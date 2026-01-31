@@ -1,0 +1,43 @@
+{
+  "name": "@jant/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "i18n:extract": "tsx scripts/extract.ts",
+    "i18n:compile": "lingui compile --typescript",
+    "i18n:build": "pnpm i18n:extract && pnpm i18n:compile"
+  },
+  "dependencies": {
+    "@lingui/core": "^5.9.0",
+    "better-auth": "^1.4.18",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.11.7",
+    "marked": "^17.0.1",
+    "sqids": "^0.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260131.0",
+    "@lingui/cli": "^5.9.0",
+    "@types/node": "^25.1.0",
+    "autoprefixer": "^10.4.24",
+    "basecoat-css": "^0.3.10",
+    "drizzle-kit": "^0.31.8",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.61.1"
+  }
+}

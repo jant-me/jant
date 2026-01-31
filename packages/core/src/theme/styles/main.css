@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@import "basecoat-css";
+
+/* Custom theme variables */
+:root {
+  --radius: 0.5rem;
+}
+
+/* Custom utilities */
+@layer utilities {
+  .container {
+    @apply mx-auto max-w-2xl px-4;
+  }
+}

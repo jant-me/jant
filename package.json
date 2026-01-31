@@ -1,0 +1,15 @@
+{
+  "name": "jant",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @jant/core dev",
+    "build": "pnpm --filter @jant/core build",
+    "typecheck": "pnpm --filter @jant/core typecheck",
+    "lint": "pnpm --filter @jant/core lint"
+  }
+}

@@ -1,11 +1,16 @@
 # Dependencies
 node_modules/
+references
 
 # Build outputs
 dist/
 build/
 out/
 *.tsbuildinfo
+
+# Cloudflare
+.wrangler/
+.dev.vars
 
 # Turbo
 .turbo/

@@ -1,6 +1,6 @@
 # Jant - 技术规格
 
-> 本文档用于指导 AI 实现。请先阅读 @plan.md 了解产品愿景。
+> 本文档用于指导 AI 实现。请先阅读 plan.zh-Hans.md 了解产品愿景。
 
 ---
 
@@ -72,13 +72,12 @@ jant/
 | 表 | 用途 |
 |---|------|
 | `posts` | 所有内容（note/article/link/quote/image/page） |
-| `media` | 媒体文件 |
+| `media` | 媒体文件元数据 |
 | `collections` | 策展集合 |
-| `post_collections` | 帖子-集合关联 |
+| `post_collections` | 帖子-集合关联（多对多） |
 | `redirects` | URL 重定向 |
-| `settings` | 站点设置 |
-| `admin` | 管理员信息 |
-| `user/session/account/verification` | better-auth 需要 |
+| `settings` | 站点设置（Key-Value） |
+| `user/session/account/verification` | better-auth 表（复用 user 表做 admin）|
 
 ### 4.2 Post 字段
 ```typescript
@@ -87,41 +86,112 @@ jant/
   type: 'note' | 'article' | 'link' | 'quote' | 'image' | 'page',
   visibility: 'featured' | 'quiet' | 'unlisted' | 'draft',
   title?: string,
-  slug?: string,           // 自定义 URL
-  content?: string,        // Markdown
-  content_html?: string,   // 渲染后
+  path?: string,           // 自定义 URL 路径（支持多级，如 about/team）
+  content?: string,        // Markdown（使用 marked 渲染）
+  content_html?: string,   // 渲染后 HTML
   source_url?: string,     // link/quote 的来源
   source_name?: string,
   source_domain?: string,  // 从 URL 提取
   reply_to_id?: number,    // Thread: 直接父帖
   thread_id?: number,      // Thread: 根帖
   deleted_at?: number,     // 软删除
+  published_at: number,    // 用户可编辑的展示时间（只允许过去时间）
+  created_at: number,      // 真实创建时间（系统自动）
+  updated_at: number,
+}
+```
+
+**URL 规则**：
+- 非 page 类型：默认 `/p/{sqid}`，用户可设置 path，修改后旧路径自动 301 重定向
+- page 类型：用户必须填写 path（支持多级路径如 `about/team`）
+
+### 4.3 Media 字段
+```typescript
+{
+  id: number,
+  post_id?: number,        // 可选，media 可独立存在（先上传后使用）
+  filename: string,        // 存储文件名
+  original_name: string,   // 原始文件名
+  mime_type: string,
+  size: number,            // 字节
+  r2_key: string,          // R2/S3 对象键
+  width?: number,          // 图片宽度
+  height?: number,         // 图片高度
+  alt?: string,            // 无障碍描述
+  created_at: number,
+}
+```
+
+### 4.4 Collections 字段
+```typescript
+{
+  id: number,
+  slug: string,            // URL: /c/{slug}，唯一
+  title: string,
+  description?: string,
   created_at: number,
   updated_at: number,
 }
 ```
 
-### 4.3 ID 方案
+### 4.5 Post_Collections 字段
+```typescript
+{
+  post_id: number,         // FK → posts.id
+  collection_id: number,   // FK → collections.id
+  added_at: number,
+  // PRIMARY KEY (post_id, collection_id)
+  // 一个帖子可属于多个 Collection
+}
+```
+
+### 4.6 Settings 字段
+```typescript
+{
+  key: string,             // PRIMARY KEY，与环境变量命名一致
+  value: string,           // JSON 序列化
+  updated_at: number,
+}
+// 例：SITE_NAME, SITE_DESCRIPTION, SITE_LANGUAGE, THEME, ONBOARDING_STATUS
+```
+
+### 4.7 Redirects 字段
+```typescript
+{
+  id: number,
+  from_path: string,       // 源路径，如 /old-post
+  to_path: string,         // 目标，可以是相对路径或完整外部 URL
+  type: 301 | 302,         // 永久 vs 临时
+  created_at: number,
+}
+// 用途：1) slug 变更时自动创建  2) 手动创建自定义重定向
+```
+
+### 4.8 ID 与 URL 方案
 
 - 数据库使用自增 integer
 - URL 使用 Sqids 编码：`/p/jR3k`
-- 若有 slug，优先显示 slug：`/p/my-post`
+- 若有 path，优先显示 path：`/p/my-post`
+- path 变更时自动创建 301 重定向到新路径
 
-### 4.4 Thread 规则
+### 4.9 Thread 规则
 ```
 创建回复时：
   reply_to_id = 父帖 ID
   thread_id = 父帖.thread_id ?? 父帖.id
+  visibility = 复制 root 的 visibility
 
 删除时：
   删除 root → 整个 thread 软删除
   删除中间 → 子帖保留，UI 不显示断链占位
 
-可见性：
-  Thread 内所有帖子继承 root 的 visibility
+可见性（创建时复制 + 级联更新）：
+  - 创建子帖时：复制 root 的 visibility
+  - 修改 root visibility 时：级联更新所有子帖
+  - 理由：查询性能好 + 符合「Thread 是一个整体」的语义
 ```
 
-### 4.5 全文搜索
+### 4.10 全文搜索
 
 使用 FTS5 trigram：
 ```sql
@@ -142,17 +212,19 @@ CREATE VIRTUAL TABLE posts_fts USING fts5(
 ```
 GET  /                    首页
 GET  /featured            精选
-GET  /p/:id               帖子（sqid 或 slug）
-GET  /:slug               页面
+GET  /p/:id               帖子（sqid 或 path）
 GET  /c/:slug             Collection
 GET  /notes|articles|...  类型索引
-GET  /archive             归档
+GET  /archive             归档（仿 Tumblr，按月份无限滚动）
 GET  /archive/:year
 GET  /search              搜索
-GET  /feed                RSS (featured)
-GET  /feed/all            RSS (all)
-GET  /sitemap.xml
+GET  /feed                RSS/Atom (featured，最近 N 篇)
+GET  /feed/all            RSS/Atom (all public)
+GET  /sitemap.xml         自动生成，包含所有公开帖子和页面
+GET  /*path               页面（page 类型，支持多级路径，最低优先级）
 ```
+
+**分页**：Cursor-based + 无限滚动，默认每页 100 项（可配置）
 
 ### 5.2 认证
 ```
@@ -185,11 +257,13 @@ GET    /api/settings        [auth]
 PUT    /api/settings        [auth]
 ```
 
-### 5.5 保留 slug
+### 5.5 保留路径
 ```
 featured, signin, signout, setup, dash, api, feed, search, archive,
 notes, articles, links, quotes, media, pages, p, c, static, assets
 ```
+> 保留路径列表可配置（通过 `lib/constants.ts` 导出）。
+> Page 创建/更新时需验证 path 不与保留路径冲突。
 
 ---
 
@@ -272,10 +346,23 @@ run = "pnpm turbo typecheck"
 SITE_URL = "https://example.com"
 
 # wrangler secret
-AUTH_SECRET = "..."  # 至少 32 字符
+AUTH_SECRET = "..."           # 至少 32 字符
+
+# 存储配置（必须配置，否则上传报错）
+R2_BUCKET = "jant-media"      # Cloudflare R2 bucket 名称
+R2_PUBLIC_URL = "https://..."  # R2 公开访问 URL
+
+# 可选：Cloudflare Images（推荐，自动处理缩放/格式转换）
+CF_IMAGES_ACCOUNT_ID = "..."
+CF_IMAGES_API_TOKEN = "..."
 ```
 
-可在后台修改：`SITE_NAME`, `SITE_DESCRIPTION`, `SITE_LANGUAGE`, `THEME`
+**存储策略**：
+- Cloudflare 部署默认使用 R2（S3 兼容，无出口费用）
+- 图片处理推荐接入 Cloudflare Images（自动缩放、WebP 转换）
+- 未配置存储时，上传功能报错，/dash/settings 页面显示配置提示
+
+可在后台修改（存入 settings 表）：`SITE_NAME`, `SITE_DESCRIPTION`, `SITE_LANGUAGE`, `THEME`
 
 ---
 
@@ -303,3 +390,68 @@ Phase 4: 完善
 3. **软删除**：posts 使用 `deleted_at` 软删除
 4. **时间戳**：使用 Unix timestamp (integer)
 5. **Slug 变更**：自动创建 301 重定向
+6. **Admin 认证**：复用 better-auth 的 user 表，通过 role 字段标识 admin
+
+---
+
+## 十二、Onboarding 流程
+
+```
+1. 首次访问任意页面 → 检查 settings.ONBOARDING_STATUS
+2. 如果 'pending' 或不存在 → 重定向到 /setup
+3. /setup 页面收集：
+   - 管理员账号（邮箱 + 密码）
+   - 站点名称
+   - 站点语言
+4. 完成后 → ONBOARDING_STATUS = 'completed'
+5. /dash/settings 页面显示存储配置状态和提示
+```
+
+---
+
+## 十三、时间显示
+
+- **1 个月内**：显示相对时间（如「3小时前」），hover 显示本地时区具体时间（JS）
+- **超过 1 个月**：服务端渲染 UTC 日期
+- 使用 `<time datetime="...">` 语义化标签
+
+---
+
+## 十四、SEO 与社交分享
+
+```html
+<!-- 必须 -->
+<title>{标题} | {站点名}</title>
+<meta name="description" content="{描述}">
+<link rel="canonical" href="{完整 URL}">
+
+<!-- Open Graph -->
+<meta property="og:title" content="{标题}">
+<meta property="og:description" content="{描述}">
+<meta property="og:image" content="{帖子第一张图，没有则不输出}">
+<meta property="og:url" content="{完整 URL}">
+
+<!-- Twitter Cards -->
+<meta name="twitter:card" content="summary_large_image">
+...
+
+<!-- JSON-LD 结构化数据 -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  ...
+}
+</script>
+```
+
+**标题/描述回退**：若帖子无标题，取正文第一行或前 120 字（取最小）
+
+---
+
+## 十五、编辑器
+
+- Article 编辑器参考 Pika.page 风格
+- 支持直接粘贴图片（自动上传到 R2）
+- 使用标准 Markdown 语法嵌入图片
+- 提供插入图片按钮简化操作
