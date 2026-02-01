@@ -1,0 +1,56 @@
+name: Reset Demo Data
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "reset" to confirm data reset'
+        required: true
+        default: ''
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    name: Reset demo.jant.me data
+
+    # For manual trigger, require confirmation
+    if: github.event_name == 'schedule' || github.event.inputs.confirm == 'reset'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install wrangler
+        run: npm install -g wrangler
+
+      - name: Clear existing data
+        run: |
+          wrangler d1 execute jant-demo-db \
+            --remote \
+            --file=templates/jant-site/scripts/reset.sql
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+
+      - name: Insert seed data
+        run: |
+          wrangler d1 execute jant-demo-db \
+            --remote \
+            --file=templates/jant-site/scripts/seed.sql
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+
+      - name: Notify completion
+        run: |
+          echo "Demo data reset completed at $(date -u)"
+          echo "- Cleared all user-created posts, media, and collections"
+          echo "- Re-inserted seed data"

@@ -9,14 +9,89 @@ A personal website/blog powered by [Jant](https://github.com/nicepkg/jant).
 pnpm install
 
 # Set up environment variables
-cp _env.example .dev.vars
-# Edit .dev.vars with your AUTH_SECRET
+cp .dev.vars.example .dev.vars
+# Edit .dev.vars and set AUTH_SECRET (32+ random characters)
 
 # Start development server
 pnpm dev
 ```
 
 Visit http://localhost:9019 to see your site.
+
+## Deploy to Cloudflare
+
+### 1. Create Cloudflare Resources
+
+First, make sure you have [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) installed and logged in:
+
+```bash
+# Install wrangler if not already installed
+npm install -g wrangler
+
+# Login to Cloudflare
+wrangler login
+```
+
+Create the required resources:
+
+```bash
+# Create D1 database
+wrangler d1 create my-blog-db
+# Note the database_id from the output!
+
+# Create R2 bucket for media storage
+wrangler r2 bucket create my-blog-media
+```
+
+### 2. Update Configuration
+
+Edit `wrangler.toml` with your resource IDs:
+
+```toml
+name = "my-blog"  # Your worker name
+
+[[d1_databases]]
+binding = "DB"
+database_name = "my-blog-db"
+database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # From step 1
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "my-blog-media"
+```
+
+### 3. Set Secrets
+
+```bash
+# Set authentication secret (use a random 32+ character string)
+wrangler secret put AUTH_SECRET
+# Enter your secret when prompted
+```
+
+### 4. Run Migrations
+
+```bash
+# Apply database migrations
+wrangler d1 migrations apply my-blog-db --remote
+```
+
+### 5. Deploy
+
+```bash
+# Build and deploy
+pnpm deploy
+```
+
+Your site is now live at `https://my-blog.<your-subdomain>.workers.dev`!
+
+### 6. Custom Domain (Optional)
+
+To use your own domain:
+
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) > Workers & Pages
+2. Select your worker > Settings > Triggers
+3. Click "Add Custom Domain"
+4. Enter your domain (e.g., `blog.example.com`)
 
 ## Commands
 
@@ -27,6 +102,13 @@ Visit http://localhost:9019 to see your site.
 | `pnpm deploy` | Build and deploy to Cloudflare |
 | `pnpm preview` | Preview production build |
 | `pnpm typecheck` | Run TypeScript checks |
+
+## Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `AUTH_SECRET` | Secret key for authentication (32+ chars) | Yes |
+| `SITE_URL` | Your site's public URL | Set in wrangler.toml |
 
 ## Customization
 
@@ -63,6 +145,20 @@ export default createApp({
 });
 ```
 
+### Custom Styles
+
+Add custom CSS in `src/theme/styles/`:
+
+```css
+/* src/theme/styles/custom.css */
+@import "@jant/core/theme/styles/main.css";
+
+/* Your custom styles */
+.my-custom-class {
+  /* ... */
+}
+```
+
 ### Using Third-Party Themes
 
 ```bash
@@ -78,7 +174,15 @@ export default createApp({
 });
 ```
 
+## Updating
+
+To update Jant to the latest version:
+
+```bash
+pnpm update @jant/core
+```
+
 ## Documentation
 
-- [Jant Documentation](https://jant.dev/docs)
-- [Architecture Guide](https://github.com/nicepkg/jant/blob/main/docs/internal/architecture.zh-Hans.md)
+- [Jant Documentation](https://jant.me/docs)
+- [GitHub Repository](https://github.com/nicepkg/jant)
