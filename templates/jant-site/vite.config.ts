@@ -20,12 +20,15 @@ function patchWorkerAssets(): Plugin {
       // Extract asset paths from manifest
       let stylesPath = "/assets/styles.css";
       let clientPath = "/assets/client.js";
+      let datastarPath = "/assets/datastar.min.js";
 
       for (const [key, entry] of Object.entries(manifest) as [string, { file: string }][]) {
         if (key.includes("main.css") || key.includes("styles")) {
           stylesPath = `/${entry.file}`;
-        } else if (key.includes("client.ts") || key.includes("client")) {
+        } else if (key.includes("client.ts")) {
           clientPath = `/${entry.file}`;
+        } else if (key.includes("datastar")) {
+          datastarPath = `/${entry.file}`;
         }
       }
 
@@ -40,6 +43,7 @@ function patchWorkerAssets(): Plugin {
           // Replace unique placeholders with actual hashed paths
           content = content.replace(/__JANT_ASSET_STYLES__/g, stylesPath);
           content = content.replace(/__JANT_ASSET_CLIENT__/g, clientPath);
+          content = content.replace(/__JANT_ASSET_DATASTAR__/g, datastarPath);
           writeFileSync(filePath, content);
         }
       }
@@ -107,6 +111,7 @@ export default defineConfig({
       input: {
         styles: "@jant/core/src/theme/styles/main.css",
         client: "@jant/core/src/client.ts",
+        datastar: "@jant/core/static/assets/datastar.min.js",
       },
       output: {
         entryFileNames: "assets/[name]-[hash].js",

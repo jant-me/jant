@@ -23,7 +23,7 @@ const DEV_ASSETS: Assets = {
 const PROD_ASSETS: Assets = {
   styles: "__JANT_ASSET_STYLES__",
   client: "__JANT_ASSET_CLIENT__",
-  datastar: "/assets/datastar.min.js",
+  datastar: "__JANT_ASSET_DATASTAR__",
 };
 
 /**
