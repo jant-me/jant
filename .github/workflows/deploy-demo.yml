@@ -33,6 +33,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Run migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          workingDirectory: templates/jant-site
+          command: d1 migrations apply jant-demo-db --remote
+
       - name: Build
         run: pnpm --filter jant-site build
         env:
@@ -49,11 +57,3 @@ jobs:
             AUTH_SECRET
         env:
           AUTH_SECRET: ${{ secrets.DEMO_AUTH_SECRET }}
-
-      - name: Run migrations
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          workingDirectory: templates/jant-site
-          command: d1 migrations apply jant-demo-db --remote
