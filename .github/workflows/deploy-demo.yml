@@ -47,7 +47,8 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           workingDirectory: templates/jant-site
-          command: d1 migrations apply DB --remote --env demo
+          environment: demo
+          command: d1 migrations apply DB --remote
 
       - name: Build
         run: pnpm --filter jant-site build
@@ -60,8 +61,13 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           workingDirectory: templates/jant-site
-          command: deploy --env demo
-          secrets: |
-            AUTH_SECRET
+          environment: demo
+          command: deploy
+
+      - name: Set AUTH_SECRET
+        working-directory: templates/jant-site
+        run: echo "$AUTH_SECRET" | wrangler secret put AUTH_SECRET --env demo
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           AUTH_SECRET: ${{ secrets.DEMO_AUTH_SECRET }}
