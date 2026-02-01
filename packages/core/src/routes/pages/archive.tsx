@@ -18,7 +18,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 const PAGE_SIZE = 50;
 
-export const archiveRoute = new Hono<Env>();
+export const archiveRoutes = new Hono<Env>();
 
 function getTypeLabel(type: string): string {
   const { t } = useLingui();
@@ -164,7 +164,7 @@ function ArchiveContent({
 }
 
 // Archive page - all posts
-archiveRoute.get("/", async (c) => {
+archiveRoutes.get("/", async (c) => {
   const typeParam = c.req.query("type") as PostType | undefined;
   const type = typeParam && POST_TYPES.includes(typeParam) ? typeParam : undefined;
 

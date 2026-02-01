@@ -4,19 +4,21 @@
  * IMPORTANT: This module is designed for concurrent environments (Cloudflare Workers).
  * We create a new i18n instance per request to avoid race conditions.
  *
- * Usage (Lingui React API):
- * ```tsx
- * import { Trans, useLingui } from "@lingui/react/macro";
- * import { I18nProvider } from "@/i18n";
+ * This is a custom implementation compatible with Hono JSX (SSR), not React.
+ * It provides a React-like API using Lingui macros with a custom context system.
  *
- * // Wrap your app in I18nProvider
+ * Usage:
+ * ```tsx
+ * import { useLingui, Trans, I18nProvider } from "@/i18n";
+ *
+ * // Wrap your app in I18nProvider (automatically done by BaseLayout when c is provided)
  * c.html(
  *   <I18nProvider c={c}>
  *     <MyApp />
  *   </I18nProvider>
  * );
  *
- * // Inside components, use useLingui() exactly like React!
+ * // Inside components, use useLingui() hook
  * function MyApp() {
  *   const { t } = useLingui();
  *

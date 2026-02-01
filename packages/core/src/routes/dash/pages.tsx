@@ -9,7 +9,7 @@ import { useLingui } from "../../i18n/index.js";
 import type { Bindings, Post } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
-import { PageForm } from "../../theme/components/index.js";
+import { PageForm, VisibilityBadge, EmptyState, ListItemRow, ActionButtons, CrudPageHeader, DangerZone } from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
 import * as time from "../../lib/time.js";
 import { VisibilitySchema, parseFormData } from "../../lib/schemas.js";
@@ -23,65 +23,48 @@ function PagesListContent({ pages }: { pages: Post[] }) {
 
   return (
     <>
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-semibold">
-          {t({ message: "Pages", comment: "@context: Pages main heading" })}
-        </h1>
-        <a href="/dash/pages/new" class="btn">
-          {t({ message: "New Page", comment: "@context: Button to create new page" })}
-        </a>
-      </div>
+      <CrudPageHeader
+        title={t({ message: "Pages", comment: "@context: Pages main heading" })}
+        ctaLabel={t({ message: "New Page", comment: "@context: Button to create new page" })}
+        ctaHref="/dash/pages/new"
+      />
 
       {pages.length === 0 ? (
-        <div class="text-center py-12 text-muted-foreground">
-          <p>{t({ message: "No pages yet.", comment: "@context: Empty state message when no pages exist" })}</p>
-          <a href="/dash/pages/new" class="btn mt-4">
-            {t({ message: "Create your first page", comment: "@context: Button in empty state to create first page" })}
-          </a>
-        </div>
+        <EmptyState
+          message={t({ message: "No pages yet.", comment: "@context: Empty state message when no pages exist" })}
+          ctaText={t({ message: "Create your first page", comment: "@context: Button in empty state to create first page" })}
+          ctaHref="/dash/pages/new"
+        />
       ) : (
         <div class="flex flex-col divide-y">
           {pages.map((page) => (
-            <div key={page.id} class="py-4 flex items-start gap-4">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-1">
-                  <span
-                    class={
-                      page.visibility === "draft" ? "badge-outline" : "badge-secondary"
-                    }
-                  >
-                    {page.visibility === "draft"
-                      ? t({ message: "Draft", comment: "@context: Page status badge - draft" })
-                      : t({ message: "Published", comment: "@context: Page status badge - published" })}
-                  </span>
-                  <span class="text-xs text-muted-foreground">
-                    {time.formatDate(page.updatedAt)}
-                  </span>
-                </div>
-                <a
-                  href={`/dash/pages/${sqid.encode(page.id)}`}
-                  class="font-medium hover:underline"
-                >
-                  {page.title || t({ message: "Untitled", comment: "@context: Default title for untitled page" })}
-                </a>
-                <p class="text-sm text-muted-foreground mt-1">
-                  /{page.path}
-                </p>
+            <ListItemRow
+              key={page.id}
+              actions={
+                <ActionButtons
+                  editHref={`/dash/pages/${sqid.encode(page.id)}/edit`}
+                  editLabel={t({ message: "Edit", comment: "@context: Button to edit page" })}
+                  viewHref={page.visibility !== "draft" && page.path ? `/${page.path}` : undefined}
+                  viewLabel={t({ message: "View", comment: "@context: Button to view page on public site" })}
+                />
+              }
+            >
+              <div class="flex items-center gap-2 mb-1">
+                <VisibilityBadge visibility={page.visibility} />
+                <span class="text-xs text-muted-foreground">
+                  {time.formatDate(page.updatedAt)}
+                </span>
               </div>
-              <div class="flex items-center gap-2">
-                <a
-                  href={`/dash/pages/${sqid.encode(page.id)}/edit`}
-                  class="btn-sm-outline"
-                >
-                  {t({ message: "Edit", comment: "@context: Button to edit page" })}
-                </a>
-                {page.visibility !== "draft" && page.path && (
-                  <a href={`/${page.path}`} class="btn-sm-ghost" target="_blank">
-                    {t({ message: "View", comment: "@context: Button to view page on public site" })}
-                  </a>
-                )}
-              </div>
-            </div>
+              <a
+                href={`/dash/pages/${sqid.encode(page.id)}`}
+                class="font-medium hover:underline"
+              >
+                {page.title || t({ message: "Untitled", comment: "@context: Default title for untitled page" })}
+              </a>
+              <p class="text-sm text-muted-foreground mt-1">
+                /{page.path}
+              </p>
+            </ListItemRow>
           ))}
         </div>
       )}
@@ -112,16 +95,12 @@ function ViewPageContent({ page }: { page: Post }) {
             <p class="text-muted-foreground mt-1">/{page.path}</p>
           )}
         </div>
-        <div class="flex gap-2">
-          <a href={`/dash/pages/${sqid.encode(page.id)}/edit`} class="btn-outline">
-            {t({ message: "Edit", comment: "@context: Button to edit page" })}
-          </a>
-          {page.visibility !== "draft" && page.path && (
-            <a href={`/${page.path}`} class="btn-ghost" target="_blank">
-              {t({ message: "View", comment: "@context: Button to view page on public site" })}
-            </a>
-          )}
-        </div>
+        <ActionButtons
+          editHref={`/dash/pages/${sqid.encode(page.id)}/edit`}
+          editLabel={t({ message: "Edit", comment: "@context: Button to edit page" })}
+          viewHref={page.visibility !== "draft" && page.path ? `/${page.path}` : undefined}
+          viewLabel={t({ message: "View", comment: "@context: Button to view page on public site" })}
+        />
       </div>
 
       <div class="card">
@@ -130,21 +109,11 @@ function ViewPageContent({ page }: { page: Post }) {
         </section>
       </div>
 
-      {/* Delete form */}
-      <div class="mt-8 pt-8 border-t">
-        <h2 class="text-lg font-medium text-destructive mb-4">
-          {t({ message: "Danger Zone", comment: "@context: Section heading for dangerous/destructive actions" })}
-        </h2>
-        <form method="post" action={`/dash/pages/${sqid.encode(page.id)}/delete`}>
-          <button
-            type="submit"
-            class="btn-destructive"
-            onclick="return confirm('Are you sure you want to delete this page?')"
-          >
-            {t({ message: "Delete Page", comment: "@context: Button to delete page" })}
-          </button>
-        </form>
-      </div>
+      <DangerZone
+        actionLabel={t({ message: "Delete Page", comment: "@context: Button to delete page" })}
+        formAction={`/dash/pages/${sqid.encode(page.id)}/delete`}
+        confirmMessage="Are you sure you want to delete this page?"
+      />
     </>
   );
 }

@@ -12,7 +12,7 @@ import * as time from "../../lib/time.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
-export const collectionRoute = new Hono<Env>();
+export const collectionRoutes = new Hono<Env>();
 
 function CollectionContent({ collection, posts }: { collection: Collection; posts: Post[] }) {
   const { t } = useLingui();
@@ -62,7 +62,7 @@ function CollectionContent({ collection, posts }: { collection: Collection; post
   );
 }
 
-collectionRoute.get("/:path", async (c) => {
+collectionRoutes.get("/:path", async (c) => {
   const path = c.req.param("path");
 
   const collection = await c.var.services.collections.getByPath(path);

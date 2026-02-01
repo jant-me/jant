@@ -7,6 +7,7 @@ import { useLingui } from "../../i18n/index.js";
 import type { Bindings, Redirect } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
+import { EmptyState, ListItemRow, ActionButtons, CrudPageHeader } from "../../theme/components/index.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -17,33 +18,37 @@ function RedirectsListContent({ redirects }: { redirects: Redirect[] }) {
 
   return (
     <>
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-semibold">{t({ message: "Redirects", comment: "@context: Dashboard heading" })}</h1>
-        <a href="/dash/redirects/new" class="btn">
-          {t({ message: "New Redirect", comment: "@context: Button to create new redirect" })}
-        </a>
-      </div>
+      <CrudPageHeader
+        title={t({ message: "Redirects", comment: "@context: Dashboard heading" })}
+        ctaLabel={t({ message: "New Redirect", comment: "@context: Button to create new redirect" })}
+        ctaHref="/dash/redirects/new"
+      />
 
       {redirects.length === 0 ? (
-        <p class="text-muted-foreground">{t({ message: "No redirects configured.", comment: "@context: Empty state message" })}</p>
+        <EmptyState
+          message={t({ message: "No redirects configured.", comment: "@context: Empty state message" })}
+          ctaText={t({ message: "New Redirect", comment: "@context: Button to create new redirect" })}
+          ctaHref="/dash/redirects/new"
+        />
       ) : (
         <div class="flex flex-col divide-y">
           {redirects.map((r) => (
-            <div key={r.id} class="py-4 flex items-center gap-4">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                  <code class="text-sm bg-muted px-1 rounded">{r.fromPath}</code>
-                  <span class="text-muted-foreground">→</span>
-                  <code class="text-sm bg-muted px-1 rounded">{r.toPath}</code>
-                  <span class="badge-outline">{r.type}</span>
-                </div>
+            <ListItemRow
+              key={r.id}
+              actions={
+                <ActionButtons
+                  deleteAction={`/dash/redirects/${r.id}/delete`}
+                  deleteLabel={t({ message: "Delete", comment: "@context: Button to delete redirect" })}
+                />
+              }
+            >
+              <div class="flex items-center gap-2">
+                <code class="text-sm bg-muted px-1 rounded">{r.fromPath}</code>
+                <span class="text-muted-foreground">→</span>
+                <code class="text-sm bg-muted px-1 rounded">{r.toPath}</code>
+                <span class="badge-outline">{r.type}</span>
               </div>
-              <form method="post" action={`/dash/redirects/${r.id}/delete`}>
-                <button type="submit" class="btn-sm-ghost text-destructive">
-                  {t({ message: "Delete", comment: "@context: Button to delete redirect" })}
-                </button>
-              </form>
-            </div>
+            </ListItemRow>
           ))}
         </div>
       )}

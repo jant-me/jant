@@ -12,7 +12,7 @@ import { DashLayout } from "../../theme/layouts/index.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
-export const dashIndexRoute = new Hono<Env>();
+export const dashIndexRoutes = new Hono<Env>();
 
 /**
  * Dashboard content component
@@ -70,7 +70,7 @@ function DashboardContent({
   );
 }
 
-dashIndexRoute.get("/", async (c) => {
+dashIndexRoutes.get("/", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   // Get some stats

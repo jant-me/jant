@@ -7,6 +7,7 @@ import { useLingui } from "../../i18n/index.js";
 import type { Bindings, Collection, Post } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
+import { EmptyState, ListItemRow, ActionButtons, CrudPageHeader, DangerZone } from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -18,37 +19,40 @@ function CollectionsListContent({ collections }: { collections: Collection[] }) 
 
   return (
     <>
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-semibold">{t({ message: "Collections", comment: "@context: Dashboard heading" })}</h1>
-        <a href="/dash/collections/new" class="btn">
-          {t({ message: "New Collection", comment: "@context: Button to create new collection" })}
-        </a>
-      </div>
+      <CrudPageHeader
+        title={t({ message: "Collections", comment: "@context: Dashboard heading" })}
+        ctaLabel={t({ message: "New Collection", comment: "@context: Button to create new collection" })}
+        ctaHref="/dash/collections/new"
+      />
 
       {collections.length === 0 ? (
-        <p class="text-muted-foreground">{t({ message: "No collections yet.", comment: "@context: Empty state message" })}</p>
+        <EmptyState
+          message={t({ message: "No collections yet.", comment: "@context: Empty state message" })}
+          ctaText={t({ message: "New Collection", comment: "@context: Button to create new collection" })}
+          ctaHref="/dash/collections/new"
+        />
       ) : (
         <div class="flex flex-col divide-y">
           {collections.map((col) => (
-            <div key={col.id} class="py-4 flex items-center gap-4">
-              <div class="flex-1 min-w-0">
-                <a href={`/dash/collections/${col.id}`} class="font-medium hover:underline">
-                  {col.title}
-                </a>
-                <p class="text-sm text-muted-foreground">/{col.path}</p>
-                {col.description && (
-                  <p class="text-sm text-muted-foreground mt-1">{col.description}</p>
-                )}
-              </div>
-              <div class="flex items-center gap-2">
-                <a href={`/dash/collections/${col.id}/edit`} class="btn-sm-outline">
-                  {t({ message: "Edit", comment: "@context: Button to edit collection" })}
-                </a>
-                <a href={`/c/${col.path}`} class="btn-sm-ghost" target="_blank">
-                  {t({ message: "View", comment: "@context: Button to view collection" })}
-                </a>
-              </div>
-            </div>
+            <ListItemRow
+              key={col.id}
+              actions={
+                <ActionButtons
+                  editHref={`/dash/collections/${col.id}/edit`}
+                  editLabel={t({ message: "Edit", comment: "@context: Button to edit collection" })}
+                  viewHref={`/c/${col.path}`}
+                  viewLabel={t({ message: "View", comment: "@context: Button to view collection" })}
+                />
+              }
+            >
+              <a href={`/dash/collections/${col.id}`} class="font-medium hover:underline">
+                {col.title}
+              </a>
+              <p class="text-sm text-muted-foreground">/{col.path}</p>
+              {col.description && (
+                <p class="text-sm text-muted-foreground mt-1">{col.description}</p>
+              )}
+            </ListItemRow>
           ))}
         </div>
       )}
@@ -112,14 +116,12 @@ function ViewCollectionContent({ collection, posts }: { collection: Collection; 
           <h1 class="text-2xl font-semibold">{collection.title}</h1>
           <p class="text-sm text-muted-foreground">/{collection.path}</p>
         </div>
-        <div class="flex gap-2">
-          <a href={`/dash/collections/${collection.id}/edit`} class="btn-outline">
-            {t({ message: "Edit", comment: "@context: Button to edit collection" })}
-          </a>
-          <a href={`/c/${collection.path}`} class="btn-ghost" target="_blank">
-            {t({ message: "View", comment: "@context: Button to view collection" })}
-          </a>
-        </div>
+        <ActionButtons
+          editHref={`/dash/collections/${collection.id}/edit`}
+          editLabel={t({ message: "Edit", comment: "@context: Button to edit collection" })}
+          viewHref={`/c/${collection.path}`}
+          viewLabel={t({ message: "View", comment: "@context: Button to view collection" })}
+        />
       </div>
 
       {collection.description && (
@@ -209,14 +211,11 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
         </div>
       </form>
 
-      <div class="mt-8 pt-8 border-t">
-        <h2 class="text-lg font-medium mb-4 text-destructive">{t({ message: "Danger Zone", comment: "@context: Heading for destructive actions section" })}</h2>
-        <form method="post" action={`/dash/collections/${collection.id}/delete`}>
-          <button type="submit" class="btn-outline text-destructive">
-            {t({ message: "Delete Collection", comment: "@context: Button to delete collection" })}
-          </button>
-        </form>
-      </div>
+      <DangerZone
+        actionLabel={t({ message: "Delete Collection", comment: "@context: Button to delete collection" })}
+        formAction={`/dash/collections/${collection.id}/delete`}
+        confirmMessage="Are you sure you want to delete this collection?"
+      />
     </>
   );
 }

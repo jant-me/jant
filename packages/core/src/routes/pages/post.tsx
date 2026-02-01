@@ -12,7 +12,7 @@ import * as time from "../../lib/time.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
-export const postRoute = new Hono<Env>();
+export const postRoutes = new Hono<Env>();
 
 function PostContent({ post }: { post: Post }) {
   const { t } = useLingui();
@@ -46,7 +46,7 @@ function PostContent({ post }: { post: Post }) {
   );
 }
 
-postRoute.get("/:id", async (c) => {
+postRoutes.get("/:id", async (c) => {
   const paramId = c.req.param("id");
 
   // Try to decode as sqid first

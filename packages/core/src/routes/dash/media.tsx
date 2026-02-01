@@ -9,6 +9,7 @@ import { useLingui } from "../../i18n/index.js";
 import type { Bindings, Media } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
+import { EmptyState, DangerZone } from "../../theme/components/index.js";
 import * as time from "../../lib/time.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -65,9 +66,9 @@ function MediaListContent({ mediaList, r2PublicUrl }: { mediaList: Media[]; r2Pu
       </div>
 
       {mediaList.length === 0 ? (
-        <div class="text-center py-12 text-muted-foreground">
-          <p>{t({ message: "No media uploaded yet.", comment: "@context: Empty state message when no media exists" })}</p>
-        </div>
+        <EmptyState
+          message={t({ message: "No media uploaded yet.", comment: "@context: Empty state message when no media exists" })}
+        />
       ) : (
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {mediaList.map((m) => {
@@ -200,27 +201,12 @@ function ViewMediaContent({ media, r2PublicUrl }: { media: Media; r2PublicUrl?: 
           </div>
 
           {/* Delete */}
-          <div class="card border-destructive/50">
-            <header>
-              <h2 class="text-destructive">
-                {t({ message: "Danger Zone", comment: "@context: Section heading for dangerous/destructive actions" })}
-              </h2>
-            </header>
-            <section>
-              <p class="text-sm text-muted-foreground mb-4">
-                {t({ message: "Deleting this media will remove it permanently from storage.", comment: "@context: Warning message before deleting media" })}
-              </p>
-              <form method="post" action={`/dash/media/${media.id}/delete`}>
-                <button
-                  type="submit"
-                  class="btn-destructive"
-                  onclick="return confirm('Are you sure you want to delete this media?')"
-                >
-                  {t({ message: "Delete Media", comment: "@context: Button to delete media" })}
-                </button>
-              </form>
-            </section>
-          </div>
+          <DangerZone
+            actionLabel={t({ message: "Delete Media", comment: "@context: Button to delete media" })}
+            formAction={`/dash/media/${media.id}/delete`}
+            confirmMessage="Are you sure you want to delete this media?"
+            description={t({ message: "Deleting this media will remove it permanently from storage.", comment: "@context: Warning message before deleting media" })}
+          />
         </div>
       </div>
     </>

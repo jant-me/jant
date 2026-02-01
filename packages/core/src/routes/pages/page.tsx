@@ -12,7 +12,7 @@ import { BaseLayout } from "../../theme/layouts/index.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
-export const pageRoute = new Hono<Env>();
+export const pageRoutes = new Hono<Env>();
 
 function PageContent({ page }: { page: Post }) {
   const { t } = useLingui();
@@ -38,7 +38,7 @@ function PageContent({ page }: { page: Post }) {
 }
 
 // Catch-all for custom page paths
-pageRoute.get("/:path", async (c) => {
+pageRoutes.get("/:path", async (c) => {
   const path = c.req.param("path");
 
   // Look up page by path

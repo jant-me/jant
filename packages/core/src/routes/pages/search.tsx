@@ -16,7 +16,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 const PAGE_SIZE = 10;
 
-export const searchRoute = new Hono<Env>();
+export const searchRoutes = new Hono<Env>();
 
 function SearchContent({
   query,
@@ -122,7 +122,7 @@ function SearchContent({
   );
 }
 
-searchRoute.get("/", async (c) => {
+searchRoutes.get("/", async (c) => {
   const query = c.req.query("q") || "";
   const pageParam = c.req.query("page");
   const page = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;

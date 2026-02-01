@@ -3,27 +3,31 @@
  *
  * These schemas ensure type-safe validation of user input
  * from forms, API requests, and other external sources.
+ *
+ * IMPORTANT: Types are defined in types.ts as the single source of truth.
+ * This file only defines Zod validation schemas based on those types.
  */
 
 import { z } from "zod";
+import { POST_TYPES, VISIBILITY_LEVELS } from "../types.js";
 
 /**
  * Post type enum schema
+ * Based on POST_TYPES from types.ts
  */
-export const PostTypeSchema = z.enum(["note", "article", "link", "quote", "image", "page"]);
-export type PostType = z.infer<typeof PostTypeSchema>;
+export const PostTypeSchema = z.enum(POST_TYPES);
 
 /**
  * Visibility enum schema
+ * Based on VISIBILITY_LEVELS from types.ts
  */
-export const VisibilitySchema = z.enum(["featured", "quiet", "unlisted", "draft"]);
-export type Visibility = z.infer<typeof VisibilitySchema>;
+export const VisibilitySchema = z.enum(VISIBILITY_LEVELS);
 
 /**
  * Redirect type enum schema
+ * Form input validation for redirect type (stored as number in DB)
  */
 export const RedirectTypeSchema = z.enum(["301", "302"]);
-export type RedirectType = z.infer<typeof RedirectTypeSchema>;
 
 /**
  * API request body schema for creating a post

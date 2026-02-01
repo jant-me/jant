@@ -12,7 +12,7 @@ import * as time from "../../lib/time.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
-export const homeRoute = new Hono<Env>();
+export const homeRoutes = new Hono<Env>();
 
 function HomeContent({ siteName, posts }: { siteName: string; posts: Post[] }) {
   const { t } = useLingui();
@@ -72,7 +72,7 @@ function HomeContent({ siteName, posts }: { siteName: string; posts: Post[] }) {
   );
 }
 
-homeRoute.get("/", async (c) => {
+homeRoutes.get("/", async (c) => {
   const isComplete = await c.var.services.settings.isOnboardingComplete();
   if (!isComplete) {
     return c.redirect("/setup");

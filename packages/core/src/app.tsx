@@ -11,15 +11,15 @@ import { i18nMiddleware, useLingui } from "./i18n/index.js";
 import type { Bindings } from "./types.js";
 
 // Routes - Pages
-import { homeRoute } from "./routes/pages/home.js";
-import { postRoute } from "./routes/pages/post.js";
-import { pageRoute } from "./routes/pages/page.js";
-import { collectionRoute } from "./routes/pages/collection.js";
-import { archiveRoute } from "./routes/pages/archive.js";
-import { searchRoute } from "./routes/pages/search.js";
+import { homeRoutes } from "./routes/pages/home.js";
+import { postRoutes } from "./routes/pages/post.js";
+import { pageRoutes } from "./routes/pages/page.js";
+import { collectionRoutes } from "./routes/pages/collection.js";
+import { archiveRoutes } from "./routes/pages/archive.js";
+import { searchRoutes } from "./routes/pages/search.js";
 
 // Routes - Dashboard
-import { dashIndexRoute } from "./routes/dash/index.js";
+import { dashIndexRoutes } from "./routes/dash/index.js";
 import { postsRoutes as dashPostsRoutes } from "./routes/dash/posts.js";
 import { pagesRoutes as dashPagesRoutes } from "./routes/dash/pages.js";
 import { mediaRoutes as dashMediaRoutes } from "./routes/dash/media.js";
@@ -296,7 +296,7 @@ export function createApp(): App {
 
   // Dashboard routes (protected)
   app.use("/dash/*", requireAuth());
-  app.route("/dash", dashIndexRoute);
+  app.route("/dash", dashIndexRoutes);
   app.route("/dash/posts", dashPostsRoutes);
   app.route("/dash/pages", dashPagesRoutes);
   app.route("/dash/media", dashMediaRoutes);
@@ -313,14 +313,14 @@ export function createApp(): App {
   app.route("/", sitemapRoutes);
 
   // Frontend routes
-  app.route("/search", searchRoute);
-  app.route("/archive", archiveRoute);
-  app.route("/c", collectionRoute);
-  app.route("/p", postRoute);
-  app.route("/", homeRoute);
+  app.route("/search", searchRoutes);
+  app.route("/archive", archiveRoutes);
+  app.route("/c", collectionRoutes);
+  app.route("/p", postRoutes);
+  app.route("/", homeRoutes);
 
   // Custom page catch-all (must be last)
-  app.route("/", pageRoute);
+  app.route("/", pageRoutes);
 
   return app;
 }

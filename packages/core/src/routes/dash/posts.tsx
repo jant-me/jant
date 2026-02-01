@@ -8,7 +8,7 @@ import { useLingui } from "../../i18n/index.js";
 import type { Bindings, Post } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
-import { PostForm, PostList } from "../../theme/components/index.js";
+import { PostForm, PostList, CrudPageHeader, ActionButtons } from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
 import {
   PostTypeSchema,
@@ -25,12 +25,11 @@ function PostsListContent({ posts }: { posts: Post[] }) {
   const { t } = useLingui();
   return (
     <>
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-semibold">{t({ message: "Posts", comment: "@context: Dashboard heading" })}</h1>
-        <a href="/dash/posts/new" class="btn">
-          {t({ message: "New Post", comment: "@context: Button to create new post" })}
-        </a>
-      </div>
+      <CrudPageHeader
+        title={t({ message: "Posts", comment: "@context: Dashboard heading" })}
+        ctaLabel={t({ message: "New Post", comment: "@context: Button to create new post" })}
+        ctaHref="/dash/posts/new"
+      />
       <PostList posts={posts} />
     </>
   );
@@ -103,14 +102,12 @@ function ViewPostContent({ post }: { post: Post }) {
     <>
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-semibold">{post.title || defaultTitle}</h1>
-        <div class="flex gap-2">
-          <a href={`/dash/posts/${sqid.encode(post.id)}/edit`} class="btn-outline">
-            {t({ message: "Edit", comment: "@context: Button to edit post" })}
-          </a>
-          <a href={`/p/${sqid.encode(post.id)}`} class="btn-ghost" target="_blank">
-            {t({ message: "View", comment: "@context: Button to view post" })}
-          </a>
-        </div>
+        <ActionButtons
+          editHref={`/dash/posts/${sqid.encode(post.id)}/edit`}
+          editLabel={t({ message: "Edit", comment: "@context: Button to edit post" })}
+          viewHref={`/p/${sqid.encode(post.id)}`}
+          viewLabel={t({ message: "View", comment: "@context: Button to view post" })}
+        />
       </div>
 
       <div class="card">
