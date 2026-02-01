@@ -57,6 +57,7 @@ export function createRedirectService(db: Database): RedirectService {
         })
         .returning();
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- DB insert with .returning() always returns inserted row
       return toRedirect(result[0]!);
     },
 

@@ -172,6 +172,7 @@ export function createPostService(db: Database): PostService {
         })
         .returning();
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- DB insert with .returning() always returns inserted row
       return toPost(result[0]!);
     },
 

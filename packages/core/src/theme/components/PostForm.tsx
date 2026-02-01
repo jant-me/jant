@@ -3,8 +3,8 @@
  */
 
 import type { FC } from "hono/jsx";
+import type { Post } from "../../types.js";
 import { useLingui } from "../../i18n/index.js";
-import type { Post, PostType, Visibility } from "../../types.js";
 
 export interface PostFormProps {
   post?: Post;

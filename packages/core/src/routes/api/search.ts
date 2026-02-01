@@ -46,6 +46,7 @@ searchApiRoutes.get("/", async (c) => {
       count: results.length,
     });
   } catch (err) {
+    // eslint-disable-next-line no-console -- Error logging is intentional
     console.error("Search error:", err);
     return c.json({ error: "Search failed" }, 500);
   }

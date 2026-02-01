@@ -1,175 +1,235 @@
 # i18n Usage Examples
 
-## 为什么必须用 `msg()`？
+## New API: useLingui() Hook
 
-**简短回答**：`msg()` 不是普通函数，是**编译时宏**（macro）。
+We now use a React-like hook API that eliminates prop drilling and makes code cleaner.
 
-**工作原理**：
-```tsx
-// 1. 你写的代码
-t(msg`Dashboard`)
-
-// 2. 编译时 SWC 插件转换成
-t({ id: "7p5kLi" })
-
-// 3. 运行时查找翻译
-i18n._({ id: "7p5kLi" }) // → "仪表板"
-```
-
-如果不用 `msg()`，Lingui 编译器就无法提取消息，也就无法生成翻译文件。
-
-**好消息**：可以用更简洁的语法！
-
----
-
-## 简化语法：使用 template literal
+### Basic Pattern
 
 ```tsx
-import { msg } from "@lingui/core/macro";
-import { useT } from "@/i18n";
+import { I18nProvider, useLingui } from "@/i18n";
 
-const t = useT(c);
-
-// ✅ 最简洁（适合不需要 context 的情况）
-const title = t(msg`Dashboard`);
-
-// ✅ 带 context（推荐，帮助翻译者理解）
-const title = t(msg({ message: "Dashboard", comment: "@context: Page title" }));
-
-// ✅ 带变量
-const greeting = t(msg`Hello ${name}`); // 自动处理变量
-
-// ✅ 带变量 + context
-const greeting = t(
-  msg({ message: `Hello ${name}`, comment: "@context: Greeting" })
-);
-```
-
----
-
-## 完整示例：简化版
-
-```tsx
-import { msg } from "@lingui/core/macro";
-import { useT, Trans } from "@/i18n";
-
+// 1. Wrap your app in route handler
 dashRoute.get("/", async (c) => {
-  const t = useT(c);
-  const username = "Alice";
-  const postCount = 42;
+  return c.html(
+    <I18nProvider c={c}>
+      <MyApp />
+    </I18nProvider>
+  );
+});
+
+// 2. Use useLingui() hook inside components
+function MyApp() {
+  const { t } = useLingui();
+
+  return <h1>{t({ message: "Dashboard", comment: "@context: Page title" })}</h1>;
+}
+```
+
+### Why the `comment` field?
+
+The `comment` field provides context for AI translators, improving translation quality:
+
+```tsx
+// ✅ Good - clear context
+t({ message: "Dashboard", comment: "@context: Page title" })
+t({ message: "Dashboard", comment: "@context: Navigation link" })
+
+// ❌ Bad - no context (translator might choose wrong word)
+t({ message: "Dashboard" })
+```
+
+---
+
+## Complete Example
+
+```tsx
+import { I18nProvider, useLingui, Trans } from "@/i18n";
+
+// Route handler: wrap in I18nProvider
+dashRoute.get("/", async (c) => {
+  const posts = await c.var.services.posts.list();
 
   return c.html(
+    <I18nProvider c={c}>
+      <Dashboard postCount={posts.length} username="Alice" />
+    </I18nProvider>
+  );
+});
+
+// Component: use useLingui() hook
+function Dashboard({ postCount, username }: { postCount: number; username: string }) {
+  const { t } = useLingui();
+
+  return (
     <div>
-      {/* 1. 最简单的翻译 */}
-      <h1>{t(msg`Dashboard`)}</h1>
+      {/* 1. Simple translation */}
+      <h1>{t({ message: "Dashboard", comment: "@context: Page title" })}</h1>
 
-      {/* 2. 带变量 */}
-      <p>{t(msg`Welcome back, ${username}!`)}</p>
-
-      {/* 3. 带变量 + context（推荐） */}
+      {/* 2. With variables */}
       <p>
         {t(
-          msg({ message: `You have ${postCount} posts`, comment: "@context: Post count" })
+          { message: "Welcome back, {name}!", comment: "@context: Welcome message" },
+          { name: username }
         )}
       </p>
 
-      {/* 4. 带组件 */}
+      {/* 3. With dynamic values */}
       <p>
-        <Trans
-          c={c}
-          message={msg`Read the <link>documentation</link> for help`}
-          components={{
-            link: <a href="/docs" class="underline" />
-          }}
-        />
+        {t(
+          { message: "You have {count} posts", comment: "@context: Post count" },
+          { count: postCount }
+        )}
+      </p>
+
+      {/* 4. With embedded components */}
+      <p>
+        <Trans comment="@context: Help text">
+          Read the <a href="/docs" class="underline">documentation</a> for help
+        </Trans>
       </p>
     </div>
   );
-});
+}
 ```
 
 ---
 
-## Trans 组件：嵌入 JSX 组件
+## Trans Component: Embedded JSX
+
+The `Trans` component is a simplified implementation that renders children as-is. It's useful for translations with embedded links or formatting.
 
 ```tsx
-import { msg } from "@lingui/core/macro";
 import { Trans } from "@/i18n";
 
-// 简单链接
-<Trans
-  c={c}
-  message={msg`Visit <link>our website</link>`}
-  components={{
-    link: <a href="/" class="text-primary" />
-  }}
-/>
+// Simple link
+<Trans comment="@context: Website link">
+  Visit <a href="/" class="text-primary">our website</a>
+</Trans>
 
-// 多个组件
-<Trans
-  c={c}
-  message={msg`Click <bold>here</bold> to <link>learn more</link>`}
-  components={{
-    bold: <strong class="font-bold" />,
-    link: <a href="/learn" class="underline" />
-  }}
-/>
+// Multiple elements
+<Trans comment="@context: Learn more link">
+  Click <strong class="font-bold">here</strong> to <a href="/learn" class="underline">learn more</a>
+</Trans>
 
-// 带变量
-<Trans
-  c={c}
-  message={msg`Welcome <bold>${username}</bold>!`}
-  components={{
-    bold: <strong class="font-semibold" />
-  }}
-/>
+// With formatting
+<Trans comment="@context: Welcome message">
+  Welcome <strong class="font-semibold">back</strong>!
+</Trans>
 ```
 
----
-
-## 对比：之前 vs 现在
+**Note**: This is a simplified implementation that renders children directly. For complex translations with dynamic placeholders, use the `t()` function instead:
 
 ```tsx
-// ❌ 之前（太繁琐）
-const i18n = getI18n(c);
-const title = i18n._(msg({ message: "Dashboard", comment: "@context: Title" }));
-const greeting = i18n._(msg({ message: `Hello ${name}`, comment: "@context: Greeting" })) as any;
+const { t } = useLingui();
 
-// ✅ 现在（简洁）
-const t = useT(c);
-const title = t(msg`Dashboard`);
-const greeting = t(msg`Hello ${name}`);
-
-// ✅ 如果需要 context（帮助翻译）
-const title = t(msg({ message: "Dashboard", comment: "@context: Page title" }));
+// For dynamic content, use t() with placeholders
+<p>
+  {t(
+    { message: "Visit {linkStart}our website{linkEnd}", comment: "@context: Website link" },
+    {
+      linkStart: '<a href="/" class="text-primary">',
+      linkEnd: '</a>',
+    }
+  )}
+</p>
 ```
 
 ---
 
-## 推荐实践
+## Comparison: Before vs Now
 
-1. **简单文本**：用 ``msg`text` ``
-2. **需要 context**：用 `msg({ message: "text", comment: "@context: ..." })`
-3. **嵌入组件**：用 `<Trans>` 组件
-4. **提取翻译**：`pnpm i18n:extract`
-5. **编译翻译**：`pnpm i18n:compile`
+### Before (Prop drilling required)
+
+```tsx
+import { getI18n } from "@/i18n";
+
+dashRoute.get("/", async (c) => {
+  const i18n = getI18n(c);
+
+  return c.html(
+    <Layout>
+      <MyComponent c={c} />  {/* Must pass c prop */}
+    </Layout>
+  );
+});
+
+function MyComponent({ c }: { c: Context }) {
+  const i18n = getI18n(c);
+  const title = i18n._({ message: "Dashboard", comment: "@context: Title" });
+  const greeting = i18n._(
+    { message: "Hello {name}", comment: "@context: Greeting" },
+    { name: "Alice" }
+  );
+
+  return <h1>{title}</h1>;
+}
+```
+
+### Now (No prop drilling)
+
+```tsx
+import { I18nProvider, useLingui } from "@/i18n";
+
+dashRoute.get("/", async (c) => {
+  return c.html(
+    <I18nProvider c={c}>
+      <Layout>
+        <MyComponent />  {/* No props needed */}
+      </Layout>
+    </I18nProvider>
+  );
+});
+
+function MyComponent() {
+  const { t } = useLingui();
+  const title = t({ message: "Dashboard", comment: "@context: Title" });
+  const greeting = t(
+    { message: "Hello {name}", comment: "@context: Greeting" },
+    { name: "Alice" }
+  );
+
+  return <h1>{title}</h1>;
+}
+```
 
 ---
 
-## 常见问题
+## Best Practices
 
-### Q: 为什么不能 `t("Dashboard")` 直接传字符串？
+1. **Always wrap in I18nProvider**: Wrap your app in `<I18nProvider c={c}>` in route handlers
+2. **Use useLingui() hook**: Call `const { t } = useLingui()` inside components
+3. **Always include comment**: Provide `@context:` comment for better AI translations
+4. **Variables as second param**: `t({ message: "Hello {name}", comment: "..." }, { name })`
+5. **Use Trans for embedded JSX**: Use `<Trans>` for links and formatting
+6. **Extract translations**: Run `pnpm i18n:extract` after adding new strings
+7. **Compile translations**: Run `pnpm i18n:compile` to generate catalog files
 
-A: 因为 Lingui 需要在**编译时**提取消息。`msg()` 是编译时宏，会被 SWC 插件在编译时替换成 hash ID。如果你写 `t("Dashboard")`，编译器无法提取消息，翻译就无法工作。
+---
 
-### Q: 能不能直接用 Lingui 官方的 Trans 组件？
+## Common Questions
 
-A: Lingui 的 `Trans` 组件是为 React 设计的，需要 React Context。我们用的是 Hono JSX（不是 React），所以需要自己实现。我们的 `Trans` 组件模仿了 Lingui 的 API，但适配了 Hono JSX。
+### Q: Why can't I use `t("Dashboard")` directly?
 
-### Q: `msg()` 支持哪些语法？
+A: Lingui uses a build-time extraction process. The `t()` function expects a message descriptor object that gets transformed by Lingui's macro system during the build. If you pass a plain string, the extraction tool won't be able to find and extract the message for translation.
 
-A: 支持：
-- Template literal: `` msg`Hello` ``
-- Template with variables: `` msg`Hello ${name}` ``
-- Object with context: `msg({ message: "Hello", comment: "@context: Greeting" })`
-- Object with variables: `msg({ message: `Hello ${name}`, comment: "@context: Greeting" })`
+You must use the object syntax:
+```tsx
+t({ message: "Dashboard", comment: "@context: Page title" })
+```
+
+### Q: Can I use Lingui's official Trans component?
+
+A: Lingui's `Trans` component is designed for React and requires React Context. Since we use Hono JSX (not React), we provide a simplified `Trans` component that works with our SSR setup. It renders children directly without complex transformation.
+
+### Q: Why use useLingui() instead of getI18n(c)?
+
+A: The `useLingui()` hook provides a cleaner API that eliminates prop drilling. Instead of passing the Hono context `c` to every component, you wrap your app once in `I18nProvider` and all child components can access i18n via the hook.
+
+### Q: Is this safe for concurrent requests?
+
+A: Yes! Each request creates its own i18n instance via `I18nProvider`. The global state is only used during the synchronous rendering phase, so there's no risk of race conditions between concurrent requests.
+
+### Q: What if I call useLingui() outside I18nProvider?
+
+A: You'll get an error: "useLingui() called outside of I18nProvider". This is intentional - the hook must be used within the provider context. Always wrap your app in `<I18nProvider c={c}>` in your route handlers.

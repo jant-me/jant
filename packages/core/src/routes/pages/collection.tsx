@@ -4,7 +4,7 @@
 
 import { Hono } from "hono";
 import { useLingui } from "../../i18n/index.js";
-import type { Bindings } from "../../types.js";
+import type { Bindings, Collection, Post } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { BaseLayout } from "../../theme/layouts/index.js";
 import * as sqid from "../../lib/sqid.js";
@@ -14,7 +14,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const collectionRoute = new Hono<Env>();
 
-function CollectionContent({ collection, posts }: { collection: any; posts: any[] }) {
+function CollectionContent({ collection, posts }: { collection: Collection; posts: Post[] }) {
   const { t } = useLingui();
 
   return (

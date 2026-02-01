@@ -79,6 +79,7 @@ export const ThreadView: FC<ThreadViewProps> = ({ posts, currentPostId }) => {
   // Single post, no thread
   if (!isThread) {
     return (
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Early return for empty array at line 73 guarantees posts[0] exists
       <ThreadPost post={rootPost!} isCurrent={true} isRoot={false} />
     );
   }

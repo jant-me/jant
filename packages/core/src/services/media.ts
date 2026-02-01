@@ -82,6 +82,7 @@ export function createMediaService(db: Database): MediaService {
         })
         .returning();
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- DB insert with .returning() always returns inserted row
       return toMedia(result[0]!);
     },
 

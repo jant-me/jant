@@ -3,11 +3,11 @@
  */
 
 import { Hono } from "hono";
-import { msg } from "@lingui/core/macro";
+import type { FC } from "hono/jsx";
 import { createDatabase } from "./db/index.js";
 import { createServices, type Services } from "./services/index.js";
 import { createAuth, type Auth } from "./auth.js";
-import { i18nMiddleware, getI18n } from "./i18n/index.js";
+import { i18nMiddleware, useLingui } from "./i18n/index.js";
 import type { Bindings } from "./types.js";
 
 // Routes - Pages
@@ -113,52 +113,59 @@ export function createApp(): App {
   // API Routes
   app.route("/api/posts", postsApiRoutes);
 
+  // Setup page component
+  const SetupContent: FC<{ error?: string }> = ({ error }) => {
+    const { t } = useLingui();
+
+    return (
+      <div class="min-h-screen flex items-center justify-center">
+        <div class="card max-w-md w-full">
+          <header>
+            <h2>{t({ message: "Welcome to Jant", comment: "@context: Setup page welcome heading" })}</h2>
+            <p>{t({ message: "Let's set up your site.", comment: "@context: Setup page description" })}</p>
+          </header>
+          <section>
+            {error && <p class="text-destructive text-sm mb-4">{error}</p>}
+            <form method="post" action="/setup" class="flex flex-col gap-4">
+              <div class="field">
+                <label class="label">{t({ message: "Site Name", comment: "@context: Setup form field - site name" })}</label>
+                <input type="text" name="siteName" class="input" required placeholder={t({ message: "My Blog", comment: "@context: Setup site name placeholder" })} />
+              </div>
+              <div class="field">
+                <label class="label">{t({ message: "Your Name", comment: "@context: Setup form field - user name" })}</label>
+                <input type="text" name="name" class="input" required placeholder="John Doe" />
+              </div>
+              <div class="field">
+                <label class="label">{t({ message: "Email", comment: "@context: Setup/signin form field - email" })}</label>
+                <input type="email" name="email" class="input" required placeholder="you@example.com" />
+              </div>
+              <div class="field">
+                <label class="label">{t({ message: "Password", comment: "@context: Setup/signin form field - password" })}</label>
+                <input type="password" name="password" class="input" required minLength={8} />
+              </div>
+              <button type="submit" class="btn">{t({ message: "Complete Setup", comment: "@context: Setup form submit button" })}</button>
+            </form>
+          </section>
+        </div>
+      </div>
+    );
+  };
+
   // Setup page
   app.get("/setup", async (c) => {
-    const i18n = getI18n(c);
     const isComplete = await c.var.services.settings.isOnboardingComplete();
     if (isComplete) return c.redirect("/");
 
     const error = c.req.query("error");
 
     return c.html(
-      <BaseLayout title={`${i18n._(msg({ message: "Setup", comment: "@context: Setup page title" }))} - Jant`}>
-        <div class="min-h-screen flex items-center justify-center">
-          <div class="card max-w-md w-full">
-            <header>
-              <h2>{i18n._(msg({ message: "Welcome to Jant", comment: "@context: Setup page welcome heading" }))}</h2>
-              <p>{i18n._(msg({ message: "Let's set up your site.", comment: "@context: Setup page description" }))}</p>
-            </header>
-            <section>
-              {error && <p class="text-destructive text-sm mb-4">{error}</p>}
-              <form method="post" action="/setup" class="flex flex-col gap-4">
-                <div class="field">
-                  <label class="label">{i18n._(msg({ message: "Site Name", comment: "@context: Setup form field - site name" }))}</label>
-                  <input type="text" name="siteName" class="input" required placeholder={i18n._(msg({ message: "My Blog", comment: "@context: Setup site name placeholder" }))} />
-                </div>
-                <div class="field">
-                  <label class="label">{i18n._(msg({ message: "Your Name", comment: "@context: Setup form field - user name" }))}</label>
-                  <input type="text" name="name" class="input" required placeholder="John Doe" />
-                </div>
-                <div class="field">
-                  <label class="label">{i18n._(msg({ message: "Email", comment: "@context: Setup/signin form field - email" }))}</label>
-                  <input type="email" name="email" class="input" required placeholder="you@example.com" />
-                </div>
-                <div class="field">
-                  <label class="label">{i18n._(msg({ message: "Password", comment: "@context: Setup/signin form field - password" }))}</label>
-                  <input type="password" name="password" class="input" required minLength={8} />
-                </div>
-                <button type="submit" class="btn">{i18n._(msg({ message: "Complete Setup", comment: "@context: Setup form submit button" }))}</button>
-              </form>
-            </section>
-          </div>
-        </div>
+      <BaseLayout title="Setup - Jant" c={c}>
+        <SetupContent error={error} />
       </BaseLayout>
     );
   });
 
   app.post("/setup", async (c) => {
-    const i18n = getI18n(c);
     const isComplete = await c.var.services.settings.isOnboardingComplete();
     if (isComplete) return c.redirect("/");
 
@@ -197,45 +204,53 @@ export function createApp(): App {
 
       return c.redirect("/signin");
     } catch (err) {
+      // eslint-disable-next-line no-console -- Error logging is intentional
       console.error("Setup error:", err);
       return c.redirect("/setup?error=Failed to create account");
     }
   });
 
+  // Signin page component
+  const SigninContent: FC<{ error?: string }> = ({ error }) => {
+    const { t } = useLingui();
+
+    return (
+      <div class="min-h-screen flex items-center justify-center">
+        <div class="card max-w-md w-full">
+          <header>
+            <h2>{t({ message: "Sign In", comment: "@context: Sign in page heading" })}</h2>
+          </header>
+          <section>
+            {error && <p class="text-destructive text-sm mb-4">{error}</p>}
+            <form method="post" action="/signin" class="flex flex-col gap-4">
+              <div class="field">
+                <label class="label">{t({ message: "Email", comment: "@context: Setup/signin form field - email" })}</label>
+                <input type="email" name="email" class="input" required />
+              </div>
+              <div class="field">
+                <label class="label">{t({ message: "Password", comment: "@context: Setup/signin form field - password" })}</label>
+                <input type="password" name="password" class="input" required />
+              </div>
+              <button type="submit" class="btn">{t({ message: "Sign In", comment: "@context: Sign in form submit button" })}</button>
+            </form>
+          </section>
+        </div>
+      </div>
+    );
+  };
+
   // Signin page
   app.get("/signin", async (c) => {
-    const i18n = getI18n(c);
     const error = c.req.query("error");
 
     return c.html(
-      <BaseLayout title={`${i18n._(msg({ message: "Sign In", comment: "@context: Sign in page title" }))} - Jant`}>
-        <div class="min-h-screen flex items-center justify-center">
-          <div class="card max-w-md w-full">
-            <header>
-              <h2>{i18n._(msg({ message: "Sign In", comment: "@context: Sign in page heading" }))}</h2>
-            </header>
-            <section>
-              {error && <p class="text-destructive text-sm mb-4">{error}</p>}
-              <form method="post" action="/signin" class="flex flex-col gap-4">
-                <div class="field">
-                  <label class="label">{i18n._(msg({ message: "Email", comment: "@context: Setup/signin form field - email" }))}</label>
-                  <input type="email" name="email" class="input" required />
-                </div>
-                <div class="field">
-                  <label class="label">{i18n._(msg({ message: "Password", comment: "@context: Setup/signin form field - password" }))}</label>
-                  <input type="password" name="password" class="input" required />
-                </div>
-                <button type="submit" class="btn">{i18n._(msg({ message: "Sign In", comment: "@context: Sign in form submit button" }))}</button>
-              </form>
-            </section>
-          </div>
-        </div>
+      <BaseLayout title="Sign In - Jant" c={c}>
+        <SigninContent error={error} />
       </BaseLayout>
     );
   });
 
   app.post("/signin", async (c) => {
-    const i18n = getI18n(c);
     if (!c.var.auth) {
       return c.redirect("/signin?error=Auth not configured");
     }
@@ -262,13 +277,13 @@ export function createApp(): App {
 
       return new Response(null, { status: 302, headers });
     } catch (err) {
+      // eslint-disable-next-line no-console -- Error logging is intentional
       console.error("Signin error:", err);
       return c.redirect("/signin?error=Invalid email or password");
     }
   });
 
   app.get("/signout", async (c) => {
-    const i18n = getI18n(c);
     if (c.var.auth) {
       try {
         await c.var.auth.api.signOut({ headers: c.req.raw.headers });

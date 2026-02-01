@@ -6,18 +6,19 @@
 
 import { Hono } from "hono";
 import { useLingui } from "../../i18n/index.js";
-import type { Bindings } from "../../types.js";
+import type { Bindings, Post } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
 import { PageForm } from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
 import * as time from "../../lib/time.js";
+import { VisibilitySchema, parseFormData } from "../../lib/schemas.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const pagesRoutes = new Hono<Env>();
 
-function PagesListContent({ pages }: { pages: any[] }) {
+function PagesListContent({ pages }: { pages: Post[] }) {
   const { t } = useLingui();
 
   return (
@@ -100,7 +101,7 @@ function NewPageContent() {
   );
 }
 
-function ViewPageContent({ page }: { page: any }) {
+function ViewPageContent({ page }: { page: Post }) {
   const { t } = useLingui();
   return (
     <>
@@ -148,7 +149,7 @@ function ViewPageContent({ page }: { page: any }) {
   );
 }
 
-function EditPageContent({ page }: { page: any }) {
+function EditPageContent({ page }: { page: Post }) {
   const { t } = useLingui();
   return (
     <>
@@ -193,15 +194,15 @@ pagesRoutes.post("/", async (c) => {
 
   const title = formData.get("title") as string;
   const content = formData.get("content") as string;
-  const visibility = formData.get("visibility") as string;
+  const visibility = parseFormData(formData, "visibility", VisibilitySchema);
   const path = formData.get("path") as string;
 
   const page = await c.var.services.posts.create({
     type: "page",
     title,
     content,
-    visibility: visibility as any,
-    path: path.toLowerCase().replace(/[^a-z0-9\-]/g, "-"),
+    visibility,
+    path: path.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
   });
 
   return c.redirect(`/dash/pages/${sqid.encode(page.id)}`);
@@ -250,15 +251,15 @@ pagesRoutes.post("/:id", async (c) => {
 
   const title = formData.get("title") as string;
   const content = formData.get("content") as string;
-  const visibility = formData.get("visibility") as string;
+  const visibility = parseFormData(formData, "visibility", VisibilitySchema);
   const path = formData.get("path") as string;
 
   await c.var.services.posts.update(id, {
     type: "page",
     title,
     content,
-    visibility: visibility as any,
-    path: path.toLowerCase().replace(/[^a-z0-9\-]/g, "-"),
+    visibility,
+    path: path.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
   });
 
   return c.redirect(`/dash/pages/${sqid.encode(id)}`);

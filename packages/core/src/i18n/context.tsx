@@ -9,6 +9,17 @@ import type { FC, PropsWithChildren } from "hono/jsx";
 import type { I18n, MessageDescriptor } from "@lingui/core";
 import { getI18n as getI18nFromContext } from "./i18n.js";
 
+/**
+ * Message descriptor that accepts both pre-macro (without id) and post-macro (with id) formats
+ * This allows TypeScript to accept t({ message, comment }) before macro transformation
+ */
+type TranslationDescriptor = {
+  id?: string;
+  message: string;
+  comment?: string;
+  values?: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+};
+
 // Store i18n instance during render
 let currentI18n: I18n | null = null;
 
@@ -32,17 +43,10 @@ export interface I18nProviderProps extends PropsWithChildren {
 
 export const I18nProvider: FC<I18nProviderProps> = ({ c, children }) => {
   // Set current i18n for this render
-  const previousI18n = currentI18n;
+  // Note: In Hono JSX, rendering is synchronous and single-threaded per request
+  // so we can safely set global context without cleanup
   currentI18n = getI18nFromContext(c);
-
-  try {
-    // Render children
-    const result = <>{children}</>;
-    return result;
-  } finally {
-    // Restore previous i18n
-    currentI18n = previousI18n;
-  }
+  return <>{children}</>;
 };
 
 /**
@@ -79,9 +83,12 @@ export function useLingui() {
     );
   }
 
-  // Create translation function that accepts MessageDescriptor
-  const translate = (descriptor: MessageDescriptor, values?: Record<string, any>) => {
-    return values ? currentI18n!._(descriptor, values) : currentI18n!._(descriptor);
+  // Create translation function that accepts both pre-macro and post-macro formats
+  const translate = (descriptor: TranslationDescriptor) => {
+    // The macro will add the id, or it's already present
+    // At runtime, we pass it to i18n._ which handles the descriptor with values
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- currentI18n is checked above
+    return currentI18n!._(descriptor as MessageDescriptor);
   };
 
   return {

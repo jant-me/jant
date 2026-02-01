@@ -4,7 +4,7 @@
 
 import { Hono } from "hono";
 import { useLingui } from "../../i18n/index.js";
-import type { Bindings } from "../../types.js";
+import type { Bindings, Redirect } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
 
@@ -12,7 +12,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const redirectsRoutes = new Hono<Env>();
 
-function RedirectsListContent({ redirects }: { redirects: any[] }) {
+function RedirectsListContent({ redirects }: { redirects: Redirect[] }) {
   const { t } = useLingui();
 
   return (

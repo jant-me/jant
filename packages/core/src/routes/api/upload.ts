@@ -84,6 +84,7 @@ uploadApiRoutes.post("/", async (c) => {
       size: media.size,
     });
   } catch (err) {
+    // eslint-disable-next-line no-console -- Error logging is intentional
     console.error("Upload error:", err);
     return c.json({ error: "Upload failed" }, 500);
   }
@@ -125,6 +126,7 @@ uploadApiRoutes.delete("/:id", async (c) => {
     try {
       await c.env.R2.delete(media.r2Key);
     } catch (err) {
+      // eslint-disable-next-line no-console -- Error logging is intentional
       console.error("R2 delete error:", err);
     }
   }

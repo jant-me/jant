@@ -5,9 +5,8 @@
  */
 
 import { Hono } from "hono";
-import type { I18n } from "@lingui/core";
 import { useLingui } from "../../i18n/index.js";
-import type { Bindings, PostType } from "../../types.js";
+import type { Bindings, Post, PostType } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { BaseLayout } from "../../theme/layouts/index.js";
 import { Pagination } from "../../theme/components/index.js";
@@ -49,6 +48,7 @@ function getTypeLabelPlural(type: string): string {
 
 function formatYearMonth(yearMonth: string): string {
   const [year, month] = yearMonth.split("-");
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- yearMonth format YYYY-MM guarantees both year and month exist
   const date = new Date(parseInt(year!, 10), parseInt(month!, 10) - 1);
   return date.toLocaleDateString("en-US", { year: "numeric", month: "long" });
 }
@@ -61,11 +61,11 @@ function ArchiveContent({
   grouped,
   replyCounts,
 }: {
-  displayPosts: any[];
+  displayPosts: Post[];
   hasMore: boolean;
   nextCursor?: number;
   type?: string;
-  grouped: Map<string, any[]>;
+  grouped: Map<string, Post[]>;
   replyCounts: Map<number, number>;
 }) {
   const { t } = useLingui();
@@ -192,6 +192,7 @@ archiveRoute.get("/", async (c) => {
 
   // Get next cursor
   const nextCursor = hasMore && displayPosts.length > 0
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Length check above guarantees element exists
     ? displayPosts[displayPosts.length - 1]!.id
     : undefined;
 
@@ -203,6 +204,7 @@ archiveRoute.get("/", async (c) => {
     if (!grouped.has(key)) {
       grouped.set(key, []);
     }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Map.set() above guarantees key exists
     grouped.get(key)!.push(post);
   }
 

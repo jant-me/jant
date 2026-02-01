@@ -3,18 +3,25 @@
  */
 
 import { Hono } from "hono";
+import { z } from "zod";
 import { useLingui } from "../../i18n/index.js";
-import type { Bindings } from "../../types.js";
+import type { Bindings, Post } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
 import { PostForm, PostList } from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
+import {
+  PostTypeSchema,
+  VisibilitySchema,
+  parseFormData,
+  parseFormDataOptional,
+} from "../../lib/schemas.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const postsRoutes = new Hono<Env>();
 
-function PostsListContent({ posts }: { posts: any[] }) {
+function PostsListContent({ posts }: { posts: Post[] }) {
   const { t } = useLingui();
   return (
     <>
@@ -68,26 +75,27 @@ postsRoutes.get("/new", async (c) => {
 postsRoutes.post("/", async (c) => {
   const formData = await c.req.formData();
 
-  const type = formData.get("type") as string;
-  const title = formData.get("title") as string;
+  // Validate and parse form data
+  const type = parseFormData(formData, "type", PostTypeSchema);
+  const visibility = parseFormData(formData, "visibility", VisibilitySchema);
+  const title = parseFormDataOptional(formData, "title", z.string());
   const content = formData.get("content") as string;
-  const visibility = formData.get("visibility") as string;
-  const sourceUrl = formData.get("sourceUrl") as string;
-  const path = formData.get("path") as string;
+  const sourceUrl = parseFormDataOptional(formData, "sourceUrl", z.string());
+  const path = parseFormDataOptional(formData, "path", z.string());
 
   const post = await c.var.services.posts.create({
-    type: type as any,
-    title: title || undefined,
+    type,
+    title,
     content,
-    visibility: visibility as any,
-    sourceUrl: sourceUrl || undefined,
-    path: path || undefined,
+    visibility,
+    sourceUrl,
+    path,
   });
 
   return c.redirect(`/dash/posts/${sqid.encode(post.id)}`);
 });
 
-function ViewPostContent({ post }: { post: any }) {
+function ViewPostContent({ post }: { post: Post }) {
   const { t } = useLingui();
   const defaultTitle = t({ message: "Post", comment: "@context: Default post title" });
 
@@ -114,7 +122,7 @@ function ViewPostContent({ post }: { post: any }) {
   );
 }
 
-function EditPostContent({ post }: { post: any }) {
+function EditPostContent({ post }: { post: Post }) {
   const { t } = useLingui();
   return (
     <>
@@ -166,20 +174,21 @@ postsRoutes.post("/:id", async (c) => {
 
   const formData = await c.req.formData();
 
-  const type = formData.get("type") as string;
-  const title = formData.get("title") as string;
-  const content = formData.get("content") as string;
-  const visibility = formData.get("visibility") as string;
-  const sourceUrl = formData.get("sourceUrl") as string;
-  const path = formData.get("path") as string;
+  // Validate and parse form data
+  const type = parseFormData(formData, "type", PostTypeSchema);
+  const visibility = parseFormData(formData, "visibility", VisibilitySchema);
+  const title = parseFormDataOptional(formData, "title", z.string()) || null;
+  const content = parseFormDataOptional(formData, "content", z.string()) || null;
+  const sourceUrl = parseFormDataOptional(formData, "sourceUrl", z.string()) || null;
+  const path = parseFormDataOptional(formData, "path", z.string()) || null;
 
   await c.var.services.posts.update(id, {
-    type: type as any,
-    title: title || null,
-    content: content || null,
-    visibility: visibility as any,
-    sourceUrl: sourceUrl || null,
-    path: path || null,
+    type,
+    title,
+    content,
+    visibility,
+    sourceUrl,
+    path,
   });
 
   return c.redirect(`/dash/posts/${sqid.encode(id)}`);

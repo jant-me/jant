@@ -1,15 +1,15 @@
 # Jant i18n - React-like API for Hono JSX
 
-## ✅ 完成的改进
+## ✅ API Overview
 
-我们现在有了类似 React 的 i18n API！
+We provide a React-like i18n API that works with Hono JSX SSR!
 
-### 1. **I18nProvider** - 类似 React Context Provider
+### 1. **I18nProvider** - Like React Context Provider
 
 ```tsx
 import { I18nProvider } from "@/i18n";
 
-// 在 route handler 中包裹你的 app
+// Wrap your app in route handler
 dashRoute.get("/", async (c) => {
   return c.html(
     <I18nProvider c={c}>
@@ -19,44 +19,41 @@ dashRoute.get("/", async (c) => {
 });
 ```
 
-### 2. **useLingui()** - 类似 React hook
+### 2. **useLingui()** - Like React hook
 
 ```tsx
-import { t } from "@lingui/core/macro";
 import { useLingui } from "@/i18n";
 
 function MyComponent() {
-  // 🎉 类似 React 的 hook API！
-  const { _, i18n } = useLingui();
+  // React-like hook API
+  const { t } = useLingui();
 
   return (
     <div>
-      {/* ✅ 简洁：_(t({ ... })) */}
-      <h1>{_(t({ message: "Dashboard", comment: "@context: Page title" }))}</h1>
+      {/* Simple and clean */}
+      <h1>{t({ message: "Dashboard", comment: "@context: Page title" })}</h1>
     </div>
   );
 }
 ```
 
-### 3. **使用 `t` macro，不是 `msg`**
+### 3. **Trans Component** - For Embedded JSX
 
 ```tsx
-import { t } from "@lingui/core/macro";  // ✅ 使用 t
-// import { msg } from "@lingui/core/macro";  // ❌ 不要用 msg
+import { Trans } from "@/i18n";
 
-const { _ } = useLingui();
-
-// ✅ 正确
-_(t({ message: "Hello", comment: "@context: Greeting" }))
-
-// ❌ 旧的方式（仍然支持，但不推荐）
-const tFunc = useT(c);
-tFunc(msg({ message: "Hello", comment: "@context: Greeting" }))
+function MyComponent() {
+  return (
+    <Trans comment="@context: Help text">
+      Read the <a href="/docs">documentation</a>
+    </Trans>
+  );
+}
 ```
 
 ---
 
-## 📝 完整示例
+## 📝 Complete Example
 
 ```tsx
 /**
@@ -64,38 +61,38 @@ tFunc(msg({ message: "Hello", comment: "@context: Greeting" }))
  */
 
 import { Hono } from "hono";
-import { t } from "@lingui/core/macro";
 import { I18nProvider, useLingui, Trans } from "@/i18n";
 
 export const dashRoute = new Hono();
 
-// 组件：使用 useLingui() hook
+// Component: use useLingui() hook
 function DashboardContent({ postCount }: { postCount: number }) {
-  const { _ } = useLingui();
+  const { t } = useLingui();
 
   return (
     <div>
-      {/* 1. 简单翻译 */}
-      <h1>{_(t({ message: "Dashboard", comment: "@context: Page title" }))}</h1>
+      {/* 1. Simple translation */}
+      <h1>{t({ message: "Dashboard", comment: "@context: Page title" })}</h1>
 
-      {/* 2. 带变量 */}
+      {/* 2. With variables */}
       <p>
-        {_(
-          t({ message: `You have ${postCount} posts`, comment: "@context: Post count message" })
+        {t(
+          { message: "You have {count} posts", comment: "@context: Post count message" },
+          { count: postCount }
         )}
       </p>
 
-      {/* 3. 带组件 - 使用 Trans */}
+      {/* 3. With embedded components - use Trans */}
       <p>
-        <Trans message={t({ message: "Read the <link>documentation</link>", comment: "@context: Help text" })}>
-          <a href="/docs" class="underline" />
+        <Trans comment="@context: Help text">
+          Read the <a href="/docs" class="underline">documentation</a>
         </Trans>
       </p>
     </div>
   );
 }
 
-// Route handler：包裹在 I18nProvider 中
+// Route handler: wrap in I18nProvider
 dashRoute.get("/", async (c) => {
   const posts = await c.var.services.posts.list();
 
@@ -109,144 +106,191 @@ dashRoute.get("/", async (c) => {
 
 ---
 
-## 🆚 对比：之前 vs 现在
+## 🆚 Comparison: Before vs Now
 
-### 之前（复杂）
+### Before (Complex - prop drilling)
 
 ```tsx
-import { msg } from "@lingui/core/macro";
-import { useT } from "@/i18n";
+import { getI18n } from "@/i18n";
 
 dashRoute.get("/", async (c) => {
-  const t = useT(c);  // 需要传 c
+  const i18n = getI18n(c);
 
   return c.html(
-    <Layout title={t(msg({ message: "Dashboard", comment: "@context: ..." }))}>
-      <MyComponent c={c} t={t} />  {/* 需要 prop drilling */}
+    <Layout title={i18n._({ message: "Dashboard", comment: "@context: ..." })}>
+      <MyComponent c={c} />  {/* Need to pass c prop */}
     </Layout>
   );
 });
 
-function MyComponent({ c, t }: { c: Context; t: Function }) {
-  return <h1>{t(msg({ message: "Hello", comment: "@context: ..." }))}</h1>;
+function MyComponent({ c }: { c: Context }) {
+  const i18n = getI18n(c);
+  return <h1>{i18n._({ message: "Hello", comment: "@context: ..." })}</h1>;
 }
 ```
 
-### 现在（简洁）
+### Now (Clean - no prop drilling)
 
 ```tsx
-import { t } from "@lingui/core/macro";
 import { I18nProvider, useLingui } from "@/i18n";
 
 dashRoute.get("/", async (c) => {
   return c.html(
     <I18nProvider c={c}>
       <Layout>
-        <MyComponent />  {/* 不需要传 c 或 t */}
+        <MyComponent />  {/* No need to pass c prop */}
       </Layout>
     </I18nProvider>
   );
 });
 
 function MyComponent() {
-  const { _ } = useLingui();  // 🎉 就像 React hook！
-  return <h1>{_(t({ message: "Hello", comment: "@context: ..." }))}</h1>;
+  const { t } = useLingui();  // Like React hook
+  return <h1>{t({ message: "Hello", comment: "@context: ..." })}</h1>;
 }
 ```
 
 ---
 
-## ⚠️ 重要注意事项
+## ⚠️ Important Notes
 
-### 1. **必须保留 `comment`**
+### 1. **Always include `comment` field**
 
 ```tsx
-// ✅ 正确 - comment 对 AI 翻译非常重要
-_(t({ message: "Dashboard", comment: "@context: Page title" }))
+// ✅ Correct - comment is crucial for AI translation
+const { t } = useLingui();
+t({ message: "Dashboard", comment: "@context: Page title" })
 
-// ❌ 错误 - 缺少 comment
-_(t`Dashboard`)  // 虽然语法支持，但缺少 context，翻译质量会下降
+// ❌ Wrong - missing comment reduces translation quality
+t({ message: "Dashboard" })
 ```
 
-### 2. **I18nProvider 必须在最外层**
+### 2. **I18nProvider must wrap your app**
 
 ```tsx
-// ✅ 正确
+// ✅ Correct - wrap in I18nProvider
 c.html(
   <I18nProvider c={c}>
     <App />
   </I18nProvider>
 )
 
-// ❌ 错误 - useLingui() 会报错
-c.html(<App />)  // App 内部的 useLingui() 找不到 context
+// ❌ Wrong - useLingui() will throw error
+c.html(<App />)  // useLingui() inside App won't find i18n context
 ```
 
-### 3. **useLingui() 只能在组件中使用**
+### 3. **useLingui() only works inside components**
 
 ```tsx
-// ✅ 正确 - 在 JSX 组件中
+// ✅ Correct - inside JSX component
 function MyComponent() {
-  const { _ } = useLingui();
-  return <div>{_(t({ ... }))}</div>;
+  const { t } = useLingui();
+  return <div>{t({ message: "Hello", comment: "@context: ..." })}</div>;
 }
 
-// ❌ 错误 - 在 route handler 中
+// ❌ Wrong - in route handler (outside I18nProvider)
 dashRoute.get("/", async (c) => {
-  const { _ } = useLingui();  // ❌ 不在 I18nProvider 内部
+  const { t } = useLingui();  // Error: not inside I18nProvider
   ...
 });
 ```
 
+### 4. **Variables go in second parameter**
+
+```tsx
+const { t } = useLingui();
+
+// ✅ Correct - values as second parameter
+t({ message: "Hello {name}", comment: "@context: Greeting" }, { name: "Alice" })
+
+// ❌ Wrong - values inside first parameter (not supported)
+t({ message: "Hello {name}", comment: "@context: Greeting", values: { name: "Alice" } })
+```
+
 ---
 
-## 🎯 最佳实践
+## 🎯 Best Practices
 
-1. **Route handler**：使用 `<I18nProvider c={c}>` 包裹
-2. **组件内部**：使用 `useLingui()` hook
-3. **翻译调用**：`_(t({ message: "...", comment: "@context: ..." }))`
-4. **带组件**：使用 `<Trans>` 组件
-5. **总是包含 `comment`**：帮助 AI 理解上下文，提高翻译质量
+1. **Route handler**: Wrap app in `<I18nProvider c={c}>`
+2. **Inside components**: Use `useLingui()` hook to get `t()` function
+3. **Translation calls**: `t({ message: "...", comment: "@context: ..." })`
+4. **With embedded JSX**: Use `<Trans>` component
+5. **Always include `comment`**: Helps AI understand context for better translations
 
 ---
 
-## 📚 API 参考
+## 📚 API Reference
 
 ### `I18nProvider`
+
+Provides i18n context to all child components. Must wrap your app in route handlers.
 
 ```tsx
 interface I18nProviderProps {
   c: Context;  // Hono context
   children: JSX.Element;
 }
+
+// Usage
+<I18nProvider c={c}>
+  <YourApp />
+</I18nProvider>
 ```
 
 ### `useLingui()`
 
+Hook to access i18n functionality inside components. Must be used within `I18nProvider`.
+
 ```tsx
 function useLingui(): {
-  i18n: I18n;           // Lingui i18n instance
+  i18n: I18n;  // Lingui i18n instance
+  t: (descriptor: MessageDescriptor, values?: Record<string, any>) => string;
   _: (descriptor: MessageDescriptor, values?: Record<string, any>) => string;
 }
+
+// Usage
+function MyComponent() {
+  const { t } = useLingui();
+  return <h1>{t({ message: "Hello", comment: "@context: Greeting" })}</h1>;
+}
 ```
+
+**Note**: `t()` and `_()` are equivalent - use whichever you prefer.
 
 ### `Trans`
 
+Component for translations with embedded JSX elements. Simplified implementation that renders children as-is.
+
 ```tsx
 interface TransProps {
-  message: MessageDescriptor;  // 来自 t({ ... })
-  children?: JSX.Element | JSX.Element[];  // 组件（按顺序映射到 message 中的标签）
-  values?: Record<string, any>;  // 变量
+  comment?: string;  // @context comment for translators
+  id?: string;       // Optional message ID
+  children: JSX.Element;  // JSX content with embedded elements
 }
+
+// Usage
+<Trans comment="@context: Help text">
+  Read the <a href="/docs">documentation</a>
+</Trans>
 ```
+
+**Note**: This is a simplified implementation. For complex translations with dynamic content, use `t()` with placeholders instead.
 
 ---
 
-## 🔧 工作原理
+## 🔧 How It Works
 
-1. **I18nProvider** 设置全局的 i18n 实例（在渲染期间）
-2. **useLingui()** 从全局状态读取当前的 i18n 实例
-3. **单次渲染**：每个请求只渲染一次，所以全局状态是安全的
-4. **并发安全**：每个请求创建新的 i18n 实例，不会互相干扰
+1. **I18nProvider** sets the global i18n instance during rendering
+2. **useLingui()** reads the current i18n instance from global state
+3. **Single-pass rendering**: Each request renders only once, making global state safe
+4. **Concurrency-safe**: Each request creates a new i18n instance, preventing race conditions
 
-这个方案模仿了 React 的 Context API，但是为 Hono JSX 的 SSR 场景优化。
+This implementation mimics React's Context API but is optimized for Hono JSX SSR scenarios.
+
+### Why Global State is Safe
+
+Unlike React (client-side with multiple re-renders), Hono JSX renders once per request on the server:
+- Request arrives → I18nProvider sets global i18n → Components render → Response sent
+- Next request → New i18n instance → Components render → Response sent
+
+Since rendering is synchronous and single-pass, there's no risk of concurrent requests interfering with each other.

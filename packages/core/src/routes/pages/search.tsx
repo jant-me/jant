@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { useLingui } from "../../i18n/index.js";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../app.js";
+import type { SearchResult } from "../../services/search.js";
 import { BaseLayout } from "../../theme/layouts/index.js";
 import { PagePagination } from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
@@ -25,7 +26,7 @@ function SearchContent({
   page,
 }: {
   query: string;
-  results: any[];
+  results: SearchResult[];
   error: string | null;
   hasMore: boolean;
   page: number;
@@ -147,8 +148,8 @@ searchRoute.get("/", async (c) => {
         results = results.slice(0, PAGE_SIZE);
       }
     } catch (err) {
+      // eslint-disable-next-line no-console -- Error logging is intentional
       console.error("Search error:", err);
-      const { t } = c.var.lingui;
       error = "Search failed. Please try again.";
     }
   }

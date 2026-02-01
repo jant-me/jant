@@ -131,105 +131,93 @@ jant/
 
 ## i18n Rules (IMPORTANT)
 
-**Every user-facing string must use Lingui `msg` macro.** No hardcoded strings in UI.
+**Every user-facing string must use the `t()` function from `useLingui()` hook.** No hardcoded strings in UI.
 
-### Simplified API
+### React-like API (useLingui hook)
 
-We provide helper functions to reduce boilerplate:
+We provide a React-like API that works with Hono JSX SSR:
 
 ```tsx
-import { msg } from "@lingui/core/macro";
-import { useT, Trans } from "@/i18n";
+import { I18nProvider, useLingui, Trans } from "@/i18n";
 
-// Simple translation
-const t = useT(c);
-const text = t(msg({ message: "Dashboard", comment: "@context: Page title" }));
-
-// With values
-const greeting = t(msg({ message: "Hello {name}", comment: "@context: Greeting" }), { name });
-
-// With embedded components
-<Trans
-  c={c}
-  message={msg({ message: "Read the <link>docs</link>", comment: "@context: Help link" })}
-  components={{ link: <a href="/docs" class="underline" /> }}
-/>
-```
-
-See `src/i18n/EXAMPLES.md` for more examples.
-
-### Per-Request i18n Instance (Cloudflare Workers)
-
-Cloudflare Workers handle multiple concurrent requests. To avoid race conditions, we create a **per-request i18n instance**:
-
-```typescript
-import { msg } from "@lingui/core/macro";
-import { getI18n } from "../../i18n/index.js";
-
-export const route = new Hono<Env>();
-
+// 1. Wrap your app in I18nProvider (in route handler)
 route.get("/", async (c) => {
-  // Get the per-request i18n instance from context
-  const i18n = getI18n(c);
-
-  // Use msg() macro for translations
-  const title = i18n._(msg({ message: "Settings", comment: "@context: Dashboard navigation item" }));
-
-  return c.html(<DashLayout c={c} title={title}>...</DashLayout>);
+  return c.html(
+    <I18nProvider c={c}>
+      <MyApp />
+    </I18nProvider>
+  );
 });
+
+// 2. Use useLingui() hook inside components
+function MyApp() {
+  const { t } = useLingui();
+
+  return (
+    <div>
+      {/* Simple translation */}
+      <h1>{t({ message: "Dashboard", comment: "@context: Page title" })}</h1>
+
+      {/* With variables */}
+      <p>{t({ message: "Hello {name}", comment: "@context: Greeting" }, { name: "Alice" })}</p>
+
+      {/* With embedded components - use Trans */}
+      <Trans comment="@context: Help text">
+        Read the <a href="/docs">documentation</a>
+      </Trans>
+    </div>
+  );
+}
 ```
+
+See `src/i18n/README.md` for detailed documentation.
 
 ### Translation Guidelines
 
-```typescript
-import { msg } from "@lingui/core/macro";
+```tsx
+import { I18nProvider, useLingui } from "@/i18n";
 
-// ✅ Correct - plain text
-i18n._(msg({ message: "Settings", comment: "@context: Dashboard navigation item" }))
+// ✅ Correct - wrap app in I18nProvider
+c.html(
+  <I18nProvider c={c}>
+    <MyComponent />
+  </I18nProvider>
+)
 
-// ✅ Correct - with interpolation (values as second parameter)
-i18n._(msg({ message: "Hello {name}", comment: "@context: Greeting" }), { name })
+// ✅ Correct - use useLingui() hook in components
+function MyComponent() {
+  const { t } = useLingui();
+  return <h1>{t({ message: "Settings", comment: "@context: Page title" })}</h1>;
+}
 
-// ✅ Correct - with plurals
-count === 1
-  ? i18n._(msg({ message: "1 item", comment: "@context: Item count" }))
-  : i18n._(msg({ message: "{count} items", comment: "@context: Item count" }), { count })
+// ✅ Correct - with variables
+const { t } = useLingui();
+const greeting = t({ message: "Hello {name}", comment: "@context: Greeting" }, { name });
+
+// ✅ Correct - with embedded components
+<Trans comment="@context: Help link">
+  Visit <a href="/docs">our website</a>
+</Trans>
 
 // ❌ Wrong - hardcoded string
 <h1>Settings</h1>
 
-// ❌ Wrong - values inside msg() (they go in i18n._() second param)
-i18n._(msg({ message: "Hello {name}", comment: "@context: Greeting", values: { name } }))
+// ❌ Wrong - no I18nProvider wrapper
+c.html(<MyComponent />)  // useLingui() will throw error
 
-// ❌ Wrong - using global i18n (causes race conditions)
-import { i18n } from "@lingui/core";
-i18n._("Settings");
-```
-
-### Component Pattern
-
-Components that need translations must receive the context:
-
-```typescript
-import { msg } from "@lingui/core/macro";
-import { getI18n } from "../../i18n/index.js";
-
-export function MyComponent({ c, ...props }: { c: Context; other?: string }) {
-  const i18n = getI18n(c);
-
-  return <div>{i18n._(msg({ message: "Hello", comment: "@context: Greeting" }))}</div>;
-}
-
-// Call with c={c}
-<MyComponent c={c} other="value" />
+// ❌ Wrong - useLingui() called outside components
+route.get("/", async (c) => {
+  const { t } = useLingui();  // Error: called outside I18nProvider
+  ...
+});
 ```
 
 ### Workflow
 
-1. **Always use `const i18n = getI18n(c)` at the start of each handler** to get the per-request i18n instance
-2. **Always include `comment`** with `@context:` prefix explaining where/how the string is used
-3. **Use `msg()` macro** for all user-facing strings: `i18n._(msg({ message, comment }))`
-4. **Values go in `i18n._()`** as second parameter, NOT inside `msg()`: `i18n._(msg({ message: "Hello {name}", comment: "..." }), { name })`
+1. **Wrap your app** in `<I18nProvider c={c}>` in route handlers
+2. **Use `useLingui()` hook** inside components to get the `t()` function
+3. **Always include `comment`** with `@context:` prefix explaining where/how the string is used
+4. **Variables as second parameter**: `t({ message: "Hello {name}", comment: "..." }, { name })`
 5. **Run `pnpm i18n:extract`** after adding new strings to update PO files
 6. **Run `mise run translate`** to auto-translate with AI (requires OPENAI_API_KEY)
 7. **Run `pnpm i18n:compile`** to compile PO files to TypeScript catalogs (hash-keyed)

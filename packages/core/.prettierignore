@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.wrangler/
+.vite/
+
+# Generated files
+src/lib/assets.gen.ts
+src/i18n/locales/*.ts
+*.po
+*.pot
+
+# Config
+.lingui/
+
+# Assets
+src/assets/
+
+# Logs
+*.log

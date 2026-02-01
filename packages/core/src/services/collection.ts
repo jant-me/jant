@@ -102,6 +102,7 @@ export function createCollectionService(db: Database): CollectionService {
         })
         .returning();
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- DB insert with .returning() always returns inserted row
       return toCollection(result[0]!);
     },
 

@@ -6,7 +6,7 @@
 
 import { Hono } from "hono";
 import { useLingui } from "../../i18n/index.js";
-import type { Bindings } from "../../types.js";
+import type { Bindings, Media } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
 import * as time from "../../lib/time.js";
@@ -32,7 +32,7 @@ function getMediaUrl(r2Key: string, r2PublicUrl?: string): string {
   return `/media/${filename}`;
 }
 
-function MediaListContent({ mediaList, r2PublicUrl }: { mediaList: any[]; r2PublicUrl?: string }) {
+function MediaListContent({ mediaList, r2PublicUrl }: { mediaList: Media[]; r2PublicUrl?: string }) {
   const { t } = useLingui();
 
   return (
@@ -108,7 +108,7 @@ function MediaListContent({ mediaList, r2PublicUrl }: { mediaList: any[]; r2Publ
   );
 }
 
-function ViewMediaContent({ media, r2PublicUrl }: { media: any; r2PublicUrl?: string }) {
+function ViewMediaContent({ media, r2PublicUrl }: { media: Media; r2PublicUrl?: string }) {
   const { t } = useLingui();
   const url = getMediaUrl(media.r2Key, r2PublicUrl);
   const isImage = media.mimeType.startsWith("image/");
@@ -271,6 +271,7 @@ mediaRoutes.post("/:id/delete", async (c) => {
     try {
       await c.env.R2.delete(media.r2Key);
     } catch (err) {
+      // eslint-disable-next-line no-console -- Error logging is intentional
       console.error("R2 delete error:", err);
     }
   }

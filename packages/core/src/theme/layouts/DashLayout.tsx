@@ -16,36 +16,25 @@ export interface DashLayoutProps {
   currentPath?: string;
 }
 
-interface NavItem {
-  href: string;
-  labelKey: string;
-  comment: string;
-  match?: RegExp;
-}
-
-const navItems: NavItem[] = [
-  { href: "/dash", labelKey: "Dashboard", comment: "@context: Dashboard navigation - main dashboard page", match: /^\/dash$/ },
-  { href: "/dash/posts", labelKey: "Posts", comment: "@context: Dashboard navigation - posts management", match: /^\/dash\/posts/ },
-  { href: "/dash/pages", labelKey: "Pages", comment: "@context: Dashboard navigation - pages management", match: /^\/dash\/pages/ },
-  { href: "/dash/media", labelKey: "Media", comment: "@context: Dashboard navigation - media library", match: /^\/dash\/media/ },
-  { href: "/dash/collections", labelKey: "Collections", comment: "@context: Dashboard navigation - collections management", match: /^\/dash\/collections/ },
-  { href: "/dash/redirects", labelKey: "Redirects", comment: "@context: Dashboard navigation - URL redirects", match: /^\/dash\/redirects/ },
-  { href: "/dash/settings", labelKey: "Settings", comment: "@context: Dashboard navigation - site settings", match: /^\/dash\/settings/ },
-];
-
 function DashLayoutContent({
-  title,
   siteName,
   currentPath,
   children,
-}: PropsWithChildren<Omit<DashLayoutProps, "c">>) {
+}: PropsWithChildren<Omit<DashLayoutProps, "c" | "title">>) {
   const { t } = useLingui();
 
-  const isActive = (item: NavItem) => {
+  const isActive = (path: string, match?: RegExp) => {
     if (!currentPath) return false;
-    if (item.match) return item.match.test(currentPath);
-    return currentPath === item.href;
+    if (match) return match.test(currentPath);
+    return currentPath === path;
   };
+
+  const navClass = (path: string, match?: RegExp) =>
+    `justify-start px-3 py-2 text-sm rounded-md ${
+      isActive(path, match)
+        ? "bg-accent text-accent-foreground font-medium"
+        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+    }`;
 
   return (
     <div class="min-h-screen">
@@ -71,19 +60,27 @@ function DashLayoutContent({
         {/* Sidebar */}
         <aside class="w-48 shrink-0">
           <nav class="flex flex-col gap-1">
-            {navItems.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                class={`justify-start px-3 py-2 text-sm rounded-md ${
-                  isActive(item)
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
-              >
-                {t({ message: item.labelKey, comment: item.comment })}
-              </a>
-            ))}
+            <a href="/dash" class={navClass("/dash", /^\/dash$/)}>
+              {t({ message: "Dashboard", comment: "@context: Dashboard navigation - main dashboard page" })}
+            </a>
+            <a href="/dash/posts" class={navClass("/dash/posts", /^\/dash\/posts/)}>
+              {t({ message: "Posts", comment: "@context: Dashboard navigation - posts management" })}
+            </a>
+            <a href="/dash/pages" class={navClass("/dash/pages", /^\/dash\/pages/)}>
+              {t({ message: "Pages", comment: "@context: Dashboard navigation - pages management" })}
+            </a>
+            <a href="/dash/media" class={navClass("/dash/media", /^\/dash\/media/)}>
+              {t({ message: "Media", comment: "@context: Dashboard navigation - media library" })}
+            </a>
+            <a href="/dash/collections" class={navClass("/dash/collections", /^\/dash\/collections/)}>
+              {t({ message: "Collections", comment: "@context: Dashboard navigation - collections management" })}
+            </a>
+            <a href="/dash/redirects" class={navClass("/dash/redirects", /^\/dash\/redirects/)}>
+              {t({ message: "Redirects", comment: "@context: Dashboard navigation - URL redirects" })}
+            </a>
+            <a href="/dash/settings" class={navClass("/dash/settings", /^\/dash\/settings/)}>
+              {t({ message: "Settings", comment: "@context: Dashboard navigation - site settings" })}
+            </a>
           </nav>
         </aside>
 
@@ -103,7 +100,7 @@ export const DashLayout: FC<PropsWithChildren<DashLayoutProps>> = ({
 }) => {
   return (
     <BaseLayout title={`${title} - ${siteName}`} c={c}>
-      <DashLayoutContent title={title} siteName={siteName} currentPath={currentPath}>
+      <DashLayoutContent siteName={siteName} currentPath={currentPath}>
         {children}
       </DashLayoutContent>
     </BaseLayout>

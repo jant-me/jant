@@ -6,6 +6,8 @@ import { Hono } from "hono";
 import type { Bindings, PostType, Visibility } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import * as sqid from "../../lib/sqid.js";
+import { CreatePostSchema, UpdatePostSchema } from "../../lib/schemas.js";
+import { requireAuthApi } from "../../middleware/auth.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -30,6 +32,7 @@ postsApiRoutes.get("/", async (c) => {
       ...p,
       sqid: sqid.encode(p.id),
     })),
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Array length check guarantees element exists
     nextCursor: posts.length === limit ? sqid.encode(posts[posts.length - 1]!.id) : null,
   });
 });
@@ -46,19 +49,29 @@ postsApiRoutes.get("/:id", async (c) => {
 });
 
 // Create post (requires auth)
-postsApiRoutes.post("/", async (c) => {
-  // TODO: Add auth check
+postsApiRoutes.post("/", requireAuthApi(), async (c) => {
 
-  const body = await c.req.json();
+  const rawBody = await c.req.json();
+
+  // Validate request body
+  const parseResult = CreatePostSchema.safeParse(rawBody);
+  if (!parseResult.success) {
+    return c.json(
+      { error: "Validation failed", details: parseResult.error.flatten() },
+      400
+    );
+  }
+
+  const body = parseResult.data;
 
   const post = await c.var.services.posts.create({
     type: body.type,
     title: body.title,
     content: body.content,
     visibility: body.visibility,
-    sourceUrl: body.sourceUrl,
+    sourceUrl: body.sourceUrl || undefined,
     sourceName: body.sourceName,
-    path: body.path,
+    path: body.path || undefined,
     replyToId: body.replyToId ? sqid.decode(body.replyToId) ?? undefined : undefined,
     publishedAt: body.publishedAt,
   });
@@ -67,13 +80,23 @@ postsApiRoutes.post("/", async (c) => {
 });
 
 // Update post (requires auth)
-postsApiRoutes.put("/:id", async (c) => {
-  // TODO: Add auth check
+postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
 
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.json({ error: "Invalid ID" }, 400);
 
-  const body = await c.req.json();
+  const rawBody = await c.req.json();
+
+  // Validate request body
+  const parseResult = UpdatePostSchema.safeParse(rawBody);
+  if (!parseResult.success) {
+    return c.json(
+      { error: "Validation failed", details: parseResult.error.flatten() },
+      400
+    );
+  }
+
+  const body = parseResult.data;
 
   const post = await c.var.services.posts.update(id, {
     type: body.type,
@@ -92,8 +115,7 @@ postsApiRoutes.put("/:id", async (c) => {
 });
 
 // Delete post (requires auth)
-postsApiRoutes.delete("/:id", async (c) => {
-  // TODO: Add auth check
+postsApiRoutes.delete("/:id", requireAuthApi(), async (c) => {
 
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.json({ error: "Invalid ID" }, 400);

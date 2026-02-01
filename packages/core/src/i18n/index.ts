@@ -43,11 +43,8 @@ export {
   type I18n,
 } from "./i18n.js";
 
-// I18nProvider for Hono JSX (SSR-compatible)
-export { I18nProvider } from "./provider.js";
-
-// useLingui hook (custom implementation for Hono JSX)
-export { useLingui } from "./context.js";
+// I18nProvider and useLingui hook (custom implementation for Hono JSX, SSR-compatible)
+export { I18nProvider, useLingui } from "./context.js";
 
 // Trans component (simplified for Hono JSX)
 export { Trans } from "./Trans.js";

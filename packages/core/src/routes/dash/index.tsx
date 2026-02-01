@@ -19,11 +19,9 @@ export const dashIndexRoute = new Hono<Env>();
  * Uses useLingui() from @lingui/react/macro - works with Hono JSX!
  */
 function DashboardContent({
-  siteName,
   publishedCount,
   draftCount,
 }: {
-  siteName: string;
   publishedCount: number;
   draftCount: number;
 }) {
@@ -83,7 +81,6 @@ dashIndexRoute.get("/", async (c) => {
   return c.html(
     <DashLayout c={c} title="Dashboard" siteName={siteName} currentPath="/dash">
       <DashboardContent
-        siteName={siteName}
         publishedCount={publishedPosts.length}
         draftCount={draftPosts.length}
       />

@@ -4,7 +4,7 @@
 
 import { Hono } from "hono";
 import { useLingui } from "../../i18n/index.js";
-import type { Bindings } from "../../types.js";
+import type { Bindings, Collection, Post } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
 import * as sqid from "../../lib/sqid.js";
@@ -13,7 +13,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const collectionsRoutes = new Hono<Env>();
 
-function CollectionsListContent({ collections }: { collections: any[] }) {
+function CollectionsListContent({ collections }: { collections: Collection[] }) {
   const { t } = useLingui();
 
   return (
@@ -101,7 +101,7 @@ function NewCollectionContent() {
   );
 }
 
-function ViewCollectionContent({ collection, posts }: { collection: any; posts: any[] }) {
+function ViewCollectionContent({ collection, posts }: { collection: Collection; posts: Post[] }) {
   const { t } = useLingui();
   const postsHeader = t({ message: "Posts in Collection ({count})", comment: "@context: Collection posts section heading", values: { count: String(posts.length) } });
 
@@ -167,7 +167,7 @@ function ViewCollectionContent({ collection, posts }: { collection: any; posts: 
   );
 }
 
-function EditCollectionContent({ collection }: { collection: any }) {
+function EditCollectionContent({ collection }: { collection: Collection }) {
   const { t } = useLingui();
 
   return (
