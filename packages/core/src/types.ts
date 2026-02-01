@@ -118,3 +118,104 @@ export interface UpdatePost {
   sourceName?: string | null;
   publishedAt?: number;
 }
+
+// =============================================================================
+// Configuration Types
+// =============================================================================
+
+import type { FC, PropsWithChildren } from "hono/jsx";
+
+/**
+ * Props for overridable theme components
+ */
+export interface BaseLayoutProps extends PropsWithChildren {
+  title?: string;
+  description?: string;
+}
+
+export interface PostCardProps {
+  post: Post;
+  showExcerpt?: boolean;
+  showDate?: boolean;
+}
+
+export interface PostListProps {
+  posts: Post[];
+  emptyMessage?: string;
+}
+
+export interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  basePath: string;
+}
+
+export interface EmptyStateProps {
+  title: string;
+  description?: string;
+  actionLabel?: string;
+  actionHref?: string;
+}
+
+/**
+ * Theme component overrides
+ */
+export interface ThemeComponents {
+  BaseLayout?: FC<BaseLayoutProps>;
+  PostCard?: FC<PostCardProps>;
+  PostList?: FC<PostListProps>;
+  Pagination?: FC<PaginationProps>;
+  EmptyState?: FC<EmptyStateProps>;
+}
+
+/**
+ * Theme configuration
+ */
+export interface JantTheme {
+  /** Theme name */
+  name?: string;
+  /** Component overrides */
+  components?: ThemeComponents;
+  /** CSS variable overrides */
+  cssVariables?: Record<string, string>;
+}
+
+/**
+ * Site configuration
+ */
+export interface SiteConfig {
+  /** Site name */
+  name?: string;
+  /** Site description */
+  description?: string;
+  /** Default language */
+  language?: string;
+  /** Site URL (usually set via env) */
+  url?: string;
+}
+
+/**
+ * Feature toggles
+ */
+export interface FeatureConfig {
+  /** Enable search (default: true) */
+  search?: boolean;
+  /** Enable RSS feed (default: true) */
+  rss?: boolean;
+  /** Enable sitemap (default: true) */
+  sitemap?: boolean;
+  /** Enable i18n (default: true) */
+  i18n?: boolean;
+}
+
+/**
+ * Main Jant configuration
+ */
+export interface JantConfig {
+  /** Site configuration */
+  site?: SiteConfig;
+  /** Theme configuration */
+  theme?: JantTheme;
+  /** Feature toggles */
+  features?: FeatureConfig;
+}

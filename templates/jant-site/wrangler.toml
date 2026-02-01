@@ -1,0 +1,20 @@
+name = "jant-site"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[dev]
+port = 9019
+
+[vars]
+SITE_URL = "http://localhost:9019"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jant-site-db"
+database_id = "local"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "jant-site-media"

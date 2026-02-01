@@ -5,28 +5,31 @@
 node = "lts"
 
 # =============================================================================
-# Development
+# Development (uses templates/jant-site)
 # =============================================================================
 [tasks.dev]
 description = "Start development server"
-run = "pnpm --filter @jant/core dev"
+run = "pnpm --filter jant-site dev"
 
 [tasks.dev-debug]
 alias = "debug"
 description = "Start dev server on port 19019 (for Claude debugging)"
-run = "pnpm --filter @jant/core dev:debug"
+run = "pnpm --filter jant-site dev:debug"
 
 [tasks.build]
-description = "Build all packages"
-run = "pnpm --filter @jant/core build"
-
-[tasks.lint]
-description = "Run ESLint"
-run = "pnpm --filter @jant/core lint"
+description = "Build template project"
+run = "pnpm --filter jant-site build"
 
 [tasks.typecheck]
 description = "Run TypeScript type checking"
-run = "pnpm --filter @jant/core typecheck"
+run = "pnpm --filter jant-site typecheck"
+
+# =============================================================================
+# Code Quality (uses @jant/core)
+# =============================================================================
+[tasks.lint]
+description = "Run ESLint"
+run = "pnpm --filter @jant/core lint"
 
 [tasks.format]
 description = "Format code with Prettier"
@@ -41,17 +44,17 @@ run = "prettier --check ."
 # =============================================================================
 [tasks.db-generate]
 alias = "generate"
-description = "Generate Drizzle migrations"
+description = "Generate Drizzle migrations (from core schema)"
 run = "pnpm --filter @jant/core db:generate"
 
 [tasks.db-migrate]
 alias = "migrate"
-description = "Run D1 migrations (local)"
-run = "pnpm --filter @jant/core db:migrate:local"
+description = "Run D1 migrations (local template)"
+run = "pnpm --filter jant-site db:migrate:local"
 
 [tasks.db-migrate-remote]
-description = "Run D1 migrations (remote)"
-run = "pnpm --filter @jant/core db:migrate:remote"
+description = "Run D1 migrations (remote template)"
+run = "pnpm --filter jant-site db:migrate:remote"
 
 # =============================================================================
 # i18n (Lingui)
@@ -113,16 +116,27 @@ npx lingui-po-translate \
 # Deploy
 # =============================================================================
 [tasks.deploy]
-description = "Deploy to Cloudflare Workers"
-run = "pnpm --filter @jant/core deploy"
+description = "Deploy template to Cloudflare Workers"
+run = "pnpm --filter jant-site deploy"
 
 # =============================================================================
 # Utilities
 # =============================================================================
 [tasks.clean]
 description = "Clean build artifacts"
-run = "rm -rf packages/*/dist packages/*/.wrangler"
+run = "rm -rf packages/*/dist packages/*/.wrangler templates/*/.wrangler"
 
 [tasks.nuke]
 description = "Remove all node_modules and reinstall"
-run = "rm -rf node_modules packages/*/node_modules && pnpm install"
+run = "rm -rf node_modules packages/*/node_modules templates/*/node_modules && pnpm install"
+
+# =============================================================================
+# create-jant CLI
+# =============================================================================
+[tasks."create:build"]
+description = "Build create-jant CLI"
+run = "pnpm --filter create-jant build"
+
+[tasks."create:dev"]
+description = "Watch and rebuild create-jant CLI"
+run = "pnpm --filter create-jant dev"

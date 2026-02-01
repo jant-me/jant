@@ -8,7 +8,7 @@ import { createDatabase } from "./db/index.js";
 import { createServices, type Services } from "./services/index.js";
 import { createAuth, type Auth } from "./auth.js";
 import { i18nMiddleware, useLingui } from "./i18n/index.js";
-import type { Bindings } from "./types.js";
+import type { Bindings, JantConfig } from "./types.js";
 
 // Routes - Pages
 import { homeRoutes } from "./routes/pages/home.js";
@@ -46,18 +46,36 @@ import { BaseLayout } from "./theme/layouts/index.js";
 export interface AppVariables {
   services: Services;
   auth: Auth;
+  config: JantConfig;
 }
 
 export type App = Hono<{ Bindings: Bindings; Variables: AppVariables }>;
 
-export function createApp(): App {
+/**
+ * Create a Jant application
+ *
+ * @param config - Optional configuration
+ * @returns Hono app instance
+ *
+ * @example
+ * ```typescript
+ * import { createApp } from "@jant/core";
+ *
+ * export default createApp({
+ *   site: { name: "My Blog" },
+ *   theme: { components: { PostCard: MyPostCard } },
+ * });
+ * ```
+ */
+export function createApp(config: JantConfig = {}): App {
   const app = new Hono<{ Bindings: Bindings; Variables: AppVariables }>();
 
-  // Initialize services and auth middleware
+  // Initialize services, auth, and config middleware
   app.use("*", async (c, next) => {
     const db = createDatabase(c.env.DB);
     const services = createServices(db, c.env.DB);
     c.set("services", services);
+    c.set("config", config);
 
     if (c.env.AUTH_SECRET) {
       const auth = createAuth(c.env.DB, {

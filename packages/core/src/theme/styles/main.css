@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "basecoat-css";
 
+/* Scan source files for Tailwind classes */
+@source "../../**/*.tsx";
+@source "../../**/*.ts";
+
 /* Custom theme variables */
 :root {
   --radius: 0.5rem;

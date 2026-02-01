@@ -183,7 +183,7 @@
 ## 阶段 8：模板与 CLI
 
 ### 8.1 用户模板
-- [ ] `templates/cloudflare/` - Cloudflare Workers 项目模板
+- [ ] `templates/jant-site/` - Cloudflare Workers 项目模板
 
 ### 8.2 CLI（可选，MVP 后）
 - [ ] `packages/cli/` - 脚手架工具

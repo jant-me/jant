@@ -49,7 +49,7 @@ jant/
 │   │
 │   └── cli/                    # @jant/cli
 │
-├── templates/cloudflare/       # 用户项目模板
+├── templates/jant-site/       # 用户项目模板
 ├── mise.toml                   # 所有开发命令
 └── pnpm-workspace.yaml
 ```

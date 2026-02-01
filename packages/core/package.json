@@ -1,10 +1,15 @@
 {
   "name": "@jant/core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "jant": "./bin/jant.js"
+  },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./theme": "./src/theme/index.ts",
+    "./theme/*": "./src/theme/*"
   },
   "scripts": {
     "dev": "pnpm db:migrate:local && vite dev",
