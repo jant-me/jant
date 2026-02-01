@@ -3,19 +3,45 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import swc from "unplugin-swc";
 import tailwindcss from "@tailwindcss/postcss";
 import autoprefixer from "autoprefixer";
-import { copyFileSync, existsSync } from "fs";
-import { resolve } from "path";
+import { existsSync, readFileSync, writeFileSync, readdirSync } from "fs";
+import { resolve, join } from "path";
 
-// Copy manifest.json to accessible location (Cloudflare may not serve .vite directory)
-function copyManifest(): Plugin {
+// After client build, patch worker bundle with actual asset paths
+function patchWorkerAssets(): Plugin {
   return {
-    name: "copy-manifest",
+    name: "patch-worker-assets",
     apply: "build",
     closeBundle() {
-      const src = resolve("dist/client/.vite/manifest.json");
-      const dest = resolve("dist/client/manifest.json");
-      if (existsSync(src)) {
-        copyFileSync(src, dest);
+      const manifestPath = resolve("dist/client/.vite/manifest.json");
+      if (!existsSync(manifestPath)) return;
+
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+
+      // Extract asset paths from manifest
+      let stylesPath = "/assets/styles.css";
+      let clientPath = "/assets/client.js";
+
+      for (const [key, entry] of Object.entries(manifest) as [string, { file: string }][]) {
+        if (key.includes("main.css") || key.includes("styles")) {
+          stylesPath = `/${entry.file}`;
+        } else if (key.includes("client.ts") || key.includes("client")) {
+          clientPath = `/${entry.file}`;
+        }
+      }
+
+      // Find and patch worker entry file
+      const workerDirs = readdirSync("dist").filter(d => d !== "client" && existsSync(join("dist", d, "assets")));
+      for (const dir of workerDirs) {
+        const assetsDir = join("dist", dir, "assets");
+        const files = readdirSync(assetsDir).filter(f => f.startsWith("worker-entry"));
+        for (const file of files) {
+          const filePath = join(assetsDir, file);
+          let content = readFileSync(filePath, "utf-8");
+          // Replace unique placeholders with actual hashed paths
+          content = content.replace(/__JANT_ASSET_STYLES__/g, stylesPath);
+          content = content.replace(/__JANT_ASSET_CLIENT__/g, clientPath);
+          writeFileSync(filePath, content);
+        }
       }
     },
   };
@@ -66,7 +92,7 @@ export default defineConfig({
     cloudflare({
       configPath: process.env.WRANGLER_CONFIG || "./wrangler.toml",
     }),
-    copyManifest(),
+    patchWorkerAssets(),
   ],
   css: {
     postcss: {
