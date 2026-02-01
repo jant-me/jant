@@ -2,7 +2,7 @@
   "name": "jant",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@9.15.4",
+  "packageManager": "pnpm@10.28.2",
   "engines": {
     "node": ">=24.0.0"
   },
