@@ -64,6 +64,7 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         env:
           NODE_ENV: production
+          WRANGLER_ENV: ${{ inputs.environment }}
 
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
