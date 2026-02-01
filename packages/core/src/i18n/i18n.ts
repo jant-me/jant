@@ -1,125 +1,61 @@
 /**
- * i18n Runtime using @lingui/core
+ * i18n Runtime using @lingui/core with Lingui macros
  *
  * Usage:
- *   import { t } from "@/i18n";
+ *   import { msg } from "@lingui/core/macro";
+ *   import { bindI18n } from "@/i18n";
  *
- *   // With comment (recommended)
- *   t({ message: "Hello", comment: "@context: Greeting on homepage" })
+ *   const { i18n } = bindI18n(c.get("i18n"));
+ *
+ *   // Simple message
+ *   i18n._(msg({ message: "Hello", comment: "@context: Greeting" }))
  *
  *   // With interpolation
- *   t({ message: "Welcome, {name}!", comment: "@context: User welcome message", values: { name } })
+ *   i18n._(msg({ message: "Welcome, {name}!", comment: "@context: Welcome" }), { name })
+ *
+ * The msg macro generates hash-based IDs at compile time, which match the compiled catalogs.
  */
 
-import { i18n } from "@lingui/core";
+import { I18n } from "@lingui/core";
 import { locales, baseLocale, isLocale, type Locale } from "./locales.js";
+import { messages as messagesEn } from "./locales/en.js";
+import { messages as messagesZhHans } from "./locales/zh-Hans.js";
+import { messages as messagesZhHant } from "./locales/zh-Hant.js";
 
 export { locales, baseLocale, isLocale, type Locale };
 
-let currentLocale: Locale = baseLocale;
+// Export I18n type for convenience
+export type { I18n };
 
-export function getLocale(): Locale {
-  return currentLocale;
-}
+/**
+ * Create a new i18n instance for a specific locale.
+ * IMPORTANT: In Cloudflare Workers (concurrent environment), we must create
+ * a new instance per request to avoid race conditions. Never use a global instance!
+ */
+export function createI18n(locale: Locale): I18n {
+  const i18n = new I18n({ locale });
 
-export function setLocale(locale: Locale): void {
-  currentLocale = locale;
+  // Load all catalogs with English as fallback
+  i18n.load("en", messagesEn);
+  i18n.load("zh-Hans", { ...messagesEn, ...messagesZhHans });
+  i18n.load("zh-Hant", { ...messagesEn, ...messagesZhHant });
+
   i18n.activate(locale);
+
+  return i18n;
 }
 
 /**
- * Base translation options (plain text)
- */
-export interface TranslateOptions {
-  /** The message to translate (use {name} for interpolation, <0>text</0> for rich text) */
-  message: string;
-  /** Context comment for translators (required for clarity) */
-  comment: string;
-  /** Values for interpolation placeholders like {name} */
-  values?: Record<string, unknown>;
-}
-
-/**
- * Rich text translation options (with JSX components)
- */
-export interface RichTranslateOptions extends TranslateOptions {
-  /**
-   * Component map for rich text placeholders <0>...</0>.
-   * When provided, returns JSX array instead of string.
-   */
-  components: Record<number, (text: string) => unknown>;
-}
-
-/**
- * Translate a message (plain text, returns string)
- */
-export function t(options: TranslateOptions): string;
-
-/**
- * Translate a message with rich text components (returns JSX array)
- */
-export function t(options: RichTranslateOptions): unknown[];
-
-/**
- * Translate a message with required comment for context.
- * Supports both plain text and rich text with JSX components.
+ * Helper to get the per-request i18n instance from Hono context.
+ * Use this in route handlers.
  *
- * @example Plain text
- * t({ message: "Hello", comment: "@context: Greeting" })
+ * @example
+ * import { msg } from "@lingui/core/macro";
+ * import { getI18n } from "@/i18n";
  *
- * @example With interpolation
- * t({ message: "Welcome, {name}!", comment: "@context: User welcome", values: { name } })
- *
- * @example Rich text with components
- * t({
- *   message: "Read our <0>Terms</0>",
- *   comment: "@context: Terms link",
- *   components: { 0: (text) => <a href="/terms">{text}</a> }
- * })
+ * const i18n = getI18n(c);
+ * const title = i18n._(msg({ message: "Dashboard", comment: "@context: Page title" }));
  */
-export function t(options: TranslateOptions | RichTranslateOptions): string | unknown[] {
-  const { message, values } = options;
-  const components = "components" in options ? options.components : undefined;
-  // comment is used at extraction time, not runtime
-  const translated = i18n._(message, values);
-
-  // If no components, return plain string
-  if (!components) {
-    return translated;
-  }
-
-  // Parse <0>...</0>, <1>...</1>, etc. patterns for rich text
-  const result: unknown[] = [];
-  let lastIndex = 0;
-  const regex = /<(\d+)>([^<]*)<\/\1>/g;
-  let match;
-
-  while ((match = regex.exec(translated)) !== null) {
-    // Add text before the match
-    if (match.index > lastIndex) {
-      result.push(translated.slice(lastIndex, match.index));
-    }
-
-    const componentIndex = parseInt(match[1]!, 10);
-    const innerText = match[2]!;
-    const component = components[componentIndex];
-
-    if (component) {
-      result.push(component(innerText));
-    } else {
-      // Fallback if component not found
-      result.push(innerText);
-    }
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text after last match
-  if (lastIndex < translated.length) {
-    result.push(translated.slice(lastIndex));
-  }
-
-  return result;
+export function getI18n(c: { get(key: "i18n"): I18n }): I18n {
+  return c.get("i18n");
 }
-
-export { i18n };

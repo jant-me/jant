@@ -3,9 +3,11 @@
  */
 
 import { Hono } from "hono";
+import { msg } from "@lingui/core/macro";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { BaseLayout } from "../../theme/layouts/index.js";
+import { getI18n } from "../../i18n/index.js";
 import * as sqid from "../../lib/sqid.js";
 import * as time from "../../lib/time.js";
 
@@ -14,6 +16,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 export const postRoute = new Hono<Env>();
 
 postRoute.get("/:id", async (c) => {
+  const i18n = getI18n(c);
   const paramId = c.req.param("id");
 
   // Try to decode as sqid first
@@ -56,14 +59,14 @@ postRoute.get("/:id", async (c) => {
               {time.formatDate(post.publishedAt)}
             </time>
             <a href={`/p/${sqid.encode(post.id)}`} class="u-url ml-4">
-              Permalink
+              {i18n._(msg({ message: "Permalink", comment: "@context: Link to permanent URL of post" }))}
             </a>
           </footer>
         </article>
 
         <nav class="mt-8">
           <a href="/" class="text-sm hover:underline">
-            ← Back to home
+            {i18n._(msg({ message: "← Back to home", comment: "@context: Navigation link" }))}
           </a>
         </nav>
       </div>

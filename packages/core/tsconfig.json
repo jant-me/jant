@@ -1,11 +1,16 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "types": ["@cloudflare/workers-types"],
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx",
+    "types": ["@cloudflare/workers-types", "vite/client"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", ".lingui-build"]
 }

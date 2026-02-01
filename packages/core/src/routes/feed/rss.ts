@@ -12,8 +12,8 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const rssRoutes = new Hono<Env>();
 
-// RSS 2.0 Feed
-rssRoutes.get("/rss.xml", async (c) => {
+// RSS 2.0 Feed - main feed at /feed
+rssRoutes.get("/", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
   const siteDescription = (await c.var.services.settings.get("SITE_DESCRIPTION")) ?? "";
   const siteUrl = c.env.SITE_URL;
@@ -47,7 +47,7 @@ rssRoutes.get("/rss.xml", async (c) => {
     <link>${siteUrl}</link>
     <description>${escapeXml(siteDescription)}</description>
     <language>en</language>
-    <atom:link href="${siteUrl}/feed/rss.xml" rel="self" type="application/rss+xml"/>
+    <atom:link href="${siteUrl}/feed" rel="self" type="application/rss+xml"/>
     ${items}
   </channel>
 </rss>`;

@@ -3,21 +3,26 @@
  */
 
 import { Hono } from "hono";
+import { msg } from "@lingui/core/macro";
 import { createDatabase } from "./db/index.js";
 import { createServices, type Services } from "./services/index.js";
 import { createAuth, type Auth } from "./auth.js";
-import { loadCatalogs, i18nMiddleware } from "./i18n/index.js";
+import { i18nMiddleware, getI18n } from "./i18n/index.js";
 import type { Bindings } from "./types.js";
 
 // Routes - Pages
 import { homeRoute } from "./routes/pages/home.js";
 import { postRoute } from "./routes/pages/post.js";
+import { pageRoute } from "./routes/pages/page.js";
 import { collectionRoute } from "./routes/pages/collection.js";
 import { archiveRoute } from "./routes/pages/archive.js";
+import { searchRoute } from "./routes/pages/search.js";
 
 // Routes - Dashboard
 import { dashIndexRoute } from "./routes/dash/index.js";
 import { postsRoutes as dashPostsRoutes } from "./routes/dash/posts.js";
+import { pagesRoutes as dashPagesRoutes } from "./routes/dash/pages.js";
+import { mediaRoutes as dashMediaRoutes } from "./routes/dash/media.js";
 import { settingsRoutes as dashSettingsRoutes } from "./routes/dash/settings.js";
 import { redirectsRoutes as dashRedirectsRoutes } from "./routes/dash/redirects.js";
 import { collectionsRoutes as dashCollectionsRoutes } from "./routes/dash/collections.js";
@@ -25,6 +30,7 @@ import { collectionsRoutes as dashCollectionsRoutes } from "./routes/dash/collec
 // Routes - API
 import { postsApiRoutes } from "./routes/api/posts.js";
 import { uploadApiRoutes } from "./routes/api/upload.js";
+import { searchApiRoutes } from "./routes/api/search.js";
 
 // Routes - Feed
 import { rssRoutes } from "./routes/feed/rss.js";
@@ -47,13 +53,10 @@ export type App = Hono<{ Bindings: Bindings; Variables: AppVariables }>;
 export function createApp(): App {
   const app = new Hono<{ Bindings: Bindings; Variables: AppVariables }>();
 
-  // Load i18n catalogs
-  loadCatalogs();
-
   // Initialize services and auth middleware
   app.use("*", async (c, next) => {
     const db = createDatabase(c.env.DB);
-    const services = createServices(db);
+    const services = createServices(db, c.env.DB);
     c.set("services", services);
 
     if (c.env.AUTH_SECRET) {
@@ -70,9 +73,20 @@ export function createApp(): App {
   // i18n middleware
   app.use("*", i18nMiddleware());
 
+  // Trailing slash redirect (redirect /foo/ to /foo)
+  app.use("*", async (c, next) => {
+    const url = new URL(c.req.url);
+    if (url.pathname !== "/" && url.pathname.endsWith("/")) {
+      const newUrl = url.pathname.slice(0, -1) + url.search;
+      return c.redirect(newUrl, 301);
+    }
+    await next();
+  });
+
   // Redirect middleware
   app.use("*", async (c, next) => {
     const path = new URL(c.req.url).pathname;
+    // Skip redirect check for API routes and static assets
     if (path.startsWith("/api/") || path.startsWith("/assets/")) {
       return next();
     }
@@ -88,22 +102,6 @@ export function createApp(): App {
   // Health check
   app.get("/health", (c) => c.json({ status: "ok" }));
 
-  // Static assets (Datastar, etc.)
-  app.get("/assets/:filename", async (c) => {
-    const filename = c.req.param("filename");
-    // In production, these would be served from R2 or a CDN
-    // For now, return a placeholder that loads from CDN
-    if (filename === "datastar.min.js") {
-      const response = await fetch(
-        "https://cdn.jsdelivr.net/npm/@sudodevnull/datastar@latest/dist/datastar.min.js"
-      );
-      return new Response(response.body, {
-        headers: { "Content-Type": "application/javascript" },
-      });
-    }
-    return c.notFound();
-  });
-
   // better-auth handler
   app.all("/api/auth/*", async (c) => {
     if (!c.var.auth) {
@@ -117,39 +115,40 @@ export function createApp(): App {
 
   // Setup page
   app.get("/setup", async (c) => {
+    const i18n = getI18n(c);
     const isComplete = await c.var.services.settings.isOnboardingComplete();
     if (isComplete) return c.redirect("/");
 
     const error = c.req.query("error");
 
     return c.html(
-      <BaseLayout title="Setup - Jant">
+      <BaseLayout title={`${i18n._(msg({ message: "Setup", comment: "@context: Setup page title" }))} - Jant`}>
         <div class="min-h-screen flex items-center justify-center">
           <div class="card max-w-md w-full">
             <header>
-              <h2>Welcome to Jant</h2>
-              <p>Let's set up your site.</p>
+              <h2>{i18n._(msg({ message: "Welcome to Jant", comment: "@context: Setup page welcome heading" }))}</h2>
+              <p>{i18n._(msg({ message: "Let's set up your site.", comment: "@context: Setup page description" }))}</p>
             </header>
             <section>
               {error && <p class="text-destructive text-sm mb-4">{error}</p>}
               <form method="post" action="/setup" class="flex flex-col gap-4">
                 <div class="field">
-                  <label class="label">Site Name</label>
-                  <input type="text" name="siteName" class="input" required placeholder="My Blog" />
+                  <label class="label">{i18n._(msg({ message: "Site Name", comment: "@context: Setup form field - site name" }))}</label>
+                  <input type="text" name="siteName" class="input" required placeholder={i18n._(msg({ message: "My Blog", comment: "@context: Setup site name placeholder" }))} />
                 </div>
                 <div class="field">
-                  <label class="label">Your Name</label>
+                  <label class="label">{i18n._(msg({ message: "Your Name", comment: "@context: Setup form field - user name" }))}</label>
                   <input type="text" name="name" class="input" required placeholder="John Doe" />
                 </div>
                 <div class="field">
-                  <label class="label">Email</label>
+                  <label class="label">{i18n._(msg({ message: "Email", comment: "@context: Setup/signin form field - email" }))}</label>
                   <input type="email" name="email" class="input" required placeholder="you@example.com" />
                 </div>
                 <div class="field">
-                  <label class="label">Password</label>
+                  <label class="label">{i18n._(msg({ message: "Password", comment: "@context: Setup/signin form field - password" }))}</label>
                   <input type="password" name="password" class="input" required minLength={8} />
                 </div>
-                <button type="submit" class="btn">Complete Setup</button>
+                <button type="submit" class="btn">{i18n._(msg({ message: "Complete Setup", comment: "@context: Setup form submit button" }))}</button>
               </form>
             </section>
           </div>
@@ -159,6 +158,7 @@ export function createApp(): App {
   });
 
   app.post("/setup", async (c) => {
+    const i18n = getI18n(c);
     const isComplete = await c.var.services.settings.isOnboardingComplete();
     if (isComplete) return c.redirect("/");
 
@@ -204,27 +204,28 @@ export function createApp(): App {
 
   // Signin page
   app.get("/signin", async (c) => {
+    const i18n = getI18n(c);
     const error = c.req.query("error");
 
     return c.html(
-      <BaseLayout title="Sign In - Jant">
+      <BaseLayout title={`${i18n._(msg({ message: "Sign In", comment: "@context: Sign in page title" }))} - Jant`}>
         <div class="min-h-screen flex items-center justify-center">
           <div class="card max-w-md w-full">
             <header>
-              <h2>Sign In</h2>
+              <h2>{i18n._(msg({ message: "Sign In", comment: "@context: Sign in page heading" }))}</h2>
             </header>
             <section>
               {error && <p class="text-destructive text-sm mb-4">{error}</p>}
               <form method="post" action="/signin" class="flex flex-col gap-4">
                 <div class="field">
-                  <label class="label">Email</label>
+                  <label class="label">{i18n._(msg({ message: "Email", comment: "@context: Setup/signin form field - email" }))}</label>
                   <input type="email" name="email" class="input" required />
                 </div>
                 <div class="field">
-                  <label class="label">Password</label>
+                  <label class="label">{i18n._(msg({ message: "Password", comment: "@context: Setup/signin form field - password" }))}</label>
                   <input type="password" name="password" class="input" required />
                 </div>
-                <button type="submit" class="btn">Sign In</button>
+                <button type="submit" class="btn">{i18n._(msg({ message: "Sign In", comment: "@context: Sign in form submit button" }))}</button>
               </form>
             </section>
           </div>
@@ -234,6 +235,7 @@ export function createApp(): App {
   });
 
   app.post("/signin", async (c) => {
+    const i18n = getI18n(c);
     if (!c.var.auth) {
       return c.redirect("/signin?error=Auth not configured");
     }
@@ -266,6 +268,7 @@ export function createApp(): App {
   });
 
   app.get("/signout", async (c) => {
+    const i18n = getI18n(c);
     if (c.var.auth) {
       try {
         await c.var.auth.api.signOut({ headers: c.req.raw.headers });
@@ -280,22 +283,29 @@ export function createApp(): App {
   app.use("/dash/*", requireAuth());
   app.route("/dash", dashIndexRoute);
   app.route("/dash/posts", dashPostsRoutes);
+  app.route("/dash/pages", dashPagesRoutes);
+  app.route("/dash/media", dashMediaRoutes);
   app.route("/dash/settings", dashSettingsRoutes);
   app.route("/dash/redirects", dashRedirectsRoutes);
   app.route("/dash/collections", dashCollectionsRoutes);
 
   // API routes
   app.route("/api/upload", uploadApiRoutes);
+  app.route("/api/search", searchApiRoutes);
 
   // Feed routes
   app.route("/feed", rssRoutes);
   app.route("/", sitemapRoutes);
 
   // Frontend routes
+  app.route("/search", searchRoute);
   app.route("/archive", archiveRoute);
   app.route("/c", collectionRoute);
   app.route("/p", postRoute);
   app.route("/", homeRoute);
+
+  // Custom page catch-all (must be last)
+  app.route("/", pageRoute);
 
   return app;
 }

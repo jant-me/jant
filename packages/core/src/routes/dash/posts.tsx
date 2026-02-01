@@ -3,10 +3,12 @@
  */
 
 import { Hono } from "hono";
+import { msg } from "@lingui/core/macro";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
 import { PostForm, PostList } from "../../theme/components/index.js";
+import { getI18n } from "../../i18n/index.js";
 import * as sqid from "../../lib/sqid.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -15,32 +17,34 @@ export const postsRoutes = new Hono<Env>();
 
 // List posts
 postsRoutes.get("/", async (c) => {
+  const i18n = getI18n(c);
   const posts = await c.var.services.posts.list({
     visibility: ["featured", "quiet", "unlisted", "draft"],
   });
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout title="Posts" siteName={siteName}>
+    <DashLayout c={c} title={i18n._(msg({ message: "Posts", comment: "@context: Dashboard page title" }))} siteName={siteName} currentPath="/dash/posts">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-semibold">Posts</h1>
+        <h1 class="text-2xl font-semibold">{i18n._(msg({ message: "Posts", comment: "@context: Dashboard heading" }))}</h1>
         <a href="/dash/posts/new" class="btn">
-          New Post
+          {i18n._(msg({ message: "New Post", comment: "@context: Button to create new post" }))}
         </a>
       </div>
-      <PostList posts={posts} />
+      <PostList c={c} posts={posts} />
     </DashLayout>
   );
 });
 
 // New post form
 postsRoutes.get("/new", async (c) => {
+  const i18n = getI18n(c);
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout title="New Post" siteName={siteName}>
-      <h1 class="text-2xl font-semibold mb-6">New Post</h1>
-      <PostForm action="/dash/posts" />
+    <DashLayout c={c} title={i18n._(msg({ message: "New Post", comment: "@context: Page title" }))} siteName={siteName} currentPath="/dash/posts">
+      <h1 class="text-2xl font-semibold mb-6">{i18n._(msg({ message: "New Post", comment: "@context: Page heading" }))}</h1>
+      <PostForm c={c} action="/dash/posts" />
     </DashLayout>
   );
 });
@@ -70,6 +74,7 @@ postsRoutes.post("/", async (c) => {
 
 // View single post
 postsRoutes.get("/:id", async (c) => {
+  const i18n = getI18n(c);
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.notFound();
 
@@ -77,17 +82,19 @@ postsRoutes.get("/:id", async (c) => {
   if (!post) return c.notFound();
 
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
+  const defaultTitle = i18n._(msg({ message: "Post", comment: "@context: Default post title" }));
+  const pageTitle = post.title || defaultTitle;
 
   return c.html(
-    <DashLayout title={post.title || "Post"} siteName={siteName}>
+    <DashLayout c={c} title={pageTitle} siteName={siteName} currentPath="/dash/posts">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-semibold">{post.title || "Post"}</h1>
+        <h1 class="text-2xl font-semibold">{post.title || defaultTitle}</h1>
         <div class="flex gap-2">
           <a href={`/dash/posts/${sqid.encode(post.id)}/edit`} class="btn-outline">
-            Edit
+            {i18n._(msg({ message: "Edit", comment: "@context: Button to edit post" }))}
           </a>
           <a href={`/p/${sqid.encode(post.id)}`} class="btn-ghost" target="_blank">
-            View
+            {i18n._(msg({ message: "View", comment: "@context: Button to view post" }))}
           </a>
         </div>
       </div>
@@ -103,6 +110,7 @@ postsRoutes.get("/:id", async (c) => {
 
 // Edit post form
 postsRoutes.get("/:id/edit", async (c) => {
+  const i18n = getI18n(c);
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.notFound();
 
@@ -110,11 +118,13 @@ postsRoutes.get("/:id/edit", async (c) => {
   if (!post) return c.notFound();
 
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
+  const defaultTitle = i18n._(msg({ message: "Post", comment: "@context: Default post title" }));
+  const editTitle = i18n._(msg({ message: "Edit: {title}", comment: "@context: Page title for editing post" }) as any, { title: post.title || defaultTitle });
 
   return c.html(
-    <DashLayout title={`Edit: ${post.title || "Post"}`} siteName={siteName}>
-      <h1 class="text-2xl font-semibold mb-6">Edit Post</h1>
-      <PostForm post={post} action={`/dash/posts/${sqid.encode(post.id)}`} />
+    <DashLayout c={c} title={editTitle} siteName={siteName} currentPath="/dash/posts">
+      <h1 class="text-2xl font-semibold mb-6">{i18n._(msg({ message: "Edit Post", comment: "@context: Page heading" }))}</h1>
+      <PostForm c={c} post={post} action={`/dash/posts/${sqid.encode(post.id)}`} />
     </DashLayout>
   );
 });

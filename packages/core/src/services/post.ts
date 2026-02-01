@@ -17,6 +17,8 @@ export interface PostFilters {
   visibility?: Visibility | Visibility[];
   includeDeleted?: boolean;
   threadId?: number;
+  /** Exclude posts that are replies (have threadId set) */
+  excludeReplies?: boolean;
   limit?: number;
   cursor?: number; // post id for cursor pagination
 }
@@ -30,6 +32,8 @@ export interface PostService {
   delete(id: number): Promise<boolean>;
   getThread(rootId: number): Promise<Post[]>;
   updateThreadVisibility(rootId: number, visibility: Visibility): Promise<void>;
+  /** Get reply counts for multiple posts */
+  getReplyCounts(postIds: number[]): Promise<Map<number, number>>;
 }
 
 export function createPostService(db: Database): PostService {
@@ -94,6 +98,11 @@ export function createPostService(db: Database): PostService {
       // Thread filter
       if (filters.threadId) {
         conditions.push(eq(posts.threadId, filters.threadId));
+      }
+
+      // Exclude replies (posts that are part of a thread but not the root)
+      if (filters.excludeReplies) {
+        conditions.push(isNull(posts.threadId));
       }
 
       // Exclude deleted unless specified
@@ -243,6 +252,27 @@ export function createPostService(db: Database): PostService {
         .update(posts)
         .set({ visibility, updatedAt: timestamp })
         .where(eq(posts.threadId, rootId));
+    },
+
+    async getReplyCounts(postIds) {
+      if (postIds.length === 0) return new Map();
+
+      const rows = await db
+        .select({
+          threadId: posts.threadId,
+          count: sql<number>`count(*)`.as("count"),
+        })
+        .from(posts)
+        .where(and(inArray(posts.threadId, postIds), isNull(posts.deletedAt)))
+        .groupBy(posts.threadId);
+
+      const counts = new Map<number, number>();
+      for (const row of rows) {
+        if (row.threadId !== null) {
+          counts.set(row.threadId, row.count);
+        }
+      }
+      return counts;
     },
   };
 }

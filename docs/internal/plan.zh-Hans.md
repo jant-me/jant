@@ -73,7 +73,7 @@
 - [x] `services/collection.ts` - Collection CRUD
 - [x] `services/redirect.ts` - 重定向管理
 - [x] `services/settings.ts` - 设置读写
-- [ ] `services/search.ts` - FTS5 搜索 (待需要时添加)
+- [x] `services/search.ts` - FTS5 全文搜索
 
 ---
 
@@ -113,7 +113,7 @@
 ### 3.3 通用组件
 - [x] `theme/components/PostList.tsx` - 帖子列表
 - [x] `theme/components/PostForm.tsx` - 发布框
-- [ ] `theme/components/Pagination.tsx` (待需要时添加)
+- [x] `theme/components/Pagination.tsx` - 分页组件
 
 ---
 
@@ -127,7 +127,7 @@
 
 ### 4.2 索引页面
 - [x] `routes/pages/archive.tsx` - 归档 (支持按类型过滤)
-- [ ] `routes/pages/search.tsx` - 搜索 (待需要时添加)
+- [x] `routes/pages/search.tsx` - 搜索 (FTS5)
 - [x] 类型索引通过 `/archive?type=note` 参数实现
 
 ### 4.3 动态页面
@@ -140,7 +140,8 @@
 ### 5.1 仪表盘
 - [x] `routes/dash/index.tsx` - 仪表盘首页
 - [x] `routes/dash/posts.tsx` - 帖子管理 (CRUD)
-- [ ] `routes/dash/pages.tsx` - 页面管理 (待需要时添加)
+- [x] `routes/dash/pages.tsx` - 页面管理 (CRUD)
+- [x] `routes/dash/media.tsx` - 媒体管理
 - [x] `routes/dash/collections.tsx` - Collection 管理 (CRUD)
 - [x] `routes/dash/redirects.tsx` - 重定向管理
 - [x] `routes/dash/settings.tsx` - 设置
@@ -149,7 +150,7 @@
 ### 5.2 API 路由
 - [x] `routes/api/posts.ts` - 帖子 API
 - [x] `routes/api/upload.ts` - 上传 API (R2)
-- [ ] `routes/api/search.ts` - 搜索 API (待需要时添加)
+- [x] `routes/api/search.ts` - 搜索 API (FTS5)
 - [ ] `routes/api/settings.ts` - 设置 API (待需要时添加)
 
 ---
@@ -215,19 +216,29 @@
 
 - ✅ 项目初始化 (pnpm workspace, TypeScript, Wrangler)
 - ✅ 数据库 (Drizzle ORM + D1, 迁移)
-- ✅ 服务层 (posts, settings, redirects, media, collections)
+- ✅ 服务层 (posts, settings, redirects, media, collections, search)
 - ✅ 认证 (better-auth, 设置页面, 登录/登出)
 - ✅ 国际化 (Lingui, 语言检测, 中间件)
 - ✅ 主题系统 (BaseCoat + Tailwind, 布局组件)
-- ✅ 前台页面 (首页, 单帖页, Collection 页)
-- ✅ 后台仪表盘 (帖子管理, Collection 管理, 设置, 重定向)
+- ✅ 前台页面 (首页, 单帖页, Collection 页, 搜索页)
+- ✅ 后台仪表盘 (帖子管理, 页面管理, 媒体管理, Collection 管理, 设置, 重定向)
 - ✅ Feed (RSS, Atom, Sitemap, robots.txt)
 - ✅ 认证保护 (仪表盘需要登录)
 - ✅ 媒体上传 API (R2 存储)
+- ✅ Thread/回复链显示
+- ✅ 全文搜索 (FTS5)
+- ✅ 分页 (首页、归档、搜索)
 
 ## 待完成功能
 
-- [ ] 搜索功能 (FTS5)
-- [ ] 页面管理 (自定义页面，使用 posts type="page")
-- [ ] 媒体管理界面 (查看/删除已上传文件)
-- [ ] Thread/回复链显示
+- [x] 搜索功能 (FTS5)
+- [x] 页面管理 (自定义页面，使用 posts type="page")
+- [x] 媒体管理界面 (查看/删除已上传文件)
+- [x] Thread/回复链显示
+
+## 可选后续功能
+
+- [ ] 评论系统
+- [ ] Webmention 支持
+- [ ] 多用户支持
+- [ ] 主题定制

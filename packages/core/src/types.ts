@@ -66,7 +66,7 @@ export interface Media {
 export interface Collection {
   id: number;
   title: string;
-  slug: string;
+  path: string | null;
   description: string | null;
   createdAt: number;
   updatedAt: number;

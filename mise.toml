@@ -11,6 +11,11 @@ node = "lts"
 description = "Start development server"
 run = "pnpm --filter @jant/core dev"
 
+[tasks.dev-debug]
+alias = "debug"
+description = "Start dev server on port 19019 (for Claude debugging)"
+run = "pnpm --filter @jant/core dev:debug"
+
 [tasks.build]
 description = "Build all packages"
 run = "pnpm --filter @jant/core build"
@@ -52,7 +57,11 @@ run = "pnpm --filter @jant/core db:migrate:remote"
 # i18n (Lingui)
 # =============================================================================
 [tasks.i18n]
-description = "Extract and compile translations"
+description = "Extract, translate with AI, and compile (requires OPENAI_API_KEY)"
+depends = ["i18n-extract", "translate", "i18n-compile"]
+
+[tasks.i18n-no-translate]
+description = "Extract and compile only (without translation)"
 run = "pnpm --filter @jant/core i18n:build"
 
 [tasks.i18n-extract]

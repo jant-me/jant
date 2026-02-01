@@ -12,7 +12,7 @@ import type { Collection, Post } from "../types.js";
 
 export interface CollectionService {
   getById(id: number): Promise<Collection | null>;
-  getBySlug(slug: string): Promise<Collection | null>;
+  getByPath(path: string): Promise<Collection | null>;
   list(): Promise<Collection[]>;
   create(data: CreateCollectionData): Promise<Collection>;
   update(id: number, data: UpdateCollectionData): Promise<Collection | null>;
@@ -25,13 +25,13 @@ export interface CollectionService {
 
 export interface CreateCollectionData {
   title: string;
-  slug: string;
+  path?: string;
   description?: string;
 }
 
 export interface UpdateCollectionData {
   title?: string;
-  slug?: string;
+  path?: string | null;
   description?: string;
 }
 
@@ -40,7 +40,7 @@ export function createCollectionService(db: Database): CollectionService {
     return {
       id: row.id,
       title: row.title,
-      slug: row.slug,
+      path: row.path,
       description: row.description,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -74,11 +74,11 @@ export function createCollectionService(db: Database): CollectionService {
       return result[0] ? toCollection(result[0]) : null;
     },
 
-    async getBySlug(slug) {
+    async getByPath(path) {
       const result = await db
         .select()
         .from(collections)
-        .where(eq(collections.slug, slug))
+        .where(eq(collections.path, path))
         .limit(1);
       return result[0] ? toCollection(result[0]) : null;
     },
@@ -95,7 +95,7 @@ export function createCollectionService(db: Database): CollectionService {
         .insert(collections)
         .values({
           title: data.title,
-          slug: data.slug,
+          path: data.path || null,
           description: data.description ?? null,
           createdAt: timestamp,
           updatedAt: timestamp,
@@ -113,7 +113,7 @@ export function createCollectionService(db: Database): CollectionService {
       const updates: Partial<typeof collections.$inferInsert> = { updatedAt: timestamp };
 
       if (data.title !== undefined) updates.title = data.title;
-      if (data.slug !== undefined) updates.slug = data.slug;
+      if (data.path !== undefined) updates.path = data.path;
       if (data.description !== undefined) updates.description = data.description;
 
       const result = await db

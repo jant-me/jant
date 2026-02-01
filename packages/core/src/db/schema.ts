@@ -55,7 +55,7 @@ export const media = sqliteTable("media", {
 
 export const collections = sqliteTable("collections", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  slug: text("slug").notNull().unique(),
+  path: text("path").unique(),
   title: text("title").notNull(),
   description: text("description"),
   createdAt: integer("created_at").notNull(),

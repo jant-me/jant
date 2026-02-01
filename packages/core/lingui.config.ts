@@ -10,6 +10,7 @@ const config: LinguiConfig = {
     },
   ],
   format: "po",
+  compileNamespace: "ts",
 };
 
 export default config;

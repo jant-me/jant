@@ -5,6 +5,7 @@
  */
 
 import type { FC, PropsWithChildren } from "hono/jsx";
+import { ASSETS } from "../../lib/assets.js";
 
 export interface BaseLayoutProps {
   title: string;
@@ -25,13 +26,8 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{title}</title>
         {description && <meta name="description" content={description} />}
-        <style>{`
-          @import "tailwindcss";
-          @import "basecoat-css";
-          :root { --radius: 0.5rem; }
-          .container { max-width: 42rem; margin: 0 auto; padding: 0 1rem; }
-        `}</style>
-        <script src="/assets/datastar.min.js" defer />
+        <link rel="stylesheet" href={ASSETS.styles} />
+        <script type="module" src={ASSETS.datastar} defer />
       </head>
       <body class="bg-background text-foreground antialiased">
         {children}

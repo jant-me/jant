@@ -5,18 +5,48 @@
  */
 
 import type { FC, PropsWithChildren } from "hono/jsx";
+import type { Context } from "hono";
+import { msg } from "@lingui/core/macro";
 import { BaseLayout } from "./BaseLayout.js";
+import { getI18n } from "../../i18n/index.js";
 
 export interface DashLayoutProps {
+  c: Context;
   title: string;
   siteName: string;
+  currentPath?: string;
 }
 
+interface NavItem {
+  href: string;
+  label: (i18n: any) => string;
+  match?: RegExp;
+}
+
+const navItems: NavItem[] = [
+  { href: "/dash", label: (i18n) => i18n._(msg({ message: "Dashboard", comment: "@context: Dashboard navigation - main dashboard page" })), match: /^\/dash$/ },
+  { href: "/dash/posts", label: (i18n) => i18n._(msg({ message: "Posts", comment: "@context: Dashboard navigation - posts management" })), match: /^\/dash\/posts/ },
+  { href: "/dash/pages", label: (i18n) => i18n._(msg({ message: "Pages", comment: "@context: Dashboard navigation - pages management" })), match: /^\/dash\/pages/ },
+  { href: "/dash/media", label: (i18n) => i18n._(msg({ message: "Media", comment: "@context: Dashboard navigation - media library" })), match: /^\/dash\/media/ },
+  { href: "/dash/collections", label: (i18n) => i18n._(msg({ message: "Collections", comment: "@context: Dashboard navigation - collections management" })), match: /^\/dash\/collections/ },
+  { href: "/dash/redirects", label: (i18n) => i18n._(msg({ message: "Redirects", comment: "@context: Dashboard navigation - URL redirects" })), match: /^\/dash\/redirects/ },
+  { href: "/dash/settings", label: (i18n) => i18n._(msg({ message: "Settings", comment: "@context: Dashboard navigation - site settings" })), match: /^\/dash\/settings/ },
+];
+
 export const DashLayout: FC<PropsWithChildren<DashLayoutProps>> = ({
+  c,
   title,
   siteName,
+  currentPath,
   children,
 }) => {
+  const i18n = getI18n(c);
+  const isActive = (item: NavItem) => {
+    if (!currentPath) return false;
+    if (item.match) return item.match.test(currentPath);
+    return currentPath === item.href;
+  };
+
   return (
     <BaseLayout title={`${title} - ${siteName}`}>
       <div class="min-h-screen">
@@ -28,10 +58,10 @@ export const DashLayout: FC<PropsWithChildren<DashLayoutProps>> = ({
             </a>
             <nav class="flex items-center gap-4">
               <a href="/" class="text-sm text-muted-foreground hover:text-foreground">
-                View Site
+                {i18n._(msg({ message: "View Site", comment: "@context: Dashboard header link to view the public site" }))}
               </a>
               <a href="/signout" class="text-sm text-muted-foreground hover:text-foreground">
-                Sign Out
+                {i18n._(msg({ message: "Sign Out", comment: "@context: Dashboard header link to sign out" }))}
               </a>
             </nav>
           </div>
@@ -42,24 +72,19 @@ export const DashLayout: FC<PropsWithChildren<DashLayoutProps>> = ({
           {/* Sidebar */}
           <aside class="w-48 shrink-0">
             <nav class="flex flex-col gap-1">
-              <a href="/dash" class="btn-ghost justify-start px-3 py-2 text-sm">
-                Dashboard
-              </a>
-              <a href="/dash/posts" class="btn-ghost justify-start px-3 py-2 text-sm">
-                Posts
-              </a>
-              <a href="/dash/pages" class="btn-ghost justify-start px-3 py-2 text-sm">
-                Pages
-              </a>
-              <a href="/dash/collections" class="btn-ghost justify-start px-3 py-2 text-sm">
-                Collections
-              </a>
-              <a href="/dash/redirects" class="btn-ghost justify-start px-3 py-2 text-sm">
-                Redirects
-              </a>
-              <a href="/dash/settings" class="btn-ghost justify-start px-3 py-2 text-sm">
-                Settings
-              </a>
+              {navItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  class={`justify-start px-3 py-2 text-sm rounded-md ${
+                    isActive(item)
+                      ? "bg-accent text-accent-foreground font-medium"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  }`}
+                >
+                  {item.label(i18n)}
+                </a>
+              ))}
             </nav>
           </aside>
 

@@ -3,9 +3,11 @@
  */
 
 import { Hono } from "hono";
+import { msg } from "@lingui/core/macro";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { BaseLayout } from "../../theme/layouts/index.js";
+import { getI18n } from "../../i18n/index.js";
 import * as sqid from "../../lib/sqid.js";
 import * as time from "../../lib/time.js";
 
@@ -13,10 +15,11 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const collectionRoute = new Hono<Env>();
 
-collectionRoute.get("/:slug", async (c) => {
-  const slug = c.req.param("slug");
+collectionRoute.get("/:path", async (c) => {
+  const i18n = getI18n(c);
+  const path = c.req.param("path");
 
-  const collection = await c.var.services.collections.getBySlug(slug);
+  const collection = await c.var.services.collections.getByPath(path);
   if (!collection) return c.notFound();
 
   const posts = await c.var.services.collections.getPosts(collection.id);
@@ -34,7 +37,7 @@ collectionRoute.get("/:slug", async (c) => {
 
         <main class="flex flex-col gap-6">
           {posts.length === 0 ? (
-            <p class="text-muted-foreground">No posts in this collection.</p>
+            <p class="text-muted-foreground">{i18n._(msg({ message: "No posts in this collection.", comment: "@context: Empty state message" }))}</p>
           ) : (
             posts.map((post) => (
               <article key={post.id} class="h-entry">
@@ -61,7 +64,7 @@ collectionRoute.get("/:slug", async (c) => {
 
         <nav class="mt-8">
           <a href="/" class="text-sm hover:underline">
-            ← Back to home
+            {i18n._(msg({ message: "← Back to home", comment: "@context: Navigation link" }))}
           </a>
         </nav>
       </div>
