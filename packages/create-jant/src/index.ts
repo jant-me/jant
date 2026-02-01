@@ -61,10 +61,11 @@ async function copyTemplate(config: ProjectConfig): Promise<void> {
     },
   });
 
-  // Rename special files (prefixed with _ to avoid issues)
+  // Rename special files/directories (prefixed with _ to avoid issues)
   const renames: Array<[string, string]> = [
     ["_gitignore", ".gitignore"],
     ["_env.example", ".dev.vars.example"],
+    ["_github", ".github"],
   ];
 
   for (const [from, to] of renames) {

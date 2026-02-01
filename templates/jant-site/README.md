@@ -86,7 +86,7 @@ Your site is now live at `https://my-blog.<your-subdomain>.workers.dev`!
 
 ### 6. GitHub Actions (CI/CD)
 
-To deploy automatically via GitHub Actions:
+A workflow file is already included at `.github/workflows/deploy.yml`. You just need to configure secrets.
 
 #### Create API Token
 
@@ -125,55 +125,22 @@ Go to your GitHub repo → **Settings** → **Secrets and variables** → **Acti
 | `CF_ACCOUNT_ID` | Your Cloudflare Account ID (find it in dashboard URL or `wrangler whoami`) |
 | `AUTH_SECRET` | Random 32+ character string for authentication |
 
-#### Example Workflow
+That's it! Push to `main` branch to trigger deployment.
 
-Create `.github/workflows/deploy.yml`:
+#### Using Environments (Optional)
+
+If you want separate staging/production environments, update `.github/workflows/deploy.yml`:
 
 ```yaml
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'pnpm'
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Run migrations
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: d1 migrations apply my-blog-db --remote
-
-      - run: pnpm build
-        env:
-          NODE_ENV: production
-
-      - name: Deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: deploy
-          secrets: |
-            AUTH_SECRET
-        env:
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+    uses: nicepkg/jant/.github/workflows/deploy.yml@v1
+    with:
+      environment: production  # Uses [env.production] in wrangler.toml
+    secrets:
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
 ```
 
 ### 7. Custom Domain (Optional)
