@@ -63,7 +63,11 @@ export async function loadAssets(
   if (prodAssets) return prodAssets;
 
   try {
-    const res = await fetchFn("/.vite/manifest.json");
+    // Try /manifest.json first (copied by vite plugin), fallback to /.vite/manifest.json
+    let res = await fetchFn("/manifest.json");
+    if (!res.ok) {
+      res = await fetchFn("/.vite/manifest.json");
+    }
     if (res.ok) {
       const manifest = (await res.json()) as ViteManifest;
       prodAssets = parseManifest(manifest);

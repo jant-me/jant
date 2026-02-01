@@ -1,8 +1,25 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import swc from "unplugin-swc";
 import tailwindcss from "@tailwindcss/postcss";
 import autoprefixer from "autoprefixer";
+import { copyFileSync, existsSync } from "fs";
+import { resolve } from "path";
+
+// Copy manifest.json to accessible location (Cloudflare may not serve .vite directory)
+function copyManifest(): Plugin {
+  return {
+    name: "copy-manifest",
+    apply: "build",
+    closeBundle() {
+      const src = resolve("dist/client/.vite/manifest.json");
+      const dest = resolve("dist/client/manifest.json");
+      if (existsSync(src)) {
+        copyFileSync(src, dest);
+      }
+    },
+  };
+}
 
 export default defineConfig({
   publicDir: false,
@@ -49,6 +66,7 @@ export default defineConfig({
     cloudflare({
       configPath: process.env.WRANGLER_CONFIG || "./wrangler.toml",
     }),
+    copyManifest(),
   ],
   css: {
     postcss: {
