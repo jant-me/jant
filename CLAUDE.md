@@ -133,6 +133,31 @@ jant/
 
 **Every user-facing string must use Lingui `msg` macro.** No hardcoded strings in UI.
 
+### Simplified API
+
+We provide helper functions to reduce boilerplate:
+
+```tsx
+import { msg } from "@lingui/core/macro";
+import { useT, Trans } from "@/i18n";
+
+// Simple translation
+const t = useT(c);
+const text = t(msg({ message: "Dashboard", comment: "@context: Page title" }));
+
+// With values
+const greeting = t(msg({ message: "Hello {name}", comment: "@context: Greeting" }), { name });
+
+// With embedded components
+<Trans
+  c={c}
+  message={msg({ message: "Read the <link>docs</link>", comment: "@context: Help link" })}
+  components={{ link: <a href="/docs" class="underline" /> }}
+/>
+```
+
+See `src/i18n/EXAMPLES.md` for more examples.
+
 ### Per-Request i18n Instance (Cloudflare Workers)
 
 Cloudflare Workers handle multiple concurrent requests. To avoid race conditions, we create a **per-request i18n instance**:

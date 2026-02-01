@@ -5,15 +5,12 @@
  */
 
 import type { FC } from "hono/jsx";
-import type { Context } from "hono";
-import { msg } from "@lingui/core/macro";
+import { useLingui } from "../../i18n/index.js";
 import type { Post } from "../../types.js";
-import { getI18n } from "../../i18n/index.js";
 import * as sqid from "../../lib/sqid.js";
 import * as time from "../../lib/time.js";
 
 export interface ThreadViewProps {
-  c: Context;
   /** All posts in the thread, ordered by createdAt */
   posts: Post[];
   /** ID of the currently viewed post (to highlight) */
@@ -21,12 +18,11 @@ export interface ThreadViewProps {
 }
 
 const ThreadPost: FC<{
-  c: Context;
   post: Post;
   isCurrent: boolean;
   isRoot: boolean;
-}> = ({ c, post, isCurrent, isRoot }) => {
-  const i18n = getI18n(c);
+}> = ({ post, isCurrent, isRoot }) => {
+  const { t } = useLingui();
   return (
     <article
       id={`post-${post.id}`}
@@ -55,7 +51,7 @@ const ThreadPost: FC<{
         </time>
         {isRoot && (
           <span class="text-xs">
-            {i18n._(msg({ message: "Thread start", comment: "@context: Thread view indicator - first post in thread" }))}
+            {t({ message: "Thread start", comment: "@context: Thread view indicator - first post in thread" })}
           </span>
         )}
         {!isCurrent && (
@@ -63,7 +59,7 @@ const ThreadPost: FC<{
             href={`/p/${sqid.encode(post.id)}`}
             class="text-xs hover:underline"
           >
-            {i18n._(msg({ message: "Permalink", comment: "@context: Link to individual post in thread" }))}
+            {t({ message: "Permalink", comment: "@context: Link to individual post in thread" })}
           </a>
         )}
       </footer>
@@ -71,8 +67,8 @@ const ThreadPost: FC<{
   );
 };
 
-export const ThreadView: FC<ThreadViewProps> = ({ c, posts, currentPostId }) => {
-  const i18n = getI18n(c);
+export const ThreadView: FC<ThreadViewProps> = ({ posts, currentPostId }) => {
+  const { t } = useLingui();
   if (posts.length === 0) {
     return null;
   }
@@ -83,13 +79,13 @@ export const ThreadView: FC<ThreadViewProps> = ({ c, posts, currentPostId }) => 
   // Single post, no thread
   if (!isThread) {
     return (
-      <ThreadPost c={c} post={rootPost!} isCurrent={true} isRoot={false} />
+      <ThreadPost post={rootPost!} isCurrent={true} isRoot={false} />
     );
   }
 
   const threadLabel = posts.length === 1
-    ? i18n._(msg({ message: "Thread with 1 post", comment: "@context: Thread view header - single post" }))
-    : i18n._(msg({ message: "Thread with {count} posts", comment: "@context: Thread view header - multiple posts" }) as any, { count: String(posts.length) });
+    ? t({ message: "Thread with 1 post", comment: "@context: Thread view header - single post" })
+    : t({ message: "Thread with {count} posts", comment: "@context: Thread view header - multiple posts", values: { count: String(posts.length) } });
 
   return (
     <div class="thread-view">
@@ -109,7 +105,6 @@ export const ThreadView: FC<ThreadViewProps> = ({ c, posts, currentPostId }) => 
             )}
 
             <ThreadPost
-              c={c}
               post={post}
               isCurrent={post.id === currentPostId}
               isRoot={index === 0}

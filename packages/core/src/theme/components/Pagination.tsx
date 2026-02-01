@@ -5,12 +5,9 @@
  */
 
 import type { FC } from "hono/jsx";
-import type { Context } from "hono";
-import { msg } from "@lingui/core/macro";
-import { getI18n } from "../../i18n/index.js";
+import { useLingui } from "../../i18n/index.js";
 
 export interface PaginationProps {
-  c: Context;
   /** Base URL for pagination links (e.g., "/archive", "/search?q=test") */
   baseUrl: string;
   /** Whether there are more items after the current page */
@@ -24,14 +21,13 @@ export interface PaginationProps {
 }
 
 export const Pagination: FC<PaginationProps> = ({
-  c,
   baseUrl,
   hasMore,
   nextCursor,
   prevCursor,
   cursorParam = "cursor",
 }) => {
-  const i18n = getI18n(c);
+  const { t } = useLingui();
   const hasPrev = prevCursor !== undefined;
   const hasNext = hasMore && nextCursor !== undefined;
 
@@ -46,8 +42,8 @@ export const Pagination: FC<PaginationProps> = ({
     return `${url.pathname}${url.search}`;
   };
 
-  const prevText = i18n._(msg({ message: "Previous", comment: "@context: Pagination button - previous page" }));
-  const nextText = i18n._(msg({ message: "Next", comment: "@context: Pagination button - next page" }));
+  const prevText = t({ message: "Previous", comment: "@context: Pagination button - previous page" });
+  const nextText = t({ message: "Next", comment: "@context: Pagination button - next page" });
 
   return (
     <nav class="flex items-center justify-between py-4" aria-label="Pagination">
@@ -88,7 +84,6 @@ export const Pagination: FC<PaginationProps> = ({
  * Simple "Load More" style pagination
  */
 export interface LoadMoreProps {
-  c: Context;
   /** URL for loading more items */
   href: string;
   /** Whether there are more items to load */
@@ -98,17 +93,16 @@ export interface LoadMoreProps {
 }
 
 export const LoadMore: FC<LoadMoreProps> = ({
-  c,
   href,
   hasMore,
   text,
 }) => {
-  const i18n = getI18n(c);
+  const { t } = useLingui();
   if (!hasMore) {
     return null;
   }
 
-  const buttonText = text ?? i18n._(msg({ message: "Load more", comment: "@context: Pagination button - load more items" }));
+  const buttonText = text ?? t({ message: "Load more", comment: "@context: Pagination button - load more items" });
 
   return (
     <div class="text-center py-4">
@@ -123,7 +117,6 @@ export const LoadMore: FC<LoadMoreProps> = ({
  * Page-based pagination (for search results etc.)
  */
 export interface PagePaginationProps {
-  c: Context;
   /** Base URL (query params will be added) */
   baseUrl: string;
   /** Current page (1-indexed) */
@@ -135,13 +128,12 @@ export interface PagePaginationProps {
 }
 
 export const PagePagination: FC<PagePaginationProps> = ({
-  c,
   baseUrl,
   currentPage,
   hasMore,
   pageParam = "page",
 }) => {
-  const i18n = getI18n(c);
+  const { t } = useLingui();
   const hasPrev = currentPage > 1;
   const hasNext = hasMore;
 
@@ -160,9 +152,9 @@ export const PagePagination: FC<PagePaginationProps> = ({
     return `${url.pathname}${url.search}`;
   };
 
-  const prevText = i18n._(msg({ message: "Previous", comment: "@context: Pagination button - previous page" }));
-  const nextText = i18n._(msg({ message: "Next", comment: "@context: Pagination button - next page" }));
-  const pageText = i18n._(msg({ message: "Page {page}", comment: "@context: Pagination - current page indicator" }) as any, { page: String(currentPage) });
+  const prevText = t({ message: "Previous", comment: "@context: Pagination button - previous page" });
+  const nextText = t({ message: "Next", comment: "@context: Pagination button - next page" });
+  const pageText = t({ message: "Page {page}", comment: "@context: Pagination - current page indicator", values: { page: String(currentPage) } });
 
   return (
     <nav class="flex items-center justify-between py-4" aria-label="Pagination">

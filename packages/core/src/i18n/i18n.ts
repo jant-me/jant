@@ -33,13 +33,14 @@ export type { I18n };
  * a new instance per request to avoid race conditions. Never use a global instance!
  */
 export function createI18n(locale: Locale): I18n {
-  const i18n = new I18n({ locale });
+  const i18n = new I18n({});
 
   // Load all catalogs with English as fallback
   i18n.load("en", messagesEn);
   i18n.load("zh-Hans", { ...messagesEn, ...messagesZhHans });
   i18n.load("zh-Hant", { ...messagesEn, ...messagesZhHant });
 
+  // Activate locale after loading messages to avoid warnings
   i18n.activate(locale);
 
   return i18n;

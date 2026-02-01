@@ -5,12 +5,11 @@
  */
 
 import { Hono } from "hono";
+import { useLingui } from "../../i18n/index.js";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
 import { PageForm } from "../../theme/components/index.js";
-import { msg } from "@lingui/core/macro";
-import { getI18n } from "../../i18n/index.js";
 import * as sqid from "../../lib/sqid.js";
 import * as time from "../../lib/time.js";
 
@@ -18,32 +17,25 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const pagesRoutes = new Hono<Env>();
 
-// List pages
-pagesRoutes.get("/", async (c) => {
-  const i18n = getI18n(c);
-  const pages = await c.var.services.posts.list({
-    type: "page",
-    visibility: ["unlisted", "draft"],
-    limit: 100,
-  });
-  const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
+function PagesListContent({ pages }: { pages: any[] }) {
+  const { t } = useLingui();
 
-  return c.html(
-    <DashLayout c={c} title={i18n._(msg({ message: "Pages", comment: "@context: Pages page title" }))} siteName={siteName} currentPath="/dash/pages">
+  return (
+    <>
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-semibold">
-          {i18n._(msg({ message: "Pages", comment: "@context: Pages main heading" }))}
+          {t({ message: "Pages", comment: "@context: Pages main heading" })}
         </h1>
         <a href="/dash/pages/new" class="btn">
-          {i18n._(msg({ message: "New Page", comment: "@context: Button to create new page" }))}
+          {t({ message: "New Page", comment: "@context: Button to create new page" })}
         </a>
       </div>
 
       {pages.length === 0 ? (
         <div class="text-center py-12 text-muted-foreground">
-          <p>{i18n._(msg({ message: "No pages yet.", comment: "@context: Empty state message when no pages exist" }))}</p>
+          <p>{t({ message: "No pages yet.", comment: "@context: Empty state message when no pages exist" })}</p>
           <a href="/dash/pages/new" class="btn mt-4">
-            {i18n._(msg({ message: "Create your first page", comment: "@context: Button in empty state to create first page" }))}
+            {t({ message: "Create your first page", comment: "@context: Button in empty state to create first page" })}
           </a>
         </div>
       ) : (
@@ -58,8 +50,8 @@ pagesRoutes.get("/", async (c) => {
                     }
                   >
                     {page.visibility === "draft"
-                      ? i18n._(msg({ message: "Draft", comment: "@context: Page status badge - draft" }))
-                      : i18n._(msg({ message: "Published", comment: "@context: Page status badge - published" }))}
+                      ? t({ message: "Draft", comment: "@context: Page status badge - draft" })
+                      : t({ message: "Published", comment: "@context: Page status badge - published" })}
                   </span>
                   <span class="text-xs text-muted-foreground">
                     {time.formatDate(page.updatedAt)}
@@ -69,7 +61,7 @@ pagesRoutes.get("/", async (c) => {
                   href={`/dash/pages/${sqid.encode(page.id)}`}
                   class="font-medium hover:underline"
                 >
-                  {page.title || i18n._(msg({ message: "Untitled", comment: "@context: Default title for untitled page" }))}
+                  {page.title || t({ message: "Untitled", comment: "@context: Default title for untitled page" })}
                 </a>
                 <p class="text-sm text-muted-foreground mt-1">
                   /{page.path}
@@ -80,11 +72,11 @@ pagesRoutes.get("/", async (c) => {
                   href={`/dash/pages/${sqid.encode(page.id)}/edit`}
                   class="btn-sm-outline"
                 >
-                  {i18n._(msg({ message: "Edit", comment: "@context: Button to edit page" }))}
+                  {t({ message: "Edit", comment: "@context: Button to edit page" })}
                 </a>
                 {page.visibility !== "draft" && page.path && (
                   <a href={`/${page.path}`} class="btn-sm-ghost" target="_blank">
-                    {i18n._(msg({ message: "View", comment: "@context: Button to view page on public site" }))}
+                    {t({ message: "View", comment: "@context: Button to view page on public site" })}
                   </a>
                 )}
               </div>
@@ -92,28 +84,111 @@ pagesRoutes.get("/", async (c) => {
           ))}
         </div>
       )}
+    </>
+  );
+}
+
+function NewPageContent() {
+  const { t } = useLingui();
+  return (
+    <>
+      <h1 class="text-2xl font-semibold mb-6">
+        {t({ message: "New Page", comment: "@context: New page main heading" })}
+      </h1>
+      <PageForm action="/dash/pages" />
+    </>
+  );
+}
+
+function ViewPageContent({ page }: { page: any }) {
+  const { t } = useLingui();
+  return (
+    <>
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-semibold">{page.title || t({ message: "Page", comment: "@context: Default page heading when untitled" })}</h1>
+          {page.path && (
+            <p class="text-muted-foreground mt-1">/{page.path}</p>
+          )}
+        </div>
+        <div class="flex gap-2">
+          <a href={`/dash/pages/${sqid.encode(page.id)}/edit`} class="btn-outline">
+            {t({ message: "Edit", comment: "@context: Button to edit page" })}
+          </a>
+          {page.visibility !== "draft" && page.path && (
+            <a href={`/${page.path}`} class="btn-ghost" target="_blank">
+              {t({ message: "View", comment: "@context: Button to view page on public site" })}
+            </a>
+          )}
+        </div>
+      </div>
+
+      <div class="card">
+        <section>
+          <div class="prose" dangerouslySetInnerHTML={{ __html: page.contentHtml || "" }} />
+        </section>
+      </div>
+
+      {/* Delete form */}
+      <div class="mt-8 pt-8 border-t">
+        <h2 class="text-lg font-medium text-destructive mb-4">
+          {t({ message: "Danger Zone", comment: "@context: Section heading for dangerous/destructive actions" })}
+        </h2>
+        <form method="post" action={`/dash/pages/${sqid.encode(page.id)}/delete`}>
+          <button
+            type="submit"
+            class="btn-destructive"
+            onclick="return confirm('Are you sure you want to delete this page?')"
+          >
+            {t({ message: "Delete Page", comment: "@context: Button to delete page" })}
+          </button>
+        </form>
+      </div>
+    </>
+  );
+}
+
+function EditPageContent({ page }: { page: any }) {
+  const { t } = useLingui();
+  return (
+    <>
+      <h1 class="text-2xl font-semibold mb-6">
+        {t({ message: "Edit Page", comment: "@context: Edit page main heading" })}
+      </h1>
+      <PageForm page={page} action={`/dash/pages/${sqid.encode(page.id)}`} />
+    </>
+  );
+}
+
+// List pages
+pagesRoutes.get("/", async (c) => {
+  const pages = await c.var.services.posts.list({
+    type: "page",
+    visibility: ["unlisted", "draft"],
+    limit: 100,
+  });
+  const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
+
+  return c.html(
+    <DashLayout c={c} title="Pages" siteName={siteName} currentPath="/dash/pages">
+      <PagesListContent pages={pages} />
     </DashLayout>
   );
 });
 
 // New page form
 pagesRoutes.get("/new", async (c) => {
-  const i18n = getI18n(c);
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title={i18n._(msg({ message: "New Page", comment: "@context: New page page title" }))} siteName={siteName} currentPath="/dash/pages">
-      <h1 class="text-2xl font-semibold mb-6">
-        {i18n._(msg({ message: "New Page", comment: "@context: New page main heading" }))}
-      </h1>
-      <PageForm c={c} action="/dash/pages" />
+    <DashLayout c={c} title="New Page" siteName={siteName} currentPath="/dash/pages">
+      <NewPageContent />
     </DashLayout>
   );
 });
 
 // Create page
 pagesRoutes.post("/", async (c) => {
-  const i18n = getI18n(c);
   const formData = await c.req.formData();
 
   const title = formData.get("title") as string;
@@ -134,7 +209,6 @@ pagesRoutes.post("/", async (c) => {
 
 // View single page
 pagesRoutes.get("/:id", async (c) => {
-  const i18n = getI18n(c);
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.notFound();
 
@@ -144,54 +218,14 @@ pagesRoutes.get("/:id", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title={page.title || i18n._(msg({ message: "Page", comment: "@context: Default page title when untitled" }))} siteName={siteName} currentPath="/dash/pages">
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h1 class="text-2xl font-semibold">{page.title || i18n._(msg({ message: "Page", comment: "@context: Default page heading when untitled" }))}</h1>
-          {page.path && (
-            <p class="text-muted-foreground mt-1">/{page.path}</p>
-          )}
-        </div>
-        <div class="flex gap-2">
-          <a href={`/dash/pages/${sqid.encode(page.id)}/edit`} class="btn-outline">
-            {i18n._(msg({ message: "Edit", comment: "@context: Button to edit page" }))}
-          </a>
-          {page.visibility !== "draft" && page.path && (
-            <a href={`/${page.path}`} class="btn-ghost" target="_blank">
-              {i18n._(msg({ message: "View", comment: "@context: Button to view page on public site" }))}
-            </a>
-          )}
-        </div>
-      </div>
-
-      <div class="card">
-        <section>
-          <div class="prose" dangerouslySetInnerHTML={{ __html: page.contentHtml || "" }} />
-        </section>
-      </div>
-
-      {/* Delete form */}
-      <div class="mt-8 pt-8 border-t">
-        <h2 class="text-lg font-medium text-destructive mb-4">
-          {i18n._(msg({ message: "Danger Zone", comment: "@context: Section heading for dangerous/destructive actions" }))}
-        </h2>
-        <form method="post" action={`/dash/pages/${sqid.encode(page.id)}/delete`}>
-          <button
-            type="submit"
-            class="btn-destructive"
-            onclick="return confirm('Are you sure you want to delete this page?')"
-          >
-            {i18n._(msg({ message: "Delete Page", comment: "@context: Button to delete page" }))}
-          </button>
-        </form>
-      </div>
+    <DashLayout c={c} title={page.title || "Page"} siteName={siteName} currentPath="/dash/pages">
+      <ViewPageContent page={page} />
     </DashLayout>
   );
 });
 
 // Edit page form
 pagesRoutes.get("/:id/edit", async (c) => {
-  const i18n = getI18n(c);
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.notFound();
 
@@ -199,22 +233,16 @@ pagesRoutes.get("/:id/edit", async (c) => {
   if (!page || page.type !== "page") return c.notFound();
 
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
-  const defaultPageTitle = i18n._(msg({ message: "Page", comment: "@context: Default page title when untitled" }));
-  const editTitle = i18n._(msg({ message: "Edit: {title}", comment: "@context: Edit page page title" }) as any, { title: page.title || defaultPageTitle });
 
   return c.html(
-    <DashLayout c={c} title={editTitle} siteName={siteName} currentPath="/dash/pages">
-      <h1 class="text-2xl font-semibold mb-6">
-        {i18n._(msg({ message: "Edit Page", comment: "@context: Edit page main heading" }))}
-      </h1>
-      <PageForm c={c} page={page} action={`/dash/pages/${sqid.encode(page.id)}`} />
+    <DashLayout c={c} title={`Edit: ${page.title || "Page"}`} siteName={siteName} currentPath="/dash/pages">
+      <EditPageContent page={page} />
     </DashLayout>
   );
 });
 
 // Update page
 pagesRoutes.post("/:id", async (c) => {
-  const i18n = getI18n(c);
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.notFound();
 
@@ -238,7 +266,6 @@ pagesRoutes.post("/:id", async (c) => {
 
 // Delete page
 pagesRoutes.post("/:id/delete", async (c) => {
-  const i18n = getI18n(c);
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.notFound();
 
