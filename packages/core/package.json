@@ -9,7 +9,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./theme": "./src/theme/index.ts",
-    "./theme/*": "./src/theme/*"
+    "./theme/*": "./src/theme/*",
+    "./src/*": "./src/*",
+    "./static/*": "./static/*"
   },
   "scripts": {
     "dev": "pnpm db:migrate:local && vite dev",

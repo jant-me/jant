@@ -8,6 +8,7 @@ import { createDatabase } from "./db/index.js";
 import { createServices, type Services } from "./services/index.js";
 import { createAuth, type Auth } from "./auth.js";
 import { i18nMiddleware, useLingui } from "./i18n/index.js";
+import { loadAssets } from "./lib/assets.js";
 import type { Bindings, JantConfig } from "./types.js";
 
 // Routes - Pages
@@ -69,6 +70,17 @@ export type App = Hono<{ Bindings: Bindings; Variables: AppVariables }>;
  */
 export function createApp(config: JantConfig = {}): App {
   const app = new Hono<{ Bindings: Bindings; Variables: AppVariables }>();
+
+  // Load asset manifest (only once, cached after first request)
+  app.use("*", async (c, next) => {
+    // In production, load assets from manifest
+    // @ts-expect-error - ASSETS binding provided by @cloudflare/vite-plugin
+    if (c.env.ASSETS?.fetch) {
+      // @ts-expect-error - ASSETS binding
+      await loadAssets((url: string) => c.env.ASSETS.fetch(new Request(new URL(url, c.req.url))));
+    }
+    await next();
+  });
 
   // Initialize services, auth, and config middleware
   app.use("*", async (c, next) => {

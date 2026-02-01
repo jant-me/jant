@@ -7,7 +7,6 @@ dist/
 build/
 out/
 *.tsbuildinfo
-packages/core/src/lib/assets.gen.ts
 packages/core/static/assets/*.css
 
 # Cloudflare
