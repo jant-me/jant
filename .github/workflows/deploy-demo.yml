@@ -30,6 +30,14 @@ jobs:
           node-version: '24'
           cache: 'pnpm'
 
+      - name: Cache Wrangler
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/.wrangler
+          key: wrangler-${{ runner.os }}-${{ hashFiles('templates/jant-site/wrangler.demo.toml') }}
+          restore-keys: |
+            wrangler-${{ runner.os }}-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -39,7 +47,7 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           workingDirectory: templates/jant-site
-          command: d1 migrations apply jant-demo-db --remote
+          command: d1 migrations apply jant-demo-db --remote --config wrangler.demo.toml
 
       - name: Build
         run: pnpm --filter jant-site build
