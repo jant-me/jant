@@ -47,24 +47,7 @@ export default defineConfig({
       },
     }),
     cloudflare({
-      configPath: "./wrangler.toml",
-      // Override config for specific environments (e.g., WRANGLER_ENV=demo)
-      config: (config) => {
-        const env = process.env.WRANGLER_ENV;
-        if (!env) return;
-
-        // Read environment-specific config from wrangler.toml
-        // The cloudflare plugin doesn't natively support wrangler environments,
-        // so we manually apply the env config here
-        const envConfig = config.env?.[env];
-        if (!envConfig) return;
-
-        // Apply environment overrides
-        if (envConfig.name) config.name = envConfig.name;
-        if (envConfig.vars) config.vars = { ...config.vars, ...envConfig.vars };
-        if (envConfig.d1_databases) config.d1_databases = envConfig.d1_databases;
-        if (envConfig.r2_buckets) config.r2_buckets = envConfig.r2_buckets;
-      },
+      configPath: process.env.WRANGLER_CONFIG || "./wrangler.toml",
     }),
   ],
   css: {

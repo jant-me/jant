@@ -18,22 +18,3 @@ migrations_dir = "migrations"
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "jant-site-media"
-
-# ===================
-# Demo Environment
-# ===================
-[env.demo]
-name = "jant-demo"
-
-[env.demo.vars]
-SITE_URL = "https://demo.jant.me"
-
-[[env.demo.d1_databases]]
-binding = "DB"
-database_name = "jant-demo-db"
-database_id = "fb835831-d594-4b2f-be54-ce036cf7f2b1"
-migrations_dir = "migrations"
-
-[[env.demo.r2_buckets]]
-binding = "R2"
-bucket_name = "jant-demo-media"

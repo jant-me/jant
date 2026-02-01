@@ -57,6 +57,7 @@ async function copyTemplate(config: ProjectConfig): Promise<void> {
       if (basename === ".dev.vars") return false;
       if (basename === "pnpm-lock.yaml") return false;
       if (basename === "dist") return false;
+      if (basename === "wrangler.demo.toml") return false;
       return true;
     },
   });
@@ -95,8 +96,6 @@ async function copyTemplate(config: ProjectConfig): Promise<void> {
     content = content.replace(/name = "jant-site"/g, `name = "${projectName}"`);
     content = content.replace(/database_name = "jant-site-db"/g, `database_name = "${projectName}-db"`);
     content = content.replace(/bucket_name = "jant-site-media"/g, `bucket_name = "${projectName}-media"`);
-    // Remove [env.demo] section (specific to demo.jant.me, not for user projects)
-    content = content.replace(/\n# =+\n# Demo Environment\n# =+\n\[env\.demo\][\s\S]*$/, "\n");
     await fs.writeFile(wranglerPath, content, "utf-8");
   }
 }
