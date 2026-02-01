@@ -33,18 +33,20 @@ jobs:
 
       - name: Clear existing data
         run: |
-          wrangler d1 execute jant-demo-db \
+          cd templates/jant-site && wrangler d1 execute DB \
             --remote \
-            --file=templates/jant-site/scripts/reset.sql
+            --env demo \
+            --file=scripts/reset.sql
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
 
       - name: Insert seed data
         run: |
-          wrangler d1 execute jant-demo-db \
+          cd templates/jant-site && wrangler d1 execute DB \
             --remote \
-            --file=templates/jant-site/scripts/seed.sql
+            --env demo \
+            --file=scripts/seed.sql
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}

@@ -34,7 +34,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/.wrangler
-          key: wrangler-${{ runner.os }}-${{ hashFiles('templates/jant-site/wrangler.demo.toml') }}
+          key: wrangler-${{ runner.os }}-${{ hashFiles('templates/jant-site/wrangler.toml') }}
           restore-keys: |
             wrangler-${{ runner.os }}-
 
@@ -47,7 +47,7 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           workingDirectory: templates/jant-site
-          command: d1 migrations apply jant-demo-db --remote --config wrangler.demo.toml
+          command: d1 migrations apply DB --remote --env demo
 
       - name: Build
         run: pnpm --filter jant-site build
@@ -60,7 +60,7 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           workingDirectory: templates/jant-site
-          command: deploy --config wrangler.demo.toml
+          command: deploy --env demo
           secrets: |
             AUTH_SECRET
         env:

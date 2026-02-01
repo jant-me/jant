@@ -84,7 +84,99 @@ pnpm deploy
 
 Your site is now live at `https://my-blog.<your-subdomain>.workers.dev`!
 
-### 6. Custom Domain (Optional)
+### 6. GitHub Actions (CI/CD)
+
+To deploy automatically via GitHub Actions:
+
+#### Create API Token
+
+1. Go to [Cloudflare API Tokens](https://dash.cloudflare.com/profile/api-tokens)
+2. Click **Create Token**
+3. Click **Use template** next to **Edit Cloudflare Workers**
+4. **IMPORTANT: Add D1 permission** (not included in template by default):
+   - Click **+ Add more**
+   - Select: **Account** → **D1** → **Edit**
+
+5. Your permissions should include at minimum:
+
+| Scope | Permission | Access |
+|-------|------------|--------|
+| Account | Workers Scripts | Edit |
+| Account | Workers R2 Storage | Edit |
+| Account | **D1** | **Edit** ← Must add manually! |
+| Zone | Workers Routes | Edit |
+
+6. **Account Resources** (below permissions list):
+   - Select **Include** → **Specific account** → Choose your account
+
+7. **Zone Resources**:
+   - Select **Include** → **All zones from an account** → Choose your account
+
+8. Click **Continue to summary** → **Create Token**
+9. Copy the token (you won't see it again!)
+
+#### Add GitHub Secrets
+
+Go to your GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
+
+| Secret Name | Value |
+|-------------|-------|
+| `CF_API_TOKEN` | Your API token from above |
+| `CF_ACCOUNT_ID` | Your Cloudflare Account ID (find it in dashboard URL or `wrangler whoami`) |
+| `AUTH_SECRET` | Random 32+ character string for authentication |
+
+#### Example Workflow
+
+Create `.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: d1 migrations apply my-blog-db --remote
+
+      - run: pnpm build
+        env:
+          NODE_ENV: production
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: deploy
+          secrets: |
+            AUTH_SECRET
+        env:
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+```
+
+### 7. Custom Domain (Optional)
 
 To use your own domain:
 
