@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "pnpm db:migrate:local && vite dev",
     "dev:debug": "pnpm db:migrate:local && vite dev --port 19019",

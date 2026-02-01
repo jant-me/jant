@@ -18,11 +18,6 @@ on:
         required: false
         type: string
         default: '24'
-      pnpm_version:
-        description: 'pnpm version'
-        required: false
-        type: string
-        default: '10'
     secrets:
       CF_API_TOKEN:
         description: 'Cloudflare API Token'
@@ -45,8 +40,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: ${{ inputs.pnpm_version }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
