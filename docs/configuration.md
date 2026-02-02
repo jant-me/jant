@@ -17,17 +17,34 @@ Set these in `wrangler.toml` or as Cloudflare secrets.
 
 | Variable | Description |
 |----------|-------------|
-| `R2_BUCKET` | Cloudflare R2 bucket name for media storage |
 | `R2_PUBLIC_URL` | Public URL for R2 bucket (if using custom domain) |
 
-### Optional: Cloudflare Images
+### Image Transformations (Optional)
 
-For automatic image optimization:
+For automatic thumbnail generation and image optimization:
 
 | Variable | Description |
 |----------|-------------|
-| `CF_IMAGES_ACCOUNT_ID` | Your Cloudflare account ID |
-| `CF_IMAGES_API_TOKEN` | Images API token |
+| `IMAGE_TRANSFORM_URL` | Base URL for image transformations |
+
+**Cloudflare Image Transformations Setup:**
+
+1. Go to Cloudflare Dashboard → Images → Transformations
+2. Enable transformations for your zone
+3. Set `IMAGE_TRANSFORM_URL` to `https://yourdomain.com/cdn-cgi/image`
+
+```toml
+[vars]
+IMAGE_TRANSFORM_URL = "https://yourdomain.com/cdn-cgi/image"
+```
+
+When enabled, the dashboard displays optimized thumbnails instead of full images. Without this setting, original images are shown (still works fine).
+
+**Note:** Images are automatically processed client-side before upload:
+- EXIF orientation correction
+- Resize to max 1920px
+- Metadata stripped (GPS, device info removed)
+- Converted to WebP at 85% quality
 
 ## Dashboard Settings
 

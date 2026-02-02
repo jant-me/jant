@@ -332,6 +332,33 @@ export function createApp(config: JantConfig = {}): App {
   app.route("/api/upload", uploadApiRoutes);
   app.route("/api/search", searchApiRoutes);
 
+  // Media files from R2 (UUIDv7-based URLs with extension)
+  app.get("/media/:idWithExt", async (c) => {
+    if (!c.env.R2) {
+      return c.notFound();
+    }
+
+    // Extract ID from "uuid.ext" format
+    const idWithExt = c.req.param("idWithExt");
+    const mediaId = idWithExt.replace(/\.[^.]+$/, "");
+
+    const media = await c.var.services.media.getById(mediaId);
+    if (!media) {
+      return c.notFound();
+    }
+
+    const object = await c.env.R2.get(media.r2Key);
+    if (!object) {
+      return c.notFound();
+    }
+
+    const headers = new Headers();
+    headers.set("Content-Type", object.httpMetadata?.contentType || media.mimeType);
+    headers.set("Cache-Control", "public, max-age=31536000, immutable");
+
+    return new Response(object.body, { headers });
+  });
+
   // Feed routes
   app.route("/feed", rssRoutes);
   app.route("/", sitemapRoutes);

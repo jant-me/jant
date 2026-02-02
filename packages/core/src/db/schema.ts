@@ -36,7 +36,7 @@ export const posts = sqliteTable("posts", {
 // =============================================================================
 
 export const media = sqliteTable("media", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+  id: text("id").primaryKey(), // UUIDv7
   postId: integer("post_id").references(() => posts.id),
   filename: text("filename").notNull(),
   originalName: text("original_name").notNull(),

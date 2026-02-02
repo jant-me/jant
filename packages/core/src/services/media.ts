@@ -5,16 +5,17 @@
  */
 
 import { eq, desc } from "drizzle-orm";
+import { uuidv7 } from "uuidv7";
 import type { Database } from "../db/index.js";
 import { media } from "../db/schema.js";
 import { now } from "../lib/time.js";
 import type { Media } from "../types.js";
 
 export interface MediaService {
-  getById(id: number): Promise<Media | null>;
+  getById(id: string): Promise<Media | null>;
   list(limit?: number): Promise<Media[]>;
   create(data: CreateMediaData): Promise<Media>;
-  delete(id: number): Promise<boolean>;
+  delete(id: string): Promise<boolean>;
   getByR2Key(r2Key: string): Promise<Media | null>;
 }
 
@@ -64,11 +65,13 @@ export function createMediaService(db: Database): MediaService {
     },
 
     async create(data) {
+      const id = uuidv7();
       const timestamp = now();
 
       const result = await db
         .insert(media)
         .values({
+          id,
           postId: data.postId ?? null,
           filename: data.filename,
           originalName: data.originalName,

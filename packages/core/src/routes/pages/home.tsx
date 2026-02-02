@@ -25,7 +25,7 @@ function HomeContent({ siteName, posts }: { siteName: string; posts: Post[] }) {
           <a href="/archive" class="text-muted-foreground hover:text-foreground">
             {t({ message: "Archive", comment: "@context: Navigation link to archive page" })}
           </a>
-          <a href="/feed/rss.xml" class="text-muted-foreground hover:text-foreground">
+          <a href="/feed" class="text-muted-foreground hover:text-foreground">
             RSS
           </a>
         </nav>

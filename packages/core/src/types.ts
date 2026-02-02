@@ -23,6 +23,7 @@ export interface Bindings {
   SITE_URL: string;
   AUTH_SECRET?: string;
   R2_PUBLIC_URL?: string;
+  IMAGE_TRANSFORM_URL?: string;
 }
 
 
@@ -50,7 +51,7 @@ export interface Post {
 }
 
 export interface Media {
-  id: number;
+  id: string; // UUIDv7
   postId: number | null;
   filename: string;
   originalName: string;

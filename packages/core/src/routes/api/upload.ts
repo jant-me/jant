@@ -8,6 +8,7 @@ import { Hono } from "hono";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { requireAuthApi } from "../../middleware/auth.js";
+import { getMediaUrl } from "../../lib/image.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -71,10 +72,8 @@ uploadApiRoutes.post("/", async (c) => {
       height,
     });
 
-    // Build public URL
-    const publicUrl = c.env.R2_PUBLIC_URL
-      ? `${c.env.R2_PUBLIC_URL}/${r2Key}`
-      : `/media/${filename}`;
+    // Build public URL (sqid-based)
+    const publicUrl = getMediaUrl(media.id, r2Key, c.env.R2_PUBLIC_URL);
 
     return c.json({
       id: media.id,
@@ -99,9 +98,7 @@ uploadApiRoutes.get("/", async (c) => {
     media: mediaList.map((m) => ({
       id: m.id,
       filename: m.filename,
-      url: c.env.R2_PUBLIC_URL
-        ? `${c.env.R2_PUBLIC_URL}/${m.r2Key}`
-        : `/media/${m.filename}`,
+      url: getMediaUrl(m.id, m.r2Key, c.env.R2_PUBLIC_URL),
       mimeType: m.mimeType,
       size: m.size,
       createdAt: m.createdAt,
@@ -111,11 +108,7 @@ uploadApiRoutes.get("/", async (c) => {
 
 // Delete a file
 uploadApiRoutes.delete("/:id", async (c) => {
-  const id = parseInt(c.req.param("id"), 10);
-  if (isNaN(id)) {
-    return c.json({ error: "Invalid ID" }, 400);
-  }
-
+  const id = c.req.param("id");
   const media = await c.var.services.media.getById(id);
   if (!media) {
     return c.json({ error: "Not found" }, 404);

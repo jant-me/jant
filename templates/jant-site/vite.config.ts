@@ -21,6 +21,7 @@ function patchWorkerAssets(): Plugin {
       let stylesPath = "/assets/styles.css";
       let clientPath = "/assets/client.js";
       let datastarPath = "/assets/datastar.min.js";
+      let imageProcessorPath = "/assets/image-processor.js";
 
       for (const [key, entry] of Object.entries(manifest) as [string, { file: string }][]) {
         if (key.includes("main.css") || key.includes("styles")) {
@@ -29,6 +30,8 @@ function patchWorkerAssets(): Plugin {
           clientPath = `/${entry.file}`;
         } else if (key.includes("datastar")) {
           datastarPath = `/${entry.file}`;
+        } else if (key.includes("image-processor")) {
+          imageProcessorPath = `/${entry.file}`;
         }
       }
 
@@ -44,6 +47,7 @@ function patchWorkerAssets(): Plugin {
           content = content.replace(/__JANT_ASSET_STYLES__/g, stylesPath);
           content = content.replace(/__JANT_ASSET_CLIENT__/g, clientPath);
           content = content.replace(/__JANT_ASSET_DATASTAR__/g, datastarPath);
+          content = content.replace(/__JANT_ASSET_IMAGE_PROCESSOR__/g, imageProcessorPath);
           writeFileSync(filePath, content);
         }
       }
@@ -112,6 +116,7 @@ export default defineConfig({
         styles: "@jant/core/src/theme/styles/main.css",
         client: "@jant/core/src/client.ts",
         datastar: "@jant/core/static/assets/datastar.min.js",
+        "image-processor": "@jant/core/static/assets/image-processor.js",
       },
       output: {
         entryFileNames: "assets/[name]-[hash].js",

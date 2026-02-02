@@ -278,6 +278,40 @@ function MyComponent() {
 3. Run `mise run translate` for AI translation (optional)
 4. Run `pnpm i18n:compile` to compile catalogs
 
+## Datastar Usage
+
+Datastar is used for client-side interactivity. Key rules:
+
+### 1. Prefer Plain JS for Simple Interactions
+
+For simple DOM manipulation like lightboxes, use plain `onclick` instead of Datastar. It's simpler and avoids signal scoping issues.
+
+```tsx
+// ✅ Simple lightbox with plain JS
+<button onclick="document.getElementById('lightbox-img').src = '/image.jpg'; document.getElementById('lightbox').showModal()">
+  <img src="/thumbnail.jpg" />
+</button>
+<dialog id="lightbox" onclick="event.target === this && this.close()">
+  <img id="lightbox-img" src="" />
+</dialog>
+```
+
+### 2. Use Expressions, Not Statements (for data-on-*)
+
+If using Datastar's `data-on-*`, use **expressions**, not statements.
+
+```tsx
+// ❌ Wrong - if statement causes "Unexpected token 'if'" error
+data-on-click="if (evt.target === this) this.close()"
+
+// ✅ Correct - use logical AND for conditional execution
+data-on-click="evt.target === this && this.close()"
+```
+
+### 3. Signal Scoping (for data-signals-*)
+
+If using Datastar signals, define `data-signals-*` on a **parent element** that contains all elements needing access to the signal. Signals defined inside a child aren't visible to siblings.
+
 ## Key Conventions
 
 1. **Services**: All DB operations go through service layer
