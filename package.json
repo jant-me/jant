@@ -9,7 +9,19 @@
   "scripts": {
     "dev": "pnpm --filter @jant/core dev",
     "build": "pnpm --filter @jant/core build",
-    "typecheck": "pnpm --filter @jant/core typecheck",
-    "lint": "pnpm --filter @jant/core lint"
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm --filter @jant/core lint",
+    "format": "pnpm --filter @jant/core format",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && pnpm -r --filter './packages/*' publish --provenance --access public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jant-me/jant.git"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.2",
+    "@changesets/cli": "^2.29.8"
   }
 }

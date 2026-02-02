@@ -1,6 +1,6 @@
 {
   "name": "create-jant",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Create a new Jant project",
   "type": "module",
   "bin": {
@@ -26,18 +26,23 @@
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
-    "@types/node": "^22.13.1",
+    "@types/node": "^24.0.0",
     "tsup": "^8.4.0",
     "typescript": "^5.7.3"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nicepkg/jant.git",
+    "url": "https://github.com/jant-me/jant.git",
     "directory": "packages/create-jant"
   },
+  "bugs": {
+    "url": "https://github.com/jant-me/jant/issues"
+  },
+  "homepage": "https://jant.me",
+  "author": "Jant Contributors",
   "keywords": [
     "jant",
     "create",

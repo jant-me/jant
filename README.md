@@ -36,6 +36,15 @@ pnpm deploy
 - [Deployment](docs/deployment.md)
 - [Configuration](docs/configuration.md)
 - [Theming](docs/theming.md)
+- [API Reference](docs/API.md)
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup
+- Code style guidelines
+- Pull request process
+- Release workflow
 
 ## Philosophy
 

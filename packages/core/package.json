@@ -1,7 +1,7 @@
 {
   "name": "@jant/core",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.0.1",
+  "description": "A modern, open-source microblogging platform built on Cloudflare Workers",
   "type": "module",
   "bin": {
     "jant": "./bin/jant.js"
@@ -13,6 +13,19 @@
     "./src/*": "./src/*",
     "./static/*": "./static/*"
   },
+  "files": [
+    "bin",
+    "src",
+    "static",
+    "migrations",
+    "drizzle.config.ts",
+    "lingui.config.ts",
+    "postcss.config.js",
+    "tailwind.config.ts",
+    "tsconfig.json",
+    "vite.config.ts",
+    "wrangler.toml"
+  ],
   "scripts": {
     "dev": "pnpm db:migrate:local && vite dev",
     "dev:debug": "pnpm db:migrate:local && vite dev --port 19019",
@@ -76,5 +89,28 @@
     "unplugin-swc": "^1.5.9",
     "vite": "^7.3.1",
     "wrangler": "^4.61.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jant-me/jant.git",
+    "directory": "packages/core"
+  },
+  "keywords": [
+    "jant",
+    "microblog",
+    "cloudflare",
+    "workers",
+    "hono",
+    "d1",
+    "r2"
+  ],
+  "author": "Jant Contributors",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jant-me/jant/issues"
+  },
+  "homepage": "https://jant.me",
+  "engines": {
+    "node": ">=24.0.0"
   }
 }

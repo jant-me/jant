@@ -35,7 +35,9 @@ This is an open source project. Code quality and maintainability are paramount.
 
 ## Important Rules
 
+- **Node.js version: 24 (LTS)** - Always use Node 24 in CI workflows, package.json engines, and documentation. Do NOT use older versions like 20 or 22. The current LTS is 24.
 - **Always use latest versions** when installing dependencies. DO NOT use outdated versions from training data. Check npm for current versions or use `pnpm add <package>@latest`.
+- **Use mise.toml for all commands** - Wrap all development commands in mise tasks. Never require users to `cd` into directories - use the `dir` parameter instead. This keeps the workflow simple and discoverable.
 - **Stop dev processes after debugging**: When starting dev server or other background processes for testing/debugging, always stop them when done so the user can restart them manually.
 - **Use debug port for testing**: When debugging, use `mise run dev-debug` which runs on port 19019, leaving port 9019 free for the user.
 
@@ -63,6 +65,17 @@ mise run i18n         # Extract + compile translations
 mise run i18n-extract # Extract messages from source
 mise run i18n-compile # Compile PO files to JS
 mise run translate    # Auto-translate using AI (needs OPENAI_API_KEY)
+
+# Release (Changesets)
+mise run changeset    # Create a changeset for your changes
+mise run cs:status    # Check pending changesets
+mise run version      # Apply changesets (bump versions)
+mise run release      # Publish packages to npm
+mise run release:dry  # Dry run publish
+
+# First-time Publish (manual, before Trusted Publishing)
+mise run publish:core   # Publish @jant/core to npm
+mise run publish:create # Publish create-jant to npm
 ```
 
 ## Project Structure
@@ -415,6 +428,29 @@ This happens when Datastar can't find the signal. Causes:
 - [x] Badge components (TypeBadge, VisibilityBadge)
 - [x] Form components (PostForm, PageForm)
 - [x] Display components (PostList, ThreadView, Pagination)
+
+### Release System ✅
+- [x] Changesets for version management
+- [x] GitHub CI (lint, typecheck, build)
+- [x] Automated npm publishing via GitHub Actions
+- [x] SemVer versioning
+- [x] Auto-generated changelogs with PR links
+
+## Releasing
+
+This project uses [Changesets](https://github.com/changesets/changesets) for version management. See [docs/RELEASING.md](docs/RELEASING.md) for full documentation.
+
+**Quick workflow:**
+1. Make changes in a branch
+2. Run `mise run changeset` to create a changeset
+3. Open PR and merge to main
+4. Merge the auto-created "Release" PR to publish
+
+**Packages:**
+| Package | Description |
+|---------|-------------|
+| `@jant/core` | Core framework |
+| `create-jant` | CLI scaffolding tool |
 
 ## Local Development
 

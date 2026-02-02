@@ -141,3 +141,39 @@ run = "pnpm --filter create-jant build"
 [tasks."create:dev"]
 description = "Watch and rebuild create-jant CLI"
 run = "pnpm --filter create-jant dev"
+
+# =============================================================================
+# Release & Publishing (Changesets)
+# =============================================================================
+[tasks.changeset]
+alias = "cs"
+description = "Create a new changeset for your changes"
+run = "pnpm changeset"
+
+[tasks."changeset:status"]
+alias = "cs:status"
+description = "Show pending changesets and version bumps"
+run = "pnpm changeset status"
+
+[tasks.version]
+description = "Apply changesets and bump versions (generates CHANGELOG)"
+run = "pnpm changeset version"
+
+[tasks.release]
+description = "Build and publish all packages to npm"
+run = "pnpm release"
+
+[tasks."release:dry"]
+description = "Dry run of release (no actual publish)"
+run = "pnpm build && pnpm -r --filter './packages/*' publish --dry-run"
+
+[tasks."publish:core"]
+description = "Manually publish @jant/core to npm (first-time setup)"
+dir = "packages/core"
+run = "npm publish --access public"
+depends = ["build"]
+
+[tasks."publish:create"]
+description = "Manually publish create-jant to npm (first-time setup)"
+dir = "packages/create-jant"
+run = "npm publish --access public"
