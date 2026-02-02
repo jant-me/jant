@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.2.2
+
+### Patch Changes
+
+- refletor css import
+
 ## 0.2.0
 
 ### Minor Changes
