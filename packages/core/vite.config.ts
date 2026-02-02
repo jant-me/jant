@@ -60,7 +60,7 @@ export default defineConfig({
         outDir: "dist/client",
         manifest: true,
         rollupOptions: {
-          input: ["/src/client.ts", "/src/theme/styles/main.css"],
+          input: ["/src/client.ts", "/src/style.css"],
         },
       },
     },

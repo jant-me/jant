@@ -1,0 +1,15 @@
+/**
+ * @jant/core Development Styles
+ *
+ * This file is used for developing/testing @jant/core directly.
+ * User projects should NOT use this file - use preset.css instead.
+ */
+
+/* Tailwind CSS v4 */
+@import "tailwindcss";
+
+/* Jant Core preset (basecoat, component styles, theme, source scanning) */
+@import "./preset.css";
+
+/* Scan local project files */
+@source "./**/*.{ts,tsx}";

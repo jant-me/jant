@@ -1,12 +1,20 @@
 /**
  * Jant Core Preset
  *
- * Includes basecoat UI and component styles.
- * Note: @source must be in user's style.css (doesn't work via @import)
+ * Includes basecoat UI, component styles, and source scanning for @jant/core components.
+ * This file should be imported in user's style.css after tailwindcss.
  */
 
+/* BaseCoat UI framework */
 @import "basecoat-css";
+
+/* Jant component styles */
 @import "./styles/components.css";
+
+/* Scan @jant/core source files for Tailwind classes */
+/* These paths are relative to this CSS file's location */
+@source "./theme/**/*.{ts,tsx}";
+@source "./routes/**/*.{ts,tsx}";
 
 @theme {
   --radius-default: 0.5rem;

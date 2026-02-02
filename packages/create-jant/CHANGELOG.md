@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.1.9
+
+### Patch Changes
+
+- Fix CSS
+
 ## 0.1.8
 
 ### Patch Changes

@@ -5,12 +5,11 @@
 /* Tailwind CSS v4 */
 @import "tailwindcss";
 
-/* Jant Core preset (basecoat, component styles, theme) */
+/* Jant Core preset (basecoat, component styles, theme, source scanning) */
 @import "@jant/core/preset.css";
 
-/* Source paths for Tailwind class scanning */
-@source "../**/*.{ts,tsx}";
-@source "../node_modules/@jant/core/src/**/*.{ts,tsx}";
+/* Scan local project files for Tailwind classes */
+@source "./**/*.{ts,tsx}";
 
 /* User customizations */
 :root {
