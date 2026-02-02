@@ -107,7 +107,8 @@
   "author": "Jant Contributors",
   "license": "AGPL-3.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "bugs": {
     "url": "https://github.com/jant-me/jant/issues"
