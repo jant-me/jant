@@ -41,6 +41,7 @@ This is an open source project. Code quality and maintainability are paramount.
 - **All GitHub workflows need manual trigger** - Always add `workflow_dispatch:` to all GitHub Actions workflows so they can be triggered manually from the Actions tab.
 - **Stop dev processes after debugging**: When starting dev server or other background processes for testing/debugging, always stop them when done so the user can restart them manually.
 - **Use debug port for testing**: When debugging, use `mise run dev-debug` which runs on port 19019, leaving port 9019 free for the user.
+- **Do NOT publish packages**: After making changes, do NOT run publish commands. The user will handle publishing manually using `mise run version` and `mise run release-local`.
 
 ## Quick Reference
 
