@@ -85,4 +85,4 @@ pnpm i18n:build    # Extract + compile translations
 
 ## License
 
-MIT
+AGPL-3.0 License.

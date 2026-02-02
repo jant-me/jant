@@ -61,4 +61,4 @@ We welcome contributions! See [CONTRIBUTING.md](https://github.com/jant-me/jant/
 
 ## License
 
-MIT
+AGPL-3.0 License.

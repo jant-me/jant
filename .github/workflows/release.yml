@@ -78,3 +78,11 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Debug output (can remove later)
+      - name: Debug changesets output
+        if: always()
+        run: |
+          echo "published: ${{ steps.changesets.outputs.published }}"
+          echo "publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}"
+          echo "pullRequestNumber: ${{ steps.changesets.outputs.pullRequestNumber }}"
