@@ -1,6 +1,6 @@
 {
   "name": "create-jant",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Create a new Jant project",
   "type": "module",
   "bin": {
@@ -16,7 +16,8 @@
     "dev": "tsup src/index.ts --format esm --watch",
     "typecheck": "tsc --noEmit",
     "copy-template": "rm -rf template && cp -r ../../templates/jant-site template",
-    "prepublishOnly": "pnpm copy-template && pnpm build"
+    "inject-version": "node -e \"const fs=require('fs');const v=require('../core/package.json').version;const f='dist/index.js';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace('__JANT_CORE_VERSION__',v))\"",
+    "prepublishOnly": "pnpm copy-template && pnpm build && pnpm inject-version"
   },
   "dependencies": {
     "@clack/prompts": "^0.10.0",

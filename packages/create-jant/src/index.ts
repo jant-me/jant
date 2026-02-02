@@ -9,6 +9,9 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// @jant/core version - injected at build time by prepublish script
+const CORE_VERSION = "__JANT_CORE_VERSION__";
+
 // Template directory resolution:
 // - If template/ exists next to dist/ (after prepublish copy), use that
 // - Otherwise, use the source templates/jant-site (for local dev)
@@ -90,9 +93,9 @@ async function copyTemplate(config: ProjectConfig): Promise<void> {
   if (await fs.pathExists(pkgPath)) {
     const pkg = await fs.readJson(pkgPath);
     pkg.name = projectName;
-    // Replace workspace:* with actual version for npm publishing
+    // Replace workspace:* with version injected at build time
     if (pkg.dependencies?.["@jant/core"] === "workspace:*") {
-      pkg.dependencies["@jant/core"] = "^0.1.0";
+      pkg.dependencies["@jant/core"] = `^${CORE_VERSION}`;
     }
     await fs.writeJson(pkgPath, pkg, { spaces: 2 });
   }
