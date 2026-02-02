@@ -45,7 +45,7 @@ function renderMediaCard(
         <button
           type="button"
           class="block w-full aspect-square bg-muted rounded-lg overflow-hidden border hover:border-primary cursor-pointer"
-          data-on-click="$$lightboxSrc = '${fullUrl}'; document.getElementById('lightbox').showModal()"
+          onclick="document.getElementById('lightbox-img').src = '${fullUrl}'; document.getElementById('lightbox').showModal()"
         >
           <img
             src="${thumbnailUrl}"
