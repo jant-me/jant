@@ -1,5 +1,7 @@
 # Jant
 
+> **Work in Progress**: This project is still under active development and not yet ready for use. See the latest build at [demo.jant.me](https://demo.jant.me).
+
 A personal microblogging system as smooth as <https://threads.com>.
 
 > **Jant** = Jantelagen (Law of Jante)
