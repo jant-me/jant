@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.1.0
+
+### Minor Changes
+
+- [`008ac1d`](https://github.com/jant-me/jant/commit/008ac1d64db88f3ec12b6e39746e9ce150c98cee) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Test CI
+
 ## 0.0.4
 
 ### Patch Changes
