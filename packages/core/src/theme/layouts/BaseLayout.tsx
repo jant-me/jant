@@ -37,10 +37,10 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{title}</title>
         {description && <meta name="description" content={description} />}
-        {/* CSS: In dev, injected by Vite HMR. In prod, loaded via link tag */}
+        {/* CSS */}
         {assets.styles && <link rel="stylesheet" href={assets.styles} />}
+        {/* Client JS (includes Datastar + BaseCoat) */}
         <script type="module" src={assets.client} defer />
-        <script type="module" src={assets.datastar} defer />
       </head>
       <body class="bg-background text-foreground antialiased">
         {content}

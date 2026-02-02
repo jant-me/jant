@@ -1,19 +1,16 @@
 /**
  * User Project Styles
- *
- * 1. Initialize Tailwind compiler (user controls version)
- * 2. Import Jant Core preset (includes basecoat, components, source paths)
- * 3. Add user-specific source paths and customizations
  */
 
-/* Initialize Tailwind CSS v4 */
+/* Tailwind CSS v4 */
 @import "tailwindcss";
 
-/* Import Jant Core preset (basecoat, components, @source paths) */
+/* Jant Core preset (basecoat, component styles, theme) */
 @import "@jant/core/preset.css";
 
-/* Scan user's own code for Tailwind classes */
+/* Source paths for Tailwind class scanning */
 @source "../**/*.{ts,tsx}";
+@source "../node_modules/@jant/core/src/**/*.{ts,tsx}";
 
 /* User customizations */
 :root {

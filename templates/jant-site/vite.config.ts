@@ -8,17 +8,14 @@ import { resolve, join } from "path";
 
 /**
  * Dev asset paths
- * CSS link prevents FOUC (Flash of Unstyled Content) in dev mode
  */
-const JANT_DEV_ASSETS = {
+const DEV_ASSETS = {
   styles: "/src/style.css",
   client: "/src/client.ts",
-  datastar: "/node_modules/@jant/core/static/assets/datastar.min.js",
-  imageProcessor: "/node_modules/@jant/core/static/assets/image-processor.js",
 };
 
 /**
- * Post-build: Extract asset paths from manifest and patch worker bundle
+ * Post-build: Patch worker bundle with hashed asset paths from manifest
  */
 function patchWorkerAssets(): Plugin {
   return {
@@ -30,27 +27,18 @@ function patchWorkerAssets(): Plugin {
 
       const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
 
-      // Find asset paths in manifest
+      // Extract paths from manifest
       let stylesPath = "";
       let clientPath = "";
-      let datastarPath = "";
-      let imageProcessorPath = "";
 
       for (const [key, entry] of Object.entries(manifest) as [string, { file: string; css?: string[] }][]) {
         if (key.includes("client")) {
           clientPath = `/${entry.file}`;
-          // CSS is extracted from client entry
-          if (entry.css?.[0]) {
-            stylesPath = `/${entry.css[0]}`;
-          }
-        } else if (key.includes("datastar")) {
-          datastarPath = `/${entry.file}`;
-        } else if (key.includes("image-processor")) {
-          imageProcessorPath = `/${entry.file}`;
+          if (entry.css?.[0]) stylesPath = `/${entry.css[0]}`;
         }
       }
 
-      // Patch worker entry files with actual paths
+      // Patch worker files
       const workerDirs = readdirSync("dist").filter(
         (d) => d !== "client" && existsSync(join("dist", d, "assets"))
       );
@@ -65,8 +53,6 @@ function patchWorkerAssets(): Plugin {
 
           content = content.replace(/__JANT_ASSET_STYLES__/g, stylesPath);
           content = content.replace(/__JANT_ASSET_CLIENT__/g, clientPath);
-          content = content.replace(/__JANT_ASSET_DATASTAR__/g, datastarPath);
-          content = content.replace(/__JANT_ASSET_IMAGE_PROCESSOR__/g, imageProcessorPath);
 
           writeFileSync(filePath, content);
         }
@@ -78,12 +64,9 @@ function patchWorkerAssets(): Plugin {
 export default defineConfig({
   publicDir: false,
 
-  // Inject dev asset paths (used by @jant/core's getAssets())
   define: {
-    __JANT_DEV_STYLES__: JSON.stringify(JANT_DEV_ASSETS.styles),
-    __JANT_DEV_CLIENT__: JSON.stringify(JANT_DEV_ASSETS.client),
-    __JANT_DEV_DATASTAR__: JSON.stringify(JANT_DEV_ASSETS.datastar),
-    __JANT_DEV_IMAGE_PROCESSOR__: JSON.stringify(JANT_DEV_ASSETS.imageProcessor),
+    __JANT_DEV_STYLES__: JSON.stringify(DEV_ASSETS.styles),
+    __JANT_DEV_CLIENT__: JSON.stringify(DEV_ASSETS.client),
   },
 
   server: {
@@ -96,7 +79,6 @@ export default defineConfig({
     port: 9019,
   },
 
-  // Process @jant/core through Vite (don't treat as external)
   ssr: {
     noExternal: ["@jant/core", "basecoat-css"],
   },
@@ -142,11 +124,7 @@ export default defineConfig({
     minify: false,
     manifest: true,
     rollupOptions: {
-      input: {
-        client: "src/client.ts",
-        datastar: "@jant/core/static/assets/datastar.min.js",
-        "image-processor": "@jant/core/static/assets/image-processor.js",
-      },
+      input: "src/client.ts",
       output: {
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
@@ -159,7 +137,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": "/src",
-      // Monorepo: use source files directly for HMR (npm users don't have this alias)
+      // Monorepo: use source files directly for HMR
       "@jant/core": resolve(__dirname, "../../packages/core/src"),
     },
   },

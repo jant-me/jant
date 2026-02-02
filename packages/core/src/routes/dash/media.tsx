@@ -13,7 +13,6 @@ import { DashLayout } from "../../theme/layouts/index.js";
 import { EmptyState, DangerZone } from "../../theme/components/index.js";
 import * as time from "../../lib/time.js";
 import { getMediaUrl, getImageUrl } from "../../lib/image.js";
-import { getAssets } from "../../lib/assets.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -96,12 +95,10 @@ function MediaListContent({
   mediaList,
   r2PublicUrl,
   imageTransformUrl,
-  imageProcessorUrl,
 }: {
   mediaList: Media[];
   r2PublicUrl?: string;
   imageTransformUrl?: string;
-  imageProcessorUrl: string;
 }) {
   const { t } = useLingui();
 
@@ -265,8 +262,7 @@ function processSSEEvent(event) {
 
   return (
     <>
-      {/* Scripts - script tags need closing tag, self-closing doesn't work in HTML */}
-      <script src={imageProcessorUrl}></script>
+      {/* Upload script */}
       <script dangerouslySetInnerHTML={{ __html: uploadScript }}></script>
 
       {/* Header */}
@@ -493,7 +489,6 @@ mediaRoutes.get("/", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
   const r2PublicUrl = c.env.R2_PUBLIC_URL;
   const imageTransformUrl = c.env.IMAGE_TRANSFORM_URL;
-  const assets = getAssets();
 
   return c.html(
     <DashLayout c={c} title="Media" siteName={siteName} currentPath="/dash/media">
@@ -501,7 +496,6 @@ mediaRoutes.get("/", async (c) => {
         mediaList={mediaList}
         r2PublicUrl={r2PublicUrl}
         imageTransformUrl={imageTransformUrl}
-        imageProcessorUrl={assets.imageProcessor}
       />
     </DashLayout>
   );

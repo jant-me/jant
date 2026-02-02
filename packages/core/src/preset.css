@@ -1,22 +1,13 @@
 /**
  * Jant Core Preset
  *
- * Encapsulates internal dependencies, component styles, and source paths.
- * Users import this AFTER initializing Tailwind in their CSS entry.
+ * Includes basecoat UI and component styles.
+ * Note: @source must be in user's style.css (doesn't work via @import)
  */
 
-/* 1. Internal dependencies */
 @import "basecoat-css";
-
-/* 2. Component styles (badges, utilities) */
 @import "./styles/components.css";
 
-/* 3. Source paths for Tailwind class scanning
-   Paths are relative to this file (src/).
-   Scans all TSX components for Tailwind classes. */
-@source "./**/*.{ts,tsx}";
-
-/* 4. Default theme variables */
 @theme {
   --radius-default: 0.5rem;
 }

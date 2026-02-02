@@ -1,6 +1,6 @@
 {
   "name": "@jant/core",
-  "version": "0.2.2",
+  "version": "0.2.4",
   "description": "A modern, open-source microblogging platform built on Cloudflare Workers",
   "type": "module",
   "bin": {
@@ -22,11 +22,8 @@
   "files": [
     "bin",
     "dist",
-    "static",
     "migrations",
-    "src/preset.css",
-    "src/styles",
-    "src/client.ts"
+    "src"
   ],
   "publishConfig": {
     "access": "public"
@@ -54,6 +51,7 @@
   },
   "dependencies": {
     "@lingui/core": "^5.9.0",
+    "@sudodevnull/datastar": "^0.19.9",
     "better-auth": "^1.4.18",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.11.7",
@@ -67,7 +65,6 @@
     "tailwindcss": "^4.0.0"
   },
   "devDependencies": {
-    "basecoat-css": "^0.3.10",
     "@cloudflare/vite-plugin": "^1.22.1",
     "@cloudflare/workers-types": "^4.20260131.0",
     "@eslint/js": "^9.39.2",
@@ -81,6 +78,7 @@
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "autoprefixer": "^10.4.24",
+    "basecoat-css": "^0.3.10",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",
