@@ -1,5 +1,17 @@
 # @jant/core
 
+## 0.1.1
+
+### Patch Changes
+
+- Fix: Move basecoat-css from devDependencies to dependencies
+
+  This fixes the "basecoat-css/all could not be resolved" error when users install @jant/core in their projects.
+
+- [`bbf82aa`](https://github.com/jant-me/jant/commit/bbf82aa29324637ae2d207efdb82c6bea12c86d9) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Test CI Release
+
+- [#8](https://github.com/jant-me/jant/pull/8) [`adddf07`](https://github.com/jant-me/jant/commit/adddf07e41f82091e313744556b851e0214c12dd) Thanks [@theowenyoung](https://github.com/theowenyoung)! - create with auth secret
+
 ## 0.1.0
 
 ### Minor Changes
