@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.1.1
+
+### Patch Changes
+
+- [`bbf82aa`](https://github.com/jant-me/jant/commit/bbf82aa29324637ae2d207efdb82c6bea12c86d9) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Test CI Release
+
 ## 0.1.0
 
 ### Minor Changes
