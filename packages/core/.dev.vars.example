@@ -1,0 +1,3 @@
+# Copy this file to .dev.vars and fill in the values
+# AUTH_SECRET must be at least 32 characters
+AUTH_SECRET=your-secret-key-at-least-32-chars-long

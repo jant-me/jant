@@ -1,0 +1,27 @@
+{
+  "name": "jant",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.2",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @jant/core dev",
+    "build": "pnpm --filter @jant/core build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm --filter @jant/core lint",
+    "format": "pnpm --filter @jant/core format",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm changeset publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jant-me/jant.git"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.2",
+    "@changesets/cli": "^2.29.8"
+  }
+}

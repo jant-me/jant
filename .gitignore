@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+references
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+packages/core/static/assets/*.css
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# Turbo
+.turbo/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.vitest/
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.swc/
+
+# Misc
+*.tgz
+*.pid
+*.seed

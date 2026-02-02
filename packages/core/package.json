@@ -1,0 +1,119 @@
+{
+  "name": "@jant/core",
+  "version": "0.1.0",
+  "description": "A modern, open-source microblogging platform built on Cloudflare Workers",
+  "type": "module",
+  "bin": {
+    "jant": "./bin/jant.js"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./theme": "./src/theme/index.ts",
+    "./theme/*": "./src/theme/*",
+    "./src/*": "./src/*",
+    "./static/*": "./static/*"
+  },
+  "files": [
+    "bin",
+    "src",
+    "static",
+    "migrations",
+    "drizzle.config.ts",
+    "lingui.config.ts",
+    "postcss.config.js",
+    "tailwind.config.ts",
+    "tsconfig.json",
+    "vite.config.ts",
+    "wrangler.toml"
+  ],
+  "scripts": {
+    "dev": "pnpm db:migrate:local && vite dev",
+    "dev:debug": "pnpm db:migrate:local && vite dev --port 19019",
+    "build": "vite build",
+    "deploy": "pnpm build && wrangler deploy",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "i18n:extract": "lingui extract",
+    "i18n:compile": "lingui compile --typescript",
+    "i18n:build": "pnpm i18n:extract && pnpm i18n:compile",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@lingui/core": "^5.9.0",
+    "better-auth": "^1.4.18",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.11.7",
+    "marked": "^17.0.1",
+    "sqids": "^0.3.0",
+    "uuidv7": "^1.1.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.28.6",
+    "@babel/core": "^7.29.0",
+    "@babel/preset-typescript": "^7.28.5",
+    "@cloudflare/vite-plugin": "^1.22.1",
+    "@cloudflare/workers-types": "^4.20260131.0",
+    "@eslint/js": "^9.39.2",
+    "@lingui/babel-plugin-lingui-macro": "^5.9.0",
+    "@lingui/cli": "^5.9.0",
+    "@lingui/format-json": "^5.9.0",
+    "@lingui/format-po": "^5.9.0",
+    "@lingui/swc-plugin": "^5.10.1",
+    "@swc/core": "^1.15.11",
+    "@tailwindcss/cli": "^4.1.18",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^25.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "autoprefixer": "^10.4.24",
+    "basecoat-css": "^0.3.10",
+    "drizzle-kit": "^0.31.8",
+    "esbuild-plugin-lingui-macro": "^1.0.1",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "glob": "^13.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "postcss": "^8.5.6",
+    "prettier": "^3.8.1",
+    "tailwindcss": "^4.1.18",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "unplugin-swc": "^1.5.9",
+    "vite": "^7.3.1",
+    "wrangler": "^4.61.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jant-me/jant.git",
+    "directory": "packages/core"
+  },
+  "keywords": [
+    "jant",
+    "microblog",
+    "cloudflare",
+    "workers",
+    "hono",
+    "d1",
+    "r2"
+  ],
+  "author": "Jant Contributors",
+  "license": "AGPL-3.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/jant-me/jant/issues"
+  },
+  "homepage": "https://jant.me",
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

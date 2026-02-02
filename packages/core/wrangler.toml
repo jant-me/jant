@@ -1,0 +1,21 @@
+name = "jant"
+main = "src/index.ts"
+compatibility_date = "2026-01-20"
+compatibility_flags = ["nodejs_compat"]
+assets = { directory = "static" }
+
+[dev]
+port = 9019
+
+[vars]
+SITE_URL = "https://local.jant.me"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jant-db"
+database_id = "local"
+migrations_dir = "src/db/migrations"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "jant-media"

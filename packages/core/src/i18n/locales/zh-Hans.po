@@ -1,0 +1,875 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-02-01 08:44:08+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: lingui-po-translate\n"
+"Language: zh-Hans\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/routes/pages/archive.tsx:135
+#. @context: Archive post reply indicator - plural
+msgid "{count} replies"
+msgstr "{count} 条回复"
+
+#: src/routes/dash/collections.tsx:196
+#. @context: Navigation link
+msgid "← Back to Collections"
+msgstr "← 返回收藏夹"
+
+#: src/routes/pages/collection.tsx:67
+#: src/routes/pages/post.tsx:69
+#. @context: Navigation link
+#. @context: Navigation link
+msgid "← Back to home"
+msgstr "← 返回首页"
+
+#: src/routes/pages/archive.tsx:134
+#. @context: Archive post reply indicator - single
+msgid "1 reply"
+msgstr "1 条回复"
+
+#: src/routes/dash/redirects.tsx:95
+#. @context: Redirect type option
+msgid "301 (Permanent)"
+msgstr "301（永久）"
+
+#: src/routes/dash/redirects.tsx:96
+#. @context: Redirect type option
+msgid "302 (Temporary)"
+msgstr "302（临时）"
+
+#: src/routes/pages/archive.tsx:85
+#. @context: Archive filter - all types
+msgid "All"
+msgstr "所有"
+
+#: src/routes/pages/archive.tsx:71
+#: src/routes/pages/home.tsx:39
+#. @context: Archive page title
+#. @context: Navigation link to archive page
+msgid "Archive"
+msgstr "档案馆"
+
+#: src/routes/pages/archive.tsx:169
+#: src/theme/components/PostForm.tsx:32
+#: src/theme/components/PostList.tsx:41
+#. @context: Post type badge - article
+#. @context: Post type label - article
+#. @context: Post type option
+msgid "Article"
+msgstr "文章"
+
+#: src/routes/pages/archive.tsx:181
+#. @context: Post type label plural - articles
+msgid "Articles"
+msgstr "文章"
+
+#: src/routes/dash/media.tsx:140
+#. @context: Button to go back to media list
+msgid "Back"
+msgstr "返回"
+
+#: src/routes/pages/archive.tsx:158
+#: src/routes/pages/page.tsx:52
+#: src/routes/pages/search.tsx:138
+#. @context: Navigation link back to home page
+#. @context: Navigation link back to home page
+#. @context: Navigation link back to home page
+msgid "Back to home"
+msgstr "返回首页"
+
+#: src/routes/dash/collections.tsx:103
+#: src/routes/dash/collections.tsx:249
+#: src/routes/dash/redirects.tsx:105
+#: src/theme/components/PageForm.tsx:113
+#: src/theme/components/PostForm.tsx:120
+#. @context: Button to cancel and go back
+#. @context: Button to cancel form
+#. @context: Button to cancel form
+#. @context: Button to cancel form
+#. @context: Button to cancel form
+msgid "Cancel"
+msgstr "取消"
+
+#: src/routes/dash/collections.tsx:24
+#: src/routes/dash/collections.tsx:26
+#: src/theme/layouts/DashLayout.tsx:31
+#. @context: Dashboard heading
+#. @context: Dashboard navigation - collections management
+#. @context: Dashboard page title
+msgid "Collections"
+msgstr "收藏夹"
+
+#: src/app.tsx:151
+#. @context: Setup form submit button
+msgid "Complete Setup"
+msgstr "完成设置"
+
+#: src/theme/components/PageForm.tsx:75
+#: src/theme/components/PostForm.tsx:60
+#. @context: Page form field label - content
+#. @context: Post form field
+msgid "Content"
+msgstr "内容"
+
+#: src/routes/dash/media.tsx:184
+#: src/routes/dash/media.tsx:210
+#. @context: Button to copy Markdown to clipboard
+#. @context: Button to copy URL to clipboard
+msgid "Copy"
+msgstr "复制"
+
+#: src/routes/dash/collections.tsx:100
+#. @context: Button to save new collection
+msgid "Create Collection"
+msgstr "创建集合"
+
+#: src/theme/components/PageForm.tsx:110
+#. @context: Button to create new page
+msgid "Create Page"
+msgstr "创建页面"
+
+#: src/routes/dash/redirects.tsx:102
+#. @context: Button to save new redirect
+msgid "Create Redirect"
+msgstr "创建重定向"
+
+#: src/routes/dash/pages.tsx:46
+#. @context: Button in empty state to create first page
+msgid "Create your first page"
+msgstr "创建您的第一页"
+
+#: src/theme/components/PostList.tsx:57
+#. @context: Button in empty state to create first post
+msgid "Create your first post"
+msgstr "创建你的第一篇帖子"
+
+#: src/theme/components/PostForm.tsx:104
+#. @context: Post form field
+msgid "Custom Path (optional)"
+msgstr "自定义路径（可选）"
+
+#: src/routes/dash/collections.tsx:255
+#: src/routes/dash/media.tsx:220
+#: src/routes/dash/pages.tsx:176
+#. @context: Heading for destructive actions section
+#. @context: Section heading for dangerous/destructive actions
+#. @context: Section heading for dangerous/destructive actions
+msgid "Danger Zone"
+msgstr "危险区域"
+
+#: src/routes/dash/index.tsx:26
+#: src/routes/dash/index.tsx:28
+#: src/theme/layouts/DashLayout.tsx:27
+#. @context: Dashboard main heading
+#. @context: Dashboard navigation - main dashboard page
+#. @context: Dashboard page title
+msgid "Dashboard"
+msgstr "仪表板"
+
+#: src/routes/dash/redirects.tsx:47
+#. @context: Button to delete redirect
+msgid "Delete"
+msgstr "删除"
+
+#: src/routes/dash/collections.tsx:258
+#. @context: Button to delete collection
+msgid "Delete Collection"
+msgstr "删除收藏夹"
+
+#: src/routes/dash/media.tsx:233
+#. @context: Button to delete media
+msgid "Delete Media"
+msgstr "删除媒体"
+
+#: src/routes/dash/pages.tsx:184
+#. @context: Button to delete page
+msgid "Delete Page"
+msgstr "删除页面"
+
+#: src/routes/dash/media.tsx:225
+#. @context: Warning message before deleting media
+msgid "Deleting this media will remove it permanently from storage."
+msgstr "删除此媒体将永久从存储中移除。"
+
+#: src/routes/dash/collections.tsx:94
+#: src/routes/dash/collections.tsx:238
+#. @context: Collection form field
+#. @context: Collection form field
+msgid "Description (optional)"
+msgstr "描述（可选）"
+
+#: src/routes/dash/pages.tsx:61
+#: src/theme/components/PageForm.tsx:97
+#: src/theme/components/PostForm.tsx:97
+#: src/theme/components/PostList.tsx:31
+#. @context: Page status badge - draft
+#. @context: Page status option - draft
+#. @context: Post visibility badge - draft
+#. @context: Post visibility option
+msgid "Draft"
+msgstr "草稿"
+
+#: src/routes/dash/index.tsx:43
+#. @context: Dashboard stat card - draft posts count
+msgid "Drafts"
+msgstr "草稿"
+
+#: src/routes/dash/collections.tsx:49
+#: src/routes/dash/collections.tsx:150
+#: src/routes/dash/pages.tsx:83
+#: src/routes/dash/pages.tsx:157
+#: src/routes/dash/posts.tsx:94
+#: src/theme/components/PostList.tsx:92
+#. @context: Button to edit collection
+#. @context: Button to edit collection
+#. @context: Button to edit page
+#. @context: Button to edit page
+#. @context: Button to edit post
+#. @context: Button to edit post
+msgid "Edit"
+msgstr "编辑"
+
+#: src/routes/dash/collections.tsx:217
+#. @context: Page heading
+msgid "Edit Collection"
+msgstr "编辑集合"
+
+#: src/routes/dash/pages.tsx:208
+#. @context: Edit page main heading
+msgid "Edit Page"
+msgstr "编辑页面"
+
+#: src/routes/dash/posts.tsx:126
+#. @context: Page heading
+msgid "Edit Post"
+msgstr "编辑帖子"
+
+#: src/routes/dash/collections.tsx:213
+#: src/routes/dash/pages.tsx:203
+#: src/routes/dash/posts.tsx:122
+#. @context: Edit page page title
+#. @context: Page title for editing collection
+#. @context: Page title for editing post
+msgid "Edit: {title}"
+msgstr "编辑: {title}"
+
+#: src/app.tsx:144
+#: src/app.tsx:221
+#. @context: Setup/signin form field - email
+#. @context: Setup/signin form field - email
+msgid "Email"
+msgstr "电子邮件"
+
+#: src/routes/pages/home.tsx:69
+#: src/theme/components/PostForm.tsx:91
+#: src/theme/components/PostList.tsx:28
+#. @context: Post visibility badge
+#. @context: Post visibility badge - featured
+#. @context: Post visibility option
+msgid "Featured"
+msgstr "精选"
+
+#: src/routes/pages/search.tsx:92
+#. @context: Search results count - multiple
+msgid "Found {count} results"
+msgstr "找到 {count} 个结果"
+
+#: src/routes/pages/search.tsx:91
+#. @context: Search results count - single
+msgid "Found 1 result"
+msgstr "找到 1 个结果"
+
+#: src/routes/dash/redirects.tsx:69
+#. @context: Redirect form field
+msgid "From Path"
+msgstr "来源路径"
+
+#: src/routes/dash/settings.tsx:30
+#. @context: Settings section heading
+msgid "General"
+msgstr "常规"
+
+#: src/routes/pages/archive.tsx:172
+#: src/theme/components/PostForm.tsx:41
+#: src/theme/components/PostList.tsx:44
+#. @context: Post type badge - image
+#. @context: Post type label - image
+#. @context: Post type option
+msgid "Image"
+msgstr "图像"
+
+#: src/routes/pages/archive.tsx:184
+#. @context: Post type label plural - images
+msgid "Images"
+msgstr "图片"
+
+#: src/routes/dash/settings.tsx:46
+#. @context: Settings form field
+msgid "Language"
+msgstr "语言"
+
+#: src/app.tsx:130
+#. @context: Setup page description
+msgid "Let's set up your site."
+msgstr "让我们设置您的网站。"
+
+#: src/routes/pages/archive.tsx:170
+#: src/theme/components/PostForm.tsx:35
+#: src/theme/components/PostList.tsx:42
+#. @context: Post type badge - link
+#. @context: Post type label - link
+#. @context: Post type option
+msgid "Link"
+msgstr "链接"
+
+#: src/routes/pages/archive.tsx:182
+#. @context: Post type label plural - links
+msgid "Links"
+msgstr "链接"
+
+#: src/theme/components/Pagination.tsx:111
+#. @context: Pagination button - load more items
+msgid "Load more"
+msgstr "加载更多"
+
+#: src/theme/components/PageForm.tsx:63
+#. @context: Page path validation message
+msgid "Lowercase letters, numbers, and hyphens only"
+msgstr "仅允许小写字母、数字和连字符"
+
+#: src/routes/dash/media.tsx:195
+#. @context: Media detail section - Markdown snippet
+msgid "Markdown"
+msgstr "Markdown"
+
+#: src/routes/dash/media.tsx:44
+#: src/routes/dash/media.tsx:47
+#: src/theme/layouts/DashLayout.tsx:30
+#. @context: Dashboard navigation - media library
+#. @context: Media main heading
+#. @context: Media page title
+msgid "Media"
+msgstr "媒体"
+
+#: src/app.tsx:137
+#. @context: Setup site name placeholder
+msgid "My Blog"
+msgstr "我的博客"
+
+#: src/routes/dash/collections.tsx:75
+#. @context: Collection title placeholder
+msgid "My Collection"
+msgstr "我的收藏"
+
+#: src/routes/dash/collections.tsx:28
+#: src/routes/dash/collections.tsx:69
+#: src/routes/dash/collections.tsx:70
+#. @context: Button to create new collection
+#. @context: Page heading
+#. @context: Page title
+msgid "New Collection"
+msgstr "新收藏"
+
+#: src/routes/dash/pages.tsx:38
+#: src/routes/dash/pages.tsx:105
+#: src/routes/dash/pages.tsx:107
+#. @context: Button to create new page
+#. @context: New page main heading
+#. @context: New page page title
+msgid "New Page"
+msgstr "新页面"
+
+#: src/routes/dash/index.tsx:56
+#: src/routes/dash/posts.tsx:31
+#: src/routes/dash/posts.tsx:45
+#: src/routes/dash/posts.tsx:46
+#. @context: Button to create new post
+#. @context: Dashboard quick action button to create new post
+#. @context: Page heading
+#. @context: Page title
+msgid "New Post"
+msgstr "新帖子"
+
+#: src/routes/dash/redirects.tsx:27
+#: src/routes/dash/redirects.tsx:64
+#: src/routes/dash/redirects.tsx:65
+#. @context: Button to create new redirect
+#. @context: Page heading
+#. @context: Page title
+msgid "New Redirect"
+msgstr "新重定向"
+
+#: src/theme/components/Pagination.tsx:50
+#: src/theme/components/Pagination.tsx:164
+#. @context: Pagination button - next page
+#. @context: Pagination button - next page
+msgid "Next"
+msgstr "下一页"
+
+#: src/routes/dash/collections.tsx:33
+#. @context: Empty state message
+msgid "No collections yet."
+msgstr "尚未有任何收藏。"
+
+#: src/routes/dash/media.tsx:74
+#. @context: Empty state message when no media exists
+msgid "No media uploaded yet."
+msgstr "尚未上传任何媒体。"
+
+#: src/routes/dash/pages.tsx:44
+#. @context: Empty state message when no pages exist
+msgid "No pages yet."
+msgstr "还没有页面。"
+
+#: src/routes/pages/archive.tsx:102
+#. @context: Archive empty state
+msgid "No posts found."
+msgstr "未找到帖子。"
+
+#: src/routes/dash/collections.tsx:168
+#: src/routes/pages/collection.tsx:40
+#. @context: Empty state message
+#. @context: Empty state message
+msgid "No posts in this collection."
+msgstr "此集合中没有帖子。"
+
+#: src/routes/pages/home.tsx:49
+#: src/theme/components/PostList.tsx:55
+#. @context: Empty state message on home page
+#. @context: Empty state message when no posts exist
+msgid "No posts yet."
+msgstr "还没有帖子。"
+
+#: src/routes/dash/redirects.tsx:32
+#. @context: Empty state message
+msgid "No redirects configured."
+msgstr "未配置重定向。"
+
+#: src/routes/pages/search.tsx:89
+#. @context: Search empty results
+msgid "No results found."
+msgstr "未找到结果。"
+
+#: src/routes/pages/archive.tsx:168
+#: src/theme/components/PostForm.tsx:29
+#: src/theme/components/PostList.tsx:40
+#. @context: Post type badge - note
+#. @context: Post type label - note
+#. @context: Post type option
+msgid "Note"
+msgstr "注意"
+
+#: src/routes/pages/archive.tsx:180
+#. @context: Post type label plural - notes
+msgid "Notes"
+msgstr "笔记"
+
+#: src/routes/dash/pages.tsx:147
+#: src/routes/dash/pages.tsx:150
+#: src/routes/dash/pages.tsx:202
+#: src/routes/pages/archive.tsx:173
+#: src/theme/components/PostList.tsx:45
+#. @context: Default page heading when untitled
+#. @context: Default page title when untitled
+#. @context: Default page title when untitled
+#. @context: Post type badge - page
+#. @context: Post type label - page
+msgid "Page"
+msgstr "页面"
+
+#: src/theme/components/Pagination.tsx:165
+#. @context: Pagination - current page indicator
+msgid "Page {page}"
+msgstr "页面 {page}"
+
+#: src/theme/components/PageForm.tsx:80
+#. @context: Page content placeholder
+msgid "Page content (Markdown supported)..."
+msgstr "页面内容（支持Markdown）..."
+
+#: src/theme/components/PageForm.tsx:43
+#. @context: Page title placeholder
+msgid "Page title..."
+msgstr "页面标题..."
+
+#: src/routes/dash/pages.tsx:32
+#: src/routes/dash/pages.tsx:35
+#: src/routes/pages/archive.tsx:185
+#: src/theme/layouts/DashLayout.tsx:29
+#. @context: Dashboard navigation - pages management
+#. @context: Pages main heading
+#. @context: Pages page title
+#. @context: Post type label plural - pages
+msgid "Pages"
+msgstr "页面"
+
+#: src/app.tsx:148
+#: src/app.tsx:225
+#. @context: Setup/signin form field - password
+#. @context: Setup/signin form field - password
+msgid "Password"
+msgstr "密码"
+
+#: src/theme/components/PageForm.tsx:52
+#. @context: Page form field label - URL path
+msgid "Path"
+msgstr "路径"
+
+#: src/routes/pages/post.tsx:62
+#: src/theme/components/ThreadView.tsx:66
+#. @context: Link to individual post in thread
+#. @context: Link to permanent URL of post
+msgid "Permalink"
+msgstr "永久链接"
+
+#: src/routes/dash/posts.tsx:85
+#: src/routes/dash/posts.tsx:121
+#. @context: Default post title
+#. @context: Default post title
+msgid "Post"
+msgstr "帖子"
+
+#: src/theme/components/PostForm.tsx:53
+#. @context: Post title placeholder
+msgid "Post title..."
+msgstr "帖子标题..."
+
+#: src/routes/dash/posts.tsx:27
+#: src/routes/dash/posts.tsx:29
+#: src/theme/layouts/DashLayout.tsx:28
+#. @context: Dashboard heading
+#. @context: Dashboard navigation - posts management
+#. @context: Dashboard page title
+msgid "Posts"
+msgstr "帖子"
+
+#: src/routes/dash/collections.tsx:139
+#. @context: Collection posts section heading
+msgid "Posts in Collection ({count})"
+msgstr "集合中的帖子 ({count})"
+
+#: src/routes/dash/media.tsx:148
+#. @context: Media detail section - preview
+msgid "Preview"
+msgstr "预览"
+
+#: src/theme/components/Pagination.tsx:49
+#: src/theme/components/Pagination.tsx:163
+#. @context: Pagination button - previous page
+#. @context: Pagination button - previous page
+msgid "Previous"
+msgstr "上一页"
+
+#: src/theme/components/PostForm.tsx:117
+#. @context: Button to publish new post
+msgid "Publish"
+msgstr "发布"
+
+#: src/routes/dash/index.tsx:34
+#: src/routes/dash/pages.tsx:62
+#: src/theme/components/PageForm.tsx:94
+#. @context: Dashboard stat card - published posts count
+#. @context: Page status badge - published
+#. @context: Page status option - published
+msgid "Published"
+msgstr "已发布"
+
+#: src/theme/components/PageForm.tsx:101
+#. @context: Page status helper text
+msgid "Published pages are accessible via their path. Drafts are not visible."
+msgstr "已发布的页面可以通过其路径访问。草稿不可见。"
+
+#: src/routes/dash/index.tsx:52
+#. @context: Dashboard stat card - quick actions section
+msgid "Quick Actions"
+msgstr "快速操作"
+
+#: src/theme/components/PostList.tsx:29
+#. @context: Post visibility badge - normal
+msgid "Quiet"
+msgstr "安静"
+
+#: src/theme/components/PostForm.tsx:88
+#. @context: Post visibility option
+msgid "Quiet (normal)"
+msgstr "安静（正常）"
+
+#: src/routes/pages/archive.tsx:171
+#: src/theme/components/PostForm.tsx:38
+#: src/theme/components/PostList.tsx:43
+#. @context: Post type badge - quote
+#. @context: Post type label - quote
+#. @context: Post type option
+msgid "Quote"
+msgstr "引用"
+
+#: src/routes/pages/archive.tsx:183
+#. @context: Post type label plural - quotes
+msgid "Quotes"
+msgstr "引用"
+
+#: src/routes/dash/redirects.tsx:23
+#: src/routes/dash/redirects.tsx:25
+#: src/theme/layouts/DashLayout.tsx:32
+#. @context: Dashboard heading
+#. @context: Dashboard navigation - URL redirects
+#. @context: Dashboard page title
+msgid "Redirects"
+msgstr "重定向"
+
+#: src/routes/dash/collections.tsx:184
+#. @context: Button to remove post from collection
+msgid "Remove"
+msgstr "移除"
+
+#: src/routes/dash/settings.tsx:63
+#. @context: Button to save settings
+msgid "Save Settings"
+msgstr "保存设置"
+
+#: src/routes/pages/search.tsx:53
+#: src/routes/pages/search.tsx:72
+#. @context: Search page title
+#. @context: Search submit button
+msgid "Search"
+msgstr "搜索"
+
+#: src/routes/pages/search.tsx:49
+#. @context: Search error message
+msgid "Search failed. Please try again."
+msgstr "搜索失败。请再试一次。"
+
+#: src/routes/pages/search.tsx:67
+#. @context: Search input placeholder
+msgid "Search posts..."
+msgstr "搜索帖子..."
+
+#: src/routes/dash/settings.tsx:24
+#: src/routes/dash/settings.tsx:25
+#: src/theme/layouts/DashLayout.tsx:33
+#. @context: Dashboard heading
+#. @context: Dashboard navigation - site settings
+#. @context: Dashboard page title
+msgid "Settings"
+msgstr "设置"
+
+#: src/app.tsx:125
+#. @context: Setup page title
+msgid "Setup"
+msgstr "设置"
+
+#: src/app.tsx:211
+#: src/app.tsx:215
+#: src/app.tsx:228
+#. @context: Sign in form submit button
+#. @context: Sign in page heading
+#. @context: Sign in page title
+msgid "Sign In"
+msgstr "登录"
+
+#: src/theme/layouts/DashLayout.tsx:64
+#. @context: Dashboard header link to sign out
+msgid "Sign Out"
+msgstr "登出"
+
+#: src/routes/dash/settings.tsx:39
+#. @context: Settings form field
+msgid "Site Description"
+msgstr "网站描述"
+
+#: src/app.tsx:136
+#: src/routes/dash/settings.tsx:34
+#. @context: Settings form field
+#. @context: Setup form field - site name
+msgid "Site Name"
+msgstr "网站名称"
+
+#: src/routes/dash/collections.tsx:79
+#: src/routes/dash/collections.tsx:226
+#. @context: Collection form field
+#. @context: Collection form field
+msgid "Slug"
+msgstr "缩略名"
+
+#: src/theme/components/PostForm.tsx:73
+#. @context: Post form field
+msgid "Source URL (optional)"
+msgstr "源网址（可选）"
+
+#: src/theme/components/PageForm.tsx:90
+#. @context: Page form field label - publish status
+msgid "Status"
+msgstr "状态"
+
+#: src/routes/dash/media.tsx:67
+#. @context: Media upload instructions - supported formats
+msgid "Supported formats: JPEG, PNG, GIF, WebP, SVG. Max size: 10MB."
+msgstr "支持的格式：JPEG、PNG、GIF、WebP、SVG。最大大小：10MB。"
+
+#: src/routes/dash/redirects.tsx:89
+#. @context: Redirect to path help text
+msgid "The destination path or URL"
+msgstr "目标路径或 URL"
+
+#: src/routes/dash/redirects.tsx:77
+#. @context: Redirect from path help text
+msgid "The path to redirect from"
+msgstr "重定向的路径"
+
+#: src/theme/components/PageForm.tsx:68
+#. @context: Page path helper text
+msgid "The URL path for this page. Use lowercase letters, numbers, and hyphens."
+msgstr "此页面的 URL 路径。使用小写字母、数字和连字符。"
+
+#: src/theme/components/ThreadView.tsx:58
+#. @context: Thread view indicator - first post in thread
+msgid "Thread start"
+msgstr "线程开始"
+
+#: src/theme/components/ThreadView.tsx:92
+#. @context: Thread view header - multiple posts
+msgid "Thread with {count} posts"
+msgstr "包含 {count} 条帖子的话题"
+
+#: src/theme/components/ThreadView.tsx:91
+#. @context: Thread view header - single post
+msgid "Thread with 1 post"
+msgstr "包含 1 条帖子的话题"
+
+#: src/routes/dash/collections.tsx:74
+#: src/routes/dash/collections.tsx:221
+#: src/theme/components/PageForm.tsx:37
+#. @context: Collection form field
+#. @context: Collection form field
+#. @context: Page form field label - title
+msgid "Title"
+msgstr "标题"
+
+#: src/theme/components/PostForm.tsx:48
+#. @context: Post form field
+msgid "Title (optional)"
+msgstr "标题（可选）"
+
+#: src/routes/dash/redirects.tsx:81
+#. @context: Redirect form field
+msgid "To Path"
+msgstr "到路径"
+
+#: src/routes/dash/redirects.tsx:93
+#: src/theme/components/PostForm.tsx:26
+#. @context: Post form field - post type
+#. @context: Redirect form field
+msgid "Type"
+msgstr "类型"
+
+#: src/theme/components/PostForm.tsx:94
+#: src/theme/components/PostList.tsx:30
+#. @context: Post visibility badge - unlisted
+#. @context: Post visibility option
+msgid "Unlisted"
+msgstr "未列出"
+
+#: src/routes/dash/pages.tsx:72
+#: src/theme/components/PostList.tsx:79
+#. @context: Default title for untitled page
+#. @context: Default title for untitled post
+msgid "Untitled"
+msgstr "无标题"
+
+#: src/theme/components/PostForm.tsx:117
+#. @context: Button to update existing post
+msgid "Update"
+msgstr "更新"
+
+#: src/routes/dash/collections.tsx:246
+#. @context: Button to save collection changes
+msgid "Update Collection"
+msgstr "更新收藏夹"
+
+#: src/theme/components/PageForm.tsx:109
+#. @context: Button to update existing page
+msgid "Update Page"
+msgstr "更新页面"
+
+#: src/routes/dash/media.tsx:50
+#. @context: Button to upload media file
+msgid "Upload"
+msgstr "上传"
+
+#: src/routes/dash/media.tsx:64
+#. @context: Media upload instructions - API usage
+msgid "Upload images via the API: POST /api/upload with a file form field."
+msgstr "通过 API 上传图像：POST /api/upload，使用文件表单字段。"
+
+#: src/routes/dash/media.tsx:169
+#. @context: Media detail section - URL
+msgid "URL"
+msgstr "网址"
+
+#: src/routes/dash/collections.tsx:89
+#. @context: Collection path help text
+msgid "URL-safe identifier (lowercase, numbers, hyphens)"
+msgstr "URL安全标识符（小写字母、数字、连字符）"
+
+#: src/routes/dash/media.tsx:188
+#. @context: Media URL helper text
+msgid "Use this URL to embed the media in your posts."
+msgstr "使用此 URL 将媒体嵌入到您的帖子中。"
+
+#: src/routes/dash/collections.tsx:52
+#: src/routes/dash/collections.tsx:153
+#: src/routes/dash/pages.tsx:87
+#: src/routes/dash/pages.tsx:161
+#: src/routes/dash/posts.tsx:97
+#: src/theme/components/PostList.tsx:95
+#. @context: Button to view collection
+#. @context: Button to view collection
+#. @context: Button to view page on public site
+#. @context: Button to view page on public site
+#. @context: Button to view post
+#. @context: Button to view post on public site
+msgid "View"
+msgstr "查看"
+
+#: src/routes/pages/home.tsx:80
+#. @context: Link to view all posts on archive page
+msgid "View all posts →"
+msgstr "查看所有帖子 →"
+
+#: src/theme/layouts/DashLayout.tsx:61
+#. @context: Dashboard header link to view the public site
+msgid "View Site"
+msgstr "查看网站"
+
+#: src/theme/components/PostForm.tsx:85
+#. @context: Post form field
+msgid "Visibility"
+msgstr "可见性"
+
+#: src/app.tsx:129
+#. @context: Setup page welcome heading
+msgid "Welcome to Jant"
+msgstr "欢迎来到Jant"
+
+#: src/theme/components/PostForm.tsx:64
+#. @context: Post content placeholder
+msgid "What's on your mind?"
+msgstr "你在想什么？"
+
+#: src/routes/dash/collections.tsx:95
+#. @context: Collection description placeholder
+msgid "What's this collection about?"
+msgstr "这个系列是关于什么的？"
+
+#: src/app.tsx:140
+#. @context: Setup form field - user name
+msgid "Your Name"
+msgstr "您的姓名"

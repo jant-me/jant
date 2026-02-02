@@ -1,0 +1,179 @@
+# =============================================================================
+# Tools
+# =============================================================================
+[tools]
+node = "lts"
+pnpm = "10.28.2"
+
+# =============================================================================
+# Development (uses templates/jant-site)
+# =============================================================================
+[tasks.dev]
+description = "Start development server"
+run = "pnpm --filter jant-site dev"
+
+[tasks.dev-debug]
+alias = "debug"
+description = "Start dev server on port 19019 (for Claude debugging)"
+run = "pnpm --filter jant-site dev:debug"
+
+[tasks.build]
+description = "Build template project"
+run = "pnpm --filter jant-site build"
+
+[tasks.typecheck]
+description = "Run TypeScript type checking"
+run = "pnpm --filter jant-site typecheck"
+
+# =============================================================================
+# Code Quality (uses @jant/core)
+# =============================================================================
+[tasks.lint]
+description = "Run ESLint"
+run = "pnpm --filter @jant/core lint"
+
+[tasks.format]
+description = "Format code with Prettier"
+run = "prettier --write ."
+
+[tasks.format-check]
+description = "Check code formatting"
+run = "prettier --check ."
+
+# =============================================================================
+# Database (D1)
+# =============================================================================
+[tasks.db-generate]
+alias = "generate"
+description = "Generate Drizzle migrations (from core schema)"
+run = "pnpm --filter @jant/core db:generate"
+
+[tasks.db-migrate]
+alias = "migrate"
+description = "Run D1 migrations (local template)"
+run = "pnpm --filter jant-site db:migrate:local"
+
+[tasks.db-migrate-remote]
+description = "Run D1 migrations (remote template)"
+run = "pnpm --filter jant-site db:migrate:remote"
+
+# =============================================================================
+# i18n (Lingui)
+# =============================================================================
+[tasks.i18n]
+description = "Extract, translate with AI, and compile (requires OPENAI_API_KEY)"
+depends = ["i18n-extract", "translate", "i18n-compile"]
+
+[tasks.i18n-no-translate]
+description = "Extract and compile only (without translation)"
+run = "pnpm --filter @jant/core i18n:build"
+
+[tasks.i18n-extract]
+alias = "extract"
+description = "Extract messages from source"
+run = "pnpm --filter @jant/core i18n:extract"
+
+[tasks.i18n-compile]
+alias = "compile"
+description = "Compile PO files to JS"
+run = "pnpm --filter @jant/core i18n:compile"
+
+[tasks.translate]
+description = "Translate all locales using AI (requires OPENAI_API_KEY)"
+depends = ["translate-zh-Hans", "translate-zh-Hant"]
+
+[tasks.translate-zh-Hans]
+alias = "tz"
+description = "Translate to Simplified Chinese"
+run = """
+npx lingui-po-translate \
+  --srcFile=packages/core/src/i18n/locales/en.po \
+  --srcLng=en \
+  --srcFormat=po \
+  --targetFile=packages/core/src/i18n/locales/zh-Hans.po \
+  --targetLng=zh-Hans \
+  --targetFormat=po \
+  --service=openai \
+  --serviceConfig="$OPENAI_API_KEY"
+"""
+
+[tasks.translate-zh-Hant]
+alias = "tt"
+description = "Translate to Traditional Chinese"
+run = """
+npx lingui-po-translate \
+  --srcFile=packages/core/src/i18n/locales/en.po \
+  --srcLng=en \
+  --srcFormat=po \
+  --targetFile=packages/core/src/i18n/locales/zh-Hant.po \
+  --targetLng=zh-Hant \
+  --targetFormat=po \
+  --service=openai \
+  --serviceConfig="$OPENAI_API_KEY" \
+  --sourceOverride="zh-Hant:zh-Hans"
+"""
+
+# =============================================================================
+# Deploy
+# =============================================================================
+[tasks.deploy]
+description = "Deploy template to Cloudflare Workers"
+run = "pnpm --filter jant-site deploy"
+
+# =============================================================================
+# Utilities
+# =============================================================================
+[tasks.clean]
+description = "Clean build artifacts"
+run = "rm -rf packages/*/dist packages/*/.wrangler templates/*/.wrangler"
+
+[tasks.nuke]
+description = "Remove all node_modules and reinstall"
+run = "rm -rf node_modules packages/*/node_modules templates/*/node_modules && pnpm install"
+
+# =============================================================================
+# create-jant CLI
+# =============================================================================
+[tasks."create:build"]
+description = "Build create-jant CLI"
+run = "pnpm --filter create-jant build"
+
+[tasks."create:dev"]
+description = "Watch and rebuild create-jant CLI"
+run = "pnpm --filter create-jant dev"
+
+# =============================================================================
+# Release & Publishing (Changesets)
+# =============================================================================
+[tasks.changeset]
+alias = "cs"
+description = "Create a new changeset for your changes"
+run = "pnpm changeset"
+
+[tasks."changeset:status"]
+alias = "cs:status"
+description = "Show pending changesets and version bumps"
+run = "pnpm changeset status"
+
+[tasks.version]
+description = "Apply changesets and bump versions (generates CHANGELOG)"
+run = "pnpm changeset version"
+
+[tasks.release]
+description = "Build and publish all packages to npm"
+run = "pnpm release"
+
+[tasks."release:dry"]
+description = "Dry run of release (no actual publish)"
+run = "pnpm build && pnpm -r --filter './packages/*' publish --dry-run"
+
+[tasks."publish:core"]
+description = "Manually publish @jant/core to npm (first-time setup)"
+dir = "packages/core"
+run = "npm publish --access public"
+depends = ["build"]
+
+[tasks."publish:create"]
+description = "Manually publish create-jant to npm (first-time setup)"
+dir = "packages/create-jant"
+run = "npm publish --access public"

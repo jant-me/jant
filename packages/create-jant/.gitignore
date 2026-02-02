@@ -1,0 +1,5 @@
+# Generated during publish - source of truth is templates/jant-site
+template/
+
+# Build output
+dist/

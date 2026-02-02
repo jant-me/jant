@@ -1,0 +1,24 @@
+{
+  "$schema": "https://swc.rs/schema.json",
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "tsx": true
+    },
+    "transform": {
+      "react": {
+        "runtime": "automatic",
+        "importSource": "hono/jsx"
+      }
+    },
+    "target": "es2022",
+    "experimental": {
+      "plugins": [
+        ["@lingui/swc-plugin", {}]
+      ]
+    }
+  },
+  "module": {
+    "type": "es6"
+  }
+}

@@ -1,0 +1,875 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-02-01 08:44:08+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: jant-extract\n"
+"Language: en\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#. @context: Archive post reply indicator - plural
+#: src/routes/pages/archive.tsx:135
+msgid "{count} replies"
+msgstr "{count} replies"
+
+#. @context: Navigation link
+#: src/routes/dash/collections.tsx:196
+msgid "← Back to Collections"
+msgstr "← Back to Collections"
+
+#. @context: Navigation link
+#. @context: Navigation link
+#: src/routes/pages/collection.tsx:67
+#: src/routes/pages/post.tsx:69
+msgid "← Back to home"
+msgstr "← Back to home"
+
+#. @context: Archive post reply indicator - single
+#: src/routes/pages/archive.tsx:134
+msgid "1 reply"
+msgstr "1 reply"
+
+#. @context: Redirect type option
+#: src/routes/dash/redirects.tsx:95
+msgid "301 (Permanent)"
+msgstr "301 (Permanent)"
+
+#. @context: Redirect type option
+#: src/routes/dash/redirects.tsx:96
+msgid "302 (Temporary)"
+msgstr "302 (Temporary)"
+
+#. @context: Archive filter - all types
+#: src/routes/pages/archive.tsx:85
+msgid "All"
+msgstr "All"
+
+#. @context: Archive page title
+#. @context: Navigation link to archive page
+#: src/routes/pages/archive.tsx:71
+#: src/routes/pages/home.tsx:39
+msgid "Archive"
+msgstr "Archive"
+
+#. @context: Post type badge - article
+#. @context: Post type label - article
+#. @context: Post type option
+#: src/routes/pages/archive.tsx:169
+#: src/theme/components/PostForm.tsx:32
+#: src/theme/components/PostList.tsx:41
+msgid "Article"
+msgstr "Article"
+
+#. @context: Post type label plural - articles
+#: src/routes/pages/archive.tsx:181
+msgid "Articles"
+msgstr "Articles"
+
+#. @context: Button to go back to media list
+#: src/routes/dash/media.tsx:140
+msgid "Back"
+msgstr "Back"
+
+#. @context: Navigation link back to home page
+#. @context: Navigation link back to home page
+#. @context: Navigation link back to home page
+#: src/routes/pages/archive.tsx:158
+#: src/routes/pages/page.tsx:52
+#: src/routes/pages/search.tsx:138
+msgid "Back to home"
+msgstr "Back to home"
+
+#. @context: Button to cancel and go back
+#. @context: Button to cancel form
+#. @context: Button to cancel form
+#. @context: Button to cancel form
+#. @context: Button to cancel form
+#: src/routes/dash/collections.tsx:103
+#: src/routes/dash/collections.tsx:249
+#: src/routes/dash/redirects.tsx:105
+#: src/theme/components/PageForm.tsx:113
+#: src/theme/components/PostForm.tsx:120
+msgid "Cancel"
+msgstr "Cancel"
+
+#. @context: Dashboard heading
+#. @context: Dashboard navigation - collections management
+#. @context: Dashboard page title
+#: src/routes/dash/collections.tsx:24
+#: src/routes/dash/collections.tsx:26
+#: src/theme/layouts/DashLayout.tsx:31
+msgid "Collections"
+msgstr "Collections"
+
+#. @context: Setup form submit button
+#: src/app.tsx:151
+msgid "Complete Setup"
+msgstr "Complete Setup"
+
+#. @context: Page form field label - content
+#. @context: Post form field
+#: src/theme/components/PageForm.tsx:75
+#: src/theme/components/PostForm.tsx:60
+msgid "Content"
+msgstr "Content"
+
+#. @context: Button to copy Markdown to clipboard
+#. @context: Button to copy URL to clipboard
+#: src/routes/dash/media.tsx:184
+#: src/routes/dash/media.tsx:210
+msgid "Copy"
+msgstr "Copy"
+
+#. @context: Button to save new collection
+#: src/routes/dash/collections.tsx:100
+msgid "Create Collection"
+msgstr "Create Collection"
+
+#. @context: Button to create new page
+#: src/theme/components/PageForm.tsx:110
+msgid "Create Page"
+msgstr "Create Page"
+
+#. @context: Button to save new redirect
+#: src/routes/dash/redirects.tsx:102
+msgid "Create Redirect"
+msgstr "Create Redirect"
+
+#. @context: Button in empty state to create first page
+#: src/routes/dash/pages.tsx:46
+msgid "Create your first page"
+msgstr "Create your first page"
+
+#. @context: Button in empty state to create first post
+#: src/theme/components/PostList.tsx:57
+msgid "Create your first post"
+msgstr "Create your first post"
+
+#. @context: Post form field
+#: src/theme/components/PostForm.tsx:104
+msgid "Custom Path (optional)"
+msgstr "Custom Path (optional)"
+
+#. @context: Heading for destructive actions section
+#. @context: Section heading for dangerous/destructive actions
+#. @context: Section heading for dangerous/destructive actions
+#: src/routes/dash/collections.tsx:255
+#: src/routes/dash/media.tsx:220
+#: src/routes/dash/pages.tsx:176
+msgid "Danger Zone"
+msgstr "Danger Zone"
+
+#. @context: Dashboard main heading
+#. @context: Dashboard navigation - main dashboard page
+#. @context: Dashboard page title
+#: src/routes/dash/index.tsx:26
+#: src/routes/dash/index.tsx:28
+#: src/theme/layouts/DashLayout.tsx:27
+msgid "Dashboard"
+msgstr "Dashboard"
+
+#. @context: Button to delete redirect
+#: src/routes/dash/redirects.tsx:47
+msgid "Delete"
+msgstr "Delete"
+
+#. @context: Button to delete collection
+#: src/routes/dash/collections.tsx:258
+msgid "Delete Collection"
+msgstr "Delete Collection"
+
+#. @context: Button to delete media
+#: src/routes/dash/media.tsx:233
+msgid "Delete Media"
+msgstr "Delete Media"
+
+#. @context: Button to delete page
+#: src/routes/dash/pages.tsx:184
+msgid "Delete Page"
+msgstr "Delete Page"
+
+#. @context: Warning message before deleting media
+#: src/routes/dash/media.tsx:225
+msgid "Deleting this media will remove it permanently from storage."
+msgstr "Deleting this media will remove it permanently from storage."
+
+#. @context: Collection form field
+#. @context: Collection form field
+#: src/routes/dash/collections.tsx:94
+#: src/routes/dash/collections.tsx:238
+msgid "Description (optional)"
+msgstr "Description (optional)"
+
+#. @context: Page status badge - draft
+#. @context: Page status option - draft
+#. @context: Post visibility badge - draft
+#. @context: Post visibility option
+#: src/routes/dash/pages.tsx:61
+#: src/theme/components/PageForm.tsx:97
+#: src/theme/components/PostForm.tsx:97
+#: src/theme/components/PostList.tsx:31
+msgid "Draft"
+msgstr "Draft"
+
+#. @context: Dashboard stat card - draft posts count
+#: src/routes/dash/index.tsx:43
+msgid "Drafts"
+msgstr "Drafts"
+
+#. @context: Button to edit collection
+#. @context: Button to edit collection
+#. @context: Button to edit page
+#. @context: Button to edit page
+#. @context: Button to edit post
+#. @context: Button to edit post
+#: src/routes/dash/collections.tsx:49
+#: src/routes/dash/collections.tsx:150
+#: src/routes/dash/pages.tsx:83
+#: src/routes/dash/pages.tsx:157
+#: src/routes/dash/posts.tsx:94
+#: src/theme/components/PostList.tsx:92
+msgid "Edit"
+msgstr "Edit"
+
+#. @context: Page heading
+#: src/routes/dash/collections.tsx:217
+msgid "Edit Collection"
+msgstr "Edit Collection"
+
+#. @context: Edit page main heading
+#: src/routes/dash/pages.tsx:208
+msgid "Edit Page"
+msgstr "Edit Page"
+
+#. @context: Page heading
+#: src/routes/dash/posts.tsx:126
+msgid "Edit Post"
+msgstr "Edit Post"
+
+#. @context: Edit page page title
+#. @context: Page title for editing collection
+#. @context: Page title for editing post
+#: src/routes/dash/collections.tsx:213
+#: src/routes/dash/pages.tsx:203
+#: src/routes/dash/posts.tsx:122
+msgid "Edit: {title}"
+msgstr "Edit: {title}"
+
+#. @context: Setup/signin form field - email
+#. @context: Setup/signin form field - email
+#: src/app.tsx:144
+#: src/app.tsx:221
+msgid "Email"
+msgstr "Email"
+
+#. @context: Post visibility badge
+#. @context: Post visibility badge - featured
+#. @context: Post visibility option
+#: src/routes/pages/home.tsx:69
+#: src/theme/components/PostForm.tsx:91
+#: src/theme/components/PostList.tsx:28
+msgid "Featured"
+msgstr "Featured"
+
+#. @context: Search results count - multiple
+#: src/routes/pages/search.tsx:92
+msgid "Found {count} results"
+msgstr "Found {count} results"
+
+#. @context: Search results count - single
+#: src/routes/pages/search.tsx:91
+msgid "Found 1 result"
+msgstr "Found 1 result"
+
+#. @context: Redirect form field
+#: src/routes/dash/redirects.tsx:69
+msgid "From Path"
+msgstr "From Path"
+
+#. @context: Settings section heading
+#: src/routes/dash/settings.tsx:30
+msgid "General"
+msgstr "General"
+
+#. @context: Post type badge - image
+#. @context: Post type label - image
+#. @context: Post type option
+#: src/routes/pages/archive.tsx:172
+#: src/theme/components/PostForm.tsx:41
+#: src/theme/components/PostList.tsx:44
+msgid "Image"
+msgstr "Image"
+
+#. @context: Post type label plural - images
+#: src/routes/pages/archive.tsx:184
+msgid "Images"
+msgstr "Images"
+
+#. @context: Settings form field
+#: src/routes/dash/settings.tsx:46
+msgid "Language"
+msgstr "Language"
+
+#. @context: Setup page description
+#: src/app.tsx:130
+msgid "Let's set up your site."
+msgstr "Let's set up your site."
+
+#. @context: Post type badge - link
+#. @context: Post type label - link
+#. @context: Post type option
+#: src/routes/pages/archive.tsx:170
+#: src/theme/components/PostForm.tsx:35
+#: src/theme/components/PostList.tsx:42
+msgid "Link"
+msgstr "Link"
+
+#. @context: Post type label plural - links
+#: src/routes/pages/archive.tsx:182
+msgid "Links"
+msgstr "Links"
+
+#. @context: Pagination button - load more items
+#: src/theme/components/Pagination.tsx:111
+msgid "Load more"
+msgstr "Load more"
+
+#. @context: Page path validation message
+#: src/theme/components/PageForm.tsx:63
+msgid "Lowercase letters, numbers, and hyphens only"
+msgstr "Lowercase letters, numbers, and hyphens only"
+
+#. @context: Media detail section - Markdown snippet
+#: src/routes/dash/media.tsx:195
+msgid "Markdown"
+msgstr "Markdown"
+
+#. @context: Dashboard navigation - media library
+#. @context: Media main heading
+#. @context: Media page title
+#: src/routes/dash/media.tsx:44
+#: src/routes/dash/media.tsx:47
+#: src/theme/layouts/DashLayout.tsx:30
+msgid "Media"
+msgstr "Media"
+
+#. @context: Setup site name placeholder
+#: src/app.tsx:137
+msgid "My Blog"
+msgstr "My Blog"
+
+#. @context: Collection title placeholder
+#: src/routes/dash/collections.tsx:75
+msgid "My Collection"
+msgstr "My Collection"
+
+#. @context: Button to create new collection
+#. @context: Page heading
+#. @context: Page title
+#: src/routes/dash/collections.tsx:28
+#: src/routes/dash/collections.tsx:69
+#: src/routes/dash/collections.tsx:70
+msgid "New Collection"
+msgstr "New Collection"
+
+#. @context: Button to create new page
+#. @context: New page main heading
+#. @context: New page page title
+#: src/routes/dash/pages.tsx:38
+#: src/routes/dash/pages.tsx:105
+#: src/routes/dash/pages.tsx:107
+msgid "New Page"
+msgstr "New Page"
+
+#. @context: Button to create new post
+#. @context: Dashboard quick action button to create new post
+#. @context: Page heading
+#. @context: Page title
+#: src/routes/dash/index.tsx:56
+#: src/routes/dash/posts.tsx:31
+#: src/routes/dash/posts.tsx:45
+#: src/routes/dash/posts.tsx:46
+msgid "New Post"
+msgstr "New Post"
+
+#. @context: Button to create new redirect
+#. @context: Page heading
+#. @context: Page title
+#: src/routes/dash/redirects.tsx:27
+#: src/routes/dash/redirects.tsx:64
+#: src/routes/dash/redirects.tsx:65
+msgid "New Redirect"
+msgstr "New Redirect"
+
+#. @context: Pagination button - next page
+#. @context: Pagination button - next page
+#: src/theme/components/Pagination.tsx:50
+#: src/theme/components/Pagination.tsx:164
+msgid "Next"
+msgstr "Next"
+
+#. @context: Empty state message
+#: src/routes/dash/collections.tsx:33
+msgid "No collections yet."
+msgstr "No collections yet."
+
+#. @context: Empty state message when no media exists
+#: src/routes/dash/media.tsx:74
+msgid "No media uploaded yet."
+msgstr "No media uploaded yet."
+
+#. @context: Empty state message when no pages exist
+#: src/routes/dash/pages.tsx:44
+msgid "No pages yet."
+msgstr "No pages yet."
+
+#. @context: Archive empty state
+#: src/routes/pages/archive.tsx:102
+msgid "No posts found."
+msgstr "No posts found."
+
+#. @context: Empty state message
+#. @context: Empty state message
+#: src/routes/dash/collections.tsx:168
+#: src/routes/pages/collection.tsx:40
+msgid "No posts in this collection."
+msgstr "No posts in this collection."
+
+#. @context: Empty state message on home page
+#. @context: Empty state message when no posts exist
+#: src/routes/pages/home.tsx:49
+#: src/theme/components/PostList.tsx:55
+msgid "No posts yet."
+msgstr "No posts yet."
+
+#. @context: Empty state message
+#: src/routes/dash/redirects.tsx:32
+msgid "No redirects configured."
+msgstr "No redirects configured."
+
+#. @context: Search empty results
+#: src/routes/pages/search.tsx:89
+msgid "No results found."
+msgstr "No results found."
+
+#. @context: Post type badge - note
+#. @context: Post type label - note
+#. @context: Post type option
+#: src/routes/pages/archive.tsx:168
+#: src/theme/components/PostForm.tsx:29
+#: src/theme/components/PostList.tsx:40
+msgid "Note"
+msgstr "Note"
+
+#. @context: Post type label plural - notes
+#: src/routes/pages/archive.tsx:180
+msgid "Notes"
+msgstr "Notes"
+
+#. @context: Default page heading when untitled
+#. @context: Default page title when untitled
+#. @context: Default page title when untitled
+#. @context: Post type badge - page
+#. @context: Post type label - page
+#: src/routes/dash/pages.tsx:147
+#: src/routes/dash/pages.tsx:150
+#: src/routes/dash/pages.tsx:202
+#: src/routes/pages/archive.tsx:173
+#: src/theme/components/PostList.tsx:45
+msgid "Page"
+msgstr "Page"
+
+#. @context: Pagination - current page indicator
+#: src/theme/components/Pagination.tsx:165
+msgid "Page {page}"
+msgstr "Page {page}"
+
+#. @context: Page content placeholder
+#: src/theme/components/PageForm.tsx:80
+msgid "Page content (Markdown supported)..."
+msgstr "Page content (Markdown supported)..."
+
+#. @context: Page title placeholder
+#: src/theme/components/PageForm.tsx:43
+msgid "Page title..."
+msgstr "Page title..."
+
+#. @context: Dashboard navigation - pages management
+#. @context: Pages main heading
+#. @context: Pages page title
+#. @context: Post type label plural - pages
+#: src/routes/dash/pages.tsx:32
+#: src/routes/dash/pages.tsx:35
+#: src/routes/pages/archive.tsx:185
+#: src/theme/layouts/DashLayout.tsx:29
+msgid "Pages"
+msgstr "Pages"
+
+#. @context: Setup/signin form field - password
+#. @context: Setup/signin form field - password
+#: src/app.tsx:148
+#: src/app.tsx:225
+msgid "Password"
+msgstr "Password"
+
+#. @context: Page form field label - URL path
+#: src/theme/components/PageForm.tsx:52
+msgid "Path"
+msgstr "Path"
+
+#. @context: Link to individual post in thread
+#. @context: Link to permanent URL of post
+#: src/routes/pages/post.tsx:62
+#: src/theme/components/ThreadView.tsx:66
+msgid "Permalink"
+msgstr "Permalink"
+
+#. @context: Default post title
+#. @context: Default post title
+#: src/routes/dash/posts.tsx:85
+#: src/routes/dash/posts.tsx:121
+msgid "Post"
+msgstr "Post"
+
+#. @context: Post title placeholder
+#: src/theme/components/PostForm.tsx:53
+msgid "Post title..."
+msgstr "Post title..."
+
+#. @context: Dashboard heading
+#. @context: Dashboard navigation - posts management
+#. @context: Dashboard page title
+#: src/routes/dash/posts.tsx:27
+#: src/routes/dash/posts.tsx:29
+#: src/theme/layouts/DashLayout.tsx:28
+msgid "Posts"
+msgstr "Posts"
+
+#. @context: Collection posts section heading
+#: src/routes/dash/collections.tsx:139
+msgid "Posts in Collection ({count})"
+msgstr "Posts in Collection ({count})"
+
+#. @context: Media detail section - preview
+#: src/routes/dash/media.tsx:148
+msgid "Preview"
+msgstr "Preview"
+
+#. @context: Pagination button - previous page
+#. @context: Pagination button - previous page
+#: src/theme/components/Pagination.tsx:49
+#: src/theme/components/Pagination.tsx:163
+msgid "Previous"
+msgstr "Previous"
+
+#. @context: Button to publish new post
+#: src/theme/components/PostForm.tsx:117
+msgid "Publish"
+msgstr "Publish"
+
+#. @context: Dashboard stat card - published posts count
+#. @context: Page status badge - published
+#. @context: Page status option - published
+#: src/routes/dash/index.tsx:34
+#: src/routes/dash/pages.tsx:62
+#: src/theme/components/PageForm.tsx:94
+msgid "Published"
+msgstr "Published"
+
+#. @context: Page status helper text
+#: src/theme/components/PageForm.tsx:101
+msgid "Published pages are accessible via their path. Drafts are not visible."
+msgstr "Published pages are accessible via their path. Drafts are not visible."
+
+#. @context: Dashboard stat card - quick actions section
+#: src/routes/dash/index.tsx:52
+msgid "Quick Actions"
+msgstr "Quick Actions"
+
+#. @context: Post visibility badge - normal
+#: src/theme/components/PostList.tsx:29
+msgid "Quiet"
+msgstr "Quiet"
+
+#. @context: Post visibility option
+#: src/theme/components/PostForm.tsx:88
+msgid "Quiet (normal)"
+msgstr "Quiet (normal)"
+
+#. @context: Post type badge - quote
+#. @context: Post type label - quote
+#. @context: Post type option
+#: src/routes/pages/archive.tsx:171
+#: src/theme/components/PostForm.tsx:38
+#: src/theme/components/PostList.tsx:43
+msgid "Quote"
+msgstr "Quote"
+
+#. @context: Post type label plural - quotes
+#: src/routes/pages/archive.tsx:183
+msgid "Quotes"
+msgstr "Quotes"
+
+#. @context: Dashboard heading
+#. @context: Dashboard navigation - URL redirects
+#. @context: Dashboard page title
+#: src/routes/dash/redirects.tsx:23
+#: src/routes/dash/redirects.tsx:25
+#: src/theme/layouts/DashLayout.tsx:32
+msgid "Redirects"
+msgstr "Redirects"
+
+#. @context: Button to remove post from collection
+#: src/routes/dash/collections.tsx:184
+msgid "Remove"
+msgstr "Remove"
+
+#. @context: Button to save settings
+#: src/routes/dash/settings.tsx:63
+msgid "Save Settings"
+msgstr "Save Settings"
+
+#. @context: Search page title
+#. @context: Search submit button
+#: src/routes/pages/search.tsx:53
+#: src/routes/pages/search.tsx:72
+msgid "Search"
+msgstr "Search"
+
+#. @context: Search error message
+#: src/routes/pages/search.tsx:49
+msgid "Search failed. Please try again."
+msgstr "Search failed. Please try again."
+
+#. @context: Search input placeholder
+#: src/routes/pages/search.tsx:67
+msgid "Search posts..."
+msgstr "Search posts..."
+
+#. @context: Dashboard heading
+#. @context: Dashboard navigation - site settings
+#. @context: Dashboard page title
+#: src/routes/dash/settings.tsx:24
+#: src/routes/dash/settings.tsx:25
+#: src/theme/layouts/DashLayout.tsx:33
+msgid "Settings"
+msgstr "Settings"
+
+#. @context: Setup page title
+#: src/app.tsx:125
+msgid "Setup"
+msgstr "Setup"
+
+#. @context: Sign in form submit button
+#. @context: Sign in page heading
+#. @context: Sign in page title
+#: src/app.tsx:211
+#: src/app.tsx:215
+#: src/app.tsx:228
+msgid "Sign In"
+msgstr "Sign In"
+
+#. @context: Dashboard header link to sign out
+#: src/theme/layouts/DashLayout.tsx:64
+msgid "Sign Out"
+msgstr "Sign Out"
+
+#. @context: Settings form field
+#: src/routes/dash/settings.tsx:39
+msgid "Site Description"
+msgstr "Site Description"
+
+#. @context: Settings form field
+#. @context: Setup form field - site name
+#: src/app.tsx:136
+#: src/routes/dash/settings.tsx:34
+msgid "Site Name"
+msgstr "Site Name"
+
+#. @context: Collection form field
+#. @context: Collection form field
+#: src/routes/dash/collections.tsx:79
+#: src/routes/dash/collections.tsx:226
+msgid "Slug"
+msgstr "Slug"
+
+#. @context: Post form field
+#: src/theme/components/PostForm.tsx:73
+msgid "Source URL (optional)"
+msgstr "Source URL (optional)"
+
+#. @context: Page form field label - publish status
+#: src/theme/components/PageForm.tsx:90
+msgid "Status"
+msgstr "Status"
+
+#. @context: Media upload instructions - supported formats
+#: src/routes/dash/media.tsx:67
+msgid "Supported formats: JPEG, PNG, GIF, WebP, SVG. Max size: 10MB."
+msgstr "Supported formats: JPEG, PNG, GIF, WebP, SVG. Max size: 10MB."
+
+#. @context: Redirect to path help text
+#: src/routes/dash/redirects.tsx:89
+msgid "The destination path or URL"
+msgstr "The destination path or URL"
+
+#. @context: Redirect from path help text
+#: src/routes/dash/redirects.tsx:77
+msgid "The path to redirect from"
+msgstr "The path to redirect from"
+
+#. @context: Page path helper text
+#: src/theme/components/PageForm.tsx:68
+msgid "The URL path for this page. Use lowercase letters, numbers, and hyphens."
+msgstr "The URL path for this page. Use lowercase letters, numbers, and hyphens."
+
+#. @context: Thread view indicator - first post in thread
+#: src/theme/components/ThreadView.tsx:58
+msgid "Thread start"
+msgstr "Thread start"
+
+#. @context: Thread view header - multiple posts
+#: src/theme/components/ThreadView.tsx:92
+msgid "Thread with {count} posts"
+msgstr "Thread with {count} posts"
+
+#. @context: Thread view header - single post
+#: src/theme/components/ThreadView.tsx:91
+msgid "Thread with 1 post"
+msgstr "Thread with 1 post"
+
+#. @context: Collection form field
+#. @context: Collection form field
+#. @context: Page form field label - title
+#: src/routes/dash/collections.tsx:74
+#: src/routes/dash/collections.tsx:221
+#: src/theme/components/PageForm.tsx:37
+msgid "Title"
+msgstr "Title"
+
+#. @context: Post form field
+#: src/theme/components/PostForm.tsx:48
+msgid "Title (optional)"
+msgstr "Title (optional)"
+
+#. @context: Redirect form field
+#: src/routes/dash/redirects.tsx:81
+msgid "To Path"
+msgstr "To Path"
+
+#. @context: Post form field - post type
+#. @context: Redirect form field
+#: src/routes/dash/redirects.tsx:93
+#: src/theme/components/PostForm.tsx:26
+msgid "Type"
+msgstr "Type"
+
+#. @context: Post visibility badge - unlisted
+#. @context: Post visibility option
+#: src/theme/components/PostForm.tsx:94
+#: src/theme/components/PostList.tsx:30
+msgid "Unlisted"
+msgstr "Unlisted"
+
+#. @context: Default title for untitled page
+#. @context: Default title for untitled post
+#: src/routes/dash/pages.tsx:72
+#: src/theme/components/PostList.tsx:79
+msgid "Untitled"
+msgstr "Untitled"
+
+#. @context: Button to update existing post
+#: src/theme/components/PostForm.tsx:117
+msgid "Update"
+msgstr "Update"
+
+#. @context: Button to save collection changes
+#: src/routes/dash/collections.tsx:246
+msgid "Update Collection"
+msgstr "Update Collection"
+
+#. @context: Button to update existing page
+#: src/theme/components/PageForm.tsx:109
+msgid "Update Page"
+msgstr "Update Page"
+
+#. @context: Button to upload media file
+#: src/routes/dash/media.tsx:50
+msgid "Upload"
+msgstr "Upload"
+
+#. @context: Media upload instructions - API usage
+#: src/routes/dash/media.tsx:64
+msgid "Upload images via the API: POST /api/upload with a file form field."
+msgstr "Upload images via the API: POST /api/upload with a file form field."
+
+#. @context: Media detail section - URL
+#: src/routes/dash/media.tsx:169
+msgid "URL"
+msgstr "URL"
+
+#. @context: Collection path help text
+#: src/routes/dash/collections.tsx:89
+msgid "URL-safe identifier (lowercase, numbers, hyphens)"
+msgstr "URL-safe identifier (lowercase, numbers, hyphens)"
+
+#. @context: Media URL helper text
+#: src/routes/dash/media.tsx:188
+msgid "Use this URL to embed the media in your posts."
+msgstr "Use this URL to embed the media in your posts."
+
+#. @context: Button to view collection
+#. @context: Button to view collection
+#. @context: Button to view page on public site
+#. @context: Button to view page on public site
+#. @context: Button to view post
+#. @context: Button to view post on public site
+#: src/routes/dash/collections.tsx:52
+#: src/routes/dash/collections.tsx:153
+#: src/routes/dash/pages.tsx:87
+#: src/routes/dash/pages.tsx:161
+#: src/routes/dash/posts.tsx:97
+#: src/theme/components/PostList.tsx:95
+msgid "View"
+msgstr "View"
+
+#. @context: Link to view all posts on archive page
+#: src/routes/pages/home.tsx:80
+msgid "View all posts →"
+msgstr "View all posts →"
+
+#. @context: Dashboard header link to view the public site
+#: src/theme/layouts/DashLayout.tsx:61
+msgid "View Site"
+msgstr "View Site"
+
+#. @context: Post form field
+#: src/theme/components/PostForm.tsx:85
+msgid "Visibility"
+msgstr "Visibility"
+
+#. @context: Setup page welcome heading
+#: src/app.tsx:129
+msgid "Welcome to Jant"
+msgstr "Welcome to Jant"
+
+#. @context: Post content placeholder
+#: src/theme/components/PostForm.tsx:64
+msgid "What's on your mind?"
+msgstr "What's on your mind?"
+
+#. @context: Collection description placeholder
+#: src/routes/dash/collections.tsx:95
+msgid "What's this collection about?"
+msgstr "What's this collection about?"
+
+#. @context: Setup form field - user name
+#: src/app.tsx:140
+msgid "Your Name"
+msgstr "Your Name"

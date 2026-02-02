@@ -1,0 +1,52 @@
+@import "tailwindcss";
+@import "basecoat-css";
+
+/* Scan source files for Tailwind classes */
+@source "../../**/*.tsx";
+@source "../../**/*.ts";
+
+/* Custom theme variables */
+:root {
+  --radius: 0.5rem;
+}
+
+/* Custom utilities */
+@layer utilities {
+  .container {
+    @apply mx-auto max-w-2xl px-4;
+  }
+}
+
+/* Badge component */
+@layer components {
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    background-color: var(--color-secondary);
+    color: var(--color-secondary-foreground);
+  }
+
+  .badge-primary {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  .badge-secondary {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    background-color: var(--color-secondary);
+    color: var(--color-secondary-foreground);
+  }
+
+  .badge-outline {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply border bg-transparent;
+    border-color: var(--color-border);
+    color: var(--color-foreground);
+  }
+
+  .badge-destructive {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    background-color: var(--color-destructive);
+    color: white;
+  }
+}
