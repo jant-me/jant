@@ -6,13 +6,13 @@ Bookstrap a new [Jant](https://github.com/jant-me/jant) project.
 
 ```bash
 # Using npm
-npm create jant my-site
+npm create jant my-blog
 
 # Using pnpm
-pnpm create jant my-site
+pnpm create jant my-blog
 
 # Using yarn
-yarn create jant my-site
+yarn create jant my-blog
 
 # Interactive mode (prompts for project name)
 npm create jant

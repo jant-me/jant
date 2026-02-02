@@ -2,6 +2,8 @@
 
 A modern, open-source microblogging platform built on Cloudflare Workers.
 
+> Still in development
+
 ## What is Jant?
 
 Jant is a single-author microblog for people who want to share thoughts without the noise of social media. No followers, no likes, no algorithms—just your words.
