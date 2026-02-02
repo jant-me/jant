@@ -1,0 +1,7 @@
+# Allow native dependencies to run build scripts
+# Required for: workerd (Cloudflare Workers), esbuild, swc, sharp
+onlyBuiltDependencies:
+  - "@swc/core"
+  - esbuild
+  - sharp
+  - workerd
