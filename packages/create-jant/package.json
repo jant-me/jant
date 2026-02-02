@@ -52,5 +52,9 @@
     "workers",
     "hono"
   ],
-  "license": "MIT"
+  "license": "AGPL-3.0",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }

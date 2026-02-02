@@ -52,4 +52,4 @@ Jant is built on the idea that not everything needs to be optimized for engageme
 
 ## License
 
-MIT
+AGPL-3.0

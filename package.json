@@ -14,7 +14,7 @@
     "format": "pnpm --filter @jant/core format",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "pnpm build && pnpm -r --filter './packages/*' publish --provenance --access public"
+    "release": "pnpm changeset publish"
   },
   "repository": {
     "type": "git",

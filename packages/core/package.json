@@ -105,7 +105,11 @@
     "r2"
   ],
   "author": "Jant Contributors",
-  "license": "MIT",
+  "license": "AGPL-3.0",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "bugs": {
     "url": "https://github.com/jant-me/jant/issues"
   },
