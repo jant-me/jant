@@ -3,72 +3,46 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import swc from "unplugin-swc";
 import tailwindcss from "@tailwindcss/postcss";
 import autoprefixer from "autoprefixer";
-import { existsSync, readFileSync, writeFileSync, readdirSync } from "fs";
-import { resolve, join } from "path";
+import { resolve } from "path";
+import { readFileSync } from "fs";
 
 /**
- * Dev asset paths
+ * Inject manifest content into SSR bundle for vite-ssr-components
  */
-const DEV_ASSETS = {
-  styles: "/src/style.css",
-  client: "/src/client.ts",
-};
+function injectManifest(): Plugin {
+  let clientOutDir = "dist/client";
 
-/**
- * Post-build: Patch worker bundle with hashed asset paths from manifest
- */
-function patchWorkerAssets(): Plugin {
   return {
-    name: "patch-worker-assets",
-    apply: "build",
-    closeBundle() {
-      const manifestPath = resolve("dist/client/.vite/manifest.json");
-      if (!existsSync(manifestPath)) return;
+    name: "inject-manifest",
+    config(config) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      clientOutDir = (config as any).environments?.client?.build?.outDir ?? "dist/client";
+    },
+    transform(code, _id, options) {
+      if (!options?.ssr) return;
+      if (!code.includes("__VITE_MANIFEST_CONTENT__")) return;
 
-      const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
-
-      // Extract paths from manifest
-      let stylesPath = "";
-      let clientPath = "";
-
-      for (const [key, entry] of Object.entries(manifest) as [string, { file: string; css?: string[] }][]) {
-        if (key.includes("client")) {
-          clientPath = `/${entry.file}`;
-          if (entry.css?.[0]) stylesPath = `/${entry.css[0]}`;
-        }
+      const manifestPath = resolve(process.cwd(), clientOutDir, ".vite/manifest.json");
+      let manifestContent: string;
+      try {
+        manifestContent = readFileSync(manifestPath, "utf-8");
+      } catch {
+        return;
       }
 
-      // Patch worker files
-      const workerDirs = readdirSync("dist").filter(
-        (d) => d !== "client" && existsSync(join("dist", d, "assets"))
+      const newCode = code.replace(
+        /"__VITE_MANIFEST_CONTENT__"/g,
+        `{ "__manifest__": { default: ${manifestContent} } }`
       );
 
-      for (const dir of workerDirs) {
-        const assetsDir = join("dist", dir, "assets");
-        const files = readdirSync(assetsDir).filter((f) => f.startsWith("worker-entry"));
-
-        for (const file of files) {
-          const filePath = join(assetsDir, file);
-          let content = readFileSync(filePath, "utf-8");
-
-          content = content.replace(/__JANT_ASSET_STYLES__/g, stylesPath);
-          content = content.replace(/__JANT_ASSET_CLIENT__/g, clientPath);
-
-          writeFileSync(filePath, content);
-        }
+      if (newCode !== code) {
+        return { code: newCode, map: null };
       }
     },
   };
 }
 
 export default defineConfig({
-  publicDir: false,
-
-  define: {
-    __JANT_DEV_STYLES__: JSON.stringify(DEV_ASSETS.styles),
-    __JANT_DEV_CLIENT__: JSON.stringify(DEV_ASSETS.client),
-  },
-
   server: {
     port: 9019,
     host: true,
@@ -79,8 +53,18 @@ export default defineConfig({
     port: 9019,
   },
 
-  ssr: {
-    noExternal: ["@jant/core", "basecoat-css"],
+  // ssr.noExternal not needed - @cloudflare/vite-plugin bundles all dependencies
+
+  environments: {
+    client: {
+      build: {
+        outDir: "dist/client",
+        manifest: true,
+        rollupOptions: {
+          input: ["/src/client.ts", "/src/style.css"],
+        },
+      },
+    },
   },
 
   plugins: [
@@ -110,7 +94,7 @@ export default defineConfig({
     cloudflare({
       configPath: process.env.WRANGLER_CONFIG || "./wrangler.toml",
     }),
-    patchWorkerAssets(),
+    injectManifest(),
   ],
 
   css: {
@@ -122,14 +106,7 @@ export default defineConfig({
   build: {
     target: "esnext",
     minify: false,
-    manifest: true,
     rollupOptions: {
-      input: "src/client.ts",
-      output: {
-        entryFileNames: "assets/[name]-[hash].js",
-        chunkFileNames: "assets/[name]-[hash].js",
-        assetFileNames: "assets/[name]-[hash][extname]",
-      },
       external: ["cloudflare:*", "__STATIC_CONTENT_MANIFEST"],
     },
   },
