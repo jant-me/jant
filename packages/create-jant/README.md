@@ -1,6 +1,6 @@
-# create-jant
+# Create Jant
 
-Scaffold a new [Jant](https://github.com/nicepkg/jant) project.
+Bookstrap a new [Jant](https://github.com/jant-me/jant) project.
 
 ## Usage
 
