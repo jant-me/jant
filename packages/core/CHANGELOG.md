@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.0.4
+
+### Patch Changes
+
+- [`5a87c0a`](https://github.com/jant-me/jant/commit/5a87c0a87f02de9ce5bd9593fafec97bcffd43ad) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Test CI Release
+
 ## 0.0.3
 
 ### Patch Changes
