@@ -1,5 +1,0 @@
-# Copy this file to .dev.vars and fill in the values
-
-# AUTH_SECRET must be at least 32 characters
-# Generate one with: openssl rand -base64 32
-AUTH_SECRET=your-secret-key-at-least-32-chars-long
