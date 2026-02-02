@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.1.2
+
+### Patch Changes
+
+- [#8](https://github.com/jant-me/jant/pull/8) [`ce638f2`](https://github.com/jant-me/jant/commit/ce638f20f856deffb745b64a83a801561dd37f25) Thanks [@theowenyoung](https://github.com/theowenyoung)! - create with auth secret
+
 ## 0.1.1
 
 ### Patch Changes
