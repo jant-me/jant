@@ -12,6 +12,11 @@ pnpm = "10.28.2"
 description = "Start development server"
 run = "pnpm --filter jant-site dev"
 
+[tasks.build-lib]
+alias = "bl"
+description = "Build @jant/core library for publishing"
+run = "pnpm --filter @jant/core build:lib"
+
 [tasks.dev-debug]
 alias = "debug"
 description = "Start dev server on port 19019 (for Claude debugging)"
@@ -164,19 +169,17 @@ description = "Build and publish all packages to npm (CI only, requires provenan
 run = "pnpm release"
 
 [tasks.release-local]
-description = "Publish packages locally (no provenance, requires OTP)"
-run = "pnpm -r --filter './packages/*' publish --access public --no-provenance --no-git-checks"
+description = "Build and publish all packages locally"
+run = "pnpm --filter @jant/core build:lib && pnpm -r --filter './packages/*' publish --access public --no-provenance --no-git-checks"
 
 [tasks.release-dry]
 description = "Dry run of release (no actual publish)"
 run = "pnpm build && pnpm -r --filter './packages/*' publish --dry-run --no-provenance"
 
 [tasks.publish-core]
-description = "Manually publish @jant/core to npm"
-dir = "packages/core"
-run = "npm publish --access public --no-provenance --no-git-checks"
+description = "Build and publish @jant/core to npm"
+run = "pnpm --filter @jant/core build:lib && cd packages/core && npm publish --access public --no-provenance --no-git-checks"
 
 [tasks.publish-create]
-description = "Manually publish create-jant to npm"
-dir = "packages/create-jant"
-run = "npm publish --access public --no-provenance --no-git-checks"
+description = "Build and publish create-jant to npm"
+run = "pnpm --filter create-jant build && cd packages/create-jant && npm publish --access public --no-provenance --no-git-checks"

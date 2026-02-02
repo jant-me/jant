@@ -1,5 +1,15 @@
 # create-jant
 
+## 0.1.3
+
+### Patch Changes
+
+- Build: Pre-compile @jant/core before publishing
+  - @jant/core now ships compiled JavaScript instead of TypeScript source
+  - Includes TypeScript declaration files (.d.ts) for type support
+  - Fixes "React is not defined" error in user projects
+  - No special Vite configuration needed in user projects
+
 ## 0.1.2
 
 ### Patch Changes

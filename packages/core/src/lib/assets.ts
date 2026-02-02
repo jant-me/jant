@@ -12,7 +12,7 @@ interface Assets {
   imageProcessor: string;
 }
 
-// Development paths
+// Development paths - use source files for HMR
 const DEV_ASSETS: Assets = {
   styles: "/node_modules/@jant/core/src/theme/styles/main.css",
   client: "/node_modules/@jant/core/src/client.ts",

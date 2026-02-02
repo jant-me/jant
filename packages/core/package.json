@@ -1,35 +1,44 @@
 {
   "name": "@jant/core",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "A modern, open-source microblogging platform built on Cloudflare Workers",
   "type": "module",
   "bin": {
     "jant": "./bin/jant.js"
   },
   "exports": {
-    ".": "./src/index.ts",
-    "./theme": "./src/theme/index.ts",
-    "./theme/*": "./src/theme/*",
-    "./src/*": "./src/*",
-    "./static/*": "./static/*"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./theme": {
+      "types": "./dist/theme/index.d.ts",
+      "default": "./dist/theme/index.js"
+    },
+    "./theme/*": {
+      "types": "./dist/theme/*.d.ts",
+      "default": "./dist/theme/*.js"
+    },
+    "./dist/*": "./dist/*",
+    "./static/*": "./static/*",
+    "./migrations/*": "./migrations/*"
   },
   "files": [
     "bin",
-    "src",
+    "dist",
     "static",
-    "migrations",
-    "drizzle.config.ts",
-    "lingui.config.ts",
-    "postcss.config.js",
-    "tailwind.config.ts",
-    "tsconfig.json",
-    "vite.config.ts",
-    "wrangler.toml"
+    "migrations"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "pnpm db:migrate:local && vite dev",
     "dev:debug": "pnpm db:migrate:local && vite dev --port 19019",
     "build": "vite build",
+    "build:lib": "swc src -d dist --strip-leading-paths && pnpm build:types && pnpm build:css",
+    "build:types": "tsc -p tsconfig.build.json",
+    "build:css": "tailwindcss -i src/theme/styles/main.css -o dist/theme/styles/main.css --minify",
     "deploy": "pnpm build && wrangler deploy",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -42,6 +51,7 @@
     "i18n:extract": "lingui extract",
     "i18n:compile": "lingui compile --typescript",
     "i18n:build": "pnpm i18n:extract && pnpm i18n:compile",
+    "prepublishOnly": "pnpm build:lib",
     "prepare": "husky"
   },
   "dependencies": {
@@ -56,17 +66,13 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@babel/cli": "^7.28.6",
-    "@babel/core": "^7.29.0",
-    "@babel/preset-typescript": "^7.28.5",
     "@cloudflare/vite-plugin": "^1.22.1",
     "@cloudflare/workers-types": "^4.20260131.0",
     "@eslint/js": "^9.39.2",
-    "@lingui/babel-plugin-lingui-macro": "^5.9.0",
     "@lingui/cli": "^5.9.0",
-    "@lingui/format-json": "^5.9.0",
     "@lingui/format-po": "^5.9.0",
     "@lingui/swc-plugin": "^5.10.1",
+    "@swc/cli": "^0.6.0",
     "@swc/core": "^1.15.11",
     "@tailwindcss/cli": "^4.1.18",
     "@tailwindcss/postcss": "^4.1.18",
@@ -75,7 +81,6 @@
     "@typescript-eslint/parser": "^8.54.0",
     "autoprefixer": "^10.4.24",
     "drizzle-kit": "^0.31.8",
-    "esbuild-plugin-lingui-macro": "^1.0.1",
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.5",
     "glob": "^13.0.0",
@@ -106,9 +111,6 @@
   ],
   "author": "Jant Contributors",
   "license": "AGPL-3.0",
-  "publishConfig": {
-    "access": "public"
-  },
   "bugs": {
     "url": "https://github.com/jant-me/jant/issues"
   },

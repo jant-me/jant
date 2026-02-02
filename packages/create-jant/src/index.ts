@@ -114,6 +114,16 @@ async function copyTemplate(config: ProjectConfig): Promise<void> {
 AUTH_SECRET=${authSecret}
 `;
   await fs.writeFile(path.join(targetDir, ".dev.vars"), devVarsContent, "utf-8");
+
+  // Patch vite.config.ts to use dist/ paths (template uses src/ for local dev)
+  const viteConfigPath = path.join(targetDir, "vite.config.ts");
+  if (await fs.pathExists(viteConfigPath)) {
+    let content = await fs.readFile(viteConfigPath, "utf-8");
+    // Replace src/ paths with dist/ paths for published package
+    content = content.replace(/@jant\/core\/src\/([^"']+)\.ts/g, "@jant/core/dist/$1.js");
+    content = content.replace(/@jant\/core\/src\/([^"']+)\.css/g, "@jant/core/dist/$1.css");
+    await fs.writeFile(viteConfigPath, content, "utf-8");
+  }
 }
 
 /**

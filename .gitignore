@@ -8,6 +8,8 @@ build/
 out/
 *.tsbuildinfo
 packages/core/static/assets/*.css
+packages/core/vite.config.d.ts
+packages/core/vite.config.d.ts.map
 
 # Cloudflare
 .wrangler/
