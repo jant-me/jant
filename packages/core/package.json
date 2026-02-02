@@ -1,6 +1,6 @@
 {
   "name": "@jant/core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A modern, open-source microblogging platform built on Cloudflare Workers",
   "type": "module",
   "bin": {
@@ -107,8 +107,7 @@
   "author": "Jant Contributors",
   "license": "AGPL-3.0",
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "bugs": {
     "url": "https://github.com/jant-me/jant/issues"

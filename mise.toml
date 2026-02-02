@@ -134,11 +134,11 @@ run = "rm -rf node_modules packages/*/node_modules templates/*/node_modules && p
 # =============================================================================
 # create-jant CLI
 # =============================================================================
-[tasks."create:build"]
+[tasks.create-build]
 description = "Build create-jant CLI"
 run = "pnpm --filter create-jant build"
 
-[tasks."create:dev"]
+[tasks.create-dev]
 description = "Watch and rebuild create-jant CLI"
 run = "pnpm --filter create-jant dev"
 
@@ -150,8 +150,8 @@ alias = "cs"
 description = "Create a new changeset for your changes"
 run = "pnpm changeset"
 
-[tasks."changeset:status"]
-alias = "cs:status"
+[tasks.changeset-status]
+alias = "cs-status"
 description = "Show pending changesets and version bumps"
 run = "pnpm changeset status"
 
@@ -160,20 +160,23 @@ description = "Apply changesets and bump versions (generates CHANGELOG)"
 run = "pnpm changeset version"
 
 [tasks.release]
-description = "Build and publish all packages to npm"
+description = "Build and publish all packages to npm (CI only, requires provenance)"
 run = "pnpm release"
 
-[tasks."release:dry"]
+[tasks.release-local]
+description = "Publish packages locally (no provenance, requires OTP)"
+run = "pnpm -r --filter './packages/*' publish --access public --no-provenance --no-git-checks"
+
+[tasks.release-dry]
 description = "Dry run of release (no actual publish)"
-run = "pnpm build && pnpm -r --filter './packages/*' publish --dry-run"
+run = "pnpm build && pnpm -r --filter './packages/*' publish --dry-run --no-provenance"
 
-[tasks."publish:core"]
-description = "Manually publish @jant/core to npm (first-time setup)"
+[tasks.publish-core]
+description = "Manually publish @jant/core to npm"
 dir = "packages/core"
-run = "npm publish --access public"
-depends = ["build"]
+run = "npm publish --access public --no-provenance --no-git-checks"
 
-[tasks."publish:create"]
-description = "Manually publish create-jant to npm (first-time setup)"
+[tasks.publish-create]
+description = "Manually publish create-jant to npm"
 dir = "packages/create-jant"
-run = "npm publish --access public"
+run = "npm publish --access public --no-provenance --no-git-checks"
