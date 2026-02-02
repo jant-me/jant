@@ -42,12 +42,15 @@ bucket_name = "jant-media"
 ## Configure Secrets
 
 ```bash
-# Required: Auth secret (generate a random 32+ character string)
+# Required: Auth secret (must be at least 32 characters!)
+# Generate one with: openssl rand -base64 32
 wrangler secret put AUTH_SECRET
 
 # Required: Your site URL
 wrangler secret put SITE_URL
 ```
+
+> **Important**: `AUTH_SECRET` must be at least 32 characters. If it's shorter, authentication will fail with "AUTH_SECRET not configured".
 
 ## Run Migrations
 

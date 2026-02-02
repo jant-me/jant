@@ -118,7 +118,13 @@ export function createApp(config: JantConfig = {}): App {
   });
 
   // Health check
-  app.get("/health", (c) => c.json({ status: "ok" }));
+  app.get("/health", (c) =>
+    c.json({
+      status: "ok",
+      auth: c.env.AUTH_SECRET ? "configured" : "missing",
+      authSecretLength: c.env.AUTH_SECRET?.length ?? 0,
+    })
+  );
 
   // better-auth handler
   app.all("/api/auth/*", async (c) => {

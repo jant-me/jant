@@ -66,13 +66,23 @@ jobs:
           NODE_ENV: production
           WRANGLER_CONFIG: ${{ inputs.environment && format('./wrangler.{0}.toml', inputs.environment) || './wrangler.toml' }}
 
+      - name: Debug - Check AUTH_SECRET
+        run: |
+          if [ -n "$AUTH_SECRET" ]; then
+            echo "✅ AUTH_SECRET is set (length: ${#AUTH_SECRET})"
+          else
+            echo "❌ AUTH_SECRET is empty or not set!"
+          fi
+        env:
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           workingDirectory: ${{ inputs.working_directory }}
-          command: deploy
+          command: deploy --config ${{ inputs.environment && format('wrangler.{0}.toml', inputs.environment) || 'wrangler.toml' }}
           secrets: AUTH_SECRET
         env:
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}

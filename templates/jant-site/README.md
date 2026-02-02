@@ -123,7 +123,12 @@ Go to your GitHub repo → **Settings** → **Secrets and variables** → **Acti
 |-------------|-------|
 | `CF_API_TOKEN` | Your API token from above |
 | `CF_ACCOUNT_ID` | Your Cloudflare Account ID (find it in dashboard URL or `wrangler whoami`) |
-| `AUTH_SECRET` | Random 32+ character string for authentication |
+| `AUTH_SECRET` | Random string for authentication (**must be at least 32 characters**) |
+
+> **Important**: `AUTH_SECRET` must be at least 32 characters long. You can generate one with:
+> ```bash
+> openssl rand -base64 32
+> ```
 
 That's it! Push to `main` branch to trigger deployment.
 
