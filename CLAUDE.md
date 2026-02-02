@@ -38,6 +38,7 @@ This is an open source project. Code quality and maintainability are paramount.
 - **Node.js version: 24 (LTS)** - Always use Node 24 in CI workflows, package.json engines, and documentation. Do NOT use older versions like 20 or 22. The current LTS is 24.
 - **Always use latest versions** when installing dependencies. DO NOT use outdated versions from training data. Check npm for current versions or use `pnpm add <package>@latest`.
 - **Use mise.toml for all commands** - Wrap all development commands in mise tasks. Never require users to `cd` into directories - use the `dir` parameter instead. This keeps the workflow simple and discoverable.
+- **All GitHub workflows need manual trigger** - Always add `workflow_dispatch:` to all GitHub Actions workflows so they can be triggered manually from the Actions tab.
 - **Stop dev processes after debugging**: When starting dev server or other background processes for testing/debugging, always stop them when done so the user can restart them manually.
 - **Use debug port for testing**: When debugging, use `mise run dev-debug` which runs on port 19019, leaving port 9019 free for the user.
 

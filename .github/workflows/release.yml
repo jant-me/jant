@@ -54,6 +54,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No NPM_TOKEN needed - uses trusted publishing via OIDC
 
+      # Auto-merge Release PR during development (0.x.x)
+      # Remove this step when ready for 1.0.0
+      - name: Auto-merge Release PR
+        if: steps.changesets.outputs.pullRequestNumber
+        run: |
+          gh pr merge ${{ steps.changesets.outputs.pullRequestNumber }} --squash --delete-branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create GitHub Release
         if: steps.changesets.outputs.published == 'true'
         uses: softprops/action-gh-release@v2
