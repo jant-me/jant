@@ -8,7 +8,7 @@
  * - Converts to WebP format
  */
 
-const ImageProcessor = (() => {
+window.ImageProcessor = (() => {
   const DEFAULT_OPTIONS = {
     maxWidth: 1920,
     maxHeight: 1920,
@@ -228,7 +228,7 @@ const ImageProcessor = (() => {
   return { process, processToFile };
 })();
 
-// Export for module systems
+// Also export for module systems
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = ImageProcessor;
+  module.exports = window.ImageProcessor;
 }

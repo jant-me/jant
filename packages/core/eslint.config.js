@@ -38,6 +38,8 @@ export default [
         ReadableStream: "readonly",
         WritableStream: "readonly",
         TransformStream: "readonly",
+        TextEncoder: "readonly",
+        TextDecoder: "readonly",
         // Cloudflare Workers specific
         crypto: "readonly",
         caches: "readonly",

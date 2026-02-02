@@ -280,37 +280,98 @@ function MyComponent() {
 
 ## Datastar Usage
 
-Datastar is used for client-side interactivity. Key rules:
+Datastar is used for client-side interactivity with SSE-powered real-time updates.
 
-### 1. Prefer Plain JS for Simple Interactions
+### 1. Signals (Reactive State)
 
-For simple DOM manipulation like lightboxes, use plain `onclick` instead of Datastar. It's simpler and avoids signal scoping issues.
-
-```tsx
-// ✅ Simple lightbox with plain JS
-<button onclick="document.getElementById('lightbox-img').src = '/image.jpg'; document.getElementById('lightbox').showModal()">
-  <img src="/thumbnail.jpg" />
-</button>
-<dialog id="lightbox" onclick="event.target === this && this.close()">
-  <img id="lightbox-img" src="" />
-</dialog>
-```
-
-### 2. Use Expressions, Not Statements (for data-on-*)
-
-If using Datastar's `data-on-*`, use **expressions**, not statements.
+Define signals on a parent element. Use `_` prefix for local signals (not sent to server).
 
 ```tsx
-// ❌ Wrong - if statement causes "Unexpected token 'if'" error
-data-on-click="if (evt.target === this) this.close()"
-
-// ✅ Correct - use logical AND for conditional execution
-data-on-click="evt.target === this && this.close()"
+<div data-signals="{_loading: false, _error: null, count: 0}">
+  <span data-text="$count"></span>
+  <button data-on-click="$count++">Add</button>
+</div>
 ```
 
-### 3. Signal Scoping (for data-signals-*)
+### 2. Conditional Display
 
-If using Datastar signals, define `data-signals-*` on a **parent element** that contains all elements needing access to the signal. Signals defined inside a child aren't visible to siblings.
+```tsx
+<span data-show="!$_loading">Ready</span>
+<span data-show="$_loading">Loading...</span>
+```
+
+### 3. Dynamic Classes
+
+```tsx
+<button data-class-opacity-50="$_loading">Submit</button>
+```
+
+### 4. SSE Responses (Server → Client)
+
+Use the `sse()` helper from `lib/sse.ts` for real-time updates:
+
+```typescript
+import { sse } from "../../lib/sse.js";
+
+app.post("/api/action", (c) => {
+  return sse(c, async (stream) => {
+    // Update signals
+    await stream.patchSignals({ _loading: false });
+
+    // Update DOM
+    await stream.patchElements('<div id="result">Done!</div>');
+
+    // Prepend to list
+    await stream.patchElements('<li>New item</li>', {
+      mode: 'prepend',
+      selector: '#items'
+    });
+  });
+});
+```
+
+### 5. Custom SSE Handling (File Uploads)
+
+For file uploads, manually parse SSE since Datastar doesn't handle FormData:
+
+```javascript
+const response = await fetch('/api/upload', {
+  method: 'POST',
+  body: formData,
+  headers: { 'Accept': 'text/event-stream' }
+});
+
+// Parse SSE events manually and update Datastar store
+const store = Datastar.store();
+// ... parse and apply events
+```
+
+### 6. Expression Rules
+
+Use **expressions**, not statements in `data-on-*`:
+
+```tsx
+// ❌ Wrong
+data-on-click="if (x) doSomething()"
+
+// ✅ Correct
+data-on-click="x && doSomething()"
+```
+
+### 7. Signal Scoping
+
+Define signals on a **parent element** that contains all elements needing access.
+
+### 8. Common Pitfalls
+
+**Signal not found error**: `Cannot read properties of undefined (reading 'value')`
+
+This happens when Datastar can't find the signal. Causes:
+- Signal defined on wrong element (child instead of parent)
+- Signal name mismatch (case-sensitive)
+- Element with `data-signals` not processed yet when child elements try to access
+
+**For complex interactions (file uploads, etc.)**, use plain JavaScript with DOM manipulation instead of Datastar signals. Datastar is best for simple reactive state, not complex async flows:
 
 ## Key Conventions
 

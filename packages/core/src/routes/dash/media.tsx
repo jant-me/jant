@@ -1,7 +1,8 @@
 /**
  * Dashboard Media Routes
  *
- * Management for uploaded media files
+ * Media management with Datastar-powered uploads.
+ * Uses SSE for real-time UI updates without page reloads.
  */
 
 import { Hono } from "hono";
@@ -18,160 +19,339 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const mediaRoutes = new Hono<Env>();
 
-// Helper to format file size
+/**
+ * Format file size for display
+ */
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-interface MediaListProps {
+/**
+ * Media card component for the grid
+ */
+function MediaCard({
+  media,
+  r2PublicUrl,
+  imageTransformUrl,
+}: {
+  media: Media;
+  r2PublicUrl?: string;
+  imageTransformUrl?: string;
+}) {
+  const fullUrl = getMediaUrl(media.id, media.r2Key, r2PublicUrl);
+  const thumbnailUrl = getImageUrl(fullUrl, imageTransformUrl, {
+    width: 300,
+    quality: 80,
+    format: "auto",
+    fit: "cover",
+  });
+  const isImage = media.mimeType.startsWith("image/");
+
+  return (
+    <div class="group relative" data-media-id={media.id}>
+      {isImage ? (
+        <button
+          type="button"
+          class="block w-full aspect-square bg-muted rounded-lg overflow-hidden border hover:border-primary cursor-pointer"
+          onclick={`document.getElementById('lightbox-img').src = '${fullUrl}'; document.getElementById('lightbox').showModal()`}
+        >
+          <img
+            src={thumbnailUrl}
+            alt={media.alt || media.originalName}
+            class="w-full h-full object-cover"
+            loading="lazy"
+          />
+        </button>
+      ) : (
+        <a
+          href={`/dash/media/${media.id}`}
+          class="block aspect-square bg-muted rounded-lg overflow-hidden border hover:border-primary"
+        >
+          <div class="w-full h-full flex items-center justify-center text-muted-foreground">
+            <span class="text-xs">{media.mimeType}</span>
+          </div>
+        </a>
+      )}
+      <a
+        href={`/dash/media/${media.id}`}
+        class="block mt-2 text-xs truncate hover:underline"
+        title={media.originalName}
+      >
+        {media.originalName}
+      </a>
+      <div class="text-xs text-muted-foreground">{formatSize(media.size)}</div>
+    </div>
+  );
+}
+
+/**
+ * Media list page content
+ *
+ * Uses plain JavaScript for upload state management (more reliable than Datastar signals
+ * for complex async flows like file uploads with SSE responses).
+ */
+function MediaListContent({
+  mediaList,
+  r2PublicUrl,
+  imageTransformUrl,
+  imageProcessorUrl,
+}: {
   mediaList: Media[];
   r2PublicUrl?: string;
   imageTransformUrl?: string;
   imageProcessorUrl: string;
-}
-
-function MediaListContent({ mediaList, r2PublicUrl, imageTransformUrl, imageProcessorUrl }: MediaListProps) {
+}) {
   const { t } = useLingui();
 
-  // Inline upload handler that processes image before upload
-  const uploadHandler = `
-    async function handleUpload(file) {
-      const btn = document.getElementById('upload-btn');
-      const originalText = btn.textContent;
-      btn.textContent = '${t({ message: "Processing...", comment: "@context: Upload button text while processing image" })}';
-      btn.style.pointerEvents = 'none';
+  const processingText = t({ message: "Processing...", comment: "@context: Upload status - processing" });
+  const uploadingText = t({ message: "Uploading...", comment: "@context: Upload status - uploading" });
+  const uploadText = t({ message: "Upload", comment: "@context: Button to upload media file" });
+  const errorText = t({ message: "Upload failed. Please try again.", comment: "@context: Upload error message" });
 
-      try {
-        const processed = await ImageProcessor.processToFile(file);
-        const fd = new FormData();
-        fd.append('file', processed);
+  // Plain JavaScript upload handler - shows progress in the list
+  const uploadScript = `
+async function handleMediaUpload(input) {
+  if (!input.files || !input.files[0]) return;
 
-        btn.textContent = '${t({ message: "Uploading...", comment: "@context: Upload button text while uploading" })}';
-        await fetch('/api/upload', { method: 'POST', body: fd });
-        location.reload();
-      } catch (e) {
-        console.error('Upload failed:', e);
-        btn.textContent = originalText;
-        btn.style.pointerEvents = '';
-        alert('${t({ message: "Upload failed. Please try again.", comment: "@context: Upload error message" })}');
+  const file = input.files[0];
+  const errorBox = document.getElementById('upload-error');
+  errorBox.classList.add('hidden');
+
+  // Ensure grid exists (remove empty state if needed)
+  let grid = document.getElementById('media-grid');
+  if (!grid) {
+    document.getElementById('empty-state')?.remove();
+    grid = document.createElement('div');
+    grid.id = 'media-grid';
+    grid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4';
+    document.getElementById('media-content').appendChild(grid);
+  }
+
+  // Create placeholder card showing progress
+  const placeholder = document.createElement('div');
+  placeholder.id = 'upload-placeholder';
+  placeholder.className = 'group relative';
+  placeholder.innerHTML = \`
+    <div class="aspect-square bg-muted rounded-lg overflow-hidden border flex items-center justify-center">
+      <div class="text-center px-2">
+        <svg class="animate-spin h-6 w-6 text-muted-foreground mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span id="upload-status" class="text-xs text-muted-foreground">${processingText}</span>
+      </div>
+    </div>
+    <div class="mt-2 text-xs truncate" title="\${file.name}">\${file.name}</div>
+    <div class="text-xs text-muted-foreground">\${formatFileSize(file.size)}</div>
+  \`;
+  grid.prepend(placeholder);
+
+  try {
+    if (typeof ImageProcessor === 'undefined') {
+      throw new Error('ImageProcessor not loaded');
+    }
+
+    // Process image client-side
+    const processed = await ImageProcessor.processToFile(file);
+    document.getElementById('upload-status').textContent = '${uploadingText}';
+
+    // Upload with SSE response
+    const fd = new FormData();
+    fd.append('file', processed);
+
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: fd,
+      headers: { 'Accept': 'text/event-stream' }
+    });
+
+    if (!response.ok) throw new Error('Upload failed: ' + response.status);
+
+    // Parse SSE stream - will replace placeholder with real card
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\\n\\n');
+      buffer = events.pop() || '';
+
+      for (const event of events) {
+        if (!event.trim()) continue;
+        processSSEEvent(event);
       }
     }
-  `.trim();
+
+  } catch (err) {
+    console.error('Upload error:', err);
+    // Show error in placeholder
+    placeholder.innerHTML = \`
+      <div class="aspect-square bg-destructive/10 rounded-lg overflow-hidden border border-destructive flex items-center justify-center">
+        <div class="text-center px-2">
+          <span class="text-xs text-destructive">\${err.message || '${errorText}'}</span>
+        </div>
+      </div>
+      <div class="mt-2 text-xs truncate text-destructive">\${file.name}</div>
+      <button type="button" class="text-xs text-muted-foreground hover:underline" onclick="this.closest('.group').remove()">Remove</button>
+    \`;
+  }
+
+  input.value = '';
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function processSSEEvent(event) {
+  const lines = event.split('\\n');
+  let eventType = '';
+  const data = {};
+  let elementsLines = [];
+  let inElements = false;
+
+  for (const line of lines) {
+    if (line.startsWith('event: ')) {
+      eventType = line.slice(7);
+    } else if (line.startsWith('data: ')) {
+      const content = line.slice(6);
+      if (content.startsWith('mode ')) {
+        data.mode = content.slice(5);
+        inElements = false;
+      } else if (content.startsWith('selector ')) {
+        data.selector = content.slice(9);
+        inElements = false;
+      } else if (content.startsWith('elements ')) {
+        elementsLines = [content.slice(9)];
+        inElements = true;
+      } else if (inElements) {
+        // Continuation of elements content
+        elementsLines.push(content);
+      }
+    }
+  }
+
+  if (elementsLines.length > 0) {
+    data.elements = elementsLines.join('\\n');
+  }
+
+  if (eventType === 'datastar-patch-elements') {
+    if (data.mode === 'remove' && data.selector) {
+      document.querySelector(data.selector)?.remove();
+    } else if (data.mode === 'outer' && data.selector && data.elements) {
+      // Replace element entirely (used for placeholder -> real card)
+      const target = document.querySelector(data.selector);
+      if (target) {
+        const temp = document.createElement('div');
+        temp.innerHTML = data.elements;
+        const newElement = temp.firstElementChild;
+        if (newElement) {
+          target.replaceWith(newElement);
+          if (window.Datastar) Datastar.apply(newElement);
+        }
+      }
+    }
+  }
+}
+`.trim();
 
   return (
     <>
-      {/* Image processor script */}
-      <script src={imageProcessorUrl} />
-      <script dangerouslySetInnerHTML={{ __html: uploadHandler }} />
+      {/* Scripts - script tags need closing tag, self-closing doesn't work in HTML */}
+      <script src={imageProcessorUrl}></script>
+      <script dangerouslySetInnerHTML={{ __html: uploadScript }}></script>
 
+      {/* Header */}
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-semibold">
           {t({ message: "Media", comment: "@context: Media main heading" })}
         </h1>
-        <label id="upload-btn" class="btn cursor-pointer">
-          {t({ message: "Upload", comment: "@context: Button to upload media file" })}
+        <label class="btn cursor-pointer">
+          <span>{uploadText}</span>
           <input
             type="file"
             class="hidden"
             accept="image/*"
-            onchange="handleUpload(this.files[0])"
+            onchange="handleMediaUpload(this)"
           />
         </label>
       </div>
+
+      {/* Hidden error container for global errors */}
+      <div id="upload-error" class="hidden"></div>
 
       {/* Upload instructions */}
       <div class="card mb-6">
         <section class="text-sm text-muted-foreground">
           <p>
-            {t({ message: "Upload images via the API: POST /api/upload with a file form field.", comment: "@context: Media upload instructions - API usage" })}
-          </p>
-          <p class="mt-2">
-            {t({ message: "Supported formats: JPEG, PNG, GIF, WebP, SVG. Max size: 10MB.", comment: "@context: Media upload instructions - supported formats" })}
+            {t({
+              message: "Images are automatically optimized: resized to max 1920px, converted to WebP, and metadata stripped.",
+              comment: "@context: Media upload instructions - auto optimization",
+            })}
           </p>
         </section>
       </div>
 
-      {mediaList.length === 0 ? (
-        <EmptyState
-          message={t({ message: "No media uploaded yet.", comment: "@context: Empty state message when no media exists" })}
-        />
-      ) : (
-        <>
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {mediaList.map((m) => {
-              const fullUrl = getMediaUrl(m.id, m.r2Key, r2PublicUrl);
-              const thumbnailUrl = getImageUrl(fullUrl, imageTransformUrl, {
-                width: 300,
-                quality: 80,
-                format: "auto",
-                fit: "cover",
-              });
-              const isImage = m.mimeType.startsWith("image/");
-
-              return (
-                <div key={m.id} class="group relative">
-                  {isImage ? (
-                    <button
-                      type="button"
-                      class="block w-full aspect-square bg-muted rounded-lg overflow-hidden border hover:border-primary cursor-pointer"
-                      onclick={`document.getElementById('lightbox-img').src = '${fullUrl}'; document.getElementById('lightbox').showModal()`}
-                    >
-                      <img
-                        src={thumbnailUrl}
-                        alt={m.alt || m.originalName}
-                        class="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    </button>
-                  ) : (
-                    <a
-                      href={`/dash/media/${m.id}`}
-                      class="block aspect-square bg-muted rounded-lg overflow-hidden border hover:border-primary"
-                    >
-                      <div class="w-full h-full flex items-center justify-center text-muted-foreground">
-                        <span class="text-xs">{m.mimeType}</span>
-                      </div>
-                    </a>
-                  )}
-                  <a href={`/dash/media/${m.id}`} class="block mt-2 text-xs truncate hover:underline" title={m.originalName}>
-                    {m.originalName}
-                  </a>
-                  <div class="text-xs text-muted-foreground">
-                    {formatSize(m.size)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Lightbox */}
-          <dialog
-            id="lightbox"
-            class="p-0 m-auto bg-transparent backdrop:bg-black/80"
-            onclick="event.target === this && this.close()"
-          >
-            <img
-              id="lightbox-img"
-              src=""
-              alt=""
-              class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+      {/* Media grid or empty state */}
+      <div id="media-content">
+        {mediaList.length === 0 ? (
+          <div id="empty-state">
+            <EmptyState
+              message={t({
+                message: "No media uploaded yet.",
+                comment: "@context: Empty state message when no media exists",
+              })}
             />
-          </dialog>
-        </>
-      )}
+          </div>
+        ) : (
+          <div
+            id="media-grid"
+            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+          >
+            {mediaList.map((m) => (
+              <MediaCard
+                key={m.id}
+                media={m}
+                r2PublicUrl={r2PublicUrl}
+                imageTransformUrl={imageTransformUrl}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Lightbox - uses plain JS, not Datastar signals */}
+      <dialog
+        id="lightbox"
+        class="p-0 m-auto bg-transparent backdrop:bg-black/80"
+        onclick="event.target === this && this.close()"
+      >
+        <img id="lightbox-img" src="" alt="" class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg" />
+      </dialog>
     </>
   );
 }
 
-interface ViewMediaProps {
+/**
+ * View single media content
+ */
+function ViewMediaContent({
+  media,
+  r2PublicUrl,
+  imageTransformUrl,
+}: {
   media: Media;
   r2PublicUrl?: string;
   imageTransformUrl?: string;
-}
-
-function ViewMediaContent({ media, r2PublicUrl, imageTransformUrl }: ViewMediaProps) {
+}) {
   const { t } = useLingui();
   const url = getMediaUrl(media.id, media.r2Key, r2PublicUrl);
   const thumbnailUrl = getImageUrl(url, imageTransformUrl, {
@@ -264,13 +444,13 @@ function ViewMediaContent({ media, r2PublicUrl, imageTransformUrl }: ViewMediaPr
                 <input
                   type="text"
                   class="input flex-1 font-mono text-sm"
-                  value={`![${media.alt || media.originalName}](${url}))`}
+                  value={`![${media.alt || media.originalName}](${url})`}
                   readonly
                 />
                 <button
                   type="button"
                   class="btn-outline"
-                  onclick={`navigator.clipboard.writeText('![${media.alt || media.originalName}](${url}))')`}
+                  onclick={`navigator.clipboard.writeText('![${media.alt || media.originalName}](${url})')`}
                 >
                   {t({ message: "Copy", comment: "@context: Button to copy Markdown to clipboard" })}
                 </button>
