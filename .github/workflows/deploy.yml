@@ -82,7 +82,9 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           workingDirectory: ${{ inputs.working_directory }}
-          command: deploy --config ${{ inputs.environment && format('wrangler.{0}.toml', inputs.environment) || 'wrangler.toml' }}
+          # Use Vite-built output (dist/<worker_name>/wrangler.json) instead of source config
+          # This ensures patchWorkerAssets plugin has replaced asset placeholders
+          command: deploy --config dist/${{ inputs.environment && format('jant_{0}', inputs.environment) || 'jant_site' }}/wrangler.json
           secrets: AUTH_SECRET
         env:
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
