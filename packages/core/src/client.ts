@@ -1,6 +1,8 @@
 /**
  * Client-side JavaScript entry point
- * Includes all interactive components from basecoat-css
+ *
+ * Pure JS/TS exports only. CSS is handled via preset.css.
  */
 
+// BaseCoat interactive components (dialogs, dropdowns, etc.)
 import "basecoat-css/all";

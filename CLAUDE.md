@@ -186,6 +186,57 @@ Located in `src/theme/components/`:
 
 **Key Point:** Never run `wrangler dev` or manual build commands. Vite handles everything.
 
+### CSS Architecture: "CSS Relay" Pattern (Important!)
+
+**Vite does NOT process CSS in `node_modules` with PostCSS.** This is a performance optimization - Vite assumes npm packages ship pre-compiled CSS.
+
+**Solution: CSS Relay Pattern**
+
+The CSS entry point must be in the user's `src/` directory, not in `node_modules`. This triggers Vite's PostCSS pipeline.
+
+```
+User Project (src/)          @jant/core (node_modules/)
+┌─────────────────┐          ┌─────────────────────────┐
+│ src/style.css   │ ──────── │ styles.css              │
+│ @import "..."   │  import  │ @import "tailwindcss";  │
+└────────┬────────┘          │ @import "basecoat-css"; │
+         │                   └─────────────────────────┘
+         ▼
+   PostCSS/Tailwind
+   (processes everything)
+```
+
+**Implementation:**
+
+1. **@jant/core**: Exports `./styles.css` pointing to source CSS (with Tailwind directives)
+2. **User project**: Has `src/style.css` that imports `@jant/core/styles.css`
+3. **User project**: `src/client.ts` imports `./style.css`
+4. **Vite**: Processes `src/style.css` with PostCSS, which inlines and compiles everything
+
+**Key files:**
+
+```css
+/* src/style.css (user project) */
+@import "@jant/core/styles.css";
+@source "./**/*.tsx";
+```
+
+```typescript
+// src/client.ts (user project)
+import "./style.css";
+import "@jant/core/src/client";
+```
+
+**DO NOT:**
+- Import CSS directly in library code (`@jant/core/src/client.ts`)
+- Reference CSS via `<link href="/node_modules/...">` URLs
+- Expect Vite to process `node_modules` CSS with PostCSS
+
+**DO:**
+- Keep library CSS as source (with Tailwind directives)
+- Create a CSS relay file in user's `src/` directory
+- Let PostCSS inline and process the imported CSS
+
 ## Architecture Conventions
 
 ### 1. Type System

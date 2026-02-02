@@ -118,13 +118,14 @@ AUTH_SECRET=${authSecret}
 `;
   await fs.writeFile(path.join(targetDir, ".dev.vars"), devVarsContent, "utf-8");
 
-  // Patch vite.config.ts to use dist/ paths (template uses src/ for local dev)
+  // Patch vite.config.ts for npm-installed @jant/core
   const viteConfigPath = path.join(targetDir, "vite.config.ts");
   if (await fs.pathExists(viteConfigPath)) {
     let content = await fs.readFile(viteConfigPath, "utf-8");
-    // Replace src/ paths with dist/ paths for published package
+    // Remove monorepo alias (npm users use package exports)
+    content = content.replace(/\s*\/\/ Monorepo:.*\n.*"@jant\/core".*,/g, "");
+    // Update lingui plugin paths: src/ -> dist/, .ts -> .js
     content = content.replace(/@jant\/core\/src\/([^"']+)\.ts/g, "@jant/core/dist/$1.js");
-    content = content.replace(/@jant\/core\/src\/([^"']+)\.css/g, "@jant/core/dist/$1.css");
     await fs.writeFile(viteConfigPath, content, "utf-8");
   }
 }

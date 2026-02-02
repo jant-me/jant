@@ -1,27 +1,25 @@
 /**
  * Asset paths for SSR
  *
- * Development: Uses source paths served by Vite dev server
- * Production: Uses paths that get patched at build time with actual hashes
+ * Development: Paths injected via vite.config.ts `define`
+ * Production: Paths replaced at build time with hashed filenames from manifest
  */
 
 interface Assets {
+  /** CSS path (prevents FOUC in dev, hashed in prod) */
   styles: string;
   client: string;
   datastar: string;
   imageProcessor: string;
 }
 
-// Development paths - use source files for HMR
-const DEV_ASSETS: Assets = {
-  styles: "/node_modules/@jant/core/src/theme/styles/main.css",
-  client: "/node_modules/@jant/core/src/client.ts",
-  datastar: "/node_modules/@jant/core/static/assets/datastar.min.js",
-  imageProcessor: "/node_modules/@jant/core/static/assets/image-processor.js",
-};
+// Injected by vite.config.ts via `define`
+declare const __JANT_DEV_STYLES__: string;
+declare const __JANT_DEV_CLIENT__: string;
+declare const __JANT_DEV_DATASTAR__: string;
+declare const __JANT_DEV_IMAGE_PROCESSOR__: string;
 
-// Production paths - these unique placeholders get replaced at build time
-// Format: __JANT_ASSET_<NAME>__ to avoid accidental matches
+// Production paths - replaced at build time
 const PROD_ASSETS: Assets = {
   styles: "__JANT_ASSET_STYLES__",
   client: "__JANT_ASSET_CLIENT__",
@@ -34,8 +32,14 @@ const PROD_ASSETS: Assets = {
  */
 export function getAssets(): Assets {
   try {
-    // import.meta.env is injected by Vite
-    if (import.meta.env?.DEV) return DEV_ASSETS;
+    if (import.meta.env?.DEV) {
+      return {
+        styles: __JANT_DEV_STYLES__,
+        client: __JANT_DEV_CLIENT__,
+        datastar: __JANT_DEV_DATASTAR__,
+        imageProcessor: __JANT_DEV_IMAGE_PROCESSOR__,
+      };
+    }
   } catch {
     // import.meta.env may not exist in all environments
   }

@@ -15,13 +15,18 @@
       "types": "./dist/theme/index.d.ts",
       "default": "./dist/theme/index.js"
     },
+    "./preset.css": "./src/preset.css",
+    "./client": "./src/client.ts",
     "./*": "./*"
   },
   "files": [
     "bin",
     "dist",
     "static",
-    "migrations"
+    "migrations",
+    "src/preset.css",
+    "src/styles",
+    "src/client.ts"
   ],
   "publishConfig": {
     "access": "public"
@@ -30,9 +35,8 @@
     "dev": "pnpm db:migrate:local && vite dev",
     "dev:debug": "pnpm db:migrate:local && vite dev --port 19019",
     "build": "vite build",
-    "build:lib": "swc src -d dist --strip-leading-paths && pnpm build:types && pnpm build:css",
+    "build:lib": "swc src -d dist --strip-leading-paths && pnpm build:types",
     "build:types": "tsc -p tsconfig.build.json",
-    "build:css": "tailwindcss -i src/theme/styles/main.css -o dist/theme/styles/main.css --minify",
     "deploy": "pnpm build && wrangler deploy",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -50,7 +54,6 @@
   },
   "dependencies": {
     "@lingui/core": "^5.9.0",
-    "basecoat-css": "^0.3.10",
     "better-auth": "^1.4.18",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.11.7",
@@ -59,7 +62,12 @@
     "uuidv7": "^1.1.0",
     "zod": "^4.3.6"
   },
+  "peerDependencies": {
+    "basecoat-css": "^0.3.0",
+    "tailwindcss": "^4.0.0"
+  },
   "devDependencies": {
+    "basecoat-css": "^0.3.10",
     "@cloudflare/vite-plugin": "^1.22.1",
     "@cloudflare/workers-types": "^4.20260131.0",
     "@eslint/js": "^9.39.2",
