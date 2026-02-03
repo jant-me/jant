@@ -2,14 +2,12 @@
  * User Project Styles
  */
 
-/* Tailwind CSS v4 */
+/* Tailwind CSS v4 + Jant Core preset */
 @import "tailwindcss";
-
-/* Jant Core preset (basecoat, component styles, theme, source scanning) */
 @import "@jant/core/preset.css";
 
-/* Scan local project files for Tailwind classes */
-@source "./**/*.{ts,tsx}";
+/* Load JS config for content scanning paths */
+@config "../tailwind.config.ts";
 
 /* User customizations */
 :root {

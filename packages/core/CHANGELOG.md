@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.2.7
+
+### Patch Changes
+
+- Fix css
+
 ## 0.2.6
 
 ### Patch Changes

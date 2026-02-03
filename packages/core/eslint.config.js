@@ -27,6 +27,8 @@ export default [
         document: "readonly",
         console: "readonly",
         fetch: "readonly",
+        Image: "readonly",
+        HTMLImageElement: "readonly",
         Request: "readonly",
         Response: "readonly",
         Headers: "readonly",
