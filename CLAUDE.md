@@ -80,47 +80,98 @@ mise run publish:core   # Publish @jant/core to npm
 mise run publish:create # Publish create-jant to npm
 ```
 
+## Package Architecture
+
+**核心原则：`packages/core` 是纯库包，不用于直接开发或部署。**
+
+### 包职责
+
+| 包 | 职责 | 包含 Vite/Wrangler? |
+|---|------|---------------------|
+| `packages/core` | 纯库 - 导出组件、服务、工具函数 | ❌ 否 |
+| `templates/jant-site` | 开发 + 测试 + 部署环境 | ✅ 是 |
+| `packages/create-jant/template` | 用户项目模板 | ✅ 是 |
+
+### `packages/core` (库)
+
+**只包含**：
+- 源代码 (`src/`)
+- 库构建配置 (`tsconfig.build.json`, `.swcrc`)
+- 代码质量工具 (`eslint.config.js`, `.prettierrc`)
+- 迁移生成 (`drizzle.config.ts`)
+- i18n 提取 (`lingui.config.ts`)
+
+**不包含** (已移除)：
+- ~~`vite.config.ts`~~ - 无需 Vite，开发在 jant-site 进行
+- ~~`wrangler.toml`~~ - 无需部署，部署从 jant-site 进行
+- ~~`src/style.css`~~ - 无需 CSS 入口，用户项目自带
+- ~~`tailwind.config.ts`~~ - 无需本地 Tailwind 配置
+
+**构建脚本**：
+```bash
+pnpm build:lib    # swc 编译 + tsc 生成类型 → dist/
+pnpm typecheck    # 类型检查
+pnpm lint         # ESLint
+pnpm db:generate  # 生成 Drizzle 迁移
+pnpm i18n:build   # 提取 + 编译翻译
+```
+
+### `templates/jant-site` (开发环境)
+
+**用途**：
+1. 在 monorepo 中开发和测试 `@jant/core`
+2. 作为参考实现和演示站点
+3. 部署到 Cloudflare Workers
+
+**特殊配置** (仅 monorepo)：
+```typescript
+// vite.config.ts - monorepo 别名，直接使用源码实现 HMR
+resolve: {
+  alias: {
+    "@jant/core": resolve(__dirname, "../../packages/core/src"),
+  },
+},
+```
+
+### `packages/create-jant/template` (用户模板)
+
+**与 jant-site 的区别**：
+- ❌ 没有 monorepo 别名 (从 node_modules 导入 @jant/core)
+- ✅ 其他配置相同
+
 ## Project Structure
 
 ```
 jant/
-├── packages/core/           # Main application (@jant/core)
+├── packages/core/           # 库包 (@jant/core)
 │   ├── src/
-│   │   ├── index.ts        # Entry point, exports createApp
+│   │   ├── index.ts        # 库入口，exports createApp
+│   │   ├── plugin.ts       # Tailwind v4 插件
+│   │   ├── preset.css      # CSS 预设 (basecoat + 组件样式)
 │   │   ├── app.tsx         # Hono app factory
 │   │   ├── types.ts        # TypeScript types (single source of truth)
 │   │   ├── db/             # Drizzle schema & migrations
 │   │   ├── services/       # Business logic (service layer)
 │   │   ├── routes/         # Route handlers (xxxRoutes naming)
-│   │   │   ├── api/        # API endpoints
-│   │   │   ├── dash/       # Dashboard routes (protected)
-│   │   │   ├── pages/      # Public pages
-│   │   │   └── feed/       # RSS/Sitemap
-│   │   ├── theme/          # UI layer
-│   │   │   ├── components/ # Reusable components (see below)
-│   │   │   └── layouts/    # Layout components
+│   │   ├── theme/          # UI layer (components, layouts)
 │   │   ├── lib/            # Utilities (100% JSDoc documented)
-│   │   │   ├── markdown.ts # Markdown rendering
-│   │   │   ├── sqid.ts     # ID encoding/decoding
-│   │   │   ├── time.ts     # Time utilities
-│   │   │   ├── url.ts      # URL utilities
-│   │   │   └── schemas.ts  # Zod validation schemas
 │   │   ├── i18n/           # Internationalization
-│   │   │   ├── README.md   # Detailed i18n documentation
-│   │   │   ├── context.tsx # Custom SSR-compatible i18n hooks
-│   │   │   └── locales/    # Translation catalogs
 │   │   └── middleware/     # Hono middleware
-│   ├── static/             # Static assets (copied to dist/client/assets/)
-│   ├── vite.config.ts      # Vite build config
 │   ├── .swcrc              # SWC config (JSX + Lingui macro)
 │   ├── eslint.config.js    # ESLint config
-│   ├── .prettierrc         # Prettier config
-│   ├── wrangler.toml       # Cloudflare config
-│   └── drizzle.config.ts   # Drizzle config
-├── docs/                   # Documentation
-│   ├── API.md              # API documentation
-│   └── internal/           # Internal documentation
-└── references/             # Third-party repos (gitignored)
+│   ├── drizzle.config.ts   # Drizzle config (迁移生成)
+│   └── tsconfig.build.json # 库类型生成配置
+├── templates/jant-site/     # 开发环境 + 演示站点
+│   ├── src/
+│   │   ├── style.css       # CSS 入口 (Tailwind + @jant/core/preset.css)
+│   │   ├── client.ts       # 客户端 JS 入口
+│   │   └── app.ts          # 应用入口
+│   ├── vite.config.ts      # Vite 配置 (含 monorepo 别名)
+│   ├── tailwind.config.ts  # Tailwind 配置 (使用 jantPlugin)
+│   └── wrangler.toml       # Cloudflare 配置
+├── packages/create-jant/    # CLI 脚手架
+│   └── template/           # 用户项目模板 (无 monorepo 别名)
+└── docs/                   # Documentation
 ```
 
 ### Reusable Components
@@ -186,56 +237,63 @@ Located in `src/theme/components/`:
 
 **Key Point:** Never run `wrangler dev` or manual build commands. Vite handles everything.
 
-### CSS Architecture: "CSS Relay" Pattern (Important!)
+### CSS Architecture: Tailwind v4 Plugin Pattern
 
-**Vite does NOT process CSS in `node_modules` with PostCSS.** This is a performance optimization - Vite assumes npm packages ship pre-compiled CSS.
+**问题**：Tailwind 需要扫描 `@jant/core` 的源文件以提取使用的 class，但路径在 monorepo 和 npm 安装时不同。
 
-**Solution: CSS Relay Pattern**
-
-The CSS entry point must be in the user's `src/` directory, not in `node_modules`. This triggers Vite's PostCSS pipeline.
+**解决方案**：使用 Tailwind 插件动态解析绝对路径。
 
 ```
-User Project (src/)          @jant/core (node_modules/)
-┌─────────────────┐          ┌─────────────────────────┐
-│ src/style.css   │ ──────── │ styles.css              │
-│ @import "..."   │  import  │ @import "tailwindcss";  │
-└────────┬────────┘          │ @import "basecoat-css"; │
-         │                   └─────────────────────────┘
-         ▼
-   PostCSS/Tailwind
-   (processes everything)
+┌─────────────────────────────────────────────────────────────┐
+│ @jant/core/src/plugin.ts                                    │
+│                                                             │
+│   // 动态解析 @jant/core 的物理路径                           │
+│   const pathRoot = path.dirname(                            │
+│     require.resolve("@jant/core/package.json")              │
+│   );                                                        │
+│   const contentPath = path.join(pathRoot, "src/**/*.tsx");  │
+│                                                             │
+│   export const jantPlugin = plugin(() => {}, {              │
+│     content: [contentPath],  // 自动注入到 Tailwind 配置     │
+│   });                                                       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 用户项目 tailwind.config.ts                                  │
+│                                                             │
+│   import { jantPlugin } from "@jant/core/plugin";           │
+│                                                             │
+│   export default {                                          │
+│     content: ["./src/**/*.tsx"],  // 用户自己的文件          │
+│     plugins: [jantPlugin],        // 插件自动添加 core 路径  │
+│   };                                                        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Implementation:**
-
-1. **@jant/core**: Exports `./styles.css` pointing to source CSS (with Tailwind directives)
-2. **User project**: Has `src/style.css` that imports `@jant/core/styles.css`
-3. **User project**: `src/client.ts` imports `./style.css`
-4. **Vite**: Processes `src/style.css` with PostCSS, which inlines and compiles everything
-
-**Key files:**
+**用户项目 CSS 配置**：
 
 ```css
-/* src/style.css (user project) */
-@import "@jant/core/styles.css";
-@source "./**/*.tsx";
+/* src/style.css */
+@import "tailwindcss";
+@import "@jant/core/preset.css";
+
+@config "../tailwind.config.ts";  /* Tailwind v4 必须显式加载配置 */
+
+/* 用户自定义 */
+:root {
+  --radius-default: 0.25rem;
+}
 ```
 
-```typescript
-// src/client.ts (user project)
-import "./style.css";
-import "@jant/core/src/client";
-```
+**@jant/core 导出**：
+- `@jant/core/plugin` → Tailwind 插件 (自动注入 content 路径)
+- `@jant/core/preset.css` → CSS 预设 (basecoat + 组件样式，不含 `@import "tailwindcss"`)
 
-**DO NOT:**
-- Import CSS directly in library code (`@jant/core/src/client.ts`)
-- Reference CSS via `<link href="/node_modules/...">` URLs
-- Expect Vite to process `node_modules` CSS with PostCSS
-
-**DO:**
-- Keep library CSS as source (with Tailwind directives)
-- Create a CSS relay file in user's `src/` directory
-- Let PostCSS inline and process the imported CSS
+**关键点**：
+- `preset.css` 不包含 `@import "tailwindcss"` (用户项目自己引入)
+- `@config` 在 Tailwind v4 中是必须的 (不会自动加载 tailwind.config.ts)
+- 插件使用 `require.resolve` 穿透 pnpm 软链，找到真实物理路径
 
 ## Architecture Conventions
 

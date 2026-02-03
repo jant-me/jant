@@ -53,8 +53,6 @@ export default defineConfig({
     port: 9019,
   },
 
-  // ssr.noExternal not needed - @cloudflare/vite-plugin bundles all dependencies
-
   environments: {
     client: {
       build: {

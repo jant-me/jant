@@ -1,15 +1,11 @@
-/**
- * User Project Styles
- */
-
-/* Tailwind CSS v4 + Jant Core preset */
+/* Tailwind CSS v4 + Jant Core */
 @import "tailwindcss";
 @import "@jant/core/preset.css";
 
-/* Load JS config for content scanning paths */
+/* Load Tailwind config (required in v4 for plugins) */
 @config "../tailwind.config.ts";
 
-/* User customizations */
+/* User customizations (optional) */
 :root {
-  --radius: 0.5rem;
+  --radius-default: 0.25rem;
 }

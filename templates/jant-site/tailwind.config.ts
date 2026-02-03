@@ -1,21 +1,9 @@
 import type { Config } from "tailwindcss";
-import path from "path";
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
-
-// Dynamically find @jant/core's physical path
-// Works in both monorepo and node_modules scenarios
-const jantCorePath = path.dirname(require.resolve("@jant/core/package.json"));
+import { jantPlugin } from "@jant/core/plugin";
 
 export default {
-  content: [
-    "./src/**/*.{ts,tsx}",
-    // Absolute path ensures Tailwind can always find the files
-    path.join(jantCorePath, "src/**/*.{ts,tsx}"),
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
+  // User only needs to care about their own code
+  content: ["./src/**/*.{ts,tsx}"],
+  // Load plugin: plugin will auto-inject @jant/core's absolute path
+  plugins: [jantPlugin],
 } satisfies Config;

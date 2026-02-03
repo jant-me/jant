@@ -18,55 +18,6 @@ importers:
         specifier: ^0.5.2
         version: 0.5.2
 
-  examples/test-blog:
-    dependencies:
-      '@jant/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: ^1.22.1
-        version: 1.22.1(vite@7.3.1(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260128.0)(wrangler@4.61.1(@cloudflare/workers-types@4.20260131.0))
-      '@cloudflare/workers-types':
-        specifier: ^4.20260131.0
-        version: 4.20260131.0
-      '@lingui/swc-plugin':
-        specifier: ^5.10.1
-        version: 5.10.1(@lingui/core@5.9.0(@lingui/babel-plugin-lingui-macro@5.9.0(babel-plugin-macros@3.1.0)(typescript@5.9.3))(babel-plugin-macros@3.1.0))(@swc/core@1.15.11)
-      '@swc/core':
-        specifier: ^1.15.11
-        version: 1.15.11
-      '@tailwindcss/postcss':
-        specifier: ^4.1.18
-        version: 4.1.18
-      autoprefixer:
-        specifier: ^10.4.24
-        version: 10.4.24(postcss@8.5.6)
-      basecoat-css:
-        specifier: ^0.3.10
-        version: 0.3.10
-      postcss:
-        specifier: ^8.5.6
-        version: 8.5.6
-      tailwindcss:
-        specifier: ^4.1.18
-        version: 4.1.18
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      unplugin-swc:
-        specifier: ^1.5.9
-        version: 1.5.9(@swc/core@1.15.11)(rollup@4.57.1)
-      vite:
-        specifier: ^7.3.1
-        version: 7.3.1(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
-      vite-ssr-components:
-        specifier: ^0.5.2
-        version: 0.5.2
-      wrangler:
-        specifier: ^4.61.1
-        version: 4.61.1(@cloudflare/workers-types@4.20260131.0)
-
   packages/core:
     dependencies:
       '@lingui/core':
@@ -97,9 +48,6 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: ^1.22.1
-        version: 1.22.1(vite@7.3.1(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20260128.0)(wrangler@4.61.1(@cloudflare/workers-types@4.20260131.0))
       '@cloudflare/workers-types':
         specifier: ^4.20260131.0
         version: 4.20260131.0
@@ -121,9 +69,6 @@ importers:
       '@swc/core':
         specifier: ^1.15.11
         version: 1.15.11
-      '@tailwindcss/postcss':
-        specifier: ^4.1.18
-        version: 4.1.18
       '@types/node':
         specifier: ^25.1.0
         version: 25.1.0
@@ -133,9 +78,6 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.54.0
         version: 8.54.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
-      autoprefixer:
-        specifier: ^10.4.24
-        version: 10.4.24(postcss@8.5.6)
       basecoat-css:
         specifier: ^0.3.10
         version: 0.3.10
@@ -157,9 +99,6 @@ importers:
       lint-staged:
         specifier: ^16.2.7
         version: 16.2.7
-      postcss:
-        specifier: ^8.5.6
-        version: 8.5.6
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
@@ -172,18 +111,6 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-      unplugin-swc:
-        specifier: ^1.5.9
-        version: 1.5.9(@swc/core@1.15.11)(rollup@4.57.1)
-      vite:
-        specifier: ^7.3.1
-        version: 7.3.1(@types/node@25.1.0)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
-      vite-ssr-components:
-        specifier: ^0.5.2
-        version: 0.5.2
-      wrangler:
-        specifier: ^4.61.1
-        version: 4.61.1(@cloudflare/workers-types@4.20260131.0)
 
   packages/create-jant:
     dependencies:
