@@ -46,19 +46,10 @@ export default defineConfig({
     port: 9019,
     host: true,
     allowedHosts: true,
-    watch: {
-      // 允许 Vite 监听 @jant/core 的变化 (默认会忽略 node_modules)
-      ignored: ["!**/node_modules/@jant/core/**"],
-    },
   },
 
   preview: {
     port: 9019,
-  },
-
-  ssr: {
-    // 强制 Vite 处理库内的 CSS 文件
-    noExternal: ["@jant/core"],
   },
 
   environments: {
