@@ -9,11 +9,11 @@ import { createApp } from "@jant/core";
 
 export default createApp({
   // Site configuration (optional - can also be set in dashboard)
-  // site: {
-  //   name: "My Blog",
-  //   description: "A personal blog powered by Jant",
-  //   language: "en",
-  // },
+  site: {
+    name: "My Blog 222",
+    description: "A personal blog powered by Jant",
+    language: "en",
+  },
 
   // Theme customization (optional)
   // theme: {

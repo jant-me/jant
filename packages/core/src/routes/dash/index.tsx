@@ -64,7 +64,7 @@ function DashboardContent({
       <p>
         <Trans comment="@context: Help text with link">
           Need help? Visit the{" "}
-          <a href="/docs" class="underline text-red-500">
+          <a href="/docs" class="underline">
             documentation
           </a>
         </Trans>

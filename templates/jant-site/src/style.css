@@ -1,8 +1,3 @@
 /* Tailwind CSS v4 + Jant Core */
 @import "tailwindcss";
 @import "@jant/core/preset.css";
-
-/* User customizations (optional) */
-:root {
-  --radius-default: 0.25rem;
-}

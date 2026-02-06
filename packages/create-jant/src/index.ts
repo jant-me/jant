@@ -122,8 +122,8 @@ AUTH_SECRET=${authSecret}
   const viteConfigPath = path.join(targetDir, "vite.config.ts");
   if (await fs.pathExists(viteConfigPath)) {
     let content = await fs.readFile(viteConfigPath, "utf-8");
-    // Remove monorepo alias (npm users use package exports)
-    content = content.replace(/\s*\/\/ Monorepo:.*\n.*"@jant\/core".*,/g, "");
+    // Remove monorepo-only blocks (marked with @monorepo-only-start/end)
+    content = content.replace(/\s*\/\/ @monorepo-only-start[\s\S]*?\/\/ @monorepo-only-end\n?/g, "");
     // Update lingui plugin paths: src/ -> dist/, .ts -> .js
     content = content.replace(/@jant\/core\/src\/([^"']+)\.ts/g, "@jant/core/dist/$1.js");
     await fs.writeFile(viteConfigPath, content, "utf-8");

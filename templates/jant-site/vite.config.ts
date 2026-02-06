@@ -6,6 +6,23 @@ import { resolve } from "path";
 import { readFileSync } from "fs";
 
 /**
+ * Trigger full page reload when server/worker code changes.
+ * @cloudflare/vite-plugin only hot-updates the worker module,
+ * but for SSR apps the browser needs a full reload to see new HTML.
+ */
+function ssrReload(): Plugin {
+  return {
+    name: "ssr-reload",
+    hotUpdate({ server }) {
+      if (this.environment.name !== "client") {
+        server.hot.send({ type: "full-reload" });
+        return [];
+      }
+    },
+  };
+}
+
+/**
  * Inject manifest content into SSR bundle for vite-ssr-components
  */
 function injectManifest(): Plugin {
@@ -66,6 +83,7 @@ export default defineConfig({
 
   plugins: [
     tailwindcss(),
+    ssrReload(),
     swc.vite({
       jsc: {
         parser: { syntax: "typescript", tsx: true },
@@ -106,8 +124,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": "/src",
-      // Monorepo: use source files directly for HMR
+      // @monorepo-only-start
       "@jant/core": resolve(__dirname, "../../packages/core/src"),
+      // @monorepo-only-end
     },
   },
 });
