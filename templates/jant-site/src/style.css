@@ -2,9 +2,6 @@
 @import "tailwindcss";
 @import "@jant/core/preset.css";
 
-/* Load Tailwind config (required in v4 for plugins) */
-@config "../tailwind.config.ts";
-
 /* User customizations (optional) */
 :root {
   --radius-default: 0.25rem;

@@ -1,6 +1,6 @@
 {
   "name": "@jant/core",
-  "version": "0.2.9",
+  "version": "0.2.11",
   "description": "A modern, open-source microblogging platform built on Cloudflare Workers",
   "type": "module",
   "bin": {
@@ -15,7 +15,6 @@
       "types": "./dist/theme/index.d.ts",
       "default": "./dist/theme/index.js"
     },
-    "./plugin": "./src/plugin.ts",
     "./preset.css": "./src/preset.css",
     "./client": "./dist/client.js",
     "./*": "./*"

@@ -146,8 +146,7 @@ jant/
 ├── packages/core/           # 库包 (@jant/core)
 │   ├── src/
 │   │   ├── index.ts        # 库入口，exports createApp
-│   │   ├── plugin.ts       # Tailwind v4 插件
-│   │   ├── preset.css      # CSS 预设 (basecoat + 组件样式)
+│   │   ├── preset.css      # CSS 预设 (basecoat + @source 自动扫描)
 │   │   ├── app.tsx         # Hono app factory
 │   │   ├── types.ts        # TypeScript types (single source of truth)
 │   │   ├── db/             # Drizzle schema & migrations
@@ -163,11 +162,11 @@ jant/
 │   └── tsconfig.build.json # 库类型生成配置
 ├── templates/jant-site/     # 开发环境 + 演示站点
 │   ├── src/
-│   │   ├── style.css       # CSS 入口 (Tailwind + @jant/core/preset.css)
+│   │   ├── style.css       # CSS 入口 (@import)
 │   │   ├── client.ts       # 客户端 JS 入口
 │   │   └── app.ts          # 应用入口
+│   ├── tailwind.config.ts  # Tailwind 配置 (使用 jantContent)
 │   ├── vite.config.ts      # Vite 配置 (含 monorepo 别名)
-│   ├── tailwind.config.ts  # Tailwind 配置 (使用 jantPlugin)
 │   └── wrangler.toml       # Cloudflare 配置
 ├── packages/create-jant/    # CLI 脚手架
 │   └── template/           # 用户项目模板 (无 monorepo 别名)
@@ -203,7 +202,7 @@ Located in `src/theme/components/`:
 - **Runtime**: Cloudflare Workers
 - **Framework**: Hono (v4)
 - **Build**: Vite + SWC + @cloudflare/vite-plugin
-- **CSS**: Tailwind CSS v4 (@tailwindcss/postcss) + BaseCoat
+- **CSS**: Tailwind CSS v4 (@tailwindcss/vite) + BaseCoat
 - **Database**: D1 + Drizzle ORM
 - **Auth**: better-auth
 - **i18n**: @lingui/core + @lingui/swc-plugin (macros)
@@ -218,7 +217,7 @@ Located in `src/theme/components/`:
 **Development (`pnpm dev` / `vite dev`):**
 1. Vite dev server starts on port 9019
 2. @cloudflare/vite-plugin integrates with Cloudflare Workers runtime
-3. CSS processed in real-time with Tailwind CSS v4 + PostCSS
+3. @tailwindcss/vite processes CSS as Vite plugin
 4. Hot Module Replacement (HMR) for instant updates
 5. Reads `.dev.vars` for environment variables
 
@@ -237,63 +236,37 @@ Located in `src/theme/components/`:
 
 **Key Point:** Never run `wrangler dev` or manual build commands. Vite handles everything.
 
-### CSS Architecture: Tailwind v4 Plugin Pattern
+### CSS Architecture: @source in Preset
 
-**问题**：Tailwind 需要扫描 `@jant/core` 的源文件以提取使用的 class，但路径在 monorepo 和 npm 安装时不同。
+**问题**：Tailwind v4 默认忽略 `node_modules`，需要让它扫描 `@jant/core` 的源文件。
 
-**解决方案**：使用 Tailwind 插件动态解析绝对路径。
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ @jant/core/src/plugin.ts                                    │
-│                                                             │
-│   // 动态解析 @jant/core 的物理路径                           │
-│   const pathRoot = path.dirname(                            │
-│     require.resolve("@jant/core/package.json")              │
-│   );                                                        │
-│   const contentPath = path.join(pathRoot, "src/**/*.tsx");  │
-│                                                             │
-│   export const jantPlugin = plugin(() => {}, {              │
-│     content: [contentPath],  // 自动注入到 Tailwind 配置     │
-│   });                                                       │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 用户项目 tailwind.config.ts                                  │
-│                                                             │
-│   import { jantPlugin } from "@jant/core/plugin";           │
-│                                                             │
-│   export default {                                          │
-│     content: ["./src/**/*.tsx"],  // 用户自己的文件          │
-│     plugins: [jantPlugin],        // 插件自动添加 core 路径  │
-│   };                                                        │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**用户项目 CSS 配置**：
+**解决方案**：在 `preset.css` 中使用 `@source "./"` 指令。当用户 `@import "@jant/core/preset.css"` 时，`@source` 路径相对于 `preset.css` 所在目录解析，自动指向 `@jant/core/src/`。
 
 ```css
-/* src/style.css */
+/* @jant/core/src/preset.css */
+@source "./";                        /* 扫描 @jant/core/src/ 下所有文件 */
+@import "basecoat-css";
+@import "./styles/components.css";
+```
+
+```css
+/* 用户项目 src/style.css - 只需两行 import */
 @import "tailwindcss";
-@import "@jant/core/preset.css";
+@import "@jant/core/preset.css";     /* 自动带入 @source 扫描 */
 
-@config "../tailwind.config.ts";  /* Tailwind v4 必须显式加载配置 */
-
-/* 用户自定义 */
 :root {
   --radius-default: 0.25rem;
 }
 ```
 
 **@jant/core 导出**：
-- `@jant/core/plugin` → Tailwind 插件 (自动注入 content 路径)
-- `@jant/core/preset.css` → CSS 预设 (basecoat + 组件样式，不含 `@import "tailwindcss"`)
+- `@jant/core/preset.css` → CSS 预设 (basecoat + 组件样式 + @source 自动扫描)
 
 **关键点**：
-- `preset.css` 不包含 `@import "tailwindcss"` (用户项目自己引入)
-- `@config` 在 Tailwind v4 中是必须的 (不会自动加载 tailwind.config.ts)
-- 插件使用 `require.resolve` 穿透 pnpm 软链，找到真实物理路径
+- Tailwind v4 的 `content` 配置已废弃，改用 CSS `@source` 指令
+- `@source` 路径相对于 CSS 文件自身位置解析，无论 monorepo 还是 npm 安装都能工作
+- 无需 `tailwind.config.ts`、`@config` 指令或 helper 函数
+- 使用 `@tailwindcss/vite` 作为 Vite 插件，无需 postcss/autoprefixer
 
 ## Architecture Conventions
 

@@ -1,8 +1,7 @@
 import { defineConfig, type Plugin } from "vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import swc from "unplugin-swc";
-import tailwindcss from "@tailwindcss/postcss";
-import autoprefixer from "autoprefixer";
+import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
 import { readFileSync } from "fs";
 
@@ -47,10 +46,19 @@ export default defineConfig({
     port: 9019,
     host: true,
     allowedHosts: true,
+    watch: {
+      // 允许 Vite 监听 @jant/core 的变化 (默认会忽略 node_modules)
+      ignored: ["!**/node_modules/@jant/core/**"],
+    },
   },
 
   preview: {
     port: 9019,
+  },
+
+  ssr: {
+    // 强制 Vite 处理库内的 CSS 文件
+    noExternal: ["@jant/core"],
   },
 
   environments: {
@@ -66,6 +74,7 @@ export default defineConfig({
   },
 
   plugins: [
+    tailwindcss(),
     swc.vite({
       jsc: {
         parser: { syntax: "typescript", tsx: true },
@@ -94,12 +103,6 @@ export default defineConfig({
     }),
     injectManifest(),
   ],
-
-  css: {
-    postcss: {
-      plugins: [tailwindcss, autoprefixer],
-    },
-  },
 
   build: {
     target: "esnext",
