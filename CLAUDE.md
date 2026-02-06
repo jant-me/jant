@@ -381,7 +381,9 @@ import { useLingui } from "@/i18n";
 function MyComponent() {
   const { t } = useLingui();
 
-  return <h1>{t({ message: "Dashboard", comment: "@context: Page title" })}</h1>;
+  return (
+    <h1>{t({ message: "Dashboard", comment: "@context: Page title" })}</h1>
+  );
 }
 ```
 

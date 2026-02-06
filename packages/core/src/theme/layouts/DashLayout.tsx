@@ -45,14 +45,24 @@ function DashLayoutContent({
             {siteName}
           </a>
           <nav class="flex items-center gap-4">
-            <a href="/" class="text-sm text-muted-foreground hover:text-foreground">
+            <a
+              href="/"
+              class="text-sm text-muted-foreground hover:text-foreground"
+            >
               {t({
                 message: "View Site",
-                comment: "@context: Dashboard header link to view the public site",
+                comment:
+                  "@context: Dashboard header link to view the public site",
               })}
             </a>
-            <a href="/signout" class="text-sm text-muted-foreground hover:text-foreground">
-              {t({ message: "Sign Out", comment: "@context: Dashboard header link to sign out" })}
+            <a
+              href="/signout"
+              class="text-sm text-muted-foreground hover:text-foreground"
+            >
+              {t({
+                message: "Sign Out",
+                comment: "@context: Dashboard header link to sign out",
+              })}
             </a>
           </nav>
         </div>
@@ -69,20 +79,32 @@ function DashLayoutContent({
                 comment: "@context: Dashboard navigation - main dashboard page",
               })}
             </a>
-            <a href="/dash/posts" class={navClass("/dash/posts", /^\/dash\/posts/)}>
+            <a
+              href="/dash/posts"
+              class={navClass("/dash/posts", /^\/dash\/posts/)}
+            >
               {t({
                 message: "Posts",
                 comment: "@context: Dashboard navigation - posts management",
               })}
             </a>
-            <a href="/dash/pages" class={navClass("/dash/pages", /^\/dash\/pages/)}>
+            <a
+              href="/dash/pages"
+              class={navClass("/dash/pages", /^\/dash\/pages/)}
+            >
               {t({
                 message: "Pages",
                 comment: "@context: Dashboard navigation - pages management",
               })}
             </a>
-            <a href="/dash/media" class={navClass("/dash/media", /^\/dash\/media/)}>
-              {t({ message: "Media", comment: "@context: Dashboard navigation - media library" })}
+            <a
+              href="/dash/media"
+              class={navClass("/dash/media", /^\/dash\/media/)}
+            >
+              {t({
+                message: "Media",
+                comment: "@context: Dashboard navigation - media library",
+              })}
             </a>
             <a
               href="/dash/collections"
@@ -90,16 +112,23 @@ function DashLayoutContent({
             >
               {t({
                 message: "Collections",
-                comment: "@context: Dashboard navigation - collections management",
+                comment:
+                  "@context: Dashboard navigation - collections management",
               })}
             </a>
-            <a href="/dash/redirects" class={navClass("/dash/redirects", /^\/dash\/redirects/)}>
+            <a
+              href="/dash/redirects"
+              class={navClass("/dash/redirects", /^\/dash\/redirects/)}
+            >
               {t({
                 message: "Redirects",
                 comment: "@context: Dashboard navigation - URL redirects",
               })}
             </a>
-            <a href="/dash/settings" class={navClass("/dash/settings", /^\/dash\/settings/)}>
+            <a
+              href="/dash/settings"
+              class={navClass("/dash/settings", /^\/dash\/settings/)}
+            >
               {t({
                 message: "Settings",
                 comment: "@context: Dashboard navigation - site settings",

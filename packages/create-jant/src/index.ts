@@ -107,11 +107,11 @@ async function copyTemplate(config: ProjectConfig): Promise<void> {
     content = content.replace(/name = "jant-site"/g, `name = "${projectName}"`);
     content = content.replace(
       /database_name = "jant-site-db"/g,
-      `database_name = "${projectName}-db"`
+      `database_name = "${projectName}-db"`,
     );
     content = content.replace(
       /bucket_name = "jant-site-media"/g,
-      `bucket_name = "${projectName}-media"`
+      `bucket_name = "${projectName}-media"`,
     );
     await fs.writeFile(wranglerPath, content, "utf-8");
   }
@@ -122,7 +122,11 @@ async function copyTemplate(config: ProjectConfig): Promise<void> {
 # AUTH_SECRET is used for session encryption (better-auth)
 AUTH_SECRET=${authSecret}
 `;
-  await fs.writeFile(path.join(targetDir, ".dev.vars"), devVarsContent, "utf-8");
+  await fs.writeFile(
+    path.join(targetDir, ".dev.vars"),
+    devVarsContent,
+    "utf-8",
+  );
 
   // Patch vite.config.ts for npm-installed @jant/core
   const viteConfigPath = path.join(targetDir, "vite.config.ts");
@@ -131,10 +135,13 @@ AUTH_SECRET=${authSecret}
     // Remove monorepo-only blocks (marked with @monorepo-only-start/end)
     content = content.replace(
       /\s*\/\/ @monorepo-only-start[\s\S]*?\/\/ @monorepo-only-end\n?/g,
-      ""
+      "",
     );
     // Update lingui plugin paths: src/ -> dist/, .ts -> .js
-    content = content.replace(/@jant\/core\/src\/([^"']+)\.ts/g, "@jant/core/dist/$1.js");
+    content = content.replace(
+      /@jant\/core\/src\/([^"']+)\.ts/g,
+      "@jant/core/dist/$1.js",
+    );
     await fs.writeFile(viteConfigPath, content, "utf-8");
   }
 }
@@ -189,7 +196,9 @@ async function main(): Promise<void> {
   // Sanitize project name
   if (!isValidProjectName(projectName)) {
     const sanitized = toValidProjectName(projectName);
-    p.log.warn(`Project name sanitized: ${chalk.yellow(projectName)} -> ${chalk.green(sanitized)}`);
+    p.log.warn(
+      `Project name sanitized: ${chalk.yellow(projectName)} -> ${chalk.green(sanitized)}`,
+    );
     projectName = sanitized;
   }
 
@@ -200,7 +209,9 @@ async function main(): Promise<void> {
     const files = await fs.readdir(targetDir);
     if (files.length > 0) {
       if (opts.yes) {
-        p.log.error(`Directory ${chalk.red(projectName)} already exists and is not empty`);
+        p.log.error(
+          `Directory ${chalk.red(projectName)} already exists and is not empty`,
+        );
         process.exit(1);
       }
 
@@ -237,7 +248,10 @@ async function main(): Promise<void> {
 
   // Show next steps
   console.log(); // eslint-disable-line no-console
-  p.note([`cd ${projectName}`, "pnpm install", "pnpm dev"].join("\n"), "Next steps");
+  p.note(
+    [`cd ${projectName}`, "pnpm install", "pnpm dev"].join("\n"),
+    "Next steps",
+  );
 
   p.outro(chalk.green("Happy coding!"));
 }

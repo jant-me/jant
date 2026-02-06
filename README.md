@@ -41,14 +41,25 @@ pnpm deploy
 - [Theming](docs/theming.md)
 - [API Reference](docs/API.md)
 
-## Contributing
+## Development
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+Requires [mise](https://mise.jdx.dev/) — it manages Node.js and pnpm automatically.
 
-- Development setup
-- Code style guidelines
-- Pull request process
-- Release workflow
+```bash
+# Install mise (macOS/Linux)
+curl https://mise.run | sh
+
+# Clone and setup
+git clone https://github.com/jant-me/jant.git
+cd jant
+mise install   # installs Node.js and pnpm
+pnpm install   # installs dependencies
+
+# Start development server (http://localhost:9019)
+mise run dev
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for code style, PR process, and release workflow.
 
 ## Philosophy
 

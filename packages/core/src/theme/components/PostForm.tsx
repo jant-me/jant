@@ -12,7 +12,11 @@ export interface PostFormProps {
   method?: "get" | "post";
 }
 
-export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) => {
+export const PostForm: FC<PostFormProps> = ({
+  post,
+  action,
+  method = "post",
+}) => {
   const { t } = useLingui();
   const isEdit = !!post;
 
@@ -21,7 +25,10 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
       {/* Type selector */}
       <div class="field">
         <label class="label">
-          {t({ message: "Type", comment: "@context: Post form field - post type" })}
+          {t({
+            message: "Type",
+            comment: "@context: Post form field - post type",
+          })}
         </label>
         <select name="type" class="select" required>
           <option value="note" selected={post?.type === "note"}>
@@ -45,13 +52,19 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
       {/* Title (optional) */}
       <div class="field">
         <label class="label">
-          {t({ message: "Title (optional)", comment: "@context: Post form field" })}
+          {t({
+            message: "Title (optional)",
+            comment: "@context: Post form field",
+          })}
         </label>
         <input
           type="text"
           name="title"
           class="input"
-          placeholder={t({ message: "Post title...", comment: "@context: Post title placeholder" })}
+          placeholder={t({
+            message: "Post title...",
+            comment: "@context: Post title placeholder",
+          })}
           value={post?.title ?? ""}
         />
       </div>
@@ -77,7 +90,10 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
       {/* Source URL (for link/quote types) */}
       <div class="field">
         <label class="label">
-          {t({ message: "Source URL (optional)", comment: "@context: Post form field" })}
+          {t({
+            message: "Source URL (optional)",
+            comment: "@context: Post form field",
+          })}
         </label>
         <input
           type="url"
@@ -94,17 +110,32 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
           {t({ message: "Visibility", comment: "@context: Post form field" })}
         </label>
         <select name="visibility" class="select">
-          <option value="quiet" selected={post?.visibility === "quiet" || !post}>
-            {t({ message: "Quiet (normal)", comment: "@context: Post visibility option" })}
+          <option
+            value="quiet"
+            selected={post?.visibility === "quiet" || !post}
+          >
+            {t({
+              message: "Quiet (normal)",
+              comment: "@context: Post visibility option",
+            })}
           </option>
           <option value="featured" selected={post?.visibility === "featured"}>
-            {t({ message: "Featured", comment: "@context: Post visibility option" })}
+            {t({
+              message: "Featured",
+              comment: "@context: Post visibility option",
+            })}
           </option>
           <option value="unlisted" selected={post?.visibility === "unlisted"}>
-            {t({ message: "Unlisted", comment: "@context: Post visibility option" })}
+            {t({
+              message: "Unlisted",
+              comment: "@context: Post visibility option",
+            })}
           </option>
           <option value="draft" selected={post?.visibility === "draft"}>
-            {t({ message: "Draft", comment: "@context: Post visibility option" })}
+            {t({
+              message: "Draft",
+              comment: "@context: Post visibility option",
+            })}
           </option>
         </select>
       </div>
@@ -112,7 +143,10 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
       {/* Custom path (optional) */}
       <div class="field">
         <label class="label">
-          {t({ message: "Custom Path (optional)", comment: "@context: Post form field" })}
+          {t({
+            message: "Custom Path (optional)",
+            comment: "@context: Post form field",
+          })}
         </label>
         <input
           type="text"
@@ -127,8 +161,14 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
       <div class="flex gap-2">
         <button type="submit" class="btn">
           {isEdit
-            ? t({ message: "Update", comment: "@context: Button to update existing post" })
-            : t({ message: "Publish", comment: "@context: Button to publish new post" })}
+            ? t({
+                message: "Update",
+                comment: "@context: Button to update existing post",
+              })
+            : t({
+                message: "Publish",
+                comment: "@context: Button to publish new post",
+              })}
         </button>
         <a href="/dash/posts" class="btn-outline">
           {t({ message: "Cancel", comment: "@context: Button to cancel form" })}

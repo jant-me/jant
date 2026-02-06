@@ -33,7 +33,7 @@ function renderMediaCard(
     size: number;
   },
   r2PublicUrl?: string,
-  imageTransformUrl?: string
+  imageTransformUrl?: string,
 ): string {
   const fullUrl = getMediaUrl(media.id, media.r2Key, r2PublicUrl);
   const thumbnailUrl = getImageUrl(fullUrl, imageTransformUrl, {
@@ -79,7 +79,9 @@ function renderMediaCard(
         href="/dash/media/${media.id}"
         class="block aspect-square bg-muted rounded-lg overflow-hidden border hover:border-primary"
       >
-        <div class="w-full h-full flex items-center justify-center text-muted-foreground">
+        <div
+          class="w-full h-full flex items-center justify-center text-muted-foreground"
+        >
           <span class="text-xs">${media.mimeType}</span>
         </div>
       </a>
@@ -104,7 +106,9 @@ function formatSize(bytes: number): string {
 /**
  * Check if request wants SSE response (from Datastar)
  */
-function wantsSSE(c: { req: { header: (name: string) => string | undefined } }): boolean {
+function wantsSSE(c: {
+  req: { header: (name: string) => string | undefined };
+}): boolean {
   const accept = c.req.header("accept") || "";
   return accept.includes("text/event-stream");
 }
@@ -114,7 +118,9 @@ uploadApiRoutes.post("/", async (c) => {
   if (!c.env.R2) {
     if (wantsSSE(c)) {
       return sse(c, async (stream) => {
-        await stream.patchSignals({ _uploadError: "R2 storage not configured" });
+        await stream.patchSignals({
+          _uploadError: "R2 storage not configured",
+        });
       });
     }
     return c.json({ error: "R2 storage not configured" }, 500);
@@ -133,7 +139,13 @@ uploadApiRoutes.post("/", async (c) => {
   }
 
   // Validate file type
-  const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+  ];
   if (!allowedTypes.includes(file.type)) {
     if (wantsSSE(c)) {
       return sse(c, async (stream) => {
@@ -148,7 +160,9 @@ uploadApiRoutes.post("/", async (c) => {
   if (file.size > maxSize) {
     if (wantsSSE(c)) {
       return sse(c, async (stream) => {
-        await stream.patchSignals({ _uploadError: "File too large (max 10MB)" });
+        await stream.patchSignals({
+          _uploadError: "File too large (max 10MB)",
+        });
       });
     }
     return c.json({ error: "File too large (max 10MB)" }, 400);
@@ -180,7 +194,11 @@ uploadApiRoutes.post("/", async (c) => {
 
     // SSE response for Datastar
     if (wantsSSE(c)) {
-      const cardHtml = renderMediaCard(media, c.env.R2_PUBLIC_URL, c.env.IMAGE_TRANSFORM_URL);
+      const cardHtml = renderMediaCard(
+        media,
+        c.env.R2_PUBLIC_URL,
+        c.env.IMAGE_TRANSFORM_URL,
+      );
 
       return sse(c, async (stream) => {
         // Replace placeholder with real media card

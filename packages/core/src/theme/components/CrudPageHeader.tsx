@@ -27,7 +27,12 @@ export interface CrudPageHeaderProps extends PropsWithChildren {
   // Optional children to render in place of default CTA button (useful for custom actions like upload buttons)
 }
 
-export const CrudPageHeader: FC<CrudPageHeaderProps> = ({ title, ctaLabel, ctaHref, children }) => {
+export const CrudPageHeader: FC<CrudPageHeaderProps> = ({
+  title,
+  ctaLabel,
+  ctaHref,
+  children,
+}) => {
   return (
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-semibold">{title}</h1>

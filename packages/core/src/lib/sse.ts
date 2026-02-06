@@ -22,7 +22,13 @@ import type { Context } from "hono";
 /**
  * Patch modes for DOM updates
  */
-export type PatchMode = "morph" | "inner" | "outer" | "append" | "prepend" | "remove";
+export type PatchMode =
+  | "morph"
+  | "inner"
+  | "outer"
+  | "append"
+  | "prepend"
+  | "remove";
 
 /**
  * SSE stream writer for Datastar events
@@ -58,7 +64,10 @@ export interface SSEStream {
    * });
    * ```
    */
-  patchElements(html: string, options?: { mode?: PatchMode; selector?: string }): Promise<void>;
+  patchElements(
+    html: string,
+    options?: { mode?: PatchMode; selector?: string },
+  ): Promise<void>;
 
   /**
    * Execute JavaScript on the client
@@ -94,7 +103,10 @@ export interface SSEStream {
  * });
  * ```
  */
-export function sse(c: Context, handler: (stream: SSEStream) => Promise<void>): Response {
+export function sse(
+  c: Context,
+  handler: (stream: SSEStream) => Promise<void>,
+): Response {
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({

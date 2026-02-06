@@ -70,17 +70,28 @@ export function createCollectionService(db: Database): CollectionService {
 
   return {
     async getById(id) {
-      const result = await db.select().from(collections).where(eq(collections.id, id)).limit(1);
+      const result = await db
+        .select()
+        .from(collections)
+        .where(eq(collections.id, id))
+        .limit(1);
       return result[0] ? toCollection(result[0]) : null;
     },
 
     async getByPath(path) {
-      const result = await db.select().from(collections).where(eq(collections.path, path)).limit(1);
+      const result = await db
+        .select()
+        .from(collections)
+        .where(eq(collections.path, path))
+        .limit(1);
       return result[0] ? toCollection(result[0]) : null;
     },
 
     async list() {
-      const rows = await db.select().from(collections).orderBy(desc(collections.createdAt));
+      const rows = await db
+        .select()
+        .from(collections)
+        .orderBy(desc(collections.createdAt));
       return rows.map(toCollection);
     },
 
@@ -107,11 +118,14 @@ export function createCollectionService(db: Database): CollectionService {
       if (!existing) return null;
 
       const timestamp = now();
-      const updates: Partial<typeof collections.$inferInsert> = { updatedAt: timestamp };
+      const updates: Partial<typeof collections.$inferInsert> = {
+        updatedAt: timestamp,
+      };
 
       if (data.title !== undefined) updates.title = data.title;
       if (data.path !== undefined) updates.path = data.path;
-      if (data.description !== undefined) updates.description = data.description;
+      if (data.description !== undefined)
+        updates.description = data.description;
 
       const result = await db
         .update(collections)
@@ -124,9 +138,14 @@ export function createCollectionService(db: Database): CollectionService {
 
     async delete(id) {
       // Delete all post-collection relationships first
-      await db.delete(postCollections).where(eq(postCollections.collectionId, id));
+      await db
+        .delete(postCollections)
+        .where(eq(postCollections.collectionId, id));
 
-      const result = await db.delete(collections).where(eq(collections.id, id)).returning();
+      const result = await db
+        .delete(collections)
+        .where(eq(collections.id, id))
+        .returning();
       return result.length > 0;
     },
 
@@ -148,7 +167,10 @@ export function createCollectionService(db: Database): CollectionService {
       await db
         .delete(postCollections)
         .where(
-          and(eq(postCollections.collectionId, collectionId), eq(postCollections.postId, postId))
+          and(
+            eq(postCollections.collectionId, collectionId),
+            eq(postCollections.postId, postId),
+          ),
         );
     },
 
@@ -167,7 +189,10 @@ export function createCollectionService(db: Database): CollectionService {
       const rows = await db
         .select({ collection: collections })
         .from(postCollections)
-        .innerJoin(collections, eq(postCollections.collectionId, collections.id))
+        .innerJoin(
+          collections,
+          eq(postCollections.collectionId, collections.id),
+        )
         .where(eq(postCollections.postId, postId));
 
       return rows.map((r) => toCollection(r.collection));

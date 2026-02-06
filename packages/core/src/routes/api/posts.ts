@@ -32,8 +32,9 @@ postsApiRoutes.get("/", async (c) => {
       ...p,
       sqid: sqid.encode(p.id),
     })),
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Array length check guarantees element exists
-    nextCursor: posts.length === limit ? sqid.encode(posts[posts.length - 1]!.id) : null,
+
+    nextCursor:
+      posts.length === limit ? sqid.encode(posts[posts.length - 1]!.id) : null,
   });
 });
 
@@ -55,7 +56,10 @@ postsApiRoutes.post("/", requireAuthApi(), async (c) => {
   // Validate request body
   const parseResult = CreatePostSchema.safeParse(rawBody);
   if (!parseResult.success) {
-    return c.json({ error: "Validation failed", details: parseResult.error.flatten() }, 400);
+    return c.json(
+      { error: "Validation failed", details: parseResult.error.flatten() },
+      400,
+    );
   }
 
   const body = parseResult.data;
@@ -68,7 +72,9 @@ postsApiRoutes.post("/", requireAuthApi(), async (c) => {
     sourceUrl: body.sourceUrl || undefined,
     sourceName: body.sourceName,
     path: body.path || undefined,
-    replyToId: body.replyToId ? (sqid.decode(body.replyToId) ?? undefined) : undefined,
+    replyToId: body.replyToId
+      ? (sqid.decode(body.replyToId) ?? undefined)
+      : undefined,
     publishedAt: body.publishedAt,
   });
 
@@ -85,7 +91,10 @@ postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
   // Validate request body
   const parseResult = UpdatePostSchema.safeParse(rawBody);
   if (!parseResult.success) {
-    return c.json({ error: "Validation failed", details: parseResult.error.flatten() }, 400);
+    return c.json(
+      { error: "Validation failed", details: parseResult.error.flatten() },
+      400,
+    );
   }
 
   const body = parseResult.data;

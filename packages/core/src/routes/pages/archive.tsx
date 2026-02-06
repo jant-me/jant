@@ -24,10 +24,19 @@ function getTypeLabel(type: string): string {
   const { t } = useLingui();
   const labels: Record<string, string> = {
     note: t({ message: "Note", comment: "@context: Post type label - note" }),
-    article: t({ message: "Article", comment: "@context: Post type label - article" }),
+    article: t({
+      message: "Article",
+      comment: "@context: Post type label - article",
+    }),
     link: t({ message: "Link", comment: "@context: Post type label - link" }),
-    quote: t({ message: "Quote", comment: "@context: Post type label - quote" }),
-    image: t({ message: "Image", comment: "@context: Post type label - image" }),
+    quote: t({
+      message: "Quote",
+      comment: "@context: Post type label - quote",
+    }),
+    image: t({
+      message: "Image",
+      comment: "@context: Post type label - image",
+    }),
     page: t({ message: "Page", comment: "@context: Post type label - page" }),
   };
   return labels[type] ?? type;
@@ -36,12 +45,30 @@ function getTypeLabel(type: string): string {
 function getTypeLabelPlural(type: string): string {
   const { t } = useLingui();
   const labels: Record<string, string> = {
-    note: t({ message: "Notes", comment: "@context: Post type label plural - notes" }),
-    article: t({ message: "Articles", comment: "@context: Post type label plural - articles" }),
-    link: t({ message: "Links", comment: "@context: Post type label plural - links" }),
-    quote: t({ message: "Quotes", comment: "@context: Post type label plural - quotes" }),
-    image: t({ message: "Images", comment: "@context: Post type label plural - images" }),
-    page: t({ message: "Pages", comment: "@context: Post type label plural - pages" }),
+    note: t({
+      message: "Notes",
+      comment: "@context: Post type label plural - notes",
+    }),
+    article: t({
+      message: "Articles",
+      comment: "@context: Post type label plural - articles",
+    }),
+    link: t({
+      message: "Links",
+      comment: "@context: Post type label plural - links",
+    }),
+    quote: t({
+      message: "Quotes",
+      comment: "@context: Post type label plural - quotes",
+    }),
+    image: t({
+      message: "Images",
+      comment: "@context: Post type label plural - images",
+    }),
+    page: t({
+      message: "Pages",
+      comment: "@context: Post type label plural - pages",
+    }),
   };
   return labels[type] ?? `${type}s`;
 }
@@ -80,8 +107,14 @@ function ArchiveContent({
 
         {/* Type filter */}
         <nav class="flex flex-wrap gap-2 mt-4">
-          <a href="/archive" class={`badge ${!type ? "badge-primary" : "badge-outline"}`}>
-            {t({ message: "All", comment: "@context: Archive filter - all types" })}
+          <a
+            href="/archive"
+            class={`badge ${!type ? "badge-primary" : "badge-outline"}`}
+          >
+            {t({
+              message: "All",
+              comment: "@context: Archive filter - all types",
+            })}
           </a>
           {POST_TYPES.filter((t) => t !== "page").map((typeKey) => (
             <a
@@ -98,7 +131,10 @@ function ArchiveContent({
       <main>
         {displayPosts.length === 0 ? (
           <p class="text-muted-foreground">
-            {t({ message: "No posts found.", comment: "@context: Archive empty state" })}
+            {t({
+              message: "No posts found.",
+              comment: "@context: Archive empty state",
+            })}
           </p>
         ) : (
           Array.from(grouped.entries()).map(([yearMonth, monthPosts]) => (
@@ -118,11 +154,18 @@ function ArchiveContent({
                         {new Date(post.publishedAt * 1000).getDate()}
                       </time>
                       <div class="flex-1 min-w-0">
-                        <a href={`/p/${sqid.encode(post.id)}`} class="hover:underline">
-                          {post.title || post.content?.slice(0, 80) || `Post #${post.id}`}
+                        <a
+                          href={`/p/${sqid.encode(post.id)}`}
+                          class="hover:underline"
+                        >
+                          {post.title ||
+                            post.content?.slice(0, 80) ||
+                            `Post #${post.id}`}
                         </a>
                         {!type && (
-                          <span class="ml-2 badge-outline text-xs">{getTypeLabel(post.type)}</span>
+                          <span class="ml-2 badge-outline text-xs">
+                            {getTypeLabel(post.type)}
+                          </span>
                         )}
                         {replyCount && replyCount > 0 && (
                           <span class="ml-2 text-xs text-muted-foreground">
@@ -130,11 +173,13 @@ function ArchiveContent({
                             {replyCount === 1
                               ? t({
                                   message: "1 reply",
-                                  comment: "@context: Archive post reply indicator - single",
+                                  comment:
+                                    "@context: Archive post reply indicator - single",
                                 })
                               : t({
                                   message: "{count} replies",
-                                  comment: "@context: Archive post reply indicator - plural",
+                                  comment:
+                                    "@context: Archive post reply indicator - plural",
                                   values: { count: String(replyCount) },
                                 })}
                             )
@@ -159,7 +204,11 @@ function ArchiveContent({
 
       <nav class="mt-4">
         <a href="/" class="text-sm hover:underline">
-          ← {t({ message: "Back to home", comment: "@context: Navigation link back to home page" })}
+          ←{" "}
+          {t({
+            message: "Back to home",
+            comment: "@context: Navigation link back to home page",
+          })}
         </a>
       </nav>
     </div>
@@ -169,7 +218,8 @@ function ArchiveContent({
 // Archive page - all posts
 archiveRoutes.get("/", async (c) => {
   const typeParam = c.req.query("type") as PostType | undefined;
-  const type = typeParam && POST_TYPES.includes(typeParam) ? typeParam : undefined;
+  const type =
+    typeParam && POST_TYPES.includes(typeParam) ? typeParam : undefined;
 
   // Parse cursor
   const cursorParam = c.req.query("cursor");
@@ -222,6 +272,6 @@ archiveRoutes.get("/", async (c) => {
         grouped={grouped}
         replyCounts={replyCounts}
       />
-    </BaseLayout>
+    </BaseLayout>,
   );
 });

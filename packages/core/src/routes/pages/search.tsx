@@ -32,7 +32,10 @@ function SearchContent({
   page: number;
 }) {
   const { t } = useLingui();
-  const searchTitle = t({ message: "Search", comment: "@context: Search page title" });
+  const searchTitle = t({
+    message: "Search",
+    comment: "@context: Search page title",
+  });
 
   return (
     <div class="container py-8 max-w-2xl">
@@ -53,20 +56,30 @@ function SearchContent({
             autofocus
           />
           <button type="submit" class="btn">
-            {t({ message: "Search", comment: "@context: Search submit button" })}
+            {t({
+              message: "Search",
+              comment: "@context: Search submit button",
+            })}
           </button>
         </div>
       </form>
 
       {/* Error */}
-      {error && <div class="p-4 rounded-lg bg-destructive/10 text-destructive mb-6">{error}</div>}
+      {error && (
+        <div class="p-4 rounded-lg bg-destructive/10 text-destructive mb-6">
+          {error}
+        </div>
+      )}
 
       {/* Results */}
       {query && !error && (
         <div>
           <p class="text-sm text-muted-foreground mb-4">
             {results.length === 0
-              ? t({ message: "No results found.", comment: "@context: Search empty results" })
+              ? t({
+                  message: "No results found.",
+                  comment: "@context: Search empty results",
+                })
               : results.length === 1
                 ? t({
                     message: "Found 1 result",
@@ -83,7 +96,10 @@ function SearchContent({
             <>
               <div class="flex flex-col gap-4">
                 {results.map((result) => (
-                  <article key={result.post.id} class="p-4 rounded-lg border hover:border-primary">
+                  <article
+                    key={result.post.id}
+                    class="p-4 rounded-lg border hover:border-primary"
+                  >
                     <a href={`/p/${sqid.encode(result.post.id)}`} class="block">
                       <h2 class="font-medium hover:underline">
                         {result.post.title ||
@@ -100,7 +116,9 @@ function SearchContent({
 
                       <footer class="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                         <span class="badge-outline">{result.post.type}</span>
-                        <time datetime={time.toISOString(result.post.publishedAt)}>
+                        <time
+                          datetime={time.toISOString(result.post.publishedAt)}
+                        >
                           {time.formatDate(result.post.publishedAt)}
                         </time>
                       </footer>
@@ -121,7 +139,11 @@ function SearchContent({
 
       <nav class="mt-8 pt-6 border-t">
         <a href="/" class="text-sm hover:underline">
-          ← {t({ message: "Back to home", comment: "@context: Navigation link back to home page" })}
+          ←{" "}
+          {t({
+            message: "Back to home",
+            comment: "@context: Navigation link back to home page",
+          })}
         </a>
       </nav>
     </div>
@@ -161,8 +183,17 @@ searchRoutes.get("/", async (c) => {
   }
 
   return c.html(
-    <BaseLayout title={query ? `Search: ${query} - ${siteName}` : `Search - ${siteName}`} c={c}>
-      <SearchContent query={query} results={results} error={error} hasMore={hasMore} page={page} />
-    </BaseLayout>
+    <BaseLayout
+      title={query ? `Search: ${query} - ${siteName}` : `Search - ${siteName}`}
+      c={c}
+    >
+      <SearchContent
+        query={query}
+        results={results}
+        error={error}
+        hasMore={hasMore}
+        page={page}
+      />
+    </BaseLayout>,
   );
 });

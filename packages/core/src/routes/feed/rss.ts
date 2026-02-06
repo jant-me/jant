@@ -15,7 +15,8 @@ export const rssRoutes = new Hono<Env>();
 // RSS 2.0 Feed - main feed at /feed
 rssRoutes.get("/", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
-  const siteDescription = (await c.var.services.settings.get("SITE_DESCRIPTION")) ?? "";
+  const siteDescription =
+    (await c.var.services.settings.get("SITE_DESCRIPTION")) ?? "";
   const siteUrl = c.env.SITE_URL;
 
   const posts = await c.var.services.posts.list({
@@ -62,7 +63,8 @@ rssRoutes.get("/", async (c) => {
 // Atom Feed
 rssRoutes.get("/atom.xml", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
-  const siteDescription = (await c.var.services.settings.get("SITE_DESCRIPTION")) ?? "";
+  const siteDescription =
+    (await c.var.services.settings.get("SITE_DESCRIPTION")) ?? "";
   const siteUrl = c.env.SITE_URL;
 
   const posts = await c.var.services.posts.list({

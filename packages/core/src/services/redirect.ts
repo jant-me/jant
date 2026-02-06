@@ -62,7 +62,10 @@ export function createRedirectService(db: Database): RedirectService {
     },
 
     async delete(id) {
-      const result = await db.delete(redirects).where(eq(redirects.id, id)).returning();
+      const result = await db
+        .delete(redirects)
+        .where(eq(redirects.id, id))
+        .returning();
       return result.length > 0;
     },
 

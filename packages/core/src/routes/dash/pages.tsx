@@ -33,7 +33,10 @@ function PagesListContent({ pages }: { pages: Post[] }) {
     <>
       <CrudPageHeader
         title={t({ message: "Pages", comment: "@context: Pages main heading" })}
-        ctaLabel={t({ message: "New Page", comment: "@context: Button to create new page" })}
+        ctaLabel={t({
+          message: "New Page",
+          comment: "@context: Button to create new page",
+        })}
         ctaHref="/dash/pages/new"
       />
 
@@ -57,8 +60,15 @@ function PagesListContent({ pages }: { pages: Post[] }) {
               actions={
                 <ActionButtons
                   editHref={`/dash/pages/${sqid.encode(page.id)}/edit`}
-                  editLabel={t({ message: "Edit", comment: "@context: Button to edit page" })}
-                  viewHref={page.visibility !== "draft" && page.path ? `/${page.path}` : undefined}
+                  editLabel={t({
+                    message: "Edit",
+                    comment: "@context: Button to edit page",
+                  })}
+                  viewHref={
+                    page.visibility !== "draft" && page.path
+                      ? `/${page.path}`
+                      : undefined
+                  }
                   viewLabel={t({
                     message: "View",
                     comment: "@context: Button to view page on public site",
@@ -68,11 +78,19 @@ function PagesListContent({ pages }: { pages: Post[] }) {
             >
               <div class="flex items-center gap-2 mb-1">
                 <VisibilityBadge visibility={page.visibility} />
-                <span class="text-xs text-muted-foreground">{time.formatDate(page.updatedAt)}</span>
+                <span class="text-xs text-muted-foreground">
+                  {time.formatDate(page.updatedAt)}
+                </span>
               </div>
-              <a href={`/dash/pages/${sqid.encode(page.id)}`} class="font-medium hover:underline">
+              <a
+                href={`/dash/pages/${sqid.encode(page.id)}`}
+                class="font-medium hover:underline"
+              >
                 {page.title ||
-                  t({ message: "Untitled", comment: "@context: Default title for untitled page" })}
+                  t({
+                    message: "Untitled",
+                    comment: "@context: Default title for untitled page",
+                  })}
               </a>
               <p class="text-sm text-muted-foreground mt-1">/{page.path}</p>
             </ListItemRow>
@@ -103,14 +121,24 @@ function ViewPageContent({ page }: { page: Post }) {
         <div>
           <h1 class="text-2xl font-semibold">
             {page.title ||
-              t({ message: "Page", comment: "@context: Default page heading when untitled" })}
+              t({
+                message: "Page",
+                comment: "@context: Default page heading when untitled",
+              })}
           </h1>
           {page.path && <p class="text-muted-foreground mt-1">/{page.path}</p>}
         </div>
         <ActionButtons
           editHref={`/dash/pages/${sqid.encode(page.id)}/edit`}
-          editLabel={t({ message: "Edit", comment: "@context: Button to edit page" })}
-          viewHref={page.visibility !== "draft" && page.path ? `/${page.path}` : undefined}
+          editLabel={t({
+            message: "Edit",
+            comment: "@context: Button to edit page",
+          })}
+          viewHref={
+            page.visibility !== "draft" && page.path
+              ? `/${page.path}`
+              : undefined
+          }
           viewLabel={t({
             message: "View",
             comment: "@context: Button to view page on public site",
@@ -120,12 +148,18 @@ function ViewPageContent({ page }: { page: Post }) {
 
       <div class="card">
         <section>
-          <div class="prose" dangerouslySetInnerHTML={{ __html: page.contentHtml || "" }} />
+          <div
+            class="prose"
+            dangerouslySetInnerHTML={{ __html: page.contentHtml || "" }}
+          />
         </section>
       </div>
 
       <DangerZone
-        actionLabel={t({ message: "Delete Page", comment: "@context: Button to delete page" })}
+        actionLabel={t({
+          message: "Delete Page",
+          comment: "@context: Button to delete page",
+        })}
         formAction={`/dash/pages/${sqid.encode(page.id)}/delete`}
         confirmMessage="Are you sure you want to delete this page?"
       />
@@ -138,7 +172,10 @@ function EditPageContent({ page }: { page: Post }) {
   return (
     <>
       <h1 class="text-2xl font-semibold mb-6">
-        {t({ message: "Edit Page", comment: "@context: Edit page main heading" })}
+        {t({
+          message: "Edit Page",
+          comment: "@context: Edit page main heading",
+        })}
       </h1>
       <PageForm page={page} action={`/dash/pages/${sqid.encode(page.id)}`} />
     </>
@@ -155,9 +192,14 @@ pagesRoutes.get("/", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title="Pages" siteName={siteName} currentPath="/dash/pages">
+    <DashLayout
+      c={c}
+      title="Pages"
+      siteName={siteName}
+      currentPath="/dash/pages"
+    >
       <PagesListContent pages={pages} />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -166,9 +208,14 @@ pagesRoutes.get("/new", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title="New Page" siteName={siteName} currentPath="/dash/pages">
+    <DashLayout
+      c={c}
+      title="New Page"
+      siteName={siteName}
+      currentPath="/dash/pages"
+    >
       <NewPageContent />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -203,9 +250,14 @@ pagesRoutes.get("/:id", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title={page.title || "Page"} siteName={siteName} currentPath="/dash/pages">
+    <DashLayout
+      c={c}
+      title={page.title || "Page"}
+      siteName={siteName}
+      currentPath="/dash/pages"
+    >
       <ViewPageContent page={page} />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -227,7 +279,7 @@ pagesRoutes.get("/:id/edit", async (c) => {
       currentPath="/dash/pages"
     >
       <EditPageContent page={page} />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 

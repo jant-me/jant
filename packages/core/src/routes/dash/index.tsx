@@ -32,13 +32,19 @@ function DashboardContent({
     <div class="container py-8">
       <h1 class="text-2xl font-semibold mb-6">
         {/* ✅ No more nesting! */}
-        {t({ message: "Dashboard", comment: "@context: Dashboard main heading" })}
+        {t({
+          message: "Dashboard",
+          comment: "@context: Dashboard main heading",
+        })}
       </h1>
 
       <div class="grid gap-4 md:grid-cols-3 mb-6">
         <div class="p-4 border rounded">
           <p class="text-sm text-muted-foreground">
-            {t({ message: "Published", comment: "@context: Post status label" })}
+            {t({
+              message: "Published",
+              comment: "@context: Post status label",
+            })}
           </p>
           <p class="text-3xl font-bold">{publishedCount}</p>
         </div>
@@ -52,10 +58,16 @@ function DashboardContent({
 
         <div class="p-4 border rounded">
           <p class="text-sm text-muted-foreground mb-2">
-            {t({ message: "Quick Actions", comment: "@context: Dashboard section title" })}
+            {t({
+              message: "Quick Actions",
+              comment: "@context: Dashboard section title",
+            })}
           </p>
           <a href="/dash/posts/new" class="btn btn-primary w-full">
-            {t({ message: "New Post", comment: "@context: Button to create new post" })}
+            {t({
+              message: "New Post",
+              comment: "@context: Button to create new post",
+            })}
           </a>
         </div>
       </div>
@@ -83,7 +95,10 @@ dashIndexRoutes.get("/", async (c) => {
 
   return c.html(
     <DashLayout c={c} title="Dashboard" siteName={siteName} currentPath="/dash">
-      <DashboardContent publishedCount={publishedPosts.length} draftCount={draftPosts.length} />
-    </DashLayout>
+      <DashboardContent
+        publishedCount={publishedPosts.length}
+        draftCount={draftPosts.length}
+      />
+    </DashLayout>,
   );
 });

@@ -51,7 +51,7 @@ export interface ImageOptions {
 export function getImageUrl(
   originalUrl: string,
   transformUrl?: string,
-  options?: ImageOptions
+  options?: ImageOptions,
 ): string {
   if (!transformUrl || !options || Object.keys(options).length === 0) {
     return originalUrl;
@@ -93,7 +93,11 @@ export function getImageUrl(
  * // Returns: "https://cdn.example.com/uploads/file.webp"
  * ```
  */
-export function getMediaUrl(mediaId: string, r2Key: string, r2PublicUrl?: string): string {
+export function getMediaUrl(
+  mediaId: string,
+  r2Key: string,
+  r2PublicUrl?: string,
+): string {
   if (r2PublicUrl) {
     return `${r2PublicUrl}/${r2Key}`;
   }

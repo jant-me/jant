@@ -20,14 +20,23 @@ function PageContent({ page }: { page: Post }) {
   return (
     <div class="container py-8 max-w-2xl">
       <article class="h-entry">
-        {page.title && <h1 class="p-name text-3xl font-semibold mb-6">{page.title}</h1>}
+        {page.title && (
+          <h1 class="p-name text-3xl font-semibold mb-6">{page.title}</h1>
+        )}
 
-        <div class="e-content prose" dangerouslySetInnerHTML={{ __html: page.contentHtml || "" }} />
+        <div
+          class="e-content prose"
+          dangerouslySetInnerHTML={{ __html: page.contentHtml || "" }}
+        />
       </article>
 
       <nav class="mt-8 pt-6 border-t">
         <a href="/" class="text-sm hover:underline">
-          ← {t({ message: "Back to home", comment: "@context: Navigation link back to home page" })}
+          ←{" "}
+          {t({
+            message: "Back to home",
+            comment: "@context: Navigation link back to home page",
+          })}
         </a>
       </nav>
     </div>
@@ -60,6 +69,6 @@ pageRoutes.get("/:path", async (c) => {
       c={c}
     >
       <PageContent page={page} />
-    </BaseLayout>
+    </BaseLayout>,
   );
 });

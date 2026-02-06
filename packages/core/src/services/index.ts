@@ -9,7 +9,10 @@ import { createSettingsService, type SettingsService } from "./settings.js";
 import { createPostService, type PostService } from "./post.js";
 import { createRedirectService, type RedirectService } from "./redirect.js";
 import { createMediaService, type MediaService } from "./media.js";
-import { createCollectionService, type CollectionService } from "./collection.js";
+import {
+  createCollectionService,
+  type CollectionService,
+} from "./collection.js";
 import { createSearchService, type SearchService } from "./search.js";
 
 export interface Services {

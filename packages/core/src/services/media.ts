@@ -50,17 +50,29 @@ export function createMediaService(db: Database): MediaService {
 
   return {
     async getById(id) {
-      const result = await db.select().from(media).where(eq(media.id, id)).limit(1);
+      const result = await db
+        .select()
+        .from(media)
+        .where(eq(media.id, id))
+        .limit(1);
       return result[0] ? toMedia(result[0]) : null;
     },
 
     async getByR2Key(r2Key) {
-      const result = await db.select().from(media).where(eq(media.r2Key, r2Key)).limit(1);
+      const result = await db
+        .select()
+        .from(media)
+        .where(eq(media.r2Key, r2Key))
+        .limit(1);
       return result[0] ? toMedia(result[0]) : null;
     },
 
     async list(limit = 100) {
-      const rows = await db.select().from(media).orderBy(desc(media.createdAt)).limit(limit);
+      const rows = await db
+        .select()
+        .from(media)
+        .orderBy(desc(media.createdAt))
+        .limit(limit);
       return rows.map(toMedia);
     },
 

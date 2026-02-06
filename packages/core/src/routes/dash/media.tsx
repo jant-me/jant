@@ -110,7 +110,10 @@ function MediaListContent({
     message: "Uploading...",
     comment: "@context: Upload status - uploading",
   });
-  const uploadText = t({ message: "Upload", comment: "@context: Button to upload media file" });
+  const uploadText = t({
+    message: "Upload",
+    comment: "@context: Button to upload media file",
+  });
   const errorText = t({
     message: "Upload failed. Please try again.",
     comment: "@context: Upload error message",
@@ -281,7 +284,12 @@ function processSSEEvent(event) {
         </h1>
         <label class="btn cursor-pointer">
           <span>{uploadText}</span>
-          <input type="file" class="hidden" accept="image/*" onchange="handleMediaUpload(this)" />
+          <input
+            type="file"
+            class="hidden"
+            accept="image/*"
+            onchange="handleMediaUpload(this)"
+          />
         </label>
       </div>
 
@@ -295,7 +303,8 @@ function processSSEEvent(event) {
             {t({
               message:
                 "Images are automatically optimized: resized to max 1920px, converted to WebP, and metadata stripped.",
-              comment: "@context: Media upload instructions - auto optimization",
+              comment:
+                "@context: Media upload instructions - auto optimization",
             })}
           </p>
         </section>
@@ -373,11 +382,15 @@ function ViewMediaContent({
         <div>
           <h1 class="text-2xl font-semibold">{media.originalName}</h1>
           <p class="text-muted-foreground mt-1">
-            {formatSize(media.size)} · {media.mimeType} · {time.formatDate(media.createdAt)}
+            {formatSize(media.size)} · {media.mimeType} ·{" "}
+            {time.formatDate(media.createdAt)}
           </p>
         </div>
         <a href="/dash/media" class="btn-outline">
-          {t({ message: "Back", comment: "@context: Button to go back to media list" })}
+          {t({
+            message: "Back",
+            comment: "@context: Button to go back to media list",
+          })}
         </a>
       </div>
 
@@ -386,7 +399,10 @@ function ViewMediaContent({
         <div class="card">
           <header>
             <h2>
-              {t({ message: "Preview", comment: "@context: Media detail section - preview" })}
+              {t({
+                message: "Preview",
+                comment: "@context: Media detail section - preview",
+              })}
             </h2>
           </header>
           <section>
@@ -422,17 +438,30 @@ function ViewMediaContent({
         <div class="space-y-6">
           <div class="card">
             <header>
-              <h2>{t({ message: "URL", comment: "@context: Media detail section - URL" })}</h2>
+              <h2>
+                {t({
+                  message: "URL",
+                  comment: "@context: Media detail section - URL",
+                })}
+              </h2>
             </header>
             <section>
               <div class="flex items-center gap-2">
-                <input type="text" class="input flex-1 font-mono text-sm" value={url} readonly />
+                <input
+                  type="text"
+                  class="input flex-1 font-mono text-sm"
+                  value={url}
+                  readonly
+                />
                 <button
                   type="button"
                   class="btn-outline"
                   onclick={`navigator.clipboard.writeText('${url}')`}
                 >
-                  {t({ message: "Copy", comment: "@context: Button to copy URL to clipboard" })}
+                  {t({
+                    message: "Copy",
+                    comment: "@context: Button to copy URL to clipboard",
+                  })}
                 </button>
               </div>
               <p class="text-xs text-muted-foreground mt-2">
@@ -484,7 +513,8 @@ function ViewMediaContent({
             formAction={`/dash/media/${media.id}/delete`}
             confirmMessage="Are you sure you want to delete this media?"
             description={t({
-              message: "Deleting this media will remove it permanently from storage.",
+              message:
+                "Deleting this media will remove it permanently from storage.",
               comment: "@context: Warning message before deleting media",
             })}
           />
@@ -518,13 +548,18 @@ mediaRoutes.get("/", async (c) => {
   const imageTransformUrl = c.env.IMAGE_TRANSFORM_URL;
 
   return c.html(
-    <DashLayout c={c} title="Media" siteName={siteName} currentPath="/dash/media">
+    <DashLayout
+      c={c}
+      title="Media"
+      siteName={siteName}
+      currentPath="/dash/media"
+    >
       <MediaListContent
         mediaList={mediaList}
         r2PublicUrl={r2PublicUrl}
         imageTransformUrl={imageTransformUrl}
       />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -539,13 +574,18 @@ mediaRoutes.get("/:id", async (c) => {
   const imageTransformUrl = c.env.IMAGE_TRANSFORM_URL;
 
   return c.html(
-    <DashLayout c={c} title={media.originalName} siteName={siteName} currentPath="/dash/media">
+    <DashLayout
+      c={c}
+      title={media.originalName}
+      siteName={siteName}
+      currentPath="/dash/media"
+    >
       <ViewMediaContent
         media={media}
         r2PublicUrl={r2PublicUrl}
         imageTransformUrl={imageTransformUrl}
       />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 

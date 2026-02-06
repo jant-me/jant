@@ -7,7 +7,10 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./db/schema.js";
 
-export function createAuth(d1: D1Database, options: { secret: string; baseURL: string }) {
+export function createAuth(
+  d1: D1Database,
+  options: { secret: string; baseURL: string },
+) {
   const db = drizzle(d1, { schema });
 
   return betterAuth({

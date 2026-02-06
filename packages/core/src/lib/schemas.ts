@@ -62,7 +62,11 @@ export const UpdatePostSchema = CreatePostSchema.partial();
  * // type is PostType, throws if invalid
  * ```
  */
-export function parseFormData<T>(formData: FormData, key: string, schema: z.ZodSchema<T>): T {
+export function parseFormData<T>(
+  formData: FormData,
+  key: string,
+  schema: z.ZodSchema<T>,
+): T {
   const value = formData.get(key);
   if (value === null) {
     throw new Error(`Missing required field: ${key}`);
@@ -82,7 +86,7 @@ export function parseFormData<T>(formData: FormData, key: string, schema: z.ZodS
 export function parseFormDataOptional<T>(
   formData: FormData,
   key: string,
-  schema: z.ZodSchema<T>
+  schema: z.ZodSchema<T>,
 ): T | undefined {
   const value = formData.get(key);
   if (value === null || value === "") {

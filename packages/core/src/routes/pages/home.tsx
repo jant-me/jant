@@ -22,8 +22,14 @@ function HomeContent({ siteName, posts }: { siteName: string; posts: Post[] }) {
       <header class="mb-8 flex items-center justify-between">
         <h1 class="text-2xl font-semibold">{siteName}</h1>
         <nav class="flex items-center gap-4 text-sm">
-          <a href="/archive" class="text-muted-foreground hover:text-foreground">
-            {t({ message: "Archive", comment: "@context: Navigation link to archive page" })}
+          <a
+            href="/archive"
+            class="text-muted-foreground hover:text-foreground"
+          >
+            {t({
+              message: "Archive",
+              comment: "@context: Navigation link to archive page",
+            })}
           </a>
           <a href="/feed" class="text-muted-foreground hover:text-foreground">
             RSS
@@ -34,14 +40,20 @@ function HomeContent({ siteName, posts }: { siteName: string; posts: Post[] }) {
       <main class="flex flex-col gap-6">
         {posts.length === 0 ? (
           <p class="text-muted-foreground">
-            {t({ message: "No posts yet.", comment: "@context: Empty state message on home page" })}
+            {t({
+              message: "No posts yet.",
+              comment: "@context: Empty state message on home page",
+            })}
           </p>
         ) : (
           posts.map((post) => (
             <article key={post.id} class="h-entry">
               {post.title && (
                 <h2 class="p-name text-lg font-medium mb-2">
-                  <a href={`/p/${sqid.encode(post.id)}`} class="u-url hover:underline">
+                  <a
+                    href={`/p/${sqid.encode(post.id)}`}
+                    class="u-url hover:underline"
+                  >
                     {post.title}
                   </a>
                 </h2>
@@ -51,12 +63,18 @@ function HomeContent({ siteName, posts }: { siteName: string; posts: Post[] }) {
                 dangerouslySetInnerHTML={{ __html: post.contentHtml || "" }}
               />
               <footer class="mt-2 text-sm text-muted-foreground">
-                <time class="dt-published" datetime={time.toISOString(post.publishedAt)}>
+                <time
+                  class="dt-published"
+                  datetime={time.toISOString(post.publishedAt)}
+                >
                   {time.formatDate(post.publishedAt)}
                 </time>
                 {post.visibility === "featured" && (
                   <span class="ml-2 text-xs">
-                    {t({ message: "Featured", comment: "@context: Post visibility badge" })}
+                    {t({
+                      message: "Featured",
+                      comment: "@context: Post visibility badge",
+                    })}
                   </span>
                 )}
               </footer>
@@ -67,7 +85,10 @@ function HomeContent({ siteName, posts }: { siteName: string; posts: Post[] }) {
 
       {posts.length >= 20 && (
         <nav class="mt-8 text-center">
-          <a href="/archive" class="text-sm text-muted-foreground hover:text-foreground">
+          <a
+            href="/archive"
+            class="text-sm text-muted-foreground hover:text-foreground"
+          >
             {t({
               message: "View all posts →",
               comment: "@context: Link to view all posts on archive page",
@@ -95,6 +116,6 @@ homeRoutes.get("/", async (c) => {
   return c.html(
     <BaseLayout title={siteName} c={c}>
       <HomeContent siteName={siteName} posts={posts} />
-    </BaseLayout>
+    </BaseLayout>,
   );
 });

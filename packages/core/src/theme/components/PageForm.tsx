@@ -14,7 +14,11 @@ export interface PageFormProps {
   cancelUrl?: string;
 }
 
-export const PageForm: FC<PageFormProps> = ({ page, action, cancelUrl = "/dash/pages" }) => {
+export const PageForm: FC<PageFormProps> = ({
+  page,
+  action,
+  cancelUrl = "/dash/pages",
+}) => {
   const { t } = useLingui();
   const isEdit = !!page;
 
@@ -26,13 +30,19 @@ export const PageForm: FC<PageFormProps> = ({ page, action, cancelUrl = "/dash/p
       {/* Title */}
       <div class="field">
         <label class="label">
-          {t({ message: "Title", comment: "@context: Page form field label - title" })}
+          {t({
+            message: "Title",
+            comment: "@context: Page form field label - title",
+          })}
         </label>
         <input
           type="text"
           name="title"
           class="input"
-          placeholder={t({ message: "Page title...", comment: "@context: Page title placeholder" })}
+          placeholder={t({
+            message: "Page title...",
+            comment: "@context: Page title placeholder",
+          })}
           value={page?.title ?? ""}
           required
         />
@@ -41,7 +51,10 @@ export const PageForm: FC<PageFormProps> = ({ page, action, cancelUrl = "/dash/p
       {/* Path */}
       <div class="field">
         <label class="label">
-          {t({ message: "Path", comment: "@context: Page form field label - URL path" })}
+          {t({
+            message: "Path",
+            comment: "@context: Page form field label - URL path",
+          })}
         </label>
         <div class="flex items-center gap-2">
           <span class="text-muted-foreground">/</span>
@@ -61,7 +74,8 @@ export const PageForm: FC<PageFormProps> = ({ page, action, cancelUrl = "/dash/p
         </div>
         <p class="text-xs text-muted-foreground mt-1">
           {t({
-            message: "The URL path for this page. Use lowercase letters, numbers, and hyphens.",
+            message:
+              "The URL path for this page. Use lowercase letters, numbers, and hyphens.",
             comment: "@context: Page path helper text",
           })}
         </p>
@@ -70,7 +84,10 @@ export const PageForm: FC<PageFormProps> = ({ page, action, cancelUrl = "/dash/p
       {/* Content */}
       <div class="field">
         <label class="label">
-          {t({ message: "Content", comment: "@context: Page form field label - content" })}
+          {t({
+            message: "Content",
+            comment: "@context: Page form field label - content",
+          })}
         </label>
         <textarea
           name="content"
@@ -88,19 +105,32 @@ export const PageForm: FC<PageFormProps> = ({ page, action, cancelUrl = "/dash/p
       {/* Visibility */}
       <div class="field">
         <label class="label">
-          {t({ message: "Status", comment: "@context: Page form field label - publish status" })}
+          {t({
+            message: "Status",
+            comment: "@context: Page form field label - publish status",
+          })}
         </label>
         <select name="visibility" class="select">
-          <option value="unlisted" selected={page?.visibility === "unlisted" || !page}>
-            {t({ message: "Published", comment: "@context: Page status option - published" })}
+          <option
+            value="unlisted"
+            selected={page?.visibility === "unlisted" || !page}
+          >
+            {t({
+              message: "Published",
+              comment: "@context: Page status option - published",
+            })}
           </option>
           <option value="draft" selected={page?.visibility === "draft"}>
-            {t({ message: "Draft", comment: "@context: Page status option - draft" })}
+            {t({
+              message: "Draft",
+              comment: "@context: Page status option - draft",
+            })}
           </option>
         </select>
         <p class="text-xs text-muted-foreground mt-1">
           {t({
-            message: "Published pages are accessible via their path. Drafts are not visible.",
+            message:
+              "Published pages are accessible via their path. Drafts are not visible.",
             comment: "@context: Page status helper text",
           })}
         </p>
@@ -110,11 +140,20 @@ export const PageForm: FC<PageFormProps> = ({ page, action, cancelUrl = "/dash/p
       <div class="flex gap-2">
         <button type="submit" class="btn">
           {isEdit
-            ? t({ message: "Update Page", comment: "@context: Button to update existing page" })
-            : t({ message: "Create Page", comment: "@context: Button to create new page" })}
+            ? t({
+                message: "Update Page",
+                comment: "@context: Button to update existing page",
+              })
+            : t({
+                message: "Create Page",
+                comment: "@context: Button to create new page",
+              })}
         </button>
         <a href={cancelUrl} class="btn-outline">
-          {t({ message: "Cancel", comment: "@context: Button to cancel and go back" })}
+          {t({
+            message: "Cancel",
+            comment: "@context: Button to cancel and go back",
+          })}
         </a>
       </div>
     </form>

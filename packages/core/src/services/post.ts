@@ -10,7 +10,13 @@ import { posts } from "../db/schema.js";
 import { now } from "../lib/time.js";
 import { extractDomain } from "../lib/url.js";
 import { render as renderMarkdown } from "../lib/markdown.js";
-import type { PostType, Visibility, Post, CreatePost, UpdatePost } from "../types.js";
+import type {
+  PostType,
+  Visibility,
+  Post,
+  CreatePost,
+  UpdatePost,
+} from "../types.js";
 
 export interface PostFilters {
   type?: PostType;
@@ -133,7 +139,9 @@ export function createPostService(db: Database): PostService {
       const contentHtml = data.content ? renderMarkdown(data.content) : null;
 
       // Extract domain from source URL
-      const sourceDomain = data.sourceUrl ? extractDomain(data.sourceUrl) : null;
+      const sourceDomain = data.sourceUrl
+        ? extractDomain(data.sourceUrl)
+        : null;
 
       // Handle thread relationship
       let threadId: number | null = null;
@@ -145,7 +153,9 @@ export function createPostService(db: Database): PostService {
           // thread_id = parent's thread_id or parent's id (if parent is root)
           threadId = parent.threadId ?? parent.id;
           // Inherit visibility from root
-          const root = parent.threadId ? await this.getById(parent.threadId) : parent;
+          const root = parent.threadId
+            ? await this.getById(parent.threadId)
+            : parent;
           if (root) {
             visibility = root.visibility;
           }
@@ -181,25 +191,35 @@ export function createPostService(db: Database): PostService {
       if (!existing) return null;
 
       const timestamp = now();
-      const updates: Partial<typeof posts.$inferInsert> = { updatedAt: timestamp };
+      const updates: Partial<typeof posts.$inferInsert> = {
+        updatedAt: timestamp,
+      };
 
       if (data.type !== undefined) updates.type = data.type;
       if (data.title !== undefined) updates.title = data.title;
       if (data.path !== undefined) updates.path = data.path;
-      if (data.publishedAt !== undefined) updates.publishedAt = data.publishedAt;
+      if (data.publishedAt !== undefined)
+        updates.publishedAt = data.publishedAt;
       if (data.sourceUrl !== undefined) {
         updates.sourceUrl = data.sourceUrl;
-        updates.sourceDomain = data.sourceUrl ? extractDomain(data.sourceUrl) : null;
+        updates.sourceDomain = data.sourceUrl
+          ? extractDomain(data.sourceUrl)
+          : null;
       }
       if (data.sourceName !== undefined) updates.sourceName = data.sourceName;
 
       if (data.content !== undefined) {
         updates.content = data.content;
-        updates.contentHtml = data.content ? renderMarkdown(data.content) : null;
+        updates.contentHtml = data.content
+          ? renderMarkdown(data.content)
+          : null;
       }
 
       // Handle visibility change - cascade to thread if this is root
-      if (data.visibility !== undefined && data.visibility !== existing.visibility) {
+      if (
+        data.visibility !== undefined &&
+        data.visibility !== existing.visibility
+      ) {
         updates.visibility = data.visibility;
         // If this is a root post, cascade visibility to all thread posts
         if (!existing.threadId) {
@@ -207,7 +227,11 @@ export function createPostService(db: Database): PostService {
         }
       }
 
-      const result = await db.update(posts).set(updates).where(eq(posts.id, id)).returning();
+      const result = await db
+        .update(posts)
+        .set(updates)
+        .where(eq(posts.id, id))
+        .returning();
 
       return result[0] ? toPost(result[0]) : null;
     },
@@ -239,7 +263,12 @@ export function createPostService(db: Database): PostService {
       const rows = await db
         .select()
         .from(posts)
-        .where(and(or(eq(posts.id, rootId), eq(posts.threadId, rootId)), isNull(posts.deletedAt)))
+        .where(
+          and(
+            or(eq(posts.id, rootId), eq(posts.threadId, rootId)),
+            isNull(posts.deletedAt),
+          ),
+        )
         .orderBy(posts.createdAt);
 
       return rows.map(toPost);

@@ -14,7 +14,7 @@ dashRoute.get("/", async (c) => {
   return c.html(
     <I18nProvider c={c}>
       <MyApp />
-    </I18nProvider>
+    </I18nProvider>,
   );
 });
 
@@ -22,7 +22,9 @@ dashRoute.get("/", async (c) => {
 function MyApp() {
   const { t } = useLingui();
 
-  return <h1>{t({ message: "Dashboard", comment: "@context: Page title" })}</h1>;
+  return (
+    <h1>{t({ message: "Dashboard", comment: "@context: Page title" })}</h1>
+  );
 }
 ```
 
@@ -53,12 +55,18 @@ dashRoute.get("/", async (c) => {
   return c.html(
     <I18nProvider c={c}>
       <Dashboard postCount={posts.length} username="Alice" />
-    </I18nProvider>
+    </I18nProvider>,
   );
 });
 
 // Component: use useLingui() hook
-function Dashboard({ postCount, username }: { postCount: number; username: string }) {
+function Dashboard({
+  postCount,
+  username,
+}: {
+  postCount: number;
+  username: string;
+}) {
   const { t } = useLingui();
 
   return (
@@ -69,16 +77,22 @@ function Dashboard({ postCount, username }: { postCount: number; username: strin
       {/* 2. With variables */}
       <p>
         {t(
-          { message: "Welcome back, {name}!", comment: "@context: Welcome message" },
-          { name: username }
+          {
+            message: "Welcome back, {name}!",
+            comment: "@context: Welcome message",
+          },
+          { name: username },
         )}
       </p>
 
       {/* 3. With dynamic values */}
       <p>
         {t(
-          { message: "You have {count} posts", comment: "@context: Post count" },
-          { count: postCount }
+          {
+            message: "You have {count} posts",
+            comment: "@context: Post count",
+          },
+          { count: postCount },
         )}
       </p>
 
@@ -130,11 +144,14 @@ const { t } = useLingui();
 // For dynamic content, use t() with placeholders
 <p>
   {t(
-    { message: "Visit {linkStart}our website{linkEnd}", comment: "@context: Website link" },
+    {
+      message: "Visit {linkStart}our website{linkEnd}",
+      comment: "@context: Website link",
+    },
     {
       linkStart: '<a href="/" class="text-primary">',
       linkEnd: "</a>",
-    }
+    },
   )}
 </p>;
 ```
@@ -154,7 +171,7 @@ dashRoute.get("/", async (c) => {
   return c.html(
     <Layout>
       <MyComponent c={c} /> {/* Must pass c prop */}
-    </Layout>
+    </Layout>,
   );
 });
 
@@ -163,7 +180,7 @@ function MyComponent({ c }: { c: Context }) {
   const title = i18n._({ message: "Dashboard", comment: "@context: Title" });
   const greeting = i18n._(
     { message: "Hello {name}", comment: "@context: Greeting" },
-    { name: "Alice" }
+    { name: "Alice" },
   );
 
   return <h1>{title}</h1>;
@@ -181,14 +198,17 @@ dashRoute.get("/", async (c) => {
       <Layout>
         <MyComponent /> {/* No props needed */}
       </Layout>
-    </I18nProvider>
+    </I18nProvider>,
   );
 });
 
 function MyComponent() {
   const { t } = useLingui();
   const title = t({ message: "Dashboard", comment: "@context: Title" });
-  const greeting = t({ message: "Hello {name}", comment: "@context: Greeting" }, { name: "Alice" });
+  const greeting = t(
+    { message: "Hello {name}", comment: "@context: Greeting" },
+    { name: "Alice" },
+  );
 
   return <h1>{title}</h1>;
 }

@@ -43,7 +43,10 @@ export const PostList: FC<PostListProps> = ({ posts }) => {
           actions={
             <ActionButtons
               editHref={`/dash/posts/${sqid.encode(post.id)}/edit`}
-              editLabel={t({ message: "Edit", comment: "@context: Button to edit post" })}
+              editLabel={t({
+                message: "Edit",
+                comment: "@context: Button to edit post",
+              })}
               viewHref={`/p/${sqid.encode(post.id)}`}
               viewLabel={t({
                 message: "View",
@@ -55,12 +58,20 @@ export const PostList: FC<PostListProps> = ({ posts }) => {
           <div class="flex items-center gap-2 mb-1">
             <TypeBadge type={post.type} />
             <VisibilityBadge visibility={post.visibility} />
-            <span class="text-xs text-muted-foreground">{time.formatDate(post.publishedAt)}</span>
+            <span class="text-xs text-muted-foreground">
+              {time.formatDate(post.publishedAt)}
+            </span>
           </div>
-          <a href={`/dash/posts/${sqid.encode(post.id)}`} class="font-medium hover:underline">
+          <a
+            href={`/dash/posts/${sqid.encode(post.id)}`}
+            class="font-medium hover:underline"
+          >
             {post.title ||
               post.content?.slice(0, 60) ||
-              t({ message: "Untitled", comment: "@context: Default title for untitled post" })}
+              t({
+                message: "Untitled",
+                comment: "@context: Default title for untitled post",
+              })}
           </a>
           {post.content && !post.title && (
             <p class="text-sm text-muted-foreground mt-1 line-clamp-2">

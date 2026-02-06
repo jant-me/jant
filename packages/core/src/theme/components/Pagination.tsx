@@ -46,7 +46,10 @@ export const Pagination: FC<PaginationProps> = ({
     message: "Previous",
     comment: "@context: Pagination button - previous page",
   });
-  const nextText = t({ message: "Next", comment: "@context: Pagination button - next page" });
+  const nextText = t({
+    message: "Next",
+    comment: "@context: Pagination button - next page",
+  });
 
   return (
     <nav class="flex items-center justify-between py-4" aria-label="Pagination">
@@ -56,7 +59,9 @@ export const Pagination: FC<PaginationProps> = ({
             ← {prevText}
           </a>
         ) : (
-          <span class="btn-outline text-sm opacity-50 cursor-not-allowed">← {prevText}</span>
+          <span class="btn-outline text-sm opacity-50 cursor-not-allowed">
+            ← {prevText}
+          </span>
         )}
       </div>
 
@@ -66,7 +71,9 @@ export const Pagination: FC<PaginationProps> = ({
             {nextText} →
           </a>
         ) : (
-          <span class="btn-outline text-sm opacity-50 cursor-not-allowed">{nextText} →</span>
+          <span class="btn-outline text-sm opacity-50 cursor-not-allowed">
+            {nextText} →
+          </span>
         )}
       </div>
     </nav>
@@ -92,7 +99,11 @@ export const LoadMore: FC<LoadMoreProps> = ({ href, hasMore, text }) => {
   }
 
   const buttonText =
-    text ?? t({ message: "Load more", comment: "@context: Pagination button - load more items" });
+    text ??
+    t({
+      message: "Load more",
+      comment: "@context: Pagination button - load more items",
+    });
 
   return (
     <div class="text-center py-4">
@@ -146,7 +157,10 @@ export const PagePagination: FC<PagePaginationProps> = ({
     message: "Previous",
     comment: "@context: Pagination button - previous page",
   });
-  const nextText = t({ message: "Next", comment: "@context: Pagination button - next page" });
+  const nextText = t({
+    message: "Next",
+    comment: "@context: Pagination button - next page",
+  });
   const pageText = t({
     message: "Page {page}",
     comment: "@context: Pagination - current page indicator",
@@ -161,7 +175,9 @@ export const PagePagination: FC<PagePaginationProps> = ({
             ← {prevText}
           </a>
         ) : (
-          <span class="btn-outline text-sm opacity-50 cursor-not-allowed">← {prevText}</span>
+          <span class="btn-outline text-sm opacity-50 cursor-not-allowed">
+            ← {prevText}
+          </span>
         )}
       </div>
 
@@ -173,7 +189,9 @@ export const PagePagination: FC<PagePaginationProps> = ({
             {nextText} →
           </a>
         ) : (
-          <span class="btn-outline text-sm opacity-50 cursor-not-allowed">{nextText} →</span>
+          <span class="btn-outline text-sm opacity-50 cursor-not-allowed">
+            {nextText} →
+          </span>
         )}
       </div>
     </nav>

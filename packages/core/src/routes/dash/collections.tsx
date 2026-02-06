@@ -20,13 +20,20 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const collectionsRoutes = new Hono<Env>();
 
-function CollectionsListContent({ collections }: { collections: Collection[] }) {
+function CollectionsListContent({
+  collections,
+}: {
+  collections: Collection[];
+}) {
   const { t } = useLingui();
 
   return (
     <>
       <CrudPageHeader
-        title={t({ message: "Collections", comment: "@context: Dashboard heading" })}
+        title={t({
+          message: "Collections",
+          comment: "@context: Dashboard heading",
+        })}
         ctaLabel={t({
           message: "New Collection",
           comment: "@context: Button to create new collection",
@@ -36,7 +43,10 @@ function CollectionsListContent({ collections }: { collections: Collection[] }) 
 
       {collections.length === 0 ? (
         <EmptyState
-          message={t({ message: "No collections yet.", comment: "@context: Empty state message" })}
+          message={t({
+            message: "No collections yet.",
+            comment: "@context: Empty state message",
+          })}
           ctaText={t({
             message: "New Collection",
             comment: "@context: Button to create new collection",
@@ -51,18 +61,29 @@ function CollectionsListContent({ collections }: { collections: Collection[] }) 
               actions={
                 <ActionButtons
                   editHref={`/dash/collections/${col.id}/edit`}
-                  editLabel={t({ message: "Edit", comment: "@context: Button to edit collection" })}
+                  editLabel={t({
+                    message: "Edit",
+                    comment: "@context: Button to edit collection",
+                  })}
                   viewHref={`/c/${col.path}`}
-                  viewLabel={t({ message: "View", comment: "@context: Button to view collection" })}
+                  viewLabel={t({
+                    message: "View",
+                    comment: "@context: Button to view collection",
+                  })}
                 />
               }
             >
-              <a href={`/dash/collections/${col.id}`} class="font-medium hover:underline">
+              <a
+                href={`/dash/collections/${col.id}`}
+                class="font-medium hover:underline"
+              >
                 {col.title}
               </a>
               <p class="text-sm text-muted-foreground">/{col.path}</p>
               {col.description && (
-                <p class="text-sm text-muted-foreground mt-1">{col.description}</p>
+                <p class="text-sm text-muted-foreground mt-1">
+                  {col.description}
+                </p>
               )}
             </ListItemRow>
           ))}
@@ -80,10 +101,17 @@ function NewCollectionContent() {
         {t({ message: "New Collection", comment: "@context: Page heading" })}
       </h1>
 
-      <form method="post" action="/dash/collections" class="flex flex-col gap-4 max-w-lg">
+      <form
+        method="post"
+        action="/dash/collections"
+        class="flex flex-col gap-4 max-w-lg"
+      >
         <div class="field">
           <label class="label">
-            {t({ message: "Title", comment: "@context: Collection form field" })}
+            {t({
+              message: "Title",
+              comment: "@context: Collection form field",
+            })}
           </label>
           <input
             type="text"
@@ -119,7 +147,10 @@ function NewCollectionContent() {
 
         <div class="field">
           <label class="label">
-            {t({ message: "Description (optional)", comment: "@context: Collection form field" })}
+            {t({
+              message: "Description (optional)",
+              comment: "@context: Collection form field",
+            })}
           </label>
           <textarea
             name="description"
@@ -140,7 +171,10 @@ function NewCollectionContent() {
             })}
           </button>
           <a href="/dash/collections" class="btn-outline">
-            {t({ message: "Cancel", comment: "@context: Button to cancel form" })}
+            {t({
+              message: "Cancel",
+              comment: "@context: Button to cancel form",
+            })}
           </a>
         </div>
       </form>
@@ -148,7 +182,13 @@ function NewCollectionContent() {
   );
 }
 
-function ViewCollectionContent({ collection, posts }: { collection: Collection; posts: Post[] }) {
+function ViewCollectionContent({
+  collection,
+  posts,
+}: {
+  collection: Collection;
+  posts: Post[];
+}) {
   const { t } = useLingui();
   const postsHeader = t({
     message: "Posts in Collection ({count})",
@@ -165,13 +205,21 @@ function ViewCollectionContent({ collection, posts }: { collection: Collection; 
         </div>
         <ActionButtons
           editHref={`/dash/collections/${collection.id}/edit`}
-          editLabel={t({ message: "Edit", comment: "@context: Button to edit collection" })}
+          editLabel={t({
+            message: "Edit",
+            comment: "@context: Button to edit collection",
+          })}
           viewHref={`/c/${collection.path}`}
-          viewLabel={t({ message: "View", comment: "@context: Button to view collection" })}
+          viewLabel={t({
+            message: "View",
+            comment: "@context: Button to view collection",
+          })}
         />
       </div>
 
-      {collection.description && <p class="text-muted-foreground mb-6">{collection.description}</p>}
+      {collection.description && (
+        <p class="text-muted-foreground mb-6">{collection.description}</p>
+      )}
 
       <div class="card">
         <header>
@@ -194,15 +242,21 @@ function ViewCollectionContent({ collection, posts }: { collection: Collection; 
                       href={`/dash/posts/${sqid.encode(post.id)}`}
                       class="font-medium hover:underline"
                     >
-                      {post.title || post.content?.slice(0, 50) || `Post #${post.id}`}
+                      {post.title ||
+                        post.content?.slice(0, 50) ||
+                        `Post #${post.id}`}
                     </a>
                   </div>
-                  <form method="post" action={`/dash/collections/${collection.id}/remove-post`}>
+                  <form
+                    method="post"
+                    action={`/dash/collections/${collection.id}/remove-post`}
+                  >
                     <input type="hidden" name="postId" value={post.id} />
                     <button type="submit" class="btn-sm-ghost text-destructive">
                       {t({
                         message: "Remove",
-                        comment: "@context: Button to remove post from collection",
+                        comment:
+                          "@context: Button to remove post from collection",
                       })}
                     </button>
                   </form>
@@ -215,7 +269,10 @@ function ViewCollectionContent({ collection, posts }: { collection: Collection; 
 
       <div class="mt-6">
         <a href="/dash/collections" class="text-sm hover:underline">
-          {t({ message: "← Back to Collections", comment: "@context: Navigation link" })}
+          {t({
+            message: "← Back to Collections",
+            comment: "@context: Navigation link",
+          })}
         </a>
       </div>
     </>
@@ -238,9 +295,18 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
       >
         <div class="field">
           <label class="label">
-            {t({ message: "Title", comment: "@context: Collection form field" })}
+            {t({
+              message: "Title",
+              comment: "@context: Collection form field",
+            })}
           </label>
-          <input type="text" name="title" class="input" required value={collection.title} />
+          <input
+            type="text"
+            name="title"
+            class="input"
+            required
+            value={collection.title}
+          />
         </div>
 
         <div class="field">
@@ -259,7 +325,10 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
 
         <div class="field">
           <label class="label">
-            {t({ message: "Description (optional)", comment: "@context: Collection form field" })}
+            {t({
+              message: "Description (optional)",
+              comment: "@context: Collection form field",
+            })}
           </label>
           <textarea name="description" class="textarea" rows={3}>
             {collection.description ?? ""}
@@ -274,7 +343,10 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
             })}
           </button>
           <a href={`/dash/collections/${collection.id}`} class="btn-outline">
-            {t({ message: "Cancel", comment: "@context: Button to cancel form" })}
+            {t({
+              message: "Cancel",
+              comment: "@context: Button to cancel form",
+            })}
           </a>
         </div>
       </form>
@@ -297,9 +369,14 @@ collectionsRoutes.get("/", async (c) => {
   const collections = await c.var.services.collections.list();
 
   return c.html(
-    <DashLayout c={c} title="Collections" siteName={siteName} currentPath="/dash/collections">
+    <DashLayout
+      c={c}
+      title="Collections"
+      siteName={siteName}
+      currentPath="/dash/collections"
+    >
       <CollectionsListContent collections={collections} />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -308,9 +385,14 @@ collectionsRoutes.get("/new", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title="New Collection" siteName={siteName} currentPath="/dash/collections">
+    <DashLayout
+      c={c}
+      title="New Collection"
+      siteName={siteName}
+      currentPath="/dash/collections"
+    >
       <NewCollectionContent />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -343,9 +425,14 @@ collectionsRoutes.get("/:id", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title={collection.title} siteName={siteName} currentPath="/dash/collections">
+    <DashLayout
+      c={c}
+      title={collection.title}
+      siteName={siteName}
+      currentPath="/dash/collections"
+    >
       <ViewCollectionContent collection={collection} posts={posts} />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -367,7 +454,7 @@ collectionsRoutes.get("/:id/edit", async (c) => {
       currentPath="/dash/collections"
     >
       <EditCollectionContent collection={collection} />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 

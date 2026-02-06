@@ -20,23 +20,37 @@ function PostContent({ post }: { post: Post }) {
   return (
     <div class="container py-8">
       <article class="h-entry">
-        {post.title && <h1 class="p-name text-2xl font-semibold mb-4">{post.title}</h1>}
+        {post.title && (
+          <h1 class="p-name text-2xl font-semibold mb-4">{post.title}</h1>
+        )}
 
-        <div class="e-content prose" dangerouslySetInnerHTML={{ __html: post.contentHtml || "" }} />
+        <div
+          class="e-content prose"
+          dangerouslySetInnerHTML={{ __html: post.contentHtml || "" }}
+        />
 
         <footer class="mt-6 pt-4 border-t text-sm text-muted-foreground">
-          <time class="dt-published" datetime={time.toISOString(post.publishedAt)}>
+          <time
+            class="dt-published"
+            datetime={time.toISOString(post.publishedAt)}
+          >
             {time.formatDate(post.publishedAt)}
           </time>
           <a href={`/p/${sqid.encode(post.id)}`} class="u-url ml-4">
-            {t({ message: "Permalink", comment: "@context: Link to permanent URL of post" })}
+            {t({
+              message: "Permalink",
+              comment: "@context: Link to permanent URL of post",
+            })}
           </a>
         </footer>
       </article>
 
       <nav class="mt-8">
         <a href="/" class="text-sm hover:underline">
-          {t({ message: "← Back to home", comment: "@context: Navigation link" })}
+          {t({
+            message: "← Back to home",
+            comment: "@context: Navigation link",
+          })}
         </a>
       </nav>
     </div>
@@ -73,6 +87,6 @@ postRoutes.get("/:id", async (c) => {
   return c.html(
     <BaseLayout title={title} description={post.content?.slice(0, 160)} c={c}>
       <PostContent post={post} />
-    </BaseLayout>
+    </BaseLayout>,
   );
 });

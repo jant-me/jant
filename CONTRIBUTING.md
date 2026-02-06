@@ -15,9 +15,12 @@ Thanks for your interest in contributing to Jant! This guide will help you get s
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) >= 24.0.0 (LTS)
-- [pnpm](https://pnpm.io/) 10.x
-- [mise](https://mise.jdx.dev/) (recommended for running tasks)
+- [mise](https://mise.jdx.dev/) — manages Node.js and pnpm automatically
+
+```bash
+# Install mise (macOS/Linux)
+curl https://mise.run | sh
+```
 
 ### Getting Started
 
@@ -26,14 +29,15 @@ Thanks for your interest in contributing to Jant! This guide will help you get s
 git clone https://github.com/jant-me/jant.git
 cd jant
 
+# Install toolchain (Node.js + pnpm, versions defined in mise.toml)
+mise install
+
 # Install dependencies
 pnpm install
 
-# Start development server
+# Start development server (http://localhost:9019)
 mise run dev
 ```
-
-The dev server runs at http://localhost:9019
 
 ### Environment Setup
 

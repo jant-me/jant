@@ -14,7 +14,7 @@ dashRoute.get("/", async (c) => {
   return c.html(
     <I18nProvider c={c}>
       <YourApp />
-    </I18nProvider>
+    </I18nProvider>,
   );
 });
 ```
@@ -77,8 +77,11 @@ function DashboardContent({ postCount }: { postCount: number }) {
       {/* 2. With variables */}
       <p>
         {t(
-          { message: "You have {count} posts", comment: "@context: Post count message" },
-          { count: postCount }
+          {
+            message: "You have {count} posts",
+            comment: "@context: Post count message",
+          },
+          { count: postCount },
         )}
       </p>
 
@@ -102,7 +105,7 @@ dashRoute.get("/", async (c) => {
   return c.html(
     <I18nProvider c={c}>
       <DashboardContent postCount={posts.length} />
-    </I18nProvider>
+    </I18nProvider>,
   );
 });
 ```
@@ -122,7 +125,7 @@ dashRoute.get("/", async (c) => {
   return c.html(
     <Layout title={i18n._({ message: "Dashboard", comment: "@context: ..." })}>
       <MyComponent c={c} /> {/* Need to pass c prop */}
-    </Layout>
+    </Layout>,
   );
 });
 
@@ -143,7 +146,7 @@ dashRoute.get("/", async (c) => {
       <Layout>
         <MyComponent /> {/* No need to pass c prop */}
       </Layout>
-    </I18nProvider>
+    </I18nProvider>,
   );
 });
 
@@ -175,7 +178,7 @@ t({ message: "Dashboard" });
 c.html(
   <I18nProvider c={c}>
     <App />
-  </I18nProvider>
+  </I18nProvider>,
 );
 
 // ❌ Wrong - useLingui() will throw error
@@ -204,10 +207,17 @@ dashRoute.get("/", async (c) => {
 const { t } = useLingui();
 
 // ✅ Correct - values as second parameter
-t({ message: "Hello {name}", comment: "@context: Greeting" }, { name: "Alice" });
+t(
+  { message: "Hello {name}", comment: "@context: Greeting" },
+  { name: "Alice" },
+);
 
 // ❌ Wrong - values inside first parameter (not supported)
-t({ message: "Hello {name}", comment: "@context: Greeting", values: { name: "Alice" } });
+t({
+  message: "Hello {name}",
+  comment: "@context: Greeting",
+  values: { name: "Alice" },
+});
 ```
 
 ---

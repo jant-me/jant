@@ -65,14 +65,22 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
   const editClass = size === "sm" ? "btn-sm-outline" : "btn-outline";
   const viewClass = size === "sm" ? "btn-sm-ghost" : "btn-ghost";
   const deleteClass =
-    size === "sm" ? "btn-sm-ghost text-destructive" : "btn-ghost text-destructive";
+    size === "sm"
+      ? "btn-sm-ghost text-destructive"
+      : "btn-ghost text-destructive";
 
-  const defaultEditLabel = t({ message: "Edit", comment: "@context: Button to edit item" });
+  const defaultEditLabel = t({
+    message: "Edit",
+    comment: "@context: Button to edit item",
+  });
   const defaultViewLabel = t({
     message: "View",
     comment: "@context: Button to view item on public site",
   });
-  const defaultDeleteLabel = t({ message: "Delete", comment: "@context: Button to delete item" });
+  const defaultDeleteLabel = t({
+    message: "Delete",
+    comment: "@context: Button to delete item",
+  });
 
   return (
     <>
@@ -91,7 +99,9 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
           <button
             type="submit"
             class={deleteClass}
-            onclick={deleteConfirm ? `return confirm('${deleteConfirm}')` : undefined}
+            onclick={
+              deleteConfirm ? `return confirm('${deleteConfirm}')` : undefined
+            }
           >
             {deleteLabel || defaultDeleteLabel}
           </button>

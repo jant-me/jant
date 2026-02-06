@@ -16,4 +16,7 @@ export { PostForm, type PostFormProps } from "./PostForm.js";
 export { PostList, type PostListProps } from "./PostList.js";
 export { ThreadView, type ThreadViewProps } from "./ThreadView.js";
 export { TypeBadge, type TypeBadgeProps } from "./TypeBadge.js";
-export { VisibilityBadge, type VisibilityBadgeProps } from "./VisibilityBadge.js";
+export {
+  VisibilityBadge,
+  type VisibilityBadgeProps,
+} from "./VisibilityBadge.js";

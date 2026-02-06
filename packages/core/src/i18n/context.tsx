@@ -79,7 +79,7 @@ export function useLingui() {
   if (!currentI18n) {
     throw new Error(
       "useLingui() called outside of I18nProvider. " +
-        "Make sure your component is wrapped in <I18nProvider c={c}>...</I18nProvider>"
+        "Make sure your component is wrapped in <I18nProvider c={c}>...</I18nProvider>",
     );
   }
 

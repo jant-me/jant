@@ -123,7 +123,7 @@ export function createApp(config: JantConfig = {}): App {
       status: "ok",
       auth: c.env.AUTH_SECRET ? "configured" : "missing",
       authSecretLength: c.env.AUTH_SECRET?.length ?? 0,
-    })
+    }),
   );
 
   // better-auth handler
@@ -146,7 +146,10 @@ export function createApp(config: JantConfig = {}): App {
         <div class="card max-w-md w-full">
           <header>
             <h2>
-              {t({ message: "Welcome to Jant", comment: "@context: Setup page welcome heading" })}
+              {t({
+                message: "Welcome to Jant",
+                comment: "@context: Setup page welcome heading",
+              })}
             </h2>
             <p>
               {t({
@@ -160,7 +163,10 @@ export function createApp(config: JantConfig = {}): App {
             <form method="post" action="/setup" class="flex flex-col gap-4">
               <div class="field">
                 <label class="label">
-                  {t({ message: "Site Name", comment: "@context: Setup form field - site name" })}
+                  {t({
+                    message: "Site Name",
+                    comment: "@context: Setup form field - site name",
+                  })}
                 </label>
                 <input
                   type="text"
@@ -175,13 +181,25 @@ export function createApp(config: JantConfig = {}): App {
               </div>
               <div class="field">
                 <label class="label">
-                  {t({ message: "Your Name", comment: "@context: Setup form field - user name" })}
+                  {t({
+                    message: "Your Name",
+                    comment: "@context: Setup form field - user name",
+                  })}
                 </label>
-                <input type="text" name="name" class="input" required placeholder="John Doe" />
+                <input
+                  type="text"
+                  name="name"
+                  class="input"
+                  required
+                  placeholder="John Doe"
+                />
               </div>
               <div class="field">
                 <label class="label">
-                  {t({ message: "Email", comment: "@context: Setup/signin form field - email" })}
+                  {t({
+                    message: "Email",
+                    comment: "@context: Setup/signin form field - email",
+                  })}
                 </label>
                 <input
                   type="email"
@@ -198,10 +216,19 @@ export function createApp(config: JantConfig = {}): App {
                     comment: "@context: Setup/signin form field - password",
                   })}
                 </label>
-                <input type="password" name="password" class="input" required minLength={8} />
+                <input
+                  type="password"
+                  name="password"
+                  class="input"
+                  required
+                  minLength={8}
+                />
               </div>
               <button type="submit" class="btn">
-                {t({ message: "Complete Setup", comment: "@context: Setup form submit button" })}
+                {t({
+                  message: "Complete Setup",
+                  comment: "@context: Setup form submit button",
+                })}
               </button>
             </form>
           </section>
@@ -220,7 +247,7 @@ export function createApp(config: JantConfig = {}): App {
     return c.html(
       <BaseLayout title="Setup - Jant" c={c}>
         <SetupContent error={error} />
-      </BaseLayout>
+      </BaseLayout>,
     );
   });
 
@@ -277,14 +304,22 @@ export function createApp(config: JantConfig = {}): App {
       <div class="min-h-screen flex items-center justify-center">
         <div class="card max-w-md w-full">
           <header>
-            <h2>{t({ message: "Sign In", comment: "@context: Sign in page heading" })}</h2>
+            <h2>
+              {t({
+                message: "Sign In",
+                comment: "@context: Sign in page heading",
+              })}
+            </h2>
           </header>
           <section>
             {error && <p class="text-destructive text-sm mb-4">{error}</p>}
             <form method="post" action="/signin" class="flex flex-col gap-4">
               <div class="field">
                 <label class="label">
-                  {t({ message: "Email", comment: "@context: Setup/signin form field - email" })}
+                  {t({
+                    message: "Email",
+                    comment: "@context: Setup/signin form field - email",
+                  })}
                 </label>
                 <input type="email" name="email" class="input" required />
               </div>
@@ -298,7 +333,10 @@ export function createApp(config: JantConfig = {}): App {
                 <input type="password" name="password" class="input" required />
               </div>
               <button type="submit" class="btn">
-                {t({ message: "Sign In", comment: "@context: Sign in form submit button" })}
+                {t({
+                  message: "Sign In",
+                  comment: "@context: Sign in form submit button",
+                })}
               </button>
             </form>
           </section>
@@ -314,7 +352,7 @@ export function createApp(config: JantConfig = {}): App {
     return c.html(
       <BaseLayout title="Sign In - Jant" c={c}>
         <SigninContent error={error} />
-      </BaseLayout>
+      </BaseLayout>,
     );
   });
 
@@ -328,11 +366,14 @@ export function createApp(config: JantConfig = {}): App {
     const password = formData.get("password") as string;
 
     try {
-      const signInRequest = new Request(`${c.env.SITE_URL}/api/auth/sign-in/email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const signInRequest = new Request(
+        `${c.env.SITE_URL}/api/auth/sign-in/email`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        },
+      );
 
       const response = await c.var.auth.handler(signInRequest);
 
@@ -397,7 +438,10 @@ export function createApp(config: JantConfig = {}): App {
     }
 
     const headers = new Headers();
-    headers.set("Content-Type", object.httpMetadata?.contentType || media.mimeType);
+    headers.set(
+      "Content-Type",
+      object.httpMetadata?.contentType || media.mimeType,
+    );
     headers.set("Cache-Control", "public, max-age=31536000, immutable");
 
     return new Response(object.body, { headers });

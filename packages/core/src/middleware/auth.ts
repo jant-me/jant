@@ -21,7 +21,9 @@ export function requireAuth(redirectTo = "/signin"): MiddlewareHandler<Env> {
     }
 
     try {
-      const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers });
+      const session = await c.var.auth.api.getSession({
+        headers: c.req.raw.headers,
+      });
 
       if (!session?.user) {
         return c.redirect(redirectTo);
@@ -45,7 +47,9 @@ export function requireAuthApi(): MiddlewareHandler<Env> {
     }
 
     try {
-      const session = await c.var.auth.api.getSession({ headers: c.req.raw.headers });
+      const session = await c.var.auth.api.getSession({
+        headers: c.req.raw.headers,
+      });
 
       if (!session?.user) {
         return c.json({ error: "Unauthorized" }, 401);

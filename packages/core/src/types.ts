@@ -6,10 +6,22 @@
 // Content Types
 // =============================================================================
 
-export const POST_TYPES = ["note", "article", "link", "quote", "image", "page"] as const;
+export const POST_TYPES = [
+  "note",
+  "article",
+  "link",
+  "quote",
+  "image",
+  "page",
+] as const;
 export type PostType = (typeof POST_TYPES)[number];
 
-export const VISIBILITY_LEVELS = ["featured", "quiet", "unlisted", "draft"] as const;
+export const VISIBILITY_LEVELS = [
+  "featured",
+  "quiet",
+  "unlisted",
+  "draft",
+] as const;
 export type Visibility = (typeof VISIBILITY_LEVELS)[number];
 
 // =============================================================================

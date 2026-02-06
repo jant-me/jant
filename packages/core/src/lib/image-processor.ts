@@ -53,7 +53,10 @@ function readExifOrientation(buffer: ArrayBuffer): number {
       const exifOffset = offset + 4;
 
       // Check for "Exif\0\0"
-      if (view.getUint32(exifOffset) !== 0x45786966 || view.getUint16(exifOffset + 4) !== 0x0000) {
+      if (
+        view.getUint32(exifOffset) !== 0x45786966 ||
+        view.getUint16(exifOffset + 4) !== 0x0000
+      ) {
         return 1;
       }
 
@@ -112,7 +115,7 @@ function calculateDimensions(
   width: number,
   height: number,
   maxWidth: number,
-  maxHeight: number
+  maxHeight: number,
 ): { width: number; height: number } {
   if (width <= maxWidth && height <= maxHeight) {
     return { width, height };
@@ -128,7 +131,10 @@ function calculateDimensions(
 /**
  * Process image file
  */
-async function process(file: File, options: ProcessOptions = {}): Promise<Blob> {
+async function process(
+  file: File,
+  options: ProcessOptions = {},
+): Promise<Blob> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
   // Read file buffer for EXIF
@@ -145,7 +151,12 @@ async function process(file: File, options: ProcessOptions = {}): Promise<Blob> 
   const srcHeight = isRotated ? img.width : img.height;
 
   // Calculate output size
-  const { width, height } = calculateDimensions(srcWidth, srcHeight, opts.maxWidth, opts.maxHeight);
+  const { width, height } = calculateDimensions(
+    srcWidth,
+    srcHeight,
+    opts.maxWidth,
+    opts.maxHeight,
+  );
 
   // Create canvas
   const canvas = document.createElement("canvas");
@@ -184,7 +195,7 @@ async function process(file: File, options: ProcessOptions = {}): Promise<Blob> 
         }
       },
       opts.mimeType,
-      opts.quality
+      opts.quality,
     );
   });
 }
@@ -192,7 +203,10 @@ async function process(file: File, options: ProcessOptions = {}): Promise<Blob> 
 /**
  * Process file and create a new File object
  */
-async function processToFile(file: File, options: ProcessOptions = {}): Promise<File> {
+async function processToFile(
+  file: File,
+  options: ProcessOptions = {},
+): Promise<File> {
   const blob = await process(file, options);
 
   // Generate new filename with .webp extension
@@ -206,5 +220,7 @@ export const ImageProcessor = { process, processToFile };
 
 // Expose globally for inline scripts
 if (typeof window !== "undefined") {
-  (window as unknown as { ImageProcessor: typeof ImageProcessor }).ImageProcessor = ImageProcessor;
+  (
+    window as unknown as { ImageProcessor: typeof ImageProcessor }
+  ).ImageProcessor = ImageProcessor;
 }

@@ -59,15 +59,21 @@ export const DangerZone: FC<DangerZoneProps> = ({
 
   return (
     <div class="mt-8 pt-8 border-t">
-      <h2 class="text-lg font-medium text-destructive mb-4">{title || defaultTitle}</h2>
-      {description && <p class="text-sm text-muted-foreground mb-4">{description}</p>}
+      <h2 class="text-lg font-medium text-destructive mb-4">
+        {title || defaultTitle}
+      </h2>
+      {description && (
+        <p class="text-sm text-muted-foreground mb-4">{description}</p>
+      )}
       {children}
       <form method="post" action={formAction}>
         <button
           type="submit"
           class="btn-destructive"
           disabled={disabled}
-          onclick={confirmMessage ? `return confirm('${confirmMessage}')` : undefined}
+          onclick={
+            confirmMessage ? `return confirm('${confirmMessage}')` : undefined
+          }
         >
           {actionLabel}
         </button>

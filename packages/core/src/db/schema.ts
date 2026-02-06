@@ -4,7 +4,12 @@
  * Database schema for Jant
  */
 
-import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  text,
+  integer,
+  primaryKey,
+} from "drizzle-orm/sqlite-core";
 
 // =============================================================================
 // Posts
@@ -12,8 +17,12 @@ import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core"
 
 export const posts = sqliteTable("posts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  type: text("type", { enum: ["note", "article", "link", "quote", "image", "page"] }).notNull(),
-  visibility: text("visibility", { enum: ["featured", "quiet", "unlisted", "draft"] })
+  type: text("type", {
+    enum: ["note", "article", "link", "quote", "image", "page"],
+  }).notNull(),
+  visibility: text("visibility", {
+    enum: ["featured", "quiet", "unlisted", "draft"],
+  })
     .notNull()
     .default("quiet"),
   title: text("title"),
@@ -77,7 +86,7 @@ export const postCollections = sqliteTable(
       .references(() => collections.id),
     addedAt: integer("added_at").notNull(),
   },
-  (table) => [primaryKey({ columns: [table.postId, table.collectionId] })]
+  (table) => [primaryKey({ columns: [table.postId, table.collectionId] })],
 );
 
 // =============================================================================
@@ -111,7 +120,9 @@ export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+  emailVerified: integer("email_verified", { mode: "boolean" })
+    .notNull()
+    .default(false),
   image: text("image"),
   role: text("role").default("admin"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
@@ -141,8 +152,12 @@ export const account = sqliteTable("account", {
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   idToken: text("id_token"),
-  accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp" }),
-  refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp" }),
+  accessTokenExpiresAt: integer("access_token_expires_at", {
+    mode: "timestamp",
+  }),
+  refreshTokenExpiresAt: integer("refresh_token_expires_at", {
+    mode: "timestamp",
+  }),
   scope: text("scope"),
   password: text("password"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),

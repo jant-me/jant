@@ -88,7 +88,9 @@ export function parseAcceptLanguage(header: string | null): Locale {
 export function detectLanguage(c: Context): Locale {
   // 1. Check cookie (using getCookie helper)
   const cookies = c.req.raw.headers.get("Cookie") ?? "";
-  const cookieMatch = cookies.match(new RegExp(`${LANGUAGE_COOKIE_NAME}=([^;]+)`));
+  const cookieMatch = cookies.match(
+    new RegExp(`${LANGUAGE_COOKIE_NAME}=([^;]+)`),
+  );
   const cookieLang = cookieMatch?.[1];
   if (cookieLang && isLocale(cookieLang)) {
     return cookieLang;

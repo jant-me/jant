@@ -24,7 +24,10 @@ function RedirectsListContent({ redirects }: { redirects: Redirect[] }) {
   return (
     <>
       <CrudPageHeader
-        title={t({ message: "Redirects", comment: "@context: Dashboard heading" })}
+        title={t({
+          message: "Redirects",
+          comment: "@context: Dashboard heading",
+        })}
         ctaLabel={t({
           message: "New Redirect",
           comment: "@context: Button to create new redirect",
@@ -82,12 +85,25 @@ function NewRedirectContent() {
         {t({ message: "New Redirect", comment: "@context: Page heading" })}
       </h1>
 
-      <form method="post" action="/dash/redirects" class="flex flex-col gap-4 max-w-lg">
+      <form
+        method="post"
+        action="/dash/redirects"
+        class="flex flex-col gap-4 max-w-lg"
+      >
         <div class="field">
           <label class="label">
-            {t({ message: "From Path", comment: "@context: Redirect form field" })}
+            {t({
+              message: "From Path",
+              comment: "@context: Redirect form field",
+            })}
           </label>
-          <input type="text" name="fromPath" class="input" placeholder="/old-path" required />
+          <input
+            type="text"
+            name="fromPath"
+            class="input"
+            placeholder="/old-path"
+            required
+          />
           <p class="text-xs text-muted-foreground mt-1">
             {t({
               message: "The path to redirect from",
@@ -98,7 +114,10 @@ function NewRedirectContent() {
 
         <div class="field">
           <label class="label">
-            {t({ message: "To Path", comment: "@context: Redirect form field" })}
+            {t({
+              message: "To Path",
+              comment: "@context: Redirect form field",
+            })}
           </label>
           <input
             type="text"
@@ -121,20 +140,32 @@ function NewRedirectContent() {
           </label>
           <select name="type" class="select">
             <option value="301">
-              {t({ message: "301 (Permanent)", comment: "@context: Redirect type option" })}
+              {t({
+                message: "301 (Permanent)",
+                comment: "@context: Redirect type option",
+              })}
             </option>
             <option value="302">
-              {t({ message: "302 (Temporary)", comment: "@context: Redirect type option" })}
+              {t({
+                message: "302 (Temporary)",
+                comment: "@context: Redirect type option",
+              })}
             </option>
           </select>
         </div>
 
         <div class="flex gap-2">
           <button type="submit" class="btn">
-            {t({ message: "Create Redirect", comment: "@context: Button to save new redirect" })}
+            {t({
+              message: "Create Redirect",
+              comment: "@context: Button to save new redirect",
+            })}
           </button>
           <a href="/dash/redirects" class="btn-outline">
-            {t({ message: "Cancel", comment: "@context: Button to cancel form" })}
+            {t({
+              message: "Cancel",
+              comment: "@context: Button to cancel form",
+            })}
           </a>
         </div>
       </form>
@@ -148,9 +179,14 @@ redirectsRoutes.get("/", async (c) => {
   const redirects = await c.var.services.redirects.list();
 
   return c.html(
-    <DashLayout c={c} title="Redirects" siteName={siteName} currentPath="/dash/redirects">
+    <DashLayout
+      c={c}
+      title="Redirects"
+      siteName={siteName}
+      currentPath="/dash/redirects"
+    >
       <RedirectsListContent redirects={redirects} />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -159,9 +195,14 @@ redirectsRoutes.get("/new", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title="New Redirect" siteName={siteName} currentPath="/dash/redirects">
+    <DashLayout
+      c={c}
+      title="New Redirect"
+      siteName={siteName}
+      currentPath="/dash/redirects"
+    >
       <NewRedirectContent />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 

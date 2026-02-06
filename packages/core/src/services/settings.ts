@@ -8,7 +8,11 @@ import { eq } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import { settings } from "../db/schema.js";
 import { now } from "../lib/time.js";
-import { SETTINGS_KEYS, ONBOARDING_STATUS, type SettingsKey } from "../lib/constants.js";
+import {
+  SETTINGS_KEYS,
+  ONBOARDING_STATUS,
+  type SettingsKey,
+} from "../lib/constants.js";
 
 export interface SettingsService {
   get(key: SettingsKey): Promise<string | null>;
@@ -22,7 +26,11 @@ export interface SettingsService {
 export function createSettingsService(db: Database): SettingsService {
   return {
     async get(key) {
-      const result = await db.select().from(settings).where(eq(settings.key, key)).limit(1);
+      const result = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.key, key))
+        .limit(1);
       return result[0]?.value ?? null;
     },
 
@@ -70,7 +78,10 @@ export function createSettingsService(db: Database): SettingsService {
     },
 
     async completeOnboarding() {
-      await this.set(SETTINGS_KEYS.ONBOARDING_STATUS, ONBOARDING_STATUS.COMPLETED);
+      await this.set(
+        SETTINGS_KEYS.ONBOARDING_STATUS,
+        ONBOARDING_STATUS.COMPLETED,
+      );
     },
   };
 }

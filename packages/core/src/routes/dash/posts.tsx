@@ -8,7 +8,12 @@ import { useLingui } from "../../i18n/index.js";
 import type { Bindings, Post } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
-import { PostForm, PostList, CrudPageHeader, ActionButtons } from "../../theme/components/index.js";
+import {
+  PostForm,
+  PostList,
+  CrudPageHeader,
+  ActionButtons,
+} from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
 import {
   PostTypeSchema,
@@ -27,7 +32,10 @@ function PostsListContent({ posts }: { posts: Post[] }) {
     <>
       <CrudPageHeader
         title={t({ message: "Posts", comment: "@context: Dashboard heading" })}
-        ctaLabel={t({ message: "New Post", comment: "@context: Button to create new post" })}
+        ctaLabel={t({
+          message: "New Post",
+          comment: "@context: Button to create new post",
+        })}
         ctaHref="/dash/posts/new"
       />
       <PostList posts={posts} />
@@ -55,9 +63,14 @@ postsRoutes.get("/", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title="Posts" siteName={siteName} currentPath="/dash/posts">
+    <DashLayout
+      c={c}
+      title="Posts"
+      siteName={siteName}
+      currentPath="/dash/posts"
+    >
       <PostsListContent posts={posts} />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -66,9 +79,14 @@ postsRoutes.get("/new", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title="New Post" siteName={siteName} currentPath="/dash/posts">
+    <DashLayout
+      c={c}
+      title="New Post"
+      siteName={siteName}
+      currentPath="/dash/posts"
+    >
       <NewPostContent />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -98,7 +116,10 @@ postsRoutes.post("/", async (c) => {
 
 function ViewPostContent({ post }: { post: Post }) {
   const { t } = useLingui();
-  const defaultTitle = t({ message: "Post", comment: "@context: Default post title" });
+  const defaultTitle = t({
+    message: "Post",
+    comment: "@context: Default post title",
+  });
 
   return (
     <>
@@ -106,15 +127,24 @@ function ViewPostContent({ post }: { post: Post }) {
         <h1 class="text-2xl font-semibold">{post.title || defaultTitle}</h1>
         <ActionButtons
           editHref={`/dash/posts/${sqid.encode(post.id)}/edit`}
-          editLabel={t({ message: "Edit", comment: "@context: Button to edit post" })}
+          editLabel={t({
+            message: "Edit",
+            comment: "@context: Button to edit post",
+          })}
           viewHref={`/p/${sqid.encode(post.id)}`}
-          viewLabel={t({ message: "View", comment: "@context: Button to view post" })}
+          viewLabel={t({
+            message: "View",
+            comment: "@context: Button to view post",
+          })}
         />
       </div>
 
       <div class="card">
         <section>
-          <div class="prose" dangerouslySetInnerHTML={{ __html: post.contentHtml || "" }} />
+          <div
+            class="prose"
+            dangerouslySetInnerHTML={{ __html: post.contentHtml || "" }}
+          />
         </section>
       </div>
     </>
@@ -145,9 +175,14 @@ postsRoutes.get("/:id", async (c) => {
   const pageTitle = post.title || "Post";
 
   return c.html(
-    <DashLayout c={c} title={pageTitle} siteName={siteName} currentPath="/dash/posts">
+    <DashLayout
+      c={c}
+      title={pageTitle}
+      siteName={siteName}
+      currentPath="/dash/posts"
+    >
       <ViewPostContent post={post} />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -169,7 +204,7 @@ postsRoutes.get("/:id/edit", async (c) => {
       currentPath="/dash/posts"
     >
       <EditPostContent post={post} />
-    </DashLayout>
+    </DashLayout>,
   );
 });
 
@@ -184,8 +219,10 @@ postsRoutes.post("/:id", async (c) => {
   const type = parseFormData(formData, "type", PostTypeSchema);
   const visibility = parseFormData(formData, "visibility", VisibilitySchema);
   const title = parseFormDataOptional(formData, "title", z.string()) || null;
-  const content = parseFormDataOptional(formData, "content", z.string()) || null;
-  const sourceUrl = parseFormDataOptional(formData, "sourceUrl", z.string()) || null;
+  const content =
+    parseFormDataOptional(formData, "content", z.string()) || null;
+  const sourceUrl =
+    parseFormDataOptional(formData, "sourceUrl", z.string()) || null;
   const path = parseFormDataOptional(formData, "path", z.string()) || null;
 
   await c.var.services.posts.update(id, {

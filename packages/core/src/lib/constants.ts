@@ -64,4 +64,5 @@ export const ONBOARDING_STATUS = {
   COMPLETED: "completed",
 } as const;
 
-export type OnboardingStatus = (typeof ONBOARDING_STATUS)[keyof typeof ONBOARDING_STATUS];
+export type OnboardingStatus =
+  (typeof ONBOARDING_STATUS)[keyof typeof ONBOARDING_STATUS];

@@ -14,7 +14,13 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const collectionRoutes = new Hono<Env>();
 
-function CollectionContent({ collection, posts }: { collection: Collection; posts: Post[] }) {
+function CollectionContent({
+  collection,
+  posts,
+}: {
+  collection: Collection;
+  posts: Post[];
+}) {
   const { t } = useLingui();
 
   return (
@@ -39,7 +45,10 @@ function CollectionContent({ collection, posts }: { collection: Collection; post
             <article key={post.id} class="h-entry">
               {post.title && (
                 <h2 class="p-name text-lg font-medium mb-2">
-                  <a href={`/p/${sqid.encode(post.id)}`} class="u-url hover:underline">
+                  <a
+                    href={`/p/${sqid.encode(post.id)}`}
+                    class="u-url hover:underline"
+                  >
                     {post.title}
                   </a>
                 </h2>
@@ -49,7 +58,10 @@ function CollectionContent({ collection, posts }: { collection: Collection; post
                 dangerouslySetInnerHTML={{ __html: post.contentHtml || "" }}
               />
               <footer class="mt-2 text-sm text-muted-foreground">
-                <time class="dt-published" datetime={time.toISOString(post.publishedAt)}>
+                <time
+                  class="dt-published"
+                  datetime={time.toISOString(post.publishedAt)}
+                >
                   {time.formatDate(post.publishedAt)}
                 </time>
               </footer>
@@ -60,7 +72,10 @@ function CollectionContent({ collection, posts }: { collection: Collection; post
 
       <nav class="mt-8">
         <a href="/" class="text-sm hover:underline">
-          {t({ message: "← Back to home", comment: "@context: Navigation link" })}
+          {t({
+            message: "← Back to home",
+            comment: "@context: Navigation link",
+          })}
         </a>
       </nav>
     </div>
@@ -83,6 +98,6 @@ collectionRoutes.get("/:path", async (c) => {
       c={c}
     >
       <CollectionContent collection={collection} posts={posts} />
-    </BaseLayout>
+    </BaseLayout>,
   );
 });
