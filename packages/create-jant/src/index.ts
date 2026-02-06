@@ -143,7 +143,7 @@ AUTH_SECRET=${authSecret}
  * Main CLI function
  */
 async function main(): Promise<void> {
-  console.log();
+  console.log(); // eslint-disable-line no-console
   p.intro(chalk.bgCyan.black(" create-jant "));
 
   program
@@ -236,13 +236,13 @@ async function main(): Promise<void> {
   }
 
   // Show next steps
-  console.log();
+  console.log(); // eslint-disable-line no-console
   p.note([`cd ${projectName}`, "pnpm install", "pnpm dev"].join("\n"), "Next steps");
 
   p.outro(chalk.green("Happy coding!"));
 }
 
 main().catch((error) => {
-  console.error(chalk.red("Error:"), error);
+  console.error(chalk.red("Error:"), error); // eslint-disable-line no-console
   process.exit(1);
 });

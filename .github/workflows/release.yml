@@ -1,9 +1,10 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
   workflow_dispatch:
 
 concurrency:
@@ -13,6 +14,7 @@ concurrency:
 jobs:
   release:
     name: Release
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -24,36 +26,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup mise
+        uses: jdx/mise-action@v2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Cache pnpm store
+        uses: actions/cache@v4
         with:
-          node-version: 24
-          cache: pnpm
-          registry-url: "https://registry.npmjs.org"
+          path: ~/.local/share/pnpm/store/v10
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: |
-          pnpm --filter @jant/core build
-          pnpm --filter create-jant build
+        run: mise run build-all
 
       - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@v1
         with:
-          version: pnpm changeset version
-          publish: pnpm release:ci
+          version: mise run version
+          publish: mise run release
           title: "chore: release packages"
           commit: "chore: release packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
-          # No NPM_TOKEN needed - uses trusted publishing via OIDC
+          # Uses trusted publishing via OIDC (id-token: write permission)
 
       # Auto-merge Release PR during development (0.x.x)
       # Remove this step when ready for 1.0.0

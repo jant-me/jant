@@ -23,36 +23,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
+      - name: Setup mise
+        uses: jdx/mise-action@v2
 
-      - name: Install wrangler
-        run: npm install -g wrangler
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Clear existing data
-        run: |
-          cd templates/jant-site && wrangler d1 execute DB \
-            --remote \
-            --config wrangler.demo.toml \
-            --file=scripts/reset.sql
+      - name: Reset demo data
+        run: mise run demo-reset
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-
-      - name: Insert seed data
-        run: |
-          cd templates/jant-site && wrangler d1 execute DB \
-            --remote \
-            --config wrangler.demo.toml \
-            --file=scripts/seed.sql
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-
-      - name: Notify completion
-        run: |
-          echo "Demo data reset completed at $(date -u)"
-          echo "- Cleared all user-created posts, media, and collections"
-          echo "- Re-inserted seed data"

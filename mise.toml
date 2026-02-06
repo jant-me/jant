@@ -6,6 +6,14 @@ node = "lts"
 pnpm = "10.28.2"
 
 # =============================================================================
+# CI
+# =============================================================================
+[tasks.ci]
+alias = "check"
+description = "Run all CI checks (lint + typecheck + build)"
+depends = ["lint", "typecheck", "build-all"]
+
+# =============================================================================
 # Development (uses templates/jant-site)
 # =============================================================================
 [tasks.dev]
@@ -26,9 +34,21 @@ run = "pnpm --filter jant-site dev:debug"
 description = "Build template project"
 run = "pnpm --filter jant-site build"
 
+[tasks.build-types]
+description = "Generate @jant/core type declarations"
+run = "pnpm --filter @jant/core build:types"
+
+[tasks.build-all]
+description = "Build all publishable packages"
+run = """
+pnpm --filter @jant/core build
+pnpm --filter create-jant build
+"""
+
 [tasks.typecheck]
-description = "Run TypeScript type checking"
-run = "pnpm --filter jant-site typecheck"
+description = "Run TypeScript type checking (all packages)"
+depends = ["build-types"]
+run = "pnpm -r typecheck"
 
 # =============================================================================
 # Code Quality (uses @jant/core)
@@ -128,6 +148,17 @@ run = "pnpm --filter jant-site preview"
 [tasks.deploy]
 description = "Deploy template to Cloudflare Workers"
 run = "pnpm --filter jant-site deploy"
+
+# =============================================================================
+# Demo
+# =============================================================================
+[tasks.demo-reset]
+description = "Reset demo.jant.me data (clear + reseed)"
+dir = "templates/jant-site"
+run = """
+pnpm exec wrangler d1 execute DB --remote --config wrangler.demo.toml --file=scripts/reset.sql
+pnpm exec wrangler d1 execute DB --remote --config wrangler.demo.toml --file=scripts/seed.sql
+"""
 
 # =============================================================================
 # Utilities
