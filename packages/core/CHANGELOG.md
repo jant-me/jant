@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.2.12
+
+### Patch Changes
+
+- [`d43a020`](https://github.com/jant-me/jant/commit/d43a020e13e54823dc580df4e94f8e6096393484) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Reflactor
+
 ## 0.2.11
 
 ### Patch Changes
