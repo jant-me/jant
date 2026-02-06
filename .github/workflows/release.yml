@@ -52,6 +52,7 @@ jobs:
           commit: "chore: release packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
           # No NPM_TOKEN needed - uses trusted publishing via OIDC
 
       # Auto-merge Release PR during development (0.x.x)
