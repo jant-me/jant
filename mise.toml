@@ -139,7 +139,8 @@ npx lingui-po-translate \
 """
 
 [tasks.preview]
-description = "Preview production build with Vite"
+description = "Build and preview production locally"
+depends = ["build"]
 run = "pnpm --filter jant-site preview"
 
 # =============================================================================
