@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.1.15
+
+### Patch Changes
+
+- [`d43a020`](https://github.com/jant-me/jant/commit/d43a020e13e54823dc580df4e94f8e6096393484) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Reflactor
+
 ## 0.1.14
 
 ### Patch Changes
