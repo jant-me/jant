@@ -145,29 +145,64 @@ export function createApp(config: JantConfig = {}): App {
       <div class="min-h-screen flex items-center justify-center">
         <div class="card max-w-md w-full">
           <header>
-            <h2>{t({ message: "Welcome to Jant", comment: "@context: Setup page welcome heading" })}</h2>
-            <p>{t({ message: "Let's set up your site.", comment: "@context: Setup page description" })}</p>
+            <h2>
+              {t({ message: "Welcome to Jant", comment: "@context: Setup page welcome heading" })}
+            </h2>
+            <p>
+              {t({
+                message: "Let's set up your site.",
+                comment: "@context: Setup page description",
+              })}
+            </p>
           </header>
           <section>
             {error && <p class="text-destructive text-sm mb-4">{error}</p>}
             <form method="post" action="/setup" class="flex flex-col gap-4">
               <div class="field">
-                <label class="label">{t({ message: "Site Name", comment: "@context: Setup form field - site name" })}</label>
-                <input type="text" name="siteName" class="input" required placeholder={t({ message: "My Blog", comment: "@context: Setup site name placeholder" })} />
+                <label class="label">
+                  {t({ message: "Site Name", comment: "@context: Setup form field - site name" })}
+                </label>
+                <input
+                  type="text"
+                  name="siteName"
+                  class="input"
+                  required
+                  placeholder={t({
+                    message: "My Blog",
+                    comment: "@context: Setup site name placeholder",
+                  })}
+                />
               </div>
               <div class="field">
-                <label class="label">{t({ message: "Your Name", comment: "@context: Setup form field - user name" })}</label>
+                <label class="label">
+                  {t({ message: "Your Name", comment: "@context: Setup form field - user name" })}
+                </label>
                 <input type="text" name="name" class="input" required placeholder="John Doe" />
               </div>
               <div class="field">
-                <label class="label">{t({ message: "Email", comment: "@context: Setup/signin form field - email" })}</label>
-                <input type="email" name="email" class="input" required placeholder="you@example.com" />
+                <label class="label">
+                  {t({ message: "Email", comment: "@context: Setup/signin form field - email" })}
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  class="input"
+                  required
+                  placeholder="you@example.com"
+                />
               </div>
               <div class="field">
-                <label class="label">{t({ message: "Password", comment: "@context: Setup/signin form field - password" })}</label>
+                <label class="label">
+                  {t({
+                    message: "Password",
+                    comment: "@context: Setup/signin form field - password",
+                  })}
+                </label>
                 <input type="password" name="password" class="input" required minLength={8} />
               </div>
-              <button type="submit" class="btn">{t({ message: "Complete Setup", comment: "@context: Setup form submit button" })}</button>
+              <button type="submit" class="btn">
+                {t({ message: "Complete Setup", comment: "@context: Setup form submit button" })}
+              </button>
             </form>
           </section>
         </div>
@@ -248,14 +283,23 @@ export function createApp(config: JantConfig = {}): App {
             {error && <p class="text-destructive text-sm mb-4">{error}</p>}
             <form method="post" action="/signin" class="flex flex-col gap-4">
               <div class="field">
-                <label class="label">{t({ message: "Email", comment: "@context: Setup/signin form field - email" })}</label>
+                <label class="label">
+                  {t({ message: "Email", comment: "@context: Setup/signin form field - email" })}
+                </label>
                 <input type="email" name="email" class="input" required />
               </div>
               <div class="field">
-                <label class="label">{t({ message: "Password", comment: "@context: Setup/signin form field - password" })}</label>
+                <label class="label">
+                  {t({
+                    message: "Password",
+                    comment: "@context: Setup/signin form field - password",
+                  })}
+                </label>
                 <input type="password" name="password" class="input" required />
               </div>
-              <button type="submit" class="btn">{t({ message: "Sign In", comment: "@context: Sign in form submit button" })}</button>
+              <button type="submit" class="btn">
+                {t({ message: "Sign In", comment: "@context: Sign in form submit button" })}
+              </button>
             </form>
           </section>
         </div>

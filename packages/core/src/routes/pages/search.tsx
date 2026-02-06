@@ -45,7 +45,10 @@ function SearchContent({
             type="search"
             name="q"
             class="input flex-1"
-            placeholder={t({ message: "Search posts...", comment: "@context: Search input placeholder" })}
+            placeholder={t({
+              message: "Search posts...",
+              comment: "@context: Search input placeholder",
+            })}
             value={query}
             autofocus
           />
@@ -56,11 +59,7 @@ function SearchContent({
       </form>
 
       {/* Error */}
-      {error && (
-        <div class="p-4 rounded-lg bg-destructive/10 text-destructive mb-6">
-          {error}
-        </div>
-      )}
+      {error && <div class="p-4 rounded-lg bg-destructive/10 text-destructive mb-6">{error}</div>}
 
       {/* Results */}
       {query && !error && (
@@ -69,8 +68,15 @@ function SearchContent({
             {results.length === 0
               ? t({ message: "No results found.", comment: "@context: Search empty results" })
               : results.length === 1
-                ? t({ message: "Found 1 result", comment: "@context: Search results count - single" })
-                : t({ message: "Found {count} results", comment: "@context: Search results count - multiple", values: { count: String(results.length) } })}
+                ? t({
+                    message: "Found 1 result",
+                    comment: "@context: Search results count - single",
+                  })
+                : t({
+                    message: "Found {count} results",
+                    comment: "@context: Search results count - multiple",
+                    values: { count: String(results.length) },
+                  })}
           </p>
 
           {results.length > 0 && (

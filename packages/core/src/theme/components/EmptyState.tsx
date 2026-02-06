@@ -29,18 +29,9 @@ export interface EmptyStateProps {
   centered?: boolean;
 }
 
-export const EmptyState: FC<EmptyStateProps> = ({
-  message,
-  ctaText,
-  ctaHref,
-  centered = true,
-}) => {
+export const EmptyState: FC<EmptyStateProps> = ({ message, ctaText, ctaHref, centered = true }) => {
   if (!centered) {
-    return (
-      <p class="text-muted-foreground">
-        {message}
-      </p>
-    );
+    return <p class="text-muted-foreground">{message}</p>;
   }
 
   return (

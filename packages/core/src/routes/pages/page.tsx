@@ -22,10 +22,7 @@ function PageContent({ page }: { page: Post }) {
       <article class="h-entry">
         {page.title && <h1 class="p-name text-3xl font-semibold mb-6">{page.title}</h1>}
 
-        <div
-          class="e-content prose"
-          dangerouslySetInnerHTML={{ __html: page.contentHtml || "" }}
-        />
+        <div class="e-content prose" dangerouslySetInnerHTML={{ __html: page.contentHtml || "" }} />
       </article>
 
       <nav class="mt-8 pt-6 border-t">
@@ -57,7 +54,11 @@ pageRoutes.get("/:path", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <BaseLayout title={`${page.title} - ${siteName}`} description={page.content?.slice(0, 160)} c={c}>
+    <BaseLayout
+      title={`${page.title} - ${siteName}`}
+      description={page.content?.slice(0, 160)}
+      c={c}
+    >
       <PageContent page={page} />
     </BaseLayout>
   );

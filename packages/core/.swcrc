@@ -13,9 +13,7 @@
     },
     "target": "es2022",
     "experimental": {
-      "plugins": [
-        ["@lingui/swc-plugin", {}]
-      ]
+      "plugins": [["@lingui/swc-plugin", {}]]
     }
   },
   "module": {

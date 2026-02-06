@@ -39,7 +39,9 @@ function NewPostContent() {
   const { t } = useLingui();
   return (
     <>
-      <h1 class="text-2xl font-semibold mb-6">{t({ message: "New Post", comment: "@context: Page heading" })}</h1>
+      <h1 class="text-2xl font-semibold mb-6">
+        {t({ message: "New Post", comment: "@context: Page heading" })}
+      </h1>
       <PostForm action="/dash/posts" />
     </>
   );
@@ -123,7 +125,9 @@ function EditPostContent({ post }: { post: Post }) {
   const { t } = useLingui();
   return (
     <>
-      <h1 class="text-2xl font-semibold mb-6">{t({ message: "Edit Post", comment: "@context: Page heading" })}</h1>
+      <h1 class="text-2xl font-semibold mb-6">
+        {t({ message: "Edit Post", comment: "@context: Page heading" })}
+      </h1>
       <PostForm post={post} action={`/dash/posts/${sqid.encode(post.id)}`} />
     </>
   );
@@ -158,7 +162,12 @@ postsRoutes.get("/:id/edit", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title={`Edit: ${post.title || "Post"}`} siteName={siteName} currentPath="/dash/posts">
+    <DashLayout
+      c={c}
+      title={`Edit: ${post.title || "Post"}`}
+      siteName={siteName}
+      currentPath="/dash/posts"
+    >
       <EditPostContent post={post} />
     </DashLayout>
   );

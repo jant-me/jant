@@ -22,8 +22,14 @@ export const PostList: FC<PostListProps> = ({ posts }) => {
   if (posts.length === 0) {
     return (
       <EmptyState
-        message={t({ message: "No posts yet.", comment: "@context: Empty state message when no posts exist" })}
-        ctaText={t({ message: "Create your first post", comment: "@context: Button in empty state to create first post" })}
+        message={t({
+          message: "No posts yet.",
+          comment: "@context: Empty state message when no posts exist",
+        })}
+        ctaText={t({
+          message: "Create your first post",
+          comment: "@context: Button in empty state to create first post",
+        })}
         ctaHref="/dash/posts/new"
       />
     );
@@ -39,22 +45,22 @@ export const PostList: FC<PostListProps> = ({ posts }) => {
               editHref={`/dash/posts/${sqid.encode(post.id)}/edit`}
               editLabel={t({ message: "Edit", comment: "@context: Button to edit post" })}
               viewHref={`/p/${sqid.encode(post.id)}`}
-              viewLabel={t({ message: "View", comment: "@context: Button to view post on public site" })}
+              viewLabel={t({
+                message: "View",
+                comment: "@context: Button to view post on public site",
+              })}
             />
           }
         >
           <div class="flex items-center gap-2 mb-1">
             <TypeBadge type={post.type} />
             <VisibilityBadge visibility={post.visibility} />
-            <span class="text-xs text-muted-foreground">
-              {time.formatDate(post.publishedAt)}
-            </span>
+            <span class="text-xs text-muted-foreground">{time.formatDate(post.publishedAt)}</span>
           </div>
-          <a
-            href={`/dash/posts/${sqid.encode(post.id)}`}
-            class="font-medium hover:underline"
-          >
-            {post.title || post.content?.slice(0, 60) || t({ message: "Untitled", comment: "@context: Default title for untitled post" })}
+          <a href={`/dash/posts/${sqid.encode(post.id)}`} class="font-medium hover:underline">
+            {post.title ||
+              post.content?.slice(0, 60) ||
+              t({ message: "Untitled", comment: "@context: Default title for untitled post" })}
           </a>
           {post.content && !post.title && (
             <p class="text-sm text-muted-foreground mt-1 line-clamp-2">

@@ -3,13 +3,13 @@ name: Reset Demo Data
 on:
   schedule:
     # Run daily at 00:00 UTC
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
   workflow_dispatch:
     inputs:
       confirm:
         description: 'Type "reset" to confirm data reset'
         required: true
-        default: ''
+        default: ""
 
 jobs:
   reset:
@@ -26,7 +26,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Install wrangler
         run: npm install -g wrangler

@@ -12,6 +12,7 @@ A personal microblogging system as smooth as <https://threads.com>.
 Jant is a single-author microblog for people who want to share thoughts without the noise of social media. No followers, no likes, no retweets—just your words.
 
 **Features**:
+
 - Multiple content types: notes, articles, links, quotes, images
 - Thread support for longer thoughts
 - Collections for curated topics
@@ -43,6 +44,7 @@ pnpm deploy
 ## Contributing
 
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+
 - Development setup
 - Code style guidelines
 - Pull request process

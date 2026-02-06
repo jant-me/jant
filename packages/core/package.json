@@ -16,8 +16,7 @@
       "default": "./dist/theme/index.js"
     },
     "./preset.css": "./src/preset.css",
-    "./client": "./dist/client.js",
-    "./*": "./*"
+    "./client": "./dist/client.js"
   },
   "files": [
     "bin",
@@ -29,18 +28,15 @@
     "access": "public"
   },
   "scripts": {
+    "build": "pnpm build:lib",
     "build:lib": "swc src -d dist --strip-leading-paths && pnpm build:types",
     "build:types": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json",
-    "lint": "eslint src/",
-    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "db:generate": "drizzle-kit generate",
     "i18n:extract": "lingui extract",
     "i18n:compile": "lingui compile --typescript",
     "i18n:build": "pnpm i18n:extract && pnpm i18n:compile",
-    "prepublishOnly": "pnpm build:lib",
-    "prepare": "husky"
+    "prepublishOnly": "pnpm build:lib"
   },
   "dependencies": {
     "@lingui/core": "^5.9.0",
@@ -59,23 +55,15 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260131.0",
-    "@eslint/js": "^9.39.2",
     "@lingui/cli": "^5.9.0",
     "@lingui/format-po": "^5.9.0",
     "@lingui/swc-plugin": "^5.10.1",
     "@swc/cli": "^0.6.0",
     "@swc/core": "^1.15.11",
     "@types/node": "^25.1.0",
-    "@typescript-eslint/eslint-plugin": "^8.54.0",
-    "@typescript-eslint/parser": "^8.54.0",
     "basecoat-css": "^0.3.10",
     "drizzle-kit": "^0.31.8",
-    "eslint": "^9.39.2",
-    "eslint-plugin-react": "^7.37.5",
     "glob": "^13.0.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
-    "prettier": "^3.8.1",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

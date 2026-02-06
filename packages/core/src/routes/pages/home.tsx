@@ -33,7 +33,9 @@ function HomeContent({ siteName, posts }: { siteName: string; posts: Post[] }) {
 
       <main class="flex flex-col gap-6">
         {posts.length === 0 ? (
-          <p class="text-muted-foreground">{t({ message: "No posts yet.", comment: "@context: Empty state message on home page" })}</p>
+          <p class="text-muted-foreground">
+            {t({ message: "No posts yet.", comment: "@context: Empty state message on home page" })}
+          </p>
         ) : (
           posts.map((post) => (
             <article key={post.id} class="h-entry">
@@ -53,7 +55,9 @@ function HomeContent({ siteName, posts }: { siteName: string; posts: Post[] }) {
                   {time.formatDate(post.publishedAt)}
                 </time>
                 {post.visibility === "featured" && (
-                  <span class="ml-2 text-xs">{t({ message: "Featured", comment: "@context: Post visibility badge" })}</span>
+                  <span class="ml-2 text-xs">
+                    {t({ message: "Featured", comment: "@context: Post visibility badge" })}
+                  </span>
                 )}
               </footer>
             </article>
@@ -64,7 +68,10 @@ function HomeContent({ siteName, posts }: { siteName: string; posts: Post[] }) {
       {posts.length >= 20 && (
         <nav class="mt-8 text-center">
           <a href="/archive" class="text-sm text-muted-foreground hover:text-foreground">
-            {t({ message: "View all posts →", comment: "@context: Link to view all posts on archive page" })}
+            {t({
+              message: "View all posts →",
+              comment: "@context: Link to view all posts on archive page",
+            })}
           </a>
         </nav>
       )}

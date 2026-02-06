@@ -39,7 +39,11 @@ export const CreatePostSchema = z.object({
   visibility: VisibilitySchema,
   sourceUrl: z.string().url().optional().or(z.literal("")),
   sourceName: z.string().optional(),
-  path: z.string().regex(/^[a-z0-9-]*$/).optional().or(z.literal("")),
+  path: z
+    .string()
+    .regex(/^[a-z0-9-]*$/)
+    .optional()
+    .or(z.literal("")),
   replyToId: z.string().optional(), // Sqid format
   publishedAt: z.number().int().positive().optional(),
 });
@@ -58,11 +62,7 @@ export const UpdatePostSchema = CreatePostSchema.partial();
  * // type is PostType, throws if invalid
  * ```
  */
-export function parseFormData<T>(
-  formData: FormData,
-  key: string,
-  schema: z.ZodSchema<T>
-): T {
+export function parseFormData<T>(formData: FormData, key: string, schema: z.ZodSchema<T>): T {
   const value = formData.get(key);
   if (value === null) {
     throw new Error(`Missing required field: ${key}`);

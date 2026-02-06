@@ -14,11 +14,7 @@ export interface PageFormProps {
   cancelUrl?: string;
 }
 
-export const PageForm: FC<PageFormProps> = ({
-  page,
-  action,
-  cancelUrl = "/dash/pages",
-}) => {
+export const PageForm: FC<PageFormProps> = ({ page, action, cancelUrl = "/dash/pages" }) => {
   const { t } = useLingui();
   const isEdit = !!page;
 
@@ -56,12 +52,18 @@ export const PageForm: FC<PageFormProps> = ({
             placeholder="about"
             value={page?.path ?? ""}
             pattern="[a-z0-9\-]+"
-            title={t({ message: "Lowercase letters, numbers, and hyphens only", comment: "@context: Page path validation message" })}
+            title={t({
+              message: "Lowercase letters, numbers, and hyphens only",
+              comment: "@context: Page path validation message",
+            })}
             required
           />
         </div>
         <p class="text-xs text-muted-foreground mt-1">
-          {t({ message: "The URL path for this page. Use lowercase letters, numbers, and hyphens.", comment: "@context: Page path helper text" })}
+          {t({
+            message: "The URL path for this page. Use lowercase letters, numbers, and hyphens.",
+            comment: "@context: Page path helper text",
+          })}
         </p>
       </div>
 
@@ -73,7 +75,10 @@ export const PageForm: FC<PageFormProps> = ({
         <textarea
           name="content"
           class="textarea min-h-48"
-          placeholder={t({ message: "Page content (Markdown supported)...", comment: "@context: Page content placeholder" })}
+          placeholder={t({
+            message: "Page content (Markdown supported)...",
+            comment: "@context: Page content placeholder",
+          })}
           required
         >
           {page?.content ?? ""}
@@ -94,7 +99,10 @@ export const PageForm: FC<PageFormProps> = ({
           </option>
         </select>
         <p class="text-xs text-muted-foreground mt-1">
-          {t({ message: "Published pages are accessible via their path. Drafts are not visible.", comment: "@context: Page status helper text" })}
+          {t({
+            message: "Published pages are accessible via their path. Drafts are not visible.",
+            comment: "@context: Page status helper text",
+          })}
         </p>
       </div>
 

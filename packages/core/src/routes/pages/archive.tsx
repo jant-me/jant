@@ -80,10 +80,7 @@ function ArchiveContent({
 
         {/* Type filter */}
         <nav class="flex flex-wrap gap-2 mt-4">
-          <a
-            href="/archive"
-            class={`badge ${!type ? "badge-primary" : "badge-outline"}`}
-          >
+          <a href="/archive" class={`badge ${!type ? "badge-primary" : "badge-outline"}`}>
             {t({ message: "All", comment: "@context: Archive filter - all types" })}
           </a>
           {POST_TYPES.filter((t) => t !== "page").map((typeKey) => (
@@ -121,10 +118,7 @@ function ArchiveContent({
                         {new Date(post.publishedAt * 1000).getDate()}
                       </time>
                       <div class="flex-1 min-w-0">
-                        <a
-                          href={`/p/${sqid.encode(post.id)}`}
-                          class="hover:underline"
-                        >
+                        <a href={`/p/${sqid.encode(post.id)}`} class="hover:underline">
                           {post.title || post.content?.slice(0, 80) || `Post #${post.id}`}
                         </a>
                         {!type && (
@@ -132,9 +126,18 @@ function ArchiveContent({
                         )}
                         {replyCount && replyCount > 0 && (
                           <span class="ml-2 text-xs text-muted-foreground">
-                            ({replyCount === 1
-                              ? t({ message: "1 reply", comment: "@context: Archive post reply indicator - single" })
-                              : t({ message: "{count} replies", comment: "@context: Archive post reply indicator - plural", values: { count: String(replyCount) } })})
+                            (
+                            {replyCount === 1
+                              ? t({
+                                  message: "1 reply",
+                                  comment: "@context: Archive post reply indicator - single",
+                                })
+                              : t({
+                                  message: "{count} replies",
+                                  comment: "@context: Archive post reply indicator - plural",
+                                  values: { count: String(replyCount) },
+                                })}
+                            )
                           </span>
                         )}
                       </div>
@@ -191,10 +194,11 @@ archiveRoutes.get("/", async (c) => {
   const replyCounts = await c.var.services.posts.getReplyCounts(postIds);
 
   // Get next cursor
-  const nextCursor = hasMore && displayPosts.length > 0
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Length check above guarantees element exists
-    ? displayPosts[displayPosts.length - 1]!.id
-    : undefined;
+  const nextCursor =
+    hasMore && displayPosts.length > 0
+      ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Length check above guarantees element exists
+        displayPosts[displayPosts.length - 1]!.id
+      : undefined;
 
   // Group posts by year-month
   const grouped = new Map<string, typeof displayPosts>();

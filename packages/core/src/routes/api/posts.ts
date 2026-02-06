@@ -23,7 +23,7 @@ postsApiRoutes.get("/", async (c) => {
   const posts = await c.var.services.posts.list({
     type,
     visibility: visibility ? [visibility] : ["featured", "quiet"],
-    cursor: cursor ? sqid.decode(cursor) ?? undefined : undefined,
+    cursor: cursor ? (sqid.decode(cursor) ?? undefined) : undefined,
     limit,
   });
 
@@ -50,16 +50,12 @@ postsApiRoutes.get("/:id", async (c) => {
 
 // Create post (requires auth)
 postsApiRoutes.post("/", requireAuthApi(), async (c) => {
-
   const rawBody = await c.req.json();
 
   // Validate request body
   const parseResult = CreatePostSchema.safeParse(rawBody);
   if (!parseResult.success) {
-    return c.json(
-      { error: "Validation failed", details: parseResult.error.flatten() },
-      400
-    );
+    return c.json({ error: "Validation failed", details: parseResult.error.flatten() }, 400);
   }
 
   const body = parseResult.data;
@@ -72,7 +68,7 @@ postsApiRoutes.post("/", requireAuthApi(), async (c) => {
     sourceUrl: body.sourceUrl || undefined,
     sourceName: body.sourceName,
     path: body.path || undefined,
-    replyToId: body.replyToId ? sqid.decode(body.replyToId) ?? undefined : undefined,
+    replyToId: body.replyToId ? (sqid.decode(body.replyToId) ?? undefined) : undefined,
     publishedAt: body.publishedAt,
   });
 
@@ -81,7 +77,6 @@ postsApiRoutes.post("/", requireAuthApi(), async (c) => {
 
 // Update post (requires auth)
 postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
-
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.json({ error: "Invalid ID" }, 400);
 
@@ -90,10 +85,7 @@ postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
   // Validate request body
   const parseResult = UpdatePostSchema.safeParse(rawBody);
   if (!parseResult.success) {
-    return c.json(
-      { error: "Validation failed", details: parseResult.error.flatten() },
-      400
-    );
+    return c.json({ error: "Validation failed", details: parseResult.error.flatten() }, 400);
   }
 
   const body = parseResult.data;
@@ -116,7 +108,6 @@ postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
 
 // Delete post (requires auth)
 postsApiRoutes.delete("/:id", requireAuthApi(), async (c) => {
-
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.json({ error: "Invalid ID" }, 400);
 

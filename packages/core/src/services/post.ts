@@ -239,9 +239,7 @@ export function createPostService(db: Database): PostService {
       const rows = await db
         .select()
         .from(posts)
-        .where(
-          and(or(eq(posts.id, rootId), eq(posts.threadId, rootId)), isNull(posts.deletedAt))
-        )
+        .where(and(or(eq(posts.id, rootId), eq(posts.threadId, rootId)), isNull(posts.deletedAt)))
         .orderBy(posts.createdAt);
 
       return rows.map(toPost);

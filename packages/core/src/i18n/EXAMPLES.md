@@ -32,11 +32,11 @@ The `comment` field provides context for AI translators, improving translation q
 
 ```tsx
 // ✅ Good - clear context
-t({ message: "Dashboard", comment: "@context: Page title" })
-t({ message: "Dashboard", comment: "@context: Navigation link" })
+t({ message: "Dashboard", comment: "@context: Page title" });
+t({ message: "Dashboard", comment: "@context: Navigation link" });
 
 // ❌ Bad - no context (translator might choose wrong word)
-t({ message: "Dashboard" })
+t({ message: "Dashboard" });
 ```
 
 ---
@@ -85,7 +85,11 @@ function Dashboard({ postCount, username }: { postCount: number; username: strin
       {/* 4. With embedded components */}
       <p>
         <Trans comment="@context: Help text">
-          Read the <a href="/docs" class="underline">documentation</a> for help
+          Read the{" "}
+          <a href="/docs" class="underline">
+            documentation
+          </a>{" "}
+          for help
         </Trans>
       </p>
     </div>
@@ -129,10 +133,10 @@ const { t } = useLingui();
     { message: "Visit {linkStart}our website{linkEnd}", comment: "@context: Website link" },
     {
       linkStart: '<a href="/" class="text-primary">',
-      linkEnd: '</a>',
+      linkEnd: "</a>",
     }
   )}
-</p>
+</p>;
 ```
 
 ---
@@ -149,7 +153,7 @@ dashRoute.get("/", async (c) => {
 
   return c.html(
     <Layout>
-      <MyComponent c={c} />  {/* Must pass c prop */}
+      <MyComponent c={c} /> {/* Must pass c prop */}
     </Layout>
   );
 });
@@ -175,7 +179,7 @@ dashRoute.get("/", async (c) => {
   return c.html(
     <I18nProvider c={c}>
       <Layout>
-        <MyComponent />  {/* No props needed */}
+        <MyComponent /> {/* No props needed */}
       </Layout>
     </I18nProvider>
   );
@@ -184,10 +188,7 @@ dashRoute.get("/", async (c) => {
 function MyComponent() {
   const { t } = useLingui();
   const title = t({ message: "Dashboard", comment: "@context: Title" });
-  const greeting = t(
-    { message: "Hello {name}", comment: "@context: Greeting" },
-    { name: "Alice" }
-  );
+  const greeting = t({ message: "Hello {name}", comment: "@context: Greeting" }, { name: "Alice" });
 
   return <h1>{title}</h1>;
 }
@@ -214,8 +215,9 @@ function MyComponent() {
 A: Lingui uses a build-time extraction process. The `t()` function expects a message descriptor object that gets transformed by Lingui's macro system during the build. If you pass a plain string, the extraction tool won't be able to find and extract the message for translation.
 
 You must use the object syntax:
+
 ```tsx
-t({ message: "Dashboard", comment: "@context: Page title" })
+t({ message: "Dashboard", comment: "@context: Page title" });
 ```
 
 ### Q: Can I use Lingui's official Trans component?

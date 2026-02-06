@@ -12,7 +12,6 @@ export type PostType = (typeof POST_TYPES)[number];
 export const VISIBILITY_LEVELS = ["featured", "quiet", "unlisted", "draft"] as const;
 export type Visibility = (typeof VISIBILITY_LEVELS)[number];
 
-
 // =============================================================================
 // Cloudflare Bindings
 // =============================================================================
@@ -25,7 +24,6 @@ export interface Bindings {
   R2_PUBLIC_URL?: string;
   IMAGE_TRANSFORM_URL?: string;
 }
-
 
 // =============================================================================
 // Entity Types

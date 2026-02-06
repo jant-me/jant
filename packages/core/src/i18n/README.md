@@ -85,7 +85,10 @@ function DashboardContent({ postCount }: { postCount: number }) {
       {/* 3. With embedded components - use Trans */}
       <p>
         <Trans comment="@context: Help text">
-          Read the <a href="/docs" class="underline">documentation</a>
+          Read the{" "}
+          <a href="/docs" class="underline">
+            documentation
+          </a>
         </Trans>
       </p>
     </div>
@@ -118,7 +121,7 @@ dashRoute.get("/", async (c) => {
 
   return c.html(
     <Layout title={i18n._({ message: "Dashboard", comment: "@context: ..." })}>
-      <MyComponent c={c} />  {/* Need to pass c prop */}
+      <MyComponent c={c} /> {/* Need to pass c prop */}
     </Layout>
   );
 });
@@ -138,14 +141,14 @@ dashRoute.get("/", async (c) => {
   return c.html(
     <I18nProvider c={c}>
       <Layout>
-        <MyComponent />  {/* No need to pass c prop */}
+        <MyComponent /> {/* No need to pass c prop */}
       </Layout>
     </I18nProvider>
   );
 });
 
 function MyComponent() {
-  const { t } = useLingui();  // Like React hook
+  const { t } = useLingui(); // Like React hook
   return <h1>{t({ message: "Hello", comment: "@context: ..." })}</h1>;
 }
 ```
@@ -159,10 +162,10 @@ function MyComponent() {
 ```tsx
 // ✅ Correct - comment is crucial for AI translation
 const { t } = useLingui();
-t({ message: "Dashboard", comment: "@context: Page title" })
+t({ message: "Dashboard", comment: "@context: Page title" });
 
 // ❌ Wrong - missing comment reduces translation quality
-t({ message: "Dashboard" })
+t({ message: "Dashboard" });
 ```
 
 ### 2. **I18nProvider must wrap your app**
@@ -173,10 +176,10 @@ c.html(
   <I18nProvider c={c}>
     <App />
   </I18nProvider>
-)
+);
 
 // ❌ Wrong - useLingui() will throw error
-c.html(<App />)  // useLingui() inside App won't find i18n context
+c.html(<App />); // useLingui() inside App won't find i18n context
 ```
 
 ### 3. **useLingui() only works inside components**
@@ -201,10 +204,10 @@ dashRoute.get("/", async (c) => {
 const { t } = useLingui();
 
 // ✅ Correct - values as second parameter
-t({ message: "Hello {name}", comment: "@context: Greeting" }, { name: "Alice" })
+t({ message: "Hello {name}", comment: "@context: Greeting" }, { name: "Alice" });
 
 // ❌ Wrong - values inside first parameter (not supported)
-t({ message: "Hello {name}", comment: "@context: Greeting", values: { name: "Alice" } })
+t({ message: "Hello {name}", comment: "@context: Greeting", values: { name: "Alice" } });
 ```
 
 ---
@@ -227,14 +230,14 @@ Provides i18n context to all child components. Must wrap your app in route handl
 
 ```tsx
 interface I18nProviderProps {
-  c: Context;  // Hono context
+  c: Context; // Hono context
   children: JSX.Element;
 }
 
 // Usage
 <I18nProvider c={c}>
   <YourApp />
-</I18nProvider>
+</I18nProvider>;
 ```
 
 ### `useLingui()`
@@ -243,10 +246,10 @@ Hook to access i18n functionality inside components. Must be used within `I18nPr
 
 ```tsx
 function useLingui(): {
-  i18n: I18n;  // Lingui i18n instance
+  i18n: I18n; // Lingui i18n instance
   t: (descriptor: MessageDescriptor, values?: Record<string, any>) => string;
   _: (descriptor: MessageDescriptor, values?: Record<string, any>) => string;
-}
+};
 
 // Usage
 function MyComponent() {
@@ -263,15 +266,15 @@ Component for translations with embedded JSX elements. Simplified implementation
 
 ```tsx
 interface TransProps {
-  comment?: string;  // @context comment for translators
-  id?: string;       // Optional message ID
-  children: JSX.Element;  // JSX content with embedded elements
+  comment?: string; // @context comment for translators
+  id?: string; // Optional message ID
+  children: JSX.Element; // JSX content with embedded elements
 }
 
 // Usage
 <Trans comment="@context: Help text">
   Read the <a href="/docs">documentation</a>
-</Trans>
+</Trans>;
 ```
 
 **Note**: This is a simplified implementation. For complex translations with dynamic content, use `t()` with placeholders instead.
@@ -290,6 +293,7 @@ This implementation mimics React's Context API but is optimized for Hono JSX SSR
 ### Why Global State is Safe
 
 Unlike React (client-side with multiple re-renders), Hono JSX renders once per request on the server:
+
 - Request arrives → I18nProvider sets global i18n → Components render → Response sent
 - Next request → New i18n instance → Components render → Response sent
 

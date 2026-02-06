@@ -22,10 +22,7 @@ function PostContent({ post }: { post: Post }) {
       <article class="h-entry">
         {post.title && <h1 class="p-name text-2xl font-semibold mb-4">{post.title}</h1>}
 
-        <div
-          class="e-content prose"
-          dangerouslySetInnerHTML={{ __html: post.contentHtml || "" }}
-        />
+        <div class="e-content prose" dangerouslySetInnerHTML={{ __html: post.contentHtml || "" }} />
 
         <footer class="mt-6 pt-4 border-t text-sm text-muted-foreground">
           <time class="dt-published" datetime={time.toISOString(post.publishedAt)}>

@@ -53,10 +53,7 @@ function readExifOrientation(buffer: ArrayBuffer): number {
       const exifOffset = offset + 4;
 
       // Check for "Exif\0\0"
-      if (
-        view.getUint32(exifOffset) !== 0x45786966 ||
-        view.getUint16(exifOffset + 4) !== 0x0000
-      ) {
+      if (view.getUint32(exifOffset) !== 0x45786966 || view.getUint16(exifOffset + 4) !== 0x0000) {
         return 1;
       }
 
@@ -148,12 +145,7 @@ async function process(file: File, options: ProcessOptions = {}): Promise<Blob> 
   const srcHeight = isRotated ? img.width : img.height;
 
   // Calculate output size
-  const { width, height } = calculateDimensions(
-    srcWidth,
-    srcHeight,
-    opts.maxWidth,
-    opts.maxHeight
-  );
+  const { width, height } = calculateDimensions(srcWidth, srcHeight, opts.maxWidth, opts.maxHeight);
 
   // Create canvas
   const canvas = document.createElement("canvas");

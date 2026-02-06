@@ -6,19 +6,19 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 
 We follow [Semantic Versioning](https://semver.org/):
 
-| Type | When to use | Example |
-|------|-------------|---------|
-| **patch** | Bug fixes, typos | `0.0.1` → `0.0.2` |
+| Type      | When to use                         | Example           |
+| --------- | ----------------------------------- | ----------------- |
+| **patch** | Bug fixes, typos                    | `0.0.1` → `0.0.2` |
 | **minor** | New features (backwards compatible) | `0.1.0` → `0.2.0` |
-| **major** | Breaking changes | `0.x.x` → `1.0.0` |
+| **major** | Breaking changes                    | `0.x.x` → `1.0.0` |
 
 > **Note**: While version is `0.x.x`, the API is considered unstable. Breaking changes may occur in minor versions.
 
 ## Packages
 
-| Package | npm | Description |
-|---------|-----|-------------|
-| `@jant/core` | [![npm](https://img.shields.io/npm/v/@jant/core)](https://www.npmjs.com/package/@jant/core) | Core framework |
+| Package       | npm                                                                                           | Description          |
+| ------------- | --------------------------------------------------------------------------------------------- | -------------------- |
+| `@jant/core`  | [![npm](https://img.shields.io/npm/v/@jant/core)](https://www.npmjs.com/package/@jant/core)   | Core framework       |
 | `create-jant` | [![npm](https://img.shields.io/npm/v/create-jant)](https://www.npmjs.com/package/create-jant) | CLI scaffolding tool |
 
 ## Workflow
@@ -117,6 +117,7 @@ After configuration, the Release workflow will automatically publish new version
 ```
 
 Benefits:
+
 - **No secrets to manage** - No npm tokens in GitHub Secrets
 - **Provenance** - Each release has cryptographic proof of its build origin
 - **Auditable** - Users can verify packages came from the official repo
@@ -141,13 +142,16 @@ pnpm changeset pre exit
 ## Troubleshooting
 
 ### "Package not found" when configuring Trusted Publisher
+
 The package must be published at least once before you can configure Trusted Publishing. Do the initial publish manually.
 
 ### "OIDC token exchange failed"
+
 - Verify workflow filename matches exactly (including `.yml` extension)
 - Check repository owner/name spelling
 - Ensure `id-token: write` permission is set in workflow
 
 ### Release PR not created
+
 - Check if there are any changeset files in `.changeset/`
 - Verify the `GITHUB_TOKEN` has write permissions

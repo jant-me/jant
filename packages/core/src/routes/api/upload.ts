@@ -24,7 +24,14 @@ uploadApiRoutes.use("*", requireAuthApi());
  * Render a media card HTML string for SSE response
  */
 function renderMediaCard(
-  media: { id: string; r2Key: string; mimeType: string; originalName: string; alt: string | null; size: number },
+  media: {
+    id: string;
+    r2Key: string;
+    mimeType: string;
+    originalName: string;
+    alt: string | null;
+    size: number;
+  },
   r2PublicUrl?: string,
   imageTransformUrl?: string
 ): string {
@@ -54,7 +61,11 @@ function renderMediaCard(
             loading="lazy"
           />
         </button>
-        <a href="/dash/media/${media.id}" class="block mt-2 text-xs truncate hover:underline" title="${media.originalName}">
+        <a
+          href="/dash/media/${media.id}"
+          class="block mt-2 text-xs truncate hover:underline"
+          title="${media.originalName}"
+        >
           ${media.originalName}
         </a>
         <div class="text-xs text-muted-foreground">${sizeStr}</div>
@@ -72,7 +83,11 @@ function renderMediaCard(
           <span class="text-xs">${media.mimeType}</span>
         </div>
       </a>
-      <a href="/dash/media/${media.id}" class="block mt-2 text-xs truncate hover:underline" title="${media.originalName}">
+      <a
+        href="/dash/media/${media.id}"
+        class="block mt-2 text-xs truncate hover:underline"
+        title="${media.originalName}"
+      >
         ${media.originalName}
       </a>
       <div class="text-xs text-muted-foreground">${sizeStr}</div>
@@ -165,11 +180,7 @@ uploadApiRoutes.post("/", async (c) => {
 
     // SSE response for Datastar
     if (wantsSSE(c)) {
-      const cardHtml = renderMediaCard(
-        media,
-        c.env.R2_PUBLIC_URL,
-        c.env.IMAGE_TRANSFORM_URL
-      );
+      const cardHtml = renderMediaCard(media, c.env.R2_PUBLIC_URL, c.env.IMAGE_TRANSFORM_URL);
 
       return sse(c, async (stream) => {
         // Replace placeholder with real media card

@@ -75,11 +75,7 @@ export function createCollectionService(db: Database): CollectionService {
     },
 
     async getByPath(path) {
-      const result = await db
-        .select()
-        .from(collections)
-        .where(eq(collections.path, path))
-        .limit(1);
+      const result = await db.select().from(collections).where(eq(collections.path, path)).limit(1);
       return result[0] ? toCollection(result[0]) : null;
     },
 

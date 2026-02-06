@@ -7,7 +7,12 @@ import { useLingui } from "../../i18n/index.js";
 import type { Bindings, Redirect } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
-import { EmptyState, ListItemRow, ActionButtons, CrudPageHeader } from "../../theme/components/index.js";
+import {
+  EmptyState,
+  ListItemRow,
+  ActionButtons,
+  CrudPageHeader,
+} from "../../theme/components/index.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -20,14 +25,23 @@ function RedirectsListContent({ redirects }: { redirects: Redirect[] }) {
     <>
       <CrudPageHeader
         title={t({ message: "Redirects", comment: "@context: Dashboard heading" })}
-        ctaLabel={t({ message: "New Redirect", comment: "@context: Button to create new redirect" })}
+        ctaLabel={t({
+          message: "New Redirect",
+          comment: "@context: Button to create new redirect",
+        })}
         ctaHref="/dash/redirects/new"
       />
 
       {redirects.length === 0 ? (
         <EmptyState
-          message={t({ message: "No redirects configured.", comment: "@context: Empty state message" })}
-          ctaText={t({ message: "New Redirect", comment: "@context: Button to create new redirect" })}
+          message={t({
+            message: "No redirects configured.",
+            comment: "@context: Empty state message",
+          })}
+          ctaText={t({
+            message: "New Redirect",
+            comment: "@context: Button to create new redirect",
+          })}
           ctaHref="/dash/redirects/new"
         />
       ) : (
@@ -38,7 +52,10 @@ function RedirectsListContent({ redirects }: { redirects: Redirect[] }) {
               actions={
                 <ActionButtons
                   deleteAction={`/dash/redirects/${r.id}/delete`}
-                  deleteLabel={t({ message: "Delete", comment: "@context: Button to delete redirect" })}
+                  deleteLabel={t({
+                    message: "Delete",
+                    comment: "@context: Button to delete redirect",
+                  })}
                 />
               }
             >
@@ -61,23 +78,28 @@ function NewRedirectContent() {
 
   return (
     <>
-      <h1 class="text-2xl font-semibold mb-6">{t({ message: "New Redirect", comment: "@context: Page heading" })}</h1>
+      <h1 class="text-2xl font-semibold mb-6">
+        {t({ message: "New Redirect", comment: "@context: Page heading" })}
+      </h1>
 
       <form method="post" action="/dash/redirects" class="flex flex-col gap-4 max-w-lg">
         <div class="field">
-          <label class="label">{t({ message: "From Path", comment: "@context: Redirect form field" })}</label>
-          <input
-            type="text"
-            name="fromPath"
-            class="input"
-            placeholder="/old-path"
-            required
-          />
-          <p class="text-xs text-muted-foreground mt-1">{t({ message: "The path to redirect from", comment: "@context: Redirect from path help text" })}</p>
+          <label class="label">
+            {t({ message: "From Path", comment: "@context: Redirect form field" })}
+          </label>
+          <input type="text" name="fromPath" class="input" placeholder="/old-path" required />
+          <p class="text-xs text-muted-foreground mt-1">
+            {t({
+              message: "The path to redirect from",
+              comment: "@context: Redirect from path help text",
+            })}
+          </p>
         </div>
 
         <div class="field">
-          <label class="label">{t({ message: "To Path", comment: "@context: Redirect form field" })}</label>
+          <label class="label">
+            {t({ message: "To Path", comment: "@context: Redirect form field" })}
+          </label>
           <input
             type="text"
             name="toPath"
@@ -85,14 +107,25 @@ function NewRedirectContent() {
             placeholder="/new-path or https://..."
             required
           />
-          <p class="text-xs text-muted-foreground mt-1">{t({ message: "The destination path or URL", comment: "@context: Redirect to path help text" })}</p>
+          <p class="text-xs text-muted-foreground mt-1">
+            {t({
+              message: "The destination path or URL",
+              comment: "@context: Redirect to path help text",
+            })}
+          </p>
         </div>
 
         <div class="field">
-          <label class="label">{t({ message: "Type", comment: "@context: Redirect form field" })}</label>
+          <label class="label">
+            {t({ message: "Type", comment: "@context: Redirect form field" })}
+          </label>
           <select name="type" class="select">
-            <option value="301">{t({ message: "301 (Permanent)", comment: "@context: Redirect type option" })}</option>
-            <option value="302">{t({ message: "302 (Temporary)", comment: "@context: Redirect type option" })}</option>
+            <option value="301">
+              {t({ message: "301 (Permanent)", comment: "@context: Redirect type option" })}
+            </option>
+            <option value="302">
+              {t({ message: "302 (Temporary)", comment: "@context: Redirect type option" })}
+            </option>
           </select>
         </div>
 

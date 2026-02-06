@@ -40,9 +40,7 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         <Link href="/src/style.css" rel="stylesheet" />
         <Script src="/src/client.ts" />
       </head>
-      <body class="bg-background text-foreground antialiased">
-        {content}
-      </body>
+      <body class="bg-background text-foreground antialiased">{content}</body>
     </html>
   );
 };

@@ -5,10 +5,10 @@ on:
     branches:
       - main
     paths:
-      - 'packages/core/**'
-      - 'templates/jant-site/**'
-      - '.github/workflows/deploy.yml'
-      - '.github/workflows/deploy-demo.yml'
+      - "packages/core/**"
+      - "templates/jant-site/**"
+      - ".github/workflows/deploy.yml"
+      - ".github/workflows/deploy-demo.yml"
   workflow_dispatch:
 
 jobs:

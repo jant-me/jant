@@ -35,7 +35,7 @@ run = "pnpm --filter jant-site typecheck"
 # =============================================================================
 [tasks.lint]
 description = "Run ESLint"
-run = "pnpm --filter @jant/core lint"
+run = "pnpm lint"
 
 [tasks.format]
 description = "Format code with Prettier"
@@ -117,6 +117,10 @@ npx lingui-po-translate \
   --serviceConfig="$OPENAI_API_KEY" \
   --sourceOverride="zh-Hant:zh-Hans"
 """
+
+[tasks.preview]
+description = "Preview production build with Vite"
+run = "pnpm --filter jant-site preview"
 
 # =============================================================================
 # Deploy

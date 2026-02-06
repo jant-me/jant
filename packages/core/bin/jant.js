@@ -71,9 +71,7 @@ function listComponents() {
 }
 
 function generateWrapperCode(componentName, info) {
-  const importPath = info.isLayout
-    ? "@jant/core/theme/layouts"
-    : "@jant/core/theme/components";
+  const importPath = info.isLayout ? "@jant/core/theme/layouts" : "@jant/core/theme/components";
 
   return `/**
  * Custom ${componentName} component

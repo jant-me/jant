@@ -51,14 +51,14 @@ const ThreadPost: FC<{
         </time>
         {isRoot && (
           <span class="text-xs">
-            {t({ message: "Thread start", comment: "@context: Thread view indicator - first post in thread" })}
+            {t({
+              message: "Thread start",
+              comment: "@context: Thread view indicator - first post in thread",
+            })}
           </span>
         )}
         {!isCurrent && (
-          <a
-            href={`/p/${sqid.encode(post.id)}`}
-            class="text-xs hover:underline"
-          >
+          <a href={`/p/${sqid.encode(post.id)}`} class="text-xs hover:underline">
             {t({ message: "Permalink", comment: "@context: Link to individual post in thread" })}
           </a>
         )}
@@ -84,32 +84,29 @@ export const ThreadView: FC<ThreadViewProps> = ({ posts, currentPostId }) => {
     );
   }
 
-  const threadLabel = posts.length === 1
-    ? t({ message: "Thread with 1 post", comment: "@context: Thread view header - single post" })
-    : t({ message: "Thread with {count} posts", comment: "@context: Thread view header - multiple posts", values: { count: String(posts.length) } });
+  const threadLabel =
+    posts.length === 1
+      ? t({ message: "Thread with 1 post", comment: "@context: Thread view header - single post" })
+      : t({
+          message: "Thread with {count} posts",
+          comment: "@context: Thread view header - multiple posts",
+          values: { count: String(posts.length) },
+        });
 
   return (
     <div class="thread-view">
-      <div class="mb-4 text-sm text-muted-foreground">
-        {threadLabel}
-      </div>
+      <div class="mb-4 text-sm text-muted-foreground">{threadLabel}</div>
 
       <div class="flex flex-col gap-3">
         {posts.map((post, index) => (
           <div key={post.id} class="relative">
             {/* Connection line */}
-            {index > 0 && (
-              <div class="absolute left-6 -top-3 w-0.5 h-3 bg-border" />
-            )}
+            {index > 0 && <div class="absolute left-6 -top-3 w-0.5 h-3 bg-border" />}
             {index < posts.length - 1 && (
               <div class="absolute left-6 -bottom-3 w-0.5 h-3 bg-border" />
             )}
 
-            <ThreadPost
-              post={post}
-              isCurrent={post.id === currentPostId}
-              isRoot={index === 0}
-            />
+            <ThreadPost post={post} isCurrent={post.id === currentPostId} isRoot={index === 0} />
           </div>
         ))}
       </div>

@@ -9,10 +9,5 @@
     "emitDeclarationOnly": true
   },
   "include": ["src/**/*"],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "src/client.ts",
-    "src/lib/image-processor.ts"
-  ]
+  "exclude": ["node_modules", "dist", "src/client.ts", "src/lib/image-processor.ts"]
 }

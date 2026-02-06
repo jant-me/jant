@@ -86,15 +86,16 @@ mise run publish:create # Publish create-jant to npm
 
 ### 包职责
 
-| 包 | 职责 | 包含 Vite/Wrangler? |
-|---|------|---------------------|
-| `packages/core` | 纯库 - 导出组件、服务、工具函数 | ❌ 否 |
-| `templates/jant-site` | 开发 + 测试 + 部署环境 | ✅ 是 |
-| `packages/create-jant/template` | 用户项目模板 | ✅ 是 |
+| 包                              | 职责                            | 包含 Vite/Wrangler? |
+| ------------------------------- | ------------------------------- | ------------------- |
+| `packages/core`                 | 纯库 - 导出组件、服务、工具函数 | ❌ 否               |
+| `templates/jant-site`           | 开发 + 测试 + 部署环境          | ✅ 是               |
+| `packages/create-jant/template` | 用户项目模板                    | ✅ 是               |
 
 ### `packages/core` (库)
 
 **只包含**：
+
 - 源代码 (`src/`)
 - 库构建配置 (`tsconfig.build.json`, `.swcrc`)
 - 代码质量工具 (`eslint.config.js`, `.prettierrc`)
@@ -102,12 +103,14 @@ mise run publish:create # Publish create-jant to npm
 - i18n 提取 (`lingui.config.ts`)
 
 **不包含** (已移除)：
+
 - ~~`vite.config.ts`~~ - 无需 Vite，开发在 jant-site 进行
 - ~~`wrangler.toml`~~ - 无需部署，部署从 jant-site 进行
 - ~~`src/style.css`~~ - 无需 CSS 入口，用户项目自带
 - ~~`tailwind.config.ts`~~ - 无需本地 Tailwind 配置
 
 **构建脚本**：
+
 ```bash
 pnpm build:lib    # swc 编译 + tsc 生成类型 → dist/
 pnpm typecheck    # 类型检查
@@ -119,11 +122,13 @@ pnpm i18n:build   # 提取 + 编译翻译
 ### `templates/jant-site` (开发环境)
 
 **用途**：
+
 1. 在 monorepo 中开发和测试 `@jant/core`
 2. 作为参考实现和演示站点
 3. 部署到 Cloudflare Workers
 
 **特殊配置** (仅 monorepo)：
+
 ```typescript
 // vite.config.ts - monorepo 别名，直接使用源码实现 HMR
 resolve: {
@@ -136,6 +141,7 @@ resolve: {
 ### `packages/create-jant/template` (用户模板)
 
 **与 jant-site 的区别**：
+
 - ❌ 没有 monorepo 别名 (从 node_modules 导入 @jant/core)
 - ✅ 其他配置相同
 
@@ -178,6 +184,7 @@ jant/
 Located in `src/theme/components/`:
 
 **CRUD Components:**
+
 - `CrudPageHeader` - Page header with title + action button
 - `EmptyState` - Empty state display with optional CTA
 - `ListItemRow` - Consistent list item layout
@@ -185,14 +192,17 @@ Located in `src/theme/components/`:
 - `DangerZone` - Destructive action section with confirmation
 
 **Badge Components:**
+
 - `TypeBadge` - Post type badge (Note/Article/Link/Quote/Image/Page)
 - `VisibilityBadge` - Visibility badge (Featured/Quiet/Unlisted/Draft)
 
 **Form Components:**
+
 - `PostForm` - Post creation/editing form
 - `PageForm` - Page creation/editing form
 
 **Display Components:**
+
 - `PostList` - Post list with filtering
 - `ThreadView` - Thread/reply chain display
 - `Pagination` - Cursor/page-based pagination
@@ -215,6 +225,7 @@ Located in `src/theme/components/`:
 **All workflows use Vite - no custom scripts, no wrangler build commands.**
 
 **Development (`pnpm dev` / `vite dev`):**
+
 1. Vite dev server starts on port 9019
 2. @cloudflare/vite-plugin integrates with Cloudflare Workers runtime
 3. @tailwindcss/vite processes CSS as Vite plugin
@@ -222,6 +233,7 @@ Located in `src/theme/components/`:
 5. Reads `.dev.vars` for environment variables
 
 **Production Build (`pnpm build` / `vite build`):**
+
 1. Vite builds both Worker code and CSS:
    - Worker code → `dist/jant/` (server-side runtime)
    - CSS + static assets → `dist/client/` (client assets served by Workers)
@@ -231,6 +243,7 @@ Located in `src/theme/components/`:
 5. Static files from `static/` copied to `dist/client/assets/`
 
 **Deployment (`pnpm deploy`):**
+
 1. Run `vite build` to generate production bundle
 2. Use `wrangler deploy` to upload to Cloudflare (reads `dist/jant/wrangler.json`)
 
@@ -244,7 +257,7 @@ Located in `src/theme/components/`:
 
 ```css
 /* @jant/core/src/preset.css */
-@source "./";                        /* 扫描 @jant/core/src/ 下所有文件 */
+@source "./"; /* 扫描 @jant/core/src/ 下所有文件 */
 @import "basecoat-css";
 @import "./styles/components.css";
 ```
@@ -252,7 +265,7 @@ Located in `src/theme/components/`:
 ```css
 /* 用户项目 src/style.css - 只需两行 import */
 @import "tailwindcss";
-@import "@jant/core/preset.css";     /* 自动带入 @source 扫描 */
+@import "@jant/core/preset.css"; /* 自动带入 @source 扫描 */
 
 :root {
   --radius-default: 0.25rem;
@@ -260,9 +273,11 @@ Located in `src/theme/components/`:
 ```
 
 **@jant/core 导出**：
+
 - `@jant/core/preset.css` → CSS 预设 (basecoat + 组件样式 + @source 自动扫描)
 
 **关键点**：
+
 - Tailwind v4 的 `content` 配置已废弃，改用 CSS `@source` 指令
 - `@source` 路径相对于 CSS 文件自身位置解析，无论 monorepo 还是 npm 安装都能工作
 - 无需 `tailwind.config.ts`、`@config` 指令或 helper 函数
@@ -273,11 +288,13 @@ Located in `src/theme/components/`:
 ### 1. Type System
 
 **Single Source of Truth: `types.ts`**
+
 - All type definitions live in `types.ts`
 - Use `const` assertions for enums: `POST_TYPES = [...] as const`
 - Export derived types: `type PostType = (typeof POST_TYPES)[number]`
 
 **Validation: `lib/schemas.ts`**
+
 - Zod schemas import constants from `types.ts`
 - Used only for runtime validation (forms, API requests)
 - Example: `PostTypeSchema = z.enum(POST_TYPES)`
@@ -285,6 +302,7 @@ Located in `src/theme/components/`:
 ### 2. Route Naming
 
 **Convention: Use `xxxRoutes` suffix consistently**
+
 ```typescript
 // ✅ Correct
 export const postsRoutes = new Hono<Env>();
@@ -306,11 +324,13 @@ export const homeroute = new Hono<Env>();
 ### 4. Component Reuse
 
 **When to extract a component:**
+
 - Pattern repeats 3+ times across files
 - Component has single, clear responsibility
 - Benefits code consistency and maintenance
 
 **Component guidelines:**
+
 - Use TypeScript interfaces for props
 - Add JSDoc comments for complex components
 - Export both component and prop types
@@ -327,22 +347,26 @@ export const homeroute = new Hono<Env>();
 ## Code Quality Standards
 
 ### TypeScript
+
 - Strict mode enabled
 - No `any` types (use proper types or `unknown`)
 - All exports are typed
 - 100% type coverage
 
 ### ESLint
+
 - Zero errors policy
 - Warnings are acceptable for console.log, non-null assertions (with comments)
 - Configuration in `eslint.config.js`
 
 ### Prettier
+
 - Auto-format on save
 - Pre-commit hook formatting
 - Configuration in `.prettierrc`
 
 ### Pre-commit Hooks
+
 - **husky**: Git hooks management
 - **lint-staged**: Format staged files
 - Runs: ESLint --fix + Prettier --write
@@ -362,6 +386,7 @@ function MyComponent() {
 ```
 
 **Key Rules:**
+
 1. ALL user-facing strings must use `t()` function
 2. Always include `comment` with `@context:` prefix
 3. Wrap app in `<I18nProvider c={c}>` (BaseLayout does this automatically when `c` prop provided)
@@ -370,6 +395,7 @@ function MyComponent() {
 **Detailed documentation:** See `src/i18n/README.md`
 
 **Workflow:**
+
 1. Add translations with `t()` function
 2. Run `pnpm i18n:extract` to extract messages
 3. Run `mise run translate` for AI translation (optional)
@@ -419,9 +445,9 @@ app.post("/api/action", (c) => {
     await stream.patchElements('<div id="result">Done!</div>');
 
     // Prepend to list
-    await stream.patchElements('<li>New item</li>', {
-      mode: 'prepend',
-      selector: '#items'
+    await stream.patchElements("<li>New item</li>", {
+      mode: "prepend",
+      selector: "#items",
     });
   });
 });
@@ -432,10 +458,10 @@ app.post("/api/action", (c) => {
 For file uploads, manually parse SSE since Datastar doesn't handle FormData:
 
 ```javascript
-const response = await fetch('/api/upload', {
-  method: 'POST',
+const response = await fetch("/api/upload", {
+  method: "POST",
   body: formData,
-  headers: { 'Accept': 'text/event-stream' }
+  headers: { Accept: "text/event-stream" },
 });
 
 // Parse SSE events manually and update Datastar store
@@ -464,6 +490,7 @@ Define signals on a **parent element** that contains all elements needing access
 **Signal not found error**: `Cannot read properties of undefined (reading 'value')`
 
 This happens when Datastar can't find the signal. Causes:
+
 - Signal defined on wrong element (child instead of parent)
 - Signal name mismatch (case-sensitive)
 - Element with `data-signals` not processed yet when child elements try to access
@@ -483,6 +510,7 @@ This happens when Datastar can't find the signal. Causes:
 ## Current Status
 
 ### Core Features ✅
+
 - [x] Project setup (pnpm workspace, mise, tsconfig)
 - [x] Database schema (Drizzle) + migrations (including FTS5)
 - [x] Services layer (settings, posts, redirects, media, collections, search)
@@ -494,6 +522,7 @@ This happens when Datastar can't find the signal. Causes:
 - [x] Feed (RSS, Atom, Sitemap)
 
 ### Code Quality ✅
+
 - [x] TypeScript strict mode (0 errors)
 - [x] ESLint configuration (0 errors, minimal warnings)
 - [x] Prettier auto-formatting
@@ -501,6 +530,7 @@ This happens when Datastar can't find the signal. Causes:
 - [x] 100% JSDoc coverage for utility functions
 
 ### Architecture ✅
+
 - [x] Type system unified (single source of truth)
 - [x] Route naming standardized (xxxRoutes convention)
 - [x] Component library established (7 reusable components)
@@ -508,12 +538,14 @@ This happens when Datastar can't find the signal. Causes:
 - [x] Service layer pattern throughout
 
 ### Component Library ✅
+
 - [x] CRUD components (EmptyState, ListItemRow, ActionButtons, CrudPageHeader, DangerZone)
 - [x] Badge components (TypeBadge, VisibilityBadge)
 - [x] Form components (PostForm, PageForm)
 - [x] Display components (PostList, ThreadView, Pagination)
 
 ### Release System ✅
+
 - [x] Changesets for version management
 - [x] GitHub CI (lint, typecheck, build)
 - [x] Automated npm publishing via GitHub Actions
@@ -525,6 +557,7 @@ This happens when Datastar can't find the signal. Causes:
 This project uses [Changesets](https://github.com/changesets/changesets) for version management. See [docs/RELEASING.md](docs/RELEASING.md) for full documentation.
 
 **Quick workflow:**
+
 1. Make changes in a branch
 2. Run `mise run changeset` to create a changeset
 3. Open PR and merge to main
@@ -541,11 +574,13 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 Vite dev server listens on all network interfaces (`host: true`) and allows custom domains via `allowedHosts`.
 
 **Access methods:**
+
 - **Localhost**: http://localhost:9019
 - **Local domain** (via Caddy): https://local.jant.me
 - **Network IP**: http://[your-ip]:9019
 
 **Configuration in `.dev.vars`:**
+
 ```
 AUTH_SECRET=your-secret-at-least-32-chars
 ```
@@ -555,6 +590,7 @@ The project is configured to work with Caddy reverse proxy pointing `local.jant.
 If you use a different local domain, update `server.allowedHosts` in `vite.config.ts`.
 
 When you run `pnpm dev`, Vite will show:
+
 ```
 ➜  Local:   http://localhost:9019/
 ➜  Network: http://10.x.x.x:9019/
@@ -563,6 +599,7 @@ When you run `pnpm dev`, Vite will show:
 ## Code Quality Metrics
 
 Current state (as of latest refactor):
+
 - **TypeScript**: 0 errors, 100% type coverage
 - **ESLint**: 0 errors, 0 warnings
 - **Build**: Clean builds in <1s

@@ -4,29 +4,29 @@ on:
   workflow_call:
     inputs:
       environment:
-        description: 'Wrangler environment (e.g., production, staging)'
+        description: "Wrangler environment (e.g., production, staging)"
         required: false
         type: string
-        default: ''
+        default: ""
       working_directory:
-        description: 'Working directory containing wrangler.toml'
+        description: "Working directory containing wrangler.toml"
         required: false
         type: string
-        default: '.'
+        default: "."
       node_version:
-        description: 'Node.js version'
+        description: "Node.js version"
         required: false
         type: string
-        default: '24'
+        default: "24"
     secrets:
       CF_API_TOKEN:
-        description: 'Cloudflare API Token'
+        description: "Cloudflare API Token"
         required: true
       CF_ACCOUNT_ID:
-        description: 'Cloudflare Account ID'
+        description: "Cloudflare Account ID"
         required: true
       AUTH_SECRET:
-        description: 'Authentication secret for Jant'
+        description: "Authentication secret for Jant"
         required: true
 
 jobs:
@@ -118,7 +118,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node_version }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

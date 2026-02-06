@@ -59,12 +59,12 @@ Photos with optional captions.
 
 Every post has a visibility level:
 
-| Level | What it means |
-|-------|---------------|
+| Level        | What it means                                 |
+| ------------ | --------------------------------------------- |
 | **Featured** | Highlighted content, appears in main RSS feed |
-| **Quiet** | Normal publish, lower profile (default) |
-| **Unlisted** | Only accessible via direct link |
-| **Draft** | Work in progress, not published |
+| **Quiet**    | Normal publish, lower profile (default)       |
+| **Unlisted** | Only accessible via direct link               |
+| **Draft**    | Work in progress, not published               |
 
 Default is "quiet" to reduce publishing anxiety. Opt-in to "featured" for posts you're proud of.
 
@@ -75,6 +75,7 @@ Reply to your own posts to create connected threads. The entire thread shares th
 ## Collections
 
 Organize posts into themed collections:
+
 - `/c/reading-2024` - Book notes from this year
 - `/c/recipes` - Your cooking experiments
 - `/c/thoughts-on-ai` - A series on AI

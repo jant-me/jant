@@ -4,10 +4,26 @@ import tsParser from "@typescript-eslint/parser";
 import reactPlugin from "eslint-plugin-react";
 
 export default [
-  js.configs.recommended,
+  // Global ignores (must be first)
   {
-    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/.wrangler/**",
+      "**/*.config.js",
+      "**/*.config.ts",
+      "**/.lingui/**",
+      "**/assets.gen.ts",
+      "**/i18n/locales/*.ts",
+      "**/src/assets/**",
+      "**/bin/**",
+    ],
+  },
+  {
+    files: ["packages/*/src/**/*.{ts,tsx}", "templates/*/src/**/*.{ts,tsx}"],
+    ...js.configs.recommended,
     languageOptions: {
+      ...js.configs.recommended.languageOptions,
       parser: tsParser,
       parserOptions: {
         ecmaVersion: "latest",
@@ -57,6 +73,7 @@ export default [
       react: reactPlugin,
     },
     rules: {
+      ...js.configs.recommended.rules,
       // TypeScript
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": [
@@ -84,18 +101,5 @@ export default [
         version: "detect",
       },
     },
-  },
-  {
-    ignores: [
-      "dist/**",
-      "node_modules/**",
-      ".wrangler/**",
-      "*.config.js",
-      "*.config.ts",
-      ".lingui/**",
-      "src/lib/assets.gen.ts",
-      "src/i18n/locales/*.ts",
-      "src/assets/**", // Third-party assets like datastar.min.js
-    ],
   },
 ];

@@ -105,8 +105,14 @@ async function copyTemplate(config: ProjectConfig): Promise<void> {
   if (await fs.pathExists(wranglerPath)) {
     let content = await fs.readFile(wranglerPath, "utf-8");
     content = content.replace(/name = "jant-site"/g, `name = "${projectName}"`);
-    content = content.replace(/database_name = "jant-site-db"/g, `database_name = "${projectName}-db"`);
-    content = content.replace(/bucket_name = "jant-site-media"/g, `bucket_name = "${projectName}-media"`);
+    content = content.replace(
+      /database_name = "jant-site-db"/g,
+      `database_name = "${projectName}-db"`
+    );
+    content = content.replace(
+      /bucket_name = "jant-site-media"/g,
+      `bucket_name = "${projectName}-media"`
+    );
     await fs.writeFile(wranglerPath, content, "utf-8");
   }
 
@@ -123,7 +129,10 @@ AUTH_SECRET=${authSecret}
   if (await fs.pathExists(viteConfigPath)) {
     let content = await fs.readFile(viteConfigPath, "utf-8");
     // Remove monorepo-only blocks (marked with @monorepo-only-start/end)
-    content = content.replace(/\s*\/\/ @monorepo-only-start[\s\S]*?\/\/ @monorepo-only-end\n?/g, "");
+    content = content.replace(
+      /\s*\/\/ @monorepo-only-start[\s\S]*?\/\/ @monorepo-only-end\n?/g,
+      ""
+    );
     // Update lingui plugin paths: src/ -> dist/, .ts -> .js
     content = content.replace(/@jant\/core\/src\/([^"']+)\.ts/g, "@jant/core/dist/$1.js");
     await fs.writeFile(viteConfigPath, content, "utf-8");
@@ -228,10 +237,7 @@ async function main(): Promise<void> {
 
   // Show next steps
   console.log();
-  p.note(
-    [`cd ${projectName}`, "pnpm install", "pnpm dev"].join("\n"),
-    "Next steps"
-  );
+  p.note([`cd ${projectName}`, "pnpm install", "pnpm dev"].join("\n"), "Next steps");
 
   p.outro(chalk.green("Happy coding!"));
 }

@@ -20,7 +20,9 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
     <form method={method} action={action} class="flex flex-col gap-4">
       {/* Type selector */}
       <div class="field">
-        <label class="label">{t({ message: "Type", comment: "@context: Post form field - post type" })}</label>
+        <label class="label">
+          {t({ message: "Type", comment: "@context: Post form field - post type" })}
+        </label>
         <select name="type" class="select" required>
           <option value="note" selected={post?.type === "note"}>
             {t({ message: "Note", comment: "@context: Post type option" })}
@@ -42,7 +44,9 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
 
       {/* Title (optional) */}
       <div class="field">
-        <label class="label">{t({ message: "Title (optional)", comment: "@context: Post form field" })}</label>
+        <label class="label">
+          {t({ message: "Title (optional)", comment: "@context: Post form field" })}
+        </label>
         <input
           type="text"
           name="title"
@@ -54,11 +58,16 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
 
       {/* Content */}
       <div class="field">
-        <label class="label">{t({ message: "Content", comment: "@context: Post form field" })}</label>
+        <label class="label">
+          {t({ message: "Content", comment: "@context: Post form field" })}
+        </label>
         <textarea
           name="content"
           class="textarea min-h-32"
-          placeholder={t({ message: "What's on your mind?", comment: "@context: Post content placeholder" })}
+          placeholder={t({
+            message: "What's on your mind?",
+            comment: "@context: Post content placeholder",
+          })}
           required
         >
           {post?.content ?? ""}
@@ -67,7 +76,9 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
 
       {/* Source URL (for link/quote types) */}
       <div class="field">
-        <label class="label">{t({ message: "Source URL (optional)", comment: "@context: Post form field" })}</label>
+        <label class="label">
+          {t({ message: "Source URL (optional)", comment: "@context: Post form field" })}
+        </label>
         <input
           type="url"
           name="sourceUrl"
@@ -79,7 +90,9 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
 
       {/* Visibility */}
       <div class="field">
-        <label class="label">{t({ message: "Visibility", comment: "@context: Post form field" })}</label>
+        <label class="label">
+          {t({ message: "Visibility", comment: "@context: Post form field" })}
+        </label>
         <select name="visibility" class="select">
           <option value="quiet" selected={post?.visibility === "quiet" || !post}>
             {t({ message: "Quiet (normal)", comment: "@context: Post visibility option" })}
@@ -98,7 +111,9 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
 
       {/* Custom path (optional) */}
       <div class="field">
-        <label class="label">{t({ message: "Custom Path (optional)", comment: "@context: Post form field" })}</label>
+        <label class="label">
+          {t({ message: "Custom Path (optional)", comment: "@context: Post form field" })}
+        </label>
         <input
           type="text"
           name="path"
@@ -111,7 +126,9 @@ export const PostForm: FC<PostFormProps> = ({ post, action, method = "post" }) =
       {/* Submit */}
       <div class="flex gap-2">
         <button type="submit" class="btn">
-          {isEdit ? t({ message: "Update", comment: "@context: Button to update existing post" }) : t({ message: "Publish", comment: "@context: Button to publish new post" })}
+          {isEdit
+            ? t({ message: "Update", comment: "@context: Button to update existing post" })
+            : t({ message: "Publish", comment: "@context: Button to publish new post" })}
         </button>
         <a href="/dash/posts" class="btn-outline">
           {t({ message: "Cancel", comment: "@context: Button to cancel form" })}

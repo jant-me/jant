@@ -99,12 +99,12 @@ A workflow file is already included at `.github/workflows/deploy.yml`. You just 
 
 5. Your permissions should include at minimum:
 
-| Scope | Permission | Access |
-|-------|------------|--------|
-| Account | Workers Scripts | Edit |
-| Account | Workers R2 Storage | Edit |
-| Account | **D1** | **Edit** ← Must add manually! |
-| Zone | Workers Routes | Edit |
+| Scope   | Permission         | Access                        |
+| ------- | ------------------ | ----------------------------- |
+| Account | Workers Scripts    | Edit                          |
+| Account | Workers R2 Storage | Edit                          |
+| Account | **D1**             | **Edit** ← Must add manually! |
+| Zone    | Workers Routes     | Edit                          |
 
 6. **Account Resources** (below permissions list):
    - Select **Include** → **Specific account** → Choose your account
@@ -119,13 +119,14 @@ A workflow file is already included at `.github/workflows/deploy.yml`. You just 
 
 Go to your GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
 
-| Secret Name | Value |
-|-------------|-------|
-| `CF_API_TOKEN` | Your API token from above |
+| Secret Name     | Value                                                                      |
+| --------------- | -------------------------------------------------------------------------- |
+| `CF_API_TOKEN`  | Your API token from above                                                  |
 | `CF_ACCOUNT_ID` | Your Cloudflare Account ID (find it in dashboard URL or `wrangler whoami`) |
-| `AUTH_SECRET` | Random string for authentication (**must be at least 32 characters**) |
+| `AUTH_SECRET`   | Random string for authentication (**must be at least 32 characters**)      |
 
 > **Important**: `AUTH_SECRET` must be at least 32 characters long. You can generate one with:
+>
 > ```bash
 > openssl rand -base64 32
 > ```
@@ -141,7 +142,7 @@ jobs:
   deploy:
     uses: nicepkg/jant/.github/workflows/deploy.yml@v1
     with:
-      environment: production  # Uses [env.production] in wrangler.toml
+      environment: production # Uses [env.production] in wrangler.toml
     secrets:
       CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
       CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
@@ -159,20 +160,20 @@ To use your own domain:
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start development server |
-| `pnpm build` | Build for production |
-| `pnpm deploy` | Build and deploy to Cloudflare |
-| `pnpm preview` | Preview production build |
-| `pnpm typecheck` | Run TypeScript checks |
+| Command          | Description                    |
+| ---------------- | ------------------------------ |
+| `pnpm dev`       | Start development server       |
+| `pnpm build`     | Build for production           |
+| `pnpm deploy`    | Build and deploy to Cloudflare |
+| `pnpm preview`   | Preview production build       |
+| `pnpm typecheck` | Run TypeScript checks          |
 
 ## Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `AUTH_SECRET` | Secret key for authentication (32+ chars) | Yes |
-| `SITE_URL` | Your site's public URL | Set in wrangler.toml |
+| Variable      | Description                               | Required             |
+| ------------- | ----------------------------------------- | -------------------- |
+| `AUTH_SECRET` | Secret key for authentication (32+ chars) | Yes                  |
+| `SITE_URL`    | Your site's public URL                    | Set in wrangler.toml |
 
 ## Customization
 
