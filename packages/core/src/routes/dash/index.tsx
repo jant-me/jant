@@ -63,7 +63,10 @@ function DashboardContent({
       {/* ✅ Trans component with embedded JSX! */}
       <p>
         <Trans comment="@context: Help text with link">
-          Need help? Visit the <a href="/docs" class="underline">documentation</a>
+          Need help? Visit the{" "}
+          <a href="/docs" class="underline">
+            documentation
+          </a>
         </Trans>
       </p>
     </div>
@@ -80,10 +83,7 @@ dashIndexRoutes.get("/", async (c) => {
 
   return c.html(
     <DashLayout c={c} title="Dashboard" siteName={siteName} currentPath="/dash">
-      <DashboardContent
-        publishedCount={publishedPosts.length}
-        draftCount={draftPosts.length}
-      />
+      <DashboardContent publishedCount={publishedPosts.length} draftCount={draftPosts.length} />
     </DashLayout>
   );
 });

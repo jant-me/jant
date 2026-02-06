@@ -17,7 +17,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      id-token: write  # Required for npm trusted publishing (OIDC)
+      id-token: write # Required for npm trusted publishing (OIDC)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
-          publish: pnpm release
+          publish: pnpm release:ci
           title: "chore: release packages"
           commit: "chore: release packages"
         env:

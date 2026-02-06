@@ -1,82 +1,94 @@
 import { defineConfig, type Plugin } from "vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import swc from "unplugin-swc";
-import tailwindcss from "@tailwindcss/postcss";
-import autoprefixer from "autoprefixer";
-import { existsSync, readFileSync, writeFileSync, readdirSync } from "fs";
-import { resolve, join } from "path";
+import tailwindcss from "@tailwindcss/vite";
+import { resolve } from "path";
+import { readFileSync } from "fs";
 
-// After client build, patch worker bundle with actual asset paths
-function patchWorkerAssets(): Plugin {
+/**
+ * Trigger full page reload when server/worker code changes.
+ * @cloudflare/vite-plugin only hot-updates the worker module,
+ * but for SSR apps the browser needs a full reload to see new HTML.
+ */
+function ssrReload(): Plugin {
   return {
-    name: "patch-worker-assets",
-    apply: "build",
-    closeBundle() {
-      const manifestPath = resolve("dist/client/.vite/manifest.json");
-      if (!existsSync(manifestPath)) return;
+    name: "ssr-reload",
+    hotUpdate({ server }) {
+      if (this.environment.name !== "client") {
+        server.hot.send({ type: "full-reload" });
+        return [];
+      }
+    },
+  };
+}
 
-      const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+/**
+ * Inject manifest content into SSR bundle for vite-ssr-components
+ */
+function injectManifest(): Plugin {
+  let clientOutDir = "dist/client";
 
-      // Extract asset paths from manifest
-      let stylesPath = "/assets/styles.css";
-      let clientPath = "/assets/client.js";
-      let datastarPath = "/assets/datastar.min.js";
-      let imageProcessorPath = "/assets/image-processor.js";
+  return {
+    name: "inject-manifest",
+    config(config) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      clientOutDir = (config as any).environments?.client?.build?.outDir ?? "dist/client";
+    },
+    transform(code, _id, options) {
+      if (!options?.ssr) return;
+      if (!code.includes("__VITE_MANIFEST_CONTENT__")) return;
 
-      for (const [key, entry] of Object.entries(manifest) as [string, { file: string }][]) {
-        if (key.includes("main.css") || key.includes("styles")) {
-          stylesPath = `/${entry.file}`;
-        } else if (key.includes("client.ts")) {
-          clientPath = `/${entry.file}`;
-        } else if (key.includes("datastar")) {
-          datastarPath = `/${entry.file}`;
-        } else if (key.includes("image-processor")) {
-          imageProcessorPath = `/${entry.file}`;
-        }
+      const manifestPath = resolve(process.cwd(), clientOutDir, ".vite/manifest.json");
+      let manifestContent: string;
+      try {
+        manifestContent = readFileSync(manifestPath, "utf-8");
+      } catch {
+        return;
       }
 
-      // Find and patch worker entry file
-      const workerDirs = readdirSync("dist").filter(d => d !== "client" && existsSync(join("dist", d, "assets")));
-      for (const dir of workerDirs) {
-        const assetsDir = join("dist", dir, "assets");
-        const files = readdirSync(assetsDir).filter(f => f.startsWith("worker-entry"));
-        for (const file of files) {
-          const filePath = join(assetsDir, file);
-          let content = readFileSync(filePath, "utf-8");
-          // Replace unique placeholders with actual hashed paths
-          content = content.replace(/__JANT_ASSET_STYLES__/g, stylesPath);
-          content = content.replace(/__JANT_ASSET_CLIENT__/g, clientPath);
-          content = content.replace(/__JANT_ASSET_DATASTAR__/g, datastarPath);
-          content = content.replace(/__JANT_ASSET_IMAGE_PROCESSOR__/g, imageProcessorPath);
-          writeFileSync(filePath, content);
-        }
+      const newCode = code.replace(
+        /"__VITE_MANIFEST_CONTENT__"/g,
+        `{ "__manifest__": { default: ${manifestContent} } }`
+      );
+
+      if (newCode !== code) {
+        return { code: newCode, map: null };
       }
     },
   };
 }
 
 export default defineConfig({
-  publicDir: false,
   server: {
     port: 9019,
     host: true,
     allowedHosts: true,
   },
+
   preview: {
     port: 9019,
   },
+
+  environments: {
+    client: {
+      build: {
+        outDir: "dist/client",
+        manifest: true,
+        rollupOptions: {
+          input: ["/src/client.ts", "/src/style.css"],
+        },
+      },
+    },
+  },
+
   plugins: [
+    tailwindcss(),
+    ssrReload(),
     swc.vite({
       jsc: {
-        parser: {
-          syntax: "typescript",
-          tsx: true,
-        },
+        parser: { syntax: "typescript", tsx: true },
         transform: {
-          react: {
-            runtime: "automatic",
-            importSource: "hono/jsx",
-          },
+          react: { runtime: "automatic", importSource: "hono/jsx" },
         },
         target: "es2022",
         experimental: {
@@ -93,42 +105,28 @@ export default defineConfig({
           ],
         },
       },
-      module: {
-        type: "es6",
-      },
+      module: { type: "es6" },
     }),
     cloudflare({
       configPath: process.env.WRANGLER_CONFIG || "./wrangler.toml",
     }),
-    patchWorkerAssets(),
+    injectManifest(),
   ],
-  css: {
-    postcss: {
-      plugins: [tailwindcss, autoprefixer],
-    },
-  },
+
   build: {
     target: "esnext",
     minify: false,
-    manifest: true,
     rollupOptions: {
-      input: {
-        styles: "@jant/core/src/theme/styles/main.css",
-        client: "@jant/core/src/client.ts",
-        datastar: "@jant/core/static/assets/datastar.min.js",
-        "image-processor": "@jant/core/static/assets/image-processor.js",
-      },
-      output: {
-        entryFileNames: "assets/[name]-[hash].js",
-        chunkFileNames: "assets/[name]-[hash].js",
-        assetFileNames: "assets/[name]-[hash][extname]",
-      },
       external: ["cloudflare:*", "__STATIC_CONTENT_MANIFEST"],
     },
   },
+
   resolve: {
     alias: {
       "@": "/src",
+      // @monorepo-only-start
+      "@jant/core": resolve(__dirname, "../../packages/core/src"),
+      // @monorepo-only-end
     },
   },
 });

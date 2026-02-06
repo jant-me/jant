@@ -76,6 +76,7 @@ my-site/
 ```
 
 **关键点：用户项目非常精简**
+
 - `src/index.ts` - 唯一必须的源文件，调用 `createApp()` 并传入配置
 - `migrations/` - 由升级命令自动同步，用户无需手动管理
 - `theme/` - 仅当需要覆盖组件时才创建
@@ -113,10 +114,12 @@ export default createApp({
 **决策：** 迁移文件存放在用户项目的 `migrations/` 目录，由升级命令从 `@jant/core` 同步。
 
 **参考：**
+
 - [Payload CMS](https://payloadcms.com/docs/database/migrations) - 迁移在用户项目，提交到 git
 - [Drizzle + D1](https://orm.drizzle.team/docs/connect-cloudflare-d1) - Wrangler 需要本地路径
 
 **原因：**
+
 1. Wrangler 的 `d1 migrations apply` 需要本地文件路径
 2. 迁移文件应该提交到 git，是项目历史的一部分
 3. 用户可以查看/审计迁移内容
@@ -127,11 +130,13 @@ export default createApp({
 **决策：** 采用配置注入方式，用户在 `createApp()` 中显式指定要覆盖的组件。
 
 **参考：**
+
 - [Astro Starlight](https://starlight.astro.build/guides/overriding-components/) - 配置注入，显式覆盖
 - [shadcn/ui](https://ui.shadcn.com/) - 复制代码（不采用，无法升级）
 - [Ghost CMS](https://docs.ghost.org/themes) - 完整主题（不采用，学习曲线高）
 
 **原因：**
+
 1. **显式覆盖** - 清楚知道哪些组件被覆盖
 2. **类型安全** - Props 接口由 Core 定义，IDE 自动补全
 3. **渐进式** - 只覆盖需要的，其他使用默认
@@ -189,6 +194,7 @@ npx @jant/cli upgrade
 ### 5.3 迁移文件管理
 
 **Core 包结构：**
+
 ```
 @jant/core/
 ├── src/
@@ -202,6 +208,7 @@ npx @jant/cli upgrade
 ```
 
 **用户项目：**
+
 ```
 my-site/
 ├── migrations/                  # 从 core 同步的迁移文件
@@ -212,6 +219,7 @@ my-site/
 ```
 
 **同步逻辑：**
+
 - 比较 core 和用户项目的迁移文件
 - 只复制用户项目中不存在的新迁移
 - 不修改或删除已存在的迁移文件
@@ -231,17 +239,17 @@ my-site/
 
 Core 导出的可覆盖组件：
 
-| 组件 | 用途 | 文件位置 |
-|------|------|----------|
-| `BaseLayout` | 页面基础布局 | `theme/layouts/BaseLayout.tsx` |
-| `PostCard` | 帖子卡片 | `theme/components/PostCard.tsx` |
-| `PostList` | 帖子列表 | `theme/components/PostList.tsx` |
-| `PostDetail` | 帖子详情 | `theme/components/PostDetail.tsx` |
-| `Header` | 页面头部 | `theme/components/Header.tsx` |
-| `Footer` | 页面底部 | `theme/components/Footer.tsx` |
-| `Sidebar` | 侧边栏 | `theme/components/Sidebar.tsx` |
-| `Pagination` | 分页 | `theme/components/Pagination.tsx` |
-| ... | ... | ... |
+| 组件         | 用途         | 文件位置                          |
+| ------------ | ------------ | --------------------------------- |
+| `BaseLayout` | 页面基础布局 | `theme/layouts/BaseLayout.tsx`    |
+| `PostCard`   | 帖子卡片     | `theme/components/PostCard.tsx`   |
+| `PostList`   | 帖子列表     | `theme/components/PostList.tsx`   |
+| `PostDetail` | 帖子详情     | `theme/components/PostDetail.tsx` |
+| `Header`     | 页面头部     | `theme/components/Header.tsx`     |
+| `Footer`     | 页面底部     | `theme/components/Footer.tsx`     |
+| `Sidebar`    | 侧边栏       | `theme/components/Sidebar.tsx`    |
+| `Pagination` | 分页         | `theme/components/Pagination.tsx` |
+| ...          | ...          | ...                               |
 
 ### 6.3 覆盖方式
 
@@ -257,7 +265,7 @@ import { MyPostCard } from "./theme/components/PostCard";
 export default createApp({
   theme: {
     components: {
-      PostCard: MyPostCard,   // 覆盖帖子卡片
+      PostCard: MyPostCard, // 覆盖帖子卡片
       // 未指定的组件使用 Core 默认实现
     },
   },
@@ -299,6 +307,7 @@ export function PostCard(props: PostCardProps) {
 #### 自动发现机制
 
 Core 在渲染时按以下顺序查找组件：
+
 1. `createApp()` 配置中指定的组件
 2. `src/theme/components/` 目录下的同名组件（swizzle 生成）
 3. Core 默认组件
@@ -385,8 +394,8 @@ export default createApp({
     ...MinimalTheme,
     components: {
       ...MinimalTheme.components,
-      Footer,      // 用 fancy 主题的 Footer
-      PostCard,    // 用自己 swizzle 的 PostCard
+      Footer, // 用 fancy 主题的 Footer
+      PostCard, // 用自己 swizzle 的 PostCard
     },
   },
 });
@@ -454,16 +463,16 @@ interface JantConfig {
     };
     // 样式覆盖
     styles?: {
-      custom?: string;  // 额外 CSS 文件路径
+      custom?: string; // 额外 CSS 文件路径
     };
   };
 
   // 功能开关
   features?: {
-    search?: boolean;      // 默认 true
-    rss?: boolean;         // 默认 true
-    sitemap?: boolean;     // 默认 true
-    i18n?: boolean;        // 默认 true
+    search?: boolean; // 默认 true
+    rss?: boolean; // 默认 true
+    sitemap?: boolean; // 默认 true
+    i18n?: boolean; // 默认 true
   };
 
   // 高级配置
@@ -560,11 +569,7 @@ templates/
 
 ```typescript
 createApp({
-  plugins: [
-    analyticsPlugin(),
-    commentsPlugin(),
-    newsletterPlugin(),
-  ],
+  plugins: [analyticsPlugin(), commentsPlugin(), newsletterPlugin()],
 });
 ```
 

@@ -3,11 +3,13 @@
  *
  * Provides the HTML shell with meta tags, styles, and scripts.
  * If Context is provided, automatically wraps children with I18nProvider.
+ *
+ * Uses vite-ssr-components for automatic dev/prod asset path resolution.
  */
 
 import type { FC, PropsWithChildren } from "hono/jsx";
 import type { Context } from "hono";
-import { getAssets } from "../../lib/assets.js";
+import { Script, Link, ViteClient } from "vite-ssr-components/hono";
 import { I18nProvider } from "../../i18n/index.js";
 
 export interface BaseLayoutProps {
@@ -24,9 +26,6 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
   c,
   children,
 }) => {
-  // Get assets at render time (supports runtime manifest loading)
-  const assets = getAssets();
-
   // Automatically wrap with I18nProvider if Context is provided
   const content = c ? <I18nProvider c={c}>{children}</I18nProvider> : children;
 
@@ -37,13 +36,11 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{title}</title>
         {description && <meta name="description" content={description} />}
-        <link rel="stylesheet" href={assets.styles} />
-        <script type="module" src={assets.client} defer />
-        <script type="module" src={assets.datastar} defer />
+        <ViteClient />
+        <Link href="/src/style.css" rel="stylesheet" />
+        <Script src="/src/client.ts" />
       </head>
-      <body class="bg-background text-foreground antialiased">
-        {content}
-      </body>
+      <body class="bg-background text-foreground antialiased">{content}</body>
     </html>
   );
 };

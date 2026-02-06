@@ -7,6 +7,7 @@ This document describes the REST API endpoints available in Jant.
 All POST, PUT, and DELETE endpoints require authentication using session cookies from better-auth.
 
 To authenticate:
+
 1. Sign in via `/signin` (web UI)
 2. Use the session cookie in subsequent API requests
 
@@ -25,12 +26,14 @@ GET /api/posts
 ```
 
 **Query Parameters:**
+
 - `type` (optional): Filter by post type (`note`, `article`, `link`, `quote`, `image`, `page`)
 - `visibility` (optional): Filter by visibility (`featured`, `quiet`, `unlisted`, `draft`)
 - `cursor` (optional): Pagination cursor (sqid format)
 - `limit` (optional): Number of posts to return (default: 100, max: 100)
 
 **Response:**
+
 ```json
 {
   "posts": [
@@ -58,9 +61,11 @@ GET /api/posts/:id
 ```
 
 **Parameters:**
+
 - `id`: Post ID in sqid format (e.g., `jR3k`)
 
 **Response:**
+
 ```json
 {
   "id": 1,
@@ -77,6 +82,7 @@ GET /api/posts/:id
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid ID format
 - `404 Not Found`: Post not found
 
@@ -89,6 +95,7 @@ POST /api/posts
 **Authentication Required:** Yes
 
 **Request Body:**
+
 ```json
 {
   "type": "note",
@@ -104,11 +111,13 @@ POST /api/posts
 ```
 
 **Required Fields:**
+
 - `type`: One of `note`, `article`, `link`, `quote`, `image`, `page`
 - `content`: Post content (Markdown)
 - `visibility`: One of `featured`, `quiet`, `unlisted`, `draft`
 
 **Optional Fields:**
+
 - `title`: Post title
 - `sourceUrl`: Source URL (must be valid URL or empty)
 - `sourceName`: Source name
@@ -117,6 +126,7 @@ POST /api/posts
 - `publishedAt`: Unix timestamp (seconds)
 
 **Response:**
+
 ```json
 {
   "id": 1,
@@ -135,6 +145,7 @@ POST /api/posts
 **Status Code:** `201 Created`
 
 **Error Responses:**
+
 - `400 Bad Request`: Validation failed (see `details` field)
 - `401 Unauthorized`: Not authenticated
 
@@ -147,6 +158,7 @@ PUT /api/posts/:id
 **Authentication Required:** Yes
 
 **Parameters:**
+
 - `id`: Post ID in sqid format
 
 **Request Body:**
@@ -156,6 +168,7 @@ Same as Create Post, but all fields are optional (partial update).
 Same as Get Single Post.
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid ID or validation failed
 - `401 Unauthorized`: Not authenticated
 - `404 Not Found`: Post not found
@@ -169,9 +182,11 @@ DELETE /api/posts/:id
 **Authentication Required:** Yes
 
 **Parameters:**
+
 - `id`: Post ID in sqid format
 
 **Response:**
+
 ```json
 {
   "success": true
@@ -179,6 +194,7 @@ DELETE /api/posts/:id
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid ID
 - `401 Unauthorized`: Not authenticated
 - `404 Not Found`: Post not found
@@ -200,14 +216,17 @@ POST /api/upload
 **Authentication Required:** Yes
 
 **Request:**
+
 - Content-Type: `multipart/form-data`
 - Field name: `file`
 
 **File Requirements:**
+
 - **Allowed types:** JPEG, PNG, GIF, WebP, SVG
 - **Max size:** 10 MB
 
 **Response:**
+
 ```json
 {
   "id": 1,
@@ -219,6 +238,7 @@ POST /api/upload
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: No file provided, file type not allowed, or file too large
 - `401 Unauthorized`: Not authenticated
 - `500 Internal Server Error`: R2 storage not configured or upload failed
@@ -232,9 +252,11 @@ GET /api/upload
 **Authentication Required:** Yes
 
 **Query Parameters:**
+
 - `limit` (optional): Number of files to return (default: 50)
 
 **Response:**
+
 ```json
 {
   "media": [
@@ -259,9 +281,11 @@ DELETE /api/upload/:id
 **Authentication Required:** Yes
 
 **Parameters:**
+
 - `id`: Media ID (integer)
 
 **Response:**
+
 ```json
 {
   "success": true
@@ -269,6 +293,7 @@ DELETE /api/upload/:id
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid ID
 - `401 Unauthorized`: Not authenticated
 - `404 Not Found`: File not found
@@ -286,10 +311,12 @@ GET /api/search
 ```
 
 **Query Parameters:**
+
 - `q` (required): Search query
 - `limit` (optional): Number of results (default: 20, max: 100)
 
 **Response:**
+
 ```json
 {
   "results": [
@@ -309,6 +336,7 @@ GET /api/search
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Missing or invalid query parameter
 
 ---
@@ -327,6 +355,7 @@ All API errors follow this format:
 ```
 
 Common HTTP status codes:
+
 - `200 OK`: Success
 - `201 Created`: Resource created
 - `400 Bad Request`: Invalid request

@@ -9,7 +9,15 @@ import { useLingui } from "../../i18n/index.js";
 import type { Bindings, Post } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
-import { PageForm, VisibilityBadge, EmptyState, ListItemRow, ActionButtons, CrudPageHeader, DangerZone } from "../../theme/components/index.js";
+import {
+  PageForm,
+  VisibilityBadge,
+  EmptyState,
+  ListItemRow,
+  ActionButtons,
+  CrudPageHeader,
+  DangerZone,
+} from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
 import * as time from "../../lib/time.js";
 import { VisibilitySchema, parseFormData } from "../../lib/schemas.js";
@@ -31,8 +39,14 @@ function PagesListContent({ pages }: { pages: Post[] }) {
 
       {pages.length === 0 ? (
         <EmptyState
-          message={t({ message: "No pages yet.", comment: "@context: Empty state message when no pages exist" })}
-          ctaText={t({ message: "Create your first page", comment: "@context: Button in empty state to create first page" })}
+          message={t({
+            message: "No pages yet.",
+            comment: "@context: Empty state message when no pages exist",
+          })}
+          ctaText={t({
+            message: "Create your first page",
+            comment: "@context: Button in empty state to create first page",
+          })}
           ctaHref="/dash/pages/new"
         />
       ) : (
@@ -45,25 +59,22 @@ function PagesListContent({ pages }: { pages: Post[] }) {
                   editHref={`/dash/pages/${sqid.encode(page.id)}/edit`}
                   editLabel={t({ message: "Edit", comment: "@context: Button to edit page" })}
                   viewHref={page.visibility !== "draft" && page.path ? `/${page.path}` : undefined}
-                  viewLabel={t({ message: "View", comment: "@context: Button to view page on public site" })}
+                  viewLabel={t({
+                    message: "View",
+                    comment: "@context: Button to view page on public site",
+                  })}
                 />
               }
             >
               <div class="flex items-center gap-2 mb-1">
                 <VisibilityBadge visibility={page.visibility} />
-                <span class="text-xs text-muted-foreground">
-                  {time.formatDate(page.updatedAt)}
-                </span>
+                <span class="text-xs text-muted-foreground">{time.formatDate(page.updatedAt)}</span>
               </div>
-              <a
-                href={`/dash/pages/${sqid.encode(page.id)}`}
-                class="font-medium hover:underline"
-              >
-                {page.title || t({ message: "Untitled", comment: "@context: Default title for untitled page" })}
+              <a href={`/dash/pages/${sqid.encode(page.id)}`} class="font-medium hover:underline">
+                {page.title ||
+                  t({ message: "Untitled", comment: "@context: Default title for untitled page" })}
               </a>
-              <p class="text-sm text-muted-foreground mt-1">
-                /{page.path}
-              </p>
+              <p class="text-sm text-muted-foreground mt-1">/{page.path}</p>
             </ListItemRow>
           ))}
         </div>
@@ -90,16 +101,20 @@ function ViewPageContent({ page }: { page: Post }) {
     <>
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-semibold">{page.title || t({ message: "Page", comment: "@context: Default page heading when untitled" })}</h1>
-          {page.path && (
-            <p class="text-muted-foreground mt-1">/{page.path}</p>
-          )}
+          <h1 class="text-2xl font-semibold">
+            {page.title ||
+              t({ message: "Page", comment: "@context: Default page heading when untitled" })}
+          </h1>
+          {page.path && <p class="text-muted-foreground mt-1">/{page.path}</p>}
         </div>
         <ActionButtons
           editHref={`/dash/pages/${sqid.encode(page.id)}/edit`}
           editLabel={t({ message: "Edit", comment: "@context: Button to edit page" })}
           viewHref={page.visibility !== "draft" && page.path ? `/${page.path}` : undefined}
-          viewLabel={t({ message: "View", comment: "@context: Button to view page on public site" })}
+          viewLabel={t({
+            message: "View",
+            comment: "@context: Button to view page on public site",
+          })}
         />
       </div>
 
@@ -205,7 +220,12 @@ pagesRoutes.get("/:id/edit", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title={`Edit: ${page.title || "Page"}`} siteName={siteName} currentPath="/dash/pages">
+    <DashLayout
+      c={c}
+      title={`Edit: ${page.title || "Page"}`}
+      siteName={siteName}
+      currentPath="/dash/pages"
+    >
       <EditPageContent page={page} />
     </DashLayout>
   );

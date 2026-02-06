@@ -64,10 +64,14 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
 
   const editClass = size === "sm" ? "btn-sm-outline" : "btn-outline";
   const viewClass = size === "sm" ? "btn-sm-ghost" : "btn-ghost";
-  const deleteClass = size === "sm" ? "btn-sm-ghost text-destructive" : "btn-ghost text-destructive";
+  const deleteClass =
+    size === "sm" ? "btn-sm-ghost text-destructive" : "btn-ghost text-destructive";
 
   const defaultEditLabel = t({ message: "Edit", comment: "@context: Button to edit item" });
-  const defaultViewLabel = t({ message: "View", comment: "@context: Button to view item on public site" });
+  const defaultViewLabel = t({
+    message: "View",
+    comment: "@context: Button to view item on public site",
+  });
   const defaultDeleteLabel = t({ message: "Delete", comment: "@context: Button to delete item" });
 
   return (

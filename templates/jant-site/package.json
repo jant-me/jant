@@ -23,13 +23,13 @@
     "@cloudflare/workers-types": "^4.20260131.0",
     "@lingui/swc-plugin": "^5.10.1",
     "@swc/core": "^1.15.11",
-    "@tailwindcss/postcss": "^4.1.18",
-    "autoprefixer": "^10.4.24",
-    "postcss": "^8.5.6",
+    "@tailwindcss/vite": "^4.1.18",
+    "basecoat-css": "^0.3.10",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "unplugin-swc": "^1.5.9",
     "vite": "^7.3.1",
+    "vite-ssr-components": "^0.5.2",
     "wrangler": "^4.61.1"
   }
 }

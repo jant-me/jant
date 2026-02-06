@@ -1,0 +1,15 @@
+/**
+ * Jant Core Preset
+ *
+ * Includes basecoat UI and component styles.
+ * @source "./" tells Tailwind to scan @jant/core source files for class usage.
+ */
+
+@source "./";
+
+@import "basecoat-css";
+@import "./styles/components.css";
+
+@theme {
+  --radius-default: 0.5rem;
+}

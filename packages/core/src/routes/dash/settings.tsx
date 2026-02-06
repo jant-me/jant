@@ -12,12 +12,22 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const settingsRoutes = new Hono<Env>();
 
-function SettingsContent({ siteName, siteDescription, siteLanguage }: { siteName: string; siteDescription: string; siteLanguage: string }) {
+function SettingsContent({
+  siteName,
+  siteDescription,
+  siteLanguage,
+}: {
+  siteName: string;
+  siteDescription: string;
+  siteLanguage: string;
+}) {
   const { t } = useLingui();
 
   return (
     <>
-      <h1 class="text-2xl font-semibold mb-6">{t({ message: "Settings", comment: "@context: Dashboard heading" })}</h1>
+      <h1 class="text-2xl font-semibold mb-6">
+        {t({ message: "Settings", comment: "@context: Dashboard heading" })}
+      </h1>
 
       <form method="post" action="/dash/settings" class="flex flex-col gap-6 max-w-lg">
         <div class="card">
@@ -26,19 +36,25 @@ function SettingsContent({ siteName, siteDescription, siteLanguage }: { siteName
           </header>
           <section class="flex flex-col gap-4">
             <div class="field">
-              <label class="label">{t({ message: "Site Name", comment: "@context: Settings form field" })}</label>
+              <label class="label">
+                {t({ message: "Site Name", comment: "@context: Settings form field" })}
+              </label>
               <input type="text" name="siteName" class="input" value={siteName} required />
             </div>
 
             <div class="field">
-              <label class="label">{t({ message: "Site Description", comment: "@context: Settings form field" })}</label>
+              <label class="label">
+                {t({ message: "Site Description", comment: "@context: Settings form field" })}
+              </label>
               <textarea name="siteDescription" class="textarea" rows={3}>
                 {siteDescription}
               </textarea>
             </div>
 
             <div class="field">
-              <label class="label">{t({ message: "Language", comment: "@context: Settings form field" })}</label>
+              <label class="label">
+                {t({ message: "Language", comment: "@context: Settings form field" })}
+              </label>
               <select name="siteLanguage" class="select">
                 <option value="en" selected={siteLanguage === "en"}>
                   English
@@ -70,7 +86,11 @@ settingsRoutes.get("/", async (c) => {
 
   return c.html(
     <DashLayout c={c} title="Settings" siteName={siteName} currentPath="/dash/settings">
-      <SettingsContent siteName={siteName} siteDescription={siteDescription} siteLanguage={siteLanguage} />
+      <SettingsContent
+        siteName={siteName}
+        siteDescription={siteDescription}
+        siteLanguage={siteLanguage}
+      />
     </DashLayout>
   );
 });

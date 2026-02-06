@@ -9,6 +9,9 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// @jant/core version - injected at build time by prepublish script
+const CORE_VERSION = "__JANT_CORE_VERSION__";
+
 // Template directory resolution:
 // - If template/ exists next to dist/ (after prepublish copy), use that
 // - Otherwise, use the source templates/jant-site (for local dev)
@@ -90,9 +93,9 @@ async function copyTemplate(config: ProjectConfig): Promise<void> {
   if (await fs.pathExists(pkgPath)) {
     const pkg = await fs.readJson(pkgPath);
     pkg.name = projectName;
-    // Replace workspace:* with actual version for npm publishing
+    // Replace workspace:* with version injected at build time
     if (pkg.dependencies?.["@jant/core"] === "workspace:*") {
-      pkg.dependencies["@jant/core"] = "^0.1.0";
+      pkg.dependencies["@jant/core"] = `^${CORE_VERSION}`;
     }
     await fs.writeJson(pkgPath, pkg, { spaces: 2 });
   }
@@ -102,8 +105,14 @@ async function copyTemplate(config: ProjectConfig): Promise<void> {
   if (await fs.pathExists(wranglerPath)) {
     let content = await fs.readFile(wranglerPath, "utf-8");
     content = content.replace(/name = "jant-site"/g, `name = "${projectName}"`);
-    content = content.replace(/database_name = "jant-site-db"/g, `database_name = "${projectName}-db"`);
-    content = content.replace(/bucket_name = "jant-site-media"/g, `bucket_name = "${projectName}-media"`);
+    content = content.replace(
+      /database_name = "jant-site-db"/g,
+      `database_name = "${projectName}-db"`
+    );
+    content = content.replace(
+      /bucket_name = "jant-site-media"/g,
+      `bucket_name = "${projectName}-media"`
+    );
     await fs.writeFile(wranglerPath, content, "utf-8");
   }
 
@@ -114,6 +123,20 @@ async function copyTemplate(config: ProjectConfig): Promise<void> {
 AUTH_SECRET=${authSecret}
 `;
   await fs.writeFile(path.join(targetDir, ".dev.vars"), devVarsContent, "utf-8");
+
+  // Patch vite.config.ts for npm-installed @jant/core
+  const viteConfigPath = path.join(targetDir, "vite.config.ts");
+  if (await fs.pathExists(viteConfigPath)) {
+    let content = await fs.readFile(viteConfigPath, "utf-8");
+    // Remove monorepo-only blocks (marked with @monorepo-only-start/end)
+    content = content.replace(
+      /\s*\/\/ @monorepo-only-start[\s\S]*?\/\/ @monorepo-only-end\n?/g,
+      ""
+    );
+    // Update lingui plugin paths: src/ -> dist/, .ts -> .js
+    content = content.replace(/@jant\/core\/src\/([^"']+)\.ts/g, "@jant/core/dist/$1.js");
+    await fs.writeFile(viteConfigPath, content, "utf-8");
+  }
 }
 
 /**
@@ -214,10 +237,7 @@ async function main(): Promise<void> {
 
   // Show next steps
   console.log();
-  p.note(
-    [`cd ${projectName}`, "pnpm install", "pnpm dev"].join("\n"),
-    "Next steps"
-  );
+  p.note([`cd ${projectName}`, "pnpm install", "pnpm dev"].join("\n"), "Next steps");
 
   p.outro(chalk.green("Happy coding!"));
 }

@@ -14,7 +14,6 @@ export default createApp({
   //   description: "A personal blog powered by Jant",
   //   language: "en",
   // },
-
   // Theme customization (optional)
   // theme: {
   //   components: {
@@ -22,7 +21,6 @@ export default createApp({
   //     // PostCard: MyPostCard,
   //   },
   // },
-
   // Feature toggles (optional)
   // features: {
   //   search: true,

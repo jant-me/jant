@@ -1,14 +1,9 @@
-@import "tailwindcss";
-@import "basecoat-css";
-
-/* Scan source files for Tailwind classes */
-@source "../../**/*.tsx";
-@source "../../**/*.ts";
-
-/* Custom theme variables */
-:root {
-  --radius: 0.5rem;
-}
+/**
+ * @jant/core component styles
+ *
+ * These use Tailwind's @layer and @apply, so they must be imported
+ * AFTER Tailwind is initialized in the user's CSS entry.
+ */
 
 /* Custom utilities */
 @layer utilities {
@@ -17,7 +12,7 @@
   }
 }
 
-/* Badge component */
+/* Badge components */
 @layer components {
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;

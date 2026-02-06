@@ -8,8 +8,8 @@ dist/
 .vite/
 
 # Generated files
-src/lib/assets.gen.ts
-src/i18n/locales/*.ts
+**/assets.gen.ts
+**/i18n/locales/*.ts
 *.po
 *.pot
 
@@ -17,7 +17,7 @@ src/i18n/locales/*.ts
 .lingui/
 
 # Assets
-src/assets/
+**/src/assets/
 
 # Logs
 *.log

@@ -58,10 +58,10 @@ jant/
 
 ### Packages
 
-| Package | Description |
-|---------|-------------|
-| `@jant/core` | Core microblogging framework (Hono, D1, R2) |
-| `create-jant` | CLI tool for creating new Jant projects |
+| Package       | Description                                 |
+| ------------- | ------------------------------------------- |
+| `@jant/core`  | Core microblogging framework (Hono, D1, R2) |
+| `create-jant` | CLI tool for creating new Jant projects     |
 
 ## Development Workflow
 
@@ -93,6 +93,7 @@ mise run deploy           # Deploy to Cloudflare
 ### Making Changes
 
 1. **Create a branch:**
+
    ```bash
    git checkout -b feat/my-feature
    ```
@@ -100,11 +101,13 @@ mise run deploy           # Deploy to Cloudflare
 2. **Make your changes**
 
 3. **Run checks:**
+
    ```bash
    mise run lint && mise run typecheck
    ```
 
 4. **Create a changeset** (if your changes affect published packages):
+
    ```bash
    mise run changeset
    ```
@@ -148,11 +151,13 @@ mise run deploy           # Deploy to Cloudflare
 ### Before Submitting
 
 1. Run all checks:
+
    ```bash
    mise run lint && mise run typecheck
    ```
 
 2. If changing published packages, add a changeset:
+
    ```bash
    mise run changeset
    ```
@@ -169,6 +174,7 @@ mise run deploy           # Deploy to Cloudflare
 ### CI Checks
 
 All PRs must pass:
+
 - ESLint (no errors)
 - TypeScript (no errors)
 - Build (successful)
@@ -193,17 +199,18 @@ mise run changeset
 ```
 
 This will prompt you to:
+
 1. Select changed packages
 2. Choose bump type (major/minor/patch)
 3. Write a change summary
 
 ### Version Types (SemVer)
 
-| Type | When to use | Example |
-|------|-------------|---------|
-| `patch` | Bug fixes, typos | `1.0.0` → `1.0.1` |
+| Type    | When to use                         | Example           |
+| ------- | ----------------------------------- | ----------------- |
+| `patch` | Bug fixes, typos                    | `1.0.0` → `1.0.1` |
 | `minor` | New features (backwards compatible) | `1.0.0` → `1.1.0` |
-| `major` | Breaking changes | `1.0.0` → `2.0.0` |
+| `major` | Breaking changes                    | `1.0.0` → `2.0.0` |
 
 ### Release Workflow
 

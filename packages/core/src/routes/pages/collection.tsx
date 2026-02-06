@@ -28,7 +28,12 @@ function CollectionContent({ collection, posts }: { collection: Collection; post
 
       <main class="flex flex-col gap-6">
         {posts.length === 0 ? (
-          <p class="text-muted-foreground">{t({ message: "No posts in this collection.", comment: "@context: Empty state message" })}</p>
+          <p class="text-muted-foreground">
+            {t({
+              message: "No posts in this collection.",
+              comment: "@context: Empty state message",
+            })}
+          </p>
         ) : (
           posts.map((post) => (
             <article key={post.id} class="h-entry">
@@ -72,7 +77,11 @@ collectionRoutes.get("/:path", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <BaseLayout title={`${collection.title} - ${siteName}`} description={collection.description ?? undefined} c={c}>
+    <BaseLayout
+      title={`${collection.title} - ${siteName}`}
+      description={collection.description ?? undefined}
+      c={c}
+    >
       <CollectionContent collection={collection} posts={posts} />
     </BaseLayout>
   );

@@ -1,5 +1,83 @@
 # @jant/core
 
+## 0.2.11
+
+### Patch Changes
+
+- Fix css
+
+## 0.2.10
+
+### Patch Changes
+
+- Fix css
+
+## 0.2.9
+
+### Patch Changes
+
+- Fix css, Remove vite from core
+
+## 0.2.8
+
+### Patch Changes
+
+- fix css
+
+## 0.2.7
+
+### Patch Changes
+
+- Fix css
+
+## 0.2.6
+
+### Patch Changes
+
+- Fix CSS
+
+## 0.2.5
+
+### Patch Changes
+
+- Fix css
+
+## 0.2.4
+
+### Patch Changes
+
+- Fix css
+
+## 0.2.3
+
+### Patch Changes
+
+- fix css
+
+## 0.2.2
+
+### Patch Changes
+
+- refletor css import
+
+## 0.2.0
+
+### Minor Changes
+
+- Build: Pre-compile @jant/core before publishing
+  - @jant/core now ships compiled JavaScript instead of TypeScript source
+  - Includes TypeScript declaration files (.d.ts) for type support
+  - Fixes "React is not defined" error in user projects
+  - No special Vite configuration needed in user projects
+
+## 0.1.3
+
+### Patch Changes
+
+- Fix: Move basecoat-css from devDependencies to dependencies
+
+  This fixes the "basecoat-css/all could not be resolved" error when users install @jant/core in their projects.
+
 ## 0.1.2
 
 ### Patch Changes

@@ -11,6 +11,7 @@ mise run changeset
 ```
 
 This will guide you through:
+
 1. Selecting changed packages
 2. Choosing version bump type (major/minor/patch)
 3. Writing a change summary
@@ -24,6 +25,7 @@ This will guide you through:
 ## Examples
 
 Good changeset summaries:
+
 - "Add dark mode support to dashboard"
 - "Fix image upload failing on large files"
 - "BREAKING: Remove deprecated `Post.slug` field"

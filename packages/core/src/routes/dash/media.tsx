@@ -13,7 +13,6 @@ import { DashLayout } from "../../theme/layouts/index.js";
 import { EmptyState, DangerZone } from "../../theme/components/index.js";
 import * as time from "../../lib/time.js";
 import { getMediaUrl, getImageUrl } from "../../lib/image.js";
-import { getAssets } from "../../lib/assets.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -96,19 +95,26 @@ function MediaListContent({
   mediaList,
   r2PublicUrl,
   imageTransformUrl,
-  imageProcessorUrl,
 }: {
   mediaList: Media[];
   r2PublicUrl?: string;
   imageTransformUrl?: string;
-  imageProcessorUrl: string;
 }) {
   const { t } = useLingui();
 
-  const processingText = t({ message: "Processing...", comment: "@context: Upload status - processing" });
-  const uploadingText = t({ message: "Uploading...", comment: "@context: Upload status - uploading" });
+  const processingText = t({
+    message: "Processing...",
+    comment: "@context: Upload status - processing",
+  });
+  const uploadingText = t({
+    message: "Uploading...",
+    comment: "@context: Upload status - uploading",
+  });
   const uploadText = t({ message: "Upload", comment: "@context: Button to upload media file" });
-  const errorText = t({ message: "Upload failed. Please try again.", comment: "@context: Upload error message" });
+  const errorText = t({
+    message: "Upload failed. Please try again.",
+    comment: "@context: Upload error message",
+  });
 
   // Plain JavaScript upload handler - shows progress in the list
   const uploadScript = `
@@ -265,8 +271,7 @@ function processSSEEvent(event) {
 
   return (
     <>
-      {/* Scripts - script tags need closing tag, self-closing doesn't work in HTML */}
-      <script src={imageProcessorUrl}></script>
+      {/* Upload script */}
       <script dangerouslySetInnerHTML={{ __html: uploadScript }}></script>
 
       {/* Header */}
@@ -276,12 +281,7 @@ function processSSEEvent(event) {
         </h1>
         <label class="btn cursor-pointer">
           <span>{uploadText}</span>
-          <input
-            type="file"
-            class="hidden"
-            accept="image/*"
-            onchange="handleMediaUpload(this)"
-          />
+          <input type="file" class="hidden" accept="image/*" onchange="handleMediaUpload(this)" />
         </label>
       </div>
 
@@ -293,7 +293,8 @@ function processSSEEvent(event) {
         <section class="text-sm text-muted-foreground">
           <p>
             {t({
-              message: "Images are automatically optimized: resized to max 1920px, converted to WebP, and metadata stripped.",
+              message:
+                "Images are automatically optimized: resized to max 1920px, converted to WebP, and metadata stripped.",
               comment: "@context: Media upload instructions - auto optimization",
             })}
           </p>
@@ -334,7 +335,12 @@ function processSSEEvent(event) {
         class="p-0 m-auto bg-transparent backdrop:bg-black/80"
         onclick="event.target === this && this.close()"
       >
-        <img id="lightbox-img" src="" alt="" class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg" />
+        <img
+          id="lightbox-img"
+          src=""
+          alt=""
+          class="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+        />
       </dialog>
     </>
   );
@@ -379,7 +385,9 @@ function ViewMediaContent({
         {/* Preview */}
         <div class="card">
           <header>
-            <h2>{t({ message: "Preview", comment: "@context: Media detail section - preview" })}</h2>
+            <h2>
+              {t({ message: "Preview", comment: "@context: Media detail section - preview" })}
+            </h2>
           </header>
           <section>
             {isImage ? (
@@ -396,7 +404,10 @@ function ViewMediaContent({
                   />
                 </button>
                 <p class="text-xs text-muted-foreground mt-2">
-                  {t({ message: "Click image to view full size", comment: "@context: Hint to click image for lightbox" })}
+                  {t({
+                    message: "Click image to view full size",
+                    comment: "@context: Hint to click image for lightbox",
+                  })}
                 </p>
               </>
             ) : (
@@ -415,12 +426,7 @@ function ViewMediaContent({
             </header>
             <section>
               <div class="flex items-center gap-2">
-                <input
-                  type="text"
-                  class="input flex-1 font-mono text-sm"
-                  value={url}
-                  readonly
-                />
+                <input type="text" class="input flex-1 font-mono text-sm" value={url} readonly />
                 <button
                   type="button"
                   class="btn-outline"
@@ -430,14 +436,22 @@ function ViewMediaContent({
                 </button>
               </div>
               <p class="text-xs text-muted-foreground mt-2">
-                {t({ message: "Use this URL to embed the media in your posts.", comment: "@context: Media URL helper text" })}
+                {t({
+                  message: "Use this URL to embed the media in your posts.",
+                  comment: "@context: Media URL helper text",
+                })}
               </p>
             </section>
           </div>
 
           <div class="card">
             <header>
-              <h2>{t({ message: "Markdown", comment: "@context: Media detail section - Markdown snippet" })}</h2>
+              <h2>
+                {t({
+                  message: "Markdown",
+                  comment: "@context: Media detail section - Markdown snippet",
+                })}
+              </h2>
             </header>
             <section>
               <div class="flex items-center gap-2">
@@ -452,7 +466,10 @@ function ViewMediaContent({
                   class="btn-outline"
                   onclick={`navigator.clipboard.writeText('![${media.alt || media.originalName}](${url})')`}
                 >
-                  {t({ message: "Copy", comment: "@context: Button to copy Markdown to clipboard" })}
+                  {t({
+                    message: "Copy",
+                    comment: "@context: Button to copy Markdown to clipboard",
+                  })}
                 </button>
               </div>
             </section>
@@ -460,10 +477,16 @@ function ViewMediaContent({
 
           {/* Delete */}
           <DangerZone
-            actionLabel={t({ message: "Delete Media", comment: "@context: Button to delete media" })}
+            actionLabel={t({
+              message: "Delete Media",
+              comment: "@context: Button to delete media",
+            })}
             formAction={`/dash/media/${media.id}/delete`}
             confirmMessage="Are you sure you want to delete this media?"
-            description={t({ message: "Deleting this media will remove it permanently from storage.", comment: "@context: Warning message before deleting media" })}
+            description={t({
+              message: "Deleting this media will remove it permanently from storage.",
+              comment: "@context: Warning message before deleting media",
+            })}
           />
         </div>
       </div>
@@ -493,7 +516,6 @@ mediaRoutes.get("/", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
   const r2PublicUrl = c.env.R2_PUBLIC_URL;
   const imageTransformUrl = c.env.IMAGE_TRANSFORM_URL;
-  const assets = getAssets();
 
   return c.html(
     <DashLayout c={c} title="Media" siteName={siteName} currentPath="/dash/media">
@@ -501,7 +523,6 @@ mediaRoutes.get("/", async (c) => {
         mediaList={mediaList}
         r2PublicUrl={r2PublicUrl}
         imageTransformUrl={imageTransformUrl}
-        imageProcessorUrl={assets.imageProcessor}
       />
     </DashLayout>
   );

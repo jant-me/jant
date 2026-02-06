@@ -38,15 +38,16 @@ wrangler secret put AUTH_SECRET --config wrangler.demo.toml
 
 Add the following secrets to your GitHub repository:
 
-| Secret | Description |
-|--------|-------------|
-| `CF_API_TOKEN` | Cloudflare API token with Workers, D1, and R2 permissions |
-| `CF_ACCOUNT_ID` | Your Cloudflare account ID |
-| `DEMO_AUTH_SECRET` | Same value as AUTH_SECRET above |
+| Secret             | Description                                               |
+| ------------------ | --------------------------------------------------------- |
+| `CF_API_TOKEN`     | Cloudflare API token with Workers, D1, and R2 permissions |
+| `CF_ACCOUNT_ID`    | Your Cloudflare account ID                                |
+| `DEMO_AUTH_SECRET` | Same value as AUTH_SECRET above                           |
 
 ### 5. Set Custom Domain
 
 In the Cloudflare dashboard:
+
 1. Go to Workers & Pages > jant-demo
 2. Settings > Triggers > Custom Domains
 3. Add `demo.jant.me`
@@ -56,6 +57,7 @@ In the Cloudflare dashboard:
 ### `reset.sql`
 
 Clears all user-created data:
+
 - Posts, media, collections, redirects
 - Sessions and verifications
 - Preserves settings and user accounts
@@ -63,6 +65,7 @@ Clears all user-created data:
 ### `seed.sql`
 
 Inserts demo data:
+
 - Site settings (name, description, etc.)
 - Sample posts (article, note, link, quote)
 - Sample collection
@@ -72,10 +75,12 @@ Inserts demo data:
 ### Deploy Demo (`.github/workflows/deploy-demo.yml`)
 
 Triggers:
+
 - Push to `main` branch (when core or template changes)
 - Manual dispatch
 
 Actions:
+
 - Builds the project
 - Deploys to Cloudflare Workers
 - Runs database migrations
@@ -83,10 +88,12 @@ Actions:
 ### Reset Demo (`.github/workflows/reset-demo.yml`)
 
 Triggers:
+
 - Daily at 00:00 UTC (cron)
 - Manual dispatch (requires "reset" confirmation)
 
 Actions:
+
 - Clears all user data
 - Re-inserts seed data
 

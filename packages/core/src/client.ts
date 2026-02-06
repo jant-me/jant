@@ -1,6 +1,12 @@
 /**
  * Client-side JavaScript entry point
- * Includes all interactive components from basecoat-css
+ *
+ * Bundles all interactive components:
+ * - Datastar (reactivity)
+ * - BaseCoat (dialogs, dropdowns)
+ * - ImageProcessor (media uploads)
  */
 
+import "@sudodevnull/datastar";
 import "basecoat-css/all";
+import "./lib/image-processor.js";

@@ -6,22 +6,23 @@
 
 ## 一、技术栈
 
-| 组件 | 选型 |
-|------|------|
-| 运行时 | Cloudflare Workers |
-| 框架 | Hono |
-| 前端交互 | Datastar |
-| 模板 | hono/jsx |
-| 样式 | BaseCoat UI + Tailwind（仅布局） |
-| 数据库 | D1 + Drizzle |
-| 认证 | better-auth |
-| i18n | @lingui/core |
-| 包管理 | pnpm monorepo |
-| 任务管理 | mise |
+| 组件     | 选型                             |
+| -------- | -------------------------------- |
+| 运行时   | Cloudflare Workers               |
+| 框架     | Hono                             |
+| 前端交互 | Datastar                         |
+| 模板     | hono/jsx                         |
+| 样式     | BaseCoat UI + Tailwind（仅布局） |
+| 数据库   | D1 + Drizzle                     |
+| 认证     | better-auth                      |
+| i18n     | @lingui/core                     |
+| 包管理   | pnpm monorepo                    |
+| 任务管理 | mise                             |
 
 ---
 
 ## 二、项目结构
+
 ```
 jant/
 ├── packages/
@@ -69,17 +70,18 @@ jant/
 
 ### 4.1 核心表
 
-| 表 | 用途 |
-|---|------|
-| `posts` | 所有内容（note/article/link/quote/image/page） |
-| `media` | 媒体文件元数据 |
-| `collections` | 策展集合 |
-| `post_collections` | 帖子-集合关联（多对多） |
-| `redirects` | URL 重定向 |
-| `settings` | 站点设置（Key-Value） |
-| `user/session/account/verification` | better-auth 表（复用 user 表做 admin）|
+| 表                                  | 用途                                           |
+| ----------------------------------- | ---------------------------------------------- |
+| `posts`                             | 所有内容（note/article/link/quote/image/page） |
+| `media`                             | 媒体文件元数据                                 |
+| `collections`                       | 策展集合                                       |
+| `post_collections`                  | 帖子-集合关联（多对多）                        |
+| `redirects`                         | URL 重定向                                     |
+| `settings`                          | 站点设置（Key-Value）                          |
+| `user/session/account/verification` | better-auth 表（复用 user 表做 admin）         |
 
 ### 4.2 Post 字段
+
 ```typescript
 {
   id: number,
@@ -102,10 +104,12 @@ jant/
 ```
 
 **URL 规则**：
+
 - 非 page 类型：默认 `/p/{sqid}`，用户可设置 path，修改后旧路径自动 301 重定向
 - page 类型：用户必须填写 path（支持多级路径如 `about/team`）
 
 ### 4.3 Media 字段
+
 ```typescript
 {
   id: number,
@@ -123,6 +127,7 @@ jant/
 ```
 
 ### 4.4 Collections 字段
+
 ```typescript
 {
   id: number,
@@ -135,6 +140,7 @@ jant/
 ```
 
 ### 4.5 Post_Collections 字段
+
 ```typescript
 {
   post_id: number,         // FK → posts.id
@@ -146,6 +152,7 @@ jant/
 ```
 
 ### 4.6 Settings 字段
+
 ```typescript
 {
   key: string,             // PRIMARY KEY，与环境变量命名一致
@@ -156,6 +163,7 @@ jant/
 ```
 
 ### 4.7 Redirects 字段
+
 ```typescript
 {
   id: number,
@@ -175,6 +183,7 @@ jant/
 - path 变更时自动创建 301 重定向到新路径
 
 ### 4.9 Thread 规则
+
 ```
 创建回复时：
   reply_to_id = 父帖 ID
@@ -194,6 +203,7 @@ jant/
 ### 4.10 全文搜索
 
 使用 FTS5 trigram：
+
 ```sql
 CREATE VIRTUAL TABLE posts_fts USING fts5(
   title, content,
@@ -209,6 +219,7 @@ CREATE VIRTUAL TABLE posts_fts USING fts5(
 ## 五、路由
 
 ### 5.1 前台
+
 ```
 GET  /                    首页
 GET  /featured            精选
@@ -227,6 +238,7 @@ GET  /*path               页面（page 类型，支持多级路径，最低优�
 **分页**：Cursor-based + 无限滚动，默认每页 100 项（可配置）
 
 ### 5.2 认证
+
 ```
 GET  /setup               首次设置
 GET  /signin              登录
@@ -235,6 +247,7 @@ ALL  /api/auth/*          better-auth
 ```
 
 ### 5.3 后台
+
 ```
 GET  /dash                仪表盘
 GET  /dash/posts          帖子管理
@@ -245,6 +258,7 @@ GET  /dash/settings       设置
 ```
 
 ### 5.4 API
+
 ```
 GET    /api/posts
 GET    /api/posts/:id
@@ -258,10 +272,12 @@ PUT    /api/settings        [auth]
 ```
 
 ### 5.5 保留路径
+
 ```
 featured, signin, signout, setup, dash, api, feed, search, archive,
 notes, articles, links, quotes, media, pages, p, c, static, assets
 ```
+
 > 保留路径列表可配置（通过 `lib/constants.ts` 导出）。
 > Page 创建/更新时需验证 path 不与保留路径冲突。
 
@@ -270,6 +286,7 @@ notes, articles, links, quotes, media, pages, p, c, static, assets
 ## 六、样式规范
 
 ### 6.1 BaseCoat 为主
+
 ```html
 <!-- ✅ 使用 BaseCoat 组件类 -->
 <button class="btn btn-primary">发布</button>
@@ -286,6 +303,7 @@ notes, articles, links, quotes, media, pages, p, c, static, assets
 ### 6.2 CSS 变量
 
 颜色主题通过 CSS 变量实现，支持 light/dark mode：
+
 ```css
 :root {
   --color-bg, --color-text, --color-accent, --color-border, ...
@@ -293,6 +311,7 @@ notes, articles, links, quotes, media, pages, p, c, static, assets
 ```
 
 ### 6.3 动画
+
 ```css
 --transition-fast: 150ms ease-out;
 --transition-base: 200ms ease-out;
@@ -303,6 +322,7 @@ notes, articles, links, quotes, media, pages, p, c, static, assets
 ## 七、microformats2
 
 所有帖子使用 `h-entry` 标记：
+
 ```html
 <article class="h-entry">
   <h2 class="p-name">标题</h2>
@@ -318,6 +338,7 @@ Link 类型额外加 `u-bookmark-of`，Quote 类型用 `h-cite`。
 ---
 
 ## 八、开发命令（mise.toml）
+
 ```toml
 [tasks.dev]
 run = "pnpm --filter @jant/core exec wrangler dev"
@@ -341,6 +362,7 @@ run = "pnpm turbo typecheck"
 ---
 
 ## 九、环境变量
+
 ```bash
 # wrangler.toml [vars]
 SITE_URL = "https://example.com"
@@ -358,6 +380,7 @@ CF_IMAGES_API_TOKEN = "..."
 ```
 
 **存储策略**：
+
 - Cloudflare 部署默认使用 R2（S3 兼容，无出口费用）
 - 图片处理推荐接入 Cloudflare Images（自动缩放、WebP 转换）
 - 未配置存储时，上传功能报错，/dash/settings 页面显示配置提示
@@ -367,6 +390,7 @@ CF_IMAGES_API_TOKEN = "..."
 ---
 
 ## 十、实现顺序
+
 ```
 Phase 1: 基础
   db/schema.ts → types.ts → lib/*.ts → services/*.ts → app.ts
@@ -422,26 +446,26 @@ Phase 4: 完善
 ```html
 <!-- 必须 -->
 <title>{标题} | {站点名}</title>
-<meta name="description" content="{描述}">
-<link rel="canonical" href="{完整 URL}">
+<meta name="description" content="{描述}" />
+<link rel="canonical" href="{完整 URL}" />
 
 <!-- Open Graph -->
-<meta property="og:title" content="{标题}">
-<meta property="og:description" content="{描述}">
-<meta property="og:image" content="{帖子第一张图，没有则不输出}">
-<meta property="og:url" content="{完整 URL}">
+<meta property="og:title" content="{标题}" />
+<meta property="og:description" content="{描述}" />
+<meta property="og:image" content="{帖子第一张图，没有则不输出}" />
+<meta property="og:url" content="{完整 URL}" />
 
 <!-- Twitter Cards -->
-<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:card" content="summary_large_image" />
 ...
 
 <!-- JSON-LD 结构化数据 -->
 <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Article",
-  ...
-}
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    ...
+  }
 </script>
 ```
 

@@ -7,7 +7,13 @@ import { useLingui } from "../../i18n/index.js";
 import type { Bindings, Collection, Post } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
-import { EmptyState, ListItemRow, ActionButtons, CrudPageHeader, DangerZone } from "../../theme/components/index.js";
+import {
+  EmptyState,
+  ListItemRow,
+  ActionButtons,
+  CrudPageHeader,
+  DangerZone,
+} from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -21,14 +27,20 @@ function CollectionsListContent({ collections }: { collections: Collection[] }) 
     <>
       <CrudPageHeader
         title={t({ message: "Collections", comment: "@context: Dashboard heading" })}
-        ctaLabel={t({ message: "New Collection", comment: "@context: Button to create new collection" })}
+        ctaLabel={t({
+          message: "New Collection",
+          comment: "@context: Button to create new collection",
+        })}
         ctaHref="/dash/collections/new"
       />
 
       {collections.length === 0 ? (
         <EmptyState
           message={t({ message: "No collections yet.", comment: "@context: Empty state message" })}
-          ctaText={t({ message: "New Collection", comment: "@context: Button to create new collection" })}
+          ctaText={t({
+            message: "New Collection",
+            comment: "@context: Button to create new collection",
+          })}
           ctaHref="/dash/collections/new"
         />
       ) : (
@@ -64,16 +76,31 @@ function NewCollectionContent() {
   const { t } = useLingui();
   return (
     <>
-      <h1 class="text-2xl font-semibold mb-6">{t({ message: "New Collection", comment: "@context: Page heading" })}</h1>
+      <h1 class="text-2xl font-semibold mb-6">
+        {t({ message: "New Collection", comment: "@context: Page heading" })}
+      </h1>
 
       <form method="post" action="/dash/collections" class="flex flex-col gap-4 max-w-lg">
         <div class="field">
-          <label class="label">{t({ message: "Title", comment: "@context: Collection form field" })}</label>
-          <input type="text" name="title" class="input" required placeholder={t({ message: "My Collection", comment: "@context: Collection title placeholder" })} />
+          <label class="label">
+            {t({ message: "Title", comment: "@context: Collection form field" })}
+          </label>
+          <input
+            type="text"
+            name="title"
+            class="input"
+            required
+            placeholder={t({
+              message: "My Collection",
+              comment: "@context: Collection title placeholder",
+            })}
+          />
         </div>
 
         <div class="field">
-          <label class="label">{t({ message: "Slug", comment: "@context: Collection form field" })}</label>
+          <label class="label">
+            {t({ message: "Slug", comment: "@context: Collection form field" })}
+          </label>
           <input
             type="text"
             name="path"
@@ -83,18 +110,34 @@ function NewCollectionContent() {
             pattern="[a-z0-9-]+"
           />
           <p class="text-xs text-muted-foreground mt-1">
-            {t({ message: "URL-safe identifier (lowercase, numbers, hyphens)", comment: "@context: Collection path help text" })}
+            {t({
+              message: "URL-safe identifier (lowercase, numbers, hyphens)",
+              comment: "@context: Collection path help text",
+            })}
           </p>
         </div>
 
         <div class="field">
-          <label class="label">{t({ message: "Description (optional)", comment: "@context: Collection form field" })}</label>
-          <textarea name="description" class="textarea" rows={3} placeholder={t({ message: "What's this collection about?", comment: "@context: Collection description placeholder" })} />
+          <label class="label">
+            {t({ message: "Description (optional)", comment: "@context: Collection form field" })}
+          </label>
+          <textarea
+            name="description"
+            class="textarea"
+            rows={3}
+            placeholder={t({
+              message: "What's this collection about?",
+              comment: "@context: Collection description placeholder",
+            })}
+          />
         </div>
 
         <div class="flex gap-2">
           <button type="submit" class="btn">
-            {t({ message: "Create Collection", comment: "@context: Button to save new collection" })}
+            {t({
+              message: "Create Collection",
+              comment: "@context: Button to save new collection",
+            })}
           </button>
           <a href="/dash/collections" class="btn-outline">
             {t({ message: "Cancel", comment: "@context: Button to cancel form" })}
@@ -107,7 +150,11 @@ function NewCollectionContent() {
 
 function ViewCollectionContent({ collection, posts }: { collection: Collection; posts: Post[] }) {
   const { t } = useLingui();
-  const postsHeader = t({ message: "Posts in Collection ({count})", comment: "@context: Collection posts section heading", values: { count: String(posts.length) } });
+  const postsHeader = t({
+    message: "Posts in Collection ({count})",
+    comment: "@context: Collection posts section heading",
+    values: { count: String(posts.length) },
+  });
 
   return (
     <>
@@ -124,9 +171,7 @@ function ViewCollectionContent({ collection, posts }: { collection: Collection; 
         />
       </div>
 
-      {collection.description && (
-        <p class="text-muted-foreground mb-6">{collection.description}</p>
-      )}
+      {collection.description && <p class="text-muted-foreground mb-6">{collection.description}</p>}
 
       <div class="card">
         <header>
@@ -134,7 +179,12 @@ function ViewCollectionContent({ collection, posts }: { collection: Collection; 
         </header>
         <section>
           {posts.length === 0 ? (
-            <p class="text-muted-foreground">{t({ message: "No posts in this collection.", comment: "@context: Empty state message" })}</p>
+            <p class="text-muted-foreground">
+              {t({
+                message: "No posts in this collection.",
+                comment: "@context: Empty state message",
+              })}
+            </p>
           ) : (
             <div class="flex flex-col divide-y">
               {posts.map((post) => (
@@ -150,7 +200,10 @@ function ViewCollectionContent({ collection, posts }: { collection: Collection; 
                   <form method="post" action={`/dash/collections/${collection.id}/remove-post`}>
                     <input type="hidden" name="postId" value={post.id} />
                     <button type="submit" class="btn-sm-ghost text-destructive">
-                      {t({ message: "Remove", comment: "@context: Button to remove post from collection" })}
+                      {t({
+                        message: "Remove",
+                        comment: "@context: Button to remove post from collection",
+                      })}
                     </button>
                   </form>
                 </div>
@@ -174,16 +227,26 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
 
   return (
     <>
-      <h1 class="text-2xl font-semibold mb-6">{t({ message: "Edit Collection", comment: "@context: Page heading" })}</h1>
+      <h1 class="text-2xl font-semibold mb-6">
+        {t({ message: "Edit Collection", comment: "@context: Page heading" })}
+      </h1>
 
-      <form method="post" action={`/dash/collections/${collection.id}`} class="flex flex-col gap-4 max-w-lg">
+      <form
+        method="post"
+        action={`/dash/collections/${collection.id}`}
+        class="flex flex-col gap-4 max-w-lg"
+      >
         <div class="field">
-          <label class="label">{t({ message: "Title", comment: "@context: Collection form field" })}</label>
+          <label class="label">
+            {t({ message: "Title", comment: "@context: Collection form field" })}
+          </label>
           <input type="text" name="title" class="input" required value={collection.title} />
         </div>
 
         <div class="field">
-          <label class="label">{t({ message: "Slug", comment: "@context: Collection form field" })}</label>
+          <label class="label">
+            {t({ message: "Slug", comment: "@context: Collection form field" })}
+          </label>
           <input
             type="text"
             name="path"
@@ -195,7 +258,9 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
         </div>
 
         <div class="field">
-          <label class="label">{t({ message: "Description (optional)", comment: "@context: Collection form field" })}</label>
+          <label class="label">
+            {t({ message: "Description (optional)", comment: "@context: Collection form field" })}
+          </label>
           <textarea name="description" class="textarea" rows={3}>
             {collection.description ?? ""}
           </textarea>
@@ -203,7 +268,10 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
 
         <div class="flex gap-2">
           <button type="submit" class="btn">
-            {t({ message: "Update Collection", comment: "@context: Button to save collection changes" })}
+            {t({
+              message: "Update Collection",
+              comment: "@context: Button to save collection changes",
+            })}
           </button>
           <a href={`/dash/collections/${collection.id}`} class="btn-outline">
             {t({ message: "Cancel", comment: "@context: Button to cancel form" })}
@@ -212,7 +280,10 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
       </form>
 
       <DangerZone
-        actionLabel={t({ message: "Delete Collection", comment: "@context: Button to delete collection" })}
+        actionLabel={t({
+          message: "Delete Collection",
+          comment: "@context: Button to delete collection",
+        })}
         formAction={`/dash/collections/${collection.id}/delete`}
         confirmMessage="Are you sure you want to delete this collection?"
       />
@@ -289,7 +360,12 @@ collectionsRoutes.get("/:id/edit", async (c) => {
   const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
 
   return c.html(
-    <DashLayout c={c} title={`Edit: ${collection.title}`} siteName={siteName} currentPath="/dash/collections">
+    <DashLayout
+      c={c}
+      title={`Edit: ${collection.title}`}
+      siteName={siteName}
+      currentPath="/dash/collections"
+    >
       <EditCollectionContent collection={collection} />
     </DashLayout>
   );

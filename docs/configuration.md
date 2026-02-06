@@ -8,23 +8,23 @@ Set these in `wrangler.toml` or as Cloudflare secrets.
 
 ### Required
 
-| Variable | Description |
-|----------|-------------|
-| `SITE_URL` | Your site's public URL (e.g., `https://myblog.com`) |
+| Variable      | Description                                              |
+| ------------- | -------------------------------------------------------- |
+| `SITE_URL`    | Your site's public URL (e.g., `https://myblog.com`)      |
 | `AUTH_SECRET` | Random string, 32+ characters. Used for session signing. |
 
 ### Storage
 
-| Variable | Description |
-|----------|-------------|
+| Variable        | Description                                       |
+| --------------- | ------------------------------------------------- |
 | `R2_PUBLIC_URL` | Public URL for R2 bucket (if using custom domain) |
 
 ### Image Transformations (Optional)
 
 For automatic thumbnail generation and image optimization:
 
-| Variable | Description |
-|----------|-------------|
+| Variable              | Description                        |
+| --------------------- | ---------------------------------- |
 | `IMAGE_TRANSFORM_URL` | Base URL for image transformations |
 
 **Cloudflare Image Transformations Setup:**
@@ -41,6 +41,7 @@ IMAGE_TRANSFORM_URL = "https://yourdomain.com/cdn-cgi/image"
 When enabled, the dashboard displays optimized thumbnails instead of full images. Without this setting, original images are shown (still works fine).
 
 **Note:** Images are automatically processed client-side before upload:
+
 - EXIF orientation correction
 - Resize to max 1920px
 - Metadata stripped (GPS, device info removed)
@@ -50,12 +51,12 @@ When enabled, the dashboard displays optimized thumbnails instead of full images
 
 These can be changed in `/dash/settings`:
 
-| Setting | Description |
-|---------|-------------|
-| `SITE_NAME` | Your site's display name |
+| Setting            | Description                             |
+| ------------------ | --------------------------------------- |
+| `SITE_NAME`        | Your site's display name                |
 | `SITE_DESCRIPTION` | Short description for meta tags and RSS |
-| `SITE_LANGUAGE` | Primary language (`en`, `zh`, etc.) |
-| `THEME` | Color theme name |
+| `SITE_LANGUAGE`    | Primary language (`en`, `zh`, etc.)     |
+| `THEME`            | Color theme name                        |
 
 ## Reserved Paths
 
