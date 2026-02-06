@@ -8,6 +8,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 SITE_URL = "https://demo.jant.me"
+DEMO_EMAIL = "demo@jant.me"
+DEMO_PASSWORD = "demodemo"
 
 [[d1_databases]]
 binding = "DB"

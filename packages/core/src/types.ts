@@ -35,6 +35,8 @@ export interface Bindings {
   AUTH_SECRET?: string;
   R2_PUBLIC_URL?: string;
   IMAGE_TRANSFORM_URL?: string;
+  DEMO_EMAIL?: string;
+  DEMO_PASSWORD?: string;
 }
 
 // =============================================================================

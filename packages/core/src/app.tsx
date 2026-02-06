@@ -297,7 +297,11 @@ export function createApp(config: JantConfig = {}): App {
   });
 
   // Signin page component
-  const SigninContent: FC<{ error?: string }> = ({ error }) => {
+  const SigninContent: FC<{
+    error?: string;
+    demoEmail?: string;
+    demoPassword?: string;
+  }> = ({ error, demoEmail, demoPassword }) => {
     const { t } = useLingui();
 
     return (
@@ -313,6 +317,15 @@ export function createApp(config: JantConfig = {}): App {
           </header>
           <section>
             {error && <p class="text-destructive text-sm mb-4">{error}</p>}
+            {demoEmail && demoPassword && (
+              <p class="text-muted-foreground text-sm mb-4">
+                {t({
+                  message: "Demo account pre-filled. Just click Sign In.",
+                  comment:
+                    "@context: Hint shown on signin page when demo credentials are pre-filled",
+                })}
+              </p>
+            )}
             <form method="post" action="/signin" class="flex flex-col gap-4">
               <div class="field">
                 <label class="label">
@@ -321,7 +334,13 @@ export function createApp(config: JantConfig = {}): App {
                     comment: "@context: Setup/signin form field - email",
                   })}
                 </label>
-                <input type="email" name="email" class="input" required />
+                <input
+                  type="email"
+                  name="email"
+                  class="input"
+                  required
+                  value={demoEmail}
+                />
               </div>
               <div class="field">
                 <label class="label">
@@ -330,7 +349,13 @@ export function createApp(config: JantConfig = {}): App {
                     comment: "@context: Setup/signin form field - password",
                   })}
                 </label>
-                <input type="password" name="password" class="input" required />
+                <input
+                  type="password"
+                  name="password"
+                  class="input"
+                  required
+                  value={demoPassword}
+                />
               </div>
               <button type="submit" class="btn">
                 {t({
@@ -351,7 +376,11 @@ export function createApp(config: JantConfig = {}): App {
 
     return c.html(
       <BaseLayout title="Sign In - Jant" c={c}>
-        <SigninContent error={error} />
+        <SigninContent
+          error={error}
+          demoEmail={c.env.DEMO_EMAIL}
+          demoPassword={c.env.DEMO_PASSWORD}
+        />
       </BaseLayout>,
     );
   });

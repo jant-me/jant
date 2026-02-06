@@ -28,6 +28,7 @@ export function createAuth(
     emailAndPassword: {
       enabled: true,
       autoSignIn: true,
+      minPasswordLength: 8,
     },
     session: {
       cookieCache: {
