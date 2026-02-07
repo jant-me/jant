@@ -3,7 +3,6 @@
  */
 
 import { Hono } from "hono";
-import { z } from "zod";
 import { useLingui } from "../../i18n/index.js";
 import type { Bindings, Post } from "../../types.js";
 import type { AppVariables } from "../../app.js";
@@ -15,12 +14,7 @@ import {
   ActionButtons,
 } from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
-import {
-  PostTypeSchema,
-  VisibilitySchema,
-  parseFormData,
-  parseFormDataOptional,
-} from "../../lib/schemas.js";
+import { sse } from "../../lib/sse.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -92,26 +86,27 @@ postsRoutes.get("/new", async (c) => {
 
 // Create post
 postsRoutes.post("/", async (c) => {
-  const formData = await c.req.formData();
-
-  // Validate and parse form data
-  const type = parseFormData(formData, "type", PostTypeSchema);
-  const visibility = parseFormData(formData, "visibility", VisibilitySchema);
-  const title = parseFormDataOptional(formData, "title", z.string());
-  const content = formData.get("content") as string;
-  const sourceUrl = parseFormDataOptional(formData, "sourceUrl", z.string());
-  const path = parseFormDataOptional(formData, "path", z.string());
+  const body = await c.req.json<{
+    type: string;
+    title?: string;
+    content: string;
+    visibility: string;
+    sourceUrl?: string;
+    path?: string;
+  }>();
 
   const post = await c.var.services.posts.create({
-    type,
-    title,
-    content,
-    visibility,
-    sourceUrl,
-    path,
+    type: body.type as Post["type"],
+    title: body.title || undefined,
+    content: body.content,
+    visibility: body.visibility as Post["visibility"],
+    sourceUrl: body.sourceUrl || undefined,
+    path: body.path || undefined,
   });
 
-  return c.redirect(`/dash/posts/${sqid.encode(post.id)}`);
+  return sse(c, async (stream) => {
+    await stream.redirect(`/dash/posts/${sqid.encode(post.id)}`);
+  });
 });
 
 function ViewPostContent({ post }: { post: Post }) {
@@ -213,28 +208,27 @@ postsRoutes.post("/:id", async (c) => {
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.notFound();
 
-  const formData = await c.req.formData();
-
-  // Validate and parse form data
-  const type = parseFormData(formData, "type", PostTypeSchema);
-  const visibility = parseFormData(formData, "visibility", VisibilitySchema);
-  const title = parseFormDataOptional(formData, "title", z.string()) || null;
-  const content =
-    parseFormDataOptional(formData, "content", z.string()) || null;
-  const sourceUrl =
-    parseFormDataOptional(formData, "sourceUrl", z.string()) || null;
-  const path = parseFormDataOptional(formData, "path", z.string()) || null;
+  const body = await c.req.json<{
+    type: string;
+    title?: string;
+    content?: string;
+    visibility: string;
+    sourceUrl?: string;
+    path?: string;
+  }>();
 
   await c.var.services.posts.update(id, {
-    type,
-    title,
-    content,
-    visibility,
-    sourceUrl,
-    path,
+    type: body.type as Post["type"],
+    title: body.title || null,
+    content: body.content || null,
+    visibility: body.visibility as Post["visibility"],
+    sourceUrl: body.sourceUrl || null,
+    path: body.path || null,
   });
 
-  return c.redirect(`/dash/posts/${sqid.encode(id)}`);
+  return sse(c, async (stream) => {
+    await stream.redirect(`/dash/posts/${sqid.encode(id)}`);
+  });
 });
 
 // Delete post
@@ -244,5 +238,7 @@ postsRoutes.post("/:id/delete", async (c) => {
 
   await c.var.services.posts.delete(id);
 
-  return c.redirect("/dash/posts");
+  return sse(c, async (stream) => {
+    await stream.redirect("/dash/posts");
+  });
 });

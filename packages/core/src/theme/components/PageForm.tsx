@@ -22,10 +22,20 @@ export const PageForm: FC<PageFormProps> = ({
   const { t } = useLingui();
   const isEdit = !!page;
 
+  const signals = JSON.stringify({
+    title: page?.title ?? "",
+    path: page?.path ?? "",
+    content: page?.content ?? "",
+    visibility: page?.visibility ?? "unlisted",
+  }).replace(/</g, "\\u003c");
+
   return (
-    <form method="post" action={action} class="flex flex-col gap-4">
-      {/* Hidden type field */}
-      <input type="hidden" name="type" value="page" />
+    <form
+      data-signals={signals}
+      data-on:submit__prevent={`@post('${action}')`}
+      class="flex flex-col gap-4"
+    >
+      <div id="page-form-message"></div>
 
       {/* Title */}
       <div class="field">
@@ -37,13 +47,12 @@ export const PageForm: FC<PageFormProps> = ({
         </label>
         <input
           type="text"
-          name="title"
+          data-bind="title"
           class="input"
           placeholder={t({
             message: "Page title...",
             comment: "@context: Page title placeholder",
           })}
-          value={page?.title ?? ""}
           required
         />
       </div>
@@ -60,10 +69,9 @@ export const PageForm: FC<PageFormProps> = ({
           <span class="text-muted-foreground">/</span>
           <input
             type="text"
-            name="path"
+            data-bind="path"
             class="input flex-1"
             placeholder="about"
-            value={page?.path ?? ""}
             pattern="[a-z0-9\-]+"
             title={t({
               message: "Lowercase letters, numbers, and hyphens only",
@@ -90,7 +98,7 @@ export const PageForm: FC<PageFormProps> = ({
           })}
         </label>
         <textarea
-          name="content"
+          data-bind="content"
           class="textarea min-h-48"
           placeholder={t({
             message: "Page content (Markdown supported)...",
@@ -110,7 +118,7 @@ export const PageForm: FC<PageFormProps> = ({
             comment: "@context: Page form field label - publish status",
           })}
         </label>
-        <select name="visibility" class="select">
+        <select data-bind="visibility" class="select">
           <option
             value="unlisted"
             selected={page?.visibility === "unlisted" || !page}

@@ -8,7 +8,8 @@
     "transform": {
       "react": {
         "runtime": "automatic",
-        "importSource": "hono/jsx"
+        "importSource": "hono/jsx",
+        "throwIfNamespace": false
       }
     },
     "target": "es2022",

@@ -9,19 +9,29 @@ import { useLingui } from "../../i18n/index.js";
 export interface PostFormProps {
   post?: Post;
   action: string;
-  method?: "get" | "post";
 }
 
-export const PostForm: FC<PostFormProps> = ({
-  post,
-  action,
-  method = "post",
-}) => {
+export const PostForm: FC<PostFormProps> = ({ post, action }) => {
   const { t } = useLingui();
   const isEdit = !!post;
 
+  const signals = JSON.stringify({
+    type: post?.type ?? "note",
+    title: post?.title ?? "",
+    content: post?.content ?? "",
+    sourceUrl: post?.sourceUrl ?? "",
+    visibility: post?.visibility ?? "quiet",
+    path: post?.path ?? "",
+  }).replace(/</g, "\\u003c");
+
   return (
-    <form method={method} action={action} class="flex flex-col gap-4">
+    <form
+      data-signals={signals}
+      data-on:submit__prevent={`@post('${action}')`}
+      class="flex flex-col gap-4"
+    >
+      <div id="post-form-message"></div>
+
       {/* Type selector */}
       <div class="field">
         <label class="label">
@@ -30,7 +40,7 @@ export const PostForm: FC<PostFormProps> = ({
             comment: "@context: Post form field - post type",
           })}
         </label>
-        <select name="type" class="select" required>
+        <select data-bind="type" class="select" required>
           <option value="note" selected={post?.type === "note"}>
             {t({ message: "Note", comment: "@context: Post type option" })}
           </option>
@@ -59,13 +69,12 @@ export const PostForm: FC<PostFormProps> = ({
         </label>
         <input
           type="text"
-          name="title"
+          data-bind="title"
           class="input"
           placeholder={t({
             message: "Post title...",
             comment: "@context: Post title placeholder",
           })}
-          value={post?.title ?? ""}
         />
       </div>
 
@@ -75,7 +84,7 @@ export const PostForm: FC<PostFormProps> = ({
           {t({ message: "Content", comment: "@context: Post form field" })}
         </label>
         <textarea
-          name="content"
+          data-bind="content"
           class="textarea min-h-32"
           placeholder={t({
             message: "What's on your mind?",
@@ -97,10 +106,9 @@ export const PostForm: FC<PostFormProps> = ({
         </label>
         <input
           type="url"
-          name="sourceUrl"
+          data-bind="sourceUrl"
           class="input"
           placeholder="https://..."
-          value={post?.sourceUrl ?? ""}
         />
       </div>
 
@@ -109,7 +117,7 @@ export const PostForm: FC<PostFormProps> = ({
         <label class="label">
           {t({ message: "Visibility", comment: "@context: Post form field" })}
         </label>
-        <select name="visibility" class="select">
+        <select data-bind="visibility" class="select">
           <option
             value="quiet"
             selected={post?.visibility === "quiet" || !post}
@@ -150,10 +158,9 @@ export const PostForm: FC<PostFormProps> = ({
         </label>
         <input
           type="text"
-          name="path"
+          data-bind="path"
           class="input"
           placeholder="my-custom-url"
-          value={post?.path ?? ""}
         />
       </div>
 

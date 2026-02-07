@@ -20,7 +20,7 @@ import {
 } from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
 import * as time from "../../lib/time.js";
-import { VisibilitySchema, parseFormData } from "../../lib/schemas.js";
+import { sse } from "../../lib/sse.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -221,22 +221,24 @@ pagesRoutes.get("/new", async (c) => {
 
 // Create page
 pagesRoutes.post("/", async (c) => {
-  const formData = await c.req.formData();
-
-  const title = formData.get("title") as string;
-  const content = formData.get("content") as string;
-  const visibility = parseFormData(formData, "visibility", VisibilitySchema);
-  const path = formData.get("path") as string;
+  const body = await c.req.json<{
+    title: string;
+    content: string;
+    visibility: string;
+    path: string;
+  }>();
 
   const page = await c.var.services.posts.create({
     type: "page",
-    title,
-    content,
-    visibility,
-    path: path.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+    title: body.title,
+    content: body.content,
+    visibility: body.visibility as Post["visibility"],
+    path: body.path.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
   });
 
-  return c.redirect(`/dash/pages/${sqid.encode(page.id)}`);
+  return sse(c, async (stream) => {
+    await stream.redirect(`/dash/pages/${sqid.encode(page.id)}`);
+  });
 });
 
 // View single page
@@ -288,22 +290,24 @@ pagesRoutes.post("/:id", async (c) => {
   const id = sqid.decode(c.req.param("id"));
   if (!id) return c.notFound();
 
-  const formData = await c.req.formData();
-
-  const title = formData.get("title") as string;
-  const content = formData.get("content") as string;
-  const visibility = parseFormData(formData, "visibility", VisibilitySchema);
-  const path = formData.get("path") as string;
+  const body = await c.req.json<{
+    title: string;
+    content: string;
+    visibility: string;
+    path: string;
+  }>();
 
   await c.var.services.posts.update(id, {
     type: "page",
-    title,
-    content,
-    visibility,
-    path: path.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+    title: body.title,
+    content: body.content,
+    visibility: body.visibility as Post["visibility"],
+    path: body.path.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
   });
 
-  return c.redirect(`/dash/pages/${sqid.encode(id)}`);
+  return sse(c, async (stream) => {
+    await stream.redirect(`/dash/pages/${sqid.encode(id)}`);
+  });
 });
 
 // Delete page
@@ -313,5 +317,7 @@ pagesRoutes.post("/:id/delete", async (c) => {
 
   await c.var.services.posts.delete(id);
 
-  return c.redirect("/dash/pages");
+  return sse(c, async (stream) => {
+    await stream.redirect("/dash/pages");
+  });
 });

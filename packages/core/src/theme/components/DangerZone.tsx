@@ -57,6 +57,10 @@ export const DangerZone: FC<DangerZoneProps> = ({
     comment: "@context: Section heading for dangerous/destructive actions",
   });
 
+  const clickHandler = confirmMessage
+    ? `confirm('${confirmMessage}') && @post('${formAction}')`
+    : `@post('${formAction}')`;
+
   return (
     <div class="mt-8 pt-8 border-t">
       <h2 class="text-lg font-medium text-destructive mb-4">
@@ -66,18 +70,14 @@ export const DangerZone: FC<DangerZoneProps> = ({
         <p class="text-sm text-muted-foreground mb-4">{description}</p>
       )}
       {children}
-      <form method="post" action={formAction}>
-        <button
-          type="submit"
-          class="btn-destructive"
-          disabled={disabled}
-          onclick={
-            confirmMessage ? `return confirm('${confirmMessage}')` : undefined
-          }
-        >
-          {actionLabel}
-        </button>
-      </form>
+      <button
+        type="button"
+        class="btn-destructive"
+        disabled={disabled}
+        data-on:click__prevent={clickHandler}
+      >
+        {actionLabel}
+      </button>
     </div>
   );
 };

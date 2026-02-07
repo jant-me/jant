@@ -7,43 +7,28 @@ import { useLingui } from "../../i18n/index.js";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
+import { sse } from "../../lib/sse.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const settingsRoutes = new Hono<Env>();
 
-function SuccessMessage({ message }: { message: string }) {
-  return (
-    <div class="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
-      {message}
-    </div>
-  );
-}
-
-function ErrorMessage({ message }: { message: string }) {
-  return (
-    <div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
-      {message}
-    </div>
-  );
-}
-
 function SettingsContent({
   siteName,
   siteDescription,
   siteLanguage,
-  saved,
-  passwordSuccess,
-  passwordError,
 }: {
   siteName: string;
   siteDescription: string;
   siteLanguage: string;
-  saved?: boolean;
-  passwordSuccess?: boolean;
-  passwordError?: string;
 }) {
   const { t } = useLingui();
+
+  const generalSignals = JSON.stringify({
+    siteName,
+    siteDescription,
+    siteLanguage,
+  }).replace(/</g, "\\u003c");
 
   return (
     <>
@@ -52,17 +37,11 @@ function SettingsContent({
       </h1>
 
       <div class="flex flex-col gap-6 max-w-lg">
-        <form method="post" action="/dash/settings">
-          {saved && (
-            <div class="mb-4">
-              <SuccessMessage
-                message={t({
-                  message: "Settings saved.",
-                  comment: "@context: Success message after saving settings",
-                })}
-              />
-            </div>
-          )}
+        <form
+          data-signals={generalSignals}
+          data-on:submit__prevent="@post('/dash/settings')"
+        >
+          <div id="settings-message"></div>
           <div class="card">
             <header>
               <h2>
@@ -82,9 +61,8 @@ function SettingsContent({
                 </label>
                 <input
                   type="text"
-                  name="siteName"
+                  data-bind="siteName"
                   class="input"
-                  value={siteName}
                   required
                 />
               </div>
@@ -96,7 +74,7 @@ function SettingsContent({
                     comment: "@context: Settings form field",
                   })}
                 </label>
-                <textarea name="siteDescription" class="textarea" rows={3}>
+                <textarea data-bind="siteDescription" class="textarea" rows={3}>
                   {siteDescription}
                 </textarea>
               </div>
@@ -108,7 +86,7 @@ function SettingsContent({
                     comment: "@context: Settings form field",
                   })}
                 </label>
-                <select name="siteLanguage" class="select">
+                <select data-bind="siteLanguage" class="select">
                   <option value="en" selected={siteLanguage === "en"}>
                     English
                   </option>
@@ -131,22 +109,11 @@ function SettingsContent({
           </button>
         </form>
 
-        <form method="post" action="/dash/settings/password">
-          {passwordSuccess && (
-            <div class="mb-4">
-              <SuccessMessage
-                message={t({
-                  message: "Password changed successfully.",
-                  comment: "@context: Success message after changing password",
-                })}
-              />
-            </div>
-          )}
-          {passwordError && (
-            <div class="mb-4">
-              <ErrorMessage message={passwordError} />
-            </div>
-          )}
+        <form
+          data-signals="{currentPassword: '', newPassword: '', confirmPassword: ''}"
+          data-on:submit__prevent="@post('/dash/settings/password')"
+        >
+          <div id="password-message"></div>
           <div class="card">
             <header>
               <h2>
@@ -166,7 +133,7 @@ function SettingsContent({
                 </label>
                 <input
                   type="password"
-                  name="currentPassword"
+                  data-bind="currentPassword"
                   class="input"
                   required
                   autocomplete="current-password"
@@ -182,7 +149,7 @@ function SettingsContent({
                 </label>
                 <input
                   type="password"
-                  name="newPassword"
+                  data-bind="newPassword"
                   class="input"
                   required
                   minlength={8}
@@ -199,7 +166,7 @@ function SettingsContent({
                 </label>
                 <input
                   type="password"
-                  name="confirmPassword"
+                  data-bind="confirmPassword"
                   class="input"
                   required
                   minlength={8}
@@ -229,10 +196,6 @@ settingsRoutes.get("/", async (c) => {
   const siteLanguage =
     (await c.var.services.settings.get("SITE_LANGUAGE")) ?? "en";
 
-  const saved = c.req.query("saved") === "1";
-  const passwordSuccess = c.req.query("password") === "1";
-  const passwordError = c.req.query("passwordError");
-
   return c.html(
     <DashLayout
       c={c}
@@ -244,9 +207,6 @@ settingsRoutes.get("/", async (c) => {
         siteName={siteName}
         siteDescription={siteDescription}
         siteLanguage={siteLanguage}
-        saved={saved}
-        passwordSuccess={passwordSuccess}
-        passwordError={passwordError}
       />
     </DashLayout>,
   );
@@ -254,44 +214,66 @@ settingsRoutes.get("/", async (c) => {
 
 // Update settings
 settingsRoutes.post("/", async (c) => {
-  const formData = await c.req.formData();
-
-  const siteName = formData.get("siteName") as string;
-  const siteDescription = formData.get("siteDescription") as string;
-  const siteLanguage = formData.get("siteLanguage") as string;
+  const body = await c.req.json<{
+    siteName: string;
+    siteDescription: string;
+    siteLanguage: string;
+  }>();
 
   await c.var.services.settings.setMany({
-    SITE_NAME: siteName,
-    SITE_DESCRIPTION: siteDescription,
-    SITE_LANGUAGE: siteLanguage,
+    SITE_NAME: body.siteName,
+    SITE_DESCRIPTION: body.siteDescription,
+    SITE_LANGUAGE: body.siteLanguage,
   });
 
-  return c.redirect("/dash/settings?saved=1");
+  return sse(c, async (stream) => {
+    await stream.patchElements(
+      '<div id="settings-message"><div class="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200 mb-4">Settings saved.</div></div>',
+    );
+  });
 });
 
 // Change password
 settingsRoutes.post("/password", async (c) => {
-  const formData = await c.req.formData();
-  const currentPassword = formData.get("currentPassword") as string;
-  const newPassword = formData.get("newPassword") as string;
-  const confirmPassword = formData.get("confirmPassword") as string;
+  const body = await c.req.json<{
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }>();
 
-  if (newPassword !== confirmPassword) {
-    return c.redirect(
-      `/dash/settings?passwordError=${encodeURIComponent("Passwords do not match.")}`,
-    );
+  if (body.newPassword !== body.confirmPassword) {
+    return sse(c, async (stream) => {
+      await stream.patchElements(
+        '<div id="password-message"><div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200 mb-4">Passwords do not match.</div></div>',
+      );
+    });
   }
 
   try {
     await c.var.auth.api.changePassword({
-      body: { currentPassword, newPassword, revokeOtherSessions: false },
+      body: {
+        currentPassword: body.currentPassword,
+        newPassword: body.newPassword,
+        revokeOtherSessions: false,
+      },
       headers: c.req.raw.headers,
     });
   } catch {
-    return c.redirect(
-      `/dash/settings?passwordError=${encodeURIComponent("Current password is incorrect.")}`,
-    );
+    return sse(c, async (stream) => {
+      await stream.patchElements(
+        '<div id="password-message"><div class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200 mb-4">Current password is incorrect.</div></div>',
+      );
+    });
   }
 
-  return c.redirect("/dash/settings?password=1");
+  return sse(c, async (stream) => {
+    await stream.patchElements(
+      '<div id="password-message"><div class="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200 mb-4">Password changed successfully.</div></div>',
+    );
+    await stream.patchSignals({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  });
 });

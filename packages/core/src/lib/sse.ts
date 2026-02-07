@@ -1,8 +1,7 @@
 /**
- * Server-Sent Events (SSE) utilities for Datastar
+ * Server-Sent Events (SSE) utilities for Datastar v1.0.0-RC.7
  *
- * Provides helpers for streaming SSE responses that Datastar can consume.
- * Datastar uses SSE for real-time UI updates without page reloads.
+ * Generates SSE events compatible with the Datastar client's expected format.
  *
  * @see https://data-star.dev/
  *
@@ -11,7 +10,8 @@
  * app.post("/api/example", (c) => {
  *   return sse(c, async (stream) => {
  *     await stream.patchSignals({ loading: false });
- *     await stream.patchElements("#result", "<div>Done!</div>");
+ *     await stream.patchElements('<div id="result">Done!</div>');
+ *     await stream.redirect("/success");
  *   });
  * });
  * ```
@@ -20,14 +20,18 @@
 import type { Context } from "hono";
 
 /**
- * Patch modes for DOM updates
+ * Patch modes for DOM element updates
+ *
+ * @see https://data-star.dev/reference/action_plugins/backend/sse
  */
 export type PatchMode =
-  | "morph"
-  | "inner"
   | "outer"
-  | "append"
+  | "inner"
+  | "replace"
   | "prepend"
+  | "append"
+  | "before"
+  | "after"
   | "remove";
 
 /**
@@ -38,23 +42,27 @@ export interface SSEStream {
    * Update reactive signals on the client
    *
    * @param signals - Object containing signal values to update
+   * @param options - Optional settings (e.g. onlyIfMissing)
    *
    * @example
    * ```ts
    * await stream.patchSignals({ count: 42, loading: false });
    * ```
    */
-  patchSignals(signals: Record<string, unknown>): Promise<void>;
+  patchSignals(
+    signals: Record<string, unknown>,
+    options?: { onlyIfMissing?: boolean },
+  ): void;
 
   /**
-   * Update DOM elements
+   * Update DOM elements via patching
    *
    * @param html - HTML content (must include element with id for targeting)
-   * @param options - Optional mode and selector
+   * @param options - Optional patch mode, selector, and view transition
    *
    * @example
    * ```ts
-   * // Replace element with matching id (default: morph)
+   * // Outer patch element with matching id (default)
    * await stream.patchElements('<div id="content">New content</div>');
    *
    * // Append to a container
@@ -66,20 +74,54 @@ export interface SSEStream {
    */
   patchElements(
     html: string,
-    options?: { mode?: PatchMode; selector?: string },
-  ): Promise<void>;
+    options?: {
+      mode?: PatchMode;
+      selector?: string;
+      useViewTransition?: boolean;
+    },
+  ): void;
 
   /**
-   * Execute JavaScript on the client
+   * Redirect the client to a new URL
    *
-   * @param script - JavaScript code to execute
+   * Uses patchElements internally to inject a script that navigates the client.
+   *
+   * @param url - The URL to redirect to
    *
    * @example
    * ```ts
-   * await stream.executeScript('console.log("Hello from server")');
+   * await stream.redirect('/dash/posts');
    * ```
    */
-  executeScript(script: string): Promise<void>;
+  redirect(url: string): void;
+
+  /**
+   * Remove elements matching a CSS selector
+   *
+   * @param selector - CSS selector for elements to remove
+   *
+   * @example
+   * ```ts
+   * await stream.remove('#placeholder');
+   * ```
+   */
+  remove(selector: string): void;
+}
+
+/**
+ * Format a single SSE event string
+ *
+ * @param eventType - The Datastar event type (e.g. "datastar-patch-elements")
+ * @param dataLines - Array of "key value" data lines
+ * @returns Formatted SSE event string
+ */
+function formatEvent(eventType: string, dataLines: readonly string[]): string {
+  let event = `event: ${eventType}\n`;
+  for (const line of dataLines) {
+    event += `data: ${line}\n`;
+  }
+  event += "\n";
+  return event;
 }
 
 /**
@@ -87,13 +129,13 @@ export interface SSEStream {
  *
  * @param c - Hono context
  * @param handler - Async function that writes to the SSE stream
+ * @param options - Optional response options (e.g. headers for cookie forwarding)
  * @returns Response with SSE content-type
  *
  * @example
  * ```ts
  * app.post("/api/upload", (c) => {
  *   return sse(c, async (stream) => {
- *     // Process upload...
  *     await stream.patchSignals({ uploading: false });
  *     await stream.patchElements('<div id="new-item">...</div>', {
  *       mode: 'append',
@@ -101,58 +143,92 @@ export interface SSEStream {
  *     });
  *   });
  * });
+ *
+ * // With cookie forwarding (for auth)
+ * app.post("/signin", (c) => {
+ *   return sse(c, async (stream) => {
+ *     await stream.redirect('/dash');
+ *   }, { headers: { 'Set-Cookie': cookieValue } });
+ * });
  * ```
  */
 export function sse(
   c: Context,
   handler: (stream: SSEStream) => Promise<void>,
+  options?: { headers?: Record<string, string> },
 ): Response {
   const encoder = new TextEncoder();
 
-  const stream = new ReadableStream({
+  const body = new ReadableStream({
     async start(controller) {
-      const write = (data: string) => {
-        controller.enqueue(encoder.encode(data));
+      const stream: SSEStream = {
+        patchSignals(signals, opts) {
+          const dataLines: string[] = [`signals ${JSON.stringify(signals)}`];
+          if (opts?.onlyIfMissing) {
+            dataLines.push("onlyIfMissing true");
+          }
+          controller.enqueue(
+            encoder.encode(formatEvent("datastar-patch-signals", dataLines)),
+          );
+        },
+
+        patchElements(html, opts) {
+          const dataLines: string[] = [];
+          // Each line of HTML gets its own "elements <line>" data line
+          for (const line of html.split("\n")) {
+            dataLines.push(`elements ${line}`);
+          }
+          if (opts?.mode) {
+            dataLines.push(`mode ${opts.mode}`);
+          }
+          if (opts?.selector) {
+            dataLines.push(`selector ${opts.selector}`);
+          }
+          if (opts?.useViewTransition) {
+            dataLines.push("useViewTransition true");
+          }
+          controller.enqueue(
+            encoder.encode(formatEvent("datastar-patch-elements", dataLines)),
+          );
+        },
+
+        redirect(url) {
+          const escapedUrl = url.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+          const script = `<script data-effect="el.remove()">window.location.href='${escapedUrl}'</script>`;
+          const dataLines: string[] = [
+            `elements ${script}`,
+            "mode append",
+            "selector body",
+          ];
+          controller.enqueue(
+            encoder.encode(formatEvent("datastar-patch-elements", dataLines)),
+          );
+        },
+
+        remove(selector) {
+          controller.enqueue(
+            encoder.encode(
+              formatEvent("datastar-patch-elements", [
+                "elements ",
+                `mode remove`,
+                `selector ${selector}`,
+              ]),
+            ),
+          );
+        },
       };
 
-      const sseStream: SSEStream = {
-        async patchSignals(signals) {
-          write(`event: datastar-patch-signals\n`);
-          write(`data: signals ${JSON.stringify(signals)}\n\n`);
-        },
-
-        async patchElements(html, options = {}) {
-          write(`event: datastar-patch-elements\n`);
-          if (options.mode) {
-            write(`data: mode ${options.mode}\n`);
-          }
-          if (options.selector) {
-            write(`data: selector ${options.selector}\n`);
-          }
-          // Escape newlines in HTML for SSE format
-          const escapedHtml = html.replace(/\n/g, "\ndata: ");
-          write(`data: elements ${escapedHtml}\n\n`);
-        },
-
-        async executeScript(script) {
-          write(`event: datastar-execute-script\n`);
-          write(`data: script ${script}\n\n`);
-        },
-      };
-
-      try {
-        await handler(sseStream);
-      } finally {
-        controller.close();
-      }
+      await handler(stream);
+      controller.close();
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+  const headers: Record<string, string> = {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    ...options?.headers,
+  };
+
+  return new Response(body, { headers });
 }

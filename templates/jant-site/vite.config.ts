@@ -140,7 +140,11 @@ export default defineConfig({
       jsc: {
         parser: { syntax: "typescript", tsx: true },
         transform: {
-          react: { runtime: "automatic", importSource: "hono/jsx" },
+          react: {
+            runtime: "automatic",
+            importSource: "hono/jsx",
+            throwIfNamespace: false,
+          },
         },
         target: "es2022",
         experimental: {

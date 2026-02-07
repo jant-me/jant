@@ -216,7 +216,7 @@ Located in `src/theme/components/`:
 - **Database**: D1 + Drizzle ORM
 - **Auth**: better-auth
 - **i18n**: @lingui/core + @lingui/swc-plugin (macros)
-- **Interactions**: Datastar
+- **Interactions**: Datastar v1.0.0-RC.7 (vendored in `src/vendor/datastar.js`)
 - **Code Quality**: ESLint + Prettier + husky + lint-staged
 - **Validation**: Zod
 
@@ -405,35 +405,82 @@ function MyComponent() {
 
 ## Datastar Usage
 
+**Version: Datastar v1.0.0-RC.7** (vendored in `src/vendor/datastar.js`, imported in `src/client.ts`). Reference source available at `references/datastar/`.
+
 Datastar is used for client-side interactivity with SSE-powered real-time updates.
 
 ### 1. Signals (Reactive State)
 
-Define signals on a parent element. Use `_` prefix for local signals (not sent to server).
+Define signals on a parent element using `data-signals`. Use `_` prefix for private signals (not sent to server).
 
 ```tsx
 <div data-signals="{_loading: false, _error: null, count: 0}">
   <span data-text="$count"></span>
-  <button data-on-click="$count++">Add</button>
+  <button data-on:click="$count++">Add</button>
 </div>
 ```
 
-### 2. Conditional Display
+### 2. Two-Way Form Binding
+
+Use `data-bind="signalName"` for two-way binding between form inputs and signals:
+
+```tsx
+<form data-signals="{title: '', content: ''}">
+  <input type="text" data-bind="title" class="input" />
+  <textarea data-bind="content" class="textarea" />
+</form>
+```
+
+**Note:** HTML attributes are case-insensitive, so `data-bind-fieldName` won't preserve camelCase. Always use value-based syntax: `data-bind="fieldName"`.
+
+### 3. Conditional Display
 
 ```tsx
 <span data-show="!$_loading">Ready</span>
 <span data-show="$_loading">Loading...</span>
 ```
 
-### 3. Dynamic Classes
+### 4. Dynamic Classes
 
 ```tsx
 <button data-class-opacity-50="$_loading">Submit</button>
 ```
 
-### 4. SSE Responses (Server → Client)
+### 5. Actions (Server Communication)
 
-Use the `sse()` helper from `lib/sse.ts` for real-time updates:
+Datastar v1.0 uses `@` prefix for actions: `@get()`, `@post()`, `@put()`, `@delete()`.
+
+- `@post('/url')` sends non-private signals as JSON body with `Content-Type: application/json`
+- Pass custom payload: `@post('/url', {payload: {key: value}})`
+- On `<form>` elements, `data-on-submit` automatically calls `preventDefault()`
+
+### 6. Attribute Syntax
+
+Datastar v1.0 uses `:` (colon) to separate plugin name from key in attribute names. Modifiers use `__` (double underscore) separator:
+
+```tsx
+data-on:submit__prevent="@post('/url')"   // preventDefault
+data-on:click__stop="handler()"            // stopPropagation
+data-on:click__once="handler()"            // once
+data-on:keydown__window="handler()"        // listen on window
+```
+
+**Important:** SWC's JSX transform rejects colons (namespace syntax) by default. Set `throwIfNamespace: false` in SWC config:
+
+```json
+{ "transform": { "react": { "throwIfNamespace": false } } }
+```
+
+### 7. SSE Responses (Server → Client)
+
+Use the `sse()` helper from `lib/sse.ts` for real-time updates. Uses **Datastar v1.0 event types**:
+
+| Event Type                | Data Fields                                                      | Description             |
+| ------------------------- | ---------------------------------------------------------------- | ----------------------- |
+| `datastar-patch-signals`  | `signals`, `onlyIfMissing`                                       | Update reactive signals |
+| `datastar-patch-elements` | `elements`, `mode`, `selector`, `useViewTransition`, `namespace` | Update DOM elements     |
+
+**Note:** No native redirect event. Redirect is implemented via `datastar-patch-elements` with an injected `<script>`.
 
 ```typescript
 import { sse } from "../../lib/sse.js";
@@ -443,7 +490,7 @@ app.post("/api/action", (c) => {
     // Update signals
     await stream.patchSignals({ _loading: false });
 
-    // Update DOM
+    // Update DOM (outer morph by default)
     await stream.patchElements('<div id="result">Done!</div>');
 
     // Prepend to list
@@ -451,11 +498,68 @@ app.post("/api/action", (c) => {
       mode: "prepend",
       selector: "#items",
     });
+
+    // Redirect client
+    await stream.redirect("/dash/posts");
+
+    // Remove elements
+    await stream.remove("#placeholder");
   });
 });
 ```
 
-### 5. Custom SSE Handling (File Uploads)
+### 8. Form Submission Pattern
+
+All dashboard forms use Datastar's `@post` action for submission instead of traditional HTML form POST. This eliminates page reloads and enables inline error/success messages.
+
+**Form (JSX):**
+
+```tsx
+<form
+  data-signals={JSON.stringify({ title: post?.title ?? "", content: "" })}
+  data-on:submit__prevent="@post('/dash/posts')"
+>
+  <input type="text" data-bind="title" class="input" />
+  <textarea data-bind="content" class="textarea" />
+  <div id="form-message"></div>
+  <button type="submit" class="btn">
+    Save
+  </button>
+</form>
+```
+
+**Handler (server):**
+
+```typescript
+app.post("/dash/posts", async (c) => {
+  const body = await c.req.json<{ title: string; content: string }>();
+
+  // On error: show inline message
+  if (!body.title) {
+    return sse(c, async (stream) => {
+      await stream.patchElements(
+        '<div id="form-message"><p class="text-destructive text-sm">Title is required</p></div>',
+      );
+    });
+  }
+
+  // On success: redirect
+  const post = await c.var.services.posts.create(body);
+  return sse(c, async (stream) => {
+    await stream.redirect(`/dash/posts/${sqid.encode(post.id)}`);
+  });
+});
+```
+
+**Key rules:**
+
+- `@post` sends non-private signals as flat JSON body, parsed with `c.req.json()`
+- Use `data-bind="fieldName"` on form inputs for two-way binding
+- Use `data-on:submit__prevent` (not `method="post" action="..."`)
+- For delete buttons without forms: `data-on:click__prevent="confirm('...') && @post('/path')"`
+- For auth responses needing cookies: pass `{ headers: { 'Set-Cookie': cookie } }` as third arg to `sse()`
+
+### 9. Custom SSE Handling (File Uploads)
 
 For file uploads, manually parse SSE since Datastar doesn't handle FormData:
 
@@ -466,36 +570,36 @@ const response = await fetch("/api/upload", {
   headers: { Accept: "text/event-stream" },
 });
 
-// Parse SSE events manually and update Datastar store
-const store = Datastar.store();
-// ... parse and apply events
+// Parse SSE events manually
+// Event type: datastar-patch-elements
+// Data fields: elements, mode, selector
 ```
 
-### 6. Expression Rules
+### 10. Expression Rules
 
-Use **expressions**, not statements in `data-on-*`:
+Use **expressions**, not statements in `data-on-*`. Signals use `$` prefix, actions use `@` prefix:
 
 ```tsx
 // ❌ Wrong
-data-on-click="if (x) doSomething()"
+data-on:click="if (x) doSomething()"
 
 // ✅ Correct
-data-on-click="x && doSomething()"
+data-on:click="x && doSomething()"
+data-on:click="$count++"
+data-on:click="@post('/api/save')"
 ```
 
-### 7. Signal Scoping
+### 11. Signal Scoping
 
 Define signals on a **parent element** that contains all elements needing access.
 
-### 8. Common Pitfalls
+### 12. Common Pitfalls
 
-**Signal not found error**: `Cannot read properties of undefined (reading 'value')`
-
-This happens when Datastar can't find the signal. Causes:
+**Signal not found error**: Happens when Datastar can't find a signal. Causes:
 
 - Signal defined on wrong element (child instead of parent)
 - Signal name mismatch (case-sensitive)
-- Element with `data-signals` not processed yet when child elements try to access
+- Element with `data-signals` not yet processed when child elements try to access
 
 **For complex interactions (file uploads, etc.)**, use plain JavaScript with DOM manipulation instead of Datastar signals. Datastar is best for simple reactive state, not complex async flows:
 

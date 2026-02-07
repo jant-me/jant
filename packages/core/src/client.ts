@@ -7,6 +7,6 @@
  * - ImageProcessor (media uploads)
  */
 
-import "@sudodevnull/datastar";
+import "./vendor/datastar.js";
 import "basecoat-css/all";
 import "./lib/image-processor.js";

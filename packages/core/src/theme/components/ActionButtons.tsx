@@ -19,7 +19,7 @@ export interface ActionButtonsProps {
   viewHref?: string;
 
   /**
-   * Delete button form action
+   * Delete action URL (sends POST via Datastar @post)
    */
   deleteAction?: string;
 
@@ -82,6 +82,12 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
     comment: "@context: Button to delete item",
   });
 
+  const deleteClickHandler = deleteAction
+    ? deleteConfirm
+      ? `confirm('${deleteConfirm}') && @post('${deleteAction}')`
+      : `@post('${deleteAction}')`
+    : undefined;
+
   return (
     <>
       {editHref && (
@@ -95,17 +101,13 @@ export const ActionButtons: FC<ActionButtonsProps> = ({
         </a>
       )}
       {deleteAction && (
-        <form method="post" action={deleteAction} style="display: inline">
-          <button
-            type="submit"
-            class={deleteClass}
-            onclick={
-              deleteConfirm ? `return confirm('${deleteConfirm}')` : undefined
-            }
-          >
-            {deleteLabel || defaultDeleteLabel}
-          </button>
-        </form>
+        <button
+          type="button"
+          class={deleteClass}
+          data-on:click__prevent={deleteClickHandler}
+        >
+          {deleteLabel || defaultDeleteLabel}
+        </button>
       )}
     </>
   );

@@ -13,6 +13,7 @@ import {
   ActionButtons,
   CrudPageHeader,
 } from "../../theme/components/index.js";
+import { sse } from "../../lib/sse.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -86,8 +87,8 @@ function NewRedirectContent() {
       </h1>
 
       <form
-        method="post"
-        action="/dash/redirects"
+        data-signals="{fromPath: '', toPath: '', type: '301'}"
+        data-on:submit__prevent="@post('/dash/redirects')"
         class="flex flex-col gap-4 max-w-lg"
       >
         <div class="field">
@@ -99,7 +100,7 @@ function NewRedirectContent() {
           </label>
           <input
             type="text"
-            name="fromPath"
+            data-bind="fromPath"
             class="input"
             placeholder="/old-path"
             required
@@ -121,7 +122,7 @@ function NewRedirectContent() {
           </label>
           <input
             type="text"
-            name="toPath"
+            data-bind="toPath"
             class="input"
             placeholder="/new-path or https://..."
             required
@@ -138,7 +139,7 @@ function NewRedirectContent() {
           <label class="label">
             {t({ message: "Type", comment: "@context: Redirect form field" })}
           </label>
-          <select name="type" class="select">
+          <select data-bind="type" class="select">
             <option value="301">
               {t({
                 message: "301 (Permanent)",
@@ -208,15 +209,18 @@ redirectsRoutes.get("/new", async (c) => {
 
 // Create redirect
 redirectsRoutes.post("/", async (c) => {
-  const formData = await c.req.formData();
+  const body = await c.req.json<{
+    fromPath: string;
+    toPath: string;
+    type: string;
+  }>();
 
-  const fromPath = formData.get("fromPath") as string;
-  const toPath = formData.get("toPath") as string;
-  const type = parseInt(formData.get("type") as string, 10) as 301 | 302;
+  const type = parseInt(body.type, 10) as 301 | 302;
+  await c.var.services.redirects.create(body.fromPath, body.toPath, type);
 
-  await c.var.services.redirects.create(fromPath, toPath, type);
-
-  return c.redirect("/dash/redirects");
+  return sse(c, async (stream) => {
+    await stream.redirect("/dash/redirects");
+  });
 });
 
 // Delete redirect
@@ -225,5 +229,8 @@ redirectsRoutes.post("/:id/delete", async (c) => {
   if (!isNaN(id)) {
     await c.var.services.redirects.delete(id);
   }
-  return c.redirect("/dash/redirects");
+
+  return sse(c, async (stream) => {
+    await stream.redirect("/dash/redirects");
+  });
 });

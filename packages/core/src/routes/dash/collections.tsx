@@ -15,6 +15,7 @@ import {
   DangerZone,
 } from "../../theme/components/index.js";
 import * as sqid from "../../lib/sqid.js";
+import { sse } from "../../lib/sse.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -102,8 +103,8 @@ function NewCollectionContent() {
       </h1>
 
       <form
-        method="post"
-        action="/dash/collections"
+        data-signals="{title: '', path: '', description: ''}"
+        data-on:submit__prevent="@post('/dash/collections')"
         class="flex flex-col gap-4 max-w-lg"
       >
         <div class="field">
@@ -115,7 +116,7 @@ function NewCollectionContent() {
           </label>
           <input
             type="text"
-            name="title"
+            data-bind="title"
             class="input"
             required
             placeholder={t({
@@ -131,7 +132,7 @@ function NewCollectionContent() {
           </label>
           <input
             type="text"
-            name="path"
+            data-bind="path"
             class="input"
             required
             placeholder="my-collection"
@@ -153,7 +154,7 @@ function NewCollectionContent() {
             })}
           </label>
           <textarea
-            name="description"
+            data-bind="description"
             class="textarea"
             rows={3}
             placeholder={t({
@@ -247,19 +248,17 @@ function ViewCollectionContent({
                         `Post #${post.id}`}
                     </a>
                   </div>
-                  <form
-                    method="post"
-                    action={`/dash/collections/${collection.id}/remove-post`}
+                  <button
+                    type="button"
+                    class="btn-sm-ghost text-destructive"
+                    data-on:click__prevent={`@post('/dash/collections/${collection.id}/remove-post', {payload: {postId: ${post.id}}})`}
                   >
-                    <input type="hidden" name="postId" value={post.id} />
-                    <button type="submit" class="btn-sm-ghost text-destructive">
-                      {t({
-                        message: "Remove",
-                        comment:
-                          "@context: Button to remove post from collection",
-                      })}
-                    </button>
-                  </form>
+                    {t({
+                      message: "Remove",
+                      comment:
+                        "@context: Button to remove post from collection",
+                    })}
+                  </button>
                 </div>
               ))}
             </div>
@@ -282,6 +281,12 @@ function ViewCollectionContent({
 function EditCollectionContent({ collection }: { collection: Collection }) {
   const { t } = useLingui();
 
+  const signals = JSON.stringify({
+    title: collection.title,
+    path: collection.path ?? "",
+    description: collection.description ?? "",
+  }).replace(/</g, "\\u003c");
+
   return (
     <>
       <h1 class="text-2xl font-semibold mb-6">
@@ -289,8 +294,8 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
       </h1>
 
       <form
-        method="post"
-        action={`/dash/collections/${collection.id}`}
+        data-signals={signals}
+        data-on:submit__prevent={`@post('/dash/collections/${collection.id}')`}
         class="flex flex-col gap-4 max-w-lg"
       >
         <div class="field">
@@ -300,13 +305,7 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
               comment: "@context: Collection form field",
             })}
           </label>
-          <input
-            type="text"
-            name="title"
-            class="input"
-            required
-            value={collection.title}
-          />
+          <input type="text" data-bind="title" class="input" required />
         </div>
 
         <div class="field">
@@ -315,10 +314,9 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
           </label>
           <input
             type="text"
-            name="path"
+            data-bind="path"
             class="input"
             required
-            value={collection.path ?? ""}
             pattern="[a-z0-9-]+"
           />
         </div>
@@ -330,7 +328,7 @@ function EditCollectionContent({ collection }: { collection: Collection }) {
               comment: "@context: Collection form field",
             })}
           </label>
-          <textarea name="description" class="textarea" rows={3}>
+          <textarea data-bind="description" class="textarea" rows={3}>
             {collection.description ?? ""}
           </textarea>
         </div>
@@ -398,19 +396,21 @@ collectionsRoutes.get("/new", async (c) => {
 
 // Create collection
 collectionsRoutes.post("/", async (c) => {
-  const formData = await c.req.formData();
-
-  const title = formData.get("title") as string;
-  const path = formData.get("path") as string;
-  const description = formData.get("description") as string;
+  const body = await c.req.json<{
+    title: string;
+    path: string;
+    description?: string;
+  }>();
 
   const collection = await c.var.services.collections.create({
-    title,
-    path,
-    description: description || undefined,
+    title: body.title,
+    path: body.path,
+    description: body.description || undefined,
   });
 
-  return c.redirect(`/dash/collections/${collection.id}`);
+  return sse(c, async (stream) => {
+    await stream.redirect(`/dash/collections/${collection.id}`);
+  });
 });
 
 // View single collection
@@ -463,19 +463,21 @@ collectionsRoutes.post("/:id", async (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.notFound();
 
-  const formData = await c.req.formData();
-
-  const title = formData.get("title") as string;
-  const path = formData.get("path") as string;
-  const description = formData.get("description") as string;
+  const body = await c.req.json<{
+    title: string;
+    path: string;
+    description?: string;
+  }>();
 
   await c.var.services.collections.update(id, {
-    title,
-    path,
-    description: description || undefined,
+    title: body.title,
+    path: body.path,
+    description: body.description || undefined,
   });
 
-  return c.redirect(`/dash/collections/${id}`);
+  return sse(c, async (stream) => {
+    await stream.redirect(`/dash/collections/${id}`);
+  });
 });
 
 // Delete collection
@@ -485,7 +487,9 @@ collectionsRoutes.post("/:id/delete", async (c) => {
 
   await c.var.services.collections.delete(id);
 
-  return c.redirect("/dash/collections");
+  return sse(c, async (stream) => {
+    await stream.redirect("/dash/collections");
+  });
 });
 
 // Remove post from collection
@@ -493,12 +497,13 @@ collectionsRoutes.post("/:id/remove-post", async (c) => {
   const id = parseInt(c.req.param("id"), 10);
   if (isNaN(id)) return c.notFound();
 
-  const formData = await c.req.formData();
-  const postId = parseInt(formData.get("postId") as string, 10);
+  const body = await c.req.json<{ postId: number }>();
 
-  if (!isNaN(postId)) {
-    await c.var.services.collections.removePost(id, postId);
+  if (body.postId) {
+    await c.var.services.collections.removePost(id, body.postId);
   }
 
-  return c.redirect(`/dash/collections/${id}`);
+  return sse(c, async (stream) => {
+    await stream.redirect(`/dash/collections/${id}`);
+  });
 });

@@ -41,6 +41,7 @@ import { requireAuth } from "./middleware/auth.js";
 
 // Layouts for auth pages
 import { BaseLayout } from "./theme/layouts/index.js";
+import { sse } from "./lib/sse.js";
 
 // Extend Hono's context variables
 export interface AppVariables {
@@ -138,7 +139,7 @@ export function createApp(config: JantConfig = {}): App {
   app.route("/api/posts", postsApiRoutes);
 
   // Setup page component
-  const SetupContent: FC<{ error?: string }> = ({ error }) => {
+  const SetupContent: FC = () => {
     const { t } = useLingui();
 
     return (
@@ -159,8 +160,12 @@ export function createApp(config: JantConfig = {}): App {
             </p>
           </header>
           <section>
-            {error && <p class="text-destructive text-sm mb-4">{error}</p>}
-            <form method="post" action="/setup" class="flex flex-col gap-4">
+            <div id="setup-message"></div>
+            <form
+              data-signals="{siteName: '', name: '', email: '', password: ''}"
+              data-on:submit__prevent="@post('/setup')"
+              class="flex flex-col gap-4"
+            >
               <div class="field">
                 <label class="label">
                   {t({
@@ -170,7 +175,7 @@ export function createApp(config: JantConfig = {}): App {
                 </label>
                 <input
                   type="text"
-                  name="siteName"
+                  data-bind="siteName"
                   class="input"
                   required
                   placeholder={t({
@@ -188,7 +193,7 @@ export function createApp(config: JantConfig = {}): App {
                 </label>
                 <input
                   type="text"
-                  name="name"
+                  data-bind="name"
                   class="input"
                   required
                   placeholder="John Doe"
@@ -203,7 +208,7 @@ export function createApp(config: JantConfig = {}): App {
                 </label>
                 <input
                   type="email"
-                  name="email"
+                  data-bind="email"
                   class="input"
                   required
                   placeholder="you@example.com"
@@ -218,7 +223,7 @@ export function createApp(config: JantConfig = {}): App {
                 </label>
                 <input
                   type="password"
-                  name="password"
+                  data-bind="password"
                   class="input"
                   required
                   minLength={8}
@@ -242,11 +247,9 @@ export function createApp(config: JantConfig = {}): App {
     const isComplete = await c.var.services.settings.isOnboardingComplete();
     if (isComplete) return c.redirect("/");
 
-    const error = c.req.query("error");
-
     return c.html(
       <BaseLayout title="Setup - Jant" c={c}>
-        <SetupContent error={error} />
+        <SetupContent />
       </BaseLayout>,
     );
   });
@@ -255,22 +258,36 @@ export function createApp(config: JantConfig = {}): App {
     const isComplete = await c.var.services.settings.isOnboardingComplete();
     if (isComplete) return c.redirect("/");
 
-    const formData = await c.req.formData();
-    const siteName = formData.get("siteName") as string;
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
+    const body = await c.req.json<{
+      siteName: string;
+      name: string;
+      email: string;
+      password: string;
+    }>();
+    const { siteName, name, email, password } = body;
 
     if (!siteName || !name || !email || !password) {
-      return c.redirect("/setup?error=All fields are required");
+      return sse(c, async (stream) => {
+        await stream.patchElements(
+          '<div id="setup-message"><p class="text-destructive text-sm mb-4">All fields are required</p></div>',
+        );
+      });
     }
 
     if (password.length < 8) {
-      return c.redirect("/setup?error=Password must be at least 8 characters");
+      return sse(c, async (stream) => {
+        await stream.patchElements(
+          '<div id="setup-message"><p class="text-destructive text-sm mb-4">Password must be at least 8 characters</p></div>',
+        );
+      });
     }
 
     if (!c.var.auth) {
-      return c.redirect("/setup?error=AUTH_SECRET not configured");
+      return sse(c, async (stream) => {
+        await stream.patchElements(
+          '<div id="setup-message"><p class="text-destructive text-sm mb-4">AUTH_SECRET not configured</p></div>',
+        );
+      });
     }
 
     try {
@@ -279,7 +296,11 @@ export function createApp(config: JantConfig = {}): App {
       });
 
       if (!signUpResponse || "error" in signUpResponse) {
-        return c.redirect("/setup?error=Failed to create account");
+        return sse(c, async (stream) => {
+          await stream.patchElements(
+            '<div id="setup-message"><p class="text-destructive text-sm mb-4">Failed to create account</p></div>',
+          );
+        });
       }
 
       await c.var.services.settings.setMany({
@@ -288,21 +309,30 @@ export function createApp(config: JantConfig = {}): App {
       });
       await c.var.services.settings.completeOnboarding();
 
-      return c.redirect("/signin");
+      return sse(c, async (stream) => {
+        await stream.redirect("/signin");
+      });
     } catch (err) {
       // eslint-disable-next-line no-console -- Error logging is intentional
       console.error("Setup error:", err);
-      return c.redirect("/setup?error=Failed to create account");
+      return sse(c, async (stream) => {
+        await stream.patchElements(
+          '<div id="setup-message"><p class="text-destructive text-sm mb-4">Failed to create account</p></div>',
+        );
+      });
     }
   });
 
   // Signin page component
   const SigninContent: FC<{
-    error?: string;
     demoEmail?: string;
     demoPassword?: string;
-  }> = ({ error, demoEmail, demoPassword }) => {
+  }> = ({ demoEmail, demoPassword }) => {
     const { t } = useLingui();
+    const signals = JSON.stringify({
+      email: demoEmail || "",
+      password: demoPassword || "",
+    }).replace(/</g, "\\u003c");
 
     return (
       <div class="min-h-screen flex items-center justify-center">
@@ -316,7 +346,7 @@ export function createApp(config: JantConfig = {}): App {
             </h2>
           </header>
           <section>
-            {error && <p class="text-destructive text-sm mb-4">{error}</p>}
+            <div id="signin-message"></div>
             {demoEmail && demoPassword && (
               <p class="text-muted-foreground text-sm mb-4">
                 {t({
@@ -326,7 +356,11 @@ export function createApp(config: JantConfig = {}): App {
                 })}
               </p>
             )}
-            <form method="post" action="/signin" class="flex flex-col gap-4">
+            <form
+              data-signals={signals}
+              data-on:submit__prevent="@post('/signin')"
+              class="flex flex-col gap-4"
+            >
               <div class="field">
                 <label class="label">
                   {t({
@@ -334,13 +368,7 @@ export function createApp(config: JantConfig = {}): App {
                     comment: "@context: Setup/signin form field - email",
                   })}
                 </label>
-                <input
-                  type="email"
-                  name="email"
-                  class="input"
-                  required
-                  value={demoEmail}
-                />
+                <input type="email" data-bind="email" class="input" required />
               </div>
               <div class="field">
                 <label class="label">
@@ -351,10 +379,9 @@ export function createApp(config: JantConfig = {}): App {
                 </label>
                 <input
                   type="password"
-                  name="password"
+                  data-bind="password"
                   class="input"
                   required
-                  value={demoPassword}
                 />
               </div>
               <button type="submit" class="btn">
@@ -372,12 +399,9 @@ export function createApp(config: JantConfig = {}): App {
 
   // Signin page
   app.get("/signin", async (c) => {
-    const error = c.req.query("error");
-
     return c.html(
       <BaseLayout title="Sign In - Jant" c={c}>
         <SigninContent
-          error={error}
           demoEmail={c.env.DEMO_EMAIL}
           demoPassword={c.env.DEMO_PASSWORD}
         />
@@ -387,12 +411,15 @@ export function createApp(config: JantConfig = {}): App {
 
   app.post("/signin", async (c) => {
     if (!c.var.auth) {
-      return c.redirect("/signin?error=Auth not configured");
+      return sse(c, async (stream) => {
+        await stream.patchElements(
+          '<div id="signin-message"><p class="text-destructive text-sm mb-4">Auth not configured</p></div>',
+        );
+      });
     }
 
-    const formData = await c.req.formData();
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
+    const body = await c.req.json<{ email: string; password: string }>();
+    const { email, password } = body;
 
     try {
       const signInRequest = new Request(
@@ -407,17 +434,35 @@ export function createApp(config: JantConfig = {}): App {
       const response = await c.var.auth.handler(signInRequest);
 
       if (!response.ok) {
-        return c.redirect("/signin?error=Invalid email or password");
+        return sse(c, async (stream) => {
+          await stream.patchElements(
+            '<div id="signin-message"><p class="text-destructive text-sm mb-4">Invalid email or password</p></div>',
+          );
+        });
       }
 
-      const headers = new Headers(response.headers);
-      headers.set("Location", "/dash");
+      // Forward Set-Cookie headers from auth response
+      const cookieHeaders: Record<string, string> = {};
+      const setCookie = response.headers.get("set-cookie");
+      if (setCookie) {
+        cookieHeaders["Set-Cookie"] = setCookie;
+      }
 
-      return new Response(null, { status: 302, headers });
+      return sse(
+        c,
+        async (stream) => {
+          await stream.redirect("/dash");
+        },
+        { headers: cookieHeaders },
+      );
     } catch (err) {
       // eslint-disable-next-line no-console -- Error logging is intentional
       console.error("Signin error:", err);
-      return c.redirect("/signin?error=Invalid email or password");
+      return sse(c, async (stream) => {
+        await stream.patchElements(
+          '<div id="signin-message"><p class="text-destructive text-sm mb-4">Invalid email or password</p></div>',
+        );
+      });
     }
   });
 
