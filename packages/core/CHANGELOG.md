@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.2.13
+
+### Patch Changes
+
+- [`108090b`](https://github.com/jant-me/jant/commit/108090b52e8af0cb690cb99e24b3d2bd5d2a196b) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix i18n
+
 ## 0.2.12
 
 ### Patch Changes
