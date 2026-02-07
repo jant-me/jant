@@ -17,10 +17,12 @@ function SettingsContent({
   siteName,
   siteDescription,
   siteLanguage,
+  saved,
 }: {
   siteName: string;
   siteDescription: string;
   siteLanguage: string;
+  saved: boolean;
 }) {
   const { t } = useLingui();
 
@@ -35,6 +37,19 @@ function SettingsContent({
       <h1 class="text-2xl font-semibold mb-6">
         {t({ message: "Settings", comment: "@context: Dashboard heading" })}
       </h1>
+
+      {saved && (
+        <div
+          id="settings-saved-toast"
+          class="mb-4 max-w-lg rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 transition-opacity duration-300 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
+          data-init={`console.log('[toast] init fired at', Date.now()); history.replaceState({}, '', '/dash/settings'); setTimeout(() => { console.log('[toast] hiding at', Date.now()); const el = document.getElementById('settings-saved-toast'); if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300) } }, 3000)`}
+        >
+          {t({
+            message: "Settings saved successfully.",
+            comment: "@context: Toast message after saving settings",
+          })}
+        </div>
+      )}
 
       <div class="flex flex-col gap-6 max-w-lg">
         <form
@@ -194,6 +209,7 @@ settingsRoutes.get("/", async (c) => {
   const siteName = all["SITE_NAME"] ?? "Jant";
   const siteDescription = all["SITE_DESCRIPTION"] ?? "";
   const siteLanguage = all["SITE_LANGUAGE"] ?? "en";
+  const saved = c.req.query("saved") !== undefined;
 
   return c.html(
     <DashLayout
@@ -206,6 +222,7 @@ settingsRoutes.get("/", async (c) => {
         siteName={siteName}
         siteDescription={siteDescription}
         siteLanguage={siteLanguage}
+        saved={saved}
       />
     </DashLayout>,
   );
@@ -219,15 +236,27 @@ settingsRoutes.post("/", async (c) => {
     siteLanguage: string;
   }>();
 
+  const oldLanguage =
+    (await c.var.services.settings.get("SITE_LANGUAGE")) ?? "en";
+
   await c.var.services.settings.setMany({
     SITE_NAME: body.siteName,
     SITE_DESCRIPTION: body.siteDescription,
     SITE_LANGUAGE: body.siteLanguage,
   });
 
+  const languageChanged = oldLanguage !== body.siteLanguage;
+
   return sse(c, async (stream) => {
-    // Redirect to reload the page in the new language
-    await stream.redirect("/dash/settings");
+    if (languageChanged) {
+      // Language changed - full reload needed to update all UI text
+      await stream.redirect("/dash/settings?saved");
+    } else {
+      // No language change - show inline success message
+      await stream.patchElements(
+        '<div id="settings-message"><div class="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200 mb-4 transition-opacity duration-300" data-init="setTimeout(() => { el.style.opacity = \'0\'; setTimeout(() => el.remove(), 300) }, 3000)">Settings saved successfully.</div></div>',
+      );
+    }
   });
 });
 
