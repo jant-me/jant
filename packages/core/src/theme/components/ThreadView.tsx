@@ -5,7 +5,7 @@
  */
 
 import type { FC } from "hono/jsx";
-import { useLingui } from "../../i18n/index.js";
+import { useLingui } from "@lingui/react/macro";
 import type { Post } from "../../types.js";
 import * as sqid from "../../lib/sqid.js";
 import * as time from "../../lib/time.js";

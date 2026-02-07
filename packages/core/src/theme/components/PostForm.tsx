@@ -4,7 +4,7 @@
 
 import type { FC } from "hono/jsx";
 import type { Post } from "../../types.js";
-import { useLingui } from "../../i18n/index.js";
+import { useLingui } from "@lingui/react/macro";
 
 export interface PostFormProps {
   post?: Post;

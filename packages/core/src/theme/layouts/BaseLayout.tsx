@@ -22,15 +22,18 @@ export interface BaseLayoutProps {
 export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
   title,
   description,
-  lang = "en",
+  lang,
   c,
   children,
 }) => {
+  // Read lang from Hono context if available, otherwise use prop or default
+  const resolvedLang = lang ?? (c ? c.get("lang") : "en");
+
   // Automatically wrap with I18nProvider if Context is provided
   const content = c ? <I18nProvider c={c}>{children}</I18nProvider> : children;
 
   return (
-    <html lang={lang}>
+    <html lang={resolvedLang}>
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />

@@ -152,9 +152,9 @@ export default defineConfig({
             [
               "@lingui/swc-plugin",
               {
-                runtimeConfigModule: {
-                  useLingui: ["@jant/core/src/i18n/index.ts", "useLingui"],
-                  Trans: ["@jant/core/src/i18n/index.ts", "Trans"],
+                runtimeModules: {
+                  useLingui: ["@jant/core/i18n", "useLingui"],
+                  trans: ["@jant/core/i18n", "Trans"],
                 },
               },
             ],

@@ -6,7 +6,7 @@
 
 import type { FC, PropsWithChildren } from "hono/jsx";
 import type { Context } from "hono";
-import { useLingui } from "../../i18n/index.js";
+import { useLingui } from "@lingui/react/macro";
 import { BaseLayout } from "./BaseLayout.js";
 
 export interface DashLayoutProps {

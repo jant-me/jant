@@ -15,6 +15,10 @@
       "types": "./dist/theme/index.d.ts",
       "default": "./dist/theme/index.js"
     },
+    "./i18n": {
+      "types": "./dist/i18n/index.d.ts",
+      "default": "./dist/i18n/index.js"
+    },
     "./preset.css": "./src/preset.css",
     "./client": "./dist/client.js"
   },

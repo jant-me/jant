@@ -53,12 +53,9 @@ export { Trans } from "./Trans.js";
 
 // Language detection utilities
 export {
-  detectLanguage,
   isValidLanguage,
-  parseAcceptLanguage,
   getLanguageDisplayName,
   getSupportedLanguages,
-  LANGUAGE_COOKIE_NAME,
 } from "./detect.js";
 
 // Hono middleware

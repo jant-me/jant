@@ -14,7 +14,17 @@
     },
     "target": "es2022",
     "experimental": {
-      "plugins": [["@lingui/swc-plugin", {}]]
+      "plugins": [
+        [
+          "@lingui/swc-plugin",
+          {
+            "runtimeModules": {
+              "useLingui": ["@jant/core/i18n", "useLingui"],
+              "trans": ["@jant/core/i18n", "Trans"]
+            }
+          }
+        ]
+      ]
     }
   },
   "module": {

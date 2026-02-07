@@ -5,7 +5,7 @@
  */
 
 import type { FC } from "hono/jsx";
-import { useLingui } from "../../i18n/index.js";
+import { useLingui } from "@lingui/react/macro";
 
 export interface PaginationProps {
   /** Base URL for pagination links (e.g., "/archive", "/search?q=test") */

@@ -6,7 +6,7 @@
  */
 
 import { Hono } from "hono";
-import { useLingui } from "../../i18n/index.js";
+import { useLingui } from "@lingui/react/macro";
 import type { Bindings, Media } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";

@@ -3,7 +3,7 @@
  */
 
 import { Hono } from "hono";
-import { useLingui } from "../../i18n/index.js";
+import { useLingui } from "@lingui/react/macro";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../theme/layouts/index.js";
@@ -190,11 +190,10 @@ function SettingsContent({
 
 // Settings page
 settingsRoutes.get("/", async (c) => {
-  const siteName = (await c.var.services.settings.get("SITE_NAME")) ?? "Jant";
-  const siteDescription =
-    (await c.var.services.settings.get("SITE_DESCRIPTION")) ?? "";
-  const siteLanguage =
-    (await c.var.services.settings.get("SITE_LANGUAGE")) ?? "en";
+  const all = await c.var.services.settings.getAll();
+  const siteName = all["SITE_NAME"] ?? "Jant";
+  const siteDescription = all["SITE_DESCRIPTION"] ?? "";
+  const siteLanguage = all["SITE_LANGUAGE"] ?? "en";
 
   return c.html(
     <DashLayout
@@ -227,9 +226,8 @@ settingsRoutes.post("/", async (c) => {
   });
 
   return sse(c, async (stream) => {
-    await stream.patchElements(
-      '<div id="settings-message"><div class="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200 mb-4">Settings saved.</div></div>',
-    );
+    // Redirect to reload the page in the new language
+    await stream.redirect("/dash/settings");
   });
 });
 

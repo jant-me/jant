@@ -83,10 +83,7 @@ export function useLingui() {
     );
   }
 
-  // Create translation function that accepts both pre-macro and post-macro formats
   const translate = (descriptor: TranslationDescriptor) => {
-    // The macro will add the id, or it's already present
-    // At runtime, we pass it to i18n._ which handles the descriptor with values
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- currentI18n is checked above
     return currentI18n!._(descriptor as MessageDescriptor);
   };

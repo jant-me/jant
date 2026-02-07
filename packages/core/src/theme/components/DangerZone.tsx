@@ -6,7 +6,7 @@
  */
 
 import type { FC, PropsWithChildren } from "hono/jsx";
-import { useLingui } from "../../i18n/index.js";
+import { useLingui } from "@lingui/react/macro";
 
 export interface DangerZoneProps extends PropsWithChildren {
   /**

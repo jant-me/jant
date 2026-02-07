@@ -7,7 +7,8 @@ import type { FC } from "hono/jsx";
 import { createDatabase } from "./db/index.js";
 import { createServices, type Services } from "./services/index.js";
 import { createAuth, type Auth } from "./auth.js";
-import { i18nMiddleware, useLingui } from "./i18n/index.js";
+import { i18nMiddleware } from "./i18n/index.js";
+import { useLingui } from "@lingui/react/macro";
 import type { Bindings, JantConfig } from "./types.js";
 
 // Routes - Pages

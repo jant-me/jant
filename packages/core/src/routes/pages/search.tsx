@@ -3,7 +3,7 @@
  */
 
 import { Hono } from "hono";
-import { useLingui } from "../../i18n/index.js";
+import { useLingui } from "@lingui/react/macro";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import type { SearchResult } from "../../services/search.js";
