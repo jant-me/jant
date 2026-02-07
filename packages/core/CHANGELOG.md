@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.2.14
+
+### Patch Changes
+
+- [`adcc0b1`](https://github.com/jant-me/jant/commit/adcc0b1a244f2d64f58a580af6d14bde12948238) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix UI
+
 ## 0.2.13
 
 ### Patch Changes
