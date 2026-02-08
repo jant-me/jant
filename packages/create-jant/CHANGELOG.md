@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.1.19
+
+### Patch Changes
+
+- [`5e168fe`](https://github.com/jant-me/jant/commit/5e168fe8238e253dbb1e64c4f7dd5aa590d1e349) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix template tsconfig
+
 ## 0.1.18
 
 ### Patch Changes
