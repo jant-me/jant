@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.1.21
+
+### Patch Changes
+
+- [`3b983cd`](https://github.com/jant-me/jant/commit/3b983cd60e371f1688829c84037e5abb9f110307) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Support Theme
+
 ## 0.1.20
 
 ### Patch Changes
