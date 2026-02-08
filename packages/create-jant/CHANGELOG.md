@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.1.18
+
+### Patch Changes
+
+- [`81af93c`](https://github.com/jant-me/jant/commit/81af93c8321b497f86c838fa3b18560d2a4fc430) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix tsconfig
+
 ## 0.1.17
 
 ### Patch Changes
