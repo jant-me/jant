@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.2.17
+
+### Patch Changes
+
+- [`3bfb176`](https://github.com/jant-me/jant/commit/3bfb176b3f93c9eac6cc5966a46110b360502a27) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix createApp
+
 ## 0.2.16
 
 ### Patch Changes
