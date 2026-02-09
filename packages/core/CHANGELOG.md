@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.0
+
+### Minor Changes
+
+- [`6870aa1`](https://github.com/jant-me/jant/commit/6870aa12c5cd32c9529d5caa9bdd957d43716037) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Architecture is nice now.
+
 ## 0.2.21
 
 ### Patch Changes
