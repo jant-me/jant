@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.2.19
+
+### Patch Changes
+
+- [`cecb444`](https://github.com/jant-me/jant/commit/cecb44403e3c25b3f92166d27a2edd68d11bf05e) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Change SSE action
+
 ## 0.2.18
 
 ### Patch Changes
