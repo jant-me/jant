@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.1.22
+
+### Patch Changes
+
+- [`6e2bc2f`](https://github.com/jant-me/jant/commit/6e2bc2f0dae8871278cb62e9eb4d705e7e31f7ce) Thanks [@theowenyoung](https://github.com/theowenyoung)! - fix create jant
+
 ## 0.1.21
 
 ### Patch Changes
