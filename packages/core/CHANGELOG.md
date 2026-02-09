@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.1
+
+### Patch Changes
+
+- [`9655952`](https://github.com/jant-me/jant/commit/965595249fdd5d388db119600a70fcc6f56058fb) Thanks [@theowenyoung](https://github.com/theowenyoung)! - fix cookie expiers
+
 ## 0.3.0
 
 ### Minor Changes
