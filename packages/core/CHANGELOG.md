@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.2
+
+### Patch Changes
+
+- [`740de94`](https://github.com/jant-me/jant/commit/740de9441b740a440d530e904a8e9d56c158d693) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Add Account settings
+
 ## 0.3.1
 
 ### Patch Changes
