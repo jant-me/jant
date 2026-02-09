@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.1.23
+
+### Patch Changes
+
+- [`858465b`](https://github.com/jant-me/jant/commit/858465ba86be4a47e8efcc4632fb32d7c0a87d21) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Skip confirm for creating database
+
 ## 0.1.22
 
 ### Patch Changes
