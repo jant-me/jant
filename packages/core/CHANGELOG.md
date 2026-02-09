@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.4
+
+### Patch Changes
+
+- [`8c86db9`](https://github.com/jant-me/jant/commit/8c86db9b970d24213235ca841a8522788219da2a) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Update template
+
 ## 0.3.3
 
 ### Patch Changes
