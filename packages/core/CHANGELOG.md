@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.5
+
+### Patch Changes
+
+- [`51f0367`](https://github.com/jant-me/jant/commit/51f03674e5324f3bfe1e71ca1b34e169c50179eb) Thanks [@theowenyoung](https://github.com/theowenyoung)! - update /setup
+
 ## 0.3.4
 
 ### Patch Changes
