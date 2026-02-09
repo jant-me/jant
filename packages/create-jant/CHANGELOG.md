@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.1.24
+
+### Patch Changes
+
+- [`6a421ae`](https://github.com/jant-me/jant/commit/6a421ae06426314da0c87d08656392c2b39ca498) Thanks [@theowenyoung](https://github.com/theowenyoung)! - fix d1
+
 ## 0.1.23
 
 ### Patch Changes
