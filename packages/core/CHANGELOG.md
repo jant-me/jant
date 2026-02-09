@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.3
+
+### Patch Changes
+
+- [`b8a5057`](https://github.com/jant-me/jant/commit/b8a5057c7229c4b7f89b9063ed9bc8ab142811aa) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Add Test
+
 ## 0.3.2
 
 ### Patch Changes
