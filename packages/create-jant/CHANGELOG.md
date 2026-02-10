@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.2.4
+
+### Patch Changes
+
+- [`ad8ce6e`](https://github.com/jant-me/jant/commit/ad8ce6ebfafa9eebfff07d20da44ef5fc8d2d7ab) Thanks [@theowenyoung](https://github.com/theowenyoung)! - media improve
+
 ## 0.2.3
 
 ### Patch Changes

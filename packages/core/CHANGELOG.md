@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.8
+
+### Patch Changes
+
+- [`ad8ce6e`](https://github.com/jant-me/jant/commit/ad8ce6ebfafa9eebfff07d20da44ef5fc8d2d7ab) Thanks [@theowenyoung](https://github.com/theowenyoung)! - media improve
+
 ## 0.3.7
 
 ### Patch Changes
