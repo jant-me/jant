@@ -1,6 +1,6 @@
 {
   "name": "@jant/core",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "description": "A modern, open-source microblogging platform built on Cloudflare Workers",
   "type": "module",
   "bin": {

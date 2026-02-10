@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.2.5
+
+### Patch Changes
+
+- [`cc7dd4e`](https://github.com/jant-me/jant/commit/cc7dd4edeccb9aba737c5f11545ec0c45b769320) Thanks [@theowenyoung](https://github.com/theowenyoung)! - s3
+
 ## 0.2.4
 
 ### Patch Changes
