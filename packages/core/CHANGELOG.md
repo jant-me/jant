@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.7
+
+### Patch Changes
+
+- [`9a7e08e`](https://github.com/jant-me/jant/commit/9a7e08e932c3d3896a303ef25825e7f2d0645bc3) Thanks [@theowenyoung](https://github.com/theowenyoung)! - collection and
+
 ## 0.3.6
 
 ### Patch Changes
