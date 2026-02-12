@@ -1,5 +1,13 @@
 # create-jant
 
+## 0.3.14
+
+### Patch Changes
+
+- [`27f2699`](https://github.com/jant-me/jant/commit/27f269996a01e7650af729ca7314ffee57daf721) Thanks [@theowenyoung](https://github.com/theowenyoung)! - re doc
+
+- [`0926f70`](https://github.com/jant-me/jant/commit/0926f709a1412febfab2c938d9817185fc8672ef) Thanks [@theowenyoung](https://github.com/theowenyoung)! - cloudflare deploy
+
 ## 0.3.13
 
 ### Patch Changes
