@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.10
+
+### Patch Changes
+
+- [`b4d4797`](https://github.com/jant-me/jant/commit/b4d4797a07097cbe443f7ef04d6575b84d4dc1a8) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix create jant
+
 ## 0.3.9
 
 ### Patch Changes
