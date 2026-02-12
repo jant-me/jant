@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.16
+
+### Patch Changes
+
+- [`0d35c52`](https://github.com/jant-me/jant/commit/0d35c52c3d226877efda7cebbfea1e744c8f19b2) Thanks [@theowenyoung](https://github.com/theowenyoung)! - readme
+
 ## 0.3.15
 
 ### Patch Changes
