@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.15
+
+### Patch Changes
+
+- readme
+
 ## 0.3.14
 
 ### Patch Changes
