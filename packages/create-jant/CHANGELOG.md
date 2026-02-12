@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.3.11
+
+### Patch Changes
+
+- [`ec60fd9`](https://github.com/jant-me/jant/commit/ec60fd9f62957882dcd92489c5e4234383a740c2) Thanks [@theowenyoung](https://github.com/theowenyoung)! - New create jant
+
 ## 0.3.10
 
 ### Patch Changes
