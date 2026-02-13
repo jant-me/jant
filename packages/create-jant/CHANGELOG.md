@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.3.19
+
+### Patch Changes
+
+- [`5dda741`](https://github.com/jant-me/jant/commit/5dda741b7dca9bca574205fcd3fb09e08a865f2d) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix readme
+
 ## 0.3.18
 
 ### Patch Changes
