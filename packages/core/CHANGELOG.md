@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.18
+
+### Patch Changes
+
+- [`d3a32b2`](https://github.com/jant-me/jant/commit/d3a32b2be62a34d2fc7ddcc51325126091726594) Thanks [@theowenyoung](https://github.com/theowenyoung)! - fix pnpm run
+
 ## 0.3.17
 
 ### Patch Changes
