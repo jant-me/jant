@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.22
+
+### Patch Changes
+
+- [`b18da07`](https://github.com/jant-me/jant/commit/b18da07fece1910681c8263af6a4d511d80e6f10) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix theme
+
 ## 0.3.21
 
 ### Patch Changes
