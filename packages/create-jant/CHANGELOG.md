@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.3.21
+
+### Patch Changes
+
+- [`eb839b5`](https://github.com/jant-me/jant/commit/eb839b5a3de6f9ff36f67fad46bc1f29e30ed3b0) Thanks [@theowenyoung](https://github.com/theowenyoung)! - fix template
+
 ## 0.3.20
 
 ### Patch Changes
