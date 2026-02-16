@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.3.24
+
+### Patch Changes
+
+- [`f4396ce`](https://github.com/jant-me/jant/commit/f4396ce70c718e4a44f163326416d50265d81790) Thanks [@theowenyoung](https://github.com/theowenyoung)! - minimal theme
+
 ## 0.3.23
 
 ### Patch Changes

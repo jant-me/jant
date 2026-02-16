@@ -1,6 +1,6 @@
 {
   "name": "jant-theme-card",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Card-style theme for Jant — bordered cards with shadows, sidebar layout",
   "type": "module",
   "exports": {
