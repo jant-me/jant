@@ -16,12 +16,20 @@ if ! command -v entire &>/dev/null; then
   curl -fsSL https://entire.io/install.sh | bash
 fi
 
-# Add mise shims to PATH so bare `node`/`pnpm` resolve to mise-managed
+# Add mise shims to PATH for this script (non-interactive, so `mise activate`
+# won't work here). This makes bare `node`/`pnpm` resolve to mise-managed
 # versions (Node 24) instead of the system ones (Node 22).
-SHIMS="$HOME/.local/share/mise/shims"
-export PATH="$SHIMS:$PATH"
-grep -qxF "export PATH=\"\$HOME/.local/share/mise/shims:\$PATH\"" "$HOME/.bashrc" 2>/dev/null \
-  || echo 'export PATH="$HOME/.local/share/mise/shims:$PATH"' >> "$HOME/.bashrc"
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+
+# For interactive shells, activate mise properly in .bashrc
+grep -qF 'mise activate bash' "$HOME/.bashrc" 2>/dev/null \
+  || cat >> "$HOME/.bashrc" <<'BASHRC'
+
+# mise
+if command -v mise >/dev/null 2>&1; then
+  eval "$(mise activate bash)"
+fi
+BASHRC
 
 # Trust the project mise.toml so mise doesn't error on untrusted config
 mise trust 2>/dev/null || true
