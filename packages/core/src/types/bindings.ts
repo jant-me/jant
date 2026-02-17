@@ -25,4 +25,6 @@ export interface Bindings {
   S3_SECRET_ACCESS_KEY?: string;
   S3_REGION?: string;
   S3_PUBLIC_URL?: string;
+  // RSS feed
+  RSS_FEED_LIMIT?: string;
 }

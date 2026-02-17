@@ -46,6 +46,17 @@ npm run dev
 - [Theming](docs/theming.md)
 - [API Reference](docs/API.md)
 
+### Recommended Configuration
+
+After deploying, configure these in `wrangler.toml` for the best experience:
+
+| Variable              | Why                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| `R2_PUBLIC_URL`       | Serve media directly from CDN instead of proxying through Worker (faster, lower cost) |
+| `IMAGE_TRANSFORM_URL` | Enable automatic thumbnail generation and image optimization                          |
+
+See [Configuration](docs/configuration.md) for full details and setup instructions.
+
 ## Development
 
 Requires [mise](https://mise.jdx.dev/) — it manages Node.js and pnpm automatically.

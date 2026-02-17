@@ -68,7 +68,7 @@ mediaRoutes.get("/picker", async (c) => {
             r2PublicUrl,
             s3PublicUrl,
           );
-          const url = getMediaUrl(m.id, m.storageKey, pUrl);
+          const url = getMediaUrl(m.storageKey, pUrl);
           const thumbUrl = getImageUrl(url, imageTransformUrl, {
             width: 150,
             quality: 80,

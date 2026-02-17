@@ -328,8 +328,8 @@ describe("toMediaView", () => {
   it("generates local proxy URL without public URL", () => {
     const media = makeMedia();
     const view = toMediaView(media, EMPTY_CTX);
-    expect(view.url).toBe("/media/01902a9f-1a2b-7c3d.webp");
-    expect(view.thumbnailUrl).toBe("/media/01902a9f-1a2b-7c3d.webp");
+    expect(view.url).toBe("/media/2025/01/01902a9f-1a2b-7c3d.webp");
+    expect(view.thumbnailUrl).toBe("/media/2025/01/01902a9f-1a2b-7c3d.webp");
   });
 
   it("generates CDN URL with public URL", () => {

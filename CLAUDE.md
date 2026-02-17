@@ -11,7 +11,7 @@
 - **Vite only**: NEVER run `wrangler dev`. Use mise tasks (`mise run dev` / `mise run build`).
 - **Use mise tasks**: All dev commands via mise. Run `mise tasks` to see available commands.
 - **NEVER edit `packages/create-jant/template/`**: Auto-generated from `templates/jant-site`.
-- **NO auto-publishing**: Never run publish/release commands.
+- **Releasing**: Only publish via the `/release` command. Never run publish/release commands ad-hoc.
 - **Debug port**: Use `mise run dev-debug` (port 19019), not `mise run dev`.
 - **Stop dev after debugging**: Stop background processes when done.
 - **GitHub Actions**: Always add `workflow_dispatch:` trigger.
@@ -32,9 +32,18 @@ Cloudflare Workers, Hono v4, Vite + SWC, Tailwind v4 + BaseCoat, D1 + Drizzle OR
 - **Services**: All DB operations go through `src/services/`.
 - **Time**: Unix timestamps (seconds), use `lib/time.ts`.
 - **IDs**: Sqids for URLs (`/p/jR3k`), integers in DB.
+- **Media URLs from storage keys**: `getMediaUrl(storageKey, publicUrl?)` is the only way to build media URLs. Proxy and CDN use the same path (`/media/YYYY/MM/uuid.ext`) — only the domain differs. Never store a media ID just to look up a storage key for URL construction; store the storage key directly (e.g., `SITE_AVATAR` stores `storageKey`, not media ID).
 - **Soft delete**: Posts use `deleted_at` field.
 - **Lib functions**: 100% JSDoc with `@param`, `@returns`, `@example`.
 - **TypeScript**: Strict mode, no `any`, all exports typed.
+
+## Principles
+
+- **File-level readability**: Any single file should be understandable without jumping elsewhere. 300-line max, single responsibility.
+- **Strict boundaries, free internals**: Validate and type-convert at system boundaries (HTTP entry, DB). Internal code trusts clean data.
+- **Data flows down**: DB → Service → ViewModel → Component. Each layer depends only on the layer above; never reach back.
+- **Fail fast & loud**: Missing config? Error at startup with a clear message. Never defer to a cryptic runtime error.
+- **Smooth upgrades**: DB migrations run automatically and are forward-compatible. Config keys are append-only. `git pull` + redeploy = done.
 
 ## Testing
 

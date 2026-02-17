@@ -44,7 +44,7 @@ msgid "302 (Temporary)"
 msgstr "302（臨時）"
 
 #. @context: Settings form field for site description
-#: src/ui/dash/settings/GeneralContent.tsx:308
+#: src/ui/dash/settings/GeneralContent.tsx:324
 msgid "About this blog"
 msgstr ""
 
@@ -152,7 +152,7 @@ msgid "Change Password"
 msgstr "更改密碼"
 
 #. @context: Font theme settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:121
+#: src/ui/dash/settings/AppearanceContent.tsx:153
 msgid "Choose a font for your site. All options use system fonts for fast loading."
 msgstr ""
 
@@ -188,7 +188,7 @@ msgstr "收藏夾"
 #~ msgstr "收藏（可選）"
 
 #. @context: Appearance settings heading
-#: src/ui/dash/settings/AppearanceContent.tsx:169
+#: src/ui/dash/settings/AppearanceContent.tsx:112
 msgid "Color theme"
 msgstr "顏色主題"
 
@@ -294,7 +294,7 @@ msgid "Dashboard"
 msgstr "儀表板"
 
 #. @context: Settings form field
-#: src/ui/dash/settings/GeneralContent.tsx:358
+#: src/ui/dash/settings/GeneralContent.tsx:374
 msgid "Default Homepage View"
 msgstr ""
 
@@ -338,7 +338,7 @@ msgid "Description (optional)"
 msgstr "描述（可選）"
 
 #. @context: Checkbox to show avatar in the site header
-#: src/ui/dash/settings/GeneralContent.tsx:258
+#: src/ui/dash/settings/GeneralContent.tsx:274
 msgid "Display avatar in my site header"
 msgstr ""
 
@@ -436,7 +436,7 @@ msgstr "請輸入您的新密碼。"
 #. @context: Post form checkbox - mark as featured
 #: src/ui/compose/ComposeDialog.tsx:305
 #: src/ui/dash/PostForm.tsx:246
-#: src/ui/dash/settings/GeneralContent.tsx:382
+#: src/ui/dash/settings/GeneralContent.tsx:398
 #: src/ui/dash/StatusBadge.tsx:45
 #: src/ui/layouts/SiteLayout.tsx:55
 #: src/ui/pages/ArchivePage.tsx:92
@@ -444,7 +444,7 @@ msgid "Featured"
 msgstr "精選"
 
 #. @context: Appearance settings heading for font theme
-#: src/ui/dash/settings/AppearanceContent.tsx:115
+#: src/ui/dash/settings/AppearanceContent.tsx:147
 msgid "Font theme"
 msgstr ""
 
@@ -470,7 +470,7 @@ msgstr "來源路徑"
 
 #. @context: Settings section heading
 #. @context: Settings sub-navigation tab
-#: src/ui/dash/settings/GeneralContent.tsx:283
+#: src/ui/dash/settings/GeneralContent.tsx:299
 #: src/ui/dash/settings/SettingsNav.tsx:15
 msgid "General"
 msgstr "一般設定"
@@ -500,7 +500,7 @@ msgid "Invalid or Expired Link"
 msgstr "無效或已過期的連結"
 
 #. @context: Checkbox for allowing search engine indexing
-#: src/ui/dash/settings/GeneralContent.tsx:499
+#: src/ui/dash/settings/GeneralContent.tsx:515
 msgid "It's OK for search engines to index my site"
 msgstr ""
 
@@ -510,13 +510,13 @@ msgid "Label"
 msgstr "標籤"
 
 #. @context: Settings form field
-#: src/ui/dash/settings/GeneralContent.tsx:334
+#: src/ui/dash/settings/GeneralContent.tsx:350
 msgid "Language"
 msgstr "語言"
 
 #. @context: Browse filter for latest posts
 #. @context: Homepage view option - show latest posts
-#: src/ui/dash/settings/GeneralContent.tsx:372
+#: src/ui/dash/settings/GeneralContent.tsx:388
 #: src/ui/layouts/SiteLayout.tsx:48
 msgid "Latest"
 msgstr ""
@@ -565,7 +565,7 @@ msgid "Markdown"
 msgstr "Markdown"
 
 #. @context: Placeholder for footer textarea
-#: src/ui/dash/settings/GeneralContent.tsx:450
+#: src/ui/dash/settings/GeneralContent.tsx:466
 msgid "Markdown supported"
 msgstr ""
 
@@ -864,8 +864,10 @@ msgstr "預覽"
 msgid "Previous"
 msgstr "上一頁"
 
+#. @context: Avatar upload button text while generating favicon variants
 #. @context: Upload status - processing
 #: src/ui/dash/media/MediaListContent.tsx:95
+#: src/ui/dash/settings/GeneralContent.tsx:215
 msgid "Processing..."
 msgstr "處理中..."
 
@@ -953,7 +955,7 @@ msgstr "重定向"
 #. @context: Button to remove the blog avatar
 #. @context: Remove media attachment button
 #: src/ui/dash/PostForm.tsx:194
-#: src/ui/dash/settings/GeneralContent.tsx:228
+#: src/ui/dash/settings/GeneralContent.tsx:243
 msgid "Remove"
 msgstr "移除"
 
@@ -1011,7 +1013,7 @@ msgid "Select Media"
 msgstr "選擇媒體"
 
 #. @context: Settings section heading for SEO
-#: src/ui/dash/settings/GeneralContent.tsx:482
+#: src/ui/dash/settings/GeneralContent.tsx:498
 msgid "SEO"
 msgstr ""
 
@@ -1050,12 +1052,12 @@ msgstr "登出"
 #~ msgstr "網站描述"
 
 #. @context: Settings section heading for site footer
-#: src/ui/dash/settings/GeneralContent.tsx:438
+#: src/ui/dash/settings/GeneralContent.tsx:454
 msgid "Site Footer"
 msgstr ""
 
 #. @context: Settings form field
-#: src/ui/dash/settings/GeneralContent.tsx:292
+#: src/ui/dash/settings/GeneralContent.tsx:308
 msgid "Site Name"
 msgstr "網站名稱"
 
@@ -1106,19 +1108,24 @@ msgid "The URL path for this page. Use lowercase letters, numbers, and hyphens."
 msgstr "此頁面的 URL 路徑。使用小寫字母、數字和連字符。"
 
 #. @context: Help text for site description field
-#: src/ui/dash/settings/GeneralContent.tsx:324
+#: src/ui/dash/settings/GeneralContent.tsx:340
 msgid "This is displayed above your blog posts on your default home page. This is also used for the meta description on your home page."
 msgstr ""
 
 #. @context: Help text for site footer field
-#: src/ui/dash/settings/GeneralContent.tsx:458
+#: src/ui/dash/settings/GeneralContent.tsx:474
 msgid "This is displayed at the bottom of all of your posts and pages. Markdown is supported."
 msgstr ""
 
 #. @context: Help text for avatar upload
-#: src/ui/dash/settings/GeneralContent.tsx:238
-msgid "This is used for your favicon."
+#: src/ui/dash/settings/GeneralContent.tsx:253
+msgid "This is used for your favicon and apple-touch-icon. For best results, upload a square image at least 180x180 pixels."
 msgstr ""
+
+#. @context: Help text for avatar upload
+#: src/ui/dash/settings/GeneralContent.tsx:238
+#~ msgid "This is used for your favicon."
+#~ msgstr ""
 
 #. @context: Password reset error description
 #: src/routes/auth/reset.tsx:128
@@ -1126,7 +1133,7 @@ msgid "This password reset link is invalid or has expired. Please generate a new
 msgstr "此密碼重設連結無效或已過期。請生成一個新的連結。"
 
 #. @context: Appearance settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:175
+#: src/ui/dash/settings/AppearanceContent.tsx:118
 msgid "This will theme both your site and your dashboard. All color themes support dark mode."
 msgstr "這將為您的網站和儀表板設置主題。所有顏色主題都支持深色模式。"
 
@@ -1146,7 +1153,7 @@ msgid "Thread with 1 post"
 msgstr "包含 1 則貼文的主題"
 
 #. @context: Settings form field
-#: src/ui/dash/settings/GeneralContent.tsx:393
+#: src/ui/dash/settings/GeneralContent.tsx:409
 msgid "Time Zone"
 msgstr ""
 
@@ -1214,17 +1221,21 @@ msgid "Upload"
 msgstr "上傳"
 
 #. @context: Button to upload avatar image
-#: src/ui/dash/settings/GeneralContent.tsx:206
+#: src/ui/dash/settings/GeneralContent.tsx:205
 msgid "Upload Avatar"
 msgstr ""
 
+#. @context: Error message when avatar upload fails
 #. @context: Upload error message
 #: src/ui/dash/media/MediaListContent.tsx:107
+#: src/ui/dash/settings/GeneralContent.tsx:225
 msgid "Upload failed. Please try again."
 msgstr "上傳失敗。請再試一次。"
 
+#. @context: Avatar upload button text while uploading
 #. @context: Upload status - uploading
 #: src/ui/dash/media/MediaListContent.tsx:99
+#: src/ui/dash/settings/GeneralContent.tsx:220
 msgid "Uploading..."
 msgstr "上傳中..."
 

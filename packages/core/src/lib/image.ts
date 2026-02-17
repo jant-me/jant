@@ -102,36 +102,28 @@ export function getPublicUrlForProvider(
 }
 
 /**
- * Generates a media URL using UUIDv7-based paths.
+ * Generates a media URL from a storage key.
  *
- * Returns a public URL for a media file. If `publicUrl` is set, uses that directly
- * with the storage key. Otherwise, generates a `/media/{id}.{ext}` local proxy URL.
+ * Both proxy and CDN paths use the same structure — only the domain differs.
+ * Without a public URL, returns a root-relative path for the local proxy.
+ * With a public URL, prefixes that domain.
  *
- * @param mediaId - The UUIDv7 database ID of the media
- * @param storageKey - The storage object key (used to build CDN path and extract extension)
+ * @param storageKey - The storage object key (e.g. `"media/2025/01/uuid.webp"`)
  * @param publicUrl - Optional public URL base for direct CDN access
  * @returns The public URL for the media file
  *
  * @example
  * ```ts
- * // Without public URL - uses local proxy with UUID and extension
- * getMediaUrl("01902a9f-1a2b-7c3d", "media/2025/01/01902a9f-1a2b-7c3d.webp");
- * // Returns: "/media/01902a9f-1a2b-7c3d.webp"
+ * // Without public URL - local proxy
+ * getMediaUrl("media/2025/01/01902a9f-1a2b-7c3d.webp");
+ * // Returns: "/media/2025/01/01902a9f-1a2b-7c3d.webp"
  *
- * // With public URL - uses direct CDN
- * getMediaUrl("01902a9f-1a2b-7c3d", "media/2025/01/01902a9f-1a2b-7c3d.webp", "https://cdn.example.com");
+ * // With public URL - CDN
+ * getMediaUrl("media/2025/01/01902a9f-1a2b-7c3d.webp", "https://cdn.example.com");
  * // Returns: "https://cdn.example.com/media/2025/01/01902a9f-1a2b-7c3d.webp"
  * ```
  */
-export function getMediaUrl(
-  mediaId: string,
-  storageKey: string,
-  publicUrl?: string,
-): string {
-  if (publicUrl) {
-    return `${publicUrl.replace(/\/+$/, "")}/${storageKey}`;
-  }
-  // Extract extension from storage key
-  const ext = storageKey.split(".").pop() || "bin";
-  return `/media/${mediaId}.${ext}`;
+export function getMediaUrl(storageKey: string, publicUrl?: string): string {
+  const base = publicUrl ? publicUrl.replace(/\/+$/, "") : "";
+  return `${base}/${storageKey}`;
 }

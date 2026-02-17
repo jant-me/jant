@@ -19,11 +19,20 @@ Jant supports two storage backends for media uploads: **Cloudflare R2** (default
 
 #### R2 (Default)
 
-| Variable        | Where           | Description                                       |
-| --------------- | --------------- | ------------------------------------------------- |
-| `R2_PUBLIC_URL` | `wrangler.toml` | Public URL for R2 bucket (if using custom domain) |
+| Variable        | Where           | Description                                         |
+| --------------- | --------------- | --------------------------------------------------- |
+| `R2_PUBLIC_URL` | `wrangler.toml` | Public URL for R2 bucket (**strongly recommended**) |
 
 R2 uses the `[[r2_buckets]]` binding in `wrangler.toml`. No additional configuration is needed beyond creating the bucket.
+
+> **Recommended:** Configure `R2_PUBLIC_URL` for best performance. Without it, every media request is proxied through your Worker — the Worker fetches the file from R2 and streams it to the client, adding latency and consuming CPU time. With `R2_PUBLIC_URL` set, media is served directly from Cloudflare's CDN edge, which is faster and reduces Worker usage.
+>
+> **Setup:** Go to Cloudflare Dashboard → R2 → Your Bucket → Settings → Public access. Enable public access (via custom domain or `r2.dev` subdomain), then set the URL in `wrangler.toml`:
+>
+> ```toml
+> [vars]
+> R2_PUBLIC_URL = "https://media.yourdomain.com"
+> ```
 
 #### S3-Compatible Storage
 
@@ -75,13 +84,27 @@ For automatic thumbnail generation and image optimization:
 **Cloudflare Image Transformations Setup:**
 
 1. Go to Cloudflare Dashboard → Images → Transformations
-2. Enable transformations for your zone
-3. Set `IMAGE_TRANSFORM_URL` to `https://yourdomain.com/cdn-cgi/image`
+2. Enable transformations for the zone that serves your images
+3. Set `IMAGE_TRANSFORM_URL` to **the domain where your images are hosted**, plus `/cdn-cgi/image`
 
-```toml
-[vars]
-IMAGE_TRANSFORM_URL = "https://yourdomain.com/cdn-cgi/image"
-```
+**Use the domain that serves your images:**
+
+- If you set `R2_PUBLIC_URL` to a custom domain (recommended), use that domain:
+
+  ```toml
+  [vars]
+  R2_PUBLIC_URL = "https://media.yourdomain.com"
+  IMAGE_TRANSFORM_URL = "https://media.yourdomain.com/cdn-cgi/image"
+  ```
+
+- If you didn't set `R2_PUBLIC_URL` (images are proxied through your Worker), use your site domain:
+
+  ```toml
+  [vars]
+  IMAGE_TRANSFORM_URL = "https://yourdomain.com/cdn-cgi/image"
+  ```
+
+> **Why?** Cloudflare Image Transformations can only transform images on the same domain by default. If the domain in `IMAGE_TRANSFORM_URL` doesn't match where the images are served, transformations will fail.
 
 When enabled, the dashboard displays optimized thumbnails instead of full images. Without this setting, original images are shown (still works fine).
 
@@ -132,8 +155,8 @@ SITE_URL = "https://myblog.com"
 # SITE_LANGUAGE = "en"
 
 # Optional: R2 and image optimization
-# R2_PUBLIC_URL = "https://cdn.example.com"
-# IMAGE_TRANSFORM_URL = "https://myblog.com/cdn-cgi/image"
+# R2_PUBLIC_URL = "https://media.myblog.com"
+# IMAGE_TRANSFORM_URL = "https://media.myblog.com/cdn-cgi/image"
 
 # Optional: S3-compatible storage (alternative to R2)
 # Set STORAGE_DRIVER = "s3" and configure the options below.

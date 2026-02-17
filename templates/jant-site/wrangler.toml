@@ -30,13 +30,17 @@ SITE_URL = ""
 # Optional: Timeline page size (default: 20)
 # PAGE_SIZE = "5"
 
-# Optional: R2 Storage (for media uploads)
+# Recommended: R2 public URL for media access
+# Without this, media files are proxied through your Worker (slower, uses more CPU).
+# With this, media is served directly from Cloudflare's CDN (faster, lower cost).
+# Set up: Cloudflare Dashboard → R2 → Your Bucket → Settings → Public access
 # R2_PUBLIC_URL = "https://cdn.example.com"
 R2_PUBLIC_URL = "https://demo-media.jant.me" # @create-jant: @remove
 
 # Optional: Cloudflare Image Transformations
 # For automatic thumbnail generation and image optimization
-# IMAGE_TRANSFORM_URL = "https://example.com/cdn-cgi/image"
+# Use the same domain as R2_PUBLIC_URL (or SITE_URL if R2_PUBLIC_URL is not set)
+# IMAGE_TRANSFORM_URL = "https://media.yourdomain.com/cdn-cgi/image"
 
 # Optional: Demo mode (pre-fill sign-in credentials)
 # DEMO_EMAIL = "demo@example.com"

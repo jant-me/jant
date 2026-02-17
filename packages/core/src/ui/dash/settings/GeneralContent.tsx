@@ -199,7 +199,6 @@ export function GeneralContent({
                   action="/dash/settings/avatar"
                   method="post"
                   enctype="multipart/form-data"
-                  data-on:change="el.submit()"
                   class="inline"
                 >
                   <label class="btn text-sm cursor-pointer">
@@ -212,6 +211,22 @@ export function GeneralContent({
                       name="file"
                       accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
                       class="hidden"
+                      data-avatar-upload
+                      data-text-processing={t({
+                        message: "Processing...",
+                        comment:
+                          "@context: Avatar upload button text while generating favicon variants",
+                      })}
+                      data-text-uploading={t({
+                        message: "Uploading...",
+                        comment:
+                          "@context: Avatar upload button text while uploading",
+                      })}
+                      data-text-error={t({
+                        message: "Upload failed. Please try again.",
+                        comment:
+                          "@context: Error message when avatar upload fails",
+                      })}
                     />
                   </label>
                 </form>
@@ -236,7 +251,8 @@ export function GeneralContent({
             </div>
             <p class="text-sm text-muted-foreground">
               {t({
-                message: "This is used for your favicon.",
+                message:
+                  "This is used for your favicon and apple-touch-icon. For best results, upload a square image at least 180x180 pixels.",
                 comment: "@context: Help text for avatar upload",
               })}
             </p>

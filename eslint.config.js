@@ -67,6 +67,9 @@ export default [
         setInterval: "readonly",
         clearTimeout: "readonly",
         clearInterval: "readonly",
+        // Encoding (available in Workers, Node, and browsers)
+        atob: "readonly",
+        btoa: "readonly",
         // Cloudflare Workers specific
         crypto: "readonly",
         caches: "readonly",

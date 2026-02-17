@@ -11,7 +11,14 @@ pnpm = "10.28.2"
 [tasks.ci]
 alias = "check"
 description = "Run all CI checks (lint + typecheck + test + build + i18n + template)"
-depends = ["lint", "typecheck", "test", "build-all", "i18n-check", "test-template"]
+run = """
+mise run lint
+mise run typecheck
+mise run test
+mise run build-all
+mise run i18n-check
+mise run test-template
+"""
 
 # =============================================================================
 # Development (uses templates/jant-site)
@@ -561,6 +568,23 @@ pnpm --filter create-jant test-template
 alias = "cs"
 description = "Create a new changeset for your changes"
 run = "pnpm changeset"
+
+[tasks.changeset-add]
+alias = "cs-add"
+description = "Create a changeset non-interactively: mise run changeset-add <patch|minor|major> <summary>"
+usage = """
+arg "<bump>"
+arg "<summary>"
+"""
+run = """
+node -e "
+const write = require(require.resolve('@changesets/write', { paths: [require.resolve('@changesets/cli')] }));
+write.default(
+  { summary: process.argv[2], releases: [{ name: '@jant/core', type: process.argv[1] }, { name: 'create-jant', type: process.argv[1] }] },
+  process.cwd()
+).then(id => console.log('Created changeset:', id));
+" "$usage_bump" "$usage_summary"
+"""
 
 [tasks.changeset-status]
 alias = "cs-status"

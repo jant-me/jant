@@ -40,6 +40,12 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
   // Read lang from Hono context if available, otherwise use prop or default
   const resolvedLang = lang ?? (c ? c.get("lang") : "en");
 
+  // Read faviconUrl from context when not provided as prop (fixes dashboard favicon)
+  const resolvedFaviconUrl = faviconUrl ?? (c ? c.get("faviconUrl") : undefined);
+
+  // Read noindex from context when not provided as prop
+  const resolvedNoindex = noindex ?? (c ? c.get("noindex") : undefined);
+
   // Automatically wrap with I18nProvider if Context is provided
   const content = c ? <I18nProvider c={c}>{children}</I18nProvider> : children;
 
@@ -59,8 +65,13 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{title}</title>
         {description && <meta name="description" content={description} />}
-        {noindex && <meta name="robots" content="noindex, nofollow" />}
-        {faviconUrl && <link rel="icon" href={faviconUrl} />}
+        {resolvedNoindex && <meta name="robots" content="noindex, nofollow" />}
+        {resolvedFaviconUrl && (
+          <>
+            <link rel="icon" href="/favicon.ico" sizes="16x16 32x32" />
+            <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+          </>
+        )}
         <ViteClient />
         <Link href="/src/style.css" rel="stylesheet" />
         {themeStyle && <style>{themeStyle}</style>}

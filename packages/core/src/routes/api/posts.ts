@@ -36,7 +36,7 @@ function toMediaAttachment(
     r2PublicUrl,
     s3PublicUrl,
   );
-  const url = getMediaUrl(m.id, m.storageKey, publicUrl);
+  const url = getMediaUrl(m.storageKey, publicUrl);
   const previewUrl = getImageUrl(url, imageTransformUrl, {
     width: 400,
     quality: 80,

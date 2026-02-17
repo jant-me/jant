@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.26
+
+### Patch Changes
+
+- [#53](https://github.com/jant-me/jant/pull/53) [`1910128`](https://github.com/jant-me/jant/commit/191012896e4dfda0e5575d5fe3ae7692e1dae7e3) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Reorder appearance settings, add avatar upload with favicon generation, and make RSS feed limit configurable
+
 ## 0.3.25
 
 ### Patch Changes

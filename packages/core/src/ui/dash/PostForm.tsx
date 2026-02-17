@@ -168,7 +168,7 @@ export const PostForm: FC<PostFormProps> = ({
                 r2PublicUrl,
                 s3PublicUrl,
               );
-              const mUrl = getMediaUrl(m.id, m.storageKey, pUrl);
+              const mUrl = getMediaUrl(m.storageKey, pUrl);
               const thumbUrl = getImageUrl(mUrl, imageTransformUrl, {
                 width: 150,
                 quality: 80,

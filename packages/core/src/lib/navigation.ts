@@ -61,21 +61,18 @@ export async function getNavigationData(c: Context): Promise<NavigationData> {
   const siteDescription =
     dbDescription || (typeof envDescription === "string" ? envDescription : "");
 
-  // Resolve avatar URL
-  const avatarMediaId = await c.var.services.settings.get("SITE_AVATAR");
+  // Resolve avatar URL from storage key
+  const avatarKey = await c.var.services.settings.get("SITE_AVATAR");
   const showHeaderAvatar =
     (await c.var.services.settings.get("SHOW_HEADER_AVATAR")) === "true";
   let siteAvatarUrl: string | undefined;
-  if (avatarMediaId) {
-    const media = await c.var.services.media.getById(avatarMediaId);
-    if (media) {
-      const publicUrl = getPublicUrlForProvider(
-        media.provider,
-        c.env.R2_PUBLIC_URL,
-        c.env.S3_PUBLIC_URL,
-      );
-      siteAvatarUrl = getMediaUrl(media.id, media.storageKey, publicUrl);
-    }
+  if (avatarKey) {
+    const publicUrl = getPublicUrlForProvider(
+      c.env.STORAGE_DRIVER || "r2",
+      c.env.R2_PUBLIC_URL,
+      c.env.S3_PUBLIC_URL,
+    );
+    siteAvatarUrl = getMediaUrl(avatarKey, publicUrl);
   }
 
   // Render footer markdown

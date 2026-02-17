@@ -45,9 +45,9 @@ export function buildMediaMap(
         );
         return {
           id: m.id,
-          url: getMediaUrl(m.id, m.storageKey, publicUrl),
+          url: getMediaUrl(m.storageKey, publicUrl),
           previewUrl: getImageUrl(
-            getMediaUrl(m.id, m.storageKey, publicUrl),
+            getMediaUrl(m.storageKey, publicUrl),
             imageTransformUrl,
             { width: 400, quality: 80, format: "auto", fit: "cover" },
           ),

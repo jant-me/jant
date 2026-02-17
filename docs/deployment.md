@@ -39,6 +39,19 @@ binding = "R2"
 bucket_name = "jant-media"
 ```
 
+**Recommended:** Enable public access on your R2 bucket and set `R2_PUBLIC_URL` in `wrangler.toml`. This allows media files to be served directly from Cloudflare's CDN instead of being proxied through your Worker.
+
+1. Go to Cloudflare Dashboard → R2 → `jant-media` → Settings → Public access
+2. Enable public access (custom domain or `r2.dev` subdomain)
+3. Add the URL to `wrangler.toml`:
+
+```toml
+[vars]
+R2_PUBLIC_URL = "https://media.yourdomain.com"
+```
+
+> Without `R2_PUBLIC_URL`, media uploads still work — files are served through a Worker proxy route (`/media/:id`), but this is slower and uses more Worker CPU.
+
 ## Configure Secrets
 
 ```bash

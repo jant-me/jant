@@ -33,7 +33,7 @@ function MediaCard({
     r2PublicUrl,
     s3PublicUrl,
   );
-  const fullUrl = getMediaUrl(media.id, media.storageKey, publicUrl);
+  const fullUrl = getMediaUrl(media.storageKey, publicUrl);
   const thumbnailUrl = getImageUrl(fullUrl, imageTransformUrl, {
     width: 300,
     quality: 80,

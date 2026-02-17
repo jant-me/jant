@@ -40,7 +40,7 @@ function renderMediaCard(
   publicUrl?: string,
   imageTransformUrl?: string,
 ): string {
-  const fullUrl = getMediaUrl(media.id, media.storageKey, publicUrl);
+  const fullUrl = getMediaUrl(media.storageKey, publicUrl);
   const thumbnailUrl = getImageUrl(fullUrl, imageTransformUrl, {
     width: 300,
     quality: 80,
@@ -229,7 +229,7 @@ uploadApiRoutes.post("/", async (c) => {
       c.env.R2_PUBLIC_URL,
       c.env.S3_PUBLIC_URL,
     );
-    const publicUrl = getMediaUrl(media.id, storageKey, mediaPublicUrl);
+    const publicUrl = getMediaUrl(storageKey, mediaPublicUrl);
     return c.json({
       id: media.id,
       filename: media.filename,
@@ -263,7 +263,6 @@ uploadApiRoutes.get("/", async (c) => {
       id: m.id,
       filename: m.filename,
       url: getMediaUrl(
-        m.id,
         m.storageKey,
         getPublicUrlForProvider(m.provider, r2PublicUrl, s3PublicUrl),
       ),

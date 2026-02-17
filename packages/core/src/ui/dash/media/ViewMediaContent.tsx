@@ -35,7 +35,7 @@ export function ViewMediaContent({
     r2PublicUrl,
     s3PublicUrl,
   );
-  const url = getMediaUrl(media.id, media.storageKey, publicUrl);
+  const url = getMediaUrl(media.storageKey, publicUrl);
   const thumbnailUrl = getImageUrl(url, imageTransformUrl, {
     width: 600,
     quality: 85,

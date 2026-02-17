@@ -77,7 +77,7 @@ export function toMediaView(media: Media, ctx: MediaContext): MediaView {
     ctx.r2PublicUrl,
     ctx.s3PublicUrl,
   );
-  const url = getMediaUrl(media.id, media.storageKey, publicUrl);
+  const url = getMediaUrl(media.storageKey, publicUrl);
   const thumbnailUrl = getImageUrl(url, ctx.imageTransformUrl, {
     width: 400,
     quality: 80,

@@ -103,12 +103,44 @@ export function AppearanceContent({
       <SettingsNav currentTab="appearance" />
 
       <div
+        data-signals={themeSignals}
+        data-on:change="@post('/dash/settings/appearance')"
+        class="max-w-3xl mb-8"
+      >
+        <fieldset>
+          <legend class="text-lg font-semibold">
+            {t({
+              message: "Color theme",
+              comment: "@context: Appearance settings heading",
+            })}
+          </legend>
+          <p class="text-sm text-muted-foreground mb-4">
+            {t({
+              message:
+                "This will theme both your site and your dashboard. All color themes support dark mode.",
+              comment: "@context: Appearance settings description",
+            })}
+          </p>
+
+          <div class="flex flex-col gap-4">
+            {themes.map((theme) => (
+              <ThemeCard
+                key={theme.id}
+                theme={theme}
+                selected={theme.id === currentThemeId}
+              />
+            ))}
+          </div>
+        </fieldset>
+      </div>
+
+      <div
         data-signals={JSON.stringify({ fontTheme: currentFontThemeId }).replace(
           /</g,
           "\\u003c",
         )}
         data-on:change="@post('/dash/settings/font-theme')"
-        class="max-w-3xl mb-8"
+        class="max-w-3xl"
       >
         <fieldset>
           <legend class="text-lg font-semibold">
@@ -154,38 +186,6 @@ export function AppearanceContent({
                   </div>
                 </div>
               </label>
-            ))}
-          </div>
-        </fieldset>
-      </div>
-
-      <div
-        data-signals={themeSignals}
-        data-on:change="@post('/dash/settings/appearance')"
-        class="max-w-3xl"
-      >
-        <fieldset>
-          <legend class="text-lg font-semibold">
-            {t({
-              message: "Color theme",
-              comment: "@context: Appearance settings heading",
-            })}
-          </legend>
-          <p class="text-sm text-muted-foreground mb-4">
-            {t({
-              message:
-                "This will theme both your site and your dashboard. All color themes support dark mode.",
-              comment: "@context: Appearance settings description",
-            })}
-          </p>
-
-          <div class="flex flex-col gap-4">
-            {themes.map((theme) => (
-              <ThemeCard
-                key={theme.id}
-                theme={theme}
-                selected={theme.id === currentThemeId}
-              />
             ))}
           </div>
         </fieldset>
