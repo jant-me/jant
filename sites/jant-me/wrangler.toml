@@ -1,0 +1,58 @@
+name = "jant-me"
+main = "src/index.ts"
+compatibility_date = "2026-01-20"
+compatibility_flags = ["nodejs_compat"]
+[dev]
+port = 9019
+
+# ============================================
+# Environment Variables
+# ============================================
+# Non-sensitive configuration goes here in [vars]
+# Sensitive secrets (like AUTH_SECRET) should be:
+# - Local dev: .dev.vars file (not committed)
+# - Production: wrangler secret put AUTH_SECRET
+# See docs/configuration.md for full details
+
+[vars]
+# Required: Your site's public URL (e.g. https://my-blog.example.com)
+SITE_URL = "https://jant.me"
+
+# Optional: Site configuration
+# These can be overridden in dashboard settings (/dash/settings)
+# If not set, values from database settings table are used
+# SITE_NAME = "My Blog"
+# SITE_DESCRIPTION = "A personal blog powered by Jant"
+# SITE_LANGUAGE = "en"
+
+# Optional: Timeline page size (default: 20)
+# PAGE_SIZE = "5"
+
+# Optional: R2 Storage (for media uploads)
+R2_PUBLIC_URL = "https://jant-me-media.jant.me"
+# Optional: Cloudflare Image Transformations
+# For automatic thumbnail generation and image optimization
+IMAGE_TRANSFORM_URL = "https://jant-me-media.jant.me/cdn-cgi/image"
+
+# Optional: Demo mode (pre-fill sign-in credentials)
+# DEMO_EMAIL = "demo@example.com"
+# DEMO_PASSWORD = "demo123"
+
+# Optional: S3-compatible storage (alternative to R2)
+# Set STORAGE_DRIVER = "s3" and configure the options below.
+# When using S3, the [[r2_buckets]] section can be removed.
+# STORAGE_DRIVER = "s3"
+# S3_ENDPOINT = "https://s3.example.com"
+# S3_BUCKET = "my-bucket"
+# S3_REGION = "us-east-1"
+# S3_PUBLIC_URL = "https://cdn.example.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "jant-me-db"
+database_id = "abdf3c96-a093-4ade-a2b4-fa957feb9a5c"
+migrations_dir = "node_modules/@jant/core/src/db/migrations"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "jant-me-media"

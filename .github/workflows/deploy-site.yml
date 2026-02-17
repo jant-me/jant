@@ -1,0 +1,22 @@
+name: Deploy jant.me
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/core/**"
+      - "sites/jant-me/**"
+      - ".github/workflows/deploy.yml"
+      - ".github/workflows/deploy-site.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to jant.me
+    uses: ./.github/workflows/deploy.yml
+    with:
+      working_directory: sites/jant-me
+    secrets:
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}

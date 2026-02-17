@@ -1,0 +1,12 @@
+# Secrets — do not commit this file
+#
+# Cloudflare Workers: copy to .dev.vars
+# VPS / Docker:      copy to .env
+
+# AUTH_SECRET must be at least 32 characters
+# Generate one with: openssl rand -base64 32
+AUTH_SECRET=your-secret-key-at-least-32-chars-long
+
+# Required when STORAGE_DRIVER=s3:
+# S3_ACCESS_KEY_ID=your-access-key
+# S3_SECRET_ACCESS_KEY=your-secret-key
