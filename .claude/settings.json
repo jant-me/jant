@@ -10,7 +10,7 @@
           },
           {
             "type": "command",
-            "command": "export PATH=\"$HOME/.local/bin:$PATH\" && entire hooks claude-code session-start"
+            "command": "entire hooks claude-code session-start"
           }
         ]
       }
@@ -21,7 +21,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "export PATH=\"$HOME/.local/bin:$PATH\" && entire hooks claude-code session-end"
+            "command": "entire hooks claude-code session-end"
           }
         ]
       }
@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "export PATH=\"$HOME/.local/bin:$PATH\" && entire hooks claude-code user-prompt-submit"
+            "command": "entire hooks claude-code user-prompt-submit"
           }
         ]
       }
@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "export PATH=\"$HOME/.local/bin:$PATH\" && entire hooks claude-code stop"
+            "command": "entire hooks claude-code stop"
           }
         ]
       }
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "export PATH=\"$HOME/.local/bin:$PATH\" && entire hooks claude-code pre-task"
+            "command": "entire hooks claude-code pre-task"
           }
         ]
       }
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "export PATH=\"$HOME/.local/bin:$PATH\" && entire hooks claude-code post-task"
+            "command": "entire hooks claude-code post-task"
           }
         ]
       },
@@ -74,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "export PATH=\"$HOME/.local/bin:$PATH\" && entire hooks claude-code post-todo"
+            "command": "entire hooks claude-code post-todo"
           }
         ]
       }
