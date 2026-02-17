@@ -1,5 +1,5 @@
 /**
- * Tests for avatar upload with favicon variant storage.
+ * Tests for avatar upload with favicon variant storage in DB settings.
  *
  * Note: Route handlers that import JSX components with @lingui/react/macro
  * cannot run in vitest (requires SWC plugin). These tests verify the
@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { createTestDatabase } from "../../../__tests__/helpers/db.js";
 import { createSettingsService } from "../../../services/settings.js";
 import { createMediaService } from "../../../services/media.js";
-import { FAVICON_STORAGE_KEYS } from "../../../lib/favicon.js";
+import { arrayBufferToBase64, base64ToUint8Array } from "../../../lib/favicon.js";
 import type { Database } from "../../../db/index.js";
 
 describe("Dashboard Settings - Avatar Upload Logic", () => {
@@ -25,7 +25,7 @@ describe("Dashboard Settings - Avatar Upload Logic", () => {
     mediaService = createMediaService(db);
   });
 
-  describe("avatar upload with favicon variants", () => {
+  describe("avatar upload with favicon variants in DB", () => {
     it("stores avatar media and sets SITE_AVATAR setting", async () => {
       const media = await mediaService.create({
         id: "test-avatar-id",
@@ -46,34 +46,44 @@ describe("Dashboard Settings - Avatar Upload Logic", () => {
       expect(stored).not.toBeNull();
       expect(stored!.mimeType).toBe("image/png");
     });
+
+    it("stores favicon ICO as base64 in settings", async () => {
+      const fakeIcoData = new Uint8Array([0, 0, 1, 0, 1, 0, 32, 32]);
+      const b64 = arrayBufferToBase64(fakeIcoData.buffer);
+      await settingsService.set("SITE_FAVICON_ICO", b64);
+
+      const stored = await settingsService.get("SITE_FAVICON_ICO");
+      expect(stored).not.toBeNull();
+      const decoded = base64ToUint8Array(stored!);
+      expect(Array.from(decoded)).toEqual(Array.from(fakeIcoData));
+    });
+
+    it("stores apple-touch-icon as base64 in settings", async () => {
+      const fakePng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
+      const b64 = arrayBufferToBase64(fakePng.buffer);
+      await settingsService.set("SITE_FAVICON_APPLE_TOUCH", b64);
+
+      const stored = await settingsService.get("SITE_FAVICON_APPLE_TOUCH");
+      expect(stored).not.toBeNull();
+      const decoded = base64ToUint8Array(stored!);
+      expect(Array.from(decoded)).toEqual(Array.from(fakePng));
+    });
   });
 
-  describe("avatar removal with favicon cleanup", () => {
-    it("removes SITE_AVATAR setting", async () => {
+  describe("avatar removal cleans up favicon settings", () => {
+    it("removes all favicon-related settings", async () => {
       await settingsService.set("SITE_AVATAR", "some-id");
-      expect(await settingsService.get("SITE_AVATAR")).toBe("some-id");
+      await settingsService.set("SITE_FAVICON_ICO", "base64data");
+      await settingsService.set("SITE_FAVICON_APPLE_TOUCH", "base64data");
 
+      // Simulate avatar removal
       await settingsService.remove("SITE_AVATAR");
+      await settingsService.remove("SITE_FAVICON_ICO");
+      await settingsService.remove("SITE_FAVICON_APPLE_TOUCH");
+
       expect(await settingsService.get("SITE_AVATAR")).toBeNull();
-    });
-  });
-
-  describe("favicon storage keys", () => {
-    it("has correct ICO storage key path", () => {
-      expect(FAVICON_STORAGE_KEYS.ICO).toBe("favicons/favicon.ico");
-    });
-
-    it("has correct apple-touch-icon storage key path", () => {
-      expect(FAVICON_STORAGE_KEYS.APPLE_TOUCH).toBe(
-        "favicons/apple-touch-icon.png",
-      );
-    });
-
-    it("storage keys do not conflict with media paths", () => {
-      // Media files are stored at media/{year}/{month}/{id}.{ext}
-      // Favicon files are stored at favicons/{filename}
-      expect(FAVICON_STORAGE_KEYS.ICO).toMatch(/^favicons\//);
-      expect(FAVICON_STORAGE_KEYS.APPLE_TOUCH).toMatch(/^favicons\//);
+      expect(await settingsService.get("SITE_FAVICON_ICO")).toBeNull();
+      expect(await settingsService.get("SITE_FAVICON_APPLE_TOUCH")).toBeNull();
     });
   });
 });

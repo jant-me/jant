@@ -1,17 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { FAVICON_STORAGE_KEYS, FAVICON_SIZES, encodeIco } from "../favicon.js";
-
-describe("FAVICON_STORAGE_KEYS", () => {
-  it("has ICO key", () => {
-    expect(FAVICON_STORAGE_KEYS.ICO).toBe("favicons/favicon.ico");
-  });
-
-  it("has APPLE_TOUCH key", () => {
-    expect(FAVICON_STORAGE_KEYS.APPLE_TOUCH).toBe(
-      "favicons/apple-touch-icon.png",
-    );
-  });
-});
+import {
+  FAVICON_SIZES,
+  encodeIco,
+  arrayBufferToBase64,
+  base64ToUint8Array,
+} from "../favicon.js";
 
 describe("FAVICON_SIZES", () => {
   it("has correct ICO sizes", () => {
@@ -26,7 +19,7 @@ describe("FAVICON_SIZES", () => {
 
 describe("encodeIco", () => {
   it("produces a valid ICO blob with correct type", () => {
-    const png = new ArrayBuffer(8); // minimal dummy PNG data
+    const png = new ArrayBuffer(8);
     const result = encodeIco([{ size: 32, png }]);
 
     expect(result).toBeInstanceOf(Blob);
@@ -34,7 +27,7 @@ describe("encodeIco", () => {
   });
 
   it("produces correct ICO header for single entry", async () => {
-    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer; // PNG magic bytes
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
     const result = encodeIco([{ size: 32, png }]);
 
     const buffer = await result.arrayBuffer();
@@ -115,5 +108,44 @@ describe("encodeIco", () => {
     const buffer = await result.arrayBuffer();
     // 6 (header) + 2*16 (directory) + 100 + 200 (data) = 338
     expect(buffer.byteLength).toBe(338);
+  });
+});
+
+describe("arrayBufferToBase64", () => {
+  it("encodes an empty buffer", () => {
+    expect(arrayBufferToBase64(new ArrayBuffer(0))).toBe("");
+  });
+
+  it("encodes simple bytes", () => {
+    const buf = new Uint8Array([72, 101, 108, 108, 111]).buffer; // "Hello"
+    expect(arrayBufferToBase64(buf)).toBe("SGVsbG8=");
+  });
+
+  it("encodes binary data correctly", () => {
+    const buf = new Uint8Array([0, 255, 128, 64]).buffer;
+    const b64 = arrayBufferToBase64(buf);
+    // Verify round-trip
+    const decoded = base64ToUint8Array(b64);
+    expect(Array.from(decoded)).toEqual([0, 255, 128, 64]);
+  });
+});
+
+describe("base64ToUint8Array", () => {
+  it("decodes an empty string", () => {
+    expect(base64ToUint8Array("").length).toBe(0);
+  });
+
+  it("decodes simple base64", () => {
+    const result = base64ToUint8Array("SGVsbG8=");
+    expect(Array.from(result)).toEqual([72, 101, 108, 108, 111]); // "Hello"
+  });
+
+  it("round-trips with arrayBufferToBase64", () => {
+    const original = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) original[i] = i;
+
+    const b64 = arrayBufferToBase64(original.buffer);
+    const decoded = base64ToUint8Array(b64);
+    expect(Array.from(decoded)).toEqual(Array.from(original));
   });
 });

@@ -1,17 +1,10 @@
 /**
  * Favicon Utilities
  *
- * Storage keys, sizes, and ICO encoding for generated favicon variants.
+ * Sizes and ICO encoding for generated favicon variants.
+ * Favicon data is stored as base64 in the settings table (not R2)
+ * since the files are tiny and accessed on every page load.
  */
-
-/**
- * Storage keys for favicon variant files.
- * These are overwritten each time a new avatar is uploaded.
- */
-export const FAVICON_STORAGE_KEYS = {
-  ICO: "favicons/favicon.ico",
-  APPLE_TOUCH: "favicons/apple-touch-icon.png",
-} as const;
 
 /**
  * Favicon variant sizes (width x height in pixels)
@@ -79,4 +72,44 @@ export function encodeIco(
   }
 
   return new Blob([header, ...pngBuffers], { type: "image/x-icon" });
+}
+
+/**
+ * Convert an ArrayBuffer to a base64 string.
+ *
+ * @param buffer - The ArrayBuffer to encode
+ * @returns base64-encoded string
+ *
+ * @example
+ * ```ts
+ * const b64 = arrayBufferToBase64(await blob.arrayBuffer());
+ * ```
+ */
+export function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]!);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Convert a base64 string to a Uint8Array.
+ *
+ * @param base64 - The base64 string to decode
+ * @returns decoded Uint8Array
+ *
+ * @example
+ * ```ts
+ * const bytes = base64ToUint8Array(storedBase64);
+ * ```
+ */
+export function base64ToUint8Array(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
