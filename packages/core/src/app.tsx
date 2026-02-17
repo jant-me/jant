@@ -58,6 +58,7 @@ import { getAvailableThemes, buildThemeStyle } from "./lib/theme.js";
 import { createStorageDriver, type StorageDriver } from "./lib/storage.js";
 import { BUILTIN_FONT_THEMES } from "./ui/font-themes.js";
 import { getMediaUrl, getPublicUrlForProvider } from "./lib/image.js";
+import { FAVICON_STORAGE_KEYS } from "./lib/favicon.js";
 
 // Extend Hono's context variables
 export interface AppVariables {
@@ -234,6 +235,35 @@ export function createApp(config: JantConfig = {}): App {
       authSecretLength: c.env.AUTH_SECRET?.length ?? 0,
     }),
   );
+
+  // Favicon routes - serve generated variants from storage
+  app.get("/favicon.ico", async (c) => {
+    const storage = c.var.storage;
+    if (!storage) return c.notFound();
+
+    const object = await storage.get(FAVICON_STORAGE_KEYS.ICO);
+    if (!object) return c.notFound();
+
+    const headers = new Headers();
+    headers.set("Content-Type", "image/x-icon");
+    headers.set("Cache-Control", "public, max-age=86400");
+
+    return new Response(object.body, { headers });
+  });
+
+  app.get("/apple-touch-icon.png", async (c) => {
+    const storage = c.var.storage;
+    if (!storage) return c.notFound();
+
+    const object = await storage.get(FAVICON_STORAGE_KEYS.APPLE_TOUCH);
+    if (!object) return c.notFound();
+
+    const headers = new Headers();
+    headers.set("Content-Type", "image/png");
+    headers.set("Cache-Control", "public, max-age=86400");
+
+    return new Response(object.body, { headers });
+  });
 
   // better-auth handler
   app.all("/api/auth/*", async (c) => {

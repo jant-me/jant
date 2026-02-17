@@ -9,6 +9,7 @@ import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../app.js";
 import { DashLayout } from "../../ui/layouts/DashLayout.js";
 import { sse, dsRedirect, dsToast } from "../../lib/sse.js";
+import { FAVICON_STORAGE_KEYS } from "../../lib/favicon.js";
 import {
   getSiteLanguage,
   getSiteName,
@@ -278,6 +279,34 @@ settingsRoutes.post("/avatar", async (c) => {
 
     await c.var.services.settings.set("SITE_AVATAR", id);
 
+    // Store favicon variants (generated client-side)
+    const faviconFile = formData.get("favicon") as File | null;
+    const appleTouchFile = formData.get("appleTouch") as File | null;
+
+    if (faviconFile) {
+      try {
+        await storage.put(
+          FAVICON_STORAGE_KEYS.ICO,
+          new Uint8Array(await faviconFile.arrayBuffer()),
+          { contentType: "image/x-icon" },
+        );
+      } catch {
+        // Favicon variant storage is best-effort
+      }
+    }
+
+    if (appleTouchFile) {
+      try {
+        await storage.put(
+          FAVICON_STORAGE_KEYS.APPLE_TOUCH,
+          new Uint8Array(await appleTouchFile.arrayBuffer()),
+          { contentType: "image/png" },
+        );
+      } catch {
+        // Apple touch icon storage is best-effort
+      }
+    }
+
     return dsRedirect("/dash/settings?saved");
   } catch {
     return dsToast("Upload failed. Please try again.", "error");
@@ -286,6 +315,20 @@ settingsRoutes.post("/avatar", async (c) => {
 
 settingsRoutes.post("/avatar/remove", async (c) => {
   await c.var.services.settings.remove("SITE_AVATAR");
+
+  // Clean up favicon variant files from storage
+  const storage = c.var.storage;
+  if (storage) {
+    try {
+      await Promise.all([
+        storage.delete(FAVICON_STORAGE_KEYS.ICO),
+        storage.delete(FAVICON_STORAGE_KEYS.APPLE_TOUCH),
+      ]);
+    } catch {
+      // Best-effort cleanup
+    }
+  }
+
   return dsRedirect("/dash/settings?saved");
 });
 
