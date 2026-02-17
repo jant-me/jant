@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.3.25
+
+### Patch Changes
+
+- [`c1c8a29`](https://github.com/jant-me/jant/commit/c1c8a2922875768f995dc80aabaf2b4f72e7e834) Thanks [@theowenyoung](https://github.com/theowenyoung)! - New Theme
+
 ## 0.3.24
 
 ### Patch Changes
