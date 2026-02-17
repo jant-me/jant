@@ -25,10 +25,12 @@ async function buildFeedData(c: Context<Env>): Promise<FeedData> {
   const siteUrl = c.env.SITE_URL;
   const siteLanguage = await getSiteLanguage(c);
 
+  const feedLimit = parseInt(c.env.RSS_FEED_LIMIT ?? "50", 10) || 50;
+
   const posts = await c.var.services.posts.list({
     status: "published",
     excludeReplies: true,
-    limit: 50,
+    limit: feedLimit,
   });
 
   // Batch load media for enclosures
