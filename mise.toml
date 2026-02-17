@@ -12,12 +12,20 @@ pnpm = "10.28.2"
 alias = "check"
 description = "Run all CI checks (lint + typecheck + test + build + i18n + template)"
 run = """
+# Phase 1: Build @jant/core once (swc + tsc declarations)
+# - typecheck needs declaration files
+# - test-template needs dist/
+pnpm --filter @jant/core build:lib
+
+# Phase 2: Checks (reuse built output, no redundant builds)
 mise run lint
-mise run typecheck
+pnpm -r typecheck
 mise run test
-mise run build-all
 mise run i18n-check
-mise run test-template
+
+# Phase 3: Build create-jant + integration test
+pnpm --filter create-jant prepublishOnly
+pnpm --filter create-jant test-template
 """
 
 # =============================================================================
@@ -49,9 +57,6 @@ run = "pnpm --filter @jant/core build:types"
 description = "Build all publishable packages"
 run = """
 pnpm --filter @jant/core build
-pnpm --filter jant-theme-card build
-pnpm --filter jant-theme-minimal build
-pnpm --filter jant-theme-threads build
 pnpm --filter create-jant build
 """
 
