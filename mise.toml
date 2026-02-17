@@ -256,6 +256,23 @@ echo "Done! Demo has been seeded from local data."
 """
 
 # =============================================================================
+# Official Site (sites/jant-me)
+# =============================================================================
+[tasks.site-dev]
+alias = "sd"
+description = "Start jant.me development server"
+run = "pnpm --filter jant-me dev"
+
+[tasks.site-build]
+alias = "sb"
+description = "Build jant.me for production"
+run = "pnpm --filter jant-me build"
+
+[tasks.site-deploy]
+description = "Deploy jant.me to Cloudflare Workers"
+run = "pnpm --filter jant-me run deploy"
+
+# =============================================================================
 # Utilities
 # =============================================================================
 [tasks.reset-password]
