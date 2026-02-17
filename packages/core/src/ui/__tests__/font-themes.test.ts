@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { BUILTIN_FONT_THEMES } from "../font-themes.js";
 
 describe("BUILTIN_FONT_THEMES", () => {
-  it("contains 5 themes", () => {
-    expect(BUILTIN_FONT_THEMES).toHaveLength(5);
+  it("contains 4 themes", () => {
+    expect(BUILTIN_FONT_THEMES).toHaveLength(4);
   });
 
   it("has 'default' as the first theme", () => {
@@ -28,7 +28,6 @@ describe("BUILTIN_FONT_THEMES", () => {
     const ids = BUILTIN_FONT_THEMES.map((t) => t.id);
     expect(ids).toContain("default");
     expect(ids).toContain("serif");
-    expect(ids).toContain("classic");
     expect(ids).toContain("humanist");
     expect(ids).toContain("mono");
   });

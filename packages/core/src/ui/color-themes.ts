@@ -118,9 +118,40 @@ function defineTheme(opts: {
 }
 
 export const BUILTIN_COLOR_THEMES: ColorTheme[] = [
+  defineTheme({
+    id: "halloween",
+    name: "Halloween",
+    preview: {
+      lightBg: "#f9f2e3",
+      lightText: "#352200",
+      lightLink: "#b84400",
+      darkBg: "#1e1000",
+      darkText: "#dfc390",
+      darkLink: "#ff8c00",
+    },
+    light: {
+      bg: "oklch(0.97 0.015 75)",
+      fg: "oklch(0.25 0.04 55)",
+      primary: "oklch(0.47 0.17 50)",
+      primaryFg: "oklch(0.98 0.01 75)",
+      muted: "oklch(0.93 0.02 75)",
+      mutedFg: "oklch(0.5 0.025 55)",
+      border: "oklch(0.88 0.025 75)",
+    },
+    dark: {
+      bg: "oklch(0.16 0.03 50)",
+      fg: "oklch(0.85 0.025 75)",
+      primary: "oklch(0.72 0.19 55)",
+      primaryFg: "oklch(0.14 0.03 50)",
+      muted: "oklch(0.22 0.025 50)",
+      mutedFg: "oklch(0.62 0.02 75)",
+      border: "oklch(0.28 0.025 50)",
+    },
+  }),
+
   {
     id: "default",
-    name: "Default",
+    name: "Panda",
     light: {},
     dark: {},
     preview: {
@@ -223,37 +254,6 @@ export const BUILTIN_COLOR_THEMES: ColorTheme[] = [
       muted: "oklch(0.24 0 0)",
       mutedFg: "oklch(0.6 0 0)",
       border: "oklch(0.3 0 0)",
-    },
-  }),
-
-  defineTheme({
-    id: "halloween",
-    name: "Halloween",
-    preview: {
-      lightBg: "#f9f2e3",
-      lightText: "#352200",
-      lightLink: "#b84400",
-      darkBg: "#1e1000",
-      darkText: "#dfc390",
-      darkLink: "#ff8c00",
-    },
-    light: {
-      bg: "oklch(0.97 0.015 75)",
-      fg: "oklch(0.25 0.04 55)",
-      primary: "oklch(0.47 0.17 50)",
-      primaryFg: "oklch(0.98 0.01 75)",
-      muted: "oklch(0.93 0.02 75)",
-      mutedFg: "oklch(0.5 0.025 55)",
-      border: "oklch(0.88 0.025 75)",
-    },
-    dark: {
-      bg: "oklch(0.16 0.03 50)",
-      fg: "oklch(0.85 0.025 75)",
-      primary: "oklch(0.72 0.19 55)",
-      primaryFg: "oklch(0.14 0.03 50)",
-      muted: "oklch(0.22 0.025 50)",
-      mutedFg: "oklch(0.62 0.02 75)",
-      border: "oklch(0.28 0.025 50)",
     },
   }),
 

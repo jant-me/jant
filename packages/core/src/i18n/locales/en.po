@@ -168,7 +168,7 @@ msgid "Change Password"
 msgstr "Change Password"
 
 #. @context: Font theme settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:121
+#: src/ui/dash/settings/AppearanceContent.tsx:153
 msgid "Choose a font for your site. All options use system fonts for fast loading."
 msgstr "Choose a font for your site. All options use system fonts for fast loading."
 
@@ -204,7 +204,7 @@ msgstr "Collections"
 #~ msgstr "Collections (optional)"
 
 #. @context: Appearance settings heading
-#: src/ui/dash/settings/AppearanceContent.tsx:169
+#: src/ui/dash/settings/AppearanceContent.tsx:112
 msgid "Color theme"
 msgstr "Color theme"
 
@@ -469,7 +469,7 @@ msgid "Featured"
 msgstr "Featured"
 
 #. @context: Appearance settings heading for font theme
-#: src/ui/dash/settings/AppearanceContent.tsx:115
+#: src/ui/dash/settings/AppearanceContent.tsx:147
 msgid "Font theme"
 msgstr "Font theme"
 
@@ -1183,7 +1183,7 @@ msgid "This password reset link is invalid or has expired. Please generate a new
 msgstr "This password reset link is invalid or has expired. Please generate a new one."
 
 #. @context: Appearance settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:175
+#: src/ui/dash/settings/AppearanceContent.tsx:118
 msgid "This will theme both your site and your dashboard. All color themes support dark mode."
 msgstr "This will theme both your site and your dashboard. All color themes support dark mode."
 
