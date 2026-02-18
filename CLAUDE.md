@@ -64,6 +64,15 @@ const res = await app.request("/api/posts");
 
 Each test gets a fresh database via `beforeEach`. Don't test third-party internals or JSX rendering.
 
+## Dev Login
+
+After `mise run db-seed`, the database has user/account rows but the password hash is from an export and unusable. Run `mise run dev-password <password>` to set a known password via better-auth's `hashPassword()`. Credentials after setup:
+
+- **Email**: `demo@jant.me`
+- **Password**: whatever you passed to `dev-password`
+- **Login page**: `/signin` → then `/dash` for the dashboard
+- **Remote sessions**: `scripts/setup-remote.sh` auto-runs `db-seed` + `dev-password testtest`, so credentials are `demo@jant.me / testtest`
+
 ## i18n
 
 ```tsx
