@@ -39,3 +39,6 @@ mise install
 
 # Install dependencies
 pnpm install
+
+# Set up local database with seed data
+mise run db-seed
