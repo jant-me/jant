@@ -9,7 +9,7 @@ import * as schema from "./db/schema.js";
 
 export function createAuth(
   d1: D1Database,
-  options: { secret: string; baseURL: string },
+  options: { secret: string; baseURL: string; useSecureCookies: boolean },
 ) {
   const db = drizzle(d1, { schema });
 
@@ -25,6 +25,9 @@ export function createAuth(
     }),
     secret: options.secret,
     baseURL: options.baseURL,
+    advanced: {
+      useSecureCookies: options.useSecureCookies,
+    },
     emailAndPassword: {
       enabled: true,
       autoSignIn: true,
