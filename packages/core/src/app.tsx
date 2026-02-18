@@ -147,9 +147,7 @@ export function createApp(config: JantConfig = {}): App {
         c.var.services.settings.get("SITE_AVATAR"),
       ]);
     const themes = getAvailableThemes(resolvedConfig);
-    const activeTheme = themeId
-      ? themes.find((t) => t.id === themeId)
-      : undefined;
+    const activeTheme = themes.find((t) => t.id === (themeId ?? "halloween"));
 
     // Build font override CSS variables
     const fontTheme = fontThemeId

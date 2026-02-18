@@ -150,7 +150,7 @@ export const BUILTIN_COLOR_THEMES: ColorTheme[] = [
   }),
 
   {
-    id: "default",
+    id: "panda",
     name: "Panda",
     light: {},
     dark: {},
