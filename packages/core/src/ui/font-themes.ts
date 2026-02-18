@@ -71,19 +71,7 @@ export const BUILTIN_FONT_THEMES: FontTheme[] = [
       comment: "@context: Font theme description",
     },
   },
-  {
-    id: "classic-editorial",
-    name: {
-      message: "Classic Editorial",
-      comment: "@context: Font theme name",
-    },
-    headingFontFamily: EDITORIAL_SERIF,
-    bodyFontFamily: SANS,
-    description: {
-      message: "Serif headings with clean sans-serif body text",
-      comment: "@context: Font theme description",
-    },
-  },
+
   {
     id: "modern-editorial",
     name: {
@@ -94,6 +82,19 @@ export const BUILTIN_FONT_THEMES: FontTheme[] = [
     bodyFontFamily: EDITORIAL_SERIF,
     description: {
       message: "Clean sans-serif headings with elegant serif body text",
+      comment: "@context: Font theme description",
+    },
+  },
+  {
+    id: "classic-editorial",
+    name: {
+      message: "Classic Editorial",
+      comment: "@context: Font theme name",
+    },
+    headingFontFamily: EDITORIAL_SERIF,
+    bodyFontFamily: SANS,
+    description: {
+      message: "Serif headings with clean sans-serif body text",
       comment: "@context: Font theme description",
     },
   },
