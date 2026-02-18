@@ -103,4 +103,117 @@ describe("PageService", () => {
       expect(slugs).not.toContain("second");
     });
   });
+
+  describe("update nav item sync", () => {
+    it("syncs nav item label when page title changes", async () => {
+      const page = await pageService.create({
+        slug: "about",
+        title: "About",
+      });
+      await navItemService.create({
+        type: "page",
+        label: "About",
+        url: "/about",
+        pageId: page.id,
+      });
+
+      await pageService.update(page.id, { title: "About Us" });
+
+      const navs = await navItemService.list();
+      expect(navs).toHaveLength(1);
+      expect(navs[0]?.label).toBe("About Us");
+    });
+
+    it("syncs nav item url when page slug changes", async () => {
+      const page = await pageService.create({
+        slug: "about",
+        title: "About",
+      });
+      await navItemService.create({
+        type: "page",
+        label: "About",
+        url: "/about",
+        pageId: page.id,
+      });
+
+      await pageService.update(page.id, { slug: "about-us" });
+
+      const navs = await navItemService.list();
+      expect(navs).toHaveLength(1);
+      expect(navs[0]?.url).toBe("/about-us");
+    });
+
+    it("syncs both label and url when title and slug change together", async () => {
+      const page = await pageService.create({
+        slug: "about",
+        title: "About",
+      });
+      await navItemService.create({
+        type: "page",
+        label: "About",
+        url: "/about",
+        pageId: page.id,
+      });
+
+      await pageService.update(page.id, {
+        title: "About Our Company",
+        slug: "about-our-company",
+      });
+
+      const navs = await navItemService.list();
+      expect(navs).toHaveLength(1);
+      expect(navs[0]?.label).toBe("About Our Company");
+      expect(navs[0]?.url).toBe("/about-our-company");
+    });
+
+    it("does not change nav item label when title is unchanged", async () => {
+      const page = await pageService.create({
+        slug: "about",
+        title: "About",
+      });
+      await navItemService.create({
+        type: "page",
+        label: "Custom Label",
+        url: "/about",
+        pageId: page.id,
+      });
+
+      // Update body only, not title
+      await pageService.update(page.id, { body: "New content" });
+
+      const navs = await navItemService.list();
+      expect(navs[0]?.label).toBe("Custom Label");
+    });
+
+    it("does not affect nav items for other pages", async () => {
+      const page1 = await pageService.create({
+        slug: "about",
+        title: "About",
+      });
+      const page2 = await pageService.create({
+        slug: "contact",
+        title: "Contact",
+      });
+      await navItemService.create({
+        type: "page",
+        label: "About",
+        url: "/about",
+        pageId: page1.id,
+      });
+      await navItemService.create({
+        type: "page",
+        label: "Contact",
+        url: "/contact",
+        pageId: page2.id,
+      });
+
+      await pageService.update(page1.id, { title: "About Us" });
+
+      const navs = await navItemService.list();
+      const aboutNav = navs.find((n) => n.pageId === page1.id);
+      const contactNav = navs.find((n) => n.pageId === page2.id);
+      expect(aboutNav?.label).toBe("About Us");
+      expect(contactNav?.label).toBe("Contact");
+    });
+  });
 });

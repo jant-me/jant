@@ -118,6 +118,14 @@ export function createPageService(db: Database): PageService {
           .where(eq(navItems.pageId, id));
       }
 
+      // If title changed, update related nav_items label
+      if (data.title !== undefined && data.title !== existing.title) {
+        await db
+          .update(navItems)
+          .set({ label: data.title ?? existing.slug, updatedAt: timestamp })
+          .where(eq(navItems.pageId, id));
+      }
+
       const result = await db
         .update(pages)
         .set(updates)
