@@ -42,3 +42,6 @@ pnpm install
 
 # Set up local database with seed data
 mise run db-seed
+
+# Set a known dev password (testtest) so we can log in
+mise run dev-password
