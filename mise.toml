@@ -148,9 +148,9 @@ echo "Done! Database has been seeded."
 """
 
 [tasks.dev-password]
-description = "Set a known password for the dev user (default: testtest)"
+description = "Set dev login credentials: mise run dev-password <password>"
 dir = "templates/jant-site"
-run = "node scripts/set-dev-password.mjs"
+run = "node scripts/set-dev-password.mjs {{arg(name=\"password\")}}"
 
 # =============================================================================
 # i18n (Lingui)
