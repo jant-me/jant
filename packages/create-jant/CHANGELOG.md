@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.3.27
+
+### Patch Changes
+
+- [#60](https://github.com/jant-me/jant/pull/60) [`4a34f2d`](https://github.com/jant-me/jant/commit/4a34f2de9889754a04a3ca24790e66f0d3362414) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Remove HTTPS redirect middleware for reverse proxy compatibility, fix cookie security from request protocol, disable Cloudflare inspector behind HTTP proxy, and optimize CI builds
+
 ## 0.3.26
 
 ### Patch Changes
