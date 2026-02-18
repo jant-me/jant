@@ -14,7 +14,7 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. @context: Custom CSS textarea placeholder
-#: src/ui/dash/settings/AppearanceContent.tsx:218
+#: src/ui/dash/settings/AppearanceContent.tsx:223
 msgid "/* Your custom CSS here */"
 msgstr "/* 您的自訂 CSS 在這裡 */"
 
@@ -44,7 +44,7 @@ msgid "Account"
 msgstr "帳戶"
 
 #. @context: Custom CSS settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:208
+#: src/ui/dash/settings/AppearanceContent.tsx:213
 msgid "Add custom CSS to override any styles. Use data attributes like [data-page], [data-post], [data-format] to target specific elements."
 msgstr "添加自定義 CSS 以覆蓋任何樣式。使用數據屬性，如 [data-page]、[data-post]、[data-format] 來針對特定元素。"
 
@@ -124,8 +124,13 @@ msgstr "更改密碼"
 
 #. @context: Font theme settings description
 #: src/ui/dash/settings/AppearanceContent.tsx:153
-msgid "Choose a font for your site. All options use system fonts for fast loading."
-msgstr "選擇一個字體為您的網站。所有選項都使用系統字體以加快加載速度。"
+#~ msgid "Choose a font for your site. All options use system fonts for fast loading."
+#~ msgstr "選擇一個字體為您的網站。所有選項都使用系統字體以加快加載速度。"
+
+#. @context: Font theme settings description
+#: src/ui/dash/settings/AppearanceContent.tsx:153
+msgid "Choose a font pairing for your site. All options use system fonts for fast loading."
+msgstr ""
 
 #. @context: Hint to click image for lightbox
 #: src/ui/dash/media/ViewMediaContent.tsx:90
@@ -223,7 +228,7 @@ msgid "Current Password"
 msgstr "當前密碼"
 
 #. @context: Appearance settings heading for custom CSS
-#: src/ui/dash/settings/AppearanceContent.tsx:202
+#: src/ui/dash/settings/AppearanceContent.tsx:207
 msgid "Custom CSS"
 msgstr "自訂 CSS"
 
@@ -857,7 +862,7 @@ msgid "Save Changes"
 msgstr "保存更改"
 
 #. @context: Button to save custom CSS
-#: src/ui/dash/settings/AppearanceContent.tsx:246
+#: src/ui/dash/settings/AppearanceContent.tsx:251
 msgid "Save CSS"
 msgstr "儲存 CSS"
 

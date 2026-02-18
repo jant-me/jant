@@ -81,6 +81,10 @@
     background-color: var(--site-nav-hover-bg);
   }
 
+  .p-name {
+    font-family: var(--font-heading);
+  }
+
   .site-logo {
     display: flex;
     align-items: center;

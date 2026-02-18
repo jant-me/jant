@@ -8,14 +8,20 @@ describe("buildThemeStyle", () => {
     expect(buildThemeStyle(undefined, {})).toBe("");
   });
 
-  it("generates CSS with font override only (no color theme)", () => {
-    const serifTheme = BUILTIN_FONT_THEMES.find((f) => f.id === "serif")!;
-    const fontOverrides = { "--font-body": serifTheme.fontFamily };
+  it("generates CSS with font overrides only (no color theme)", () => {
+    const theme = BUILTIN_FONT_THEMES.find(
+      (f) => f.id === "classic-editorial",
+    )!;
+    const fontOverrides = {
+      "--font-body": theme.bodyFontFamily,
+      "--font-heading": theme.headingFontFamily,
+    };
 
     const css = buildThemeStyle(undefined, fontOverrides);
 
     expect(css).toContain(":root:root");
     expect(css).toContain("--font-body:");
+    expect(css).toContain("--font-heading:");
     expect(css).toContain("Charter");
     expect(css).toContain(":root.dark");
   });
@@ -27,12 +33,16 @@ describe("buildThemeStyle", () => {
       light: { "--primary": "oklch(0.5 0.1 200)" },
       dark: { "--primary": "oklch(0.7 0.1 200)" },
     };
-    const fontOverrides = { "--font-body": "Georgia, serif" };
+    const fontOverrides = {
+      "--font-body": "Georgia, serif",
+      "--font-heading": "Futura, sans-serif",
+    };
 
     const css = buildThemeStyle(fakeTheme, fontOverrides);
 
     expect(css).toContain("--primary:");
     expect(css).toContain("--font-body: Georgia, serif");
+    expect(css).toContain("--font-heading: Futura, sans-serif");
   });
 
   it("cssVariables override theme values", () => {

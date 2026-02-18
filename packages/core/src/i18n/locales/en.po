@@ -19,7 +19,7 @@ msgstr ""
 #~ msgstr "{count} replies"
 
 #. @context: Custom CSS textarea placeholder
-#: src/ui/dash/settings/AppearanceContent.tsx:218
+#: src/ui/dash/settings/AppearanceContent.tsx:223
 msgid "/* Your custom CSS here */"
 msgstr "/* Your custom CSS here */"
 
@@ -61,7 +61,7 @@ msgid "Account"
 msgstr "Account"
 
 #. @context: Custom CSS settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:208
+#: src/ui/dash/settings/AppearanceContent.tsx:213
 msgid "Add custom CSS to override any styles. Use data attributes like [data-page], [data-post], [data-format] to target specific elements."
 msgstr "Add custom CSS to override any styles. Use data attributes like [data-page], [data-post], [data-format] to target specific elements."
 
@@ -169,8 +169,13 @@ msgstr "Change Password"
 
 #. @context: Font theme settings description
 #: src/ui/dash/settings/AppearanceContent.tsx:153
-msgid "Choose a font for your site. All options use system fonts for fast loading."
-msgstr "Choose a font for your site. All options use system fonts for fast loading."
+#~ msgid "Choose a font for your site. All options use system fonts for fast loading."
+#~ msgstr "Choose a font for your site. All options use system fonts for fast loading."
+
+#. @context: Font theme settings description
+#: src/ui/dash/settings/AppearanceContent.tsx:153
+msgid "Choose a font pairing for your site. All options use system fonts for fast loading."
+msgstr "Choose a font pairing for your site. All options use system fonts for fast loading."
 
 #. @context: Hint to click image for lightbox
 #: src/ui/dash/media/ViewMediaContent.tsx:90
@@ -278,7 +283,7 @@ msgid "Current Password"
 msgstr "Current Password"
 
 #. @context: Appearance settings heading for custom CSS
-#: src/ui/dash/settings/AppearanceContent.tsx:202
+#: src/ui/dash/settings/AppearanceContent.tsx:207
 msgid "Custom CSS"
 msgstr "Custom CSS"
 
@@ -1012,7 +1017,7 @@ msgid "Save Changes"
 msgstr "Save Changes"
 
 #. @context: Button to save custom CSS
-#: src/ui/dash/settings/AppearanceContent.tsx:246
+#: src/ui/dash/settings/AppearanceContent.tsx:251
 msgid "Save CSS"
 msgstr "Save CSS"
 

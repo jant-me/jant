@@ -157,7 +157,8 @@ export function createApp(config: JantConfig = {}): App {
       : undefined;
     const fontOverrides: Record<string, string> = {};
     if (fontTheme) {
-      fontOverrides["--font-body"] = fontTheme.fontFamily;
+      fontOverrides["--font-body"] = fontTheme.bodyFontFamily;
+      fontOverrides["--font-heading"] = fontTheme.headingFontFamily;
     }
 
     const themeStyle = buildThemeStyle(activeTheme, {

@@ -14,7 +14,8 @@ describe("BUILTIN_FONT_THEMES", () => {
     for (const theme of BUILTIN_FONT_THEMES) {
       expect(theme.id).toBeTruthy();
       expect(theme.name.message).toBeTruthy();
-      expect(theme.fontFamily).toBeTruthy();
+      expect(theme.headingFontFamily).toBeTruthy();
+      expect(theme.bodyFontFamily).toBeTruthy();
       expect(theme.description.message).toBeTruthy();
     }
   });
@@ -27,9 +28,22 @@ describe("BUILTIN_FONT_THEMES", () => {
   it("includes expected theme IDs", () => {
     const ids = BUILTIN_FONT_THEMES.map((t) => t.id);
     expect(ids).toContain("default");
-    expect(ids).toContain("serif");
-    expect(ids).toContain("classical");
+    expect(ids).toContain("classic-editorial");
+    expect(ids).toContain("modern-editorial");
+    expect(ids).toContain("literary");
     expect(ids).toContain("geometric");
-    expect(ids).toContain("mono");
+  });
+
+  it("default theme uses the same font for heading and body", () => {
+    const defaultTheme = BUILTIN_FONT_THEMES.find((t) => t.id === "default")!;
+    expect(defaultTheme.headingFontFamily).toBe(defaultTheme.bodyFontFamily);
+  });
+
+  it("pairing themes have distinct heading and body fonts", () => {
+    const pairingIds = ["classic-editorial", "modern-editorial", "literary"];
+    for (const id of pairingIds) {
+      const theme = BUILTIN_FONT_THEMES.find((t) => t.id === id)!;
+      expect(theme.headingFontFamily).not.toBe(theme.bodyFontFamily);
+    }
   });
 });
