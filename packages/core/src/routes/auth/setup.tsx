@@ -180,6 +180,27 @@ setupRoutes.post("/setup", async (c) => {
       url: "/archive",
     });
 
+    // Seed default About page
+    const aboutPage = await c.var.services.pages.create({
+      slug: "about",
+      title: "About",
+      body: [
+        "Welcome to my corner of the internet.",
+        "",
+        "This is a place where I share my thoughts, ideas, and things I find interesting. Feel free to look around and get to know what this site is all about.",
+        "",
+        "If you'd like to get in touch, don't hesitate to reach out.",
+      ].join("\n"),
+      status: "published",
+    });
+
+    await c.var.services.navItems.create({
+      type: "page",
+      label: "About",
+      url: "/about",
+      pageId: aboutPage.id,
+    });
+
     return dsRedirect("/signin?setup");
   } catch (err) {
     // eslint-disable-next-line no-console -- Error logging is intentional
