@@ -19,7 +19,7 @@ msgstr ""
 #~ msgstr "{count} replies"
 
 #. @context: Custom CSS textarea placeholder
-#: src/ui/dash/settings/AppearanceContent.tsx:223
+#: src/ui/dash/settings/AppearanceContent.tsx:227
 msgid "/* Your custom CSS here */"
 msgstr "/* Your custom CSS here */"
 
@@ -61,7 +61,7 @@ msgid "Account"
 msgstr "Account"
 
 #. @context: Custom CSS settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:213
+#: src/ui/dash/settings/AppearanceContent.tsx:217
 msgid "Add custom CSS to override any styles. Use data attributes like [data-page], [data-post], [data-format] to target specific elements."
 msgstr "Add custom CSS to override any styles. Use data attributes like [data-page], [data-post], [data-format] to target specific elements."
 
@@ -283,7 +283,7 @@ msgid "Current Password"
 msgstr "Current Password"
 
 #. @context: Appearance settings heading for custom CSS
-#: src/ui/dash/settings/AppearanceContent.tsx:207
+#: src/ui/dash/settings/AppearanceContent.tsx:211
 msgid "Custom CSS"
 msgstr "Custom CSS"
 
@@ -1017,7 +1017,7 @@ msgid "Save Changes"
 msgstr "Save Changes"
 
 #. @context: Button to save custom CSS
-#: src/ui/dash/settings/AppearanceContent.tsx:251
+#: src/ui/dash/settings/AppearanceContent.tsx:255
 msgid "Save CSS"
 msgstr "Save CSS"
 

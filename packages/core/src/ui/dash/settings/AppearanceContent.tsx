@@ -182,11 +182,15 @@ export function AppearanceContent({
                       class="font-semibold"
                       style={`font-family:${ft.headingFontFamily}`}
                     >
-                      The quick brown fox jumps over the lazy dog.
+                      <div>The quick brown fox jumps over the lazy dog.</div>
+                      <div>敏捷的棕色狐狸跳过了懒惰的狗。</div>
                     </div>
-                    <div style={`font-family:${ft.bodyFontFamily}`}>
-                      The quick brown fox jumps over the lazy dog.
-                      敏捷的棕色狐狸跳过了懒惰的狗。
+                    <div
+                      class="mt-2"
+                      style={`font-family:${ft.bodyFontFamily}`}
+                    >
+                      <div>The quick brown fox jumps over the lazy dog.</div>
+                      <div>敏捷的棕色狐狸跳过了懒惰的狗。</div>
                     </div>
                   </div>
                 </div>
