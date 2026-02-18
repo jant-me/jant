@@ -99,19 +99,6 @@ export function createApp(config: JantConfig = {}): App {
 
   const app = new Hono<{ Bindings: Bindings; Variables: AppVariables }>();
 
-  // HTTPS redirect — when SITE_URL is https, redirect plain HTTP requests
-  app.use("*", async (c, next) => {
-    const siteUrl = c.env.SITE_URL;
-    if (siteUrl?.startsWith("https://")) {
-      const url = new URL(c.req.url);
-      if (url.protocol === "http:") {
-        url.protocol = "https:";
-        return c.redirect(url.toString(), 301);
-      }
-    }
-    await next();
-  });
-
   // Initialize services, auth, and config middleware
   app.use("*", async (c, next) => {
     // Use withSession() to enable D1 Read Replication
