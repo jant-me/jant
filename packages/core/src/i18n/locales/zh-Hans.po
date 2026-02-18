@@ -124,13 +124,8 @@ msgstr "更改密码"
 
 #. @context: Font theme settings description
 #: src/ui/dash/settings/AppearanceContent.tsx:153
-#~ msgid "Choose a font for your site. All options use system fonts for fast loading."
-#~ msgstr "选择一个字体用于您的网站。所有选项都使用系统字体以实现快速加载。"
-
-#. @context: Font theme settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:153
 msgid "Choose a font pairing for your site. All options use system fonts for fast loading."
-msgstr ""
+msgstr "选择一个字体搭配用于您的网站。所有选项都使用系统字体以实现快速加载。"
 
 #. @context: Hint to click image for lightbox
 #: src/ui/dash/media/ViewMediaContent.tsx:90
@@ -965,7 +960,7 @@ msgstr "重定向的路径"
 #: src/ui/dash/settings/AppearanceContent.tsx:185
 #: src/ui/dash/settings/AppearanceContent.tsx:195
 msgid "The quick brown fox jumps over the lazy dog."
-msgstr "天地玄黄，宇宙洪荒。日月盈昃，辰宿列张。"
+msgstr "敏捷的棕色狐狸跳过懒狗。"
 
 #. @context: Compose quote text placeholder
 #. @context: Quote text placeholder
