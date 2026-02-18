@@ -179,6 +179,9 @@ export default defineConfig({
     }),
     cloudflare({
       configPath: process.env.WRANGLER_CONFIG || "./wrangler.toml",
+      // Disable inspector when behind a proxy (e.g. Claude Code remote containers).
+      // The proxy intercepts miniflare's localhost inspector connection causing startup failure.
+      ...(process.env.HTTP_PROXY ? { inspectorPort: false } : {}),
     }),
     injectManifest(),
   ],
