@@ -92,7 +92,9 @@ describe("PageService", () => {
         type: "page",
         label: "Second",
         url: "/second",
-        pageId: pages.find((p) => p.slug === "second")!.id,
+        pageId: (
+          pages.find((p) => p.slug === "second") as (typeof pages)[number]
+        ).id,
       });
 
       const notInNav = await pageService.listNotInNav();

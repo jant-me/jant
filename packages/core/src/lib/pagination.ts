@@ -40,10 +40,11 @@ export function getPageNumbers(
   // Insert 0 for gaps
   const result: number[] = [];
   for (let i = 0; i < sorted.length; i++) {
-    if (i > 0 && sorted[i]! - sorted[i - 1]! > 1) {
+    const current = sorted[i] as number;
+    if (i > 0 && current - (sorted[i - 1] as number) > 1) {
       result.push(0); // ellipsis marker
     }
-    result.push(sorted[i]!);
+    result.push(current);
   }
 
   return result;

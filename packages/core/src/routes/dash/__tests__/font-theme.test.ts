@@ -48,7 +48,9 @@ describe("Font theme save & CSS generation", () => {
     const fontThemeId = await settings.get("FONT_THEME");
     expect(fontThemeId).toBe("geometric");
 
-    const fontTheme = BUILTIN_FONT_THEMES.find((f) => f.id === fontThemeId)!;
+    const fontTheme = BUILTIN_FONT_THEMES.find(
+      (f) => f.id === fontThemeId,
+    ) as (typeof BUILTIN_FONT_THEMES)[number];
     expect(fontTheme).toBeDefined();
     expect(fontTheme.headingFontFamily).toContain("Futura");
     expect(fontTheme.bodyFontFamily).toContain("system-ui");
@@ -89,7 +91,9 @@ describe("Font theme save & CSS generation", () => {
     await settings.set("FONT_THEME", "classic-editorial");
 
     const fontThemeId = await settings.get("FONT_THEME");
-    const fontTheme = BUILTIN_FONT_THEMES.find((f) => f.id === fontThemeId)!;
+    const fontTheme = BUILTIN_FONT_THEMES.find(
+      (f) => f.id === fontThemeId,
+    ) as (typeof BUILTIN_FONT_THEMES)[number];
 
     expect(fontTheme.headingFontFamily).toContain("Charter");
     expect(fontTheme.bodyFontFamily).toContain("system-ui");

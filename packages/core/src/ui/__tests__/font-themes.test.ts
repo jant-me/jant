@@ -35,14 +35,18 @@ describe("BUILTIN_FONT_THEMES", () => {
   });
 
   it("default theme uses the same font for heading and body", () => {
-    const defaultTheme = BUILTIN_FONT_THEMES.find((t) => t.id === "default")!;
+    const defaultTheme = BUILTIN_FONT_THEMES.find(
+      (t) => t.id === "default",
+    ) as (typeof BUILTIN_FONT_THEMES)[number];
     expect(defaultTheme.headingFontFamily).toBe(defaultTheme.bodyFontFamily);
   });
 
   it("pairing themes have distinct heading and body fonts", () => {
     const pairingIds = ["classic-editorial", "modern-editorial", "literary"];
     for (const id of pairingIds) {
-      const theme = BUILTIN_FONT_THEMES.find((t) => t.id === id)!;
+      const theme = BUILTIN_FONT_THEMES.find(
+        (t) => t.id === id,
+      ) as (typeof BUILTIN_FONT_THEMES)[number];
       expect(theme.headingFontFamily).not.toBe(theme.bodyFontFamily);
     }
   });

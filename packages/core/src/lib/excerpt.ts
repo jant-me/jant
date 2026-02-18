@@ -61,7 +61,7 @@ export interface HtmlExcerpt {
 export function getHtmlExcerpt(bodyHtml: string): HtmlExcerpt {
   // Honor manual <!--more--> marker
   if (bodyHtml.includes("<!--more-->")) {
-    const excerpt = bodyHtml.split("<!--more-->")[0]!;
+    const excerpt = bodyHtml.split("<!--more-->")[0] ?? "";
     return { excerpt, hasMore: true };
   }
 

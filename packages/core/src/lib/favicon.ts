@@ -34,9 +34,7 @@ export const FAVICON_SIZES = {
  * ]);
  * ```
  */
-export function encodeIco(
-  entries: { size: number; png: ArrayBuffer }[],
-): Blob {
+export function encodeIco(entries: { size: number; png: ArrayBuffer }[]): Blob {
   const headerSize = 6;
   const dirEntrySize = 16;
   const dirSize = entries.length * dirEntrySize;
@@ -54,7 +52,7 @@ export function encodeIco(
 
   const pngBuffers: ArrayBuffer[] = [];
   for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i]!;
+    const entry = entries[i] as (typeof entries)[number];
     const offset = headerSize + i * dirEntrySize;
 
     // Width/height: 0 means 256
@@ -89,7 +87,7 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
   for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]!);
+    binary += String.fromCharCode(bytes[i] as number);
   }
   return btoa(binary);
 }

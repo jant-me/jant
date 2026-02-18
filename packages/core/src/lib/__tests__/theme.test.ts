@@ -11,7 +11,7 @@ describe("buildThemeStyle", () => {
   it("generates CSS with font overrides only (no color theme)", () => {
     const theme = BUILTIN_FONT_THEMES.find(
       (f) => f.id === "classic-editorial",
-    )!;
+    ) as (typeof BUILTIN_FONT_THEMES)[number];
     const fontOverrides = {
       "--font-body": theme.bodyFontFamily,
       "--font-heading": theme.headingFontFamily,

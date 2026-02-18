@@ -94,7 +94,7 @@ describe("Dashboard Pages - Nav Management Logic", () => {
         slug: "about",
         title: "About",
       });
-      const navItem = await navItemService.create({
+      await navItemService.create({
         type: "page",
         label: "About",
         url: "/about",
@@ -105,7 +105,7 @@ describe("Dashboard Pages - Nav Management Logic", () => {
       const allNavItems = await navItemService.list();
       const found = allNavItems.find((item) => item.pageId === page.id);
       expect(found).toBeDefined();
-      await navItemService.delete(found!.id);
+      await navItemService.delete(found?.id as number);
 
       // Nav item should be gone
       const navItems = await navItemService.list();

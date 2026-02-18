@@ -61,12 +61,14 @@ export const BUILTIN_FONT_THEMES: FontTheme[] = [
   {
     id: "default",
     name: {
+      id: "System Default",
       message: "System Default",
       comment: "@context: Font theme name",
     },
     headingFontFamily: SANS,
     bodyFontFamily: SANS,
     description: {
+      id: "Matches your OS native font for consistent reading",
       message: "Matches your OS native font for consistent reading",
       comment: "@context: Font theme description",
     },
@@ -75,12 +77,14 @@ export const BUILTIN_FONT_THEMES: FontTheme[] = [
   {
     id: "modern-editorial",
     name: {
+      id: "Modern Editorial",
       message: "Modern Editorial",
       comment: "@context: Font theme name",
     },
     headingFontFamily: SANS,
     bodyFontFamily: EDITORIAL_SERIF,
     description: {
+      id: "Clean sans-serif headings with elegant serif body text",
       message: "Clean sans-serif headings with elegant serif body text",
       comment: "@context: Font theme description",
     },
@@ -88,12 +92,14 @@ export const BUILTIN_FONT_THEMES: FontTheme[] = [
   {
     id: "classic-editorial",
     name: {
+      id: "Classic Editorial",
       message: "Classic Editorial",
       comment: "@context: Font theme name",
     },
     headingFontFamily: EDITORIAL_SERIF,
     bodyFontFamily: SANS,
     description: {
+      id: "Serif headings with clean sans-serif body text",
       message: "Serif headings with clean sans-serif body text",
       comment: "@context: Font theme description",
     },
@@ -101,12 +107,14 @@ export const BUILTIN_FONT_THEMES: FontTheme[] = [
   {
     id: "literary",
     name: {
+      id: "Literary",
       message: "Literary",
       comment: "@context: Font theme name",
     },
     headingFontFamily: CLASSICAL_SERIF,
     bodyFontFamily: EDITORIAL_SERIF,
     description: {
+      id: "Full serif pairing for immersive long-form reading",
       message: "Full serif pairing for immersive long-form reading",
       comment: "@context: Font theme description",
     },
@@ -114,12 +122,14 @@ export const BUILTIN_FONT_THEMES: FontTheme[] = [
   {
     id: "geometric",
     name: {
+      id: "Geometric",
       message: "Geometric",
       comment: "@context: Font theme name",
     },
     headingFontFamily: GEOMETRIC_SANS,
     bodyFontFamily: SANS,
     description: {
+      id: "Bold geometric headings with clean sans-serif body text",
       message: "Bold geometric headings with clean sans-serif body text",
       comment: "@context: Font theme description",
     },

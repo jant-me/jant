@@ -54,7 +54,7 @@ describe("Dashboard Settings - Avatar Upload Logic", () => {
 
       const stored = await settingsService.get("SITE_FAVICON_ICO");
       expect(stored).not.toBeNull();
-      const decoded = base64ToUint8Array(stored!);
+      const decoded = base64ToUint8Array(stored as string);
       expect(Array.from(decoded)).toEqual(Array.from(fakeIcoData));
     });
 
@@ -65,7 +65,7 @@ describe("Dashboard Settings - Avatar Upload Logic", () => {
 
       const stored = await settingsService.get("SITE_FAVICON_APPLE_TOUCH");
       expect(stored).not.toBeNull();
-      const decoded = base64ToUint8Array(stored!);
+      const decoded = base64ToUint8Array(stored as string);
       expect(Array.from(decoded)).toEqual(Array.from(fakePng));
     });
   });

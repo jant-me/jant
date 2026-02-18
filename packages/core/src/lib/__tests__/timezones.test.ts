@@ -6,7 +6,7 @@ describe("TIMEZONES", () => {
     expect(TIMEZONES.length).toBeGreaterThan(30);
     const utc = TIMEZONES.find((tz) => tz.value === "UTC");
     expect(utc).toBeDefined();
-    expect(utc!.offset).toBe("+00:00");
+    expect(utc?.offset).toBe("+00:00");
   });
 
   it("each entry has required fields", () => {
