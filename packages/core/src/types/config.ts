@@ -37,6 +37,10 @@ export const CONFIG_FIELDS = {
   },
 
   // Environment-only (deployment/infrastructure config)
+  DEFAULT_THEME: {
+    defaultValue: "halloween",
+    envOnly: true,
+  },
   SITE_URL: {
     defaultValue: "",
     envOnly: true,

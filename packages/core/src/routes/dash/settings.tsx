@@ -330,8 +330,9 @@ settingsRoutes.post("/avatar/display", async (c) => {
 settingsRoutes.get("/appearance", async (c) => {
   const { settings } = c.var.services;
   const siteName = await getSiteName(c);
+  const defaultThemeId = getConfigFallback(c, "DEFAULT_THEME");
   const currentThemeId =
-    (await settings.get(SETTINGS_KEYS.THEME)) ?? "halloween";
+    (await settings.get(SETTINGS_KEYS.THEME)) ?? defaultThemeId;
   const currentFontThemeId = (await settings.get("FONT_THEME")) ?? "default";
   const customCSS = (await settings.get(SETTINGS_KEYS.CUSTOM_CSS)) ?? "";
   const themes = getAvailableThemes(c.var.config);
@@ -366,7 +367,8 @@ settingsRoutes.post("/appearance", async (c) => {
     return dsToast("Invalid theme selected.", "error");
   }
 
-  if (validTheme.id === "halloween") {
+  const defaultThemeId = getConfigFallback(c, "DEFAULT_THEME");
+  if (validTheme.id === defaultThemeId) {
     await settings.remove(SETTINGS_KEYS.THEME);
   } else {
     await settings.set(SETTINGS_KEYS.THEME, validTheme.id);

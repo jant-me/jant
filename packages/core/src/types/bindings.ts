@@ -6,6 +6,7 @@ export interface Bindings {
   DB: D1Database;
   R2?: R2Bucket;
   SITE_URL: string;
+  DEFAULT_THEME?: string;
   AUTH_SECRET?: string;
   R2_PUBLIC_URL?: string;
   IMAGE_TRANSFORM_URL?: string;

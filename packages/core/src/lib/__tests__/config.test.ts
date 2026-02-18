@@ -172,6 +172,34 @@ describe("isNoIndex", () => {
   });
 });
 
+describe("DEFAULT_THEME", () => {
+  it("returns 'halloween' by default", () => {
+    const c = createMockContext({
+      settings: {} as ReturnType<typeof createSettingsService>,
+    });
+    const result = getConfigFallback(c, "DEFAULT_THEME");
+    expect(result).toBe("halloween");
+  });
+
+  it("returns env value when DEFAULT_THEME is set", () => {
+    const c = createMockContext(
+      { settings: {} as ReturnType<typeof createSettingsService> },
+      { DEFAULT_THEME: "panda" },
+    );
+    const result = getConfigFallback(c, "DEFAULT_THEME");
+    expect(result).toBe("panda");
+  });
+
+  it("is envOnly so getConfig skips DB lookup", async () => {
+    const c = createMockContext(
+      { settings: {} as ReturnType<typeof createSettingsService> },
+      { DEFAULT_THEME: "beach" },
+    );
+    const result = await getConfig(c, "DEFAULT_THEME");
+    expect(result).toBe("beach");
+  });
+});
+
 describe("getConfigFallback", () => {
   it("returns default when no env value", () => {
     const c = createMockContext({
