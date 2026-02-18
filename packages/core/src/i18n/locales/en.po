@@ -19,7 +19,7 @@ msgstr ""
 #~ msgstr "{count} replies"
 
 #. @context: Custom CSS textarea placeholder
-#: src/ui/dash/settings/AppearanceContent.tsx:231
+#: src/ui/dash/settings/AppearanceContent.tsx:233
 msgid "/* Your custom CSS here */"
 msgstr "/* Your custom CSS here */"
 
@@ -61,7 +61,7 @@ msgid "Account"
 msgstr "Account"
 
 #. @context: Custom CSS settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:221
+#: src/ui/dash/settings/AppearanceContent.tsx:223
 msgid "Add custom CSS to override any styles. Use data attributes like [data-page], [data-post], [data-format] to target specific elements."
 msgstr "Add custom CSS to override any styles. Use data attributes like [data-page], [data-post], [data-format] to target specific elements."
 
@@ -173,7 +173,7 @@ msgstr "Change Password"
 #~ msgstr "Choose a font for your site. All options use system fonts for fast loading."
 
 #. @context: Font theme settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:155
+#: src/ui/dash/settings/AppearanceContent.tsx:153
 msgid "Choose a font pairing for your site. All options use system fonts for fast loading."
 msgstr "Choose a font pairing for your site. All options use system fonts for fast loading."
 
@@ -209,7 +209,7 @@ msgstr "Collections"
 #~ msgstr "Collections (optional)"
 
 #. @context: Appearance settings heading
-#: src/ui/dash/settings/AppearanceContent.tsx:114
+#: src/ui/dash/settings/AppearanceContent.tsx:112
 msgid "Color theme"
 msgstr "Color theme"
 
@@ -283,7 +283,7 @@ msgid "Current Password"
 msgstr "Current Password"
 
 #. @context: Appearance settings heading for custom CSS
-#: src/ui/dash/settings/AppearanceContent.tsx:215
+#: src/ui/dash/settings/AppearanceContent.tsx:217
 msgid "Custom CSS"
 msgstr "Custom CSS"
 
@@ -474,7 +474,7 @@ msgid "Featured"
 msgstr "Featured"
 
 #. @context: Appearance settings heading for font theme
-#: src/ui/dash/settings/AppearanceContent.tsx:149
+#: src/ui/dash/settings/AppearanceContent.tsx:147
 msgid "Font theme"
 msgstr "Font theme"
 
@@ -1017,7 +1017,7 @@ msgid "Save Changes"
 msgstr "Save Changes"
 
 #. @context: Button to save custom CSS
-#: src/ui/dash/settings/AppearanceContent.tsx:259
+#: src/ui/dash/settings/AppearanceContent.tsx:261
 msgid "Save CSS"
 msgstr "Save CSS"
 
@@ -1067,7 +1067,7 @@ msgstr "SEO"
 #. @context: Dashboard heading
 #. @context: Dashboard navigation - site settings
 #: src/ui/dash/settings/AccountContent.tsx:16
-#: src/ui/dash/settings/AppearanceContent.tsx:103
+#: src/ui/dash/settings/AppearanceContent.tsx:101
 #: src/ui/dash/settings/GeneralContent.tsx:151
 #: src/ui/layouts/DashLayout.tsx:133
 msgid "Settings"
@@ -1150,6 +1150,13 @@ msgstr "The destination path or URL"
 msgid "The path to redirect from"
 msgstr "The path to redirect from"
 
+#. @context: Font theme preview sentence for body text
+#. @context: Font theme preview sentence for headings
+#: src/ui/dash/settings/AppearanceContent.tsx:185
+#: src/ui/dash/settings/AppearanceContent.tsx:195
+msgid "The quick brown fox jumps over the lazy dog."
+msgstr "The quick brown fox jumps over the lazy dog."
+
 #. @context: Compose quote text placeholder
 #. @context: Quote text placeholder
 #: src/ui/compose/ComposeDialog.tsx:156
@@ -1188,7 +1195,7 @@ msgid "This password reset link is invalid or has expired. Please generate a new
 msgstr "This password reset link is invalid or has expired. Please generate a new one."
 
 #. @context: Appearance settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:120
+#: src/ui/dash/settings/AppearanceContent.tsx:118
 msgid "This will theme both your site and your dashboard. All color themes support dark mode."
 msgstr "This will theme both your site and your dashboard. All color themes support dark mode."
 

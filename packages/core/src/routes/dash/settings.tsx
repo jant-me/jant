@@ -334,7 +334,6 @@ settingsRoutes.get("/appearance", async (c) => {
   const currentFontThemeId = (await settings.get("FONT_THEME")) ?? "default";
   const customCSS = (await settings.get(SETTINGS_KEYS.CUSTOM_CSS)) ?? "";
   const themes = getAvailableThemes(c.var.config);
-  const siteLanguage = await getSiteLanguage(c);
   const saved = c.req.query("saved") !== undefined;
 
   return c.html(
@@ -351,7 +350,6 @@ settingsRoutes.get("/appearance", async (c) => {
         fontThemes={BUILTIN_FONT_THEMES}
         currentFontThemeId={currentFontThemeId}
         customCSS={customCSS}
-        siteLanguage={siteLanguage}
       />
     </DashLayout>,
   );
