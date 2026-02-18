@@ -14,7 +14,7 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. @context: Custom CSS textarea placeholder
-#: src/ui/dash/settings/AppearanceContent.tsx:227
+#: src/ui/dash/settings/AppearanceContent.tsx:231
 msgid "/* Your custom CSS here */"
 msgstr "/* 您的自訂 CSS 在這裡 */"
 
@@ -44,7 +44,7 @@ msgid "Account"
 msgstr "帳戶"
 
 #. @context: Custom CSS settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:217
+#: src/ui/dash/settings/AppearanceContent.tsx:221
 msgid "Add custom CSS to override any styles. Use data attributes like [data-page], [data-post], [data-format] to target specific elements."
 msgstr "添加自定義 CSS 以覆蓋任何樣式。使用數據屬性，如 [data-page]、[data-post]、[data-format] 來針對特定元素。"
 
@@ -128,7 +128,7 @@ msgstr "更改密碼"
 #~ msgstr "選擇一個字體為您的網站。所有選項都使用系統字體以加快加載速度。"
 
 #. @context: Font theme settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:153
+#: src/ui/dash/settings/AppearanceContent.tsx:155
 msgid "Choose a font pairing for your site. All options use system fonts for fast loading."
 msgstr ""
 
@@ -159,7 +159,7 @@ msgid "Collections"
 msgstr "收藏夾"
 
 #. @context: Appearance settings heading
-#: src/ui/dash/settings/AppearanceContent.tsx:112
+#: src/ui/dash/settings/AppearanceContent.tsx:114
 msgid "Color theme"
 msgstr "顏色主題"
 
@@ -228,7 +228,7 @@ msgid "Current Password"
 msgstr "當前密碼"
 
 #. @context: Appearance settings heading for custom CSS
-#: src/ui/dash/settings/AppearanceContent.tsx:211
+#: src/ui/dash/settings/AppearanceContent.tsx:215
 msgid "Custom CSS"
 msgstr "自訂 CSS"
 
@@ -385,7 +385,7 @@ msgid "Featured"
 msgstr "精選"
 
 #. @context: Appearance settings heading for font theme
-#: src/ui/dash/settings/AppearanceContent.tsx:147
+#: src/ui/dash/settings/AppearanceContent.tsx:149
 msgid "Font theme"
 msgstr "字型主題"
 
@@ -862,7 +862,7 @@ msgid "Save Changes"
 msgstr "保存更改"
 
 #. @context: Button to save custom CSS
-#: src/ui/dash/settings/AppearanceContent.tsx:255
+#: src/ui/dash/settings/AppearanceContent.tsx:259
 msgid "Save CSS"
 msgstr "儲存 CSS"
 
@@ -902,7 +902,7 @@ msgstr "SEO"
 #. @context: Dashboard heading
 #. @context: Dashboard navigation - site settings
 #: src/ui/dash/settings/AccountContent.tsx:16
-#: src/ui/dash/settings/AppearanceContent.tsx:101
+#: src/ui/dash/settings/AppearanceContent.tsx:103
 #: src/ui/dash/settings/GeneralContent.tsx:151
 #: src/ui/layouts/DashLayout.tsx:133
 msgid "Settings"
@@ -993,7 +993,7 @@ msgid "This password reset link is invalid or has expired. Please generate a new
 msgstr "此密碼重設連結無效或已過期。請生成一個新的連結。"
 
 #. @context: Appearance settings description
-#: src/ui/dash/settings/AppearanceContent.tsx:118
+#: src/ui/dash/settings/AppearanceContent.tsx:120
 msgid "This will theme both your site and your dashboard. All color themes support dark mode."
 msgstr "這將為您的網站和儀表板設置主題。所有顏色主題都支持深色模式。"
 

@@ -79,12 +79,14 @@ export function AppearanceContent({
   fontThemes,
   currentFontThemeId,
   customCSS,
+  siteLanguage,
 }: {
   themes: ColorTheme[];
   currentThemeId: string;
   fontThemes: FontTheme[];
   currentFontThemeId: string;
   customCSS: string;
+  siteLanguage: string;
 }) {
   const { t } = useLingui();
 
@@ -182,15 +184,17 @@ export function AppearanceContent({
                       class="font-semibold"
                       style={`font-family:${ft.headingFontFamily}`}
                     >
-                      <div>The quick brown fox jumps over the lazy dog.</div>
-                      <div>敏捷的棕色狐狸跳过了懒惰的狗。</div>
+                      {siteLanguage.startsWith("zh")
+                        ? "天地玄黄，宇宙洪荒。日月盈昃，辰宿列张。"
+                        : "The quick brown fox jumps over the lazy dog."}
                     </div>
                     <div
                       class="mt-2"
                       style={`font-family:${ft.bodyFontFamily}`}
                     >
-                      <div>The quick brown fox jumps over the lazy dog.</div>
-                      <div>敏捷的棕色狐狸跳过了懒惰的狗。</div>
+                      {siteLanguage.startsWith("zh")
+                        ? "天地玄黄，宇宙洪荒。日月盈昃，辰宿列张。"
+                        : "The quick brown fox jumps over the lazy dog."}
                     </div>
                   </div>
                 </div>
