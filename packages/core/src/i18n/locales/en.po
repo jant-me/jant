@@ -838,6 +838,11 @@ msgstr "Markdown supported"
 msgid "Media"
 msgstr "Media"
 
+#. @context: Button to show overflow nav links
+#: src/ui/layouts/SiteLayout.tsx
+msgid "More"
+msgstr "More"
+
 #. @context: Header more button tooltip
 #: src/ui/compose/ComposeDialog.tsx
 #~ msgid "More options"

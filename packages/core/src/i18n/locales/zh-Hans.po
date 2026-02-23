@@ -703,6 +703,11 @@ msgstr "支持Markdown"
 msgid "Media"
 msgstr "媒体"
 
+#. @context: Button to show overflow nav links
+#: src/ui/layouts/SiteLayout.tsx
+msgid "More"
+msgstr ""
+
 #. @context: Collection title placeholder
 #: src/ui/dash/collections/CollectionForm.tsx
 msgid "My Collection"

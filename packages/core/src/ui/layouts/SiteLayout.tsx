@@ -75,6 +75,10 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
     currentPath === "/featured" ||
     currentPath === "/latest";
 
+  const maxVisibleLinks = 2;
+  const primaryLinks = links.slice(0, maxVisibleLinks);
+  const overflowLinks = links.slice(maxVisibleLinks);
+
   return (
     <div class="site-page">
       <header class={`site-header ${sidebar ? "site-header-sidebar" : ""}`}>
@@ -87,12 +91,60 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
               {siteName}
             </a>
             <div class="site-header-right">
-              {links.length > 0 && (
+              {isHomePage && (
                 <nav class="site-header-nav">
-                  {links.map((link) => (
+                  {browseLinks.map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      class={`site-header-link ${currentPath === link.href ? "site-header-link-active" : ""}`}
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </nav>
+              )}
+              {isHomePage && primaryLinks.length > 0 && (
+                <span class="site-header-divider" />
+              )}
+              {primaryLinks.length > 0 && (
+                <nav class="site-header-nav">
+                  {primaryLinks.map((link) => (
                     <HeaderLink key={link.id} link={link} />
                   ))}
                 </nav>
+              )}
+              {overflowLinks.length > 0 && (
+                <div class="site-header-more">
+                  <button
+                    class="site-header-more-btn"
+                    aria-label={t({
+                      message: "More",
+                      comment: "@context: Button to show overflow nav links",
+                    })}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="1" />
+                      <circle cx="19" cy="12" r="1" />
+                      <circle cx="5" cy="12" r="1" />
+                    </svg>
+                  </button>
+                  <div class="site-header-more-menu">
+                    {overflowLinks.map((link) => (
+                      <HeaderLink key={link.id} link={link} />
+                    ))}
+                  </div>
+                </div>
               )}
               <a
                 href="/search"
@@ -136,22 +188,6 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
         ) : (
           <div class="site-container">
             <div class="site-content">
-              {isHomePage && (
-                <nav class="site-browse-nav">
-                  {browseLinks.map((link, i) => (
-                    <>
-                      {i > 0 && <span class="site-browse-sep">/</span>}
-                      <a
-                        key={link.href}
-                        href={link.href}
-                        class={`site-browse-link ${currentPath === link.href ? "site-browse-link-active" : ""}`}
-                      >
-                        {link.label}
-                      </a>
-                    </>
-                  ))}
-                </nav>
-              )}
               {isHomePage && isAuthenticated && <ComposePrompt />}
               {children}
             </div>

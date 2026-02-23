@@ -58,6 +58,69 @@
     gap: 12px;
   }
 
+  .site-header-divider {
+    width: 1px;
+    height: 14px;
+    background-color: var(--site-divider);
+  }
+
+  .site-header-more {
+    position: relative;
+  }
+
+  .site-header-more-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 999px;
+    background: none;
+    color: var(--site-text-secondary);
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      background-color 0.15s;
+  }
+
+  .site-header-more-btn:hover {
+    color: var(--site-text-primary);
+    background-color: var(--site-nav-hover-bg);
+  }
+
+  .site-header-more-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 120px;
+    padding: 8px;
+    background-color: var(--site-elevated-bg);
+    border: 0.5px solid var(--site-divider);
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.08);
+    z-index: 50;
+  }
+
+  .site-header-more:focus-within .site-header-more-menu {
+    display: flex;
+  }
+
+  .site-header-more-menu .site-header-link {
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition:
+      color 0.15s,
+      background-color 0.15s;
+  }
+
+  .site-header-more-menu .site-header-link:hover {
+    background-color: var(--site-nav-hover-bg);
+  }
+
   .site-header-search {
     display: flex;
     align-items: center;
@@ -137,36 +200,7 @@
     line-height: var(--leading);
   }
 
-  /* --- Browse filter tabs ------------------------------------------------- */
-
-  .site-browse-nav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 16px 0 var(--space-xl);
-  }
-
-  .site-browse-sep {
-    color: var(--site-divider);
-    font-size: var(--text-sm);
-  }
-
-  .site-browse-link {
-    font-size: var(--text-base);
-    color: var(--site-text-secondary);
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.15s;
-  }
-
-  .site-browse-link:hover {
-    color: var(--site-text-primary);
-  }
-
-  .site-browse-link-active {
-    color: var(--site-text-primary);
-    font-weight: 700;
-  }
+  /* --- Browse filter (Latest / Featured in header) ----------------------- */
 
   /* --- Main content area -------------------------------------------------- */
 
@@ -177,7 +211,7 @@
 
   .site-content {
     background-color: var(--site-elevated-bg);
-    padding: 0 var(--site-padding);
+    padding: var(--space-xl) var(--site-padding) 0;
   }
 
   /* --- Sidebar layout (shared by dashboard and site sidebar pages) ------- */
