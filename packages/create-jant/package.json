@@ -1,6 +1,6 @@
 {
   "name": "create-jant",
-  "version": "0.3.28",
+  "version": "0.3.29",
   "description": "Create a new Jant project",
   "type": "module",
   "bin": {
