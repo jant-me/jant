@@ -1,5 +1,7 @@
 # create-jant
 
+## 0.3.30
+
 ## 0.3.29
 
 ### Patch Changes

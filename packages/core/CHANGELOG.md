@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.30
+
+### Patch Changes
+
+- [`95e26ea`](https://github.com/jant-me/jant/commit/95e26eaf9e5cfef4c00166587e9f0a9ce992d159) Thanks [@theowenyoung](https://github.com/theowenyoung)! - change tumbtail
+
 ## 0.3.29
 
 ## 0.3.28
