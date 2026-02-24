@@ -108,7 +108,7 @@
     width: calc(var(--site-width) - 2 * var(--site-padding));
     max-width: calc(100% - 2 * var(--site-padding));
     padding: 10px 20px;
-    border-radius: 24px;
+    border-radius: 10px;
     background-color: color-mix(
       in srgb,
       var(--site-text-secondary) 6%,
@@ -368,7 +368,8 @@
     align-items: center;
     gap: 12px;
     padding: 16px 0;
-    margin: -20px 0 12px;
+    margin: -20px 0 var(--space-xl);
+    border-bottom: 1px solid var(--site-divider);
   }
 
   .compose-prompt-trigger {
@@ -388,11 +389,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: var(--avatar-size);
-    height: var(--avatar-size);
     flex-shrink: 0;
-    border-radius: var(--avatar-radius);
-    border: 1.5px solid var(--site-column-outline);
     color: var(--site-text-secondary);
   }
 
