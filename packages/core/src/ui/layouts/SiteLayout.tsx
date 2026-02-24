@@ -89,6 +89,28 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
             )}
             {siteName}
           </a>
+          <div class="site-search-box">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="search"
+              class="site-search-input"
+              placeholder={searchLabel}
+              aria-label={searchLabel}
+            />
+          </div>
           <div class="site-header-right">
             {primaryLinks.length > 0 && (
               <nav class="site-header-nav">
@@ -113,13 +135,13 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    stroke-width="2"
+                    stroke-width="2.5"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   >
-                    <circle cx="12" cy="12" r="1" />
-                    <circle cx="19" cy="12" r="1" />
-                    <circle cx="5" cy="12" r="1" />
+                    <circle cx="12" cy="12" r="1.5" />
+                    <circle cx="19" cy="12" r="1.5" />
+                    <circle cx="5" cy="12" r="1.5" />
                   </svg>
                 </button>
                 <div class="site-header-more-menu">
@@ -129,27 +151,6 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
                 </div>
               </div>
             )}
-            <a
-              href="/search"
-              class={`site-header-search ${currentPath === "/search" ? "site-header-search-active" : ""}`}
-              aria-label={searchLabel}
-              title={searchLabel}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-              </svg>
-            </a>
           </div>
         </div>
       </header>
