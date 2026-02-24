@@ -107,16 +107,34 @@
     transform: translateX(-50%);
     width: calc(var(--site-width) - 2 * var(--site-padding));
     max-width: calc(100% - 2 * var(--site-padding));
-    padding: 10px 0;
-    border-radius: 0;
-    background: none;
-    border-bottom: 1px solid var(--site-divider);
+    padding: 10px 20px;
+    border-radius: 24px;
+    background-color: color-mix(
+      in srgb,
+      var(--site-text-secondary) 6%,
+      transparent
+    );
     color: var(--site-text-secondary);
-    transition: border-color 0.2s;
+    transition:
+      background-color 0.2s,
+      color 0.2s;
+  }
+
+  .site-search-box:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--site-text-secondary) 8%,
+      transparent
+    );
   }
 
   .site-search-box:focus-within {
-    border-color: var(--site-text-primary);
+    background-color: color-mix(
+      in srgb,
+      var(--site-text-secondary) 8%,
+      transparent
+    );
+    color: var(--site-text-primary);
   }
 
   .site-search-input {
