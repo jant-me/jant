@@ -111,7 +111,7 @@
     border-radius: 10px;
     background-color: color-mix(
       in srgb,
-      var(--site-text-secondary) 6%,
+      var(--site-text-secondary) 5%,
       transparent
     );
     color: var(--site-text-secondary);
@@ -207,16 +207,16 @@
   .site-browse-nav {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 20px;
     margin-bottom: var(--space-xl);
   }
 
   .site-browse-link {
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     color: var(--site-text-secondary);
     text-decoration: none;
-    font-weight: 500;
-    transition: color 0.15s;
+    font-weight: 400;
+    transition: color 0.2s;
   }
 
   .site-browse-link:hover {
@@ -367,22 +367,15 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    width: 100%;
     padding: 16px 0;
     margin: -20px 0 var(--space-xl);
-    border-bottom: 1px solid var(--site-divider);
-  }
-
-  .compose-prompt-trigger {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    min-width: 0;
-    padding: 0;
     border: none;
+    border-bottom: 1px solid var(--site-divider);
     background: none;
     cursor: pointer;
     text-align: left;
+    outline: none;
   }
 
   .compose-prompt-avatar {
@@ -394,6 +387,7 @@
   }
 
   .compose-prompt-text {
+    flex: 1;
     font-size: var(--text-base);
     color: var(--site-text-secondary);
   }
