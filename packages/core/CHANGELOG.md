@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.36
+
+### Patch Changes
+
+- [`0dd7086`](https://github.com/jant-me/jant/commit/0dd708605b00231b2076cf7bae7ce5afb1fcdad7) Thanks [@theowenyoung](https://github.com/theowenyoung)! - new compose
+
 ## 0.3.35
 
 ### Patch Changes
