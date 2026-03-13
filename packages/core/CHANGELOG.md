@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.37
+
+### Patch Changes
+
+- [`745c808`](https://github.com/jant-me/jant/commit/745c808749879c0239299a13f46368bfee276fae) Thanks [@theowenyoung](https://github.com/theowenyoung)! - UI
+
 ## 0.3.36
 
 ### Patch Changes
