@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.3.38
+
+### Patch Changes
+
+- [`a2e2778`](https://github.com/jant-me/jant/commit/a2e2778756f315dadb305d48799495bdc4883a35) Thanks [@theowenyoung](https://github.com/theowenyoung)! - font
+
 ## 0.3.37
 
 ### Patch Changes
