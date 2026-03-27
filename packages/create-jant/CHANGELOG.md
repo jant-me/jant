@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.3.40
+
+### Patch Changes
+
+- [`8093cf1`](https://github.com/jant-me/jant/commit/8093cf1f155a76f30390bcd6864cf3c8e48fca3f) Thanks [@theowenyoung](https://github.com/theowenyoung)! - new version for starter
+
 ## 0.3.39
 
 ### Patch Changes

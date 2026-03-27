@@ -1,6 +1,0 @@
----
-"@jant/core": patch
-"create-jant": patch
----
-
-new version for starter
