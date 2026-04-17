@@ -51,16 +51,16 @@ Root `templates/` and root `static/` are your territory. Zola picks any file und
 
 The exported site uses a Zola `feed` taxonomy for pagination instead of filtering posts at template time. The main paths are:
 
-| URL                     | What it renders                                         |
-| ----------------------- | ------------------------------------------------------- |
-| `/`                     | Home — pinned posts, then the first page of public feed |
-| `/feed/public/page/N/`  | Older public posts, paginated (N ≥ 2)                   |
-| `/archive/`             | Archive — first page of hidden-from-home posts          |
-| `/feed/archive/page/N/` | Older archive posts, paginated (N ≥ 2)                  |
-| `/{slug}/`              | A single post                                           |
-| `/{collection-slug}/`   | A single collection                                     |
-| `/collections/`         | The collections directory                               |
-| `/feed/unlisted/`       | Unlisted posts; marked `noindex` for search engines     |
+| URL                     | What it renders                                               |
+| ----------------------- | ------------------------------------------------------------- |
+| `/`                     | Home — pinned posts, then the first page of non-pinned public |
+| `/feed/public/page/N/`  | Older non-pinned public posts, paginated (N ≥ 2)              |
+| `/archive/`             | Archive — every published post in one chronological list      |
+| `/feed/archive/page/N/` | Older published posts, paginated (N ≥ 2)                      |
+| `/{slug}/`              | A single post                                                 |
+| `/{collection-slug}/`   | A single collection                                           |
+| `/collections/`         | The collections directory                                     |
+| `/feed/unlisted/`       | Posts hidden from the home feed; listing page is `noindex`    |
 
 Page size is controlled by your Jant site's **Posts per page** setting.
 

@@ -66,20 +66,29 @@ Two pieces are load-bearing for the theme model:
   — drives the home and archive pagination.
 
 The `feed` taxonomy replaces the old `latest_hidden` template-time
-filter. Every non-draft post is assigned at least one feed term. The
-terms are:
+filter. Every non-draft, non-private post is assigned one or two feed
+terms via `feedTermsForPost()` in `export.ts`:
 
-| Term       | Post set                                                     |
-| ---------- | ------------------------------------------------------------ |
-| `public`   | `visibility = public`, not pinned                            |
-| `pinned`   | `visibility = public` **and** `pinnedAt` is set              |
-| `archive`  | `visibility = latest_hidden` (visible but excluded from `/`) |
-| `unlisted` | `visibility = unlisted` (reachable by URL only)              |
+| Jant `visibility` / flag | Feed terms emitted  |
+| ------------------------ | ------------------- |
+| `public`, not pinned     | `public`, `archive` |
+| `public`, `pinnedAt` set | `pinned`, `archive` |
+| `latest_hidden`          | `unlisted`          |
+| `private`                | none (drafted)      |
 
-A post can be in exactly one feed per visibility bucket. Pinned posts go
-to `feed=pinned`, **not** `feed=public`, so Zola's paginator for
-`/feed/public/page/N/` doesn't double-count them. Home page 1 (`/`) then
-manually prepends the pinned set before the first slice of `feed=public`.
+So each `feed` term maps to a specific URL:
+
+| Term       | URL                     | Contains                                      |
+| ---------- | ----------------------- | --------------------------------------------- |
+| `public`   | `/feed/public/page/N/`  | Non-pinned public posts                       |
+| `pinned`   | `/feed/pinned/`         | Pinned public posts (rarely browsed directly) |
+| `archive`  | `/feed/archive/page/N/` | All published posts (pinned + non-pinned)     |
+| `unlisted` | `/feed/unlisted/`       | `latest_hidden` posts; listing is `noindex`   |
+
+`archive` is a secondary tag on every public post — it is what drives
+the chronological `/archive/` page. Pinned posts go to `feed=pinned`,
+**not** `feed=public`, so Zola's paginator for `/feed/public/page/N/`
+cannot double-count them against the pinned prefix on home page 1.
 
 ## URL scheme
 

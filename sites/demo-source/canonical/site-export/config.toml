@@ -10,7 +10,7 @@ feed_filenames = [ "atom.xml" ]
 [extra.jant_export]
 format = "jant-site"
 version = 1
-generated_at = "2026-04-17T10:33:11.000Z"
+generated_at = "2026-04-17T11:10:44.000Z"
 
 [extra.jant]
 home_default_view = "latest"

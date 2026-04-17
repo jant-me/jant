@@ -1825,13 +1825,12 @@ const TEMPLATE_TAXONOMY_SINGLE = `{% extends "base.html" %}
 const TEMPLATE_FEED_SINGLE = `{% extends "base.html" %}
 {% import "macros.html" as macros %}
 
-{% set term_label = term.name %}
-{% if term.name == "public" %}{% set term_label = "Latest" %}{% endif %}
-{% if term.name == "archive" %}{% set term_label = "Archive" %}{% endif %}
-{% if term.name == "pinned" %}{% set term_label = "Pinned" %}{% endif %}
-{% if term.name == "unlisted" %}{% set term_label = "Unlisted" %}{% endif %}
+{# Label lookup is inlined in each block body because Tera's top-level
+   {% set %} does not propagate into {% block %} content when the
+   template uses {% extends %}. A shared macro would also work, but
+   inlining is simpler for a four-term map. #}
 
-{% block title %}{{ term_label }} &mdash; {{ config.title }}{% endblock %}
+{% block title %}{% if term.name == "public" %}Latest{% elif term.name == "archive" %}Archive{% elif term.name == "pinned" %}Pinned{% elif term.name == "unlisted" %}Unlisted{% else %}{{ term.name }}{% endif %} &mdash; {{ config.title }}{% endblock %}
 
 {% block head_extra %}
   {% if term.name == "unlisted" %}
@@ -1842,7 +1841,7 @@ const TEMPLATE_FEED_SINGLE = `{% extends "base.html" %}
 {% block content %}
 <div data-page="feed-{{ term.name }}">
   <header class="section-header">
-    <h1 class="section-title">{{ term_label }}</h1>
+    <h1 class="section-title">{% if term.name == "public" %}Latest{% elif term.name == "archive" %}Archive{% elif term.name == "pinned" %}Pinned{% elif term.name == "unlisted" %}Unlisted{% else %}{{ term.name }}{% endif %}</h1>
     {% if paginator.current_index > 1 %}
     <p class="page-context-label">Page {{ paginator.current_index }}</p>
     {% endif %}
