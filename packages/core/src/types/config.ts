@@ -355,23 +355,6 @@ export const CONFIG_FIELDS = {
     envOnly: false,
     internal: true,
   },
-  /**
-   * JSON array of GitHub App installations authorized for this site.
-   *
-   * Each callback from the install flow upserts an entry here, so the
-   * picker can show all accounts/orgs the owner has granted access to —
-   * not just the latest install. Shape:
-   *   Array<{
-   *     installationId: string;
-   *     account: { login: string; type: "User"|"Organization"; avatarUrl: string };
-   *     addedAt: number; // Unix seconds
-   *   }>
-   */
-  GITHUB_SYNC_APP_INSTALLATIONS: {
-    defaultValue: "",
-    envOnly: false,
-    internal: true,
-  },
 
   // GitHub App (env-only, shared across all sites on a hosted control plane).
   // When all three are configured, the GitHub App connect flow becomes
