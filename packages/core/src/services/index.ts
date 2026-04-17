@@ -39,6 +39,10 @@ import {
   createUploadSessionService,
   type UploadSessionService,
 } from "./upload-session.js";
+import {
+  createGitHubAppInstallationsService,
+  type GitHubAppInstallationsService,
+} from "./github-app-installations.js";
 import type { HostedControlPlaneClient } from "../lib/hosted-control-plane.js";
 import type { EnsureSingleSiteOptions } from "./site.js";
 
@@ -59,6 +63,7 @@ export interface Services {
   siteAdmin: SiteAdminService;
   siteMembers: SiteMemberService;
   siteProfile: SiteProfileService;
+  githubAppInstallations: GitHubAppInstallationsService;
 }
 
 export function createServices(
@@ -141,6 +146,10 @@ export function createServices(
         );
       },
     }),
+    githubAppInstallations: createGitHubAppInstallationsService(
+      db,
+      databaseSchema,
+    ),
   };
 }
 
@@ -167,3 +176,14 @@ export type {
   ManagedSiteResult,
   SiteAdminService,
 } from "./site-admin.js";
+export type {
+  CreateManagedSiteInput as CreateManagedSiteInputDup,
+  ManagedSiteResult as ManagedSiteResultDup,
+  SiteAdminService as SiteAdminServiceDup,
+} from "./site-admin.js";
+export type {
+  GitHubAppInstallationsService,
+  GitHubInstallationAccount,
+  GitHubAccountType,
+  StoredGitHubAppInstallation,
+} from "./github-app-installations.js";
