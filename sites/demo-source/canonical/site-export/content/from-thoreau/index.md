@@ -3,8 +3,11 @@ date: 2025-10-26T20:10:00.000Z
 updated: 2026-04-03T02:30:40.000Z
 slug: "from-thoreau"
 taxonomies:
-  c:
+  collections:
     - "reading-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: quote
   status: published

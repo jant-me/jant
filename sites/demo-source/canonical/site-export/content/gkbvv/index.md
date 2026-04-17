@@ -7,8 +7,11 @@ aliases:
   - "/2cl6d"
   - "/3zqv7"
 taxonomies:
-  c:
+  collections:
     - "tiny-projects"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: note
   status: published
@@ -25,13 +28,25 @@ Tonight's tiny project: make the desk usable again without buying a single organ
 </figure>
 </div>
 
+---
+
+<time datetime="2026-01-07T19:00:00.000Z">Jan 7, 2026</time>
+
 <!-- jant:reply date="2026-01-07T19:00:00.000Z" slug="5oxsv" format="note" status="published" visibility="public" -->
 
 The real problem was not cables. It was receipts, pens, and three mugs pretending not to be clutter.
 
+---
+
+<time datetime="2026-01-07T20:10:00.000Z">Jan 7, 2026</time>
+
 <!-- jant:reply date="2026-01-07T20:10:00.000Z" slug="2cl6d" format="note" status="published" visibility="public" -->
 
 I keep relearning that most home fixes are just decisions I delayed.
+
+---
+
+<time datetime="2026-01-07T19:25:00.000Z">Jan 7, 2026</time>
 
 <!-- jant:reply date="2026-01-07T19:25:00.000Z" slug="3zqv7" format="note" status="published" visibility="public" -->
 

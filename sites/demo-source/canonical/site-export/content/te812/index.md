@@ -7,9 +7,12 @@ aliases:
   - "/the-soup-trick-i-always-forget"
   - "/cxiu6"
 taxonomies:
-  c:
+  collections:
     - "home-cooking"
     - "weekend-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: note
   status: published
@@ -26,13 +29,25 @@ Made tomato soup because the weather could not decide what month it wanted to be
 </figure>
 </div>
 
+---
+
+<time datetime="2026-02-01T12:50:00.000Z">Feb 1, 2026</time>
+
 <!-- jant:reply date="2026-02-01T12:50:00.000Z" slug="t77ms" format="note" status="published" visibility="public" -->
 
 Added a grilled cheese with too much mustard and it turned out to be exactly the right amount of mustard.
 
+---
+
+<time datetime="2026-02-01T12:20:00.000Z">Feb 1, 2026</time>
+
 <!-- jant:reply date="2026-02-01T12:20:00.000Z" slug="the-soup-trick-i-always-forget" format="link" status="published" visibility="public" url="https://www.seriouseats.com/15-minute-creamy-tomato-soup-vegan-recipe" title="The soup trick I always forget" -->
 
 Butter first, then onions. It changes the whole pot.
+
+---
+
+<time datetime="2026-02-01T18:05:00.000Z">Feb 1, 2026</time>
 
 <!-- jant:reply date="2026-02-01T18:05:00.000Z" slug="cxiu6" format="note" status="published" visibility="public" -->
 

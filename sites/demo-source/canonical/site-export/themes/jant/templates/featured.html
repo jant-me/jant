@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% block title %}Featured &mdash; {{ config.title }}{% endblock %}
+
+{% block content %}
+{% set root = get_section(path="_index.md") %}
+{% set featured = root.pages | filter(attribute="extra.featured", value=true) %}
+<div class="section-shell">
+  <header class="section-header">
+    <h1 class="section-title">Featured</h1>
+  </header>
+  {% if featured | length > 0 %}
+  <div data-feed>
+    <div id="timeline-feed">
+      <div id="timeline-items">
+        {% for page in featured %}
+          <div class="feed-item" data-timeline-item data-timeline-item-content>
+            {% if not loop.first %}<hr class="feed-divider">{% endif %}
+            {{ macros::post_card(page=page) }}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p class="section-empty">Nothing featured yet. Pin a post as featured from the admin to see it here.</p>
+  {% endif %}
+</div>
+{% endblock %}

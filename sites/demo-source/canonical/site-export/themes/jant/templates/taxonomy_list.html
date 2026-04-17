@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Collections &mdash; {{ config.title }}{% endblock %}
+
+{% block content %}
+<div class="section-shell">
+  <header class="section-header">
+    <h1 class="section-title">Collections</h1>
+    <p class="section-description">Browse exported posts by collection.</p>
+  </header>
+  {% set directory_items = config.extra.jant.collections_directory | default(value=[]) %}
+  {% if directory_items | length > 0 %}
+  <div class="collection-directory">
+    {% for item in directory_items %}
+      {% if item.type == "divider" %}
+      <div class="collection-directory-divider">
+        <div class="collection-directory-divider-row" {% if not item.label %}aria-hidden="true"{% endif %}>
+          {% if item.label %}
+          <span class="collection-directory-divider-text">{{ item.label }}</span>
+          {% endif %}
+          <hr class="collection-directory-divider-line">
+        </div>
+      </div>
+      {% elif item.type == "link" and item.label and item.url %}
+      <div class="collection-directory-item collection-directory-item-link">
+        <div class="collection-directory-main">
+          <span class="collection-directory-sequence" aria-hidden="true"></span>
+          <div class="collection-directory-title-row">
+            <a href="{{ item.url }}" class="collection-directory-title-link" target="_blank" rel="noopener noreferrer">
+              <span class="collection-directory-title">
+                {{ item.label }}
+                <span class="collection-directory-title-marker" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l2.92-2.92a5 5 0 0 0-7.07-7.08L11.7 5.24" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-2.92 2.92a5 5 0 0 0 7.07 7.08l1.69-1.7" />
+                  </svg>
+                </span>
+              </span>
+            </a>
+          </div>
+          <p class="collection-directory-summary">
+            <span class="collection-directory-meta">Link</span>
+          </p>
+        </div>
+      </div>
+      {% elif item.type == "collection" and item.slug %}
+      {% set entry_count = item.entry_count | default(value=-1) %}
+      {% set recent_activity_label = item.recent_activity_label | default(value="") %}
+      {% set has_collection_page = entry_count != 0 %}
+      <div class="collection-directory-item">
+        <div class="collection-directory-main">
+          <span class="collection-directory-sequence" aria-hidden="true"></span>
+          <div class="collection-directory-title-row">
+            {% if has_collection_page %}
+            <a href="/{{ item.slug }}" class="collection-directory-title-link">
+              <span class="collection-directory-title">{{ item.title | default(value=item.slug) }}</span>
+            </a>
+            {% else %}
+            <span class="collection-directory-title">{{ item.title | default(value=item.slug) }}</span>
+            {% endif %}
+          </div>
+          <p class="collection-directory-summary">
+            {% if entry_count >= 0 %}
+            <span class="collection-directory-meta">
+              {{ entry_count }} {% if entry_count == 1 %}entry{% else %}entries{% endif %}
+            </span>
+            {% endif %}
+            {% if recent_activity_label != "" %}
+              {% if entry_count >= 0 %}
+              <span class="collection-directory-meta-separator" aria-hidden="true">/</span>
+              {% endif %}
+            <span class="collection-directory-updated">Updated {{ recent_activity_label }}</span>
+            {% elif entry_count < 0 %}
+            <span class="collection-directory-meta">Collection</span>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <ol class="collection-list">
+    {% for term in terms %}
+    {% set term_meta = get_section(path= term.name ~ '/_index.md') %}
+    {% set latest_page = term.pages | first %}
+    <li class="collection-list-item">
+      <a href="/{{ term.name }}" class="collection-list-link">
+        <span class="collection-list-sequence" aria-hidden="true"></span>
+        <span class="collection-list-content">
+          <span class="collection-list-title">{{ term_meta.title | default(value=term.name) }}</span>
+          <span class="collection-list-meta">
+            <span>{{ term.pages | length }} entries</span>
+            {% if latest_page %}
+            <span>Updated {{ latest_page.updated | default(value=latest_page.date) | date(format="%Y-%m-%d") }}</span>
+            {% endif %}
+          </span>
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ol>
+  {% endif %}
+</div>
+{% endblock %}

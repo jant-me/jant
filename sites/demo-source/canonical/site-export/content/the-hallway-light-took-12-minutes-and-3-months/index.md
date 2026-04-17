@@ -4,9 +4,12 @@ date: 2025-08-18T18:10:00.000Z
 updated: 2026-04-03T02:31:03.000Z
 slug: "the-hallway-light-took-12-minutes-and-3-months"
 taxonomies:
-  c:
+  collections:
     - "tiny-projects"
     - "weekend-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: note
   status: published

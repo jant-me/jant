@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% block title %}{{ config.title }}{% endblock %}
+{% block header_top_class %}site-header-top site-header-top-bordered site-header-top-home{% endblock %}
+{% block site_content_class %}site-content site-content-home{% endblock %}
+
+{% block content %}
+<div data-page="home">
+  {# Home page 1 is a manual render of the feed taxonomy. Pinned posts
+     live in feed=pinned (NOT feed=public) so Zola's native paginator at
+     /feed/public/page/N/ cannot double-count them. #}
+  {% set_global pinned_pages = [] %}
+  {% set_global public_pages = [] %}
+  {% set feed_tax = get_taxonomy(kind="feed") %}
+  {% for t in feed_tax.items %}
+    {% if t.name == "pinned" %}{% set_global pinned_pages = t.pages %}{% endif %}
+    {% if t.name == "public" %}{% set_global public_pages = t.pages %}{% endif %}
+  {% endfor %}
+
+  {% set page_size = config.extra.jant.page_size %}
+  {% set home_public = public_pages | slice(end=page_size) %}
+  {% set home_pages = pinned_pages | concat(with=home_public) %}
+
+  <div data-feed>
+    <div id="timeline-feed">
+      <div id="timeline-items">
+        {% for page in home_pages %}
+        <div class="feed-item" data-timeline-item data-timeline-item-content>
+          {% if not loop.first %}<hr class="feed-divider">{% endif %}
+          {{ macros::post_card(page=page, context="home") }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {% if public_pages | length > page_size %}
+  <nav class="pagination" aria-label="Pagination">
+    <span class="pagination-disabled">Previous</span>
+    <span aria-current="page" class="pagination-current">1</span>
+    <a href="/feed/public/page/2/" class="pagination-link">Next</a>
+  </nav>
+  {% endif %}
+
+  {% if config.extra.jant.show_jant_branding_on_home %}
+  <footer class="home-branding-credit">
+    Build with
+    <a href="https://github.com/jant-me/jant" target="_blank" rel="noopener noreferrer">
+      <span>Jant</span>
+    </a>
+  </footer>
+  {% endif %}
+</div>
+{% endblock %}

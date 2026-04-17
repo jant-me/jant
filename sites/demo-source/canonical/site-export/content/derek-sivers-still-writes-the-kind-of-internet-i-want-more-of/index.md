@@ -4,9 +4,12 @@ date: 2025-11-25T08:50:00.000Z
 updated: 2026-04-03T02:30:36.000Z
 slug: "derek-sivers-still-writes-the-kind-of-internet-i-want-more-of"
 taxonomies:
-  c:
+  collections:
     - "reading-notes"
     - "useful-links"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: link
   status: published

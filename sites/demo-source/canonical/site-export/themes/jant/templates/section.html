@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% block title %}{{ section.title }} &mdash; {{ config.title }}{% endblock %}
+
+{% block content %}
+<div class="section-shell">
+  <header class="section-header">
+    <h1 class="section-title">{{ section.title }}</h1>
+    {% if section.description %}
+    <p class="section-description">{{ section.description }}</p>
+    {% endif %}
+  </header>
+
+  <div data-feed>
+    <div id="timeline-feed">
+      <div id="timeline-items">
+        {% for page in section.pages %}
+          <div class="feed-item" data-timeline-item data-timeline-item-content>
+            {% if not loop.first %}<hr class="feed-divider">{% endif %}
+            {{ macros::post_card(page=page) }}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

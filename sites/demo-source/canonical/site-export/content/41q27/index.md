@@ -7,9 +7,12 @@ aliases:
   - "/0x4nv"
   - "/faqyt"
 taxonomies:
-  c:
+  collections:
     - "tiny-projects"
     - "weekend-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: note
   status: published
@@ -26,13 +29,25 @@ Repotted the balcony herbs before breakfast. Basil was dramatic. Mint did not ca
 </figure>
 </div>
 
+---
+
+<time datetime="2025-09-27T09:40:00.000Z">Sep 27, 2025</time>
+
 <!-- jant:reply date="2025-09-27T09:40:00.000Z" slug="the-potting-mix-guide-i-keep-rereading" format="link" status="published" visibility="public" url="https://www.rhs.org.uk/plants/types/houseplants/repotting" title="The potting mix guide I keep rereading" -->
 
 Basic, clear, and good for confidence when I start overthinking dirt.
 
+---
+
+<time datetime="2025-09-27T09:00:00.000Z">Sep 27, 2025</time>
+
 <!-- jant:reply date="2025-09-27T09:00:00.000Z" slug="0x4nv" format="note" status="published" visibility="public" -->
 
 I keep forgetting that plants mostly want consistency, not inspiration. Fair enough.
+
+---
+
+<time datetime="2025-09-27T16:50:00.000Z">Sep 27, 2025</time>
 
 <!-- jant:reply date="2025-09-27T16:50:00.000Z" slug="faqyt" format="note" status="published" visibility="public" -->
 

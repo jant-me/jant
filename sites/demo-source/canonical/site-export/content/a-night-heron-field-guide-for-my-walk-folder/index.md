@@ -4,9 +4,12 @@ date: 2026-03-05T09:10:00.000Z
 updated: 2026-04-03T02:30:32.000Z
 slug: "a-night-heron-field-guide-for-my-walk-folder"
 taxonomies:
-  c:
+  collections:
     - "city-walks"
     - "useful-links"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: link
   status: published

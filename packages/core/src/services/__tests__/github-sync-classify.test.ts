@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { GitHubClient } from "../../lib/github-api.js";
 import {
   classifyRepoForSync,
+  JANT_MANAGED_GLOBS,
   JANT_SYNC_MARKER_PATH,
   JANT_SYNC_MARKER_SCHEMA_VERSION,
   type JantSyncMarker,
@@ -62,6 +63,7 @@ function markerJson(overrides: Partial<JantSyncMarker> = {}): string {
     site_id: "sit_testsiteid000000000000000",
     site_host: "blog.example.com",
     created_at: 1713225600,
+    managed_globs: [...JANT_MANAGED_GLOBS],
     ...overrides,
   };
   return JSON.stringify(marker, null, 2);
@@ -133,5 +135,53 @@ describe("classifyRepoForSync", () => {
     });
     const result = await classifyRepoForSync(client, "acme", "site", siteId);
     expect(result.kind).toBe("owned");
+  });
+
+  it("accepts a legacy v1 marker as 'owned' (no managed_globs field)", async () => {
+    // Pre-v2 markers have no managed_globs. Classification must still
+    // match on site_id so existing connections keep working; pushFullSync
+    // handles the v1 → v2 layout migration on the next push.
+    const legacyMarker = JSON.stringify(
+      {
+        schema_version: 1,
+        site_id: siteId,
+        site_host: "blog.example.com",
+        created_at: 1713225600,
+      },
+      null,
+      2,
+    );
+    const client = stubClient({
+      refExists: true,
+      markerFile: {
+        content: encodeBase64(legacyMarker),
+        encoding: "base64",
+      },
+    });
+    const result = await classifyRepoForSync(client, "acme", "site", siteId);
+    expect(result.kind).toBe("owned");
+    if (result.kind === "owned") {
+      expect(result.marker.schema_version).toBe(1);
+      expect(result.marker.managed_globs).toBeUndefined();
+    }
+  });
+
+  it("preserves managed_globs from a v2 marker when owned", async () => {
+    const client = stubClient({
+      refExists: true,
+      markerFile: {
+        content: markerJson({ site_id: siteId }),
+        encoding: "utf-8",
+      },
+    });
+    const result = await classifyRepoForSync(client, "acme", "site", siteId);
+    expect(result.kind).toBe("owned");
+    if (result.kind === "owned") {
+      expect(result.marker.schema_version).toBe(2);
+      expect(result.marker.managed_globs).toEqual([...JANT_MANAGED_GLOBS]);
+      // The hard list should include themes/jant/** — the load-bearing
+      // path for the theme-packaging model.
+      expect(result.marker.managed_globs).toContain("themes/jant/**");
+    }
   });
 });

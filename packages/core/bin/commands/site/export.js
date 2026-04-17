@@ -238,6 +238,8 @@ async function exportLocalSite(env = process.env) {
         imageTransformUrl: appConfig.imageTransformUrl,
         sitePathPrefix: appConfig.sitePathPrefix,
         navItems,
+        pageSize: appConfig.pageSize,
+        archivePageSize: appConfig.archivePageSize,
       },
       {
         storage: runtime.storage,

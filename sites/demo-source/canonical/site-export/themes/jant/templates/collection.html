@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% block title %}{{ section.title }} &mdash; {{ config.title }}{% endblock %}
+
+{% block content %}
+<div class="section-shell">
+  <header class="section-header">
+    <h1 class="section-title">{{ section.title }}</h1>
+    {% if section.description %}
+    <p class="section-description">{{ section.description }}</p>
+    {% endif %}
+  </header>
+  {% set entry_count = section.extra.entry_count | default(value=0) %}
+  {% if entry_count > 0 %}
+  {% set term = get_taxonomy_term(kind="collections", term=section.extra.collection_term) %}
+  {# Partition posts: collection-pinned ones first (matching the live site's
+     per-collection pin sort), then everything else in date-desc order.
+     A post is collection-pinned when its extra.collection_pins array
+     contains this collection's slug. #}
+  {% set this_slug = section.extra.collection_term %}
+  {% set_global pinned_pages = [] %}
+  {% set_global rest_pages = [] %}
+  {% for page in term.pages %}
+    {% set pins = page.extra.collection_pins | default(value=[]) %}
+    {% set_global is_pinned_here = false %}
+    {% for p in pins %}
+      {% if p == this_slug %}{% set_global is_pinned_here = true %}{% endif %}
+    {% endfor %}
+    {% if is_pinned_here %}
+      {% set_global pinned_pages = pinned_pages | concat(with=page) %}
+    {% else %}
+      {% set_global rest_pages = rest_pages | concat(with=page) %}
+    {% endif %}
+  {% endfor %}
+  {% set ordered_pages = pinned_pages | concat(with=rest_pages) %}
+  <div data-feed>
+    <div id="timeline-feed">
+      <div id="timeline-items">
+        {% for page in ordered_pages %}
+          <div class="feed-item" data-timeline-item data-timeline-item-content>
+            {% if not loop.first %}<hr class="feed-divider">{% endif %}
+            {{ macros::post_card(page=page) }}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p class="section-empty">No posts in this collection yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

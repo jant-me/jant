@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% block title %}Archive &mdash; {{ config.title }}{% endblock %}
+
+{% block content %}
+<div data-page="archive">
+  <header class="section-header">
+    <h1 class="section-title">Archive</h1>
+    <p class="section-description">Every published post in one chronological list.</p>
+  </header>
+
+  {# Archive is driven by the feed=archive taxonomy term, which contains
+     every non-draft, non-unlisted post — pinned and non-pinned alike.
+     Page 1 renders the first page_size slice manually; page 2+ is
+     handed off to Zola's paginator at /feed/archive/page/N/. The slice
+     boundary lines up with paginator page 1 exactly, so the Next link
+     below jumps to page 2 without duplicates or gaps. #}
+  {% set_global archive_pages = [] %}
+  {% set feed_tax = get_taxonomy(kind="feed") %}
+  {% for t in feed_tax.items %}
+    {% if t.name == "archive" %}{% set_global archive_pages = t.pages %}{% endif %}
+  {% endfor %}
+  {% set page_size = config.extra.jant.page_size %}
+  {% set slice_pages = archive_pages | slice(end=page_size) %}
+
+  <div data-feed>
+    <div id="timeline-feed">
+      <div id="timeline-items">
+        {% for page in slice_pages %}
+        <div class="feed-item" data-timeline-item data-timeline-item-content>
+          {% if not loop.first %}<hr class="feed-divider">{% endif %}
+          {{ macros::post_card(page=page) }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {% if archive_pages | length > page_size %}
+  <nav class="pagination" aria-label="Pagination">
+    <span class="pagination-disabled">Previous</span>
+    <span aria-current="page" class="pagination-current">1</span>
+    <a href="/feed/archive/page/2/" class="pagination-link">Next</a>
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

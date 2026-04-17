@@ -1,7 +1,8 @@
-base_url = "https://demo-source.jant.me/"
+base_url = "https://demo-source.jant.me"
 title = "Jant"
 description = "Thoughts, links, and quotes — one post at a time"
 default_language = "en"
+theme = "jant"
 generate_feeds = true
 compile_sass = false
 feed_filenames = [ "atom.xml" ]
@@ -9,7 +10,7 @@ feed_filenames = [ "atom.xml" ]
 [extra.jant_export]
 format = "jant-site"
 version = 1
-generated_at = "2026-04-05T10:54:31.000Z"
+generated_at = "2026-04-17T10:33:11.000Z"
 
 [extra.jant]
 home_default_view = "latest"
@@ -25,32 +26,51 @@ theme_id = "tufte"
 default_theme_id = "tufte"
 font_theme_id = "tufte"
 theme_mode = "auto"
+page_size = 50
 site_avatar_url = "/media/7d1da94fd970-med_01kn8jtq3penf98tfq4gzmh9g9.png"
 favicon_version = "202604030230"
 
 [[extra.jant.nav]]
 type = "system"
+label = "Latest"
+url = "/"
+system_key = "latest"
+placement = "header"
+
+[[extra.jant.nav]]
+type = "system"
+label = "Featured"
+url = "/featured/"
+system_key = "featured"
+placement = "header"
+
+[[extra.jant.nav]]
+type = "system"
 label = "Collections"
-url = "/collections"
+url = "/collections/"
 system_key = "collections"
+placement = "header"
 
 [[extra.jant.nav]]
 type = "system"
 label = "Archive"
-url = "/archive"
+url = "/archive/"
 system_key = "archive"
+placement = "header"
 
 [[extra.jant.nav]]
 type = "system"
 label = "RSS"
-url = "/feed"
+url = "/atom.xml"
 system_key = "rss"
+placement = "more"
 
 [[extra.jant.nav]]
 type = "system"
 label = "Settings"
 url = "/settings"
 system_key = "settings"
+placement = "more"
 
 [[extra.jant.collections_directory]]
 type = "collection"
@@ -97,6 +117,11 @@ recent_activity_label = "2026-03-09"
 [[taxonomies]]
 name = "collections"
 feed = true
+
+[[taxonomies]]
+name = "feed"
+feed = true
+paginate_by = 50
 
 [markdown]
 highlight_code = true

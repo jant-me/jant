@@ -57,7 +57,59 @@ export const SYNC_COMMIT_MARKER = "[jant-sync]";
 export const JANT_SYNC_MARKER_PATH = ".jant-sync";
 
 /** Marker file schema version. Bump on incompatible format changes. */
-export const JANT_SYNC_MARKER_SCHEMA_VERSION = 1;
+export const JANT_SYNC_MARKER_SCHEMA_VERSION = 2;
+
+/**
+ * Hard list of paths Jant fully owns and always overwrites on push.
+ * Anything outside this set is user territory and preserved via base_tree.
+ *
+ * - `content/**` — posts, collections, sections (rendered by Zola)
+ * - `themes/jant/**` — the packaged Jant theme (templates + static assets)
+ * - `config.toml` — site config, including `theme = "jant"`
+ * - `.gitignore`, `README.md` — scaffolded once, then kept in sync
+ * - `.jant-sync` — ownership marker; written by this service, not by export
+ *
+ * The list is also stored in the marker itself (`managed_globs`) so future
+ * schema bumps can diff the old and new sets to decide what needs cleanup.
+ */
+export const JANT_MANAGED_GLOBS = [
+  "content/**",
+  "themes/jant/**",
+  "config.toml",
+  ".gitignore",
+  "README.md",
+  ".jant-sync",
+] as const;
+
+/**
+ * Paths that schema v1 used to own under the flat layout but schema v2
+ * no longer writes. On the first v2 push against a v1-marked repo, these
+ * are explicitly deleted so stale root templates can't shadow the new
+ * `themes/jant/` theme (Zola's override rule puts root templates first).
+ *
+ * `static/custom.css` is included: v1 wrote Jant-admin custom CSS here, and
+ * v2 writes it under `themes/jant/static/custom.css`. Leaving the legacy
+ * copy around would cause it to win over the current admin value.
+ */
+const V1_LEGACY_PATHS = [
+  "templates/base.html",
+  "templates/archive.html",
+  "templates/index.html",
+  "templates/page.html",
+  "templates/section.html",
+  "templates/taxonomy_list.html",
+  "templates/taxonomy_single.html",
+  "templates/collection.html",
+  "templates/featured.html",
+  "templates/atom.xml",
+  "templates/macros.html",
+  "static/tokens.css",
+  "static/style.css",
+  "static/theme.css",
+  "static/custom.css",
+  "static/favicon.ico",
+  "static/apple-touch-icon.png",
+] as const;
 
 /** Directory prefix for post files in the repo. */
 const POST_DIR = "content/posts";
@@ -71,6 +123,12 @@ export interface JantSyncMarker {
   site_id: string;
   site_host: string;
   created_at: number;
+  /**
+   * Paths Jant claims ownership of in this repo. Optional on v1 markers
+   * (did not exist); required by writers from v2 onward so future pushes
+   * can detect layout migrations.
+   */
+  managed_globs?: readonly string[];
 }
 
 export type RepoClassification =
@@ -250,6 +308,7 @@ export function createGitHubSyncService(
       site_id: siteId,
       site_host: safeHost(siteConfig.siteUrl),
       created_at: preservedCreatedAt,
+      managed_globs: [...JANT_MANAGED_GLOBS],
     };
   }
   // -------------------------------------------------------------------
@@ -334,10 +393,10 @@ export function createGitHubSyncService(
     repo: string,
     defaultBranch: string,
     seedMarker: JantSyncMarker,
-  ): Promise<{ sha: string; justInitialized: boolean }> {
+  ): Promise<{ sha: string }> {
     try {
       const ref = await client.getRef(owner, repo, `heads/${defaultBranch}`);
-      return { sha: ref.sha, justInitialized: false };
+      return { sha: ref.sha };
     } catch {
       // Empty repo — seed it so the Git Trees API becomes available.
       // Write the ownership marker directly as the seed: it's the file
@@ -347,7 +406,7 @@ export function createGitHubSyncService(
         message: `Initialize Jant sync ${SYNC_COMMIT_MARKER}`,
       });
       const ref = await client.getRef(owner, repo, `heads/${defaultBranch}`);
-      return { sha: ref.sha, justInitialized: true };
+      return { sha: ref.sha };
     }
   }
 
@@ -368,27 +427,28 @@ export function createGitHubSyncService(
       const exportFiles = await exportService.generateZolaFiles();
 
       // Resolve HEAD before building the tree — needed both as the commit
-      // parent / base_tree and to probe for existing "seed" files below.
+      // parent / base_tree and to detect marker schema migrations.
       const repoInfo = await client.getRepo(owner, repo);
       const defaultBranch = repoInfo.default_branch;
 
-      // Build marker up front so the seed and the tree entry use the same
-      // created_at — avoids a one-second drift between the init commit and
+      // Build marker up front so the seed commit and the tree commit share
+      // the same created_at — avoids a one-second drift between init and
       // the first sync commit.
       const now = Math.floor(Date.now() / 1000);
-      // Read existing marker (if any) to preserve created_at across pushes.
-      // Returns null for empty/new repos; getOrInitHead handles seeding.
+      // Read existing marker (if any) to preserve created_at across pushes
+      // and decide whether a schema-migration cleanup is needed.
       const existingMarkerBeforeInit = await client
         .getFileContent(owner, repo, JANT_SYNC_MARKER_PATH)
         .catch(() => null);
-      const marker = buildMarker(
-        existingMarkerBeforeInit
-          ? decodeMarkerContent(existingMarkerBeforeInit)
-          : null,
-        now,
-      );
+      const existingMarkerText = existingMarkerBeforeInit
+        ? decodeMarkerContent(existingMarkerBeforeInit)
+        : null;
+      const existingMarker = existingMarkerText
+        ? parseMarker(existingMarkerText)
+        : null;
+      const marker = buildMarker(existingMarkerText, now);
 
-      const { sha: headSha, justInitialized } = await getOrInitHead(
+      const { sha: headSha } = await getOrInitHead(
         client,
         owner,
         repo,
@@ -396,33 +456,9 @@ export function createGitHubSyncService(
         marker,
       );
 
-      // Seed files (e.g. .gitignore, README.md) are write-once: users are
-      // expected to customize them, so we must not overwrite existing copies.
-      // Probe HEAD in parallel and drop any that already exist. Skip the
-      // probe entirely for repos we just initialized — only our own placeholder
-      // is there, so every seed should be written.
-      const seedFiles = exportFiles.filter((f) => f.managed === "seed");
-      const existingSeedPaths = new Set<string>(
-        justInitialized
-          ? []
-          : (
-              await Promise.all(
-                seedFiles.map(async (f) => {
-                  const existing = await client.getFileContent(
-                    owner,
-                    repo,
-                    f.path,
-                    headSha,
-                  );
-                  return existing ? f.path : null;
-                }),
-              )
-            ).filter((p): p is string => p !== null),
-      );
-
-      // Convert to Git tree items. The ownership marker is always emitted —
-      // `marker` was built above from the pre-init read, so created_at is
-      // preserved across pushes and Git dedupes identical content via blob SHA.
+      // Convert to Git tree items. The ownership marker is always emitted;
+      // `created_at` is preserved across pushes (Git dedupes identical
+      // blobs by SHA, so a no-op marker push is still cheap).
       const treeItems: GitHubTreeItem[] = [
         {
           path: JANT_SYNC_MARKER_PATH,
@@ -431,8 +467,28 @@ export function createGitHubSyncService(
           content: formatMarker(marker),
         },
       ];
+
+      // On the first push against a v1-marked repo, null out the legacy
+      // flat-layout paths. Without this, root `templates/**` files would
+      // shadow the new `themes/jant/` theme because Zola's override rule
+      // picks root over theme. The cleanup runs exactly once: subsequent
+      // pushes see schema_version === 2 and skip this branch.
+      if (
+        existingMarker &&
+        existingMarker.site_id === siteId &&
+        (existingMarker.schema_version ?? 1) < 2
+      ) {
+        for (const legacyPath of V1_LEGACY_PATHS) {
+          treeItems.push({
+            path: legacyPath,
+            mode: "100644",
+            type: "blob",
+            sha: null,
+          });
+        }
+      }
+
       for (const file of exportFiles) {
-        if (existingSeedPaths.has(file.path)) continue;
         if (typeof file.content === "string") {
           treeItems.push({
             path: file.path,

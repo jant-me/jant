@@ -644,6 +644,7 @@ export function createSiteAdminService(
           sitePathPrefix: appConfig.sitePathPrefix,
           navItems: navItemList,
           pageSize: appConfig.pageSize,
+          archivePageSize: appConfig.archivePageSize,
         },
         {
           storage: deps.storage ?? null,

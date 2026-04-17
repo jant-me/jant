@@ -4,9 +4,12 @@ date: 2025-09-06T09:45:00.000Z
 updated: 2026-04-03T02:30:35.000Z
 slug: "current-tea-rotation"
 taxonomies:
-  c:
+  collections:
     - "home-cooking"
     - "weekend-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: note
   status: published

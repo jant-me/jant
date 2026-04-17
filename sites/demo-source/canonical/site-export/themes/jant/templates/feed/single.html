@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% set term_label = term.name %}
+{% if term.name == "public" %}{% set term_label = "Latest" %}{% endif %}
+{% if term.name == "archive" %}{% set term_label = "Archive" %}{% endif %}
+{% if term.name == "pinned" %}{% set term_label = "Pinned" %}{% endif %}
+{% if term.name == "unlisted" %}{% set term_label = "Unlisted" %}{% endif %}
+
+{% block title %}{{ term_label }} &mdash; {{ config.title }}{% endblock %}
+
+{% block head_extra %}
+  {% if term.name == "unlisted" %}
+  <meta name="robots" content="noindex, follow">
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div data-page="feed-{{ term.name }}">
+  <header class="section-header">
+    <h1 class="section-title">{{ term_label }}</h1>
+    {% if paginator.current_index > 1 %}
+    <p class="page-context-label">Page {{ paginator.current_index }}</p>
+    {% endif %}
+  </header>
+  <div data-feed>
+    <div id="timeline-feed">
+      <div id="timeline-items">
+        {% for page in paginator.pages %}
+        <div class="feed-item" data-timeline-item data-timeline-item-content>
+          {% if not loop.first %}<hr class="feed-divider">{% endif %}
+          {{ macros::post_card(page=page) }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {% if paginator.previous or paginator.next %}
+  <nav class="pagination" aria-label="Pagination">
+    {% if paginator.previous %}
+    <a href="{{ paginator.previous }}" class="pagination-link">Previous</a>
+    {% else %}
+    <span class="pagination-disabled">Previous</span>
+    {% endif %}
+
+    {% set total = paginator.number_pagers %}
+    {% set current = paginator.current_index %}
+    {% set_global prev_shown = 0 %}
+    {% for n in range(start=1, end=total + 1) %}
+      {% set show = total <= 7 or n == 1 or n == total or n == current or n == current - 1 or n == current + 1 %}
+      {% if show %}
+        {% if n > prev_shown + 1 %}<span class="pagination-ellipsis" aria-hidden="true">…</span>{% endif %}
+        {% if n == current %}
+        <span aria-current="page" class="pagination-current">{{ n }}</span>
+        {% else %}
+          {% if n == 1 %}
+            {% set page_url = paginator.first %}
+          {% else %}
+            {% set page_url = paginator.base_url ~ n ~ "/" %}
+          {% endif %}
+        <a href="{{ page_url }}" class="pagination-link">{{ n }}</a>
+        {% endif %}
+        {% set_global prev_shown = n %}
+      {% endif %}
+    {% endfor %}
+
+    {% if paginator.next %}
+    <a href="{{ paginator.next }}" class="pagination-link">Next</a>
+    {% else %}
+    <span class="pagination-disabled">Next</span>
+    {% endif %}
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

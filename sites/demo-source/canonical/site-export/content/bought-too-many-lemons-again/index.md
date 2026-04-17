@@ -4,8 +4,11 @@ date: 2025-11-09T09:20:00.000Z
 updated: 2026-04-03T02:30:34.000Z
 slug: "bought-too-many-lemons-again"
 taxonomies:
-  c:
+  collections:
     - "home-cooking"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: note
   status: published

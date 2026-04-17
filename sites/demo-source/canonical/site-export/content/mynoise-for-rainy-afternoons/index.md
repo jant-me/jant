@@ -4,9 +4,12 @@ date: 2025-07-21T13:40:00.000Z
 updated: 2026-04-03T02:30:49.000Z
 slug: "mynoise-for-rainy-afternoons"
 taxonomies:
-  c:
+  collections:
     - "useful-links"
     - "weekend-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: link
   status: published

@@ -54,6 +54,7 @@ export async function handleQueueBatch(
           noindex: false,
           navItems: [],
           pageSize: 50,
+          archivePageSize: 50,
         },
         runtime.storage,
         getGitHubAppConfig(env),

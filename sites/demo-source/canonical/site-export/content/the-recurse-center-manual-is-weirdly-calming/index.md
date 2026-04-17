@@ -4,9 +4,12 @@ date: 2026-01-29T15:20:00.000Z
 updated: 2026-04-03T02:31:04.000Z
 slug: "the-recurse-center-manual-is-weirdly-calming"
 taxonomies:
-  c:
+  collections:
     - "tiny-projects"
     - "useful-links"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: link
   status: published

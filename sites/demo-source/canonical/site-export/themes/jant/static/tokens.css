@@ -1,0 +1,423 @@
+/**
+ * Design Tokens
+ *
+ * CSS custom properties for all visual aspects of the UI.
+ * These are the stable customization API — override in custom CSS
+ * to change typography, layout, surfaces, and element sizing.
+ */
+
+:root {
+  /* Typography — Font families */
+  --font-cjk-serif-fallback:
+    "Songti SC", STSong, SimSun, "Songti TC", PMingLiU, MingLiU,
+    "Noto Serif SC", "Noto Serif CJK SC", "Noto Serif TC", "Noto Serif CJK TC";
+  --font-body:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Helvetica, Arial, "PingFang TC", "PingFang SC",
+    "Hiragino Sans CNS", "Hiragino Sans GB", "Microsoft JhengHei",
+    "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", sans-serif;
+  --font-heading:
+    "New York Small", "New York", "Iowan Old Style", Charter,
+    "Bitstream Charter", "Source Serif 4", Cambria, "Sitka Text", Georgia,
+    var(--font-cjk-serif-fallback), ui-serif, serif;
+  --font-site-title:
+    "New York Small", "New York", "Iowan Old Style", Charter,
+    "Bitstream Charter", "Source Serif 4", Cambria, "Sitka Text", Georgia,
+    var(--font-cjk-serif-fallback), ui-serif, serif;
+  --font-serif:
+    var(--font-cjk-serif-fallback), ui-serif, "New York Small", "New York",
+    "Iowan Old Style", Charter, Georgia, "Times New Roman", Times, serif;
+  --font-ui:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Helvetica, Arial, "PingFang TC", "PingFang SC",
+    "Hiragino Sans CNS", "Hiragino Sans GB", "Microsoft JhengHei",
+    "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", sans-serif;
+  --font-mono:
+    ui-monospace, Menlo, Monaco, Consolas, "Cascadia Code", "Courier New",
+    monospace;
+
+  /* Typography — Font weights */
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extrabold: 800;
+  /*
+   * Unified type scale.
+   *
+   * Every font-size in the system — reading content AND UI controls —
+   * must reference one of these tokens. No raw rem/px values elsewhere.
+   *
+   *   --type-display    2.7rem  (40.5px) — page titles, h1
+   *   --type-title      2.1rem  (31.5px) — h2, feed card titles
+   *   --type-subtitle   1.8rem  (27px)   — h3
+   *   --type-body       1.4rem  (21px)   — running text, form inputs
+   *   --type-secondary  1.1rem  (16.5px) — meta, nav, sidenotes, UI labels
+   *   --type-base       1.0rem  (15px)   — code, UI buttons, controls
+   *   --type-sm         0.9rem  (13.5px) — code blocks, small UI text
+   *   --type-xs         0.8rem  (12px)   — captions, descriptions, chips
+   *   --type-2xs        0.65rem (9.75px) — tiny labels, file sizes, badges
+   */
+  --type-display: 2.7rem;
+  --type-title: 2.1rem;
+  --type-subtitle: 1.8rem;
+  --type-body: 1.4rem;
+  --type-secondary: 1.1rem;
+  --type-base: 1rem;
+  --type-sm: 0.9rem;
+  --type-xs: 0.8rem;
+  --type-2xs: 0.65rem;
+
+  /* Content reading tokens — desktop maps to core scale,
+     mobile overrides below cap sizes for small screens.
+     --type-content-scale uniformly scales all content sizes
+     without affecting UI controls. */
+  --type-content-scale: 0.81;
+  --type-content-display: calc(var(--type-display) * var(--type-content-scale));
+  --type-content-title: calc(var(--type-title) * var(--type-content-scale));
+  --type-content-subtitle: calc(
+    var(--type-subtitle) * var(--type-content-scale)
+  );
+  --type-content-body: calc(var(--type-body) * var(--type-content-scale));
+
+  /* Semantic aliases */
+  --type-code: var(--type-base);
+  --type-code-block: var(--type-sm);
+  --type-body-size: var(--type-content-body);
+  --type-body-tracking: 0;
+  --type-ui-title: var(--type-secondary);
+  --type-ui-control: var(--type-base);
+  --type-ui-meta: var(--type-base);
+  --type-ui-hint: var(--type-sm);
+  --type-ui-caption: var(--type-xs);
+  --type-ui-micro: var(--type-2xs);
+  --type-ui-input: var(--type-secondary);
+  --type-thread-context: var(--type-base);
+  --type-thread-context-title: var(--type-secondary);
+  --type-thread-context-meta: var(--type-sm);
+  --feed-note-title-size: var(--type-content-title);
+  --feed-note-title-leading: var(--type-heading-leading);
+  --type-body-leading: 1.5;
+  --type-display-leading: 1.15;
+  --type-heading-leading: 1.15;
+  --type-heading-weight: var(--fw-regular);
+  --type-heading-tracking: 0;
+  --type-display-weight: var(--fw-regular);
+  --type-display-tracking: 0;
+  --type-label-weight: var(--fw-medium);
+  --type-label-tracking: 0.08em;
+
+  /* Layout — Tufte proportional model */
+  --content-max-width: 42rem;
+  --form-max-width: 42rem;
+  /* compose dialogs + feed content cap */
+  --layout-body-max-width: 1088px;
+  --layout-content-width: 55%;
+  --layout-sidenote-width: 50%;
+  --layout-sidenote-margin: -60%;
+  --site-padding: 1.5rem;
+  --content-gap: 1rem;
+  --space-xl: 2rem;
+
+  /* Sidebar layout (admin + site sidebar pages) */
+  --sidebar-width: 12rem;
+  --sidebar-gap: 2rem;
+
+  /* Surfaces */
+  --card-bg: var(--card);
+  --card-radius: 0;
+  --card-padding: 1rem;
+  --card-border-width: 0;
+  --card-shadow: none;
+
+  /* Elements */
+  --avatar-size: 28px;
+  --avatar-radius: 50%;
+  --media-radius: 0.5rem;
+
+  /* Icons */
+  --icon-stroke: 2;
+  --icon-stroke-fine: 1.5;
+
+  /* Derived color tokens (from BaseCoat variables) */
+  --site-accent: var(--primary);
+  --site-accent-text: var(--primary-foreground);
+  --site-column-outline: var(--border);
+  --site-border-light: color-mix(
+    in srgb,
+    var(--site-column-outline) 52%,
+    transparent
+  );
+  --site-threadline: var(--border);
+  --site-page-bg: var(--background);
+  --site-elevated-bg: var(--background);
+  --site-nav-hover-bg: var(--accent);
+  --site-text-primary: var(--foreground);
+  --site-text-secondary: var(--muted-foreground);
+  --site-reading-title: color-mix(
+    in oklch,
+    var(--site-text-primary) 81%,
+    black
+  );
+  --site-reading-heading: color-mix(
+    in oklch,
+    var(--site-text-primary) 86%,
+    black
+  );
+  --site-reading-body: color-mix(in oklch, var(--site-text-primary) 90%, black);
+  --site-reading-quote: color-mix(
+    in oklch,
+    var(--site-text-primary) 95%,
+    black
+  );
+  --site-reading-meta: color-mix(
+    in srgb,
+    var(--site-text-secondary) 72%,
+    var(--site-text-primary)
+  );
+  --site-reading-caption: color-mix(
+    in srgb,
+    var(--site-text-secondary) 88%,
+    var(--site-text-primary)
+  );
+  --site-content-link: inherit;
+  --site-content-link-hover: var(--site-text-primary);
+  --site-content-link-underline: color-mix(
+    in srgb,
+    var(--site-text-secondary) 58%,
+    transparent
+  );
+  --site-reading-link: var(--site-reading-body);
+  --site-reading-link-hover: var(--site-reading-heading);
+  --site-reading-link-underline: color-mix(
+    in srgb,
+    var(--site-reading-meta) 58%,
+    transparent
+  );
+  --site-text-placeholder: oklch(from var(--muted-foreground) l c h / 0.5);
+  --site-media-outline: var(--border);
+  --site-divider: var(--border);
+  --site-feed-card-bg: color-mix(
+    in srgb,
+    var(--site-elevated-bg) 88%,
+    var(--site-nav-hover-bg)
+  );
+  --site-feed-card-border: color-mix(
+    in srgb,
+    var(--site-divider) 78%,
+    transparent
+  );
+  --site-feed-card-shadow: color-mix(
+    in srgb,
+    var(--site-text-primary) 12%,
+    transparent
+  );
+  --site-feed-divider-color: color-mix(
+    in srgb,
+    var(--site-text-secondary) 30%,
+    transparent
+  );
+  --site-feed-link-tint: color-mix(in srgb, var(--site-accent) 7%, transparent);
+  --site-feed-quote-tint: color-mix(
+    in srgb,
+    var(--site-accent) 10%,
+    transparent
+  );
+  --site-blockquote-rail: color-mix(
+    in srgb,
+    var(--site-accent) 22%,
+    var(--site-divider)
+  );
+  --site-blockquote-bg: color-mix(
+    in srgb,
+    var(--site-feed-quote-tint) 62%,
+    var(--site-page-bg)
+  );
+  --site-blockquote-text: color-mix(
+    in oklch,
+    var(--site-text-primary) 92%,
+    black
+  );
+  --site-summary-blockquote-bg: color-mix(
+    in srgb,
+    var(--site-feed-quote-tint) 42%,
+    var(--site-page-bg)
+  );
+  --site-reading-blockquote-rail: color-mix(
+    in srgb,
+    var(--site-reading-link) 18%,
+    var(--site-reading-meta)
+  );
+  --site-reading-blockquote-bg: color-mix(
+    in srgb,
+    var(--site-accent) 6%,
+    var(--site-page-bg)
+  );
+  --site-thread-context-bg: color-mix(
+    in srgb,
+    var(--site-nav-hover-bg) 58%,
+    transparent
+  );
+  --site-thread-context-border: color-mix(
+    in srgb,
+    var(--site-divider) 74%,
+    transparent
+  );
+  --site-thread-gap-bg: color-mix(
+    in srgb,
+    var(--site-nav-hover-bg) 42%,
+    transparent
+  );
+  --site-thread-item-spacing: 16px;
+  --site-thread-context-max-height: clamp(196px, 40vh, 400px);
+  --site-thread-dot-ring: color-mix(
+    in srgb,
+    var(--site-accent) 16%,
+    transparent
+  );
+  --compose-paper-bg: var(--site-page-bg);
+  --compose-control-bg: color-mix(
+    in srgb,
+    var(--site-nav-hover-bg) 72%,
+    var(--compose-paper-bg)
+  );
+  --compose-control-bg-strong: color-mix(
+    in srgb,
+    var(--site-nav-hover-bg) 88%,
+    var(--compose-paper-bg)
+  );
+  --compose-control-border: color-mix(
+    in srgb,
+    var(--site-column-outline) 68%,
+    transparent
+  );
+  --compose-blockquote-rail: color-mix(
+    in srgb,
+    var(--site-accent) 24%,
+    var(--compose-control-border)
+  );
+  --compose-blockquote-bg: color-mix(
+    in srgb,
+    var(--compose-control-bg) 56%,
+    var(--compose-paper-bg)
+  );
+  --compose-blockquote-bg-focus: color-mix(
+    in srgb,
+    var(--compose-control-bg-strong) 70%,
+    var(--compose-paper-bg)
+  );
+  --compose-blockquote-text: color-mix(
+    in srgb,
+    var(--site-text-primary) 88%,
+    var(--site-text-secondary)
+  );
+  --compose-floating-bg: color-mix(
+    in srgb,
+    var(--compose-paper-bg) 94%,
+    var(--site-nav-hover-bg) 6%
+  );
+
+  /* Search highlight */
+  --search-mark-bg: oklch(0.92 0.14 90 / 0.55);
+  --search-mark-color: oklch(0.35 0.09 70);
+
+  /* Admin */
+  --dash-bg: oklch(0.97 0.005 80);
+  --dash-card-radius: 10px;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --site-padding: 1.875rem;
+    --layout-content-width: 100%;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme-mode="light"]) {
+    --site-reading-title: var(--site-text-primary);
+    --site-reading-heading: color-mix(
+      in oklch,
+      var(--site-text-primary) 94%,
+      var(--site-text-secondary)
+    );
+    --site-reading-body: color-mix(
+      in oklch,
+      var(--site-text-primary) 96%,
+      black
+    );
+    --site-reading-quote: color-mix(
+      in oklch,
+      var(--site-text-primary) 98%,
+      black
+    );
+    --site-reading-meta: color-mix(
+      in srgb,
+      var(--site-text-secondary) 92%,
+      var(--site-text-primary)
+    );
+    --site-reading-caption: color-mix(
+      in srgb,
+      var(--site-text-secondary) 96%,
+      var(--site-text-primary)
+    );
+    --site-reading-link: var(--site-reading-body);
+    --search-mark-bg: oklch(0.45 0.1 85 / 0.5);
+    --search-mark-color: oklch(0.92 0.08 90);
+    --dash-bg: oklch(0.2 0.005 80);
+  }
+}
+
+:root[data-theme-mode="dark"] {
+  --site-reading-title: var(--site-text-primary);
+  --site-reading-heading: color-mix(
+    in oklch,
+    var(--site-text-primary) 94%,
+    var(--site-text-secondary)
+  );
+  --site-reading-body: color-mix(in oklch, var(--site-text-primary) 96%, black);
+  --site-reading-quote: color-mix(
+    in oklch,
+    var(--site-text-primary) 98%,
+    black
+  );
+  --site-reading-meta: color-mix(
+    in srgb,
+    var(--site-text-secondary) 92%,
+    var(--site-text-primary)
+  );
+  --site-reading-caption: color-mix(
+    in srgb,
+    var(--site-text-secondary) 96%,
+    var(--site-text-primary)
+  );
+  --site-reading-link: var(--site-reading-body);
+  --search-mark-bg: oklch(0.45 0.1 85 / 0.5);
+  --search-mark-color: oklch(0.92 0.08 90);
+  --dash-bg: oklch(0.2 0.005 80);
+}
+
+@media (max-width: 760px), (hover: none) and (pointer: coarse) {
+  :root {
+    /* Content layer — tighter scale for mobile reading
+       Ratio ≈ 1.9 : 1.4 : 1.15 : 1 (display:title:subtitle:body)
+       13px base → 31.9 / 24 / 19.5 / 16.9 */
+    --type-content-display: calc(2.45rem * var(--type-content-scale));
+    --type-content-title: calc(1.85rem * var(--type-content-scale));
+    --type-content-subtitle: calc(1.5rem * var(--type-content-scale));
+    --type-content-body: calc(1.3rem * var(--type-content-scale));
+
+    /* UI layer — pixel floors for touch targets */
+    --type-ui-title: max(16px, var(--type-secondary));
+    --type-ui-control: max(15px, var(--type-base));
+    --type-ui-meta: max(15px, var(--type-secondary));
+    --type-ui-hint: max(13px, var(--type-sm));
+    --type-ui-caption: max(13px, var(--type-xs));
+    --type-ui-micro: max(12px, var(--type-2xs));
+    --type-ui-input: max(16px, var(--type-secondary));
+    --type-thread-context: max(15px, var(--type-base));
+    --type-thread-context-title: max(16px, var(--type-secondary));
+    --type-thread-context-meta: max(14px, var(--type-sm));
+  }
+}

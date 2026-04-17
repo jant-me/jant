@@ -4,9 +4,12 @@ date: 2025-10-15T14:15:00.000Z
 updated: 2026-04-03T02:30:33.000Z
 slug: "are-na-is-the-only-bookmark-pile-i-still-revisit"
 taxonomies:
-  c:
+  collections:
     - "tiny-projects"
     - "useful-links"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: link
   status: published

@@ -31,6 +31,39 @@ By default, Jant localizes referenced media into the export so the archive is mo
 
 When the export comes from Jant, `config.toml` also keeps Jant-specific metadata for round-trip imports, including header navigation and the collections directory structure (collection order, dividers, and custom links).
 
+### Export Layout
+
+A Jant export is a standard Zola site. Templates and static assets are packaged as a theme at `themes/jant/`, and `config.toml` sets `theme = "jant"`:
+
+```
+config.toml
+content/                  your posts, collections, sections
+themes/jant/              the packaged Jant theme (templates + static)
+README.md
+.gitignore
+templates/                your overrides (optional)
+static/                   your static files + downloaded media
+```
+
+Root `templates/` and root `static/` are your territory. Zola picks any file under root `templates/<name>.html` over `themes/jant/templates/<name>.html`, so you can override a single page without forking the theme. With `--localize-media` (the default), referenced media is downloaded into `static/media/` so the export is self-contained.
+
+### URL Scheme
+
+The exported site uses a Zola `feed` taxonomy for pagination instead of filtering posts at template time. The main paths are:
+
+| URL                     | What it renders                                         |
+| ----------------------- | ------------------------------------------------------- |
+| `/`                     | Home — pinned posts, then the first page of public feed |
+| `/feed/public/page/N/`  | Older public posts, paginated (N ≥ 2)                   |
+| `/archive/`             | Archive — first page of hidden-from-home posts          |
+| `/feed/archive/page/N/` | Older archive posts, paginated (N ≥ 2)                  |
+| `/{slug}/`              | A single post                                           |
+| `/{collection-slug}/`   | A single collection                                     |
+| `/collections/`         | The collections directory                               |
+| `/feed/unlisted/`       | Unlisted posts; marked `noindex` for search engines     |
+
+Page size is controlled by your Jant site's **Posts per page** setting.
+
 ### Export the Local Site
 
 ```bash
@@ -54,6 +87,18 @@ npx jant site export --url https://your-site.example --output ./jant-site-export
 ```
 
 You can also pass `--token`, but `JANT_API_TOKEN` is easier to reuse.
+
+### Customizing an Export
+
+The `themes/jant/` directory is the packaged Jant theme. If you sync the export to GitHub, Jant will overwrite everything under `themes/jant/**`, `content/**`, `config.toml`, `.gitignore`, and `README.md` on every push. Everything else in the repo is yours and is preserved.
+
+The supported ways to customize an exported site:
+
+- **Override a single template.** Copy the file you want to change from `themes/jant/templates/<name>.html` to `templates/<name>.html` at the project root, then edit the root copy. Zola loads root templates before theme templates, so your version wins without forking the whole theme.
+- **Add static files.** Drop files into the root `static/` directory. They are served at the matching URL and take precedence over anything of the same name in `themes/jant/static/`.
+- **Change colors, fonts, or layout tweaks.** Use **Settings > Custom CSS** in Jant. The value is written to `themes/jant/static/custom.css` on every export, so it is safe to edit from the Jant dashboard but not from the repo.
+
+Editing `themes/jant/**` directly in the repo is not supported — the next sync or export replaces it. For site-wide configuration, use Jant's **Settings** rather than editing `config.toml` by hand.
 
 ## Site Import
 

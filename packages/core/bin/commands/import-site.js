@@ -36,6 +36,26 @@ async function parseToml(content) {
   return parse(content);
 }
 
+/**
+ * Read custom.css from a Jant export. Prefers the root `static/custom.css`
+ * (user override) and falls back to `themes/jant/static/custom.css` (the
+ * default location Jant writes). Legacy flat-layout exports only had the
+ * root copy, so the fallback keeps old exports importable.
+ */
+async function readImportCustomCss(rootDir) {
+  const rootCss = await readFile(
+    join(rootDir, "static", "custom.css"),
+    "utf-8",
+  ).catch(() => null);
+  if (rootCss !== null) {
+    return rootCss;
+  }
+  return readFile(
+    join(rootDir, "themes", "jant", "static", "custom.css"),
+    "utf-8",
+  ).catch(() => "");
+}
+
 function resolveImportUrl(url, siteConfig) {
   if (typeof url !== "string" || url.trim() === "" || url.startsWith("data:")) {
     return url;
@@ -1549,10 +1569,7 @@ export async function run(argv) {
     if (configContent) {
       siteConfig = await parseToml(configContent);
     }
-    customCss = await readFile(
-      join(sourceRootDir, "static", "custom.css"),
-      "utf-8",
-    ).catch(() => "");
+    customCss = await readImportCustomCss(sourceRootDir);
   } else {
     console.log(`Reading ZIP ${inputPath}...`);
     const zipData = await readFile(inputPath);
@@ -1572,10 +1589,7 @@ export async function run(argv) {
     if (configContent) {
       siteConfig = await parseToml(configContent);
     }
-    customCss = await readFile(
-      join(sourceRootDir, "static", "custom.css"),
-      "utf-8",
-    ).catch(() => "");
+    customCss = await readImportCustomCss(sourceRootDir);
   }
 
   try {

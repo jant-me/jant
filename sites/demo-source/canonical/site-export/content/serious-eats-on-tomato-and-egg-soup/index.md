@@ -4,9 +4,12 @@ date: 2025-09-17T17:30:00.000Z
 updated: 2026-04-03T02:30:54.000Z
 slug: "serious-eats-on-tomato-and-egg-soup"
 taxonomies:
-  c:
+  collections:
     - "home-cooking"
     - "useful-links"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: link
   status: published

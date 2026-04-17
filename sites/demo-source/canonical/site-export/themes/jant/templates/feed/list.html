@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Feed &mdash; {{ config.title }}{% endblock %}
+
+{% block head_extra %}
+<meta name="robots" content="noindex, nofollow">
+{% endblock %}
+
+{% block content %}
+<div class="section-shell">
+  <header class="section-header">
+    <h1 class="section-title">Feed</h1>
+    <p class="section-description">Internal routing index. Start from <a href="{{ config.base_url }}">the home page</a> instead.</p>
+  </header>
+</div>
+{% endblock %}

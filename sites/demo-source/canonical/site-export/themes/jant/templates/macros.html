@@ -1,0 +1,297 @@
+{# Strip the site's base_url prefix from current_url to get a leading-slash
+   path, then compare against item.url (also leading-slash, pre-resolved by
+   resolveNavItemUrl in export.ts). Both sides are normalized to drop any
+   trailing slash before equality check. #}
+{% macro nav_link(item, class) %}
+{% set base = config.base_url | trim_end_matches(pat="/") %}
+{% set cp = current_url | default(value="") | trim_start_matches(pat=base) %}
+{% if cp == "" %}{% set cp = "/" %}{% endif %}
+{% set norm_cp = cp | trim_end_matches(pat="/") %}
+{% if norm_cp == "" %}{% set norm_cp = "/" %}{% endif %}
+{% set norm_link = item.url | trim_end_matches(pat="/") %}
+{% if norm_link == "" %}{% set norm_link = "/" %}{% endif %}
+<a href="{{ item.url }}" class="site-header-link {{ class }}{% if norm_cp == norm_link %} site-header-link-active{% endif %}">{{ item.label }}</a>
+{% endmacro %}
+
+{% macro nav_more_link(item, class) %}
+{% set base = config.base_url | trim_end_matches(pat="/") %}
+{% set cp = current_url | default(value="") | trim_start_matches(pat=base) %}
+{% if cp == "" %}{% set cp = "/" %}{% endif %}
+{% set norm_cp = cp | trim_end_matches(pat="/") %}
+{% if norm_cp == "" %}{% set norm_cp = "/" %}{% endif %}
+{% set norm_link = item.url | trim_end_matches(pat="/") %}
+{% if norm_link == "" %}{% set norm_link = "/" %}{% endif %}
+<a href="{{ item.url }}" class="{{ class }}{% if norm_cp == norm_link %} site-header-more-link-active{% endif %}">{{ item.label }}</a>
+{% endmacro %}
+
+{% macro post_status_badges() %}
+<div class="post-status-badges">
+  <span class="post-status-badge post-status-pinned">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" x2="12" y1="17" y2="22" />
+      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+    </svg>
+    Pinned
+  </span>
+  <span class="post-status-badge post-status-private">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
+      <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+      <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
+      <path d="m2 2 20 20" />
+    </svg>
+    Private
+  </span>
+</div>
+{% endmacro %}
+
+{% macro post_rating(page) %}
+{% if page.extra.rating %}
+<div class="post-rating" aria-label="{{ page.extra.rating }} out of 5">
+  {% for i in range(end=5) %}
+  <span class="{% if i < page.extra.rating %}post-star-filled{% else %}post-star-empty{% endif %}">★</span>
+  {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro post_header_meta(page) %}
+<div class="post-header-meta-row">
+  <a href="{{ page.permalink }}" class="u-url post-header-meta-link">
+    <time class="dt-published" datetime="{{ page.date }}" title="{{ page.date }}">
+      {{ page.date | date(format="%b %e, %Y") }}
+    </time>
+  </a>
+</div>
+{% endmacro %}
+
+{% macro post_footer(page, detail=false, show_date=true) %}
+{% set collections = page.taxonomies.collections | default(value=[]) %}
+<footer class="post-menu-footer{% if detail %} post-footer-detail{% endif %}" data-post-meta>
+  <div class="post-footer-meta">
+    <span class="post-footer-featured" title="Featured">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 3 10.1 10.1 3 12l7.1 1.9L12 21l1.9-7.1L21 12l-7.1-1.9Z" />
+      </svg>
+      <span class="sr-only">Featured</span>
+    </span>
+    {% if show_date %}
+    <a href="{{ page.permalink }}" class="u-url post-footer-link">
+      <time class="dt-published" datetime="{{ page.date }}" title="{{ page.date }}">
+        {{ page.date | date(format="%b %e, %Y") }}
+      </time>
+    </a>
+    {% endif %}
+    {% if page.extra.format == "link" and page.extra.link_url %}
+    <a href="{{ page.extra.link_url }}" class="post-footer-external-link" target="_blank" rel="noopener noreferrer" aria-label="Open external link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 17 17 7" />
+        <path d="M9 7h8v8" />
+      </svg>
+    </a>
+    {% endif %}
+    {% if collections | length > 0 %}
+    {% set first_collection = collections | first %}
+    {% set first_collection_meta = get_section(path= first_collection ~ '/_index.md') %}
+    {% set collection_count = collections | length %}
+    {% set hidden_collection_count = collection_count - 2 %}
+    {% set show_collection_separator = show_date or (page.extra.format == "link" and page.extra.link_url) or page.extra.featured %}
+    <span class="post-collection-tags">
+      {% if show_collection_separator %}
+      <span class="post-collection-sep" aria-hidden="true">&middot;</span>
+      {% endif %}
+      <a href="/{{ first_collection }}" class="post-collection-tag">
+        {% if detail %}
+        <span class="post-collection-primary-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="5.05" width="10" height="8.15" rx="2.2" />
+            <path d="M5.1 5.05V4.2a1.1 1.1 0 0 1 1.1-1.1h3.6a1.1 1.1 0 0 1 1.1 1.1v.85" />
+          </svg>
+        </span>
+        {% endif %}
+        <span class="post-collection-tag-text">{{ first_collection_meta.title | default(value=first_collection) }}</span>
+      </a>
+      {% if collection_count >= 2 %}
+      {% set second_collection = collections | nth(n=1) %}
+      {% set second_collection_meta = get_section(path= second_collection ~ '/_index.md') %}
+      <span class="post-collection-second-sep" aria-hidden="true">, </span>
+      <a href="/{{ second_collection }}" class="post-collection-tag">
+        <span class="post-collection-tag-text">{{ second_collection_meta.title | default(value=second_collection) }}</span>
+      </a>
+      {% endif %}
+      {% if hidden_collection_count > 0 %}
+      <span class="post-collection-second-sep" aria-hidden="true">, </span>
+      <span class="post-collection-more-wrap">
+        <button type="button" class="post-collection-more" aria-haspopup="menu" data-collection-popover-trigger>+{{ hidden_collection_count }}</button>
+        <span class="post-collection-popover" role="menu" data-collection-popover>
+          {% for col in collections %}
+          {% if loop.index > 2 %}
+          {% set col_meta = get_section(path= col ~ '/_index.md') %}
+          <a href="/{{ col }}" class="post-collection-popover-item" role="menuitem">{{ col_meta.title | default(value=col) }}</a>
+          {% endif %}
+          {% endfor %}
+        </span>
+      </span>
+      {% endif %}
+    </span>
+    {% endif %}
+  </div>
+</footer>
+{% endmacro %}
+
+{% macro note_card(page, detail=false, context="") %}
+<article
+  class="h-entry post-menu-target {% if detail %}post-detail-shell{% else %}post-card-shell{% endif %}"
+  {% if detail %}data-page="post"{% endif %}
+  data-post
+  data-format="note"
+  data-post-permalink="{{ page.permalink }}"
+  {% if page.title %}data-post-has-title{% endif %}
+  {# Pin icon is intentionally restricted to the home/latest feed.
+     Featured, collection, and detail contexts deliberately don't emit
+     this attribute, so the CSS-driven badge stays hidden there. #}
+  {% if context == "home" and page.extra.pinned %}data-post-pinned{% endif %}
+  {% if page.extra.featured %}data-post-featured{% endif %}
+  data-post-visibility="{{ page.extra.visibility | default(value='public') }}"
+>
+  {{ self::post_status_badges() }}
+  {% if page.title %}
+    {% if detail %}
+    <div class="post-header-block post-header-block-detail">
+      <h1 class="p-name detail-title post-detail-title">{{ page.title }}</h1>
+      {{ self::post_header_meta(page=page) }}
+      {{ self::post_rating(page=page) }}
+    </div>
+    {% else %}
+    <h2 class="p-name feed-note-title">
+      <a href="{{ page.permalink }}" class="u-url post-title-link">{{ page.title }}</a>
+    </h2>
+    {% endif %}
+  {% endif %}
+  {% if detail and page.content %}
+  <div class="e-content prose post-detail-body" data-post-body>{{ page.content | safe }}</div>
+  {% elif not detail and page.summary %}
+  <div class="e-content prose {% if page.title %}post-body-summary{% endif %}" data-post-body>{{ page.summary | safe }}</div>
+  {% elif page.content %}
+  <div class="e-content prose {% if page.title and not detail %}post-body-summary{% endif %}" data-post-body>{{ page.content | safe }}</div>
+  {% endif %}
+  {% if not detail or not page.title %}
+  {{ self::post_rating(page=page) }}
+  {% endif %}
+  {% if detail and page.title %}
+  {{ self::post_footer(page=page, detail=detail, show_date=false) }}
+  {% else %}
+  {{ self::post_footer(page=page, detail=detail, show_date=true) }}
+  {% endif %}
+</article>
+{% endmacro %}
+
+{% macro link_card(page, detail=false, context="") %}
+<article
+  class="h-entry post-menu-target {% if detail %}post-detail-shell post-detail-link{% else %}post-card-shell feed-link-post{% endif %}"
+  {% if detail %}data-page="post"{% endif %}
+  data-post
+  data-format="link"
+  data-post-permalink="{{ page.permalink }}"
+  {% if page.title %}data-post-has-title{% endif %}
+  {# Pin icon is intentionally restricted to the home/latest feed.
+     Featured, collection, and detail contexts deliberately don't emit
+     this attribute, so the CSS-driven badge stays hidden there. #}
+  {% if context == "home" and page.extra.pinned %}data-post-pinned{% endif %}
+  {% if page.extra.featured %}data-post-featured{% endif %}
+  data-post-visibility="{{ page.extra.visibility | default(value='public') }}"
+>
+  {{ self::post_status_badges() }}
+  {% if page.extra.link_url %}
+  <a href="{{ page.extra.link_url }}" class="feed-link-domain" rel="noopener noreferrer" target="_blank">
+    <svg class="feed-link-domain-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <path d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+    </svg>
+    <span>{{ page.extra.link_url | split(pat='//') | nth(n=1) | split(pat='/') | first }}</span>
+  </a>
+  {% endif %}
+  {% if page.title %}
+    {% if detail %}
+    <div class="post-header-block">
+      <h1 class="p-name detail-title post-detail-title feed-link-title">
+        <a href="{{ page.extra.link_url | default(value=page.permalink) }}" class="u-url feed-link-title-link" {% if page.extra.link_url %}target="_blank" rel="noopener noreferrer"{% endif %}>{{ page.title }}</a>
+      </h1>
+      {{ self::post_rating(page=page) }}
+    </div>
+    {% else %}
+    <h2 class="p-name feed-link-title">
+      <a href="{{ page.extra.link_url | default(value=page.permalink) }}" class="u-url feed-link-title-link" {% if page.extra.link_url %}target="_blank" rel="noopener noreferrer"{% endif %}>{{ page.title }}</a>
+    </h2>
+    {% endif %}
+  {% endif %}
+  {% if detail and page.content %}
+  <div class="e-content prose feed-link-summary post-detail-body" data-post-body>{{ page.content | safe }}</div>
+  {% elif not detail and page.summary %}
+  <div class="e-content prose feed-link-summary" data-post-body>{{ page.summary | safe }}</div>
+  {% elif page.content %}
+  <div class="e-content prose feed-link-summary" data-post-body>{{ page.content | safe }}</div>
+  {% endif %}
+  {% if not detail or not page.title %}
+  {{ self::post_rating(page=page) }}
+  {% endif %}
+  {{ self::post_footer(page=page, detail=detail) }}
+</article>
+{% endmacro %}
+
+{% macro quote_card(page, detail=false, context="") %}
+<article
+  class="h-entry post-menu-target feed-quote-post {% if detail %}post-detail-shell{% endif %}"
+  {% if detail %}data-page="post"{% endif %}
+  data-post
+  data-format="quote"
+  data-post-permalink="{{ page.permalink }}"
+  {# Pin icon is intentionally restricted to the home/latest feed.
+     Featured, collection, and detail contexts deliberately don't emit
+     this attribute, so the CSS-driven badge stays hidden there. #}
+  {% if context == "home" and page.extra.pinned %}data-post-pinned{% endif %}
+  {% if page.extra.featured %}data-post-featured{% endif %}
+  data-post-visibility="{{ page.extra.visibility | default(value='public') }}"
+>
+  {{ self::post_status_badges() }}
+  {% if page.extra.quote_text %}
+  <blockquote class="feed-quote feed-quote-card">
+    <span class="decorative-quote-mark feed-quote-mark" aria-hidden="true">
+  <svg viewBox="0 0 96 96" role="presentation" focusable="false">
+    <path fill="currentColor" d="M24.4 10.5C16.9 17.7 11.5 26.8 8.2 37.7C4.9 48.7 4.8 58.9 7.8 68.2C10.3 75.7 15.4 79.5 22.9 79.5C28 79.5 32.2 77.8 35.4 74.2C38.6 70.7 40.2 66.5 40.2 61.4C40.2 56.5 38.8 52.6 36 49.6C33.3 46.6 29.7 45.1 25.2 45.1C23.4 45.1 21.8 45.3 20.2 45.8C22.2 37.3 26.7 29.2 33.6 21.4L24.4 10.5Z" /><path fill="currentColor" d="M60.8 10.5C53.3 17.7 47.9 26.8 44.6 37.7C41.3 48.7 41.2 58.9 44.2 68.2C46.7 75.7 51.8 79.5 59.3 79.5C64.4 79.5 68.6 77.8 71.8 74.2C75 70.7 76.6 66.5 76.6 61.4C76.6 56.5 75.2 52.6 72.4 49.6C69.7 46.6 66.1 45.1 61.6 45.1C59.8 45.1 58.2 45.3 56.6 45.8C58.6 37.3 63.1 29.2 70 21.4L60.8 10.5Z" />
+  </svg>
+</span>
+    <div class="e-content feed-quote-content{% if detail %} post-detail-quote{% endif %}">{{ page.extra.quote_text }}</div>
+  </blockquote>
+  {% endif %}
+  {% if page.extra.source_name or page.extra.source_url %}
+  <div class="feed-quote-attribution">
+    {% if page.extra.source_url %}
+    <a href="{{ page.extra.source_url }}" class="feed-quote-source" target="_blank" rel="noopener noreferrer">
+      {{ page.extra.source_name | default(value=page.extra.source_url | split(pat='//') | nth(n=1) | split(pat='/') | first) }}
+    </a>
+    {% else %}
+    <span>{{ page.extra.source_name }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% if detail and page.content %}
+  <div class="feed-quote-commentary prose{% if detail %} post-detail-body{% endif %}" data-post-body>{{ page.content | safe }}</div>
+  {% elif not detail and page.summary %}
+  <div class="feed-quote-commentary prose" data-post-body>{{ page.summary | safe }}</div>
+  {% elif page.content %}
+  <div class="feed-quote-commentary prose" data-post-body>{{ page.content | safe }}</div>
+  {% endif %}
+  {{ self::post_rating(page=page) }}
+  {{ self::post_footer(page=page, detail=detail) }}
+</article>
+{% endmacro %}
+
+{% macro post_card(page, detail=false, context="") %}
+{% if page.extra.format == "link" %}
+{{ self::link_card(page=page, detail=detail, context=context) }}
+{% elif page.extra.format == "quote" %}
+{{ self::quote_card(page=page, detail=detail, context=context) }}
+{% else %}
+{{ self::note_card(page=page, detail=detail, context=context) }}
+{% endif %}
+{% endmacro %}

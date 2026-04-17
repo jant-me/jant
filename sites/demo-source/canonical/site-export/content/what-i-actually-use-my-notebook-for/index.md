@@ -4,9 +4,12 @@ date: 2025-10-02T11:00:00.000Z
 updated: 2026-04-03T02:31:05.000Z
 slug: "what-i-actually-use-my-notebook-for"
 taxonomies:
-  c:
+  collections:
     - "tiny-projects"
     - "weekend-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: note
   status: published

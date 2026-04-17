@@ -4,9 +4,12 @@ date: 2026-01-12T19:00:00.000Z
 updated: 2026-04-03T02:31:02.000Z
 slug: "the-five-minute-reset-is-still-the-best-habit-i-have"
 taxonomies:
-  c:
+  collections:
     - "tiny-projects"
     - "weekend-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: note
   status: published

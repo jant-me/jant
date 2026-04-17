@@ -3,8 +3,11 @@ date: 2025-08-04T07:25:00.000Z
 updated: 2026-04-03T02:30:37.000Z
 slug: "e0kcg"
 taxonomies:
-  c:
+  collections:
     - "weekend-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: note
   status: published

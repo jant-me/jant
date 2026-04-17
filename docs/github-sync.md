@@ -59,11 +59,11 @@ Jant validates the token, saves the configuration, and creates a webhook on the 
 
 When these environment variables are set on the Jant deployment, the GitHub App connect flow is enabled:
 
-| Variable                    | Required | What it is                                                                                                                                  |
-| --------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GITHUB_APP_ID`             | Yes      | Numeric App ID from the GitHub App settings page.                                                                                           |
-| `GITHUB_APP_PRIVATE_KEY`    | Yes      | PKCS#8 PEM private key generated in the GitHub App settings. `\n` escapes are expanded automatically, so you can store it on a single line. |
-| `GITHUB_APP_SLUG`           | Yes      | App slug (the last segment of `github.com/apps/<slug>`). Used to build install URLs.                                                        |
+| Variable                    | Required | What it is                                                                                                                                                                                                                                                        |
+| --------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GITHUB_APP_ID`             | Yes      | Numeric App ID from the GitHub App settings page.                                                                                                                                                                                                                 |
+| `GITHUB_APP_PRIVATE_KEY`    | Yes      | PKCS#8 PEM private key generated in the GitHub App settings. `\n` escapes are expanded automatically, so you can store it on a single line.                                                                                                                       |
+| `GITHUB_APP_SLUG`           | Yes      | App slug (the last segment of `github.com/apps/<slug>`). Used to build install URLs.                                                                                                                                                                              |
 | `GITHUB_APP_WEBHOOK_SECRET` | No       | Shared secret for GitHub App webhooks. Used by two endpoints: the per-repo push webhook (takes precedence over the per-site secret) and the App-level webhook at `/api/github-sync/app-webhook`, which reacts to installation and installation-repository events. |
 
 ### Creating the GitHub App
@@ -110,9 +110,21 @@ Jant uses the installation to issue short-lived tokens on demand — no token is
 
 ## Push a Full Sync
 
-After connecting, click **Push Full Sync** to populate the repository with all your posts. This creates a single commit containing every post as a Markdown file under `content/posts/`.
+After connecting, click **Push Full Sync** to populate the repository with all your posts. This creates a single commit containing every post as a Markdown file under `content/posts/`, plus the theme and config needed to build the site with [Zola](https://www.getzola.org).
 
 You can re-run a full sync at any time. It replaces the repository content in one atomic commit. Git treats unchanged files as no-ops, so your blame history is preserved for files that did not change.
+
+### What Jant Owns in the Repo
+
+Jant fully manages these paths and overwrites them on every push:
+
+- `content/**` — posts, collections, sections
+- `themes/jant/**` — the packaged Jant theme (templates and static assets)
+- `config.toml` — site configuration, including the `theme = "jant"` line
+- `.gitignore`, `README.md` — scaffolded by Jant
+- `.jant-sync` — ownership marker
+
+Everything else is yours. Jant preserves it across pushes. If you want to customize the site, edit root-level `templates/<name>.html` or `static/<name>` — Zola picks those over the theme's versions. Do not edit under `themes/jant/**` directly; the next push will revert your changes. See [Customizing an Export](export-and-import.md#customizing-an-export) for details.
 
 ## Incremental Sync
 

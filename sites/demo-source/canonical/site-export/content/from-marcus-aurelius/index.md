@@ -3,8 +3,11 @@ date: 2025-09-03T12:20:00.000Z
 updated: 2026-04-03T02:30:39.000Z
 slug: "from-marcus-aurelius"
 taxonomies:
-  c:
+  collections:
     - "reading-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: quote
   status: published

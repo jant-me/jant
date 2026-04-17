@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { unzipSync } from "fflate";
-import { createExportService } from "../services/export.js";
+import { buildPostMarkdown, createExportService } from "../services/export.js";
 import type { Collection, Media, Post } from "../types.js";
 
 function decodeZipEntry(
@@ -120,6 +120,7 @@ describe("createExportService", () => {
       noindex: false,
       navItems: [],
       pageSize: 50,
+      archivePageSize: 50,
     };
 
     const zip = await createExportService(
@@ -134,16 +135,26 @@ describe("createExportService", () => {
       "content/programming/_index.md",
     );
     const postMarkdown = decodeZipEntry(files, "content/desk-note/index.md");
-    const archiveTemplate = decodeZipEntry(files, "templates/archive.html");
+    const archiveTemplate = decodeZipEntry(
+      files,
+      "themes/jant/templates/archive.html",
+    );
     const taxonomyListTemplate = decodeZipEntry(
       files,
-      "templates/taxonomy_list.html",
+      "themes/jant/templates/taxonomy_list.html",
     );
-    const atomTemplate = decodeZipEntry(files, "templates/atom.xml");
-    const macrosTemplate = decodeZipEntry(files, "templates/macros.html");
-    const styleCss = decodeZipEntry(files, "static/style.css");
-    const faviconFile = files["static/favicon.ico"];
-    const appleTouchFile = files["static/apple-touch-icon.png"];
+    const atomTemplate = decodeZipEntry(
+      files,
+      "themes/jant/templates/atom.xml",
+    );
+    const macrosTemplate = decodeZipEntry(
+      files,
+      "themes/jant/templates/macros.html",
+    );
+    const styleCss = decodeZipEntry(files, "themes/jant/static/style.css");
+    const faviconFile = files["themes/jant/static/favicon.ico"];
+    const appleTouchFile = files["themes/jant/static/apple-touch-icon.png"];
+    const themeToml = decodeZipEntry(files, "themes/jant/theme.toml");
 
     expect(configToml).toContain('site_avatar_mode = "none"');
     expect(configToml).toContain('favicon_mode = "default"');
@@ -166,10 +177,16 @@ describe("createExportService", () => {
     expect(postMarkdown).toContain("summary_text:");
     expect(postMarkdown).not.toContain("archive_month:");
     expect(postMarkdown).not.toContain("archive_month_label:");
-    expect(archiveTemplate).toContain('group_by(attribute="year")');
-    expect(archiveTemplate).toContain('group_by(attribute="month")');
-    expect(archiveTemplate).toContain("page.extra.summary_text");
-    expect(archiveTemplate).toContain("get_section(path= col ~ '/_index.md')");
+    expect(postMarkdown).toContain("  feed:");
+    expect(postMarkdown).toContain('    - "public"');
+    expect(postMarkdown).toContain('    - "archive"');
+    expect(configToml).toContain('name = "feed"');
+    expect(configToml).toContain("paginate_by = 50");
+    expect(archiveTemplate).toContain('get_taxonomy(kind="feed")');
+    expect(archiveTemplate).toContain('t.name == "archive"');
+    expect(archiveTemplate).toContain("archive_pages | slice(end=page_size)");
+    expect(archiveTemplate).toContain('href="/feed/archive/page/2/"');
+    expect(archiveTemplate).not.toContain("latest_hidden");
     expect(taxonomyListTemplate).toContain(
       "config.extra.jant.collections_directory",
     );
@@ -230,6 +247,15 @@ describe("createExportService", () => {
     expect(faviconFile?.byteLength).toBeGreaterThan(0);
     expect(appleTouchFile).toBeDefined();
     expect(appleTouchFile?.byteLength).toBeGreaterThan(0);
+    expect(configToml).toContain('theme = "jant"');
+    expect(themeToml).toContain('name = "Jant"');
+    // Legacy flat paths must not leak back in — Jant only writes under
+    // themes/jant/ now; root templates/ and static/ belong to the user.
+    expect(files["templates/base.html"]).toBeUndefined();
+    expect(files["templates/archive.html"]).toBeUndefined();
+    expect(files["templates/index.html"]).toBeUndefined();
+    expect(files["static/style.css"]).toBeUndefined();
+    expect(files["static/favicon.ico"]).toBeUndefined();
   });
 
   it("embeds markdown payloads for text attachments and renders preview markup", async () => {
@@ -322,6 +348,7 @@ describe("createExportService", () => {
       noindex: false,
       navItems: [],
       pageSize: 50,
+      archivePageSize: 50,
     };
 
     const zip = await createExportService(services, siteConfig, {
@@ -329,7 +356,7 @@ describe("createExportService", () => {
     }).generateZolaSite();
     const files = unzipSync(zip);
     const postMarkdown = decodeZipEntry(files, "content/desk-note/index.md");
-    const styleCss = decodeZipEntry(files, "static/style.css");
+    const styleCss = decodeZipEntry(files, "themes/jant/static/style.css");
 
     // Text attachments export as a card-shaped link to the public `.html`
     // artifact — file icon, summary, character count — not inline content.
@@ -433,6 +460,7 @@ describe("createExportService", () => {
       noindex: false,
       navItems: [],
       pageSize: 50,
+      archivePageSize: 50,
     };
 
     const zip = await createExportService(
@@ -525,6 +553,7 @@ describe("createExportService", () => {
       noindex: false,
       navItems: [],
       pageSize: 50,
+      archivePageSize: 50,
     };
 
     const zip = await createExportService(services, siteConfig, {
@@ -543,8 +572,10 @@ describe("createExportService", () => {
     expect(configToml).toContain('site_avatar_mode = "custom"');
     expect(configToml).toContain('favicon_mode = "custom"');
     expect(configToml).toContain('apple_touch_mode = "custom"');
-    expect(files["static/favicon.ico"]).toEqual(customFaviconBytes);
-    expect(files["static/apple-touch-icon.png"]).toEqual(customAppleTouchBytes);
+    expect(files["themes/jant/static/favicon.ico"]).toEqual(customFaviconBytes);
+    expect(files["themes/jant/static/apple-touch-icon.png"]).toEqual(
+      customAppleTouchBytes,
+    );
   });
 
   it("falls back to the default apple-touch icon when the custom asset is unavailable", async () => {
@@ -615,6 +646,7 @@ describe("createExportService", () => {
       noindex: false,
       navItems: [],
       pageSize: 50,
+      archivePageSize: 50,
     };
 
     const zip = await createExportService(services, siteConfig, {
@@ -624,7 +656,7 @@ describe("createExportService", () => {
     }).generateZolaSite();
     const files = unzipSync(zip);
     const configToml = decodeZipEntry(files, "config.toml");
-    const appleTouchFile = files["static/apple-touch-icon.png"];
+    const appleTouchFile = files["themes/jant/static/apple-touch-icon.png"];
 
     expect(configToml).toContain('apple_touch_mode = "default"');
     expect(appleTouchFile).toBeDefined();
@@ -700,6 +732,7 @@ describe("createExportService", () => {
       noindex: false,
       navItems: [],
       pageSize: 50,
+      archivePageSize: 50,
     };
 
     const zip = await createExportService(
@@ -780,6 +813,7 @@ describe("createExportService", () => {
       noindex: false,
       navItems: [],
       pageSize: 50,
+      archivePageSize: 50,
     };
 
     const zip = await createExportService(
@@ -791,7 +825,10 @@ describe("createExportService", () => {
       files,
       "content/from-marcus-aurelius/index.md",
     );
-    const macrosTemplate = decodeZipEntry(files, "templates/macros.html");
+    const macrosTemplate = decodeZipEntry(
+      files,
+      "themes/jant/templates/macros.html",
+    );
 
     expect(postMarkdown).not.toContain("\ntitle:");
     expect(postMarkdown).toContain("source_name:");
@@ -886,6 +923,7 @@ describe("createExportService", () => {
       noindex: false,
       navItems: [],
       pageSize: 50,
+      archivePageSize: 50,
     };
 
     const zip = await createExportService(
@@ -902,5 +940,94 @@ describe("createExportService", () => {
     expect(postMarkdown).toContain("    root_aliases:");
     expect(postMarkdown).toContain('      - "/older-root"');
     expect(postMarkdown).not.toContain('      - "/thread-reply"');
+  });
+
+  it("emits feed taxonomy values per visibility", () => {
+    const basePost: Post = {
+      id: "post-1",
+      format: "note",
+      status: "published",
+      visibility: "public",
+      pinnedAt: null,
+      featuredAt: null,
+      slug: "hello",
+      title: null,
+      url: null,
+      body: null,
+      bodyHtml: null,
+      bodyText: "hi",
+      quoteText: null,
+      summary: "hi",
+      rating: null,
+      previewImageKey: null,
+      previewKind: null,
+      previewProvider: null,
+      replyToId: null,
+      threadId: "post-1",
+      deletedAt: null,
+      publishedAt: 1773014400,
+      lastActivityAt: 1773014400,
+      createdAt: 1773014400,
+      updatedAt: 1773014400,
+    };
+
+    const siteConfig: Parameters<typeof buildPostMarkdown>[8] = {
+      siteName: "Jant",
+      siteUrl: "https://example.com",
+      siteDescription: "",
+      siteLanguage: "zh-CN",
+      showJantBrandingOnHome: true,
+      homeDefaultView: "latest",
+      siteFooter: "",
+      showHeaderAvatar: false,
+      siteAvatarUrl: "",
+      themeId: "paper",
+      defaultThemeId: "paper",
+      fontThemeId: "system",
+      themeMode: "auto",
+      noindex: false,
+      navItems: [],
+      pageSize: 50,
+      archivePageSize: 50,
+    };
+    const callBuild = (post: Post): string =>
+      buildPostMarkdown(
+        post,
+        [],
+        [],
+        { rootAliases: [], zolaAliases: [] },
+        new Map([[post.id, post.slug]]),
+        new Map(),
+        [],
+        new Map(),
+        siteConfig,
+      );
+
+    const publicMd = callBuild(basePost);
+    expect(publicMd).toContain("taxonomies:");
+    expect(publicMd).toContain("  feed:");
+    expect(publicMd).toContain('    - "public"');
+    expect(publicMd).toContain('    - "archive"');
+    expect(publicMd).not.toContain('    - "pinned"');
+    expect(publicMd).not.toContain('    - "unlisted"');
+
+    const pinnedMd = callBuild({ ...basePost, pinnedAt: 1773014400 });
+    expect(pinnedMd).toContain("  feed:");
+    expect(pinnedMd).toContain('    - "pinned"');
+    expect(pinnedMd).toContain('    - "archive"');
+    expect(pinnedMd).not.toContain('    - "public"');
+
+    const latestHiddenMd = callBuild({
+      ...basePost,
+      visibility: "latest_hidden",
+    });
+    expect(latestHiddenMd).toContain("  feed:");
+    expect(latestHiddenMd).toContain('    - "unlisted"');
+    expect(latestHiddenMd).not.toContain('    - "public"');
+    expect(latestHiddenMd).not.toContain('    - "archive"');
+
+    const privateMd = callBuild({ ...basePost, visibility: "private" });
+    expect(privateMd).not.toContain("  feed:");
+    expect(privateMd).toContain("draft: true");
   });
 });

@@ -1,0 +1,13 @@
+# Zola build output
+public/
+static/processed_images/
+.zola-cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp

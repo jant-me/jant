@@ -4,9 +4,12 @@ date: 2026-02-20T17:40:00.000Z
 updated: 2026-04-03T02:30:54.000Z
 slug: "rain-makes-my-neighborhood-look-better"
 taxonomies:
-  c:
+  collections:
     - "city-walks"
     - "weekend-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: note
   status: published

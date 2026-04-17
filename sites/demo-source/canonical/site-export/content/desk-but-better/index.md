@@ -4,8 +4,11 @@ date: 2026-03-01T10:45:00.000Z
 updated: 2026-04-03T02:30:36.000Z
 slug: "desk-but-better"
 taxonomies:
-  c:
+  collections:
     - "tiny-projects"
+  feed:
+    - "pinned"
+    - "archive"
 extra:
   format: note
   status: published

@@ -35,5 +35,6 @@ export function buildSyncSiteConfig(c: {
     sitePathPrefix: cfg.sitePathPrefix,
     navItems: [],
     pageSize: cfg.pageSize,
+    archivePageSize: cfg.archivePageSize,
   };
 }

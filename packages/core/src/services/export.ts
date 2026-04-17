@@ -41,19 +41,6 @@ import type { Post, Collection, Media, NavItem } from "../types.js";
 export interface ExportFile {
   path: string;
   content: string | Uint8Array;
-  /**
-   * How this file should be managed when syncing to a long-lived destination
-   * (e.g. GitHub repo):
-   * - `"always"` (default): regenerated on every sync; user edits will be
-   *   overwritten. Use for files Jant needs to keep authoritative (templates,
-   *   config, generated content).
-   * - `"seed"`: written only when the destination does not already have the
-   *   file. Use for files users are expected to customize (`.gitignore`,
-   *   `README.md`).
-   *
-   * ZIP/local exports always include every file regardless of this flag.
-   */
-  managed?: "always" | "seed";
 }
 
 export interface ExportService {
@@ -94,6 +81,8 @@ export interface SiteConfig {
   >[];
   /** Items per page for Zola pagination — kept in sync with the main site's PAGE_SIZE. */
   pageSize: number;
+  /** Items per archive page — kept in sync with the main site's ARCHIVE_PAGE_SIZE. */
+  archivePageSize: number;
 }
 
 interface AttachmentExportMeta {
@@ -317,7 +306,7 @@ export function createExportService(
       });
       exportFiles.push({
         path: "content/_index.md",
-        content: buildRootSection(siteConfig.pageSize),
+        content: buildRootSection(),
       });
       exportFiles.push({
         path: "content/collections/_index.md",
@@ -340,68 +329,93 @@ export function createExportService(
           content: buildFeaturedSection(),
         });
         exportFiles.push({
-          path: "templates/featured.html",
+          path: "themes/jant/templates/featured.html",
           content: TEMPLATE_FEATURED,
         });
       }
-      exportFiles.push({ path: "templates/base.html", content: TEMPLATE_BASE });
       exportFiles.push({
-        path: "templates/archive.html",
+        path: "themes/jant/theme.toml",
+        content: buildThemeToml(),
+      });
+      exportFiles.push({
+        path: "themes/jant/templates/base.html",
+        content: TEMPLATE_BASE,
+      });
+      exportFiles.push({
+        path: "themes/jant/templates/archive.html",
         content: TEMPLATE_ARCHIVE,
       });
       exportFiles.push({
-        path: "templates/index.html",
+        path: "themes/jant/templates/index.html",
         content: TEMPLATE_INDEX,
       });
-      exportFiles.push({ path: "templates/page.html", content: TEMPLATE_PAGE });
       exportFiles.push({
-        path: "templates/section.html",
+        path: "themes/jant/templates/page.html",
+        content: TEMPLATE_PAGE,
+      });
+      exportFiles.push({
+        path: "themes/jant/templates/section.html",
         content: TEMPLATE_SECTION,
       });
       exportFiles.push({
-        path: "templates/taxonomy_list.html",
+        path: "themes/jant/templates/taxonomy_list.html",
         content: TEMPLATE_TAXONOMY_LIST,
       });
       exportFiles.push({
-        path: "templates/taxonomy_single.html",
+        path: "themes/jant/templates/taxonomy_single.html",
         content: TEMPLATE_TAXONOMY_SINGLE,
       });
       exportFiles.push({
-        path: "templates/collection.html",
+        path: "themes/jant/templates/feed/single.html",
+        content: TEMPLATE_FEED_SINGLE,
+      });
+      exportFiles.push({
+        path: "themes/jant/templates/feed/list.html",
+        content: TEMPLATE_FEED_LIST,
+      });
+      exportFiles.push({
+        path: "themes/jant/templates/collection.html",
         content: TEMPLATE_COLLECTION,
       });
-      exportFiles.push({ path: "templates/atom.xml", content: TEMPLATE_ATOM });
       exportFiles.push({
-        path: "templates/macros.html",
+        path: "themes/jant/templates/atom.xml",
+        content: TEMPLATE_ATOM,
+      });
+      exportFiles.push({
+        path: "themes/jant/templates/macros.html",
         content: TEMPLATE_MACROS,
       });
-      exportFiles.push({ path: "static/tokens.css", content: TOKENS_CSS });
-      exportFiles.push({ path: "static/style.css", content: STYLE_CSS });
       exportFiles.push({
-        path: "static/theme.css",
+        path: "themes/jant/static/tokens.css",
+        content: TOKENS_CSS,
+      });
+      exportFiles.push({
+        path: "themes/jant/static/style.css",
+        content: STYLE_CSS,
+      });
+      exportFiles.push({
+        path: "themes/jant/static/theme.css",
         content: siteConfig.themeCss ?? "",
       });
       exportFiles.push({
-        path: "static/custom.css",
+        path: "themes/jant/static/custom.css",
         content: siteConfig.customCss ?? "",
       });
       exportFiles.push({
-        path: "static/favicon.ico",
+        path: "themes/jant/static/favicon.ico",
         content: iconAssets.faviconBytes,
       });
       exportFiles.push({
-        path: "static/apple-touch-icon.png",
+        path: "themes/jant/static/apple-touch-icon.png",
         content: iconAssets.appleTouchBytes,
       });
       exportFiles.push({
         path: "README.md",
         content: buildReadme(siteConfig.siteName),
-        managed: "seed",
       });
       exportFiles.push({
         path: ".gitignore",
         content: buildGitignore(),
-        managed: "seed",
       });
 
       return exportFiles;
@@ -510,6 +524,25 @@ function yamlString(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
 }
 
+/**
+ * Map a post onto `feed` taxonomy terms. Private posts are emitted with
+ * `draft: true` and never reach Zola, so they get no terms.
+ *
+ * Pinned posts are routed to `feed=pinned` instead of `feed=public` so
+ * Zola's paginator for `/feed/public/page/N/` doesn't see them — that's
+ * what lets the home page prepend pinned posts manually without causing
+ * a duplicate on page 2+ (see the "no dup/skip at boundary" risk in
+ * tasks/zola-theme-and-feed-taxonomy.md).
+ */
+function feedTermsForPost(
+  post: Pick<Post, "visibility" | "pinnedAt">,
+): string[] {
+  if (post.visibility === "private") return [];
+  if (post.visibility === "latest_hidden") return ["unlisted"];
+  const public_or_pinned = post.pinnedAt !== null ? "pinned" : "public";
+  return [public_or_pinned, "archive"];
+}
+
 export function buildPostMarkdown(
   root: Post,
   threadReplies: Post[],
@@ -553,13 +586,27 @@ export function buildPostMarkdown(
     }
   }
 
-  // Taxonomies
-  if (postCollections.length > 0) {
+  // Taxonomies. Every non-draft post gets a `feed` term so home and
+  // archive can be rendered as Zola taxonomy pages (no template-time
+  // visibility filtering). Private/draft posts don't reach Zola —
+  // `draft: true` above skips them on build.
+  const feedTerms = feedTermsForPost(root);
+  const hasCollections = postCollections.length > 0;
+  const hasFeed = feedTerms.length > 0;
+  if (hasCollections || hasFeed) {
     parts.push("taxonomies:");
-    parts.push("  collections:");
-    for (const c of postCollections) {
-      const colSlug = collectionSlugMap.get(c.id) ?? c.slug;
-      parts.push(`    - ${yamlString(colSlug)}`);
+    if (hasCollections) {
+      parts.push("  collections:");
+      for (const c of postCollections) {
+        const colSlug = collectionSlugMap.get(c.id) ?? c.slug;
+        parts.push(`    - ${yamlString(colSlug)}`);
+      }
+    }
+    if (hasFeed) {
+      parts.push("  feed:");
+      for (const term of feedTerms) {
+        parts.push(`    - ${yamlString(term)}`);
+      }
     }
   }
 
@@ -970,6 +1017,7 @@ function buildConfigToml(
     `title = "${escapeToml(config.siteName)}"`,
     `description = "${escapeToml(config.siteDescription)}"`,
     `default_language = "${escapeToml(config.siteLanguage)}"`,
+    'theme = "jant"',
     "generate_feeds = true",
     "compile_sass = false",
     "",
@@ -994,6 +1042,7 @@ function buildConfigToml(
     `default_theme_id = "${escapeToml(config.defaultThemeId)}"`,
     `font_theme_id = "${escapeToml(config.fontThemeId)}"`,
     `theme_mode = "${escapeToml(config.themeMode)}"`,
+    `page_size = ${config.pageSize}`,
   ];
 
   if (config.siteAvatarUrl) {
@@ -1053,6 +1102,11 @@ function buildConfigToml(
   parts.push('name = "collections"');
   parts.push("feed = true");
   parts.push("");
+  parts.push("[[taxonomies]]");
+  parts.push('name = "feed"');
+  parts.push("feed = true");
+  parts.push(`paginate_by = ${config.pageSize}`);
+  parts.push("");
   parts.push("[markdown]");
   parts.push("highlight_code = true");
   parts.push('highlight_theme = "css"');
@@ -1062,10 +1116,24 @@ function buildConfigToml(
 `;
 }
 
-function buildRootSection(pageSize: number): string {
+function buildThemeToml(): string {
+  // Minimal metadata required for Zola to recognize themes/jant/ as a theme.
+  // No [extra] overrides: all theme config lives in the site's config.toml so
+  // Jant-managed settings stay in one place.
+  return `name = "Jant"
+description = "Default theme packaged with Jant exports."
+license = "MIT"
+homepage = "https://jant.so"
+`;
+}
+
+function buildRootSection(): string {
+  // Sort is retained so section-derived iterators (e.g. the featured
+  // template) get the newest-first order they expect. Home and archive
+  // no longer paginate through this section — they use the `feed`
+  // taxonomy terms instead — so `paginate_by` is intentionally absent.
   return `+++
 sort_by = "date"
-paginate_by = ${pageSize}
 +++
 `;
 }
@@ -1346,6 +1414,7 @@ const TEMPLATE_BASE = `{% import "macros.html" as macros %}
   <link rel="stylesheet" href="{{ get_url(path='theme.css') }}">
   <link rel="stylesheet" href="{{ get_url(path='custom.css') }}">
   <link rel="alternate" type="application/atom+xml" title="{{ config.title }}" href="{{ get_url(path='atom.xml') }}">
+  {% block head_extra %}{% endblock %}
 </head>
 <body>
   <div class="site-page">
@@ -1433,62 +1502,39 @@ const TEMPLATE_INDEX = `{% extends "base.html" %}
 
 {% block content %}
 <div data-page="home">
-  {% if paginator.current_index > 1 %}
-  <p class="page-context-label">Page {{ paginator.current_index }}</p>
-  {% endif %}
+  {# Home page 1 is a manual render of the feed taxonomy. Pinned posts
+     live in feed=pinned (NOT feed=public) so Zola's native paginator at
+     /feed/public/page/N/ cannot double-count them. #}
+  {% set_global pinned_pages = [] %}
+  {% set_global public_pages = [] %}
+  {% set feed_tax = get_taxonomy(kind="feed") %}
+  {% for t in feed_tax.items %}
+    {% if t.name == "pinned" %}{% set_global pinned_pages = t.pages %}{% endif %}
+    {% if t.name == "public" %}{% set_global public_pages = t.pages %}{% endif %}
+  {% endfor %}
+
+  {% set page_size = config.extra.jant.page_size %}
+  {% set home_public = public_pages | slice(end=page_size) %}
+  {% set home_pages = pinned_pages | concat(with=home_public) %}
+
   <div data-feed>
     <div id="timeline-feed">
       <div id="timeline-items">
-        {% for page in paginator.pages %}
-          {% if page.extra.visibility | default(value="public") != "latest_hidden" %}
-          <div class="feed-item" data-timeline-item data-timeline-item-content>
-            {% if not loop.first %}<hr class="feed-divider">{% endif %}
-            {{ macros::post_card(page=page, context="home") }}
-          </div>
-          {% endif %}
+        {% for page in home_pages %}
+        <div class="feed-item" data-timeline-item data-timeline-item-content>
+          {% if not loop.first %}<hr class="feed-divider">{% endif %}
+          {{ macros::post_card(page=page, context="home") }}
+        </div>
         {% endfor %}
       </div>
     </div>
   </div>
 
-  {% if paginator.previous or paginator.next %}
-  {# Mirrors PagePagination in src/ui/shared/Pagination.tsx: flex-centered
-     numbered pagination that always shows first/last page, current ±1,
-     and inserts ellipses for gaps. Previous/Next stay rendered when
-     disabled so the control's width is stable across pages. #}
+  {% if public_pages | length > page_size %}
   <nav class="pagination" aria-label="Pagination">
-    {% if paginator.previous %}
-    <a href="{{ paginator.previous }}" class="pagination-link">Previous</a>
-    {% else %}
     <span class="pagination-disabled">Previous</span>
-    {% endif %}
-
-    {% set total = paginator.number_pagers %}
-    {% set current = paginator.current_index %}
-    {% set_global prev_shown = 0 %}
-    {% for n in range(start=1, end=total + 1) %}
-      {% set show = total <= 7 or n == 1 or n == total or n == current or n == current - 1 or n == current + 1 %}
-      {% if show %}
-        {% if n > prev_shown + 1 %}<span class="pagination-ellipsis" aria-hidden="true">…</span>{% endif %}
-        {% if n == current %}
-        <span aria-current="page" class="pagination-current">{{ n }}</span>
-        {% else %}
-          {% if n == 1 %}
-            {% set page_url = paginator.first %}
-          {% else %}
-            {% set page_url = paginator.base_url ~ n ~ "/" %}
-          {% endif %}
-        <a href="{{ page_url }}" class="pagination-link">{{ n }}</a>
-        {% endif %}
-        {% set_global prev_shown = n %}
-      {% endif %}
-    {% endfor %}
-
-    {% if paginator.next %}
-    <a href="{{ paginator.next }}" class="pagination-link">Next</a>
-    {% else %}
-    <span class="pagination-disabled">Next</span>
-    {% endif %}
+    <span aria-current="page" class="pagination-current">1</span>
+    <a href="/feed/public/page/2/" class="pagination-link">Next</a>
   </nav>
   {% endif %}
 
@@ -1534,12 +1580,10 @@ const TEMPLATE_SECTION = `{% extends "base.html" %}
     <div id="timeline-feed">
       <div id="timeline-items">
         {% for page in section.pages %}
-          {% if page.extra.visibility | default(value="public") != "latest_hidden" %}
           <div class="feed-item" data-timeline-item data-timeline-item-content>
             {% if not loop.first %}<hr class="feed-divider">{% endif %}
             {{ macros::post_card(page=page) }}
           </div>
-          {% endif %}
         {% endfor %}
       </div>
     </div>
@@ -1549,57 +1593,51 @@ const TEMPLATE_SECTION = `{% extends "base.html" %}
 `;
 
 const TEMPLATE_ARCHIVE = `{% extends "base.html" %}
+{% import "macros.html" as macros %}
 
 {% block title %}Archive &mdash; {{ config.title }}{% endblock %}
 
 {% block content %}
-{% set root = get_section(path="_index.md") %}
-<div class="section-shell archive-shell">
+<div data-page="archive">
   <header class="section-header">
     <h1 class="section-title">Archive</h1>
-    <p class="section-description">Every exported post in one chronological list.</p>
+    <p class="section-description">Every published post in one chronological list.</p>
   </header>
 
-  <div class="archive-list">
-    {% for year, year_pages in root.pages | group_by(attribute="year") %}
-      {% for month, month_pages in year_pages | group_by(attribute="month") %}
-    <section class="archive-month-group">
-      <header class="archive-month-heading">
-        {{ month_pages[0].date | date(format="%B %Y") }}
-      </header>
-        {% for page in month_pages %}
-          {% if page.extra.visibility | default(value="public") == "public" %}
-          {% set archive_title = page.title | default(value="") %}
-          {% if archive_title == "" %}
-            {% set archive_title = page.extra.summary_text | default(value="") %}
-          {% endif %}
-          {% if archive_title == "" %}
-            {% set archive_title = page.summary | default(value=page.content) | striptags | trim %}
-          {% endif %}
-          <article class="archive-entry">
-            <time class="archive-entry-date" datetime="{{ page.date }}">
-              {{ page.date | date(format="%b %e, %Y") }}
-            </time>
-            <div class="archive-entry-main">
-              <a href="{{ page.permalink }}" class="archive-entry-title">
-                {{ archive_title | default(value="Untitled") | truncate(length=92) }}
-              </a>
-              <div class="archive-entry-meta">
-                <span class="archive-entry-format">{{ page.extra.format | default(value="note") }}</span>
-                {% set collections = page.taxonomies.collections | default(value=[]) %}
-                {% for col in collections %}
-                {% set col_meta = get_section(path= col ~ '/_index.md') %}
-                <a href="/{{ col }}" class="archive-entry-tag">{{ col_meta.title | default(value=col) }}</a>
-                {% endfor %}
-              </div>
-            </div>
-          </article>
-          {% endif %}
+  {# Archive is driven by the feed=archive taxonomy term, which contains
+     every non-draft, non-unlisted post — pinned and non-pinned alike.
+     Page 1 renders the first page_size slice manually; page 2+ is
+     handed off to Zola's paginator at /feed/archive/page/N/. The slice
+     boundary lines up with paginator page 1 exactly, so the Next link
+     below jumps to page 2 without duplicates or gaps. #}
+  {% set_global archive_pages = [] %}
+  {% set feed_tax = get_taxonomy(kind="feed") %}
+  {% for t in feed_tax.items %}
+    {% if t.name == "archive" %}{% set_global archive_pages = t.pages %}{% endif %}
+  {% endfor %}
+  {% set page_size = config.extra.jant.page_size %}
+  {% set slice_pages = archive_pages | slice(end=page_size) %}
+
+  <div data-feed>
+    <div id="timeline-feed">
+      <div id="timeline-items">
+        {% for page in slice_pages %}
+        <div class="feed-item" data-timeline-item data-timeline-item-content>
+          {% if not loop.first %}<hr class="feed-divider">{% endif %}
+          {{ macros::post_card(page=page) }}
+        </div>
         {% endfor %}
-    </section>
-      {% endfor %}
-    {% endfor %}
+      </div>
+    </div>
   </div>
+
+  {% if archive_pages | length > page_size %}
+  <nav class="pagination" aria-label="Pagination">
+    <span class="pagination-disabled">Previous</span>
+    <span aria-current="page" class="pagination-current">1</span>
+    <a href="/feed/archive/page/2/" class="pagination-link">Next</a>
+  </nav>
+  {% endif %}
 </div>
 {% endblock %}
 `;
@@ -1621,12 +1659,10 @@ const TEMPLATE_FEATURED = `{% extends "base.html" %}
     <div id="timeline-feed">
       <div id="timeline-items">
         {% for page in featured %}
-          {% if page.extra.visibility | default(value="public") != "latest_hidden" %}
           <div class="feed-item" data-timeline-item data-timeline-item-content>
             {% if not loop.first %}<hr class="feed-divider">{% endif %}
             {{ macros::post_card(page=page) }}
           </div>
-          {% endif %}
         {% endfor %}
       </div>
     </div>
@@ -1763,16 +1799,126 @@ const TEMPLATE_TAXONOMY_SINGLE = `{% extends "base.html" %}
     <div id="timeline-feed">
       <div id="timeline-items">
         {% for page in term.pages %}
-          {% if page.extra.visibility | default(value="public") != "latest_hidden" %}
           <div class="feed-item" data-timeline-item data-timeline-item-content>
             {% if not loop.first %}<hr class="feed-divider">{% endif %}
             {{ macros::post_card(page=page) }}
           </div>
-          {% endif %}
         {% endfor %}
       </div>
     </div>
   </div>
+</div>
+{% endblock %}
+`;
+
+/**
+ * Per-term paginator page for the `feed` taxonomy
+ * (`/feed/{term}/`, `/feed/{term}/page/N/`). Takes precedence over
+ * the generic `taxonomy_single.html` because it lives at the Zola-
+ * specified path `templates/feed/single.html`.
+ *
+ * Unlike `taxonomy_single.html` (which resolves a sibling `_index.md`
+ * section for each term label), feed terms have no backing section —
+ * labels come from a static map keyed by term name. The `unlisted`
+ * term emits a noindex meta via the `head_extra` block.
+ */
+const TEMPLATE_FEED_SINGLE = `{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% set term_label = term.name %}
+{% if term.name == "public" %}{% set term_label = "Latest" %}{% endif %}
+{% if term.name == "archive" %}{% set term_label = "Archive" %}{% endif %}
+{% if term.name == "pinned" %}{% set term_label = "Pinned" %}{% endif %}
+{% if term.name == "unlisted" %}{% set term_label = "Unlisted" %}{% endif %}
+
+{% block title %}{{ term_label }} &mdash; {{ config.title }}{% endblock %}
+
+{% block head_extra %}
+  {% if term.name == "unlisted" %}
+  <meta name="robots" content="noindex, follow">
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div data-page="feed-{{ term.name }}">
+  <header class="section-header">
+    <h1 class="section-title">{{ term_label }}</h1>
+    {% if paginator.current_index > 1 %}
+    <p class="page-context-label">Page {{ paginator.current_index }}</p>
+    {% endif %}
+  </header>
+  <div data-feed>
+    <div id="timeline-feed">
+      <div id="timeline-items">
+        {% for page in paginator.pages %}
+        <div class="feed-item" data-timeline-item data-timeline-item-content>
+          {% if not loop.first %}<hr class="feed-divider">{% endif %}
+          {{ macros::post_card(page=page) }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {% if paginator.previous or paginator.next %}
+  <nav class="pagination" aria-label="Pagination">
+    {% if paginator.previous %}
+    <a href="{{ paginator.previous }}" class="pagination-link">Previous</a>
+    {% else %}
+    <span class="pagination-disabled">Previous</span>
+    {% endif %}
+
+    {% set total = paginator.number_pagers %}
+    {% set current = paginator.current_index %}
+    {% set_global prev_shown = 0 %}
+    {% for n in range(start=1, end=total + 1) %}
+      {% set show = total <= 7 or n == 1 or n == total or n == current or n == current - 1 or n == current + 1 %}
+      {% if show %}
+        {% if n > prev_shown + 1 %}<span class="pagination-ellipsis" aria-hidden="true">…</span>{% endif %}
+        {% if n == current %}
+        <span aria-current="page" class="pagination-current">{{ n }}</span>
+        {% else %}
+          {% if n == 1 %}
+            {% set page_url = paginator.first %}
+          {% else %}
+            {% set page_url = paginator.base_url ~ n ~ "/" %}
+          {% endif %}
+        <a href="{{ page_url }}" class="pagination-link">{{ n }}</a>
+        {% endif %}
+        {% set_global prev_shown = n %}
+      {% endif %}
+    {% endfor %}
+
+    {% if paginator.next %}
+    <a href="{{ paginator.next }}" class="pagination-link">Next</a>
+    {% else %}
+    <span class="pagination-disabled">Next</span>
+    {% endif %}
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}
+`;
+
+/**
+ * Noindex stub for the `/feed/` taxonomy listing page. The feed
+ * taxonomy exists only as a routing mechanism, not a browsable index,
+ * so the listing has no editorial content and is marked noindex.
+ */
+const TEMPLATE_FEED_LIST = `{% extends "base.html" %}
+
+{% block title %}Feed &mdash; {{ config.title }}{% endblock %}
+
+{% block head_extra %}
+<meta name="robots" content="noindex, nofollow">
+{% endblock %}
+
+{% block content %}
+<div class="section-shell">
+  <header class="section-header">
+    <h1 class="section-title">Feed</h1>
+    <p class="section-description">Internal routing index. Start from <a href="{{ config.base_url }}">the home page</a> instead.</p>
+  </header>
 </div>
 {% endblock %}
 `;
@@ -1817,12 +1963,10 @@ const TEMPLATE_COLLECTION = `{% extends "base.html" %}
     <div id="timeline-feed">
       <div id="timeline-items">
         {% for page in ordered_pages %}
-          {% if page.extra.visibility | default(value="public") != "latest_hidden" %}
           <div class="feed-item" data-timeline-item data-timeline-item-content>
             {% if not loop.first %}<hr class="feed-divider">{% endif %}
             {{ macros::post_card(page=page) }}
           </div>
-          {% endif %}
         {% endfor %}
       </div>
     </div>

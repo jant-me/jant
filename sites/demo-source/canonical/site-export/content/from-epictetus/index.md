@@ -3,8 +3,11 @@ date: 2026-02-05T06:55:00.000Z
 updated: 2026-04-03T02:30:38.000Z
 slug: "from-epictetus"
 taxonomies:
-  c:
+  collections:
     - "reading-notes"
+  feed:
+    - "public"
+    - "archive"
 extra:
   format: quote
   status: published
