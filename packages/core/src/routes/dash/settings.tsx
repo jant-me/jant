@@ -63,11 +63,6 @@ import {
   searchInstallationRepos,
 } from "../../lib/github-app.js";
 import {
-  listStoredInstallations,
-  removeStoredInstallation,
-  upsertStoredInstallation,
-} from "../../lib/github-sync-installations.js";
-import {
   isSyncPending,
   markSyncPending,
   runBackgroundSync,
@@ -1428,6 +1423,62 @@ settingsRoutes.get("/github-sync/app/install", async (c) => {
     return c.text("GitHub App is not configured on this deployment.", 404);
   }
 
+  // Reinstall-same-account predicate (§5): when this site already has at
+  // least one authorized installation, skip the GitHub round-trip and
+  // render the picker directly. The GitHub redirect is a dead end when
+  // the App is already installed on the chosen account — GitHub shows
+  // its Configure page and never comes back with installation_id.
+  //
+  // `?force=new` bypasses the predicate so the picker's "Install on
+  // another account" action can still reach GitHub to add a fresh
+  // install.
+  const forceNew = c.req.query("force") === "new";
+  if (!forceNew) {
+    const existing =
+      await c.var.services.githubAppInstallations.listInstallationsForSite(
+        c.var.currentSite.id,
+      );
+    if (existing.length > 0) {
+      const navData = await getNavigationData(c);
+      const base = publicPath(c, "/settings/github-sync");
+      const labels = buildRepoPickerLabels(c);
+      const suggestedRepoName = buildSuggestedRepoName(c);
+      return renderPublicPage(c, {
+        title: buildPageTitle(
+          "GitHub Sync — Pick Repository",
+          navData.siteName,
+        ),
+        navData,
+        content: (
+          <>
+            <AdminBreadcrumb
+              parent={breadcrumbLabel(c, "settings")}
+              parentHref={publicPath(c, "/settings")}
+              current={breadcrumbLabel(c, "githubSync")}
+            />
+            <jant-repo-picker
+              labels={labels}
+              api-base={`${base}/app`}
+              connect-url={`${base}/app/connect`}
+              install-url={`${base}/app/install?force=new`}
+              cancel-url={publicPath(c, "/settings")}
+              create-repo-name-hint={suggestedRepoName}
+            >
+              <div class="flex flex-col gap-6 max-w-form">
+                <div>
+                  <h2 class="text-lg font-medium mb-1">Pick a repository</h2>
+                  <p class="text-sm text-muted-foreground">
+                    Loading repositories…
+                  </p>
+                </div>
+              </div>
+            </jant-repo-picker>
+          </>
+        ),
+      });
+    }
+  }
+
   // Build the state token. When running behind a hosted control plane we
   // sign host+nonce with the shared SSO secret so the control plane can
   // verify and route the callback back to the correct site host. In
@@ -1504,11 +1555,11 @@ settingsRoutes.get("/github-sync/app/callback", async (c) => {
   // so the user isn't locked out right after a successful install.
   try {
     const installation = await getInstallation(app, installationId);
-    await upsertStoredInstallation(c.var.services.settings, {
+    await c.var.services.githubAppInstallations.upsertInstallation(
       installationId,
-      account: installation.account,
-      addedAt: Math.floor(Date.now() / 1000),
-    });
+      c.var.currentSite.id,
+      installation.account,
+    );
   } catch {
     // Swallow — the legacy inline picker still works with just the
     // installation_id from the URL, just without the owner list.
@@ -1969,8 +2020,17 @@ async function getInstallationTokenFromApp(
 
 /** List GitHub App installations authorized for this site. */
 settingsRoutes.get("/github-sync/app/installations", async (c) => {
-  const installations = await listStoredInstallations(c.var.services.settings);
-  return c.json({ installations });
+  const installations =
+    await c.var.services.githubAppInstallations.listInstallationsForSite(
+      c.var.currentSite.id,
+    );
+  return c.json({
+    installations: installations.map((entry) => ({
+      installationId: entry.installationId,
+      account: entry.account,
+      addedAt: entry.addedAt,
+    })),
+  });
 });
 
 /**
@@ -1999,9 +2059,10 @@ settingsRoutes.get("/github-sync/app/repos", async (c) => {
 
   try {
     if (q) {
-      const installations = await listStoredInstallations(
-        c.var.services.settings,
-      );
+      const installations =
+        await c.var.services.githubAppInstallations.listInstallationsForSite(
+          c.var.currentSite.id,
+        );
       const installation = installations.find(
         (i) => i.installationId === installationId,
       );
@@ -2036,7 +2097,10 @@ settingsRoutes.get("/github-sync/app/repos", async (c) => {
     // GitHub returns 401 when an installation was uninstalled on their
     // side. Clean up our cached entry so the UI stops showing a dead owner.
     if (/\b401\b/.test(detail) || /\b404\b/.test(detail)) {
-      await removeStoredInstallation(c.var.services.settings, installationId);
+      await c.var.services.githubAppInstallations.removeInstallation(
+        installationId,
+        c.var.currentSite.id,
+      );
       return c.json(
         { error: "Installation is no longer accessible.", removed: true },
         410,

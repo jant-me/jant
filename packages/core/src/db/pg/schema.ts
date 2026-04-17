@@ -824,3 +824,34 @@ export const verification = pgTable("verification", {
     mode: "date",
   }),
 });
+
+// ---------------------------------------------------------------------------
+// GitHub App Installations (junction table: installation ↔ site, many-to-many)
+// ---------------------------------------------------------------------------
+
+const GITHUB_APP_ACCOUNT_TYPES = ["User", "Organization"] as const;
+
+export const githubAppInstallation = pgTable(
+  "github_app_installation",
+  {
+    installationId: text("installation_id").notNull(),
+    siteId: text("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    accountLogin: text("account_login").notNull(),
+    accountType: text("account_type", {
+      enum: GITHUB_APP_ACCOUNT_TYPES,
+    }).notNull(),
+    accountAvatarUrl: text("account_avatar_url").notNull().default(""),
+    addedAt: integer("added_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.installationId, table.siteId] }),
+    index("github_app_installation_by_installation").on(table.installationId),
+    index("github_app_installation_by_site").on(table.siteId),
+    check(
+      "chk_github_app_installation_account_type",
+      sql`${table.accountType} IN (${sqlTextEnum(GITHUB_APP_ACCOUNT_TYPES)})`,
+    ),
+  ],
+);
