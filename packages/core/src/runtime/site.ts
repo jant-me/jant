@@ -84,7 +84,15 @@ export async function resolveRequestSite(
 
   const resolved = await siteService.resolveByHost(requestUrl.host);
   if (!resolved) {
-    if (requestUrl.pathname.startsWith("/api/internal/")) {
+    // Host-agnostic endpoints: these are reached via the control-plane
+    // host (jant-cloud) or a fixed core host, not a tenant host, so
+    // host-based site resolution cannot pin them to a tenant. The
+    // handlers resolve affected sites themselves (e.g. from the webhook
+    // payload's installation id) instead of relying on `currentSite`.
+    if (
+      requestUrl.pathname.startsWith("/api/internal/") ||
+      requestUrl.pathname === "/api/github-sync/app-webhook"
+    ) {
       return {
         site: createTransientSite("internal"),
         domain: null,
