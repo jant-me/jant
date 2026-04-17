@@ -64,7 +64,7 @@ When these environment variables are set on the Jant deployment, the GitHub App 
 | `GITHUB_APP_ID`             | Yes      | Numeric App ID from the GitHub App settings page.                                                                                           |
 | `GITHUB_APP_PRIVATE_KEY`    | Yes      | PKCS#8 PEM private key generated in the GitHub App settings. `\n` escapes are expanded automatically, so you can store it on a single line. |
 | `GITHUB_APP_SLUG`           | Yes      | App slug (the last segment of `github.com/apps/<slug>`). Used to build install URLs.                                                        |
-| `GITHUB_APP_WEBHOOK_SECRET` | No       | Shared webhook secret configured in the GitHub App. When set, it takes precedence over the per-site secret.                                 |
+| `GITHUB_APP_WEBHOOK_SECRET` | No       | Shared secret for GitHub App webhooks. Used by two endpoints: the per-repo push webhook (takes precedence over the per-site secret) and the App-level webhook at `/api/github-sync/app-webhook`, which reacts to installation and installation-repository events. |
 
 ### Creating the GitHub App
 
@@ -78,9 +78,9 @@ Go to **Settings > Developer settings > GitHub Apps > New GitHub App** (on your 
 2. **Setup URL (optional)**: `https://<your-jant-site>/settings/github-sync/app/callback`.
 3. **Redirect on update**: ✅ checked.
 4. **Callback URL**: leave blank.
-5. **Webhook**: uncheck **Active**. Jant registers per-repo webhooks itself — no App-level webhook is needed.
+5. **Webhook**: check **Active** and set the URL to `https://<your-jant-site>/api/github-sync/app-webhook`. Paste the same value used for `GITHUB_APP_WEBHOOK_SECRET` into **Secret**. This keeps Jant's installation state in sync when the App is uninstalled, suspended, or repositories are removed. Per-repo push webhooks are still registered automatically at the site host.
 6. **Repository permissions**: `Contents: Read & write`, `Metadata: Read-only`, `Webhooks: Read & write`.
-7. **Subscribe to events**: `Push`.
+7. **Subscribe to events**: `Push`, `Installation`, `Installation repositories`.
 8. **Where can this GitHub App be installed**: "Only on this account".
 9. Generate a private key (PKCS#8 PEM) and copy the App ID.
 
@@ -92,9 +92,9 @@ A GitHub App only supports one Setup URL, but hosted sites live on different hos
 2. **Setup URL (optional)**: `https://<your-control-plane>/api/github/install-callback`.
 3. **Redirect on update**: ✅ checked.
 4. **Callback URL**: leave blank.
-5. **Webhook**: uncheck **Active**. Each site registers its own repo-level webhook at its own host, so there's nothing to route centrally.
+5. **Webhook**: check **Active** and set the URL to `https://<your-control-plane>/api/github-app-webhook`. The control plane forwards the delivery to every affected site's `/api/github-sync/app-webhook`. Paste the same value used for `GITHUB_APP_WEBHOOK_SECRET` into **Secret**. Each site still registers its own repo-level push webhook at its own host.
 6. **Repository permissions**: same as self-hosted — `Contents: Read & write`, `Metadata: Read-only`, `Webhooks: Read & write`.
-7. **Subscribe to events**: `Push`.
+7. **Subscribe to events**: `Push`, `Installation`, `Installation repositories`.
 8. **Where can this GitHub App be installed**: "Any account".
 9. Generate a private key (PKCS#8 PEM) and copy the App ID.
 
