@@ -177,11 +177,6 @@ export type {
   SiteAdminService,
 } from "./site-admin.js";
 export type {
-  CreateManagedSiteInput as CreateManagedSiteInputDup,
-  ManagedSiteResult as ManagedSiteResultDup,
-  SiteAdminService as SiteAdminServiceDup,
-} from "./site-admin.js";
-export type {
   GitHubAppInstallationsService,
   GitHubInstallationAccount,
   GitHubAccountType,
