@@ -93,6 +93,138 @@ githubSyncWebhookRoutes.post("/webhook", async (c) => {
 });
 
 // ---------------------------------------------------------------------------
+// App-level webhook receiver
+//
+// Delivered by GitHub (self-hosted) or by the hosted control plane as a
+// raw byte-for-byte forward (hosted). Authentication is the standard
+// GitHub `X-Hub-Signature-256` HMAC over the raw body using
+// `GITHUB_APP_WEBHOOK_SECRET` — no additional bearer token, so the
+// auth model is symmetric between self-hosted and hosted deployments.
+//
+// This endpoint is host-agnostic: the request host is the control
+// plane's host (hosted) or the core host (self-hosted), never a
+// tenant host. `resolveRequestSite` exempts this path from host-based
+// site resolution; handlers resolve affected sites from the payload
+// via `listSitesForInstallation`.
+// ---------------------------------------------------------------------------
+
+interface InstallationEventPayload {
+  action: string;
+  installation?: {
+    id: number | string;
+  };
+  repositories_removed?: Array<{ full_name?: string; name?: string }>;
+}
+
+githubSyncWebhookRoutes.post("/app-webhook", async (c) => {
+  const app = getGitHubAppConfig(c.env);
+  if (!app?.webhookSecret) {
+    // Fast-fail before reading the body so misconfigured deployments
+    // fail loudly on the first delivery instead of silently accepting
+    // unsigned requests.
+    return c.json({ error: "GitHub App webhook secret not configured" }, 404);
+  }
+
+  const signature = c.req.header("X-Hub-Signature-256") ?? "";
+  const rawBody = await c.req.text();
+
+  const valid = await verifyGitHubWebhookSignature(
+    rawBody,
+    signature,
+    app.webhookSecret,
+  );
+  if (!valid) {
+    return c.json({ error: "Invalid signature" }, 401);
+  }
+
+  const event = c.req.header("X-GitHub-Event");
+  const deliveryId = c.req.header("X-GitHub-Delivery") ?? "";
+
+  // Parse only after HMAC has passed so malformed payloads don't leak
+  // error shape information to unauthenticated callers.
+  let payload: InstallationEventPayload;
+  try {
+    payload = JSON.parse(rawBody) as InstallationEventPayload;
+  } catch {
+    return c.json({ error: "Invalid JSON payload" }, 400);
+  }
+
+  const installationId = payload.installation?.id;
+  const installations = c.var.services.githubAppInstallations;
+
+  if (event === "installation") {
+    if (!installationId) {
+      return c.json({ ok: true, skipped: "no installation id" });
+    }
+    const id = String(installationId);
+    switch (payload.action) {
+      case "created":
+        // The OAuth callback at `/settings/github-sync/app/callback`
+        // is the source of truth for new bindings — it's the only
+        // place where we know both `installation_id` AND the Jant
+        // `site_id` that initiated the install. The webhook race is
+        // expected: it may arrive before or after the callback finishes.
+        return c.json({ ok: true, event, deliveryId, action: "logged" });
+      case "deleted": {
+        const affected = await installations.applyInstallationDeleted(id);
+        return c.json({
+          ok: true,
+          event,
+          deliveryId,
+          action: "cleared",
+          affectedSites: affected.length,
+        });
+      }
+      case "suspend":
+      case "unsuspend": {
+        const affected = await installations.applySuspensionChange(
+          id,
+          payload.action === "suspend",
+        );
+        return c.json({
+          ok: true,
+          event,
+          deliveryId,
+          action: payload.action,
+          affectedSites: affected.length,
+        });
+      }
+      default:
+        return c.json({ ok: true, skipped: `installation.${payload.action}` });
+    }
+  }
+
+  if (event === "installation_repositories") {
+    if (!installationId) {
+      return c.json({ ok: true, skipped: "no installation id" });
+    }
+    if (payload.action !== "removed") {
+      return c.json({
+        ok: true,
+        skipped: `installation_repositories.${payload.action}`,
+      });
+    }
+    const removed =
+      payload.repositories_removed
+        ?.map((repo) => repo.full_name)
+        .filter((name): name is string => typeof name === "string") ?? [];
+    const affected = await installations.applyReposRemoved(
+      String(installationId),
+      removed,
+    );
+    return c.json({
+      ok: true,
+      event,
+      deliveryId,
+      action: "removed",
+      affectedSites: affected.length,
+    });
+  }
+
+  return c.json({ ok: true, skipped: event ?? "no event header" });
+});
+
+// ---------------------------------------------------------------------------
 // Admin endpoints — mounted in "needs config" section
 // ---------------------------------------------------------------------------
 
