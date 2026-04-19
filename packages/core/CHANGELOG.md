@@ -1,5 +1,11 @@
 # @jant/core
 
+## 1.0.0
+
+### Major Changes
+
+- [`bd6084f`](https://github.com/jant-me/jant/commit/bd6084f6074fdfe67e05c9c67f368dda658f0d9c) Thanks [@theowenyoung](https://github.com/theowenyoung)! - new version
+
 ## 0.3.40
 
 ### Patch Changes
