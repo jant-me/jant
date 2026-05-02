@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.48
+
+### Patch Changes
+
+- [`b874636`](https://github.com/jant-me/jant/commit/b874636261caac5e50ecc124850c49d803a16861) Thanks [@theowenyoung](https://github.com/theowenyoung)! - fix compose ui
+
 ## 0.3.47
 
 ### Patch Changes
