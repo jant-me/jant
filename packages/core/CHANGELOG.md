@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.3.49
+
+### Patch Changes
+
+- [`48bfaf4`](https://github.com/jant-me/jant/commit/48bfaf42aeca810c41a63b2573317ebc6688a1da) Thanks [@theowenyoung](https://github.com/theowenyoung)! - new api
+
 ## 0.3.48
 
 ### Patch Changes
