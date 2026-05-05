@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.3.50
+
+### Patch Changes
+
+- [`5753575`](https://github.com/jant-me/jant/commit/5753575165253a29b2ef5fc1f1d80b9c2b81adce) Thanks [@theowenyoung](https://github.com/theowenyoung)! - new version
+
 ## 0.3.49
 
 ## 0.3.48
