@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.4.0
+
+### Minor Changes
+
+- [`fe2f1bb`](https://github.com/jant-me/jant/commit/fe2f1bbce353a1501dd591f1acaf4c8ea5a6dec1) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Firsr Alpha
+
 ## 0.3.50
 
 ### Patch Changes
