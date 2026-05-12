@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.4.3
+
+### Patch Changes
+
+- [`229a1d8`](https://github.com/jant-me/jant/commit/229a1d875e702b86b8b34b0cd2ba4abc3114a244) Thanks [@theowenyoung](https://github.com/theowenyoung)! - post actions adapt
+
 ## 0.4.2
 
 ### Patch Changes

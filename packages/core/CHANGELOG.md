@@ -1,5 +1,13 @@
 # @jant/core
 
+## 0.4.3
+
+### Patch Changes
+
+- [`229a1d8`](https://github.com/jant-me/jant/commit/229a1d875e702b86b8b34b0cd2ba4abc3114a244) Thanks [@theowenyoung](https://github.com/theowenyoung)! - post actions adapt
+
+- [`8c5f8cb`](https://github.com/jant-me/jant/commit/8c5f8cb7d76565db38521e59cc68b035f8e957f3) Thanks [@theowenyoung](https://github.com/theowenyoung)! - thread post distance
+
 ## 0.4.2
 
 ### Patch Changes
