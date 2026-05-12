@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.4.2
+
+### Patch Changes
+
+- [`b7a89bf`](https://github.com/jant-me/jant/commit/b7a89bf5624958a2cc32bd7b49521ed61cc43341) Thanks [@theowenyoung](https://github.com/theowenyoung)! - fix video focus
+
 ## 0.4.1
 
 ### Patch Changes
