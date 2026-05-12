@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.4.1
+
+### Patch Changes
+
+- [`b2eeb4b`](https://github.com/jant-me/jant/commit/b2eeb4b680ff4f49fe7baee833b1fd972b7bee39) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Better Compose Uploading
+
 ## 0.4.0
 
 ### Minor Changes
