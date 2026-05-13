@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.4.4
+
+### Patch Changes
+
+- [`6d68c81`](https://github.com/jant-me/jant/commit/6d68c811db07bb851ede743896c5f5340f5b25a2) Thanks [@theowenyoung](https://github.com/theowenyoung)! - New empty homepage
+
 ## 0.4.3
 
 ### Patch Changes
