@@ -4,7 +4,7 @@
 >
 > Jant 基于 AGPL-3.0-or-later 协议开源，源码托管于 [GitHub](https://github.com/jant-me/jant)，问题反馈请提交至 [Issues](https://github.com/jant-me/jant/issues)。
 
-Jant 是一个为单作者设计的小型博客系统，支持 **Note、Link、Quote** 三种内容格式。可以串成 Thread，也可以归到 Collection 里。发布体验更接近 Twitter / Threads，而不是 WordPress / Ghost 的后台。
+Jant 是一个为单作者设计的小型博客系统，支持 **Note、Link、Quote** 三种内容格式。 Thread，也可以归到 Collection 里。发布体验更接近 Twitter / Threads，而不是 WordPress / Ghost 的后台。
 
 ![Jant Home](https://jant-me-media.jant.me/assets/jant-home-800.png)
 

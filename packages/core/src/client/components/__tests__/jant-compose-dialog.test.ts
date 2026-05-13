@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { Editor } from "@tiptap/core";
 import { MAX_THREAD_POSTS } from "../../../types.js";
@@ -1915,7 +1917,7 @@ describe("JantComposeDialog", () => {
     expect(detail.replyRefreshId).toBe("019ce8cf-19a1-7d16-9a75-017a9ac7299d");
   });
 
-  it("uses the replied post format as the initial compose format", async () => {
+  it("honors an explicit initialFormat option when opening a reply", async () => {
     const el = await createElement();
 
     await el.openReply(
@@ -2737,6 +2739,18 @@ describe("JantComposeDialog", () => {
     );
 
     URL.revokeObjectURL(previewUrl);
+  });
+
+  it("keeps reply compose tools inside the constrained editor surface", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    expect(css).toMatch(
+      /\.compose-editor-row\s*>\s*jant-compose-editor\s*\{[\s\S]*align-self:\s*stretch;[\s\S]*overflow:\s*hidden;/,
+    );
+    expect(css).toMatch(/\.compose-tools-row\s*\{[\s\S]*flex-shrink:\s*0;/);
+    expect(css).toMatch(
+      /\.compose-editor-row\s+\.compose-attachments-dock\s*\{[\s\S]*max-height:\s*min\(240px,\s*34dvh\);[\s\S]*overflow-y:\s*auto;/,
+    );
   });
 
   it("remove button clears attachment", async () => {

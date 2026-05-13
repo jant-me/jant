@@ -410,6 +410,11 @@ msgstr "Couldn't delete. Try again in a moment."
 msgid "Couldn't save. Try again in a moment."
 msgstr "Couldn't save. Try again in a moment."
 
+#. @context: Link text pointing to GitHub's new repository page
+#: src/ui/dash/settings/GitHubSyncContent.tsx
+msgid "Create a new repository"
+msgstr "Create a new repository"
+
 #. @context: GitHub sync picker — entry that opens github.com/new in a new tab
 #: src/routes/dash/settings.tsx
 msgid "Create a new repository on GitHub"
@@ -429,6 +434,11 @@ msgstr "Create Custom URL"
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 msgid "Create one on GitHub"
 msgstr "Create one on GitHub"
+
+#. @context: Help text for GitHub repository input on GitHub Sync settings, telling users they must create the repo themselves
+#: src/ui/dash/settings/GitHubSyncContent.tsx
+msgid "Create the repository on GitHub first — it can be empty."
+msgstr "Create the repository on GitHub first — it can be empty."
 
 #. @context: Token creation date
 #: src/ui/dash/settings/ApiTokensContent.tsx

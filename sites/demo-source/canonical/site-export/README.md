@@ -67,7 +67,7 @@ static/                   — Copy files here to add them to the published site
 - **Jant metadata** — `data/jant.toml` drives nav and the collections directory, and is preserved across round-trip import.
 - **Styles** — edit `themes/jant/static/main.css`, or drop a `static/main.css` at the site root to override.
 - **Templates** — add files under `layouts/` at the site root to override the bundled theme.
-- **Debugging** — from a Jant site project, run `npx jant site export https://your-site.example --directory ./my-site`, then `cd my-site && hugo serve`.
+- **Debugging** — from a Jant site project, run `npx jant site export --directory ./my-site`, then `cd my-site && hugo serve`.
 
 ## Fetching media locally
 

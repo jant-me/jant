@@ -81,18 +81,33 @@ export const QuoteCard: FC<TimelineCardProps> = ({
           dangerouslySetInnerHTML={{ __html: commentaryHtml }}
         />
       )}
-      {!isCompact && post.media.length > 0 && (
-        <div class="mt-3" data-post-media>
-          <MediaGallery
-            attachments={post.media}
-            postPermalink={post.permalink}
-          />
-        </div>
-      )}
-      {!isCompact && !display?.hideRating && (
-        <StarRating rating={post.rating} />
-      )}
-      <PostFooter post={post} detail={isDetail} display={display?.footer} />
+      {(() => {
+        const tail = (
+          <>
+            {!isCompact && post.media.length > 0 && (
+              <div class="mt-3" data-post-media>
+                <MediaGallery
+                  attachments={post.media}
+                  postPermalink={post.permalink}
+                />
+              </div>
+            )}
+            {!isCompact && !display?.hideRating && (
+              <StarRating rating={post.rating} />
+            )}
+            <PostFooter
+              post={post}
+              detail={isDetail}
+              display={display?.footer}
+            />
+          </>
+        );
+        return !isCompact && post.media.length > 1 ? (
+          <div class="post-attached-group">{tail}</div>
+        ) : (
+          tail
+        );
+      })()}
     </article>
   );
 };

@@ -1,5 +1,4 @@
 import type { JantComposeDialog } from "./components/jant-compose-dialog.js";
-import type { ComposeFormat } from "./components/compose-types.js";
 
 interface ReplyToData {
   contentHtml: string;
@@ -100,16 +99,6 @@ function getReplyData(article: HTMLElement): ReplyToData {
   };
 }
 
-function getArticleComposeFormat(
-  article: HTMLElement,
-): ComposeFormat | undefined {
-  const format = article.dataset.format;
-  if (format === "note" || format === "link" || format === "quote") {
-    return format;
-  }
-  return undefined;
-}
-
 export async function openNewCompose(
   options?: ComposeOpenOptions,
 ): Promise<void> {
@@ -124,12 +113,10 @@ export async function openReplyForArticle(article: HTMLElement): Promise<void> {
   if (!dialog) return;
 
   const threadRootId = article.dataset.threadRootId ?? postId;
-  const initialFormat = getArticleComposeFormat(article);
   await dialog.openReply(
     postId,
     getReplyData(article),
     threadRootId,
     getReplyRefreshTarget(article) ?? undefined,
-    initialFormat ? { initialFormat } : undefined,
   );
 }

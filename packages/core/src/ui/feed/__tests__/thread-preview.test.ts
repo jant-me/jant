@@ -7,10 +7,7 @@ import { createI18n } from "../../../i18n/i18n.js";
 import type { PostView, TimelineItemView } from "../../../types.js";
 import { CuratedThreadPreview } from "../CuratedThreadPreview.js";
 import { ThreadPreview } from "../ThreadPreview.js";
-import {
-  getThreadPreviewState,
-  isThreadContextLikelyOverflow,
-} from "../thread-preview-state.js";
+import { getThreadPreviewState } from "../thread-preview-state.js";
 
 function createPostView(overrides: Partial<PostView> = {}): PostView {
   return {
@@ -128,56 +125,6 @@ describe("getThreadPreviewState", () => {
     });
   });
 
-  it("treats hidden ancestors as likely overflow", () => {
-    expect(
-      isThreadContextLikelyOverflow({
-        rootPost: createPostView(),
-        hiddenCount: 1,
-      }),
-    ).toBe(true);
-  });
-
-  it("treats media-heavy context as likely overflow", () => {
-    expect(
-      isThreadContextLikelyOverflow({
-        rootPost: createPostView({
-          media: [
-            {
-              id: "media-1",
-              url: "/image.jpg",
-              thumbnailUrl: "/image-thumb.jpg",
-              mimeType: "image/jpeg",
-            },
-          ],
-        }),
-        hiddenCount: 0,
-      }),
-    ).toBe(true);
-  });
-
-  it("keeps very short context collapsed without affordances", () => {
-    expect(
-      isThreadContextLikelyOverflow({
-        rootPost: createPostView({
-          bodyHtml: "<p>Short note.</p>",
-        }),
-        secondReply: createPostView({
-          id: "post-2",
-          permalink: "/post-2",
-          slug: "post-2",
-          bodyHtml: "<p>Tiny reply.</p>",
-        }),
-        penultimateReply: createPostView({
-          id: "post-3",
-          permalink: "/post-3",
-          slug: "post-3",
-          bodyHtml: "<p>Brief note.</p>",
-        }),
-        hiddenCount: 0,
-      }),
-    ).toBe(false);
-  });
-
   it("keeps thread preview items shrinkable within the grid track", () => {
     const css = readFileSync(
       new URL("../../../styles/ui.css", import.meta.url),
@@ -249,7 +196,7 @@ describe("getThreadPreviewState", () => {
     expect(html).not.toContain('id="continue"');
   });
 
-  it("always renders collapsible context shell with toggle even when all thread slots are visible", () => {
+  it("renders ancestor context fully without collapse affordances", () => {
     const html = renderWithI18n(() =>
       ThreadPreview({
         rootPost: createPostView({
@@ -280,9 +227,68 @@ describe("getThreadPreviewState", () => {
       }),
     );
 
-    expect(html).toContain("data-thread-context");
-    expect(html).toContain("data-thread-context-toggle");
-    expect(html).toContain("thread-context-collapsed");
+    expect(html).not.toContain("data-thread-context");
+    expect(html).not.toContain("data-thread-context-toggle");
+    expect(html).not.toContain("thread-context-collapsed");
+    expect(html).not.toContain("thread-context-fade");
+  });
+
+  it("points the hidden-posts gap link to the second reply so the detail page opens just above the hidden range", () => {
+    const html = renderWithI18n(() =>
+      ThreadPreview({
+        rootPost: createPostView({ bodyHtml: "<p>Root</p>" }),
+        secondReply: createPostView({
+          id: "post-2",
+          permalink: "/post-2",
+          slug: "post-2",
+          bodyHtml: "<p>Second</p>",
+        }),
+        penultimateReply: createPostView({
+          id: "post-4",
+          permalink: "/post-4",
+          slug: "post-4",
+          bodyHtml: "<p>Penultimate</p>",
+        }),
+        latestReply: createPostView({
+          id: "post-5",
+          permalink: "/post-5",
+          slug: "post-5",
+          bodyHtml: "<p>Latest</p>",
+          isLastInThread: true,
+        }),
+        totalReplyCount: 4,
+      }),
+    );
+
+    expect(html).toMatch(
+      /<a[^>]*\bhref="\/post-2"[^>]*\bclass="thread-gap-link"|<a[^>]*\bclass="thread-gap-link"[^>]*\bhref="\/post-2"/,
+    );
+  });
+
+  it("falls back to the latest reply for the gap link when there is no second reply", () => {
+    const html = renderWithI18n(() =>
+      ThreadPreview({
+        rootPost: createPostView({ bodyHtml: "<p>Root</p>" }),
+        penultimateReply: createPostView({
+          id: "post-4",
+          permalink: "/post-4",
+          slug: "post-4",
+          bodyHtml: "<p>Penultimate</p>",
+        }),
+        latestReply: createPostView({
+          id: "post-5",
+          permalink: "/post-5",
+          slug: "post-5",
+          bodyHtml: "<p>Latest</p>",
+          isLastInThread: true,
+        }),
+        totalReplyCount: 3,
+      }),
+    );
+
+    expect(html).toMatch(
+      /<a[^>]*\bhref="\/post-5"[^>]*\bclass="thread-gap-link"|<a[^>]*\bclass="thread-gap-link"[^>]*\bhref="\/post-5"/,
+    );
   });
 
   it("renders article summaries in curated thread previews", () => {

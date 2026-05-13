@@ -1,5 +1,51 @@
 # @jant/core
 
+## 0.5.0
+
+### Minor Changes
+
+- [`191d9da`](https://github.com/jant-me/jant/commit/191d9da71d615b591546798e76f39e806b53db9c) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix reply attachments
+
+## 0.4.5
+
+### Patch Changes
+
+- [`4502502`](https://github.com/jant-me/jant/commit/4502502a0d6a1a4086bf0ccd961e598904c9a6e3) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Update desc
+
+- [`345c597`](https://github.com/jant-me/jant/commit/345c5976fdbaccac291fc62ac72ce4546812c5cf) Thanks [@theowenyoung](https://github.com/theowenyoung)! - image width fix
+
+## 0.4.4
+
+### Patch Changes
+
+- [`6d68c81`](https://github.com/jant-me/jant/commit/6d68c811db07bb851ede743896c5f5340f5b25a2) Thanks [@theowenyoung](https://github.com/theowenyoung)! - New empty homepage
+
+## 0.4.3
+
+### Patch Changes
+
+- [`229a1d8`](https://github.com/jant-me/jant/commit/229a1d875e702b86b8b34b0cd2ba4abc3114a244) Thanks [@theowenyoung](https://github.com/theowenyoung)! - post actions adapt
+
+- [`8c5f8cb`](https://github.com/jant-me/jant/commit/8c5f8cb7d76565db38521e59cc68b035f8e957f3) Thanks [@theowenyoung](https://github.com/theowenyoung)! - thread post distance
+
+## 0.4.2
+
+### Patch Changes
+
+- [`b7a89bf`](https://github.com/jant-me/jant/commit/b7a89bf5624958a2cc32bd7b49521ed61cc43341) Thanks [@theowenyoung](https://github.com/theowenyoung)! - fix video focus
+
+## 0.4.1
+
+### Patch Changes
+
+- [`b2eeb4b`](https://github.com/jant-me/jant/commit/b2eeb4b680ff4f49fe7baee833b1fd972b7bee39) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Better Compose Uploading
+
+## 0.4.0
+
+### Minor Changes
+
+- [`fe2f1bb`](https://github.com/jant-me/jant/commit/fe2f1bbce353a1501dd591f1acaf4c8ea5a6dec1) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Firsr Alpha
+
 ## 0.3.50
 
 ### Patch Changes

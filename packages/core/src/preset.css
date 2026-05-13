@@ -503,6 +503,20 @@ html {
   margin-top: 3rem;
 }
 
+/* When a post has multi-attachment media, this wrapper shrinks to the
+   widest child (typically the gallery) but never narrower than the standard
+   content column. Footer inside takes 100% of the wrapper, so right-side
+   actions follow the gallery's right edge. */
+.post-attached-group {
+  width: fit-content;
+  min-width: var(--layout-content-width);
+  max-width: 100%;
+}
+
+.post-attached-group > [data-post-meta] {
+  width: 100%;
+}
+
 @media (max-width: 1024px) {
   [data-page="search"],
   .site-home-header,
@@ -520,5 +534,9 @@ html {
   [data-post-meta],
   [data-post-end] {
     width: min(100%, 35rem);
+  }
+
+  .post-attached-group {
+    min-width: min(100%, 35rem);
   }
 }

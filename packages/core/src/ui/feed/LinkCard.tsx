@@ -144,9 +144,24 @@ export const LinkCard: FC<TimelineCardProps> = ({
           {bodyEl}
         </>
       )}
-      {mediaEl}
-      {ratingEl}
-      <PostFooter post={post} detail={isDetail} display={display?.footer} />
+      {(() => {
+        const tail = (
+          <>
+            {mediaEl}
+            {ratingEl}
+            <PostFooter
+              post={post}
+              detail={isDetail}
+              display={display?.footer}
+            />
+          </>
+        );
+        return !isCompact && post.media.length > 1 ? (
+          <div class="post-attached-group">{tail}</div>
+        ) : (
+          tail
+        );
+      })()}
     </article>
   );
 };

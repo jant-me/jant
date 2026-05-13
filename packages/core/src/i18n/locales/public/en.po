@@ -1773,17 +1773,13 @@ msgstr "Settings"
 msgid "Shared links"
 msgstr "Shared links"
 
-#. @context: Button to collapse expanded thread context
 #. @context: Collapse reply context
 #: src/ui/compose/ComposeDialog.tsx
-#: src/ui/feed/ThreadPreview.tsx
 msgid "Show less"
 msgstr "Show less"
 
-#. @context: Button to expand faded thread context
 #. @context: Expand reply context
 #: src/ui/compose/ComposeDialog.tsx
-#: src/ui/feed/ThreadPreview.tsx
 msgid "Show more"
 msgstr "Show more"
 

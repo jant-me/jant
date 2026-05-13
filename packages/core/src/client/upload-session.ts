@@ -89,20 +89,61 @@ function parseTransport(value: unknown): UploadTransportResponse | null {
   return null;
 }
 
-async function sha256Base64(file: File): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    await file.arrayBuffer(),
-  );
-  const bytes = new Uint8Array(digest);
-  let ascii = "";
-  for (const byte of bytes) {
-    ascii += String.fromCharCode(byte);
+interface XhrPutResult {
+  status: number;
+  ok: boolean;
+  text: string;
+}
+
+/**
+ * PUT a request body via XMLHttpRequest so we can observe upload progress.
+ * `fetch()` does not expose `upload.progress`, so byte-level progress for
+ * single-PUT and per-part requests requires XHR.
+ */
+function xhrPut(
+  url: string,
+  body: Blob | File,
+  headers: Record<string, string>,
+  onProgress?: (progress: number) => void,
+): Promise<XhrPutResult> {
+  return new Promise((resolve, reject) => {
+    const xhr = new globalThis.XMLHttpRequest();
+    xhr.open("PUT", url);
+    for (const [name, value] of Object.entries(headers)) {
+      xhr.setRequestHeader(name, value);
+    }
+    xhr.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable && onProgress) {
+        onProgress(event.loaded / event.total);
+      }
+    });
+    xhr.addEventListener("load", () => {
+      resolve({
+        status: xhr.status,
+        ok: xhr.status >= 200 && xhr.status < 300,
+        text: xhr.responseText,
+      });
+    });
+    xhr.addEventListener("error", () => reject(new Error("Network error")));
+    xhr.addEventListener("abort", () => reject(new Error("Upload aborted")));
+    xhr.send(body);
+  });
+}
+
+function parseJsonObjectFromText(text: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(text);
+    return isJsonObject(parsed) ? parsed : null;
+  } catch {
+    return null;
   }
-  return btoa(ascii);
 }
 
 async function initiateUpload(file: File): Promise<InitiateResponse> {
+  // Note: no client-side SHA-256 here. Hashing the whole file would force a
+  // full File.arrayBuffer() read, which on mobile Safari pushes peak memory
+  // past the per-tab cap for large videos and gets the page killed.
+  // Server-side size + storage ETag are sufficient integrity checks.
   const res = await fetch(publicPath("/api/uploads/init"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -110,7 +151,6 @@ async function initiateUpload(file: File): Promise<InitiateResponse> {
       filename: file.name,
       contentType: file.type || "application/octet-stream",
       size: file.size,
-      checksumSha256: await sha256Base64(file),
     }),
   });
 
@@ -196,24 +236,26 @@ async function uploadMultipartRelay(
     const end = Math.min(start + transport.partSize, file.size);
     const partNumber = i + 1;
     const chunk = file.slice(start, end);
-    const response = await fetch(
+    const partBytes = end - start;
+    const response = await xhrPut(
       publicPath(`${transport.url}?partNumber=${partNumber}`),
-      {
-        method: "PUT",
-        body: chunk,
+      chunk,
+      {},
+      (partProgress) => {
+        onProgress?.((uploadedBytes + partBytes * partProgress) / file.size);
       },
     );
     if (!response.ok) {
       throw new Error(`Failed to upload part ${partNumber}`);
     }
-    const data = await readJsonObject(response);
-    const uploadedPart = getJsonNumber(data, "partNumber");
-    const etag = getJsonString(data, "etag");
+    const data = parseJsonObjectFromText(response.text);
+    const uploadedPart = data ? getJsonNumber(data, "partNumber") : null;
+    const etag = data ? getJsonString(data, "etag") : null;
     if (!uploadedPart || !etag) {
       throw new Error(`Failed to upload part ${partNumber}`);
     }
     parts.push({ partNumber: uploadedPart, etag });
-    uploadedBytes += end - start;
+    uploadedBytes += partBytes;
     onProgress?.(uploadedBytes / file.size);
   }
 
@@ -229,24 +271,28 @@ export async function uploadViaSession(
 
   try {
     if (transport.kind === "put") {
-      const response = await fetch(transport.url, {
-        method: "PUT",
-        headers: transport.headers,
-        body: file,
-      });
+      const response = await xhrPut(
+        transport.url,
+        file,
+        transport.headers,
+        onProgress,
+      );
       if (!response.ok) {
         throw new Error("Upload failed");
       }
       onProgress?.(1);
     } else if (transport.kind === "relay") {
-      const response = await fetch(publicPath(transport.url), {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
+      const response = await xhrPut(
+        publicPath(transport.url),
+        file,
+        { "Content-Type": file.type },
+        onProgress,
+      );
       if (!response.ok) {
-        const data = await readJsonObject(response);
-        throw new Error(getJsonString(data, "error") ?? "Upload failed");
+        const data = parseJsonObjectFromText(response.text);
+        throw new Error(
+          (data && getJsonString(data, "error")) ?? "Upload failed",
+        );
       }
       onProgress?.(1);
     }

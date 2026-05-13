@@ -21,6 +21,7 @@ import {
 import {
   showToast,
   showPersistentToast,
+  updateToast,
   replaceWithAutoClose,
   queueToastForNextPage,
 } from "./toast.js";
@@ -28,7 +29,6 @@ import { openReplyForArticle } from "./compose-launch.js";
 import { getJsonString, readJsonObject } from "./json.js";
 import { uploadViaSession } from "./upload-session.js";
 import { publicPath } from "./runtime-paths.js";
-import { setupThreadContexts } from "./thread-context.js";
 import { tiptapJsonToMarkdown } from "../lib/tiptap-to-markdown.js";
 import { getMediaCategory } from "../lib/upload.js";
 import { resolveInlineImageUrls } from "./tiptap/inline-image-upload.js";
@@ -75,7 +75,6 @@ async function refreshTimelineThreadView(
     if (!html) return false;
 
     content.innerHTML = html;
-    setupThreadContexts(content);
     return true;
   } catch {
     return false;
@@ -98,7 +97,6 @@ async function refreshPostCardView(postId: string): Promise<boolean> {
       );
       if (!content) return false;
       content.innerHTML = html;
-      setupThreadContexts(content);
       return true;
     }
 
@@ -108,12 +106,6 @@ async function refreshPostCardView(postId: string): Promise<boolean> {
     if (!article) return false;
 
     article.outerHTML = html;
-    const refreshed = document.querySelector<HTMLElement>(
-      `article[data-post-id="${postId}"]`,
-    );
-    if (refreshed) {
-      setupThreadContexts(refreshed);
-    }
     return true;
   } catch {
     return false;
@@ -133,12 +125,6 @@ async function refreshPostPageView(postId: string): Promise<boolean> {
     if (!html) return false;
 
     container.outerHTML = html;
-    const refreshed = document.querySelector<HTMLElement>(
-      `[data-post-view][data-post-view-id="${postId}"]`,
-    );
-    if (refreshed) {
-      setupThreadContexts(refreshed);
-    }
     return true;
   } catch {
     return false;
@@ -172,6 +158,46 @@ const uploadPromises = new Map<string, Promise<string | null>>();
 
 /** Track attachments removed while their upload is still in flight */
 const removedClientIds = new Set<string>();
+
+/**
+ * Track upload-phase progress (0..1) per clientId for live toast aggregation.
+ * Populated only during the actual byte-upload phase — processing/transcoding
+ * progress is intentionally excluded so the percentage doesn't reset mid-flight.
+ */
+const uploadProgress = new Map<string, number>();
+
+interface ActiveUploadToast {
+  clientIds: string[];
+  baseMsg: string;
+}
+
+let activeUploadToast: ActiveUploadToast | null = null;
+
+function refreshUploadToast() {
+  if (!activeUploadToast) return;
+  const { clientIds, baseMsg } = activeUploadToast;
+  if (clientIds.length === 0) return;
+
+  let sum = 0;
+  let done = 0;
+  for (const id of clientIds) {
+    const p = uploadProgress.get(id) ?? 0;
+    sum += Math.min(1, Math.max(0, p));
+    if (p >= 1) done += 1;
+  }
+  const total = clientIds.length;
+  const pct = Math.floor((sum / total) * 100);
+  // Show "currently on item N of M" rather than "N completed of M": while any
+  // work is in flight we report the next-in-progress index (capped at total),
+  // so 2 files with neither done shows "1/2" instead of the confusing "0/2".
+  const current = Math.min(done + 1, total);
+
+  const message =
+    total === 1
+      ? `${baseMsg} ${pct}%`
+      : `${baseMsg} ${pct}% ${current}/${total}`;
+  updateToast("compose-deferred", message);
+}
 
 /**
  * Track completed upload mediaIds by clientId.
@@ -265,6 +291,13 @@ async function uploadFile(
   clientId: string,
   editor: JantComposeEditor | null,
 ): Promise<string | null> {
+  // Capture cheap metadata up-front so we can release `file` (the original
+  // potentially-huge blob) as soon as transcoding finishes. On iOS Safari
+  // holding a 300MB+ source blob alongside the transcoded output, upload
+  // chunks, and decoder buffers can push the tab past the per-process
+  // memory cap and get it silently reloaded mid-publish.
+  const fileType = file.type;
+  const fileName = file.name;
   try {
     let toUpload: File;
     let width: number | undefined;
@@ -274,7 +307,7 @@ async function uploadFile(
     let waveform: string | undefined;
     let poster: Blob | undefined;
 
-    if (file.type.startsWith("video/")) {
+    if (fileType.startsWith("video/")) {
       // Video: transcode with mediabunny (requires WebCodecs)
       if (!VideoProcessor.isSupported()) {
         editor?.updateAttachmentStatus(
@@ -298,6 +331,8 @@ async function uploadFile(
         editor?.updateAttachmentProgress(clientId, progress);
       });
       toUpload = result.file;
+      // Drop the original blob ref now that we have the transcoded output.
+      file = null as unknown as File;
       width = result.width;
       height = result.height;
       durationSeconds = result.durationSeconds;
@@ -306,7 +341,7 @@ async function uploadFile(
       if (poster) {
         editor?.updateAttachmentPoster(clientId, poster);
       }
-    } else if (file.type.startsWith("audio/")) {
+    } else if (fileType.startsWith("audio/")) {
       // Audio: transcode to AAC (.m4a) (requires WebCodecs)
       if (!AudioProcessor.isSupported()) {
         editor?.updateAttachmentStatus(
@@ -330,23 +365,24 @@ async function uploadFile(
         editor?.updateAttachmentProgress(clientId, progress);
       });
       toUpload = result.file;
+      file = null as unknown as File;
     } else if (
-      file.type.startsWith("image/") ||
-      /\.heic$/i.test(file.name) ||
-      /\.heif$/i.test(file.name)
+      fileType.startsWith("image/") ||
+      /\.heic$/i.test(fileName) ||
+      /\.heif$/i.test(fileName)
     ) {
       // Image: convert HEIC/HEIF if needed, then resize + convert to WebP
       let imageFile = file;
       try {
         const { isHeic, heicTo } = await import("heic-to");
-        if (await isHeic(file)) {
+        if (await isHeic(imageFile)) {
           editor?.updateAttachmentStatus(clientId, "processing", null, null);
           const blob = await heicTo({
-            blob: file,
+            blob: imageFile,
             type: "image/jpeg",
             quality: 0.92,
           });
-          imageFile = new File([blob], file.name.replace(/\.heic$/i, ".jpg"), {
+          imageFile = new File([blob], fileName.replace(/\.heic$/i, ".jpg"), {
             type: "image/jpeg",
           });
           editor?.updateAttachmentPreview(clientId, imageFile);
@@ -355,6 +391,8 @@ async function uploadFile(
         toUpload = result.file;
         width = result.width;
         height = result.height;
+        file = null as unknown as File;
+        imageFile = null as unknown as File;
       } catch {
         editor?.removeAttachment(clientId);
         showToast("Image format not supported.", "error");
@@ -369,7 +407,7 @@ async function uploadFile(
 
     // Extract metadata for non-video files (video metadata comes from VideoProcessor)
     // Audio waveform is already extracted above (before AudioProcessor runs).
-    if (!file.type.startsWith("video/")) {
+    if (!fileType.startsWith("video/")) {
       const meta = await extractMediaMetadata(toUpload);
       width ??= meta.width;
       height ??= meta.height;
@@ -387,7 +425,7 @@ async function uploadFile(
     // markdown via the compose API and materialized by `createTextAttachment`.
     let summary: string | undefined;
     let chars: number | undefined;
-    const category = getMediaCategory(file.type);
+    const category = getMediaCategory(fileType);
     if (category === "text") {
       try {
         const textContent = await toUpload.text();
@@ -399,6 +437,9 @@ async function uploadFile(
         // Ignore — summary is optional
       }
     }
+
+    uploadProgress.set(clientId, 0);
+    refreshUploadToast();
 
     const result = await uploadViaSession(
       toUpload,
@@ -414,13 +455,19 @@ async function uploadFile(
       },
       (progress) => {
         editor?.updateAttachmentProgress(clientId, progress);
+        uploadProgress.set(clientId, progress);
+        refreshUploadToast();
       },
     );
 
+    uploadProgress.set(clientId, 1);
+    refreshUploadToast();
     editor?.updateAttachmentStatus(clientId, "done", result.id, null);
     completedMediaIds.set(clientId, result.id);
     return result.id;
   } catch (error) {
+    uploadProgress.delete(clientId);
+    refreshUploadToast();
     const message = error instanceof Error ? error.message : "Upload failed";
     editor?.updateAttachmentStatus(clientId, "error", null, message);
     // Error is shown on the attachment thumbnail; only toast when there's no editor context.
@@ -625,10 +672,21 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
   // Show persistent toast only when uploads are still in flight
   if (hasPending) {
     showPersistentToast("compose-deferred", uploadingMsg);
+    if (detail.pendingAttachments.length > 0) {
+      activeUploadToast = {
+        clientIds: detail.pendingAttachments.map((a) => a.clientId),
+        baseMsg: uploadingMsg,
+      };
+      refreshUploadToast();
+    }
   }
 
   /** Show result toast — replaces persistent toast if one exists, otherwise shows a new one */
   const toastMsg = (msg: string, type: "success" | "error" = "success") => {
+    if (activeUploadToast) {
+      for (const id of activeUploadToast.clientIds) uploadProgress.delete(id);
+      activeUploadToast = null;
+    }
     if (hasPending) {
       replaceWithAutoClose("compose-deferred", msg, type);
     } else {

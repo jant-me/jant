@@ -213,6 +213,95 @@ describe("JantMediaLightbox", () => {
     expect(muteButton).not.toBeNull();
   });
 
+  it("scrubs the video on arrow keys instead of switching items", async () => {
+    const el = await createElement();
+
+    el.open(
+      [
+        {
+          url: "https://example.com/clip-a.mp4",
+          alt: "",
+          mimeType: "video/mp4",
+          durationSeconds: 45,
+          size: 2_000_000,
+        },
+        {
+          url: "https://example.com/clip-b.mp4",
+          alt: "",
+          mimeType: "video/mp4",
+          durationSeconds: 45,
+          size: 2_000_000,
+        },
+      ],
+      0,
+    );
+    await flush(el);
+
+    const dialog = el.querySelector<HTMLDialogElement>(".media-lightbox");
+    const video = el.querySelector<HTMLVideoElement>(".media-lightbox-video");
+    if (!dialog || !video) throw new Error("expected dialog and video");
+
+    Object.defineProperty(video, "duration", { configurable: true, value: 45 });
+    video.currentTime = 10;
+
+    dialog.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "ArrowRight",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    await flush(el);
+
+    expect(video.currentTime).toBeCloseTo(15);
+    expect(el.querySelector(".media-lightbox-counter")?.textContent).toMatch(
+      /1\s*\/\s*2/,
+    );
+
+    dialog.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "ArrowLeft",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    await flush(el);
+
+    expect(video.currentTime).toBeCloseTo(10);
+    expect(el.querySelector(".media-lightbox-counter")?.textContent).toMatch(
+      /1\s*\/\s*2/,
+    );
+  });
+
+  it("switches items on arrow keys for images", async () => {
+    const el = await createElement();
+
+    el.open(
+      [
+        { url: "https://example.com/a.jpg", alt: "" },
+        { url: "https://example.com/b.jpg", alt: "" },
+      ],
+      0,
+    );
+    await flush(el);
+
+    const dialog = el.querySelector<HTMLDialogElement>(".media-lightbox");
+    if (!dialog) throw new Error("expected dialog");
+
+    dialog.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "ArrowRight",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    await flush(el);
+
+    expect(el.querySelector(".media-lightbox-counter")?.textContent).toMatch(
+      /2\s*\/\s*2/,
+    );
+  });
+
   it("keeps native controls for long videos", async () => {
     const el = await createElement();
 

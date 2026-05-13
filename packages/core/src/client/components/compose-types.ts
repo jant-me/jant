@@ -14,7 +14,12 @@ export interface ComposeAttachment {
   clientId: string;
   file: File;
   previewUrl: string;
-  /** Blob URL for a video poster frame (used as `<video poster>` on Safari) */
+  /**
+   * Poster URL for video attachments, used as `<video poster>` so Safari shows
+   * a preview frame (Chrome renders the first frame natively, Safari does not).
+   * For new uploads this is a blob URL produced by `URL.createObjectURL`; for
+   * edit mode it's the server-side poster URL.
+   */
   posterUrl: string | null;
   status: "pending" | "processing" | "uploading" | "done" | "error";
   progress: number | null;

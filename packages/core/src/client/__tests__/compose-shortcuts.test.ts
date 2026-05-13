@@ -168,9 +168,7 @@ describe("compose shortcuts", () => {
     expect(postId).toBe("post-current");
     expect(threadRootId).toBe("thread-root");
     expect(refreshTarget).toEqual({ kind: "post-view", id: "post-current" });
-    expect(vi.mocked(composeEl.openReply).mock.calls[0]?.[4]).toEqual({
-      initialFormat: "quote",
-    });
+    expect(vi.mocked(composeEl.openReply).mock.calls[0]?.[4]).toBeUndefined();
     expect(replyData).toMatchObject({ dateText: "Mar 19" });
     expect((replyData as { contentHtml: string }).contentHtml).toContain(
       "Reply body",
@@ -205,7 +203,6 @@ describe("compose shortcuts", () => {
       expect.objectContaining({ dateText: "Mar 20" }),
       "thread-root",
       { kind: "post-view", id: "post-current" },
-      { initialFormat: "quote" },
     );
   });
 

@@ -837,6 +837,7 @@ export class JantComposeEditor extends LitElement {
     media?: Array<{
       id: string;
       previewUrl: string;
+      posterUrl?: string | null;
       alt?: string;
       mimeType: string;
       originalName?: string;
@@ -884,7 +885,7 @@ export class JantComposeEditor extends LitElement {
         clientId: randomUUID(),
         file: new File([], m.originalName ?? "existing", { type: m.mimeType }),
         previewUrl: m.previewUrl,
-        posterUrl: null,
+        posterUrl: m.posterUrl ?? null,
         status: "done" as const,
         progress: null,
         mediaId: m.id,

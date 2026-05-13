@@ -197,9 +197,7 @@ export class JantMediaLightbox extends LitElement {
     this.updateComplete.then(() => {
       const dialog = this.querySelector<HTMLDialogElement>(".media-lightbox");
       dialog?.showModal();
-      // Focus the content wrapper instead of letting the browser auto-focus
-      // the close button, which would show a focus ring on arrow-key nav.
-      this.querySelector<HTMLElement>(".media-lightbox-content")?.focus();
+      this.#focusCurrentMedia();
     });
   }
 
@@ -285,18 +283,41 @@ export class JantMediaLightbox extends LitElement {
     if (ke.key === "Escape") {
       e.preventDefault();
       this.close();
-    } else if (
-      target?.classList.contains("media-lightbox-short-progress") &&
-      (ke.key === "ArrowLeft" || ke.key === "ArrowRight")
-    ) {
       return;
-    } else if (ke.key === "ArrowLeft") {
-      e.preventDefault();
-      this.#prev();
-    } else if (ke.key === "ArrowRight") {
-      e.preventDefault();
-      this.#next();
     }
+    if (ke.key !== "ArrowLeft" && ke.key !== "ArrowRight") return;
+
+    // Let the progress slider's native arrow-key seeking through.
+    if (target?.classList.contains("media-lightbox-short-progress")) return;
+
+    // On videos, arrow keys scrub the playhead. Item switching happens via
+    // the on-screen prev/next buttons — matches YouTube/native player conventions.
+    const currentImage = this._images[this._currentIndex];
+    if (currentImage?.mimeType?.startsWith("video/")) {
+      const video = this.querySelector<HTMLVideoElement>(
+        ".media-lightbox-video",
+      );
+      if (video) {
+        e.preventDefault();
+        const step = 5;
+        const delta = ke.key === "ArrowLeft" ? -step : step;
+        const duration =
+          Number.isFinite(video.duration) && video.duration > 0
+            ? video.duration
+            : null;
+        const nextTime =
+          duration != null
+            ? Math.max(0, Math.min(video.currentTime + delta, duration))
+            : Math.max(0, video.currentTime + delta);
+        video.currentTime = nextTime;
+        this._videoCurrentTime = nextTime;
+      }
+      return;
+    }
+
+    e.preventDefault();
+    if (ke.key === "ArrowLeft") this.#prev();
+    else this.#next();
   };
 
   #handleDialogClick = (e: Event) => {
@@ -342,6 +363,24 @@ export class JantMediaLightbox extends LitElement {
 
   #pauseCurrentVideo() {
     this.querySelector<HTMLVideoElement>(".media-lightbox-video")?.pause();
+  }
+
+  // Focus the active video so space/native shortcuts work without an extra
+  // click. Falls back to the content wrapper for images — focusing the close
+  // button would show a focus ring during arrow-key nav.
+  #focusCurrentMedia() {
+    const currentImage = this._images[this._currentIndex];
+    const isVideo = currentImage?.mimeType?.startsWith("video/");
+    if (isVideo) {
+      const video = this.querySelector<HTMLVideoElement>(
+        ".media-lightbox-video",
+      );
+      if (video) {
+        video.focus();
+        return;
+      }
+    }
+    this.querySelector<HTMLElement>(".media-lightbox-content")?.focus();
   }
 
   #resetShortVideoState(image?: LightboxImage) {
@@ -416,6 +455,7 @@ export class JantMediaLightbox extends LitElement {
     stage.scrollTop = 0;
     stage.scrollLeft = 0;
     this.#syncCurrentVideo();
+    this.#focusCurrentMedia();
   }
 
   render() {

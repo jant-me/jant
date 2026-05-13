@@ -410,6 +410,11 @@ msgstr "無法刪除。請稍後再試。"
 msgid "Couldn't save. Try again in a moment."
 msgstr "無法儲存。請稍後再試。"
 
+#. @context: Link text pointing to GitHub's new repository page
+#: src/ui/dash/settings/GitHubSyncContent.tsx
+msgid "Create a new repository"
+msgstr "建立新儲存庫"
+
 #. @context: GitHub sync picker — entry that opens github.com/new in a new tab
 #: src/routes/dash/settings.tsx
 msgid "Create a new repository on GitHub"
@@ -429,6 +434,11 @@ msgstr "建立自訂網址"
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 msgid "Create one on GitHub"
 msgstr "在 GitHub 上建立一個"
+
+#. @context: Help text for GitHub repository input on GitHub Sync settings, telling users they must create the repo themselves
+#: src/ui/dash/settings/GitHubSyncContent.tsx
+msgid "Create the repository on GitHub first — it can be empty."
+msgstr "先在 GitHub 上建立儲存庫 — 可以是空的。"
 
 #. @context: Token creation date
 #: src/ui/dash/settings/ApiTokensContent.tsx

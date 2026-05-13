@@ -14,7 +14,7 @@ summary_text: "Thirty minutes later: laptop, lamp, notebook, one glass of water.
 media:
   - id: "med_01kn8jve5nenf98tzap11gpxzr"
     kind: "image"
-    src: "/media/med_01kn8jve5nenf98tzap11gpxzr.webp"
+    src: "/media/8714116d3c8e-med_01kn8jve5nenf98tzap11gpxzr.webp"
     position: 3055
     width: 1200
     height: 900

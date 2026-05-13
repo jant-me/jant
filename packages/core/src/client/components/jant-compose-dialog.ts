@@ -66,6 +66,7 @@ interface ApiMediaAttachment {
   type: "media";
   id: string;
   previewUrl: string;
+  posterUrl?: string | null;
   alt?: string;
   mimeType: string;
   url?: string;
@@ -429,6 +430,7 @@ async function resolveApiAttachments(allAttachments: ApiAttachment[]) {
   const media = mediaItems.map((m) => ({
     id: m.id,
     previewUrl: m.previewUrl,
+    posterUrl: m.posterUrl ?? null,
     alt: m.alt,
     mimeType: m.mimeType,
     originalName: m.originalName,

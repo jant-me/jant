@@ -370,7 +370,7 @@ description = "Refresh sites/demo-source/canonical/snapshot from the remote demo
 run = "node scripts/demo-source/export-canonical.mjs"
 
 [tasks.demo-source-export-canonical-site-export]
-description = "Refresh sites/demo-source/canonical/site-export from the committed canonical snapshot"
+description = "Refresh sites/demo-source/canonical/site-export from the deployed demo-source site (requires JANT_API_TOKEN)"
 run = "node scripts/demo-source/export-canonical-site-export.mjs"
 
 [tasks.demo-source-clear-storage]

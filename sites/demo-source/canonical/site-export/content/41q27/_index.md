@@ -26,7 +26,7 @@ collections:
 media:
   - id: "med_01kn8jtx8qenf98tm9ahxr48sw"
     kind: "image"
-    src: "/media/med_01kn8jtx8qenf98tm9ahxr48sw.webp"
+    src: "/media/0f868ce9ac84-med_01kn8jtx8qenf98tm9ahxr48sw.webp"
     position: 3055
     width: 1200
     height: 900

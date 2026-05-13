@@ -1314,7 +1314,10 @@ hr.feed-divider {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-xl) * 1.1);
+  /* Match runtime `.thread-group-preview .thread-item` which uses
+     `padding: var(--site-thread-item-spacing) 0` — adjacent items have
+     2x the token between them, so the flex `gap` here is 2x to match. */
+  gap: calc(var(--site-thread-item-spacing) * 2);
   margin: 0;
   padding: 0;
   border-left: 0;

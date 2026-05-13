@@ -280,8 +280,7 @@
     var(--site-nav-hover-bg) 42%,
     transparent
   );
-  --site-thread-item-spacing: 16px;
-  --site-thread-context-max-height: clamp(196px, 40vh, 400px);
+  --site-thread-item-spacing: 32px;
   --site-thread-dot-ring: color-mix(
     in srgb,
     var(--site-accent) 16%,

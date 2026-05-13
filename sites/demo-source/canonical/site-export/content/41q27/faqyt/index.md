@@ -14,7 +14,7 @@ summary_text: "By late afternoon the basil was standing up again. I respect a fa
 media:
   - id: "med_01kn8jv0jdenf98tp6qr9zgjjc"
     kind: "image"
-    src: "/media/med_01kn8jv0jdenf98tp6qr9zgjjc.webp"
+    src: "/media/8a0b4277443f-med_01kn8jv0jdenf98tp6qr9zgjjc.webp"
     position: 3055
     width: 1200
     height: 900

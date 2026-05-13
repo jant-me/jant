@@ -1,7 +1,7 @@
 /**
  * Thread Preview
  *
- * Shows latest reply as the hero post with faded ancestor context above.
+ * Shows latest reply as the hero post with ancestor context above.
  * Thread line connects all posts via `.thread-group` / `.thread-item`.
  */
 
@@ -36,18 +36,6 @@ export const ThreadPreview: FC<ThreadPreviewProps> = ({
   totalReplyCount,
 }) => {
   const { i18n } = useLingui();
-  const showMoreLabel = i18n._(
-    msg({
-      message: "Show more",
-      comment: "@context: Button to expand faded thread context",
-    }),
-  );
-  const showLessLabel = i18n._(
-    msg({
-      message: "Show less",
-      comment: "@context: Button to collapse expanded thread context",
-    }),
-  );
   const { hiddenCount } = getThreadPreviewState({
     secondReply,
     penultimateReply,
@@ -72,68 +60,49 @@ export const ThreadPreview: FC<ThreadPreviewProps> = ({
     penultimateReply.id !== secondReply?.id
       ? penultimateReply
       : undefined;
+  const gapHref = renderedSecondReply?.permalink ?? latestReply.permalink;
 
   return (
     <div class="thread-group thread-group-preview">
-      {/* Faded ancestor context */}
-      <div
-        class="thread-context-shell thread-context-collapsed"
-        data-thread-context
-      >
-        {/* Root post */}
-        <div class="thread-item thread-item-context">
-          <TimelineItemFromPost
-            post={rootPost}
-            mode="feed"
-            display={ROOT_CONTEXT_DISPLAY}
-          />
-        </div>
-
-        {/* Second post in the thread */}
-        {renderedSecondReply && (
-          <div class="thread-item thread-item-context">
-            <TimelineItemFromPost
-              post={renderedSecondReply}
-              mode="feed"
-              display={CONTEXT_DISPLAY}
-            />
-          </div>
-        )}
-
-        {/* Hidden posts gap */}
-        {hiddenCount > 0 && (
-          <div class="thread-item thread-item-gap">
-            <a href={latestReply.permalink} class="thread-gap-link">
-              {hiddenPostsLabel}
-            </a>
-          </div>
-        )}
-
-        {/* Penultimate post in the thread */}
-        {renderedPenultimateReply && (
-          <div class="thread-item thread-item-context">
-            <TimelineItemFromPost
-              post={renderedPenultimateReply}
-              mode="feed"
-              display={CONTEXT_DISPLAY}
-            />
-          </div>
-        )}
-
-        <div class="thread-context-fade" />
+      {/* Root post */}
+      <div class="thread-item thread-item-context">
+        <TimelineItemFromPost
+          post={rootPost}
+          mode="feed"
+          display={ROOT_CONTEXT_DISPLAY}
+        />
       </div>
 
-      {/* Toggle button – always present for expanding context in timeline */}
-      <button
-        type="button"
-        class="thread-context-toggle text-muted-foreground hover:text-foreground hidden"
-        data-thread-context-toggle
-        data-label-more={showMoreLabel}
-        data-label-less={showLessLabel}
-        aria-expanded="false"
-      >
-        {showMoreLabel}
-      </button>
+      {/* Second post in the thread */}
+      {renderedSecondReply && (
+        <div class="thread-item thread-item-context">
+          <TimelineItemFromPost
+            post={renderedSecondReply}
+            mode="feed"
+            display={CONTEXT_DISPLAY}
+          />
+        </div>
+      )}
+
+      {/* Hidden posts gap */}
+      {hiddenCount > 0 && (
+        <div class="thread-item thread-item-gap">
+          <a href={gapHref} class="thread-gap-link">
+            {hiddenPostsLabel}
+          </a>
+        </div>
+      )}
+
+      {/* Penultimate post in the thread */}
+      {renderedPenultimateReply && (
+        <div class="thread-item thread-item-context">
+          <TimelineItemFromPost
+            post={renderedPenultimateReply}
+            mode="feed"
+            display={CONTEXT_DISPLAY}
+          />
+        </div>
+      )}
 
       {/* Latest reply (full card, hero) */}
       <div class="thread-item thread-item-hero">

@@ -1,14 +1,12 @@
 # Why blog today?
 
-> This is the thinking behind Jant. If you just want to get something running, jump to [Getting started](getting-started.md).
+> This article explains the design background behind Jant. If you want to install and configure it first, start with [Getting started](getting-started.md).
 
-[Jant](https://jant.me) is a small blog system for one author.
+Today, most personal writing happens in the feeds of various social platforms. Anyone can publish quickly and immediately enter some kind of algorithmic system. Unfortunately, that system is good at distributing content, but it is built around immediacy — ongoing maintenance, long-term search, structured archives, and stable references are usually not its priorities. What's more uncomfortable: these platforms are typically driven by advertising incentives, which naturally pushes their users toward more exaggerated and emotional content as a way to maximize time spent on the platform.
 
-It rests on a fairly plain conviction: personal blogs are still worth keeping around. Not as a replacement for social media, but as a place that genuinely belongs to you.
+Meanwhile, personal blogs are trying to solve this problem: they give the author a stable, indexable, long-term publishing space. Each piece has its own URL, the structure is decided by the author, and the archive does not have to be reorganized around changes in platform formats or recommendation systems.
 
-So before getting into Jant itself, it's worth going back to the question underneath it all:
-
-Why is it still worth blogging today?
+This article starts not with Jant's feature set, but with blogging itself: when social platforms are the default publishing environment, what problems can a personal blog still solve?
 
 ## Honestly, most of the time, no one is reading your blog
 
@@ -82,9 +80,9 @@ He also notes:
 
 ---
 
-This is what [Jant](https://jant.me) is trying to do: take as much friction as possible out of writing and shipping, and then split "publishing" from "broadcasting" — so you can keep a record without having to broadcast every time. Note, Link, and Quote cover almost any shape your writing wants to take, with attachments for images, video, audio, and any other format. Everything syncs automatically to your own GitHub repo as plain Markdown — yours to take with you, anytime.
+In the early web, publishing your writing mostly happened on your own site. Platforms later made publishing much easier, but they also gave writers less control over how a piece appears, whether it can be found, and how long it remains available. A blog gives those decisions back to the author: the links, structure, archive, edits, and deletions are all yours to decide. Whether a piece enters the feed, when it appears, and whether it appears as an excerpt or a link can be handled separately, instead of being tied to the act of publishing itself. This does not mean rejecting platforms: social media, newsletters, and RSS can still handle distribution, while the original always remains the source of truth.
 
-You just need a place to write down what you want to remember. That place should be yours.
+Blogging probably won't make you visible to many people overnight, but every piece you write will stay there at your own pace — open to revision, indexed by search, waiting for the people who actually care about it to find it at some point. If you've hesitated to start, or stepped away somewhere along the way, I hope this piece is a reason to begin again.
 
 ## What's next
 

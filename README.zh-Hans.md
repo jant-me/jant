@@ -8,7 +8,7 @@
 >
 > 你也可以查看作者的博客作为参考：[owen.jant.blog](https://owen.jant.blog/)
 
-Jant 是一个为单作者设计的小型博客系统，支持 **Note、Link、Quote** 三种内容格式。可以串成 Thread，也可以归到 Collection 里。发布体验更接近 Twitter / Threads，而不是 WordPress / Ghost 的后台。
+Jant 是一个为单作者设计的小型博客系统，支持 **Note、Link、Quote** 三种内容格式。一个想法可以用 Thread 持续展开，也可以归入 Collection 里。发布体验更接近 Twitter / Threads，而不是 WordPress / Ghost 的后台。
 
 ![Jant Home](https://jant-me-media.jant.me/assets/jant-home.png)
 
@@ -20,11 +20,11 @@ Jant 是一个为单作者设计的小型博客系统，支持 **Note、Link、Q
 
 ### 发布与推送分离
 
-大多数博客系统把"已发布"和"已广播"当成同一个决定——发出去就同时进入 RSS、订阅者 feed 和首页时间线。Jant 把发布和推送分开：每篇帖子都可以选择分发方式——不出现在 Latest、出现在 Latest，或标为 Featured 进入 `/feed` 并推送到 RSS。
+大多数博客系统把"已发布"和"推送到 RSS"当成同一个决定——发出去就意味着同时进入 RSS。Jant 把发布和推送到 RSS 分开：每篇帖子都可以选择分发方式——不出现在 Latest、出现在 Latest，或标为 Featured 进入 `/feed` 并推送到 RSS。
 
 ### 写作体验
 
-传统博客给你一张表单：标题、正文、分类、标签、摘要、SEO、封面图。这是管理内容的界面，不是写东西的界面。Jant 借鉴 Twitter 和 Threads 的做法——标题可选，随时追加成 Thread，发布只有一个动作。
+传统博客（比如 Wordpress) 会为用户 提供一个后台系统，如果你要发布一片文章，你需要填写一系列表单：标题、正文、分类、标签、摘要和 SEO 等，但是这是企业管理内容的界面，不是个人写东西的界面。Jant 借鉴了 Twitter 和 Threads 的做法——标题可选，随时追加成 Thread，发布只需要一个动作。
 
 ![Jant 撰写界面](https://jant-me-media.jant.me/assets/new.png)
 

@@ -1,6 +1,6 @@
 format = "jant-site"
 version = 1
-generated_at = "2026-04-26T18:21:41.000Z"
+generated_at = "2026-05-12T00:13:42.000Z"
 site_name = "Jant"
 site_description = ""
 site_language = "en"
@@ -21,7 +21,7 @@ archive_page_size = 50
 rss_feed_limit = 50
 favicon_path = "/favicon.ico"
 apple_touch_icon_path = "/apple-touch-icon.png"
-site_avatar_url = "/media/7d1da94fd970-med_01kn8jtq3penf98tfq4gzmh9g9.png"
+site_avatar_url = "/media/e89ea4eabf01-med_01kn8jtq3penf98tfq4gzmh9g9.png"
 favicon_version = "202604030230"
 
 [[nav]]

@@ -134,7 +134,7 @@
                 "display: block; width: 100%; height: auto;")
               (printf "display: block; width: 100%%; height: %dpx; object-fit: cover;" $rowHeight) -}}
           {{- if $isShort -}}
-            <div class="media-video-wrap media-video-wrap-short" style="{{ $videoWrapStyle }}">
+            <div class="media-video-wrap media-video-wrap-short" style="{{ $videoWrapStyle | safeCSS }}">
               <a href="{{ .src }}" data-lightbox-index="{{ ._lbIdx }}" class="media-visual-frame media-video-link" style="display: block; cursor: pointer;">
                 <video preload="none" muted playsinline loop
                   {{- with .poster }} poster="{{ . }}"{{- end -}}
@@ -144,7 +144,7 @@
                   data-video-src="{{ .src }}"
                   data-feed-video-id="{{ .id }}"
                   class="media-visual"
-                  style="{{ $videoStyle }}"></video>
+                  style="{{ $videoStyle | safeCSS }}"></video>
               </a>
               <button type="button" class="media-feed-video-mute" data-feed-video-mute-toggle data-muted="true" aria-label="Play with sound">
                 <svg class="media-feed-video-icon media-feed-video-icon-muted" width="12" height="12" viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
@@ -160,13 +160,13 @@
           {{- else -}}
             <a href="{{ .src }}" data-lightbox-index="{{ ._lbIdx }}"
               class="media-video-wrap media-visual-frame"
-              style="{{ $videoWrapStyle }}">
+              style="{{ $videoWrapStyle | safeCSS }}">
               <video preload="none" muted playsinline
                 {{- with .poster }} poster="{{ . }}"{{- end -}}
                 {{- with .width }} width="{{ . }}"{{- end -}}
                 {{- with .height }} height="{{ . }}"{{- end }}
                 class="media-visual"
-                style="{{ $videoStyle }}"></video>
+                style="{{ $videoStyle | safeCSS }}"></video>
               <div class="media-video-play-overlay">
                 <svg viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
               </div>

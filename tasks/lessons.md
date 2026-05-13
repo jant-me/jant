@@ -1,0 +1,25 @@
+# Lessons
+
+- In happy-dom component tests, avoid reading repo files with `import.meta.url`; Vitest may transform the module URL away from `file:`. Use a stable project-root or package-root path with `resolve()` instead.
+- Product copy in argument-driven docs should support the article's thesis, not compress the product overview into a feature list. Select only the capabilities that advance the current argument.
+- Do not present category defaults as product differentiators. In product copy, only name capabilities when they explain a real design choice or trade-off.
+- When connecting a product premise to a concrete feature, include the missing reasoning step. Avoid jumping from an abstract claim to an implementation detail without explaining the relationship.
+- Avoid repeating the document title as a transition. Use bridge sentences to advance the argument instead of restating the headline question.
+- In conclusions, synthesize the article's argument instead of recapping features or ending with generic ownership slogans.
+- Avoid vague conclusion pivots like "these judgments" or "this is what X does"; name the concrete product trade-off directly.
+- Remove stock transition phrases when the sentence can start with the concrete subject and action.
+- When a conclusion returns from essay argument to product description, add a short conceptual bridge before naming specific product choices.
+- For "why" essays, do not force a product mention into the conclusion when the article's argument can close on the underlying concept. Let navigation links carry readers to product details.
+- In Chinese prose, avoid abstract product-jargon clusters such as "low-friction", "infrastructure", "attention position", and "content sedimentation" when a concrete sentence about what the tool lets the author do is clearer.
+- For professional Chinese documentation, prefer precise functional claims over broad value-language like "价值在于", "放回作者手里", or slogan-style ownership statements.
+- Conclusions should synthesize the actual threads developed in the article. Before rewriting a close, identify the preceding arguments and make the ending answer those arguments directly.
+- Avoid stock three-part conclusion patterns in Chinese essays, especially "put these reasons together / this changes X / this is why Y". Prefer a concrete contrast or operational difference that closes the argument without a forced uplift.
+- When polishing a user-provided draft, preserve its argument structure and improve precision, accuracy, and rhythm instead of replacing it with a new conceptual frame.
+- In Chinese documentation, avoid awkward pluralization like "平台们"; use category terms such as "社交媒体" or enumerate channels directly.
+- Close professional essays with a concrete restatement of the operational choice, not a broad phrase like "务实选择" followed by uplift language.
+- Do not over-compress a conclusion into a neat slogan. When the previous paragraph already explains the mechanism, close with a precise boundary or implication.
+- Do not narrow a broad essay conclusion to a single mechanism if the article developed multiple themes. Synthesize the actual scope without turning it into a generic uplift.
+- When a nearby paragraph already enumerates channels, a conclusion should name the underlying distinction instead of repeating the examples.
+- When a conclusion keeps one strong operational point, add a compact bridge for the other major arguments so the ending does not appear to ignore the rest of the essay.
+- For CTA-style endings in argument-driven docs, avoid button copy and marketing uplift. The final sentence should sound like the article's own conclusion first, with navigation doing the explicit conversion work.
+- When the user rejects a CTA for an essay conclusion, close by reframing the article's central question or implication instead of nudging the reader toward setup, action, or conversion.

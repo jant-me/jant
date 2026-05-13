@@ -91,27 +91,38 @@ export const NoteCard: FC<TimelineCardProps> = ({
           dangerouslySetInnerHTML={{ __html: displayHtml }}
         />
       )}
-      {!isCompact && post.media.length > 0 && (
-        <div class="mt-3" data-post-media>
-          <MediaGallery
-            attachments={post.media}
-            postPermalink={post.permalink}
-          />
-        </div>
-      )}
-      {!isDetail &&
-        !isCompact &&
-        !showFullBody &&
-        isArticle &&
-        post.summaryHasMore && (
-          <a href={getContinueHref(post)} class="feed-continue-link">
-            Continue →
-          </a>
-        )}
-      {!isCompact && !showHeaderRating && !display?.hideRating && (
-        <StarRating rating={post.rating} />
-      )}
-      <PostFooter post={post} detail={isDetail} display={footerDisplay} />
+      {(() => {
+        const tail = (
+          <>
+            {!isCompact && post.media.length > 0 && (
+              <div class="mt-3" data-post-media>
+                <MediaGallery
+                  attachments={post.media}
+                  postPermalink={post.permalink}
+                />
+              </div>
+            )}
+            {!isDetail &&
+              !isCompact &&
+              !showFullBody &&
+              isArticle &&
+              post.summaryHasMore && (
+                <a href={getContinueHref(post)} class="feed-continue-link">
+                  Continue →
+                </a>
+              )}
+            {!isCompact && !showHeaderRating && !display?.hideRating && (
+              <StarRating rating={post.rating} />
+            )}
+            <PostFooter post={post} detail={isDetail} display={footerDisplay} />
+          </>
+        );
+        return !isCompact && post.media.length > 1 ? (
+          <div class="post-attached-group">{tail}</div>
+        ) : (
+          tail
+        );
+      })()}
     </article>
   );
 };

@@ -701,8 +701,8 @@ export const CreateCustomUrlSchema = z.object({
     .min(1)
     .max(512)
     .regex(
-      /^\/?[a-z0-9][a-z0-9\-/]*$/,
-      "Path must contain only lowercase alphanumeric characters, hyphens, and slashes",
+      /^\/?[a-z0-9][a-z0-9\-/.]*$/,
+      "Path must contain only lowercase alphanumeric characters, hyphens, slashes, and dots",
     )
     .transform((p) => (p.startsWith("/") ? p : `/${p}`)),
   targetType: CustomUrlTargetTypeSchema,

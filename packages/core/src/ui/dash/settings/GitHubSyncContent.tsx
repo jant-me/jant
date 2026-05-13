@@ -198,6 +198,31 @@ function GitHubSyncSetupForm({
               required
               autocomplete="off"
             />
+            <p class="text-sm text-muted-foreground mt-1">
+              {i18n._(
+                msg({
+                  message:
+                    "Create the repository on GitHub first — it can be empty.",
+                  comment:
+                    "@context: Help text for GitHub repository input on GitHub Sync settings, telling users they must create the repo themselves",
+                }),
+              )}{" "}
+              <a
+                href="https://github.com/new"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="underline hover:no-underline"
+              >
+                {i18n._(
+                  msg({
+                    message: "Create a new repository",
+                    comment:
+                      "@context: Link text pointing to GitHub's new repository page",
+                  }),
+                )}
+              </a>
+              .
+            </p>
           </div>
 
           <div class="flex mt-2">
