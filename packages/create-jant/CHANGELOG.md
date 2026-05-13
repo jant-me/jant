@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.5.1
+
+### Patch Changes
+
+- [`b5049aa`](https://github.com/jant-me/jant/commit/b5049aaa964da72a09e83d936d92b499918dfb63) Thanks [@theowenyoung](https://github.com/theowenyoung)! - fix title
+
 ## 0.5.0
 
 ## 0.4.5
