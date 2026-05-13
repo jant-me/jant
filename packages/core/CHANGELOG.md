@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.5.0
+
+### Minor Changes
+
+- [`191d9da`](https://github.com/jant-me/jant/commit/191d9da71d615b591546798e76f39e806b53db9c) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix reply attachments
+
 ## 0.4.5
 
 ### Patch Changes
