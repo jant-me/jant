@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.4.5
+
+### Patch Changes
+
+- [`345c597`](https://github.com/jant-me/jant/commit/345c5976fdbaccac291fc62ac72ce4546812c5cf) Thanks [@theowenyoung](https://github.com/theowenyoung)! - image width fix
+
 ## 0.4.4
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @jant/core
 
+## 0.4.5
+
+### Patch Changes
+
+- [`4502502`](https://github.com/jant-me/jant/commit/4502502a0d6a1a4086bf0ccd961e598904c9a6e3) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Update desc
+
+- [`345c597`](https://github.com/jant-me/jant/commit/345c5976fdbaccac291fc62ac72ce4546812c5cf) Thanks [@theowenyoung](https://github.com/theowenyoung)! - image width fix
+
 ## 0.4.4
 
 ### Patch Changes
