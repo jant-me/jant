@@ -5,7 +5,7 @@
 ## 配置
 
 ```
-API_BASE = https://owen.jant.blog
+API_BASE = https://www.owenyoung.com
 API_TOKEN = YOUR_API_TOKEN
 ```
 

@@ -6,7 +6,7 @@
 >
 > 在线演示：[demo.jant.me](https://demo.jant.me)（演示账号已自动填充，数据每日清空）
 >
-> 你也可以查看作者的博客作为参考：[owen.jant.blog](https://owen.jant.blog/)
+> 你也可以查看作者的博客作为参考：[www.owenyoung.com](https://www.owenyoung.com/)
 
 Jant 是一个为单作者设计的小型博客系统，支持 **Note、Link、Quote** 三种内容格式。一个想法可以用 Thread 持续展开，也可以归入 Collection 里。发布体验更接近 Twitter / Threads，而不是 WordPress / Ghost 的后台。
 

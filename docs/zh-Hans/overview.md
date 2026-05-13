@@ -10,7 +10,7 @@ Jant 是一个为单作者设计的小型博客系统，支持 **Note、Link、Q
 
 在线演示：[demo.jant.me](https://demo.jant.me)。点击 `More` 菜单里的[登录](https://demo.jant.me/signin)直接体验，演示账号已自动填充，数据每日清空。
 
-也可以参考作者本人的博客：[owen.jant.blog](https://owen.jant.blog/)。
+也可以参考作者本人的博客：[www.owenyoung.com](https://www.owenyoung.com/)。
 
 ## 一种"无压力"的公开写作
 

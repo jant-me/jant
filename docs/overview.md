@@ -10,7 +10,7 @@ Jant is a small blog system for one author. It supports three post formats — *
 
 Live demo: [demo.jant.me](https://demo.jant.me). Click [Sign in](https://demo.jant.me/signin) under the `More` menu — demo credentials are pre-filled, and the data resets daily.
 
-You can also look at the author's own blog as a real-world example: [owen.jant.blog](https://owen.jant.blog/).
+You can also look at the author's own blog as a real-world example: [www.owenyoung.com](https://www.owenyoung.com/).
 
 ## A quieter way to write in public
 
