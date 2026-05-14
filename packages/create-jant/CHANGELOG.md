@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.5.2
+
+### Patch Changes
+
+- [`3b88f47`](https://github.com/jant-me/jant/commit/3b88f478285955189ee21ba34c23a3da93971b35) Thanks [@theowenyoung](https://github.com/theowenyoung)! - add slash tips to compose dialog
+
 ## 0.5.1
 
 ### Patch Changes
