@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.5.3
+
+### Patch Changes
+
+- [`d884f79`](https://github.com/jant-me/jant/commit/d884f79d5c8ca9f1f676115431889966dfd8783c) Thanks [@theowenyoung](https://github.com/theowenyoung)! - fix spaces
+
 ## 0.5.2
 
 ### Patch Changes
