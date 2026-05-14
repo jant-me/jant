@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.5.4
+
+### Patch Changes
+
+- [`4c96373`](https://github.com/jant-me/jant/commit/4c9637318b988d69ec0d81286753683d870a78a7) Thanks [@theowenyoung](https://github.com/theowenyoung)! - fix video upload in Safari
+
 ## 0.5.3
 
 ### Patch Changes
