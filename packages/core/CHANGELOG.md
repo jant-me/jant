@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.6.0
+
+### Minor Changes
+
+- [`66d9b40`](https://github.com/jant-me/jant/commit/66d9b40d34e9c61781e341bea38dd083cba55b4f) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Add Telegram Bot support & fade for Threads
+
 ## 0.5.4
 
 ### Patch Changes
