@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.6.2
+
+### Patch Changes
+
+- [`0f6b1b1`](https://github.com/jant-me/jant/commit/0f6b1b1d3166112a7b2dace485e7571705ac75da) Thanks [@theowenyoung](https://github.com/theowenyoung)! - for greate images gallery
+
 ## 0.6.1
 
 ### Patch Changes
