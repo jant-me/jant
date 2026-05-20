@@ -227,7 +227,17 @@ export function createExportService(
     media: MediaService;
   },
   siteConfig: SiteConfig,
-  deps: { storage?: StorageDriver | null } = {},
+  deps: {
+    storage?: StorageDriver | null;
+    /**
+     * Whether to bundle media bytes into the exported site under
+     * `static/media/`. Defaults to `true` (the `jant site export`
+     * archive, which must be self-contained). GitHub Sync passes
+     * `false` so media is linked by URL instead — it never reads or
+     * base64-encodes attachment bytes.
+     */
+    bundleMedia?: boolean;
+  } = {},
 ): ExportService {
   return {
     async generateHugoFiles() {
@@ -308,6 +318,7 @@ export function createExportService(
 
       // 3. Build file list
       const exportFiles: ExportFile[] = [];
+      const bundleMedia = deps.bundleMedia ?? true;
 
       // Generate thread bundles (root _index.md + per-reply index.md).
       for (const root of roots) {
@@ -335,6 +346,7 @@ export function createExportService(
           rawMediaByPost,
           siteConfig,
           deps.storage ?? null,
+          bundleMedia,
         );
         exportFiles.push(...bundleFiles);
       }
@@ -662,14 +674,13 @@ interface MediaEmission {
   entry: JantMedia;
   /**
    * Site-relative path under `static/` where the primary bytes should
-   * land, or null when the media links to a remote public URL and no
-   * bytes need to be emitted.
+   * land, or null when the media is linked by URL and no bytes need to
+   * be emitted.
    */
   inlinePath: string | null;
   /**
    * Site-relative path under `static/` where the poster bytes should
-   * land, or null when there's no poster or the poster is linked via
-   * a public URL.
+   * land, or null when there's no poster or the poster is linked by URL.
    */
   inlinePosterPath: string | null;
 }
@@ -682,26 +693,42 @@ interface MediaEmission {
  * When the media's provider has a reachable public URL (R2/S3/local
  * proxy configured with a `*_public_url`), `src` points at that absolute
  * URL and no bytes are emitted — the exported site stays small and the
- * media keeps being served from wherever it already lives. Without a
- * public URL the bytes are written to `static/media/{id}.ext` and `src`
- * is the site-relative path.
+ * media keeps being served from wherever it already lives.
+ *
+ * Otherwise behavior depends on `bundleMedia`:
+ * - `true` (the `jant site export` archive): bytes are written to
+ *   `static/media/{id}.ext` and `src` is the site-relative path, so the
+ *   archive is self-contained.
+ * - `false` (GitHub Sync): no bytes are emitted. `src` falls back to the
+ *   site's own URL so it stays an absolute, resolvable link — the worker
+ *   already serves these objects at `/{storageKey}`. This keeps Sync
+ *   from reading and base64-encoding every attachment on every push.
+ *
+ * When `bundleMedia` is false but the site URL is unknown, bundling is
+ * used as a last resort to avoid emitting a broken relative link.
  */
 function buildMediaEmission(
   media: Media,
   siteConfig: SiteConfig,
+  bundleMedia: boolean,
 ): MediaEmission {
-  const publicUrl = getPublicUrlForProvider(
+  const dedicatedPublicUrl = getPublicUrlForProvider(
     media.provider,
     siteConfig.r2PublicUrl,
     siteConfig.s3PublicUrl,
     siteConfig.localPublicUrl,
   );
-  const hasPublic = Boolean(publicUrl);
+  const siteFallbackUrl =
+    !bundleMedia && siteConfig.siteUrl.trim() ? siteConfig.siteUrl : undefined;
+  const mediaBaseUrl = dedicatedPublicUrl || siteFallbackUrl;
+  const hasRemoteUrl = Boolean(mediaBaseUrl);
 
   const ext = extOfFilename(media.filename);
   const localName = `${media.id}${ext}`;
   const localPath = `/media/${localName}`;
-  const src = hasPublic ? getMediaUrl(media.storageKey, publicUrl) : localPath;
+  const src = hasRemoteUrl
+    ? getMediaUrl(media.storageKey, mediaBaseUrl)
+    : localPath;
 
   const entry: JantMedia = {
     id: media.id,
@@ -730,18 +757,18 @@ function buildMediaEmission(
   if (media.posterKey) {
     const posterExt = extOfStorageKey(media.posterKey);
     const posterLocalName = `${media.id}-poster.${posterExt}`;
-    entry.poster = hasPublic
-      ? getMediaUrl(media.posterKey, publicUrl)
+    entry.poster = hasRemoteUrl
+      ? getMediaUrl(media.posterKey, mediaBaseUrl)
       : `/media/${posterLocalName}`;
     entry.poster_key = media.posterKey;
-    if (!hasPublic) {
+    if (!hasRemoteUrl) {
       inlinePosterPath = `static/media/${posterLocalName}`;
     }
   }
 
   return {
     entry,
-    inlinePath: hasPublic ? null : `static/media/${localName}`,
+    inlinePath: hasRemoteUrl ? null : `static/media/${localName}`,
     inlinePosterPath,
   };
 }
@@ -793,6 +820,7 @@ async function buildThreadBundle(
   mediaByPost: Map<string, Media[]>,
   siteConfig: SiteConfig,
   storage: StorageDriver | null,
+  bundleMedia: boolean,
 ): Promise<ExportFile[]> {
   const files: ExportFile[] = [];
 
@@ -807,7 +835,9 @@ async function buildThreadBundle(
 
   // Root front matter.
   const rootMedia = mediaByPost.get(root.id) ?? [];
-  const rootEmissions = rootMedia.map((m) => buildMediaEmission(m, siteConfig));
+  const rootEmissions = rootMedia.map((m) =>
+    buildMediaEmission(m, siteConfig, bundleMedia),
+  );
   const rootMediaList = rootEmissions.map((e) => e.entry);
   const rootFrontMatter: HugoFrontMatter = {
     id: root.id,
@@ -894,7 +924,7 @@ async function buildThreadBundle(
     const replySlug = slugMap.get(reply.id) ?? reply.slug;
     const replyMedia = mediaByPost.get(reply.id) ?? [];
     const replyEmissions = replyMedia.map((m) =>
-      buildMediaEmission(m, siteConfig),
+      buildMediaEmission(m, siteConfig, bundleMedia),
     );
     const replyMediaList = replyEmissions.map((e) => e.entry);
     const replyCollectionEntries = buildExportedCollectionEntriesForPost(

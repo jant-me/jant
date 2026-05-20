@@ -800,4 +800,131 @@ describe("createExportService (Hugo)", () => {
     const files = filesToMap(await service.generateHugoFiles());
     expect(files.has("static/media/med-x.webp")).toBe(false);
   });
+
+  it("Sync mode (bundleMedia false) links media by absolute site URL without reading bytes", async () => {
+    const root = makePost({ id: "post-root", slug: "with-media" });
+    const media = makeMedia({
+      id: "med-1",
+      filename: "photo.webp",
+      storageKey: "media/med-1.webp",
+    });
+    const storage = {
+      // Must NOT be called — Sync links by URL, never reads attachment bytes.
+      get: async () => {
+        throw new Error("storage.get should not be called in Sync mode");
+      },
+    };
+    const service = createExportService(
+      buildServices({
+        posts: [root],
+        mediaByPost: new Map([["post-root", [media]]]),
+      }),
+      makeSiteConfig(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { storage: storage as any, bundleMedia: false },
+    );
+    const files = filesToMap(await service.generateHugoFiles());
+    expect(files.has("static/media/med-1.webp")).toBe(false);
+    const { frontMatter } = await parseFrontMatter(
+      files.get("content/with-media/_index.md") as string,
+    );
+    const entry = frontMatter.media![0];
+    expect(entry.src).toBe("https://example.com/media/med-1.webp");
+    expect(entry.storage_key).toBe("media/med-1.webp");
+  });
+
+  it("Sync mode links the video poster by absolute site URL without bundling", async () => {
+    const root = makePost({ id: "post-root", slug: "with-video" });
+    const videoMedia = makeMedia({
+      id: "med-video",
+      filename: "clip.mp4",
+      mimeType: "video/mp4",
+      storageKey: "media/med-video.mp4",
+      mediaKind: "video",
+      posterKey: "media/posters/med-video.webp",
+    });
+    const storage = {
+      get: async () => {
+        throw new Error("storage.get should not be called in Sync mode");
+      },
+    };
+    const service = createExportService(
+      buildServices({
+        posts: [root],
+        mediaByPost: new Map([["post-root", [videoMedia]]]),
+      }),
+      makeSiteConfig(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { storage: storage as any, bundleMedia: false },
+    );
+    const files = filesToMap(await service.generateHugoFiles());
+    expect(files.has("static/media/med-video.mp4")).toBe(false);
+    expect(files.has("static/media/med-video-poster.webp")).toBe(false);
+    const { frontMatter } = await parseFrontMatter(
+      files.get("content/with-video/_index.md") as string,
+    );
+    const entry = frontMatter.media![0];
+    expect(entry.src).toBe("https://example.com/media/med-video.mp4");
+    expect(entry.poster).toBe(
+      "https://example.com/media/posters/med-video.webp",
+    );
+  });
+
+  it("Sync mode still prefers a dedicated provider public URL when configured", async () => {
+    const root = makePost({ id: "post-root", slug: "with-cdn" });
+    const media = makeMedia({
+      id: "med-cdn",
+      filename: "cdn.webp",
+      storageKey: "media/med-cdn.webp",
+    });
+    const service = createExportService(
+      buildServices({
+        posts: [root],
+        mediaByPost: new Map([["post-root", [media]]]),
+      }),
+      makeSiteConfig({ r2PublicUrl: "https://cdn.example.com" }),
+      { bundleMedia: false },
+    );
+    const files = filesToMap(await service.generateHugoFiles());
+    expect(files.has("static/media/med-cdn.webp")).toBe(false);
+    const { frontMatter } = await parseFrontMatter(
+      files.get("content/with-cdn/_index.md") as string,
+    );
+    expect(frontMatter.media![0].src).toBe(
+      "https://cdn.example.com/media/med-cdn.webp",
+    );
+  });
+
+  it("Sync mode falls back to bundling bytes when the site URL is unknown", async () => {
+    const root = makePost({ id: "post-root", slug: "with-media" });
+    const media = makeMedia({
+      id: "med-1",
+      filename: "photo.webp",
+      storageKey: "media/med-1.webp",
+    });
+    const storage = {
+      get: async (key: string) =>
+        key === "media/med-1.webp"
+          ? { body: new Blob([new Uint8Array([1, 2, 3])]).stream() }
+          : null,
+    };
+    const service = createExportService(
+      buildServices({
+        posts: [root],
+        mediaByPost: new Map([["post-root", [media]]]),
+      }),
+      makeSiteConfig({ siteUrl: "" }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { storage: storage as any, bundleMedia: false },
+    );
+    const files = filesToMap(await service.generateHugoFiles());
+    // No resolvable URL — bundling is the only way to avoid a broken link.
+    expect(files.get("static/media/med-1.webp")).toEqual(
+      new Uint8Array([1, 2, 3]),
+    );
+    const { frontMatter } = await parseFrontMatter(
+      files.get("content/with-media/_index.md") as string,
+    );
+    expect(frontMatter.media![0].src).toBe("/media/med-1.webp");
+  });
 });

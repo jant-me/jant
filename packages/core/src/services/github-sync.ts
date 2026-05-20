@@ -451,8 +451,14 @@ export function createGitHubSyncService(
       if (!config) throw new Error("GitHub Sync is not configured");
       const { client, owner, repo } = createClient(config);
 
-      // Generate full Hugo site via the shared export service
-      const exportService = createExportService(services, siteConfig, deps);
+      // Generate full Hugo site via the shared export service.
+      // `bundleMedia: false` — Sync links attachments by URL instead of
+      // writing their bytes into the repo, so a push never reads or
+      // base64-encodes media. Media stays served from the live site.
+      const exportService = createExportService(services, siteConfig, {
+        storage: deps.storage,
+        bundleMedia: false,
+      });
       const exportFiles = await exportService.generateHugoFiles();
 
       // Resolve HEAD before building the tree — needed as the commit

@@ -5,8 +5,10 @@
  * call site had its own near-identical copy.
  *
  * The shape mirrors `routes/api/export.ts` so `jant site export` and
- * `jant github sync` produce byte-identical Hugo sites (modulo media
- * files, which Sync intentionally skips). If you add a field to the
+ * `jant github sync` produce matching Hugo sites. They differ only in
+ * media: `site export` bundles attachment bytes into `static/media/` for
+ * a self-contained archive, while Sync links attachments by URL and
+ * never writes their bytes into the repo. If you add a field to the
  * export route, add it here too.
  */
 
