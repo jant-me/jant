@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.6.3
+
+### Patch Changes
+
+- [`d8500cc`](https://github.com/jant-me/jant/commit/d8500ccff8de31d1095851f916581ee7f04ec4a0) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix avatar UI and compose dialog long images
+
 ## 0.6.2
 
 ### Patch Changes
