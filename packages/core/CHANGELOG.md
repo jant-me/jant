@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.6.4
+
+### Patch Changes
+
+- [`d904f83`](https://github.com/jant-me/jant/commit/d904f836aa258e1d14a3c5d3390eab15fe9b2e25) Thanks [@theowenyoung](https://github.com/theowenyoung)! - better cache control
+
 ## 0.6.3
 
 ### Patch Changes
