@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.6.6
+
+### Patch Changes
+
+- [`d044bd8`](https://github.com/jant-me/jant/commit/d044bd8347e5d6d86985d611961e8fc3b13583eb) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Capture video poster frames closer to the start (cap seek at 1s instead of 3s)
+
 ## 0.6.5
 
 ### Patch Changes
