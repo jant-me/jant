@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.6.5
+
+### Patch Changes
+
+- [`e912c7b`](https://github.com/jant-me/jant/commit/e912c7b4af0414b3612d184e6806d45e80cd61d2) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Fix UI and docs
+
 ## 0.6.4
 
 ### Patch Changes
