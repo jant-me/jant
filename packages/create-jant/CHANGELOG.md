@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.6.7
+
+### Patch Changes
+
+- [`e876341`](https://github.com/jant-me/jant/commit/e876341a8ee1d7ca7434d73e125441b37c4bc7ce) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Add click-to-zoom media lightbox with aspect-aware upload resizing; show server error text on upload failure; stop treating IME composition keys (e.g. CJK pinyin Escape) as app shortcuts
+
 ## 0.6.6
 
 ### Patch Changes
