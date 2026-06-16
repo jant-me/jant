@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.6.8
+
+### Patch Changes
+
+- [#128](https://github.com/jant-me/jant/pull/128) [`4a0b3e7`](https://github.com/jant-me/jant/commit/4a0b3e704134aced078587eac03fb8db30f92cfa) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Add an archive thread filter and switch shareable filter URLs to single-word params (media/title/replies/visibility, legacy spellings still accepted); expand untitled notes in the feed with read more/less; allow switching post format while editing; add a Manage Hosting entry in Settings for hosted sites; treat self-referential absolute nav links as internal; raise the default upload size limit to 1024 MB; reap orphaned compose uploads; and fix footnote sidenote rendering and clipper recognition.
+
 ## 0.6.7
 
 ### Patch Changes
