@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.6.9
+
+### Patch Changes
+
+- [`ab64986`](https://github.com/jant-me/jant/commit/ab6498699d3a4dfeb79b144f17af5232921b1dda) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Change post format while editing and move the format selector above replies/edits; expand untitled notes inline with Read more/less; add an archive thread filter with single-word URL params; split content and dashboard language settings; reap orphaned compose media and move deleted media to a 30-day trash before purge; clipper-friendly footnote sidenotes; treat self-referential absolute nav links as internal; re-hydrate interactive behaviors in swapped-in fragments
+
 ## 0.6.8
 
 ### Patch Changes
