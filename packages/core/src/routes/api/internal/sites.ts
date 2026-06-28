@@ -81,6 +81,23 @@ const RenameManagedSiteSchema = z.object({
     ),
 });
 
+// Control-plane notice payload. `message`/`actionLabel` are locale maps
+// (locale tag → string); core stores and renders them without interpreting
+// their meaning. The notice key is a path param, not part of the body.
+const NoticeLocaleMapSchema = z
+  .record(z.string(), z.string().max(2000))
+  .refine((map) => Object.keys(map).length > 0, {
+    message: "At least one locale is required.",
+  });
+
+const SetSiteNoticeSchema = z.object({
+  severity: z.enum(["info", "warn", "urgent"]),
+  message: NoticeLocaleMapSchema,
+  actionLabel: NoticeLocaleMapSchema.optional(),
+  actionUrl: z.string().trim().url().max(2048).optional(),
+  expiresAt: z.number().int().positive().optional(),
+});
+
 export const internalSitesRoutes = new Hono<Env>();
 
 function assertHostBasedMode(env: Bindings) {
@@ -271,6 +288,37 @@ internalSitesRoutes.post(
       siteId: result.site.id,
       status: result.site.status,
     });
+  },
+);
+
+internalSitesRoutes.put(
+  "/:siteId/notices/:key",
+  requireInternalAdminApi(),
+  async (c) => {
+    assertHostBasedMode(c.env);
+    const body = parseValidated(SetSiteNoticeSchema, await c.req.json());
+    await c.var.services.siteAdmin.setSiteNotice(c.req.param("siteId"), {
+      key: c.req.param("key"),
+      severity: body.severity,
+      message: body.message,
+      actionLabel: body.actionLabel ?? null,
+      actionUrl: body.actionUrl ?? null,
+      expiresAt: body.expiresAt ?? null,
+    });
+    return c.body(null, 204);
+  },
+);
+
+internalSitesRoutes.delete(
+  "/:siteId/notices/:key",
+  requireInternalAdminApi(),
+  async (c) => {
+    assertHostBasedMode(c.env);
+    await c.var.services.siteAdmin.clearSiteNotice(
+      c.req.param("siteId"),
+      c.req.param("key"),
+    );
+    return c.body(null, 204);
   },
 );
 

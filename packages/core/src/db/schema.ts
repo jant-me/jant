@@ -41,6 +41,7 @@ const UPLOAD_SESSION_STATES = [
   "failed",
 ] as const;
 const CONTENT_DISPOSITIONS = ["inline", "attachment"] as const;
+const SITE_NOTICE_SEVERITIES = ["info", "warn", "urgent"] as const;
 
 function sqlTextEnum(values: readonly string[]) {
   return sql.raw(values.map((value) => `'${value}'`).join(", "));
@@ -690,6 +691,44 @@ export const settings = sqliteTable(
   (table) => [
     primaryKey({ columns: [table.siteId, table.key] }),
     index("idx_site_setting_site_id").on(table.siteId),
+  ],
+);
+
+// =============================================================================
+// Site Notices (control-plane-injected, opaque to core)
+// =============================================================================
+//
+// A neutral per-site notice channel. The hosted control plane pushes an opaque
+// notice (severity + localized message/action map + optional expiry) through the
+// internal admin API; core renders it as a plain alert in the site dashboard and
+// does not interpret its meaning. `message`/`action_label` hold a JSON locale map
+// (e.g. {"en-US": "...", "zh-Hans": "..."}); core selects by dashboard locale.
+
+export const siteNotices = sqliteTable(
+  "site_notice",
+  {
+    siteId: text("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    severity: text("severity", {
+      enum: SITE_NOTICE_SEVERITIES,
+    })
+      .notNull()
+      .default("info"),
+    message: text("message").notNull(),
+    actionLabel: text("action_label"),
+    actionUrl: text("action_url"),
+    expiresAt: integer("expires_at"),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.siteId, table.key] }),
+    index("idx_site_notice_site_id").on(table.siteId),
+    check(
+      "chk_site_notice_severity",
+      sql`${table.severity} IN (${sqlTextEnum(SITE_NOTICE_SEVERITIES)})`,
+    ),
   ],
 );
 

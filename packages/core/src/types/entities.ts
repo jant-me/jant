@@ -36,6 +36,26 @@ export interface SiteDomain {
   updatedAt: number;
 }
 
+export type SiteNoticeSeverity = "info" | "warn" | "urgent";
+
+/**
+ * A control-plane-injected notice rendered in the site dashboard. Core treats
+ * the content as opaque: `message`/`actionLabel` are locale maps (locale tag →
+ * string) the dashboard picks from at render time. Core does not interpret what
+ * a notice means — it is a neutral channel written only by the internal admin
+ * API.
+ */
+export interface SiteNotice {
+  siteId: string;
+  key: string;
+  severity: SiteNoticeSeverity;
+  message: Record<string, string>;
+  actionLabel: Record<string, string> | null;
+  actionUrl: string | null;
+  expiresAt: number | null;
+  updatedAt: number;
+}
+
 export interface SiteMember {
   siteId: string;
   userId: string;

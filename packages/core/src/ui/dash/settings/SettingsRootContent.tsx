@@ -6,10 +6,28 @@ import { msg } from "@lingui/core/macro";
 import { coalesceDisplayText } from "../../../lib/display-text.js";
 import { useLingui } from "../../../i18n/context.js";
 import { extractDomain, toPublicPath } from "../../../lib/url.js";
+import type { SiteNotice } from "../../../types.js";
 import {
   SettingsDirectoryLink,
   SettingsDirectorySection,
 } from "./SettingsDirectory.js";
+
+// Pick the best string from a control-plane notice locale map for the active
+// dashboard locale: exact tag → same base language (e.g. zh-Hant → zh-Hans,
+// en → en-US) → English → first available. Core does not author these strings;
+// it only selects one, so the control plane stays free to ship its own locales.
+function pickNoticeText(map: Record<string, string>, locale: string): string {
+  if (map[locale]) {
+    return map[locale];
+  }
+  const base = locale.split("-")[0];
+  for (const [key, value] of Object.entries(map)) {
+    if (key === base || key.split("-")[0] === base) {
+      return value;
+    }
+  }
+  return map["en-US"] ?? map.en ?? Object.values(map)[0] ?? "";
+}
 
 // Lucide icon SVG paths (16x16, stroke-based)
 const ICONS = {
@@ -34,13 +52,25 @@ export function SettingsRootContent({
   demoMode = false,
   hostedControlPlaneSiteSettingsUrl,
   hostedControlPlaneProviderLabel,
+  notice = null,
 }: {
   sitePathPrefix?: string;
   demoMode?: boolean;
   hostedControlPlaneSiteSettingsUrl?: string | null;
   hostedControlPlaneProviderLabel?: string | null;
+  notice?: SiteNotice | null;
 }) {
   const { i18n } = useLingui();
+  const noticeMessage = notice
+    ? pickNoticeText(notice.message, i18n.locale)
+    : "";
+  const noticeAction =
+    notice?.actionUrl && notice.actionLabel
+      ? {
+          href: notice.actionUrl,
+          label: pickNoticeText(notice.actionLabel, i18n.locale),
+        }
+      : null;
   const accountDescription = demoMode
     ? i18n._(
         msg({
@@ -72,6 +102,20 @@ export function SettingsRootContent({
 
   return (
     <div class="settings-root">
+      {notice && noticeMessage ? (
+        <div
+          role="note"
+          class={`alert${notice.severity === "urgent" ? " alert-destructive" : ""} mb-6`}
+          style="display:flex;gap:.75rem;align-items:center;justify-content:space-between"
+        >
+          <span>{noticeMessage}</span>
+          {noticeAction ? (
+            <a href={noticeAction.href} class="btn-sm-outline shrink-0">
+              {noticeAction.label}
+            </a>
+          ) : null}
+        </div>
+      ) : null}
       <header class="page-intro">
         <h1 class="page-intro-title">
           {i18n._(

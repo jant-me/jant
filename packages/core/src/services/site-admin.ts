@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import {
   executeStatement,
   type Database,
@@ -27,7 +27,12 @@ import {
   getCjkSerifCssVariables,
   getFontThemeCssVariables,
 } from "../ui/font-themes.js";
-import type { Site, SiteDomain } from "../types.js";
+import type {
+  Site,
+  SiteDomain,
+  SiteNotice,
+  SiteNoticeSeverity,
+} from "../types.js";
 import { createCollectionService } from "./collection.js";
 // Note: `./export.js` is loaded lazily inside `exportManagedSite` because it
 // pulls in Vite-specific `?raw` asset imports (CSS/HTML/JS templates) at
@@ -40,8 +45,11 @@ import { createPathService } from "./path.js";
 import { createPostService } from "./post.js";
 import { createSettingsService } from "./settings.js";
 
-const { sites: _sqliteSites, siteDomains: _sqliteSiteDomains } =
-  sqliteSchemaBundle;
+const {
+  sites: _sqliteSites,
+  siteDomains: _sqliteSiteDomains,
+  siteNotices: _sqliteSiteNotices,
+} = sqliteSchemaBundle;
 
 export interface CreateManagedSiteInput {
   key: string;
@@ -100,6 +108,15 @@ export interface ManagedSitePostCountResult {
 export interface ManagedSiteKeyAvailabilityResult {
   available: boolean;
   key: string;
+}
+
+export interface SetSiteNoticeInput {
+  key: string;
+  severity: SiteNoticeSeverity;
+  message: Record<string, string>;
+  actionLabel?: Record<string, string> | null;
+  actionUrl?: string | null;
+  expiresAt?: number | null;
 }
 
 export interface SiteAdminService {
@@ -167,6 +184,18 @@ export interface SiteAdminService {
     domainId: string,
     redirectToPrimary: boolean,
   ): Promise<SiteDomain[]>;
+  /**
+   * Upsert a control-plane notice for a site, keyed by `key`. The content is
+   * opaque to core and rendered as-is in the site dashboard (see SiteNotice).
+   */
+  setSiteNotice(siteId: string, input: SetSiteNoticeInput): Promise<void>;
+  /** Remove a control-plane notice by key. No-op when absent. */
+  clearSiteNotice(siteId: string, key: string): Promise<void>;
+  /**
+   * The most relevant active (non-expired) notice for a site, or null. Used by
+   * the dashboard render path; safe to call in any resolution mode.
+   */
+  getSiteNotice(siteId: string): Promise<SiteNotice | null>;
 }
 
 export interface SiteAdminServiceConfig {
@@ -192,6 +221,41 @@ function toSiteDomain(row: typeof _sqliteSiteDomains.$inferSelect): SiteDomain {
     kind: row.kind as SiteDomain["kind"],
     redirectToPrimary: row.redirectToPrimary,
     createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+// `message`/`action_label` are stored as a JSON locale map (locale tag →
+// string). Core renders by picking the dashboard locale from this map; it never
+// interprets the content. Tolerate a bare string from an older payload by
+// treating it as the base-locale entry.
+function parseLocaleMap(value: string): Record<string, string> {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const out: Record<string, string> = {};
+      for (const [locale, text] of Object.entries(parsed)) {
+        if (typeof text === "string") {
+          out[locale] = text;
+        }
+      }
+      return out;
+    }
+  } catch {
+    // Not JSON — fall through to the bare-string fallback.
+  }
+  return { [baseLocale]: value };
+}
+
+function toSiteNotice(row: typeof _sqliteSiteNotices.$inferSelect): SiteNotice {
+  return {
+    siteId: row.siteId,
+    key: row.key,
+    severity: row.severity as SiteNoticeSeverity,
+    message: parseLocaleMap(row.message),
+    actionLabel: row.actionLabel ? parseLocaleMap(row.actionLabel) : null,
+    actionUrl: row.actionUrl,
+    expiresAt: row.expiresAt,
     updatedAt: row.updatedAt,
   };
 }
@@ -223,6 +287,7 @@ export function createSiteAdminService(
     settings,
     siteDomains,
     siteMembers,
+    siteNotices,
     sites,
   } = databaseSchema;
   const siteResolutionMode = config.siteResolutionMode ?? "single-site";
@@ -865,6 +930,92 @@ export function createSiteAdminService(
           "active",
         ),
       );
+    },
+    async setSiteNotice(siteId, input) {
+      assertManagedSiteOperationsEnabled();
+      const normalizedSiteId = siteId.trim();
+      const normalizedKey = input.key.trim();
+      if (!normalizedSiteId || !normalizedKey) {
+        throw new NotFoundError("Site");
+      }
+
+      const values = {
+        siteId: normalizedSiteId,
+        key: normalizedKey,
+        severity: input.severity,
+        message: JSON.stringify(input.message),
+        actionLabel: input.actionLabel
+          ? JSON.stringify(input.actionLabel)
+          : null,
+        actionUrl: input.actionUrl ?? null,
+        expiresAt: input.expiresAt ?? null,
+        updatedAt: now(),
+      };
+
+      async function upsert(targetDb: Database): Promise<void> {
+        // Confirm the site exists so a stale control-plane pointer surfaces as
+        // a 404 instead of inserting an orphan notice.
+        await requireSite(targetDb, normalizedSiteId);
+        await targetDb
+          .insert(siteNotices)
+          .values(values)
+          .onConflictDoUpdate({
+            target: [siteNotices.siteId, siteNotices.key],
+            set: {
+              severity: values.severity,
+              message: values.message,
+              actionLabel: values.actionLabel,
+              actionUrl: values.actionUrl,
+              expiresAt: values.expiresAt,
+              updatedAt: values.updatedAt,
+            },
+          });
+      }
+
+      if (!supportsDrizzleTransaction(db, databaseDialect)) {
+        await upsert(db);
+        return;
+      }
+      await db.transaction(async (tx) => upsert(tx as unknown as Database));
+    },
+    async clearSiteNotice(siteId, key) {
+      assertManagedSiteOperationsEnabled();
+      const normalizedSiteId = siteId.trim();
+      const normalizedKey = key.trim();
+      if (!normalizedSiteId || !normalizedKey) {
+        return;
+      }
+      await db
+        .delete(siteNotices)
+        .where(
+          and(
+            eq(siteNotices.siteId, normalizedSiteId),
+            eq(siteNotices.key, normalizedKey),
+          ),
+        );
+    },
+    async getSiteNotice(siteId) {
+      const normalizedSiteId = siteId.trim();
+      if (!normalizedSiteId) {
+        return null;
+      }
+      const timestamp = now();
+      const rows = await db
+        .select()
+        .from(siteNotices)
+        .where(
+          and(
+            eq(siteNotices.siteId, normalizedSiteId),
+            or(
+              isNull(siteNotices.expiresAt),
+              gt(siteNotices.expiresAt, timestamp),
+            ),
+          ),
+        )
+        .orderBy(desc(siteNotices.updatedAt))
+        .limit(1);
+      const row = rows[0];
+      return row ? toSiteNotice(row) : null;
     },
     async deleteManagedSite(siteId, deps) {
       assertManagedSiteOperationsEnabled();

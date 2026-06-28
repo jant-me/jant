@@ -4,6 +4,8 @@ If you'd rather not deal with deployment, upgrades, and backups, the official ho
 
 → [Sign up at jant.me/signup](https://jant.me/signup) (already have an account? [sign in](https://jant.me/signin))
 
+30-day free trial — no credit card required.
+
 ## Pricing and limits
 
 Hosted Jant has simple pricing — just one plan:
@@ -15,6 +17,8 @@ Hosted Jant has simple pricing — just one plan:
 | Media storage | 10 GB         |
 
 Need more storage? Email [support@jant.me](mailto:support@jant.me) and we'll work something out.
+
+Add a payment method before the trial ends and billing continues automatically at $10.46 / year; if you don't, your sites go offline, into the same 90-day retention window as a cancellation.
 
 Billed annually. After you cancel, the site keeps running until the end of the current paid period. Then it enters a 90-day retention window during which data can still be recovered. After 90 days, the site is permanently deleted.
 

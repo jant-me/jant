@@ -274,6 +274,11 @@ settingsRoutes.get("/", async (c) => {
   const hostedControlPlaneProviderLabel = getHostedControlPlaneProviderLabel(
     c.env,
   );
+  // A control-plane-injected notice (e.g. a hosted trial reminder), if any. Core
+  // renders it without interpreting its meaning. Null in self-hosted setups.
+  const notice = await c.var.services.siteAdmin.getSiteNotice(
+    c.var.currentSite.id,
+  );
 
   return renderPublicPage(c, {
     title: buildPageTitle("Settings", navData.siteName),
@@ -285,6 +290,7 @@ settingsRoutes.get("/", async (c) => {
           demoMode={c.var.appConfig.demoMode}
           hostedControlPlaneSiteSettingsUrl={hostedControlPlaneSiteSettingsUrl}
           hostedControlPlaneProviderLabel={hostedControlPlaneProviderLabel}
+          notice={notice}
         />
       </div>
     ),
