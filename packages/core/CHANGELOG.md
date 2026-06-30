@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.6.11
+
+### Patch Changes
+
+- [`b7197f0`](https://github.com/jant-me/jant/commit/b7197f030a62ad6e373508c4cecb73249c9dae17) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Auto-rehost pasted inline images into site storage, and fix the TipTap link editor popover not appearing on mobile tap
+
 ## 0.6.10
 
 ### Patch Changes
