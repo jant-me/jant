@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.6.12
+
+### Patch Changes
+
+- [`505d101`](https://github.com/jant-me/jant/commit/505d1014e499c1c0b8b896cbfde238c229ad638d) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Refine reading typography, reply composition, navigation workflows, and import behavior.
+
 ## 0.6.11
 
 ### Patch Changes
