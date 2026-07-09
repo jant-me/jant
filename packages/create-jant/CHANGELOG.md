@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.6.13
+
+### Patch Changes
+
+- [`d067461`](https://github.com/jant-me/jant/commit/d0674618d0b9efcd0500b91a911630fd115d352b) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Improve compose and media handling, navigation updates, and feed ordering fixes.
+
 ## 0.6.12
 
 ### Patch Changes
