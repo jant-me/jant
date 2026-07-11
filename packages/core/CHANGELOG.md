@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.6.14
+
+### Patch Changes
+
+- [`fc4dbdb`](https://github.com/jant-me/jant/commit/fc4dbdb88ae1dd1a6f8fdc192b9458d21f8ece46) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Improve editing, search, and responsive UI interactions.
+
 ## 0.6.13
 
 ### Patch Changes
