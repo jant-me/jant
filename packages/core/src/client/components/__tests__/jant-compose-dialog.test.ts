@@ -2374,6 +2374,56 @@ describe("JantComposeDialog", () => {
     );
   });
 
+  it("includes quiet reply intent when submitting multiple reply posts", async () => {
+    const el = await createElement();
+    await el.openReply("019ce8ce-d6d8-7fda-a5df-c2da2bef5ade", {
+      contentHtml: "<p>Parent</p>",
+      dateText: "Mar 14",
+    });
+
+    (
+      el as unknown as {
+        _addThreadItem: () => void;
+      }
+    )._addThreadItem();
+    await flushUpdates(el);
+
+    el._quietReply = true;
+    const editors = Array.from(
+      el.querySelectorAll<JantComposeEditor>("jant-compose-editor"),
+    );
+    expect(editors).toHaveLength(2);
+
+    editors.forEach((editor, index) => {
+      editor._bodyJson = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: `Quiet reply ${index + 1}` }],
+          },
+        ],
+      };
+    });
+    await Promise.all(editors.map((editor) => editor.updateComplete));
+    await el.updateComplete;
+
+    let receivedDetail: ComposeSubmitDetail | null = null;
+    el.addEventListener("jant:compose-submit-deferred", (event) => {
+      receivedDetail = (event as CustomEvent<ComposeSubmitDetail>).detail;
+    });
+
+    requireElement(
+      el.querySelector<HTMLButtonElement>(".compose-publish-main"),
+      "expected reply button",
+    ).click();
+
+    expect(receivedDetail).not.toBeNull();
+    const detail = receivedDetail as unknown as ComposeSubmitDetail;
+    expect(detail.quietReply).toBe(true);
+    expect(detail.threadPosts?.[0]?.quietReply).toBe(true);
+  });
+
   it("does not add more thread items than the shared limit", async () => {
     const el = await createElement();
     el._threadItems = Array.from({ length: MAX_THREAD_POSTS }, (_, index) => ({

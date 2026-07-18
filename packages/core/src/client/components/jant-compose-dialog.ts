@@ -1377,6 +1377,7 @@ export class JantComposeDialog extends LitElement {
       collectionIds: isRoot && !this._replyToId ? [...this._collectionIds] : [],
       attachments: orderedAttachments,
       replyToId: isRoot ? (this._replyToId ?? undefined) : undefined,
+      quietReply: isRoot ? this._quietReply || undefined : undefined,
       replyThreadRootId: isRoot
         ? (this._replyThreadRootId ?? undefined)
         : undefined,

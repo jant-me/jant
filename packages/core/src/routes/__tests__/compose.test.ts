@@ -351,4 +351,55 @@ describe("Compose Routes", () => {
       expect(data.error).toBeDefined();
     });
   });
+
+  describe("POST /compose/thread", () => {
+    it("keeps the existing thread activity unchanged for a quiet multi-post reply", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/compose", composeRoutes);
+
+      const root = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "Existing root",
+        publishedAt: 1000,
+      });
+
+      const res = await app.request("/compose/thread", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          posts: [
+            {
+              format: "note",
+              bodyMarkdown: "Quiet reply one",
+              status: "published",
+              replyToId: root.id,
+              quietReply: true,
+              publishedAt: 9000,
+            },
+            {
+              format: "note",
+              bodyMarkdown: "Quiet reply two",
+              status: "published",
+            },
+          ],
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ status: "published" });
+
+      const thread = await services.posts.getThread(root.id);
+      expect(thread.map((post) => post.bodyText)).toEqual([
+        "Existing root",
+        "Quiet reply one",
+        "Quiet reply two",
+      ]);
+      expect((await services.posts.getById(root.id))?.lastActivityAt).toBe(
+        1000,
+      );
+    });
+  });
 });

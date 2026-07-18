@@ -263,6 +263,8 @@ export interface PostService {
   /**
    * Atomically create a thread of posts. The first item is the root; each
    * subsequent item is automatically chained as a reply to the previous one.
+   * When the first item quietly extends an existing thread, the quiet behavior
+   * applies to every new reply in the batch.
    * On failure, all already-created posts are rolled back.
    *
    * @param items - Ordered list of (data, attachments) pairs; at least 2 required
@@ -2072,6 +2074,9 @@ export function createPostService(
         throw new ValidationError("A thread requires at least 2 posts.");
       }
 
+      const extendsExistingThreadQuietly =
+        items[0]?.data.replyToId !== undefined &&
+        items[0].data.quietReply === true;
       const created: Post[] = [];
 
       for (let i = 0; i < items.length; i++) {
@@ -2083,6 +2088,7 @@ export function createPostService(
           ...data,
           // Chain each post as a reply to the previous one (server-side chaining)
           replyToId: i === 0 ? data.replyToId : prevPost?.id,
+          quietReply: extendsExistingThreadQuietly ? true : data.quietReply,
         };
 
         try {

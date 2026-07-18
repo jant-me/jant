@@ -228,6 +228,7 @@ composeRoutes.post("/thread", async (c) => {
         rating: data.rating || undefined,
         collectionIds: index === 0 ? data.collectionIds : undefined,
         replyToId: index === 0 ? data.replyToId : undefined,
+        quietReply: data.quietReply,
         publishedAt: index === 0 ? data.publishedAt : undefined,
       },
       attachments: data.attachments,
