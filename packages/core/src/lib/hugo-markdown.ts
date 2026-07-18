@@ -16,8 +16,9 @@
 // ---------------------------------------------------------------------------
 
 /**
- * Per-collection membership metadata. Preserved verbatim on round-trip so
- * curators keep their collected_at / position / pinned_at ordering.
+ * Per-Thread collection membership metadata. Current exports write this
+ * only on the Thread root bundle. Import also accepts legacy reply-level
+ * entries and folds them into the root without losing metadata.
  */
 export interface HugoCollectionRef {
   slug: string;
@@ -111,10 +112,14 @@ export interface HugoFrontMatter {
   featured_at?: string | null;
   pinned_at?: string | null;
 
+  // Derived Featured Thread projection (root bundles only)
+  featured_post_ids?: string[];
+  featured_sort_at?: string;
+
   // Round-trip bookkeeping
   root_aliases?: string[];
 
-  // Memberships + attachments
+  // Thread memberships (root bundles only) + attachments
   collections?: HugoCollectionRef[];
   media?: JantMedia[];
 
@@ -201,6 +206,8 @@ const FRONT_MATTER_KEY_ORDER: readonly string[] = [
   "quote_text",
   "rating",
   "featured_at",
+  "featured_post_ids",
+  "featured_sort_at",
   "pinned_at",
 
   // Bookkeeping / attachments

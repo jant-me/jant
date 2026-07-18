@@ -53,7 +53,7 @@ interface CollectionsResponse {
     title: string;
     description: string | null;
     sortOrder: string;
-    postCount: number;
+    threadCount: number;
     recentActivityAt: number;
   }>;
   directoryItems?: Array<{
@@ -247,7 +247,7 @@ export class JantCollectionsManager extends LitElement {
 
   #countLabel(count: number) {
     return `${count} ${
-      count === 1 ? this.labels.entrySingular : this.labels.entryPlural
+      count === 1 ? this.labels.threadSingular : this.labels.threadPlural
     }`;
   }
 
@@ -323,7 +323,7 @@ export class JantCollectionsManager extends LitElement {
         title: collection.title,
         description: collection.description,
         sortOrder: collection.sortOrder,
-        postCount: collection.postCount ?? 0,
+        threadCount: collection.threadCount ?? 0,
         recentActivityAt: collection.recentActivityAt,
       });
     }
@@ -845,7 +845,7 @@ export class JantCollectionsManager extends LitElement {
           : nothing}
         <p class="collection-directory-summary">
           <span class="collection-directory-meta"
-            >${this.#countLabel(collection.postCount)}</span
+            >${this.#countLabel(collection.threadCount)}</span
           >
           <span class="collection-directory-meta-separator" aria-hidden="true"
             >/</span

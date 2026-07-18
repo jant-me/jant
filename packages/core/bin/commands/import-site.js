@@ -1615,7 +1615,7 @@ async function walkHugoContent(rootDir) {
 }
 
 /**
- * Resolve the collection memberships listed in a bundle's top-level
+ * Resolve the collection memberships listed in a post bundle's top-level
  * `collections:` front-matter array into `{collectionId, createdAt,
  * position, pinnedAt}` records the post-create APIs expect.
  *
@@ -1634,19 +1634,74 @@ function resolveCollectionMemberships(frontMatter, collectionSlugToId) {
     const id = collectionSlugToId.get(raw.slug);
     if (!id) continue;
     const entry = { collectionId: id };
-    if (typeof raw.collected_at === "string" && raw.collected_at) {
-      entry.createdAt = Math.floor(new Date(raw.collected_at).getTime() / 1000);
+    const createdAt = parseImportTimestamp(raw.collected_at);
+    if (createdAt !== null) {
+      entry.createdAt = createdAt;
     }
-    if (typeof raw.position === "number") {
+    if (typeof raw.position === "number" && Number.isFinite(raw.position)) {
       entry.position = raw.position;
     }
-    if (typeof raw.pinned_at === "string" && raw.pinned_at) {
-      entry.pinnedAt = Math.floor(new Date(raw.pinned_at).getTime() / 1000);
+    const pinnedAt = parseImportTimestamp(raw.pinned_at);
+    if (pinnedAt !== null) {
+      entry.pinnedAt = pinnedAt;
     }
     entries.push(entry);
     ids.push(id);
   }
   return { entries, ids };
+}
+
+/**
+ * Resolve one Thread's collection memberships from its root and every reply.
+ *
+ * Current exports write `collections:` only on the root bundle. Older exports
+ * wrote it per post, so import must take the union before creating the root.
+ * Duplicate memberships retain all historical information by taking the
+ * greatest collected/pinned timestamps and the smallest position.
+ */
+function resolveThreadCollectionMemberships(rootBundle, collectionSlugToId) {
+  const byCollectionId = new Map();
+  const bundles = [rootBundle, ...(rootBundle.children ?? [])];
+
+  for (const bundle of bundles) {
+    const { entries } = resolveCollectionMemberships(
+      bundle.frontMatter,
+      collectionSlugToId,
+    );
+
+    for (const entry of entries) {
+      const current = byCollectionId.get(entry.collectionId);
+      if (!current) {
+        byCollectionId.set(entry.collectionId, { ...entry });
+        continue;
+      }
+
+      if (entry.createdAt !== undefined) {
+        current.createdAt =
+          current.createdAt === undefined
+            ? entry.createdAt
+            : Math.max(current.createdAt, entry.createdAt);
+      }
+      if (entry.position !== undefined) {
+        current.position =
+          current.position === undefined
+            ? entry.position
+            : Math.min(current.position, entry.position);
+      }
+      if (entry.pinnedAt !== undefined) {
+        current.pinnedAt =
+          current.pinnedAt === undefined
+            ? entry.pinnedAt
+            : Math.max(current.pinnedAt, entry.pinnedAt);
+      }
+    }
+  }
+
+  const entries = [...byCollectionId.values()];
+  return {
+    entries,
+    ids: entries.map((entry) => entry.collectionId),
+  };
 }
 
 function parseImportTimestamp(value) {
@@ -1795,6 +1850,7 @@ export const __test__ = {
   walkHugoContent,
   mediaSpecFromJantMedia,
   resolveCollectionMemberships,
+  resolveThreadCollectionMemberships,
   buildPostPayloadFromBundle,
   shouldImportReplyQuietly,
 };
@@ -2220,8 +2276,8 @@ export async function run(argv) {
         }
       }
 
-      const memberships = resolveCollectionMemberships(
-        rootFm,
+      const memberships = resolveThreadCollectionMemberships(
+        rootBundle,
         collectionSlugToId,
       );
       const postData = buildPostPayloadFromBundle(rootBundle, {
@@ -2357,14 +2413,10 @@ export async function run(argv) {
           if (textAttachment) replyAttachments.push(textAttachment);
         }
 
-        const replyMemberships = resolveCollectionMemberships(
-          replyFm,
-          collectionSlugToId,
-        );
         const replyData = buildPostPayloadFromBundle(replyBundle, {
           bodyMarkdown: replyBody,
           attachments: replyAttachments,
-          memberships: replyMemberships,
+          memberships: { entries: [], ids: [] },
           replyToId: threadTailId,
           quietReply: shouldImportReplyQuietly(rootFm, replyFm),
         });

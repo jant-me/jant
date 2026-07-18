@@ -1483,6 +1483,20 @@ hr.feed-divider {
   margin-top: 0;
 }
 
+/* Featured timelines keep Post-level selection while grouping by Thread.
+   Selected Root/Child Posts use the accent marker; context Posts retain the
+   neutral rail marker. */
+.thread-preview .thread-item-featured::before {
+  left: calc(
+    var(--thread-rail-left) + var(--thread-rail-width) / 2 -
+      var(--thread-hero-dot-size) / 2 - var(--thread-rail-indent)
+  );
+  width: var(--thread-hero-dot-size);
+  height: var(--thread-hero-dot-size);
+  background-color: var(--site-accent);
+  border-width: var(--thread-hero-dot-border-width);
+}
+
 .thread-preview .thread-item-hero::before {
   left: calc(
     var(--thread-rail-left) + var(--thread-rail-width) / 2 -

@@ -42,7 +42,7 @@ async function createCollectionWithPost(
     bodyMarkdown: bodyMarkdown ?? postTitle,
     status: "published",
   });
-  await services.collections.addPost(collection.id, post.id);
+  await services.collections.addThread(collection.id, post.id);
   return { collection, post };
 }
 
@@ -50,10 +50,16 @@ describe("Collection Routing", () => {
   it("renders a single collection at its root path", async () => {
     const { app, services } = createCollectionRoutingTestApp();
 
-    await createCollectionWithPost(services, {
+    const { post } = await createCollectionWithPost(services, {
       slug: "reading",
       title: "Reading",
       postTitle: "Book log",
+    });
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Thread follow-up",
+      status: "published",
+      replyToId: post.id,
     });
 
     const res = await app.request("/reading");
@@ -64,6 +70,7 @@ describe("Collection Routing", () => {
     const html = await res.text();
     expect(html).toContain("Reading");
     expect(html).toContain("Book log");
+    expect(html).toContain("Thread follow-up");
   });
 
   it("redirects namespaced single-collection paths to the root canonical URL", async () => {

@@ -167,7 +167,7 @@ site-aware uniqueness/indexes:
 - `collection`
 - `path_registry`
 - `collection_directory_item`
-- `post_collection`
+- `thread_collection`
 - `nav_item`
 - `site_setting`
 - `api_token`

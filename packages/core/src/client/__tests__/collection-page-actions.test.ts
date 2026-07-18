@@ -16,7 +16,7 @@ function createMarkup() {
     <div
       data-collection-page-actions
       data-collection-id="collection-1"
-      data-collection-page-labels='{"edit":"Edit","moreActions":"More actions","deleteCollection":"Delete","confirmDelete":"Delete this collection permanently? Posts inside won\\u0027t be removed.","cancel":"Cancel","saveFailed":"Couldn\\u0027t save. Try again in a moment.","deleted":"Deleted"}'
+      data-collection-page-labels='{"edit":"Edit","moreActions":"More actions","deleteCollection":"Delete","confirmDelete":"Delete this collection permanently? Threads inside won\\u0027t be removed.","cancel":"Cancel","saveFailed":"Couldn\\u0027t save. Try again in a moment.","deleted":"Deleted"}'
       data-collection-page-redirect-url="/collections"
     >
       <button
@@ -98,7 +98,7 @@ describe("collection detail page actions", () => {
 
     expect(showConfirmDialog).toHaveBeenCalledWith({
       message:
-        "Delete this collection permanently? Posts inside won't be removed.",
+        "Delete this collection permanently? Threads inside won't be removed.",
       confirmLabel: "Delete",
       cancelLabel: "Cancel",
       tone: "danger",

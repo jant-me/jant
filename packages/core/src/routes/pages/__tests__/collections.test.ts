@@ -30,7 +30,7 @@ describe("Collections Listing Page - Data Logic", () => {
     );
   });
 
-  it("returns collections with post counts and recent activity", async () => {
+  it("returns collections with Thread counts and recent activity", async () => {
     const recipes = await collectionService.create({
       slug: "recipes",
       title: "Recipes",
@@ -40,7 +40,7 @@ describe("Collections Listing Page - Data Logic", () => {
       title: "Travel",
     });
 
-    // Add posts to recipes collection via junction table
+    // Add Threads to the recipes Collection.
     const p1 = await postService.create({
       format: "note",
       bodyMarkdown: "Recipe 1",
@@ -49,8 +49,8 @@ describe("Collections Listing Page - Data Logic", () => {
       format: "note",
       bodyMarkdown: "Recipe 2",
     });
-    await collectionService.addPost(recipes.id, p1.id);
-    await collectionService.addPost(recipes.id, p2.id);
+    await collectionService.addThread(recipes.id, p1.id);
+    await collectionService.addThread(recipes.id, p2.id);
 
     const directory = await collectionService.listDirectoryData();
 
@@ -59,9 +59,9 @@ describe("Collections Listing Page - Data Logic", () => {
       (c) => c.slug === "recipes",
     );
     const travelResult = directory.collections.find((c) => c.slug === "travel");
-    expect(recipesResult?.postCount).toBe(2);
+    expect(recipesResult?.threadCount).toBe(2);
     expect(recipesResult?.recentActivityAt).toBe(p2.lastActivityAt);
-    expect(travelResult?.postCount).toBe(0);
+    expect(travelResult?.threadCount).toBe(0);
     expect(travelResult?.recentActivityAt).toBeGreaterThan(0);
   });
 
@@ -86,13 +86,13 @@ describe("Collections Listing Page - Data Logic", () => {
       bodyMarkdown: "Will remain",
     });
 
-    await collectionService.addPost(col.id, post.id);
-    await collectionService.addPost(col.id, post2.id);
+    await collectionService.addThread(col.id, post.id);
+    await collectionService.addThread(col.id, post2.id);
 
     await postService.delete(post.id);
 
     const directory = await collectionService.listDirectoryData();
-    expect(directory.collections[0]?.postCount).toBe(1);
+    expect(directory.collections[0]?.threadCount).toBe(1);
     expect(directory.collections[0]?.recentActivityAt).toBe(
       post2.lastActivityAt,
     );

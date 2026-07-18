@@ -71,6 +71,18 @@ function applyMigration(sqlite: Database.Database, filename: string) {
   }
 }
 
+function applyMigrationsThrough(
+  sqlite: Database.Database,
+  finalFilename: string,
+) {
+  for (const filename of listMigrationFiles()) {
+    applyMigration(sqlite, filename);
+    if (filename === finalFilename) return;
+  }
+
+  throw new Error(`Migration not found: ${finalFilename}`);
+}
+
 function insertRootPost(
   sqlite: Database.Database,
   values: {
@@ -317,6 +329,319 @@ describe("migration integrity", () => {
         `Duplicates: ${duplicates.join(" | ")}`,
       ].join("\n"),
     ).toEqual([]);
+  });
+
+  it("migrates post collections into a lossless thread-level union", () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+
+    applyMigrationsThrough(sqlite, "0026_absent_rhodey.sql");
+
+    const siteId = "sit_test00000000000000000000000";
+    const rootId = "post-root";
+    const firstReplyId = "post-reply-1";
+    const secondReplyId = "post-reply-2";
+    const sharedCollectionId = "collection-shared";
+    const childOnlyCollectionId = "collection-child-only";
+
+    insertSite(sqlite, {
+      id: siteId,
+      key: "default",
+      createdAt: 1,
+    });
+
+    sqlite
+      .prepare(
+        `
+          INSERT INTO collection (
+            id,
+            site_id,
+            title,
+            description,
+            sort_order,
+            created_at,
+            updated_at
+          ) VALUES
+            (?, ?, 'Shared', NULL, 'newest', 1, 1),
+            (?, ?, 'Child only', NULL, 'newest', 2, 2)
+        `,
+      )
+      .run(sharedCollectionId, siteId, childOnlyCollectionId, siteId);
+
+    insertRootPost(sqlite, {
+      siteId,
+      id: rootId,
+      title: "Root",
+      bodyText: "Root body",
+      createdAt: 10,
+    });
+
+    const insertReply = sqlite.prepare(
+      `
+        INSERT INTO post (
+          id,
+          site_id,
+          format,
+          status,
+          visibility,
+          title,
+          body_text,
+          reply_to_id,
+          thread_id,
+          published_at,
+          last_activity_at,
+          created_at,
+          updated_at
+        ) VALUES (?, ?, 'note', 'published', NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+    );
+    insertReply.run(
+      firstReplyId,
+      siteId,
+      "First reply",
+      "First reply body",
+      rootId,
+      rootId,
+      20,
+      20,
+      20,
+      20,
+    );
+    insertReply.run(
+      secondReplyId,
+      siteId,
+      "Second reply",
+      "Second reply body",
+      firstReplyId,
+      rootId,
+      30,
+      30,
+      30,
+      30,
+    );
+
+    const insertMembership = sqlite.prepare(
+      `
+        INSERT INTO post_collection (
+          site_id,
+          post_id,
+          collection_id,
+          created_at,
+          position,
+          pinned_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+      `,
+    );
+    insertMembership.run(siteId, rootId, sharedCollectionId, 100, 7, 300);
+    insertMembership.run(
+      siteId,
+      firstReplyId,
+      sharedCollectionId,
+      400,
+      5,
+      null,
+    );
+    insertMembership.run(
+      siteId,
+      secondReplyId,
+      sharedCollectionId,
+      250,
+      1,
+      900,
+    );
+    insertMembership.run(
+      siteId,
+      firstReplyId,
+      childOnlyCollectionId,
+      500,
+      4,
+      700,
+    );
+
+    expect(
+      sqlite.prepare("SELECT COUNT(*) AS count FROM post_collection").get(),
+    ).toEqual({ count: 4 });
+
+    applyMigration(sqlite, "0027_old_blue_blade.sql");
+
+    expect(
+      sqlite
+        .prepare(
+          `
+            SELECT
+              site_id AS siteId,
+              thread_id AS threadId,
+              collection_id AS collectionId,
+              created_at AS createdAt,
+              position,
+              pinned_at AS pinnedAt
+            FROM thread_collection
+            ORDER BY collection_id
+          `,
+        )
+        .all(),
+    ).toEqual([
+      {
+        siteId,
+        threadId: rootId,
+        collectionId: childOnlyCollectionId,
+        createdAt: 500,
+        position: 4,
+        pinnedAt: 700,
+      },
+      {
+        siteId,
+        threadId: rootId,
+        collectionId: sharedCollectionId,
+        createdAt: 400,
+        position: 1,
+        pinnedAt: 900,
+      },
+    ]);
+
+    expect(
+      sqlite
+        .prepare(
+          `
+            SELECT COUNT(*) AS count
+            FROM thread_collection tc
+            INNER JOIN post root
+              ON root.site_id = tc.site_id
+              AND root.id = tc.thread_id
+            WHERE root.reply_to_id IS NOT NULL
+              OR root.thread_id <> root.id
+          `,
+        )
+        .get(),
+    ).toEqual({ count: 0 });
+    expect(
+      sqlite
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'post_collection'",
+        )
+        .get(),
+    ).toBeUndefined();
+    expect(sqlite.pragma("foreign_key_check")).toEqual([]);
+  });
+
+  it("indexes Featured Thread ordering by publication time in both dialects", () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+
+    applyMigrationsThrough(sqlite, "0027_old_blue_blade.sql");
+    applyMigration(sqlite, "0028_superb_post.sql");
+
+    const indexes = sqlite
+      .prepare(
+        `
+          SELECT name
+          FROM sqlite_master
+          WHERE type = 'index'
+            AND name IN (
+              'idx_post_site_featured_featured_at',
+              'idx_post_site_featured_thread_published'
+            )
+          ORDER BY name
+        `,
+      )
+      .all();
+    expect(indexes).toEqual([
+      { name: "idx_post_site_featured_thread_published" },
+    ]);
+    expect(
+      sqlite
+        .prepare(
+          "SELECT name FROM pragma_index_info('idx_post_site_featured_thread_published') ORDER BY seqno",
+        )
+        .all(),
+    ).toEqual([
+      { name: "site_id" },
+      { name: "thread_id" },
+      { name: "published_at" },
+      { name: "id" },
+    ]);
+
+    insertSite(sqlite, {
+      id: "sit_test00000000000000000000000",
+      key: "default",
+      createdAt: 1,
+    });
+    sqlite.exec(`
+      WITH RECURSIVE sequence(value) AS (
+        VALUES (1)
+        UNION ALL
+        SELECT value + 1 FROM sequence WHERE value < 1000
+      )
+      INSERT INTO post (
+        id,
+        site_id,
+        format,
+        status,
+        visibility,
+        title,
+        body_text,
+        thread_id,
+        published_at,
+        featured_at,
+        created_at,
+        updated_at
+      )
+      SELECT
+        printf('post-%04d', value),
+        'sit_test00000000000000000000000',
+        'note',
+        'published',
+        'public',
+        printf('Post %d', value),
+        '',
+        printf('post-%04d', value),
+        value,
+        CASE WHEN value % 20 = 0 THEN value + 1000 ELSE NULL END,
+        value,
+        value
+      FROM sequence
+    `);
+    sqlite.exec("ANALYZE");
+
+    const queryPlan = sqlite
+      .prepare(
+        `
+          EXPLAIN QUERY PLAN
+          SELECT
+            thread_id,
+            MAX(published_at) AS latest_featured_published_at
+          FROM post
+          WHERE site_id = ?
+            AND status = 'published'
+            AND featured_at IS NOT NULL
+          GROUP BY thread_id
+          ORDER BY latest_featured_published_at DESC, thread_id DESC
+          LIMIT 20
+        `,
+      )
+      .all("sit_test00000000000000000000000") as Array<{
+      detail: string;
+    }>;
+    expect(
+      queryPlan.some(({ detail }) =>
+        detail.includes("idx_post_site_featured_thread_published"),
+      ),
+      JSON.stringify(queryPlan),
+    ).toBe(true);
+    expect(
+      queryPlan.some(({ detail }) => detail.includes("FOR GROUP BY")),
+    ).toBe(false);
+
+    const postgresMigration = readFileSync(
+      resolve(PG_MIGRATIONS_DIR, "0026_talented_killer_shrike.sql"),
+      "utf-8",
+    );
+    expect(postgresMigration).toContain(
+      'DROP INDEX "idx_post_site_featured_featured_at"',
+    );
+    expect(postgresMigration).toContain(
+      'CREATE INDEX "idx_post_site_featured_thread_published" ON "post" USING btree ("site_id","thread_id","published_at","id")',
+    );
   });
 
   it("fts schema migration rebuilds and maintains the post_fts index", () => {

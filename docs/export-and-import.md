@@ -92,7 +92,7 @@ Included:
 - **Every post** (including Thread replies). Drafts and private posts are also archived with `draft: true` in front matter; Hugo skips them by default and only renders them with `hugo --buildDrafts`.
 - Media referenced by posts and avatars, downloaded into `static/media/` by default. Pass `--no-pull-media` to skip.
 - Collections, the collections directory (order, dividers, custom links), and header navigation — written to `data/jant.toml`.
-- Per-post `featured_at`, `pinned_at`, and collection membership written to front matter for round-trip restore.
+- Per-post `featured_at` and `pinned_at`, plus per-Thread collection membership on the root bundle, written to front matter for round-trip restore.
 - **Current slug plus historical aliases and redirects**: when a post's slug changes, the old slug stays in `path_registry` as a `redirect` row. On export, both `redirect` and `alias` rows are written to the root post's `aliases:` field. Hugo's custom `alias.html` template keeps the old links working.
 - Site display settings: `SITE_NAME`, `SITE_DESCRIPTION`, `SITE_LANGUAGE`, theme, type style, custom CSS, favicon, and so on — written to `data/jant.toml` and `hugo.toml`.
 
@@ -134,17 +134,18 @@ The root `layouts/` and `static/` directories are yours to maintain. Hugo loads 
 | `/featured/`          | Featured: posts marked Featured, newest first                     |
 | `/{slug}/`            | A single Thread (root post with inline replies)                   |
 | `/{reply-slug}/`      | Alias that redirects to `/{root-slug}/#{reply-slug}`              |
-| `/{collection-slug}/` | A single collection                                               |
+| `/{collection-slug}/` | A collection of complete Threads                                  |
 | `/collections/`       | Collections directory                                             |
 
 Page size is controlled by Jant's **Settings → Posts per page**.
 
 ### Round-trip fidelity
 
-A `site export` → `site import` round-trip preserves every post's Featured, pinned, and collection-membership state exactly:
+A `site export` → `site import` round-trip preserves every post's Featured and pinned state, plus every Thread's collection membership:
 
 - `featured_at` and `pinned_at` are written to front matter as ISO timestamps, not booleans, so re-importing restores the precise moment a post was Featured or pinned.
-- The top-level `collections` array in front matter carries `collected_at`, `position`, and per-collection `pinned_at` for every entry. Each reply leaf bundle keeps the same metadata in its own front matter.
+- The Thread root's top-level `collections` array carries `collected_at`, `position`, and per-collection `pinned_at` for every entry. Reply leaf bundles do not repeat Thread membership.
+- Imports remain compatible with older exports that wrote `collections` on each post. The importer unions root and reply memberships by Thread, taking the latest `collected_at`, latest `pinned_at`, and smallest `position` for duplicates.
 - Thread root `last_activity_at` preserves the effect of replies published with **Reply quietly**. Quietness is not a per-reply field in the export; import uses the root activity timestamp to avoid bumping replies that originally landed quietly.
 
 Fields not documented here are Jant-internal — don't hand-edit them. They get written back to the database verbatim on the next import and will overwrite any later changes you made in Jant.
@@ -319,7 +320,9 @@ The archive shrinks to just `meta.json` + `db.sql`.
 
 ### Import a snapshot
 
-Snapshot import requires explicit `--replace`. With `--replace`, the snapshot's content tables in the target database are wiped (`post`, `collection`, `nav_item`, `collection_directory_item`, `post_collection`, `media`, `path_registry`), then rewritten from the snapshot. Tables outside that scope — users, sessions, tokens — are left alone. Without `--replace`, import refuses to run, preventing accidental overwrites.
+Snapshot import requires explicit `--replace`. With `--replace`, the snapshot's content tables in the target database are wiped (`post`, `collection`, `nav_item`, `collection_directory_item`, `thread_collection`, `media`, `path_registry`), then rewritten from the snapshot. Tables outside that scope — users, sessions, tokens — are left alone. Without `--replace`, import refuses to run, preventing accidental overwrites.
+
+Current exports use snapshot format v2. Imports also accept v1 snapshots: their legacy `post_collection` rows are upgraded in memory to the Thread-level union before any target content is cleared.
 
 Default target:
 

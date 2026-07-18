@@ -5626,6 +5626,10 @@
     z-index: 6;
   }
 
+  .compose-action-row-without-collection {
+    justify-content: flex-end;
+  }
+
   @media (min-width: 700px) {
     .compose-action-row {
       padding: 12px 18px 16px;

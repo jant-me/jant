@@ -227,8 +227,8 @@ export const posts = sqliteTable(
       .where(
         sql`${table.replyToId} IS NOT NULL AND ${table.status} = 'published'`,
       ),
-    index("idx_post_site_featured_featured_at")
-      .on(table.siteId, table.featuredAt, table.threadId, table.id)
+    index("idx_post_site_featured_thread_published")
+      .on(table.siteId, table.threadId, table.publishedAt, table.id)
       .where(
         sql`${table.status} = 'published' AND ${table.featuredAt} IS NOT NULL`,
       ),
@@ -571,16 +571,16 @@ export const collectionDirectoryItems = sqliteTable(
 );
 
 // =============================================================================
-// Post-Collection Junction Table (M:N)
+// Thread-Collection Junction Table (M:N)
 // =============================================================================
 
-export const postCollections = sqliteTable(
-  "post_collection",
+export const threadCollections = sqliteTable(
+  "thread_collection",
   {
     siteId: text("site_id")
       .notNull()
       .references(() => sites.id, { onDelete: "cascade" }),
-    postId: text("post_id")
+    threadId: text("thread_id")
       .notNull()
       .references(() => posts.id, { onDelete: "cascade" }),
     collectionId: text("collection_id")
@@ -591,16 +591,16 @@ export const postCollections = sqliteTable(
     pinnedAt: integer("pinned_at"),
   },
   (table) => [
-    primaryKey({ columns: [table.siteId, table.postId, table.collectionId] }),
-    index("idx_post_collection_site_collection_id").on(
+    primaryKey({ columns: [table.siteId, table.threadId, table.collectionId] }),
+    index("idx_thread_collection_site_collection_id").on(
       table.siteId,
       table.collectionId,
     ),
-    index("idx_post_collection_site_collection_created_post").on(
+    index("idx_thread_collection_site_collection_created_thread").on(
       table.siteId,
       table.collectionId,
       table.createdAt,
-      table.postId,
+      table.threadId,
     ),
   ],
 );

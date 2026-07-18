@@ -49,8 +49,8 @@ const labels: CollectionManagerLabels = {
   deleteLink: "Remove link",
   confirmDeleteLink: "Remove this link from Collections?",
   cancel: "Cancel",
-  entrySingular: "entry",
-  entryPlural: "entries",
+  threadSingular: "thread",
+  threadPlural: "threads",
   emptyState: "Create a collection to get started.",
   orderSaved: "Collection order updated.",
   saved: "Collection saved.",
@@ -94,7 +94,7 @@ const items: CollectionManagerItem[] = [
       title: "Reading",
       description: "Notes from books",
       sortOrder: "newest",
-      postCount: 4,
+      threadCount: 4,
       recentActivityAt: 1_763_619_200,
     },
   },
@@ -109,7 +109,7 @@ const items: CollectionManagerItem[] = [
       title: "Tools",
       description: "Tools I keep around",
       sortOrder: "newest",
-      postCount: 2,
+      threadCount: 2,
       recentActivityAt: 1_763_619_260,
     },
   },
@@ -140,7 +140,7 @@ const groupedItems: CollectionManagerItem[] = [
       title: "Solo",
       description: null,
       sortOrder: "newest",
-      postCount: 1,
+      threadCount: 1,
       recentActivityAt: 1_763_619_300,
     },
   },
@@ -305,7 +305,7 @@ describe("JantCollectionsManager", () => {
     );
     expect(firstRow?.textContent).toContain("Reading");
     expect(firstRow?.textContent).toContain("Notes from books");
-    expect(firstRow?.textContent).toContain("4 entries");
+    expect(firstRow?.textContent).toContain("4 threads");
   });
 
   it("keeps focus on the URL field while typing in the new link form", async () => {

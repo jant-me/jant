@@ -49,9 +49,8 @@
   generation scripts should skip writes when output is unchanged. Otherwise a
   no-op generated-file mtime update can create an infinite reload loop.
 - Collection timelines and collection feeds must sort "newest" by thread-level
-  activity (`lastActivityAt` on the root), not only by the published timestamp
-  of collection-member posts. Otherwise replies to a collected root that are not
-  themselves collection members will not bump the thread; quiet replies should
+  activity (`lastActivityAt` on the root), not only by the root's published
+  timestamp. Non-quiet replies bump the shared Thread; quiet replies should
   remain non-bumping by leaving root activity unchanged.
 - In happy-dom tests for Lit custom elements, instantiate registered elements with `document.createElement("tag-name")` and use `globalThis.Element` / `globalThis.localStorage` in type or lint-visible positions.
 - In happy-dom component tests, avoid reading repo files with `import.meta.url`; Vitest may transform the module URL away from `file:`. Use a stable project-root or package-root path with `resolve()` instead.
@@ -148,3 +147,10 @@
   before changing list padding.
 - When adding a requested keyboard shortcut to an intentionally minimal surface,
   do not add a visible action unless the user explicitly asks for one.
+- A schema migration that copies and drops a live table must run with writers
+  drained. Preflight and postflight counts detect bad state but cannot prevent
+  concurrent-write loss; zero-downtime changes require an expand/backfill/
+  cutover sequence.
+- Domain scope such as Root-versus-Child must not depend on presentation mode.
+  Derive it from stable IDs and centralize shared interactive data attributes
+  across feed, detail, search, and partial-render components.

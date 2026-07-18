@@ -1,0 +1,2 @@
+DROP INDEX `idx_post_site_featured_featured_at`;--> statement-breakpoint
+CREATE INDEX `idx_post_site_featured_thread_published` ON `post` (`site_id`,`thread_id`,`published_at`,`id`) WHERE "post"."status" = 'published' AND "post"."featured_at" IS NOT NULL;

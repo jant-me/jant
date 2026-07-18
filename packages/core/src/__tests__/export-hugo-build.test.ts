@@ -6,7 +6,14 @@
  */
 
 import { spawn, spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -71,6 +78,7 @@ function buildFixtureServices(): ServicesArg {
     threadId: "pst_root",
     createdAt: 1773020000,
     publishedAt: 1773020000,
+    featuredAt: 1773030000,
   });
   const collection = makeCollection({ id: "col-1", slug: "ideas" });
   const media = makeMedia({ id: "med_hero", filename: "hero.webp" });
@@ -95,15 +103,29 @@ function buildFixtureServices(): ServicesArg {
             type: "collection" as const,
             collection: {
               ...collection,
-              postCount: 1,
+              threadCount: 1,
               recentActivityAt: collection.updatedAt,
             },
           },
         ],
         directoryItems: [],
       }),
-      getCollectionsByPostIds: async () => new Map(),
-      getCollectionEntriesByPostIds: async () => new Map(),
+      getCollectionsByPostIds: async () =>
+        new Map([["pst_root", [collection]]]),
+      getCollectionEntriesByThreadIds: async () =>
+        new Map([
+          [
+            "pst_root",
+            [
+              {
+                collectionId: "col-1",
+                createdAt: 1773020000,
+                position: 0,
+                pinnedAt: null,
+              },
+            ],
+          ],
+        ]),
     },
     media: {
       getByPostIds: async () => new Map([["pst_root", [media]]]),
@@ -166,13 +188,47 @@ describe("Hugo smoke build", () => {
     for (const rel of [
       "public/index.html",
       "public/featured/index.html",
+      "public/featured/index.xml",
       "public/archive/index.html",
       "public/collections/index.html",
+      "public/ideas/index.html",
+      "public/ideas/index.xml",
       "public/hello-world/index.html",
       // Alias page for the reply slug (root aliases include /hello-reply/).
       "public/hello-reply/index.html",
     ]) {
       expect(await fileExists(join(tempDir, rel)), `missing ${rel}`).toBe(true);
     }
+
+    const collectionHtml = await readFile(
+      join(tempDir, "public/ideas/index.html"),
+      "utf-8",
+    );
+    expect(collectionHtml).toContain("Hello World");
+    expect(collectionHtml).toContain("Follow-up");
+
+    const collectionFeed = await readFile(
+      join(tempDir, "public/ideas/index.xml"),
+      "utf-8",
+    );
+    expect(collectionFeed).toContain("Hello World");
+    expect(collectionFeed).toContain("Follow-up");
+    expect(collectionFeed.match(/<entry>/g)).toHaveLength(1);
+
+    const featuredHtml = await readFile(
+      join(tempDir, "public/featured/index.html"),
+      "utf-8",
+    );
+    expect(featuredHtml).toContain("Hello World");
+    expect(featuredHtml).toContain("Follow-up");
+    expect(featuredHtml).toContain("thread-item-featured");
+
+    const featuredFeed = await readFile(
+      join(tempDir, "public/featured/index.xml"),
+      "utf-8",
+    );
+    expect(featuredFeed).toContain("Hello World");
+    expect(featuredFeed).toContain("Follow-up");
+    expect(featuredFeed.match(/<entry>/g)).toHaveLength(1);
   }, 60_000);
 });

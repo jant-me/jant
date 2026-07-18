@@ -66,6 +66,34 @@ To enable the remote job, configure:
 
 The rehearsal database should be a dedicated remote D1 database used only for CI resets and migration playback.
 
+## Production table cutovers
+
+Migration rehearsal proves that a known fixture upgrades correctly. It does not
+make a destructive table replacement safe while the old application is still
+writing. A migration that copies rows into a replacement table and then drops
+the source table requires a write maintenance window unless it was deliberately
+designed as a multi-release expand/backfill/cutover change.
+
+Before such a migration:
+
+1. Stop or drain every application instance that can write the source table.
+2. Record a database recovery point (for D1, a Time Travel bookmark) and keep an
+   off-platform backup appropriate to the deployment.
+3. Run `jant migrate` and keep writes stopped while its post-migration
+   verification runs.
+4. Deploy the application version that reads the replacement schema.
+5. Verify the migrated row count and application health before resuming writes.
+
+This matters especially for Cloudflare deployments because `jant deploy`
+applies remote migrations before uploading the new Worker. The old Worker can
+remain active during that interval. Preflight and postflight checks detect bad
+references, invalid Thread roots, and count mismatches, but they cannot prevent
+a concurrent old-version write from racing a destructive cutover.
+
+For D1, rehearse with production-scale row counts as well as representative
+data. If a single copy or aggregation may approach D1's query-duration limit,
+replace the one-shot migration with a staged, resumable backfill.
+
 ## Content-Lab Workflow
 
 Use a separate long-lived Worker plus D1 database for manual content entry and visual review. That environment is for humans, not for CI resets.

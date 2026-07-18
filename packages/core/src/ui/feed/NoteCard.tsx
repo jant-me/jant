@@ -10,6 +10,7 @@ import type { FC } from "hono/jsx";
 import { useLingui } from "../../i18n/context.js";
 import type { TimelineCardProps } from "../../types.js";
 import { MediaGallery } from "../shared/MediaGallery.js";
+import { getPostArticleAttributes } from "../shared/post-article-attributes.js";
 import { StarRating } from "../shared/StarRating.js";
 import { PostFooter, PostPublishedLink } from "../shared/PostFooter.js";
 import { PostStatusBadges } from "./PostStatusBadges.js";
@@ -86,18 +87,7 @@ export const NoteCard: FC<TimelineCardProps> = ({
     <article
       class={`h-entry post-menu-target${isCompact ? " feed-compact" : isDetail ? " py-6" : ""}`}
       {...(isDetail ? { "data-page": "post" } : {})}
-      data-post
-      data-format="note"
-      data-post-id={post.id}
-      data-post-slug={post.slug}
-      data-thread-root-id={post.threadRootId ?? post.id}
-      {...(post.pinned ? { "data-post-pinned": "" } : {})}
-      {...(post.pinnedInCollection
-        ? { "data-post-pinned-in-collection": "" }
-        : {})}
-      {...(post.featured ? { "data-post-featured": "" } : {})}
-      data-post-visibility={post.visibility}
-      {...(!isDetail && post.threadRootId ? { "data-post-reply": "" } : {})}
+      {...getPostArticleAttributes(post)}
     >
       {!isCompact && !display?.hideStatusBadges && <PostStatusBadges />}
       {isArticle &&

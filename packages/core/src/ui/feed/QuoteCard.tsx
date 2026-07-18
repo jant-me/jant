@@ -18,6 +18,7 @@ import { PostStatusBadges } from "./PostStatusBadges.js";
 import { sanitizeUrl, extractDisplayDomain } from "../../lib/url.js";
 import { DecorativeQuoteMark } from "../shared/DecorativeQuoteMark.js";
 import { MediaGallery } from "../shared/MediaGallery.js";
+import { getPostArticleAttributes } from "../shared/post-article-attributes.js";
 
 export const QuoteCard: FC<TimelineCardProps> = ({
   post,
@@ -34,18 +35,7 @@ export const QuoteCard: FC<TimelineCardProps> = ({
     <article
       class={articleClass}
       {...(isDetail ? { "data-page": "post" } : {})}
-      data-post
-      data-format="quote"
-      data-post-id={post.id}
-      data-post-slug={post.slug}
-      data-thread-root-id={post.threadRootId ?? post.id}
-      {...(post.pinned ? { "data-post-pinned": "" } : {})}
-      {...(post.pinnedInCollection
-        ? { "data-post-pinned-in-collection": "" }
-        : {})}
-      {...(post.featured ? { "data-post-featured": "" } : {})}
-      data-post-visibility={post.visibility}
-      {...(!isDetail && post.threadRootId ? { "data-post-reply": "" } : {})}
+      {...getPostArticleAttributes(post)}
     >
       {!isCompact && !display?.hideStatusBadges && <PostStatusBadges />}
       {post.quoteText && (

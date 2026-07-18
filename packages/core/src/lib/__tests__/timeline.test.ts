@@ -18,7 +18,7 @@ import { createPostService } from "../../services/post.js";
 import { createMediaService } from "../../services/media.js";
 import { createPathService } from "../../services/path.js";
 import { createCollectionService } from "../../services/collection.js";
-import { postCollections, posts as postTable, sites } from "../../db/schema.js";
+import { posts as postTable, sites } from "../../db/schema.js";
 import { buildMediaMap } from "../media-helpers.js";
 import {
   assembleCollectionTimeline,
@@ -524,22 +524,26 @@ describe("Timeline data assembly", () => {
     ]);
   });
 
-  it("orders featured threads by latest featured time instead of later non-featured activity", async () => {
+  it("orders Featured Threads by the latest selected Post publication time", async () => {
     const olderFeaturedRoot = await postService.create({
       format: "note",
       bodyMarkdown: "Older featured root",
+      publishedAt: 1000,
     });
     const olderFeaturedReply = await postService.create({
       format: "note",
       bodyMarkdown: "Older featured reply",
       replyToId: olderFeaturedRoot.id,
+      publishedAt: 3000,
     });
     const newerFeaturedRoot = await postService.create({
       format: "note",
       bodyMarkdown: "Newer featured root",
       featured: true,
+      publishedAt: 2000,
     });
 
+    // Featured timestamps deliberately disagree with publication order.
     await db
       .update(postTable)
       .set({ featuredAt: 100 })
@@ -553,6 +557,7 @@ describe("Timeline data assembly", () => {
       format: "note",
       bodyMarkdown: "Later non-featured reply",
       replyToId: olderFeaturedReply.id,
+      publishedAt: 4000,
     });
 
     const result = await assembleFeaturedTimeline(createTimelineContext(), {
@@ -560,11 +565,63 @@ describe("Timeline data assembly", () => {
     });
 
     expect(result.items).toHaveLength(2);
-    expect(result.items[0]?.post.id).toBe(newerFeaturedRoot.id);
-    expect(result.items[1]?.post.id).toBe(olderFeaturedRoot.id);
+    expect(result.items[0]?.post.id).toBe(olderFeaturedRoot.id);
+    expect(result.items[1]?.post.id).toBe(newerFeaturedRoot.id);
   });
 
-  it("groups collection posts by root thread and sorts threads by collected-at", async () => {
+  it("loads only the Root, Featured Posts, and final Post for curated display", async () => {
+    const root = await postService.create({
+      format: "note",
+      bodyMarkdown: "Root",
+      publishedAt: 1000,
+    });
+    const hiddenReplyA = await postService.create({
+      format: "note",
+      bodyMarkdown: "Hidden reply A",
+      replyToId: root.id,
+      publishedAt: 2000,
+    });
+    const featuredReply = await postService.create({
+      format: "note",
+      bodyMarkdown: "Featured reply",
+      replyToId: hiddenReplyA.id,
+      featured: true,
+      publishedAt: 3000,
+    });
+    const hiddenReplyB = await postService.create({
+      format: "note",
+      bodyMarkdown: "Hidden reply B",
+      replyToId: featuredReply.id,
+      publishedAt: 4000,
+    });
+    const finalReply = await postService.create({
+      format: "note",
+      bodyMarkdown: "Final reply",
+      replyToId: hiddenReplyB.id,
+      publishedAt: 5000,
+    });
+
+    const result = await postService.getFeaturedThreadTimelineData([root.id]);
+    const thread = result.get(root.id);
+
+    expect(thread?.posts).toEqual([
+      expect.objectContaining({
+        post: expect.objectContaining({ id: root.id }),
+        position: 0,
+      }),
+      expect.objectContaining({
+        post: expect.objectContaining({ id: featuredReply.id }),
+        position: 2,
+      }),
+      expect.objectContaining({
+        post: expect.objectContaining({ id: finalReply.id }),
+        position: 4,
+      }),
+    ]);
+    expect(thread?.featuredPostIds).toEqual([featuredReply.id]);
+  });
+
+  it("renders every post in each collected Thread and sorts by Thread activity", async () => {
     const collection = await collectionService.create({
       slug: "reading",
       title: "Reading",
@@ -593,26 +650,12 @@ describe("Timeline data assembly", () => {
       bodyMarkdown: "Second thread root",
     });
 
-    await db.insert(postCollections).values([
-      {
-        siteId: DEFAULT_TEST_SITE_ID,
-        postId: collectedReplyA.id,
-        collectionId: collection.id,
-        createdAt: 100,
-      },
-      {
-        siteId: DEFAULT_TEST_SITE_ID,
-        postId: collectedReplyB.id,
-        collectionId: collection.id,
-        createdAt: 200,
-      },
-      {
-        siteId: DEFAULT_TEST_SITE_ID,
-        postId: secondRoot.id,
-        collectionId: collection.id,
-        createdAt: 300,
-      },
-    ]);
+    await collectionService.addThread(collection.id, firstRoot.id, {
+      createdAt: 200,
+    });
+    await collectionService.addThread(collection.id, secondRoot.id, {
+      createdAt: 300,
+    });
 
     const result = await assembleCollectionTimeline(createTimelineContext(), {
       collectionIds: [collection.id],
@@ -632,17 +675,22 @@ describe("Timeline data assembly", () => {
       expect.objectContaining({
         post: expect.objectContaining({ id: collectedReplyA.id }),
         hiddenBeforeCount: 0,
-        highlighted: true,
+        highlighted: false,
+      }),
+      expect.objectContaining({
+        post: expect.objectContaining({ id: hiddenMiddleReply.id }),
+        hiddenBeforeCount: 0,
+        highlighted: false,
       }),
       expect.objectContaining({
         post: expect.objectContaining({ id: collectedReplyB.id }),
-        hiddenBeforeCount: 1,
-        highlighted: true,
+        hiddenBeforeCount: 0,
+        highlighted: false,
       }),
     ]);
   });
 
-  it("keeps the last post visible when a collected root is the only selected post", async () => {
+  it("renders the complete Thread when its root belongs to a collection", async () => {
     const collection = await collectionService.create({
       slug: "root-only",
       title: "Root only",
@@ -657,10 +705,7 @@ describe("Timeline data assembly", () => {
       replyToId: root.id,
     });
 
-    await db.insert(postCollections).values({
-      siteId: DEFAULT_TEST_SITE_ID,
-      postId: root.id,
-      collectionId: collection.id,
+    await collectionService.addThread(collection.id, root.id, {
       createdAt: 100,
     });
 
@@ -676,7 +721,7 @@ describe("Timeline data assembly", () => {
       expect.objectContaining({
         post: expect.objectContaining({ id: root.id }),
         hiddenBeforeCount: 0,
-        highlighted: true,
+        highlighted: false,
       }),
       expect.objectContaining({
         post: expect.objectContaining({ id: uncollectedReply.id }),
@@ -686,7 +731,7 @@ describe("Timeline data assembly", () => {
     ]);
   });
 
-  it("highlights the union of collected posts across multiple collections", async () => {
+  it("deduplicates Threads selected through multiple collections", async () => {
     const smart = await collectionService.create({
       slug: "smart",
       title: "Smart",
@@ -719,26 +764,15 @@ describe("Timeline data assembly", () => {
       bodyMarkdown: "Second thread root",
     });
 
-    await db.insert(postCollections).values([
-      {
-        siteId: DEFAULT_TEST_SITE_ID,
-        postId: smartReply.id,
-        collectionId: smart.id,
-        createdAt: 100,
-      },
-      {
-        siteId: DEFAULT_TEST_SITE_ID,
-        postId: movieReply.id,
-        collectionId: movies.id,
-        createdAt: 200,
-      },
-      {
-        siteId: DEFAULT_TEST_SITE_ID,
-        postId: secondRoot.id,
-        collectionId: movies.id,
-        createdAt: 300,
-      },
-    ]);
+    await collectionService.addThread(smart.id, firstRoot.id, {
+      createdAt: 100,
+    });
+    await collectionService.addThread(movies.id, firstRoot.id, {
+      createdAt: 200,
+    });
+    await collectionService.addThread(movies.id, secondRoot.id, {
+      createdAt: 300,
+    });
 
     const result = await assembleCollectionTimeline(createTimelineContext(), {
       collectionIds: [smart.id, movies.id],
@@ -758,12 +792,17 @@ describe("Timeline data assembly", () => {
       expect.objectContaining({
         post: expect.objectContaining({ id: smartReply.id }),
         hiddenBeforeCount: 0,
-        highlighted: true,
+        highlighted: false,
+      }),
+      expect.objectContaining({
+        post: expect.objectContaining({ id: hiddenMiddleReply.id }),
+        hiddenBeforeCount: 0,
+        highlighted: false,
       }),
       expect.objectContaining({
         post: expect.objectContaining({ id: movieReply.id }),
-        hiddenBeforeCount: 1,
-        highlighted: true,
+        hiddenBeforeCount: 0,
+        highlighted: false,
       }),
     ]);
   });

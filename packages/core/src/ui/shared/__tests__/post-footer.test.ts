@@ -106,6 +106,21 @@ describe("PostFooter", () => {
     expect(html.match(/href="\/studio"/g)).toHaveLength(1);
   });
 
+  it("shows collection tags only on the thread root", () => {
+    const html = renderPostFooter(
+      createPostView({
+        id: "post-child",
+        replyToId: "post-root",
+      }),
+    );
+
+    expect(html).not.toContain('class="post-collection-tags"');
+    expect(html).not.toContain('href="/notes"');
+    expect(html).not.toContain("data-collection-popover-trigger");
+    expect(html).toContain('aria-label="More actions"');
+    expect(html).toContain("data-post-menu-trigger");
+  });
+
   it("renders the featured icon before the timestamp for client-side toggles", () => {
     const html = renderPostFooter(
       createPostView({

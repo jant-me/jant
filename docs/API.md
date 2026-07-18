@@ -118,7 +118,7 @@ Current tool groups:
 - posts: `jant_posts_list`, `jant_posts_get`, `jant_posts_get_content`, `jant_posts_create`, `jant_posts_update`, `jant_posts_delete`
 - media: `jant_media_list`, `jant_media_get`, `jant_media_upload`, `jant_media_update_alt`, `jant_media_delete`
 - attachments: `jant_attachments_get_content`
-- collections: `jant_collections_list`, `jant_collections_get`, `jant_collections_create`, `jant_collections_update`, `jant_collections_delete`, `jant_collections_add_post`, `jant_collections_remove_post`
+- collections: `jant_collections_list`, `jant_collections_get`, `jant_collections_create`, `jant_collections_update`, `jant_collections_delete`, `jant_collections_add_thread`, `jant_collections_remove_thread`
 - settings: `jant_settings_get`, `jant_settings_update`
 - search: `jant_search_posts`
 
@@ -301,11 +301,11 @@ Post responses include these fields:
 | `createdAt`      | integer                                  | Unix seconds                                              |
 | `updatedAt`      | integer                                  | Unix seconds                                              |
 | `attachments`    | array                                    | Ordered media/text attachment objects                     |
-| `collectionIds`  | `col_*` string[]                         | Only included by `GET /api/posts/:id`                     |
+| `collectionIds`  | `col_*` string[]                         | Shared Thread Collections; only in `GET /api/posts/:id`   |
 
 ### Post response shape
 
-The post list and detail endpoints return the same core fields. `GET /api/posts/:id` additionally includes `collectionIds`.
+The post list and detail endpoints return the same core fields. `GET /api/posts/:id` additionally includes the shared Thread-level `collectionIds`; Root and Child responses return the same set.
 
 Example:
 
@@ -597,7 +597,7 @@ Invalid slug candidates return `400`, including reserved slugs and slugs with in
 
 Auth: `Session or token`
 
-This returns the full post plus `collectionIds` and ordered `attachments`.
+This returns the full post plus shared Thread-level `collectionIds` and ordered `attachments`.
 
 Example:
 
@@ -664,7 +664,7 @@ Fields:
 | `sourceUrl`     | absolute URL                             | no                   | `null`         | Quote attribution URL; not allowed for non-quote                          |
 | `quoteText`     | string                                   | required for `quote` | —              | Not allowed for `note` or `link`                                          |
 | `rating`        | integer                                  | no                   | `null`         | `1` to `5`; send `0` to clear on update                                   |
-| `collectionIds` | `col_*` string[]                         | no                   | `[]`           | Collection TypeIDs; max `20`                                              |
+| `collectionIds` | `col_*` string[]                         | no                   | `[]`           | Shared Thread Collection TypeIDs; max `20`                                |
 | `replyToId`     | `pst_*` string                           | no                   | `null`         | Make this post a thread reply                                             |
 | `publishedAt`   | integer                                  | no                   | current time   | Unix seconds; only valid when `status` is `published`                     |
 | `attachments`   | attachment[]                             | no                   | `[]`           | Ordered attachments, max `20`                                             |
@@ -680,6 +680,7 @@ Important rules:
 - Replies cannot be pinned.
 - Replies inherit thread visibility.
 - Replies inherit the root status unless you explicitly create the reply as `draft`.
+- Set `collectionIds` while creating a Thread root. Reply creation rejects non-empty Collection input; use the Thread Collection endpoints afterward, which accept either a Root or Child Post ID.
 
 Path behavior:
 
@@ -813,6 +814,7 @@ Notes:
 - `path` is not supported on update. Use `slug` for canonical URL changes and `custom-urls` for extra aliases.
 - For quote posts, keep using `sourceName` and `sourceUrl`.
 - Thread replies reject direct `visibility` and `pinned` changes.
+- Sending `collectionIds` from either a Root or Child update replaces the shared Thread Collection set.
 - Draft updates cannot set `publishedAt`.
 - To clear a rating, send `0`.
 
@@ -1291,22 +1293,23 @@ Response:
 
 Base path: `/api/collections`
 
-Collections group posts by topic. A post can belong to multiple collections.
+Collections group complete Threads by topic. A Thread can belong to multiple
+Collections, and its root and children always share the same memberships.
 
 Collection responses include these fields:
 
-| Field              | Type                                  | Notes                          |
-| ------------------ | ------------------------------------- | ------------------------------ |
-| `id`               | `col_*` string                        | Collection ID                  |
-| `siteId`           | string                                | Owning site                    |
-| `slug`             | string                                | Canonical collection slug      |
-| `title`            | string                                | Display title                  |
-| `description`      | string \| `null`                      | Optional description           |
-| `sortOrder`        | `newest` \| `oldest` \| `rating_desc` | Per-collection post sort order |
-| `createdAt`        | integer                               | Unix seconds                   |
-| `updatedAt`        | integer                               | Unix seconds                   |
-| `postCount`        | integer                               | Only present in list responses |
-| `recentActivityAt` | integer                               | Only present in list responses |
+| Field              | Type                                  | Notes                            |
+| ------------------ | ------------------------------------- | -------------------------------- |
+| `id`               | `col_*` string                        | Collection ID                    |
+| `siteId`           | string                                | Owning site                      |
+| `slug`             | string                                | Canonical collection slug        |
+| `title`            | string                                | Display title                    |
+| `description`      | string \| `null`                      | Optional description             |
+| `sortOrder`        | `newest` \| `oldest` \| `rating_desc` | Per-collection Thread sort order |
+| `createdAt`        | integer                               | Unix seconds                     |
+| `updatedAt`        | integer                               | Unix seconds                     |
+| `threadCount`      | integer                               | Only present in list responses   |
+| `recentActivityAt` | integer                               | Only present in list responses   |
 
 Directory item responses include these fields:
 
@@ -1354,7 +1357,7 @@ Default response:
       "sortOrder": "newest",
       "createdAt": 1706000000,
       "updatedAt": 1706000000,
-      "postCount": 12,
+      "threadCount": 12,
       "recentActivityAt": 1706100000
     }
   ],
@@ -1424,7 +1427,7 @@ Fields:
 | `slug`        | string                                | yes      | —        | Canonical collection slug, max `200`, lowercase letters/numbers/hyphens only |
 | `title`       | string                                | yes      | —        | Display title, max `120`                                                     |
 | `description` | string                                | no       | `null`   | Optional description, max `500`                                              |
-| `sortOrder`   | `newest` \| `oldest` \| `rating_desc` | no       | `newest` | Per-collection post sort order                                               |
+| `sortOrder`   | `newest` \| `oldest` \| `rating_desc` | no       | `newest` | Per-Collection Thread sort order                                             |
 
 Notes:
 
@@ -1599,23 +1602,26 @@ Response:
 { "success": true }
 ```
 
-### Add a post to a collection
+### Add a Thread to a collection
 
-`POST /api/collections/:id/posts`
+`POST /api/collections/:id/threads`
 
 Auth: `Session or token`
 
 Request body:
 
 ```json
-{ "postId": "pst_01jpyx3m7gw4w3h7m4bknq0v1d" }
+{ "threadId": "pst_01jpyx3m7gw4w3h7m4bknq0v1d" }
 ```
 
 Fields:
 
-| Field    | Type           | Required | Default | Notes   |
-| -------- | -------------- | -------- | ------- | ------- |
-| `postId` | `pst_*` string | yes      | —       | Post ID |
+| Field      | Type           | Required | Default | Notes                        |
+| ---------- | -------------- | -------- | ------- | ---------------------------- |
+| `threadId` | `pst_*` string | yes      | —       | Thread root or child Post ID |
+
+The ID is normalized to the Thread root. The root and every child share one
+Collection membership set.
 
 Response:
 
@@ -1623,15 +1629,31 @@ Response:
 { "success": true }
 ```
 
-### Remove a post from a collection
+### Remove a Thread from a collection
 
-`DELETE /api/collections/:id/posts/:postId`
+`DELETE /api/collections/:id/threads/:threadId`
 
 Auth: `Session or token`
 
-Removes the post-to-collection association. It does not delete the post or the collection.
+Removes the whole Thread from the Collection. It does not delete the Thread or
+the Collection.
 
 Response:
+
+```json
+{ "success": true }
+```
+
+### Pin or unpin a Thread in a collection
+
+`PUT /api/collections/:id/threads/:threadId/pin`
+
+`DELETE /api/collections/:id/threads/:threadId/pin`
+
+Auth: `Session or token`
+
+Both endpoints accept a Thread root or child Post ID and operate on the shared
+Thread membership. Response:
 
 ```json
 { "success": true }
@@ -2212,7 +2234,7 @@ Archive contents:
 Notes:
 
 - Each thread root is a Hugo branch bundle; its replies live as nested leaf bundles rendered inline by the thread template.
-- Collection membership is exported as a top-level `collections` front-matter array on each post, with per-entry `collected_at` / `position` / `pinned_at`.
+- Collection membership is exported once per Thread as a top-level `collections` front-matter array on the root bundle, with per-entry `collected_at` / `position` / `pinned_at`. Reply bundles do not repeat it.
 - Navigation items, theme CSS, custom CSS, favicon, and Apple touch icon are included in the scaffold when available.
 - Exported post bodies become Markdown. Media references point back to the original Jant media URLs; the ZIP does not bundle original media binaries.
 

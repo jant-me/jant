@@ -621,7 +621,10 @@ function buildPostBody(
         ? detail.rating
         : null
       : detail.rating || undefined,
-    collectionIds: detail.collectionIds,
+    // Reply creation and Child edits must not reorganize their existing
+    // Thread as a side effect. Collection management stays on Thread-level
+    // organization surfaces; JSON.stringify omits this undefined field.
+    collectionIds: detail.replyToId ? undefined : detail.collectionIds,
     attachments: attachments.length > 0 ? attachments : undefined,
     replyToId: detail.replyToId || undefined,
     quietReply: detail.quietReply || undefined,

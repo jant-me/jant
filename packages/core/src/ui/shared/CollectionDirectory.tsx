@@ -124,7 +124,7 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
           i18n._(
             msg({
               message:
-                "No collections yet. Start one to organize posts by topic.",
+                "No collections yet. Start one to organize threads by topic.",
               comment: "@context: Empty state message on collections page",
             }),
           )}
@@ -285,18 +285,18 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
               )}
               <p class="collection-directory-summary">
                 <span class="collection-directory-meta">
-                  {collection.postCount}{" "}
-                  {collection.postCount === 1
+                  {collection.threadCount}{" "}
+                  {collection.threadCount === 1
                     ? i18n._(
                         msg({
-                          message: "entry",
-                          comment: "@context: Singular entry count label",
+                          message: "thread",
+                          comment: "@context: Singular thread count label",
                         }),
                       )
                     : i18n._(
                         msg({
-                          message: "entries",
-                          comment: "@context: Plural entry count label",
+                          message: "threads",
+                          comment: "@context: Plural thread count label",
                         }),
                       )}
                 </span>

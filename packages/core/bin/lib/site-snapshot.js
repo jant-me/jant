@@ -2,7 +2,8 @@ import { readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 export const SNAPSHOT_FORMAT = "jant-site-snapshot";
-export const SNAPSHOT_VERSION = 1;
+export const SNAPSHOT_VERSION = 2;
+export const SUPPORTED_SNAPSHOT_VERSIONS = [1, SNAPSHOT_VERSION];
 
 export const SNAPSHOT_TABLES = [
   "site_setting",
@@ -10,13 +11,13 @@ export const SNAPSHOT_TABLES = [
   "nav_item",
   "collection_directory_item",
   "post",
-  "post_collection",
+  "thread_collection",
   "path_registry",
   "media",
 ];
 
 export const SNAPSHOT_CLEAR_TABLES = [
-  "post_collection",
+  "thread_collection",
   "media",
   "path_registry",
   "collection_directory_item",
@@ -81,11 +82,11 @@ const SELECT_SQL_BY_TABLE = {
     WHERE "site_id" = ?1
     ORDER BY "created_at", "id"
   `,
-  post_collection: `
+  thread_collection: `
     SELECT *
-    FROM "post_collection"
+    FROM "thread_collection"
     WHERE "site_id" = ?1
-    ORDER BY "created_at", "post_id", "collection_id"
+    ORDER BY "created_at", "thread_id", "collection_id"
   `,
   path_registry: `
     SELECT *
@@ -206,9 +207,9 @@ export function assertSnapshotMeta(meta) {
     );
   }
 
-  if (meta.version !== SNAPSHOT_VERSION) {
+  if (!SUPPORTED_SNAPSHOT_VERSIONS.includes(meta.version)) {
     throw new Error(
-      `Unsupported snapshot version: expected ${SNAPSHOT_VERSION}, got ${String(meta.version)}`,
+      `Unsupported snapshot version: expected one of ${SUPPORTED_SNAPSHOT_VERSIONS.join(", ")}, got ${String(meta.version)}`,
     );
   }
 
@@ -434,6 +435,7 @@ export function rewriteLegacySnapshotSql(sql, siteId) {
         "collection_directory_item",
         "post",
         "post_collection",
+        "thread_collection",
         "path_registry",
         "media",
       ]) {
@@ -445,6 +447,209 @@ export function rewriteLegacySnapshotSql(sql, siteId) {
   );
 
   return `${rewrittenStatements.join(";\n")};\n`;
+}
+
+function parseInsertStatement(statement) {
+  const match = statement.match(
+    /^INSERT\s+INTO\s+"?([^"\s]+)"?\s*\(([^)]*)\)\s*VALUES\s*\(([\s\S]*)\)$/i,
+  );
+  if (!match) {
+    return null;
+  }
+
+  const columns = match[2]
+    .split(",")
+    .map((column) => column.trim().replace(/^"|"$/g, ""));
+  const values = parseSqlValueList(match[3]);
+  if (columns.length !== values.length) {
+    throw new Error(
+      `Snapshot INSERT for ${match[1]} has ${columns.length} columns but ${values.length} values.`,
+    );
+  }
+
+  return {
+    table: match[1],
+    values: new Map(columns.map((column, index) => [column, values[index]])),
+  };
+}
+
+function readRequiredSqlString(insert, column, label) {
+  const value = parseSqlScalar(insert.values.get(column));
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`Snapshot ${label} is missing required ${column}.`);
+  }
+  return value;
+}
+
+function readSqlNumber(insert, column, fallback, label) {
+  if (!insert.values.has(column)) {
+    return fallback;
+  }
+  const value = parseSqlScalar(insert.values.get(column));
+  if (value === null && fallback === null) {
+    return null;
+  }
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    throw new Error(`Snapshot ${label} has invalid ${column}.`);
+  }
+  return number;
+}
+
+function formatSqlScalar(value) {
+  if (value === null) {
+    return "NULL";
+  }
+  if (typeof value === "number") {
+    return String(value);
+  }
+  return `'${escapeSqlString(value)}'`;
+}
+
+/**
+ * Upgrade a v1 snapshot dump from per-post Collection rows to the explicit
+ * v2 Thread model. The conversion happens entirely in memory so callers can
+ * fail before clearing any target tables.
+ *
+ * Memberships from every post in a Thread are unioned. Duplicate metadata
+ * uses MAX(created_at), MAX(pinned_at), and MIN(position), matching the live
+ * schema migration.
+ *
+ * @param {string} sql v1 snapshot SQL after site-id rewriting
+ * @returns {string} replayable v2 SQL containing `thread_collection` rows
+ * @example
+ * upgradeV1SnapshotSql(v1DbSql)
+ */
+export function upgradeV1SnapshotSql(sql) {
+  const uncommentedSql = sql
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("--"))
+    .join("\n");
+  const statements = splitSqlStatements(uncommentedSql);
+  const postThreadIds = new Map();
+
+  for (const statement of statements) {
+    const insert = parseInsertStatement(statement);
+    if (insert?.table.toLowerCase() !== "post") {
+      continue;
+    }
+    const siteId = readRequiredSqlString(insert, "site_id", "post row");
+    const postId = readRequiredSqlString(insert, "id", "post row");
+    const threadId = readRequiredSqlString(insert, "thread_id", "post row");
+    postThreadIds.set(`${siteId}\u0000${postId}`, threadId);
+  }
+
+  const memberships = new Map();
+  let lastPostIndex = -1;
+  const retainedStatements = [];
+
+  for (const statement of statements) {
+    const insert = parseInsertStatement(statement);
+    const table = insert?.table.toLowerCase();
+    if (table === "post") {
+      lastPostIndex = retainedStatements.length;
+    }
+    if (table !== "post_collection") {
+      retainedStatements.push(statement.trim());
+      continue;
+    }
+
+    const siteId = readRequiredSqlString(
+      insert,
+      "site_id",
+      "post_collection row",
+    );
+    const postId = readRequiredSqlString(
+      insert,
+      "post_id",
+      "post_collection row",
+    );
+    const collectionId = readRequiredSqlString(
+      insert,
+      "collection_id",
+      "post_collection row",
+    );
+    const threadId = postThreadIds.get(`${siteId}\u0000${postId}`);
+    if (!threadId) {
+      throw new Error(
+        `Snapshot post_collection row references missing post ${postId}; target content was not changed.`,
+      );
+    }
+
+    const createdAt = readSqlNumber(
+      insert,
+      "created_at",
+      0,
+      "post_collection row",
+    );
+    const position = readSqlNumber(
+      insert,
+      "position",
+      0,
+      "post_collection row",
+    );
+    const pinnedAt = readSqlNumber(
+      insert,
+      "pinned_at",
+      null,
+      "post_collection row",
+    );
+    const key = `${siteId}\u0000${threadId}\u0000${collectionId}`;
+    const current = memberships.get(key);
+    if (!current) {
+      memberships.set(key, {
+        siteId,
+        threadId,
+        collectionId,
+        createdAt,
+        position,
+        pinnedAt,
+      });
+      continue;
+    }
+
+    current.createdAt = Math.max(current.createdAt, createdAt);
+    current.position = Math.min(current.position, position);
+    if (pinnedAt !== null) {
+      current.pinnedAt =
+        current.pinnedAt === null
+          ? pinnedAt
+          : Math.max(current.pinnedAt, pinnedAt);
+    }
+  }
+
+  if (memberships.size === 0) {
+    return sql;
+  }
+
+  const upgradedStatements = [...memberships.values()].map(
+    (membership) =>
+      `INSERT INTO "thread_collection" ("site_id", "thread_id", "collection_id", "created_at", "position", "pinned_at") VALUES(${[
+        membership.siteId,
+        membership.threadId,
+        membership.collectionId,
+        membership.createdAt,
+        membership.position,
+        membership.pinnedAt,
+      ]
+        .map(formatSqlScalar)
+        .join(", ")})`,
+  );
+  retainedStatements.splice(lastPostIndex + 1, 0, ...upgradedStatements);
+  return `${retainedStatements.join(";\n")};\n`;
+}
+
+/**
+ * Apply format-version compatibility rewrites to snapshot SQL.
+ *
+ * @param {string} sql site-scoped snapshot SQL
+ * @param {number} snapshotVersion version read from `meta.json`
+ * @returns {string} SQL ready for the current schema
+ * @example
+ * upgradeSnapshotSql(dbSql, meta.version)
+ */
+export function upgradeSnapshotSql(sql, snapshotVersion) {
+  return snapshotVersion === 1 ? upgradeV1SnapshotSql(sql) : sql;
 }
 
 /**

@@ -8,7 +8,7 @@
 >
 > You can also look at the author's blog as a real-world example: [www.owenyoung.com](https://www.owenyoung.com/)
 
-Jant is a small blog system for one author. It supports three post formats — **Note, Link, Quote** — that you can connect into a Thread or group into a Collection. Publishing feels closer to Twitter or Threads than to a WordPress or Ghost dashboard.
+Jant is a small blog system for one author. It supports three post formats — **Note, Link, Quote** — that you can connect into Threads and group into Collections. Publishing feels closer to Twitter or Threads than to a WordPress or Ghost dashboard.
 
 ![Jant Home](https://jant-me-media.jant.me/assets/jant-home.png)
 

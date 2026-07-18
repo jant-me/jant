@@ -31,6 +31,24 @@ INSERT INTO "collection" (
   1774200010
 );
 
+INSERT INTO "collection" (
+  "id",
+  "site_id",
+  "title",
+  "description",
+  "sort_order",
+  "created_at",
+  "updated_at"
+) VALUES (
+  'col_01kme7j8f9f4m7s2k8r5c9t0qd',
+  'sit_01kme7j7j1f4m7s2k8r5c9t0qb',
+  'Child-only Notes',
+  'Collection assigned only to a reply before the Thread migration.',
+  'newest',
+  1774200011,
+  1774200011
+);
+
 INSERT INTO "nav_item" (
   "id",
   "site_id",
@@ -149,17 +167,114 @@ INSERT INTO "post" (
   1774200020
 );
 
+INSERT INTO "post" (
+  "id",
+  "site_id",
+  "format",
+  "status",
+  "visibility",
+  "title",
+  "body",
+  "body_html",
+  "body_text",
+  "reply_to_id",
+  "thread_id",
+  "published_at",
+  "last_activity_at",
+  "created_at",
+  "updated_at"
+) VALUES (
+  'pst_01kme7ja2mf4m7s2k8r5c9t0qh',
+  'sit_01kme7j7j1f4m7s2k8r5c9t0qb',
+  'note',
+  'published',
+  NULL,
+  'First rehearsal reply',
+  '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"First migration rehearsal reply."}]}]}',
+  '<p>First migration rehearsal reply.</p>',
+  'First migration rehearsal reply.',
+  'pst_01kme7ja2mf4m7s2k8r5c9t0qf',
+  'pst_01kme7ja2mf4m7s2k8r5c9t0qf',
+  1774200030,
+  1774200030,
+  1774200030,
+  1774200030
+);
+
+INSERT INTO "post" (
+  "id",
+  "site_id",
+  "format",
+  "status",
+  "visibility",
+  "title",
+  "body",
+  "body_html",
+  "body_text",
+  "reply_to_id",
+  "thread_id",
+  "published_at",
+  "last_activity_at",
+  "created_at",
+  "updated_at"
+) VALUES (
+  'pst_01kme7ja2mf4m7s2k8r5c9t0qi',
+  'sit_01kme7j7j1f4m7s2k8r5c9t0qb',
+  'note',
+  'published',
+  NULL,
+  'Second rehearsal reply',
+  '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Second migration rehearsal reply."}]}]}',
+  '<p>Second migration rehearsal reply.</p>',
+  'Second migration rehearsal reply.',
+  'pst_01kme7ja2mf4m7s2k8r5c9t0qh',
+  'pst_01kme7ja2mf4m7s2k8r5c9t0qf',
+  1774200040,
+  1774200040,
+  1774200040,
+  1774200040
+);
+
 INSERT INTO "post_collection" (
   "site_id",
   "post_id",
   "collection_id",
-  "created_at"
-) VALUES (
-  'sit_01kme7j7j1f4m7s2k8r5c9t0qb',
-  'pst_01kme7ja2mf4m7s2k8r5c9t0qf',
-  'col_01kme7j8f9f4m7s2k8r5c9t0qc',
-  1774200021
-);
+  "created_at",
+  "position",
+  "pinned_at"
+) VALUES
+  (
+    'sit_01kme7j7j1f4m7s2k8r5c9t0qb',
+    'pst_01kme7ja2mf4m7s2k8r5c9t0qf',
+    'col_01kme7j8f9f4m7s2k8r5c9t0qc',
+    1774200021,
+    7,
+    1774200300
+  ),
+  (
+    'sit_01kme7j7j1f4m7s2k8r5c9t0qb',
+    'pst_01kme7ja2mf4m7s2k8r5c9t0qh',
+    'col_01kme7j8f9f4m7s2k8r5c9t0qc',
+    1774200040,
+    5,
+    NULL
+  ),
+  (
+    'sit_01kme7j7j1f4m7s2k8r5c9t0qb',
+    'pst_01kme7ja2mf4m7s2k8r5c9t0qi',
+    'col_01kme7j8f9f4m7s2k8r5c9t0qc',
+    1774200030,
+    1,
+    1774200500
+  ),
+  (
+    'sit_01kme7j7j1f4m7s2k8r5c9t0qb',
+    'pst_01kme7ja2mf4m7s2k8r5c9t0qh',
+    'col_01kme7j8f9f4m7s2k8r5c9t0qd',
+    1774200060,
+    4,
+    1774200600
+  );
 
 INSERT INTO "path_registry" (
   "id",

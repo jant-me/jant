@@ -13,7 +13,7 @@
 - 单博客，单作者
 - 三种内容格式（Note, Link, Quote）类似 Tumblr
 - Thread（帖子串）——把想法串联成连贯的对话
-- Collection（合集）——把零散帖子组织成主题合集
+- Collection（合集）——把完整 Thread 组织成主题合集
 - 可定制的颜色方案和字体主题
 - 多语言支持（英文、简体中文、繁体中文）
 - 极简部署（Cloudflare Workers，一键启动）
@@ -113,7 +113,7 @@
 
 ### 2.5 Collection（合集）
 
-**场景**：把零散帖子组织成主题合集。合集同时承担"子类型"的分类职责——用户通过合集来区分书评、影评、产品推荐等，而非通过内容类型。
+**场景**：把完整 Thread 组织成主题合集。合集同时承担"子类型"的分类职责——用户通过合集来区分书评、影评、产品推荐等，而非通过内容类型。
 
 **示例**：
 
@@ -124,7 +124,7 @@
 
 **规则**：
 
-- 一个帖子可以属于多个合集（多对多关系，通过 `post_collections` 关联表实现）
+- 一个 Thread 可以属于多个合集（多对多关系，通过 `thread_collection` 关联表实现）；Root 和所有 Child 共享同一份归属
 - 合集有名称、描述和图标
 - 合集有自定义排序方式（最新/最早/评分最高/评分最低）
 - 合集有自定义 slug，地址为 `/{slug}`，创建时根据名称自动生成，用户可修改
@@ -223,7 +223,7 @@ Link 格式的帖子，后端根据 URL 在 API 返回时计算渲染信息（�
 
 ### 3.7 合集页面
 
-`/collections` 展示所有合集的列表页，点击进入单个合集的帖子列表（`/{slug}`）。合集页面为双栏布局，左侧边栏展示所有合集，右侧栏展示当前合集的帖子列表。
+`/collections` 展示所有合集的列表页，点击进入单个合集的 Thread 列表（`/{slug}`）。每个结果展示完整 Thread，不保留逐 Post 收藏语义。
 
 ### 3.8 首次使用（Onboarding）
 
@@ -272,8 +272,8 @@ Link 格式的帖子，后端根据 URL 在 API 返回时计算渲染信息（�
 | `/latest`                  | 302 重定向到 `/`                                                   |
 | `/featured`                | 精选帖子                                                           |
 | `/{slug}`                  | 单条帖子（slug 自动生成或自定义）                                  |
-| `/{slug}`                  | 单个合集帖子列表                                                   |
-| `/collections/{slug}`      | 组合合集帖子列表                                                   |
+| `/{slug}`                  | 单个合集 Thread 列表                                               |
+| `/collections/{slug}`      | 组合合集 Thread 列表                                               |
 | `/collections`             | 合集列表页                                                         |
 | `/archive`                 | 归档（支持 ?format= &featured= 筛选）                              |
 | `/search`                  | 搜索                                                               |
@@ -324,8 +324,8 @@ Link 格式的帖子，后端根据 URL 在 API 返回时计算渲染信息（�
 - `/featured/feed` — 仅精选帖子
 - `/archive/feed` — 全量归档（含 `Hidden from Latest`，支持 `?year=`、`?format=`、`?collection=`、`?media=` 等归档筛选）
 - 旧地址 `/feed/latest`、`/feed/featured` 会 `308` 永久跳转到上面的规范地址，老订阅者不受影响
-- `/{slug}/feed` — 单个合集的 RSS Feed，按加入合集时间倒序
-- `/collections/{slug}/feed` — 组合合集的 RSS Feed，按加入合集时间倒序
+- `/{slug}/feed` — 单个合集的 RSS Feed，按 Thread 活动时间倒序
+- `/collections/{slug}/feed` — 组合合集的 RSS Feed，按 Thread 活动时间倒序
 
 **Sitemap**：自动生成，包含所有公开帖子和页面。
 

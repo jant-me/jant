@@ -50,7 +50,6 @@ interface RawSearchRow {
   quote_text: string | null;
   summary: string | null;
   rating: number | null;
-  collection_id: string | null;
   reply_to_id: string | null;
   thread_id: string;
   published_at: number | null;

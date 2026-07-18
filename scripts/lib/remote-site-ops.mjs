@@ -116,7 +116,7 @@ export function buildSiteContentResetSql(
 ) {
   const escapedSiteId = escapeSqlString(siteId);
   const statements = [
-    `DELETE FROM "post_collection" WHERE "site_id" = '${escapedSiteId}';`,
+    `DELETE FROM "thread_collection" WHERE "site_id" = '${escapedSiteId}';`,
     `DELETE FROM "collection_directory_item" WHERE "site_id" = '${escapedSiteId}';`,
     `DELETE FROM "path_registry" WHERE "site_id" = '${escapedSiteId}';`,
   ];

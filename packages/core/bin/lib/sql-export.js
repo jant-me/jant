@@ -12,7 +12,7 @@ const TABLE_EXPORT_ORDER = [
   "collection_directory_item",
   "api_token",
   "post",
-  "post_collection",
+  "thread_collection",
   "path_registry",
   "media",
 ];

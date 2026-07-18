@@ -622,8 +622,8 @@ msgstr "Delete table"
 
 #. @context: Confirm dialog for deleting a collection
 #: src/ui/shared/collection-management-labels.ts
-msgid "Delete this collection permanently? Posts inside won't be removed."
-msgstr "Delete this collection permanently? Posts inside won't be removed."
+msgid "Delete this collection permanently? Threads inside won't be removed."
+msgstr "Delete this collection permanently? Threads inside won't be removed."
 
 #. @context: Hint shown on signin page when demo credentials are pre-filled
 #: src/routes/auth/signin.tsx
@@ -822,20 +822,6 @@ msgstr "Enter a valid date."
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Enter a valid URL starting with http://, https://, or mailto:."
 msgstr "Enter a valid URL starting with http://, https://, or mailto:."
-
-#. @context: Plural entry count label
-#. @context: Plural entry count label
-#: src/ui/shared/CollectionDirectory.tsx
-#: src/ui/shared/CollectionsManager.tsx
-msgid "entries"
-msgstr "entries"
-
-#. @context: Singular entry count label
-#. @context: Singular entry count label
-#: src/ui/shared/CollectionDirectory.tsx
-#: src/ui/shared/CollectionsManager.tsx
-msgid "entry"
-msgstr "entry"
 
 #. @context: Usage label for the brand pack card
 #: src/ui/pages/BrandPage.tsx
@@ -1370,8 +1356,8 @@ msgstr "No collections match that search. Try a different name."
 #: src/ui/pages/CollectionsPage.tsx
 #: src/ui/shared/CollectionDirectory.tsx
 #: src/ui/shared/CollectionsManager.tsx
-msgid "No collections yet. Start one to organize posts by topic."
-msgstr "No collections yet. Start one to organize posts by topic."
+msgid "No collections yet. Start one to organize threads by topic."
+msgstr "No collections yet. Start one to organize threads by topic."
 
 #. @context: Drafts panel empty state
 #: src/ui/compose/ComposeDialog.tsx
@@ -1416,8 +1402,8 @@ msgstr "Notes"
 
 #. @context: Empty state message on an aggregate collection page
 #: src/ui/pages/CollectionPage.tsx
-msgid "Nothing here yet. Add posts to one of these collections to fill this view."
-msgstr "Nothing here yet. Add posts to one of these collections to fill this view."
+msgid "Nothing here yet. Add threads to one of these collections to fill this view."
+msgstr "Nothing here yet. Add threads to one of these collections to fill this view."
 
 #. @context: Empty state message on featured page
 #: src/ui/pages/FeaturedPage.tsx
@@ -2115,8 +2101,8 @@ msgstr "This article is here to answer a specific question: does the default acc
 
 #. @context: Empty state message
 #: src/ui/pages/CollectionPage.tsx
-msgid "This collection is empty. Add posts from the editor."
-msgstr "This collection is empty. Add posts from the editor."
+msgid "This collection is empty. Add threads from the editor."
+msgstr "This collection is empty. Add threads from the editor."
 
 #. @context: Collection link help text
 #: src/ui/shared/collection-management-labels.ts
@@ -2178,10 +2164,14 @@ msgstr "This uses the real single-post detail rendering with a longer article, i
 
 #. @context: Archive month header count unit for a single thread
 #. @context: Archive page summary unit for a single matching thread
+#. @context: Singular thread count label
+#. @context: Singular thread count label
 #. @context: Singular thread count label on collection detail page
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/CollectionPage.tsx
+#: src/ui/shared/CollectionDirectory.tsx
+#: src/ui/shared/CollectionsManager.tsx
 msgid "thread"
 msgstr "thread"
 
@@ -2198,11 +2188,15 @@ msgstr "Thread accents"
 #. @context: Archive feed title segment for hasReplies=1 filter
 #. @context: Archive month header count unit for multiple threads
 #. @context: Archive page summary unit for multiple matching threads
+#. @context: Plural thread count label
+#. @context: Plural thread count label
 #. @context: Plural thread count label on collection detail page
 #: src/routes/pages/archive.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/CollectionPage.tsx
+#: src/ui/shared/CollectionDirectory.tsx
+#: src/ui/shared/CollectionsManager.tsx
 msgid "threads"
 msgstr "threads"
 

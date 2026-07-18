@@ -1,9 +1,10 @@
+import { eq } from "drizzle-orm";
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   createTestDatabase,
   DEFAULT_TEST_SITE_ID,
 } from "../../__tests__/helpers/db.js";
-import { postCollections } from "../../db/schema.js";
+import { posts, threadCollections } from "../../db/schema.js";
 import { createPostService } from "../post.js";
 import { createCollectionService } from "../collection.js";
 import type { Database } from "../../db/index.js";
@@ -475,6 +476,39 @@ describe("PostService - Timeline features", () => {
     });
   });
 
+  describe("countCollectionThreadRootsForCollections", () => {
+    it("counts rated Threads once even when multiple children are rated", async () => {
+      const collection = await collectionService.create({
+        slug: "rated-threads",
+        title: "Rated Threads",
+      });
+      const ratedRoot = await postService.create({
+        format: "note",
+        bodyMarkdown: "Rated root",
+        rating: 5,
+      });
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "Rated child",
+        rating: 4,
+        replyToId: ratedRoot.id,
+      });
+      const unratedRoot = await postService.create({
+        format: "note",
+        bodyMarkdown: "Unrated root",
+      });
+      await collectionService.addThread(collection.id, ratedRoot.id);
+      await collectionService.addThread(collection.id, unratedRoot.id);
+
+      const count = await postService.countCollectionThreadRootsForCollections(
+        [collection.id],
+        { status: "published", hasRating: true },
+      );
+
+      expect(count).toBe(1);
+    });
+  });
+
   describe("listCollectionThreadRootIds", () => {
     it("bumps a hidden collection thread when a non-quiet reply is published", async () => {
       const collection = await collectionService.create({
@@ -493,8 +527,8 @@ describe("PostService - Timeline features", () => {
         publishedAt: 2000,
       });
 
-      await collectionService.addPost(collection.id, hiddenRoot.id);
-      await collectionService.addPost(collection.id, newerRoot.id);
+      await collectionService.addThread(collection.id, hiddenRoot.id);
+      await collectionService.addThread(collection.id, newerRoot.id);
 
       await postService.create({
         format: "note",
@@ -530,8 +564,8 @@ describe("PostService - Timeline features", () => {
         publishedAt: 2000,
       });
 
-      await collectionService.addPost(collection.id, olderRoot.id);
-      await collectionService.addPost(collection.id, newerRoot.id);
+      await collectionService.addThread(collection.id, olderRoot.id);
+      await collectionService.addThread(collection.id, newerRoot.id);
 
       await postService.create({
         format: "note",
@@ -550,6 +584,40 @@ describe("PostService - Timeline features", () => {
       );
 
       expect(rootIds).toEqual([newerRoot.id, olderRoot.id]);
+    });
+
+    it("orders a Thread by a newer root edit", async () => {
+      const collection = await collectionService.create({
+        slug: "edited",
+        title: "Edited",
+      });
+      const editedRoot = await postService.create({
+        format: "note",
+        bodyMarkdown: "Edited root",
+        publishedAt: 1000,
+      });
+      const newerRoot = await postService.create({
+        format: "note",
+        bodyMarkdown: "Newer root",
+        publishedAt: 2000,
+      });
+
+      await collectionService.addThread(collection.id, editedRoot.id);
+      await collectionService.addThread(collection.id, newerRoot.id);
+      await db
+        .update(posts)
+        .set({ createdAt: 500, updatedAt: 3000 })
+        .where(eq(posts.id, editedRoot.id));
+
+      const rootIds = await postService.listCollectionThreadRootIds(
+        collection.id,
+        {
+          status: "published",
+          sortOrder: "newest",
+        },
+      );
+
+      expect(rootIds).toEqual([editedRoot.id, newerRoot.id]);
     });
   });
 
@@ -573,16 +641,16 @@ describe("PostService - Timeline features", () => {
         bodyMarkdown: "Second root",
       });
 
-      await db.insert(postCollections).values([
+      await db.insert(threadCollections).values([
         {
           siteId: DEFAULT_TEST_SITE_ID,
-          postId: collectedReply.id,
+          threadId: firstRoot.id,
           collectionId: collection.id,
           createdAt: 100,
         },
         {
           siteId: DEFAULT_TEST_SITE_ID,
-          postId: secondRoot.id,
+          threadId: secondRoot.id,
           collectionId: collection.id,
           createdAt: 200,
         },
@@ -618,17 +686,17 @@ describe("PostService - Timeline features", () => {
         publishedAt: 2000,
       });
 
-      await db.insert(postCollections).values([
+      await db.insert(threadCollections).values([
         {
           siteId: DEFAULT_TEST_SITE_ID,
-          postId: olderRoot.id,
+          threadId: olderRoot.id,
           collectionId: collection.id,
           createdAt: 100,
           pinnedAt: 5000,
         },
         {
           siteId: DEFAULT_TEST_SITE_ID,
-          postId: newerRoot.id,
+          threadId: newerRoot.id,
           collectionId: collection.id,
           createdAt: 200,
         },
@@ -681,22 +749,22 @@ describe("PostService - Timeline features", () => {
         bodyMarkdown: "Second root",
       });
 
-      await db.insert(postCollections).values([
+      await db.insert(threadCollections).values([
         {
           siteId: DEFAULT_TEST_SITE_ID,
-          postId: sharedRoot.id,
+          threadId: sharedRoot.id,
           collectionId: smart.id,
           createdAt: 100,
         },
         {
           siteId: DEFAULT_TEST_SITE_ID,
-          postId: sharedReply.id,
+          threadId: sharedRoot.id,
           collectionId: movies.id,
           createdAt: 300,
         },
         {
           siteId: DEFAULT_TEST_SITE_ID,
-          postId: secondRoot.id,
+          threadId: secondRoot.id,
           collectionId: movies.id,
           createdAt: 200,
         },
@@ -733,8 +801,8 @@ describe("PostService - Timeline features", () => {
         publishedAt: 2000,
       });
 
-      await collectionService.addPost(collection.id, hiddenRoot.id);
-      await collectionService.addPost(collection.id, newerRoot.id);
+      await collectionService.addThread(collection.id, hiddenRoot.id);
+      await collectionService.addThread(collection.id, newerRoot.id);
 
       await postService.create({
         format: "note",

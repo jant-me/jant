@@ -18,7 +18,7 @@ describe("Collections API Routes", () => {
       expect(body.directoryItems).toEqual([]);
     });
 
-    it("returns collections with post counts and directory items", async () => {
+    it("returns collections with Thread counts and directory items", async () => {
       const { app, services } = createTestApp();
       app.route("/api/collections", collectionsApiRoutes);
 
@@ -30,14 +30,14 @@ describe("Collections API Routes", () => {
         format: "note",
         bodyMarkdown: "tech post",
       });
-      await services.collections.addPost(col.id, post.id);
+      await services.collections.addThread(col.id, post.id);
 
       const res = await app.request("/api/collections");
       const body = await res.json();
 
       expect(body.collections).toHaveLength(1);
       expect(body.collections[0].slug).toBe("tech");
-      expect(body.collections[0].postCount).toBe(1);
+      expect(body.collections[0].threadCount).toBe(1);
       expect(body.collections[0].recentActivityAt).toBe(post.lastActivityAt);
 
       expect(body.directoryItems).toHaveLength(1);
@@ -460,8 +460,8 @@ describe("Collections API Routes", () => {
     });
   });
 
-  describe("POST /api/collections/:id/posts", () => {
-    it("adds a post to a collection", async () => {
+  describe("POST /api/collections/:id/threads", () => {
+    it("adds a thread to a collection", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/collections", collectionsApiRoutes);
 
@@ -474,16 +474,46 @@ describe("Collections API Routes", () => {
         bodyMarkdown: "test",
       });
 
-      const res = await app.request(`/api/collections/${col.id}/posts`, {
+      const res = await app.request(`/api/collections/${col.id}/threads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId: post.id }),
+        body: JSON.stringify({ threadId: post.id }),
       });
 
       expect(res.status).toBe(201);
 
-      const postIds = await services.collections.getPostIds(col.id);
-      expect(postIds).toContain(post.id);
+      const threadIds = await services.collections.getThreadIds(col.id);
+      expect(threadIds).toContain(post.id);
+    });
+
+    it("normalizes a child post ID to the thread root", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/collections", collectionsApiRoutes);
+
+      const col = await services.collections.create({
+        slug: "tech",
+        title: "Tech",
+      });
+      const root = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const child = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "child",
+        replyToId: root.id,
+      });
+
+      const res = await app.request(`/api/collections/${col.id}/threads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ threadId: child.id }),
+      });
+
+      expect(res.status).toBe(201);
+      expect(await services.collections.getThreadIds(col.id)).toEqual([
+        root.id,
+      ]);
     });
 
     it("returns 404 for non-existent collection", async () => {
@@ -496,10 +526,10 @@ describe("Collections API Routes", () => {
         bodyMarkdown: "test",
       });
 
-      const res = await app.request(`/api/collections/${missingId}/posts`, {
+      const res = await app.request(`/api/collections/${missingId}/threads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId: post.id }),
+        body: JSON.stringify({ threadId: post.id }),
       });
 
       expect(res.status).toBe(404);
@@ -514,11 +544,11 @@ describe("Collections API Routes", () => {
         title: "Tech",
       });
 
-      const res = await app.request(`/api/collections/${col.id}/posts`, {
+      const res = await app.request(`/api/collections/${col.id}/threads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          postId: "00000000-0000-0000-0000-000000000001",
+          threadId: "00000000-0000-0000-0000-000000000001",
         }),
       });
 
@@ -526,8 +556,8 @@ describe("Collections API Routes", () => {
     });
   });
 
-  describe("DELETE /api/collections/:id/posts/:postId", () => {
-    it("removes a post from a collection", async () => {
+  describe("DELETE /api/collections/:id/threads/:threadId", () => {
+    it("removes a thread from a collection", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/collections", collectionsApiRoutes);
 
@@ -540,17 +570,59 @@ describe("Collections API Routes", () => {
         bodyMarkdown: "test",
       });
 
-      await services.collections.addPost(col.id, post.id);
+      await services.collections.addThread(col.id, post.id);
 
       const res = await app.request(
-        `/api/collections/${col.id}/posts/${post.id}`,
+        `/api/collections/${col.id}/threads/${post.id}`,
         { method: "DELETE" },
       );
 
       expect(res.status).toBe(200);
 
-      const postIds = await services.collections.getPostIds(col.id);
-      expect(postIds).not.toContain(post.id);
+      const threadIds = await services.collections.getThreadIds(col.id);
+      expect(threadIds).not.toContain(post.id);
+    });
+  });
+
+  describe("PUT/DELETE /api/collections/:id/threads/:threadId/pin", () => {
+    it("pins and unpins the whole thread when given a child post ID", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/collections", collectionsApiRoutes);
+
+      const col = await services.collections.create({
+        slug: "tech",
+        title: "Tech",
+      });
+      const root = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const child = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "child",
+        replyToId: root.id,
+      });
+      await services.collections.addThread(col.id, root.id);
+
+      const pinRes = await app.request(
+        `/api/collections/${col.id}/threads/${child.id}/pin`,
+        { method: "PUT" },
+      );
+
+      expect(pinRes.status).toBe(200);
+      expect(await services.collections.getPinnedThreadIds([col.id])).toEqual(
+        new Set([root.id]),
+      );
+
+      const unpinRes = await app.request(
+        `/api/collections/${col.id}/threads/${child.id}/pin`,
+        { method: "DELETE" },
+      );
+
+      expect(unpinRes.status).toBe(200);
+      expect(await services.collections.getPinnedThreadIds([col.id])).toEqual(
+        new Set(),
+      );
     });
   });
 });

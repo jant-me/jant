@@ -144,9 +144,73 @@ describe("MCP API Routes", () => {
     );
 
     expect(toolNames).toContain("jant_posts_list");
-    expect(toolNames).toContain("jant_collections_add_post");
+    expect(toolNames).toContain("jant_collections_add_thread");
+    expect(toolNames).toContain("jant_collections_remove_thread");
     expect(toolNames).toContain("jant_settings_update");
     expect(toolNames).toContain("jant_search_posts");
+  });
+
+  it("manages collection membership at the thread root", async () => {
+    const { app, services } = createTestApp({ authenticated: true });
+    app.route("/api/mcp", mcpApiRoutes);
+
+    const collection = await services.collections.create({
+      slug: "notes",
+      title: "Notes",
+    });
+    const root = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Root",
+    });
+    const child = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Child",
+      replyToId: root.id,
+    });
+
+    const addRes = await postMcp(
+      app,
+      {
+        jsonrpc: "2.0",
+        id: 21,
+        method: "tools/call",
+        params: {
+          name: "jant_collections_add_thread",
+          arguments: {
+            collectionId: collection.id,
+            threadId: child.id,
+          },
+        },
+      },
+      { "MCP-Protocol-Version": "2025-06-18" },
+    );
+
+    expect(addRes.status).toBe(200);
+    expect((await addRes.json()).result.isError).toBe(false);
+    expect(await services.collections.getThreadIds(collection.id)).toEqual([
+      root.id,
+    ]);
+
+    const removeRes = await postMcp(
+      app,
+      {
+        jsonrpc: "2.0",
+        id: 22,
+        method: "tools/call",
+        params: {
+          name: "jant_collections_remove_thread",
+          arguments: {
+            collectionId: collection.id,
+            threadId: child.id,
+          },
+        },
+      },
+      { "MCP-Protocol-Version": "2025-06-18" },
+    );
+
+    expect(removeRes.status).toBe(200);
+    expect((await removeRes.json()).result.isError).toBe(false);
+    expect(await services.collections.getThreadIds(collection.id)).toEqual([]);
   });
 
   it("creates posts through tools/call", async () => {

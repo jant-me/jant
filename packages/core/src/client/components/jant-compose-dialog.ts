@@ -891,7 +891,7 @@ export class JantComposeDialog extends LitElement {
         if (requestId !== this._openEditRequestId) return;
       }
 
-      if (post.collectionIds?.length) {
+      if (!post.replyToId && post.collectionIds?.length) {
         this._collectionIds = post.collectionIds;
       }
 
@@ -1008,6 +1008,9 @@ export class JantComposeDialog extends LitElement {
     if (options?.restoreDraft !== false) {
       await this.restoreLocalDraft({ expectedReplyToId: id });
     }
+    // Collection membership belongs to the existing Thread. Reply compose
+    // must not restore or submit stale per-compose Collection state.
+    this._collectionIds = [];
 
     this.closest("dialog")?.showModal();
     await this.updateComplete;
@@ -1371,7 +1374,7 @@ export class JantComposeDialog extends LitElement {
           : this._visibility
         : undefined,
       rating: editorData.rating,
-      collectionIds: isRoot ? [...this._collectionIds] : [],
+      collectionIds: isRoot && !this._replyToId ? [...this._collectionIds] : [],
       attachments: orderedAttachments,
       replyToId: isRoot ? (this._replyToId ?? undefined) : undefined,
       replyThreadRootId: isRoot
@@ -1441,7 +1444,7 @@ export class JantComposeDialog extends LitElement {
       status,
       visibility: this._visibilityLocked ? undefined : this._visibility,
       rating: editorData.rating,
-      collectionIds: [...this._collectionIds],
+      collectionIds: this._replyToId ? [] : [...this._collectionIds],
       attachments: orderedAttachments,
       editPostId: this._editPostId ?? this._draftSourceId ?? undefined,
       replyToId: this._replyToId ?? undefined,
@@ -2764,7 +2767,7 @@ export class JantComposeDialog extends LitElement {
     this._visibility = post.visibility ?? "public";
     this._visibilityLocked = Boolean(post.replyToId);
 
-    if (post.collectionIds?.length) {
+    if (!post.replyToId && post.collectionIds?.length) {
       this._collectionIds = post.collectionIds;
     }
 
@@ -3188,7 +3191,9 @@ export class JantComposeDialog extends LitElement {
       return;
     }
 
-    this._collectionIds = [...(draft.collectionIds ?? [])];
+    this._collectionIds = draft.replyToId
+      ? []
+      : [...(draft.collectionIds ?? [])];
     this._slug = draft.slug ?? "";
     this._slugTaken = false;
     this._slugCheckLoading = false;
@@ -3329,7 +3334,9 @@ export class JantComposeDialog extends LitElement {
 
     // Restore metadata
     this._format = draft.format;
-    this._collectionIds = [...(draft.collectionIds ?? [])];
+    this._collectionIds = this._replyToId
+      ? []
+      : [...(draft.collectionIds ?? [])];
     this._slug = draft.slug ?? "";
     this._publishedAtInput = draft.publishedAtInput ?? "";
     this._publishedAtTimeMinutes = draft.publishedAtTimeMinutes ?? null;
@@ -5561,11 +5568,12 @@ export class JantComposeDialog extends LitElement {
           : html`<div
                 class=${classMap({
                   "compose-action-row": true,
+                  "compose-action-row-without-collection": !!this._replyToId,
                   "compose-action-row-overlay-open":
                     this._showPublishPanel || this._showCollection,
                 })}
               >
-                ${this._renderCollectionSelector()}
+                ${this._replyToId ? nothing : this._renderCollectionSelector()}
                 ${this._renderPublishButton()}
               </div>
               ${this._renderQuickActionsRow()}`}

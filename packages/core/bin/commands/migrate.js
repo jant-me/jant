@@ -9,6 +9,7 @@ import {
   applyNodeBackfills,
   applyPgBackfills,
 } from "../lib/migration-runner.js";
+import { queryD1 } from "../lib/d1-query.js";
 import { loadNodeRuntime } from "../lib/load-node-runtime.js";
 import { loadNodeEnvFile } from "../lib/node-env.js";
 import { openNodeSqlite, resolveDatabaseDialect } from "../lib/node-sqlite.js";
@@ -16,6 +17,10 @@ import {
   bootstrapCliRuntime,
   getCliRuntimeLabel,
 } from "../lib/runtime-target.js";
+import {
+  preflightThreadCollectionMigration,
+  verifyThreadCollectionMigration,
+} from "../lib/thread-collection-migration.js";
 
 export { loadNodeEnvFile };
 
@@ -167,6 +172,27 @@ async function logCliPgMigrationDebug(databaseUrl, phase) {
   }
 }
 
+async function withNodeMigrationQuery(databaseDialect, databaseUrl, callback) {
+  if (databaseDialect === "pg") {
+    const pool = new Pool({ connectionString: databaseUrl });
+    try {
+      return await callback(async (sql) => (await pool.query(sql)).rows);
+    } finally {
+      await pool.end().catch(() => undefined);
+    }
+  }
+
+  const { sqlite } = openNodeSqlite(process.env, {
+    createParentDir: true,
+    requireInitialized: false,
+  });
+  try {
+    return await callback((sql) => sqlite.prepare(sql).all());
+  } finally {
+    sqlite.close();
+  }
+}
+
 export async function run(argv) {
   const { values } = parseArgs({
     args: argv,
@@ -256,6 +282,16 @@ export async function run(argv) {
   }
 
   if (runtime === "node") {
+    const threadCollectionPreflight = await withNodeMigrationQuery(
+      databaseDialect,
+      databaseUrl,
+      (query) =>
+        preflightThreadCollectionMigration({
+          dialect: databaseDialect === "pg" ? "pg" : "sqlite",
+          query,
+        }),
+    );
+
     if (debugMigrate && databaseDialect === "pg") {
       await logCliPgMigrationDebug(databaseUrl, "before");
     }
@@ -269,6 +305,16 @@ export async function run(argv) {
       }
       throw error;
     }
+
+    await withNodeMigrationQuery(databaseDialect, databaseUrl, (query) =>
+      verifyThreadCollectionMigration(
+        {
+          dialect: databaseDialect === "pg" ? "pg" : "sqlite",
+          query,
+        },
+        threadCollectionPreflight,
+      ),
+    );
 
     if (debugMigrate && databaseDialect === "pg") {
       await logCliPgMigrationDebug(databaseUrl, "after");
@@ -299,7 +345,16 @@ export async function run(argv) {
       env: values.env,
       persistTo: values["persist-to"],
     };
+    const query = (sql) => queryD1(sql, runtime, options);
+    const threadCollectionPreflight = await preflightThreadCollectionMigration({
+      dialect: "sqlite",
+      query,
+    });
     applyD1SchemaMigrations(runtime, options);
+    await verifyThreadCollectionMigration(
+      { dialect: "sqlite", query },
+      threadCollectionPreflight,
+    );
     applyD1Backfills(runtime, options);
   }
 

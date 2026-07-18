@@ -10,7 +10,7 @@ import type { Editor, JSONContent } from "@tiptap/core";
 import type {
   PostFormInitial,
   PostFormLabels,
-  PostCollectionOption,
+  ThreadCollectionOption,
   PostMediaItem,
   PostSubmitDetail,
   PostFormat,
@@ -116,7 +116,7 @@ export class JantPostForm extends LitElement {
 
   declare labels: PostFormLabels;
   declare initial: PostFormInitial;
-  declare collections: PostCollectionOption[];
+  declare collections: ThreadCollectionOption[];
   declare media: PostMediaItem[];
   declare action: string;
   declare cancelHref: string;
@@ -191,7 +191,7 @@ export class JantPostForm extends LitElement {
       });
     }
     if (typeof this.collections === "string") {
-      this.collections = parseJson<PostCollectionOption[]>(
+      this.collections = parseJson<ThreadCollectionOption[]>(
         this.collections,
         [],
       );

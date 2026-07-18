@@ -56,7 +56,7 @@ npx jant site snapshot import --path ./backups/jant-site-snapshot-2026-03-30.zip
 npx jant site snapshot import --remote --config ./wrangler.toml --path ./backups/jant-site-snapshot-2026-03-30.zip --replace
 ```
 
-Without `--replace`, the command refuses to run, preventing accidental overwrites. With `--replace`, content-scope tables in the target database are wiped and rewritten from the archive (`post`, `collection`, `nav_item`, `collection_directory_item`, `post_collection`, `media`, `path_registry`). Auth tables — `user`, `session`, `api_token`, etc. — are not touched. For archive layout and the `--skip-objects` and `--allow-missing-objects` options, see [Export and import § Site snapshot](export-and-import.md#site-snapshot-site-snapshot).
+Without `--replace`, the command refuses to run, preventing accidental overwrites. With `--replace`, content-scope tables in the target database are wiped and rewritten from the archive (`post`, `collection`, `nav_item`, `collection_directory_item`, `thread_collection`, `media`, `path_registry`). Auth tables — `user`, `session`, `api_token`, etc. — are not touched. For archive layout and the `--skip-objects` and `--allow-missing-objects` options, see [Export and import § Site snapshot](export-and-import.md#site-snapshot-site-snapshot).
 
 ## Docker and Node
 

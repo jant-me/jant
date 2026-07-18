@@ -19,6 +19,7 @@ const {
   loadSiteConfig,
   mediaSpecFromJantMedia,
   resolveCollectionMemberships,
+  resolveThreadCollectionMemberships,
   buildPostPayloadFromBundle,
   getRootAliasPathsForImport,
   uploadMediaList,
@@ -295,6 +296,61 @@ describe("Hugo import CLI helpers", () => {
         pinnedAt: Math.floor(new Date("2026-03-06T21:53:20Z").getTime() / 1000),
       },
     ]);
+  });
+
+  it("unions legacy per-post Collection metadata across a Thread", () => {
+    const slugToId = new Map([
+      ["ideas", "col_ideas"],
+      ["walks", "col_walks"],
+    ]);
+    const rootBundle = {
+      frontMatter: {
+        collections: [
+          {
+            slug: "ideas",
+            collected_at: "2026-03-01T00:00:00Z",
+            position: 5,
+            pinned_at: "2026-03-05T00:00:00Z",
+          },
+        ],
+      },
+      children: [
+        {
+          frontMatter: {
+            collections: [
+              {
+                slug: "ideas",
+                collected_at: "2026-03-03T00:00:00Z",
+                position: 2,
+                pinned_at: "2026-03-04T00:00:00Z",
+              },
+              {
+                slug: "walks",
+                collected_at: "2026-03-02T00:00:00Z",
+                position: 7,
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    expect(resolveThreadCollectionMemberships(rootBundle, slugToId)).toEqual({
+      entries: [
+        {
+          collectionId: "col_ideas",
+          createdAt: Date.parse("2026-03-03T00:00:00Z") / 1000,
+          position: 2,
+          pinnedAt: Date.parse("2026-03-05T00:00:00Z") / 1000,
+        },
+        {
+          collectionId: "col_walks",
+          createdAt: Date.parse("2026-03-02T00:00:00Z") / 1000,
+          position: 7,
+        },
+      ],
+      ids: ["col_ideas", "col_walks"],
+    });
   });
 
   it("buildPostPayloadFromBundle translates front matter into createPost input", () => {

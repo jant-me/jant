@@ -183,11 +183,21 @@ export function createD1SqlRunner(runtime, options) {
       executeD1(sql, runtime, { ...options, quiet: true });
     },
     executeTrackedFile(filePath, trackingSql) {
+      // A tracked schema/data migration is already atomic with its tracking
+      // insert. Do not let the lower-level Wrangler helper blindly replay a
+      // destructive batch after an ambiguous network response. The outer
+      // runner reconciles the tracking row instead.
+      const trackedOptions = {
+        ...options,
+        quiet: true,
+        retryAttempts: 1,
+      };
+
       if (trackedExecution === "segmented") {
         for (const statement of readSqlStatements(filePath)) {
-          executeD1(statement, runtime, { ...options, quiet: true });
+          executeD1(statement, runtime, trackedOptions);
         }
-        executeD1(trackingSql, runtime, { ...options, quiet: true });
+        executeD1(trackingSql, runtime, trackedOptions);
         return;
       }
 
@@ -200,7 +210,7 @@ export function createD1SqlRunner(runtime, options) {
             tempPath,
             `\n${readNormalizedSqlFile(filePath)}\n${trackingSql}\n`,
           );
-          executeD1File(tempPath, runtime, { ...options, quiet: true });
+          executeD1File(tempPath, runtime, trackedOptions);
         } finally {
           rmSync(tempDir, { recursive: true, force: true });
         }
@@ -210,10 +220,7 @@ export function createD1SqlRunner(runtime, options) {
       executeD1(
         `\n${readNormalizedSqlFile(filePath)}\n${trackingSql}`,
         runtime,
-        {
-          ...options,
-          quiet: true,
-        },
+        trackedOptions,
       );
     },
     query(sql) {
@@ -261,6 +268,21 @@ export function applyTrackedSqlFiles(runner, options) {
       }
       console.log(`[${index + 1}/${pendingFiles.length}] ${file.name} ✅`);
     } catch (error) {
+      // The database may have committed the atomic batch even if the client
+      // lost its response. Re-read the tracking table before reporting a
+      // failure; a committed marker means replay would be both unnecessary and
+      // unsafe for CREATE/COPY/DROP migrations.
+      try {
+        if (new Set(listAppliedNames(runner, tableName)).has(file.name)) {
+          console.log(
+            `[${index + 1}/${pendingFiles.length}] ${file.name} ✅ (confirmed after interrupted response)`,
+          );
+          continue;
+        }
+      } catch {
+        // Preserve the original execution failure when reconciliation itself
+        // cannot reach the database.
+      }
       console.log(`[${index + 1}/${pendingFiles.length}] ${file.name} ❌`);
       throw new Error(`Failed to apply ${file.name}: ${error.message}`, {
         cause: error,

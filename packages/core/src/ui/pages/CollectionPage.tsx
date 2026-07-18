@@ -556,7 +556,7 @@ export const CollectionPage: FC<CollectionPageProps> = ({
               ? i18n._(
                   msg({
                     message:
-                      "Nothing here yet. Add posts to one of these collections to fill this view.",
+                      "Nothing here yet. Add threads to one of these collections to fill this view.",
                     comment:
                       "@context: Empty state message on an aggregate collection page",
                   }),
@@ -564,7 +564,7 @@ export const CollectionPage: FC<CollectionPageProps> = ({
               : i18n._(
                   msg({
                     message:
-                      "This collection is empty. Add posts from the editor.",
+                      "This collection is empty. Add threads from the editor.",
                     comment: "@context: Empty state message",
                   }),
                 )}

@@ -273,6 +273,11 @@ npm run deploy   # 部署到 Cloudflare；远端迁移在部署时应用
 
 如果你的仓库已配置 push 自动部署（一键部署，或上面的 GitHub Actions 工作流），可以跳过本地命令：提交更新后的 `package.json` 与 lockfile，推送到 `main` 即可。远端迁移会作为部署的一部分自动执行。
 
+涉及替换或删除数据库表的升级，应先阅读发布说明。`jant deploy` 会先执行
+migration，再上传新版 Worker，因此破坏性 schema 切换可能需要短暂暂停写入。
+在 migration、新 Worker 上传和部署后检查全部完成前，停止或排空旧版本的写入实例。
+Migration 校验能够发现脏数据或数量不一致，但无法让表替换期间的并发写入变得安全。
+
 ## 常见错误
 
 - `uses R2 which is only available with an R2 subscription`：没启用 R2，到 [R2 控制台](https://dash.cloudflare.com/?to=/:account/r2) 接受条款。

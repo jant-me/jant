@@ -4,7 +4,7 @@ import {
   createTestDatabase,
   DEFAULT_TEST_SITE_ID,
 } from "../../__tests__/helpers/db.js";
-import { postCollections, posts } from "../../db/schema.js";
+import { threadCollections, posts } from "../../db/schema.js";
 import { createPostService } from "../post.js";
 import { createMediaService } from "../media.js";
 import { createCollectionService } from "../collection.js";
@@ -683,6 +683,55 @@ describe("PostService", () => {
       expect(notFeatured[0]?.bodyText).toBe("normal post");
     });
 
+    it("orders Featured Post lists and cursors by publishedAt", async () => {
+      const oldest = await postService.create({
+        format: "note",
+        bodyMarkdown: "oldest",
+        featured: true,
+        publishedAt: 1000,
+      });
+      const middle = await postService.create({
+        format: "note",
+        bodyMarkdown: "middle",
+        featured: true,
+        publishedAt: 2000,
+      });
+      const newest = await postService.create({
+        format: "note",
+        bodyMarkdown: "newest",
+        featured: true,
+        publishedAt: 3000,
+      });
+
+      await db
+        .update(posts)
+        .set({ featuredAt: 9000 })
+        .where(eq(posts.id, oldest.id));
+      await db
+        .update(posts)
+        .set({ featuredAt: 8000 })
+        .where(eq(posts.id, middle.id));
+      await db
+        .update(posts)
+        .set({ featuredAt: 7000 })
+        .where(eq(posts.id, newest.id));
+
+      const firstPage = await postService.list({
+        featured: true,
+        ignorePinnedSort: true,
+        limit: 2,
+      });
+      const secondPage = await postService.list({
+        featured: true,
+        ignorePinnedSort: true,
+        cursor: middle.id,
+        limit: 2,
+      });
+
+      expect(firstPage.map((post) => post.id)).toEqual([newest.id, middle.id]);
+      expect(secondPage.map((post) => post.id)).toEqual([oldest.id]);
+    });
+
     it("excludes posts hidden from Latest when requested", async () => {
       await postService.create({
         format: "note",
@@ -1072,9 +1121,9 @@ describe("PostService", () => {
           rating: i + 1,
         });
 
-        await db.insert(postCollections).values({
+        await db.insert(threadCollections).values({
           siteId: DEFAULT_TEST_SITE_ID,
-          postId: post.id,
+          threadId: post.id,
           collectionId: collection.id,
           createdAt: 100 + i,
         });
@@ -1296,6 +1345,76 @@ describe("PostService", () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it("updates the shared Thread collections when editing a child", async () => {
+      const firstCollection = await collectionService.create({
+        slug: "first-thread-collection",
+        title: "First",
+      });
+      const secondCollection = await collectionService.create({
+        slug: "second-thread-collection",
+        title: "Second",
+      });
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+        collectionIds: [firstCollection.id],
+      });
+      const child = await postService.create({
+        format: "note",
+        bodyMarkdown: "child",
+        replyToId: root.id,
+      });
+
+      expect(
+        (await collectionService.getCollectionsByPostId(child.id)).map(
+          (collection) => collection.id,
+        ),
+      ).toEqual([firstCollection.id]);
+
+      await postService.update(child.id, {
+        collectionIds: [secondCollection.id],
+      });
+
+      const [rootCollections, childCollections, rows] = await Promise.all([
+        collectionService.getCollectionsByPostId(root.id),
+        collectionService.getCollectionsByPostId(child.id),
+        db.select().from(threadCollections),
+      ]);
+      expect(rootCollections.map((collection) => collection.id)).toEqual([
+        secondCollection.id,
+      ]);
+      expect(childCollections.map((collection) => collection.id)).toEqual([
+        secondCollection.id,
+      ]);
+      expect(rows).toEqual([
+        expect.objectContaining({
+          threadId: root.id,
+          collectionId: secondCollection.id,
+        }),
+      ]);
+    });
+
+    it("rejects Collection membership while creating a child", async () => {
+      const collection = await collectionService.create({
+        slug: "reply-create-collection",
+        title: "Reply Create Collection",
+      });
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+
+      await expect(
+        postService.create({
+          format: "note",
+          bodyMarkdown: "child",
+          replyToId: root.id,
+          collectionIds: [collection.id],
+        }),
+      ).rejects.toThrow("Cannot set Collections while creating a Thread reply");
+      expect(await collectionService.getThreadIds(collection.id)).toEqual([]);
     });
 
     it("sets publishedAt when publishing a draft", async () => {

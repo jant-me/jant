@@ -92,7 +92,7 @@ CLI 启动时会自动加载 `<cwd>/.env.node`，但已通过 `export` 设置的
 - **所有 post**（含 Thread 的回复）。草稿与私密 post 也会进入归档，front matter 标 `draft: true`，Hugo 默认不构建它们；需要 `hugo --buildDrafts` 才会渲染。
 - post 与头像引用的媒体文件，默认下载到 `static/media/`，可加 `--no-pull-media` 跳过。
 - collections、collections directory（顺序、divider、自定义链接）、头部导航——写入 `data/jant.toml`。
-- 每个 post 的 `featured_at`、`pinned_at`、collection 归属，写入 front matter 供 round-trip 还原。
+- 每个 post 的 `featured_at`、`pinned_at`，以及写在 root bundle 上的 Thread 级 collection 归属，都会进入 front matter 供 round-trip 还原。
 - **当前 slug 加历史别名/重定向**：post 改过 slug 时，`path_registry` 里的旧 slug 会作为 `redirect` 行保留下来；导出时和 `alias` 行一并写进 root post 的 `aliases:`，Hugo 通过自定义 `alias.html` 模板让旧链接继续可用。
 - 站点显示设置：`SITE_NAME`、`SITE_DESCRIPTION`、`SITE_LANGUAGE`、主题、字型、自定义 CSS、favicon 等，写入 `data/jant.toml` 与 `hugo.toml`。
 
@@ -134,17 +134,18 @@ static/                   用户自有静态文件 + 下载的媒体
 | `/featured/`          | 精选：标记为 Featured 的 post，最新优先          |
 | `/{slug}/`            | 单条 Thread（root post 与内联回复）              |
 | `/{reply-slug}/`      | Alias，重定向至 `/{root-slug}/#{reply-slug}`     |
-| `/{collection-slug}/` | 单个 collection                                  |
+| `/{collection-slug}/` | 一个 collection 中的完整 Threads                 |
 | `/collections/`       | Collections directory                            |
 
 每页条数由 Jant **Settings → Posts per page** 控制。
 
 ### Round-trip 保真
 
-`site export` → `site import` 一次往返会完整保留每个 post 的 Featured、置顶与 collection 归属：
+`site export` → `site import` 一次往返会完整保留每个 post 的 Featured、置顶状态，以及每个 Thread 的 collection 归属：
 
 - `featured_at` 与 `pinned_at` 在 front matter 里写 ISO 时间戳，而非布尔值；重新导入后会恢复到该 post 当时被 Feature 或置顶的具体时刻。
-- Front matter 顶层的 `collections` 数组，每条 entry 携带 `collected_at`、`position` 以及 per-collection `pinned_at`；每个回复的 leaf bundle 在自身 front matter 中保留同等信息。
+- Thread root 的 front matter 顶层 `collections` 数组中，每条 entry 携带 `collected_at`、`position` 与 per-collection `pinned_at`；回复 leaf bundle 不再重复 Thread 归属。
+- Import 仍兼容旧导出中逐 post 写入的 `collections`：导入前会按 Thread 取并集，重复归属取最新 `collected_at`、最新 `pinned_at` 与最小 `position`。
 - Thread root 的 `last_activity_at` 会保留 **Reply quietly** 的效果。导出里没有 per-reply 的 quiet 字段；导入时会用 root 的活动时间判断哪些回复原本不应把 thread bump 到 Latest 顶部。
 
 未在文档中列出的字段属于 Jant 内部使用，不要手动改：再次导入时它们会原样写回数据库，覆盖你后来在 Jant 中的修改。
@@ -319,7 +320,9 @@ npx jant site snapshot export --output ./jant-site-snapshot.zip --skip-objects
 
 ### 导入 Snapshot
 
-Snapshot import 必须显式传 `--replace`。`--replace` 会清空目标库中 snapshot 涵盖的表（post、collection、nav_item、collection_directory_item、post_collection、media、path_registry），再按 snapshot 内容重新写入。users、sessions、tokens 不在涵盖范围内，保持不变。没有 `--replace` 时 import 直接拒绝运行，避免误覆盖。
+Snapshot import 必须显式传 `--replace`。`--replace` 会清空目标库中 snapshot 涵盖的表（post、collection、nav_item、collection_directory_item、thread_collection、media、path_registry），再按 snapshot 内容重新写入。users、sessions、tokens 不在涵盖范围内，保持不变。没有 `--replace` 时 import 直接拒绝运行，避免误覆盖。
+
+当前导出使用 snapshot format v2。Import 仍接受 v1 snapshot：会先在内存中把旧 `post_collection` 行升级成 Thread 级并集，确认可转换后才清空目标内容。
 
 默认目标：
 

@@ -622,7 +622,7 @@ msgstr ""
 
 #. @context: Confirm dialog for deleting a collection
 #: src/ui/shared/collection-management-labels.ts
-msgid "Delete this collection permanently? Posts inside won't be removed."
+msgid "Delete this collection permanently? Threads inside won't be removed."
 msgstr ""
 
 #. @context: Hint shown on signin page when demo credentials are pre-filled
@@ -821,20 +821,6 @@ msgstr ""
 #. @context: Compose URL field error message
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Enter a valid URL starting with http://, https://, or mailto:."
-msgstr ""
-
-#. @context: Plural entry count label
-#. @context: Plural entry count label
-#: src/ui/shared/CollectionDirectory.tsx
-#: src/ui/shared/CollectionsManager.tsx
-msgid "entries"
-msgstr ""
-
-#. @context: Singular entry count label
-#. @context: Singular entry count label
-#: src/ui/shared/CollectionDirectory.tsx
-#: src/ui/shared/CollectionsManager.tsx
-msgid "entry"
 msgstr ""
 
 #. @context: Usage label for the brand pack card
@@ -1370,7 +1356,7 @@ msgstr ""
 #: src/ui/pages/CollectionsPage.tsx
 #: src/ui/shared/CollectionDirectory.tsx
 #: src/ui/shared/CollectionsManager.tsx
-msgid "No collections yet. Start one to organize posts by topic."
+msgid "No collections yet. Start one to organize threads by topic."
 msgstr ""
 
 #. @context: Drafts panel empty state
@@ -1416,7 +1402,7 @@ msgstr ""
 
 #. @context: Empty state message on an aggregate collection page
 #: src/ui/pages/CollectionPage.tsx
-msgid "Nothing here yet. Add posts to one of these collections to fill this view."
+msgid "Nothing here yet. Add threads to one of these collections to fill this view."
 msgstr ""
 
 #. @context: Empty state message on featured page
@@ -2112,7 +2098,7 @@ msgstr ""
 
 #. @context: Empty state message
 #: src/ui/pages/CollectionPage.tsx
-msgid "This collection is empty. Add posts from the editor."
+msgid "This collection is empty. Add threads from the editor."
 msgstr ""
 
 #. @context: Collection link help text
@@ -2175,10 +2161,14 @@ msgstr ""
 
 #. @context: Archive month header count unit for a single thread
 #. @context: Archive page summary unit for a single matching thread
+#. @context: Singular thread count label
+#. @context: Singular thread count label
 #. @context: Singular thread count label on collection detail page
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/CollectionPage.tsx
+#: src/ui/shared/CollectionDirectory.tsx
+#: src/ui/shared/CollectionsManager.tsx
 msgid "thread"
 msgstr ""
 
@@ -2195,11 +2185,15 @@ msgstr ""
 #. @context: Archive feed title segment for hasReplies=1 filter
 #. @context: Archive month header count unit for multiple threads
 #. @context: Archive page summary unit for multiple matching threads
+#. @context: Plural thread count label
+#. @context: Plural thread count label
 #. @context: Plural thread count label on collection detail page
 #: src/routes/pages/archive.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/CollectionPage.tsx
+#: src/ui/shared/CollectionDirectory.tsx
+#: src/ui/shared/CollectionsManager.tsx
 msgid "threads"
 msgstr ""
 

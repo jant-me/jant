@@ -76,6 +76,7 @@ import PARTIAL_POST_CARD from "./export-theme/layouts/partials/post-card.html?ra
 import PARTIAL_MEDIA_GALLERY from "./export-theme/layouts/partials/media-gallery.html?raw";
 import PARTIAL_REPLY from "./export-theme/layouts/partials/reply.html?raw";
 import PARTIAL_THREAD_PREVIEW from "./export-theme/layouts/partials/thread-preview.html?raw";
+import PARTIAL_FEATURED_THREAD from "./export-theme/layouts/partials/featured-thread.html?raw";
 import LAYOUT_RSS from "./export-theme/layouts/_default/rss.xml?raw";
 import PARTIAL_FEED_POST_CONTENT from "./export-theme/layouts/partials/feed-post-content.xml?raw";
 
@@ -171,7 +172,7 @@ interface ExportCollectionDirectorySourceItem {
     slug: string;
     title: string;
     description?: string | null;
-    postCount?: number;
+    threadCount?: number;
     recentActivityAt?: number;
   };
 }
@@ -184,14 +185,14 @@ interface SiteIconAssets {
 }
 
 interface ExportedCollectionMetrics {
-  postCount: number;
+  threadCount: number;
   recentActivityAt: number;
 }
 
 /**
  * A single `collections:` front-matter entry, already resolved to its
  * Hugo-visible slug. Assembled from
- * `collectionService.getCollectionEntriesByPostIds` + `collectionSlugMap`.
+ * `collectionService.getCollectionEntriesByThreadIds` + `collectionSlugMap`.
  */
 interface ExportedCollectionEntry {
   slug: string;
@@ -262,15 +263,15 @@ export function createExportService(
       const rootPostIds = roots.map((p) => p.id);
 
       const [
-        collectionsByPost,
-        collectionEntriesByPost,
+        collectionsByRoot,
+        collectionEntriesByThread,
         rawMediaByPost,
         slugMap,
         aliasMap,
         collectionSlugMap,
       ] = await Promise.all([
-        services.collections.getCollectionsByPostIds(allPostIds),
-        services.collections.getCollectionEntriesByPostIds(allPostIds),
+        services.collections.getCollectionsByPostIds(rootPostIds),
+        services.collections.getCollectionEntriesByThreadIds(rootPostIds),
         services.media.getByPostIds(allPostIds),
         services.paths.getPostSlugMap(allPostIds),
         services.paths.getPostAliases(rootPostIds),
@@ -289,7 +290,7 @@ export function createExportService(
       const collectionMetrics = buildExportedCollectionMetrics(
         allCollections,
         allPosts,
-        collectionsByPost,
+        collectionsByRoot,
       );
       const exportedCollectionDirectoryItems =
         buildExportedCollectionDirectoryItems(
@@ -325,9 +326,9 @@ export function createExportService(
         const threadReplies = repliesByThread.get(root.id) ?? [];
         const rootAliases = [...(aliasMap.get(root.id) ?? [])];
 
-        const rootCollectionEntries = buildExportedCollectionEntriesForPost(
+        const rootCollectionEntries = buildExportedCollectionEntriesForThread(
           root.id,
-          collectionEntriesByPost,
+          collectionEntriesByThread,
           collectionSlugMap,
           collectionTitleMap,
         );
@@ -339,9 +340,6 @@ export function createExportService(
           rootAliases,
           rootCollectionEntries,
           slugMap,
-          collectionEntriesByPost,
-          collectionSlugMap,
-          collectionTitleMap,
           rawMediaByPost,
           siteConfig,
           deps.storage ?? null,
@@ -353,7 +351,8 @@ export function createExportService(
       // Collection landing pages (`content/{slug}/_index.md`).
       for (const collection of allCollections) {
         const slug = collectionSlugMap.get(collection.id) ?? collection.slug;
-        const entryCount = collectionMetrics.get(collection.id)?.postCount ?? 0;
+        const entryCount =
+          collectionMetrics.get(collection.id)?.threadCount ?? 0;
         exportFiles.push({
           path: `content/${slug}/_index.md`,
           content: await buildCollectionSection(collection, slug, entryCount),
@@ -476,6 +475,10 @@ export function createExportService(
       exportFiles.push({
         path: "themes/jant/layouts/partials/thread-preview.html",
         content: PARTIAL_THREAD_PREVIEW,
+      });
+      exportFiles.push({
+        path: "themes/jant/layouts/partials/featured-thread.html",
+        content: PARTIAL_FEATURED_THREAD,
       });
       exportFiles.push({
         path: "themes/jant/layouts/_default/rss.xml",
@@ -625,9 +628,9 @@ async function buildSiteIconAssets(
 // Thread bundle generation
 // ---------------------------------------------------------------------------
 
-function buildExportedCollectionEntriesForPost(
-  postId: string,
-  collectionEntriesByPost: Map<
+function buildExportedCollectionEntriesForThread(
+  threadId: string,
+  collectionEntriesByThread: Map<
     string,
     {
       collectionId: string;
@@ -639,7 +642,7 @@ function buildExportedCollectionEntriesForPost(
   collectionSlugMap: Map<string, string>,
   collectionTitleMap: Map<string, string>,
 ): ExportedCollectionEntry[] {
-  const entries = collectionEntriesByPost.get(postId) ?? [];
+  const entries = collectionEntriesByThread.get(threadId) ?? [];
   const resolved: ExportedCollectionEntry[] = [];
   for (const entry of entries) {
     const slug = collectionSlugMap.get(entry.collectionId);
@@ -805,23 +808,21 @@ async function buildThreadBundle(
   rootAliases: string[],
   rootCollectionEntries: ExportedCollectionEntry[],
   slugMap: Map<string, string>,
-  collectionEntriesByPost: Map<
-    string,
-    {
-      collectionId: string;
-      createdAt: number;
-      position: number;
-      pinnedAt: number | null;
-    }[]
-  >,
-  collectionSlugMap: Map<string, string>,
-  collectionTitleMap: Map<string, string>,
   mediaByPost: Map<string, Media[]>,
   siteConfig: SiteConfig,
   storage: StorageDriver | null,
   bundleMedia: boolean,
 ): Promise<ExportFile[]> {
   const files: ExportFile[] = [];
+  const featuredPosts = [root, ...threadReplies].filter(
+    (post) => post.status === "published" && post.featuredAt !== null,
+  );
+  const featuredPostIds = featuredPosts.map((post) => post.id);
+  const featuredSortAt = featuredPosts.reduce<number | null>(
+    (latest, post) =>
+      Math.max(latest ?? -1, post.publishedAt ?? post.createdAt),
+    null,
+  );
 
   // Root aliases = historical root slugs + every reply slug (so
   // /{reply-slug}/ gets a Hugo alias page that redirects/anchors to
@@ -876,6 +877,9 @@ async function buildThreadBundle(
     rating: root.rating ?? undefined,
     featured_at:
       root.featuredAt !== null ? toISOString(root.featuredAt) : undefined,
+    featured_post_ids: featuredPostIds.length > 0 ? featuredPostIds : undefined,
+    featured_sort_at:
+      featuredSortAt !== null ? toISOString(featuredSortAt) : undefined,
     pinned_at: root.pinnedAt !== null ? toISOString(root.pinnedAt) : undefined,
     root_aliases: rootAliases.length > 0 ? rootAliases : undefined,
     collections:
@@ -926,13 +930,6 @@ async function buildThreadBundle(
       buildMediaEmission(m, siteConfig, bundleMedia),
     );
     const replyMediaList = replyEmissions.map((e) => e.entry);
-    const replyCollectionEntries = buildExportedCollectionEntriesForPost(
-      reply.id,
-      collectionEntriesByPost,
-      collectionSlugMap,
-      collectionTitleMap,
-    );
-
     const replyFrontMatter: HugoFrontMatter = {
       id: reply.id,
       title: reply.format !== "quote" ? (reply.title ?? undefined) : undefined,
@@ -965,10 +962,6 @@ async function buildThreadBundle(
         reply.featuredAt !== null ? toISOString(reply.featuredAt) : undefined,
       pinned_at:
         reply.pinnedAt !== null ? toISOString(reply.pinnedAt) : undefined,
-      collections:
-        replyCollectionEntries.length > 0
-          ? collectionEntriesToRefs(replyCollectionEntries)
-          : undefined,
       media: replyMediaList.length > 0 ? replyMediaList : undefined,
     };
 
@@ -1276,9 +1269,9 @@ function buildExportedCollectionDirectoryItems(
         ? renderMarkdown(collectionDescription)
         : null,
       entryCount:
-        metrics?.postCount ??
-        (typeof collection.postCount === "number"
-          ? collection.postCount
+        metrics?.threadCount ??
+        (typeof collection.threadCount === "number"
+          ? collection.threadCount
           : undefined),
       recentActivityLabel: formatCollectionActivityLabel(activityTimestamp),
       recentActivityIso: formatCollectionActivityIso(activityTimestamp),
@@ -1291,13 +1284,13 @@ function buildExportedCollectionDirectoryItems(
 function buildExportedCollectionMetrics(
   collections: readonly Collection[],
   posts: readonly Post[],
-  collectionsByPost: ReadonlyMap<string, readonly Collection[]>,
+  collectionsByThread: ReadonlyMap<string, readonly Collection[]>,
 ): Map<string, ExportedCollectionMetrics> {
   const metrics = new Map<string, ExportedCollectionMetrics>();
 
   for (const collection of collections) {
     metrics.set(collection.id, {
-      postCount: 0,
+      threadCount: 0,
       recentActivityAt: collection.updatedAt,
     });
   }
@@ -1317,15 +1310,15 @@ function buildExportedCollectionMetrics(
       post.publishedAt ??
       post.updatedAt ??
       post.createdAt;
-    const postCollections = collectionsByPost.get(post.id) ?? [];
+    const threadCollections = collectionsByThread.get(post.id) ?? [];
 
-    for (const collection of postCollections) {
+    for (const collection of threadCollections) {
       const current = metrics.get(collection.id);
       if (!current) {
         continue;
       }
 
-      if (current.postCount === 0) {
+      if (current.threadCount === 0) {
         current.recentActivityAt = activityAt;
       } else {
         current.recentActivityAt = Math.max(
@@ -1333,7 +1326,7 @@ function buildExportedCollectionMetrics(
           activityAt,
         );
       }
-      current.postCount += 1;
+      current.threadCount += 1;
     }
   }
 

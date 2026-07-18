@@ -14,7 +14,7 @@ Three things to understand before you start:
 
 1. **Posts come in three formats** — `note`, `link`, `quote`. Pick the right one per source item; do not coerce everything into `note`.
 2. **Threads** are how connected thoughts stay together. A reply is a post with `replyToId` pointing at another post. There is no separate "comments" table.
-3. **Collections** are curated groupings (like "Reading" or "Design"). They are not tags. A post can belong to multiple collections.
+3. **Collections** are curated groupings (like "Reading" or "Design"). They are not tags. A Thread can belong to multiple collections; its root and replies share the same memberships.
 
 If the source has tags or categories, ask the user whether to map them to collections, drop them, or fold them into post bodies. Do not invent collections silently.
 
@@ -160,7 +160,7 @@ curl -X POST "$JANT_SITE/api/collections" \
 # → 201 Created with the collection object including its col_* id
 ```
 
-Save the returned `col_*` IDs; you will pass them in `collectionIds` on each post.
+Save the returned `col_*` IDs; pass them in `collectionIds` on each standalone post or Thread root.
 
 `slug` must be lowercase `a-z`, `0-9`, and `-`, max 200 chars. `title` is max 120. `sortOrder` is one of `newest`, `oldest`, `rating_desc`.
 
@@ -214,7 +214,7 @@ Common fields you will set during a migration:
 | `visibility`    | `public` (default), `latest_hidden` (excluded from the homepage feed but still reachable), or `private`.                  |
 | `pinned`        | Pre-pin a post if the source had it pinned. Replies cannot be pinned.                                                     |
 | `featured`      | Pre-feature a post if the source had a "starred"/"featured" concept.                                                      |
-| `collectionIds` | Array of `col_*` IDs from Step 6.                                                                                         |
+| `collectionIds` | Array of `col_*` IDs from Step 6. Set this on standalone posts and Thread roots; omit it on replies.                      |
 | `attachments`   | Ordered media + text attachments. See below.                                                                              |
 | `replyToId`     | If the source has threaded posts, set this to the parent post's `pst_*` ID to make this post a reply (see Threads below). |
 
@@ -253,6 +253,7 @@ If the source has threaded or reply-style posts (Twitter exports, Tumblr convers
 1. Import the thread root first as a normal post.
 2. Import each reply with `replyToId` set to the parent's `pst_*` ID. The reply can point at the root or at another reply — Jant resolves the thread.
 3. Replies inherit the root's `visibility` and `status` unless explicitly created as `draft`. They cannot be `pinned`. They reject direct `visibility` changes.
+4. Set `collectionIds` on the root only. Every reply projects that same Thread-level membership set; do not replay per-post collection assignments.
 
 You do not set `threadId` on creation; Jant computes it from `replyToId`.
 

@@ -1,6 +1,6 @@
 {
   "format": "jant-site-snapshot",
-  "version": 1,
+  "version": 2,
   "scope": "content",
   "createdAt": "2026-04-26T18:21:31.495Z",
   "source": {
@@ -17,7 +17,7 @@
     "nav_item",
     "collection_directory_item",
     "post",
-    "post_collection",
+    "thread_collection",
     "path_registry",
     "media"
   ],

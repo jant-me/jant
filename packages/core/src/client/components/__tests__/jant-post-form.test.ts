@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import type {
   PostFormLabels,
   PostFormInitial,
-  PostCollectionOption,
+  ThreadCollectionOption,
   PostMediaItem,
   PostSubmitDetail,
 } from "../post-form-types.js";
@@ -64,7 +64,7 @@ const initial: PostFormInitial = {
   mediaIds: [],
 };
 
-const collections: PostCollectionOption[] = [
+const collections: ThreadCollectionOption[] = [
   { id: 1, title: "General" },
   { id: 2, title: "Favorites" },
 ];

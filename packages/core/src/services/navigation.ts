@@ -72,7 +72,7 @@ export function createNavItemService(
   siteId: string,
   databaseSchema: DatabaseSchema = sqliteSchemaBundle,
 ): NavItemService {
-  const { navItems, postCollections, posts, pathRegistry, collections } =
+  const { navItems, threadCollections, posts, pathRegistry, collections } =
     databaseSchema;
 
   const defaultSystemOrder = [
@@ -603,47 +603,45 @@ export function createNavItemService(
       if (collectionIds.length === 0) return new Map<string, number>();
 
       const threshold = now() - COLLECTION_FRESHNESS_WINDOW_SECONDS;
+      const threadActivityAt = sql<number>`CASE
+        WHEN ${posts.updatedAt} > ${posts.createdAt}
+          AND ${posts.updatedAt} > COALESCE(${posts.lastActivityAt}, -1)
+        THEN ${posts.updatedAt}
+        ELSE COALESCE(${posts.lastActivityAt}, ${posts.updatedAt})
+      END`;
 
-      // Find collections with recent activity and the latest update timestamp.
-      // 1. A post was added to the collection within the freshness window
-      // 2. A post in the collection was edited within the freshness window
-      // 3. A thread reply was published where the thread root is in the collection
+      // Find collections with recent Thread activity and its latest timestamp.
+      // `lastActivityAt` is maintained on the root when a non-quiet reply is
+      // published. A later `updatedAt` keeps actual root edits visible without
+      // treating a freshly imported historical root as newly active.
       const rows = await db
         .select({
-          collectionId: postCollections.collectionId,
+          collectionId: threadCollections.collectionId,
           latestAt:
-            sql<number>`MAX(CASE WHEN ${postCollections.createdAt} > ${posts.updatedAt} THEN ${postCollections.createdAt} ELSE ${posts.updatedAt} END)`.as(
+            sql<number>`MAX(CASE WHEN ${threadCollections.createdAt} > ${threadActivityAt} THEN ${threadCollections.createdAt} ELSE ${threadActivityAt} END)`.as(
               "latest_at",
             ),
         })
-        .from(postCollections)
+        .from(threadCollections)
         .innerJoin(
           posts,
           and(
-            eq(posts.id, postCollections.postId),
-            eq(posts.siteId, postCollections.siteId),
+            eq(posts.id, threadCollections.threadId),
+            eq(posts.siteId, threadCollections.siteId),
           ),
         )
         .where(
           and(
-            eq(postCollections.siteId, siteId),
-            inArray(postCollections.collectionId, collectionIds),
+            eq(threadCollections.siteId, siteId),
+            inArray(threadCollections.collectionId, collectionIds),
             sql`(
-              ${postCollections.createdAt} > ${threshold}
-              OR (${posts.updatedAt} > ${threshold}
+              ${threadCollections.createdAt} > ${threshold}
+              OR (${threadActivityAt} > ${threshold}
                 AND ${posts.status} = 'published')
-              OR EXISTS (
-                SELECT 1 FROM ${posts} reply
-                WHERE reply.site_id = ${postCollections.siteId}
-                  AND reply.thread_id = ${postCollections.postId}
-                  AND reply.reply_to_id IS NOT NULL
-                  AND reply.status = 'published'
-                  AND reply.created_at > ${threshold}
-              )
             )`,
           ),
         )
-        .groupBy(postCollections.collectionId);
+        .groupBy(threadCollections.collectionId);
 
       return new Map(rows.map((r) => [r.collectionId, r.latestAt]));
     },

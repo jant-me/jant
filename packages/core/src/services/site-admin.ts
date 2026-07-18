@@ -218,7 +218,7 @@ export function createSiteAdminService(
     media,
     navItems,
     pathRegistry,
-    postCollections,
+    threadCollections,
     posts,
     settings,
     siteDomains,
@@ -485,8 +485,8 @@ export function createSiteAdminService(
     }
 
     await targetDb
-      .delete(postCollections)
-      .where(eq(postCollections.siteId, siteId));
+      .delete(threadCollections)
+      .where(eq(threadCollections.siteId, siteId));
     await targetDb.delete(pathRegistry).where(eq(pathRegistry.siteId, siteId));
     await targetDb
       .delete(collectionDirectoryItems)

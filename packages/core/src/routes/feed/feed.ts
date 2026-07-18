@@ -242,15 +242,9 @@ async function buildFeaturedFeedData(
   ).map((postView, index) => {
     const post = posts[index] as (typeof posts)[number];
 
-    // feedUpdatedAt = max(lastActivityAt, featuredAt)
-    const lastActivity = toISOString(post.lastActivityAt);
-    const featuredIso = post.featuredAt ? toISOString(post.featuredAt) : null;
-    const feedUpdatedAt =
-      featuredIso && featuredIso > lastActivity ? featuredIso : lastActivity;
-
     return {
       ...postView,
-      feedUpdatedAt,
+      feedUpdatedAt: toISOString(post.lastActivityAt),
       threadReplies: buildThreadReplies(post.id, threadMap, mediaMap, mediaCtx),
     };
   });

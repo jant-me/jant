@@ -134,11 +134,11 @@ const tables = [
      ORDER BY position, id`,
   ],
   [
-    "post_collection",
-    `SELECT pc.* FROM post_collection pc
-     JOIN post p ON p.id = pc.post_id
-     WHERE pc.site_id = '${escapedSiteId}'
-     ORDER BY pc.created_at, pc.collection_id, pc.post_id`,
+    "thread_collection",
+    `SELECT tc.* FROM thread_collection tc
+     JOIN post p ON p.id = tc.thread_id
+     WHERE tc.site_id = '${escapedSiteId}'
+     ORDER BY tc.created_at, tc.collection_id, tc.thread_id`,
   ],
   [
     "path_registry",

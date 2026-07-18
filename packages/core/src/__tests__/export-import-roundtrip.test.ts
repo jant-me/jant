@@ -31,7 +31,7 @@ function buildRoundtripServices(opts: {
   posts: Post[];
   collections: Collection[];
   mediaByPost: Map<string, Media[]>;
-  collectionEntriesByPost: Map<
+  collectionEntriesByThread: Map<
     string,
     {
       collectionId: string;
@@ -65,14 +65,15 @@ function buildRoundtripServices(opts: {
           type: "collection" as const,
           collection: {
             ...collection,
-            postCount: 0,
+            threadCount: 0,
             recentActivityAt: collection.updatedAt,
           },
         })),
         directoryItems: [],
       }),
       getCollectionsByPostIds: async () => new Map(),
-      getCollectionEntriesByPostIds: async () => opts.collectionEntriesByPost,
+      getCollectionEntriesByThreadIds: async () =>
+        opts.collectionEntriesByThread,
     },
     media: {
       getByPostIds: async () => opts.mediaByPost,
@@ -170,7 +171,7 @@ describe("export → import round-trip", () => {
         ["post-root", [rootMedia]],
         ["post-reply", [replyMedia]],
       ]),
-      collectionEntriesByPost: entries,
+      collectionEntriesByThread: entries,
       aliasMap: new Map([["post-root", ["/historic-slug/"]]]),
     });
     const exportService = createExportService(services, makeSiteConfig());
@@ -220,6 +221,7 @@ describe("export → import round-trip", () => {
     // Reply bundle carries build.render: never and its own media entries.
     const replyFm = rootBundle.children[0].frontMatter;
     expect(replyFm.build).toEqual({ render: "never", list: "local" });
+    expect(replyFm.collections).toBeUndefined();
     expect(replyFm.media?.[0].src).toBe("/media/med-reply.webp");
     expect(replyFm.media?.[0].alt).toBe("Detail");
 

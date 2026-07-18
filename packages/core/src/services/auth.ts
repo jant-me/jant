@@ -97,7 +97,7 @@ export function createAuthService(
     verification,
     media,
     collections,
-    postCollections,
+    threadCollections,
     pathRegistry,
     collectionDirectoryItems: directoryItemsTable,
     navItems,
@@ -111,7 +111,7 @@ export function createAuthService(
 
   async function deleteDataRows(targetDb: Database): Promise<void> {
     // Junction/dependent tables first
-    await targetDb.delete(postCollections);
+    await targetDb.delete(threadCollections);
     await targetDb.delete(pathRegistry);
     await targetDb.delete(directoryItemsTable);
     await targetDb.delete(media);

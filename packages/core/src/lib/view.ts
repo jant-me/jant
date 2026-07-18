@@ -243,13 +243,13 @@ function clipPreviewText(
  *
  * @param post - Post with media attachments from database
  * @param _ctx - Media context with URL configuration
- * @param postCollections - Optional collections this post belongs to
+ * @param threadCollections - Optional shared Thread collections projected here
  * @returns Render-ready PostView with pre-computed fields
  */
 export function toPostView(
   post: PostWithMedia,
   ctx: MediaContext,
-  postCollections?: Collection[],
+  threadCollections?: Collection[],
   isLastInThread?: boolean,
   aliasPath?: string,
   pinnedInCollection?: boolean,
@@ -316,11 +316,13 @@ export function toPostView(
   }
 
   // Convert collection tags
-  const collections: CollectionTagView[] = (postCollections ?? []).map((c) => ({
-    slug: c.slug,
-    title: c.title,
-    url: toPublicPath(getCollectionPagePath(c.slug), ctx.sitePathPrefix),
-  }));
+  const collections: CollectionTagView[] = (threadCollections ?? []).map(
+    (c) => ({
+      slug: c.slug,
+      title: c.title,
+      url: toPublicPath(getCollectionPagePath(c.slug), ctx.sitePathPrefix),
+    }),
+  );
 
   // Convert media attachments
   const media: MediaView[] = post.mediaAttachments.map((m) => ({
@@ -429,12 +431,12 @@ export function toPostViewFromPost(
   ctx: MediaContext,
   isLastInThread?: boolean,
   aliasPath?: string,
-  postCollections?: Collection[],
+  threadCollections?: Collection[],
 ): PostView {
   return toPostView(
     { ...post, mediaAttachments: [] },
     ctx,
-    postCollections,
+    threadCollections,
     isLastInThread,
     aliasPath,
   );
@@ -587,14 +589,14 @@ export function toSearchResultView(
   ctx: MediaContext,
   query?: string,
   aliasPath?: string,
-  postCollections?: Collection[],
+  threadCollections?: Collection[],
 ): SearchResultView {
   const post = toPostViewFromPost(
     result.post,
     ctx,
     undefined,
     aliasPath,
-    postCollections,
+    threadCollections,
   );
 
   let titleHighlighted: string | undefined;

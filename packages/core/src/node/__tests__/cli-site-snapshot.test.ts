@@ -16,6 +16,8 @@ const SNAPSHOT_COLLECTION_ID = "col_01jpyy08bc4w2h8r7m3q5t9kdn";
 const SNAPSHOT_NAV_ID = "nav_01jpyy0gqv4m7r2k8s5c1t9bdh";
 const SNAPSHOT_DIRECTORY_ITEM_ID = "cdi_01jpyy0r6s3m8v1k5t9q2b4gcn";
 const SNAPSHOT_POST_ID = "pst_01jpyy18fh4w2m7r8k3c5t9qdn";
+const SNAPSHOT_REPLY_ID = "pst_01jpyy1e6s4m8v2k5t9c3b7qdh";
+const SNAPSHOT_SECOND_COLLECTION_ID = "col_01jpyy0c4s7m8r1k5t9b3q6dgh";
 const SNAPSHOT_PATH_ID = "pth_01jpyy1k2v6m4s8r1t5c9b3qgh";
 const SNAPSHOT_MEDIA_ID = "med_01jpyy1vxh4m7s2k8r5c9t3qbn";
 const SNAPSHOT_AVATAR_MEDIA_ID = "med_01jpyy1zs6m4v8r2k5t9c3b7qh";
@@ -145,7 +147,7 @@ describe("jant site snapshot export/import", () => {
           '${SNAPSHOT_POST_ID}', 1774009200, 1774009200, 1774009200, 1774009200
         );
 
-        INSERT INTO "post_collection" ("site_id", "post_id", "collection_id", "created_at")
+        INSERT INTO "thread_collection" ("site_id", "thread_id", "collection_id", "created_at")
         VALUES ('${SNAPSHOT_SITE_ID}', '${SNAPSHOT_POST_ID}', '${SNAPSHOT_COLLECTION_ID}', 1774009200);
 
         INSERT INTO "path_registry" (
@@ -240,7 +242,7 @@ describe("jant site snapshot export/import", () => {
     );
     expect(meta).toEqual({
       format: "jant-site-snapshot",
-      version: 1,
+      version: 2,
       dialect: "sqlite",
       site: { id: SNAPSHOT_SITE_ID, key: SNAPSHOT_SITE_KEY },
     });
@@ -279,6 +281,16 @@ describe("jant site snapshot export/import", () => {
         post_id: SNAPSHOT_POST_ID,
         storage_key: SNAPSHOT_MEDIA_KEY,
         poster_key: SNAPSHOT_POSTER_KEY,
+      });
+
+      const collectionMembership = verifySqlite
+        .prepare(
+          `SELECT "thread_id", "collection_id" FROM "thread_collection" WHERE "site_id" = '${SNAPSHOT_SITE_ID}'`,
+        )
+        .get();
+      expect(collectionMembership).toEqual({
+        thread_id: SNAPSHOT_POST_ID,
+        collection_id: SNAPSHOT_COLLECTION_ID,
       });
 
       const siteName = verifySqlite
@@ -337,6 +349,138 @@ describe("jant site snapshot export/import", () => {
     expect(importLogSpy).toHaveBeenCalledWith(
       `Imported snapshot from ${snapshotPath}`,
     );
+  });
+
+  it("imports v1 per-post Collection rows as a Thread union", async () => {
+    const root = await mkdtemp(join(tmpdir(), "jant-site-snapshot-v1-"));
+    tempDirs.push(root);
+    const targetDbPath = join(root, "target.sqlite");
+    const snapshotPath = join(root, "snapshot");
+    await migrate({ DATABASE_URL: `file:${targetDbPath}` } as Bindings);
+
+    const sqlite = new Database(targetDbPath);
+    try {
+      sqlite.exec(`
+        INSERT INTO "site" ("id", "key", "status", "created_at", "updated_at")
+        VALUES ('${SNAPSHOT_SITE_ID}', '${SNAPSHOT_SITE_KEY}', 'active', 1, 1);
+      `);
+    } finally {
+      sqlite.close();
+    }
+
+    await mkdir(snapshotPath, { recursive: true });
+    await writeFile(
+      join(snapshotPath, "meta.json"),
+      JSON.stringify({
+        format: "jant-site-snapshot",
+        version: 1,
+        dialect: "sqlite",
+        site: { id: SNAPSHOT_SITE_ID, key: SNAPSHOT_SITE_KEY },
+      }),
+    );
+    await writeFile(
+      join(snapshotPath, "db.sql"),
+      `
+        INSERT INTO "collection" ("id", "site_id", "title", "sort_order", "created_at", "updated_at") VALUES('${SNAPSHOT_COLLECTION_ID}', '${SNAPSHOT_SITE_ID}', 'Ideas', 'newest', 10, 10);
+        INSERT INTO "collection" ("id", "site_id", "title", "sort_order", "created_at", "updated_at") VALUES('${SNAPSHOT_SECOND_COLLECTION_ID}', '${SNAPSHOT_SITE_ID}', 'Walks', 'newest', 10, 10);
+        INSERT INTO "post" ("id", "site_id", "format", "status", "visibility", "reply_to_id", "thread_id", "created_at", "updated_at") VALUES('${SNAPSHOT_POST_ID}', '${SNAPSHOT_SITE_ID}', 'note', 'published', 'public', NULL, '${SNAPSHOT_POST_ID}', 10, 10);
+        INSERT INTO "post" ("id", "site_id", "format", "status", "visibility", "reply_to_id", "thread_id", "created_at", "updated_at") VALUES('${SNAPSHOT_REPLY_ID}', '${SNAPSHOT_SITE_ID}', 'note', 'published', 'public', '${SNAPSHOT_POST_ID}', '${SNAPSHOT_POST_ID}', 11, 11);
+        INSERT INTO "post_collection" ("site_id", "post_id", "collection_id", "created_at", "position", "pinned_at") VALUES('${SNAPSHOT_SITE_ID}', '${SNAPSHOT_POST_ID}', '${SNAPSHOT_COLLECTION_ID}', 20, 5, 30);
+        INSERT INTO "post_collection" ("site_id", "post_id", "collection_id", "created_at", "position", "pinned_at") VALUES('${SNAPSHOT_SITE_ID}', '${SNAPSHOT_REPLY_ID}', '${SNAPSHOT_COLLECTION_ID}', 40, 2, 35);
+        INSERT INTO "post_collection" ("site_id", "post_id", "collection_id", "created_at", "position", "pinned_at") VALUES('${SNAPSHOT_SITE_ID}', '${SNAPSHOT_REPLY_ID}', '${SNAPSHOT_SECOND_COLLECTION_ID}', 25, 7, NULL);
+      `,
+    );
+
+    useLocalSnapshotRuntime(`file:${targetDbPath}`, join(root, "target-media"));
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const { run: runImport } =
+      await import("../../../bin/commands/site/snapshot/import.js");
+    await runImport(["--path", snapshotPath, "--replace"]);
+
+    const verifySqlite = new Database(targetDbPath, { readonly: true });
+    try {
+      const rows = verifySqlite
+        .prepare(
+          `SELECT "thread_id", "collection_id", "created_at", "position", "pinned_at" FROM "thread_collection" ORDER BY "collection_id"`,
+        )
+        .all();
+      expect(rows).toEqual([
+        {
+          thread_id: SNAPSHOT_POST_ID,
+          collection_id: SNAPSHOT_COLLECTION_ID,
+          created_at: 40,
+          position: 2,
+          pinned_at: 35,
+        },
+        {
+          thread_id: SNAPSHOT_POST_ID,
+          collection_id: SNAPSHOT_SECOND_COLLECTION_ID,
+          created_at: 25,
+          position: 7,
+          pinned_at: null,
+        },
+      ]);
+    } finally {
+      verifySqlite.close();
+    }
+  });
+
+  it("rejects malformed v1 memberships before clearing target content", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "jant-site-snapshot-v1-preflight-"),
+    );
+    tempDirs.push(root);
+    const targetDbPath = join(root, "target.sqlite");
+    const snapshotPath = join(root, "snapshot");
+    await migrate({ DATABASE_URL: `file:${targetDbPath}` } as Bindings);
+
+    const sqlite = new Database(targetDbPath);
+    try {
+      sqlite.exec(`
+        INSERT INTO "site" ("id", "key", "status", "created_at", "updated_at")
+        VALUES ('${SNAPSHOT_SITE_ID}', '${SNAPSHOT_SITE_KEY}', 'active', 1, 1);
+        INSERT INTO "post" ("id", "site_id", "format", "status", "visibility", "thread_id", "created_at", "updated_at")
+        VALUES ('${SNAPSHOT_OLD_POST_ID}', '${SNAPSHOT_SITE_ID}', 'note', 'published', 'public', '${SNAPSHOT_OLD_POST_ID}', 1, 1);
+      `);
+    } finally {
+      sqlite.close();
+    }
+
+    await mkdir(snapshotPath, { recursive: true });
+    await writeFile(
+      join(snapshotPath, "meta.json"),
+      JSON.stringify({
+        format: "jant-site-snapshot",
+        version: 1,
+        dialect: "sqlite",
+        site: { id: SNAPSHOT_SITE_ID, key: SNAPSHOT_SITE_KEY },
+      }),
+    );
+    await writeFile(
+      join(snapshotPath, "db.sql"),
+      `INSERT INTO "post_collection" ("site_id", "post_id", "collection_id", "created_at", "position", "pinned_at") VALUES('${SNAPSHOT_SITE_ID}', 'pst_missing', '${SNAPSHOT_COLLECTION_ID}', 10, 0, NULL);`,
+    );
+
+    useLocalSnapshotRuntime(`file:${targetDbPath}`, join(root, "target-media"));
+    const { run: runImport } =
+      await import("../../../bin/commands/site/snapshot/import.js");
+    await expect(
+      runImport(["--path", snapshotPath, "--replace"]),
+    ).rejects.toThrow(/references missing post pst_missing/);
+
+    const verifySqlite = new Database(targetDbPath, { readonly: true });
+    try {
+      expect(
+        verifySqlite
+          .prepare(
+            `SELECT COUNT(*) FROM "post" WHERE "id" = '${SNAPSHOT_OLD_POST_ID}'`,
+          )
+          .pluck()
+          .get(),
+      ).toBe(1);
+    } finally {
+      verifySqlite.close();
+    }
   });
 
   it("skips downloading storage objects when --skip-objects is passed", async () => {

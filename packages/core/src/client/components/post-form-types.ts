@@ -59,7 +59,7 @@ export interface PostFormInitial {
   mediaIds: string[];
 }
 
-export interface PostCollectionOption {
+export interface ThreadCollectionOption {
   id: number;
   title: string;
 }

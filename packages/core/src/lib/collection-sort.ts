@@ -18,9 +18,9 @@ export function isRatingSortOrder(
 }
 
 /**
- * Returns true when a collection has enough rated posts to make rating sort useful.
+ * Returns true when a collection has enough rated Threads to make rating sort useful.
  *
- * @param ratedPostCount - Number of posts in the collection with a rating
+ * @param ratedThreadCount - Number of Threads with at least one rating
  * @returns Whether rating sort should be shown to readers
  *
  * @example
@@ -28,13 +28,15 @@ export function isRatingSortOrder(
  * supportsCollectionRatingSort(2);
  * ```
  */
-export function supportsCollectionRatingSort(ratedPostCount: number): boolean {
-  return ratedPostCount > 1;
+export function supportsCollectionRatingSort(
+  ratedThreadCount: number,
+): boolean {
+  return ratedThreadCount > 1;
 }
 
 /**
  * Resolves the sort order for a collection page, falling back when rating
- * sorting is requested but the collection does not have enough rated posts.
+ * sorting is requested but the collection does not have enough rated Threads.
  *
  * @param requestedSort - Sort order from the request query
  * @param defaultSort - Collection default sort order

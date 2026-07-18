@@ -147,16 +147,16 @@ export async function renderCollectionPage(
   );
   const isAggregate = selection.collections.length > 1;
 
-  const ratedPostCount = await c.var.services.posts.countUpTo(
-    {
+  const ratedThreadCount =
+    await c.var.services.posts.countCollectionThreadRootsForCollections(
       collectionIds,
-      status: "published",
-      excludePrivate: !navData.isAuthenticated,
-      hasRating: true,
-    },
-    2,
-  );
-  const showRatingSort = supportsCollectionRatingSort(ratedPostCount);
+      {
+        status: "published",
+        excludePrivate: !navData.isAuthenticated,
+        hasRating: true,
+      },
+    );
+  const showRatingSort = supportsCollectionRatingSort(ratedThreadCount);
   const requestedDefaultSort = isAggregate
     ? "newest"
     : primaryCollection.sortOrder;

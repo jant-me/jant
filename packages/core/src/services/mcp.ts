@@ -132,12 +132,12 @@ const UploadMediaToolSchema = z.object({
   posterBase64: z.string().min(1).optional(),
 });
 
-const AddCollectionPostToolSchema = z.object({
+const AddCollectionThreadToolSchema = z.object({
   collectionId: CollectionIdSchema,
-  postId: PostIdSchema,
+  threadId: PostIdSchema,
 });
 
-const RemoveCollectionPostToolSchema = AddCollectionPostToolSchema;
+const RemoveCollectionThreadToolSchema = AddCollectionThreadToolSchema;
 
 const mcpTools: McpToolDefinition[] = [
   {
@@ -174,7 +174,8 @@ const mcpTools: McpToolDefinition[] = [
   },
   {
     name: "jant_posts_get",
-    description: "Get one post, including attachments and collection IDs.",
+    description:
+      "Get one post, including attachments and shared Thread collection IDs.",
     inputSchema: {
       type: "object",
       properties: {
@@ -687,55 +688,64 @@ const mcpTools: McpToolDefinition[] = [
     },
   },
   {
-    name: "jant_collections_add_post",
-    description: "Add a post to a collection.",
+    name: "jant_collections_add_thread",
+    description: "Add a thread to a collection.",
     inputSchema: {
       type: "object",
       properties: {
         collectionId: { type: "string", description: "Collection TypeID" },
-        postId: { type: "string", description: "Post TypeID" },
+        threadId: {
+          type: "string",
+          description: "Root or child Post TypeID in the Thread",
+        },
       },
-      required: ["collectionId", "postId"],
+      required: ["collectionId", "threadId"],
       additionalProperties: false,
     },
     async execute(args, context) {
-      const input = AddCollectionPostToolSchema.parse(args ?? {});
-      const [collection, post] = await Promise.all([
-        context.services.collections.getById(input.collectionId),
-        context.services.posts.getById(input.postId),
-      ]);
+      const input = AddCollectionThreadToolSchema.parse(args ?? {});
+      const collection = await context.services.collections.getById(
+        input.collectionId,
+      );
 
       if (!collection) {
         throw new NotFoundError("Collection");
       }
-      if (!post) {
-        throw new NotFoundError("Post");
-      }
 
-      await context.services.collections.addPost(
+      await context.services.collections.addThread(
         input.collectionId,
-        input.postId,
+        input.threadId,
       );
       return { success: true };
     },
   },
   {
-    name: "jant_collections_remove_post",
-    description: "Remove a post from a collection.",
+    name: "jant_collections_remove_thread",
+    description: "Remove a thread from a collection.",
     inputSchema: {
       type: "object",
       properties: {
         collectionId: { type: "string", description: "Collection TypeID" },
-        postId: { type: "string", description: "Post TypeID" },
+        threadId: {
+          type: "string",
+          description: "Root or child Post TypeID in the Thread",
+        },
       },
-      required: ["collectionId", "postId"],
+      required: ["collectionId", "threadId"],
       additionalProperties: false,
     },
     async execute(args, context) {
-      const input = RemoveCollectionPostToolSchema.parse(args ?? {});
-      await context.services.collections.removePost(
+      const input = RemoveCollectionThreadToolSchema.parse(args ?? {});
+      const collection = await context.services.collections.getById(
         input.collectionId,
-        input.postId,
+      );
+      if (!collection) {
+        throw new NotFoundError("Collection");
+      }
+
+      await context.services.collections.removeThread(
+        input.collectionId,
+        input.threadId,
       );
       return { success: true };
     },
@@ -1287,14 +1297,14 @@ async function serializePost(
   post: Parameters<typeof toApiPost>[0],
   context: McpToolContext,
 ) {
-  const [mediaList, postCollections] = await Promise.all([
+  const [mediaList, threadCollections] = await Promise.all([
     context.services.media.getByPostId(post.id),
     context.services.collections.getCollectionsByPostId(post.id),
   ]);
 
   return toApiPost(post, {
     attachments: serializeAttachments(mediaList, context.appConfig),
-    collectionIds: postCollections.map((collection) => collection.id),
+    collectionIds: threadCollections.map((collection) => collection.id),
   });
 }
 

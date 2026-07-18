@@ -75,14 +75,18 @@ Three pieces are load-bearing for the theme model:
 - `[permalinks] post = "/:slug/"` — keeps thread roots at root-level
   URLs independent of their on-disk location.
 
-All per-post, per-collection, per-reply state lives in flat YAML front
-matter. No custom taxonomies are emitted — instead, the home, featured,
+Post state and Thread-level collection state live in flat YAML front matter.
+Collection membership is emitted only on the Thread root; reply bundles keep
+their own post/media state but do not repeat membership. No custom taxonomies
+are emitted — instead, the home, featured,
 and archive layouts use `where` + `.Paginate` over `.Site.RegularPages`
 to filter at render time. This means pinned-vs-public, featured, and
 unlisted distinctions are encoded as front-matter fields (`pinned_at`,
-`featured_at`, `visibility`), not as taxonomy membership. Thread activity is
-encoded on the root bundle as `last_activity_at`; reply bundles do not carry a
-per-reply quiet marker.
+`featured_at`, `visibility`), not as taxonomy membership. Featured remains a
+per-Post selection; root bundles additionally carry the derived
+`featured_post_ids` and `featured_sort_at` projection used to de-duplicate and
+order Featured Threads. Thread activity is encoded on the root bundle as
+`last_activity_at`; reply bundles do not carry a per-reply quiet marker.
 
 ## Front matter shape
 
@@ -103,6 +107,9 @@ format: note
 status: published
 visibility: public
 featured_at: 2025-01-20T00:00:00Z
+featured_post_ids:
+  - pst_...
+featured_sort_at: 2025-01-15T12:00:00Z
 pinned_at: null
 collections:
   - slug: favorites
@@ -135,21 +142,23 @@ visibility: public
 ```
 
 No `aliases` on replies. The reply's URL is redirected by the root's
-`aliases:` list + the custom `_default/alias.html` template.
+`aliases:` list + the custom `_default/alias.html` template. Replies also omit
+`collections`; older exports that contain reply-level entries are unioned into
+the Thread root during import.
 
 ## URL scheme
 
-| URL                   | Rendered by                                                       |
-| --------------------- | ----------------------------------------------------------------- |
-| `/`                   | `index.html` — pinned prefix + paginated `visibility=public` tail |
-| `/page/N/`            | Hugo's native paginator on home (N ≥ 2)                           |
-| `/archive/`           | `archive/list.html` — every published post chronologically        |
-| `/archive/page/N/`    | Hugo's native paginator on archive (N ≥ 2)                        |
-| `/featured/`          | `featured/list.html` — posts with `featured_at` set, newest first |
-| `/{root-slug}/`       | `post/list.html` — thread root + inline replies                   |
-| `/{reply-slug}/`      | `_default/alias.html` — redirects to `/{root-slug}/#{reply-slug}` |
-| `/{collection-slug}/` | `collection/single.html`                                          |
-| `/collections/`       | `collections/list.html` — reads `hugo.Data.jant.directory`        |
+| URL                   | Rendered by                                                                                               |
+| --------------------- | --------------------------------------------------------------------------------------------------------- |
+| `/`                   | `index.html` — pinned prefix + paginated `visibility=public` tail                                         |
+| `/page/N/`            | Hugo's native paginator on home (N ≥ 2)                                                                   |
+| `/archive/`           | `archive/list.html` — every published post chronologically                                                |
+| `/archive/page/N/`    | Hugo's native paginator on archive (N ≥ 2)                                                                |
+| `/featured/`          | `featured/list.html` — one curated entry per Thread, ordered by the newest Featured Post publication time |
+| `/{root-slug}/`       | `post/list.html` — thread root + inline replies                                                           |
+| `/{reply-slug}/`      | `_default/alias.html` — redirects to `/{root-slug}/#{reply-slug}`                                         |
+| `/{collection-slug}/` | `_default/list.html` — complete Threads in the collection                                                 |
+| `/collections/`       | `collections/list.html` — reads `hugo.Data.jant.directory`                                                |
 
 The home template handles the pinned prepend in-layout: it iterates
 `where .Site.RegularPages "Params.pinned_at" "ne" nil` first, then

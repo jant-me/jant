@@ -102,21 +102,21 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
         comment: "@context: Tooltip for divider delete button",
       }),
     ),
-    entrySingular: i18n._(
+    threadSingular: i18n._(
       msg({
-        message: "entry",
-        comment: "@context: Singular entry count label",
+        message: "thread",
+        comment: "@context: Singular thread count label",
       }),
     ),
-    entryPlural: i18n._(
+    threadPlural: i18n._(
       msg({
-        message: "entries",
-        comment: "@context: Plural entry count label",
+        message: "threads",
+        comment: "@context: Plural thread count label",
       }),
     ),
     emptyState: i18n._(
       msg({
-        message: "No collections yet. Start one to organize posts by topic.",
+        message: "No collections yet. Start one to organize threads by topic.",
         comment: "@context: Empty state message on collections page",
       }),
     ),

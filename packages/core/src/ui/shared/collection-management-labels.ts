@@ -112,7 +112,7 @@ const collectionMutationMessages = {
   }),
   confirmDelete: msg({
     message:
-      "Delete this collection permanently? Posts inside won't be removed.",
+      "Delete this collection permanently? Threads inside won't be removed.",
     comment: "@context: Confirm dialog for deleting a collection",
   }),
   cancel: msg({

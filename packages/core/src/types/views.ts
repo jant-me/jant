@@ -92,7 +92,7 @@ export interface PostView {
   // Media -- URLs pre-computed
   media: MediaView[];
 
-  // Collections this post belongs to
+  // Thread-level Collections projected onto this post
   collections: CollectionTagView[];
 
   // Thread context

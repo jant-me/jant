@@ -226,7 +226,7 @@ composeRoutes.post("/thread", async (c) => {
             : data.url || undefined,
         quoteText: data.quoteText || undefined,
         rating: data.rating || undefined,
-        collectionIds: index === 0 ? data.collectionIds : [],
+        collectionIds: index === 0 ? data.collectionIds : undefined,
         replyToId: index === 0 ? data.replyToId : undefined,
         publishedAt: index === 0 ? data.publishedAt : undefined,
       },

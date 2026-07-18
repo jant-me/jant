@@ -31,8 +31,8 @@ export interface CollectionManagerLabels {
   deleteLink: string;
   confirmDeleteLink: string;
   cancel: string;
-  entrySingular: string;
-  entryPlural: string;
+  threadSingular: string;
+  threadPlural: string;
   emptyState: string;
   orderSaved: string;
   saved: string;
@@ -50,7 +50,7 @@ export interface ManagedCollection {
   title: string;
   description: string | null;
   sortOrder: string;
-  postCount: number;
+  threadCount: number;
   recentActivityAt: number;
 }
 

@@ -20,7 +20,7 @@ export const CollectionsPage: FC<CollectionsPageProps> = ({
   const { i18n } = useLingui();
   const emptyMessage = i18n._(
     msg({
-      message: "No collections yet. Start one to organize posts by topic.",
+      message: "No collections yet. Start one to organize threads by topic.",
       comment: "@context: Empty state message on collections page",
     }),
   );

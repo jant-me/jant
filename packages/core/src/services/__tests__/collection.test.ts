@@ -281,7 +281,7 @@ describe("CollectionService", () => {
         format: "note",
         bodyMarkdown: "Book note",
       });
-      await collectionService.addPost(reading.id, post.id);
+      await collectionService.addThread(reading.id, post.id);
 
       const directory = await collectionService.listDirectoryData();
 
@@ -297,7 +297,7 @@ describe("CollectionService", () => {
           type: "collection",
           collection: expect.objectContaining({
             id: reading.id,
-            postCount: 1,
+            threadCount: 1,
             recentActivityAt: post.lastActivityAt,
           }),
         }),
@@ -307,6 +307,30 @@ describe("CollectionService", () => {
           label: "Essays",
         }),
       ]);
+    });
+
+    it("uses a later Root edit as the Thread's recent activity", async () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+        const collection = await collectionService.create({
+          slug: "edited-thread",
+          title: "Edited Thread",
+        });
+        const root = await postService.create({
+          format: "note",
+          bodyMarkdown: "before",
+        });
+        await collectionService.addThread(collection.id, root.id);
+
+        vi.setSystemTime(new Date("2024-01-01T00:01:00Z"));
+        await postService.update(root.id, { bodyMarkdown: "after" });
+
+        const directory = await collectionService.listDirectoryData();
+        expect(directory.collections[0]?.recentActivityAt).toBe(1704067260);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("includes custom links in directory items", async () => {
@@ -451,7 +475,7 @@ describe("CollectionService", () => {
         bodyMarkdown: "test post",
       });
 
-      await collectionService.addPost(collection.id, post.id);
+      await collectionService.addThread(collection.id, post.id);
 
       // Verify association exists
       const before = await collectionService.getCollectionsByPostId(post.id);
@@ -736,15 +760,15 @@ describe("CollectionService", () => {
     });
   });
 
-  describe("getPostCounts", () => {
+  describe("getThreadCounts", () => {
     it("returns empty map when no posts exist", async () => {
       await collectionService.create({ slug: "empty", title: "Empty" });
 
-      const counts = await collectionService.getPostCounts();
+      const counts = await collectionService.getThreadCounts();
       expect(counts.size).toBe(0);
     });
 
-    it("returns correct counts for collections with posts", async () => {
+    it("returns correct counts for collections with Threads", async () => {
       const col1 = await collectionService.create({
         slug: "col1",
         title: "Col 1",
@@ -767,16 +791,16 @@ describe("CollectionService", () => {
         bodyMarkdown: "post 3",
       });
 
-      await collectionService.addPost(col1.id, p1.id);
-      await collectionService.addPost(col1.id, p2.id);
-      await collectionService.addPost(col2.id, p3.id);
+      await collectionService.addThread(col1.id, p1.id);
+      await collectionService.addThread(col1.id, p2.id);
+      await collectionService.addThread(col2.id, p3.id);
 
-      const counts = await collectionService.getPostCounts();
+      const counts = await collectionService.getThreadCounts();
       expect(counts.get(col1.id)).toBe(2);
       expect(counts.get(col2.id)).toBe(1);
     });
 
-    it("does not count posts without a collection", async () => {
+    it("does not count Threads without a collection", async () => {
       const col = await collectionService.create({
         slug: "col",
         title: "Col",
@@ -791,14 +815,14 @@ describe("CollectionService", () => {
         bodyMarkdown: "no collection",
       });
 
-      await collectionService.addPost(col.id, p1.id);
+      await collectionService.addThread(col.id, p1.id);
 
-      const counts = await collectionService.getPostCounts();
+      const counts = await collectionService.getThreadCounts();
       expect(counts.get(col.id)).toBe(1);
       expect(counts.size).toBe(1);
     });
 
-    it("does not count soft-deleted posts", async () => {
+    it("does not count deleted Threads", async () => {
       const col = await collectionService.create({
         slug: "col",
         title: "Col",
@@ -813,19 +837,18 @@ describe("CollectionService", () => {
         bodyMarkdown: "still alive",
       });
 
-      await collectionService.addPost(col.id, post.id);
-      await collectionService.addPost(col.id, post2.id);
+      await collectionService.addThread(col.id, post.id);
+      await collectionService.addThread(col.id, post2.id);
 
-      // Soft-delete one post
       await postService.delete(post.id);
 
-      const counts = await collectionService.getPostCounts();
+      const counts = await collectionService.getThreadCounts();
       expect(counts.get(col.id)).toBe(1);
     });
   });
 
-  describe("addPost / removePost", () => {
-    it("adds a post to a collection", async () => {
+  describe("addThread / removeThread", () => {
+    it("adds a Thread to a collection", async () => {
       const col = await collectionService.create({
         slug: "test",
         title: "Test",
@@ -835,7 +858,7 @@ describe("CollectionService", () => {
         bodyMarkdown: "test",
       });
 
-      await collectionService.addPost(col.id, post.id);
+      await collectionService.addThread(col.id, post.id);
 
       const collections = await collectionService.getCollectionsByPostId(
         post.id,
@@ -854,14 +877,14 @@ describe("CollectionService", () => {
         bodyMarkdown: "test",
       });
 
-      await collectionService.addPost(col.id, post.id);
-      await collectionService.addPost(col.id, post.id); // duplicate
+      await collectionService.addThread(col.id, post.id);
+      await collectionService.addThread(col.id, post.id); // duplicate
 
-      const postIds = await collectionService.getPostIds(col.id);
-      expect(postIds).toHaveLength(1);
+      const threadIds = await collectionService.getThreadIds(col.id);
+      expect(threadIds).toHaveLength(1);
     });
 
-    it("removes a post from a collection", async () => {
+    it("removes a Thread from a collection", async () => {
       const col = await collectionService.create({
         slug: "test",
         title: "Test",
@@ -871,13 +894,42 @@ describe("CollectionService", () => {
         bodyMarkdown: "test",
       });
 
-      await collectionService.addPost(col.id, post.id);
-      await collectionService.removePost(col.id, post.id);
+      await collectionService.addThread(col.id, post.id);
+      await collectionService.removeThread(col.id, post.id);
 
       const collections = await collectionService.getCollectionsByPostId(
         post.id,
       );
       expect(collections).toHaveLength(0);
+    });
+
+    it("normalizes Child mutations to the shared Thread root", async () => {
+      const collection = await collectionService.create({
+        slug: "child-mutation",
+        title: "Child Mutation",
+      });
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const child = await postService.create({
+        format: "note",
+        bodyMarkdown: "child",
+        replyToId: root.id,
+      });
+
+      await collectionService.addThread(collection.id, child.id);
+      expect(await collectionService.getThreadIds(collection.id)).toEqual([
+        root.id,
+      ]);
+      expect(
+        (await collectionService.getCollectionsByPostId(root.id)).map(
+          (item) => item.id,
+        ),
+      ).toEqual([collection.id]);
+
+      await collectionService.removeThread(collection.id, child.id);
+      expect(await collectionService.getThreadIds(collection.id)).toEqual([]);
     });
   });
 
@@ -899,8 +951,8 @@ describe("CollectionService", () => {
         bodyMarkdown: "test",
       });
 
-      await collectionService.addPost(cols[0]?.id ?? "", post.id);
-      await collectionService.addPost(cols[1]?.id ?? "", post.id);
+      await collectionService.addThread(cols[0]?.id ?? "", post.id);
+      await collectionService.addThread(cols[1]?.id ?? "", post.id);
 
       const collections = await collectionService.getCollectionsByPostId(
         post.id,
@@ -919,10 +971,70 @@ describe("CollectionService", () => {
       );
       expect(collections).toHaveLength(0);
     });
+
+    it("projects one shared membership set onto the root and every child", async () => {
+      const collection = await collectionService.create({
+        slug: "shared-thread",
+        title: "Shared Thread",
+      });
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const child = await postService.create({
+        format: "note",
+        bodyMarkdown: "child",
+        replyToId: root.id,
+      });
+
+      await collectionService.addThread(collection.id, root.id);
+
+      const [rootCollections, childCollections, batch] = await Promise.all([
+        collectionService.getCollectionsByPostId(root.id),
+        collectionService.getCollectionsByPostId(child.id),
+        collectionService.getCollectionsByPostIds([root.id, child.id]),
+      ]);
+
+      expect(rootCollections.map((item) => item.id)).toEqual([collection.id]);
+      expect(childCollections.map((item) => item.id)).toEqual([collection.id]);
+      expect(batch.get(root.id)?.map((item) => item.id)).toEqual([
+        collection.id,
+      ]);
+      expect(batch.get(child.id)?.map((item) => item.id)).toEqual([
+        collection.id,
+      ]);
+    });
+
+    it("keeps shared membership when a Child is deleted and removes it with the Root", async () => {
+      const collection = await collectionService.create({
+        slug: "thread-lifecycle",
+        title: "Thread Lifecycle",
+      });
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const child = await postService.create({
+        format: "note",
+        bodyMarkdown: "child",
+        replyToId: root.id,
+      });
+      await collectionService.addThread(collection.id, root.id);
+
+      await postService.delete(child.id);
+      expect(
+        (await collectionService.getCollectionsByPostId(root.id)).map(
+          (item) => item.id,
+        ),
+      ).toEqual([collection.id]);
+
+      await postService.delete(root.id);
+      expect(await collectionService.getThreadIds(collection.id)).toEqual([]);
+    });
   });
 
-  describe("getPostIds", () => {
-    it("returns all post IDs in a collection", async () => {
+  describe("getThreadIds", () => {
+    it("returns all Thread root IDs in a collection", async () => {
       const col = await collectionService.create({
         slug: "test",
         title: "Test",
@@ -936,18 +1048,18 @@ describe("CollectionService", () => {
         bodyMarkdown: "two",
       });
 
-      await collectionService.addPost(col.id, p1.id);
-      await collectionService.addPost(col.id, p2.id);
+      await collectionService.addThread(col.id, p1.id);
+      await collectionService.addThread(col.id, p2.id);
 
-      const ids = await collectionService.getPostIds(col.id);
+      const ids = await collectionService.getThreadIds(col.id);
       expect(ids).toHaveLength(2);
       expect(ids).toContain(p1.id);
       expect(ids).toContain(p2.id);
     });
   });
 
-  describe("syncPostCollections", () => {
-    it("replaces all collection memberships for a post", async () => {
+  describe("syncThreadCollections", () => {
+    it("replaces all collection memberships for a Thread", async () => {
       const col1 = await collectionService.create({
         slug: "col1",
         title: "Col 1",
@@ -967,11 +1079,14 @@ describe("CollectionService", () => {
       });
 
       // Initially in col1 and col2
-      await collectionService.addPost(col1.id, post.id);
-      await collectionService.addPost(col2.id, post.id);
+      await collectionService.addThread(col1.id, post.id);
+      await collectionService.addThread(col2.id, post.id);
 
       // Sync to col2 and col3
-      await collectionService.syncPostCollections(post.id, [col2.id, col3.id]);
+      await collectionService.syncThreadCollections(post.id, [
+        col2.id,
+        col3.id,
+      ]);
 
       const collections = await collectionService.getCollectionsByPostId(
         post.id,
@@ -993,8 +1108,8 @@ describe("CollectionService", () => {
         bodyMarkdown: "test",
       });
 
-      await collectionService.addPost(col.id, post.id);
-      await collectionService.syncPostCollections(post.id, []);
+      await collectionService.addThread(col.id, post.id);
+      await collectionService.syncThreadCollections(post.id, []);
 
       const collections = await collectionService.getCollectionsByPostId(
         post.id,
@@ -1018,13 +1133,13 @@ describe("CollectionService", () => {
       const originalTransaction = dbWithoutTransaction.transaction.bind(db);
       dbWithoutTransaction.transaction = async () => {
         throw new Error(
-          "sqlite syncPostCollections() should not call transaction()",
+          "sqlite syncThreadCollections() should not call transaction()",
         );
       };
 
       try {
         await expect(
-          collectionService.syncPostCollections(post.id, [col.id]),
+          collectionService.syncThreadCollections(post.id, [col.id]),
         ).resolves.toBeUndefined();
       } finally {
         dbWithoutTransaction.transaction = originalTransaction;

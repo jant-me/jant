@@ -1,7 +1,7 @@
 /**
  * Collections Listing Page Route
  *
- * Lists all collections with their post counts.
+ * Lists all collections with their Thread counts.
  */
 
 import { Hono } from "hono";

@@ -1,25 +1,60 @@
 {
   "name": "demo-current",
-  "baseMigrationTag": "0003_fts_site_aware",
+  "baseMigrationTag": "0026_absent_rhodey",
   "seedPath": "./demo-current.sql",
   "assertions": [
     {
       "name": "published posts exist",
       "sql": "SELECT COUNT(*) AS count FROM post",
       "column": "count",
-      "atLeast": 1
+      "equals": 3
     },
     {
       "name": "collections exist",
       "sql": "SELECT COUNT(*) AS count FROM collection",
       "column": "count",
-      "atLeast": 1
+      "equals": 2
     },
     {
       "name": "fts index populated",
       "sql": "SELECT COUNT(*) AS count FROM post_fts",
       "column": "count",
-      "atLeast": 1
+      "equals": 3
+    },
+    {
+      "name": "thread collection union preserves both collections",
+      "sql": "SELECT COUNT(*) AS count FROM thread_collection",
+      "column": "count",
+      "equals": 2
+    },
+    {
+      "name": "shared collection metadata is aggregated across the thread",
+      "sql": "SELECT COUNT(*) AS count FROM thread_collection WHERE site_id = 'sit_01kme7j7j1f4m7s2k8r5c9t0qb' AND thread_id = 'pst_01kme7ja2mf4m7s2k8r5c9t0qf' AND collection_id = 'col_01kme7j8f9f4m7s2k8r5c9t0qc' AND created_at = 1774200040 AND position = 1 AND pinned_at = 1774200500",
+      "column": "count",
+      "equals": 1
+    },
+    {
+      "name": "child-only collection becomes thread membership",
+      "sql": "SELECT COUNT(*) AS count FROM thread_collection WHERE site_id = 'sit_01kme7j7j1f4m7s2k8r5c9t0qb' AND thread_id = 'pst_01kme7ja2mf4m7s2k8r5c9t0qf' AND collection_id = 'col_01kme7j8f9f4m7s2k8r5c9t0qd' AND created_at = 1774200060 AND position = 4 AND pinned_at = 1774200600",
+      "column": "count",
+      "equals": 1
+    },
+    {
+      "name": "thread collection targets are roots",
+      "sql": "SELECT COUNT(*) AS count FROM thread_collection tc INNER JOIN post root ON root.site_id = tc.site_id AND root.id = tc.thread_id WHERE root.reply_to_id IS NOT NULL OR root.thread_id <> root.id",
+      "column": "count",
+      "equals": 0
+    },
+    {
+      "name": "legacy post collection table is removed",
+      "sql": "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'post_collection'",
+      "column": "count",
+      "equals": 0
+    },
+    {
+      "name": "foreign keys remain valid",
+      "sql": "PRAGMA foreign_key_check",
+      "rowCount": 0
     }
   ]
 }

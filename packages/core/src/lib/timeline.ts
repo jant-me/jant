@@ -28,7 +28,10 @@ export interface TimelineResult {
   totalCount: number;
 }
 
-type CuratedThreadSelectionMap = Map<string, Set<string>>;
+interface CuratedThreadSource {
+  posts: Array<{ post: Post; position: number }>;
+  highlightedPostIds: ReadonlySet<string>;
+}
 
 async function buildTimelineItems(
   c: Context<Env>,
@@ -171,13 +174,12 @@ export async function assembleTimelineItems(
 async function buildCuratedThreadItems(
   c: Context<Env>,
   rootIds: string[],
-  threadsByRootId: Map<string, Post[]>,
-  selectedPostIdsByThread: CuratedThreadSelectionMap,
-  collectionPinnedPostIds?: Set<string>,
+  threadsByRootId: Map<string, CuratedThreadSource>,
+  collectionPinnedThreadIds?: Set<string>,
 ): Promise<TimelineItemView[]> {
   const orderedThreads = rootIds
-    .map((rootId) => threadsByRootId.get(rootId) ?? [])
-    .filter((thread) => thread.length > 0);
+    .map((rootId) => threadsByRootId.get(rootId))
+    .filter((thread): thread is CuratedThreadSource => Boolean(thread));
 
   if (orderedThreads.length === 0) {
     return [];
@@ -185,7 +187,7 @@ async function buildCuratedThreadItems(
 
   const mediaCtx = createMediaContext(c.var.appConfig);
   const postIds = orderedThreads.flatMap((thread) =>
-    thread.map((post) => post.id),
+    thread.posts.map(({ post }) => post.id),
   );
   const [rawMediaMap, collectionsMap, curatedAliasesMap] = await Promise.all([
     c.var.services.media.getByPostIds(postIds),
@@ -202,14 +204,15 @@ async function buildCuratedThreadItems(
   );
 
   return orderedThreads.reduce<TimelineItemView[]>((items, thread) => {
-    const root = thread[0];
-    if (!root) {
+    const rootEntry = thread.posts[0];
+    if (!rootEntry || rootEntry.position !== 0) {
       return items;
     }
 
-    const lastPostId = thread[thread.length - 1]?.id;
-    const postViews = thread.map((post) =>
-      toPostView(
+    const lastPostId = thread.posts[thread.posts.length - 1]?.post.id;
+    const renderedPosts = thread.posts.map(({ post, position }) => ({
+      position,
+      view: toPostView(
         {
           ...post,
           mediaAttachments: mediaMap.get(post.id) ?? [],
@@ -218,54 +221,31 @@ async function buildCuratedThreadItems(
         collectionsMap.get(post.id),
         post.id === lastPostId,
         curatedAliasesMap.get(post.id)?.[0],
-        collectionPinnedPostIds?.has(post.id),
+        post.id === post.threadId &&
+          collectionPinnedThreadIds?.has(post.threadId),
       ),
-    );
-    const rootView = postViews[0];
-    const selectedIds = selectedPostIdsByThread.get(root.id);
+    }));
+    const rootView = renderedPosts[0]?.view;
 
-    if (!rootView || !selectedIds || selectedIds.size === 0) {
+    if (!rootView) {
       return items;
     }
 
-    const selectedIndices = postViews.reduce<number[]>(
-      (indices, post, index) => {
-        if (selectedIds.has(post.id)) {
-          indices.push(index);
-        }
-        return indices;
-      },
-      [],
-    );
-
-    if (selectedIndices.length === 0) {
-      return items;
-    }
-
-    const selectedIndexSet = new Set(selectedIndices);
-    const visibleIndices = [
-      ...new Set([0, postViews.length - 1, ...selectedIndices]),
-    ].sort((left, right) => left - right);
-    const segments = visibleIndices.reduce<
+    const segments = renderedPosts.reduce<
       NonNullable<TimelineItemView["curatedThread"]>["segments"]
-    >((items, index, segmentIndex) => {
-      const postView = postViews[index];
-      if (!postView) {
-        return items;
-      }
-
-      const previousIndex =
-        segmentIndex === 0 ? undefined : visibleIndices[segmentIndex - 1];
+    >((items, renderedPost, segmentIndex) => {
+      const previousPosition =
+        segmentIndex === 0
+          ? undefined
+          : renderedPosts[segmentIndex - 1]?.position;
 
       items.push({
-        post: postView,
+        post: renderedPost.view,
         hiddenBeforeCount:
-          previousIndex === undefined
-            ? index === 0
-              ? 0
-              : index - 1
-            : index - previousIndex - 1,
-        highlighted: selectedIndexSet.has(index),
+          previousPosition === undefined
+            ? renderedPost.position
+            : renderedPost.position - previousPosition - 1,
+        highlighted: thread.highlightedPostIds.has(renderedPost.view.id),
       });
 
       return items;
@@ -275,10 +255,10 @@ async function buildCuratedThreadItems(
       return items;
     }
 
-    const isRootOnlySelection =
+    const isStandaloneRoot =
       segments.length === 1 && segments[0]?.post.id === rootView.id;
 
-    if (isRootOnlySelection) {
+    if (isStandaloneRoot) {
       items.push({ post: rootView });
       return items;
     }
@@ -418,26 +398,19 @@ export async function assembleFeaturedTimeline(
     return { items: [], currentPage: page, totalPages, totalCount };
   }
 
-  const threadsByRootId =
-    await c.var.services.posts.getPublishedThreads(rootIds);
-  const selectedPostIdsByThread: CuratedThreadSelectionMap = new Map();
-
-  for (const [threadId, thread] of threadsByRootId) {
-    const selectedIds = thread
-      .filter((post) => post.featuredAt !== null)
-      .map((post) => post.id);
-
-    if (selectedIds.length > 0) {
-      selectedPostIdsByThread.set(threadId, new Set(selectedIds));
-    }
-  }
-
-  const items = await buildCuratedThreadItems(
-    c,
-    rootIds,
-    threadsByRootId,
-    selectedPostIdsByThread,
+  const featuredThreads =
+    await c.var.services.posts.getFeaturedThreadTimelineData(rootIds);
+  const threadsByRootId = new Map<string, CuratedThreadSource>(
+    [...featuredThreads].map(([threadId, thread]) => [
+      threadId,
+      {
+        posts: thread.posts,
+        highlightedPostIds: new Set(thread.featuredPostIds),
+      },
+    ]),
   );
+
+  const items = await buildCuratedThreadItems(c, rootIds, threadsByRootId);
 
   return { items, currentPage: page, totalPages, totalCount };
 }
@@ -445,9 +418,9 @@ export async function assembleFeaturedTimeline(
 /**
  * Assembles a paginated collection timeline grouped by thread root.
  *
- * Threads are ordered by collection membership time (newest/oldest) or by the
- * rated posts collected into the thread. Within each thread, collected posts are
- * expanded and intervening non-collected posts collapse into hidden-count gaps.
+ * Threads are ordered by collection activity/rating semantics. Every published
+ * post in each matching Thread is rendered; Collection membership never selects
+ * or hides individual posts within the Thread.
  *
  * @param c - Hono context (provides services + appConfig)
  * @param options - Collection IDs, optional page number, auth state, and sort
@@ -493,27 +466,24 @@ export async function assembleCollectionTimeline(
     return { items: [], currentPage: page, totalPages, totalCount };
   }
 
-  const [threadsByRootId, collectedPostIdsByThread, pinnedPostIds] =
-    await Promise.all([
-      c.var.services.posts.getPublishedThreads(rootIds),
-      c.var.services.posts.getCollectionPostIdsByThreadForCollections(
-        options.collectionIds,
-        rootIds,
-      ),
-      c.var.services.collections.getPinnedPostIds(options.collectionIds),
-    ]);
-  const selectedPostIdsByThread: CuratedThreadSelectionMap = new Map(
-    [...collectedPostIdsByThread.entries()].map(([threadId, postIds]) => [
+  const [threadsByRootId, pinnedThreadIds] = await Promise.all([
+    c.var.services.posts.getPublishedThreads(rootIds),
+    c.var.services.collections.getPinnedThreadIds(options.collectionIds),
+  ]);
+  const curatedThreadsByRootId = new Map<string, CuratedThreadSource>(
+    [...threadsByRootId].map(([threadId, thread]) => [
       threadId,
-      new Set(postIds),
+      {
+        posts: thread.map((post, position) => ({ post, position })),
+        highlightedPostIds: new Set<string>(),
+      },
     ]),
   );
   const items = await buildCuratedThreadItems(
     c,
     rootIds,
-    threadsByRootId,
-    selectedPostIdsByThread,
-    pinnedPostIds,
+    curatedThreadsByRootId,
+    pinnedThreadIds,
   );
 
   return { items, currentPage: page, totalPages, totalCount };

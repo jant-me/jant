@@ -87,6 +87,23 @@ function extractJson(raw) {
   return raw.slice(start);
 }
 
+function getWranglerExecutionOptions(options) {
+  const executionOptions = { ...options };
+  for (const key of [
+    "configPath",
+    "database",
+    "env",
+    "persistTo",
+    "quiet",
+    "retryAttempts",
+    "retryDelayMs",
+    "trackedExecution",
+  ]) {
+    delete executionOptions[key];
+  }
+  return executionOptions;
+}
+
 function runWrangler(args, options = {}) {
   const retryAttempts = Math.max(
     1,
@@ -99,7 +116,7 @@ function runWrangler(args, options = {}) {
 
   for (let attempt = 1; attempt <= retryAttempts; attempt += 1) {
     try {
-      return runLocalWrangler(args, options);
+      return runLocalWrangler(args, getWranglerExecutionOptions(options));
     } catch (error) {
       const output = `${error.stdout ?? ""}${error.stderr ?? ""}`.trim();
       const wranglerError = parseWranglerError(output);
@@ -135,7 +152,7 @@ export function executeD1(sql, runtime, options = {}) {
   );
 
   if (options.quiet) {
-    const output = runWrangler([...args, "--json"]);
+    const output = runWrangler([...args, "--json"], options);
     const parsed = JSON.parse(extractJson(output));
     const statements = Array.isArray(parsed) ? parsed : [parsed];
 
@@ -148,7 +165,7 @@ export function executeD1(sql, runtime, options = {}) {
     return statements;
   }
 
-  runWrangler(args, { stdio: "inherit" });
+  runWrangler(args, { ...options, stdio: "inherit" });
 }
 
 export function queryD1(sql, runtime, options = {}) {
@@ -164,6 +181,7 @@ export function queryD1(sql, runtime, options = {}) {
       ],
       options,
     ),
+    options,
   );
   const parsed = JSON.parse(extractJson(output));
   const statement = Array.isArray(parsed) ? parsed[0] : parsed;
@@ -189,7 +207,7 @@ export function executeD1File(filePath, runtime, options = {}) {
   );
 
   if (options.quiet) {
-    const output = runWrangler([...args, "--json"]);
+    const output = runWrangler([...args, "--json"], options);
     const parsed = JSON.parse(extractJson(output));
     const statements = Array.isArray(parsed) ? parsed : [parsed];
 
@@ -202,5 +220,5 @@ export function executeD1File(filePath, runtime, options = {}) {
     return statements;
   }
 
-  runWrangler(args, { stdio: "inherit" });
+  runWrangler(args, { ...options, stdio: "inherit" });
 }

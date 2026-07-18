@@ -46,7 +46,7 @@ npx jant site snapshot import --path ./backups/jant-site-snapshot-2026-03-30.zip
 npx jant site snapshot import --remote --config ./wrangler.toml --path ./backups/jant-site-snapshot-2026-03-30.zip --replace
 ```
 
-不传 `--replace` 时命令直接拒绝，避免误覆盖。`--replace` 会清空目标库中内容范围的表后写入归档（`post`、`collection`、`nav_item`、`collection_directory_item`、`post_collection`、`media`、`path_registry`），但不动 `user` / `session` / `api_token` 等认证表。归档结构、`--skip-objects`、`--allow-missing-objects` 等选项详见 [导出与导入 § 站点快照](export-and-import.md#站点快照site-snapshot)。
+不传 `--replace` 时命令直接拒绝，避免误覆盖。`--replace` 会清空目标库中内容范围的表后写入归档（`post`、`collection`、`nav_item`、`collection_directory_item`、`thread_collection`、`media`、`path_registry`），但不动 `user` / `session` / `api_token` 等认证表。归档结构、`--skip-objects`、`--allow-missing-objects` 等选项详见 [导出与导入 § 站点快照](export-and-import.md#站点快照site-snapshot)。
 
 ## Docker 与 Node
 

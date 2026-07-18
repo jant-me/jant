@@ -1,8 +1,9 @@
 {{ define "main" }}
-  {{- /* Root posts are branch bundles (kind=section), so we iterate .Site.Pages. */ -}}
+  {{- /* Root bundles carry a derived projection of every Featured Post in the Thread. */ -}}
   {{- $posts := where .Site.Pages "Type" "post" -}}
-  {{- $featured := where $posts "Params.featured_at" "ne" nil -}}
-  {{- $featured = sort $featured "Params.featured_at" "desc" -}}
+  {{- $roots := where $posts "Kind" "section" -}}
+  {{- $featured := where $roots "Params.featured_sort_at" "ne" nil -}}
+  {{- $featured = sort $featured "Params.featured_sort_at" "desc" -}}
   {{- $pageSize := .Site.Params.page_size | default 10 -}}
   {{- $paginator := .Paginate $featured $pageSize -}}
 
@@ -17,7 +18,7 @@
       <div class="post-list">
         {{- range $i, $p := $paginator.Pages -}}
           {{- if gt $i 0 -}}<hr class="feed-divider" aria-hidden="true" />{{- end -}}
-          {{ partial "thread-preview.html" $p }}
+          {{ partial "featured-thread.html" $p }}
         {{- end -}}
       </div>
       {{ partial "pagination.html" $paginator }}

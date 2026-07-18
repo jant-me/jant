@@ -186,6 +186,8 @@ export const PostFooter: FC<PostFooterProps> = ({ post, detail, display }) => {
   const showReply = !hideReply && post.isLastInThread;
   const showCollectionSeparator =
     showTimestamp || !!safeExternalUrl || post.featured;
+  const visibleCollections =
+    post.replyToId || post.threadRootId ? [] : post.collections;
 
   return (
     <footer
@@ -224,7 +226,7 @@ export const PostFooter: FC<PostFooterProps> = ({ post, detail, display }) => {
           </a>
         )}
         <CompactCollectionTags
-          collections={post.collections}
+          collections={visibleCollections}
           showSeparator={showCollectionSeparator}
           showIcon={detail}
         />

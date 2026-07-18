@@ -282,6 +282,39 @@ describe("Public Posts API Routes", () => {
       expect(body).not.toHaveProperty("body");
     });
 
+    it("returns the shared Thread Collections for a child post", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+
+      const collection = await services.collections.create({
+        slug: "shared",
+        title: "Shared",
+      });
+      const root = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "root",
+        collectionIds: [collection.id],
+      });
+      const child = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "child",
+        replyToId: root.id,
+      });
+
+      const res = await app.request(`/api/public/posts/${child.slug}`);
+      expect(res.status).toBe(200);
+      await expect(res.json()).resolves.toMatchObject({
+        id: child.id,
+        collections: [
+          {
+            id: collection.id,
+            slug: "shared",
+            title: "Shared",
+          },
+        ],
+      });
+    });
+
     it("returns markdown instead of rendered fields when content=markdown", async () => {
       const { app, services } = createTestApp({ authenticated: false });
       app.route("/api/public/posts", publicPostsApiRoutes);

@@ -69,7 +69,7 @@ Non-images default to 1024 MB; tune it with `UPLOAD_MAX_FILE_SIZE_MB`. See [Conf
 
 ## Can deleted posts be recovered?
 
-No. Deletion is permanent — the post row, its paths, its Collection memberships, and its attachment media are all cleaned up together (inline media embedded in the body is left alone). The UI asks for explicit confirmation before deleting.
+No. Deletion is permanent — the post row, its paths, and its attachment media are cleaned up together (inline media embedded in the body is left alone). Deleting a Thread root also deletes the Thread's Collection memberships; deleting only a reply leaves the shared memberships intact. The UI asks for explicit confirmation before deleting.
 
 ## Is multi-language supported?
 

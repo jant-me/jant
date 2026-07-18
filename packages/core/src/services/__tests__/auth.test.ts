@@ -11,7 +11,7 @@ import {
   media,
   navItems,
   pathRegistry,
-  postCollections,
+  threadCollections,
   posts,
   session,
   settings as settingsTable,
@@ -165,9 +165,9 @@ describe("AuthService", () => {
       updatedAt: timestamp,
     });
 
-    await db.insert(postCollections).values({
+    await db.insert(threadCollections).values({
       siteId: DEFAULT_TEST_SITE_ID,
-      postId: "pst_01km9authdelete00000000000",
+      threadId: "pst_01km9authdelete00000000000",
       collectionId: "col_01km9authdelete00000000000",
       createdAt: timestamp,
     });
@@ -245,7 +245,9 @@ describe("AuthService", () => {
       const remainingDirectoryItems = await db
         .select()
         .from(collectionDirectoryItems);
-      const remainingPostCollections = await db.select().from(postCollections);
+      const remainingThreadCollections = await db
+        .select()
+        .from(threadCollections);
       const remainingNavItems = await db.select().from(navItems);
       const remainingApiTokens = await db.select().from(apiTokens);
       const existingSites = await db.select().from(sites);
@@ -262,7 +264,7 @@ describe("AuthService", () => {
       expect(remainingCollections).toHaveLength(0);
       expect(remainingPaths).toHaveLength(0);
       expect(remainingDirectoryItems).toHaveLength(0);
-      expect(remainingPostCollections).toHaveLength(0);
+      expect(remainingThreadCollections).toHaveLength(0);
       expect(remainingNavItems).toHaveLength(0);
       expect(remainingApiTokens).toHaveLength(0);
       expect(existingSites).toHaveLength(0);

@@ -35,17 +35,17 @@ export interface TextAttachmentContent {
 }
 
 /**
- * A single collection membership entry, with all the per-row metadata the
- * `post_collection` junction table carries. Used by the Hugo importer to
+ * A single Thread collection membership entry, with all the per-row metadata
+ * the `thread_collection` junction table carries. Used by the Hugo importer to
  * restore per-entry `createdAt` / `position` / `pinnedAt` losslessly.
  */
-export interface PostCollectionEntry {
+export interface ThreadCollectionEntry {
   collectionId: string;
-  /** Unix seconds — when the post was added to the collection. Defaults to now() when omitted. */
+  /** Unix seconds — when the Thread was added to the collection. Defaults to now() when omitted. */
   createdAt?: number;
   /** Sort position within the collection. Defaults to append-at-end when omitted. */
   position?: number;
-  /** Unix seconds when the post was pinned in this specific collection; null means unpinned. */
+  /** Unix seconds when the Thread was pinned in this specific collection; null means unpinned. */
   pinnedAt?: number | null;
 }
 
@@ -79,9 +79,10 @@ export interface CreatePost {
   quoteText?: string;
   rating?: number;
   /**
-   * Simple slug/ID list of collections to add the post to. Uses `now()` for
-   * `createdAt` and append-at-end for `position`. For lossless import that
-   * preserves those fields, use `collectionEntries` instead.
+   * Simple slug/ID list for the shared Thread collection set. Set this while
+   * creating a Thread root; reply creation rejects non-empty membership input.
+   * Uses `now()` for `createdAt` and append-at-end for `position`. For lossless
+   * import that preserves those fields, use `collectionEntries` instead.
    */
   collectionIds?: string[];
   /**
@@ -89,7 +90,7 @@ export interface CreatePost {
    * `collectionIds` and restores per-entry `createdAt` / `position` /
    * `pinnedAt` losslessly.
    */
-  collectionEntries?: PostCollectionEntry[];
+  collectionEntries?: ThreadCollectionEntry[];
   replyToId?: string;
   quietReply?: boolean;
   publishedAt?: number;
@@ -116,7 +117,7 @@ export interface UpdatePost {
   quoteText?: string | null;
   rating?: number | null;
   collectionIds?: string[];
-  collectionEntries?: PostCollectionEntry[];
+  collectionEntries?: ThreadCollectionEntry[];
   publishedAt?: number;
   attachments?: PostAttachmentInput[];
 }

@@ -1,6 +1,6 @@
 # 写作与内容组织
 
-Jant 的发布模型只有一种东西：帖子。帖子有三种格式（Note、Link、Quote），可以挂附件、可以打分。如果几篇帖子是连着写的，可以串成一个 Thread；如果几篇帖子讲同一个主题，可以归到一个 Collection。其他都是这两件事的延伸。
+Jant 的发布模型只有一种东西：帖子。帖子有三种格式（Note、Link、Quote），可以挂附件、可以打分。如果几篇帖子是连着写的，可以串成一个 Thread；如果多个 Thread 讲同一个主题，可以归到一个 Collection。其他都是这两件事的延伸。
 
 ## 帖子格式
 
@@ -61,7 +61,7 @@ Thread 是把多条帖子按时间顺序串在一起的结构——你写一条�
 
 ## Collections
 
-Collection 是按 `/{slug}` 组织的策展式分组。同一篇帖子可以同时属于多个 Collection。
+Collection 是按 `/{slug}` 组织的策展式分组。同一个 Thread 可以同时属于多个 Collection；Root 与所有回复始终共享同一份归属。
 
 适合：
 
@@ -78,8 +78,9 @@ URL 里也可以组合多个 Collection：
 
 Jant 会把它当成跨多个 Collection 的组合视图：
 
-- 展示这些 Collection 中帖子的并集
+- 展示这些 Collection 中完整 Thread 的并集
 - 同一个 Thread 同时属于多个 Collection 时只显示一次
+- 每个命中的 Thread 都会完整展示，包括所有已发布回复
 - 同样的写法也适用于 feed：`/collections/{slug1}+{slug2}/feed`
 
 ## 创建独立页面（About 页）
@@ -98,7 +99,7 @@ Jant 没有单独的「页面」类型——独立页面就是一篇 Hidden from
 帖子有四种发布状态：
 
 - **`Public`**：公开，出现在首页 Latest，公开访客可见。
-- **`Hidden from Latest`**：从首页隐去，但仍然公开——直链有效，可加入 Collection，也会出现在 `/archive` 里。
+- **`Hidden from Latest`**：从首页隐去，但仍然公开——直链有效，所在 Thread 可加入 Collection，也会出现在 `/archive` 里。
 - **`Private`**：仅登录后可见。
 - **`Draft`**：未发布，仅自己可见。
 
@@ -106,9 +107,9 @@ Jant 没有单独的「页面」类型——独立页面就是一篇 Hidden from
 
 ### Featured
 
-把一篇帖子标记为 Featured，等于同时做两件事：让它出现在 `/featured` 页面，并把它推送到默认 `/feed` 里订阅你的人那里。
+把一条帖子标记为 Featured，等于同时做两件事：在 `/featured` 页面凸显这条帖子，并让它所在的 Thread 进入默认 `/feed`。同一 Thread 即使有多条帖子被标记，也只会在页面和 feed 中出现一次。
 
-- Featured 帖子会出现在 Featured 页面
+- Featured 页面按 Thread 聚合所选帖子，并按最新一条 Featured 帖子的发布时间排列 Thread
 - Featured feed 在 `/featured/feed`
 - 主 `/feed` 可以指向 Featured 或 Latest，默认指向 Featured
 
@@ -122,7 +123,7 @@ Jant 的核心设计之一是把"发布"和"广播"拆开。
 
 这两件事在 Jant 里是独立的：
 
-- 标记为 `Hidden from Latest` 的帖子会从首页隐去，但内容本身仍然公开：直链有效，可加入 Collection，也会出现在 `/archive` 里。
+- 标记为 `Hidden from Latest` 的帖子会从首页隐去，但内容本身仍然公开：直链有效，所在 Thread 可加入 Collection，也会出现在 `/archive` 里。
 - `Public` 的帖子会出现在首页 Latest，但**不会**进入默认的 `/feed`。
 - 只有标记为 `Featured` 的内容，才会进入 `/feed`，推送给订阅者。
 
@@ -157,7 +158,7 @@ Feed：
 
 - `/feed` 使用你当前配置的主 feed
 - `/latest/feed` 返回出现在首页 Latest 的帖子（不含 `Hidden from Latest`）
-- `/featured/feed` 返回 Featured 帖子
+- `/featured/feed` 中，每个包含 Featured 帖子的 Thread 只返回一个条目
 - `/archive/feed` 返回全量公开帖子（包含 `Hidden from Latest`），支持 `?year=`、`?format=`、`?collection=`、`?media=` 等筛选参数
 - `/{slug}/feed` 返回单个 Collection 的 feed
 - `/collections/{slug1}+{slug2}/feed` 返回组合 Collection 的 feed

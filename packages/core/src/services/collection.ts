@@ -1,7 +1,8 @@
 /**
  * Collection Service (v2)
  *
- * Manages collections. Posts belong to collections via post_collections junction table (M:N).
+ * Manages collections. Threads belong to collections through the
+ * `thread_collection` junction table (M:N).
  * Collection directory ordering is managed through the collection_directory_item
  * table with fractional indexing.
  */
@@ -33,7 +34,11 @@ import type {
   UpdateCollectionDirectoryEntry,
   CollectionSortOrder,
 } from "../types.js";
-import { ConflictError, ValidationError } from "../lib/errors.js";
+import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+} from "../lib/errors.js";
 import {
   createPathService,
   toCollectionPath,
@@ -91,7 +96,7 @@ export interface CollectionService {
   ): Promise<ResolvedCollectionSelection | null>;
   list(): Promise<Collection[]>;
   listDirectoryData(): Promise<CollectionsDirectoryData>;
-  /** List collections sorted by most recent post addition (for compose dialog) */
+  /** List collections sorted by most recent Thread addition (for compose dialog) */
   listByRecentActivity(): Promise<Collection[]>;
   create(data: CreateCollection): Promise<Collection>;
   update(id: string, data: UpdateCollection): Promise<Collection | null>;
@@ -115,16 +120,16 @@ export interface CollectionService {
     after: string | null,
     before: string | null,
   ): Promise<CollectionDirectoryEntry | null>;
-  /** Get post count per collection */
-  getPostCounts(): Promise<Map<string, number>>;
+  /** Get Thread count per collection */
+  getThreadCounts(): Promise<Map<string, number>>;
   /**
-   * Add a post to a collection. Optional metadata lets the caller set the
+   * Add a Thread to a collection. Optional metadata lets the caller set the
    * per-row `createdAt` / `position` / `pinnedAt` explicitly; omitted
    * fields default to `now()` / append-at-end / `null`.
    */
-  addPost(
+  addThread(
     collectionId: string,
-    postId: string,
+    threadId: string,
     opts?: {
       createdAt?: number;
       position?: number;
@@ -132,13 +137,13 @@ export interface CollectionService {
     },
   ): Promise<void>;
   /**
-   * Replace all collection memberships of a post in one transaction,
+   * Replace all collection memberships of a Thread in one transaction,
    * preserving each entry's `createdAt` / `position` / `pinnedAt`.
    * Used by the Hugo import path so round-tripping through
    * `jant site export | jant site import` is lossless.
    */
-  syncPostCollectionsWithMeta(
-    postId: string,
+  syncThreadCollectionsWithMeta(
+    threadId: string,
     entries: {
       collectionId: string;
       createdAt?: number;
@@ -146,39 +151,39 @@ export interface CollectionService {
       pinnedAt?: number | null;
     }[],
   ): Promise<void>;
-  /** Remove a post from a collection */
-  removePost(collectionId: string, postId: string): Promise<void>;
-  /** Pin a post within a collection */
-  pinPost(collectionId: string, postId: string): Promise<void>;
-  /** Unpin a post within a collection */
-  unpinPost(collectionId: string, postId: string): Promise<void>;
-  /** Get pinned post IDs for given collections */
-  getPinnedPostIds(collectionIds: string[]): Promise<Set<string>>;
-  /** Get all collections a post belongs to */
+  /** Remove a Thread from a collection */
+  removeThread(collectionId: string, threadId: string): Promise<void>;
+  /** Pin a Thread within a collection */
+  pinThread(collectionId: string, threadId: string): Promise<void>;
+  /** Unpin a Thread within a collection */
+  unpinThread(collectionId: string, threadId: string): Promise<void>;
+  /** Get pinned Thread IDs for given collections */
+  getPinnedThreadIds(collectionIds: string[]): Promise<Set<string>>;
+  /** Get the Thread-level collections shared by a post and its siblings */
   getCollectionsByPostId(postId: string): Promise<Collection[]>;
-  /** Batch get collections for multiple posts */
+  /** Batch project Thread-level collections onto multiple posts */
   getCollectionsByPostIds(
     postIds: string[],
   ): Promise<Map<string, Collection[]>>;
   /**
-   * Batch get the set of collection IDs each post is pinned in.
+   * Batch get the set of collection IDs each Thread is pinned in.
    *
    * Used by the Hugo export to surface per-collection pins so the static
-   * collection page can sort pinned posts to the top, mirroring the live
+   * collection page can sort pinned Threads to the top, mirroring the live
    * site behavior.
    */
-  getCollectionPinsByPostIds(
-    postIds: string[],
+  getCollectionPinsByThreadIds(
+    threadIds: string[],
   ): Promise<Map<string, Set<string>>>;
   /**
-   * Batch fetch the full per-entry collection metadata for each post: the
+   * Batch fetch the full per-entry collection metadata for each Thread: the
    * `createdAt` timestamp, `position`, and per-collection `pinnedAt`.
    *
    * Used by the Hugo export to emit lossless `collections` front-matter
    * entries so round-tripping through `jant site export | jant site import`
    * preserves per-entry state.
    */
-  getCollectionEntriesByPostIds(postIds: string[]): Promise<
+  getCollectionEntriesByThreadIds(threadIds: string[]): Promise<
     Map<
       string,
       {
@@ -189,10 +194,13 @@ export interface CollectionService {
       }[]
     >
   >;
-  /** Get all post IDs in a collection */
-  getPostIds(collectionId: string): Promise<string[]>;
-  /** Sync a post's collection memberships (replace all with given IDs) */
-  syncPostCollections(postId: string, collectionIds: string[]): Promise<void>;
+  /** Get all Thread IDs in a collection */
+  getThreadIds(collectionId: string): Promise<string[]>;
+  /** Sync a Thread's collection memberships (replace all with given IDs) */
+  syncThreadCollections(
+    threadId: string,
+    collectionIds: string[],
+  ): Promise<void>;
 }
 
 export function createCollectionService(
@@ -207,7 +215,7 @@ export function createCollectionService(
     collections,
     pathRegistry,
     collectionDirectoryItems: directoryItemsTable,
-    postCollections,
+    threadCollections,
     posts,
     navItems,
   } = databaseSchema;
@@ -373,6 +381,17 @@ export function createCollectionService(
     return rows.length > 0;
   }
 
+  async function resolveThreadRootId(postId: string): Promise<string> {
+    const rows = await db
+      .select({ threadId: posts.threadId })
+      .from(posts)
+      .where(and(eq(posts.siteId, siteId), eq(posts.id, postId)))
+      .limit(1);
+    const threadId = rows[0]?.threadId;
+    if (!threadId) throw new NotFoundError("Thread");
+    return threadId;
+  }
+
   async function getDirectoryMovePosition(
     id: string,
     afterId: string | null,
@@ -429,22 +448,28 @@ export function createCollectionService(
   async function listDirectoryCollections(): Promise<
     CollectionDirectoryCollection[]
   > {
-    const postCount = sql<number>`
+    const threadActivityAt = sql<number>`CASE
+      WHEN ${posts.updatedAt} > ${posts.createdAt}
+        AND ${posts.updatedAt} > COALESCE(${posts.lastActivityAt}, -1)
+      THEN ${posts.updatedAt}
+      ELSE COALESCE(
+        ${posts.lastActivityAt},
+        ${posts.publishedAt},
+        ${posts.updatedAt}
+      )
+    END`;
+    const threadCount = sql<number>`
       CAST(COUNT(
         CASE
           WHEN ${posts.id} IS NOT NULL THEN 1
         END
       ) AS INTEGER)
-    `.as("post_count");
+    `.as("thread_count");
     const recentActivityAt = sql<number | null>`
       MAX(
         CASE
           WHEN ${posts.id} IS NOT NULL
-          THEN COALESCE(
-            ${posts.lastActivityAt},
-            ${posts.publishedAt},
-            ${posts.updatedAt}
-          )
+          THEN ${threadActivityAt}
         END
       )
     `.as("recent_activity_at");
@@ -452,20 +477,23 @@ export function createCollectionService(
     const rows = await db
       .select({
         collection: collections,
-        postCount,
+        threadCount,
         recentActivityAt,
       })
       .from(collections)
       .leftJoin(
-        postCollections,
+        threadCollections,
         and(
-          eq(postCollections.siteId, siteId),
-          eq(collections.id, postCollections.collectionId),
+          eq(threadCollections.siteId, siteId),
+          eq(collections.id, threadCollections.collectionId),
         ),
       )
       .leftJoin(
         posts,
-        and(eq(posts.siteId, siteId), eq(postCollections.postId, posts.id)),
+        and(
+          eq(posts.siteId, threadCollections.siteId),
+          eq(threadCollections.threadId, posts.id),
+        ),
       )
       .where(eq(collections.siteId, siteId))
       .groupBy(collections.id)
@@ -484,7 +512,7 @@ export function createCollectionService(
 
         return {
           ...toCollection(row.collection, slug),
-          postCount: row.postCount,
+          threadCount: row.threadCount,
           recentActivityAt: row.recentActivityAt ?? row.collection.updatedAt,
         };
       })
@@ -616,21 +644,21 @@ export function createCollectionService(
     async listByRecentActivity() {
       const lastAddedAt = sql<
         number | null
-      >`MAX(${postCollections.createdAt})`.as("last_added_at");
+      >`MAX(${threadCollections.createdAt})`.as("last_added_at");
       const rows = await db
         .select({ collection: collections, lastAddedAt })
         .from(collections)
         .leftJoin(
-          postCollections,
+          threadCollections,
           and(
-            eq(postCollections.siteId, siteId),
-            eq(collections.id, postCollections.collectionId),
+            eq(threadCollections.siteId, siteId),
+            eq(collections.id, threadCollections.collectionId),
           ),
         )
         .where(eq(collections.siteId, siteId))
         .groupBy(collections.id)
         .orderBy(
-          desc(sql`COALESCE(MAX(${postCollections.createdAt}), 0)`),
+          desc(sql`COALESCE(MAX(${threadCollections.createdAt}), 0)`),
           desc(collections.createdAt),
         );
       return hydrateCollections(rows.map((row) => row.collection));
@@ -814,11 +842,11 @@ export function createCollectionService(
 
     async delete(id) {
       await db
-        .delete(postCollections)
+        .delete(threadCollections)
         .where(
           and(
-            eq(postCollections.siteId, siteId),
-            eq(postCollections.collectionId, id),
+            eq(threadCollections.siteId, siteId),
+            eq(threadCollections.collectionId, id),
           ),
         );
       await db
@@ -1041,19 +1069,15 @@ export function createCollectionService(
       throw new Error("Failed to assign a unique directory item position");
     },
 
-    async getPostCounts() {
+    async getThreadCounts() {
       const rows = await db
         .select({
-          collectionId: postCollections.collectionId,
+          collectionId: threadCollections.collectionId,
           count: sql<number>`CAST(count(*) AS INTEGER)`.as("count"),
         })
-        .from(postCollections)
-        .innerJoin(
-          sql`post`,
-          sql`post.id = ${postCollections.postId} AND post.site_id = ${siteId}`,
-        )
-        .where(eq(postCollections.siteId, siteId))
-        .groupBy(postCollections.collectionId);
+        .from(threadCollections)
+        .where(eq(threadCollections.siteId, siteId))
+        .groupBy(threadCollections.collectionId);
 
       const counts = new Map<string, number>();
       for (const row of rows) {
@@ -1062,24 +1086,25 @@ export function createCollectionService(
       return counts;
     },
 
-    async addPost(collectionId, postId, opts) {
+    async addThread(collectionId, postId, opts) {
+      const threadId = await resolveThreadRootId(postId);
       const [maxRow] = await db
         .select({
-          maxPos: sql<number>`COALESCE(MAX(${postCollections.position}), -1)`,
+          maxPos: sql<number>`COALESCE(MAX(${threadCollections.position}), -1)`,
         })
-        .from(postCollections)
+        .from(threadCollections)
         .where(
           and(
-            eq(postCollections.siteId, siteId),
-            eq(postCollections.postId, postId),
+            eq(threadCollections.siteId, siteId),
+            eq(threadCollections.threadId, threadId),
           ),
         );
       const nextPosition = (maxRow?.maxPos ?? -1) + 1;
       await db
-        .insert(postCollections)
+        .insert(threadCollections)
         .values({
           siteId,
-          postId,
+          threadId,
           collectionId,
           createdAt: opts?.createdAt ?? now(),
           position: opts?.position ?? nextPosition,
@@ -1088,12 +1113,12 @@ export function createCollectionService(
         .onConflictDoNothing();
     },
 
-    async syncPostCollectionsWithMeta(postId, entries) {
+    async syncThreadCollectionsWithMeta(threadId, entries) {
       const seen = new Set<string>();
       const timestamp = now();
       const insertValues: {
         siteId: string;
-        postId: string;
+        threadId: string;
         collectionId: string;
         createdAt: number;
         position: number;
@@ -1105,7 +1130,7 @@ export function createCollectionService(
         seen.add(entry.collectionId);
         insertValues.push({
           siteId,
-          postId,
+          threadId,
           collectionId: entry.collectionId,
           createdAt: entry.createdAt ?? timestamp,
           position: entry.position ?? fallbackPosition,
@@ -1115,11 +1140,11 @@ export function createCollectionService(
       }
 
       const deleteQuery = db
-        .delete(postCollections)
+        .delete(threadCollections)
         .where(
           and(
-            eq(postCollections.siteId, siteId),
-            eq(postCollections.postId, postId),
+            eq(threadCollections.siteId, siteId),
+            eq(threadCollections.threadId, threadId),
           ),
         );
 
@@ -1127,7 +1152,7 @@ export function createCollectionService(
         const writeQueries = [];
         writeQueries.push(deleteQuery);
         if (insertValues.length > 0) {
-          writeQueries.push(db.insert(postCollections).values(insertValues));
+          writeQueries.push(db.insert(threadCollections).values(insertValues));
         }
         await db.batch(
           writeQueries as [
@@ -1140,88 +1165,101 @@ export function createCollectionService(
 
       await db.transaction(async (tx) => {
         await tx
-          .delete(postCollections)
+          .delete(threadCollections)
           .where(
             and(
-              eq(postCollections.siteId, siteId),
-              eq(postCollections.postId, postId),
+              eq(threadCollections.siteId, siteId),
+              eq(threadCollections.threadId, threadId),
             ),
           );
         if (insertValues.length > 0) {
-          await tx.insert(postCollections).values(insertValues);
+          await tx.insert(threadCollections).values(insertValues);
         }
       });
     },
 
-    async removePost(collectionId, postId) {
+    async removeThread(collectionId, postId) {
+      const threadId = await resolveThreadRootId(postId);
       await db
-        .delete(postCollections)
+        .delete(threadCollections)
         .where(
           and(
-            eq(postCollections.siteId, siteId),
-            eq(postCollections.postId, postId),
-            eq(postCollections.collectionId, collectionId),
+            eq(threadCollections.siteId, siteId),
+            eq(threadCollections.threadId, threadId),
+            eq(threadCollections.collectionId, collectionId),
           ),
         );
     },
 
-    async pinPost(collectionId, postId) {
+    async pinThread(collectionId, postId) {
+      const threadId = await resolveThreadRootId(postId);
       await db
-        .update(postCollections)
+        .update(threadCollections)
         .set({ pinnedAt: now() })
         .where(
           and(
-            eq(postCollections.siteId, siteId),
-            eq(postCollections.postId, postId),
-            eq(postCollections.collectionId, collectionId),
+            eq(threadCollections.siteId, siteId),
+            eq(threadCollections.threadId, threadId),
+            eq(threadCollections.collectionId, collectionId),
           ),
         );
     },
 
-    async unpinPost(collectionId, postId) {
+    async unpinThread(collectionId, postId) {
+      const threadId = await resolveThreadRootId(postId);
       await db
-        .update(postCollections)
+        .update(threadCollections)
         .set({ pinnedAt: null })
         .where(
           and(
-            eq(postCollections.siteId, siteId),
-            eq(postCollections.postId, postId),
-            eq(postCollections.collectionId, collectionId),
+            eq(threadCollections.siteId, siteId),
+            eq(threadCollections.threadId, threadId),
+            eq(threadCollections.collectionId, collectionId),
           ),
         );
     },
 
-    async getPinnedPostIds(collectionIds) {
+    async getPinnedThreadIds(collectionIds) {
       if (collectionIds.length === 0) return new Set<string>();
       const rows = await db
-        .select({ postId: postCollections.postId })
-        .from(postCollections)
+        .select({ threadId: threadCollections.threadId })
+        .from(threadCollections)
         .where(
           and(
-            eq(postCollections.siteId, siteId),
-            inArray(postCollections.collectionId, collectionIds),
-            sql`${postCollections.pinnedAt} IS NOT NULL`,
+            eq(threadCollections.siteId, siteId),
+            inArray(threadCollections.collectionId, collectionIds),
+            sql`${threadCollections.pinnedAt} IS NOT NULL`,
           ),
         );
-      return new Set(rows.map((r) => r.postId));
+      return new Set(rows.map((row) => row.threadId));
     },
 
     async getCollectionsByPostId(postId) {
       const rows = await db
         .select({ collection: collections })
-        .from(postCollections)
+        .from(posts)
+        .innerJoin(
+          threadCollections,
+          and(
+            eq(threadCollections.siteId, posts.siteId),
+            eq(threadCollections.threadId, posts.threadId),
+          ),
+        )
         .innerJoin(
           collections,
-          eq(postCollections.collectionId, collections.id),
+          eq(threadCollections.collectionId, collections.id),
         )
         .where(
           and(
-            eq(postCollections.siteId, siteId),
+            eq(posts.siteId, siteId),
             eq(collections.siteId, siteId),
-            eq(postCollections.postId, postId),
+            eq(posts.id, postId),
           ),
         )
-        .orderBy(asc(postCollections.position), asc(postCollections.createdAt));
+        .orderBy(
+          asc(threadCollections.position),
+          asc(threadCollections.createdAt),
+        );
 
       return hydrateCollections(rows.map((row) => row.collection));
     },
@@ -1230,27 +1268,38 @@ export function createCollectionService(
       const result = new Map<string, Collection[]>();
       if (postIds.length === 0) return result;
 
-      const rows = await batchQueryRows(postIds, (chunk) =>
+      const postRows = await batchQueryRows(postIds, (chunk) =>
         db
           .select({
-            postId: postCollections.postId,
+            postId: posts.id,
+            threadId: posts.threadId,
+          })
+          .from(posts)
+          .where(and(eq(posts.siteId, siteId), inArray(posts.id, chunk))),
+      );
+      const threadIds = [...new Set(postRows.map((row) => row.threadId))];
+      if (threadIds.length === 0) return result;
+      const rows = await batchQueryRows(threadIds, (chunk) =>
+        db
+          .select({
+            threadId: threadCollections.threadId,
             collection: collections,
           })
-          .from(postCollections)
+          .from(threadCollections)
           .innerJoin(
             collections,
-            eq(postCollections.collectionId, collections.id),
+            eq(threadCollections.collectionId, collections.id),
           )
           .where(
             and(
-              eq(postCollections.siteId, siteId),
+              eq(threadCollections.siteId, siteId),
               eq(collections.siteId, siteId),
-              inArray(postCollections.postId, chunk),
+              inArray(threadCollections.threadId, chunk),
             ),
           )
           .orderBy(
-            asc(postCollections.position),
-            asc(postCollections.createdAt),
+            asc(threadCollections.position),
+            asc(threadCollections.createdAt),
           ),
       );
 
@@ -1259,61 +1308,69 @@ export function createCollectionService(
         collectionRows.map((row) => row.id),
       );
 
+      const collectionsByThread = new Map<string, Collection[]>();
       for (const row of rows) {
         const slug = slugMap.get(row.collection.id);
         if (!slug) continue;
-        const existing = result.get(row.postId) ?? [];
+        const existing = collectionsByThread.get(row.threadId) ?? [];
         existing.push(toCollection(row.collection, slug));
-        result.set(row.postId, existing);
+        collectionsByThread.set(row.threadId, existing);
+      }
+
+      for (const row of postRows) {
+        const threadMemberships = collectionsByThread.get(row.threadId);
+        if (threadMemberships) {
+          result.set(row.postId, threadMemberships);
+        }
       }
 
       return result;
     },
 
-    async getCollectionPinsByPostIds(postIds) {
+    async getCollectionPinsByThreadIds(threadIds) {
       const result = new Map<string, Set<string>>();
-      if (postIds.length === 0) return result;
+      if (threadIds.length === 0) return result;
 
-      const rows = await batchQueryRows(postIds, (chunk) =>
+      const rows = await batchQueryRows(threadIds, (chunk) =>
         db
           .select({
-            postId: postCollections.postId,
-            collectionId: postCollections.collectionId,
+            threadId: threadCollections.threadId,
+            collectionId: threadCollections.collectionId,
           })
-          .from(postCollections)
+          .from(threadCollections)
           .where(
             and(
-              eq(postCollections.siteId, siteId),
-              inArray(postCollections.postId, chunk),
-              sql`${postCollections.pinnedAt} IS NOT NULL`,
+              eq(threadCollections.siteId, siteId),
+              inArray(threadCollections.threadId, chunk),
+              sql`${threadCollections.pinnedAt} IS NOT NULL`,
             ),
           ),
       );
 
       for (const row of rows) {
-        const existing = result.get(row.postId) ?? new Set<string>();
+        const existing = result.get(row.threadId) ?? new Set<string>();
         existing.add(row.collectionId);
-        result.set(row.postId, existing);
+        result.set(row.threadId, existing);
       }
 
       return result;
     },
 
-    async getPostIds(collectionId) {
+    async getThreadIds(collectionId) {
       const rows = await db
-        .select({ postId: postCollections.postId })
-        .from(postCollections)
+        .select({ threadId: threadCollections.threadId })
+        .from(threadCollections)
         .where(
           and(
-            eq(postCollections.siteId, siteId),
-            eq(postCollections.collectionId, collectionId),
+            eq(threadCollections.siteId, siteId),
+            eq(threadCollections.collectionId, collectionId),
           ),
         );
 
-      return rows.map((row) => row.postId);
+      return rows.map((row) => row.threadId);
     },
 
-    async getCollectionEntriesByPostIds(postIds) {
+    async getCollectionEntriesByThreadIds(threadIds) {
       const result = new Map<
         string,
         {
@@ -1323,58 +1380,59 @@ export function createCollectionService(
           pinnedAt: number | null;
         }[]
       >();
-      if (postIds.length === 0) return result;
+      if (threadIds.length === 0) return result;
 
-      const rows = await batchQueryRows(postIds, (chunk) =>
+      const rows = await batchQueryRows(threadIds, (chunk) =>
         db
           .select({
-            postId: postCollections.postId,
-            collectionId: postCollections.collectionId,
-            createdAt: postCollections.createdAt,
-            position: postCollections.position,
-            pinnedAt: postCollections.pinnedAt,
+            threadId: threadCollections.threadId,
+            collectionId: threadCollections.collectionId,
+            createdAt: threadCollections.createdAt,
+            position: threadCollections.position,
+            pinnedAt: threadCollections.pinnedAt,
           })
-          .from(postCollections)
+          .from(threadCollections)
           .where(
             and(
-              eq(postCollections.siteId, siteId),
-              inArray(postCollections.postId, chunk),
+              eq(threadCollections.siteId, siteId),
+              inArray(threadCollections.threadId, chunk),
             ),
           )
           .orderBy(
-            asc(postCollections.position),
-            asc(postCollections.createdAt),
+            asc(threadCollections.position),
+            asc(threadCollections.createdAt),
           ),
       );
 
       for (const row of rows) {
-        const existing = result.get(row.postId) ?? [];
+        const existing = result.get(row.threadId) ?? [];
         existing.push({
           collectionId: row.collectionId,
           createdAt: row.createdAt,
           position: row.position,
           pinnedAt: row.pinnedAt,
         });
-        result.set(row.postId, existing);
+        result.set(row.threadId, existing);
       }
 
       return result;
     },
 
-    async syncPostCollections(postId, collectionIds) {
+    async syncThreadCollections(threadId, collectionIds) {
       const nextCollectionIds = [...new Set(collectionIds)];
 
       // Fetch existing rows to preserve createdAt for retained collections
       const existingRows = await db
         .select({
-          collectionId: postCollections.collectionId,
-          createdAt: postCollections.createdAt,
+          collectionId: threadCollections.collectionId,
+          createdAt: threadCollections.createdAt,
+          pinnedAt: threadCollections.pinnedAt,
         })
-        .from(postCollections)
+        .from(threadCollections)
         .where(
           and(
-            eq(postCollections.siteId, siteId),
-            eq(postCollections.postId, postId),
+            eq(threadCollections.siteId, siteId),
+            eq(threadCollections.threadId, threadId),
           ),
         );
 
@@ -1382,25 +1440,26 @@ export function createCollectionService(
         return;
       }
 
-      const existingTimestamps = new Map(
-        existingRows.map((r) => [r.collectionId, r.createdAt]),
+      const existingEntries = new Map(
+        existingRows.map((row) => [row.collectionId, row]),
       );
       const timestamp = now();
       const insertValues = nextCollectionIds.map((collectionId, index) => ({
         siteId,
-        postId,
+        threadId,
         collectionId,
-        createdAt: existingTimestamps.get(collectionId) ?? timestamp,
+        createdAt: existingEntries.get(collectionId)?.createdAt ?? timestamp,
         position: index,
+        pinnedAt: existingEntries.get(collectionId)?.pinnedAt ?? null,
       }));
 
       // Delete all and re-insert to preserve user-specified ordering
       const deleteQuery = db
-        .delete(postCollections)
+        .delete(threadCollections)
         .where(
           and(
-            eq(postCollections.siteId, siteId),
-            eq(postCollections.postId, postId),
+            eq(threadCollections.siteId, siteId),
+            eq(threadCollections.threadId, threadId),
           ),
         );
 
@@ -1408,7 +1467,7 @@ export function createCollectionService(
         const writeQueries = [];
         writeQueries.push(deleteQuery);
         if (insertValues.length > 0) {
-          writeQueries.push(db.insert(postCollections).values(insertValues));
+          writeQueries.push(db.insert(threadCollections).values(insertValues));
         }
         await db.batch(
           writeQueries as [
@@ -1421,15 +1480,15 @@ export function createCollectionService(
 
       await db.transaction(async (tx) => {
         await tx
-          .delete(postCollections)
+          .delete(threadCollections)
           .where(
             and(
-              eq(postCollections.siteId, siteId),
-              eq(postCollections.postId, postId),
+              eq(threadCollections.siteId, siteId),
+              eq(threadCollections.threadId, threadId),
             ),
           );
         if (insertValues.length > 0) {
-          await tx.insert(postCollections).values(insertValues);
+          await tx.insert(threadCollections).values(insertValues);
         }
       });
     },

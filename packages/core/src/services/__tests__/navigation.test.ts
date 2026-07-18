@@ -810,7 +810,7 @@ describe("NavItemService", () => {
       // Add it to the collection recently
       sqlite
         .prepare(
-          `INSERT INTO post_collection (site_id, post_id, collection_id, created_at, position)
+          `INSERT INTO thread_collection (site_id, thread_id, collection_id, created_at, position)
            VALUES (?, ?, ?, ?, 0)`,
         )
         .run(DEFAULT_TEST_SITE_ID, "pst_test001", TEST_COLLECTION_ID, ts);
@@ -838,7 +838,7 @@ describe("NavItemService", () => {
         );
       sqlite
         .prepare(
-          `INSERT INTO post_collection (site_id, post_id, collection_id, created_at, position)
+          `INSERT INTO thread_collection (site_id, thread_id, collection_id, created_at, position)
            VALUES (?, ?, ?, ?, 0)`,
         )
         .run(DEFAULT_TEST_SITE_ID, "pst_test002", TEST_COLLECTION_ID, oldTs);
@@ -847,6 +847,35 @@ describe("NavItemService", () => {
         TEST_COLLECTION_ID,
       ]);
       expect(result.has(TEST_COLLECTION_ID)).toBe(false);
+    });
+
+    it("detects freshness from a recent root edit even when Thread activity is old", async () => {
+      const oldTs = now() - 60 * 60 * 72;
+      const recentTs = now();
+      sqlite
+        .prepare(
+          `INSERT INTO post (id, site_id, thread_id, format, status, visibility, created_at, updated_at, last_activity_at)
+           VALUES (?, ?, ?, 'note', 'published', 'public', ?, ?, ?)`,
+        )
+        .run(
+          "pst_edited",
+          DEFAULT_TEST_SITE_ID,
+          "pst_edited",
+          oldTs,
+          recentTs,
+          oldTs,
+        );
+      sqlite
+        .prepare(
+          `INSERT INTO thread_collection (site_id, thread_id, collection_id, created_at, position)
+           VALUES (?, ?, ?, ?, 0)`,
+        )
+        .run(DEFAULT_TEST_SITE_ID, "pst_edited", TEST_COLLECTION_ID, oldTs);
+
+      const result = await navItemService.getCollectionFreshness([
+        TEST_COLLECTION_ID,
+      ]);
+      expect(result.get(TEST_COLLECTION_ID)).toBe(recentTs);
     });
 
     it("detects freshness from recent thread replies", async () => {
@@ -871,7 +900,7 @@ describe("NavItemService", () => {
       // Add the root to the collection (old)
       sqlite
         .prepare(
-          `INSERT INTO post_collection (site_id, post_id, collection_id, created_at, position)
+          `INSERT INTO thread_collection (site_id, thread_id, collection_id, created_at, position)
            VALUES (?, ?, ?, ?, 0)`,
         )
         .run(DEFAULT_TEST_SITE_ID, "pst_root", TEST_COLLECTION_ID, oldTs);

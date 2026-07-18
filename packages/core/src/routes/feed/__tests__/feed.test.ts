@@ -172,7 +172,7 @@ describe("Atom Feed Routes", () => {
       );
     });
 
-    it("orders featured items by featuredAt and preserves original publishedAt", async () => {
+    it("orders Featured Threads by selected Post publication time", async () => {
       const { app, services, db } = createFeedTestApp();
 
       const olderPublished = await services.posts.create({
@@ -203,11 +203,9 @@ describe("Atom Feed Routes", () => {
       expect(res.status).toBe(200);
 
       const xml = await res.text();
-      // Older published should appear first because it has a later featuredAt
-      expect(xml.indexOf("Older published")).toBeLessThan(
-        xml.indexOf("Newer published"),
+      expect(xml.indexOf("Newer published")).toBeLessThan(
+        xml.indexOf("Older published"),
       );
-      // <published> should reflect original publishedAt, not featuredAt
       expect(xml).toContain("<published>1970-01-01T00:16:40.000Z</published>");
       expect(xml).toContain("<published>1970-01-01T00:33:20.000Z</published>");
     });
@@ -351,6 +349,45 @@ describe("Atom Feed Routes", () => {
       const xml = await res.text();
       expect(xml).toContain("Featured Post");
       expect(xml).not.toContain("Regular Post");
+    });
+
+    it("deduplicates by Thread and orders from a Featured Child publication", async () => {
+      const { app, services } = createFeedTestApp();
+
+      const olderRoot = await services.posts.create({
+        format: "note",
+        title: "Older Thread Root",
+        bodyMarkdown: "Older root body",
+        status: "published",
+        publishedAt: 1000,
+      });
+      await services.posts.create({
+        format: "note",
+        title: "Featured Child",
+        bodyMarkdown: "Selected child body",
+        status: "published",
+        replyToId: olderRoot.id,
+        featured: true,
+        publishedAt: 3000,
+      });
+      await services.posts.create({
+        format: "note",
+        title: "Newer Root",
+        bodyMarkdown: "Newer root body",
+        status: "published",
+        featured: true,
+        publishedAt: 2000,
+      });
+
+      const res = await app.request("/featured/feed");
+      expect(res.status).toBe(200);
+
+      const xml = await res.text();
+      expect(xml.match(/<entry>/g)).toHaveLength(2);
+      expect(xml).toContain("Selected child body");
+      expect(xml.indexOf("Older Thread Root")).toBeLessThan(
+        xml.indexOf("Newer Root"),
+      );
     });
   });
 

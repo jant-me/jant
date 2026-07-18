@@ -3,7 +3,8 @@
 Give `/featured/` native pagination via a `feed=featured` taxonomy term,
 and make export/import **lossless** for featured/pinned state, collection
 membership (with `collected_at`, `position`, per-collection `pinned_at`),
-and reply-level versions of all of the above. Reorganize Jant-private
+and reply-level featured/pinned state. Collection membership is shared by the
+whole Thread and serialized on its root. Reorganize Jant-private
 frontmatter under `extra.jant.*` and switch the reply marker to a
 JSON-inside-HTML-comment format so nested data stops fighting with
 attribute escaping.
@@ -26,20 +27,18 @@ Two problems sit on top of each other:
      reimport.
    - `pinnedAt` has the same bug via `extra.pinned = true`.
    - Reply markers (`<!-- jant:reply ... -->` in `export.ts:687-707`) carry
-     no `featured`, `pinned`, or `collections` attributes. Replies that are
-     featured/pinned or in a collection silently lose those states entirely
-     on export; import's `replyData` (`import-site.js:1959-1976`) has no
-     fields to receive them.
-   - `post_collection.createdAt` (= "collected_at"), `position`, and
+     no `featured` or `pinned` attributes, so those reply states are lost on
+     export. Legacy reply-level Collection entries are folded into the shared
+     Thread union during import rather than serialized on replies again.
+   - `thread_collection.createdAt` (= "collected_at"), `position`, and
      `pinnedAt` (collection-level pin, independent from global pin) are
      not exported at all — only the bare slug list in `taxonomies.collections`
      and a bool-only `extra.collection_pins`. Import resets `createdAt` to
      `now()` and ignores `collection_pins` entirely.
 
-The data model already supports the semantics we want (replies in
-collections, replies featured, per-collection pin timestamps — see
-`schema.ts:541-570` and `post.ts:1462, 1475-1476`). Only the serialization
-layer is broken.
+The data model supports shared Thread Collections, reply featured state, and
+per-collection pin timestamps. The serialization layer must keep Collection
+metadata on the Thread root and preserve legacy reply memberships by union.
 
 Since Jant is pre-1.0, this refactor does **not** preserve
 backward compatibility with the previously committed canonical fixture.
@@ -208,9 +207,9 @@ all intentional.
   `update` payloads accept `featuredAt?: number | null` and
   `pinnedAt?: number | null` directly (current `featured`/`pinned` bools
   become unused and can be removed; drop them, no backward compat).
-- **`packages/core/src/services/collection.ts`** — `addPost` signature
-  extends to `addPost(collectionId, postId, opts?: { createdAt?, position?, pinnedAt? })`.
-  New internal helper `syncPostCollectionsWithMeta(postId, entries: CollectionEntryInput[])`
+- **`packages/core/src/services/collection.ts`** — `addThread` accepts
+  `addThread(collectionId, threadId, opts?: { createdAt?, position?, pinnedAt? })`.
+  New internal helper `syncThreadCollectionsWithMeta(threadId, entries: CollectionEntryInput[])`
   used by import to set `createdAt`/`position`/`pinnedAt` per entry in one
   transaction. Existing callers (admin UI) pass no opts and get
   `now()`-based defaults — unchanged behavior.
@@ -224,13 +223,10 @@ all intentional.
     - Emit `[extra.jant]` with `featured_at` / `pinned_at` (ISO) when set.
     - Emit `[[extra.jant.collections]]` array with per-entry
       `slug` / `collected_at` / `position` / `pinned_at`.
-  - Reply serialization emits the new JSON comment; helper
-    `buildReplyMarker(reply, replyMediaPostCollections, collectionSlugMap)`
-    produces the full JSON payload including `featured_at`, `pinned_at`,
-    and `collections[]` for the reply.
-  - Pass `collectionsByPost` and `collectionPinsByPost` **through** to
-    replies (currently only root gets them — `export.ts:245, 253`). Build
-    per-reply structured entries the same way root does.
+  - Reply serialization emits the new JSON comment with `featured_at` and
+    `pinned_at`; Collection entries stay on the Thread root only.
+  - Fetch Collection entries by Thread root and reuse that single membership
+    set for the exported Thread.
   - `featured.html` template: manual render of first page of
     `feed=featured`, links to `/feed/featured/page/N/` for N ≥ 2.
   - `index.html` template: always pull from `feed=public`; featured stays on
@@ -264,11 +260,11 @@ all intentional.
     to `taxonomies.collections` slug list with no timestamp metadata
     (tolerates hand-authored Zola sites, not a compat shim for Jant's own
     output).
-  - `replyData` gains `featuredAt`, `pinnedAt`, and `collectionEntries`
-    parsed from the reply JSON. `replySegment.attrs` is now an object
+  - `replyData` gains `featuredAt` and `pinnedAt` parsed from the reply JSON.
+    `replySegment.attrs` is now an object
     with typed fields, not a flat string map.
-  - Add `collectionIds` / structured entries to the reply `createPost`
-    call (currently omitted entirely).
+  - Union any legacy root/reply Collection entries before creating the root;
+    reply `createPost` calls omit Collection membership.
 
 ### Theme
 
@@ -289,16 +285,16 @@ all intentional.
   - Collection membership emits `[[extra.jant.collections]]` with
     `collected_at`, `position`, and `pinned_at` when set.
   - Reply marker is a multi-line HTML comment with valid JSON, including
-    `featured_at` / `pinned_at` / `collections[]`.
+    `featured_at` / `pinned_at` but no per-reply Collection list.
 - **New `packages/core/src/__tests__/export-import-roundtrip.test.ts`**
   - Seed DB: root post featured at T1, pinned at T2, in collection A
     (collected at T3, pinned in A at T4, position 5) and collection B.
-    Reply featured at T5, in collection A (collected at T6, position 2).
+    Reply featured at T5; the Thread shares the root's Collection set.
   - Export, re-import into a fresh DB, assert all timestamps, positions,
     and pinning flags match exactly.
 - **`packages/core/src/services/__tests__/post.test.ts`** and
   **`collection.test.ts`** — cover the new `featuredAt`/`pinnedAt`
-  direct-timestamp path and `addPost` with opts.
+  direct-timestamp path and `addThread` with opts.
 
 ### Docs
 
@@ -330,16 +326,16 @@ all intentional.
      - Else `featured !== undefined` → `true` → `now()`, `false` → `null`.
      - Else leave unchanged (update path only).
    - Admin UI form **unchanged** — it keeps sending `featured: true/false`.
-   - Extend `collection.ts` `addPost(id, id, opts?)` and add
-     `syncPostCollectionsWithMeta`.
+   - Extend `collection.ts` `addThread(id, id, opts?)` and add
+     `syncThreadCollectionsWithMeta`.
    - Tests cover: UI-style bool input, import-style ISO input, both
      provided (ISO wins), neither provided (no change on update).
 
 2. **Export: new frontmatter + reply marker format.**
    - Rewrite `buildPostMarkdown` frontmatter block.
    - Rewrite reply serialization with `buildReplyMarker`.
-   - Teach replies about their own collections / pins (pass
-     `collectionsByPost` / `collectionPinsByPost` down).
+   - Keep Collection metadata on the Thread root; replies carry only their
+     own post-level featured/pinned metadata.
    - Update `feedTermsForPost` for featured.
    - Update `export-service.test.ts` assertions to the new format.
 
@@ -351,7 +347,8 @@ all intentional.
 4. **Import: new frontmatter + reply marker consumption.**
    - Read `extra.jant.featured_at` / `pinned_at` and reply JSON fields.
    - Pass timestamps as-is to `createPost`.
-   - Pass structured collection entries for both root and reply posts.
+   - Union structured Collection entries across legacy root/reply input and
+     pass them only when creating the Thread root.
    - Add the roundtrip test.
 
 5. **Theme: `/featured/` pagination + new frontmatter reads.**
@@ -374,14 +371,14 @@ all intentional.
 - `mise run check-lint`.
 - `mise run demo-source-export-canonical-site-export` — fixture
   regenerates cleanly.
-- Manual: export a site with a featured reply that lives in two
-  collections, one of which pins it; import into a fresh local DB;
+- Manual: export a site with a featured reply whose Thread lives in two
+  Collections, one of which pins the Thread; import into a fresh local DB;
   confirm:
   - `/featured/` lists the post and paginates when there are enough
     featured posts.
   - `featured_at` / `pinned_at` timestamps in DB match the original.
-  - `post_collection.createdAt` / `position` / `pinnedAt` for the reply
-    match the original.
+  - `thread_collection.createdAt` / `position` / `pinnedAt` for the root
+    match the original shared Thread membership.
   - `/` renders Latest and `/featured/` renders Featured.
 
 ## Risks & open questions

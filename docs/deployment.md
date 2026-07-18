@@ -273,6 +273,14 @@ npm run deploy   # deploy to Cloudflare; applies remote migrations
 
 If your repo auto-deploys on push (via one-click deploy or the GitHub Actions workflow above), you can skip the local commands: commit the updated `package.json` and lockfile and push to `main`. Remote migrations run as part of the deploy.
 
+Read the release notes before upgrades that replace or remove database tables.
+`jant deploy` applies migrations before it uploads the new Worker, so a
+destructive schema cutover may require a short write maintenance window. Stop
+or drain the old deployment's writers until the migration, new Worker upload,
+and post-deploy checks have completed. Migration validation can detect bad data
+or a count mismatch; it cannot make concurrent writes safe during a table
+replacement.
+
 ## Common errors
 
 - `uses R2 which is only available with an R2 subscription`: R2 isn't enabled. Open the [R2 dashboard](https://dash.cloudflare.com/?to=/:account/r2) and accept the terms.

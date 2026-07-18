@@ -27,6 +27,7 @@ import type { CollectionSubmitDetail } from "./collection-types.js";
 
 interface PostMenuData {
   id: string;
+  threadId: string;
   pinned: boolean;
   pinnedInCollection: boolean;
   featured: boolean;
@@ -44,7 +45,7 @@ interface CollectionsResponse {
   collections?: CollectionItem[];
 }
 
-interface PostCollectionsResponse {
+interface ThreadCollectionsResponse {
   collectionIds?: string[];
 }
 
@@ -78,6 +79,34 @@ export function removeLeadingFeedDivider(
   firstDivider?.remove();
 }
 
+function findThreadRootArticle(threadId: string): HTMLElement | null {
+  return (
+    Array.from(
+      document.querySelectorAll<HTMLElement>("article[data-post-id]"),
+    ).find((article) => article.dataset.postId === threadId) ?? null
+  );
+}
+
+function readPostMenuData(article: HTMLElement): PostMenuData | null {
+  const id = article.dataset.postId;
+  if (!id) return null;
+
+  const threadId = article.dataset.threadRootId ?? id;
+  const threadRootArticle = findThreadRootArticle(threadId) ?? article;
+
+  return {
+    id,
+    threadId,
+    pinned: article.hasAttribute("data-post-pinned"),
+    pinnedInCollection: threadRootArticle.hasAttribute(
+      "data-post-pinned-in-collection",
+    ),
+    featured: article.hasAttribute("data-post-featured"),
+    visibility: article.dataset.postVisibility ?? "public",
+    isReply: threadId !== id || article.hasAttribute("data-post-reply"),
+  };
+}
+
 export class JantPostMenu extends LitElement {
   static properties = {
     _open: { state: true },
@@ -89,7 +118,7 @@ export class JantPostMenu extends LitElement {
     _collections: { state: true },
     _collectionsLoading: { state: true },
     _collectionSearch: { state: true },
-    _postCollectionIds: { state: true },
+    _threadCollectionIds: { state: true },
     _addCollectionPanelOpen: { state: true },
   };
 
@@ -102,7 +131,7 @@ export class JantPostMenu extends LitElement {
   declare _collections: CollectionItem[] | null;
   declare _collectionsLoading: boolean;
   declare _collectionSearch: string;
-  declare _postCollectionIds: string[];
+  declare _threadCollectionIds: string[];
   declare _addCollectionPanelOpen: boolean;
   declare _triggerEl: HTMLElement | null;
 
@@ -127,7 +156,7 @@ export class JantPostMenu extends LitElement {
     this._collections = null;
     this._collectionsLoading = false;
     this._collectionSearch = "";
-    this._postCollectionIds = [];
+    this._threadCollectionIds = [];
     this._addCollectionPanelOpen = false;
     this._triggerEl = null;
   }
@@ -246,25 +275,16 @@ export class JantPostMenu extends LitElement {
       const article = trigger.closest<HTMLElement>("article[data-post]");
       if (!article) return;
 
-      const postId = article.dataset.postId;
-      if (!postId) return;
+      const menuData = readPostMenuData(article);
+      if (!menuData) return;
 
       // Toggle: close if same post, open if different
-      if (this._open && this._data?.id === postId) {
+      if (this._open && this._data?.id === menuData.id) {
         this.#close();
         return;
       }
 
-      this._data = {
-        id: postId,
-        pinned: article.hasAttribute("data-post-pinned"),
-        pinnedInCollection: article.hasAttribute(
-          "data-post-pinned-in-collection",
-        ),
-        featured: article.hasAttribute("data-post-featured"),
-        visibility: article.dataset.postVisibility ?? "public",
-        isReply: article.hasAttribute("data-post-reply"),
-      };
+      this._data = menuData;
 
       // Position relative to trigger
       this._triggerEl = trigger;
@@ -472,19 +492,10 @@ export class JantPostMenu extends LitElement {
    * relative to the post's menu trigger button.
    */
   openCollectionsForPost(article: HTMLElement) {
-    const postId = article.dataset.postId;
-    if (!postId) return;
+    const menuData = readPostMenuData(article);
+    if (!menuData || menuData.isReply) return;
 
-    this._data = {
-      id: postId,
-      pinned: article.hasAttribute("data-post-pinned"),
-      pinnedInCollection: article.hasAttribute(
-        "data-post-pinned-in-collection",
-      ),
-      featured: article.hasAttribute("data-post-featured"),
-      visibility: article.dataset.postVisibility ?? "public",
-      isReply: article.hasAttribute("data-post-reply"),
-    };
+    this._data = menuData;
 
     const trigger = article.querySelector<HTMLElement>(
       "[data-post-menu-trigger]",
@@ -650,7 +661,7 @@ export class JantPostMenu extends LitElement {
 
   #toggleCollectionPin() {
     if (!this._data) return;
-    const postId = this._data.id;
+    const threadId = this._data.threadId;
     const collectionId = document.querySelector<HTMLElement>(
       "[data-collection-id]",
     )?.dataset.collectionId;
@@ -659,9 +670,7 @@ export class JantPostMenu extends LitElement {
     const newPinned = !this._data.pinnedInCollection;
 
     // Optimistic update
-    const article = document.querySelector<HTMLElement>(
-      `article[data-post-id="${postId}"]`,
-    );
+    const article = findThreadRootArticle(threadId);
     if (article) {
       if (newPinned) {
         article.setAttribute("data-post-pinned-in-collection", "");
@@ -677,14 +686,14 @@ export class JantPostMenu extends LitElement {
     this.#close();
 
     const method = newPinned ? "PUT" : "DELETE";
-    fetch(`/api/collections/${collectionId}/posts/${postId}/pin`, { method })
+    fetch(`/api/collections/${collectionId}/threads/${threadId}/pin`, {
+      method,
+    })
       .then((res) => {
         if (!res.ok) throw new Error();
       })
       .catch(() => {
-        const el = document.querySelector<HTMLElement>(
-          `article[data-post-id="${postId}"]`,
-        );
+        const el = findThreadRootArticle(threadId);
         if (el) {
           if (newPinned) {
             el.removeAttribute("data-post-pinned-in-collection");
@@ -754,7 +763,7 @@ export class JantPostMenu extends LitElement {
   }
 
   async #openCollectionPicker() {
-    if (!this._data) return;
+    if (!this._data || this._data.isReply) return;
     const postId = this._data.id;
     this._view = "collections";
     this._collectionSearch = "";
@@ -776,18 +785,18 @@ export class JantPostMenu extends LitElement {
       const collectionsData =
         (await collectionsRes.json()) as CollectionsResponse;
       const collections = collectionsData.collections ?? [];
-      let postCollectionIds = this._postCollectionIds;
+      let threadCollectionIds = this._threadCollectionIds;
 
       if (postRes.ok) {
-        const postData = (await postRes.json()) as PostCollectionsResponse;
-        postCollectionIds = postData.collectionIds ?? [];
+        const postData = (await postRes.json()) as ThreadCollectionsResponse;
+        threadCollectionIds = postData.collectionIds ?? [];
       }
       this.#collectionPickerOrder = getSelectedFirstOrder(
         collections,
-        postCollectionIds,
+        threadCollectionIds,
       );
       this._collections = collections;
-      this._postCollectionIds = postCollectionIds;
+      this._threadCollectionIds = threadCollectionIds;
     } catch {
       this._collections = this._collections ?? [];
       showToast("Could not load collections.", "error");
@@ -800,23 +809,23 @@ export class JantPostMenu extends LitElement {
 
   #toggleCollection(collectionId: string) {
     if (!this._data) return;
-    const postId = this._data.id;
-    const isSelected = this._postCollectionIds.includes(collectionId);
+    const threadId = this._data.threadId;
+    const isSelected = this._threadCollectionIds.includes(collectionId);
 
     // Optimistic update
     if (isSelected) {
-      this._postCollectionIds = this._postCollectionIds.filter(
+      this._threadCollectionIds = this._threadCollectionIds.filter(
         (id) => id !== collectionId,
       );
     } else {
-      this._postCollectionIds = [...this._postCollectionIds, collectionId];
+      this._threadCollectionIds = [...this._threadCollectionIds, collectionId];
     }
     this.#collectionsDirty = true;
     showToast(isSelected ? "Removed from collection." : "Added to collection.");
 
     // Fire request in background, revert on failure
     if (isSelected) {
-      fetch(`/api/collections/${collectionId}/posts/${postId}`, {
+      fetch(`/api/collections/${collectionId}/threads/${threadId}`, {
         method: "DELETE",
       })
         .then((res) => {
@@ -825,19 +834,19 @@ export class JantPostMenu extends LitElement {
         })
         .catch(() => {
           // Revert: re-add
-          if (!this._postCollectionIds.includes(collectionId)) {
-            this._postCollectionIds = [
-              ...this._postCollectionIds,
+          if (!this._threadCollectionIds.includes(collectionId)) {
+            this._threadCollectionIds = [
+              ...this._threadCollectionIds,
               collectionId,
             ];
           }
           showToast("Could not remove from collection. Try again.", "error");
         });
     } else {
-      fetch(`/api/collections/${collectionId}/posts`, {
+      fetch(`/api/collections/${collectionId}/threads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId }),
+        body: JSON.stringify({ threadId }),
       })
         .then((res) => {
           if (!res.ok) {
@@ -849,7 +858,7 @@ export class JantPostMenu extends LitElement {
         })
         .catch(() => {
           // Revert: remove
-          this._postCollectionIds = this._postCollectionIds.filter(
+          this._threadCollectionIds = this._threadCollectionIds.filter(
             (id) => id !== collectionId,
           );
           showToast("Could not add to collection. Try again.", "error");
@@ -920,14 +929,14 @@ export class JantPostMenu extends LitElement {
 
       this._collections = [...(this._collections ?? []), newItem];
 
-      // Auto-add the post to the newly created collection
+      // Auto-add the thread to the newly created collection
       if (this._data) {
-        await fetch(`/api/collections/${created.id}/posts`, {
+        await fetch(`/api/collections/${created.id}/threads`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ postId: this._data.id }),
+          body: JSON.stringify({ threadId: this._data.threadId }),
         });
-        this._postCollectionIds = [...this._postCollectionIds, created.id];
+        this._threadCollectionIds = [...this._threadCollectionIds, created.id];
       }
 
       await this.#refreshComposeCollections();
@@ -1193,7 +1202,7 @@ export class JantPostMenu extends LitElement {
             ? html`<div class="post-menu-picker-empty">Loading...</div>`
             : filtered.length > 0
               ? filtered.map((c) => {
-                  const selected = this._postCollectionIds.includes(c.id);
+                  const selected = this._threadCollectionIds.includes(c.id);
                   return html`
                     <button
                       type="button"
@@ -1492,19 +1501,22 @@ export class JantPostMenu extends LitElement {
               <span class="post-menu-item-trailing">${this.#iconEdit()}</span>
             </button>
 
-            <button
-              type="button"
-              role="menuitem"
-              class="post-menu-item"
-              data-post-menu-open-collections
-              @click=${() => this.#openCollectionPicker()}
-            >
-              <span class="post-menu-item-label">Add to collection</span>
-              <span class="post-menu-item-trailing post-menu-item-chevron"
-                >${this.#iconChevronRight()}</span
-              >
-            </button>
-
+            ${this._data.isReply
+              ? nothing
+              : html`
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="post-menu-item"
+                    data-post-menu-open-collections
+                    @click=${() => this.#openCollectionPicker()}
+                  >
+                    <span class="post-menu-item-label">Add to collection</span>
+                    <span class="post-menu-item-trailing post-menu-item-chevron"
+                      >${this.#iconChevronRight()}</span
+                    >
+                  </button>
+                `}
             ${this._data.isReply
               ? nothing
               : html`
@@ -1562,7 +1574,7 @@ export class JantPostMenu extends LitElement {
                     >
                   </button>
                 `}
-            ${collectionId
+            ${collectionId && !this._data.isReply
               ? html`
                   <button
                     type="button"

@@ -327,7 +327,7 @@ describe("JantPostMenu", () => {
         }
 
         if (
-          url === "/api/collections/collection-1/posts/post-1" &&
+          url === "/api/collections/collection-1/threads/post-1" &&
           method === "DELETE"
         ) {
           selectedIds.splice(0, 1);
@@ -397,7 +397,7 @@ describe("JantPostMenu", () => {
     keydown(requireElement(options[0] ?? null, "expected first option"), " ");
     await Promise.resolve();
     await menu.updateComplete;
-    expect(menu._postCollectionIds).toEqual([]);
+    expect(menu._threadCollectionIds).toEqual([]);
 
     options = Array.from(
       menu.querySelectorAll<HTMLButtonElement>(".post-menu-picker-option"),
@@ -410,6 +410,48 @@ describe("JantPostMenu", () => {
     );
     await menu.updateComplete;
     expect(document.activeElement).toBe(searchInput);
+  });
+
+  it("derives Child action scope from Thread identity", async () => {
+    const { menu, trigger } = await createMenu();
+    const article = requireElement(
+      trigger.closest<HTMLElement>("article[data-post]"),
+      "expected post article",
+    );
+    article.dataset.postId = "reply-1";
+    article.dataset.threadRootId = "post-1";
+    document.body.insertAdjacentHTML(
+      "afterbegin",
+      '<div data-collection-id="collection-1"></div>',
+    );
+
+    click(trigger);
+    await menu.updateComplete;
+
+    expect(menu.textContent).toContain("Edit");
+    expect(menu.textContent).toContain("Add to Featured");
+    expect(menu.textContent).toContain("Delete");
+    expect(menu.querySelector("[data-post-menu-open-collections]")).toBeNull();
+    expect(menu.querySelector("[data-post-menu-open-visibility]")).toBeNull();
+    expect(menu.textContent).not.toContain("Pin this post");
+    expect(menu.textContent).not.toContain("Pin in collection");
+  });
+
+  it("blocks the collection shortcut for a Child without a reply marker", async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const { menu, trigger } = await createMenu();
+    const article = requireElement(
+      trigger.closest<HTMLElement>("article[data-post]"),
+      "expected post article",
+    );
+    article.dataset.postId = "reply-1";
+    article.dataset.threadRootId = "post-1";
+
+    menu.openCollectionsForPost(article);
+    await menu.updateComplete;
+
+    expect(menu.textContent?.trim()).toBe("");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("closes the collection picker with Enter without toggling the focused option", async () => {
@@ -466,7 +508,7 @@ describe("JantPostMenu", () => {
     keydown(firstOption, "Enter");
     await menu.updateComplete;
 
-    expect(menu._postCollectionIds).toEqual(["collection-1"]);
+    expect(menu._threadCollectionIds).toEqual(["collection-1"]);
     expect(menu.textContent?.trim()).toBe("");
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
   });
@@ -564,7 +606,7 @@ describe("JantPostMenu", () => {
         }
 
         if (
-          url === "/api/collections/collection-3/posts" &&
+          url === "/api/collections/collection-3/threads" &&
           method === "POST"
         ) {
           selectedIds.push("collection-3");
@@ -572,7 +614,7 @@ describe("JantPostMenu", () => {
         }
 
         if (
-          url === "/api/collections/collection-2/posts/post-1" &&
+          url === "/api/collections/collection-2/threads/post-1" &&
           method === "DELETE"
         ) {
           const index = selectedIds.indexOf("collection-2");

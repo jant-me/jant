@@ -15,6 +15,7 @@ import {
   CompactCollectionTags,
   PostMenuTriggerButton,
 } from "../shared/PostFooter.js";
+import { getPostArticleAttributes } from "../shared/post-article-attributes.js";
 
 // External link icon (shared by LinkCard)
 const ExternalLinkIcon = () => (
@@ -46,20 +47,11 @@ const SearchResultCard: FC<{
     }
   }
 
-  const hasCollections = post.collections.length > 0;
+  const isChildPost = !!post.replyToId || !!post.threadRootId;
+  const visibleCollections = isChildPost ? [] : post.collections;
+  const hasCollections = visibleCollections.length > 0;
 
-  // Data attributes required by the client-side post menu component
-  const postAttrs = {
-    "data-post": "",
-    "data-format": post.format,
-    "data-post-id": post.id,
-    "data-post-slug": post.slug,
-    "data-thread-root-id": post.threadRootId ?? post.id,
-    ...(post.pinned ? { "data-post-pinned": "" } : {}),
-    ...(post.featured ? { "data-post-featured": "" } : {}),
-    "data-post-visibility": post.visibility,
-    ...(post.threadRootId ? { "data-post-reply": "" } : {}),
-  };
+  const postAttrs = getPostArticleAttributes(post);
 
   const footer = (
     <footer class="post-menu-footer mt-2">
@@ -69,7 +61,7 @@ const SearchResultCard: FC<{
           <time datetime={post.publishedAt}>{post.publishedAtFormatted}</time>
         </a>
         <CompactCollectionTags
-          collections={post.collections}
+          collections={visibleCollections}
           showSeparator={hasCollections}
         />
       </div>

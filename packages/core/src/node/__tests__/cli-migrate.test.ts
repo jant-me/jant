@@ -83,6 +83,12 @@ describe("jant migrate", () => {
     vi.doMock("../../../bin/lib/load-node-runtime.js", () => ({
       loadNodeRuntime: vi.fn(async () => ({ migrate })),
     }));
+    vi.doMock("../../../bin/lib/thread-collection-migration.js", () => ({
+      preflightThreadCollectionMigration: vi.fn(async () => ({
+        phase: "fresh",
+      })),
+      verifyThreadCollectionMigration: vi.fn(async () => undefined),
+    }));
 
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 

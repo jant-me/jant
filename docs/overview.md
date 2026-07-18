@@ -4,7 +4,7 @@
 >
 > Jant is open source under AGPL-3.0-or-later. Source code is hosted on [GitHub](https://github.com/jant-me/jant); please report problems via [Issues](https://github.com/jant-me/jant/issues).
 
-Jant is a small blog system for one author. It supports three post formats — **Note, Link, Quote** — that you can connect into a Thread or group into a Collection. Publishing feels closer to Twitter or Threads than to a WordPress or Ghost dashboard.
+Jant is a small blog system for one author. It supports three post formats — **Note, Link, Quote** — that you can connect into Threads and group into Collections. Publishing feels closer to Twitter or Threads than to a WordPress or Ghost dashboard.
 
 ![Jant Home](https://jant-me-media.jant.me/assets/jant-home-800.png)
 

@@ -663,6 +663,11 @@ describe("JantComposeDialog", () => {
     expect(
       el.querySelector(".compose-thread-layout.compose-reply-compose-layout"),
     ).not.toBeNull();
+    expect(el.querySelector(".compose-collection-trigger")).toBeNull();
+    expect(
+      el.querySelector(".compose-action-row-without-collection"),
+    ).not.toBeNull();
+    expect(el.querySelector(".compose-publish-main")).not.toBeNull();
   });
 
   it("shows an Edit title with the format selector above the post when editing a reply", async () => {
@@ -684,6 +689,7 @@ describe("JantComposeDialog", () => {
             title: "Hello",
             body: null,
             replyToId: parentId,
+            collectionIds: ["col-thread"],
           };
       return Promise.resolve(
         new Response(JSON.stringify(json), {
@@ -703,6 +709,8 @@ describe("JantComposeDialog", () => {
       el.querySelector(".compose-dialog-header-center .compose-segmented"),
     ).toBeNull();
     expect(el.querySelector(".compose-thread-post-header")).not.toBeNull();
+    expect(el._collectionIds).toEqual([]);
+    expect(el.querySelector(".compose-collection-trigger")).toBeNull();
   });
 
   it("switches format from the inline selector when replying", async () => {
@@ -2297,7 +2305,7 @@ describe("JantComposeDialog", () => {
         rating: 0,
         showTitle: false,
         showRating: false,
-        collectionIds: [],
+        collectionIds: ["col-stale"],
         replyToId,
         attachedTexts: [],
         attachmentOrder: [],
@@ -2316,6 +2324,8 @@ describe("JantComposeDialog", () => {
       "expected compose editor",
     );
     expect(el._replyToId).toBe(replyToId);
+    expect(el._collectionIds).toEqual([]);
+    expect(el.querySelector(".compose-collection-trigger")).toBeNull();
     expect(editor.getData().body).toContain("Recovered reply draft");
   });
 

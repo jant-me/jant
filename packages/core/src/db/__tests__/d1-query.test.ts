@@ -8,7 +8,7 @@ vi.mock("../../../bin/lib/wrangler-cli.js", () => ({
   runLocalWrangler: runLocalWranglerMock,
 }));
 
-const { parseWranglerError, queryD1 } =
+const { executeD1, parseWranglerError, queryD1 } =
   await import("../../../bin/lib/d1-query.js");
 
 function createWranglerError(stderr) {
@@ -80,5 +80,47 @@ describe("d1-query Wrangler error parsing", () => {
       }),
     ).toThrow("Wrangler error: Authentication error.");
     expect(runLocalWranglerMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows tracked migrations to disable transient retries", () => {
+    runLocalWranglerMock.mockImplementationOnce(() => {
+      throw createWranglerError("fetch failed");
+    });
+
+    expect(() =>
+      executeD1("CREATE TABLE replacement (id TEXT)", "d1-remote", {
+        quiet: true,
+        retryAttempts: 1,
+        retryDelayMs: 0,
+      }),
+    ).toThrow("fetch failed");
+    expect(runLocalWranglerMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps Wrangler target flags out of child-process options", () => {
+    runLocalWranglerMock.mockReturnValue(
+      JSON.stringify([{ results: [{ count: 1 }], success: true }]),
+    );
+
+    queryD1("SELECT 1", "d1-remote", {
+      configPath: "/tmp/wrangler.toml",
+      database: "CONTENT_DB",
+      env: "preview",
+      persistTo: "/tmp/d1",
+      retryAttempts: 1,
+    });
+
+    expect(runLocalWranglerMock).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        "CONTENT_DB",
+        "--config",
+        "/tmp/wrangler.toml",
+        "--env",
+        "preview",
+        "--persist-to",
+        "/tmp/d1",
+      ]),
+      {},
+    );
   });
 });

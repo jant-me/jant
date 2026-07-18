@@ -118,6 +118,70 @@ describe("compose bridge", () => {
     expect(refreshCollections).toHaveBeenCalledTimes(1);
   });
 
+  it("omits stale Collection state from Reply requests", async () => {
+    const composeEl = document.createElement(
+      "jant-compose-dialog",
+    ) as ComposeHarness;
+    composeEl.refreshCollections = vi.fn(async () => true);
+    composeEl.pageMode = false;
+    document.body.appendChild(composeEl);
+
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input, init) => {
+        const raw =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        const url = new URL(raw, "http://localhost");
+
+        if (url.pathname === "/compose") {
+          const body = JSON.parse(String(init?.body)) as Record<
+            string,
+            unknown
+          >;
+          expect(body.replyToId).toBe("pst_parent");
+          expect(body).not.toHaveProperty("collectionIds");
+
+          return new Response(
+            JSON.stringify({ status: "draft", toast: "Draft saved." }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url.pathname}`);
+      });
+
+    composeEl.dispatchEvent(
+      new CustomEvent("jant:compose-submit-deferred", {
+        bubbles: true,
+        detail: {
+          format: "note",
+          title: "",
+          body: "Reply draft",
+          url: "",
+          quoteText: "",
+          quoteAuthor: "",
+          status: "draft",
+          rating: 0,
+          collectionIds: ["col-stale"],
+          attachments: [],
+          pendingAttachments: [],
+          replyToId: "pst_parent",
+        },
+      }),
+    );
+
+    await flushBridgeWork();
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+  });
+
   it("stays on page and resets form after page-mode publish", async () => {
     const composeEl = document.createElement(
       "jant-compose-dialog",
