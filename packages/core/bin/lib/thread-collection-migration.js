@@ -56,11 +56,13 @@ async function readPostgresPostColumns(query) {
   return new Set(rows.map((row) => String(row.column_name)));
 }
 
-async function hasThreadColumns(query, dialect) {
-  const columns =
-    dialect === "pg"
-      ? await readPostgresPostColumns(query)
-      : await readSqlitePostColumns(query);
+async function readPostColumns(query, dialect) {
+  return dialect === "pg"
+    ? readPostgresPostColumns(query)
+    : readSqlitePostColumns(query);
+}
+
+function hasThreadColumns(columns) {
   return (
     columns.has("id") &&
     columns.has("site_id") &&
@@ -69,10 +71,18 @@ async function hasThreadColumns(query, dialect) {
   );
 }
 
-async function readLegacyStats(query) {
+async function readLegacyStats(query, postColumns) {
+  const retainedPostPredicate = postColumns.has("deleted_at")
+    ? "post.deleted_at IS NULL"
+    : "1 = 1";
+  const softDeletedSourceExpression = postColumns.has("deleted_at")
+    ? "CASE WHEN post.deleted_at IS NOT NULL THEN 1 ELSE 0 END"
+    : "0";
   const rows = await query(`
     SELECT
       COUNT(*) AS source_count,
+      COALESCE(SUM(${softDeletedSourceExpression}), 0)
+        AS soft_deleted_source_count,
       COALESCE(SUM(CASE WHEN site.id IS NULL THEN 1 ELSE 0 END), 0)
         AS missing_site_count,
       COALESCE(SUM(CASE WHEN post.id IS NULL THEN 1 ELSE 0 END), 0)
@@ -114,6 +124,7 @@ async function readLegacyStats(query) {
       INNER JOIN post
         ON post.site_id = membership.site_id
         AND post.id = membership.post_id
+      WHERE ${retainedPostPredicate}
       GROUP BY
         membership.site_id,
         post.thread_id,
@@ -123,6 +134,10 @@ async function readLegacyStats(query) {
 
   return {
     sourceCount: toCount(row.source_count, "legacy row count"),
+    softDeletedSourceCount: toCount(
+      row.soft_deleted_source_count,
+      "soft-deleted legacy row count",
+    ),
     expectedCount: toCount(
       expectedRows[0]?.expected_count,
       "expected Thread membership count",
@@ -257,17 +272,24 @@ export async function preflightThreadCollectionMigration(options) {
     return { phase: "fresh" };
   }
 
-  if (!(await hasThreadColumns(options.query, options.dialect))) {
+  const postColumns = await readPostColumns(options.query, options.dialect);
+  if (!hasThreadColumns(postColumns)) {
     log(
       "Thread Collection migration preflight deferred until earlier schema migrations add Thread columns.",
     );
     return { phase: "deferred" };
   }
 
-  const stats = await readLegacyStats(options.query);
+  const stats = await readLegacyStats(options.query, postColumns);
   assertLegacyStats(stats);
+  const softDeletedMembershipLabel =
+    stats.softDeletedSourceCount === 1 ? "membership" : "memberships";
+  const anticipatedDeletion =
+    stats.softDeletedSourceCount > 0
+      ? `; ${stats.softDeletedSourceCount} soft-deleted post ${softDeletedMembershipLabel} will be removed by an earlier migration`
+      : "";
   log(
-    `Thread Collection migration preflight passed (${stats.sourceCount} post memberships -> ${stats.expectedCount} Thread memberships).`,
+    `Thread Collection migration preflight passed (${stats.sourceCount} post memberships -> ${stats.expectedCount} Thread memberships${anticipatedDeletion}).`,
   );
   log(
     "Thread Collection cutover requires writes to remain stopped until migration, application deployment, and verification finish.",

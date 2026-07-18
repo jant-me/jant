@@ -33,6 +33,11 @@ interface CuratedThreadSource {
   highlightedPostIds: ReadonlySet<string>;
 }
 
+interface CuratedThreadDisplayOptions {
+  collectionPinnedThreadIds?: ReadonlySet<string>;
+  showContextRatings: boolean;
+}
+
 async function buildTimelineItems(
   c: Context<Env>,
   posts: Post[],
@@ -175,7 +180,7 @@ async function buildCuratedThreadItems(
   c: Context<Env>,
   rootIds: string[],
   threadsByRootId: Map<string, CuratedThreadSource>,
-  collectionPinnedThreadIds?: Set<string>,
+  display: CuratedThreadDisplayOptions,
 ): Promise<TimelineItemView[]> {
   const orderedThreads = rootIds
     .map((rootId) => threadsByRootId.get(rootId))
@@ -222,7 +227,7 @@ async function buildCuratedThreadItems(
         post.id === lastPostId,
         curatedAliasesMap.get(post.id)?.[0],
         post.id === post.threadId &&
-          collectionPinnedThreadIds?.has(post.threadId),
+          display.collectionPinnedThreadIds?.has(post.threadId),
       ),
     }));
     const rootView = renderedPosts[0]?.view;
@@ -267,6 +272,7 @@ async function buildCuratedThreadItems(
       post: rootView,
       curatedThread: {
         rootPost: rootView,
+        showContextRatings: display.showContextRatings,
         segments,
       },
     });
@@ -410,7 +416,9 @@ export async function assembleFeaturedTimeline(
     ]),
   );
 
-  const items = await buildCuratedThreadItems(c, rootIds, threadsByRootId);
+  const items = await buildCuratedThreadItems(c, rootIds, threadsByRootId, {
+    showContextRatings: false,
+  });
 
   return { items, currentPage: page, totalPages, totalCount };
 }
@@ -483,7 +491,10 @@ export async function assembleCollectionTimeline(
     c,
     rootIds,
     curatedThreadsByRootId,
-    pinnedThreadIds,
+    {
+      collectionPinnedThreadIds: pinnedThreadIds,
+      showContextRatings: true,
+    },
   );
 
   return { items, currentPage: page, totalPages, totalCount };

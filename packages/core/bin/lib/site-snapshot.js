@@ -377,22 +377,86 @@ function prependSiteIdInsert(sql, tableName, siteId) {
 function splitSqlStatements(sql) {
   const statements = [];
   let current = "";
-  let inString = false;
+  let state = "sql";
 
   for (let index = 0; index < sql.length; index += 1) {
     const char = sql[index];
-    if (char === "'") {
+
+    if (state === "line-comment") {
+      if (char === "\n") {
+        current += char;
+        state = "sql";
+      }
+      continue;
+    }
+
+    if (state === "block-comment") {
+      if (char === "*" && sql[index + 1] === "/") {
+        index += 1;
+        state = "sql";
+      } else if (char === "\n") {
+        current += char;
+      }
+      continue;
+    }
+
+    if (state === "string") {
       current += char;
-      if (inString && sql[index + 1] === "'") {
+      if (char === "'" && sql[index + 1] === "'") {
         current += "'";
         index += 1;
         continue;
       }
-      inString = !inString;
+      if (char === "'") {
+        state = "sql";
+      }
       continue;
     }
 
-    if (char === ";" && !inString) {
+    if (state === "identifier") {
+      current += char;
+      if (char === '"' && sql[index + 1] === '"') {
+        current += '"';
+        index += 1;
+        continue;
+      }
+      if (char === '"') {
+        state = "sql";
+      }
+      continue;
+    }
+
+    if (char === "'") {
+      current += char;
+      state = "string";
+      continue;
+    }
+
+    if (char === '"') {
+      current += char;
+      state = "identifier";
+      continue;
+    }
+
+    if (char === "-" && sql[index + 1] === "-") {
+      if (current && !/\s$/.test(current)) {
+        current += " ";
+      }
+      index += 1;
+      state = "line-comment";
+      continue;
+    }
+
+    if (char === "/" && sql[index + 1] === "*") {
+      if (current && !/\s$/.test(current)) {
+        current += " ";
+      }
+      index += 1;
+      state = "block-comment";
+      continue;
+    }
+
+    if (char === ";") {
       const trimmed = current.trim();
       if (trimmed) {
         statements.push(trimmed);
@@ -404,6 +468,13 @@ function splitSqlStatements(sql) {
     current += char;
   }
 
+  if (state === "string" || state === "identifier") {
+    throw new Error("Snapshot SQL contains an unterminated quoted value.");
+  }
+  if (state === "block-comment") {
+    throw new Error("Snapshot SQL contains an unterminated block comment.");
+  }
+
   const trimmed = current.trim();
   if (trimmed) {
     statements.push(trimmed);
@@ -413,38 +484,31 @@ function splitSqlStatements(sql) {
 }
 
 export function rewriteLegacySnapshotSql(sql, siteId) {
-  const uncommentedSql = sql
-    .split("\n")
-    .filter((line) => !line.trimStart().startsWith("--"))
-    .join("\n");
+  const rewrittenStatements = splitSqlStatements(sql).map((statement) => {
+    const normalized = statement.trim();
+    const legacySettingMatch = normalized.match(
+      /^INSERT INTO "?setting"? \(([^)]*)\) VALUES\(([\s\S]*)\)$/i,
+    );
+    if (legacySettingMatch) {
+      return `INSERT INTO "site_setting" ("site_id", ${legacySettingMatch[1]}) VALUES('${escapeSqlString(siteId)}', ${legacySettingMatch[2]})`;
+    }
 
-  const rewrittenStatements = splitSqlStatements(uncommentedSql).map(
-    (statement) => {
-      const normalized = statement.trim();
-      const legacySettingMatch = normalized.match(
-        /^INSERT INTO "?setting"? \(([^)]*)\) VALUES\(([\s\S]*)\)$/i,
-      );
-      if (legacySettingMatch) {
-        return `INSERT INTO "site_setting" ("site_id", ${legacySettingMatch[1]}) VALUES('${escapeSqlString(siteId)}', ${legacySettingMatch[2]})`;
-      }
+    let rewritten = normalized;
+    for (const tableName of [
+      "collection",
+      "nav_item",
+      "collection_directory_item",
+      "post",
+      "post_collection",
+      "thread_collection",
+      "path_registry",
+      "media",
+    ]) {
+      rewritten = prependSiteIdInsert(rewritten, tableName, siteId);
+    }
 
-      let rewritten = normalized;
-      for (const tableName of [
-        "collection",
-        "nav_item",
-        "collection_directory_item",
-        "post",
-        "post_collection",
-        "thread_collection",
-        "path_registry",
-        "media",
-      ]) {
-        rewritten = prependSiteIdInsert(rewritten, tableName, siteId);
-      }
-
-      return rewritten;
-    },
-  );
+    return rewritten;
+  });
 
   return `${rewrittenStatements.join(";\n")};\n`;
 }
@@ -521,33 +585,49 @@ function formatSqlScalar(value) {
  * upgradeV1SnapshotSql(v1DbSql)
  */
 export function upgradeV1SnapshotSql(sql) {
-  const uncommentedSql = sql
-    .split("\n")
-    .filter((line) => !line.trimStart().startsWith("--"))
-    .join("\n");
-  const statements = splitSqlStatements(uncommentedSql);
-  const postThreadIds = new Map();
+  const statements = splitSqlStatements(sql);
+  const postsById = new Map();
+  const collectionIds = new Set();
 
   for (const statement of statements) {
     const insert = parseInsertStatement(statement);
-    if (insert?.table.toLowerCase() !== "post") {
+    const table = insert?.table.toLowerCase();
+    if (table === "collection") {
+      const siteId = readRequiredSqlString(insert, "site_id", "collection row");
+      const collectionId = readRequiredSqlString(
+        insert,
+        "id",
+        "collection row",
+      );
+      collectionIds.add(`${siteId}\u0000${collectionId}`);
+      continue;
+    }
+    if (table !== "post") {
       continue;
     }
     const siteId = readRequiredSqlString(insert, "site_id", "post row");
     const postId = readRequiredSqlString(insert, "id", "post row");
     const threadId = readRequiredSqlString(insert, "thread_id", "post row");
-    postThreadIds.set(`${siteId}\u0000${postId}`, threadId);
+    const replyToId = parseSqlScalar(insert.values.get("reply_to_id"));
+    if (replyToId !== null && typeof replyToId !== "string") {
+      throw new Error("Snapshot post row has invalid reply_to_id.");
+    }
+    postsById.set(`${siteId}\u0000${postId}`, {
+      id: postId,
+      replyToId,
+      threadId,
+    });
   }
 
   const memberships = new Map();
-  let lastPostIndex = -1;
+  let lastDependencyIndex = -1;
   const retainedStatements = [];
 
   for (const statement of statements) {
     const insert = parseInsertStatement(statement);
     const table = insert?.table.toLowerCase();
-    if (table === "post") {
-      lastPostIndex = retainedStatements.length;
+    if (table === "collection" || table === "post") {
+      lastDependencyIndex = retainedStatements.length;
     }
     if (table !== "post_collection") {
       retainedStatements.push(statement.trim());
@@ -569,10 +649,28 @@ export function upgradeV1SnapshotSql(sql) {
       "collection_id",
       "post_collection row",
     );
-    const threadId = postThreadIds.get(`${siteId}\u0000${postId}`);
-    if (!threadId) {
+    const post = postsById.get(`${siteId}\u0000${postId}`);
+    if (!post) {
       throw new Error(
         `Snapshot post_collection row references missing post ${postId}; target content was not changed.`,
+      );
+    }
+    if (!collectionIds.has(`${siteId}\u0000${collectionId}`)) {
+      throw new Error(
+        `Snapshot post_collection row references missing Collection ${collectionId}; target content was not changed.`,
+      );
+    }
+
+    const threadId = post.threadId;
+    const root = postsById.get(`${siteId}\u0000${threadId}`);
+    if (!root) {
+      throw new Error(
+        `Snapshot post_collection row references missing Thread root ${threadId}; target content was not changed.`,
+      );
+    }
+    if (root.id !== root.threadId || root.replyToId !== null) {
+      throw new Error(
+        `Snapshot post_collection row references invalid Thread root ${threadId}; target content was not changed.`,
       );
     }
 
@@ -635,7 +733,7 @@ export function upgradeV1SnapshotSql(sql) {
         .map(formatSqlScalar)
         .join(", ")})`,
   );
-  retainedStatements.splice(lastPostIndex + 1, 0, ...upgradedStatements);
+  retainedStatements.splice(lastDependencyIndex + 1, 0, ...upgradedStatements);
   return `${retainedStatements.join(";\n")};\n`;
 }
 
@@ -664,11 +762,7 @@ export function upgradeSnapshotSql(sql, snapshotVersion) {
  * the preflight check that runs before db.sql is applied.
  */
 export function extractMediaStorageKeysFromDumpSql(sql, sourceSiteId) {
-  const uncommented = sql
-    .split("\n")
-    .filter((line) => !line.trimStart().startsWith("--"))
-    .join("\n");
-  const statements = splitSqlStatements(uncommented);
+  const statements = splitSqlStatements(sql);
   const keys = new Set();
 
   for (const statement of statements) {

@@ -194,12 +194,20 @@ describe("Public Posts API Routes", () => {
         title: "Older",
         bodyMarkdown: "first",
         collectionIds: [collection.id],
+        publishedAt: 1000,
       });
       const newer = await services.posts.create({
         format: "note",
         title: "Newer",
         bodyMarkdown: "second",
         collectionIds: [collection.id],
+        publishedAt: 2000,
+      });
+      await services.posts.create({
+        format: "note",
+        bodyMarkdown: "Later reply to the older Thread",
+        replyToId: older.id,
+        publishedAt: 3000,
       });
 
       const res = await app.request(
@@ -211,6 +219,145 @@ describe("Public Posts API Routes", () => {
       expect(body.posts).toHaveLength(2);
       expect(body.posts[0].id).toBe(older.id);
       expect(body.posts[1].id).toBe(newer.id);
+    });
+
+    it("sorts collection results by Thread activity from Child Posts", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+
+      const collection = await services.collections.create({
+        slug: "active-threads",
+        title: "Active Threads",
+      });
+      const olderRoot = await services.posts.create({
+        format: "note",
+        title: "Older root",
+        bodyMarkdown: "older",
+        collectionIds: [collection.id],
+        publishedAt: 1000,
+      });
+      const newerRoot = await services.posts.create({
+        format: "note",
+        title: "Newer root",
+        bodyMarkdown: "newer",
+        collectionIds: [collection.id],
+        publishedAt: 2000,
+      });
+      await services.posts.create({
+        format: "note",
+        bodyMarkdown: "new activity",
+        replyToId: olderRoot.id,
+        publishedAt: 3000,
+      });
+
+      const res = await app.request(
+        "/api/public/posts?collection=active-threads&sort=newest",
+      );
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.posts.map((post: { id: string }) => post.id)).toEqual([
+        olderRoot.id,
+        newerRoot.id,
+      ]);
+    });
+
+    it("sorts and cursor-paginates collection Threads by Child ratings", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+
+      const collection = await services.collections.create({
+        slug: "rated-threads",
+        title: "Rated Threads",
+        sortOrder: "rating_desc",
+      });
+      const createRatedThread = async (
+        title: string,
+        publishedAt: number,
+        rating: number,
+      ) => {
+        const root = await services.posts.create({
+          format: "note",
+          title,
+          bodyMarkdown: `${title} root`,
+          collectionIds: [collection.id],
+          publishedAt,
+        });
+        await services.posts.create({
+          format: "note",
+          bodyMarkdown: `${title} rated Child`,
+          replyToId: root.id,
+          publishedAt: publishedAt + 100,
+          rating,
+        });
+        return root;
+      };
+
+      const highest = await createRatedThread("Highest", 1000, 5);
+      const middle = await createRatedThread("Middle", 2000, 3);
+      const lowest = await createRatedThread("Lowest", 3000, 1);
+
+      const firstRes = await app.request(
+        "/api/public/posts?collection=rated-threads&limit=1",
+      );
+      expect(firstRes.status).toBe(200);
+      const first = await firstRes.json();
+      expect(first.posts[0].id).toBe(highest.id);
+      expect(first.nextCursor).toBe(highest.id);
+
+      const secondRes = await app.request(
+        `/api/public/posts?collection=rated-threads&limit=1&cursor=${first.nextCursor}`,
+      );
+      expect(secondRes.status).toBe(200);
+      const second = await secondRes.json();
+      expect(second.posts[0].id).toBe(middle.id);
+      expect(second.nextCursor).toBe(middle.id);
+
+      const thirdRes = await app.request(
+        `/api/public/posts?collection=rated-threads&limit=1&cursor=${second.nextCursor}`,
+      );
+      expect(thirdRes.status).toBe(200);
+      const third = await thirdRes.json();
+      expect(third.posts[0].id).toBe(lowest.id);
+    });
+
+    it("keeps root format and Latest visibility filters for Collections", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+
+      const collection = await services.collections.create({
+        slug: "mixed",
+        title: "Mixed",
+      });
+      const note = await services.posts.create({
+        format: "note",
+        title: "Visible note",
+        bodyMarkdown: "note",
+        collectionIds: [collection.id],
+      });
+      await services.posts.create({
+        format: "link",
+        title: "Visible link",
+        url: "https://example.com",
+        collectionIds: [collection.id],
+      });
+      await services.posts.create({
+        format: "note",
+        title: "Hidden note",
+        bodyMarkdown: "hidden",
+        visibility: "latest_hidden",
+        collectionIds: [collection.id],
+      });
+
+      const res = await app.request(
+        "/api/public/posts?collection=mixed&format=note",
+      );
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.posts.map((post: { id: string }) => post.id)).toEqual([
+        note.id,
+      ]);
     });
 
     it("allows overriding collection sort order via sort parameter", async () => {

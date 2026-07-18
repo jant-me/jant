@@ -227,13 +227,16 @@ publicPostsApiRoutes.get("/", async (c) => {
       : primaryCollection.sortOrder;
 
     const ratedThreadCount =
-      await c.var.services.posts.countCollectionThreadRootsForCollections(
+      await c.var.services.posts.countCollectionThreadRootsUpToForCollections(
         collectionIds,
         {
           status: "published",
           excludePrivate: true,
+          excludeLatestHidden: true,
+          rootFormat: format,
           hasRating: true,
         },
+        2,
       );
     const showRatingSort = supportsCollectionRatingSort(ratedThreadCount);
     const defaultSort = resolveCollectionSortOrder(
@@ -244,17 +247,28 @@ publicPostsApiRoutes.get("/", async (c) => {
     sortOrder = resolveCollectionSortOrder(sort, defaultSort, showRatingSort);
   }
 
-  const posts = await c.var.services.posts.list({
-    format,
-    collectionIds,
-    sortOrder,
-    status: "published",
-    cursor: cursor ?? undefined,
-    limit,
-    excludePrivate: true,
-    excludeLatestHidden: true,
-    excludeReplies: true,
-  });
+  const posts = collectionIds
+    ? await c.var.services.posts.listCollectionThreadRootsForCollections(
+        collectionIds,
+        {
+          status: "published",
+          excludePrivate: true,
+          excludeLatestHidden: true,
+          rootFormat: format,
+          sortOrder,
+          cursor: cursor ?? undefined,
+          limit,
+        },
+      )
+    : await c.var.services.posts.list({
+        format,
+        status: "published",
+        cursor: cursor ?? undefined,
+        limit,
+        excludePrivate: true,
+        excludeLatestHidden: true,
+        excludeReplies: true,
+      });
 
   const postIds = posts.map((post) => post.id);
   const [mediaMap, collectionsMap] = await Promise.all([

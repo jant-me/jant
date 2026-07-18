@@ -33,6 +33,9 @@ media:
     size: 15810
     provider: "r2"
     storage_key: "media/sit_01kn8jq3t4famtyg9hjd074ckr/files/med_01kn8jw26cenf98vc7k0ppz5k8.webp"
+featured_post_ids:
+  - "pst_01kn8jw2yzenf98vc9xarmbqtj"
+featured_sort_at: "2025-10-02T11:00:00.000Z"
 ---
 
 I always imagine I will use a fresh notebook for my best thoughts. In reality, it becomes useful much sooner and in messier ways.

@@ -136,6 +136,9 @@ export interface SummaryConfig {
 interface ThreadRootPageOptions {
   status?: Status;
   excludePrivate?: boolean;
+  excludeLatestHidden?: boolean;
+  /** Restrict by the Thread root's format without excluding Child Posts. */
+  rootFormat?: Format;
   /** Restrict to Threads with at least one rated published post. */
   hasRating?: true;
   limit?: number;
@@ -149,6 +152,8 @@ interface CollectionFeedEntryOptions extends ThreadRootPageOptions {
 
 interface CollectionThreadRootPageOptions extends ThreadRootPageOptions {
   sortOrder?: CollectionSortOrder;
+  /** Root Post ID returned by the previous page. */
+  cursor?: string;
 }
 
 interface CursorSortKey {
@@ -333,6 +338,12 @@ export interface PostService {
     collectionIds: string[],
     options?: ThreadRootPageOptions,
   ): Promise<number>;
+  /** Count distinct matching collection Threads up to a fixed limit. */
+  countCollectionThreadRootsUpToForCollections(
+    collectionIds: string[],
+    options: ThreadRootPageOptions | undefined,
+    limit: number,
+  ): Promise<number>;
   /** List collection thread root IDs ordered by collected-at or rating semantics */
   listCollectionThreadRootIds(
     collectionId: string,
@@ -343,6 +354,11 @@ export interface PostService {
     collectionIds: string[],
     options?: CollectionThreadRootPageOptions,
   ): Promise<string[]>;
+  /** List and hydrate collection Thread roots using Thread-level ordering. */
+  listCollectionThreadRootsForCollections(
+    collectionIds: string[],
+    options?: CollectionThreadRootPageOptions,
+  ): Promise<Post[]>;
   /** List collection feed entries ordered by latest added-at timestamp */
   listCollectionFeedEntries(
     collectionId: string,
@@ -1140,6 +1156,18 @@ export function createPostService(
     if (options?.excludePrivate) {
       conditions.push(sql`${effectiveVisibilityExpr} != 'private'`);
     }
+    if (options?.excludeLatestHidden) {
+      conditions.push(sql`${effectiveVisibilityExpr} != 'latest_hidden'`);
+    }
+    if (options?.rootFormat) {
+      conditions.push(sql`EXISTS (
+        SELECT 1
+        FROM post AS collection_root
+        WHERE collection_root.site_id = ${siteId}
+          AND collection_root.id = ${posts.threadId}
+          AND collection_root.format = ${options.rootFormat}
+      )`);
+    }
     if (options?.hasRating) {
       conditions.push(isNotNull(posts.rating));
     }
@@ -1165,6 +1193,59 @@ export function createPostService(
         ${posts.updatedAt}
       )
     )`.as(alias);
+  }
+
+  function buildCollectionThreadSortQuery(
+    collectionIds: string[],
+    options: CollectionThreadRootPageOptions,
+  ) {
+    const conditions = [
+      ...buildThreadRootPageConditions(options),
+      buildCollectionMembershipCondition(collectionIds),
+    ];
+    const sortOrder = options.sortOrder ?? "newest";
+    const publishedAt =
+      sortOrder === "oldest"
+        ? sql<number>`MIN(${posts.publishedAt})`.as("published_at")
+        : sql<number>`MAX(${posts.publishedAt})`.as("published_at");
+    const threadActivityAt =
+      buildCollectionThreadActivityExpr("thread_activity_at");
+    const ratingPresence = sql<number>`MAX(
+      CASE
+        WHEN ${posts.rating} IS NULL THEN 0
+        ELSE 1
+      END
+    )`.as("rating_presence");
+    const ratingValue = sql<number>`MAX(coalesce(${posts.rating}, -1))`.as(
+      "rating_value",
+    );
+    const collectionPinnedAt =
+      sql<number>`MAX(coalesce(${threadCollections.pinnedAt}, -1))`.as(
+        "collection_pinned_at",
+      );
+
+    const sortedThreads = db
+      .select({
+        threadId: posts.threadId,
+        publishedAt,
+        threadActivityAt,
+        collectionPinnedAt,
+        ratingPresence,
+        ratingValue,
+      })
+      .from(posts)
+      .innerJoin(
+        threadCollections,
+        and(
+          eq(threadCollections.siteId, posts.siteId),
+          eq(threadCollections.threadId, posts.threadId),
+        ),
+      )
+      .where(and(...conditions))
+      .groupBy(posts.threadId)
+      .as("collection_thread_sort");
+
+    return { sortOrder, sortedThreads };
   }
 
   function isMediaAttachmentInput(
@@ -3036,6 +3117,35 @@ export function createPostService(
       return rows[0]?.count ?? 0;
     },
 
+    async countCollectionThreadRootsUpToForCollections(
+      collectionIds,
+      options = {},
+      limit,
+    ) {
+      const normalizedLimit = Math.max(0, Math.trunc(limit));
+      if (normalizedLimit === 0) return 0;
+
+      const conditions = [
+        ...buildThreadRootPageConditions(options),
+        buildCollectionMembershipCondition(collectionIds),
+      ];
+      const rows = await db
+        .select({ threadId: posts.threadId })
+        .from(posts)
+        .innerJoin(
+          threadCollections,
+          and(
+            eq(threadCollections.siteId, posts.siteId),
+            eq(threadCollections.threadId, posts.threadId),
+          ),
+        )
+        .where(and(...conditions))
+        .groupBy(posts.threadId)
+        .limit(normalizedLimit);
+
+      return rows.length;
+    },
+
     async listCollectionThreadRootIds(collectionId, options = {}) {
       return this.listCollectionThreadRootIdsForCollections(
         [collectionId],
@@ -3047,71 +3157,102 @@ export function createPostService(
       collectionIds,
       options = {},
     ) {
-      const conditions = [
-        ...buildThreadRootPageConditions(options),
-        buildCollectionMembershipCondition(collectionIds),
-      ];
-      const sortOrder = options.sortOrder ?? "newest";
-      const publishedAt =
-        sortOrder === "oldest"
-          ? sql<number>`MIN(${posts.publishedAt})`.as("published_at")
-          : sql<number>`MAX(${posts.publishedAt})`.as("published_at");
-      const threadActivityAt =
-        buildCollectionThreadActivityExpr("thread_activity_at");
-      const ratingPresence = sql<number>`MAX(
-        CASE
-          WHEN ${posts.rating} IS NULL THEN 0
-          ELSE 1
-        END
-      )`.as("rating_presence");
-      const ratingValue = sql<number | null>`MAX(${posts.rating})`.as(
-        "rating_value",
+      const { sortOrder, sortedThreads } = buildCollectionThreadSortQuery(
+        collectionIds,
+        options,
       );
+      let cursorCondition: SQL<unknown> | undefined;
 
-      const collectionPinnedAt =
-        sql<number>`MAX(coalesce(${threadCollections.pinnedAt}, -1))`.as(
-          "collection_pinned_at",
-        );
+      if (options.cursor) {
+        const cursorRows = await db
+          .select()
+          .from(sortedThreads)
+          .where(eq(sortedThreads.threadId, options.cursor))
+          .limit(1);
+        const cursorRow = cursorRows[0];
+        if (!cursorRow) return [];
 
-      const baseQuery = db
-        .select({
-          threadId: posts.threadId,
-          publishedAt,
-          threadActivityAt,
-          collectionPinnedAt,
-          ratingPresence,
-          ratingValue,
-        })
-        .from(posts)
-        .innerJoin(
-          threadCollections,
-          and(
-            eq(threadCollections.siteId, posts.siteId),
-            eq(threadCollections.threadId, posts.threadId),
-          ),
-        )
-        .where(and(...conditions))
-        .groupBy(posts.threadId);
+        const pinnedKey: CursorSortKey = {
+          direction: "desc",
+          expr: sortedThreads.collectionPinnedAt,
+          value: cursorRow.collectionPinnedAt,
+        };
+
+        cursorCondition =
+          sortOrder === "oldest"
+            ? buildLexicographicCursorCondition([
+                pinnedKey,
+                {
+                  direction: "asc",
+                  expr: sortedThreads.publishedAt,
+                  value: cursorRow.publishedAt,
+                },
+                {
+                  direction: "asc",
+                  expr: sortedThreads.threadId,
+                  value: cursorRow.threadId,
+                },
+              ])
+            : sortOrder === "rating_desc"
+              ? buildLexicographicCursorCondition([
+                  pinnedKey,
+                  {
+                    direction: "desc",
+                    expr: sortedThreads.ratingPresence,
+                    value: cursorRow.ratingPresence,
+                  },
+                  {
+                    direction: "desc",
+                    expr: sortedThreads.ratingValue,
+                    value: cursorRow.ratingValue,
+                  },
+                  {
+                    direction: "desc",
+                    expr: sortedThreads.threadActivityAt,
+                    value: cursorRow.threadActivityAt,
+                  },
+                  {
+                    direction: "desc",
+                    expr: sortedThreads.threadId,
+                    value: cursorRow.threadId,
+                  },
+                ])
+              : buildLexicographicCursorCondition([
+                  pinnedKey,
+                  {
+                    direction: "desc",
+                    expr: sortedThreads.threadActivityAt,
+                    value: cursorRow.threadActivityAt,
+                  },
+                  {
+                    direction: "desc",
+                    expr: sortedThreads.threadId,
+                    value: cursorRow.threadId,
+                  },
+                ]);
+      }
+
+      const baseQuery = db.select().from(sortedThreads).where(cursorCondition);
 
       let query =
         sortOrder === "oldest"
           ? baseQuery.orderBy(
-              desc(collectionPinnedAt),
-              asc(publishedAt),
-              asc(posts.threadId),
+              desc(sortedThreads.collectionPinnedAt),
+              asc(sortedThreads.publishedAt),
+              asc(sortedThreads.threadId),
             )
           : sortOrder === "rating_desc"
             ? baseQuery.orderBy(
-                desc(collectionPinnedAt),
-                desc(ratingPresence),
-                desc(ratingValue),
-                desc(threadActivityAt),
-                desc(posts.threadId),
+                desc(sortedThreads.collectionPinnedAt),
+                desc(sortedThreads.ratingPresence),
+                desc(sortedThreads.ratingValue),
+                desc(sortedThreads.threadActivityAt),
+                desc(sortedThreads.threadId),
               )
             : baseQuery.orderBy(
-                desc(collectionPinnedAt),
-                desc(threadActivityAt),
-                desc(posts.threadId),
+                desc(sortedThreads.collectionPinnedAt),
+                desc(sortedThreads.threadActivityAt),
+                desc(sortedThreads.threadId),
               );
 
       if (options.limit !== undefined) {
@@ -3123,6 +3264,18 @@ export function createPostService(
 
       const rows = await query;
       return rows.map((row) => row.threadId);
+    },
+
+    async listCollectionThreadRootsForCollections(collectionIds, options = {}) {
+      const rootIds = await this.listCollectionThreadRootIdsForCollections(
+        collectionIds,
+        options,
+      );
+      const rootsById = await hydratePostsById(rootIds);
+      return rootIds.flatMap((rootId) => {
+        const root = rootsById.get(rootId);
+        return root ? [root] : [];
+      });
     },
 
     async listCollectionFeedEntries(collectionId, options = {}) {

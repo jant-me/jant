@@ -33,6 +33,9 @@ media:
     size: 14094
     provider: "r2"
     storage_key: "media/sit_01kn8jq3t4famtyg9hjd074ckr/files/med_01kn8jvq58enf98v538w5vsqp4.webp"
+featured_post_ids:
+  - "pst_01kn8jvqxgenf98v5bqfamwhmt"
+featured_sort_at: "2026-02-20T17:40:00.000Z"
 ---
 
 Everything sharpens after a light shower: the crosswalk paint, the leaves stuck to the curb, the bakery sign that usually disappears into the block.

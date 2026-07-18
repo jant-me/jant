@@ -38,9 +38,8 @@
   --site-reading-quote: oklch(0.36 0.008 55);
   --font-body:
     ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Helvetica Neue", Helvetica, Arial, "PingFang TC", "PingFang SC",
-    "Hiragino Sans CNS", "Hiragino Sans GB", "Microsoft JhengHei",
-    "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", sans-serif;
+    Roboto, "Helvetica Neue", Helvetica, Arial, var(--font-cjk-sans-fallback),
+    sans-serif;
   --font-heading:
     "New York Small", "New York", "Iowan Old Style", Charter,
     "Bitstream Charter", "Source Serif 4", Cambria, "Sitka Text", Georgia,
@@ -86,9 +85,8 @@
   --dash-bg: oklch(0.15 0.005 70);
   --font-body:
     ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Helvetica Neue", Helvetica, Arial, "PingFang TC", "PingFang SC",
-    "Hiragino Sans CNS", "Hiragino Sans GB", "Microsoft JhengHei",
-    "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", sans-serif;
+    Roboto, "Helvetica Neue", Helvetica, Arial, var(--font-cjk-sans-fallback),
+    sans-serif;
   --font-heading:
     "New York Small", "New York", "Iowan Old Style", Charter,
     "Bitstream Charter", "Source Serif 4", Cambria, "Sitka Text", Georgia,
@@ -135,9 +133,8 @@
     --dash-bg: oklch(0.15 0.005 70);
     --font-body:
       ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-      Roboto, "Helvetica Neue", Helvetica, Arial, "PingFang TC", "PingFang SC",
-      "Hiragino Sans CNS", "Hiragino Sans GB", "Microsoft JhengHei",
-      "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", sans-serif;
+      Roboto, "Helvetica Neue", Helvetica, Arial, var(--font-cjk-sans-fallback),
+      sans-serif;
     --font-heading:
       "New York Small", "New York", "Iowan Old Style", Charter,
       "Bitstream Charter", "Source Serif 4", Cambria, "Sitka Text", Georgia,

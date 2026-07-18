@@ -15,6 +15,14 @@ const THREAD_CONTEXT_LAST_DISPLAY = {
   hideRating: true,
 } as const;
 
+const COMPLETE_THREAD_CONTEXT_DISPLAY = {
+  footer: {
+    hideReply: true,
+  },
+} as const;
+
+const COMPLETE_THREAD_LAST_DISPLAY = {} as const;
+
 const CURATED_SEGMENT_DISPLAY = {} as const;
 
 interface CuratedThreadPreviewProps {
@@ -25,7 +33,7 @@ export const CuratedThreadPreview: FC<CuratedThreadPreviewProps> = ({
   curatedThread,
 }) => {
   const { i18n } = useLingui();
-  const { segments } = curatedThread;
+  const { segments, showContextRatings } = curatedThread;
 
   if (segments.length === 0) {
     return null;
@@ -70,9 +78,13 @@ export const CuratedThreadPreview: FC<CuratedThreadPreviewProps> = ({
               post={segment.post}
               mode="feed"
               display={
-                index === segments.length - 1
-                  ? THREAD_CONTEXT_LAST_DISPLAY
-                  : THREAD_CONTEXT_DISPLAY
+                showContextRatings
+                  ? index === segments.length - 1
+                    ? COMPLETE_THREAD_LAST_DISPLAY
+                    : COMPLETE_THREAD_CONTEXT_DISPLAY
+                  : index === segments.length - 1
+                    ? THREAD_CONTEXT_LAST_DISPLAY
+                    : THREAD_CONTEXT_DISPLAY
               }
             />
           )}

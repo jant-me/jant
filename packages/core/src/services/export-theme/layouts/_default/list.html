@@ -66,13 +66,15 @@
         <div class="post-list">
           {{- range $i, $p := $paginator.Pages -}}
             {{- if gt $i 0 -}}<hr class="feed-divider" aria-hidden="true" />{{- end -}}
-            <div class="thread-full" data-slug="{{ $p.Params.slug | default $p.Slug }}">
+            {{- $replies := $p.Pages.ByDate -}}
+            {{- $hasReplies := gt (len $replies) 0 -}}
+            <div class="thread thread-full{{ if $hasReplies }} thread-has-replies{{ end }}" data-slug="{{ $p.Params.slug | default $p.Slug }}">
               <div class="thread-item thread-item-root">
                 {{ partial "post-card.html" $p }}
               </div>
-              {{- with $p.Pages.ByDate -}}
+              {{- if $hasReplies -}}
                 <section class="thread-replies" aria-label="Replies">
-                  {{- range . -}}
+                  {{- range $replies -}}
                     {{ partial "reply.html" . }}
                   {{- end -}}
                 </section>

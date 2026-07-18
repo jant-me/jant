@@ -21,6 +21,10 @@ import {
   extractNumberPrefix,
   isCanonicalNumberedSqlFile,
 } from "../../../bin/lib/migration-artifacts.js";
+import {
+  preflightThreadCollectionMigration,
+  verifyThreadCollectionMigration,
+} from "../../../bin/lib/thread-collection-migration.js";
 
 const MIGRATIONS_DIR = resolve(import.meta.dirname, "../migrations");
 const PG_MIGRATIONS_DIR = resolve(import.meta.dirname, "../migrations/pg");
@@ -81,6 +85,21 @@ function applyMigrationsThrough(
   }
 
   throw new Error(`Migration not found: ${finalFilename}`);
+}
+
+function applyMigrationsAfter(
+  sqlite: Database.Database,
+  previousFilename: string,
+) {
+  let foundPrevious = false;
+  for (const filename of listMigrationFiles()) {
+    if (foundPrevious) applyMigration(sqlite, filename);
+    if (filename === previousFilename) foundPrevious = true;
+  }
+
+  if (!foundPrevious) {
+    throw new Error(`Migration not found: ${previousFilename}`);
+  }
 }
 
 function insertRootPost(
@@ -522,6 +541,91 @@ describe("migration integrity", () => {
         .get(),
     ).toBeUndefined();
     expect(sqlite.pragma("foreign_key_check")).toEqual([]);
+  });
+
+  it("verifies an upgrade from 0020 with a collected soft-deleted post", async () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+    applyMigrationsThrough(sqlite, "0020_free_zaladane.sql");
+
+    const siteId = "sit_soft_delete_upgrade";
+    const collectionId = "collection-upgrade";
+    insertSite(sqlite, { id: siteId, key: "default", createdAt: 1 });
+    sqlite
+      .prepare(
+        `
+          INSERT INTO collection (
+            id,
+            site_id,
+            title,
+            description,
+            sort_order,
+            created_at,
+            updated_at
+          ) VALUES (?, ?, 'Upgrade', NULL, 'newest', 1, 1)
+        `,
+      )
+      .run(collectionId, siteId);
+    insertRootPost(sqlite, {
+      siteId,
+      id: "post-live",
+      title: "Live",
+      bodyText: "Live post",
+      createdAt: 10,
+    });
+    insertRootPost(sqlite, {
+      siteId,
+      id: "post-soft-deleted",
+      title: "Deleted",
+      bodyText: "Deleted post",
+      createdAt: 20,
+    });
+    sqlite
+      .prepare("UPDATE post SET deleted_at = ? WHERE id = ?")
+      .run(30, "post-soft-deleted");
+    sqlite.exec(`
+      INSERT INTO post_collection (
+        site_id,
+        post_id,
+        collection_id,
+        created_at,
+        position,
+        pinned_at
+      ) VALUES
+        ('${siteId}', 'post-live', '${collectionId}', 10, 0, NULL),
+        ('${siteId}', 'post-soft-deleted', '${collectionId}', 20, 0, NULL);
+    `);
+
+    const query = (sql: string) => sqlite.prepare(sql).all();
+    const preflight = await preflightThreadCollectionMigration({
+      dialect: "sqlite",
+      log: () => undefined,
+      query,
+    });
+    expect(preflight).toEqual({
+      expectedCount: 1,
+      phase: "legacy",
+      sourceCount: 2,
+    });
+
+    applyMigrationsAfter(sqlite, "0020_free_zaladane.sql");
+
+    await expect(
+      verifyThreadCollectionMigration(
+        { dialect: "sqlite", log: () => undefined, query },
+        preflight,
+      ),
+    ).resolves.toBeUndefined();
+    expect(
+      sqlite
+        .prepare(
+          "SELECT thread_id AS threadId FROM thread_collection ORDER BY thread_id",
+        )
+        .all(),
+    ).toEqual([{ threadId: "post-live" }]);
+    expect(sqlite.pragma("foreign_key_check")).toEqual([]);
+
+    sqlite.close();
   });
 
   it("indexes Featured Thread ordering by publication time in both dialects", () => {

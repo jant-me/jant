@@ -222,6 +222,8 @@ export interface TimelineItemView {
   };
   curatedThread?: {
     rootPost: PostView;
+    /** Show ratings on non-highlighted context posts (complete Collection Threads). */
+    showContextRatings: boolean;
     segments: {
       post: PostView;
       hiddenBeforeCount: number;

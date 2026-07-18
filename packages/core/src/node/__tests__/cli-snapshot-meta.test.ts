@@ -77,6 +77,8 @@ describe("assertSnapshotMeta", () => {
 describe("upgradeV1SnapshotSql", () => {
   it("unions per-post Collection rows into Thread rows without losing metadata", () => {
     const sql = `
+      INSERT INTO "collection" ("id", "site_id") VALUES('col_a', 'sit_test');
+      INSERT INTO "collection" ("id", "site_id") VALUES('col_b', 'sit_test');
       INSERT INTO "post" ("id", "site_id", "thread_id") VALUES('pst_root', 'sit_test', 'pst_root');
       INSERT INTO "post" ("id", "site_id", "thread_id") VALUES('pst_reply', 'sit_test', 'pst_root');
       INSERT INTO "post_collection" ("site_id", "post_id", "collection_id", "created_at", "position", "pinned_at") VALUES('sit_test', 'pst_root', 'col_a', 10, 5, 40);
@@ -94,12 +96,50 @@ describe("upgradeV1SnapshotSql", () => {
     );
   });
 
+  it("preserves comment-like lines inside multiline post content", () => {
+    const body = ["before", "-- must survive", "---", "after"].join("\n");
+    const sql = `
+      -- export metadata must be ignored as a real SQL comment
+      INSERT INTO "collection" ("id", "site_id") VALUES('col_a', 'sit_test');
+      INSERT INTO "post" ("id", "site_id", "thread_id", "body") VALUES('pst_root', 'sit_test', 'pst_root', '${body}');
+      INSERT INTO "post_collection" ("site_id", "post_id", "collection_id", "created_at", "position", "pinned_at") VALUES('sit_test', 'pst_root', 'col_a', 10, 0, NULL);
+    `;
+
+    const upgraded = upgradeV1SnapshotSql(sql);
+    expect(upgraded).toContain(`'${body}'`);
+    expect(upgraded).not.toContain("export metadata must be ignored");
+  });
+
   it("fails a dangling v1 membership during preflight conversion", () => {
     const sql = `
       INSERT INTO "post_collection" ("site_id", "post_id", "collection_id", "created_at", "position", "pinned_at") VALUES('sit_test', 'pst_missing', 'col_a', 10, 0, NULL);
     `;
     expect(() => upgradeV1SnapshotSql(sql)).toThrow(
       /references missing post pst_missing.*target content was not changed/,
+    );
+  });
+
+  it("fails a v1 membership whose Collection is missing", () => {
+    const sql = `
+      INSERT INTO "post" ("id", "site_id", "thread_id") VALUES('pst_root', 'sit_test', 'pst_root');
+      INSERT INTO "post_collection" ("site_id", "post_id", "collection_id", "created_at", "position", "pinned_at") VALUES('sit_test', 'pst_root', 'col_missing', 10, 0, NULL);
+    `;
+
+    expect(() => upgradeV1SnapshotSql(sql)).toThrow(
+      /references missing Collection col_missing.*target content was not changed/,
+    );
+  });
+
+  it("fails a v1 membership whose thread_id points at a reply", () => {
+    const sql = `
+      INSERT INTO "collection" ("id", "site_id") VALUES('col_a', 'sit_test');
+      INSERT INTO "post" ("id", "site_id", "thread_id") VALUES('pst_member', 'sit_test', 'pst_reply');
+      INSERT INTO "post" ("id", "site_id", "thread_id") VALUES('pst_reply', 'sit_test', 'pst_root');
+      INSERT INTO "post_collection" ("site_id", "post_id", "collection_id", "created_at", "position", "pinned_at") VALUES('sit_test', 'pst_member', 'col_a', 10, 0, NULL);
+    `;
+
+    expect(() => upgradeV1SnapshotSql(sql)).toThrow(
+      /references invalid Thread root pst_reply.*target content was not changed/,
     );
   });
 

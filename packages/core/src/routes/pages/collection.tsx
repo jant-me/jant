@@ -148,13 +148,14 @@ export async function renderCollectionPage(
   const isAggregate = selection.collections.length > 1;
 
   const ratedThreadCount =
-    await c.var.services.posts.countCollectionThreadRootsForCollections(
+    await c.var.services.posts.countCollectionThreadRootsUpToForCollections(
       collectionIds,
       {
         status: "published",
         excludePrivate: !navData.isAuthenticated,
         hasRating: true,
       },
+      2,
     );
   const showRatingSort = supportsCollectionRatingSort(ratedThreadCount);
   const requestedDefaultSort = isAggregate

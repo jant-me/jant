@@ -1,1 +1,6 @@
 * text=auto eol=lf
+
+# The generated Lit bundle contains a literal space/tab/newline character class.
+# Treat that embedded sequence as code, not an end-of-line whitespace error.
+packages/core/src/services/export-theme/assets/client-site.js whitespace=-blank-at-eol
+sites/demo-source/canonical/site-export/themes/jant/static/_jant/client-site.js whitespace=-blank-at-eol

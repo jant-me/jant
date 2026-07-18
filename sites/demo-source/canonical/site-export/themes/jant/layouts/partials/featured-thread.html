@@ -1,0 +1,56 @@
+{{- /*
+  Curated Featured Thread.
+
+  The Root carries a derived `featured_post_ids` projection. Render the Root,
+  every selected Featured Post, and the final Post once, preserving the real
+  Thread positions so omitted runs can be represented as gap links.
+*/ -}}
+{{- $root := . -}}
+{{- $featuredIds := $root.Params.featured_post_ids | default slice -}}
+{{- $posts := slice $root -}}
+{{- range $root.Pages.ByDate -}}
+  {{- $posts = $posts | append . -}}
+{{- end -}}
+{{- $lastIndex := sub (len $posts) 1 -}}
+{{- $visible := slice -}}
+
+{{- range $index, $post := $posts -}}
+  {{- $postId := string ($post.Params.id | default "") -}}
+  {{- $highlighted := in $featuredIds $postId -}}
+  {{- if or (eq $index 0) $highlighted (eq $index $lastIndex) -}}
+    {{- $visible = $visible | append (dict
+      "post" $post
+      "position" $index
+      "highlighted" $highlighted
+    ) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- if eq (len $visible) 1 -}}
+  {{- partial "post-card.html" $root -}}
+{{- else -}}
+  {{- $slug := $root.Params.slug | default $root.Slug -}}
+  {{- $previousPosition := -1 -}}
+  <article class="thread-preview thread-preview-curated" data-slug="{{ $slug }}">
+    <div class="thread-preview-context">
+      {{- range $entry := $visible -}}
+        {{- $position := int $entry.position -}}
+        {{- $hiddenCount := sub $position (add $previousPosition 1) -}}
+        {{- if gt $hiddenCount 0 -}}
+          <div class="thread-item thread-item-gap">
+            <a class="thread-preview-gap" href="{{ $root.RelPermalink }}">
+              {{ $hiddenCount }} hidden {{ if eq $hiddenCount 1 }}post{{ else }}posts{{ end }}
+            </a>
+          </div>
+        {{- end -}}
+        <div class="thread-item {{ if $entry.highlighted }}thread-item-featured{{ else }}thread-item-context{{ end }}">
+          {{ partial "post-card.html" $entry.post }}
+        </div>
+        {{- $previousPosition = $position -}}
+      {{- end -}}
+    </div>
+    <a class="thread-preview-thread-link" href="{{ $root.RelPermalink }}">
+      View full thread &rarr;
+    </a>
+  </article>
+{{- end -}}

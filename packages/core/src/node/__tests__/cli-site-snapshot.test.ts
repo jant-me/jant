@@ -483,6 +483,65 @@ describe("jant site snapshot export/import", () => {
     }
   });
 
+  it("rolls back a Node snapshot replacement when SQL replay fails", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "jant-site-snapshot-atomic-replace-"),
+    );
+    tempDirs.push(root);
+    const targetDbPath = join(root, "target.sqlite");
+    const snapshotPath = join(root, "snapshot");
+    await migrate({ DATABASE_URL: `file:${targetDbPath}` } as Bindings);
+
+    const sqlite = new Database(targetDbPath);
+    try {
+      sqlite.exec(`
+        INSERT INTO "site" ("id", "key", "status", "created_at", "updated_at")
+        VALUES ('${SNAPSHOT_SITE_ID}', '${SNAPSHOT_SITE_KEY}', 'active', 1, 1);
+        INSERT INTO "post" ("id", "site_id", "format", "status", "visibility", "thread_id", "created_at", "updated_at")
+        VALUES ('${SNAPSHOT_OLD_POST_ID}', '${SNAPSHOT_SITE_ID}', 'note', 'published', 'public', '${SNAPSHOT_OLD_POST_ID}', 1, 1);
+      `);
+    } finally {
+      sqlite.close();
+    }
+
+    await mkdir(snapshotPath, { recursive: true });
+    await writeFile(
+      join(snapshotPath, "meta.json"),
+      JSON.stringify({
+        format: "jant-site-snapshot",
+        version: 2,
+        dialect: "sqlite",
+        site: { id: SNAPSHOT_SITE_ID, key: SNAPSHOT_SITE_KEY },
+      }),
+    );
+    await writeFile(
+      join(snapshotPath, "db.sql"),
+      `
+        INSERT INTO "post" ("id", "site_id", "format", "status", "visibility", "thread_id", "created_at", "updated_at")
+        VALUES ('${SNAPSHOT_POST_ID}', '${SNAPSHOT_SITE_ID}', 'note', 'published', 'public', '${SNAPSHOT_POST_ID}', 2, 2);
+        INSERT INTO "thread_collection" ("site_id", "thread_id", "collection_id", "created_at")
+        VALUES ('${SNAPSHOT_SITE_ID}', '${SNAPSHOT_POST_ID}', '${SNAPSHOT_COLLECTION_ID}', 2);
+      `,
+    );
+
+    useLocalSnapshotRuntime(`file:${targetDbPath}`, join(root, "target-media"));
+    const { run: runImport } =
+      await import("../../../bin/commands/site/snapshot/import.js");
+    await expect(
+      runImport(["--path", snapshotPath, "--replace"]),
+    ).rejects.toThrow(/FOREIGN KEY constraint failed/);
+
+    const verifySqlite = new Database(targetDbPath, { readonly: true });
+    try {
+      const postIds = verifySqlite
+        .prepare(`SELECT "id" FROM "post" WHERE "site_id" = ? ORDER BY "id"`)
+        .all(SNAPSHOT_SITE_ID);
+      expect(postIds).toEqual([{ id: SNAPSHOT_OLD_POST_ID }]);
+    } finally {
+      verifySqlite.close();
+    }
+  });
+
   it("skips downloading storage objects when --skip-objects is passed", async () => {
     const root = await mkdtemp(
       join(tmpdir(), "jant-site-snapshot-skip-objects-"),

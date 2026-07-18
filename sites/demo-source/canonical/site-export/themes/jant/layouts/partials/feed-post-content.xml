@@ -8,6 +8,8 @@
                      link-format "★" suffix)
     includeReplies — when true, appends each public reply separated by
                      <hr/> + <small><time></time></small>
+    inline         — when true, renders title/link metadata that top-level
+                     Atom entries expose through their entry fields
 
   Output is raw HTML suitable for embedding inside Atom
   <content type="html"><![CDATA[...]]></content>. Since CDATA ends at the
@@ -18,8 +20,30 @@
 {{- $post := .post -}}
 {{- $permalink := .permalink -}}
 {{- $includeReplies := .includeReplies -}}
+{{- $inline := false -}}
+{{- with .inline -}}{{- $inline = . -}}{{- end -}}
 {{- $format := $post.Params.format | default "note" -}}
 {{- $parts := slice -}}
+
+{{- /* --- Inline title/link metadata for thread replies --- */ -}}
+{{- if and $inline (ne $format "quote") -}}
+  {{- $title := $post.Title | default "" -}}
+  {{- $linkUrl := string ($post.Params.link_url | default "") -}}
+  {{- if eq $format "link" -}}
+    {{- if ne $linkUrl "" -}}
+      {{- $domain := $linkUrl -}}
+      {{- with urls.Parse $linkUrl -}}{{- if .Host -}}{{- $domain = replaceRE `^(www|m|mobile)\.` "" .Host -}}{{- end -}}{{- end -}}
+      {{- $parts = $parts | append (printf `<p><a href=%q>%s</a></p>` $linkUrl (transform.XMLEscape $domain)) -}}
+    {{- end -}}
+    {{- if ne $title "" -}}
+      {{- $titleHref := $permalink -}}
+      {{- if ne $linkUrl "" -}}{{- $titleHref = $linkUrl -}}{{- end -}}
+      {{- $parts = $parts | append (printf `<h2><a href=%q>%s</a></h2>` $titleHref (transform.XMLEscape $title)) -}}
+    {{- end -}}
+  {{- else if ne $title "" -}}
+    {{- $parts = $parts | append (printf `<h2><a href=%q>%s</a></h2>` $permalink (transform.XMLEscape $title)) -}}
+  {{- end -}}
+{{- end -}}
 
 {{- /* --- Quote block (format=quote) --- */ -}}
 {{- if eq $format "quote" -}}
@@ -100,7 +124,7 @@
     {{- $replyLabel := .Date.Format "Jan 2, 2006 15:04" -}}
     {{- $parts = $parts | append "<hr/>" -}}
     {{- $parts = $parts | append (printf `<p><small><time datetime=%q>%s</time></small></p>` $replyDatetime (transform.XMLEscape $replyLabel)) -}}
-    {{- $parts = $parts | append (partial "feed-post-content.xml" (dict "post" . "permalink" $replyPermalink "includeReplies" false)) -}}
+    {{- $parts = $parts | append (partial "feed-post-content.xml" (dict "post" . "permalink" $replyPermalink "includeReplies" false "inline" true)) -}}
   {{- end -}}
 {{- end -}}
 

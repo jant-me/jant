@@ -8,14 +8,12 @@
 
 :root {
   /* Typography — Font families */
-  --font-cjk-serif-fallback:
-    "Songti SC", STSong, SimSun, "Songti TC", PMingLiU, MingLiU,
-    "Noto Serif SC", "Noto Serif CJK SC", "Noto Serif TC", "Noto Serif CJK TC";
+  --font-cjk-serif-fallback: "Jant Language Fallback";
+  --font-cjk-sans-fallback: "Jant Language Fallback";
   --font-body:
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Helvetica, Arial, "PingFang TC", "PingFang SC",
-    "Hiragino Sans CNS", "Hiragino Sans GB", "Microsoft JhengHei",
-    "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", sans-serif;
+    "Helvetica Neue", Helvetica, Arial, var(--font-cjk-sans-fallback),
+    sans-serif;
   --font-heading:
     "New York Small", "New York", "Iowan Old Style", Charter,
     "Bitstream Charter", "Source Serif 4", Cambria, "Sitka Text", Georgia,
@@ -29,9 +27,8 @@
     "Iowan Old Style", Charter, Georgia, "Times New Roman", Times, serif;
   --font-ui:
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Helvetica, Arial, "PingFang TC", "PingFang SC",
-    "Hiragino Sans CNS", "Hiragino Sans GB", "Microsoft JhengHei",
-    "Microsoft YaHei", "Noto Sans CJK TC", "Noto Sans CJK SC", sans-serif;
+    "Helvetica Neue", Helvetica, Arial, var(--font-cjk-sans-fallback),
+    sans-serif;
   --font-mono:
     ui-monospace, Menlo, Monaco, Consolas, "Cascadia Code", "Courier New",
     monospace;
@@ -65,8 +62,8 @@
    *   --type-subtitle   1.8rem  (27px)   — h3
    *   --type-body       1.4rem  (21px)   — running text, form inputs
    *   --type-secondary  1.1rem  (16.5px) — meta, nav, sidenotes, UI labels
-   *   --type-base       1.0rem  (15px)   — code, UI buttons, controls
-   *   --type-sm         0.9rem  (13.5px) — code blocks, small UI text
+   *   --type-base       1.0rem  (15px)   — UI buttons, controls
+   *   --type-sm         0.9rem  (13.5px) — small UI text
    *   --type-xs         0.8rem  (12px)   — captions, descriptions, chips
    *   --type-2xs        0.65rem (9.75px) — tiny labels, file sizes, badges
    */
@@ -84,18 +81,20 @@
      mobile overrides below cap sizes for small screens.
      --type-content-scale uniformly scales all content sizes
      without affecting UI controls. */
-  --type-content-scale: 0.81;
+  --type-content-scale: 0.8;
   --type-content-display: calc(var(--type-display) * var(--type-content-scale));
   --type-content-title: calc(var(--type-title) * var(--type-content-scale));
   --type-content-subtitle: calc(
     var(--type-subtitle) * var(--type-content-scale)
   );
   --type-content-body: calc(var(--type-body) * var(--type-content-scale));
+  --type-content-quote: calc(var(--type-content-body) * 1.16);
+  --type-content-quote-leading: 1.4;
 
   /* Semantic aliases */
-  --type-code: var(--type-base);
-  --type-code-block: var(--type-sm);
   --type-body-size: var(--type-content-body);
+  --type-code: calc(var(--type-body-size) * 0.94);
+  --type-code-block: calc(var(--type-body-size) * 0.9);
   --type-body-tracking: 0;
   --type-ui-title: var(--type-secondary);
   --type-ui-control: var(--type-base);
@@ -107,14 +106,14 @@
   --type-thread-context: var(--type-base);
   --type-thread-context-title: var(--type-secondary);
   --type-thread-context-meta: var(--type-sm);
-  --feed-note-title-size: var(--type-content-title);
+  --feed-note-title-size: calc(var(--type-content-body) * 1.36);
   --feed-note-title-leading: var(--type-heading-leading);
-  --type-body-leading: 1.5;
+  --type-body-leading: 1.7;
   --type-display-leading: 1.15;
   --type-heading-leading: 1.15;
-  --type-heading-weight: var(--fw-regular);
+  --type-heading-weight: var(--fw-medium);
   --type-heading-tracking: 0;
-  --type-display-weight: var(--fw-regular);
+  --type-display-weight: var(--fw-medium);
   --type-display-tracking: 0;
   --type-label-weight: var(--fw-medium);
   --type-label-tracking: 0.08em;
@@ -130,6 +129,46 @@
   --site-padding: 1.5rem;
   --content-gap: 1rem;
   --space-xl: 2rem;
+  --space-2xl: 4rem;
+  /*
+   * Home timeline vertical rhythm — the single source of truth for the gaps
+   * between stacked sections on the home page:
+   *
+   *   site description → separator → first post → divider → post → ...
+   *
+   * where "separator" is the description hairline (logged out) or the compose
+   * prompt (logged in). Every one of those gaps derives from this token, and
+   * the individual pieces (compose prompt, description hairline, post cards)
+   * carry no rhythm margin of their own — the structural wrappers
+   * (.site-home-header, hr.feed-divider) own the spacing. Retune the whole
+   * feed cadence by changing this one value.
+   *
+   * Note: per-format card padding (.feed-quote-post, thread previews) is the
+   * card's own internal spacing and is intentionally NOT part of this rhythm.
+   *
+   * Kept as a free-standing value (not pinned to the --space-* scale) so the
+   * feed cadence can be tuned independently.
+   */
+  --site-feed-rhythm: 4.4rem;
+  /*
+   * The post footer's action row (reply / menu buttons) is a taller tap
+   * target than its visible content, leaving a few px of dead space below
+   * the last visible element of every post (~5.9px logged out from the
+   * footer min-height, ~6.8px logged in from the menu button). hr.feed-divider
+   * subtracts this from its top margin so the VISIBLE gap between posts equals
+   * --site-feed-rhythm — the same as the header spacing. Re-measure if the
+   * footer button size or meta font changes.
+   */
+  --post-footer-overshoot: 6px;
+  /*
+   * The site intro (description) block is deliberately tighter than
+   * --site-feed-rhythm so it reads as a compact header unit rather than a
+   * full feed section. -top: gap from the header nav down to the intro.
+   * -bottom: gap from the intro down to its separator — the hairline (logged
+   * out) or the compose prompt text (logged in). Same values in both states.
+   */
+  --site-intro-gap-top: 24px;
+  --site-intro-gap-bottom: 36px;
 
   /* Sidebar layout (admin + site sidebar pages) */
   --sidebar-width: 12rem;
@@ -224,6 +263,22 @@
     var(--site-text-primary) 12%,
     transparent
   );
+  --site-code-text: color-mix(
+    in srgb,
+    var(--site-reading-heading) 86%,
+    var(--site-reading-body)
+  );
+  --site-code-bg: color-mix(in srgb, var(--site-reading-meta) 12%, transparent);
+  --site-code-block-bg: color-mix(
+    in srgb,
+    var(--site-elevated-bg) 94%,
+    var(--site-nav-hover-bg)
+  );
+  --site-code-block-border: color-mix(
+    in srgb,
+    var(--site-divider) 62%,
+    transparent
+  );
   --site-feed-divider-color: color-mix(
     in srgb,
     var(--site-text-secondary) 30%,
@@ -280,8 +335,8 @@
     var(--site-nav-hover-bg) 42%,
     transparent
   );
-  --site-thread-item-spacing: 16px;
-  --site-thread-context-max-height: clamp(196px, 40vh, 400px);
+  --site-thread-item-spacing: 32px;
+  --site-thread-context-max-height: 160px;
   --site-thread-dot-ring: color-mix(
     in srgb,
     var(--site-accent) 16%,
@@ -341,6 +396,21 @@
 @media (max-width: 760px) {
   :root {
     --site-padding: 1.875rem;
+  }
+}
+
+/* Tufte two-column → single-column collapse.
+ *
+ * Below this width the post column is already narrowed to `min(100%, 35rem)`
+ * (preset.css) and there is no room for a 45% sidenote gutter, so all content
+ * goes full-width. Single images (MediaGallery getSingleVisualWidth) and link
+ * previews (.link-preview) read this token directly, so they collapse here too.
+ *
+ * Keep this breakpoint in sync with the post-column collapse (preset.css /
+ * ui.css feed-divider, both `max-width: 1024px`) and the sidenote float→inline
+ * collapse (ui.css). They are one layout switch; do not let them drift apart. */
+@media (max-width: 1024px) {
+  :root {
     --layout-content-width: 100%;
   }
 }
@@ -427,13 +497,15 @@
 
 @media (max-width: 760px), (hover: none) and (pointer: coarse) {
   :root {
-    /* Content layer — tighter scale for mobile reading
-       Ratio ≈ 1.9 : 1.4 : 1.15 : 1 (display:title:subtitle:body)
-       13px base → 31.9 / 24 / 19.5 / 16.9 */
+    /* Content layer — tighter scale for mobile reading.
+       Ratio ≈ 1.88 : 1.42 : 1.15 : 1 (display:title:subtitle:body).
+       At 15px root × 0.8 content-scale: 29.4 / 22.2 / 18 / 15.6px.
+       Body is floored to a 16px minimum below (max()) for readability;
+       the floor still yields to calc() when the user zooms the root up. */
     --type-content-display: calc(2.45rem * var(--type-content-scale));
     --type-content-title: calc(1.85rem * var(--type-content-scale));
     --type-content-subtitle: calc(1.5rem * var(--type-content-scale));
-    --type-content-body: calc(1.3rem * var(--type-content-scale));
+    --type-content-body: max(16px, calc(1.3rem * var(--type-content-scale)));
 
     /* UI layer — pixel floors for touch targets */
     --type-ui-title: max(16px, var(--type-secondary));

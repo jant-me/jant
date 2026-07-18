@@ -1,7 +1,8 @@
 <!doctype html>
 {{- $lang := .Site.LanguageCode | default "en" -}}
 {{- $themeMode := .Site.Params.theme_mode | default "auto" -}}
-<html lang="{{ $lang }}"{{ if ne $themeMode "auto" }} data-theme-mode="{{ $themeMode }}"{{ end }}>
+{{- $themeId := .Site.Params.theme_id -}}
+<html lang="{{ $lang }}"{{ with $themeId }} data-theme="{{ . }}"{{ end }}{{ if ne $themeMode "auto" }} data-theme-mode="{{ $themeMode }}"{{ end }}>
   <head>
     {{ partial "head.html" . }}
   </head>

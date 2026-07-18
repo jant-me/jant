@@ -9,7 +9,8 @@
   */ -}}
   {{- if eq .Type "collection" -}}
     {{- $collectionSlug := .Params.slug | default .Slug -}}
-    {{- $allPosts := where .Site.Pages "Type" "post" -}}
+    {{- /* Thread collection membership is stored only on root bundles. */ -}}
+    {{- $allPosts := where (where .Site.Pages "Type" "post") "Kind" "section" -}}
     {{- $members := slice -}}
     {{- range $allPosts -}}
       {{- $post := . -}}
@@ -57,7 +58,7 @@
           <p class="section-summary">{{ . }}</p>
         {{- end -}}
         {{- with .Params.entry_count -}}
-          <p class="section-meta">{{ . }} {{ if eq (int .) 1 }}post{{ else }}posts{{ end }}</p>
+          <p class="section-meta">{{ . }} {{ if eq (int .) 1 }}thread{{ else }}threads{{ end }}</p>
         {{- end -}}
         {{ .Content }}
       </header>
@@ -65,12 +66,25 @@
         <div class="post-list">
           {{- range $i, $p := $paginator.Pages -}}
             {{- if gt $i 0 -}}<hr class="feed-divider" aria-hidden="true" />{{- end -}}
-            {{ partial "post-card.html" $p }}
+            {{- $replies := $p.Pages.ByDate -}}
+            {{- $hasReplies := gt (len $replies) 0 -}}
+            <div class="thread thread-full{{ if $hasReplies }} thread-has-replies{{ end }}" data-slug="{{ $p.Params.slug | default $p.Slug }}">
+              <div class="thread-item thread-item-root">
+                {{ partial "post-card.html" $p }}
+              </div>
+              {{- if $hasReplies -}}
+                <section class="thread-replies" aria-label="Replies">
+                  {{- range $replies -}}
+                    {{ partial "reply.html" . }}
+                  {{- end -}}
+                </section>
+              {{- end -}}
+            </div>
           {{- end -}}
         </div>
         {{ partial "pagination.html" $paginator }}
       {{- else -}}
-        <p class="empty-state">No posts in this collection yet.</p>
+        <p class="empty-state">This collection doesn't contain any threads.</p>
       {{- end -}}
     </section>
   {{- else -}}

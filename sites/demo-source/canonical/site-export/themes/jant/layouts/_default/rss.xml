@@ -7,10 +7,11 @@
 
   Feed filter parity with the corresponding HTML list view:
     - home   (`.Kind == "home"`): visibility == "public" (drops latest_hidden)
-    - featured (`.Type == "featured"`): featured_at != nil
+    - featured (`.Type == "featured"`): one Root per Thread whose derived
+        featured projection is non-empty, ordered by selected Post publication
     - archive  (`.Type == "archive"`): all published (includes latest_hidden)
     - collection (`.Type == "collection"`): Params.collections.slug match,
-        pinned first then per `sort_order`
+        ordered per `sort_order`; pinning is ignored for RSS
 
   Per-entry payload mirrors `buildSinglePostContent` + `buildFeedContent`:
     - Title: empty for quote posts, else .Title
@@ -23,7 +24,8 @@
         body    → Hugo-rendered .Content (stripped of <script>/<style>)
         rating  → <p>★★★★☆ 4/5</p>
         link    → trailing <p><a href=permalink> ★ </a></p>
-        replies → <hr/> + <p><small><time>{dt}</time></small></p> + content
+        replies → <hr/> + <p><small><time>{dt}</time></small></p>
+                  + inline title/link metadata + content
 
   Hugo's default RSS media-type override (`[outputFormats.RSS]`) makes this
   template produce application/atom+xml at /{section}/index.xml.
@@ -31,6 +33,7 @@
 {{- $page := . -}}
 {{- $limit := int (.Site.Params.rss_feed_limit | default 50) -}}
 {{- $allPosts := where .Site.Pages "Type" "post" -}}
+{{- $rootPosts := where $allPosts "Kind" "section" -}}
 
 {{- /* ------------------------------------------------------------------
      Post selection per feed kind
@@ -42,14 +45,14 @@
   {{- $public := where $allPosts "Params.visibility" "public" -}}
   {{- $posts = $public.ByDate.Reverse -}}
 {{- else if $isFeatured -}}
-  {{- $featured := where $allPosts "Params.featured_at" "ne" nil -}}
-  {{- $posts = sort $featured "Params.featured_at" "desc" -}}
+  {{- $featured := where $rootPosts "Params.featured_sort_at" "ne" nil -}}
+  {{- $posts = sort $featured "Params.featured_sort_at" "desc" -}}
 {{- else if eq $page.Type "archive" -}}
   {{- $posts = $allPosts.ByDate.Reverse -}}
 {{- else if eq $page.Type "collection" -}}
   {{- $collectionSlug := $page.Params.slug | default $page.Slug -}}
   {{- $members := slice -}}
-  {{- range $allPosts -}}
+  {{- range $rootPosts -}}
     {{- $post := . -}}
     {{- with $post.Params.collections -}}
       {{- range . -}}
@@ -59,25 +62,15 @@
       {{- end -}}
     {{- end -}}
   {{- end -}}
-  {{- $pinned := slice -}}
-  {{- $unpinned := slice -}}
-  {{- range $members -}}
-    {{- if .entry.pinned_at -}}
-      {{- $pinned = $pinned | append . -}}
-    {{- else -}}
-      {{- $unpinned = $unpinned | append . -}}
-    {{- end -}}
-  {{- end -}}
-  {{- if $pinned -}}{{- $pinned = sort $pinned "entry.pinned_at" "desc" -}}{{- end -}}
   {{- $sortOrder := $page.Params.sort_order | default "position" -}}
-  {{- if $unpinned -}}
+  {{- $ordered := $members -}}
+  {{- if $ordered -}}
     {{- if eq $sortOrder "collected_at_desc" -}}
-      {{- $unpinned = sort $unpinned "entry.collected_at" "desc" -}}
+      {{- $ordered = sort $ordered "entry.collected_at" "desc" -}}
     {{- else -}}
-      {{- $unpinned = sort $unpinned "entry.position" "asc" -}}
+      {{- $ordered = sort $ordered "entry.position" "asc" -}}
     {{- end -}}
   {{- end -}}
-  {{- $ordered := $pinned | append $unpinned -}}
   {{- range $ordered -}}{{- $posts = $posts | append .post -}}{{- end -}}
 {{- end -}}
 
@@ -121,18 +114,12 @@
   {{- $entryTitle := cond (eq $format "quote") "" (.Title | default "") -}}
   {{- /* <published>: from `date` frontmatter (= publishedAt).
        <updated>: prefer `last_activity_at` (thread-bumped), then `updated`
-       (root edit time), else `date`. For featured, take max with
-       `featured_at` so featuring alone surfaces a post. */ -}}
+       (root edit time), else `date`. Featured membership does not rewrite
+       content time or chronological ordering. */ -}}
   {{- $published := .Date.UTC.Format "2006-01-02T15:04:05Z" -}}
   {{- $updatedSrc := .Date -}}
   {{- with .Params.last_activity_at -}}{{- $updatedSrc = time . -}}
   {{- else -}}{{- with .Params.updated -}}{{- $updatedSrc = time . -}}{{- end -}}{{- end -}}
-  {{- if $isFeatured -}}
-    {{- with .Params.featured_at -}}
-      {{- $featuredAt := time . -}}
-      {{- if $featuredAt.After $updatedSrc -}}{{- $updatedSrc = $featuredAt -}}{{- end -}}
-    {{- end -}}
-  {{- end -}}
   {{- $updated := $updatedSrc.UTC.Format "2006-01-02T15:04:05Z" -}}
   {{- /* Plain-text summary fallback chain (mirrors getFeedSummaryText). */ -}}
   {{- $summaryText := "" -}}

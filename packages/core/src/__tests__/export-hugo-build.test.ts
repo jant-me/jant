@@ -206,6 +206,9 @@ describe("Hugo smoke build", () => {
     );
     expect(collectionHtml).toContain("Hello World");
     expect(collectionHtml).toContain("Follow-up");
+    expect(collectionHtml).toMatch(
+      /class="thread thread-full thread-has-replies"/,
+    );
 
     const collectionFeed = await readFile(
       join(tempDir, "public/ideas/index.xml"),

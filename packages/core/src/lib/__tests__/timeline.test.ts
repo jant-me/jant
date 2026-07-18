@@ -345,6 +345,7 @@ describe("Timeline data assembly", () => {
 
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.post.id).toBe(root.id);
+    expect(result.items[0]?.curatedThread?.showContextRatings).toBe(false);
     expect(result.items[0]?.curatedThread?.segments).toEqual([
       expect.objectContaining({
         post: expect.objectContaining({ id: root.id }),
@@ -666,6 +667,7 @@ describe("Timeline data assembly", () => {
     expect(result.items).toHaveLength(2);
     expect(result.items[0]?.post.id).toBe(secondRoot.id);
     expect(result.items[1]?.post.id).toBe(firstRoot.id);
+    expect(result.items[1]?.curatedThread?.showContextRatings).toBe(true);
     expect(result.items[1]?.curatedThread?.segments).toEqual([
       expect.objectContaining({
         post: expect.objectContaining({ id: firstRoot.id }),

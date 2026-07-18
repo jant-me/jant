@@ -473,6 +473,7 @@ describe("getThreadPreviewState", () => {
       CuratedThreadPreview({
         curatedThread: {
           rootPost: post,
+          showContextRatings: false,
           segments: [{ post, hiddenBeforeCount: 0, highlighted: true }],
         },
       }),
@@ -490,6 +491,7 @@ describe("getThreadPreviewState", () => {
     });
     const curatedThread: NonNullable<TimelineItemView["curatedThread"]> = {
       rootPost: articlePost,
+      showContextRatings: false,
       segments: [
         {
           post: articlePost,
@@ -508,6 +510,73 @@ describe("getThreadPreviewState", () => {
     expect(html).toContain("<p>Lead</p>");
     expect(html).not.toContain("<p>Body</p>");
     expect(html).not.toContain('id="continue"');
+  });
+
+  it("shows ratings on every post in a complete Collection Thread", () => {
+    const root = createPostView({
+      id: "post-root",
+      slug: "post-root",
+      permalink: "/post-root",
+      rating: 3,
+    });
+    const reply = createPostView({
+      id: "post-reply",
+      slug: "post-reply",
+      permalink: "/post-reply",
+      replyToId: root.id,
+      threadRootId: root.id,
+      rating: 5,
+      isLastInThread: true,
+    });
+
+    const html = renderWithI18n(() =>
+      CuratedThreadPreview({
+        curatedThread: {
+          rootPost: root,
+          showContextRatings: true,
+          segments: [
+            { post: root, hiddenBeforeCount: 0, highlighted: false },
+            { post: reply, hiddenBeforeCount: 0, highlighted: false },
+          ],
+        },
+      }),
+    );
+
+    expect(html.match(/class="post-rating"/g)).toHaveLength(2);
+    expect(html).not.toContain("thread-item-curated");
+  });
+
+  it("keeps non-selected Featured context ratings hidden", () => {
+    const featured = createPostView({
+      id: "post-featured",
+      slug: "post-featured",
+      permalink: "/post-featured",
+      rating: 4,
+    });
+    const context = createPostView({
+      id: "post-context",
+      slug: "post-context",
+      permalink: "/post-context",
+      rating: 5,
+      isLastInThread: true,
+    });
+
+    const html = renderWithI18n(() =>
+      CuratedThreadPreview({
+        curatedThread: {
+          rootPost: featured,
+          showContextRatings: false,
+          segments: [
+            { post: featured, hiddenBeforeCount: 0, highlighted: true },
+            { post: context, hiddenBeforeCount: 0, highlighted: false },
+          ],
+        },
+      }),
+    );
+
+    expect(html.match(/class="post-rating"/g)).toHaveLength(1);
+    expect(html).toContain("thread-item-curated");
+    expect(html).toContain("thread-item-context");
   });
 });
 

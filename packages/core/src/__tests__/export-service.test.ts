@@ -568,6 +568,13 @@ describe("createExportService (Hugo)", () => {
     expect(files.has("themes/jant/static/tokens.css")).toBe(true);
     expect(files.has("themes/jant/static/theme.css")).toBe(true);
     expect(files.has("themes/jant/static/custom.css")).toBe(true);
+
+    const collectionList = files.get(
+      "themes/jant/layouts/_default/list.html",
+    ) as string;
+    expect(collectionList).toContain(
+      'class="thread thread-full{{ if $hasReplies }} thread-has-replies{{ end }}"',
+    );
   });
 
   it("writes a .gitignore covering Hugo build artifacts", async () => {

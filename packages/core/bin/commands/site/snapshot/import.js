@@ -70,7 +70,7 @@ async function createNodeImportContext() {
       return nodeDatabase.query(sql);
     },
     async execute(sql) {
-      await nodeDatabase.execute(sql);
+      await nodeDatabase.executeAtomically(sql);
     },
     async uploadObject(key, filePath, contentType) {
       if (!storage) {

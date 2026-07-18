@@ -1,5 +1,5 @@
 {{- /*
-  Media gallery — unified scroll-snap row mirroring main-site MediaGallery.tsx.
+  Media gallery — unified horizontal scroll row mirroring main-site MediaGallery.tsx.
   Emits images, videos, audio cards, documents, and text attachments in the
   post's stored `media` order (already sorted by position in the exporter).
 
@@ -78,8 +78,9 @@
   <div class="{{ $wrapClass }}" style="margin-top: 0.75rem;">
     <div data-post-media
       {{- if $lightbox }} data-lightbox-group="{{ $lightbox | jsonify }}"{{- end -}}
+      {{- if not $singleVisual }} tabindex="0" role="group" aria-label="Media gallery"{{- end -}}
       style="display: flex; gap: 0.5rem;
-        {{- if not $singleVisual }} overflow-x: auto; scroll-behavior: smooth; scroll-snap-type: x mandatory; scrollbar-width: none; -ms-overflow-style: none;{{- end }}">
+        {{- if not $singleVisual }} overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none;{{- end }}">
       {{- range $items -}}
         {{- $k := ._kind -}}
         {{- /* Per-item width for non-single visuals */ -}}
@@ -106,7 +107,7 @@
           {{- else -}}
             <a href="{{ .src }}" data-lightbox-index="{{ ._lbIdx }}"
               class="media-visual-frame"
-              style="display: block; flex-shrink: 0; scroll-snap-align: start; width: {{ $itemWidth }}px; max-width: 85%;">
+              style="display: block; flex-shrink: 0; width: {{ $itemWidth }}px; max-width: 85%;">
               <img src="{{ .src }}" alt="{{ .alt | default "" }}"
                 {{- with .width }} width="{{ . }}"{{- end -}}
                 {{- with .height }} height="{{ . }}"{{- end }}
@@ -126,7 +127,7 @@
           {{- if $singleVisual -}}
             {{- $videoWrapStyle = printf "%s display: block; width: min(100%%, calc(24rem * %s)); max-width: 100%%;" $videoWrapStyle (printf "%.4f" $itemRatio) -}}
           {{- else -}}
-            {{- $videoWrapStyle = printf "%s display: block; flex-shrink: 0; scroll-snap-align: start; width: %dpx; max-width: 85%%;" $videoWrapStyle $itemWidth -}}
+            {{- $videoWrapStyle = printf "%s display: block; flex-shrink: 0; width: %dpx; max-width: 85%%;" $videoWrapStyle $itemWidth -}}
           {{- end -}}
           {{- $videoStyle := cond $singleVisual
               (cond (and (gt (int (default 0 .width)) 0) (gt (int (default 0 .height)) 0))
@@ -134,7 +135,7 @@
                 "display: block; width: 100%; height: auto;")
               (printf "display: block; width: 100%%; height: %dpx; object-fit: cover;" $rowHeight) -}}
           {{- if $isShort -}}
-            <div class="media-video-wrap media-video-wrap-short" style="{{ $videoWrapStyle }}">
+            <div class="media-video-wrap media-video-wrap-short" style="{{ $videoWrapStyle | safeCSS }}">
               <a href="{{ .src }}" data-lightbox-index="{{ ._lbIdx }}" class="media-visual-frame media-video-link" style="display: block; cursor: pointer;">
                 <video preload="none" muted playsinline loop
                   {{- with .poster }} poster="{{ . }}"{{- end -}}
@@ -144,7 +145,7 @@
                   data-video-src="{{ .src }}"
                   data-feed-video-id="{{ .id }}"
                   class="media-visual"
-                  style="{{ $videoStyle }}"></video>
+                  style="{{ $videoStyle | safeCSS }}"></video>
               </a>
               <button type="button" class="media-feed-video-mute" data-feed-video-mute-toggle data-muted="true" aria-label="Play with sound">
                 <svg class="media-feed-video-icon media-feed-video-icon-muted" width="12" height="12" viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
@@ -160,13 +161,13 @@
           {{- else -}}
             <a href="{{ .src }}" data-lightbox-index="{{ ._lbIdx }}"
               class="media-video-wrap media-visual-frame"
-              style="{{ $videoWrapStyle }}">
+              style="{{ $videoWrapStyle | safeCSS }}">
               <video preload="none" muted playsinline
                 {{- with .poster }} poster="{{ . }}"{{- end -}}
                 {{- with .width }} width="{{ . }}"{{- end -}}
                 {{- with .height }} height="{{ . }}"{{- end }}
                 class="media-visual"
-                style="{{ $videoStyle }}"></video>
+                style="{{ $videoStyle | safeCSS }}"></video>
               <div class="media-video-play-overlay">
                 <svg viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
               </div>
@@ -175,7 +176,7 @@
         {{- else if eq $k "audio" -}}
           {{- $audioName := .original_name | default (.alt | default "Audio") -}}
           <div class="media-gallery-card media-audio-card{{ if .waveform }} has-waveform{{ end }}"
-            style="flex-shrink: 0; scroll-snap-align: start; width: {{ $docCardWidth }}px; height: {{ $rowHeight }}px;">
+            style="flex-shrink: 0; width: {{ $docCardWidth }}px; height: {{ $rowHeight }}px;">
             <audio preload="none" class="media-audio-el">
               <source src="{{ .src }}"{{ with .mime_type }} type="{{ . }}"{{ end }}>
             </audio>
@@ -205,7 +206,7 @@
           {{- /* Static site has no text-preview modal — link direct to file. */ -}}
           {{- $label := .summary | default (.original_name | default "Attached text") -}}
           <a href="{{ .src }}" target="_blank" rel="noopener noreferrer" class="media-gallery-card"
-            style="flex-shrink: 0; scroll-snap-align: start; width: {{ $docCardWidth }}px; height: {{ $rowHeight }}px;">
+            style="flex-shrink: 0; width: {{ $docCardWidth }}px; height: {{ $rowHeight }}px;">
             <div class="media-gallery-card-inner">
               <div class="media-gallery-card-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24" aria-hidden="true">
@@ -225,7 +226,7 @@
           {{- /* document / file */ -}}
           {{- $label := .original_name | default (path.Base .src) -}}
           <a href="{{ .src }}" target="_blank" rel="noopener noreferrer" class="media-gallery-card"
-            style="flex-shrink: 0; scroll-snap-align: start; width: {{ $docCardWidth }}px; height: {{ $rowHeight }}px;">
+            style="flex-shrink: 0; width: {{ $docCardWidth }}px; height: {{ $rowHeight }}px;">
             <div class="media-gallery-card-inner">
               <div class="media-gallery-card-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24" aria-hidden="true">
@@ -242,5 +243,13 @@
         {{- end -}}
       {{- end -}}
     </div>
+    {{- if not $singleVisual -}}
+      <button type="button" class="media-gallery-nav media-gallery-nav-prev" tabindex="-1" aria-label="Scroll to previous media">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button type="button" class="media-gallery-nav media-gallery-nav-next" tabindex="-1" aria-label="Scroll to next media">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    {{- end -}}
   </div>
 {{- end -}}

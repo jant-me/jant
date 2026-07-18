@@ -9,6 +9,41 @@ function createQuery(sqlite: Database.Database) {
   return (sql: string) => sqlite.prepare(sql).all();
 }
 
+function createDialectQuery(
+  sqlite: Database.Database,
+  dialect: "pg" | "sqlite",
+) {
+  if (dialect === "sqlite") return createQuery(sqlite);
+
+  return (sql: string) => {
+    if (sql.includes("to_regclass('public.post_collection')")) {
+      const tableExists = (name: string) =>
+        sqlite
+          .prepare(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+          )
+          .get(name) !== undefined;
+      return [
+        {
+          legacy_exists: tableExists("post_collection"),
+          target_exists: tableExists("thread_collection"),
+        },
+      ];
+    }
+
+    if (sql.includes("information_schema.columns")) {
+      return sqlite
+        .prepare(`PRAGMA table_info("post")`)
+        .all()
+        .map((row) => ({
+          column_name: String((row as { name: unknown }).name),
+        }));
+    }
+
+    return sqlite.prepare(sql).all();
+  };
+}
+
 function createDomainTables(sqlite: Database.Database) {
   sqlite.exec(`
     CREATE TABLE site (
@@ -65,6 +100,46 @@ function seedLegacyThread(sqlite: Database.Database) {
       ('site-1', 'child-1', 'shared'),
       ('site-1', 'child-2', 'shared'),
       ('site-1', 'child-1', 'child-only');
+  `);
+}
+
+function seedSoftDeletedLegacyMembership(sqlite: Database.Database) {
+  sqlite.exec(`
+    ALTER TABLE post ADD COLUMN deleted_at INTEGER;
+  `);
+  seedLegacyThread(sqlite);
+  sqlite.exec(`
+    INSERT INTO post (id, site_id, reply_to_id, thread_id, deleted_at)
+    VALUES ('deleted-root', 'site-1', NULL, 'deleted-root', 100);
+    INSERT INTO collection (id, site_id)
+    VALUES ('deleted-only', 'site-1');
+    INSERT INTO post_collection (site_id, post_id, collection_id)
+    VALUES ('site-1', 'deleted-root', 'deleted-only');
+  `);
+}
+
+function applySoftDeleteAndThreadCollectionCutover(
+  sqlite: Database.Database,
+  options: { loseChildOnlyMembership?: boolean } = {},
+) {
+  sqlite.exec(`
+    DELETE FROM post_collection
+    WHERE post_id IN (
+      SELECT id FROM post WHERE deleted_at IS NOT NULL
+    );
+    DELETE FROM post WHERE deleted_at IS NOT NULL;
+  `);
+  createTargetTable(sqlite);
+  sqlite.exec(`
+    INSERT INTO thread_collection (site_id, thread_id, collection_id)
+    SELECT membership.site_id, post.thread_id, membership.collection_id
+    FROM post_collection AS membership
+    INNER JOIN post
+      ON post.site_id = membership.site_id
+      AND post.id = membership.post_id
+    ${options.loseChildOnlyMembership ? "WHERE membership.collection_id <> 'child-only'" : ""}
+    GROUP BY membership.site_id, post.thread_id, membership.collection_id;
+    DROP TABLE post_collection;
   `);
 }
 
@@ -217,4 +292,73 @@ describe("Thread Collection migration guard", () => {
 
     sqlite.close();
   });
+
+  it.each(["sqlite", "pg"] as const)(
+    "allows a %s legacy upgrade to discard collected soft-deleted posts",
+    async (dialect) => {
+      const sqlite = new Database(":memory:");
+      createDomainTables(sqlite);
+      createLegacyTable(sqlite);
+      seedSoftDeletedLegacyMembership(sqlite);
+      const query = createDialectQuery(sqlite, dialect);
+      const log = vi.fn();
+
+      const preflight = await preflightThreadCollectionMigration({
+        dialect,
+        log,
+        query,
+      });
+
+      expect(preflight).toEqual({
+        expectedCount: 2,
+        phase: "legacy",
+        sourceCount: 5,
+      });
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "1 soft-deleted post membership will be removed",
+        ),
+      );
+
+      applySoftDeleteAndThreadCollectionCutover(sqlite);
+
+      await expect(
+        verifyThreadCollectionMigration(
+          { dialect, log: vi.fn(), query },
+          preflight,
+        ),
+      ).resolves.toBeUndefined();
+
+      sqlite.close();
+    },
+  );
+
+  it.each(["sqlite", "pg"] as const)(
+    "still detects a real %s membership loss after anticipated soft deletes",
+    async (dialect) => {
+      const sqlite = new Database(":memory:");
+      createDomainTables(sqlite);
+      createLegacyTable(sqlite);
+      seedSoftDeletedLegacyMembership(sqlite);
+      const query = createDialectQuery(sqlite, dialect);
+      const preflight = await preflightThreadCollectionMigration({
+        dialect,
+        log: vi.fn(),
+        query,
+      });
+
+      applySoftDeleteAndThreadCollectionCutover(sqlite, {
+        loseChildOnlyMembership: true,
+      });
+
+      await expect(
+        verifyThreadCollectionMigration(
+          { dialect, log: vi.fn(), query },
+          preflight,
+        ),
+      ).rejects.toThrow("expected rows=2, actual rows=1");
+
+      sqlite.close();
+    },
+  );
 });
