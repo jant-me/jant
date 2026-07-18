@@ -1,12 +1,67 @@
-import { createNodeFromContent, Extension } from "@tiptap/core";
+import {
+  createNodeFromContent,
+  Extension,
+  getTextBetween,
+  getTextSerializersFromSchema,
+  type Editor,
+} from "@tiptap/core";
 import { Fragment, Slice } from "@tiptap/pm/model";
-import { Plugin } from "@tiptap/pm/state";
-import { normalizeMarkdownDocument } from "../../lib/markdown-manager.js";
+import { AllSelection, Plugin } from "@tiptap/pm/state";
+import {
+  normalizeMarkdownDocument,
+  serializeMarkdownDocument,
+} from "../../lib/markdown-manager.js";
 
 function toFragment(
   content: ReturnType<typeof createNodeFromContent>,
 ): Fragment {
   return content instanceof Fragment ? content : content.content;
+}
+
+function selectionCoversDocument(editor: Editor): boolean {
+  const { doc, selection } = editor.state;
+
+  return (
+    selection instanceof AllSelection ||
+    (selection.from === 0 && selection.to === doc.content.size)
+  );
+}
+
+function serializeReadableSelection(editor: Editor): string {
+  const { doc, schema, selection } = editor.state;
+  const textSerializers = getTextSerializersFromSchema(schema);
+  const sortedRanges = [...selection.ranges].sort(
+    (left, right) => left.$from.pos - right.$from.pos,
+  );
+
+  return sortedRanges
+    .map(({ $from, $to }) =>
+      getTextBetween(
+        doc,
+        { from: $from.pos, to: $to.pos },
+        { textSerializers },
+      ),
+    )
+    .join("\n\n");
+}
+
+/**
+ * Serializes clipboard plain text without changing the editor document.
+ *
+ * A complete document selection expresses an export-like intent, so it uses
+ * Jant's canonical Markdown contract. Partial selections retain Tiptap's
+ * readable plain-text behavior; rich HTML is serialized separately by
+ * ProseMirror and is unaffected by this hook.
+ *
+ * @param editor - Active Tiptap editor
+ * @returns Text to write to the clipboard's `text/plain` flavor
+ */
+function serializeClipboardText(editor: Editor): string {
+  if (selectionCoversDocument(editor)) {
+    return serializeMarkdownDocument(editor.getJSON()).trimEnd();
+  }
+
+  return serializeReadableSelection(editor);
 }
 
 /**
@@ -46,21 +101,31 @@ export function isCodeEditorHtml(html: string): boolean {
 export const MarkdownClipboard = Extension.create({
   name: "markdownClipboard",
 
+  // Run before Tiptap's built-in plain-text serializer. Paste handling is also
+  // intentionally resolved before generic clipboard parsing.
+  priority: 1000,
+
   addProseMirrorPlugins() {
     return [
       new Plugin({
         props: {
+          clipboardTextSerializer: () => serializeClipboardText(this.editor),
+
           /**
            * When pasting from a code editor, discard the HTML and re-insert
            * the plain text so it flows through `clipboardTextParser` below
            * and gets parsed as markdown.
            */
           handlePaste: (view, event) => {
-            const html = event.clipboardData?.getData("text/html") ?? "";
+            const clipboardData = event.clipboardData;
+            if (!clipboardData || typeof clipboardData.getData !== "function") {
+              return false;
+            }
+
+            const html = clipboardData.getData("text/html");
             if (!html || !isCodeEditorHtml(html)) return false;
 
-            const text =
-              event.clipboardData?.getData("text/plain")?.trim() ?? "";
+            const text = clipboardData.getData("text/plain").trim();
             if (!text || !this.editor.markdown) return false;
 
             const parsed = normalizeMarkdownDocument(

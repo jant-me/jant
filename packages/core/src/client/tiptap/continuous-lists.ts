@@ -1,14 +1,10 @@
 /**
- * Continuous Ordered Lists
+ * Continuous Lists
  *
- * Rich-text sources can paste one visual ordered list as several adjacent
- * `<ol>` elements, each with its own `start` value. TipTap preserves those
- * values, so editing an earlier fragment does not renumber the later ones.
- *
- * Adjacent ordered-list nodes have no visible or semantic separator in the
- * editor. Join them into one node so the browser owns the numbering for the
- * whole logical list. A paragraph or any other block between lists remains an
- * intentional boundary and preserves a restart.
+ * Rich-text sources can paste one visual list as several adjacent list nodes.
+ * Adjacent wrappers of the same type have no visible or semantic separator, so
+ * normalize them into one list. A paragraph, a different list type, or any
+ * other block remains an intentional boundary.
  */
 
 import { Extension } from "@tiptap/core";
@@ -17,7 +13,11 @@ import { Plugin } from "@tiptap/pm/state";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { canJoin } from "@tiptap/pm/transform";
 
-function findJoinableOrderedListBoundary(
+function isStandardList(node: ProseMirrorNode): boolean {
+  return node.type.name === "bulletList" || node.type.name === "orderedList";
+}
+
+function findJoinableListBoundary(
   node: ProseMirrorNode,
   nodePosition = -1,
   document = node,
@@ -31,14 +31,15 @@ function findJoinableOrderedListBoundary(
     const childPosition = contentStart + childOffset;
 
     if (
-      previousChild?.type.name === "orderedList" &&
-      child.type.name === "orderedList" &&
+      previousChild &&
+      isStandardList(previousChild) &&
+      previousChild.type === child.type &&
       canJoin(document, childPosition)
     ) {
       return childPosition;
     }
 
-    const nestedBoundary = findJoinableOrderedListBoundary(
+    const nestedBoundary = findJoinableListBoundary(
       child,
       childPosition,
       document,
@@ -53,35 +54,35 @@ function findJoinableOrderedListBoundary(
 }
 
 /**
- * Builds a transaction that joins every adjacent ordered-list fragment.
+ * Builds a transaction that joins every adjacent same-type list fragment.
  *
  * @param state - Current editor state
- * @returns A joining transaction, or null when the document is already normalized
+ * @returns A joining transaction, or null when the document is normalized
  * @example
- * const tr = buildContinuousOrderedListsTransaction(editor.state);
+ * const tr = buildContinuousListsTransaction(editor.state);
  * if (tr) editor.view.dispatch(tr);
  */
-export function buildContinuousOrderedListsTransaction(
+export function buildContinuousListsTransaction(
   state: EditorState,
 ): Transaction | null {
   const tr = state.tr;
   let changed = false;
-  let boundary = findJoinableOrderedListBoundary(tr.doc);
+  let boundary = findJoinableListBoundary(tr.doc);
 
   while (boundary !== null) {
     tr.join(boundary);
     changed = true;
-    boundary = findJoinableOrderedListBoundary(tr.doc);
+    boundary = findJoinableListBoundary(tr.doc);
   }
 
   return changed ? tr : null;
 }
 
-export const ContinuousOrderedLists = Extension.create({
-  name: "continuousOrderedLists",
+export const ContinuousLists = Extension.create({
+  name: "continuousLists",
 
   onCreate() {
-    const tr = buildContinuousOrderedListsTransaction(this.editor.state);
+    const tr = buildContinuousListsTransaction(this.editor.state);
     if (tr) this.editor.view.dispatch(tr.setMeta("addToHistory", false));
   },
 
@@ -93,7 +94,7 @@ export const ContinuousOrderedLists = Extension.create({
             return null;
           }
 
-          return buildContinuousOrderedListsTransaction(newState);
+          return buildContinuousListsTransaction(newState);
         },
       }),
     ];

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 
 import type { Editor } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
 import { afterEach, describe, expect, it } from "vitest";
 import { createTiptapEditor } from "../create-editor.js";
 import { isCodeEditorHtml } from "../markdown-clipboard.js";
@@ -75,6 +76,165 @@ describe("isCodeEditorHtml", () => {
 });
 
 describe("MarkdownClipboard", () => {
+  it("copies a complete document as canonical Markdown without changing it", () => {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const editor = createTiptapEditor({
+      element,
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "heading",
+            attrs: { level: 2 },
+            content: [{ type: "text", text: "Heading" }],
+          },
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                marks: [{ type: "bold" }],
+                text: "Bold",
+              },
+              { type: "text", text: " and " },
+              {
+                type: "text",
+                marks: [
+                  {
+                    type: "link",
+                    attrs: {
+                      href: "https://example.com",
+                      target: "_blank",
+                    },
+                  },
+                ],
+                text: "link",
+              },
+            ],
+          },
+          {
+            type: "blockquote",
+            content: [
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "Quote" }],
+              },
+              {
+                type: "paragraph",
+                content: [{ type: "text", text: "Second" }],
+              },
+            ],
+          },
+          {
+            type: "bulletList",
+            content: [
+              {
+                type: "listItem",
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [{ type: "text", text: "One" }],
+                  },
+                  {
+                    type: "bulletList",
+                    content: [
+                      {
+                        type: "listItem",
+                        content: [
+                          {
+                            type: "paragraph",
+                            content: [{ type: "text", text: "Nested" }],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: "listItem",
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [{ type: "text", text: "Two" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    editors.push(editor);
+    editor.commands.selectAll();
+    const before = editor.getJSON();
+    const { dom, text } = editor.view.serializeForClipboard(
+      editor.state.selection.content(),
+    );
+
+    expect(text).toBe(
+      "## Heading\n\n**Bold** and [link](https://example.com)\n\n> Quote\n>\n> Second\n\n- One\n  - Nested\n- Two",
+    );
+    expect(dom.querySelector("h2")?.textContent).toBe("Heading");
+    expect(dom.innerHTML).toContain("<strong>Bold</strong>");
+    expect(dom.innerHTML).toContain("<blockquote>");
+    expect(editor.getJSON()).toEqual(before);
+  });
+
+  it("keeps partial selections as readable plain text", () => {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const editor = createTiptapEditor({
+      element,
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                marks: [{ type: "bold" }],
+                text: "Bold",
+              },
+              { type: "text", text: " and " },
+              {
+                type: "text",
+                marks: [
+                  {
+                    type: "link",
+                    attrs: {
+                      href: "https://example.com",
+                      target: "_blank",
+                    },
+                  },
+                ],
+                text: "link",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    editors.push(editor);
+    editor.view.dispatch(
+      editor.state.tr.setSelection(
+        TextSelection.create(editor.state.doc, 1, 14),
+      ),
+    );
+
+    const { dom, text } = editor.view.serializeForClipboard(
+      editor.state.selection.content(),
+    );
+
+    expect(text).toBe("Bold and link");
+    expect(text).not.toContain("**");
+    expect(text).not.toContain("https://example.com");
+    expect(dom.innerHTML).toContain("<strong>Bold</strong>");
+    expect(dom.innerHTML).toContain("<a");
+  });
+
   it.each([
     ["plain text", ""],
     [

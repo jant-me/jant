@@ -13,11 +13,10 @@ import type { PasteMediaOptions } from "./paste-media.js";
 import { BubbleMenu } from "./bubble-menu.js";
 import { LinkToolbar } from "./link-toolbar.js";
 import { ExitableMarks } from "./exitable-marks.js";
-import { TabIndent } from "./tab-indent.js";
-import { ListParagraphBackspace } from "./list-paragraph-backspace.js";
-import { ContinuousOrderedLists } from "./continuous-ordered-lists.js";
+import { CodeBlockIndent } from "./tab-indent.js";
+import { StructuralKeymap } from "./structural-keymap.js";
+import { ContinuousLists } from "./continuous-lists.js";
 import { LinkInputRules } from "./link-input-rules.js";
-import { WrappingInputRules } from "./wrapping-input-rules.js";
 import { InsertParagraphAround } from "./insert-paragraph-around.js";
 import { Footnotes } from "./footnotes.js";
 import type { FormattingToolbarMode } from "./toolbar-mode.js";
@@ -88,12 +87,11 @@ export function createSettingsEditorExtensions(
     }),
     ReclaimModEnter,
     LinkInputRules,
-    WrappingInputRules,
     MarkdownClipboard,
     ExitableMarks,
     InsertParagraphAround,
-    ListParagraphBackspace,
-    ContinuousOrderedLists,
+    StructuralKeymap,
+    ContinuousLists,
     BubbleMenu.configure({
       toolbarMode: "compose",
     }),
@@ -123,7 +121,6 @@ export function createEditorExtensions(
     Footnotes,
     ImageInputRules,
     LinkInputRules,
-    WrappingInputRules,
     MarkdownClipboard,
     SlashCommands,
     ...(options.tableControlLabels
@@ -138,8 +135,8 @@ export function createEditorExtensions(
     LinkToolbar,
     ExitableMarks,
     InsertParagraphAround,
-    ListParagraphBackspace,
-    ContinuousOrderedLists,
-    TabIndent,
+    StructuralKeymap,
+    ContinuousLists,
+    CodeBlockIndent,
   ];
 }

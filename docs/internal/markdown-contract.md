@@ -151,6 +151,20 @@ Search indexing and excerpt generation do not treat every node the same.
 
 This is intentional: footnotes should be discoverable in search, but they should not leak into feed excerpts by default.
 
+## Clipboard Contract
+
+Compose preserves the destination-friendly clipboard behavior expected from a
+rich-text editor while making a complete document easy to take elsewhere:
+
+- A partial selection uses readable plain text for `text/plain` and preserves
+  rich formatting in `text/html`.
+- A complete document selection uses this canonical Markdown serializer for
+  `text/plain` and still preserves rich formatting in `text/html`.
+- Copy serialization never changes the editor document or creates an undo step.
+
+Do not add a second selection serializer for clipboard Markdown. Full-document
+copy must use the same shared manager as export and all other Markdown consumers.
+
 ## Change Checklist
 
 When adding or changing Markdown behavior:

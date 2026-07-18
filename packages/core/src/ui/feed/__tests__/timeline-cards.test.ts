@@ -202,7 +202,16 @@ describe("timeline cards", () => {
       /\.compose-tiptap-body\s+\.tiptap\s+ol\s*\{[^}]*padding-left:\s*2\.25em;[^}]*margin:\s*1\.25em 0;/,
     );
     expect(uiCss).toMatch(
-      /\.compose-tiptap-body\s+\.tiptap\s+ol ol\s*\{[^}]*list-style-type:\s*lower-alpha;[^}]*padding-left:\s*1\.5em;[^}]*margin:\s*0\.4em 0;/,
+      /\.compose-tiptap-body\s+\.tiptap\s+:is\(ul, ol\)\s+:is\(ul, ol\)\s*\{[^}]*padding-left:\s*1\.5em;[^}]*margin:\s*0\.4em 0;/,
+    );
+    expect(uiCss).toMatch(
+      /\.compose-tiptap-body\s+\.tiptap\s+ul ul\s*\{[^}]*list-style-type:\s*circle;/,
+    );
+    expect(uiCss).toMatch(
+      /\.compose-tiptap-body\s+\.tiptap\s+ul ul ul\s*\{[^}]*list-style-type:\s*square;/,
+    );
+    expect(uiCss).toMatch(
+      /\.compose-tiptap-body\s+\.tiptap\s+ol ol\s*\{[^}]*list-style-type:\s*lower-alpha;/,
     );
     expect(uiCss).toMatch(
       /\.compose-tiptap-body\s+\.tiptap\s+ol ol ol\s*\{[^}]*list-style-type:\s*lower-roman;/,
@@ -211,8 +220,11 @@ describe("timeline cards", () => {
       /\.compose-tiptap-body\s+\.tiptap\s+li\s*\{[^}]*margin:\s*0\.5em 0;/,
     );
     expect(uiCss).toContain(".compose-tiptap-body .tiptap li > p:first-child");
+    expect(uiCss).toContain(
+      ".compose-tiptap-body .tiptap li > p:has(+ :is(ul, ol))",
+    );
     expect(uiCss).toMatch(
-      /\.compose-tiptap-body\s+\.tiptap\s+li\s+>\s+p:has\(\+ ol\),[\s\S]*p:has\(\+ \.ProseMirror-gapcursor \+ ol\)\s*\{[^}]*margin-bottom:\s*0;/,
+      /p:has\(\+ \.ProseMirror-gapcursor \+ :is\(ul, ol\)\)\s*\{[^}]*margin-bottom:\s*0;/,
     );
     expect(uiCss).toMatch(
       /\.compose-reply-compose-layout\s+\.compose-tiptap-body\s+\.tiptap\s+li\s*\{[^}]*margin:\s*0\.15em 0;/,
@@ -221,7 +233,7 @@ describe("timeline cards", () => {
       /\.compose-reply-compose-layout\s+\.compose-tiptap-body\s+\.tiptap\s+ol\s*\{[^}]*padding-left:\s*2\.25em;[^}]*margin:\s*0\.25em 0;/,
     );
     expect(uiCss).toMatch(
-      /\.compose-reply-compose-layout\s+\.compose-tiptap-body\s+\.tiptap\s+ol ol\s*\{[^}]*padding-left:\s*1\.5em;[^}]*margin:\s*0\.2em 0;/,
+      /\.compose-reply-compose-layout\s+\.compose-tiptap-body\s+\.tiptap\s+:is\(ul, ol\)\s+:is\(ul, ol\)\s*\{[^}]*padding-left:\s*1\.5em;[^}]*margin:\s*0\.2em 0;/,
     );
     expect(presetCss).toMatch(
       /:where\(ol ol\)\s*\{[^}]*list-style-type:\s*lower-alpha;[^}]*margin-top:\s*0\.4em;[^}]*margin-bottom:\s*0\.4em;/,

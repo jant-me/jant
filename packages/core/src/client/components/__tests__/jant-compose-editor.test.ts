@@ -802,6 +802,87 @@ describe("JantComposeEditor", () => {
     expect(el.querySelector('.compose-tool-btn[title="Title"]')).toBeNull();
   });
 
+  it.each([
+    ["note", ".compose-note-title"],
+    ["link", ".compose-link-title"],
+  ] as const)(
+    "moves from the %s title to the start of the body on Enter",
+    async (format, selector) => {
+      const el = await createElement(format);
+      if (format === "note") {
+        el._showTitle = true;
+        await el.updateComplete;
+      }
+
+      const titleInput = requireElement(
+        el.querySelector<HTMLInputElement>(selector),
+        `expected ${format} title input`,
+      );
+      const editor = requireEditor(el);
+      titleInput.focus();
+
+      const event = new globalThis.KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      titleInput.dispatchEvent(event);
+      await new Promise<void>((resolve) => {
+        globalThis.requestAnimationFrame(() => resolve());
+      });
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(editor.view.dom);
+      expect(editor.state.selection.from).toBe(1);
+    },
+  );
+
+  it("keeps focus in the title while an IME composition is active", async () => {
+    const el = await createElement("note");
+    el._showTitle = true;
+    await el.updateComplete;
+
+    const titleInput = requireElement(
+      el.querySelector<HTMLInputElement>(".compose-note-title"),
+      "expected note title input",
+    );
+    titleInput.focus();
+
+    const event = new globalThis.KeyboardEvent("keydown", {
+      key: "Enter",
+      isComposing: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    titleInput.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(titleInput);
+  });
+
+  it("leaves Mod-Enter available for the publish shortcut", async () => {
+    const el = await createElement("note");
+    el._showTitle = true;
+    await el.updateComplete;
+
+    const titleInput = requireElement(
+      el.querySelector<HTMLInputElement>(".compose-note-title"),
+      "expected note title input",
+    );
+    titleInput.focus();
+
+    const event = new globalThis.KeyboardEvent("keydown", {
+      key: "Enter",
+      metaKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    titleInput.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(titleInput);
+  });
+
   it("keeps title after rate and places fullscreen at the far right of the toolbar", async () => {
     const el = await createElement("note");
     const toolTitles = [

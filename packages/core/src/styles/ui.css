@@ -9050,10 +9050,21 @@
     margin: 1.25em 0;
   }
 
-  .compose-tiptap-body .tiptap ol ol {
-    list-style-type: lower-alpha;
+  .compose-tiptap-body .tiptap :is(ul, ol) :is(ul, ol) {
     padding-left: 1.5em;
     margin: 0.4em 0;
+  }
+
+  .compose-tiptap-body .tiptap ul ul {
+    list-style-type: circle;
+  }
+
+  .compose-tiptap-body .tiptap ul ul ul {
+    list-style-type: square;
+  }
+
+  .compose-tiptap-body .tiptap ol ol {
+    list-style-type: lower-alpha;
   }
 
   .compose-tiptap-body .tiptap ol ol ol {
@@ -9074,8 +9085,11 @@
 
   /* A nested list makes its leading paragraph no longer the last child, so
      clear the body-paragraph margin that would otherwise separate the levels. */
-  .compose-tiptap-body .tiptap li > p:has(+ ol),
-  .compose-tiptap-body .tiptap li > p:has(+ .ProseMirror-gapcursor + ol) {
+  .compose-tiptap-body .tiptap li > p:has(+ :is(ul, ol)),
+  .compose-tiptap-body
+    .tiptap
+    li
+    > p:has(+ .ProseMirror-gapcursor + :is(ul, ol)) {
     margin-bottom: 0;
   }
 
@@ -9110,7 +9124,11 @@
     margin: 0.25em 0;
   }
 
-  .compose-reply-compose-layout .compose-tiptap-body .tiptap ol ol {
+  .compose-reply-compose-layout
+    .compose-tiptap-body
+    .tiptap
+    :is(ul, ol)
+    :is(ul, ol) {
     padding-left: 1.5em;
     margin: 0.2em 0;
   }

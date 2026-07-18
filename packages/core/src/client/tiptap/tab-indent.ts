@@ -1,14 +1,12 @@
 /**
- * Tab Indent Extension
+ * Code Block Indent Extension
  *
- * Handles Tab / Shift-Tab in two contexts:
+ * Handles Tab / Shift-Tab inside code blocks by inserting or removing 2-space
+ * indentation. When text is selected across multiple lines, every selected
+ * line is indented or outdented.
  *
- * 1. **Code blocks** — inserts or removes 2-space indentation.
- *    When text is selected across multiple lines, indents/outdents each line.
- * 2. **Lists** — sinks or lifts the current list item.
- *
- * Normal paragraphs are left alone so Tab keeps its default focus-navigation
- * behavior for keyboard accessibility.
+ * List indentation belongs to StructuralKeymap. Normal paragraphs are left
+ * alone so Tab keeps its default focus-navigation behavior for accessibility.
  */
 
 import { Extension } from "@tiptap/core";
@@ -16,21 +14,12 @@ import { TextSelection } from "@tiptap/pm/state";
 
 const INDENT = "  "; // 2 spaces
 
-export const TabIndent = Extension.create({
-  name: "tabIndent",
+export const CodeBlockIndent = Extension.create({
+  name: "codeBlockIndent",
 
   addKeyboardShortcuts() {
     return {
       Tab: ({ editor }) => {
-        // ── Lists ──────────────────────────────────────────────────
-        if (editor.isActive("listItem")) {
-          editor.commands.sinkListItem("listItem");
-          // Keep browser focus navigation from taking over when the current
-          // item cannot sink, such as the first item in a list.
-          return true;
-        }
-
-        // ── Code blocks ────────────────────────────────────────────
         if (editor.isActive("codeBlock")) {
           const { state, dispatch } = editor.view;
           const { selection } = state;
@@ -91,15 +80,6 @@ export const TabIndent = Extension.create({
       },
 
       "Shift-Tab": ({ editor }) => {
-        // ── Lists ──────────────────────────────────────────────────
-        if (editor.isActive("listItem")) {
-          editor.commands.liftListItem("listItem");
-          // Consume the shortcut in list context even when the item is
-          // already at the outermost level and cannot lift any further.
-          return true;
-        }
-
-        // ── Code blocks ────────────────────────────────────────────
         if (editor.isActive("codeBlock")) {
           const { state, dispatch } = editor.view;
           const { selection } = state;

@@ -1710,6 +1710,16 @@ export class JantComposeEditor extends LitElement {
     this._lastFocusedField = target;
   }
 
+  private _handleTitleKeydown(e: globalThis.KeyboardEvent) {
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.key !== "Enter" || e.metaKey || e.ctrlKey || e.altKey) {
+      return;
+    }
+
+    e.preventDefault();
+    this._editor?.commands.focus("start");
+  }
+
   private _toggleEmojiPicker() {
     if (this._showEmojiPicker) {
       this.closeEmojiPicker();
@@ -1975,13 +1985,7 @@ export class JantComposeEditor extends LitElement {
                   .value=${this._title}
                   @input=${(e: Event) => this._onInput("_title", e)}
                   @focus=${(e: Event) => this._onFieldFocus(e)}
-                  @keydown=${(e: globalThis.KeyboardEvent) => {
-                    if (e.isComposing || e.keyCode === 229) return;
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      this._editor?.commands.focus("start");
-                    }
-                  }}
+                  @keydown=${this._handleTitleKeydown}
                   class="compose-input compose-note-title"
                   placeholder=${this.labels.titlePlaceholder}
                 />
@@ -2054,6 +2058,7 @@ export class JantComposeEditor extends LitElement {
           .value=${this._title}
           @input=${(e: Event) => this._onInput("_title", e)}
           @focus=${(e: Event) => this._onFieldFocus(e)}
+          @keydown=${this._handleTitleKeydown}
           @blur=${() => {
             this._showLinkTitleValidation = true;
           }}
