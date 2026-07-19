@@ -6,14 +6,24 @@
  * importing an older snapshot.
  */
 
+import type { JSONContent } from "@tiptap/core";
+import { upgradeLegacyFootnotes } from "./footnotes.js";
 import {
-  renderTiptapJson,
-  tryRenderTiptapJson,
+  renderTiptapDocument,
   type TiptapRenderResult,
 } from "./tiptap-render.js";
 
 /** Current persisted post body HTML contract. V1 is the legacy inline trio. */
-export const POST_BODY_HTML_VERSION = 3;
+export const POST_BODY_HTML_VERSION = 4;
+
+export type PreparedPostBodyHtmlResult =
+  | {
+      ok: true;
+      body: string;
+      html: string;
+      upgradedLegacyFootnotes: boolean;
+    }
+  | { ok: false; error: string };
 
 export interface StoredPostBodyHtml {
   id: string;
@@ -35,7 +45,46 @@ export interface StoredPostBodyHtml {
  * ```
  */
 export function renderPostBodyHtml(postId: string, body: string): string {
-  return renderTiptapJson(body, { namespace: postId });
+  const result = tryPreparePostBodyHtml(postId, body);
+  return result.ok ? result.html : "";
+}
+
+/**
+ * Normalize recognized historical footnotes and render the current HTML
+ * projection in one parse pass.
+ *
+ * @param postId - Immutable post TypeID
+ * @param body - Canonical TipTap JSON
+ * @returns Prepared canonical JSON and HTML, or a parse failure
+ * @example
+ * ```ts
+ * tryPreparePostBodyHtml("pst_example", '{"type":"doc","content":[]}');
+ * // { ok: true, body: "...", html: "", upgradedLegacyFootnotes: false }
+ * ```
+ */
+export function tryPreparePostBodyHtml(
+  postId: string,
+  body: string,
+): PreparedPostBodyHtmlResult {
+  try {
+    const parsed = JSON.parse(body) as JSONContent;
+    if (parsed.type !== "doc") {
+      return { ok: false, error: "TipTap body root must be a doc node." };
+    }
+
+    const upgraded = upgradeLegacyFootnotes(parsed);
+    return {
+      ok: true,
+      body: upgraded.upgraded ? JSON.stringify(upgraded.doc) : body,
+      html: renderTiptapDocument(upgraded.doc, { namespace: postId }),
+      upgradedLegacyFootnotes: upgraded.upgraded,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Invalid TipTap JSON.",
+    };
+  }
 }
 
 /**
@@ -49,7 +98,10 @@ export function tryRenderPostBodyHtml(
   postId: string,
   body: string,
 ): TiptapRenderResult {
-  return tryRenderTiptapJson(body, { namespace: postId });
+  const result = tryPreparePostBodyHtml(postId, body);
+  return result.ok
+    ? { ok: true, html: result.html }
+    : { ok: false, error: result.error };
 }
 
 /**

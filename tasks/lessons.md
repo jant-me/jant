@@ -181,3 +181,7 @@
 - Normalize clipboard artifacts only behind a stable source marker and an
   exact observed shape. Do not apply broad "visually empty" cleanup to generic
   rich HTML or nested authored content.
+- A projection-version backfill proves only that derived bytes were rebuilt.
+  Before claiming a semantic content migration is complete, test real
+  historical canonical shapes and report canonical upgrades separately from
+  projection rewrites.

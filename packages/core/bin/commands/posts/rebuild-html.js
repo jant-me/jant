@@ -55,7 +55,7 @@ async function requestBatch(url, token, { limit, cursor, dryRun }) {
 
 function logBatchResult(batchIndex, result) {
   console.log(
-    `  batch ${batchIndex}: processed=${result.processed} wouldRebuild=${result.wouldRebuild} rebuilt=${result.rebuilt} skipped=${result.skipped} conflicted=${result.conflicted} failed=${result.failed}`,
+    `  batch ${batchIndex}: processed=${result.processed} wouldRebuild=${result.wouldRebuild} rebuilt=${result.rebuilt} wouldUpgradeFootnotes=${result.wouldUpgradeFootnotes ?? 0} upgradedFootnotes=${result.upgradedFootnotes ?? 0} skipped=${result.skipped} conflicted=${result.conflicted} failed=${result.failed}`,
   );
   for (const failure of result.failures ?? []) {
     console.error(`    ${failure.postId}: ${failure.error}`);
@@ -81,7 +81,9 @@ export async function run(argv) {
   if (values.help) {
     console.log("Usage: jant posts rebuild-html [--url <url>] [options]");
     console.log("");
-    console.log("Rebuild stored post body HTML from canonical TipTap JSON.");
+    console.log(
+      "Upgrade recognized legacy footnotes and rebuild stored post body HTML.",
+    );
     console.log(
       "The operation is site-scoped, cursor-paginated, and idempotent.",
     );
@@ -136,6 +138,8 @@ export async function run(argv) {
     processed: 0,
     wouldRebuild: 0,
     rebuilt: 0,
+    wouldUpgradeFootnotes: 0,
+    upgradedFootnotes: 0,
     skipped: 0,
     conflicted: 0,
     failed: 0,
@@ -169,7 +173,7 @@ export async function run(argv) {
 
   console.log("");
   console.log(
-    `Done. targetVersion=${targetVersion ?? "unknown"} processed=${totals.processed} wouldRebuild=${totals.wouldRebuild} rebuilt=${totals.rebuilt} skipped=${totals.skipped} conflicted=${totals.conflicted} failed=${totals.failed} batches=${batchIndex}`,
+    `Done. targetVersion=${targetVersion ?? "unknown"} processed=${totals.processed} wouldRebuild=${totals.wouldRebuild} rebuilt=${totals.rebuilt} wouldUpgradeFootnotes=${totals.wouldUpgradeFootnotes} upgradedFootnotes=${totals.upgradedFootnotes} skipped=${totals.skipped} conflicted=${totals.conflicted} failed=${totals.failed} batches=${batchIndex}`,
   );
 
   if (totals.failed > 0 || totals.conflicted > 0) {

@@ -2437,6 +2437,47 @@ describe("PostService", () => {
       });
     }
 
+    function legacyFootnoteBody(): string {
+      return JSON.stringify({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "Body " },
+              {
+                type: "text",
+                text: "[1]",
+                marks: [{ type: "link", attrs: { href: "#fn-1" } }],
+              },
+            ],
+          },
+          { type: "horizontalRule" },
+          {
+            type: "orderedList",
+            content: [
+              {
+                type: "listItem",
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [
+                      { type: "text", text: "Definition " },
+                      {
+                        type: "text",
+                        text: "↩︎",
+                        marks: [{ type: "link", attrs: { href: "#fnref-1" } }],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    }
+
     it("resolves stale stored HTML on reads before the rebuild writes", async () => {
       const post = await createFootnotePost("stale");
       await db
@@ -2519,6 +2560,89 @@ describe("PostService", () => {
         rebuilt: 0,
         skipped: 1,
         failed: 0,
+      });
+    });
+
+    it("atomically upgrades historical generic footnotes and their projections", async () => {
+      const post = await postService.create({
+        format: "note",
+        title: "Legacy",
+        bodyMarkdown: "Placeholder",
+      });
+      const legacyBody = legacyFootnoteBody();
+      await db
+        .update(posts)
+        .set({
+          body: legacyBody,
+          bodyHtml:
+            '<p>Body <a href="#fn-1">[1]</a></p><hr><ol><li><p>Definition <a href="#fnref-1">↩︎</a></p></li></ol>',
+          bodyHtmlVersion: 3,
+          bodyText: "Body [1] #fn-1 Definition ↩︎ #fnref-1",
+          summary: "Body [1]\n\nDefinition ↩︎",
+        })
+        .where(eq(posts.id, post.id));
+      const before = await db
+        .select({ updatedAt: posts.updatedAt, body: posts.body })
+        .from(posts)
+        .where(eq(posts.id, post.id))
+        .limit(1);
+
+      const dryRun = await postService.rebuildBodyHtml({
+        dryRun: true,
+        summaryConfig: { maxParagraphs: 5, maxChars: 500 },
+      });
+      expect(dryRun).toMatchObject({
+        wouldRebuild: 1,
+        rebuilt: 0,
+        wouldUpgradeFootnotes: 1,
+        upgradedFootnotes: 0,
+        failed: 0,
+      });
+      expect(
+        await db
+          .select({ body: posts.body })
+          .from(posts)
+          .where(eq(posts.id, post.id))
+          .limit(1),
+      ).toEqual([{ body: legacyBody }]);
+
+      const result = await postService.rebuildBodyHtml({
+        summaryConfig: { maxParagraphs: 5, maxChars: 500 },
+      });
+      expect(result).toMatchObject({
+        rebuilt: 1,
+        wouldUpgradeFootnotes: 1,
+        upgradedFootnotes: 1,
+        conflicted: 0,
+        failed: 0,
+      });
+
+      const stored = await db
+        .select({
+          body: posts.body,
+          bodyHtml: posts.bodyHtml,
+          bodyHtmlVersion: posts.bodyHtmlVersion,
+          bodyText: posts.bodyText,
+          summary: posts.summary,
+          updatedAt: posts.updatedAt,
+        })
+        .from(posts)
+        .where(eq(posts.id, post.id))
+        .limit(1);
+      expect(stored[0]?.body).toContain('"type":"footnoteReference"');
+      expect(stored[0]?.body).toContain('"type":"footnoteDefinition"');
+      expect(stored[0]?.bodyHtml).toContain('role="doc-noteref"');
+      expect(stored[0]?.bodyHtml).toContain('role="doc-endnotes"');
+      expect(stored[0]?.bodyText).toBe("Body Definition");
+      expect(stored[0]?.summary).toBe("Body");
+      expect(stored[0]?.bodyHtmlVersion).toBe(POST_BODY_HTML_VERSION);
+      expect(stored[0]?.updatedAt).toBe(before[0]?.updatedAt);
+
+      await expect(postService.rebuildBodyHtml()).resolves.toMatchObject({
+        wouldRebuild: 0,
+        wouldUpgradeFootnotes: 0,
+        upgradedFootnotes: 0,
+        skipped: 1,
       });
     });
 

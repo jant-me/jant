@@ -129,6 +129,10 @@ versioned projection:
 - `body_html_version = 2` means the short-lived semantic Subgrid structure with
   per-block wrappers, split lists, and inline row metadata.
 - `body_html_version = 3` means the canonical single-list structure above.
+- `body_html_version = 4` keeps the v3 public structure and additionally
+  guarantees that a high-confidence historical `#fn-*` link, separator,
+  ordered-list, and `#fnref-*` backlink set has been upgraded to canonical
+  TipTap footnote nodes.
 - Create and body-update operations write the body, rendered HTML, and current
   version atomically.
 - Product reads render stale rows from canonical JSON in memory. A partial
@@ -150,7 +154,9 @@ real link, the definition was inline-only, and rich/repeated footnotes could not
 be represented correctly. V2 introduced real links and DPUB roles, but still
 encoded its Subgrid layout as wrappers, split lists, and row metadata in public
 HTML. V3 keeps the semantic improvements while moving the optional Tufte rail
-entirely into a progressive enhancement for wide public post containers.
+entirely into a progressive enhancement for wide public post containers. V4
+closes the historical-import gap where older rich-text pastes had already
+flattened footnotes into ordinary TipTap links and a trailing list.
 
 Serialization behavior:
 
@@ -244,18 +250,22 @@ rich-text editor while making a complete document easy to take elsewhere:
 Do not add a second selection serializer for clipboard Markdown. Full-document
 copy must use the same shared manager as export and all other Markdown consumers.
 
-## Body HTML v3 rollout
+## Body HTML v4 rollout
 
 The schema migration and projection rebuild are deliberately separate:
 
 1. Run `jant migrate`. The new non-null column defaults every historical and
    imported row to v1; it does not rewrite content.
-2. Deploy the v3 reader/writer and let the previous application version drain.
-   Do not materialize v3 while an old writer can still edit posts.
+2. Deploy the v4 reader/writer and let the previous application version drain.
+   Do not materialize v4 while an old writer can still edit posts.
 3. Dry-run every target site. Self-hosted/current-site example:
    `jant posts rebuild-html --url <site-url> --dry-run`.
-4. Re-run without `--dry-run`. The command is cursor-paginated and idempotent;
-   it changes only `body_html` and `body_html_version`.
+4. Re-run without `--dry-run`. The command is cursor-paginated and idempotent.
+   It always refreshes `body_html` and `body_html_version`. For a structurally
+   complete historical footnote set it also atomically upgrades `body`,
+   `body_text`, and the stored summary. Dry-run and final output report these as
+   `wouldUpgradeFootnotes` and `upgradedFootnotes` separately from projection
+   rebuilds.
 5. Hosted orchestration must enumerate the complete tenant population in the
    control plane and call the explicit-site endpoint for each site. For one
    managed site, use
@@ -267,10 +277,13 @@ The schema migration and projection rebuild are deliberately separate:
    edits settle. Completion means every intended site reports zero failures
    and conflicts on a final dry run.
 
-The rebuild uses canonical TipTap JSON, never SQL string manipulation or legacy
-HTML conversion. It does not modify `updated_at`, `published_at`, slugs, or
-authored JSON. Both internal endpoints require `INTERNAL_ADMIN_TOKEN`; pass it
-through `--token` or the environment variable of the same name.
+The rebuild recognizes legacy footnotes from parsed canonical TipTap structure,
+never from SQL string manipulation or the stored legacy HTML. Conversion is
+all-or-nothing: every reference, trailing definition item, and backlink must
+form a complete set, so ordinary fragment links and numbered lists remain
+authored content. It does not modify `updated_at`, `published_at`, or slugs.
+Both internal endpoints require `INTERNAL_ADMIN_TOKEN`; pass it through
+`--token` or the environment variable of the same name.
 
 ## Change Checklist
 

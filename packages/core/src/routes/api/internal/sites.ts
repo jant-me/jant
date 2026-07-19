@@ -216,7 +216,15 @@ internalSitesRoutes.post(
     const body = parseValidated(RebuildPostBodyHtmlSchema, rawBody);
     const services = c.var.servicesForSite(c.req.param("siteId"));
 
-    return c.json(await services.posts.rebuildBodyHtml(body));
+    return c.json(
+      await services.posts.rebuildBodyHtml({
+        ...body,
+        summaryConfig: {
+          maxParagraphs: c.var.appConfig.summaryMaxParagraphs,
+          maxChars: c.var.appConfig.summaryMaxChars,
+        },
+      }),
+    );
   },
 );
 

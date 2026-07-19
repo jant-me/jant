@@ -3,6 +3,7 @@ import {
   POST_BODY_HTML_VERSION,
   renderPostBodyHtml,
   resolvePostBodyHtml,
+  tryPreparePostBodyHtml,
   tryRenderPostBodyHtml,
 } from "../post-body-html.js";
 
@@ -23,6 +24,45 @@ const body = JSON.stringify({
         {
           type: "paragraph",
           content: [{ type: "text", text: "Definition" }],
+        },
+      ],
+    },
+  ],
+});
+
+const legacyBody = JSON.stringify({
+  type: "doc",
+  content: [
+    {
+      type: "paragraph",
+      content: [
+        { type: "text", text: "Body " },
+        {
+          type: "text",
+          text: "[1]",
+          marks: [{ type: "link", attrs: { href: "#fn-1" } }],
+        },
+      ],
+    },
+    { type: "horizontalRule" },
+    {
+      type: "orderedList",
+      content: [
+        {
+          type: "listItem",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                { type: "text", text: "Definition " },
+                {
+                  type: "text",
+                  text: "↩︎",
+                  marks: [{ type: "link", attrs: { href: "#fnref-1" } }],
+                },
+              ],
+            },
+          ],
         },
       ],
     },
@@ -75,6 +115,35 @@ describe("post body HTML projection", () => {
       '<section class="footnote-endnotes" role="doc-endnotes"><ol class="footnote-list">',
     );
     expect(html).not.toMatch(/footnote-document|footnote-main|data-footnote-/);
+  });
+
+  it("upgrades legacy generic footnotes before rendering the projection", () => {
+    const prepared = tryPreparePostBodyHtml("pst_example", legacyBody);
+
+    expect(prepared).toMatchObject({
+      ok: true,
+      upgradedLegacyFootnotes: true,
+    });
+    if (!prepared.ok) throw new Error(prepared.error);
+
+    expect(prepared.body).toContain('"type":"footnoteReference"');
+    expect(prepared.body).toContain('"type":"footnoteDefinition"');
+    expect(prepared.body).not.toContain("#fnref-1");
+    expect(prepared.html).toContain('role="doc-noteref"');
+    expect(prepared.html).toContain('role="doc-endnotes"');
+  });
+
+  it("treats v3 generic footnotes as stale until canonical migration", () => {
+    const html = resolvePostBodyHtml({
+      id: "pst_example",
+      body: legacyBody,
+      bodyHtml: '<p>Body <a href="#fn-1">[1]</a></p>',
+      bodyHtmlVersion: 3,
+    });
+
+    expect(html).toContain('role="doc-noteref"');
+    expect(html).toContain('role="doc-endnotes"');
+    expect(html).not.toContain('href="#fn-1"');
   });
 
   it("falls back to stored HTML when historical canonical JSON is invalid", () => {

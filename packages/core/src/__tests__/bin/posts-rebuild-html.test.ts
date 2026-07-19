@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { run } from "../../../bin/commands/posts/rebuild-html.js";
+import { POST_BODY_HTML_VERSION } from "../../lib/post-body-html.js";
 
 const originalEnv = {
   INTERNAL_ADMIN_TOKEN: process.env.INTERNAL_ADMIN_TOKEN,
@@ -26,13 +27,15 @@ function batchResponse(overrides: Record<string, unknown> = {}) {
       processed: 1,
       wouldRebuild: 1,
       rebuilt: 1,
+      wouldUpgradeFootnotes: 0,
+      upgradedFootnotes: 0,
       skipped: 0,
       conflicted: 0,
       failed: 0,
       failures: [],
       nextCursor: null,
       done: true,
-      targetVersion: 3,
+      targetVersion: POST_BODY_HTML_VERSION,
       ...overrides,
     }),
     { status: 200, headers: { "Content-Type": "application/json" } },

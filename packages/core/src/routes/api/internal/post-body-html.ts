@@ -32,7 +32,13 @@ internalPostBodyHtmlRoutes.post(
       : {};
     const body = parseValidated(RebuildPostBodyHtmlSchema, rawBody);
 
-    const result = await c.var.services.posts.rebuildBodyHtml(body);
+    const result = await c.var.services.posts.rebuildBodyHtml({
+      ...body,
+      summaryConfig: {
+        maxParagraphs: c.var.appConfig.summaryMaxParagraphs,
+        maxChars: c.var.appConfig.summaryMaxChars,
+      },
+    });
     return c.json(result);
   },
 );

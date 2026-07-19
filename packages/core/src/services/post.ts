@@ -39,7 +39,7 @@ import {
   POST_BODY_HTML_VERSION,
   renderPostBodyHtml,
   resolvePostBodyHtml,
-  tryRenderPostBodyHtml,
+  tryPreparePostBodyHtml,
 } from "../lib/post-body-html.js";
 import { extractSummary, extractBodyText } from "../lib/summary.js";
 import { markdownToTiptapJson } from "../lib/markdown-to-tiptap.js";
@@ -94,12 +94,16 @@ export interface RebuildBodyHtmlOptions {
   cursor?: string;
   /** Compute and report changes without writing them. */
   dryRun?: boolean;
+  /** Summary settings used only when a canonical legacy body is upgraded. */
+  summaryConfig?: SummaryConfig;
 }
 
 export interface RebuildBodyHtmlResult {
   processed: number;
   wouldRebuild: number;
   rebuilt: number;
+  wouldUpgradeFootnotes: number;
+  upgradedFootnotes: number;
   skipped: number;
   conflicted: number;
   failed: number;
@@ -428,7 +432,8 @@ export interface PostService {
     done: boolean;
   }>;
   /**
-   * Rebuild stored post body HTML from canonical TipTap JSON for this site.
+   * Upgrade recognized legacy footnotes and rebuild stored post body HTML for
+   * this site.
    *
    * Updates use compare-and-swap guards so concurrent edits win. Editorial
    * timestamps are never touched. The operation is cursor-paginated,
@@ -1704,7 +1709,11 @@ export function createPostService(
       const rawBody = data.bodyMarkdown
         ? markdownToTiptapJson(data.bodyMarkdown)
         : (data.body ?? null);
-      const body = rawBody ? trimTiptapBody(rawBody) : null;
+      const trimmedBody = rawBody ? trimTiptapBody(rawBody) : null;
+      const preparedBody = trimmedBody
+        ? tryPreparePostBodyHtml(id, trimmedBody)
+        : null;
+      const body = preparedBody?.ok ? preparedBody.body : trimmedBody;
       const title = data.title?.trim() || null;
       const quoteText = data.quoteText?.trim() || null;
       const url = data.url?.trim() || null;
@@ -1720,7 +1729,11 @@ export function createPostService(
           : undefined,
       });
 
-      const bodyHtml = body ? renderPostBodyHtml(id, body) : null;
+      const bodyHtml = preparedBody?.ok
+        ? preparedBody.html
+        : body
+          ? renderPostBodyHtml(id, body)
+          : null;
       const bodyText = body
         ? extractBodyText(body, { includeLinkHrefs: true })
         : null;
@@ -2243,18 +2256,25 @@ export function createPostService(
         updates.featuredAt = data.featured ? timestamp : null;
       }
 
+      let updatedBody: string | null | undefined;
       if (data.body !== undefined || data.bodyMarkdown !== undefined) {
         const rawBody = data.bodyMarkdown
           ? markdownToTiptapJson(data.bodyMarkdown)
           : (data.body ?? null);
         const normalizedBody = rawBody ? trimTiptapBody(rawBody) : null;
-        updates.body = normalizedBody;
-        updates.bodyHtml = normalizedBody
-          ? renderPostBodyHtml(existing.id, normalizedBody)
+        const preparedBody = normalizedBody
+          ? tryPreparePostBodyHtml(existing.id, normalizedBody)
           : null;
+        updatedBody = preparedBody?.ok ? preparedBody.body : normalizedBody;
+        updates.body = updatedBody;
+        updates.bodyHtml = preparedBody?.ok
+          ? preparedBody.html
+          : updatedBody
+            ? renderPostBodyHtml(existing.id, updatedBody)
+            : null;
         updates.bodyHtmlVersion = POST_BODY_HTML_VERSION;
-        updates.bodyText = normalizedBody
-          ? extractBodyText(normalizedBody, { includeLinkHrefs: true })
+        updates.bodyText = updatedBody
+          ? extractBodyText(updatedBody, { includeLinkHrefs: true })
           : null;
       }
 
@@ -2262,14 +2282,7 @@ export function createPostService(
       if (summaryConfig) {
         const format = nextFormat;
         const title = nextTitle;
-        const body =
-          data.bodyMarkdown !== undefined
-            ? data.bodyMarkdown
-              ? markdownToTiptapJson(data.bodyMarkdown)
-              : null
-            : data.body !== undefined
-              ? data.body
-              : existing.body;
+        const body = updatedBody !== undefined ? updatedBody : existing.body;
         if (format === "note" && title && body) {
           updates.summary = extractSummary(
             body,
@@ -3540,6 +3553,8 @@ export function createPostService(
       const rows = await db
         .select({
           id: posts.id,
+          format: posts.format,
+          title: posts.title,
           body: posts.body,
           bodyHtml: posts.bodyHtml,
           bodyHtmlVersion: posts.bodyHtmlVersion,
@@ -3554,6 +3569,8 @@ export function createPostService(
       const failures: Array<{ postId: string; error: string }> = [];
       let wouldRebuild = 0;
       let rebuilt = 0;
+      let wouldUpgradeFootnotes = 0;
+      let upgradedFootnotes = 0;
       let skipped = 0;
       let conflicted = 0;
 
@@ -3563,18 +3580,23 @@ export function createPostService(
           continue;
         }
 
+        let nextBody = row.body;
         let nextBodyHtml: string | null = null;
+        let upgradesLegacyFootnotes = false;
         if (row.body !== null) {
-          const rendered = tryRenderPostBodyHtml(row.id, row.body);
-          if (!rendered.ok) {
-            failures.push({ postId: row.id, error: rendered.error });
+          const prepared = tryPreparePostBodyHtml(row.id, row.body);
+          if (!prepared.ok) {
+            failures.push({ postId: row.id, error: prepared.error });
             continue;
           }
-          nextBodyHtml = rendered.html;
+          nextBody = prepared.body;
+          nextBodyHtml = prepared.html;
+          upgradesLegacyFootnotes = prepared.upgradedLegacyFootnotes;
         }
 
         if (
           row.bodyHtmlVersion === POST_BODY_HTML_VERSION &&
+          row.body === nextBody &&
           row.bodyHtml === nextBodyHtml
         ) {
           skipped++;
@@ -3582,16 +3604,36 @@ export function createPostService(
         }
 
         wouldRebuild++;
+        if (upgradesLegacyFootnotes) wouldUpgradeFootnotes++;
         if (dryRun) continue;
 
         const bodyCondition =
           row.body === null ? isNull(posts.body) : eq(posts.body, row.body);
+        const canonicalBodyChanged = row.body !== nextBody;
+        const updates: Partial<typeof posts.$inferInsert> = {
+          bodyHtml: nextBodyHtml,
+          bodyHtmlVersion: POST_BODY_HTML_VERSION,
+        };
+        if (canonicalBodyChanged) {
+          updates.body = nextBody;
+          updates.bodyText = nextBody
+            ? extractBodyText(nextBody, { includeLinkHrefs: true })
+            : null;
+
+          if (options.summaryConfig) {
+            updates.summary =
+              row.format === "note" && row.title && nextBody
+                ? extractSummary(
+                    nextBody,
+                    options.summaryConfig.maxParagraphs,
+                    options.summaryConfig.maxChars,
+                  )
+                : null;
+          }
+        }
         const updatedRows = await db
           .update(posts)
-          .set({
-            bodyHtml: nextBodyHtml,
-            bodyHtmlVersion: POST_BODY_HTML_VERSION,
-          })
+          .set(updates)
           .where(
             and(
               eq(posts.siteId, siteId),
@@ -3606,6 +3648,7 @@ export function createPostService(
           conflicted++;
         } else {
           rebuilt++;
+          if (upgradesLegacyFootnotes) upgradedFootnotes++;
         }
       }
 
@@ -3616,6 +3659,8 @@ export function createPostService(
         processed: batch.length,
         wouldRebuild,
         rebuilt,
+        wouldUpgradeFootnotes,
+        upgradedFootnotes,
         skipped,
         conflicted,
         failed: failures.length,
