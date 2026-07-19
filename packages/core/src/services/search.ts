@@ -10,6 +10,7 @@ import type { Post, Status, Format, SearchResult } from "../types.js";
 import type { DatabaseDialect } from "../db/dialect.js";
 import type { RawQueryClient } from "../db/raw-query.js";
 import { escapeHtml } from "../lib/html.js";
+import { resolvePostBodyHtml } from "../lib/post-body-html.js";
 import {
   buildSearchSnippet,
   extractSearchTerms,
@@ -46,6 +47,7 @@ interface RawSearchRow {
   url: string | null;
   body: string | null;
   body_html: string | null;
+  body_html_version: number;
   body_text: string | null;
   quote_text: string | null;
   summary: string | null;
@@ -75,7 +77,12 @@ function mapRow(row: RawSearchRow): SearchResult {
       title: row.title,
       url: row.url,
       body: row.body,
-      bodyHtml: row.body_html,
+      bodyHtml: resolvePostBodyHtml({
+        id: row.id,
+        body: row.body,
+        bodyHtml: row.body_html,
+        bodyHtmlVersion: row.body_html_version,
+      }),
       bodyText: row.body_text,
       quoteText: row.quote_text,
       summary: row.summary,

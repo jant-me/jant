@@ -541,6 +541,63 @@ describe("timeline cards", () => {
     expect(detailHtml).toContain('class="e-content prose post-detail-body"');
   });
 
+  it("progressively enhances canonical endnotes on wide detail and timeline posts", () => {
+    const css = readFileSync(
+      new URL("../../../styles/ui.css", import.meta.url),
+      "utf8",
+    );
+    const tokens = readFileSync(
+      new URL("../../../styles/tokens.css", import.meta.url),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\[data-post-view\],\s*\[data-timeline-item\]\s*\{[^}]*container:\s*post-view\s*\/\s*inline-size;/,
+    );
+    expect(css).toContain(
+      "[data-timeline-item] article[data-post] > [data-post-body].prose",
+    );
+    expect(css).toContain("@container post-view (min-width: 56rem)");
+    expect(css).toContain("--jant-footnote-rail-enabled: 1");
+    expect(css).toContain(".footnote-rail-measuring");
+    expect(css).toContain(".footnote-rail-ready");
+    expect(css).toContain("--footnote-rail-y");
+    expect(css).toContain("--footnote-rail-number");
+    expect(css).toContain("--footnote-rail-block-size");
+    expect(css).toMatch(
+      /> \.footnote-endnotes\s*\{[^}]*position:\s*absolute;[^}]*inset-inline-start:\s*calc\(100% \+ var\(--layout-sidenote-gap\)\);[^}]*width:\s*var\(--layout-sidenote-width\);/,
+    );
+    expect(css).toMatch(
+      /> \.footnote-list\s*> \.footnote\s*\{[^}]*display:\s*grid;[^}]*column-gap:\s*1ch;[^}]*align-items:\s*baseline;[^}]*list-style:\s*none;/,
+    );
+    expect(css).toMatch(
+      /> \.footnote::before\s*\{[^}]*content:\s*var\(--footnote-rail-number\);[^}]*font-size:\s*inherit;[^}]*line-height:\s*inherit;[^}]*color:\s*var\(--site-footnote-marker\);/,
+    );
+    expect(css).toMatch(
+      /\.footnote-rail-ready[\s\S]*> \.footnote-list[\s\S]*> \.footnote\s*\{[^}]*position:\s*absolute;[^}]*inset-block-start:\s*var\(--footnote-rail-y\);/,
+    );
+    expect(css).toMatch(
+      /\.footnote-rail-ready[\s\S]*\.footnote:target\s*\{[^}]*background:\s*transparent;/,
+    );
+    expect(css).toMatch(
+      /\.footnote-rail-ready[\s\S]*\.footnote-backlinks\s*\{[^}]*position:\s*absolute;[^}]*clip-path:\s*inset\(50%\);/,
+    );
+    expect(css).toMatch(
+      /\.footnote-rail-ready[\s\S]*\.footnote-backlinks:focus-within\s*\{[^}]*position:\s*static;[^}]*clip-path:\s*none;/,
+    );
+    expect(css).toMatch(
+      /\.footnote-ref\s*\{[^}]*--site-prose-link-color:\s*var\(--site-footnote-marker\);[^}]*--site-prose-link-underline:\s*transparent;[^}]*margin-inline:\s*0\.25rem;[^}]*vertical-align:\s*super;[^}]*font-size:\s*var\(--type-footnote-ref\);[^}]*color:\s*var\(--site-footnote-marker\);/,
+    );
+    expect(tokens).toContain(
+      "--type-footnote-ref: calc(var(--type-body-size) * 0.75)",
+    );
+    expect(css).toContain("@media print");
+    expect(css).not.toContain("@supports (grid-template-rows: subgrid)");
+    expect(css).not.toContain(".footnote-document");
+    expect(css).not.toContain(".footnote-main");
+    expect(css).not.toContain(".footnote-body");
+  });
+
   it("can render full article bodies inside feed contexts without permalink anchors", () => {
     const post = createPostView({
       format: "note",

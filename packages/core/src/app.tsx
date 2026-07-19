@@ -55,6 +55,7 @@ import {
 import { telegramWebhookRoutes } from "./routes/api/telegram.js";
 import { internalTextAttachmentsRoutes } from "./routes/api/internal/text-attachments.js";
 import { internalSearchReindexRoutes } from "./routes/api/internal/search-reindex.js";
+import { internalPostBodyHtmlRoutes } from "./routes/api/internal/post-body-html.js";
 import { internalUploadsRoutes } from "./routes/api/internal/uploads.js";
 import { publicArchiveApiRoutes } from "./routes/api/public/archive.js";
 import { publicPostsApiRoutes } from "./routes/api/public/posts.js";
@@ -355,6 +356,7 @@ export function createApp(): App {
   app.route("/api/internal/sites", internalSitesRoutes);
   app.route("/api/internal/text-attachments", internalTextAttachmentsRoutes);
   app.route("/api/internal/search/reindex", internalSearchReindexRoutes);
+  app.route("/api/internal/posts/body-html", internalPostBodyHtmlRoutes);
   app.route("/api/internal/uploads", internalUploadsRoutes);
   app.route("/api/github-sync", githubSyncWebhookRoutes);
   app.route("/api/telegram", telegramWebhookRoutes);
@@ -382,7 +384,9 @@ export function createApp(): App {
       if (!object) return c.notFound();
 
       const markdown = await new Response(object.body).text();
-      const html = renderTiptapJson(markdownToTiptapJson(markdown));
+      const html = renderTiptapJson(markdownToTiptapJson(markdown), {
+        namespace: media.id,
+      });
 
       return c.json({ html, markdown }, 200, {
         "Cache-Control": "public, no-cache",

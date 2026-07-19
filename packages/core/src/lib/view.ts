@@ -5,6 +5,7 @@
  * Theme components receive only View types -- no lib/ imports needed.
  */
 
+import type { JSONContent } from "@tiptap/core";
 import type {
   Post,
   PostWithMedia,
@@ -35,7 +36,7 @@ import {
 import { getCollectionPagePath } from "./collection-paths.js";
 import { getMediaUrl, getImageUrl, getPublicUrlForProvider } from "./image.js";
 import { extractSummaryHtml, extractBodyText } from "./summary.js";
-import { renderTiptapDocument } from "./tiptap-render.js";
+import { renderTiptapDocumentAroundBoundary } from "./tiptap-render.js";
 import { highlightText } from "./search-snippet.js";
 import { isFullUrl, toPublicPath, toSameSitePath } from "./url.js";
 
@@ -154,8 +155,9 @@ const NOTE_SUMMARY_MIN_HIDDEN_CHARS = 200;
  * The summary HTML is not a byte-prefix of `bodyHtml` — structural nodes
  * (horizontalRule, moreBreak, image) appear in `bodyHtml` but are excluded from
  * the summary, so slicing `bodyHtml` by summary length lands mid-tag and
- * corrupts the markup. Instead we render the pre-boundary doc slice and splice
- * the marker at that exact block boundary.
+ * corrupts the markup. Instead we split a full-document render at the exact
+ * source boundary. The full render plan keeps repeated-footnote backlinks
+ * byte-compatible across the split.
  *
  * @param bodyJson - Tiptap JSON string for the post body
  * @param bodyHtml - Rendered body HTML to splice the marker into
@@ -169,6 +171,7 @@ function spliceAtSummaryBoundary(
   bodyHtml: string,
   breakAtIndex: number,
   markerHtml: string,
+  namespace: string,
 ): string | null {
   try {
     const doc = JSON.parse(bodyJson) as { type?: string; content?: unknown[] };
@@ -180,12 +183,13 @@ function spliceAtSummaryBoundary(
     ) {
       return null;
     }
-    const beforeHtml = renderTiptapDocument({
-      type: "doc",
-      content: doc.content.slice(0, breakAtIndex) as never[],
-    });
-    if (!bodyHtml.startsWith(beforeHtml)) return null;
-    return beforeHtml + markerHtml + bodyHtml.slice(beforeHtml.length);
+    const split = renderTiptapDocumentAroundBoundary(
+      doc as JSONContent,
+      breakAtIndex,
+      { namespace },
+    );
+    if (!split || split.beforeHtml + split.afterHtml !== bodyHtml) return null;
+    return split.beforeHtml + markerHtml + split.afterHtml;
   } catch {
     // Better an untouched body than corrupted markup.
     return null;
@@ -288,6 +292,7 @@ export function toPostView(
       isArticle ? ARTICLE_SUMMARY_MAX_BLOCKS : NOTE_SUMMARY_MAX_BLOCKS,
       isArticle ? ARTICLE_SUMMARY_MAX_CHARS : NOTE_SUMMARY_MAX_CHARS,
       isArticle ? 0 : NOTE_SUMMARY_MIN_HIDDEN_CHARS,
+      { namespace: id },
     );
     if (result && isArticle) {
       summaryHtml = result.html;
@@ -298,6 +303,7 @@ export function toPostView(
           post.bodyHtml,
           result.breakAtIndex,
           '<span id="continue"></span>',
+          id,
         );
         if (spliced) bodyHtmlWithAnchor = spliced;
       }
@@ -307,6 +313,7 @@ export function toPostView(
         post.bodyHtml,
         result.breakAtIndex,
         "<span data-note-break></span>",
+        id,
       );
       if (spliced) {
         bodyHtmlWithAnchor = spliced;

@@ -8,6 +8,9 @@ import { createPostService } from "../post.js";
 import type { Database } from "../../db/index.js";
 import type { RawQueryClient } from "../../db/raw-query.js";
 import type BetterSqlite3 from "better-sqlite3";
+import { eq } from "drizzle-orm";
+import { posts } from "../../db/schema.js";
+import { POST_BODY_HTML_VERSION } from "../../lib/post-body-html.js";
 
 /** Wraps plain text in a minimal valid TipTap JSON document. */
 function tiptapDoc(text: string): string {
@@ -37,6 +40,7 @@ function createSearchRow(overrides?: Partial<Record<string, unknown>>) {
     url: null,
     body: tiptapDoc("Hello world"),
     body_html: "<p>Hello world</p>",
+    body_html_version: POST_BODY_HTML_VERSION,
     body_text: "Hello world",
     quote_text: null,
     summary: null,
@@ -135,6 +139,50 @@ describe("SearchService", () => {
     const results = await searchService.search("TypeScript");
     expect(results.length).toBeGreaterThanOrEqual(1);
     expect(results[0]?.post.title).toContain("TypeScript");
+  });
+
+  it("resolves stale body HTML on the raw search read path", async () => {
+    const body = JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "semanticneedle" },
+            { type: "footnoteReference", attrs: { label: "1" } },
+          ],
+        },
+        {
+          type: "footnoteDefinition",
+          attrs: { label: "1" },
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Definition" }],
+            },
+          ],
+        },
+      ],
+    });
+    const post = await postService.create({ format: "note", body });
+    await db
+      .update(posts)
+      .set({
+        bodyHtml: '<span class="sidenote">legacy</span>',
+        bodyHtmlVersion: 1,
+      })
+      .where(eq(posts.id, post.id));
+
+    const searchService = createSearchService(
+      createMockD1(sqlite),
+      DEFAULT_TEST_SITE_ID,
+    );
+    const results = await searchService.search("semanticneedle");
+
+    expect(results[0]?.post.bodyHtml).toContain('role="doc-noteref"');
+    expect(results[0]?.post.bodyHtml).toMatch(/id="fn-[a-z0-9]{13}-1"/);
+    expect(results[0]?.post.bodyHtml).not.toContain(post.id);
+    expect(results[0]?.post.bodyHtml).not.toContain("legacy");
   });
 
   it("respects status filter", async () => {

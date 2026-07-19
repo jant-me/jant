@@ -190,6 +190,13 @@
       "when": 1784343834845,
       "tag": "0026_talented_killer_shrike",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1784436805462,
+      "tag": "0027_short_cannonball",
+      "breakpoints": true
     }
   ]
 }

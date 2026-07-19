@@ -20,6 +20,7 @@ import type {
   SearchResult,
   Post,
 } from "../../types.js";
+import { renderTiptapJson } from "../tiptap-render.js";
 const EMPTY_CTX: MediaContext = {};
 const CTX_WITH_URLS: MediaContext = {
   r2PublicUrl: "https://cdn.example.com",
@@ -268,6 +269,58 @@ describe("toPostView", () => {
     // inert HTML comment, so it's fine to keep in the post-anchor body.
     expect(view.bodyHtml).toBe(
       '<p>Lead</p><span id="continue"></span><!--more--><p>Rest</p>',
+    );
+  });
+
+  it("places the summary boundary after a footnote repeated in the hidden tail", () => {
+    const firstText = "A".repeat(300);
+    const secondText = "B".repeat(300);
+    const body = JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: firstText },
+            { type: "footnoteReference", attrs: { label: "shared" } },
+          ],
+        },
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: secondText },
+            { type: "footnoteReference", attrs: { label: "shared" } },
+          ],
+        },
+        {
+          type: "footnoteDefinition",
+          attrs: { label: "shared" },
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Shared definition" }],
+            },
+          ],
+        },
+      ],
+    });
+    const bodyHtml = renderTiptapJson(body, { namespace: UUID_1 });
+    const view = toPostView(
+      makePostWithMedia({ title: "Article", body, bodyHtml }),
+      EMPTY_CTX,
+    );
+
+    expect(view.summaryHasMore).toBe(true);
+    const markerIndex = view.bodyHtml?.indexOf('<span id="continue"></span>');
+    expect(markerIndex).toBeGreaterThan(
+      view.bodyHtml?.indexOf(firstText) ?? -1,
+    );
+    expect(markerIndex).toBeLessThan(view.bodyHtml?.indexOf(secondText) ?? -1);
+    expect(view.bodyHtml).toContain('href="#fnref-1jp3895hp1ag7-1-2"');
+    expect(view.bodyHtml).not.toContain("footnote-document");
+    expect(view.bodyHtml?.match(/<ol class="footnote-list">/g)).toHaveLength(1);
+    expect(view.bodyHtml?.indexOf("Shared definition")).toBeGreaterThan(
+      view.bodyHtml?.indexOf(secondText) ?? -1,
     );
   });
 

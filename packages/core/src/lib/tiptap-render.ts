@@ -7,7 +7,7 @@
 
 import type { JSONContent } from "@tiptap/core";
 import {
-  getFootnoteDomId,
+  getFootnoteLabelKey,
   normalizeFootnoteArtifacts,
   normalizeFootnoteLabel,
 } from "./footnotes.js";
@@ -30,6 +30,7 @@ interface TiptapNode {
 }
 
 interface RenderContext {
+  footnotes: FootnotePlan;
   renderChildren(content?: TiptapNode[]): string;
   renderNode(node: TiptapNode): string;
   renderText(text: string, marks?: TiptapMark[]): string;
@@ -37,6 +38,40 @@ interface RenderContext {
 
 type MarkRenderer = (html: string, mark: TiptapMark) => string;
 type NodeRenderer = (node: TiptapNode, context: RenderContext) => string;
+
+export interface TiptapRenderOptions {
+  /**
+   * Stable namespace for fragment IDs when multiple rendered documents can
+   * share a page. Persisted post HTML passes the immutable post TypeID.
+   */
+  namespace?: string;
+}
+
+export type TiptapRenderResult =
+  | { ok: true; html: string }
+  | { ok: false; error: string };
+
+interface FootnoteReferencePlan {
+  definitionId: string;
+  referenceId: string;
+  number: number;
+  occurrence: number;
+  label: string;
+  hasDefinition: boolean;
+}
+
+interface FootnoteGroup {
+  definitionId: string;
+  number: number;
+  label: string;
+  definition: TiptapNode | null;
+  references: FootnoteReferencePlan[];
+}
+
+interface FootnotePlan {
+  groups: FootnoteGroup[];
+  referencesByNode: WeakMap<TiptapNode, FootnoteReferencePlan>;
+}
 
 function getStringAttr(
   attrs: Record<string, unknown> | undefined,
@@ -80,47 +115,206 @@ function renderTableCell(
   return `<${tagName}${colspanAttr}${rowspanAttr}>${context.renderChildren(node.content)}</${tagName}>`;
 }
 
-/**
- * Strips wrapping `<p>...</p>` from single-paragraph sidenote bodies
- * so they render cleanly as inline spans.
- */
-function stripSingleParagraph(html: string): string {
-  const trimmed = html.trim();
-  if (
-    trimmed.startsWith("<p>") &&
-    trimmed.endsWith("</p>") &&
-    trimmed.indexOf("<p>", 1) === -1
-  ) {
-    return trimmed.slice(3, -4);
+const FOOTNOTE_NAMESPACE_HASH_OFFSET = 0xcbf29ce484222325n;
+const FOOTNOTE_NAMESPACE_HASH_PRIME = 0x100000001b3n;
+const FOOTNOTE_NAMESPACE_HASH_MASK = 0xffffffffffffffffn;
+
+function createFootnoteIdScope(namespace: string | undefined): string {
+  const normalized = (namespace ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!normalized) return "";
+
+  // Fragment IDs are public implementation details, not content IDs. Hash the
+  // immutable entity namespace so HTML stays readable without embedding a full
+  // 30-character TypeID. A 64-bit scope keeps collision risk negligible even
+  // across a page containing thousands of independently rendered documents.
+  let hash = FOOTNOTE_NAMESPACE_HASH_OFFSET;
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash ^= BigInt(normalized.charCodeAt(index));
+    hash =
+      (hash * FOOTNOTE_NAMESPACE_HASH_PRIME) & FOOTNOTE_NAMESPACE_HASH_MASK;
   }
-  return trimmed;
+
+  return hash.toString(36).padStart(13, "0");
 }
 
-/**
- * Module-level definition map populated by the `doc` renderer so that
- * `footnoteReference` nodes can inline sidenote content.
- */
-let activeDefinitionMap: Map<string, TiptapNode> | null = null;
+function collectFootnoteReferences(
+  node: TiptapNode,
+  visit: (reference: TiptapNode) => void,
+): void {
+  if (node.type === "footnoteReference") {
+    visit(node);
+    return;
+  }
 
-function renderSidenoteReference(
+  for (const child of node.content ?? []) {
+    collectFootnoteReferences(child, visit);
+  }
+}
+
+function createFootnotePlan(
+  doc: TiptapNode,
+  options: TiptapRenderOptions,
+): FootnotePlan {
+  const definitions = new Map<string, TiptapNode>();
+  const bodyNodes = (doc.content ?? []).filter(
+    (node) => node.type !== "footnoteDefinition",
+  );
+
+  for (const node of doc.content ?? []) {
+    if (node.type !== "footnoteDefinition") continue;
+    const key = getFootnoteLabelKey(getStringAttr(node.attrs, "label"));
+    if (key && !definitions.has(key)) definitions.set(key, node);
+  }
+
+  const namespace = createFootnoteIdScope(options.namespace);
+  const idScope = namespace ? `${namespace}-` : "";
+  const groupsByKey = new Map<string, FootnoteGroup>();
+  const groups: FootnoteGroup[] = [];
+  const referencesByNode = new WeakMap<TiptapNode, FootnoteReferencePlan>();
+
+  for (const owner of bodyNodes) {
+    collectFootnoteReferences(owner, (reference) => {
+      const normalizedLabel = normalizeFootnoteLabel(
+        getStringAttr(reference.attrs, "label"),
+      );
+      const label = normalizedLabel || "footnote";
+      const key = getFootnoteLabelKey(label);
+      let group = groupsByKey.get(key);
+
+      if (!group) {
+        const number = groupsByKey.size + 1;
+        group = {
+          definitionId: `fn-${idScope}${number}`,
+          number,
+          label,
+          definition: definitions.get(key) ?? null,
+          references: [],
+        };
+        groupsByKey.set(key, group);
+        groups.push(group);
+      }
+
+      const occurrence = group.references.length + 1;
+      const referencePlan: FootnoteReferencePlan = {
+        definitionId: group.definitionId,
+        referenceId: `fnref-${idScope}${group.number}-${occurrence}`,
+        number: group.number,
+        occurrence,
+        label: group.label,
+        hasDefinition: group.definition !== null,
+      };
+      group.references.push(referencePlan);
+      referencesByNode.set(reference, referencePlan);
+    });
+  }
+
+  return { groups, referencesByNode };
+}
+
+function renderFootnoteReference(
   node: TiptapNode,
   context: RenderContext,
 ): string {
-  const label = normalizeFootnoteLabel(getStringAttr(node.attrs, "label"));
-  const footnoteId = getFootnoteDomId(label);
-  const definitionNode = activeDefinitionMap?.get(label);
-  const bodyHtml = definitionNode
-    ? stripSingleParagraph(context.renderChildren(definitionNode.content))
-    : "";
+  const plan = context.footnotes.referencesByNode.get(node);
+  const fallbackLabel =
+    normalizeFootnoteLabel(getStringAttr(node.attrs, "label")) || "footnote";
+  const label = plan?.label ?? fallbackLabel;
+  const number = plan?.number ?? label;
 
-  // The `footref` / `footref-toggle` classes are not styled by us; they mark the
-  // Tufte sidenote trio as an Org-mode-style footnote so HTML-to-Markdown readers
-  // (Defuddle, used by Obsidian Web Clipper) recover `[^n]` references instead of
-  // silently dropping `span.sidenote`. See docs/internal/markdown-contract.md.
+  if (!plan?.hasDefinition) {
+    return `<sup class="footnote-ref">${escapeHtml(String(number))}</sup>`;
+  }
+
   return (
-    `<label for="sn-${escapeHtml(footnoteId)}" class="margin-toggle sidenote-number footref"></label>` +
-    `<input type="checkbox" id="sn-${escapeHtml(footnoteId)}" class="margin-toggle footref-toggle"/>` +
-    `<span class="sidenote">${bodyHtml}</span>`
+    `<sup class="footnote-ref">` +
+    `<a id="${escapeHtml(plan.referenceId)}" href="#${escapeHtml(plan.definitionId)}" role="doc-noteref">` +
+    `${plan.number}</a></sup>`
+  );
+}
+
+function renderFootnoteGroup(
+  group: FootnoteGroup,
+  context: RenderContext,
+  includeValue: boolean,
+): string {
+  if (!group.definition) return "";
+
+  const definitionContent = group.definition.content ?? [];
+  const backlinks = group.references
+    .map((reference) => {
+      const occurrence =
+        group.references.length > 1 ? String(reference.occurrence) : "";
+      return (
+        `<a href="#${escapeHtml(reference.referenceId)}" class="footnote-backref" ` +
+        `role="doc-backlink">↩︎${occurrence}</a>`
+      );
+    })
+    .join(" ");
+  const backlinksHtml = `<span class="footnote-backlinks">${backlinks}</span>`;
+  const lastBlock = definitionContent.at(-1);
+  let bodyHtml: string;
+
+  if (lastBlock?.type === "paragraph") {
+    const precedingBlocks = definitionContent.slice(0, -1);
+    const lastParagraphHtml = context.renderChildren(lastBlock.content);
+    const separator = lastParagraphHtml ? " " : "";
+    bodyHtml =
+      context.renderChildren(precedingBlocks) +
+      `<p>${lastParagraphHtml}${separator}${backlinksHtml}</p>`;
+  } else {
+    bodyHtml =
+      context.renderChildren(definitionContent) +
+      `<p class="footnote-backlinks">${backlinks}</p>`;
+  }
+
+  const valueAttr = includeValue ? ` value="${group.number}"` : "";
+
+  return (
+    `<li id="${escapeHtml(group.definitionId)}" class="footnote"${valueAttr}>` +
+    bodyHtml +
+    `</li>`
+  );
+}
+
+function renderFootnoteEndnotes(context: RenderContext): string {
+  const groups = context.footnotes.groups.filter(
+    (group) => group.definition !== null,
+  );
+  if (groups.length === 0) return "";
+
+  const firstNumber = groups[0]?.number ?? 1;
+  let expectedNumber = firstNumber;
+  const items = groups
+    .map((group) => {
+      const includeValue = group.number !== expectedNumber;
+      expectedNumber = group.number + 1;
+      return renderFootnoteGroup(group, context, includeValue);
+    })
+    .join("");
+  const startAttr = firstNumber === 1 ? "" : ` start="${firstNumber}"`;
+
+  return (
+    `<section class="footnote-endnotes" role="doc-endnotes">` +
+    `<ol class="footnote-list"${startAttr}>${items}</ol>` +
+    `</section>`
+  );
+}
+
+function renderDocumentContent(
+  node: TiptapNode,
+  context: RenderContext,
+): string {
+  const bodyNodes = (node.content ?? []).filter(
+    (child) => child.type !== "footnoteDefinition",
+  );
+
+  return (
+    bodyNodes.map((bodyNode) => context.renderNode(bodyNode)).join("") +
+    renderFootnoteEndnotes(context)
   );
 }
 
@@ -140,30 +334,7 @@ const MARK_RENDERERS: Record<string, MarkRenderer> = {
 };
 
 const NODE_RENDERERS: Record<string, NodeRenderer> = {
-  doc: (node, context) => {
-    const content = node.content ?? [];
-
-    // Build definition lookup so footnoteReference can inline sidenotes
-    const definitionMap = new Map<string, TiptapNode>();
-    for (const child of content) {
-      if (child.type === "footnoteDefinition") {
-        const label = normalizeFootnoteLabel(
-          getStringAttr(child.attrs, "label"),
-        );
-        if (label) definitionMap.set(label, child);
-      }
-    }
-
-    activeDefinitionMap = definitionMap.size > 0 ? definitionMap : null;
-    try {
-      const bodyNodes = content.filter(
-        (child) => child.type !== "footnoteDefinition",
-      );
-      return context.renderChildren(bodyNodes);
-    } finally {
-      activeDefinitionMap = null;
-    }
-  },
+  doc: (node, context) => renderDocumentContent(node, context),
   paragraph: (node, context) =>
     `<p>${context.renderChildren(node.content)}</p>`,
   heading: (node, context) => {
@@ -213,7 +384,7 @@ const NODE_RENDERERS: Record<string, NodeRenderer> = {
     return `<div class="tiptap-html-block">${html}</div>`;
   },
   moreBreak: () => "<!--more-->",
-  footnoteReference: (node, context) => renderSidenoteReference(node, context),
+  footnoteReference: (node, context) => renderFootnoteReference(node, context),
   footnoteDefinition: () => "",
 };
 
@@ -230,40 +401,144 @@ function renderText(text: string, marks: TiptapMark[] = []): string {
   return html;
 }
 
-function renderChildren(content: TiptapNode[] = []): string {
-  return content.map(renderNode).join("");
-}
-
 function renderUnknownNode(node: TiptapNode, context: RenderContext): string {
   return node.content ? context.renderChildren(node.content) : "";
 }
 
-function renderNode(node: TiptapNode): string {
-  const renderNodeType = NODE_RENDERERS[node.type] ?? renderUnknownNode;
-  return renderNodeType(node, RENDER_CONTEXT);
-}
+function createRenderContext(footnotes: FootnotePlan): RenderContext {
+  const context: RenderContext = {
+    footnotes,
+    renderChildren(content: TiptapNode[] = []) {
+      return content.map((node) => context.renderNode(node)).join("");
+    },
+    renderNode(node) {
+      const renderNodeType = NODE_RENDERERS[node.type] ?? renderUnknownNode;
+      return renderNodeType(node, context);
+    },
+    renderText,
+  };
 
-const RENDER_CONTEXT: RenderContext = {
-  renderChildren,
-  renderNode,
-  renderText,
-};
+  return context;
+}
 
 /**
  * Renders a parsed TipTap document to HTML.
  *
  * @param doc - Parsed TipTap document
+ * @param options - Rendering options, including a stable footnote ID namespace
  * @returns HTML string
  */
-export function renderTiptapDocument(doc: JSONContent): string {
+export function renderTiptapDocument(
+  doc: JSONContent,
+  options: TiptapRenderOptions = {},
+): string {
   if (doc.type !== "doc") return "";
-  return renderNode(normalizeFootnoteArtifacts(doc) as TiptapNode);
+  const normalized = normalizeFootnoteArtifacts(doc) as TiptapNode;
+  const context = createRenderContext(createFootnotePlan(normalized, options));
+  return context.renderNode(normalized);
+}
+
+export interface TiptapBoundaryRenderResult {
+  beforeHtml: string;
+  afterHtml: string;
+}
+
+/**
+ * Render a document as two byte-compatible segments around a top-level source
+ * boundary.
+ *
+ * The full document is planned before either segment is rendered, so a
+ * footnote before the boundary still includes backlinks to repeated references
+ * after it. Joining the two strings is therefore identical to a normal render.
+ *
+ * @param doc - Parsed TipTap document
+ * @param boundaryIndex - Index in the original `doc.content` array
+ * @param options - Rendering options, including a stable footnote ID namespace
+ * @returns The rendered segments, or null for an invalid root or boundary
+ * @example
+ * ```ts
+ * renderTiptapDocumentAroundBoundary(
+ *   { type: "doc", content: [{ type: "paragraph" }] },
+ *   1,
+ * );
+ * // { beforeHtml: "<p></p>", afterHtml: "" }
+ * ```
+ */
+export function renderTiptapDocumentAroundBoundary(
+  doc: JSONContent,
+  boundaryIndex: number,
+  options: TiptapRenderOptions = {},
+): TiptapBoundaryRenderResult | null {
+  const originalContent = doc.content ?? [];
+  if (
+    doc.type !== "doc" ||
+    !Array.isArray(doc.content) ||
+    !Number.isInteger(boundaryIndex) ||
+    boundaryIndex < 0 ||
+    boundaryIndex > originalContent.length
+  ) {
+    return null;
+  }
+
+  const normalized = normalizeFootnoteArtifacts(doc) as TiptapNode;
+  const context = createRenderContext(createFootnotePlan(normalized, options));
+  const normalizedBoundaryIndex = Math.min(
+    boundaryIndex,
+    normalized.content?.length ?? 0,
+  );
+  let beforeBodyHtml = "";
+  let afterBodyHtml = "";
+
+  for (const [index, node] of (normalized.content ?? []).entries()) {
+    if (node.type === "footnoteDefinition") continue;
+    const html = context.renderNode(node);
+    if (index < normalizedBoundaryIndex) {
+      beforeBodyHtml += html;
+    } else {
+      afterBodyHtml += html;
+    }
+  }
+
+  return {
+    beforeHtml: beforeBodyHtml,
+    afterHtml: afterBodyHtml + renderFootnoteEndnotes(context),
+  };
+}
+
+/**
+ * Strictly parses and renders a TipTap JSON document.
+ *
+ * Unlike `renderTiptapJson`, this distinguishes invalid canonical JSON from a
+ * valid empty document. Projection rebuilds use it so malformed historical
+ * content is reported and never marked as current.
+ *
+ * @param json - TipTap JSON string
+ * @param options - Rendering options
+ * @returns A discriminated render result
+ */
+export function tryRenderTiptapJson(
+  json: string,
+  options: TiptapRenderOptions = {},
+): TiptapRenderResult {
+  try {
+    const doc = JSON.parse(json) as JSONContent;
+    if (doc.type !== "doc") {
+      return { ok: false, error: "TipTap body root must be a doc node." };
+    }
+    return { ok: true, html: renderTiptapDocument(doc, options) };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Invalid TipTap JSON.",
+    };
+  }
 }
 
 /**
  * Renders a Tiptap JSON document to an HTML string.
  *
  * @param json - Tiptap JSON string or parsed document object
+ * @param options - Rendering options, including a stable footnote ID namespace
  * @returns HTML string
  *
  * @example
@@ -272,13 +547,12 @@ export function renderTiptapDocument(doc: JSONContent): string {
  * // "<p>Hello</p>"
  * ```
  */
-export function renderTiptapJson(json: string): string {
-  try {
-    const doc = JSON.parse(json) as JSONContent;
-    return renderTiptapDocument(doc);
-  } catch {
-    return "";
-  }
+export function renderTiptapJson(
+  json: string,
+  options: TiptapRenderOptions = {},
+): string {
+  const result = tryRenderTiptapJson(json, options);
+  return result.ok ? result.html : "";
 }
 
 /**

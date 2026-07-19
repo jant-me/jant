@@ -1,5 +1,6 @@
 import type { Bindings } from "../types.js";
 import { getConfiguredSingleSitePathPrefix } from "./env.js";
+import { POST_BODY_HTML_VERSION } from "./post-body-html.js";
 import { stripSitePathPrefix } from "./url.js";
 
 const TRACKING_QUERY_PARAMS = [
@@ -21,6 +22,7 @@ const TRACKING_QUERY_PARAMS = [
 
 const AUTH_COOKIE_PATTERN =
   /(?:^|;\s*)(?:__Host-)?(?:__Secure-)?better-auth[.-][^=]+=/;
+const BODY_HTML_CACHE_VERSION_PARAM = "__jant_body_html";
 
 type ExecutionContextLike = {
   waitUntil(promise: Promise<unknown>): void;
@@ -83,7 +85,9 @@ export function isWorkerResponseCachePath(path: string): boolean {
  * Normalize a public request URL for Worker cache lookup.
  *
  * Tracking parameters are removed so equivalent feed requests converge on one
- * cache entry while functional filters like `format` remain intact.
+ * cache entry while functional filters like `format` remain intact. A private
+ * body-HTML contract version invalidates cached feed markup across renderer
+ * deployments; it is only used for Cache API lookup and never forwarded.
  *
  * @param requestUrl - Full public request URL
  * @returns Normalized cache key URL
@@ -95,6 +99,10 @@ export function normalizeWorkerCacheKeyUrl(requestUrl: string): string {
     url.searchParams.delete(param);
   }
 
+  url.searchParams.set(
+    BODY_HTML_CACHE_VERSION_PARAM,
+    String(POST_BODY_HTML_VERSION),
+  );
   url.searchParams.sort();
   return url.toString();
 }

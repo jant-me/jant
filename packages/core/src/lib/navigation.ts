@@ -68,7 +68,9 @@ export async function getNavigationData(
   // Plain text for meta tags / RSS; HTML for homepage display
   const siteDescription = rawDescription ? toPlainText(rawDescription) : "";
   const siteDescriptionHtml = rawDescription
-    ? renderMarkdown(rawDescription)
+    ? renderMarkdown(rawDescription, {
+        namespace: `${c.var.currentSite.id}-description`,
+      })
     : undefined;
 
   // Avatar URL and display flag come from appConfig
@@ -76,7 +78,11 @@ export async function getNavigationData(
   const showHeaderAvatar = appConfig.showHeaderAvatar;
 
   // Render footer markdown
-  const siteFooterHtml = siteFooter ? renderMarkdown(siteFooter) : undefined;
+  const siteFooterHtml = siteFooter
+    ? renderMarkdown(siteFooter, {
+        namespace: `${c.var.currentSite.id}-footer`,
+      })
+    : undefined;
 
   // Auth state is populated once per request by `attachSession` middleware.
   const isAuthenticated = c.var.isAuthenticated;

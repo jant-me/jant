@@ -167,6 +167,7 @@ export const posts = pgTable(
     url: text("url"),
     body: text("body"),
     bodyHtml: text("body_html"),
+    bodyHtmlVersion: integer("body_html_version").notNull().default(1),
     bodyText: text("body_text"),
     quoteText: text("quote_text"),
     summary: text("summary"),

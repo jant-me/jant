@@ -2350,9 +2350,128 @@
     );
   }
 
-  /* --- Sidenotes (Tufte-style margin notes) ------------------------------ */
+  /* --- Semantic footnotes with Tufte presentation ------------------------ */
 
-  .sidenote,
+  /* The published DOM stays semantic and readable without CSS: body blocks
+     come first, followed by doc-endnotes containing one native ordered list.
+     Detail and timeline posts use their real container width to opt into the
+     Tufte rail; narrow containers, print, feeds, and readers retain endnote
+     order. */
+  [data-post-view],
+  [data-timeline-item] {
+    container: post-view / inline-size;
+  }
+
+  .footnote-endnotes {
+    margin-block: 1.5rem 0;
+    padding-block-start: 0.85rem;
+    border-block-start: 1px solid var(--site-divider);
+  }
+
+  .footnote-list {
+    margin-block: 0;
+    padding-inline-start: 1.5rem;
+  }
+
+  .footnote {
+    scroll-margin-block-start: 2rem;
+    padding-inline-start: 0.15rem;
+    overflow-wrap: anywhere;
+    font-family: var(--font-body);
+    font-size: var(--type-sm);
+    font-style: normal;
+    font-weight: 400;
+    font-variant: normal;
+    line-height: 1.3;
+    letter-spacing: var(--type-body-tracking, normal);
+    text-align: left;
+    color: var(--site-footnote-text);
+  }
+
+  .footnote::marker {
+    color: inherit;
+    font-size: var(--type-xs);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .footnote:target {
+    border-radius: var(--radius-sm, 0.25rem);
+    background: color-mix(in srgb, var(--site-reading-meta) 8%, transparent);
+  }
+
+  .footnote > :first-child {
+    margin-block-start: 0;
+  }
+
+  .footnote > :last-child {
+    margin-block-end: 0;
+  }
+
+  .footnote code {
+    font-size: var(--type-code);
+  }
+
+  .footnote-backlinks {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem;
+    font-size: var(--type-xs);
+  }
+
+  span.footnote-backlinks {
+    margin-inline-start: 0.35rem;
+    vertical-align: baseline;
+  }
+
+  p.footnote-backlinks {
+    display: flex;
+    margin-block: 0.45rem 0;
+  }
+
+  .footnote + .footnote {
+    margin-block-start: 0.75rem;
+  }
+
+  .footnote-backref,
+  .footnote-ref > a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .footnote-backref:hover,
+  .footnote-ref > a:hover {
+    text-decoration: underline;
+  }
+
+  .footnote-backref:focus-visible,
+  .footnote-ref > a:focus-visible {
+    border-radius: var(--radius-sm, 0.25rem);
+    outline: 1px solid currentColor;
+    outline-offset: 2px;
+  }
+
+  .footnote-ref {
+    --site-prose-link-color: var(--site-footnote-marker);
+    --site-prose-link-hover: var(--site-footnote-marker);
+    --site-prose-link-underline: transparent;
+
+    margin-inline: 0.25rem;
+    vertical-align: super;
+    line-height: 0;
+    font-size: var(--type-footnote-ref);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--site-footnote-marker);
+  }
+
+  /* --- Legacy v1 sidenotes ----------------------------------------------- */
+
+  /* Kept for one compatibility window so imported snapshots or cached HTML
+     from an older runtime remain readable during rollout. Product reads render
+     stale post projections as v3 before the database rebuild runs. */
+
+  .sidenote:not([role="doc-footnote"]),
   .marginnote {
     /* Layout: float into the right margin. A floated note anchors to its containing
        block's right *content* edge, so if a theme gives that block inline-end padding
@@ -2395,7 +2514,7 @@
   }
 
   .sidenote-number::after,
-  .sidenote::before {
+  .sidenote:not([role="doc-footnote"])::before {
     position: relative;
     vertical-align: baseline;
   }
@@ -2411,13 +2530,13 @@
     margin-right: 0.25rem;
   }
 
-  .sidenote::before {
+  .sidenote:not([role="doc-footnote"])::before {
     content: counter(sidenote-counter) " ";
     font-size: var(--type-xs);
     top: -0.5rem;
   }
 
-  .sidenote > code,
+  .sidenote:not([role="doc-footnote"]) > code,
   .marginnote > code {
     font-size: var(--type-code);
   }
@@ -2446,12 +2565,12 @@
       cursor: pointer;
     }
 
-    .sidenote,
+    .sidenote:not([role="doc-footnote"]),
     .marginnote {
       display: none;
     }
 
-    .margin-toggle:checked + .sidenote,
+    .margin-toggle:checked + .sidenote:not([role="doc-footnote"]),
     .margin-toggle:checked + .marginnote {
       display: block;
       float: left;
@@ -10133,10 +10252,10 @@
   }
 
   .compose-tiptap-body .tiptap .tiptap-footnote-reference {
-    font-size: 0.75em;
+    font-size: var(--type-footnote-ref);
     line-height: 1;
     vertical-align: super;
-    color: var(--site-accent);
+    color: var(--site-footnote-marker);
     white-space: nowrap;
     cursor: pointer;
   }
@@ -10144,6 +10263,7 @@
   .compose-tiptap-body
     .tiptap
     .tiptap-footnote-reference.ProseMirror-selectednode {
+    color: var(--site-accent);
     outline: 1px solid var(--site-accent);
     outline-offset: 2px;
     border-radius: 4px;
@@ -10158,7 +10278,7 @@
   }
 
   .compose-tiptap-body .tiptap .tiptap-footnote-definition::before {
-    content: attr(data-footnote-label);
+    content: "[^" attr(data-footnote-label) "]:";
     grid-column: 1;
     align-self: start;
     color: var(--site-text-secondary);
@@ -12440,6 +12560,168 @@
     .archive-month-header-spaced {
       margin-top: 20px;
     }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Wide public-post footnote rail.
+ *
+ * Kept OUTSIDE @layer components so the runtime layout can override the
+ * unlayered `.prose` list rules. The source HTML remains one natural endnote
+ * list; these selectors only apply after the client has measured a wide detail
+ * or timeline container and confirmed that the rail fits safely.
+ * ------------------------------------------------------------------------- */
+
+:is(
+  [data-post-view] [data-page="post"] [data-post-body].post-detail-body,
+  [data-timeline-item] article[data-post] > [data-post-body].prose
+) {
+  --jant-footnote-rail-enabled: 0;
+}
+
+@media screen {
+  @container post-view (min-width: 56rem) {
+    :is(
+      [data-post-view] [data-page="post"] [data-post-body].post-detail-body,
+      [data-timeline-item] article[data-post] > [data-post-body].prose
+    ) {
+      --jant-footnote-rail-enabled: 1;
+    }
+
+    [data-post-body].prose:is(.footnote-rail-measuring, .footnote-rail-ready) {
+      position: relative;
+    }
+
+    [data-post-body].prose:is(.footnote-rail-measuring, .footnote-rail-ready)
+      > .footnote-endnotes {
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline-start: calc(100% + var(--layout-sidenote-gap));
+      width: var(--layout-sidenote-width);
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    [data-post-body].prose:is(.footnote-rail-measuring, .footnote-rail-ready)
+      > .footnote-endnotes
+      > .footnote-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      row-gap: 0.75rem;
+    }
+
+    [data-post-body].prose:is(.footnote-rail-measuring, .footnote-rail-ready)
+      > .footnote-endnotes
+      > .footnote-list
+      > .footnote {
+      display: grid;
+      grid-template-columns: max-content minmax(0, 1fr);
+      column-gap: 1ch;
+      align-items: baseline;
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    [data-post-body].prose:is(.footnote-rail-measuring, .footnote-rail-ready)
+      > .footnote-endnotes
+      > .footnote-list
+      > .footnote::before {
+      content: var(--footnote-rail-number);
+      grid-column: 1;
+      grid-row: 1;
+      font-size: inherit;
+      line-height: inherit;
+      font-variant-numeric: tabular-nums;
+      color: var(--site-footnote-marker);
+    }
+
+    [data-post-body].prose:is(.footnote-rail-measuring, .footnote-rail-ready)
+      > .footnote-endnotes
+      > .footnote-list
+      > .footnote
+      > * {
+      grid-column: 2;
+      min-width: 0;
+    }
+
+    [data-post-body].prose:is(.footnote-rail-measuring, .footnote-rail-ready)
+      > .footnote-endnotes
+      > .footnote-list
+      > .footnote
+      > :first-child {
+      grid-row: 1;
+    }
+
+    [data-post-body].prose.footnote-rail-measuring > .footnote-endnotes {
+      visibility: hidden;
+    }
+
+    [data-post-body].prose.footnote-rail-measuring
+      > .footnote-endnotes
+      > .footnote-list {
+      display: grid;
+    }
+
+    [data-post-body].prose.footnote-rail-ready
+      > .footnote-endnotes
+      > .footnote-list {
+      position: relative;
+      display: block;
+      block-size: var(--footnote-rail-block-size);
+    }
+
+    [data-post-body].prose.footnote-rail-ready
+      > .footnote-endnotes
+      > .footnote-list
+      > .footnote {
+      position: absolute;
+      inset-block-start: var(--footnote-rail-y);
+      inset-inline: 0;
+      width: 100%;
+    }
+
+    /* The note is already beside its first reference. Keep reciprocal links in
+       the DOM for keyboard and assistive-technology users, revealing them when
+       focus enters rather than adding a persistent arrow to every rail item. */
+    [data-post-body].prose.footnote-rail-ready .footnote-backlinks {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    [data-post-body].prose.footnote-rail-ready
+      .footnote-backlinks:focus-within {
+      position: static;
+      grid-column: 2;
+      width: auto;
+      height: auto;
+      margin: 0;
+      overflow: visible;
+      clip: auto;
+      clip-path: none;
+      white-space: normal;
+    }
+
+    [data-post-body].prose.footnote-rail-ready .footnote:target {
+      background: transparent;
+    }
+  }
+}
+
+@media print {
+  [data-post-body].prose:is(.footnote-rail-measuring, .footnote-rail-ready) {
+    min-block-size: auto !important;
   }
 }
 

@@ -4,13 +4,15 @@ import {
   createTestDatabase,
   DEFAULT_TEST_SITE_ID,
 } from "../../__tests__/helpers/db.js";
-import { threadCollections, posts } from "../../db/schema.js";
+import { threadCollections, posts, sites } from "../../db/schema.js";
 import { createPostService } from "../post.js";
 import { createMediaService } from "../media.js";
 import { createCollectionService } from "../collection.js";
 import type { Database } from "../../db/index.js";
 import { createPathService } from "../path.js";
 import type { MediaService } from "../media.js";
+import { POST_BODY_HTML_VERSION } from "../../lib/post-body-html.js";
+import type BetterSqlite3 from "better-sqlite3";
 
 function createMockStorage() {
   const files = new Map<string, { body: Uint8Array; contentType?: string }>();
@@ -44,12 +46,14 @@ function createMockStorage() {
 
 describe("PostService", () => {
   let db: Database;
+  let sqlite: BetterSqlite3.Database;
   let postService: ReturnType<typeof createPostService>;
   let collectionService: ReturnType<typeof createCollectionService>;
 
   beforeEach(() => {
     const testDb = createTestDatabase();
     db = testDb.db as unknown as Database;
+    sqlite = testDb.sqlite;
     postService = createPostService(
       db,
       { slugIdLength: 5 },
@@ -150,6 +154,26 @@ describe("PostService", () => {
       });
 
       expect(post.bodyHtml).toContain("<strong>bold</strong>");
+    });
+
+    it("writes current namespaced body HTML projection metadata", async () => {
+      const post = await postService.create({
+        format: "note",
+        bodyMarkdown: "Body[^1]\n\n[^1]: Definition",
+      });
+      const row = await db
+        .select({
+          bodyHtml: posts.bodyHtml,
+          bodyHtmlVersion: posts.bodyHtmlVersion,
+        })
+        .from(posts)
+        .where(eq(posts.id, post.id))
+        .limit(1);
+
+      expect(row[0]?.bodyHtmlVersion).toBe(POST_BODY_HTML_VERSION);
+      expect(row[0]?.bodyHtml).toMatch(/id="fn-[a-z0-9]{13}-1"/);
+      expect(row[0]?.bodyHtml).not.toContain(post.id);
+      expect(post.bodyHtml).toContain('role="doc-endnotes"');
     });
 
     it("sets publishedAt and timestamps", async () => {
@@ -2402,6 +2426,250 @@ describe("PostService", () => {
       expect(second.processed).toBe(1);
       expect(second.done).toBe(true);
       expect(second.nextCursor).toBeNull();
+    });
+  });
+
+  describe("rebuildBodyHtml", () => {
+    async function createFootnotePost(label: string) {
+      return postService.create({
+        format: "note",
+        bodyMarkdown: `Body ${label}[^1]\n\n[^1]: Definition ${label}`,
+      });
+    }
+
+    it("resolves stale stored HTML on reads before the rebuild writes", async () => {
+      const post = await createFootnotePost("stale");
+      await db
+        .update(posts)
+        .set({
+          bodyHtml: '<span class="sidenote">legacy</span>',
+          bodyHtmlVersion: 1,
+        })
+        .where(eq(posts.id, post.id));
+
+      const resolved = await postService.getById(post.id);
+      expect(resolved?.bodyHtml).toContain('role="doc-noteref"');
+      expect(resolved?.bodyHtml).toContain('role="doc-endnotes"');
+      expect(resolved?.bodyHtml).not.toContain("legacy");
+
+      const stored = await db
+        .select({ bodyHtml: posts.bodyHtml })
+        .from(posts)
+        .where(eq(posts.id, post.id))
+        .limit(1);
+      expect(stored[0]?.bodyHtml).toContain("legacy");
+    });
+
+    it("supports dry-run, preserves timestamps, and is idempotent", async () => {
+      const post = await createFootnotePost("rebuild");
+      await db
+        .update(posts)
+        .set({
+          bodyHtml: '<span class="sidenote">legacy</span>',
+          bodyHtmlVersion: 1,
+        })
+        .where(eq(posts.id, post.id));
+
+      const before = await db
+        .select({
+          updatedAt: posts.updatedAt,
+          publishedAt: posts.publishedAt,
+        })
+        .from(posts)
+        .where(eq(posts.id, post.id))
+        .limit(1);
+
+      const dryRun = await postService.rebuildBodyHtml({ dryRun: true });
+      expect(dryRun).toMatchObject({
+        processed: 1,
+        wouldRebuild: 1,
+        rebuilt: 0,
+        skipped: 0,
+        conflicted: 0,
+        failed: 0,
+        done: true,
+        targetVersion: POST_BODY_HTML_VERSION,
+      });
+
+      const firstPass = await postService.rebuildBodyHtml();
+      expect(firstPass).toMatchObject({
+        wouldRebuild: 1,
+        rebuilt: 1,
+        failed: 0,
+      });
+
+      const stored = await db
+        .select({
+          bodyHtml: posts.bodyHtml,
+          bodyHtmlVersion: posts.bodyHtmlVersion,
+          updatedAt: posts.updatedAt,
+          publishedAt: posts.publishedAt,
+        })
+        .from(posts)
+        .where(eq(posts.id, post.id))
+        .limit(1);
+      expect(stored[0]?.bodyHtmlVersion).toBe(POST_BODY_HTML_VERSION);
+      expect(stored[0]?.bodyHtml).toContain('role="doc-endnotes"');
+      expect(stored[0]?.updatedAt).toBe(before[0]?.updatedAt);
+      expect(stored[0]?.publishedAt).toBe(before[0]?.publishedAt);
+
+      const secondPass = await postService.rebuildBodyHtml();
+      expect(secondPass).toMatchObject({
+        wouldRebuild: 0,
+        rebuilt: 0,
+        skipped: 1,
+        failed: 0,
+      });
+    });
+
+    it("reports malformed canonical bodies without marking them current", async () => {
+      const post = await createFootnotePost("invalid");
+      await db
+        .update(posts)
+        .set({
+          body: "not json",
+          bodyHtml: "<p>legacy fallback</p>",
+          bodyHtmlVersion: 1,
+        })
+        .where(eq(posts.id, post.id));
+
+      const result = await postService.rebuildBodyHtml();
+      expect(result.failed).toBe(1);
+      expect(result.failures[0]?.postId).toBe(post.id);
+      expect(result.rebuilt).toBe(0);
+
+      const stored = await db
+        .select({
+          bodyHtml: posts.bodyHtml,
+          bodyHtmlVersion: posts.bodyHtmlVersion,
+        })
+        .from(posts)
+        .where(eq(posts.id, post.id))
+        .limit(1);
+      expect(stored[0]).toEqual({
+        bodyHtml: "<p>legacy fallback</p>",
+        bodyHtmlVersion: 1,
+      });
+      expect((await postService.getById(post.id))?.bodyHtml).toBe(
+        "<p>legacy fallback</p>",
+      );
+    });
+
+    it("paginates deterministically", async () => {
+      const created = [];
+      for (const label of ["one", "two", "three"]) {
+        created.push(await createFootnotePost(label));
+      }
+      await db
+        .update(posts)
+        .set({ bodyHtmlVersion: 1 })
+        .where(eq(posts.siteId, DEFAULT_TEST_SITE_ID));
+
+      const first = await postService.rebuildBodyHtml({ limit: 2 });
+      expect(first.processed).toBe(2);
+      expect(first.done).toBe(false);
+      expect(first.nextCursor).not.toBeNull();
+
+      const second = await postService.rebuildBodyHtml({
+        limit: 2,
+        cursor: first.nextCursor ?? undefined,
+      });
+      expect(second.processed).toBe(1);
+      expect(second.done).toBe(true);
+      expect(first.rebuilt + second.rebuilt).toBe(created.length);
+    });
+
+    it("lets a concurrent canonical-body edit win the compare-and-swap", async () => {
+      const post = await createFootnotePost("conflict");
+      await db
+        .update(posts)
+        .set({ bodyHtmlVersion: 1 })
+        .where(eq(posts.id, post.id));
+
+      const concurrentBody = JSON.stringify({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Concurrent edit" }],
+          },
+        ],
+      });
+      let injected = false;
+      const conflictDb = new Proxy(db, {
+        get(target, property, receiver) {
+          if (property === "update") {
+            return (...args: Parameters<Database["update"]>) => {
+              if (!injected) {
+                injected = true;
+                sqlite
+                  .prepare("UPDATE post SET body = ? WHERE id = ?")
+                  .run(concurrentBody, post.id);
+              }
+              return target.update(...args);
+            };
+          }
+
+          const value = Reflect.get(target, property, receiver) as unknown;
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+      const conflictService = createPostService(
+        conflictDb,
+        { slugIdLength: 5 },
+        DEFAULT_TEST_SITE_ID,
+      );
+
+      const result = await conflictService.rebuildBodyHtml();
+
+      expect(result).toMatchObject({ rebuilt: 0, conflicted: 1 });
+      const stored = await db
+        .select({ body: posts.body, version: posts.bodyHtmlVersion })
+        .from(posts)
+        .where(eq(posts.id, post.id))
+        .limit(1);
+      expect(stored[0]).toEqual({ body: concurrentBody, version: 1 });
+    });
+
+    it("never widens a rebuild to another site", async () => {
+      const defaultPost = await createFootnotePost("default");
+      const secondSiteId = "sit_second000000000000000000000";
+      const timestamp = Math.floor(Date.now() / 1000);
+      await db.insert(sites).values({
+        id: secondSiteId,
+        key: "second",
+        status: "active",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+      const secondService = createPostService(
+        db,
+        { slugIdLength: 5 },
+        secondSiteId,
+      );
+      const secondPost = await secondService.create({
+        format: "note",
+        bodyMarkdown: "Second[^1]\n\n[^1]: Other site",
+      });
+      await db
+        .update(posts)
+        .set({ bodyHtmlVersion: 1 })
+        .where(eq(posts.id, defaultPost.id));
+      await db
+        .update(posts)
+        .set({ bodyHtmlVersion: 1 })
+        .where(eq(posts.id, secondPost.id));
+
+      const result = await postService.rebuildBodyHtml();
+      expect(result.processed).toBe(1);
+
+      const rows = await db
+        .select({ id: posts.id, version: posts.bodyHtmlVersion })
+        .from(posts);
+      expect(rows.find((row) => row.id === defaultPost.id)?.version).toBe(
+        POST_BODY_HTML_VERSION,
+      );
+      expect(rows.find((row) => row.id === secondPost.id)?.version).toBe(1);
     });
   });
 

@@ -19,6 +19,7 @@ import "./client/note-expand.js";
 import "./client/archive-nav.js";
 import "./client/site-header-nav.js";
 import "./client/collection-sort-menu.js";
+import "./client/footnote-rail.js";
 
 declare const __JANT_VERSION__: string;
 

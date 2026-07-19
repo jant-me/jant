@@ -801,6 +801,88 @@ describe("extractSummaryHtml", () => {
     expect(result!.html).toContain(">Link text</a>");
   });
 
+  it("includes referenced footnote definitions with the requested namespace", () => {
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Visible" },
+            { type: "footnoteReference", attrs: { label: "note" } },
+          ],
+        },
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Hidden tail" }],
+        },
+        {
+          type: "footnoteDefinition",
+          attrs: { label: "note" },
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Definition" }],
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = extractSummaryHtml(doc, 1, 500, 0, {
+      namespace: "pst_summary",
+    });
+
+    expect(result?.hasMore).toBe(true);
+    expect(result?.html).toContain('id="fn-0pba1ne36oeor-1"');
+    expect(result?.html).toContain('role="doc-endnotes"');
+    expect(result?.html.match(/<ol class="footnote-list">/g)).toHaveLength(1);
+    expect(result?.html).not.toMatch(
+      /footnote-document|footnote-main|data-footnote-|--footnote-/,
+    );
+    expect(result?.html).not.toContain("Hidden tail");
+    expect(result!.html.indexOf("Definition")).toBeGreaterThan(
+      result!.html.indexOf("Visible"),
+    );
+  });
+
+  it("omits a footnote when its first reference is beyond the summary boundary", () => {
+    const doc = JSON.stringify({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Visible summary" }],
+        },
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Hidden reference" },
+            { type: "footnoteReference", attrs: { label: "note" } },
+          ],
+        },
+        {
+          type: "footnoteDefinition",
+          attrs: { label: "note" },
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Hidden definition" }],
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = extractSummaryHtml(doc, 1, 500);
+
+    expect(result?.hasMore).toBe(true);
+    expect(result?.html).toContain("Visible summary");
+    expect(result?.html).not.toContain("Hidden reference");
+    expect(result?.html).not.toContain("Hidden definition");
+    expect(result?.html).not.toContain('role="doc-endnotes"');
+  });
+
   function paragraphsDoc(...texts: string[]): string {
     return JSON.stringify({
       type: "doc",

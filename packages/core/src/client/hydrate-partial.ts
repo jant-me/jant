@@ -15,6 +15,7 @@
 import { setupThreadContexts } from "./thread-context.js";
 import { initFeedVideoPlayer } from "./feed-video-player.js";
 import { initPrecomputedWaveforms } from "./audio-player.js";
+import { initFootnoteRails } from "./footnote-rail.js";
 
 export function hydratePartial(
   root: globalThis.Document | globalThis.Element,
@@ -22,4 +23,5 @@ export function hydratePartial(
   setupThreadContexts(root);
   initFeedVideoPlayer(root);
   initPrecomputedWaveforms(root);
+  initFootnoteRails(root);
 }

@@ -6,7 +6,10 @@
  */
 
 import type { JSONContent } from "@tiptap/core";
-import { renderTiptapDocument } from "./tiptap-render.js";
+import {
+  renderTiptapDocument,
+  type TiptapRenderOptions,
+} from "./tiptap-render.js";
 
 interface TiptapNode {
   type: string;
@@ -220,6 +223,7 @@ export function extractSummary(
  *   included and `hasMore` is `false`. Avoids a "read more" that reveals only a
  *   sliver of text. Explicit `moreBreak` markers reflect author intent and are
  *   never subject to this tolerance.
+ * @param renderOptions - Renderer options such as the post footnote namespace
  * @returns HTML summary, whether content was truncated, and the index in
  *   `doc.content` where the content after the summary boundary begins, or null.
  *   `breakAtIndex` lets callers align the summary with the full-body rendering
@@ -236,6 +240,7 @@ export function extractSummaryHtml(
   maxBlocks: number = 5,
   maxChars: number = 500,
   minHiddenChars: number = 0,
+  renderOptions: TiptapRenderOptions = {},
 ): { html: string; hasMore: boolean; breakAtIndex: number } | null {
   let doc: TiptapNode;
   try {
@@ -260,10 +265,13 @@ export function extractSummaryHtml(
     if (selected.length === 0) return null;
     const subDoc: JSONContent = {
       type: "doc",
-      content: selected as JSONContent[],
+      content: [
+        ...selected,
+        ...nodes.filter((node) => node.type === "footnoteDefinition"),
+      ] as JSONContent[],
     };
     return {
-      html: renderTiptapDocument(subDoc),
+      html: renderTiptapDocument(subDoc, renderOptions),
       hasMore: true,
       // Anchor goes in place of the moreBreak marker, so the marker itself
       // is NOT part of the pre-anchor body. It remains in the post-anchor
@@ -329,10 +337,13 @@ export function extractSummaryHtml(
 
   const subDoc: JSONContent = {
     type: "doc",
-    content: selected as JSONContent[],
+    content: [
+      ...selected,
+      ...nodes.filter((node) => node.type === "footnoteDefinition"),
+    ] as JSONContent[],
   };
   return {
-    html: renderTiptapDocument(subDoc),
+    html: renderTiptapDocument(subDoc, renderOptions),
     hasMore,
     breakAtIndex: lastSelectedIdx + 1,
   };

@@ -34,7 +34,13 @@ import {
 } from "../db/schema-bundle.js";
 import { createEntityId } from "../lib/ids.js";
 import { now } from "../lib/time.js";
-import { renderTiptapJson, trimTiptapBody } from "../lib/tiptap-render.js";
+import { trimTiptapBody } from "../lib/tiptap-render.js";
+import {
+  POST_BODY_HTML_VERSION,
+  renderPostBodyHtml,
+  resolvePostBodyHtml,
+  tryRenderPostBodyHtml,
+} from "../lib/post-body-html.js";
 import { extractSummary, extractBodyText } from "../lib/summary.js";
 import { markdownToTiptapJson } from "../lib/markdown-to-tiptap.js";
 import { tiptapJsonToMarkdown } from "../lib/tiptap-to-markdown.js";
@@ -79,6 +85,28 @@ import { generateRandomId } from "../lib/nanoid.js";
 export interface PostDeleteDeps {
   media: MediaService;
   storage?: StorageDriver | null;
+}
+
+export interface RebuildBodyHtmlOptions {
+  /** Batch size (1..100, default 50). */
+  limit?: number;
+  /** Exclusive post ID cursor. */
+  cursor?: string;
+  /** Compute and report changes without writing them. */
+  dryRun?: boolean;
+}
+
+export interface RebuildBodyHtmlResult {
+  processed: number;
+  wouldRebuild: number;
+  rebuilt: number;
+  skipped: number;
+  conflicted: number;
+  failed: number;
+  failures: Array<{ postId: string; error: string }>;
+  nextCursor: string | null;
+  done: boolean;
+  targetVersion: number;
 }
 
 export interface PostAttachmentDeps extends PostDeleteDeps {
@@ -399,6 +427,16 @@ export interface PostService {
     nextCursor: string | null;
     done: boolean;
   }>;
+  /**
+   * Rebuild stored post body HTML from canonical TipTap JSON for this site.
+   *
+   * Updates use compare-and-swap guards so concurrent edits win. Editorial
+   * timestamps are never touched. The operation is cursor-paginated,
+   * idempotent, and supports a read-only dry run.
+   */
+  rebuildBodyHtml(
+    options?: RebuildBodyHtmlOptions,
+  ): Promise<RebuildBodyHtmlResult>;
 }
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
@@ -554,7 +592,7 @@ export function createPostService(
   databaseSchema: DatabaseSchema = sqliteSchemaBundle,
 ): PostService {
   const resolvedPaths = paths ?? createPathService(db, siteId, databaseSchema);
-  const { pathRegistry, posts, threadCollections } = databaseSchema;
+  const { pathRegistry, posts, sites, threadCollections } = databaseSchema;
   const databaseDialect = config.databaseDialect ?? "sqlite";
   const usesBatchWrites = !supportsDrizzleTransaction(db, databaseDialect);
 
@@ -1048,7 +1086,12 @@ export function createPostService(
       title: row.title,
       url: row.url,
       body: row.body,
-      bodyHtml: row.bodyHtml,
+      bodyHtml: resolvePostBodyHtml({
+        id: row.id,
+        body: row.body,
+        bodyHtml: row.bodyHtml,
+        bodyHtmlVersion: row.bodyHtmlVersion,
+      }),
       bodyText: row.bodyText,
       quoteText: row.quoteText,
       summary: row.summary,
@@ -1677,7 +1720,7 @@ export function createPostService(
           : undefined,
       });
 
-      const bodyHtml = body ? renderTiptapJson(body) : null;
+      const bodyHtml = body ? renderPostBodyHtml(id, body) : null;
       const bodyText = body
         ? extractBodyText(body, { includeLinkHrefs: true })
         : null;
@@ -1877,6 +1920,7 @@ export function createPostService(
               url,
               body,
               bodyHtml,
+              bodyHtmlVersion: POST_BODY_HTML_VERSION,
               bodyText,
               quoteText,
               summary,
@@ -1953,6 +1997,7 @@ export function createPostService(
               url,
               body,
               bodyHtml,
+              bodyHtmlVersion: POST_BODY_HTML_VERSION,
               bodyText,
               quoteText,
               summary,
@@ -2205,8 +2250,9 @@ export function createPostService(
         const normalizedBody = rawBody ? trimTiptapBody(rawBody) : null;
         updates.body = normalizedBody;
         updates.bodyHtml = normalizedBody
-          ? renderTiptapJson(normalizedBody)
+          ? renderPostBodyHtml(existing.id, normalizedBody)
           : null;
+        updates.bodyHtmlVersion = POST_BODY_HTML_VERSION;
         updates.bodyText = normalizedBody
           ? extractBodyText(normalizedBody, { includeLinkHrefs: true })
           : null;
@@ -3470,6 +3516,113 @@ export function createPostService(
         skipped,
         nextCursor: hasMore ? lastId : null,
         done: !hasMore,
+      };
+    },
+
+    async rebuildBodyHtml(options = {}) {
+      const requested = options.limit ?? 50;
+      const limit = Math.min(Math.max(Math.trunc(requested), 1), 100);
+      const cursor = options.cursor;
+      const dryRun = options.dryRun ?? false;
+
+      const siteRows = await db
+        .select({ id: sites.id })
+        .from(sites)
+        .where(eq(sites.id, siteId))
+        .limit(1);
+      if (!siteRows[0]) {
+        throw new NotFoundError("Site");
+      }
+
+      const whereConditions = [eq(posts.siteId, siteId)];
+      if (cursor) whereConditions.push(gt(posts.id, cursor));
+
+      const rows = await db
+        .select({
+          id: posts.id,
+          body: posts.body,
+          bodyHtml: posts.bodyHtml,
+          bodyHtmlVersion: posts.bodyHtmlVersion,
+        })
+        .from(posts)
+        .where(and(...whereConditions))
+        .orderBy(asc(posts.id))
+        .limit(limit + 1);
+
+      const hasMore = rows.length > limit;
+      const batch = hasMore ? rows.slice(0, limit) : rows;
+      const failures: Array<{ postId: string; error: string }> = [];
+      let wouldRebuild = 0;
+      let rebuilt = 0;
+      let skipped = 0;
+      let conflicted = 0;
+
+      for (const row of batch) {
+        if (row.bodyHtmlVersion > POST_BODY_HTML_VERSION) {
+          skipped++;
+          continue;
+        }
+
+        let nextBodyHtml: string | null = null;
+        if (row.body !== null) {
+          const rendered = tryRenderPostBodyHtml(row.id, row.body);
+          if (!rendered.ok) {
+            failures.push({ postId: row.id, error: rendered.error });
+            continue;
+          }
+          nextBodyHtml = rendered.html;
+        }
+
+        if (
+          row.bodyHtmlVersion === POST_BODY_HTML_VERSION &&
+          row.bodyHtml === nextBodyHtml
+        ) {
+          skipped++;
+          continue;
+        }
+
+        wouldRebuild++;
+        if (dryRun) continue;
+
+        const bodyCondition =
+          row.body === null ? isNull(posts.body) : eq(posts.body, row.body);
+        const updatedRows = await db
+          .update(posts)
+          .set({
+            bodyHtml: nextBodyHtml,
+            bodyHtmlVersion: POST_BODY_HTML_VERSION,
+          })
+          .where(
+            and(
+              eq(posts.siteId, siteId),
+              eq(posts.id, row.id),
+              bodyCondition,
+              eq(posts.bodyHtmlVersion, row.bodyHtmlVersion),
+            ),
+          )
+          .returning({ id: posts.id });
+
+        if (updatedRows.length === 0) {
+          conflicted++;
+        } else {
+          rebuilt++;
+        }
+      }
+
+      const lastRow = batch.at(-1);
+      const lastId = lastRow ? lastRow.id : null;
+
+      return {
+        processed: batch.length,
+        wouldRebuild,
+        rebuilt,
+        skipped,
+        conflicted,
+        failed: failures.length,
+        failures,
+        nextCursor: hasMore ? lastId : null,
+        done: !hasMore,
+        targetVersion: POST_BODY_HTML_VERSION,
       };
     },
   };

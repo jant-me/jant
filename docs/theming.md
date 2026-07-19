@@ -91,21 +91,22 @@ These derive from the core palette by default. Built-in themes set `--site-accen
 
 ## Typography variables
 
-| Variable            | Default                      | What it controls                                                  |
-| ------------------- | ---------------------------- | ----------------------------------------------------------------- |
-| `--font-body`       | System sans-serif            | Body text, inputs                                                 |
-| `--font-heading`    | Editorial serif stack        | Post titles and h1–h3                                             |
-| `--font-site-title` | Editorial serif stack        | Site logo (header)                                                |
-| `--font-ui`         | System sans-serif            | Buttons, navigation, labels, badges (not affected by font themes) |
-| `--font-serif`      | System serif + Noto fallback | Serif accent text                                                 |
-| `--font-blockquote` | `inherit`                    | Blockquote font family; defaults to the body font                 |
-| `--font-mono`       | System monospace             | Code blocks                                                       |
-| `--fw-light`        | 300                          | Light accents                                                     |
-| `--fw-regular`      | 400                          | Body text                                                         |
-| `--fw-medium`       | 500                          | Labels, active nav                                                |
-| `--fw-semibold`     | 600                          | Headings, buttons                                                 |
-| `--fw-bold`         | 700                          | Strong emphasis                                                   |
-| `--fw-extrabold`    | 800                          | Site logo                                                         |
+| Variable              | Default                      | What it controls                                                  |
+| --------------------- | ---------------------------- | ----------------------------------------------------------------- |
+| `--font-body`         | System sans-serif            | Body text, inputs                                                 |
+| `--font-heading`      | Editorial serif stack        | Post titles and h1–h3                                             |
+| `--font-site-title`   | Editorial serif stack        | Site logo (header)                                                |
+| `--font-ui`           | System sans-serif            | Buttons, navigation, labels, badges (not affected by font themes) |
+| `--font-serif`        | System serif + Noto fallback | Serif accent text                                                 |
+| `--font-blockquote`   | `inherit`                    | Blockquote font family; defaults to the body font                 |
+| `--font-mono`         | System monospace             | Code blocks                                                       |
+| `--type-footnote-ref` | `75%` of content body text   | Inline footnote reference size                                    |
+| `--fw-light`          | 300                          | Light accents                                                     |
+| `--fw-regular`        | 400                          | Body text                                                         |
+| `--fw-medium`         | 500                          | Labels, active nav                                                |
+| `--fw-semibold`       | 600                          | Headings, buttons                                                 |
+| `--fw-bold`           | 700                          | Strong emphasis                                                   |
+| `--fw-extrabold`      | 800                          | Site logo                                                         |
 
 When you pick a font theme in **Settings > Font Theme**, `--font-heading`, `--font-body`, and a few related font weights switch with it. `--font-ui` is intentionally left out — buttons, navigation, and other interface text always stay system sans-serif for legibility. You can still override any variable in Custom CSS for further tuning.
 
@@ -122,11 +123,13 @@ To use external font sources like Google Fonts, load the font files first via [c
 
 ## Layout variables
 
-| Variable              | Default  | What it controls           |
-| --------------------- | -------- | -------------------------- |
-| `--content-max-width` | `42rem`  | Maximum content width      |
-| `--site-padding`      | `1.5rem` | Horizontal padding         |
-| `--content-gap`       | `1rem`   | Spacing between feed items |
+| Variable                  | Default  | What it controls                    |
+| ------------------------- | -------- | ----------------------------------- |
+| `--content-max-width`     | `42rem`  | Maximum content width               |
+| `--site-padding`          | `1.5rem` | Horizontal padding                  |
+| `--content-gap`           | `1rem`   | Spacing between feed items          |
+| `--layout-sidenote-width` | `50%`    | Wide-screen footnote rail width     |
+| `--layout-sidenote-gap`   | `10%`    | Gap between prose and footnote rail |
 
 ### Example: wider content area
 
@@ -138,18 +141,41 @@ To use external font sources like Google Fonts, load the font files first via [c
 
 ### Sidenotes and indented blocks
 
-Footnotes render as Tufte-style margin notes that float into the right gutter. A floated note anchors to the right edge of whatever block contains its `[^n]` reference, so if you give a block **inline-end (right) padding** — most commonly a padded blockquote card — that note drifts left by the padding amount.
+Footnotes use semantic source HTML: superscript noteref links in the body and
+native ordered endnotes after the authored content. On detail pages and public
+timeline lists, Jant uses each post's actual container—not only the viewport—to
+decide whether there is room for a Tufte-style right rail. A small progressive
+client enhancer positions the existing endnote list when a container is at
+least `56rem` wide and the notes fit without excessive overflow. Every timeline
+item is measured independently. Narrow or dense containers, print,
+no-JavaScript clients, and older browsers keep bottom endnotes.
 
-Tell the note how far the edge is inset with `--sidenote-anchor-inset` (default `0`). Derive it from the same value you use for the padding so the two never drift apart:
+Because the enhancer reads each noteref's real position instead of anchoring a
+float to its containing block, padding on blockquotes or other prose blocks no
+longer needs a compensating anchor offset. Rail numbers share the note text's
+size and baseline. Customize its proportions and semantic colors through theme
+tokens:
 
 ```css
-[data-page="post"] .post-detail-body.prose blockquote {
-  --blockquote-pad-x: 1rem;
-  padding-inline: var(--blockquote-pad-x);
-  /* keep notes aligned with the gutter regardless of the padding above */
-  --sidenote-anchor-inset: var(--blockquote-pad-x);
+:root {
+  --layout-sidenote-width: 42%;
+  --layout-sidenote-gap: 8%;
+  --type-footnote-ref: calc(var(--type-body-size) * 0.75);
+  --site-footnote-text: var(--site-reading-caption);
+  --site-footnote-marker: var(--site-text-secondary);
 }
 ```
+
+The rail visually suppresses backlink arrows because each note is already next
+to its first reference. The backlink remains in the semantic HTML for bottom
+endnotes and assistive technology, and becomes visible if a keyboard user
+focuses it.
+
+Theme selectors should prefer `.footnote-endnotes`, `.footnote-list`,
+`.footnote`, `.footnote-ref`, and `.footnote-backlinks`. Fragment IDs are
+opaque and may change between HTML contract versions; never style or parse
+their compact hash. The older `.margin-toggle + .sidenote` trio is retained
+only for legacy stored HTML.
 
 ## Cards and media
 

@@ -1,0 +1,1 @@
+ALTER TABLE `post` ADD `body_html_version` integer DEFAULT 1 NOT NULL;

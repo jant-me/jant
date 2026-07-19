@@ -3207,6 +3207,17 @@ describe("JantComposeDialog", () => {
     );
   });
 
+  it("keeps passive footnote references quiet until the editor selects them", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    expect(css).toMatch(
+      /\.compose-tiptap-body \.tiptap \.tiptap-footnote-reference\s*\{[^}]*color:\s*var\(--site-footnote-marker\);/,
+    );
+    expect(css).toMatch(
+      /\.tiptap-footnote-reference\.ProseMirror-selectednode\s*\{[^}]*color:\s*var\(--site-accent\);[^}]*outline:\s*1px solid var\(--site-accent\);/,
+    );
+  });
+
   it("remove button clears attachment", async () => {
     const el = await createElement();
     const editor = requireElement(

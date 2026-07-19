@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
 import { createTestApp } from "../../../../__tests__/helpers/app.js";
+import { posts } from "../../../../db/schema.js";
 import { publicPostsApiRoutes } from "../posts.js";
 
 describe("Public Posts API Routes", () => {
@@ -98,6 +100,32 @@ describe("Public Posts API Routes", () => {
       expect(body.posts[0].bodyMarkdown).toBe("# Hello\n\nBody text");
       expect(body.posts[0]).not.toHaveProperty("bodyHtml");
       expect(body.posts[0]).not.toHaveProperty("bodyText");
+    });
+
+    it("returns canonical v3 HTML when the stored projection is stale", async () => {
+      const { app, services, db } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+      const post = await services.posts.create({
+        format: "note",
+        title: "Footnote API",
+        bodyMarkdown: "API body[^1]\n\n[^1]: API definition",
+      });
+      await db
+        .update(posts)
+        .set({
+          bodyHtml: '<span class="sidenote">legacy</span>',
+          bodyHtmlVersion: 1,
+        })
+        .where(eq(posts.id, post.id));
+
+      const response = await app.request("/api/public/posts");
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.posts[0].bodyHtml).toContain('role="doc-noteref"');
+      expect(body.posts[0].bodyHtml).toMatch(/id="fn-[a-z0-9]{13}-1"/);
+      expect(body.posts[0].bodyHtml).not.toContain(post.id);
+      expect(body.posts[0].bodyHtml).not.toContain("legacy");
     });
 
     it("filters posts by a single collection slug", async () => {

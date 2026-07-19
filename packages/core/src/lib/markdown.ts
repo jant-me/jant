@@ -8,12 +8,16 @@
 
 import { parseMarkdownDocument } from "./markdown-manager.js";
 import { extractBodyText } from "./summary.js";
-import { renderTiptapDocument } from "./tiptap-render.js";
+import {
+  renderTiptapDocument,
+  type TiptapRenderOptions,
+} from "./tiptap-render.js";
 
 /**
  * Renders Markdown content to HTML using Jant's shared Markdown pipeline.
  *
  * @param markdown - The Markdown string to convert to HTML
+ * @param options - Rendering options, including a stable footnote namespace
  * @returns The rendered HTML string
  *
  * @example
@@ -22,9 +26,12 @@ import { renderTiptapDocument } from "./tiptap-render.js";
  * // "<h1>Hello</h1><p>This is <strong>bold</strong> text.</p>"
  * ```
  */
-export function render(markdown: string): string {
+export function render(
+  markdown: string,
+  options: TiptapRenderOptions = {},
+): string {
   if (!markdown.trim()) return "";
-  return renderTiptapDocument(parseMarkdownDocument(markdown));
+  return renderTiptapDocument(parseMarkdownDocument(markdown), options);
 }
 
 /**

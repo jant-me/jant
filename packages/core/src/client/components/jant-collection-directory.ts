@@ -839,7 +839,11 @@ export class JantCollectionsManager extends LitElement {
         ${collection.description
           ? html`
               <div class="collection-directory-description prose">
-                ${unsafeHTML(renderMarkdown(collection.description))}
+                ${unsafeHTML(
+                  renderMarkdown(collection.description, {
+                    namespace: collection.id,
+                  }),
+                )}
               </div>
             `
           : nothing}
@@ -1036,7 +1040,9 @@ export class JantCollectionsManager extends LitElement {
         ${item.description
           ? html`
               <div class="collection-directory-description prose">
-                ${unsafeHTML(renderMarkdown(item.description))}
+                ${unsafeHTML(
+                  renderMarkdown(item.description, { namespace: item.id }),
+                )}
               </div>
             `
           : html`

@@ -469,6 +469,33 @@ describe("Atom Feed Routes", () => {
     });
   });
 
+  it("emits canonical v3 footnotes from a stale stored projection", async () => {
+    const { app, services, db } = createFeedTestApp();
+    const post = await services.posts.create({
+      format: "note",
+      title: "Footnote feed",
+      bodyMarkdown: "Feed body[^1]\n\n[^1]: Feed definition",
+      status: "published",
+    });
+    await db
+      .update(postTable)
+      .set({
+        bodyHtml: '<span class="sidenote">legacy</span>',
+        bodyHtmlVersion: 1,
+      })
+      .where(eq(postTable.id, post.id));
+
+    const response = await app.request("/latest/feed");
+    const xml = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(xml).toContain('role="doc-noteref"');
+    expect(xml).toContain('role="doc-endnotes"');
+    expect(xml).toMatch(/id="fn-[a-z0-9]{13}-1"/);
+    expect(xml).not.toContain(`fn-${post.id}`);
+    expect(xml).not.toContain("legacy");
+  });
+
   describe("RSS_FEED_LIMIT env var", () => {
     it("defaults to 50 when RSS_FEED_LIMIT is not set", async () => {
       const { app, services } = createFeedTestApp();

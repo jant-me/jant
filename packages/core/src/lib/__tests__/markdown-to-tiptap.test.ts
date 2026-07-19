@@ -128,6 +128,29 @@ describe("markdownToTiptapJson", () => {
       expect(doc.content[1].content[0].type).toBe("paragraph");
       expect(doc.content[1].content[0].content[0].text).toBe("Footnote body");
     });
+
+    it("normalizes inline footnotes into paired structural nodes", () => {
+      const doc = parse("Body^[Inline **bold** note.]");
+
+      expect(doc.content[0].content).toEqual([
+        { type: "text", text: "Body" },
+        { type: "footnoteReference", attrs: { label: "1" } },
+      ]);
+      expect(doc.content[1]).toMatchObject({
+        type: "footnoteDefinition",
+        attrs: { label: "1" },
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "Inline " },
+              { type: "text", text: "bold", marks: [{ type: "bold" }] },
+              { type: "text", text: " note." },
+            ],
+          },
+        ],
+      });
+    });
   });
 
   describe("inline elements", () => {
@@ -398,15 +421,20 @@ describe("end-to-end: Markdown → markdownToTiptapJson → renderTiptapJson", (
     expect(html).toContain("<figcaption>Caption</figcaption>");
   });
 
-  it("renders footnotes as inline sidenotes through the shared document renderer", () => {
+  it("renders semantic footnotes through the shared document renderer", () => {
     const json = markdownToTiptapJson("Body[^1]\n\n[^1]: Footnote body");
     const html = renderTiptapJson(json);
 
+    expect(html).toContain('role="doc-noteref"');
     expect(html).toContain(
-      '<label for="sn-1" class="margin-toggle sidenote-number footref">',
+      '<section class="footnote-endnotes" role="doc-endnotes">',
     );
-    expect(html).toContain('<span class="sidenote">Footnote body</span>');
-    expect(html).not.toContain('<section class="footnotes"');
+    expect(html).toContain('<ol class="footnote-list">');
+    expect(html).toContain('<li id="fn-1" class="footnote">');
+    expect(html).toMatch(/<p>Footnote body <span class="footnote-backlinks">/);
+    expect(html).toContain('role="doc-backlink"');
+    expect(html).not.toMatch(/footnote-document|footnote-main|footnote-body/);
+    expect(html).not.toMatch(/data-footnote-|--footnote-|tabindex=/);
   });
 
   it("renders a complex document", () => {

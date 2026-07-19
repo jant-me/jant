@@ -17,6 +17,7 @@ import {
 } from "@tiptap/extension-table";
 import {
   getFootnoteDefinitionLabelText,
+  getFootnoteLabelKey,
   getFootnoteReferenceText,
   indentFootnoteMarkdown,
   normalizeFootnoteArtifacts,
@@ -544,6 +545,100 @@ function createFootnoteReferenceMarkdownToken() {
   };
 }
 
+const INLINE_FOOTNOTE_CONTENT_ATTR = "__jantInlineFootnoteContent";
+
+function parseInlineFootnoteSource(
+  src: string,
+): { content: string; raw: string } | null {
+  if (!src.startsWith("^[")) return null;
+
+  let bracketDepth = 1;
+  let codeDelimiterLength = 0;
+
+  for (let index = 2; index < src.length; index += 1) {
+    const character = src[index];
+
+    if (character === "\n" || character === "\r") return null;
+
+    if (character === "\\" && codeDelimiterLength === 0) {
+      index += 1;
+      continue;
+    }
+
+    if (character === "`") {
+      let delimiterLength = 1;
+      while (src[index + delimiterLength] === "`") {
+        delimiterLength += 1;
+      }
+
+      if (codeDelimiterLength === 0) {
+        codeDelimiterLength = delimiterLength;
+      } else if (codeDelimiterLength === delimiterLength) {
+        codeDelimiterLength = 0;
+      }
+
+      index += delimiterLength - 1;
+      continue;
+    }
+
+    if (codeDelimiterLength > 0) continue;
+
+    if (character === "[") {
+      bracketDepth += 1;
+      continue;
+    }
+
+    if (character !== "]") continue;
+    bracketDepth -= 1;
+    if (bracketDepth !== 0) continue;
+
+    const content = src.slice(2, index);
+    if (!content.trim()) return null;
+
+    return {
+      content,
+      raw: src.slice(0, index + 1),
+    };
+  }
+
+  return null;
+}
+
+const MarkdownInlineFootnote = Extension.create({
+  name: "inlineFootnote",
+
+  parseMarkdown: (token, helpers) =>
+    helpers.createNode("footnoteReference", {
+      [INLINE_FOOTNOTE_CONTENT_ATTR]: Array.isArray(token.tokens)
+        ? helpers.parseInline(token.tokens)
+        : [],
+    }),
+
+  markdownTokenizer: {
+    name: "inlineFootnote",
+    level: "inline",
+    start(src: string) {
+      return src.indexOf("^[");
+    },
+    tokenize(src: string, _tokens: unknown[], helpers) {
+      const inlineFootnote = parseInlineFootnoteSource(src);
+      if (!inlineFootnote) return undefined;
+
+      return {
+        type: "inlineFootnote",
+        raw: inlineFootnote.raw,
+        tokens: helpers.inlineTokens(inlineFootnote.content),
+      };
+    },
+  },
+});
+
+function normalizeFootnoteDataLabel(label: unknown): string {
+  const normalized = normalizeFootnoteLabel(label);
+  const legacyDisplayLabel = normalized.match(/^\[\^([^\]]+)\]:?$/)?.[1];
+  return normalizeFootnoteLabel(legacyDisplayLabel ?? normalized);
+}
+
 export const MarkdownFootnoteReference = Node.create({
   name: "footnoteReference",
   group: "inline",
@@ -565,7 +660,7 @@ export const MarkdownFootnoteReference = Node.create({
         getAttrs(dom) {
           const element = dom as QueryableElement;
           return {
-            label: normalizeFootnoteLabel(
+            label: normalizeFootnoteDataLabel(
               element.getAttribute("data-footnote-label"),
             ),
           };
@@ -620,7 +715,7 @@ export const MarkdownFootnoteDefinition = Node.create({
         getAttrs(dom) {
           const element = dom as QueryableElement;
           return {
-            label: normalizeFootnoteLabel(
+            label: normalizeFootnoteDataLabel(
               element.getAttribute("data-footnote-label"),
             ),
           };
@@ -636,7 +731,7 @@ export const MarkdownFootnoteDefinition = Node.create({
       "div",
       {
         "data-footnote-definition": "",
-        "data-footnote-label": getFootnoteDefinitionLabelText(label),
+        "data-footnote-label": label,
         class: "tiptap-footnote-definition",
       },
       0,
@@ -744,9 +839,89 @@ export function createMarkdownContentExtensions(
     options.moreBreakExtension ?? MarkdownMoreBreak,
     options.embedExtension ?? MarkdownEmbedNode,
     options.htmlBlockExtension ?? MarkdownHtmlBlockNode,
+    MarkdownInlineFootnote,
     MarkdownFootnoteReference,
     MarkdownFootnoteDefinition,
   ];
+}
+
+function isJsonContent(value: unknown): value is JSONContent {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { type?: unknown }).type === "string"
+  );
+}
+
+function collectUsedFootnoteLabels(
+  node: JSONContent,
+  usedLabels: Set<string>,
+): void {
+  if (node.type === "footnoteReference" || node.type === "footnoteDefinition") {
+    const label = normalizeFootnoteLabel(node.attrs?.label);
+    if (label) usedLabels.add(getFootnoteLabelKey(label));
+  }
+
+  for (const child of node.content ?? []) {
+    collectUsedFootnoteLabels(child, usedLabels);
+  }
+}
+
+function expandInlineFootnotes(doc: JSONContent): JSONContent {
+  if (doc.type !== "doc") return doc;
+
+  const usedLabels = new Set<string>();
+  collectUsedFootnoteLabels(doc, usedLabels);
+  const definitions: JSONContent[] = [];
+  let nextNumericLabel = 1;
+
+  const allocateLabel = (): string => {
+    while (usedLabels.has(getFootnoteLabelKey(String(nextNumericLabel)))) {
+      nextNumericLabel += 1;
+    }
+
+    const label = String(nextNumericLabel);
+    usedLabels.add(getFootnoteLabelKey(label));
+    nextNumericLabel += 1;
+    return label;
+  };
+
+  const expandNode = (node: JSONContent): JSONContent => {
+    const inlineContent = node.attrs?.[INLINE_FOOTNOTE_CONTENT_ATTR];
+
+    if (node.type === "footnoteReference" && Array.isArray(inlineContent)) {
+      const label = allocateLabel();
+      const attrs: Record<string, unknown> = { ...(node.attrs ?? {}), label };
+      delete attrs[INLINE_FOOTNOTE_CONTENT_ATTR];
+      const content = inlineContent
+        .filter(isJsonContent)
+        .map((child) => expandNode(normalizeMarkdownDocument(child)));
+
+      definitions.push({
+        type: "footnoteDefinition",
+        attrs: { label },
+        content: [
+          content.length > 0
+            ? { type: "paragraph", content }
+            : { type: "paragraph" },
+        ],
+      });
+
+      return { ...node, attrs };
+    }
+
+    return node.content
+      ? { ...node, content: node.content.map(expandNode) }
+      : node;
+  };
+
+  const expanded = expandNode(doc);
+  if (definitions.length === 0) return expanded;
+
+  return {
+    ...expanded,
+    content: [...(expanded.content ?? []), ...definitions],
+  };
 }
 
 /**
@@ -845,7 +1020,9 @@ export function normalizeMarkdownDocument(node: JSONContent): JSONContent {
     normalized.content = nextContent;
   }
 
-  return normalized;
+  return normalized.type === "doc"
+    ? expandInlineFootnotes(normalized)
+    : normalized;
 }
 
 function expandCodeBlockFences(markdown: string): string {

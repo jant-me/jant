@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Bindings } from "../../types.js";
-import { withWorkerResponseCache } from "../worker-response-cache.js";
+import { POST_BODY_HTML_VERSION } from "../post-body-html.js";
+import {
+  normalizeWorkerCacheKeyUrl,
+  withWorkerResponseCache,
+} from "../worker-response-cache.js";
 
 interface StoredResponse {
   body: Uint8Array;
@@ -59,6 +63,19 @@ function createCloudflareBindings(overrides: Partial<Bindings> = {}): Bindings {
 }
 
 describe("withWorkerResponseCache", () => {
+  it("versions cache keys with the current body HTML contract", () => {
+    const url = new URL(
+      normalizeWorkerCacheKeyUrl(
+        "https://example.com/feed?__jant_body_html=old&utm_source=test",
+      ),
+    );
+
+    expect(url.searchParams.get("__jant_body_html")).toBe(
+      String(POST_BODY_HTML_VERSION),
+    );
+    expect(url.searchParams.has("utm_source")).toBe(false);
+  });
+
   it("caches anonymous phase-one feed responses and normalizes tracking params", async () => {
     const cache = createMemoryCache();
     const bindings = createCloudflareBindings();

@@ -1005,7 +1005,7 @@ export function createMediaService(
 
       const markdown = await new Response(object.body).text();
       const tiptapJson = markdownToTiptapJson(markdown);
-      const html = renderTiptapJson(tiptapJson);
+      const html = renderTiptapJson(tiptapJson, { namespace: record.id });
 
       return {
         id: record.id,

@@ -231,7 +231,9 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                   <div
                     class="collection-directory-description prose"
                     dangerouslySetInnerHTML={{
-                      __html: renderMarkdown(item.description),
+                      __html: renderMarkdown(item.description, {
+                        namespace: item.id,
+                      }),
                     }}
                   />
                 ) : (
@@ -279,7 +281,9 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                 <div
                   class="collection-directory-description prose"
                   dangerouslySetInnerHTML={{
-                    __html: renderMarkdown(collection.description),
+                    __html: renderMarkdown(collection.description, {
+                      namespace: collection.id,
+                    }),
                   }}
                 />
               )}

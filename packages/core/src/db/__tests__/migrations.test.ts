@@ -350,6 +350,46 @@ describe("migration integrity", () => {
     ).toEqual([]);
   });
 
+  it("adds body_html_version as a legacy-safe projection marker", () => {
+    const sqlite = new Database(":memory:");
+    sqlite.pragma("foreign_keys = ON");
+    applyMigrationsThrough(sqlite, "0028_superb_post.sql");
+
+    const siteId = "sit_body_html_migration";
+    insertSite(sqlite, { id: siteId, key: "default", createdAt: 1 });
+    insertRootPost(sqlite, {
+      siteId,
+      id: "post-before-version",
+      title: "Legacy projection",
+      bodyText: "Legacy",
+      createdAt: 2,
+    });
+
+    applyMigration(sqlite, "0029_boring_magma.sql");
+
+    expect(
+      sqlite
+        .prepare(
+          "SELECT body_html_version AS version FROM post WHERE id = 'post-before-version'",
+        )
+        .get(),
+    ).toEqual({ version: 1 });
+    const column = sqlite
+      .prepare(
+        "SELECT \"notnull\" AS required, dflt_value AS defaultValue FROM pragma_table_info('post') WHERE name = 'body_html_version'",
+      )
+      .get();
+    expect(column).toEqual({ required: 1, defaultValue: "1" });
+
+    const postgresMigration = readFileSync(
+      resolve(PG_MIGRATIONS_DIR, "0027_short_cannonball.sql"),
+      "utf-8",
+    );
+    expect(postgresMigration).toContain(
+      'ADD COLUMN "body_html_version" integer DEFAULT 1 NOT NULL',
+    );
+  });
+
   it("migrates post collections into a lossless thread-level union", () => {
     const sqlite = new Database(":memory:");
     sqlite.pragma("foreign_keys = ON");

@@ -8,11 +8,13 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("../thread-context.js", () => ({ setupThreadContexts: vi.fn() }));
 vi.mock("../feed-video-player.js", () => ({ initFeedVideoPlayer: vi.fn() }));
 vi.mock("../audio-player.js", () => ({ initPrecomputedWaveforms: vi.fn() }));
+vi.mock("../footnote-rail.js", () => ({ initFootnoteRails: vi.fn() }));
 
 import { hydratePartial } from "../hydrate-partial.js";
 import { setupThreadContexts } from "../thread-context.js";
 import { initFeedVideoPlayer } from "../feed-video-player.js";
 import { initPrecomputedWaveforms } from "../audio-player.js";
+import { initFootnoteRails } from "../footnote-rail.js";
 
 describe("hydratePartial", () => {
   it("re-initializes per-element behaviors scoped to the swapped root", () => {
@@ -23,5 +25,6 @@ describe("hydratePartial", () => {
     expect(setupThreadContexts).toHaveBeenCalledWith(root);
     expect(initFeedVideoPlayer).toHaveBeenCalledWith(root);
     expect(initPrecomputedWaveforms).toHaveBeenCalledWith(root);
+    expect(initFootnoteRails).toHaveBeenCalledWith(root);
   });
 });

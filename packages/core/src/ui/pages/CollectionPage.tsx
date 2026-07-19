@@ -226,7 +226,9 @@ export const CollectionPage: FC<CollectionPageProps> = ({
             <div
               class="collection-page-description prose"
               dangerouslySetInnerHTML={{
-                __html: renderMarkdown(primaryCollection.description),
+                __html: renderMarkdown(primaryCollection.description, {
+                  namespace: primaryCollection.id,
+                }),
               }}
             />
           ) : null}

@@ -402,6 +402,12 @@ describe("tiptapJsonToMarkdown", () => {
       const md = "Body copy[^1]\n\n[^1]: Footnote body";
       expect(roundtrip(md)).toBe(md);
     });
+
+    it("canonicalizes inline footnotes as references plus definitions", () => {
+      expect(roundtrip("Body^[Inline **bold** note.]")).toBe(
+        "Body[^1]\n\n[^1]: Inline **bold** note.",
+      );
+    });
   });
 
   describe("edge cases", () => {

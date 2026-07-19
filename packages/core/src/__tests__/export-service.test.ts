@@ -577,6 +577,24 @@ describe("createExportService (Hugo)", () => {
     );
   });
 
+  it("renders semantic, namespaced footnotes in exported site HTML fields", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig({
+        siteFooter: "Footer[^1]\n\n[^1]: Export definition",
+      }),
+    );
+    const files = filesToMap(await service.generateHugoFiles());
+    const { parse } = await import("smol-toml");
+    const data = parse(files.get("data/jant.toml") as string);
+    const footerHtml = data.site_footer_html as string;
+
+    expect(footerHtml).toContain('role="doc-noteref"');
+    expect(footerHtml).toContain('role="doc-endnotes"');
+    expect(footerHtml).toContain("fn-3gu8g1hux2k2m-1");
+    expect(footerHtml).not.toContain("site-footer");
+  });
+
   it("writes a .gitignore covering Hugo build artifacts", async () => {
     const service = createExportService(
       buildServices({ posts: [] }),

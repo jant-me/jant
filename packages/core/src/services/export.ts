@@ -1241,7 +1241,11 @@ function buildExportedCollectionDirectoryItems(
         sequence: sequenceLabels[index] ?? "",
         label: item.label,
         url: item.url,
-        descriptionHtml: description ? renderMarkdown(description) : null,
+        descriptionHtml: description
+          ? renderMarkdown(description, {
+              namespace: `collection-directory-link-${sequenceLabels[index] ?? index}`,
+            })
+          : null,
       });
       return;
     }
@@ -1266,7 +1270,7 @@ function buildExportedCollectionDirectoryItems(
       slug,
       title: collection.title || slug,
       descriptionHtml: collectionDescription
-        ? renderMarkdown(collectionDescription)
+        ? renderMarkdown(collectionDescription, { namespace: collection.id })
         : null,
       entryCount:
         metrics?.threadCount ??
@@ -1495,7 +1499,9 @@ function buildJantDataToml(
   iconAssets: SiteIconAssets,
   directoryItems: readonly ExportedCollectionDirectoryItem[],
 ): string {
-  const footerHtml = config.siteFooter ? renderMarkdown(config.siteFooter) : "";
+  const footerHtml = config.siteFooter
+    ? renderMarkdown(config.siteFooter, { namespace: "site-footer" })
+    : "";
   const parts: string[] = [
     'format = "jant-site"',
     "version = 1",
