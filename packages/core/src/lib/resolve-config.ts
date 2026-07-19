@@ -78,6 +78,33 @@ function parseConfigInt(value: string, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+/**
+ * Resolve the environment-only limits used for automatic post summaries.
+ *
+ * Internal maintenance routes run before the full config middleware, so they
+ * use this focused resolver instead of assuming `c.var.appConfig` exists.
+ *
+ * @param env - Runtime bindings.
+ * @returns Positive summary extraction limits with configured defaults.
+ * @example
+ * ```ts
+ * resolveSummaryConfig({ SUMMARY_MAX_CHARS: "240" }).maxChars;
+ * // 240
+ * ```
+ */
+export function resolveSummaryConfig(env: Bindings): {
+  maxParagraphs: number;
+  maxChars: number;
+} {
+  return {
+    maxParagraphs: parseConfigInt(
+      resolveFallback("SUMMARY_MAX_PARAGRAPHS", env),
+      5,
+    ),
+    maxChars: parseConfigInt(resolveFallback("SUMMARY_MAX_CHARS", env), 500),
+  };
+}
+
 function parseFeedKind(value: string, fallback: FeedKind): FeedKind {
   return value === "latest" || value === "featured" ? value : fallback;
 }
@@ -102,6 +129,7 @@ export function resolveConfig(
   allSettings: Record<string, string>,
   options?: { siteUrl?: string },
 ): AppConfig {
+  const summaryConfig = resolveSummaryConfig(env);
   const pageSize = parseConfigInt(resolve("PAGE_SIZE", allSettings, env), 50);
   const searchPageSize = parseConfigInt(
     resolve("SEARCH_PAGE_SIZE", allSettings, env),
@@ -186,10 +214,8 @@ export function resolveConfig(
       1024,
 
     // Summary extraction (ENV only)
-    summaryMaxParagraphs:
-      parseInt(getEnvString(env, "SUMMARY_MAX_PARAGRAPHS") ?? "5", 10) || 5,
-    summaryMaxChars:
-      parseInt(getEnvString(env, "SUMMARY_MAX_CHARS") ?? "500", 10) || 500,
+    summaryMaxParagraphs: summaryConfig.maxParagraphs,
+    summaryMaxChars: summaryConfig.maxChars,
 
     // Slug (ENV only)
     slugIdLength: parseInt(getEnvString(env, "SLUG_ID_LENGTH") ?? "5", 10) || 5,

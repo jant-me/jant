@@ -185,3 +185,7 @@
   Before claiming a semantic content migration is complete, test real
   historical canonical shapes and report canonical upgrades separately from
   projection rewrites.
+- Before running a remote migration or backfill, verify the configured host,
+  database, and deployment target as one identity. Environment labels such as
+  `preview` may refer to different Worker and hosted stacks; a matching label
+  is not proof that the command reaches the intended data.

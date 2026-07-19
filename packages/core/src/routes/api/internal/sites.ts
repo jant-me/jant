@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { requireInternalAdminApi } from "../../../middleware/auth.js";
 import { ConflictError } from "../../../lib/errors.js";
+import { resolveSummaryConfig } from "../../../lib/resolve-config.js";
 import { parseValidated } from "../../../lib/schemas.js";
 import {
   getConfiguredStorageDriver,
@@ -219,10 +220,7 @@ internalSitesRoutes.post(
     return c.json(
       await services.posts.rebuildBodyHtml({
         ...body,
-        summaryConfig: {
-          maxParagraphs: c.var.appConfig.summaryMaxParagraphs,
-          maxChars: c.var.appConfig.summaryMaxChars,
-        },
+        summaryConfig: resolveSummaryConfig(c.env),
       }),
     );
   },

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveConfig } from "../resolve-config.js";
+import { resolveConfig, resolveSummaryConfig } from "../resolve-config.js";
 import type { Bindings } from "../../types/bindings.js";
 
 function makeEnv(overrides: Partial<Bindings> = {}): Bindings {
@@ -253,6 +253,26 @@ describe("resolveConfig", () => {
     expect(config2.searchPageSize).toBe(50);
     expect(config2.archivePageSize).toBe(50);
     expect(config2.rssFeedLimit).toBe(50);
+  });
+
+  it("resolves summary limits without the full app config", () => {
+    expect(
+      resolveSummaryConfig(
+        makeEnv({
+          SUMMARY_MAX_PARAGRAPHS: "3",
+          SUMMARY_MAX_CHARS: 240,
+        }),
+      ),
+    ).toEqual({ maxParagraphs: 3, maxChars: 240 });
+
+    expect(
+      resolveSummaryConfig(
+        makeEnv({
+          SUMMARY_MAX_PARAGRAPHS: 0,
+          SUMMARY_MAX_CHARS: "invalid",
+        }),
+      ),
+    ).toEqual({ maxParagraphs: 5, maxChars: 500 });
   });
 
   it("resolves fallbacks without DB values", () => {

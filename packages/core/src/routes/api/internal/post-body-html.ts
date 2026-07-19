@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { requireInternalAdminApi } from "../../../middleware/auth.js";
+import { resolveSummaryConfig } from "../../../lib/resolve-config.js";
 import { parseValidated } from "../../../lib/schemas.js";
 import type { Bindings } from "../../../types.js";
 import type { AppVariables } from "../../../types/app-context.js";
@@ -34,10 +35,7 @@ internalPostBodyHtmlRoutes.post(
 
     const result = await c.var.services.posts.rebuildBodyHtml({
       ...body,
-      summaryConfig: {
-        maxParagraphs: c.var.appConfig.summaryMaxParagraphs,
-        maxChars: c.var.appConfig.summaryMaxChars,
-      },
+      summaryConfig: resolveSummaryConfig(c.env),
     });
     return c.json(result);
   },

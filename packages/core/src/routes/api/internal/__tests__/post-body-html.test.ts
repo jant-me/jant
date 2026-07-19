@@ -25,6 +25,10 @@ describe("Internal post body HTML rebuild routes", () => {
       authenticated: false,
       internalAdminToken: "internal-secret",
     });
+    app.use("*", async (c, next) => {
+      c.set("appConfig", undefined as never);
+      await next();
+    });
     app.route("/api/internal/posts/body-html", internalPostBodyHtmlRoutes);
     const post = await services.posts.create({
       format: "note",
@@ -74,6 +78,10 @@ describe("Internal post body HTML rebuild routes", () => {
       authenticated: false,
       internalAdminToken: "internal-secret",
       siteResolutionMode: "host-based",
+    });
+    app.use("*", async (c, next) => {
+      c.set("appConfig", undefined as never);
+      await next();
     });
     app.route("/api/internal/sites", internalSitesRoutes);
 
