@@ -1,5 +1,11 @@
 # create-jant
 
+## 0.6.15
+
+### Patch Changes
+
+- [`5013bc9`](https://github.com/jant-me/jant/commit/5013bc90c99aa50630f5e348e83051a38dcf1e32) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Improve publishing controls, navigation and collection management, feed configuration, draft previews, editor behavior, and media playback.
+
 ## 0.6.14
 
 ### Patch Changes
