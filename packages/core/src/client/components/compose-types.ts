@@ -301,6 +301,8 @@ export interface ComposeSubmitDetail {
   collectionIds: string[];
   attachments: ComposeSubmitAttachment[];
   editPostId?: string;
+  /** Identifies an existing server draft loaded through the drafts workflow. */
+  draftSourceId?: string;
   replyToId?: string;
   quietReply?: boolean;
   replyThreadRootId?: string;

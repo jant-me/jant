@@ -16,7 +16,7 @@ import { createEntityId } from "../lib/ids.js";
 import { now } from "../lib/time.js";
 import { ConflictError } from "../lib/errors.js";
 import { normalizePath } from "../lib/url.js";
-import type { PathKind, PathRecord } from "../types.js";
+import type { PathKind, PathRecord, Status } from "../types.js";
 
 export interface ResolvedPath extends PathRecord {
   targetType: "post" | "collection" | "redirect" | "archive";
@@ -55,6 +55,7 @@ export interface NavigableItem {
   path: string;
   type: "post" | "collection";
   format?: string;
+  status?: Status;
 }
 
 export function toCollectionPath(slug: string): string {
@@ -375,6 +376,7 @@ export function createPathService(
         .select({
           title: posts.title,
           format: posts.format,
+          status: posts.status,
           path: pathRegistry.path,
         })
         .from(pathRegistry)
@@ -422,6 +424,7 @@ export function createPathService(
           path: row.path,
           type: "post",
           format: row.format,
+          status: row.status,
         });
       }
 

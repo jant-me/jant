@@ -68,7 +68,11 @@ function openEditFromQueryParam() {
   if (!postId || !composeEl) return;
 
   consumeEditQueryParam();
-  void composeEl.openEdit(postId);
+  if (document.querySelector("[data-preview-status]")) {
+    void composeEl.openDraft(postId);
+  } else {
+    void composeEl.openEdit(postId);
+  }
 }
 
 async function toggleFeatured(

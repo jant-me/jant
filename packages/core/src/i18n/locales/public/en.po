@@ -813,6 +813,11 @@ msgstr "Edit"
 msgid "Edit custom link"
 msgstr "Edit custom link"
 
+#. @context: Action in the draft preview status bar that opens the editor
+#: src/ui/shared/DraftPreviewBar.tsx
+msgid "Edit draft"
+msgstr "Edit draft"
+
 #. @context: Button to manually edit the collection link
 #: src/ui/shared/collection-management-labels.ts
 msgid "Edit link"

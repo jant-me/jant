@@ -8,6 +8,7 @@ type ComposeHarness = HTMLElement & {
   clearLocalDraftFromStorage?: () => void;
   clearEditDraftFromStorage?: (postId: string) => void;
   openEdit?: (id: string) => Promise<void>;
+  openDraft?: (id: string) => Promise<void>;
   openNew?: (options?: { restoreDraft?: boolean }) => Promise<void>;
   openReply?: (
     id: string,
@@ -42,9 +43,18 @@ async function flushBridgeWork(times = 4) {
   }
 }
 
+function renderPostView(postId: string) {
+  const postView = document.createElement("div");
+  postView.dataset.postView = "";
+  postView.dataset.postViewId = postId;
+  document.body.appendChild(postView);
+  return postView;
+}
+
 describe("compose bridge", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
+    delete document.documentElement.dataset.sitePathPrefix;
     vi.restoreAllMocks();
     globalThis.sessionStorage.clear();
   });
@@ -716,6 +726,241 @@ describe("compose bridge", () => {
 
     await flushBridgeWork();
 
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an updated draft on its authenticated preview path", async () => {
+    const composeEl = document.createElement(
+      "jant-compose-dialog",
+    ) as ComposeHarness;
+    composeEl.refreshCollections = vi.fn(async () => true);
+    composeEl.pageMode = false;
+    document.body.appendChild(composeEl);
+    const previewBar = document.createElement("aside");
+    previewBar.dataset.previewStatus = "";
+    document.body.appendChild(previewBar);
+    document.documentElement.dataset.sitePathPrefix = "/blog";
+    globalThis.history.replaceState({}, "", "/blog/preview/draft-post");
+
+    const assignSpy = vi
+      .spyOn(globalThis.location, "assign")
+      .mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const raw =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      const url = new URL(raw, "http://localhost");
+
+      expect(url.pathname).toBe("/api/posts/pst_draft");
+      expect(init?.method).toBe("PUT");
+      expect(JSON.parse(String(init?.body))).toMatchObject({
+        status: "draft",
+      });
+
+      return new Response(
+        JSON.stringify({
+          id: "pst_draft",
+          slug: "draft-post",
+          status: "draft",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    });
+
+    composeEl.dispatchEvent(
+      new CustomEvent("jant:compose-submit-deferred", {
+        bubbles: true,
+        detail: {
+          format: "note",
+          title: "Draft post",
+          body: "Updated draft body",
+          url: "",
+          quoteText: "",
+          quoteAuthor: "",
+          slug: "draft-post",
+          status: "draft",
+          visibility: "public",
+          rating: 0,
+          collectionIds: [],
+          attachments: [],
+          pendingAttachments: [],
+          editPostId: "pst_draft",
+          draftSourceId: "pst_draft",
+        },
+      }),
+    );
+
+    await flushBridgeWork();
+
+    expect(assignSpy).toHaveBeenCalledWith("/blog/preview/draft-post");
+  });
+
+  it("keeps a draft-panel save in place and signals the updated list", async () => {
+    const composeEl = document.createElement(
+      "jant-compose-dialog",
+    ) as ComposeHarness;
+    const refreshCollections = vi.fn(async () => true);
+    composeEl.refreshCollections = refreshCollections;
+    composeEl.pageMode = false;
+    document.body.appendChild(composeEl);
+
+    const assignSpy = vi
+      .spyOn(globalThis.location, "assign")
+      .mockImplementation(() => {});
+    const completeSpy = vi.fn();
+    document.addEventListener("jant:compose-submit-complete", completeSpy, {
+      once: true,
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "pst_draft",
+          slug: "draft-post",
+          status: "draft",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    composeEl.dispatchEvent(
+      new CustomEvent("jant:compose-submit-deferred", {
+        bubbles: true,
+        detail: {
+          format: "note",
+          title: "Draft post",
+          body: "Updated draft body",
+          url: "",
+          quoteText: "",
+          quoteAuthor: "",
+          slug: "draft-post",
+          status: "draft",
+          visibility: "public",
+          rating: 0,
+          collectionIds: [],
+          attachments: [],
+          pendingAttachments: [],
+          editPostId: "pst_draft",
+          draftSourceId: "pst_draft",
+        },
+      }),
+    );
+
+    await flushBridgeWork();
+
+    expect(assignSpy).not.toHaveBeenCalled();
+    expect(refreshCollections).toHaveBeenCalled();
+    expect(completeSpy).toHaveBeenCalledOnce();
+  });
+
+  it("reopens a failed server draft through the draft loader", async () => {
+    const composeEl = document.createElement(
+      "jant-compose-dialog",
+    ) as ComposeHarness;
+    composeEl.refreshCollections = vi.fn(async () => true);
+    composeEl.pageMode = false;
+    composeEl.openDraft = vi.fn(async () => {});
+    composeEl.openEdit = vi.fn(async () => {});
+    document.body.appendChild(composeEl);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "Could not save draft." }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    composeEl.dispatchEvent(
+      new CustomEvent("jant:compose-submit-deferred", {
+        bubbles: true,
+        detail: {
+          format: "note",
+          title: "Draft post",
+          body: "Updated draft body",
+          url: "",
+          quoteText: "",
+          quoteAuthor: "",
+          status: "draft",
+          visibility: "public",
+          rating: 0,
+          collectionIds: [],
+          attachments: [],
+          pendingAttachments: [],
+          editPostId: "pst_draft",
+          draftSourceId: "pst_draft",
+        },
+      }),
+    );
+
+    await flushBridgeWork();
+
+    expect(composeEl.openDraft).toHaveBeenCalledWith("pst_draft");
+    expect(composeEl.openEdit).not.toHaveBeenCalled();
+  });
+
+  it("sends a published draft to its public permalink", async () => {
+    const composeEl = document.createElement(
+      "jant-compose-dialog",
+    ) as ComposeHarness;
+    composeEl.refreshCollections = vi.fn(async () => true);
+    composeEl.pageMode = false;
+    document.body.appendChild(composeEl);
+    renderPostView("pst_draft");
+    const previewBar = document.createElement("aside");
+    previewBar.dataset.previewStatus = "";
+    document.body.appendChild(previewBar);
+    document.documentElement.dataset.sitePathPrefix = "/blog";
+    globalThis.history.replaceState({}, "", "/blog/preview/draft-post");
+
+    const assignSpy = vi
+      .spyOn(globalThis.location, "assign")
+      .mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "pst_draft",
+          slug: "published-post",
+          status: "published",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    composeEl.dispatchEvent(
+      new CustomEvent("jant:compose-submit-deferred", {
+        bubbles: true,
+        detail: {
+          format: "note",
+          title: "Published post",
+          body: "Ready to publish",
+          url: "",
+          quoteText: "",
+          quoteAuthor: "",
+          slug: "published-post",
+          status: "published",
+          visibility: "public",
+          rating: 0,
+          collectionIds: [],
+          attachments: [],
+          pendingAttachments: [],
+          editPostId: "pst_draft",
+          draftSourceId: "pst_draft",
+        },
+      }),
+    );
+
+    await flushBridgeWork();
+
+    expect(assignSpy).toHaveBeenCalledWith("/blog/published-post");
   });
 });

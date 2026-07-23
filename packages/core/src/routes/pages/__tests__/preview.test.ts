@@ -51,11 +51,13 @@ describe("draft preview route", () => {
     expect(html).toContain("data-preview-status");
     expect(html).toContain("Draft preview");
     expect(html).toContain("This post isn’t published.");
+    expect(html).toContain("Edit draft");
+    expect(html).toContain(`/preview/${draft.slug}?edit=1`);
     expect(html).toContain('<meta name="robots" content="noindex, nofollow"');
     expect(html).not.toContain('rel="canonical"');
     expect(html).not.toContain("application/ld+json");
     expect(html).not.toContain("article:published_time");
-    expect(html).not.toContain('id="compose-dialog"');
+    expect(html).toContain('id="compose-dialog"');
   });
 
   it("renders every draft in a saved thread", async () => {

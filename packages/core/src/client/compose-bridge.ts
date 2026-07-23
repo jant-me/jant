@@ -694,6 +694,7 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
     getComposeDialogFromEventTarget(event.target) ??
     (document.querySelector("jant-compose-dialog") as JantComposeDialog | null);
   const isPageMode = !!composeEl?.pageMode;
+  const isDraftPreviewPage = !!document.querySelector("[data-preview-status]");
 
   // Get labels for toast messages
   const labels = composeEl?.labels;
@@ -753,6 +754,12 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
   };
   const reopenComposeAfterFailure = async () => {
     if (!composeEl || isPageMode) return;
+
+    if (detail.draftSourceId) {
+      if (typeof composeEl.openDraft !== "function") return;
+      await composeEl.openDraft(detail.draftSourceId);
+      return;
+    }
 
     if (isEdit && detail.editPostId) {
       if (typeof composeEl.openEdit !== "function") return;
@@ -930,7 +937,12 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
 
       if (threadStatus === "published") {
         clearRecoveredLocalDraft();
-        if (isPageMode) {
+        if (isDraftPreviewPage && detail.draftSourceId) {
+          queueSuccessToast(publishedMsg);
+          globalThis.location.assign(
+            threadPermalink ?? globalThis.location.pathname,
+          );
+        } else if (isPageMode) {
           await refreshComposeCollections();
           resetPageCompose();
           toastMsg(publishedMsg);
@@ -945,6 +957,11 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
         }
       } else {
         clearRecoveredLocalDraft();
+        if (isDraftPreviewPage && detail.draftSourceId) {
+          queueSuccessToast(threadToast ?? "Draft saved.");
+          globalThis.location.assign(globalThis.location.pathname);
+          return;
+        }
         await refreshComposeCollections();
         if (!leavePageAfterConfirmSave()) resetPageCompose();
         toastMsg(threadToast ?? "Draft saved.");
@@ -1033,21 +1050,50 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
       const editData = await readJsonObject(res);
       const editPostId = detail.editPostId ?? "";
       const newSlug = getJsonString(editData, "slug");
-      const newPath = newSlug ? publicPath(`/${newSlug}`) : null;
+      const nextStatus = getJsonString(editData, "status") ?? detail.status;
+      const newPath = newSlug
+        ? publicPath(
+            nextStatus === "draft" ? `/preview/${newSlug}` : `/${newSlug}`,
+          )
+        : null;
+      const editSuccessMessage =
+        nextStatus === "draft"
+          ? "Draft saved."
+          : detail.draftSourceId
+            ? publishedMsg
+            : "Post updated.";
+
+      // Draft preview pages cannot use the public post-view refresh endpoint.
+      // Reload the authenticated preview so saved content stays visible.
+      if (nextStatus === "draft") {
+        if (isDraftPreviewPage) {
+          queueSuccessToast(editSuccessMessage);
+          globalThis.location.assign(newPath ?? globalThis.location.pathname);
+          return;
+        }
+
+        // Drafts opened from the compose panel stay in that workflow. The
+        // completion event lets a pending "save and open drafts" action fetch
+        // the updated list only after the write has finished.
+        await refreshComposeCollections();
+        toastMsg(editSuccessMessage);
+        dispatchSubmitComplete(composeEl, "draft");
+        return;
+      }
 
       if (isPageMode) {
         // On the post detail page: refresh or navigate if slug changed
         if (newPath && newPath !== globalThis.location.pathname) {
-          queueSuccessToast("Post updated.");
+          queueSuccessToast(editSuccessMessage);
           globalThis.location.assign(newPath);
         } else {
           const refreshed =
             editPostId && (await refreshPostPageView(editPostId));
           if (!refreshed) {
-            queueSuccessToast("Post updated.");
+            queueSuccessToast(editSuccessMessage);
             globalThis.location.assign(globalThis.location.pathname);
           } else {
-            toastMsg("Post updated.");
+            toastMsg(editSuccessMessage);
           }
         }
       } else if (editPostId) {
@@ -1057,15 +1103,15 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
         );
         if (postView) {
           if (newPath && newPath !== globalThis.location.pathname) {
-            queueSuccessToast("Post updated.");
+            queueSuccessToast(editSuccessMessage);
             globalThis.location.assign(newPath);
             return;
           }
           const refreshed = await refreshPostPageView(editPostId);
           if (refreshed) {
-            toastMsg("Post updated.");
+            toastMsg(editSuccessMessage);
           } else {
-            queueSuccessToast("Post updated.");
+            queueSuccessToast(editSuccessMessage);
             globalThis.location.reload();
           }
         } else {
@@ -1080,14 +1126,14 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
             ? await refreshTimelineThreadView(threadRootId)
             : await refreshPostCardView(editPostId);
           if (refreshed) {
-            toastMsg("Post updated.");
+            toastMsg(editSuccessMessage);
           } else {
-            queueSuccessToast("Post updated.");
+            queueSuccessToast(editSuccessMessage);
             globalThis.location.reload();
           }
         }
       } else {
-        queueSuccessToast("Post updated.");
+        queueSuccessToast(editSuccessMessage);
         globalThis.location.reload();
       }
       return;

@@ -943,6 +943,16 @@ export class JantComposeDialog extends LitElement {
     }
   }
 
+  async openDraft(id: string) {
+    const dialog = this.closest("dialog");
+    if (dialog && !dialog.open) {
+      dialog.showModal();
+    }
+    await this.updateComplete;
+    this._focusDialogShell();
+    await this._loadDraft(id);
+  }
+
   async openNew(options?: ComposeOpenOptions) {
     this.reset();
 
@@ -1448,6 +1458,7 @@ export class JantComposeDialog extends LitElement {
       collectionIds: this._replyToId ? [] : [...this._collectionIds],
       attachments: orderedAttachments,
       editPostId: this._editPostId ?? this._draftSourceId ?? undefined,
+      draftSourceId: this._draftSourceId ?? undefined,
       replyToId: this._replyToId ?? undefined,
       quietReply: this._quietReply || undefined,
       replyThreadRootId: this._replyThreadRootId ?? undefined,
@@ -1566,6 +1577,7 @@ export class JantComposeDialog extends LitElement {
           detail: {
             ...threadPosts[0],
             editPostId: this._editPostId ?? this._draftSourceId ?? undefined,
+            draftSourceId: this._draftSourceId ?? undefined,
             threadPosts,
             pendingAttachments: allPending,
           },
@@ -3459,7 +3471,7 @@ export class JantComposeDialog extends LitElement {
     const menuOpen = this._draftMenuOpenId === draft.id;
 
     return html`
-      <div class="compose-draft-item" @click=${() => this._loadDraft(draft.id)}>
+      <div class="compose-draft-item" @click=${() => this.openDraft(draft.id)}>
         <div class="compose-draft-content">
           ${preview
             ? html`<div class="compose-draft-preview">${preview}</div>`

@@ -260,6 +260,10 @@ async function renderPost(
     display.threadPostViews,
     c.var.appConfig.siteUrl,
   );
+  const draftEditHref = `${toPublicPath(
+    `/preview/${post.slug}`,
+    c.var.appConfig.sitePathPrefix,
+  )}?edit=1`;
 
   return renderPublicPage(c, {
     title: previewTitle
@@ -288,8 +292,7 @@ async function renderPost(
     navData,
     ...(options.isPreview
       ? {
-          pageChrome: <DraftPreviewBar />,
-          showComposeDialog: false,
+          pageChrome: <DraftPreviewBar editHref={draftEditHref} />,
           noindex: true,
         }
       : {}),

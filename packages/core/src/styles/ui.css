@@ -55,7 +55,7 @@
   .draft-preview-bar-inner {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     gap: 0.7rem;
     min-height: 2.5rem;
     max-width: var(--layout-body-max-width);
@@ -64,6 +64,13 @@
     font-size: var(--type-ui-caption);
     line-height: 1.35;
     text-align: center;
+  }
+
+  .draft-preview-bar-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
   }
 
   .draft-preview-bar-label {
@@ -90,10 +97,64 @@
     color: var(--site-text-secondary);
   }
 
+  .draft-preview-bar-action {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    min-height: 1.9rem;
+    padding: 0.28rem 0.72rem;
+    border: 1px solid
+      color-mix(in srgb, var(--site-text-primary) 18%, transparent);
+    border-radius: 999px;
+    background: color-mix(
+      in srgb,
+      var(--site-elevated-bg) 78%,
+      var(--site-nav-hover-bg)
+    );
+    color: var(--site-text-primary);
+    font-size: var(--type-ui-caption);
+    font-weight: var(--fw-medium);
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      border-color 150ms ease,
+      background-color 150ms ease,
+      color 150ms ease,
+      transform 150ms ease;
+  }
+
+  .draft-preview-bar-action:hover {
+    border-color: color-mix(
+      in srgb,
+      var(--site-accent) 48%,
+      var(--site-divider)
+    );
+    background: var(--site-nav-hover-bg);
+    color: var(--site-accent);
+  }
+
+  .draft-preview-bar-action:active {
+    transform: translateY(1px);
+  }
+
+  .draft-preview-bar-action:focus-visible {
+    outline: 2px solid var(--site-accent);
+    outline-offset: 2px;
+  }
+
   @media (max-width: 480px) {
     .draft-preview-bar-inner {
+      align-items: center;
+      gap: 0.65rem;
+      text-align: left;
+    }
+
+    .draft-preview-bar-copy {
       flex-direction: column;
-      gap: 0.18rem;
+      align-items: flex-start;
+      gap: 0.12rem;
     }
   }
 

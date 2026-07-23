@@ -11,6 +11,7 @@ interface MockPaletteItem {
   title: string;
   path: string;
   type: "post" | "collection" | "system";
+  status?: "draft" | "published";
 }
 
 function mockPaletteApi(items: MockPaletteItem[] = []) {
@@ -44,6 +45,7 @@ describe("JantCommandPalette slash path mode", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     document.body.innerHTML = "";
+    delete document.documentElement.dataset.sitePathPrefix;
     globalThis.localStorage.clear();
     globalThis.history.replaceState({}, "", "/");
   });
@@ -73,6 +75,7 @@ describe("JantCommandPalette persistent search action", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     document.body.innerHTML = "";
+    delete document.documentElement.dataset.sitePathPrefix;
     globalThis.localStorage.clear();
     globalThis.history.replaceState({}, "", "/");
   });
@@ -186,5 +189,53 @@ describe("JantCommandPalette persistent search action", () => {
     );
 
     expect(globalThis.location.pathname).toBe("/match-1");
+  });
+
+  it("opens draft post matches through the authenticated preview route", async () => {
+    const el = await renderPalette("draft", [
+      {
+        title: "Draft post",
+        path: "draft-post",
+        type: "post",
+        status: "draft",
+      },
+    ]);
+    const dialog = el.querySelector<HTMLDialogElement>(".command-palette");
+    expect(dialog?.textContent).toContain("Draft · draft-post");
+
+    dialog?.dispatchEvent(
+      new globalThis.KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(globalThis.location.pathname).toBe("/preview/draft-post");
+    expect(globalThis.location.search).toBe("?edit=1");
+  });
+
+  it("keeps the site path prefix when opening a draft preview", async () => {
+    document.documentElement.dataset.sitePathPrefix = "/blog";
+    const el = await renderPalette("draft", [
+      {
+        title: "Draft post",
+        path: "draft-post",
+        type: "post",
+        status: "draft",
+      },
+    ]);
+    const dialog = el.querySelector<HTMLDialogElement>(".command-palette");
+
+    dialog?.dispatchEvent(
+      new globalThis.KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(globalThis.location.pathname).toBe("/blog/preview/draft-post");
+    expect(globalThis.location.search).toBe("?edit=1");
   });
 });

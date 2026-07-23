@@ -1470,6 +1470,9 @@ describe("PostService", () => {
       expect(published?.status).toBe("published");
       expect(published?.publishedAt).toBeTypeOf("number");
       expect((published?.publishedAt ?? 0) >= post.updatedAt).toBe(true);
+      expect(
+        (await postService.list({ status: "draft" })).map((draft) => draft.id),
+      ).not.toContain(post.id);
     });
 
     it("clears publishedAt when converting a published post back to draft", async () => {

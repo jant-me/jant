@@ -8,6 +8,7 @@ type ComposeHarness = HTMLElement & {
   openNew: (options?: unknown) => Promise<void>;
   openReply: (...args: unknown[]) => Promise<void>;
   openEdit: (id: string) => Promise<void>;
+  openDraft: (id: string) => Promise<void>;
 };
 
 function dispatchShortcut(
@@ -30,6 +31,7 @@ function createComposeHarness(): ComposeHarness {
   composeEl.openNew = vi.fn(async () => {});
   composeEl.openReply = vi.fn(async () => {});
   composeEl.openEdit = vi.fn(async () => {});
+  composeEl.openDraft = vi.fn(async () => {});
   document.body.appendChild(composeEl);
   return composeEl;
 }
@@ -281,6 +283,24 @@ describe("compose shortcuts", () => {
 
     expect(composeEl.openEdit).toHaveBeenCalledWith("post-current");
     expect(window.location.pathname).toBe("/about");
+    expect(window.location.search).toBe("");
+  });
+
+  it("loads the current draft through the drafts workflow on preview pages", async () => {
+    const composeEl = createComposeHarness();
+    document.body.setAttribute("data-authenticated", "true");
+    const previewBar = document.createElement("aside");
+    previewBar.dataset.previewStatus = "";
+    document.body.appendChild(previewBar);
+    renderThreadDetailPage();
+    globalThis.history.pushState({}, "", "/preview/draft-post?edit=1");
+
+    composeShortcutsTestOnly.openEditFromQueryParam();
+    await Promise.resolve();
+
+    expect(composeEl.openDraft).toHaveBeenCalledWith("post-current");
+    expect(composeEl.openEdit).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/preview/draft-post");
     expect(window.location.search).toBe("");
   });
 

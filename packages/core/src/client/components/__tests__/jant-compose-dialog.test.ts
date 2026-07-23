@@ -5095,9 +5095,92 @@ describe("JantComposeDialog", () => {
     expect((receivedDetail as unknown as ComposeSubmitDetail).editPostId).toBe(
       "draft789",
     );
+    expect(
+      (receivedDetail as unknown as ComposeSubmitDetail).draftSourceId,
+    ).toBe("draft789");
     expect((receivedDetail as unknown as ComposeSubmitDetail).status).toBe(
       "published",
     );
+  });
+
+  it("opens a thread draft without deleting it and preserves its draft identity", async () => {
+    const rootId = "pst_draft_root";
+    const replyId = "pst_draft_reply";
+    const requests: Array<{ url: string; method: string }> = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      requests.push({ url, method: init?.method ?? "GET" });
+
+      if (url === `/api/posts/${rootId}`) {
+        return new Response(
+          JSON.stringify({
+            id: rootId,
+            threadId: rootId,
+            format: "note",
+            status: "draft",
+            slug: "draft-thread",
+            title: "Draft thread",
+            body: null,
+            attachments: [],
+            collectionIds: [],
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      if (url === "/api/posts?status=draft&limit=50") {
+        return new Response(
+          JSON.stringify({
+            posts: [
+              {
+                id: replyId,
+                threadId: rootId,
+                replyToId: rootId,
+                format: "quote",
+                status: "draft",
+                quoteText: "Draft reply",
+                attachments: [],
+              },
+            ],
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const el = await createElement();
+    await el.openDraft(rootId);
+    await flushUpdates(el);
+
+    expect(el._draftSourceId).toBe(rootId);
+    expect(el.querySelectorAll("jant-compose-editor")).toHaveLength(2);
+    expect(requests).toEqual([
+      { url: `/api/posts/${rootId}`, method: "GET" },
+      { url: "/api/posts?status=draft&limit=50", method: "GET" },
+    ]);
+
+    let receivedDetail: ComposeSubmitDetail | null = null;
+    el.addEventListener("jant:compose-submit-deferred", (event) => {
+      receivedDetail = (event as CustomEvent<ComposeSubmitDetail>).detail;
+    });
+    requireElement(
+      el.querySelector<HTMLButtonElement>(".compose-publish-main"),
+      "expected publish button",
+    ).click();
+
+    expect(receivedDetail).not.toBeNull();
+    expect(
+      (receivedDetail as unknown as ComposeSubmitDetail).draftSourceId,
+    ).toBe(rootId);
+    expect((receivedDetail as unknown as ComposeSubmitDetail).editPostId).toBe(
+      rootId,
+    );
+    expect(
+      (receivedDetail as unknown as ComposeSubmitDetail).threadPosts,
+    ).toHaveLength(2);
+    expect(requests.every((request) => request.method === "GET")).toBe(true);
   });
 
   it("draft button confirm save dispatches draft then opens drafts panel", async () => {
