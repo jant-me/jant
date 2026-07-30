@@ -26,6 +26,22 @@ describe("render", () => {
     expect(html).toContain(">link</a>");
   });
 
+  it("renders phone and messaging action links", () => {
+    expect(render("[Call](tel:+15551234567)")).toContain(
+      'href="tel:+15551234567"',
+    );
+    expect(render("[Message](sms:xxxxx@xx.com)")).toContain(
+      'href="sms:xxxxx@xx.com"',
+    );
+  });
+
+  it("strips executable link destinations", () => {
+    const html = render("[unsafe](javascript:alert(1))");
+
+    expect(html).not.toContain("javascript:");
+    expect(html).toContain('href=""');
+  });
+
   it("renders code blocks", () => {
     const html = render("```\nconst x = 1;\n```");
     expect(html).toContain("<code>");

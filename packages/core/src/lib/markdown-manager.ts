@@ -25,6 +25,7 @@ import {
   parseFootnoteDefinition,
 } from "./footnotes.js";
 import { renderMarkdownImage, type RichImageAttrs } from "./rich-image.js";
+import { sanitizeRichTextHref } from "./url.js";
 
 export const MARKDOWN_MARKED_OPTIONS = {
   gfm: true,
@@ -825,7 +826,11 @@ export function createMarkdownContentExtensions(
       codeBlock: false,
       trailingNode: { notAfter: ["footnoteDefinition"] },
     }),
-    SemanticLink.configure({ openOnClick: false, autolink: false }),
+    SemanticLink.configure({
+      openOnClick: false,
+      autolink: false,
+      isAllowedUri: (url) => sanitizeRichTextHref(url) !== "",
+    }),
     MarkdownCodeBlock,
     Table.configure({
       resizable: false,

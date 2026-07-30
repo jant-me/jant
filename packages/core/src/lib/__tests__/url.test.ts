@@ -5,6 +5,8 @@ import {
   isFullUrl,
   isSafeAbsoluteUrl,
   normalizePath,
+  sanitizeRichTextHref,
+  sanitizeUrl,
   stripSitePathPrefix,
   slugify,
   toSameSitePath,
@@ -208,6 +210,22 @@ describe("isSafeAbsoluteUrl", () => {
   it("rejects unsupported protocols", () => {
     expect(isSafeAbsoluteUrl("javascript:alert(1)")).toBe(false);
     expect(isSafeAbsoluteUrl("ftp://example.com")).toBe(false);
+  });
+});
+
+describe("URL sanitizers", () => {
+  it("keeps action protocols scoped to rich-text links", () => {
+    expect(sanitizeRichTextHref("tel:+15551234567")).toBe("tel:+15551234567");
+    expect(sanitizeRichTextHref("sms:xxxxx@xx.com")).toBe("sms:xxxxx@xx.com");
+
+    expect(sanitizeUrl("tel:+15551234567")).toBe("");
+    expect(sanitizeUrl("sms:xxxxx@xx.com")).toBe("");
+  });
+
+  it("rejects executable protocols in every context", () => {
+    expect(sanitizeRichTextHref("javascript:alert(1)")).toBe("");
+    expect(sanitizeRichTextHref("data:text/html,<h1>Hi</h1>")).toBe("");
+    expect(sanitizeUrl("javascript:alert(1)")).toBe("");
   });
 });
 

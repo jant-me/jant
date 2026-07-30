@@ -183,6 +183,25 @@ export function extractDisplayDomain(url: string): string | null {
 }
 
 const SAFE_URL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
+const SAFE_RICH_TEXT_HREF_PROTOCOLS = new Set([
+  ...SAFE_URL_PROTOCOLS,
+  "tel:",
+  "sms:",
+]);
+
+function sanitizeUrlWithProtocols(
+  url: string,
+  protocols: ReadonlySet<string>,
+): string {
+  try {
+    const parsed = new URL(url, "https://placeholder.invalid");
+    // Relative URLs resolve against the placeholder and get https: — allow them
+    if (protocols.has(parsed.protocol)) return url;
+    return "";
+  } catch {
+    return "";
+  }
+}
 
 /**
  * Checks whether a string is a safe absolute URL.
@@ -231,14 +250,27 @@ export function isSafeAbsoluteUrl(url: string): boolean {
  * ```
  */
 export function sanitizeUrl(url: string): string {
-  try {
-    const parsed = new URL(url, "https://placeholder.invalid");
-    // Relative URLs resolve against the placeholder and get https: — allow them
-    if (SAFE_URL_PROTOCOLS.has(parsed.protocol)) return url;
-    return "";
-  } catch {
-    return "";
-  }
+  return sanitizeUrlWithProtocols(url, SAFE_URL_PROTOCOLS);
+}
+
+/**
+ * Sanitizes a rich-text link destination.
+ *
+ * In addition to safe web and email URLs, rich-text links may launch the
+ * device's phone or messaging app through `tel:` and `sms:`. Relative links
+ * remain valid, while executable and resource-only protocols are rejected.
+ *
+ * @param url - The link destination to sanitize
+ * @returns The original URL if safe for an anchor, or an empty string otherwise
+ *
+ * @example
+ * ```ts
+ * sanitizeRichTextHref("sms:+15551234567"); // "sms:+15551234567"
+ * sanitizeRichTextHref("javascript:alert(1)"); // ""
+ * ```
+ */
+export function sanitizeRichTextHref(url: string): string {
+  return sanitizeUrlWithProtocols(url, SAFE_RICH_TEXT_HREF_PROTOCOLS);
 }
 
 /**

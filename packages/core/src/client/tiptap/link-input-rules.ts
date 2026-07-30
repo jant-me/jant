@@ -1,5 +1,5 @@
 import { Extension, InputRule } from "@tiptap/core";
-import { sanitizeUrl } from "../../lib/url.js";
+import { sanitizeRichTextHref } from "../../lib/url.js";
 
 // The URL group uses [^()\s] (single char) instead of [^()\s]+ to avoid
 // catastrophic backtracking from nested quantifiers when the regex fails
@@ -15,7 +15,7 @@ const MARKDOWN_LINK_INPUT_REGEX = new RegExp(
 const MARKDOWN_LINK_SPACE_REGEX = new RegExp(
   MARKDOWN_LINK_PATTERN.source + "\\s$",
 );
-const BARE_URL_INPUT_REGEX = /((?:https?:\/\/|mailto:)[^\s<]+)\s$/;
+const BARE_URL_INPUT_REGEX = /((?:https?:\/\/|mailto:|tel:|sms:)[^\s<]+)\s$/i;
 
 export const LinkInputRules = Extension.create({
   name: "linkInputRules",
@@ -36,7 +36,7 @@ export const LinkInputRules = Extension.create({
       trailingChar: string,
     ) {
       const label = match[1]?.trim();
-      const href = sanitizeUrl(match[2] ?? "");
+      const href = sanitizeRichTextHref(match[2] ?? "");
 
       if (!label || !href) {
         return null;
@@ -56,7 +56,7 @@ export const LinkInputRules = Extension.create({
       new InputRule({
         find: BARE_URL_INPUT_REGEX,
         handler: ({ state, range, match }) => {
-          const href = sanitizeUrl(match[1] ?? "");
+          const href = sanitizeRichTextHref(match[1] ?? "");
 
           if (!href) {
             return null;

@@ -14,7 +14,7 @@ import {
 import { renderEmbedFromAttrs } from "./embed-render.js";
 import { escapeHtml } from "./html.js";
 import { renderPublishedImageFigure } from "./rich-image.js";
-import { sanitizeUrl } from "./url.js";
+import { sanitizeRichTextHref } from "./url.js";
 
 interface TiptapMark {
   type: string;
@@ -324,7 +324,9 @@ const MARK_RENDERERS: Record<string, MarkRenderer> = {
   strike: (html) => `<s>${html}</s>`,
   code: (html) => `<code>${html}</code>`,
   link: (html, mark) => {
-    const href = escapeHtml(sanitizeUrl(getStringAttr(mark.attrs, "href")));
+    const href = escapeHtml(
+      sanitizeRichTextHref(getStringAttr(mark.attrs, "href")),
+    );
     const target = getStringAttr(mark.attrs, "target");
     const targetAttr = target ? ` target="${escapeHtml(target)}"` : "";
     const relAttr = target ? ' rel="noopener noreferrer"' : "";
