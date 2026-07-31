@@ -127,7 +127,7 @@ function getFormatLabelPlural(format: string): string {
 const FORMAT_ICONS: Record<string, string> = {
   note: "notepad-text",
   link: "external-link",
-  quote: "text-quote",
+  quote: "quote",
 };
 
 /** Icon name mapping for media kinds. */
