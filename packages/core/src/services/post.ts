@@ -899,19 +899,13 @@ export function createPostService(
       );
     }
     if (filters.hasMedia !== undefined) {
-      if (filters.hasMedia) {
-        conditions.push(
-          sql`${posts.id} IN (
-            SELECT post_id FROM media WHERE site_id = ${siteId}
-          )`,
-        );
-      } else {
-        conditions.push(
-          sql`${posts.id} NOT IN (
-            SELECT post_id FROM media WHERE site_id = ${siteId}
-          )`,
-        );
-      }
+      const mediaExists = sql`EXISTS (
+        SELECT 1
+        FROM media
+        WHERE site_id = ${siteId}
+          AND post_id = ${posts.id}
+      )`;
+      conditions.push(filters.hasMedia ? mediaExists : sql`NOT ${mediaExists}`);
     }
     if (filters.hasTitle !== undefined) {
       if (filters.hasTitle) {

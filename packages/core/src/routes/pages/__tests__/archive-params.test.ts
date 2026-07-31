@@ -116,9 +116,22 @@ describe("archive feed filter params", () => {
       format: "note",
       bodyMarkdown: "text only body",
     });
+    await services.media.create({
+      filename: "unattached.jpg",
+      originalName: "unattached.jpg",
+      mimeType: "image/jpeg",
+      size: 1024,
+      storageKey: "media/unattached.jpg",
+    });
 
     const fresh = await fetchFeed(app, "?media=none");
     expect(fresh).toContain("text only body");
+
+    const page = await app.request("/archive?media=none");
+    expect(page.status).toBe(200);
+    const pageHtml = await page.text();
+    expect(pageHtml).toContain('aria-label="1 thread"');
+    expect(pageHtml).toContain("text only body");
 
     const legacy = await fetchFeed(app, "?hasMedia=0");
     expect(legacy).toContain("text only body");
