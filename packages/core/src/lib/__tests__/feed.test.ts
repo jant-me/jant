@@ -110,6 +110,24 @@ describe("feed renderers", () => {
     expect(xml).not.toContain("<iframe");
   });
 
+  it("resolves relative links and media URLs inside post HTML", () => {
+    const post = makePostView({
+      bodyHtml:
+        '<p><a href="/related">Related</a> <a href="#footnote">Footnote</a></p>' +
+        '<img src="/media/inline.jpg" alt="Inline">' +
+        '<video poster="/media/poster.jpg"><source src="/media/clip.mp4"></video>' +
+        '<span data-src="/leave-this-relative"></span>',
+    });
+    const xml = defaultFeedRenderer(makeFeedData(post));
+
+    expect(xml).toContain('href="https://example.com/related"');
+    expect(xml).toContain('href="#footnote"');
+    expect(xml).toContain('src="https://example.com/media/inline.jpg"');
+    expect(xml).toContain('poster="https://example.com/media/poster.jpg"');
+    expect(xml).toContain('src="https://example.com/media/clip.mp4"');
+    expect(xml).toContain('data-src="/leave-this-relative"');
+  });
+
   it("does not expose quote attribution as feed title", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
@@ -156,6 +174,57 @@ describe("feed renderers", () => {
     expect(xml).toContain(
       '<a href="https://example.com/post-1" title="Permalink">&nbsp;★&nbsp;</a>',
     );
+  });
+
+  it("renders YouTube Link previews as a linked thumbnail with a provider-aware action", () => {
+    const post = makePostView({
+      format: "link",
+      title: "A useful video",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      bodyHtml: "<p>My notes on the video.</p>",
+      previewKind: "video",
+      previewProvider: "youtube",
+      previewImageUrl: "/media/previews/youtube.jpg",
+    });
+    const xml = defaultFeedRenderer(makeFeedData(post));
+
+    expect(xml).toContain(
+      '<figure><a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"><img src="https://example.com/media/previews/youtube.jpg" alt="A useful video"/></a><figcaption><a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">▶ Watch on YouTube</a></figcaption></figure>',
+    );
+    expect(xml.indexOf("<figure>")).toBeLessThan(
+      xml.indexOf("My notes on the video."),
+    );
+    expect(xml).not.toContain("<iframe");
+    expect(xml).not.toContain('rel="enclosure"');
+  });
+
+  it("renders non-video Link previews without a video action", () => {
+    const post = makePostView({
+      format: "link",
+      title: "Illustrated article",
+      url: "https://external.com/illustrated",
+      previewKind: "image",
+      previewImageUrl: "https://example.com/previews/article.jpg",
+    });
+    const xml = defaultFeedRenderer(makeFeedData(post));
+
+    expect(xml).toContain(
+      '<figure><a href="https://external.com/illustrated"><img src="https://example.com/previews/article.jpg" alt="Illustrated article"/></a></figure>',
+    );
+    expect(xml).not.toContain("Watch video");
+    expect(xml).not.toContain("Watch on");
+  });
+
+  it("keeps the text fallback when a Link post has no preview image", () => {
+    const post = makePostView({
+      format: "link",
+      title: "Text-only link",
+      url: "https://external.com/text-only",
+    });
+    const xml = defaultFeedRenderer(makeFeedData(post));
+
+    expect(xml).toContain("<![CDATA[<p>Text-only link</p>");
+    expect(xml).not.toContain("<figure>");
   });
 
   it("note posts still link to blog permalink without ★", () => {
@@ -272,6 +341,38 @@ describe("feed renderers", () => {
     );
   });
 
+  it("renders a YouTube Link preview inside a thread reply", () => {
+    const reply = makePostView({
+      id: "reply-video",
+      permalink: "/reply-video",
+      slug: "reply-video",
+      format: "link",
+      title: "Thread video",
+      url: "https://youtu.be/dQw4w9WgXcQ",
+      previewKind: "video",
+      previewProvider: "youtube",
+      previewImageUrl: "/media/previews/thread-video.jpg",
+    });
+
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          title: "Thread Root",
+          bodyHtml: "<p>Root content</p>",
+          threadReplies: [reply],
+        }),
+      ),
+    );
+
+    const replyTitle =
+      '<h2><a href="https://youtu.be/dQw4w9WgXcQ">Thread video</a></h2>';
+    const preview =
+      '<figure><a href="https://youtu.be/dQw4w9WgXcQ"><img src="https://example.com/media/previews/thread-video.jpg" alt="Thread video"/></a><figcaption><a href="https://youtu.be/dQw4w9WgXcQ">▶ Watch on YouTube</a></figcaption></figure>';
+    expect(xml).toContain(replyTitle);
+    expect(xml).toContain(preview);
+    expect(xml.indexOf(replyTitle)).toBeLessThan(xml.indexOf(preview));
+  });
+
   it("includes thread reply media as Atom enclosures on the combined entry", () => {
     const reply = makePostView({
       id: "reply-1",
@@ -365,6 +466,31 @@ describe("feed renderers", () => {
     );
     expect(xml).toContain(
       '<link rel="enclosure" type="video/mp4" href="https://example.com/media/clip.mp4" length="1200000"',
+    );
+  });
+
+  it("resolves relative attachment, poster, and enclosure URLs", () => {
+    const post = makePostView({
+      media: [
+        makeMediaView({
+          id: "med_local_vid",
+          url: "/media/local-clip.mp4",
+          thumbnailUrl: "/media/local-clip-thumb.jpg",
+          posterUrl: "/media/local-clip-poster.jpg",
+          mimeType: "video/mp4",
+        }),
+      ],
+    });
+    const xml = defaultFeedRenderer(makeFeedData(post));
+
+    expect(xml).toContain(
+      '<a href="https://example.com/media/local-clip.mp4"><img src="https://example.com/media/local-clip-poster.jpg"',
+    );
+    expect(xml).toContain(
+      '<a href="https://example.com/media/local-clip.mp4">▶ Watch video</a>',
+    );
+    expect(xml).toContain(
+      '<link rel="enclosure" type="video/mp4" href="https://example.com/media/local-clip.mp4"',
     );
   });
 

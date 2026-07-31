@@ -6,6 +6,7 @@
  */
 
 import type { FC } from "hono/jsx";
+import { getLinkPreviewProviderLabel } from "../../lib/link-preview.js";
 import { Icon } from "../shared/Icon.js";
 
 interface LinkPreviewProps {
@@ -15,12 +16,6 @@ interface LinkPreviewProps {
   provider?: string;
 }
 
-const PROVIDER_LABELS: Record<string, string> = {
-  youtube: "YouTube",
-  vimeo: "Vimeo",
-  bilibili: "Bilibili",
-};
-
 export const LinkPreview: FC<LinkPreviewProps> = ({
   imageUrl,
   linkUrl,
@@ -28,7 +23,7 @@ export const LinkPreview: FC<LinkPreviewProps> = ({
   provider,
 }) => {
   const isVideo = kind === "video";
-  const providerLabel = provider ? PROVIDER_LABELS[provider] : undefined;
+  const providerLabel = getLinkPreviewProviderLabel(provider);
 
   return (
     <a

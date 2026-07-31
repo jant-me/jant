@@ -15,6 +15,9 @@ run = "pnpm --filter @jant/core i18n:build && pnpm --filter @jant/core dev"
 
 [tasks.dev-node]
 description = "Start the Node runtime with Vite-managed HMR"
+# Node fetch only reads HTTP_PROXY/HTTPS_PROXY/NO_PROXY when this startup
+# opt-in is present. The Vite config runs too late to enable it retroactively.
+env = { NODE_USE_ENV_PROXY = "1" }
 run = "pnpm --filter @jant/core i18n:build && pnpm --filter @jant/core dev:node"
 
 [tasks.dev-debug]

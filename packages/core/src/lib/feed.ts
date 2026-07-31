@@ -11,6 +11,7 @@
  */
 
 import type { FeedData, FeedPostView, MediaView, PostView } from "../types.js";
+import { getLinkPreviewProviderLabel } from "./link-preview.js";
 import { extractDisplayDomain } from "./url.js";
 import { getMediaCategory } from "./upload.js";
 
@@ -38,6 +39,49 @@ function escapeXml(str: string): string {
  */
 function escapeCdata(str: string): string {
   return str.replaceAll("]]>", "]]]]><![CDATA[>");
+}
+
+/**
+ * Resolve a URL for use outside the feed document's browser context.
+ *
+ * Feed readers do not consistently resolve root-relative URLs found inside
+ * Atom HTML content or enclosure attributes, so every non-fragment URL must
+ * carry its own origin.
+ */
+function toAbsoluteFeedUrl(url: string, siteUrl: string): string {
+  const normalizedUrl = url.trim();
+  if (!normalizedUrl || normalizedUrl.startsWith("#")) return normalizedUrl;
+
+  try {
+    const baseUrl = siteUrl.endsWith("/") ? siteUrl : `${siteUrl}/`;
+    return new URL(normalizedUrl, baseUrl).toString();
+  } catch {
+    return normalizedUrl;
+  }
+}
+
+/**
+ * Resolve navigational and media URL attributes inside trusted post HTML.
+ *
+ * Fragment-only links stay local to the rendered feed entry so footnotes and
+ * other in-entry references continue to work.
+ */
+function absolutizeFeedHtmlUrls(html: string, siteUrl: string): string {
+  return html.replaceAll(
+    /(\s)(href|poster|src)=(["'])([^"']*)\3/gi,
+    (
+      match,
+      whitespace: string,
+      attribute: string,
+      quote: string,
+      url: string,
+    ) => {
+      const absoluteUrl = toAbsoluteFeedUrl(url, siteUrl);
+      return absoluteUrl
+        ? `${whitespace}${attribute}=${quote}${absoluteUrl}${quote}`
+        : match;
+    },
+  );
 }
 
 /**
@@ -144,6 +188,35 @@ function renderRatingHtml(rating: number): string {
   return `<p>${filled}${empty} ${rating}/5</p>`;
 }
 
+/**
+ * Render a Link post preview as feed-safe HTML.
+ *
+ * Feed readers commonly strip CSS overlays and embedded players, so video
+ * previews use a linked thumbnail plus a visible provider-aware action.
+ * Non-video Link previews keep the linked thumbnail without a video label.
+ */
+function renderLinkPreviewForFeed(post: PostView, siteUrl: string): string {
+  if (post.format !== "link") return "";
+
+  const imageUrl = post.previewImageUrl?.trim();
+  const linkUrl = post.url?.trim();
+  if (!imageUrl || !linkUrl) return "";
+
+  const isVideo = post.previewKind?.trim().toLowerCase() === "video";
+  const providerLabel = getLinkPreviewProviderLabel(post.previewProvider);
+  const fallbackAlt = isVideo
+    ? providerLabel
+      ? `${providerLabel} video`
+      : "Video preview"
+    : "Link preview";
+  const altText = post.title?.trim() || fallbackAlt;
+  const caption = isVideo
+    ? `<figcaption><a href="${escapeXml(linkUrl)}">▶ ${providerLabel ? `Watch on ${providerLabel}` : "Watch video"}</a></figcaption>`
+    : "";
+
+  return `<figure><a href="${escapeXml(linkUrl)}"><img src="${escapeXml(toAbsoluteFeedUrl(imageUrl, siteUrl))}" alt="${escapeXml(altText)}"/></a>${caption}</figure>`;
+}
+
 function formatFeedBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -203,9 +276,13 @@ function buildAttachmentLinkText(
  *   and duration metadata when known. Text attachments link to the rendered
  *   preview page when a post permalink is available.
  */
-function renderMediaItem(item: MediaView, postPermalinkUrl?: string): string {
+function renderMediaItem(
+  item: MediaView,
+  siteUrl: string,
+  postPermalinkUrl?: string,
+): string {
   const category = getMediaCategory(item.mimeType);
-  const url = escapeXml(item.url);
+  const url = escapeXml(toAbsoluteFeedUrl(item.url, siteUrl));
   const name = item.originalName ?? "";
   const altText = item.altText ?? "";
   const caption = item.altText?.trim() || "";
@@ -223,7 +300,10 @@ function renderMediaItem(item: MediaView, postPermalinkUrl?: string): string {
   }
 
   if (category === "video") {
-    const poster = item.posterUrl || item.thumbnailUrl;
+    const poster = toAbsoluteFeedUrl(
+      item.posterUrl || item.thumbnailUrl,
+      siteUrl,
+    );
     const dims =
       item.width && item.height
         ? ` width="${item.width}" height="${item.height}"`
@@ -272,11 +352,12 @@ function renderMediaItem(item: MediaView, postPermalinkUrl?: string): string {
  */
 function renderMediaForFeed(
   media: MediaView[],
+  siteUrl: string,
   postPermalinkUrl?: string,
 ): string {
   if (media.length === 0) return "";
   return media
-    .map((item) => renderMediaItem(item, postPermalinkUrl))
+    .map((item) => renderMediaItem(item, siteUrl, postPermalinkUrl))
     .join("\n");
 }
 
@@ -289,6 +370,7 @@ function renderMediaForFeed(
  */
 function buildSinglePostContent(
   post: PostView,
+  siteUrl: string,
   permalinkUrl?: string,
   options: SinglePostContentOptions = {},
 ): string {
@@ -314,11 +396,18 @@ function buildSinglePostContent(
     }
   }
 
-  if (post.bodyHtml) {
-    parts.push(stripUnsafeFeedHtml(post.bodyHtml));
+  const linkPreviewHtml = renderLinkPreviewForFeed(post, siteUrl);
+  if (linkPreviewHtml) {
+    parts.push(linkPreviewHtml);
   }
 
-  const mediaHtml = renderMediaForFeed(post.media, permalinkUrl);
+  if (post.bodyHtml) {
+    parts.push(
+      absolutizeFeedHtmlUrls(stripUnsafeFeedHtml(post.bodyHtml), siteUrl),
+    );
+  }
+
+  const mediaHtml = renderMediaForFeed(post.media, siteUrl, permalinkUrl);
   if (mediaHtml) {
     parts.push(mediaHtml);
   }
@@ -353,7 +442,7 @@ function buildFeedContent(
   siteUrl: string,
   permalinkUrl?: string,
 ): string {
-  const rootContent = buildSinglePostContent(post, permalinkUrl);
+  const rootContent = buildSinglePostContent(post, siteUrl, permalinkUrl);
   const replies = post.threadReplies;
 
   if (!replies || replies.length === 0) {
@@ -368,7 +457,9 @@ function buildFeedContent(
     parts.push(
       `<p><small><time datetime="${escapeXml(reply.publishedAt)}">${escapeXml(reply.publishedAtFormatted)}</time></small></p>`,
     );
-    parts.push(buildSinglePostContent(reply, replyPermalink, { inline: true }));
+    parts.push(
+      buildSinglePostContent(reply, siteUrl, replyPermalink, { inline: true }),
+    );
   }
 
   return parts.join("\n");
@@ -421,7 +512,7 @@ export function defaultFeedRenderer(data: FeedData): string {
           const titleAttr = m.originalName
             ? ` title="${escapeXml(m.originalName)}"`
             : "";
-          return `\n    <link rel="enclosure" type="${escapeXml(m.mimeType)}" href="${escapeXml(m.url)}"${lengthAttr}${titleAttr}/>`;
+          return `\n    <link rel="enclosure" type="${escapeXml(m.mimeType)}" href="${escapeXml(toAbsoluteFeedUrl(m.url, siteUrl))}"${lengthAttr}${titleAttr}/>`;
         })
         .join("");
 
