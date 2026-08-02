@@ -289,13 +289,10 @@ msgid "Author (optional)"
 msgstr ""
 
 #. @context: Theme mode option on sample page
+#. @context: Value shown on a post's permalink control when the link is generated automatically
+#: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Auto"
-msgstr ""
-
-#. @context: Compose summary shown near the submit controls when a manual custom link is cleared
-#: src/ui/compose/ComposeDialog.tsx
-msgid "Auto link"
 msgstr ""
 
 #. @context: Usage label for the circle tile asset card
@@ -1366,6 +1363,11 @@ msgstr ""
 msgid "New post"
 msgstr ""
 
+#. @context: Compose dialog header title when composing a single post
+#: src/ui/compose/ComposeDialog.tsx
+msgid "New Post"
+msgstr ""
+
 #. @context: Compose dialog header title when composing a thread
 #: src/ui/compose/ComposeDialog.tsx
 msgid "New Thread"
@@ -1455,6 +1457,11 @@ msgstr ""
 #. @context: Empty state message on featured page
 #: src/ui/pages/FeaturedPage.tsx
 msgid "Nothing in Featured yet. Mark a post as featured to show it here."
+msgstr ""
+
+#. @context: Value shown on a post's date control when it will publish at the current time
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Now"
 msgstr ""
 
 #. @context: Collection sort order option
@@ -1614,11 +1621,6 @@ msgstr ""
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Publish"
-msgstr ""
-
-#. @context: Compose summary shown near the submit controls when an edited post no longer has a custom publish date
-#: src/ui/compose/ComposeDialog.tsx
-msgid "Publish now"
 msgstr ""
 
 #. @context: Compose publish settings panel title

@@ -649,9 +649,9 @@ export const ComposeForm: FC<ComposeFormProps> = ({
     ),
     publishDateSummaryNow: i18n._(
       msg({
-        message: "Publish now",
+        message: "Now",
         comment:
-          "@context: Compose summary shown near the submit controls when an edited post no longer has a custom publish date",
+          "@context: Value shown on a post's date control when it will publish at the current time",
       }),
     ),
     publishDateSummaryAction: i18n._(
@@ -688,9 +688,9 @@ export const ComposeForm: FC<ComposeFormProps> = ({
     ),
     publishSlugSummaryAuto: i18n._(
       msg({
-        message: "Auto link",
+        message: "Auto",
         comment:
-          "@context: Compose summary shown near the submit controls when a manual custom link is cleared",
+          "@context: Value shown on a post's permalink control when the link is generated automatically",
       }),
     ),
     publishSlugSummaryAction: i18n._(
@@ -799,6 +799,13 @@ export const ComposeForm: FC<ComposeFormProps> = ({
         message: "New Thread",
         comment:
           "@context: Compose dialog header title when composing a thread",
+      }),
+    ),
+    newPost: i18n._(
+      msg({
+        message: "New Post",
+        comment:
+          "@context: Compose dialog header title when composing a single post",
       }),
     ),
     replyTitle: i18n._(

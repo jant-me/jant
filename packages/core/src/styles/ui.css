@@ -5334,31 +5334,9 @@
     font-family: var(--font-ui);
   }
 
-  .compose-format-pill {
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: calc((100% - 6px) / 3);
-    height: calc(100% - 6px);
-    background-color: var(--compose-paper-bg);
-    border-radius: 7px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-    transition: left 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-    z-index: 0;
-  }
-
-  .compose-format-pill-link {
-    left: calc(3px + (100% - 6px) / 3);
-  }
-
-  .compose-format-pill-quote {
-    left: calc(3px + (100% - 6px) * 2 / 3);
-  }
-
   .compose-segmented-item {
     position: relative;
     z-index: 1;
-    flex: 1;
     padding: 5px 0.95rem;
     border-radius: 8px;
     border: none;
@@ -6022,11 +6000,6 @@
     border-bottom-right-radius: inherit;
   }
 
-  .compose-action-row:has(+ .compose-quick-actions-row) {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-
   .compose-action-row-overlay-open {
     z-index: 6;
   }
@@ -6447,28 +6420,7 @@
     min-width: 0;
   }
 
-  .compose-quick-actions-row {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    padding: 2px 12px 12px;
-    background-color: var(--compose-paper-bg);
-    border-bottom-left-radius: inherit;
-    border-bottom-right-radius: inherit;
-  }
-
-  .compose-action-row:has(+ .compose-quick-actions-row) {
-    padding-bottom: 4px;
-  }
-
   @media (min-width: 700px) {
-    .compose-quick-actions-row {
-      padding: 2px 18px 14px;
-    }
-
-    .compose-action-row:has(+ .compose-quick-actions-row) {
-      padding-bottom: 4px;
-    }
   }
 
   .compose-publish-quick-toggle {
@@ -6531,83 +6483,6 @@
     cursor: not-allowed;
   }
 
-  .compose-publish-summaries {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    width: 100%;
-  }
-
-  .compose-publish-summary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.48rem;
-    min-height: 2.15rem;
-    max-width: min(100%, 17rem);
-    padding: 0.38rem 0.74rem;
-    border: 1px solid var(--compose-control-border);
-    border-radius: 999px;
-    background-color: color-mix(
-      in srgb,
-      var(--compose-control-bg) 82%,
-      var(--compose-paper-bg)
-    );
-    color: color-mix(
-      in srgb,
-      var(--site-text-primary) 70%,
-      var(--site-text-secondary)
-    );
-    font-size: var(--compose-summary-size);
-    font-weight: var(--fw-medium);
-    line-height: 1.1;
-    cursor: pointer;
-    white-space: nowrap;
-    transition:
-      background-color 0.18s ease,
-      border-color 0.18s ease,
-      color 0.18s ease,
-      transform 0.18s ease;
-  }
-
-  .compose-publish-summary:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--site-text-primary) 12%, transparent);
-    background-color: color-mix(
-      in srgb,
-      var(--compose-control-bg-strong) 84%,
-      var(--compose-paper-bg)
-    );
-    color: var(--site-text-primary);
-    transform: translateY(-1px);
-  }
-
-  .compose-publish-summary:disabled {
-    opacity: 0.6;
-    cursor: progress;
-  }
-
-  .compose-publish-summary-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1rem;
-    height: 1rem;
-    flex-shrink: 0;
-  }
-
-  .compose-publish-summary-icon svg {
-    display: block;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-  }
-
-  .compose-publish-summary-text {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
   .compose-publish-group {
     position: relative;
     display: inline-flex;
@@ -6621,8 +6496,7 @@
   }
 
   .compose-publish-single,
-  .compose-publish-main,
-  .compose-publish-toggle {
+  .compose-publish-main {
     min-height: 2.8rem;
     border: none;
     background: transparent;
@@ -6668,103 +6542,7 @@
   }
 
   .compose-publish-buttons .compose-publish-main {
-    border-radius: 999px 0 0 999px;
-  }
-
-  .compose-publish-buttons-inactive .compose-publish-toggle:not(:disabled) {
-    color: color-mix(
-      in srgb,
-      var(--site-text-secondary) 92%,
-      var(--site-elevated-bg)
-    );
-    background-color: color-mix(
-      in srgb,
-      var(--compose-control-bg) 88%,
-      var(--compose-paper-bg)
-    );
-    --compose-publish-divider-color: color-mix(
-      in srgb,
-      var(--site-divider) 72%,
-      transparent
-    );
-  }
-
-  .compose-publish-buttons-inactive
-    .compose-publish-toggle:not(:disabled):hover,
-  .compose-publish-buttons-inactive
-    .compose-publish-toggle[aria-expanded="true"]:not(:disabled) {
-    color: color-mix(
-      in srgb,
-      var(--site-text-primary) 68%,
-      var(--site-text-secondary)
-    );
-    background-color: color-mix(
-      in srgb,
-      var(--compose-control-bg-strong) 88%,
-      var(--compose-paper-bg)
-    );
-  }
-
-  .compose-publish-buttons-inactive .compose-publish-toggle-chevron {
-    opacity: 0.62;
-  }
-
-  .compose-publish-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    width: 2.75rem;
-    color: var(--site-elevated-bg);
-    background-color: var(--site-text-primary);
-    border-radius: 0 999px 999px 0;
-    flex-shrink: 0;
-    --compose-publish-divider-color: color-mix(
-      in srgb,
-      var(--site-elevated-bg) 14%,
-      transparent
-    );
-  }
-
-  .compose-publish-toggle::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 50%;
-    width: 1px;
-    height: 1rem;
-    transform: translateY(-50%);
-    background-color: var(--compose-publish-divider-color);
-    opacity: 0.7;
-  }
-
-  .compose-publish-toggle:hover:not(:disabled),
-  .compose-publish-toggle[aria-expanded="true"]:not(:disabled) {
-    background-color: color-mix(
-      in srgb,
-      var(--site-text-primary) 94%,
-      var(--site-elevated-bg)
-    );
-  }
-
-  .compose-publish-toggle-chevron {
-    opacity: 0.78;
-    display: block;
-    width: 0.92rem;
-    height: 0.92rem;
-    overflow: visible;
-    --icon-stroke: 1.46;
-    stroke-width: var(--icon-stroke);
-  }
-
-  .compose-publish-single:focus-visible,
-  .compose-publish-main:focus-visible,
-  .compose-publish-toggle:focus-visible,
-  .compose-publish-summary:focus-visible,
-  .compose-publish-chip:focus-visible {
-    outline: 2px solid
-      color-mix(in srgb, var(--site-text-primary) 22%, transparent);
-    outline-offset: 2px;
+    border-radius: 999px;
   }
 
   .compose-publish-single:disabled:not(.compose-publish-single-loading),
@@ -6777,24 +6555,6 @@
       var(--compose-paper-bg)
     );
     box-shadow: none;
-  }
-
-  .compose-publish-toggle:disabled:not(.compose-publish-toggle-loading) {
-    opacity: 1;
-    color: var(--site-text-secondary);
-    background-color: color-mix(
-      in srgb,
-      var(--compose-control-bg) 88%,
-      var(--compose-paper-bg)
-    );
-    border-left-color: color-mix(in srgb, var(--site-divider) 80%, transparent);
-  }
-
-  .compose-publish-single-loading:disabled,
-  .compose-publish-main-loading:disabled,
-  .compose-publish-toggle-loading:disabled {
-    opacity: 1;
-    cursor: progress;
   }
 
   .compose-publish-panel {
@@ -6871,41 +6631,265 @@
     padding-left: calc(1rem + env(safe-area-inset-left));
   }
 
-  .compose-publish-section {
+  /* ── Options sheet ──────────────────────────────────────────────────
+     A vertical list read top to bottom, not a toolbar of chips: muted
+     group label, one full-width row per setting, value or control on the
+     right. Every choice carries its own hint so they can be compared
+     before picking one. */
+
+  .compose-sheet {
     display: flex;
     flex-direction: column;
-    gap: 0.625rem;
   }
 
-  .compose-publish-section-header {
+  .compose-sheet-label {
+    margin: 0;
+    padding: 0.35rem 0.35rem 0.3rem;
+    color: var(--site-text-secondary);
+    font-size: 0.79rem;
+    font-weight: var(--fw-semibold);
+  }
+
+  .compose-sheet-row {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem;
+    align-items: center;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 0.5rem 0.45rem;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--site-text-primary);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
   }
 
-  .compose-publish-section-copy {
+  .compose-sheet-row:hover:not(:disabled),
+  .compose-sheet-row-open {
+    background-color: var(--compose-control-bg);
+  }
+
+  .compose-sheet-row:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .compose-sheet-row:focus-visible {
+    outline: 2px solid
+      color-mix(in srgb, var(--site-text-primary) 22%, transparent);
+    outline-offset: 1px;
+  }
+
+  .compose-sheet-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.08rem;
+    flex: 1;
     min-width: 0;
   }
 
-  .compose-publish-section-label {
-    color: color-mix(
-      in srgb,
-      var(--site-text-primary) 84%,
-      var(--site-text-secondary)
-    );
-    font-size: var(--compose-panel-label-size);
+  .compose-sheet-title {
+    font-size: 0.9rem;
     font-weight: var(--fw-medium);
-    letter-spacing: 0.01em;
-    line-height: 1.24;
   }
 
-  .compose-publish-section-hint {
-    margin-top: 0.25rem;
+  .compose-sheet-sub {
     color: var(--site-text-secondary);
-    font-size: var(--compose-panel-hint-size);
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .compose-sheet-value {
+    flex-shrink: 0;
+    max-width: 11rem;
+    overflow: hidden;
+    color: var(--site-text-secondary);
+    font-size: 0.82rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .compose-sheet-check,
+  .compose-sheet-caret {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+  }
+
+  .compose-sheet-caret {
+    color: var(--site-text-secondary);
+    opacity: 0.75;
+  }
+
+  .compose-sheet-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.15rem 0.45rem 0.7rem;
+  }
+
+  .compose-sheet-hint {
+    margin: 0;
+    color: var(--site-text-secondary);
+    font-size: 0.75rem;
     line-height: 1.45;
-    text-wrap: pretty;
+  }
+
+  .compose-sheet-divider {
+    height: 1px;
+    margin: 0.45rem 0.1rem;
+    background-color: var(--site-divider);
+  }
+
+  .compose-sheet-row-switch {
+    cursor: default;
+  }
+
+  .compose-sheet-row-switch > .input[role="switch"] {
+    flex-shrink: 0;
+  }
+
+  /* ── Per-post date / permalink ──────────────────────────────────────
+     Sits on the post it describes, not in the publish panel. Quiet until the
+     post is hovered or focused, or the values are non-default. Uses
+     margin-left:auto so appearing and disappearing never shifts the × next
+     to it. */
+
+  .compose-post-meta {
+    position: relative;
+    margin-left: auto;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+  }
+
+  /* Only the first trailing control claims the free space. Two `auto` margins
+     would split it and strand the pill mid-row. */
+  .compose-post-meta ~ .compose-thread-post-remove {
+    margin-left: 0;
+  }
+
+  /* Scoped to the editor element rather than a layout row: single-post mode
+     has no `.compose-editor-row` wrapper to hang this off. */
+  jant-compose-editor:hover .compose-post-meta,
+  jant-compose-editor:focus-within .compose-post-meta,
+  .compose-post-meta-set,
+  .compose-post-meta-open,
+  .compose-post-meta:hover,
+  .compose-post-meta:focus-within {
+    opacity: 1;
+  }
+
+  .compose-post-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: min(17rem, 52vw);
+    padding: 3px 10px 3px 8px;
+    border: 1px solid var(--compose-control-border);
+    border-radius: 999px;
+    background-color: var(--compose-paper-bg);
+    color: var(--site-text-secondary);
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-caption);
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .compose-post-meta-pill:hover,
+  .compose-post-meta-pill[aria-expanded="true"] {
+    background-color: var(--compose-control-bg);
+    color: var(--site-text-primary);
+  }
+
+  .compose-post-meta-set .compose-post-meta-pill {
+    border-color: color-mix(in srgb, var(--site-text-primary) 32%, transparent);
+    color: var(--site-text-primary);
+    font-weight: var(--fw-medium);
+  }
+
+  .compose-post-meta-icon {
+    flex-shrink: 0;
+    opacity: 0.85;
+  }
+
+  .compose-post-meta-sep {
+    color: var(--site-divider);
+  }
+
+  .compose-post-meta-value {
+    min-width: 0;
+  }
+
+  /* Only the permalink gives ground when space runs out — the date is short
+     and fixed-width. */
+  .compose-post-meta-value-slug {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .compose-post-meta-panel {
+    position: absolute;
+    z-index: 100;
+    top: calc(100% + 6px);
+    right: 0;
+    width: min(20rem, calc(100vw - 3rem));
+    padding: 0.55rem 0.6rem;
+    border: 1px solid var(--compose-control-border);
+    border-radius: 14px;
+    background-color: var(--compose-paper-bg);
+    box-shadow: var(
+      --compose-panel-shadow,
+      0 12px 32px -16px rgba(0, 0, 0, 0.4)
+    );
+  }
+
+  .compose-post-meta-open {
+    z-index: 100;
+  }
+
+  /* Options trigger: its own button past Publish, never a chevron welded to
+     it. A split button reads as one button. */
+  .compose-options-trigger {
+    display: inline-grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--site-text-secondary);
+    cursor: pointer;
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease;
+  }
+
+  .compose-options-trigger:hover:not(:disabled),
+  .compose-options-trigger-open {
+    background-color: var(--compose-control-bg);
+    color: var(--site-text-primary);
+  }
+
+  .compose-options-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .compose-options-trigger:focus-visible {
+    outline: 2px solid
+      color-mix(in srgb, var(--site-text-primary) 22%, transparent);
+    outline-offset: 2px;
+  }
+
+  .compose-options-trigger-icon {
+    width: 1.25rem;
+    height: 1.25rem;
   }
 
   .compose-publish-section-action {
@@ -6944,89 +6928,7 @@
     outline-offset: 2px;
   }
 
-  .compose-publish-switch-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem;
-    cursor: pointer;
-  }
-
-  .compose-publish-switch-row > .input[role="switch"] {
-    flex-shrink: 0;
-    margin-top: 0.1rem;
-  }
-
-  .compose-publish-divider {
-    height: 1px;
-    margin: 0.75rem 0;
-    background-color: color-mix(
-      in srgb,
-      var(--site-text-primary) 8%,
-      transparent
-    );
-  }
-
   /* --- Visibility segmented control --------------------------------------- */
-
-  .compose-publish-chips {
-    display: flex;
-    border-radius: 12px;
-    padding: 4px;
-    background-color: var(--compose-control-bg);
-    box-shadow: inset 0 0 0 1px var(--compose-control-border);
-  }
-
-  .compose-publish-chip {
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.3rem;
-    min-height: 2.45rem;
-    padding: 0.46rem 0.5rem;
-    border-radius: 10px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    white-space: nowrap;
-    color: var(--site-text-secondary);
-    transition:
-      background-color 0.18s ease,
-      box-shadow 0.18s ease,
-      color 0.18s ease;
-  }
-
-  .compose-publish-chip:hover:not(:disabled):not(
-      .compose-publish-chip-selected
-    ) {
-    color: var(--site-text-primary);
-  }
-
-  .compose-publish-chip:disabled {
-    cursor: default;
-    opacity: 0.72;
-  }
-
-  .compose-publish-chip-selected {
-    background-color: var(--compose-paper-bg);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-    color: var(--site-text-primary);
-  }
-
-  .compose-publish-chip-label {
-    font-size: 0.875rem;
-    font-weight: var(--fw-medium);
-    letter-spacing: 0.005em;
-    line-height: 1.28;
-  }
-
-  .compose-publish-chip-hint {
-    color: var(--site-text-secondary);
-    font-size: var(--compose-panel-hint-size);
-    line-height: 1.45;
-    text-wrap: pretty;
-  }
 
   .compose-publish-visibility-icon {
     display: inline-flex;
@@ -7990,14 +7892,17 @@
     content: "";
     position: absolute;
     left: var(--compose-thread-rail-left);
-    top: 0;
+    /* Start at the first dot rather than the top of the layout — the format
+       header sits above it, and a line stub over the first post reads as an
+       artefact. */
+    top: 1.35rem;
     bottom: 0;
-    width: 1px;
-    background: linear-gradient(
-      180deg,
-      transparent 0,
-      color-mix(in srgb, var(--site-threadline) 85%, transparent) 8%,
-      color-mix(in srgb, var(--site-threadline) 55%, transparent) 100%
+    width: 1.5px;
+    border-radius: 1px;
+    background-color: color-mix(
+      in srgb,
+      var(--site-threadline) 85%,
+      transparent
     );
     z-index: 0;
   }
@@ -8508,16 +8413,14 @@
     font-size: var(--type-ui-caption);
     font-family: var(--font-ui);
     color: var(--site-text-secondary);
-    padding: 4px 12px 4px 9px;
-    border-radius: 20px;
-    border: 1.5px dashed
-      color-mix(in srgb, var(--site-threadline) 70%, transparent);
+    padding: 5px 10px 5px 8px;
+    border-radius: 9px;
+    border: none;
     background: transparent;
     cursor: pointer;
     transition:
       color 0.15s ease,
-      background-color 0.15s ease,
-      border-color 0.15s ease;
+      background-color 0.15s ease;
   }
 
   .compose-thread-compose-layout .compose-thread-add-btn {
@@ -8527,8 +8430,6 @@
   .compose-thread-add-btn:hover:not(:disabled) {
     color: var(--site-text-primary);
     background-color: var(--compose-control-bg);
-    border-color: var(--site-threadline);
-    border-style: solid;
   }
 
   .compose-thread-add-btn:disabled,
@@ -8557,32 +8458,58 @@
     font-size: var(--type-ui-caption);
     font-family: var(--font-ui);
     color: var(--site-text-secondary);
-    padding: 4px 12px 4px 9px;
-    border-radius: 20px;
-    border: 1.5px dashed
-      color-mix(in srgb, var(--site-threadline) 70%, transparent);
+    padding: 5px 10px 5px 8px;
+    border-radius: 9px;
+    border: none;
     background: transparent;
     cursor: pointer;
     transition:
       color 0.15s ease,
-      background-color 0.15s ease,
-      border-color 0.15s ease;
+      background-color 0.15s ease;
   }
 
   .compose-add-thread-btn:hover:not(:disabled) {
     color: var(--site-text-primary);
     background-color: var(--compose-control-bg);
-    border-color: var(--site-threadline);
-    border-style: solid;
   }
 
   /* --- Thread post header: format tag switcher + × on right --------------- */
 
+  /* Event-delegation wrapper only — contributes no box, so the editor keeps
+     the layout it has outside a thread. */
+  .compose-single-editor {
+    display: contents;
+  }
+
   .compose-thread-post-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 6px 0 4px;
+    gap: 8px;
+    /* Control row, so it takes the tools row's 16px gutter rather than the
+       body's 24px text gutter: the segmented box then lines up exactly with
+       the tool buttons bracketing the editor from below. */
+    padding: 10px 16px 2px;
+  }
+
+  /* Inside a thread row the rail already indents the left; the right still
+     needs the tools row's gutter so × and the pill line up with the tool
+     buttons below them. */
+  .compose-editor-row .compose-thread-post-header {
+    padding-block: 6px 4px;
+    padding-inline: 0 16px;
+  }
+
+  /* "1/3" position marker. Identity comes before attribute, so it leads the
+     row; it pairs visually with the thread rail dot to its left. */
+  .compose-post-position {
+    flex-shrink: 0;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--compose-control-bg);
+    color: var(--site-text-secondary);
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
   }
 
   /* Reply / edit-reply compose (a .compose-editor-row directly under
@@ -8597,7 +8524,8 @@
     padding-top: 14px;
   }
 
-  .compose-thread-post-header + .compose-body {
+  /* The header now sits above every post, so it owns the gap to the body. */
+  .compose-editor-row .compose-thread-post-header + .compose-body {
     padding-top: 8px;
   }
 
@@ -8605,48 +8533,40 @@
     padding-top: 12px;
   }
 
-  /* Thread format selector: pill-tag style (lighter than the main segmented) */
+  /* Format selector: one grouped control, not three separate outlined tags.
+     Sized down from the base segmented since it now sits inline above every
+     post rather than filling the dialog header. */
   .compose-thread-segmented {
-    background: transparent;
+    flex: none;
+    padding: 2px;
+    border-radius: 9px;
     box-shadow: none;
-    padding: 0;
-    gap: 4px;
-  }
-
-  .compose-thread-segmented .compose-format-pill {
-    display: none;
+    gap: 1px;
   }
 
   .compose-thread-segmented .compose-segmented-item {
     flex: none;
+    padding: 3px 11px;
+    border-radius: 7px;
+    border: none;
     font-size: var(--type-ui-caption);
-    padding: 3px 10px;
-    border-radius: 20px;
-    border: 1.5px solid
-      color-mix(in srgb, var(--site-text-secondary) 22%, transparent);
     letter-spacing: 0.01em;
     transition:
-      border-color 0.15s ease,
       color 0.15s ease,
-      background-color 0.15s ease;
+      background-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
 
   .compose-thread-segmented
     .compose-segmented-item:hover:not(.compose-segmented-item-active) {
-    border-color: color-mix(
-      in srgb,
-      var(--site-text-secondary) 50%,
-      transparent
-    );
     color: var(--site-text-primary);
-    background: transparent;
   }
 
   .compose-thread-segmented .compose-segmented-item-active {
     color: var(--site-text-primary);
     font-weight: var(--fw-medium);
-    border-color: color-mix(in srgb, var(--site-text-primary) 55%, transparent);
-    background: color-mix(in srgb, var(--site-text-primary) 7%, transparent);
+    background-color: var(--compose-paper-bg);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   }
 
   /* Remove button (×) — hidden by default, revealed on thread post hover/focus */
@@ -8654,6 +8574,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    margin-left: auto;
     width: 28px;
     height: 28px;
     border-radius: 8px;

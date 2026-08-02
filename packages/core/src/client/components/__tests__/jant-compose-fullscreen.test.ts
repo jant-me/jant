@@ -20,6 +20,7 @@ const labels = {
   showMore: "Show more",
   showLess: "Show less",
   newThread: "New Thread",
+  newPost: "New Post",
   replyTitle: "Reply",
   editTitle: "Edit",
 } as ComposeLabels;

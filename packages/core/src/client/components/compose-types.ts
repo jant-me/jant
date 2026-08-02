@@ -90,6 +90,11 @@ export interface LocalDraft {
   /** Present when the draft is a multi-post thread */
   threadItems?: Array<{
     format: ComposeFormat;
+    /** Per-post publish date; empty means "follows the thread". */
+    publishedAtInput?: string;
+    publishedAtTimeMinutes?: number | null;
+    /** Per-post permalink; empty means the server assigns a random id. */
+    slug?: string;
     title: string;
     bodyJson: JSONContent | null;
     url: string;
@@ -230,6 +235,7 @@ export interface ComposeLabels {
   showMore: string;
   showLess: string;
   newThread: string;
+  newPost: string;
   replyTitle: string;
   editTitle: string;
   slashHint: string;

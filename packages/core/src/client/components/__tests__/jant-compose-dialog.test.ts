@@ -211,13 +211,13 @@ const labels: ComposeLabels = {
   publishDateInvalid: "Enter a valid date.",
   publishDateFutureError:
     "Choose today or an earlier date, or leave it blank to publish now.",
-  publishDateSummaryNow: "Publish now",
+  publishDateSummaryNow: "Now",
   publishDateSummaryAction: "Edit publish date",
   publishSlugLabel: "Custom link",
   publishSlugPlaceholder: "your-post-link",
   publishSlugHint: "Leave blank to generate one automatically.",
   publishSlugAuto: "Generate automatically",
-  publishSlugSummaryAuto: "Auto link",
+  publishSlugSummaryAuto: "Auto",
   publishSlugSummaryAction: "Edit custom link",
   publishSlugReset: "Reset link",
   publishSlugSuggested: "Suggested link",
@@ -234,6 +234,7 @@ const labels: ComposeLabels = {
   showMore: "Show more",
   showLess: "Show less",
   newThread: "New Thread",
+  newPost: "New Post",
   replyTitle: "Reply",
   editTitle: "Edit",
   slashHint: "Type / for commands",
@@ -278,6 +279,37 @@ const collections: ComposeCollection[] = [
   { id: "col-1", title: "Books", slug: "books" },
   { id: "col-2", title: "Movies", slug: "movies" },
 ];
+
+/** Date and permalink hang off the post itself, not the publish panel. */
+async function openPostMeta(el: JantComposeDialog) {
+  const pill = el.querySelector<HTMLButtonElement>(
+    "[data-compose-post-meta-pill]",
+  );
+  if (pill && pill.getAttribute("aria-expanded") !== "true") pill.click();
+  await flushUpdates(el);
+}
+
+/**
+ * Open the post's date/permalink panel and drill into one row. Idempotent, so
+ * it is safe to call even when both are already expanded.
+ */
+async function openDrill(el: JantComposeDialog, kind: "date" | "slug") {
+  await openPostMeta(el);
+  const row = el.querySelector<HTMLButtonElement>(
+    `[data-compose-drill="${kind}"]`,
+  );
+  if (row && row.getAttribute("aria-expanded") !== "true") row.click();
+  // The slug suggestion is fetched when the row opens; let it settle.
+  await flushUpdates(el);
+  await flushUpdates(el);
+}
+
+/** The value shown on a collapsed options row (what the summary chips used to say). */
+function drillValue(el: JantComposeDialog, kind: "date" | "slug") {
+  return el
+    .querySelector(`[data-compose-drill="${kind}"] .compose-sheet-value`)
+    ?.textContent?.trim();
+}
 
 async function createElement(
   cols: ComposeCollection[] = collections,
@@ -350,7 +382,7 @@ describe("JantComposeDialog", () => {
     expect(postBtn.disabled).toBe(true);
     expect(
       requireElement(
-        el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+        el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
         "expected publish settings toggle",
       ).disabled,
     ).toBe(false);
@@ -490,7 +522,7 @@ describe("JantComposeDialog", () => {
     const el = await createElement();
 
     requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     ).click();
     await el.updateComplete;
@@ -525,28 +557,101 @@ describe("JantComposeDialog", () => {
     expect(draftButton.getAttribute("aria-label")).toBe("Save as draft");
   });
 
-  it("shows the selected visibility hint in the publish settings panel", async () => {
+  it("opens options from its own button, not a chevron on Publish", async () => {
+    const el = await createElement();
+
+    // The split button is gone: Publish is one button, options is another.
+    expect(el.querySelector(".compose-publish-toggle")).toBeNull();
+    expect(el.querySelector(".compose-quick-actions-row")).toBeNull();
+
+    const trigger = requireElement(
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
+      "expected options trigger",
+    );
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(el.querySelector(".compose-sheet")).toBeNull();
+
+    trigger.click();
+    await flushUpdates(el);
+
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    expect(el.querySelector(".compose-sheet")).not.toBeNull();
+  });
+
+  it("keeps date and permalink on the post, collapsed until drilled into", async () => {
+    const el = await createElement();
+
+    // They describe one post, so they hang off the post — not the publish
+    // panel, which speaks for the whole submission.
+    requireElement(
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
+      "expected options trigger",
+    ).click();
+    await flushUpdates(el);
+    expect(el.querySelector('[data-compose-drill="date"]')).toBeNull();
+    expect(el.querySelector('[data-compose-drill="slug"]')).toBeNull();
+
+    await openPostMeta(el);
+
+    // Collapsed: rows show their value, no editors on screen.
+    expect(drillValue(el, "date")).toBe("Now");
+    expect(drillValue(el, "slug")).toBe("Auto");
+    expect(el.querySelector(".compose-publish-date-input")).toBeNull();
+    expect(el.querySelector(".compose-publish-slug-input")).toBeNull();
+
+    await openDrill(el, "date");
+    expect(el.querySelector(".compose-publish-date-input")).not.toBeNull();
+    expect(el.querySelector(".compose-publish-slug-input")).toBeNull();
+
+    // Opening the other row closes this one — one editor at a time.
+    await openDrill(el, "slug");
+    expect(el.querySelector(".compose-publish-slug-input")).not.toBeNull();
+    expect(el.querySelector(".compose-publish-date-input")).toBeNull();
+  });
+
+  it("explains every visibility option and checks the selected one", async () => {
     const el = await createElement();
 
     requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     ).click();
     await el.updateComplete;
 
-    // Default is public — only public hint shown
+    // Each row carries its own hint, so the options can be compared before
+    // one is picked — a single hint under a chip group could not do that.
     expect(el.textContent).toContain("Appears in Latest.");
-    expect(el.textContent).not.toContain("Only visible when signed in.");
-
-    // Switch to private — hint updates
-    const chips = el.querySelectorAll<HTMLButtonElement>(
-      ".compose-publish-chip[role='radio']",
-    );
-    chips[2]?.click();
-    await el.updateComplete;
-
     expect(el.textContent).toContain("Only visible when signed in.");
-    expect(el.textContent).not.toContain("Appears in Latest.");
+
+    const rows = el.querySelectorAll<HTMLButtonElement>(
+      ".compose-sheet-row[role='radio']",
+    );
+    expect(rows).toHaveLength(3);
+    expect(rows[0].getAttribute("aria-checked")).toBe("true");
+    expect(rows[0].querySelector(".compose-sheet-check")).not.toBeNull();
+    expect(rows[2].querySelector(".compose-sheet-check")).toBeNull();
+
+    rows[2].click();
+    await flushUpdates(el);
+
+    // Picking is the whole job of this panel, so it dismisses itself — no
+    // Done button to confirm a radio selection.
+    expect(el._visibility).toBe("private");
+    expect(el.querySelector(".compose-sheet")).toBeNull();
+    expect(el.querySelector(".compose-publish-done")).toBeNull();
+
+    // Reopening shows the new choice checked.
+    requireElement(
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
+      "expected publish settings toggle",
+    ).click();
+    await flushUpdates(el);
+    const updated = el.querySelectorAll<HTMLButtonElement>(
+      ".compose-sheet-row[role='radio']",
+    );
+    expect(updated[2].getAttribute("aria-checked")).toBe("true");
+    expect(updated[2].querySelector(".compose-sheet-check")).not.toBeNull();
+    expect(updated[0].querySelector(".compose-sheet-check")).toBeNull();
   });
 
   it("format switching updates active state", async () => {
@@ -630,7 +735,7 @@ describe("JantComposeDialog", () => {
     );
   }
 
-  it("shows the format switcher instead of a title while editing", async () => {
+  it("shows the format switcher above the post while editing", async () => {
     vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
       cb(0);
       return 1;
@@ -641,9 +746,15 @@ describe("JantComposeDialog", () => {
     await el.openEdit("pst_123");
     await flushUpdates(el);
 
-    expect(el.querySelector(".compose-segmented")).not.toBeNull();
-    // The "Edit post" title is gone — the switcher takes the center slot.
-    expect(el.querySelector(".compose-dialog-title")).toBeNull();
+    // The switcher has exactly one home: above its own post. The header center
+    // is always a title.
+    expect(el.querySelector(".compose-thread-post-header")).not.toBeNull();
+    expect(
+      el.querySelector(".compose-dialog-header-center .compose-segmented"),
+    ).toBeNull();
+    expect(el.querySelector(".compose-dialog-title")?.textContent?.trim()).toBe(
+      "Edit",
+    );
   });
 
   it("shows a Reply title with the format selector above the post when replying", async () => {
@@ -714,6 +825,157 @@ describe("JantComposeDialog", () => {
     expect(el.querySelector(".compose-thread-post-header")).not.toBeNull();
     expect(el._collectionIds).toEqual([]);
     expect(el.querySelector(".compose-collection-trigger")).toBeNull();
+  });
+
+  it("keeps the format selector above the post in single-post mode", async () => {
+    const el = await createElement();
+    await flushUpdates(el);
+
+    // One selector, one place — never in the header center.
+    expect(
+      el.querySelector(".compose-dialog-header-center .compose-segmented"),
+    ).toBeNull();
+    const items = el.querySelectorAll<HTMLButtonElement>(
+      ".compose-thread-post-header .compose-segmented-item",
+    );
+    expect(items.length).toBe(3);
+
+    items[1].click(); // link
+    await flushUpdates(el);
+    expect(el._format).toBe("link");
+
+    // A single post has no "which one", so no position marker.
+    expect(el.querySelector(".compose-post-position")).toBeNull();
+  });
+
+  it("gives every thread post its own date and permalink control", async () => {
+    const el = await createElement();
+    el._threadItems = [
+      { id: "thread-1", format: "note" },
+      { id: "thread-2", format: "note" },
+    ];
+    await flushUpdates(el);
+
+    // Every post is separately addressable (`path_registry` has a row each),
+    // so every post gets both controls — not just the root.
+    const pills = el.querySelectorAll("[data-compose-post-meta-pill]");
+    expect(pills).toHaveLength(2);
+    for (const pill of pills) {
+      expect(
+        pill.querySelector(".compose-post-meta-value-slug"),
+      ).not.toBeNull();
+    }
+  });
+
+  it("sends a reply's own permalink and blocks an invalid one", async () => {
+    const el = await createElement();
+    el._threadItems = [
+      { id: "thread-1", format: "note" },
+      { id: "thread-2", format: "note", slug: "part-two" },
+    ];
+    await flushUpdates(el);
+
+    const build = (
+      el as unknown as {
+        _buildEditorPostDetail: (
+          editor: JantComposeEditor,
+          format: string,
+          index: number,
+          status: string,
+        ) => ComposeSubmitDetail;
+      }
+    )._buildEditorPostDetail;
+    const editors = el.querySelectorAll<JantComposeEditor>(
+      "jant-compose-editor",
+    );
+
+    expect(build.call(el, editors[1], "note", 1, "published").slug).toBe(
+      "part-two",
+    );
+    expect(build.call(el, editors[0], "note", 0, "published").slug).toBe(
+      undefined,
+    );
+
+    // A reply's bad slug blocks publish just like the root's would.
+    el._threadItems = [
+      { id: "thread-1", format: "note" },
+      { id: "thread-2", format: "note", slug: "not a slug!" },
+    ];
+    await flushUpdates(el);
+    expect(
+      (el as unknown as { _canPublish: () => boolean })._canPublish(),
+    ).toBe(false);
+  });
+
+  it("sends a reply's own date and leaves the rest for the server to inherit", async () => {
+    const el = await createElement();
+    el._threadItems = [
+      { id: "thread-1", format: "note" },
+      { id: "thread-2", format: "note", publishedAtInput: "2024-03-09" },
+      { id: "thread-3", format: "note" },
+    ];
+    await flushUpdates(el);
+
+    const detail = (
+      el as unknown as {
+        _buildEditorPostDetail: (
+          editor: JantComposeEditor,
+          format: string,
+          index: number,
+          status: string,
+        ) => ComposeSubmitDetail;
+      }
+    )._buildEditorPostDetail;
+    const editors = el.querySelectorAll<JantComposeEditor>(
+      "jant-compose-editor",
+    );
+
+    const second = detail.call(el, editors[1], "note", 1, "published");
+    const third = detail.call(el, editors[2], "note", 2, "published");
+
+    expect(second.publishedAt).toBeGreaterThan(0);
+    // Undefined, not "now" — the server fills it from the root.
+    expect(third.publishedAt).toBeUndefined();
+  });
+
+  it("blocks publishing when any thread post has a future date", async () => {
+    const el = await createElement();
+    const future = new Date(Date.now() + 86400000 * 3)
+      .toISOString()
+      .slice(0, 10);
+    el._threadItems = [
+      { id: "thread-1", format: "note" },
+      { id: "thread-2", format: "note", publishedAtInput: future },
+    ];
+    await flushUpdates(el);
+
+    expect(
+      (el as unknown as { _canPublish: () => boolean })._canPublish(),
+    ).toBe(false);
+  });
+
+  it("numbers each post in a thread", async () => {
+    const el = await createElement();
+    el._threadItems = [
+      { id: "thread-1", format: "note" },
+      { id: "thread-2", format: "note" },
+    ];
+    await flushUpdates(el);
+
+    const positions = () =>
+      Array.from(el.querySelectorAll(".compose-post-position")).map((n) =>
+        n.textContent?.trim(),
+      );
+    expect(positions()).toEqual(["1/2", "2/2"]);
+    expect(el.querySelector(".compose-dialog-title")?.textContent?.trim()).toBe(
+      "New Thread",
+    );
+
+    (el as unknown as { _addThreadItem: () => void })._addThreadItem();
+    await flushUpdates(el);
+
+    // The total re-renders on every post, not just the new one.
+    expect(positions()).toEqual(["1/3", "2/3", "3/3"]);
   });
 
   it("switches format from the inline selector when replying", async () => {
@@ -1040,13 +1302,13 @@ describe("JantComposeDialog", () => {
     await editor.updateComplete;
 
     requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     ).click();
     await el.updateComplete;
 
     const options = el.querySelectorAll<HTMLButtonElement>(
-      ".compose-publish-chip[role='radio']",
+      ".compose-sheet-row[role='radio']",
     );
     expect(options).toHaveLength(3);
     options[1]?.click();
@@ -1100,11 +1362,12 @@ describe("JantComposeDialog", () => {
       await editor.updateComplete;
 
       requireElement(
-        el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+        el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
         "expected publish settings toggle",
       ).click();
       await el.updateComplete;
 
+      await openDrill(el, "date");
       const publishedAtInput = requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-date-input"),
         "expected publish date input",
@@ -1145,16 +1408,17 @@ describe("JantComposeDialog", () => {
     }
   });
 
-  it("shows a publish date summary near the submit controls after the date changes", async () => {
+  it("keeps the chosen publish date readable on the collapsed options row", async () => {
     const el = await createElement();
 
     const publishToggle = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     );
     publishToggle.click();
     await el.updateComplete;
 
+    await openDrill(el, "date");
     const publishedAtInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-date-input"),
       "expected publish date input",
@@ -1163,22 +1427,15 @@ describe("JantComposeDialog", () => {
     publishedAtInput.dispatchEvent(new Event("input", { bubbles: true }));
     await el.updateComplete;
 
-    publishToggle.click();
-    await el.updateComplete;
-
-    const summary = requireElement(
-      el.querySelector<HTMLButtonElement>(
-        "[data-compose-publish-date-summary]",
-      ),
-      "expected publish date summary",
-    );
-    expect(summary.dataset.publishDate).toBe("2024-01-15");
-    expect(summary.textContent).toContain("2024");
-
-    summary.click();
-    await el.updateComplete;
+    // Collapse the row: the chosen date stays readable on the row itself.
+    requireElement(
+      el.querySelector<HTMLButtonElement>('[data-compose-drill="date"]'),
+      "expected publish date row",
+    ).click();
     await flushUpdates(el);
+    expect(drillValue(el, "date")).toContain("2024");
 
+    await openDrill(el, "date");
     expect(
       requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-date-input"),
@@ -1187,7 +1444,7 @@ describe("JantComposeDialog", () => {
     ).toBe(document.activeElement);
   });
 
-  it("does not show a publish date summary for an unchanged date while editing a post", async () => {
+  it("shows the existing publish date on the options row while editing a post", async () => {
     const el = await createElement();
     (
       el as unknown as {
@@ -1213,10 +1470,12 @@ describe("JantComposeDialog", () => {
     el.requestUpdate();
     await el.updateComplete;
 
-    expect(el.querySelector("[data-compose-publish-date-summary]")).toBeNull();
+    await openPostMeta(el);
+
+    expect(drillValue(el, "date")).toContain("2024");
   });
 
-  it("shows a publish now summary after clearing the publish date while editing a post", async () => {
+  it("shows Now on the post date control after clearing the date while editing", async () => {
     const el = await createElement();
     (
       el as unknown as {
@@ -1242,15 +1501,12 @@ describe("JantComposeDialog", () => {
     el.requestUpdate();
     await el.updateComplete;
 
-    expect(
-      requireElement(
-        el.querySelector<HTMLElement>("[data-compose-publish-date-summary]"),
-        "expected publish now summary",
-      ).textContent,
-    ).toContain("Publish now");
+    await openPostMeta(el);
+
+    expect(drillValue(el, "date")).toBe("Now");
   });
 
-  it("shows a custom link summary near the submit controls after the link changes", async () => {
+  it("keeps the custom link readable on the collapsed options row", async () => {
     mockSlugApi((url) => {
       if (url.searchParams.get("mode") === "suggest") {
         return { body: { slug: "configured-post" } };
@@ -1263,7 +1519,7 @@ describe("JantComposeDialog", () => {
 
     const el = await createElement();
     const publishToggle = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     );
 
@@ -1271,6 +1527,7 @@ describe("JantComposeDialog", () => {
     await el.updateComplete;
     await flushUpdates(el);
 
+    await openDrill(el, "slug");
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
@@ -1280,22 +1537,15 @@ describe("JantComposeDialog", () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     await el.updateComplete;
 
-    publishToggle.click();
-    await el.updateComplete;
-
-    const summary = requireElement(
-      el.querySelector<HTMLButtonElement>(
-        "[data-compose-publish-slug-summary]",
-      ),
-      "expected custom link summary",
-    );
-    expect(summary.dataset.publishSlug).toBe("reading-notes");
-    expect(summary.textContent).toContain("/reading-notes");
-
-    summary.click();
-    await el.updateComplete;
+    // Collapse the row: the custom link stays readable on the row itself.
+    requireElement(
+      el.querySelector<HTMLButtonElement>('[data-compose-drill="slug"]'),
+      "expected custom link row",
+    ).click();
     await flushUpdates(el);
+    expect(drillValue(el, "slug")).toBe("/reading-notes");
 
+    await openDrill(el, "slug");
     expect(
       requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
@@ -1304,7 +1554,7 @@ describe("JantComposeDialog", () => {
     ).toBe(document.activeElement);
   });
 
-  it("does not show a custom link summary for an unchanged link while editing a post", async () => {
+  it("shows the existing custom link on the options row while editing a post", async () => {
     const el = await createElement();
     (
       el as unknown as {
@@ -1330,10 +1580,12 @@ describe("JantComposeDialog", () => {
     el.requestUpdate();
     await el.updateComplete;
 
-    expect(el.querySelector("[data-compose-publish-slug-summary]")).toBeNull();
+    await openPostMeta(el);
+
+    expect(drillValue(el, "slug")).toBe("/reading-notes");
   });
 
-  it("shows an auto link summary after clearing the custom link while editing a post", async () => {
+  it("shows Auto on the post permalink control after clearing the link while editing", async () => {
     const el = await createElement();
     (
       el as unknown as {
@@ -1359,12 +1611,9 @@ describe("JantComposeDialog", () => {
     el.requestUpdate();
     await el.updateComplete;
 
-    expect(
-      requireElement(
-        el.querySelector<HTMLElement>("[data-compose-publish-slug-summary]"),
-        "expected auto link summary",
-      ).textContent,
-    ).toContain("Auto link");
+    await openPostMeta(el);
+
+    expect(drillValue(el, "slug")).toBe("Auto");
   });
 
   it("blocks publishing with a future publish date", async () => {
@@ -1389,11 +1638,12 @@ describe("JantComposeDialog", () => {
       await editor.updateComplete;
 
       requireElement(
-        el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+        el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
         "expected publish settings toggle",
       ).click();
       await el.updateComplete;
 
+      await openDrill(el, "date");
       const publishedAtInput = requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-date-input"),
         "expected publish date input",
@@ -1420,13 +1670,13 @@ describe("JantComposeDialog", () => {
     const el = await createElement();
 
     requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     ).click();
     await el.updateComplete;
 
     const options = el.querySelectorAll<HTMLButtonElement>(
-      ".compose-publish-chip[role='radio']",
+      ".compose-sheet-row[role='radio']",
     );
     expect(options).toHaveLength(3);
     options[2]?.click();
@@ -1444,13 +1694,13 @@ describe("JantComposeDialog", () => {
     const el = await createElement();
 
     requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     ).click();
     await el.updateComplete;
 
     const options = el.querySelectorAll<HTMLButtonElement>(
-      ".compose-publish-chip[role='radio']",
+      ".compose-sheet-row[role='radio']",
     );
     expect(options).toHaveLength(3);
     options[1]?.click();
@@ -1474,13 +1724,13 @@ describe("JantComposeDialog", () => {
     expect(el._visibility).toBe("public");
 
     requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     ).click();
     await el.updateComplete;
 
     const options = el.querySelectorAll<HTMLButtonElement>(
-      ".compose-publish-chip[role='radio']",
+      ".compose-sheet-row[role='radio']",
     );
     options[1]?.click();
     await el.updateComplete;
@@ -1565,13 +1815,14 @@ describe("JantComposeDialog", () => {
     await editor.updateComplete;
 
     const publishToggle = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     );
     publishToggle.click();
     await el.updateComplete;
     await flushUpdates(el);
 
+    await openDrill(el, "slug");
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
@@ -1611,7 +1862,7 @@ describe("JantComposeDialog", () => {
     const el = await createElement();
 
     const publishToggle = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     );
 
@@ -1619,6 +1870,7 @@ describe("JantComposeDialog", () => {
     await el.updateComplete;
     await flushUpdates(el);
 
+    await openDrill(el, "slug");
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
@@ -1633,6 +1885,7 @@ describe("JantComposeDialog", () => {
     publishToggle.click();
     await el.updateComplete;
 
+    await openDrill(el, "slug");
     expect(el.querySelector(".compose-publish-slug-input")).not.toBeNull();
   });
 
@@ -1691,7 +1944,7 @@ describe("JantComposeDialog", () => {
     } as never);
 
     requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     ).click();
     await el.updateComplete;
@@ -1762,7 +2015,7 @@ describe("JantComposeDialog", () => {
     } as never);
 
     requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     ).click();
     await el.updateComplete;
@@ -1784,7 +2037,7 @@ describe("JantComposeDialog", () => {
     const el = await createElement();
 
     requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     ).click();
     await el.updateComplete;
@@ -1812,13 +2065,14 @@ describe("JantComposeDialog", () => {
     await editor.updateComplete;
 
     const publishToggle = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     );
     publishToggle.click();
     await el.updateComplete;
     await flushUpdates(el);
 
+    await openDrill(el, "slug");
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
@@ -1874,13 +2128,14 @@ describe("JantComposeDialog", () => {
     await editor.updateComplete;
 
     const publishToggle = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     );
     publishToggle.click();
     await el.updateComplete;
     await flushUpdates(el);
 
+    await openDrill(el, "slug");
     expect(
       el.querySelector(".compose-slug-suggestion-value")?.textContent?.trim(),
     ).toBe("/hello-world");
@@ -1901,11 +2156,11 @@ describe("JantComposeDialog", () => {
     ).toBeUndefined();
   });
 
-  it("shows visibility and custom link settings in the publish panel", async () => {
+  it("keeps the publish panel to whole-submission settings", async () => {
     const el = await createElement();
 
     const publishToggle = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     );
     publishToggle.click();
@@ -1917,12 +2172,16 @@ describe("JantComposeDialog", () => {
     );
     expect(panel.textContent).not.toContain("Publish settings");
     expect(panel.textContent).toContain("Visibility");
-    expect(panel.textContent).toContain("Published on");
-    expect(panel.textContent).toContain("Custom link");
     expect(panel.textContent).not.toContain("Save as draft");
     expect(panel.textContent).not.toContain("Discard");
-    expect(panel.querySelector(".compose-publish-date-input")).not.toBeNull();
-    expect(panel.querySelector(".compose-publish-slug-input")).not.toBeNull();
+    // Post-scoped settings are not in here — they live on the post.
+    expect(panel.textContent).not.toContain("Published on");
+    expect(panel.textContent).not.toContain("Custom link");
+
+    await openDrill(el, "date");
+    expect(el.querySelector(".compose-publish-date-input")).not.toBeNull();
+    await openDrill(el, "slug");
+    expect(el.querySelector(".compose-publish-slug-input")).not.toBeNull();
   });
 
   it("clears the custom slug with the reset action", async () => {
@@ -1938,13 +2197,14 @@ describe("JantComposeDialog", () => {
 
     const el = await createElement();
     const publishToggle = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     );
     publishToggle.click();
     await el.updateComplete;
     await flushUpdates(el);
 
+    await openDrill(el, "slug");
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
@@ -1964,6 +2224,7 @@ describe("JantComposeDialog", () => {
     ).click();
     await flushUpdates(el);
 
+    await openDrill(el, "slug");
     expect(
       requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
@@ -1986,7 +2247,7 @@ describe("JantComposeDialog", () => {
     await el.updateComplete;
 
     const publishToggle = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     );
     publishToggle.click();
@@ -2023,13 +2284,14 @@ describe("JantComposeDialog", () => {
       await editor.updateComplete;
 
       const publishToggle = requireElement(
-        el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+        el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
         "expected publish settings toggle",
       );
       publishToggle.click();
       await el.updateComplete;
       await flushUpdates(el);
 
+      await openDrill(el, "slug");
       expect(
         el.querySelector(".compose-slug-suggestion-value")?.textContent?.trim(),
       ).toBe("/hello-world");
@@ -2079,13 +2341,14 @@ describe("JantComposeDialog", () => {
       await editor.updateComplete;
 
       const publishToggle = requireElement(
-        el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+        el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
         "expected publish settings toggle",
       );
       publishToggle.click();
       await el.updateComplete;
       await flushUpdates(el);
 
+      await openDrill(el, "slug");
       const slugInput = requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
         "expected custom link input",
@@ -2136,11 +2399,12 @@ describe("JantComposeDialog", () => {
       await editor.updateComplete;
 
       requireElement(
-        el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+        el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
         "expected publish settings toggle",
       ).click();
       await el.updateComplete;
 
+      await openDrill(el, "slug");
       const slugInput = requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
         "expected custom link input",
@@ -2188,11 +2452,12 @@ describe("JantComposeDialog", () => {
     await editor.updateComplete;
 
     requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-publish-toggle"),
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
       "expected publish settings toggle",
     ).click();
     await el.updateComplete;
 
+    await openDrill(el, "slug");
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
@@ -5008,9 +5273,12 @@ describe("JantComposeDialog", () => {
     el._format = "note";
     await el.updateComplete;
 
-    // Format switcher should be visible (not "Edit post" title)
+    // Format switcher should be visible, and the header title says this is a
+    // new post rather than an edit.
     expect(el.querySelector(".compose-segmented")).not.toBeNull();
-    expect(el.querySelector(".compose-dialog-title")).toBeNull();
+    expect(el.querySelector(".compose-dialog-title")?.textContent?.trim()).toBe(
+      "New Post",
+    );
 
     // Button should say "Post", not "Done"
     const postBtn = requireElement(

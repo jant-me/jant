@@ -2202,11 +2202,19 @@ export function createPostService(
         if (!item) continue;
         const { data, attachments } = item;
         const prevPost = created[i - 1];
+        // A reply with no date of its own belongs to the root's moment, not to
+        // whenever the request happened to run. Without this, backdating the
+        // root leaves its replies stamped today and the thread reads as if it
+        // spanned years. Thread order is by `createdAt`/`id` (see the thread
+        // queries), so sharing one `publishedAt` cannot reorder anything.
+        const rootPublishedAt = created[0]?.publishedAt ?? undefined;
         const postData: CreatePost = {
           ...data,
           // Chain each post as a reply to the previous one (server-side chaining)
           replyToId: i === 0 ? data.replyToId : prevPost?.id,
           quietReply: extendsExistingThreadQuietly ? true : data.quietReply,
+          publishedAt:
+            i === 0 ? data.publishedAt : (data.publishedAt ?? rootPublishedAt),
         };
 
         try {

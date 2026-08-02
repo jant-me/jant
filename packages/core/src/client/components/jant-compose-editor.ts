@@ -189,6 +189,8 @@ export class JantComposeEditor extends LitElement {
     threadItem: { type: Boolean, attribute: "thread-item" },
     removable: { type: Boolean },
     inlineFormat: { type: Boolean, attribute: "inline-format" },
+    positionLabel: { type: String, attribute: "position-label" },
+    headerExtra: { attribute: false },
     slashCommandDiscovered: { type: Boolean },
     _title: { state: true },
     _bodyJson: { state: true },
@@ -215,6 +217,17 @@ export class JantComposeEditor extends LitElement {
   declare threadItem: boolean;
   declare removable: boolean;
   declare inlineFormat: boolean;
+  /**
+   * "1/3"-style position marker shown before the format selector. Empty for a
+   * single post, where there is no "which one" to answer.
+   */
+  declare positionLabel: string;
+  /**
+   * Owner-supplied content for the right side of the format header — the
+   * dialog's per-post date/permalink control. Passed in rather than built here
+   * because publish metadata belongs to the dialog, not to the editor.
+   */
+  declare headerExtra: unknown;
   declare slashCommandDiscovered: boolean;
   declare _title: string;
   declare _bodyJson: JSONContent | null;
@@ -273,6 +286,8 @@ export class JantComposeEditor extends LitElement {
     this.threadItem = false;
     this.removable = false;
     this.inlineFormat = false;
+    this.positionLabel = "";
+    this.headerExtra = null;
     this.slashCommandDiscovered = false;
     this._title = "";
     this._bodyJson = null;
@@ -2690,13 +2705,9 @@ export class JantComposeEditor extends LitElement {
     return html`
       <div class="compose-thread-post-header">
         <div class="compose-segmented compose-thread-segmented">
-          <div
-            class=${classMap({
-              "compose-format-pill": true,
-              "compose-format-pill-link": this.format === "link",
-              "compose-format-pill-quote": this.format === "quote",
-            })}
-          ></div>
+          <!-- No sliding indicator: the items size to their labels now, so a
+               thirds-based pill would not line up. The active item carries its
+               own background instead. -->
           ${formats.map(
             (f) => html`
               <button
@@ -2721,6 +2732,12 @@ export class JantComposeEditor extends LitElement {
             `,
           )}
         </div>
+        ${this.positionLabel
+          ? html`<span class="compose-post-position"
+              >${this.positionLabel}</span
+            >`
+          : nothing}
+        ${this.headerExtra ?? nothing}
         ${this.removable
           ? html`<button
               type="button"
@@ -2762,10 +2779,10 @@ export class JantComposeEditor extends LitElement {
   }
 
   render() {
+    // The format selector lives here in every mode — single post, reply, and
+    // thread item alike — so there is exactly one place it can be.
     return html`
-      ${this.threadItem || this.inlineFormat
-        ? this._renderFormatHeader()
-        : nothing}
+      ${this._renderFormatHeader()}
       <section class="compose-body">
         ${this.format === "note"
           ? this._renderNoteFields()

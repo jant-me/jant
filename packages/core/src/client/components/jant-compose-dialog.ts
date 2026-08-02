@@ -61,6 +61,18 @@ interface ReplyToData {
 interface ThreadItem {
   id: string;
   format: ComposeFormat;
+  /**
+   * Per-post publish date. Empty means "follows the thread" — the server fills
+   * it from the root (see `createThreadWithAttachments`). The root's own date
+   * stays on `_publishedAtInput` so every existing edit/draft/submit path keeps
+   * working unchanged.
+   */
+  publishedAtInput?: string;
+  publishedAtTimeMinutes?: number | null;
+  /** Per-post permalink. Empty means the server assigns a random id. */
+  slug?: string;
+  /** Last availability answer for this post's slug. */
+  slugTaken?: boolean;
 }
 
 interface ApiMediaAttachment {
@@ -164,13 +176,6 @@ interface ComposeFilePickerCloseDetail {
   cancelled?: boolean;
 }
 
-interface ComposePublishSummaryChip {
-  kind: "publishedAt" | "slug";
-  text: string;
-  actionLabel: string;
-  value: string;
-}
-
 const COMPOSE_PUBLISH_PANEL_FULLSCREEN_QUERY =
   "(max-width: 700px), (max-height: 760px), (hover: none) and (pointer: coarse)";
 
@@ -218,6 +223,31 @@ const COMPOSE_PUBLISH_ACTION_ICONS = {
   `,
   chevron: `
     <path d="M5.1 6.45 8 9.3l2.9-2.85" />
+  `,
+  caretRight: `
+    <path d="M6.45 5.1 9.3 8l-2.85 2.9" />
+  `,
+  calendar: `
+    <rect x="2.75" y="3.45" width="10.5" height="9.8" rx="2.2" />
+    <path d="M5.35 2.55v2.1" />
+    <path d="M10.65 2.55v2.1" />
+    <path d="M2.75 6.2h10.5" />
+  `,
+  link: `
+    <path d="M9.75 4.15h1.35a2.75 2.75 0 0 1 0 5.5H9.75" />
+    <path d="M6.25 9.65H4.9a2.75 2.75 0 1 1 0-5.5h1.35" />
+    <path d="M5.65 8h4.7" />
+  `,
+  /* Sliders in a rounded square — "settings for this thing", without borrowing
+     the gear, which elsewhere means site settings. Drawn on a 24 grid with a
+     lighter stroke than the other action icons: at 16 the interior lines sit
+     too close together and merge into a blob. */
+  options: `
+    <rect x="3" y="3" width="18" height="18" rx="5.5" stroke-width="1.5" />
+    <path d="M9.4 7.4v9.2" stroke-width="1.5" />
+    <path d="M14.6 7.4v9.2" stroke-width="1.5" />
+    <path d="M7.4 13.6h4" stroke-width="1.5" />
+    <path d="M12.6 10.4h4" stroke-width="1.5" />
   `,
 } as const;
 
@@ -568,6 +598,8 @@ export class JantComposeDialog extends LitElement {
     _publishedAtInput: { state: true },
     _visibility: { state: true },
     _showPublishPanel: { state: true },
+    _postMetaIndex: { state: true },
+    _publishDrill: { state: true },
     _publishPanelFullscreen: { state: true },
     _suggestedSlug: { state: true },
     _suggestedSlugLoading: { state: true },
@@ -613,6 +645,14 @@ export class JantComposeDialog extends LitElement {
   declare _publishedAtInput: string;
   declare _visibility: ComposeVisibility;
   declare _showPublishPanel: boolean;
+  /** Index of the post whose date/permalink panel is open; null when closed. */
+  declare _postMetaIndex: number | null;
+  /**
+   * Which options row is expanded. Date and permalink are drilled into rather
+   * than shown open, so the panel stays a short list instead of a wall of
+   * inputs for settings most posts never touch.
+   */
+  declare _publishDrill: "date" | "slug" | null;
   declare _publishPanelFullscreen: boolean;
   declare _suggestedSlug: string;
   declare _suggestedSlugLoading: boolean;
@@ -711,6 +751,8 @@ export class JantComposeDialog extends LitElement {
     this._sourceCollectionId = null;
     this._showPublishPanel = false;
     this._publishPanelFullscreen = false;
+    this._postMetaIndex = null;
+    this._publishDrill = null;
     this._suggestedSlug = "";
     this._suggestedSlugLoading = false;
     this._slugCheckLoading = false;
@@ -1376,8 +1418,10 @@ export class JantComposeDialog extends LitElement {
       quoteText: editorData.quoteText,
       quoteAuthor: editorData.quoteAuthor,
       status,
-      slug: isRoot ? this._slug.trim() || undefined : undefined,
-      publishedAt: isRoot ? this._getPublishedAtSubmitValue(status) : undefined,
+      slug: this._getPostSlug(index).trim() || undefined,
+      // Every post carries its own date; a reply that left it blank sends
+      // undefined and the server fills it from the root.
+      publishedAt: this._getPostPublishedAtSubmitValue(index, status),
       visibility: isRoot
         ? this._visibilityLocked
           ? undefined
@@ -1468,17 +1512,24 @@ export class JantComposeDialog extends LitElement {
   }
 
   private _focusBlockedSubmitField(status: "published" | "draft"): boolean {
-    if (
-      status === "published" &&
-      this._getPublishedAtValidationMessage() !== null
-    ) {
-      this._revealPublishedAtField();
-      return true;
+    if (status === "published") {
+      const posts = Math.max(1, this._threadItems.length);
+      for (let i = 0; i < posts; i++) {
+        if (this._getPostPublishedAtValidationMessage(i) !== null) {
+          this._revealPublishedAtField(i);
+          return true;
+        }
+      }
     }
 
-    if (this._getSlugValidationMessage()) {
-      this._revealSlugField();
-      return true;
+    {
+      const posts = Math.max(1, this._threadItems.length);
+      for (let i = 0; i < posts; i++) {
+        if (this._getPostSlugValidationMessage(i)) {
+          this._revealSlugField(i);
+          return true;
+        }
+      }
     }
 
     // ── Thread mode: validate each editor against its own format ──────
@@ -1987,7 +2038,9 @@ export class JantComposeDialog extends LitElement {
   }
 
   private _scheduleSuggestedSlugRefresh(immediate = false) {
-    if (!this._showPublishPanel || this._hasManualSlug()) return;
+    // Only worth fetching while the slug UI is on screen — which is the post's
+    // own panel now, not the publish panel.
+    if (this._postMetaIndex !== 0 || this._hasManualSlug()) return;
     if (!this._canSuggestSlug()) {
       this._slugSuggestRequestId += 1;
       this._suggestedSlug = "";
@@ -2042,7 +2095,7 @@ export class JantComposeDialog extends LitElement {
       if (
         requestId !== this._slugSuggestRequestId ||
         this._hasManualSlug() ||
-        !this._showPublishPanel
+        this._postMetaIndex !== 0
       ) {
         return;
       }
@@ -2057,9 +2110,9 @@ export class JantComposeDialog extends LitElement {
     }
   }
 
-  private _scheduleSlugAvailabilityCheck() {
-    if (!this._hasManualSlug()) {
-      this._slugTaken = false;
+  private _scheduleSlugAvailabilityCheck(index = 0) {
+    if (!this._hasPostManualSlug(index)) {
+      this._setPostSlugTaken(index, false);
       this._slugCheckLoading = false;
       return;
     }
@@ -2069,21 +2122,20 @@ export class JantComposeDialog extends LitElement {
       this._slugCheckTimer = null;
     }
 
-    const syncError = this._getSlugSyncValidationMessage();
-    if (syncError) {
-      this._slugTaken = false;
+    if (this._getPostSlugSyncValidationMessage(index)) {
+      this._setPostSlugTaken(index, false);
       this._slugCheckLoading = false;
       return;
     }
 
     this._slugCheckLoading = true;
-    const slug = this._slug.trim();
+    const slug = this._getPostSlug(index).trim();
     this._slugCheckTimer = setTimeout(() => {
-      void this._checkSlugAvailability(slug);
+      void this._checkSlugAvailability(slug, index);
     }, 250);
   }
 
-  private async _checkSlugAvailability(slug: string) {
+  private async _checkSlugAvailability(slug: string, index = 0) {
     this._slugCheckTimer = null;
     const requestId = ++this._slugCheckRequestId;
 
@@ -2100,11 +2152,11 @@ export class JantComposeDialog extends LitElement {
       const json = (await res.json()) as { available?: boolean };
       if (
         requestId !== this._slugCheckRequestId ||
-        this._slug.trim() !== slug
+        this._getPostSlug(index).trim() !== slug
       ) {
         return;
       }
-      this._slugTaken = json.available === false;
+      this._setPostSlugTaken(index, json.available === false);
     } catch {
       // Server-side create/update remains the final authority.
     } finally {
@@ -2126,9 +2178,9 @@ export class JantComposeDialog extends LitElement {
     });
   }
 
-  private _resetCustomSlug() {
-    this._slug = "";
-    this._slugTaken = false;
+  private _resetCustomSlug(index = 0) {
+    this._setPostSlug(index, "");
+    this._setPostSlugTaken(index, false);
     this._slugCheckLoading = false;
     this._scheduleSuggestedSlugRefresh(true);
     this.updateComplete.then(() => {
@@ -2406,6 +2458,12 @@ export class JantComposeDialog extends LitElement {
 
     if (this._showPublishPanel) {
       this._closePublishPanel(true);
+      return true;
+    }
+
+    if (this._postMetaIndex !== null) {
+      this._closePostMeta();
+      this._restorePageEditorFocus();
       return true;
     }
 
@@ -3040,6 +3098,9 @@ export class JantComposeDialog extends LitElement {
           const data = editor.getData();
           return {
             format: item.format,
+            publishedAtInput: item.publishedAtInput,
+            publishedAtTimeMinutes: item.publishedAtTimeMinutes,
+            slug: item.slug,
             title: data.title,
             bodyJson: editor.getNormalizedBodyJson(),
             url: data.url,
@@ -3231,6 +3292,9 @@ export class JantComposeDialog extends LitElement {
       this._threadItems = draft.threadItems.map((item) => ({
         id: randomUUID(),
         format: item.format,
+        publishedAtInput: item.publishedAtInput,
+        publishedAtTimeMinutes: item.publishedAtTimeMinutes,
+        slug: item.slug,
       }));
       this._focusedThreadIndex = 0;
 
@@ -3676,25 +3740,20 @@ export class JantComposeDialog extends LitElement {
   // ── Render helpers ────────────────────────────────────────────────
 
   private _renderHeader() {
-    const formats = JantComposeDialog._FORMATS;
-    const formatLabels: Record<ComposeFormat, string> = {
-      note: this.labels.note,
-      link: this.labels.link,
-      quote: this.labels.quote,
-    };
     const draftButtonLabel = this._hasContent()
       ? this.labels.saveAsDraft
       : this.labels.drafts;
-    // Format selector sits inline (above each post) whenever more than one post
-    // is on screen — a reply (parent shown above) or a multi-post thread. The
-    // header then shows a plain title instead of the format selector.
+    // The format selector always sits above its own post (see
+    // `jant-compose-editor`'s format header), so the dialog header is only ever
+    // a title. One selector, one place, in every mode.
     const isReply = !!(this._replyToId && this._replyToData);
-    const showTitle = isReply || this._threadItems.length > 0;
     const headerTitle = this._editPostId
       ? this.labels.editTitle
       : isReply
         ? this.labels.replyTitle
-        : this.labels.newThread;
+        : this._threadItems.length > 0
+          ? this.labels.newThread
+          : this.labels.newPost;
 
     return html`
       <header class="compose-dialog-header">
@@ -3707,33 +3766,7 @@ export class JantComposeDialog extends LitElement {
         </button>
 
         <div class="compose-dialog-header-center">
-          ${showTitle
-            ? html`<span class="compose-dialog-title">${headerTitle}</span>`
-            : html`
-                <div class="compose-segmented">
-                  <div
-                    class=${classMap({
-                      "compose-format-pill": true,
-                      "compose-format-pill-link": this._format === "link",
-                      "compose-format-pill-quote": this._format === "quote",
-                    })}
-                  ></div>
-                  ${formats.map(
-                    (f) => html`
-                      <button
-                        type="button"
-                        class=${classMap({
-                          "compose-segmented-item": true,
-                          "compose-segmented-item-active": this._format === f,
-                        })}
-                        @click=${() => this._switchFormat(f)}
-                      >
-                        ${formatLabels[f]}
-                      </button>
-                    `,
-                  )}
-                </div>
-              `}
+          <span class="compose-dialog-title">${headerTitle}</span>
         </div>
 
         <div class="compose-dialog-header-actions">
@@ -4387,56 +4420,24 @@ export class JantComposeDialog extends LitElement {
     };
   }
 
-  private _getSlugSummary(): ComposePublishSummaryChip | null {
-    const currentSlug = this._slug.trim();
+  private _getPostPublishedAtSubmitValue(
+    index: number,
+    status: "published" | "draft",
+  ): number | undefined {
+    if (index === 0) return this._getPublishedAtSubmitValue(status);
+    if (status === "draft") return undefined;
 
-    if (currentSlug && this._getSlugValidationMessage() !== null) {
-      return null;
-    }
+    const item = this._threadItems[index];
+    const input = item?.publishedAtInput ?? "";
+    if (!input.trim()) return undefined;
 
-    if (this._editPostId || this._draftSourceId) {
-      if (currentSlug === this._initialSlug) {
-        return null;
-      }
-
-      if (!currentSlug) {
-        return {
-          kind: "slug",
-          text: this.labels.publishSlugSummaryAuto,
-          actionLabel: this.labels.publishSlugSummaryAction,
-          value: currentSlug,
-        };
-      }
-    }
-
-    if (!currentSlug) return null;
-
-    return {
-      kind: "slug",
-      text: `/${currentSlug}`,
-      actionLabel: this.labels.publishSlugSummaryAction,
-      value: currentSlug,
-    };
-  }
-
-  private _getPublishSummaryChips(): ComposePublishSummaryChip[] {
-    const chips: ComposePublishSummaryChip[] = [];
-    const publishedAtSummary = this._getPublishedAtSummary();
-    if (publishedAtSummary !== null) {
-      chips.push({
-        kind: "publishedAt",
-        text: publishedAtSummary.text,
-        actionLabel: this.labels.publishDateSummaryAction,
-        value: publishedAtSummary.input,
-      });
-    }
-
-    const slugSummary = this._getSlugSummary();
-    if (slugSummary !== null) {
-      chips.push(slugSummary);
-    }
-
-    return chips;
+    const timestamp = buildTimestampFromLocalDate(
+      input,
+      item?.publishedAtTimeMinutes ??
+        getTimestampTimeMinutes(this._getCurrentTimestamp()),
+    );
+    if (timestamp === null) return undefined;
+    return Math.min(timestamp, this._getCurrentTimestamp());
   }
 
   private _getPublishedAtSubmitValue(
@@ -4472,10 +4473,11 @@ export class JantComposeDialog extends LitElement {
     return undefined;
   }
 
-  private _openPublishPanelAndFocus(selector: string) {
+  private _openPublishPanelAndFocus(selector: string, index = 0) {
     this._showCollection = false;
     this._collectionSearch = "";
-    this._showPublishPanel = true;
+    this._showPublishPanel = false;
+    this._postMetaIndex = index;
     this._confirmPanelOpen = false;
     this._scheduleSuggestedSlugRefresh(true);
     this.updateComplete.then(() => {
@@ -4483,18 +4485,25 @@ export class JantComposeDialog extends LitElement {
     });
   }
 
-  private _revealSlugField() {
-    this._openPublishPanelAndFocus(".compose-publish-slug-input");
+  private _revealSlugField(index = 0) {
+    this._publishDrill = "slug";
+    this._openPublishPanelAndFocus(".compose-publish-slug-input", index);
   }
 
-  private _revealPublishedAtField() {
-    this._openPublishPanelAndFocus(".compose-publish-date-input");
+  private _revealPublishedAtField(index = 0) {
+    this._publishDrill = "date";
+    this._openPublishPanelAndFocus(".compose-publish-date-input", index);
   }
 
   private _canPublish(): boolean {
     if (this._loading) return false;
-    if (this._getPublishedAtValidationMessage()) return false;
-    if (this._getSlugValidationMessage()) return false;
+    const posts = Math.max(1, this._threadItems.length);
+    for (let i = 0; i < posts; i++) {
+      if (this._getPostPublishedAtValidationMessage(i)) return false;
+    }
+    for (let i = 0; i < posts; i++) {
+      if (this._getPostSlugValidationMessage(i)) return false;
+    }
 
     if (this._threadItems.length > 0) {
       // Thread mode: validate all editors
@@ -4563,6 +4572,9 @@ export class JantComposeDialog extends LitElement {
   private _setVisibility(visibility: ComposeVisibility) {
     if (this._visibilityLocked) return;
     this._visibility = visibility;
+    // Choosing is the whole job of the panel, so dismiss it. Nothing here
+    // needs confirming — a radio selection is not a form.
+    if (this._showPublishPanel) this._closePublishPanel(true);
     if (!this._editPostId && !this._draftSourceId && !this._replyToId) {
       JantComposeDialog._lastNewPostVisibility = visibility;
       if (this._sourceCollectionId) {
@@ -4574,26 +4586,28 @@ export class JantComposeDialog extends LitElement {
     }
   }
 
-  private _onSlugInput(e: Event) {
+  private _onSlugInput(e: Event, index = 0) {
     const value = (e.target as HTMLInputElement).value;
-    this._slug = value.toLowerCase();
-    this._slugTaken = false;
+    this._setPostSlug(index, value.toLowerCase());
+    this._setPostSlugTaken(index, false);
     this._slugCheckLoading = false;
-    if (this._hasManualSlug()) {
-      this._scheduleSlugAvailabilityCheck();
+    if (this._hasPostManualSlug(index)) {
+      this._scheduleSlugAvailabilityCheck(index);
       return;
     }
     this._scheduleSuggestedSlugRefresh();
   }
 
-  private _onPublishedAtInput(e: Event) {
-    this._publishedAtInput = (e.target as HTMLInputElement).value;
-  }
-
-  private _resetPublishedAt() {
+  private _resetPublishedAt(index = 0) {
     const currentTimestamp = this._getCurrentTimestamp();
-    this._publishedAtInput = toLocalDateInputValue(currentTimestamp);
-    this._publishedAtTimeMinutes = getTimestampTimeMinutes(currentTimestamp);
+    this._setPostPublishedAtInput(
+      index,
+      toLocalDateInputValue(currentTimestamp),
+    );
+    this._setPostPublishedAtTimeMinutes(
+      index,
+      getTimestampTimeMinutes(currentTimestamp),
+    );
     this.updateComplete.then(() => {
       this.querySelector<HTMLInputElement>(
         ".compose-publish-date-input",
@@ -4619,9 +4633,15 @@ export class JantComposeDialog extends LitElement {
     );
   }
 
-  private _renderPublishVisibilityChip(
+  /**
+   * One choice in the options sheet: title, one-line explanation, and a check
+   * on the selected row. Every option carries its own hint so they can be
+   * compared before choosing, which a single hint under a chip group can't do.
+   */
+  private _renderVisibilityRow(
     visibility: ComposeVisibility,
     label: string,
+    hint: string,
   ) {
     const selected = this._visibility === visibility;
 
@@ -4629,8 +4649,8 @@ export class JantComposeDialog extends LitElement {
       <button
         type="button"
         class=${classMap({
-          "compose-publish-chip": true,
-          "compose-publish-chip-selected": selected,
+          "compose-sheet-row": true,
+          "compose-sheet-row-selected": selected,
         })}
         role="radio"
         aria-checked=${selected ? "true" : "false"}
@@ -4638,182 +4658,216 @@ export class JantComposeDialog extends LitElement {
         @click=${() => this._setVisibility(visibility)}
       >
         ${this._renderVisibilityIcon(visibility)}
-        <span class="compose-publish-chip-label">${label}</span>
+        <span class="compose-sheet-main">
+          <span class="compose-sheet-title">${label}</span>
+          <span class="compose-sheet-sub">${hint}</span>
+        </span>
+        ${selected
+          ? html`<span class="compose-sheet-check" aria-hidden="true">
+              ${renderComposePublishActionIcon(
+                COMPOSE_PUBLISH_ACTION_ICONS.check,
+                "compose-sheet-check-icon",
+              )}
+            </span>`
+          : nothing}
       </button>
     `;
   }
 
-  private _getVisibilityHint(): string {
-    switch (this._visibility) {
-      case "public":
-        return this.labels.publishVisibilityPublicHint;
-      case "latest_hidden":
-        return this.labels.publishVisibilityHiddenFromLatestHint;
-      case "private":
-        return this.labels.publishVisibilityPrivateHint;
-    }
-  }
-
-  private _renderPublishDateSection() {
-    const publishedAtError = this._getPublishedAtValidationMessage();
+  /** A row that expands its editor in place instead of opening another layer. */
+  private _renderPublishDrillRow(
+    kind: "date" | "slug",
+    label: string,
+    value: string,
+    body: unknown,
+  ) {
+    const open = this._publishDrill === kind;
 
     return html`
-      <section class="compose-publish-section">
-        <div class="compose-publish-section-header">
-          <div class="compose-publish-section-copy">
-            <p class="compose-publish-section-label">
-              ${this.labels.publishDateLabel}
-            </p>
-            <p class="compose-publish-section-hint">
-              ${this.labels.publishDateHint}
-            </p>
-          </div>
-          ${this._hasPublishedAtValue()
-            ? html`
-                <button
-                  type="button"
-                  class="compose-publish-section-action"
-                  @click=${() => this._resetPublishedAt()}
-                >
-                  ${this.labels.publishDateReset}
-                </button>
-              `
-            : nothing}
-        </div>
-        <div class="compose-publish-date-field">
-          <div class="compose-publish-date-input-wrap">
-            <input
-              type="date"
-              class="compose-input compose-publish-date-input"
-              .value=${this._publishedAtInput}
-              max=${this._getPublishedAtMaxInput()}
-              aria-invalid=${publishedAtError ? "true" : "false"}
-              @input=${(e: Event) => this._onPublishedAtInput(e)}
-            />
-          </div>
-          ${publishedAtError
-            ? html`<p
-                class=${classMap({
-                  "compose-publish-date-status": true,
-                  "compose-publish-date-status-error": true,
-                })}
-              >
-                ${publishedAtError}
-              </p>`
-            : nothing}
-        </div>
-      </section>
+      <button
+        type="button"
+        class=${classMap({
+          "compose-sheet-row": true,
+          "compose-sheet-row-open": open,
+        })}
+        aria-expanded=${open ? "true" : "false"}
+        data-compose-drill=${kind}
+        @click=${() => {
+          this._publishDrill = open ? null : kind;
+          if (open) return;
+          if (kind === "slug") this._scheduleSuggestedSlugRefresh(true);
+          // Opening a row is a request to edit it, so land the caret there.
+          const field =
+            kind === "date"
+              ? ".compose-publish-date-input"
+              : ".compose-publish-slug-input";
+          this.updateComplete.then(() => {
+            this.querySelector<HTMLElement>(field)?.focus();
+          });
+        }}
+      >
+        <span class="compose-sheet-main">
+          <span class="compose-sheet-title">${label}</span>
+        </span>
+        <span class="compose-sheet-value">${value}</span>
+        ${renderComposePublishActionIcon(
+          open
+            ? COMPOSE_PUBLISH_ACTION_ICONS.chevron
+            : COMPOSE_PUBLISH_ACTION_ICONS.caretRight,
+          "compose-sheet-caret",
+        )}
+      </button>
+      ${open ? html`<div class="compose-sheet-edit">${body}</div>` : nothing}
     `;
   }
 
-  private _renderPublishSlugSection() {
-    const slugError = this._getSlugValidationMessage();
-    const slugStatus = this._getSlugStatusMessage();
-    const slugPreview = this._getSlugPreviewParts();
+  private _renderPublishDateSection(index: number) {
+    const publishedAtError = this._getPostPublishedAtValidationMessage(index);
+
+    return html`
+      <div class="compose-publish-date-field">
+        <div class="compose-publish-date-input-wrap">
+          <input
+            type="date"
+            class="compose-input compose-publish-date-input"
+            .value=${this._getPostPublishedAtInput(index)}
+            max=${this._getPublishedAtMaxInput()}
+            aria-invalid=${publishedAtError ? "true" : "false"}
+            @input=${(e: Event) =>
+              this._setPostPublishedAtInput(
+                index,
+                (e.target as HTMLInputElement).value,
+              )}
+          />
+        </div>
+        ${publishedAtError
+          ? html`<p
+              class="compose-publish-date-status compose-publish-date-status-error"
+            >
+              ${publishedAtError}
+            </p>`
+          : html`<p class="compose-sheet-hint">
+              ${this.labels.publishDateHint}
+            </p>`}
+        ${this._hasPostPublishedAtValue(index)
+          ? html`
+              <button
+                type="button"
+                class="compose-publish-section-action"
+                @click=${() => this._resetPublishedAt(index)}
+              >
+                ${this.labels.publishDateReset}
+              </button>
+            `
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _renderPublishSlugSection(index: number) {
+    const isRoot = index === 0;
+    const slugError = this._getPostSlugValidationMessage(index);
+    const slugStatus = isRoot ? this._getSlugStatusMessage() : slugError;
+    const slugPreview = isRoot ? this._getSlugPreviewParts() : null;
+    // Suggestions come from the title, which replies do not have.
     const showSuggestion =
+      isRoot &&
       !this._hasManualSlug() &&
       !this._suggestedSlugLoading &&
       Boolean(this._suggestedSlug);
 
     return html`
-      <section class="compose-publish-section">
-        <div class="compose-publish-section-header">
-          <div class="compose-publish-section-copy">
-            <p class="compose-publish-section-label">
-              ${this.labels.publishSlugLabel}
-            </p>
-            <p class="compose-publish-section-hint">
+      <div class="compose-publish-slug-field">
+        <div class="compose-publish-slug-input-wrap">
+          <span class="compose-publish-slug-prefix">/</span>
+          <input
+            type="text"
+            class="compose-input compose-publish-slug-input"
+            .value=${this._getPostSlug(index)}
+            placeholder=${this.labels.publishSlugPlaceholder}
+            aria-invalid=${slugError ? "true" : "false"}
+            spellcheck="false"
+            autocapitalize="off"
+            autocomplete="off"
+            @input=${(e: Event) => this._onSlugInput(e, index)}
+          />
+        </div>
+        ${showSuggestion
+          ? html`
+              <button
+                type="button"
+                class="compose-slug-suggestion"
+                @click=${() => this._useSuggestedSlug()}
+              >
+                <span class="compose-slug-suggestion-copy">
+                  <span class="compose-slug-suggestion-label"
+                    >${this.labels.publishSlugSuggested}</span
+                  >
+                  <span class="compose-slug-suggestion-chip">
+                    <span class="compose-slug-suggestion-value"
+                      >/${this._suggestedSlug}</span
+                    >
+                  </span>
+                </span>
+                <span class="compose-slug-suggestion-icon" aria-hidden="true">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M3 7h8" />
+                    <path d="m8 3 4 4-4 4" />
+                  </svg>
+                </span>
+              </button>
+            `
+          : nothing}
+        ${slugStatus
+          ? html`<p
+              class=${classMap({
+                "compose-publish-slug-status": true,
+                "compose-publish-slug-status-error": Boolean(slugError),
+              })}
+              data-compose-slug-error=${slugError ? "true" : nothing}
+            >
+              ${slugStatus}
+            </p>`
+          : nothing}
+        ${slugPreview
+          ? html`<p
+              class="compose-publish-slug-preview"
+              data-compose-slug-preview
+              title=${slugPreview.full}
+            >
+              <span class="compose-publish-slug-preview-origin"
+                >${slugPreview.origin}</span
+              ><span class="compose-publish-slug-preview-path"
+                >${slugPreview.path}</span
+              >
+            </p>`
+          : nothing}
+        ${slugStatus
+          ? nothing
+          : html`<p class="compose-sheet-hint">
               ${this.labels.publishSlugHint}
-            </p>
-          </div>
-          ${this._hasManualSlug()
-            ? html`
-                <button
-                  type="button"
-                  class="compose-publish-section-action"
-                  @click=${() => this._resetCustomSlug()}
-                >
-                  ${this.labels.publishSlugReset}
-                </button>
-              `
-            : nothing}
-        </div>
-        <div class="compose-publish-slug-field">
-          <div class="compose-publish-slug-input-wrap">
-            <span class="compose-publish-slug-prefix">/</span>
-            <input
-              type="text"
-              class="compose-input compose-publish-slug-input"
-              .value=${this._slug}
-              placeholder=${this.labels.publishSlugPlaceholder}
-              aria-invalid=${slugError ? "true" : "false"}
-              spellcheck="false"
-              autocapitalize="off"
-              autocomplete="off"
-              @input=${(e: Event) => this._onSlugInput(e)}
-            />
-          </div>
-          ${showSuggestion
-            ? html`
-                <button
-                  type="button"
-                  class="compose-slug-suggestion"
-                  @click=${() => this._useSuggestedSlug()}
-                >
-                  <span class="compose-slug-suggestion-copy">
-                    <span class="compose-slug-suggestion-label"
-                      >${this.labels.publishSlugSuggested}</span
-                    >
-                    <span class="compose-slug-suggestion-chip">
-                      <span class="compose-slug-suggestion-value"
-                        >/${this._suggestedSlug}</span
-                      >
-                    </span>
-                  </span>
-                  <span class="compose-slug-suggestion-icon" aria-hidden="true">
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 14 14"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.4"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <path d="M3 7h8" />
-                      <path d="m8 3 4 4-4 4" />
-                    </svg>
-                  </span>
-                </button>
-              `
-            : nothing}
-          ${slugStatus
-            ? html`<p
-                class=${classMap({
-                  "compose-publish-slug-status": true,
-                  "compose-publish-slug-status-error": Boolean(slugError),
-                })}
-                data-compose-slug-error=${slugError ? "true" : nothing}
+            </p>`}
+        ${this._hasManualSlug()
+          ? html`
+              <button
+                type="button"
+                class="compose-publish-section-action"
+                @click=${() => this._resetCustomSlug()}
               >
-                ${slugStatus}
-              </p>`
-            : nothing}
-          ${slugPreview
-            ? html`<p
-                class="compose-publish-slug-preview"
-                data-compose-slug-preview
-                title=${slugPreview.full}
-              >
-                <span class="compose-publish-slug-preview-origin"
-                  >${slugPreview.origin}</span
-                ><span class="compose-publish-slug-preview-path"
-                  >${slugPreview.path}</span
-                >
-              </p>`
-            : nothing}
-        </div>
-      </section>
+                ${this.labels.publishSlugReset}
+              </button>
+            `
+          : nothing}
+      </div>
     `;
   }
 
@@ -4821,69 +4875,307 @@ export class JantComposeDialog extends LitElement {
     if (!this._replyToId) return nothing;
 
     return html`
-      <section class="compose-publish-section">
-        <label class="compose-publish-switch-row">
-          <div class="compose-publish-section-copy">
-            <p class="compose-publish-section-label">
-              ${this.labels.quietReplyLabel}
-            </p>
-            <p class="compose-publish-section-hint">
-              ${this.labels.quietReplyHint}
-            </p>
-          </div>
-          <input
-            type="checkbox"
-            role="switch"
-            class="input"
-            .checked=${this._quietReply}
-            @change=${(e: Event) => {
-              this._quietReply = (e.target as HTMLInputElement).checked;
-            }}
-          />
-        </label>
-      </section>
+      <label class="compose-sheet-row compose-sheet-row-switch">
+        <span class="compose-sheet-main">
+          <span class="compose-sheet-title"
+            >${this.labels.quietReplyLabel}</span
+          >
+          <span class="compose-sheet-sub">${this.labels.quietReplyHint}</span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          class="input"
+          .checked=${this._quietReply}
+          @change=${(e: Event) => {
+            this._quietReply = (e.target as HTMLInputElement).checked;
+          }}
+        />
+      </label>
     `;
   }
 
-  private _renderPublishPanelSections() {
+  /**
+   * Value shown on the collapsed "Published on" row. Always reflects the
+   * current date — unlike the old summary chip, which deliberately stayed
+   * silent when nothing had changed.
+   */
+  private _getPublishedAtRowValue(): string {
+    const parsed = parseLocalDateInputValue(this._publishedAtInput);
+    if (parsed === null) return this.labels.publishDateSummaryNow;
+
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(parsed.year, parsed.monthIndex, parsed.day));
+  }
+
+  /** Value shown on the collapsed "Custom link" row. */
+  private _getPostSlugRowValue(index: number): string {
+    const slug = this._getPostSlug(index).trim();
+    return slug ? `/${slug}` : this.labels.publishSlugSummaryAuto;
+  }
+
+  /* ── Per-post publish date ───────────────────────────────────────────
+     Only the root carries a permalink control: a reply's slug is a random id
+     assigned at publish time, and overriding it is not a thing people do. The
+     date is — backfilling an old thread is the whole reason this exists. */
+
+  private _getPostSlug(index: number): string {
+    if (index === 0) return this._slug;
+    return this._threadItems[index]?.slug ?? "";
+  }
+
+  private _setPostSlug(index: number, value: string) {
+    if (index === 0) {
+      this._slug = value;
+      return;
+    }
+    this._threadItems = this._threadItems.map((item, i) =>
+      i === index ? { ...item, slug: value } : item,
+    );
+  }
+
+  private _setPostSlugTaken(index: number, taken: boolean) {
+    if (index === 0) {
+      this._slugTaken = taken;
+      return;
+    }
+    this._threadItems = this._threadItems.map((item, i) =>
+      i === index ? { ...item, slugTaken: taken } : item,
+    );
+  }
+
+  private _hasPostManualSlug(index: number): boolean {
+    return this._getPostSlug(index).trim().length > 0;
+  }
+
+  private _getPostSlugSyncValidationMessage(index: number): string | null {
+    const issue = getSlugValidationIssue(this._getPostSlug(index));
+    if (issue === "invalid") return this.labels.publishSlugInvalid;
+    if (issue === "reserved") return this.labels.publishSlugReserved;
+    return null;
+  }
+
+  private _getPostSlugValidationMessage(index: number): string | null {
+    const sync = this._getPostSlugSyncValidationMessage(index);
+    if (sync) return sync;
+    const taken =
+      index === 0 ? this._slugTaken : this._threadItems[index]?.slugTaken;
+    if (this._hasPostManualSlug(index) && taken) {
+      return this.labels.publishSlugTaken;
+    }
+    return null;
+  }
+
+  private _getPostPublishedAtInput(index: number): string {
+    if (index === 0) return this._publishedAtInput;
+    return this._threadItems[index]?.publishedAtInput ?? "";
+  }
+
+  private _setPostPublishedAtInput(index: number, value: string) {
+    if (index === 0) {
+      this._publishedAtInput = value;
+      return;
+    }
+    this._threadItems = this._threadItems.map((item, i) =>
+      i === index ? { ...item, publishedAtInput: value } : item,
+    );
+  }
+
+  private _setPostPublishedAtTimeMinutes(index: number, value: number | null) {
+    if (index === 0) {
+      this._publishedAtTimeMinutes = value;
+      return;
+    }
+    this._threadItems = this._threadItems.map((item, i) =>
+      i === index ? { ...item, publishedAtTimeMinutes: value } : item,
+    );
+  }
+
+  private _hasPostPublishedAtValue(index: number): boolean {
+    return this._getPostPublishedAtInput(index).trim().length > 0;
+  }
+
+  /** Same rules as the root's, applied to any post in the thread. */
+  private _getPostPublishedAtValidationMessage(index: number): string | null {
+    const input = this._getPostPublishedAtInput(index);
+    if (!input.trim()) return null;
+    if (parseLocalDateInputValue(input) === null) {
+      return this.labels.publishDateInvalid;
+    }
+    if (input > this._getPublishedAtMaxInput()) {
+      return this.labels.publishDateFutureError;
+    }
+    return null;
+  }
+
+  private _getPostPublishedAtRowValue(index: number): string {
+    const parsed = parseLocalDateInputValue(
+      this._getPostPublishedAtInput(index),
+    );
+    if (parsed !== null) {
+      return new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(new Date(parsed.year, parsed.monthIndex, parsed.day));
+    }
+    // A reply with no date of its own inherits the root's — say so rather than
+    // implying it publishes "now" independently.
+    if (index > 0 && this._hasPublishedAtValue()) {
+      return this._getPublishedAtRowValue();
+    }
+    return this.labels.publishDateSummaryNow;
+  }
+
+  /**
+   * Date (and, on the root, permalink) describe one post, so they live on that
+   * post rather than in the publish panel, which speaks for the whole
+   * submission. The control stays quiet until the post is hovered, focused, or
+   * carries a non-default value.
+   */
+  private _renderPostMetaControl(index: number) {
+    if (this._openingEdit) return nothing;
+
+    const isRoot = index === 0;
+    const open = this._postMetaIndex === index;
+    const custom =
+      this._hasPostPublishedAtValue(index) || this._hasPostManualSlug(index);
+
     return html`
-      ${this._replyToId ? this._renderQuietReplySection() : nothing}
-      ${this._visibilityLocked
-        ? nothing
-        : html`
-            <section class="compose-publish-section">
-              <div class="compose-publish-section-header">
-                <div class="compose-publish-section-copy">
-                  <p class="compose-publish-section-label">
-                    ${this.labels.publishVisibilityLabel}
-                  </p>
-                </div>
+      <div
+        class=${classMap({
+          "compose-post-meta": true,
+          "compose-post-meta-set": custom,
+          "compose-post-meta-open": open,
+        })}
+      >
+        ${open
+          ? html`<div
+              class="compose-dropdown-backdrop"
+              @click=${() => this._closePostMeta()}
+            ></div>`
+          : nothing}
+        <button
+          type="button"
+          class="compose-post-meta-pill"
+          aria-haspopup="dialog"
+          aria-expanded=${open ? "true" : "false"}
+          data-compose-post-meta-pill
+          data-post-index=${index}
+          @click=${() => {
+            if (open) return this._closePostMeta();
+            this._showPublishPanel = false;
+            this._showCollection = false;
+            this._publishDrill = null;
+            this._postMetaIndex = index;
+            if (isRoot) this._scheduleSuggestedSlugRefresh(true);
+          }}
+        >
+          ${renderComposePublishActionIcon(
+            COMPOSE_PUBLISH_ACTION_ICONS.calendar,
+            "compose-post-meta-icon",
+          )}
+          <span class="compose-post-meta-value"
+            >${this._getPostPublishedAtRowValue(index)}</span
+          >
+          <span class="compose-post-meta-sep" aria-hidden="true">·</span>
+          ${renderComposePublishActionIcon(
+            COMPOSE_PUBLISH_ACTION_ICONS.link,
+            "compose-post-meta-icon",
+          )}
+          <span class="compose-post-meta-value compose-post-meta-value-slug"
+            >${this._getPostSlugRowValue(index)}</span
+          >
+        </button>
+        ${open
+          ? html`<div
+              class="compose-post-meta-panel"
+              role="dialog"
+              aria-label=${this.labels.publishSettings}
+              data-compose-post-meta-panel
+            >
+              <div class="compose-sheet">
+                ${this._renderPublishDrillRow(
+                  "date",
+                  this.labels.publishDateLabel,
+                  this._getPostPublishedAtRowValue(index),
+                  this._renderPublishDateSection(index),
+                )}
+                ${this._renderPublishDrillRow(
+                  "slug",
+                  this.labels.publishSlugLabel,
+                  this._getPostSlugRowValue(index),
+                  this._renderPublishSlugSection(index),
+                )}
               </div>
-              <div class="compose-publish-chips" role="radiogroup">
-                ${this._renderPublishVisibilityChip(
+              <div class="compose-publish-panel-footer">
+                <button
+                  type="button"
+                  class="compose-publish-done"
+                  @click=${() => this._closePostMeta()}
+                >
+                  ${this.labels.done}
+                </button>
+              </div>
+            </div>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _closePostMeta() {
+    this._postMetaIndex = null;
+    this._publishDrill = null;
+  }
+
+  /**
+   * A vertical list, not a toolbar: grouped by a muted label, one row per
+   * setting, value or control on the right. Rows that need an editor drill in
+   * so the collapsed panel stays short.
+   */
+  private _renderPublishPanelSections() {
+    const divider = html`<div
+      class="compose-sheet-divider"
+      aria-hidden="true"
+    ></div>`;
+
+    return html`
+      <div class="compose-sheet">
+        ${this._visibilityLocked
+          ? nothing
+          : html`
+              <p class="compose-sheet-label">
+                ${this.labels.publishVisibilityLabel}
+              </p>
+              <div
+                role="radiogroup"
+                aria-label=${this.labels.publishVisibilityLabel}
+              >
+                ${this._renderVisibilityRow(
                   "public",
                   this.labels.publishVisibilityPublic,
+                  this.labels.publishVisibilityPublicHint,
                 )}
-                ${this._renderPublishVisibilityChip(
+                ${this._renderVisibilityRow(
                   "latest_hidden",
                   this.labels.publishVisibilityHiddenFromLatest,
+                  this.labels.publishVisibilityHiddenFromLatestHint,
                 )}
-                ${this._renderPublishVisibilityChip(
+                ${this._renderVisibilityRow(
                   "private",
                   this.labels.publishVisibilityPrivate,
+                  this.labels.publishVisibilityPrivateHint,
                 )}
               </div>
-              <p class="compose-publish-chip-hint">
-                ${this._getVisibilityHint()}
-              </p>
-            </section>
-          `}
-      ${this._visibilityLocked && !this._replyToId
-        ? nothing
-        : html`<div class="compose-publish-divider" aria-hidden="true"></div>`}
-      ${this._renderPublishDateSection()}
-      <div class="compose-publish-divider" aria-hidden="true"></div>
-      ${this._renderPublishSlugSection()}
+            `}
+        ${this._replyToId
+          ? html`${this._visibilityLocked ? nothing : divider}
+            ${this._renderQuietReplySection()}`
+          : nothing}
+      </div>
     `;
   }
 
@@ -4902,15 +5194,6 @@ export class JantComposeDialog extends LitElement {
         data-compose-publish-panel-desktop
       >
         ${this._renderPublishPanelSections()}
-        <div class="compose-publish-panel-footer">
-          <button
-            type="button"
-            class="compose-publish-done"
-            @click=${() => this._closePublishPanel(true)}
-          >
-            ${this.labels.done}
-          </button>
-        </div>
       </div>
     `;
   }
@@ -4961,75 +5244,6 @@ export class JantComposeDialog extends LitElement {
         <div class="compose-publish-mobile-body">
           ${this._renderPublishPanelSections()}
         </div>
-      </div>
-    `;
-  }
-
-  private _renderPublishSummary(summary: ComposePublishSummaryChip) {
-    const isPublishedAt = summary.kind === "publishedAt";
-
-    return html`
-      <button
-        type="button"
-        class="compose-publish-summary"
-        data-compose-publish-summary=${summary.kind}
-        data-compose-publish-date-summary=${isPublishedAt ? "" : nothing}
-        data-compose-publish-slug-summary=${isPublishedAt ? nothing : ""}
-        data-publish-summary-value=${summary.value}
-        data-publish-date=${isPublishedAt ? summary.value : nothing}
-        data-publish-slug=${isPublishedAt ? nothing : summary.value}
-        aria-label=${summary.actionLabel}
-        title=${summary.actionLabel}
-        ?disabled=${this._loading}
-        @click=${() =>
-          isPublishedAt
-            ? this._revealPublishedAtField()
-            : this._revealSlugField()}
-      >
-        <span class="compose-publish-summary-icon" aria-hidden="true">
-          ${isPublishedAt
-            ? html`<svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.35"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="2.75" y="3.45" width="10.5" height="9.8" rx="2.2" />
-                <path d="M5.35 2.55v2.1" />
-                <path d="M10.65 2.55v2.1" />
-                <path d="M2.75 6.2h10.5" />
-              </svg>`
-            : html`<svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.35"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M9.75 4.15h1.35a2.75 2.75 0 0 1 0 5.5H9.75" />
-                <path d="M6.25 9.65H4.9a2.75 2.75 0 1 1 0-5.5h1.35" />
-                <path d="M5.65 8h4.7" />
-              </svg>`}
-        </span>
-        <span class="compose-publish-summary-text">${summary.text}</span>
-      </button>
-    `;
-  }
-
-  private _renderPublishSummaries() {
-    const summaries = this._getPublishSummaryChips();
-    if (summaries.length === 0) return nothing;
-
-    return html`
-      <div class="compose-publish-summaries">
-        ${summaries.map((summary) => this._renderPublishSummary(summary))}
       </div>
     `;
   }
@@ -5087,7 +5301,6 @@ export class JantComposeDialog extends LitElement {
 
     return html`
       <div class="compose-publish-shell">
-        ${this._renderPublishSummaries()}
         <div
           class=${classMap({
             "compose-publish-group": true,
@@ -5118,79 +5331,40 @@ export class JantComposeDialog extends LitElement {
             >
               ${this._loading ? spinner : nothing} ${this._getSubmitLabel()}
             </button>
-            <button
-              type="button"
-              class=${classMap({
-                "compose-publish-toggle": true,
-                "compose-publish-toggle-loading": this._loading,
-              })}
-              ?disabled=${this._loading}
-              aria-haspopup="dialog"
-              aria-expanded=${this._showPublishPanel ? "true" : "false"}
-              aria-label=${this.labels.publishSettings}
-              title=${this.labels.publishSettings}
-              @click=${() => this._togglePublishPanel()}
-            >
-              ${renderComposePublishActionIcon(
-                COMPOSE_PUBLISH_ACTION_ICONS.chevron,
-                "compose-publish-toggle-chevron",
-              )}
-            </button>
           </div>
+          <!-- Options sits past Publish as its own control rather than a
+               chevron welded to it: a split button reads as one button, which
+               is why nobody found the settings. -->
+          <button
+            type="button"
+            class=${classMap({
+              "compose-options-trigger": true,
+              "compose-options-trigger-open": this._showPublishPanel,
+            })}
+            ?disabled=${this._loading}
+            aria-haspopup="dialog"
+            aria-expanded=${this._showPublishPanel ? "true" : "false"}
+            aria-label=${this.labels.publishSettings}
+            title=${this.labels.publishSettings}
+            @click=${() => this._togglePublishPanel()}
+          >
+            <svg
+              class="compose-options-trigger-icon"
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              ${unsafeSVG(COMPOSE_PUBLISH_ACTION_ICONS.options)}
+            </svg>
+          </button>
           ${this._renderDesktopPublishPanel()}
         </div>
       </div>
-    `;
-  }
-
-  private _renderQuickActionsRow() {
-    const hideFromLatest = this._renderHideFromLatestQuickToggle();
-    const quietReply = this._renderQuietReplyQuickToggle();
-    if (hideFromLatest === nothing && quietReply === nothing) return nothing;
-    return html`
-      <div class="compose-quick-actions-row">
-        ${hideFromLatest} ${quietReply}
-      </div>
-    `;
-  }
-
-  private _renderQuietReplyQuickToggle() {
-    if (!this._replyToId) return nothing;
-    return html`
-      <label class="compose-publish-quick-toggle">
-        <input
-          type="checkbox"
-          class="input compose-publish-quick-toggle-input"
-          .checked=${this._quietReply}
-          ?disabled=${this._loading}
-          @change=${(e: Event) => {
-            this._quietReply = (e.target as HTMLInputElement).checked;
-          }}
-        />
-        <span>${this.labels.quietReplyLabel}</span>
-      </label>
-    `;
-  }
-
-  private _renderHideFromLatestQuickToggle() {
-    if (this._visibilityLocked) return nothing;
-    if (this._visibility === "private") return nothing;
-
-    const checked = this._visibility === "latest_hidden";
-    return html`
-      <label class="compose-publish-quick-toggle">
-        <input
-          type="checkbox"
-          class="input compose-publish-quick-toggle-input"
-          .checked=${checked}
-          ?disabled=${this._loading}
-          @change=${(e: Event) => {
-            const target = e.target as HTMLInputElement;
-            this._setVisibility(target.checked ? "latest_hidden" : "public");
-          }}
-        />
-        <span>${this.labels.publishHideFromLatest}</span>
-      </label>
     `;
   }
 
@@ -5413,6 +5587,7 @@ export class JantComposeDialog extends LitElement {
     item: ThreadItem,
     index: number,
     showRemove: boolean,
+    total: number,
   ) {
     return html`
       <div
@@ -5452,6 +5627,8 @@ export class JantComposeDialog extends LitElement {
           .uploadMaxFileSize=${this.uploadMaxFileSize}
           .threadItem=${true}
           .removable=${showRemove}
+          .positionLabel=${`${index + 1}/${total}`}
+          .headerExtra=${this._renderPostMetaControl(index)}
           .slashCommandDiscovered=${this.slashCommandDiscovered}
           data-thread-id=${item.id}
         ></jant-compose-editor>
@@ -5517,7 +5694,9 @@ export class JantComposeDialog extends LitElement {
         @jant:compose-content-changed=${() => this._scheduleDraftSave()}
       >
         ${isReply ? this._renderReplyContext() : nothing}
-        ${items.map((item, i) => this._renderThreadPost(item, i, showRemove))}
+        ${items.map((item, i) =>
+          this._renderThreadPost(item, i, showRemove, items.length),
+        )}
         ${this._renderAddToThreadRow()}
       </div>
     `;
@@ -5562,8 +5741,22 @@ export class JantComposeDialog extends LitElement {
       .labels=${this.labels}
       .uploadMaxFileSize=${this.uploadMaxFileSize}
       .inlineFormat=${isReply}
+      .headerExtra=${this._renderPostMetaControl(0)}
       .slashCommandDiscovered=${this.slashCommandDiscovered}
     ></jant-compose-editor>`;
+    // Single-post mode routes its own format changes; the reply and thread
+    // branches below wrap the editor with their own handlers. This wrapper is
+    // `display: contents` — `.compose-editor-row` would hand the editor the
+    // thread rail's geometry, and a single post has no rail to indent past.
+    const singleEditor = html`<div
+      class="compose-single-editor"
+      @jant:format-change=${(e: CustomEvent<{ format: ComposeFormat }>) => {
+        e.stopPropagation();
+        this._switchFormat(e.detail.format);
+      }}
+    >
+      ${editor}
+    </div>`;
 
     return html`
       <div
@@ -5601,24 +5794,23 @@ export class JantComposeDialog extends LitElement {
                     </div>
                   </div>
                 `
-              : editor}
+              : singleEditor}
         ${isOpeningEdit || isThreadMode || this._editPostId
           ? nothing
           : this._renderAddThreadTrigger()}
         ${isOpeningEdit
           ? nothing
           : html`<div
-                class=${classMap({
-                  "compose-action-row": true,
-                  "compose-action-row-without-collection": !!this._replyToId,
-                  "compose-action-row-overlay-open":
-                    this._showPublishPanel || this._showCollection,
-                })}
-              >
-                ${this._replyToId ? nothing : this._renderCollectionSelector()}
-                ${this._renderPublishButton()}
-              </div>
-              ${this._renderQuickActionsRow()}`}
+              class=${classMap({
+                "compose-action-row": true,
+                "compose-action-row-without-collection": !!this._replyToId,
+                "compose-action-row-overlay-open":
+                  this._showPublishPanel || this._showCollection,
+              })}
+            >
+              ${this._replyToId ? nothing : this._renderCollectionSelector()}
+              ${this._renderPublishButton()}
+            </div>`}
         ${this._renderMobilePublishPanel()} ${this._renderAttachedPanel()}
         ${this._renderAltPanel()} ${this._renderDraftsPanel()}
         ${this._renderConfirmPanel()}

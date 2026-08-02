@@ -211,7 +211,9 @@ composeRoutes.post("/thread", async (c) => {
     postSchemas.map((data, index) => ({
       data: {
         format: data.format,
-        slug: index === 0 ? data.slug || undefined : undefined,
+        // Every post may carry its own permalink; blank means the service
+        // generates one (title-derived for the root, random id for replies).
+        slug: data.slug || undefined,
         title:
           data.format === "quote"
             ? data.sourceName || undefined
@@ -229,7 +231,9 @@ composeRoutes.post("/thread", async (c) => {
         collectionIds: index === 0 ? data.collectionIds : undefined,
         replyToId: index === 0 ? data.replyToId : undefined,
         quietReply: data.quietReply,
-        publishedAt: index === 0 ? data.publishedAt : undefined,
+        // Replies may carry their own date; when they don't, the service
+        // inherits the root's rather than stamping "now".
+        publishedAt: data.publishedAt,
       },
       attachments: data.attachments,
     })),

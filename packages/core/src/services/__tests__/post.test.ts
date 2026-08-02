@@ -1859,6 +1859,92 @@ describe("PostService", () => {
     });
   });
 
+  describe("createThreadWithAttachments", () => {
+    // No attachments in these cases, so only the up-front id check is reached.
+    const deps = {
+      media: { validateIds: async () => [] },
+    } as unknown as Parameters<
+      typeof postService.createThreadWithAttachments
+    >[1];
+
+    it("dates every reply from the root when the root is backdated", async () => {
+      const backdated = 1710000000; // 2024-03-09
+
+      const created = await postService.createThreadWithAttachments(
+        [
+          {
+            data: {
+              format: "note",
+              bodyMarkdown: "root",
+              publishedAt: backdated,
+            },
+            attachments: [],
+          },
+          { data: { format: "note", bodyMarkdown: "second" }, attachments: [] },
+          { data: { format: "note", bodyMarkdown: "third" }, attachments: [] },
+        ],
+        deps,
+        undefined,
+      );
+
+      // Without inheritance the replies would land on today and the thread
+      // would read as if it spanned two years.
+      expect(created.map((p) => p.publishedAt)).toEqual([
+        backdated,
+        backdated,
+        backdated,
+      ]);
+      // Order still comes from createdAt/id, so the chain is intact.
+      expect(created[1].replyToId).toBe(created[0].id);
+      expect(created[2].replyToId).toBe(created[1].id);
+    });
+
+    it("keeps a reply's own date when one is given", async () => {
+      const rootAt = 1710000000;
+      const replyAt = 1720000000;
+
+      const created = await postService.createThreadWithAttachments(
+        [
+          {
+            data: { format: "note", bodyMarkdown: "root", publishedAt: rootAt },
+            attachments: [],
+          },
+          {
+            data: {
+              format: "note",
+              bodyMarkdown: "second",
+              publishedAt: replyAt,
+            },
+            attachments: [],
+          },
+        ],
+        deps,
+        undefined,
+      );
+
+      expect(created.map((p) => p.publishedAt)).toEqual([rootAt, replyAt]);
+    });
+
+    it("leaves draft threads undated", async () => {
+      const created = await postService.createThreadWithAttachments(
+        [
+          {
+            data: { format: "note", bodyMarkdown: "root", status: "draft" },
+            attachments: [],
+          },
+          {
+            data: { format: "note", bodyMarkdown: "second", status: "draft" },
+            attachments: [],
+          },
+        ],
+        deps,
+        undefined,
+      );
+
+      expect(created.map((p) => p.publishedAt)).toEqual([null, null]);
+    });
+  });
+
   describe("threads", () => {
     it("sets threadId on reply to a root post", async () => {
       const root = await postService.create({
