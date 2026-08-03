@@ -228,9 +228,6 @@ const COMPOSE_PUBLISH_ACTION_ICONS = {
   check: `
     <path d="M4.35 8.2 6.9 10.7 11.65 5.95" />
   `,
-  chevron: `
-    <path d="M5.1 6.45 8 9.3l2.9-2.85" />
-  `,
   caretRight: `
     <path d="M6.45 5.1 9.3 8l-2.85 2.9" />
   `,
@@ -607,7 +604,6 @@ export class JantComposeDialog extends LitElement {
     _visibility: { state: true },
     _showPublishPanel: { state: true },
     _postMetaIndex: { state: true },
-    _publishDrill: { state: true },
     _publishPanelFullscreen: { state: true },
     _suggestedSlug: { state: true },
     _suggestedSlugLoading: { state: true },
@@ -658,12 +654,6 @@ export class JantComposeDialog extends LitElement {
   declare _showPublishPanel: boolean;
   /** Index of the post whose date/permalink panel is open; null when closed. */
   declare _postMetaIndex: number | null;
-  /**
-   * Which options row is expanded. Date and permalink are drilled into rather
-   * than shown open, so the panel stays a short list instead of a wall of
-   * inputs for settings most posts never touch.
-   */
-  declare _publishDrill: "date" | "slug" | null;
   declare _publishPanelFullscreen: boolean;
   declare _suggestedSlug: string;
   declare _suggestedSlugLoading: boolean;
@@ -764,7 +754,6 @@ export class JantComposeDialog extends LitElement {
     this._showPublishPanel = false;
     this._publishPanelFullscreen = false;
     this._postMetaIndex = null;
-    this._publishDrill = null;
     this._suggestedSlug = "";
     this._suggestedSlugLoading = false;
     this._slugCheckLoading = false;
@@ -2503,8 +2492,8 @@ export class JantComposeDialog extends LitElement {
     }
 
     if (this._postMetaIndex !== null) {
+      // `_closePostMeta` hands focus back to the post itself.
       this._closePostMeta();
-      this._restorePageEditorFocus();
       return true;
     }
 
@@ -4512,12 +4501,10 @@ export class JantComposeDialog extends LitElement {
   }
 
   private _revealSlugField(index = 0) {
-    this._publishDrill = "slug";
     this._openPublishPanelAndFocus(".compose-publish-slug-input", index);
   }
 
   private _revealPublishedAtField(index = 0) {
-    this._publishDrill = "date";
     this._openPublishPanelAndFocus(".compose-publish-date-input", index);
   }
 
@@ -4700,64 +4687,78 @@ export class JantComposeDialog extends LitElement {
     `;
   }
 
-  /** A row that expands its editor in place instead of opening another layer. */
-  private _renderPublishDrillRow(
-    kind: "date" | "slug",
-    label: string,
-    value: string,
-    body: unknown,
-  ) {
-    const open = this._publishDrill === kind;
-
+  /**
+   * The label above a field, with its reset on the right. The reset only shows
+   * once there is something to reset, so the default state is a bare label.
+   */
+  private _renderMetaFieldHead(label: string, reset: unknown) {
     return html`
-      <button
-        type="button"
-        class=${classMap({
-          "compose-sheet-row": true,
-          "compose-sheet-row-open": open,
-        })}
-        aria-expanded=${open ? "true" : "false"}
-        data-compose-drill=${kind}
-        @click=${() => {
-          this._publishDrill = open ? null : kind;
-          if (open) return;
-          if (kind === "slug") this._scheduleSuggestedSlugRefresh(true);
-          // Opening a row is a request to edit it, so land the caret there.
-          const field =
-            kind === "date"
-              ? ".compose-publish-date-input"
-              : ".compose-publish-slug-input";
-          this.updateComplete.then(() => {
-            this.querySelector<HTMLElement>(field)?.focus();
-          });
-        }}
-      >
-        <span class="compose-sheet-main">
-          <span class="compose-sheet-title">${label}</span>
-        </span>
-        <span class="compose-sheet-value">${value}</span>
-        ${renderComposePublishActionIcon(
-          open
-            ? COMPOSE_PUBLISH_ACTION_ICONS.chevron
-            : COMPOSE_PUBLISH_ACTION_ICONS.caretRight,
-          "compose-sheet-caret",
-        )}
-      </button>
-      ${open ? html`<div class="compose-sheet-edit">${body}</div>` : nothing}
+      <div class="compose-meta-field-head">
+        <span class="compose-meta-label">${label}</span>
+        ${reset}
+      </div>
     `;
+  }
+
+  /**
+   * Chrome opens the calendar only from its own indicator glyph — a ~13px
+   * target that reads as a browser default next to everything else in this
+   * panel, and that other engines place differently or not at all. The
+   * indicator is hidden in CSS and this button drives the same picker through
+   * `showPicker()`, so there is one target, it is ours, and it is the height of
+   * the field. Typing a date into the field still works either way, which is
+   * why the button is the only thing that opens the picker: taking over the
+   * whole field would put the calendar in front of anyone reaching for the
+   * keyboard.
+   */
+  private _openDatePicker(index: number) {
+    const fields = this.querySelectorAll<HTMLInputElement>(
+      ".compose-publish-date-input",
+    );
+    // One panel is open at a time, so the panel's own field is the only one in
+    // the DOM; `index` is kept for the thread case if that ever changes.
+    const input = fields[index] ?? fields[0];
+    if (!input) return;
+
+    input.focus();
+    try {
+      input.showPicker();
+    } catch {
+      // Older engines, or a browser that declined: the field is still typable.
+    }
   }
 
   private _renderPublishDateSection(index: number) {
     const publishedAtError = this._getPostPublishedAtValidationMessage(index);
+    const hasValue = this._hasPostPublishedAtValue(index);
 
     return html`
-      <div class="compose-publish-date-field">
+      <div class="compose-meta-field compose-publish-date-field">
+        ${this._renderMetaFieldHead(
+          this.labels.publishDateLabel,
+          hasValue
+            ? html`<button
+                type="button"
+                class="compose-publish-section-action"
+                @click=${() => this._resetPublishedAt(index)}
+              >
+                ${this.labels.publishDateReset}
+              </button>`
+            : nothing,
+        )}
         <div class="compose-publish-date-input-wrap">
           <input
             type="date"
-            class="compose-input compose-publish-date-input"
+            class=${classMap({
+              "compose-input": true,
+              "compose-publish-date-input": true,
+              // The browser draws `yyyy-mm-dd` in the value's own colour, so an
+              // empty field reads as a date that has been set. Dim it instead.
+              "compose-publish-date-input-empty": !hasValue,
+            })}
             .value=${this._getPostPublishedAtInput(index)}
             max=${this._getPublishedAtMaxInput()}
+            aria-label=${this.labels.publishDateLabel}
             aria-invalid=${publishedAtError ? "true" : "false"}
             @input=${(e: Event) =>
               this._setPostPublishedAtInput(
@@ -4765,6 +4766,18 @@ export class JantComposeDialog extends LitElement {
                 (e.target as HTMLInputElement).value,
               )}
           />
+          <button
+            type="button"
+            class="compose-publish-date-picker"
+            aria-label=${this.labels.publishDateSummaryAction}
+            data-compose-date-picker
+            @click=${() => this._openDatePicker(index)}
+          >
+            ${renderComposePublishActionIcon(
+              COMPOSE_PUBLISH_ACTION_ICONS.calendar,
+              "compose-publish-date-picker-icon",
+            )}
+          </button>
         </div>
         ${publishedAtError
           ? html`<p
@@ -4772,20 +4785,11 @@ export class JantComposeDialog extends LitElement {
             >
               ${publishedAtError}
             </p>`
-          : html`<p class="compose-sheet-hint">
-              ${this.labels.publishDateHint}
-            </p>`}
-        ${this._hasPostPublishedAtValue(index)
-          ? html`
-              <button
-                type="button"
-                class="compose-publish-section-action"
-                @click=${() => this._resetPublishedAt(index)}
-              >
-                ${this.labels.publishDateReset}
-              </button>
-            `
-          : nothing}
+          : hasValue
+            ? nothing
+            : html`<p class="compose-sheet-hint">
+                ${this.labels.publishDateHint}
+              </p>`}
       </div>
     `;
   }
@@ -4803,14 +4807,27 @@ export class JantComposeDialog extends LitElement {
       Boolean(this._suggestedSlug);
 
     return html`
-      <div class="compose-publish-slug-field">
+      <div class="compose-meta-field compose-publish-slug-field">
+        ${this._renderMetaFieldHead(
+          this.labels.publishSlugLabel,
+          this._hasManualSlug()
+            ? html`<button
+                type="button"
+                class="compose-publish-section-action"
+                @click=${() => this._resetCustomSlug()}
+              >
+                ${this.labels.publishSlugReset}
+              </button>`
+            : nothing,
+        )}
         <div class="compose-publish-slug-input-wrap">
-          <span class="compose-publish-slug-prefix">/</span>
+          <span class="compose-publish-slug-prefix" aria-hidden="true">/</span>
           <input
             type="text"
             class="compose-input compose-publish-slug-input"
             .value=${this._getPostSlug(index)}
             placeholder=${this.labels.publishSlugPlaceholder}
+            aria-label=${this.labels.publishSlugLabel}
             aria-invalid=${slugError ? "true" : "false"}
             spellcheck="false"
             autocapitalize="off"
@@ -4825,20 +4842,16 @@ export class JantComposeDialog extends LitElement {
                 class="compose-slug-suggestion"
                 @click=${() => this._useSuggestedSlug()}
               >
-                <span class="compose-slug-suggestion-copy">
-                  <span class="compose-slug-suggestion-label"
-                    >${this.labels.publishSlugSuggested}</span
-                  >
-                  <span class="compose-slug-suggestion-chip">
-                    <span class="compose-slug-suggestion-value"
-                      >/${this._suggestedSlug}</span
-                    >
-                  </span>
-                </span>
+                <span class="compose-slug-suggestion-label"
+                  >${this.labels.publishSlugSuggested}</span
+                >
+                <span class="compose-slug-suggestion-value"
+                  >/${this._suggestedSlug}</span
+                >
                 <span class="compose-slug-suggestion-icon" aria-hidden="true">
                   <svg
-                    width="14"
-                    height="14"
+                    width="13"
+                    height="13"
                     viewBox="0 0 14 14"
                     fill="none"
                     stroke="currentColor"
@@ -4863,36 +4876,23 @@ export class JantComposeDialog extends LitElement {
             >
               ${slugStatus}
             </p>`
-          : nothing}
-        ${slugPreview
-          ? html`<p
-              class="compose-publish-slug-preview"
-              data-compose-slug-preview
-              title=${slugPreview.full}
-            >
-              <span class="compose-publish-slug-preview-origin"
-                >${slugPreview.origin}</span
-              ><span class="compose-publish-slug-preview-path"
-                >${slugPreview.path}</span
+          : slugPreview
+            ? html`<p
+                class="compose-publish-slug-preview"
+                data-compose-slug-preview
+                title=${slugPreview.full}
               >
-            </p>`
-          : nothing}
-        ${slugStatus
-          ? nothing
-          : html`<p class="compose-sheet-hint">
-              ${this.labels.publishSlugHint}
-            </p>`}
-        ${this._hasManualSlug()
-          ? html`
-              <button
-                type="button"
-                class="compose-publish-section-action"
-                @click=${() => this._resetCustomSlug()}
-              >
-                ${this.labels.publishSlugReset}
-              </button>
-            `
-          : nothing}
+                <span class="compose-publish-slug-preview-origin"
+                  >${slugPreview.origin}</span
+                ><span class="compose-publish-slug-preview-path"
+                  >${slugPreview.path}</span
+                >
+              </p>`
+            : this._hasPostManualSlug(index)
+              ? nothing
+              : html`<p class="compose-sheet-hint">
+                  ${this.labels.publishSlugHint}
+                </p>`}
       </div>
     `;
   }
@@ -5095,9 +5095,16 @@ export class JantComposeDialog extends LitElement {
             if (open) return this._closePostMeta();
             this._showPublishPanel = false;
             this._showCollection = false;
-            this._publishDrill = null;
             this._postMetaIndex = index;
             if (isRoot) this._scheduleSuggestedSlugRefresh(true);
+            // Focus the panel, not its first field: a focused `type="date"`
+            // opens with its year segment highlighted in the OS accent colour,
+            // which Chrome will not let us restyle. Tab reaches the fields.
+            this.updateComplete.then(() => {
+              this.querySelector<HTMLElement>(
+                "[data-compose-post-meta-panel]",
+              )?.focus();
+            });
           }}
         >
           ${renderComposePublishActionIcon(
@@ -5119,26 +5126,16 @@ export class JantComposeDialog extends LitElement {
               class="compose-post-meta-panel"
               role="dialog"
               aria-label=${this.labels.publishSettings}
+              tabindex="-1"
               data-compose-post-meta-panel
             >
-              <div class="compose-sheet">
-                ${this._renderPublishDrillRow(
-                  "date",
-                  this.labels.publishDateLabel,
-                  this._getPostPublishedAtRowValue(index),
-                  this._renderPublishDateSection(index),
-                )}
-                ${this._renderPublishDrillRow(
-                  "slug",
-                  this.labels.publishSlugLabel,
-                  this._getPostSlugRowValue(index),
-                  this._renderPublishSlugSection(index),
-                )}
-              </div>
-              <div class="compose-publish-panel-footer">
+              ${this._renderPublishDateSection(index)}
+              ${this._renderPublishSlugSection(index)}
+              <div class="compose-post-meta-footer">
                 <button
                   type="button"
                   class="compose-publish-done"
+                  data-compose-post-meta-done
                   @click=${() => this._closePostMeta()}
                 >
                   ${this.labels.done}
@@ -5150,15 +5147,37 @@ export class JantComposeDialog extends LitElement {
     `;
   }
 
+  /**
+   * Hands focus back to the post the panel belongs to. The panel takes focus
+   * when it opens, so without this the closing panel takes the focus with it as
+   * it leaves the DOM: focus lands on `<body>`, the editor loses
+   * `:focus-within`, and on a wide screen the pill — quiet until hovered or
+   * focused — fades out from under the pointer. It also leaves the compose
+   * element entirely, which matters more: the `keydown` listener is bound to
+   * this component, so Escape would stop closing compose afterwards.
+   */
   private _closePostMeta() {
+    const index = this._postMetaIndex;
+    if (index === null) return;
+
+    const heldFocus =
+      this.querySelector("[data-compose-post-meta-panel]")?.contains(
+        document.activeElement,
+      ) ?? false;
     this._postMetaIndex = null;
-    this._publishDrill = null;
+    if (!heldFocus) return;
+
+    this.updateComplete.then(() => {
+      const editors = this.querySelectorAll<JantComposeEditor>(
+        "jant-compose-editor",
+      );
+      (editors[index] ?? editors[0])?.focusInput();
+    });
   }
 
   /**
    * A vertical list, not a toolbar: grouped by a muted label, one row per
-   * setting, value or control on the right. Rows that need an editor drill in
-   * so the collapsed panel stays short.
+   * setting, value or control on the right.
    */
   private _renderPublishPanelSections() {
     const divider = html`<div

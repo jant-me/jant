@@ -318,35 +318,33 @@ const collections: ComposeCollection[] = [
   { id: "col-2", title: "Movies", slug: "movies" },
 ];
 
-/** Date and permalink hang off the post itself, not the publish panel. */
-async function openPostMeta(el: JantComposeDialog) {
-  const pill = el.querySelector<HTMLButtonElement>(
-    "[data-compose-post-meta-pill]",
-  );
-  if (pill && pill.getAttribute("aria-expanded") !== "true") pill.click();
-  await flushUpdates(el);
-}
-
 /**
- * Open the post's date/permalink panel and drill into one row. Idempotent, so
- * it is safe to call even when both are already expanded.
+ * Date and permalink hang off the post itself, not the publish panel. Both
+ * fields are open as soon as the panel is, so there is nothing further to
+ * expand. Idempotent.
  */
-async function openDrill(el: JantComposeDialog, kind: "date" | "slug") {
-  await openPostMeta(el);
-  const row = el.querySelector<HTMLButtonElement>(
-    `[data-compose-drill="${kind}"]`,
-  );
-  if (row && row.getAttribute("aria-expanded") !== "true") row.click();
-  // The slug suggestion is fetched when the row opens; let it settle.
+async function openPostMeta(el: JantComposeDialog, index = 0) {
+  const pill = el.querySelectorAll<HTMLButtonElement>(
+    "[data-compose-post-meta-pill]",
+  )[index];
+  if (pill && pill.getAttribute("aria-expanded") !== "true") pill.click();
+  // The slug suggestion is fetched when the panel opens; let it settle.
   await flushUpdates(el);
   await flushUpdates(el);
 }
 
-/** The value shown on a collapsed options row (what the summary chips used to say). */
-function drillValue(el: JantComposeDialog, kind: "date" | "slug") {
-  return el
-    .querySelector(`[data-compose-drill="${kind}"] .compose-sheet-value`)
-    ?.textContent?.trim();
+/** The date or permalink as the post's own pill states it. */
+function pillValue(
+  el: JantComposeDialog,
+  kind: "date" | "slug",
+  index = 0,
+): string | undefined {
+  const pill = el.querySelectorAll("[data-compose-post-meta-pill]")[index];
+  const selector =
+    kind === "date"
+      ? ".compose-post-meta-value:not(.compose-post-meta-value-slug)"
+      : ".compose-post-meta-value-slug";
+  return pill?.querySelector(selector)?.textContent?.trim();
 }
 
 async function createElement(
@@ -654,7 +652,7 @@ describe("JantComposeDialog", () => {
     expect(el.querySelector(".compose-sheet")).not.toBeNull();
   });
 
-  it("keeps date and permalink on the post, collapsed until drilled into", async () => {
+  it("keeps date and permalink on the post, not in the publish panel", async () => {
     const el = await createElement();
 
     // They describe one post, so they hang off the post — not the publish
@@ -664,25 +662,113 @@ describe("JantComposeDialog", () => {
       "expected options trigger",
     ).click();
     await flushUpdates(el);
-    expect(el.querySelector('[data-compose-drill="date"]')).toBeNull();
-    expect(el.querySelector('[data-compose-drill="slug"]')).toBeNull();
+    expect(el.querySelector(".compose-publish-date-input")).toBeNull();
+    expect(el.querySelector(".compose-publish-slug-input")).toBeNull();
 
+    // The pill states both values while the panel is shut.
+    expect(pillValue(el, "date")).toBe("Now");
+    expect(pillValue(el, "slug")).toBe("Auto");
+
+    // Two settings is not a list to drill through: opening the pill opens both
+    // fields at once, with focus on the panel so Tab lands in them.
+    await openPostMeta(el);
+    expect(el.querySelector(".compose-publish-date-input")).not.toBeNull();
+    expect(el.querySelector(".compose-publish-slug-input")).not.toBeNull();
+    expect(el.querySelector("[data-compose-post-meta-panel]")).toBe(
+      document.activeElement,
+    );
+  });
+
+  it("opens the calendar from its own button, not the UA glyph", async () => {
+    const el = await createElement();
     await openPostMeta(el);
 
-    // Collapsed: rows show their value, no editors on screen.
-    expect(drillValue(el, "date")).toBe("Now");
-    expect(drillValue(el, "slug")).toBe("Auto");
-    expect(el.querySelector(".compose-publish-date-input")).toBeNull();
-    expect(el.querySelector(".compose-publish-slug-input")).toBeNull();
+    const input = requireElement(
+      el.querySelector<HTMLInputElement>(".compose-publish-date-input"),
+      "expected publish date input",
+    );
+    // Chrome only opens the picker from its ~13px indicator, which is hidden
+    // here — the button has to drive the same picker itself.
+    const showPicker = vi.fn();
+    (input as HTMLInputElement & { showPicker: () => void }).showPicker =
+      showPicker;
 
-    await openDrill(el, "date");
-    expect(el.querySelector(".compose-publish-date-input")).not.toBeNull();
-    expect(el.querySelector(".compose-publish-slug-input")).toBeNull();
+    requireElement(
+      el.querySelector<HTMLButtonElement>("[data-compose-date-picker]"),
+      "expected date picker button",
+    ).click();
+    await flushUpdates(el);
 
-    // Opening the other row closes this one — one editor at a time.
-    await openDrill(el, "slug");
-    expect(el.querySelector(".compose-publish-slug-input")).not.toBeNull();
+    expect(showPicker).toHaveBeenCalledTimes(1);
+    expect(input).toBe(document.activeElement);
+  });
+
+  it("keeps the date field usable when showPicker is unsupported", async () => {
+    const el = await createElement();
+    await openPostMeta(el);
+
+    const input = requireElement(
+      el.querySelector<HTMLInputElement>(".compose-publish-date-input"),
+      "expected publish date input",
+    );
+    // Engines without `showPicker` must still get a focused, typable field
+    // rather than an uncaught TypeError from the button.
+    expect(
+      (input as HTMLInputElement & { showPicker?: () => void }).showPicker,
+    ).toBeUndefined();
+
+    expect(() =>
+      requireElement(
+        el.querySelector<HTMLButtonElement>("[data-compose-date-picker]"),
+        "expected date picker button",
+      ).click(),
+    ).not.toThrow();
+    await flushUpdates(el);
+
+    expect(input).toBe(document.activeElement);
+  });
+
+  it("closes the date panel from its Done button", async () => {
+    const el = await createElement();
+    await openPostMeta(el);
+
+    // Escape and an outside click both close it, but neither announces itself,
+    // and touch has no Escape key at all.
+    requireElement(
+      el.querySelector<HTMLButtonElement>("[data-compose-post-meta-done]"),
+      "expected Done button",
+    ).click();
+    await flushUpdates(el);
+
+    expect(el.querySelector("[data-compose-post-meta-panel]")).toBeNull();
     expect(el.querySelector(".compose-publish-date-input")).toBeNull();
+  });
+
+  it("hands focus back to the post when the date panel closes", async () => {
+    const el = await createElement();
+    await openPostMeta(el);
+    expect(el.querySelector("[data-compose-post-meta-panel]")).toBe(
+      document.activeElement,
+    );
+
+    // The panel holds focus while it is open, so it would take focus out of the
+    // document with it on the way out. The pill is only visible on hover, focus
+    // or a non-default value — and on touch there is no hover — so losing focus
+    // to `<body>` hides the only way back in.
+    const editor = requireElement(
+      el.querySelector<JantComposeEditor>("jant-compose-editor"),
+      "expected editor",
+    );
+    const focusInput = vi.spyOn(editor, "focusInput");
+
+    requireElement(
+      el.querySelector<HTMLButtonElement>("[data-compose-post-meta-pill]"),
+      "expected post meta pill",
+    ).click();
+    await flushUpdates(el);
+
+    expect(el.querySelector("[data-compose-post-meta-panel]")).toBeNull();
+    expect(focusInput).toHaveBeenCalled();
   });
 
   it("explains every visibility option and checks the selected one", async () => {
@@ -1486,7 +1572,7 @@ describe("JantComposeDialog", () => {
       ).click();
       await el.updateComplete;
 
-      await openDrill(el, "date");
+      await openPostMeta(el);
       const publishedAtInput = requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-date-input"),
         "expected publish date input",
@@ -1527,7 +1613,7 @@ describe("JantComposeDialog", () => {
     }
   });
 
-  it("keeps the chosen publish date readable on the collapsed options row", async () => {
+  it("keeps the chosen publish date readable on the post's pill", async () => {
     const el = await createElement();
 
     const publishToggle = requireElement(
@@ -1537,7 +1623,7 @@ describe("JantComposeDialog", () => {
     publishToggle.click();
     await el.updateComplete;
 
-    await openDrill(el, "date");
+    await openPostMeta(el);
     const publishedAtInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-date-input"),
       "expected publish date input",
@@ -1546,24 +1632,25 @@ describe("JantComposeDialog", () => {
     publishedAtInput.dispatchEvent(new Event("input", { bubbles: true }));
     await el.updateComplete;
 
-    // Collapse the row: the chosen date stays readable on the row itself.
+    // Close the panel: the chosen date stays readable on the pill.
     requireElement(
-      el.querySelector<HTMLButtonElement>('[data-compose-drill="date"]'),
-      "expected publish date row",
+      el.querySelector<HTMLButtonElement>("[data-compose-post-meta-pill]"),
+      "expected post meta pill",
     ).click();
     await flushUpdates(el);
-    expect(drillValue(el, "date")).toContain("2024");
+    expect(el.querySelector(".compose-publish-date-input")).toBeNull();
+    expect(pillValue(el, "date")).toContain("2024");
 
-    await openDrill(el, "date");
+    await openPostMeta(el);
     expect(
       requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-date-input"),
         "expected publish date input after reopening publish settings",
-      ),
-    ).toBe(document.activeElement);
+      ).value,
+    ).toBe("2024-01-15");
   });
 
-  it("shows the existing publish date on the options row while editing a post", async () => {
+  it("shows the existing publish date on the post pill while editing a post", async () => {
     const el = await createElement();
     (
       el as unknown as {
@@ -1591,7 +1678,7 @@ describe("JantComposeDialog", () => {
 
     await openPostMeta(el);
 
-    expect(drillValue(el, "date")).toContain("2024");
+    expect(pillValue(el, "date")).toContain("2024");
   });
 
   it("shows Now on the post date control after clearing the date while editing", async () => {
@@ -1622,10 +1709,10 @@ describe("JantComposeDialog", () => {
 
     await openPostMeta(el);
 
-    expect(drillValue(el, "date")).toBe("Now");
+    expect(pillValue(el, "date")).toBe("Now");
   });
 
-  it("keeps the custom link readable on the collapsed options row", async () => {
+  it("keeps the custom link readable on the post's pill", async () => {
     mockSlugApi((url) => {
       if (url.searchParams.get("mode") === "suggest") {
         return { body: { slug: "configured-post" } };
@@ -1646,7 +1733,7 @@ describe("JantComposeDialog", () => {
     await el.updateComplete;
     await flushUpdates(el);
 
-    await openDrill(el, "slug");
+    await openPostMeta(el);
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
@@ -1656,24 +1743,25 @@ describe("JantComposeDialog", () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     await el.updateComplete;
 
-    // Collapse the row: the custom link stays readable on the row itself.
+    // Close the panel: the custom link stays readable on the pill.
     requireElement(
-      el.querySelector<HTMLButtonElement>('[data-compose-drill="slug"]'),
-      "expected custom link row",
+      el.querySelector<HTMLButtonElement>("[data-compose-post-meta-pill]"),
+      "expected post meta pill",
     ).click();
     await flushUpdates(el);
-    expect(drillValue(el, "slug")).toBe("/reading-notes");
+    expect(el.querySelector(".compose-publish-slug-input")).toBeNull();
+    expect(pillValue(el, "slug")).toBe("/reading-notes");
 
-    await openDrill(el, "slug");
+    await openPostMeta(el);
     expect(
       requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
         "expected custom link input after reopening publish settings",
-      ),
-    ).toBe(document.activeElement);
+      ).value,
+    ).toBe("reading-notes");
   });
 
-  it("shows the existing custom link on the options row while editing a post", async () => {
+  it("shows the existing custom link on the post pill while editing a post", async () => {
     const el = await createElement();
     (
       el as unknown as {
@@ -1701,10 +1789,10 @@ describe("JantComposeDialog", () => {
 
     await openPostMeta(el);
 
-    expect(drillValue(el, "slug")).toBe("/reading-notes");
+    expect(pillValue(el, "slug")).toBe("/reading-notes");
   });
 
-  it("shows Auto on the post permalink control after clearing the link while editing", async () => {
+  it("shows Auto on the post permalink pill after clearing the link while editing", async () => {
     const el = await createElement();
     (
       el as unknown as {
@@ -1732,7 +1820,7 @@ describe("JantComposeDialog", () => {
 
     await openPostMeta(el);
 
-    expect(drillValue(el, "slug")).toBe("Auto");
+    expect(pillValue(el, "slug")).toBe("Auto");
   });
 
   it("blocks publishing with a future publish date", async () => {
@@ -1762,7 +1850,7 @@ describe("JantComposeDialog", () => {
       ).click();
       await el.updateComplete;
 
-      await openDrill(el, "date");
+      await openPostMeta(el);
       const publishedAtInput = requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-date-input"),
         "expected publish date input",
@@ -2013,7 +2101,7 @@ describe("JantComposeDialog", () => {
     await el.updateComplete;
     await flushUpdates(el);
 
-    await openDrill(el, "slug");
+    await openPostMeta(el);
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
@@ -2061,7 +2149,7 @@ describe("JantComposeDialog", () => {
     await el.updateComplete;
     await flushUpdates(el);
 
-    await openDrill(el, "slug");
+    await openPostMeta(el);
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
@@ -2076,7 +2164,7 @@ describe("JantComposeDialog", () => {
     publishToggle.click();
     await el.updateComplete;
 
-    await openDrill(el, "slug");
+    await openPostMeta(el);
     expect(el.querySelector(".compose-publish-slug-input")).not.toBeNull();
   });
 
@@ -2263,7 +2351,7 @@ describe("JantComposeDialog", () => {
     await el.updateComplete;
     await flushUpdates(el);
 
-    await openDrill(el, "slug");
+    await openPostMeta(el);
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
@@ -2325,7 +2413,7 @@ describe("JantComposeDialog", () => {
     await el.updateComplete;
     await flushUpdates(el);
 
-    await openDrill(el, "slug");
+    await openPostMeta(el);
     expect(
       el.querySelector(".compose-slug-suggestion-value")?.textContent?.trim(),
     ).toBe("/hello-world");
@@ -2368,9 +2456,9 @@ describe("JantComposeDialog", () => {
     expect(panel.textContent).not.toContain("Published on");
     expect(panel.textContent).not.toContain("Custom link");
 
-    await openDrill(el, "date");
+    await openPostMeta(el);
     expect(el.querySelector(".compose-publish-date-input")).not.toBeNull();
-    await openDrill(el, "slug");
+    await openPostMeta(el);
     expect(el.querySelector(".compose-publish-slug-input")).not.toBeNull();
   });
 
@@ -2394,7 +2482,7 @@ describe("JantComposeDialog", () => {
     await el.updateComplete;
     await flushUpdates(el);
 
-    await openDrill(el, "slug");
+    await openPostMeta(el);
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",
@@ -2414,7 +2502,7 @@ describe("JantComposeDialog", () => {
     ).click();
     await flushUpdates(el);
 
-    await openDrill(el, "slug");
+    await openPostMeta(el);
     expect(
       requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
@@ -2480,7 +2568,7 @@ describe("JantComposeDialog", () => {
       await el.updateComplete;
       await flushUpdates(el);
 
-      await openDrill(el, "slug");
+      await openPostMeta(el);
       expect(
         el.querySelector(".compose-slug-suggestion-value")?.textContent?.trim(),
       ).toBe("/hello-world");
@@ -2537,7 +2625,7 @@ describe("JantComposeDialog", () => {
       await el.updateComplete;
       await flushUpdates(el);
 
-      await openDrill(el, "slug");
+      await openPostMeta(el);
       const slugInput = requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
         "expected custom link input",
@@ -2593,7 +2681,7 @@ describe("JantComposeDialog", () => {
       ).click();
       await el.updateComplete;
 
-      await openDrill(el, "slug");
+      await openPostMeta(el);
       const slugInput = requireElement(
         el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
         "expected custom link input",
@@ -2646,7 +2734,7 @@ describe("JantComposeDialog", () => {
     ).click();
     await el.updateComplete;
 
-    await openDrill(el, "slug");
+    await openPostMeta(el);
     const slugInput = requireElement(
       el.querySelector<HTMLInputElement>(".compose-publish-slug-input"),
       "expected custom link input",

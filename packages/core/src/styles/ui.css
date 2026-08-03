@@ -6577,8 +6577,7 @@
     transition: background-color 0.15s ease;
   }
 
-  .compose-sheet-row:hover:not(:disabled),
-  .compose-sheet-row-open {
+  .compose-sheet-row:hover:not(:disabled) {
     --compose-icon-paper-fill: var(--compose-control-bg);
     background-color: var(--compose-control-bg);
   }
@@ -6626,16 +6625,6 @@
     line-height: 1.4;
   }
 
-  .compose-sheet-value {
-    flex-shrink: 0;
-    max-width: 11rem;
-    overflow: hidden;
-    color: var(--site-text-secondary);
-    font-size: 0.82rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .compose-sheet-check,
   .compose-sheet-caret {
     display: inline-flex;
@@ -6646,13 +6635,6 @@
   .compose-sheet-caret {
     color: var(--site-text-secondary);
     opacity: 0.75;
-  }
-
-  .compose-sheet-edit {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.15rem 0.45rem 0.7rem;
   }
 
   .compose-sheet-hint {
@@ -6693,19 +6675,20 @@
     transition: opacity 0.18s ease;
   }
 
-  /* On narrow screens the header has no room for the pill beside the format
-     selector, so it wraps. An `opacity: 0` pill would still reserve that second
-     row on every post — take it out of flow entirely until it is wanted. There
-     is no hover on touch, so focus and a custom value are the real triggers. */
+  /* Narrow screens show the pill outright instead of revealing it. "Quiet until
+     approached" needs a pointer to approach with, and this width is mostly
+     touch, where there is none — an invisible-until-focused control is just a
+     missing one.
+
+     It must also stay in the layout. Gating `display` on
+     `jant-compose-editor:focus-within` made pressing the pill destroy it:
+     pointerdown moves focus off the editor, the pill unmounts before mouseup,
+     and a press that starts and ends on different elements never becomes a
+     click. The pill was unclickable at this width — only `.click()` from script
+     could open the panel. */
   @media (max-width: 760px) {
     .compose-post-meta {
-      display: none;
-    }
-
-    jant-compose-editor:focus-within .compose-post-meta,
-    .compose-post-meta-set,
-    .compose-post-meta-open {
-      display: block;
+      opacity: 1;
     }
   }
 
@@ -6776,14 +6759,17 @@
     color: color-mix(in srgb, currentcolor 45%, transparent);
   }
 
+  /* Only the permalink gives ground when space runs out — the date is short and
+     already as terse as it gets. Without `overflow: hidden` a shrunk flex item
+     still paints its full text, so a long slug used to run under the date. */
   .compose-post-meta-value {
+    flex-shrink: 0;
     min-width: 0;
+    overflow: hidden;
   }
 
-  /* Only the permalink gives ground when space runs out — the date is short
-     and fixed-width. */
   .compose-post-meta-value-slug {
-    overflow: hidden;
+    flex-shrink: 1;
     text-overflow: ellipsis;
   }
 
@@ -6792,8 +6778,11 @@
     z-index: 100;
     top: calc(100% + 6px);
     right: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
     width: min(20rem, calc(100vw - 3rem));
-    padding: 0.55rem 0.6rem;
+    padding: 0.8rem 0.85rem 0.85rem;
     border: 1px solid var(--compose-control-border);
     border-radius: 12px;
     /* Same surface treatment as .compose-publish-panel — it is the same kind
@@ -6802,6 +6791,50 @@
     box-shadow:
       0 10px 28px rgba(0, 0, 0, 0.08),
       0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  /* It takes focus when it opens so the dialog is announced and Tab lands in
+     the fields, but it is a container, not a control — no focus ring. */
+  .compose-post-meta-panel:focus {
+    outline: none;
+  }
+
+  /* ── Date / permalink form ──────────────────────────────────────────
+     Two settings, so they are both just open: a drill row per field meant
+     the panel restated each value directly above the input showing it, and
+     changed height every time one was opened. */
+
+  .compose-meta-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .compose-meta-field-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6rem;
+    min-height: 1.15rem;
+  }
+
+  .compose-meta-label {
+    color: var(--site-text-primary);
+    font-size: 0.82rem;
+    font-weight: var(--fw-medium);
+  }
+
+  /* The panel's own way out. Escape and a click outside both close it, but
+     neither announces itself, and on touch there is no Escape key at all. It
+     spans the panel's padding so the divider reads as the foot of the panel
+     rather than a line drawn inside it. */
+  .compose-post-meta-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin: -0.1rem -0.85rem -0.85rem;
+    padding: 0.4rem 0.6rem 0.5rem;
+    border-top: 1px solid
+      color-mix(in srgb, var(--site-divider) 60%, transparent);
   }
 
   .compose-post-meta-open {
@@ -6848,40 +6881,32 @@
     height: 1.35rem;
   }
 
+  /* Sits on the field's label row, so it reads as an aside to that label rather
+     than a second thing to do. It only appears once there is a value to undo,
+     which is why it can afford to be this quiet. */
   .compose-publish-section-action {
     flex-shrink: 0;
-    min-height: 2.1rem;
-    padding: 0.42rem 0.78rem;
-    border: 1px solid var(--compose-control-border);
-    border-radius: 999px;
-    background-color: var(--compose-control-bg);
-    color: color-mix(
-      in srgb,
-      var(--site-text-primary) 74%,
-      var(--site-text-secondary)
-    );
-    font-size: var(--compose-panel-control-size);
-    font-weight: var(--fw-medium);
-    line-height: 1;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--site-text-secondary);
+    font-size: 0.75rem;
+    line-height: 1.2;
+    text-underline-offset: 2px;
     cursor: pointer;
-    transition:
-      color 0.16s ease,
-      background-color 0.16s ease,
-      border-color 0.16s ease,
-      transform 0.16s ease;
+    transition: color 0.16s ease;
   }
 
   .compose-publish-section-action:hover {
     color: var(--site-text-primary);
-    border-color: color-mix(in srgb, var(--site-text-primary) 14%, transparent);
-    background-color: var(--compose-control-bg-strong);
-    transform: translateY(-1px);
+    text-decoration: underline;
   }
 
   .compose-publish-section-action:focus-visible {
     outline: 2px solid
       color-mix(in srgb, var(--site-text-primary) 18%, transparent);
-    outline-offset: 2px;
+    outline-offset: 3px;
+    border-radius: 4px;
   }
 
   /* --- Visibility segmented control --------------------------------------- */
@@ -6998,90 +7023,46 @@
     background-color: var(--compose-control-border);
   }
 
+  /* One line, no card: a card holding a chip holding the slug was three nested
+     frames for what is a single tap-to-accept. */
   .compose-slug-suggestion {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.65rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
     width: 100%;
-    padding: 0.62rem 0.68rem;
-    border: 1px solid var(--compose-control-border);
-    border-radius: 10px;
-    background-color: color-mix(
-      in srgb,
-      var(--compose-control-bg) 72%,
-      var(--compose-paper-bg)
-    );
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, var(--compose-paper-bg) 88%, transparent),
-      0 1px 2px rgba(0, 0, 0, 0.03);
+    margin: -0.05rem -0.35rem;
+    padding: 0.3rem 0.35rem;
+    border: none;
+    border-radius: 7px;
+    background: none;
     cursor: pointer;
     text-align: left;
-    transition:
-      background-color 0.16s ease,
-      border-color 0.16s ease,
-      transform 0.16s ease,
-      box-shadow 0.16s ease;
+    transition: background-color 0.16s ease;
   }
 
   .compose-slug-suggestion:hover {
-    border-color: color-mix(in srgb, var(--site-text-primary) 14%, transparent);
-    background-color: color-mix(
-      in srgb,
-      var(--compose-control-bg-strong) 78%,
-      var(--compose-paper-bg)
-    );
-    transform: translateY(-1px);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, var(--compose-paper-bg) 88%, transparent),
-      0 4px 14px rgba(0, 0, 0, 0.045);
+    background-color: var(--compose-control-bg);
   }
 
   .compose-slug-suggestion:focus-visible {
     outline: 2px solid
       color-mix(in srgb, var(--site-text-primary) 18%, transparent);
-    outline-offset: 2px;
-  }
-
-  .compose-slug-suggestion-copy {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.45rem;
+    outline-offset: 1px;
   }
 
   .compose-slug-suggestion-label {
+    flex-shrink: 0;
     color: var(--site-text-secondary);
-    font-size: var(--type-ui-micro);
-    font-weight: var(--fw-medium);
-    letter-spacing: 0.01em;
-    line-height: 1.2;
-  }
-
-  .compose-slug-suggestion-chip {
-    display: inline-flex;
-    align-items: center;
-    min-width: 0;
-    max-width: 100%;
-    padding: 0.25rem 0.48rem;
-    border-radius: 999px;
-    border: 1px solid var(--compose-control-border);
-    background-color: color-mix(
-      in srgb,
-      var(--compose-paper-bg) 92%,
-      var(--compose-control-bg)
-    );
-    box-shadow: inset 0 1px 0
-      color-mix(in srgb, var(--compose-paper-bg) 88%, transparent);
+    font-size: 0.75rem;
+    line-height: 1.3;
   }
 
   .compose-slug-suggestion-value {
-    display: block;
+    min-width: 0;
     color: var(--site-text-primary);
     font-size: var(--type-ui-caption);
     font-weight: var(--fw-medium);
-    line-height: 1.2;
+    line-height: 1.3;
     font-family:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
@@ -7092,101 +7073,61 @@
 
   .compose-slug-suggestion-icon {
     display: inline-flex;
+    flex-shrink: 0;
     align-items: center;
-    justify-content: center;
-    width: 1.65rem;
-    height: 1.65rem;
-    border-radius: 999px;
-    background-color: color-mix(
-      in srgb,
-      var(--compose-paper-bg) 88%,
-      var(--compose-control-bg)
-    );
-    color: color-mix(
-      in srgb,
-      var(--site-text-primary) 72%,
-      var(--site-text-secondary)
-    );
+    margin-left: auto;
+    color: var(--site-text-secondary);
+    transform: translateY(0.1em);
     transition:
       transform 0.16s ease,
-      background-color 0.16s ease,
       color 0.16s ease;
   }
 
   .compose-slug-suggestion:hover .compose-slug-suggestion-icon {
-    transform: translateX(1px);
-    background-color: color-mix(
-      in srgb,
-      var(--compose-paper-bg) 66%,
-      var(--compose-control-bg-strong)
-    );
+    transform: translate(2px, 0.1em);
     color: var(--site-text-primary);
   }
 
-  .compose-publish-slug-field,
-  .compose-publish-date-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.55rem;
-  }
-
+  /* Scaled to the panel it sits in. The old field was 3rem tall with a 14px
+     radius, a gradient, an inset highlight and a drop shadow — more chrome than
+     the dialog's own controls carry. */
   .compose-publish-slug-input-wrap,
   .compose-publish-date-input-wrap {
     display: flex;
     align-items: center;
-    gap: 0.78rem;
-    min-height: 3rem;
-    padding: 0 0.95rem;
+    gap: 0.5rem;
+    min-height: 2.3rem;
+    padding: 0 0.6rem;
     border: 1px solid var(--compose-control-border);
-    border-radius: 14px;
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--compose-paper-bg) 94%, transparent),
-        color-mix(in srgb, var(--compose-control-bg) 16%, transparent)
-      ),
-      color-mix(in srgb, var(--compose-paper-bg) 97%, var(--compose-control-bg));
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, var(--compose-paper-bg) 92%, transparent),
-      0 1px 2px rgba(0, 0, 0, 0.02);
+    border-radius: 9px;
+    background-color: color-mix(
+      in srgb,
+      var(--compose-control-bg) 55%,
+      var(--compose-paper-bg)
+    );
     transition:
       border-color 0.16s ease,
-      background-color 0.16s ease,
       box-shadow 0.16s ease;
   }
 
   .compose-publish-slug-input-wrap:focus-within,
   .compose-publish-date-input-wrap:focus-within {
-    border-color: color-mix(in srgb, var(--site-text-primary) 16%, transparent);
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--compose-paper-bg) 96%, transparent),
-        color-mix(in srgb, var(--compose-control-bg-strong) 24%, transparent)
-      ),
-      color-mix(
-        in srgb,
-        var(--compose-paper-bg) 96%,
-        var(--compose-control-bg-strong)
-      );
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, var(--compose-paper-bg) 94%, transparent),
-      0 0 0 3px color-mix(in srgb, var(--site-text-primary) 6%, transparent);
+    border-color: color-mix(in srgb, var(--site-text-primary) 22%, transparent);
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--site-text-primary) 7%, transparent);
+  }
+
+  /* The message under the field is red; the field it belongs to should say so
+     too, rather than leaving the reader to pair them up. */
+  .compose-publish-slug-input-wrap:has([aria-invalid="true"]),
+  .compose-publish-date-input-wrap:has([aria-invalid="true"]) {
+    border-color: color-mix(in srgb, var(--destructive) 42%, transparent);
   }
 
   .compose-publish-slug-prefix {
     flex-shrink: 0;
-    min-width: 1.25rem;
-    padding-right: 0.78rem;
-    border-right: 1px solid
-      color-mix(in srgb, var(--site-text-primary) 8%, transparent);
-    color: color-mix(
-      in srgb,
-      var(--site-text-primary) 52%,
-      var(--site-text-secondary)
-    );
-    font-size: var(--compose-panel-control-size);
-    font-weight: var(--fw-medium);
+    color: var(--site-text-secondary);
+    font-size: var(--type-ui-caption);
     line-height: 1;
     font-family:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
@@ -7202,9 +7143,8 @@
     padding: 0;
     box-shadow: none;
     color: var(--site-text-primary);
-    font-size: var(--compose-inline-input-size);
-    font-weight: var(--fw-medium);
-    line-height: 1.35;
+    font-size: var(--type-ui-caption);
+    line-height: 1.4;
     font-family:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
@@ -7214,13 +7154,56 @@
     font-family: inherit;
   }
 
+  /* The browser paints `yyyy-mm-dd` in the value's own colour, so an untouched
+     field reads as a date that was chosen. Only the empty state is dimmed. */
+  .compose-publish-date-input-empty::-webkit-datetime-edit {
+    color: var(--site-text-secondary);
+    opacity: 0.75;
+  }
+
+  /* Replaced by .compose-publish-date-picker, which drives the same picker from
+     a target the height of the field instead of a ~13px UA glyph. */
+  .compose-publish-date-input::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+
+  .compose-publish-date-picker {
+    display: inline-grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    margin-right: -0.35rem;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--site-text-secondary);
+    cursor: pointer;
+    transition:
+      background-color 0.16s ease,
+      color 0.16s ease;
+  }
+
+  .compose-publish-date-picker:hover {
+    background-color: var(--compose-control-bg-strong);
+    color: var(--site-text-primary);
+  }
+
+  .compose-publish-date-picker:focus-visible {
+    outline: 2px solid
+      color-mix(in srgb, var(--site-text-primary) 22%, transparent);
+    outline-offset: 1px;
+  }
+
+  .compose-publish-date-picker-icon {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
   .compose-publish-slug-input::placeholder,
   .compose-publish-date-input::placeholder {
-    color: color-mix(
-      in srgb,
-      var(--site-text-secondary) 82%,
-      var(--compose-paper-bg)
-    );
+    color: var(--site-text-secondary);
+    opacity: 0.75;
   }
 
   .compose-publish-slug-input:focus,
@@ -7241,21 +7224,13 @@
     color: var(--destructive);
   }
 
+  /* The URL a slug resolves to is a confirmation, not a control — a bordered
+     box for it made a third framed thing in a panel with two fields. */
   .compose-publish-slug-preview {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.04rem;
-    padding: 0.48rem 0.62rem;
-    border-radius: 9px;
-    border: 1px solid var(--compose-control-border);
-    background-color: color-mix(
-      in srgb,
-      var(--compose-control-bg) 58%,
-      var(--compose-paper-bg)
-    );
-    font-size: var(--type-ui-caption);
-    line-height: 1.35;
+    margin: 0;
+    color: var(--site-text-secondary);
+    font-size: var(--type-ui-micro);
+    line-height: 1.4;
     word-break: break-word;
     font-family:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
@@ -7263,19 +7238,11 @@
   }
 
   .compose-publish-slug-preview-origin {
-    color: color-mix(
-      in srgb,
-      var(--site-text-secondary) 92%,
-      var(--compose-paper-bg)
-    );
-    font-size: var(--type-ui-micro);
-    font-weight: var(--fw-normal);
+    opacity: 0.75;
   }
 
   .compose-publish-slug-preview-path {
     color: var(--site-text-primary);
-    font-size: var(--type-ui-caption);
-    font-weight: var(--fw-medium);
     overflow-wrap: anywhere;
   }
 
