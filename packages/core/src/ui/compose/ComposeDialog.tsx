@@ -126,9 +126,9 @@ export const ComposeForm: FC<ComposeFormProps> = ({
     ),
     titlePlaceholder: i18n._(
       msg({
-        message: "Title (optional)",
+        message: "Untitled",
         comment:
-          "@context: Compose note title placeholder — a note can be published without one",
+          "@context: Compose note title placeholder. States what the note is while the field is empty rather than asking for a title — untitled notes are a normal kind of note here, and Archive files them under this same word.",
       }),
     ),
     bodyPlaceholder: i18n._(

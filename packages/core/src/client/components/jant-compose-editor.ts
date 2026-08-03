@@ -2720,7 +2720,7 @@ export class JantComposeEditor extends LitElement {
 
     return html`
       <div class="compose-thread-post-header">
-        <div class="compose-segmented compose-thread-segmented">
+        <div class="compose-segmented">
           <!-- No sliding indicator: the items size to their labels now, so a
                thirds-based pill would not line up. The active item carries its
                own background instead. -->

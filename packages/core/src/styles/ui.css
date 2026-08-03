@@ -4869,8 +4869,8 @@
       background: transparent;
     }
 
-    /* The page supplies its own gutter, so the format row drops the dialog's
-       and lines its selector up with the title field below it. */
+    /* The page supplies its own gutter, so the format row drops the dialog's;
+       the switcher's hang then puts its first label on the title field's edge. */
     .compose-page-shell .compose-dialog-inner-page .compose-thread-post-header {
       padding-inline: 0;
     }
@@ -4928,6 +4928,12 @@
     --compose-panel-control-size: var(--type-ui-control);
     --compose-summary-size: var(--type-ui-meta);
     --compose-primary-button-size: var(--type-ui-meta);
+
+    /* How far the format switcher is pulled left of the text column. Declared
+       up here with the other compose tunables so one value covers the dialog,
+       the /new page and every thread row at once. See `.compose-segmented` for
+       what the endpoints look like and why 12px is the ceiling. */
+    --compose-switcher-hang: 8px;
   }
 
   .compose-dialog {
@@ -5206,44 +5212,71 @@
     }
   }
 
-  /* --- Format switcher with animated pill --------------------------------- */
+  /* --- Format switcher ----------------------------------------------------- */
 
+  /* One grouped control — a tinted track with a pill on the active format.
+     The strip's own inset (track padding + item padding) is 16px, so its box
+     and its first label can never both sit on the text column: whatever the
+     strip is pulled left by, the other edge is 16px away from the text. There
+     is no value that aligns both, only a choice of which one to favour, so the
+     amount is a knob rather than a derived number:
+
+       0px  strip's tinted box on the text edge, "Note" 16px inside it
+       8px  neither edge exact; the tint is light enough that the perceived
+            edge sits between them, which is why this is the default
+       16px "Note" on the text edge, the tint hanging a full inset out
+
+     12px is the hard ceiling: in a thread row the rail dot ends 12px short of
+     the content edge, and past that the tint runs over the dot. */
   .compose-segmented {
+    --compose-switcher-track-pad: 3px;
+    --compose-switcher-item-pad: 13px;
+
     display: inline-flex;
-    background-color: var(--compose-control-bg);
-    border-radius: 10px;
-    padding: 3px;
+    flex: none;
+    gap: 1px;
+    padding: var(--compose-switcher-track-pad);
+    margin-inline-start: calc(-1 * var(--compose-switcher-hang));
+    /* Paints over the thread rail dot, not under it. The dot carries a
+       surface-coloured ring (`--site-thread-marker-gap`) to break the rail line
+       around itself, and that ring reaches further right than the dot does —
+       far enough to clip the strip's left edge once it hangs. Both sit at
+       z-index 1, so the strip wins on document order. Covering ring pixels is
+       harmless here: the line it protects runs down the dot's centre, well left
+       of anywhere the strip reaches. */
     position: relative;
-    box-shadow: inset 0 0 0 1px var(--compose-control-border);
+    z-index: 1;
+    border-radius: calc(var(--compose-switcher-track-pad) + 8px);
+    background-color: var(--compose-control-bg);
     font-family: var(--font-ui);
   }
 
   .compose-segmented-item {
-    position: relative;
-    z-index: 1;
-    padding: 5px 0.95rem;
-    border-radius: 8px;
+    flex: none;
+    padding: 5px var(--compose-switcher-item-pad);
     border: none;
+    border-radius: 8px;
     background: transparent;
     color: var(--site-text-secondary);
     font-size: var(--type-ui-hint);
     font-weight: var(--fw-medium);
     line-height: 1.2;
-    cursor: pointer;
-    transition: color 0.2s ease;
     letter-spacing: 0.01em;
+    cursor: pointer;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
 
-  @media (min-width: 700px) {
-    .compose-segmented-item {
-      padding: 0.4rem 1.15rem;
-      font-size: var(--type-ui-control);
-    }
+  .compose-segmented-item:hover:not(.compose-segmented-item-active) {
+    color: var(--site-text-primary);
   }
 
   .compose-segmented-item-active {
     color: var(--site-text-primary);
-    font-weight: var(--fw-medium);
+    background-color: var(--compose-paper-bg);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   }
 
   /* --- Body --------------------------------------------------------------- */
@@ -8461,10 +8494,17 @@
     flex-wrap: wrap;
     row-gap: 4px;
     gap: 8px;
-    /* Control row, so it takes the tools row's 16px gutter rather than the
-       body's 24px text gutter: the segmented box then lines up exactly with
+    /* Left is the body's text gutter, not the tools row's: the switcher hangs
+       back out by its item padding, so it is the label that starts on the text
+       edge. Right keeps the tools row's 16px so × and the date pill stay over
        the tool buttons bracketing the editor from below. */
-    padding: 10px 16px 2px;
+    padding: 10px 16px 2px 20px;
+  }
+
+  @media (min-width: 700px) {
+    .compose-thread-post-header {
+      padding-left: 24px;
+    }
   }
 
   /* Inside a thread row the rail already indents the left; the right still
@@ -8519,42 +8559,6 @@
 
   .compose-reply-compose-layout .compose-thread-post-header + .compose-body {
     padding-top: 12px;
-  }
-
-  /* Format selector: one grouped control, not three separate outlined tags.
-     Sized down from the base segmented since it now sits inline above every
-     post rather than filling the dialog header. */
-  .compose-thread-segmented {
-    flex: none;
-    padding: 3px;
-    border-radius: 11px;
-    box-shadow: none;
-    gap: 1px;
-  }
-
-  .compose-thread-segmented .compose-segmented-item {
-    flex: none;
-    padding: 5px 13px;
-    border-radius: 8px;
-    border: none;
-    font-size: var(--type-ui-hint);
-    letter-spacing: 0.01em;
-    transition:
-      color 0.15s ease,
-      background-color 0.15s ease,
-      box-shadow 0.15s ease;
-  }
-
-  .compose-thread-segmented
-    .compose-segmented-item:hover:not(.compose-segmented-item-active) {
-    color: var(--site-text-primary);
-  }
-
-  .compose-thread-segmented .compose-segmented-item-active {
-    color: var(--site-text-primary);
-    font-weight: var(--fw-medium);
-    background-color: var(--compose-paper-bg);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   }
 
   /* Remove button (×) — hidden by default, revealed on thread post hover/focus */

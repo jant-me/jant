@@ -2276,11 +2276,6 @@ msgstr ""
 msgid "Title"
 msgstr ""
 
-#. @context: Compose note title placeholder — a note can be published without one
-#: src/ui/compose/ComposeDialog.tsx
-msgid "Title (optional)"
-msgstr ""
-
 #. @context: Archive filter - notes that have a title
 #. @context: Archive filter - notes that have a title
 #: src/ui/pages/ArchivePage.tsx
@@ -2320,6 +2315,8 @@ msgstr ""
 
 #. @context: Archive filter - notes without a title
 #. @context: Archive filter - notes without a title
+#. @context: Compose note title placeholder. States what the note is while the field is empty rather than asking for a title — untitled notes are a normal kind of note here, and Archive files them under this same word.
+#: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
 msgid "Untitled"
