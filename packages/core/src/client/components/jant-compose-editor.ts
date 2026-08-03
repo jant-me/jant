@@ -100,35 +100,6 @@ const COMPOSE_TOOLBAR_ICONS = {
       stroke-width="1.6"
     />
   `,
-  title: `
-    <rect
-      x="3.35"
-      y="3.2"
-      width="11.3"
-      height="2.05"
-      rx="0.68"
-      fill="currentColor"
-      stroke="none"
-    />
-    <rect
-      x="7.8"
-      y="4.6"
-      width="2.4"
-      height="9.45"
-      rx="0.78"
-      fill="currentColor"
-      stroke="none"
-    />
-    <rect
-      x="6.75"
-      y="13.15"
-      width="4.5"
-      height="1.12"
-      rx="0.56"
-      fill="currentColor"
-      stroke="none"
-    />
-  `,
   fullscreen: `
     <path d="M5.85 3H3v2.85" stroke-width="1.48" />
     <path d="M12.15 3H15v2.85" stroke-width="1.48" />
@@ -198,7 +169,6 @@ export class JantComposeEditor extends LitElement {
     _quoteText: { state: true },
     _quoteAuthor: { state: true },
     _rating: { state: true },
-    _showTitle: { state: true },
     _showRating: { state: true },
     _attachedTexts: { state: true },
     _attachments: { state: true },
@@ -235,7 +205,6 @@ export class JantComposeEditor extends LitElement {
   declare _quoteText: string;
   declare _quoteAuthor: string;
   declare _rating: number;
-  declare _showTitle: boolean;
   declare _showRating: boolean;
   declare _attachedTexts: AttachedTextItem[];
   declare _attachments: ComposeAttachment[];
@@ -295,7 +264,6 @@ export class JantComposeEditor extends LitElement {
     this._quoteText = "";
     this._quoteAuthor = "";
     this._rating = 0;
-    this._showTitle = false;
     this._showRating = false;
     this._attachedTexts = [];
     this._attachments = [];
@@ -688,7 +656,6 @@ export class JantComposeEditor extends LitElement {
     const removedSize = this._removedTopLevelSize(promotion);
 
     this._title = promotion.title;
-    this._showTitle = true;
     this._bodyJson = promotion.bodyJson;
 
     if (editor) {
@@ -784,7 +751,7 @@ export class JantComposeEditor extends LitElement {
       default:
         return {
           ...shared,
-          title: this._showTitle ? this._title : "",
+          title: this._title,
           body,
           url: "",
           quoteText: "",
@@ -803,7 +770,6 @@ export class JantComposeEditor extends LitElement {
     this._quoteText = "";
     this._quoteAuthor = "";
     this._rating = 0;
-    this._showTitle = false;
     this._showRating = false;
     this._attachedTexts = [];
     // Revoke preview URLs before clearing
@@ -1070,7 +1036,6 @@ export class JantComposeEditor extends LitElement {
     "_quoteText",
     "_quoteAuthor",
     "_rating",
-    "_showTitle",
     "_showRating",
     "_attachedTexts",
     "_attachmentOrder",
@@ -1135,7 +1100,6 @@ export class JantComposeEditor extends LitElement {
     return {
       json: this._editor?.getJSON() ?? this._bodyJson,
       title: this._title,
-      showTitle: this._showTitle,
       selection: this.getEditorSelection(),
     };
   }
@@ -1151,7 +1115,6 @@ export class JantComposeEditor extends LitElement {
       url: this._url,
       quoteText: this._quoteText,
       quoteAuthor: this._quoteAuthor,
-      showTitle: this._showTitle,
       bodyJson: this._normalizeDocJson(
         this._editor?.getJSON() ?? this._bodyJson,
       ),
@@ -1169,7 +1132,6 @@ export class JantComposeEditor extends LitElement {
     this._url = fields.url;
     this._quoteText = fields.quoteText;
     this._quoteAuthor = fields.quoteAuthor;
-    this._showTitle = fields.showTitle;
     this._bodyJson = fields.bodyJson;
   }
 
@@ -1182,7 +1144,6 @@ export class JantComposeEditor extends LitElement {
     quoteText?: string;
     quoteAuthor?: string;
     rating?: number;
-    showTitle?: boolean;
     showRating?: boolean;
     media?: Array<{
       id: string;
@@ -1211,8 +1172,6 @@ export class JantComposeEditor extends LitElement {
       this._rating = data.rating;
       this._showRating = true;
     }
-    if (data.showTitle !== undefined) this._showTitle = data.showTitle;
-    else if (data.title && data.format === "note") this._showTitle = true;
     if (data.showRating !== undefined) this._showRating = data.showRating;
     this._failedAttachmentPreviews = [];
 
@@ -1302,14 +1261,10 @@ export class JantComposeEditor extends LitElement {
   setEditorState(
     json: JSONContent | null,
     title: string,
-    showTitle: boolean,
     selection?: ComposeEditorSelection | null,
   ) {
     this._bodyJson = json;
     this._title = title;
-    if (this.format === "note") {
-      this._showTitle = showTitle || title.length > 0;
-    }
     if (this._editor) {
       this._editor.commands.setContent(
         json ?? {
@@ -1549,7 +1504,6 @@ export class JantComposeEditor extends LitElement {
 
   private _shouldPasteInlineImage(file: File): boolean {
     if (!file.type.startsWith("image/")) return false;
-    if (this.format === "note" && !this._showTitle) return false;
     return this._title.trim().length > 0;
   }
 
@@ -1992,30 +1946,15 @@ export class JantComposeEditor extends LitElement {
   private _renderNoteFields() {
     return html`
       <div class="compose-field-enter">
-        ${this._showTitle
-          ? html`
-              <div class="compose-note-title-row">
-                <input
-                  type="text"
-                  .value=${this._title}
-                  @input=${(e: Event) => this._onInput("_title", e)}
-                  @focus=${(e: Event) => this._onFieldFocus(e)}
-                  @keydown=${this._handleTitleKeydown}
-                  class="compose-input compose-note-title"
-                  placeholder=${this.labels.titlePlaceholder}
-                />
-                <button
-                  type="button"
-                  class="compose-note-title-dismiss"
-                  @click=${() => {
-                    this._showTitle = false;
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            `
-          : nothing}
+        <input
+          type="text"
+          .value=${this._title}
+          @input=${(e: Event) => this._onInput("_title", e)}
+          @focus=${(e: Event) => this._onFieldFocus(e)}
+          @keydown=${this._handleTitleKeydown}
+          class="compose-input compose-note-title"
+          placeholder=${this.labels.titlePlaceholder}
+        />
         <div class="compose-tiptap-wrap">
           <div class="compose-tiptap-body"></div>
           <span class="compose-slash-discovery-hint" aria-hidden="true">
@@ -2649,31 +2588,6 @@ export class JantComposeEditor extends LitElement {
           ${renderComposeToolbarIcon(COMPOSE_TOOLBAR_ICONS.rate)}
         </button>
 
-        ${this.format === "note"
-          ? html`
-              <button
-                type="button"
-                class=${classMap({
-                  "compose-tool-btn": true,
-                  "compose-tool-btn-active": this._showTitle,
-                })}
-                title=${this.labels.title}
-                @click=${() => {
-                  const willShow = !this._showTitle;
-                  this._showTitle = willShow;
-                  if (willShow) {
-                    this.updateComplete.then(() => {
-                      this.querySelector<HTMLInputElement>(
-                        ".compose-note-title",
-                      )?.focus();
-                    });
-                  }
-                }}
-              >
-                ${renderComposeToolbarIcon(COMPOSE_TOOLBAR_ICONS.title)}
-              </button>
-            `
-          : nothing}
         ${this.format === "note"
           ? html`
               <div class="compose-tool-view-group">

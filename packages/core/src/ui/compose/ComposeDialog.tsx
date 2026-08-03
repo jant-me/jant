@@ -126,8 +126,9 @@ export const ComposeForm: FC<ComposeFormProps> = ({
     ),
     titlePlaceholder: i18n._(
       msg({
-        message: "Title",
-        comment: "@context: Compose note title placeholder",
+        message: "Title (optional)",
+        comment:
+          "@context: Compose note title placeholder — a note can be published without one",
       }),
     ),
     bodyPlaceholder: i18n._(
@@ -232,12 +233,6 @@ export const ComposeForm: FC<ComposeFormProps> = ({
       msg({
         message: "Emoji",
         comment: "@context: Compose toolbar - emoji picker tooltip",
-      }),
-    ),
-    title: i18n._(
-      msg({
-        message: "Title",
-        comment: "@context: Compose toolbar - title tooltip",
       }),
     ),
     fullscreen: i18n._(

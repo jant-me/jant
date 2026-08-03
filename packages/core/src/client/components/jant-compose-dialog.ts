@@ -148,7 +148,6 @@ interface ComposeStateSnapshot {
   quoteText: string;
   quoteAuthor: string;
   rating: number;
-  showTitle: boolean;
   showRating: boolean;
   attachments: Array<{
     clientId: string;
@@ -1196,10 +1195,6 @@ export class JantComposeDialog extends LitElement {
 
     const editorData = editor.getData();
     const attachedTexts = editor.getEffectiveAttachedTexts();
-    const showTitle =
-      this._format === "note" && editorData.title.trim().length > 0
-        ? editor._showTitle
-        : false;
     const showRating = editorData.rating > 0 ? editor._showRating : false;
 
     return {
@@ -1215,7 +1210,6 @@ export class JantComposeDialog extends LitElement {
       quoteText: editorData.quoteText,
       quoteAuthor: editorData.quoteAuthor,
       rating: editorData.rating,
-      showTitle,
       showRating,
       attachments: editor._attachments.map((attachment) => ({
         clientId: attachment.clientId,
@@ -2586,7 +2580,6 @@ export class JantComposeDialog extends LitElement {
       editor.setEditorState(
         e.detail.json as import("@tiptap/core").JSONContent,
         e.detail.title,
-        e.detail.showTitle,
         e.detail.selection,
       );
       // Adopt any in-flight inline image uploads from the fullscreen editor
@@ -3129,7 +3122,6 @@ export class JantComposeDialog extends LitElement {
         publishedAtTimeMinutes: this._publishedAtTimeMinutes,
         visibility: this._visibility,
         rating: 0,
-        showTitle: false,
         showRating: false,
         collectionIds: [...this._collectionIds],
         replyToId: this._replyToId,
@@ -3189,10 +3181,6 @@ export class JantComposeDialog extends LitElement {
       publishedAtTimeMinutes: this._publishedAtTimeMinutes,
       visibility: this._visibility,
       rating: data.rating,
-      showTitle:
-        this._format === "note" && data.title.trim().length > 0
-          ? editor._showTitle
-          : false,
       showRating: data.rating > 0 ? editor._showRating : false,
       collectionIds: [...this._collectionIds],
       replyToId: this._replyToId,
@@ -3369,7 +3357,6 @@ export class JantComposeDialog extends LitElement {
       quoteText: draft.quoteText || undefined,
       quoteAuthor: draft.quoteAuthor || undefined,
       rating: draft.rating || undefined,
-      showTitle: draft.showTitle,
       showRating: draft.showRating,
       textAttachments: textAttachments?.length ? textAttachments : undefined,
       attachmentOrder: draft.attachmentOrder,
@@ -3442,7 +3429,6 @@ export class JantComposeDialog extends LitElement {
       quoteText: draft.quoteText || undefined,
       quoteAuthor: draft.quoteAuthor || undefined,
       rating: draft.rating || undefined,
-      showTitle: draft.showTitle,
       showRating: draft.showRating,
       textAttachments: textAttachments?.length ? textAttachments : undefined,
       attachmentOrder: draft.attachmentOrder,
@@ -5447,7 +5433,6 @@ export class JantComposeDialog extends LitElement {
             firstEditor.setEditorState(
               editorState.json,
               editorState.title,
-              editorState.showTitle,
               editorState.selection,
             );
           }
@@ -5538,7 +5523,6 @@ export class JantComposeDialog extends LitElement {
           singleEditor.setEditorState(
             editorState.json,
             editorState.title,
-            editorState.showTitle,
             editorState.selection,
           );
         }

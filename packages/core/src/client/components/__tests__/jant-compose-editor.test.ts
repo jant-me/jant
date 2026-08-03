@@ -176,7 +176,6 @@ const labels: ComposeLabels = {
   media: "Media",
   rate: "Rate",
   emoji: "Emoji",
-  title: "Title",
   fullscreen: "Fullscreen",
   exitFullscreen: "Exit fullscreen",
   collection: "Collection",
@@ -796,13 +795,10 @@ describe("JantComposeEditor", () => {
     expect(el._attachedTexts[0].bodyJson).toBeNull();
   });
 
-  it("shows title toggle only in note mode", async () => {
+  it("has no title toggle — a note always shows its title field", async () => {
     const el = await createElement("note");
-    expect(el.querySelector('.compose-tool-btn[title="Title"]')).not.toBeNull();
-
-    el.format = "link";
-    await el.updateComplete;
     expect(el.querySelector('.compose-tool-btn[title="Title"]')).toBeNull();
+    expect(el.querySelector(".compose-note-title")).not.toBeNull();
   });
 
   it.each([
@@ -813,7 +809,6 @@ describe("JantComposeEditor", () => {
     async (format, selector) => {
       const el = await createElement(format);
       if (format === "note") {
-        el._showTitle = true;
         await el.updateComplete;
       }
 
@@ -842,7 +837,6 @@ describe("JantComposeEditor", () => {
 
   it("keeps focus in the title while an IME composition is active", async () => {
     const el = await createElement("note");
-    el._showTitle = true;
     await el.updateComplete;
 
     const titleInput = requireElement(
@@ -865,7 +859,6 @@ describe("JantComposeEditor", () => {
 
   it("leaves Mod-Enter available for the publish shortcut", async () => {
     const el = await createElement("note");
-    el._showTitle = true;
     await el.updateComplete;
 
     const titleInput = requireElement(
@@ -886,18 +879,18 @@ describe("JantComposeEditor", () => {
     expect(document.activeElement).toBe(titleInput);
   });
 
-  it("keeps title after rate and places fullscreen at the far right of the toolbar", async () => {
+  it("places fullscreen at the far right of the toolbar", async () => {
     const el = await createElement("note");
     const toolTitles = [
       ...el.querySelectorAll<HTMLButtonElement>(".compose-tool-btn"),
     ].map((button) => button.getAttribute("title"));
 
+    // No "Title" button — the field is always there.
     expect(toolTitles).toEqual([
       "Media",
       "Attached Text",
       "Emoji",
       "Rate",
-      "Title",
       "Fullscreen",
     ]);
     expect(
@@ -925,7 +918,6 @@ describe("JantComposeEditor", () => {
   it("getData returns current field values", async () => {
     const el = await createElement("note");
     el._title = "Test Title";
-    el._showTitle = true;
     el._bodyJson = {
       type: "doc",
       content: [
@@ -995,31 +987,11 @@ describe("JantComposeEditor", () => {
     expect(data.attachmentOrder).toEqual(["t2"]);
   });
 
-  it("getData omits title when showTitle is off in note mode", async () => {
+  it("getData returns the note title as typed", async () => {
     const el = await createElement("note");
-    el._title = "Hidden Title";
-    el._showTitle = false;
+    el._title = "Kept Title";
 
-    const data = el.getData();
-    expect(data.title).toBe("");
-  });
-
-  it("preserves title in memory when toggling off and restores on toggle on", async () => {
-    const el = await createElement("note");
-    el._title = "My Title";
-    el._showTitle = true;
-    await el.updateComplete;
-
-    // Toggle off — title stays in memory
-    el._showTitle = false;
-    await el.updateComplete;
-    expect(el._title).toBe("My Title");
-    expect(el.getData().title).toBe("");
-
-    // Toggle back on — title restored
-    el._showTitle = true;
-    await el.updateComplete;
-    expect(el.getData().title).toBe("My Title");
+    expect(el.getData().title).toBe("Kept Title");
   });
 
   it("promotes a leading H1 to the note title", async () => {
@@ -1036,7 +1008,6 @@ describe("JantComposeEditor", () => {
     const body = JSON.parse(data.body) as JSONContent;
 
     expect(data.title).toBe("My Markdown Title");
-    expect(el._showTitle).toBe(true);
     expect(body.content?.[0]).toEqual(tiptapParagraph("Body"));
   });
 
@@ -1051,7 +1022,6 @@ describe("JantComposeEditor", () => {
     const body = JSON.parse(data.body) as JSONContent;
 
     expect(data.title).toBe("");
-    expect(el._showTitle).toBe(false);
     expect(body.content?.[0]).toEqual(tiptapHeading(1, "Draft title"));
   });
 
@@ -1059,7 +1029,6 @@ describe("JantComposeEditor", () => {
     const el = await createElement("note");
     const editor = requireEditor(el);
     el._title = "Manual title";
-    el._showTitle = true;
 
     editor.commands.setContent(
       tiptapDoc(tiptapHeading(1, "Markdown Title"), tiptapParagraph("Body")),
@@ -1344,7 +1313,7 @@ describe("JantComposeEditor", () => {
     expect(el._attachmentOrder[0]).toBe("t1");
   });
 
-  it("pastes clipboard files into attachments when no visible title is set", async () => {
+  it("pastes clipboard files into attachments when no title is set", async () => {
     const uploadWithMetadataMock = vi.mocked(uploadWithMetadata);
     const el = await createElement("note");
     const events: CustomEvent[] = [];
@@ -1380,7 +1349,6 @@ describe("JantComposeEditor", () => {
       id: "med_test",
     });
     const el = await createElement("note");
-    el._showTitle = true;
     el._title = "Essay";
     await el.updateComplete;
 
@@ -1400,30 +1368,9 @@ describe("JantComposeEditor", () => {
     ]);
   });
 
-  it("pastes images as attachments when the title row was toggled off after typing", async () => {
-    const uploadWithMetadataMock = vi.mocked(uploadWithMetadata);
-    const el = await createElement("note");
-    el._showTitle = true;
-    el._title = "Essay";
-    await el.updateComplete;
-    el._showTitle = false;
-    await el.updateComplete;
-
-    const image = new File(["image"], "clipboard.png", { type: "image/png" });
-    const { handled } = triggerEditorPaste(el, [image]);
-    await el.updateComplete;
-
-    expect(handled).toBe(true);
-    expect(uploadWithMetadataMock).not.toHaveBeenCalled();
-    expect(el._attachments.map((attachment) => attachment.file.name)).toEqual([
-      "clipboard.png",
-    ]);
-  });
-
   it("pastes images as attachments when only whitespace is in the title", async () => {
     const uploadWithMetadataMock = vi.mocked(uploadWithMetadata);
     const el = await createElement("note");
-    el._showTitle = true;
     el._title = "   ";
     await el.updateComplete;
 

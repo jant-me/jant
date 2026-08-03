@@ -11,7 +11,6 @@ const EMPTY: ComposeConvertFields = {
   url: "",
   quoteText: "",
   quoteAuthor: "",
-  showTitle: false,
   bodyJson: null,
 };
 
@@ -55,7 +54,6 @@ describe("convertComposeFormat", () => {
       "quote",
       fields({
         title: "My thoughts",
-        showTitle: true,
         bodyJson: doc(paragraph("body")),
       }),
     );
@@ -216,7 +214,6 @@ describe("convertComposeFormat", () => {
       "link",
       fields({
         title: "Keep me",
-        showTitle: true,
         bodyJson: doc(paragraph("body")),
       }),
     );
@@ -236,7 +233,6 @@ describe("convertComposeFormat", () => {
       }),
     );
     expect(result.title).toBe("Keep me");
-    expect(result.showTitle).toBe(true);
     expect(result.url).toBe("");
     expect(firstBlock(result)).toEqual({
       type: "paragraph",
@@ -315,22 +311,6 @@ describe("convertComposeFormat", () => {
     );
     expect(result.quoteText).toBe("Quoted line");
     expect(result.bodyJson).toBeNull();
-  });
-
-  it("sets showTitle only for a note that ends up with a title", () => {
-    const toNote = convertComposeFormat(
-      "link",
-      "note",
-      fields({ title: "T", url: "https://example.com" }),
-    );
-    expect(toNote.showTitle).toBe(true);
-
-    const toQuote = convertComposeFormat(
-      "note",
-      "quote",
-      fields({ title: "T" }),
-    );
-    expect(toQuote.showTitle).toBe(false);
   });
 
   it("treats a non-attribution last line as part of the quote text", () => {

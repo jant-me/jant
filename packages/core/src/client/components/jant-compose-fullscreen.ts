@@ -31,7 +31,6 @@ export class JantComposeFullscreen extends LitElement {
     labels: { type: Object },
     _open: { state: true },
     _title: { state: true },
-    _showTitle: { state: true },
     _replyContext: { state: true },
     _replyExpanded: { state: true },
   };
@@ -39,7 +38,6 @@ export class JantComposeFullscreen extends LitElement {
   declare labels: ComposeLabels;
   declare _open: boolean;
   declare _title: string;
-  declare _showTitle: boolean;
   declare _replyContext: ComposeFullscreenReplyContext | null;
   declare _replyExpanded: boolean;
 
@@ -59,7 +57,6 @@ export class JantComposeFullscreen extends LitElement {
     this.labels = {} as ComposeLabels;
     this._open = false;
     this._title = "";
-    this._showTitle = false;
     this._replyContext = null;
     this._replyExpanded = false;
   }
@@ -129,7 +126,6 @@ export class JantComposeFullscreen extends LitElement {
     if (e.detail.labels) {
       this.labels = e.detail.labels;
     }
-    this._showTitle = e.detail.showTitle || e.detail.title.trim().length > 0;
     this._replyContext = e.detail.replyContext ?? null;
     this._replyExpanded = e.detail.replyContext?.expanded ?? false;
     this._editorIndex = e.detail.editorIndex ?? 0;
@@ -248,7 +244,6 @@ export class JantComposeFullscreen extends LitElement {
         detail: {
           json,
           title: this._title,
-          showTitle: this._showTitle || this._title.trim().length > 0,
           selection,
           replyExpanded: this._replyExpanded,
           intent,
@@ -268,57 +263,31 @@ export class JantComposeFullscreen extends LitElement {
     this._finishClose("publish");
   }
 
-  private _revealTitle() {
-    this._showTitle = true;
-    this.updateComplete.then(() => {
-      this.querySelector<HTMLInputElement>(
-        ".compose-fullscreen-title",
-      )?.focus();
-    });
-  }
-
   private _renderTitleField(variant: "note" | "reply") {
     const titleClasses = classMap({
       "compose-fullscreen-title": true,
       "compose-fullscreen-title-reply": variant === "reply",
     });
-    const placeholderClasses = classMap({
-      "compose-fullscreen-title-placeholder": true,
-      "compose-fullscreen-title-placeholder-reply": variant === "reply",
-    });
-
-    return this._showTitle
-      ? html`
-          <div class="compose-fullscreen-title-shell">
-            <input
-              type="text"
-              .value=${this._title}
-              @input=${(e: Event) => {
-                this._title = (e.target as HTMLInputElement).value;
-              }}
-              @keydown=${(e: globalThis.KeyboardEvent) => {
-                if (e.isComposing || e.keyCode === 229) return;
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  this._editor?.commands.focus("start");
-                }
-              }}
-              class=${titleClasses}
-              placeholder=${this.labels.titlePlaceholder ?? "Title"}
-            />
-          </div>
-        `
-      : html`
-          <button
-            type="button"
-            class=${placeholderClasses}
-            @click=${() => this._revealTitle()}
-          >
-            ${variant === "reply"
-              ? this.labels.titlePlaceholder || this.labels.title || "Title"
-              : this.labels.title || "Title"}
-          </button>
-        `;
+    return html`
+      <div class="compose-fullscreen-title-shell">
+        <input
+          type="text"
+          .value=${this._title}
+          @input=${(e: Event) => {
+            this._title = (e.target as HTMLInputElement).value;
+          }}
+          @keydown=${(e: globalThis.KeyboardEvent) => {
+            if (e.isComposing || e.keyCode === 229) return;
+            if (e.key === "Enter") {
+              e.preventDefault();
+              this._editor?.commands.focus("start");
+            }
+          }}
+          class=${titleClasses}
+          placeholder=${this.labels.titlePlaceholder ?? "Title"}
+        />
+      </div>
+    `;
   }
 
   render() {

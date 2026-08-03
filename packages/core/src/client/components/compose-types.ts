@@ -76,7 +76,6 @@ export interface LocalDraft {
   publishedAtTimeMinutes?: number | null;
   visibility: ComposeVisibility;
   rating: number;
-  showTitle: boolean;
   showRating: boolean;
   collectionIds: string[];
   replyToId: string | null;
@@ -137,7 +136,6 @@ export interface ComposeLabels {
   media: string;
   rate: string;
   emoji: string;
-  title: string;
   fullscreen: string;
   exitFullscreen: string;
   collection: string;
@@ -257,7 +255,6 @@ export interface ComposeEditorSelection {
 export interface ComposeFullscreenOpenDetail {
   json: JSONContent | null;
   title: string;
-  showTitle: boolean;
   selection?: ComposeEditorSelection | null;
   labels?: ComposeLabels;
   replyContext?: ComposeFullscreenReplyContext | null;
@@ -267,7 +264,6 @@ export interface ComposeFullscreenOpenDetail {
 export interface ComposeFullscreenCloseDetail {
   json: JSONContent | null;
   title: string;
-  showTitle: boolean;
   selection?: ComposeEditorSelection | null;
   replyExpanded: boolean;
   intent?: "publish";

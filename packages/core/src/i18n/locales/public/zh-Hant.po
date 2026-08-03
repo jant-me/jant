@@ -2264,14 +2264,15 @@ msgid "Threads can include up to {count} posts."
 msgstr ""
 
 #. @context: Collection form field
-#. @context: Compose note title placeholder
-#. @context: Compose toolbar - title tooltip
 #. @context: Input label on sample page
-#: src/ui/compose/ComposeDialog.tsx
-#: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 #: src/ui/shared/collection-management-labels.ts
 msgid "Title"
+msgstr ""
+
+#. @context: Compose note title placeholder — a note can be published without one
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Title (optional)"
 msgstr ""
 
 #. @context: Archive filter - notes that have a title

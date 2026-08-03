@@ -144,7 +144,6 @@ const labels: ComposeLabels = {
   media: "Media",
   rate: "Rate",
   emoji: "Emoji",
-  title: "Title",
   fullscreen: "Fullscreen",
   exitFullscreen: "Exit fullscreen",
   collection: "Collection",
@@ -414,7 +413,6 @@ describe("JantComposeDialog", () => {
             ],
           },
           title: "",
-          showTitle: false,
           selection: { from: 3, to: 3 },
           replyExpanded: false,
         },
@@ -1772,7 +1770,6 @@ describe("JantComposeDialog", () => {
         slug: "",
         visibility: "public",
         rating: 0,
-        showTitle: false,
         showRating: false,
         collectionIds: ["col-1"],
         attachedTexts: [],
@@ -2117,7 +2114,6 @@ describe("JantComposeDialog", () => {
       el.querySelector<JantComposeEditor>("jant-compose-editor"),
       "expected compose editor",
     );
-    editor._showTitle = true;
     editor._title = "Hello World";
     editor._bodyJson = {
       type: "doc",
@@ -2279,7 +2275,6 @@ describe("JantComposeDialog", () => {
         el.querySelector<JantComposeEditor>("jant-compose-editor"),
         "expected compose editor",
       );
-      editor._showTitle = true;
       editor._title = "Hello World";
       await editor.updateComplete;
 
@@ -2571,7 +2566,6 @@ describe("JantComposeDialog", () => {
         slug: "",
         visibility: "public",
         rating: 0,
-        showTitle: false,
         showRating: false,
         collectionIds: ["col-stale"],
         replyToId,
@@ -3520,7 +3514,7 @@ describe("JantComposeDialog", () => {
       /\.compose-quote-text\s*\{[\s\S]*font-size:\s*var\(--compose-quote-input-size\);[\s\S]*line-height:\s*var\(--compose-quote-input-leading\);/,
     );
     expect(css).toMatch(
-      /\.compose-reply-compose-layout\s*\{[\s\S]*--compose-title-input-size:\s*var\(--type-content-subtitle\);[\s\S]*--compose-quote-input-size:\s*calc\(var\(--type-content-body\) \* 1\.06\);[\s\S]*--compose-quote-input-leading:\s*1\.42;[\s\S]*--compose-inline-input-size:\s*var\(--type-base\);/,
+      /\.compose-reply-compose-layout\s*\{[\s\S]*--compose-title-input-size:\s*calc\(var\(--type-content-body\) \* 1\.2\);[\s\S]*--compose-quote-input-size:\s*calc\(var\(--type-content-body\) \* 1\.06\);[\s\S]*--compose-quote-input-leading:\s*1\.42;[\s\S]*--compose-inline-input-size:\s*var\(--type-base\);/,
     );
     expect(css).toMatch(
       /\.compose-reply-compose-layout\s+\.compose-quote-wrap\s*\{[\s\S]*margin-top:\s*0\.4rem;[\s\S]*padding:\s*24px 18px 18px;[\s\S]*border-radius:\s*0\.95rem;/,
@@ -4647,7 +4641,6 @@ describe("JantComposeDialog", () => {
             ],
           },
           title: "Fullscreen title",
-          showTitle: true,
           replyExpanded: false,
           intent: "publish",
           editorIndex: 0,
@@ -4681,7 +4674,6 @@ describe("JantComposeDialog", () => {
         detail: {
           json: { type: "doc", content: [{ type: "paragraph" }] },
           title: "",
-          showTitle: false,
           replyExpanded: false,
           intent: "publish",
           editorIndex: 0,
@@ -4706,7 +4698,6 @@ describe("JantComposeDialog", () => {
     const openDetail: ComposeFullscreenOpenDetail = {
       json: null,
       title: "",
-      showTitle: false,
     };
     editors[1]?.dispatchEvent(
       new CustomEvent<ComposeFullscreenOpenDetail>("jant:fullscreen-open", {
@@ -4736,7 +4727,6 @@ describe("JantComposeDialog", () => {
             ],
           },
           title: "",
-          showTitle: false,
           replyExpanded: false,
           editorIndex: 1,
         },

@@ -4950,8 +4950,8 @@
 
   .compose-dialog,
   .compose-page-shell > jant-compose-dialog {
-    --compose-title-input-size: var(--type-content-subtitle);
-    --compose-title-input-leading: var(--type-display-leading);
+    --compose-title-input-size: calc(var(--type-content-body) * 1.2);
+    --compose-title-input-leading: 1.35;
     --compose-quote-input-size: var(--type-content-subtitle);
     --compose-quote-input-leading: 1.32;
     --compose-inline-input-size: var(--type-ui-input);
@@ -4960,13 +4960,6 @@
     --compose-panel-control-size: var(--type-ui-control);
     --compose-summary-size: var(--type-ui-meta);
     --compose-primary-button-size: var(--type-ui-meta);
-  }
-
-  @media (min-width: 700px) {
-    .compose-dialog,
-    .compose-page-shell > jant-compose-dialog {
-      --compose-title-input-size: var(--feed-note-title-size);
-    }
   }
 
   .compose-dialog {
@@ -5411,52 +5404,31 @@
     color: var(--site-text-secondary);
   }
 
+  /* An optional field sitting directly above the one people came to type in:
+     the empty state should recede, not announce itself. */
+  .compose-note-title::placeholder,
+  .compose-link-title::placeholder {
+    color: color-mix(in srgb, var(--site-text-secondary) 55%, transparent);
+    font-weight: 400;
+  }
+
   .compose-input:focus::placeholder {
     opacity: 0.6;
   }
 
   /* --- Note mode ---------------------------------------------------------- */
 
-  .compose-note-title-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-    animation: compose-fade-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
   .compose-note-title {
-    flex: 1;
+    width: 100%;
+    /* Sole owner of the title-to-body gap now that the first block's lead-in
+       margin is gone — one place to tune instead of two that stack. */
+    margin-bottom: 12px;
     font-family: var(--font-heading);
     font-size: var(--compose-title-input-size);
     font-weight: var(--type-heading-weight);
     letter-spacing: var(--type-heading-tracking);
     line-height: var(--compose-title-input-leading);
     text-wrap: pretty;
-  }
-
-  @media (min-width: 700px) {
-    .compose-note-title {
-      font-size: var(--compose-title-input-size);
-    }
-  }
-
-  .compose-note-title-dismiss {
-    border: none;
-    background: transparent;
-    color: var(--site-text-secondary);
-    cursor: pointer;
-    font-size: var(--type-ui-hint);
-    padding: 6px 8px;
-    border-radius: 8px;
-    flex-shrink: 0;
-    line-height: 1;
-    opacity: 0.6;
-    transition: opacity 0.15s ease;
-  }
-
-  .compose-note-title-dismiss:hover {
-    opacity: 1;
   }
 
   .compose-body-input {
@@ -5519,15 +5491,9 @@
     font-weight: var(--type-heading-weight);
     letter-spacing: var(--type-heading-tracking);
     line-height: var(--compose-title-input-leading);
-    margin-bottom: 16px;
+    margin-bottom: 10px;
     padding-left: 2px;
     text-wrap: pretty;
-  }
-
-  @media (min-width: 700px) {
-    .compose-link-title {
-      font-size: var(--compose-title-input-size);
-    }
   }
 
   /* --- Quote mode --------------------------------------------------------- */
@@ -5677,7 +5643,9 @@
 
   .compose-url-input {
     border-bottom: 1px solid transparent;
+    font-family: var(--font-mono);
     font-size: var(--compose-inline-input-size);
+    color: var(--site-accent);
     line-height: 1.4;
     padding-block: 0.1rem;
     transition:
@@ -6759,8 +6727,28 @@
   .compose-post-meta {
     position: relative;
     margin-left: auto;
+    /* Without this the flex item cannot shrink past its content's min-content
+       width, so the header row overflows on narrow screens instead of
+       ellipsising the permalink. */
+    min-width: 0;
     opacity: 0;
     transition: opacity 0.18s ease;
+  }
+
+  /* On narrow screens the header has no room for the pill beside the format
+     selector, so it wraps. An `opacity: 0` pill would still reserve that second
+     row on every post — take it out of flow entirely until it is wanted. There
+     is no hover on touch, so focus and a custom value are the real triggers. */
+  @media (max-width: 760px) {
+    .compose-post-meta {
+      display: none;
+    }
+
+    jant-compose-editor:focus-within .compose-post-meta,
+    .compose-post-meta-set,
+    .compose-post-meta-open {
+      display: block;
+    }
   }
 
   /* Only the first trailing control claims the free space. Two `auto` margins
@@ -6785,6 +6773,7 @@
     align-items: center;
     gap: 5px;
     max-width: min(17rem, 52vw);
+    min-width: 0;
     padding: 3px 10px 3px 8px;
     border: 1px solid var(--compose-control-border);
     border-radius: 999px;
@@ -6840,12 +6829,13 @@
     width: min(20rem, calc(100vw - 3rem));
     padding: 0.55rem 0.6rem;
     border: 1px solid var(--compose-control-border);
-    border-radius: 14px;
-    background-color: var(--compose-paper-bg);
-    box-shadow: var(
-      --compose-panel-shadow,
-      0 12px 32px -16px rgba(0, 0, 0, 0.4)
-    );
+    border-radius: 12px;
+    /* Same surface treatment as .compose-publish-panel — it is the same kind
+       of floating panel, and --compose-floating-bg is what adapts to dark. */
+    background-color: var(--compose-floating-bg);
+    box-shadow:
+      0 10px 28px rgba(0, 0, 0, 0.08),
+      0 1px 3px rgba(0, 0, 0, 0.05);
   }
 
   .compose-post-meta-open {
@@ -7841,7 +7831,7 @@
   }
 
   .compose-reply-compose-layout {
-    --compose-title-input-size: var(--type-content-subtitle);
+    --compose-title-input-size: calc(var(--type-content-body) * 1.2);
     --compose-title-input-leading: 1.35;
     --compose-quote-input-size: calc(var(--type-content-body) * 1.06);
     --compose-quote-input-leading: 1.42;
@@ -8484,6 +8474,10 @@
   .compose-thread-post-header {
     display: flex;
     align-items: center;
+    /* The format selector will not shrink, so on a narrow screen let the
+       date/permalink pill drop to its own line rather than clip. */
+    flex-wrap: wrap;
+    row-gap: 4px;
     gap: 8px;
     /* Control row, so it takes the tools row's 16px gutter rather than the
        body's 24px text gutter: the segmented box then lines up exactly with
@@ -9361,12 +9355,12 @@
     margin-bottom: 1rem;
   }
 
-  /* In inline-format compose (reply / edit-reply / thread — the editors wrapped
-     in .compose-editor-row), the format header sits right above the body, so the
-     first block's 1.4rem top margin reads as a gap between the format pills and
-     the input. Drop it there so the text hugs the header. Standalone new/edit
-     editors keep their natural lead-in. */
-  .compose-editor-row .compose-tiptap-body .tiptap > :first-child {
+  /* The first block's 1.4rem top margin is a lead-in that only made sense when
+     the body was the first thing in the editor. Every editor now renders a
+     format header above it — and notes a title field too — so it reads as a gap
+     instead. (This used to be scoped to .compose-editor-row, back when
+     standalone new/edit editors did start with the body.) */
+  .compose-tiptap-body .tiptap > :first-child {
     margin-top: 0;
   }
 
@@ -11241,29 +11235,6 @@
     margin-top: 0.95rem;
   }
 
-  .compose-fullscreen-title-placeholder {
-    display: block;
-    width: 100%;
-    padding: 0;
-    border: none;
-    background: none;
-    color: var(--site-text-secondary);
-    font-family: var(--font-heading);
-    font-size: var(--type-content-display);
-    font-weight: var(--type-display-weight);
-    line-height: var(--type-display-leading);
-    letter-spacing: var(--type-display-tracking);
-    text-align: left;
-    opacity: 0.32;
-    cursor: pointer;
-    transition: opacity 160ms ease;
-  }
-
-  .compose-fullscreen-title-placeholder:hover,
-  .compose-fullscreen-title-placeholder:focus-visible {
-    opacity: 0.52;
-  }
-
   .compose-fullscreen-title-shell {
     display: flex;
     align-items: center;
@@ -11308,20 +11279,6 @@
     opacity: 0.6;
   }
 
-  .compose-fullscreen-title-placeholder-reply {
-    font-family: var(--font-body);
-    font-size: var(--type-base);
-    font-weight: var(--fw-medium);
-    letter-spacing: 0.01em;
-    line-height: 1.35;
-    opacity: 0.42;
-  }
-
-  .compose-fullscreen-title-placeholder-reply:hover,
-  .compose-fullscreen-title-placeholder-reply:focus-visible {
-    opacity: 0.62;
-  }
-
   .compose-fullscreen .compose-tiptap-body .tiptap {
     min-height: calc(100dvh - 14rem);
     padding-bottom: max(18vh, 8rem);
@@ -11350,16 +11307,8 @@
       font-size: var(--type-content-subtitle);
     }
 
-    .compose-fullscreen-title-placeholder {
-      font-size: var(--type-content-subtitle);
-    }
-
     .compose-fullscreen-title-reply {
       font-size: var(--type-base);
-    }
-
-    .compose-fullscreen-title-placeholder-reply {
-      font-size: var(--type-sm);
     }
 
     .compose-fullscreen .compose-tiptap-body .tiptap {

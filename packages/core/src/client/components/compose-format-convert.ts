@@ -27,7 +27,6 @@ export interface ComposeConvertFields {
   url: string;
   quoteText: string;
   quoteAuthor: string;
-  showTitle: boolean;
   bodyJson: JSONContent | null;
 }
 
@@ -155,7 +154,6 @@ function makeBlockquote(
  * // quote → note: the quote becomes a leading blockquote in the body
  * convertComposeFormat("quote", "note", {
  *   title: "", url: "", quoteText: "Stay hungry", quoteAuthor: "Jobs",
- *   showTitle: false, bodyJson: null,
  * });
  */
 export function convertComposeFormat(
@@ -249,7 +247,6 @@ export function convertComposeFormat(
   if (prepend.length) content.unshift(...prepend);
 
   out.bodyJson = content.length ? { type: "doc", content } : null;
-  out.showTitle = to === "note" && out.title.trim().length > 0;
 
   return out;
 }
