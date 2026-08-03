@@ -103,6 +103,7 @@ type ApiAttachment = ApiMediaAttachment | ApiTextAttachment;
 interface ComposePostResponse {
   id: string;
   threadId?: string;
+  threadPosition?: number;
   format: ComposeFormat;
   slug?: string | null;
   visibility?: ComposeVisibility | null;
@@ -178,7 +179,7 @@ interface ComposeFilePickerCloseDetail {
 const COMPOSE_PUBLISH_PANEL_FULLSCREEN_QUERY =
   "(max-width: 700px), (max-height: 760px), (hover: none) and (pointer: coarse)";
 
-const COMPOSE_DIALOG_HEADER_ICONS = {
+const COMPOSE_SHEET_ROW_ICONS = {
   drafts: `
     <rect x="3.85" y="3.45" width="7.85" height="8.35" rx="2.35" />
     <rect
@@ -187,13 +188,20 @@ const COMPOSE_DIALOG_HEADER_ICONS = {
       width="7.85"
       height="8.35"
       rx="2.35"
-      fill="var(--compose-dialog-icon-paper-fill)"
+      fill="var(--compose-icon-paper-fill)"
       stroke="none"
     />
     <rect x="6.15" y="5.75" width="7.85" height="8.35" rx="2.35" />
     <path d="M8.55 8.55h3.2" stroke-width="1.2" />
     <path d="M8.55 10.8h3.95" stroke-width="1.2" />
     <path d="M8.55 13.05h2.45" stroke-width="1.2" />
+  `,
+  /* One sheet going down into a tray: this row files the post you are looking
+     at, where `drafts` opens the stack you have already filed. */
+  saveDraft: `
+    <path d="M9 3.2v7.1" />
+    <path d="M6.3 7.75 9 10.45l2.7-2.7" />
+    <path d="M3.6 11.4v1.9a1.5 1.5 0 0 0 1.5 1.5h7.8a1.5 1.5 0 0 0 1.5-1.5v-1.9" />
   `,
 } as const;
 
@@ -226,6 +234,10 @@ const COMPOSE_PUBLISH_ACTION_ICONS = {
   caretRight: `
     <path d="M6.45 5.1 9.3 8l-2.85 2.9" />
   `,
+  close: `
+    <path d="M4.5 4.5 11.5 11.5" />
+    <path d="M11.5 4.5 4.5 11.5" />
+  `,
   calendar: `
     <rect x="2.75" y="3.45" width="10.5" height="9.8" rx="2.2" />
     <path d="M5.35 2.55v2.1" />
@@ -247,9 +259,12 @@ const COMPOSE_PUBLISH_ACTION_ICONS = {
 } as const;
 
 const COMPOSE_COLLECTION_PICKER_ICONS = {
+  /* A stack seen edge-on, not a folder: a collection is a post filed under
+     several topics at once, and the folder glyph promises a single container
+     the model does not have. */
   collection: `
-    <rect x="3" y="5.05" width="10" height="8.15" rx="2.2" />
-    <path d="M5.1 5.05V4.2a1.1 1.1 0 0 1 1.1-1.1h3.6a1.1 1.1 0 0 1 1.1 1.1v.85" />
+    <path d="M2.5 5.2 8 2.4l5.5 2.8L8 8 2.5 5.2Z" />
+    <path d="M2.5 8.6 8 11.4l5.5-2.8" />
   `,
   search: `
     <circle cx="7.1" cy="7.1" r="3.65" />
@@ -264,18 +279,15 @@ const COMPOSE_COLLECTION_PICKER_ICONS = {
     <path d="M8 5.55v4.9" />
     <path d="M5.55 8h4.9" />
   `,
-  chevron: `
-    <path d="M5.1 6.45 8 9.3l2.9-2.85" />
-  `,
 } as const;
 
-function renderComposeHeaderIcon(
-  icon: (typeof COMPOSE_DIALOG_HEADER_ICONS)[keyof typeof COMPOSE_DIALOG_HEADER_ICONS],
+function renderComposeSheetRowIcon(
+  icon: (typeof COMPOSE_SHEET_ROW_ICONS)[keyof typeof COMPOSE_SHEET_ROW_ICONS],
 ) {
   return html`<svg
-    class="compose-dialog-header-icon"
-    width="24"
-    height="24"
+    class="compose-sheet-row-icon"
+    width="18"
+    height="18"
     viewBox="0 0 18 18"
     fill="none"
     stroke="currentColor"
@@ -586,6 +598,7 @@ export class JantComposeDialog extends LitElement {
     _addCollectionPanelOpen: { state: true },
     _replyToId: { state: true },
     _replyToData: { state: true },
+    _replyParentPosition: { state: true },
     _replyExpanded: { state: true },
     _threadItems: { state: true },
     _focusedThreadIndex: { state: true },
@@ -633,6 +646,9 @@ export class JantComposeDialog extends LitElement {
   declare _addCollectionPanelOpen: boolean;
   declare _replyToId: string | null;
   declare _replyToData: ReplyToData | null;
+  /** Where the post being replied to sits in its own chain; see
+   *  `_positionLabel`. Null until the parent has been read back. */
+  declare _replyParentPosition: number | null;
   declare _replyExpanded: boolean;
   declare _threadItems: ThreadItem[];
   declare _focusedThreadIndex: number;
@@ -733,6 +749,7 @@ export class JantComposeDialog extends LitElement {
     this._threadItems = [];
     this._focusedThreadIndex = 0;
     this._replyThreadRootId = null;
+    this._replyParentPosition = null;
     this._replyRefreshKind = null;
     this._replyRefreshId = null;
     this._slug = "";
@@ -764,6 +781,12 @@ export class JantComposeDialog extends LitElement {
     super.updated(changed);
     if (this._initialSnapshot === null && this._editor) {
       this._captureInitialSnapshot();
+    }
+    // The visible title used to be the dialog's accessible name. Nothing on
+    // screen needs to replace it, but a screen reader announcing an unnamed
+    // dialog does — so the name moves to an attribute, where it costs no space.
+    if (changed.has("labels") && this._dialogEl && this.labels) {
+      this._dialogEl.setAttribute("aria-label", this.labels.composeDialogLabel);
     }
     if (
       changed.has("_addCollectionPanelOpen") &&
@@ -828,6 +851,7 @@ export class JantComposeDialog extends LitElement {
     this._threadItems = [];
     this._focusedThreadIndex = 0;
     this._replyThreadRootId = null;
+    this._replyParentPosition = null;
     this._replyRefreshKind = null;
     this._replyRefreshId = null;
     this._slug = "";
@@ -1063,6 +1087,30 @@ export class JantComposeDialog extends LitElement {
     await this.updateComplete;
     this._editor?.focusInput();
     this._captureInitialSnapshot();
+    // Deliberately not awaited: this only feeds the `3/3` marker, and blocking
+    // the composer's open on it would trade a visible delay for a decoration.
+    // The marker stays hidden until the number is known rather than counting
+    // from 1 and then correcting itself.
+    void this._loadReplyParentPosition(id);
+  }
+
+  /**
+   * Read back where the parent sits in its own chain, so the editors below it
+   * can be numbered from there. Failure is silent — a missing marker is a much
+   * smaller problem than a wrong one.
+   */
+  private async _loadReplyParentPosition(replyToId: string) {
+    try {
+      const res = await fetch(`/api/posts/${replyToId}`);
+      if (!res.ok) return;
+      const post = (await res.json()) as ComposePostResponse;
+      // The composer may have been closed, or pointed at another post, while
+      // this was in flight.
+      if (this._replyToId !== replyToId) return;
+      this._replyParentPosition = post.threadPosition ?? null;
+    } catch {
+      // Leave the marker hidden.
+    }
   }
 
   /**
@@ -1077,6 +1125,7 @@ export class JantComposeDialog extends LitElement {
       this._replyThreadRootId = (post.replyToId as string | null)
         ? (post.threadId as string)
         : (post.id as string);
+      this._replyParentPosition = post.threadPosition ?? null;
       const dateText = post.publishedAt
         ? new Date(post.publishedAt * 1000).toLocaleDateString(undefined, {
             month: "short",
@@ -3731,51 +3780,40 @@ export class JantComposeDialog extends LitElement {
 
   // ── Render helpers ────────────────────────────────────────────────
 
-  private _renderHeader() {
-    const draftButtonLabel = this._hasContent()
-      ? this.labels.saveAsDraft
-      : this.labels.drafts;
-    // The format selector always sits above its own post (see
-    // `jant-compose-editor`'s format header), so the dialog header is only ever
-    // a title. One selector, one place, in every mode.
-    const isReply = !!(this._replyToId && this._replyToData);
-    const headerTitle = this._editPostId
-      ? this.labels.editTitle
-      : isReply
-        ? this.labels.replyTitle
-        : this._threadItems.length > 0
-          ? this.labels.newThread
-          : this.labels.newPost;
+  /**
+   * The way out, sitting at the end of the post header row where a thread post
+   * keeps its own ×. Compose has no title bar to hang a Cancel off any more:
+   * "New post" restated what an empty composer already says, and Publish
+   * already reads "Update" when editing, so the row was carrying nothing but
+   * two controls that belong closer to the work.
+   *
+   * A thread's posts each own that slot for removing themselves, so there the
+   * exit lives in the options panel instead — see `_renderCloseComposeRow`.
+   */
+  private _renderCloseComposeControl() {
+    if (this.pageMode || this._threadItems.length > 0) return nothing;
 
     return html`
-      <header class="compose-dialog-header">
-        <button
-          type="button"
-          class="compose-dialog-cancel"
-          @click=${() => this.requestClose()}
+      <button
+        type="button"
+        class="compose-close-btn"
+        aria-label=${this.labels.cancel}
+        title=${this.labels.cancel}
+        @click=${() => this.requestClose()}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          aria-hidden="true"
         >
-          ${this.labels.cancel}
-        </button>
-
-        <div class="compose-dialog-header-center">
-          <span class="compose-dialog-title">${headerTitle}</span>
-        </div>
-
-        <div class="compose-dialog-header-actions">
-          ${this._editPostId
-            ? nothing
-            : html`<button
-                type="button"
-                class="compose-dialog-header-btn compose-dialog-draft-btn"
-                aria-label=${draftButtonLabel}
-                title=${draftButtonLabel}
-                ?disabled=${this._loading}
-                @click=${() => this._handleDraftButtonClick()}
-              >
-                ${renderComposeHeaderIcon(COMPOSE_DIALOG_HEADER_ICONS.drafts)}
-              </button>`}
-        </div>
-      </header>
+          <path d="M4.5 4.5 11.5 11.5M11.5 4.5 4.5 11.5" />
+        </svg>
+      </button>
     `;
   }
 
@@ -3832,17 +3870,13 @@ export class JantComposeDialog extends LitElement {
               }
             }}
           >
-            <span class="compose-collection-trigger-icon">
-              ${renderComposeCollectionPickerIcon(
-                COMPOSE_COLLECTION_PICKER_ICONS.collection,
-                "compose-collection-trigger-svg",
-              )}
-            </span>
-            <span class="compose-collection-label">${selectedLabel}</span>
+            <!-- No chevron: the glyph already says "picker", and a second one
+                 pointing down only made the control wider. -->
             ${renderComposeCollectionPickerIcon(
-              COMPOSE_COLLECTION_PICKER_ICONS.chevron,
-              "compose-collection-chevron",
+              COMPOSE_COLLECTION_PICKER_ICONS.collection,
+              "compose-collection-trigger-svg",
             )}
+            <span class="compose-collection-label">${selectedLabel}</span>
           </button>
           <div
             class="compose-collection-popover"
@@ -5131,6 +5165,11 @@ export class JantComposeDialog extends LitElement {
       class="compose-sheet-divider"
       aria-hidden="true"
     ></div>`;
+    const saveDraftRow = this._renderSaveDraftRow();
+    const draftsRow = this._renderDraftsRow();
+    const closeRow = this._renderCloseComposeRow();
+    const hasSessionRows =
+      saveDraftRow !== nothing || draftsRow !== nothing || closeRow !== nothing;
 
     return html`
       <div class="compose-sheet">
@@ -5165,7 +5204,101 @@ export class JantComposeDialog extends LitElement {
           ? html`${this._visibilityLocked ? nothing : divider}
             ${this._renderQuietReplySection()}`
           : nothing}
+        ${hasSessionRows
+          ? html`${divider} ${saveDraftRow} ${draftsRow} ${closeRow}`
+          : nothing}
       </div>
+    `;
+  }
+
+  /**
+   * "Save as draft" is an action on what is in front of you; "Drafts" is a
+   * place to go. One row cannot be both, which is what the old title-bar button
+   * tried to do: it read "Save as draft" and then dropped you in the list. Once
+   * there is something to save, both are offered and each does one thing.
+   */
+  private _renderSaveDraftRow() {
+    if (this._editPostId || !this._hasContent()) return nothing;
+
+    return html`
+      <button
+        type="button"
+        class="compose-sheet-row"
+        ?disabled=${this._loading}
+        @click=${() => {
+          this._closePublishPanel(false);
+          void this._submit("draft");
+        }}
+      >
+        ${renderComposeSheetRowIcon(COMPOSE_SHEET_ROW_ICONS.saveDraft)}
+        <span class="compose-sheet-main">
+          <span class="compose-sheet-title">${this.labels.saveAsDraft}</span>
+        </span>
+      </button>
+    `;
+  }
+
+  /**
+   * Drafts moved off the title bar and in here when that bar went away. It is
+   * the rarer of the two things the bar held — a session action, not part of
+   * writing — so it belongs behind the same trigger as the rest of them.
+   *
+   * Leaving unsaved work behind still asks first, but that prompt is now the
+   * fallback rather than the only path: `_renderSaveDraftRow` is sitting right
+   * above it for anyone who already knows what they want.
+   */
+  private _renderDraftsRow() {
+    if (this._editPostId) return nothing;
+
+    return html`
+      <button
+        type="button"
+        class="compose-sheet-row"
+        ?disabled=${this._loading}
+        @click=${() => {
+          this._closePublishPanel(false);
+          this._handleDraftButtonClick();
+        }}
+      >
+        ${renderComposeSheetRowIcon(COMPOSE_SHEET_ROW_ICONS.drafts)}
+        <span class="compose-sheet-main">
+          <span class="compose-sheet-title">${this.labels.drafts}</span>
+        </span>
+        ${renderComposePublishActionIcon(
+          COMPOSE_PUBLISH_ACTION_ICONS.caretRight,
+          "compose-sheet-caret",
+        )}
+      </button>
+    `;
+  }
+
+  /**
+   * A thread's posts each spend their × on removing themselves, so this is the
+   * only visible exit there — and the only one at all on a phone, which has no
+   * Escape key and no backdrop to tap. It routes through `requestClose`, so
+   * unsaved work still gets the "Save to drafts?" prompt.
+   */
+  private _renderCloseComposeRow() {
+    if (this._threadItems.length === 0) return nothing;
+
+    return html`
+      <button
+        type="button"
+        class="compose-sheet-row"
+        ?disabled=${this._loading}
+        @click=${() => {
+          this._closePublishPanel(false);
+          this.requestClose();
+        }}
+      >
+        ${renderComposePublishActionIcon(
+          COMPOSE_PUBLISH_ACTION_ICONS.close,
+          "compose-sheet-row-icon",
+        )}
+        <span class="compose-sheet-main">
+          <span class="compose-sheet-title">${this.labels.closeCompose}</span>
+        </span>
+      </button>
     `;
   }
 
@@ -5427,6 +5560,12 @@ export class JantComposeDialog extends LitElement {
         aria-live="polite"
         aria-busy="true"
       >
+        <!-- The post header this normally rides on has not rendered yet, so the
+             close control gets its own row rather than leaving a fetch with no
+             way out on a phone, where there is no Escape key. -->
+        <div class="compose-edit-loading-close">
+          ${this._renderCloseComposeControl()}
+        </div>
         <div class="compose-edit-loading-status">
           <svg
             class="animate-spin size-5"
@@ -5634,11 +5773,34 @@ export class JantComposeDialog extends LitElement {
     }
   }
 
+  /**
+   * Where this editor sits in the thread it is extending, as `3/3`.
+   *
+   * A reply continues a chain that already exists, so it counts from the end of
+   * that chain, not from 1: replying to the second post of a thread makes the
+   * third. Only the parent's own depth can tell us this, so the marker stays
+   * hidden until `_loadReplyParentPosition` has read it back — a number that
+   * starts at 2 and jumps to 3 is worse than one that arrives late.
+   *
+   * Empty when there is no chain to place the post in: a lone new post is not
+   * "1/1", and an edit says the more useful thing through its "Editing" marker
+   * (the post being edited may have replies below that compose cannot see, so a
+   * total would be a guess).
+   */
+  private _positionLabel(index: number): string {
+    if (this._editPostId) return "";
+    const isReply = !!(this._replyToId && this._replyToData);
+    if (isReply && this._replyParentPosition === null) return "";
+    const posted = isReply ? (this._replyParentPosition ?? 0) : 0;
+    const total = posted + (this._threadItems.length || 1);
+    if (total < 2) return "";
+    return `${posted + index + 1}/${total}`;
+  }
+
   private _renderThreadPost(
     item: ThreadItem,
     index: number,
     showRemove: boolean,
-    total: number,
     startsThread: boolean,
   ) {
     return html`
@@ -5680,7 +5842,7 @@ export class JantComposeDialog extends LitElement {
           .threadItem=${true}
           .removable=${showRemove}
           .titleByDefault=${startsThread}
-          .positionLabel=${`${index + 1}/${total}`}
+          .positionLabel=${this._positionLabel(index)}
           .headerExtra=${this._renderPostMetaControl(index)}
           .slashCommandDiscovered=${this.slashCommandDiscovered}
           data-thread-id=${item.id}
@@ -5752,7 +5914,6 @@ export class JantComposeDialog extends LitElement {
             item,
             i,
             showRemove,
-            items.length,
             // Only the post that opens a thread of its own gets a title field
             // by default — everything downstream of it continues a thought that
             // is already named.
@@ -5804,7 +5965,10 @@ export class JantComposeDialog extends LitElement {
       .uploadMaxFileSize=${this.uploadMaxFileSize}
       .inlineFormat=${isReply}
       .titleByDefault=${!isReply}
-      .headerExtra=${this._renderPostMetaControl(0)}
+      .positionLabel=${this._positionLabel(0)}
+      .badgeLabel=${this._editPostId ? this.labels.editing : ""}
+      .headerExtra=${html`${this._renderPostMetaControl(0)}
+      ${this._renderCloseComposeControl()}`}
       .slashCommandDiscovered=${this.slashCommandDiscovered}
     ></jant-compose-editor>`;
     // Single-post mode routes its own format changes; the reply and thread
@@ -5832,7 +5996,6 @@ export class JantComposeDialog extends LitElement {
         aria-hidden=${this._addCollectionPanelOpen ? "true" : "false"}
         ?inert=${this._addCollectionPanelOpen}
       >
-        ${this._renderHeader()}
         ${isOpeningEdit
           ? this._renderEditLoadingState()
           : isThreadMode

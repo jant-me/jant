@@ -131,12 +131,15 @@ postsApiRoutes.get("/:id/content", requireAuthApi(), async (c) => {
 postsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
 
-  // Fetch post, media, and collections in parallel (all keyed by the same id)
-  const [post, mediaList, threadCollections] = await Promise.all([
-    c.var.services.posts.getById(id),
-    c.var.services.media.getByPostId(id),
-    c.var.services.collections.getCollectionsByPostId(id),
-  ]);
+  // Fetch post, media, collections and thread position in parallel (all keyed
+  // by the same id)
+  const [post, mediaList, threadCollections, threadPosition] =
+    await Promise.all([
+      c.var.services.posts.getById(id),
+      c.var.services.media.getByPostId(id),
+      c.var.services.collections.getCollectionsByPostId(id),
+      c.var.services.posts.getThreadPosition(id),
+    ]);
   const foundPost = assertFound(post, "Post");
   const {
     r2PublicUrl,
@@ -147,8 +150,8 @@ postsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
   } = c.var.appConfig;
   const collectionIds = threadCollections.map((col) => col.id);
 
-  return c.json(
-    toApiPost(foundPost, {
+  return c.json({
+    ...toApiPost(foundPost, {
       collectionIds,
       attachments: mediaList.map((m) =>
         toApiAttachment(
@@ -161,7 +164,8 @@ postsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
         ),
       ),
     }),
-  );
+    threadPosition,
+  });
 });
 
 // Create post (requires auth)

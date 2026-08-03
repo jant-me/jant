@@ -265,10 +265,9 @@ const labels: ComposeLabels = {
   threadLimitReached: "Threads can include up to 20 posts.",
   showMore: "Show more",
   showLess: "Show less",
-  newThread: "New Thread",
-  newPost: "New Post",
-  replyTitle: "Reply",
-  editTitle: "Edit",
+  closeCompose: "Close compose",
+  editing: "Editing",
+  composeDialogLabel: "Compose",
   slashHint: "Type / for commands",
   tableControls: {
     toolbarLabel: "Table controls",

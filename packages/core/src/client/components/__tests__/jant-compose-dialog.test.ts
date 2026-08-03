@@ -69,6 +69,45 @@ async function flushUpdates(el?: JantComposeDialog) {
   }
 }
 
+async function openPublishPanel(el: JantComposeDialog) {
+  requireElement(
+    el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
+    "expected publish settings toggle",
+  ).click();
+  await flushUpdates(el);
+}
+
+/** Options-panel rows are found by their title — the drafts entries moved off
+ *  the title bar and into that panel. */
+function sheetRow(
+  el: JantComposeDialog,
+  title: string,
+): HTMLButtonElement | null {
+  return (
+    Array.from(
+      el.querySelectorAll<HTMLButtonElement>(
+        ".compose-publish-panel .compose-sheet-row",
+      ),
+    ).find(
+      (row) =>
+        row.querySelector(".compose-sheet-title")?.textContent?.trim() ===
+        title,
+    ) ?? null
+  );
+}
+
+function sheetRowTitles(el: JantComposeDialog): (string | undefined)[] {
+  return Array.from(
+    el.querySelectorAll<HTMLElement>(
+      ".compose-publish-panel .compose-sheet-title",
+    ),
+  ).map((n) => n.textContent?.trim());
+}
+
+function draftsRow(el: JantComposeDialog): HTMLButtonElement | null {
+  return sheetRow(el, "Drafts");
+}
+
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((res) => {
@@ -233,10 +272,9 @@ const labels: ComposeLabels = {
   threadLimitReached: "Threads can include up to 20 posts.",
   showMore: "Show more",
   showLess: "Show less",
-  newThread: "New Thread",
-  newPost: "New Post",
-  replyTitle: "Reply",
-  editTitle: "Edit",
+  closeCompose: "Close compose",
+  editing: "Editing",
+  composeDialogLabel: "Compose",
   slashHint: "Type / for commands",
   tableControls: {
     toolbarLabel: "Table controls",
@@ -363,8 +401,11 @@ describe("JantComposeDialog", () => {
   it("renders with collections and labels", async () => {
     const el = await createElement();
 
-    // Header present
-    expect(el.querySelector(".compose-dialog-header")).not.toBeNull();
+    // No title bar: the composer opens straight onto the post header row. A new
+    // post gets no marker either — an empty composer already says that much.
+    expect(el.querySelector(".compose-dialog-header")).toBeNull();
+    expect(el.querySelector(".compose-thread-post-header")).not.toBeNull();
+    expect(el.querySelector(".compose-post-badge")).toBeNull();
 
     // Format buttons present
     const segmentedItems = el.querySelectorAll(".compose-segmented-item");
@@ -529,15 +570,13 @@ describe("JantComposeDialog", () => {
     expect(el.querySelector(".compose-publish-panel")).not.toBeNull();
   });
 
-  it("updates the draft button label to match its current action", async () => {
+  it("offers saving separately from browsing once there is something to save", async () => {
     const el = await createElement();
+    await openPublishPanel(el);
 
-    const draftButton = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-dialog-draft-btn"),
-      "expected draft button",
-    );
-    expect(draftButton.title).toBe("Drafts");
-    expect(draftButton.getAttribute("aria-label")).toBe("Drafts");
+    // Nothing written yet, so there is only a place to go.
+    expect(sheetRowTitles(el)).toContain("Drafts");
+    expect(sheetRowTitles(el)).not.toContain("Save as draft");
 
     const editor = requireElement(
       el.querySelector<JantComposeEditor>("jant-compose-editor"),
@@ -550,10 +589,49 @@ describe("JantComposeDialog", () => {
       ],
     };
     await editor.updateComplete;
-    await el.updateComplete;
+    await flushUpdates(el);
 
-    expect(draftButton.title).toBe("Save as draft");
-    expect(draftButton.getAttribute("aria-label")).toBe("Save as draft");
+    // Now both: an action on this post, and the list. Neither label lies about
+    // what its row does.
+    const titles = sheetRowTitles(el);
+    expect(titles).toContain("Save as draft");
+    expect(titles).toContain("Drafts");
+    expect(titles.indexOf("Save as draft")).toBeLessThan(
+      titles.indexOf("Drafts"),
+    );
+  });
+
+  it("saves straight to a draft from its own row, with no prompt in the way", async () => {
+    const el = await createElement();
+    const editor = requireElement(
+      el.querySelector<JantComposeEditor>("jant-compose-editor"),
+      "expected compose editor",
+    );
+    editor._bodyJson = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Hello world" }] },
+      ],
+    };
+    await editor.updateComplete;
+    await flushUpdates(el);
+
+    let detail: ComposeSubmitDetail | null = null;
+    el.addEventListener("jant:compose-submit-deferred", (event) => {
+      detail = (event as CustomEvent<ComposeSubmitDetail>).detail;
+    });
+
+    await openPublishPanel(el);
+    requireElement(
+      sheetRow(el, "Save as draft"),
+      "expected save-as-draft row",
+    ).click();
+    await flushUpdates(el);
+
+    expect(el._confirmPanelOpen).toBe(false);
+    expect(el._draftsPanelOpen).toBe(false);
+    expect(detail).not.toBeNull();
+    expect(detail!.status).toBe("draft");
   });
 
   it("opens options from its own button, not a chevron on Publish", async () => {
@@ -744,18 +822,21 @@ describe("JantComposeDialog", () => {
     await el.openEdit("pst_123");
     await flushUpdates(el);
 
-    // The switcher has exactly one home: above its own post. The header center
-    // is always a title.
-    expect(el.querySelector(".compose-thread-post-header")).not.toBeNull();
+    // The switcher has exactly one home: above its own post. Editing says so
+    // through the submit label and a marker in the header row, not a title bar.
+    expect(el.querySelector(".compose-thread-post-header")).toBeTruthy();
+    expect(el.querySelector(".compose-dialog-header")).toBeNull();
     expect(
-      el.querySelector(".compose-dialog-header-center .compose-segmented"),
-    ).toBeNull();
-    expect(el.querySelector(".compose-dialog-title")?.textContent?.trim()).toBe(
-      "Edit",
+      el
+        .querySelector(".compose-thread-post-header .compose-post-badge")
+        ?.textContent?.trim(),
+    ).toBe(labels.editing);
+    expect(el.querySelector(".compose-publish-main")?.textContent?.trim()).toBe(
+      labels.update,
     );
   });
 
-  it("shows a Reply title with the format selector above the post when replying", async () => {
+  it("shows the format selector above the post when replying", async () => {
     const el = await createElement();
     await el.openReply("019ce8ce-d6d8-7fda-a5df-c2da2bef5ade", {
       contentHtml: "<p>Parent</p>",
@@ -763,14 +844,8 @@ describe("JantComposeDialog", () => {
     });
     await flushUpdates(el);
 
-    expect(el.querySelector(".compose-dialog-title")?.textContent?.trim()).toBe(
-      "Reply",
-    );
-    // The header center no longer hosts the format selector...
-    expect(
-      el.querySelector(".compose-dialog-header-center .compose-segmented"),
-    ).toBeNull();
-    // ...it sits inline above the reply editor instead.
+    expect(el.querySelector(".compose-dialog-header")).toBeNull();
+    // The selector sits inline above the reply editor.
     expect(el.querySelector(".compose-thread-post-header")).not.toBeNull();
     expect(
       el.querySelector(".compose-thread-layout.compose-reply-compose-layout"),
@@ -814,12 +889,10 @@ describe("JantComposeDialog", () => {
     await el.openEdit("pst_123");
     await flushUpdates(el);
 
-    expect(el.querySelector(".compose-dialog-title")?.textContent?.trim()).toBe(
-      "Edit",
+    expect(el.querySelector(".compose-publish-main")?.textContent?.trim()).toBe(
+      labels.update,
     );
-    expect(
-      el.querySelector(".compose-dialog-header-center .compose-segmented"),
-    ).toBeNull();
+    expect(el.querySelector(".compose-dialog-header")).toBeNull();
     expect(el.querySelector(".compose-thread-post-header")).not.toBeNull();
     expect(el._collectionIds).toEqual([]);
     expect(el.querySelector(".compose-collection-trigger")).toBeNull();
@@ -829,10 +902,7 @@ describe("JantComposeDialog", () => {
     const el = await createElement();
     await flushUpdates(el);
 
-    // One selector, one place — never in the header center.
-    expect(
-      el.querySelector(".compose-dialog-header-center .compose-segmented"),
-    ).toBeNull();
+    // One selector, one place — above its own post.
     const items = el.querySelectorAll<HTMLButtonElement>(
       ".compose-thread-post-header .compose-segmented-item",
     );
@@ -965,15 +1035,66 @@ describe("JantComposeDialog", () => {
         n.textContent?.trim(),
       );
     expect(positions()).toEqual(["1/2", "2/2"]);
-    expect(el.querySelector(".compose-dialog-title")?.textContent?.trim()).toBe(
-      "New Thread",
-    );
 
     (el as unknown as { _addThreadItem: () => void })._addThreadItem();
     await flushUpdates(el);
 
     // The total re-renders on every post, not just the new one.
     expect(positions()).toEqual(["1/3", "2/3", "3/3"]);
+  });
+
+  const positionsIn = (el: JantComposeDialog) =>
+    Array.from(el.querySelectorAll(".compose-post-position")).map((n) =>
+      n.textContent?.trim(),
+    );
+
+  it("numbers a reply from the end of the thread it continues", async () => {
+    // The parent is the second post of a thread, so the reply is the third —
+    // not the first, and not the second.
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: "pst_parent", threadPosition: 2 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const el = await createElement();
+    await el.openReply("pst_parent", {
+      contentHtml: "<p>Parent</p>",
+      dateText: "Mar 14",
+    });
+    await flushUpdates(el);
+    await flushUpdates(el);
+
+    expect(positionsIn(el)).toEqual(["3/3"]);
+
+    (el as unknown as { _addThreadItem: () => void })._addThreadItem();
+    await flushUpdates(el);
+
+    expect(positionsIn(el)).toEqual(["3/4", "4/4"]);
+  });
+
+  it("shows no number for a reply until the parent's position is known", async () => {
+    // Counting from 1 and then correcting to 3 is worse than arriving late, so
+    // the marker stays away while the lookup is in flight — and stays away for
+    // good if it fails.
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+
+    const el = await createElement();
+    await el.openReply("pst_parent", {
+      contentHtml: "<p>Parent</p>",
+      dateText: "Mar 14",
+    });
+    await flushUpdates(el);
+    await flushUpdates(el);
+
+    expect(positionsIn(el)).toEqual([]);
+  });
+
+  it("leaves a lone new post unnumbered — there is no chain to place it in", async () => {
+    const el = await createElement();
+    await flushUpdates(el);
+
+    expect(el.querySelector(".compose-post-position")).toBeNull();
   });
 
   it("switches format from the inline selector when replying", async () => {
@@ -2844,6 +2965,20 @@ describe("JantComposeDialog", () => {
     );
   });
 
+  it("gives the collection trigger one glyph and no chevron", async () => {
+    const el = await createElement();
+    const trigger = requireElement(
+      el.querySelector<HTMLButtonElement>(".compose-collection-trigger"),
+      "expected collection trigger",
+    );
+
+    expect(trigger.querySelectorAll("svg").length).toBe(1);
+    expect(
+      trigger.querySelector(".compose-collection-trigger-svg"),
+    ).not.toBeNull();
+    expect(trigger.querySelector(".compose-collection-chevron")).toBeNull();
+  });
+
   it("collection selector toggles IDs", async () => {
     const el = await createElement();
 
@@ -3374,13 +3509,10 @@ describe("JantComposeDialog", () => {
     };
     await editor.updateComplete;
 
-    // Click the draft header button — should show confirm panel
-    const draftBtn = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-dialog-header-btn"),
-      "expected draft button",
-    );
-    draftBtn.click();
-    await el.updateComplete;
+    // Click the drafts row in the options panel — should show confirm panel
+    await openPublishPanel(el);
+    requireElement(draftsRow(el), "expected drafts row").click();
+    await flushUpdates(el);
 
     expect(el._confirmPanelOpen).toBe(true);
     expect(el.querySelector(".compose-confirm-panel")).not.toBeNull();
@@ -3397,13 +3529,10 @@ describe("JantComposeDialog", () => {
       }),
     );
 
-    // Click the draft header button — should open drafts panel
-    const draftBtn = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-dialog-header-btn"),
-      "expected draft button",
-    );
-    draftBtn.click();
-    await el.updateComplete;
+    // Click the drafts row in the options panel — should open drafts panel
+    await openPublishPanel(el);
+    requireElement(draftsRow(el), "expected drafts row").click();
+    await flushUpdates(el);
 
     expect(el._draftsPanelOpen).toBe(true);
 
@@ -3583,6 +3712,11 @@ describe("JantComposeDialog", () => {
     expect(css).toMatch(
       /\.compose-dialog,[\s\S]*\.compose-page-shell\s*>\s*jant-compose-dialog\s*\{[\s\S]*--compose-quote-input-size:\s*var\(--type-content-subtitle\);[\s\S]*--compose-quote-input-leading:\s*1\.32;/,
     );
+    // On the page the gutter comes from the page, so the format row drops the
+    // dialog's and lines up with the title field under it.
+    expect(css).toMatch(
+      /\.compose-page-shell\s+\.compose-dialog-inner-page\s+\.compose-thread-post-header\s*\{\s*padding-inline:\s*0;/,
+    );
     expect(css).toMatch(
       /\.compose-quote-text\s*\{[\s\S]*font-size:\s*var\(--compose-quote-input-size\);[\s\S]*line-height:\s*var\(--compose-quote-input-leading\);/,
     );
@@ -3622,6 +3756,27 @@ describe("JantComposeDialog", () => {
     expect(css).toMatch(
       /\.compose-thread-layout > \.compose-thread-add-row::before\s*\{\s*display:\s*none;/,
     );
+
+    // The dot reads its offset off the same centre the rail is trimmed to, so
+    // resizing the marker cannot leave the line pointing past it.
+    expect(css).toMatch(
+      /\.compose-thread-dot\s*\{[\s\S]*margin-top:\s*calc\(\s*var\(--compose-thread-dot-center\) -\s*var\(--compose-thread-row-padding-top\) -\s*var\(--site-thread-marker-size\) \/ 2\s*\);/,
+    );
+  });
+
+  it("draws compose's rail dots smaller than the feed's, with no punch-out ring", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    // A joint in the line, not a marker to find a post by: the feed's ring and
+    // surface border together were wider than the whole compose dot now is.
+    expect(css).toMatch(
+      /\.compose-thread-layout\s*\{\s*--site-thread-marker-size:\s*7px;\s*--site-thread-marker-border-width:\s*0px;\s*--site-thread-marker-ring-width:\s*0px;/,
+    );
+    expect(css).toMatch(
+      /\.thread-group\s*\{\s*--site-thread-marker-size:\s*10px;/,
+    );
+    // No border or ring left on the compose dot itself.
+    expect(css).not.toMatch(/\.compose-thread-dot\s*\{[^}]*box-shadow/);
   });
 
   it("keeps passive footnote references quiet until the editor selects them", () => {
@@ -3899,7 +4054,97 @@ describe("JantComposeDialog", () => {
     );
   });
 
-  // ── Close confirmation ─────────────────────────────────────────────
+  // ── Leaving compose ────────────────────────────────────────────────
+
+  it("names the dialog for assistive tech now that no title is drawn", async () => {
+    // The visible title carried the dialog's accessible name; it moves to an
+    // attribute rather than disappearing with the row.
+    const dialog = document.createElement("dialog");
+    document.body.appendChild(dialog);
+    const el = document.createElement(
+      "jant-compose-dialog",
+    ) as JantComposeDialog;
+    el.collections = collections;
+    el.labels = labels;
+    dialog.appendChild(el);
+    await flushUpdates(el);
+
+    expect(dialog.getAttribute("aria-label")).toBe(labels.composeDialogLabel);
+
+    // Tear the dialog down here: happy-dom throws when `body.innerHTML = ""`
+    // in the shared beforeEach removes one it did not itself create.
+    el.remove();
+    dialog.remove();
+  });
+
+  it("closes from the × in the post header row", async () => {
+    const el = await createElement();
+    await flushUpdates(el);
+    const requestCloseSpy = vi.spyOn(el, "requestClose");
+
+    const closeBtn = requireElement(
+      el.querySelector<HTMLButtonElement>(
+        ".compose-thread-post-header .compose-close-btn",
+      ),
+      "expected close button in the post header",
+    );
+    expect(closeBtn.getAttribute("aria-label")).toBe(labels.cancel);
+
+    closeBtn.click();
+    await flushUpdates(el);
+
+    expect(requestCloseSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("hands the header slot back to per-post remove in a thread, and moves the exit into the options panel", async () => {
+    const el = await createElement();
+    el._threadItems = [
+      { id: "thread-1", format: "note" },
+      { id: "thread-2", format: "note" },
+    ];
+    await flushUpdates(el);
+
+    // Each post owns its × for removing itself, so no close button competes.
+    expect(el.querySelector(".compose-close-btn")).toBeNull();
+    expect(
+      el.querySelectorAll(".compose-thread-post-remove").length,
+    ).toBeGreaterThan(0);
+
+    await openPublishPanel(el);
+    const closeRow = requireElement(
+      Array.from(
+        el.querySelectorAll<HTMLButtonElement>(
+          ".compose-publish-panel .compose-sheet-row",
+        ),
+      ).find(
+        (row) =>
+          row.querySelector(".compose-sheet-title")?.textContent?.trim() ===
+          labels.closeCompose,
+      ) ?? null,
+      "expected a close row in the options panel",
+    );
+
+    const requestCloseSpy = vi.spyOn(el, "requestClose");
+    closeRow.click();
+    await flushUpdates(el);
+
+    expect(el._showPublishPanel).toBe(false);
+    expect(requestCloseSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the exit out of the options panel when the × already offers one", async () => {
+    const el = await createElement();
+    await openPublishPanel(el);
+
+    const titles = Array.from(
+      el.querySelectorAll<HTMLElement>(
+        ".compose-publish-panel .compose-sheet-title",
+      ),
+    ).map((n) => n.textContent?.trim());
+
+    expect(titles).not.toContain(labels.closeCompose);
+    expect(titles).toContain("Drafts");
+  });
 
   it("requestClose on empty form closes immediately without confirmation", async () => {
     const el = await createElement();
@@ -5361,11 +5606,11 @@ describe("JantComposeDialog", () => {
     el._format = "note";
     await el.updateComplete;
 
-    // Format switcher should be visible, and the header title says this is a
+    // Format switcher should be visible, and the submit label says this is a
     // new post rather than an edit.
     expect(el.querySelector(".compose-segmented")).not.toBeNull();
-    expect(el.querySelector(".compose-dialog-title")?.textContent?.trim()).toBe(
-      "New Post",
+    expect(el.querySelector(".compose-publish-main")?.textContent?.trim()).toBe(
+      "Post",
     );
 
     // Button should say "Post", not "Done"
@@ -5568,13 +5813,10 @@ describe("JantComposeDialog", () => {
       receivedDetail = (event as CustomEvent<ComposeSubmitDetail>).detail;
     });
 
-    // Click draft button → confirm panel
-    const draftBtn = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-dialog-header-btn"),
-      "expected draft button",
-    );
-    draftBtn.click();
-    await el.updateComplete;
+    // Click the drafts row in the options panel → confirm panel
+    await openPublishPanel(el);
+    requireElement(draftsRow(el), "expected drafts row").click();
+    await flushUpdates(el);
     expect(el._confirmPanelOpen).toBe(true);
 
     // Click "Save"
@@ -5639,13 +5881,10 @@ describe("JantComposeDialog", () => {
       submitFired = true;
     });
 
-    // Click draft button → confirm panel
-    const draftBtn = requireElement(
-      el.querySelector<HTMLButtonElement>(".compose-dialog-header-btn"),
-      "expected draft button",
-    );
-    draftBtn.click();
-    await el.updateComplete;
+    // Click the drafts row in the options panel → confirm panel
+    await openPublishPanel(el);
+    requireElement(draftsRow(el), "expected drafts row").click();
+    await flushUpdates(el);
 
     // Click "Don't save"
     requireElement(

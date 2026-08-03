@@ -795,31 +795,24 @@ export const ComposeForm: FC<ComposeFormProps> = ({
           "@context: Toast shown when a local draft is restored on compose open",
       }),
     ),
-    newThread: i18n._(
+    closeCompose: i18n._(
       msg({
-        message: "New Thread",
+        message: "Close compose",
         comment:
-          "@context: Compose dialog header title when composing a thread",
+          "@context: Post options row that leaves the composer; prompts to save a draft first if there is unsaved work",
       }),
     ),
-    newPost: i18n._(
+    editing: i18n._(
       msg({
-        message: "New Post",
+        message: "Editing",
         comment:
-          "@context: Compose dialog header title when composing a single post",
+          "@context: Marker above the composer when changing a post that is already published",
       }),
     ),
-    replyTitle: i18n._(
+    composeDialogLabel: i18n._(
       msg({
-        message: "Reply",
-        comment:
-          "@context: Compose dialog header title when replying to a post",
-      }),
-    ),
-    editTitle: i18n._(
-      msg({
-        message: "Edit",
-        comment: "@context: Compose dialog header title when editing a post",
+        message: "Compose",
+        comment: "@context: Accessible name for the compose dialog",
       }),
     ),
     slashHint: i18n._(
@@ -928,7 +921,6 @@ export const ComposeForm: FC<ComposeFormProps> = ({
     >
       {/* SSR fallback skeleton */}
       <div class="compose-dialog-inner">
-        <div class="compose-dialog-header" />
         <div class="compose-body skel-section-md" />
       </div>
     </jant-compose-dialog>

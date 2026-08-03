@@ -18,10 +18,9 @@ const labels = {
   bodyPlaceholder: "What's on your mind...",
   showMore: "Show more",
   showLess: "Show less",
-  newThread: "New Thread",
-  newPost: "New Post",
-  replyTitle: "Reply",
-  editTitle: "Edit",
+  closeCompose: "Close compose",
+  editing: "Editing",
+  composeDialogLabel: "Compose",
 } as ComposeLabels;
 
 async function flush(el?: JantComposeFullscreen) {

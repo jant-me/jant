@@ -2114,6 +2114,57 @@ describe("PostService", () => {
       expect(thread[0]?.bodyText).toBe("root");
     });
 
+    it("getThreadPosition counts the chain from the root down to a post", async () => {
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const reply1 = await postService.create({
+        format: "note",
+        bodyMarkdown: "reply1",
+        replyToId: root.id,
+      });
+      const reply2 = await postService.create({
+        format: "note",
+        bodyMarkdown: "reply2",
+        replyToId: reply1.id,
+      });
+
+      expect(await postService.getThreadPosition(root.id)).toBe(1);
+      expect(await postService.getThreadPosition(reply1.id)).toBe(2);
+      expect(await postService.getThreadPosition(reply2.id)).toBe(3);
+    });
+
+    it("getThreadPosition walks the reply chain rather than counting members", async () => {
+      // `create` only allows replying to the tail, so today a thread is a
+      // straight chain and depth happens to equal its size. The walk is what
+      // makes the two agree — counting `threadId` members would give the same
+      // answer here and the wrong one the moment a draft chain is incomplete.
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const tail = await postService.create({
+        format: "note",
+        bodyMarkdown: "tail",
+        replyToId: root.id,
+      });
+
+      // A second post filed under the same thread without joining the chain:
+      // it is not above the tail, so it must not push the tail's position.
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "unrelated",
+      });
+
+      expect(await postService.getThreadPosition(tail.id)).toBe(2);
+      expect(await postService.getThread(root.id)).toHaveLength(2);
+    });
+
+    it("getThreadPosition returns 0 for a post that does not exist", async () => {
+      expect(await postService.getThreadPosition("pst_missing")).toBe(0);
+    });
+
     it("getThread excludes deleted posts", async () => {
       const root = await postService.create({
         format: "note",

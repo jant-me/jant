@@ -191,6 +191,7 @@ export class JantComposeEditor extends LitElement {
     inlineFormat: { type: Boolean, attribute: "inline-format" },
     titleByDefault: { type: Boolean, attribute: "title-by-default" },
     positionLabel: { type: String, attribute: "position-label" },
+    badgeLabel: { type: String, attribute: "badge-label" },
     headerExtra: { attribute: false },
     slashCommandDiscovered: { type: Boolean },
     _title: { state: true },
@@ -231,6 +232,9 @@ export class JantComposeEditor extends LitElement {
    * single post, where there is no "which one" to answer.
    */
   declare positionLabel: string;
+  /** Status marker for the header row, e.g. "Editing". Mutually exclusive with
+   * `positionLabel` in practice — a thread post is never an edit. */
+  declare badgeLabel: string;
   /**
    * Owner-supplied content for the right side of the format header — the
    * dialog's per-post date/permalink control. Passed in rather than built here
@@ -297,6 +301,7 @@ export class JantComposeEditor extends LitElement {
     this.inlineFormat = false;
     this.titleByDefault = true;
     this.positionLabel = "";
+    this.badgeLabel = "";
     this.headerExtra = null;
     this.slashCommandDiscovered = false;
     this._title = "";
@@ -2746,6 +2751,11 @@ export class JantComposeEditor extends LitElement {
         ${this.positionLabel
           ? html`<span class="compose-post-position"
               >${this.positionLabel}</span
+            >`
+          : nothing}
+        ${this.badgeLabel
+          ? html`<span class="compose-post-position compose-post-badge"
+              >${this.badgeLabel}</span
             >`
           : nothing}
         ${this.headerExtra ?? nothing}

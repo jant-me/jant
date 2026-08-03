@@ -416,6 +416,11 @@ msgstr "Circle tile"
 msgid "Clear filter"
 msgstr "Clear filter"
 
+#. @context: Post options row that leaves the composer; prompts to save a draft first if there is unsaved work
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Close compose"
+msgstr "Close compose"
+
 #. @context: Close drawer button label
 #: src/ui/layouts/SiteLayout.tsx
 msgid "Close menu"
@@ -506,6 +511,11 @@ msgstr "Compare it against the theme controls"
 #: src/routes/auth/setup.tsx
 msgid "Complete Setup"
 msgstr "Complete Setup"
+
+#. @context: Accessible name for the compose dialog
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Compose"
+msgstr "Compose"
 
 #. @context: Password reset form field
 #: src/routes/auth/reset.tsx
@@ -797,11 +807,9 @@ msgstr "Drafts"
 msgid "Drag collections, links, and dividers into the order you want."
 msgstr "Drag collections, links, and dividers into the order you want."
 
-#. @context: Compose dialog header title when editing a post
 #. @context: Per-collection edit action
 #. @context: Per-collection edit action
 #. @context: Per-collection edit action
-#: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/CollectionEditorPage.tsx
 #: src/ui/pages/CollectionEditorPage.tsx
 #: src/ui/shared/collection-management-labels.ts
@@ -837,6 +845,11 @@ msgstr "Edit post"
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Edit publish date"
 msgstr "Edit publish date"
+
+#. @context: Marker above the composer when changing a post that is already published
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Editing"
+msgstr "Editing"
 
 #. @context: Sample link post title on the theme sample page
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -1366,16 +1379,6 @@ msgstr "New Password"
 msgid "New post"
 msgstr "New post"
 
-#. @context: Compose dialog header title when composing a single post
-#: src/ui/compose/ComposeDialog.tsx
-msgid "New Post"
-msgstr "New Post"
-
-#. @context: Compose dialog header title when composing a thread
-#: src/ui/compose/ComposeDialog.tsx
-msgid "New Thread"
-msgstr "New Thread"
-
 #. @context: Collection sort order option
 #. @context: Collection sort order option
 #: src/ui/pages/CollectionPage.tsx
@@ -1759,9 +1762,7 @@ msgstr "Replies"
 
 #. @context: Archive tile label for a single thread reply
 #. @context: Compose button - reply to post
-#. @context: Compose dialog header title when replying to a post
 #. @context: Reply button label in the post footer
-#: src/ui/compose/ComposeDialog.tsx
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/shared/PostFooter.tsx

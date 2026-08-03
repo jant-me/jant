@@ -234,10 +234,9 @@ export interface ComposeLabels {
   threadLimitReached: string;
   showMore: string;
   showLess: string;
-  newThread: string;
-  newPost: string;
-  replyTitle: string;
-  editTitle: string;
+  closeCompose: string;
+  editing: string;
+  composeDialogLabel: string;
   slashHint: string;
   tableControls: TableControlLabels;
   collectionFormLabels: CollectionFormLabels;

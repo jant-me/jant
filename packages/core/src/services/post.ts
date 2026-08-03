@@ -346,6 +346,21 @@ export interface PostService {
    */
   deleteThreadDraft(id: string, deps?: PostDeleteDeps): Promise<boolean>;
   getThread(rootId: string): Promise<Post[]>;
+  /**
+   * 1-based position of a Post in the reply chain running from its Thread root
+   * down to it: a root is 1, a reply to it is 2, a reply to that is 3.
+   *
+   * Threads are stored as a tree (`replyToId`) flattened under one `threadId`,
+   * so this is the Post's depth, not how many Posts the Thread holds — two
+   * replies to the same parent are both at the same position.
+   *
+   * @param postId - TypeID of the Post to locate
+   * @returns The 1-based position, or 0 when no such Post exists
+   * @example
+   * // Root -> reply -> reply, asked about the last one
+   * await posts.getThreadPosition(lastId); // => 3
+   */
+  getThreadPosition(postId: string): Promise<number>;
   updateThreadStatusAndVisibility(
     rootId: string,
     status: Status,
@@ -2888,6 +2903,44 @@ export function createPostService(
         .orderBy(posts.createdAt, posts.id);
 
       return hydratePosts(rows);
+    },
+
+    async getThreadPosition(postId) {
+      const targetRows = await db
+        .select({ replyToId: posts.replyToId, threadId: posts.threadId })
+        .from(posts)
+        .where(and(eq(posts.siteId, siteId), eq(posts.id, postId)))
+        .limit(1);
+
+      const target = targetRows[0];
+      if (!target) return 0;
+      if (!target.replyToId) return 1;
+
+      // One read for the whole Thread, then walk up in memory: a chain of N
+      // Posts would otherwise be N round trips.
+      const threadRows = await db
+        .select({ id: posts.id, replyToId: posts.replyToId })
+        .from(posts)
+        .where(
+          and(eq(posts.siteId, siteId), eq(posts.threadId, target.threadId)),
+        );
+
+      const parentOf = new Map(
+        threadRows.map((row) => [row.id, row.replyToId] as const),
+      );
+
+      let position = 1;
+      let cursor: string | null = target.replyToId;
+      // A cycle is impossible per the schema's CHECK constraints, but walking a
+      // parent chain unguarded turns a bad row into a hung request.
+      const visited = new Set<string>([postId]);
+      while (cursor && !visited.has(cursor)) {
+        visited.add(cursor);
+        position += 1;
+        cursor = parentOf.get(cursor) ?? null;
+      }
+
+      return position;
     },
 
     async updateThreadStatusAndVisibility(rootId, status, visibility) {

@@ -2939,13 +2939,26 @@
     flex-shrink: 0;
   }
 
-  .thread-group,
-  .compose-thread-layout {
+  .thread-group {
     --site-thread-marker-size: 10px;
     --site-thread-marker-border-width: 2px;
     --site-thread-marker-ring-width: 2px;
     --site-thread-marker-hero-size: 14px;
     --site-thread-marker-hero-border-width: 3px;
+    --site-thread-marker-surface: var(--site-page-bg);
+  }
+
+  /* Compose draws the same rail an order quieter than the feed does. A read
+     view has to mark where each post begins in a wall of text; compose already
+     has a card edge, a format selector and a "1/3" per post, so the dot is only
+     a joint in the line. Flat, 7px, no punch-out border and no ring — the ring
+     alone was wider than the dot is now. */
+  .compose-thread-layout {
+    --site-thread-marker-size: 7px;
+    --site-thread-marker-border-width: 0px;
+    --site-thread-marker-ring-width: 0px;
+    --site-thread-marker-hero-size: 7px;
+    --site-thread-marker-hero-border-width: 0px;
     --site-thread-marker-surface: var(--site-page-bg);
   }
 
@@ -3252,8 +3265,7 @@
     padding-top: 0.95rem;
   }
 
-  .thread-group-preview .thread-item-hero::before,
-  .compose-editor-row .compose-thread-dot {
+  .thread-group-preview .thread-item-hero::before {
     left: calc(
       var(--site-thread-rail-line-left) + var(--site-thread-rail-line-width) /
         2 - var(--site-thread-marker-hero-size) / 2 -
@@ -4834,6 +4846,7 @@
   .compose-page-shell .compose-dialog-inner {
     min-height: 0;
     max-height: none;
+    padding-top: 0;
     border-radius: inherit;
   }
 
@@ -4883,27 +4896,6 @@
       overflow: visible;
     }
 
-    .compose-page-shell .compose-dialog-inner-page .compose-dialog-header {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      align-items: center;
-      gap: 12px;
-      padding: 0 0 16px;
-    }
-
-    .compose-page-shell
-      .compose-dialog-inner-page
-      .compose-dialog-header-center {
-      position: static;
-      transform: none;
-      justify-self: start;
-      min-width: 0;
-    }
-
-    .compose-page-shell .compose-dialog-inner-page .compose-dialog-cancel {
-      display: none;
-    }
-
     .compose-page-shell .compose-dialog-inner-page .compose-body {
       padding: 22px 0 12px;
       min-height: clamp(16rem, 36vh, 24rem);
@@ -4913,6 +4905,12 @@
     .compose-page-shell .compose-dialog-inner-page .compose-add-thread-trigger {
       padding-inline: 0;
       background: transparent;
+    }
+
+    /* The page supplies its own gutter, so the format row drops the dialog's
+       and lines its selector up with the title field below it. */
+    .compose-page-shell .compose-dialog-inner-page .compose-thread-post-header {
+      padding-inline: 0;
     }
 
     .compose-page-shell .compose-dialog-inner-page .compose-attachments-dock {
@@ -5015,10 +5013,15 @@
     background: transparent;
   }
 
+  /* The composer opens straight onto the first post's header row now that the
+     title bar is gone, so the top gutter it used to provide lives here. It
+     cannot go on the row itself: single-post mode's wrapper is
+     `display: contents` and generates no box to pad. */
   .compose-dialog-inner {
     display: flex;
     flex-direction: column;
     max-height: calc(100dvh - var(--compose-margin-top) - 20px);
+    padding-top: 10px;
     position: relative;
     background-color: var(--compose-paper-bg);
     border-radius: inherit;
@@ -5121,120 +5124,39 @@
 
   /* --- Header ------------------------------------------------------------- */
 
-  .compose-dialog-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 3.6rem;
-    padding: 12px 14px;
-    background-color: var(--compose-paper-bg);
-    border-top-left-radius: inherit;
-    border-top-right-radius: inherit;
-    position: relative;
-    z-index: 4;
-  }
-
-  @media (min-width: 700px) {
-    .compose-dialog-header {
-      padding: 14px 18px;
-    }
-  }
-
-  .compose-dialog-cancel {
-    min-height: 44px;
-    min-width: 72px;
-    padding: 10px 14px;
-    border: none;
-    background: none;
-    border-radius: 10px;
-    color: var(--site-text-secondary);
-    font-size: var(--type-ui-control);
-    font-weight: var(--fw-medium);
-    cursor: pointer;
-    transition: color 0.15s ease-out;
-    flex-shrink: 0;
-    text-align: left;
-  }
-
-  .compose-dialog-cancel:hover {
-    color: var(--site-text-primary);
-  }
-
-  .compose-dialog-header-center {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: max-content;
-    max-width: calc(100% - 9.5rem);
-  }
-
-  .compose-dialog-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    flex-shrink: 0;
-    min-width: 44px;
-    justify-content: flex-end;
-  }
-
-  .compose-dialog-title {
-    font-weight: var(--fw-semibold);
-    font-size: var(--type-ui-control);
-    line-height: 1.2;
-  }
-
-  .compose-dialog-header-btn {
+  /* Leaves the composer, so unlike the per-post × it never hides until hover:
+     on a phone this and the options sheet are the only ways out. */
+  .compose-close-btn {
     --compose-dialog-icon-paper-fill: var(--compose-paper-bg);
 
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    margin-left: auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
     border: none;
-    background: none;
+    background: transparent;
     color: var(--site-text-secondary);
     cursor: pointer;
-    transition:
-      background-color 0.15s ease-out,
-      color 0.15s ease-out;
-  }
-
-  .compose-dialog-header-btn:hover {
-    --compose-dialog-icon-paper-fill: var(--compose-control-bg);
-    color: var(--site-text-primary);
-    background-color: var(--compose-control-bg);
-  }
-
-  .compose-dialog-draft-btn {
-    color: color-mix(
-      in srgb,
-      var(--site-text-primary) 48%,
-      var(--site-text-secondary)
-    );
-  }
-
-  .compose-dialog-header-icon {
-    display: block;
-    width: 26px;
-    height: 26px;
-    --icon-stroke: 1.32;
     flex-shrink: 0;
-    overflow: visible;
+    opacity: 0.6;
+    transition:
+      opacity 0.15s ease,
+      background-color 0.13s ease,
+      color 0.13s ease;
   }
 
-  .compose-dialog-draft-btn .compose-dialog-header-icon {
-    --icon-stroke: 1.24;
-  }
-
-  .compose-dialog-draft-btn:hover {
+  .compose-close-btn:hover {
+    opacity: 1;
+    background-color: var(--compose-control-bg);
     color: var(--site-text-primary);
   }
 
-  .compose-dialog-header-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
+  .compose-edit-loading-close {
+    display: flex;
+    justify-content: flex-end;
   }
 
   /* Treat touch-first browsers as mobile here too. iOS Safari can expose a
@@ -5288,11 +5210,10 @@
       );
     }
 
-    .compose-dialog-header {
-      padding-top: calc(12px + env(safe-area-inset-top));
-      padding-right: calc(14px + env(safe-area-inset-right));
-      padding-left: calc(14px + env(safe-area-inset-left));
-      border-bottom: 1px solid var(--compose-control-border);
+    /* Fullscreen on a phone, so the composer's own first row sits under the
+       notch — it takes the inset the title bar used to. */
+    .compose-dialog-inner {
+      padding-top: calc(10px + env(safe-area-inset-top));
     }
 
     .compose-body {
@@ -6030,14 +5951,14 @@
   .compose-collection-trigger {
     display: flex;
     align-items: center;
-    gap: 0.62rem;
+    gap: 0.38rem;
     min-width: 0;
     max-width: 100%;
-    min-height: 2.45rem;
+    min-height: 1.95rem;
     border: 1px solid var(--compose-control-border);
     background: var(--compose-control-bg);
     border-radius: 999px;
-    padding: 0.24rem 0.72rem 0.24rem 0.28rem;
+    padding: 0.2rem 0.68rem;
     cursor: pointer;
     transition:
       background-color 0.18s ease,
@@ -6064,44 +5985,41 @@
     );
   }
 
-  .compose-collection-trigger-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.65rem;
-    height: 1.65rem;
-    border-radius: 999px;
-    background: color-mix(
-      in srgb,
-      var(--compose-paper-bg) 72%,
-      var(--compose-control-bg)
-    );
-    color: color-mix(
-      in srgb,
-      var(--site-text-primary) 58%,
-      var(--site-text-secondary)
-    );
-    flex-shrink: 0;
-  }
-
-  .compose-collection-trigger-svg,
   .compose-collection-search-icon,
   .compose-collection-add-svg,
   .compose-collection-option-check-circle,
   .compose-collection-option-plus-circle,
   .compose-collection-option-svg,
-  .compose-collection-chevron,
   .compose-collection-option-check {
     display: block;
     overflow: visible;
   }
 
-  .compose-collection-trigger-svg,
   .compose-collection-option-svg {
     width: 0.92rem;
     height: 0.92rem;
     --icon-stroke: 1.3;
     stroke-width: var(--icon-stroke);
+  }
+
+  /* Bare on the pill rather than in its own tinted circle: the pill is already
+     a container, and a chip inside it read as a button inside a button. */
+  .compose-collection-trigger-svg {
+    display: block;
+    overflow: visible;
+    width: 0.86rem;
+    height: 0.86rem;
+    flex-shrink: 0;
+    opacity: 0.75;
+    --icon-stroke: 1.4;
+    stroke-width: var(--icon-stroke);
+  }
+
+  .compose-collection-trigger:hover .compose-collection-trigger-svg,
+  .compose-collection-trigger[data-open="true"] .compose-collection-trigger-svg,
+  .compose-collection-trigger[data-selected="true"]
+    .compose-collection-trigger-svg {
+    opacity: 1;
   }
 
   .compose-collection-label {
@@ -6115,32 +6033,18 @@
     font-weight: var(--fw-medium);
   }
 
-  .compose-collection-chevron {
-    width: 0.78rem;
-    height: 0.78rem;
-    flex-shrink: 0;
-    opacity: 0.46;
-    --icon-stroke: 1.38;
-    stroke-width: var(--icon-stroke);
-    transition:
-      transform 0.18s ease,
-      opacity 0.18s ease;
-  }
-
-  .compose-collection-trigger[data-open="true"] .compose-collection-chevron {
-    transform: rotate(180deg);
-    opacity: 0.74;
-  }
-
+  /* Desktop sizing. Every dimension here has a roomier counterpart in the
+     touch block near the end of the file — a picker aimed with a cursor can be
+     tighter than one aimed with a thumb. */
   .compose-collection-select [data-popover] {
     z-index: 100;
-    min-width: 16rem;
-    max-width: 20rem;
+    min-width: 13.5rem;
+    max-width: 17rem;
   }
 
   .compose-collection-popover {
-    padding: 0.56rem 0.62rem 0.5rem;
-    border-radius: 1.08rem;
+    padding: 0.44rem 0.48rem 0.4rem;
+    border-radius: 0.95rem;
     border: 1px solid var(--compose-control-border);
     background: var(--compose-floating-bg);
     box-shadow:
@@ -6150,16 +6054,16 @@
   }
 
   .compose-collection-popover-header {
-    padding: 0.24rem 0 0.6rem;
+    padding: 0.18rem 0 0.44rem;
   }
 
   .compose-collection-search-shell {
     display: flex;
     align-items: center;
-    gap: 0.52rem;
-    min-height: 2.8rem;
-    padding: 0 0.95rem;
-    border-radius: 0.92rem;
+    gap: 0.45rem;
+    min-height: 2.25rem;
+    padding: 0 0.75rem;
+    border-radius: 0.75rem;
     border: 1px solid var(--compose-control-border);
     background: var(--compose-control-bg);
     color: var(--site-text-secondary);
@@ -6182,8 +6086,8 @@
   }
 
   .compose-collection-search-icon {
-    width: 1.15rem;
-    height: 1.15rem;
+    width: 0.98rem;
+    height: 0.98rem;
     flex-shrink: 0;
     --icon-stroke: 1.3;
     stroke-width: var(--icon-stroke);
@@ -6210,7 +6114,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.06rem;
-    max-height: 15rem;
+    max-height: 12.5rem;
     overflow-y: auto;
     padding: 0.08rem;
   }
@@ -6219,15 +6123,15 @@
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
     min-width: 0;
-    min-height: 3rem;
+    min-height: 2.35rem;
     padding-top: 0;
     padding-bottom: 0;
-    padding-left: 0.8rem !important;
-    padding-right: 0.46rem !important;
+    padding-left: 0.62rem !important;
+    padding-right: 0.4rem !important;
     border: none;
-    border-radius: 0.88rem;
+    border-radius: 0.7rem;
     background: transparent;
     background-image: none !important;
     cursor: pointer !important;
@@ -6267,8 +6171,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.32rem;
-    height: 1.32rem;
+    width: 1.12rem;
+    height: 1.12rem;
     flex-shrink: 0;
   }
 
@@ -6319,7 +6223,7 @@
   }
 
   .compose-collection-empty {
-    padding: 0.95rem 0.7rem 1.05rem;
+    padding: 0.75rem 0.6rem 0.85rem;
     color: var(--site-text-secondary);
     font-size: var(--type-ui-caption);
     line-height: 1.5;
@@ -6327,8 +6231,8 @@
   }
 
   .compose-collection-footer {
-    margin-top: 0.35rem;
-    padding: 0.35rem 0.22rem 0.12rem;
+    margin-top: 0.28rem;
+    padding: 0.28rem 0.18rem 0.1rem;
     border-top: 1px solid
       color-mix(in srgb, var(--site-divider) 50%, transparent);
   }
@@ -6336,12 +6240,12 @@
   .compose-collection-add-action {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.6rem;
     width: 100%;
-    min-height: 3rem;
-    padding: 0 0.8rem;
+    min-height: 2.35rem;
+    padding: 0 0.62rem;
     border: none;
-    border-radius: 1rem;
+    border-radius: 0.7rem;
     background: transparent;
     cursor: pointer;
     text-align: left;
@@ -6498,8 +6402,12 @@
   }
 
   .compose-publish-single,
+  /* Sized against the row it leads, not in isolation. With the collection pill
+     down to 1.95rem a 2.8rem Publish read as a button from a different screen;
+     the three controls now step down 2.3 / 2.1 / 1.95rem. Touch gets the old
+     sizes back further down — 37px is a fine mouse target and a poor thumb one. */
   .compose-publish-main {
-    min-height: 2.8rem;
+    min-height: 2.4rem;
     border: none;
     background: transparent;
     cursor: pointer;
@@ -6516,8 +6424,8 @@
     justify-content: center;
     gap: 0.3rem;
     white-space: nowrap;
-    min-width: 6rem;
-    padding: 0 18px;
+    min-width: 5.25rem;
+    padding: 0 16px;
     background-color: var(--site-text-primary);
     color: var(--site-elevated-bg);
     font-size: var(--compose-primary-button-size);
@@ -6653,6 +6561,8 @@
   }
 
   .compose-sheet-row {
+    --compose-icon-paper-fill: var(--compose-paper-bg);
+
     display: flex;
     align-items: center;
     gap: 0.7rem;
@@ -6669,7 +6579,21 @@
 
   .compose-sheet-row:hover:not(:disabled),
   .compose-sheet-row-open {
+    --compose-icon-paper-fill: var(--compose-control-bg);
     background-color: var(--compose-control-bg);
+  }
+
+  /* Sized to the visibility glyphs it sits in a list with, so the session rows
+     at the foot of the panel read as the same kind of row. */
+  .compose-sheet-row-icon {
+    display: block;
+    width: 0.98rem;
+    height: 0.98rem;
+    --icon-stroke: 1.3;
+    stroke-width: var(--icon-stroke);
+    flex-shrink: 0;
+    overflow: visible;
+    color: var(--site-text-secondary);
   }
 
   .compose-sheet-row:disabled {
@@ -6787,7 +6711,8 @@
 
   /* Only the first trailing control claims the free space. Two `auto` margins
      would split it and strand the pill mid-row. */
-  .compose-post-meta ~ .compose-thread-post-remove {
+  .compose-post-meta ~ .compose-thread-post-remove,
+  .compose-post-meta ~ .compose-close-btn {
     margin-left: 0;
   }
 
@@ -6889,8 +6814,8 @@
     display: inline-grid;
     flex-shrink: 0;
     place-items: center;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.2rem;
+    height: 2.2rem;
     border: none;
     border-radius: 999px;
     background: transparent;
@@ -7923,27 +7848,24 @@
      stops at the last post's. Under the last post it used to keep going —
      that's the tallest row in the layout, so it was a long line pointing at
      nothing. */
+  /* Distance from a row's top edge to the centre of its dot: where the rail
+     has to start or stop, and where the dot itself has to land. The dot derives
+     its own margin from this pair (see `.compose-thread-dot`) rather than
+     restating it, so resizing the marker cannot drift the line off the dot. */
   .compose-thread-layout > * {
     position: relative;
-
-    /* Distance from this row's top edge to the centre of its dot, which is
-       where the rail has to start or stop. Mirrors the row's own padding-top
-       plus the dot's margin-top and half its size — keep the two in step. */
-    --compose-thread-dot-center: calc(
-      0.65rem + var(--site-thread-marker-size) / 2
-    );
+    --compose-thread-row-padding-top: 0px;
+    --compose-thread-dot-center: calc(0.65rem + 5px);
   }
 
   .compose-thread-layout > .compose-editor-row {
-    --compose-thread-dot-center: calc(
-      14px + 1rem + var(--site-thread-marker-hero-size) / 2
-    );
+    --compose-thread-row-padding-top: 14px;
+    --compose-thread-dot-center: calc(14px + 1rem + 7px);
   }
 
   .compose-thread-compose-layout > .compose-editor-row {
-    --compose-thread-dot-center: calc(
-      4px + 1.05rem + var(--site-thread-marker-hero-size) / 2
-    );
+    --compose-thread-row-padding-top: 4px;
+    --compose-thread-dot-center: calc(4px + 1.05rem + 7px);
   }
 
   .compose-thread-layout > *::before {
@@ -8109,34 +8031,28 @@
     height: 20px;
   }
 
-  /* Dot marker for thread positions. Positioned so it can anchor its own rail
-     segments, and so its ring paints over them. */
+  /* Dot marker for thread positions. Sits above the rail so it reads as a joint
+     in the line, and takes its offset from the row's declared dot centre so the
+     two ends of the rail always meet it. */
   .compose-thread-dot {
     position: relative;
     z-index: 1;
     width: var(--site-thread-marker-size);
     height: var(--site-thread-marker-size);
-    margin-top: 0.65rem;
+    margin-top: calc(
+      var(--compose-thread-dot-center) - var(--compose-thread-row-padding-top) -
+        var(--site-thread-marker-size) / 2
+    );
     border-radius: 50%;
-    border: var(--site-thread-marker-border-width) solid
-      var(--site-thread-marker-surface);
     background-color: var(--site-threadline);
     flex-shrink: 0;
     align-self: flex-start;
-    box-shadow: 0 0 0 var(--site-thread-marker-ring-width)
-      var(--site-thread-dot-ring);
   }
 
+  /* The post being written gets the accent; the reply context above it stays on
+     the line's own colour. */
   .compose-editor-row .compose-thread-dot {
-    margin-top: 1rem;
-    margin-left: calc(
-      (var(--site-thread-marker-size) - var(--site-thread-marker-hero-size)) / 2
-    );
-  }
-
-  /* In thread compose mode, dot aligns with the post header row */
-  .compose-thread-compose-layout .compose-editor-row .compose-thread-dot {
-    margin-top: 1.05rem;
+    background-color: var(--site-accent);
   }
 
   .compose-reply-context {
@@ -8351,14 +8267,23 @@
       padding: 0.78rem 0.9rem;
     }
 
-    .compose-collection-trigger {
-      min-height: 2.65rem;
-      padding-right: 0.82rem;
+    /* Touch keeps the roomier set: the desktop sizes above are tuned for a
+       cursor, and a thumb needs the millimetres back. */
+    .compose-publish-single,
+    .compose-publish-main {
+      min-height: 2.8rem;
+      min-width: 6rem;
+      padding-inline: 18px;
     }
 
-    .compose-collection-trigger-icon {
-      width: 1.75rem;
-      height: 1.75rem;
+    .compose-options-trigger {
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+
+    .compose-collection-trigger {
+      min-height: 2.5rem;
+      padding-inline: 0.85rem;
     }
 
     .compose-collection-select [data-popover] {
@@ -8366,13 +8291,24 @@
       max-width: min(20rem, calc(100vw - 1rem));
     }
 
+    .compose-collection-search-icon {
+      width: 1.15rem;
+      height: 1.15rem;
+    }
+
+    .compose-collection-options {
+      max-height: 15rem;
+    }
+
     .compose-collection-popover {
       padding: 0.62rem 0.68rem 0.58rem;
     }
 
     .compose-collection-search-shell {
+      gap: 0.52rem;
       min-height: 3rem;
       padding: 0 1rem;
+      border-radius: 0.92rem;
     }
 
     .compose-collection-options {
@@ -8389,6 +8325,18 @@
     .compose-collection-option-marker {
       width: 1.5rem;
       height: 1.5rem;
+    }
+
+    .compose-collection-add-action {
+      gap: 0.82rem;
+      min-height: 3rem;
+      padding: 0 0.92rem;
+      border-radius: 1rem;
+    }
+
+    .compose-collection-footer {
+      margin-top: 0.35rem;
+      padding: 0.35rem 0.22rem 0.12rem;
     }
 
     .compose-thread-layout {
@@ -8583,6 +8531,18 @@
     font-size: 0.68rem;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.01em;
+  }
+
+  /* "Editing" — the one thing a compose title ever said that you could not read
+     off the composer itself: this post is already live. New / reply / thread
+     all announce themselves through the parent post, the 2/3 markers and the
+     submit label, so only this case earns a word.
+     It takes the position marker's weight rather than an accent tint: it sits
+     in that marker's slot, and everything else in this row that is not the
+     format selector is deliberately quiet. Only the numerals are reset. */
+  .compose-post-badge {
+    font-variant-numeric: normal;
+    letter-spacing: 0.02em;
   }
 
   /* Reply / edit-reply compose (a .compose-editor-row directly under
@@ -11289,10 +11249,6 @@
     color: var(--site-text-secondary);
   }
 
-  .compose-fullscreen-thread-layout .compose-thread-dot {
-    margin-top: 0.6rem;
-  }
-
   .compose-fullscreen-editor-row {
     overflow: visible;
     padding-top: 1.5rem;
@@ -11308,10 +11264,6 @@
 
   .compose-fullscreen-editor-surface-reply {
     gap: 0.7rem;
-  }
-
-  .compose-fullscreen-editor-row .compose-thread-dot {
-    margin-top: 0.95rem;
   }
 
   /* Stand-in for a hidden title: reads as the field's own placeholder, and
