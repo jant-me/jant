@@ -3852,19 +3852,157 @@ describe("JantComposeDialog", () => {
     );
   });
 
-  it("draws compose's rail dots smaller than the feed's, with no punch-out ring", () => {
+  it("declares one marker vocabulary for the compose and reading rails", () => {
     const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
 
-    // A joint in the line, not a marker to find a post by: the feed's ring and
-    // surface border together were wider than the whole compose dot now is.
+    // Both rails draw the same dot; only the surface behind it differs.
+    // `[^}]*` rather than `[\s\S]*` throughout: a greedy any-char run walks past
+    // the rule's closing brace and happily matches a later rule's declaration.
     expect(css).toMatch(
-      /\.compose-thread-layout\s*\{\s*--site-thread-marker-size:\s*7px;\s*--site-thread-marker-border-width:\s*0px;\s*--site-thread-marker-ring-width:\s*0px;/,
+      /\.thread-group,\s*\.compose-thread-layout\s*\{\s*--site-thread-marker-size:\s*7px;[^}]*--site-thread-marker-gap:\s*9px;/,
     );
     expect(css).toMatch(
-      /\.thread-group\s*\{\s*--site-thread-marker-size:\s*10px;/,
+      /\.compose-thread-layout\s*\{\s*--site-thread-marker-surface:\s*var\(--compose-paper-bg\);\s*\}/,
     );
-    // No border or ring left on the compose dot itself.
-    expect(css).not.toMatch(/\.compose-thread-dot\s*\{[^}]*box-shadow/);
+    // 7:1.5 marker-to-rail on both, from one token — compose used to hardcode
+    // its own 1.5px while reading ran a 1px hairline under the same 7px dot.
+    expect(css).toMatch(/--site-thread-rail-line-width:\s*1\.5px;/);
+    expect(css).not.toMatch(
+      /\.thread-group-preview,\s*\.thread-group-detail\s*\{[^}]*--site-thread-rail-line-width:/,
+    );
+    expect(css).toMatch(
+      /\.compose-thread-layout > \*::before\s*\{[^}]*width:\s*var\(--site-thread-rail-line-width\);\s*margin-left:\s*calc\(var\(--site-thread-rail-line-width\) \/ -2\);/,
+    );
+    // The reading rail's fade-in gradient stays — it softens where collapsed
+    // ancestor context begins, which compose solves by trimming per row.
+    expect(css).toMatch(
+      /\.thread-group-preview::before,\s*\.thread-group-detail::before\s*\{\s*background:\s*linear-gradient\(/,
+    );
+    // The border/ring vocabulary is gone — the only ring anywhere is the
+    // surface-coloured gap, and nothing may reintroduce a contrasting one.
+    for (const dead of [
+      "--site-thread-marker-border-width",
+      "--site-thread-marker-ring-width",
+      "--site-thread-marker-hero-size",
+      "--site-thread-marker-hero-border-width",
+    ]) {
+      expect(css).not.toContain(dead);
+    }
+    expect(css).not.toMatch(/\.compose-thread-dot(::before)?\s*\{[^}]*border:/);
+  });
+
+  it("punches the dot's gap with the surface colour on both rails", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    const punchOut =
+      /box-shadow:\s*0 0 0 var\(--site-thread-marker-gap\)\s*var\(--site-thread-marker-surface\);/;
+    expect(css).toMatch(
+      new RegExp(`\\.compose-thread-dot::before\\s*\\{[^}]*${punchOut.source}`),
+    );
+    expect(css).toMatch(
+      new RegExp(`\\.thread-item::before\\s*\\{[^}]*${punchOut.source}`),
+    );
+    // The reading dot no longer carries a contrasting border or accent ring.
+    expect(css).not.toMatch(/\.thread-item::before\s*\{[^}]*border:\s/);
+    expect(css).not.toMatch(
+      /\.thread-item::before\s*\{[^}]*--site-thread-dot-ring/,
+    );
+  });
+
+  it("marks the post a view is about with an accent fill, not a bigger dot", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    // Feed hero, curated highlight and the opened detail post share one rule,
+    // matching compose's `.is-current`. Size is not a second signal.
+    expect(css).toMatch(
+      /\.thread-item-hero::before,\s*\.thread-item-curated::before,\s*\.thread-item-current::before\s*\{\s*background-color:\s*var\(--site-thread-marker-current\);\s*\}/,
+    );
+    // Both rails take the current-post colour from one token, and that token is
+    // a tint — the raw accent made a 7px dot the loudest thing on the page.
+    expect(css).toMatch(
+      /\.compose-editor-row\.is-current \.compose-thread-dot::before\s*\{\s*background-color:\s*var\(--site-thread-marker-current\);/,
+    );
+    expect(css).toMatch(
+      /--site-thread-marker-current:\s*color-mix\(\s*in srgb,\s*var\(--site-accent\) 80%,\s*var\(--site-threadline\)\s*\);/,
+    );
+    expect(css).not.toMatch(
+      /\.thread-item-current::before\s*\{[^}]*var\(--site-accent\)[^-]/,
+    );
+    // Every dot's geometry now derives from the shared token.
+    expect(css).toMatch(
+      /\.thread-item::before\s*\{[^}]*width:\s*var\(--site-thread-marker-size\);/,
+    );
+    expect(css).not.toMatch(/\.thread-item::before\s*\{[^}]*width:\s*\d+px;/);
+  });
+
+  it("centres every rail child on the line by giving them a shared track", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    // The line's x is derived from the track, never from a dot's own size — a
+    // hardcoded half-marker is what put the line down the dot's edge before.
+    expect(css).toMatch(
+      /--compose-thread-rail-left:\s*calc\(\s*var\(--compose-thread-padding-left\) \+ var\(--compose-thread-rail-width\) \/ 2\s*\);/,
+    );
+    expect(css).not.toMatch(/--compose-thread-rail-left:[^;]*\+ \d/);
+
+    // Post dot: fills the track, centres the circle in it.
+    expect(css).toMatch(
+      /\.compose-thread-dot\s*\{[\s\S]*justify-content:\s*center;[\s\S]*width:\s*var\(--compose-thread-rail-width\);/,
+    );
+    // "Add to thread" placeholder: fills the track outright, so no offset.
+    expect(css).toMatch(
+      /\.compose-thread-add-dot\s*\{[\s\S]*width:\s*var\(--compose-thread-rail-width\);[\s\S]*height:\s*var\(--compose-thread-rail-width\);/,
+    );
+    expect(css).not.toMatch(/\.compose-thread-add-dot\s*\{[^}]*margin-left:/);
+    // Reply meta hangs off the same track as the rows above it.
+    expect(css).toMatch(
+      /\.compose-reply-meta\s*\{[\s\S]*var\(--compose-thread-gap\) \+\s*var\(--compose-thread-rail-width\)/,
+    );
+  });
+
+  it("accents the dot of the post holding the cursor, not every editor row", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    // Which selector carries the highlight — the colour itself is pinned by
+    // "marks the post a view is about…", so this stays token-agnostic.
+    expect(css).toMatch(
+      /\.compose-editor-row\.is-current \.compose-thread-dot::before\s*\{\s*background-color:/,
+    );
+    // The old rule lit every post in a thread at once.
+    expect(css).not.toMatch(
+      /\.compose-editor-row \.compose-thread-dot\s*\{\s*background-color:/,
+    );
+  });
+
+  it("moves the current-post marker as focus moves between thread posts", async () => {
+    const el = await createElement();
+    el._threadItems = [
+      { id: "thread-1", format: "note" },
+      { id: "thread-2", format: "note" },
+      { id: "thread-3", format: "note" },
+    ];
+    await flushUpdates(el);
+
+    const currentIndexes = () =>
+      Array.from(el.querySelectorAll<HTMLElement>(".compose-thread-post"))
+        .map((row, index) =>
+          row.classList.contains("is-current") ? index : -1,
+        )
+        .filter((index) => index >= 0);
+
+    // Exactly one at a time — the old rule accented all three.
+    expect(currentIndexes()).toEqual([0]);
+
+    const second = requireElement(
+      el.querySelector<HTMLElement>(
+        '.compose-thread-post[data-thread-index="1"]',
+      ),
+      "expected the second thread post",
+    );
+    second.dispatchEvent(new Event("focusin", { bubbles: true }));
+    await flushUpdates(el);
+
+    expect(currentIndexes()).toEqual([1]);
   });
 
   it("keeps passive footnote references quiet until the editor selects them", () => {

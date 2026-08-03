@@ -225,3 +225,18 @@
 - When a restrained inline notice is too easy to miss, add salience through a
   subtle token-based surface and a reduced-motion-safe entrance—not more copy
   or decorative status icons.
+- Never shrink or compress a layout to fit a visual comparison into one
+  screenshot. Spacing is judged as a ratio against its surroundings, so halving
+  the surrounding distance makes every candidate look twice as large and pushes
+  the choice too small. Scroll and take several crops instead.
+- When a marker's geometry is derived from a size token on one axis, check the
+  other axis in the same change. A rail can center its dots correctly
+  vertically while the horizontal offset is still a constant left over from a
+  different component's marker size.
+- When a user keeps saying a small element "doesn't look right" across several
+  rounds of size and shape changes, stop tuning geometry and grep the token file
+  for how the same colour is used elsewhere. An element using an accent at full
+  strength while every sibling token uses 6-24% will read wrong at any size.
+- Never publish a rendered page — artifact, demo, or screenshot deliverable —
+  without opening it and looking first. Computed-style assertions are worth
+  running too, but they do not replace looking at the result.

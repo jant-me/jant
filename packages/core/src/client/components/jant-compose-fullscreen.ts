@@ -410,7 +410,7 @@ export class JantComposeFullscreen extends LitElement {
                         </button>
                       </div>
                       <div
-                        class="compose-editor-row compose-fullscreen-editor-row"
+                        class="compose-editor-row compose-fullscreen-editor-row is-current"
                       >
                         <div class="compose-thread-dot"></div>
                         ${editorSurface("reply")}

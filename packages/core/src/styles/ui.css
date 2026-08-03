@@ -2939,34 +2939,43 @@
     flex-shrink: 0;
   }
 
-  .thread-group {
-    --site-thread-marker-size: 10px;
-    --site-thread-marker-border-width: 2px;
-    --site-thread-marker-ring-width: 2px;
-    --site-thread-marker-hero-size: 14px;
-    --site-thread-marker-hero-border-width: 3px;
-    --site-thread-marker-surface: var(--site-page-bg);
-  }
-
-  /* Compose draws the same rail an order quieter than the feed does. A read
-     view has to mark where each post begins in a wall of text; compose already
-     has a card edge, a format selector and a "1/3" per post, so the dot is only
-     a joint in the line. Flat, 7px, no punch-out border and no ring — the ring
-     alone was wider than the dot is now. */
+  /* One dot, drawn the same way everywhere it appears: a flat fill with a
+     surface-coloured gap punched around it, so it reads as a bead threaded on
+     the rail rather than a bulge in it. No border and no ring — reading used to
+     carry both, and since the ring sat on every dot it never distinguished
+     anything. What a post *is* comes from its card; the dot only says where it
+     sits on the chain, and an accent fill says which one the view is about. */
+  .thread-group,
   .compose-thread-layout {
     --site-thread-marker-size: 7px;
-    --site-thread-marker-border-width: 0px;
-    --site-thread-marker-ring-width: 0px;
-    --site-thread-marker-hero-size: 7px;
-    --site-thread-marker-hero-border-width: 0px;
+    /* Kept at 7:1.5 with the marker. A 7px dot on a 1px hairline reads as a bead
+       dropped onto a thread rather than the same stroke thickening; the timeline
+       components this pattern comes from (Ant, CodyHouse) all run a 2px rail. */
+    --site-thread-rail-line-width: 1.5px;
+    /* The gap's ceiling is set by whichever dot has the rail on one side only —
+       in compose that's the last post, where the rail is trimmed. One line end
+       holds it instead of two, and around 12px it reads as floating loose. */
+    --site-thread-marker-gap: 9px;
     --site-thread-marker-surface: var(--site-page-bg);
+    /* "This is the post the view is about." Tinted toward the rail rather than
+       the raw accent: every other accent-derived token in the system sits
+       between 6% and 24% (see tokens.css), and a 7px shape at full accent was
+       the single highest-contrast thing in an otherwise near-empty column. */
+    --site-thread-marker-current: color-mix(
+      in srgb,
+      var(--site-accent) 80%,
+      var(--site-threadline)
+    );
+  }
+
+  .compose-thread-layout {
+    --site-thread-marker-surface: var(--compose-paper-bg);
   }
 
   /* Thread group: timeline layout — vertical line with dot markers */
   .thread-group {
     --site-thread-rail-indent: 24px;
     --site-thread-rail-line-left: 5px;
-    --site-thread-rail-line-width: 2px;
     position: relative;
     padding-left: var(--site-thread-rail-indent);
   }
@@ -3000,28 +3009,42 @@
 
   /* Dot marker at each post position — auto-centered on the rail line.
      Line ::before is relative to .thread-group, but dot ::before is relative
-     to .thread-item which sits inside the padding (indent), so we subtract it. */
+     to .thread-item which sits inside the padding (indent), so we subtract it.
+     Every length here is derived: a hardcoded half-marker is what once left the
+     compose rail running down the edge of its own dots instead of through them. */
   .thread-item::before {
     content: "";
     position: absolute;
     left: calc(
       var(--site-thread-rail-line-left) + var(--site-thread-rail-line-width) /
-        2 - 6px - var(--site-thread-rail-indent)
+        2 - var(--site-thread-marker-size) / 2 - var(--site-thread-rail-indent)
     );
     top: 50%;
     transform: translateY(-50%);
-    width: 12px;
-    height: 12px;
+    width: var(--site-thread-marker-size);
+    height: var(--site-thread-marker-size);
     border-radius: 50%;
     background-color: var(--site-threadline);
+    box-shadow: 0 0 0 var(--site-thread-marker-gap)
+      var(--site-thread-marker-surface);
     z-index: 1;
+  }
+
+  /* "This is the post the view is about": the feed preview's latest reply, a
+     curated preview's highlighted segment, and the post you opened on a detail
+     page. One signal for all three — accent fill on the same dot. Hero and
+     curated also ran 4px larger; the full card beside them already says it, so
+     size was a second signal doing the first one's job. */
+  .thread-item-hero::before,
+  .thread-item-curated::before,
+  .thread-item-current::before {
+    background-color: var(--site-thread-marker-current);
   }
 
   .thread-group-preview,
   .thread-group-detail {
     --site-thread-rail-indent: 0px;
     --site-thread-rail-line-left: -27px;
-    --site-thread-rail-line-width: 1px;
   }
 
   @media (max-width: 760px) {
@@ -3047,34 +3070,20 @@
     padding: var(--site-thread-item-spacing) 0;
   }
 
-  .thread-group-preview .thread-item::before,
-  .thread-group-detail .thread-item::before {
-    left: calc(
-      var(--site-thread-rail-line-left) + var(--site-thread-rail-line-width) /
-        2 - var(--site-thread-marker-size) / 2 - var(--site-thread-rail-indent)
-    );
-    width: var(--site-thread-marker-size);
-    height: var(--site-thread-marker-size);
-    border: var(--site-thread-marker-border-width) solid
-      var(--site-thread-marker-surface);
-    background-color: var(--site-threadline);
-    box-shadow: 0 0 0 var(--site-thread-marker-ring-width)
-      var(--site-thread-dot-ring);
-  }
-
   /* Collapsible ancestor context wrapper.
      Server-rendered with `data-collapsed`. Crop and fade are always active
      while data-collapsed is set; JS only toggles the Show more/less button
      visibility based on real overflow. Negative left margin + matching
      padding extends the shell's box past the content edge so the dot
-     markers (which live at left:-31.5px on desktop) survive
-     `overflow: hidden`. `box-sizing: content-box` keeps the inner content
-     width identical to before. */
+     markers survive `overflow: hidden`. `box-sizing: content-box` keeps the
+     inner content width identical to before. The inset has to clear the dot's
+     punched gap, not just its fill: on desktop the fill starts at -30px but the
+     gap reaches -39px, so the old 40px cleared it by a single pixel. */
   .thread-context-shell {
     position: relative;
     box-sizing: content-box;
-    margin-left: -40px;
-    padding-left: 40px;
+    margin-left: -48px;
+    padding-left: 48px;
     transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
@@ -3265,36 +3274,6 @@
     padding-top: 0.95rem;
   }
 
-  .thread-group-preview .thread-item-hero::before {
-    left: calc(
-      var(--site-thread-rail-line-left) + var(--site-thread-rail-line-width) /
-        2 - var(--site-thread-marker-hero-size) / 2 -
-        var(--site-thread-rail-indent)
-    );
-    width: var(--site-thread-marker-hero-size);
-    height: var(--site-thread-marker-hero-size);
-    border: var(--site-thread-marker-hero-border-width) solid
-      var(--site-thread-marker-surface);
-    background-color: var(--site-accent);
-    box-shadow: 0 0 0 var(--site-thread-marker-ring-width)
-      var(--site-thread-dot-ring);
-  }
-
-  .thread-group-curated .thread-item-curated::before {
-    left: calc(
-      var(--site-thread-rail-line-left) + var(--site-thread-rail-line-width) /
-        2 - var(--site-thread-marker-hero-size) / 2 -
-        var(--site-thread-rail-indent)
-    );
-    width: var(--site-thread-marker-hero-size);
-    height: var(--site-thread-marker-hero-size);
-    border: var(--site-thread-marker-hero-border-width) solid
-      var(--site-thread-marker-surface);
-    background-color: var(--site-accent);
-    box-shadow: 0 0 0 var(--site-thread-marker-ring-width)
-      var(--site-thread-dot-ring);
-  }
-
   /* Compact text for thread replies */
   .feed-compact {
     @apply text-sm;
@@ -3313,23 +3292,6 @@
      for the ghost-style toggle (~28px) + a glimpse of the faded shell. */
   .thread-context-toggle + .thread-detail-item {
     scroll-margin-top: 120px;
-  }
-
-  .thread-group-detail .thread-item-current::before {
-    background-color: var(--site-accent);
-    box-shadow:
-      0 0 0 var(--site-thread-marker-border-width)
-        var(--site-thread-marker-surface),
-      0 0 0
-        calc(
-          var(--site-thread-marker-border-width) +
-            var(--site-thread-marker-ring-width)
-        )
-        color-mix(
-          in srgb,
-          var(--site-accent) 18%,
-          var(--site-thread-marker-surface)
-        );
   }
 
   /* Quote block styling */
@@ -7753,8 +7715,14 @@
     --compose-thread-padding-left: 16px;
     --compose-thread-padding-right: 16px;
     --compose-thread-gap: 12px;
-    --compose-thread-rail-left: calc(var(--compose-thread-padding-left) + 5px);
-    --site-thread-marker-surface: var(--compose-paper-bg);
+    /* Fixed track every rail child sits in and centres its circle inside, so the
+       line's x depends on the track alone and no dot size can pull it off centre.
+       The constant this replaced was half the *feed's* 10px marker and stayed
+       behind when compose dropped to 7px, leaving the line down the dot's edge. */
+    --compose-thread-rail-width: 10px;
+    --compose-thread-rail-left: calc(
+      var(--compose-thread-padding-left) + var(--compose-thread-rail-width) / 2
+    );
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -7841,12 +7809,17 @@
     left: var(--compose-thread-rail-left);
     top: 0;
     bottom: 0;
-    width: 1.5px;
-    margin-left: -0.75px;
+    width: var(--site-thread-rail-line-width);
+    margin-left: calc(var(--site-thread-rail-line-width) / -2);
     border-radius: 1px;
+    /* Matched to the weight of the reading rail's gradient rather than its
+       implementation. That one runs 85% → 55% down its length, so ~70% flat
+       reads at the same strength here. It can't literally share the gradient:
+       this rail is drawn per row so both ends can be trimmed, and a per-row
+       gradient would fade in once per post instead of once per thread. */
     background-color: color-mix(
       in srgb,
-      var(--site-threadline) 85%,
+      var(--site-threadline) 70%,
       transparent
     );
   }
@@ -8000,26 +7973,41 @@
 
   /* Dot marker for thread positions. Sits above the rail so it reads as a joint
      in the line, and takes its offset from the row's declared dot centre so the
-     two ends of the rail always meet it. */
+     two ends of the rail always meet it. The element is the full rail track and
+     only centres the circle inside it, which is what keeps the line through the
+     dot's middle no matter how the marker is resized. */
   .compose-thread-dot {
     position: relative;
     z-index: 1;
-    width: var(--site-thread-marker-size);
+    display: flex;
+    justify-content: center;
+    width: var(--compose-thread-rail-width);
     height: var(--site-thread-marker-size);
     margin-top: calc(
       var(--compose-thread-dot-center) - var(--compose-thread-row-padding-top) -
         var(--site-thread-marker-size) / 2
     );
-    border-radius: 50%;
-    background-color: var(--site-threadline);
     flex-shrink: 0;
     align-self: flex-start;
   }
 
-  /* The post being written gets the accent; the reply context above it stays on
+  .compose-thread-dot::before {
+    content: "";
+    width: var(--site-thread-marker-size);
+    height: var(--site-thread-marker-size);
+    border-radius: 50%;
+    background-color: var(--site-threadline);
+    box-shadow: 0 0 0 var(--site-thread-marker-gap)
+      var(--site-thread-marker-surface);
+    transition: background-color 0.15s ease;
+  }
+
+  /* Every post in a thread is equally new, so accenting all of them says nothing
+     — it just makes the rail loud. The accent marks where you are on the chain
+     instead: the one post holding the cursor. The reply context above stays on
      the line's own colour. */
-  .compose-editor-row .compose-thread-dot {
-    background-color: var(--site-accent);
+  .compose-editor-row.is-current .compose-thread-dot::before {
+    background-color: var(--site-thread-marker-current);
   }
 
   .compose-reply-context {
@@ -8134,7 +8122,8 @@
     padding-top: 4px;
     padding-right: var(--compose-thread-padding-right);
     padding-left: calc(
-      var(--compose-thread-padding-left) + var(--compose-thread-gap) + 10px
+      var(--compose-thread-padding-left) + var(--compose-thread-gap) +
+        var(--compose-thread-rail-width)
     );
     font-size: var(--type-thread-context-meta);
     color: var(--site-text-secondary);
@@ -8377,17 +8366,16 @@
     padding-bottom: 10px;
   }
 
+  /* Fills the rail track exactly, so it lands on the same centre line as the
+     post dots without any offset of its own. */
   .compose-thread-add-dot {
-    width: 10px;
-    height: 10px;
+    width: var(--compose-thread-rail-width);
+    height: var(--compose-thread-rail-width);
     border-radius: 50%;
     border: 1.5px dashed
       color-mix(in srgb, var(--site-threadline) 60%, transparent);
     flex-shrink: 0;
     margin-top: 1px;
-    margin-left: calc(
-      (var(--site-thread-marker-hero-size) - var(--site-thread-marker-size)) / 2
-    );
   }
 
   .compose-thread-add-btn {

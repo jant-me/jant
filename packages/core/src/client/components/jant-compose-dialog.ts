@@ -5824,7 +5824,14 @@ export class JantComposeDialog extends LitElement {
   ) {
     return html`
       <div
-        class="compose-editor-row compose-thread-post"
+        class=${classMap({
+          "compose-editor-row": true,
+          "compose-thread-post": true,
+          // Marks the post the cursor is in, which is what the rail's accent
+          // dot points at. Every post in a thread is equally "new", so being an
+          // editor row is not what makes one of them current.
+          "is-current": index === this._focusedThreadIndex,
+        })}
         data-thread-index=${index}
         @focusin=${() => {
           this._focusedThreadIndex = index;
@@ -6026,7 +6033,7 @@ export class JantComposeDialog extends LitElement {
                   >
                     ${this._renderReplyContext()}
                     <div
-                      class="compose-editor-row"
+                      class="compose-editor-row is-current"
                       @jant:format-change=${(
                         e: CustomEvent<{ format: ComposeFormat }>,
                       ) => {
