@@ -235,6 +235,12 @@ export const ComposeForm: FC<ComposeFormProps> = ({
         comment: "@context: Compose toolbar - emoji picker tooltip",
       }),
     ),
+    title: i18n._(
+      msg({
+        message: "Title",
+        comment: "@context: Compose toolbar - show or hide the title field",
+      }),
+    ),
     fullscreen: i18n._(
       msg({
         message: "Fullscreen",
@@ -683,9 +689,9 @@ export const ComposeForm: FC<ComposeFormProps> = ({
     ),
     publishSlugSummaryAuto: i18n._(
       msg({
-        message: "Auto",
+        message: "/…",
         comment:
-          "@context: Value shown on a post's permalink control when the link is generated automatically",
+          "@context: Value shown on a post's permalink control when the link is generated automatically — a stand-in for the path the server will assign. Sits next to real permalinks rendered as /my-post, so keep the leading slash",
       }),
     ),
     publishSlugSummaryAction: i18n._(

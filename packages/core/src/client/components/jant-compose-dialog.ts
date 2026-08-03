@@ -232,21 +232,17 @@ const COMPOSE_PUBLISH_ACTION_ICONS = {
     <path d="M10.65 2.55v2.1" />
     <path d="M2.75 6.2h10.5" />
   `,
-  link: `
-    <path d="M9.75 4.15h1.35a2.75 2.75 0 0 1 0 5.5H9.75" />
-    <path d="M6.25 9.65H4.9a2.75 2.75 0 1 1 0-5.5h1.35" />
-    <path d="M5.65 8h4.7" />
-  `,
-  /* Sliders in a rounded square — "settings for this thing", without borrowing
-     the gear, which elsewhere means site settings. Drawn on a 24 grid with a
-     lighter stroke than the other action icons: at 16 the interior lines sit
-     too close together and merge into a blob. */
+  /* Two sliders — "settings for this thing", without borrowing the gear, which
+     elsewhere means site settings. No enclosing box: the trigger is already a
+     round button, and a rounded square inside a circle read as two competing
+     frames. Drawn on a 24 grid so the tracks have room to separate. */
   options: `
-    <rect x="3" y="3" width="18" height="18" rx="5.5" stroke-width="1.5" />
-    <path d="M9.4 7.4v9.2" stroke-width="1.5" />
-    <path d="M14.6 7.4v9.2" stroke-width="1.5" />
-    <path d="M7.4 13.6h4" stroke-width="1.5" />
-    <path d="M12.6 10.4h4" stroke-width="1.5" />
+    <path d="M4 8.5h3.4" stroke-width="1.8" />
+    <path d="M12.6 8.5H20" stroke-width="1.8" />
+    <circle cx="10" cy="8.5" r="2.2" stroke-width="1.8" />
+    <path d="M4 15.5h7.4" stroke-width="1.8" />
+    <path d="M16.6 15.5H20" stroke-width="1.8" />
+    <circle cx="14" cy="15.5" r="2.2" stroke-width="1.8" />
   `,
 } as const;
 
@@ -1195,6 +1191,8 @@ export class JantComposeDialog extends LitElement {
 
     const editorData = editor.getData();
     const attachedTexts = editor.getEffectiveAttachedTexts();
+    // No `showTitle` here: a hidden title reads back as an empty one, so the
+    // toggle is already visible in `title`.
     const showRating = editorData.rating > 0 ? editor._showRating : false;
 
     return {
@@ -2580,6 +2578,7 @@ export class JantComposeDialog extends LitElement {
       editor.setEditorState(
         e.detail.json as import("@tiptap/core").JSONContent,
         e.detail.title,
+        e.detail.showTitle,
         e.detail.selection,
       );
       // Adopt any in-flight inline image uploads from the fullscreen editor
@@ -3122,6 +3121,7 @@ export class JantComposeDialog extends LitElement {
         publishedAtTimeMinutes: this._publishedAtTimeMinutes,
         visibility: this._visibility,
         rating: 0,
+        showTitle: false,
         showRating: false,
         collectionIds: [...this._collectionIds],
         replyToId: this._replyToId,
@@ -3181,6 +3181,10 @@ export class JantComposeDialog extends LitElement {
       publishedAtTimeMinutes: this._publishedAtTimeMinutes,
       visibility: this._visibility,
       rating: data.rating,
+      // The toggle as it stands, not "does a title exist" — restoring a draft
+      // should put the editor back the way it was left, including an open but
+      // still-empty title field.
+      showTitle: this._format === "note" ? editor._showTitle : false,
       showRating: data.rating > 0 ? editor._showRating : false,
       collectionIds: [...this._collectionIds],
       replyToId: this._replyToId,
@@ -3357,6 +3361,7 @@ export class JantComposeDialog extends LitElement {
       quoteText: draft.quoteText || undefined,
       quoteAuthor: draft.quoteAuthor || undefined,
       rating: draft.rating || undefined,
+      showTitle: draft.showTitle,
       showRating: draft.showRating,
       textAttachments: textAttachments?.length ? textAttachments : undefined,
       attachmentOrder: draft.attachmentOrder,
@@ -3429,6 +3434,7 @@ export class JantComposeDialog extends LitElement {
       quoteText: draft.quoteText || undefined,
       quoteAuthor: draft.quoteAuthor || undefined,
       rating: draft.rating || undefined,
+      showTitle: draft.showTitle,
       showRating: draft.showRating,
       textAttachments: textAttachments?.length ? textAttachments : undefined,
       attachmentOrder: draft.attachmentOrder,
@@ -5068,10 +5074,8 @@ export class JantComposeDialog extends LitElement {
             >${this._getPostPublishedAtRowValue(index)}</span
           >
           <span class="compose-post-meta-sep" aria-hidden="true">·</span>
-          ${renderComposePublishActionIcon(
-            COMPOSE_PUBLISH_ACTION_ICONS.link,
-            "compose-post-meta-icon",
-          )}
+          <!-- No link icon: the permalink already renders with its leading
+               slash, and two icons in a control this quiet read as clutter. -->
           <span class="compose-post-meta-value compose-post-meta-value-slug"
             >${this._getPostSlugRowValue(index)}</span
           >
@@ -5354,6 +5358,67 @@ export class JantComposeDialog extends LitElement {
     `;
   }
 
+  /**
+   * Shortcuts for the two settings that get reached for constantly, sitting
+   * under Publish where they can be flipped without opening the panel. Both are
+   * mirrors of a row inside it, not a second source of truth.
+   */
+  private _renderQuickActionsRow() {
+    const hideFromLatest = this._renderHideFromLatestQuickToggle();
+    const quietReply = this._renderQuietReplyQuickToggle();
+    if (hideFromLatest === nothing && quietReply === nothing) return nothing;
+    return html`
+      <div class="compose-quick-actions-row">
+        ${hideFromLatest} ${quietReply}
+      </div>
+    `;
+  }
+
+  private _renderQuietReplyQuickToggle() {
+    if (!this._replyToId) return nothing;
+    return html`
+      <label class="compose-publish-quick-toggle">
+        <input
+          type="checkbox"
+          class="input compose-publish-quick-toggle-input"
+          .checked=${this._quietReply}
+          ?disabled=${this._loading}
+          @change=${(e: Event) => {
+            this._quietReply = (e.target as HTMLInputElement).checked;
+          }}
+        />
+        <span>${this.labels.quietReplyLabel}</span>
+      </label>
+    `;
+  }
+
+  /**
+   * Visibility has three states, so a checkbox cannot speak for all of them: it
+   * covers the public ↔ hidden-from-Latest pair and steps aside once the post
+   * is private, where the panel's radio list is the only honest control.
+   */
+  private _renderHideFromLatestQuickToggle() {
+    if (this._visibilityLocked) return nothing;
+    if (this._visibility === "private") return nothing;
+
+    const checked = this._visibility === "latest_hidden";
+    return html`
+      <label class="compose-publish-quick-toggle">
+        <input
+          type="checkbox"
+          class="input compose-publish-quick-toggle-input"
+          .checked=${checked}
+          ?disabled=${this._loading}
+          @change=${(e: Event) => {
+            const target = e.target as HTMLInputElement;
+            this._setVisibility(target.checked ? "latest_hidden" : "public");
+          }}
+        />
+        <span>${this.labels.publishHideFromLatest}</span>
+      </label>
+    `;
+  }
+
   private _renderEditLoadingState() {
     return html`
       <div
@@ -5433,6 +5498,7 @@ export class JantComposeDialog extends LitElement {
             firstEditor.setEditorState(
               editorState.json,
               editorState.title,
+              editorState.showTitle,
               editorState.selection,
             );
           }
@@ -5523,6 +5589,7 @@ export class JantComposeDialog extends LitElement {
           singleEditor.setEditorState(
             editorState.json,
             editorState.title,
+            editorState.showTitle,
             editorState.selection,
           );
         }
@@ -5572,6 +5639,7 @@ export class JantComposeDialog extends LitElement {
     index: number,
     showRemove: boolean,
     total: number,
+    startsThread: boolean,
   ) {
     return html`
       <div
@@ -5611,6 +5679,7 @@ export class JantComposeDialog extends LitElement {
           .uploadMaxFileSize=${this.uploadMaxFileSize}
           .threadItem=${true}
           .removable=${showRemove}
+          .titleByDefault=${startsThread}
           .positionLabel=${`${index + 1}/${total}`}
           .headerExtra=${this._renderPostMetaControl(index)}
           .slashCommandDiscovered=${this.slashCommandDiscovered}
@@ -5679,7 +5748,16 @@ export class JantComposeDialog extends LitElement {
       >
         ${isReply ? this._renderReplyContext() : nothing}
         ${items.map((item, i) =>
-          this._renderThreadPost(item, i, showRemove, items.length),
+          this._renderThreadPost(
+            item,
+            i,
+            showRemove,
+            items.length,
+            // Only the post that opens a thread of its own gets a title field
+            // by default — everything downstream of it continues a thought that
+            // is already named.
+            i === 0 && !isReply,
+          ),
         )}
         ${this._renderAddToThreadRow()}
       </div>
@@ -5725,6 +5803,7 @@ export class JantComposeDialog extends LitElement {
       .labels=${this.labels}
       .uploadMaxFileSize=${this.uploadMaxFileSize}
       .inlineFormat=${isReply}
+      .titleByDefault=${!isReply}
       .headerExtra=${this._renderPostMetaControl(0)}
       .slashCommandDiscovered=${this.slashCommandDiscovered}
     ></jant-compose-editor>`;
@@ -5785,16 +5864,17 @@ export class JantComposeDialog extends LitElement {
         ${isOpeningEdit
           ? nothing
           : html`<div
-              class=${classMap({
-                "compose-action-row": true,
-                "compose-action-row-without-collection": !!this._replyToId,
-                "compose-action-row-overlay-open":
-                  this._showPublishPanel || this._showCollection,
-              })}
-            >
-              ${this._replyToId ? nothing : this._renderCollectionSelector()}
-              ${this._renderPublishButton()}
-            </div>`}
+                class=${classMap({
+                  "compose-action-row": true,
+                  "compose-action-row-without-collection": !!this._replyToId,
+                  "compose-action-row-overlay-open":
+                    this._showPublishPanel || this._showCollection,
+                })}
+              >
+                ${this._replyToId ? nothing : this._renderCollectionSelector()}
+                ${this._renderPublishButton()}
+              </div>
+              ${this._renderQuickActionsRow()}`}
         ${this._renderMobilePublishPanel()} ${this._renderAttachedPanel()}
         ${this._renderAltPanel()} ${this._renderDraftsPanel()}
         ${this._renderConfirmPanel()}

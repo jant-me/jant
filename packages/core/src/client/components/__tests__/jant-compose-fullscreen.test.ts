@@ -58,7 +58,7 @@ describe("JantComposeFullscreen", () => {
     }
   });
 
-  it("always offers the title field", async () => {
+  it("shows the title field when the editor arrived with one open", async () => {
     const el = document.createElement(
       "jant-compose-fullscreen",
     ) as JantComposeFullscreen;
@@ -68,14 +68,39 @@ describe("JantComposeFullscreen", () => {
 
     document.dispatchEvent(
       new CustomEvent("jant:fullscreen-open", {
-        detail: { json: null, title: "", labels },
+        detail: { json: null, title: "", showTitle: true, labels },
       }),
     );
     await flush(el);
 
-    // No reveal step: a note has a title field, empty or not.
     expect(el.querySelector(".compose-fullscreen-title")).not.toBeNull();
     expect(el.textContent).not.toContain("Fullscreen");
+  });
+
+  it("offers a way back to a title the editor had hidden", async () => {
+    const el = document.createElement(
+      "jant-compose-fullscreen",
+    ) as JantComposeFullscreen;
+    el.labels = labels;
+    document.body.appendChild(el);
+    await flush(el);
+
+    document.dispatchEvent(
+      new CustomEvent("jant:fullscreen-open", {
+        detail: { json: null, title: "", showTitle: false, labels },
+      }),
+    );
+    await flush(el);
+
+    expect(el.querySelector(".compose-fullscreen-title")).toBeNull();
+    const reveal = el.querySelector<HTMLButtonElement>(
+      ".compose-fullscreen-title-placeholder",
+    );
+    expect(reveal).not.toBeNull();
+
+    reveal?.click();
+    await flush(el);
+    expect(el.querySelector(".compose-fullscreen-title")).not.toBeNull();
   });
 
   it.each(["metaKey", "ctrlKey"] as const)(
@@ -243,6 +268,7 @@ describe("JantComposeFullscreen", () => {
         detail: {
           json: null,
           title: "",
+          showTitle: true,
           labels,
           replyContext: {
             contentHtml: "<p>A quiet sentence worth answering.</p>",
@@ -257,7 +283,7 @@ describe("JantComposeFullscreen", () => {
     expect(el.textContent).toContain("A quiet sentence worth answering.");
     expect(el.textContent).toContain("Mar 10, 2026");
     expect(el.textContent).toContain("Show more");
-    // The reply's title field lives inside its own row, always present.
+    // The reply's title field lives inside its own row, not the toolbar.
     expect(
       el.querySelector(
         ".compose-fullscreen-editor-row .compose-fullscreen-title-reply",

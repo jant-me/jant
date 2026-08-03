@@ -11,6 +11,7 @@ const EMPTY: ComposeConvertFields = {
   url: "",
   quoteText: "",
   quoteAuthor: "",
+  showTitle: false,
   bodyJson: null,
 };
 

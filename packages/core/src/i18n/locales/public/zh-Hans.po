@@ -38,6 +38,11 @@ msgstr ""
 msgid "{count} images couldn't be saved to your library — their original links were kept."
 msgstr "有 {count} 张图片无法转存到你的媒体库，已保留原链接。"
 
+#. @context: Value shown on a post's permalink control when the link is generated automatically — a stand-in for the path the server will assign. Sits next to real permalinks rendered as /my-post, so keep the leading slash
+#: src/ui/compose/ComposeDialog.tsx
+msgid "/…"
+msgstr ""
+
 #. @context: Placeholder for the custom collections link URL
 #: src/ui/shared/collection-management-labels.ts
 msgid "/archive?format=quote or https://example.com"
@@ -289,8 +294,6 @@ msgid "Author (optional)"
 msgstr ""
 
 #. @context: Theme mode option on sample page
-#. @context: Value shown on a post's permalink control when the link is generated automatically
-#: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Auto"
 msgstr ""
@@ -2264,7 +2267,9 @@ msgid "Threads can include up to {count} posts."
 msgstr ""
 
 #. @context: Collection form field
+#. @context: Compose toolbar - show or hide the title field
 #. @context: Input label on sample page
+#: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 #: src/ui/shared/collection-management-labels.ts
 msgid "Title"

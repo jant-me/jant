@@ -27,6 +27,7 @@ export interface ComposeConvertFields {
   url: string;
   quoteText: string;
   quoteAuthor: string;
+  showTitle: boolean;
   bodyJson: JSONContent | null;
 }
 
@@ -154,6 +155,7 @@ function makeBlockquote(
  * // quote → note: the quote becomes a leading blockquote in the body
  * convertComposeFormat("quote", "note", {
  *   title: "", url: "", quoteText: "Stay hungry", quoteAuthor: "Jobs",
+ *   showTitle: false, bodyJson: null,
  * });
  */
 export function convertComposeFormat(
@@ -247,6 +249,11 @@ export function convertComposeFormat(
   if (prepend.length) content.unshift(...prepend);
 
   out.bodyJson = content.length ? { type: "doc", content } : null;
+  // A title carried in from another format has nowhere to show unless the note's
+  // title field is open, so opening it is the only way not to drop it. The
+  // toggle is otherwise left alone, so note → link → note keeps the user's
+  // choice instead of resetting it.
+  if (to === "note" && out.title.trim().length > 0) out.showTitle = true;
 
   return out;
 }

@@ -4929,6 +4929,14 @@
       background-color: inherit;
     }
 
+    /* Takes the page's gutter rather than the dialog's, so the toggles line up
+       under Publish instead of sitting 12px inside it. */
+    .compose-page-shell .compose-dialog-inner-page .compose-quick-actions-row {
+      padding-inline: 0;
+      padding-bottom: 2px;
+      background-color: inherit;
+    }
+
     .compose-page-shell .compose-dialog-inner-page .compose-thread-layout {
       --compose-thread-padding-left: 0px;
       --compose-thread-padding-right: 0px;
@@ -5968,6 +5976,14 @@
     border-bottom-right-radius: inherit;
   }
 
+  /* The quick toggles take over the action row's bottom edge when present, so
+     the two read as one block rather than a strip stuck underneath. */
+  .compose-action-row:has(+ .compose-quick-actions-row) {
+    padding-bottom: 4px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
   .compose-action-row-overlay-open {
     z-index: 6;
   }
@@ -5976,9 +5992,27 @@
     justify-content: flex-end;
   }
 
+  .compose-quick-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 2px 12px 12px;
+    background-color: var(--compose-paper-bg);
+    border-bottom-left-radius: inherit;
+    border-bottom-right-radius: inherit;
+  }
+
   @media (min-width: 700px) {
     .compose-action-row {
       padding: 12px 18px 16px;
+    }
+
+    .compose-action-row:has(+ .compose-quick-actions-row) {
+      padding-bottom: 4px;
+    }
+
+    .compose-quick-actions-row {
+      padding: 2px 18px 14px;
     }
   }
 
@@ -6768,6 +6802,9 @@
     opacity: 1;
   }
 
+  /* Defaults are the common case, so at rest this is a caption rather than a
+     control: no chrome, and dimmer than the format selector it shares the row
+     with. The outline arrives on hover, once it is being aimed at. */
   .compose-post-meta-pill {
     display: inline-flex;
     align-items: center;
@@ -6775,10 +6812,10 @@
     max-width: min(17rem, 52vw);
     min-width: 0;
     padding: 3px 10px 3px 8px;
-    border: 1px solid var(--compose-control-border);
+    border: 1px solid transparent;
     border-radius: 999px;
-    background-color: var(--compose-paper-bg);
-    color: var(--site-text-secondary);
+    background-color: transparent;
+    color: color-mix(in srgb, var(--site-text-secondary) 62%, transparent);
     font-family: var(--font-ui);
     font-size: var(--type-ui-caption);
     white-space: nowrap;
@@ -6791,12 +6828,16 @@
 
   .compose-post-meta-pill:hover,
   .compose-post-meta-pill[aria-expanded="true"] {
+    border-color: var(--compose-control-border);
     background-color: var(--compose-control-bg);
     color: var(--site-text-primary);
   }
 
+  /* A date or permalink the author chose is real information, not a default —
+     it gets the chrome back and full contrast. */
   .compose-post-meta-set .compose-post-meta-pill {
     border-color: color-mix(in srgb, var(--site-text-primary) 32%, transparent);
+    background-color: var(--compose-paper-bg);
     color: var(--site-text-primary);
     font-weight: var(--fw-medium);
   }
@@ -6807,7 +6848,7 @@
   }
 
   .compose-post-meta-sep {
-    color: var(--site-divider);
+    color: color-mix(in srgb, currentcolor 45%, transparent);
   }
 
   .compose-post-meta-value {
@@ -6878,8 +6919,8 @@
   }
 
   .compose-options-trigger-icon {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.35rem;
+    height: 1.35rem;
   }
 
   .compose-publish-section-action {
@@ -7877,24 +7918,64 @@
     }
   }
 
-  /* Continuous vertical line through the rail */
-  .compose-thread-layout::before {
+  /* The rail is drawn one row at a time rather than as a single strip down the
+     layout, so the two ends can be trimmed: it starts at the first dot and
+     stops at the last post's. Under the last post it used to keep going —
+     that's the tallest row in the layout, so it was a long line pointing at
+     nothing. */
+  .compose-thread-layout > * {
+    position: relative;
+
+    /* Distance from this row's top edge to the centre of its dot, which is
+       where the rail has to start or stop. Mirrors the row's own padding-top
+       plus the dot's margin-top and half its size — keep the two in step. */
+    --compose-thread-dot-center: calc(
+      0.65rem + var(--site-thread-marker-size) / 2
+    );
+  }
+
+  .compose-thread-layout > .compose-editor-row {
+    --compose-thread-dot-center: calc(
+      14px + 1rem + var(--site-thread-marker-hero-size) / 2
+    );
+  }
+
+  .compose-thread-compose-layout > .compose-editor-row {
+    --compose-thread-dot-center: calc(
+      4px + 1.05rem + var(--site-thread-marker-hero-size) / 2
+    );
+  }
+
+  .compose-thread-layout > *::before {
     content: "";
     position: absolute;
     left: var(--compose-thread-rail-left);
-    /* Start at the first dot rather than the top of the layout — the format
-       header sits above it, and a line stub over the first post reads as an
-       artefact. */
-    top: 1.35rem;
+    top: 0;
     bottom: 0;
     width: 1.5px;
+    margin-left: -0.75px;
     border-radius: 1px;
     background-color: color-mix(
       in srgb,
       var(--site-threadline) 85%,
       transparent
     );
-    z-index: 0;
+  }
+
+  .compose-thread-layout > :first-child::before {
+    top: var(--compose-thread-dot-center);
+  }
+
+  /* The last post ends the rail. `.compose-thread-add-row` sits below it and is
+     a placeholder, not a post, so its dashed dot is left unconnected. */
+  .compose-thread-layout
+    > .compose-editor-row:not(:has(~ .compose-editor-row))::before {
+    bottom: auto;
+    height: var(--compose-thread-dot-center);
+  }
+
+  .compose-thread-layout > .compose-thread-add-row::before {
+    display: none;
   }
 
   /* Row containing dot + reply context */
@@ -8028,8 +8109,11 @@
     height: 20px;
   }
 
-  /* Dot marker for thread positions */
+  /* Dot marker for thread positions. Positioned so it can anchor its own rail
+     segments, and so its ring paints over them. */
   .compose-thread-dot {
+    position: relative;
+    z-index: 1;
     width: var(--site-thread-marker-size);
     height: var(--site-thread-marker-size);
     margin-top: 0.65rem;
@@ -8041,7 +8125,6 @@
     align-self: flex-start;
     box-shadow: 0 0 0 var(--site-thread-marker-ring-width)
       var(--site-thread-dot-ring);
-    z-index: 1;
   }
 
   .compose-editor-row .compose-thread-dot {
@@ -8312,10 +8395,6 @@
       padding-top: 0.75rem;
     }
 
-    .compose-thread-layout::before {
-      top: 0.75rem;
-    }
-
     .compose-reply-context {
       padding-top: 0.24rem;
       padding-bottom: 0.28rem;
@@ -8532,18 +8611,18 @@
      post rather than filling the dialog header. */
   .compose-thread-segmented {
     flex: none;
-    padding: 2px;
-    border-radius: 9px;
+    padding: 3px;
+    border-radius: 11px;
     box-shadow: none;
     gap: 1px;
   }
 
   .compose-thread-segmented .compose-segmented-item {
     flex: none;
-    padding: 3px 11px;
-    border-radius: 7px;
+    padding: 5px 13px;
+    border-radius: 8px;
     border: none;
-    font-size: var(--type-ui-caption);
+    font-size: var(--type-ui-hint);
     letter-spacing: 0.01em;
     transition:
       color 0.15s ease,
@@ -11235,6 +11314,32 @@
     margin-top: 0.95rem;
   }
 
+  /* Stand-in for a hidden title: reads as the field's own placeholder, and
+     clicking it swaps in the real input. Fullscreen has no toolbar to put the
+     `T` toggle on, so this is the way back to a title from here. */
+  .compose-fullscreen-title-placeholder {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--site-text-secondary);
+    font-family: var(--font-heading);
+    font-size: var(--type-content-display);
+    font-weight: var(--type-display-weight);
+    line-height: var(--type-display-leading);
+    letter-spacing: var(--type-display-tracking);
+    text-align: left;
+    opacity: 0.32;
+    cursor: pointer;
+    transition: opacity 160ms ease;
+  }
+
+  .compose-fullscreen-title-placeholder:hover,
+  .compose-fullscreen-title-placeholder:focus-visible {
+    opacity: 0.52;
+  }
+
   .compose-fullscreen-title-shell {
     display: flex;
     align-items: center;
@@ -11279,6 +11384,20 @@
     opacity: 0.6;
   }
 
+  .compose-fullscreen-title-placeholder-reply {
+    font-family: var(--font-body);
+    font-size: var(--type-base);
+    font-weight: var(--fw-medium);
+    letter-spacing: 0.01em;
+    line-height: 1.35;
+    opacity: 0.42;
+  }
+
+  .compose-fullscreen-title-placeholder-reply:hover,
+  .compose-fullscreen-title-placeholder-reply:focus-visible {
+    opacity: 0.62;
+  }
+
   .compose-fullscreen .compose-tiptap-body .tiptap {
     min-height: calc(100dvh - 14rem);
     padding-bottom: max(18vh, 8rem);
@@ -11307,8 +11426,16 @@
       font-size: var(--type-content-subtitle);
     }
 
+    .compose-fullscreen-title-placeholder {
+      font-size: var(--type-content-subtitle);
+    }
+
     .compose-fullscreen-title-reply {
       font-size: var(--type-base);
+    }
+
+    .compose-fullscreen-title-placeholder-reply {
+      font-size: var(--type-sm);
     }
 
     .compose-fullscreen .compose-tiptap-body .tiptap {

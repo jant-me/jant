@@ -176,6 +176,7 @@ const labels: ComposeLabels = {
   media: "Media",
   rate: "Rate",
   emoji: "Emoji",
+  title: "Title",
   fullscreen: "Fullscreen",
   exitFullscreen: "Exit fullscreen",
   collection: "Collection",
@@ -308,10 +309,14 @@ const labels: ComposeLabels = {
 
 async function createElement(
   format: string = "note",
+  options: { titleByDefault?: boolean } = {},
 ): Promise<JantComposeEditor> {
   const el = document.createElement("jant-compose-editor") as JantComposeEditor;
   el.format = format as "note" | "link" | "quote";
   el.labels = labels;
+  if (options.titleByDefault !== undefined) {
+    el.titleByDefault = options.titleByDefault;
+  }
   document.body.appendChild(el);
   await el.updateComplete;
   return el;
@@ -795,9 +800,45 @@ describe("JantComposeEditor", () => {
     expect(el._attachedTexts[0].bodyJson).toBeNull();
   });
 
-  it("has no title toggle — a note always shows its title field", async () => {
+  it("shows a note's title field by default on a post that starts a thread", async () => {
     const el = await createElement("note");
-    expect(el.querySelector('.compose-tool-btn[title="Title"]')).toBeNull();
+    expect(el.querySelector(".compose-note-title")).not.toBeNull();
+    expect(el.querySelector('.compose-tool-btn[title="Title"]')).not.toBeNull();
+  });
+
+  it("hides a note's title field by default on a continuation post", async () => {
+    const el = await createElement("note", { titleByDefault: false });
+    expect(el.querySelector(".compose-note-title")).toBeNull();
+  });
+
+  it("toggles the title field from the toolbar", async () => {
+    const el = await createElement("note", { titleByDefault: false });
+    const toggle = requireElement(
+      el.querySelector<HTMLButtonElement>('.compose-tool-btn[title="Title"]'),
+      "expected title toggle",
+    );
+
+    toggle.click();
+    await el.updateComplete;
+    expect(el.querySelector(".compose-note-title")).not.toBeNull();
+
+    toggle.click();
+    await el.updateComplete;
+    expect(el.querySelector(".compose-note-title")).toBeNull();
+  });
+
+  it("drops a hidden title from the submitted data", async () => {
+    const el = await createElement("note");
+    el._title = "Named";
+    el._showTitle = false;
+    await el.updateComplete;
+    expect(el.getData().title).toBe("");
+  });
+
+  it("keeps the title field visible when a post arrives with one", async () => {
+    const el = await createElement("note", { titleByDefault: false });
+    el.populate({ format: "note", title: "Loaded title" });
+    await el.updateComplete;
     expect(el.querySelector(".compose-note-title")).not.toBeNull();
   });
 
@@ -885,12 +926,12 @@ describe("JantComposeEditor", () => {
       ...el.querySelectorAll<HTMLButtonElement>(".compose-tool-btn"),
     ].map((button) => button.getAttribute("title"));
 
-    // No "Title" button — the field is always there.
     expect(toolTitles).toEqual([
       "Media",
       "Attached Text",
       "Emoji",
       "Rate",
+      "Title",
       "Fullscreen",
     ]);
     expect(

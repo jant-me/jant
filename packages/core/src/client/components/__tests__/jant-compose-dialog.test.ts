@@ -144,6 +144,7 @@ const labels: ComposeLabels = {
   media: "Media",
   rate: "Rate",
   emoji: "Emoji",
+  title: "Title",
   fullscreen: "Fullscreen",
   exitFullscreen: "Exit fullscreen",
   collection: "Collection",
@@ -560,7 +561,6 @@ describe("JantComposeDialog", () => {
 
     // The split button is gone: Publish is one button, options is another.
     expect(el.querySelector(".compose-publish-toggle")).toBeNull();
-    expect(el.querySelector(".compose-quick-actions-row")).toBeNull();
 
     const trigger = requireElement(
       el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
@@ -1710,6 +1710,79 @@ describe("JantComposeDialog", () => {
         "expected publish button",
       ).textContent?.trim(),
     ).toBe("Post hidden");
+  });
+
+  it("flips visibility from the Hide from Latest shortcut", async () => {
+    const el = await createElement();
+
+    const toggle = requireElement(
+      el.querySelector<HTMLInputElement>(
+        ".compose-quick-actions-row .compose-publish-quick-toggle-input",
+      ),
+      "expected hide-from-latest shortcut",
+    );
+    expect(toggle.checked).toBe(false);
+
+    toggle.checked = true;
+    toggle.dispatchEvent(new globalThis.Event("change"));
+    await el.updateComplete;
+    expect(el._visibility).toBe("latest_hidden");
+
+    toggle.checked = false;
+    toggle.dispatchEvent(new globalThis.Event("change"));
+    await el.updateComplete;
+    expect(el._visibility).toBe("public");
+  });
+
+  it("drops the Hide from Latest shortcut once the post is private", async () => {
+    const el = await createElement();
+
+    requireElement(
+      el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
+      "expected publish settings toggle",
+    ).click();
+    await el.updateComplete;
+
+    // A checkbox cannot speak for a third state, so it steps aside.
+    el.querySelectorAll<HTMLButtonElement>(
+      ".compose-sheet-row[role='radio']",
+    )[2]?.click();
+    await el.updateComplete;
+
+    expect(el._visibility).toBe("private");
+    expect(el.querySelector(".compose-quick-actions-row")).toBeNull();
+  });
+
+  it("offers the quiet reply shortcut on a reply, in place of visibility", async () => {
+    const el = await createElement();
+
+    await el.openReply("019ce8ce-d6d8-7fda-a5df-c2da2bef5ade", {
+      contentHtml: "<p>Parent</p>",
+      dateText: "Mar 14",
+    });
+    await flushUpdates(el);
+
+    const toggles = el.querySelectorAll<HTMLInputElement>(
+      ".compose-quick-actions-row .compose-publish-quick-toggle-input",
+    );
+    // A reply inherits the root's visibility, so only quiet reply is offered.
+    expect(toggles).toHaveLength(1);
+
+    const toggle = requireElement(
+      toggles.item(0),
+      "expected quiet reply shortcut",
+    );
+    toggle.checked = true;
+    toggle.dispatchEvent(new globalThis.Event("change"));
+    await el.updateComplete;
+
+    expect(el._quietReply).toBe(true);
+    expect(
+      requireElement(
+        el.querySelector<HTMLButtonElement>(".compose-publish-main"),
+        "expected publish button",
+      ).textContent?.trim(),
+    ).toBe("Reply quietly");
   });
 
   it("opens a new post with the requested collection and keeps the last visibility until refresh", async () => {
@@ -3505,7 +3578,7 @@ describe("JantComposeDialog", () => {
       /\.compose-reply-compose-layout\s+\.compose-thread-post-header\s*\+\s*\.compose-body\s*\{[\s\S]*padding-top:\s*12px;/,
     );
     expect(css).toMatch(
-      /@media \(max-width:\s*760px\),\s*\(hover:\s*none\) and \(pointer:\s*coarse\)\s*\{[\s\S]*\.compose-thread-layout\s*\{[\s\S]*padding-top:\s*0\.75rem;[\s\S]*\.compose-thread-layout::before\s*\{[\s\S]*top:\s*0\.75rem;/,
+      /@media \(max-width:\s*760px\),\s*\(hover:\s*none\) and \(pointer:\s*coarse\)\s*\{[\s\S]*\.compose-thread-layout\s*\{[\s\S]*padding-top:\s*0\.75rem;/,
     );
     expect(css).toMatch(
       /\.compose-dialog,[\s\S]*\.compose-page-shell\s*>\s*jant-compose-dialog\s*\{[\s\S]*--compose-quote-input-size:\s*var\(--type-content-subtitle\);[\s\S]*--compose-quote-input-leading:\s*1\.32;/,
@@ -3527,6 +3600,27 @@ describe("JantComposeDialog", () => {
     );
     expect(css).toMatch(
       /\.compose-reply-compose-layout\s+\.compose-tiptap-body\s+\.tiptap\s*\{[\s\S]*font-size:\s*var\(--type-content-body\);/,
+    );
+  });
+
+  it("runs the thread rail from the first dot to the last post's, and no further", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    // Drawn per row rather than as one strip down the layout, which is what
+    // lets both ends be trimmed back to a dot.
+    expect(css).not.toMatch(/\.compose-thread-layout::before\s*\{/);
+    expect(css).toMatch(
+      /\.compose-thread-layout > \*::before\s*\{[\s\S]*top:\s*0;[\s\S]*bottom:\s*0;/,
+    );
+    expect(css).toMatch(
+      /\.compose-thread-layout > :first-child::before\s*\{\s*top:\s*var\(--compose-thread-dot-center\);/,
+    );
+    expect(css).toMatch(
+      /\.compose-editor-row:not\(:has\(~ \.compose-editor-row\)\)::before\s*\{\s*bottom:\s*auto;\s*height:\s*var\(--compose-thread-dot-center\);/,
+    );
+    // The "add" row is a placeholder, not a post — the rail stops before it.
+    expect(css).toMatch(
+      /\.compose-thread-layout > \.compose-thread-add-row::before\s*\{\s*display:\s*none;/,
     );
   });
 
@@ -4641,6 +4735,7 @@ describe("JantComposeDialog", () => {
             ],
           },
           title: "Fullscreen title",
+          showTitle: true,
           replyExpanded: false,
           intent: "publish",
           editorIndex: 0,
@@ -4674,6 +4769,7 @@ describe("JantComposeDialog", () => {
         detail: {
           json: { type: "doc", content: [{ type: "paragraph" }] },
           title: "",
+          showTitle: false,
           replyExpanded: false,
           intent: "publish",
           editorIndex: 0,
@@ -4698,6 +4794,7 @@ describe("JantComposeDialog", () => {
     const openDetail: ComposeFullscreenOpenDetail = {
       json: null,
       title: "",
+      showTitle: false,
     };
     editors[1]?.dispatchEvent(
       new CustomEvent<ComposeFullscreenOpenDetail>("jant:fullscreen-open", {
@@ -4727,6 +4824,7 @@ describe("JantComposeDialog", () => {
             ],
           },
           title: "",
+          showTitle: false,
           replyExpanded: false,
           editorIndex: 1,
         },
