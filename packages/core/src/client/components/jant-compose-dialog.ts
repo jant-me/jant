@@ -258,10 +258,13 @@ const COMPOSE_PUBLISH_ACTION_ICONS = {
 const COMPOSE_COLLECTION_PICKER_ICONS = {
   /* A stack seen edge-on, not a folder: a collection is a post filed under
      several topics at once, and the folder glyph promises a single container
-     the model does not have. */
+     the model does not have. Drawn spanning y 3.5–12.5 so the artwork's centre
+     is the viewBox's — it used to sit at 6.9 against a centre of 8, and since
+     layout centres the svg *box*, that 1.1-unit drift rode straight through as
+     an icon floating above its own label. */
   collection: `
-    <path d="M2.5 5.2 8 2.4l5.5 2.8L8 8 2.5 5.2Z" />
-    <path d="M2.5 8.6 8 11.4l5.5-2.8" />
+    <path d="M2.5 6.3 8 3.5l5.5 2.8L8 9.1 2.5 6.3Z" />
+    <path d="M2.5 9.7 8 12.5l5.5-2.8" />
   `,
   search: `
     <circle cx="7.1" cy="7.1" r="3.65" />
@@ -5996,20 +5999,17 @@ export class JantComposeDialog extends LitElement {
       .headerExtra=${html`${this._renderPostMetaControl(0)}
       ${this._renderCloseComposeControl()}`}
       .slashCommandDiscovered=${this.slashCommandDiscovered}
-    ></jant-compose-editor>`;
-    // Single-post mode routes its own format changes; the reply and thread
-    // branches below wrap the editor with their own handlers. This wrapper is
-    // `display: contents` — `.compose-editor-row` would hand the editor the
-    // thread rail's geometry, and a single post has no rail to indent past.
-    const singleEditor = html`<div
-      class="compose-single-editor"
       @jant:format-change=${(e: CustomEvent<{ format: ComposeFormat }>) => {
         e.stopPropagation();
         this._switchFormat(e.detail.format);
       }}
-    >
-      ${editor}
-    </div>`;
+    ></jant-compose-editor>`;
+    // The handler sits on the editor itself, not on a wrapper. Single-post mode
+    // renders this editor as a direct child of `.compose-dialog-inner`, and the
+    // rules that make it the scroll container are keyed on that child
+    // relationship — a delegating wrapper breaks them even at
+    // `display: contents`, which drops the box but not the DOM parentage.
+    // (Thread mode builds its own editors in `_renderThreadPost`.)
 
     return html`
       <div
@@ -6032,21 +6032,13 @@ export class JantComposeDialog extends LitElement {
                     class="compose-thread-layout compose-reply-compose-layout"
                   >
                     ${this._renderReplyContext()}
-                    <div
-                      class="compose-editor-row is-current"
-                      @jant:format-change=${(
-                        e: CustomEvent<{ format: ComposeFormat }>,
-                      ) => {
-                        e.stopPropagation();
-                        this._switchFormat(e.detail.format);
-                      }}
-                    >
+                    <div class="compose-editor-row is-current">
                       <div class="compose-thread-dot"></div>
                       ${editor}
                     </div>
                   </div>
                 `
-              : singleEditor}
+              : editor}
         ${isOpeningEdit || isThreadMode || this._editPostId
           ? nothing
           : this._renderAddThreadTrigger()}

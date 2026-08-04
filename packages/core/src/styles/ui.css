@@ -2939,12 +2939,12 @@
     flex-shrink: 0;
   }
 
-  /* One dot, drawn the same way everywhere it appears: a flat fill with a
-     surface-coloured gap punched around it, so it reads as a bead threaded on
-     the rail rather than a bulge in it. No border and no ring — reading used to
-     carry both, and since the ring sat on every dot it never distinguished
-     anything. What a post *is* comes from its card; the dot only says where it
-     sits on the chain, and an accent fill says which one the view is about. */
+  /* One dot on both rails: a flat fill with a surface-coloured gap punched
+     around it, so it reads as a bead threaded on the rail rather than a bulge in
+     it. Same size, same colours, same punch — reading then rings it (below) and
+     compose stops at the fill. What a post *is* comes from its card; the dot
+     only says where it sits on the chain, and an accent fill says which one the
+     view is about. */
   .thread-group,
   .compose-thread-layout {
     --site-thread-marker-size: 7px;
@@ -2963,7 +2963,7 @@
        the single highest-contrast thing in an otherwise near-empty column. */
     --site-thread-marker-current: color-mix(
       in srgb,
-      var(--site-accent) 80%,
+      var(--site-accent) 90%,
       var(--site-threadline)
     );
   }
@@ -2972,10 +2972,19 @@
     --site-thread-marker-surface: var(--compose-paper-bg);
   }
 
-  /* Thread group: timeline layout — vertical line with dot markers */
+  /* Thread group: timeline layout — vertical line with dot markers.
+     Reading rings its dots; compose doesn't. A compose dot sits beside a card
+     edge, a format switcher and a "1/3", so a joint in the line is all it has to
+     be. Reading's rail runs down an otherwise empty column, where a bare fill
+     reads as a speck of stray threadline — the ring gives it a silhouette
+     without making it any louder, since the tint is the same 16% accent every
+     other halo in the system uses. Held off the fill by a band of surface so
+     the two stay separate marks rather than one fuzzy dot. */
   .thread-group {
     --site-thread-rail-indent: 24px;
     --site-thread-rail-line-left: 5px;
+    --site-thread-marker-ring-inset: 2px;
+    --site-thread-marker-ring-width: 2px;
     position: relative;
     padding-left: var(--site-thread-rail-indent);
   }
@@ -3025,8 +3034,21 @@
     height: var(--site-thread-marker-size);
     border-radius: 50%;
     background-color: var(--site-threadline);
-    box-shadow: 0 0 0 var(--site-thread-marker-gap)
-      var(--site-thread-marker-surface);
+    /* Three concentric layers off one border box, painted first-on-top: a band
+       of surface, the accent ring, then the rest of the punch-out. The punch's
+       radius is unchanged, so the ring sits inside the gap the rail line was
+       already broken for and nothing downstream (`.thread-context-shell`'s
+       inset, the compose switcher's overhang) has to move for it. */
+    box-shadow:
+      0 0 0 var(--site-thread-marker-ring-inset)
+        var(--site-thread-marker-surface),
+      0 0 0
+        calc(
+          var(--site-thread-marker-ring-inset) +
+            var(--site-thread-marker-ring-width)
+        )
+        var(--site-thread-dot-ring),
+      0 0 0 var(--site-thread-marker-gap) var(--site-thread-marker-surface);
     z-index: 1;
   }
 
@@ -3055,6 +3077,12 @@
     }
   }
 
+  /* The rail fades in at the top, where collapsed ancestor context begins: the
+     thread continues above what this view shows, so the line shouldn't start on
+     a hard edge. The bottom needs no matching fade — the line is cut at the last
+     dot instead. Compose doesn't share the gradient: its rail is drawn per row
+     so both ends can be trimmed, and a per-row gradient would fade once per
+     post rather than once per thread. */
   .thread-group-preview::before,
   .thread-group-detail::before {
     background: linear-gradient(
@@ -3063,6 +3091,25 @@
       color-mix(in srgb, var(--site-threadline) 85%, transparent) 8%,
       color-mix(in srgb, var(--site-threadline) 55%, transparent) 100%
     );
+  }
+
+  /* The rail ends at the last dot. Below it the line pointed at posts that
+     aren't there — the thread is over, and compose already trims its own rail
+     the same way. Painted over rather than shortened: the line is one box on the
+     group so it can carry a single gradient, and only the last post knows where
+     its own dot sits (its own 50%). `> ` scopes this to the group's own children
+     — the ancestors inside `.thread-context-shell` have a last child too, and
+     the rail must run straight through it. */
+  .thread-group > .thread-item:last-child::after {
+    content: "";
+    position: absolute;
+    left: calc(
+      var(--site-thread-rail-line-left) - var(--site-thread-rail-indent)
+    );
+    top: 50%;
+    bottom: 0;
+    width: var(--site-thread-rail-line-width);
+    background-color: var(--site-thread-marker-surface);
   }
 
   .thread-group-preview .thread-item,
@@ -5944,6 +5991,14 @@
   }
 
   .compose-collection-trigger {
+    /* Optically, not geometrically, centered: the glyph meets the left padding
+       at a vertex and sits inset in its own box, so equal padding leaves the
+       icon side looking open and the label side pinched against the edge.
+       Tune the pill's side padding here and in the touch block below — both
+       set these two values rather than re-declaring `padding`, so neither
+       silently shadows the other. */
+    --compose-collection-pad-icon: 0.56rem;
+    --compose-collection-pad-label: 0.85rem;
     display: flex;
     align-items: center;
     gap: 0.38rem;
@@ -5953,7 +6008,8 @@
     border: 1px solid var(--compose-control-border);
     background: var(--compose-control-bg);
     border-radius: 999px;
-    padding: 0.2rem 0.68rem;
+    padding: 0.2rem var(--compose-collection-pad-label) 0.2rem
+      var(--compose-collection-pad-icon);
     cursor: pointer;
     transition:
       background-color 0.18s ease,
@@ -8272,7 +8328,8 @@
 
     .compose-collection-trigger {
       min-height: 2.5rem;
-      padding-inline: 0.85rem;
+      --compose-collection-pad-icon: 0.68rem;
+      --compose-collection-pad-label: 0.85rem;
     }
 
     .compose-collection-select [data-popover] {
@@ -8479,12 +8536,6 @@
   }
 
   /* --- Thread post header: format tag switcher + × on right --------------- */
-
-  /* Event-delegation wrapper only — contributes no box, so the editor keeps
-     the layout it has outside a thread. */
-  .compose-single-editor {
-    display: contents;
-  }
 
   .compose-thread-post-header {
     display: flex;

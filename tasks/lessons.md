@@ -240,3 +240,36 @@
 - Never publish a rendered page — artifact, demo, or screenshot deliverable —
   without opening it and looking first. Computed-style assertions are worth
   running too, but they do not replace looking at the result.
+- `display: contents` drops an element's box, not its place in the DOM tree, so
+  a wrapper added for event delegation still breaks every child combinator
+  (`.parent > .child`) that used to reach past it. Before inserting one, grep
+  the stylesheet for `> ` rules naming the child. Flex/scroll chains fail
+  silently this way: the child falls back to `display: inline`, its
+  `overflow-y: auto` descendant loses the bounded height it needed, and the
+  content simply stops scrolling. Prefer putting the listener on the element
+  itself.
+- When a CSS value edit appears to have no effect, do not tune it further —
+  find what shadows it. Shorthands beat the longhands they cover regardless of
+  which reads more specific: a later `padding-inline` inside a media query
+  overrides the horizontal halves of an earlier `padding`, at equal specificity,
+  so edits to the base rule are inert whenever that query matches. Enumerate
+  every rule for the selector (`grep -n '\.the-class' styles/*.css`) before
+  changing a number twice. Where two blocks legitimately tune the same property,
+  have both set custom properties that a single declaration reads, so neither
+  can silently shadow the other.
+- Judge a responsive tweak in the mode the user is looking at, not the one the
+  automation window happens to be in. `(hover: none) and (pointer: coarse)`
+  matches whenever DevTools device emulation is on, which is exactly when
+  someone is eyeballing a dialog. An offscreen same-origin iframe sized to the
+  breakpoint renders the other mode for measurement and screenshots without
+  resizing the window.
+- Leave the dev server running between turns when the user is iterating on
+  visuals. Killing it as cleanup means their next reload shows a stale page, and
+  "I changed it and nothing happened" then has two causes to untangle instead of
+  one.
+- Centre icon artwork inside its own viewBox. Layout centres the `<svg>` box, so
+  any drift between the artwork's bounding box and the viewBox centre rides
+  straight through into every use. Check with
+  `svg.getBBox().y + svg.getBBox().height / 2` against half the viewBox height —
+  a 1-unit drift on a 16-unit grid is roughly 1px on screen and reads as an icon
+  floating above its label.

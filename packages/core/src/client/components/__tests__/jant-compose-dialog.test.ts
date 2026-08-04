@@ -3775,6 +3775,50 @@ describe("JantComposeDialog", () => {
     URL.revokeObjectURL(previewUrl);
   });
 
+  it("keeps the single-post editor a direct child of the dialog shell", async () => {
+    const el = await createElement();
+
+    const shell = requireElement(
+      el.querySelector<HTMLElement>(".compose-dialog-inner"),
+      "expected compose dialog shell",
+    );
+    const editor = requireElement(
+      el.querySelector<JantComposeEditor>("jant-compose-editor"),
+      "expected compose editor",
+    );
+
+    // The rules that make the editor the scroll container are keyed on
+    // `.compose-dialog-inner > jant-compose-editor`. Any wrapper breaks them —
+    // including a `display: contents` one, which drops the box but not the DOM
+    // parentage the selector matches on — and a long body then overflows the
+    // dialog with nothing to scroll.
+    expect(editor.parentElement).toBe(shell);
+
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    expect(css).toMatch(
+      /\.compose-dialog-inner\s*>\s*jant-compose-editor\s*\{[\s\S]*flex:\s*1;[\s\S]*min-height:\s*0;[\s\S]*overflow:\s*hidden;/,
+    );
+    expect(css).toMatch(/\.compose-body\s*\{[\s\S]*overflow-y:\s*auto;/);
+  });
+
+  it("routes a format change straight off the single-post editor", async () => {
+    const el = await createElement();
+    const editor = requireElement(
+      el.querySelector<JantComposeEditor>("jant-compose-editor"),
+      "expected compose editor",
+    );
+
+    editor.dispatchEvent(
+      new CustomEvent("jant:format-change", {
+        detail: { format: "quote" },
+        bubbles: true,
+      }),
+    );
+    await flushUpdates(el);
+
+    expect(el._format).toBe("quote");
+  });
+
   it("keeps reply compose tools inside the constrained editor surface", () => {
     const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
 
@@ -3878,11 +3922,30 @@ describe("JantComposeDialog", () => {
     expect(css).toMatch(
       /\.thread-group-preview::before,\s*\.thread-group-detail::before\s*\{\s*background:\s*linear-gradient\(/,
     );
-    // The border/ring vocabulary is gone — the only ring anywhere is the
-    // surface-coloured gap, and nothing may reintroduce a contrasting one.
+    // Both rails now stop at the last dot. Reading masks its group-wide line
+    // from that dot down; `> ` keeps the mask off the last ancestor inside
+    // `.thread-context-shell`, which the rail must run straight through.
+    expect(css).toMatch(
+      /\.thread-group > \.thread-item:last-child::after\s*\{[^}]*top:\s*50%;\s*bottom:\s*0;\s*width:\s*var\(--site-thread-rail-line-width\);\s*background-color:\s*var\(--site-thread-marker-surface\);/,
+    );
+    expect(css).not.toMatch(/\.thread-group \.thread-item:last-child::after/);
+    // The ring is reading's alone: the token is declared on `.thread-group`, and
+    // compose's dot rule never reads it. The compose rail is quiet by design —
+    // it already has a card edge, a format switcher and a "1/3" per row.
+    expect(css).toMatch(
+      /\.thread-group\s*\{[^}]*--site-thread-marker-ring-inset:\s*2px;\s*--site-thread-marker-ring-width:\s*2px;/,
+    );
+    expect(css).not.toMatch(
+      /\.compose-thread-layout\s*\{[^}]*--site-thread-marker-ring/,
+    );
+    expect(css).not.toMatch(
+      /\.compose-thread-dot::before\s*\{[^}]*--site-thread-(dot-ring|marker-ring)/,
+    );
+    // The per-dot border and the size-based hero markers stay gone: a border
+    // eats into the fill instead of sitting outside it, and a bigger dot
+    // repeats what the full card beside it already says.
     for (const dead of [
       "--site-thread-marker-border-width",
-      "--site-thread-marker-ring-width",
       "--site-thread-marker-hero-size",
       "--site-thread-marker-hero-border-width",
     ]) {
@@ -3894,19 +3957,25 @@ describe("JantComposeDialog", () => {
   it("punches the dot's gap with the surface colour on both rails", () => {
     const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
 
+    // Compose stops at the punch-out; reading layers its ring inside the same
+    // radius, so the outermost layer — the one that breaks the rail line — is
+    // still the gap at its full size on both rails.
     const punchOut =
-      /box-shadow:\s*0 0 0 var\(--site-thread-marker-gap\)\s*var\(--site-thread-marker-surface\);/;
+      /0 0 0 var\(--site-thread-marker-gap\)\s*var\(--site-thread-marker-surface\);/;
     expect(css).toMatch(
-      new RegExp(`\\.compose-thread-dot::before\\s*\\{[^}]*${punchOut.source}`),
+      new RegExp(
+        `\\.compose-thread-dot::before\\s*\\{[^}]*box-shadow:\\s*${punchOut.source}`,
+      ),
     );
     expect(css).toMatch(
       new RegExp(`\\.thread-item::before\\s*\\{[^}]*${punchOut.source}`),
     );
-    // The reading dot no longer carries a contrasting border or accent ring.
-    expect(css).not.toMatch(/\.thread-item::before\s*\{[^}]*border:\s/);
-    expect(css).not.toMatch(
-      /\.thread-item::before\s*\{[^}]*--site-thread-dot-ring/,
+    // Reading's ring: a band of surface, then the accent tint, both drawn as
+    // spread inside the punch. A border would eat the fill instead.
+    expect(css).toMatch(
+      /\.thread-item::before\s*\{[^}]*box-shadow:\s*0 0 0 var\(--site-thread-marker-ring-inset\)\s*var\(--site-thread-marker-surface\),\s*0 0 0\s*calc\(\s*var\(--site-thread-marker-ring-inset\) \+\s*var\(--site-thread-marker-ring-width\)\s*\)\s*var\(--site-thread-dot-ring\),/,
     );
+    expect(css).not.toMatch(/\.thread-item::before\s*\{[^}]*border:\s/);
   });
 
   it("marks the post a view is about with an accent fill, not a bigger dot", () => {
@@ -3923,7 +3992,7 @@ describe("JantComposeDialog", () => {
       /\.compose-editor-row\.is-current \.compose-thread-dot::before\s*\{\s*background-color:\s*var\(--site-thread-marker-current\);/,
     );
     expect(css).toMatch(
-      /--site-thread-marker-current:\s*color-mix\(\s*in srgb,\s*var\(--site-accent\) 80%,\s*var\(--site-threadline\)\s*\);/,
+      /--site-thread-marker-current:\s*color-mix\(\s*in srgb,\s*var\(--site-accent\) 90%,\s*var\(--site-threadline\)\s*\);/,
     );
     expect(css).not.toMatch(
       /\.thread-item-current::before\s*\{[^}]*var\(--site-accent\)[^-]/,
