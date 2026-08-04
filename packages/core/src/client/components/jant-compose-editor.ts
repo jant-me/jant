@@ -269,7 +269,6 @@ export class JantComposeEditor extends LitElement {
   private _emojiContainer: HTMLElement | null = null;
   private readonly _urlStatusId = `compose-url-status-${randomUUID()}`;
   private _onDocClickBound = this._onDocumentClick.bind(this);
-  private _scrollBufferApplied = false;
   private _filePickerCleanup: (() => void) | null = null;
   private _suppressAttachedTextOpenUntil = 0;
   /**
@@ -1008,7 +1007,6 @@ export class JantComposeEditor extends LitElement {
       toolbarMode: "compose",
       onUpdate: (json) => {
         this._bodyJson = json;
-        this._ensureScrollBuffer();
         this.promoteLeadingH1Title();
         hideSlashCommandHint(this);
       },
@@ -1039,36 +1037,6 @@ export class JantComposeEditor extends LitElement {
       tableControlLabels: this.labels.tableControls,
     });
     this._lastEditorSelection = this._readEditorSelection();
-
-    // Lock editor min-height once so new lines fill existing space
-    // instead of growing the dialog line-by-line.
-    // Skip in page mode where the editor grows freely with the page.
-    this._scrollBufferApplied = false;
-    const dom = this._editor.view.dom as HTMLElement;
-    const isPageMode = !!this.closest(".compose-page-shell");
-    if (!isPageMode) {
-      const last = dom.lastElementChild as HTMLElement | null;
-      const contentH = last ? last.offsetTop + last.offsetHeight : 0;
-      const buffer = this.format !== "note" ? 60 : 120;
-      dom.style.minHeight = `${contentH + buffer}px`;
-    }
-  }
-
-  /**
-   * One-time: adds bottom padding for scroll buffer once the
-   * compose-body starts scrolling. Since the dialog is already at
-   * max-height by that point, the extra padding doesn't grow it.
-   */
-  private _ensureScrollBuffer() {
-    if (this._scrollBufferApplied) return;
-    const dom = this._editor?.view?.dom as HTMLElement | undefined;
-    if (!dom) return;
-    const body = this.querySelector(".compose-body") as HTMLElement | null;
-    if (!body) return;
-    if (body.scrollHeight > body.clientHeight + 20) {
-      dom.style.paddingBottom = "40px";
-      this._scrollBufferApplied = true;
-    }
   }
 
   private _destroyEditor() {

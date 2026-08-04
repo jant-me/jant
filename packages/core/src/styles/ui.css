@@ -4859,16 +4859,14 @@
     border-radius: inherit;
   }
 
-  .compose-page-shell .compose-dialog-inner > jant-compose-editor,
-  .compose-page-shell .compose-thread-layout,
-  .compose-page-shell .compose-editor-row,
-  .compose-page-shell .compose-editor-row > jant-compose-editor {
+  /* The page itself is the scroller here, so the composer's region gives up
+     its own and grows to whatever it holds. */
+  .compose-page-shell .compose-scroll {
     flex: 0 1 auto;
-    min-height: 0;
+    overflow: visible;
   }
 
   .compose-page-shell .compose-body {
-    flex: 0 1 auto;
     min-height: clamp(8rem, 22vh, 12rem);
   }
 
@@ -5056,12 +5054,31 @@
     pointer-events: none;
   }
 
-  .compose-dialog-inner > jant-compose-editor {
+  /* The composer's one scroll region. Every block inside it — editor body,
+     attachments, per-post toolbar — flows at its natural height and scrolls
+     together, so there is a single answer to "what scrolls?" in every mode.
+     Only the action row below it stays pinned. Nesting a second scroller in
+     here (a fixed-height body, a capped attachment dock) is what forced the
+     old previews to be small; don't reintroduce one. */
+  .compose-scroll {
     flex: 1;
     min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .compose-scroll::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .compose-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--site-divider);
+    border-radius: 4px;
+  }
+
+  .compose-scroll > jant-compose-editor {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
     position: relative;
   }
 
@@ -5211,20 +5228,6 @@
       padding-left: calc(20px + env(safe-area-inset-left));
     }
 
-    .compose-dialog-inner > jant-compose-editor,
-    .compose-thread-layout,
-    .compose-editor-row,
-    .compose-editor-row > jant-compose-editor {
-      flex: 0 1 auto;
-    }
-
-    .compose-dialog-inner > jant-compose-editor,
-    .compose-editor-row > jant-compose-editor {
-      max-height: calc(
-        100dvh - 13rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)
-      );
-    }
-
     /* Fullscreen on a phone, so the composer's own first row sits under the
        notch — it takes the inset the title bar used to. */
     .compose-dialog-inner {
@@ -5232,7 +5235,6 @@
     }
 
     .compose-body {
-      flex: 0 1 auto;
       min-height: clamp(8rem, 22vh, 12rem);
       padding-right: calc(20px + env(safe-area-inset-right));
       padding-left: calc(20px + env(safe-area-inset-left));
@@ -5328,28 +5330,31 @@
 
   /* --- Body --------------------------------------------------------------- */
 
+  /* Grows with its content — `.compose-scroll` does the scrolling. The floor is
+     a target to click into on an empty post, so it yields once the post has an
+     attachment: below a full-size preview the same space reads as a gap between
+     the text and the picture. */
   .compose-body {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
+    min-height: 72px;
     padding: 16px 20px 12px;
     display: flex;
     flex-direction: column;
+  }
+
+  jant-compose-editor:has(.compose-attachments-dock) .compose-body {
+    min-height: 0;
+  }
+
+  jant-compose-editor:has(.compose-attachments-dock)
+    .compose-tiptap-body
+    .tiptap {
+    min-height: 0;
   }
 
   @media (min-width: 700px) {
     .compose-body {
       padding: 18px 24px 12px;
     }
-  }
-
-  .compose-body::-webkit-scrollbar {
-    width: 3px;
-  }
-
-  .compose-body::-webkit-scrollbar-thumb {
-    background-color: var(--site-divider);
-    border-radius: 4px;
   }
 
   .compose-field-enter {
@@ -5713,16 +5718,11 @@
     margin-left: 4px;
   }
 
+  /* Plain background, no top fade: nothing scrolls underneath it any more —
+     the dock travels with its post inside `.compose-scroll`. */
   .compose-attachments-dock {
-    flex-shrink: 0;
     padding: 8px 20px 4px;
-    background:
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--compose-paper-bg) 0%, transparent) 0%,
-        var(--compose-paper-bg) 18px
-      ),
-      var(--compose-paper-bg);
+    background-color: var(--compose-paper-bg);
   }
 
   @media (min-width: 700px) {
@@ -5810,11 +5810,12 @@
 
   /* --- Tools row ---------------------------------------------------------- */
 
+  /* Belongs to its post, not to the dialog: it sits under that post's content
+     and scrolls away with it, so a thread shows one toolbar per block. */
   .compose-tools-row {
     padding: 6px 10px;
     display: flex;
     align-items: center;
-    flex-shrink: 0;
     gap: 4px;
     background-color: var(--compose-paper-bg);
   }
@@ -7392,10 +7393,13 @@
     transform: scale(1.02);
   }
 
+  /* Sized to be looked at, not to leave room for a pinned toolbar. Nothing
+     clips the dock any more, so a tall preview just makes `.compose-scroll`
+     longer. The dvh half keeps it from filling a short window on its own. */
   .compose-attachment-img {
     display: block;
     border-radius: var(--media-radius, 0.5rem);
-    max-height: min(160px, 18dvh);
+    max-height: min(420px, 46dvh);
     object-fit: contain;
   }
 
@@ -7452,7 +7456,7 @@
      cropped from the top (object-fit: cover) instead of shrinking to a sliver. */
   .compose-attachment:only-child .compose-attachment-img {
     max-width: 100%;
-    max-height: min(200px, 22dvh);
+    max-height: min(460px, 52dvh);
     min-width: 48px;
     object-fit: cover;
     object-position: center top;
@@ -7463,9 +7467,9 @@
     aspect-ratio: 4 / 3;
   }
 
-  /* Multiple images: fixed height, cover */
+  /* Multiple images: one shared height so the row reads as a strip, cover */
   .compose-attachment:not(:only-child) .compose-attachment-img {
-    height: 200px;
+    height: min(340px, 40dvh);
     width: auto;
     min-width: 120px;
     object-fit: cover;
@@ -7814,9 +7818,6 @@
     );
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
     position: relative;
   }
 
@@ -7945,18 +7946,18 @@
     gap: var(--compose-thread-gap);
     padding-right: var(--compose-thread-padding-right);
     padding-left: var(--compose-thread-padding-left);
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
+    padding-top: 4px;
+    padding-bottom: 4px;
   }
 
+  /* `flex: 1` here is horizontal — it claims the width left by the rail dot.
+     The row's height comes from the editor's own content; nothing in this
+     chain clips or scrolls, that is `.compose-scroll`'s job. */
   .compose-editor-row > jant-compose-editor {
     flex: 1;
-    min-height: 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    align-self: stretch;
-    overflow: hidden;
     position: relative;
   }
 
@@ -7966,98 +7967,8 @@
   }
 
   .compose-editor-row .compose-attachments-dock {
-    flex: 0 1 auto;
-    min-height: 0;
-    max-height: min(240px, 34dvh);
-    overflow-y: auto;
     padding-inline: 0;
     background: transparent;
-  }
-
-  .compose-reply-compose-layout .compose-editor-row .compose-attachments-dock {
-    --compose-reply-attachment-width: 96px;
-    --compose-reply-attachment-height: 72px;
-
-    max-height: min(116px, 18dvh);
-    padding-block: 4px 2px;
-  }
-
-  .compose-reply-compose-layout .compose-editor-row .compose-attachments {
-    gap: 6px;
-    padding-block: 0;
-  }
-
-  .compose-reply-compose-layout .compose-editor-row .compose-attachment {
-    gap: 2px;
-    max-width: none;
-  }
-
-  .compose-reply-compose-layout
-    .compose-editor-row
-    .compose-attachment:has(.compose-attachment-preview-fallback) {
-    width: var(--compose-reply-attachment-width);
-  }
-
-  .compose-reply-compose-layout
-    .compose-editor-row
-    .compose-attachment:only-child
-    .compose-attachment-img,
-  .compose-reply-compose-layout
-    .compose-editor-row
-    .compose-attachment:not(:only-child)
-    .compose-attachment-img {
-    width: var(--compose-reply-attachment-width);
-    height: var(--compose-reply-attachment-height);
-    min-width: 0;
-    max-width: var(--compose-reply-attachment-width);
-    max-height: var(--compose-reply-attachment-height);
-    object-fit: cover;
-    object-position: center;
-  }
-
-  .compose-reply-compose-layout
-    .compose-editor-row
-    .compose-attachment-preview-fallback,
-  .compose-reply-compose-layout
-    .compose-editor-row
-    .compose-attachment-processing {
-    width: var(--compose-reply-attachment-width);
-    height: var(--compose-reply-attachment-height);
-    aspect-ratio: auto;
-  }
-
-  .compose-reply-compose-layout
-    .compose-editor-row
-    .compose-attachment-preview-fallback
-    svg {
-    width: 28px;
-    height: 28px;
-  }
-
-  .compose-reply-compose-layout
-    .compose-editor-row
-    .compose-attachment-file-card,
-  .compose-reply-compose-layout
-    .compose-editor-row
-    .compose-attachment:not(:only-child)
-    .compose-attachment-file-card {
-    width: 112px;
-    height: var(--compose-reply-attachment-height);
-    gap: 4px;
-    padding: 8px 10px;
-  }
-
-  .compose-reply-compose-layout .compose-editor-row .compose-attachment-alt {
-    padding: 1px 3px;
-    font-size: var(--type-ui-micro);
-    line-height: 1.2;
-  }
-
-  .compose-reply-compose-layout .compose-editor-row .compose-attachment-remove {
-    top: 4px;
-    right: 4px;
-    width: 20px;
-    height: 20px;
   }
 
   /* Dot marker for thread positions. Sits above the rail so it reads as a joint
@@ -8106,12 +8017,15 @@
     overflow: hidden;
     position: relative;
     padding: 0.08rem 0 0.18rem;
-    transition: max-height 0.3s ease;
   }
 
+  /* "Show more" means show it: expanding hands the post its full height rather
+     than a taller box with a second scrollbar in it. That inner scrollbar is
+     what made the parent's pictures thumbnails — there was never room for one
+     at full size. Length is the toggle's job now, not the preview's. */
   .compose-reply-context.expanded {
-    max-height: min(400px, 35dvh);
-    overflow-y: auto;
+    max-height: none;
+    overflow: visible;
   }
 
   .compose-reply-context-body {
@@ -8166,32 +8080,31 @@
     background-color: transparent;
   }
 
+  /* The parent reads at the same scale as the reply being written — the same
+     ceiling as `.compose-attachment-img`, the same radius token — so the two
+     halves of the exchange look like the same material. This is the only size
+     rule for pictures in the context: it covers both the ones inside the post's
+     own HTML and the media strip below it, which sits in here too. */
   .compose-reply-context-body img,
   .compose-reply-context-body video {
     width: auto !important;
     height: auto !important;
-    max-height: 120px;
-    border-radius: 6px;
+    max-height: min(420px, 46dvh);
+    border-radius: var(--media-radius, 0.5rem);
     object-fit: contain;
     background-image: none !important;
   }
 
   .compose-reply-context-media {
     display: flex;
-    gap: 6px;
+    gap: 8px;
     flex-wrap: wrap;
-    margin-top: 6px;
+    margin-top: 8px;
   }
 
   .compose-reply-context-media-link {
     display: block;
     cursor: pointer;
-  }
-
-  .compose-reply-context-media-img {
-    max-height: 80px;
-    border-radius: 6px;
-    object-fit: contain;
   }
 
   .compose-reply-fade {
@@ -8409,35 +8322,14 @@
     }
   }
 
-  /* --- Thread compose layout (multi-post, scrollable) --------------------- */
+  /* --- Thread compose layout (multi-post) --------------------------------- */
 
-  /* Scrollable variant for composing a new thread (vs reply thread which is
-     fixed-height). Each editor item grows naturally; the whole layout scrolls. */
-  .compose-thread-compose-layout {
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
+  /* `.compose-thread-compose-layout` carries no layout rules of its own: the
+     grow-naturally-and-scroll-as-one behaviour it used to opt into is now what
+     every mode does, under `.compose-scroll`. It survives as a hook for the
+     rail geometry above and the toolbar indent below.
 
-  .compose-thread-compose-layout .compose-editor-row {
-    flex: none;
-    overflow: visible;
-    align-items: flex-start;
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
-
-  .compose-thread-compose-layout .compose-editor-row > jant-compose-editor {
-    overflow: visible;
-    min-width: 0;
-  }
-
-  .compose-thread-compose-layout .compose-body {
-    flex: none;
-    overflow-y: visible;
-    min-height: 72px;
-  }
-
-  /* Focused thread post gets a subtle left accent. Use an inset box-shadow, not
+     Focused thread post gets a subtle left accent. Use an inset box-shadow, not
      a border: a border adds 2px of layout width only while focused, so switching
      focus between thread posts shifted each one sideways ("jitter"). box-shadow
      paints in the same spot without affecting layout. */
@@ -11240,12 +11132,16 @@
       var(--site-page-bg) 88%,
       var(--site-elevated-bg) 12%
     );
+  }
 
-    overflow: visible;
+  /* Scoped to the collapsed state. Unscoped it also outranked
+     `.compose-reply-context.expanded` — same specificity, declared later — so
+     fullscreen's "Show more" expanded a box that was still pinned at 140px. */
+  .compose-fullscreen-thread-layout .compose-reply-context:not(.expanded) {
+    max-height: 140px;
   }
 
   .compose-fullscreen-thread-layout .compose-reply-context {
-    max-height: 140px;
     padding: 0.08rem 0 0.08rem;
   }
 
@@ -11260,7 +11156,6 @@
   }
 
   .compose-fullscreen-editor-row {
-    overflow: visible;
     padding-top: 1.5rem;
   }
 

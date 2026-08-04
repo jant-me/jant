@@ -2992,15 +2992,15 @@ describe("JantComposeDialog", () => {
     ];
     await el.updateComplete;
 
-    const threadLayout = requireElement(
-      el.querySelector<HTMLElement>(".compose-thread-compose-layout"),
-      "expected thread compose layout",
+    const scroller = requireElement(
+      el.querySelector<HTMLElement>(".compose-scroll"),
+      "expected compose scroll region",
     );
-    Object.defineProperty(threadLayout, "scrollHeight", {
+    Object.defineProperty(scroller, "scrollHeight", {
       configurable: true,
       value: 640,
     });
-    threadLayout.scrollTop = 120;
+    scroller.scrollTop = 120;
 
     (
       el as unknown as {
@@ -3009,7 +3009,7 @@ describe("JantComposeDialog", () => {
     )._addThreadItem();
     await flushUpdates(el);
 
-    expect(threadLayout.scrollTop).toBe(640);
+    expect(scroller.scrollTop).toBe(640);
   });
 
   it("omits visibility from locked edit submissions", async () => {
@@ -3775,30 +3775,70 @@ describe("JantComposeDialog", () => {
     URL.revokeObjectURL(previewUrl);
   });
 
-  it("keeps the single-post editor a direct child of the dialog shell", async () => {
+  it("puts the single-post editor straight inside the one scroll region", async () => {
     const el = await createElement();
 
-    const shell = requireElement(
-      el.querySelector<HTMLElement>(".compose-dialog-inner"),
-      "expected compose dialog shell",
+    const scroller = requireElement(
+      el.querySelector<HTMLElement>(".compose-scroll"),
+      "expected compose scroll region",
     );
     const editor = requireElement(
       el.querySelector<JantComposeEditor>("jant-compose-editor"),
       "expected compose editor",
     );
 
-    // The rules that make the editor the scroll container are keyed on
-    // `.compose-dialog-inner > jant-compose-editor`. Any wrapper breaks them —
+    // The rules that lay the editor out are keyed on
+    // `.compose-scroll > jant-compose-editor`. Any wrapper breaks them —
     // including a `display: contents` one, which drops the box but not the DOM
-    // parentage the selector matches on — and a long body then overflows the
-    // dialog with nothing to scroll.
-    expect(editor.parentElement).toBe(shell);
+    // parentage the selector matches on.
+    expect(editor.parentElement).toBe(scroller);
+    // The action row is the composer's pinned floor; it must stay outside.
+    expect(scroller.querySelector(".compose-action-row")).toBeNull();
+    expect(el.querySelector(".compose-action-row")).not.toBeNull();
+  });
 
+  it("scrolls in exactly one place across every compose mode", async () => {
     const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    // `.compose-scroll` owns the scrolling for single-post, reply and thread
+    // alike. Anything nested inside it that scrolls on its own is the bug this
+    // replaced: three stacked scrollers, and previews shrunk to fit them.
     expect(css).toMatch(
-      /\.compose-dialog-inner\s*>\s*jant-compose-editor\s*\{[\s\S]*flex:\s*1;[\s\S]*min-height:\s*0;[\s\S]*overflow:\s*hidden;/,
+      /\.compose-scroll\s*\{[\s\S]*flex:\s*1;[\s\S]*min-height:\s*0;[\s\S]*overflow-y:\s*auto;/,
     );
-    expect(css).toMatch(/\.compose-body\s*\{[\s\S]*overflow-y:\s*auto;/);
+    expect(css).not.toMatch(/\.compose-body\s*\{[^}]*overflow-y:\s*auto;/);
+    expect(css).not.toMatch(
+      /\.compose-thread-compose-layout\s*\{[^}]*overflow-y:\s*auto;/,
+    );
+    expect(css).not.toMatch(
+      /\.compose-editor-row\s+\.compose-attachments-dock\s*\{[^}]*overflow-y:\s*auto;/,
+    );
+
+    // Nothing between the scroll region and the text may clip or claim a fixed
+    // share of the height — every block is sized by its own content.
+    expect(css).not.toMatch(
+      /\.compose-editor-row\s*\{[^}]*overflow:\s*hidden;/,
+    );
+    expect(css).not.toMatch(
+      /\.compose-thread-layout\s*\{[^}]*overflow:\s*hidden;/,
+    );
+  });
+
+  it("lets attachment previews take the room the pinned toolbar used to need", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    expect(css).toMatch(
+      /\.compose-attachment-img\s*\{[\s\S]*max-height:\s*min\(420px,\s*46dvh\);/,
+    );
+    expect(css).toMatch(
+      /\.compose-attachment:only-child\s+\.compose-attachment-img\s*\{[\s\S]*max-height:\s*min\(460px,\s*52dvh\);/,
+    );
+    expect(css).toMatch(
+      /\.compose-attachment:not\(:only-child\)\s+\.compose-attachment-img\s*\{[\s\S]*height:\s*min\(340px,\s*40dvh\);/,
+    );
+    // Reply compose no longer shrinks its previews to 96×72 to spare the
+    // toolbar — one preview size everywhere.
+    expect(css).not.toMatch(/--compose-reply-attachment-width/);
   });
 
   it("routes a format change straight off the single-post editor", async () => {
@@ -3819,21 +3859,38 @@ describe("JantComposeDialog", () => {
     expect(el._format).toBe("quote");
   });
 
-  it("keeps reply compose tools inside the constrained editor surface", () => {
+  it("shows the replied-to post at the same scale as the reply", () => {
     const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
 
+    // Same ceiling as the composer's own previews — the parent is not a
+    // thumbnail strip.
     expect(css).toMatch(
-      /\.compose-editor-row\s*>\s*jant-compose-editor\s*\{[\s\S]*align-self:\s*stretch;[\s\S]*overflow:\s*hidden;/,
+      /\.compose-reply-context-body img,[\s\S]*?video\s*\{[\s\S]*?max-height:\s*min\(420px,\s*46dvh\);/,
     );
-    expect(css).toMatch(/\.compose-tools-row\s*\{[\s\S]*flex-shrink:\s*0;/);
+    // One rule governs every picture in the context. A second one keyed on
+    // `.compose-reply-context-media-img` would sit at lower specificity than
+    // the `…-body img` rule above it and never apply — the media strip is
+    // inside the body.
+    expect(css).not.toMatch(/\.compose-reply-context-media-img\s*\{/);
+
+    // Expanding hands the post its full height; a capped, separately scrolling
+    // box is what left no room for full-size pictures.
     expect(css).toMatch(
-      /\.compose-editor-row\s+\.compose-attachments-dock\s*\{[\s\S]*max-height:\s*min\(240px,\s*34dvh\);[\s\S]*overflow-y:\s*auto;/,
+      /\.compose-reply-context\.expanded\s*\{\s*max-height:\s*none;\s*overflow:\s*visible;/,
     );
+    // Fullscreen's collapsed cap must not outrank that.
     expect(css).toMatch(
-      /\.compose-reply-compose-layout\s+\.compose-editor-row\s+\.compose-attachments-dock\s*\{[\s\S]*--compose-reply-attachment-width:\s*96px;[\s\S]*--compose-reply-attachment-height:\s*72px;[\s\S]*max-height:\s*min\(116px,\s*18dvh\);/,
+      /\.compose-fullscreen-thread-layout\s+\.compose-reply-context:not\(\.expanded\)\s*\{\s*max-height:\s*140px;/,
     );
+  });
+
+  it("keeps reply compose tools inside the editor's text column", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    // `flex: 1` on the editor is horizontal — it claims the width the rail dot
+    // leaves. Height comes from content.
     expect(css).toMatch(
-      /\.compose-reply-compose-layout[\s\S]*\.compose-attachment:only-child[\s\S]*\.compose-attachment-img,[\s\S]*\.compose-reply-compose-layout[\s\S]*\.compose-attachment:not\(:only-child\)[\s\S]*\.compose-attachment-img\s*\{[\s\S]*height:\s*var\(--compose-reply-attachment-height\);[\s\S]*object-fit:\s*cover;/,
+      /\.compose-editor-row\s*>\s*jant-compose-editor\s*\{[\s\S]*flex:\s*1;[\s\S]*min-width:\s*0;/,
     );
     expect(css).toMatch(
       /\.compose-reply-compose-layout\s+\.compose-thread-post-header\s*\+\s*\.compose-body\s*\{[\s\S]*padding-top:\s*12px;/,

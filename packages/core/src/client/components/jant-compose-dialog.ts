@@ -5709,11 +5709,9 @@ export class JantComposeDialog extends LitElement {
         "jant-compose-editor",
       );
       editors[this._focusedThreadIndex]?.focusInput();
-      const threadLayout = this.querySelector<HTMLElement>(
-        ".compose-thread-compose-layout",
-      );
-      if (threadLayout) {
-        threadLayout.scrollTop = threadLayout.scrollHeight;
+      const scroller = this.querySelector<HTMLElement>(".compose-scroll");
+      if (scroller) {
+        scroller.scrollTop = scroller.scrollHeight;
       }
     });
   }
@@ -6004,11 +6002,11 @@ export class JantComposeDialog extends LitElement {
         this._switchFormat(e.detail.format);
       }}
     ></jant-compose-editor>`;
-    // The handler sits on the editor itself, not on a wrapper. Single-post mode
-    // renders this editor as a direct child of `.compose-dialog-inner`, and the
-    // rules that make it the scroll container are keyed on that child
-    // relationship — a delegating wrapper breaks them even at
-    // `display: contents`, which drops the box but not the DOM parentage.
+    // The handler sits on the editor itself rather than a delegating wrapper.
+    // Single-post mode renders this editor as a direct child of
+    // `.compose-scroll`, and the rules that lay it out are keyed on that child
+    // relationship — a wrapper breaks them even at `display: contents`, which
+    // drops the box but not the DOM parentage a selector matches on.
     // (Thread mode builds its own editors in `_renderThreadPost`.)
 
     return html`
@@ -6022,26 +6020,28 @@ export class JantComposeDialog extends LitElement {
         aria-hidden=${this._addCollectionPanelOpen ? "true" : "false"}
         ?inert=${this._addCollectionPanelOpen}
       >
-        ${isOpeningEdit
-          ? this._renderEditLoadingState()
-          : isThreadMode
-            ? this._renderThreadComposeLayout()
-            : isReply
-              ? html`
-                  <div
-                    class="compose-thread-layout compose-reply-compose-layout"
-                  >
-                    ${this._renderReplyContext()}
-                    <div class="compose-editor-row is-current">
-                      <div class="compose-thread-dot"></div>
-                      ${editor}
+        <div class="compose-scroll">
+          ${isOpeningEdit
+            ? this._renderEditLoadingState()
+            : isThreadMode
+              ? this._renderThreadComposeLayout()
+              : isReply
+                ? html`
+                    <div
+                      class="compose-thread-layout compose-reply-compose-layout"
+                    >
+                      ${this._renderReplyContext()}
+                      <div class="compose-editor-row is-current">
+                        <div class="compose-thread-dot"></div>
+                        ${editor}
+                      </div>
                     </div>
-                  </div>
-                `
-              : editor}
-        ${isOpeningEdit || isThreadMode || this._editPostId
-          ? nothing
-          : this._renderAddThreadTrigger()}
+                  `
+                : editor}
+          ${isOpeningEdit || isThreadMode || this._editPostId
+            ? nothing
+            : this._renderAddThreadTrigger()}
+        </div>
         ${isOpeningEdit
           ? nothing
           : html`<div
