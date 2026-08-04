@@ -5938,20 +5938,30 @@ export class JantComposeDialog extends LitElement {
     `;
   }
 
-  private _renderAddThreadTrigger() {
+  // `onRail` is for the reply composer, which is already a thread layout: the
+  // row joins the rail with the same dashed dot thread compose uses, so the
+  // placeholder sits where the next post will land instead of floating out at
+  // the dialog's own left edge, a rail's width clear of everything above it.
+  private _renderAddThreadTrigger(onRail: boolean) {
     const disabled = !this._hasContent();
-    return html`
-      <div class="compose-add-thread-trigger">
-        <button
-          type="button"
-          class="compose-add-thread-btn"
-          ?disabled=${disabled}
-          @click=${() => this._addThreadItem()}
-        >
-          Add to thread
-        </button>
-      </div>
+    const button = html`
+      <button
+        type="button"
+        class="compose-thread-add-btn"
+        ?disabled=${disabled}
+        @click=${() => this._addThreadItem()}
+      >
+        Add to thread
+      </button>
     `;
+    return onRail
+      ? html`
+          <div class="compose-thread-add-row">
+            <div class="compose-thread-add-dot"></div>
+            ${button}
+          </div>
+        `
+      : html`<div class="compose-add-thread-trigger">${button}</div>`;
   }
 
   render() {
@@ -5981,6 +5991,13 @@ export class JantComposeDialog extends LitElement {
     // drops the box but not the DOM parentage a selector matches on.
     // (Thread mode builds its own editors in `_renderThreadPost`.)
 
+    // Thread mode grows its own row at the end of the layout, and editing an
+    // existing post has no next slot to offer at all.
+    const addThreadRow =
+      isOpeningEdit || isThreadMode || this._editPostId
+        ? nothing
+        : this._renderAddThreadTrigger(isReply);
+
     return html`
       <div
         class=${classMap({
@@ -6007,12 +6024,10 @@ export class JantComposeDialog extends LitElement {
                         <div class="compose-thread-dot"></div>
                         ${editor}
                       </div>
+                      ${addThreadRow}
                     </div>
                   `
-                : editor}
-          ${isOpeningEdit || isThreadMode || this._editPostId
-            ? nothing
-            : this._renderAddThreadTrigger()}
+                : html`${editor}${addThreadRow}`}
         </div>
         ${isOpeningEdit
           ? nothing

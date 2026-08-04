@@ -943,6 +943,39 @@ describe("JantComposeDialog", () => {
     expect(el.querySelector(".compose-publish-main")).not.toBeNull();
   });
 
+  it("puts a reply's add-to-thread row on the rail with the other posts", async () => {
+    const el = await createElement();
+    await el.openReply("019ce8ce-d6d8-7fda-a5df-c2da2bef5ade", {
+      contentHtml: "<p>Parent</p>",
+      dateText: "Mar 14",
+    });
+    await flushUpdates(el);
+
+    // Inside the layout, not a sibling of it: out there it misses the rail's
+    // indent and lands a rail's width left of everything above it.
+    const layout = el.querySelector(
+      ".compose-thread-layout.compose-reply-compose-layout",
+    );
+    const addRow = layout?.querySelector(":scope > .compose-thread-add-row");
+    expect(addRow).not.toBeNull();
+    expect(el.querySelector(".compose-add-thread-trigger")).toBeNull();
+    // The dashed dot marks where the next post lands, as in thread compose.
+    expect(addRow?.querySelector(".compose-thread-add-dot")).not.toBeNull();
+    // ...and it stays the last row, so the rail still stops at the reply.
+    expect(layout?.lastElementChild).toBe(addRow);
+  });
+
+  it("keeps a single post's add-to-thread row off the rail", async () => {
+    const el = await createElement();
+    await flushUpdates(el);
+
+    // No rail to join, so no dot: the row's position says "next slot" alone.
+    const trigger = el.querySelector(".compose-add-thread-trigger");
+    expect(trigger).not.toBeNull();
+    expect(el.querySelector(".compose-thread-add-dot")).toBeNull();
+    expect(trigger?.querySelector(".compose-thread-add-btn")).not.toBeNull();
+  });
+
   it("shows an Edit title with the format selector above the post when editing a reply", async () => {
     vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
       cb(0);
@@ -3901,10 +3934,13 @@ describe("JantComposeDialog", () => {
     expect(css).toMatch(
       /\.compose-dialog,[\s\S]*\.compose-page-shell\s*>\s*jant-compose-dialog\s*\{[\s\S]*--compose-quote-input-size:\s*var\(--type-content-subtitle\);[\s\S]*--compose-quote-input-leading:\s*1\.32;/,
     );
-    // On the page the gutter comes from the page, so the format row drops the
-    // dialog's and lines up with the title field under it.
+    // On the page the card's own padding is the text column, so every row
+    // inside it reads a zero gutter and only restates its right.
     expect(css).toMatch(
-      /\.compose-page-shell\s+\.compose-dialog-inner-page\s+\.compose-thread-post-header\s*\{\s*padding-inline:\s*0;/,
+      /\.compose-page-shell\s+\.compose-dialog-inner-page\s*\{[\s\S]*--compose-gutter:\s*0px;/,
+    );
+    expect(css).toMatch(
+      /\.compose-page-shell\s+\.compose-dialog-inner-page\s+\.compose-thread-post-header\s*\{\s*padding-inline-end:\s*0;/,
     );
     expect(css).toMatch(
       /\.compose-quote-text\s*\{[\s\S]*font-size:\s*var\(--compose-quote-input-size\);[\s\S]*line-height:\s*var\(--compose-quote-input-leading\);/,
@@ -3975,6 +4011,56 @@ describe("JantComposeDialog", () => {
     expect(css).toMatch(
       /\.compose-thread-dot\s*\{[\s\S]*margin-top:\s*calc\(\s*var\(--compose-thread-dot-center\) -\s*var\(--compose-thread-row-padding-top\) -\s*var\(--site-thread-marker-size\) \/ 2\s*\);/,
     );
+  });
+
+  it("starts every compose row's ink on one text column", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    // One knob for the column itself, read by every row rather than restated
+    // as a literal per row.
+    expect(css).toMatch(
+      /\.compose-dialog,\s*\.compose-page-shell\s*>\s*jant-compose-dialog\s*\{[\s\S]*--compose-gutter:\s*20px;/,
+    );
+    expect(css).toMatch(
+      /@media \(min-width:\s*700px\)\s*\{[\s\S]*--compose-gutter:\s*24px;/,
+    );
+    // Zero wherever the indent already comes from outside the editor.
+    expect(css).toMatch(
+      /\.compose-editor-row\s*\{\s*\/\*[\s\S]*?\*\/\s*--compose-gutter:\s*0px;/,
+    );
+
+    for (const rule of [
+      /\.compose-body\s*\{[^}]*padding:\s*16px 20px 12px var\(--compose-gutter\);/,
+      /\.compose-tools-row\s*\{[\s\S]*padding:\s*6px 10px 6px var\(--compose-gutter\);/,
+      /\.compose-attachments-dock\s*\{\s*padding:\s*8px 20px 4px var\(--compose-gutter\);/,
+      /\.compose-thread-post-header\s*\{[\s\S]*padding:\s*10px 16px 2px var\(--compose-gutter\);/,
+      /\.compose-add-thread-trigger\s*\{\s*padding:\s*1px 10px 4px var\(--compose-gutter\);/,
+      /\.compose-action-row\s*\{\s*padding:\s*10px 12px 14px var\(--compose-gutter\);/,
+    ]) {
+      expect(css).toMatch(rule);
+    }
+
+    // Each control hangs its box back out of the column by its own optical
+    // inset, so the glyph or the label lands on the edge and not the box.
+    expect(css).toMatch(
+      /\.compose-tools-row\s*\{[\s\S]*--compose-tool-hang:\s*12px;/,
+    );
+    expect(css).toMatch(
+      /\.compose-tools-row > :first-child\s*\{\s*margin-inline-start:\s*calc\(-1 \* var\(--compose-tool-hang\)\);/,
+    );
+    expect(css).toMatch(
+      /\.compose-thread-add-btn\s*\{[\s\S]*padding:\s*5px var\(--compose-add-hang\);\s*margin-inline-start:\s*calc\(-1 \* var\(--compose-add-hang\)\);/,
+    );
+    expect(css).toMatch(
+      /\.compose-collection-select\s*\{[\s\S]*margin-inline-start:\s*calc\(\s*-1 \* \(var\(--compose-collection-pad-icon\) \+ 1px\)\s*\);/,
+    );
+
+    // The ad-hoc thread-only indents these replaced are gone — they were what
+    // let each mode drift to its own edge in the first place.
+    expect(css).not.toMatch(/margin-inline-start:\s*-10px;/);
+    expect(css).not.toMatch(/\.compose-thread-layout \.compose-tools-row\s*\{/);
+    // One "Add to thread" button, not two rule sets that have to stay in step.
+    expect(css).not.toMatch(/\.compose-add-thread-btn/);
   });
 
   it("declares one marker vocabulary for the compose and reading rails", () => {
