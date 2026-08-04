@@ -5856,9 +5856,15 @@
     justify-content: center;
     width: 44px;
     height: 44px;
+    /* The button keeps its 44px touch target; only the paint is inset, so the
+       chip a hovered or switched-on tool wears is 36px and sits closer to the
+       glyph than to its neighbours. `background-clip` shrinks the corner radii
+       with the box, which is why 12px here reads as 8px on the chip. */
+    padding: 4px;
+    background-clip: content-box;
     border-radius: 12px;
     border: none;
-    background: transparent;
+    background-color: transparent;
     cursor: pointer;
     transition: all 0.18s ease;
     flex-shrink: 0;
@@ -5880,12 +5886,23 @@
     background-color: var(--compose-control-bg);
   }
 
-  /* A tool that is on inks up to the row's old weight; it does not light a
-     chip. What it opened — the title field, the star row, the emoji picker —
-     is the state display, so the button only has to point at it. Colour is the
-     one channel left, which is why the toggles carry `aria-pressed`. */
+  /* On is a real chip — the shape people already read as "this control is
+     switched on" — just quieter than the one that was tried first. That one
+     paired the chip with full-strength ink, so the whole button lit up at
+     once; here the glyph is left in the row's faded ink and the chip does the
+     talking on its own, a little under the row's hover tint. It is the only
+     edge in the row, so it needs no help to be found. */
   .compose-tool-btn-active {
-    color: var(--site-text-secondary);
+    background-color: color-mix(
+      in srgb,
+      var(--compose-control-bg) 85%,
+      var(--compose-paper-bg)
+    );
+  }
+
+  /* Hover has to stay a step above a button that already carries a chip. */
+  .compose-tool-btn-active:hover {
+    background-color: var(--compose-control-bg-strong);
   }
 
   /* A tool that has grown a label is reading matter now, so it carries text's
@@ -5893,7 +5910,9 @@
   .compose-tool-btn-add {
     width: auto;
     gap: 4px;
-    padding: 0 10px 0 8px;
+    /* Same 4px of inset paint as the icon-only buttons; only the sides open up
+       to make room for the label. */
+    padding: 4px 10px 4px 8px;
     color: var(--site-text-secondary);
   }
 

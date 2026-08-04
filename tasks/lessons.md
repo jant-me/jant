@@ -321,3 +321,38 @@ codebase `--site-elevated-bg` was used ~60 ways that mean "the default
 background", including three that use it as _text_ colour, so lifting it
 repainted the reading column. Add an honest token and migrate deliberately
 instead of redefining one whose meaning has drifted.
+
+## Turn the familiar affordance down; don't replace it
+
+Seven passes to land the compose tools row's on state, and the answer was the
+first thing that was tried and rejected — a chip behind the icon — just quieter.
+What had actually failed the first time was firing two channels at once: the
+chip _and_ the glyph jumping from the row's faded ink to full strength, so the
+whole button lit up. Keeping the glyph exactly as its neighbours are drawn and
+letting the chip speak alone reads as on without raising the row's voice — and
+once it was alone it could take a deeper tint (85% of the row's hover colour)
+in a smaller box (36px inside the 44px target, via `background-clip:
+content-box`) than the version that had two channels going.
+
+Everything invented in between — accent hue, a heavier stroke, a 3px dot, an
+edge-less radial cushion — was more inventive and worse. The dot and the
+cushion were rejected in the same words: they are not what a person reads as
+"switched on". A rounded fill behind an icon is; a shapeless smudge under it
+looks like a rendering artefact, and a mark beside it looks like clutter.
+
+So when a control feels too loud, first ask which channels are stacked on it
+and turn them down one at a time. Do not replace a conventional affordance with
+a subtler invention — the convention is doing work that no amount of restraint
+in a novel treatment can buy back. Notes from the detour:
+
+- **A chip's loudness is mostly its edge, not its fill** — which is why the
+  radial version disappeared at the same tint. That is a reason to soften the
+  fill, not to delete the silhouette.
+- **Underlines pick up meaning from what they sit under.** A bar under the
+  `title` T read as the underline-formatting button.
+- **Accent is not always a colour.** Jant ships two themes whose accent has
+  zero chroma (`snow`, `paper`), so hue can never carry a state alone. Keep
+  `aria-pressed` on the toggles regardless.
+
+And don't lean on "the panel it opened is the state display" — icon-only
+toggles have no label, so the button has to answer on its own.
