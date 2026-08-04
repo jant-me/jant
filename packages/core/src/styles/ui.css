@@ -4786,7 +4786,12 @@
     }
   }
 
+  /* The one composer that is not a floating sheet: it fills the viewport, so
+     its paper is the page's, not the elevated surface's. Nothing sits behind
+     it to be lifted away from. */
   .compose-page {
+    --compose-paper-bg: var(--site-page-bg);
+
     position: fixed;
     inset: 0;
     z-index: 50;
@@ -4997,7 +5002,7 @@
     box-shadow:
       0 8px 40px rgba(0, 0, 0, 0.08),
       0 1px 3px rgba(0, 0, 0, 0.04);
-    border: 1px solid var(--compose-control-border);
+    border: 1px solid var(--site-raised-border);
     overflow: visible;
   }
 
@@ -5005,8 +5010,15 @@
     animation: compose-modal-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
+  /* The dim is only half of it. On a dark page there is no luminance left to
+     take away — 0.3 → 0.7 alpha moves the dialog's contrast against its own
+     backdrop by 0.05 — so the blur carries the separation instead. It reads as
+     depth rather than darkness, which is the one cue that still works when the
+     page and the sheet are three percent apart. */
   .compose-dialog::backdrop {
     background-color: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
   }
 
   .compose-dialog jant-compose-dialog {
@@ -5542,15 +5554,17 @@
     font-weight: var(--fw-regular);
     line-height: var(--compose-quote-input-leading);
     letter-spacing: -0.02em;
-    min-height: 9rem;
+    /* Four lines of the quote's own type — enough to hold most pulled passages
+       without opening a well. Stated in lines so it tracks the two leadings
+       this input takes (1.32 in compose, 1.42 in a reply) instead of needing a
+       pixel value per breakpoint. The `rows` attribute is set to match. */
+    min-height: calc(var(--compose-quote-input-leading) * 4em);
     padding-top: 0.5rem;
     text-wrap: pretty;
   }
 
   @media (min-width: 700px) {
     .compose-quote-text {
-      font-size: var(--compose-quote-input-size);
-      min-height: 9.5rem;
       padding-top: 0.55rem;
     }
   }
@@ -5848,31 +5862,39 @@
     cursor: pointer;
     transition: all 0.18s ease;
     flex-shrink: 0;
-    color: var(--site-text-secondary);
+    color: var(--compose-tool-ink);
   }
 
+  /* One weight for the whole row, stated here rather than per icon, so the
+     stroked glyphs and the star's outline read as one set. */
   .compose-tool-icon {
-    --icon-stroke: 1.46;
     display: block;
     width: 20px;
     height: 20px;
     flex-shrink: 0;
     overflow: visible;
+    stroke-width: 1.42;
   }
 
   .compose-tool-btn:hover {
     background-color: var(--compose-control-bg);
   }
 
+  /* A tool that is on inks up to the row's old weight; it does not light a
+     chip. What it opened — the title field, the star row, the emoji picker —
+     is the state display, so the button only has to point at it. Colour is the
+     one channel left, which is why the toggles carry `aria-pressed`. */
   .compose-tool-btn-active {
-    color: var(--site-text-primary);
-    background-color: var(--compose-control-bg-strong);
+    color: var(--site-text-secondary);
   }
 
+  /* A tool that has grown a label is reading matter now, so it carries text's
+     weight — the row's faded ink would put "Add more" under the 4.5:1 floor. */
   .compose-tool-btn-add {
     width: auto;
     gap: 4px;
     padding: 0 10px 0 8px;
+    color: var(--site-text-secondary);
   }
 
   .compose-tool-label {
@@ -5881,12 +5903,11 @@
     white-space: nowrap;
   }
 
-  .compose-tool-sep {
-    width: 1px;
-    height: 16px;
-    background-color: var(--site-divider);
-    margin: 0 2px;
-    border-radius: 1px;
+  /* Was a hairline. The two groups (insert something / mark something up) are
+     still worth telling apart, but air does it without drawing another edge
+     into the paper. */
+  .compose-tool-gap {
+    width: 8px;
     flex-shrink: 0;
   }
 
@@ -5900,7 +5921,6 @@
     width: 44px;
     height: 44px;
     border-radius: 12px;
-    color: var(--site-text-secondary);
   }
 
   .compose-tool-btn-view:hover,
@@ -6006,8 +6026,11 @@
     min-width: 0;
     max-width: 100%;
     min-height: 1.95rem;
-    border: 1px solid var(--compose-control-border);
-    background: var(--compose-control-bg);
+    /* No fill and no edge at rest — it was the one bordered pill left in the
+       composer, which made picking a collection look like the thing to do. It
+       keeps a transparent border so the box does not resize on hover. */
+    border: 1px solid transparent;
+    background: transparent;
     border-radius: 999px;
     padding: 0.2rem var(--compose-collection-pad-label) 0.2rem
       var(--compose-collection-pad-icon);
@@ -6021,12 +6044,12 @@
     font-size: var(--type-ui-control);
   }
 
+  /* The same flat wash the tools row uses on hover — no lift, no edge. A chip
+     that rises off the paper is what made this read as the loud control. */
   .compose-collection-trigger:hover,
   .compose-collection-trigger[data-open="true"] {
     color: var(--site-text-primary);
-    background: var(--compose-control-bg-strong);
-    border-color: color-mix(in srgb, var(--site-text-primary) 10%, transparent);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    background: var(--compose-control-bg);
   }
 
   .compose-collection-trigger[data-selected="true"] {
@@ -6453,13 +6476,17 @@
     z-index: 100;
   }
 
-  .compose-publish-single,
-  /* Sized against the row it leads, not in isolation. With the collection pill
-     down to 1.95rem a 2.8rem Publish read as a button from a different screen;
-     the three controls now step down 2.3 / 2.1 / 1.95rem. Touch gets the old
-     sizes back further down — 37px is a fine mouse target and a poor thumb one. */
+  /* Sized against the row it leads, not in isolation. Measured: Publish 33px,
+     the options trigger 33px, the collection pill 30.5px — Publish and the
+     options circle share a height so they read as one pair at the end of the
+     row, and the collection pill sits just under them. Touch gets the roomier
+     set back further down: 33px is a fine mouse target and a poor thumb one. */
   .compose-publish-main {
-    min-height: 2.4rem;
+    /* `em`, not `rem`: the box is a multiple of its own label, so the ratio
+       holds if the button's type ever scales. The reference is 2.4em (36px
+       around a 15px label); ours sits a step under, which is the only place we
+       leave it — every other number in this button is traced. */
+    min-height: 2.2em;
     border: none;
     background: transparent;
     cursor: pointer;
@@ -6469,28 +6496,36 @@
       box-shadow 0.18s ease;
   }
 
-  .compose-publish-single,
+  /* Shape traced from threads.com's Post button, measured off the reference at
+     2x: 1px border, 8px radius, 18px side padding, ~15px bold label, content
+     width with no `min-width` — the reference sizes to its word. Height is the
+     one number we take a step under; see above.
+
+     Where we part from it: threads outlines Post in *both* states, and we only
+     borrow that for disabled (below). Once there is something to post the
+     button fills with ink rather than firming up an outline — a composer this
+     flat can carry one solid object, and it should be the send. Weight and
+     tracking hold across both states so the box does not resize the moment the
+     post becomes postable. */
   .compose-publish-main {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.3rem;
     white-space: nowrap;
-    min-width: 5.25rem;
-    padding: 0 16px;
+    padding: 0 18px;
     background-color: var(--site-text-primary);
     color: var(--site-elevated-bg);
     font-size: var(--compose-primary-button-size);
-    font-weight: var(--fw-semibold);
-    letter-spacing: 0.01em;
+    font-weight: var(--fw-bold);
+    letter-spacing: 0;
     box-shadow: none;
   }
 
-  .compose-publish-single:hover:not(:disabled),
   .compose-publish-main:hover:not(:disabled) {
     background-color: color-mix(
       in srgb,
-      var(--site-text-primary) 94%,
+      var(--site-text-primary) 92%,
       var(--site-elevated-bg)
     );
   }
@@ -6499,24 +6534,32 @@
     display: inline-flex;
     align-items: stretch;
     overflow: hidden;
-    border-radius: 999px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
   }
 
   .compose-publish-buttons .compose-publish-main {
-    border-radius: 999px;
+    border-radius: 8px;
   }
 
-  .compose-publish-single:disabled:not(.compose-publish-single-loading),
+  /* Nothing postable yet. Both channels step back together: the frame to
+     7% (1.10:1, the reference's #f4f4f4 on white) and the label to 46%
+     (2.12:1, its #b2b2b2). Inactive controls are exempt from the contrast
+     floors, which is the only reason a label may sit this far under 4.5:1. */
   .compose-publish-main:disabled:not(.compose-publish-main-loading) {
     opacity: 1;
-    color: var(--site-text-secondary);
-    background-color: color-mix(
-      in srgb,
-      var(--compose-control-bg) 88%,
-      var(--compose-paper-bg)
-    );
-    box-shadow: none;
+    color: color-mix(in srgb, var(--site-text-secondary) 46%, transparent);
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--site-text-secondary) 7%, transparent);
+    cursor: not-allowed;
+  }
+
+  /* Pointing at it says so rather than doing nothing: the frame comes up a
+     step, but the label stays faded and the cursor stays barred, so the hover
+     never promises a press it will not accept. */
+  .compose-publish-main:disabled:not(.compose-publish-main-loading):hover {
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--site-text-secondary) 18%, transparent);
   }
 
   .compose-publish-panel {
@@ -7845,8 +7888,9 @@
     width: 1.55rem;
   }
 
+  /* Height comes from the shared four-line floor, which already reads this
+     layout's own leading and type size — only the lead-in changes here. */
   .compose-reply-compose-layout .compose-quote-text {
-    min-height: 6.5rem;
     padding-top: 0.35rem;
   }
 
@@ -7860,11 +7904,6 @@
       top: 0.62rem;
       left: 1rem;
       width: 1.6rem;
-    }
-
-    .compose-reply-compose-layout .compose-quote-text {
-      min-height: 6.5rem;
-      padding-top: 0.35rem;
     }
   }
 
@@ -8225,13 +8264,12 @@
       padding: 0.78rem 0.9rem;
     }
 
-    /* Touch keeps the roomier set: the desktop sizes above are tuned for a
-       cursor, and a thumb needs the millimetres back. */
-    .compose-publish-single,
+    /* Touch keeps the roomier set: the reference's 36px box is tuned for a
+       cursor, and a thumb needs the millimetres back. Width still comes from
+       the word — only the box around it grows. */
     .compose-publish-main {
-      min-height: 2.8rem;
-      min-width: 6rem;
-      padding-inline: 18px;
+      min-height: 2.8em;
+      padding-inline: 22px;
     }
 
     .compose-options-trigger {
@@ -8360,14 +8398,16 @@
     margin-top: 1px;
   }
 
+  /* No glyph of its own: in thread compose the dashed dot on the rail already
+     says "next slot", and on a single post the row's position says it. The
+     label is all that is left, so it sits at the row's own quiet weight. */
   .compose-thread-add-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
     font-size: var(--type-ui-caption);
     font-family: var(--font-ui);
     color: var(--site-text-secondary);
-    padding: 5px 10px 5px 8px;
+    padding: 5px 8px;
     border-radius: 9px;
     border: none;
     background: transparent;
@@ -8408,11 +8448,10 @@
   .compose-add-thread-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
     font-size: var(--type-ui-caption);
     font-family: var(--font-ui);
     color: var(--site-text-secondary);
-    padding: 5px 10px 5px 8px;
+    padding: 5px 8px;
     border-radius: 9px;
     border: none;
     background: transparent;
@@ -9210,9 +9249,14 @@
     min-height: 0;
   }
 
+  /* The floor is two lines, written as two lines. It is a target to click into
+     on an empty post, not a reserved shape, so it should follow the type
+     instead of a pixel count that goes stale when the leading moves. Every
+     compose text surface shares it: a note's body and the "thoughts" under a
+     link or a quote all open the same way and grow from there. */
   .compose-tiptap-body .tiptap {
     outline: none;
-    min-height: 120px;
+    min-height: calc(var(--type-body-leading) * 2em);
     min-width: 0;
     max-width: 100%;
     overflow-x: auto;
@@ -9226,14 +9270,6 @@
   .compose-reply-compose-layout .compose-tiptap-body .tiptap {
     font-size: var(--type-content-body);
     line-height: var(--type-body-leading);
-  }
-
-  .compose-tiptap-thoughts .tiptap {
-    min-height: 72px;
-  }
-
-  .compose-tiptap-thoughts-quote .tiptap {
-    min-height: 56px;
   }
 
   .compose-tiptap-link .tiptap {

@@ -5879,7 +5879,6 @@ export class JantComposeDialog extends LitElement {
   }
 
   private _renderAddToThreadRow() {
-    const PLUS_ICON = `<circle cx="8" cy="8" r="5.7"/><path d="M8 5.55v4.9M5.55 8h4.9"/>`;
     const editors = this.querySelectorAll<JantComposeEditor>(
       "jant-compose-editor",
     );
@@ -5902,19 +5901,6 @@ export class JantComposeDialog extends LitElement {
           ?disabled=${lastEmpty || atLimit}
           @click=${() => this._addThreadItem()}
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.65"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            ${unsafeSVG(PLUS_ICON)}
-          </svg>
           Add to thread
         </button>
       </div>
@@ -5953,7 +5939,6 @@ export class JantComposeDialog extends LitElement {
   }
 
   private _renderAddThreadTrigger() {
-    const PLUS_ICON = `<circle cx="8" cy="8" r="5.7"/><path d="M8 5.55v4.9M5.55 8h4.9"/>`;
     const disabled = !this._hasContent();
     return html`
       <div class="compose-add-thread-trigger">
@@ -5963,19 +5948,6 @@ export class JantComposeDialog extends LitElement {
           ?disabled=${disabled}
           @click=${() => this._addThreadItem()}
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.65"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            ${unsafeSVG(PLUS_ICON)}
-          </svg>
           Add to thread
         </button>
       </div>

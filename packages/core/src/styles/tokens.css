@@ -203,7 +203,30 @@
   );
   --site-threadline: var(--border);
   --site-page-bg: var(--background);
+  /* Despite the name, this is the page colour and ~60 rules use it that way —
+     including three that use it as *text* on a dark button. It cannot be
+     lifted without repainting the whole site; `--site-raised-bg` below is the
+     one that actually means "above the page". Read this as
+     "--site-default-surface" until the call sites are triaged. */
   --site-elevated-bg: var(--background);
+  /* What sits *above* the page: dialogs, popovers, menus, sheets. On a light
+     page this is the page colour, because the separating is done by the
+     backdrop dim and the drop shadows — both black over white. Neither works
+     on a dark page: 30% black over `#110f0d` composites to `#0c0b09`, and a
+     black shadow on near-black is nothing at all, which left the compose
+     dialog at 1.03:1 against its own backdrop. So in dark mode this lifts
+     instead (see the dark blocks below). Elevation there is lightness, not
+     shadow. */
+  --site-raised-bg: var(--site-page-bg);
+  /* The edge of a raised layer. On a light page the fill already separates and
+     this is just a hairline; on a dark one it does most of the work, because
+     the fill has almost no room to lift into. Same formula as
+     `--compose-control-border` in light so nothing moves there. */
+  --site-raised-border: color-mix(
+    in srgb,
+    var(--site-column-outline) 68%,
+    transparent
+  );
   --site-nav-hover-bg: var(--accent);
   --site-text-primary: var(--foreground);
   --site-text-secondary: var(--muted-foreground);
@@ -350,7 +373,10 @@
     var(--site-accent) 16%,
     transparent
   );
-  --compose-paper-bg: var(--site-page-bg);
+  /* The composer is a floating sheet in every mode but one, so its paper is
+     the raised surface. `.compose-page` — the full-page `/new` composer, which
+     *is* the page — puts this back to `--site-page-bg` locally. */
+  --compose-paper-bg: var(--site-raised-bg);
   --compose-control-bg: color-mix(
     in srgb,
     var(--site-nav-hover-bg) 72%,
@@ -365,6 +391,15 @@
     in srgb,
     var(--site-column-outline) 68%,
     transparent
+  );
+  /* The tools row sits directly under the sentence being written, so its icons
+     stay a step behind the body's own muted ink and only come forward when
+     pointed at or switched on. 72% keeps the faded state above the 3:1
+     non-text contrast floor. */
+  --compose-tool-ink: color-mix(
+    in srgb,
+    var(--site-text-secondary) 72%,
+    var(--compose-paper-bg)
   );
   --compose-blockquote-rail: color-mix(
     in srgb,
@@ -471,6 +506,16 @@
     --search-mark-bg: oklch(0.45 0.1 85 / 0.5);
     --search-mark-color: oklch(0.92 0.08 90);
     --dash-bg: oklch(0.2 0.005 80);
+    --site-raised-bg: color-mix(
+      in oklab,
+      var(--background) 88%,
+      var(--foreground)
+    );
+    --site-raised-border: color-mix(
+      in oklab,
+      var(--site-raised-bg) 78%,
+      var(--foreground)
+    );
   }
 }
 
@@ -501,6 +546,22 @@
   --search-mark-bg: oklch(0.45 0.1 85 / 0.5);
   --search-mark-color: oklch(0.92 0.08 90);
   --dash-bg: oklch(0.2 0.005 80);
+  /* 12% of the foreground mixed into the page. The headroom here is small and
+     bounded: `--site-divider` sits 1.36:1 above the page, and a surface lifted
+     past it would swallow every hairline drawn on it. 12% lands at 1.24:1 —
+     most of the range that exists, with the dividers still on top of it. */
+  --site-raised-bg: color-mix(
+    in oklab,
+    var(--background) 88%,
+    var(--foreground)
+  );
+  /* Carries the separation the fill cannot: 12% of lift is most of the room
+     the palette has, so the edge has to say the rest. */
+  --site-raised-border: color-mix(
+    in oklab,
+    var(--site-raised-bg) 78%,
+    var(--foreground)
+  );
 }
 
 @media (max-width: 760px), (hover: none) and (pointer: coarse) {

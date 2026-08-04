@@ -273,3 +273,51 @@
   `svg.getBBox().y + svg.getBBox().height / 2` against half the viewBox height —
   a 1-unit drift on a 16-unit grid is roughly 1px on screen and reads as an icon
   floating above its label.
+
+## Measuring live UI in the browser harness
+
+The automated tab reports `visibilityState: "hidden"`, and a hidden tab does not
+advance CSS animations, CSS transitions, or `requestAnimationFrame`. Before
+measuring anything in the running app, inject
+`* { transition: none !important }` plus `animation: none !important` on the
+element that animates in. Otherwise:
+
+- `getBoundingClientRect()` reads through a stuck opening transform — the
+  compose dialog's `scale(0.97)` made a 36px button measure 34.92px;
+- `getComputedStyle()` returns the value the transition started from, so a
+  button that has just become enabled still reports its disabled colours;
+- TipTap's `commands.focus()` is a no-op, because it defers `view.focus()` to a
+  `requestAnimationFrame` that never fires. Assert the handler ran (a probe
+  attribute, a spy) rather than asserting `document.activeElement`.
+
+## Dark mode: elevation is lightness, not shadow
+
+Every separator that works on a light page is _black over something_ — backdrop
+dims, drop shadows, hairline borders. On a near-black page all of them stop
+working at once. When a dark surface needs to read as above the page, lift its
+lightness; do not reach for a heavier shadow or a darker backdrop (measured:
+pushing a dialog's backdrop from 0.3 to 0.7 alpha bought 0.05 of contrast).
+
+The lift has a ceiling: it must stay below `--site-divider`, or the hairlines
+drawn on that surface disappear into it.
+
+**Do not judge two dark surfaces by WCAG contrast ratio.** Its `+0.05` floor
+crushes near-black, so the number barely moves and can even fall as the
+perceptual gap grows (deepening a page from L 0.17 to 0.11 took the measured
+ratio from 1.24:1 down to 1.15:1 while widening the real step). Use Oklab ΔL —
+that is what the reference systems design against, and by it a dark dialog
+needs only ~0.05–0.09 above the page: GitHub ships 0.044, Material 3 0.057,
+Radix 0.074. Reserve WCAG ratios for text and control boundaries, which is what
+they are for.
+
+Dark UIs separate a floating layer with three cues, none of them a shadow: a
+small surface step, a border clearly visible against that surface (~0.10–0.15
+ΔL — Radix spends two of its twelve grey steps on borders alone), and blur
+behind modals. The border usually does more work than the fill; check it before
+reaching for more lift.
+
+Before lifting a token named `*-elevated-*`, read its call sites. In this
+codebase `--site-elevated-bg` was used ~60 ways that mean "the default
+background", including three that use it as _text_ colour, so lifting it
+repainted the reading column. Add an honest token and migrate deliberately
+instead of redefining one whose meaning has drifted.

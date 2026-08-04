@@ -97,43 +97,44 @@ const COMPOSE_TOOLBAR_ICONS = {
     />
     <path
       d="m9 1.95 2.08 4.21 4.65.67-3.36 3.29.8 4.63L9 12.55l-4.17 2.2.8-4.63-3.36-3.29 4.65-.67z"
-      stroke-width="1.6"
     />
   `,
+  /* The one filled glyph in the row, so its bars are cut to the weight the
+     stroked icons read at — a 2.05 bar beside a 1.42 stroke looks bold. */
   title: `
     <rect
       x="3.35"
-      y="3.2"
+      y="3.37"
       width="11.3"
-      height="2.05"
+      height="1.72"
+      rx="0.6"
+      fill="currentColor"
+      stroke="none"
+    />
+    <rect
+      x="7.99"
+      y="4.6"
+      width="2.02"
+      height="9.45"
       rx="0.68"
       fill="currentColor"
       stroke="none"
     />
     <rect
-      x="7.8"
-      y="4.6"
-      width="2.4"
-      height="9.45"
-      rx="0.78"
-      fill="currentColor"
-      stroke="none"
-    />
-    <rect
       x="6.75"
-      y="13.15"
+      y="13.32"
       width="4.5"
-      height="1.12"
-      rx="0.56"
+      height="0.95"
+      rx="0.48"
       fill="currentColor"
       stroke="none"
     />
   `,
   fullscreen: `
-    <path d="M5.85 3H3v2.85" stroke-width="1.48" />
-    <path d="M12.15 3H15v2.85" stroke-width="1.48" />
-    <path d="M3 12.15V15h2.85" stroke-width="1.48" />
-    <path d="M15 12.15V15h-2.85" stroke-width="1.48" />
+    <path d="M5.85 3H3v2.85" />
+    <path d="M12.15 3H15v2.85" />
+    <path d="M3 12.15V15h2.85" />
+    <path d="M15 12.15V15h-2.85" />
   `,
 } as const;
 
@@ -147,7 +148,6 @@ function renderComposeToolbarIcon(
     viewBox="0 0 18 18"
     fill="none"
     stroke="currentColor"
-    stroke-width="1.55"
     stroke-linecap="round"
     stroke-linejoin="round"
     aria-hidden="true"
@@ -1539,6 +1539,25 @@ export class JantComposeEditor extends LitElement {
     el.style.height = `${el.scrollHeight}px`;
   }
 
+  /**
+   * Puts the caret in the body when the click landed on blank section instead
+   * of on the editor. The surfaces that reserve height — the `/new` page, the
+   * dialog on a phone — leave a stretch of empty paper under a two-line
+   * editor, and it should behave like paper: click it, write there. Only the
+   * layout wrappers forward; a click that reached a real control belongs to
+   * that control.
+   */
+  private _focusBodyFromBlankSpace = (e: MouseEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    const forwards =
+      target.classList.contains("compose-body") ||
+      target.classList.contains("compose-field-enter") ||
+      target.classList.contains("compose-tiptap-wrap");
+    if (!forwards) return;
+    this._editor?.commands.focus("end");
+  };
+
   private _setRating(star: number) {
     this._rating = this._rating === star ? 0 : star;
   }
@@ -2074,9 +2093,7 @@ export class JantComposeEditor extends LitElement {
           : nothing}
         <div class="compose-divider"></div>
         <div class="compose-tiptap-wrap">
-          <div
-            class="compose-tiptap-body compose-tiptap-thoughts compose-tiptap-link"
-          ></div>
+          <div class="compose-tiptap-body compose-tiptap-link"></div>
           <span class="compose-slash-discovery-hint" aria-hidden="true">
             ${this.labels.slashHint}
           </span>
@@ -2100,7 +2117,7 @@ export class JantComposeEditor extends LitElement {
             @focus=${(e: Event) => this._onFieldFocus(e)}
             class="compose-input compose-quote-text"
             placeholder=${this.labels.quotePlaceholder}
-            rows="5"
+            rows="4"
           ></textarea>
         </div>
         <div class="compose-quote-author-row">
@@ -2145,9 +2162,7 @@ export class JantComposeEditor extends LitElement {
           aria-hidden="true"
         ></div>
         <div class="compose-tiptap-wrap">
-          <div
-            class="compose-tiptap-body compose-tiptap-thoughts compose-tiptap-thoughts-quote"
-          ></div>
+          <div class="compose-tiptap-body"></div>
           <span class="compose-slash-discovery-hint" aria-hidden="true">
             ${this.labels.slashHint}
           </span>
@@ -2603,12 +2618,13 @@ export class JantComposeEditor extends LitElement {
             "compose-tool-btn-active": this._showEmojiPicker,
           })}
           title=${this.labels.emoji}
+          aria-pressed=${this._showEmojiPicker ? "true" : "false"}
           @click=${() => this._toggleEmojiPicker()}
         >
           ${renderComposeToolbarIcon(COMPOSE_TOOLBAR_ICONS.emoji)}
         </button>
 
-        <div class="compose-tool-sep"></div>
+        <div class="compose-tool-gap"></div>
 
         <button
           type="button"
@@ -2617,6 +2633,7 @@ export class JantComposeEditor extends LitElement {
             "compose-tool-btn-active": this._showRating,
           })}
           title=${this.labels.rate}
+          aria-pressed=${this._showRating ? "true" : "false"}
           @click=${() => {
             const willShow = !this._showRating;
             this._showRating = willShow;
@@ -2772,7 +2789,7 @@ export class JantComposeEditor extends LitElement {
     // thread item alike — so there is exactly one place it can be.
     return html`
       ${this._renderFormatHeader()}
-      <section class="compose-body">
+      <section class="compose-body" @click=${this._focusBodyFromBlankSpace}>
         ${this.format === "note"
           ? this._renderNoteFields()
           : this.format === "link"

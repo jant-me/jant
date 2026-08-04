@@ -3918,12 +3918,36 @@ describe("JantComposeDialog", () => {
     expect(css).toMatch(
       /\.compose-reply-compose-layout\s+\.compose-link-url-wrap\s*\{[\s\S]*margin-top:\s*0\.4rem;/,
     );
+    // The reply layout tunes only the lead-in. Height is the shared four-line
+    // floor, which reads this layout's own leading and type size, so a
+    // `min-height` here would just restate what the base rule already knows.
     expect(css).toMatch(
-      /\.compose-reply-compose-layout\s+\.compose-quote-text\s*\{[\s\S]*min-height:\s*6\.5rem;[\s\S]*padding-top:\s*0\.35rem;/,
+      /\.compose-reply-compose-layout\s+\.compose-quote-text\s*\{\s*padding-top:\s*0\.35rem;\s*\}/,
+    );
+    expect(css).not.toMatch(
+      /\.compose-reply-compose-layout\s+\.compose-quote-text\s*\{[^}]*min-height:/,
     );
     expect(css).toMatch(
       /\.compose-reply-compose-layout\s+\.compose-tiptap-body\s+\.tiptap\s*\{[\s\S]*font-size:\s*var\(--type-content-body\);/,
     );
+  });
+
+  it("opens every compose text surface at a floor stated in lines", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    // Two lines for the editor, four for the quote — as multiples of the
+    // leading, not pixels, so the floor follows the type instead of going
+    // stale next to it.
+    expect(css).toMatch(
+      /\.compose-tiptap-body \.tiptap\s*\{[\s\S]*min-height:\s*calc\(var\(--type-body-leading\) \* 2em\);/,
+    );
+    expect(css).toMatch(
+      /\.compose-quote-text\s*\{[\s\S]*min-height:\s*calc\(var\(--compose-quote-input-leading\) \* 4em\);/,
+    );
+
+    // One floor for every editor: a note's body and the "thoughts" under a
+    // link or a quote all open the same way.
+    expect(css).not.toMatch(/\.compose-tiptap-thoughts/);
   });
 
   it("runs the thread rail from the first dot to the last post's, and no further", () => {
