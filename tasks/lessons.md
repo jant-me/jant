@@ -368,3 +368,23 @@ in a novel treatment can buy back. Notes from the detour:
 
 And don't lean on "the panel it opened is the state display" — icon-only
 toggles have no label, so the button has to answer on its own.
+
+## Delete the task file before committing, not after
+
+`tasks/todos/` accumulated nine finished task files because cleanup was treated
+as an afterthought — something to do once the commit was already made, which
+means never. Removing the file is part of finishing the work, so it belongs in
+the same step as writing the Results section: verify → record results → delete
+the file → commit. A commit command that says "only stage and commit" is not a
+reason to skip it; by then it is too late.
+
+The criterion is the file's own checkboxes, not whether the code shipped.
+Several of the stale files turned out to still carry unchecked manual-QA
+passes, open questions addressed to the user, and follow-up work — deleting
+them would have destroyed the only record of those. **A task file with open
+items is active work even when its code has already landed.** Only delete when
+nothing is left unchecked.
+
+That is also why `tasks/todos/*.md` should not be gitignored, tempting as it is
+to make the rule self-enforcing: the files carry handoff state that has to
+survive a fresh clone. The discipline has to live in the workflow instead.
