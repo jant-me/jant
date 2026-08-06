@@ -8847,9 +8847,16 @@
   }
 
   .compose-draft-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
     font-size: var(--type-ui-caption);
     color: var(--site-text-secondary);
     margin-top: 4px;
+  }
+
+  .compose-draft-format {
+    font-weight: 500;
   }
 
   .compose-draft-more {

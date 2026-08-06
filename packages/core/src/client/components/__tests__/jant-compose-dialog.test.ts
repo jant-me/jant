@@ -3784,6 +3784,71 @@ describe("JantComposeDialog", () => {
     expect(el._draftMenuOpenId).toBeNull();
   });
 
+  it("uses title or quote text for draft previews and identifies each format", async () => {
+    const el = await createElement();
+    el._draftsPanelOpen = true;
+    el._draftsLoading = false;
+    el._drafts = [
+      {
+        id: "pst_note",
+        slug: "note-draft",
+        format: "note",
+        title: "A titled note",
+        bodyText: "This body should not be the preview",
+        bodyHtml: "<p>This body should not be the preview</p>",
+        url: null,
+        quoteText: null,
+        replyToId: null,
+        updatedAt: 0,
+        mediaAttachments: [],
+      },
+      {
+        id: "pst_quote",
+        slug: "quote-draft",
+        format: "quote",
+        title: "Quote title",
+        bodyText: "Supporting note",
+        bodyHtml: "<p>Supporting note</p>",
+        url: null,
+        quoteText: "The quoted words come first.",
+        replyToId: null,
+        updatedAt: 0,
+        mediaAttachments: [],
+      },
+      {
+        id: "pst_link",
+        slug: "link-draft",
+        format: "link",
+        title: null,
+        bodyText: "A link note",
+        bodyHtml: "<p>A link note</p>",
+        url: "https://example.com",
+        quoteText: null,
+        replyToId: null,
+        updatedAt: 0,
+        mediaAttachments: [],
+      },
+    ];
+    await el.updateComplete;
+
+    const rows = el.querySelectorAll<HTMLElement>(".compose-draft-item");
+    expect(rows).toHaveLength(3);
+    expect(rows[0]?.querySelector(".compose-draft-preview")?.textContent).toBe(
+      "A titled note",
+    );
+    expect(rows[1]?.querySelector(".compose-draft-preview")?.textContent).toBe(
+      "The quoted words come first.",
+    );
+    expect(rows[2]?.querySelector(".compose-draft-preview")?.textContent).toBe(
+      "A link note",
+    );
+    expect(
+      Array.from(el.querySelectorAll(".compose-draft-format")).map(
+        (format) => format.textContent,
+      ),
+    ).toEqual(["Note", "Quote", "Link"]);
+  });
+
   it("does not dispatch submit when loading", async () => {
     const el = await createElement();
     el._loading = true;

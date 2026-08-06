@@ -196,12 +196,13 @@ const COMPOSE_SHEET_ROW_ICONS = {
     <path d="M8.55 10.8h3.95" stroke-width="1.2" />
     <path d="M8.55 13.05h2.45" stroke-width="1.2" />
   `,
-  /* One sheet going down into a tray: this row files the post you are looking
-     at, where `drafts` opens the stack you have already filed. */
+  /* A bookmark: keep this where you can come back to it. One silhouette holds
+     up at the 16px these rows render at, where the page-and-pencil it replaced
+     turned to mush — and it stays clearly apart from the stacked pages above,
+     which the page alone did not. The down-arrow/tray before that read as a
+     download. */
   saveDraft: `
-    <path d="M9 3.2v7.1" />
-    <path d="M6.3 7.75 9 10.45l2.7-2.7" />
-    <path d="M3.6 11.4v1.9a1.5 1.5 0 0 0 1.5 1.5h7.8a1.5 1.5 0 0 0 1.5-1.5v-1.9" />
+    <path d="M6.65 3.6h4.7a2 2 0 0 1 2 2v8.7L9 11.75l-4.35 2.55V5.6a2 2 0 0 1 2-2Z" />
   `,
 } as const;
 
@@ -3036,9 +3037,16 @@ export class JantComposeDialog extends LitElement {
   }
 
   private _getDraftPreview(draft: DraftItem): string | null {
-    if (draft.bodyText) return draft.bodyText;
+    if (draft.format === "quote") {
+      if (draft.quoteText) return draft.quoteText;
+      if (draft.title) return draft.title;
+      if (draft.bodyText) return draft.bodyText;
+      if (draft.url) return draft.url;
+      return null;
+    }
+
     if (draft.title) return draft.title;
-    if (draft.quoteText) return draft.quoteText;
+    if (draft.bodyText) return draft.bodyText;
     if (draft.url) return draft.url;
     return null;
   }
@@ -3569,6 +3577,7 @@ export class JantComposeDialog extends LitElement {
 
   private _renderDraftItem(draft: DraftItem) {
     const preview = this._getDraftPreview(draft);
+    const formatLabel = this.labels[draft.format];
     const menuId = `draft-actions-${draft.id}`;
     const menuOpen = this._draftMenuOpenId === draft.id;
 
@@ -3583,6 +3592,8 @@ export class JantComposeDialog extends LitElement {
                 Empty draft
               </div>`}
           <div class="compose-draft-meta">
+            <span class="compose-draft-format">${formatLabel}</span>
+            <span aria-hidden="true">·</span>
             ${this._formatDraftDate(draft.updatedAt)}
           </div>
         </div>
