@@ -1141,6 +1141,101 @@ describe("JantComposeDialog", () => {
     ).toBe(false);
   });
 
+  /**
+   * Publish reads each row's own answer, so a row that has been removed stops
+   * being asked. These used to fail: the button was computed during render from
+   * the editors still in the DOM — including the one that render was about to
+   * remove.
+   */
+  describe("publish reflects the rows that are left", () => {
+    const publishButton = (el: JantComposeDialog) =>
+      requireElement(
+        el.querySelector<HTMLButtonElement>(".compose-publish-main"),
+        "expected publish button",
+      );
+
+    async function typeInto(
+      el: JantComposeDialog,
+      index: number,
+      text: string,
+    ) {
+      const editor = el.querySelectorAll<JantComposeEditor>(
+        "jant-compose-editor",
+      )[index];
+      requireEditor(
+        requireElement(editor, `expected editor ${index}`),
+      ).commands.insertContent(text);
+      await flushUpdates(el);
+    }
+
+    async function addPost(el: JantComposeDialog) {
+      requireElement(
+        el.querySelector<HTMLButtonElement>(".compose-thread-add-btn"),
+        "expected add-to-thread button",
+      ).click();
+      await flushUpdates(el);
+      await flushUpdates(el);
+    }
+
+    async function removePost(el: JantComposeDialog, index: number) {
+      requireElement(
+        el.querySelectorAll<HTMLButtonElement>(".compose-thread-post-remove")[
+          index
+        ],
+        `expected remove button ${index}`,
+      ).click();
+      await flushUpdates(el);
+      await flushUpdates(el);
+    }
+
+    it("re-enables publish when the empty last post is removed", async () => {
+      const el = await createElement();
+      await typeInto(el, 0, "one");
+      await addPost(el);
+      await typeInto(el, 1, "two");
+      await addPost(el);
+
+      expect(publishButton(el).disabled).toBe(true);
+
+      await removePost(el, 2);
+
+      expect(publishButton(el).disabled).toBe(false);
+    });
+
+    it("re-enables publish when the emptied post is the first of two", async () => {
+      const el = await createElement();
+      await typeInto(el, 0, "one");
+      await addPost(el);
+      await typeInto(el, 1, "two");
+
+      requireEditor(
+        el.querySelectorAll<JantComposeEditor>("jant-compose-editor")[0],
+      ).commands.clearContent();
+      await flushUpdates(el);
+      expect(publishButton(el).disabled).toBe(true);
+
+      await removePost(el, 0);
+
+      expect(publishButton(el).disabled).toBe(false);
+    });
+
+    it("keeps each post's own text when the middle post is removed", async () => {
+      const el = await createElement();
+      await typeInto(el, 0, "AAA");
+      await addPost(el);
+      await typeInto(el, 1, "BBB");
+      await addPost(el);
+      await typeInto(el, 2, "CCC");
+
+      await removePost(el, 1);
+
+      const text = Array.from(
+        el.querySelectorAll<JantComposeEditor>("jant-compose-editor"),
+      ).map((editor) => requireEditor(editor).getText());
+      expect(text).toEqual(["AAA", "CCC"]);
+    });
+  });
+
   it("numbers each post in a thread", async () => {
     const el = await createElement();
     el._threadItems = [

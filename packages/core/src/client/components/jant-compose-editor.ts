@@ -26,6 +26,7 @@ import type {
   ComposeFormat,
   ComposeLabels,
   ComposeAttachment,
+  ComposeRowStatus,
   AttachedTextItem,
   ComposeEditorSelection,
   ComposeFullscreenOpenDetail,
@@ -809,6 +810,69 @@ export class JantComposeEditor extends LitElement {
   }
 
   /**
+   * What this row contributes to the composer's submit state.
+   *
+   * The editor owns these fields, so it owns the answer: the dialog reduces
+   * `getStatus()` over the rows it has rather than reading editors back out of
+   * the DOM, which during a render still holds the row it is about to remove.
+   *
+   * @returns Whether the row holds anything worth keeping, and whether it is
+   *   complete enough to publish
+   * @example
+   * editor.getStatus(); // { hasContent: true, publishable: false } — link, no URL yet
+   */
+  getStatus(): ComposeRowStatus {
+    const data = this.getData();
+    const hasContent =
+      !!data.body ||
+      !!data.title.trim() ||
+      !!data.url.trim() ||
+      !!data.quoteText.trim() ||
+      !!data.quoteAuthor.trim() ||
+      data.rating > 0 ||
+      data.attachments.length > 0 ||
+      data.attachedTexts.length > 0;
+    const fieldsValid =
+      !this.getUrlValidationMessage() && !this.getLinkTitleValidationMessage();
+
+    let publishable: boolean;
+    switch (this.format) {
+      // A link is its URL and title, both of which the validators already
+      // require — nothing else has to be filled in.
+      case "link":
+        publishable = fieldsValid;
+        break;
+      case "quote":
+        publishable = fieldsValid && !!data.quoteText.trim();
+        break;
+      default:
+        publishable = fieldsValid && hasContent;
+    }
+
+    return { hasContent, publishable };
+  }
+
+  #lastStatus: ComposeRowStatus | null = null;
+
+  /** Tell the owner when — and only when — this row's answer changes. */
+  #notifyStatus() {
+    const status = this.getStatus();
+    if (
+      this.#lastStatus?.hasContent === status.hasContent &&
+      this.#lastStatus?.publishable === status.publishable
+    ) {
+      return;
+    }
+    this.#lastStatus = status;
+    this.dispatchEvent(
+      new CustomEvent<ComposeRowStatus>("jant:compose-status", {
+        bubbles: true,
+        detail: status,
+      }),
+    );
+  }
+
+  /**
    * Set the title toggle's default and apply it now.
    *
    * `titleByDefault` alone only takes effect on the first update or on
@@ -1125,6 +1189,11 @@ export class JantComposeEditor extends LitElement {
       }
     }
 
+    // Every field that can change this row's answer is reactive, so `updated()`
+    // is where the owner hears about it — including the ones a user edit never
+    // touches, like an upload finishing.
+    this.#notifyStatus();
+
     // Notify parent dialog of content changes for draft auto-save. A format
     // conversion writes content fields too, but it's not a user edit, so skip
     // the notification once when asked.
@@ -1310,6 +1379,7 @@ export class JantComposeEditor extends LitElement {
 
     this._showUrlValidation = false;
     this._showLinkTitleValidation = false;
+    this.#notifyStatus();
   }
 
   /** Updates editor content and title from fullscreen close */
@@ -1333,6 +1403,10 @@ export class JantComposeEditor extends LitElement {
       );
     }
     this._lastEditorSelection = selection ?? this._readEditorSelection();
+    // Content handed in from outside has to be visible to the owner in the same
+    // tick: fullscreen's ⌘↵ hands the text back and publishes on the next line,
+    // with no render in between to carry the news.
+    this.#notifyStatus();
   }
 
   private static SUMMARY_LENGTH = 100;

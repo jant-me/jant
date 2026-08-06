@@ -9,6 +9,7 @@
 
 import { LitElement, html, nothing } from "lit";
 import { classMap } from "lit/directives/class-map.js";
+import { repeat } from "lit/directives/repeat.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import type { Editor, JSONContent } from "@tiptap/core";
@@ -20,6 +21,7 @@ import type {
   ComposeSubmitDetail,
   ComposeSubmitAttachment,
   ComposeAttachment,
+  ComposeRowStatus,
   DraftItem,
   LocalDraft,
   ComposeFullscreenOpenDetail,
@@ -171,6 +173,12 @@ interface ComposeStateSnapshot {
 }
 
 const EDITOR_FLOATING_UI_SELECTOR = "[data-editor-floating-ui]";
+
+/**
+ * Row key for the single-post composer. Thread posts key on their own id; a
+ * lone post has no thread item to borrow one from.
+ */
+const SINGLE_ROW_ID = "single";
 
 interface ComposeFilePickerCloseDetail {
   cancelled?: boolean;
@@ -634,6 +642,7 @@ export class JantComposeDialog extends LitElement {
     _replyParentPosition: { state: true },
     _replyExpanded: { state: true },
     _threadItems: { state: true },
+    _rowStatus: { state: true },
     _focusedThreadIndex: { state: true },
     _slug: { state: true },
     _publishedAtInput: { state: true },
@@ -683,6 +692,8 @@ export class JantComposeDialog extends LitElement {
   declare _replyParentPosition: number | null;
   declare _replyExpanded: boolean;
   declare _threadItems: ThreadItem[];
+  /** Each row's own answer, keyed by row id. See `_rowIds`. */
+  declare _rowStatus: ReadonlyMap<string, ComposeRowStatus>;
   declare _focusedThreadIndex: number;
   declare _slug: string;
   declare _publishedAtInput: string;
@@ -773,6 +784,7 @@ export class JantComposeDialog extends LitElement {
     this._replyToData = null;
     this._replyExpanded = false;
     this._threadItems = [];
+    this._rowStatus = new Map();
     this._focusedThreadIndex = 0;
     this._replyThreadRootId = null;
     this._replyParentPosition = null;
@@ -800,6 +812,51 @@ export class JantComposeDialog extends LitElement {
 
   private get _editor(): JantComposeEditor | null {
     return this.querySelector("jant-compose-editor");
+  }
+
+  /**
+   * The rows the composer currently has, in order — thread posts by their own
+   * id, or the single composer's one row.
+   *
+   * Everything derived from row content reduces over this list, so a row that
+   * has been removed stops being asked the moment `_threadItems` changes. No
+   * DOM read is involved, which is the point: a render reads the DOM as it
+   * stands *before* that render's own changes are committed.
+   */
+  private get _rowIds(): string[] {
+    return this._threadItems.length > 0
+      ? this._threadItems.map((item) => item.id)
+      : [SINGLE_ROW_ID];
+  }
+
+  private _handleRowStatus(rowId: string, status: ComposeRowStatus) {
+    const previous = this._rowStatus.get(rowId);
+    if (
+      previous?.hasContent === status.hasContent &&
+      previous?.publishable === status.publishable
+    ) {
+      return;
+    }
+    const next = new Map(this._rowStatus);
+    next.set(rowId, status);
+    this._rowStatus = next;
+  }
+
+  protected willUpdate(changed: Map<string, unknown>) {
+    super.willUpdate(changed);
+
+    // An answer belongs to the row that gave it. When the set of rows changes,
+    // drop the ones that are gone so a row can never inherit an answer that
+    // was never about it — leaving thread mode, in particular, hands the single
+    // row's key back to a fresh editor.
+    if (changed.has("_threadItems")) {
+      const live = new Set(this._rowIds);
+      if ([...this._rowStatus.keys()].some((id) => !live.has(id))) {
+        this._rowStatus = new Map(
+          [...this._rowStatus].filter(([id]) => live.has(id)),
+        );
+      }
+    }
   }
 
   protected updated(changed: Map<string, unknown>) {
@@ -874,6 +931,7 @@ export class JantComposeDialog extends LitElement {
     this._replyToData = null;
     this._replyExpanded = false;
     this._threadItems = [];
+    this._rowStatus = new Map();
     this._focusedThreadIndex = 0;
     this._replyThreadRootId = null;
     this._replyParentPosition = null;
@@ -1230,39 +1288,16 @@ export class JantComposeDialog extends LitElement {
     return false;
   }
 
+  /**
+   * Whether any row holds something worth keeping.
+   *
+   * Collection selection alone isn't content — it's metadata that only matters
+   * when paired with actual post content.
+   */
   private _hasContent(): boolean {
-    if (this._threadItems.length > 0) {
-      // Thread mode: check the first editor for content
-      const firstEditor = this.querySelector<JantComposeEditor>(
-        "jant-compose-editor",
-      );
-      if (!firstEditor) return false;
-      const data = firstEditor.getData();
-      return (
-        !!data.body ||
-        !!data.title.trim() ||
-        !!data.url.trim() ||
-        !!data.quoteText.trim() ||
-        data.attachments.length > 0
-      );
-    }
-
-    const editor = this._editor;
-    if (!editor) return false;
-
-    const data = editor.getData();
-    if (data.body) return true;
-    if (data.title.trim()) return true;
-    if (data.url.trim()) return true;
-    if (data.quoteText.trim()) return true;
-    if (data.quoteAuthor.trim()) return true;
-    if (data.attachedTexts.length > 0) return true;
-    if (data.rating > 0) return true;
-    if (data.attachments.length > 0) return true;
-    // Collection selection alone isn't content — it's metadata that
-    // only matters when paired with actual post content above.
-
-    return false;
+    return this._rowIds.some(
+      (id) => this._rowStatus.get(id)?.hasContent === true,
+    );
   }
 
   private _buildSnapshot(): ComposeStateSnapshot | null {
@@ -3832,12 +3867,6 @@ export class JantComposeDialog extends LitElement {
     // already pending from loading the post.
     this._cancelDraftSaveTimer();
     this._format = target;
-    // Sync the editor's format this tick. Lit commits the `.format` binding
-    // only after this render returns, so `_canPublish()` (which reads
-    // `editor.getData()`, keyed on the editor's format) would otherwise compute
-    // against the stale format for one render and leave the submit button
-    // wrongly disabled.
-    if (editor) editor.format = target;
     this._showPublishPanel = false;
     if (this._shouldAutofocusFormatInput()) {
       globalThis.requestAnimationFrame(() => this._editor?.focusInput());
@@ -4585,52 +4614,15 @@ export class JantComposeDialog extends LitElement {
     this._openPublishPanelAndFocus(".compose-publish-date-input", index);
   }
 
+  /** Every row ready, and every row's own date and permalink accepted. */
   private _canPublish(): boolean {
     if (this._loading) return false;
-    const posts = Math.max(1, this._threadItems.length);
-    for (let i = 0; i < posts; i++) {
+    const rowIds = this._rowIds;
+    for (let i = 0; i < rowIds.length; i++) {
       if (this._getPostPublishedAtValidationMessage(i)) return false;
-    }
-    for (let i = 0; i < posts; i++) {
       if (this._getPostSlugValidationMessage(i)) return false;
     }
-
-    if (this._threadItems.length > 0) {
-      // Thread mode: validate all editors
-      const editors = Array.from(
-        this.querySelectorAll<JantComposeEditor>("jant-compose-editor"),
-      );
-      if (editors.length === 0) return false;
-      for (const editor of editors) {
-        if (editor.getUrlValidationMessage()) return false;
-        if (editor.getLinkTitleValidationMessage()) return false;
-      }
-      // Every editor in the thread must have content
-      return editors.every((editor) => {
-        const data = editor.getData();
-        return (
-          !!data.body ||
-          !!data.title.trim() ||
-          !!data.url.trim() ||
-          !!data.quoteText.trim() ||
-          data.attachments.length > 0
-        );
-      });
-    }
-
-    const editor = this._editor;
-    if (!editor) return false;
-    if (editor.getUrlValidationMessage()) return false;
-    if (editor.getLinkTitleValidationMessage()) return false;
-
-    const data = editor.getData();
-    if (this._format === "link") {
-      return data.url.trim().length > 0;
-    }
-    if (this._format === "quote") {
-      return data.quoteText.trim().length > 0;
-    }
-    return this._hasContent();
+    return rowIds.every((id) => this._rowStatus.get(id)?.publishable === true);
   }
 
   private _focusPublishPanelInitialField() {
@@ -5894,7 +5886,6 @@ export class JantComposeDialog extends LitElement {
           singleEditor._showRating = capturedShowRating;
         }
         singleEditor.focusInput();
-        this.requestUpdate();
       });
     } else {
       this._threadItems = newItems;
@@ -5972,6 +5963,10 @@ export class JantComposeDialog extends LitElement {
           e.stopPropagation();
           this._removeThreadItem(index);
         }}
+        @jant:compose-status=${(e: CustomEvent<ComposeRowStatus>) => {
+          e.stopPropagation();
+          this._handleRowStatus(item.id, e.detail);
+        }}
       >
         <div class="compose-thread-dot"></div>
         <jant-compose-editor
@@ -5991,18 +5986,9 @@ export class JantComposeDialog extends LitElement {
   }
 
   private _renderAddToThreadRow() {
-    const editors = this.querySelectorAll<JantComposeEditor>(
-      "jant-compose-editor",
-    );
-    const lastEditor = editors[editors.length - 1];
-    const lastData = lastEditor?.getData();
-    const lastEmpty =
-      !lastData ||
-      (!lastData.body &&
-        !lastData.title.trim() &&
-        !lastData.url.trim() &&
-        !lastData.quoteText.trim() &&
-        lastData.attachments.length === 0);
+    const rowIds = this._rowIds;
+    const lastId = rowIds[rowIds.length - 1];
+    const lastEmpty = !this._rowStatus.get(lastId)?.hasContent;
     const atLimit = this._threadItems.length >= MAX_THREAD_POSTS;
     return html`
       <div class="compose-thread-add-row">
@@ -6034,16 +6020,24 @@ export class JantComposeDialog extends LitElement {
         @jant:compose-content-changed=${() => this._scheduleDraftSave()}
       >
         ${isReply ? this._renderReplyContext() : nothing}
-        ${items.map((item, i) =>
-          this._renderThreadPost(
-            item,
-            i,
-            showRemove,
-            // Only the post that opens a thread of its own gets a title field
-            // by default — everything downstream of it continues a thought that
-            // is already named.
-            i === 0 && !isReply,
-          ),
+        <!-- Keyed by row id, not by position: an editor holds its own content,
+             so an unkeyed list would reuse elements by position and drop the
+             last one when a middle post is removed — taking that post's text
+             with it, and pairing the survivors with the wrong dates and
+             permalinks. -->
+        ${repeat(
+          items,
+          (item) => item.id,
+          (item, i) =>
+            this._renderThreadPost(
+              item,
+              i,
+              showRemove,
+              // Only the post that opens a thread of its own gets a title field
+              // by default — everything downstream of it continues a thought
+              // that is already named.
+              i === 0 && !isReply,
+            ),
         )}
         ${this._renderAddToThreadRow()}
       </div>
@@ -6094,6 +6088,10 @@ export class JantComposeDialog extends LitElement {
       @jant:format-change=${(e: CustomEvent<{ format: ComposeFormat }>) => {
         e.stopPropagation();
         this._switchFormat(e.detail.format);
+      }}
+      @jant:compose-status=${(e: CustomEvent<ComposeRowStatus>) => {
+        e.stopPropagation();
+        this._handleRowStatus(SINGLE_ROW_ID, e.detail);
       }}
     ></jant-compose-editor>`;
     // The handler sits on the editor itself rather than a delegating wrapper.

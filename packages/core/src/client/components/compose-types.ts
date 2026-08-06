@@ -11,6 +11,18 @@ import type { TableControlLabels } from "../tiptap/table-control-labels.js";
 
 export type ComposeFormat = "note" | "link" | "quote";
 
+/**
+ * What one composer row says about itself. An editor owns its fields, so it
+ * owns these two answers too — the dialog reduces them over the rows it has
+ * instead of reading editors back out of the DOM while it renders.
+ */
+export interface ComposeRowStatus {
+  /** Anything worth keeping: the check behind "discard this?" and autosave. */
+  hasContent: boolean;
+  /** Enough to publish this row: its format's requirements met, fields valid. */
+  publishable: boolean;
+}
+
 export interface ComposeAttachment {
   clientId: string;
   file: File;

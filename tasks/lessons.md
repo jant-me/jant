@@ -267,6 +267,18 @@
   visuals. Killing it as cleanup means their next reload shows a stale page, and
   "I changed it and nothing happened" then has two causes to untangle instead of
   one.
+- Never compute a Lit component's rendered output by reading the DOM inside
+  `render()` — `querySelector` there sees the tree as it stands _before_ this
+  render's own changes land, so anything derived from the set of children is one
+  step behind whenever that set changes. Push the answer up: let each child
+  report its own state through an event, key it by the child's id, and reduce
+  over the ids. A `requestUpdate()` sprinkled after the fact only papers over
+  the particular case that was noticed.
+- Render a list of stateful children with `repeat(items, item => item.id, …)`.
+  An unkeyed `items.map()` reuses elements by position, so removing a middle
+  item drops the _last_ element — and any state the element owns (a Tiptap doc,
+  an upload) goes with it while the surviving elements silently pair up with the
+  wrong model rows.
 - Centre icon artwork inside its own viewBox. Layout centres the `<svg>` box, so
   any drift between the artwork's bounding box and the viewBox centre rides
   straight through into every use. Check with
