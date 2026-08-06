@@ -6931,6 +6931,17 @@
     opacity: 1;
   }
 
+  /* A lone post shows its pill outright. "Quiet until approached" only pays
+     off when several rows would each carry one — with a single pill there is
+     no noise to save, and hiding it made the date/permalink fade out exactly
+     when focus moved to the publish controls, where that metadata matters
+     most. The child combinator is the single-post detector: only that mode
+     renders the editor as a direct child of `.compose-scroll`; reply and
+     thread rows sit inside `.compose-editor-row` and stay quiet. */
+  .compose-scroll > jant-compose-editor .compose-post-meta {
+    opacity: 1;
+  }
+
   /* Defaults are the common case, so at rest this is a caption rather than a
      control: no chrome, and dimmer than the format selector it shares the row
      with. The outline arrives on hover, once it is being aimed at. */
