@@ -95,6 +95,24 @@ describe("generatePostSlug", () => {
         }),
       ).rejects.toThrow("Could not generate a unique slug");
     });
+
+    it("romanizes Korean titles", async () => {
+      const slug = await generatePostSlug({
+        title: "개발 일지",
+        idLength: 5,
+        isAvailable: alwaysAvailable,
+      });
+      expect(slug).toBe("gaebal-ilji");
+    });
+
+    it("falls back to random IDs for kanji-heavy Japanese titles", async () => {
+      const slug = await generatePostSlug({
+        title: "日本語のタイトルです",
+        idLength: 5,
+        isAvailable: alwaysAvailable,
+      });
+      expect(slug).toMatch(/^[a-z0-9]{5}-[a-z0-9]{5}$/);
+    });
   });
 
   describe("random slug (no title, no slug)", () => {

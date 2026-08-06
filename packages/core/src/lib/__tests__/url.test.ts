@@ -275,6 +275,41 @@ describe("slugify", () => {
   it("handles CJK characters with spaces", () => {
     expect(slugify("电影 评论")).toBe("dian-ying-ping-lun");
   });
+
+  it("romanizes Korean titles", () => {
+    expect(slugify("안녕하세요 세계")).toBe("annyeonghaseyo-segye");
+    expect(slugify("개발 일지 3일차")).toBe("gaebal-ilji-3ilcha");
+  });
+
+  it("romanizes kana-only Japanese titles", () => {
+    expect(slugify("カタカナタイトル")).toBe("katakanataitoru");
+    expect(slugify("ハンバーガー")).toBe("hanbaga");
+  });
+
+  it("keeps Latin words in mostly-kana Japanese titles", () => {
+    expect(slugify("React入門ガイド")).toBe("react-gaido");
+  });
+
+  it("returns empty for kanji-heavy Japanese titles instead of garbling them", () => {
+    // Kanji carries the meaning; without a reading dictionary any output
+    // would be gibberish, so callers should fall back to a random ID.
+    expect(slugify("日本語のタイトルです")).toBe("");
+    expect(slugify("東京タワーに行った")).toBe("");
+    expect(slugify("こんにちは世界")).toBe("");
+  });
+
+  it("returns empty for scripts with no usable transliteration", () => {
+    expect(slugify("שלום עולם")).toBe("");
+    expect(slugify("สวัสดีชาวโลก")).toBe("");
+  });
+
+  it("returns empty when most of the title is untransliterable", () => {
+    expect(slugify("שלום world")).toBe("");
+  });
+
+  it("returns empty for emoji-only titles", () => {
+    expect(slugify("🎉🎉")).toBe("");
+  });
 });
 
 describe("stripSitePathPrefix", () => {
