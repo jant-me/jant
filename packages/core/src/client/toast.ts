@@ -20,8 +20,40 @@ interface QueuedToast {
 
 export const QUEUED_TOAST_STORAGE_KEY = "jant.pendingToast";
 
-/** Ensure the toast container is in the top layer (above <dialog> etc.) */
+function openModalDialogs(): HTMLDialogElement[] {
+  const open = [
+    ...document.querySelectorAll<HTMLDialogElement>("dialog[open]"),
+  ];
+  try {
+    const modal = open.filter((dialog) => dialog.matches(":modal"));
+    if (modal.length > 0) return modal;
+  } catch {
+    // ":modal" unsupported — treat every open dialog as potentially modal.
+  }
+  // Engines without working ":modal" (happy-dom) match nothing above; Jant
+  // only opens dialogs via showModal(), so open dialogs are the right proxy.
+  return open;
+}
+
+/**
+ * A modal <dialog> makes everything outside its subtree inert: the popover
+ * promotion keeps toasts *painted* above the dialog, but clicks and text
+ * selection would still fall through to the dialog. Mounting the container
+ * inside the topmost open modal dialog escapes the inert tree; the close
+ * watcher moves it back out when that dialog closes.
+ */
+function mountOutsideInertTree(container: HTMLElement): void {
+  const dialogs = openModalDialogs();
+  // Top-layer order isn't queryable; document order matches Jant's dialog
+  // nesting (confirm dialogs are descendants of the dialog that opened them).
+  const host = dialogs.at(-1) ?? document.body;
+  if (container.parentElement !== host) host.appendChild(container);
+}
+
+/** Ensure the toast container is interactive and in the top layer (above <dialog> etc.) */
 function ensureTopLayer(container: HTMLElement): void {
+  mountOutsideInertTree(container);
+
   if (typeof container.showPopover !== "function") return;
 
   // Re-promote above any modal dialog that was opened after the toast container.
@@ -38,7 +70,21 @@ function ensureTopLayer(container: HTMLElement): void {
 }
 
 function getToastContainer(): HTMLElement | null {
-  return document.getElementById("toast-container");
+  const existing = document.getElementById("toast-container");
+  if (existing) return existing;
+  if (!document.body) return null;
+
+  // The container can vanish with a modal dialog it was mounted into if that
+  // dialog is removed from the DOM while open. Recreate it so toasts keep
+  // working for the rest of the page's lifetime.
+  const container = document.createElement("div");
+  container.id = "toast-container";
+  container.className = "toast-container";
+  container.setAttribute("popover", "manual");
+  container.setAttribute("aria-live", "polite");
+  container.setAttribute("aria-relevant", "additions text");
+  document.body.appendChild(container);
+  return container;
 }
 
 function canUseSessionStorage(): boolean {
@@ -92,12 +138,9 @@ const TOAST_ICONS = {
     '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>',
 };
 
-const COPY_ICON =
-  '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
-const CHECK_ICON =
-  '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg>';
 const TOAST_DURATION_MS = 3000;
-const ACTION_TOAST_DURATION_MS = 8000;
+const ACTION_TOAST_DURATION_MS = 5000;
+const MIN_RESUME_MS = 1000;
 
 /** Build toast inner content using safe DOM APIs (icon is trusted, text uses textContent). */
 function setToastContent(
@@ -117,21 +160,62 @@ function setToastContent(
     a.textContent = action.label;
     toast.appendChild(a);
   }
-  if (type === "error" && navigator.clipboard) {
-    const btn = document.createElement("button");
-    btn.className = "toast-copy";
-    btn.setAttribute("aria-label", "Copy error message");
-    btn.innerHTML = COPY_ICON;
-    btn.addEventListener("click", () => {
-      navigator.clipboard.writeText(message).then(() => {
-        btn.innerHTML = CHECK_ICON;
-        setTimeout(() => {
-          btn.innerHTML = COPY_ICON;
-        }, 1500);
-      });
-    });
-    toast.appendChild(btn);
-  }
+}
+
+/**
+ * Auto-dismiss a toast after `duration`, pausing while the pointer hovers it
+ * or focus is inside it — so the message can be read, selected, and copied.
+ * On leave, the remaining time resumes (at least MIN_RESUME_MS).
+ */
+function scheduleAutoDismiss(toast: HTMLElement, duration: number): void {
+  let remaining = duration;
+  let startedAt = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let hovered = false;
+  let focused = false;
+
+  const pause = () => {
+    if (timer === null) return;
+    clearTimeout(timer);
+    timer = null;
+    remaining = Math.max(remaining - (Date.now() - startedAt), MIN_RESUME_MS);
+  };
+
+  const resume = () => {
+    if (timer !== null) return;
+    startedAt = Date.now();
+    timer = setTimeout(() => {
+      toast.classList.add("toast-out");
+      toast.addEventListener("animationend", () => toast.remove());
+    }, remaining);
+  };
+
+  const sync = () => {
+    if (hovered || focused) {
+      pause();
+    } else {
+      resume();
+    }
+  };
+
+  toast.addEventListener("pointerenter", () => {
+    hovered = true;
+    sync();
+  });
+  toast.addEventListener("pointerleave", () => {
+    hovered = false;
+    sync();
+  });
+  toast.addEventListener("focusin", () => {
+    focused = true;
+    sync();
+  });
+  toast.addEventListener("focusout", () => {
+    focused = false;
+    sync();
+  });
+
+  resume();
 }
 
 /**
@@ -157,10 +241,7 @@ export function showToast(message: string, type: ToastType = "success"): void {
   setToastContent(toast, type, message);
   container.appendChild(toast);
 
-  setTimeout(() => {
-    toast.classList.add("toast-out");
-    toast.addEventListener("animationend", () => toast.remove());
-  }, TOAST_DURATION_MS);
+  scheduleAutoDismiss(toast, TOAST_DURATION_MS);
 }
 
 /**
@@ -190,10 +271,7 @@ export function showToastWithAction(
   setToastContent(toast, type, message, action);
   container.appendChild(toast);
 
-  setTimeout(() => {
-    toast.classList.add("toast-out");
-    toast.addEventListener("animationend", () => toast.remove());
-  }, ACTION_TOAST_DURATION_MS);
+  scheduleAutoDismiss(toast, ACTION_TOAST_DURATION_MS);
 }
 
 /**
@@ -284,10 +362,7 @@ export function replaceWithAutoClose(
   toast.replaceChildren();
   setToastContent(toast, type, message);
 
-  setTimeout(() => {
-    toast.classList.add("toast-out");
-    toast.addEventListener("animationend", () => toast.remove());
-  }, TOAST_DURATION_MS);
+  scheduleAutoDismiss(toast, TOAST_DURATION_MS);
 }
 
 /**
@@ -317,10 +392,7 @@ export function replaceWithAutoCloseAction(
   toast.replaceChildren();
   setToastContent(toast, type, message, action);
 
-  setTimeout(() => {
-    toast.classList.add("toast-out");
-    toast.addEventListener("animationend", () => toast.remove());
-  }, ACTION_TOAST_DURATION_MS);
+  scheduleAutoDismiss(toast, ACTION_TOAST_DURATION_MS);
 }
 
 /**
@@ -363,6 +435,25 @@ export function consumeQueuedToast(): boolean {
   return true;
 }
 
+function initDialogCloseWatcher(): void {
+  // "close" doesn't bubble; capture reaches it from the document anyway.
+  document.addEventListener(
+    "close",
+    (event) => {
+      const dialog = event.target;
+      if (!(dialog instanceof HTMLDialogElement)) return;
+
+      const container = document.getElementById("toast-container");
+      if (!container || !dialog.contains(container)) return;
+
+      // The closed dialog is display:none — move the container back out
+      // (into the next open modal dialog, if any) so live toasts stay visible.
+      ensureTopLayer(container);
+    },
+    true,
+  );
+}
+
 function initQueuedToastConsumer(): void {
   const showQueuedToast = () => {
     consumeQueuedToast();
@@ -378,4 +469,5 @@ function initQueuedToastConsumer(): void {
   showQueuedToast();
 }
 
+initDialogCloseWatcher();
 initQueuedToastConsumer();

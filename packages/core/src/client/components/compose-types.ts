@@ -37,6 +37,12 @@ export interface ComposeAttachment {
   status: "pending" | "processing" | "uploading" | "done" | "error";
   progress: number | null;
   mediaId: string | null;
+  /**
+   * Server URL of the uploaded file, set when the upload completes. Unlike
+   * `previewUrl` (a blob URL revoked on editor reset) it stays valid, so
+   * draft restore can rehydrate the attachment after the dialog closed.
+   */
+  remoteUrl: string | null;
   alt: string;
   error: string | null;
   /** Text content preview for text files (first ~100 chars) */
@@ -76,6 +82,23 @@ export interface DraftItem {
   }[];
 }
 
+/**
+ * Snapshot of a media attachment whose upload completed. Stored in the local
+ * draft (and passed by the bridge on failure restore) so uploaded images
+ * survive a failed publish or a page reload — the bytes are already on the
+ * server, only the reference needs restoring.
+ */
+export interface LocalDraftMedia {
+  clientId: string;
+  mediaId: string;
+  url: string;
+  mimeType: string;
+  name?: string;
+  alt?: string;
+  summary?: string | null;
+  chars?: number | null;
+}
+
 export interface LocalDraft {
   format: ComposeFormat;
   title: string;
@@ -99,6 +122,7 @@ export interface LocalDraft {
     summary: string;
   }>;
   attachmentOrder?: string[];
+  mediaAttachments?: LocalDraftMedia[];
   /** Present when the draft is a multi-post thread */
   threadItems?: Array<{
     format: ComposeFormat;
@@ -119,6 +143,7 @@ export interface LocalDraft {
       summary: string;
     }>;
     attachmentOrder?: string[];
+    mediaAttachments?: LocalDraftMedia[];
   }>;
   savedAt: number;
 }

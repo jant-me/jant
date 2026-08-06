@@ -481,20 +481,6 @@ svg[stroke-width].icon-fine {
     }
   }
 
-  .toast-copy {
-    @apply shrink-0 translate-y-0.5 cursor-pointer rounded-sm p-0 border-0 bg-transparent;
-    color: var(--color-muted-foreground);
-    transition: color 0.15s;
-
-    &:hover {
-      color: var(--color-foreground);
-    }
-
-    > svg {
-      @apply size-3.5;
-    }
-  }
-
   .toast-out {
     animation: toast-out 0.3s ease-in forwards;
   }
