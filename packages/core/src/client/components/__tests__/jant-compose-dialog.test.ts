@@ -2155,6 +2155,152 @@ describe("JantComposeDialog", () => {
     expect(el._collectionIds).toEqual(["col-2", "col-1"]);
   });
 
+  const NOTE_TITLE_KEY = "jant:compose-note-title";
+
+  function titleToggle(el: JantComposeDialog, index = 0): HTMLButtonElement {
+    return requireElement(
+      el.querySelectorAll<HTMLButtonElement>(
+        '.compose-tool-btn[title="Title"]',
+      )[index] ?? null,
+      "expected title toggle",
+    );
+  }
+
+  it("remembers a note's title toggle for the next new post", async () => {
+    const el = await createElement();
+    await el.openNew({ restoreDraft: false });
+    await flushUpdates(el);
+
+    expect(el.querySelector(".compose-note-title")).not.toBeNull();
+
+    titleToggle(el).click();
+    await flushUpdates(el);
+
+    expect(globalThis.localStorage.getItem(NOTE_TITLE_KEY)).toBe("0");
+    expect(el.querySelector(".compose-note-title")).toBeNull();
+
+    await el.openNew({ restoreDraft: false });
+    await flushUpdates(el);
+
+    expect(el.querySelector(".compose-note-title")).toBeNull();
+
+    titleToggle(el).click();
+    await flushUpdates(el);
+
+    expect(globalThis.localStorage.getItem(NOTE_TITLE_KEY)).toBe("1");
+
+    await el.openNew({ restoreDraft: false });
+    await flushUpdates(el);
+
+    expect(el.querySelector(".compose-note-title")).not.toBeNull();
+  });
+
+  it("opens a fresh composer without the title field when it was last turned off", async () => {
+    globalThis.localStorage.setItem(NOTE_TITLE_KEY, "0");
+
+    const el = await createElement();
+
+    expect(el.querySelector(".compose-note-title")).toBeNull();
+  });
+
+  it("does not remember the title toggle from an edit", async () => {
+    mockEditPost({ format: "note", title: "Hello", body: null });
+
+    const el = await createElement();
+    await el.openEdit("pst_123");
+    await flushUpdates(el);
+
+    titleToggle(el).click();
+    await flushUpdates(el);
+
+    // Dropping this post's title says nothing about the next post's.
+    expect(globalThis.localStorage.getItem(NOTE_TITLE_KEY)).toBeNull();
+  });
+
+  it("does not remember the title toggle from a reply", async () => {
+    const el = await createElement();
+    await el.openReply("019ce8ce-d6d8-7fda-a5df-c2da2bef5ade", {
+      contentHtml: "<p>Parent</p>",
+      dateText: "Mar 14",
+    });
+    await flushUpdates(el);
+
+    titleToggle(el).click();
+    await flushUpdates(el);
+
+    expect(el.querySelector(".compose-note-title")).not.toBeNull();
+    expect(globalThis.localStorage.getItem(NOTE_TITLE_KEY)).toBeNull();
+  });
+
+  it("does not remember the title toggle from a thread post", async () => {
+    const el = await createElement();
+    (el as unknown as { _addThreadItem: () => void })._addThreadItem();
+    await flushUpdates(el);
+
+    titleToggle(el).click();
+    await flushUpdates(el);
+
+    expect(globalThis.localStorage.getItem(NOTE_TITLE_KEY)).toBeNull();
+  });
+
+  it("does not remember a title the editor reveals on its own", async () => {
+    const el = await createElement();
+    await el.openNew({ restoreDraft: false });
+    await flushUpdates(el);
+
+    const editor = requireElement(
+      el.querySelector<JantComposeEditor>("jant-compose-editor"),
+      "expected compose editor",
+    );
+    // The fullscreen and H1-promotion paths land here. Neither is the author
+    // stating a habit, so neither writes one down.
+    editor.setEditorState(null, "Promoted", true);
+    await flushUpdates(el);
+
+    expect(el.querySelector(".compose-note-title")).not.toBeNull();
+    expect(globalThis.localStorage.getItem(NOTE_TITLE_KEY)).toBeNull();
+  });
+
+  it("lets a restored draft's title state win over the remembered default", async () => {
+    globalThis.localStorage.setItem(NOTE_TITLE_KEY, "0");
+    globalThis.localStorage.setItem(
+      "jant:compose-draft",
+      JSON.stringify({
+        format: "note",
+        title: "Draft title",
+        showTitle: true,
+        bodyJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Draft body" }],
+            },
+          ],
+        },
+        url: "",
+        quoteText: "",
+        quoteAuthor: "",
+        slug: "",
+        visibility: "public",
+        rating: 0,
+        showRating: false,
+        collectionIds: [],
+        attachedTexts: [],
+        attachmentOrder: [],
+        savedAt: Date.now(),
+      }),
+    );
+
+    const el = await createElement();
+    await el.openNew();
+    await flushUpdates(el);
+
+    expect(
+      el.querySelector<HTMLInputElement>(".compose-note-title")?.value,
+    ).toBe("Draft title");
+  });
+
   it("includes a custom slug from the publish settings panel in the submit payload", async () => {
     mockSlugApi((url) => {
       if (url.searchParams.get("mode") === "suggest") {

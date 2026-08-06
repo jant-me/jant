@@ -566,6 +566,38 @@ export class JantComposeDialog extends LitElement {
     }
   }
 
+  /**
+   * Whether a note's title field starts visible, remembered per browser.
+   * Titling notes is a habit rather than a per-post decision, so the last
+   * deliberate answer carries over. One key, not one per collection: where the
+   * note was started says nothing about whether it wants a name.
+   */
+  private static _NOTE_TITLE_KEY = "jant:compose-note-title";
+
+  /** Defaults to on, so a browser with nothing stored behaves as it always has. */
+  private static _getNoteTitleDefault(): boolean {
+    try {
+      return (
+        globalThis.localStorage.getItem(JantComposeDialog._NOTE_TITLE_KEY) !==
+        "0"
+      );
+    } catch {
+      // localStorage unavailable
+      return true;
+    }
+  }
+
+  private static _setNoteTitleDefault(show: boolean) {
+    try {
+      globalThis.localStorage.setItem(
+        JantComposeDialog._NOTE_TITLE_KEY,
+        show ? "1" : "0",
+      );
+    } catch {
+      // localStorage unavailable
+    }
+  }
+
   static properties = {
     collections: { type: Array },
     labels: { type: Object },
@@ -1009,6 +1041,12 @@ export class JantComposeDialog extends LitElement {
 
   async openNew(options?: ComposeOpenOptions) {
     this.reset();
+
+    // `reset()` seeds the toggle from `titleByDefault`, which Lit only refreshes
+    // on the next render — after a reply, that value is still the reply's. Say
+    // it outright here. A restored draft overwrites it below with its own
+    // answer, which is right: that one belongs to the draft, not to the habit.
+    this._editor?.setTitleDefault(JantComposeDialog._getNoteTitleDefault());
 
     if (options?.restoreDraft !== false) {
       await this.restoreLocalDraft();
@@ -2243,6 +2281,10 @@ export class JantComposeDialog extends LitElement {
       "jant:compose-content-changed",
       this._onContentChanged,
     );
+    this.addEventListener(
+      "jant:title-toggle",
+      this._handleTitleToggle as EventListener,
+    );
     this.addEventListener("jant:file-picker-open", this._handleFilePickerOpen);
     this.addEventListener(
       "jant:file-picker-close",
@@ -2299,6 +2341,10 @@ export class JantComposeDialog extends LitElement {
     this.removeEventListener(
       "jant:compose-content-changed",
       this._onContentChanged,
+    );
+    this.removeEventListener(
+      "jant:title-toggle",
+      this._handleTitleToggle as EventListener,
     );
     this.removeEventListener(
       "jant:file-picker-open",
@@ -3080,6 +3126,18 @@ export class JantComposeDialog extends LitElement {
     if (!this._draftSourceId) {
       this._scheduleDraftSave();
     }
+  };
+
+  /**
+   * Remember the note title toggle for the next new note. Same guard as
+   * `_setVisibility`: an edit, a loaded draft, or a reply answers for that one
+   * post, not for how this author writes. Thread rows are excluded too — the
+   * toggle there answers for a position in a thread.
+   */
+  private _handleTitleToggle = (e: CustomEvent<{ showTitle: boolean }>) => {
+    if (this._editPostId || this._draftSourceId || this._replyToId) return;
+    if ((e.target as JantComposeEditor | null)?.threadItem) return;
+    JantComposeDialog._setNoteTitleDefault(e.detail.showTitle);
   };
 
   private _cancelDraftSaveTimer() {
@@ -6027,7 +6085,7 @@ export class JantComposeDialog extends LitElement {
       .labels=${this.labels}
       .uploadMaxFileSize=${this.uploadMaxFileSize}
       .inlineFormat=${isReply}
-      .titleByDefault=${!isReply}
+      .titleByDefault=${!isReply && JantComposeDialog._getNoteTitleDefault()}
       .positionLabel=${this._positionLabel(0)}
       .badgeLabel=${this._editPostId ? this.labels.editing : ""}
       .headerExtra=${html`${this._renderPostMetaControl(0)}

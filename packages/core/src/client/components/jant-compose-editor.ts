@@ -223,8 +223,9 @@ export class JantComposeEditor extends LitElement {
    * Whether a note's title field starts visible. A post that opens a thread is
    * usually the one worth naming, so it defaults on there; a reply or a
    * continuation post carries the thread's title already, so it defaults off.
-   * Either way the `T` tool overrides it, and a post that arrives with a title
-   * always shows the field.
+   * On a new single post the owner narrows it further with the author's own
+   * remembered answer. Either way the `T` tool overrides it, and a post that
+   * arrives with a title always shows the field.
    */
   declare titleByDefault: boolean;
   /**
@@ -805,6 +806,23 @@ export class JantComposeEditor extends LitElement {
           quoteAuthor: "",
         };
     }
+  }
+
+  /**
+   * Set the title toggle's default and apply it now.
+   *
+   * `titleByDefault` alone only takes effect on the first update or on
+   * `reset()`, and an owner that resets before Lit re-renders would seed from
+   * the previous session's value. An owner that knows the default up front
+   * calls this instead.
+   *
+   * @param show - Whether a note's title field starts visible
+   * @example
+   * editor.setTitleDefault(false); // next new note opens without a title field
+   */
+  setTitleDefault(show: boolean) {
+    this.titleByDefault = show;
+    this._showTitle = show;
   }
 
   reset() {
@@ -2662,6 +2680,16 @@ export class JantComposeEditor extends LitElement {
                 @click=${() => {
                   const willShow = !this._showTitle;
                   this._showTitle = willShow;
+                  // Only this deliberate click is worth remembering. The other
+                  // writers of `_showTitle` — H1 promotion, format conversion,
+                  // fullscreen reveal — are the program acting on one post, not
+                  // the author stating a habit, so they stay silent.
+                  this.dispatchEvent(
+                    new CustomEvent("jant:title-toggle", {
+                      bubbles: true,
+                      detail: { showTitle: willShow },
+                    }),
+                  );
                   if (willShow) {
                     this.updateComplete.then(() => {
                       this.querySelector<HTMLInputElement>(
