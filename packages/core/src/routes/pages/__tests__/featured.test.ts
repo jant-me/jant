@@ -39,12 +39,16 @@ describe("Featured Page - Data Logic", () => {
       bodyMarkdown: "Normal post",
       status: "published",
     });
-    await postService.create({
+    // Featuring an unpublished post is refused outright, so the only way a
+    // draft carries the flag is by being unpublished after the fact — the
+    // case this filter still has to catch.
+    const unpublished = await postService.create({
       format: "note",
       bodyMarkdown: "Draft featured",
       featured: true,
-      status: "draft",
+      status: "published",
     });
+    await postService.update(unpublished.id, { status: "draft" });
 
     const posts = await postService.list({
       featured: true,

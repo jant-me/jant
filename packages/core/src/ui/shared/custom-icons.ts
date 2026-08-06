@@ -106,6 +106,11 @@ export const CUSTOM_SYMBOLS: Record<string, CustomSymbol> = {
     viewBox: "0 0 24 24",
     inner: `<line ${STROKE_POST_BADGE} x1="12" x2="12" y1="17" y2="22" /><path ${STROKE_POST_BADGE} d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />`,
   },
+  // Post status badge: draft (lucide pencil-line, thin 1.75 stroke).
+  "post-status-draft": {
+    viewBox: "0 0 24 24",
+    inner: `<path ${STROKE_POST_BADGE} d="M12 20h9" /><path ${STROKE_POST_BADGE} d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" />`,
+  },
   // Post status badge: private (lucide eye-off, thin 1.75 stroke).
   "post-status-private": {
     viewBox: "0 0 24 24",

@@ -527,6 +527,11 @@ msgstr "Confirm Password"
 msgid "Continue →"
 msgstr "Continue →"
 
+#. @context: Tooltip on the draft badge, which opens the editor
+#: src/ui/feed/PostStatusBadges.tsx
+msgid "Continue writing this draft"
+msgstr "Continue writing this draft"
+
 #. @context: Controls section heading on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Controls"
@@ -765,6 +770,11 @@ msgstr "Download SVG"
 #: src/ui/pages/BrandPage.tsx
 msgid "Download the official Jant logo, icons, and preview files."
 msgstr "Download the official Jant logo, icons, and preview files."
+
+#. @context: Post status badge for an unpublished draft, shown to the author only
+#: src/ui/feed/PostStatusBadges.tsx
+msgid "Draft"
+msgstr "Draft"
 
 #. @context: Accessible label for a draft item's more-actions button
 #: src/ui/compose/ComposeDialog.tsx
@@ -1155,6 +1165,11 @@ msgstr "Label"
 #: src/ui/shared/CollectionsManager.tsx
 msgid "Label (optional)"
 msgstr "Label (optional)"
+
+#. @context: Tooltip text for the timestamp on an unpublished draft
+#: src/ui/shared/PostFooter.tsx
+msgid "Last edited on {date} at {time}"
+msgstr "Last edited on {date} at {time}"
 
 #. @context: Active browse tab label on sample page
 #. @context: Browser page title for the latest feed
@@ -1550,6 +1565,11 @@ msgstr ""
 msgid "Paste a URL..."
 msgstr "Paste a URL..."
 
+#. @context: Post status badge for a pinned post
+#: src/ui/feed/PostStatusBadges.tsx
+msgid "Pinned"
+msgstr "Pinned"
+
 #. @context: Compose button - publish post
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Post"
@@ -1613,7 +1633,9 @@ msgstr "Primary logo files"
 
 #. @context: Archive visibility filter - private posts
 #. @context: Compose publish settings visibility option
+#. @context: Post status badge for a private post
 #: src/ui/compose/ComposeDialog.tsx
+#: src/ui/feed/PostStatusBadges.tsx
 #: src/ui/pages/ArchivePage.tsx
 msgid "Private"
 msgstr "Private"

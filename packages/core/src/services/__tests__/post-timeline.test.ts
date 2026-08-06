@@ -400,7 +400,7 @@ describe("PostService - Timeline features", () => {
     });
   });
 
-  describe("getLastPostIdsByThread", () => {
+  describe("getThreadTailIds", () => {
     it("keeps independent root threads separate", async () => {
       const root1 = await postService.create({
         format: "note",
@@ -412,10 +412,7 @@ describe("PostService - Timeline features", () => {
         quoteText: "quoted",
       });
 
-      const result = await postService.getLastPostIdsByThread([
-        root1.id,
-        root2.id,
-      ]);
+      const result = await postService.getThreadTailIds([root1.id, root2.id]);
 
       expect(result.get(root1.id)).toBe(root1.id);
       expect(result.get(root2.id)).toBe(root2.id);
@@ -436,13 +433,56 @@ describe("PostService - Timeline features", () => {
         replyToId: root1.id,
       });
 
-      const result = await postService.getLastPostIdsByThread([
-        root1.id,
-        root2.id,
-      ]);
+      const result = await postService.getThreadTailIds([root1.id, root2.id]);
 
       expect(result.get(root1.id)).toBe(reply1.id);
       expect(result.get(root2.id)).toBe(root2.id);
+    });
+
+    it("skips a trailing draft by default", async () => {
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const reply = await postService.create({
+        format: "note",
+        bodyMarkdown: "published reply",
+        replyToId: root.id,
+      });
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "unfinished",
+        replyToId: reply.id,
+        status: "draft",
+      });
+
+      const result = await postService.getThreadTailIds([root.id]);
+
+      expect(result.get(root.id)).toBe(reply.id);
+    });
+
+    it("returns a trailing draft when drafts are included", async () => {
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const reply = await postService.create({
+        format: "note",
+        bodyMarkdown: "published reply",
+        replyToId: root.id,
+      });
+      const draft = await postService.create({
+        format: "note",
+        bodyMarkdown: "unfinished",
+        replyToId: reply.id,
+        status: "draft",
+      });
+
+      const result = await postService.getThreadTailIds([root.id], {
+        includeDrafts: true,
+      });
+
+      expect(result.get(root.id)).toBe(draft.id);
     });
   });
 

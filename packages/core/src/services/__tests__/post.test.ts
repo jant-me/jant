@@ -2004,6 +2004,143 @@ describe("PostService", () => {
       );
     });
 
+    it("refuses to feature an unpublished post", async () => {
+      await expect(
+        postService.create({
+          format: "note",
+          bodyMarkdown: "not ready",
+          status: "draft",
+          featured: true,
+        }),
+      ).rejects.toThrow("Publish this post before featuring it.");
+
+      const draft = await postService.create({
+        format: "note",
+        bodyMarkdown: "not ready",
+        status: "draft",
+      });
+      await expect(
+        postService.update(draft.id, { featured: true }),
+      ).rejects.toThrow("Publish this post before featuring it.");
+    });
+
+    it("keeps a featured flag through a trip back to draft", async () => {
+      const post = await postService.create({
+        format: "note",
+        bodyMarkdown: "published",
+        featured: true,
+      });
+
+      const unpublished = await postService.update(post.id, {
+        status: "draft",
+      });
+
+      expect(unpublished?.status).toBe("draft");
+      expect(unpublished?.featuredAt).not.toBeNull();
+    });
+
+    it("publishes a reply whose parent is still a draft", async () => {
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const draft = await postService.create({
+        format: "note",
+        bodyMarkdown: "unfinished",
+        replyToId: root.id,
+        status: "draft",
+      });
+
+      const next = await postService.create({
+        format: "note",
+        bodyMarkdown: "continues past the draft",
+        replyToId: draft.id,
+      });
+
+      // Readers never saw the draft, so publishing past it reads as
+      // continuous. The draft stays parked until it is dealt with on its own.
+      expect(next.status).toBe("published");
+      expect(draft.status).toBe("draft");
+    });
+
+    it("publishes only the post asked for, leaving other drafts alone", async () => {
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const first = await postService.create({
+        format: "note",
+        bodyMarkdown: "first draft",
+        replyToId: root.id,
+        status: "draft",
+      });
+      const second = await postService.create({
+        format: "note",
+        bodyMarkdown: "second draft",
+        replyToId: first.id,
+        status: "draft",
+      });
+
+      await postService.update(second.id, { status: "published" });
+
+      const statusById = new Map(
+        (await postService.getThread(root.id)).map((p) => [p.id, p.status]),
+      );
+      expect(statusById.get(first.id)).toBe("draft");
+      expect(statusById.get(second.id)).toBe("published");
+    });
+
+    it("keeps a draft between two published replies", async () => {
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const middle = await postService.create({
+        format: "note",
+        bodyMarkdown: "middle",
+        replyToId: root.id,
+      });
+      const last = await postService.create({
+        format: "note",
+        bodyMarkdown: "last",
+        replyToId: middle.id,
+      });
+
+      await postService.update(middle.id, { status: "draft" });
+
+      const statusById = new Map(
+        (await postService.getThread(root.id)).map((p) => [p.id, p.status]),
+      );
+      // Unpublishing one post touches only that post. The public thread simply
+      // skips it; nothing else in the chain changes.
+      expect(statusById.get(root.id)).toBe("published");
+      expect(statusById.get(middle.id)).toBe("draft");
+      expect(statusById.get(last.id)).toBe("published");
+    });
+
+    it("names the draft when an unpublished reply holds the thread tail", async () => {
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "unfinished",
+        replyToId: root.id,
+        status: "draft",
+      });
+
+      await expect(
+        postService.create({
+          format: "note",
+          bodyMarkdown: "reply",
+          replyToId: root.id,
+        }),
+      ).rejects.toThrow(
+        "This thread ends with an unpublished draft. Finish that draft or discard it, then reply.",
+      );
+    });
+
     it("inherits status from root post", async () => {
       const root = await postService.create({
         format: "note",

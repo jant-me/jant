@@ -9,7 +9,7 @@ import type { Context } from "hono";
 import type { Bindings, Post, PostView } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
 import { buildMediaMap } from "./media-helpers.js";
-import { createMediaContext, toPostView } from "./view.js";
+import { createMediaContext, resolveDraftTailId, toPostView } from "./view.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -82,7 +82,12 @@ function resolvePostSocialImage(
 interface PostDisplayOptions {
   isAuthenticated?: boolean;
   allowDraft?: boolean;
-  /** Include draft members when assembling a thread for an authenticated preview. */
+  /**
+   * Force draft members into the assembled thread. The author already sees
+   * them whenever they are signed in; this only covers the draft-preview
+   * route, where the request is authenticated but `isAuthenticated` has
+   * already been forced to `true` for private-post access.
+   */
   includeDraftThread?: boolean;
 }
 
@@ -120,11 +125,16 @@ export async function assemblePostCardView(
   }
 
   const mediaCtx = createMediaContext(c.var.appConfig);
-  const [rawMediaMap, collectionsMap, lastPostMap, aliasesMap] =
+  const [rawMediaMap, collectionsMap, lastPostMap, draftTailMap, aliasesMap] =
     await Promise.all([
       c.var.services.media.getByPostIds([post.id]),
       c.var.services.collections.getCollectionsByPostIds([post.id]),
-      c.var.services.posts.getLastPostIdsByThread([post.threadId]),
+      c.var.services.posts.getThreadTailIds([post.threadId]),
+      c.var.isAuthenticated
+        ? c.var.services.posts.getThreadTailIds([post.threadId], {
+            includeDrafts: true,
+          })
+        : Promise.resolve(new Map<string, string>()),
       c.var.services.paths.getPostAliases([post.id]),
     ]);
 
@@ -143,6 +153,13 @@ export async function assemblePostCardView(
     lastPostMap.get(post.threadId) === post.id,
     aliasesMap.get(post.id)?.[0],
   );
+
+  const draftTailId = resolveDraftTailId(
+    post.threadId,
+    lastPostMap,
+    draftTailMap,
+  );
+  if (draftTailId) view.draftTailId = draftTailId;
 
   return view;
 }
@@ -170,12 +187,19 @@ export async function assemblePostPageDisplay(
   }
 
   const mediaCtx = createMediaContext(c.var.appConfig);
+  // Drafts render for the author so the thread they see ends where the server
+  // thinks it ends — otherwise a trailing draft silently blocks replies while
+  // staying invisible. Read the real auth state rather than the option, which
+  // callers force to `true` to bypass the private-post check.
+  const includeDrafts = Boolean(
+    options?.includeDraftThread || c.var.isAuthenticated,
+  );
   const threadPosts = (
     await c.var.services.posts.getThread(post.threadId)
   ).filter(
     (threadPost) =>
       threadPost.status === "published" ||
-      (options?.includeDraftThread && threadPost.status === "draft"),
+      (includeDrafts && threadPost.status === "draft"),
   );
 
   const allPostIds =
@@ -219,13 +243,22 @@ export async function assemblePostPageDisplay(
         )
       : undefined;
 
-  const socialImage = resolvePostSocialImage(postView, threadPostViews);
+  // Page metadata describes what a reader gets, so it never draws on drafts:
+  // an unpublished reply must not supply the og:image or bump the modified
+  // time. Falls back to the post itself when nothing in the thread is
+  // published (the draft-preview route, which is noindex anyway).
+  const publishedViews = threadPostViews?.filter(
+    (view) => view.status === "published",
+  );
+  const metaViews = publishedViews?.length ? publishedViews : [postView];
 
-  const rootView = threadPostViews?.[0] ?? postView;
-  const allViews = threadPostViews ?? [postView];
+  const socialImage = resolvePostSocialImage(postView, metaViews);
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- metaViews is never empty
+  const rootView = metaViews[0]!;
   // ISO 8601 strings from toISOString() are all UTC and zero-padded, so
   // lexical comparison matches chronological order.
-  const articleModifiedTime = allViews
+  const articleModifiedTime = metaViews
     .map((p) => p.updatedAt)
     .reduce((latest, t) => (t > latest ? t : latest));
 

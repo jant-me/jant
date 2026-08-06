@@ -2027,6 +2027,62 @@ describe("JantComposeDialog", () => {
     ).toBe("Reply quietly");
   });
 
+  it("drops the quiet reply switch when editing an existing reply", async () => {
+    const parentId = "019ce8ce-d6d8-7fda-a5df-c2da2bef5ade";
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      const json = url.includes(parentId)
+        ? { id: parentId, bodyHtml: "<p>Parent</p>", format: "note" }
+        : {
+            id: "pst_123",
+            format: "note",
+            title: null,
+            body: null,
+            replyToId: parentId,
+          };
+      return Promise.resolve(
+        new Response(JSON.stringify(json), {
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    });
+
+    const el = await createElement();
+    await el.openEdit("pst_123");
+    await flushUpdates(el);
+
+    // Saving an edit goes through the update path, which has no create-time
+    // thread bump to skip — so the switch is gone rather than dead.
+    expect(el.querySelector(".compose-quick-actions-row")).toBeNull();
+
+    el._showPublishPanel = true;
+    await flushUpdates(el);
+    expect(
+      Array.from(el.querySelectorAll(".compose-sheet-title")).some(
+        (row) => row.textContent?.trim() === labels.quietReplyLabel,
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps the quiet reply switch on a thread draft, which saves by recreating", async () => {
+    const el = await createElement();
+    await el.openReply("019ce8ce-d6d8-7fda-a5df-c2da2bef5ade", {
+      contentHtml: "<p>Parent</p>",
+      dateText: "Mar 14",
+    });
+    (el as unknown as { _addThreadItem: () => void })._addThreadItem();
+    // Re-editing a saved thread draft deletes and recreates every post, so the
+    // create-time flag still lands.
+    el._draftSourceId = "pst_draft";
+    await flushUpdates(el);
+
+    expect(
+      el.querySelectorAll(
+        ".compose-quick-actions-row .compose-publish-quick-toggle-input",
+      ),
+    ).toHaveLength(1);
+  });
+
   it("opens a new post with the requested collection and keeps the last visibility until refresh", async () => {
     const el = await createElement();
 

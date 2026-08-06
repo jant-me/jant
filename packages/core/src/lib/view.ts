@@ -407,6 +407,34 @@ export function toPostView(
 }
 
 /**
+ * Resolves the unpublished draft sitting at the end of a Thread, if any.
+ *
+ * Both maps come from the same ordering over the same rows, differing only in
+ * whether drafts are eligible — so when they disagree, the draft-inclusive
+ * answer is by definition unpublished. No status lookup needed.
+ *
+ * @param threadId - Thread root ID to look up
+ * @param publishedTails - Tails from `getThreadTailIds(ids)`
+ * @param draftInclusiveTails - Tails from `getThreadTailIds(ids, { includeDrafts: true })`
+ * @returns The trailing draft's Post ID, or undefined when the Thread ends
+ *   on a published Post
+ * @example
+ * ```ts
+ * const draftTailId = resolveDraftTailId(post.threadId, tails, draftTails);
+ * if (draftTailId) view.draftTailId = draftTailId;
+ * ```
+ */
+export function resolveDraftTailId(
+  threadId: string,
+  publishedTails: Map<string, string>,
+  draftInclusiveTails: Map<string, string>,
+): string | undefined {
+  const withDrafts = draftInclusiveTails.get(threadId);
+  if (!withDrafts) return undefined;
+  return withDrafts === publishedTails.get(threadId) ? undefined : withDrafts;
+}
+
+/**
  * Batch converts PostWithMedia[] to PostView[].
  *
  * @param posts - Posts with media attachments

@@ -1,4 +1,5 @@
 import type { JantComposeDialog } from "./components/jant-compose-dialog.js";
+import { showToast } from "./toast.js";
 
 interface ReplyToData {
   contentHtml: string;
@@ -141,6 +142,18 @@ export async function openReplyForArticle(article: HTMLElement): Promise<void> {
 
   const dialog = getComposeDialog();
   if (!dialog) return;
+
+  // Only surfaces that hide the trailing draft redirect to it — the feed hands
+  // its ID down on the last published post. Where the draft is rendered the
+  // author can already see it, so Reply keeps its ordinary meaning: continue
+  // the thread after this post. (`create` keeps that continuation a draft, so
+  // the chain never publishes past an unpublished post.)
+  const hiddenDraftTailId = article.dataset.threadDraftTailId;
+  if (hiddenDraftTailId) {
+    showToast("Picking up the unfinished draft at the end of this thread.");
+    await dialog.openEdit(hiddenDraftTailId);
+    return;
+  }
 
   const threadRootId = article.dataset.threadRootId ?? postId;
   await dialog.openReply(

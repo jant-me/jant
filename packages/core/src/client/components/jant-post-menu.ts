@@ -16,6 +16,7 @@ import {
   FEATURED_SPARKLE_PATH,
 } from "../../lib/featured-icons.js";
 import { showConfirmDialog } from "../confirm.js";
+import { refreshArticleView } from "../post-refresh.js";
 import { showToast } from "../toast.js";
 import { publicPath } from "../runtime-paths.js";
 import {
@@ -33,6 +34,7 @@ interface PostMenuData {
   featured: boolean;
   visibility: string;
   isReply: boolean;
+  isDraft: boolean;
 }
 
 interface CollectionItem {
@@ -104,6 +106,7 @@ function readPostMenuData(article: HTMLElement): PostMenuData | null {
     featured: article.hasAttribute("data-post-featured"),
     visibility: article.dataset.postVisibility ?? "public",
     isReply: threadId !== id || article.hasAttribute("data-post-reply"),
+    isDraft: article.hasAttribute("data-post-draft"),
   };
 }
 
@@ -529,6 +532,36 @@ export class JantPostMenu extends LitElement {
     }
   }
 
+  async #publish() {
+    if (!this._data) return;
+    const postId = this._data.id;
+    const trigger = this._triggerEl;
+    this.#close({ restoreFocus: false });
+
+    const article = document.querySelector<HTMLElement>(
+      `article[data-post-id="${postId}"]`,
+    );
+
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "published" }),
+      });
+      if (!res.ok) throw new Error();
+
+      showToast("Draft published.");
+      // The badge, the timestamp, and any drafts published alongside this one
+      // all change at once — re-render the surface rather than patching it.
+      if (!article || !(await refreshArticleView(article))) {
+        globalThis.location.reload();
+      }
+    } catch {
+      showToast("Could not publish the draft. Try again.", "error");
+      trigger?.focus();
+    }
+  }
+
   #setVisibility(newVisibility: string) {
     if (!this._data) return;
     const postId = this._data.id;
@@ -711,8 +744,10 @@ export class JantPostMenu extends LitElement {
     this.#close({ restoreFocus: false });
 
     const confirmed = await showConfirmDialog({
-      message: "Delete this post permanently? This can't be undone.",
-      confirmLabel: "Delete",
+      message: this._data.isDraft
+        ? "Discard this draft permanently? This can't be undone."
+        : "Delete this post permanently? This can't be undone.",
+      confirmLabel: this._data.isDraft ? "Discard" : "Delete",
       cancelLabel: "Cancel",
       tone: "danger",
     });
@@ -991,6 +1026,21 @@ export class JantPostMenu extends LitElement {
   }
 
   // --- Icons (inline SVG) ---
+
+  #iconPublish() {
+    return html`<svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.75"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M12 19V5" />
+      <path d="m5 12 7-7 7 7" />
+    </svg>`;
+  }
 
   #iconEdit() {
     return html`<svg
@@ -1501,6 +1551,21 @@ export class JantPostMenu extends LitElement {
               <span class="post-menu-item-trailing">${this.#iconEdit()}</span>
             </button>
 
+            ${this._data.isDraft
+              ? html`
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="post-menu-item"
+                    @click=${() => this.#publish()}
+                  >
+                    <span class="post-menu-item-label">Publish</span>
+                    <span class="post-menu-item-trailing"
+                      >${this.#iconPublish()}</span
+                    >
+                  </button>
+                `
+              : nothing}
             ${this._data.isReply
               ? nothing
               : html`
@@ -1539,24 +1604,27 @@ export class JantPostMenu extends LitElement {
           </div>
 
           <div class="post-menu-section">
-            <button
-              type="button"
-              role="menuitem"
-              class="post-menu-item"
-              @click=${() => this.#setFeatured(!isFeatured)}
-            >
-              <span class="post-menu-item-label"
-                >${isFeatured
-                  ? "Remove from Featured"
-                  : "Add to Featured"}</span
-              >
-              <span class="post-menu-item-trailing"
-                >${isFeatured
-                  ? this.#iconFeaturedOff()
-                  : this.#iconFeatured()}</span
-              >
-            </button>
-
+            ${this._data.isDraft
+              ? nothing
+              : html`
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="post-menu-item"
+                    @click=${() => this.#setFeatured(!isFeatured)}
+                  >
+                    <span class="post-menu-item-label"
+                      >${isFeatured
+                        ? "Remove from Featured"
+                        : "Add to Featured"}</span
+                    >
+                    <span class="post-menu-item-trailing"
+                      >${isFeatured
+                        ? this.#iconFeaturedOff()
+                        : this.#iconFeatured()}</span
+                    >
+                  </button>
+                `}
             ${this._data.isReply
               ? nothing
               : html`
@@ -1604,7 +1672,9 @@ export class JantPostMenu extends LitElement {
               class="post-menu-item post-menu-item-danger"
               @click=${() => this.#delete()}
             >
-              <span class="post-menu-item-label">Delete</span>
+              <span class="post-menu-item-label"
+                >${this._data.isDraft ? "Discard" : "Delete"}</span
+              >
               <span class="post-menu-item-trailing">${this.#iconTrash()}</span>
             </button>
           </div>

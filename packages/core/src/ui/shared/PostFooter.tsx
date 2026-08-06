@@ -97,7 +97,11 @@ export const CompactCollectionTags: FC<{
 interface PostPublishedLinkProps {
   post: Pick<
     PostView,
-    "permalink" | "publishedAt" | "publishedAtFormatted" | "publishedAtTime"
+    | "permalink"
+    | "publishedAt"
+    | "publishedAtFormatted"
+    | "publishedAtTime"
+    | "status"
   >;
   className: string;
 }
@@ -107,17 +111,33 @@ export const PostPublishedLink: FC<PostPublishedLinkProps> = ({
   className,
 }) => {
   const { i18n } = useLingui();
-  const publishedLabel = i18n._(
-    msg({
-      message: "Published on {date} at {time}",
-      comment:
-        "@context: Tooltip text for the published timestamp in post metadata",
-    }),
-    {
-      date: post.publishedAtFormatted,
-      time: post.publishedAtTime,
-    },
-  );
+  // A draft has never been published; `publishedAt` is standing in for its
+  // last edit. The link still matters (it is how you open the post), so keep
+  // it and tell the truth about what the date means.
+  const publishedLabel =
+    post.status === "draft"
+      ? i18n._(
+          msg({
+            message: "Last edited on {date} at {time}",
+            comment:
+              "@context: Tooltip text for the timestamp on an unpublished draft",
+          }),
+          {
+            date: post.publishedAtFormatted,
+            time: post.publishedAtTime,
+          },
+        )
+      : i18n._(
+          msg({
+            message: "Published on {date} at {time}",
+            comment:
+              "@context: Tooltip text for the published timestamp in post metadata",
+          }),
+          {
+            date: post.publishedAtFormatted,
+            time: post.publishedAtTime,
+          },
+        );
 
   return (
     <a href={post.permalink} class={className}>
@@ -180,6 +200,9 @@ export const PostFooter: FC<PostFooterProps> = ({ post, detail, display }) => {
         );
   const safeExternalUrl =
     post.format === "link" && post.url ? sanitizeUrl(post.url) : "";
+  // Drafts get an ordinary footer — the Draft badge above already says what
+  // they are, and their lifecycle actions live in the post menu next to Edit
+  // and Delete rather than in a bespoke button row.
   const showTimestamp = !display?.hideTimestamp;
   const hideActions = !!display?.hideActions;
   const hideReply = !!display?.hideReply;

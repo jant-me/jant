@@ -25,8 +25,12 @@ import {
   replaceWithAutoClose,
   queueToastForNextPage,
 } from "./toast.js";
-import { openReplyForArticle } from "./compose-launch.js";
-import { hydratePartial } from "./hydrate-partial.js";
+import { getComposeDialog, openReplyForArticle } from "./compose-launch.js";
+import {
+  refreshPostCardView,
+  refreshPostPageView,
+  refreshTimelineThreadView,
+} from "./post-refresh.js";
 import { getJsonString, readJsonObject } from "./json.js";
 import { uploadViaSession } from "./upload-session.js";
 import { publicPath } from "./runtime-paths.js";
@@ -64,104 +68,6 @@ function getComposeDialogFromEventTarget(
   return target instanceof globalThis.Element
     ? (target.closest("jant-compose-dialog") as JantComposeDialog | null)
     : null;
-}
-
-async function fetchPartialHtml(path: string): Promise<string | null> {
-  const res = await fetch(path, {
-    headers: { Accept: "text/html" },
-  });
-  if (!res.ok) return null;
-  return res.text();
-}
-
-async function refreshTimelineThreadView(
-  threadRootId: string,
-): Promise<boolean> {
-  try {
-    const timelineItem = document.querySelector<HTMLElement>(
-      `[data-timeline-item][data-thread-root-id="${threadRootId}"]`,
-    );
-    const content = timelineItem?.querySelector<HTMLElement>(
-      "[data-timeline-item-content]",
-    );
-    if (!content) return false;
-
-    const html = await fetchPartialHtml(
-      `/_/timeline-item/${encodeURIComponent(threadRootId)}`,
-    );
-    if (!html) return false;
-
-    content.innerHTML = html;
-    // Swapped-in markup carries interactions whose per-element setup only runs
-    // on DOMContentLoaded (thread "Show more" toggle, feed video autoplay, audio
-    // waveform); re-initialize them or they stay inert until a full reload.
-    hydratePartial(content);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function refreshPostCardView(postId: string): Promise<boolean> {
-  try {
-    const timelineItem = document
-      .querySelector<HTMLElement>(`article[data-post-id="${postId}"]`)
-      ?.closest<HTMLElement>("[data-timeline-item]");
-    const html = await fetchPartialHtml(
-      `/_/post-card/${encodeURIComponent(postId)}`,
-    );
-    if (!html) return false;
-
-    if (timelineItem) {
-      const content = timelineItem.querySelector<HTMLElement>(
-        "[data-timeline-item-content]",
-      );
-      if (!content) return false;
-      content.innerHTML = html;
-      hydratePartial(content);
-      return true;
-    }
-
-    const article = document.querySelector<HTMLElement>(
-      `article[data-post-id="${postId}"]`,
-    );
-    if (!article) return false;
-
-    article.outerHTML = html;
-    // outerHTML detaches `article`; re-query the replacement to hydrate it.
-    const nextArticle = document.querySelector<HTMLElement>(
-      `article[data-post-id="${postId}"]`,
-    );
-    if (nextArticle) hydratePartial(nextArticle);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function refreshPostPageView(postId: string): Promise<boolean> {
-  try {
-    const container = document.querySelector<HTMLElement>(
-      `[data-post-view][data-post-view-id="${postId}"]`,
-    );
-    if (!container) return false;
-
-    const html = await fetchPartialHtml(
-      `/_/post-view/${encodeURIComponent(postId)}`,
-    );
-    if (!html) return false;
-
-    container.outerHTML = html;
-    // outerHTML detaches `container`; re-query the replacement to hydrate it
-    // (see refreshTimelineThreadView).
-    const next = document.querySelector<HTMLElement>(
-      `[data-post-view][data-post-view-id="${postId}"]`,
-    );
-    if (next) hydratePartial(next);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 async function refreshReplyTarget(
@@ -563,6 +469,25 @@ document.addEventListener("click", (e: MouseEvent) => {
   const article = trigger.closest<HTMLElement>("article[data-post]");
   if (!article) return;
   void openReplyForArticle(article);
+});
+
+// ── Draft badge → editor ────────────────────────────────────────────
+//
+// The badge on an inline draft doubles as its most likely next action. Publish
+// and Delete live in the post menu with every other post action.
+
+document.addEventListener("click", (e: MouseEvent) => {
+  const trigger = (e.target as HTMLElement).closest<HTMLElement>(
+    "[data-draft-continue]",
+  );
+  if (!trigger) return;
+
+  const postId =
+    trigger.dataset.postId ??
+    trigger.closest<HTMLElement>("article[data-post]")?.dataset.postId;
+  if (!postId) return;
+
+  void getComposeDialog()?.openEdit(postId);
 });
 
 // ── Submit handler ──────────────────────────────────────────────────

@@ -1464,7 +1464,10 @@ export class JantComposeDialog extends LitElement {
       collectionIds: isRoot && !this._replyToId ? [...this._collectionIds] : [],
       attachments: orderedAttachments,
       replyToId: isRoot ? (this._replyToId ?? undefined) : undefined,
-      quietReply: isRoot ? this._quietReply || undefined : undefined,
+      quietReply:
+        isRoot && this._canReplyQuietly()
+          ? this._quietReply || undefined
+          : undefined,
       replyThreadRootId: isRoot
         ? (this._replyThreadRootId ?? undefined)
         : undefined,
@@ -1537,7 +1540,9 @@ export class JantComposeDialog extends LitElement {
       editPostId: this._editPostId ?? this._draftSourceId ?? undefined,
       draftSourceId: this._draftSourceId ?? undefined,
       replyToId: this._replyToId ?? undefined,
-      quietReply: this._quietReply || undefined,
+      quietReply: this._canReplyQuietly()
+        ? this._quietReply || undefined
+        : undefined,
       replyThreadRootId: this._replyThreadRootId ?? undefined,
       replyRefreshKind: this._replyRefreshKind ?? undefined,
       replyRefreshId: this._replyRefreshId ?? undefined,
@@ -4900,8 +4905,22 @@ export class JantComposeDialog extends LitElement {
     `;
   }
 
+  /**
+   * Replying quietly is an instruction for the moment a reply is written: the
+   * server's only job is to skip the thread-activity bump it would otherwise
+   * do on create. Saving an existing post goes through the update path, which
+   * has no such bump to skip and no way to carry the intent — so the switch is
+   * not offered there rather than sitting dead. A thread draft is the one
+   * exception: saving it deletes and recreates every post, so the flag lands.
+   */
+  private _canReplyQuietly(): boolean {
+    if (!this._replyToId) return false;
+    const editsExistingPost = !!(this._editPostId || this._draftSourceId);
+    return !editsExistingPost || this._threadItems.length >= 2;
+  }
+
   private _renderQuietReplySection() {
-    if (!this._replyToId) return nothing;
+    if (!this._canReplyQuietly()) return nothing;
 
     return html`
       <label class="compose-sheet-row compose-sheet-row-switch">
@@ -5176,6 +5195,28 @@ export class JantComposeDialog extends LitElement {
       );
       (editors[index] ?? editors[0])?.focusInput();
     });
+  }
+
+  /**
+   * Whether the settings panel would have anything in it.
+   *
+   * Asks the row renderers instead of restating their conditions, so it cannot
+   * drift out of sync with what the panel actually shows — the same reason
+   * `_renderQuickActionsRow` inspects its children rather than recomputing
+   * them. Editing a thread reply empties every row (visibility belongs to the
+   * root, the draft rows only apply to unsaved posts), and an Options button
+   * that opens a blank sheet is worse than no button.
+   */
+  private _hasPublishPanelContent(): boolean {
+    if (!this._visibilityLocked) return true;
+    if (this._replyToId && this._renderQuietReplySection() !== nothing) {
+      return true;
+    }
+    return (
+      this._renderSaveDraftRow() !== nothing ||
+      this._renderDraftsRow() !== nothing ||
+      this._renderCloseComposeRow() !== nothing
+    );
   }
 
   /**
@@ -5480,33 +5521,35 @@ export class JantComposeDialog extends LitElement {
           <!-- Options sits past Publish as its own control rather than a
                chevron welded to it: a split button reads as one button, which
                is why nobody found the settings. -->
-          <button
-            type="button"
-            class=${classMap({
-              "compose-options-trigger": true,
-              "compose-options-trigger-open": this._showPublishPanel,
-            })}
-            ?disabled=${this._loading}
-            aria-haspopup="dialog"
-            aria-expanded=${this._showPublishPanel ? "true" : "false"}
-            aria-label=${this.labels.publishSettings}
-            title=${this.labels.publishSettings}
-            @click=${() => this._togglePublishPanel()}
-          >
-            <svg
-              class="compose-options-trigger-icon"
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              ${unsafeSVG(COMPOSE_PUBLISH_ACTION_ICONS.options)}
-            </svg>
-          </button>
+          ${this._hasPublishPanelContent()
+            ? html`<button
+                type="button"
+                class=${classMap({
+                  "compose-options-trigger": true,
+                  "compose-options-trigger-open": this._showPublishPanel,
+                })}
+                ?disabled=${this._loading}
+                aria-haspopup="dialog"
+                aria-expanded=${this._showPublishPanel ? "true" : "false"}
+                aria-label=${this.labels.publishSettings}
+                title=${this.labels.publishSettings}
+                @click=${() => this._togglePublishPanel()}
+              >
+                <svg
+                  class="compose-options-trigger-icon"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  ${unsafeSVG(COMPOSE_PUBLISH_ACTION_ICONS.options)}
+                </svg>
+              </button>`
+            : nothing}
           ${this._renderDesktopPublishPanel()}
         </div>
       </div>
@@ -5530,7 +5573,7 @@ export class JantComposeDialog extends LitElement {
   }
 
   private _renderQuietReplyQuickToggle() {
-    if (!this._replyToId) return nothing;
+    if (!this._canReplyQuietly()) return nothing;
     return html`
       <label class="compose-publish-quick-toggle">
         <input

@@ -102,6 +102,12 @@ export interface PostView {
   threadRootId?: string;
   /** Whether this post is the last (most recent) in its thread. Controls reply button visibility. */
   isLastInThread: boolean;
+  /**
+   * TypeID of an unpublished draft that already ends this thread, set only for
+   * the signed-in author on surfaces that do not render drafts. Replying here
+   * would fork the chain, so the reply affordance resumes that draft instead.
+   */
+  draftTailId?: string;
   /** Number of published replies in this thread when relevant to the current view. */
   replyCount?: number;
 

@@ -5,12 +5,14 @@ type PostArticleAttributeSource = Pick<
   | "id"
   | "slug"
   | "format"
+  | "status"
   | "visibility"
   | "replyToId"
   | "threadRootId"
   | "pinned"
   | "pinnedInCollection"
   | "featured"
+  | "draftTailId"
 >;
 
 /**
@@ -40,6 +42,10 @@ export function getPostArticleAttributes(post: PostArticleAttributeSource) {
       ? { "data-post-pinned-in-collection": "" }
       : {}),
     ...(post.featured ? { "data-post-featured": "" } : {}),
+    ...(post.status === "draft" ? { "data-post-draft": "" } : {}),
+    ...(post.draftTailId
+      ? { "data-thread-draft-tail-id": post.draftTailId }
+      : {}),
     "data-post-visibility": post.visibility,
     ...(isChildPost ? { "data-post-reply": "" } : {}),
   };

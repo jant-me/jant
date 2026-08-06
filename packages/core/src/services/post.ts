@@ -433,8 +433,29 @@ export interface PostService {
   ): Promise<Map<string, Post[]>>;
   /** Get distinct years that have published posts */
   getDistinctYears(filters?: PostFilters): Promise<number[]>;
-  /** For each thread ID, return the ID of the last published, non-deleted post */
-  getLastPostIdsByThread(threadIds: string[]): Promise<Map<string, string>>;
+  /**
+   * For each Thread ID, resolve the Post that currently ends the chain.
+   *
+   * Two callers need two different answers. Readers ask what the audience can
+   * see, so drafts must not count — the Reply affordance belongs on the last
+   * published Post. The reply guard asks what the chain physically ends with,
+   * and there an unpublished draft still owns the slot: attaching a second
+   * reply to the same parent would fork a structure that is meant to be linear.
+   *
+   * @param threadIds - Thread root IDs to resolve (duplicates are fine)
+   * @param options - `includeDrafts` counts unpublished members as the tail
+   * @returns Map of Thread root ID to its tail Post ID; threads with no
+   *   matching member are absent from the map
+   * @example
+   * ```ts
+   * const tails = await posts.getThreadTailIds([root.id], { includeDrafts: true });
+   * const tailId = tails.get(root.id);
+   * ```
+   */
+  getThreadTailIds(
+    threadIds: string[],
+    options?: { includeDrafts?: boolean },
+  ): Promise<Map<string, string>>;
   /**
    * Rebuild `post.body_text` for a batch of non-deleted posts, cursor-paginated
    * by post id. For each row, recomputes the plain-text extraction via
@@ -953,19 +974,6 @@ export function createPostService(
     }
 
     return conditions;
-  }
-
-  async function getLastLivePostIdInThread(
-    threadId: string,
-  ): Promise<string | null> {
-    const rows = await db
-      .select({ id: posts.id })
-      .from(posts)
-      .where(and(eq(posts.siteId, siteId), eq(posts.threadId, threadId)))
-      .orderBy(desc(posts.createdAt), desc(posts.id))
-      .limit(1);
-
-    return rows[0]?.id ?? null;
   }
 
   function getCursorSortTimestamp(
@@ -1855,10 +1863,19 @@ export function createPostService(
           );
         }
 
-        const lastLivePostId = await getLastLivePostIdInThread(parent.threadId);
-        if (lastLivePostId && lastLivePostId !== parent.id) {
+        // Drafts count here: an unpublished reply already owns the tail slot,
+        // and a sibling attached to the same parent would fork the chain.
+        const tailId = (
+          await this.getThreadTailIds([parent.threadId], {
+            includeDrafts: true,
+          })
+        ).get(parent.threadId);
+        if (tailId && tailId !== parent.id) {
+          const tail = await this.getById(tailId);
           throw new ConflictError(
-            "This post is no longer the end of the thread. Reply to the latest post instead.",
+            tail?.status === "draft"
+              ? "This thread ends with an unpublished draft. Finish that draft or discard it, then reply."
+              : "This post is no longer the end of the thread. Reply to the latest post instead.",
           );
         }
 
@@ -1869,10 +1886,12 @@ export function createPostService(
           parent.threadId === parent.id
             ? parent
             : await this.getById(parent.threadId);
-        if (root) {
-          if (data.status !== "draft") {
-            status = root.status;
-          }
+        // A reply takes the root's status. A draft earlier in the chain does
+        // not hold it back: readers never saw that post, so publishing past it
+        // reads as continuous, and the draft stays parked until it is dealt
+        // with on its own.
+        if (root && data.status !== "draft") {
+          status = root.status;
         }
         visibility = null;
 
@@ -1884,6 +1903,12 @@ export function createPostService(
             "Cannot set Collections while creating a Thread reply. Set them on the Thread root instead.",
           );
         }
+      }
+
+      // Featured surfaces only list published posts, so featuring a draft
+      // writes a flag that does nothing and shows nowhere. Say so instead.
+      if (status === "draft" && resolvedFeaturedAt !== null) {
+        throw new ConflictError("Publish this post before featuring it.");
       }
 
       assertDraftPublishedAt(status, data.publishedAt);
@@ -2350,6 +2375,12 @@ export function createPostService(
         updates.featuredAt = data.featuredAt;
       } else if (data.featured !== undefined) {
         updates.featuredAt = data.featured ? timestamp : null;
+      }
+      // Same rule `create` enforces: nothing unpublished can be featured.
+      // Only guards turning it on — an existing flag survives a trip back to
+      // draft and takes effect again when the post is republished.
+      if (nextStatus === "draft" && updates.featuredAt) {
+        throw new ConflictError("Publish this post before featuring it.");
       }
 
       let updatedBody: string | null | undefined;
@@ -3611,7 +3642,7 @@ export function createPostService(
       return result;
     },
 
-    async getLastPostIdsByThread(threadIds) {
+    async getThreadTailIds(threadIds, options) {
       const result = new Map<string, string>();
       if (threadIds.length === 0) return result;
 
@@ -3626,7 +3657,7 @@ export function createPostService(
           and(
             eq(posts.siteId, siteId),
             inArray(posts.threadId, unique),
-            eq(posts.status, "published"),
+            ...(options?.includeDrafts ? [] : [eq(posts.status, "published")]),
           ),
         )
         .orderBy(posts.threadId, desc(posts.createdAt), desc(posts.id));

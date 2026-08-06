@@ -3331,6 +3331,28 @@
     scroll-margin-top: 80px;
   }
 
+  /* --- Trailing draft in a thread (author-only) ---------------------------
+     Rendered so the author sees the same thread end the server does. Reads as
+     provisional — present enough to act on, quiet enough not to pass for
+     published writing. */
+
+  .thread-detail-item article[data-post-draft] {
+    opacity: 0.72;
+    transition: opacity 0.18s ease;
+  }
+
+  .thread-detail-item article[data-post-draft]:hover,
+  .thread-detail-item article[data-post-draft]:focus-within {
+    opacity: 1;
+  }
+
+  /* A draft is not part of the published spine, so its marker is hollow: the
+     rail reaches it, but the dot reads as an empty slot rather than another
+     published stop. */
+  .thread-item:has(article[data-post-draft])::before {
+    background-color: var(--site-thread-marker-surface);
+  }
+
   /* When a child post has an ancestor shell above it (toggle button sits
      directly before the current post), leave enough room above the scroll
      landing so the user can see the Show more button + a peek of the
@@ -3559,6 +3581,7 @@
   /* Show the container when at least one status is active */
   article[data-post-pinned] .post-status-badges,
   article[data-post-pinned-in-collection] .post-status-badges,
+  article[data-post-draft] .post-status-badges,
   article[data-post-visibility="private"] .post-status-badges {
     display: flex;
   }
@@ -3587,6 +3610,38 @@
 
   article[data-post-visibility="private"] .post-status-private {
     display: inline-flex;
+  }
+
+  article[data-post-draft] .post-status-draft {
+    display: inline-flex;
+  }
+
+  /* The draft badge is a button — the shortest path from "I see an unfinished
+     post" to "I'm finishing it". */
+  .post-status-draft {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    letter-spacing: inherit;
+    cursor: pointer;
+    transition: color 0.18s ease;
+  }
+
+  .post-status-draft:hover,
+  .post-status-draft:focus-visible {
+    color: var(--site-text-primary);
+  }
+
+  .post-status-draft:hover svg,
+  .post-status-draft:focus-visible svg {
+    opacity: 1;
+  }
+
+  .post-status-draft:focus-visible {
+    outline: 2px solid var(--site-accent);
+    outline-offset: 3px;
+    border-radius: 3px;
   }
 
   .post-status-badge svg {
@@ -4034,6 +4089,14 @@
     flex-direction: column;
     gap: 0;
     padding: 0 0.22rem;
+  }
+
+  /* Every item in a group is conditional, so a group can end up with none —
+     a draft reply hides both Featured and Pin. Match on element children so
+     Lit's binding comments and the template's whitespace don't count as
+     content, otherwise the empty group still draws its divider and padding. */
+  .post-menu-section:not(:has(> *)) {
+    display: none;
   }
 
   .post-menu-section + .post-menu-section {
