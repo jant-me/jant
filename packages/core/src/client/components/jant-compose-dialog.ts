@@ -911,6 +911,9 @@ export class JantComposeDialog extends LitElement {
     if (this._showCollection) {
       this._updateCollectionPopoverSide();
     }
+    if (this._postMetaIndex !== null) {
+      this._updatePostMetaPanelLayout();
+    }
   }
 
   reset() {
@@ -2359,6 +2362,10 @@ export class JantComposeDialog extends LitElement {
     window.addEventListener("scroll", this._handleViewportChange, {
       passive: true,
     });
+    document.addEventListener("scroll", this._handleAnyScroll, {
+      capture: true,
+      passive: true,
+    });
     globalThis.visualViewport?.addEventListener(
       "resize",
       this._handleViewportChange,
@@ -2418,6 +2425,9 @@ export class JantComposeDialog extends LitElement {
     window.removeEventListener("beforeunload", this._onBeforeUnload);
     window.removeEventListener("resize", this._handleViewportChange);
     window.removeEventListener("scroll", this._handleViewportChange);
+    document.removeEventListener("scroll", this._handleAnyScroll, {
+      capture: true,
+    });
     globalThis.visualViewport?.removeEventListener(
       "resize",
       this._handleViewportChange,
@@ -2474,6 +2484,20 @@ export class JantComposeDialog extends LitElement {
     if (this._showCollection) {
       this.updateComplete.then(() => this._updateCollectionPopoverSide());
     }
+    if (this._postMetaIndex !== null) {
+      this.updateComplete.then(() => this._updatePostMetaPanelLayout());
+    }
+  };
+
+  /**
+   * The date/permalink panel is pinned to a pill inside `.compose-scroll`, and
+   * a `scroll` event on that box never reaches `window` — it doesn't bubble.
+   * Capture phase catches it wherever it fires, so the panel travels with its
+   * pill instead of hanging in place once the composer moves under it.
+   */
+  private _handleAnyScroll = () => {
+    if (this._postMetaIndex === null) return;
+    this._updatePostMetaPanelLayout();
   };
 
   private _handleDialogCancel = (e: Event) => {
@@ -4713,9 +4737,7 @@ export class JantComposeDialog extends LitElement {
     this._postMetaIndex = index;
     this._confirmPanelOpen = false;
     this._scheduleSuggestedSlugRefresh(true);
-    this.updateComplete.then(() => {
-      this.querySelector<HTMLElement>(selector)?.focus();
-    });
+    this._placeAndFocusPostMetaPanel(selector);
   }
 
   private _revealSlugField(index = 0) {
@@ -5295,11 +5317,7 @@ export class JantComposeDialog extends LitElement {
             // Focus the panel, not its first field: a focused `type="date"`
             // opens with its year segment highlighted in the OS accent colour,
             // which Chrome will not let us restyle. Tab reaches the fields.
-            this.updateComplete.then(() => {
-              this.querySelector<HTMLElement>(
-                "[data-compose-post-meta-panel]",
-              )?.focus();
-            });
+            this._placeAndFocusPostMetaPanel();
           }}
         >
           ${renderComposePublishActionIcon(
@@ -5340,6 +5358,114 @@ export class JantComposeDialog extends LitElement {
           : nothing}
       </div>
     `;
+  }
+
+  /**
+   * Places the just-opened date/permalink panel, then puts focus in it.
+   *
+   * Both wait on `updateComplete` because the panel is not ours to render: it
+   * is handed to the post's editor row as `headerExtra`, so it only reaches the
+   * DOM on the editor's own update, one below this one. Focus is `preventScroll`
+   * — the panel is already pinned where it should be, and without it the browser
+   * scrolls `.compose-scroll` to "reveal" a panel that is not in that box,
+   * taking the format switcher off the top of the composer with it.
+   */
+  private _placeAndFocusPostMetaPanel(focusSelector?: string) {
+    this.updateComplete.then(() => {
+      this._updatePostMetaPanelLayout();
+      this.querySelector<HTMLElement>(
+        focusSelector ?? "[data-compose-post-meta-panel]",
+      )?.focus({ preventScroll: true });
+    });
+  }
+
+  /**
+   * Pins the open date/permalink panel under the pill it belongs to.
+   *
+   * The pill sits inside `.compose-scroll`, and that box scrolls: an absolutely
+   * positioned panel is clipped by it, and an empty post makes the box shorter
+   * than the panel every time, so the whole footer — Done included — used to be
+   * cut off. `position: fixed` takes the panel out of the scroller, which hands
+   * the coordinates to us.
+   *
+   * They are not viewport coordinates. The dialog's open animation leaves a
+   * transform behind, and a transformed ancestor becomes the containing block
+   * for `fixed` descendants — so the panel is parked at 0,0 first and the rect
+   * that comes back is the origin everything else is measured from. Reading it
+   * beats naming the ancestor: the page-mode composer has no dialog at all.
+   */
+  private _updatePostMetaPanelLayout() {
+    const index = this._postMetaIndex;
+    if (index === null) return;
+
+    const panel = this.querySelector<HTMLElement>(
+      "[data-compose-post-meta-panel]",
+    );
+    const pill = this.querySelector<HTMLElement>(
+      `[data-compose-post-meta-pill][data-post-index="${index}"]`,
+    );
+    if (!panel || !pill) return;
+
+    const visualViewport = globalThis.visualViewport;
+    const viewportTop = visualViewport?.offsetTop ?? 0;
+    const viewportLeft = visualViewport?.offsetLeft ?? 0;
+    const viewportBottom =
+      viewportTop + (visualViewport?.height ?? globalThis.innerHeight);
+    const viewportRight =
+      viewportLeft + (visualViewport?.width ?? globalThis.innerWidth);
+    const edgePadding = 12;
+    const gap = 6;
+
+    // Same rule as the publish panel: open into whichever side has more room,
+    // and cap the panel at what that side actually offers so a short window
+    // scrolls the panel's own body instead of hiding its footer.
+    const pillRect = pill.getBoundingClientRect();
+    const availableAbove = Math.max(
+      0,
+      pillRect.top - (viewportTop + edgePadding) - gap,
+    );
+    const availableBelow = Math.max(
+      0,
+      viewportBottom - edgePadding - pillRect.bottom - gap,
+    );
+    const direction = availableBelow >= availableAbove ? "down" : "up";
+    const maxHeight = Math.max(
+      1,
+      Math.floor(direction === "up" ? availableAbove : availableBelow),
+    );
+
+    panel.style.top = "0px";
+    panel.style.left = "0px";
+    const origin = panel.getBoundingClientRect();
+    // The dialog opens with a `scale(0.97)` animation, so for a third of a
+    // second every measured rect is smaller than the box it describes while the
+    // offsets we write are not. `offsetWidth` is the same box before the
+    // transform, so their ratio is the scale to divide back out.
+    const scale = origin.width / (panel.offsetWidth || origin.width || 1) || 1;
+
+    panel.style.setProperty(
+      "--compose-post-meta-panel-max-height",
+      `${maxHeight / scale}px`,
+    );
+    // Read back rather than reuse `origin.height`: the cap above is what
+    // decides how tall the panel actually is, and a panel opening upwards is
+    // placed from its own bottom edge.
+    const height = panel.offsetHeight * scale;
+
+    const top =
+      direction === "down"
+        ? pillRect.bottom + gap
+        : pillRect.top - gap - height;
+    // Right-aligned to the pill, which is itself flush with the composer's
+    // right edge — then held inside the viewport, since a narrow screen can
+    // put the panel's left edge past it.
+    const left = Math.min(
+      Math.max(pillRect.right - origin.width, viewportLeft + edgePadding),
+      Math.max(viewportRight - edgePadding - origin.width, viewportLeft),
+    );
+
+    panel.style.top = `${(top - origin.top) / scale}px`;
+    panel.style.left = `${(left - origin.left) / scale}px`;
   }
 
   /**
