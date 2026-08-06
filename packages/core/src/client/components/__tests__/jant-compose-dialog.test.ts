@@ -679,6 +679,97 @@ describe("JantComposeDialog", () => {
     );
   });
 
+  it("pins the date panel to its pill instead of inside the scroller", async () => {
+    const el = await createElement();
+
+    // The pill lives in `.compose-scroll`, which clips and scrolls. An
+    // absolutely positioned panel is taller than that box on an empty post, so
+    // it lost its footer, and focusing it scrolled the format switcher off the
+    // top to bring it into view. Fixed positioning leaves the scroller behind,
+    // which makes placing the panel our job.
+    const focusCalls: Array<{
+      target: unknown;
+      options?: globalThis.FocusOptions;
+    }> = [];
+    const nativeFocus = globalThis.HTMLElement.prototype.focus;
+    globalThis.HTMLElement.prototype.focus = function (
+      this: globalThis.HTMLElement,
+      options?: globalThis.FocusOptions,
+    ) {
+      focusCalls.push({ target: this, options });
+      return nativeFocus.call(this, options);
+    };
+
+    try {
+      await openPostMeta(el);
+    } finally {
+      globalThis.HTMLElement.prototype.focus = nativeFocus;
+    }
+
+    const panel = requireElement(
+      el.querySelector<globalThis.HTMLElement>(
+        "[data-compose-post-meta-panel]",
+      ),
+      "expected post meta panel",
+    );
+
+    expect(focusCalls.find((call) => call.target === panel)?.options).toEqual({
+      preventScroll: true,
+    });
+
+    // Placed under the pill, and capped at the room the viewport actually has
+    // so a short window scrolls the panel rather than cropping it.
+    expect(panel.style.top).toBe("6px");
+    expect(panel.style.left).not.toBe("");
+    expect(
+      panel.style.getPropertyValue("--compose-post-meta-panel-max-height"),
+    ).toBe(`${globalThis.innerHeight - 12 - 6}px`);
+
+    // Inline coordinates only mean anything if the panel is out of the
+    // scroller — `position: absolute` here is the bug, not a style choice.
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    expect(css).toMatch(
+      /\.compose-post-meta-panel\s*\{\s*position:\s*fixed;[\s\S]*max-height:\s*var\(--compose-post-meta-panel-max-height,\s*none\);\s*overflow-y:\s*auto;/,
+    );
+  });
+
+  it("keeps the date panel on its pill when the composer scrolls", async () => {
+    const el = await createElement();
+    await openPostMeta(el);
+
+    const panel = requireElement(
+      el.querySelector<globalThis.HTMLElement>(
+        "[data-compose-post-meta-panel]",
+      ),
+      "expected post meta panel",
+    );
+    const pill = requireElement(
+      el.querySelector<globalThis.HTMLElement>("[data-compose-post-meta-pill]"),
+      "expected post meta pill",
+    );
+    pill.getBoundingClientRect = () =>
+      ({
+        top: 100,
+        bottom: 130,
+        left: 300,
+        right: 400,
+        width: 100,
+        height: 30,
+      }) as globalThis.DOMRect;
+
+    // A `scroll` event on the composer's own box never reaches `window` — it
+    // doesn't bubble — so a pinned panel would hang in place while the pill it
+    // belongs to slid away underneath it.
+    const scroller = requireElement(
+      el.querySelector(".compose-scroll"),
+      "expected compose scroller",
+    );
+    scroller.dispatchEvent(new globalThis.Event("scroll"));
+
+    expect(panel.style.top).toBe("136px");
+    expect(panel.style.left).toBe("400px");
+  });
+
   it("opens the calendar from its own button, not the UA glyph", async () => {
     const el = await createElement();
     await openPostMeta(el);

@@ -7005,15 +7005,26 @@
     text-overflow: ellipsis;
   }
 
+  /* Fixed, not absolute. The pill it hangs from lives inside `.compose-scroll`,
+     and an absolute panel is clipped by that box — an empty post makes the box
+     shorter than the panel every time, so the footer went missing and focusing
+     the panel scrolled the format switcher off the top to compensate. Fixed
+     leaves the scroller behind; `_updatePostMetaPanelLayout` supplies top/left
+     and the max-height, since only script can know where the pill ended up. */
   .compose-post-meta-panel {
-    position: absolute;
+    position: fixed;
     z-index: 100;
-    top: calc(100% + 6px);
-    right: 0;
+    top: 0;
+    left: 0;
     display: flex;
     flex-direction: column;
     gap: 0.85rem;
     width: min(20rem, calc(100vw - 3rem));
+    /* A window too short for the whole panel scrolls the panel, never crops it.
+       Unset until script measures, so the panel is never briefly 1px tall. */
+    max-height: var(--compose-post-meta-panel-max-height, none);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 0.8rem 0.85rem 0.85rem;
     border: 1px solid var(--compose-control-border);
     border-radius: 12px;
