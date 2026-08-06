@@ -974,6 +974,7 @@ async function buildThreadBundle(
       source_url: reply.format === "quote" && reply.url ? reply.url : undefined,
       quote_text: reply.quoteText ?? undefined,
       rating: reply.rating ?? undefined,
+      quiet_reply: reply.quietReply ? true : undefined,
       featured_at:
         reply.featuredAt !== null ? toISOString(reply.featuredAt) : undefined,
       pinned_at:

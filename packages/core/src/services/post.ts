@@ -141,6 +141,14 @@ export interface PostFilters {
   publishedAfter?: number;
   /** Unix timestamp (exclusive) — only posts published before this time */
   publishedBefore?: number;
+  /**
+   * Unix timestamp (inclusive) — range filter on whichever column `sortBy`
+   * selects. Kept separate from `publishedAfter` so a caller can pin a
+   * publication window (the RSS delay) and still filter on the sort axis.
+   */
+  axisAfter?: number;
+  /** Unix timestamp (exclusive) — upper bound on the `sortBy` column */
+  axisBefore?: number;
   /** Media kinds to filter by (OR logic: post has media of ANY selected kind). */
   mediaKinds?: MediaKind[];
   /** Filter by media presence */
@@ -156,8 +164,20 @@ export interface PostFilters {
   hasReplies?: boolean;
   /** Explicit result sort order */
   sortOrder?: SortOrder;
-  /** Timestamp used for chronological sorting (defaults to thread activity). */
-  sortBy?: "activity" | "published";
+  /**
+   * Time axis for chronological queries (defaults to announced activity).
+   *
+   * - `activity` — `lastActivityAt`: last announced post. Quiet replies do not
+   *   move it. Latest and the feeds use this.
+   * - `thread_updated` — `threadUpdatedAt`: last post of any kind, quiet
+   *   included. The archive's updated sort uses this.
+   * - `published` — when the Thread root itself was published.
+   *
+   * Selects the column used for sorting **and** for the year/month bucketing
+   * done by `countByYearMonth` and `getDistinctYears`, so a caller that groups
+   * its results cannot end up with buckets that disagree with the order.
+   */
+  sortBy?: "activity" | "thread_updated" | "published";
   /** Ignore global pinned ordering when results must remain chronological. */
   ignorePinnedSort?: boolean;
   limit?: number;
@@ -289,7 +309,7 @@ export interface PostService {
   count(filters?: PostFilters): Promise<number>;
   /** Count posts matching filters up to a fixed limit (ignores cursor, offset, limit) */
   countUpTo(filters: PostFilters | undefined, limit: number): Promise<number>;
-  /** Count posts grouped by published year-month (YYYY-MM) */
+  /** Count posts grouped by year-month (YYYY-MM) on the `sortBy` time axis */
   countByYearMonth(
     filters?: PostFilters,
   ): Promise<{ yearMonth: string; count: number }[]>;
@@ -431,7 +451,7 @@ export interface PostService {
     rootIds: string[],
     options?: Pick<PostFilters, "publishedBefore">,
   ): Promise<Map<string, Post[]>>;
-  /** Get distinct years that have published posts */
+  /** Get distinct years with posts, bucketed on the `sortBy` time axis */
   getDistinctYears(filters?: PostFilters): Promise<number[]>;
   /**
    * For each Thread ID, resolve the Post that currently ends the chain.
@@ -676,16 +696,27 @@ export function createPostService(
   const databaseDialect = config.databaseDialect ?? "sqlite";
   const usesBatchWrites = !supportsDrizzleTransaction(db, databaseDialect);
 
-  function buildPublishedYearMonthExpr(): SQL<string> {
-    return databaseDialect === "pg"
-      ? sql<string>`to_char(timezone('UTC', to_timestamp(${posts.publishedAt})), 'YYYY-MM')`
-      : sql<string>`strftime('%Y-%m', ${posts.publishedAt}, 'unixepoch')`;
+  /**
+   * Column that carries the time axis selected by `PostFilters.sortBy`.
+   * Sorting, year/month bucketing, and date-range filters all read it through
+   * here so they can never drift onto different columns.
+   */
+  function timeAxisColumn(filters: Pick<PostFilters, "sortBy">) {
+    if (filters.sortBy === "activity") return posts.lastActivityAt;
+    if (filters.sortBy === "thread_updated") return posts.threadUpdatedAt;
+    return posts.publishedAt;
   }
 
-  function buildPublishedYearExpr(): SQL<string> {
+  function buildYearMonthExpr(column: SQLWrapper): SQL<string> {
     return databaseDialect === "pg"
-      ? sql<string>`to_char(timezone('UTC', to_timestamp(${posts.publishedAt})), 'YYYY')`
-      : sql<string>`strftime('%Y', ${posts.publishedAt}, 'unixepoch')`;
+      ? sql<string>`to_char(timezone('UTC', to_timestamp(${column})), 'YYYY-MM')`
+      : sql<string>`strftime('%Y-%m', ${column}, 'unixepoch')`;
+  }
+
+  function buildYearExpr(column: SQLWrapper): SQL<string> {
+    return databaseDialect === "pg"
+      ? sql<string>`to_char(timezone('UTC', to_timestamp(${column})), 'YYYY')`
+      : sql<string>`strftime('%Y', ${column}, 'unixepoch')`;
   }
 
   const effectiveVisibilityExpr = sql<string>`coalesce(
@@ -726,28 +757,58 @@ export function createPostService(
     return rows.length > 0;
   }
 
-  async function recalculateThreadLastActivity(rootId: string): Promise<void> {
+  /**
+   * Recompute both Thread activity timestamps on the root from the Thread's
+   * rows.
+   *
+   * - `lastActivityAt` — newest published post excluding quiet replies. This
+   *   is "last announced" and drives Latest and the feeds.
+   * - `threadUpdatedAt` — newest published post including quiet replies. This
+   *   is "last changed" and drives the archive's updated sort.
+   *
+   * Both are derived, never accumulated, so a quiet reply stays quiet no
+   * matter what later edits or deletions trigger a recalculation.
+   *
+   * @param rootId - Thread root post ID
+   */
+  async function recalculateThreadActivity(rootId: string): Promise<void> {
     const rootRows = await db
       .select({
-        latestPublishedAt: sql<number | null>`MAX(${posts.publishedAt})`.as(
-          "latest_published_at",
+        announcedAt: sql<number | null>`MAX(
+          CASE
+            WHEN ${posts.quietReply} THEN NULL
+            ELSE ${posts.publishedAt}
+          END
+        )`.as("announced_at"),
+        updatedAt: sql<number | null>`MAX(${posts.publishedAt})`.as(
+          "thread_updated_at",
         ),
       })
       .from(posts)
-      .where(and(eq(posts.siteId, siteId), eq(posts.threadId, rootId)));
+      .where(
+        and(
+          eq(posts.siteId, siteId),
+          eq(posts.threadId, rootId),
+          eq(posts.status, "published"),
+        ),
+      );
 
-    const latestPublishedAt = rootRows[0]?.latestPublishedAt ?? null;
+    const announcedAt = rootRows[0]?.announcedAt ?? null;
+    const threadUpdatedAt = rootRows[0]?.updatedAt ?? null;
     const root = await db
       .select({ updatedAt: posts.updatedAt })
       .from(posts)
       .where(and(eq(posts.siteId, siteId), eq(posts.id, rootId)))
       .limit(1);
 
-    const lastActivityAt = latestPublishedAt ?? root[0]?.updatedAt ?? now();
+    const fallback = root[0]?.updatedAt ?? now();
 
     await db
       .update(posts)
-      .set({ lastActivityAt })
+      .set({
+        lastActivityAt: announcedAt ?? fallback,
+        threadUpdatedAt: threadUpdatedAt ?? fallback,
+      })
       .where(and(eq(posts.siteId, siteId), eq(posts.id, rootId)));
   }
 
@@ -923,6 +984,15 @@ export function createPostService(
     if (filters.publishedBefore !== undefined) {
       conditions.push(sql`${posts.publishedAt} < ${filters.publishedBefore}`);
     }
+    if (filters.axisAfter !== undefined || filters.axisBefore !== undefined) {
+      const axis = timeAxisColumn(filters);
+      if (filters.axisAfter !== undefined) {
+        conditions.push(sql`${axis} >= ${filters.axisAfter}`);
+      }
+      if (filters.axisBefore !== undefined) {
+        conditions.push(sql`${axis} < ${filters.axisBefore}`);
+      }
+    }
     if (filters.mediaKinds && filters.mediaKinds.length > 0) {
       const placeholders = filters.mediaKinds.map((k) => sql`${k}`);
       conditions.push(
@@ -983,7 +1053,31 @@ export function createPostService(
     if (filters.sortBy === "published") {
       return row.publishedAt ?? row.createdAt;
     }
+    if (filters.sortBy === "thread_updated") {
+      return row.threadUpdatedAt ?? -1;
+    }
     return row.status === "draft" ? row.updatedAt : (row.lastActivityAt ?? -1);
+  }
+
+  /**
+   * Chronological sort key for `list()`.
+   *
+   * Shared by the ORDER BY and the keyset cursor comparison — they must read
+   * the same expression or pagination silently skips or repeats rows.
+   */
+  function buildSortTimestampExpr(filters: PostFilters): SQLWrapper {
+    if (filters.sortBy === "published") {
+      return sql<number>`coalesce(${posts.publishedAt}, ${posts.createdAt})`;
+    }
+    if (filters.sortBy === "thread_updated") {
+      return posts.threadUpdatedAt;
+    }
+    if (filters.status === "draft") return posts.updatedAt;
+    if (filters.status === "published") return posts.lastActivityAt;
+    return sql<number>`CASE
+      WHEN ${posts.status} = 'draft' THEN ${posts.updatedAt}
+      ELSE ${posts.lastActivityAt}
+    END`;
   }
 
   function buildLexicographicCursorCondition(
@@ -1025,17 +1119,7 @@ export function createPostService(
       return null;
     }
 
-    const sortTimestampExpr =
-      filters.sortBy === "published"
-        ? sql<number>`coalesce(${posts.publishedAt}, ${posts.createdAt})`
-        : filters.status === "draft"
-          ? posts.updatedAt
-          : filters.status === "published"
-            ? posts.lastActivityAt
-            : sql<number>`CASE
-                WHEN ${posts.status} = 'draft' THEN ${posts.updatedAt}
-                ELSE ${posts.lastActivityAt}
-              END`;
+    const sortTimestampExpr = buildSortTimestampExpr(filters);
     const pinnedSortExpr = sql<number>`coalesce(${posts.pinnedAt}, -1)`;
     const featuredPublishedSortExpr = sql<number>`coalesce(
       ${posts.publishedAt}, ${posts.createdAt}, -1
@@ -1170,8 +1254,14 @@ export function createPostService(
       previewProvider: row.previewProvider,
       replyToId: row.replyToId,
       threadId: row.threadId,
+      quietReply: row.quietReply,
       publishedAt: row.publishedAt,
       lastActivityAt: row.lastActivityAt ?? row.publishedAt ?? row.updatedAt,
+      threadUpdatedAt:
+        row.threadUpdatedAt ??
+        row.lastActivityAt ??
+        row.publishedAt ??
+        row.updatedAt,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -1301,16 +1391,24 @@ export function createPostService(
     return conditions;
   }
 
+  /**
+   * Thread activity timestamp used to order collection threads.
+   *
+   * Activity means the thread gained a post, not that a post was edited —
+   * the same definition `post.last_activity_at` carries everywhere else. The
+   * outer MAX only collapses the per-member rows of a GROUP BY thread_id; the
+   * subquery returns one value per thread. The COALESCE fallbacks cover rows
+   * whose root is missing or predates `last_activity_at`.
+   */
   function buildCollectionThreadActivityExpr(alias: string) {
     return sql<number>`MAX(
       COALESCE(
         (
-          SELECT CASE
-            WHEN root.updated_at > root.created_at
-              AND root.updated_at > COALESCE(root.last_activity_at, -1)
-            THEN root.updated_at
-            ELSE COALESCE(root.last_activity_at, root.updated_at)
-          END
+          SELECT COALESCE(
+            root.last_activity_at,
+            root.published_at,
+            root.updated_at
+          )
           FROM post AS root
           WHERE root.site_id = ${siteId}
             AND root.id = ${posts.threadId}
@@ -1570,17 +1668,7 @@ export function createPostService(
       if (filters.cursor && !cursorCondition) {
         return [];
       }
-      const sortTimestamp =
-        filters.sortBy === "published"
-          ? sql<number>`coalesce(${posts.publishedAt}, ${posts.createdAt})`
-          : filters.status === "draft"
-            ? posts.updatedAt
-            : filters.status === "published"
-              ? posts.lastActivityAt
-              : sql<number>`CASE
-                  WHEN ${posts.status} = 'draft' THEN ${posts.updatedAt}
-                  ELSE ${posts.lastActivityAt}
-                END`;
+      const sortTimestamp = buildSortTimestampExpr(filters);
 
       if (cursorCondition) {
         conditions.push(cursorCondition);
@@ -1755,11 +1843,9 @@ export function createPostService(
     },
 
     async countByYearMonth(filters = {}) {
-      const conditions = [
-        ...buildFilterConditions(filters),
-        isNotNull(posts.publishedAt),
-      ];
-      const publishedYearMonthExpr = buildPublishedYearMonthExpr();
+      const axis = timeAxisColumn(filters);
+      const conditions = [...buildFilterConditions(filters), isNotNull(axis)];
+      const publishedYearMonthExpr = buildYearMonthExpr(axis);
 
       return db
         .select({
@@ -1783,6 +1869,8 @@ export function createPostService(
           ? ensurePostVisibility(data.visibility)
           : undefined;
       const rating = ensurePostRating(data.rating);
+      // Only replies can be quiet — a root has nothing to stay quiet about.
+      const isQuietReply = Boolean(data.replyToId) && data.quietReply === true;
 
       const rawBody = data.bodyMarkdown
         ? markdownToTiptapJson(data.bodyMarkdown)
@@ -2040,8 +2128,10 @@ export function createPostService(
               rating,
               replyToId: data.replyToId ?? null,
               threadId,
+              quietReply: isQuietReply,
               publishedAt,
               lastActivityAt: publishedAt ?? timestamp,
+              threadUpdatedAt: publishedAt ?? timestamp,
               createdAt: timestamp,
               updatedAt: timestamp,
             }),
@@ -2117,8 +2207,10 @@ export function createPostService(
               rating,
               replyToId: data.replyToId ?? null,
               threadId,
+              quietReply: isQuietReply,
               publishedAt,
               lastActivityAt: publishedAt ?? timestamp,
+              threadUpdatedAt: publishedAt ?? timestamp,
               createdAt: timestamp,
               updatedAt: timestamp,
             });
@@ -2178,9 +2270,11 @@ export function createPostService(
         throw new ConflictError(`Slug "${slug}" could not be resolved`);
       }
 
-      // Bump thread root's lastActivityAt when creating a published reply
-      if (data.replyToId && status === "published" && !data.quietReply) {
-        await recalculateThreadLastActivity(threadId);
+      // A quiet reply still changes the Thread, it just isn't announced —
+      // the recalculation reads the persisted quiet_reply flag and keeps
+      // lastActivityAt where it was while moving threadUpdatedAt forward.
+      if (data.replyToId && status === "published") {
+        await recalculateThreadActivity(threadId);
       }
 
       return post;
@@ -2493,7 +2587,7 @@ export function createPostService(
           .where(and(eq(posts.siteId, siteId), eq(posts.id, id)))
           .returning();
         if (needsThreadActivityRecalc) {
-          await recalculateThreadLastActivity(existing.threadId);
+          await recalculateThreadActivity(existing.threadId);
           return this.getById(id);
         }
         return hydratePost(result[0]);
@@ -2728,7 +2822,7 @@ export function createPostService(
       }
 
       if (needsThreadActivityRecalc) {
-        await recalculateThreadLastActivity(existing.threadId);
+        await recalculateThreadActivity(existing.threadId);
         return this.getById(id);
       }
       return hydratePost(updateResult?.[0]);
@@ -2916,7 +3010,7 @@ export function createPostService(
         await db
           .delete(posts)
           .where(and(eq(posts.siteId, siteId), eq(posts.id, id)));
-        await recalculateThreadLastActivity(existing.threadId);
+        await recalculateThreadActivity(existing.threadId);
       }
 
       return true;
@@ -3038,7 +3132,7 @@ export function createPostService(
             );
         });
       }
-      await recalculateThreadLastActivity(rootId);
+      await recalculateThreadActivity(rootId);
     },
 
     async getReplyCounts(postIds) {
@@ -3671,11 +3765,9 @@ export function createPostService(
     },
 
     async getDistinctYears(filters = {}) {
-      const conditions = [
-        ...buildFilterConditions(filters),
-        isNotNull(posts.publishedAt),
-      ];
-      const publishedYearExpr = buildPublishedYearExpr();
+      const axis = timeAxisColumn(filters);
+      const conditions = [...buildFilterConditions(filters), isNotNull(axis)];
+      const publishedYearExpr = buildYearExpr(axis);
 
       const rows = await db
         .select({

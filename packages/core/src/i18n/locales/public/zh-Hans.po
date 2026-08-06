@@ -1394,6 +1394,11 @@ msgstr ""
 msgid "New post"
 msgstr ""
 
+#. @context: Archive page meta note explaining the active sort order
+#: src/ui/pages/ArchivePage.tsx
+msgid "newest changes first"
+msgstr ""
+
 #. @context: Collection sort order option
 #. @context: Collection sort order option
 #: src/ui/pages/CollectionPage.tsx
@@ -1916,6 +1921,16 @@ msgstr ""
 msgid "Shared links"
 msgstr ""
 
+#. @context: Archive view option - grid
+#: src/ui/pages/ArchivePage.tsx
+msgid "Show as a grid of tiles"
+msgstr ""
+
+#. @context: Archive view option - list
+#: src/ui/pages/ArchivePage.tsx
+msgid "Show as a list with full posts"
+msgstr ""
+
 #. @context: Collapse expanded thread ancestor context in the feed
 #. @context: Collapse expanded thread ancestor context in the feed
 #. @context: Collapse reply context
@@ -2015,6 +2030,21 @@ msgstr ""
 #. @context: Sort menu label on collection detail page
 #: src/ui/pages/CollectionPage.tsx
 msgid "Sort"
+msgstr ""
+
+#. @context: Archive sort option - threads that recently gained a post first
+#: src/ui/pages/ArchivePage.tsx
+msgid "Sort by when each thread was last added to"
+msgstr ""
+
+#. @context: Archive sort option - newest published first
+#: src/ui/pages/ArchivePage.tsx
+msgid "Sort by when each thread was published"
+msgstr ""
+
+#. @context: Archive sort toggle group label
+#: src/ui/pages/ArchivePage.tsx
+msgid "Sort order"
 msgstr ""
 
 #. @context: Collection form field
@@ -2344,6 +2374,11 @@ msgstr ""
 msgid "Untitled"
 msgstr ""
 
+#. @context: Archive month header when sorting by last update — {month} is e.g. 'August 2026'
+#: src/ui/pages/ArchivePage.tsx
+msgid "Updated {month}"
+msgstr ""
+
 #. @context: Error when file upload fails
 #: src/routes/api/upload.ts
 msgid "Upload didn't go through. Try again in a moment."
@@ -2419,6 +2454,11 @@ msgstr ""
 #. @context: Thread link label on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "View earlier notes in this thread"
+msgstr ""
+
+#. @context: Archive grid/list toggle group label
+#: src/ui/pages/ArchivePage.tsx
+msgid "View mode"
 msgstr ""
 
 #. @context: Compose publish settings section label

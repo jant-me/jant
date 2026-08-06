@@ -1394,6 +1394,11 @@ msgstr "New Password"
 msgid "New post"
 msgstr "New post"
 
+#. @context: Archive page meta note explaining the active sort order
+#: src/ui/pages/ArchivePage.tsx
+msgid "newest changes first"
+msgstr "newest changes first"
+
 #. @context: Collection sort order option
 #. @context: Collection sort order option
 #: src/ui/pages/CollectionPage.tsx
@@ -1919,6 +1924,16 @@ msgstr "Settings"
 msgid "Shared links"
 msgstr "Shared links"
 
+#. @context: Archive view option - grid
+#: src/ui/pages/ArchivePage.tsx
+msgid "Show as a grid of tiles"
+msgstr "Show as a grid of tiles"
+
+#. @context: Archive view option - list
+#: src/ui/pages/ArchivePage.tsx
+msgid "Show as a list with full posts"
+msgstr "Show as a list with full posts"
+
 #. @context: Collapse expanded thread ancestor context in the feed
 #. @context: Collapse expanded thread ancestor context in the feed
 #. @context: Collapse reply context
@@ -2019,6 +2034,21 @@ msgstr "Something doesn't look right. Check the form and try again."
 #: src/ui/pages/CollectionPage.tsx
 msgid "Sort"
 msgstr "Sort"
+
+#. @context: Archive sort option - threads that recently gained a post first
+#: src/ui/pages/ArchivePage.tsx
+msgid "Sort by when each thread was last added to"
+msgstr "Sort by when each thread was last added to"
+
+#. @context: Archive sort option - newest published first
+#: src/ui/pages/ArchivePage.tsx
+msgid "Sort by when each thread was published"
+msgstr "Sort by when each thread was published"
+
+#. @context: Archive sort toggle group label
+#: src/ui/pages/ArchivePage.tsx
+msgid "Sort order"
+msgstr "Sort order"
 
 #. @context: Collection form field
 #: src/ui/shared/collection-management-labels.ts
@@ -2347,6 +2377,11 @@ msgstr "Type the quote..."
 msgid "Untitled"
 msgstr "Untitled"
 
+#. @context: Archive month header when sorting by last update — {month} is e.g. 'August 2026'
+#: src/ui/pages/ArchivePage.tsx
+msgid "Updated {month}"
+msgstr "Updated {month}"
+
 #. @context: Error when file upload fails
 #: src/routes/api/upload.ts
 msgid "Upload didn't go through. Try again in a moment."
@@ -2423,6 +2458,11 @@ msgstr "View"
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "View earlier notes in this thread"
 msgstr "View earlier notes in this thread"
+
+#. @context: Archive grid/list toggle group label
+#: src/ui/pages/ArchivePage.tsx
+msgid "View mode"
+msgstr "View mode"
 
 #. @context: Compose publish settings section label
 #: src/ui/compose/ComposeDialog.tsx

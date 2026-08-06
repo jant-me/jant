@@ -164,8 +164,25 @@ export const posts = sqliteTable(
     previewProvider: text("preview_provider"),
     replyToId: text("reply_to_id"),
     threadId: text("thread_id").notNull(),
+    /**
+     * The author added this reply without announcing it. Persisted so both
+     * activity timestamps below stay recomputable from the rows alone.
+     * Always false on Thread roots.
+     */
+    quietReply: integer("quiet_reply", { mode: "boolean" })
+      .notNull()
+      .default(false),
     publishedAt: integer("published_at"),
+    /**
+     * Root only: newest published_at in the Thread, excluding quiet replies —
+     * "last announced". Drives Latest and the feeds.
+     */
     lastActivityAt: integer("last_activity_at"),
+    /**
+     * Root only: newest published_at in the Thread, quiet replies included —
+     * "last changed". Drives the archive's updated sort.
+     */
+    threadUpdatedAt: integer("thread_updated_at"),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },
@@ -212,6 +229,9 @@ export const posts = sqliteTable(
     ),
     index("idx_post_site_root_published_activity")
       .on(table.siteId, table.lastActivityAt, table.id)
+      .where(sql`${table.replyToId} IS NULL AND ${table.status} = 'published'`),
+    index("idx_post_site_root_thread_updated")
+      .on(table.siteId, table.threadUpdatedAt, table.id)
       .where(sql`${table.replyToId} IS NULL AND ${table.status} = 'published'`),
     index("idx_post_site_root_draft_updated")
       .on(table.siteId, table.updatedAt, table.id)

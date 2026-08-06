@@ -626,7 +626,98 @@ describe("PostService - Timeline features", () => {
       expect(rootIds).toEqual([newerRoot.id, olderRoot.id]);
     });
 
-    it("orders a Thread by a newer root edit", async () => {
+    // Quietness used to live only in control flow: the reply skipped the
+    // recalculation and nothing recorded that it had. Any later recalculation
+    // recomputed MAX(published_at) over the whole Thread, swallowed the quiet
+    // reply, and bumped the Thread anyway. It is a stored column now, so the
+    // decision survives whatever else happens to the Thread.
+    it("keeps a quiet reply quiet after an unrelated post is deleted", async () => {
+      const collection = await collectionService.create({
+        slug: "durable",
+        title: "Durable",
+      });
+      const olderRoot = await postService.create({
+        format: "note",
+        bodyMarkdown: "Older root",
+        publishedAt: 1000,
+      });
+      const newerRoot = await postService.create({
+        format: "note",
+        bodyMarkdown: "Newer root",
+        publishedAt: 2000,
+      });
+      await collectionService.addThread(collection.id, olderRoot.id);
+      await collectionService.addThread(collection.id, newerRoot.id);
+
+      const normalReply = await postService.create({
+        format: "note",
+        bodyMarkdown: "Normal reply",
+        replyToId: olderRoot.id,
+        publishedAt: 1500,
+      });
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "Quiet reply",
+        replyToId: normalReply.id,
+        publishedAt: 3000,
+        quietReply: true,
+      });
+
+      // Triggers a full recalculation of the Thread.
+      await postService.delete(normalReply.id);
+
+      const root = await postService.getById(olderRoot.id);
+      expect(root?.lastActivityAt).toBe(1000);
+      expect(root?.threadUpdatedAt).toBe(3000);
+
+      const rootIds = await postService.listCollectionThreadRootIds(
+        collection.id,
+        { status: "published", sortOrder: "newest" },
+      );
+      expect(rootIds).toEqual([newerRoot.id, olderRoot.id]);
+    });
+
+    it("records both activity timestamps for a quiet reply", async () => {
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "Root",
+        publishedAt: 1000,
+      });
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "Quiet reply",
+        replyToId: root.id,
+        publishedAt: 3000,
+        quietReply: true,
+      });
+
+      const updated = await postService.getById(root.id);
+      expect(updated?.lastActivityAt).toBe(1000);
+      expect(updated?.threadUpdatedAt).toBe(3000);
+    });
+
+    it("moves both timestamps for a normal reply", async () => {
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "Root",
+        publishedAt: 1000,
+      });
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "Normal reply",
+        replyToId: root.id,
+        publishedAt: 3000,
+      });
+
+      const updated = await postService.getById(root.id);
+      expect(updated?.lastActivityAt).toBe(3000);
+      expect(updated?.threadUpdatedAt).toBe(3000);
+    });
+
+    // Activity means the Thread gained a post. Editing an old post is not
+    // activity — otherwise fixing a typo would drag it back to the top of its
+    // collection, and "recently updated" would stop meaning anything.
+    it("does not reorder a Thread when its root is only edited", async () => {
       const collection = await collectionService.create({
         slug: "edited",
         title: "Edited",
@@ -657,7 +748,7 @@ describe("PostService - Timeline features", () => {
         },
       );
 
-      expect(rootIds).toEqual([editedRoot.id, newerRoot.id]);
+      expect(rootIds).toEqual([newerRoot.id, editedRoot.id]);
     });
   });
 

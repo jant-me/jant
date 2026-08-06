@@ -111,6 +111,11 @@ export interface HugoFrontMatter {
   rating?: number | null;
   featured_at?: string | null;
   pinned_at?: string | null;
+  /**
+   * Reply bundles only: the reply was published without announcing the Thread
+   * on Latest. Round-tripped so a restore rebuilds the same ordering.
+   */
+  quiet_reply?: boolean;
 
   // Derived Featured Thread projection (root bundles only)
   featured_post_ids?: string[];

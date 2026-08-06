@@ -21,6 +21,7 @@ import type {
 import type { AppVariables } from "../../types/app-context.js";
 import type {
   ArchiveFilters,
+  ArchiveSort,
   ArchiveView,
   ArchiveVisibility,
 } from "../../types/props.js";
@@ -66,6 +67,7 @@ interface ParsedArchiveParams {
   visibility?: ArchiveVisibility;
   visibilityAll: boolean;
   view?: ArchiveView;
+  sort: ArchiveSort;
   currentPage: number;
 }
 
@@ -144,6 +146,11 @@ function parseArchiveParams(
       ? viewParam
       : undefined;
 
+  // sort selects the time axis for ordering, month grouping, and the year
+  // filter alike — they must stay on the same column or the month headers
+  // stop agreeing with the order inside them.
+  const sort: ArchiveSort = q("sort") === "updated" ? "updated" : "published";
+
   // Page always comes from the actual request URL (pagination links use ?page=N)
   const pageParam = c.req.query("page");
   const currentPage = Math.max(1, parseInt(pageParam || "1", 10) || 1);
@@ -159,6 +166,7 @@ function parseArchiveParams(
     visibility,
     visibilityAll,
     view,
+    sort,
     currentPage,
   };
 }
@@ -187,12 +195,15 @@ function buildArchivePostFilters(
       : (params.visibility ?? undefined)
     : undefined;
 
-  let publishedAfter: number | undefined;
-  let publishedBefore: number | undefined;
-  if (params.validYear) {
-    publishedAfter = Date.UTC(params.validYear, 0, 1) / 1000;
-    publishedBefore = Date.UTC(params.validYear + 1, 0, 1) / 1000;
-  }
+  // The year filter follows the active axis, so every month bucket shown
+  // under `year=N` really belongs to that year.
+  const yearRange = params.validYear
+    ? {
+        after: Date.UTC(params.validYear, 0, 1) / 1000,
+        before: Date.UTC(params.validYear + 1, 0, 1) / 1000,
+      }
+    : undefined;
+  const sortsByActivity = params.sort === "updated";
 
   return {
     format: params.format,
@@ -206,20 +217,28 @@ function buildArchivePostFilters(
         ? { visibility: effectiveVisibility }
         : {}),
     collectionId,
-    publishedAfter,
-    publishedBefore,
+    ...(yearRange
+      ? sortsByActivity
+        ? { axisAfter: yearRange.after, axisBefore: yearRange.before }
+        : { publishedAfter: yearRange.after, publishedBefore: yearRange.before }
+      : {}),
     mediaKinds: params.mediaKinds,
     hasMedia: params.hasMedia,
     hasTitle: params.hasTitle,
     hasReplies: params.hasReplies,
-    sortBy: "published",
+    // "thread_updated", not "activity": the archive is the canonical all-posts
+    // view, and the quiet-reply switch only promises not to move a Thread on
+    // Latest. Here the honest answer is when the Thread last changed.
+    sortBy: sortsByActivity ? "thread_updated" : "published",
     ignorePinnedSort: true,
   };
 }
 
 /**
  * Build a query string from parsed archive params (for feed self-URL and
- * archive page feed link). Omits page-only params (view, page).
+ * archive page feed link). Omits view and page — those shape the rendered
+ * page, not the result set — but carries `sort`, so the feed button on an
+ * updated-sorted page hands back the matching feed.
  */
 function buildArchiveFeedQuery(params: ParsedArchiveParams): string {
   const qs = new URLSearchParams();
@@ -237,6 +256,7 @@ function buildArchiveFeedQuery(params: ParsedArchiveParams): string {
   if (params.hasReplies !== undefined) {
     qs.set("replies", params.hasReplies ? "any" : "none");
   }
+  if (params.sort === "updated") qs.set("sort", "updated");
   const str = qs.toString();
   return str ? `?${str}` : "";
 }
@@ -338,6 +358,7 @@ export async function renderArchivePage(
       services.posts.getDistinctYears({
         status: "published",
         excludeReplies: true,
+        sortBy: filters.sortBy,
       }),
       services.collections.list(),
     ]);
@@ -365,8 +386,12 @@ export async function renderArchivePage(
 
     const grouped = new Map<string, PostWithMedia[]>();
     for (const post of posts) {
-      const publishedAt = post.publishedAt ?? post.updatedAt;
-      const key = formatYearMonth(publishedAt, appConfig.timeZone);
+      // Bucket on the same axis the query sorted by, so groups stay ordered.
+      const groupedAt =
+        params.sort === "updated"
+          ? post.threadUpdatedAt
+          : (post.publishedAt ?? post.updatedAt);
+      const key = formatYearMonth(groupedAt, appConfig.timeZone);
       if (!grouped.has(key)) {
         grouped.set(key, []);
       }
@@ -438,6 +463,7 @@ export async function renderArchivePage(
     hasReplies: params.hasReplies,
     visibility: effectiveVisibility,
     view: params.view,
+    sort: params.sort === "updated" ? "updated" : undefined,
   };
 
   const feedQuery = buildArchiveFeedQuery(params);
@@ -448,7 +474,12 @@ export async function renderArchivePage(
   }));
 
   return renderPublicPage(c, {
-    title: buildPageTitle("Archive", navData.siteName),
+    // Distinguishes a bookmarked or shared ?sort=updated view in the tab bar.
+    title: buildPageTitle(
+      "Archive",
+      params.sort === "updated" ? "Recently updated" : undefined,
+      navData.siteName,
+    ),
     navData,
     content: (
       <ArchivePage
@@ -634,6 +665,17 @@ async function buildArchiveFeedData(
   // Feed mirrors the unauthenticated archive page: published + non-private,
   // including Hidden-from-Latest. /archive is the canonical "all posts" view,
   // so its feed must match.
+  //
+  // Ordered by publication by default, like the page it belongs to. Ordering
+  // by activity would make the feed's contents shift under a fixed
+  // `rssFeedLimit` — a new reply pulls an old Thread back into the window and
+  // pushes something else out — and it buys nothing in return, because readers
+  // key entries by id and will not re-surface one that merely moved.
+  // /latest/feed is the activity feed; this one is the chronological record.
+  //
+  // `?sort=updated` opts into the same axis the page uses, for a subscriber
+  // who wants that trade-off deliberately.
+  const sortsByActivity = params.sort === "updated";
   const filters: PostFilters = {
     format: params.format,
     status: "published",
@@ -645,14 +687,20 @@ async function buildArchiveFeedData(
     hasMedia: params.hasMedia,
     hasTitle: params.hasTitle,
     hasReplies: params.hasReplies,
+    sortBy: sortsByActivity ? "thread_updated" : "published",
     ignorePinnedSort: true,
+    // The year filter follows the active axis; the RSS delay always stays on
+    // publication, so a just-published post is never announced early.
     ...(params.validYear
-      ? {
-          publishedAfter: Date.UTC(params.validYear, 0, 1) / 1000,
-        }
+      ? sortsByActivity
+        ? {
+            axisAfter: Date.UTC(params.validYear, 0, 1) / 1000,
+            axisBefore: yearPublishedBefore,
+          }
+        : { publishedAfter: Date.UTC(params.validYear, 0, 1) / 1000 }
       : {}),
     publishedBefore:
-      yearPublishedBefore === undefined
+      yearPublishedBefore === undefined || sortsByActivity
         ? rssPublishedBefore
         : Math.min(yearPublishedBefore, rssPublishedBefore),
     limit: appConfig.rssFeedLimit,

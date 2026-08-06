@@ -11541,6 +11541,13 @@
 
   /* --- View toggle -------------------------------------------------------- */
 
+  .archive-toolbar-toggles {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
   .archive-view-toggle {
     display: flex;
     align-items: center;

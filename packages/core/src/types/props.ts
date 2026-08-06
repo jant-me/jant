@@ -52,6 +52,16 @@ export type ArchiveVisibility =
 /** View mode for the archive page. */
 export type ArchiveView = "grid" | "list";
 
+/**
+ * Time axis for the archive page.
+ *
+ * `published` (default) orders and buckets by when a thread was first
+ * published — the stable historical record. `updated` switches the whole axis
+ * to thread activity, so a thread moves to the month it last gained a post.
+ * Edits are not activity.
+ */
+export type ArchiveSort = "published" | "updated";
+
 /** Filters currently active on the archive page */
 export interface ArchiveFilters {
   year?: number;
@@ -65,6 +75,8 @@ export interface ArchiveFilters {
   hasReplies?: boolean;
   visibility?: ArchiveVisibility;
   view?: ArchiveView;
+  /** Omitted when the default `published` axis is active */
+  sort?: ArchiveSort;
 }
 
 /** Props for the archive page component */

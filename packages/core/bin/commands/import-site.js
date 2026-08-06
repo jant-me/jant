@@ -1743,6 +1743,13 @@ function getImportedPostStatus(frontMatter) {
 function shouldImportReplyQuietly(rootFrontMatter, replyFrontMatter) {
   if (getImportedPostStatus(replyFrontMatter) !== "published") return false;
 
+  // Exports since quiet_reply became a stored column say so explicitly.
+  if (typeof replyFrontMatter.quiet_reply === "boolean") {
+    return replyFrontMatter.quiet_reply;
+  }
+
+  // Older bundles: a reply published after the root's recorded last activity
+  // can only have gotten there by skipping the bump, so it was quiet.
   const rootLastActivityAt = getImportedRootLastActivityAt(rootFrontMatter);
   const replyPublishedAt = parseImportTimestamp(replyFrontMatter.date);
   return (

@@ -66,8 +66,13 @@ export interface Post {
   previewProvider: string | null;
   replyToId: string | null;
   threadId: string;
+  /** Reply published without announcing it on Latest. Always false on roots. */
+  quietReply: boolean;
   publishedAt: number | null;
+  /** Root only: newest published post in the Thread, quiet replies excluded. */
   lastActivityAt: number;
+  /** Root only: newest published post in the Thread, quiet replies included. */
+  threadUpdatedAt: number;
   createdAt: number;
   updatedAt: number;
 }

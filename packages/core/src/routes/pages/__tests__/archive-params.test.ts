@@ -141,6 +141,134 @@ describe("archive feed filter params", () => {
   });
 });
 
+describe("archive feed ordering", () => {
+  // The feed belongs to the archive page, so it uses the page's default axis.
+  // Ordering by activity would let a reply to an old Thread reshuffle the
+  // feed window under a fixed rssFeedLimit, and readers key entries by id
+  // anyway — a moved entry is not a re-surfaced one. /latest/feed is where
+  // activity ordering lives.
+  it("orders by publication, not by recent replies", async () => {
+    const { app, services } = setupApp();
+    const oldThread = await services.posts.create({
+      format: "note",
+      title: "Old thread with a new reply",
+      bodyMarkdown: "root from 2019",
+      publishedAt: Date.UTC(2019, 0, 1) / 1000,
+    });
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "reply from 2026",
+      replyToId: oldThread.id,
+      publishedAt: Date.UTC(2026, 5, 1) / 1000,
+    });
+    await services.posts.create({
+      format: "note",
+      title: "Plain newer post",
+      bodyMarkdown: "root from 2025",
+      publishedAt: Date.UTC(2025, 0, 1) / 1000,
+    });
+
+    const xml = await fetchFeed(app, "");
+
+    expect(xml.indexOf("Plain newer post")).toBeLessThan(
+      xml.indexOf("Old thread with a new reply"),
+    );
+  });
+
+  it("honors an explicit sort=updated, quiet replies included", async () => {
+    const { app, services } = setupApp();
+    const oldThread = await services.posts.create({
+      format: "note",
+      title: "Old thread with a new reply",
+      bodyMarkdown: "root from 2019",
+      publishedAt: Date.UTC(2019, 0, 1) / 1000,
+    });
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "quiet addition",
+      replyToId: oldThread.id,
+      publishedAt: Date.UTC(2026, 5, 1) / 1000,
+      quietReply: true,
+    });
+    await services.posts.create({
+      format: "note",
+      title: "Plain newer post",
+      bodyMarkdown: "root from 2025",
+      publishedAt: Date.UTC(2025, 0, 1) / 1000,
+    });
+
+    const updated = await fetchFeed(app, "?sort=updated");
+    expect(updated.indexOf("Old thread with a new reply")).toBeLessThan(
+      updated.indexOf("Plain newer post"),
+    );
+
+    // Same URL param, same axis as the page — the default stays chronological.
+    const chronological = await fetchFeed(app, "");
+    expect(chronological.indexOf("Plain newer post")).toBeLessThan(
+      chronological.indexOf("Old thread with a new reply"),
+    );
+  });
+
+  it("scopes a year filter to the axis the feed is sorted on", async () => {
+    const { app, services } = setupApp();
+    const oldThread = await services.posts.create({
+      format: "note",
+      title: "Extended in 2026",
+      bodyMarkdown: "root from 2019",
+      publishedAt: Date.UTC(2019, 0, 1) / 1000,
+    });
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "addition",
+      replyToId: oldThread.id,
+      publishedAt: Date.UTC(2026, 5, 1) / 1000,
+    });
+    await services.posts.create({
+      format: "note",
+      title: "Published in 2025",
+      bodyMarkdown: "root from 2025",
+      publishedAt: Date.UTC(2025, 0, 1) / 1000,
+    });
+
+    const byActivity = await fetchFeed(app, "?sort=updated&year=2026");
+    expect(byActivity).toContain("Extended in 2026");
+    expect(byActivity).not.toContain("Published in 2025");
+
+    const byPublication = await fetchFeed(app, "?year=2025");
+    expect(byPublication).toContain("Published in 2025");
+    expect(byPublication).not.toContain("Extended in 2026");
+  });
+
+  it("keeps the same order after an old thread gains a reply", async () => {
+    const { app, services } = setupApp();
+    const first = await services.posts.create({
+      format: "note",
+      title: "Alpha",
+      bodyMarkdown: "alpha root",
+      publishedAt: Date.UTC(2020, 0, 1) / 1000,
+    });
+    await services.posts.create({
+      format: "note",
+      title: "Beta",
+      bodyMarkdown: "beta root",
+      publishedAt: Date.UTC(2021, 0, 1) / 1000,
+    });
+
+    const before = await fetchFeed(app, "");
+    const orderBefore = before.indexOf("Beta") < before.indexOf("Alpha");
+
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "late addition",
+      replyToId: first.id,
+      publishedAt: Date.UTC(2026, 0, 1) / 1000,
+    });
+
+    const after = await fetchFeed(app, "");
+    expect(after.indexOf("Beta") < after.indexOf("Alpha")).toBe(orderBefore);
+  });
+});
+
 describe("archive page legacy param redirect", () => {
   it("redirects legacy boolean params to their single-word spelling", async () => {
     const { app } = setupApp();
@@ -233,5 +361,156 @@ describe("archive page ordering", () => {
     expect(html.indexOf("Newer unpinned post")).toBeLessThan(
       html.indexOf("Older pinned post"),
     );
+  });
+});
+
+describe("archive page sort=updated", () => {
+  /**
+   * An old thread that recently gained a reply, plus a younger standalone
+   * thread. The two axes disagree about their order, which is the whole point
+   * of the toggle.
+   */
+  async function seedDivergingThreads(services: {
+    posts: {
+      create: (data: Record<string, unknown>) => Promise<{ id: string }>;
+    };
+  }) {
+    const olderThread = await services.posts.create({
+      format: "note",
+      title: "Growing thread",
+      bodyMarkdown: "root from 2019",
+      publishedAt: Date.UTC(2019, 2, 5) / 1000,
+    });
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "reply from 2026",
+      replyToId: olderThread.id,
+      publishedAt: Date.UTC(2026, 7, 1) / 1000,
+    });
+    await services.posts.create({
+      format: "note",
+      title: "Untouched newer thread",
+      bodyMarkdown: "root from 2025",
+      publishedAt: Date.UTC(2025, 0, 1) / 1000,
+    });
+  }
+
+  it("puts recently extended threads first", async () => {
+    const { app, services } = setupApp();
+    await seedDivergingThreads(services);
+
+    const res = await app.request("/archive?sort=updated");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+
+    expect(html.indexOf("Growing thread")).toBeLessThan(
+      html.indexOf("Untouched newer thread"),
+    );
+  });
+
+  it("buckets months on the same axis it sorts by", async () => {
+    const { app, services } = setupApp();
+    await seedDivergingThreads(services);
+
+    const byPublished = await (await app.request("/archive")).text();
+    expect(byPublished).toContain("March 2019");
+    expect(byPublished).not.toContain("August 2026");
+
+    const byActivity = await (
+      await app.request("/archive?sort=updated")
+    ).text();
+    expect(byActivity).toContain("August 2026");
+    expect(byActivity).not.toContain("March 2019");
+  });
+
+  it("scopes the year filter to the active axis", async () => {
+    const { app, services } = setupApp();
+    await seedDivergingThreads(services);
+
+    const activityYear = await (
+      await app.request("/archive?sort=updated&year=2026")
+    ).text();
+    expect(activityYear).toContain("Growing thread");
+    expect(activityYear).not.toContain("Untouched newer thread");
+
+    const publishedYear = await (
+      await app.request("/archive?year=2026")
+    ).text();
+    expect(publishedYear).not.toContain("Growing thread");
+  });
+
+  it("keeps the default axis unchanged without the param", async () => {
+    const { app, services } = setupApp();
+    await seedDivergingThreads(services);
+
+    const html = await (await app.request("/archive")).text();
+    expect(html.indexOf("Untouched newer thread")).toBeLessThan(
+      html.indexOf("Growing thread"),
+    );
+  });
+
+  it("distinguishes the updated view in the document title", async () => {
+    const { app, services } = setupApp();
+    await seedDivergingThreads(services);
+
+    const byPublished = await (await app.request("/archive")).text();
+    expect(byPublished).toContain("<title>Archive - ");
+    expect(byPublished).not.toContain("Recently updated");
+
+    const byActivity = await (
+      await app.request("/archive?sort=updated")
+    ).text();
+    expect(byActivity).toContain("<title>Archive - Recently updated - ");
+  });
+
+  it("ignores an unknown sort value", async () => {
+    const { app, services } = setupApp();
+    await seedDivergingThreads(services);
+
+    const html = await (await app.request("/archive?sort=nonsense")).text();
+    expect(html.indexOf("Untouched newer thread")).toBeLessThan(
+      html.indexOf("Growing thread"),
+    );
+  });
+
+  // The quiet-reply switch promises "won't move the thread to the top of
+  // latest". The archive is not Latest — it is the canonical all-posts view,
+  // and it already shows Hidden-from-Latest content. So its updated sort
+  // reports when the Thread actually changed.
+  it("surfaces quietly extended threads even though Latest does not", async () => {
+    const { app, services } = setupApp();
+    const quietThread = await services.posts.create({
+      format: "note",
+      title: "Quietly extended thread",
+      bodyMarkdown: "root from 2019",
+      publishedAt: Date.UTC(2019, 2, 5) / 1000,
+    });
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "quiet addendum",
+      replyToId: quietThread.id,
+      publishedAt: Date.UTC(2026, 7, 1) / 1000,
+      quietReply: true,
+    });
+    await services.posts.create({
+      format: "note",
+      title: "Untouched newer thread",
+      bodyMarkdown: "root from 2025",
+      publishedAt: Date.UTC(2025, 0, 1) / 1000,
+    });
+
+    const html = await (await app.request("/archive?sort=updated")).text();
+    expect(html.indexOf("Quietly extended thread")).toBeLessThan(
+      html.indexOf("Untouched newer thread"),
+    );
+    expect(html).toContain("August 2026");
+
+    // Latest still honors the quiet flag.
+    const roots = await services.posts.list({
+      status: "published",
+      excludeReplies: true,
+      excludeLatestHidden: true,
+    });
+    expect(roots[0]?.title).toBe("Untouched newer thread");
   });
 });

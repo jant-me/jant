@@ -62,6 +62,7 @@ function buildFilterUrl(
     );
   }
   if (merged.view && merged.view !== "grid") params.set("view", merged.view);
+  if (merged.sort === "updated") params.set("sort", "updated");
 
   const qs = params.toString();
   return qs
@@ -463,34 +464,118 @@ const ChipMediaSelect: FC<{
 // View Toggle
 // =============================================================================
 
+/**
+ * One option in a toolbar toggle. `label` is used for both the hover tooltip
+ * and the accessible name — an icon-only control has to explain itself to
+ * both audiences, and one string keeps them from drifting apart.
+ */
+const ToggleOption: FC<{
+  href: string;
+  icon: string;
+  label: string;
+  active: boolean;
+}> = ({ href, icon, label, active }) => (
+  <a
+    href={href}
+    class={`archive-view-btn${active ? " archive-view-btn-active" : ""}`}
+    role="radio"
+    aria-checked={active ? "true" : "false"}
+    aria-label={label}
+    title={label}
+  >
+    <Icon name={icon} class="[&>svg]:size-4" />
+  </a>
+);
+
 const ViewToggle: FC<{
   filters: ArchiveFilters;
   sitePathPrefix?: string;
 }> = ({ filters, sitePathPrefix = "" }) => {
+  const { i18n } = useLingui();
   const currentView: ArchiveView = filters.view ?? "grid";
-  const gridUrl = buildFilterUrl(filters, { view: undefined }, sitePathPrefix);
-  const listUrl = buildFilterUrl(filters, { view: "list" }, sitePathPrefix);
 
   return (
-    <div class="archive-view-toggle" role="radiogroup" aria-label="View mode">
-      <a
-        href={gridUrl}
-        class={`archive-view-btn${currentView === "grid" ? " archive-view-btn-active" : ""}`}
-        role="radio"
-        aria-checked={currentView === "grid" ? "true" : "false"}
-        aria-label="Grid view"
-      >
-        <Icon name="layout-grid" class="[&>svg]:size-4" />
-      </a>
-      <a
-        href={listUrl}
-        class={`archive-view-btn${currentView === "list" ? " archive-view-btn-active" : ""}`}
-        role="radio"
-        aria-checked={currentView === "list" ? "true" : "false"}
-        aria-label="List view"
-      >
-        <Icon name="list" class="[&>svg]:size-4" />
-      </a>
+    <div
+      class="archive-view-toggle"
+      role="radiogroup"
+      aria-label={i18n._(
+        msg({
+          message: "View mode",
+          comment: "@context: Archive grid/list toggle group label",
+        }),
+      )}
+    >
+      <ToggleOption
+        href={buildFilterUrl(filters, { view: undefined }, sitePathPrefix)}
+        icon="layout-grid"
+        active={currentView === "grid"}
+        label={i18n._(
+          msg({
+            message: "Show as a grid of tiles",
+            comment: "@context: Archive view option - grid",
+          }),
+        )}
+      />
+      <ToggleOption
+        href={buildFilterUrl(filters, { view: "list" }, sitePathPrefix)}
+        icon="list"
+        active={currentView === "list"}
+        label={i18n._(
+          msg({
+            message: "Show as a list with full posts",
+            comment: "@context: Archive view option - list",
+          }),
+        )}
+      />
+    </div>
+  );
+};
+
+/**
+ * Time-axis toggle. Sits next to the view toggle because it changes how the
+ * page is arranged, not which threads it contains — unlike the filter chips.
+ */
+const SortToggle: FC<{
+  filters: ArchiveFilters;
+  sitePathPrefix?: string;
+}> = ({ filters, sitePathPrefix = "" }) => {
+  const { i18n } = useLingui();
+  const sortsByActivity = filters.sort === "updated";
+
+  return (
+    <div
+      class="archive-view-toggle"
+      role="radiogroup"
+      aria-label={i18n._(
+        msg({
+          message: "Sort order",
+          comment: "@context: Archive sort toggle group label",
+        }),
+      )}
+    >
+      <ToggleOption
+        href={buildFilterUrl(filters, { sort: undefined }, sitePathPrefix)}
+        icon="clock"
+        active={!sortsByActivity}
+        label={i18n._(
+          msg({
+            message: "Sort by when each thread was published",
+            comment: "@context: Archive sort option - newest published first",
+          }),
+        )}
+      />
+      <ToggleOption
+        href={buildFilterUrl(filters, { sort: "updated" }, sitePathPrefix)}
+        icon="history"
+        active={sortsByActivity}
+        label={i18n._(
+          msg({
+            message: "Sort by when each thread was last added to",
+            comment:
+              "@context: Archive sort option - threads that recently gained a post first",
+          }),
+        )}
+      />
     </div>
   );
 };
@@ -948,7 +1033,10 @@ const FilterBar: FC<{
         )}
       </div>
 
-      <ViewToggle filters={filters} sitePathPrefix={sitePathPrefix} />
+      <div class="archive-toolbar-toggles">
+        <SortToggle filters={filters} sitePathPrefix={sitePathPrefix} />
+        <ViewToggle filters={filters} sitePathPrefix={sitePathPrefix} />
+      </div>
     </div>
   );
 };
@@ -1258,6 +1346,7 @@ export const ArchivePage: FC<ArchivePageProps> = ({
 }) => {
   const { i18n } = useLingui();
   const currentView: ArchiveView = filters.view ?? "grid";
+  const sortsByActivity = filters.sort === "updated";
   const paginationBaseUrl = buildFilterUrl(filters, {}, sitePathPrefix);
   const totalCountUnit =
     totalCount === 1
@@ -1295,6 +1384,18 @@ export const ArchivePage: FC<ArchivePageProps> = ({
         >
           <span class="archive-page-summary-count">{totalCount}</span>{" "}
           {totalCountUnit}
+          {sortsByActivity && (
+            <>
+              {" · "}
+              {i18n._(
+                msg({
+                  message: "newest changes first",
+                  comment:
+                    "@context: Archive page meta note explaining the active sort order",
+                }),
+              )}
+            </>
+          )}
           {feedHref && (
             <>
               {" "}
@@ -1347,7 +1448,18 @@ export const ArchivePage: FC<ArchivePageProps> = ({
                 <div key={`grid-${group.year}-${group.month}`} class="contents">
                   <ArchiveMonthHeader
                     class={`archive-month-header${groupIndex > 0 ? " archive-month-header-spaced" : ""}`}
-                    label={group.label}
+                    label={
+                      sortsByActivity
+                        ? i18n._(
+                            msg({
+                              message: "Updated {month}",
+                              comment:
+                                "@context: Archive month header when sorting by last update — {month} is e.g. 'August 2026'",
+                            }),
+                            { month: group.label },
+                          )
+                        : group.label
+                    }
                     count={group.totalCount}
                   />
                   {group.posts.map((post) => (

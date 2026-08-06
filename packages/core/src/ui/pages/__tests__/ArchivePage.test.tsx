@@ -120,4 +120,60 @@ describe("ArchivePage", () => {
       'class="feed-link"',
     );
   });
+
+  it("offers the updated sort and marks published as the default", () => {
+    const html = renderArchivePage();
+
+    expect(html).toContain('aria-label="Sort order"');
+    expect(html).toContain("sort=updated");
+    expect(html).toContain(
+      '<a href="/archive" class="archive-view-btn archive-view-btn-active" role="radio" aria-checked="true" aria-label="Sort by when each thread was published"',
+    );
+  });
+
+  it("marks the updated sort active and keeps a way back", () => {
+    const html = renderArchivePage({ filters: { sort: "updated" } });
+
+    expect(html).toContain(
+      '<a href="/archive?sort=updated" class="archive-view-btn archive-view-btn-active" role="radio" aria-checked="true" aria-label="Sort by when each thread was last added to"',
+    );
+    expect(html).toContain('<a href="/archive" class="archive-view-btn"');
+  });
+
+  // Icon-only controls need a hover tooltip too — aria-label only reaches
+  // assistive tech, and a bare clock/history pair is unreadable without one.
+  it("gives every toolbar toggle a tooltip matching its accessible name", () => {
+    const html = renderArchivePage();
+
+    for (const label of [
+      "Sort by when each thread was published",
+      "Sort by when each thread was last added to",
+      "Show as a grid of tiles",
+      "Show as a list with full posts",
+    ]) {
+      expect(html).toContain(`aria-label="${label}" title="${label}"`);
+    }
+  });
+
+  it("labels month headers as update months in the updated sort", () => {
+    expect(renderArchivePage()).toContain(
+      '<span class="archive-month-header-label">March 2026</span>',
+    );
+
+    const updated = renderArchivePage({ filters: { sort: "updated" } });
+    expect(updated).toContain(
+      '<span class="archive-month-header-label">Updated March 2026</span>',
+    );
+    expect(updated).toContain("newest changes first");
+  });
+
+  it("keeps the sort selection in filter and view links", () => {
+    const html = renderArchivePage({
+      filters: { sort: "updated" },
+      availableCollections: [{ slug: "tech", title: "Tech" }],
+    });
+
+    expect(html).toContain("collection=tech&amp;sort=updated");
+    expect(html).toContain("view=list&amp;sort=updated");
+  });
 });

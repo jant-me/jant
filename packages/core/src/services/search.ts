@@ -54,8 +54,11 @@ interface RawSearchRow {
   rating: number | null;
   reply_to_id: string | null;
   thread_id: string;
+  /** SQLite returns 0/1, Postgres a boolean. */
+  quiet_reply: number | boolean | null;
   published_at: number | null;
   last_activity_at: number | null;
+  thread_updated_at: number | null;
   created_at: number;
   updated_at: number;
   rank: number;
@@ -92,9 +95,15 @@ function mapRow(row: RawSearchRow): SearchResult {
       previewProvider: null,
       replyToId: row.reply_to_id,
       threadId: row.thread_id,
+      quietReply: Boolean(row.quiet_reply),
       publishedAt: row.published_at,
       lastActivityAt:
         row.last_activity_at ?? row.published_at ?? row.updated_at,
+      threadUpdatedAt:
+        row.thread_updated_at ??
+        row.last_activity_at ??
+        row.published_at ??
+        row.updated_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     },
