@@ -527,7 +527,12 @@ describe("compose bridge", () => {
       undefined,
       "pst_root",
       { kind: "timeline-item", id: "pst_root" },
-      { restoreDraft: true, initialFormat: "quote" },
+      {
+        restoreDraft: true,
+        initialFormat: "quote",
+        restoreToast: false,
+        restoreMedia: [],
+      },
     );
     expect(composeEl.openNew).not.toHaveBeenCalled();
     expect(composeEl.clearLocalDraftFromStorage).not.toHaveBeenCalled();

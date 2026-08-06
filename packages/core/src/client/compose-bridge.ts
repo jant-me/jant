@@ -8,6 +8,7 @@
 import type { ComposeSubmitDetail } from "./components/compose-types.js";
 import type { ComposeAttachment } from "./components/compose-types.js";
 import type { ComposeSubmitAttachment } from "./components/compose-types.js";
+import type { LocalDraftMedia } from "./components/compose-types.js";
 import type { JantComposeDialog } from "./components/jant-compose-dialog.js";
 import type { JantComposeEditor } from "./components/jant-compose-editor.js";
 import type { PostAttachmentInput } from "../types.js";
@@ -33,6 +34,7 @@ import {
 } from "./post-refresh.js";
 import { getJsonString, readJsonObject } from "./json.js";
 import { uploadViaSession } from "./upload-session.js";
+import type { UploadSessionResult } from "./upload-session.js";
 import { publicPath } from "./runtime-paths.js";
 import { tiptapJsonToMarkdown } from "../lib/tiptap-to-markdown.js";
 import { getMediaCategory } from "../lib/upload.js";
@@ -139,7 +141,7 @@ function refreshUploadToast() {
 }
 
 /**
- * Track completed upload mediaIds by clientId.
+ * Track completed upload results by clientId.
  *
  * When an attachment is migrated between editor instances (e.g. entering thread
  * mode while an upload is in-flight), `updateAttachmentStatus` fires on the old
@@ -148,8 +150,11 @@ function refreshUploadToast() {
  * handler can't look it up. This map provides a fallback: we record the result
  * here as soon as any upload succeeds, and `buildRequestAttachments` reads it
  * when `attachment.mediaId` is null and the clientId isn't in `uploadPromises`.
+ *
+ * The full result (not just the id) is kept so a failed publish can restore
+ * uploaded attachments into the reopened compose dialog.
  */
-const completedMediaIds = new Map<string, string>();
+const completedUploads = new Map<string, UploadSessionResult>();
 
 /**
  * Quickly grab the very first decoded frame of a video as a small poster.
@@ -401,8 +406,14 @@ async function uploadFile(
 
     uploadProgress.set(clientId, 1);
     refreshUploadToast();
-    editor?.updateAttachmentStatus(clientId, "done", result.id, null);
-    completedMediaIds.set(clientId, result.id);
+    editor?.updateAttachmentStatus(
+      clientId,
+      "done",
+      result.id,
+      null,
+      result.url,
+    );
+    completedUploads.set(clientId, result);
     return result.id;
   } catch (error) {
     uploadProgress.delete(clientId);
@@ -422,7 +433,7 @@ document.addEventListener("jant:attachment-removed", (e: Event) => {
     e as CustomEvent<{ clientId: string; mediaId: string | null }>
   ).detail;
 
-  completedMediaIds.delete(clientId);
+  completedUploads.delete(clientId);
 
   if (mediaId) {
     // Upload already finished — fire-and-forget delete
@@ -576,7 +587,7 @@ function buildRequestAttachments(
       const mediaId =
         attachment.mediaId ??
         pendingMediaIds.get(attachment.clientId) ??
-        completedMediaIds.get(attachment.clientId);
+        completedUploads.get(attachment.clientId)?.id;
       if (!mediaId) continue;
 
       requestAttachments.push({
@@ -677,6 +688,36 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
     }
     composeEl?.clearLocalDraftFromStorage?.();
   };
+  /**
+   * Uploads that completed before the publish failed. The local draft's own
+   * media snapshot misses uploads that finished after the dialog closed, so
+   * the reopened compose merges these over it.
+   */
+  const collectRestorableMedia = (): LocalDraftMedia[] => {
+    const details = detail.threadPosts?.length ? detail.threadPosts : [detail];
+    const media: LocalDraftMedia[] = [];
+    const seen = new Set<string>();
+    for (const d of details) {
+      for (const attachment of d.attachments) {
+        if (attachment.type !== "media" || seen.has(attachment.clientId)) {
+          continue;
+        }
+        seen.add(attachment.clientId);
+        const upload = completedUploads.get(attachment.clientId);
+        if (!upload) continue;
+        media.push({
+          clientId: attachment.clientId,
+          mediaId: upload.id,
+          url: upload.url,
+          mimeType: upload.mimeType,
+          name: upload.filename || undefined,
+          alt: attachment.alt || undefined,
+        });
+      }
+    }
+    return media;
+  };
+
   const reopenComposeAfterFailure = async () => {
     if (!composeEl || isPageMode) return;
 
@@ -688,7 +729,7 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
 
     if (isEdit && detail.editPostId) {
       if (typeof composeEl.openEdit !== "function") return;
-      await composeEl.openEdit(detail.editPostId);
+      await composeEl.openEdit(detail.editPostId, { restoreToast: false });
       return;
     }
 
@@ -704,13 +745,22 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
               id: detail.replyRefreshId,
             }
           : undefined,
-        { restoreDraft: true, initialFormat: detail.format },
+        {
+          restoreDraft: true,
+          initialFormat: detail.format,
+          restoreToast: false,
+          restoreMedia: collectRestorableMedia(),
+        },
       );
       return;
     }
 
     if (typeof composeEl.openNew !== "function") return;
-    await composeEl.openNew({ restoreDraft: true });
+    await composeEl.openNew({
+      restoreDraft: true,
+      restoreToast: false,
+      restoreMedia: collectRestorableMedia(),
+    });
   };
   const handleSubmitError = async (message: string) => {
     clearPageLoading();
@@ -750,10 +800,10 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
     const results = await Promise.all(pendingPromises);
 
     // If any pending upload failed (null result where we expected a mediaId
-    // AND the upload wasn't already tracked in completedMediaIds):
+    // AND the upload wasn't already tracked in completedUploads):
     const failedCount = results.filter(
       (id, i) =>
-        id === null && !completedMediaIds.has(pendingClientIds[i] ?? ""),
+        id === null && !completedUploads.has(pendingClientIds[i] ?? ""),
     ).length;
     if (failedCount > 0) {
       if (detail.status === "published" && !isEdit) {

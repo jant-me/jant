@@ -24,6 +24,7 @@ import type {
   ComposeRowStatus,
   DraftItem,
   LocalDraft,
+  LocalDraftMedia,
   ComposeFullscreenOpenDetail,
   ComposeFullscreenReplyContext,
   ComposeFullscreenCloseDetail,
@@ -131,11 +132,17 @@ interface ComposeOpenOptions {
   collectionId?: string;
   restoreDraft?: boolean;
   initialFormat?: ComposeFormat;
+  /** false suppresses the "Draft restored." toast (failure reopen: the error toast is enough) */
+  restoreToast?: boolean;
+  /** Uploads the bridge knows completed — merged over the draft's own media snapshot */
+  restoreMedia?: LocalDraftMedia[];
 }
 
 interface ComposeReplyOpenOptions {
   restoreDraft?: boolean;
   initialFormat?: ComposeFormat;
+  restoreToast?: boolean;
+  restoreMedia?: LocalDraftMedia[];
 }
 
 interface ComposeStateSnapshot {
@@ -990,7 +997,7 @@ export class JantComposeDialog extends LitElement {
     }
   }
 
-  async openEdit(id: string) {
+  async openEdit(id: string, options?: { restoreToast?: boolean }) {
     this.reset();
     const requestId = ++this._openEditRequestId;
     this._openingEdit = true;
@@ -1049,7 +1056,10 @@ export class JantComposeDialog extends LitElement {
       if (requestId !== this._openEditRequestId) return;
 
       // Check for a local edit draft (unsaved changes from a previous session)
-      const restored = this._restoreEditDraftIfAvailable(id);
+      const restored = this._restoreEditDraftIfAvailable(
+        id,
+        options?.restoreToast,
+      );
 
       if (!restored) {
         this._editor?.populate({
@@ -1107,7 +1117,10 @@ export class JantComposeDialog extends LitElement {
     this._editor?.setTitleDefault(JantComposeDialog._getNoteTitleDefault());
 
     if (options?.restoreDraft !== false) {
-      await this.restoreLocalDraft();
+      await this.restoreLocalDraft({
+        notify: options?.restoreToast,
+        extraMedia: options?.restoreMedia,
+      });
     }
 
     if (options?.initialFormat) {
@@ -1166,7 +1179,11 @@ export class JantComposeDialog extends LitElement {
     this._format = options?.initialFormat ?? "note";
 
     if (options?.restoreDraft !== false) {
-      await this.restoreLocalDraft({ expectedReplyToId: id });
+      await this.restoreLocalDraft({
+        expectedReplyToId: id,
+        notify: options?.restoreToast,
+        extraMedia: options?.restoreMedia,
+      });
     }
     // Collection membership belongs to the existing Thread. Reply compose
     // must not restore or submit stale per-compose Collection state.
@@ -3252,6 +3269,9 @@ export class JantComposeDialog extends LitElement {
               summary: t.summary,
             })),
             attachmentOrder: [...data.attachmentOrder],
+            mediaAttachments: JantComposeDialog._mediaSnapshotFromAttachments(
+              data.attachments,
+            ),
           };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
@@ -3309,6 +3329,7 @@ export class JantComposeDialog extends LitElement {
       !!data.quoteText.trim() ||
       !!data.quoteAuthor.trim() ||
       data.rating > 0 ||
+      data.attachments.length > 0 ||
       data.attachedTexts.length > 0;
 
     if (!hasContent) {
@@ -3342,6 +3363,9 @@ export class JantComposeDialog extends LitElement {
         summary: t.summary,
       })),
       attachmentOrder: [...data.attachmentOrder],
+      mediaAttachments: JantComposeDialog._mediaSnapshotFromAttachments(
+        data.attachments,
+      ),
       savedAt: Date.now(),
     };
 
@@ -3370,7 +3394,67 @@ export class JantComposeDialog extends LitElement {
     );
   }
 
-  async restoreLocalDraft(options?: { expectedReplyToId?: string }) {
+  /**
+   * Snapshot attachments whose upload completed. Only these can be restored
+   * later — for the rest the bytes exist nowhere but in-memory.
+   */
+  private static _mediaSnapshotFromAttachments(
+    attachments: ComposeAttachment[],
+  ): LocalDraftMedia[] {
+    return attachments.flatMap((a) =>
+      a.status === "done" && a.mediaId && a.remoteUrl
+        ? [
+            {
+              clientId: a.clientId,
+              mediaId: a.mediaId,
+              url: a.remoteUrl,
+              mimeType: a.file.type,
+              name: a.file.name || undefined,
+              alt: a.alt || undefined,
+              summary: a.summary,
+              chars: a.chars,
+            },
+          ]
+        : [],
+    );
+  }
+
+  /** Convert stored media snapshots into `populate()` media entries. */
+  private static _restoredMediaToPopulate(media: LocalDraftMedia[]) {
+    return media.map((m) => ({
+      id: m.mediaId,
+      clientId: m.clientId,
+      previewUrl: m.url,
+      mimeType: m.mimeType,
+      originalName: m.name,
+      alt: m.alt,
+      summary: m.summary ?? undefined,
+      chars: m.chars ?? undefined,
+    }));
+  }
+
+  /**
+   * Merge a draft's media snapshot with bridge-supplied completed uploads.
+   * Bridge entries win: they include uploads that finished after the dialog
+   * closed, which the autosaved snapshot predates.
+   */
+  private static _mergeRestoredMedia(
+    snapshot: LocalDraftMedia[] | undefined,
+    extra: LocalDraftMedia[] | undefined,
+  ): Map<string, LocalDraftMedia> {
+    const merged = new Map<string, LocalDraftMedia>();
+    for (const m of snapshot ?? []) merged.set(m.clientId, m);
+    for (const m of extra ?? []) merged.set(m.clientId, m);
+    return merged;
+  }
+
+  async restoreLocalDraft(options?: {
+    expectedReplyToId?: string;
+    /** false suppresses the "Draft restored." toast */
+    notify?: boolean;
+    /** Completed uploads known to the bridge at failure time */
+    extraMedia?: LocalDraftMedia[];
+  }) {
     // Don't restore if already in edit or draft-load mode
     if (this._editPostId || this._draftSourceId) return;
     // Don't restore if the editor already has content (e.g. reopened dialog)
@@ -3460,6 +3544,18 @@ export class JantComposeDialog extends LitElement {
           ];
         });
 
+        // Bridge entries are a flat list — this item owns the clientIds in
+        // its own attachmentOrder.
+        const itemExtraMedia = options?.extraMedia?.filter((m) =>
+          item.attachmentOrder?.includes(m.clientId),
+        );
+        const media = [
+          ...JantComposeDialog._mergeRestoredMedia(
+            item.mediaAttachments,
+            itemExtraMedia,
+          ).values(),
+        ];
+
         editor.populate({
           format: item.format,
           title: item.title || undefined,
@@ -3467,6 +3563,9 @@ export class JantComposeDialog extends LitElement {
           url: item.url || undefined,
           quoteText: item.quoteText || undefined,
           quoteAuthor: item.quoteAuthor || undefined,
+          media: media.length
+            ? JantComposeDialog._restoredMediaToPopulate(media)
+            : undefined,
           textAttachments: textAttachments?.length
             ? textAttachments
             : undefined,
@@ -3475,7 +3574,7 @@ export class JantComposeDialog extends LitElement {
       }
 
       this._draftRestored = true;
-      showToast(this.labels.draftRestored);
+      if (options?.notify !== false) showToast(this.labels.draftRestored);
       globalThis.requestAnimationFrame(() => {
         this._captureInitialSnapshot();
       });
@@ -3500,6 +3599,13 @@ export class JantComposeDialog extends LitElement {
       ];
     });
 
+    const media = [
+      ...JantComposeDialog._mergeRestoredMedia(
+        draft.mediaAttachments,
+        options?.extraMedia,
+      ).values(),
+    ];
+
     this._editor?.populate({
       format: draft.format,
       title: draft.title || undefined,
@@ -3510,12 +3616,15 @@ export class JantComposeDialog extends LitElement {
       rating: draft.rating || undefined,
       showTitle: draft.showTitle,
       showRating: draft.showRating,
+      media: media.length
+        ? JantComposeDialog._restoredMediaToPopulate(media)
+        : undefined,
       textAttachments: textAttachments?.length ? textAttachments : undefined,
       attachmentOrder: draft.attachmentOrder,
     });
 
     this._draftRestored = true;
-    showToast(this.labels.draftRestored);
+    if (options?.notify !== false) showToast(this.labels.draftRestored);
     globalThis.requestAnimationFrame(() => {
       this._captureInitialSnapshot();
     });
@@ -3525,7 +3634,10 @@ export class JantComposeDialog extends LitElement {
    * Check for a local edit draft for the given post ID and restore it if valid.
    * Returns true if a draft was restored, false otherwise.
    */
-  private _restoreEditDraftIfAvailable(postId: string): boolean {
+  private _restoreEditDraftIfAvailable(
+    postId: string,
+    notify?: boolean,
+  ): boolean {
     const key = JantComposeDialog._EDIT_DRAFT_KEY_PREFIX + postId;
 
     let raw: string | null;
@@ -3588,7 +3700,7 @@ export class JantComposeDialog extends LitElement {
     });
 
     this._draftRestored = true;
-    showToast(this.labels.draftRestored);
+    if (notify !== false) showToast(this.labels.draftRestored);
     return true;
   }
 

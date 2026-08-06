@@ -2250,6 +2250,104 @@ describe("JantComposeDialog", () => {
     expect(el._collectionIds).toEqual(["col-2", "col-1"]);
   });
 
+  function seedDraftWithMedia() {
+    globalThis.localStorage.setItem(
+      "jant:compose-draft",
+      JSON.stringify({
+        format: "note",
+        title: "",
+        bodyJson: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Draft with images" }],
+            },
+          ],
+        },
+        url: "",
+        quoteText: "",
+        quoteAuthor: "",
+        slug: "",
+        visibility: "public",
+        rating: 0,
+        showTitle: false,
+        showRating: false,
+        collectionIds: [],
+        replyToId: null,
+        attachedTexts: [],
+        attachmentOrder: ["client-a", "client-b"],
+        mediaAttachments: [
+          {
+            clientId: "client-a",
+            mediaId: "med_aaa",
+            url: "/media/aaa.jpg",
+            mimeType: "image/jpeg",
+            name: "aaa.jpg",
+            alt: "first",
+          },
+        ],
+        savedAt: Date.now(),
+      }),
+    );
+  }
+
+  it("restores uploaded media from the draft snapshot plus bridge-supplied uploads", async () => {
+    const el = await createElement();
+    seedDraftWithMedia();
+
+    // client-b's upload finished after the dialog closed — only the bridge
+    // knows about it, so it arrives via restoreMedia instead of the snapshot.
+    await el.openNew({
+      restoreDraft: true,
+      restoreToast: false,
+      restoreMedia: [
+        {
+          clientId: "client-b",
+          mediaId: "med_bbb",
+          url: "/media/bbb.png",
+          mimeType: "image/png",
+          name: "bbb.png",
+        },
+      ],
+    });
+    await flushUpdates(el);
+
+    const editor = requireElement(
+      el.querySelector<JantComposeEditor>("jant-compose-editor"),
+      "expected compose editor",
+    );
+    const attachments = editor._attachments;
+    expect(attachments.map((a) => a.clientId)).toEqual([
+      "client-a",
+      "client-b",
+    ]);
+    expect(attachments.map((a) => a.mediaId)).toEqual(["med_aaa", "med_bbb"]);
+    expect(attachments.every((a) => a.status === "done")).toBe(true);
+    expect(attachments[0].remoteUrl).toBe("/media/aaa.jpg");
+    expect(attachments[0].alt).toBe("first");
+    expect(editor._attachmentOrder).toEqual(["client-a", "client-b"]);
+  });
+
+  it("suppresses the draft-restored toast when restoreToast is false", async () => {
+    const container = document.createElement("div");
+    container.id = "toast-container";
+    document.body.appendChild(container);
+    const el = await createElement();
+    seedDraftWithMedia();
+
+    await el.openNew({ restoreDraft: true, restoreToast: false });
+    await flushUpdates(el);
+    expect(container.querySelector(".toast")).toBeNull();
+
+    el.reset();
+    await el.openNew({ restoreDraft: true });
+    await flushUpdates(el);
+    expect(container.querySelector(".toast span")?.textContent).toBe(
+      "Draft restored.",
+    );
+  });
+
   const NOTE_TITLE_KEY = "jant:compose-note-title";
 
   function titleToggle(el: JantComposeDialog, index = 0): HTMLButtonElement {
@@ -4148,6 +4246,7 @@ describe("JantComposeDialog", () => {
         alt: "",
         error: null,
         posterUrl: null,
+        remoteUrl: null,
         summary: null,
         chars: null,
       },
@@ -4636,6 +4735,7 @@ describe("JantComposeDialog", () => {
         alt: "",
         error: null,
         posterUrl: null,
+        remoteUrl: null,
         summary: null,
         chars: null,
       },
@@ -4678,6 +4778,7 @@ describe("JantComposeDialog", () => {
         alt: "",
         error: null,
         posterUrl: null,
+        remoteUrl: null,
         summary: null,
         chars: null,
       },
@@ -4733,6 +4834,7 @@ describe("JantComposeDialog", () => {
         alt: "A test image",
         error: null,
         posterUrl: null,
+        remoteUrl: null,
         summary: null,
         chars: null,
       },
@@ -4803,6 +4905,7 @@ describe("JantComposeDialog", () => {
         alt: "Alt for pending",
         error: null,
         posterUrl: null,
+        remoteUrl: null,
         summary: null,
         chars: null,
       },
@@ -6750,6 +6853,7 @@ describe("JantComposeDialog", () => {
         alt: "",
         error: null,
         posterUrl: null,
+        remoteUrl: null,
         summary: null,
         chars: null,
       },

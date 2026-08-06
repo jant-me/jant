@@ -922,9 +922,12 @@ export class JantComposeEditor extends LitElement {
     status: ComposeAttachment["status"],
     mediaId: string | null,
     error: string | null,
+    remoteUrl?: string | null,
   ) {
     this._attachments = this._attachments.map((a) =>
-      a.clientId === clientId ? { ...a, status, mediaId, error } : a,
+      a.clientId === clientId
+        ? { ...a, status, mediaId, error, remoteUrl: remoteUrl ?? a.remoteUrl }
+        : a,
     );
   }
 
@@ -1267,6 +1270,8 @@ export class JantComposeEditor extends LitElement {
     showRating?: boolean;
     media?: Array<{
       id: string;
+      /** Preserved so a restored draft's attachmentOrder still maps by clientId */
+      clientId?: string;
       previewUrl: string;
       posterUrl?: string | null;
       alt?: string;
@@ -1315,13 +1320,14 @@ export class JantComposeEditor extends LitElement {
     // Convert media attachments to ComposeAttachment[] with status "done"
     if (data.media?.length) {
       const attachments = data.media.map((m) => ({
-        clientId: randomUUID(),
+        clientId: m.clientId ?? randomUUID(),
         file: new File([], m.originalName ?? "existing", { type: m.mimeType }),
         previewUrl: m.previewUrl,
         posterUrl: m.posterUrl ?? null,
         status: "done" as const,
         progress: null,
         mediaId: m.id,
+        remoteUrl: m.previewUrl,
         alt: m.alt ?? "",
         error: null,
         summary: m.summary ?? null,
@@ -1710,6 +1716,7 @@ export class JantComposeEditor extends LitElement {
         status: "pending",
         progress: null,
         mediaId: null,
+        remoteUrl: null,
         alt: "",
         error: null,
         summary: null,
