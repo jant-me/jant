@@ -1448,17 +1448,12 @@ export const ArchivePage: FC<ArchivePageProps> = ({
                 <div key={`grid-${group.year}-${group.month}`} class="contents">
                   <ArchiveMonthHeader
                     class={`archive-month-header${groupIndex > 0 ? " archive-month-header-spaced" : ""}`}
+                    // Not translated, on purpose: `group.label` is built with
+                    // a hardcoded en-US month name, so a translated wrapper
+                    // would only produce "更新于 August 2026". Both halves
+                    // become translatable together, or neither does.
                     label={
-                      sortsByActivity
-                        ? i18n._(
-                            msg({
-                              message: "Updated {month}",
-                              comment:
-                                "@context: Archive month header when sorting by last update — {month} is e.g. 'August 2026'",
-                            }),
-                            { month: group.label },
-                          )
-                        : group.label
+                      sortsByActivity ? `Updated ${group.label}` : group.label
                     }
                     count={group.totalCount}
                   />

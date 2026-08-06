@@ -309,7 +309,10 @@ describe("CollectionService", () => {
       ]);
     });
 
-    it("uses a later Root edit as the Thread's recent activity", async () => {
+    // The directory's "recent activity" uses the same definition as every
+    // other surface: the Thread gained a post. Editing one is not activity,
+    // or fixing a typo would reshuffle the whole collection directory.
+    it("does not treat a later Root edit as recent activity", async () => {
       vi.useFakeTimers();
       try {
         vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
@@ -325,6 +328,34 @@ describe("CollectionService", () => {
 
         vi.setSystemTime(new Date("2024-01-01T00:01:00Z"));
         await postService.update(root.id, { bodyMarkdown: "after" });
+
+        const directory = await collectionService.listDirectoryData();
+        expect(directory.collections[0]?.recentActivityAt).toBe(1704067200);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("treats a new reply as recent activity", async () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+        const collection = await collectionService.create({
+          slug: "growing-thread",
+          title: "Growing Thread",
+        });
+        const root = await postService.create({
+          format: "note",
+          bodyMarkdown: "root",
+        });
+        await collectionService.addThread(collection.id, root.id);
+
+        vi.setSystemTime(new Date("2024-01-01T00:01:00Z"));
+        await postService.create({
+          format: "note",
+          bodyMarkdown: "reply",
+          replyToId: root.id,
+        });
 
         const directory = await collectionService.listDirectoryData();
         expect(directory.collections[0]?.recentActivityAt).toBe(1704067260);

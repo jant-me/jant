@@ -53,6 +53,44 @@ describe("Public Posts API Routes", () => {
       expect(body.posts[0]).not.toHaveProperty("body");
     });
 
+    // Consumers need both axes: `lastActivityAt` answers "when was this
+    // announced", `threadUpdatedAt` answers "when did it actually change".
+    // Exposing only the first left no way to tell a quiet addition happened.
+    it("reports both thread activity timestamps", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+
+      const root = await services.posts.create({
+        format: "note",
+        title: "Quietly extended",
+        bodyMarkdown: "root",
+        publishedAt: 1000,
+      });
+      await services.posts.create({
+        format: "note",
+        bodyMarkdown: "quiet addendum",
+        replyToId: root.id,
+        publishedAt: 3000,
+        quietReply: true,
+      });
+
+      const res = await app.request("/api/public/posts");
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        posts: {
+          title: string | null;
+          quietReply: boolean;
+          lastActivityAt: number;
+          threadUpdatedAt: number;
+        }[];
+      };
+
+      const entry = body.posts.find((p) => p.title === "Quietly extended");
+      expect(entry?.lastActivityAt).toBe(1000);
+      expect(entry?.threadUpdatedAt).toBe(3000);
+      expect(entry?.quietReply).toBe(false);
+    });
+
     it("supports format and limit filters", async () => {
       const { app, services } = createTestApp({ authenticated: false });
       app.route("/api/public/posts", publicPostsApiRoutes);

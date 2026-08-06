@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import type { Bindings } from "../../../types.js";
 import type { AppVariables } from "../../../types/app-context.js";
@@ -152,6 +152,73 @@ describe("Sitemap Routes", () => {
       // Slugs appear in id-ascending order (== creation order for TypeIDs).
       const indices = created.map((slug) => xml.indexOf(`/${slug}`));
       expect(indices).toEqual([...indices].sort((a, b) => a - b));
+    });
+
+    // A Thread root's page renders its replies, so anything that changes a
+    // reply changes the page. Unlike ordering, edits count for <lastmod> —
+    // the page really did change.
+    it("moves <lastmod> when a reply is added", async () => {
+      const { app, services } = createSitemapTestApp();
+      const readLastmod = async () => {
+        const xml = await (await app.request("/sitemap-posts-1.xml")).text();
+        return /<lastmod>([^<]+)<\/lastmod>/.exec(xml)?.[1];
+      };
+
+      vi.useFakeTimers();
+      try {
+        // lastmod is a date, so the two writes need to land on different days.
+        vi.setSystemTime(new Date("2026-03-01T00:00:00Z"));
+        const root = await services.posts.create({
+          format: "note",
+          bodyMarkdown: "root",
+          title: "Threaded",
+          status: "published",
+        });
+        expect(await readLastmod()).toBe("2026-03-01");
+
+        vi.setSystemTime(new Date("2026-03-05T00:00:00Z"));
+        await services.posts.create({
+          format: "note",
+          bodyMarkdown: "reply",
+          replyToId: root.id,
+          status: "published",
+        });
+        expect(await readLastmod()).toBe("2026-03-05");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("ignores a draft reply in <lastmod>", async () => {
+      const { app, services } = createSitemapTestApp();
+      const readLastmod = async () => {
+        const xml = await (await app.request("/sitemap-posts-1.xml")).text();
+        return /<lastmod>([^<]+)<\/lastmod>/.exec(xml)?.[1];
+      };
+
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date("2026-03-01T00:00:00Z"));
+        const root = await services.posts.create({
+          format: "note",
+          bodyMarkdown: "root",
+          title: "Threaded",
+          status: "published",
+        });
+
+        vi.setSystemTime(new Date("2026-03-05T00:00:00Z"));
+        await services.posts.create({
+          format: "note",
+          bodyMarkdown: "unpublished reply",
+          replyToId: root.id,
+          status: "draft",
+        });
+
+        // Not on the page, so it must not claim the page changed.
+        expect(await readLastmod()).toBe("2026-03-01");
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("excludes private posts, replies, and drafts", async () => {

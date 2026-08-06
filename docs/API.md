@@ -277,34 +277,36 @@ Jant supports three post formats:
 
 Post responses include these fields:
 
-| Field            | Type                                     | Notes                                                     |
-| ---------------- | ---------------------------------------- | --------------------------------------------------------- |
-| `id`             | `pst_*` string                           | Post ID                                                   |
-| `siteId`         | string                                   | Owning site                                               |
-| `format`         | `note` \| `link` \| `quote`              | Post format                                               |
-| `status`         | `draft` \| `published`                   | Stored post status                                        |
-| `visibility`     | `public` \| `latest_hidden` \| `private` | Resolved visibility shown to clients                      |
-| `pinnedAt`       | integer \| `null`                        | Pin timestamp                                             |
-| `featuredAt`     | integer \| `null`                        | Feature timestamp                                         |
-| `slug`           | string                                   | Canonical slug                                            |
-| `title`          | string \| `null`                         | Returned for non-quote responses; omitted for `quote`     |
-| `url`            | string \| `null`                         | Returned for non-quote responses; usually `null` on notes |
-| `sourceName`     | string \| `null`                         | Returned instead of `title` for `quote`                   |
-| `sourceUrl`      | string \| `null`                         | Returned instead of `url` for `quote`                     |
-| `body`           | string \| `null`                         | Raw TipTap JSON string when stored that way               |
-| `bodyHtml`       | string \| `null`                         | Rendered HTML                                             |
-| `bodyText`       | string \| `null`                         | Plain-text rendering                                      |
-| `quoteText`      | string \| `null`                         | Quote content                                             |
-| `summary`        | string \| `null`                         | Optional summary                                          |
-| `rating`         | integer \| `null`                        | `1` to `5` when set                                       |
-| `replyToId`      | `pst_*` string \| `null`                 | Parent reply/post ID                                      |
-| `threadId`       | `pst_*` string                           | Thread root ID                                            |
-| `publishedAt`    | integer \| `null`                        | Publish timestamp                                         |
-| `lastActivityAt` | integer                                  | Last activity timestamp                                   |
-| `createdAt`      | integer                                  | Unix seconds                                              |
-| `updatedAt`      | integer                                  | Unix seconds                                              |
-| `attachments`    | array                                    | Ordered media/text attachment objects                     |
-| `collectionIds`  | `col_*` string[]                         | Shared Thread Collections; only in `GET /api/posts/:id`   |
+| Field             | Type                                     | Notes                                                     |
+| ----------------- | ---------------------------------------- | --------------------------------------------------------- |
+| `id`              | `pst_*` string                           | Post ID                                                   |
+| `siteId`          | string                                   | Owning site                                               |
+| `format`          | `note` \| `link` \| `quote`              | Post format                                               |
+| `status`          | `draft` \| `published`                   | Stored post status                                        |
+| `visibility`      | `public` \| `latest_hidden` \| `private` | Resolved visibility shown to clients                      |
+| `pinnedAt`        | integer \| `null`                        | Pin timestamp                                             |
+| `featuredAt`      | integer \| `null`                        | Feature timestamp                                         |
+| `slug`            | string                                   | Canonical slug                                            |
+| `title`           | string \| `null`                         | Returned for non-quote responses; omitted for `quote`     |
+| `url`             | string \| `null`                         | Returned for non-quote responses; usually `null` on notes |
+| `sourceName`      | string \| `null`                         | Returned instead of `title` for `quote`                   |
+| `sourceUrl`       | string \| `null`                         | Returned instead of `url` for `quote`                     |
+| `body`            | string \| `null`                         | Raw TipTap JSON string when stored that way               |
+| `bodyHtml`        | string \| `null`                         | Rendered HTML                                             |
+| `bodyText`        | string \| `null`                         | Plain-text rendering                                      |
+| `quoteText`       | string \| `null`                         | Quote content                                             |
+| `summary`         | string \| `null`                         | Optional summary                                          |
+| `rating`          | integer \| `null`                        | `1` to `5` when set                                       |
+| `replyToId`       | `pst_*` string \| `null`                 | Parent reply/post ID                                      |
+| `threadId`        | `pst_*` string                           | Thread root ID                                            |
+| `quietReply`      | boolean                                  | Reply published without announcing its Thread             |
+| `publishedAt`     | integer \| `null`                        | Publish timestamp                                         |
+| `lastActivityAt`  | integer                                  | Newest post in the Thread, excluding quiet replies        |
+| `threadUpdatedAt` | integer                                  | Newest post in the Thread, including quiet replies        |
+| `createdAt`       | integer                                  | Unix seconds                                              |
+| `updatedAt`       | integer                                  | Unix seconds — last row write, including edits            |
+| `attachments`     | array                                    | Ordered media/text attachment objects                     |
+| `collectionIds`   | `col_*` string[]                         | Shared Thread Collections; only in `GET /api/posts/:id`   |
 
 ### Post response shape
 
@@ -331,8 +333,10 @@ Example:
   "rating": null,
   "replyToId": null,
   "threadId": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
+  "quietReply": false,
   "publishedAt": 1706000000,
   "lastActivityAt": 1706000000,
+  "threadUpdatedAt": 1706000000,
   "createdAt": 1706000000,
   "updatedAt": 1706000000,
   "attachments": []
@@ -380,12 +384,14 @@ Public post responses include these fields:
 | `previewImageUrl` | string \| `null`            | Public preview image URL                                                                                     |
 | `replyToId`       | `pst_*` string \| `null`    | Parent reply/post ID                                                                                         |
 | `threadId`        | `pst_*` string              | Thread root ID                                                                                               |
+| `quietReply`      | boolean                     | Reply published without announcing its Thread. Always `false` on Thread roots                                |
 | `pinnedAt`        | integer \| `null`           | Pin timestamp                                                                                                |
 | `featuredAt`      | integer \| `null`           | Feature timestamp                                                                                            |
 | `publishedAt`     | integer \| `null`           | Publish timestamp                                                                                            |
-| `lastActivityAt`  | integer                     | Last activity timestamp                                                                                      |
+| `lastActivityAt`  | integer                     | Thread root: newest post in the Thread, **excluding** quiet replies. Editing a post never moves it           |
+| `threadUpdatedAt` | integer                     | Thread root: newest post in the Thread, **including** quiet replies. Editing a post never moves it           |
 | `createdAt`       | integer                     | Unix seconds                                                                                                 |
-| `updatedAt`       | integer                     | Unix seconds                                                                                                 |
+| `updatedAt`       | integer                     | Unix seconds — when this row was last written, including edits                                               |
 | `attachments`     | array                       | Ordered media/text attachment objects                                                                        |
 | `collections`     | object[]                    | Public collection refs with `id`, `slug`, `title`, and `url`                                                 |
 

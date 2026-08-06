@@ -61,10 +61,15 @@ export type PublicPostBaseResponse = {
   previewImageUrl: string | null;
   replyToId: string | null;
   threadId: string;
+  /** Reply published without announcing its Thread. Always false on roots. */
+  quietReply: boolean;
   pinnedAt: number | null;
   featuredAt: number | null;
   publishedAt: number | null;
+  /** Root only: newest post in the Thread, quiet replies excluded. */
   lastActivityAt: number;
+  /** Root only: newest post in the Thread, quiet replies included. */
+  threadUpdatedAt: number;
   createdAt: number;
   updatedAt: number;
   attachments: ReturnType<typeof toApiAttachment>[];
@@ -146,10 +151,12 @@ export function toPublicPost(
     previewImageUrl,
     replyToId: post.replyToId,
     threadId: post.threadId,
+    quietReply: post.quietReply,
     pinnedAt: post.pinnedAt,
     featuredAt: post.featuredAt,
     publishedAt: post.publishedAt,
     lastActivityAt: post.lastActivityAt,
+    threadUpdatedAt: post.threadUpdatedAt,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
     attachments: mediaList.map((media) =>

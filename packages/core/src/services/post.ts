@@ -32,6 +32,10 @@ import {
   sqliteSchemaBundle,
   type DatabaseSchema,
 } from "../db/schema-bundle.js";
+import {
+  buildRootActivityExpr,
+  rootActivityColumns,
+} from "../db/thread-activity.js";
 import { createEntityId } from "../lib/ids.js";
 import { now } from "../lib/time.js";
 import { trimTiptapBody } from "../lib/tiptap-render.js";
@@ -1394,21 +1398,16 @@ export function createPostService(
   /**
    * Thread activity timestamp used to order collection threads.
    *
-   * Activity means the thread gained a post, not that a post was edited —
-   * the same definition `post.last_activity_at` carries everywhere else. The
-   * outer MAX only collapses the per-member rows of a GROUP BY thread_id; the
-   * subquery returns one value per thread. The COALESCE fallbacks cover rows
-   * whose root is missing or predates `last_activity_at`.
+   * Rows here are Thread *members* grouped by thread_id, so the definition is
+   * reached through a subquery to the root. The outer MAX only collapses the
+   * group — the subquery returns one value per thread. The outer COALESCE
+   * covers a member whose root row is missing.
    */
   function buildCollectionThreadActivityExpr(alias: string) {
     return sql<number>`MAX(
       COALESCE(
         (
-          SELECT COALESCE(
-            root.last_activity_at,
-            root.published_at,
-            root.updated_at
-          )
+          SELECT ${buildRootActivityExpr(rootActivityColumns("root"))}
           FROM post AS root
           WHERE root.site_id = ${siteId}
             AND root.id = ${posts.threadId}
@@ -1750,10 +1749,30 @@ export function createPostService(
         conditions.push(sql`${posts.id} > ${afterId}`);
       }
 
+      // `lastmod` describes the page, and a Thread root's page renders its
+      // replies too — so an added or edited reply changes it even though the
+      // root row is untouched. Unlike ordering, edits do count here: the page
+      // really did change. Mirrors `articleModifiedTime` in lib/post-display.
+      //
+      // The outer columns are written out rather than interpolated: Drizzle
+      // only qualifies projection columns when the query has a join, so
+      // `${posts.id}` would render as a bare "id" here and bind to the
+      // subquery's own alias instead of correlating to the outer row.
+      const threadModifiedAt = sql<number>`COALESCE(
+        (
+          SELECT MAX(member.updated_at)
+          FROM post AS member
+          WHERE member.site_id = ${siteId}
+            AND member.thread_id = "post"."id"
+            AND member.status = 'published'
+        ),
+        "post"."updated_at"
+      )`;
+
       const rows = await db
         .select({
           id: posts.id,
-          updatedAt: posts.updatedAt,
+          updatedAt: threadModifiedAt,
           featuredAt: posts.featuredAt,
         })
         .from(posts)

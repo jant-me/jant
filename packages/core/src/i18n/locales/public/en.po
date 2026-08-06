@@ -2377,11 +2377,6 @@ msgstr "Type the quote..."
 msgid "Untitled"
 msgstr "Untitled"
 
-#. @context: Archive month header when sorting by last update — {month} is e.g. 'August 2026'
-#: src/ui/pages/ArchivePage.tsx
-msgid "Updated {month}"
-msgstr "Updated {month}"
-
 #. @context: Error when file upload fails
 #: src/routes/api/upload.ts
 msgid "Upload didn't go through. Try again in a moment."

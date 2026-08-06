@@ -529,7 +529,18 @@ export function defaultFeedRenderer(data: FeedData): string {
     })
     .join("");
 
-  const now = new Date().toISOString();
+  // The feed's own <updated> is the newest entry timestamp, not the current
+  // time — stamping "now" on every render tells every reader the feed changed
+  // on every poll, which is both untrue and useless for change detection.
+  // ISO 8601 from toISOString() is UTC and zero-padded, so lexical max is
+  // chronological max. Empty feeds fall back to now, since Atom requires it.
+  const feedUpdated =
+    posts
+      .map((post) => post.feedUpdatedAt ?? post.updatedAt)
+      .reduce<
+        string | null
+      >((latest, value) => (latest === null || value > latest ? value : latest), null) ??
+    new Date().toISOString();
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
@@ -538,7 +549,7 @@ export function defaultFeedRenderer(data: FeedData): string {
   <link href="${escapeXml(siteUrl)}" rel="alternate"/>
   <link href="${escapeXml(selfUrl)}" rel="self"/>
   <id>${escapeXml(selfUrl)}</id>
-  <updated>${now}</updated>
+  <updated>${feedUpdated}</updated>
   ${entries}
 </feed>`;
 }

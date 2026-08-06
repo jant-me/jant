@@ -15,6 +15,7 @@ import {
   supportsDrizzleTransaction,
 } from "../db/index.js";
 import type { DatabaseDialect } from "../db/dialect.js";
+import { buildRootActivityExpr } from "../db/thread-activity.js";
 import {
   sqliteSchemaBundle,
   type DatabaseSchema,
@@ -448,16 +449,13 @@ export function createCollectionService(
   async function listDirectoryCollections(): Promise<
     CollectionDirectoryCollection[]
   > {
-    const threadActivityAt = sql<number>`CASE
-      WHEN ${posts.updatedAt} > ${posts.createdAt}
-        AND ${posts.updatedAt} > COALESCE(${posts.lastActivityAt}, -1)
-      THEN ${posts.updatedAt}
-      ELSE COALESCE(
-        ${posts.lastActivityAt},
-        ${posts.publishedAt},
-        ${posts.updatedAt}
-      )
-    END`;
+    // `posts` is joined on thread_collections.thread_id, so each row is
+    // already the Thread root — the definition applies to it directly.
+    const threadActivityAt = buildRootActivityExpr({
+      lastActivityAt: posts.lastActivityAt,
+      publishedAt: posts.publishedAt,
+      updatedAt: posts.updatedAt,
+    });
     const threadCount = sql<number>`
       CAST(COUNT(
         CASE

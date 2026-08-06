@@ -27,6 +27,7 @@ import {
   getDefaultJantAppleTouchIconBytes,
   getDefaultJantFaviconIcoBytes,
 } from "../lib/jant-branding.js";
+import { getRootActivityAt } from "../db/thread-activity.js";
 import { tiptapJsonToMarkdown } from "../lib/tiptap-to-markdown.js";
 import { extractBodyText } from "../lib/summary.js";
 import { getMediaUrl, getPublicUrlForProvider } from "../lib/image.js";
@@ -1327,11 +1328,7 @@ function buildExportedCollectionMetrics(
       continue;
     }
 
-    const activityAt =
-      post.lastActivityAt ??
-      post.publishedAt ??
-      post.updatedAt ??
-      post.createdAt;
+    const activityAt = getRootActivityAt(post);
     const threadCollections = collectionsByThread.get(post.id) ?? [];
 
     for (const collection of threadCollections) {
