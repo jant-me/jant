@@ -11465,7 +11465,12 @@
 
   /* --- Filter bar (single row of BaseCoat selects) ----------------------- */
 
+  /* The bar has two shapes. While the whole thing fits on one line it stays a
+     single row. Once it doesn't, it splits into two groups — see the container
+     query further down. The bar is its own query container, so the split is
+     driven by the width it actually has rather than by the viewport. */
   .archive-filters {
+    container: archive-filters / inline-size;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -11565,6 +11570,10 @@
 
   .archive-toolbar-toggles {
     display: flex;
+    /* Side by side when the group has room, stacked when it doesn't. Either
+       way the pair hugs the right edge. */
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
@@ -11600,6 +11609,40 @@
     background: var(--background);
     color: var(--site-text-primary);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  /* --- Split shape: too narrow for one line ------------------------------- */
+
+  /* 39rem is where the full bar — six touch-sized chips, the gap, and both
+     toggle pills — stops fitting on one line. Under it the two halves stop
+     competing for that line and become two groups: chips three-up on the left
+     at their natural width, toggles taking whatever is left on the right. That
+     leftover holds both pills side by side when there's room and stacks them
+     one above the other when there isn't. Without this the chips would be
+     squeezed into a two-per-row column beside a full-height toggle cluster. */
+  @container archive-filters (max-width: 39rem) {
+    .archive-filters-chips {
+      display: grid;
+      grid-template-columns: repeat(3, auto);
+      justify-content: start;
+      flex: 0 0 auto;
+    }
+
+    /* Claim the whole leftover column rather than just the width of the two
+       pills, so the group's own flex-end alignment pins them to the right
+       edge instead of leaving them tucked against the chips. */
+    .archive-toolbar-toggles {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+  }
+
+  /* Narrower than three chips plus one toggle pill — drop the chips to two-up
+     rather than let the toggles overflow the bar. */
+  @container archive-filters (max-width: 19.5rem) {
+    .archive-filters-chips {
+      grid-template-columns: repeat(2, auto);
+    }
   }
 
   @media (max-width: 760px), (hover: none) and (pointer: coarse) {
