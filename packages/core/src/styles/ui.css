@@ -6913,6 +6913,55 @@
     }
   }
 
+  /* Phone width cannot seat the whole post header: the format switcher alone
+     takes more than half of it, so the pill wrapped to a second line and sat
+     there under empty space — a row spent on a control that, at its defaults,
+     reports nothing. "Now · /…" only says "publishing now, link to be
+     assigned", so it is the one part of the header that can give up its words.
+     The icon stays and takes the outline the words used to imply, since an
+     unlabelled glyph has to look like a button to read as one; the text is
+     clipped rather than removed so the control keeps its accessible name. A
+     post carrying a date or link of its own still says so in full and may
+     still wrap — that line has something to report, the default does not. */
+  @media (max-width: 480px) {
+    .compose-post-meta:not(.compose-post-meta-set) .compose-post-meta-value,
+    .compose-post-meta:not(.compose-post-meta-set) .compose-post-meta-sep {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    /* Square padding around the icon, sized to the × it sits beside. */
+    .compose-post-meta:not(.compose-post-meta-set) .compose-post-meta-pill {
+      padding: 6px;
+      border-color: var(--compose-control-border);
+    }
+
+    /* The other half of the same trade. A post carrying its own date or link
+       has something to report and keeps its words — but the row still cannot
+       seat them beside the switcher, so it wrapped and landed right-aligned
+       under empty space, reading like something that fell off the row above.
+       Given a line of its own at the head of the text column it reads as what
+       it is: a caption for the post beneath it. The line is taken outright
+       rather than by overflow, so every dated post looks the same instead of
+       depending on how long its slug happens to be. */
+    .compose-post-meta-set {
+      order: 1;
+      flex-basis: 100%;
+      margin-inline: 0;
+    }
+
+    /* The × and the close button take the free space back, now that the pill
+       has left the line they used to share with it. */
+    .compose-post-meta-set ~ .compose-thread-post-remove,
+    .compose-post-meta-set ~ .compose-close-btn {
+      margin-left: auto;
+    }
+  }
+
   /* Only the first trailing control claims the free space. Two `auto` margins
      would split it and strand the pill mid-row. */
   .compose-post-meta ~ .compose-thread-post-remove,
@@ -6982,9 +7031,12 @@
     font-weight: var(--fw-medium);
   }
 
+  /* No extra dimming: the pill's own colour is already mixed down to 62%, and
+     the icon is drawn a hair lighter than its siblings to stay on the pixel
+     grid. Fading it again on top of both left it looking smudged rather than
+     quiet. */
   .compose-post-meta-icon {
     flex-shrink: 0;
-    opacity: 0.85;
   }
 
   .compose-post-meta-sep {
