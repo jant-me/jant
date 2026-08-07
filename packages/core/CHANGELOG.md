@@ -1,5 +1,11 @@
 # @jant/core
 
+## 0.6.16
+
+### Patch Changes
+
+- [`ed13f3d`](https://github.com/jant-me/jant/commit/ed13f3df91f5f5b1e9a01478f246ba1a04277d4d) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Composer refresh: single scroll region with full-size previews, per-row publish state, scoped settings, always-available note titles, and floating date panel. Thread activity: threads report when they last changed and the archive sorts by it. Fixes: real slugs for Korean and Japanese titles, reliable YouTube previews in feeds, SMS and phone links in rich text, archive text-only filter, draft navigation and preview editing, and error toasts that stay touchable with images restored on failed posts.
+
 ## 0.6.15
 
 ### Patch Changes
