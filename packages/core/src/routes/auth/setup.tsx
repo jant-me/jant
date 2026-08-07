@@ -17,17 +17,19 @@ import { buildPageTitle } from "../../lib/page-title.js";
 import { mapIanaToTimezone } from "../../lib/timezones.js";
 import { getI18n } from "../../i18n/index.js";
 import {
-  detectCjkFontFromHeader,
-  detectLocaleFromHeader,
-} from "../../i18n/detect.js";
+  getSupportedLocaleEntries,
+  resolveSupportedLocaleTag,
+} from "../../i18n/supported-locales.js";
 import { toPublicPath } from "../../lib/url.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
-const SetupContent: FC<{ sitePathPrefix?: string }> = ({
-  sitePathPrefix = "",
-}) => {
+const SetupContent: FC<{
+  sitePathPrefix?: string;
+  contentLanguage: string;
+}> = ({ sitePathPrefix = "", contentLanguage }) => {
   const { i18n } = useLingui();
+  const localeOptions = getSupportedLocaleEntries();
 
   return (
     <div class="min-h-screen flex items-center justify-center">
@@ -52,7 +54,7 @@ const SetupContent: FC<{ sitePathPrefix?: string }> = ({
         </header>
         <section>
           <form
-            data-signals="{siteName: '', email: '', password: '', timezone: '', language: ''}"
+            data-signals={`{siteName: '', email: '', password: '', timezone: '', language: '', contentLanguage: ${JSON.stringify(contentLanguage)}}`}
             data-init="$timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; $language = navigator.language || ''"
             data-on:submit__prevent={`@post('${toPublicPath("/setup", sitePathPrefix)}')`}
             data-indicator="_loading"
@@ -74,6 +76,50 @@ const SetupContent: FC<{ sitePathPrefix?: string }> = ({
                 required
                 placeholder="My Blog"
               />
+            </div>
+            {/* Asked outright rather than inferred from the browser. The
+                inference is wrong exactly for the people it matters to — anyone
+                whose browser language is not their writing language — and it
+                silently mis-sets `<html lang>`, the feed language, and the CJK
+                font stack. `data-init` above prefills it, so confirming costs a
+                glance. */}
+            <div class="field">
+              <label class="label" for="setup-content-language">
+                {i18n._(
+                  msg({
+                    message: "Content language",
+                    comment:
+                      "@context: Setup form field - site content language",
+                  }),
+                )}
+              </label>
+              <select
+                id="setup-content-language"
+                data-bind="contentLanguage"
+                class="select"
+              >
+                {localeOptions.map((entry) => (
+                  <option
+                    key={entry.tag}
+                    value={entry.tag}
+                    selected={entry.tag === contentLanguage}
+                  >
+                    {entry.native === entry.english
+                      ? entry.native
+                      : `${entry.native} (${entry.english})`}
+                  </option>
+                ))}
+              </select>
+              <p class="text-sm text-muted-foreground mt-1">
+                {i18n._(
+                  msg({
+                    message:
+                      "The language your readers and search engines see.",
+                    comment:
+                      "@context: Setup form help text under the content language field",
+                  }),
+                )}
+              </p>
             </div>
             <div class="field">
               <label class="label">
@@ -148,7 +194,12 @@ setupRoutes.get("/setup", async (c) => {
 
   return c.html(
     <BaseLayout title={buildPageTitle("Setup", c.var.appConfig.siteName)} c={c}>
-      <SetupContent sitePathPrefix={c.var.appConfig.sitePathPrefix} />
+      <SetupContent
+        sitePathPrefix={c.var.appConfig.sitePathPrefix}
+        contentLanguage={resolveSupportedLocaleTag(
+          c.req.header("Accept-Language"),
+        )}
+      />
     </BaseLayout>,
   );
 });
@@ -177,7 +228,7 @@ setupRoutes.post("/setup", async (c) => {
     return dsToast(errorMsg, "error");
   }
 
-  const { siteName, email, password } = parsed.data;
+  const { siteName, email, password, contentLanguage } = parsed.data;
 
   if (!c.var.auth) {
     return dsToast(
@@ -225,21 +276,14 @@ setupRoutes.post("/setup", async (c) => {
     }
 
     const timeZone = mapIanaToTimezone(browserTimezone ?? "");
-    const cjkSerifFont =
-      browserLanguage && browserLanguage.trim()
-        ? detectCjkFontFromHeader(browserLanguage)
-        : "off";
-    const siteLanguage =
-      browserLanguage && browserLanguage.trim()
-        ? detectLocaleFromHeader(browserLanguage)
-        : undefined;
 
     await c.var.services.bootstrap.completeInitialSetup({
       ownerUserId,
       siteName,
       timeZone,
-      cjkSerifFont,
-      siteLanguage,
+      siteLanguage:
+        contentLanguage ?? resolveSupportedLocaleTag(browserLanguage),
+      browserLanguage,
     });
 
     return dsRedirect(

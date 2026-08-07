@@ -76,27 +76,23 @@ export function ConfigEditorContent({
         "zh-Hant": "繁體中文",
       },
     },
-    CJK_SERIF_FONT: {
+    MULTILINGUAL_ENABLED: {
       description: i18n._(
         msg({
           message:
-            "The serif fallback used when the content language has no built-in profile.",
-          comment: "@context: Config Editor setting description",
+            "Whether each language gets its own home page, archive, and feed. Managed on the Language page.",
+          comment: "@context: Config Editor linked setting description",
         }),
       ),
-      optionLabels: {
-        off: i18n._(
-          msg({
-            message: "Follow content language",
-            comment:
-              "@context: Config Editor enum option for automatic CJK font fallback",
-          }),
-        ),
-        "zh-Hans": "简体中文",
-        "zh-Hant": "繁體中文",
-        ja: "日本語",
-        ko: "한국어",
-      },
+    },
+    ADDITIONAL_LANGUAGES: {
+      description: i18n._(
+        msg({
+          message:
+            "The languages served under a URL prefix. Managed on the Language page.",
+          comment: "@context: Config Editor linked setting description",
+        }),
+      ),
     },
     MAIN_RSS_FEED: {
       description: i18n._(

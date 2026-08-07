@@ -7,6 +7,7 @@
 import type { Context } from "hono";
 import type { Collection, NavItem, NavItemView } from "../types.js";
 import { toNavItemViews } from "./view.js";
+import { viewBasePath } from "./view-language.js";
 import { render as renderMarkdown, toPlainText } from "./markdown.js";
 
 /**
@@ -15,7 +16,15 @@ import { render as renderMarkdown, toPlainText } from "./markdown.js";
 export interface NavigationData {
   links: NavItemView[];
   currentPath: string;
+  /** Deployment path prefix, such as `/blog`. */
   sitePathPrefix: string;
+  /**
+   * Public path prefix for reader-facing surfaces. Equals `sitePathPrefix`
+   * outside a language view, and carries the language prefix inside one
+   * (`/blog/en`). Pass this — not `sitePathPrefix` — to anything building
+   * links to the home page, archive, search, feeds or collections.
+   */
+  basePath: string;
   siteName: string;
   /** Plain-text description for meta tags and RSS/Atom feeds */
   siteDescription: string;
@@ -107,6 +116,8 @@ export async function getNavigationData(
       ? await c.var.services.navItems.getCollectionFreshness(collectionNavIds)
       : undefined;
 
+  const basePath = `${appConfig.sitePathPrefix}${viewBasePath(c)}`;
+
   const links = toNavItemViews(
     items,
     currentPath,
@@ -114,6 +125,7 @@ export async function getNavigationData(
     appConfig.sitePathPrefix,
     collectionFreshness,
     appConfig.siteOrigin,
+    basePath,
   );
 
   // Only load collections when authenticated (for compose dialog)
@@ -125,6 +137,7 @@ export async function getNavigationData(
     links,
     currentPath,
     sitePathPrefix: appConfig.sitePathPrefix,
+    basePath,
     siteName,
     siteDescription,
     siteDescriptionHtml,

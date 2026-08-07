@@ -199,6 +199,27 @@ describe("Settings API Routes", () => {
       expect(body.details.rejectedKeys).toContain("AUTH_SECRET");
     });
 
+    it("rejects the multilingual keys, which only the language page may write", async () => {
+      const { app } = createTestApp({ authenticated: true });
+      app.route("/api/settings", settingsApiRoutes);
+
+      const res = await app.request("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          MULTILINGUAL_ENABLED: "true",
+          ADDITIONAL_LANGUAGES: "en",
+        }),
+      });
+
+      // Writing these directly would skip the confirmation that stamps
+      // existing posts and the URL-prefix conflict check.
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.details.rejectedKeys).toContain("MULTILINGUAL_ENABLED");
+      expect(body.details.rejectedKeys).toContain("ADDITIONAL_LANGUAGES");
+    });
+
     it("rejects internal keys", async () => {
       const { app } = createTestApp({ authenticated: true });
       app.route("/api/settings", settingsApiRoutes);

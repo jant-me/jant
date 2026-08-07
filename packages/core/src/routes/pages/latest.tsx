@@ -5,9 +5,10 @@
  */
 
 import { Hono } from "hono";
+import type { Context } from "hono";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
-import { toPublicPath } from "../../lib/url.js";
+import { toViewPath } from "../../lib/view-language.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import { buildFeedData, parseFormatQuery, renderFeed } from "../feed/feed.js";
 
@@ -15,12 +16,20 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const latestRoutes = new Hono<Env>();
 
-latestRoutes.get("/", async (c) => {
-  return c.redirect(toPublicPath("/", c.var.appConfig.sitePathPrefix), 302);
-});
+/** `/latest` is an alias for the view's home timeline. */
+export function redirectLatestToHome(c: Context<Env>): Response {
+  return c.redirect(toViewPath(c, "/"), 302);
+}
 
-// Atom — /latest/feed (canonical latest feed; accepts ?format=note|link|quote)
-latestRoutes.get("/feed", async (c) => {
+/**
+ * Render the latest Atom feed for the current view language.
+ *
+ * Accepts `?format=note|link|quote`.
+ *
+ * @param c - Hono context
+ * @returns Atom feed response
+ */
+export async function renderLatestFeed(c: Context<Env>): Promise<Response> {
   const format = parseFormatQuery(c);
   const feedData = await buildFeedData(c, {
     kind: "latest",
@@ -28,16 +37,16 @@ latestRoutes.get("/feed", async (c) => {
     format,
   });
   return renderFeed(defaultFeedRenderer(feedData));
-});
+}
 
-// Legacy atom.xml suffix → canonical /latest/feed (preserves ?format=)
-latestRoutes.get("/feed/atom.xml", (c) => {
-  const sitePathPrefix = c.var.appConfig.sitePathPrefix;
+/** Legacy atom.xml suffix → canonical /latest/feed, preserving `?format=`. */
+export function redirectLegacyLatestFeed(c: Context<Env>): Response {
   const qs = c.req.url.includes("?")
     ? c.req.url.slice(c.req.url.indexOf("?"))
     : "";
-  return c.redirect(
-    `${toPublicPath("/latest/feed", sitePathPrefix)}${qs}`,
-    308,
-  );
-});
+  return c.redirect(`${toViewPath(c, "/latest/feed")}${qs}`, 308);
+}
+
+latestRoutes.get("/", redirectLatestToHome);
+latestRoutes.get("/feed", renderLatestFeed);
+latestRoutes.get("/feed/atom.xml", redirectLegacyLatestFeed);

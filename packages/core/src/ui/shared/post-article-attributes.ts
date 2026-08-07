@@ -13,6 +13,7 @@ type PostArticleAttributeSource = Pick<
   | "pinnedInCollection"
   | "featured"
   | "draftTailId"
+  | "language"
 >;
 
 /**
@@ -47,6 +48,7 @@ export function getPostArticleAttributes(post: PostArticleAttributeSource) {
       ? { "data-thread-draft-tail-id": post.draftTailId }
       : {}),
     "data-post-visibility": post.visibility,
+    ...(post.language ? { "data-post-language": post.language } : {}),
     ...(isChildPost ? { "data-post-reply": "" } : {}),
   };
 }

@@ -93,7 +93,7 @@ describe("BUILTIN_FONT_THEMES", () => {
   });
 
   it("routes zh-Hans content to simplified serif and sans fallbacks", () => {
-    const variables = getCjkFontCssVariables("zh-Hans", "off");
+    const variables = getCjkFontCssVariables("zh-Hans");
     const serif = variables["--font-cjk-serif-fallback"];
     const sans = variables["--font-cjk-sans-fallback"];
 
@@ -105,7 +105,7 @@ describe("BUILTIN_FONT_THEMES", () => {
   });
 
   it("routes zh-Hant content to traditional serif and sans fallbacks", () => {
-    const variables = getCjkFontCssVariables("zh-Hant", "off");
+    const variables = getCjkFontCssVariables("zh-Hant");
     const serif = variables["--font-cjk-serif-fallback"];
     const sans = variables["--font-cjk-sans-fallback"];
 
@@ -117,29 +117,32 @@ describe("BUILTIN_FONT_THEMES", () => {
   });
 
   it("routes Japanese content to the Japanese font profile", () => {
-    const variables = getCjkFontCssVariables("ja", "off");
+    const variables = getCjkFontCssVariables("ja");
 
     expect(variables["--font-cjk-serif-fallback"]).toContain('"Noto Serif JP"');
     expect(variables["--font-cjk-sans-fallback"]).toContain('"Noto Sans JP"');
   });
 
   it("routes Korean content to the Korean font profile", () => {
-    const variables = getCjkFontCssVariables("ko", "off");
+    const variables = getCjkFontCssVariables("ko");
 
     expect(variables["--font-cjk-serif-fallback"]).toContain('"Noto Serif KR"');
     expect(variables["--font-cjk-sans-fallback"]).toContain('"Noto Sans KR"');
   });
 
-  it("uses the explicit CJK fallback for an unadapted content language", () => {
-    expect(resolveCjkFontProfile("en", "zh-Hans")).toBe("zh-Hans");
+  it("derives the profile from the language alone", () => {
+    expect(resolveCjkFontProfile("zh-Hant")).toBe("zh-Hant");
+    expect(resolveCjkFontProfile("zh-CN")).toBe("zh-Hans");
+    expect(resolveCjkFontProfile("ja-JP")).toBe("ja");
   });
 
-  it("lets an adapted content language override the manual fallback", () => {
-    expect(resolveCjkFontProfile("zh-Hant", "zh-Hans")).toBe("zh-Hant");
+  it("has no profile for a language without CJK typography", () => {
+    expect(resolveCjkFontProfile("en")).toBeUndefined();
+    expect(resolveCjkFontProfile()).toBeUndefined();
   });
 
   it("keeps the default profile neutral", () => {
-    expect(getCjkFontCssVariables("en", "off")).toEqual({});
+    expect(getCjkFontCssVariables("en")).toEqual({});
     expect(DEFAULT_FONT_CJK_SERIF_FALLBACK).toBe('"Jant Language Fallback"');
     expect(DEFAULT_FONT_CJK_SANS_FALLBACK).toBe('"Jant Language Fallback"');
   });

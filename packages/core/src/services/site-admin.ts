@@ -323,7 +323,6 @@ export function createSiteAdminService(
         siteLanguage: input.siteLanguage?.trim()
           ? detectLocaleFromHeader(input.siteLanguage)
           : baseLocale,
-        cjkSerifFont: "off",
         timeZone: input.timeZone,
       },
       {
@@ -782,11 +781,11 @@ export function createSiteAdminService(
             (theme) => theme.id === appConfig.fontThemeId,
           )
         : undefined;
+      // The static export is one site-wide stylesheet, so it uses the site
+      // language for the CJK stack. Per-page language overrides are a runtime
+      // concern that a flat Hugo export has no equivalent for.
       const fontOverrides = {
-        ...getCjkFontCssVariables(
-          appConfig.siteLanguage,
-          appConfig.cjkSerifFont,
-        ),
+        ...getCjkFontCssVariables(appConfig.siteLanguage),
         ...(fontTheme ? getFontThemeCssVariables(fontTheme) : {}),
       };
       const themeCss = buildThemeStyle(
@@ -809,6 +808,8 @@ export function createSiteAdminService(
           siteUrl: appConfig.siteUrl,
           siteDescription: appConfig.siteDescription,
           siteLanguage: appConfig.siteLanguage,
+          multilingualEnabled: appConfig.multilingualEnabled,
+          additionalLanguages: appConfig.additionalLanguages,
           showJantBrandingOnHome: appConfig.showJantBrandingOnHome,
           publicApiEnabled: appConfig.publicApiEnabled,
           rssFeedsEnabled: appConfig.rssFeedsEnabled,

@@ -388,3 +388,43 @@ nothing is left unchecked.
 That is also why `tasks/todos/*.md` should not be gitignored, tempting as it is
 to make the rule self-enforcing: the files carry handoff state that has to
 survive a fresh clone. The discipline has to live in the workflow instead.
+
+## Lingui resolves ICU at `i18n._()` — placeholders the browser fills must be passed back
+
+Any label rendered server-side and interpolated client-side has to carry its
+placeholder through explicitly:
+
+```ts
+i18n._(msg({ message: "Translation of “{title}”" }), { title: "{title}" });
+```
+
+Formatting with no value does not leave `{title}` in the string — it resolves to
+nothing, so the label silently ships as `Translation of ""`. This has now caused
+the same bug twice (the multilingual settings dialog, then compose). It is
+invisible in a type check and invisible in a component test that uses fixture
+labels: the assertion has to run against the **server-rendered** labels blob.
+When adding a label with a browser-filled slot, add a test that renders the
+component and asserts the slot survived.
+
+## hono/jsx deduplicates `<link>` elements by `href`
+
+Two `<link>` elements with the same `href` render as one, whatever their `rel`
+or other attributes. That silently drops:
+
+- a self-referential `hreflang` alternate (it shares the canonical link's URL),
+- an `x-default` alternate (it shares the primary language's URL).
+
+An hreflang set without a self-referential entry is ignored by search engines,
+so this is not cosmetic. Emit such groups as `raw()` HTML with `escapeHtml()` on
+the attribute values rather than as JSX elements. Suspect this whenever a list
+of `<link>`s renders with fewer elements than the array it was mapped from.
+
+## `types/` must not import from `lib/`
+
+A type-only `import` from `src/types/views.ts` into `src/lib/view-language.ts`
+was enough to change TypeScript's lib resolution across the whole program — an
+unrelated file started failing with a DOM-vs-workers `BufferSource` mismatch,
+and only under `tsc -b --force`. The dependency direction is `lib → types`;
+shared view types belong in `types/`, and `lib` re-exports them if convenient.
+If a type error appears in a file you did not touch, check whether a new import
+created a cycle through the type layer.

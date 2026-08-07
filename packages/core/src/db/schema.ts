@@ -165,6 +165,27 @@ export const posts = sqliteTable(
     replyToId: text("reply_to_id"),
     threadId: text("thread_id").notNull(),
     /**
+     * BCP 47 content language in canonical form (`en`, `zh-Hans`).
+     *
+     * Uniform across a Thread: replies inherit the Root's value on creation and
+     * a language change rewrites every row in the Thread. Language filters can
+     * therefore be plain column predicates even on member-grained queries.
+     *
+     * NULL only exists before multilingual content is first enabled; enabling
+     * stamps every NULL row with the primary language.
+     */
+    language: text("language"),
+    /**
+     * Shared translation-group key (TypeID, `tgr_` prefix). Rows sharing a value
+     * are translations of one another — one row per language, no direction.
+     *
+     * Only ever set on Thread Roots (`thread_id = id`); enforced in the post
+     * service rather than by a table CHECK, because adding a CHECK to `post`
+     * would make drizzle-kit rebuild the table and silently drop the FTS
+     * triggers (`post_ai` / `post_ad` / `post_au`) that keep search current.
+     */
+    translationGroupId: text("translation_group_id"),
+    /**
      * The author added this reply without announcing it. Persisted so both
      * activity timestamps below stay recomputable from the rows alone.
      * Always false on Thread roots.
@@ -246,6 +267,12 @@ export const posts = sqliteTable(
       .where(
         sql`${table.status} = 'published' AND ${table.featuredAt} IS NOT NULL`,
       ),
+    // One Post per language inside a translation group. The `site_id` prefix
+    // matches the indexing convention here and lets the same index serve
+    // "list the members of this group" without a second index.
+    uniqueIndex("uq_post_site_translation_group_language")
+      .on(table.siteId, table.translationGroupId, table.language)
+      .where(sql`${table.translationGroupId} IS NOT NULL`),
   ],
 );
 

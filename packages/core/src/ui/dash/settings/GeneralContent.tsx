@@ -15,9 +15,6 @@ import type { AboutPageStatus } from "../../../services/about-page.js";
 export function GeneralContent({
   siteName,
   siteDescription,
-  siteLanguage,
-  dashboardLanguage,
-  cjkSerifFont,
   siteNameFallback,
   siteDescriptionFallback,
   mainRssFeed,
@@ -37,9 +34,6 @@ export function GeneralContent({
 }: {
   siteName: string;
   siteDescription: string;
-  siteLanguage: string;
-  dashboardLanguage: string;
-  cjkSerifFont: string;
   siteNameFallback: string;
   siteDescriptionFallback: string;
   mainRssFeed: string;
@@ -104,11 +98,11 @@ export function GeneralContent({
         comment: "@context: Compact conflict message when /about is occupied",
       }),
     ),
-    languageAndTime: i18n._(
+    timeSection: i18n._(
       msg({
-        message: "Language & Time",
+        message: "Time",
         comment:
-          "@context: Settings subsection heading for language and time zone fields",
+          "@context: Settings subsection heading for the time zone field",
       }),
     ),
     home: i18n._(
@@ -140,69 +134,6 @@ export function GeneralContent({
       msg({
         message: "A short intro shown on your home page.",
         comment: "@context: Help text for site description field",
-      }),
-    ),
-    siteLanguage: i18n._(
-      msg({
-        message: "Content language",
-        comment:
-          "@context: Settings form field for the public content language",
-      }),
-    ),
-    siteLanguageHelp: i18n._(
-      msg({
-        message:
-          "The language your posts are written in. Announced to readers and search engines through HTML lang and your RSS feed. Any BCP 47 tag works.",
-        comment: "@context: Help text under the content language picker",
-      }),
-    ),
-    contentLanguagePreview: i18n._(
-      msg({
-        message: "Readers and search engines see",
-        comment:
-          "@context: Lead text before a live <html lang> preview of the content language",
-      }),
-    ),
-    dashboardLanguage: i18n._(
-      msg({
-        message: "Dashboard language",
-        comment:
-          "@context: Settings form field for the admin interface language",
-      }),
-    ),
-    dashboardLanguageHelp: i18n._(
-      msg({
-        message:
-          "The language this admin dashboard shows in. Available in English, 简体中文, and 繁體中文.",
-        comment: "@context: Help text under the dashboard language picker",
-      }),
-    ),
-    siteLanguageSearchPlaceholder: i18n._(
-      msg({
-        message: "Search…",
-        comment:
-          "@context: Placeholder inside the language combobox search field",
-      }),
-    ),
-    siteLanguageNoMatches: i18n._(
-      msg({
-        message: "No matches.",
-        comment:
-          "@context: Empty state shown when the language search filters out every entry",
-      }),
-    ),
-    cjkFont: i18n._(
-      msg({
-        message: "CJK fallback",
-        comment:
-          "@context: Settings field for a manual Chinese, Japanese, or Korean font fallback",
-      }),
-    ),
-    cjkFontHelp: i18n._(
-      msg({
-        message:
-          "Used when the content language has no built-in font profile. Your font theme still controls serif and sans styling.",
-        comment: "@context: Help text for the manual CJK font fallback setting",
       }),
     ),
     timeZone: i18n._(
@@ -387,45 +318,11 @@ export function GeneralContent({
     timezones.map((tz) => ({ value: tz.value, label: tz.label })),
   ).replace(/</g, "\\u003c");
 
-  // The 3 catalog locales Jant's dashboard is translated into. Native-script
-  // labels so each reads in its own language, like the CJK font options.
-  const dashboardLanguagesJson = JSON.stringify([
-    { value: "en", label: "English" },
-    { value: "zh-Hans", label: "简体中文" },
-    { value: "zh-Hant", label: "繁體中文" },
-  ]).replace(/</g, "\\u003c");
-
-  const cjkFontsJson = JSON.stringify([
-    {
-      value: "off",
-      label: i18n._(
-        msg({
-          message: "Follow content language",
-          comment:
-            "@context: CJK font fallback option that uses the configured content language",
-        }),
-      ),
-    },
-    {
-      value: "zh-Hans",
-      label: "\u7B80\u4F53\u4E2D\u6587 (Simplified Chinese)",
-    },
-    {
-      value: "zh-Hant",
-      label: "\u7E41\u9AD4\u4E2D\u6587 (Traditional Chinese)",
-    },
-    { value: "ja", label: "\u65E5\u672C\u8A9E (Japanese)" },
-    { value: "ko", label: "\uD55C\uAD6D\uC5B4 (Korean)" },
-  ]).replace(/</g, "\\u003c");
-
   const aboutPageJson = JSON.stringify(aboutPage).replace(/</g, "\\u003c");
 
   const initialData = JSON.stringify({
     siteName,
     siteDescription,
-    siteLanguage,
-    dashboardLanguage,
-    cjkSerifFont,
     mainRssFeed,
     timeZone,
     siteFooter,
@@ -439,8 +336,6 @@ export function GeneralContent({
         <jant-settings-general
           labels={labels}
           timezones={timezonesJson}
-          cjk-fonts={cjkFontsJson}
-          dashboard-languages={dashboardLanguagesJson}
           sitename-fallback={siteNameFallback}
           sitedescription-fallback={siteDescriptionFallback}
           main-feed-url={mainFeedUrl}

@@ -15,6 +15,7 @@ import { isReservedPath } from "../lib/constants.js";
 import { ConflictError, ValidationError } from "../lib/errors.js";
 import { normalizePath } from "../lib/url.js";
 import type { CustomUrl } from "../types.js";
+import { readLanguageSettings } from "./language.js";
 import { createPathService, type PathService } from "./path.js";
 
 export interface CreateCustomUrl {
@@ -111,7 +112,12 @@ export function createCustomUrlService(
     async create(data) {
       const normalized = normalizeInputPath(data.path);
 
-      if (isReservedPath(normalized)) {
+      const { reservedPrefixes } = await readLanguageSettings(
+        db,
+        siteId,
+        databaseSchema,
+      );
+      if (isReservedPath(normalized, reservedPrefixes)) {
         throw new ValidationError(
           `Path "${normalized}" is reserved and cannot be used`,
         );
@@ -238,7 +244,12 @@ export function createCustomUrlService(
 
     async isPathAvailable(path) {
       const normalized = normalizeInputPath(path);
-      if (isReservedPath(normalized)) return false;
+      const { reservedPrefixes } = await readLanguageSettings(
+        db,
+        siteId,
+        databaseSchema,
+      );
+      if (isReservedPath(normalized, reservedPrefixes)) return false;
       return resolvedPaths.isPathAvailable(normalized);
     },
   };

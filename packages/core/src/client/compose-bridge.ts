@@ -564,6 +564,12 @@ function buildPostBody(
     attachments: attachments.length > 0 ? attachments : undefined,
     replyToId: detail.replyToId || undefined,
     quietReply: detail.quietReply || undefined,
+    // Absent means the author left the language to detection; the server runs
+    // the same detector against the final text.
+    language: detail.language || undefined,
+    // A translation group is only ever minted on create — an edit that carried
+    // this would silently regroup an existing post.
+    translationOfId: isEdit ? undefined : detail.translationOfId || undefined,
   };
 }
 

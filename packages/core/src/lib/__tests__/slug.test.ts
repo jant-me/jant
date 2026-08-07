@@ -141,4 +141,74 @@ describe("generatePostSlug", () => {
       ).rejects.toThrow("Could not generate a unique slug");
     });
   });
+
+  describe("language suffix", () => {
+    /** Every slug is taken except the ones listed. */
+    const onlyAvailable = (...free: string[]) => {
+      const allowed = new Set(free);
+      return async (slug: string) => allowed.has(slug);
+    };
+
+    it("is not used when the base slug is free", async () => {
+      const slug = await generatePostSlug({
+        title: "Book Review",
+        idLength: 5,
+        languageSuffix: "en",
+        isAvailable: alwaysAvailable,
+      });
+      expect(slug).toBe("book-review");
+    });
+
+    it("is tried before a random suffix when the base collides", async () => {
+      const slug = await generatePostSlug({
+        title: "Book Review",
+        idLength: 5,
+        languageSuffix: "en",
+        isAvailable: onlyAvailable("book-review-en"),
+      });
+      expect(slug).toBe("book-review-en");
+    });
+
+    it("keeps the multi-part tag intact", async () => {
+      const slug = await generatePostSlug({
+        title: "Book Review",
+        idLength: 5,
+        languageSuffix: "zh-hant",
+        isAvailable: onlyAvailable("book-review-zh-hant"),
+      });
+      expect(slug).toBe("book-review-zh-hant");
+    });
+
+    it("falls back to a random suffix when the language slug is taken too", async () => {
+      const slug = await generatePostSlug({
+        title: "Book Review",
+        idLength: 5,
+        languageSuffix: "en",
+        isAvailable: async (candidate: string) =>
+          candidate !== "book-review" && candidate !== "book-review-en",
+      });
+      expect(slug).toMatch(/^book-review-[a-z0-9]{5}$/);
+    });
+
+    it("goes straight to a random suffix without one", async () => {
+      const slug = await generatePostSlug({
+        title: "Book Review",
+        idLength: 5,
+        isAvailable: async (candidate: string) => candidate !== "book-review",
+      });
+      expect(slug).toMatch(/^book-review-[a-z0-9]{5}$/);
+    });
+
+    it("skips a language candidate that lands on a reserved path", async () => {
+      const slug = await generatePostSlug({
+        title: "feed",
+        idLength: 5,
+        languageSuffix: "en",
+        isAvailable: alwaysAvailable,
+      });
+      // "feed" is reserved, so the base is never offered and the language
+      // candidate is never reached — the random fallback owns this case.
+      expect(slug).toMatch(/^feed-[a-z0-9]{5}$/);
+    });
+  });
 });

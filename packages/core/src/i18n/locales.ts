@@ -58,6 +58,63 @@ export function normalizeContentLanguage(value: string): string {
 }
 
 /**
+ * URL prefix form of a content language tag.
+ *
+ * A purely mechanical lowercase of the canonical tag, so it never needs storing
+ * separately. Canonical tags are one-to-one with their lowercase forms, so two
+ * different languages can never collide on one prefix.
+ *
+ * @param tag - Canonical BCP 47 tag
+ * @returns Lowercase prefix used in `/{prefix}/...` URLs
+ * @example
+ * toLanguagePrefix("zh-Hant"); // "zh-hant"
+ */
+export function toLanguagePrefix(tag: string): string {
+  return tag.toLowerCase();
+}
+
+/**
+ * Parse the stored `ADDITIONAL_LANGUAGES` value into canonical tags.
+ *
+ * Tolerant by design — it reads a settings row that predates any given
+ * validation rule. Blank and unparseable entries are dropped, tags are
+ * canonicalized, duplicates collapse, and order is preserved because it is the
+ * order the language switcher renders in.
+ *
+ * @param value - Raw comma-separated settings value
+ * @returns Canonical tags, deduplicated, in the stored order
+ * @example
+ * parseLanguageList(" en , ZH-hant ,en "); // ["en", "zh-Hant"]
+ */
+export function parseLanguageList(value: string | null | undefined): string[] {
+  if (!value) return [];
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const token of value.split(",")) {
+    const trimmed = token.trim();
+    if (!trimmed || !isValidContentLanguage(trimmed)) continue;
+    const tag = normalizeContentLanguage(trimmed);
+    if (seen.has(tag)) continue;
+    seen.add(tag);
+    result.push(tag);
+  }
+  return result;
+}
+
+/**
+ * Serialize canonical tags back into the stored settings form.
+ *
+ * @param tags - Canonical BCP 47 tags in switcher order
+ * @returns Comma-separated value for `ADDITIONAL_LANGUAGES`
+ * @example
+ * formatLanguageList(["en", "ja"]); // "en,ja"
+ */
+export function formatLanguageList(tags: readonly string[]): string {
+  return tags.join(",");
+}
+
+/**
  * Resolve a content language tag to the catalog locale that should drive the
  * dashboard UI for that user.
  *

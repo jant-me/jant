@@ -23,7 +23,7 @@ export interface SettingsLabels {
   aboutPageConflict: string;
   createAboutPage: string;
   editAboutPage: string;
-  languageAndTime: string;
+  timeSection: string;
   home: string;
   search: string;
   siteName: string;
@@ -48,18 +48,6 @@ export interface SettingsLabels {
   featuredFeedOptionDescription: string;
   showJantBrandingOnHome: string;
   markdownSupported: string;
-  siteLanguage: string;
-  siteLanguageHelp: string;
-  /** Placeholder shown inside the locale combobox search field. */
-  siteLanguageSearchPlaceholder: string;
-  /** Empty-state message when the search filters out every option. */
-  siteLanguageNoMatches: string;
-  /** Lead text before the live `<html lang>` preview. */
-  contentLanguagePreview: string;
-  dashboardLanguage: string;
-  dashboardLanguageHelp: string;
-  cjkFont: string;
-  cjkFontHelp: string;
   timeZone: string;
 
   // Search
@@ -80,24 +68,9 @@ export interface SettingsTimezone {
   label: string;
 }
 
-/** CJK font option for the select dropdown */
-export interface SettingsCjkFont {
-  value: string;
-  label: string;
-}
-
-/** Dashboard UI language option for the select dropdown */
-export interface SettingsDashboardLanguage {
-  value: string;
-  label: string;
-}
-
 export interface SettingsInitialData {
   siteName: string;
   siteDescription: string;
-  siteLanguage: string;
-  dashboardLanguage: string;
-  cjkSerifFont: string;
   mainRssFeed: string;
   timeZone: string;
   siteFooter: string;

@@ -6,7 +6,7 @@
  * slash (for example: "hello-world" or "collections/reading+tools").
  */
 
-import { and, eq, inArray, isNotNull, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
 import { type Database, batchQuery } from "../db/index.js";
 import {
   sqliteSchemaBundle,
@@ -48,6 +48,20 @@ export interface PathService {
   deleteByPostId(postId: string): Promise<void>;
   getPostAliases(postIds: string[]): Promise<Map<string, string[]>>;
   listNavigableItems(): Promise<NavigableItem[]>;
+  /**
+   * Find registered paths that a URL segment would shadow: the segment itself
+   * and anything nested under it.
+   *
+   * Used before a language is added, because `/{prefix}` and `/{prefix}/…` stop
+   * resolving through the path registry once that prefix goes live.
+   *
+   * @param segment - First URL segment, without slashes
+   * @param limit - Maximum records to return
+   * @returns Matching path records, shortest path first
+   * @example
+   * await paths.findPathsUnderSegment("ja"); // [{ path: "ja", postId: "pst_…" }]
+   */
+  findPathsUnderSegment(segment: string, limit?: number): Promise<PathRecord[]>;
 }
 
 export interface NavigableItem {
@@ -437,6 +451,33 @@ export function createPathService(
       }
 
       return items;
+    },
+
+    async findPathsUnderSegment(segment, limit = 10) {
+      const normalized = normalizeStoredPath(segment);
+      if (!normalized) return [];
+
+      // Stored alias paths are free-form, so a segment containing `%` or `_`
+      // would widen the prefix match. The explicit ESCAPE clause is understood
+      // by both SQLite and Postgres; drizzle's bare `like()` is not, because
+      // the two dialects disagree on the default escape character.
+      const childPattern = `${normalized.replace(/[\\%_]/g, "\\$&")}/%`;
+      const rows = await db
+        .select()
+        .from(pathRegistry)
+        .where(
+          and(
+            eq(pathRegistry.siteId, siteId),
+            or(
+              eq(pathRegistry.path, normalized),
+              sql`${pathRegistry.path} LIKE ${childPattern} ESCAPE '\\'`,
+            ),
+          ),
+        )
+        .orderBy(asc(pathRegistry.path))
+        .limit(limit);
+
+      return rows.map(toPathRecord);
     },
   };
 }

@@ -95,25 +95,14 @@ export function detectLocaleFromHeader(header: string | undefined): Locale {
   return baseLocale;
 }
 
-/** Valid CJK font profile values */
-export const CJK_SERIF_FONT_VALUES = [
-  "off",
-  "zh-Hans",
-  "zh-Hant",
-  "ja",
-  "ko",
-] as const;
-export type CjkSerifFont = (typeof CJK_SERIF_FONT_VALUES)[number];
-
 /**
- * Check if a value is a valid CJK serif font setting
+ * CJK typography profiles Jant ships a font stack for.
+ *
+ * Simplified, Traditional, Japanese and Korean want different Han glyph shapes
+ * from the same code points, so each gets its own fallback stack and stylesheet.
  */
-export function isCjkSerifFont(value: unknown): value is CjkSerifFont {
-  return (
-    typeof value === "string" &&
-    CJK_SERIF_FONT_VALUES.includes(value as CjkSerifFont)
-  );
-}
+export const CJK_FONT_PROFILES = ["zh-Hans", "zh-Hant", "ja", "ko"] as const;
+export type CjkFontProfile = (typeof CJK_FONT_PROFILES)[number];
 
 /**
  * Map a BCP 47 language tag to a CJK font profile.
@@ -125,7 +114,7 @@ export function isCjkSerifFont(value: unknown): value is CjkSerifFont {
  */
 export function getCjkFontFromLanguageTag(
   tag: string,
-): Exclude<CjkSerifFont, "off"> | undefined {
+): CjkFontProfile | undefined {
   const normalized = tag.trim().toLowerCase();
   if (!normalized) return undefined;
 
@@ -143,52 +132,4 @@ export function getCjkFontFromLanguageTag(
   if (primary === "ko") return "ko";
 
   return undefined;
-}
-
-/**
- * Detect CJK serif font preference from an `Accept-Language` HTTP header.
- *
- * @param header - Raw `Accept-Language` header value
- * @returns CJK serif font value, or "off" if no CJK language detected
- *
- * @example
- * detectCjkFontFromHeader("zh-CN,en;q=0.8") // "zh-Hans"
- * detectCjkFontFromHeader("ja,en;q=0.9")    // "ja"
- * detectCjkFontFromHeader("en-US")           // "off"
- */
-export function detectCjkFontFromHeader(
-  header: string | undefined,
-): CjkSerifFont {
-  if (!header || !header.trim()) return "off";
-
-  const entries: Array<{ tag: string; q: number }> = [];
-
-  for (const part of header.split(",")) {
-    const segments = part.trim().split(";");
-    const tag = segments[0]?.trim();
-    if (!tag) continue;
-
-    let q = 1.0;
-    for (let i = 1; i < segments.length; i++) {
-      const param = segments[i]?.trim();
-      if (param?.toLowerCase().startsWith("q=")) {
-        const parsed = Number.parseFloat(param.slice(2));
-        if (!Number.isNaN(parsed)) q = parsed;
-        break;
-      }
-    }
-
-    if (q <= 0) continue;
-
-    entries.push({ tag, q });
-  }
-
-  entries.sort((a, b) => b.q - a.q);
-
-  for (const { tag } of entries) {
-    const font = getCjkFontFromLanguageTag(tag);
-    if (font) return font;
-  }
-
-  return "off";
 }

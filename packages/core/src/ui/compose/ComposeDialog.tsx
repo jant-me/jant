@@ -13,12 +13,21 @@ import type { FC } from "hono/jsx";
 import { MAX_THREAD_POSTS, type Collection } from "../../types.js";
 import { useLingui } from "../../i18n/context.js";
 import { getCollectionFormLabels } from "../shared/collection-management-labels.js";
-import type { ComposeLabels } from "../../client/components/compose-types.js";
+import type {
+  ComposeLabels,
+  ComposeLanguage,
+} from "../../client/components/compose-types.js";
 
 export interface ComposeDialogProps {
   collections?: Collection[];
   uploadMaxFileSize?: number;
   slashCommandDiscovered?: boolean;
+  /**
+   * Languages the site publishes. Empty on a single-language site, and the
+   * composer then shows no language UI at all — an author who never turned
+   * multilingual content on should not meet it.
+   */
+  languages?: ComposeLanguage[];
 }
 
 export interface ComposeFormProps extends ComposeDialogProps {
@@ -31,6 +40,7 @@ export const ComposeForm: FC<ComposeFormProps> = ({
   collections,
   uploadMaxFileSize,
   slashCommandDiscovered = false,
+  languages,
   pageMode = false,
   closeHref,
   autoRestoreDraft = false,
@@ -897,9 +907,62 @@ export const ComposeForm: FC<ComposeFormProps> = ({
         }),
       ),
     },
+    languageLabel: i18n._(
+      msg({
+        message: "Language",
+        comment: "@context: Compose field for the post's content language",
+      }),
+    ),
+    languageAuto: i18n._(
+      msg({
+        message: "Detect",
+        comment:
+          "@context: Compose language option that leaves detection to Jant",
+      }),
+    ),
+    languageAutoHint: i18n._(
+      msg({
+        message: "Read from what you write",
+        comment: "@context: Help text under the compose language field",
+      }),
+    ),
+    languageAutoDetected: i18n._(
+      msg({
+        message: "Read from what you write — looks like {language}",
+        comment:
+          "@context: Help text under the compose language field once a language has been detected",
+      }),
+      // Detected in the browser from the current text; see `translationOf`.
+      { language: "{language}" },
+    ),
+    translationOf: i18n._(
+      msg({
+        message: "Translation of “{title}”",
+        comment:
+          "@context: Compose banner shown while writing a translation of an existing post",
+      }),
+      // The post being translated is only known in the browser, and Lingui
+      // resolves an ICU message completely at `i18n._()` time — formatted with
+      // no value, this slot would come out empty. Passing the placeholder back
+      // as the value leaves it intact for the component to fill.
+      { title: "{title}" },
+    ),
+    translationOfInLanguage: i18n._(
+      msg({
+        message: "Writing the {language} version of “{title}”",
+        comment:
+          "@context: Compose banner shown while writing a translation, once the target language is known",
+      }),
+      { language: "{language}", title: "{title}" },
+    ),
     collectionFormLabels: getCollectionFormLabels(i18n),
   } satisfies ComposeLabels;
   const labels = JSON.stringify(labelsObject).replace(/</g, "\\u003c");
+
+  const languagesJson = JSON.stringify(languages ?? []).replace(
+    /</g,
+    "\\u003c",
+  );
 
   const collectionsJson = JSON.stringify(
     (collections ?? []).map((c) => ({
@@ -912,6 +975,7 @@ export const ComposeForm: FC<ComposeFormProps> = ({
   return (
     <jant-compose-dialog
       collections={collectionsJson}
+      languages={languagesJson}
       labels={labels}
       upload-max-file-size={uploadMaxFileSize ?? 500}
       {...(pageMode ? { "page-mode": "" } : {})}
@@ -931,6 +995,7 @@ export const ComposeDialog: FC<ComposeDialogProps> = ({
   collections,
   uploadMaxFileSize,
   slashCommandDiscovered = false,
+  languages,
 }) => {
   return (
     <dialog id="compose-dialog" class="compose-dialog">
@@ -938,6 +1003,7 @@ export const ComposeDialog: FC<ComposeDialogProps> = ({
         collections={collections}
         uploadMaxFileSize={uploadMaxFileSize}
         slashCommandDiscovered={slashCommandDiscovered}
+        languages={languages}
       />
     </dialog>
   );

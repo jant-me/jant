@@ -23,7 +23,6 @@ import {
   isValidContentLanguage,
   normalizeContentLanguage,
 } from "../i18n/locales.js";
-import { isCjkSerifFont } from "../i18n/detect.js";
 import type { StorageDriver } from "../lib/storage.js";
 import type { MediaService } from "./media.js";
 import {
@@ -44,7 +43,6 @@ export interface GeneralSettingsData {
   siteLanguage: string;
   /** Admin UI locale; empty string follows the content language. */
   dashboardLanguage?: string;
-  cjkSerifFont: string;
   showJantBrandingOnHome: boolean;
   mainRssFeed?: FeedKind;
   timeZone: string;
@@ -61,15 +59,23 @@ export interface SiteSettingsResult {
   siteNameChanged: boolean;
 }
 
+/**
+ * Locale fields a settings page owns.
+ *
+ * Every field is "undefined = leave untouched" so the two pages that split
+ * these settings — Language and General — can each send only what they own,
+ * without either erasing the other's field.
+ */
 export interface LocaleSettingsData {
-  siteLanguage: string;
+  /** Site content language; also the primary language when multilingual is on. */
+  siteLanguage?: string;
   /**
    * Admin dashboard UI locale. Empty string clears the explicit setting so the
    * dashboard follows the content language. When set, must be a catalog locale.
    */
   dashboardLanguage?: string;
-  cjkSerifFont: string;
-  timeZone: string;
+  /** IANA time zone; empty string resets to UTC. */
+  timeZone?: string;
 }
 
 export interface GeneralSettingsResult {
@@ -106,7 +112,6 @@ export interface SettingsService {
     data: LocaleSettingsData,
     opts: {
       oldLanguage: string;
-      oldCjkSerifFont?: string;
       oldDashboardLanguage?: string;
     },
   ): Promise<{ languageChanged: boolean }>;
@@ -128,7 +133,6 @@ export interface SettingsService {
     data: GeneralSettingsData,
     opts: {
       oldLanguage: string;
-      oldCjkSerifFont?: string;
       fallbackSiteName: string;
     },
   ): Promise<GeneralSettingsResult>;
@@ -294,16 +298,18 @@ export function createSettingsService(
     },
 
     async updateLocaleSettings(data, opts) {
-      const trimmedLanguage = data.siteLanguage.trim() || baseLocale;
-      if (!isValidContentLanguage(trimmedLanguage)) {
-        throw new ValidationError(
-          "Enter a valid BCP 47 language tag (e.g. en, zh-Hans, fi, ja, fr-CA).",
-        );
+      let languageChanged = false;
+      if (data.siteLanguage !== undefined) {
+        const trimmedLanguage = data.siteLanguage.trim() || baseLocale;
+        if (!isValidContentLanguage(trimmedLanguage)) {
+          throw new ValidationError(
+            "Enter a valid BCP 47 language tag (e.g. en, zh-Hans, fi, ja, fr-CA).",
+          );
+        }
+        const normalized = normalizeContentLanguage(trimmedLanguage);
+        await this.set("SITE_LANGUAGE", normalized);
+        languageChanged = opts.oldLanguage !== normalized;
       }
-      await this.set(
-        "SITE_LANGUAGE",
-        normalizeContentLanguage(trimmedLanguage),
-      );
 
       // Dashboard UI locale. undefined = leave untouched; "" = clear so the
       // dashboard follows the content language; otherwise it must be one of the
@@ -325,37 +331,24 @@ export function createSettingsService(
           (opts.oldDashboardLanguage ?? "") !== dashboardLanguage;
       }
 
-      // Optional CJK fallback for content languages without a font profile.
-      const cjkFont = data.cjkSerifFont?.trim() ?? "";
-      if (cjkFont && isCjkSerifFont(cjkFont) && cjkFont !== "off") {
-        await this.set("CJK_SERIF_FONT", cjkFont);
-      } else {
-        await this.remove("CJK_SERIF_FONT");
-      }
+      if (data.timeZone !== undefined) {
+        if (data.timeZone) {
+          if (!isSupportedTimeZone(data.timeZone)) {
+            throw new ValidationError("Choose a valid time zone.");
+          }
 
-      if (data.timeZone) {
-        if (!isSupportedTimeZone(data.timeZone)) {
-          throw new ValidationError("Choose a valid time zone.");
-        }
-
-        const normalizedTimeZone = normalizeTimeZone(data.timeZone);
-        if (normalizedTimeZone !== "UTC") {
-          await this.set("TIME_ZONE", normalizedTimeZone);
+          const normalizedTimeZone = normalizeTimeZone(data.timeZone);
+          if (normalizedTimeZone !== "UTC") {
+            await this.set("TIME_ZONE", normalizedTimeZone);
+          } else {
+            await this.remove("TIME_ZONE");
+          }
         } else {
           await this.remove("TIME_ZONE");
         }
-      } else {
-        await this.remove("TIME_ZONE");
       }
 
-      const effectiveCjkFont =
-        cjkFont && isCjkSerifFont(cjkFont) ? cjkFont : "off";
-      return {
-        languageChanged:
-          opts.oldLanguage !== trimmedLanguage ||
-          (opts.oldCjkSerifFont ?? "off") !== effectiveCjkFont ||
-          dashboardChanged,
-      };
+      return { languageChanged: languageChanged || dashboardChanged };
     },
 
     async updateFeedSettings(data) {
@@ -392,7 +385,6 @@ export function createSettingsService(
       await this.updateHomeBranding(data.showJantBrandingOnHome);
       const { languageChanged } = await this.updateLocaleSettings(data, {
         oldLanguage: opts.oldLanguage,
-        oldCjkSerifFont: opts.oldCjkSerifFont,
       });
 
       await this.updateFeedSettings({ mainRssFeed: data.mainRssFeed });

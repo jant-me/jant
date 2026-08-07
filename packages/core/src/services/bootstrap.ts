@@ -23,8 +23,16 @@ import { createSiteService, type EnsureSingleSiteOptions } from "./site.js";
 export interface CompleteInitialSetupData {
   ownerUserId: string;
   siteName: string;
+  /** Language the site publishes in, chosen explicitly during setup. */
   siteLanguage?: string | null;
-  cjkSerifFont?: string | null;
+  /**
+   * The browser's own language, used only to pin the dashboard UI locale.
+   *
+   * Kept separate from `siteLanguage` because the two genuinely differ for the
+   * people this matters to most: someone running an English-language blog from
+   * a Chinese browser wants an English site and a Chinese dashboard.
+   */
+  browserLanguage?: string | null;
   timeZone?: string | null;
 }
 
@@ -67,15 +75,14 @@ export function createBootstrapService(
           ? normalizeContentLanguage(data.siteLanguage)
           : baseLocale;
       await settings.set("SITE_LANGUAGE", siteLanguage);
-      // Pin the dashboard UI locale to the detected catalog language so it stays
-      // stable if the operator later changes the public content language.
+      // Pin the dashboard UI locale to the browser's language, not the site's.
+      // The dashboard is read by one person — the author — so their own
+      // language is the better signal, and pinning it keeps it stable when the
+      // public content language later changes.
       await settings.set(
         "DASHBOARD_LANGUAGE",
-        resolveCatalogLocale(siteLanguage),
+        resolveCatalogLocale(data.browserLanguage ?? siteLanguage),
       );
-      if (data.cjkSerifFont && data.cjkSerifFont !== "off") {
-        await settings.set("CJK_SERIF_FONT", data.cjkSerifFont);
-      }
 
       await settings.completeOnboarding();
     },

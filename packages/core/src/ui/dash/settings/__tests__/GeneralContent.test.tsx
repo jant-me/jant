@@ -36,9 +36,6 @@ function createProps(
   return {
     siteName: "My Blog",
     siteDescription: "A test blog",
-    siteLanguage: "en",
-    dashboardLanguage: "en",
-    cjkSerifFont: "off",
     siteNameFallback: "Fallback Name",
     siteDescriptionFallback: "Fallback Description",
     mainRssFeed: "featured" as const,

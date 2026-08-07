@@ -401,6 +401,9 @@ export function toPostView(
     collections,
     replyToId: post.replyToId ?? undefined,
     threadRootId: post.replyToId ? post.threadId : undefined,
+    // Language is a Thread property, carried on the root. Repeating it on every
+    // reply would invite per-reply controls that the data model does not allow.
+    language: post.replyToId ? undefined : (post.language ?? undefined),
     isLastInThread: isLastInThread ?? true,
     body: post.body ?? undefined,
   };
@@ -507,6 +510,30 @@ export function toPostViewsFromPosts(
  * @param currentPath - Current URL path for active state
  * @param isAuthenticated - Whether the user is logged in (affects system settings item)
  */
+/**
+ * System nav destinations that exist once per language view.
+ *
+ * `settings` is absent on purpose: the dashboard is a single, language-neutral
+ * surface, so a reader browsing `/en` still signs in at `/signin`.
+ */
+const LANGUAGE_SCOPED_SYSTEM_KEYS = new Set<string>([
+  "latest",
+  "featured",
+  "collections",
+  "archive",
+  "rss",
+]);
+
+/** Whether a nav item points at a surface that a language view re-serves. */
+function isLanguageScopedNavItem(item: NavItem): boolean {
+  if (item.type === "system") {
+    return LANGUAGE_SCOPED_SYSTEM_KEYS.has(item.systemKey ?? "");
+  }
+  // Collections keep their slug but filter by language; posts and free-form
+  // links have one address each.
+  return item.type === "collection";
+}
+
 export function toNavItemView(
   item: NavItem,
   currentPath: string,
@@ -514,6 +541,7 @@ export function toNavItemView(
   sitePathPrefix = "",
   collectionFreshness?: Map<string, number>,
   siteOrigin = "",
+  basePath = sitePathPrefix,
 ): NavItemView {
   let url = item.url;
   let label = item.label;
@@ -546,14 +574,15 @@ export function toNavItemView(
   // so strip it back to a path and skip external-link affordances.
   const sameSitePath = toSameSitePath(url, siteOrigin);
   const isExternal = sameSitePath === null && isFullUrl(url);
+  const linkPrefix = isLanguageScopedNavItem(item) ? basePath : sitePathPrefix;
   const publicUrl = isExternal
     ? url
-    : toPublicPath(sameSitePath ?? url, sitePathPrefix);
+    : toPublicPath(sameSitePath ?? url, linkPrefix);
 
   let isActive = false;
   if (!isExternal) {
-    if (publicUrl === sitePathPrefix || publicUrl === "/") {
-      isActive = currentPath === (sitePathPrefix || "/");
+    if (publicUrl === linkPrefix || publicUrl === "/") {
+      isActive = currentPath === (linkPrefix || "/");
     } else {
       isActive =
         currentPath === publicUrl || currentPath.startsWith(`${publicUrl}/`);
@@ -596,6 +625,7 @@ export function toNavItemViews(
   sitePathPrefix = "",
   collectionFreshness?: Map<string, number>,
   siteOrigin = "",
+  basePath = sitePathPrefix,
 ): NavItemView[] {
   return items.map((item) =>
     toNavItemView(
@@ -605,6 +635,7 @@ export function toNavItemViews(
       sitePathPrefix,
       collectionFreshness,
       siteOrigin,
+      basePath,
     ),
   );
 }

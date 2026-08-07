@@ -11,6 +11,7 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
 import type { Context } from "hono";
 import { raw } from "hono/utils/html";
+import { escapeHtml } from "../../lib/html.js";
 import { msg } from "@lingui/core/macro";
 import {
   getPublicAssetBasePath,
@@ -21,6 +22,7 @@ import { getJantIconHref } from "../../lib/jant-branding.js";
 import { getPublicUrlForProvider } from "../../lib/image.js";
 import { getThemeBrowserColors, resolveBuiltinTheme } from "../../lib/theme.js";
 import { toAbsoluteAssetUrl, toPublicPath } from "../../lib/url.js";
+import type { LanguageAlternate } from "../../lib/view-language.js";
 import {
   CLIENT_AUTH_JS_FILE,
   CLIENT_CJK_CSS_FILE,
@@ -33,7 +35,10 @@ import {
   IS_VITE_DEV,
 } from "../../lib/version.js";
 import { I18nProvider } from "../../i18n/index.js";
-import { resolveCjkFontProfile } from "../font-themes.js";
+import {
+  getCjkFontCssVariables,
+  resolveCjkFontProfile,
+} from "../font-themes.js";
 import { resetIconCollector } from "../shared/icon-collector.js";
 import { Icon } from "../shared/Icon.js";
 import { IconSprite } from "../shared/IconSprite.js";
@@ -81,6 +86,12 @@ export interface BaseLayoutProps {
    * thread at both the reply URL and the thread-root URL).
    */
   canonicalHref?: string;
+  /**
+   * Absolute URLs of this page in the site's other languages, rendered as
+   * `<link rel="alternate" hreflang>`. Set on pages that exist once per
+   * language (list surfaces) or that have translations (posts).
+   */
+  alternateLanguages?: LanguageAlternate[];
   noindex?: boolean;
   isAuthenticated?: boolean;
   clientBundle?: "public" | "full";
@@ -105,6 +116,7 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
   articlePublishedTime,
   articleModifiedTime,
   canonicalHref,
+  alternateLanguages,
   noindex,
   isAuthenticated = false,
   clientBundle,
@@ -177,11 +189,22 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
   const browserThemeColors = getThemeBrowserColors(activeTheme);
   const resolvedClientBundle =
     clientBundle ?? (isAuthenticated ? "full" : "public");
-  const cjkSerifFont = appConfig?.cjkSerifFont ?? "off";
-  const cjkFontProfile = resolveCjkFontProfile(
-    appConfig?.siteLanguage ?? resolvedLang,
-    cjkSerifFont,
-  );
+  // Derived from the language of *this page*, not the site's: on a post page
+  // that is the post's own language, on a language-filtered list it is the view
+  // language, and otherwise it falls back to the site language. Simplified,
+  // Traditional, Japanese and Korean render the same code points with different
+  // glyphs, so a page in one must not inherit another's font stack.
+  const cjkFontProfile = resolveCjkFontProfile(resolvedLang);
+  const cjkFontDeclarations = Object.entries(
+    getCjkFontCssVariables(resolvedLang),
+  )
+    .map(([name, value]) => `  ${name}: ${value};`)
+    .join("\n");
+  // `:root:root` matches the specificity `buildThemeStyle` uses, so ordering
+  // alone decides the winner.
+  const cjkFontStyle = cjkFontDeclarations
+    ? `:root:root {\n${cjkFontDeclarations}\n}`
+    : "";
   const cjkStylesheetPath =
     cjkFontProfile === "zh-Hans"
       ? IS_VITE_DEV
@@ -397,6 +420,21 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
             />
           )}
           {canonicalHref && <link rel="canonical" href={canonicalHref} />}
+          {/* Emitted as raw HTML on purpose: hono/jsx deduplicates `<link>`
+              elements by `href` alone, which silently drops the self-referential
+              alternate (it shares the canonical link's URL) and any `x-default`
+              (it shares the primary language's). Both are required for an
+              hreflang set to be honoured. Values are escaped here. */}
+          {alternateLanguages && alternateLanguages.length > 0
+            ? raw(
+                alternateLanguages
+                  .map(
+                    (alternate) =>
+                      `<link rel="alternate" hreflang="${escapeHtml(alternate.hreflang)}" href="${escapeHtml(alternate.href)}"/>`,
+                  )
+                  .join(""),
+              )
+            : null}
           <link rel="icon" href={resolvedFaviconHref} sizes="16x16 32x32" />
           <link rel="apple-touch-icon" href={resolvedAppleTouchHref} />
           <link
@@ -445,6 +483,11 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
               __html: `.site-header-search-link,.site-header-hamburger,.site-header-more-responsive-only,.site-header-more-link-responsive,.site-header-more-divider-responsive{display:none!important}@media(max-width:1200px){.site-header-search-form{display:none!important}.site-header-search-link{display:inline-flex!important}}@media(max-width:960px){.site-header-link-collapse-lg{display:none!important}.site-header-more-responsive-only.site-header-more-tier-lg{display:inline-flex!important}.site-header-more-link-show-lg{display:flex!important}.site-header-more-divider-show-lg{display:block!important}}@media(max-width:780px){.site-header-link-collapse-md{display:none!important}.site-header-more-responsive-only.site-header-more-tier-md{display:inline-flex!important}.site-header-more-link-show-md{display:flex!important}.site-header-more-divider-show-md{display:block!important}}@media(max-width:580px){.site-header-link-collapse-sm{display:none!important}.site-header-more-responsive-only.site-header-more-tier-sm{display:inline-flex!important}.site-header-more-link-show-sm{display:flex!important}.site-header-more-divider-show-sm{display:block!important}}@media(max-width:480px){.site-header-nav,.site-header-more{display:none!important}.site-header-search-slot{display:flex!important}.site-header-hamburger{display:flex!important}.site-header-right{margin-left:.35rem}}`,
             }}
           />
+          {/* Emitted before the theme style so a font theme that names its own
+              CJK stack still wins. */}
+          {cjkFontStyle && (
+            <style dangerouslySetInnerHTML={{ __html: cjkFontStyle }} />
+          )}
           {themeStyle && (
             <style dangerouslySetInnerHTML={{ __html: themeStyle }} />
           )}

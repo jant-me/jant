@@ -5,6 +5,7 @@
  */
 
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { msg } from "@lingui/core/macro";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
@@ -14,7 +15,7 @@ import { formatPageLabel, parsePageNumber } from "../../lib/pagination.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
 import { assembleFeaturedTimeline } from "../../lib/timeline.js";
-import { toPublicPath } from "../../lib/url.js";
+import { buildSurfaceAlternates, toViewPath } from "../../lib/view-language.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import { buildFeedData, renderFeed } from "../feed/feed.js";
 import { FeaturedPage } from "../../ui/pages/FeaturedPage.js";
@@ -23,7 +24,13 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const featuredRoutes = new Hono<Env>();
 
-featuredRoutes.get("/", async (c) => {
+/**
+ * Render the featured timeline for the current view language.
+ *
+ * @param c - Hono context
+ * @returns Featured page response
+ */
+export async function renderFeaturedPage(c: Context<Env>): Promise<Response> {
   const navData = await getNavigationData(c);
   const i18n = getI18n(c);
 
@@ -45,29 +52,40 @@ featuredRoutes.get("/", async (c) => {
       page > 1
         ? buildPageTitle(featuredTitle, paginatedPageTitle, navData.siteName)
         : buildPageTitle(featuredTitle, navData.siteName),
+    alternateLanguages: buildSurfaceAlternates(c),
     navData,
     content: (
       <FeaturedPage
         items={items}
         currentPage={currentPage}
         totalPages={totalPages}
-        baseUrl={toPublicPath("/featured", navData.sitePathPrefix)}
+        baseUrl={toViewPath(c, "/featured")}
       />
     ),
   });
-});
+}
 
-// Atom — /featured/feed (canonical featured feed)
-featuredRoutes.get("/feed", async (c) => {
+featuredRoutes.get("/", renderFeaturedPage);
+
+/**
+ * Render the featured Atom feed for the current view language.
+ *
+ * @param c - Hono context
+ * @returns Atom feed response
+ */
+export async function renderFeaturedFeed(c: Context<Env>): Promise<Response> {
   const feedData = await buildFeedData(c, {
     kind: "featured",
     selfPath: "/featured/feed",
   });
   return renderFeed(defaultFeedRenderer(feedData));
-});
+}
 
-// Legacy atom.xml suffix → canonical /featured/feed
-featuredRoutes.get("/feed/atom.xml", (c) => {
-  const sitePathPrefix = c.var.appConfig.sitePathPrefix;
-  return c.redirect(toPublicPath("/featured/feed", sitePathPrefix), 308);
-});
+/** Legacy atom.xml suffix → canonical /featured/feed, inside the same view. */
+export function redirectLegacyFeaturedFeed(c: Context<Env>): Response {
+  return c.redirect(toViewPath(c, "/featured/feed"), 308);
+}
+
+// Atom — /featured/feed (canonical featured feed)
+featuredRoutes.get("/feed", renderFeaturedFeed);
+featuredRoutes.get("/feed/atom.xml", redirectLegacyFeaturedFeed);

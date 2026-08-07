@@ -38,6 +38,8 @@ export const CollectionPage: FC<CollectionPageProps> = ({
   isAuthenticated,
   isInNavigation = false,
   sitePathPrefix = "",
+  basePath = sitePathPrefix,
+  emptyInLanguage,
   feedHref,
 }) => {
   const primaryCollection = collections[0];
@@ -54,7 +56,7 @@ export const CollectionPage: FC<CollectionPageProps> = ({
         }),
       )
     : collections.map((collection) => collection.title).join(" + ");
-  const collectionUrl = toPublicPath(pagePath, sitePathPrefix);
+  const collectionUrl = toPublicPath(pagePath, basePath);
   const editCollectionUrl = toPublicPath(
     `${getCollectionEditPath(primaryCollection.slug)}?returnTo=${encodeURIComponent(
       collectionUrl,
@@ -189,12 +191,7 @@ export const CollectionPage: FC<CollectionPageProps> = ({
           >
             <ol>
               <li>
-                <a
-                  href={toPublicPath(
-                    getCollectionsDirectoryPath(),
-                    sitePathPrefix,
-                  )}
-                >
+                <a href={toPublicPath(getCollectionsDirectoryPath(), basePath)}>
                   {i18n._(
                     msg({
                       message: "Collections",
@@ -256,7 +253,7 @@ export const CollectionPage: FC<CollectionPageProps> = ({
                   <a
                     href={toPublicPath(
                       getCollectionSelectionPath(collection.slug),
-                      sitePathPrefix,
+                      basePath,
                     )}
                   >
                     {collection.title}
@@ -312,7 +309,7 @@ export const CollectionPage: FC<CollectionPageProps> = ({
                 <>
                   {" "}
                   <a
-                    href={toPublicPath(feedHref, sitePathPrefix)}
+                    href={toPublicPath(feedHref, basePath)}
                     class="feed-link"
                     title={i18n._(
                       msg({
@@ -467,7 +464,7 @@ export const CollectionPage: FC<CollectionPageProps> = ({
                 data-collection-in-navigation={String(isInNavigation)}
                 data-collection-page-redirect-url={toPublicPath(
                   getCollectionsDirectoryPath(),
-                  sitePathPrefix,
+                  basePath,
                 )}
               >
                 <button
@@ -630,24 +627,52 @@ export const CollectionPage: FC<CollectionPageProps> = ({
 
       <main>
         {items.length === 0 ? (
-          <p class="text-muted-foreground">
-            {isAggregate
-              ? i18n._(
-                  msg({
-                    message:
-                      "Nothing here yet. Add threads to one of these collections to fill this view.",
-                    comment:
-                      "@context: Empty state message on an aggregate collection page",
-                  }),
-                )
-              : i18n._(
-                  msg({
-                    message:
-                      "This collection is empty. Add threads from the editor.",
-                    comment: "@context: Empty state message",
-                  }),
-                )}
-          </p>
+          emptyInLanguage ? (
+            <p class="text-muted-foreground">
+              {i18n._(
+                msg({
+                  message: "Nothing in {language} here yet.",
+                  comment:
+                    "@context: Empty state when a collection has no posts in the language being browsed",
+                }),
+                { language: emptyInLanguage.languageLabel },
+              )}{" "}
+              {emptyInLanguage.alternatives.map((alternative, index) => (
+                <span key={alternative.lang}>
+                  {index > 0 ? <span> · </span> : null}
+                  <a href={alternative.href} hreflang={alternative.lang}>
+                    {i18n._(
+                      msg({
+                        message: "Read it in {language}",
+                        comment:
+                          "@context: Link out of an empty language view of a collection",
+                      }),
+                      { language: alternative.label },
+                    )}
+                  </a>
+                </span>
+              ))}
+            </p>
+          ) : (
+            <p class="text-muted-foreground">
+              {isAggregate
+                ? i18n._(
+                    msg({
+                      message:
+                        "Nothing here yet. Add threads to one of these collections to fill this view.",
+                      comment:
+                        "@context: Empty state message on an aggregate collection page",
+                    }),
+                  )
+                : i18n._(
+                    msg({
+                      message:
+                        "This collection is empty. Add threads from the editor.",
+                      comment: "@context: Empty state message",
+                    }),
+                  )}
+            </p>
+          )
         ) : (
           <TimelineFeed
             items={items}

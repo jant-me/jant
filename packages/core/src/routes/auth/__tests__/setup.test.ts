@@ -61,24 +61,35 @@ describe("Setup bootstrap logic", () => {
     expect(onboardingRow?.value).toBe("completed");
   });
 
-  it("stores the initial language, CJK font, and timezone during setup", async () => {
+  it("stores the chosen content language and timezone during setup", async () => {
     await runSetupBootstrap(services, {
       siteLanguage: "en",
-      cjkSerifFont: "zh-Hans",
       timeZone: "Asia/Shanghai",
     });
 
     const rows = await services.db.select().from(settings);
     expect(rows.find((row) => row.key === "SITE_LANGUAGE")?.value).toBe("en");
-    expect(rows.find((row) => row.key === "CJK_SERIF_FONT")?.value).toBe(
-      "zh-Hans",
-    );
     expect(rows.find((row) => row.key === "TIME_ZONE")?.value).toBe(
       "Asia/Shanghai",
     );
   });
 
-  it("pins the dashboard language to the detected catalog locale", async () => {
+  it("pins the dashboard language to the browser, not the site", async () => {
+    // Someone running an English blog from a Chinese browser: English site,
+    // Chinese dashboard.
+    await runSetupBootstrap(services, {
+      siteLanguage: "en",
+      browserLanguage: "zh-TW",
+    });
+
+    const rows = await services.db.select().from(settings);
+    expect(rows.find((row) => row.key === "SITE_LANGUAGE")?.value).toBe("en");
+    expect(rows.find((row) => row.key === "DASHBOARD_LANGUAGE")?.value).toBe(
+      "zh-Hant",
+    );
+  });
+
+  it("falls back to the content language when the browser sent none", async () => {
     await runSetupBootstrap(services, { siteLanguage: "zh-TW" });
 
     const rows = await services.db.select().from(settings);

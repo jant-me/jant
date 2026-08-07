@@ -12,6 +12,11 @@ export interface CollectionDirectoryProps {
   items: CollectionDirectoryItem[];
   emptyMessage?: string;
   sitePathPrefix?: string;
+  /**
+   * Public path prefix for collection links, carrying the language prefix in a
+   * language view. Defaults to `sitePathPrefix`.
+   */
+  basePath?: string;
   siteOrigin?: string;
 }
 
@@ -113,6 +118,7 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
   items,
   emptyMessage,
   sitePathPrefix = "",
+  basePath = sitePathPrefix,
   siteOrigin = "",
 }) => {
   const { i18n } = useLingui();
@@ -152,7 +158,7 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                       <a
                         href={toPublicPath(
                           getCollectionSelectionPath(group.slugExpression),
-                          sitePathPrefix,
+                          basePath,
                         )}
                         class="collection-directory-divider-link collection-directory-divider-text"
                       >
@@ -268,7 +274,7 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                 <a
                   href={toPublicPath(
                     getCollectionSelectionPath(collection.slug),
-                    sitePathPrefix,
+                    basePath,
                   )}
                   class="collection-directory-title-link"
                 >

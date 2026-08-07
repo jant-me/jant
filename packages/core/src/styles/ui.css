@@ -249,6 +249,7 @@
   .site-header-right {
     display: flex;
     align-items: center;
+    gap: 0.9rem;
     flex-shrink: 0;
   }
 
@@ -943,6 +944,37 @@
       color-mix(in srgb, var(--site-divider) 60%, transparent);
   }
 
+  /* --- Language switcher ---------------------------------------------------
+     Reuses the "More" menu's classes for look and behaviour; only the
+     anchoring differs, because the switcher sits at the end of the header row
+     where a left-anchored popover would run off the viewport. These rules must
+     stay *after* the `.site-header-more-*` rules they override: the selectors
+     have equal specificity, so source order decides. */
+
+  .site-header-lang {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .site-header-lang-btn {
+    white-space: nowrap;
+  }
+
+  .site-header-lang-popover {
+    left: auto;
+    right: 0;
+    min-width: 9rem;
+    border-left: none;
+    border-right: 0.5px solid var(--site-header-hairline);
+    transform-origin: top right;
+  }
+
+  .site-header-lang-popover .site-header-more-link {
+    justify-content: flex-end;
+    padding: 0.38rem 1.15rem 0.38rem 0.75rem;
+  }
+
   /* --- Header responsive -------------------------------------------------- */
 
   @media (max-width: 1200px) {
@@ -1019,7 +1051,9 @@
 
   @media (max-width: 480px) {
     .site-header-nav,
-    .site-header-more {
+    .site-header-more,
+    /* The drawer carries its own language section at this width. */
+    .site-header-lang {
       display: none;
     }
 
@@ -4005,6 +4039,13 @@
     background: transparent;
   }
 
+  /* Three sections and post titles need more room than a plain action list. */
+  .post-menu-panel:has(.post-menu-language-panel) {
+    width: min(19rem, calc(100vw - 1.25rem));
+    min-width: min(19rem, calc(100vw - 1.25rem));
+    max-width: min(21rem, calc(100vw - 1.25rem));
+  }
+
   .post-menu-panel {
     width: min(15rem, calc(100vw - 1.25rem));
     min-width: min(15rem, calc(100vw - 1.25rem));
@@ -4097,6 +4138,98 @@
      content, otherwise the empty group still draws its divider and padding. */
   .post-menu-section:not(:has(> *)) {
     display: none;
+  }
+
+  /* Explanatory line inside a panel — the same muted register as the menu's
+     own metadata, never competing with the items it explains. */
+  /* "Also available in …" under a post that has translations. Quiet: it is a
+     way out for a reader who needs one, not a call to action. */
+  .post-translations {
+    margin: 1.4rem 0 0;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    color: var(--site-text-secondary);
+  }
+
+  .post-translations a {
+    color: inherit;
+    text-decoration-color: color-mix(
+      in srgb,
+      var(--site-text-secondary) 45%,
+      transparent
+    );
+  }
+
+  .post-translations a:hover {
+    color: var(--site-text-primary);
+  }
+
+  /* Explanatory line inside a panel — the same muted register as the menu's
+     own metadata, never competing with the items it explains. */
+  .post-menu-hint {
+    padding: 0.3rem 0.95rem 0.55rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    line-height: 1.45;
+    text-wrap: pretty;
+    color: color-mix(in srgb, var(--site-text-secondary) 78%, transparent);
+  }
+
+  /* Groups the language panel's three jobs — which language this is, where its
+     other versions are, how to add one — so they read as three answers rather
+     than one long list. */
+  .post-menu-section-label {
+    margin: 0;
+    padding: 0.45rem 0.95rem 0.3rem;
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--site-text-secondary) 68%, transparent);
+  }
+
+  .post-menu-search {
+    padding: 0.2rem 0.35rem 0.35rem;
+  }
+
+  .post-menu-search-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 0.5px solid var(--site-divider);
+    border-radius: 0.55rem;
+    background: transparent;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    color: var(--site-text-primary);
+  }
+
+  .post-menu-search-input::placeholder {
+    color: color-mix(in srgb, var(--site-text-secondary) 62%, transparent);
+  }
+
+  .post-menu-search-input:focus-visible {
+    outline: none;
+    border-color: color-mix(in srgb, var(--site-text-primary) 40%, transparent);
+  }
+
+  /* A translation's title is the useful part of its row, so it gets the space
+     and the language label stays a short suffix. */
+  .post-menu-language-panel .post-menu-item-label {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .post-menu-language-panel .post-menu-item-meta {
+    flex: 0 0 auto;
+  }
+
+  .post-menu-language-panel [role="menuitem"][disabled],
+  .post-menu-language-panel [role="menuitemradio"][disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .post-menu-section + .post-menu-section {
@@ -6781,6 +6914,30 @@
     font-weight: var(--fw-semibold);
   }
 
+  /* Says what the composer was opened to do, above the editor rather than
+     inside a panel — the author should know before they start typing. */
+  .compose-translation-context {
+    margin: 0 0 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.6rem;
+    background: color-mix(in srgb, var(--site-nav-hover-bg) 55%, transparent);
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    line-height: 1.45;
+    text-wrap: pretty;
+    color: var(--site-text-secondary);
+  }
+
+  /* Context line under a section label — says what this post is, without
+     competing with the choices below it. */
+  .compose-sheet-note {
+    margin: 0;
+    padding: 0 0.35rem 0.4rem;
+    color: color-mix(in srgb, var(--site-text-secondary) 82%, transparent);
+    font-size: 0.79rem;
+    line-height: 1.45;
+  }
+
   .compose-sheet-row {
     --compose-icon-paper-fill: var(--compose-paper-bg);
 
@@ -8428,7 +8585,8 @@
       max-width: min(19.5rem, calc(100vw - 1rem));
     }
 
-    .post-menu-panel:has(.post-menu-collection-picker) {
+    .post-menu-panel:has(.post-menu-collection-picker),
+    .post-menu-panel:has(.post-menu-language-panel) {
       width: min(20rem, calc(100vw - 1rem));
       min-width: min(20rem, calc(100vw - 1rem));
       max-width: min(21rem, calc(100vw - 1rem));
@@ -9007,6 +9165,104 @@
 
   body:has(.text-preview-dialog--ssr[open]) {
     overflow: hidden;
+  }
+
+  /* --- Shared post picker ------------------------------------------------- */
+
+  .picker-dialog {
+    margin: 0;
+  }
+
+  .picker-dialog > .picker-dialog-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: min(32rem, calc(100vw - 2rem));
+    max-height: min(32rem, calc(100vh - 4rem));
+    outline: none;
+  }
+
+  .picker-dialog-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .picker-dialog-title {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 1.05rem;
+    font-weight: var(--fw-semibold);
+    text-wrap: balance;
+  }
+
+  .picker-dialog-hint {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    line-height: 1.45;
+    text-wrap: pretty;
+    color: var(--site-text-secondary);
+  }
+
+  /* The results scroll, not the dialog: the search field has to stay reachable
+     while the author reads down a long list. */
+  .picker-dialog-results {
+    display: flex;
+    flex-direction: column;
+    min-height: 3rem;
+    max-height: 18rem;
+    overflow-y: auto;
+  }
+
+  .picker-dialog-option {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.55rem 0.65rem;
+    border: none;
+    border-radius: 0.55rem;
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    text-align: left;
+    color: var(--site-text-primary);
+  }
+
+  .picker-dialog-option:hover,
+  .picker-dialog-option:focus-visible {
+    outline: none;
+    background: color-mix(in srgb, var(--site-nav-hover-bg) 70%, transparent);
+  }
+
+  .picker-dialog-option-label {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .picker-dialog-option-meta {
+    flex: 0 0 auto;
+    font-size: var(--type-ui-meta);
+    color: var(--site-text-secondary);
+  }
+
+  .picker-dialog-status {
+    margin: 0;
+    padding: 0.55rem 0.65rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    line-height: 1.45;
+    text-wrap: pretty;
+    color: var(--site-text-secondary);
+  }
+
+  .picker-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
   }
 
   /* --- Shared confirm dialog --------------------------------------------- */

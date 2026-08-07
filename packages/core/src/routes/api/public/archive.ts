@@ -3,7 +3,11 @@ import { z } from "zod";
 import type { Bindings } from "../../../types.js";
 import type { AppVariables } from "../../../types/app-context.js";
 import { MEDIA_KINDS } from "../../../types.js";
-import { FormatSchema, parseValidated } from "../../../lib/schemas.js";
+import {
+  ContentLanguageSchema,
+  FormatSchema,
+  parseValidated,
+} from "../../../lib/schemas.js";
 import { toPublicPost } from "./posts.js";
 import { requirePublicApiEnabled } from "../../../middleware/public-content-access.js";
 
@@ -25,6 +29,8 @@ const PresenceSchema = z
 
 const ListPublicArchiveQuerySchema = z.object({
   format: FormatSchema.optional(),
+  /** Restrict to one content language. See `/api/public/posts`. */
+  lang: ContentLanguageSchema.optional(),
   collection: z.string().optional(),
   year: z.coerce.number().int().min(1971).optional(),
   // Kinds list (image,video,...) or presence words: any = posts with any
@@ -63,6 +69,7 @@ const ListPublicArchiveQuerySchema = z.object({
 publicArchiveApiRoutes.get("/", async (c) => {
   const {
     format,
+    lang,
     collection,
     year,
     media,
@@ -98,6 +105,7 @@ publicArchiveApiRoutes.get("/", async (c) => {
 
   const posts = await c.var.services.posts.list({
     format,
+    lang,
     collectionIds,
     status: "published",
     cursor: cursor ?? undefined,

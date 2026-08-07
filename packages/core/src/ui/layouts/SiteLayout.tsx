@@ -8,7 +8,11 @@
 import { msg } from "@lingui/core/macro";
 import type { FC, PropsWithChildren } from "hono/jsx";
 import { useLingui } from "../../i18n/context.js";
-import type { NavItemView, SiteLayoutProps } from "../../types.js";
+import type {
+  LanguageSwitcherOption,
+  NavItemView,
+  SiteLayoutProps,
+} from "../../types.js";
 import { toPublicPath } from "../../lib/url.js";
 import { ComposeDialog } from "../compose/ComposeDialog.js";
 import { ComposePrompt } from "../compose/ComposePrompt.js";
@@ -119,6 +123,8 @@ export interface SiteHeaderProps {
   sitePathPrefix?: string;
   siteAvatarUrl?: string;
   showHeaderAvatar?: boolean;
+  /** Languages this site publishes in. Empty on a single-language site. */
+  languageSwitcher?: LanguageSwitcherOption[];
 }
 
 function linkCollapseTier(idx: number): string {
@@ -150,6 +156,7 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
   sitePathPrefix = "",
   siteAvatarUrl,
   showHeaderAvatar,
+  languageSwitcher = [],
 }) => {
   const { i18n } = useLingui();
   const linksWithLabels = links.map((link) => ({
@@ -179,6 +186,18 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
     }),
   );
   const moreLabel = i18n._(NAV_MORE_LABEL);
+
+  // The switcher is a "take me to this language's site" control, so it names
+  // each language in that language — a reader looking for their own language
+  // should not have to read the current one to find it.
+  const languageLabel = i18n._(
+    msg({
+      message: "Language",
+      comment: "@context: Accessible label for the site language switcher",
+    }),
+  );
+  const currentLanguage =
+    languageSwitcher.find((option) => option.isCurrent) ?? languageSwitcher[0];
 
   // Split custom links by placement.
   const headerLinks = linksWithLabels.filter(
@@ -357,6 +376,58 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
             </div>
 
             <div class="site-header-right">
+              {languageSwitcher.length > 1 && currentLanguage && (
+                <div class="site-header-lang">
+                  <button
+                    type="button"
+                    class="site-header-more-btn site-header-lang-btn"
+                    id="site-nav-lang-trigger"
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                    aria-label={languageLabel}
+                  >
+                    <span lang={currentLanguage.lang}>
+                      {currentLanguage.label}
+                    </span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                  <div
+                    id="site-nav-lang-popover"
+                    class="site-header-more-popover site-header-lang-popover"
+                    data-popover
+                    data-align="end"
+                    aria-hidden="true"
+                  >
+                    {languageSwitcher.map((option) => (
+                      <a
+                        key={option.lang}
+                        href={option.href}
+                        hreflang={option.lang}
+                        lang={option.lang}
+                        class={`site-header-more-link ${option.isCurrent ? "site-header-more-link-active" : ""}`}
+                        {...(option.isCurrent
+                          ? { "aria-current": "true" }
+                          : {})}
+                      >
+                        {option.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
               <button
                 type="button"
                 class="site-header-hamburger"
@@ -470,6 +541,24 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
               ))}
             </>
           )}
+          {languageSwitcher.length > 1 && (
+            <>
+              <div class="site-nav-drawer-divider" />
+              <span class="site-nav-drawer-section-label">{languageLabel}</span>
+              {languageSwitcher.map((option) => (
+                <a
+                  key={option.lang}
+                  href={option.href}
+                  hreflang={option.lang}
+                  lang={option.lang}
+                  class={`site-nav-drawer-link site-nav-drawer-link-secondary ${option.isCurrent ? "site-nav-drawer-link-active" : ""}`}
+                  {...(option.isCurrent ? { "aria-current": "true" } : {})}
+                >
+                  {option.label}
+                </a>
+              ))}
+            </>
+          )}
         </nav>
       </div>
     </>
@@ -495,6 +584,8 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
   composeOpenShortcutDiscovered = false,
   slashCommandDiscovered = false,
   composeCollectionId,
+  languageSwitcher,
+  composeLanguages,
   children,
 }) => {
   const { i18n } = useLingui();
@@ -536,6 +627,7 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
           sitePathPrefix={sitePathPrefix}
           siteAvatarUrl={siteAvatarUrl}
           showHeaderAvatar={showHeaderAvatar}
+          languageSwitcher={languageSwitcher}
         />
       )}
 
@@ -602,12 +694,20 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
 
       <jant-media-lightbox />
       <jant-text-preview />
-      {isAuthenticated && <jant-post-menu />}
+      {isAuthenticated && (
+        <jant-post-menu
+          languages={JSON.stringify(composeLanguages ?? []).replace(
+            /</g,
+            "\\u003c",
+          )}
+        />
+      )}
       {isAuthenticated && showComposeDialog && (
         <ComposeDialog
           collections={collections}
           uploadMaxFileSize={uploadMaxFileSize}
           slashCommandDiscovered={slashCommandDiscovered}
+          languages={composeLanguages}
         />
       )}
     </div>

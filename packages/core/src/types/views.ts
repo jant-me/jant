@@ -68,6 +68,11 @@ export interface PostView {
   /** 24-hour featured time, e.g. "23:05" */
   featuredAtTime?: string;
   rating?: number;
+  /**
+   * BCP 47 content language, on Thread roots of a multilingual site. Absent on
+   * replies (they follow the root) and on sites that publish one language.
+   */
+  language?: string;
 
   // Link preview
   /** Preview kind: "video", "image", etc. */
@@ -267,6 +272,26 @@ export interface ArchiveGroup {
 /**
  * Site Layout Props
  */
+/** One `<link rel="alternate" hreflang>` target. */
+export interface LanguageAlternate {
+  /** BCP 47 tag, or `x-default` for the entry point. */
+  hreflang: string;
+  /** Absolute URL. */
+  href: string;
+}
+
+/** One entry in the site's language switcher. */
+export interface LanguageSwitcherOption {
+  /** Canonical BCP 47 tag. */
+  lang: string;
+  /** The language's own name for itself, e.g. "日本語". */
+  label: string;
+  /** Where switching to this language takes the reader. */
+  href: string;
+  /** Whether this is the language currently on screen. */
+  isCurrent: boolean;
+}
+
 export interface SiteLayoutProps {
   siteName: string;
   links: NavItemView[];
@@ -287,4 +312,11 @@ export interface SiteLayoutProps {
   slashCommandDiscovered?: boolean;
   /** When set, the mobile compose FAB pre-selects this collection. */
   composeCollectionId?: string;
+  /**
+   * Languages this site publishes in, for the header's language switcher.
+   * Empty on a single-language site, which renders no switcher at all.
+   */
+  languageSwitcher?: LanguageSwitcherOption[];
+  /** Languages offered in the composer. Empty on a single-language site. */
+  composeLanguages?: Array<{ tag: string; label: string }>;
 }

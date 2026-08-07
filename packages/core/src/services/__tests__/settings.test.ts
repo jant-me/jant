@@ -170,7 +170,6 @@ describe("SettingsService", () => {
       siteDescription: "",
       siteFooter: "",
       siteLanguage: "en",
-      cjkSerifFont: "off",
       showJantBrandingOnHome: false,
       mainRssFeed: "featured",
       timeZone: "UTC",
@@ -390,7 +389,6 @@ describe("SettingsService", () => {
       const result = await settingsService.updateLocaleSettings(
         {
           siteLanguage: "zh-Hans",
-          cjkSerifFont: "zh-Hans",
           timeZone: "America/New_York",
         },
         {
@@ -400,29 +398,32 @@ describe("SettingsService", () => {
 
       expect(result.languageChanged).toBe(true);
       expect(await settingsService.get("SITE_LANGUAGE")).toBe("zh-Hans");
-      expect(await settingsService.get("CJK_SERIF_FONT")).toBe("zh-Hans");
       expect(await settingsService.get("TIME_ZONE")).toBe("America/New_York");
     });
 
-    it("removes CJK_SERIF_FONT when set to off", async () => {
-      await settingsService.set("CJK_SERIF_FONT", "zh-Hans");
-      await settingsService.updateLocaleSettings(
-        {
-          siteLanguage: "en",
-          cjkSerifFont: "off",
-          timeZone: "UTC",
-        },
-        { oldLanguage: "en" },
-      );
+    // The Language and General pages each own part of this group, so an absent
+    // field has to mean "leave it alone" rather than "clear it".
+    it("leaves out-of-scope fields untouched", async () => {
+      await settingsService.set("SITE_LANGUAGE", "ja");
+      await settingsService.set("TIME_ZONE", "Asia/Tokyo");
 
-      expect(await settingsService.get("CJK_SERIF_FONT")).toBeNull();
+      await settingsService.updateLocaleSettings(
+        { timeZone: "America/New_York" },
+        { oldLanguage: "ja" },
+      );
+      expect(await settingsService.get("SITE_LANGUAGE")).toBe("ja");
+
+      await settingsService.updateLocaleSettings(
+        { siteLanguage: "en" },
+        { oldLanguage: "ja" },
+      );
+      expect(await settingsService.get("TIME_ZONE")).toBe("America/New_York");
     });
 
     it("stores the base locale when language input is blank", async () => {
       const result = await settingsService.updateLocaleSettings(
         {
           siteLanguage: "",
-          cjkSerifFont: "off",
           timeZone: "UTC",
         },
         {
@@ -439,7 +440,6 @@ describe("SettingsService", () => {
         {
           siteLanguage: "fr",
           dashboardLanguage: "zh-Hant",
-          cjkSerifFont: "off",
           timeZone: "UTC",
         },
         { oldLanguage: "fr", oldDashboardLanguage: "" },
@@ -456,7 +456,6 @@ describe("SettingsService", () => {
         {
           siteLanguage: "en",
           dashboardLanguage: "",
-          cjkSerifFont: "off",
           timeZone: "UTC",
         },
         { oldLanguage: "en", oldDashboardLanguage: "zh-Hans" },
@@ -481,7 +480,6 @@ describe("SettingsService", () => {
           {
             siteLanguage: "en",
             dashboardLanguage: "fr",
-            cjkSerifFont: "off",
             timeZone: "UTC",
           },
           { oldLanguage: "en" },

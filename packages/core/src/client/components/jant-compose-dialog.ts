@@ -12,12 +12,16 @@ import { classMap } from "lit/directives/class-map.js";
 import { repeat } from "lit/directives/repeat.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
+import { ifDefined } from "lit/directives/if-defined.js";
 import type { Editor, JSONContent } from "@tiptap/core";
+import { extractBodyText } from "../../lib/summary.js";
+import { suggestPostLanguage } from "../../lib/lang-detect.js";
 import type {
   ComposeFormat,
   ComposeVisibility,
   ComposeLabels,
   ComposeCollection,
+  ComposeLanguage,
   ComposeSubmitDetail,
   ComposeSubmitAttachment,
   ComposeAttachment,
@@ -627,6 +631,7 @@ export class JantComposeDialog extends LitElement {
 
   static properties = {
     collections: { type: Array },
+    languages: { type: Array },
     labels: { type: Object },
     uploadMaxFileSize: { type: Number, attribute: "upload-max-file-size" },
     pageMode: { type: Boolean, attribute: "page-mode" },
@@ -675,9 +680,12 @@ export class JantComposeDialog extends LitElement {
     _slugTaken: { state: true },
     _visibilityLocked: { state: true },
     _quietReply: { state: true },
+    _language: { state: true },
+    _translationOf: { state: true },
   };
 
   declare collections: ComposeCollection[];
+  declare languages: ComposeLanguage[];
   declare labels: ComposeLabels;
   declare uploadMaxFileSize: number;
   declare pageMode: boolean;
@@ -727,6 +735,10 @@ export class JantComposeDialog extends LitElement {
   declare _slugTaken: boolean;
   declare _visibilityLocked: boolean;
   declare _quietReply: boolean;
+  /** Author's explicit language choice. Null means "let Jant read it". */
+  declare _language: string | null;
+  /** Thread root this post is being written as a translation of. */
+  declare _translationOf: { id: string; title: string } | null;
 
   private _attachedEditor: Editor | null = null;
   private _attachedTextSnapshot: JSONContent | null = null;
@@ -773,6 +785,7 @@ export class JantComposeDialog extends LitElement {
   constructor() {
     super();
     this.collections = [];
+    this.languages = [];
     this.labels = {} as ComposeLabels;
     this.uploadMaxFileSize = 1024;
     this.pageMode = false;
@@ -827,6 +840,8 @@ export class JantComposeDialog extends LitElement {
     this._slugTaken = false;
     this._visibilityLocked = false;
     this._quietReply = false;
+    this._language = null;
+    this._translationOf = null;
   }
 
   private get _editor(): JantComposeEditor | null {
@@ -976,6 +991,8 @@ export class JantComposeDialog extends LitElement {
     this._slugSuggestionKey = "";
     this._visibilityLocked = false;
     this._quietReply = false;
+    this._language = null;
+    this._translationOf = null;
     this._confirmForDrafts = false;
     this._confirmForAttachedText = false;
     this._initialSnapshot = null;
@@ -1164,6 +1181,35 @@ export class JantComposeDialog extends LitElement {
     await this.updateComplete;
     this._editor?.focusInput();
     this._captureInitialSnapshot();
+  }
+
+  /**
+   * Open the composer on a new post that translates an existing one.
+   *
+   * Nothing is created server-side here: the source ID and the target language
+   * ride along in memory, and the translation group is minted only if the
+   * author saves. Closing the composer leaves no trace — no draft row, no slug,
+   * no single-member group.
+   *
+   * @param sourcePostId - Thread root the new post translates
+   * @param language - Language to write it in
+   */
+  async openTranslation(sourcePostId: string, language: string) {
+    this.reset();
+    this._editor?.setTitleDefault(JantComposeDialog._getNoteTitleDefault());
+
+    if (this.languages.some((entry) => entry.tag === language)) {
+      this._language = language;
+    }
+
+    this.closest("dialog")?.showModal();
+    await this.updateComplete;
+    this._editor?.focusInput();
+    this._captureInitialSnapshot();
+
+    // Deliberately after the open: the banner is context, not a precondition,
+    // and blocking the composer on a fetch would trade a visible delay for it.
+    await this._loadTranslationSource(sourcePostId);
   }
 
   /**
@@ -1652,6 +1698,10 @@ export class JantComposeDialog extends LitElement {
       replyThreadRootId: this._replyThreadRootId ?? undefined,
       replyRefreshKind: this._replyRefreshKind ?? undefined,
       replyRefreshId: this._replyRefreshId ?? undefined,
+      // Only the root carries a language: a reply belongs to its Thread and
+      // inherits it server-side. Absent means the author left it to detection.
+      language: this._replyToId ? undefined : (this._language ?? undefined),
+      translationOfId: this._translationOf?.id,
     };
   }
 
@@ -3328,6 +3378,8 @@ export class JantComposeDialog extends LitElement {
         showRating: false,
         collectionIds: [...this._collectionIds],
         replyToId: this._replyToId,
+        language: this._language,
+        translationOfId: this._translationOf?.id ?? null,
         attachedTexts: [],
         attachmentOrder: [],
         threadItems,
@@ -3392,6 +3444,8 @@ export class JantComposeDialog extends LitElement {
       showRating: data.rating > 0 ? editor._showRating : false,
       collectionIds: [...this._collectionIds],
       replyToId: this._replyToId,
+      language: this._language,
+      translationOfId: this._translationOf?.id ?? null,
       attachedTexts: data.attachedTexts.map((t) => ({
         clientId: t.clientId,
         bodyJson: t.bodyJson,
@@ -3537,6 +3591,10 @@ export class JantComposeDialog extends LitElement {
     this._publishedAtInput = draft.publishedAtInput ?? "";
     this._publishedAtTimeMinutes = draft.publishedAtTimeMinutes ?? null;
     this._visibility = draft.visibility ?? "public";
+    this._language = draft.language ?? null;
+    if (draft.translationOfId) {
+      await this._loadTranslationSource(draft.translationOfId);
+    }
 
     // Restore reply context if this draft was a reply
     if (draft.replyToId) {
@@ -3740,12 +3798,35 @@ export class JantComposeDialog extends LitElement {
     return true;
   }
 
+  /**
+   * Pick up a "write the translation" request from the URL.
+   *
+   * The post menu sends the author here with the source Thread and the target
+   * language in the query string, and nothing else exists yet: no draft row, no
+   * slug, no group. Applied after any local draft restore so a draft the author
+   * already started for this translation wins over the bare request.
+   */
+  private async _applyTranslationRequestFromUrl(): Promise<void> {
+    const params = new URLSearchParams(globalThis.location?.search ?? "");
+    const translationOf = params.get("translationOf");
+    if (!translationOf) return;
+
+    const lang = params.get("lang");
+    if (lang && this.languages.some((language) => language.tag === lang)) {
+      this._language = lang;
+    }
+    if (!this._translationOf) {
+      await this._loadTranslationSource(translationOf);
+    }
+  }
+
   private async _focusPageEditorOnMount() {
     if (this._pageFocusApplied) return;
 
     if (this.autoRestoreDraft) {
       await this.restoreLocalDraft();
     }
+    await this._applyTranslationRequestFromUrl();
 
     await this.updateComplete;
     globalThis.requestAnimationFrame(() => {
@@ -3911,6 +3992,32 @@ export class JantComposeDialog extends LitElement {
   }
 
   // ── Reply context rendering ──────────────────────────────────────
+
+  /**
+   * Says what this post is, when it was opened to translate another one.
+   *
+   * Sits where the reply context sits, for the same reason: a composer that
+   * was opened *about* something should say so before the author starts
+   * typing, not bury it two panels deep.
+   */
+  private _renderTranslationContext() {
+    const source = this._translationOf;
+    if (!source) return nothing;
+
+    const languageLabel =
+      this.languages.find((entry) => entry.tag === this._language)?.label ?? "";
+
+    return html`
+      <p class="compose-translation-context">
+        ${(languageLabel
+          ? this.labels.translationOfInLanguage
+          : this.labels.translationOf
+        )
+          .replace("{language}", languageLabel)
+          .replace("{title}", source.title)}
+      </p>
+    `;
+  }
 
   private _renderReplyContext() {
     if (!this._replyToId || !this._replyToData) return nothing;
@@ -4903,6 +5010,145 @@ export class JantComposeDialog extends LitElement {
   }
 
   /**
+   * Load the post a translation is being written for.
+   *
+   * Only the ID is carried around — through the URL that opens the composer,
+   * and through a local draft picked up later — so the title shown in the
+   * banner is fetched when it is needed. A post that has since been deleted
+   * simply drops the link rather than blocking the composer.
+   *
+   * @param postId - Thread root the new post translates
+   */
+  private async _loadTranslationSource(postId: string): Promise<void> {
+    try {
+      const response = await fetch(publicPath(`/api/posts/${postId}`), {
+        credentials: "same-origin",
+      });
+      if (!response.ok) return;
+      const post = (await response.json()) as {
+        id: string;
+        displayTitle?: string;
+        slug?: string;
+      };
+      // `displayTitle` is derived server-side for untitled notes; a slug is a
+      // URL, not a name, and only stands in when there is nothing else.
+      this._translationOf = {
+        id: post.id,
+        title: post.displayTitle || post.slug || "",
+      };
+    } catch {
+      // Offline or the post is gone. The composer still works; the author is
+      // writing a post, just not a linked one.
+    }
+  }
+
+  /**
+   * Plain text of the post being written, for the language suggestion.
+   *
+   * Read on demand rather than tracked: the panel is something the author
+   * opens deliberately, so reading the editor at that moment is both cheaper
+   * than watching every keystroke and more accurate than a cached value.
+   */
+  private _composeTextForDetection(): string {
+    const editor = this._editor;
+    if (!editor) return "";
+    const data = editor.getData();
+    const bodyText = data.body ? (extractBodyText(data.body) ?? "") : "";
+    return [data.title, data.quoteText, bodyText].filter(Boolean).join(" ");
+  }
+
+  /** The language this post would be saved with if submitted right now. */
+  private _effectiveLanguage(): string | null {
+    if (this._language) return this._language;
+    const tags = this.languages.map((language) => language.tag);
+    if (tags.length === 0) return null;
+    return suggestPostLanguage({
+      text: this._composeTextForDetection(),
+      languages: tags,
+      primary: tags[0] as string,
+    });
+  }
+
+  private _renderLanguageRow(tag: string | null, label: string, hint: string) {
+    const selected = this._language === tag;
+
+    return html`
+      <button
+        type="button"
+        class=${classMap({
+          "compose-sheet-row": true,
+          "compose-sheet-row-selected": selected,
+        })}
+        role="radio"
+        aria-checked=${selected ? "true" : "false"}
+        lang=${ifDefined(tag ?? undefined)}
+        @click=${() => {
+          this._language = tag;
+          this._scheduleDraftSave();
+        }}
+      >
+        <span class="compose-sheet-main">
+          <span class="compose-sheet-title">${label}</span>
+          ${hint
+            ? html`<span class="compose-sheet-sub">${hint}</span>`
+            : nothing}
+        </span>
+        ${selected
+          ? html`<span class="compose-sheet-check" aria-hidden="true">
+              ${renderComposePublishActionIcon(
+                COMPOSE_PUBLISH_ACTION_ICONS.check,
+                "compose-sheet-check-icon",
+              )}
+            </span>`
+          : nothing}
+      </button>
+    `;
+  }
+
+  /**
+   * The post's content language, offered only once the site publishes more
+   * than one. A single-language author never meets this control — that is the
+   * point of the whole feature being opt-in.
+   *
+   * Replies are excluded: a Thread is written in one language, and a reply
+   * takes the root's server-side.
+   */
+  private _renderLanguageSection() {
+    if (this._replyToId || this.languages.length < 2) return nothing;
+
+    const detected = this._effectiveLanguage();
+    const detectedLabel =
+      this.languages.find((language) => language.tag === detected)?.label ?? "";
+
+    return html`
+      <p class="compose-sheet-label">${this.labels.languageLabel}</p>
+      ${this._translationOf
+        ? html`<p class="compose-sheet-note">
+            ${this.labels.translationOf.replace(
+              "{title}",
+              this._translationOf.title,
+            )}
+          </p>`
+        : nothing}
+      <div role="radiogroup" aria-label=${this.labels.languageLabel}>
+        ${this._renderLanguageRow(
+          null,
+          this.labels.languageAuto,
+          detectedLabel
+            ? this.labels.languageAutoDetected.replace(
+                "{language}",
+                detectedLabel,
+              )
+            : this.labels.languageAutoHint,
+        )}
+        ${this.languages.map((language) =>
+          this._renderLanguageRow(language.tag, language.label, ""),
+        )}
+      </div>
+    `;
+  }
+
+  /**
    * The label above a field, with its reset on the right. The reset only shows
    * once there is something to reset, so the default state is a bare label.
    */
@@ -5545,8 +5791,13 @@ export class JantComposeDialog extends LitElement {
     const hasSessionRows =
       saveDraftRow !== nothing || draftsRow !== nothing || closeRow !== nothing;
 
+    const languageSection = this._renderLanguageSection();
+
     return html`
       <div class="compose-sheet">
+        ${languageSection === nothing
+          ? nothing
+          : html`${languageSection}${divider}`}
         ${this._visibilityLocked
           ? nothing
           : html`
@@ -6269,7 +6520,9 @@ export class JantComposeDialog extends LitElement {
         })}
         @jant:compose-content-changed=${() => this._scheduleDraftSave()}
       >
-        ${isReply ? this._renderReplyContext() : nothing}
+        ${isReply
+          ? this._renderReplyContext()
+          : this._renderTranslationContext()}
         <!-- Keyed by row id, not by position: an editor holds its own content,
              so an unkeyed list would reuse elements by position and drop the
              last one when a middle post is removed — taking that post's text
@@ -6387,7 +6640,7 @@ export class JantComposeDialog extends LitElement {
                       ${addThreadRow}
                     </div>
                   `
-                : html`${editor}${addThreadRow}`}
+                : html`${this._renderTranslationContext()}${editor}${addThreadRow}`}
         </div>
         ${isOpeningEdit
           ? nothing

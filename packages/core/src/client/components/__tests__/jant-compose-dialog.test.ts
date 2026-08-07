@@ -235,6 +235,12 @@ const labels: ComposeLabels = {
   publishHideFromLatest: "Hide from Latest",
   publishPrivate: "Post as Private",
   publishSettings: "Publish settings",
+  languageLabel: "Language",
+  languageAuto: "Detect",
+  languageAutoHint: "Read from what you write",
+  languageAutoDetected: "Read from what you write — looks like {language}",
+  translationOf: "Translation of “{title}”",
+  translationOfInLanguage: "Writing the {language} version of “{title}”",
   publishVisibilityLabel: "Visibility",
   publishVisibilityPublic: "Public",
   publishVisibilityPublicHint: "Appears in Latest.",
@@ -650,6 +656,104 @@ describe("JantComposeDialog", () => {
 
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
     expect(el.querySelector(".compose-sheet")).not.toBeNull();
+  });
+
+  describe("language", () => {
+    async function openPublishPanel(el: JantComposeDialog) {
+      requireElement(
+        el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
+        "expected options trigger",
+      ).click();
+      await flushUpdates(el);
+    }
+
+    function languageRowTitles(el: JantComposeDialog): string[] {
+      const group = el.querySelector("[role='radiogroup']");
+      return Array.from(
+        group?.querySelectorAll(".compose-sheet-title") ?? [],
+      ).map((node) => node.textContent?.trim() ?? "");
+    }
+
+    it("shows nothing on a site that publishes one language", async () => {
+      // The whole feature is opt-in: an author who never turned it on should
+      // not meet a language control.
+      const el = await createElement();
+      await openPublishPanel(el);
+
+      expect(languageRowTitles(el)).not.toContain("English");
+      expect(el.textContent).not.toContain("Detect");
+    });
+
+    it("offers Detect plus each language once the site is multilingual", async () => {
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      await flushUpdates(el);
+      await openPublishPanel(el);
+
+      expect(languageRowTitles(el)).toEqual(["Detect", "简体中文", "English"]);
+    });
+
+    it("says what it was opened to translate, before anything is typed", async () => {
+      // Opened from a post, so the composer should carry that context above the
+      // editor — not two panels down in the publish sheet.
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      await flushUpdates(el);
+
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          id: "pst_source",
+          displayTitle: "咖啡笔记",
+          slug: "coffee",
+        }),
+      } as Response);
+
+      await el.openTranslation("pst_source", "en");
+      await flushUpdates(el);
+
+      const banner = el.querySelector(".compose-translation-context");
+      expect(banner?.textContent?.trim()).toBe(
+        "Writing the English version of “咖啡笔记”",
+      );
+    });
+
+    it("sends the chosen language, and nothing when left on Detect", async () => {
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      await flushUpdates(el);
+      await openPublishPanel(el);
+
+      const build = (
+        el as unknown as {
+          _buildSubmitDetail: (
+            status: "published" | "draft",
+          ) => ComposeSubmitDetail | null;
+        }
+      )._buildSubmitDetail.bind(el);
+
+      // Absent, not guessed here: the server sees the final text.
+      expect(build("published")?.language).toBeUndefined();
+
+      const rows = Array.from(
+        el.querySelectorAll<HTMLButtonElement>(
+          "[role='radiogroup'] .compose-sheet-row",
+        ),
+      );
+      requireElement(rows[2] ?? null, "expected the English row").click();
+      await flushUpdates(el);
+
+      expect(build("published")?.language).toBe("en");
+    });
   });
 
   it("keeps date and permalink on the post, not in the publish panel", async () => {

@@ -118,7 +118,10 @@ export const PostPage: FC<PostPageProps> = ({
   post,
   threadPosts,
   isPreview = false,
+  translations = [],
 }) => {
+  const { i18n } = useLingui();
+
   return (
     <div
       data-post-view
@@ -137,6 +140,29 @@ export const PostPage: FC<PostPageProps> = ({
           mode="detail"
           display={isPreview ? PREVIEW_DISPLAY : undefined}
         />
+      )}
+      {translations.length > 0 && (
+        <p class="post-translations" data-post-translations>
+          {i18n._(
+            msg({
+              message: "Also available in",
+              comment:
+                "@context: Label before links to this post's translations",
+            }),
+          )}{" "}
+          {translations.map((translation, index) => (
+            <span key={translation.lang}>
+              {index > 0 ? <span>, </span> : null}
+              <a
+                href={translation.href}
+                hreflang={translation.lang}
+                lang={translation.lang}
+              >
+                {translation.label}
+              </a>
+            </span>
+          ))}
+        </p>
       )}
       {/* Public integration slot — code injection (giscus, Webmentions, etc.) appends here. */}
       <div data-post-end />

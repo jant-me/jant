@@ -213,7 +213,7 @@ export const SearchPage: FC<SearchPageProps> = ({
   error,
   hasMore,
   page,
-  sitePathPrefix = "",
+  basePath = "",
   isAuthenticated,
 }) => {
   const { i18n } = useLingui();
@@ -232,7 +232,7 @@ export const SearchPage: FC<SearchPageProps> = ({
       {/* Search form */}
       <form
         method="get"
-        action={toPublicPath("/search", sitePathPrefix)}
+        action={toPublicPath("/search", basePath)}
         class="mb-8"
       >
         <div class="flex gap-2">
@@ -305,7 +305,7 @@ export const SearchPage: FC<SearchPageProps> = ({
 
               <PagePagination
                 baseUrl={
-                  toPublicPath("/search", sitePathPrefix) +
+                  toPublicPath("/search", basePath) +
                   "?q=" +
                   encodeURIComponent(query)
                 }

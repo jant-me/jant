@@ -1,5 +1,6 @@
 import { isTextAttachment } from "../services/media.js";
 import type { Media, Post } from "../types.js";
+import { getPostDisplayTitle } from "./post-meta.js";
 import { getImageUrl, getMediaUrl, getPublicUrlForProvider } from "./image.js";
 import { toPublicPath } from "./url.js";
 
@@ -7,6 +8,12 @@ export type ApiPostResponse = Omit<Post, "title" | "url"> & {
   attachments?: ReturnType<typeof toApiAttachment>[];
   collectionIds?: string[];
   title?: string | null;
+  /**
+   * Short plain-text name for this Post, derived when it has no title of its
+   * own. Use it wherever the Post is referenced from somewhere else; a slug is
+   * a URL, not a name.
+   */
+  displayTitle: string;
   url?: string | null;
   sourceName?: string | null;
   sourceUrl?: string | null;
@@ -82,11 +89,15 @@ export function toApiPost(
   } = {},
 ): ApiPostResponse {
   const { title, url, ...rest } = post;
+  // A short name for this Post wherever it is referenced from somewhere else —
+  // notes are usually untitled, so the client cannot just read `title`.
+  const displayTitle = getPostDisplayTitle(post);
 
   if (post.format === "quote") {
     return {
       ...rest,
       ...extras,
+      displayTitle,
       sourceName: title ?? null,
       sourceUrl: url ?? null,
     };
@@ -95,6 +106,7 @@ export function toApiPost(
   return {
     ...rest,
     ...extras,
+    displayTitle,
     title: title ?? null,
     url: url ?? null,
   };

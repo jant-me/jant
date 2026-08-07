@@ -18,7 +18,6 @@ import {
 import { buildThemeStyle, resolveBuiltinTheme } from "../lib/theme.js";
 import {
   BUILTIN_FONT_THEMES,
-  getCjkFontCssVariables,
   getFontThemeCssVariables,
 } from "../ui/font-themes.js";
 
@@ -47,14 +46,15 @@ export function withConfig(): MiddlewareHandler<Env> {
     // Resolve active color theme
     const activeTheme = resolveBuiltinTheme(appConfig.themeId);
 
-    // Build font theme CSS variables
+    // Build font theme CSS variables. The CJK fallback stacks are deliberately
+    // NOT resolved here: they depend on the language of the page being
+    // rendered — a post's own language, or the language a filtered list view is
+    // showing — which this middleware runs too early to know. `BaseLayout`
+    // emits them alongside the matching CJK stylesheet instead.
     const fontTheme = BUILTIN_FONT_THEMES.find(
       (f) => f.id === appConfig.fontThemeId,
     );
-    const fontOverrides = {
-      ...getCjkFontCssVariables(appConfig.siteLanguage, appConfig.cjkSerifFont),
-      ...(fontTheme ? getFontThemeCssVariables(fontTheme) : {}),
-    };
+    const fontOverrides = fontTheme ? getFontThemeCssVariables(fontTheme) : {};
 
     const themeStyle = buildThemeStyle(
       activeTheme,

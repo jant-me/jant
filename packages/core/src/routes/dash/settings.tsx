@@ -19,13 +19,15 @@ import { getNavigationData } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { AdminBreadcrumb } from "../../ui/shared/AdminBreadcrumb.js";
 import { getTimeZoneOptions } from "../../lib/timezones.js";
-import { ValidationError } from "../../lib/errors.js";
+import { getOrBuildEntry } from "../../i18n/supported-locales.js";
+import { DomainError, ValidationError } from "../../lib/errors.js";
 import { SETTINGS_KEYS } from "../../lib/constants.js";
 import { getAvailableThemes } from "../../lib/theme.js";
 import { THEME_MODES, type ThemeMode } from "../../types/config.js";
 import { BUILTIN_FONT_THEMES } from "../../ui/font-themes.js";
 import { SettingsRootContent } from "../../ui/dash/settings/SettingsRootContent.js";
 import { GeneralContent } from "../../ui/dash/settings/GeneralContent.js";
+import { LanguageContent } from "../../ui/dash/settings/LanguageContent.js";
 import { AvatarContent } from "../../ui/dash/settings/AvatarContent.js";
 import { AccountMenuContent } from "../../ui/dash/settings/AccountMenuContent.js";
 import { AccountContent } from "../../ui/dash/settings/AccountContent.js";
@@ -52,7 +54,11 @@ import {
 } from "../../lib/telegram-settings-status.js";
 import { TelegramContent } from "../../ui/dash/settings/TelegramContent.js";
 import { toAbsoluteSiteUrl, toPublicPath } from "../../lib/url.js";
-import { parseValidated, UpdateSiteSettingsSchema } from "../../lib/schemas.js";
+import {
+  ContentLanguageSchema,
+  parseValidated,
+  UpdateSiteSettingsSchema,
+} from "../../lib/schemas.js";
 import {
   getHostedControlPlaneAccountPasswordUrl,
   getHostedControlPlaneAccountUrl,
@@ -95,13 +101,24 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const settingsRoutes = new Hono<Env>();
 
-const UpdateLocaleSettingsSchema = z.object({
-  siteLanguage: z.string(),
-  // Optional for back-compat: absent = leave the dashboard language untouched,
-  // "" = clear it (follow content language).
-  dashboardLanguage: z.string().optional(),
-  cjkSerifFont: z.string(),
+const UpdateTimeSettingsSchema = z.object({
   timeZone: z.string(),
+});
+
+// Both fields are optional: the language page saves one control at a time, and
+// an absent field means "leave it alone" rather than "clear it".
+const UpdateLanguageSettingsSchema = z.object({
+  contentLanguage: ContentLanguageSchema.optional(),
+  dashboardLanguage: z.string().optional(),
+});
+
+const LanguageTagSchema = z.object({
+  language: ContentLanguageSchema,
+});
+
+const EnableMultilingualSchema = z.object({
+  primary: ContentLanguageSchema,
+  additional: z.array(ContentLanguageSchema),
 });
 
 const UpdateFeedSettingsSchema = z.object({
@@ -138,6 +155,7 @@ function breadcrumbLabel(
   key:
     | "settings"
     | "general"
+    | "language"
     | "avatar"
     | "navigation"
     | "colorTheme"
@@ -162,6 +180,10 @@ function breadcrumbLabel(
     case "general":
       return i18n._(
         msg({ message: "General", comment: "@context: Breadcrumb label" }),
+      );
+    case "language":
+      return i18n._(
+        msg({ message: "Language", comment: "@context: Breadcrumb label" }),
       );
     case "avatar":
       return i18n._(
@@ -341,13 +363,6 @@ settingsRoutes.get("/general", async (c) => {
         <GeneralContent
           siteName={dbSiteName || ""}
           siteDescription={dbSiteDescription || ""}
-          siteLanguage={appConfig.siteLanguage}
-          dashboardLanguage={
-            isLocale(appConfig.dashboardLanguage)
-              ? appConfig.dashboardLanguage
-              : resolveCatalogLocale(appConfig.siteLanguage)
-          }
-          cjkSerifFont={appConfig.cjkSerifFont}
           siteNameFallback={appConfig.fallbacks.siteName}
           siteDescriptionFallback={appConfig.fallbacks.siteDescription}
           mainRssFeed={appConfig.mainRssFeed}
@@ -451,42 +466,219 @@ settingsRoutes.post("/general", async (c) => {
   }
 });
 
-settingsRoutes.post("/general/language-time", async (c) => {
+// Time zone only. Language moved to its own page, so this no longer sends —
+// and must not clear — the language fields.
+settingsRoutes.post("/general/time", async (c) => {
   const i18n = getI18n(c);
-  const body = parseValidated(UpdateLocaleSettingsSchema, await c.req.json());
+  const body = parseValidated(UpdateTimeSettingsSchema, await c.req.json());
   const toast = i18n._(
     msg({
-      message: "Language and time updated.",
-      comment: "@context: Toast after saving language and time settings",
+      message: "Time zone updated.",
+      comment: "@context: Toast after saving the time zone",
     }),
   );
-  const { languageChanged } =
-    await c.var.services.settings.updateLocaleSettings(body, {
-      oldLanguage: c.var.appConfig.siteLanguage,
-      oldCjkSerifFont: c.var.appConfig.cjkSerifFont,
-      oldDashboardLanguage: c.var.appConfig.dashboardLanguage,
-    });
+  await c.var.services.settings.updateLocaleSettings(body, {
+    oldLanguage: c.var.appConfig.siteLanguage,
+  });
 
   const wantsJson = c.req.header("accept")?.includes("application/json");
   if (wantsJson) {
-    if (languageChanged) {
-      return c.json({
-        status: "redirect" as const,
-        url: publicPath(c, "/settings/general?saved"),
-      });
-    }
-
-    return c.json({
-      status: "ok" as const,
-      toast,
-    });
-  }
-
-  if (languageChanged) {
-    return dsRedirect(publicPath(c, "/settings/general?saved"));
+    return c.json({ status: "ok" as const, toast });
   }
 
   return dsToast(toast);
+});
+
+// ===========================================================================
+// Language
+//
+// Every language setting lives on one page, and every write goes through the
+// language service — the multilingual keys are DB-only precisely so this is the
+// only door.
+// ===========================================================================
+
+settingsRoutes.get("/language", async (c) => {
+  const { appConfig } = c.var;
+  const navData = await getNavigationData(c);
+  const [state, preview] = await Promise.all([
+    c.var.services.language.getState(),
+    c.var.services.language.getEnablePreview(),
+  ]);
+
+  return renderPublicPage(c, {
+    title: buildPageTitle("Language", navData.siteName),
+    navData,
+    content: (
+      <>
+        <AdminBreadcrumb
+          parent={breadcrumbLabel(c, "settings")}
+          parentHref={publicPath(c, "/settings")}
+          current={breadcrumbLabel(c, "language")}
+        />
+        <LanguageContent
+          contentLanguage={state.primary}
+          dashboardLanguage={
+            isLocale(appConfig.dashboardLanguage)
+              ? appConfig.dashboardLanguage
+              : resolveCatalogLocale(state.primary)
+          }
+          multilingualEnabled={state.enabled}
+          additionalLanguages={state.additional}
+          unmarkedPostCount={preview.pendingCount}
+          sitePathPrefix={appConfig.sitePathPrefix}
+        />
+      </>
+    ),
+  });
+});
+
+/**
+ * Run a language mutation and report it as JSON.
+ *
+ * Every language endpoint has the same shape — do the thing, or explain in one
+ * sentence why it could not be done — so they share one wrapper rather than
+ * repeating the try/catch.
+ */
+async function respondToLanguageAction(
+  c: Context<Env>,
+  toast: string,
+  action: () => Promise<void>,
+): Promise<Response> {
+  try {
+    await action();
+    return c.json({ status: "ok" as const, toast });
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ error: error.message, code: error.code }, 400);
+    }
+    throw error;
+  }
+}
+
+settingsRoutes.post("/language", async (c) => {
+  const i18n = getI18n(c);
+  const body = parseValidated(UpdateLanguageSettingsSchema, await c.req.json());
+
+  return respondToLanguageAction(
+    c,
+    i18n._(
+      msg({
+        message: "Language updated.",
+        comment: "@context: Toast after saving a language setting",
+      }),
+    ),
+    async () => {
+      await c.var.services.settings.updateLocaleSettings(
+        {
+          siteLanguage: body.contentLanguage,
+          dashboardLanguage: body.dashboardLanguage,
+        },
+        {
+          oldLanguage: c.var.appConfig.siteLanguage,
+          oldDashboardLanguage: c.var.appConfig.dashboardLanguage,
+        },
+      );
+    },
+  );
+});
+
+settingsRoutes.post("/language/enable", async (c) => {
+  const i18n = getI18n(c);
+  const body = parseValidated(EnableMultilingualSchema, await c.req.json());
+
+  try {
+    const { markedCount } = await c.var.services.language.enable(body);
+    return c.json({
+      status: "ok" as const,
+      toast:
+        markedCount > 0
+          ? i18n._(
+              msg({
+                message:
+                  "Multilingual content is on. {count, plural, one {# post was marked} other {# posts were marked}} as {language}.",
+                comment:
+                  "@context: Toast after turning multilingual content on with existing posts",
+              }),
+              // The language's own name, not its tag — the author picked
+              // "繁體中文" in the dialog, not "zh-Hant".
+              {
+                count: markedCount,
+                language: getOrBuildEntry(body.primary).native,
+              },
+            )
+          : i18n._(
+              msg({
+                message: "Multilingual content is on.",
+                comment:
+                  "@context: Toast after turning multilingual content on with no existing posts",
+              }),
+            ),
+    });
+  } catch (error) {
+    if (error instanceof DomainError) {
+      return c.json({ error: error.message, code: error.code }, 400);
+    }
+    throw error;
+  }
+});
+
+settingsRoutes.post("/language/disable", async (c) => {
+  const i18n = getI18n(c);
+  return respondToLanguageAction(
+    c,
+    i18n._(
+      msg({
+        message: "Multilingual content is off. Your languages are still saved.",
+        comment: "@context: Toast after turning multilingual content off",
+      }),
+    ),
+    () => c.var.services.language.disable(),
+  );
+});
+
+settingsRoutes.post("/language/primary", async (c) => {
+  const i18n = getI18n(c);
+  const body = parseValidated(LanguageTagSchema, await c.req.json());
+  return respondToLanguageAction(
+    c,
+    i18n._(
+      msg({
+        message: "Primary language changed.",
+        comment: "@context: Toast after changing the primary language",
+      }),
+    ),
+    () => c.var.services.language.setPrimary(body.language),
+  );
+});
+
+settingsRoutes.post("/language/add", async (c) => {
+  const i18n = getI18n(c);
+  const body = parseValidated(LanguageTagSchema, await c.req.json());
+  return respondToLanguageAction(
+    c,
+    i18n._(
+      msg({
+        message: "Language added.",
+        comment: "@context: Toast after adding a content language",
+      }),
+    ),
+    () => c.var.services.language.addLanguage(body.language),
+  );
+});
+
+settingsRoutes.post("/language/remove", async (c) => {
+  const i18n = getI18n(c);
+  const body = parseValidated(LanguageTagSchema, await c.req.json());
+  return respondToLanguageAction(
+    c,
+    i18n._(
+      msg({
+        message: "Language removed.",
+        comment: "@context: Toast after removing a content language",
+      }),
+    ),
+    () => c.var.services.language.removeLanguage(body.language),
+  );
 });
 
 settingsRoutes.post("/general/feeds", async (c) => {

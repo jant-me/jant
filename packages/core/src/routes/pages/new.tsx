@@ -8,6 +8,7 @@ import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
 import { getI18n } from "../../i18n/index.js";
 import { ComposePage } from "../../ui/pages/ComposePage.js";
+import { buildComposeLanguages } from "../../lib/view-language.js";
 import { SETTINGS_KEYS } from "../../lib/constants.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -43,6 +44,7 @@ newPostRoutes.get("/new", async (c) => {
         uploadMaxFileSize={c.var.appConfig.uploadMaxFileSize}
         closeHref="/"
         slashCommandDiscovered={slashCommandDiscovered}
+        languages={buildComposeLanguages(c)}
       />
     ),
   });

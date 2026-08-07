@@ -66,6 +66,15 @@ export interface Post {
   previewProvider: string | null;
   replyToId: string | null;
   threadId: string;
+  /**
+   * BCP 47 content language, canonical form. Uniform across a Thread. `null`
+   * only until the site first enables multilingual content.
+   */
+  language: string | null;
+  /**
+   * Shared key for Posts that are translations of one another. Roots only.
+   */
+  translationGroupId: string | null;
   /** Reply published without announcing it on Latest. Always false on roots. */
   quietReply: boolean;
   publishedAt: number | null;

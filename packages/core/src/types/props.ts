@@ -7,6 +7,7 @@ import type { Collection, CollectionDirectoryItem } from "./entities.js";
 import type {
   PostView,
   FeedPostView,
+  LanguageSwitcherOption,
   TimelineItemView,
   SearchResultView,
   ArchiveGroup,
@@ -32,6 +33,12 @@ export interface PostPageProps {
   threadPosts?: PostView[];
   /** Hide owner-only actions while preserving the public post rendering. */
   isPreview?: boolean;
+  /**
+   * Other-language versions of this post. Rendered as a line under the post,
+   * because a reader who cannot read this one needs a way out that does not
+   * involve guessing at the language switcher.
+   */
+  translations?: Array<{ href: string; label: string; lang: string }>;
 }
 
 /** Props for the featured page component */
@@ -92,7 +99,13 @@ export interface ArchivePageProps {
   availableYears: number[];
   availableCollections: { slug: string; title: string }[];
   isAuthenticated: boolean;
-  sitePathPrefix?: string;
+  /**
+   * Public path this page's own URLs are built from — the deployment prefix
+   * plus, in a language view, that language's prefix (`/blog/en`). Every link
+   * the archive generates is a link back to itself with different filters, so
+   * this is the only prefix it needs.
+   */
+  basePath?: string;
   timeZone?: string;
   /** Href for the RSS feed matching current filters */
   feedHref?: string;
@@ -105,7 +118,8 @@ export interface SearchPageProps {
   error?: string;
   hasMore: boolean;
   page: number;
-  sitePathPrefix?: string;
+  /** Public path this page's own URLs are built from. See `ArchivePageProps`. */
+  basePath?: string;
   isAuthenticated?: boolean;
 }
 
@@ -123,7 +137,24 @@ export interface CollectionPageProps {
   showRatingSort: boolean;
   isAuthenticated: boolean;
   isInNavigation?: boolean;
+  /** Deployment path prefix. Used for links to admin surfaces. */
   sitePathPrefix?: string;
+  /**
+   * Public path prefix for reader-facing links, which in a language view also
+   * carries that language's prefix. Defaults to `sitePathPrefix`.
+   */
+  basePath?: string;
+  /**
+   * Set when the collection is empty in this language but not in the others.
+   * The empty state then says which language is missing and offers the ones
+   * that have something — an empty page with no way out is a dead end.
+   */
+  emptyInLanguage?: {
+    /** The current language's own name for itself. */
+    languageLabel: string;
+    /** This collection in each of the site's other languages. */
+    alternatives: LanguageSwitcherOption[];
+  };
   /** Href for this collection selection's Atom feed when feeds are enabled. */
   feedHref?: string;
 }
@@ -141,7 +172,13 @@ export interface CollectionsPageProps {
   items: CollectionDirectoryItem[];
   isAuthenticated: boolean;
   navigationCollectionIds?: string[];
+  /** Deployment path prefix. Used for links to admin surfaces. */
   sitePathPrefix?: string;
+  /**
+   * Public path prefix for reader-facing links, which in a language view also
+   * carries that language's prefix. Defaults to `sitePathPrefix`.
+   */
+  basePath?: string;
   siteOrigin?: string;
 }
 

@@ -10,7 +10,13 @@
  * ```
  */
 
-import type { FeedData, FeedPostView, MediaView, PostView } from "../types.js";
+import type {
+  FeedData,
+  FeedPostView,
+  LanguageAlternate,
+  MediaView,
+  PostView,
+} from "../types.js";
 import { getLinkPreviewProviderLabel } from "./link-preview.js";
 import { extractDisplayDomain } from "./url.js";
 import { getMediaCategory } from "./upload.js";
@@ -480,7 +486,15 @@ function getEntryMedia(post: FeedPostView): MediaView[] {
  * @returns Atom XML string
  */
 export function defaultFeedRenderer(data: FeedData): string {
-  const { siteName, siteDescription, siteUrl, title, selfUrl, posts } = data;
+  const {
+    siteName,
+    siteDescription,
+    siteUrl,
+    siteLanguage,
+    title,
+    selfUrl,
+    posts,
+  } = data;
   const feedTitle = title ?? siteName;
 
   const entries = posts
@@ -542,8 +556,13 @@ export function defaultFeedRenderer(data: FeedData): string {
       >((latest, value) => (latest === null || value > latest ? value : latest), null) ??
     new Date().toISOString();
 
+  // A feed states its own language: at the root that is the site's, and in a
+  // language view it is that view's, so a reader subscribing to /en/feed gets
+  // a feed their reader can label and their screen reader can pronounce.
+  const langAttr = siteLanguage ? ` xml:lang="${escapeXml(siteLanguage)}"` : "";
+
   return `<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
+<feed xmlns="http://www.w3.org/2005/Atom"${langAttr}>
   <title>${escapeXml(feedTitle)}</title>
   <subtitle>${escapeXml(siteDescription)}</subtitle>
   <link href="${escapeXml(siteUrl)}" rel="alternate"/>
@@ -576,6 +595,12 @@ export interface SitemapUrlEntry {
     | "never";
   /** "0.0" – "1.0" */
   priority?: string;
+  /**
+   * Other-language versions of this URL. Sitemap `hreflang` groups must be
+   * reciprocal and self-inclusive, so this lists every member of the group,
+   * this URL included.
+   */
+  alternates?: LanguageAlternate[];
 }
 
 /** One `<sitemap>` entry inside a `<sitemapindex>`. */
@@ -604,12 +629,23 @@ export function renderSitemapUrlSet(entries: SitemapUrlEntry[]): string {
       if (entry.priority) {
         parts.push(`    <priority>${escapeXml(entry.priority)}</priority>`);
       }
+      for (const alternate of entry.alternates ?? []) {
+        parts.push(
+          `    <xhtml:link rel="alternate" hreflang="${escapeXml(alternate.hreflang)}" href="${escapeXml(alternate.href)}"/>`,
+        );
+      }
       return `  <url>\n${parts.join("\n")}\n  </url>`;
     })
     .join("\n");
 
+  // The xhtml namespace is only meaningful for `<xhtml:link>` alternates, so
+  // it is declared only when some URL carries them.
+  const xhtmlNs = entries.some((entry) => entry.alternates?.length)
+    ? ' xmlns:xhtml="http://www.w3.org/1999/xhtml"'
+    : "";
+
   return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${xhtmlNs}>
 ${urls}
 </urlset>`;
 }

@@ -29,6 +29,8 @@ export async function buildSyncSiteConfig(c: {
     siteUrl: appConfig.siteUrl,
     siteDescription: appConfig.siteDescription,
     siteLanguage: appConfig.siteLanguage,
+    multilingualEnabled: appConfig.multilingualEnabled,
+    additionalLanguages: appConfig.additionalLanguages,
     showJantBrandingOnHome: appConfig.showJantBrandingOnHome,
     publicApiEnabled: appConfig.publicApiEnabled,
     rssFeedsEnabled: appConfig.rssFeedsEnabled,
