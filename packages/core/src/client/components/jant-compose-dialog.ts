@@ -240,22 +240,34 @@ const COMPOSE_PUBLISH_VISIBILITY_ICONS: Record<ComposeVisibility, string> = {
   `,
 };
 
+/* Drawn on a 14 grid, which is also the size these render at: a 16-unit
+   drawing shown at 14px scales every coordinate by 0.875, so no edge lands on
+   a device pixel and the whole glyph greys out. Diagonals are antialiased
+   whatever you do, so the checks and carets only needed the grid; the calendar
+   is all horizontals and verticals, and those are what the scale was smearing.
+   See its stroke width for the rest of that story. */
 const COMPOSE_PUBLISH_ACTION_ICONS = {
   check: `
-    <path d="M4.35 8.2 6.9 10.7 11.65 5.95" />
+    <path d="M3.75 7.25 6 9.5l4.25-4.25" />
   `,
   caretRight: `
-    <path d="M6.45 5.1 9.3 8l-2.85 2.9" />
+    <path d="M5.65 4.5 8.15 7l-2.5 2.5" />
   `,
   close: `
-    <path d="M4.5 4.5 11.5 11.5" />
-    <path d="M11.5 4.5 4.5 11.5" />
+    <path d="M4 4 10 10" />
+    <path d="M10 4 4 10" />
   `,
+  /* Every straight stroke is centred on a half unit and drawn 1 wide, which is
+     the only combination that lands on whole device pixels at 1x, 2x and 3x
+     alike: a 1px stroke centred at x.5 covers exactly one pixel at 1x, two at
+     2x, three at 3x. Hence also the flat `stroke-width`, overriding the
+     family's 1.35 — the weight is worth less here than the edges are. The
+     rounded corners still antialias, as corners should. */
   calendar: `
-    <rect x="2.75" y="3.45" width="10.5" height="9.8" rx="2.2" />
-    <path d="M5.35 2.55v2.1" />
-    <path d="M10.65 2.55v2.1" />
-    <path d="M2.75 6.2h10.5" />
+    <rect x="2.5" y="3.5" width="9" height="8" rx="2" stroke-width="1" />
+    <path d="M4.5 2.5v2" stroke-width="1" />
+    <path d="M9.5 2.5v2" stroke-width="1" />
+    <path d="M2.5 6.5h9" stroke-width="1" />
   `,
   /* Two sliders — "settings for this thing", without borrowing the gear, which
      elsewhere means site settings. No enclosing box: the trigger is already a
@@ -365,10 +377,10 @@ function renderComposePublishActionIcon(
     class=${classes}
     width="14"
     height="14"
-    viewBox="0 0 16 16"
+    viewBox="0 0 14 14"
     fill="none"
     stroke="currentColor"
-    stroke-width="1.55"
+    stroke-width="1.35"
     stroke-linecap="round"
     stroke-linejoin="round"
     aria-hidden="true"
