@@ -89,7 +89,7 @@ describe("getHostedControlPlaneSigninUrl", () => {
     };
 
     expect(getHostedControlPlaneDashboardUrl(env)).toBe(
-      "https://cloud-jant.localtest.me/sites",
+      "https://cloud-jant.localtest.me/app",
     );
     expect(getHostedControlPlaneAccountUrl(env)).toBe(
       "https://cloud-jant.localtest.me/settings/account",

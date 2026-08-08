@@ -13,8 +13,10 @@ import {
   ConfigurationError,
   DomainError,
   NotFoundError,
+  SiteUnavailableError,
   ValidationError,
 } from "../lib/errors.js";
+import { renderSiteUnavailablePage } from "../lib/site-unavailable-page.js";
 import { dsToast } from "../lib/sse.js";
 import { getRuntimeConfigurationErrorPage } from "../lib/startup-config.js";
 
@@ -66,6 +68,16 @@ export const errorHandler: ErrorHandler<Env> = (err, c) => {
     // eslint-disable-next-line no-console -- Server error logging is intentional
     console.error("[Jant] Unhandled error:", err);
     return c.json({ error: "Something went wrong on our end" }, 500);
+  }
+
+  // A suspended site: the host is real, so answer with a page that says so
+  // instead of the generic 404 shell. 503 keeps the site's search index alive
+  // while it can still be restored; `Retry-After` is deliberately omitted
+  // because we can't promise when (or whether) it comes back.
+  if (err instanceof SiteUnavailableError) {
+    return c.html(renderSiteUnavailablePage(c.env), 503, {
+      "Cache-Control": "no-store",
+    });
   }
 
   // Non-API routes: map NotFoundError to Hono's built-in 404

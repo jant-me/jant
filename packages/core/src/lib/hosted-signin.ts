@@ -60,7 +60,7 @@ export function getHostedControlPlaneResetUrl(
 export function getHostedControlPlaneDashboardUrl(
   env: object | undefined | null,
 ): string | null {
-  return buildHostedControlPlaneUrl(env, "/sites");
+  return buildHostedControlPlaneUrl(env, "/app");
 }
 
 export function getHostedControlPlaneAccountUrl(

@@ -17,7 +17,7 @@ import {
   type SiteLookupResult,
   TRANSIENT_SINGLE_SITE_ID,
 } from "../services/site.js";
-import { NotFoundError } from "../lib/errors.js";
+import { NotFoundError, SiteUnavailableError } from "../lib/errors.js";
 import type { Bindings } from "../types/bindings.js";
 
 function logHostedSiteResolutionFailure(input: {
@@ -115,7 +115,11 @@ export async function resolveRequestSite(
       siteKey: resolved.site.key,
       siteStatus: resolved.site.status,
     });
-    throw new NotFoundError("Site");
+    // The host resolved, so the site is real — it is just suspended (hosted
+    // plan ended, or an operator took it down). Serving a 404 here told the
+    // visitor the address was wrong and told crawlers to drop the site, both
+    // of which are false while it can still be restored.
+    throw new SiteUnavailableError();
   }
   return resolved;
 }
