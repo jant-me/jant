@@ -8,7 +8,11 @@ import { createRequestRuntime } from "../index.js";
 import { createNodeRequestRuntime } from "../node.js";
 import type { Bindings } from "../../types.js";
 import { siteDomains, sites } from "../../db/schema.js";
-import { ConflictError, NotFoundError } from "../../lib/errors.js";
+import {
+  ConflictError,
+  NotFoundError,
+  SiteUnavailableError,
+} from "../../lib/errors.js";
 import { TRANSIENT_SINGLE_SITE_ID } from "../../services/site.js";
 
 afterEach(() => {
@@ -217,7 +221,7 @@ describe("createNodeRequestRuntime", () => {
     );
   });
 
-  it("treats suspended host-based sites as not found", async () => {
+  it("treats suspended host-based sites as unavailable, not missing", async () => {
     const { db, sqlite } = createTestDatabase();
     const consoleError = vi
       .spyOn(console, "error")
@@ -250,7 +254,7 @@ describe("createNodeRequestRuntime", () => {
         } as Bindings,
         "http://suspended.localtest.me/",
       ),
-    ).rejects.toBeInstanceOf(NotFoundError);
+    ).rejects.toBeInstanceOf(SiteUnavailableError);
     expect(consoleError).toHaveBeenCalledWith(
       "[Jant] Hosted site resolution failed: host=suspended.localtest.me path=/ reason=site-not-active siteId=sit_test00000000000000000000000 siteKey=default siteStatus=suspended",
     );

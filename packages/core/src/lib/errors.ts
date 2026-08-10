@@ -90,6 +90,21 @@ export class ConfigurationError extends DomainError {
   }
 }
 
+/**
+ * The requested site exists but is not being served — 503.
+ *
+ * Distinct from `NotFoundError` on purpose: a suspended site has a real
+ * hostname and real data behind it, and it can come back. 404 tells both the
+ * visitor and search engines that nothing was ever here, so a suspended site
+ * would quietly lose its index entries during a window it can still be
+ * restored from.
+ */
+export class SiteUnavailableError extends DomainError {
+  constructor(message = "This site is not being served right now.") {
+    super(message, 503, "SITE_UNAVAILABLE");
+  }
+}
+
 // =============================================================================
 // Route Helpers
 // =============================================================================

@@ -46,6 +46,7 @@ Services throw typed domain errors with clear intent:
 | `ConflictError`        | 409         | State conflict (e.g. duplicate) |
 | `RateLimitError`       | 429         | Too many requests               |
 | `ExternalServiceError` | 500         | Third-party failure             |
+| `SiteUnavailableError` | 503         | Site exists but is suspended    |
 
 Unknown/unhandled errors map to `500`.
 
