@@ -5245,6 +5245,14 @@
     --compose-quote-input-size: var(--type-content-subtitle);
     --compose-quote-input-leading: 1.32;
     --compose-inline-input-size: var(--type-ui-input);
+    /* The quote source is a mono URL sitting under the sans author line. At
+       the shared inline-input size mono's wider glyphs read a notch louder
+       than the author it supports, so it steps down to land where the
+       rendered `.feed-quote-source` sits. A custom property resolves its
+       var()s where it is declared, so any layout that re-tunes
+       --compose-inline-input-size must restate this ratio too — see
+       `.compose-reply-compose-layout`. */
+    --compose-quote-source-size: calc(var(--compose-inline-input-size) * 0.88);
     --compose-panel-label-size: var(--type-ui-control);
     --compose-panel-hint-size: var(--type-ui-hint);
     --compose-panel-control-size: var(--type-ui-control);
@@ -5911,15 +5919,22 @@
     margin-bottom: 1.05rem;
   }
 
-  .compose-quote-source-input {
-    font-size: var(--compose-inline-input-size);
-    line-height: 1.35;
+  /* Scoped to the wrapper — like `.compose-link-url-wrap .compose-url-input`
+     — so it outranks the shared `.compose-url-input` base further down, which
+     otherwise wins on order and holds this input at the inline-input size.
+     Line height and color stay with that base. */
+  .compose-quote-source .compose-quote-source-input {
+    font-size: var(--compose-quote-source-size);
     letter-spacing: 0.005em;
-    color: color-mix(
-      in srgb,
-      var(--site-text-secondary) 88%,
-      var(--site-text-primary)
-    );
+  }
+
+  /* iOS Safari zooms the page whenever a focused input is under 16px — the
+     floor --type-ui-input already buys. Applied at the use site so it holds
+     whichever --compose-quote-source-size declaration won. */
+  @media (hover: none) and (pointer: coarse) {
+    .compose-quote-source .compose-quote-source-input {
+      font-size: max(16px, var(--compose-quote-source-size));
+    }
   }
 
   .compose-quote-author-row:focus-within .compose-quote-author,
@@ -8285,6 +8300,7 @@
     --compose-quote-input-size: calc(var(--type-content-body) * 1.06);
     --compose-quote-input-leading: 1.42;
     --compose-inline-input-size: var(--type-base);
+    --compose-quote-source-size: calc(var(--compose-inline-input-size) * 0.88);
   }
 
   .compose-reply-compose-layout .compose-quote-wrap {
