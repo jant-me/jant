@@ -4175,9 +4175,10 @@
     color: color-mix(in srgb, var(--site-text-secondary) 78%, transparent);
   }
 
-  /* Groups the language panel's three jobs — which language this is, where its
-     other versions are, how to add one — so they read as three answers rather
-     than one long list. */
+  /* Names a group of rows that would not otherwise say what they are — the
+     language panel's list of other versions is a column of bare language
+     names. Rows that describe themselves ("Write the English version") get no
+     label; a heading over them would only repeat what they already say. */
   .post-menu-section-label {
     margin: 0;
     padding: 0.45rem 0.95rem 0.3rem;
@@ -4213,17 +4214,15 @@
     border-color: color-mix(in srgb, var(--site-text-primary) 40%, transparent);
   }
 
-  /* A translation's title is the useful part of its row, so it gets the space
-     and the language label stays a short suffix. */
+  /* Rows here name a language or an action, both of which want the whole line
+     and neither of which is worth wrapping to a second one — "Write the 简体中文
+     version" in a narrow popover would otherwise grow the row. The one row with
+     a meta, *Change language*, is sized by the shared rule further down. */
   .post-menu-language-panel .post-menu-item-label {
     flex: 1 1 auto;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .post-menu-language-panel .post-menu-item-meta {
-    flex: 0 0 auto;
   }
 
   .post-menu-language-panel [role="menuitem"][disabled],
@@ -4379,6 +4378,79 @@
 
   .post-menu-item-active .post-menu-item-trailing {
     color: var(--site-text-primary);
+  }
+
+  /* A menu row that carries a second action — reading a translation and
+     unlinking it are different enough to want their own hit targets. The row
+     is a flex pair rather than one item: a link that fills it, and a small
+     text button pinned to the end.
+     The action is worded, not drawn: every icon for "unlink" is the chain of
+     "link" with something taken away, and at this size the difference is not
+     one anybody should have to squint for. Since the row spends no width on
+     the other version's title — the language is what identifies it, and the
+     title is on the link's tooltip — there is room to just say it.
+     Both children wear `role="menuitem"`, which BaseCoat styles through a
+     three-class selector of its own (`width: 100%`, among others). Every rule
+     below therefore names the row as well, to sit at the same specificity and
+     win on source order — dropping `.post-menu-row` from any of them silently
+     hands the button a full-width menu item's geometry back, which is also why
+     `width` and `font-size` are restated rather than left to default. */
+  .post-menu-row {
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+    padding-right: 0.3rem;
+  }
+
+  .post-menu-panel .post-menu-row .post-menu-row-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-right: 0.45rem;
+  }
+
+  .post-menu-panel .post-menu-row .post-menu-row-action {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 2.15rem;
+    padding: 0 0.6rem;
+    border: none;
+    border-radius: 0.8rem !important;
+    background: transparent;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-caption);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--site-text-secondary) 88%, transparent);
+    transition:
+      background-color 0.16s ease,
+      color 0.16s ease;
+  }
+
+  .post-menu-panel .post-menu-row .post-menu-row-action:hover,
+  .post-menu-panel .post-menu-row .post-menu-row-action:focus-visible {
+    outline: none;
+    background: color-mix(in srgb, var(--site-nav-hover-bg) 72%, transparent);
+    color: var(--site-text-primary);
+  }
+
+  .post-menu-panel .post-menu-row .post-menu-row-action-danger:hover,
+  .post-menu-panel .post-menu-row .post-menu-row-action-danger:focus-visible {
+    background: color-mix(
+      in srgb,
+      var(--destructive) 12%,
+      var(--site-page-bg) 88%
+    );
+    color: var(--destructive);
+  }
+
+  .post-menu-panel .post-menu-row .post-menu-row-action[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed !important;
   }
 
   /* --- Collection Picker (replaces menu when "Add to collection" is clicked) --- */
@@ -6914,20 +6986,6 @@
     font-weight: var(--fw-semibold);
   }
 
-  /* Says what the composer was opened to do, above the editor rather than
-     inside a panel — the author should know before they start typing. */
-  .compose-translation-context {
-    margin: 0 0 0.75rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.6rem;
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 55%, transparent);
-    font-family: var(--font-ui);
-    font-size: var(--type-ui-meta);
-    line-height: 1.45;
-    text-wrap: pretty;
-    color: var(--site-text-secondary);
-  }
-
   /* Context line under a section label — says what this post is, without
      competing with the choices below it. */
   .compose-sheet-note {
@@ -8440,7 +8498,9 @@
   /*
    * Reply context clones feed/detail card internals into a much narrower shell.
    * Scale headings to the thread context ladder instead of the original
-   * page/card layout.
+   * page/card layout. Deliberately *not* shared with the translation context,
+   * which renders the original at its normal `prose` scale — there the
+   * structure is part of what is being translated.
    */
   .compose-reply-context-body
     :is(.post-detail-title, .feed-note-title, .feed-link-title),
@@ -8452,12 +8512,7 @@
     margin-bottom: 0.18rem;
   }
 
-  .compose-reply-context-body .prose,
-  .compose-reply-context-body .e-content {
-    font-size: inherit;
-  }
-
-  .compose-reply-context-body .feed-quote {
+  .compose-reply-context-body :is(.prose, .e-content, .feed-quote) {
     font-size: inherit;
   }
 
@@ -8540,6 +8595,224 @@
     color: var(--site-text-primary);
   }
 
+  /* --- Translation context in compose dialog ----------------------------- */
+
+  /* The original is a different post, not the one above this one on a chain,
+     so it gets no thread rail — every other direct child of the layout does. */
+  .compose-thread-layout > .compose-translation-context::before {
+    display: none;
+  }
+
+  .compose-translation-context {
+    /* Thread mode hands every row its own gutter through those variables;
+       the single-post composer has no thread layout around it, so the
+       fallback matches what the format selector is inset by. */
+    margin: 0.6rem var(--compose-thread-padding-right, 16px) 0.15rem
+      var(--compose-thread-padding-left, 16px);
+  }
+
+  /* The original, rendered by the server as its own page renders it, inside a
+     frame the composer owns. Everything here is about making a page-scale
+     rendering behave as a panel: it must not set the composer's width, and it
+     must not out-shout the editor below it.
+     An outline and no fill: the border is load-bearing — it is what says the
+     text scrolls and where it stops — but a tint on top of that would be a
+     second signal for the same thing, in a composer that already stacks a
+     quote box and a code block inside the editor below. */
+  .compose-translation-original {
+    max-height: min(10rem, 34dvh);
+    padding: 0.15rem 0.9rem 0.35rem;
+    border: 1px solid color-mix(in srgb, var(--site-divider) 60%, transparent);
+    border-radius: 0.9rem;
+    overflow-y: auto;
+    /* Belt and braces with the child rules below: a page-width table or an
+       unbroken URL must scroll or wrap inside this frame, never widen the
+       dialog. */
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--site-divider) 90%, transparent)
+      transparent;
+  }
+
+  .compose-translation-original:focus-visible {
+    outline: 2px solid
+      color-mix(in srgb, var(--site-text-primary) 32%, transparent);
+    outline-offset: 2px;
+  }
+
+  /* The whole rendering, a size down, so the reference does not out-shout the
+     post being written.
+     `zoom` rather than the type tokens, for two reasons. It scales spacing and
+     rules along with the text, which is what "the page, smaller" means — type
+     alone leaves page-scale margins around shrunken words. And
+     `--type-content-scale` cannot do this from here anyway: `:root`
+     substitutes it into `--type-content-body` and friends *where those are
+     declared*, so descendants inherit resolved lengths, and lowering the scale
+     downstream changes nothing. Restating each derived token here works, but
+     copies the root's formulas into a second place to drift from.
+     Where `zoom` is unsupported the preview simply renders at page scale —
+     larger than intended, still correct. */
+  .compose-translation-preview {
+    --layout-content-width: 100%;
+
+    zoom: 0.9;
+    min-width: 0;
+    /* Long unbroken strings — URLs, IDs, CJK-free code — are the usual cause of
+       a preview that scrolls sideways when the window narrows. */
+    overflow-wrap: anywhere;
+  }
+
+  /* The post markup expects to be the page: it opens with the page's own top
+     padding and reserves a sidenote gutter. Neither applies in a panel. */
+  .compose-translation-preview article {
+    padding: 0.55rem 0 0.2rem !important;
+  }
+
+  /* `preset.css` sizes a post's blocks to the page's *reading column*, three
+     different ways: `--layout-content-width` for most of them, a hardcoded
+     `min(80%, 45rem)` for the title (Tufte's narrower title measure), and a
+     hardcoded `min(100%, 35rem)` for all of them under a 1024px **viewport**
+     media query. All three are about the page. In a panel the column is the
+     panel, at every window size — a viewport query knows nothing about how
+     wide this frame happens to be.
+     The list mirrors the one in `preset.css`; if that grows, this has to.
+     `!important` because those rules sit after `preset.css` closes its
+     `@layer components`, and an unlayered declaration outranks anything
+     layered whatever its specificity — an `!important` one does not. */
+  .compose-translation-preview
+    :is(
+      .post-detail-title,
+      .post-detail-body,
+      .post-body-summary,
+      .feed-note-title,
+      .feed-link-title,
+      .feed-quote,
+      .feed-quote-attribution,
+      .feed-quote-commentary,
+      .feed-link-domain,
+      .feed-continue-link,
+      [data-post-body],
+      [data-post-meta],
+      [data-post-end]
+    ) {
+    width: 100% !important;
+  }
+
+  /* Same story, different property: the media block floors this wrapper at
+     35rem so a gallery never sits narrower than the page's column. In a panel
+     that floor can exceed the frame, and `overflow-x: hidden` would clip the
+     overflow rather than let it scroll. */
+  .compose-translation-preview .post-attached-group {
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+
+  /* A post's own title is set at `--type-content-display` — the size of a
+     banner for the page you are on. Here the post is not the page; it is an
+     item shown inside one, which is what `--feed-note-title-size` is already
+     the size for. Borrowing it keeps the title a title without letting it
+     tower over the body, and keeps tracking the body scale rather than
+     freezing at whatever the zoom happens to be. Notes and Links share the
+     class, so one rule covers both; Quotes have no title. */
+  .compose-translation-preview .post-detail-title {
+    font-size: var(--feed-note-title-size);
+    line-height: var(--feed-note-title-leading);
+  }
+
+  .compose-translation-preview > :first-child > :first-child {
+    margin-top: 0;
+  }
+
+  /* Wide blocks scroll on their own rather than pushing the frame open. */
+  .compose-translation-preview :is(pre, table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .compose-translation-preview :is(img, video, iframe, svg) {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* A page-scale picture inside a 15rem frame is just a scroll tax. */
+  .compose-translation-preview :is(img, video) {
+    max-height: min(180px, 24dvh);
+    object-fit: contain;
+  }
+
+  /* Shown only when the rendering could not be fetched — the post still needs
+     a name and a way in. */
+  .compose-translation-fallback {
+    margin: 0;
+    padding: 0.55rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--site-divider) 60%, transparent);
+    border-radius: 0.9rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    color: var(--site-text-secondary);
+    text-wrap: pretty;
+  }
+
+  /* The seam: what is above, turned into what is written below. It used to sit
+     on a hairline; the space around it does the same job with one less line on
+     screen, so long as there is enough of it — hence the padding, which is the
+     whole separator now. */
+  .compose-translation-seam {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.85rem 0.15rem 0.7rem;
+  }
+
+  .compose-translation-seam-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 0;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-caption);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.03em;
+    color: color-mix(in srgb, var(--site-text-secondary) 76%, transparent);
+    text-wrap: pretty;
+  }
+
+  /* Reads as one centred phrase — "↓ Translating into English · Hide" — the
+     same shape the reply context uses for "Aug 3 · Show more", so folding the
+     original costs no row and no box of its own. */
+  .compose-translation-seam-dot {
+    margin: 0 0.4rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-caption);
+    color: color-mix(in srgb, var(--site-text-secondary) 50%, transparent);
+  }
+
+  .compose-translation-seam-toggle {
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-caption);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.03em;
+    color: color-mix(in srgb, var(--site-text-secondary) 76%, transparent);
+    cursor: pointer;
+  }
+
+  .compose-translation-seam-toggle:hover,
+  .compose-translation-seam-toggle:focus-visible {
+    color: var(--site-text-primary);
+  }
+
+  .compose-translation-seam-icon {
+    flex: 0 0 auto;
+    width: 0.82rem;
+    height: 0.82rem;
+    opacity: 0.75;
+  }
+
   @media (max-width: 760px), (hover: none) and (pointer: coarse) {
     .post-menu-footer {
       gap: 12px;
@@ -8606,6 +8879,12 @@
     .post-menu-picker-option,
     .post-menu-picker-add {
       min-height: 3.25rem;
+    }
+
+    /* Grows with the rows around it, which the rule above just made taller. */
+    .post-menu-panel .post-menu-row .post-menu-row-action {
+      min-height: 2.75rem;
+      padding: 0 0.75rem;
     }
 
     .post-menu-item-icon,

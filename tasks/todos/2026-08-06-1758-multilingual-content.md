@@ -1290,3 +1290,291 @@ Escape 退出）、无标题日文 note 显示正文开头 + 「日本語」meta
 - 关联已有文章用的是通用 `/api/search`，候选里不显示各自语言；选错由服务端
   `linkTranslation` 拦下并给出文案。要更好需要一个带语言的候选端点。
 - §13 列出的范围外项（`zxx`、批量扫描复核 UI、机翻等）仍不做。
+
+## 18. 生产化打磨（2026-08-08）
+
+主流程做完后的四处瑕疵，目标是把这个功能提到可以部署的水平。
+
+### 18.1 语言面板：被占用的语言不再是一行死掉的 "Taken"
+
+原来的面板把同一件事说了两遍：单选组里 `English  Taken`（禁用），下面
+「Other versions」再列一次那篇英文版。禁用行回答的是没人问的问题——作者**不能**
+切到那个语言，看到它也没用。
+
+- 单选组只留**能切**的语言（自己 + 空闲的）。
+- 「Other versions」每行 `语言 · 标题`，带两个动作：整行是链接，`target="_blank"`
+  新标签打开；末尾一个 icon 按钮解除关联，先关菜单再弹确认框（和 Delete 现有的
+  顺序一致——弹在 popover 底下会抢焦点，也会抢 backdrop 点击）。
+- 删掉了 group 级的「Leave this translation group」。逐行 unlink 覆盖得了它：
+  `DELETE /api/posts/{对方id}/translations` 把**对方**移出组，service 在只剩一个
+  成员时自己把组收掉，所以两篇的情形按一次就等于退组。两个控件说一件事是多的。
+
+一个布局坑：`.post-menu-language-panel .post-menu-item-meta { flex: 0 0 auto }`
+是给旧版写的（meta 是短短的语言名）。现在 meta 是标题，不收缩就会把 `↗` 挤出
+可视区并被 `overflow:hidden` 硬切。删掉该覆盖，回到基类的 `flex: 1 1 auto` +
+省略号。
+
+### 18.2 「Applies to the whole thread.」删掉
+
+菜单入口本来就对回复隐藏，这句是噪音。
+
+### 18.3 译文继承原文的**形态**
+
+`openTranslation` 之前永远从 note 开始，翻译一条 quote 要先手动切格式。现在从
+源帖带过来：
+
+- `format` 原样继承——格式是「说了什么」的属性，不是「用哪种语言说」的属性；
+- quote 带 `sourceName` / `sourceUrl`，link 带 `url`。这些是**引用**，不是译文。
+  正文是作者来这里要写的部分，别的什么都不抄。
+
+只在作者还没打字时套用（`_hasContent()`）：fetch 落在 composer 打开之后，为了省
+一次格式点击去覆盖人家的第一句话是很坏的交易。套用完重新 `_captureInitialSnapshot()`。
+
+### 18.4 顶部横幅改成原文卡片 + 语言接缝
+
+原来是一行 `Writing the 日本語 version of “xxx”`。左右对照太重；一行又不够——
+只给标题，等于逼作者另开一个标签页看原文。折中：一张卡片，头部
+`日本語 VERSION OF` + 原文标题（新标签打开），下面是原文正文，默认裁到 116px
+带渐隐，`Show more` 展开。折叠/渐隐的机制和 reply context 是同一套，prose 复位
+规则用 `:is()` 与它共享。
+
+文案拆成 `translationContext` /`translationContextInLanguage`（只到 "… version
+of"，标题自己一个元素）+ `translationContextOpen`，替掉
+`translationOfInLanguage`。发布面板里的 `translationOf` 保留不动。
+
+### 18.5 顺手修掉的三个真问题
+
+- **`vi.mock("../confirm.js")` 路径错了**：组件在上一层，真实的确认框一直在跑。
+  改成 `../../`，原有的 delete 测试才第一次真的测到东西。
+- **BaseCoat 的菜单选择器压过两类选择器**：见 `lessons.md`。行内 icon 按钮要三个
+  类才拿得回自己的宽高。
+- **预填让 composer 看起来「有内容」**：`requestClose()` 对新帖问的是
+  `_hasContent()`，于是什么都没写就关闭会弹「要不要存草稿」。新增
+  `_hasWorkToLose()`：有内容，且（预填过的话）与预填后的快照有差异。
+  `_handleDraftButtonClick`、`_renderSaveDraftRow`、`_renderAddThreadTrigger`
+  问的是同一个问题，一并换掉。
+
+### 18.6 验证
+
+- 262 files / 3402 tests；lint、format、typecheck 全绿。
+- 新增测试：post menu 语言面板 5 个（不再出现 Taken/hint、View+Unlink 两个动作、
+  确认后 DELETE 打在**对方** id 上并刷新、取消则不动、free 语言列表），compose
+  6 个（kicker + 新标签链接、原文折叠与 Show more、无正文时只留头部、quote 继承
+  格式与引用、已打字则不套用、预填后关闭不弹确认而打字后会弹）。
+- 浏览器复验（本地 19020，zh-Hans 主 + en/ja）：语言面板三段式与长标题省略、
+  unlink 确认框与刷新、quote 的英文版落在 quote 格式且带 Steve Jobs /
+  example.com/focus、发布后两边互相出现、`/new?translationOf=…&lang=ja` 的页面
+  模式同样正确。验证后已删除测试帖并把多语言开关恢复为关闭。
+- 三条新文案在 zh-Hans / zh-Hant 尚未翻译（`msgstr ""`，回退英文），与本功能其余
+  公开文案的现状一致——等 `mise run i18n-translate` 那一趟统一处理。
+
+### 18.7 对照区第二轮（同日）
+
+第一版把整块做成「kicker + 标题 + 折叠正文 + Show more」。三处再改：
+
+**语言标签下移到两篇文章的接缝上。** `English version of` 压在最上面，说的是
+「下面这一坨是什么」；真正要标的是**边界**——上面是原文，下面是你写的译文。改成
+卡片下方一条居中的细线 + `↓ Translating into 日本語`。文案也跟着从
+「{language} version of」变成「Translating into {language}」，标题不再是文案的
+一部分，自己一个元素。
+
+**原文按 `prose` 正常渲染。** 之前复用了 reply context 那套缩排规则（标题降级到
+`--type-thread-context-title`、`.prose` 强制 `font-size: inherit`）。翻译时**结构
+本身就是要翻的东西**——标题得看起来像标题，列表得像列表。给正文加上
+`e-content prose`，并把那几条共享选择器退回只服务 reply context（注释里写清楚为什么
+不共享）。
+
+**折叠展开换成固定高度滚动。** reply context 当初特意从内滚动改成 Show more，理由
+是「展开就该真的展开」——那是对的，回复的父帖读一次就不再看了。翻译不是：读一段
+写一段，两边都得在屏幕上。长文一展开就把编辑器顶出可视区，正是最需要同屏的时候。
+所以 `max-height: min(15rem, 34dvh)` + `overflow-y: auto` +
+`overscroll-behavior: contain`（滚到底不要带着整个 composer 一起滚），`tabindex="0"`
+
+- `role="region"` + aria-label 让键盘和读屏也能用。标题下加一条细线：不然被截掉的
+  半行看起来像布局坏了，而不是「滚动到这里」。`_translationExpanded`、渐隐、
+  Show more、日期行一并删掉。
+
+验证：3403 tests 全绿；浏览器复验了长文滚动（scrollHeight 493 / 视口 225）、标题
+与列表按正常 prose 渲染、blockquote 走站点样式、接缝两侧细线等宽、quote 这种没有
+正文的源帖只留卡片头 + 接缝、`/new?translationOf=…` 页面模式同样正确。
+
+### 18.8 对照区第三轮：预览就是文章本身（同日）
+
+前两版都在**重建**原文：只取 `bodyHtml` 丢进一个 `prose` 容器。这对 note 勉强
+够用，对 quote 和 link 是错的——引用的出处、链接卡片的域名和标题都不在
+`bodyHtml` 里，全被静默丢掉了。
+
+**改成服务端渲染**：新增 `GET /_/post-preview/:postId`，用
+`TimelineItemFromPost mode="detail"` 配上一组 display 选项
+（`hideStatusBadges` / `footer.hideActions` / `footer.hideReply`）把交互 chrome
+摘掉。复用真正的渲染器，不再有第二套要同步的 markup。它和 `/_/post-view` 的区别
+是：那个渲染整条 Thread、用来替换整页，这个只渲染根帖、用来嵌在别处。
+
+**注入进来的 markup 需要「收养」一下**（`_adoptTranslationPreview`，跑在
+`updated()` 里）：
+
+- **所有链接改成新标签打开。** 这是真 bug：预览里点任何一个链接都会把 composer
+  整个导航走，未保存的译文跟着没。
+- **摘掉文章的身份。** `data-post-id` / `data-post` / `.post-menu-target` 是文章
+  菜单、键盘快捷键和 `refreshArticleView` 找文章的依据；DOM 里多一份原文的 id，
+  它们就可能对着预览动手，以为那是真的卡片。
+
+**标题后的外链图标去掉了。** 那个图标让整张卡片读起来像一篇 Link post，而不是
+它本身。详情页渲染里本来就带自己的固定链接（头部那行日期），收养时已经指向新
+标签，不需要再加东西。
+
+**字号**用 `zoom: 0.85`。先试过在预览容器上改 `--type-content-scale`：没用——
+自定义属性是在**声明处**代入的，`:root` 早就把它算进 `--type-content-body` 了，
+后代继承到的是长度不是公式。改成在容器上重新派生一遍那 9 个 token 是可行的，但
+把 root 的比例（`* 1.16`、`* 0.94`…）抄了第二份，会漂。`zoom` 一行搞定，而且它
+连间距和线宽一起缩——「整页小一号」本来就该是这个意思，只缩字号会在小字周围留下
+页面级的留白。正文实测 14.3px，比编辑器的 16.8px 小一档。不支持 `zoom` 的浏览器
+退化成「按页面尺寸渲染」，偏大但不坏。
+
+**横向滚动**：`overflow-x: hidden` + `overflow-wrap: anywhere` +
+`pre`/`table` 自己 `overflow-x: auto` + 媒体 `max-width: 100%`。340px 宽的对话框
+下实测 0 溢出，超长 URL 换行，代码块自己横滚。
+
+**meta 一起继承**：collections、visibility、rating 和格式、引用一样跟着走 ——
+它们描述的是这篇文章的位置和它谈论的东西，都不随语言变。只有文字是空的。
+
+验证：3409 tests（新增 `/_/post-preview` 的 4 个路由测试 + compose 侧 4 个）；
+浏览器复验 note / quote / link 三种源帖的预览（quote 带出「— Steve Jobs」，link
+带出域名 + 标题卡片）、340px 窄框 0 横向溢出、collections=News、
+visibility=latest_hidden、rating=4 全部预选且不触发「要不要存草稿」。
+
+### 18.9 预览宽度与缩放方式的收尾（2026-08-09）
+
+**标题没占满卡片宽度。** `preset.css` 的 `.post-detail-title { width: min(80%,
+45rem) }` —— 页面上那是 Tufte 的标题栏比正文窄一档，在面板里就成了「长标题在 80%
+处换行、正文却是满宽」，读起来像坏了。它是唯一一个把宽度写死、而不是读
+`--layout-content-width` 的块，所以之前把那个 token 设成 100% 没管住它。
+
+改起来还踩了一层：`preset.css` 的 `@layer components` 在第 82 行就闭合了，之后
+的规则全是**未分层**的，而未分层声明赢过任何 `@layer` 里的规则，跟特异性无关 ——
+`ui.css` 整个在 `@layer components` 里，三个类也打不过它一个类。用 `!important`，
+和 `.post-menu-panel .post-menu-item`、`.compose-reply-context-body img` 是同一个
+既有套路。（自定义属性不受这条影响：`--layout-content-width` 设在元素上就是赢，
+因为那个元素上没有第二条声明在竞争——这也是 token 覆盖生效、`width` 覆盖不生效的
+原因。）
+
+**缩放为什么最后用 `zoom`。** 排过三种：
+
+1. 改 `--type-content-scale` —— 无效，见 `lessons.md`。
+2. 在容器上重新派生那 7 个 token —— 可行，但把 root 的比例抄了第二份；
+   改成覆盖消费方（`.prose`、`.post-detail-title`、`h2`、`.feed-quote-content`
+   …）可以不抄比例，代价是变成一份**选择器清单**，渲染器以后多一种卡片就会静默
+   地按页面尺寸渲染那一块。
+3. `zoom: 0.85` —— 对渲染器产出的任何东西都自动正确，而且连间距一起缩。这条最后
+   胜出的关键不是「一行比九行短」，是 prose 的排版节奏是 `rem` 写死的
+   （`p { margin: 1.4rem }`、`h1 { margin-top: 4rem }`），只缩字号会在小字周围
+   留下页面级的留白，223px 高的框里差出整整一段。
+
+`zoom` 的常见风险在这个位置上都不成立：预览里没有任何代码测量坐标（收养那一趟只
+设属性），边框在外层未缩放的框上，文字渲染实测干净。不支持时退化成按页面尺寸
+渲染，偏大但不坏。
+
+验证：3409 tests 全绿；长标题现在与正文同宽（550/550），340px 窄框下标题与正文
+同为 277px、横向溢出 0。
+
+### 18.10 预览宽度：三套页面级宽度规则，不是一套
+
+`.post-detail-title` 只是第一个。`preset.css` 一共用**三种方式**给文章块定宽：
+
+1. `--layout-content-width`（桌面，token，好办）；
+2. `.post-detail-title { width: min(80%, 45rem) }`（硬编码，绕过 token）；
+3. `@media (max-width: 1024px) { …15 个选择器… { width: min(100%, 35rem) } }`
+   —— 硬编码，而且看的是**视口**宽度，跟面板多宽毫无关系。
+
+所以窗口一窄，预览里的正文就被压到 525px，卡片右边空一块。只覆盖 token 管不住
+2 和 3。现在按 `preset.css` 那份清单在预览作用域里统一 `width: 100% !important`
+（`!important` 是因为那些规则在 `preset.css` 的 `@layer components` 闭合之后，
+未分层声明赢过任何分层规则）。
+
+顺带补了 `.post-attached-group`：它在同一个 media block 里有
+`min-width: min(100%, 35rem)`。那是个**下限**，窄面板里会超出框，而框是
+`overflow-x: hidden`，超出的部分是被裁掉而不是能滚 —— 改成 `min-width: 0`。
+
+验证方式（窗口没法真的改小）：注入一份未分层的 `<style>` 无条件复刻那个 media
+block，然后对比面板内外。外面的正文 565 → 525（规则确实生效），面板内的标题和
+正文稳定在 550，说明覆盖真的赢了、而不是规则根本没触发。
+
+留了一个可选的后续：`preset.css` 里那份 15 个选择器的清单其实是桌面那份的重复，
+把断点收敛成 `:root { --layout-content-width: min(100%, 35rem) }` 并给标题也开一个
+`--layout-title-width`，就能删掉整个 media block，预览这边也不用再抄清单。属于页面
+排版重构，影响面比这次大，单独做。
+
+### 18.11 Language 面板：语言选择器降一级，Other versions 只留语言（2026-08-10）
+
+两处来自实际使用的反馈，都是「面板里东西太多」的两个不同侧面。
+
+**Other versions 不再显示标题。** 一行里语言 + 标题 + 外链角标 + unlink，标题必然
+被截断（实测那条译文标题是 "This one is written in English, and nobody picked a
+language."，在 285px 的面板里只能露出前几个字）。而识别一个译版靠的是**语言**，
+标题只是确认 —— 现在语言当 label、标题挪到链接的 `title` 悬停提示和 `aria-label`
+里，一个字也没丢，行反而空出一半宽度。
+
+**unlink 改成文字。** 原来那个图标是 Lucide 的 `unlink-2`，也就是 `link-2` 去掉
+中间那一横。所有「unlink」图标本质上都是「link 图标减掉点什么」，在 1rem 尺寸下
+这个「减掉」不该让人眯着眼找。空出来的宽度正好用来直说 —— "Unlink"。同理没有用
+`×`：那在一行文章链接旁边会被读成「删除这篇文章」，代价太高。
+
+**语言选择器降到三级。** 它是**订正**动作，一篇文章一辈子可能改一次，而读译版、
+加译版是日常。留在面板里平铺还会退化：双语站点且另一语言已被译版占用时，radio 组
+只剩当前语言一行，还点不动 —— 纯噪音。现在是一条
+`Change language  简体中文 ›`，进三级面板选；`free.length === 0` 时该行与整个
+「加译版」区块一起不渲染（没有可切换的语言，也就没有可加的译版，更不该给一个
+通向死面板的入口；当前语言在上一级菜单那行仍然可见）。Escape 一次只退一级。
+
+**面板顺序（第二轮反馈后定稿）。** 先把 `Change language` 放在了最底下 ——
+按「不常用的沉底」排的，但读起来是错的：上一级菜单那行写着 `Language 简体中文 ›`，
+点进去这个值却出现在最后一行，像是答非所问。改成自上而下按**问题被问到的顺序**：
+
+```
+Change language        简体中文  ›   ← 这是什么语言（回答上一级那行的承诺）
+─────
+Write the 繁體中文 version      ›    ← 我能做什么（日常动作，无小标题）
+Link a version you already wrote ›
+─────
+OTHER VERSIONS                       ← 已经有什么（随 fetch 到达，所以放最后）
+English   ↗  Unlink
+日本語     ↗  Unlink
+```
+
+三个变化各有独立理由：`Change language` 置顶是为了对上上一级的预览值；「加译版」
+区块**去掉小标题**因为两行自己就说清了自己（多一行标题只是重复），代价是
+"Link one you already wrote" 失去上下文，改写成 "Link a version you already
+wrote" 才能独立成句；`OTHER VERSIONS` 沉底是因为它是 `#loadTranslations()` 的
+结果 —— 放在上面的话，面板会在打开后一瞬间把下面的行整体向下推一截，正好推在
+光标底下。
+
+**顺带修掉一个既有 bug：面板的 ← 返回键会直接关掉整个菜单。** 文档级点击处理器
+判定「点在菜单里面」用的是 `[role='menu']`，而那个属性在**列表**上，面板 header
+在列表外面 —— 所以每一个 ← 都被判成点了外面。Visibility 面板侥幸没事，只因为它的
+根节点上有 `data-visibility-panel`，恰好在那条选择器里。
+
+**接着这个修法本身又踩了一次坑（值得记下来）**：第一版改成了判
+`.post-menu-panel`，也就是所有视图渲染进去的那个容器 —— 看起来才是「点在下拉框
+任何地方」的诚实写法，结果**真实鼠标点 Language 会把整个菜单关掉**，而所有测试
+和我在页面里派发的合成点击全是绿的。原因是时序：真实点击时浏览器会在**两个事件
+监听器之间**跑一次 microtask checkpoint，所以菜单项自己的 `@click` 已经把面板
+重渲染完了，等文档级处理器拿到这个事件时，`target` 已经是一个**游离节点**，它的
+子树到视图根为止，`closest` 再也够不到那个容器。而脚本里的 `el.click()` 永远暴露
+不出这一点 —— 调用栈全程不空，中途不会重渲染。
+
+最终判 `.post-menu-view`（每个视图的根，既包住 header，又是游离 target 自己的
+祖先），两个方向都成立。回归测试用「在菜单项上再挂一个监听器调 `performUpdate()`」
+把重渲染放到浏览器 checkpoint 的位置，去掉修复就会红（`aria-expanded` 变 `false`）。
+
+**焦点**：`#focusAfterUpdate` 是 `querySelector(...)?.focus()`，所以目标必须
+（一）可聚焦、（二）在**首帧**就存在 —— 译版列表是 `#openLanguagePanel` 里
+`await` 出来的，首帧没有。选择器指向链接而非行 `<div>`，并在 fetch 落地后补一次
+（仅当焦点还不在面板内），覆盖「所有其他语言都被占用 → 首帧空面板」这一种情况。
+新增的测试去掉补的那次就会失败（焦点停在 `<body>`）。
+
+验证：post-menu 24 tests（新增 6）+ 全套 3415 tests + check-lint + check-types；
+浏览器复验三语组（zh-Hans 帖 + en/ja 译版 + 空闲的 zh-Hant）——面板 6 行按上面的
+顺序渲染、行宽 269/285 无溢出；三级面板正确只列 简体中文（√）与 繁體中文；
+← 从三级退回 Language 面板、再一次退回主菜单（此前会整个关掉）；Escape 同样逐级
+退；无译版的帖子面板为 Change language + Write ×3 + Link。窄视口那一档只做了算术
+估算（约 176px / 304px），Chrome 拒绝调整该窗口尺寸，没能实测。

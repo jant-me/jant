@@ -1057,9 +1057,19 @@ msgstr ""
 msgid "Hidden from Latest"
 msgstr ""
 
+#. @context: Button that folds away the original while writing its translation. Sits right after the words “Translating into …”, which is what makes it clear what gets hidden — the accessible name spells it out
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Hide"
+msgstr ""
+
 #. @context: Compose dropdown option for hiding a post from the Latest view
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Hide from Latest"
+msgstr ""
+
+#. @context: Accessible name of the button that folds away the post being translated
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Hide the original"
 msgstr ""
 
 #. @context: Collection sort order option
@@ -1559,6 +1569,11 @@ msgstr ""
 msgid "Open raw SVG"
 msgstr ""
 
+#. @context: Tooltip on the source post link above the compose editor while writing a translation
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Open the original in a new tab"
+msgstr ""
+
 #. @context: Menu action to organize collections
 #: src/ui/shared/CollectionsManager.tsx
 msgid "Organize"
@@ -1963,6 +1978,11 @@ msgstr ""
 msgid "Shared links"
 msgstr ""
 
+#. @context: Button that brings back the folded-away original while writing its translation
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Show"
+msgstr ""
+
 #. @context: Archive view option - grid
 #: src/ui/pages/ArchivePage.tsx
 msgid "Show as a grid of tiles"
@@ -1989,6 +2009,11 @@ msgstr ""
 #: src/ui/feed/ThreadPreview.tsx
 #: src/ui/pages/PostPage.tsx
 msgid "Show more"
+msgstr ""
+
+#. @context: Accessible name of the button that brings back the folded-away post being translated
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Show the original"
 msgstr ""
 
 #. @context: Description for the settings system navigation toggle
@@ -2223,6 +2248,11 @@ msgstr ""
 msgid "The language your readers and search engines see."
 msgstr ""
 
+#. @context: Accessible name of the scrollable panel holding the post being translated
+#: src/ui/compose/ComposeDialog.tsx
+msgid "The original"
+msgstr ""
+
 #. @context: Blockquote on the theme sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "The right accent should disappear into the writing until you need it."
@@ -2390,6 +2420,16 @@ msgstr ""
 #. @context: Compose table action
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Toggle header row"
+msgstr ""
+
+#. @context: Divider between the original post and the editor writing its translation, when the target language is not known yet
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Translating"
+msgstr ""
+
+#. @context: Divider between the original post above and the editor below, naming the language being written
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Translating into {language}"
 msgstr ""
 
 #. @context: Compose banner shown while writing a translation of an existing post
@@ -2601,11 +2641,6 @@ msgstr ""
 #. @context: Nudge shown to the signed-in site owner on an empty home page, pointing to the compose prompt above the feed
 #: src/ui/pages/HomePage.tsx
 msgid "Write your first post to get started."
-msgstr ""
-
-#. @context: Compose banner shown while writing a translation, once the target language is known
-#: src/ui/compose/ComposeDialog.tsx
-msgid "Writing the {language} version of “{title}”"
 msgstr ""
 
 #. @context: Error toast when sign-in credentials are wrong

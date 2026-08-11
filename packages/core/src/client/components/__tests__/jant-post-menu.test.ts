@@ -7,11 +7,14 @@ const { showConfirmDialogMock, showToastMock } = vi.hoisted(() => ({
   showToastMock: vi.fn(),
 }));
 
-vi.mock("../confirm.js", () => ({
+// Paths are relative to the *component*, which lives one level up from this
+// folder — `../confirm.js` from here names a file that does not exist, so the
+// mock silently never applied and the real dialog ran instead.
+vi.mock("../../confirm.js", () => ({
   showConfirmDialog: showConfirmDialogMock,
 }));
 
-vi.mock("../toast.js", () => ({
+vi.mock("../../toast.js", () => ({
   showToast: showToastMock,
 }));
 
@@ -713,6 +716,334 @@ describe("JantPostMenu", () => {
 
     confirmation.resolve(false);
     await Promise.resolve();
+  });
+
+  describe("language panel", () => {
+    /** Open the menu on a Thread that already has an English version. */
+    async function openLanguagePanel(
+      translations: Array<Record<string, unknown>> = [
+        {
+          id: "post-en",
+          slug: "coffee-notes",
+          label: "Coffee notes",
+          language: "en",
+        },
+      ],
+      languages: Array<{ tag: string; label: string }> = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+        { tag: "ja", label: "日本語" },
+      ],
+    ) {
+      const { menu, trigger } = await createMenu();
+      const article = requireElement(
+        document.querySelector<HTMLElement>("article[data-post-id]"),
+        "expected the post article",
+      );
+      article.dataset.postLanguage = "zh-Hans";
+
+      menu.languages = languages;
+      await menu.updateComplete;
+
+      const existingFetch = globalThis.fetch as (
+        input: unknown,
+        init?: globalThis.RequestInit,
+      ) => Promise<Response>;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn((input: unknown, init?: globalThis.RequestInit) => {
+          const url = String(input);
+          if (url === "/api/posts/post-1/translations") {
+            return Promise.resolve(jsonResponse({ translations }));
+          }
+          if (
+            url.endsWith("/translations") &&
+            (init?.method ?? "GET") === "DELETE"
+          ) {
+            return Promise.resolve(new Response(null, { status: 204 }));
+          }
+          return existingFetch(input, init);
+        }),
+      );
+
+      click(trigger);
+      await menu.updateComplete;
+      click(
+        requireElement(
+          menu.querySelector<HTMLElement>("[data-post-menu-open-language]"),
+          "expected the language entry",
+        ),
+      );
+      await menu.updateComplete;
+      await Promise.resolve();
+      await Promise.resolve();
+      await menu.updateComplete;
+
+      return { menu, trigger };
+    }
+
+    function radioLabels(menu: JantPostMenu): string[] {
+      return Array.from(
+        menu.querySelectorAll<HTMLElement>("[data-post-menu-language-option]"),
+      ).map(
+        (option) =>
+          option.querySelector(".post-menu-item-label")?.textContent?.trim() ??
+          "",
+      );
+    }
+
+    async function openLanguageSwitch(menu: JantPostMenu) {
+      click(
+        requireElement(
+          menu.querySelector<HTMLElement>(
+            "[data-post-menu-open-language-switch]",
+          ),
+          "expected the change-language entry",
+        ),
+      );
+      await menu.updateComplete;
+    }
+
+    it("keeps the picker one level down, behind the language it is on", async () => {
+      // Switching a Thread's language is a correction made once if ever, while
+      // reading and adding other versions is the daily work.
+      const { menu } = await openLanguagePanel();
+
+      expect(radioLabels(menu)).toEqual([]);
+      const entry = requireElement(
+        menu.querySelector<HTMLElement>(
+          "[data-post-menu-open-language-switch]",
+        ),
+        "expected the change-language entry",
+      );
+      expect(
+        entry.querySelector(".post-menu-item-meta")?.textContent,
+      ).toContain("简体中文");
+
+      await openLanguageSwitch(menu);
+      expect(menu.textContent).toContain("Change language");
+      expect(radioLabels(menu)).toEqual(["简体中文", "日本語"]);
+    });
+
+    it("leaves a language another version holds out of the picker", async () => {
+      // The author cannot switch to it, so a dead row saying "Taken" answers a
+      // question nobody asked. The version holding it is one level up.
+      const { menu } = await openLanguagePanel();
+      await openLanguageSwitch(menu);
+
+      expect(radioLabels(menu)).not.toContain("English");
+      expect(menu.textContent).not.toContain("Taken");
+      expect(menu.textContent).not.toContain("Applies to the whole thread");
+    });
+
+    it("drops the change-language row when there is nothing to change to", async () => {
+      // A two-language site whose other version is already linked: the picker
+      // would hold a single unclickable row for the language it is already in.
+      const { menu } = await openLanguagePanel(undefined, [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ]);
+
+      expect(
+        menu.querySelector("[data-post-menu-open-language-switch]"),
+      ).toBeNull();
+      expect(menu.textContent).toContain("Other versions");
+    });
+
+    it("lands focus in the panel even when its only row arrives with the fetch", async () => {
+      // Nothing is on screen until the translations resolve in that case, so
+      // the first focus attempt has nothing to land on.
+      const { menu } = await openLanguagePanel(undefined, [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ]);
+      await menu.updateComplete;
+      await Promise.resolve();
+
+      expect(document.activeElement).toBe(
+        menu.querySelector("[data-post-menu-translation] a"),
+      );
+    });
+
+    it("gives each other version a way to read it and a way to unlink it", async () => {
+      const { menu } = await openLanguagePanel();
+
+      const row = requireElement(
+        menu.querySelector<HTMLElement>("[data-post-menu-translation]"),
+        "expected a row for the English version",
+      );
+      // The language identifies the version; the title would only be clipped,
+      // so it rides on the link instead of spending the row's width.
+      expect(row.querySelector(".post-menu-item-label")?.textContent).toContain(
+        "English",
+      );
+      expect(row.querySelector(".post-menu-item-meta")).toBeNull();
+
+      const open = requireElement(
+        row.querySelector<HTMLAnchorElement>("a"),
+        "expected a link to the English version",
+      );
+      expect(open.getAttribute("href")).toBe("/coffee-notes");
+      expect(open.getAttribute("target")).toBe("_blank");
+      expect(open.getAttribute("rel")).toBe("noopener noreferrer");
+      expect(open.getAttribute("title")).toBe("Coffee notes");
+
+      const unlink = requireElement(
+        row.querySelector<HTMLElement>("[data-post-menu-translation-unlink]"),
+        "expected an unlink button",
+      );
+      expect(unlink.textContent?.trim()).toBe("Unlink");
+    });
+
+    it("unlinks the version whose row was clicked, once confirmed", async () => {
+      // `DELETE` on the *other* post takes that one out of the group — which is
+      // what "unlink the English version" means from this row.
+      const { menu } = await openLanguagePanel();
+      showConfirmDialogMock.mockResolvedValue(true);
+      const reload = vi.fn();
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: { ...window.location, reload, assign: vi.fn() },
+      });
+
+      click(
+        requireElement(
+          menu.querySelector<HTMLElement>(
+            "[data-post-menu-translation-unlink]",
+          ),
+          "expected an unlink button",
+        ),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(showConfirmDialogMock).toHaveBeenCalledWith(
+        expect.objectContaining({ confirmLabel: "Unlink", tone: "danger" }),
+      );
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        "/api/posts/post-en/translations",
+        expect.objectContaining({ method: "DELETE" }),
+      );
+      expect(reload).toHaveBeenCalled();
+    });
+
+    it("keeps the link when the confirm is dismissed", async () => {
+      const { menu, trigger } = await openLanguagePanel();
+      showConfirmDialogMock.mockResolvedValue(false);
+
+      click(
+        requireElement(
+          menu.querySelector<HTMLElement>(
+            "[data-post-menu-translation-unlink]",
+          ),
+          "expected an unlink button",
+        ),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(globalThis.fetch).not.toHaveBeenCalledWith(
+        "/api/posts/post-en/translations",
+        expect.objectContaining({ method: "DELETE" }),
+      );
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("offers every free language for a new version", async () => {
+      const { menu } = await openLanguagePanel();
+
+      const addSection = requireElement(
+        menu.querySelector<HTMLElement>("[data-post-menu-translation-first]")
+          ?.parentElement ?? null,
+        "expected the add-a-translation section",
+      );
+      expect(addSection.textContent).toContain("Write the 日本語 version");
+      expect(addSection.textContent).not.toContain("Write the English");
+      // Self-describing, so the section carries no label of its own.
+      expect(addSection.textContent).toContain(
+        "Link a version you already wrote",
+      );
+      expect(addSection.querySelector(".post-menu-section-label")).toBeNull();
+    });
+
+    it("answers in the order the questions get asked", async () => {
+      // The entry that opened this panel said "Language · 简体中文", so landing
+      // on a panel whose last row is that same value read as a mismatch.
+      const { menu } = await openLanguagePanel();
+
+      const rows = Array.from(
+        menu.querySelectorAll<HTMLElement>(
+          ".post-menu-item-label, .post-menu-section-label",
+        ),
+      ).map((row) => row.textContent?.trim());
+
+      expect(rows).toEqual([
+        "Change language",
+        "Write the 日本語 version",
+        "Link a version you already wrote",
+        "Other versions",
+        "English",
+      ]);
+    });
+
+    it("stays open when the clicked item re-renders the panel out from under itself", async () => {
+      // A real browser runs a microtask checkpoint between event listeners, so
+      // by the time the document-level handler sees the click, the item that
+      // switched panels is already detached — the re-render swapped the whole
+      // `.post-menu-view` out from under it, leaving the container behind.
+      // `click()` from a script never reproduces that (the stack never empties,
+      // so nothing re-renders mid-dispatch), so do the swap by hand in a second
+      // listener on the item, which is where the checkpoint would fall.
+      const { menu, trigger } = await createMenu();
+      menu.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      click(trigger);
+      await menu.updateComplete;
+
+      const entry = requireElement(
+        menu.querySelector<HTMLElement>("[data-post-menu-open-language]"),
+        "expected the language entry",
+      );
+      entry.addEventListener("click", () =>
+        menu.querySelector(".post-menu-view")?.remove(),
+      );
+      click(entry);
+      await menu.updateComplete;
+
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
+      expect(menu.textContent).toContain("Language");
+    });
+
+    it("walks back one panel per press of the back button", async () => {
+      // The back button sits in the panel header, outside the `role="menu"`
+      // list — matching only the list made every one of them read as a click
+      // outside the menu and close the whole thing.
+      const { menu } = await openLanguagePanel();
+      await openLanguageSwitch(menu);
+
+      const back = () =>
+        click(
+          requireElement(
+            menu.querySelector<HTMLElement>(".post-menu-panel-back"),
+            "expected a back button",
+          ),
+        );
+
+      back();
+      await menu.updateComplete;
+      expect(
+        menu.querySelector("[data-post-menu-open-language-switch]"),
+      ).not.toBeNull();
+
+      back();
+      await menu.updateComplete;
+      expect(
+        menu.querySelector("[data-post-menu-open-language]"),
+      ).not.toBeNull();
+    });
   });
 
   it("removes the leading feed divider from the first remaining timeline item", async () => {

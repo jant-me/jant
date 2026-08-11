@@ -682,6 +682,7 @@ export class JantComposeDialog extends LitElement {
     _quietReply: { state: true },
     _language: { state: true },
     _translationOf: { state: true },
+    _translationCollapsed: { state: true },
   };
 
   declare collections: ComposeCollection[];
@@ -737,11 +738,31 @@ export class JantComposeDialog extends LitElement {
   declare _quietReply: boolean;
   /** Author's explicit language choice. Null means "let Jant read it". */
   declare _language: string | null;
-  /** Thread root this post is being written as a translation of. */
-  declare _translationOf: { id: string; title: string } | null;
+  /**
+   * Thread root this post is being written as a translation of, with enough of
+   * it to read: translating from a title alone means keeping the original open
+   * in another tab.
+   */
+  declare _translationOf: {
+    id: string;
+    title: string;
+    href: string;
+    /** The post rendered server-side, exactly as its own page renders it. */
+    previewHtml: string;
+  } | null;
+  /**
+   * Whether the original is folded away.
+   *
+   * Per composer session, not remembered: an author who folds it to get room
+   * for one paragraph should not find it gone the next time they open a
+   * translation, when the first thing they need is to read.
+   */
+  declare _translationCollapsed: boolean;
 
   private _attachedEditor: Editor | null = null;
   private _attachedTextSnapshot: JSONContent | null = null;
+  /** Whether this composer was pre-filled from the post it translates. */
+  private _seededFromSource = false;
   private _confirmForDrafts = false;
   private _confirmForAttachedText = false;
   private _draftSaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -842,6 +863,8 @@ export class JantComposeDialog extends LitElement {
     this._quietReply = false;
     this._language = null;
     this._translationOf = null;
+    this._translationCollapsed = false;
+    this._seededFromSource = false;
   }
 
   private get _editor(): JantComposeEditor | null {
@@ -898,6 +921,7 @@ export class JantComposeDialog extends LitElement {
     if (this._initialSnapshot === null && this._editor) {
       this._captureInitialSnapshot();
     }
+    this._adoptTranslationPreview();
     // The visible title used to be the dialog's accessible name. Nothing on
     // screen needs to replace it, but a screen reader announcing an unnamed
     // dialog does — so the name moves to an attribute, where it costs no space.
@@ -993,6 +1017,8 @@ export class JantComposeDialog extends LitElement {
     this._quietReply = false;
     this._language = null;
     this._translationOf = null;
+    this._translationCollapsed = false;
+    this._seededFromSource = false;
     this._confirmForDrafts = false;
     this._confirmForAttachedText = false;
     this._initialSnapshot = null;
@@ -1207,9 +1233,11 @@ export class JantComposeDialog extends LitElement {
     this._editor?.focusInput();
     this._captureInitialSnapshot();
 
-    // Deliberately after the open: the banner is context, not a precondition,
-    // and blocking the composer on a fetch would trade a visible delay for it.
-    await this._loadTranslationSource(sourcePostId);
+    // Deliberately after the open: the original is context, not a
+    // precondition, and blocking the composer on a fetch would trade a visible
+    // delay for it. `seed` is safe this late because it stands down the moment
+    // the author has typed anything.
+    await this._loadTranslationSource(sourcePostId, { seed: true });
   }
 
   /**
@@ -1378,6 +1406,20 @@ export class JantComposeDialog extends LitElement {
     );
   }
 
+  /**
+   * Whether closing would throw away something the author wrote.
+   *
+   * Normally "is there content" answers that, because a new composer opens
+   * empty. A translation opens pre-seeded with the original's citation, though,
+   * and being asked to save a draft of a URL you never typed is worse than the
+   * prompt is worth — so once seeded, the question becomes whether anything has
+   * changed since it opened.
+   */
+  private _hasWorkToLose(): boolean {
+    if (!this._hasContent()) return false;
+    return this._seededFromSource ? this._hasUnsavedChanges() : true;
+  }
+
   private _buildSnapshot(): ComposeStateSnapshot | null {
     const editor = this._editor;
     if (!editor) return null;
@@ -1484,7 +1526,7 @@ export class JantComposeDialog extends LitElement {
       return;
     }
 
-    if (this._hasContent()) {
+    if (this._hasWorkToLose()) {
       this._confirmForDrafts = false;
       this._confirmForAttachedText = false;
       this._confirmPanelOpen = true;
@@ -2931,7 +2973,7 @@ export class JantComposeDialog extends LitElement {
 
   private _handleDraftButtonClick() {
     if (this._loading) return;
-    if (this._hasContent()) {
+    if (this._hasWorkToLose()) {
       this._confirmForDrafts = true;
       this._confirmPanelOpen = true;
     } else {
@@ -3816,7 +3858,9 @@ export class JantComposeDialog extends LitElement {
       this._language = lang;
     }
     if (!this._translationOf) {
-      await this._loadTranslationSource(translationOf);
+      // `seed` still stands down on its own if the restore above brought
+      // content back, so a draft the author already started keeps its format.
+      await this._loadTranslationSource(translationOf, { seed: true });
     }
   }
 
@@ -3994,11 +4038,30 @@ export class JantComposeDialog extends LitElement {
   // ── Reply context rendering ──────────────────────────────────────
 
   /**
-   * Says what this post is, when it was opened to translate another one.
+   * The original, above the composer that is translating it.
    *
    * Sits where the reply context sits, for the same reason: a composer that
    * was opened *about* something should say so before the author starts
    * typing, not bury it two panels deep.
+   *
+   * Three decisions worth keeping:
+   *
+   * - It shows the whole post as the site renders it — server-rendered by
+   *   `/_/post-preview`, so a Quote arrives with its attribution and a Link
+   *   with its card. Structure is part of what gets translated, and a
+   *   `bodyHtml`-only preview silently dropped everything that is not body.
+   * - It scrolls inside a fixed frame instead of expanding. Translation is
+   *   read-a-bit, write-a-bit: a "show more" that hands a long post its full
+   *   height pushes the editor off the screen exactly when both need to be
+   *   visible. (The reply context expands, and is right to — it is read once,
+   *   before writing, not alongside.)
+   * - Nothing is bolted on to say "this is a link somewhere". The post's own
+   *   permalink is inside the rendering already; `_adoptTranslationPreview`
+   *   sends it to a new tab. An external-link glyph on a title made the whole
+   *   card read as a Link post rather than as the article it is.
+   *
+   * The language goes on the divider underneath rather than at the top: it
+   * belongs at the seam, where it reads as "…and below is that, in Japanese".
    */
   private _renderTranslationContext() {
     const source = this._translationOf;
@@ -4006,17 +4069,125 @@ export class JantComposeDialog extends LitElement {
 
     const languageLabel =
       this.languages.find((entry) => entry.tag === this._language)?.label ?? "";
+    const seam = languageLabel
+      ? this.labels.translationContextInLanguage.replace(
+          "{language}",
+          languageLabel,
+        )
+      : this.labels.translationContext;
+
+    const collapsed = this._translationCollapsed;
 
     return html`
-      <p class="compose-translation-context">
-        ${(languageLabel
-          ? this.labels.translationOfInLanguage
-          : this.labels.translationOf
-        )
-          .replace("{language}", languageLabel)
-          .replace("{title}", source.title)}
-      </p>
+      <div class="compose-translation-context">
+        ${collapsed
+          ? nothing
+          : source.previewHtml
+            ? html`<div
+                class="compose-translation-original"
+                tabindex="0"
+                role="region"
+                aria-label=${this.labels.translationContextOriginal}
+              >
+                <div class="compose-translation-preview">
+                  ${unsafeHTML(source.previewHtml)}
+                </div>
+              </div>`
+            : html`<p class="compose-translation-fallback">
+                ${source.href
+                  ? html`<a
+                      href=${source.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title=${this.labels.translationContextOpen}
+                      >${source.title}</a
+                    >`
+                  : source.title}
+              </p>`}
+        <div class="compose-translation-seam">
+          <span class="compose-translation-seam-label">
+            ${this._iconArrowDown()}${seam}
+          </span>
+          <span class="compose-translation-seam-dot" aria-hidden="true">·</span>
+          <button
+            type="button"
+            class="compose-translation-seam-toggle"
+            aria-expanded=${collapsed ? "false" : "true"}
+            aria-label=${collapsed
+              ? this.labels.translationContextShowLong
+              : this.labels.translationContextHideLong}
+            @click=${() => {
+              this._translationCollapsed = !this._translationCollapsed;
+            }}
+          >
+            ${collapsed
+              ? this.labels.translationContextShow
+              : this.labels.translationContextHide}
+          </button>
+        </div>
+      </div>
     `;
+  }
+
+  /**
+   * Make the server-rendered original safe to sit inside the composer.
+   *
+   * Two things have to be undone, both because this markup was written to *be*
+   * a post rather than to be quoted inside one:
+   *
+   * - Every link leaves for a new tab. A link followed in place navigates the
+   *   composer away and takes the unsaved translation with it.
+   * - The post's identity comes off. `data-post-id` and friends are how the
+   *   post menu, the keyboard shortcuts and `refreshArticleView` find a post;
+   *   leaving a second copy of the original's id in the DOM lets any of them
+   *   act on the preview believing it is the real card.
+   *
+   * Runs on every update because `unsafeHTML` re-creates the subtree whenever
+   * the markup changes, and is cheap to repeat — the marker attribute makes it
+   * a no-op once a given rendering has been adopted.
+   */
+  private _adoptTranslationPreview() {
+    const preview = this.querySelector<HTMLElement>(
+      ".compose-translation-preview:not([data-preview-adopted])",
+    );
+    if (!preview) return;
+    preview.dataset.previewAdopted = "";
+
+    for (const link of preview.querySelectorAll("a[href]")) {
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer");
+    }
+
+    for (const el of preview.querySelectorAll<HTMLElement>("[data-post-id]")) {
+      delete el.dataset.postId;
+      delete el.dataset.post;
+      delete el.dataset.threadRootId;
+      delete el.dataset.postMenuTarget;
+      el.classList.remove("post-menu-target");
+    }
+    for (const trigger of preview.querySelectorAll(
+      "[data-post-menu-trigger], [data-reply-trigger], [data-timeline-item]",
+    )) {
+      trigger.remove();
+    }
+  }
+
+  /** Points at what comes next: the version being written, below. */
+  private _iconArrowDown() {
+    return html`<svg
+      class="compose-translation-seam-icon"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.9"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 5v14" />
+      <path d="m19 12-7 7-7-7" />
+    </svg>`;
   }
 
   private _renderReplyContext() {
@@ -5013,33 +5184,110 @@ export class JantComposeDialog extends LitElement {
    * Load the post a translation is being written for.
    *
    * Only the ID is carried around — through the URL that opens the composer,
-   * and through a local draft picked up later — so the title shown in the
-   * banner is fetched when it is needed. A post that has since been deleted
+   * and through a local draft picked up later — so everything shown above the
+   * editor is fetched when it is needed. A post that has since been deleted
    * simply drops the link rather than blocking the composer.
    *
    * @param postId - Thread root the new post translates
+   * @param options.seed - Also take the original's shape: its format, and the
+   *   citation fields that name a source rather than say anything in a
+   *   language. Only for a composer opened fresh on this translation; a
+   *   restored draft already carries the author's own answers.
    */
-  private async _loadTranslationSource(postId: string): Promise<void> {
+  private async _loadTranslationSource(
+    postId: string,
+    options: { seed?: boolean } = {},
+  ): Promise<void> {
     try {
       const response = await fetch(publicPath(`/api/posts/${postId}`), {
         credentials: "same-origin",
       });
       if (!response.ok) return;
-      const post = (await response.json()) as {
-        id: string;
+      const post = (await response.json()) as ComposePostResponse & {
         displayTitle?: string;
-        slug?: string;
       };
       // `displayTitle` is derived server-side for untitled notes; a slug is a
       // URL, not a name, and only stands in when there is nothing else.
       this._translationOf = {
         id: post.id,
         title: post.displayTitle || post.slug || "",
+        href: post.slug ? publicPath(`/${post.slug}`) : "",
+        previewHtml: await this._fetchTranslationPreview(post.id),
       };
+
+      if (options.seed) await this._seedFromTranslationSource(post);
     } catch {
       // Offline or the post is gone. The composer still works; the author is
       // writing a post, just not a linked one.
     }
+  }
+
+  /**
+   * The original rendered as it renders anywhere else on the site.
+   *
+   * Server-side rather than rebuilt here: a Quote's attribution and a Link's
+   * card are not `bodyHtml`, and reproducing each format's markup in the
+   * composer would be a second renderer to keep in step with the first.
+   *
+   * @param postId - Thread root the new post translates
+   * @returns The post's markup, or "" when it cannot be fetched
+   */
+  private async _fetchTranslationPreview(postId: string): Promise<string> {
+    try {
+      const response = await fetch(
+        publicPath(`/_/post-preview/${encodeURIComponent(postId)}`),
+        { headers: { Accept: "text/html" }, credentials: "same-origin" },
+      );
+      if (!response.ok) return "";
+      return await response.text();
+    } catch {
+      return "";
+    }
+  }
+
+  /**
+   * Start the translation in the shape of its original.
+   *
+   * A quote stays a quote — the format is a property of what was said, not of
+   * the language it was said in — and the citation travels with it: the URL a
+   * quote or a link points at is the same source whichever language describes
+   * it. Collections, visibility and rating come along for the same reason:
+   * they describe the post's place and its subject, neither of which changes
+   * when the words do. The prose is the part the author is here to write, so
+   * that is all that starts empty.
+   *
+   * Skipped the moment the author has typed anything: the fetch runs after the
+   * composer opens, and overwriting their first sentence to save them a format
+   * click is a bad trade.
+   */
+  private async _seedFromTranslationSource(
+    post: ComposePostResponse,
+  ): Promise<void> {
+    if (this._hasContent() || this._editPostId || this._draftSourceId) return;
+
+    const format = post.format;
+    this._format = format;
+    if (post.collectionIds?.length) {
+      this._collectionIds = [...post.collectionIds];
+    }
+    if (post.visibility) this._visibility = post.visibility;
+    await this.updateComplete;
+
+    this._editor?.populate({
+      format,
+      url:
+        format === "quote"
+          ? (post.sourceUrl ?? undefined)
+          : (post.url ?? undefined),
+      quoteAuthor:
+        format === "quote" ? (post.sourceName ?? undefined) : undefined,
+      rating: post.rating ?? undefined,
+    });
+    await this.updateComplete;
+    // The author has still typed nothing, so none of this counts as a change
+    // they would be asked to discard on close.
+    this._seededFromSource = true;
+    this._captureInitialSnapshot();
   }
 
   /**
@@ -5843,7 +6091,7 @@ export class JantComposeDialog extends LitElement {
    * there is something to save, both are offered and each does one thing.
    */
   private _renderSaveDraftRow() {
-    if (this._editPostId || !this._hasContent()) return nothing;
+    if (this._editPostId || !this._hasWorkToLose()) return nothing;
 
     return html`
       <button
@@ -6552,7 +6800,7 @@ export class JantComposeDialog extends LitElement {
   // placeholder sits where the next post will land instead of floating out at
   // the dialog's own left edge, a rail's width clear of everything above it.
   private _renderAddThreadTrigger(onRail: boolean) {
-    const disabled = !this._hasContent();
+    const disabled = !this._hasWorkToLose();
     const button = html`
       <button
         type="button"

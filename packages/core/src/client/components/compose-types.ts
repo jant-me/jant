@@ -249,7 +249,14 @@ export interface ComposeLabels {
   languageAutoHint: string;
   languageAutoDetected: string;
   translationOf: string;
-  translationOfInLanguage: string;
+  translationContext: string;
+  translationContextInLanguage: string;
+  translationContextOpen: string;
+  translationContextOriginal: string;
+  translationContextHide: string;
+  translationContextHideLong: string;
+  translationContextShow: string;
+  translationContextShowLong: string;
   publishVisibilityLabel: string;
   publishVisibilityPublic: string;
   publishVisibilityPublicHint: string;

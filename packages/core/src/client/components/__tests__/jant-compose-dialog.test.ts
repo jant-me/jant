@@ -240,7 +240,14 @@ const labels: ComposeLabels = {
   languageAutoHint: "Read from what you write",
   languageAutoDetected: "Read from what you write — looks like {language}",
   translationOf: "Translation of “{title}”",
-  translationOfInLanguage: "Writing the {language} version of “{title}”",
+  translationContext: "Translating",
+  translationContextInLanguage: "Translating into {language}",
+  translationContextOpen: "Open the original in a new tab",
+  translationContextOriginal: "The original",
+  translationContextHide: "Hide",
+  translationContextHideLong: "Hide the original",
+  translationContextShow: "Show",
+  translationContextShowLong: "Show the original",
   publishVisibilityLabel: "Visibility",
   publishVisibilityPublic: "Public",
   publishVisibilityPublicHint: "Appears in Latest.",
@@ -696,32 +703,366 @@ describe("JantComposeDialog", () => {
       expect(languageRowTitles(el)).toEqual(["Detect", "简体中文", "English"]);
     });
 
-    it("says what it was opened to translate, before anything is typed", async () => {
-      // Opened from a post, so the composer should carry that context above the
-      // editor — not two panels down in the publish sheet.
+    /**
+     * Open the composer on a translation of `post`. The composer asks for two
+     * things: the post's fields, to seed from, and its server-rendered markup,
+     * to show.
+     */
+    async function openTranslationOf(
+      el: JantComposeDialog,
+      post: Record<string, unknown>,
+      options: { language?: string; previewHtml?: string | null } = {},
+    ) {
+      const { language = "en", previewHtml = null } = options;
+      vi.spyOn(globalThis, "fetch").mockImplementation((input: unknown) => {
+        if (String(input).includes("/_/post-preview/")) {
+          return Promise.resolve({
+            ok: previewHtml !== null,
+            text: async () => previewHtml ?? "",
+          } as Response);
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => post,
+        } as Response);
+      });
+
+      await el.openTranslation((post.id as string) ?? "pst_source", language);
+      await flushUpdates(el);
+      await flushUpdates(el);
+      await flushUpdates(el);
+      return el;
+    }
+
+    async function multilingualElement() {
       const el = await createElement();
       el.languages = [
         { tag: "zh-Hans", label: "简体中文" },
         { tag: "en", label: "English" },
       ];
       await flushUpdates(el);
+      return el;
+    }
 
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: async () => ({
+    const PREVIEW_HTML =
+      '<article class="h-entry post-menu-target" data-post data-post-id="pst_source" data-page="post">' +
+      '<h1 class="post-detail-title">咖啡笔记</h1>' +
+      '<div class="post-header-meta-row"><a href="/coffee" class="post-header-meta-link">Aug 8, 2026</a></div>' +
+      '<div class="e-content prose post-detail-body"><h2>耶加雪菲</h2>' +
+      '<p>今天试了一支，<a href="https://example.com/beans">花香</a>很明显。</p></div>' +
+      "</article>";
+
+    it("says what it was opened to translate, before anything is typed", async () => {
+      // Opened from a post, so the composer should carry that context above the
+      // editor — not two panels down in the publish sheet.
+      const el = await multilingualElement();
+      await openTranslationOf(
+        el,
+        {
           id: "pst_source",
+          format: "note",
           displayTitle: "咖啡笔记",
           slug: "coffee",
-        }),
-      } as Response);
+        },
+        { previewHtml: PREVIEW_HTML },
+      );
 
-      await el.openTranslation("pst_source", "en");
+      const banner = requireElement(
+        el.querySelector(".compose-translation-context"),
+        "expected the translation context",
+      );
+      // The language sits on the seam between the two posts, not above both:
+      // it reads as "…and below is that, in English".
+      expect(
+        banner
+          .querySelector(".compose-translation-seam-label")
+          ?.textContent?.trim(),
+      ).toBe("Translating into English");
+    });
+
+    it("shows the original as the site renders it, inside a frame to scroll", async () => {
+      // Server-rendered rather than rebuilt here, so a Quote arrives with its
+      // attribution and a Link with its card. The frame is fixed because an
+      // original handed its full height pushes the editor off the screen
+      // exactly when both need to be visible.
+      const el = await multilingualElement();
+      await openTranslationOf(
+        el,
+        {
+          id: "pst_source",
+          format: "note",
+          displayTitle: "咖啡笔记",
+          slug: "coffee",
+        },
+        { previewHtml: PREVIEW_HTML },
+      );
+
+      const original = requireElement(
+        el.querySelector(".compose-translation-original"),
+        "expected the original's frame",
+      );
+      // Keyboard users have to be able to scroll it, and a screen reader has to
+      // be able to name it.
+      expect(original.getAttribute("tabindex")).toBe("0");
+      expect(original.getAttribute("role")).toBe("region");
+      expect(original.getAttribute("aria-label")).toBe("The original");
+      // Structure is part of what is being translated, so it survives intact.
+      expect(original.querySelector("h1")?.textContent).toBe("咖啡笔记");
+      expect(original.querySelector("h2")?.textContent).toBe("耶加雪菲");
+
+      // Nothing left of the expand-in-place preview it replaced, and no bolted
+      // on external-link glyph — that made the card read as a Link post.
+      expect(el.querySelector(".compose-translation-toggle")).toBeNull();
+      expect(el.querySelector(".compose-translation-source-icon")).toBeNull();
+    });
+
+    it("folds the original away and back, keeping the seam either way", async () => {
+      // The frame costs vertical room the editor may want back mid-draft. What
+      // it is being translated into stays on screen while it is folded — that
+      // is about the two posts, not about how much of one is showing.
+      const el = await multilingualElement();
+      await openTranslationOf(
+        el,
+        {
+          id: "pst_source",
+          format: "note",
+          displayTitle: "咖啡笔记",
+          slug: "coffee",
+        },
+        { previewHtml: PREVIEW_HTML },
+      );
+
+      const toggle = () =>
+        requireElement(
+          el.querySelector<HTMLButtonElement>(
+            ".compose-translation-seam-toggle",
+          ),
+          "expected the fold toggle",
+        );
+
+      expect(el.querySelector(".compose-translation-original")).not.toBeNull();
+      expect(toggle().getAttribute("aria-expanded")).toBe("true");
+      expect(toggle().textContent?.trim()).toBe("Hide");
+
+      toggle().click();
       await flushUpdates(el);
 
-      const banner = el.querySelector(".compose-translation-context");
-      expect(banner?.textContent?.trim()).toBe(
-        "Writing the English version of “咖啡笔记”",
+      expect(el.querySelector(".compose-translation-original")).toBeNull();
+      expect(toggle().getAttribute("aria-expanded")).toBe("false");
+      expect(toggle().textContent?.trim()).toBe("Show");
+      expect(toggle().getAttribute("aria-label")).toBe("Show the original");
+      expect(
+        el
+          .querySelector(".compose-translation-seam-label")
+          ?.textContent?.trim(),
+      ).toBe("Translating into English");
+
+      toggle().click();
+      await flushUpdates(el);
+
+      // Unfolding re-creates the markup, so the links have to be sent to a new
+      // tab again — the adopt pass runs on every update, not just the first.
+      const link = requireElement(
+        el.querySelector<HTMLAnchorElement>(
+          ".compose-translation-preview a[href]",
+        ),
+        "expected the original back",
       );
+      expect(link.getAttribute("target")).toBe("_blank");
+    });
+
+    it("sends every link in the original to a new tab", async () => {
+      // A link followed in place navigates the composer away and takes the
+      // unsaved translation with it.
+      const el = await multilingualElement();
+      await openTranslationOf(
+        el,
+        {
+          id: "pst_source",
+          format: "note",
+          displayTitle: "咖啡笔记",
+          slug: "coffee",
+        },
+        { previewHtml: PREVIEW_HTML },
+      );
+
+      const links = Array.from(
+        el.querySelectorAll<HTMLAnchorElement>(
+          ".compose-translation-preview a[href]",
+        ),
+      );
+      expect(links.length).toBe(2);
+      for (const link of links) {
+        expect(link.getAttribute("target")).toBe("_blank");
+        expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+      }
+    });
+
+    it("strips the original's identity so nothing else can act on it", async () => {
+      // `data-post-id` is how the post menu, the keyboard shortcuts and
+      // `refreshArticleView` find a post. A second copy of the original's id in
+      // the DOM lets any of them act on the preview believing it is the card.
+      const el = await multilingualElement();
+      await openTranslationOf(
+        el,
+        {
+          id: "pst_source",
+          format: "note",
+          displayTitle: "咖啡笔记",
+          slug: "coffee",
+        },
+        { previewHtml: PREVIEW_HTML },
+      );
+
+      const preview = requireElement(
+        el.querySelector(".compose-translation-preview"),
+        "expected the preview",
+      );
+      expect(preview.querySelector("[data-post-id]")).toBeNull();
+      expect(preview.querySelector(".post-menu-target")).toBeNull();
+      expect(
+        document.querySelectorAll('[data-post-id="pst_source"]').length,
+      ).toBe(0);
+    });
+
+    it("falls back to a plain link when the rendering cannot be fetched", async () => {
+      const el = await multilingualElement();
+      await openTranslationOf(
+        el,
+        {
+          id: "pst_source",
+          format: "note",
+          displayTitle: "咖啡笔记",
+          slug: "coffee",
+        },
+        { previewHtml: null },
+      );
+
+      expect(el.querySelector(".compose-translation-original")).toBeNull();
+      const link = requireElement(
+        el.querySelector<HTMLAnchorElement>(".compose-translation-fallback a"),
+        "expected a fallback link to the original",
+      );
+      expect(link.textContent?.trim()).toBe("咖啡笔记");
+      expect(link.getAttribute("href")).toBe("/coffee");
+      expect(link.getAttribute("target")).toBe("_blank");
+      // The seam still names the language: it is about the two posts, not about
+      // how much of one of them could be shown.
+      expect(
+        el
+          .querySelector(".compose-translation-seam-label")
+          ?.textContent?.trim(),
+      ).toBe("Translating into English");
+    });
+
+    it("starts a translation in the original's shape, down to its meta", async () => {
+      // Everything that describes the post's subject or its place travels:
+      // format, citation, collections, visibility, rating. Only the words are
+      // language-specific, so only the words start empty.
+      const el = await multilingualElement();
+      await openTranslationOf(el, {
+        id: "pst_source",
+        format: "quote",
+        displayTitle: "关于专注",
+        slug: "focus",
+        quoteText: "专注是一种拒绝。",
+        sourceName: "Some Author",
+        sourceUrl: "https://example.com/focus",
+        collectionIds: ["col_reading", "col_notes"],
+        visibility: "latest_hidden",
+        rating: 4,
+      });
+
+      const editor = requireElement(
+        el.querySelector<JantComposeEditor>("jant-compose-editor"),
+        "expected the editor",
+      );
+      expect(editor.format).toBe("quote");
+      const data = editor.getData();
+      expect(data.url).toBe("https://example.com/focus");
+      expect(data.quoteAuthor).toBe("Some Author");
+      expect(data.rating).toBe(4);
+      // The prose is the part the author is here to write.
+      expect(data.quoteText).toBe("");
+
+      const internals = el as unknown as {
+        _collectionIds: string[];
+        _visibility: string;
+        _hasUnsavedChanges: () => boolean;
+      };
+      expect(internals._collectionIds).toEqual(["col_reading", "col_notes"]);
+      expect(internals._visibility).toBe("latest_hidden");
+
+      // None of that counts as something to discard: the author typed nothing.
+      expect(internals._hasUnsavedChanges()).toBe(false);
+    });
+
+    it("closes a seeded translation without offering to save it", async () => {
+      // The citation arrived from the original, not from the author. Being
+      // asked to save a draft of a URL you never typed is worse than the
+      // prompt is worth — but the moment anything is written, it comes back.
+      const el = await multilingualElement();
+      await openTranslationOf(el, {
+        id: "pst_source",
+        format: "quote",
+        displayTitle: "关于专注",
+        slug: "focus",
+        sourceUrl: "https://example.com/focus",
+      });
+      const internals = el as unknown as {
+        _confirmPanelOpen: boolean;
+        _hasContent: () => boolean;
+      };
+
+      el.requestClose();
+      await flushUpdates(el);
+      expect(internals._confirmPanelOpen).toBe(false);
+
+      await openTranslationOf(el, {
+        id: "pst_source",
+        format: "quote",
+        displayTitle: "关于专注",
+        slug: "focus",
+        sourceUrl: "https://example.com/focus",
+      });
+      const editor = requireElement(
+        el.querySelector<JantComposeEditor>("jant-compose-editor"),
+        "expected the editor",
+      );
+      editor._quoteText = "Focus is about saying no.";
+      await flushUpdates(el);
+
+      el.requestClose();
+      await flushUpdates(el);
+      expect(internals._confirmPanelOpen).toBe(true);
+    });
+
+    it("leaves the format alone once the author has started writing", async () => {
+      // The fetch lands after the composer opens. Overwriting a first sentence
+      // to save a format click is a bad trade.
+      const el = await multilingualElement();
+      vi.spyOn(
+        el as unknown as { _hasContent: () => boolean },
+        "_hasContent",
+      ).mockReturnValue(true);
+
+      await openTranslationOf(el, {
+        id: "pst_source",
+        format: "quote",
+        displayTitle: "关于专注",
+        slug: "focus",
+        sourceUrl: "https://example.com/focus",
+      });
+
+      const editor = requireElement(
+        el.querySelector<JantComposeEditor>("jant-compose-editor"),
+        "expected the editor",
+      );
+      expect(editor.format).toBe("note");
+      expect(editor.getData().url).toBe("");
+      // The context still shows — it is the one thing that never fights the
+      // author for the page.
+      expect(el.querySelector(".compose-translation-context")).not.toBeNull();
     });
 
     it("sends the chosen language, and nothing when left on Detect", async () => {

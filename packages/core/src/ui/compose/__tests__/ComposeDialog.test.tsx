@@ -49,8 +49,7 @@ describe("ComposeForm labels", () => {
     const labels = renderComposeLabels();
 
     expect(labels.translationOf).toContain("{title}");
-    expect(labels.translationOfInLanguage).toContain("{title}");
-    expect(labels.translationOfInLanguage).toContain("{language}");
+    expect(labels.translationContextInLanguage).toContain("{language}");
     expect(labels.languageAutoDetected).toContain("{language}");
   });
 

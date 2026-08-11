@@ -59,6 +59,47 @@ partialPageRoutes.get("/_/post-card/:postId", async (c) => {
   );
 });
 
+/**
+ * A Post rendered as its detail page, with every control taken off.
+ *
+ * For surfaces that show one Post inside another context — the composer
+ * writing a translation of it, so far. Those need the Post to *look* like
+ * itself, because its structure is part of what the author is working from,
+ * but they must not offer to act on it: the actions belong to the Post being
+ * written, not to the one being read.
+ *
+ * Not a variant of `/_/post-view`: that one renders the whole Thread and is
+ * what a page swaps itself for. This renders the root alone.
+ */
+partialPageRoutes.get("/_/post-preview/:postId", async (c) => {
+  const postId = parseIdParam(c.req.param("postId"), ID_PREFIX.post);
+  const postView = await assemblePostCardView(c, postId, {
+    isAuthenticated: c.var.isAuthenticated,
+  });
+
+  if (!postView) {
+    return c.notFound();
+  }
+
+  return c.html(
+    <I18nProvider c={c}>
+      <TimelineItemFromPost
+        post={postView}
+        mode="detail"
+        display={{
+          hideStatusBadges: true,
+          showFullBody: true,
+          // `hideTimestamp` is deliberately absent: a titled detail post puts
+          // its date in the header, and the card only drops the footer's copy
+          // when this is left undefined. Stating it either way prints the date
+          // twice.
+          footer: { hideActions: true, hideReply: true },
+        }}
+      />
+    </I18nProvider>,
+  );
+});
+
 partialPageRoutes.get("/_/post-view/:postId", async (c) => {
   const postId = parseIdParam(c.req.param("postId"), ID_PREFIX.post);
   const display = await assemblePostPageDisplay(c, postId, {

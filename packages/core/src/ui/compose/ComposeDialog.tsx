@@ -947,13 +947,63 @@ export const ComposeForm: FC<ComposeFormProps> = ({
       // as the value leaves it intact for the component to fill.
       { title: "{title}" },
     ),
-    translationOfInLanguage: i18n._(
+    translationContext: i18n._(
       msg({
-        message: "Writing the {language} version of “{title}”",
+        message: "Translating",
         comment:
-          "@context: Compose banner shown while writing a translation, once the target language is known",
+          "@context: Divider between the original post and the editor writing its translation, when the target language is not known yet",
       }),
-      { language: "{language}", title: "{title}" },
+    ),
+    translationContextInLanguage: i18n._(
+      msg({
+        message: "Translating into {language}",
+        comment:
+          "@context: Divider between the original post above and the editor below, naming the language being written",
+      }),
+      // Filled in the browser from the chosen language; see `translationOf`.
+      { language: "{language}" },
+    ),
+    translationContextOpen: i18n._(
+      msg({
+        message: "Open the original in a new tab",
+        comment:
+          "@context: Tooltip on the source post link above the compose editor while writing a translation",
+      }),
+    ),
+    translationContextOriginal: i18n._(
+      msg({
+        message: "The original",
+        comment:
+          "@context: Accessible name of the scrollable panel holding the post being translated",
+      }),
+    ),
+    translationContextHide: i18n._(
+      msg({
+        message: "Hide",
+        comment:
+          "@context: Button that folds away the original while writing its translation. Sits right after the words “Translating into …”, which is what makes it clear what gets hidden — the accessible name spells it out",
+      }),
+    ),
+    translationContextHideLong: i18n._(
+      msg({
+        message: "Hide the original",
+        comment:
+          "@context: Accessible name of the button that folds away the post being translated",
+      }),
+    ),
+    translationContextShow: i18n._(
+      msg({
+        message: "Show",
+        comment:
+          "@context: Button that brings back the folded-away original while writing its translation",
+      }),
+    ),
+    translationContextShowLong: i18n._(
+      msg({
+        message: "Show the original",
+        comment:
+          "@context: Accessible name of the button that brings back the folded-away post being translated",
+      }),
     ),
     collectionFormLabels: getCollectionFormLabels(i18n),
   } satisfies ComposeLabels;
