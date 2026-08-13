@@ -66,7 +66,16 @@ export function createAuth(
       },
     },
     session: {
-      expiresIn: 3600 * 24 * 30, // 30 days
+      // An idle window, not a hard cap. `attachSession` writes better-auth's
+      // re-issued cookie back to the browser, so any visit inside the window
+      // pushes both the stored session and the cookie out another 90 days —
+      // a single author on their own machine should effectively never be
+      // asked to sign in again.
+      expiresIn: 3600 * 24 * 90, // 90 days
+      // How stale a session may get before a read renews it. Same as
+      // better-auth's default, but stated here because it sets the renewal
+      // cadence and that shouldn't be invisible library behaviour.
+      updateAge: 3600 * 24, // 1 day
       cookieCache: {
         enabled: true,
         maxAge: 60 * 5, // 5 minutes

@@ -190,10 +190,10 @@ describe("attachSession with a real better-auth instance", () => {
     // cache hit deliberately short-circuits before any refresh.
     const cookieHeader = sessionCookie!.split(";")[0]!;
 
-    // better-auth only re-issues the cookie once per `updateAge` (1 day by
-    // default). Age the stored session past that threshold so this request is
-    // the one that refreshes: with `expiresIn` at 30 days, any expiry inside
-    // the next 29 days is due.
+    // better-auth only re-issues the cookie once per `updateAge` (1 day). Age
+    // the stored session past that threshold so this request is the one that
+    // refreshes: with `expiresIn` at 90 days, any expiry inside the next 89
+    // days is due.
     const rows = await db.select().from(sessionTable);
     expect(rows).toHaveLength(1);
     const due = new Date(Date.now() + 28 * 24 * 60 * 60 * 1000);
@@ -214,8 +214,10 @@ describe("attachSession with a real better-auth instance", () => {
     expect(await res.json()).toEqual({ authed: true });
 
     // The regression this guards: without `returnHeaders` the refreshed cookie
-    // is dropped, so the browser copy keeps its original expiry and dies a
-    // fixed 30 days after sign-in however active the user is.
+    // is dropped, so the browser copy keeps the expiry it was born with and
+    // dies a fixed `expiresIn` after sign-in however active the user is.
+    // Asserted against the aged-down 28 days rather than the configured window,
+    // so this stays a test of "it rolls forward" and not of the current policy.
     const refreshed = res.headers
       .getSetCookie()
       .find((cookie) => cookie.includes(".session_token="));
