@@ -36,13 +36,18 @@ function createTestHonoApp() {
 function createMockAuth(authenticated: boolean) {
   return {
     api: {
-      getSession: async () =>
-        authenticated
+      // `attachSession` reads with `returnHeaders: true` so it can write
+      // better-auth's refreshed cookies back onto the response, which puts the
+      // result in better-call's `{ headers, response }` shape.
+      getSession: async () => ({
+        headers: new Headers(),
+        response: authenticated
           ? {
               user: { id: "user-1", email: "test@test.com", name: "Test" },
               session: { id: "session-1" },
             }
           : null,
+      }),
     },
   } as AppVariables["auth"];
 }
@@ -200,9 +205,72 @@ describe("requireAuth", () => {
     expect(res.status).toBe(302);
     expect(res.headers.get("Location")).toBe("/login");
   });
+
+  it("surfaces a route handler's error instead of bouncing to signin", async () => {
+    const app = createTestHonoApp();
+    app.use("*", async (c, next) => {
+      c.set("auth", createMockAuth(true));
+      c.set("services", {
+        siteMembers: createMockSiteMembers(),
+      } as AppVariables["services"]);
+      await next();
+    });
+    app.use("*", attachSession());
+    app.get("/settings", requireAuth(), () => {
+      throw new Error("saving the post blew up");
+    });
+
+    // Rewriting this into a redirect reads to the author as being randomly
+    // signed out, and throws away whatever they were editing.
+    const res = await app.request("/settings", { redirect: "manual" });
+    expect(res.status).toBe(500);
+  });
+
+  it("surfaces a failed membership lookup instead of bouncing to signin", async () => {
+    const app = createTestHonoApp();
+    app.use("*", async (c, next) => {
+      c.set("auth", createMockAuth(true));
+      c.set("services", {
+        siteMembers: {
+          ...createMockSiteMembers(),
+          get: vi.fn(async () => {
+            throw new Error("database unavailable");
+          }),
+        },
+      } as unknown as AppVariables["services"]);
+      await next();
+    });
+    app.use("*", attachSession());
+    app.get("/settings", requireAuth(), (c) => c.text("Settings"));
+
+    // `siteMembers.get` resolves to `null` for "not a member", so a throw is
+    // always infrastructure — never a reason to claim the user is signed out.
+    const res = await app.request("/settings", { redirect: "manual" });
+    expect(res.status).toBe(500);
+  });
 });
 
 describe("requireAuthApi", () => {
+  it("surfaces a route handler's error instead of answering 401", async () => {
+    const app = createTestHonoApp();
+    app.use("*", async (c, next) => {
+      c.set("auth", createMockAuth(true));
+      c.set("services", {
+        siteMembers: createMockSiteMembers(),
+      } as AppVariables["services"]);
+      await next();
+    });
+    app.use("*", attachSession());
+    app.get("/api/data", requireAuthApi(), () => {
+      throw new Error("upstream failed");
+    });
+
+    // A 401 here would tell the client the login expired and send the author
+    // back to sign-in over what is really a server-side failure.
+    const res = await app.request("/api/data");
+    expect(res.status).toBe(500);
+  });
+
   it("allows authenticated requests via session", async () => {
     const app = createTestHonoApp();
     app.onError(errorHandler);

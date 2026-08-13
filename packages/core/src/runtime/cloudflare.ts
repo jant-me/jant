@@ -52,6 +52,13 @@ export interface CloudflareRequestRuntime {
 export async function createCloudflareRequestRuntime(
   env: Bindings,
   publicRequestUrl: string,
+  options?: {
+    /**
+     * Anchor this request's first read to the primary instead of any replica.
+     * Set for requests that carry a session cookie — see `createRequestRuntime`.
+     */
+    anchorReadsToPrimary?: boolean;
+  },
 ): Promise<CloudflareRequestRuntime> {
   if (!env.DB) {
     throw new Error("Cloudflare runtime requires a DB binding.");
@@ -62,8 +69,19 @@ export async function createCloudflareRequestRuntime(
     throw new Error("AUTH_SECRET should be set after startup validation.");
   }
 
-  // Use withSession() to enable D1 Read Replication.
-  const session = env.DB.withSession();
+  // Use withSession() to enable D1 Read Replication. The constraint applies to
+  // the session's *first* query; every later query is anchored to the bookmark
+  // that one returns, so the whole request is sequentially consistent.
+  //
+  // Bookmarks are not carried across requests, so an unconstrained first read
+  // may land on a replica that has not caught up yet. For anonymous traffic
+  // that is fine and it is the point of replication. For a request holding a
+  // session cookie it is not: the session row is written on the primary, and a
+  // lagging replica answers "no such session" — the visitor is bounced to
+  // sign-in even though they never signed out.
+  const session = env.DB.withSession(
+    options?.anchorReadsToPrimary ? "first-primary" : "first-unconstrained",
+  );
 
   // Note: Drizzle ORM doesn't officially support D1DatabaseSession yet
   // (issue #2226), but it works at runtime.

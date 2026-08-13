@@ -142,19 +142,20 @@ export function requireAuth(redirectTo = "/signin"): MiddlewareHandler<Env> {
       return c.redirect(buildRedirectTarget());
     }
 
-    try {
-      const membership = await c.var.services.siteMembers.get(
-        c.var.currentSite.id,
-        session.user.id,
-      );
-      if (!membership) {
-        return c.redirect(buildRedirectTarget());
-      }
-
-      await next();
-    } catch {
+    // `siteMembers.get` resolves to `null` for "not a member", so a throw is
+    // always infrastructure. Both it and `next()` stay outside a catch: a
+    // failing database read or a route handler blowing up used to be rewritten
+    // into a redirect to sign-in, which reads to the user as being randomly
+    // signed out and loses whatever they were doing.
+    const membership = await c.var.services.siteMembers.get(
+      c.var.currentSite.id,
+      session.user.id,
+    );
+    if (!membership) {
       return c.redirect(buildRedirectTarget());
     }
+
+    await next();
   };
 }
 
@@ -168,17 +169,15 @@ export function requireAuthApi(): MiddlewareHandler<Env> {
     // 1. Try session auth (session is pre-fetched by `attachSession` middleware).
     const session = c.var.session;
     if (session?.user) {
-      try {
-        const membership = await c.var.services.siteMembers.get(
-          c.var.currentSite.id,
-          session.user.id,
-        );
-        if (membership) {
-          await next();
-          return;
-        }
-      } catch {
-        // Membership check failed — fall through to Bearer token
+      // Only the membership lookup falls through to Bearer on failure. `next()`
+      // must stay outside that catch, or a route handler throwing turns into a
+      // 401 and the client treats a server error as an expired login.
+      const membership = await c.var.services.siteMembers
+        .get(c.var.currentSite.id, session.user.id)
+        .catch(() => null);
+      if (membership) {
+        await next();
+        return;
       }
     }
 

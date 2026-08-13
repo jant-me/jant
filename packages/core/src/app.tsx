@@ -307,7 +307,11 @@ export function createApp(): App {
     if (startupConfigError) {
       return c.html(startupConfigError, 500);
     }
-    const runtime = await createRequestRuntime(c.env, publicRequestUrl);
+    const runtime = await createRequestRuntime(
+      c.env,
+      publicRequestUrl,
+      c.req.raw,
+    );
     c.set("services", runtime.services);
     c.set("servicesForSite", runtime.servicesForSite);
     c.set("hostedHandoff", runtime.hostedHandoff);
