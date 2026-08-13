@@ -205,6 +205,23 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
       comment: "@context: Accessible label for the site language switcher",
     }),
   );
+  // Which language the reader is in, and whether that is worth saying out
+  // loud: the root is the site's default, everything else is a variant of it.
+  const currentLanguage = languageSwitcher.find((option) => option.isCurrent);
+  const offPrimaryLanguage = Boolean(
+    currentLanguage && !currentLanguage.isPrimary,
+  );
+  // The visible name is written in its own language, so the accessible name
+  // has to carry it too — a control read out as "Language" alone would lose
+  // the one thing it says.
+  const currentLanguageLabel = i18n._(
+    msg({
+      message: "Language: {language}",
+      comment:
+        "@context: Accessible label for the site language switcher when it names the language on screen",
+    }),
+    { language: currentLanguage?.label ?? "" },
+  );
   // Split custom links by placement.
   const headerLinks = linksWithLabels.filter(
     (l) => l.placement === "header" || !l.placement,
@@ -383,21 +400,28 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
 
             <div class="site-header-right">
               {languageSwitcher.length > 1 && (
-                <div class="site-header-lang">
+                <div
+                  class={`site-header-lang${
+                    offPrimaryLanguage ? " site-header-lang-named" : ""
+                  }`}
+                >
                   <button
                     type="button"
                     class="site-header-more-btn site-header-lang-btn"
                     id="site-nav-lang-trigger"
                     aria-haspopup="menu"
                     aria-expanded="false"
-                    aria-label={languageLabel}
+                    aria-label={
+                      offPrimaryLanguage ? currentLanguageLabel : languageLabel
+                    }
                   >
-                    {/* A globe alone, not a flag and not the current
-                        language's name: flags name countries rather than
-                        languages, and the name serves nobody — whoever can
-                        read it is already reading this language, and whoever
-                        needs to switch cannot. The menu below names every
-                        language in itself. */}
+                    {/* A globe, never a flag: flags name countries rather
+                        than languages. The primary language is the site as
+                        it comes, so the globe stands alone there; every
+                        other view is a variant of it, and a reader who
+                        landed on one — from a search result, a shared link,
+                        a post written in another language — is told which,
+                        without opening anything. */}
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="15"
@@ -415,6 +439,14 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
                       <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
                       <path d="M2 12h20" />
                     </svg>
+                    {offPrimaryLanguage && (
+                      <span
+                        class="site-header-lang-name"
+                        lang={currentLanguage?.lang}
+                      >
+                        {currentLanguage?.label}
+                      </span>
+                    )}
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="12"

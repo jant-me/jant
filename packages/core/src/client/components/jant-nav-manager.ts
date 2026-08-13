@@ -323,8 +323,16 @@ export class JantNavManager extends LitElement {
         ? this.systemNavItems.find((config) => config.key === item.systemKey)
             ?.label
         : undefined;
+    // `targetTitle` comes back on mutation responses, which carry the raw nav
+    // item rather than the server-rendered `displayLabel` — without it a page
+    // or collection added with no label of its own would render blank until
+    // the next full load.
     const displayLabel =
-      item.label.trim() || systemLabel || item.displayLabel || item.label;
+      item.label.trim() ||
+      systemLabel ||
+      item.displayLabel ||
+      item.targetTitle?.trim() ||
+      item.label;
 
     return { ...item, displayLabel };
   }
@@ -944,7 +952,9 @@ export class JantNavManager extends LitElement {
 
   async #handleUpdate(item: NavManagerItem) {
     const label = this._editLabel.trim();
-    if (!label && item.type !== "system") {
+    // Clearing the field hands the item back to its target's title, so only a
+    // free-form link — which points at nothing that has one — still needs one.
+    if (!label && item.type === "link") {
       showToast(this.labels.labelRequired, "error");
       return;
     }
@@ -1448,7 +1458,8 @@ export class JantNavManager extends LitElement {
             <input
               type="text"
               class="input"
-              required
+              maxlength="100"
+              placeholder=${item.displayLabel ?? ""}
               .value=${this._editLabel}
               @input=${(e: Event) => {
                 this._editLabel = (e.target as HTMLInputElement).value;
@@ -1484,8 +1495,8 @@ export class JantNavManager extends LitElement {
             <input
               type="text"
               class="input"
-              required
               maxlength="100"
+              placeholder=${item.displayLabel ?? ""}
               .value=${this._editLabel}
               @input=${(e: Event) => {
                 this._editLabel = (e.target as HTMLInputElement).value;

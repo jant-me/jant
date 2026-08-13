@@ -14,6 +14,9 @@
  *   shared Han characters is not, and that case deliberately falls back.
  * - Latin script says "not CJK", nothing more. It resolves to a language only
  *   when the site publishes exactly one non-CJK language.
+ * - Nothing at all is read out of a fragment. See `MIN_SIGNAL`: under a couple
+ *   of words the honest answer is the caller's default, not a coin toss that
+ *   changes with the next keystroke.
  *
  * The detector **never** returns an empty value or a language the site does
  * not publish: it always answers with a member of `languages`, falling back to
@@ -128,35 +131,105 @@ function countScripts(text: string): ScriptCounts {
 }
 
 /**
+ * What a CJK character is worth against a Latin letter.
+ *
+ * A Han character is closer to a word than to a letter, and kana and Hangul
+ * sit in between — so counting characters straight would let a two-character
+ * quote outvote a paragraph. Three is the rough density ratio between CJK and
+ * Latin text, and it is the only number here that has to be approximate: it
+ * decides ties between scripts, not what any one script means.
+ */
+const CJK_WEIGHT = 3;
+
+/**
+ * How much evidence it takes before the detector will name a script at all.
+ *
+ * Ten points is four Han characters, or two English words. Below that the
+ * answer would swing on every keystroke — a composer that reads "H" as English
+ * and "He 说" as Chinese is not reading, it is twitching. Under the threshold
+ * the detector refuses and the caller keeps its own default, which is the
+ * language of the page the author is writing from.
+ */
+const MIN_SIGNAL = 10;
+
+/**
  * Identify the script family a piece of text is written in.
  *
  * Exported for its own sake — the language-set resolution below is a separate
  * concern, and testing the two apart keeps both honest.
  *
  * @param text - Plain text, typically a post body
- * @returns The script family, or null when the text carries no signal
+ * @returns The script family, or null when the text carries too little signal
  * @example
  * detectScript("これはテスト"); // "ja"
  * detectScript("國學說這時"); // "zh-Hant"
+ * detectScript("Hi"); // null — too short to be worth an answer
  * detectScript("123 !!!"); // null
  */
 export function detectScript(text: string): DetectedScript | null {
   const counts = countScripts(text);
+  const cjk = (counts.hangul + counts.kana + counts.han) * CJK_WEIGHT;
 
-  // Korean mixes Hangul with Han; Japanese mixes kana with Han. Neither
-  // borrows the other's syllabary, so either one present settles it.
-  if (counts.hangul > 0) return "ko";
-  if (counts.kana > 0) return "ja";
-
-  if (counts.han > 0) {
+  // Which script the text is *mostly* in, not merely which one appears in it:
+  // an English paragraph that quotes a Chinese phrase is still English, and
+  // before this comparison a single Han character spoke for the whole post.
+  if (cjk >= counts.latin && cjk >= MIN_SIGNAL) {
+    // Korean mixes Hangul with Han; Japanese mixes kana with Han. Neither
+    // borrows the other's syllabary, so either one present settles it.
+    if (counts.hangul > 0) return "ko";
+    if (counts.kana > 0) return "ja";
     if (counts.simplified > counts.traditional) return "zh-Hans";
     if (counts.traditional > counts.simplified) return "zh-Hant";
-    // Han with no distinctive character either way — a short phrase written
+    // Han with no distinctive character either way — a phrase written
     // identically in both. Refuse to guess.
     return null;
   }
 
-  return counts.latin > 0 ? "latin" : null;
+  return counts.latin >= MIN_SIGNAL ? "latin" : null;
+}
+
+/**
+ * Read one of the site's languages out of a piece of text, or admit that the
+ * text does not say.
+ *
+ * The distinction is the whole point of this function existing next to
+ * `detectContentLanguage`: a caller that substitutes a default cannot tell
+ * "this is English" from "I could not tell, here is your default", and a
+ * composer that reports the second as the first is lying to the author.
+ *
+ * @param text - Plain text, typically a post body
+ * @param options - The languages the site publishes
+ * @returns A tag from `options.languages`, or null when the text does not
+ *   settle on one of them
+ * @example
+ * readContentLanguage("國學說這時會對後", {
+ *   languages: ["zh-Hans", "zh-Hant", "en"],
+ * }); // "zh-Hant"
+ * readContentLanguage("Hi", { languages: ["zh-Hans", "en"] }); // null
+ */
+export function readContentLanguage(
+  text: string,
+  options: { languages: readonly string[] },
+): string | null {
+  const { languages } = options;
+  if (languages.length === 0) return null;
+
+  const script = detectScript(text);
+  if (!script) return null;
+
+  if (script === "latin") {
+    // Latin script only says "not CJK". That names a language only when there
+    // is exactly one candidate; with English and French configured, guessing
+    // between them from the alphabet alone would be a coin toss.
+    const nonCjk = languages.filter((tag) => !getCjkFontFromLanguageTag(tag));
+    return nonCjk.length === 1 ? (nonCjk[0] as string) : null;
+  }
+
+  // No match means the site does not publish the detected script — say nothing
+  // rather than invent a language the author never configured.
+  return (
+    languages.find((tag) => getCjkFontFromLanguageTag(tag) === script) ?? null
+  );
 }
 
 /**
@@ -176,28 +249,7 @@ export function detectContentLanguage(
   text: string,
   options: { languages: readonly string[]; fallback: string },
 ): string {
-  const { languages, fallback } = options;
-  if (languages.length === 0) return fallback;
-
-  const script = detectScript(text);
-  if (!script) return fallback;
-
-  if (script === "latin") {
-    // Latin script only says "not CJK". That names a language only when there
-    // is exactly one candidate; with English and French configured, guessing
-    // between them from the alphabet alone would be a coin toss.
-    const nonCjk = languages.filter((tag) => !getCjkFontFromLanguageTag(tag));
-    return nonCjk.length === 1 ? (nonCjk[0] as string) : fallback;
-  }
-
-  const match = languages.find(
-    (tag) => getCjkFontFromLanguageTag(tag) === script,
-  );
-  if (match) return match;
-
-  // The site does not publish the detected script. Keep the author's default
-  // rather than inventing a language they never configured.
-  return fallback;
+  return readContentLanguage(text, options) ?? options.fallback;
 }
 
 /**

@@ -15,7 +15,7 @@ import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { ifDefined } from "lit/directives/if-defined.js";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { extractBodyText } from "../../lib/summary.js";
-import { suggestPostLanguage } from "../../lib/lang-detect.js";
+import { readContentLanguage } from "../../lib/lang-detect.js";
 import type {
   ComposeFormat,
   ComposeVisibility,
@@ -126,6 +126,11 @@ interface ComposePostResponse {
   rating?: number | null;
   publishedAt?: number | null;
   bodyHtml?: string | null;
+  /**
+   * The language this Post is filed under. Null on a single-language site, and
+   * on posts written before the feature was turned on.
+   */
+  language?: string | null;
 }
 
 interface DraftsResponse {
@@ -156,6 +161,8 @@ interface ComposeStateSnapshot {
   publishedAtInput: string;
   publishedAtTimeMinutes: number | null;
   visibility: ComposeVisibility;
+  /** The author's explicit language choice, not what detection reads. */
+  language: string | null;
   title: string;
   bodyJson: JSONContent | null;
   url: string;
@@ -286,6 +293,17 @@ const COMPOSE_PUBLISH_ACTION_ICONS = {
     <circle cx="14" cy="15.5" r="2.2" stroke-width="1.8" />
   `,
 } as const;
+
+/* The site header's globe, stroke for stroke. Language already has a symbol on
+   this site — the switcher in the top right — and the author is the one person
+   who sees both. A second glyph for the same idea would only be a second thing
+   to learn. Drawn on a 24 grid like its counterpart, so the two are literally
+   the same artwork at two sizes. */
+const COMPOSE_LANGUAGE_ICON = `
+  <circle cx="12" cy="12" r="10" />
+  <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+  <path d="M2 12h20" />
+`;
 
 const COMPOSE_COLLECTION_PICKER_ICONS = {
   /* A stack seen edge-on, not a folder: a collection is a post filed under
@@ -682,7 +700,7 @@ export class JantComposeDialog extends LitElement {
     _visibilityLocked: { state: true },
     _quietReply: { state: true },
     _language: { state: true },
-    _langConfirm: { state: true },
+    _showLanguagePicker: { state: true },
     _translationOf: { state: true },
     _translationCollapsed: { state: true },
   };
@@ -742,14 +760,8 @@ export class JantComposeDialog extends LitElement {
   declare _quietReply: boolean;
   /** Author's explicit language choice. Null means "let Jant read it". */
   declare _language: string | null;
-  /**
-   * The publish-time language check, when it is on screen: detection read the
-   * text as one language while the page the composer opened from is in
-   * another, so the author is asked which one they meant.
-   */
-  declare _langConfirm: { detected: string; context: string } | null;
-  /** Settles the pending publish once the language check is answered. */
-  #langConfirmResolve: ((choice: string | null) => void) | null = null;
+  /** Whether the language pill's list of choices is open. */
+  declare _showLanguagePicker: boolean;
   /**
    * Thread root this post is being written as a translation of, with enough of
    * it to read: translating from a title alone means keeping the original open
@@ -875,7 +887,7 @@ export class JantComposeDialog extends LitElement {
     this._visibilityLocked = false;
     this._quietReply = false;
     this._language = null;
-    this._langConfirm = null;
+    this._showLanguagePicker = false;
     this._translationOf = null;
     this._translationCollapsed = false;
     this._seededFromSource = false;
@@ -1030,7 +1042,7 @@ export class JantComposeDialog extends LitElement {
     this._visibilityLocked = false;
     this._quietReply = false;
     this._language = null;
-    this.#cancelLanguageConfirm();
+    this._showLanguagePicker = false;
     this._translationOf = null;
     this._translationCollapsed = false;
     this._seededFromSource = false;
@@ -1108,6 +1120,11 @@ export class JantComposeDialog extends LitElement {
       this._initialSlug = this._slug.trim();
       this._visibility = post.visibility ?? "public";
       this._visibilityLocked = Boolean(post.replyToId);
+      // A published post's language is a settled fact, so it comes back as the
+      // author's own choice rather than as something to re-read: editing a
+      // Chinese post from an English page must not quietly re-file it, and the
+      // pill next to Post has to show what this post *is*, not a fresh guess.
+      this._language = post.language ?? null;
 
       if (post.replyToId) {
         this._replyToId = post.replyToId;
@@ -1452,6 +1469,7 @@ export class JantComposeDialog extends LitElement {
       publishedAtInput: this._publishedAtInput,
       publishedAtTimeMinutes: this._publishedAtTimeMinutes,
       visibility: this._visibility,
+      language: this._language,
       title: editorData.title,
       bodyJson: editor.getNormalizedBodyJson(),
       url: editorData.url,
@@ -1504,11 +1522,6 @@ export class JantComposeDialog extends LitElement {
   requestClose() {
     if (this._loading) return;
 
-    // A pending language check belongs to a publish that no longer happens.
-    if (this._langConfirm) {
-      this.#cancelLanguageConfirm();
-    }
-
     // Dismiss any open dropdowns first
     if (this._showCollection) {
       this._closeCollectionPicker();
@@ -1516,6 +1529,7 @@ export class JantComposeDialog extends LitElement {
     if (this._showPublishPanel) {
       this._showPublishPanel = false;
     }
+    this._showLanguagePicker = false;
 
     if (this._confirmPanelOpen) {
       const restoreAttachedFocus = this._confirmForAttachedText;
@@ -1761,9 +1775,10 @@ export class JantComposeDialog extends LitElement {
       replyRefreshKind: this._replyRefreshKind ?? undefined,
       replyRefreshId: this._replyRefreshId ?? undefined,
       // Only the root carries a language: a reply belongs to its Thread and
-      // inherits it server-side. An automatic choice resolves here to the
-      // page's language (or what detection read, once the author confirmed
-      // it); absent only on a single-language site, where the server decides.
+      // inherits it server-side. An automatic choice resolves here to whatever
+      // the pill beside this button has been showing — what detection read, or
+      // the page's language while it has read nothing. Absent only on a
+      // single-language site, where the server decides.
       language: this._replyToId
         ? undefined
         : (this._effectiveLanguage() ?? undefined),
@@ -1955,17 +1970,6 @@ export class JantComposeDialog extends LitElement {
 
   private _submit(status: "published" | "draft") {
     this._showPublishPanel = false;
-    // Publishing is the moment a language becomes a public fact, so the
-    // check runs here; a draft save keeps whatever the author has so far.
-    // The submit stays synchronous whenever no sheet is needed.
-    const pending =
-      status === "published" ? this._maybeConfirmLanguage() : null;
-    if (pending) {
-      void pending.then((confirmed) => {
-        if (confirmed) this._finishSubmit(status);
-      });
-      return;
-    }
     this._finishSubmit(status);
   }
 
@@ -2736,11 +2740,6 @@ export class JantComposeDialog extends LitElement {
   }
 
   private _dismissEscapeOverlay(): boolean {
-    if (this._langConfirm) {
-      this.#cancelLanguageConfirm();
-      return true;
-    }
-
     if (this._confirmPanelOpen) {
       this.requestClose();
       return true;
@@ -2753,6 +2752,11 @@ export class JantComposeDialog extends LitElement {
 
     if (this._editor?.isEmojiPickerOpen()) {
       this._editor.closeEmojiPicker({ restoreFocus: true });
+      return true;
+    }
+
+    if (this._showLanguagePicker) {
+      this._closeLanguagePicker(true);
       return true;
     }
 
@@ -2811,14 +2815,6 @@ export class JantComposeDialog extends LitElement {
       if (this._shouldIgnoreEscapeClose()) return;
       if (this._dismissEscapeOverlay()) return;
       this.requestClose();
-    } else if (ke.key === "Enter" && this._langConfirm) {
-      // A button inside the sheet activates itself; Enter anywhere else
-      // confirms what detection read, as the likeliest answer.
-      const target = ke.target as HTMLElement | null;
-      if (!target?.closest("[data-lang-confirm]")) {
-        ke.preventDefault();
-        this.#langConfirmResolve?.(this._langConfirm.detected);
-      }
     } else if (ke.key === "Enter" && this._confirmPanelOpen) {
       ke.preventDefault();
       this._handleConfirmSave();
@@ -3854,6 +3850,10 @@ export class JantComposeDialog extends LitElement {
     this._publishedAtInput = draft.publishedAtInput ?? "";
     this._publishedAtTimeMinutes = draft.publishedAtTimeMinutes ?? null;
     this._visibility = draft.visibility ?? "public";
+    // The draft speaks for the language too, and its answer may be that the
+    // author put this post back on automatic — so it replaces the one seeded
+    // from the post rather than filling in for a missing one.
+    this._language = draft.language ?? null;
 
     // Restore editor content
     const textAttachments = draft.attachedTexts?.flatMap((t) => {
@@ -4430,6 +4430,7 @@ export class JantComposeDialog extends LitElement {
             @click=${() => {
               const nextOpen = !this._showCollection;
               this._showPublishPanel = false;
+              this._showLanguagePicker = false;
               if (nextOpen) {
                 this._prepareCollectionPickerOrder();
               }
@@ -4879,64 +4880,6 @@ export class JantComposeDialog extends LitElement {
     `;
   }
 
-  /**
-   * The publish-time language check sheet (see `_resolveAutoLanguage`).
-   *
-   * Both languages are named in themselves, the way the site's language
-   * switcher does it — the author choosing "日本語" should read it as such.
-   */
-  private _renderLanguageConfirmPanel() {
-    if (!this._langConfirm) return nothing;
-    const { detected, context } = this._langConfirm;
-
-    const nameOf = (tag: string) =>
-      this.languages.find((language) => language.tag === tag)?.label ?? tag;
-    const withLanguage = (template: string, tag: string) => {
-      const slot = template.indexOf("{language}");
-      if (slot === -1) return html`${template}`;
-      return html`${template.slice(0, slot)}<span lang=${tag}
-          >${nameOf(tag)}</span
-        >${template.slice(slot + "{language}".length)}`;
-    };
-
-    return html`
-      <div class="compose-confirm-panel" data-lang-confirm>
-        <div class="compose-confirm-sheet">
-          <div class="compose-confirm-header">
-            <p class="compose-confirm-title">
-              ${withLanguage(this.labels.languageConfirmTitle, detected)}
-            </p>
-            <p class="compose-confirm-subtitle">
-              ${this.labels.languageConfirmSubtitle}
-            </p>
-          </div>
-          <button
-            type="button"
-            class="compose-confirm-action compose-confirm-save"
-            data-lang-confirm-primary
-            @click=${() => this.#langConfirmResolve?.(detected)}
-          >
-            ${withLanguage(this.labels.languageConfirmPublishIn, detected)}
-          </button>
-          <button
-            type="button"
-            class="compose-confirm-action"
-            @click=${() => this.#langConfirmResolve?.(context)}
-          >
-            ${withLanguage(this.labels.languageConfirmPublishIn, context)}
-          </button>
-          <button
-            type="button"
-            class="compose-confirm-action compose-confirm-cancel"
-            @click=${() => this.#cancelLanguageConfirm()}
-          >
-            ${this.labels.confirmCloseCancel}
-          </button>
-        </div>
-      </div>
-    `;
-  }
-
   private _getSubmitLabel(): string {
     if (this._editPostId) return this.labels.update;
     if (this._replyToId) {
@@ -5130,6 +5073,7 @@ export class JantComposeDialog extends LitElement {
     this._showCollection = false;
     this._collectionSearch = "";
     this._showPublishPanel = false;
+    this._showLanguagePicker = false;
     this._postMetaIndex = index;
     this._confirmPanelOpen = false;
     this._scheduleSuggestedSlugRefresh(true);
@@ -5173,6 +5117,7 @@ export class JantComposeDialog extends LitElement {
   private _togglePublishPanel() {
     this._showCollection = false;
     this._collectionSearch = "";
+    this._showLanguagePicker = false;
     const nextOpen = !this._showPublishPanel;
     this._showPublishPanel = nextOpen;
     if (nextOpen) {
@@ -5424,71 +5369,25 @@ export class JantComposeDialog extends LitElement {
       : (tags[0] as string);
   }
 
+  /**
+   * What detection actually reads out of the text as it stands, or null when
+   * the text does not say yet.
+   *
+   * Null is a distinct answer from "the page's language", and the "Detect" row
+   * has to tell them apart: a row offering to read what you write cannot claim
+   * to have read something out of two words. It also ignores an explicit
+   * choice — the row describes what picking it would do, not what the author
+   * picked instead.
+   */
+  private _readLanguage(): string | null {
+    return readContentLanguage(this._composeTextForDetection(), {
+      languages: this.languages.map((language) => language.tag),
+    });
+  }
+
   /** The language this post would be saved with if submitted right now. */
   private _effectiveLanguage(): string | null {
-    if (this._language) return this._language;
-    const context = this._contextLanguageTag();
-    if (!context) return null;
-    return suggestPostLanguage({
-      text: this._composeTextForDetection(),
-      languages: this.languages.map((language) => language.tag),
-      primary: context,
-    });
-  }
-
-  /**
-   * The publish-time language check.
-   *
-   * A post left on automatic publishes in the current page's language — an
-   * author browsing /ja is writing for /ja. Detection acts as a tripwire, not
-   * an authority: only when it confidently reads the text as a *different*
-   * language does a small sheet ask which one was meant, and the answer
-   * becomes the author's explicit choice. An explicit choice is never
-   * second-guessed, and replies inherit their thread's language server-side.
-   *
-   * @returns A pending answer while the sheet is up; null when no check is
-   *   needed, so the caller can keep the submit fully synchronous
-   */
-  private _maybeConfirmLanguage(): Promise<boolean> | null {
-    if (this._replyToId || this._language || this.languages.length < 2) {
-      return null;
-    }
-    const context = this._contextLanguageTag();
-    if (!context) return null;
-
-    const detected = suggestPostLanguage({
-      text: this._composeTextForDetection(),
-      languages: this.languages.map((language) => language.tag),
-      primary: context,
-    });
-    if (!detected || detected === context) return null;
-
-    return new Promise((resolve) => {
-      this._langConfirm = { detected, context };
-      this.#langConfirmResolve = (choice) => {
-        this._langConfirm = null;
-        this.#langConfirmResolve = null;
-        if (!choice) {
-          resolve(false);
-          this.updateComplete.then(() => this._editor?.focusInput());
-          return;
-        }
-        this._language = choice;
-        resolve(true);
-      };
-      void this.updateComplete.then(() => {
-        this.querySelector<HTMLElement>("[data-lang-confirm-primary]")?.focus();
-      });
-    });
-  }
-
-  /** Dismiss the language check without publishing, if it is on screen. */
-  #cancelLanguageConfirm() {
-    if (!this.#langConfirmResolve) {
-      this._langConfirm = null;
-      return;
-    }
-    this.#langConfirmResolve(null);
+    return this._language ?? this._readLanguage() ?? this._contextLanguageTag();
   }
 
   private _renderLanguageRow(tag: string | null, label: string, hint: string) {
@@ -5504,9 +5403,13 @@ export class JantComposeDialog extends LitElement {
         role="radio"
         aria-checked=${selected ? "true" : "false"}
         lang=${ifDefined(tag ?? undefined)}
+        data-compose-language-row
         @click=${() => {
           this._language = tag;
           this._scheduleDraftSave();
+          // Choosing is the whole job of this list, so it closes behind the
+          // choice — the same as picking a visibility in the options sheet.
+          this._closeLanguagePicker(true);
         }}
       >
         <span class="compose-sheet-main">
@@ -5527,45 +5430,165 @@ export class JantComposeDialog extends LitElement {
     `;
   }
 
+  private _closeLanguagePicker(restoreFocus = false) {
+    if (!this._showLanguagePicker) return;
+    this._showLanguagePicker = false;
+    if (!restoreFocus) return;
+    this.updateComplete.then(() => {
+      this.querySelector<HTMLElement>(
+        "[data-compose-language-trigger]",
+      )?.focus();
+    });
+  }
+
+  private _toggleLanguagePicker() {
+    const nextOpen = !this._showLanguagePicker;
+    if (!nextOpen) {
+      this._closeLanguagePicker(true);
+      return;
+    }
+    this._showCollection = false;
+    this._collectionSearch = "";
+    this._showPublishPanel = false;
+    this._postMetaIndex = null;
+    this._showLanguagePicker = true;
+    this.updateComplete.then(() => {
+      const rows = this.querySelectorAll<HTMLElement>(
+        "[data-compose-language-row]",
+      );
+      const selected = Array.from(rows).find(
+        (row) => row.getAttribute("aria-checked") === "true",
+      );
+      (selected ?? rows[0])?.focus();
+    });
+  }
+
   /**
    * The post's content language, offered only once the site publishes more
    * than one. A single-language author never meets this control — that is the
    * point of the whole feature being opt-in.
    *
+   * It sits next to Post rather than inside the options sheet because it is
+   * not a setting so much as a statement about what is being written: the pill
+   * names the language this would publish in right now, so the answer is
+   * visible before the button that makes it public, not two clicks behind it.
+   *
+   * It only *names* it when there is something to say, though. Writing from
+   * /ja in Japanese, the globe alone is the whole message — the answer is the
+   * page you are standing on. The name appears when the answer stops being
+   * obvious: detection has moved it somewhere else, or the author has pinned
+   * it themselves. So a language that changes under you announces itself by
+   * growing a word, and one that never changes never speaks.
+   *
    * Replies are excluded: a Thread is written in one language, and a reply
    * takes the root's server-side.
    */
-  private _renderLanguageSection() {
+  private _renderLanguageControl() {
     if (this._replyToId || this.languages.length < 2) return nothing;
 
-    const detected = this._effectiveLanguage();
-    const detectedLabel =
-      this.languages.find((language) => language.tag === detected)?.label ?? "";
+    const effective = this._effectiveLanguage();
+    const effectiveLabel =
+      this.languages.find((language) => language.tag === effective)?.label ??
+      "";
+    const chosen = this._language !== null;
+    const named = chosen || effective !== this._contextLanguageTag();
+    const open = this._showLanguagePicker;
+    const accessibleLabel = this.labels.languageTriggerLabel.replace(
+      "{language}",
+      effectiveLabel,
+    );
 
     return html`
-      <p class="compose-sheet-label">${this.labels.languageLabel}</p>
-      ${this._translationOf
-        ? html`<p class="compose-sheet-note">
-            ${this.labels.translationOf.replace(
-              "{title}",
-              this._translationOf.title,
-            )}
-          </p>`
-        : nothing}
-      <div role="radiogroup" aria-label=${this.labels.languageLabel}>
-        ${this._renderLanguageRow(
-          null,
-          this.labels.languageAuto,
-          detectedLabel
-            ? this.labels.languageAutoDetected.replace(
-                "{language}",
-                detectedLabel,
-              )
-            : this.labels.languageAutoHint,
-        )}
-        ${this.languages.map((language) =>
-          this._renderLanguageRow(language.tag, language.label, ""),
-        )}
+      <div
+        class=${classMap({
+          "compose-language": true,
+          "compose-language-open": open,
+        })}
+      >
+        ${open
+          ? html`<div
+              class="compose-dropdown-backdrop"
+              @click=${() => this._closeLanguagePicker(true)}
+            ></div>`
+          : nothing}
+        <button
+          type="button"
+          class=${classMap({
+            "compose-language-trigger": true,
+            "compose-language-trigger-bare": !named,
+          })}
+          data-compose-language-trigger
+          data-open=${open ? "true" : nothing}
+          data-chosen=${chosen ? "true" : nothing}
+          ?disabled=${this._loading}
+          aria-haspopup="dialog"
+          aria-expanded=${open ? "true" : "false"}
+          aria-label=${accessibleLabel}
+          title=${accessibleLabel}
+          @click=${() => this._toggleLanguagePicker()}
+        >
+          <svg
+            class="compose-language-trigger-svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.9"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            ${unsafeSVG(COMPOSE_LANGUAGE_ICON)}
+          </svg>
+          ${named
+            ? html`<span
+                class="compose-language-label"
+                lang=${ifDefined(effective ?? undefined)}
+                >${effectiveLabel}</span
+              >`
+            : nothing}
+        </button>
+        ${open ? this._renderLanguagePicker() : nothing}
+      </div>
+    `;
+  }
+
+  private _renderLanguagePicker() {
+    const labelOf = (tag: string | null) =>
+      this.languages.find((language) => language.tag === tag)?.label ?? "";
+    // Two states, and the row has to be straight about which one it is in: it
+    // has read a language, or it has not read one yet and the page's language
+    // is standing in until it does.
+    const read = this._readLanguage();
+    const pendingLabel = labelOf(this._contextLanguageTag());
+    const autoHint = read
+      ? this.labels.languageAutoDetected.replace("{language}", labelOf(read))
+      : pendingLabel
+        ? this.labels.languageAutoPending.replace("{language}", pendingLabel)
+        : this.labels.languageAutoHint;
+
+    return html`
+      <div
+        class="compose-language-popover"
+        role="dialog"
+        aria-label=${this.labels.languageLabel}
+      >
+        <p class="compose-sheet-label">${this.labels.languageLabel}</p>
+        ${this._translationOf
+          ? html`<p class="compose-sheet-note">
+              ${this.labels.translationOf.replace(
+                "{title}",
+                this._translationOf.title,
+              )}
+            </p>`
+          : nothing}
+        <div role="radiogroup" aria-label=${this.labels.languageLabel}>
+          ${this._renderLanguageRow(null, this.labels.languageAuto, autoHint)}
+          ${this.languages.map((language) =>
+            this._renderLanguageRow(language.tag, language.label, ""),
+          )}
+        </div>
       </div>
     `;
   }
@@ -5992,6 +6015,7 @@ export class JantComposeDialog extends LitElement {
             if (open) return this._closePostMeta();
             this._showPublishPanel = false;
             this._showCollection = false;
+            this._showLanguagePicker = false;
             this._postMetaIndex = index;
             if (isRoot) this._scheduleSuggestedSlugRefresh(true);
             // Focus the panel, not its first field: a focused `type="date"`
@@ -6213,13 +6237,8 @@ export class JantComposeDialog extends LitElement {
     const hasSessionRows =
       saveDraftRow !== nothing || draftsRow !== nothing || closeRow !== nothing;
 
-    const languageSection = this._renderLanguageSection();
-
     return html`
       <div class="compose-sheet">
-        ${languageSection === nothing
-          ? nothing
-          : html`${languageSection}${divider}`}
         ${this._visibilityLocked
           ? nothing
           : html`
@@ -7071,16 +7090,18 @@ export class JantComposeDialog extends LitElement {
                   "compose-action-row": true,
                   "compose-action-row-without-collection": !!this._replyToId,
                   "compose-action-row-overlay-open":
-                    this._showPublishPanel || this._showCollection,
+                    this._showPublishPanel ||
+                    this._showCollection ||
+                    this._showLanguagePicker,
                 })}
               >
                 ${this._replyToId ? nothing : this._renderCollectionSelector()}
-                ${this._renderPublishButton()}
+                ${this._renderLanguageControl()} ${this._renderPublishButton()}
               </div>
               ${this._renderQuickActionsRow()}`}
         ${this._renderMobilePublishPanel()} ${this._renderAttachedPanel()}
         ${this._renderAltPanel()} ${this._renderDraftsPanel()}
-        ${this._renderConfirmPanel()} ${this._renderLanguageConfirmPanel()}
+        ${this._renderConfirmPanel()}
       </div>
       ${this._renderAddCollectionPanel()}
     `;

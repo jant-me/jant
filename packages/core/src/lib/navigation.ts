@@ -70,12 +70,24 @@ export async function getNavigationData(
     languageScope?: string | null;
   },
 ): Promise<NavigationData> {
+  const appConfig = c.var.appConfig;
+  const langBase =
+    options?.languageScope !== undefined
+      ? languageScopeBasePath(c, options.languageScope)
+      : viewBasePath(c);
+  // An empty prefix means the primary language's view, whose nav items already
+  // point where they should — so the whole primary-language site, multilingual
+  // or not, never pays for the translation lookup.
+  const scopeLanguage = langBase
+    ? (options?.languageScope ?? c.var.viewLang ?? null)
+    : null;
+
   // Callers that already fetched nav items can pass them in to avoid a
   // redundant DB round-trip.
   const savedItems =
-    options?.preloadedItems ?? (await c.var.services.navItems.list());
+    options?.preloadedItems ??
+    (await c.var.services.navItems.list({ language: scopeLanguage }));
   const currentPath = c.var.publicPath;
-  const appConfig = c.var.appConfig;
   // Keep the saved RSS item untouched so its placement and custom label come
   // back when feeds are re-enabled. Only the rendered projection is filtered.
   const items = appConfig.rssFeedsEnabled
@@ -126,10 +138,6 @@ export async function getNavigationData(
       ? await c.var.services.navItems.getCollectionFreshness(collectionNavIds)
       : undefined;
 
-  const langBase =
-    options?.languageScope !== undefined
-      ? languageScopeBasePath(c, options.languageScope)
-      : viewBasePath(c);
   const basePath = `${appConfig.sitePathPrefix}${langBase}`;
 
   const links = toNavItemViews(

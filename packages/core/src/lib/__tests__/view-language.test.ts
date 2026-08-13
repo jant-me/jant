@@ -289,8 +289,15 @@ describe("buildLanguageSwitcher", () => {
         label: "简体中文",
         href: "/archive",
         isCurrent: false,
+        isPrimary: true,
       },
-      { lang: "en", label: "English", href: "/en/archive", isCurrent: true },
+      {
+        lang: "en",
+        label: "English",
+        href: "/en/archive",
+        isCurrent: true,
+        isPrimary: false,
+      },
     ]);
   });
 
@@ -305,12 +312,19 @@ describe("buildLanguageSwitcher", () => {
         currentLang: "zh-Hans",
       }),
     ).toEqual([
-      { lang: "zh-Hans", label: "简体中文", href: "/", isCurrent: true },
+      {
+        lang: "zh-Hans",
+        label: "简体中文",
+        href: "/",
+        isCurrent: true,
+        isPrimary: true,
+      },
       {
         lang: "en",
         label: "English",
         href: "/the-translation",
         isCurrent: false,
+        isPrimary: false,
       },
     ]);
   });

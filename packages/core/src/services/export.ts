@@ -141,7 +141,13 @@ export interface SiteConfig {
   sitePathPrefix?: string;
   navItems: Pick<
     NavItem,
-    "type" | "systemKey" | "label" | "url" | "position" | "placement"
+    | "type"
+    | "systemKey"
+    | "label"
+    | "targetTitle"
+    | "url"
+    | "position"
+    | "placement"
   >[];
   /** Items per page for Hugo pagination — kept in sync with the main site's PAGE_SIZE. */
   pageSize: number;
@@ -1365,13 +1371,21 @@ function buildExportedCollectionMetrics(
 // Nav item resolution
 // ---------------------------------------------------------------------------
 
+/**
+ * Label to bake into the static site.
+ *
+ * Mirrors `getNavItemDisplayLabel`: a stored label is the author's own words
+ * and wins, an empty one means the item follows what it points at. The export
+ * has no i18n runtime, so built-in destinations fall back to their English
+ * default rather than a translated one.
+ */
 function resolveNavItemLabel(item: SiteConfig["navItems"][number]): string {
   if (item.label) return item.label;
   if (item.systemKey) {
     const definition = SYSTEM_NAV_KEYS[item.systemKey as SystemNavKey];
     if (definition) return definition.defaultLabel;
   }
-  return item.label;
+  return item.targetTitle?.trim() || item.label;
 }
 
 /**

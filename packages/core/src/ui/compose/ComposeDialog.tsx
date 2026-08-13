@@ -30,8 +30,8 @@ export interface ComposeDialogProps {
   languages?: ComposeLanguage[];
   /**
    * Content language of the page the composer opens from. A post left on
-   * automatic publishes in this language unless detection disagrees, in which
-   * case the author is asked which one they meant.
+   * automatic publishes in this language until detection reads the writing as
+   * another one, which the composer says on the button beside Post.
    */
   contextLanguage?: string | null;
 }
@@ -942,28 +942,23 @@ export const ComposeForm: FC<ComposeFormProps> = ({
       // Detected in the browser from the current text; see `translationOf`.
       { language: "{language}" },
     ),
-    languageConfirmTitle: i18n._(
+    languageAutoPending: i18n._(
       msg({
-        message: "This looks like {language}",
+        message: "Not enough text to tell yet — publishes in {language}",
         comment:
-          "@context: Title of the publish-time check shown when the detected language differs from the page's language",
+          "@context: Help text under the compose language field before there is enough writing to read a language out of; {language} is the one it would publish in meanwhile, which is the language of the page the composer was opened from",
       }),
-      // Detected in the browser at publish time; see `translationOf`.
+      // Only known in the browser; see `translationOf`.
       { language: "{language}" },
     ),
-    languageConfirmSubtitle: i18n._(
+    languageTriggerLabel: i18n._(
       msg({
-        message: "Which language should it publish in?",
-        comment: "@context: Question under the publish-time language check",
-      }),
-    ),
-    languageConfirmPublishIn: i18n._(
-      msg({
-        message: "Publish in {language}",
+        message: "Language: {language}",
         comment:
-          "@context: Publish-time language check action, one button per language",
+          "@context: Accessible name of the composer's language button, which sits beside Post and names the language this post would publish in",
       }),
-      // Filled in the browser with each choice's own name.
+      // Filled in the browser with whichever language that is; see
+      // `translationOf`.
       { language: "{language}" },
     ),
     translationOf: i18n._(

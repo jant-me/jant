@@ -156,10 +156,11 @@ export type CreateNavItem =
       position?: string;
     }
   | {
+      // The URL is derived from the collection's slug and is not accepted
+      // here; an omitted label means the item follows the collection's title.
       type: "collection";
       collectionId: string;
-      label: string;
-      url: string;
+      label?: string;
       placement?: NavItemPlacement;
       position?: string;
     }

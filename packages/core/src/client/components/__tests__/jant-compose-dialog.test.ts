@@ -239,9 +239,8 @@ const labels: ComposeLabels = {
   languageAuto: "Detect",
   languageAutoHint: "Read from what you write",
   languageAutoDetected: "Read from what you write — looks like {language}",
-  languageConfirmTitle: "This looks like {language}",
-  languageConfirmSubtitle: "Which language should it publish in?",
-  languageConfirmPublishIn: "Publish in {language}",
+  languageAutoPending: "Not enough text to tell yet — publishes in {language}",
+  languageTriggerLabel: "Language: {language}",
   translationOf: "Translation of “{title}”",
   translationContext: "Translating",
   translationContextInLanguage: "Translating into {language}",
@@ -669,16 +668,19 @@ describe("JantComposeDialog", () => {
   });
 
   describe("language", () => {
-    async function openPublishPanel(el: JantComposeDialog) {
-      requireElement(
-        el.querySelector<HTMLButtonElement>(".compose-options-trigger"),
-        "expected options trigger",
-      ).click();
+    function languageTrigger(el: JantComposeDialog): HTMLButtonElement | null {
+      return el.querySelector<HTMLButtonElement>(".compose-language-trigger");
+    }
+
+    async function openLanguagePicker(el: JantComposeDialog) {
+      requireElement(languageTrigger(el), "expected language pill").click();
       await flushUpdates(el);
     }
 
     function languageRowTitles(el: JantComposeDialog): string[] {
-      const group = el.querySelector("[role='radiogroup']");
+      const group = el.querySelector(
+        ".compose-language-popover [role='radiogroup']",
+      );
       return Array.from(
         group?.querySelectorAll(".compose-sheet-title") ?? [],
       ).map((node) => node.textContent?.trim() ?? "");
@@ -688,9 +690,8 @@ describe("JantComposeDialog", () => {
       // The whole feature is opt-in: an author who never turned it on should
       // not meet a language control.
       const el = await createElement();
-      await openPublishPanel(el);
 
-      expect(languageRowTitles(el)).not.toContain("English");
+      expect(languageTrigger(el)).toBeNull();
       expect(el.textContent).not.toContain("Detect");
     });
 
@@ -701,9 +702,227 @@ describe("JantComposeDialog", () => {
         { tag: "en", label: "English" },
       ];
       await flushUpdates(el);
-      await openPublishPanel(el);
+      await openLanguagePicker(el);
 
       expect(languageRowTitles(el)).toEqual(["Detect", "简体中文", "English"]);
+    });
+
+    it("stays a bare globe while the answer is the page you are on", async () => {
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      el.contextLanguage = "en";
+      await flushUpdates(el);
+
+      // Writing English from /en: the globe is the whole message. The answer
+      // is still named for anyone who asks for it.
+      const trigger = requireElement(
+        languageTrigger(el),
+        "expected language pill",
+      );
+      expect(trigger.textContent?.trim()).toBe("");
+      expect(trigger.getAttribute("aria-label")).toBe("Language: English");
+      expect(trigger.getAttribute("title")).toBe("Language: English");
+      expect(trigger.dataset.chosen).toBeUndefined();
+    });
+
+    it("grows the language name once detection moves it", async () => {
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      el.contextLanguage = "en";
+      await flushUpdates(el);
+
+      const editor = requireElement(
+        el.querySelector<JantComposeEditor>("jant-compose-editor"),
+        "expected compose editor",
+      );
+      const write = async (text: string) => {
+        editor._bodyJson = {
+          type: "doc",
+          content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+        };
+        await editor.updateComplete;
+        await flushUpdates(el);
+      };
+
+      // A fragment is not evidence: two characters leave the pill alone.
+      await write("这会");
+      expect(languageTrigger(el)?.textContent?.trim()).toBe("");
+
+      // A sentence is. The pill says so itself, with nothing opened.
+      await write("这会说国学时间");
+      expect(languageTrigger(el)?.textContent?.trim()).toBe("简体中文");
+      expect(languageTrigger(el)?.getAttribute("aria-label")).toBe(
+        "Language: 简体中文",
+      );
+    });
+
+    it("marks the pill once the author picks a language themselves", async () => {
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      el.contextLanguage = "en";
+      await flushUpdates(el);
+      await openLanguagePicker(el);
+
+      const rows = Array.from(
+        el.querySelectorAll<HTMLButtonElement>(
+          ".compose-language-popover .compose-sheet-row",
+        ),
+      );
+      requireElement(rows[1] ?? null, "expected the 简体中文 row").click();
+      await flushUpdates(el);
+
+      // Choosing closes the list behind the choice.
+      expect(el.querySelector(".compose-language-popover")).toBeNull();
+      const trigger = requireElement(
+        languageTrigger(el),
+        "expected language pill",
+      );
+      expect(trigger.textContent?.trim()).toBe("简体中文");
+      expect(trigger.dataset.chosen).toBe("true");
+    });
+
+    it("says the text is too short rather than claiming a reading", async () => {
+      // Below the detector's threshold there is no reading to report. Naming
+      // the page's language here would pass a fallback off as an answer.
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      el.contextLanguage = "zh-Hans";
+      await flushUpdates(el);
+      await openLanguagePicker(el);
+
+      const hint = () =>
+        el
+          .querySelector(".compose-language-popover .compose-sheet-sub")
+          ?.textContent?.trim();
+      expect(hint()).toBe(
+        "Not enough text to tell yet — publishes in 简体中文",
+      );
+
+      const editor = requireElement(
+        el.querySelector<JantComposeEditor>("jant-compose-editor"),
+        "expected compose editor",
+      );
+      editor._bodyJson = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Hello there, in English." }],
+          },
+        ],
+      };
+      await editor.updateComplete;
+      await flushUpdates(el);
+
+      expect(hint()).toBe("Read from what you write — looks like English");
+    });
+
+    it("keeps the Detect row honest after an explicit choice", async () => {
+      // The row offers to read the text, so it has to report what reading it
+      // produces — not echo back the language the author picked instead.
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      el.contextLanguage = "en";
+      await flushUpdates(el);
+
+      const editor = requireElement(
+        el.querySelector<JantComposeEditor>("jant-compose-editor"),
+        "expected compose editor",
+      );
+      editor._bodyJson = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Hello there, in English." }],
+          },
+        ],
+      };
+      await editor.updateComplete;
+      await flushUpdates(el);
+      await openLanguagePicker(el);
+
+      const rows = Array.from(
+        el.querySelectorAll<HTMLButtonElement>(
+          ".compose-language-popover .compose-sheet-row",
+        ),
+      );
+      requireElement(rows[1] ?? null, "expected the 简体中文 row").click();
+      await flushUpdates(el);
+      await openLanguagePicker(el);
+
+      const hint = el.querySelector(
+        ".compose-language-popover .compose-sheet-sub",
+      );
+      expect(hint?.textContent?.trim()).toBe(
+        "Read from what you write — looks like English",
+      );
+    });
+
+    it("closes the list on Escape and hands focus back to the pill", async () => {
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      await flushUpdates(el);
+      await openLanguagePicker(el);
+      expect(el.querySelector(".compose-language-popover")).not.toBeNull();
+
+      el.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+      await flushUpdates(el);
+
+      expect(el.querySelector(".compose-language-popover")).toBeNull();
+      expect(document.activeElement).toBe(languageTrigger(el));
+    });
+
+    it("closes the list when another control opens", async () => {
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      await flushUpdates(el);
+      await openLanguagePicker(el);
+
+      await openPublishPanel(el);
+
+      expect(el.querySelector(".compose-language-popover")).toBeNull();
+      expect(el.querySelector(".compose-sheet")).not.toBeNull();
+    });
+
+    it("keeps language out of the options sheet", async () => {
+      // One setting, one place. The sheet speaks for the whole submission; the
+      // language belongs to what is being written.
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      await flushUpdates(el);
+
+      await openPublishPanel(el);
+
+      expect(
+        el.querySelector(".compose-sheet")?.textContent ?? "",
+      ).not.toContain("Detect");
     });
 
     /**
@@ -1076,7 +1295,7 @@ describe("JantComposeDialog", () => {
       ];
       el.contextLanguage = "en";
       await flushUpdates(el);
-      await openPublishPanel(el);
+      await openLanguagePicker(el);
 
       const build = (
         el as unknown as {
@@ -1092,13 +1311,51 @@ describe("JantComposeDialog", () => {
 
       const rows = Array.from(
         el.querySelectorAll<HTMLButtonElement>(
-          "[role='radiogroup'] .compose-sheet-row",
+          ".compose-language-popover .compose-sheet-row",
         ),
       );
       requireElement(rows[1] ?? null, "expected the 简体中文 row").click();
       await flushUpdates(el);
 
       expect(build("published")?.language).toBe("zh-Hans");
+    });
+
+    it("keeps a published post's own language when editing it", async () => {
+      // A post that is already filed in Japanese must not be re-read from the
+      // English page it is being edited on — the language is a fact about the
+      // post, not a guess to redo.
+      mockEditPost({
+        format: "note",
+        title: "Hi",
+        body: null,
+        language: "ja",
+      });
+
+      const el = await createElement();
+      el.languages = [
+        { tag: "en", label: "English" },
+        { tag: "ja", label: "日本語" },
+      ];
+      el.contextLanguage = "en";
+      await flushUpdates(el);
+      await el.openEdit("pst_123");
+      await flushUpdates(el);
+
+      const trigger = requireElement(
+        languageTrigger(el),
+        "expected language pill",
+      );
+      expect(trigger.textContent?.trim()).toBe("日本語");
+      expect(trigger.dataset.chosen).toBe("true");
+
+      const build = (
+        el as unknown as {
+          _buildSubmitDetail: (
+            status: "published" | "draft",
+          ) => ComposeSubmitDetail | null;
+        }
+      )._buildSubmitDetail.bind(el);
+      expect(build("published")?.language).toBe("ja");
     });
 
     it("falls back to the primary language when the page has none", async () => {
@@ -1120,7 +1377,8 @@ describe("JantComposeDialog", () => {
       expect(build("published")?.language).toBe("zh-Hans");
     });
 
-    describe("publish-time check", () => {
+    describe("publishing on automatic", () => {
+      /** A composer whose text reads as a different language than the page. */
       async function createMismatch(overrides?: {
         contextLanguage?: string;
         text?: string;
@@ -1149,6 +1407,7 @@ describe("JantComposeDialog", () => {
           ],
         };
         await editor.updateComplete;
+        await flushUpdates(el);
 
         const details: ComposeSubmitDetail[] = [];
         el.addEventListener("jant:compose-submit-deferred", (event) => {
@@ -1164,70 +1423,28 @@ describe("JantComposeDialog", () => {
         ).click();
       }
 
-      it("holds the publish when detection disagrees with the page", async () => {
+      it("publishes what the pill says, without stopping to ask", async () => {
+        // The pill grew the word 日本語 the moment detection moved off the
+        // page's language — the same moment a sheet used to interrupt. There
+        // is nothing left for one to add.
         const { el, details } = await createMismatch();
+        expect(
+          el.querySelector(".compose-language-trigger")?.textContent?.trim(),
+        ).toBe("日本語");
 
         clickPublish(el);
-        await flushUpdates(el);
-
-        // Nothing published yet — the sheet is asking.
-        expect(details).toHaveLength(0);
-        const sheet = el.querySelector("[data-lang-confirm]");
-        expect(sheet).not.toBeNull();
-        expect(sheet?.textContent).toContain("日本語");
-
-        el.querySelector<HTMLButtonElement>(
-          "[data-lang-confirm-primary]",
-        )?.click();
         await flushUpdates(el);
 
         expect(details).toHaveLength(1);
         expect(details[0]?.language).toBe("ja");
-        expect(el.querySelector("[data-lang-confirm]")).toBeNull();
       });
 
-      it("keeps the page's language when the author says so", async () => {
-        const { el, details } = await createMismatch();
-
-        clickPublish(el);
-        await flushUpdates(el);
-
-        // The second action is the page's language.
-        const actions = Array.from(
-          el.querySelectorAll<HTMLButtonElement>(
-            "[data-lang-confirm] .compose-confirm-action",
-          ),
-        );
-        actions[1]?.click();
-        await flushUpdates(el);
-
-        expect(details).toHaveLength(1);
-        expect(details[0]?.language).toBe("zh-Hans");
-      });
-
-      it("cancels back into the editor on Escape", async () => {
-        const { el, details } = await createMismatch();
-
-        clickPublish(el);
-        await flushUpdates(el);
-        expect(el.querySelector("[data-lang-confirm]")).not.toBeNull();
-
-        el.dispatchEvent(
-          new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-        );
-        await flushUpdates(el);
-
-        expect(el.querySelector("[data-lang-confirm]")).toBeNull();
-        expect(details).toHaveLength(0);
-      });
-
-      it("publishes without asking when detection agrees", async () => {
+      it("publishes in the page's language when detection agrees", async () => {
         const { el, details } = await createMismatch({ contextLanguage: "ja" });
 
         clickPublish(el);
         await flushUpdates(el);
 
-        expect(el.querySelector("[data-lang-confirm]")).toBeNull();
         expect(details).toHaveLength(1);
         expect(details[0]?.language).toBe("ja");
       });
@@ -1242,7 +1459,6 @@ describe("JantComposeDialog", () => {
         clickPublish(el);
         await flushUpdates(el);
 
-        expect(el.querySelector("[data-lang-confirm]")).toBeNull();
         expect(details).toHaveLength(1);
         expect(details[0]?.language).toBe("zh-Hans");
       });

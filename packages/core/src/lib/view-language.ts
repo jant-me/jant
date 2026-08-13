@@ -364,6 +364,7 @@ export function buildLanguageSwitcher(
   const currentPrefix = toLanguagePrefix(
     options.currentLang || getViewLang(c) || c.var.appConfig.siteLanguage,
   );
+  const primaryPrefix = toLanguagePrefix(c.var.appConfig.siteLanguage);
 
   return languages.map((lang) => {
     const override = options.hrefByLanguage?.get(lang);
@@ -374,6 +375,7 @@ export function buildLanguageSwitcher(
         ? toPublicPath(override, c.var.appConfig.sitePathPrefix)
         : toLanguagePath(c, lang, fallbackPath),
       isCurrent: toLanguagePrefix(lang) === currentPrefix,
+      isPrimary: toLanguagePrefix(lang) === primaryPrefix,
     };
   });
 }

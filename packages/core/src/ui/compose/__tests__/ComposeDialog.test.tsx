@@ -51,8 +51,8 @@ describe("ComposeForm labels", () => {
     expect(labels.translationOf).toContain("{title}");
     expect(labels.translationContextInLanguage).toContain("{language}");
     expect(labels.languageAutoDetected).toContain("{language}");
-    expect(labels.languageConfirmTitle).toContain("{language}");
-    expect(labels.languageConfirmPublishIn).toContain("{language}");
+    expect(labels.languageAutoPending).toContain("{language}");
+    expect(labels.languageTriggerLabel).toContain("{language}");
   });
 
   it("never ships an unresolved ICU construct", () => {

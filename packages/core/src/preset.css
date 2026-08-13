@@ -191,6 +191,12 @@ html {
   font-size: var(--type-body-size);
   line-height: var(--type-body-leading);
   letter-spacing: var(--type-body-tracking);
+  /* Authored text can contain a run with no break opportunity — a long URL, an
+     ID, a word typed without spaces. Such a run does not wrap on its own and
+     spills past the content column across the page. `break-word` splits it only
+     when it cannot fit a line by itself, so ordinary text keeps its natural
+     line breaks and intrinsic sizing is unaffected. */
+  overflow-wrap: break-word;
 
   :where(h1, h2, h3, h4, h5, h6) {
     font-family: var(--font-heading);
@@ -527,6 +533,30 @@ html {
     var(--site-divider) 82%,
     transparent
   );
+}
+
+/*
+ * Author text outside `.prose`
+ *
+ * Titles, quote bodies, and their attributions render authored text without
+ * the prose wrapper, so they need the same last-resort break. Without it a
+ * single unbroken run overflows the fixed-width content column below.
+ */
+.post-detail-title,
+.post-detail-quote,
+.feed-note-title,
+.feed-link-title,
+.feed-quote-content {
+  overflow-wrap: break-word;
+}
+
+/* Attribution and domain lay their parts out with flex, so each part is a flex
+   item that refuses to shrink below its min-content width. `break-word` leaves
+   min-content at the longest word and the item still overflows; `anywhere` also
+   shrinks min-content, which is what lets the row wrap. */
+.feed-quote-attribution,
+.feed-link-domain {
+  overflow-wrap: anywhere;
 }
 
 /*

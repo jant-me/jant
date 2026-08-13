@@ -309,6 +309,25 @@ describe("language views filter content", () => {
     expect(html).toContain('aria-current="true"');
   });
 
+  it("names the language in the header once the reader is off the primary one", async () => {
+    const { app, en } = await seedTwoLanguages();
+
+    // The root is the site as it comes; the globe stands alone there.
+    const primary = await (await app.request("/")).text();
+    const primaryHeader = primary.slice(primary.indexOf("site-header-lang"));
+    expect(primaryHeader).not.toContain("site-header-lang-name");
+    expect(primaryHeader).toContain(`aria-label="Language"`);
+
+    // Every other view says which one it is, on the list surfaces…
+    const view = await (await app.request("/en")).text();
+    expect(view).toContain('<span class="site-header-lang-name" lang="en">');
+    expect(view).toContain(`aria-label="Language: English"`);
+
+    // …and on a post, whose chrome belongs to the post's own language.
+    const post = await (await app.request(`/${en.slug}`)).text();
+    expect(post).toContain('<span class="site-header-lang-name" lang="en">');
+  });
+
   it("repeats the switcher in the mobile drawer, where the header hides it", async () => {
     const { app } = await seedTwoLanguages();
 
@@ -359,6 +378,25 @@ describe("language views filter content", () => {
     expect(await (await app.request(`/${zh.slug}`)).text()).not.toContain(
       "Also available in",
     );
+  });
+
+  it.each([
+    ["draft", { status: "draft" as const }],
+    ["private", { visibility: "private" as const }],
+  ])("never points a reader at a %s translation", async (_label, patch) => {
+    const { app, services, zh, en } = await seedTwoLanguages();
+    await services.posts.linkTranslation(zh.id, en.id);
+    await services.posts.update(en.id, patch);
+
+    const html = await (await app.request(`/${zh.slug}`)).text();
+
+    // Both answer a reader with a 404, so neither the line nor the head
+    // may advertise them.
+    expect(html).not.toContain("Also available in");
+    expect(html).not.toContain('rel="alternate" hreflang=');
+    // The switcher still offers English — that language's home, which is
+    // always somewhere real.
+    expect(html).toContain('href="/en" hreflang="en"');
   });
 
   it("sends a language with no translation to that language's home", async () => {
@@ -528,5 +566,69 @@ describe("the public JSON API", () => {
       "/api/public/posts?lang=not%20a%20tag",
     );
     expect(res.status).toBe(400);
+  });
+});
+
+describe("a page in the navigation", () => {
+  async function seedAboutPage({ withTranslation = true } = {}) {
+    const testApp = createLanguageTestApp();
+    await enableMultilingual(testApp.services, {
+      primary: "zh-Hans",
+      additional: "en",
+    });
+
+    const zh = await testApp.services.posts.create({
+      format: "note",
+      title: "关于",
+      slug: "about",
+      body: noteBody("中文介绍"),
+      language: "zh-Hans",
+      status: "published",
+      visibility: "latest_hidden",
+    });
+    const en = withTranslation
+      ? await testApp.services.posts.create({
+          format: "note",
+          title: "About",
+          body: noteBody("English introduction"),
+          language: "en",
+          status: "published",
+          visibility: "latest_hidden",
+          translationOfId: zh.id,
+        })
+      : null;
+    await testApp.services.navItems.create({ type: "page", postId: zh.id });
+
+    return { ...testApp, zh, en };
+  }
+
+  it("sends an English reader to the English version", async () => {
+    const { app, en } = await seedAboutPage();
+
+    const html = await (await app.request("/en")).text();
+
+    expect(html).toContain(`href="/${en?.slug}"`);
+    expect(html).toContain(">About<");
+    expect(html).not.toContain(`href="/about"`);
+  });
+
+  it("keeps the primary view on the page written for it", async () => {
+    const { app } = await seedAboutPage();
+
+    const html = await (await app.request("/")).text();
+
+    expect(html).toContain(`href="/about"`);
+    expect(html).toContain(">关于<");
+  });
+
+  it("falls back to the one version that exists", async () => {
+    const { app } = await seedAboutPage({ withTranslation: false });
+
+    const html = await (await app.request("/en")).text();
+
+    // No English version to reach, so the link — and its label, which warns
+    // what it leads to — stay in the primary language.
+    expect(html).toContain(`href="/about"`);
+    expect(html).toContain(">关于<");
   });
 });

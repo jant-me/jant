@@ -603,6 +603,7 @@ export function toNavItemView(
     postId: item.postId,
     label,
     url: publicUrl,
+    targetTitle: item.targetTitle,
     placement: item.placement as NavItemPlacement,
     isActive,
     isExternal,

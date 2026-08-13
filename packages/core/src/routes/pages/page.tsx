@@ -248,8 +248,15 @@ async function buildTranslationLinks(
   const translations = post.translationGroupId
     ? await c.var.services.posts.listTranslations(post.threadId)
     : [];
+  // Only the versions a reader can actually open. A draft or private
+  // translation answers the same URL with a 404, and an `hreflang` pointing
+  // at a 404 is worse than no `hreflang` at all — the switcher then falls
+  // back to that language's home, which is always somewhere real (§5).
   const siblings = translations.filter(
-    (other): other is Post & { language: string } => Boolean(other.language),
+    (other): other is Post & { language: string } =>
+      Boolean(other.language) &&
+      other.status === "published" &&
+      other.visibility !== "private",
   );
 
   // Prefer each post's custom URL when it has one, the same way permalinks do,

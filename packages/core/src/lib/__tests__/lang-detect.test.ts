@@ -64,6 +64,33 @@ describe("detectScript", () => {
     expect(detectScript("123 — !!! 🙂")).toBeNull();
     expect(detectScript("")).toBeNull();
   });
+
+  it("refuses a fragment, whichever script it is in", () => {
+    // The first few characters of a post decide nothing — an answer here would
+    // change on the next keystroke, which is worse than no answer.
+    expect(detectScript("H")).toBeNull();
+    expect(detectScript("Hello")).toBeNull();
+    expect(detectScript("这会")).toBeNull();
+    expect(detectScript("こん")).toBeNull();
+  });
+
+  it("answers once there are a couple of words", () => {
+    expect(detectScript("Hello there")).toBe("latin");
+    expect(detectScript("这是中文")).toBe("zh-Hans");
+  });
+
+  it("reads a passage by what it is mostly in", () => {
+    // A Han character used to speak for the whole post no matter how much
+    // English surrounded it.
+    expect(
+      detectScript(
+        "The word 说 comes up in every other sentence of this chapter.",
+      ),
+    ).toBe("latin");
+    // ...and the reverse still holds: a Chinese passage quoting a English
+    // word is Chinese.
+    expect(detectScript("这篇讲的是国学时间，里头引了 React")).toBe("zh-Hans");
+  });
 });
 
 describe("detectContentLanguage", () => {
@@ -143,6 +170,13 @@ describe("suggestPostLanguage", () => {
   it("falls back to the primary language for empty text", () => {
     expect(suggestPostLanguage({ ...site, text: "   " })).toBe("zh-Hans");
     expect(suggestPostLanguage(site)).toBe("zh-Hans");
+  });
+
+  it("keeps the primary language until the text says otherwise", () => {
+    // Half a word in: the composer shows the language of the page the author
+    // is writing from, and stays there until there is something to read.
+    expect(suggestPostLanguage({ ...site, text: "Hel" })).toBe("zh-Hans");
+    expect(suggestPostLanguage({ ...site, text: "Hello there" })).toBe("en");
   });
 
   it("returns null on a site that is not multilingual", () => {

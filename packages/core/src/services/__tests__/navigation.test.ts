@@ -81,6 +81,8 @@ function insertTestPost(
     format?: "note" | "link" | "quote";
     status?: "draft" | "published";
     visibility?: "public" | "latest_hidden" | "private";
+    language?: string | null;
+    translationGroupId?: string | null;
   },
 ) {
   const ts = now();
@@ -88,9 +90,10 @@ function insertTestPost(
     .prepare(
       `INSERT INTO post (
         id, site_id, format, status, visibility, title, thread_id,
+        language, translation_group_id,
         published_at, last_activity_at, created_at, updated_at
       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.id,
@@ -100,6 +103,8 @@ function insertTestPost(
       input.visibility ?? "latest_hidden",
       input.title,
       input.id,
+      input.language ?? null,
+      input.translationGroupId ?? null,
       ts,
       ts,
       ts,
@@ -252,7 +257,9 @@ describe("NavItemService", () => {
       expect(item).toMatchObject({
         type: "page",
         postId: TEST_POST_ID,
-        label: "About me",
+        // Nothing stored: the item follows the page's title from here on.
+        label: "",
+        targetTitle: "About me",
         url: "/about-me",
         placement: "header",
       });
@@ -280,7 +287,7 @@ describe("NavItemService", () => {
       ).rejects.toThrow("Page must be a published, non-private titled note");
     });
 
-    it("truncates a page's default navigation label", async () => {
+    it("truncates a page's custom navigation label", async () => {
       insertTestPost(sqlite, {
         id: TEST_POST_ID,
         slug: "long-title",
@@ -290,9 +297,146 @@ describe("NavItemService", () => {
       const item = await navItemService.create({
         type: "page",
         postId: TEST_POST_ID,
+        label: "B".repeat(150),
       });
 
-      expect(item.label).toBe("A".repeat(100));
+      expect(item.label).toBe("B".repeat(100));
+    });
+
+    it("leaves a page item's label empty so it follows the page title", async () => {
+      insertTestPost(sqlite, {
+        id: TEST_POST_ID,
+        slug: "about-me",
+        title: "About me",
+      });
+      const item = await navItemService.create({
+        type: "page",
+        postId: TEST_POST_ID,
+      });
+
+      sqlite
+        .prepare(`UPDATE post SET title = ? WHERE id = ?`)
+        .run("Colophon", TEST_POST_ID);
+
+      const [reread] = await navItemService.list();
+      expect(reread).toMatchObject({
+        id: item.id,
+        label: "",
+        targetTitle: "Colophon",
+      });
+    });
+  });
+
+  describe("list in a language view", () => {
+    const TRANSLATION_GROUP = "tgr_test0000000000000000000001";
+
+    function addAboutPageNav() {
+      insertTestPost(sqlite, {
+        id: TEST_POST_ID,
+        slug: "about",
+        title: "关于",
+        language: "zh-Hans",
+        translationGroupId: TRANSLATION_GROUP,
+      });
+      return navItemService.create({ type: "page", postId: TEST_POST_ID });
+    }
+
+    it("points a page item at the version written in the view's language", async () => {
+      const item = await addAboutPageNav();
+      insertTestPost(sqlite, {
+        id: TEST_POST_ID_2,
+        slug: "about-en",
+        title: "About",
+        language: "en",
+        translationGroupId: TRANSLATION_GROUP,
+      });
+
+      const [resolved] = await navItemService.list({ language: "en" });
+
+      expect(resolved).toMatchObject({
+        id: item.id,
+        // The address and the title move together: a link that lands on
+        // English content is labelled in English.
+        url: "/about-en",
+        targetTitle: "About",
+        // Still the configured target — only the destination follows the view.
+        postId: TEST_POST_ID,
+      });
+    });
+
+    it("leaves the item alone when that language has no version", async () => {
+      const item = await addAboutPageNav();
+
+      const [resolved] = await navItemService.list({ language: "ja" });
+
+      expect(resolved).toMatchObject({
+        id: item.id,
+        url: "/about",
+        targetTitle: "关于",
+      });
+    });
+
+    it("ignores a translation that is not publicly readable", async () => {
+      await addAboutPageNav();
+      insertTestPost(sqlite, {
+        id: TEST_POST_ID_2,
+        slug: "about-en",
+        title: "About",
+        status: "draft",
+        language: "en",
+        translationGroupId: TRANSLATION_GROUP,
+      });
+      insertTestPost(sqlite, {
+        id: TEST_POST_ID_3,
+        slug: "about-ja",
+        title: "About (ja)",
+        visibility: "private",
+        language: "ja",
+        translationGroupId: TRANSLATION_GROUP,
+      });
+
+      const [draftView] = await navItemService.list({ language: "en" });
+      const [privateView] = await navItemService.list({ language: "ja" });
+
+      expect(draftView?.url).toBe("/about");
+      expect(privateView?.url).toBe("/about");
+    });
+
+    it("keeps a label the author typed, whatever the view", async () => {
+      insertTestPost(sqlite, {
+        id: TEST_POST_ID,
+        slug: "about",
+        title: "关于",
+        language: "zh-Hans",
+        translationGroupId: TRANSLATION_GROUP,
+      });
+      insertTestPost(sqlite, {
+        id: TEST_POST_ID_2,
+        slug: "about-en",
+        title: "About",
+        language: "en",
+        translationGroupId: TRANSLATION_GROUP,
+      });
+      await navItemService.create({
+        type: "page",
+        postId: TEST_POST_ID,
+        label: "自我介绍",
+      });
+
+      const [resolved] = await navItemService.list({ language: "en" });
+
+      expect(resolved).toMatchObject({
+        label: "自我介绍",
+        url: "/about-en",
+      });
+    });
+
+    it("does not follow translations without a language", async () => {
+      const item = await addAboutPageNav();
+
+      const [resolved] = await navItemService.list();
+
+      expect(resolved).toMatchObject({ id: item.id, url: "/about" });
     });
   });
 

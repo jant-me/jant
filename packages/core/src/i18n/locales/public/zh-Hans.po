@@ -1198,6 +1198,13 @@ msgstr ""
 msgid "Language"
 msgstr ""
 
+#. @context: Accessible label for the site language switcher when it names the language on screen
+#. @context: Accessible name of the composer's language button, which sits beside Post and names the language this post would publish in
+#: src/ui/compose/ComposeDialog.tsx
+#: src/ui/layouts/SiteLayout.tsx
+msgid "Language: {language}"
+msgstr ""
+
 #. @context: Tooltip text for the timestamp on an unpublished draft
 #: src/ui/shared/PostFooter.tsx
 msgid "Last edited on {date} at {time}"
@@ -1481,6 +1488,11 @@ msgstr ""
 msgid "No threads match these filters. Try adjusting your selection or clear all filters."
 msgstr ""
 
+#. @context: Help text under the compose language field before there is enough writing to read a language out of; {language} is the one it would publish in meanwhile, which is the language of the page the composer was opened from
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Not enough text to tell yet — publishes in {language}"
+msgstr ""
+
 #. @context: Action to dismiss the post-create Collection navigation prompt
 #: src/ui/shared/CollectionsManager.tsx
 msgid "Not now"
@@ -1696,11 +1708,6 @@ msgstr ""
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Publish"
-msgstr ""
-
-#. @context: Publish-time language check action, one button per language
-#: src/ui/compose/ComposeDialog.tsx
-msgid "Publish in {language}"
 msgstr ""
 
 #. @context: Compose publish settings panel title
@@ -2321,11 +2328,6 @@ msgstr ""
 msgid "This link is reserved. Choose something else."
 msgstr ""
 
-#. @context: Title of the publish-time check shown when the detected language differs from the page's language
-#: src/ui/compose/ComposeDialog.tsx
-msgid "This looks like {language}"
-msgstr ""
-
 #. @context: Explanation in the draft preview status bar
 #: src/ui/shared/DraftPreviewBar.tsx
 msgid "This post isn’t published."
@@ -2601,11 +2603,6 @@ msgstr ""
 #. @context: Sample note summary second paragraph on the theme sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "When the accent is slightly warmer and less literal, the whole page feels more like a writing space and less like product UI."
-msgstr ""
-
-#. @context: Question under the publish-time language check
-#: src/ui/compose/ComposeDialog.tsx
-msgid "Which language should it publish in?"
 msgstr ""
 
 #. @context: Description for the circle tile asset card

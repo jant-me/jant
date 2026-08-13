@@ -169,8 +169,11 @@ export interface NavItemView {
   systemKey?: SystemNavKey;
   collectionId?: string;
   postId?: string;
+  /** Author's override, or `""` when the item follows its target's title */
   label: string;
   url: string;
+  /** Target's current title — the display label when `label` is empty */
+  targetTitle?: string;
   /** "header" = visible in nav bar, "more" = under More dropdown */
   placement: NavItemPlacement;
   /** Pre-computed based on currentPath */
@@ -290,6 +293,12 @@ export interface LanguageSwitcherOption {
   href: string;
   /** Whether this is the language currently on screen. */
   isCurrent: boolean;
+  /**
+   * Whether this is the site's primary language — the one served from the
+   * root. The switcher's trigger stays silent on it and names every other
+   * language, so a reader always knows when they are off the default.
+   */
+  isPrimary: boolean;
 }
 
 export interface SiteLayoutProps {
