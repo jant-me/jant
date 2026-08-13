@@ -28,6 +28,12 @@ export interface ComposeDialogProps {
    * multilingual content on should not meet it.
    */
   languages?: ComposeLanguage[];
+  /**
+   * Content language of the page the composer opens from. A post left on
+   * automatic publishes in this language unless detection disagrees, in which
+   * case the author is asked which one they meant.
+   */
+  contextLanguage?: string | null;
 }
 
 export interface ComposeFormProps extends ComposeDialogProps {
@@ -41,6 +47,7 @@ export const ComposeForm: FC<ComposeFormProps> = ({
   uploadMaxFileSize,
   slashCommandDiscovered = false,
   languages,
+  contextLanguage,
   pageMode = false,
   closeHref,
   autoRestoreDraft = false,
@@ -935,6 +942,30 @@ export const ComposeForm: FC<ComposeFormProps> = ({
       // Detected in the browser from the current text; see `translationOf`.
       { language: "{language}" },
     ),
+    languageConfirmTitle: i18n._(
+      msg({
+        message: "This looks like {language}",
+        comment:
+          "@context: Title of the publish-time check shown when the detected language differs from the page's language",
+      }),
+      // Detected in the browser at publish time; see `translationOf`.
+      { language: "{language}" },
+    ),
+    languageConfirmSubtitle: i18n._(
+      msg({
+        message: "Which language should it publish in?",
+        comment: "@context: Question under the publish-time language check",
+      }),
+    ),
+    languageConfirmPublishIn: i18n._(
+      msg({
+        message: "Publish in {language}",
+        comment:
+          "@context: Publish-time language check action, one button per language",
+      }),
+      // Filled in the browser with each choice's own name.
+      { language: "{language}" },
+    ),
     translationOf: i18n._(
       msg({
         message: "Translation of “{title}”",
@@ -1026,6 +1057,7 @@ export const ComposeForm: FC<ComposeFormProps> = ({
     <jant-compose-dialog
       collections={collectionsJson}
       languages={languagesJson}
+      {...(contextLanguage ? { "context-language": contextLanguage } : {})}
       labels={labels}
       upload-max-file-size={uploadMaxFileSize ?? 500}
       {...(pageMode ? { "page-mode": "" } : {})}
@@ -1046,6 +1078,7 @@ export const ComposeDialog: FC<ComposeDialogProps> = ({
   uploadMaxFileSize,
   slashCommandDiscovered = false,
   languages,
+  contextLanguage,
 }) => {
   return (
     <dialog id="compose-dialog" class="compose-dialog">
@@ -1054,6 +1087,7 @@ export const ComposeDialog: FC<ComposeDialogProps> = ({
         uploadMaxFileSize={uploadMaxFileSize}
         slashCommandDiscovered={slashCommandDiscovered}
         languages={languages}
+        contextLanguage={contextLanguage}
       />
     </dialog>
   );

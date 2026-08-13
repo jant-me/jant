@@ -129,6 +129,46 @@ describe("LanguageService", () => {
       expect(await settings.get("ADDITIONAL_LANGUAGES")).toBe("en,ja");
       expect(await settings.get("SITE_LANGUAGE")).toBe("zh-Hans");
     });
+
+    // Turning multilingual off keeps both the languages and the stamps, and
+    // the re-enable dialog lets the author edit the list freely — so enable
+    // itself must hold the invariant the remove guard holds, or dropping a
+    // language there would strand its posts outside every view.
+    it("refuses a list that leaves stamped posts without a language", async () => {
+      await language.enable({ primary: "zh-Hans", additional: ["ja"] });
+      await posts.create({
+        format: "note",
+        body: noteBody("日本語の投稿"),
+        language: "ja",
+      });
+      await language.disable();
+
+      await expect(
+        language.enable({ primary: "zh-Hans", additional: ["en"] }),
+      ).rejects.toThrow(/still written in a language missing from this list/);
+      // Nothing was written: the site stays off with its old lists intact.
+      expect((await language.getState()).enabled).toBe(false);
+      expect(await settings.get("ADDITIONAL_LANGUAGES")).toBe("ja");
+    });
+
+    it("accepts any list that seats every stamped language", async () => {
+      await language.enable({ primary: "zh-Hans", additional: ["ja"] });
+      await posts.create({
+        format: "note",
+        body: noteBody("日本語の投稿"),
+        language: "ja",
+      });
+      await language.disable();
+
+      // ja changes seats — it becomes the primary — and en joins fresh.
+      await language.enable({ primary: "ja", additional: ["zh-Hans", "en"] });
+
+      expect(await language.getState()).toMatchObject({
+        enabled: true,
+        primary: "ja",
+        additional: ["zh-Hans", "en"],
+      });
+    });
   });
 
   describe("URL prefix conflicts", () => {

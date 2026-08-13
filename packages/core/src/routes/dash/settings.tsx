@@ -20,7 +20,11 @@ import { buildPageTitle } from "../../lib/page-title.js";
 import { AdminBreadcrumb } from "../../ui/shared/AdminBreadcrumb.js";
 import { getTimeZoneOptions } from "../../lib/timezones.js";
 import { getOrBuildEntry } from "../../i18n/supported-locales.js";
-import { DomainError, ValidationError } from "../../lib/errors.js";
+import {
+  DomainError,
+  LanguageInUseError,
+  ValidationError,
+} from "../../lib/errors.js";
 import { SETTINGS_KEYS } from "../../lib/constants.js";
 import { getAvailableThemes } from "../../lib/theme.js";
 import { THEME_MODES, type ThemeMode } from "../../types/config.js";
@@ -548,6 +552,31 @@ async function respondToLanguageAction(
     await action();
     return c.json({ status: "ok" as const, toast });
   } catch (error) {
+    // The one refusal an author will actually meet — removing or dropping a
+    // language that posts still use — gets a localized sentence naming the
+    // language; the settings page pairs it with a link to those posts.
+    if (error instanceof LanguageInUseError) {
+      const i18n = getI18n(c);
+      return c.json(
+        {
+          error: i18n._(
+            msg({
+              message:
+                "{count, plural, one {# post is} other {# posts are}} still written in {language}. Change their language, or keep the language.",
+              comment:
+                "@context: Error when a content language that posts still use would be dropped",
+            }),
+            {
+              count: error.postCount,
+              language: getOrBuildEntry(error.language).native,
+            },
+          ),
+          code: error.code,
+          language: error.language,
+        },
+        400,
+      );
+    }
     if (error instanceof DomainError) {
       return c.json({ error: error.message, code: error.code }, 400);
     }
@@ -615,6 +644,30 @@ settingsRoutes.post("/language/enable", async (c) => {
             ),
     });
   } catch (error) {
+    if (error instanceof LanguageInUseError) {
+      // Worded for the dialog it lands in: the fix is putting the language
+      // back on the list right there, and the response carries the tag so
+      // the dialog can offer that as one click.
+      return c.json(
+        {
+          error: i18n._(
+            msg({
+              message:
+                "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first.",
+              comment:
+                "@context: Refusal in the multilingual dialog when the list drops a language that posts still use",
+            }),
+            {
+              count: error.postCount,
+              language: getOrBuildEntry(error.language).native,
+            },
+          ),
+          code: error.code,
+          language: error.language,
+        },
+        400,
+      );
+    }
     if (error instanceof DomainError) {
       return c.json({ error: error.message, code: error.code }, 400);
     }

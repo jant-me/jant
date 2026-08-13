@@ -99,7 +99,7 @@ describe("LanguageContent", () => {
         }),
       );
 
-      expect(labels.enableMarkWarning).toContain("1 existing post will");
+      expect(labels.enableMarkWarning).toContain("1 existing post with");
       expect(labels.enableMarkWarning).not.toContain("posts");
     });
 

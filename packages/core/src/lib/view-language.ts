@@ -158,6 +158,36 @@ export function viewBasePath(c: ViewContext): string {
 }
 
 /**
+ * URL prefix of the view a given language is served under.
+ *
+ * A post page belongs to its own language's site: its chrome — logo, nav,
+ * search — links into that language's view, so a reader on a Japanese post
+ * stays among Japanese surfaces. Post pages render at language-neutral URLs,
+ * so this is derived from the post's language rather than the request path.
+ *
+ * @param c - Request context
+ * @param lang - Content language of the page, or null/undefined when unknown
+ * @returns `/ja`-style prefix for an active non-primary language, otherwise
+ *   an empty string (the root view)
+ * @example
+ * languageScopeBasePath(c, "ja"); // "/ja" on a zh-Hans + ja site
+ * languageScopeBasePath(c, "zh-Hans"); // "" — the primary lives at the root
+ */
+export function languageScopeBasePath(
+  c: ViewContext,
+  lang: string | null | undefined,
+): string {
+  if (!lang) return "";
+  const { siteLanguage } = c.var.appConfig;
+  const prefix = toLanguagePrefix(lang);
+  if (prefix === toLanguagePrefix(siteLanguage)) return "";
+  const active = getViewLanguages(c).some(
+    (tag) => toLanguagePrefix(tag) === prefix,
+  );
+  return active ? `/${prefix}` : "";
+}
+
+/**
  * Build a public path that stays inside the current language view.
  *
  * Use this for every in-page link a handler generates — pagination, filter
@@ -191,6 +221,47 @@ export function toViewPath(c: ViewContext, path = "/"): string {
  */
 export function viewRelativePath(c: ViewContext): string {
   return c.var.viewLang ? stripFirstSegment(c.req.path) : c.req.path;
+}
+
+/**
+ * Reader surfaces that are served once per language.
+ *
+ * Mirrors the `langGet()` table in `routes/pages/language.tsx` — the two must
+ * change together. Everything else (settings, dash, auth, one-off pages) has
+ * no counterpart under a language prefix, so language-crossing links from
+ * those pages must aim at the language's home instead.
+ */
+const PER_LANGUAGE_SURFACES = new Set([
+  "/",
+  "/feed",
+  "/latest",
+  "/featured",
+  "/archive",
+  "/search",
+  "/collections",
+]);
+
+const PER_LANGUAGE_SURFACE_PREFIXES = [
+  "/latest/",
+  "/featured/",
+  "/archive/",
+  "/collections/",
+];
+
+/**
+ * Whether a path exists in every language's view.
+ *
+ * @param path - Internal app path, without any language prefix
+ * @returns True when `/ja{path}` is a page rather than a 404
+ * @example
+ * isPerLanguageSurface("/archive"); // true — /ja/archive exists
+ * isPerLanguageSurface("/settings/language"); // false — the dash is one place
+ */
+export function isPerLanguageSurface(path: string): boolean {
+  if (PER_LANGUAGE_SURFACES.has(path)) return true;
+  return PER_LANGUAGE_SURFACE_PREFIXES.some((prefix) =>
+    path.startsWith(prefix),
+  );
 }
 
 /**
@@ -257,9 +328,11 @@ export function buildComposeLanguages(
  *
  * The switcher means "take me to this language's site", not "translate this
  * page": from a list surface it goes to that surface in the other language,
- * and from a post it goes to the translation when one exists and to that
- * language's home page when it does not. It is never disabled and never warns
- * — a reader who lands on a language's home page has still arrived somewhere.
+ * from a post it goes to the translation when one exists, and from anywhere
+ * without a counterpart in that language — a post with no translation, a
+ * settings page — it goes to that language's home. It is never disabled and
+ * never warns: a reader who lands on a language's home page has still
+ * arrived somewhere, and it never links to a 404.
  *
  * @param c - Request context
  * @param options - Per-language destinations, and where to go without one
@@ -284,7 +357,10 @@ export function buildLanguageSwitcher(
   const languages = getViewLanguages(c);
   if (languages.length === 0) return [];
 
-  const fallbackPath = options.fallbackPath ?? viewRelativePath(c);
+  const currentPath = viewRelativePath(c);
+  const fallbackPath =
+    options.fallbackPath ??
+    (isPerLanguageSurface(currentPath) ? currentPath : "/");
   const currentPrefix = toLanguagePrefix(
     options.currentLang || getViewLang(c) || c.var.appConfig.siteLanguage,
   );

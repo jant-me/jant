@@ -1578,3 +1578,192 @@ wrote" 才能独立成句；`OTHER VERSIONS` 沉底是因为它是 `#loadTransla
 ← 从三级退回 Language 面板、再一次退回主菜单（此前会整个关掉）；Escape 同样逐级
 退；无译版的帖子面板为 Change language + Write ×3 + Link。窄视口那一档只做了算术
 估算（约 176px / 304px），Chrome 拒绝调整该窗口尺寸，没能实测。
+
+## 19. 详情页归属、发布语言确认与设置简化(2026-08-11)
+
+与作者讨论「/xyz 详情页点首页应该去 /ja」后落定的三件事。URL 设计(D1)不变;
+补的是渲染层的归属规则。
+
+### 19.1 新规则:文章页的骨架属于它自己语言的站
+
+文章 URL 语言中立,`viewLang` 在详情页永远为空——但 `post.language` 就在行上。
+`getNavigationData` 新增 `languageScope` 选项(详情页传文章语言),
+`view-language.ts` 新增 `languageScopeBasePath()`。站内动线上这与「保持读者
+来路视图」等价:日语文章只能从 /ja 表面到达。确定性渲染,一个 URL 一份字节。
+
+顺带修了一个 M2 的漏项:`SiteHeader` 的 logo、抽屉品牌链接、搜索图标原来
+硬编码根路径,连 `/en/archive` 列表视图里点站名也会掉回主语言。现在
+`SiteHeader`/`SiteLayout` 接 `basePath`(= sitePathPrefix + 语言前缀),
+logo、搜索、`isHomePage` 判定全部走它——`/ja` 由此获得完整的首页待遇
+(home 头部样式、站点简介、页脚、compose FAB)。
+
+### 19.2 发布时语言确认(改自 §6/§8 的静默检测)
+
+compose 的「Detect」在**发布**时解析为**当前页面语言**(context,经
+`composeContextLanguage` 链路传入:列表面 = 视图语言,详情页 = 文章语言)。
+检测器降级为绊线:只有当它有把握地读出**另一种**语言时,才弹一个
+action-sheet(「This looks like 日本語」→ Publish in 日本語 / Publish in
+简体中文 / Cancel),Enter 确认检测语言,Escape 回编辑。一致或无信号则
+直接以 context 发布,零打扰。显式选过语言永不弹(选择不被二次质疑)。
+
+实现细节:`_submit` 在无需弹框时保持**完全同步**(`_maybeConfirmLanguage()`
+返回 null 走原路径)——第一版无条件 async 让 15 个「点击→同步断言事件」的
+测试红了,这不是测试的错,是提交时序无谓变化的真实回归。提交 payload 的
+language 现在总是解析出的明确值(`_effectiveLanguage()`,fallback = context);
+本地草稿仍存原始 `_language`(Detect 存 null,恢复后仍是 Detect)。
+服务端检测兜底保留,继续服务 API/bot。
+
+### 19.3 设置 → 语言:一个列表替代三块控件
+
+- 开启态页面:主语言下拉 + Other languages chips + Reader URLs 图例合并为
+  一个「Languages」列表——每行 = 语言名 + 它的地址 + Primary 徽标或
+  [Make primary] [×]。改主语言从「在下拉里换人」变成行内动作,走同一个
+  确认框。关闭态不变(Content language + 安静的开关)。
+- 开启对话框:删掉「What turning this on does」四条 bullet(与页面开关的
+  帮助文案重复),压成一行「Post addresses do not change, and you can turn
+  this off again at any time.」;打标警告保留;primaryLanguageHelp 挪进
+  对话框的主语言选择器下面(决策点上说明)。
+
+验证:3428 tests + check-lint + check-types + i18n 100% 覆盖;本地 dev
+端到端(enable → 发日语帖 → `/uypgv` 的 `<html lang="ja">` + logo/导航全部
+`/ja/*`、`/ja` 有 home 样式且列出该帖、`/` 不列、主语言帖 chrome 在根、
+`/zh-hans` 与 `/ja/{slug}` 301;移除有帖语言被正确拒绝)。
+
+### 19.4 切换器的完备性 + 设置页地址可点击(同日跟进)
+
+- **切换器规则补完**:默认 fallback 原来是「当前路径」,在 settings 等无
+  per-language 对应物的页面上会铸出 `/ja/settings/language` 这种 404。
+  新增 `isPerLanguageSurface()`(白名单,镜像 `langGet()` 表,两处需同步改),
+  `buildLanguageSwitcher` 默认 fallback 改为:有对应物 → 当前路径,没有 → `/`。
+  规则从此一句话覆盖所有表面:**切换器带你去那个语言的站;有对应物去对应物,
+  没有去首页;永不产出 404**。白名单方向是 fail-safe:未来新增的
+  非语言页面自动落到首页而不是死链。
+- **Dashboard 与语言视图的边界(设计意图,回应「settings 只有一个是否合理」)**:
+  合理且有意为之。语言视图只分叉**读者流**;dashboard 是作者的单一驾驶舱,
+  不属于任何语言视图,其显示语言由「界面语言」设置决定,与进入时的来路无关。
+  从 /ja 进 settings 后想回去,切换器一次点击到 /ja(上一条保证了这个链接存在)。
+- **设置 → 语言列表的地址可点击**:每行 URL 变为 `target="_blank"` +
+  `rel="noopener noreferrer"` 的链接,hover 下划线。
+
+### 19.5 第三轮文案与交互打磨(用户反馈后,2026-08-11)
+
+- **移除语言的拒绝变为行内错误 + 出路链接**:新增 `LanguageInUseError`(带
+  postCount),remove 路由把它本地化(复数 + 语言原生名:「还有 2 篇日本語
+  文章。先修改它们的语言,或保留该语言。」),设置页渲染在该语言行的下方
+  (`role="alert"`),多语言开启时附「查看这些文章 →」链接指向 `/{lang}/archive`
+  新标签打开。规则本身(零帖守卫)一字未动——语言标签是关于文本的事实,
+  批量重标或放行孤儿都是更差的选择(讨论记录见对话;要点:孤儿内容不可见、
+  重标即说谎、根视图的语言承诺不可随配置漂移)。已知小缺口:计数含草稿,
+  archive 只列已发布。
+- **多语言开关从 checkbox 改为按钮**:checkbox 暗示即时生效,但实际要走确认
+  对话框,取消后还得手动把它掰回去(#syncMultilingualCheckbox hack)。改为
+  关闭态 `[Turn on multilingual content]`、开启态列表下方安静的
+  `[Turn off multilingual content]`,hack 随之删除。
+- **文案**:contentLanguageHelp →「你写作使用的语言,也是读者和搜索引擎看到
+  的语言」;打标警告 → 明确说「尚未标记语言的文章」(重开场景下 count 只是
+  NULL 帖数,旧文案「你已有的 N 篇文章」在此误导);确认按钮按 count 分档
+  (有帖「Mark posts and turn on / 标记并开启」,零帖「Turn on / 开启」——
+  不承诺不会发生的动作)。
+- **切换器加 globe 图标**(label 之前,14px,72% 不透明度)。**不加国旗**:
+  国旗指国家不指语言——zh-Hans/zh-Hant/en 都没有唯一对应的国旗,行业惯例
+  (W3C i18n)明确反对用国旗表示语言。
+- **「Also available in …」移到正文之前**:这行字的目标读者是读不懂正文的人,
+  不该让他们滚过读不懂的整页去找出口(Wikipedia/MDN/NYT 双语的先例都在顶部)。
+  对所有文章统一放顶部,不按长度分叉(条件布局 = 不一致)。
+
+### 19.6 第四轮:译本链接入 meta、icon-only 切换器、设置页任务化(2026-08-11)
+
+- **译本链接不再是独立一行,搭日期的车**(§19.5 的顶部横排被否:辅助功能不能
+  高调)。新组件 `PostTranslationLinks`(12px globe + 各语言原生名,无文案;
+  完整句子在 aria-label「Also available in {language}」)经
+  `PostFooterDisplayOptions.translations` 传入:**有标题的文章**跟日期一起在
+  标题下的 header meta 行(长文读者在滚动前就能看到出口),**其余格式**跟
+  footer 的日期在一起(短帖一屏可见,footer 即出口)。区分逻辑与日期完全同轨,
+  不新增分叉。Thread 上挂在读者落地的那篇(祖先可能被折叠)。
+- **切换器 trigger 改为 icon-only**(globe + chevron):trigger 上的当前语言名
+  服务不了任何人——读得懂的人正在读这个语言,想切走的人读不懂它。菜单里
+  依旧每个语言用自己的名字。aria-label 不变。
+- **设置页从「功能开关」改为「任务动作」**:
+  - 关闭态:「Multilingual content」块的按钮是 `+ Add language`(作者的真实
+    意图是「加一种语言」,不是「启用一个 feature flag」;Shopify Markets 同款
+    模式)。对话框标题「Add a language」,确认按钮「Add language」——打标
+    副作用由紧邻其上的警告块陈述,按钮不再复述(修订 §9.2 的「按钮说清打标」:
+    当时按钮叫「确认」才有该规则,现在警告就在按钮上方一寸)。
+  - 开启态:语言列表块之后,对称的「Multilingual content」块:一行现状描述
+    (「每个语言都有自己的首页、归档和订阅源。」)+ `Turn off` 小按钮,
+    与 Add language 不再挤在一起;确认对话框不变。
+  - **修复**:`unmarkedPostCount === 0` 时不再显示打标警告块。旧文案
+    「你还没有文章」在「全部文章已有标记」的重开场景下是错的;没有副作用
+    就不该有警告,整块隐藏。`enableMarkWarningEmpty` 删除。
+- 本地 dev 实测:无标题中文帖译本链接在 footer 日期旁;有标题日语文章在
+  标题下 meta 行;trigger 可见文本为空、globe 存在。
+
+### 19.7 第五轮:meta-row 方案回滚,设置页定为「状态 + 行内开关」(2026-08-11)
+
+- **译本链接:§19.6 的 meta-row 集成整体回滚**,恢复 §5 原设计——所有格式统一
+  在文章之后一行安静的完整句子:「Also available in 日本語」(链接,hreflang,
+  语言原生名)。用户实测反馈:header meta 行右对齐的变体难看,按格式分叉的
+  位置不统一;原句式反而最好。**不用下拉框**:个人博客译本常态是 1–2 个,
+  下拉把唯一的链接藏进一次点击(Wikipedia 用下拉是因为它有 300 种语言)。
+  `PostTranslationLinks`、`PostFooterDisplayOptions.translations` 及相关
+  plumbing 全部删除。
+- **设置 → 语言 定稿为三段式**:
+  1. Site:内容语言(关)/ Languages 列表(开)。帮助文案缩短为
+     「你写作使用的语言。」(SEO 半句删除)。
+  2. **Multilingual content 独立成节**(border-t,与 Dashboard 同级)——解决
+     「内容语言字段与多语言块距离太近产生歧义」;节内为一行描述 + 状态徽标
+     (**On/已开启** / **Off/未开启**)+ 行内链接动作(**Turn off/关闭** /
+     **Turn on/开启**)。关闭后状态一目了然,重开入口不再是让人懵的
+     「+ Add language」。
+  3. Dashboard:不变。
+- **开启对话框**:标题「Turn on multilingual content / 开启多语言内容」
+  (与点击的动作一致),确认按钮改为通用 **Save/保存**(§19.6 的
+  「Add language」按钮被否:这是一个设置表单,提交按钮该是保存;打标副作用
+  由紧邻的警告块陈述)。`enableConfirm` 标签删除,复用 `save`。
+- dev 实测:有标题/无标题两种帖的译本行都在 article 之后、无 header 变体;
+  开关状态切换与重开路径可见。
+
+### 19.8 第六轮:命名、行菜单、重开守卫、即时刷新(2026-08-12)
+
+- **命名**:中文译文层面「多语言内容」→「多语言」(节标题、弹窗标题、toast
+  全部统一;英文源文案保持 "Multilingual content" 的语法完整性)。
+- **语言列表行动作折叠**:「设为主语言」「删除」是一年一次的操作,常驻按钮
+  给了它们日常级的显眼度。改为每行一个「⋯」菜单(aria-haspopup,菜单项
+  「设为主语言」/「删除 {语言}」,删除为 destructive 色),主语言行只有徽标。
+  外点 + Escape 关闭,与 picker 互斥,有测试。
+- **重开守卫(真实的不变量漏洞)**:`enable()` 原来整体重写语言列表而不检查
+  「有帖语言 ⊆ 新列表」——关闭→重开时在弹窗里删掉一个语言,它的文章会从
+  所有视图消失(remove 守卫的旁路)。补上:`posts.listLanguagesInUse()`
+  (GROUP BY language)+ enable 内校验,违反抛 `LanguageInUseError`(现在
+  携带 language + postCount),路由统一本地化(与 remove 同一句文案:
+  「还有 N 篇{语言}文章。先修改它们的语言,或保留该语言。」)。**弹窗内联
+  错误**:`_enableError` 显示在对话框内(toast 会被 modal 顶层盖住,永远
+  看不见——顺带修了前缀冲突错误同样不可见的旧问题)。已知取舍:一次只点名
+  第一个缺席语言。服务层测试覆盖拒绝与「换座位不算丢」两个方向。
+- **开关后的界面即时性**:开启/关闭多语言改变的是页面自身的 chrome(右上角
+  切换器的有无),只有服务端能重新渲染它——成功后 `window.location.reload()`
+  (与界面语言修改同一先例)。不走 header fragment 刷新:同一请求内
+  `appConfig` 是设置写入前的快照,渲染出的仍是旧 header。
+- dev 实测:重开删语言被拒(中文、点名语言与数量);含全部有帖语言则成功;
+  守卫在含多种历史语言的库上逐一点名。
+
+### 19.9 第七轮:文案精修与弹窗守卫的可操作化(2026-08-12)
+
+依据 AGENTS.md 新增的中文文案规范(全角标点、无主语优先、反翻译腔)执行:
+
+- **多语言区块描述**(zh):「为每种语言提供独立的首页、归档和订阅源。发布时
+  可以选择语言,也可以把不同语言的文章互相关联为译本。」两种状态共用同一段
+  描述(功能是什么不随开关变),`multilingualOnHelp` 删除。
+- **「开启」→「启用」**:zh 目录 msgstr 层面全量替换(状态徽标「已启用」、
+  动作链接「启用」、弹窗标题「启用多语言」、toast「多语言已启用。」);
+  「关闭」不动。**未启用状态不再显示徽标**——默认态无需宣告,一个「启用」
+  链接即是全部;「已启用」徽标只在开着时出现(`statusOff` 删除)。
+- **保证行**(zh):「启用多语言后,文章地址不会改变;之后也可以随时安全地
+  关闭。」(原句缺主题、逗号半角,被用户点名看不懂。)
+- **弹窗守卫错误可操作化**:enable 路径拿到专属文案——「还有 N 篇{语言}文章,
+  但列表里没有这个语言。把它加回列表,或先修改这些文章的语言。」并且响应带
+  `language` 字段,弹窗在错误旁渲染一个「添加 {语言}」按钮,一键把缺席语言
+  放回列表(用户实测截图:错误提到繁體中文,但弹窗里根本没有它的任何入口)。
+  remove 流程保留原「保留该语言」措辞(在列表行语境成立)。
+- **全角标点清理**:此前几轮我加入的 zh 译文里混有半角逗号/分号(每文件
+  5 处),按新规范全部改为全角;ICU 语法逗号不受影响。

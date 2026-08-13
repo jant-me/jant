@@ -632,6 +632,7 @@ export class JantComposeDialog extends LitElement {
   static properties = {
     collections: { type: Array },
     languages: { type: Array },
+    contextLanguage: { type: String, attribute: "context-language" },
     labels: { type: Object },
     uploadMaxFileSize: { type: Number, attribute: "upload-max-file-size" },
     pageMode: { type: Boolean, attribute: "page-mode" },
@@ -681,12 +682,15 @@ export class JantComposeDialog extends LitElement {
     _visibilityLocked: { state: true },
     _quietReply: { state: true },
     _language: { state: true },
+    _langConfirm: { state: true },
     _translationOf: { state: true },
     _translationCollapsed: { state: true },
   };
 
   declare collections: ComposeCollection[];
   declare languages: ComposeLanguage[];
+  /** Content language of the page the composer opened from. */
+  declare contextLanguage: string;
   declare labels: ComposeLabels;
   declare uploadMaxFileSize: number;
   declare pageMode: boolean;
@@ -738,6 +742,14 @@ export class JantComposeDialog extends LitElement {
   declare _quietReply: boolean;
   /** Author's explicit language choice. Null means "let Jant read it". */
   declare _language: string | null;
+  /**
+   * The publish-time language check, when it is on screen: detection read the
+   * text as one language while the page the composer opened from is in
+   * another, so the author is asked which one they meant.
+   */
+  declare _langConfirm: { detected: string; context: string } | null;
+  /** Settles the pending publish once the language check is answered. */
+  #langConfirmResolve: ((choice: string | null) => void) | null = null;
   /**
    * Thread root this post is being written as a translation of, with enough of
    * it to read: translating from a title alone means keeping the original open
@@ -807,6 +819,7 @@ export class JantComposeDialog extends LitElement {
     super();
     this.collections = [];
     this.languages = [];
+    this.contextLanguage = "";
     this.labels = {} as ComposeLabels;
     this.uploadMaxFileSize = 1024;
     this.pageMode = false;
@@ -862,6 +875,7 @@ export class JantComposeDialog extends LitElement {
     this._visibilityLocked = false;
     this._quietReply = false;
     this._language = null;
+    this._langConfirm = null;
     this._translationOf = null;
     this._translationCollapsed = false;
     this._seededFromSource = false;
@@ -1016,6 +1030,7 @@ export class JantComposeDialog extends LitElement {
     this._visibilityLocked = false;
     this._quietReply = false;
     this._language = null;
+    this.#cancelLanguageConfirm();
     this._translationOf = null;
     this._translationCollapsed = false;
     this._seededFromSource = false;
@@ -1489,6 +1504,11 @@ export class JantComposeDialog extends LitElement {
   requestClose() {
     if (this._loading) return;
 
+    // A pending language check belongs to a publish that no longer happens.
+    if (this._langConfirm) {
+      this.#cancelLanguageConfirm();
+    }
+
     // Dismiss any open dropdowns first
     if (this._showCollection) {
       this._closeCollectionPicker();
@@ -1741,8 +1761,12 @@ export class JantComposeDialog extends LitElement {
       replyRefreshKind: this._replyRefreshKind ?? undefined,
       replyRefreshId: this._replyRefreshId ?? undefined,
       // Only the root carries a language: a reply belongs to its Thread and
-      // inherits it server-side. Absent means the author left it to detection.
-      language: this._replyToId ? undefined : (this._language ?? undefined),
+      // inherits it server-side. An automatic choice resolves here to the
+      // page's language (or what detection read, once the author confirmed
+      // it); absent only on a single-language site, where the server decides.
+      language: this._replyToId
+        ? undefined
+        : (this._effectiveLanguage() ?? undefined),
       translationOfId: this._translationOf?.id,
     };
   }
@@ -1931,6 +1955,17 @@ export class JantComposeDialog extends LitElement {
 
   private _submit(status: "published" | "draft") {
     this._showPublishPanel = false;
+    // Publishing is the moment a language becomes a public fact, so the
+    // check runs here; a draft save keeps whatever the author has so far.
+    // The submit stays synchronous whenever no sheet is needed.
+    const pending =
+      status === "published" ? this._maybeConfirmLanguage() : null;
+    if (pending) {
+      void pending.then((confirmed) => {
+        if (confirmed) this._finishSubmit(status);
+      });
+      return;
+    }
     this._finishSubmit(status);
   }
 
@@ -2701,6 +2736,11 @@ export class JantComposeDialog extends LitElement {
   }
 
   private _dismissEscapeOverlay(): boolean {
+    if (this._langConfirm) {
+      this.#cancelLanguageConfirm();
+      return true;
+    }
+
     if (this._confirmPanelOpen) {
       this.requestClose();
       return true;
@@ -2771,6 +2811,14 @@ export class JantComposeDialog extends LitElement {
       if (this._shouldIgnoreEscapeClose()) return;
       if (this._dismissEscapeOverlay()) return;
       this.requestClose();
+    } else if (ke.key === "Enter" && this._langConfirm) {
+      // A button inside the sheet activates itself; Enter anywhere else
+      // confirms what detection read, as the likeliest answer.
+      const target = ke.target as HTMLElement | null;
+      if (!target?.closest("[data-lang-confirm]")) {
+        ke.preventDefault();
+        this.#langConfirmResolve?.(this._langConfirm.detected);
+      }
     } else if (ke.key === "Enter" && this._confirmPanelOpen) {
       ke.preventDefault();
       this._handleConfirmSave();
@@ -4831,6 +4879,64 @@ export class JantComposeDialog extends LitElement {
     `;
   }
 
+  /**
+   * The publish-time language check sheet (see `_resolveAutoLanguage`).
+   *
+   * Both languages are named in themselves, the way the site's language
+   * switcher does it — the author choosing "日本語" should read it as such.
+   */
+  private _renderLanguageConfirmPanel() {
+    if (!this._langConfirm) return nothing;
+    const { detected, context } = this._langConfirm;
+
+    const nameOf = (tag: string) =>
+      this.languages.find((language) => language.tag === tag)?.label ?? tag;
+    const withLanguage = (template: string, tag: string) => {
+      const slot = template.indexOf("{language}");
+      if (slot === -1) return html`${template}`;
+      return html`${template.slice(0, slot)}<span lang=${tag}
+          >${nameOf(tag)}</span
+        >${template.slice(slot + "{language}".length)}`;
+    };
+
+    return html`
+      <div class="compose-confirm-panel" data-lang-confirm>
+        <div class="compose-confirm-sheet">
+          <div class="compose-confirm-header">
+            <p class="compose-confirm-title">
+              ${withLanguage(this.labels.languageConfirmTitle, detected)}
+            </p>
+            <p class="compose-confirm-subtitle">
+              ${this.labels.languageConfirmSubtitle}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="compose-confirm-action compose-confirm-save"
+            data-lang-confirm-primary
+            @click=${() => this.#langConfirmResolve?.(detected)}
+          >
+            ${withLanguage(this.labels.languageConfirmPublishIn, detected)}
+          </button>
+          <button
+            type="button"
+            class="compose-confirm-action"
+            @click=${() => this.#langConfirmResolve?.(context)}
+          >
+            ${withLanguage(this.labels.languageConfirmPublishIn, context)}
+          </button>
+          <button
+            type="button"
+            class="compose-confirm-action compose-confirm-cancel"
+            @click=${() => this.#cancelLanguageConfirm()}
+          >
+            ${this.labels.confirmCloseCancel}
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
   private _getSubmitLabel(): string {
     if (this._editPostId) return this.labels.update;
     if (this._replyToId) {
@@ -5305,16 +5411,84 @@ export class JantComposeDialog extends LitElement {
     return [data.title, data.quoteText, bodyText].filter(Boolean).join(" ");
   }
 
+  /**
+   * The language of the page the composer opened from, as the automatic
+   * choice's default. Falls back to the primary language when the page's
+   * language is unknown or not one the site publishes.
+   */
+  private _contextLanguageTag(): string | null {
+    const tags = this.languages.map((language) => language.tag);
+    if (tags.length === 0) return null;
+    return tags.includes(this.contextLanguage)
+      ? this.contextLanguage
+      : (tags[0] as string);
+  }
+
   /** The language this post would be saved with if submitted right now. */
   private _effectiveLanguage(): string | null {
     if (this._language) return this._language;
-    const tags = this.languages.map((language) => language.tag);
-    if (tags.length === 0) return null;
+    const context = this._contextLanguageTag();
+    if (!context) return null;
     return suggestPostLanguage({
       text: this._composeTextForDetection(),
-      languages: tags,
-      primary: tags[0] as string,
+      languages: this.languages.map((language) => language.tag),
+      primary: context,
     });
+  }
+
+  /**
+   * The publish-time language check.
+   *
+   * A post left on automatic publishes in the current page's language — an
+   * author browsing /ja is writing for /ja. Detection acts as a tripwire, not
+   * an authority: only when it confidently reads the text as a *different*
+   * language does a small sheet ask which one was meant, and the answer
+   * becomes the author's explicit choice. An explicit choice is never
+   * second-guessed, and replies inherit their thread's language server-side.
+   *
+   * @returns A pending answer while the sheet is up; null when no check is
+   *   needed, so the caller can keep the submit fully synchronous
+   */
+  private _maybeConfirmLanguage(): Promise<boolean> | null {
+    if (this._replyToId || this._language || this.languages.length < 2) {
+      return null;
+    }
+    const context = this._contextLanguageTag();
+    if (!context) return null;
+
+    const detected = suggestPostLanguage({
+      text: this._composeTextForDetection(),
+      languages: this.languages.map((language) => language.tag),
+      primary: context,
+    });
+    if (!detected || detected === context) return null;
+
+    return new Promise((resolve) => {
+      this._langConfirm = { detected, context };
+      this.#langConfirmResolve = (choice) => {
+        this._langConfirm = null;
+        this.#langConfirmResolve = null;
+        if (!choice) {
+          resolve(false);
+          this.updateComplete.then(() => this._editor?.focusInput());
+          return;
+        }
+        this._language = choice;
+        resolve(true);
+      };
+      void this.updateComplete.then(() => {
+        this.querySelector<HTMLElement>("[data-lang-confirm-primary]")?.focus();
+      });
+    });
+  }
+
+  /** Dismiss the language check without publishing, if it is on screen. */
+  #cancelLanguageConfirm() {
+    if (!this.#langConfirmResolve) {
+      this._langConfirm = null;
+      return;
+    }
+    this.#langConfirmResolve(null);
   }
 
   private _renderLanguageRow(tag: string | null, label: string, hint: string) {
@@ -6906,7 +7080,7 @@ export class JantComposeDialog extends LitElement {
               ${this._renderQuickActionsRow()}`}
         ${this._renderMobilePublishPanel()} ${this._renderAttachedPanel()}
         ${this._renderAltPanel()} ${this._renderDraftsPanel()}
-        ${this._renderConfirmPanel()}
+        ${this._renderConfirmPanel()} ${this._renderLanguageConfirmPanel()}
       </div>
       ${this._renderAddCollectionPanel()}
     `;

@@ -111,7 +111,9 @@ async function renderPostWithTextPreview(
   post: Post,
   autoOpen: TextPreviewAutoOpen,
 ) {
-  const navDataPromise = getNavigationData(c);
+  // A post page's chrome lives in the post's own language view (its URL
+  // carries no prefix, so `viewLang` can't say).
+  const navDataPromise = getNavigationData(c, { languageScope: post.language });
   const display = await assemblePostPageDisplay(c, post, {
     isAuthenticated: true,
   });
@@ -156,6 +158,7 @@ async function renderPostWithTextPreview(
     articleModifiedTime: display.articleModifiedTime,
     jsonLd: buildPostJsonLd(c, display, meta, canonicalHref, navData.siteName),
     navData,
+    composeContextLanguage: post.language,
     content: (
       <>
         <PostPage
@@ -279,8 +282,10 @@ async function renderPost(
   post: Post,
   options: { allowDraft?: boolean; isPreview?: boolean } = {},
 ) {
-  // Start navData fetch immediately — it's independent of thread/media queries
-  const navDataPromise = getNavigationData(c);
+  // Start navData fetch immediately — it's independent of thread/media queries.
+  // The chrome is scoped to the post's language: a Japanese post's logo and
+  // nav lead into /ja, since the post URL itself carries no language.
+  const navDataPromise = getNavigationData(c, { languageScope: post.language });
   const display = await assemblePostPageDisplay(c, post, {
     // Private-post access is validated before renderPost() is called.
     isAuthenticated: true,
@@ -383,6 +388,7 @@ async function renderPost(
         }
       : {}),
     navData,
+    composeContextLanguage: post.language,
     ...(options.isPreview
       ? {
           pageChrome: <DraftPreviewBar editHref={draftEditHref} />,

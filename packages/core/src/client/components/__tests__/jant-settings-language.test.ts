@@ -27,28 +27,27 @@ const labels = {
   followContent: "Follow content language",
   multilingual: "Multilingual content",
   multilingualHelp: "Give each language its own home page, archive, and feed.",
+  statusOn: "On",
+  turnOn: "Turn on",
+  addMissingLanguage: "Add {language}",
+  viewPosts: "View these posts",
+  languagesLabel: "Languages",
+  primaryBadge: "Primary",
+  makePrimary: "Make primary",
   otherLanguages: "Other languages",
   addLanguage: "Add language",
   removeLanguage: "Remove {language}",
+  languageMenu: "Options for {language}",
   enableTitle: "Turn on multilingual content",
-  enableWhatHappensTitle: "What turning this on does",
-  enableEffectViews:
-    "Each language gets its own home page, archive, feed, and collection pages.",
-  enableEffectCompose:
-    "You choose a language when you publish, and can link posts as translations of one another.",
-  enableEffectUrls:
-    "Post addresses do not change. The primary language keeps the root address; the others get a URL prefix.",
-  enableEffectReversible:
-    "You can turn this off again at any time without losing anything.",
+  enableReassurance:
+    "Post addresses do not change, and you can turn this off again at any time.",
   enableMarkTitle: "One-time change to your existing posts",
   // Lingui resolves the plural server-side against the real count, so what
   // reaches the component already has a number and only `{language}` left.
   enableMarkWarning: "Your 347 existing posts will be marked as {language}.",
-  enableMarkWarningEmpty: "You have no posts yet, so nothing gets marked.",
   enableFixHint:
     "Any post written in another language can be corrected from its own menu afterwards.",
   enableNeedsLanguage: "Add at least one more language to turn this on.",
-  enableConfirm: "Mark posts and turn on",
   changePrimaryTitle: "Change the primary language?",
   changePrimaryBody:
     "{next} will be served at the root address, and {previous} moves to {prefix}.",
@@ -61,7 +60,6 @@ const labels = {
   saving: "Saving…",
   searchPlaceholder: "Search…",
   noMatches: "No matches.",
-  urlPreview: "Reader URLs:",
 };
 
 const locales = [
@@ -151,6 +149,14 @@ function findByText<T extends globalThis.Element>(
   );
 }
 
+/** Open the "⋯" actions menu on a language's row. */
+async function openRowMenu(el: JantSettingsLanguage, language: string) {
+  el.querySelector<HTMLButtonElement>(
+    `[data-language-menu][aria-label="Options for ${language}"]`,
+  )?.click();
+  await el.updateComplete;
+}
+
 describe("JantSettingsLanguage", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
@@ -168,10 +174,16 @@ describe("JantSettingsLanguage", () => {
 
       expect(el.textContent).toContain(labels.contentLanguage);
       expect(el.textContent).toContain(labels.contentLanguageHelp);
+      // Multilingual is its own section, off by default: a description and
+      // a way to turn it on — no badge announcing the default state.
       expect(el.textContent).toContain(labels.multilingual);
-      // Nothing about extra languages until the author opts in.
+      expect(el.textContent).toContain(labels.turnOn);
+      expect(el.querySelector(".badge-secondary")).toBeNull();
+      expect(el.querySelector("[data-multilingual-setup]")).not.toBeNull();
+      // No language management shows before the author opts in.
+      expect(el.textContent).not.toContain(labels.addLanguage);
       expect(el.textContent).not.toContain(labels.otherLanguages);
-      expect(el.textContent).not.toContain(labels.urlPreview);
+      expect(el.textContent).not.toContain(labels.languagesLabel);
     });
 
     it("shows the language's own name, not its tag", async () => {
@@ -286,10 +298,7 @@ describe("JantSettingsLanguage", () => {
     it("quotes the number of posts that will be marked", async () => {
       const el = await createElement({ unmarkedPostCount: 347 });
 
-      const checkbox = el.querySelector<HTMLInputElement>(
-        'input[type="checkbox"]',
-      );
-      checkbox?.click();
+      el.querySelector<HTMLButtonElement>("[data-multilingual-setup]")?.click();
       await el.updateComplete;
 
       const dialog = el.querySelector("[data-enable-dialog]");
@@ -300,7 +309,7 @@ describe("JantSettingsLanguage", () => {
 
     it("fills the language slot the server left open", async () => {
       const el = await createElement({ unmarkedPostCount: 347 });
-      el.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+      el.querySelector<HTMLButtonElement>("[data-multilingual-setup]")?.click();
       await el.updateComplete;
 
       const dialog = el.querySelector("[data-enable-dialog]");
@@ -308,19 +317,22 @@ describe("JantSettingsLanguage", () => {
       expect(dialog?.textContent).not.toContain("{language}");
     });
 
-    it("says nothing gets marked on an empty site", async () => {
+    it("shows no marking warning when nothing needs marking", async () => {
       const el = await createElement({ unmarkedPostCount: 0 });
-      el.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+      el.querySelector<HTMLButtonElement>("[data-multilingual-setup]")?.click();
       await el.updateComplete;
 
+      // Every post already carries a language (or there are none) — an alert
+      // about a change that will not happen would only confuse.
       const dialog = el.querySelector("[data-enable-dialog]");
-      expect(dialog?.textContent).toContain(labels.enableMarkWarningEmpty);
+      expect(dialog).not.toBeNull();
+      expect(dialog?.textContent).not.toContain(labels.enableMarkTitle);
       expect(dialog?.textContent).not.toContain(labels.enableFixHint);
     });
 
     it("keeps the warning in step with the primary language chosen in the dialog", async () => {
       const el = await createElement({ unmarkedPostCount: 5 });
-      el.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+      el.querySelector<HTMLButtonElement>("[data-multilingual-setup]")?.click();
       await el.updateComplete;
 
       const dialog = el.querySelector("[data-enable-dialog]");
@@ -338,15 +350,52 @@ describe("JantSettingsLanguage", () => {
       );
     });
 
-    it("cannot be confirmed without a second language", async () => {
-      const el = await createElement({ unmarkedPostCount: 3 });
-      el.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+    it("shows a refusal inside the dialog and stays open", async () => {
+      // Re-enabling with a language dropped from the list while its posts
+      // remain — the server refuses, and a toast would hide under the modal.
+      const el = await createElement({ unmarkedPostCount: 0 });
+      const calls = mockFetch(
+        { error: "3 posts are written in 繁體中文.", language: "zh-Hant" },
+        false,
+      );
+
+      el.querySelector<HTMLButtonElement>("[data-multilingual-setup]")?.click();
+      await el.updateComplete;
+      el.querySelector<HTMLButtonElement>(
+        'button[aria-labelledby="language-enable-add-label"]',
+      )?.click();
+      await el.updateComplete;
+      findByText<HTMLButtonElement>(el, '[role="option"]', "English")?.click();
+      await el.updateComplete;
+      el.querySelector<HTMLButtonElement>("[data-enable-confirm]")?.click();
+      await vi.waitFor(() => expect(calls.length).toBe(1));
+      await vi.waitFor(() =>
+        expect(
+          el.querySelector('[data-enable-dialog] [role="alert"]'),
+        ).not.toBeNull(),
+      );
+
+      expect(
+        el.querySelector('[data-enable-dialog] [role="alert"]')?.textContent,
+      ).toContain("3 posts are written in 繁體中文.");
+      expect(showToastMock).not.toHaveBeenCalled();
+
+      // The refusal names the language, so putting it back is one click.
+      el.querySelector<HTMLButtonElement>("[data-enable-add-back]")?.click();
       await el.updateComplete;
 
-      const confirm = findByText<HTMLButtonElement>(
-        el,
-        "button",
-        labels.enableConfirm,
+      const dialog = el.querySelector("[data-enable-dialog]");
+      expect(dialog?.textContent).toContain("繁體中文");
+      expect(dialog?.querySelector('[role="alert"]')).toBeNull();
+    });
+
+    it("cannot be confirmed without a second language", async () => {
+      const el = await createElement({ unmarkedPostCount: 3 });
+      el.querySelector<HTMLButtonElement>("[data-multilingual-setup]")?.click();
+      await el.updateComplete;
+
+      const confirm = el.querySelector<HTMLButtonElement>(
+        "[data-enable-confirm]",
       );
       expect(confirm?.disabled).toBe(true);
       expect(el.textContent).toContain(labels.enableNeedsLanguage);
@@ -356,7 +405,7 @@ describe("JantSettingsLanguage", () => {
       const el = await createElement({ unmarkedPostCount: 3 });
       const calls = mockFetch({ toast: "Multilingual content is on." });
 
-      el.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+      el.querySelector<HTMLButtonElement>("[data-multilingual-setup]")?.click();
       await el.updateComplete;
 
       el.querySelector<HTMLButtonElement>(
@@ -366,13 +415,10 @@ describe("JantSettingsLanguage", () => {
       findByText<HTMLButtonElement>(el, '[role="option"]', "English")?.click();
       await el.updateComplete;
 
-      findByText<HTMLButtonElement>(
-        el,
-        "button",
-        labels.enableConfirm,
-      )?.click();
+      el.querySelector<HTMLButtonElement>("[data-enable-confirm]")?.click();
+      // The enabled view only exists once the change is saved.
       await vi.waitFor(() =>
-        expect(el.textContent).toContain(labels.primaryLanguageHelp),
+        expect(el.querySelector("[data-multilingual-off]")).not.toBeNull(),
       );
 
       expect(calls[0]?.url).toBe("/settings/language/enable");
@@ -380,36 +426,33 @@ describe("JantSettingsLanguage", () => {
         primary: "zh-Hans",
         additional: ["en"],
       });
-      expect(el.textContent).toContain(labels.otherLanguages);
+      expect(el.textContent).toContain(labels.languagesLabel);
+      expect(el.textContent).toContain("English");
     });
 
-    it("unchecks the toggle again when the dialog is cancelled", async () => {
+    it("stays off when the dialog is cancelled", async () => {
       const el = await createElement({ unmarkedPostCount: 3 });
       const calls = mockFetch({});
 
-      const checkbox = el.querySelector<HTMLInputElement>(
-        "[data-multilingual-toggle]",
-      );
-      checkbox?.click();
+      el.querySelector<HTMLButtonElement>("[data-multilingual-setup]")?.click();
       await el.updateComplete;
-      expect(checkbox?.checked).toBe(true);
+      expect(el.querySelector("[data-enable-dialog]")).not.toBeNull();
 
       findByText<HTMLButtonElement>(el, "button", labels.cancel)?.click();
       await el.updateComplete;
 
-      // The browser flipped it on click; nothing was saved, so it must go back.
-      expect(checkbox?.checked).toBe(false);
+      // Nothing was saved: the page still offers turning it on.
+      expect(el.querySelector("[data-enable-dialog]")).toBeNull();
+      expect(el.querySelector("[data-multilingual-setup]")).not.toBeNull();
+      expect(el.textContent).not.toContain(labels.languagesLabel);
       expect(calls).toHaveLength(0);
     });
 
-    it("leaves the toggle on once the change is saved", async () => {
+    it("offers turning it off once the change is saved", async () => {
       const el = await createElement({ unmarkedPostCount: 3 });
       mockFetch({ toast: "Multilingual content is on." });
 
-      const checkbox = el.querySelector<HTMLInputElement>(
-        "[data-multilingual-toggle]",
-      );
-      checkbox?.click();
+      el.querySelector<HTMLButtonElement>("[data-multilingual-setup]")?.click();
       await el.updateComplete;
 
       el.querySelector<HTMLButtonElement>(
@@ -418,26 +461,20 @@ describe("JantSettingsLanguage", () => {
       await el.updateComplete;
       findByText<HTMLButtonElement>(el, '[role="option"]', "English")?.click();
       await el.updateComplete;
-      findByText<HTMLButtonElement>(
-        el,
-        "button",
-        labels.enableConfirm,
-      )?.click();
+      el.querySelector<HTMLButtonElement>("[data-enable-confirm]")?.click();
       await vi.waitFor(() =>
-        expect(el.textContent).toContain(labels.primaryLanguageHelp),
+        expect(el.querySelector("[data-multilingual-off]")).not.toBeNull(),
       );
 
-      expect(
-        el.querySelector<HTMLInputElement>("[data-multilingual-toggle]")
-          ?.checked,
-      ).toBe(true);
+      expect(el.querySelector("[data-multilingual-off]")).not.toBeNull();
+      expect(el.querySelector("[data-multilingual-setup]")).toBeNull();
     });
 
     it("closes on Escape without saving", async () => {
       const el = await createElement({ unmarkedPostCount: 3 });
       const calls = mockFetch({});
 
-      el.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+      el.querySelector<HTMLButtonElement>("[data-multilingual-setup]")?.click();
       await el.updateComplete;
       document.dispatchEvent(
         new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
@@ -455,18 +492,55 @@ describe("JantSettingsLanguage", () => {
       additionalLanguages: ["en", "ja"],
     };
 
-    it("relabels the language field and previews the reader URLs", async () => {
+    it("lists every language with its reader URL, primary first", async () => {
       const el = await createElement(enabled);
 
-      expect(el.textContent).toContain(labels.primaryLanguage);
-      expect(el.textContent).toContain(labels.primaryLanguageHelp);
+      expect(el.textContent).toContain(labels.languagesLabel);
+      expect(el.textContent).toContain(labels.primaryBadge);
       expect(el.textContent).not.toContain(labels.contentLanguageHelp);
-      expect(el.textContent).toContain(labels.urlPreview);
 
       const codes = Array.from(el.querySelectorAll("code")).map((node) =>
         node.textContent?.trim(),
       );
       expect(codes).toEqual(["/", "/en", "/ja"]);
+      // Each address is a real link, opened away from the settings page.
+      const links = Array.from(
+        el.querySelectorAll<globalThis.HTMLAnchorElement>("li a"),
+      );
+      expect(links.map((link) => link.getAttribute("href"))).toEqual([
+        "/",
+        "/en",
+        "/ja",
+      ]);
+      for (const link of links) {
+        expect(link.getAttribute("target")).toBe("_blank");
+        expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+      }
+      // The primary row carries the badge; the others fold their rare
+      // actions behind a "⋯" menu instead of a row of buttons.
+      const primaryRow = findByText<globalThis.HTMLLIElement>(
+        el,
+        "li",
+        "简体中文",
+      );
+      expect(primaryRow?.textContent).toContain(labels.primaryBadge);
+      expect(primaryRow?.querySelector("[data-language-menu]")).toBeNull();
+      expect(el.querySelectorAll("[data-language-menu]").length).toBe(2);
+      expect(el.textContent).not.toContain(labels.makePrimary);
+    });
+
+    it("dismisses a row menu on Escape", async () => {
+      const el = await createElement(enabled);
+
+      await openRowMenu(el, "English");
+      expect(el.querySelector('[role="menu"]')).not.toBeNull();
+
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+      await el.updateComplete;
+
+      expect(el.querySelector('[role="menu"]')).toBeNull();
     });
 
     it("honors the hosted site path prefix in those URLs", async () => {
@@ -483,7 +557,7 @@ describe("JantSettingsLanguage", () => {
       const calls = mockFetch({ toast: "Language added." });
 
       el.querySelector<HTMLButtonElement>(
-        'button[aria-labelledby="language-add-label"]',
+        '[data-language-picker] button[aria-labelledby="language-list-label"]',
       )?.click();
       await el.updateComplete;
       findByText<HTMLButtonElement>(el, '[role="option"]', "繁體中文")?.click();
@@ -502,33 +576,51 @@ describe("JantSettingsLanguage", () => {
         false,
       );
 
-      const remove = el.querySelector<HTMLButtonElement>(
-        'button[aria-label="Remove English"]',
-      );
-      remove?.click();
+      await openRowMenu(el, "English");
+      findByText<HTMLButtonElement>(
+        el,
+        '[role="menuitem"]',
+        "Remove English",
+      )?.click();
       await vi.waitFor(() => expect(calls.length).toBe(1));
       await el.updateComplete;
 
       expect(calls[0]?.url).toBe("/settings/language/remove");
       expect(el.textContent).toContain("English");
+
+      // The refusal shows under that language's row, with a way to the posts.
+      await vi.waitFor(() =>
+        expect(el.querySelector('[role="alert"]')).not.toBeNull(),
+      );
+      const alert = el.querySelector('[role="alert"]');
+      expect(alert?.textContent).toContain(
+        "2 posts are still written in this language.",
+      );
+      const link = alert?.querySelector("a");
+      expect(link?.getAttribute("href")).toBe("/en/archive");
+      expect(link?.getAttribute("target")).toBe("_blank");
+      expect(link?.textContent).toContain(labels.viewPosts);
     });
 
     it("drops a language the server accepted", async () => {
       const el = await createElement(enabled);
       const calls = mockFetch({ toast: "Language removed." });
 
-      el.querySelector<HTMLButtonElement>(
-        'button[aria-label="Remove 日本語"]',
+      await openRowMenu(el, "日本語");
+      findByText<HTMLButtonElement>(
+        el,
+        '[role="menuitem"]',
+        "Remove 日本語",
       )?.click();
       await vi.waitFor(() =>
         expect(
-          el.querySelector('button[aria-label="Remove 日本語"]'),
+          el.querySelector('[aria-label="Options for 日本語"]'),
         ).toBeNull(),
       );
 
       expect(calls[0]?.url).toBe("/settings/language/remove");
       expect(
-        el.querySelector('button[aria-label="Remove English"]'),
+        el.querySelector('[aria-label="Options for English"]'),
       ).not.toBeNull();
       const codes = Array.from(el.querySelectorAll("code")).map((node) =>
         node.textContent?.trim(),
@@ -542,11 +634,12 @@ describe("JantSettingsLanguage", () => {
       const confirmSpy = vi.fn().mockResolvedValue(false);
       showConfirmDialogMock.mockImplementation(confirmSpy);
 
-      el.querySelector<HTMLButtonElement>(
-        'button[aria-labelledby="language-primary-label"]',
+      await openRowMenu(el, "English");
+      findByText<HTMLButtonElement>(
+        el,
+        '[role="menuitem"]',
+        labels.makePrimary,
       )?.click();
-      await el.updateComplete;
-      findByText<HTMLButtonElement>(el, '[role="option"]', "English")?.click();
       await vi.waitFor(() => expect(confirmSpy).toHaveBeenCalled());
 
       // Declined — nothing is written.
@@ -562,11 +655,12 @@ describe("JantSettingsLanguage", () => {
       const calls = mockFetch({ toast: "Primary language changed." });
       showConfirmDialogMock.mockResolvedValue(true);
 
-      el.querySelector<HTMLButtonElement>(
-        'button[aria-labelledby="language-primary-label"]',
+      await openRowMenu(el, "English");
+      findByText<HTMLButtonElement>(
+        el,
+        '[role="menuitem"]',
+        labels.makePrimary,
       )?.click();
-      await el.updateComplete;
-      findByText<HTMLButtonElement>(el, '[role="option"]', "English")?.click();
       await vi.waitFor(() => expect(calls.length).toBe(1));
       await el.updateComplete;
 
@@ -579,19 +673,17 @@ describe("JantSettingsLanguage", () => {
       expect(codes).toEqual(["/", "/ja", "/zh-hans"]);
     });
 
-    it("re-checks the toggle when turning it off is declined", async () => {
+    it("keeps the views when turning it off is declined", async () => {
       const el = await createElement(enabled);
       const calls = mockFetch({});
       showConfirmDialogMock.mockResolvedValue(false);
 
-      const checkbox = el.querySelector<HTMLInputElement>(
-        "[data-multilingual-toggle]",
-      );
-      checkbox?.click();
-      await vi.waitFor(() => expect(checkbox?.checked).toBe(true));
+      el.querySelector<HTMLButtonElement>("[data-multilingual-off]")?.click();
+      await vi.waitFor(() => expect(showConfirmDialogMock).toHaveBeenCalled());
+      await el.updateComplete;
 
       expect(calls).toHaveLength(0);
-      expect(el.textContent).toContain(labels.urlPreview);
+      expect(el.querySelector("[data-language-menu]")).not.toBeNull();
     });
 
     it("confirms before turning multilingual off", async () => {
@@ -599,13 +691,13 @@ describe("JantSettingsLanguage", () => {
       const calls = mockFetch({ toast: "Multilingual content is off." });
       showConfirmDialogMock.mockResolvedValue(true);
 
-      el.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+      el.querySelector<HTMLButtonElement>("[data-multilingual-off]")?.click();
       await vi.waitFor(() => expect(calls.length).toBe(1));
       await el.updateComplete;
 
       expect(calls[0]?.url).toBe("/settings/language/disable");
       // The languages stay configured; only the views stop.
-      expect(el.textContent).not.toContain(labels.urlPreview);
+      expect(el.querySelector("[data-language-menu]")).toBeNull();
       expect(el.textContent).toContain(labels.contentLanguageHelp);
     });
   });

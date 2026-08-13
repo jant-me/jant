@@ -14,7 +14,9 @@ import {
   buildSurfaceAlternates,
   getViewLang,
   getViewLanguages,
+  isPerLanguageSurface,
   isPrefixedLanguageView,
+  languageScopeBasePath,
   resolveLanguageView,
   toLanguagePath,
   toViewPath,
@@ -220,6 +222,32 @@ describe("getViewLanguages", () => {
   });
 });
 
+describe("languageScopeBasePath", () => {
+  it("scopes an active non-primary language to its prefix", () => {
+    expect(languageScopeBasePath(fakeContext(), "en")).toBe("/en");
+  });
+
+  it("keeps the primary language at the root", () => {
+    expect(languageScopeBasePath(fakeContext(), "zh-Hans")).toBe("");
+  });
+
+  it("stays at the root without a language", () => {
+    expect(languageScopeBasePath(fakeContext(), null)).toBe("");
+  });
+
+  it("stays at the root while multilingual is off", () => {
+    // A post keeps its language column after the feature is switched off,
+    // but there is no /en view to scope its chrome to any more.
+    expect(
+      languageScopeBasePath(fakeContext({ multilingualEnabled: false }), "en"),
+    ).toBe("");
+  });
+
+  it("ignores a language the site no longer publishes", () => {
+    expect(languageScopeBasePath(fakeContext(), "ja")).toBe("");
+  });
+});
+
 describe("buildSurfaceAlternates", () => {
   it("points at the same surface in every language", () => {
     const c = fakeContext({ path: "/en/archive", viewLang: "en" });
@@ -298,5 +326,29 @@ describe("buildLanguageSwitcher", () => {
     expect(
       buildLanguageSwitcher(fakeContext({ additionalLanguages: [] })),
     ).toEqual([]);
+  });
+
+  it("aims at each language's home from a page no language view serves", () => {
+    // /ja/settings/language would be a 404 — the switcher must never mint one.
+    const c = fakeContext({ path: "/settings/language" });
+
+    expect(buildLanguageSwitcher(c).map((option) => option.href)).toEqual([
+      "/",
+      "/en",
+    ]);
+  });
+});
+
+describe("isPerLanguageSurface", () => {
+  it("recognizes the surfaces the language routes serve", () => {
+    expect(isPerLanguageSurface("/")).toBe(true);
+    expect(isPerLanguageSurface("/archive")).toBe(true);
+    expect(isPerLanguageSurface("/collections/reading")).toBe(true);
+  });
+
+  it("rejects everything without a per-language counterpart", () => {
+    expect(isPerLanguageSurface("/settings")).toBe(false);
+    expect(isPerLanguageSurface("/settings/language")).toBe(false);
+    expect(isPerLanguageSurface("/my-post")).toBe(false);
   });
 });

@@ -26,26 +26,28 @@ interface LanguageLabels {
   contentLanguageHelp: string;
   primaryLanguage: string;
   primaryLanguageHelp: string;
+  languagesLabel: string;
+  primaryBadge: string;
+  makePrimary: string;
   dashboardLanguage: string;
   dashboardLanguageHelp: string;
   followContent: string;
   multilingual: string;
   multilingualHelp: string;
+  statusOn: string;
+  turnOn: string;
+  addMissingLanguage: string;
+  viewPosts: string;
   otherLanguages: string;
   addLanguage: string;
   removeLanguage: string;
+  languageMenu: string;
   enableTitle: string;
-  enableWhatHappensTitle: string;
-  enableEffectViews: string;
-  enableEffectCompose: string;
-  enableEffectUrls: string;
-  enableEffectReversible: string;
+  enableReassurance: string;
   enableMarkTitle: string;
   enableMarkWarning: string;
-  enableMarkWarningEmpty: string;
   enableFixHint: string;
   enableNeedsLanguage: string;
-  enableConfirm: string;
   changePrimaryTitle: string;
   changePrimaryBody: string;
   changePrimaryConfirm: string;
@@ -57,7 +59,6 @@ interface LanguageLabels {
   saving: string;
   searchPlaceholder: string;
   noMatches: string;
-  urlPreview: string;
 }
 
 interface LocaleOption {
@@ -115,6 +116,9 @@ export class JantSettingsLanguage extends LitElement {
     _sitePathPrefix: { state: true },
     _savingSite: { state: true },
     _savingDashboard: { state: true },
+    _removeError: { state: true },
+    _rowMenuOpen: { state: true },
+    _enableError: { state: true },
     _pickerOpen: { state: true },
     _pickerQuery: { state: true },
     _enableOpen: { state: true },
@@ -133,6 +137,20 @@ export class JantSettingsLanguage extends LitElement {
   declare _sitePathPrefix: string;
   declare _savingSite: boolean;
   declare _savingDashboard: boolean;
+  /**
+   * The refusal to remove a language, shown under that language's own row.
+   * Inline rather than a toast: the way out is a link to the posts, and a
+   * link belongs where the refusal happened.
+   */
+  declare _removeError: { tag: string; message: string } | null;
+  /** Language tag whose row menu (make primary / remove) is open. */
+  declare _rowMenuOpen: string | null;
+  /**
+   * Refusal from the enable dialog's save, shown inside the dialog. When the
+   * server names the language whose posts blocked the save, putting it back
+   * on the list is offered as one click.
+   */
+  declare _enableError: { message: string; language?: string } | null;
   declare _pickerOpen:
     | "primary"
     | "add"
@@ -165,6 +183,9 @@ export class JantSettingsLanguage extends LitElement {
     this._sitePathPrefix = "";
     this._savingSite = false;
     this._savingDashboard = false;
+    this._removeError = null;
+    this._rowMenuOpen = null;
+    this._enableError = null;
     this._pickerOpen = null;
     this._pickerQuery = "";
     this._enableOpen = false;
@@ -237,8 +258,13 @@ export class JantSettingsLanguage extends LitElement {
   // ── Dismissal ─────────────────────────────────────────────────────
 
   #onDocumentClick = (event: Event) => {
-    if (!this._pickerOpen) return;
     const target = event.target as globalThis.Element | null;
+    if (this._rowMenuOpen) {
+      const inMenu =
+        target && this.contains(target) && target.closest?.("[data-row-menu]");
+      if (!inMenu) this._rowMenuOpen = null;
+    }
+    if (!this._pickerOpen) return;
     if (target && this.contains(target)) {
       if (target.closest?.("[data-language-picker]")) return;
     }
@@ -248,6 +274,11 @@ export class JantSettingsLanguage extends LitElement {
 
   #onDocumentKeydown = (event: globalThis.KeyboardEvent) => {
     if (event.key !== "Escape") return;
+    if (this._rowMenuOpen) {
+      event.stopPropagation();
+      this._rowMenuOpen = null;
+      return;
+    }
     if (this._pickerOpen) {
       event.stopPropagation();
       this._pickerOpen = null;
@@ -263,11 +294,18 @@ export class JantSettingsLanguage extends LitElement {
   #openPicker(which: NonNullable<JantSettingsLanguage["_pickerOpen"]>) {
     this._pickerOpen = this._pickerOpen === which ? null : which;
     this._pickerQuery = "";
+    this._rowMenuOpen = null;
     if (this._pickerOpen) {
       void this.updateComplete.then(() => {
         this.querySelector<HTMLInputElement>("[data-language-search]")?.focus();
       });
     }
+  }
+
+  #toggleRowMenu(tag: string) {
+    this._rowMenuOpen = this._rowMenuOpen === tag ? null : tag;
+    this._pickerOpen = null;
+    this._pickerQuery = "";
   }
 
   #filteredLocales(exclude: readonly string[]): LocaleOption[] {
@@ -288,7 +326,7 @@ export class JantSettingsLanguage extends LitElement {
   async #post(
     path: string,
     body: Record<string, unknown>,
-  ): Promise<{ ok: boolean; message?: string }> {
+  ): Promise<{ ok: boolean; message?: string; language?: string }> {
     try {
       const res = await fetch(this.#endpoint(path), {
         method: "POST",
@@ -303,6 +341,9 @@ export class JantSettingsLanguage extends LitElement {
         return {
           ok: false,
           message: getJsonString(json, "error") ?? `HTTP ${res.status}`,
+          // A language-in-use refusal names the language, so the dialog can
+          // offer putting it back as one click.
+          language: getJsonString(json, "language"),
         };
       }
       return { ok: true, message: getJsonString(json, "toast") };
@@ -314,6 +355,7 @@ export class JantSettingsLanguage extends LitElement {
   async #selectPrimary(tag: string) {
     this._pickerOpen = null;
     this._pickerQuery = "";
+    this._removeError = null;
     if (tag === this._contentLanguage) return;
 
     // With multilingual off this is just "what language is this site in". With
@@ -382,6 +424,7 @@ export class JantSettingsLanguage extends LitElement {
   async #addLanguage(tag: string) {
     this._pickerOpen = null;
     this._pickerQuery = "";
+    this._removeError = null;
     const result = await this.#post("/add", { language: tag });
     if (!result.ok) {
       showToast(result.message ?? "", "error");
@@ -392,37 +435,18 @@ export class JantSettingsLanguage extends LitElement {
   }
 
   async #removeLanguage(tag: string) {
+    this._removeError = null;
     const result = await this.#post("/remove", { language: tag });
     if (!result.ok) {
-      showToast(result.message ?? "", "error");
+      this._removeError = { tag, message: result.message ?? "" };
       return;
     }
     this._additional = this._additional.filter((entry) => entry !== tag);
     if (result.message) showToast(result.message);
   }
 
-  /**
-   * Put the checkbox back in step with the stored setting.
-   *
-   * The browser flips a checkbox the moment it is clicked, but this one only
-   * takes effect once a confirmation is accepted and the server agrees. Lit
-   * will not undo that on its own — the bound property never changed, so it
-   * has nothing to re-commit — which would leave a cancelled toggle showing
-   * the opposite of the truth.
-   */
-  #syncMultilingualCheckbox() {
-    const checkbox = this.querySelector(
-      "[data-multilingual-toggle]",
-    ) as globalThis.HTMLInputElement | null;
-    if (checkbox) checkbox.checked = this._multilingualEnabled;
-  }
-
-  async #toggleMultilingual(next: boolean) {
-    if (next) {
-      this.#openEnableDialog();
-      return;
-    }
-
+  async #turnOffMultilingual() {
+    this._removeError = null;
     const confirmed = await showConfirmDialog({
       title: this.labels.disableTitle,
       message: interpolate(this.labels.disableBody, {
@@ -431,24 +455,23 @@ export class JantSettingsLanguage extends LitElement {
       confirmLabel: this.labels.disableConfirm,
       cancelLabel: this.labels.cancel,
     });
-    if (!confirmed) {
-      this.#syncMultilingualCheckbox();
-      return;
-    }
+    if (!confirmed) return;
 
     const result = await this.#post("/disable", {});
     if (!result.ok) {
-      this.#syncMultilingualCheckbox();
       showToast(result.message ?? "", "error");
       return;
     }
     this._multilingualEnabled = false;
-    if (result.message) showToast(result.message);
+    // The header's language switcher has to go away with the views.
+    window.location.reload();
   }
 
   // ── Enable dialog ─────────────────────────────────────────────────
 
   #openEnableDialog() {
+    this._removeError = null;
+    this._enableError = null;
     this._enablePrimary = this._contentLanguage;
     this._enableAdditional = [...this._additional];
     this._enableOpen = true;
@@ -462,9 +485,6 @@ export class JantSettingsLanguage extends LitElement {
   }
 
   #closeEnableDialog() {
-    // Runs after `#confirmEnable` has committed the new state, so this reads
-    // the truth in both the accepted and the cancelled case.
-    this.#syncMultilingualCheckbox();
     const dialog = this.querySelector<HTMLDialogElement>(
       "[data-enable-dialog]",
     );
@@ -478,13 +498,19 @@ export class JantSettingsLanguage extends LitElement {
     if (this._enableAdditional.length === 0 || this._enableBusy) return;
 
     this._enableBusy = true;
+    this._enableError = null;
     const result = await this.#post("/enable", {
       primary: this._enablePrimary,
       additional: this._enableAdditional,
     });
     this._enableBusy = false;
     if (!result.ok) {
-      showToast(result.message ?? "", "error");
+      // Inside the dialog, where the refusal happened — a toast would sit
+      // beneath the modal's top layer and never be seen.
+      this._enableError = {
+        message: result.message ?? "",
+        ...(result.language ? { language: result.language } : {}),
+      };
       return;
     }
 
@@ -493,7 +519,10 @@ export class JantSettingsLanguage extends LitElement {
     this._multilingualEnabled = true;
     this._unmarkedPostCount = 0;
     this.#closeEnableDialog();
-    if (result.message) showToast(result.message);
+    // The page's own chrome changed with the setting — the language switcher
+    // exists now — and only the server can render it. Same pattern as the
+    // dashboard-language change above.
+    window.location.reload();
   }
 
   // ── Render ────────────────────────────────────────────────────────
@@ -578,6 +607,45 @@ export class JantSettingsLanguage extends LitElement {
   }
 
   /**
+   * The save refusal, rendered inside the dialog with its one-click fix.
+   *
+   * When the server names the language whose posts blocked the save, an
+   * "Add {language}" button puts it straight back on the list — the reader
+   * of the error should not have to find that language in a picker.
+   */
+  #renderEnableError(error: { message: string; language?: string }) {
+    return html`
+      <div class="flex flex-wrap items-center gap-2" role="alert">
+        <p class="text-sm text-destructive">${error.message}</p>
+        ${error.language
+          ? html`
+              <button
+                type="button"
+                class="btn-sm-outline"
+                data-enable-add-back
+                @click=${() => this.#addBackLanguage(error.language ?? "")}
+              >
+                ${interpolate(this.labels.addMissingLanguage, {
+                  language: this.#displayName(error.language),
+                })}
+              </button>
+            `
+          : nothing}
+      </div>
+    `;
+  }
+
+  /** Put the language the refusal named back on the dialog's list. */
+  #addBackLanguage(tag: string) {
+    if (!tag) return;
+    this._enableError = null;
+    if (tag === this._enablePrimary || this._enableAdditional.includes(tag)) {
+      return;
+    }
+    this._enableAdditional = [...this._enableAdditional, tag];
+  }
+
+  /**
    * The confirmation shown before multilingual content is switched on.
    *
    * BaseCoat's `.alert` is a two-column grid where only a title element and a
@@ -587,12 +655,14 @@ export class JantSettingsLanguage extends LitElement {
   #renderEnableDialog() {
     if (!this._enableOpen) return nothing;
 
+    // With nothing to stamp there is nothing to warn about — the alert only
+    // exists for the one-time marking of posts that predate the feature.
     const warning =
       this._unmarkedPostCount > 0
         ? interpolate(this.labels.enableMarkWarning, {
             language: this.#displayName(this._enablePrimary),
           })
-        : this.labels.enableMarkWarningEmpty;
+        : null;
 
     return html`
       <dialog
@@ -646,6 +716,9 @@ export class JantSettingsLanguage extends LitElement {
                   this._pickerQuery = "";
                 },
               })}
+              <p class="text-sm text-muted-foreground mt-1">
+                ${this.labels.primaryLanguageHelp}
+              </p>
             </div>
 
             <div class="field">
@@ -690,48 +763,45 @@ export class JantSettingsLanguage extends LitElement {
               </div>
             </div>
 
-            <div class="flex flex-col gap-2">
-              <span class="label">${this.labels.enableWhatHappensTitle}</span>
-              <ul
-                class="list-disc pl-5 text-sm text-muted-foreground flex flex-col gap-1"
-              >
-                <li>${this.labels.enableEffectViews}</li>
-                <li>${this.labels.enableEffectCompose}</li>
-                <li>${this.labels.enableEffectUrls}</li>
-                <li>${this.labels.enableEffectReversible}</li>
-              </ul>
-            </div>
+            ${warning
+              ? html`
+                  <div class="alert">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"
+                      />
+                      <path d="M12 9v4" />
+                      <path d="M12 17h.01" />
+                    </svg>
+                    <strong>${this.labels.enableMarkTitle}</strong>
+                    <section>
+                      <p>${warning}</p>
+                      <p>${this.labels.enableFixHint}</p>
+                    </section>
+                  </div>
+                `
+              : nothing}
 
-            <div class="alert">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path
-                  d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"
-                />
-                <path d="M12 9v4" />
-                <path d="M12 17h.01" />
-              </svg>
-              <strong>${this.labels.enableMarkTitle}</strong>
-              <section>
-                <p>${warning}</p>
-                ${this._unmarkedPostCount > 0
-                  ? html`<p>${this.labels.enableFixHint}</p>`
-                  : nothing}
-              </section>
-            </div>
+            <p class="text-sm text-muted-foreground">
+              ${this.labels.enableReassurance}
+            </p>
 
             ${this._enableAdditional.length === 0
               ? html`<p class="text-sm text-muted-foreground">
                   ${this.labels.enableNeedsLanguage}
                 </p>`
+              : nothing}
+            ${this._enableError
+              ? this.#renderEnableError(this._enableError)
               : nothing}
           </div>
 
@@ -746,13 +816,12 @@ export class JantSettingsLanguage extends LitElement {
             <button
               type="button"
               class="btn"
+              data-enable-confirm
               ?disabled=${this._enableAdditional.length === 0 ||
               this._enableBusy}
               @click=${() => void this.#confirmEnable()}
             >
-              ${this._enableBusy
-                ? this.labels.saving
-                : this.labels.enableConfirm}
+              ${this._enableBusy ? this.labels.saving : this.labels.save}
             </button>
           </footer>
         </div>
@@ -760,109 +829,217 @@ export class JantSettingsLanguage extends LitElement {
     `;
   }
 
+  /**
+   * The folded actions of one non-primary language row.
+   *
+   * Making a language primary or removing it are once-a-year moves; a row of
+   * always-visible buttons would give them daily-driver prominence. A "⋯"
+   * menu keeps the list to what matters — language and address — and follows
+   * the dismissal rules every popover here follows.
+   */
+  #renderRowMenu(tag: string) {
+    const open = this._rowMenuOpen === tag;
+    const name = this.#displayName(tag);
+
+    return html`
+      <span class="relative ml-auto flex items-center" data-row-menu>
+        <button
+          type="button"
+          class="btn-sm-ghost text-muted-foreground"
+          aria-haspopup="menu"
+          aria-expanded=${open ? "true" : "false"}
+          aria-label=${interpolate(this.labels.languageMenu, {
+            language: name,
+          })}
+          data-language-menu
+          @click=${() => this.#toggleRowMenu(tag)}
+        >
+          ⋯
+        </button>
+        ${open
+          ? html`
+              <div
+                role="menu"
+                class="absolute right-0 top-full z-20 mt-1 min-w-40 rounded-md border bg-popover py-1 text-popover-foreground shadow-md"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent"
+                  ?disabled=${this._savingSite}
+                  @click=${() => {
+                    this._rowMenuOpen = null;
+                    void this.#selectPrimary(tag);
+                  }}
+                >
+                  ${this.labels.makePrimary}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="block w-full cursor-pointer px-3 py-2 text-left text-sm text-destructive hover:bg-accent"
+                  @click=${() => {
+                    this._rowMenuOpen = null;
+                    void this.#removeLanguage(tag);
+                  }}
+                >
+                  ${interpolate(this.labels.removeLanguage, {
+                    language: name,
+                  })}
+                </button>
+              </div>
+            `
+          : nothing}
+      </span>
+    `;
+  }
+
+  /**
+   * The site's languages as one list, each with the address it is served at.
+   *
+   * One row per language keeps every fact and action in the same place —
+   * which language, which URL, which one owns the root, make another primary,
+   * remove one — instead of a picker, a chip row and a URL legend apart.
+   */
+  #renderLanguagesList() {
+    const languages = [this._contentLanguage, ...this._additional];
+
+    return html`
+      <div class="field">
+        <span id="language-list-label" class="label"
+          >${this.labels.languagesLabel}${this._savingSite
+            ? ` ${this.labels.saving}`
+            : ""}</span
+        >
+        <ul
+          class="flex flex-col rounded-md border divide-y"
+          aria-labelledby="language-list-label"
+        >
+          ${languages.map((tag) => {
+            const isPrimary = tag === this._contentLanguage;
+            const url = isPrimary
+              ? `${this._sitePathPrefix}/`
+              : this.#prefixFor(tag);
+            return html`
+              <li class="flex flex-col px-3 py-1.5 text-sm">
+                <div class="flex min-h-8 items-center gap-3">
+                  <span class="min-w-0 truncate" lang=${tag}
+                    >${this.#displayName(tag)}</span
+                  >
+                  <a
+                    href=${url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="shrink-0"
+                  >
+                    <code
+                      class="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                      >${url}</code
+                    >
+                  </a>
+                  ${isPrimary
+                    ? html`<span class="badge-secondary ml-auto"
+                        >${this.labels.primaryBadge}</span
+                      >`
+                    : this.#renderRowMenu(tag)}
+                </div>
+                ${this._removeError?.tag === tag
+                  ? html`
+                      <p class="pb-1 text-sm text-destructive" role="alert">
+                        ${this._removeError.message}${this._multilingualEnabled
+                          ? html`
+                              <a
+                                class="underline underline-offset-2"
+                                href=${`${this.#prefixFor(tag)}/archive`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                >${this.labels.viewPosts}</a
+                              >
+                            `
+                          : nothing}
+                      </p>
+                    `
+                  : nothing}
+              </li>
+            `;
+          })}
+        </ul>
+        <div class="mt-2">
+          ${this.#renderLanguagePicker({
+            which: "add",
+            labelId: "language-list-label",
+            exclude: [this._contentLanguage, ...this._additional],
+            triggerLabel: `+ ${this.labels.addLanguage}`,
+            triggerClass: "btn-sm-outline",
+            onSelect: (tag) => void this.#addLanguage(tag),
+          })}
+        </div>
+      </div>
+    `;
+  }
+
   render() {
     if (!this.labels.contentLanguage) return nothing;
-
-    const primaryLabel = this._multilingualEnabled
-      ? this.labels.primaryLanguage
-      : this.labels.contentLanguage;
-    const primaryHelp = this._multilingualEnabled
-      ? this.labels.primaryLanguageHelp
-      : this.labels.contentLanguageHelp;
 
     return html`
       <div class="flex flex-col gap-8">
         <section class="flex flex-col gap-4">
           <h2 class="text-lg font-medium">${this.labels.siteSection}</h2>
 
-          <div class="field">
-            <span id="language-primary-label" class="label"
-              >${primaryLabel}</span
-            >
-            ${this.#renderLanguagePicker({
-              which: "primary",
-              labelId: "language-primary-label",
-              current: this._contentLanguage,
-              exclude: [],
-              triggerLabel: this.#displayName(this._contentLanguage),
-              triggerClass: PICKER_TRIGGER_CLASS,
-              onSelect: (tag) => void this.#selectPrimary(tag),
-            })}
-            <p class="text-sm text-muted-foreground mt-1">
-              ${primaryHelp}${this._savingSite ? ` ${this.labels.saving}` : ""}
-            </p>
-          </div>
-
-          <div class="field">
-            <label class="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                class="input mt-1 size-4"
-                data-multilingual-toggle
-                .checked=${this._multilingualEnabled}
-                @change=${(e: Event) =>
-                  void this.#toggleMultilingual(
-                    (e.target as HTMLInputElement).checked,
-                  )}
-              />
-              <span class="flex flex-col">
-                <span class="label">${this.labels.multilingual}</span>
-                <span class="text-sm text-muted-foreground"
-                  >${this.labels.multilingualHelp}</span
-                >
-              </span>
-            </label>
-          </div>
-
           ${this._multilingualEnabled
-            ? html`
-                <div class="field pl-7">
-                  <span id="language-add-label" class="label"
-                    >${this.labels.otherLanguages}</span
+            ? this.#renderLanguagesList()
+            : html`
+                <div class="field">
+                  <span id="language-primary-label" class="label"
+                    >${this.labels.contentLanguage}</span
                   >
-                  <div class="flex flex-wrap items-center gap-2">
-                    ${this._additional.map(
-                      (tag) => html`
-                        <span class="badge-secondary gap-1">
-                          ${this.#displayName(tag)}
-                          <button
-                            type="button"
-                            class="cursor-pointer opacity-70 hover:opacity-100"
-                            aria-label=${interpolate(
-                              this.labels.removeLanguage,
-                              { language: this.#displayName(tag) },
-                            )}
-                            @click=${() => void this.#removeLanguage(tag)}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      `,
-                    )}
-                    ${this.#renderLanguagePicker({
-                      which: "add",
-                      labelId: "language-add-label",
-                      exclude: [this._contentLanguage, ...this._additional],
-                      triggerLabel: `+ ${this.labels.addLanguage}`,
-                      triggerClass: "btn-sm-outline",
-                      onSelect: (tag) => void this.#addLanguage(tag),
-                    })}
-                  </div>
-                  <p class="text-sm text-muted-foreground mt-2">
-                    ${this.labels.urlPreview}
-                    ${[this._contentLanguage, ...this._additional].map(
-                      (tag, index) =>
-                        html`${index > 0 ? " · " : " "}
-                          <code class="rounded bg-muted px-1.5 py-0.5 text-xs"
-                            >${tag === this._contentLanguage
-                              ? `${this._sitePathPrefix}/`
-                              : this.#prefixFor(tag)}</code
-                          >`,
-                    )}
+                  ${this.#renderLanguagePicker({
+                    which: "primary",
+                    labelId: "language-primary-label",
+                    current: this._contentLanguage,
+                    exclude: [],
+                    triggerLabel: this.#displayName(this._contentLanguage),
+                    triggerClass: PICKER_TRIGGER_CLASS,
+                    onSelect: (tag) => void this.#selectPrimary(tag),
+                  })}
+                  <p class="text-sm text-muted-foreground mt-1">
+                    ${this.labels.contentLanguageHelp}${this._savingSite
+                      ? ` ${this.labels.saving}`
+                      : ""}
                   </p>
                 </div>
-              `
-            : nothing}
+              `}
+        </section>
+
+        <section class="flex flex-col gap-3 border-t pt-8">
+          <h2 class="text-lg font-medium">${this.labels.multilingual}</h2>
+          <p class="text-sm text-muted-foreground">
+            ${this.labels.multilingualHelp}
+          </p>
+          <div class="flex items-center gap-3">
+            ${this._multilingualEnabled
+              ? html`
+                  <span class="badge-secondary">${this.labels.statusOn}</span>
+                  <button
+                    type="button"
+                    class="btn-link h-auto p-0 text-sm text-muted-foreground"
+                    data-multilingual-off
+                    @click=${() => void this.#turnOffMultilingual()}
+                  >
+                    ${this.labels.disableConfirm}
+                  </button>
+                `
+              : html`
+                  <button
+                    type="button"
+                    class="btn-sm-outline"
+                    data-multilingual-setup
+                    @click=${() => this.#openEnableDialog()}
+                  >
+                    ${this.labels.turnOn}
+                  </button>
+                `}
+          </div>
         </section>
 
         <section class="flex flex-col gap-4 border-t pt-8">

@@ -341,15 +341,16 @@ describe("language views filter content", () => {
     await services.posts.linkTranslation(zh.id, en.id);
 
     const html = await (await app.request(`/${zh.slug}`)).text();
-    const line = html.slice(html.indexOf("data-post-translations"));
+    const start = html.indexOf("data-post-translations");
+    const line = html.slice(start, html.indexOf("</p>", start));
 
     expect(html).toContain("Also available in");
     expect(line).toContain(`href="/${en.slug}"`);
     expect(line).toContain("English");
     // Its own language is not an alternative to itself.
-    expect(line.slice(0, line.indexOf("data-post-end"))).not.toContain(
-      "简体中文",
-    );
+    expect(line).not.toContain("简体中文");
+    // One quiet sentence after the post, not a banner above it.
+    expect(html.indexOf("<article")).toBeLessThan(start);
   });
 
   it("says nothing on a post with no translations", async () => {

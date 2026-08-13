@@ -15,6 +15,7 @@ import type { NavigationData } from "./navigation.js";
 import {
   buildComposeLanguages,
   buildLanguageSwitcher,
+  getViewLang,
   type LanguageAlternate,
   type LanguageSwitcherOption,
 } from "./view-language.js";
@@ -82,6 +83,12 @@ export interface RenderPublicPageOptions {
   showHomeBranding?: boolean;
   /** When set, the mobile compose FAB pre-selects this collection. */
   composeCollectionId?: string;
+  /**
+   * Content language of the page the composer opens from, for its default.
+   * List surfaces leave this unset and get the view language; a post page
+   * passes its post's language, since its URL carries no view prefix.
+   */
+  composeContextLanguage?: string | null;
 }
 
 /**
@@ -128,6 +135,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
     showHeader,
     showHomeBranding,
     composeCollectionId,
+    composeContextLanguage,
   } = options;
 
   // Use siteDescription as meta description fallback when not explicitly provided
@@ -142,6 +150,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
     links: navData.links,
     currentPath: navData.currentPath,
     sitePathPrefix: navData.sitePathPrefix,
+    basePath: navData.basePath,
     isAuthenticated: navData.isAuthenticated,
     collections: navData.collections,
     siteAvatarUrl: navData.siteAvatarUrl,
@@ -162,6 +171,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
     composeCollectionId,
     languageSwitcher: languageSwitcher ?? buildLanguageSwitcher(c),
     composeLanguages: buildComposeLanguages(c),
+    composeContextLanguage: composeContextLanguage ?? getViewLang(c),
   };
   const faviconUrl = appConfig.siteAvatarUrl || undefined;
   const faviconVersion = appConfig.faviconVersion || undefined;

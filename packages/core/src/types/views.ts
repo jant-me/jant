@@ -297,6 +297,11 @@ export interface SiteLayoutProps {
   links: NavItemView[];
   currentPath: string;
   sitePathPrefix?: string;
+  /**
+   * Public base for language-scoped chrome links (logo, search, home
+   * detection). `sitePathPrefix` plus the language-view prefix, when any.
+   */
+  basePath?: string;
   isAuthenticated?: boolean;
   collections?: Collection[];
   siteAvatarUrl?: string;
@@ -319,4 +324,9 @@ export interface SiteLayoutProps {
   languageSwitcher?: LanguageSwitcherOption[];
   /** Languages offered in the composer. Empty on a single-language site. */
   composeLanguages?: Array<{ tag: string; label: string }>;
+  /**
+   * Content language of the page the composer opens from. The composer's
+   * automatic language resolves to this unless detection disagrees.
+   */
+  composeContextLanguage?: string | null;
 }

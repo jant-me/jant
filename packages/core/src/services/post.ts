@@ -448,6 +448,11 @@ export interface PostService {
   /** Count Posts on this site written in `language`, drafts included. */
   countByLanguage(language: string): Promise<number>;
   /**
+   * Every language stamped on this site's Posts, with how many carry it.
+   * Drafts included; the pre-multilingual NULL rows are not.
+   */
+  listLanguagesInUse(): Promise<Array<{ language: string; count: number }>>;
+  /**
    * List the Thread roots that are translations of the given Post, excluding
    * the Post itself. Empty when it belongs to no translation group.
    */
@@ -3580,6 +3585,22 @@ export function createPostService(
         .from(posts)
         .where(and(eq(posts.siteId, siteId), eq(posts.language, normalized)));
       return Number(rows[0]?.count ?? 0);
+    },
+
+    async listLanguagesInUse() {
+      const rows = await db
+        .select({
+          language: posts.language,
+          count: sql<number>`CAST(count(*) AS INTEGER)`,
+        })
+        .from(posts)
+        .where(and(eq(posts.siteId, siteId), isNotNull(posts.language)))
+        .groupBy(posts.language);
+      return rows
+        .filter((row): row is { language: string; count: number } =>
+          Boolean(row.language),
+        )
+        .map((row) => ({ language: row.language, count: Number(row.count) }));
     },
 
     async listTranslations(postId) {

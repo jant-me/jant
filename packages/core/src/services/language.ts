@@ -25,7 +25,11 @@ import {
   toLanguagePrefix,
 } from "../i18n/locales.js";
 import { RESERVED_PATHS } from "../lib/constants.js";
-import { ConflictError, ValidationError } from "../lib/errors.js";
+import {
+  ConflictError,
+  LanguageInUseError,
+  ValidationError,
+} from "../lib/errors.js";
 import type { PathService } from "./path.js";
 import type { PostService } from "./post.js";
 import type { SettingsService } from "./settings.js";
@@ -288,6 +292,25 @@ export function createLanguageService(
         );
       }
 
+      // The list must keep a place for every language posts are already
+      // written in. Turning multilingual off keeps both the languages and
+      // the stamps, so a re-enable that dropped one from the dialog would
+      // otherwise strand its posts outside every view — the exact orphaning
+      // the remove guard exists to prevent, through a side door.
+      const allowed = new Set([primary, ...additional]);
+      const stranded = (await posts.listLanguagesInUse()).find(
+        (entry) => !allowed.has(entry.language),
+      );
+      if (stranded) {
+        throw new LanguageInUseError(
+          stranded.count === 1
+            ? "One post is still written in a language missing from this list. Keep the language, or change the post's language first."
+            : `${stranded.count} posts are still written in a language missing from this list. Keep the language, or change their language first.`,
+          stranded.language,
+          stranded.count,
+        );
+      }
+
       // Every prefix is checked before anything is written, so a conflict
       // leaves the site exactly as it was.
       for (const language of additional) {
@@ -354,10 +377,12 @@ export function createLanguageService(
       // stays reachable after it is switched off, and the posts are still there.
       const postCount = await posts.countByLanguage(tag);
       if (postCount > 0) {
-        throw new ConflictError(
+        throw new LanguageInUseError(
           postCount === 1
             ? "One post is still written in this language. Change its language, or keep the language."
             : `${postCount} posts are still written in this language. Change their language, or keep the language.`,
+          tag,
+          postCount,
         );
       }
 

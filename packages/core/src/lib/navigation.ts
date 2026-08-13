@@ -7,7 +7,7 @@
 import type { Context } from "hono";
 import type { Collection, NavItem, NavItemView } from "../types.js";
 import { toNavItemViews } from "./view.js";
-import { viewBasePath } from "./view-language.js";
+import { languageScopeBasePath, viewBasePath } from "./view-language.js";
 import { render as renderMarkdown, toPlainText } from "./markdown.js";
 
 /**
@@ -58,7 +58,17 @@ export interface NavigationData {
  */
 export async function getNavigationData(
   c: Context,
-  options?: { preloadedItems?: NavItem[]; includeCollections?: boolean },
+  options?: {
+    preloadedItems?: NavItem[];
+    includeCollections?: boolean;
+    /**
+     * Content language whose view the page's chrome should live in. Post
+     * pages pass their post's language here: their URLs carry no language
+     * prefix, so `viewLang` is never set on them, yet a Japanese post's
+     * logo and nav should lead to `/ja`, not to the primary view.
+     */
+    languageScope?: string | null;
+  },
 ): Promise<NavigationData> {
   // Callers that already fetched nav items can pass them in to avoid a
   // redundant DB round-trip.
@@ -116,7 +126,11 @@ export async function getNavigationData(
       ? await c.var.services.navItems.getCollectionFreshness(collectionNavIds)
       : undefined;
 
-  const basePath = `${appConfig.sitePathPrefix}${viewBasePath(c)}`;
+  const langBase =
+    options?.languageScope !== undefined
+      ? languageScopeBasePath(c, options.languageScope)
+      : viewBasePath(c);
+  const basePath = `${appConfig.sitePathPrefix}${langBase}`;
 
   const links = toNavItemViews(
     items,

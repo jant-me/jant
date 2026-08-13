@@ -60,6 +60,24 @@ export class ConflictError extends DomainError {
   }
 }
 
+/**
+ * A content language cannot be dropped while posts still carry it — 409.
+ *
+ * Thrown when removing a language, and when turning multilingual on with a
+ * language list that leaves stamped posts behind. Carries the language and
+ * post count so the settings route can compose a localized message; the
+ * plain-English `message` serves API consumers.
+ */
+export class LanguageInUseError extends DomainError {
+  constructor(
+    message: string,
+    public readonly language: string,
+    public readonly postCount: number,
+  ) {
+    super(message, 409, "LANGUAGE_IN_USE");
+  }
+}
+
 /** Hosted media quota exceeded — 409 */
 export class MediaQuotaExceededError extends DomainError {
   constructor(

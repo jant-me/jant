@@ -121,6 +121,13 @@ export interface SiteHeaderProps {
   links: NavItemView[];
   currentPath: string;
   sitePathPrefix?: string;
+  /**
+   * Public base for language-scoped links — the logo, search, and home
+   * detection. Equals `sitePathPrefix` outside a language view, and carries
+   * the language prefix inside one (`/blog/ja`), so a page in the Japanese
+   * view leads home to `/ja` rather than to the primary language.
+   */
+  basePath?: string;
   siteAvatarUrl?: string;
   showHeaderAvatar?: boolean;
   /** Languages this site publishes in. Empty on a single-language site. */
@@ -154,11 +161,13 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
   links,
   currentPath,
   sitePathPrefix = "",
+  basePath = sitePathPrefix,
   siteAvatarUrl,
   showHeaderAvatar,
   languageSwitcher = [],
 }) => {
   const { i18n } = useLingui();
+  const homeHref = basePath || "/";
   const linksWithLabels = links.map((link) => ({
     ...link,
     displayLabel: getNavItemDisplayLabel(link, i18n, sitePathPrefix),
@@ -171,7 +180,7 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
       comment: "@context: Search icon link in browse nav",
     }),
   );
-  const searchHref = toPublicPath("/search", sitePathPrefix);
+  const searchHref = toPublicPath("/search", basePath);
 
   const menuLabel = i18n._(
     msg({
@@ -196,9 +205,6 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
       comment: "@context: Accessible label for the site language switcher",
     }),
   );
-  const currentLanguage =
-    languageSwitcher.find((option) => option.isCurrent) ?? languageSwitcher[0];
-
   // Split custom links by placement.
   const headerLinks = linksWithLabels.filter(
     (l) => l.placement === "header" || !l.placement,
@@ -225,9 +231,9 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
     .filter(Boolean)
     .join(" ");
   const isHomePage =
-    currentPath === toPublicPath("/", sitePathPrefix) ||
-    currentPath === toPublicPath("/featured", sitePathPrefix) ||
-    currentPath === toPublicPath("/latest", sitePathPrefix);
+    currentPath === homeHref ||
+    currentPath === toPublicPath("/featured", basePath) ||
+    currentPath === toPublicPath("/latest", basePath);
 
   return (
     <>
@@ -236,7 +242,7 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
           <div
             class={`site-header-top site-header-top-bordered${isHomePage ? " site-header-top-home" : ""}`}
           >
-            <a href={toPublicPath("/", sitePathPrefix)} class="site-logo">
+            <a href={homeHref} class="site-logo">
               {showHeaderAvatar && siteAvatarUrl && (
                 <img src={siteAvatarUrl} class="site-logo-avatar" alt="" />
               )}
@@ -376,7 +382,7 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
             </div>
 
             <div class="site-header-right">
-              {languageSwitcher.length > 1 && currentLanguage && (
+              {languageSwitcher.length > 1 && (
                 <div class="site-header-lang">
                   <button
                     type="button"
@@ -386,9 +392,29 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
                     aria-expanded="false"
                     aria-label={languageLabel}
                   >
-                    <span lang={currentLanguage.lang}>
-                      {currentLanguage.label}
-                    </span>
+                    {/* A globe alone, not a flag and not the current
+                        language's name: flags name countries rather than
+                        languages, and the name serves nobody — whoever can
+                        read it is already reading this language, and whoever
+                        needs to switch cannot. The menu below names every
+                        language in itself. */}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                      class="site-header-lang-globe"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                      <path d="M2 12h20" />
+                    </svg>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="12"
@@ -472,10 +498,7 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
         inert
       >
         <div class="site-nav-drawer-header">
-          <a
-            href={toPublicPath("/", sitePathPrefix)}
-            class="site-nav-drawer-brand"
-          >
+          <a href={homeHref} class="site-nav-drawer-brand">
             {showHeaderAvatar && siteAvatarUrl && (
               <img
                 src={siteAvatarUrl}
@@ -570,6 +593,7 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
   links,
   currentPath,
   sitePathPrefix = "",
+  basePath = sitePathPrefix,
   isAuthenticated,
   collections,
   siteAvatarUrl,
@@ -586,6 +610,7 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
   composeCollectionId,
   languageSwitcher,
   composeLanguages,
+  composeContextLanguage,
   children,
 }) => {
   const { i18n } = useLingui();
@@ -598,9 +623,9 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
   );
 
   const isHomePage =
-    currentPath === toPublicPath("/", sitePathPrefix) ||
-    currentPath === toPublicPath("/featured", sitePathPrefix) ||
-    currentPath === toPublicPath("/latest", sitePathPrefix);
+    currentPath === (basePath || "/") ||
+    currentPath === toPublicPath("/featured", basePath) ||
+    currentPath === toPublicPath("/latest", basePath);
   const showMobileComposeFab = Boolean(
     (isHomePage || composeCollectionId) && isAuthenticated && showComposeDialog,
   );
@@ -625,6 +650,7 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
           links={links}
           currentPath={currentPath}
           sitePathPrefix={sitePathPrefix}
+          basePath={basePath}
           siteAvatarUrl={siteAvatarUrl}
           showHeaderAvatar={showHeaderAvatar}
           languageSwitcher={languageSwitcher}
@@ -708,6 +734,7 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
           uploadMaxFileSize={uploadMaxFileSize}
           slashCommandDiscovered={slashCommandDiscovered}
           languages={composeLanguages}
+          contextLanguage={composeContextLanguage}
         />
       )}
     </div>

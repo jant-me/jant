@@ -141,6 +141,11 @@ export const PostPage: FC<PostPageProps> = ({
           display={isPreview ? PREVIEW_DISPLAY : undefined}
         />
       )}
+      {/* One quiet sentence after the post, whatever its format — the
+          translations are an aside about the post, not part of it. Listed
+          in full rather than behind a dropdown: one or two entries is the
+          norm, and the reader who needs this is scanning for their own
+          language's name. */}
       {translations.length > 0 && (
         <p class="post-translations" data-post-translations>
           {i18n._(

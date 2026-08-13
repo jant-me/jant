@@ -248,6 +248,9 @@ export interface ComposeLabels {
   languageAuto: string;
   languageAutoHint: string;
   languageAutoDetected: string;
+  languageConfirmTitle: string;
+  languageConfirmSubtitle: string;
+  languageConfirmPublishIn: string;
   translationOf: string;
   translationContext: string;
   translationContextInLanguage: string;

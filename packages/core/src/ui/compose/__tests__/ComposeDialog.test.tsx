@@ -51,6 +51,8 @@ describe("ComposeForm labels", () => {
     expect(labels.translationOf).toContain("{title}");
     expect(labels.translationContextInLanguage).toContain("{language}");
     expect(labels.languageAutoDetected).toContain("{language}");
+    expect(labels.languageConfirmTitle).toContain("{language}");
+    expect(labels.languageConfirmPublishIn).toContain("{language}");
   });
 
   it("never ships an unresolved ICU construct", () => {
@@ -77,6 +79,35 @@ describe("ComposeForm labels", () => {
     );
     expect(html).toContain("languages=");
     expect(html).toContain("English");
+  });
+
+  it("hands the component the page's language as the automatic default", () => {
+    const i18n = createI18n("en");
+    const c = {
+      get(key: string) {
+        return key === "i18n" ? i18n : undefined;
+      },
+    } as unknown as Context;
+    I18nProvider({ c, children: "" });
+
+    const html = renderToString(
+      ComposeForm({
+        languages: [
+          { tag: "zh-Hans", label: "简体中文" },
+          { tag: "ja", label: "日本語" },
+        ],
+        contextLanguage: "ja",
+      }),
+    );
+    expect(html).toContain('context-language="ja"');
+
+    // Without a page language the attribute stays off, and the component
+    // falls back to the primary language on its own.
+    expect(
+      renderToString(
+        ComposeForm({ languages: [{ tag: "en", label: "English" }] }),
+      ),
+    ).not.toContain("context-language");
   });
 
   it("sends an empty list on a single-language site", () => {

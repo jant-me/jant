@@ -84,7 +84,7 @@ export function LanguageContent({
     ),
     contentLanguageHelp: i18n._(
       msg({
-        message: "The language your readers and search engines see.",
+        message: "The language you write in.",
         comment: "@context: Help text for the content language field",
       }),
     ),
@@ -99,6 +99,25 @@ export function LanguageContent({
       msg({
         message: "The root address (/, /feed) shows this language.",
         comment: "@context: Help text for the primary language field",
+      }),
+    ),
+    languagesLabel: i18n._(
+      msg({
+        message: "Languages",
+        comment: "@context: Label above the list of the site's languages",
+      }),
+    ),
+    primaryBadge: i18n._(
+      msg({
+        message: "Primary",
+        comment: "@context: Badge on the language served at the root address",
+      }),
+    ),
+    makePrimary: i18n._(
+      msg({
+        message: "Make primary",
+        comment:
+          "@context: Button that moves a language to the site's root address",
       }),
     ),
     dashboardLanguage: i18n._(
@@ -133,6 +152,34 @@ export function LanguageContent({
         comment: "@context: Help text for the multilingual content toggle",
       }),
     ),
+    statusOn: i18n._(
+      msg({
+        message: "On",
+        comment: "@context: Status badge — multilingual content is on",
+      }),
+    ),
+    turnOn: i18n._(
+      msg({
+        message: "Turn on",
+        comment:
+          "@context: Link in the multilingual section that opens the setup dialog",
+      }),
+    ),
+    addMissingLanguage: i18n._(
+      msg({
+        message: "Add {language}",
+        comment:
+          "@context: One-click fix in the multilingual dialog, putting a language with posts back on the list",
+      }),
+      { language: keepPlaceholder("language") },
+    ),
+    viewPosts: i18n._(
+      msg({
+        message: "View these posts",
+        comment:
+          "@context: Link in the cannot-remove-language error, leading to that language's archive",
+      }),
+    ),
     otherLanguages: i18n._(
       msg({
         message: "Other languages",
@@ -152,45 +199,27 @@ export function LanguageContent({
       }),
       { language: keepPlaceholder("language") },
     ),
+    languageMenu: i18n._(
+      msg({
+        message: "Options for {language}",
+        comment:
+          "@context: Accessible label on a language row's actions menu trigger",
+      }),
+      { language: keepPlaceholder("language") },
+    ),
     enableTitle: i18n._(
       msg({
         message: "Turn on multilingual content",
-        comment: "@context: Title of the multilingual confirmation dialog",
-      }),
-    ),
-    enableWhatHappensTitle: i18n._(
-      msg({
-        message: "What turning this on does",
         comment:
-          "@context: Heading above the multilingual dialog's effect list",
+          "@context: Title of the dialog that configures languages and turns multilingual on",
       }),
     ),
-    enableEffectViews: i18n._(
+    enableReassurance: i18n._(
       msg({
         message:
-          "Each language gets its own home page, archive, feed, and collection pages.",
-        comment: "@context: Multilingual dialog effect — per-language views",
-      }),
-    ),
-    enableEffectCompose: i18n._(
-      msg({
-        message:
-          "You choose a language when you publish, and can link posts as translations of one another.",
-        comment: "@context: Multilingual dialog effect — composing",
-      }),
-    ),
-    enableEffectUrls: i18n._(
-      msg({
-        message:
-          "Post addresses do not change. The primary language keeps the root address; the others get a URL prefix.",
-        comment: "@context: Multilingual dialog effect — URLs",
-      }),
-    ),
-    enableEffectReversible: i18n._(
-      msg({
-        message:
-          "You can turn this off again at any time without losing anything.",
-        comment: "@context: Multilingual dialog effect — reversibility",
+          "Post addresses do not change, and you can turn this off again at any time.",
+        comment:
+          "@context: Reassurance line at the bottom of the multilingual dialog",
       }),
     ),
     enableMarkTitle: i18n._(
@@ -203,21 +232,14 @@ export function LanguageContent({
     enableMarkWarning: i18n._(
       msg({
         message:
-          "Your {count, plural, one {# existing post} other {# existing posts}} will be marked as {language}.",
+          "{count, plural, one {# existing post} other {# existing posts}} with no language yet will be marked as {language}.",
         comment:
-          "@context: Warning in the multilingual dialog about stamping existing posts",
+          "@context: Warning in the multilingual dialog about stamping posts that have no language",
       }),
       // The count is fixed for this page load, so Lingui resolves the plural
       // here. The language is picked inside the dialog, so its placeholder is
       // carried through untouched and filled in by the component.
       { count: unmarkedPostCount, language: keepPlaceholder("language") },
-    ),
-    enableMarkWarningEmpty: i18n._(
-      msg({
-        message: "You have no posts yet, so nothing gets marked.",
-        comment:
-          "@context: Variant of the stamping warning when the site has no posts",
-      }),
     ),
     enableFixHint: i18n._(
       msg({
@@ -231,12 +253,6 @@ export function LanguageContent({
         message: "Add at least one more language to turn this on.",
         comment:
           "@context: Validation message when the multilingual dialog has no second language",
-      }),
-    ),
-    enableConfirm: i18n._(
-      msg({
-        message: "Mark posts and turn on",
-        comment: "@context: Confirm button in the multilingual dialog",
       }),
     ),
     changePrimaryTitle: i18n._(
@@ -306,12 +322,6 @@ export function LanguageContent({
       msg({
         message: "No matches.",
         comment: "@context: Empty state in the language picker",
-      }),
-    ),
-    urlPreview: i18n._(
-      msg({
-        message: "Reader URLs:",
-        comment: "@context: Label above the per-language URL preview",
       }),
     ),
   }).replace(/</g, "\\u003c");

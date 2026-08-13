@@ -168,7 +168,15 @@ Cloudflare Workers, Hono v4, Vite + SWC, Tailwind v4 + BaseCoat, D1 + Drizzle OR
 
 ## UX Copy Guidelines
 
-All user-facing text follows a consistent voice. When writing or reviewing copy, apply these rules.
+All user-facing text follows a consistent voice. When writing or reviewing copy, apply these rules. They apply to every locale; the Chinese section at the end adds locale-specific rules.
+
+### Style Anchor
+
+Write like iA Writer or Bear: a quiet tool, not a companion. Declarative sentences, short lines, no exclamation points, no praise, no mascot energy. Jant is a workroom for one person — copy should read like the label on a well-made object, not a brand talking. If a line would fit in a marketing email or an onboarding tour, rewrite it.
+
+### Match the Existing Corpus
+
+Before writing or changing any user-facing string, read the neighboring strings — the surrounding component and the same area of `src/i18n/locales/*/en.po` — and match their register, terminology, and casing. The existing copy is the style guide of record; new copy must be indistinguishable from it.
 
 ### Voice & Tone
 
@@ -176,6 +184,17 @@ All user-facing text follows a consistent voice. When writing or reviewing copy,
 - Use plain English. If you can say it in 5 words, don't use 10.
 - Avoid filler words: "please", "simply", "just", "easily", "feel free to".
 - Never say "successfully" — if it worked, the user knows.
+
+### Banned AI-isms
+
+Never use, in any locale:
+
+- Exclamation points — `"Published!"` → `"Post published."`
+- Cheerleading: "Awesome", "Great job", "Perfect", "You're all set", "Oops"
+- Tour-guide framing: "Let's …", "Welcome aboard", "your journey", "Ready to …?"
+- Marketing adverbs: "seamlessly", "effortlessly", "instantly", "powerful"
+- Emoji in UI copy
+- Vague failure: "Something went wrong" with no cause or next step
 
 ### Empty States
 
@@ -212,6 +231,17 @@ All user-facing text follows a consistent voice. When writing or reviewing copy,
 - Describe what a setting **does**, not what it **is**.
 - Good: `"Hide this post from search engines and RSS feeds"`
 - Bad: `"Visibility: Private"`
+
+### 中文文案（zh-Hans / zh-Hant）
+
+Chinese copy is written, not translated. Say it the way a native product would; never mirror English sentence structure word-for-word.
+
+- **人称**：统一用「你」，禁止「您」。能省则省 — 优先无主语句式（「已发布」，不是「你的文章已发布」），只有指代不清时才写「你」。
+- **标点**：中文句子一律用全角标点（，。？「」（）），不允许半角逗号、句号夹在中文里。纯英文、数字、代码、URL 片段保持半角。
+- **语气**：不用感叹号，不用语气词卖萌（哦、啦、哟、呢）。「请稍后再试」这类惯用语可以用，但一条信息里最多一个「请」。
+- **反翻译腔**：先想中文里本来怎么说，再落笔。「{count} 个设置已显示」是翻译腔，「已显示 {count} 个设置」才像话。「进行…操作」「对…进行」一律改写成直接的动词。
+- **术语表**（新增术语先查 .po 保持一致）：Post→文章、Note→笔记、Link→链接、Quote→引用、Collection→合集（zh-Hant：選集）、Draft→草稿；「账户」不写「帐户」。
+- **zh-Hant 不是简繁转换**：用词按台湾惯用（設定、選集），不要机械转换 zh-Hans。
 
 ## Reference
 

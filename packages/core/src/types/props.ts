@@ -27,6 +27,15 @@ export interface HomePageProps {
   signinUrl: string;
 }
 
+/** A link to another language's version of a post. */
+export interface PostTranslationLinkView {
+  href: string;
+  /** The language's own name for itself, e.g. "日本語". */
+  label: string;
+  /** Canonical BCP 47 tag. */
+  lang: string;
+}
+
 /** Props for the single post page component */
 export interface PostPageProps {
   post: PostView;
@@ -34,11 +43,11 @@ export interface PostPageProps {
   /** Hide owner-only actions while preserving the public post rendering. */
   isPreview?: boolean;
   /**
-   * Other-language versions of this post. Rendered as a line under the post,
-   * because a reader who cannot read this one needs a way out that does not
-   * involve guessing at the language switcher.
+   * Other-language versions of this post. Rendered as one quiet sentence
+   * after the post — a reader who cannot read this one needs a way out that
+   * does not involve guessing at the language switcher.
    */
-  translations?: Array<{ href: string; label: string; lang: string }>;
+  translations?: PostTranslationLinkView[];
 }
 
 /** Props for the featured page component */

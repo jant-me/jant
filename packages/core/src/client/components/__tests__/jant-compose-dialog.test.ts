@@ -239,6 +239,9 @@ const labels: ComposeLabels = {
   languageAuto: "Detect",
   languageAutoHint: "Read from what you write",
   languageAutoDetected: "Read from what you write — looks like {language}",
+  languageConfirmTitle: "This looks like {language}",
+  languageConfirmSubtitle: "Which language should it publish in?",
+  languageConfirmPublishIn: "Publish in {language}",
   translationOf: "Translation of “{title}”",
   translationContext: "Translating",
   translationContextInLanguage: "Translating into {language}",
@@ -1065,12 +1068,13 @@ describe("JantComposeDialog", () => {
       expect(el.querySelector(".compose-translation-context")).not.toBeNull();
     });
 
-    it("sends the chosen language, and nothing when left on Detect", async () => {
+    it("sends the chosen language, and the page's language on Detect", async () => {
       const el = await createElement();
       el.languages = [
         { tag: "zh-Hans", label: "简体中文" },
         { tag: "en", label: "English" },
       ];
+      el.contextLanguage = "en";
       await flushUpdates(el);
       await openPublishPanel(el);
 
@@ -1082,18 +1086,166 @@ describe("JantComposeDialog", () => {
         }
       )._buildSubmitDetail.bind(el);
 
-      // Absent, not guessed here: the server sees the final text.
-      expect(build("published")?.language).toBeUndefined();
+      // Left on Detect with no text signal: the post belongs to the page it
+      // was written from, so the page's language goes out explicitly.
+      expect(build("published")?.language).toBe("en");
 
       const rows = Array.from(
         el.querySelectorAll<HTMLButtonElement>(
           "[role='radiogroup'] .compose-sheet-row",
         ),
       );
-      requireElement(rows[2] ?? null, "expected the English row").click();
+      requireElement(rows[1] ?? null, "expected the 简体中文 row").click();
       await flushUpdates(el);
 
-      expect(build("published")?.language).toBe("en");
+      expect(build("published")?.language).toBe("zh-Hans");
+    });
+
+    it("falls back to the primary language when the page has none", async () => {
+      const el = await createElement();
+      el.languages = [
+        { tag: "zh-Hans", label: "简体中文" },
+        { tag: "en", label: "English" },
+      ];
+      await flushUpdates(el);
+
+      const build = (
+        el as unknown as {
+          _buildSubmitDetail: (
+            status: "published" | "draft",
+          ) => ComposeSubmitDetail | null;
+        }
+      )._buildSubmitDetail.bind(el);
+
+      expect(build("published")?.language).toBe("zh-Hans");
+    });
+
+    describe("publish-time check", () => {
+      async function createMismatch(overrides?: {
+        contextLanguage?: string;
+        text?: string;
+      }) {
+        const el = await createElement();
+        el.languages = [
+          { tag: "zh-Hans", label: "简体中文" },
+          { tag: "ja", label: "日本語" },
+        ];
+        el.contextLanguage = overrides?.contextLanguage ?? "zh-Hans";
+        await flushUpdates(el);
+
+        const editor = requireElement(
+          el.querySelector<JantComposeEditor>("jant-compose-editor"),
+          "expected compose editor",
+        );
+        editor._bodyJson = {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                { type: "text", text: overrides?.text ?? "これはテストです" },
+              ],
+            },
+          ],
+        };
+        await editor.updateComplete;
+
+        const details: ComposeSubmitDetail[] = [];
+        el.addEventListener("jant:compose-submit-deferred", (event) => {
+          details.push((event as CustomEvent<ComposeSubmitDetail>).detail);
+        });
+        return { el, details };
+      }
+
+      function clickPublish(el: JantComposeDialog) {
+        requireElement(
+          el.querySelector<HTMLButtonElement>(".compose-publish-main"),
+          "expected post button",
+        ).click();
+      }
+
+      it("holds the publish when detection disagrees with the page", async () => {
+        const { el, details } = await createMismatch();
+
+        clickPublish(el);
+        await flushUpdates(el);
+
+        // Nothing published yet — the sheet is asking.
+        expect(details).toHaveLength(0);
+        const sheet = el.querySelector("[data-lang-confirm]");
+        expect(sheet).not.toBeNull();
+        expect(sheet?.textContent).toContain("日本語");
+
+        el.querySelector<HTMLButtonElement>(
+          "[data-lang-confirm-primary]",
+        )?.click();
+        await flushUpdates(el);
+
+        expect(details).toHaveLength(1);
+        expect(details[0]?.language).toBe("ja");
+        expect(el.querySelector("[data-lang-confirm]")).toBeNull();
+      });
+
+      it("keeps the page's language when the author says so", async () => {
+        const { el, details } = await createMismatch();
+
+        clickPublish(el);
+        await flushUpdates(el);
+
+        // The second action is the page's language.
+        const actions = Array.from(
+          el.querySelectorAll<HTMLButtonElement>(
+            "[data-lang-confirm] .compose-confirm-action",
+          ),
+        );
+        actions[1]?.click();
+        await flushUpdates(el);
+
+        expect(details).toHaveLength(1);
+        expect(details[0]?.language).toBe("zh-Hans");
+      });
+
+      it("cancels back into the editor on Escape", async () => {
+        const { el, details } = await createMismatch();
+
+        clickPublish(el);
+        await flushUpdates(el);
+        expect(el.querySelector("[data-lang-confirm]")).not.toBeNull();
+
+        el.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        );
+        await flushUpdates(el);
+
+        expect(el.querySelector("[data-lang-confirm]")).toBeNull();
+        expect(details).toHaveLength(0);
+      });
+
+      it("publishes without asking when detection agrees", async () => {
+        const { el, details } = await createMismatch({ contextLanguage: "ja" });
+
+        clickPublish(el);
+        await flushUpdates(el);
+
+        expect(el.querySelector("[data-lang-confirm]")).toBeNull();
+        expect(details).toHaveLength(1);
+        expect(details[0]?.language).toBe("ja");
+      });
+
+      it("never second-guesses an explicit choice", async () => {
+        const { el, details } = await createMismatch();
+        // The author picked 简体中文 themselves; the Japanese text is theirs
+        // to own — a quote, perhaps.
+        (el as unknown as { _language: string | null })._language = "zh-Hans";
+        await flushUpdates(el);
+
+        clickPublish(el);
+        await flushUpdates(el);
+
+        expect(el.querySelector("[data-lang-confirm]")).toBeNull();
+        expect(details).toHaveLength(1);
+        expect(details[0]?.language).toBe("zh-Hans");
+      });
     });
   });
 

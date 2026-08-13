@@ -13,6 +13,21 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. @context: Warning in the multilingual dialog about stamping posts that have no language
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "{count, plural, one {# existing post} other {# existing posts}} with no language yet will be marked as {language}."
+msgstr "{count, plural, one {# existing post} other {# existing posts}} with no language yet will be marked as {language}."
+
+#. @context: Error when a content language that posts still use would be dropped
+#: src/routes/dash/settings.tsx
+msgid "{count, plural, one {# post is} other {# posts are}} still written in {language}. Change their language, or keep the language."
+msgstr "{count, plural, one {# post is} other {# posts are}} still written in {language}. Change their language, or keep the language."
+
+#. @context: Refusal in the multilingual dialog when the list drops a language that posts still use
+#: src/routes/dash/settings.tsx
+msgid "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
+msgstr "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
+
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "{count} settings shown"
@@ -113,6 +128,11 @@ msgstr "Active Tokens"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Add"
 msgstr "Add"
+
+#. @context: One-click fix in the multilingual dialog, putting a language with posts back on the list
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "Add {language}"
+msgstr "Add {language}"
 
 #. @context: Description in link popover form
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1004,11 +1024,6 @@ msgstr "Drag links here to show them under the More menu"
 msgid "e.g. iOS Shortcuts"
 msgstr "e.g. iOS Shortcuts"
 
-#. @context: Multilingual dialog effect — per-language views
-#: src/ui/dash/settings/LanguageContent.tsx
-msgid "Each language gets its own home page, archive, feed, and collection pages."
-msgstr "Each language gets its own home page, archive, feed, and collection pages."
-
 #. @context: Button to edit item
 #: src/ui/dash/ActionButtons.tsx
 msgid "Edit"
@@ -1309,6 +1324,11 @@ msgstr "Language removed."
 msgid "Language updated."
 msgstr "Language updated."
 
+#. @context: Label above the list of the site's languages
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "Languages"
+msgstr "Languages"
+
 #. @context: Label for last push commit SHA on GitHub Sync status
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 msgid "Last commit"
@@ -1421,6 +1441,11 @@ msgstr "Main feed"
 msgid "Main RSS feed"
 msgstr "Main RSS feed"
 
+#. @context: Button that moves a language to the site's root address
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "Make primary"
+msgstr "Make primary"
+
 #. @context: Settings item label for opening the hosted account management page
 #: src/ui/dash/settings/AccountMenuContent.tsx
 msgid "Manage Account"
@@ -1455,11 +1480,6 @@ msgstr "Manual Push"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "March 14"
 msgstr "March 14"
-
-#. @context: Confirm button in the multilingual dialog
-#: src/ui/dash/settings/LanguageContent.tsx
-msgid "Mark posts and turn on"
-msgstr "Mark posts and turn on"
 
 #. @context: Placeholder hint for markdown-enabled textareas
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -1671,6 +1691,11 @@ msgstr "Nothing matches this search. Try a different name or description."
 msgid "Off-white paper with a deep forest-green accent."
 msgstr "Off-white paper with a deep forest-green accent."
 
+#. @context: Status badge — multilingual content is on
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "On"
+msgstr "On"
+
 #. @context: Title of the stamping warning in the multilingual dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "One-time change to your existing posts"
@@ -1697,6 +1722,11 @@ msgstr "Open Telegram to connect"
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Open the bot and send the binding code, then anything you message it becomes a note."
 msgstr "Open the bot and send the binding code, then anything you message it becomes a note."
+
+#. @context: Accessible label on a language row's actions menu trigger
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "Options for {language}"
+msgstr "Options for {language}"
 
 #. @context: Separator between the QR code and the deep-link button on the Telegram connect page
 #: src/ui/dash/settings/TelegramContent.tsx
@@ -1827,15 +1857,20 @@ msgstr "Pinned"
 msgid "Post"
 msgstr "Post"
 
-#. @context: Multilingual dialog effect — URLs
+#. @context: Reassurance line at the bottom of the multilingual dialog
 #: src/ui/dash/settings/LanguageContent.tsx
-msgid "Post addresses do not change. The primary language keeps the root address; the others get a URL prefix."
-msgstr "Post addresses do not change. The primary language keeps the root address; the others get a URL prefix."
+msgid "Post addresses do not change, and you can turn this off again at any time."
+msgstr "Post addresses do not change, and you can turn this off again at any time."
 
 #. @context: Settings item description for Telegram integration
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Post notes by messaging a Telegram bot"
 msgstr "Post notes by messaging a Telegram bot"
+
+#. @context: Badge on the language served at the root address
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "Primary"
+msgstr "Primary"
 
 #. @context: Label the content language field takes once multilingual is on
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -1896,11 +1931,6 @@ msgstr "Query Parameters"
 #: src/ui/dash/FormatBadge.tsx
 msgid "Quote"
 msgstr "Quote"
-
-#. @context: Label above the per-language URL preview
-#: src/ui/dash/settings/LanguageContent.tsx
-msgid "Reader URLs:"
-msgstr "Reader URLs:"
 
 #. @context: Heading above recent pages in the page picker
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -2354,8 +2384,8 @@ msgstr "The language used by the private Jant dashboard."
 
 #. @context: Help text for the content language field
 #: src/ui/dash/settings/LanguageContent.tsx
-msgid "The language your readers and search engines see."
-msgstr "The language your readers and search engines see."
+msgid "The language you write in."
+msgstr "The language you write in."
 
 #. @context: Config Editor linked setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -2529,7 +2559,12 @@ msgstr "Turn off"
 msgid "Turn off multilingual content?"
 msgstr "Turn off multilingual content?"
 
-#. @context: Title of the multilingual confirmation dialog
+#. @context: Link in the multilingual section that opens the setup dialog
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "Turn on"
+msgstr "Turn on"
+
+#. @context: Title of the dialog that configures languages and turns multilingual on
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Turn on multilingual content"
 msgstr "Turn on multilingual content"
@@ -2639,6 +2674,11 @@ msgstr "Very light ivory with a faint tea-green accent."
 msgid "View"
 msgstr "View"
 
+#. @context: Link in the cannot-remove-language error, leading to that language's archive
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "View these posts"
+msgstr "View these posts"
+
 #. @context: Prefix before Custom CSS link on color theme page
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Want more control?"
@@ -2709,11 +2749,6 @@ msgstr "Warm-neutral and easy for long reading."
 msgid "We'll prefill the name {name}. The list refreshes on return."
 msgstr "We'll prefill the name {name}. The list refreshes on return."
 
-#. @context: Heading above the multilingual dialog's effect list
-#: src/ui/dash/settings/LanguageContent.tsx
-msgid "What turning this on does"
-msgstr "What turning this on does"
-
 #. @context: Description for backup and restore documentation link in account settings
 #: src/ui/dash/settings/AccountMenuContent.tsx
 msgid "When to use site export, database backups, and recovery drills."
@@ -2738,26 +2773,6 @@ msgstr "Which post stream the canonical /feed URL returns."
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Yellow-tinted paper with an olive-green accent."
 msgstr "Yellow-tinted paper with an olive-green accent."
-
-#. @context: Multilingual dialog effect — reversibility
-#: src/ui/dash/settings/LanguageContent.tsx
-msgid "You can turn this off again at any time without losing anything."
-msgstr "You can turn this off again at any time without losing anything."
-
-#. @context: Multilingual dialog effect — composing
-#: src/ui/dash/settings/LanguageContent.tsx
-msgid "You choose a language when you publish, and can link posts as translations of one another."
-msgstr "You choose a language when you publish, and can link posts as translations of one another."
-
-#. @context: Variant of the stamping warning when the site has no posts
-#: src/ui/dash/settings/LanguageContent.tsx
-msgid "You have no posts yet, so nothing gets marked."
-msgstr "You have no posts yet, so nothing gets marked."
-
-#. @context: Warning in the multilingual dialog about stamping existing posts
-#: src/ui/dash/settings/LanguageContent.tsx
-msgid "Your {count, plural, one {# existing post} other {# existing posts}} will be marked as {language}."
-msgstr "Your {count, plural, one {# existing post} other {# existing posts}} will be marked as {language}."
 
 #. @context: Fallback name when a connected Telegram account has no username
 #: src/ui/dash/settings/TelegramContent.tsx

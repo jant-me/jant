@@ -961,6 +961,13 @@
     white-space: nowrap;
   }
 
+  /* Quiet marker that this control is about language, ahead of a label that
+     is written in the current language itself. */
+  .site-header-lang-globe {
+    flex-shrink: 0;
+    opacity: 0.72;
+  }
+
   .site-header-lang-popover {
     left: auto;
     right: 0;
