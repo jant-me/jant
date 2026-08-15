@@ -15,7 +15,7 @@
  */
 
 import { Hono } from "hono";
-import type { Bindings } from "../../types.js";
+import type { Bindings, Post } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import {
   renderSitemapIndex,
@@ -125,16 +125,66 @@ sitemapRoutes.get("/:file{sitemap-posts-[0-9]+\\.xml}", async (c) => {
     limit: SITEMAP_SHARD_SIZE,
   });
 
+  // `entry.alias` already includes a leading "/" (see `paths.getPostAliases`);
+  // slugs are stored raw. Prepending "/" to an alias would create "//path",
+  // which `new URL()` reads as protocol-relative and hijacks the hostname.
+  const pathOf = (entry: (typeof shardEntries)[number]) =>
+    entry.alias ?? `/${entry.slug}`;
+
+  // A post's URL is language-neutral and listed once. Translations are
+  // announced with `xhtml:link` alternates instead, which is what the sitemap
+  // protocol asks for — and the only place a crawler can learn about a
+  // translation whose own URL lives in a different shard.
+  const translated = shardEntries.filter(
+    (entry) => entry.translationGroupId && entry.language,
+  );
+  const translationsMap =
+    translated.length > 0
+      ? await c.var.services.posts.getTranslationsMap(
+          translated.map((entry) => entry.id),
+        )
+      : new Map<string, Post[]>();
+  const siblingIds = [...translationsMap.values()]
+    .flat()
+    .map((post) => post.id);
+  const siblingAliases =
+    siblingIds.length > 0
+      ? await c.var.services.paths.getPostAliases(siblingIds)
+      : new Map<string, string[]>();
+
   const urls: SitemapUrlEntry[] = shardEntries.map((entry) => {
-    // `entry.alias` already includes a leading "/" (see
-    // `paths.getPostAliases`); slugs are stored raw. Prepending "/" to an
-    // alias would create "//path" which `new URL()` interprets as
-    // protocol-relative and hijacks the hostname.
-    const path = entry.alias ?? `/${entry.slug}`;
+    const path = pathOf(entry);
+    const siblings: Post[] = translationsMap.get(entry.id) ?? [];
+    const alternates =
+      entry.language && siblings.length > 0
+        ? [
+            {
+              hreflang: entry.language,
+              href: absoluteUrl(path, siteUrl, sitePathPrefix),
+            },
+            ...siblings.flatMap((sibling) =>
+              sibling.language
+                ? [
+                    {
+                      hreflang: sibling.language,
+                      href: absoluteUrl(
+                        siblingAliases.get(sibling.id)?.[0] ??
+                          `/${sibling.slug}`,
+                        siteUrl,
+                        sitePathPrefix,
+                      ),
+                    },
+                  ]
+                : [],
+            ),
+          ]
+        : undefined;
+
     return {
       loc: absoluteUrl(path, siteUrl, sitePathPrefix),
       lastmod: toIsoDate(entry.updatedAt),
       priority: entry.featuredAt ? "0.8" : "0.6",
+      ...(alternates ? { alternates } : {}),
     };
   });
 

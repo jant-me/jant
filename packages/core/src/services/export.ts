@@ -110,6 +110,10 @@ export interface SiteConfig {
   siteUrl: string;
   siteDescription: string;
   siteLanguage: string;
+  /** Whether the source site serves per-language browsing views. */
+  multilingualEnabled: boolean;
+  /** Non-primary content languages, in switcher order. */
+  additionalLanguages: readonly string[];
   showJantBrandingOnHome: boolean;
   /** Whether anonymous JSON reads are enabled on the source Jant site. */
   publicApiEnabled: boolean;
@@ -137,7 +141,13 @@ export interface SiteConfig {
   sitePathPrefix?: string;
   navItems: Pick<
     NavItem,
-    "type" | "systemKey" | "label" | "url" | "position" | "placement"
+    | "type"
+    | "systemKey"
+    | "label"
+    | "targetTitle"
+    | "url"
+    | "position"
+    | "placement"
   >[];
   /** Items per page for Hugo pagination — kept in sync with the main site's PAGE_SIZE. */
   pageSize: number;
@@ -886,6 +896,11 @@ async function buildThreadBundle(
     format: root.format,
     status: root.status,
     visibility: root.visibility,
+    // Language is Thread-uniform, so only the root emits it; the importer
+    // re-derives replies from their root. `translation_group` is an opaque
+    // shared key — importing the whole site keeps translated posts linked.
+    language: root.language ?? undefined,
+    translation_group: root.translationGroupId ?? undefined,
     summary_text: getArchiveSummaryText(root) ?? undefined,
     link_url: root.format === "link" && root.url ? root.url : undefined,
     source_name: root.format === "quote" && root.title ? root.title : undefined,
@@ -1356,13 +1371,21 @@ function buildExportedCollectionMetrics(
 // Nav item resolution
 // ---------------------------------------------------------------------------
 
+/**
+ * Label to bake into the static site.
+ *
+ * Mirrors `getNavItemDisplayLabel`: a stored label is the author's own words
+ * and wins, an empty one means the item follows what it points at. The export
+ * has no i18n runtime, so built-in destinations fall back to their English
+ * default rather than a translated one.
+ */
 function resolveNavItemLabel(item: SiteConfig["navItems"][number]): string {
   if (item.label) return item.label;
   if (item.systemKey) {
     const definition = SYSTEM_NAV_KEYS[item.systemKey as SystemNavKey];
     if (definition) return definition.defaultLabel;
   }
-  return item.label;
+  return item.targetTitle?.trim() || item.label;
 }
 
 /**
@@ -1510,6 +1533,8 @@ function buildJantDataToml(
     `site_name = "${escapeTomlString(config.siteName)}"`,
     `site_description = "${escapeTomlString(config.siteDescription)}"`,
     `site_language = "${escapeTomlString(config.siteLanguage)}"`,
+    `multilingual_enabled = ${config.multilingualEnabled}`,
+    `additional_languages = "${escapeTomlString(config.additionalLanguages.join(","))}"`,
     `main_rss_feed = "${escapeTomlString(config.mainRssFeed)}"`,
     `public_api_enabled = ${config.publicApiEnabled}`,
     `rss_feeds_enabled = ${config.rssFeedsEnabled}`,

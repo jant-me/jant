@@ -16,6 +16,7 @@ import { hostedDomainCheckRoutes } from "./routes/hosted/domain-check.js";
 
 // Routes - Pages
 import { homeRoutes } from "./routes/pages/home.js";
+import { languageRoutes } from "./routes/pages/language.js";
 import { pageRoutes } from "./routes/pages/page.js";
 import { collectionRoutes } from "./routes/pages/collection.js";
 import { archiveRoutes } from "./routes/pages/archive.js";
@@ -582,6 +583,12 @@ export function createApp(): App {
   app.route("/collections", collectionsPageRoutes);
   app.route("/collections", collectionRoutes);
   app.route("/", homeRoutes);
+
+  // Per-language views of every surface above. Mounted here on purpose: after
+  // the static route groups, so `/archive` is the archive rather than a
+  // language named "archive", and before the catch-all, so `/en` is a language
+  // view rather than a lookup for a post whose slug is "en".
+  app.route("/:lang", languageRoutes);
 
   // Custom page catch-all (must be last)
   app.route("/", pageRoutes);

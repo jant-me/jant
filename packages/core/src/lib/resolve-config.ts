@@ -20,6 +20,7 @@ import {
   getConfiguredStorageDriver,
   getEnvString,
 } from "./env.js";
+import { parseLanguageList } from "../i18n/locales.js";
 import { getPublicUrlForProvider, getMediaUrl } from "./image.js";
 import { normalizeTimeZone } from "./timezones.js";
 import { getSiteOrigin, getSitePathPrefix, normalizeSiteUrl } from "./url.js";
@@ -223,7 +224,11 @@ export function resolveConfig(
     siteDescriptionExplicit,
     siteLanguage: resolve("SITE_LANGUAGE", allSettings, env),
     dashboardLanguage: resolve("DASHBOARD_LANGUAGE", allSettings, env),
-    cjkSerifFont: resolve("CJK_SERIF_FONT", allSettings, env),
+    multilingualEnabled:
+      resolve("MULTILINGUAL_ENABLED", allSettings, env) === "true",
+    additionalLanguages: parseLanguageList(
+      resolve("ADDITIONAL_LANGUAGES", allSettings, env),
+    ),
     mainRssFeed: parseFeedKind(
       resolve("MAIN_RSS_FEED", allSettings, env),
       "featured",

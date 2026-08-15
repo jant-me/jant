@@ -97,6 +97,25 @@ function getDescriptionCandidate(post: Post): string {
   return "";
 }
 
+/**
+ * What to call a Post in a list, when it may have no title of its own.
+ *
+ * Notes are usually untitled, so falling back to the slug would show readers
+ * and authors a URL fragment where they expect a sentence. The chain is the
+ * same one browser titles and Open Graph tags already use: title, then the
+ * quoted text, then the summary, then the opening of the body, then a link's
+ * domain.
+ *
+ * @param post - The Post to name
+ * @returns A short plain-text label, or an empty string when there is nothing
+ *   to derive one from
+ * @example
+ * getPostDisplayTitle(untitledNote); // "An untitled note about espresso."
+ */
+export function getPostDisplayTitle(post: Post): string {
+  return getTitleCandidate(post);
+}
+
 export interface PostMeta {
   title: string;
   description?: string;

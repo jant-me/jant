@@ -8,7 +8,11 @@
 import { msg } from "@lingui/core/macro";
 import type { FC, PropsWithChildren } from "hono/jsx";
 import { useLingui } from "../../i18n/context.js";
-import type { NavItemView, SiteLayoutProps } from "../../types.js";
+import type {
+  LanguageSwitcherOption,
+  NavItemView,
+  SiteLayoutProps,
+} from "../../types.js";
 import { toPublicPath } from "../../lib/url.js";
 import { ComposeDialog } from "../compose/ComposeDialog.js";
 import { ComposePrompt } from "../compose/ComposePrompt.js";
@@ -117,8 +121,17 @@ export interface SiteHeaderProps {
   links: NavItemView[];
   currentPath: string;
   sitePathPrefix?: string;
+  /**
+   * Public base for language-scoped links — the logo, search, and home
+   * detection. Equals `sitePathPrefix` outside a language view, and carries
+   * the language prefix inside one (`/blog/ja`), so a page in the Japanese
+   * view leads home to `/ja` rather than to the primary language.
+   */
+  basePath?: string;
   siteAvatarUrl?: string;
   showHeaderAvatar?: boolean;
+  /** Languages this site publishes in. Empty on a single-language site. */
+  languageSwitcher?: LanguageSwitcherOption[];
 }
 
 function linkCollapseTier(idx: number): string {
@@ -148,10 +161,13 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
   links,
   currentPath,
   sitePathPrefix = "",
+  basePath = sitePathPrefix,
   siteAvatarUrl,
   showHeaderAvatar,
+  languageSwitcher = [],
 }) => {
   const { i18n } = useLingui();
+  const homeHref = basePath || "/";
   const linksWithLabels = links.map((link) => ({
     ...link,
     displayLabel: getNavItemDisplayLabel(link, i18n, sitePathPrefix),
@@ -164,7 +180,7 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
       comment: "@context: Search icon link in browse nav",
     }),
   );
-  const searchHref = toPublicPath("/search", sitePathPrefix);
+  const searchHref = toPublicPath("/search", basePath);
 
   const menuLabel = i18n._(
     msg({
@@ -180,6 +196,32 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
   );
   const moreLabel = i18n._(NAV_MORE_LABEL);
 
+  // The switcher is a "take me to this language's site" control, so it names
+  // each language in that language — a reader looking for their own language
+  // should not have to read the current one to find it.
+  const languageLabel = i18n._(
+    msg({
+      message: "Language",
+      comment: "@context: Accessible label for the site language switcher",
+    }),
+  );
+  // Which language the reader is in, and whether that is worth saying out
+  // loud: the root is the site's default, everything else is a variant of it.
+  const currentLanguage = languageSwitcher.find((option) => option.isCurrent);
+  const offPrimaryLanguage = Boolean(
+    currentLanguage && !currentLanguage.isPrimary,
+  );
+  // The visible name is written in its own language, so the accessible name
+  // has to carry it too — a control read out as "Language" alone would lose
+  // the one thing it says.
+  const currentLanguageLabel = i18n._(
+    msg({
+      message: "Language: {language}",
+      comment:
+        "@context: Accessible label for the site language switcher when it names the language on screen",
+    }),
+    { language: currentLanguage?.label ?? "" },
+  );
   // Split custom links by placement.
   const headerLinks = linksWithLabels.filter(
     (l) => l.placement === "header" || !l.placement,
@@ -206,9 +248,9 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
     .filter(Boolean)
     .join(" ");
   const isHomePage =
-    currentPath === toPublicPath("/", sitePathPrefix) ||
-    currentPath === toPublicPath("/featured", sitePathPrefix) ||
-    currentPath === toPublicPath("/latest", sitePathPrefix);
+    currentPath === homeHref ||
+    currentPath === toPublicPath("/featured", basePath) ||
+    currentPath === toPublicPath("/latest", basePath);
 
   return (
     <>
@@ -217,7 +259,7 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
           <div
             class={`site-header-top site-header-top-bordered${isHomePage ? " site-header-top-home" : ""}`}
           >
-            <a href={toPublicPath("/", sitePathPrefix)} class="site-logo">
+            <a href={homeHref} class="site-logo">
               {showHeaderAvatar && siteAvatarUrl && (
                 <img src={siteAvatarUrl} class="site-logo-avatar" alt="" />
               )}
@@ -357,6 +399,93 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
             </div>
 
             <div class="site-header-right">
+              {languageSwitcher.length > 1 && (
+                <div
+                  class={`site-header-lang${
+                    offPrimaryLanguage ? " site-header-lang-named" : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    class="site-header-more-btn site-header-lang-btn"
+                    id="site-nav-lang-trigger"
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                    aria-label={
+                      offPrimaryLanguage ? currentLanguageLabel : languageLabel
+                    }
+                  >
+                    {/* A globe, never a flag: flags name countries rather
+                        than languages. The primary language is the site as
+                        it comes, so the globe stands alone there; every
+                        other view is a variant of it, and a reader who
+                        landed on one — from a search result, a shared link,
+                        a post written in another language — is told which,
+                        without opening anything. */}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                      class="site-header-lang-globe"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                      <path d="M2 12h20" />
+                    </svg>
+                    {offPrimaryLanguage && (
+                      <span
+                        class="site-header-lang-name"
+                        lang={currentLanguage?.lang}
+                      >
+                        {currentLanguage?.label}
+                      </span>
+                    )}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                  <div
+                    id="site-nav-lang-popover"
+                    class="site-header-more-popover site-header-lang-popover"
+                    data-popover
+                    data-align="end"
+                    aria-hidden="true"
+                  >
+                    {languageSwitcher.map((option) => (
+                      <a
+                        key={option.lang}
+                        href={option.href}
+                        hreflang={option.lang}
+                        lang={option.lang}
+                        class={`site-header-more-link ${option.isCurrent ? "site-header-more-link-active" : ""}`}
+                        {...(option.isCurrent
+                          ? { "aria-current": "true" }
+                          : {})}
+                      >
+                        {option.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
               <button
                 type="button"
                 class="site-header-hamburger"
@@ -401,10 +530,7 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
         inert
       >
         <div class="site-nav-drawer-header">
-          <a
-            href={toPublicPath("/", sitePathPrefix)}
-            class="site-nav-drawer-brand"
-          >
+          <a href={homeHref} class="site-nav-drawer-brand">
             {showHeaderAvatar && siteAvatarUrl && (
               <img
                 src={siteAvatarUrl}
@@ -470,6 +596,24 @@ export const SiteHeader: FC<SiteHeaderProps> = ({
               ))}
             </>
           )}
+          {languageSwitcher.length > 1 && (
+            <>
+              <div class="site-nav-drawer-divider" />
+              <span class="site-nav-drawer-section-label">{languageLabel}</span>
+              {languageSwitcher.map((option) => (
+                <a
+                  key={option.lang}
+                  href={option.href}
+                  hreflang={option.lang}
+                  lang={option.lang}
+                  class={`site-nav-drawer-link site-nav-drawer-link-secondary ${option.isCurrent ? "site-nav-drawer-link-active" : ""}`}
+                  {...(option.isCurrent ? { "aria-current": "true" } : {})}
+                >
+                  {option.label}
+                </a>
+              ))}
+            </>
+          )}
         </nav>
       </div>
     </>
@@ -481,6 +625,7 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
   links,
   currentPath,
   sitePathPrefix = "",
+  basePath = sitePathPrefix,
   isAuthenticated,
   collections,
   siteAvatarUrl,
@@ -495,6 +640,9 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
   composeOpenShortcutDiscovered = false,
   slashCommandDiscovered = false,
   composeCollectionId,
+  languageSwitcher,
+  composeLanguages,
+  composeContextLanguage,
   children,
 }) => {
   const { i18n } = useLingui();
@@ -507,9 +655,9 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
   );
 
   const isHomePage =
-    currentPath === toPublicPath("/", sitePathPrefix) ||
-    currentPath === toPublicPath("/featured", sitePathPrefix) ||
-    currentPath === toPublicPath("/latest", sitePathPrefix);
+    currentPath === (basePath || "/") ||
+    currentPath === toPublicPath("/featured", basePath) ||
+    currentPath === toPublicPath("/latest", basePath);
   const showMobileComposeFab = Boolean(
     (isHomePage || composeCollectionId) && isAuthenticated && showComposeDialog,
   );
@@ -534,8 +682,10 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
           links={links}
           currentPath={currentPath}
           sitePathPrefix={sitePathPrefix}
+          basePath={basePath}
           siteAvatarUrl={siteAvatarUrl}
           showHeaderAvatar={showHeaderAvatar}
+          languageSwitcher={languageSwitcher}
         />
       )}
 
@@ -602,12 +752,21 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
 
       <jant-media-lightbox />
       <jant-text-preview />
-      {isAuthenticated && <jant-post-menu />}
+      {isAuthenticated && (
+        <jant-post-menu
+          languages={JSON.stringify(composeLanguages ?? []).replace(
+            /</g,
+            "\\u003c",
+          )}
+        />
+      )}
       {isAuthenticated && showComposeDialog && (
         <ComposeDialog
           collections={collections}
           uploadMaxFileSize={uploadMaxFileSize}
           slashCommandDiscovered={slashCommandDiscovered}
+          languages={composeLanguages}
+          contextLanguage={composeContextLanguage}
         />
       )}
     </div>

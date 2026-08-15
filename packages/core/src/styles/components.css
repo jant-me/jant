@@ -1777,3 +1777,11 @@ svg[stroke-width].icon-fine {
     min-height: 300px;
   }
 }
+
+/* Progressive enhancement for the locale picker: the plain <select> beside it
+   is the real field until the element upgrades, at which point the element
+   hides it and takes over. Keeping the picker out of the layout until then
+   avoids showing two controls for one choice. */
+jant-locale-picker:not(:defined) {
+  display: none;
+}

@@ -19,10 +19,6 @@ import { showToast } from "./toast.js";
 function parseSettingsInitialData(data: unknown): SettingsInitialData | null {
   const siteName = getJsonString(data, "siteName");
   const siteDescription = getJsonString(data, "siteDescription");
-  const siteLanguage = getJsonString(data, "siteLanguage");
-  // Tolerate older payloads without the key: empty = follow content language.
-  const dashboardLanguage = getJsonString(data, "dashboardLanguage") ?? "";
-  const cjkSerifFont = getJsonString(data, "cjkSerifFont");
   const mainRssFeed = getJsonString(data, "mainRssFeed");
   const timeZone = getJsonString(data, "timeZone");
   const siteFooter = getJsonString(data, "siteFooter");
@@ -32,8 +28,6 @@ function parseSettingsInitialData(data: unknown): SettingsInitialData | null {
   if (
     siteName === undefined ||
     siteDescription === undefined ||
-    siteLanguage === undefined ||
-    cjkSerifFont === undefined ||
     mainRssFeed === undefined ||
     timeZone === undefined ||
     siteFooter === undefined ||
@@ -46,9 +40,6 @@ function parseSettingsInitialData(data: unknown): SettingsInitialData | null {
   return {
     siteName,
     siteDescription,
-    siteLanguage,
-    dashboardLanguage,
-    cjkSerifFont,
     mainRssFeed,
     timeZone,
     siteFooter,

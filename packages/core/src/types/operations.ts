@@ -93,6 +93,18 @@ export interface CreatePost {
   collectionEntries?: ThreadCollectionEntry[];
   replyToId?: string;
   quietReply?: boolean;
+  /**
+   * BCP 47 content language. Ignored for replies, which always inherit the
+   * Thread root's language so a language filter stays a plain column predicate.
+   * Omitted on single-language sites, where the column stays NULL.
+   */
+  language?: string | null;
+  /**
+   * Thread root ID this Post is a translation of. The service joins both into
+   * one translation group when the Post is created, minting the group on the
+   * source Post if it does not have one yet. Roots only.
+   */
+  translationOfId?: string;
   publishedAt?: number;
   attachments?: PostAttachmentInput[];
 }
@@ -119,6 +131,13 @@ export interface UpdatePost {
   collectionIds?: string[];
   collectionEntries?: ThreadCollectionEntry[];
   publishedAt?: number;
+  /**
+   * Content language. Applied to the whole Thread, like
+   * `PostService.setThreadLanguage` — a Thread is written in one language, and
+   * that is what keeps every language filter a plain column predicate. Ignored
+   * on replies, which follow their root.
+   */
+  language?: string | null;
   attachments?: PostAttachmentInput[];
 }
 
@@ -137,10 +156,11 @@ export type CreateNavItem =
       position?: string;
     }
   | {
+      // The URL is derived from the collection's slug and is not accepted
+      // here; an omitted label means the item follows the collection's title.
       type: "collection";
       collectionId: string;
-      label: string;
-      url: string;
+      label?: string;
       placement?: NavItemPlacement;
       position?: string;
     }

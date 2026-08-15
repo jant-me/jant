@@ -36,6 +36,7 @@ import {
   type SiteProfileService,
 } from "./site-profile.js";
 import { createAboutPageService, type AboutPageService } from "./about-page.js";
+import { createLanguageService, type LanguageService } from "./language.js";
 import {
   createUploadSessionService,
   type UploadSessionService,
@@ -66,6 +67,7 @@ export interface Services {
   siteMembers: SiteMemberService;
   siteProfile: SiteProfileService;
   aboutPage: AboutPageService;
+  language: LanguageService;
   githubAppInstallations: GitHubAppInstallationsService;
   telegram: TelegramService;
 }
@@ -157,6 +159,7 @@ export function createServices(
       posts,
       collections,
     }),
+    language: createLanguageService({ settings, posts, paths }),
     githubAppInstallations: createGitHubAppInstallationsService(
       db,
       databaseSchema,
@@ -176,6 +179,7 @@ export type { CollectionService } from "./collection.js";
 export type { SearchService, SearchResult, SearchOptions } from "./search.js";
 export type { NavItemService } from "./navigation.js";
 export type { AboutPageService, AboutPageStatus } from "./about-page.js";
+export type { LanguageService, LanguageState } from "./language.js";
 export type { AuthService, DeleteAccountDeps } from "./auth.js";
 export type { ApiTokenService } from "./api-token.js";
 export type {

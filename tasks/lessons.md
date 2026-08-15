@@ -388,3 +388,288 @@ nothing is left unchecked.
 That is also why `tasks/todos/*.md` should not be gitignored, tempting as it is
 to make the rule self-enforcing: the files carry handoff state that has to
 survive a fresh clone. The discipline has to live in the workflow instead.
+
+## Lingui resolves ICU at `i18n._()` — placeholders the browser fills must be passed back
+
+Any label rendered server-side and interpolated client-side has to carry its
+placeholder through explicitly:
+
+```ts
+i18n._(msg({ message: "Translation of “{title}”" }), { title: "{title}" });
+```
+
+Formatting with no value does not leave `{title}` in the string — it resolves to
+nothing, so the label silently ships as `Translation of ""`. This has now caused
+the same bug twice (the multilingual settings dialog, then compose). It is
+invisible in a type check and invisible in a component test that uses fixture
+labels: the assertion has to run against the **server-rendered** labels blob.
+When adding a label with a browser-filled slot, add a test that renders the
+component and asserts the slot survived.
+
+## hono/jsx deduplicates `<link>` elements by `href`
+
+Two `<link>` elements with the same `href` render as one, whatever their `rel`
+or other attributes. That silently drops:
+
+- a self-referential `hreflang` alternate (it shares the canonical link's URL),
+- an `x-default` alternate (it shares the primary language's URL).
+
+An hreflang set without a self-referential entry is ignored by search engines,
+so this is not cosmetic. Emit such groups as `raw()` HTML with `escapeHtml()` on
+the attribute values rather than as JSX elements. Suspect this whenever a list
+of `<link>`s renders with fewer elements than the array it was mapped from.
+
+## `types/` must not import from `lib/`
+
+A type-only `import` from `src/types/views.ts` into `src/lib/view-language.ts`
+was enough to change TypeScript's lib resolution across the whole program — an
+unrelated file started failing with a DOM-vs-workers `BufferSource` mismatch,
+and only under `tsc -b --force`. The dependency direction is `lib → types`;
+shared view types belong in `types/`, and `lib` re-exports them if convenient.
+If a type error appears in a file you did not touch, check whether a new import
+created a cycle through the type layer.
+
+## `vi.mock()` paths are relative to the _component_, not the test file
+
+`packages/core/src/client/components/__tests__/jant-post-menu.test.ts` mocked
+`"../confirm.js"`, but the component it tests lives one folder up, so its own
+import resolves to `"../../confirm.js"` from the test. Vitest registers a mock
+for a specifier nothing imports and reports nothing: the real confirm dialog ran
+for months, and the one test that touched it only asserted the menu had closed,
+which happens _before_ the confirm. Mock the path the code under test writes,
+and assert `expect(theMock).toHaveBeenCalled...` at least once per mocked module
+so a dead mock fails loudly.
+
+## BaseCoat's menu styles outrank a two-class selector
+
+Anything with `role="menuitem"` inside a BaseCoat menu picks up a three-class
+rule (`width: 100%`, `display: flex`, ellipsis clipping). A `.post-menu-panel
+.post-menu-row-action` override is (0,2,0) and loses, but _only for properties
+both rules set_ — `height` and `flex` applied while `width` and `display` did
+not, which reads like a stale stylesheet rather than a cascade problem. When a
+custom control inside a menu comes out full-width, add a third class to the
+selector rather than reaching for `!important`.
+
+## A pre-filled composer is not a composer with content in it
+
+`requestClose()` asks "is there content?" (`_hasContent()`) for a new post,
+because a new composer opens empty. Seeding a translation with the original's
+citation broke that assumption: closing without typing a word offered to save a
+draft of a URL. The fix is `_hasWorkToLose()` — content _and_, once seeded, a
+difference from the snapshot taken after seeding. Any future "open the composer
+with something already in it" has to answer the same question, and the snapshot
+has to be re-captured after the pre-fill lands.
+
+## "Show more" and "scroll inside a frame" answer different questions
+
+The reply context deliberately replaced an inner scrollbar with an expand
+toggle, and the comment explaining why is still right — a parent post is read
+once, before writing, so handing it its full height costs nothing. The
+translation context needs the opposite: the author reads a paragraph and writes
+a paragraph, so a source expanded to full height pushes the editor off screen
+exactly when both have to be visible. Ask which one the surface is before
+copying either. A frame that scrolls also needs `overscroll-behavior: contain`
+(or the dialog scrolls on behind it), `tabindex="0"` + `role`/`aria-label` (or
+keyboard users cannot scroll it), and a rule at its top edge (or a half-visible
+first line reads as a clipping bug).
+
+## Borrowed content should render as itself unless there is a reason not to
+
+The first version of the translation context reused the reply context's prose
+resets, which shrink headings onto the thread-context ladder. For a translation
+that is wrong: the _structure_ is part of what is being translated, so a heading
+has to look like a heading. Adding `e-content prose` and dropping the resets was
+the whole fix. Before sharing a rule between two surfaces, check that they agree
+on why it exists — here the shared selector was the bug.
+
+## Read the setting before you write it, and never "restore" a guess
+
+Verifying the multilingual UI needed the feature on, so I called
+`/settings/language/enable`, then `disable()` afterwards to "leave things as I
+found them". They were not as I found them: multilingual was already on, and
+`enable()`'s `writeLanguages(primary, additional)` overwrites
+`ADDITIONAL_LANGUAGES` unconditionally — it dropped a configured `zh-Hant` that
+had a post in it. `/api/settings` does not list `MULTILINGUAL_ENABLED` or
+`ADDITIONAL_LANGUAGES` (no `editor` field, by design — the language service is
+their only writer), and I read that absence as "off".
+
+Rules for touching a dev database to verify something:
+
+- Capture the _actual_ prior value first, from the source of truth — the
+  `site_setting` table if the API does not expose the key — and restore that
+  exact value, not a plausible default.
+- "Absent from an API response" is not "unset". Check why it is absent.
+- Prefer setup that needs no global switch: seed the rows the feature reads, or
+  ask the user to turn it on, rather than flipping site configuration under them.
+- Say in the summary exactly which settings were changed and to what, so a wrong
+  restore is visible immediately instead of three rounds later.
+
+Also: `pkill -f vite` / `pkill -f "wrangler dev"` kills the user's own dev
+server, not just the one this session started. Track the PID and kill that.
+
+## `--type-content-scale` is a site-wide knob, not an inheritable one
+
+Custom properties are substituted **where they are declared**. `:root` declares
+`--type-content-body: calc(var(--type-body) * var(--type-content-scale))`, so it
+resolves to a length on `:root`; descendants inherit that length, not the
+formula. Lowering `--type-content-scale` on a subtree therefore does nothing,
+which is easy to miss because the token's own comment says it "uniformly scales
+all content sizes" — true, but only from `:root`.
+
+Restating every derived token locally works and is what the first fix did. It
+also copies the root's ratios (`* 1.16`, `* 0.94`, …) into a second place to
+drift from. To render a page-scale surface smaller inside a panel, prefer
+`zoom`: it scales spacing and rules along with the text — which is what "the
+page, smaller" actually means, since type alone leaves page-scale margins around
+shrunken words — and it degrades to "not scaled" rather than to broken.
+
+## `preset.css` is mostly unlayered, so `ui.css` cannot override it by specificity
+
+`preset.css` closes its `@layer components` block at line 82. Everything after
+that — `.prose`, `.post-detail-title`, the content-column widths — is
+**unlayered**, and an unlayered declaration beats every declaration in a named
+layer no matter how specific. `ui.css` is entirely inside `@layer components`,
+so a three-class selector there still loses to a one-class selector in the tail
+of `preset.css`.
+
+Symptom: the rule appears in the stylesheet, `getComputedStyle` reports the
+custom properties you set, and the one property you actually wanted silently
+keeps the old value. Reach for `!important` (the existing pattern —
+`.post-menu-panel .post-menu-item`, `.compose-reply-context-body img`) rather
+than adding more classes, and say in the comment that the fight is with an
+unlayered rule.
+
+Custom properties are exempt from this: setting `--layout-content-width` on an
+element wins for that element because nothing else declares it there. That is
+why token overrides worked while the `width` override did not.
+
+## A viewport media query inside a panel is almost always wrong
+
+`preset.css` sizes a post's blocks to the page's reading column three different
+ways: `--layout-content-width` at desktop, a hardcoded `min(80%, 45rem)` for the
+title, and a hardcoded `min(100%, 35rem)` for the whole list under a
+`max-width: 1024px` **viewport** query. Rendering that markup inside a panel,
+only the first is neutralised by overriding the token — the other two are
+`width` declarations that ignore it, and the media query fires on the window,
+which says nothing about how wide the panel is. Symptom: the panel looks right
+on a wide screen and the content stops short of the edge on a narrow one.
+
+When embedding a page-scale rendering, audit for _all_ the ways it is sized, not
+just the tokenised one — and remember `min-width` floors (`.post-attached-group`)
+as well as `width` caps, because a floor larger than the frame gets clipped by
+the frame's `overflow-x: hidden` instead of scrolling.
+
+To test a viewport query without being able to resize the window, inject an
+unlayered `<style>` that replicates the media block's declarations
+unconditionally, and check an element _outside_ the panel does change while one
+inside does not. That also proves the override is really winning rather than the
+rule never having applied.
+
+## An icon that means "the negation of another icon" does not read at menu scale
+
+Every "unlink" glyph is the "link" glyph with something taken away — Lucide's
+`unlink-2` is literally `link-2` minus the middle bar. At the ~1rem size a menu
+row gives a trailing control, the thing taken away is exactly what is invisible,
+so the button reads as "link". Spend a word instead ("Unlink"); it also gives a
+bigger touch target. `×` is not the alternative — next to a row that names
+another post it reads as "delete that post", which is the wrong action to make
+guessable.
+
+The width for the word usually exists: check what the row is spending it on
+first. A translation row was spending it on the other version's title, clipped
+to a few characters, when the language is what identifies a version and the
+title works fine as a `title`/`aria-label`.
+
+## `#focusAfterUpdate` targets must be focusable _and_ present in the first frame
+
+It is `this.querySelector(selector)?.focus()` on the next `updateComplete`, so
+both halves fail silently: a `<div>` row matches and does nothing (`focus()` on
+a non-focusable element is a no-op), and a section rendered from an `await`ed
+fetch is not in the DOM yet when the promise resolves. Point the selector at the
+focusable child (`[data-…-row] a`, not the row), and after the fetch lands
+re-focus if `!this.contains(document.activeElement)` — the guard is what keeps
+the retry from stealing focus in the normal case, where the first attempt found
+something. Note `querySelector` with a selector list returns the first match in
+_document_ order, not in the order the list is written, so the list expresses
+"the topmost of these", never a priority.
+
+A test for this has to assert `document.activeElement`; deleting the retry
+should leave it on `<body>`.
+
+## A close-on-outside-click test must name the swapped subtree, not its container
+
+`#handleDocumentClick` closes the menu on any click that fails
+`target.closest(...)`, and the selector is pinned between two failures.
+
+Too narrow and the header falls outside it: `[role="menu"]` is on the _list_, so
+every back button — which lives in the panel header — read as a click outside
+the menu and closed the whole thing. (The visibility panel escaped only because
+its root carries `data-visibility-panel`, another selector in the same list.
+One panel working is what let the bug survive.)
+
+Too wide and the target cannot reach it: `.post-menu-panel`, the container the
+views render into, looks like the honest "anywhere in the dropdown" answer and
+breaks every item that switches panels. On a **real** click the browser runs a
+microtask checkpoint between event listeners, so the item's own handler has
+already re-rendered the panel by the time the document handler runs; `target` is
+detached, its subtree ends at the view root, and `closest` never reaches the
+container. Clicking a submenu entry opened the submenu and closed the menu in
+one event.
+
+Name the root of the subtree that gets replaced (`.post-menu-view`) — it
+contains the header, and it survives as the detached target's own ancestor.
+
+The timing half of this is invisible to `el.click()` from a script: the stack
+never empties mid-dispatch, so nothing re-renders and every synthetic test
+passes. To cover it, add a listener on the item that calls `performUpdate()`,
+which puts the re-render exactly where the browser's checkpoint would be. Any
+"did this click land inside my UI?" check has this hazard whenever the click
+also re-renders that UI.
+
+## Order a submenu by the questions it answers, not by how often each is used
+
+Demoting the rare action to the bottom is a reasonable default and was wrong
+here: the row that opens the panel reads `Language · 简体中文`, so a panel whose
+_last_ row is that same value reads as an answer to a different question. Lead
+with what the entry promised, then what the author can do, then what already
+exists.
+
+Two corollaries. A section filled by a fetch belongs last whatever its
+importance — anywhere else it shoves the rows below it downward a moment after
+the panel opens, under the cursor. And a section label is only worth a row when
+its rows do not say what they are: "Other versions" over a column of bare
+language names, yes; "Add a translation" over "Write the English version", no —
+but dropping it means any row that leaned on it for context has to be reworded
+to stand alone.
+
+## A link to a per-language surface needs the view prefix, and the default hides it
+
+Two address kinds exist on a multilingual site. Post permalinks are
+language-neutral: one post, one address, whatever view it was reached from.
+Everything the `langGet()` table serves — home, feed, latest, featured, archive,
+search, collections, and the registered-path catch-all — exists once per
+language, so a link to one from inside `/en` that omits `/en` does not merely
+look odd; it silently moves the reader to another language's copy.
+
+Use `toViewPath(c, path)` in handlers, `navData.basePath` in components, and
+`viewPath(path)` in client code (`publicPath` deliberately knows only the site
+path prefix). The trap is not forgetting the rule, it is the shape that hides
+the forgetting: `basePath = sitePathPrefix` as a default parameter turns an
+omission into a valid-looking primary-language link instead of an error. Make
+`basePath` required wherever a component links to a per-language surface, and
+thread it through every wrapper — the signed-in collections directory had the
+bug for exactly one reason, that `CollectionsManager` sat between the page and
+`CollectionDirectory` and did not forward it.
+
+Client-side rendering is a second, easier-to-miss copy of the same bug: a Lit
+component that re-renders rows after hydration overwrites correct server HTML
+with its own hrefs. Check both halves when auditing a surface.
+
+One thing a helper cannot decide for you. `/{slug}` is a shared root namespace:
+a collection page there is per-language, a post permalink there is not, and the
+path alone does not say which. So there are two client helpers, not one —
+`viewPath()` always prefixes and is for call sites that know what they are
+linking to, `navPath()` prefixes only the surfaces provably served per language
+and is for code like the command palette that navigates to settings, posts and
+archives through one branchless code path. Guarding the wrong one strips the
+prefix off exactly the collection links this whole entry is about.

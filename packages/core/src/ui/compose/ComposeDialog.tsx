@@ -13,12 +13,27 @@ import type { FC } from "hono/jsx";
 import { MAX_THREAD_POSTS, type Collection } from "../../types.js";
 import { useLingui } from "../../i18n/context.js";
 import { getCollectionFormLabels } from "../shared/collection-management-labels.js";
-import type { ComposeLabels } from "../../client/components/compose-types.js";
+import type {
+  ComposeLabels,
+  ComposeLanguage,
+} from "../../client/components/compose-types.js";
 
 export interface ComposeDialogProps {
   collections?: Collection[];
   uploadMaxFileSize?: number;
   slashCommandDiscovered?: boolean;
+  /**
+   * Languages the site publishes. Empty on a single-language site, and the
+   * composer then shows no language UI at all — an author who never turned
+   * multilingual content on should not meet it.
+   */
+  languages?: ComposeLanguage[];
+  /**
+   * Content language of the page the composer opens from. A post left on
+   * automatic publishes in this language until detection reads the writing as
+   * another one, which the composer says on the button beside Post.
+   */
+  contextLanguage?: string | null;
 }
 
 export interface ComposeFormProps extends ComposeDialogProps {
@@ -31,6 +46,8 @@ export const ComposeForm: FC<ComposeFormProps> = ({
   collections,
   uploadMaxFileSize,
   slashCommandDiscovered = false,
+  languages,
+  contextLanguage,
   pageMode = false,
   closeHref,
   autoRestoreDraft = false,
@@ -897,9 +914,131 @@ export const ComposeForm: FC<ComposeFormProps> = ({
         }),
       ),
     },
+    languageLabel: i18n._(
+      msg({
+        message: "Language",
+        comment: "@context: Compose field for the post's content language",
+      }),
+    ),
+    languageAuto: i18n._(
+      msg({
+        message: "Detect",
+        comment:
+          "@context: Compose language option that leaves detection to Jant",
+      }),
+    ),
+    languageAutoHint: i18n._(
+      msg({
+        message: "Read from what you write",
+        comment: "@context: Help text under the compose language field",
+      }),
+    ),
+    languageAutoDetected: i18n._(
+      msg({
+        message: "Read from what you write — looks like {language}",
+        comment:
+          "@context: Help text under the compose language field once a language has been detected",
+      }),
+      // Detected in the browser from the current text; see `translationOf`.
+      { language: "{language}" },
+    ),
+    languageAutoPending: i18n._(
+      msg({
+        message: "Not enough text to tell yet — publishes in {language}",
+        comment:
+          "@context: Help text under the compose language field before there is enough writing to read a language out of; {language} is the one it would publish in meanwhile, which is the language of the page the composer was opened from",
+      }),
+      // Only known in the browser; see `translationOf`.
+      { language: "{language}" },
+    ),
+    languageTriggerLabel: i18n._(
+      msg({
+        message: "Language: {language}",
+        comment:
+          "@context: Accessible name of the composer's language button, which sits beside Post and names the language this post would publish in",
+      }),
+      // Filled in the browser with whichever language that is; see
+      // `translationOf`.
+      { language: "{language}" },
+    ),
+    translationOf: i18n._(
+      msg({
+        message: "Translation of “{title}”",
+        comment:
+          "@context: Compose banner shown while writing a translation of an existing post",
+      }),
+      // The post being translated is only known in the browser, and Lingui
+      // resolves an ICU message completely at `i18n._()` time — formatted with
+      // no value, this slot would come out empty. Passing the placeholder back
+      // as the value leaves it intact for the component to fill.
+      { title: "{title}" },
+    ),
+    translationContext: i18n._(
+      msg({
+        message: "Translating",
+        comment:
+          "@context: Divider between the original post and the editor writing its translation, when the target language is not known yet",
+      }),
+    ),
+    translationContextInLanguage: i18n._(
+      msg({
+        message: "Translating into {language}",
+        comment:
+          "@context: Divider between the original post above and the editor below, naming the language being written",
+      }),
+      // Filled in the browser from the chosen language; see `translationOf`.
+      { language: "{language}" },
+    ),
+    translationContextOpen: i18n._(
+      msg({
+        message: "Open the original in a new tab",
+        comment:
+          "@context: Tooltip on the source post link above the compose editor while writing a translation",
+      }),
+    ),
+    translationContextOriginal: i18n._(
+      msg({
+        message: "The original",
+        comment:
+          "@context: Accessible name of the scrollable panel holding the post being translated",
+      }),
+    ),
+    translationContextHide: i18n._(
+      msg({
+        message: "Hide",
+        comment:
+          "@context: Button that folds away the original while writing its translation. Sits right after the words “Translating into …”, which is what makes it clear what gets hidden — the accessible name spells it out",
+      }),
+    ),
+    translationContextHideLong: i18n._(
+      msg({
+        message: "Hide the original",
+        comment:
+          "@context: Accessible name of the button that folds away the post being translated",
+      }),
+    ),
+    translationContextShow: i18n._(
+      msg({
+        message: "Show",
+        comment:
+          "@context: Button that brings back the folded-away original while writing its translation",
+      }),
+    ),
+    translationContextShowLong: i18n._(
+      msg({
+        message: "Show the original",
+        comment:
+          "@context: Accessible name of the button that brings back the folded-away post being translated",
+      }),
+    ),
     collectionFormLabels: getCollectionFormLabels(i18n),
   } satisfies ComposeLabels;
   const labels = JSON.stringify(labelsObject).replace(/</g, "\\u003c");
+
+  const languagesJson = JSON.stringify(languages ?? []).replace(
+    /</g,
+    "\\u003c",
+  );
 
   const collectionsJson = JSON.stringify(
     (collections ?? []).map((c) => ({
@@ -912,6 +1051,8 @@ export const ComposeForm: FC<ComposeFormProps> = ({
   return (
     <jant-compose-dialog
       collections={collectionsJson}
+      languages={languagesJson}
+      {...(contextLanguage ? { "context-language": contextLanguage } : {})}
       labels={labels}
       upload-max-file-size={uploadMaxFileSize ?? 500}
       {...(pageMode ? { "page-mode": "" } : {})}
@@ -931,6 +1072,8 @@ export const ComposeDialog: FC<ComposeDialogProps> = ({
   collections,
   uploadMaxFileSize,
   slashCommandDiscovered = false,
+  languages,
+  contextLanguage,
 }) => {
   return (
     <dialog id="compose-dialog" class="compose-dialog">
@@ -938,6 +1081,8 @@ export const ComposeDialog: FC<ComposeDialogProps> = ({
         collections={collections}
         uploadMaxFileSize={uploadMaxFileSize}
         slashCommandDiscovered={slashCommandDiscovered}
+        languages={languages}
+        contextLanguage={contextLanguage}
       />
     </dialog>
   );

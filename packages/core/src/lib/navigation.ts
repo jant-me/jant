@@ -7,6 +7,7 @@
 import type { Context } from "hono";
 import type { Collection, NavItem, NavItemView } from "../types.js";
 import { toNavItemViews } from "./view.js";
+import { languageScopeBasePath, viewBasePath } from "./view-language.js";
 import { render as renderMarkdown, toPlainText } from "./markdown.js";
 
 /**
@@ -15,7 +16,15 @@ import { render as renderMarkdown, toPlainText } from "./markdown.js";
 export interface NavigationData {
   links: NavItemView[];
   currentPath: string;
+  /** Deployment path prefix, such as `/blog`. */
   sitePathPrefix: string;
+  /**
+   * Public path prefix for reader-facing surfaces. Equals `sitePathPrefix`
+   * outside a language view, and carries the language prefix inside one
+   * (`/blog/en`). Pass this — not `sitePathPrefix` — to anything building
+   * links to the home page, archive, search, feeds or collections.
+   */
+  basePath: string;
   siteName: string;
   /** Plain-text description for meta tags and RSS/Atom feeds */
   siteDescription: string;
@@ -49,14 +58,36 @@ export interface NavigationData {
  */
 export async function getNavigationData(
   c: Context,
-  options?: { preloadedItems?: NavItem[]; includeCollections?: boolean },
+  options?: {
+    preloadedItems?: NavItem[];
+    includeCollections?: boolean;
+    /**
+     * Content language whose view the page's chrome should live in. Post
+     * pages pass their post's language here: their URLs carry no language
+     * prefix, so `viewLang` is never set on them, yet a Japanese post's
+     * logo and nav should lead to `/ja`, not to the primary view.
+     */
+    languageScope?: string | null;
+  },
 ): Promise<NavigationData> {
+  const appConfig = c.var.appConfig;
+  const langBase =
+    options?.languageScope !== undefined
+      ? languageScopeBasePath(c, options.languageScope)
+      : viewBasePath(c);
+  // An empty prefix means the primary language's view, whose nav items already
+  // point where they should — so the whole primary-language site, multilingual
+  // or not, never pays for the translation lookup.
+  const scopeLanguage = langBase
+    ? (options?.languageScope ?? c.var.viewLang ?? null)
+    : null;
+
   // Callers that already fetched nav items can pass them in to avoid a
   // redundant DB round-trip.
   const savedItems =
-    options?.preloadedItems ?? (await c.var.services.navItems.list());
+    options?.preloadedItems ??
+    (await c.var.services.navItems.list({ language: scopeLanguage }));
   const currentPath = c.var.publicPath;
-  const appConfig = c.var.appConfig;
   // Keep the saved RSS item untouched so its placement and custom label come
   // back when feeds are re-enabled. Only the rendered projection is filtered.
   const items = appConfig.rssFeedsEnabled
@@ -107,6 +138,8 @@ export async function getNavigationData(
       ? await c.var.services.navItems.getCollectionFreshness(collectionNavIds)
       : undefined;
 
+  const basePath = `${appConfig.sitePathPrefix}${langBase}`;
+
   const links = toNavItemViews(
     items,
     currentPath,
@@ -114,6 +147,7 @@ export async function getNavigationData(
     appConfig.sitePathPrefix,
     collectionFreshness,
     appConfig.siteOrigin,
+    basePath,
   );
 
   // Only load collections when authenticated (for compose dialog)
@@ -125,6 +159,7 @@ export async function getNavigationData(
     links,
     currentPath,
     sitePathPrefix: appConfig.sitePathPrefix,
+    basePath,
     siteName,
     siteDescription,
     siteDescriptionHtml,

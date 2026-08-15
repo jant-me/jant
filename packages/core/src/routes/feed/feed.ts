@@ -38,6 +38,7 @@ import { FORMATS } from "../../types/constants.js";
 
 import { createMediaContext, toPostViews } from "../../lib/view.js";
 import { toAbsoluteSiteUrl, toPublicPath } from "../../lib/url.js";
+import { getViewLang, viewBasePath } from "../../lib/view-language.js";
 import { toPlainText } from "../../lib/markdown.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -131,6 +132,7 @@ async function buildLatestFeedData(
     excludeLatestHidden: true,
     excludePrivate: true,
     format,
+    lang: getViewLang(c) ?? undefined,
     ignorePinnedSort: true,
     publishedBefore,
     limit: feedLimit,
@@ -199,6 +201,7 @@ async function buildFeaturedFeedData(
   const rootIds = await c.var.services.posts.listFeaturedThreadRootIds({
     status: "published",
     excludePrivate: true,
+    lang: getViewLang(c) ?? undefined,
     publishedBefore,
     limit: feedLimit,
   });
@@ -284,7 +287,8 @@ export async function buildFeedData(
   const siteName = appConfig.siteName;
   const siteDescription = toPlainText(appConfig.siteDescription);
   const siteUrl = appConfig.siteUrl;
-  const siteLanguage = appConfig.siteLanguage;
+  // A language view's feed is that language's feed, so it declares it.
+  const siteLanguage = getViewLang(c) ?? appConfig.siteLanguage;
   const feedLimit = appConfig.rssFeedLimit;
   const publishedBefore = getRssPublishedBefore(
     appConfig.rssPublishDelaySeconds,
@@ -318,7 +322,7 @@ export async function buildFeedData(
             }),
           )}`,
     selfUrl: toAbsoluteSiteUrl(
-      opts.selfPath,
+      `${viewBasePath(c)}${opts.selfPath}`,
       siteUrl,
       appConfig.sitePathPrefix,
     ),
@@ -347,12 +351,20 @@ export function renderFeed(xml: string) {
   });
 }
 
-// Atom — /feed
-feedRoutes.get("/", async (c) => {
+/**
+ * Render the site's main Atom feed for the current view language.
+ *
+ * @param c - Hono context
+ * @returns Atom feed response
+ */
+export async function renderMainFeed(c: Context<Env>): Promise<Response> {
   const kind = c.var.appConfig.mainRssFeed === "latest" ? "latest" : "featured";
   const feedData = await buildFeedData(c, { kind, selfPath: "/feed" });
   return renderFeed(defaultFeedRenderer(feedData));
-});
+}
+
+// Atom — /feed
+feedRoutes.get("/", renderMainFeed);
 
 // Legacy — /feed/latest moved to the canonical /latest/feed. Kept
 // indefinitely as a 308 so old subscribers don't break; preserves the

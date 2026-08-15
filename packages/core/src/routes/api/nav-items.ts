@@ -17,7 +17,6 @@ import {
 } from "../../lib/schemas.js";
 import { assertFound, parseIdParam, NotFoundError } from "../../lib/errors.js";
 import { ID_PREFIX } from "../../lib/ids.js";
-import { getCollectionPagePath } from "../../lib/collection-paths.js";
 import { renderSiteHeaderHtml } from "../../lib/site-header-fragment.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -98,16 +97,10 @@ navItemsApiRoutes.post("/", requireAuthApi(), async (c) => {
       placement: body.placement,
     });
   } else if (body.type === "collection") {
-    const collection = await c.var.services.collections.getById(
-      body.collectionId,
-    );
-    if (!collection) throw new NotFoundError("Collection");
-
     item = await c.var.services.navItems.create({
       type: "collection",
       collectionId: body.collectionId,
-      label: body.label || collection.title,
-      url: getCollectionPagePath(collection.slug),
+      label: body.label,
       placement: body.placement,
     });
   } else if (body.type === "page") {

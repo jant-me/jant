@@ -112,6 +112,16 @@ export interface HugoFrontMatter {
   featured_at?: string | null;
   pinned_at?: string | null;
   /**
+   * BCP 47 content language. Root bundles only — replies take the root's.
+   */
+  language?: string;
+  /**
+   * Opaque shared key linking posts that are translations of one another. Root
+   * bundles only. Meaningful within one export; carried across so a full-site
+   * restore keeps translated posts linked.
+   */
+  translation_group?: string;
+  /**
    * Reply bundles only: the reply was published without announcing the Thread
    * on Latest. Round-tripped so a restore rebuilds the same ordering.
    */

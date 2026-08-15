@@ -13,7 +13,7 @@ import {
   baseLocale,
   isValidContentLanguage,
   normalizeContentLanguage,
-  resolveCatalogLocale,
+  resolveFirstRunDashboardLocale,
 } from "../i18n/locales.js";
 import { createNavItemService } from "./navigation.js";
 import { createSettingsService } from "./settings.js";
@@ -23,8 +23,16 @@ import { createSiteService, type EnsureSingleSiteOptions } from "./site.js";
 export interface CompleteInitialSetupData {
   ownerUserId: string;
   siteName: string;
+  /** Language the site publishes in, chosen explicitly during setup. */
   siteLanguage?: string | null;
-  cjkSerifFont?: string | null;
+  /**
+   * The browser's own language, used only to pin the dashboard UI locale.
+   *
+   * Kept separate from `siteLanguage` because the two genuinely differ for the
+   * people this matters to most: someone running an English-language blog from
+   * a Chinese browser wants an English site and a Chinese dashboard.
+   */
+  browserLanguage?: string | null;
   timeZone?: string | null;
 }
 
@@ -67,14 +75,17 @@ export function createBootstrapService(
           ? normalizeContentLanguage(data.siteLanguage)
           : baseLocale;
       await settings.set("SITE_LANGUAGE", siteLanguage);
-      // Pin the dashboard UI locale to the detected catalog language so it stays
-      // stable if the operator later changes the public content language.
-      await settings.set(
-        "DASHBOARD_LANGUAGE",
-        resolveCatalogLocale(siteLanguage),
+      // Leave the dashboard following the content language unless the browser
+      // reported something following would not produce. Pinning unconditionally
+      // would freeze the dashboard to `en` for every author whose browser is
+      // English — including the ones who just chose a different language by
+      // hand one field above.
+      const dashboardLanguage = resolveFirstRunDashboardLocale(
+        siteLanguage,
+        data.browserLanguage,
       );
-      if (data.cjkSerifFont && data.cjkSerifFont !== "off") {
-        await settings.set("CJK_SERIF_FONT", data.cjkSerifFont);
+      if (dashboardLanguage) {
+        await settings.set("DASHBOARD_LANGUAGE", dashboardLanguage);
       }
 
       await settings.completeOnboarding();

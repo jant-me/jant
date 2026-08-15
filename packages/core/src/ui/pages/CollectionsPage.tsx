@@ -16,6 +16,7 @@ export const CollectionsPage: FC<CollectionsPageProps> = ({
   isAuthenticated,
   navigationCollectionIds = [],
   sitePathPrefix = "",
+  basePath = sitePathPrefix,
   siteOrigin = "",
 }) => {
   const { i18n } = useLingui();
@@ -33,6 +34,7 @@ export const CollectionsPage: FC<CollectionsPageProps> = ({
           items={items}
           navigationCollectionIds={navigationCollectionIds}
           sitePathPrefix={sitePathPrefix}
+          basePath={basePath}
           siteOrigin={siteOrigin}
         />
       </div>
@@ -61,6 +63,7 @@ export const CollectionsPage: FC<CollectionsPageProps> = ({
           items={items}
           emptyMessage={emptyMessage}
           sitePathPrefix={sitePathPrefix}
+          basePath={basePath}
           siteOrigin={siteOrigin}
         />
       </div>

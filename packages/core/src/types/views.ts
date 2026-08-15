@@ -68,6 +68,11 @@ export interface PostView {
   /** 24-hour featured time, e.g. "23:05" */
   featuredAtTime?: string;
   rating?: number;
+  /**
+   * BCP 47 content language, on Thread roots of a multilingual site. Absent on
+   * replies (they follow the root) and on sites that publish one language.
+   */
+  language?: string;
 
   // Link preview
   /** Preview kind: "video", "image", etc. */
@@ -164,8 +169,11 @@ export interface NavItemView {
   systemKey?: SystemNavKey;
   collectionId?: string;
   postId?: string;
+  /** Author's override, or `""` when the item follows its target's title */
   label: string;
   url: string;
+  /** Target's current title — the display label when `label` is empty */
+  targetTitle?: string;
   /** "header" = visible in nav bar, "more" = under More dropdown */
   placement: NavItemPlacement;
   /** Pre-computed based on currentPath */
@@ -267,11 +275,42 @@ export interface ArchiveGroup {
 /**
  * Site Layout Props
  */
+/** One `<link rel="alternate" hreflang>` target. */
+export interface LanguageAlternate {
+  /** BCP 47 tag, or `x-default` for the entry point. */
+  hreflang: string;
+  /** Absolute URL. */
+  href: string;
+}
+
+/** One entry in the site's language switcher. */
+export interface LanguageSwitcherOption {
+  /** Canonical BCP 47 tag. */
+  lang: string;
+  /** The language's own name for itself, e.g. "日本語". */
+  label: string;
+  /** Where switching to this language takes the reader. */
+  href: string;
+  /** Whether this is the language currently on screen. */
+  isCurrent: boolean;
+  /**
+   * Whether this is the site's primary language — the one served from the
+   * root. The switcher's trigger stays silent on it and names every other
+   * language, so a reader always knows when they are off the default.
+   */
+  isPrimary: boolean;
+}
+
 export interface SiteLayoutProps {
   siteName: string;
   links: NavItemView[];
   currentPath: string;
   sitePathPrefix?: string;
+  /**
+   * Public base for language-scoped chrome links (logo, search, home
+   * detection). `sitePathPrefix` plus the language-view prefix, when any.
+   */
+  basePath?: string;
   isAuthenticated?: boolean;
   collections?: Collection[];
   siteAvatarUrl?: string;
@@ -287,4 +326,16 @@ export interface SiteLayoutProps {
   slashCommandDiscovered?: boolean;
   /** When set, the mobile compose FAB pre-selects this collection. */
   composeCollectionId?: string;
+  /**
+   * Languages this site publishes in, for the header's language switcher.
+   * Empty on a single-language site, which renders no switcher at all.
+   */
+  languageSwitcher?: LanguageSwitcherOption[];
+  /** Languages offered in the composer. Empty on a single-language site. */
+  composeLanguages?: Array<{ tag: string; label: string }>;
+  /**
+   * Content language of the page the composer opens from. The composer's
+   * automatic language resolves to this unless detection disagrees.
+   */
+  composeContextLanguage?: string | null;
 }

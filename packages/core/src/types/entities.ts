@@ -66,6 +66,15 @@ export interface Post {
   previewProvider: string | null;
   replyToId: string | null;
   threadId: string;
+  /**
+   * BCP 47 content language, canonical form. Uniform across a Thread. `null`
+   * only until the site first enables multilingual content.
+   */
+  language: string | null;
+  /**
+   * Shared key for Posts that are translations of one another. Roots only.
+   */
+  translationGroupId: string | null;
   /** Reply published without announcing it on Latest. Always false on roots. */
   quietReply: boolean;
   publishedAt: number | null;
@@ -184,8 +193,22 @@ export interface NavItem {
   systemKey?: SystemNavKey;
   collectionId?: string;
   postId?: string;
+  /**
+   * Author's override, or `""` when the item follows whatever it points at.
+   *
+   * Empty is the normal state: a page or collection item shows its target's
+   * current title, a built-in item shows its translated default. Only a label
+   * the author typed is stored here, and it then wins in every language view.
+   */
   label: string;
   url: string;
+  /**
+   * Current title of the post or collection this item points at, resolved at
+   * read time. The display label when `label` is empty — see
+   * `getNavItemDisplayLabel`. Absent for `link` and `system` items, which have
+   * no target row to follow.
+   */
+  targetTitle?: string;
   placement: NavItemPlacement;
   position: string;
   createdAt: number;

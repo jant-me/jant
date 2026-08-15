@@ -17,7 +17,8 @@ function createContext(
     themeId?: string;
     defaultThemeId?: string;
     siteLanguage?: string;
-    cjkSerifFont?: string;
+    /** Language of the page being rendered (post language or view language). */
+    lang?: string;
     rssFeedsEnabled?: boolean;
   },
 ) {
@@ -29,7 +30,6 @@ function createContext(
       siteUrl: overrides?.siteUrl ?? "https://example.com",
       siteAvatarUrl: overrides?.siteAvatarUrl,
       siteLanguage: overrides?.siteLanguage ?? "en",
-      cjkSerifFont: overrides?.cjkSerifFont ?? "off",
       noindex: false,
       customCSS: "",
       themeMode: overrides?.themeMode ?? "auto",
@@ -37,7 +37,7 @@ function createContext(
       defaultThemeId: overrides?.defaultThemeId ?? "linen",
       assetBasePath: overrides?.assetBasePath ?? "/_assets",
     },
-    lang: "en",
+    lang: overrides?.lang ?? overrides?.siteLanguage ?? "en",
     i18n: {
       _: (descriptor: { message?: string }) => descriptor.message ?? "",
     },
@@ -339,14 +339,30 @@ describe("BaseLayout", () => {
     expect(html).toContain('data-asset-base-path="/blog/_assets"');
   });
 
-  it("loads the content language font profile when the CJK fallback is off", async () => {
+  it("loads the CJK stylesheet for the site language", async () => {
     const { BaseLayout } = await loadBaseLayout();
     const html = renderToString(
       BaseLayout({
         title: "Jant",
+        c: createContext("featured", { siteLanguage: "zh-Hant" }),
+        children: "Test",
+      }),
+    );
+
+    expect(html).toContain("client-cjk-tc.css");
+    expect(html).not.toContain("client-cjk.css");
+  });
+
+  it("follows the page language rather than the site language", async () => {
+    const { BaseLayout } = await loadBaseLayout();
+    // A Traditional Chinese post on a Simplified Chinese site: the Han glyphs
+    // must come from the post's own language, not the site's.
+    const html = renderToString(
+      BaseLayout({
+        title: "Jant",
         c: createContext("featured", {
-          siteLanguage: "zh-Hant",
-          cjkSerifFont: "off",
+          siteLanguage: "zh-Hans",
+          lang: "zh-Hant",
         }),
         children: "Test",
       }),
@@ -356,31 +372,31 @@ describe("BaseLayout", () => {
     expect(html).not.toContain("client-cjk.css");
   });
 
-  it("uses the manual CJK fallback only for an unadapted content language", async () => {
+  it("emits the CJK font variables for the page language", async () => {
     const { BaseLayout } = await loadBaseLayout();
-    const fallbackHtml = renderToString(
+    const html = renderToString(
       BaseLayout({
         title: "Jant",
-        c: createContext("featured", {
-          siteLanguage: "en",
-          cjkSerifFont: "zh-Hans",
-        }),
-        children: "Test",
-      }),
-    );
-    const contentLanguageHtml = renderToString(
-      BaseLayout({
-        title: "Jant",
-        c: createContext("featured", {
-          siteLanguage: "zh-Hant",
-          cjkSerifFont: "zh-Hans",
-        }),
+        c: createContext("featured", { siteLanguage: "en", lang: "ja" }),
         children: "Test",
       }),
     );
 
-    expect(fallbackHtml).toContain("client-cjk.css");
-    expect(contentLanguageHtml).toContain("client-cjk-tc.css");
+    expect(html).toContain("--font-cjk-serif-fallback");
+    expect(html).toContain("client-cjk-jp.css");
+  });
+
+  it("emits no CJK font variables for a non-CJK page language", async () => {
+    const { BaseLayout } = await loadBaseLayout();
+    const html = renderToString(
+      BaseLayout({
+        title: "Jant",
+        c: createContext("featured", { siteLanguage: "en" }),
+        children: "Test",
+      }),
+    );
+
+    expect(html).not.toContain("--font-cjk-serif-fallback");
   });
 
   it("exposes the active theme id on the root html element", async () => {

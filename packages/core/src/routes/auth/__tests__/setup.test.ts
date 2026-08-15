@@ -61,35 +61,76 @@ describe("Setup bootstrap logic", () => {
     expect(onboardingRow?.value).toBe("completed");
   });
 
-  it("stores the initial language, CJK font, and timezone during setup", async () => {
+  it("stores the chosen content language and timezone during setup", async () => {
     await runSetupBootstrap(services, {
       siteLanguage: "en",
-      cjkSerifFont: "zh-Hans",
       timeZone: "Asia/Shanghai",
     });
 
     const rows = await services.db.select().from(settings);
     expect(rows.find((row) => row.key === "SITE_LANGUAGE")?.value).toBe("en");
-    expect(rows.find((row) => row.key === "CJK_SERIF_FONT")?.value).toBe(
-      "zh-Hans",
-    );
     expect(rows.find((row) => row.key === "TIME_ZONE")?.value).toBe(
       "Asia/Shanghai",
     );
   });
 
-  it("pins the dashboard language to the detected catalog locale", async () => {
-    await runSetupBootstrap(services, { siteLanguage: "zh-TW" });
+  it("pins the dashboard language when only the browser knows it", async () => {
+    // Someone running an English blog from a Chinese browser: English site,
+    // Chinese dashboard. Following the content language would miss this.
+    await runSetupBootstrap(services, {
+      siteLanguage: "en",
+      browserLanguage: "zh-TW",
+    });
 
     const rows = await services.db.select().from(settings);
-    // Content language stays verbatim; the dashboard locale is the resolved
-    // catalog (zh-Hant) so it is stable if content language later changes.
-    expect(rows.find((row) => row.key === "SITE_LANGUAGE")?.value).toBe(
-      "zh-TW",
-    );
+    expect(rows.find((row) => row.key === "SITE_LANGUAGE")?.value).toBe("en");
     expect(rows.find((row) => row.key === "DASHBOARD_LANGUAGE")?.value).toBe(
       "zh-Hant",
     );
+  });
+
+  it("leaves the dashboard following a content language the author chose", async () => {
+    // The reverse mismatch, and the common one: an English browser is what
+    // every unconfigured machine reports, so it is no evidence against the
+    // language just chosen by hand. The dashboard must not freeze to English.
+    await runSetupBootstrap(services, {
+      siteLanguage: "zh-Hans",
+      browserLanguage: "en",
+    });
+
+    const rows = await services.db.select().from(settings);
+    expect(rows.find((row) => row.key === "SITE_LANGUAGE")?.value).toBe(
+      "zh-Hans",
+    );
+    expect(
+      rows.find((row) => row.key === "DASHBOARD_LANGUAGE"),
+    ).toBeUndefined();
+  });
+
+  it("leaves the dashboard following when the browser sent none", async () => {
+    await runSetupBootstrap(services, { siteLanguage: "zh-TW" });
+
+    const rows = await services.db.select().from(settings);
+    // Content language stays verbatim, and the dashboard derives zh-Hant from
+    // it at render time rather than being pinned here.
+    expect(rows.find((row) => row.key === "SITE_LANGUAGE")?.value).toBe(
+      "zh-TW",
+    );
+    expect(
+      rows.find((row) => row.key === "DASHBOARD_LANGUAGE"),
+    ).toBeUndefined();
+  });
+
+  it("leaves the dashboard following when browser and content agree", async () => {
+    await runSetupBootstrap(services, {
+      siteLanguage: "zh-Hans",
+      browserLanguage: "zh-CN",
+    });
+
+    const rows = await services.db.select().from(settings);
+    expect(
+      rows.find((row) => row.key === "DASHBOARD_LANGUAGE"),
+    ).toBeUndefined();
   });
 
   it("is idempotent when default navigation already exists", async () => {

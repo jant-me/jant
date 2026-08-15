@@ -9,6 +9,10 @@ export interface ComposePageProps {
   uploadMaxFileSize?: number;
   closeHref?: string;
   slashCommandDiscovered?: boolean;
+  /** Languages offered in the composer. Empty on a single-language site. */
+  languages?: Array<{ tag: string; label: string }>;
+  /** Content language the composer's automatic choice defaults to. */
+  contextLanguage?: string | null;
 }
 
 export const ComposePage: FC<ComposePageProps> = ({
@@ -16,6 +20,8 @@ export const ComposePage: FC<ComposePageProps> = ({
   uploadMaxFileSize,
   closeHref = "/",
   slashCommandDiscovered = false,
+  languages,
+  contextLanguage,
 }) => {
   const { i18n } = useLingui();
   const backLabel = i18n._(
@@ -55,6 +61,8 @@ export const ComposePage: FC<ComposePageProps> = ({
           closeHref={closeHref}
           autoRestoreDraft
           slashCommandDiscovered={slashCommandDiscovered}
+          languages={languages}
+          contextLanguage={contextLanguage}
         />
       </div>
     </section>

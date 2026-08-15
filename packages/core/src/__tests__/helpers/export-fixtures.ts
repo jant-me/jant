@@ -87,6 +87,8 @@ export function makeSiteConfig(over: Partial<SiteConfig> = {}): SiteConfig {
     siteUrl: "https://example.com",
     siteDescription: "Export fixture",
     siteLanguage: "en",
+    multilingualEnabled: false,
+    additionalLanguages: [],
     showJantBrandingOnHome: true,
     publicApiEnabled: true,
     rssFeedsEnabled: true,

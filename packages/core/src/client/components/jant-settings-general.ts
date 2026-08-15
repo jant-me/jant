@@ -10,17 +10,10 @@
 import { LitElement, html, nothing } from "lit";
 import type { Editor } from "@tiptap/core";
 import { MAX_SITE_NAME_LENGTH } from "../../types.js";
-import {
-  getSupportedLocaleEntries,
-  getOrBuildEntry,
-  type LocaleEntry,
-} from "../../i18n/supported-locales.js";
 import type {
   SettingsInitialData,
   SettingsLabels,
   SettingsTimezone,
-  SettingsCjkFont,
-  SettingsDashboardLanguage,
   SettingsAboutPageStatus,
 } from "./settings-types.js";
 import { showToast } from "../toast.js";
@@ -33,13 +26,11 @@ export class JantSettingsGeneral extends LitElement {
   static properties = {
     labels: { type: Object },
     timezones: { type: Array },
-    cjkFonts: { type: Array, attribute: "cjk-fonts" },
     siteNameFallback: { type: String, attribute: "sitename-fallback" },
     siteDescriptionFallback: {
       type: String,
       attribute: "sitedescription-fallback",
     },
-    dashboardLanguages: { type: Array, attribute: "dashboard-languages" },
     demoMode: { type: Boolean, attribute: "demo-mode" },
     mainFeedUrl: { type: String, attribute: "main-feed-url" },
     latestFeedUrl: { type: String, attribute: "latest-feed-url" },
@@ -61,11 +52,6 @@ export class JantSettingsGeneral extends LitElement {
     _siteLoading: { state: true },
 
     // Language, CJK & time group
-    _siteLanguage: { state: true },
-    _dashboardLanguage: { state: true },
-    _localeOpen: { state: true },
-    _localeQuery: { state: true },
-    _cjkSerifFont: { state: true },
     _timeZone: { state: true },
     _origLocale: { state: true },
     _localeDirty: { state: true },
@@ -90,8 +76,6 @@ export class JantSettingsGeneral extends LitElement {
 
   declare labels: SettingsLabels;
   declare timezones: SettingsTimezone[];
-  declare cjkFonts: SettingsCjkFont[];
-  declare dashboardLanguages: SettingsDashboardLanguage[];
   declare siteNameFallback: string;
   declare siteDescriptionFallback: string;
   declare demoMode: boolean;
@@ -116,19 +100,9 @@ export class JantSettingsGeneral extends LitElement {
   declare _siteLoading: boolean;
 
   // Language, CJK & time
-  declare _siteLanguage: string;
   /** Admin dashboard UI locale (one of the translated catalog locales). */
-  declare _dashboardLanguage: string;
-  /** Whether the locale combobox dropdown is currently open. */
-  declare _localeOpen: boolean;
-  /** Search query inside the locale combobox. */
-  declare _localeQuery: string;
-  declare _cjkSerifFont: string;
   declare _timeZone: string;
   declare _origLocale: {
-    siteLanguage: string;
-    dashboardLanguage: string;
-    cjkSerifFont: string;
     timeZone: string;
   };
   declare _localeDirty: boolean;
@@ -163,8 +137,6 @@ export class JantSettingsGeneral extends LitElement {
     super();
     this.labels = {} as SettingsLabels;
     this.timezones = [];
-    this.cjkFonts = [];
-    this.dashboardLanguages = [];
     this.siteNameFallback = "";
     this.siteDescriptionFallback = "";
     this.demoMode = false;
@@ -190,18 +162,8 @@ export class JantSettingsGeneral extends LitElement {
     this._siteDirty = false;
     this._siteLoading = false;
 
-    this._siteLanguage = "en";
-    this._dashboardLanguage = "en";
-    this._localeOpen = false;
-    this._localeQuery = "";
-    this._cjkSerifFont = "off";
     this._timeZone = "UTC";
-    this._origLocale = {
-      siteLanguage: "en",
-      dashboardLanguage: "en",
-      cjkSerifFont: "off",
-      timeZone: "UTC",
-    };
+    this._origLocale = { timeZone: "UTC" };
 
     this._localeDirty = false;
     this._localeLoading = false;
@@ -221,14 +183,10 @@ export class JantSettingsGeneral extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    document.addEventListener("click", this._onLocalePickerDocumentClick);
-    document.addEventListener("keydown", this._onLocalePickerKeydown);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    document.removeEventListener("click", this._onLocalePickerDocumentClick);
-    document.removeEventListener("keydown", this._onLocalePickerKeydown);
     this._descEditor?.destroy();
     this._descEditor = null;
     this._footerEditor?.destroy();
@@ -241,16 +199,8 @@ export class JantSettingsGeneral extends LitElement {
     this._siteDescription = data.siteDescription;
     this._siteFooter = data.siteFooter;
 
-    this._siteLanguage = data.siteLanguage;
-    this._dashboardLanguage = data.dashboardLanguage;
-    this._cjkSerifFont = data.cjkSerifFont;
     this._timeZone = data.timeZone;
-    this._origLocale = {
-      siteLanguage: data.siteLanguage,
-      dashboardLanguage: data.dashboardLanguage,
-      cjkSerifFont: data.cjkSerifFont,
-      timeZone: data.timeZone,
-    };
+    this._origLocale = { timeZone: data.timeZone };
 
     this._mainRssFeed = data.mainRssFeed;
     this._origMainRssFeed = data.mainRssFeed;
@@ -283,13 +233,8 @@ export class JantSettingsGeneral extends LitElement {
       };
       this._siteDirty = false;
       this._siteLoading = false;
-    } else if (section === "language-time") {
-      this._origLocale = {
-        siteLanguage: this._siteLanguage,
-        dashboardLanguage: this._dashboardLanguage,
-        cjkSerifFont: this._cjkSerifFont,
-        timeZone: this._timeZone,
-      };
+    } else if (section === "time") {
+      this._origLocale = { timeZone: this._timeZone };
       this._localeDirty = false;
       this._localeLoading = false;
     } else if (section === "feeds") {
@@ -309,7 +254,7 @@ export class JantSettingsGeneral extends LitElement {
   sectionError(section: string) {
     if (section === "site") {
       this._siteLoading = false;
-    } else if (section === "language-time") {
+    } else if (section === "time") {
       this._localeLoading = false;
     } else if (section === "feeds") {
       this._feedLoading = false;
@@ -408,14 +353,10 @@ export class JantSettingsGeneral extends LitElement {
     );
   }
 
-  // ── Language & time group helpers ────────────────────────────────
+  // ── Time group helpers ────────────────────────────────────────────
 
   private _syncLocaleDirty() {
-    this._localeDirty =
-      this._siteLanguage !== this._origLocale.siteLanguage ||
-      this._dashboardLanguage !== this._origLocale.dashboardLanguage ||
-      this._cjkSerifFont !== this._origLocale.cjkSerifFont ||
-      this._timeZone !== this._origLocale.timeZone;
+    this._localeDirty = this._timeZone !== this._origLocale.timeZone;
   }
 
   private _saveLocale() {
@@ -425,147 +366,12 @@ export class JantSettingsGeneral extends LitElement {
       new CustomEvent("jant:settings-save", {
         bubbles: true,
         detail: {
-          endpoint: "/settings/general/language-time",
-          data: {
-            siteLanguage: this._siteLanguage,
-            dashboardLanguage: this._dashboardLanguage,
-            cjkSerifFont: this._cjkSerifFont,
-            timeZone: this._timeZone,
-          },
-          section: "language-time",
+          endpoint: "/settings/general/time",
+          data: { timeZone: this._timeZone },
+          section: "time",
         },
       }),
     );
-  }
-
-  // ── Locale combobox ────────────────────────────────────────────────
-
-  private _filteredLocaleEntries(): LocaleEntry[] {
-    const all = getSupportedLocaleEntries();
-    const query = this._localeQuery.trim().toLowerCase();
-    if (!query) return all;
-    return all.filter(
-      (e) =>
-        e.tag.toLowerCase().includes(query) ||
-        e.native.toLowerCase().includes(query) ||
-        e.english.toLowerCase().includes(query),
-    );
-  }
-
-  private _toggleLocalePicker = () => {
-    this._localeOpen = !this._localeOpen;
-    if (!this._localeOpen) {
-      this._localeQuery = "";
-    } else {
-      // Focus the search input on next paint.
-      this.updateComplete.then(() => {
-        const input = this.querySelector<HTMLInputElement>(
-          "[data-locale-search]",
-        );
-        input?.focus();
-      });
-    }
-  };
-
-  private _selectLocale(tag: string) {
-    this._siteLanguage = tag;
-    this._localeOpen = false;
-    this._localeQuery = "";
-    this._syncLocaleDirty();
-  }
-
-  private _onLocalePickerDocumentClick = (e: Event) => {
-    if (!this._localeOpen) return;
-    const target = e.target as Node | null;
-    const picker = this.querySelector("[data-locale-picker]");
-    if (picker && target && !picker.contains(target)) {
-      this._localeOpen = false;
-    }
-  };
-
-  private _onLocalePickerKeydown = (e: KeyboardEvent) => {
-    if (e.isComposing || e.keyCode === 229) return;
-    if (e.key === "Escape" && this._localeOpen) {
-      this._localeOpen = false;
-      this._localeQuery = "";
-    }
-  };
-
-  private _renderLanguagePicker() {
-    const current = getOrBuildEntry(this._siteLanguage || "en");
-    const filtered = this._filteredLocaleEntries();
-    const searchPlaceholder =
-      this.labels.siteLanguageSearchPlaceholder || "Search…";
-    const noMatches = this.labels.siteLanguageNoMatches || "No matches.";
-
-    return html`
-      <div class="relative w-fit max-w-full" data-locale-picker>
-        <button
-          type="button"
-          class="flex h-9 w-full cursor-pointer items-center rounded-md border border-input bg-transparent bg-[image:var(--chevron-down-icon-50)] bg-position-[center_right_0.75rem] bg-size-[1rem] bg-no-repeat py-2 pl-3 pr-9 text-left text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30 dark:hover:bg-input/50"
-          aria-expanded=${this._localeOpen ? "true" : "false"}
-          aria-haspopup="listbox"
-          aria-labelledby="site-language-label"
-          @click=${this._toggleLocalePicker}
-        >
-          <span class="min-w-0 truncate">${current.native}</span>
-        </button>
-
-        ${this._localeOpen
-          ? html`
-              <div
-                class="absolute left-0 top-full z-10 mt-1 w-80 min-w-full max-w-[calc(100vw-2rem)] max-h-72 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md"
-              >
-                <div class="border-b p-2">
-                  <input
-                    type="text"
-                    class="input w-full"
-                    data-locale-search
-                    placeholder=${searchPlaceholder}
-                    autocomplete="off"
-                    spellcheck="false"
-                    .value=${this._localeQuery}
-                    @input=${(e: Event) => {
-                      this._localeQuery = (e.target as HTMLInputElement).value;
-                    }}
-                  />
-                </div>
-                <div role="listbox" class="max-h-56 overflow-auto py-1">
-                  ${filtered.length === 0
-                    ? html`
-                        <div class="px-3 py-2 text-sm text-muted-foreground">
-                          ${noMatches}
-                        </div>
-                      `
-                    : filtered.map(
-                        (entry) => html`
-                          <button
-                            type="button"
-                            role="option"
-                            aria-selected=${entry.tag === this._siteLanguage
-                              ? "true"
-                              : "false"}
-                            class=${[
-                              "flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-accent",
-                              entry.tag === this._siteLanguage
-                                ? "bg-accent/60"
-                                : "",
-                            ].join(" ")}
-                            @click=${() => this._selectLocale(entry.tag)}
-                          >
-                            <span>${entry.native}</span>
-                            <span class="text-xs text-muted-foreground">
-                              ${entry.english}
-                            </span>
-                          </button>
-                        `,
-                      )}
-                </div>
-              </div>
-            `
-          : nothing}
-      </div>
-    `;
   }
 
   // ── Feed group helpers ────────────────────────────────────────────
@@ -880,76 +686,7 @@ export class JantSettingsGeneral extends LitElement {
               this._localeLoading,
             )}
         >
-          ${this._renderSectionTitle(this.labels.languageAndTime)}
-          <div class="field">
-            <label id="site-language-label" class="label"
-              >${this.labels.siteLanguage}</label
-            >
-            ${this._renderLanguagePicker()}
-            <p class="text-sm text-muted-foreground mt-1">
-              ${this.labels.siteLanguageHelp}
-            </p>
-            <p class="text-sm text-muted-foreground mt-1">
-              ${this.labels.contentLanguagePreview}
-              <code class="rounded bg-muted px-1.5 py-0.5 text-xs"
-                >${`<html lang="${this._siteLanguage || "en"}">`}</code
-              >
-            </p>
-          </div>
-
-          <div class="field">
-            <label id="dashboard-language-label" class="label"
-              >${this.labels.dashboardLanguage}</label
-            >
-            <select
-              class="select"
-              aria-labelledby="dashboard-language-label"
-              @change=${(e: Event) => {
-                this._dashboardLanguage = (e.target as HTMLSelectElement).value;
-                this._syncLocaleDirty();
-              }}
-            >
-              ${this.dashboardLanguages.map(
-                (lang) => html`
-                  <option
-                    value=${lang.value}
-                    ?selected=${this._dashboardLanguage === lang.value}
-                  >
-                    ${lang.label}
-                  </option>
-                `,
-              )}
-            </select>
-            <p class="text-sm text-muted-foreground mt-1">
-              ${this.labels.dashboardLanguageHelp}
-            </p>
-          </div>
-
-          <div class="field">
-            <label class="label">${this.labels.cjkFont}</label>
-            <select
-              class="select"
-              @change=${(e: Event) => {
-                this._cjkSerifFont = (e.target as HTMLSelectElement).value;
-                this._syncLocaleDirty();
-              }}
-            >
-              ${this.cjkFonts.map(
-                (font) => html`
-                  <option
-                    value=${font.value}
-                    ?selected=${this._cjkSerifFont === font.value}
-                  >
-                    ${font.label}
-                  </option>
-                `,
-              )}
-            </select>
-            <p class="text-sm text-muted-foreground mt-1">
-              ${this.labels.cjkFontHelp}
-            </p>
-          </div>
-
+          ${this._renderSectionTitle(this.labels.timeSection)}
           <div class="field">
             <label class="label">${this.labels.timeZone}</label>
             <select

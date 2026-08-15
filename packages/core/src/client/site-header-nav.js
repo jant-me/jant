@@ -8,9 +8,18 @@
 const moreControllers = new WeakMap();
 const drawerControllers = new WeakMap();
 
-function initMoreDropdown(root) {
-  const trigger = root.querySelector(".site-header-more-btn");
-  const popover = root.querySelector(".site-header-more-popover");
+/** Header dropdowns, in the order they appear: the "More" nav overflow and,
+ *  on a multilingual site, the language switcher. Both behave identically —
+ *  click to toggle, outside click or Escape to close, opening one closes the
+ *  other via the shared `basecoat:popover` event. */
+const DROPDOWNS = [
+  { trigger: ".site-header-more-btn", popover: ".site-header-more-popover" },
+  { trigger: ".site-header-lang-btn", popover: ".site-header-lang-popover" },
+];
+
+function initDropdown(root, triggerSelector, popoverSelector) {
+  const trigger = root.querySelector(triggerSelector);
+  const popover = root.querySelector(popoverSelector);
 
   if (!trigger || !popover) return;
   if (trigger.dataset.moreInitialized === "true") return;
@@ -129,8 +138,10 @@ export function initSiteHeaderNav(root = document) {
   // --- Freshness indicators ---
   initNavFreshness(root);
 
-  // --- More dropdown ---
-  initMoreDropdown(root);
+  // --- Header dropdowns ---
+  for (const { trigger, popover } of DROPDOWNS) {
+    initDropdown(root, trigger, popover);
+  }
 
   // --- Mobile drawer ---
   if (!hamburger || !drawer || !backdrop) return;
@@ -210,7 +221,8 @@ export function initSiteHeaderNav(root = document) {
 }
 
 export function destroySiteHeaderNav(root = document) {
-  for (const trigger of root.querySelectorAll(".site-header-more-btn")) {
+  const triggerSelector = DROPDOWNS.map((d) => d.trigger).join(", ");
+  for (const trigger of root.querySelectorAll(triggerSelector)) {
     const controller = moreControllers.get(trigger);
     controller?.abort();
     moreControllers.delete(trigger);

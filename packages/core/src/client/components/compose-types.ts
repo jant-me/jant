@@ -115,6 +115,13 @@ export interface LocalDraft {
   showRating: boolean;
   collectionIds: string[];
   replyToId: string | null;
+  /** Language the author picked, if they picked one. */
+  language?: string | null;
+  /**
+   * Thread root this draft is a translation of. Carried so a half-written
+   * translation picked up later still knows what it belongs to.
+   */
+  translationOfId?: string | null;
   attachedTexts: Array<{
     clientId: string;
     bodyJson: JSONContent | null;
@@ -237,6 +244,21 @@ export interface ComposeLabels {
   publishHideFromLatest: string;
   publishPrivate: string;
   publishSettings: string;
+  languageLabel: string;
+  languageAuto: string;
+  languageAutoHint: string;
+  languageAutoDetected: string;
+  languageAutoPending: string;
+  languageTriggerLabel: string;
+  translationOf: string;
+  translationContext: string;
+  translationContextInLanguage: string;
+  translationContextOpen: string;
+  translationContextOriginal: string;
+  translationContextHide: string;
+  translationContextHideLong: string;
+  translationContextShow: string;
+  translationContextShowLong: string;
   publishVisibilityLabel: string;
   publishVisibilityPublic: string;
   publishVisibilityPublicHint: string;
@@ -350,8 +372,24 @@ export interface ComposeSubmitDetail {
   replyThreadRootId?: string;
   replyRefreshKind?: "timeline-item" | "post-card" | "post-view";
   replyRefreshId?: string;
+  /**
+   * Content language chosen by the author. Absent means "nobody said" — the
+   * server reads one out of the text rather than guessing in the browser,
+   * because it sees the final text.
+   */
+  language?: string;
+  /** Thread root this post is being written as a translation of. */
+  translationOfId?: string;
   /** Present when submitting a multi-post thread; index 0 is the root */
   threadPosts?: ComposeSubmitDetail[];
+}
+
+/** One language the site publishes, as offered in the composer. */
+export interface ComposeLanguage {
+  /** Canonical BCP 47 tag. */
+  tag: string;
+  /** The language's own name for itself, e.g. "日本語". */
+  label: string;
 }
 
 export interface ComposeCollection {

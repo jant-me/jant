@@ -89,6 +89,8 @@ composeRoutes.post("/", async (c) => {
       collectionIds: data.collectionIds,
       replyToId: data.replyToId,
       quietReply: data.quietReply,
+      language: data.language,
+      translationOfId: data.translationOfId,
       publishedAt: data.publishedAt,
     },
     data.attachments,
@@ -231,6 +233,9 @@ composeRoutes.post("/thread", async (c) => {
         collectionIds: index === 0 ? data.collectionIds : undefined,
         replyToId: index === 0 ? data.replyToId : undefined,
         quietReply: data.quietReply,
+        // Thread-level, so only the root states them; replies inherit.
+        language: index === 0 ? data.language : undefined,
+        translationOfId: index === 0 ? data.translationOfId : undefined,
         // Replies may carry their own date; when they don't, the service
         // inherits the root's rather than stamping "now".
         publishedAt: data.publishedAt,

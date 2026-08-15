@@ -11,8 +11,12 @@ export interface NavManagerItem {
   systemKey?: SystemNavKey;
   collectionId?: string;
   postId?: string;
+  /** Author's override, or `""` when the item follows its target's title */
   label: string;
+  /** Resolved label from the server-rendered list */
   displayLabel?: string;
+  /** Target's current title, present on mutation responses */
+  targetTitle?: string;
   url: string;
   placement?: "header" | "more";
 }

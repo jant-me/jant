@@ -187,7 +187,7 @@ describe("SiteAdminService", () => {
       "rss",
       "settings",
     ]);
-    expect(onboarding.value).toBe("completed");
+    expect(onboarding.value).toBe("provisioned");
   });
 
   it("rejects reuse of an idempotency key with different key or primary host", async () => {

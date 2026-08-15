@@ -30,11 +30,12 @@ import {
   type ConfigEditorDefinition,
   type ConfigKey,
 } from "../types.js";
-import { isCjkSerifFont } from "../i18n/detect.js";
 import {
+  formatLanguageList,
   isLocale,
   isValidContentLanguage,
   normalizeContentLanguage,
+  parseLanguageList,
 } from "../i18n/locales.js";
 import { ValidationError } from "./errors.js";
 import { createTypeIdSchema, ID_PREFIX } from "./ids.js";
@@ -193,6 +194,20 @@ export const RatingSchema = z.coerce
   .or(z.literal("").transform(() => undefined))
   .transform((v) => (v === 0 ? undefined : v));
 
+/**
+ * Any syntactically valid BCP 47 tag, normalized to canonical case.
+ *
+ * Deliberately open: Jant ships dashboard catalogs for a handful of locales but
+ * content can be written in any language.
+ */
+export const ContentLanguageSchema = z
+  .string()
+  .trim()
+  .refine(isValidContentLanguage, {
+    message: "Enter a valid BCP 47 language tag (e.g. en, zh-Hans, ja).",
+  })
+  .transform(normalizeContentLanguage);
+
 const PostIdSchema = createTypeIdSchema(ID_PREFIX.post);
 const MediaIdSchema = createTypeIdSchema(ID_PREFIX.media);
 const CollectionIdSchema = createTypeIdSchema(ID_PREFIX.collection);
@@ -294,6 +309,12 @@ const PostFieldsSchema = z.object({
     .optional(),
   replyToId: PostIdSchema.optional(),
   quietReply: z.boolean().optional(),
+  // Content language. The post service normalizes and enforces the
+  // thread-uniform rule; this only rejects tags that are not BCP 47 at all.
+  language: ContentLanguageSchema.optional().or(
+    z.literal("").transform(() => undefined),
+  ),
+  translationOfId: PostIdSchema.optional(),
   publishedAt: z.number().int().positive().optional(),
   mediaIds: z.array(MediaIdSchema).max(MAX_MEDIA_ATTACHMENTS).optional(),
   mediaAlts: z.record(MediaIdSchema, z.string()).optional(),
@@ -808,10 +829,15 @@ export function normalizeEditableSettingValue(
         );
       }
       break;
-    case "CJK_SERIF_FONT":
-      if (!isCjkSerifFont(normalized)) {
-        throw new ValidationError("Choose an available CJK font fallback.");
+    case "MULTILINGUAL_ENABLED":
+      if (normalized !== "true" && normalized !== "false") {
+        throw new ValidationError("Multilingual content is on or off.");
       }
+      break;
+    case "ADDITIONAL_LANGUAGES":
+      // Re-serialized from the parsed form so a hand-written value cannot
+      // store blanks, duplicates, or non-canonical casing.
+      normalized = formatLanguageList(parseLanguageList(normalized));
       break;
     case "TIME_ZONE":
       if (!isSupportedTimeZone(normalized)) {
@@ -861,6 +887,23 @@ export const SetupSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters")
     .max(128),
+  // Prefilled from Accept-Language and confirmed by the author. Optional so an
+  // older client or a scripted setup still succeeds; the route falls back to
+  // the same detection the form used.
+  contentLanguage: ContentLanguageSchema.optional().or(
+    z.literal("").transform(() => undefined),
+  ),
+});
+
+/**
+ * Setup on a site whose shell already exists.
+ *
+ * A control plane created the site and its owner, so the only thing left to
+ * settle is the language its author writes in — the one fact no header, host,
+ * or billing record can supply.
+ */
+export const SetupLanguageSchema = z.object({
+  contentLanguage: ContentLanguageSchema,
 });
 
 /**

@@ -37,7 +37,13 @@ import { getNavigationData } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
 import { formatYearMonth } from "../../lib/time.js";
-import { toAbsoluteSiteUrl, toPublicPath } from "../../lib/url.js";
+import { toAbsoluteSiteUrl } from "../../lib/url.js";
+import {
+  buildSurfaceAlternates,
+  getViewLang,
+  toViewPath,
+  viewBasePath,
+} from "../../lib/view-language.js";
 import {
   createMediaContext,
   toArchiveGroupsWithMedia,
@@ -183,9 +189,10 @@ function buildArchivePostFilters(
   opts: {
     isAuthenticated: boolean;
     collectionId?: string;
+    lang?: string;
   },
 ): PostFilters {
-  const { isAuthenticated, collectionId } = opts;
+  const { isAuthenticated, collectionId, lang } = opts;
 
   // Map visibility: feed routes force public; page respects auth
   // Authenticated users default to showing all visibilities
@@ -207,6 +214,7 @@ function buildArchivePostFilters(
 
   return {
     format: params.format,
+    lang,
     status: "published",
     excludeReplies: true,
     excludePrivate: !isAuthenticated,
@@ -337,6 +345,7 @@ export async function renderArchivePage(
   const filters = buildArchivePostFilters(params, {
     isAuthenticated: navData.isAuthenticated,
     collectionId,
+    lang: getViewLang(c) ?? undefined,
   });
 
   // --- Parallel data fetches ------------------------------------------------
@@ -358,6 +367,7 @@ export async function renderArchivePage(
       services.posts.getDistinctYears({
         status: "published",
         excludeReplies: true,
+        lang: filters.lang,
         sortBy: filters.sortBy,
       }),
       services.collections.list(),
@@ -480,6 +490,7 @@ export async function renderArchivePage(
       params.sort === "updated" ? "Recently updated" : undefined,
       navData.siteName,
     ),
+    alternateLanguages: buildSurfaceAlternates(c),
     navData,
     content: (
       <ArchivePage
@@ -492,7 +503,7 @@ export async function renderArchivePage(
         availableYears={availableYears}
         availableCollections={availableCollectionsList}
         isAuthenticated={navData.isAuthenticated}
-        sitePathPrefix={navData.sitePathPrefix}
+        basePath={navData.basePath}
         timeZone={appConfig.timeZone}
         feedHref={
           appConfig.rssFeedsEnabled ? `/archive/feed${feedQuery}` : undefined
@@ -506,11 +517,21 @@ export async function renderArchivePage(
 // Archive page route
 // =============================================================================
 
-archiveRoutes.get("/", (c) => {
+/**
+ * Serve the archive page, first normalizing any legacy query parameters.
+ *
+ * @param c - Hono context
+ * @returns Archive page response, or a 308 to the canonical parameter spelling
+ */
+export function renderArchiveRoute(
+  c: Context<Env>,
+): Promise<Response> | Response {
   const canonical = legacyArchiveParamsRedirect(c);
   if (canonical) return c.redirect(canonical, 308);
   return renderArchivePage(c);
-});
+}
+
+archiveRoutes.get("/", renderArchiveRoute);
 
 // =============================================================================
 // Archive feed
@@ -678,6 +699,7 @@ async function buildArchiveFeedData(
   const sortsByActivity = params.sort === "updated";
   const filters: PostFilters = {
     format: params.format,
+    lang: getViewLang(c) ?? undefined,
     status: "published",
     excludeReplies: true,
     excludePrivate: true,
@@ -799,10 +821,10 @@ async function buildArchiveFeedData(
     siteName: appConfig.siteName,
     siteDescription: toPlainText(appConfig.siteDescription),
     siteUrl: appConfig.siteUrl,
-    siteLanguage: appConfig.siteLanguage,
+    siteLanguage: getViewLang(c) ?? appConfig.siteLanguage,
     title: buildArchiveFeedTitle(c, params, collection?.title),
     selfUrl: toAbsoluteSiteUrl(
-      `${selfPath}${feedQuery}`,
+      `${viewBasePath(c)}${selfPath}${feedQuery}`,
       appConfig.siteUrl,
       appConfig.sitePathPrefix,
     ),
@@ -810,8 +832,13 @@ async function buildArchiveFeedData(
   };
 }
 
-// Atom — /archive/feed
-archiveRoutes.get("/feed", async (c) => {
+/**
+ * Render the archive Atom feed for the current view language.
+ *
+ * @param c - Hono context
+ * @returns Atom feed response
+ */
+export async function renderArchiveFeed(c: Context<Env>): Promise<Response> {
   const feedData = await buildArchiveFeedData(c, "/archive/feed");
   return new Response(defaultFeedRenderer(feedData), {
     headers: {
@@ -819,16 +846,17 @@ archiveRoutes.get("/feed", async (c) => {
       "Cache-Control": RSS_FEED_CACHE_CONTROL,
     },
   });
-});
+}
+
+// Atom — /archive/feed
+archiveRoutes.get("/feed", renderArchiveFeed);
 
 // Legacy atom.xml redirect
-archiveRoutes.get("/feed/atom.xml", (c) => {
-  const sitePathPrefix = c.var.appConfig.sitePathPrefix;
+export function redirectLegacyArchiveFeed(c: Context<Env>): Response {
   const qs = c.req.url.includes("?")
     ? c.req.url.slice(c.req.url.indexOf("?"))
     : "";
-  return c.redirect(
-    `${toPublicPath("/archive/feed", sitePathPrefix)}${qs}`,
-    308,
-  );
-});
+  return c.redirect(`${toViewPath(c, "/archive/feed")}${qs}`, 308);
+}
+
+archiveRoutes.get("/feed/atom.xml", redirectLegacyArchiveFeed);

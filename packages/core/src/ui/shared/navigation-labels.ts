@@ -11,6 +11,7 @@ type NavigationLabelItem = {
   systemKey?: SystemNavKey;
   label: string;
   url: string;
+  targetTitle?: string;
 };
 
 // `context: "nav"` gives these site-header labels a distinct Lingui hash so
@@ -163,20 +164,31 @@ function getBuiltinNavLabelDescriptor(
   return null;
 }
 
+/**
+ * The text a nav item shows.
+ *
+ * A stored label is always the author's own words, so it wins outright. An
+ * empty one means the item follows what it points at: a built-in destination
+ * shows its translated default, a page or collection shows that row's current
+ * title — which is also how a nav entry ends up in the reader's language once
+ * a language view has resolved it to a translated page.
+ *
+ * @param item - Nav item, view or raw
+ * @param i18n - Translator for built-in destinations
+ * @param sitePathPrefix - Deployment path prefix, such as `/blog`
+ * @returns Label to render
+ */
 export function getNavItemDisplayLabel(
   item: NavigationLabelItem,
   i18n: Translator,
   sitePathPrefix = "",
 ): string {
-  if (item.type === "system" && item.systemKey) {
-    // Non-empty label means the user customized it — use as-is.
-    // Empty label means "use the i18n-translated default".
-    if (item.label) {
-      return item.label;
-    }
-  }
+  if (item.label) return item.label;
+
   const descriptor = getBuiltinNavLabelDescriptor(item, sitePathPrefix);
-  return descriptor ? i18n._(descriptor) : item.label;
+  if (descriptor) return i18n._(descriptor);
+
+  return item.targetTitle?.trim() || item.label;
 }
 
 export function getSystemNavDisplayLabel(

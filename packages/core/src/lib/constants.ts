@@ -36,10 +36,27 @@ export type ReservedPath = (typeof RESERVED_PATHS)[number];
 
 /**
  * Check if a path is reserved
+ *
+ * @param path - Stored path form (no leading slash)
+ * @param languagePrefixes - URL prefixes of the site's additional languages
+ *   (lowercase tags). While those are live, `/{prefix}` and everything under it
+ *   is served by the language views, so no slug or custom URL may claim them.
+ *   Passed per call rather than baked into the static list because the set is
+ *   per-site and changes at runtime.
+ * @returns Whether the path's first segment is unavailable
+ * @example
+ * isReservedPath("archive"); // true
+ * isReservedPath("ja/hello", ["ja"]); // true
+ * isReservedPath("ja/hello"); // false — no language configured
  */
-export function isReservedPath(path: string): boolean {
+export function isReservedPath(
+  path: string,
+  languagePrefixes: readonly string[] = [],
+): boolean {
   const firstSegment = path.split("/")[0]?.toLowerCase();
-  return RESERVED_PATHS.includes(firstSegment as ReservedPath);
+  if (!firstSegment) return false;
+  if (RESERVED_PATHS.includes(firstSegment as ReservedPath)) return true;
+  return languagePrefixes.includes(firstSegment);
 }
 
 /**
@@ -66,10 +83,17 @@ export const SETTINGS_KEYS = Object.fromEntries(
 export type SettingsKey = SettingsFieldKey;
 
 /**
- * Onboarding status values
+ * Onboarding status values.
+ *
+ * `provisioned` is the hosted middle state: a control plane created the site
+ * and its owner, so the site is real and servable, but nobody has yet answered
+ * the questions only a person can answer — the language they write in. It is
+ * deliberately distinct from `pending`, which means the site has no owner at
+ * all and nothing but setup should be reachable.
  */
 export const ONBOARDING_STATUS = {
   PENDING: "pending",
+  PROVISIONED: "provisioned",
   COMPLETED: "completed",
 } as const;
 

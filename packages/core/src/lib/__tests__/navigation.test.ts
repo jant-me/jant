@@ -153,4 +153,62 @@ describe("getNavigationData", () => {
 
     expect(result.links.map((link) => link.id)).toEqual(["nav_custom"]);
   });
+
+  // A post page's URL carries no language prefix, so its chrome is scoped by
+  // the post's language instead of the request path.
+  it("scopes the base path to an explicit language", async () => {
+    const makeContext = (languageScope: string) =>
+      ({
+        var: {
+          publicPath: "/some-post",
+          appConfig: {
+            siteName: "Jant",
+            sitePathPrefix: "",
+            siteDescription: "",
+            siteDescriptionExplicit: false,
+            siteAvatarUrl: "",
+            showHeaderAvatar: false,
+            siteFooter: "",
+            siteLanguage: "zh-Hans",
+            additionalLanguages: ["ja"],
+            multilingualEnabled: true,
+            rssFeedsEnabled: true,
+          },
+          services: {
+            navItems: {
+              list: async () => [
+                {
+                  id: "nav_latest",
+                  type: "system",
+                  systemKey: "latest",
+                  label: "Latest",
+                  url: "/",
+                  placement: "header",
+                  position: "a0",
+                  createdAt: 1,
+                  updatedAt: 1,
+                },
+              ],
+            },
+            collections: {
+              listByRecentActivity: async () => [],
+            },
+          },
+          isAuthenticated: false,
+          session: null,
+        },
+      }) as unknown as Context;
+
+    const japanese = await getNavigationData(makeContext("ja"), {
+      languageScope: "ja",
+    });
+    expect(japanese.basePath).toBe("/ja");
+    expect(japanese.links[0]?.url).toBe("/ja");
+
+    const primary = await getNavigationData(makeContext("zh-Hans"), {
+      languageScope: "zh-Hans",
+    });
+    expect(primary.basePath).toBe("");
+    expect(primary.links[0]?.url).toBe("/");
+  });
 });

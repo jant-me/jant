@@ -17,7 +17,6 @@ describe("editable settings registry", () => {
       "SITE_DESCRIPTION",
       "SITE_LANGUAGE",
       "DASHBOARD_LANGUAGE",
-      "CJK_SERIF_FONT",
       "MAIN_RSS_FEED",
       "PAGE_SIZE",
       "SEARCH_PAGE_SIZE",
@@ -34,6 +33,15 @@ describe("editable settings registry", () => {
       "RSS_FEEDS_ENABLED",
     ]);
     expect(editableSettingKeys).not.toContain("AUTH_SECRET");
+    // The multilingual keys are deliberately DB-only. Making them editable
+    // here would let `PUT /api/settings` turn multilingual on without the
+    // confirmation that stamps existing posts — every unstamped post would
+    // then vanish from the root view — and add a language without the
+    // URL-prefix conflict check.
+    expect(editableSettingKeys).not.toContain("MULTILINGUAL_ENABLED");
+    expect(editableSettingKeys).not.toContain("ADDITIONAL_LANGUAGES");
+    expect(resettableConfigEditorKeys).not.toContain("MULTILINGUAL_ENABLED");
+    expect(resettableConfigEditorKeys).not.toContain("ADDITIONAL_LANGUAGES");
     expect(editableSettingKeys).not.toContain("GITHUB_SYNC_TOKEN");
     expect(editableSettingKeys).not.toContain("SITE_AVATAR");
     expect(configEditorVisibleKeys).toEqual(

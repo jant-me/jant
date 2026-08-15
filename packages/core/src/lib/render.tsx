@@ -12,6 +12,13 @@ import { SETTINGS_KEYS } from "./constants.js";
 import { BaseLayout, type ToastProps } from "../ui/layouts/BaseLayout.js";
 import { SiteLayout } from "../ui/layouts/SiteLayout.js";
 import type { NavigationData } from "./navigation.js";
+import {
+  buildComposeLanguages,
+  buildLanguageSwitcher,
+  getViewLang,
+  type LanguageAlternate,
+  type LanguageSwitcherOption,
+} from "./view-language.js";
 
 export interface RenderPublicPageOptions {
   /** Page title for <title> tag */
@@ -45,6 +52,17 @@ export interface RenderPublicPageOptions {
    * thread root).
    */
   canonicalHref?: string;
+  /**
+   * `hreflang` alternates for this page. List surfaces pass
+   * `buildSurfaceAlternates(c)`; a post passes its translations. Pages that
+   * exist once for the whole site pass nothing.
+   */
+  alternateLanguages?: LanguageAlternate[];
+  /**
+   * Language switcher entries. Defaults to the current surface in each of the
+   * site's languages; a post overrides it with its translations.
+   */
+  languageSwitcher?: LanguageSwitcherOption[];
   /** Navigation data (from getNavigationData) */
   navData: NavigationData;
   /** Page content JSX to render inside SiteLayout */
@@ -65,6 +83,12 @@ export interface RenderPublicPageOptions {
   showHomeBranding?: boolean;
   /** When set, the mobile compose FAB pre-selects this collection. */
   composeCollectionId?: string;
+  /**
+   * Content language of the page the composer opens from, for its default.
+   * List surfaces leave this unset and get the view language; a post page
+   * passes its post's language, since its URL carries no view prefix.
+   */
+  composeContextLanguage?: string | null;
 }
 
 /**
@@ -99,6 +123,8 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
     articleModifiedTime,
     jsonLd,
     canonicalHref,
+    alternateLanguages,
+    languageSwitcher,
     navData,
     content,
     pageChrome,
@@ -109,6 +135,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
     showHeader,
     showHomeBranding,
     composeCollectionId,
+    composeContextLanguage,
   } = options;
 
   // Use siteDescription as meta description fallback when not explicitly provided
@@ -123,6 +150,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
     links: navData.links,
     currentPath: navData.currentPath,
     sitePathPrefix: navData.sitePathPrefix,
+    basePath: navData.basePath,
     isAuthenticated: navData.isAuthenticated,
     collections: navData.collections,
     siteAvatarUrl: navData.siteAvatarUrl,
@@ -141,6 +169,9 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
       allSettings[SETTINGS_KEYS.DISCOVERY_SLASH_COMMAND_AT],
     ),
     composeCollectionId,
+    languageSwitcher: languageSwitcher ?? buildLanguageSwitcher(c),
+    composeLanguages: buildComposeLanguages(c),
+    composeContextLanguage: composeContextLanguage ?? getViewLang(c),
   };
   const faviconUrl = appConfig.siteAvatarUrl || undefined;
   const faviconVersion = appConfig.faviconVersion || undefined;
@@ -162,6 +193,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
       articleModifiedTime={articleModifiedTime}
       jsonLd={jsonLd}
       canonicalHref={canonicalHref}
+      alternateLanguages={alternateLanguages}
       faviconUrl={faviconUrl}
       faviconVersion={faviconVersion}
       noindex={resolvedNoindex}

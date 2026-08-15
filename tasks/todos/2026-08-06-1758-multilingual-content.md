@@ -1,6 +1,6 @@
 # 多语言内容功能 — 实现设计文档
 
-状态：**设计定稿，待实现**
+状态：**已完成 —— 四个阶段全部实现并验证**（见文末「实现记录」）
 日期：2026-08-06（同日完成代码库对照评审并修订：路由挂载方式、去表级 CHECK、
 物化 SQL 的 site 界定、语言集合不变量、设置键 DB-only、公开 catalog 声明）
 
@@ -282,6 +282,12 @@ Lingui 消息 ID 碰撞把设置译文泄漏进公开页头。本功能**维持�
     简繁靠特有字投票（国学说这时会对后 ↔ 國學說這時會對後），一句话以上基本必中；
     纯共享汉字的极短文本 → 模糊，回落默认值。
   - **检测器永远不返回空值或语言集合之外的值**。
+- **两条「宁可不答」的规则**（`MIN_SIGNAL` / `CJK_WEIGHT`）：
+  - **片段不算证据**：信号量满 10 分才回答，CJK 字符按 3 分、拉丁字母按 1 分
+    ——四个汉字或两个英文单词。不够就回落调用方默认值（compose 里就是页面
+    语言）。少了这条，pill 会在第一个字母上就翻语言，读起来是抽搐不是判断。
+  - **按「主要是什么」判，不按「出现过什么」判**：CJK 与拉丁比信号量，大的
+    赢。少了这条，一篇英文里引一句中文就会被读成中文。
 - 不引入 franc / cld3。
 
 ---
@@ -342,8 +348,29 @@ Lingui 消息 ID 碰撞把设置译文泄漏进公开页头。本功能**维持�
 - 提交链路带 `language` 字段：`PostFieldsSchema` → `CreatePost/UpdatePost` →
   service 落库；`ComposeSubmitDetail` / `LocalDraft` 同步加字段（本地草稿
   要能记住选过的语言）。
-- 位置建议：per-row 的 post meta 控件（现有 publish date + permalink 那个
-  pill/popover）或 publish panel，实现时取交互最顺的一处；只在 root 行渲染。
+- 位置（已定）：**Post 按钮左边的一颗 pill**，只在 root 行渲染。图标就是站点
+  右上角切换器那颗 globe，同一份 artwork——语言在这个站点已经有符号了。
+- pill **只在有话说的时候才写出语言名**：
+  - 自动态、且结果就是当前页面的语言 → 只有 globe（答案就是你站的那一页）；
+  - 检测把语言挪走了，或作者自己选过 → 长出语言名（显式选过转主色）。
+    这样「检测改了你的语言」靠自己出现来宣布，不需要额外标记；无障碍名
+    (`aria-label` / `title`) 任何时候都完整报出语言。
+- 点开是 popover：「自动 · 读你写的字 — 看起来像 X」+ 每个语言一行。选项 =
+  主语言 + `ADDITIONAL_LANGUAGES`，显示名用语言自己的名字（简体中文 /
+  English / 日本語）。语言不进 Options 面板，一个设置只有一个入口。
+- **不做发布前的确认弹窗。** 曾经做过一版：检测读出的语言与页面语言不一致时，
+  发布前弹 sheet 问「发成哪个」。删掉了，因为 pill 写出语言名的条件与它的触发
+  条件完全重合——每一次弹窗会出现的场合，Post 左边早就从一颗地球变成了
+  「English」。弹窗问的问题 pill 已经答了，它提供的选项 pill 点开就是。
+  - 连带不做的还有「不再提示」偏好：那个选项说不清自己的后果。sheet 有两个
+    并列答案（信检测 / 用页面语言），一个勾选无法表达「以后按哪个」；要说清
+    只能把勾选绑到按钮上，偏好就从两态变三态。这套复杂度是弹窗带来的，不是
+    功能本身要求的。
+  - 兜底：检测第一次把语言挪走时，pill 上那个词有一次很轻的淡入（0.22s，
+    `prefers-reduced-motion` 下取消）。它把「它替你改了」说出来，但不要求
+    回答，也就没有「下次默认是什么」这个问题。
+  - 真发错了不是不可逆：文章菜单有「更改语言」（整条 thread），编辑时 pill
+    也在。
 
 ---
 
@@ -779,3 +806,1045 @@ CJK 字体 profile（简/繁/日/韩样式表的选择）不再有用户设置�
   给旧中文帖「添加译本」（中途关闭一次验证零痕迹，再完整发布）→ 两篇互见 +
   hreflang → 切换器在有/无译本文章上行为符合 §5 表格 → `/en/collections`
   列出全部集合且空集合详情页有出路文案 → 关闭后 `/en/feed` 301 到 `/feed`。
+
+---
+
+## 17. 实现记录
+
+实现前做了一次代码库对照评审，验证了 D20（FTS 触发器确实存在，加 CHECK 会整表重建）、
+D21（`resolve()` 用 `envKeys ?? []`、`editableSettingKeys` 过滤 `"editor" in field`）、
+`isRssFeedPath("/en/feed")` 为 true、`BaseLayout` 读 `lang ?? c.get("lang")`。
+以下是与设计文档不同或文档未覆盖的地方，**以本节为准**。
+
+### 17.1 对设计的修正
+
+**M1 — §4.4 挂载方案的唯一可行写法（Hono 实测）**
+Hono 的中间件无法跳过后续已匹配的 handler：`app.use("/:lang", gate)` 里 `next()`
+会直接进入语言 handler。实测（hono 4.11.9）确认唯一正确的构造是：
+
+- 语言路由组挂在**所有静态路由组之后、`pageRoutes` catch-all 之前**；
+- gate 必须写在**每个终端语言 handler 内部**，非启用前缀时 `return next()`。
+
+实测通过的路径矩阵：`/archive`→根、`/en/archive`→语言视图、`/en/{slug}`→语言
+catch-all、`/fr`、`/hello`、`/hello/text/{id}`→`pageRoutes` catch-all、
+`/settings/*`→设置路由。实现时用 `langGet()` helper 把 gate 焊进注册，避免漏写。
+
+**M2 — 语言视图需要链接生成跟着变，不只是过滤**
+`/xx/*` 不是「只读包装」：`home.tsx` 的分页 `baseUrl`、WebSite JSON-LD 的
+`searchUrlTemplate`、archive/search/collection 的分页与筛选 URL、
+`renderCollectionFeed` 的 `/{col}/feed` 全部硬编码根路径。语言视图下必须带前缀，
+否则 `/en` 第二页会跳回主语言时间线。→ 阶段 3 需把这些 handler 抽成按
+「视图 base path」参数化的共享函数，不能只往 context 塞 `viewLang`。
+
+**M3 — `post.language` 定为 thread 内统一的不变量（替代按粒度分别写过滤条件）**
+`buildThreadRootPageConditions` 被 collection 查询复用，那里行是按 `thread_id`
+分组的 thread **成员**（所以 `rootFormat` 写成 `EXISTS ... root.id = posts.thread_id`）。
+若直接 `posts.language = ?` 会过滤错行。采用的解法是把语言定为 thread 级不变量：
+
+- 回复创建时**强制继承 root 的语言**，忽略调用方传入值；
+- 改语言走 `setThreadLanguage`，**整条 thread 一起改**；
+- 开启回填覆盖该站全部 NULL 行（root 与回复一视同仁）。
+
+这样列谓词在 root 粒度和成员粒度都正确，且比 EXISTS 子查询快。已有测试锁住。
+
+**M4 — CJK 字体变量的计算位置**
+`themeStyle`（含 `getCjkFontCssVariables`）是在 `withConfig()` 里按
+`appConfig.siteLanguage` **每请求算一次**的，§12 要按帖/视图语言推导就必须挪到
+layout。已确认无内置字体主题定义 `--font-cjk-*`，所以 `withConfig` 里
+`{...cjk, ...fontTheme}` 的合并顺序是空约束，挪动安全。
+`services/site-admin.ts` 的静态导出走同一套，需同步处理。→ 阶段 2。
+
+**M5 — 站点导出/导入（设计文档完全未覆盖）**
+`jant.toml` + 文章 frontmatter 是真实的往返通道（有
+`export-import-roundtrip.test.ts`）。不处理的话导出再导入会整站丢多语言。
+已做：frontmatter 增加 `language` / `translation_group`（仅 root bundle），
+`HugoFrontMatter` 类型同步，导入端映射 `language`。
+待做：`translation_group` 的重建需要 link 端点（→ 阶段 4）；
+`MULTILINGUAL_ENABLED` / `ADDITIONAL_LANGUAGES` 进 `jant.toml`（→ 阶段 2）。
+
+**M6 — 移除语言的零帖校验必须无视开关状态**
+关闭多语言后语言设置页仍可进入，`countByLanguage` 不能只在开启态生效。→ 阶段 2。
+
+### 17.2 阶段 1 已完成（数据与过滤地基）
+
+- `post` 表加 `language` / `translation_group_id` + partial unique index，
+  **两个方言同步**。迁移 `0032_married_tomas.sql`（SQLite）与
+  `0030_abandoned_nighthawk.sql`（PG）经人工核对**只有 `ADD COLUMN` 与
+  `CREATE INDEX`，无表重建**，FTS 触发器安全。
+- `ID_PREFIX.translationGroup = "tgr"`；`Post` 实体加两个字段；
+  `toPost` 与 search 的 `RawSearchRow`/`mapRow` 同步（搜索 SQL 用 `post.*`，
+  列自动带出）。
+- `PostFilters.lang` + `ThreadRootPageOptions.lang`，两个条件构造器各加一条。
+- `CreatePost.language` / `CreatePost.translationOfId`；`PostFieldsSchema` 加
+  `language` / `translationOfId`，新增导出的 `ContentLanguageSchema`；
+  `/api/posts` 与 compose 路由转发（thread 批量创建时只有 root 携带）。
+- 新 service 方法：`setThreadLanguage`、`materializeMissingLanguage`、
+  `countMissingLanguage`、`countByLanguage`、`listTranslations`、
+  `getTranslationsMap`、`linkTranslation`、`unlinkTranslation`。
+  root-only 与同站校验集中在 `requireTranslatableRoot`，组内语言唯一性
+  在 `assertTranslationLanguageFree`（DB 的 partial unique index 是最后一道）。
+- 「添加译本」提交时原子建组：源帖无组则在同一 batch/transaction 内补写组 ID，
+  失败不留单元素组（有测试）。
+- `generatePostSlug` 加 `languageSuffix`；非主语言帖冲突时先试 `{base}-{lang}`。
+  主语言判定读 `SITE_LANGUAGE`，**仅在「有标题 + 有语言」时才查**，
+  单语站零额外查询。
+- `materializeMissingLanguage` 先 count 再 update 返回条数：三种驱动报告
+  affected rows 的方式不一致，调用方只需要数字做文案。
+
+**验证**：`mise run check-tests` 252 files / 3201 tests 全绿（新增 59 个用例：
+`services/__tests__/post-language.test.ts` 40 个、`lib/__tests__/slug.test.ts`
++7、其余为既有用例）；`check-lint`、`check-types`、`check-format` 全绿。
+覆盖：thread 统一不变量（回复继承 / 整条改 / 任意帖为入口）、
+lang 过滤（含成员粒度的 collection 与 featured 查询）、回填幂等性与
+**site 界定**（另建一站验证不被误标）、翻译组建组/入组/退组/单元素折叠/
+组内语言冲突/跨站源帖拒绝/失败零残留、DB 层 UNIQUE 兜底、
+slug 候选顺序（主语言 vs 非主语言 vs 语言 slug 也被占）。
+
+### 17.3 阶段 2 已完成（设置与生命周期）
+
+**新 service：`src/services/language.ts`**（不是把编排塞进 settings service —
+后者够不到 posts/paths）。`LanguageService` 是两个 DB-only 键的**唯一写入口**：
+`getState` / `getEnablePreview` / `enable` / `disable` / `setPrimary` /
+`addLanguage` / `removeLanguage`。同文件另导出 `readLanguageSettings(db, siteId,
+schema)` —— 一个独立的**读**函数，给 post 与 custom-url service 在 slug/路径
+校验时用，避免为两个值把整个 service 穿进去。
+
+- `CONFIG_FIELDS` 加 `MULTILINGUAL_ENABLED` / `ADDITIONAL_LANGUAGES`：**均无
+  `envKeys`、无 `editor`**，只带 `configEditorLink`（可搜索、不可写、不可 reset）。
+  已有测试断言 `PUT /api/settings` 拒绝这两个键。
+- `AppConfig` 加 `multilingualEnabled` / `additionalLanguages`。
+- `i18n/locales.ts` 加 `toLanguagePrefix` / `parseLanguageList` /
+  `formatLanguageList`（逗号分隔值的容错解析：丢空值与非法 tag、规范化大小写、
+  去重、保序）。
+- `isReservedPath(path, languagePrefixes?)` 扩展为可感知站点已启用前缀；
+  穿到 `generatePostSlug`（新 `reservedPrefixes` 选项）、post service 的
+  `data.path` 校验、custom-url service 的 `create` 与 `isPathAvailable`。
+  双向防护：加语言时查 `path_registry`（新 `PathService.findPathsUnderSegment`，
+  用带 `ESCAPE` 的 LIKE 以兼容两个方言），启用期间禁止新 slug/自定义 URL 占用前缀。
+
+**设置 IA**：新建 `/settings/language` 页（route + `LanguageContent.tsx` +
+`jant-settings-language.ts`）。该 Lit 组件**不走 settings bridge**：它的操作不是
+「保存表单」而是各自带确认与失败语义的命令，所以直接对自己的端点发请求。
+端点：`POST /settings/language`（内容语言 / 界面语言，字段级可选）、
+`/enable`、`/disable`、`/primary`、`/add`、`/remove`。
+General 页只剩 Time Zone（区块改名 `Time`，端点 `/general/language-time` →
+`/general/time`）。
+
+**D17 `CJK_SERIF_FONT` 删除**（用户确认执行）：删了 `CONFIG_FIELDS` 字段、
+`AppConfig.cjkSerifFont`、`resolve-config`、`schemas.ts` 校验、settings service
+的读写与 `LocaleSettingsData`/`GeneralSettingsData`、`GeneralContent`、
+`jant-settings-general`、`settings-bridge`、`settings-types`、
+`ConfigEditorContent`、setup 预填、`bootstrap`、`site-admin`，以及
+`i18n/detect.ts` 的 `detectCjkFontFromHeader` / `isCjkSerifFont` /
+`CJK_SERIF_FONT_VALUES`（类型收敛为 `CjkFontProfile`，去掉了没有意义的 `"off"`
+成员）。
+
+**字体按语言推导（M4）**：`resolveCjkFontProfile(language)` 变成纯语言函数；
+`getCjkFontCssVariables` 从 `withConfig()` **移到 `BaseLayout`**，按
+`resolvedLang`（帖子语言 / 视图语言 / 站点语言）产出，并在 `themeStyle` **之前**
+输出 `:root:root` 块，让字体主题仍然优先。`site-admin` 的静态导出保持站点级
+（Hugo 扁平导出没有 per-page 语言的对应物，已注释说明）。
+
+**Setup（§9.5）**：新增可见的「内容语言」下拉，用 **`Accept-Language` 服务端
+预填**（新 `resolveSupportedLocaleTag`：精确 tag → 语言+脚本（`maximize()`，
+让 zh-CN→zh-Hans）→ 裸语言 → en），比客户端 JS 猜更稳。
+`DASHBOARD_LANGUAGE` 改为 pin 到**浏览器**语言的 catalog（`browserLanguage`
+与 `siteLanguage` 在 bootstrap 里彻底分开），CJK 预填随设置一并删除。
+
+**导出（M5 部分）**：`jant.toml` 增加 `multilingual_enabled` /
+`additional_languages`。**导入端有意未接**：raw 写这两个键会绕过启用确认与
+前缀冲突检查，且写入顺序早于建帖时会让未标记的帖子从根视图消失 —— 正是 D21
+要防的。导入后由作者在语言页一键重开即可，帖子的 `language` 已在阶段 1 往返。
+
+**i18n**：37 条新设置文案已补 zh-Hans / zh-Hant 翻译，覆盖率回到 100%。
+
+**验证**：`check-tests` **255 files / 3252 tests 全绿**（阶段 2 净增 51 例）；
+`check-lint`、`check-types`、`check-format`、`i18n-check` 全绿。
+新测试：`services/__tests__/language.test.ts`（28 例：state、enable 与打标、
+前缀冲突四向（帖子 slug / 嵌套路径 / 应用保留字 / 部分冲突时零写入）、
+反向防护（自定义 URL 与新 slug 不得占用启用中的前缀）、换主语言的列表互换与
+不动帖子、移除语言的零帖校验（含草稿、含关闭态）、开→关→重开往返只标记关闭
+期间的帖子、语言集合不变量）；
+`client/components/__tests__/jant-settings-language.test.ts`（24 例：单语态不
+露多语言痕迹、选择器筛选/空态/Escape/外点关闭、启用对话框的数量文案（复数/
+单数/空站）与随主语言联动、无第二语言不可确认、Escape 取消不写入、URL 预览
+（含 hosted 子路径前缀）、添加/移除（失败时不改 UI）、换主语言的确认文案与
+列表互换、关闭确认、界面语言只提交自己那个字段）；
+`i18n/__tests__/supported-locales.test.ts`（14 例）；
+另有 `api-settings`、`/api/settings` 路由、`BaseLayout`、`font-themes`、
+`settings`、`setup`、`detect` 的更新用例。
+
+### 17.4 阶段 2 的 UI 修复（浏览器实测后）
+
+浏览器实测发现 6 个缺陷，均已修复并补测试：
+
+1. **页面顶部大片空白** —— `createRenderRoot()` 直接 `return this`，没有清 SSR
+   骨架。lit-html 是**追加**自己的 part 而不是替换已有子节点，所以那个
+   `skel-section-lg` 占位块一直堆在真实表单上方。库内其他 light-DOM 组件
+   （`jant-settings-general` / `jant-settings-avatar` / `jant-confirm-dialog`）
+   都先 `this.innerHTML = ""`，照做即可。
+2. **「+ 添加语言」按钮没有可见文字** —— 用了 `btn-outline btn-sm`，正是
+   AGENTS.md「Common Pitfalls」点名的 BaseCoat 变体组合错误。正确类名是
+   **`btn-sm-outline`**（BaseCoat 的尺寸+变体是合成的单一类）。
+3. **开启对话框内容竖排成一列、文字重叠** —— `.alert` 是两列 grid，只有
+   `> h2..h6 / strong / [data-title]` 和 `> section` 会落到 `col-start-2`；
+   裸 `<p>` 落进宽度为 `0` 的第一列。改为 `svg + <strong> + <section>` 结构。
+4. **数量显示为 `NaN`** —— 根因是**把 ICU 模板当字符串发给客户端**：Lingui 在
+   `i18n._()` 时就会把消息完全格式化，`{count, plural, ...}` 对着 `undefined`
+   算出 NaN。解法是新增 `keepPlaceholder(name)` —— 把占位符文本本身作为 value
+   传给 Lingui，于是**服务端用真实 count 解析复数**，只把真正在浏览器才知道的
+   槽（`{language}` / `{next}` / `{previous}` / `{prefix}`）原样留给组件。
+   客户端 `interpolate` 随之简化为纯 `{name}` 替换，删掉了自制的复数分支。
+5. **开关在确认前就视觉翻转，取消后与真实状态不一致** —— 浏览器点击即翻转
+   checkbox，而 Lit 不会回滚（绑定值没变，没有可重新提交的东西）。新增
+   `#syncMultilingualCheckbox()`，在取消 / 失败 / 对话框关闭三条路径上把 DOM
+   写回真实状态。
+6. **Toast 显示裸 tag `zh-Hant`** —— 改用 `getOrBuildEntry(tag).native`。
+
+**文案重写**：多语言开关说明与开启/关闭对话框改为具体陈述影响（每种语言独立的
+首页/归档/订阅源/集合页、发布时选语言并可互相关联为译本、文章地址不变、可安全
+关闭）。开启对话框改为「开启后会发生什么」四条列表 + 独立的一次性打标警示。
+中文译文在插值语言名两侧加「」，避免中英夹排贴在一起。
+
+新增测试：`ui/dash/settings/__tests__/LanguageContent.test.tsx`（6 例，锁住
+「服务端解析复数、保留运行时槽、任何 label 都不得泄漏 `plural,` 或 `NaN`」），
+组件测试补 3 例覆盖开关同步。
+
+### 17.5 阶段 3 执行方案（视图语言路由）
+
+> 下面的 Hono 行为是**实测结论**（hono 4.11.9），不要凭直觉重推。
+
+**S1. 挂载机制（M1，已实测）**
+
+- `app.route("/:lang", langRoutes)` 可用，`c.req.param("lang")` 正常解析。
+- Hono 中间件**无法跳过**后续已匹配的 handler：`app.use("/:lang", gate)` 里
+  `next()` 会直接进入语言 handler。因此 gate 必须写在**每个终端语言 handler
+  内部**，非启用前缀时 `return next()`。
+- 挂载点必须在**所有静态路由组之后、`app.route("/", pageRoutes)` 之前**
+  （`app.tsx` 尾部，`pageRoutes` 那一行的上一行）。
+- 实测通过的路径矩阵（务必写成回归测试）：
+  `/` `/archive` `/archive/feed` `/feed` `/collections` `/collections/{slug}`
+  → 根路由；`/en` `/en/archive` `/en/feed` `/en/collections` `/en/{slug}`
+  `/en/a/b` `/zh-hant` `/zh-hant/archive` → 语言视图；
+  `/fr` `/hello` `/hello/text/{id}` → `pageRoutes` catch-all；
+  `/settings` `/settings/general` → 设置路由。
+- 实现形态：新建 `src/routes/pages/language.tsx`，内部用
+  `const langGet = (path, handler) => langRoutes.get(path, async (c, next) => {
+const view = resolveLanguageView(c); if (!view) return next(); ... })`
+  把 gate 焊进注册，避免漏写。`langGet("/*")` 必须**最后**注册。
+
+**S2. gate 的三分支（§4.4 / §9.4）**
+
+首段命中 `appConfig.additionalLanguages` 且 `multilingualEnabled` → 注入
+`viewLang` 走视图；命中 `additionalLanguages` 但**已关闭** → 剥前缀 301；
+首段等于主语言前缀 → 301 回根对应物（§4.3）；其余 → `next()`。
+
+**S3. handler 抽取（M2 —— 本阶段最大的一块）**
+
+`/xx/*` **不是**只读包装：现有 handler 硬编码了根路径。已确认的触点：
+`home.tsx` 的分页 `baseUrl = toPublicPath("/")` 与 WebSite JSON-LD 的
+`searchUrlTemplate`；`archive.tsx` / `search.tsx` / `collection.tsx` 的分页与
+筛选 URL；`renderCollectionFeed` 的 `/{col}/feed`。不改则 `/en` 第二页会甩回
+主语言时间线。
+
+做法：把 `home / archive / latest / featured / search / collections /
+collection` 的 handler 各抽成导出的 `renderXxx(c)`，内部用一个新的
+`viewBasePath(c)`（无 viewLang → `""`，有 → `/en`）拼所有站内链接；根路由与
+语言路由注册**同一个函数**。`feed/feed.ts` 同理。
+
+**S4. 其余**
+
+- `viewLang` 加进 `AppVariables`；在 gate 里 `c.set("lang", viewLang)`
+  覆盖 i18n middleware 写的站点语言（文章页则设为该帖 `language`）。
+  **catalog 维持 baseLocale 不动**（D23）——`viewLang` 只驱动 `<html lang>`、
+  feed 语言标记、字体 profile（阶段 2 已改成读 `resolvedLang`）与内容过滤。
+- `page.tsx` catch-all：`/xx/{slug}` 对称解析（文章 → 301 到 `/{slug}`；
+  collection → 该语言过滤视图；redirect 行照跟；未命中 404）。
+- `feed.ts` 按视图语言过滤 + Atom `xml:lang` / RSS `<language>`；
+  `sitemap.ts` 给有翻译组的文章补 `xhtml:link` alternates。
+  `isRssFeedPath("/en/feed")` 已确认为 true，worker 缓存无需改动。
+- `renderPublicPage()` / `BaseLayout` 加 hreflang alternates。
+- 导航加语言切换器（语义见 §5 表格：有译本 → 那篇；无译本 → `/xx` 首页；
+  列表面 → 同表面的 `/xx` 版）。
+- `/api/public/*` 加 `lang` 过滤参数。
+- Collection 目录**不按语言隐藏**；详情页空态要给出路文案。
+- 新增公开文案以**英文源文案**交付（D23），不进 zh catalog。
+
+### 17.6 阶段 3 已完成（视图语言路由）
+
+**新增**
+
+- `lib/view-language.ts` —— 本阶段的地基。`resolveLanguageView`（三分支
+  gate）、`getViewLang`（内容过滤语言）、`isPrefixedLanguageView`（是否带前缀）、
+  `viewBasePath` / `toViewPath` / `viewRelativePath` / `toLanguagePath`、
+  `getViewLanguages`、`buildSurfaceAlternates`、`buildLanguageSwitcher`。
+- `routes/pages/language.tsx` —— `langGet()` 把 gate 焊进注册，按 §17.5 挂在
+  `app.tsx` 的 `homeRoutes` 之后、`pageRoutes` 之前。
+- `AppVariables.viewLang`（可选）。
+
+**两个语言概念必须分开（实现中踩到的坑）**
+
+`viewLang`（URL 前缀，决定链接前缀与 `/xx/{slug}` 的 301）和 **内容过滤语言**
+（`getViewLang`）不是一回事：多语言开启时**根就是主语言的视图**，所以根上
+`getViewLang` 返回主语言而 `viewBasePath` 返回空串。合成一个会让 `/` 显示全部
+语言而 `/en` 只显示一种。
+
+**过滤从 context 读，不逐层传参**
+
+`assembleTimeline` / `assembleFeaturedTimeline` / `assembleCollectionTimeline` /
+`buildFeedData` / `buildArchivePostFilters` / 搜索路由都直接 `getViewLang(c)`，
+调用方无法漏传。`search` service 新增 `lang`（4 处 SQL，索引本身语言无关）。
+
+**链接作用域：新增 `basePath` 概念**
+
+`NavigationData.basePath = sitePathPrefix + viewBasePath`。页面组件里凡是**只**
+用于本表面自身链接的 `sitePathPrefix` 直接改名 `basePath`（`ArchivePage`、
+`SearchPage`）；混用管理链接的组件（`CollectionPage`、`CollectionsPage` /
+`CollectionDirectory`）**两个 prop 并存**，默认 `basePath = sitePathPrefix`。
+`toNavItemView` 新增 `basePath`，只作用于语言化系统项（latest/featured/
+collections/archive/rss）与 collection 项 —— settings/signin 与文章链接不加前缀。
+
+**path_registry catch-all 复用同一个 handler**
+
+`pageRoutes.get("/*")` 抽成 `renderRegisteredPath(c)`，内部用
+`viewRelativePath(c)` 解析，所以 `/en/hello` 与 `/hello` 命中同一行；命中文章时
+若在语言视图下就 301 到规范地址（别名优先），文本附件深链同理。
+
+**SEO / a11y**
+
+- `RenderPublicPageOptions.alternateLanguages` → `BaseLayout` 输出
+  `<link rel="alternate" hreflang>`。列表面用 `buildSurfaceAlternates(c)`；
+  文章页用翻译组（`listTranslations`），并把 `<html lang>` 设为该帖 `language`
+  （字体 profile 随之正确）。
+- **不发 `x-default`**：hono/jsx 会把 `href` 相同的 `<link>` 去重，而 x-default
+  必然与主语言同 URL，发了反而把主语言那条挤掉。实测确认，spec 里本就可选。
+- Atom `<feed>` 现在输出 `xml:lang`（此前 `FeedData.siteLanguage` 根本没被渲染）。
+- Sitemap：`SitemapUrlEntry.alternates` → `<xhtml:link>`，命名空间按需声明；
+  `listForSitemap` 补 `language` / `translationGroupId`，路由用
+  `getTranslationsMap` 批量取组。
+
+**语言切换器**
+
+复用 More 菜单的 class 与交互（`site-header-nav.js` 的 `initMoreDropdown` 泛化成
+`initDropdown(root, trigger, popover)` + `DROPDOWNS` 表，共享
+`basecoat:popover` 互斥）。`renderPublicPage` 默认注入
+`buildLanguageSwitcher(c)`，文章页覆盖为翻译组语义。窄屏隐藏 header 版，抽屉里
+有独立 Language 段。
+
+**CSS 顺序陷阱（浏览器实测才发现）**：`.site-header-lang-popover` 与
+`.site-header-more-popover` 特异性相同，`left/right` 靠源码顺序决胜 —— 覆盖块
+必须放在 `.site-header-more-*` **之后**，否则弹层左对齐并溢出视口右边。
+
+**其他**
+
+- `/api/public/posts`、`/api/public/archive` 加 `lang` 参数（`ContentLanguageSchema`
+  校验，非法 tag → 400）；响应体新增 `language` / `translationGroupId`。
+- Collection 详情页空态：本语言为空但其他语言有内容时给出路
+  （"Nothing in English here yet. Read it in 简体中文"），只在为空时多跑一次计数。
+- 新增公开文案全部英文源文案（D23），未进 zh catalog。
+
+**验证**：`check-tests` 258 files / 3333 tests 全绿，`check-lint`、`check-types`、
+`check-format` 均通过；i18n 重新生成，coverage 100%（`i18n-check` 在 `.po` 未提交
+时必然报 out of sync，与阶段 2 相同）。浏览器实测：路径矩阵、切换器弹层与跳转、
+`/en/{slug}` 301、文章页 `<html lang>`、hreflang、`xml:lang`、抽屉语言段。
+**未做视觉验证**：窄屏抽屉（浏览器 resize 在本环境不生效），改用 markup 断言覆盖。
+
+### 17.7 阶段 4 已完成（Compose 与翻译组）
+
+**检测器 `lib/lang-detect.ts`（同构，约 4KB）**
+
+`detectScript`（纯脚本判定）与 `detectContentLanguage`（约束到站点语言集）分开，
+两者各自可测。Hangul/假名近乎必中；简繁靠 530/536 个单侧汉字投票，**平票即拒绝**
+而不是瞎猜。拉丁字母只说明「非 CJK」，仅当站点只有一种非 CJK 语言时才据此定语言。
+
+字符表构造时排除了 `后 台 只 划 冲 叠` 这类**繁体中也在用**的简化字（它们会投错
+票），但保留其繁体对应字 `後 臺 隻 劃 衝 疊` —— 两个集合是独立计数器，不必成对。
+
+**兜底落在 service，不是逐个调用方**
+
+`posts.create` 里 `!data.replyToId && !language` 时跑 `suggestPostLanguage`，所以
+API、Telegram、MCP、compose 全部自动覆盖，调用方无法漏。显式选择永远不被推翻；
+单语站点（`readLanguageSettings().languages` 为空）永远不打标（§10.1）。
+`readLanguageSettings` 因此多返回一个 `languages`（单语站点为空数组）。
+
+**新端点**
+
+`PUT /api/posts/:id/language`、`GET|POST|DELETE /api/posts/:id/translations`。
+`setThreadLanguage` 现在还校验「该语言必须在站点语言集内」—— 只在站点已有语言集时
+生效，否则阶段 1 的 40 个测试（无 settings）会全挂。
+
+**Compose**
+
+语言选择器放在 **publish panel**（root-only，复用 `compose-sheet-row` 单选行，零
+新 CSS），而不是 per-row 的 post-meta 药丸 —— 语言是整条 thread 的属性。
+默认「Detect」= 不发 `language` 字段，由服务端对最终正文判定；面板打开时即时读一次
+编辑器正文给出建议（不监听每次按键：面板是作者主动打开的）。
+`ComposeSubmitDetail` / `LocalDraft` 加 `language` + `translationOfId`。
+
+**文章菜单**
+
+`Language`（改整条 thread）与 `Translations`（列出译本 + 解除 + 「Write the X
+version」+ 搜索关联已有文章）两个子面板。改语言**不做乐观更新** —— 服务端可能因
+组内语言占用而拒绝，先显示成功再回滚是骗人。
+
+**「添加译本」零服务端痕迹**
+
+菜单只把 `?translationOf=<id>&lang=<tag>` 放进 URL，compose 从 URL 取回；关掉就
+什么都没留下。组在提交时才由 service 原子铸造。
+
+**导入**
+
+`import-site.js` 收集每篇的 `translation_group`，全部创建完成后按组把成员都链到
+第一个（N 个成员 N-1 次调用，永不要求服务端合并两个组）；冲突只 warn 不中断。
+
+**浏览器实测发现的两个真 bug**
+
+1. **hono/jsx 按 `href` 去重 `<link>`** —— 文章页的自指 hreflang 与 `canonical`
+   同 URL，被静默吃掉；而**没有自指条目的 hreflang 组会被搜索引擎整组忽略**。
+   改为在 `BaseLayout` 用 `raw()` + `escapeHtml()` 输出 alternates，顺带把阶段 3
+   为此砍掉的 `x-default` 加了回来。
+2. **`Translation of "{title}"` 渲染成空** —— 又是阶段 2 那个 Lingui 陷阱：
+   `i18n._()` 会把 ICU 完整求值，浏览器才知道的值必须把占位符原样传回
+   （`{ title: "{title}" }`）。新增 `ui/compose/__tests__/ComposeDialog.test.tsx`
+   守住这一类：断言服务端渲染出的 labels 仍带 `{title}` / `{language}`。
+
+另外把组内语言冲突文案里的裸 tag 换成语言自称（`zh-Hans` → `简体中文`）——
+作者在菜单里选的是后者。
+
+**验证**：`check-tests` 261 files / 3374 tests 全绿；`check-lint`、`check-types`、
+`check-format` 通过；i18n coverage 100%。浏览器走完 §16 验收基线：开启 → 无语言
+字段发帖两篇（检测出 zh-Hans / en）→ 关联互为译本 → 两篇互见「Also available in」
+
+- 双向 hreflang → 「Write the English version」→ compose 预填英文并显示
+  「Translation of "mrlwg"」→ 发布后组自动成立 → 改语言被组内占用拒绝并显示服务端
+  文案。**未做**：窄屏视觉（同阶段 3，环境 resize 不生效）。
+
+### 17.8 菜单与关联体验的返工（用户实测反馈后）
+
+**一个顶级入口，不是两个**
+
+`Language` 和 `Translations` 合成一个 `Language`（meta 显示当前语言），面板里分
+三段：语言单选 → `OTHER VERSIONS` → `ADD A TRANSLATION`。没有做三级菜单：站点
+语言集通常 2–3 个，直接内联比多一层跳转更短；更重要的是**「某语言不可选」的原因
+（组内另一篇已占用）只有紧挨着译本列表才说得清**。面板打开时顺带加载译本，所以
+占用信息是免费的。
+
+被占用的语言渲染成 disabled + `Taken`，`title` 给出占用者标题 —— 作者不必点下去
+撞错误才知道。面板宽度加到 19rem（窄屏 20rem），复用 collection picker 已有的
+`:has()` 变体写法。
+
+**编辑文章确实可以改语言了（此前是假的）**
+
+compose 的语言选择器在编辑态本来就渲染，但 `UpdatePost` 根本没有 `language` 字段，
+值被静默丢掉 —— 是阶段 4 引入的 bug。现在 `UpdatePost.language` 走
+`setThreadLanguage`（**整条 thread**），且**放在 update 最前面**：语言被拒时不应该
+有任何别的字段已经写进去。
+
+**关联候选改为服务端过滤**
+
+新增 `posts.listTranslationCandidates(postId, {query, limit})` +
+`GET /api/posts/:id/translations/candidates`。规则（thread root、已发布、语言不在
+本组已占用集合内、两边不能都有组）属于 service，菜单只渲染返回值 ——
+**菜单里出现的每一条点下去都成功**。匹配用 title/body 的 LIKE 子串扫描而非共享
+FTS 索引：索引表达不了这些过滤条件，而这是作者对自己文章的一次显式操作，成本有界。
+
+**「已关联中文文章能不能把自己改成英文」**：不能，也不应该。组内 `UNIQUE
+(translation_group_id, language)` 就是这条规则，`assertTranslationLanguageFree`
+在 service 层拦下并给出「哪篇占了该语言」的文案。返工后这条约束在 UI 上是**可见
+的**（Taken + 置灰），而不是点了才知道。想改，先解除关联或改对方的语言。
+
+顺带把冲突文案里的裸 tag 换成语言自称（`zh-Hans` → `简体中文`）。
+
+**「写译本」改为原地开弹窗**
+
+`#writeTranslation` 之前是 `location.assign('/new?...')` —— 整页跳到空白编辑页，
+恰好在最需要上下文的时候把上下文丢了。现在优先调 `composeEl.openTranslation(
+sourceId, tag)`（沿用 reply/edit 已有的 dialog API），只有页面上没有 dialog 时
+（`/new` 自身、`showComposeDialog: false` 的页面）才回落到 URL —— URL 形式保留，
+它是有效的深链，页面态 compose 仍从 query 读取。
+
+弹窗顶部加 `Writing the {language} version of "{title}"` 横幅，位置与 reply 的
+上下文横幅相同：**为某事打开的编辑器应该在作者动笔前就说清是为了什么**，而不是
+埋在 publish panel 里两层深。两个占位符同样要原样传回（第三次遇到这个 Lingui
+陷阱，已在 `ComposeDialog.test.tsx` 里断言）。
+
+注意横幅要渲染在**两个**分支里：thread 布局和单帖布局是分开的模板，只改前者会
+在最常见的单帖场景下完全不显示。
+
+**验证**：261 files / 3383 tests；浏览器复验了单入口菜单、三段面板、占用置灰、
+空态（两个 Write the X version + 搜索框）、候选过滤（同语言/已占用语言/已有组的
+文章都不出现）、点选后即时关联并原地更新面板、以及「写日語版」原地开弹窗 → 发布
+后停留在原帖且「Also available in English, 日本語」当场出现。
+
+### 17.9 引用显示与通用文章选择器（第二轮反馈）
+
+**Note 大多没有标题，所以到处不能只读 `title`**
+
+之前译本行、候选行、compose 横幅都退化成显示 slug（`yidcy`）—— slug 是 URL，不是
+名字。其实代码库里早有这条规则：`lib/post-meta.ts` 的 `getTitleCandidate`
+（标题 → 引文片段 → summary → 正文开头 → 链接域名），浏览器标题和 OG 标签一直
+在用。把它导出为 `getPostDisplayTitle(post)`，然后：
+
+- `/translations` 与 `/translations/candidates` 各返回一个 `label`；
+- `toApiPost` 加 `displayTitle`（**任何**引用某篇文章的客户端都需要它，不只是
+  这个功能）。
+
+无标题的日文 note 现在显示「これはコーヒーについての日本語のノートです。」。
+
+**「Applies to the whole thread — replies are…」精简为「Applies to the whole
+thread.」** —— 菜单入口本来就对回复隐藏，长解释是噪音。
+
+**关联改用通用弹窗 `<jant-post-picker>`**
+
+popover 里塞搜索框是错的形状：结果需要放得下真标题、需要键盘。新组件按
+`jant-confirm-dialog` 的模式做（`ensurePostPicker()` + `pickPost(options)`
+返回 `Promise<string | null>`），**对「为什么而选」一无所知** —— 调用方给文案和
+一个 `search(query)` 函数，可用性规则仍留在服务端。菜单里退化成一行
+「Link one you already wrote ›」。
+
+实现上值得记的两点：搜索做了 200ms 防抖，并且用一个自增 token 防止**慢的旧请求
+覆盖新结果**（防抖本身不解决这个竞态，已写成测试）。
+
+**验证**：262 files / 3393 tests（含 picker 的 7 个契约测试与 label 派生的 3 个）；
+浏览器复验：单行 hint、译本行显示真标题、picker 弹窗（自动聚焦、空态文案、
+Escape 退出）、无标题日文 note 显示正文开头 + 「日本語」meta、选中后关联成功并
+刷新出「Also available in English, 日本語」。
+
+### 17.10 剩余的已知缺口
+
+- 语言切换器与文章菜单文案是**英文硬编码**（与既有公开 UI 一致，D23），未走
+  Lingui —— 与 `jant-post-menu.ts` 现状一致，要改应整体改。
+- 关联已有文章用的是通用 `/api/search`，候选里不显示各自语言；选错由服务端
+  `linkTranslation` 拦下并给出文案。要更好需要一个带语言的候选端点。
+- §13 列出的范围外项（`zxx`、批量扫描复核 UI、机翻等）仍不做。
+
+## 18. 生产化打磨（2026-08-08）
+
+主流程做完后的四处瑕疵，目标是把这个功能提到可以部署的水平。
+
+### 18.1 语言面板：被占用的语言不再是一行死掉的 "Taken"
+
+原来的面板把同一件事说了两遍：单选组里 `English  Taken`（禁用），下面
+「Other versions」再列一次那篇英文版。禁用行回答的是没人问的问题——作者**不能**
+切到那个语言，看到它也没用。
+
+- 单选组只留**能切**的语言（自己 + 空闲的）。
+- 「Other versions」每行 `语言 · 标题`，带两个动作：整行是链接，`target="_blank"`
+  新标签打开；末尾一个 icon 按钮解除关联，先关菜单再弹确认框（和 Delete 现有的
+  顺序一致——弹在 popover 底下会抢焦点，也会抢 backdrop 点击）。
+- 删掉了 group 级的「Leave this translation group」。逐行 unlink 覆盖得了它：
+  `DELETE /api/posts/{对方id}/translations` 把**对方**移出组，service 在只剩一个
+  成员时自己把组收掉，所以两篇的情形按一次就等于退组。两个控件说一件事是多的。
+
+一个布局坑：`.post-menu-language-panel .post-menu-item-meta { flex: 0 0 auto }`
+是给旧版写的（meta 是短短的语言名）。现在 meta 是标题，不收缩就会把 `↗` 挤出
+可视区并被 `overflow:hidden` 硬切。删掉该覆盖，回到基类的 `flex: 1 1 auto` +
+省略号。
+
+### 18.2 「Applies to the whole thread.」删掉
+
+菜单入口本来就对回复隐藏，这句是噪音。
+
+### 18.3 译文继承原文的**形态**
+
+`openTranslation` 之前永远从 note 开始，翻译一条 quote 要先手动切格式。现在从
+源帖带过来：
+
+- `format` 原样继承——格式是「说了什么」的属性，不是「用哪种语言说」的属性；
+- quote 带 `sourceName` / `sourceUrl`，link 带 `url`。这些是**引用**，不是译文。
+  正文是作者来这里要写的部分，别的什么都不抄。
+
+只在作者还没打字时套用（`_hasContent()`）：fetch 落在 composer 打开之后，为了省
+一次格式点击去覆盖人家的第一句话是很坏的交易。套用完重新 `_captureInitialSnapshot()`。
+
+### 18.4 顶部横幅改成原文卡片 + 语言接缝
+
+原来是一行 `Writing the 日本語 version of “xxx”`。左右对照太重；一行又不够——
+只给标题，等于逼作者另开一个标签页看原文。折中：一张卡片，头部
+`日本語 VERSION OF` + 原文标题（新标签打开），下面是原文正文，默认裁到 116px
+带渐隐，`Show more` 展开。折叠/渐隐的机制和 reply context 是同一套，prose 复位
+规则用 `:is()` 与它共享。
+
+文案拆成 `translationContext` /`translationContextInLanguage`（只到 "… version
+of"，标题自己一个元素）+ `translationContextOpen`，替掉
+`translationOfInLanguage`。发布面板里的 `translationOf` 保留不动。
+
+### 18.5 顺手修掉的三个真问题
+
+- **`vi.mock("../confirm.js")` 路径错了**：组件在上一层，真实的确认框一直在跑。
+  改成 `../../`，原有的 delete 测试才第一次真的测到东西。
+- **BaseCoat 的菜单选择器压过两类选择器**：见 `lessons.md`。行内 icon 按钮要三个
+  类才拿得回自己的宽高。
+- **预填让 composer 看起来「有内容」**：`requestClose()` 对新帖问的是
+  `_hasContent()`，于是什么都没写就关闭会弹「要不要存草稿」。新增
+  `_hasWorkToLose()`：有内容，且（预填过的话）与预填后的快照有差异。
+  `_handleDraftButtonClick`、`_renderSaveDraftRow`、`_renderAddThreadTrigger`
+  问的是同一个问题，一并换掉。
+
+### 18.6 验证
+
+- 262 files / 3402 tests；lint、format、typecheck 全绿。
+- 新增测试：post menu 语言面板 5 个（不再出现 Taken/hint、View+Unlink 两个动作、
+  确认后 DELETE 打在**对方** id 上并刷新、取消则不动、free 语言列表），compose
+  6 个（kicker + 新标签链接、原文折叠与 Show more、无正文时只留头部、quote 继承
+  格式与引用、已打字则不套用、预填后关闭不弹确认而打字后会弹）。
+- 浏览器复验（本地 19020，zh-Hans 主 + en/ja）：语言面板三段式与长标题省略、
+  unlink 确认框与刷新、quote 的英文版落在 quote 格式且带 Steve Jobs /
+  example.com/focus、发布后两边互相出现、`/new?translationOf=…&lang=ja` 的页面
+  模式同样正确。验证后已删除测试帖并把多语言开关恢复为关闭。
+- 三条新文案在 zh-Hans / zh-Hant 尚未翻译（`msgstr ""`，回退英文），与本功能其余
+  公开文案的现状一致——等 `mise run i18n-translate` 那一趟统一处理。
+
+### 18.7 对照区第二轮（同日）
+
+第一版把整块做成「kicker + 标题 + 折叠正文 + Show more」。三处再改：
+
+**语言标签下移到两篇文章的接缝上。** `English version of` 压在最上面，说的是
+「下面这一坨是什么」；真正要标的是**边界**——上面是原文，下面是你写的译文。改成
+卡片下方一条居中的细线 + `↓ Translating into 日本語`。文案也跟着从
+「{language} version of」变成「Translating into {language}」，标题不再是文案的
+一部分，自己一个元素。
+
+**原文按 `prose` 正常渲染。** 之前复用了 reply context 那套缩排规则（标题降级到
+`--type-thread-context-title`、`.prose` 强制 `font-size: inherit`）。翻译时**结构
+本身就是要翻的东西**——标题得看起来像标题，列表得像列表。给正文加上
+`e-content prose`，并把那几条共享选择器退回只服务 reply context（注释里写清楚为什么
+不共享）。
+
+**折叠展开换成固定高度滚动。** reply context 当初特意从内滚动改成 Show more，理由
+是「展开就该真的展开」——那是对的，回复的父帖读一次就不再看了。翻译不是：读一段
+写一段，两边都得在屏幕上。长文一展开就把编辑器顶出可视区，正是最需要同屏的时候。
+所以 `max-height: min(15rem, 34dvh)` + `overflow-y: auto` +
+`overscroll-behavior: contain`（滚到底不要带着整个 composer 一起滚），`tabindex="0"`
+
+- `role="region"` + aria-label 让键盘和读屏也能用。标题下加一条细线：不然被截掉的
+  半行看起来像布局坏了，而不是「滚动到这里」。`_translationExpanded`、渐隐、
+  Show more、日期行一并删掉。
+
+验证：3403 tests 全绿；浏览器复验了长文滚动（scrollHeight 493 / 视口 225）、标题
+与列表按正常 prose 渲染、blockquote 走站点样式、接缝两侧细线等宽、quote 这种没有
+正文的源帖只留卡片头 + 接缝、`/new?translationOf=…` 页面模式同样正确。
+
+### 18.8 对照区第三轮：预览就是文章本身（同日）
+
+前两版都在**重建**原文：只取 `bodyHtml` 丢进一个 `prose` 容器。这对 note 勉强
+够用，对 quote 和 link 是错的——引用的出处、链接卡片的域名和标题都不在
+`bodyHtml` 里，全被静默丢掉了。
+
+**改成服务端渲染**：新增 `GET /_/post-preview/:postId`，用
+`TimelineItemFromPost mode="detail"` 配上一组 display 选项
+（`hideStatusBadges` / `footer.hideActions` / `footer.hideReply`）把交互 chrome
+摘掉。复用真正的渲染器，不再有第二套要同步的 markup。它和 `/_/post-view` 的区别
+是：那个渲染整条 Thread、用来替换整页，这个只渲染根帖、用来嵌在别处。
+
+**注入进来的 markup 需要「收养」一下**（`_adoptTranslationPreview`，跑在
+`updated()` 里）：
+
+- **所有链接改成新标签打开。** 这是真 bug：预览里点任何一个链接都会把 composer
+  整个导航走，未保存的译文跟着没。
+- **摘掉文章的身份。** `data-post-id` / `data-post` / `.post-menu-target` 是文章
+  菜单、键盘快捷键和 `refreshArticleView` 找文章的依据；DOM 里多一份原文的 id，
+  它们就可能对着预览动手，以为那是真的卡片。
+
+**标题后的外链图标去掉了。** 那个图标让整张卡片读起来像一篇 Link post，而不是
+它本身。详情页渲染里本来就带自己的固定链接（头部那行日期），收养时已经指向新
+标签，不需要再加东西。
+
+**字号**用 `zoom: 0.85`。先试过在预览容器上改 `--type-content-scale`：没用——
+自定义属性是在**声明处**代入的，`:root` 早就把它算进 `--type-content-body` 了，
+后代继承到的是长度不是公式。改成在容器上重新派生一遍那 9 个 token 是可行的，但
+把 root 的比例（`* 1.16`、`* 0.94`…）抄了第二份，会漂。`zoom` 一行搞定，而且它
+连间距和线宽一起缩——「整页小一号」本来就该是这个意思，只缩字号会在小字周围留下
+页面级的留白。正文实测 14.3px，比编辑器的 16.8px 小一档。不支持 `zoom` 的浏览器
+退化成「按页面尺寸渲染」，偏大但不坏。
+
+**横向滚动**：`overflow-x: hidden` + `overflow-wrap: anywhere` +
+`pre`/`table` 自己 `overflow-x: auto` + 媒体 `max-width: 100%`。340px 宽的对话框
+下实测 0 溢出，超长 URL 换行，代码块自己横滚。
+
+**meta 一起继承**：collections、visibility、rating 和格式、引用一样跟着走 ——
+它们描述的是这篇文章的位置和它谈论的东西，都不随语言变。只有文字是空的。
+
+验证：3409 tests（新增 `/_/post-preview` 的 4 个路由测试 + compose 侧 4 个）；
+浏览器复验 note / quote / link 三种源帖的预览（quote 带出「— Steve Jobs」，link
+带出域名 + 标题卡片）、340px 窄框 0 横向溢出、collections=News、
+visibility=latest_hidden、rating=4 全部预选且不触发「要不要存草稿」。
+
+### 18.9 预览宽度与缩放方式的收尾（2026-08-09）
+
+**标题没占满卡片宽度。** `preset.css` 的 `.post-detail-title { width: min(80%,
+45rem) }` —— 页面上那是 Tufte 的标题栏比正文窄一档，在面板里就成了「长标题在 80%
+处换行、正文却是满宽」，读起来像坏了。它是唯一一个把宽度写死、而不是读
+`--layout-content-width` 的块，所以之前把那个 token 设成 100% 没管住它。
+
+改起来还踩了一层：`preset.css` 的 `@layer components` 在第 82 行就闭合了，之后
+的规则全是**未分层**的，而未分层声明赢过任何 `@layer` 里的规则，跟特异性无关 ——
+`ui.css` 整个在 `@layer components` 里，三个类也打不过它一个类。用 `!important`，
+和 `.post-menu-panel .post-menu-item`、`.compose-reply-context-body img` 是同一个
+既有套路。（自定义属性不受这条影响：`--layout-content-width` 设在元素上就是赢，
+因为那个元素上没有第二条声明在竞争——这也是 token 覆盖生效、`width` 覆盖不生效的
+原因。）
+
+**缩放为什么最后用 `zoom`。** 排过三种：
+
+1. 改 `--type-content-scale` —— 无效，见 `lessons.md`。
+2. 在容器上重新派生那 7 个 token —— 可行，但把 root 的比例抄了第二份；
+   改成覆盖消费方（`.prose`、`.post-detail-title`、`h2`、`.feed-quote-content`
+   …）可以不抄比例，代价是变成一份**选择器清单**，渲染器以后多一种卡片就会静默
+   地按页面尺寸渲染那一块。
+3. `zoom: 0.85` —— 对渲染器产出的任何东西都自动正确，而且连间距一起缩。这条最后
+   胜出的关键不是「一行比九行短」，是 prose 的排版节奏是 `rem` 写死的
+   （`p { margin: 1.4rem }`、`h1 { margin-top: 4rem }`），只缩字号会在小字周围
+   留下页面级的留白，223px 高的框里差出整整一段。
+
+`zoom` 的常见风险在这个位置上都不成立：预览里没有任何代码测量坐标（收养那一趟只
+设属性），边框在外层未缩放的框上，文字渲染实测干净。不支持时退化成按页面尺寸
+渲染，偏大但不坏。
+
+验证：3409 tests 全绿；长标题现在与正文同宽（550/550），340px 窄框下标题与正文
+同为 277px、横向溢出 0。
+
+### 18.10 预览宽度：三套页面级宽度规则，不是一套
+
+`.post-detail-title` 只是第一个。`preset.css` 一共用**三种方式**给文章块定宽：
+
+1. `--layout-content-width`（桌面，token，好办）；
+2. `.post-detail-title { width: min(80%, 45rem) }`（硬编码，绕过 token）；
+3. `@media (max-width: 1024px) { …15 个选择器… { width: min(100%, 35rem) } }`
+   —— 硬编码，而且看的是**视口**宽度，跟面板多宽毫无关系。
+
+所以窗口一窄，预览里的正文就被压到 525px，卡片右边空一块。只覆盖 token 管不住
+2 和 3。现在按 `preset.css` 那份清单在预览作用域里统一 `width: 100% !important`
+（`!important` 是因为那些规则在 `preset.css` 的 `@layer components` 闭合之后，
+未分层声明赢过任何分层规则）。
+
+顺带补了 `.post-attached-group`：它在同一个 media block 里有
+`min-width: min(100%, 35rem)`。那是个**下限**，窄面板里会超出框，而框是
+`overflow-x: hidden`，超出的部分是被裁掉而不是能滚 —— 改成 `min-width: 0`。
+
+验证方式（窗口没法真的改小）：注入一份未分层的 `<style>` 无条件复刻那个 media
+block，然后对比面板内外。外面的正文 565 → 525（规则确实生效），面板内的标题和
+正文稳定在 550，说明覆盖真的赢了、而不是规则根本没触发。
+
+留了一个可选的后续：`preset.css` 里那份 15 个选择器的清单其实是桌面那份的重复，
+把断点收敛成 `:root { --layout-content-width: min(100%, 35rem) }` 并给标题也开一个
+`--layout-title-width`，就能删掉整个 media block，预览这边也不用再抄清单。属于页面
+排版重构，影响面比这次大，单独做。
+
+### 18.11 Language 面板：语言选择器降一级，Other versions 只留语言（2026-08-10）
+
+两处来自实际使用的反馈，都是「面板里东西太多」的两个不同侧面。
+
+**Other versions 不再显示标题。** 一行里语言 + 标题 + 外链角标 + unlink，标题必然
+被截断（实测那条译文标题是 "This one is written in English, and nobody picked a
+language."，在 285px 的面板里只能露出前几个字）。而识别一个译版靠的是**语言**，
+标题只是确认 —— 现在语言当 label、标题挪到链接的 `title` 悬停提示和 `aria-label`
+里，一个字也没丢，行反而空出一半宽度。
+
+**unlink 改成文字。** 原来那个图标是 Lucide 的 `unlink-2`，也就是 `link-2` 去掉
+中间那一横。所有「unlink」图标本质上都是「link 图标减掉点什么」，在 1rem 尺寸下
+这个「减掉」不该让人眯着眼找。空出来的宽度正好用来直说 —— "Unlink"。同理没有用
+`×`：那在一行文章链接旁边会被读成「删除这篇文章」，代价太高。
+
+**语言选择器降到三级。** 它是**订正**动作，一篇文章一辈子可能改一次，而读译版、
+加译版是日常。留在面板里平铺还会退化：双语站点且另一语言已被译版占用时，radio 组
+只剩当前语言一行，还点不动 —— 纯噪音。现在是一条
+`Change language  简体中文 ›`，进三级面板选；`free.length === 0` 时该行与整个
+「加译版」区块一起不渲染（没有可切换的语言，也就没有可加的译版，更不该给一个
+通向死面板的入口；当前语言在上一级菜单那行仍然可见）。Escape 一次只退一级。
+
+**面板顺序（第二轮反馈后定稿）。** 先把 `Change language` 放在了最底下 ——
+按「不常用的沉底」排的，但读起来是错的：上一级菜单那行写着 `Language 简体中文 ›`，
+点进去这个值却出现在最后一行，像是答非所问。改成自上而下按**问题被问到的顺序**：
+
+```
+Change language        简体中文  ›   ← 这是什么语言（回答上一级那行的承诺）
+─────
+Write the 繁體中文 version      ›    ← 我能做什么（日常动作，无小标题）
+Link a version you already wrote ›
+─────
+OTHER VERSIONS                       ← 已经有什么（随 fetch 到达，所以放最后）
+English   ↗  Unlink
+日本語     ↗  Unlink
+```
+
+三个变化各有独立理由：`Change language` 置顶是为了对上上一级的预览值；「加译版」
+区块**去掉小标题**因为两行自己就说清了自己（多一行标题只是重复），代价是
+"Link one you already wrote" 失去上下文，改写成 "Link a version you already
+wrote" 才能独立成句；`OTHER VERSIONS` 沉底是因为它是 `#loadTranslations()` 的
+结果 —— 放在上面的话，面板会在打开后一瞬间把下面的行整体向下推一截，正好推在
+光标底下。
+
+**顺带修掉一个既有 bug：面板的 ← 返回键会直接关掉整个菜单。** 文档级点击处理器
+判定「点在菜单里面」用的是 `[role='menu']`，而那个属性在**列表**上，面板 header
+在列表外面 —— 所以每一个 ← 都被判成点了外面。Visibility 面板侥幸没事，只因为它的
+根节点上有 `data-visibility-panel`，恰好在那条选择器里。
+
+**接着这个修法本身又踩了一次坑（值得记下来）**：第一版改成了判
+`.post-menu-panel`，也就是所有视图渲染进去的那个容器 —— 看起来才是「点在下拉框
+任何地方」的诚实写法，结果**真实鼠标点 Language 会把整个菜单关掉**，而所有测试
+和我在页面里派发的合成点击全是绿的。原因是时序：真实点击时浏览器会在**两个事件
+监听器之间**跑一次 microtask checkpoint，所以菜单项自己的 `@click` 已经把面板
+重渲染完了，等文档级处理器拿到这个事件时，`target` 已经是一个**游离节点**，它的
+子树到视图根为止，`closest` 再也够不到那个容器。而脚本里的 `el.click()` 永远暴露
+不出这一点 —— 调用栈全程不空，中途不会重渲染。
+
+最终判 `.post-menu-view`（每个视图的根，既包住 header，又是游离 target 自己的
+祖先），两个方向都成立。回归测试用「在菜单项上再挂一个监听器调 `performUpdate()`」
+把重渲染放到浏览器 checkpoint 的位置，去掉修复就会红（`aria-expanded` 变 `false`）。
+
+**焦点**：`#focusAfterUpdate` 是 `querySelector(...)?.focus()`，所以目标必须
+（一）可聚焦、（二）在**首帧**就存在 —— 译版列表是 `#openLanguagePanel` 里
+`await` 出来的，首帧没有。选择器指向链接而非行 `<div>`，并在 fetch 落地后补一次
+（仅当焦点还不在面板内），覆盖「所有其他语言都被占用 → 首帧空面板」这一种情况。
+新增的测试去掉补的那次就会失败（焦点停在 `<body>`）。
+
+验证：post-menu 24 tests（新增 6）+ 全套 3415 tests + check-lint + check-types；
+浏览器复验三语组（zh-Hans 帖 + en/ja 译版 + 空闲的 zh-Hant）——面板 6 行按上面的
+顺序渲染、行宽 269/285 无溢出；三级面板正确只列 简体中文（√）与 繁體中文；
+← 从三级退回 Language 面板、再一次退回主菜单（此前会整个关掉）；Escape 同样逐级
+退；无译版的帖子面板为 Change language + Write ×3 + Link。窄视口那一档只做了算术
+估算（约 176px / 304px），Chrome 拒绝调整该窗口尺寸，没能实测。
+
+## 19. 详情页归属、发布语言确认与设置简化(2026-08-11)
+
+与作者讨论「/xyz 详情页点首页应该去 /ja」后落定的三件事。URL 设计(D1)不变;
+补的是渲染层的归属规则。
+
+### 19.1 新规则:文章页的骨架属于它自己语言的站
+
+文章 URL 语言中立,`viewLang` 在详情页永远为空——但 `post.language` 就在行上。
+`getNavigationData` 新增 `languageScope` 选项(详情页传文章语言),
+`view-language.ts` 新增 `languageScopeBasePath()`。站内动线上这与「保持读者
+来路视图」等价:日语文章只能从 /ja 表面到达。确定性渲染,一个 URL 一份字节。
+
+顺带修了一个 M2 的漏项:`SiteHeader` 的 logo、抽屉品牌链接、搜索图标原来
+硬编码根路径,连 `/en/archive` 列表视图里点站名也会掉回主语言。现在
+`SiteHeader`/`SiteLayout` 接 `basePath`(= sitePathPrefix + 语言前缀),
+logo、搜索、`isHomePage` 判定全部走它——`/ja` 由此获得完整的首页待遇
+(home 头部样式、站点简介、页脚、compose FAB)。
+
+### 19.2 发布时语言确认(改自 §6/§8 的静默检测)
+
+compose 的「Detect」在**发布**时解析为**当前页面语言**(context,经
+`composeContextLanguage` 链路传入:列表面 = 视图语言,详情页 = 文章语言)。
+检测器降级为绊线:只有当它有把握地读出**另一种**语言时,才弹一个
+action-sheet(「This looks like 日本語」→ Publish in 日本語 / Publish in
+简体中文 / Cancel),Enter 确认检测语言,Escape 回编辑。一致或无信号则
+直接以 context 发布,零打扰。显式选过语言永不弹(选择不被二次质疑)。
+
+实现细节:`_submit` 在无需弹框时保持**完全同步**(`_maybeConfirmLanguage()`
+返回 null 走原路径)——第一版无条件 async 让 15 个「点击→同步断言事件」的
+测试红了,这不是测试的错,是提交时序无谓变化的真实回归。提交 payload 的
+language 现在总是解析出的明确值(`_effectiveLanguage()`,fallback = context);
+本地草稿仍存原始 `_language`(Detect 存 null,恢复后仍是 Detect)。
+服务端检测兜底保留,继续服务 API/bot。
+
+### 19.3 设置 → 语言:一个列表替代三块控件
+
+- 开启态页面:主语言下拉 + Other languages chips + Reader URLs 图例合并为
+  一个「Languages」列表——每行 = 语言名 + 它的地址 + Primary 徽标或
+  [Make primary] [×]。改主语言从「在下拉里换人」变成行内动作,走同一个
+  确认框。关闭态不变(Content language + 安静的开关)。
+- 开启对话框:删掉「What turning this on does」四条 bullet(与页面开关的
+  帮助文案重复),压成一行「Post addresses do not change, and you can turn
+  this off again at any time.」;打标警告保留;primaryLanguageHelp 挪进
+  对话框的主语言选择器下面(决策点上说明)。
+
+验证:3428 tests + check-lint + check-types + i18n 100% 覆盖;本地 dev
+端到端(enable → 发日语帖 → `/uypgv` 的 `<html lang="ja">` + logo/导航全部
+`/ja/*`、`/ja` 有 home 样式且列出该帖、`/` 不列、主语言帖 chrome 在根、
+`/zh-hans` 与 `/ja/{slug}` 301;移除有帖语言被正确拒绝)。
+
+### 19.4 切换器的完备性 + 设置页地址可点击(同日跟进)
+
+- **切换器规则补完**:默认 fallback 原来是「当前路径」,在 settings 等无
+  per-language 对应物的页面上会铸出 `/ja/settings/language` 这种 404。
+  新增 `isPerLanguageSurface()`(白名单,镜像 `langGet()` 表,两处需同步改),
+  `buildLanguageSwitcher` 默认 fallback 改为:有对应物 → 当前路径,没有 → `/`。
+  规则从此一句话覆盖所有表面:**切换器带你去那个语言的站;有对应物去对应物,
+  没有去首页;永不产出 404**。白名单方向是 fail-safe:未来新增的
+  非语言页面自动落到首页而不是死链。
+- **Dashboard 与语言视图的边界(设计意图,回应「settings 只有一个是否合理」)**:
+  合理且有意为之。语言视图只分叉**读者流**;dashboard 是作者的单一驾驶舱,
+  不属于任何语言视图,其显示语言由「界面语言」设置决定,与进入时的来路无关。
+  从 /ja 进 settings 后想回去,切换器一次点击到 /ja(上一条保证了这个链接存在)。
+- **设置 → 语言列表的地址可点击**:每行 URL 变为 `target="_blank"` +
+  `rel="noopener noreferrer"` 的链接,hover 下划线。
+
+### 19.5 第三轮文案与交互打磨(用户反馈后,2026-08-11)
+
+- **移除语言的拒绝变为行内错误 + 出路链接**:新增 `LanguageInUseError`(带
+  postCount),remove 路由把它本地化(复数 + 语言原生名:「还有 2 篇日本語
+  文章。先修改它们的语言,或保留该语言。」),设置页渲染在该语言行的下方
+  (`role="alert"`),多语言开启时附「查看这些文章 →」链接指向 `/{lang}/archive`
+  新标签打开。规则本身(零帖守卫)一字未动——语言标签是关于文本的事实,
+  批量重标或放行孤儿都是更差的选择(讨论记录见对话;要点:孤儿内容不可见、
+  重标即说谎、根视图的语言承诺不可随配置漂移)。已知小缺口:计数含草稿,
+  archive 只列已发布。
+- **多语言开关从 checkbox 改为按钮**:checkbox 暗示即时生效,但实际要走确认
+  对话框,取消后还得手动把它掰回去(#syncMultilingualCheckbox hack)。改为
+  关闭态 `[Turn on multilingual content]`、开启态列表下方安静的
+  `[Turn off multilingual content]`,hack 随之删除。
+- **文案**:contentLanguageHelp →「你写作使用的语言,也是读者和搜索引擎看到
+  的语言」;打标警告 → 明确说「尚未标记语言的文章」(重开场景下 count 只是
+  NULL 帖数,旧文案「你已有的 N 篇文章」在此误导);确认按钮按 count 分档
+  (有帖「Mark posts and turn on / 标记并开启」,零帖「Turn on / 开启」——
+  不承诺不会发生的动作)。
+- **切换器加 globe 图标**(label 之前,14px,72% 不透明度)。**不加国旗**:
+  国旗指国家不指语言——zh-Hans/zh-Hant/en 都没有唯一对应的国旗,行业惯例
+  (W3C i18n)明确反对用国旗表示语言。
+- **「Also available in …」移到正文之前**:这行字的目标读者是读不懂正文的人,
+  不该让他们滚过读不懂的整页去找出口(Wikipedia/MDN/NYT 双语的先例都在顶部)。
+  对所有文章统一放顶部,不按长度分叉(条件布局 = 不一致)。
+
+### 19.6 第四轮:译本链接入 meta、icon-only 切换器、设置页任务化(2026-08-11)
+
+- **译本链接不再是独立一行,搭日期的车**(§19.5 的顶部横排被否:辅助功能不能
+  高调)。新组件 `PostTranslationLinks`(12px globe + 各语言原生名,无文案;
+  完整句子在 aria-label「Also available in {language}」)经
+  `PostFooterDisplayOptions.translations` 传入:**有标题的文章**跟日期一起在
+  标题下的 header meta 行(长文读者在滚动前就能看到出口),**其余格式**跟
+  footer 的日期在一起(短帖一屏可见,footer 即出口)。区分逻辑与日期完全同轨,
+  不新增分叉。Thread 上挂在读者落地的那篇(祖先可能被折叠)。
+- **切换器 trigger 改为 icon-only**(globe + chevron):trigger 上的当前语言名
+  服务不了任何人——读得懂的人正在读这个语言,想切走的人读不懂它。菜单里
+  依旧每个语言用自己的名字。aria-label 不变。
+- **设置页从「功能开关」改为「任务动作」**:
+  - 关闭态:「Multilingual content」块的按钮是 `+ Add language`(作者的真实
+    意图是「加一种语言」,不是「启用一个 feature flag」;Shopify Markets 同款
+    模式)。对话框标题「Add a language」,确认按钮「Add language」——打标
+    副作用由紧邻其上的警告块陈述,按钮不再复述(修订 §9.2 的「按钮说清打标」:
+    当时按钮叫「确认」才有该规则,现在警告就在按钮上方一寸)。
+  - 开启态:语言列表块之后,对称的「Multilingual content」块:一行现状描述
+    (「每个语言都有自己的首页、归档和订阅源。」)+ `Turn off` 小按钮,
+    与 Add language 不再挤在一起;确认对话框不变。
+  - **修复**:`unmarkedPostCount === 0` 时不再显示打标警告块。旧文案
+    「你还没有文章」在「全部文章已有标记」的重开场景下是错的;没有副作用
+    就不该有警告,整块隐藏。`enableMarkWarningEmpty` 删除。
+- 本地 dev 实测:无标题中文帖译本链接在 footer 日期旁;有标题日语文章在
+  标题下 meta 行;trigger 可见文本为空、globe 存在。
+
+### 19.7 第五轮:meta-row 方案回滚,设置页定为「状态 + 行内开关」(2026-08-11)
+
+- **译本链接:§19.6 的 meta-row 集成整体回滚**,恢复 §5 原设计——所有格式统一
+  在文章之后一行安静的完整句子:「Also available in 日本語」(链接,hreflang,
+  语言原生名)。用户实测反馈:header meta 行右对齐的变体难看,按格式分叉的
+  位置不统一;原句式反而最好。**不用下拉框**:个人博客译本常态是 1–2 个,
+  下拉把唯一的链接藏进一次点击(Wikipedia 用下拉是因为它有 300 种语言)。
+  `PostTranslationLinks`、`PostFooterDisplayOptions.translations` 及相关
+  plumbing 全部删除。
+- **设置 → 语言 定稿为三段式**:
+  1. Site:内容语言(关)/ Languages 列表(开)。帮助文案缩短为
+     「你写作使用的语言。」(SEO 半句删除)。
+  2. **Multilingual content 独立成节**(border-t,与 Dashboard 同级)——解决
+     「内容语言字段与多语言块距离太近产生歧义」;节内为一行描述 + 状态徽标
+     (**On/已开启** / **Off/未开启**)+ 行内链接动作(**Turn off/关闭** /
+     **Turn on/开启**)。关闭后状态一目了然,重开入口不再是让人懵的
+     「+ Add language」。
+  3. Dashboard:不变。
+- **开启对话框**:标题「Turn on multilingual content / 开启多语言内容」
+  (与点击的动作一致),确认按钮改为通用 **Save/保存**(§19.6 的
+  「Add language」按钮被否:这是一个设置表单,提交按钮该是保存;打标副作用
+  由紧邻的警告块陈述)。`enableConfirm` 标签删除,复用 `save`。
+- dev 实测:有标题/无标题两种帖的译本行都在 article 之后、无 header 变体;
+  开关状态切换与重开路径可见。
+
+### 19.8 第六轮:命名、行菜单、重开守卫、即时刷新(2026-08-12)
+
+- **命名**:中文译文层面「多语言内容」→「多语言」(节标题、弹窗标题、toast
+  全部统一;英文源文案保持 "Multilingual content" 的语法完整性)。
+- **语言列表行动作折叠**:「设为主语言」「删除」是一年一次的操作,常驻按钮
+  给了它们日常级的显眼度。改为每行一个「⋯」菜单(aria-haspopup,菜单项
+  「设为主语言」/「删除 {语言}」,删除为 destructive 色),主语言行只有徽标。
+  外点 + Escape 关闭,与 picker 互斥,有测试。
+- **重开守卫(真实的不变量漏洞)**:`enable()` 原来整体重写语言列表而不检查
+  「有帖语言 ⊆ 新列表」——关闭→重开时在弹窗里删掉一个语言,它的文章会从
+  所有视图消失(remove 守卫的旁路)。补上:`posts.listLanguagesInUse()`
+  (GROUP BY language)+ enable 内校验,违反抛 `LanguageInUseError`(现在
+  携带 language + postCount),路由统一本地化(与 remove 同一句文案:
+  「还有 N 篇{语言}文章。先修改它们的语言,或保留该语言。」)。**弹窗内联
+  错误**:`_enableError` 显示在对话框内(toast 会被 modal 顶层盖住,永远
+  看不见——顺带修了前缀冲突错误同样不可见的旧问题)。已知取舍:一次只点名
+  第一个缺席语言。服务层测试覆盖拒绝与「换座位不算丢」两个方向。
+- **开关后的界面即时性**:开启/关闭多语言改变的是页面自身的 chrome(右上角
+  切换器的有无),只有服务端能重新渲染它——成功后 `window.location.reload()`
+  (与界面语言修改同一先例)。不走 header fragment 刷新:同一请求内
+  `appConfig` 是设置写入前的快照,渲染出的仍是旧 header。
+- dev 实测:重开删语言被拒(中文、点名语言与数量);含全部有帖语言则成功;
+  守卫在含多种历史语言的库上逐一点名。
+
+### 19.9 第七轮:文案精修与弹窗守卫的可操作化(2026-08-12)
+
+依据 AGENTS.md 新增的中文文案规范(全角标点、无主语优先、反翻译腔)执行:
+
+- **多语言区块描述**(zh):「为每种语言提供独立的首页、归档和订阅源。发布时
+  可以选择语言,也可以把不同语言的文章互相关联为译本。」两种状态共用同一段
+  描述(功能是什么不随开关变),`multilingualOnHelp` 删除。
+- **「开启」→「启用」**:zh 目录 msgstr 层面全量替换(状态徽标「已启用」、
+  动作链接「启用」、弹窗标题「启用多语言」、toast「多语言已启用。」);
+  「关闭」不动。**未启用状态不再显示徽标**——默认态无需宣告,一个「启用」
+  链接即是全部;「已启用」徽标只在开着时出现(`statusOff` 删除)。
+- **保证行**(zh):「启用多语言后,文章地址不会改变;之后也可以随时安全地
+  关闭。」(原句缺主题、逗号半角,被用户点名看不懂。)
+- **弹窗守卫错误可操作化**:enable 路径拿到专属文案——「还有 N 篇{语言}文章,
+  但列表里没有这个语言。把它加回列表,或先修改这些文章的语言。」并且响应带
+  `language` 字段,弹窗在错误旁渲染一个「添加 {语言}」按钮,一键把缺席语言
+  放回列表(用户实测截图:错误提到繁體中文,但弹窗里根本没有它的任何入口)。
+  remove 流程保留原「保留该语言」措辞(在列表行语境成立)。
+- **全角标点清理**:此前几轮我加入的 zh 译文里混有半角逗号/分号(每文件
+  5 处),按新规范全部改为全角;ICU 语法逗号不受影响。
+
+### 19.10 第八轮:「Also available in …」的归属与死链(2026-08-13)
+
+位置不动(§19.7 的结论仍然成立:所有格式统一在文章之后一行完整句子),
+改的是它在页面上属于谁:
+
+- **它是文章元数据的最后一行,不是漂在页脚下面的一句话**。原样式
+  `--type-ui-meta`(15px)比它上面的日期/合集行(`--type-ui-hint`,13.5px)
+  还大,又隔着 43.5px 的空白,读起来像正文结束后遗落的一句。改为与页脚同
+  号同色,间距收到 22.5px(即文章自身的 `py-6` 下内边距,与「正文 → 页脚」
+  的 24px 同一节奏)。
+- **加站点切换器那颗 globe**(0.95rem,取合集图标的灰度):页面上唯一已经
+  表示「语言」的记号,也让这一行与它上面的「合集图标 + 名称」成对。
+- **语言名恢复下划线**:全局 `a` 规则把这里的下划线抹掉了,而这行字的读者
+  恰恰读不懂包着语言名的那句英文,链接必须自己看起来像出口。
+- **修:草稿/私密译本不再被公开宣传**。`buildTranslationLinks` 取的是整个
+  translation group,不筛状态——而草稿与私密文章对读者都是 404。于是一篇
+  发布的文章会挂出一条 404 链接,`hreflang` 也指向同一个 404。改为只保留
+  `status === "published" && visibility !== "private"` 的兄弟;被滤掉之后
+  切换器自动回落到该语言首页(§5 的兜底),永远落在真实存在的页面上。
+  回归测试:`language-routing.test.ts` 的「never points a reader at a
+  draft/private translation」。
+
+已知(与本轮无关,另一趟活):public 目录的中文翻译尚未开始(482 条里 480 条
+为空),所以中文页面上这行仍显示英文源文案。
+
+### 19.11 第九轮:切换器说出「你在哪个语言」(2026-08-13)
+
+用户实测:一篇日语文章的页面上没有任何地方说明这是日语站,连点开右上角
+切换器也看不出来。两处都改:
+
+- **菜单里的当前语言原本没有标记**。`.site-header-more-link-active` 只是
+  一档颜色加深,而那一档与 `:hover` 完全相同——鼠标扫过哪一行哪一行就长得
+  像「当前」。`aria-current="true"` 一直是对的,只有视觉是空的。现在当前行
+  用 primary 色 + medium 字重 + 一颗 4px 圆点(与移动端抽屉里那颗同款)。
+- **trigger 在非主语言时写出语言名**(部分推翻 §19.6 的 icon-only)。
+  §19.6 的理由是「读得懂的人正在读这个语言,想切走的人读不懂它」——那句话
+  只在主语言成立。主语言是站点的默认形态,不必宣告;`/ja`、`/zh-hant`
+  以及任何一篇非主语言文章都是它的变体,从搜索结果、分享链接、或一篇
+  别的语言的文章落进来的读者应该不用点开任何东西就知道自己在哪一支。
+  规则与 composer 的语言 pill 完全同构(没话说时只留 globe,状态偏离默认
+  时才写出名字)。
+  - `LanguageSwitcherOption` 新增 `isPrimary`,视图层不再靠数组下标推断。
+  - 可见文本用语言自己的名字,所以 `aria-label` 改用既有的
+    「Language: {language}」(与 composer pill 共用同一条 msgid),否则
+    朗读出来的「Language」会丢掉这个控件唯一说的那件事。
+  - 名字上限 7rem(窄屏 4.5rem)带省略号,长 endonym 不会顶坏头部。
+  - ≤480px 原本整个隐藏(抽屉里有语言段落)。现在只隐藏**没有名字的那一
+    种**:一颗光秃秃的地球在手机上确实只占地方,但「你在日语站」这句话要
+    活下来。`.site-header-lang-named` 由服务端加,不依赖 `:has()`。
+
+未验证:≤480px 的实际拥挤程度。本次浏览器会话的视口固定在 1200px,无法
+真机复现;若手机上顶栏显挤,把 `.site-header-lang:not(.site-header-lang-named)`
+改回 `.site-header-lang` 即可退回原状。

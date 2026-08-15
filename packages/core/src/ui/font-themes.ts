@@ -12,8 +12,7 @@
 import type { MessageDescriptor } from "@lingui/core";
 import {
   getCjkFontFromLanguageTag,
-  isCjkSerifFont,
-  type CjkSerifFont,
+  type CjkFontProfile,
 } from "../i18n/detect.js";
 
 /**
@@ -117,46 +116,39 @@ export function getFontThemeCssVariables(
 }
 
 /**
- * Resolve the language font profile for the current content language.
+ * Resolve the CJK font profile for a content language.
  *
- * An adapted content language always wins. The explicit CJK setting is a
- * fallback for sites whose primary content language does not have a profile.
+ * Purely derived from the language — Simplified, Traditional, Japanese and
+ * Korean want different Han glyph shapes, and the language tag is the only
+ * thing that knows which. The page passes the language it is actually
+ * rendering: a post's own language on a post page, the view language on a
+ * language-filtered list, the site language otherwise.
  *
- * @param siteLanguage - BCP 47 content language tag
- * @param cjkFallback - Explicit CJK fallback setting
+ * @param language - BCP 47 content language tag
  * @returns Resolved CJK font profile, or `undefined` for the default stack
  * @example
- * resolveCjkFontProfile("zh-TW", "zh-Hans") // "zh-Hant"
+ * resolveCjkFontProfile("zh-TW") // "zh-Hant"
+ * resolveCjkFontProfile("en")    // undefined
  */
 export function resolveCjkFontProfile(
-  siteLanguage?: string,
-  cjkFallback?: string,
-): Exclude<CjkSerifFont, "off"> | undefined {
-  const contentProfile = siteLanguage
-    ? getCjkFontFromLanguageTag(siteLanguage)
-    : undefined;
-  if (contentProfile) return contentProfile;
-
-  return isCjkSerifFont(cjkFallback) && cjkFallback !== "off"
-    ? cjkFallback
-    : undefined;
+  language?: string,
+): CjkFontProfile | undefined {
+  return language ? getCjkFontFromLanguageTag(language) : undefined;
 }
 
 /**
  * Build serif and sans fallback variables for the resolved language profile.
  *
- * @param siteLanguage - BCP 47 content language tag
- * @param cjkFallback - Explicit CJK fallback setting
+ * @param language - BCP 47 content language tag
  * @returns CSS variables consumed by every font theme
  * @example
- * getCjkFontCssVariables("en", "zh-Hans")
+ * getCjkFontCssVariables("zh-Hans")
  * // => { "--font-cjk-serif-fallback": '"Songti SC", ...', ... }
  */
 export function getCjkFontCssVariables(
-  siteLanguage?: string,
-  cjkFallback?: string,
+  language?: string,
 ): Record<string, string> {
-  switch (resolveCjkFontProfile(siteLanguage, cjkFallback)) {
+  switch (resolveCjkFontProfile(language)) {
     case "zh-Hans":
       return {
         "--font-cjk-serif-fallback": HANS_CJK_SERIF_FALLBACK,

@@ -249,6 +249,7 @@
   .site-header-right {
     display: flex;
     align-items: center;
+    gap: 0.9rem;
     flex-shrink: 0;
   }
 
@@ -943,6 +944,74 @@
       color-mix(in srgb, var(--site-divider) 60%, transparent);
   }
 
+  /* --- Language switcher ---------------------------------------------------
+     Reuses the "More" menu's classes for look and behaviour; only the
+     anchoring differs, because the switcher sits at the end of the header row
+     where a left-anchored popover would run off the viewport. These rules must
+     stay *after* the `.site-header-more-*` rules they override: the selectors
+     have equal specificity, so source order decides. */
+
+  .site-header-lang {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .site-header-lang-btn {
+    white-space: nowrap;
+    gap: 0.38rem;
+  }
+
+  /* Quiet marker that this control is about language, ahead of a label that
+     is written in the current language itself. */
+  .site-header-lang-globe {
+    flex-shrink: 0;
+    opacity: 0.72;
+  }
+
+  /* Only present off the primary language. Long endonyms ("Nederlands",
+     "Português") ellipsize rather than push the header around. */
+  .site-header-lang-name {
+    display: block;
+    min-width: 0;
+    max-width: 7rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .site-header-lang-popover {
+    left: auto;
+    right: 0;
+    min-width: 9rem;
+    border-left: none;
+    border-right: 0.5px solid var(--site-header-hairline);
+    transform-origin: top right;
+  }
+
+  .site-header-lang-popover .site-header-more-link {
+    justify-content: flex-end;
+    padding: 0.38rem 1.15rem 0.38rem 0.75rem;
+  }
+
+  /* The first question this menu has to answer is which language the reader
+     is already in. The shared `-active` colour shift cannot answer it: it is
+     the same shift hover paints on whichever row the pointer sits over. */
+  .site-header-lang-popover .site-header-more-link-active {
+    color: var(--site-text-primary);
+    font-weight: var(--fw-medium);
+  }
+
+  .site-header-lang-popover .site-header-more-link-active::before {
+    content: "";
+    flex: none;
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+
   /* --- Header responsive -------------------------------------------------- */
 
   @media (max-width: 1200px) {
@@ -1019,8 +1088,17 @@
 
   @media (max-width: 480px) {
     .site-header-nav,
-    .site-header-more {
+    .site-header-more,
+    /* The drawer carries the language list at this width, so a bare globe
+       would only take room. Off the primary language the trigger is not a
+       control any more but a statement of where the reader is, and that has
+       to survive the narrow header. */
+    .site-header-lang:not(.site-header-lang-named) {
       display: none;
+    }
+
+    .site-header-lang-name {
+      max-width: 4.5rem;
     }
 
     .site-header-search-slot {
@@ -4005,6 +4083,13 @@
     background: transparent;
   }
 
+  /* Three sections and post titles need more room than a plain action list. */
+  .post-menu-panel:has(.post-menu-language-panel) {
+    width: min(19rem, calc(100vw - 1.25rem));
+    min-width: min(19rem, calc(100vw - 1.25rem));
+    max-width: min(21rem, calc(100vw - 1.25rem));
+  }
+
   .post-menu-panel {
     width: min(15rem, calc(100vw - 1.25rem));
     min-width: min(15rem, calc(100vw - 1.25rem));
@@ -4097,6 +4182,123 @@
      content, otherwise the empty group still draws its divider and padding. */
   .post-menu-section:not(:has(> *)) {
     display: none;
+  }
+
+  /* "Also available in …" under a post that has translations. Quiet: it is a
+     way out for a reader who needs one, not a call to action. It carries the
+     post footer's type and colour and sits one rhythm below it, so it reads
+     as the last line of the post's own metadata; a size larger and an inch
+     further down, it read as a sentence adrift under the page. */
+  .post-translations {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-hint);
+    line-height: 1.45;
+    color: var(--site-text-secondary);
+    text-wrap: pretty;
+  }
+
+  /* Same mark as the header's language switcher — the only glyph on the page
+     that already means "language" — drawn in the collection tag's icon tone
+     so the two metadata lines rhyme. */
+  .post-translations-globe {
+    display: inline-block;
+    width: 0.95rem;
+    height: 0.95rem;
+    margin-right: 0.32rem;
+    vertical-align: -0.2em;
+    color: color-mix(
+      in srgb,
+      var(--site-text-secondary) 78%,
+      var(--site-divider)
+    );
+  }
+
+  /* Underlined on purpose: the reader this line is written for cannot read
+     the sentence around the language names, so the names have to look like
+     the way out on their own. */
+  .post-translations a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+    text-decoration-color: color-mix(
+      in srgb,
+      var(--site-text-secondary) 45%,
+      transparent
+    );
+  }
+
+  .post-translations a:hover {
+    color: var(--site-text-primary);
+    text-decoration-color: currentColor;
+  }
+
+  /* Explanatory line inside a panel — the same muted register as the menu's
+     own metadata, never competing with the items it explains. */
+  .post-menu-hint {
+    padding: 0.3rem 0.95rem 0.55rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    line-height: 1.45;
+    text-wrap: pretty;
+    color: color-mix(in srgb, var(--site-text-secondary) 78%, transparent);
+  }
+
+  /* Names a group of rows that would not otherwise say what they are — the
+     language panel's list of other versions is a column of bare language
+     names. Rows that describe themselves ("Write the English version") get no
+     label; a heading over them would only repeat what they already say. */
+  .post-menu-section-label {
+    margin: 0;
+    padding: 0.45rem 0.95rem 0.3rem;
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--site-text-secondary) 68%, transparent);
+  }
+
+  .post-menu-search {
+    padding: 0.2rem 0.35rem 0.35rem;
+  }
+
+  .post-menu-search-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: 0.5px solid var(--site-divider);
+    border-radius: 0.55rem;
+    background: transparent;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    color: var(--site-text-primary);
+  }
+
+  .post-menu-search-input::placeholder {
+    color: color-mix(in srgb, var(--site-text-secondary) 62%, transparent);
+  }
+
+  .post-menu-search-input:focus-visible {
+    outline: none;
+    border-color: color-mix(in srgb, var(--site-text-primary) 40%, transparent);
+  }
+
+  /* Rows here name a language or an action, both of which want the whole line
+     and neither of which is worth wrapping to a second one — "Write the 简体中文
+     version" in a narrow popover would otherwise grow the row. The one row with
+     a meta, *Change language*, is sized by the shared rule further down. */
+  .post-menu-language-panel .post-menu-item-label {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .post-menu-language-panel [role="menuitem"][disabled],
+  .post-menu-language-panel [role="menuitemradio"][disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .post-menu-section + .post-menu-section {
@@ -4246,6 +4448,79 @@
 
   .post-menu-item-active .post-menu-item-trailing {
     color: var(--site-text-primary);
+  }
+
+  /* A menu row that carries a second action — reading a translation and
+     unlinking it are different enough to want their own hit targets. The row
+     is a flex pair rather than one item: a link that fills it, and a small
+     text button pinned to the end.
+     The action is worded, not drawn: every icon for "unlink" is the chain of
+     "link" with something taken away, and at this size the difference is not
+     one anybody should have to squint for. Since the row spends no width on
+     the other version's title — the language is what identifies it, and the
+     title is on the link's tooltip — there is room to just say it.
+     Both children wear `role="menuitem"`, which BaseCoat styles through a
+     three-class selector of its own (`width: 100%`, among others). Every rule
+     below therefore names the row as well, to sit at the same specificity and
+     win on source order — dropping `.post-menu-row` from any of them silently
+     hands the button a full-width menu item's geometry back, which is also why
+     `width` and `font-size` are restated rather than left to default. */
+  .post-menu-row {
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+    padding-right: 0.3rem;
+  }
+
+  .post-menu-panel .post-menu-row .post-menu-row-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-right: 0.45rem;
+  }
+
+  .post-menu-panel .post-menu-row .post-menu-row-action {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 2.15rem;
+    padding: 0 0.6rem;
+    border: none;
+    border-radius: 0.8rem !important;
+    background: transparent;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-caption);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--site-text-secondary) 88%, transparent);
+    transition:
+      background-color 0.16s ease,
+      color 0.16s ease;
+  }
+
+  .post-menu-panel .post-menu-row .post-menu-row-action:hover,
+  .post-menu-panel .post-menu-row .post-menu-row-action:focus-visible {
+    outline: none;
+    background: color-mix(in srgb, var(--site-nav-hover-bg) 72%, transparent);
+    color: var(--site-text-primary);
+  }
+
+  .post-menu-panel .post-menu-row .post-menu-row-action-danger:hover,
+  .post-menu-panel .post-menu-row .post-menu-row-action-danger:focus-visible {
+    background: color-mix(
+      in srgb,
+      var(--destructive) 12%,
+      var(--site-page-bg) 88%
+    );
+    color: var(--destructive);
+  }
+
+  .post-menu-panel .post-menu-row .post-menu-row-action[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed !important;
   }
 
   /* --- Collection Picker (replaces menu when "Add to collection" is clicked) --- */
@@ -5040,6 +5315,14 @@
     --compose-quote-input-size: var(--type-content-subtitle);
     --compose-quote-input-leading: 1.32;
     --compose-inline-input-size: var(--type-ui-input);
+    /* The quote source is a mono URL sitting under the sans author line. At
+       the shared inline-input size mono's wider glyphs read a notch louder
+       than the author it supports, so it steps down to land where the
+       rendered `.feed-quote-source` sits. A custom property resolves its
+       var()s where it is declared, so any layout that re-tunes
+       --compose-inline-input-size must restate this ratio too — see
+       `.compose-reply-compose-layout`. */
+    --compose-quote-source-size: calc(var(--compose-inline-input-size) * 0.88);
     --compose-panel-label-size: var(--type-ui-control);
     --compose-panel-hint-size: var(--type-ui-hint);
     --compose-panel-control-size: var(--type-ui-control);
@@ -5706,15 +5989,22 @@
     margin-bottom: 1.05rem;
   }
 
-  .compose-quote-source-input {
-    font-size: var(--compose-inline-input-size);
-    line-height: 1.35;
+  /* Scoped to the wrapper — like `.compose-link-url-wrap .compose-url-input`
+     — so it outranks the shared `.compose-url-input` base further down, which
+     otherwise wins on order and holds this input at the inline-input size.
+     Line height and color stay with that base. */
+  .compose-quote-source .compose-quote-source-input {
+    font-size: var(--compose-quote-source-size);
     letter-spacing: 0.005em;
-    color: color-mix(
-      in srgb,
-      var(--site-text-secondary) 88%,
-      var(--site-text-primary)
-    );
+  }
+
+  /* iOS Safari zooms the page whenever a focused input is under 16px — the
+     floor --type-ui-input already buys. Applied at the use site so it holds
+     whichever --compose-quote-source-size declaration won. */
+  @media (hover: none) and (pointer: coarse) {
+    .compose-quote-source .compose-quote-source-input {
+      font-size: max(16px, var(--compose-quote-source-size));
+    }
   }
 
   .compose-quote-author-row:focus-within .compose-quote-author,
@@ -6117,6 +6407,157 @@
     .compose-quick-actions-row {
       padding: 2px 18px 14px;
     }
+  }
+
+  /* --- Language pill ------------------------------------------------------
+     Sits between the collection pill and Post, naming the language this post
+     would publish in right now. Quiet while Jant is the one reading it, and a
+     shade firmer once the author has said so themselves — the same two states
+     the collection pill uses, for the same reason: the author's own answer
+     should not look like a guess. */
+
+  .compose-language {
+    display: inline-flex;
+    position: relative;
+    /* Shrinks with the collection pill rather than pushing Post off a narrow
+       screen; the label ellipsizes and the glyph stays. */
+    min-width: 0;
+  }
+
+  .compose-language-open {
+    z-index: 100;
+  }
+
+  .compose-language-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 1.95rem;
+    /* Transparent border, so the box does not resize under the hover wash. */
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+    cursor: pointer;
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease;
+    color: var(--site-text-secondary);
+    font-size: var(--type-ui-control);
+  }
+
+  .compose-language-trigger:hover:not(:disabled),
+  .compose-language-trigger[data-open="true"] {
+    color: var(--site-text-primary);
+    background: var(--compose-control-bg);
+  }
+
+  .compose-language-trigger[data-chosen="true"] {
+    color: color-mix(
+      in srgb,
+      var(--site-text-primary) 88%,
+      var(--site-text-secondary)
+    );
+  }
+
+  /* Nothing to report: the globe stands alone, in a round target the size of
+     the options button on the other side of Post. */
+  .compose-language-trigger-bare {
+    justify-content: center;
+    gap: 0;
+    width: 2.2rem;
+    padding-inline: 0;
+  }
+
+  .compose-language-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .compose-language-trigger:focus-visible {
+    outline: 2px solid
+      color-mix(in srgb, var(--site-text-primary) 22%, transparent);
+    outline-offset: 2px;
+  }
+
+  .compose-language-trigger-svg {
+    display: block;
+    overflow: visible;
+    /* The header switcher's globe reads at 15px; this one carries the same
+       meridians and needs the same room. */
+    width: 0.98rem;
+    height: 0.98rem;
+    flex-shrink: 0;
+    opacity: 0.75;
+  }
+
+  .compose-language-trigger:hover:not(:disabled) .compose-language-trigger-svg,
+  .compose-language-trigger[data-open="true"] .compose-language-trigger-svg,
+  .compose-language-trigger[data-chosen="true"] .compose-language-trigger-svg {
+    opacity: 1;
+  }
+
+  /* The word only exists while the language is worth naming, so this plays
+     exactly when it starts being worth naming — which is the moment detection
+     moves the post off the page's language. That used to be a sheet stopping
+     the publish to ask; it is now a word arriving next to Post. Short and
+     small: enough to catch the eye that is already aimed at the button, and
+     not enough to be an event. */
+  @keyframes compose-language-name-in {
+    from {
+      opacity: 0;
+      transform: translateX(-3px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .compose-language-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 7rem;
+    font-weight: var(--fw-medium);
+    animation: compose-language-name-in 0.22s ease both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .compose-language-label {
+      animation: none;
+    }
+  }
+
+  /* Anchored to the pill's right edge and opening upwards: it hangs over the
+     editor, never off the side of a phone. */
+  .compose-language-popover {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    z-index: 100;
+    /* Wide enough for the Detect row's hint to fall in two lines rather than
+       three — it is the one row here that carries a sentence. */
+    min-width: 14.5rem;
+    max-width: min(17rem, calc(100vw - 1.5rem));
+    padding: 0.44rem 0.48rem 0.4rem;
+    border-radius: 0.95rem;
+    border: 1px solid var(--compose-control-border);
+    background: var(--compose-floating-bg);
+    box-shadow:
+      0 18px 42px -28px rgba(15, 23, 42, 0.3),
+      inset 0 1px 0 color-mix(in srgb, white 58%, transparent);
+    backdrop-filter: blur(14px);
+  }
+
+  .compose-language-popover .compose-sheet-row {
+    --compose-icon-paper-fill: var(--compose-floating-bg);
   }
 
   .compose-collection-select {
@@ -6779,6 +7220,16 @@
     color: var(--site-text-secondary);
     font-size: 0.79rem;
     font-weight: var(--fw-semibold);
+  }
+
+  /* Context line under a section label — says what this post is, without
+     competing with the choices below it. */
+  .compose-sheet-note {
+    margin: 0;
+    padding: 0 0.35rem 0.4rem;
+    color: color-mix(in srgb, var(--site-text-secondary) 82%, transparent);
+    font-size: 0.79rem;
+    line-height: 1.45;
   }
 
   .compose-sheet-row {
@@ -8070,6 +8521,7 @@
     --compose-quote-input-size: calc(var(--type-content-body) * 1.06);
     --compose-quote-input-leading: 1.42;
     --compose-inline-input-size: var(--type-base);
+    --compose-quote-source-size: calc(var(--compose-inline-input-size) * 0.88);
   }
 
   .compose-reply-compose-layout .compose-quote-wrap {
@@ -8283,7 +8735,9 @@
   /*
    * Reply context clones feed/detail card internals into a much narrower shell.
    * Scale headings to the thread context ladder instead of the original
-   * page/card layout.
+   * page/card layout. Deliberately *not* shared with the translation context,
+   * which renders the original at its normal `prose` scale — there the
+   * structure is part of what is being translated.
    */
   .compose-reply-context-body
     :is(.post-detail-title, .feed-note-title, .feed-link-title),
@@ -8295,12 +8749,7 @@
     margin-bottom: 0.18rem;
   }
 
-  .compose-reply-context-body .prose,
-  .compose-reply-context-body .e-content {
-    font-size: inherit;
-  }
-
-  .compose-reply-context-body .feed-quote {
+  .compose-reply-context-body :is(.prose, .e-content, .feed-quote) {
     font-size: inherit;
   }
 
@@ -8383,6 +8832,224 @@
     color: var(--site-text-primary);
   }
 
+  /* --- Translation context in compose dialog ----------------------------- */
+
+  /* The original is a different post, not the one above this one on a chain,
+     so it gets no thread rail — every other direct child of the layout does. */
+  .compose-thread-layout > .compose-translation-context::before {
+    display: none;
+  }
+
+  .compose-translation-context {
+    /* Thread mode hands every row its own gutter through those variables;
+       the single-post composer has no thread layout around it, so the
+       fallback matches what the format selector is inset by. */
+    margin: 0.6rem var(--compose-thread-padding-right, 16px) 0.15rem
+      var(--compose-thread-padding-left, 16px);
+  }
+
+  /* The original, rendered by the server as its own page renders it, inside a
+     frame the composer owns. Everything here is about making a page-scale
+     rendering behave as a panel: it must not set the composer's width, and it
+     must not out-shout the editor below it.
+     An outline and no fill: the border is load-bearing — it is what says the
+     text scrolls and where it stops — but a tint on top of that would be a
+     second signal for the same thing, in a composer that already stacks a
+     quote box and a code block inside the editor below. */
+  .compose-translation-original {
+    max-height: min(10rem, 34dvh);
+    padding: 0.15rem 0.9rem 0.35rem;
+    border: 1px solid color-mix(in srgb, var(--site-divider) 60%, transparent);
+    border-radius: 0.9rem;
+    overflow-y: auto;
+    /* Belt and braces with the child rules below: a page-width table or an
+       unbroken URL must scroll or wrap inside this frame, never widen the
+       dialog. */
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--site-divider) 90%, transparent)
+      transparent;
+  }
+
+  .compose-translation-original:focus-visible {
+    outline: 2px solid
+      color-mix(in srgb, var(--site-text-primary) 32%, transparent);
+    outline-offset: 2px;
+  }
+
+  /* The whole rendering, a size down, so the reference does not out-shout the
+     post being written.
+     `zoom` rather than the type tokens, for two reasons. It scales spacing and
+     rules along with the text, which is what "the page, smaller" means — type
+     alone leaves page-scale margins around shrunken words. And
+     `--type-content-scale` cannot do this from here anyway: `:root`
+     substitutes it into `--type-content-body` and friends *where those are
+     declared*, so descendants inherit resolved lengths, and lowering the scale
+     downstream changes nothing. Restating each derived token here works, but
+     copies the root's formulas into a second place to drift from.
+     Where `zoom` is unsupported the preview simply renders at page scale —
+     larger than intended, still correct. */
+  .compose-translation-preview {
+    --layout-content-width: 100%;
+
+    zoom: 0.9;
+    min-width: 0;
+    /* Long unbroken strings — URLs, IDs, CJK-free code — are the usual cause of
+       a preview that scrolls sideways when the window narrows. */
+    overflow-wrap: anywhere;
+  }
+
+  /* The post markup expects to be the page: it opens with the page's own top
+     padding and reserves a sidenote gutter. Neither applies in a panel. */
+  .compose-translation-preview article {
+    padding: 0.55rem 0 0.2rem !important;
+  }
+
+  /* `preset.css` sizes a post's blocks to the page's *reading column*, three
+     different ways: `--layout-content-width` for most of them, a hardcoded
+     `min(80%, 45rem)` for the title (Tufte's narrower title measure), and a
+     hardcoded `min(100%, 35rem)` for all of them under a 1024px **viewport**
+     media query. All three are about the page. In a panel the column is the
+     panel, at every window size — a viewport query knows nothing about how
+     wide this frame happens to be.
+     The list mirrors the one in `preset.css`; if that grows, this has to.
+     `!important` because those rules sit after `preset.css` closes its
+     `@layer components`, and an unlayered declaration outranks anything
+     layered whatever its specificity — an `!important` one does not. */
+  .compose-translation-preview
+    :is(
+      .post-detail-title,
+      .post-detail-body,
+      .post-body-summary,
+      .feed-note-title,
+      .feed-link-title,
+      .feed-quote,
+      .feed-quote-attribution,
+      .feed-quote-commentary,
+      .feed-link-domain,
+      .feed-continue-link,
+      [data-post-body],
+      [data-post-meta],
+      [data-post-end]
+    ) {
+    width: 100% !important;
+  }
+
+  /* Same story, different property: the media block floors this wrapper at
+     35rem so a gallery never sits narrower than the page's column. In a panel
+     that floor can exceed the frame, and `overflow-x: hidden` would clip the
+     overflow rather than let it scroll. */
+  .compose-translation-preview .post-attached-group {
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+
+  /* A post's own title is set at `--type-content-display` — the size of a
+     banner for the page you are on. Here the post is not the page; it is an
+     item shown inside one, which is what `--feed-note-title-size` is already
+     the size for. Borrowing it keeps the title a title without letting it
+     tower over the body, and keeps tracking the body scale rather than
+     freezing at whatever the zoom happens to be. Notes and Links share the
+     class, so one rule covers both; Quotes have no title. */
+  .compose-translation-preview .post-detail-title {
+    font-size: var(--feed-note-title-size);
+    line-height: var(--feed-note-title-leading);
+  }
+
+  .compose-translation-preview > :first-child > :first-child {
+    margin-top: 0;
+  }
+
+  /* Wide blocks scroll on their own rather than pushing the frame open. */
+  .compose-translation-preview :is(pre, table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .compose-translation-preview :is(img, video, iframe, svg) {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* A page-scale picture inside a 15rem frame is just a scroll tax. */
+  .compose-translation-preview :is(img, video) {
+    max-height: min(180px, 24dvh);
+    object-fit: contain;
+  }
+
+  /* Shown only when the rendering could not be fetched — the post still needs
+     a name and a way in. */
+  .compose-translation-fallback {
+    margin: 0;
+    padding: 0.55rem 0.9rem;
+    border: 1px solid color-mix(in srgb, var(--site-divider) 60%, transparent);
+    border-radius: 0.9rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    color: var(--site-text-secondary);
+    text-wrap: pretty;
+  }
+
+  /* The seam: what is above, turned into what is written below. It used to sit
+     on a hairline; the space around it does the same job with one less line on
+     screen, so long as there is enough of it — hence the padding, which is the
+     whole separator now. */
+  .compose-translation-seam {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.85rem 0.15rem 0.7rem;
+  }
+
+  .compose-translation-seam-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 0;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-caption);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.03em;
+    color: color-mix(in srgb, var(--site-text-secondary) 76%, transparent);
+    text-wrap: pretty;
+  }
+
+  /* Reads as one centred phrase — "↓ Translating into English · Hide" — the
+     same shape the reply context uses for "Aug 3 · Show more", so folding the
+     original costs no row and no box of its own. */
+  .compose-translation-seam-dot {
+    margin: 0 0.4rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-caption);
+    color: color-mix(in srgb, var(--site-text-secondary) 50%, transparent);
+  }
+
+  .compose-translation-seam-toggle {
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-caption);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.03em;
+    color: color-mix(in srgb, var(--site-text-secondary) 76%, transparent);
+    cursor: pointer;
+  }
+
+  .compose-translation-seam-toggle:hover,
+  .compose-translation-seam-toggle:focus-visible {
+    color: var(--site-text-primary);
+  }
+
+  .compose-translation-seam-icon {
+    flex: 0 0 auto;
+    width: 0.82rem;
+    height: 0.82rem;
+    opacity: 0.75;
+  }
+
   @media (max-width: 760px), (hover: none) and (pointer: coarse) {
     .post-menu-footer {
       gap: 12px;
@@ -8428,7 +9095,8 @@
       max-width: min(19.5rem, calc(100vw - 1rem));
     }
 
-    .post-menu-panel:has(.post-menu-collection-picker) {
+    .post-menu-panel:has(.post-menu-collection-picker),
+    .post-menu-panel:has(.post-menu-language-panel) {
       width: min(20rem, calc(100vw - 1rem));
       min-width: min(20rem, calc(100vw - 1rem));
       max-width: min(21rem, calc(100vw - 1rem));
@@ -8448,6 +9116,12 @@
     .post-menu-picker-option,
     .post-menu-picker-add {
       min-height: 3.25rem;
+    }
+
+    /* Grows with the rows around it, which the rule above just made taller. */
+    .post-menu-panel .post-menu-row .post-menu-row-action {
+      min-height: 2.75rem;
+      padding: 0 0.75rem;
     }
 
     .post-menu-item-icon,
@@ -8483,6 +9157,26 @@
 
     .compose-collection-trigger {
       min-height: 2.5rem;
+    }
+
+    .compose-language-trigger {
+      min-height: 2.5rem;
+      padding-inline: 0.8rem;
+    }
+
+    .compose-language-trigger-bare {
+      width: 2.5rem;
+      padding-inline: 0;
+    }
+
+    .compose-language-popover {
+      min-width: min(16rem, calc(100vw - 1rem));
+      max-width: min(20rem, calc(100vw - 1rem));
+      padding: 0.62rem 0.68rem 0.58rem;
+    }
+
+    .compose-language-popover .compose-sheet-row {
+      padding: 0.66rem 0.6rem;
     }
 
     .compose-collection-select [data-popover] {
@@ -9007,6 +9701,104 @@
 
   body:has(.text-preview-dialog--ssr[open]) {
     overflow: hidden;
+  }
+
+  /* --- Shared post picker ------------------------------------------------- */
+
+  .picker-dialog {
+    margin: 0;
+  }
+
+  .picker-dialog > .picker-dialog-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: min(32rem, calc(100vw - 2rem));
+    max-height: min(32rem, calc(100vh - 4rem));
+    outline: none;
+  }
+
+  .picker-dialog-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .picker-dialog-title {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 1.05rem;
+    font-weight: var(--fw-semibold);
+    text-wrap: balance;
+  }
+
+  .picker-dialog-hint {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    line-height: 1.45;
+    text-wrap: pretty;
+    color: var(--site-text-secondary);
+  }
+
+  /* The results scroll, not the dialog: the search field has to stay reachable
+     while the author reads down a long list. */
+  .picker-dialog-results {
+    display: flex;
+    flex-direction: column;
+    min-height: 3rem;
+    max-height: 18rem;
+    overflow-y: auto;
+  }
+
+  .picker-dialog-option {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.55rem 0.65rem;
+    border: none;
+    border-radius: 0.55rem;
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    text-align: left;
+    color: var(--site-text-primary);
+  }
+
+  .picker-dialog-option:hover,
+  .picker-dialog-option:focus-visible {
+    outline: none;
+    background: color-mix(in srgb, var(--site-nav-hover-bg) 70%, transparent);
+  }
+
+  .picker-dialog-option-label {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .picker-dialog-option-meta {
+    flex: 0 0 auto;
+    font-size: var(--type-ui-meta);
+    color: var(--site-text-secondary);
+  }
+
+  .picker-dialog-status {
+    margin: 0;
+    padding: 0.55rem 0.65rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    line-height: 1.45;
+    text-wrap: pretty;
+    color: var(--site-text-secondary);
+  }
+
+  .picker-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
   }
 
   /* --- Shared confirm dialog --------------------------------------------- */

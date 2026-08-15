@@ -3,6 +3,7 @@
  */
 
 import { Hono } from "hono";
+import type { Context } from "hono";
 import type { Bindings, SearchResult } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { SearchPage } from "../../ui/pages/SearchPage.js";
@@ -10,12 +11,22 @@ import { getNavigationData } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
 import { createMediaContext, toSearchResultViews } from "../../lib/view.js";
+import {
+  buildSurfaceAlternates,
+  getViewLang,
+} from "../../lib/view-language.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const searchRoutes = new Hono<Env>();
 
-searchRoutes.get("/", async (c) => {
+/**
+ * Render the search page for the current view language.
+ *
+ * @param c - Hono context
+ * @returns Search page response
+ */
+export async function renderSearchPage(c: Context<Env>): Promise<Response> {
   const query = c.req.query("q") || "";
   const pageParam = c.req.query("page");
   const page = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
@@ -35,6 +46,7 @@ searchRoutes.get("/", async (c) => {
         limit: pageSize + 1,
         offset: (page - 1) * pageSize,
         status: ["published"],
+        lang: getViewLang(c) ?? undefined,
       });
 
       hasMore = results.length > pageSize;
@@ -72,6 +84,7 @@ searchRoutes.get("/", async (c) => {
       query ? `Search: ${query}` : "Search",
       navData.siteName,
     ),
+    alternateLanguages: buildSurfaceAlternates(c),
     navData,
     content: (
       <SearchPage
@@ -80,9 +93,11 @@ searchRoutes.get("/", async (c) => {
         error={error}
         hasMore={hasMore}
         page={page}
-        sitePathPrefix={navData.sitePathPrefix}
+        basePath={navData.basePath}
         isAuthenticated={navData.isAuthenticated}
       />
     ),
   });
-});
+}
+
+searchRoutes.get("/", renderSearchPage);

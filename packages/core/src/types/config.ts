@@ -125,13 +125,37 @@ export const CONFIG_FIELDS = {
       options: ["", "en", "zh-Hans", "zh-Hant"],
     },
   },
-  CJK_SERIF_FONT: {
-    defaultValue: "off",
+  // Multilingual content. Both keys are deliberately DB-only:
+  //
+  // - No `envKeys`: an env var could flip multilingual on without the confirm
+  //   step that stamps existing posts with the primary language, and every
+  //   unstamped post would vanish from the root view. Adding a language through
+  //   env would likewise skip the URL-prefix conflict check.
+  // - No `editor`: `PUT /api/settings` and the generic Config Editor both gate
+  //   on `"editor" in field`, so omitting it leaves exactly one writer — the
+  //   language service, which owns the ordering these settings depend on.
+  //
+  // `configEditorLink` keeps them findable in settings search without making
+  // them directly writable.
+  MULTILINGUAL_ENABLED: {
+    defaultValue: "false",
     envOnly: false,
-    envKeys: ["CJK_SERIF_FONT"],
-    editor: {
-      type: "enum",
-      options: ["off", "zh-Hans", "zh-Hant", "ja", "ko"],
+    configEditorLink: {
+      type: "boolean",
+      settingsPath: "/settings/language",
+      display: "value",
+    },
+  },
+  // Comma-separated canonical BCP 47 tags, in switcher order. Never contains
+  // the primary language. Comma-separated rather than JSON because tags cannot
+  // contain commas: no escaping, readable in the settings table, order-preserving.
+  ADDITIONAL_LANGUAGES: {
+    defaultValue: "",
+    envOnly: false,
+    configEditorLink: {
+      type: "string",
+      settingsPath: "/settings/language",
+      display: "configured",
     },
   },
   MAIN_RSS_FEED: {
@@ -683,6 +707,10 @@ export interface AppConfig {
   siteDescription: string;
   /** true only when description is set in DB or ENV (not just the default) */
   siteDescriptionExplicit: boolean;
+  /**
+   * The site's content language, and — once multilingual content is on — its
+   * primary language: the one served from the unprefixed root URLs.
+   */
   siteLanguage: string;
   /**
    * Admin dashboard UI locale. Empty string means "follow the content
@@ -690,8 +718,15 @@ export interface AppConfig {
    * the translated catalog locales ("en", "zh-Hans", "zh-Hant").
    */
   dashboardLanguage: string;
-  /** Optional CJK font fallback when the content language has no profile. */
-  cjkSerifFont: string;
+  /** Whether the site serves per-language browsing views. */
+  multilingualEnabled: boolean;
+  /**
+   * Canonical BCP 47 tags served under a URL prefix, in switcher order. Never
+   * includes `siteLanguage`. Retained when multilingual is switched off so
+   * turning it back on restores the same setup — and so the old prefixes can
+   * still redirect rather than 404.
+   */
+  additionalLanguages: string[];
   mainRssFeed: FeedKind;
   /** Canonical IANA timezone identifier used for date/time display. */
   timeZone: string;

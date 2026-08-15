@@ -15,6 +15,7 @@ import { now } from "../lib/time.js";
 import {
   SETTINGS_KEYS,
   ONBOARDING_STATUS,
+  type OnboardingStatus,
   type SettingsKey,
 } from "../lib/constants.js";
 import {
@@ -22,8 +23,8 @@ import {
   isLocale,
   isValidContentLanguage,
   normalizeContentLanguage,
+  resolveFirstRunDashboardLocale,
 } from "../i18n/locales.js";
-import { isCjkSerifFont } from "../i18n/detect.js";
 import type { StorageDriver } from "../lib/storage.js";
 import type { MediaService } from "./media.js";
 import {
@@ -44,7 +45,6 @@ export interface GeneralSettingsData {
   siteLanguage: string;
   /** Admin UI locale; empty string follows the content language. */
   dashboardLanguage?: string;
-  cjkSerifFont: string;
   showJantBrandingOnHome: boolean;
   mainRssFeed?: FeedKind;
   timeZone: string;
@@ -61,15 +61,23 @@ export interface SiteSettingsResult {
   siteNameChanged: boolean;
 }
 
+/**
+ * Locale fields a settings page owns.
+ *
+ * Every field is "undefined = leave untouched" so the two pages that split
+ * these settings — Language and General — can each send only what they own,
+ * without either erasing the other's field.
+ */
 export interface LocaleSettingsData {
-  siteLanguage: string;
+  /** Site content language; also the primary language when multilingual is on. */
+  siteLanguage?: string;
   /**
    * Admin dashboard UI locale. Empty string clears the explicit setting so the
    * dashboard follows the content language. When set, must be a catalog locale.
    */
   dashboardLanguage?: string;
-  cjkSerifFont: string;
-  timeZone: string;
+  /** IANA time zone; empty string resets to UTC. */
+  timeZone?: string;
 }
 
 export interface GeneralSettingsResult {
@@ -96,8 +104,27 @@ export interface SettingsService {
   set(key: SettingsKey, value: string): Promise<void>;
   setMany(entries: Partial<Record<SettingsKey, string>>): Promise<void>;
   remove(key: SettingsKey): Promise<void>;
+  /** How far first-run setup has got: pending → provisioned → completed. */
+  getOnboardingStatus(): Promise<OnboardingStatus>;
   isOnboardingComplete(): Promise<boolean>;
+  /**
+   * Mark a control-plane-created site as real but not yet confirmed by its
+   * owner. Public pages serve normally from here; setup still owes one answer.
+   */
+  markSiteProvisioned(): Promise<void>;
   completeOnboarding(): Promise<void>;
+  /**
+   * Close first-run setup on a site whose shell already exists, by recording
+   * the language its author says they write in.
+   *
+   * @param data - The confirmed content language, plus the browser's own
+   *   language so the dashboard can be pinned to it
+   * @param opts - The language in effect before this answer
+   */
+  confirmFirstRunLanguage(
+    data: { siteLanguage: string; browserLanguage?: string | null },
+    opts: { oldLanguage: string },
+  ): Promise<void>;
   updateSiteSettings(
     data: SiteSettingsData,
     opts: { fallbackSiteName: string; oldSiteName: string },
@@ -106,7 +133,6 @@ export interface SettingsService {
     data: LocaleSettingsData,
     opts: {
       oldLanguage: string;
-      oldCjkSerifFont?: string;
       oldDashboardLanguage?: string;
     },
   ): Promise<{ languageChanged: boolean }>;
@@ -128,7 +154,6 @@ export interface SettingsService {
     data: GeneralSettingsData,
     opts: {
       oldLanguage: string;
-      oldCjkSerifFont?: string;
       fallbackSiteName: string;
     },
   ): Promise<GeneralSettingsResult>;
@@ -252,9 +277,27 @@ export function createSettingsService(
       });
     },
 
+    async getOnboardingStatus() {
+      const status = await this.get(SETTINGS_KEYS.ONBOARDING_STATUS);
+      if (status === ONBOARDING_STATUS.COMPLETED) {
+        return ONBOARDING_STATUS.COMPLETED;
+      }
+      if (status === ONBOARDING_STATUS.PROVISIONED) {
+        return ONBOARDING_STATUS.PROVISIONED;
+      }
+      return ONBOARDING_STATUS.PENDING;
+    },
+
     async isOnboardingComplete() {
       const status = await this.get(SETTINGS_KEYS.ONBOARDING_STATUS);
       return status === ONBOARDING_STATUS.COMPLETED;
+    },
+
+    async markSiteProvisioned() {
+      await this.set(
+        SETTINGS_KEYS.ONBOARDING_STATUS,
+        ONBOARDING_STATUS.PROVISIONED,
+      );
     },
 
     async completeOnboarding() {
@@ -262,6 +305,23 @@ export function createSettingsService(
         SETTINGS_KEYS.ONBOARDING_STATUS,
         ONBOARDING_STATUS.COMPLETED,
       );
+    },
+
+    async confirmFirstRunLanguage(data, opts) {
+      await this.updateLocaleSettings(
+        {
+          siteLanguage: data.siteLanguage,
+          // Empty means "follow the content language", which is right unless
+          // the browser named a catalog following would not reach.
+          dashboardLanguage:
+            resolveFirstRunDashboardLocale(
+              data.siteLanguage,
+              data.browserLanguage,
+            ) ?? "",
+        },
+        { oldLanguage: opts.oldLanguage },
+      );
+      await this.completeOnboarding();
     },
 
     async updateSiteSettings(data, opts) {
@@ -294,16 +354,18 @@ export function createSettingsService(
     },
 
     async updateLocaleSettings(data, opts) {
-      const trimmedLanguage = data.siteLanguage.trim() || baseLocale;
-      if (!isValidContentLanguage(trimmedLanguage)) {
-        throw new ValidationError(
-          "Enter a valid BCP 47 language tag (e.g. en, zh-Hans, fi, ja, fr-CA).",
-        );
+      let languageChanged = false;
+      if (data.siteLanguage !== undefined) {
+        const trimmedLanguage = data.siteLanguage.trim() || baseLocale;
+        if (!isValidContentLanguage(trimmedLanguage)) {
+          throw new ValidationError(
+            "Enter a valid BCP 47 language tag (e.g. en, zh-Hans, fi, ja, fr-CA).",
+          );
+        }
+        const normalized = normalizeContentLanguage(trimmedLanguage);
+        await this.set("SITE_LANGUAGE", normalized);
+        languageChanged = opts.oldLanguage !== normalized;
       }
-      await this.set(
-        "SITE_LANGUAGE",
-        normalizeContentLanguage(trimmedLanguage),
-      );
 
       // Dashboard UI locale. undefined = leave untouched; "" = clear so the
       // dashboard follows the content language; otherwise it must be one of the
@@ -325,37 +387,24 @@ export function createSettingsService(
           (opts.oldDashboardLanguage ?? "") !== dashboardLanguage;
       }
 
-      // Optional CJK fallback for content languages without a font profile.
-      const cjkFont = data.cjkSerifFont?.trim() ?? "";
-      if (cjkFont && isCjkSerifFont(cjkFont) && cjkFont !== "off") {
-        await this.set("CJK_SERIF_FONT", cjkFont);
-      } else {
-        await this.remove("CJK_SERIF_FONT");
-      }
+      if (data.timeZone !== undefined) {
+        if (data.timeZone) {
+          if (!isSupportedTimeZone(data.timeZone)) {
+            throw new ValidationError("Choose a valid time zone.");
+          }
 
-      if (data.timeZone) {
-        if (!isSupportedTimeZone(data.timeZone)) {
-          throw new ValidationError("Choose a valid time zone.");
-        }
-
-        const normalizedTimeZone = normalizeTimeZone(data.timeZone);
-        if (normalizedTimeZone !== "UTC") {
-          await this.set("TIME_ZONE", normalizedTimeZone);
+          const normalizedTimeZone = normalizeTimeZone(data.timeZone);
+          if (normalizedTimeZone !== "UTC") {
+            await this.set("TIME_ZONE", normalizedTimeZone);
+          } else {
+            await this.remove("TIME_ZONE");
+          }
         } else {
           await this.remove("TIME_ZONE");
         }
-      } else {
-        await this.remove("TIME_ZONE");
       }
 
-      const effectiveCjkFont =
-        cjkFont && isCjkSerifFont(cjkFont) ? cjkFont : "off";
-      return {
-        languageChanged:
-          opts.oldLanguage !== trimmedLanguage ||
-          (opts.oldCjkSerifFont ?? "off") !== effectiveCjkFont ||
-          dashboardChanged,
-      };
+      return { languageChanged: languageChanged || dashboardChanged };
     },
 
     async updateFeedSettings(data) {
@@ -392,7 +441,6 @@ export function createSettingsService(
       await this.updateHomeBranding(data.showJantBrandingOnHome);
       const { languageChanged } = await this.updateLocaleSettings(data, {
         oldLanguage: opts.oldLanguage,
-        oldCjkSerifFont: opts.oldCjkSerifFont,
       });
 
       await this.updateFeedSettings({ mainRssFeed: data.mainRssFeed });

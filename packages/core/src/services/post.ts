@@ -15,6 +15,7 @@ import {
   isNull,
   desc,
   inArray,
+  notInArray,
   sql,
   isNotNull,
   asc,
@@ -78,6 +79,14 @@ import {
   ValidationError,
   NotFoundError,
 } from "../lib/errors.js";
+import {
+  isValidContentLanguage,
+  normalizeContentLanguage,
+  toLanguagePrefix,
+} from "../i18n/locales.js";
+import { readLanguageSettings } from "./language.js";
+import { getOrBuildEntry } from "../i18n/supported-locales.js";
+import { suggestPostLanguage } from "../lib/lang-detect.js";
 import { createPathService, type PathService } from "./path.js";
 import {
   extractYouTubeVideoId,
@@ -155,6 +164,16 @@ export interface PostFilters {
   axisBefore?: number;
   /** Media kinds to filter by (OR logic: post has media of ANY selected kind). */
   mediaKinds?: MediaKind[];
+  /**
+   * Restrict to one BCP 47 content language (canonical form, matched exactly).
+   *
+   * A plain column predicate is correct at every grain because `post.language`
+   * is uniform across a Thread — replies inherit the Root's value and a
+   * language change rewrites the whole Thread. It rides along as a residual
+   * predicate on the existing hot-path partial indexes rather than getting its
+   * own index; see the multilingual design notes for the upgrade path.
+   */
+  lang?: string;
   /** Filter by media presence */
   hasMedia?: boolean;
   /** Filter by title presence */
@@ -199,6 +218,8 @@ interface ThreadRootPageOptions {
   status?: Status;
   excludePrivate?: boolean;
   excludeLatestHidden?: boolean;
+  /** See `PostFilters.lang`. */
+  lang?: string;
   /** Exclude Posts published at or after this Unix timestamp. */
   publishedBefore?: number;
   /** Restrict by the Thread root's format without excluding Child Posts. */
@@ -267,6 +288,10 @@ export interface SitemapPostEntry {
   alias: string | null;
   updatedAt: number;
   featuredAt: number | null;
+  /** Content language, when the post has one. */
+  language: string | null;
+  /** Translation group, used to emit sitemap `hreflang` alternates. */
+  translationGroupId: string | null;
 }
 
 export interface PostService {
@@ -390,6 +415,92 @@ export interface PostService {
     status: Status,
     visibility: Visibility,
   ): Promise<void>;
+  /**
+   * Set the content language of a whole Thread (root and every reply).
+   *
+   * Thread-wide by design: `post.language` is uniform inside a Thread, which is
+   * what lets every language filter stay a plain column predicate. Rejects a
+   * language another Post in the same translation group already holds.
+   *
+   * @param postId - Any Post in the Thread; the Thread is resolved from it
+   * @param language - Canonical BCP 47 tag
+   * @throws {NotFoundError} When no such Post exists on this site
+   * @throws {ConflictError} When the translation group already has that language
+   * @example
+   * await posts.setThreadLanguage(post.id, "zh-Hans");
+   */
+  setThreadLanguage(postId: string, language: string): Promise<void>;
+  /**
+   * Stamp every Post that has no language yet with `language`.
+   *
+   * Runs once when an author turns multilingual content on, and is idempotent
+   * so re-enabling later only touches Posts written while it was off. Scoped to
+   * this site — hosted deployments share one database.
+   *
+   * @param language - Canonical BCP 47 tag of the site's primary language
+   * @returns Number of Posts stamped
+   * @example
+   * await posts.materializeMissingLanguage("zh-Hans"); // => 347
+   */
+  materializeMissingLanguage(language: string): Promise<number>;
+  /** Count Posts on this site that still have no language. */
+  countMissingLanguage(): Promise<number>;
+  /** Count Posts on this site written in `language`, drafts included. */
+  countByLanguage(language: string): Promise<number>;
+  /**
+   * Every language stamped on this site's Posts, with how many carry it.
+   * Drafts included; the pre-multilingual NULL rows are not.
+   */
+  listLanguagesInUse(): Promise<Array<{ language: string; count: number }>>;
+  /**
+   * List the Thread roots that are translations of the given Post, excluding
+   * the Post itself. Empty when it belongs to no translation group.
+   */
+  listTranslations(postId: string): Promise<Post[]>;
+  /**
+   * List translations for many Thread roots in one round trip, keyed by the
+   * root ID that was asked about. Roots with no group are omitted.
+   */
+  getTranslationsMap(postIds: string[]): Promise<Map<string, Post[]>>;
+  /**
+   * Find published Thread roots this Post could be linked to as a translation.
+   *
+   * Filtered server-side rather than in the menu, because "can these two be
+   * linked" is a rule the service owns: a candidate has to be a Thread root in
+   * a language this Post's translation group does not already hold, and the two
+   * groups must not both exist — `linkTranslation` refuses to merge them.
+   * Offering a post that will be rejected teaches the author nothing.
+   *
+   * The match is a plain substring scan over title and body text. It is a
+   * deliberate, authenticated action over one author's own posts, so the cost
+   * is bounded and the shared search index (which cannot express these filters)
+   * is not worth involving.
+   *
+   * @param postId - Any Post in the Thread looking for a translation
+   * @param options - Search text and how many candidates to return
+   * @returns Matching Thread roots, newest first
+   * @example
+   * await posts.listTranslationCandidates(id, { query: "recipe" });
+   */
+  listTranslationCandidates(
+    postId: string,
+    options: { query: string; limit?: number },
+  ): Promise<Post[]>;
+  /**
+   * Link two already-published Thread roots as translations of each other.
+   *
+   * Joins the side without a group into the other's group, minting one when
+   * neither has any. Merging two existing groups is refused — that would
+   * silently restructure both sides.
+   *
+   * @throws {ConflictError} When the languages clash or both sides have groups
+   */
+  linkTranslation(postId: string, otherPostId: string): Promise<void>;
+  /**
+   * Remove a Thread root from its translation group. When that leaves a single
+   * Post behind, its group is cleared too so no one-member groups survive.
+   */
+  unlinkTranslation(postId: string): Promise<void>;
   /** Get reply counts for multiple posts */
   getReplyCounts(postIds: string[]): Promise<Map<string, number>>;
   /** Get preview replies for multiple thread roots */
@@ -617,6 +728,34 @@ function ensurePostRating(
   }
 
   throw new ErrorCtor("Rating must be an integer between 1 and 5.");
+}
+
+/**
+ * Normalize a caller-supplied content language to what the column stores.
+ *
+ * Empty, missing, and unparseable values all become `null` — the single-language
+ * state — so the column never holds a half-set value. Whether the tag is one
+ * the site actually offers is a settings-layer question, checked where the site
+ * language configuration is in scope.
+ *
+ * @param value - Raw BCP 47 tag from a request or import
+ * @returns Canonical tag (`zh-Hans`), or `null` when there is nothing to store
+ * @example
+ * normalizePostLanguage("ZH-hans"); // "zh-Hans"
+ * normalizePostLanguage("  ");      // null
+ */
+export function normalizePostLanguage(
+  value: string | null | undefined,
+): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (!isValidContentLanguage(trimmed)) {
+    throw new ValidationError(
+      "Enter a valid BCP 47 language tag (e.g. en, zh-Hans, ja).",
+    );
+  }
+  return normalizeContentLanguage(trimmed);
 }
 
 function assertPostFormatShape(data: {
@@ -934,6 +1073,64 @@ export function createPostService(
     )`;
   }
 
+  /**
+   * Load a Post and assert it can carry a translation group.
+   *
+   * Groups live on Thread roots only, and both sides must belong to this site.
+   * These two rules replace the table CHECK the SQLite schema cannot add, so
+   * every write path that touches `translation_group_id` goes through here.
+   */
+  async function requireTranslatableRoot(
+    postId: string,
+  ): Promise<typeof posts.$inferSelect> {
+    const rows = await db
+      .select()
+      .from(posts)
+      .where(and(eq(posts.siteId, siteId), eq(posts.id, postId)))
+      .limit(1);
+    const row = rows[0];
+    if (!row) {
+      throw new NotFoundError("Post");
+    }
+    if (row.threadId !== row.id) {
+      throw new ValidationError(
+        "Translations link whole threads. Use the thread's first post.",
+      );
+    }
+    return row;
+  }
+
+  /** Reject a language another Post in the same translation group already holds. */
+  async function assertTranslationLanguageFree(
+    groupId: string,
+    language: string,
+    excludePostId?: string,
+  ): Promise<void> {
+    const rows = await db
+      .select({ id: posts.id, title: posts.title })
+      .from(posts)
+      .where(
+        and(
+          eq(posts.siteId, siteId),
+          eq(posts.translationGroupId, groupId),
+          eq(posts.language, language),
+        ),
+      )
+      .limit(2);
+    const clash = rows.find((row) => row.id !== excludePostId);
+    if (clash) {
+      // The language's own name, not its tag: this message is shown to the
+      // author, and "简体中文" is what they picked in the menu — "zh-Hans" is
+      // an implementation detail they never chose.
+      const languageName = getOrBuildEntry(language).native;
+      throw new ConflictError(
+        clash.title
+          ? `"${clash.title}" is already the ${languageName} version in this translation group. Unlink it first, or pick another language.`
+          : `Another post is already the ${languageName} version in this translation group. Unlink it first, or pick another language.`,
+      );
+    }
+  }
+
   /** Build WHERE conditions from filters (shared by list and count) */
   function buildFilterConditions(filters: PostFilters) {
     const conditions = [eq(posts.siteId, siteId)];
@@ -963,6 +1160,9 @@ export function createPostService(
           ? sql`${posts.featuredAt} IS NOT NULL`
           : isNull(posts.featuredAt),
       );
+    }
+    if (filters.lang) {
+      conditions.push(eq(posts.language, filters.lang));
     }
     if (filters.format) {
       conditions.push(eq(posts.format, filters.format));
@@ -1258,6 +1458,8 @@ export function createPostService(
       previewProvider: row.previewProvider,
       replyToId: row.replyToId,
       threadId: row.threadId,
+      language: row.language,
+      translationGroupId: row.translationGroupId,
       quietReply: row.quietReply,
       publishedAt: row.publishedAt,
       lastActivityAt: row.lastActivityAt ?? row.publishedAt ?? row.updatedAt,
@@ -1366,6 +1568,9 @@ export function createPostService(
     }
     if (options?.excludeLatestHidden) {
       conditions.push(sql`${effectiveVisibilityExpr} != 'latest_hidden'`);
+    }
+    if (options?.lang) {
+      conditions.push(eq(posts.language, options.lang));
     }
     if (options?.publishedBefore !== undefined) {
       conditions.push(
@@ -1774,6 +1979,8 @@ export function createPostService(
           id: posts.id,
           updatedAt: threadModifiedAt,
           featuredAt: posts.featuredAt,
+          language: posts.language,
+          translationGroupId: posts.translationGroupId,
         })
         .from(posts)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
@@ -1799,6 +2006,8 @@ export function createPostService(
             alias,
             updatedAt: row.updatedAt,
             featuredAt: row.featuredAt,
+            language: row.language,
+            translationGroupId: row.translationGroupId,
           };
         })
         .filter((entry): entry is SitemapPostEntry => entry !== null);
@@ -1937,6 +2146,11 @@ export function createPostService(
       let threadId = id;
       let status: Status = requestedStatus ?? "published";
       let visibility: Visibility | null = requestedVisibility ?? "public";
+      // Roots carry the requested language; replies overwrite this with the
+      // root's value below so a Thread never mixes languages.
+      let language = normalizePostLanguage(data.language);
+      let translationGroupId: string | null = null;
+      let sourceTranslationPostId: string | null = null;
 
       // Collapse the two-input (`flag` + `flagAt`) pair the DTO exposes
       // into the single timestamp form the DB column stores. Explicit
@@ -2001,6 +2215,10 @@ export function createPostService(
           status = root.status;
         }
         visibility = null;
+        // A reply is part of the root's Thread, so it is written in the
+        // Thread's language whatever the caller asked for. This is what keeps
+        // language filters correct on member-grained queries.
+        language = root?.language ?? parent.language ?? null;
 
         if (
           (data.collectionIds?.length ?? 0) > 0 ||
@@ -2009,6 +2227,54 @@ export function createPostService(
           throw new ConflictError(
             "Cannot set Collections while creating a Thread reply. Set them on the Thread root instead.",
           );
+        }
+      }
+
+      const { primary, languages, reservedPrefixes } =
+        await readLanguageSettings(db, siteId, databaseSchema);
+
+      // Nobody named a language, so read one out of the text. Every write path
+      // that bypasses compose — the API, the Telegram bot, MCP — lands here, so
+      // a multilingual site never accumulates unlabelled posts. An explicit
+      // choice is the author's and is left alone; replies already carry the
+      // Thread's language.
+      if (!data.replyToId && !language) {
+        language = suggestPostLanguage({
+          text: bodyText ?? title ?? quoteText,
+          languages,
+          primary,
+        });
+      }
+
+      // "Add a translation" carries only the source ID until the author
+      // submits; the group is minted here so abandoning the composer leaves
+      // nothing behind (no draft row, no slug, no single-member group).
+      if (data.translationOfId) {
+        if (data.replyToId) {
+          throw new ValidationError(
+            "Translations link whole threads. Add the translation from the thread's first post.",
+          );
+        }
+        const source = await requireTranslatableRoot(data.translationOfId);
+        if (!language) {
+          throw new ValidationError(
+            "Choose a language for this translation before saving it.",
+          );
+        }
+        if (source.language === language) {
+          throw new ConflictError(
+            "That post is already written in this language. Pick a different language for the translation.",
+          );
+        }
+        if (source.translationGroupId) {
+          await assertTranslationLanguageFree(
+            source.translationGroupId,
+            language,
+          );
+          translationGroupId = source.translationGroupId;
+        } else {
+          translationGroupId = createEntityId("translationGroup");
+          sourceTranslationPostId = source.id;
         }
       }
 
@@ -2033,10 +2299,17 @@ export function createPostService(
       // readable slug can still set one explicitly.
       const titleForSlug =
         format === "quote" ? undefined : (title ?? undefined);
+      // Only a non-primary language earns a readable language suffix: the bare
+      // namespace belongs to the primary language, and a suffix shared by two
+      // same-language posts distinguishes nothing.
+      const languageSuffix =
+        language && language !== primary
+          ? toLanguagePrefix(language)
+          : undefined;
 
       if (data.path) {
         const normalized = normalizePath(data.path);
-        if (isReservedPath(normalized)) {
+        if (isReservedPath(normalized, reservedPrefixes)) {
           throw new ValidationError(
             `Path "${normalized}" is reserved and cannot be used`,
           );
@@ -2046,6 +2319,7 @@ export function createPostService(
           slug = await generatePostSlug({
             slug: normalized,
             idLength: config.slugIdLength,
+            reservedPrefixes,
             isAvailable: isSlugAvailable,
           });
         } else {
@@ -2055,6 +2329,8 @@ export function createPostService(
             slug: slugified || undefined,
             title: titleForSlug,
             idLength: config.slugIdLength,
+            languageSuffix,
+            reservedPrefixes,
             isAvailable: isSlugAvailable,
           });
           // Verify the alias path is available before proceeding
@@ -2068,6 +2344,8 @@ export function createPostService(
           slug: data.slug,
           title: titleForSlug,
           idLength: config.slugIdLength,
+          languageSuffix,
+          reservedPrefixes,
           isAvailable: isSlugAvailable,
         });
       }
@@ -2127,6 +2405,23 @@ export function createPostService(
         if (usesBatchWrites) {
           const writeQueries = [];
 
+          // Mint the group on the source Post in the same write as the
+          // translation itself, so a failure never leaves a one-member group.
+          if (sourceTranslationPostId && translationGroupId) {
+            writeQueries.push(
+              db
+                .update(posts)
+                .set({ translationGroupId, updatedAt: timestamp })
+                .where(
+                  and(
+                    eq(posts.siteId, siteId),
+                    eq(posts.id, sourceTranslationPostId),
+                    isNull(posts.translationGroupId),
+                  ),
+                ),
+            );
+          }
+
           writeQueries.push(
             db.insert(posts).values({
               id,
@@ -2147,6 +2442,8 @@ export function createPostService(
               rating,
               replyToId: data.replyToId ?? null,
               threadId,
+              language,
+              translationGroupId,
               quietReply: isQuietReply,
               publishedAt,
               lastActivityAt: publishedAt ?? timestamp,
@@ -2207,6 +2504,19 @@ export function createPostService(
           );
         } else {
           await db.transaction(async (tx) => {
+            if (sourceTranslationPostId && translationGroupId) {
+              await tx
+                .update(posts)
+                .set({ translationGroupId, updatedAt: timestamp })
+                .where(
+                  and(
+                    eq(posts.siteId, siteId),
+                    eq(posts.id, sourceTranslationPostId),
+                    isNull(posts.translationGroupId),
+                  ),
+                );
+            }
+
             await tx.insert(posts).values({
               id,
               siteId,
@@ -2226,6 +2536,8 @@ export function createPostService(
               rating,
               replyToId: data.replyToId ?? null,
               threadId,
+              language,
+              translationGroupId,
               quietReply: isQuietReply,
               publishedAt,
               lastActivityAt: publishedAt ?? timestamp,
@@ -2365,6 +2677,9 @@ export function createPostService(
           ...data,
           // Chain each post as a reply to the previous one (server-side chaining)
           replyToId: i === 0 ? data.replyToId : prevPost?.id,
+          // Translation groups and languages are Thread-level: the root carries
+          // them and every reply inherits, so later items must not restate them.
+          translationOfId: i === 0 ? data.translationOfId : undefined,
           quietReply: extendsExistingThreadQuietly ? true : data.quietReply,
           publishedAt:
             i === 0 ? data.publishedAt : (data.publishedAt ?? rootPublishedAt),
@@ -2396,6 +2711,17 @@ export function createPostService(
     async update(id, data, summaryConfig) {
       const existing = await this.getById(id);
       if (!existing) return null;
+
+      // Thread-wide, so it cannot ride along on the single-row write below.
+      // Runs first: if the language is refused — the Thread's translation group
+      // already holds it — nothing else should have been written either.
+      if (
+        data.language &&
+        !existing.replyToId &&
+        data.language !== existing.language
+      ) {
+        await this.setThreadLanguage(id, data.language);
+      }
 
       const timestamp = now();
       const nextFormat =
@@ -3152,6 +3478,346 @@ export function createPostService(
         });
       }
       await recalculateThreadActivity(rootId);
+    },
+
+    async setThreadLanguage(postId, language) {
+      const normalized = normalizePostLanguage(language);
+      if (!normalized) {
+        throw new ValidationError("Choose a language for this post.");
+      }
+
+      // A language the site does not publish has no view, no feed and no
+      // switcher entry, so the post would simply vanish. Only checked once the
+      // site actually has a language set to belong to.
+      const { languages } = await readLanguageSettings(
+        db,
+        siteId,
+        databaseSchema,
+      );
+      if (
+        languages.length > 0 &&
+        !languages.some(
+          (tag) => toLanguagePrefix(tag) === toLanguagePrefix(normalized),
+        )
+      ) {
+        throw new ValidationError(
+          "This site does not publish that language. Add it in Settings → Language first.",
+        );
+      }
+
+      const rows = await db
+        .select({
+          threadId: posts.threadId,
+          id: posts.id,
+          translationGroupId: posts.translationGroupId,
+        })
+        .from(posts)
+        .where(and(eq(posts.siteId, siteId), eq(posts.id, postId)))
+        .limit(1);
+      const row = rows[0];
+      if (!row) {
+        throw new NotFoundError("Post");
+      }
+
+      // The group lives on the root, so a reply's Thread has to be resolved
+      // before the translation-group check can run.
+      const rootRows =
+        row.id === row.threadId
+          ? [row]
+          : await db
+              .select({
+                threadId: posts.threadId,
+                id: posts.id,
+                translationGroupId: posts.translationGroupId,
+              })
+              .from(posts)
+              .where(and(eq(posts.siteId, siteId), eq(posts.id, row.threadId)))
+              .limit(1);
+      const root = rootRows[0];
+      if (root?.translationGroupId) {
+        await assertTranslationLanguageFree(
+          root.translationGroupId,
+          normalized,
+          root.id,
+        );
+      }
+
+      const timestamp = now();
+      await db
+        .update(posts)
+        .set({ language: normalized, updatedAt: timestamp })
+        .where(and(eq(posts.siteId, siteId), eq(posts.threadId, row.threadId)));
+    },
+
+    async materializeMissingLanguage(language) {
+      const normalized = normalizePostLanguage(language);
+      if (!normalized) {
+        throw new ValidationError("Choose a primary language for this site.");
+      }
+
+      // Counted before the write rather than read back from it: the three
+      // supported drivers report affected rows differently, and the caller only
+      // needs the number for its confirmation copy.
+      const pending = await this.countMissingLanguage();
+      if (pending === 0) return 0;
+
+      await db
+        .update(posts)
+        .set({ language: normalized })
+        .where(and(eq(posts.siteId, siteId), isNull(posts.language)));
+      return pending;
+    },
+
+    async countMissingLanguage() {
+      const rows = await db
+        .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
+        .from(posts)
+        .where(and(eq(posts.siteId, siteId), isNull(posts.language)));
+      return Number(rows[0]?.count ?? 0);
+    },
+
+    async countByLanguage(language) {
+      const normalized = normalizePostLanguage(language);
+      if (!normalized) return 0;
+
+      const rows = await db
+        .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
+        .from(posts)
+        .where(and(eq(posts.siteId, siteId), eq(posts.language, normalized)));
+      return Number(rows[0]?.count ?? 0);
+    },
+
+    async listLanguagesInUse() {
+      const rows = await db
+        .select({
+          language: posts.language,
+          count: sql<number>`CAST(count(*) AS INTEGER)`,
+        })
+        .from(posts)
+        .where(and(eq(posts.siteId, siteId), isNotNull(posts.language)))
+        .groupBy(posts.language);
+      return rows
+        .filter((row): row is { language: string; count: number } =>
+          Boolean(row.language),
+        )
+        .map((row) => ({ language: row.language, count: Number(row.count) }));
+    },
+
+    async listTranslations(postId) {
+      const map = await this.getTranslationsMap([postId]);
+      return map.get(postId) ?? [];
+    },
+
+    async listTranslationCandidates(postId, options) {
+      const term = options.query.trim();
+      if (!term) return [];
+      const limit = options.limit ?? 8;
+
+      const source = await this.getById(postId);
+      if (!source) return [];
+      const root =
+        source.replyToId === null
+          ? source
+          : await this.getById(source.threadId);
+      if (!root?.language) return [];
+
+      // Languages this Thread's group already speaks for, its own included.
+      const taken = new Set([root.language]);
+      if (root.translationGroupId) {
+        for (const sibling of await this.listTranslations(root.id)) {
+          if (sibling.language) taken.add(sibling.language);
+        }
+      }
+
+      // Escaped with an explicit ESCAPE clause: the two dialects disagree on
+      // the default escape character (see `paths.findPathsUnderSegment`).
+      const like = `%${term.replace(/[\\%_]/g, "\\$&")}%`;
+      const conditions: SQL[] = [
+        eq(posts.siteId, siteId),
+        eq(posts.status, "published"),
+        // Thread roots only: a translation links whole Threads.
+        sql`${posts.id} = ${posts.threadId}`,
+        sql`${posts.id} != ${root.id}`,
+        isNotNull(posts.language),
+        notInArray(posts.language, [...taken]),
+        sql`(${posts.title} LIKE ${like} ESCAPE '\\' OR ${posts.bodyText} LIKE ${like} ESCAPE '\\')`,
+      ];
+
+      if (root.translationGroupId) {
+        // Both sides having a group would ask for a merge, which is refused.
+        conditions.push(isNull(posts.translationGroupId));
+      } else {
+        // The candidate may carry a group, as long as joining it would not put
+        // two Posts of this language in it.
+        conditions.push(
+          sql`(${posts.translationGroupId} IS NULL OR NOT EXISTS (
+            SELECT 1
+            FROM post AS group_member
+            WHERE group_member.site_id = ${siteId}
+              AND group_member.translation_group_id = "post"."translation_group_id"
+              AND group_member.language = ${root.language}
+          ))`,
+        );
+      }
+
+      const rows = await db
+        .select()
+        .from(posts)
+        .where(and(...conditions))
+        .orderBy(desc(posts.publishedAt))
+        .limit(limit);
+
+      return hydratePosts(rows);
+    },
+
+    async getTranslationsMap(postIds) {
+      const result = new Map<string, Post[]>();
+      const uniqueIds = [...new Set(postIds)].filter(Boolean);
+      if (uniqueIds.length === 0) return result;
+
+      const seedRows = await db
+        .select({ id: posts.id, translationGroupId: posts.translationGroupId })
+        .from(posts)
+        .where(
+          and(
+            eq(posts.siteId, siteId),
+            inArray(posts.id, uniqueIds),
+            isNotNull(posts.translationGroupId),
+          ),
+        );
+      if (seedRows.length === 0) return result;
+
+      const groupIds = [
+        ...new Set(
+          seedRows
+            .map((row) => row.translationGroupId)
+            .filter((groupId): groupId is string => groupId !== null),
+        ),
+      ];
+      const memberRows = await db
+        .select()
+        .from(posts)
+        .where(
+          and(
+            eq(posts.siteId, siteId),
+            inArray(posts.translationGroupId, groupIds),
+          ),
+        );
+      const members = await hydratePosts(memberRows);
+      const byGroup = new Map<string, Post[]>();
+      for (const member of members) {
+        const groupId = member.translationGroupId;
+        if (!groupId) continue;
+        const bucket = byGroup.get(groupId);
+        if (bucket) bucket.push(member);
+        else byGroup.set(groupId, [member]);
+      }
+
+      for (const seed of seedRows) {
+        const groupId = seed.translationGroupId;
+        if (!groupId) continue;
+        const siblings = (byGroup.get(groupId) ?? []).filter(
+          (member) => member.id !== seed.id,
+        );
+        if (siblings.length > 0) result.set(seed.id, siblings);
+      }
+      return result;
+    },
+
+    async linkTranslation(postId, otherPostId) {
+      if (postId === otherPostId) {
+        throw new ValidationError("Pick a different post to link.");
+      }
+
+      const [post, other] = await Promise.all([
+        requireTranslatableRoot(postId),
+        requireTranslatableRoot(otherPostId),
+      ]);
+
+      if (!post.language || !other.language) {
+        throw new ValidationError(
+          "Both posts need a language before they can be linked as translations.",
+        );
+      }
+      if (post.language === other.language) {
+        throw new ConflictError(
+          "These two posts are written in the same language. Translations need different languages.",
+        );
+      }
+      if (post.translationGroupId && other.translationGroupId) {
+        if (post.translationGroupId === other.translationGroupId) return;
+        throw new ConflictError(
+          "Both posts already belong to translation groups. Unlink one of them first.",
+        );
+      }
+
+      const timestamp = now();
+      if (post.translationGroupId ?? other.translationGroupId) {
+        const groupId = (post.translationGroupId ??
+          other.translationGroupId) as string;
+        const joiningId = post.translationGroupId ? other.id : post.id;
+        const joiningLanguage = post.translationGroupId
+          ? other.language
+          : post.language;
+        await assertTranslationLanguageFree(groupId, joiningLanguage);
+        await db
+          .update(posts)
+          .set({ translationGroupId: groupId, updatedAt: timestamp })
+          .where(and(eq(posts.siteId, siteId), eq(posts.id, joiningId)));
+        return;
+      }
+
+      const groupId = createEntityId("translationGroup");
+      const setGroup = (targetId: string) =>
+        db
+          .update(posts)
+          .set({ translationGroupId: groupId, updatedAt: timestamp })
+          .where(and(eq(posts.siteId, siteId), eq(posts.id, targetId)));
+
+      if (usesBatchWrites) {
+        await db.batch([setGroup(post.id), setGroup(other.id)]);
+      } else {
+        await db.transaction(async (tx) => {
+          await tx
+            .update(posts)
+            .set({ translationGroupId: groupId, updatedAt: timestamp })
+            .where(and(eq(posts.siteId, siteId), eq(posts.id, post.id)));
+          await tx
+            .update(posts)
+            .set({ translationGroupId: groupId, updatedAt: timestamp })
+            .where(and(eq(posts.siteId, siteId), eq(posts.id, other.id)));
+        });
+      }
+    },
+
+    async unlinkTranslation(postId) {
+      const post = await requireTranslatableRoot(postId);
+      const groupId = post.translationGroupId;
+      if (!groupId) return;
+
+      const timestamp = now();
+      await db
+        .update(posts)
+        .set({ translationGroupId: null, updatedAt: timestamp })
+        .where(and(eq(posts.siteId, siteId), eq(posts.id, post.id)));
+
+      // A group of one is indistinguishable from no group and would linger as
+      // a dangling key, so collapse it as soon as the second-to-last member
+      // leaves.
+      const remaining = await db
+        .select({ id: posts.id })
+        .from(posts)
+        .where(
+          and(eq(posts.siteId, siteId), eq(posts.translationGroupId, groupId)),
+        )
+        .limit(2);
+      const lastMember = remaining.length === 1 ? remaining[0] : undefined;
+      if (lastMember) {
+        await db
+          .update(posts)
+          .set({ translationGroupId: null, updatedAt: timestamp })
+          .where(and(eq(posts.siteId, siteId), eq(posts.id, lastMember.id)));
+      }
     },
 
     async getReplyCounts(postIds) {

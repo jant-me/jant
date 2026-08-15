@@ -12,6 +12,15 @@ export interface CollectionDirectoryProps {
   items: CollectionDirectoryItem[];
   emptyMessage?: string;
   sitePathPrefix?: string;
+  /**
+   * Public path prefix for collection links, carrying the language prefix in a
+   * language view.
+   *
+   * Required rather than defaulting to `sitePathPrefix`: forgetting it does not
+   * fail, it silently links a reader in `/en` back into the primary view, which
+   * is a bug that looks like a working link. Pass `navData.basePath`.
+   */
+  basePath: string;
   siteOrigin?: string;
 }
 
@@ -113,6 +122,7 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
   items,
   emptyMessage,
   sitePathPrefix = "",
+  basePath,
   siteOrigin = "",
 }) => {
   const { i18n } = useLingui();
@@ -152,7 +162,7 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                       <a
                         href={toPublicPath(
                           getCollectionSelectionPath(group.slugExpression),
-                          sitePathPrefix,
+                          basePath,
                         )}
                         class="collection-directory-divider-link collection-directory-divider-text"
                       >
@@ -268,7 +278,7 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                 <a
                   href={toPublicPath(
                     getCollectionSelectionPath(collection.slug),
-                    sitePathPrefix,
+                    basePath,
                   )}
                   class="collection-directory-title-link"
                 >

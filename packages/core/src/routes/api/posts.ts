@@ -7,6 +7,7 @@ import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { z } from "zod";
 import {
+  ContentLanguageSchema,
   CreatePostApiSchema,
   UpdatePostApiSchema,
   FormatSchema,
@@ -16,6 +17,7 @@ import {
 } from "../../lib/schemas.js";
 import { requireAuthApi } from "../../middleware/auth.js";
 import { toApiAttachment, toApiPost } from "../../lib/api-posts.js";
+import { getPostDisplayTitle } from "../../lib/post-meta.js";
 import { assertFound, NotFoundError, parseIdParam } from "../../lib/errors.js";
 import { ID_PREFIX } from "../../lib/ids.js";
 import { triggerGitHubSyncInline } from "../../lib/github-sync-trigger.js";
@@ -196,6 +198,8 @@ postsApiRoutes.post("/", requireAuthApi(), async (c) => {
       collectionEntries: body.collectionEntries,
       replyToId: body.replyToId,
       quietReply: body.quietReply,
+      language: body.language,
+      translationOfId: body.translationOfId,
       publishedAt: body.publishedAt,
     },
     body.attachments,
@@ -269,6 +273,7 @@ postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
         collectionIds: body.collectionIds,
         collectionEntries: body.collectionEntries,
         publishedAt: body.publishedAt,
+        language: body.language,
       },
       body.attachments,
       {
@@ -311,6 +316,111 @@ postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
       ),
     }),
   );
+});
+
+// =============================================================================
+// Language and translations
+// =============================================================================
+
+const SetLanguageSchema = z.object({ language: ContentLanguageSchema });
+const TranslationCandidatesQuerySchema = z.object({
+  q: z.string().trim().min(1).max(200),
+  limit: z.coerce.number().int().min(1).max(20).optional().default(8),
+});
+const LinkTranslationSchema = z.object({ postId: PostIdSchema });
+
+/**
+ * Set the content language of a whole Thread.
+ *
+ * Thread-wide because `post.language` is uniform inside a Thread — see the
+ * service method for why every language filter depends on that.
+ */
+postsApiRoutes.put("/:id/language", requireAuthApi(), async (c) => {
+  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+  const { language } = parseValidated(SetLanguageSchema, await c.req.json());
+
+  await c.var.services.posts.setThreadLanguage(id, language);
+  await triggerGitHubSyncInline(c);
+
+  return c.json({ success: true, language });
+});
+
+/** List the Thread roots this post is a translation of. */
+postsApiRoutes.get("/:id/translations", requireAuthApi(), async (c) => {
+  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+  const post = assertFound(await c.var.services.posts.getById(id), "Post");
+  const translations = await c.var.services.posts.listTranslations(
+    post.threadId,
+  );
+
+  return c.json({
+    translations: translations.map((translation) => ({
+      id: translation.id,
+      slug: translation.slug,
+      title: translation.title,
+      // What to show in a list: notes are usually untitled, and a slug is not
+      // a name.
+      label: getPostDisplayTitle(translation) || translation.slug,
+      language: translation.language,
+    })),
+  });
+});
+
+/**
+ * Posts this one could be linked to as a translation.
+ *
+ * The eligibility rules live in the service; the menu only renders what comes
+ * back, so it never offers a post the link would refuse.
+ */
+postsApiRoutes.get(
+  "/:id/translations/candidates",
+  requireAuthApi(),
+  async (c) => {
+    const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+    const { q, limit } = parseValidated(
+      TranslationCandidatesQuerySchema,
+      c.req.query(),
+    );
+
+    const candidates = await c.var.services.posts.listTranslationCandidates(
+      id,
+      {
+        query: q,
+        limit,
+      },
+    );
+
+    return c.json({
+      candidates: candidates.map((post) => ({
+        id: post.id,
+        slug: post.slug,
+        title: post.title,
+        label: getPostDisplayTitle(post) || post.slug,
+        language: post.language,
+      })),
+    });
+  },
+);
+
+/** Link two already-published Threads as translations of each other. */
+postsApiRoutes.post("/:id/translations", requireAuthApi(), async (c) => {
+  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+  const { postId } = parseValidated(LinkTranslationSchema, await c.req.json());
+
+  await c.var.services.posts.linkTranslation(id, postId);
+  await triggerGitHubSyncInline(c);
+
+  return c.json({ success: true });
+});
+
+/** Take this Thread out of its translation group. */
+postsApiRoutes.delete("/:id/translations", requireAuthApi(), async (c) => {
+  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+
+  await c.var.services.posts.unlinkTranslation(id);
+  await triggerGitHubSyncInline(c);
+
+  return c.json({ success: true });
 });
 
 // Delete post (requires auth)

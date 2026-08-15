@@ -33,9 +33,9 @@ import { DecorativeQuoteMark } from "../shared/DecorativeQuoteMark.js";
 function buildFilterUrl(
   current: ArchiveFilters,
   updates: Partial<ArchiveFilters & { clear?: boolean }>,
-  sitePathPrefix = "",
+  basePath = "",
 ): string {
-  if (updates.clear) return toPublicPath("/archive", sitePathPrefix);
+  if (updates.clear) return toPublicPath("/archive", basePath);
 
   const merged = { ...current, ...updates };
   const params = new URLSearchParams();
@@ -66,8 +66,8 @@ function buildFilterUrl(
 
   const qs = params.toString();
   return qs
-    ? toPublicPath(`/archive?${qs}`, sitePathPrefix)
-    : toPublicPath("/archive", sitePathPrefix);
+    ? toPublicPath(`/archive?${qs}`, basePath)
+    : toPublicPath("/archive", basePath);
 }
 
 // =============================================================================
@@ -354,8 +354,8 @@ const ChipMediaSelect: FC<{
   filters: ArchiveFilters;
   activeLabel?: string;
   clearUrl: string;
-  sitePathPrefix?: string;
-}> = ({ id, icon, filters: f, activeLabel, clearUrl, sitePathPrefix = "" }) => {
+  basePath?: string;
+}> = ({ id, icon, filters: f, activeLabel, clearUrl, basePath = "" }) => {
   const { i18n } = useLingui();
   const isActive = !!activeLabel;
   const activeKinds = f.mediaKinds ?? [];
@@ -372,7 +372,7 @@ const ChipMediaSelect: FC<{
   const textOnlyUrl = buildFilterUrl(
     { ...f, mediaKinds: undefined, hasMedia: undefined },
     { hasMedia: false, mediaKinds: undefined },
-    sitePathPrefix,
+    basePath,
   );
   const clearLabel = i18n._(
     msg({
@@ -489,8 +489,8 @@ const ToggleOption: FC<{
 
 const ViewToggle: FC<{
   filters: ArchiveFilters;
-  sitePathPrefix?: string;
-}> = ({ filters, sitePathPrefix = "" }) => {
+  basePath?: string;
+}> = ({ filters, basePath = "" }) => {
   const { i18n } = useLingui();
   const currentView: ArchiveView = filters.view ?? "grid";
 
@@ -506,7 +506,7 @@ const ViewToggle: FC<{
       )}
     >
       <ToggleOption
-        href={buildFilterUrl(filters, { view: undefined }, sitePathPrefix)}
+        href={buildFilterUrl(filters, { view: undefined }, basePath)}
         icon="layout-grid"
         active={currentView === "grid"}
         label={i18n._(
@@ -517,7 +517,7 @@ const ViewToggle: FC<{
         )}
       />
       <ToggleOption
-        href={buildFilterUrl(filters, { view: "list" }, sitePathPrefix)}
+        href={buildFilterUrl(filters, { view: "list" }, basePath)}
         icon="list"
         active={currentView === "list"}
         label={i18n._(
@@ -537,8 +537,8 @@ const ViewToggle: FC<{
  */
 const SortToggle: FC<{
   filters: ArchiveFilters;
-  sitePathPrefix?: string;
-}> = ({ filters, sitePathPrefix = "" }) => {
+  basePath?: string;
+}> = ({ filters, basePath = "" }) => {
   const { i18n } = useLingui();
   const sortsByActivity = filters.sort === "updated";
 
@@ -554,7 +554,7 @@ const SortToggle: FC<{
       )}
     >
       <ToggleOption
-        href={buildFilterUrl(filters, { sort: undefined }, sitePathPrefix)}
+        href={buildFilterUrl(filters, { sort: undefined }, basePath)}
         icon="clock"
         active={!sortsByActivity}
         label={i18n._(
@@ -565,7 +565,7 @@ const SortToggle: FC<{
         )}
       />
       <ToggleOption
-        href={buildFilterUrl(filters, { sort: "updated" }, sitePathPrefix)}
+        href={buildFilterUrl(filters, { sort: "updated" }, basePath)}
         icon="history"
         active={sortsByActivity}
         label={i18n._(
@@ -655,16 +655,16 @@ const FilterBar: FC<{
   availableYears: number[];
   availableCollections: { slug: string; title: string }[];
   isAuthenticated: boolean;
-  sitePathPrefix?: string;
+  basePath?: string;
 }> = ({
   filters,
   availableYears,
   availableCollections,
   isAuthenticated,
-  sitePathPrefix = "",
+  basePath = "",
 }) => {
   const { i18n } = useLingui();
-  const currentUrl = buildFilterUrl(filters, {}, sitePathPrefix);
+  const currentUrl = buildFilterUrl(filters, {}, basePath);
 
   // --- Year options ---------------------------------------------------------
 
@@ -680,12 +680,12 @@ const FilterBar: FC<{
       value: buildFilterUrl(
         { ...filters, year: undefined },
         { year: undefined },
-        sitePathPrefix,
+        basePath,
       ),
     },
     ...availableYears.map((year) => ({
       label: String(year),
-      value: buildFilterUrl(filters, { year }, sitePathPrefix),
+      value: buildFilterUrl(filters, { year }, basePath),
     })),
   ];
 
@@ -707,16 +707,12 @@ const FilterBar: FC<{
           collectionTitle: undefined,
         },
         { collectionSlug: undefined, collectionTitle: undefined },
-        sitePathPrefix,
+        basePath,
       ),
     },
     ...availableCollections.map((col) => ({
       label: col.title,
-      value: buildFilterUrl(
-        filters,
-        { collectionSlug: col.slug },
-        sitePathPrefix,
-      ),
+      value: buildFilterUrl(filters, { collectionSlug: col.slug }, basePath),
     })),
   ];
 
@@ -760,7 +756,7 @@ const FilterBar: FC<{
       value: buildFilterUrl(
         { ...filters, format: undefined, hasTitle: undefined },
         { format: undefined, hasTitle: undefined },
-        sitePathPrefix,
+        basePath,
       ),
     },
     {
@@ -772,7 +768,7 @@ const FilterBar: FC<{
           format: "note",
           hasTitle: undefined,
         },
-        sitePathPrefix,
+        basePath,
       ),
     },
     {
@@ -790,7 +786,7 @@ const FilterBar: FC<{
           format: "note",
           hasTitle: true,
         },
-        sitePathPrefix,
+        basePath,
       ),
     },
     {
@@ -808,7 +804,7 @@ const FilterBar: FC<{
           format: "note",
           hasTitle: false,
         },
-        sitePathPrefix,
+        basePath,
       ),
     },
     ...FORMATS.filter((f) => f !== "note").map((f) => ({
@@ -817,7 +813,7 @@ const FilterBar: FC<{
       value: buildFilterUrl(
         filters,
         { format: f, hasTitle: undefined },
-        sitePathPrefix,
+        basePath,
       ),
     })),
   ];
@@ -830,7 +826,7 @@ const FilterBar: FC<{
   const allVisibilityBaseUrl = buildFilterUrl(
     { ...filters, visibility: undefined },
     { visibility: undefined },
-    sitePathPrefix,
+    basePath,
   );
   const allVisibilityUrl = allVisibilityBaseUrl.includes("?")
     ? `${allVisibilityBaseUrl}&visibility=all`
@@ -852,7 +848,7 @@ const FilterBar: FC<{
       ...(v === "featured"
         ? { iconHtml: FEATURED_VISIBILITY_ICON_HTML }
         : { icon: VISIBILITY_ICONS[v] }),
-      value: buildFilterUrl(filters, { visibility: v }, sitePathPrefix),
+      value: buildFilterUrl(filters, { visibility: v }, basePath),
     })),
   ];
 
@@ -861,7 +857,7 @@ const FilterBar: FC<{
   const threadClearUrl = buildFilterUrl(
     { ...filters, hasReplies: undefined },
     { hasReplies: undefined },
-    sitePathPrefix,
+    basePath,
   );
 
   const threadsLabel = i18n._(
@@ -891,12 +887,12 @@ const FilterBar: FC<{
     {
       label: threadsLabel,
       icon: THREAD_ICONS.threads,
-      value: buildFilterUrl(filters, { hasReplies: true }, sitePathPrefix),
+      value: buildFilterUrl(filters, { hasReplies: true }, basePath),
     },
     {
       label: singlePostsLabel,
       icon: THREAD_ICONS.single,
-      value: buildFilterUrl(filters, { hasReplies: false }, sitePathPrefix),
+      value: buildFilterUrl(filters, { hasReplies: false }, basePath),
     },
   ];
 
@@ -932,7 +928,7 @@ const FilterBar: FC<{
   const mediaClearUrl = buildFilterUrl(
     { ...filters, mediaKinds: undefined, hasMedia: undefined },
     { mediaKinds: undefined, hasMedia: undefined },
-    sitePathPrefix,
+    basePath,
   );
 
   return (
@@ -947,7 +943,7 @@ const FilterBar: FC<{
             clearUrl={buildFilterUrl(
               { ...filters, year: undefined },
               { year: undefined },
-              sitePathPrefix,
+              basePath,
             )}
             activeLabel={filters.year ? String(filters.year) : undefined}
           />
@@ -965,7 +961,7 @@ const FilterBar: FC<{
                 collectionTitle: undefined,
               },
               { collectionSlug: undefined, collectionTitle: undefined },
-              sitePathPrefix,
+              basePath,
             )}
             activeLabel={filters.collectionTitle}
             iconOnly
@@ -979,7 +975,7 @@ const FilterBar: FC<{
           clearUrl={buildFilterUrl(
             { ...filters, format: undefined, hasTitle: undefined },
             { format: undefined, hasTitle: undefined },
-            sitePathPrefix,
+            basePath,
           )}
           activeLabel={formatActiveLabel}
           activeIcon={formatActiveIcon}
@@ -1003,7 +999,7 @@ const FilterBar: FC<{
           filters={filters}
           activeLabel={mediaActiveLabel}
           clearUrl={mediaClearUrl}
-          sitePathPrefix={sitePathPrefix}
+          basePath={basePath}
         />
 
         {isAuthenticated && (
@@ -1034,8 +1030,8 @@ const FilterBar: FC<{
       </div>
 
       <div class="archive-toolbar-toggles">
-        <SortToggle filters={filters} sitePathPrefix={sitePathPrefix} />
-        <ViewToggle filters={filters} sitePathPrefix={sitePathPrefix} />
+        <SortToggle filters={filters} basePath={basePath} />
+        <ViewToggle filters={filters} basePath={basePath} />
       </div>
     </div>
   );
@@ -1340,14 +1336,14 @@ export const ArchivePage: FC<ArchivePageProps> = ({
   availableYears,
   availableCollections,
   isAuthenticated,
-  sitePathPrefix = "",
+  basePath = "",
   timeZone = "UTC",
   feedHref,
 }) => {
   const { i18n } = useLingui();
   const currentView: ArchiveView = filters.view ?? "grid";
   const sortsByActivity = filters.sort === "updated";
-  const paginationBaseUrl = buildFilterUrl(filters, {}, sitePathPrefix);
+  const paginationBaseUrl = buildFilterUrl(filters, {}, basePath);
   const totalCountUnit =
     totalCount === 1
       ? i18n._(
@@ -1400,7 +1396,7 @@ export const ArchivePage: FC<ArchivePageProps> = ({
             <>
               {" "}
               <a
-                href={toPublicPath(feedHref, sitePathPrefix)}
+                href={toPublicPath(feedHref, basePath)}
                 class="feed-link"
                 title={i18n._(
                   msg({
@@ -1426,7 +1422,7 @@ export const ArchivePage: FC<ArchivePageProps> = ({
           availableYears={availableYears}
           availableCollections={availableCollections}
           isAuthenticated={isAuthenticated}
-          sitePathPrefix={sitePathPrefix}
+          basePath={basePath}
         />
       </header>
 

@@ -53,6 +53,13 @@ export interface AppVariables {
    * `c.var.rateLimiter.check(...)` instead of caring which impl is used.
    */
   rateLimiter: RateLimiter;
+  /**
+   * Language whose browsing view is being served, set by the language routes
+   * when the URL carries a language prefix (`/en/archive`). Undefined on the
+   * root view, which shows the primary language — or every language, when
+   * multilingual content is off.
+   */
+  viewLang?: string;
 }
 
 export type App = Hono<{ Bindings: Bindings; Variables: AppVariables }>;

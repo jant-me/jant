@@ -118,7 +118,10 @@ export const PostPage: FC<PostPageProps> = ({
   post,
   threadPosts,
   isPreview = false,
+  translations = [],
 }) => {
+  const { i18n } = useLingui();
+
   return (
     <div
       data-post-view
@@ -137,6 +140,50 @@ export const PostPage: FC<PostPageProps> = ({
           mode="detail"
           display={isPreview ? PREVIEW_DISPLAY : undefined}
         />
+      )}
+      {/* One quiet sentence after the post, whatever its format — the
+          translations are an aside about the post, not part of it. Listed
+          in full rather than behind a dropdown: one or two entries is the
+          norm, and the reader who needs this is scanning for their own
+          language's name. The globe is the header switcher's own mark, the
+          one thing on the page that already means "language". */}
+      {translations.length > 0 && (
+        <p class="post-translations" data-post-translations>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            class="post-translations-globe"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+            <path d="M2 12h20" />
+          </svg>
+          {i18n._(
+            msg({
+              message: "Also available in",
+              comment:
+                "@context: Label before links to this post's translations",
+            }),
+          )}{" "}
+          {translations.map((translation, index) => (
+            <span key={translation.lang}>
+              {index > 0 ? <span>, </span> : null}
+              <a
+                href={translation.href}
+                hreflang={translation.lang}
+                lang={translation.lang}
+              >
+                {translation.label}
+              </a>
+            </span>
+          ))}
+        </p>
       )}
       {/* Public integration slot — code injection (giscus, Webmentions, etc.) appends here. */}
       <div data-post-end />

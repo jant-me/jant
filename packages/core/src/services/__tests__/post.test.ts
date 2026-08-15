@@ -1570,7 +1570,7 @@ describe("PostService", () => {
       expect(updated?.pinnedAt).toBeTypeOf("number");
     });
 
-    it("updates slug and its page navigation URL", async () => {
+    it("updates slug and title on its page navigation entry", async () => {
       const post = await postService.create({
         format: "note",
         title: "Test page",
@@ -1585,11 +1585,15 @@ describe("PostService", () => {
 
       const updated = await postService.update(post.id, {
         slug: "new-slug",
+        title: "Renamed page",
       });
 
       expect(updated?.slug).toBe("new-slug");
+      // The URL is synced on write; the title is read through, so renaming the
+      // page carries its navigation entry along with no sync step at all.
       expect(await navItemService.getById(navItem.id)).toMatchObject({
-        label: "Test page",
+        label: "",
+        targetTitle: "Renamed page",
         url: "/new-slug",
       });
     });

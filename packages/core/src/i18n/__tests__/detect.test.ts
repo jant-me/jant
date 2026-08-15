@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { detectLocaleFromHeader, detectCjkFontFromHeader } from "../detect.js";
+import {
+  detectLocaleFromHeader,
+  getCjkFontFromLanguageTag,
+} from "../detect.js";
 
 describe("detectLocaleFromHeader", () => {
   it("returns en for en", () => {
@@ -45,94 +48,36 @@ describe("detectLocaleFromHeader", () => {
   });
 });
 
-describe("detectCjkFontFromHeader", () => {
-  // Simplified Chinese
-  it("maps zh-CN to zh-Hans", () => {
-    expect(detectCjkFontFromHeader("zh-CN")).toBe("zh-Hans");
+describe("getCjkFontFromLanguageTag", () => {
+  it("maps Simplified Chinese tags to the zh-Hans profile", () => {
+    expect(getCjkFontFromLanguageTag("zh-CN")).toBe("zh-Hans");
+    expect(getCjkFontFromLanguageTag("zh-SG")).toBe("zh-Hans");
+    expect(getCjkFontFromLanguageTag("zh-Hans")).toBe("zh-Hans");
+    // Bare `zh` is ambiguous in principle; Simplified is the majority reading.
+    expect(getCjkFontFromLanguageTag("zh")).toBe("zh-Hans");
   });
 
-  it("maps zh-SG to zh-Hans", () => {
-    expect(detectCjkFontFromHeader("zh-SG")).toBe("zh-Hans");
+  it("maps Traditional Chinese tags to the zh-Hant profile", () => {
+    expect(getCjkFontFromLanguageTag("zh-TW")).toBe("zh-Hant");
+    expect(getCjkFontFromLanguageTag("zh-HK")).toBe("zh-Hant");
+    expect(getCjkFontFromLanguageTag("zh-MO")).toBe("zh-Hant");
+    expect(getCjkFontFromLanguageTag("zh-Hant")).toBe("zh-Hant");
   });
 
-  it("maps zh-Hans to zh-Hans", () => {
-    expect(detectCjkFontFromHeader("zh-Hans")).toBe("zh-Hans");
-  });
-
-  it("maps bare zh to zh-Hans", () => {
-    expect(detectCjkFontFromHeader("zh")).toBe("zh-Hans");
-  });
-
-  // Traditional Chinese
-  it("maps zh-TW to zh-Hant", () => {
-    expect(detectCjkFontFromHeader("zh-TW")).toBe("zh-Hant");
-  });
-
-  it("maps zh-HK to zh-Hant", () => {
-    expect(detectCjkFontFromHeader("zh-HK")).toBe("zh-Hant");
-  });
-
-  it("maps zh-MO to zh-Hant", () => {
-    expect(detectCjkFontFromHeader("zh-MO")).toBe("zh-Hant");
-  });
-
-  it("maps zh-Hant to zh-Hant", () => {
-    expect(detectCjkFontFromHeader("zh-Hant")).toBe("zh-Hant");
-  });
-
-  // Japanese
-  it("maps ja to ja", () => {
-    expect(detectCjkFontFromHeader("ja")).toBe("ja");
-  });
-
-  it("maps ja-JP to ja", () => {
-    expect(detectCjkFontFromHeader("ja-JP")).toBe("ja");
-  });
-
-  // Korean
-  it("maps ko to ko", () => {
-    expect(detectCjkFontFromHeader("ko")).toBe("ko");
-  });
-
-  it("maps ko-KR to ko", () => {
-    expect(detectCjkFontFromHeader("ko-KR")).toBe("ko");
-  });
-
-  // q-value priority
-  it("picks highest q-value CJK language", () => {
-    expect(detectCjkFontFromHeader("fr;q=0.5,zh-CN;q=0.9,en;q=0.8")).toBe(
-      "zh-Hans",
-    );
-  });
-
-  it("picks first CJK when q-values are equal", () => {
-    expect(detectCjkFontFromHeader("zh-TW,en")).toBe("zh-Hant");
-  });
-
-  // Non-CJK fallback
-  it("returns off for non-CJK language", () => {
-    expect(detectCjkFontFromHeader("en-US")).toBe("off");
-  });
-
-  it("returns off for undefined", () => {
-    expect(detectCjkFontFromHeader(undefined)).toBe("off");
-  });
-
-  it("returns off for empty string", () => {
-    expect(detectCjkFontFromHeader("")).toBe("off");
-  });
-
-  it("skips entries with q=0", () => {
-    expect(detectCjkFontFromHeader("zh-CN;q=0,en")).toBe("off");
+  it("maps Japanese and Korean tags", () => {
+    expect(getCjkFontFromLanguageTag("ja")).toBe("ja");
+    expect(getCjkFontFromLanguageTag("ja-JP")).toBe("ja");
+    expect(getCjkFontFromLanguageTag("ko")).toBe("ko");
+    expect(getCjkFontFromLanguageTag("ko-KR")).toBe("ko");
   });
 
   it("is case-insensitive", () => {
-    expect(detectCjkFontFromHeader("ZH-CN")).toBe("zh-Hans");
+    expect(getCjkFontFromLanguageTag("ZH-CN")).toBe("zh-Hans");
   });
 
-  it("handles realistic browser header", () => {
-    expect(detectCjkFontFromHeader("zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7")).toBe(
-      "zh-Hant",
-    );
+  it("returns nothing for languages with no CJK profile", () => {
+    expect(getCjkFontFromLanguageTag("en-US")).toBeUndefined();
+    expect(getCjkFontFromLanguageTag("")).toBeUndefined();
+    expect(getCjkFontFromLanguageTag("   ")).toBeUndefined();
   });
 });

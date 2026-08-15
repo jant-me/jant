@@ -6,6 +6,7 @@
  */
 
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { msg } from "@lingui/core/macro";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
@@ -16,6 +17,11 @@ import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
 import { assembleTimeline } from "../../lib/timeline.js";
 import { toAbsoluteSiteUrl, toPublicPath } from "../../lib/url.js";
+import {
+  buildSurfaceAlternates,
+  toViewPath,
+  viewBasePath,
+} from "../../lib/view-language.js";
 import { buildWebSiteJsonLd } from "../../lib/structured-data.js";
 import { HomePage } from "../../ui/pages/HomePage.js";
 
@@ -23,7 +29,13 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const homeRoutes = new Hono<Env>();
 
-homeRoutes.get("/", async (c) => {
+/**
+ * Render the timeline home page for the current view language.
+ *
+ * @param c - Hono context
+ * @returns Home page response
+ */
+export async function renderHomePage(c: Context<Env>): Promise<Response> {
   const i18n = getI18n(c);
   const page = parsePageNumber(c.req.query("page"));
   const paginatedPageTitle = formatPageLabel(page);
@@ -46,9 +58,13 @@ homeRoutes.get("/", async (c) => {
     page === 1 && siteUrl
       ? buildWebSiteJsonLd({
           name: navData.siteName,
-          url: toAbsoluteSiteUrl("/", siteUrl, navData.sitePathPrefix),
+          url: toAbsoluteSiteUrl(
+            viewBasePath(c) || "/",
+            siteUrl,
+            navData.sitePathPrefix,
+          ),
           searchUrlTemplate: `${toAbsoluteSiteUrl(
-            "/search",
+            `${viewBasePath(c)}/search`,
             siteUrl,
             navData.sitePathPrefix,
           )}?q={search_term_string}`,
@@ -68,18 +84,21 @@ homeRoutes.get("/", async (c) => {
         ? buildPageTitle(latestTitle, paginatedPageTitle, navData.siteName)
         : navData.siteName,
     jsonLd: websiteJsonLd,
+    alternateLanguages: buildSurfaceAlternates(c),
     navData,
     showHomeBranding:
       c.var.appConfig.showJantBrandingOnHome && currentPage === 1,
     content: (
       <HomePage
         items={items}
-        baseUrl={toPublicPath("/", navData.sitePathPrefix)}
+        baseUrl={toViewPath(c, "/")}
         currentPage={currentPage}
         totalPages={totalPages}
         isAuthenticated={isAuthenticated}
-        signinUrl={`${toPublicPath("/signin", navData.sitePathPrefix)}?redirect=${encodeURIComponent(toPublicPath("/", navData.sitePathPrefix))}`}
+        signinUrl={`${toPublicPath("/signin", navData.sitePathPrefix)}?redirect=${encodeURIComponent(toViewPath(c, "/"))}`}
       />
     ),
   });
-});
+}
+
+homeRoutes.get("/", renderHomePage);

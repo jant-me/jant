@@ -12,6 +12,7 @@ import {
   normalizeContentLanguage,
   resolveCatalogLocale,
 } from "./i18n.js";
+import { detectLocaleFromHeader } from "./detect.js";
 
 declare module "hono" {
   interface ContextVariableMap {
@@ -26,6 +27,11 @@ declare module "hono" {
  * paths activate the catalog locale resolved from the user's configured
  * `SITE_LANGUAGE`; everything else is forced to `baseLocale` (English).
  *
+ * `/setup` counts as one of them. It is read by exactly one person — the
+ * author, before they have a dashboard — so it belongs on the author's side of
+ * this split, not the readers'. On a site with no language configured yet, the
+ * browser's own is what it resolves from.
+ *
  * Why: Lingui computes message IDs from `message` text alone (the `comment`
  * field is a translator note and does not disambiguate). Shared strings like
  * "Latest" / "Featured" collide between public navigation labels and settings
@@ -33,7 +39,7 @@ declare module "hono" {
  * translations into the public header. Scoping activation by route keeps
  * public pages in English without requiring per-call-site `context:` tags.
  */
-const ADMIN_PATH_PREFIXES = ["/settings", "/dash"] as const;
+const ADMIN_PATH_PREFIXES = ["/settings", "/dash", "/setup"] as const;
 
 function isAdminPath(path: string): boolean {
   return ADMIN_PATH_PREFIXES.some(
@@ -69,7 +75,11 @@ export function i18nMiddleware(): MiddlewareHandler {
     const dashboardSetting = c.get("allSettings")?.DASHBOARD_LANGUAGE;
     const dashboardLocale = isLocale(dashboardSetting)
       ? dashboardSetting
-      : resolveCatalogLocale(contentLang);
+      : isValidContentLanguage(rawSetting)
+        ? resolveCatalogLocale(contentLang)
+        : // Before a language is configured — first-run setup — the only
+          // signal about the person reading is the browser they arrived in.
+          detectLocaleFromHeader(c.req.header("Accept-Language"));
     const uiLang = isAdminPath(c.req.path) ? dashboardLocale : baseLocale;
     const i18n = createI18n(uiLang);
 

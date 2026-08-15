@@ -402,7 +402,9 @@ describe("Nav Items API Routes", () => {
       const body = await res.json();
       expect(body.type).toBe("collection");
       expect(body.collectionId).toBe(collection.id);
-      expect(body.label).toBe("Design Notes");
+      // No label of its own: the item follows the collection's title.
+      expect(body.label).toBe("");
+      expect(body.targetTitle).toBe("Design Notes");
       expect(body.url).toBe("/design-notes");
     });
 
@@ -501,7 +503,10 @@ describe("Nav Items API Routes", () => {
       expect(await res.json()).toMatchObject({
         type: "page",
         postId: page.id,
-        label: "About me",
+        // No label of its own: the item follows the page's title, which is
+        // what the rendered header shows.
+        label: "",
+        targetTitle: "About me",
         url: "/about-me",
         headerHtml: expect.stringContaining("About me"),
       });
