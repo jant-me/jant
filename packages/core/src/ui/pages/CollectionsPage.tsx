@@ -34,6 +34,7 @@ export const CollectionsPage: FC<CollectionsPageProps> = ({
           items={items}
           navigationCollectionIds={navigationCollectionIds}
           sitePathPrefix={sitePathPrefix}
+          basePath={basePath}
           siteOrigin={siteOrigin}
         />
       </div>

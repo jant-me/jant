@@ -15,6 +15,7 @@ import { now } from "../lib/time.js";
 import {
   SETTINGS_KEYS,
   ONBOARDING_STATUS,
+  type OnboardingStatus,
   type SettingsKey,
 } from "../lib/constants.js";
 import {
@@ -22,6 +23,7 @@ import {
   isLocale,
   isValidContentLanguage,
   normalizeContentLanguage,
+  resolveFirstRunDashboardLocale,
 } from "../i18n/locales.js";
 import type { StorageDriver } from "../lib/storage.js";
 import type { MediaService } from "./media.js";
@@ -102,8 +104,27 @@ export interface SettingsService {
   set(key: SettingsKey, value: string): Promise<void>;
   setMany(entries: Partial<Record<SettingsKey, string>>): Promise<void>;
   remove(key: SettingsKey): Promise<void>;
+  /** How far first-run setup has got: pending → provisioned → completed. */
+  getOnboardingStatus(): Promise<OnboardingStatus>;
   isOnboardingComplete(): Promise<boolean>;
+  /**
+   * Mark a control-plane-created site as real but not yet confirmed by its
+   * owner. Public pages serve normally from here; setup still owes one answer.
+   */
+  markSiteProvisioned(): Promise<void>;
   completeOnboarding(): Promise<void>;
+  /**
+   * Close first-run setup on a site whose shell already exists, by recording
+   * the language its author says they write in.
+   *
+   * @param data - The confirmed content language, plus the browser's own
+   *   language so the dashboard can be pinned to it
+   * @param opts - The language in effect before this answer
+   */
+  confirmFirstRunLanguage(
+    data: { siteLanguage: string; browserLanguage?: string | null },
+    opts: { oldLanguage: string },
+  ): Promise<void>;
   updateSiteSettings(
     data: SiteSettingsData,
     opts: { fallbackSiteName: string; oldSiteName: string },
@@ -256,9 +277,27 @@ export function createSettingsService(
       });
     },
 
+    async getOnboardingStatus() {
+      const status = await this.get(SETTINGS_KEYS.ONBOARDING_STATUS);
+      if (status === ONBOARDING_STATUS.COMPLETED) {
+        return ONBOARDING_STATUS.COMPLETED;
+      }
+      if (status === ONBOARDING_STATUS.PROVISIONED) {
+        return ONBOARDING_STATUS.PROVISIONED;
+      }
+      return ONBOARDING_STATUS.PENDING;
+    },
+
     async isOnboardingComplete() {
       const status = await this.get(SETTINGS_KEYS.ONBOARDING_STATUS);
       return status === ONBOARDING_STATUS.COMPLETED;
+    },
+
+    async markSiteProvisioned() {
+      await this.set(
+        SETTINGS_KEYS.ONBOARDING_STATUS,
+        ONBOARDING_STATUS.PROVISIONED,
+      );
     },
 
     async completeOnboarding() {
@@ -266,6 +305,23 @@ export function createSettingsService(
         SETTINGS_KEYS.ONBOARDING_STATUS,
         ONBOARDING_STATUS.COMPLETED,
       );
+    },
+
+    async confirmFirstRunLanguage(data, opts) {
+      await this.updateLocaleSettings(
+        {
+          siteLanguage: data.siteLanguage,
+          // Empty means "follow the content language", which is right unless
+          // the browser named a catalog following would not reach.
+          dashboardLanguage:
+            resolveFirstRunDashboardLocale(
+              data.siteLanguage,
+              data.browserLanguage,
+            ) ?? "",
+        },
+        { oldLanguage: opts.oldLanguage },
+      );
+      await this.completeOnboarding();
     },
 
     async updateSiteSettings(data, opts) {

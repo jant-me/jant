@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import {
   detectContentLanguage,
   detectScript,
+  readContentLanguage,
   suggestPostLanguage,
 } from "../lang-detect.js";
 
@@ -45,14 +46,18 @@ describe("detectScript", () => {
     );
   });
 
-  it("refuses when the two sides tie", () => {
-    // Three distinctive characters each. Guessing here would be a coin toss.
-    expect(detectScript("這個說这个说")).toBeNull();
+  it("names the script but not the variant when the two sides tie", () => {
+    // Three distinctive characters each. Which variant is a coin toss; that
+    // the text is Chinese is not in doubt.
+    expect(detectScript("這個說这个说")).toBe("han");
   });
 
-  it("refuses when the Han characters are written the same in both", () => {
+  it("names the script but not the variant for characters shared by both", () => {
     // "我今天很好" is identical in Simplified and Traditional.
-    expect(detectScript("我今天很好")).toBeNull();
+    expect(detectScript("我今天很好")).toBe("han");
+    // Repetition across paragraphs adds length, never a distinguishing
+    // character — the case that first showed this up.
+    expect(detectScript("哈哈哈哈哈哈哈啊哈哈哈\n\n".repeat(5))).toBe("han");
   });
 
   it("reads Latin script as Latin, accents included", () => {
@@ -129,6 +134,40 @@ describe("detectContentLanguage", () => {
         fallback: "en",
       }),
     ).toBe("en");
+  });
+
+  it("reads shared Han as the site's one Chinese language", () => {
+    // Text written the same way in both variants. With one of the two
+    // published there is nothing left to be ambiguous about.
+    expect(detectContentLanguage("哈哈哈哈哈哈哈啊哈哈哈", zhEn)).toBe(
+      "zh-Hans",
+    );
+    expect(
+      detectContentLanguage("我今天很好", {
+        languages: ["zh-TW", "en"],
+        fallback: "en",
+      }),
+    ).toBe("zh-TW");
+  });
+
+  it("reads shared Han as Simplified when that is the only language", () => {
+    // Nothing to weigh it against: every candidate the site has is Simplified
+    // Chinese, so text that is certainly Chinese is certainly that.
+    expect(
+      readContentLanguage("哈哈哈哈哈哈哈啊哈哈哈", {
+        languages: ["zh-Hans"],
+      }),
+    ).toBe("zh-Hans");
+  });
+
+  it("will not choose between Simplified and Traditional", () => {
+    // Both published, and the text distinguishes neither: the fallback is the
+    // only honest answer.
+    expect(
+      readContentLanguage("我今天很好", {
+        languages: ["zh-Hans", "zh-Hant", "en"],
+      }),
+    ).toBeNull();
   });
 
   it("falls back when the site does not publish the detected script", () => {

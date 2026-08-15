@@ -1860,7 +1860,7 @@ msgstr "文章"
 #. @context: Reassurance line at the bottom of the multilingual dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Post addresses do not change, and you can turn this off again at any time."
-msgstr "啟用多語言後，文章地址不會改變；之後也可以隨時安全地關閉。"
+msgstr "所有文章的網址都不會改變，也可以隨時再關閉。"
 
 #. @context: Settings item description for Telegram integration
 #: src/ui/dash/settings/SettingsRootContent.tsx

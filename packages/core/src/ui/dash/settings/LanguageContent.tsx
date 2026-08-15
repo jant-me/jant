@@ -40,8 +40,8 @@ function keepPlaceholder(name: string): string {
 export interface LanguageContentProps {
   /** Site content language, and primary language when multilingual is on. */
   contentLanguage: string;
-  /** Resolved dashboard catalog locale currently in effect. */
-  dashboardLanguage: Locale;
+  /** Explicit dashboard catalog locale, or `""` when it follows the content. */
+  dashboardLanguage: Locale | "";
   /** Whether per-language browsing views are being served. */
   multilingualEnabled: boolean;
   /** Additional languages in switcher order. */

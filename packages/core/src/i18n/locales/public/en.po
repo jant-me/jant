@@ -128,6 +128,11 @@ msgstr "A softer blue feels more like ink than product chrome."
 msgid "Accent should feel present, not loud."
 msgstr "Accent should feel present, not loud."
 
+#. @context: Setup form group - the admin account being created
+#: src/routes/auth/setup.tsx
+msgid "Account"
+msgstr "Account"
+
 #. @context: Add more attachments button
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Add"
@@ -528,6 +533,8 @@ msgid "Confirm Password"
 msgstr "Confirm Password"
 
 #. @context: Setup form field - site content language
+#. @context: Setup form field - site content language
+#: src/routes/auth/setup.tsx
 #: src/routes/auth/setup.tsx
 msgid "Content language"
 msgstr "Content language"
@@ -553,10 +560,6 @@ msgid "Couldn't add this collection to navigation. Try again."
 msgstr "Couldn't add this collection to navigation. Try again."
 
 #. @context: Error toast when account creation fails
-#. @context: Error toast when account creation fails
-#. @context: Error toast when account creation fails
-#: src/routes/auth/setup.tsx
-#: src/routes/auth/setup.tsx
 #: src/routes/auth/setup.tsx
 msgid "Couldn't create your account. Check the details and try again."
 msgstr "Couldn't create your account. Check the details and try again."
@@ -580,11 +583,6 @@ msgstr "Couldn't save. Try again in a moment."
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Create a collection to get started."
 msgstr "Create a collection to get started."
-
-#. @context: Setup page description
-#: src/routes/auth/setup.tsx
-msgid "Create your admin account."
-msgstr "Create your admin account."
 
 #. @context: Thread item label on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -1149,6 +1147,11 @@ msgstr "Interfaces for reading should guide the eye, not keep asking for attenti
 msgid "iOS home screen"
 msgstr "iOS home screen"
 
+#. @context: Setup page description under the write-language question
+#: src/routes/auth/setup.tsx
+msgid "It sets the language readers and search engines see. Change it any time in Settings."
+msgstr "It sets the language readers and search engines see. Change it any time in Settings."
+
 #. @context: test fixture — not shipped anywhere
 #. @context: test fixture — not shipped anywhere
 #: src/i18n/__tests__/fallback.test.ts
@@ -1477,6 +1480,11 @@ msgstr "No drafts yet. Save a draft to find it here."
 #: src/routes/api/upload.ts
 msgid "No file selected. Choose a file to upload."
 msgstr "No file selected. Choose a file to upload."
+
+#. @context: Empty state in the language picker
+#: src/routes/auth/setup.tsx
+msgid "No matches."
+msgstr "No matches."
 
 #. @context: Search empty results
 #: src/ui/pages/SearchPage.tsx
@@ -1982,6 +1990,16 @@ msgstr "Search snippet"
 msgid "Search..."
 msgstr "Search..."
 
+#. @context: Placeholder in the language picker search box
+#: src/routes/auth/setup.tsx
+msgid "Search…"
+msgstr "Search…"
+
+#. @context: Setup page description
+#: src/routes/auth/setup.tsx
+msgid "Set up your site and the account you write from."
+msgstr "Set up your site and the account you write from."
+
 #. @context: Built-in navigation label for settings
 #: src/ui/shared/navigation-labels.ts
 msgctxt "nav"
@@ -2065,6 +2083,11 @@ msgstr "single posts"
 #: src/ui/pages/ArchivePage.tsx
 msgid "Single posts"
 msgstr "Single posts"
+
+#. @context: Setup form group - the site itself
+#: src/routes/auth/setup.tsx
+msgid "Site"
+msgstr "Site"
 
 #. @context: Token label on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -2163,6 +2186,11 @@ msgstr "Square tile"
 #: src/ui/pages/BrandPage.tsx
 msgid "Start here"
 msgstr "Start here"
+
+#. @context: Setup submit button on a hosted site, after the language question
+#: src/routes/auth/setup.tsx
+msgid "Start writing"
+msgstr "Start writing"
 
 #. @context: Table cell in the sample detail article
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -2572,6 +2600,11 @@ msgstr "Visibility"
 #: src/routes/auth/setup.tsx
 msgid "Welcome to Jant"
 msgstr "Welcome to Jant"
+
+#. @context: Setup heading on a hosted site, where the language is all that is left to ask
+#: src/routes/auth/setup.tsx
+msgid "What language do you write in?"
+msgstr "What language do you write in?"
 
 #. @context: Table header in the sample detail article
 #: src/ui/pages/ThemeSamplePage.tsx

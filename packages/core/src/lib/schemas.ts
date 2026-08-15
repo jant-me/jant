@@ -896,6 +896,17 @@ export const SetupSchema = z.object({
 });
 
 /**
+ * Setup on a site whose shell already exists.
+ *
+ * A control plane created the site and its owner, so the only thing left to
+ * settle is the language its author writes in — the one fact no header, host,
+ * or billing record can supply.
+ */
+export const SetupLanguageSchema = z.object({
+  contentLanguage: ContentLanguageSchema,
+});
+
+/**
  * Sign-in form validation schema
  */
 export const SigninSchema = z.object({

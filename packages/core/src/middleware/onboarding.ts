@@ -1,15 +1,25 @@
 /**
  * Onboarding Middleware
  *
- * Redirects key page routes to /setup if onboarding hasn't been completed.
+ * Redirects key page routes to /setup while first-run setup is unfinished.
  * Uses an allowlist approach: only explicitly listed page routes are redirected,
  * so static assets, API endpoints, feeds, and other resources always pass through.
  * Caches the result in memory so the DB is only queried once per isolate lifetime.
+ *
+ * How much is gated depends on how far setup has got:
+ *
+ * - `pending` — nobody owns the site and it holds nothing. Readers have no
+ *   business being anywhere but setup, so the public root is gated too.
+ * - `provisioned` — a control plane already created the site and its owner, so
+ *   the site is real and must serve readers normally. Only the author's own
+ *   entrances are gated, and only once they are signed in, because the one
+ *   remaining question is theirs to answer.
  */
 
 import type { MiddlewareHandler } from "hono";
 import type { Bindings } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
+import { ONBOARDING_STATUS } from "../lib/constants.js";
 import { getRuntimeSitePathPrefix } from "../lib/site-resolution.js";
 import { toPublicPath } from "../lib/url.js";
 
@@ -31,13 +41,20 @@ export function requireOnboarding(): MiddlewareHandler<Env> {
       return next();
     }
 
-    if (!shouldRedirect(path)) {
+    if (!isGatedPath(path)) {
       return next();
     }
 
-    const isComplete = await c.var.services.settings.isOnboardingComplete();
-    if (isComplete) {
+    const status = await c.var.services.settings.getOnboardingStatus();
+    if (status === ONBOARDING_STATUS.COMPLETED) {
       completedOnboardingSites.add(c.var.currentSite.id);
+      return next();
+    }
+
+    if (
+      status === ONBOARDING_STATUS.PROVISIONED &&
+      !(c.var.isAuthenticated && isAuthorPath(path))
+    ) {
       return next();
     }
 
@@ -52,15 +69,17 @@ export function requireOnboarding(): MiddlewareHandler<Env> {
 }
 
 /**
- * Only these page routes are redirected to /setup during onboarding.
+ * Only these page routes are ever redirected to /setup.
  * Everything else (assets, API, feeds, media, etc.) passes through.
  */
-function shouldRedirect(path: string): boolean {
+function isGatedPath(path: string): boolean {
+  return path === "/signin" || path === "/reset" || isAuthorPath(path);
+}
+
+/** The routes an author uses to reach their own site. */
+function isAuthorPath(path: string): boolean {
   return (
-    path === "/" ||
-    path === "/signin" ||
-    path === "/reset" ||
-    path.startsWith("/settings")
+    path === "/" || path.startsWith("/settings") || path.startsWith("/compose")
   );
 }
 

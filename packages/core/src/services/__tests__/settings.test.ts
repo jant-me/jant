@@ -360,6 +360,57 @@ describe("SettingsService", () => {
       const result = await settingsService.isOnboardingComplete();
       expect(result).toBe(true);
     });
+
+    it("reports the three first-run states", async () => {
+      expect(await settingsService.getOnboardingStatus()).toBe("pending");
+
+      await settingsService.markSiteProvisioned();
+      expect(await settingsService.getOnboardingStatus()).toBe("provisioned");
+      // A provisioned site is real, but setup is not finished with it.
+      expect(await settingsService.isOnboardingComplete()).toBe(false);
+
+      await settingsService.completeOnboarding();
+      expect(await settingsService.getOnboardingStatus()).toBe("completed");
+    });
+
+    it("finishes setup when the author confirms the language they write in", async () => {
+      await settingsService.markSiteProvisioned();
+      // The control plane's guess, taken from the locale the owner browsed it
+      // in, is what the site starts with.
+      await settingsService.set("SITE_LANGUAGE", "zh-Hans");
+
+      await settingsService.confirmFirstRunLanguage(
+        { siteLanguage: "en", browserLanguage: "zh-Hans" },
+        { oldLanguage: "zh-Hans" },
+      );
+
+      expect(await settingsService.get("SITE_LANGUAGE")).toBe("en");
+      // English site, Chinese dashboard — the split the question exists for.
+      expect(await settingsService.get("DASHBOARD_LANGUAGE")).toBe("zh-Hans");
+      expect(await settingsService.isOnboardingComplete()).toBe(true);
+    });
+
+    it("leaves the dashboard following when the browser sent none", async () => {
+      await settingsService.confirmFirstRunLanguage(
+        { siteLanguage: "zh-TW", browserLanguage: "" },
+        { oldLanguage: "en" },
+      );
+
+      expect(await settingsService.get("SITE_LANGUAGE")).toBe("zh-TW");
+      expect(await settingsService.get("DASHBOARD_LANGUAGE")).toBeNull();
+    });
+
+    it("leaves the dashboard following the language the author confirmed", async () => {
+      // An English browser says nothing about someone who just answered
+      // "Simplified Chinese" — the dashboard follows that answer.
+      await settingsService.confirmFirstRunLanguage(
+        { siteLanguage: "zh-Hans", browserLanguage: "en-US" },
+        { oldLanguage: "en" },
+      );
+
+      expect(await settingsService.get("SITE_LANGUAGE")).toBe("zh-Hans");
+      expect(await settingsService.get("DASHBOARD_LANGUAGE")).toBeNull();
+    });
   });
 
   describe("grouped settings updates", () => {

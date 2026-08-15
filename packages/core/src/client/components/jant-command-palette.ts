@@ -13,7 +13,7 @@ import { classMap } from "lit/directives/class-map.js";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { NAVIGATION_SETTINGS_PATH } from "../../lib/settings-paths.js";
 import { openNewCompose } from "../compose-launch.js";
-import { publicPath } from "../runtime-paths.js";
+import { navPath } from "../runtime-paths.js";
 import { getBestFieldSearchRank, normalizeSearch } from "../search-rank.js";
 
 // ---------------------------------------------------------------------------
@@ -380,7 +380,11 @@ export class JantCommandPalette extends LitElement {
   #executeSearch(query: string) {
     saveHistory(SEARCH_HISTORY_KEY, query);
     this.close();
-    window.location.href = publicPath(`/search?q=${encodeURIComponent(query)}`);
+    // navPath, not publicPath: a search run from inside /en belongs in /en.
+    // The palette jumps to settings pages and posts through this same code
+    // path, so it cannot assert the kind of any one target — navPath decides
+    // per target and leaves the site-wide ones alone.
+    window.location.href = navPath(`/search?q=${encodeURIComponent(query)}`);
   }
 
   #executeItem(index: number) {
@@ -409,7 +413,7 @@ export class JantCommandPalette extends LitElement {
       if (displayItem?.pathTarget) {
         saveHistory(NAV_HISTORY_KEY, displayItem.pathTarget);
         this.close();
-        window.location.href = publicPath(displayItem.pathTarget);
+        window.location.href = navPath(displayItem.pathTarget);
         return;
       }
 
@@ -431,11 +435,11 @@ export class JantCommandPalette extends LitElement {
       saveHistory(NAV_HISTORY_KEY, item.path);
       this.close();
       if (item.type === "system") {
-        window.location.href = publicPath(item.path);
+        window.location.href = navPath(item.path);
       } else if (item.type === "collection") {
-        window.location.href = publicPath(`/collections/${item.path}`);
+        window.location.href = navPath(`/collections/${item.path}`);
       } else {
-        window.location.href = publicPath(
+        window.location.href = navPath(
           item.status === "draft"
             ? `/preview/${item.path}?edit=1`
             : `/${item.path}`,
@@ -554,19 +558,23 @@ export class JantCommandPalette extends LitElement {
         <span class="command-palette-result-icon">${unsafeSVG(item.icon)}</span>
         <span class="command-palette-result-body">
           <span class="command-palette-result-title">${item.label}</span>
-          ${item.secondary
-            ? html`<span class="command-palette-result-path"
-                >${item.secondary}</span
-              >`
-            : nothing}
+          ${
+            item.secondary
+              ? html`<span class="command-palette-result-path"
+                  >${item.secondary}</span
+                >`
+              : nothing
+          }
         </span>
-        ${item.shortcut
-          ? html`<kbd
-              class="command-palette-result-shortcut"
-              aria-label="Command or Control plus Enter"
-              >${item.shortcut}</kbd
-            >`
-          : nothing}
+        ${
+          item.shortcut
+            ? html`<kbd
+                class="command-palette-result-shortcut"
+                aria-label="Command or Control plus Enter"
+                >${item.shortcut}</kbd
+              >`
+            : nothing
+        }
       </div>
     `;
   }
@@ -606,39 +614,47 @@ export class JantCommandPalette extends LitElement {
               role="combobox"
               aria-expanded="true"
               aria-controls="command-palette-results"
-              aria-activedescendant=${items.length > 0
-                ? `command-palette-item-${this._selectedIndex}`
-                : ""}
+              aria-activedescendant=${
+                items.length > 0
+                  ? `command-palette-item-${this._selectedIndex}`
+                  : ""
+              }
               autocomplete="off"
               spellcheck="false"
             />
-            ${this._loading
-              ? html`<span class="command-palette-spinner"></span>`
-              : nothing}
+            ${
+              this._loading
+                ? html`<span class="command-palette-spinner"></span>`
+                : nothing
+            }
           </div>
 
-          ${items.length > 0
-            ? html`
-                <div
-                  id="command-palette-results"
-                  class="command-palette-results-container"
-                  role="listbox"
-                >
-                  ${resultItems.length > 0
-                    ? html`<div class="command-palette-results">
-                        ${resultItems.map(({ item, index }) =>
-                          this.#renderItem(item, index),
-                        )}
-                      </div>`
-                    : nothing}
-                  ${footerItems.map(({ item, index }) =>
-                    this.#renderItem(item, index, true),
-                  )}
-                </div>
-              `
-            : this._query.trim() && !this._loading
-              ? html`<div class="command-palette-empty">No results</div>`
-              : nothing}
+          ${
+            items.length > 0
+              ? html`
+                  <div
+                    id="command-palette-results"
+                    class="command-palette-results-container"
+                    role="listbox"
+                  >
+                    ${
+                      resultItems.length > 0
+                        ? html`<div class="command-palette-results">
+                            ${resultItems.map(({ item, index }) =>
+                            this.#renderItem(item, index),
+                          )}
+                          </div>`
+                        : nothing
+                    }
+                    ${footerItems.map(({ item, index }) =>
+                      this.#renderItem(item, index, true),
+                    )}
+                  </div>
+                `
+              : this._query.trim() && !this._loading
+                ? html`<div class="command-palette-empty">No results</div>`
+                : nothing
+          }
         </div>
       </dialog>
     `;

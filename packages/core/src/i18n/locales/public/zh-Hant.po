@@ -128,6 +128,11 @@ msgstr ""
 msgid "Accent should feel present, not loud."
 msgstr ""
 
+#. @context: Setup form group - the admin account being created
+#: src/routes/auth/setup.tsx
+msgid "Account"
+msgstr "帳戶"
+
 #. @context: Add more attachments button
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Add"
@@ -286,7 +291,7 @@ msgstr ""
 #. @context: Error toast when authentication secret is missing from server config
 #: src/routes/auth/setup.tsx
 msgid "Auth secret is missing. Check your environment variables."
-msgstr ""
+msgstr "缺少驗證金鑰，檢查環境變數設定。"
 
 #. @context: Error toast when authentication system is unavailable
 #: src/routes/auth/signin.tsx
@@ -515,7 +520,7 @@ msgstr ""
 #. @context: Setup form submit button
 #: src/routes/auth/setup.tsx
 msgid "Complete Setup"
-msgstr ""
+msgstr "完成設定"
 
 #. @context: Accessible name for the compose dialog
 #: src/ui/compose/ComposeDialog.tsx
@@ -528,9 +533,11 @@ msgid "Confirm Password"
 msgstr ""
 
 #. @context: Setup form field - site content language
+#. @context: Setup form field - site content language
+#: src/routes/auth/setup.tsx
 #: src/routes/auth/setup.tsx
 msgid "Content language"
-msgstr ""
+msgstr "內容語言"
 
 #. @context: Feed link from a truncated article excerpt to its full page
 #: src/ui/feed/NoteCard.tsx
@@ -553,13 +560,9 @@ msgid "Couldn't add this collection to navigation. Try again."
 msgstr ""
 
 #. @context: Error toast when account creation fails
-#. @context: Error toast when account creation fails
-#. @context: Error toast when account creation fails
-#: src/routes/auth/setup.tsx
-#: src/routes/auth/setup.tsx
 #: src/routes/auth/setup.tsx
 msgid "Couldn't create your account. Check the details and try again."
-msgstr ""
+msgstr "帳戶建立失敗，檢查填寫內容後重試。"
 
 #. @context: Toast shown when edit mode fails to load a post
 #: src/ui/compose/ComposeDialog.tsx
@@ -579,11 +582,6 @@ msgstr ""
 #. @context: Compose collection combobox empty state when no collections exist
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Create a collection to get started."
-msgstr ""
-
-#. @context: Setup page description
-#: src/routes/auth/setup.tsx
-msgid "Create your admin account."
 msgstr ""
 
 #. @context: Thread item label on sample page
@@ -886,7 +884,7 @@ msgstr ""
 #: src/routes/auth/setup.tsx
 #: src/routes/auth/signin.tsx
 msgid "Email"
-msgstr ""
+msgstr "電子郵件"
 
 #. @context: Compose toolbar - emoji picker tooltip
 #: src/ui/compose/ComposeDialog.tsx
@@ -1148,6 +1146,11 @@ msgstr ""
 #: src/ui/pages/BrandPage.tsx
 msgid "iOS home screen"
 msgstr ""
+
+#. @context: Setup page description under the write-language question
+#: src/routes/auth/setup.tsx
+msgid "It sets the language readers and search engines see. Change it any time in Settings."
+msgstr "它決定讀者和搜尋引擎看到的語言，之後可以在設定中更改。"
 
 #. @context: test fixture — not shipped anywhere
 #. @context: test fixture — not shipped anywhere
@@ -1478,6 +1481,11 @@ msgstr ""
 msgid "No file selected. Choose a file to upload."
 msgstr ""
 
+#. @context: Empty state in the language picker
+#: src/routes/auth/setup.tsx
+msgid "No matches."
+msgstr "無相符結果。"
+
 #. @context: Search empty results
 #: src/ui/pages/SearchPage.tsx
 msgid "No results. Try different keywords."
@@ -1601,7 +1609,7 @@ msgstr ""
 #: src/routes/auth/setup.tsx
 #: src/routes/auth/signin.tsx
 msgid "Password"
-msgstr ""
+msgstr "密碼"
 
 #. @context: Error shown when password reset is blocked in demo mode
 #: src/routes/auth/reset.tsx
@@ -1979,6 +1987,16 @@ msgstr ""
 msgid "Search..."
 msgstr ""
 
+#. @context: Placeholder in the language picker search box
+#: src/routes/auth/setup.tsx
+msgid "Search…"
+msgstr "搜尋…"
+
+#. @context: Setup page description
+#: src/routes/auth/setup.tsx
+msgid "Set up your site and the account you write from."
+msgstr "設定你的網站，以及寫作用的帳戶。"
+
 #. @context: Built-in navigation label for settings
 #: src/ui/shared/navigation-labels.ts
 msgctxt "nav"
@@ -2063,6 +2081,11 @@ msgstr ""
 msgid "Single posts"
 msgstr ""
 
+#. @context: Setup form group - the site itself
+#: src/routes/auth/setup.tsx
+msgid "Site"
+msgstr "網站"
+
 #. @context: Token label on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Site accent"
@@ -2071,7 +2094,7 @@ msgstr ""
 #. @context: Setup form field - site name
 #: src/routes/auth/setup.tsx
 msgid "Site Name"
-msgstr ""
+msgstr "網站名稱"
 
 #. @context: Description for the favicon asset card
 #: src/ui/pages/BrandPage.tsx
@@ -2104,7 +2127,7 @@ msgstr ""
 #: src/routes/compose.tsx
 #: src/routes/compose.tsx
 msgid "Something doesn't look right. Check the form and try again."
-msgstr ""
+msgstr "有欄位填寫不正確，檢查後重試。"
 
 #. @context: Sort menu label on collection detail page
 #: src/ui/pages/CollectionPage.tsx
@@ -2160,6 +2183,11 @@ msgstr ""
 #: src/ui/pages/BrandPage.tsx
 msgid "Start here"
 msgstr ""
+
+#. @context: Setup submit button on a hosted site, after the language question
+#: src/routes/auth/setup.tsx
+msgid "Start writing"
+msgstr "開始寫作"
 
 #. @context: Table cell in the sample detail article
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -2258,7 +2286,7 @@ msgstr ""
 #. @context: Setup form help text under the content language field
 #: src/routes/auth/setup.tsx
 msgid "The language your readers and search engines see."
-msgstr ""
+msgstr "讀者和搜尋引擎看到的語言。"
 
 #. @context: Accessible name of the scrollable panel holding the post being translated
 #: src/ui/compose/ComposeDialog.tsx
@@ -2568,7 +2596,12 @@ msgstr ""
 #. @context: Setup page welcome heading
 #: src/routes/auth/setup.tsx
 msgid "Welcome to Jant"
-msgstr ""
+msgstr "歡迎使用 Jant"
+
+#. @context: Setup heading on a hosted site, where the language is all that is left to ask
+#: src/routes/auth/setup.tsx
+msgid "What language do you write in?"
+msgstr "你寫作的主要語言是？"
 
 #. @context: Table header in the sample detail article
 #: src/ui/pages/ThemeSamplePage.tsx

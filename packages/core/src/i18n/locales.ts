@@ -151,3 +151,40 @@ export function resolveCatalogLocale(tag: string): Locale {
 
   return baseLocale;
 }
+
+/**
+ * Decide whether first-run setup should pin the dashboard's own locale.
+ *
+ * The dashboard follows the content language unless `DASHBOARD_LANGUAGE` says
+ * otherwise, so setup's only job is to notice when the browser knows something
+ * following would miss. It knows something in exactly one case: it names a
+ * catalog that is neither the fallback nor the one the content language
+ * already resolves to.
+ *
+ * That covers both directions of the mismatch this exists for. Someone writing
+ * an English blog from a Chinese browser gets a Chinese dashboard, because the
+ * browser is the only thing that said "Chinese". Someone writing a Chinese blog
+ * from an English browser keeps a Chinese dashboard, because `en` is what every
+ * unconfigured browser reports and is no evidence against the language they
+ * just chose by hand.
+ *
+ * @param contentLanguage - The BCP 47 tag the author chose to publish in
+ * @param browserLanguage - What the browser reported, if anything
+ * @returns The catalog to pin, or `null` to follow the content language
+ * @example
+ * resolveFirstRunDashboardLocale("zh-Hans", "en"); // null — follow the content
+ * resolveFirstRunDashboardLocale("en", "zh-CN"); // "zh-Hans"
+ */
+export function resolveFirstRunDashboardLocale(
+  contentLanguage: string,
+  browserLanguage?: string | null,
+): Locale | null {
+  const browser = browserLanguage?.trim();
+  if (!browser) return null;
+
+  const browserCatalog = resolveCatalogLocale(browser);
+  if (browserCatalog === baseLocale) return null;
+  if (browserCatalog === resolveCatalogLocale(contentLanguage)) return null;
+
+  return browserCatalog;
+}

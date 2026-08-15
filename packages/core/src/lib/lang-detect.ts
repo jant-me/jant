@@ -10,8 +10,10 @@
  *
  * - Hangul and kana are near-unambiguous, so Korean and Japanese are reliable.
  * - Simplified vs Traditional Chinese is decided by voting on characters that
- *   exist in only one of the two. One sentence is usually plenty; a handful of
- *   shared Han characters is not, and that case deliberately falls back.
+ *   exist in only one of the two. One sentence is usually plenty. Text written
+ *   the same way in both — `我今天很好` — is reported as Chinese of unsettled
+ *   variant, which is enough on a site publishing only one of them and
+ *   deliberately not enough on a site publishing both.
  * - Latin script says "not CJK", nothing more. It resolves to a language only
  *   when the site publishes exactly one non-CJK language.
  * - Nothing at all is read out of a fragment. See `MIN_SIGNAL`: under a couple
@@ -59,8 +61,17 @@ const TRADITIONAL_ONLY =
 const SIMPLIFIED_SET = new Set(SIMPLIFIED_ONLY);
 const TRADITIONAL_SET = new Set(TRADITIONAL_ONLY);
 
-/** Script family a run of text is written in, before it meets the site's languages. */
-export type DetectedScript = "ko" | "ja" | "zh-Hans" | "zh-Hant" | "latin";
+/**
+ * Script family a run of text is written in, before it meets the site's
+ * languages.
+ *
+ * `han` is Chinese whose variant the text does not settle: `我今天很好` and
+ * `哈哈哈哈` are written identically in Simplified and Traditional. It is a
+ * real answer, not a refusal — the text is certainly Chinese — and on a site
+ * that publishes only one of the two variants it is all the answer needed.
+ */
+export type DetectedScript =
+  "ko" | "ja" | "zh-Hans" | "zh-Hant" | "han" | "latin";
 
 interface ScriptCounts {
   hangul: number;
@@ -163,6 +174,7 @@ const MIN_SIGNAL = 10;
  * @example
  * detectScript("これはテスト"); // "ja"
  * detectScript("國學說這時"); // "zh-Hant"
+ * detectScript("我今天很好"); // "han" — Chinese, variant not settled
  * detectScript("Hi"); // null — too short to be worth an answer
  * detectScript("123 !!!"); // null
  */
@@ -180,9 +192,11 @@ export function detectScript(text: string): DetectedScript | null {
     if (counts.kana > 0) return "ja";
     if (counts.simplified > counts.traditional) return "zh-Hans";
     if (counts.traditional > counts.simplified) return "zh-Hant";
-    // Han with no distinctive character either way — a phrase written
-    // identically in both. Refuse to guess.
-    return null;
+    // Han with no distinctive character either way, or the same number on each
+    // side. Which variant this is, the text does not say; that it is Chinese,
+    // it says clearly. Report that much and let the caller weigh it against the
+    // languages the site actually publishes.
+    return "han";
   }
 
   return counts.latin >= MIN_SIGNAL ? "latin" : null;
@@ -223,6 +237,18 @@ export function readContentLanguage(
     // between them from the alphabet alone would be a coin toss.
     const nonCjk = languages.filter((tag) => !getCjkFontFromLanguageTag(tag));
     return nonCjk.length === 1 ? (nonCjk[0] as string) : null;
+  }
+
+  if (script === "han") {
+    // Same shape as the Latin case: the text narrowed it to Chinese but not to
+    // a variant, so it names a language only when the site publishes one of
+    // them. A site running both Simplified and Traditional gets no answer,
+    // which is the honest one — the text genuinely does not say.
+    const chinese = languages.filter((tag) => {
+      const profile = getCjkFontFromLanguageTag(tag);
+      return profile === "zh-Hans" || profile === "zh-Hant";
+    });
+    return chinese.length === 1 ? (chinese[0] as string) : null;
   }
 
   // No match means the site does not publish the detected script — say nothing

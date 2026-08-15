@@ -13,7 +13,7 @@ import {
   baseLocale,
   isValidContentLanguage,
   normalizeContentLanguage,
-  resolveCatalogLocale,
+  resolveFirstRunDashboardLocale,
 } from "../i18n/locales.js";
 import { createNavItemService } from "./navigation.js";
 import { createSettingsService } from "./settings.js";
@@ -75,14 +75,18 @@ export function createBootstrapService(
           ? normalizeContentLanguage(data.siteLanguage)
           : baseLocale;
       await settings.set("SITE_LANGUAGE", siteLanguage);
-      // Pin the dashboard UI locale to the browser's language, not the site's.
-      // The dashboard is read by one person — the author — so their own
-      // language is the better signal, and pinning it keeps it stable when the
-      // public content language later changes.
-      await settings.set(
-        "DASHBOARD_LANGUAGE",
-        resolveCatalogLocale(data.browserLanguage ?? siteLanguage),
+      // Leave the dashboard following the content language unless the browser
+      // reported something following would not produce. Pinning unconditionally
+      // would freeze the dashboard to `en` for every author whose browser is
+      // English — including the ones who just chose a different language by
+      // hand one field above.
+      const dashboardLanguage = resolveFirstRunDashboardLocale(
+        siteLanguage,
+        data.browserLanguage,
       );
+      if (dashboardLanguage) {
+        await settings.set("DASHBOARD_LANGUAGE", dashboardLanguage);
+      }
 
       await settings.completeOnboarding();
     },

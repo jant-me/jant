@@ -20,6 +20,7 @@ import type {
 } from "../types/views.js";
 import { toLanguagePrefix } from "../i18n/locales.js";
 import { getOrBuildEntry } from "../i18n/supported-locales.js";
+import { isPerLanguageSurface } from "./per-language-surfaces.js";
 import { toAbsoluteSiteUrl, toPublicPath } from "./url.js";
 
 type ViewContext = Context<{ Bindings: Bindings; Variables: AppVariables }>;
@@ -223,46 +224,9 @@ export function viewRelativePath(c: ViewContext): string {
   return c.var.viewLang ? stripFirstSegment(c.req.path) : c.req.path;
 }
 
-/**
- * Reader surfaces that are served once per language.
- *
- * Mirrors the `langGet()` table in `routes/pages/language.tsx` — the two must
- * change together. Everything else (settings, dash, auth, one-off pages) has
- * no counterpart under a language prefix, so language-crossing links from
- * those pages must aim at the language's home instead.
- */
-const PER_LANGUAGE_SURFACES = new Set([
-  "/",
-  "/feed",
-  "/latest",
-  "/featured",
-  "/archive",
-  "/search",
-  "/collections",
-]);
-
-const PER_LANGUAGE_SURFACE_PREFIXES = [
-  "/latest/",
-  "/featured/",
-  "/archive/",
-  "/collections/",
-];
-
-/**
- * Whether a path exists in every language's view.
- *
- * @param path - Internal app path, without any language prefix
- * @returns True when `/ja{path}` is a page rather than a 404
- * @example
- * isPerLanguageSurface("/archive"); // true — /ja/archive exists
- * isPerLanguageSurface("/settings/language"); // false — the dash is one place
- */
-export function isPerLanguageSurface(path: string): boolean {
-  if (PER_LANGUAGE_SURFACES.has(path)) return true;
-  return PER_LANGUAGE_SURFACE_PREFIXES.some((prefix) =>
-    path.startsWith(prefix),
-  );
-}
+// The table of per-language surfaces lives in its own module so the client can
+// import it too — a link built in the browser needs the same answer.
+export { isPerLanguageSurface };
 
 /**
  * Build a path inside an arbitrary language's view.

@@ -94,8 +94,10 @@ describe("Internal site admin routes", () => {
 
     expect(siteRows).toEqual([{ key: "demo-cloud" }]);
     expect(domainRows).toEqual([{ host: "demo-cloud.example.com" }]);
+    // Provisioned, not completed: the site is real and servable, but its
+    // owner has not yet confirmed the language they write in.
     expect(settingRows).toEqual([
-      { key: "ONBOARDING_STATUS", value: "completed" },
+      { key: "ONBOARDING_STATUS", value: "provisioned" },
       { key: "SITE_LANGUAGE", value: "en" },
       { key: "SITE_NAME", value: "Demo Cloud" },
     ]);
@@ -136,7 +138,7 @@ describe("Internal site admin routes", () => {
       .all(body.siteId) as { key: string; value: string }[];
 
     expect(settingRows).toEqual([
-      { key: "ONBOARDING_STATUS", value: "completed" },
+      { key: "ONBOARDING_STATUS", value: "provisioned" },
       { key: "SITE_LANGUAGE", value: "en" },
       { key: "SITE_NAME", value: "Locale Demo" },
       { key: "TIME_ZONE", value: "Etc/GMT-8" },

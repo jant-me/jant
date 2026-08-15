@@ -17,6 +17,13 @@ export interface CollectionsManagerProps {
   items: CollectionDirectoryItem[];
   navigationCollectionIds?: string[];
   sitePathPrefix?: string;
+  /**
+   * Site path prefix plus the language prefix of the view being rendered.
+   * Collection pages exist once per language, so a reader on `/en/collections`
+   * must land on `/en/{slug}` rather than being dropped into the primary view.
+   * Required for the same reason as on {@link CollectionDirectoryProps}.
+   */
+  basePath: string;
   siteOrigin?: string;
 }
 
@@ -24,6 +31,7 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
   items,
   navigationCollectionIds = [],
   sitePathPrefix = "",
+  basePath,
   siteOrigin = "",
 }) => {
   const { i18n } = useLingui();
@@ -327,6 +335,7 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
           items={items}
           emptyMessage={labels.emptyState}
           sitePathPrefix={sitePathPrefix}
+          basePath={basePath}
           siteOrigin={siteOrigin}
         />
       </jant-collections-manager>

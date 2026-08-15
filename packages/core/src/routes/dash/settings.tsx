@@ -13,7 +13,7 @@ import { z } from "zod";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { sse, dsRedirect, dsToast } from "../../lib/sse.js";
-import { getI18n, isLocale, resolveCatalogLocale } from "../../i18n/index.js";
+import { getI18n, isLocale } from "../../i18n/index.js";
 import { renderPublicPage } from "../../lib/render.js";
 import { getNavigationData } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
@@ -521,10 +521,13 @@ settingsRoutes.get("/language", async (c) => {
         />
         <LanguageContent
           contentLanguage={state.primary}
+          // Unset stays unset rather than being shown as the locale it
+          // currently resolves to: "Follow content language" is a real choice
+          // on this page, and it is the one most sites are on.
           dashboardLanguage={
             isLocale(appConfig.dashboardLanguage)
               ? appConfig.dashboardLanguage
-              : resolveCatalogLocale(state.primary)
+              : ""
           }
           multilingualEnabled={state.enabled}
           additionalLanguages={state.additional}

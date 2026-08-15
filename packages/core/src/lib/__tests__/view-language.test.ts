@@ -365,4 +365,19 @@ describe("isPerLanguageSurface", () => {
     expect(isPerLanguageSurface("/settings/language")).toBe(false);
     expect(isPerLanguageSurface("/my-post")).toBe(false);
   });
+
+  it("separates collection pages from the collection editors", () => {
+    // `langGet()` serves /collections/:slug and its feed, and nothing else
+    // under /collections — the editors are registered once, outside it.
+    expect(isPerLanguageSurface("/collections/a+b")).toBe(true);
+    expect(isPerLanguageSurface("/collections/a+b/feed")).toBe(true);
+    expect(isPerLanguageSurface("/collections/new")).toBe(false);
+    expect(isPerLanguageSurface("/collections/reading/edit")).toBe(false);
+  });
+
+  it("ignores a query string, so a built link can be passed as-is", () => {
+    expect(isPerLanguageSurface("/archive?media=any")).toBe(true);
+    expect(isPerLanguageSurface("/search?q=hello")).toBe(true);
+    expect(isPerLanguageSurface("/settings?tab=general")).toBe(false);
+  });
 });

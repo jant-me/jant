@@ -83,10 +83,17 @@ export const SETTINGS_KEYS = Object.fromEntries(
 export type SettingsKey = SettingsFieldKey;
 
 /**
- * Onboarding status values
+ * Onboarding status values.
+ *
+ * `provisioned` is the hosted middle state: a control plane created the site
+ * and its owner, so the site is real and servable, but nobody has yet answered
+ * the questions only a person can answer — the language they write in. It is
+ * deliberately distinct from `pending`, which means the site has no owner at
+ * all and nothing but setup should be reachable.
  */
 export const ONBOARDING_STATUS = {
   PENDING: "pending",
+  PROVISIONED: "provisioned",
   COMPLETED: "completed",
 } as const;
 

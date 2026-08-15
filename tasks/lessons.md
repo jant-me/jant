@@ -641,3 +641,35 @@ its rows do not say what they are: "Other versions" over a column of bare
 language names, yes; "Add a translation" over "Write the English version", no —
 but dropping it means any row that leaned on it for context has to be reworded
 to stand alone.
+
+## A link to a per-language surface needs the view prefix, and the default hides it
+
+Two address kinds exist on a multilingual site. Post permalinks are
+language-neutral: one post, one address, whatever view it was reached from.
+Everything the `langGet()` table serves — home, feed, latest, featured, archive,
+search, collections, and the registered-path catch-all — exists once per
+language, so a link to one from inside `/en` that omits `/en` does not merely
+look odd; it silently moves the reader to another language's copy.
+
+Use `toViewPath(c, path)` in handlers, `navData.basePath` in components, and
+`viewPath(path)` in client code (`publicPath` deliberately knows only the site
+path prefix). The trap is not forgetting the rule, it is the shape that hides
+the forgetting: `basePath = sitePathPrefix` as a default parameter turns an
+omission into a valid-looking primary-language link instead of an error. Make
+`basePath` required wherever a component links to a per-language surface, and
+thread it through every wrapper — the signed-in collections directory had the
+bug for exactly one reason, that `CollectionsManager` sat between the page and
+`CollectionDirectory` and did not forward it.
+
+Client-side rendering is a second, easier-to-miss copy of the same bug: a Lit
+component that re-renders rows after hydration overwrites correct server HTML
+with its own hrefs. Check both halves when auditing a surface.
+
+One thing a helper cannot decide for you. `/{slug}` is a shared root namespace:
+a collection page there is per-language, a post permalink there is not, and the
+path alone does not say which. So there are two client helpers, not one —
+`viewPath()` always prefixes and is for call sites that know what they are
+linking to, `navPath()` prefixes only the surfaces provably served per language
+and is for code like the command palette that navigates to settings, posts and
+archives through one branchless code path. Guarding the wrong one strips the
+prefix off exactly the collection links this whole entry is about.

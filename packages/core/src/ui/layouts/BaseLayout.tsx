@@ -23,6 +23,7 @@ import { getPublicUrlForProvider } from "../../lib/image.js";
 import { getThemeBrowserColors, resolveBuiltinTheme } from "../../lib/theme.js";
 import { toAbsoluteAssetUrl, toPublicPath } from "../../lib/url.js";
 import type { LanguageAlternate } from "../../lib/view-language.js";
+import { toLanguagePrefix } from "../../i18n/locales.js";
 import {
   CLIENT_AUTH_JS_FILE,
   CLIENT_CJK_CSS_FILE,
@@ -144,6 +145,13 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
     faviconVersion ?? (appConfig?.faviconVersion || undefined);
   const resolvedNoindex = noindex ?? appConfig?.noindex;
   const sitePathPrefix = appConfig?.sitePathPrefix || "";
+  // Where "here" is for links the client builds. The server has `toViewPath`
+  // for this; without the same base in the DOM, a client-rendered link to a
+  // per-language surface silently drops the reader into the primary view.
+  const viewLang = c?.get("viewLang");
+  const viewBasePath = viewLang
+    ? `${sitePathPrefix}/${toLanguagePrefix(viewLang)}`
+    : sitePathPrefix;
   const assetBasePath = IS_VITE_DEV
     ? "/"
     : appConfig?.assetBasePath || getPublicAssetBasePath(sitePathPrefix);
@@ -322,6 +330,7 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         data-theme={appConfig?.themeId}
         data-theme-mode={themeMode}
         data-site-path-prefix={sitePathPrefix}
+        data-view-base-path={viewBasePath}
         data-asset-base-path={assetBasePath}
         data-media-base={mediaBase}
       >

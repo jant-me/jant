@@ -74,9 +74,9 @@ describe("Setup bootstrap logic", () => {
     );
   });
 
-  it("pins the dashboard language to the browser, not the site", async () => {
+  it("pins the dashboard language when only the browser knows it", async () => {
     // Someone running an English blog from a Chinese browser: English site,
-    // Chinese dashboard.
+    // Chinese dashboard. Following the content language would miss this.
     await runSetupBootstrap(services, {
       siteLanguage: "en",
       browserLanguage: "zh-TW",
@@ -89,18 +89,48 @@ describe("Setup bootstrap logic", () => {
     );
   });
 
-  it("falls back to the content language when the browser sent none", async () => {
+  it("leaves the dashboard following a content language the author chose", async () => {
+    // The reverse mismatch, and the common one: an English browser is what
+    // every unconfigured machine reports, so it is no evidence against the
+    // language just chosen by hand. The dashboard must not freeze to English.
+    await runSetupBootstrap(services, {
+      siteLanguage: "zh-Hans",
+      browserLanguage: "en",
+    });
+
+    const rows = await services.db.select().from(settings);
+    expect(rows.find((row) => row.key === "SITE_LANGUAGE")?.value).toBe(
+      "zh-Hans",
+    );
+    expect(
+      rows.find((row) => row.key === "DASHBOARD_LANGUAGE"),
+    ).toBeUndefined();
+  });
+
+  it("leaves the dashboard following when the browser sent none", async () => {
     await runSetupBootstrap(services, { siteLanguage: "zh-TW" });
 
     const rows = await services.db.select().from(settings);
-    // Content language stays verbatim; the dashboard locale is the resolved
-    // catalog (zh-Hant) so it is stable if content language later changes.
+    // Content language stays verbatim, and the dashboard derives zh-Hant from
+    // it at render time rather than being pinned here.
     expect(rows.find((row) => row.key === "SITE_LANGUAGE")?.value).toBe(
       "zh-TW",
     );
-    expect(rows.find((row) => row.key === "DASHBOARD_LANGUAGE")?.value).toBe(
-      "zh-Hant",
-    );
+    expect(
+      rows.find((row) => row.key === "DASHBOARD_LANGUAGE"),
+    ).toBeUndefined();
+  });
+
+  it("leaves the dashboard following when browser and content agree", async () => {
+    await runSetupBootstrap(services, {
+      siteLanguage: "zh-Hans",
+      browserLanguage: "zh-CN",
+    });
+
+    const rows = await services.db.select().from(settings);
+    expect(
+      rows.find((row) => row.key === "DASHBOARD_LANGUAGE"),
+    ).toBeUndefined();
   });
 
   it("is idempotent when default navigation already exists", async () => {

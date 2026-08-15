@@ -18,6 +18,11 @@ import { LitElement, html, nothing } from "lit";
 import { showConfirmDialog } from "../confirm.js";
 import { showToast } from "../toast.js";
 import { getJsonString, readJsonObject } from "../json.js";
+import {
+  LOCALE_PICKER_TRIGGER_CLASS,
+  type LocaleOption,
+  type LocalePickerLabels,
+} from "./jant-locale-picker.js";
 
 interface LanguageLabels {
   siteSection: string;
@@ -61,13 +66,6 @@ interface LanguageLabels {
   noMatches: string;
 }
 
-interface LocaleOption {
-  tag: string;
-  native: string;
-  english: string;
-  coverage: number;
-}
-
 interface LanguageInitialState {
   contentLanguage: string;
   dashboardLanguage: string;
@@ -79,14 +77,6 @@ interface LanguageInitialState {
 
 /** Catalog locales the dashboard is translated into. */
 const DASHBOARD_LOCALES = ["", "en", "zh-Hans", "zh-Hant"] as const;
-
-/**
- * Combobox trigger styled to match a native `.select`, since that is what it
- * stands in for. BaseCoat has no combobox class, and `.select` alone would drop
- * the chevron affordance on a `<button>`.
- */
-const PICKER_TRIGGER_CLASS =
-  "flex h-9 w-full cursor-pointer items-center rounded-md border border-input bg-transparent bg-[image:var(--chevron-down-icon-50)] bg-position-[center_right_0.75rem] bg-size-[1rem] bg-no-repeat py-2 pl-3 pr-9 text-left text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
 /**
  * Fill the `{name}` slots the server deliberately left intact.
@@ -119,8 +109,6 @@ export class JantSettingsLanguage extends LitElement {
     _removeError: { state: true },
     _rowMenuOpen: { state: true },
     _enableError: { state: true },
-    _pickerOpen: { state: true },
-    _pickerQuery: { state: true },
     _enableOpen: { state: true },
     _enableAdditional: { state: true },
     _enablePrimary: { state: true },
@@ -151,13 +139,6 @@ export class JantSettingsLanguage extends LitElement {
    * on the list is offered as one click.
    */
   declare _enableError: { message: string; language?: string } | null;
-  declare _pickerOpen:
-    | "primary"
-    | "add"
-    | "enable-primary"
-    | "enable-add"
-    | null;
-  declare _pickerQuery: string;
   declare _enableOpen: boolean;
   declare _enableAdditional: string[];
   declare _enablePrimary: string;
@@ -186,8 +167,6 @@ export class JantSettingsLanguage extends LitElement {
     this._removeError = null;
     this._rowMenuOpen = null;
     this._enableError = null;
-    this._pickerOpen = null;
-    this._pickerQuery = "";
     this._enableOpen = false;
     this._enableAdditional = [];
     this._enablePrimary = "en";
@@ -257,32 +236,26 @@ export class JantSettingsLanguage extends LitElement {
 
   // ── Dismissal ─────────────────────────────────────────────────────
 
+  /** True while any locale picker on this page is showing its list. */
+  #pickerIsOpen(): boolean {
+    return this.querySelector("jant-locale-picker[open]") !== null;
+  }
+
   #onDocumentClick = (event: Event) => {
+    if (!this._rowMenuOpen) return;
     const target = event.target as globalThis.Element | null;
-    if (this._rowMenuOpen) {
-      const inMenu =
-        target && this.contains(target) && target.closest?.("[data-row-menu]");
-      if (!inMenu) this._rowMenuOpen = null;
-    }
-    if (!this._pickerOpen) return;
-    if (target && this.contains(target)) {
-      if (target.closest?.("[data-language-picker]")) return;
-    }
-    this._pickerOpen = null;
-    this._pickerQuery = "";
+    const inMenu =
+      target && this.contains(target) && target.closest?.("[data-row-menu]");
+    if (!inMenu) this._rowMenuOpen = null;
   };
 
   #onDocumentKeydown = (event: globalThis.KeyboardEvent) => {
     if (event.key !== "Escape") return;
+    // An open picker handles its own Escape and stops the event there, so
+    // reaching this handler means no picker consumed it.
     if (this._rowMenuOpen) {
       event.stopPropagation();
       this._rowMenuOpen = null;
-      return;
-    }
-    if (this._pickerOpen) {
-      event.stopPropagation();
-      this._pickerOpen = null;
-      this._pickerQuery = "";
       return;
     }
     if (this._enableOpen) {
@@ -291,34 +264,8 @@ export class JantSettingsLanguage extends LitElement {
     }
   };
 
-  #openPicker(which: NonNullable<JantSettingsLanguage["_pickerOpen"]>) {
-    this._pickerOpen = this._pickerOpen === which ? null : which;
-    this._pickerQuery = "";
-    this._rowMenuOpen = null;
-    if (this._pickerOpen) {
-      void this.updateComplete.then(() => {
-        this.querySelector<HTMLInputElement>("[data-language-search]")?.focus();
-      });
-    }
-  }
-
   #toggleRowMenu(tag: string) {
     this._rowMenuOpen = this._rowMenuOpen === tag ? null : tag;
-    this._pickerOpen = null;
-    this._pickerQuery = "";
-  }
-
-  #filteredLocales(exclude: readonly string[]): LocaleOption[] {
-    const query = this._pickerQuery.trim().toLowerCase();
-    return this.locales.filter((locale) => {
-      if (exclude.includes(locale.tag)) return false;
-      if (!query) return true;
-      return (
-        locale.tag.toLowerCase().includes(query) ||
-        locale.native.toLowerCase().includes(query) ||
-        locale.english.toLowerCase().includes(query)
-      );
-    });
   }
 
   // ── Server calls ──────────────────────────────────────────────────
@@ -353,8 +300,6 @@ export class JantSettingsLanguage extends LitElement {
   }
 
   async #selectPrimary(tag: string) {
-    this._pickerOpen = null;
-    this._pickerQuery = "";
     this._removeError = null;
     if (tag === this._contentLanguage) return;
 
@@ -422,8 +367,6 @@ export class JantSettingsLanguage extends LitElement {
   }
 
   async #addLanguage(tag: string) {
-    this._pickerOpen = null;
-    this._pickerQuery = "";
     this._removeError = null;
     const result = await this.#post("/add", { language: tag });
     if (!result.ok) {
@@ -490,8 +433,6 @@ export class JantSettingsLanguage extends LitElement {
     );
     if (dialog?.open) dialog.close();
     this._enableOpen = false;
-    this._pickerOpen = null;
-    this._pickerQuery = "";
   }
 
   async #confirmEnable() {
@@ -527,82 +468,43 @@ export class JantSettingsLanguage extends LitElement {
 
   // ── Render ────────────────────────────────────────────────────────
 
+  /**
+   * Labels handed to every picker on the page.
+   *
+   * Built once: the picker takes them as a property, and a fresh object each
+   * render would make Lit see a changed property on every keystroke elsewhere
+   * in the form.
+   */
+  get #pickerLabels(): LocalePickerLabels {
+    this.#pickerLabelsCache ??= {
+      search: this.labels.searchPlaceholder,
+      empty: this.labels.noMatches,
+    };
+    return this.#pickerLabelsCache;
+  }
+
+  #pickerLabelsCache: LocalePickerLabels | null = null;
+
   #renderLanguagePicker(options: {
-    which: NonNullable<JantSettingsLanguage["_pickerOpen"]>;
     labelId: string;
     current?: string;
     exclude: readonly string[];
-    triggerLabel: string;
+    triggerLabel?: string;
     triggerClass: string;
     onSelect: (tag: string) => void;
   }) {
-    const open = this._pickerOpen === options.which;
-    const filtered = open ? this.#filteredLocales(options.exclude) : [];
-
     return html`
-      <div class="relative w-fit max-w-full" data-language-picker>
-        <button
-          type="button"
-          class=${options.triggerClass}
-          aria-expanded=${open ? "true" : "false"}
-          aria-haspopup="listbox"
-          aria-labelledby=${options.labelId}
-          @click=${() => this.#openPicker(options.which)}
-        >
-          <span class="min-w-0 truncate">${options.triggerLabel}</span>
-        </button>
-        ${open
-          ? html`
-              <div
-                class="absolute left-0 top-full z-20 mt-1 w-80 min-w-full max-w-[calc(100vw-2rem)] max-h-72 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md"
-              >
-                <div class="border-b p-2">
-                  <input
-                    type="text"
-                    class="input w-full"
-                    data-language-search
-                    placeholder=${this.labels.searchPlaceholder}
-                    autocomplete="off"
-                    spellcheck="false"
-                    .value=${this._pickerQuery}
-                    @input=${(e: Event) => {
-                      this._pickerQuery = (e.target as HTMLInputElement).value;
-                    }}
-                  />
-                </div>
-                <div role="listbox" class="max-h-56 overflow-auto py-1">
-                  ${filtered.length === 0
-                    ? html`<div class="px-3 py-2 text-sm text-muted-foreground">
-                        ${this.labels.noMatches}
-                      </div>`
-                    : filtered.map(
-                        (locale) => html`
-                          <button
-                            type="button"
-                            role="option"
-                            aria-selected=${locale.tag === options.current
-                              ? "true"
-                              : "false"}
-                            class=${[
-                              "flex w-full cursor-pointer flex-col px-3 py-2 text-left text-sm hover:bg-accent",
-                              locale.tag === options.current
-                                ? "bg-accent/60"
-                                : "",
-                            ].join(" ")}
-                            @click=${() => options.onSelect(locale.tag)}
-                          >
-                            <span>${locale.native}</span>
-                            <span class="text-xs text-muted-foreground"
-                              >${locale.english} · ${locale.tag}</span
-                            >
-                          </button>
-                        `,
-                      )}
-                </div>
-              </div>
-            `
-          : nothing}
-      </div>
+      <jant-locale-picker
+        .locales=${this.locales}
+        .labels=${this.#pickerLabels}
+        .value=${options.current ?? ""}
+        .exclude=${[...options.exclude]}
+        .triggerLabel=${options.triggerLabel ?? ""}
+        .triggerClass=${options.triggerClass}
+        .labelledby=${options.labelId}
+        @locale-select=${(e: CustomEvent<{ tag: string }>) =>
+          options.onSelect(e.detail.tag)}
+      ></jant-locale-picker>
     `;
   }
 
@@ -617,20 +519,22 @@ export class JantSettingsLanguage extends LitElement {
     return html`
       <div class="flex flex-wrap items-center gap-2" role="alert">
         <p class="text-sm text-destructive">${error.message}</p>
-        ${error.language
-          ? html`
-              <button
-                type="button"
-                class="btn-sm-outline"
-                data-enable-add-back
-                @click=${() => this.#addBackLanguage(error.language ?? "")}
-              >
-                ${interpolate(this.labels.addMissingLanguage, {
-                  language: this.#displayName(error.language),
-                })}
-              </button>
-            `
-          : nothing}
+        ${
+          error.language
+            ? html`
+                <button
+                  type="button"
+                  class="btn-sm-outline"
+                  data-enable-add-back
+                  @click=${() => this.#addBackLanguage(error.language ?? "")}
+                >
+                  ${interpolate(this.labels.addMissingLanguage, {
+                    language: this.#displayName(error.language),
+                  })}
+                </button>
+              `
+            : nothing
+        }
       </div>
     `;
   }
@@ -676,7 +580,7 @@ export class JantSettingsLanguage extends LitElement {
           if (e.target === e.currentTarget) this.#closeEnableDialog();
         }}
         @keydown=${(e: globalThis.KeyboardEvent) => {
-          if (e.key === "Enter" && !e.shiftKey && this._pickerOpen === null) {
+          if (e.key === "Enter" && !e.shiftKey && !this.#pickerIsOpen()) {
             e.preventDefault();
             void this.#confirmEnable();
           }
@@ -701,19 +605,16 @@ export class JantSettingsLanguage extends LitElement {
                 >${this.labels.primaryLanguage}</span
               >
               ${this.#renderLanguagePicker({
-                which: "enable-primary",
                 labelId: "language-enable-primary-label",
                 current: this._enablePrimary,
                 exclude: this._enableAdditional,
                 triggerLabel: this.#displayName(this._enablePrimary),
-                triggerClass: PICKER_TRIGGER_CLASS,
+                triggerClass: LOCALE_PICKER_TRIGGER_CLASS,
                 onSelect: (tag) => {
                   this._enablePrimary = tag;
                   this._enableAdditional = this._enableAdditional.filter(
                     (entry) => entry !== tag,
                   );
-                  this._pickerOpen = null;
-                  this._pickerQuery = "";
                 },
               })}
               <p class="text-sm text-muted-foreground mt-1">
@@ -749,60 +650,63 @@ export class JantSettingsLanguage extends LitElement {
                   `,
                 )}
                 ${this.#renderLanguagePicker({
-                  which: "enable-add",
                   labelId: "language-enable-add-label",
                   exclude: [this._enablePrimary, ...this._enableAdditional],
                   triggerLabel: `+ ${this.labels.addLanguage}`,
                   triggerClass: "btn-sm-outline",
                   onSelect: (tag) => {
                     this._enableAdditional = [...this._enableAdditional, tag];
-                    this._pickerOpen = null;
-                    this._pickerQuery = "";
                   },
                 })}
               </div>
             </div>
 
-            ${warning
-              ? html`
-                  <div class="alert">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"
-                      />
-                      <path d="M12 9v4" />
-                      <path d="M12 17h.01" />
-                    </svg>
-                    <strong>${this.labels.enableMarkTitle}</strong>
-                    <section>
-                      <p>${warning}</p>
-                      <p>${this.labels.enableFixHint}</p>
-                    </section>
-                  </div>
-                `
-              : nothing}
+            ${
+              warning
+                ? html`
+                    <div class="alert">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"
+                        />
+                        <path d="M12 9v4" />
+                        <path d="M12 17h.01" />
+                      </svg>
+                      <strong>${this.labels.enableMarkTitle}</strong>
+                      <section>
+                        <p>${warning}</p>
+                        <p>${this.labels.enableFixHint}</p>
+                      </section>
+                    </div>
+                  `
+                : nothing
+            }
 
             <p class="text-sm text-muted-foreground">
               ${this.labels.enableReassurance}
             </p>
 
-            ${this._enableAdditional.length === 0
-              ? html`<p class="text-sm text-muted-foreground">
-                  ${this.labels.enableNeedsLanguage}
-                </p>`
-              : nothing}
-            ${this._enableError
-              ? this.#renderEnableError(this._enableError)
-              : nothing}
+            ${
+              this._enableAdditional.length === 0
+                ? html`<p class="text-sm text-muted-foreground">
+                    ${this.labels.enableNeedsLanguage}
+                  </p>`
+                : nothing
+            }
+            ${
+              this._enableError
+                ? this.#renderEnableError(this._enableError)
+                : nothing
+            }
           </div>
 
           <footer class="confirm-dialog-actions">
@@ -817,8 +721,9 @@ export class JantSettingsLanguage extends LitElement {
               type="button"
               class="btn"
               data-enable-confirm
-              ?disabled=${this._enableAdditional.length === 0 ||
-              this._enableBusy}
+              ?disabled=${
+                this._enableAdditional.length === 0 || this._enableBusy
+              }
               @click=${() => void this.#confirmEnable()}
             >
               ${this._enableBusy ? this.labels.saving : this.labels.save}
@@ -856,40 +761,42 @@ export class JantSettingsLanguage extends LitElement {
         >
           ⋯
         </button>
-        ${open
-          ? html`
-              <div
-                role="menu"
-                class="absolute right-0 top-full z-20 mt-1 min-w-40 rounded-md border bg-popover py-1 text-popover-foreground shadow-md"
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent"
-                  ?disabled=${this._savingSite}
-                  @click=${() => {
-                    this._rowMenuOpen = null;
-                    void this.#selectPrimary(tag);
-                  }}
+        ${
+          open
+            ? html`
+                <div
+                  role="menu"
+                  class="absolute right-0 top-full z-20 mt-1 min-w-40 rounded-md border bg-popover py-1 text-popover-foreground shadow-md"
                 >
-                  ${this.labels.makePrimary}
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  class="block w-full cursor-pointer px-3 py-2 text-left text-sm text-destructive hover:bg-accent"
-                  @click=${() => {
-                    this._rowMenuOpen = null;
-                    void this.#removeLanguage(tag);
-                  }}
-                >
-                  ${interpolate(this.labels.removeLanguage, {
-                    language: name,
-                  })}
-                </button>
-              </div>
-            `
-          : nothing}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent"
+                    ?disabled=${this._savingSite}
+                    @click=${() => {
+                      this._rowMenuOpen = null;
+                      void this.#selectPrimary(tag);
+                    }}
+                  >
+                    ${this.labels.makePrimary}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="block w-full cursor-pointer px-3 py-2 text-left text-sm text-destructive hover:bg-accent"
+                    @click=${() => {
+                      this._rowMenuOpen = null;
+                      void this.#removeLanguage(tag);
+                    }}
+                  >
+                    ${interpolate(this.labels.removeLanguage, {
+                      language: name,
+                    })}
+                  </button>
+                </div>
+              `
+            : nothing
+        }
       </span>
     `;
   }
@@ -907,9 +814,9 @@ export class JantSettingsLanguage extends LitElement {
     return html`
       <div class="field">
         <span id="language-list-label" class="label"
-          >${this.labels.languagesLabel}${this._savingSite
-            ? ` ${this.labels.saving}`
-            : ""}</span
+          >${this.labels.languagesLabel}${
+            this._savingSite ? ` ${this.labels.saving}` : ""
+          }</span
         >
         <ul
           class="flex flex-col rounded-md border divide-y"
@@ -937,36 +844,41 @@ export class JantSettingsLanguage extends LitElement {
                       >${url}</code
                     >
                   </a>
-                  ${isPrimary
-                    ? html`<span class="badge-secondary ml-auto"
-                        >${this.labels.primaryBadge}</span
-                      >`
-                    : this.#renderRowMenu(tag)}
+                  ${
+                    isPrimary
+                      ? html`<span class="badge-secondary ml-auto"
+                          >${this.labels.primaryBadge}</span
+                        >`
+                      : this.#renderRowMenu(tag)
+                  }
                 </div>
-                ${this._removeError?.tag === tag
-                  ? html`
-                      <p class="pb-1 text-sm text-destructive" role="alert">
-                        ${this._removeError.message}${this._multilingualEnabled
-                          ? html`
-                              <a
-                                class="underline underline-offset-2"
-                                href=${`${this.#prefixFor(tag)}/archive`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                >${this.labels.viewPosts}</a
-                              >
-                            `
-                          : nothing}
-                      </p>
-                    `
-                  : nothing}
+                ${
+                  this._removeError?.tag === tag
+                    ? html`
+                        <p class="pb-1 text-sm text-destructive" role="alert">
+                          ${this._removeError.message}${
+                            this._multilingualEnabled
+                              ? html`
+                                  <a
+                                    class="underline underline-offset-2"
+                                    href=${`${this.#prefixFor(tag)}/archive`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    >${this.labels.viewPosts}</a
+                                  >
+                                `
+                              : nothing
+                          }
+                        </p>
+                      `
+                    : nothing
+                }
               </li>
             `;
           })}
         </ul>
         <div class="mt-2">
           ${this.#renderLanguagePicker({
-            which: "add",
             labelId: "language-list-label",
             exclude: [this._contentLanguage, ...this._additional],
             triggerLabel: `+ ${this.labels.addLanguage}`,
@@ -986,29 +898,30 @@ export class JantSettingsLanguage extends LitElement {
         <section class="flex flex-col gap-4">
           <h2 class="text-lg font-medium">${this.labels.siteSection}</h2>
 
-          ${this._multilingualEnabled
-            ? this.#renderLanguagesList()
-            : html`
-                <div class="field">
-                  <span id="language-primary-label" class="label"
-                    >${this.labels.contentLanguage}</span
-                  >
-                  ${this.#renderLanguagePicker({
-                    which: "primary",
-                    labelId: "language-primary-label",
-                    current: this._contentLanguage,
-                    exclude: [],
-                    triggerLabel: this.#displayName(this._contentLanguage),
-                    triggerClass: PICKER_TRIGGER_CLASS,
-                    onSelect: (tag) => void this.#selectPrimary(tag),
-                  })}
-                  <p class="text-sm text-muted-foreground mt-1">
-                    ${this.labels.contentLanguageHelp}${this._savingSite
-                      ? ` ${this.labels.saving}`
-                      : ""}
-                  </p>
-                </div>
-              `}
+          ${
+            this._multilingualEnabled
+              ? this.#renderLanguagesList()
+              : html`
+                  <div class="field">
+                    <span id="language-primary-label" class="label"
+                      >${this.labels.contentLanguage}</span
+                    >
+                    ${this.#renderLanguagePicker({
+                      labelId: "language-primary-label",
+                      current: this._contentLanguage,
+                      exclude: [],
+                      triggerLabel: this.#displayName(this._contentLanguage),
+                      triggerClass: LOCALE_PICKER_TRIGGER_CLASS,
+                      onSelect: (tag) => void this.#selectPrimary(tag),
+                    })}
+                    <p class="text-sm text-muted-foreground mt-1">
+                      ${this.labels.contentLanguageHelp}${
+                        this._savingSite ? ` ${this.labels.saving}` : ""
+                      }
+                    </p>
+                  </div>
+                `
+          }
         </section>
 
         <section class="flex flex-col gap-3 border-t pt-8">
@@ -1017,28 +930,30 @@ export class JantSettingsLanguage extends LitElement {
             ${this.labels.multilingualHelp}
           </p>
           <div class="flex items-center gap-3">
-            ${this._multilingualEnabled
-              ? html`
-                  <span class="badge-secondary">${this.labels.statusOn}</span>
-                  <button
-                    type="button"
-                    class="btn-link h-auto p-0 text-sm text-muted-foreground"
-                    data-multilingual-off
-                    @click=${() => void this.#turnOffMultilingual()}
-                  >
-                    ${this.labels.disableConfirm}
-                  </button>
-                `
-              : html`
-                  <button
-                    type="button"
-                    class="btn-sm-outline"
-                    data-multilingual-setup
-                    @click=${() => this.#openEnableDialog()}
-                  >
-                    ${this.labels.turnOn}
-                  </button>
-                `}
+            ${
+              this._multilingualEnabled
+                ? html`
+                    <span class="badge-secondary">${this.labels.statusOn}</span>
+                    <button
+                      type="button"
+                      class="btn-link h-auto p-0 text-sm text-muted-foreground"
+                      data-multilingual-off
+                      @click=${() => void this.#turnOffMultilingual()}
+                    >
+                      ${this.labels.disableConfirm}
+                    </button>
+                  `
+                : html`
+                    <button
+                      type="button"
+                      class="btn-sm-outline"
+                      data-multilingual-setup
+                      @click=${() => this.#openEnableDialog()}
+                    >
+                      ${this.labels.turnOn}
+                    </button>
+                  `
+            }
           </div>
         </section>
 
@@ -1064,9 +979,11 @@ export class JantSettingsLanguage extends LitElement {
                     value=${tag}
                     ?selected=${this._dashboardLanguage === tag}
                   >
-                    ${tag === ""
-                      ? this.labels.followContent
-                      : this.#displayName(tag)}
+                    ${
+                      tag === ""
+                        ? this.labels.followContent
+                        : this.#displayName(tag)
+                    }
                   </option>
                 `,
               )}
