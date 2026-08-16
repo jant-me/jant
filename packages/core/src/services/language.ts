@@ -103,9 +103,16 @@ export interface LanguageService {
    * good answer — hiding, migrating, or redirecting them all guess at intent —
    * so this reports the count and leaves the choice to the author.
    *
+   * Removing the last additional language turns multilingual content off with
+   * it: per-language views need a second language to mean anything, and a site
+   * left with the flag on and nothing to serve under it would report the
+   * feature as on everywhere the setting is read while behaving as
+   * single-language everywhere it is used.
+   *
+   * @returns Whether multilingual content was turned off along with it
    * @throws {ConflictError} When posts still use the language
    */
-  removeLanguage(language: string): Promise<void>;
+  removeLanguage(language: string): Promise<{ multilingualDisabled: boolean }>;
 }
 
 export interface LanguageServiceDeps {
@@ -371,7 +378,9 @@ export function createLanguageService(
           "This is the primary language. Make another language primary first.",
         );
       }
-      if (!state.additional.includes(tag)) return;
+      if (!state.additional.includes(tag)) {
+        return { multilingualDisabled: false };
+      }
 
       // Counted whether or not multilingual is currently on: the settings page
       // stays reachable after it is switched off, and the posts are still there.
@@ -386,10 +395,18 @@ export function createLanguageService(
         );
       }
 
-      await writeLanguages(
-        state.primary,
-        state.additional.filter((entry) => entry !== tag),
-      );
+      const remaining = state.additional.filter((entry) => entry !== tag);
+      await writeLanguages(state.primary, remaining);
+
+      // Nothing left to serve under a prefix, so the feature goes with it. The
+      // flag is only cleared when it was actually on — a removal made while
+      // multilingual is off has nothing to turn off, and saying so would be a
+      // lie the settings page then has to explain.
+      const multilingualDisabled = remaining.length === 0 && state.enabled;
+      if (multilingualDisabled) {
+        await settings.remove("MULTILINGUAL_ENABLED");
+      }
+      return { multilingualDisabled };
     },
   };
 }

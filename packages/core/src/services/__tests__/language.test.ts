@@ -364,6 +364,58 @@ describe("LanguageService", () => {
         /primary language/,
       );
     });
+
+    it("leaves the feature on while another language remains", async () => {
+      expect(await language.removeLanguage("ja")).toEqual({
+        multilingualDisabled: false,
+      });
+
+      expect(await settings.get("MULTILINGUAL_ENABLED")).toBe("true");
+      expect((await language.getState()).enabled).toBe(true);
+    });
+
+    it("turns the feature off with the last language it serves", async () => {
+      await language.removeLanguage("ja");
+
+      expect(await language.removeLanguage("en")).toEqual({
+        multilingualDisabled: true,
+      });
+
+      // Not merely masked by the empty list: the flag itself is gone, so every
+      // reader of the setting agrees with what the site actually serves.
+      expect(await settings.get("MULTILINGUAL_ENABLED")).toBeFalsy();
+      expect(await language.getState()).toEqual({
+        enabled: false,
+        primary: "zh-Hans",
+        additional: [],
+        all: ["zh-Hans"],
+      });
+    });
+
+    it("still refuses the last language while posts use it", async () => {
+      await language.removeLanguage("ja");
+      await posts.create({
+        format: "note",
+        body: noteBody("english"),
+        language: "en",
+      });
+
+      await expect(language.removeLanguage("en")).rejects.toThrow(
+        /One post is still written/,
+      );
+      expect((await language.getState()).enabled).toBe(true);
+      expect(await settings.get("MULTILINGUAL_ENABLED")).toBe("true");
+    });
+
+    it("has nothing to turn off when multilingual is already off", async () => {
+      await language.removeLanguage("ja");
+      await language.disable();
+
+      expect(await language.removeLanguage("en")).toEqual({
+        multilingualDisabled: false,
+      });
+      expect((await language.getState()).additional).toEqual([]);
+    });
   });
 
   describe("turning it off and back on", () => {

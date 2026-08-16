@@ -89,13 +89,17 @@ All of it lives on **Settings → Language**, on the language list that replaces
 
 **Make another language primary.** The two swap in one step: the new primary takes the root URLs and the old primary moves to its own prefix. Post addresses do not change — but anyone subscribed to `/feed` starts receiving the new primary language's posts, because `/feed` is the root view's feed.
 
-**Remove a language.** Only allowed while no post is written in it. With posts present there is no good answer — hiding, moving, or redirecting them all guess at what you meant — so Jant reports how many posts still use it and links to them, and leaves the decision to you.
+**Remove a language.** Only allowed while no post is written in it. With posts present there is no good answer — hiding, moving, or redirecting them all guess at what you meant — so Jant reports how many posts still use it and links to them, and leaves the decision to you. Once the language is gone its prefix stops answering.
+
+**Remove the last one, and multilingual content goes with it.** Per-language views need a second language to mean anything, so removing the only language other than the primary turns the feature off in the same step. Jant asks first and says what changes. The rule above still holds: a language posts are written in cannot be removed, last one or not — change those posts' language first.
 
 ## Turning it off
 
 Choose **Turn off** on the Language page. The root URLs go back to showing every language, and the old prefixes redirect there, so existing links and feed subscriptions keep working.
 
 Your language list and every post's language are kept. Turning it back on restores the same setup, and nothing needs to be stamped a second time.
+
+Removing your languages one by one ends up in the same place, with one difference: a removed language is gone from the list, so its prefix stops answering instead of redirecting. Turn it off when you might come back to it; remove a language when you are done with it.
 
 ## Settings reference
 

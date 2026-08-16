@@ -33,6 +33,11 @@ msgstr "{count, plural, one {# post is} other {# posts are}} written in {languag
 msgid "{count} settings shown"
 msgstr "{count} settings shown"
 
+#. @context: Body of the dialog confirming removal of the last additional language
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in."
+msgstr "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in."
+
 #. @context: Body of the change-primary-language dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "{next} will be served at the root address (/, /feed, /archive), and {previous} moves to {prefix}. Post addresses do not change, but anyone subscribed to /feed starts receiving {next} posts."
@@ -1350,6 +1355,11 @@ msgstr "Language added."
 msgid "Language removed."
 msgstr "Language removed."
 
+#. @context: Toast after removing the last additional content language
+#: src/routes/dash/settings.tsx
+msgid "Language removed. Multilingual content is off."
+msgstr "Language removed. Multilingual content is off."
+
 #. @context: Toast after saving a language setting
 #: src/routes/dash/settings.tsx
 msgid "Language updated."
@@ -2011,6 +2021,11 @@ msgstr "Remove"
 msgid "Remove {language}"
 msgstr "Remove {language}"
 
+#. @context: Confirm button when removing the last additional language
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "Remove and turn off"
+msgstr "Remove and turn off"
+
 #. @context: Button to remove the saved Telegram bot token
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Remove bot"
@@ -2625,7 +2640,9 @@ msgstr "Tune how your site looks, reads, and runs."
 msgid "Turn off"
 msgstr "Turn off"
 
+#. @context: Title of the dialog confirming removal of the last additional language
 #. @context: Title of the disable-multilingual dialog
+#: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Turn off multilingual content?"
 msgstr "Turn off multilingual content?"

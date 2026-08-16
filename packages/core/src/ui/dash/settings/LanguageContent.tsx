@@ -313,6 +313,32 @@ export function LanguageContent({
         comment: "@context: Confirm button in the disable-multilingual dialog",
       }),
     ),
+    removeLastTitle: i18n._(
+      msg({
+        message: "Turn off multilingual content?",
+        comment:
+          "@context: Title of the dialog confirming removal of the last additional language",
+      }),
+    ),
+    removeLastBody: i18n._(
+      msg({
+        message:
+          "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in.",
+        comment:
+          "@context: Body of the dialog confirming removal of the last additional language",
+      }),
+      {
+        language: keepPlaceholder("language"),
+        prefix: keepPlaceholder("prefix"),
+      },
+    ),
+    removeLastConfirm: i18n._(
+      msg({
+        message: "Remove and turn off",
+        comment:
+          "@context: Confirm button when removing the last additional language",
+      }),
+    ),
     cancel: i18n._(
       msg({ message: "Cancel", comment: "@context: Dialog cancel button" }),
     ),

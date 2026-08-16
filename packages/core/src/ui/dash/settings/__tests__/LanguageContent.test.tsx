@@ -122,6 +122,8 @@ describe("LanguageContent", () => {
       expect(labels.changePrimaryBody).toContain("{previous}");
       expect(labels.changePrimaryBody).toContain("{prefix}");
       expect(labels.disableBody).toContain("{prefix}");
+      expect(labels.removeLastBody).toContain("{language}");
+      expect(labels.removeLastBody).toContain("{prefix}");
     });
 
     it("never leaks an unresolved ICU construct into a label", async () => {

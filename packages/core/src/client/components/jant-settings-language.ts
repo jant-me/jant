@@ -61,6 +61,9 @@ interface LanguageLabels {
   disableTitle: string;
   disableBody: string;
   disableConfirm: string;
+  removeLastTitle: string;
+  removeLastBody: string;
+  removeLastConfirm: string;
   cancel: string;
   save: string;
   saving: string;
@@ -387,14 +390,52 @@ export class JantSettingsLanguage extends LitElement {
     if (result.message) showToast(result.message);
   }
 
+  /**
+   * Remove a language, and with the last one the feature itself.
+   *
+   * Per-language views need a second language to mean anything, so the server
+   * turns multilingual content off when this empties the list. That is a bigger
+   * change than the menu item promises, hence the confirmation — asked before
+   * the request, which means it is also asked in the case the server then
+   * refuses (posts still written in that language). The refusal lands under the
+   * row as it always has; the alternative is a preflight round-trip on every
+   * removal to avoid one dialog in the rarer path.
+   */
   async #removeLanguage(tag: string) {
     this._removeError = null;
+    const isLast =
+      this._multilingualEnabled &&
+      this._additional.length === 1 &&
+      this._additional[0] === tag;
+
+    if (isLast) {
+      const confirmed = await showConfirmDialog({
+        title: this.labels.removeLastTitle,
+        message: interpolate(this.labels.removeLastBody, {
+          language: this.#displayName(tag),
+          prefix: this.#prefixFor(tag),
+        }),
+        confirmLabel: this.labels.removeLastConfirm,
+        cancelLabel: this.labels.cancel,
+      });
+      if (!confirmed) return;
+    }
+
     const result = await this.#post("/remove", { language: tag });
     if (!result.ok) {
       this._removeError = { tag, message: result.message ?? "" };
       return;
     }
     this._additional = this._additional.filter((entry) => entry !== tag);
+
+    if (isLast) {
+      this._multilingualEnabled = false;
+      // Same reload as turning it off directly: the header switcher and the
+      // composer's language control are server-rendered.
+      if (result.message) queueToastForNextPage(result.message);
+      window.location.reload();
+      return;
+    }
     if (result.message) showToast(result.message);
   }
 

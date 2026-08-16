@@ -695,3 +695,17 @@ but its file is not under `dash/`, add the file to the settings catalog's
 `routes/auth/setup.tsx` is named explicitly in both). If the route is not an
 admin path, translating it is wasted work until the middleware says otherwise —
 `signin.tsx` and `reset.tsx` are in that state on purpose.
+
+## `mise run i18n-check` answers a question about HEAD, not about your tree
+
+The task runs `i18n:build` and then `git diff --exit-code` over
+`src/i18n/locales/`. On a branch with uncommitted copy changes it always fails,
+and the failure says nothing about whether the catalogs are correct — it only
+says they differ from what is committed. What it actually gates in CI is "a
+rebuild after this commit produces no diff".
+
+To verify that locally before committing, rebuild twice and compare the working
+diff against itself: `git diff --stat src/i18n/locales/` before and after a
+second `mise run i18n-build` must be identical. A changed second run means the
+extraction is not settled — usually a `msgstr` written into a catalog Lingui is
+about to rewrite.

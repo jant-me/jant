@@ -64,6 +64,10 @@ const labels = {
   disableTitle: "Turn off multilingual content?",
   disableBody: "The {prefix} addresses redirect to the root.",
   disableConfirm: "Turn off",
+  removeLastTitle: "Turn off multilingual content?",
+  removeLastBody:
+    "{language} is the only other language on this site, so removing it turns multilingual content off. {prefix} stops working.",
+  removeLastConfirm: "Remove and turn off",
   cancel: "Cancel",
   save: "Save",
   saving: "Saving…",
@@ -662,6 +666,69 @@ describe("JantSettingsLanguage", () => {
         node.textContent?.trim(),
       );
       expect(codes).toEqual(["/", "/en"]);
+      // A language with others beside it is removed without ceremony.
+      expect(showConfirmDialogMock).not.toHaveBeenCalled();
+    });
+
+    it("asks before removing the last other language", async () => {
+      const el = await createElement({
+        multilingualEnabled: true,
+        additionalLanguages: ["en"],
+      });
+      const calls = mockFetch({});
+      showConfirmDialogMock.mockResolvedValue(false);
+
+      await openRowMenu(el, "English");
+      findByText<HTMLButtonElement>(
+        el,
+        '[role="menuitem"]',
+        "Remove English",
+      )?.click();
+      await vi.waitFor(() => expect(showConfirmDialogMock).toHaveBeenCalled());
+      await el.updateComplete;
+
+      // Declined — the language stays and nothing is written.
+      expect(calls).toHaveLength(0);
+      expect(
+        el.querySelector('[aria-label="Options for English"]'),
+      ).not.toBeNull();
+
+      const message = showConfirmDialogMock.mock.calls[0]?.[0]
+        ?.message as string;
+      expect(message).toContain("English");
+      expect(message).toContain("/en");
+    });
+
+    it("turns multilingual off with the last other language", async () => {
+      const el = await createElement({
+        multilingualEnabled: true,
+        additionalLanguages: ["en"],
+      });
+      const calls = mockFetch({
+        toast: "Language removed. Multilingual content is off.",
+      });
+      showConfirmDialogMock.mockResolvedValue(true);
+
+      await openRowMenu(el, "English");
+      findByText<HTMLButtonElement>(
+        el,
+        '[role="menuitem"]',
+        "Remove English",
+      )?.click();
+      await vi.waitFor(() => expect(calls.length).toBe(1));
+      await el.updateComplete;
+
+      expect(calls[0]?.url).toBe("/settings/language/remove");
+      expect(calls[0]?.body).toEqual({ language: "en" });
+      // The page is a single-language page again, without a refresh.
+      expect(el.querySelector("[data-language-menu]")).toBeNull();
+      expect(el.textContent).toContain(labels.contentLanguageHelp);
+      expect(el.querySelector("[data-multilingual-setup]")).not.toBeNull();
+      // The confirmation has to survive the reload that drops the switcher.
+      expect(queueToastMock).toHaveBeenCalledWith(
+        "Language removed. Multilingual content is off.",
+      );
+      expect(showToastMock).not.toHaveBeenCalled();
     });
 
     it("confirms before moving the root URLs to another language", async () => {

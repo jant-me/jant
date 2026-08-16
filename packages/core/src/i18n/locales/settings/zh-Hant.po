@@ -33,6 +33,11 @@ msgstr "{count, plural, other {還有 # 篇{language}文章，但列表裡沒有
 msgid "{count} settings shown"
 msgstr "{count} 個設定已顯示"
 
+#. @context: Body of the dialog confirming removal of the last additional language
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in."
+msgstr "移除 {language} 後就只剩主語言了，多語言會一併關閉。根位址將恢復顯示所有語言，{prefix} 不再可用，每篇文章的語言維持不變。"
+
 #. @context: Body of the change-primary-language dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "{next} will be served at the root address (/, /feed, /archive), and {previous} moves to {prefix}. Post addresses do not change, but anyone subscribed to /feed starts receiving {next} posts."
@@ -1350,6 +1355,11 @@ msgstr "語言已新增。"
 msgid "Language removed."
 msgstr "語言已移除。"
 
+#. @context: Toast after removing the last additional content language
+#: src/routes/dash/settings.tsx
+msgid "Language removed. Multilingual content is off."
+msgstr "語言已移除，多語言已關閉。"
+
 #. @context: Toast after saving a language setting
 #: src/routes/dash/settings.tsx
 msgid "Language updated."
@@ -2011,6 +2021,11 @@ msgstr "移除"
 msgid "Remove {language}"
 msgstr "移除「{language}」"
 
+#. @context: Confirm button when removing the last additional language
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "Remove and turn off"
+msgstr "移除並關閉"
+
 #. @context: Button to remove the saved Telegram bot token
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Remove bot"
@@ -2625,7 +2640,9 @@ msgstr "調整您的網站外觀、可讀性與執行效能。"
 msgid "Turn off"
 msgstr "關閉"
 
+#. @context: Title of the dialog confirming removal of the last additional language
 #. @context: Title of the disable-multilingual dialog
+#: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Turn off multilingual content?"
 msgstr "關閉多語言？"

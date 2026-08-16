@@ -544,16 +544,20 @@ settingsRoutes.get("/language", async (c) => {
  *
  * Every language endpoint has the same shape — do the thing, or explain in one
  * sentence why it could not be done — so they share one wrapper rather than
- * repeating the try/catch.
+ * repeating the try/catch. The toast may be built from what the action
+ * returned, for the one operation whose outcome is not known until it runs.
  */
-async function respondToLanguageAction(
+async function respondToLanguageAction<T>(
   c: Context<Env>,
-  toast: string,
-  action: () => Promise<void>,
+  toast: string | ((result: T) => string),
+  action: () => Promise<T>,
 ): Promise<Response> {
   try {
-    await action();
-    return c.json({ status: "ok" as const, toast });
+    const result = await action();
+    return c.json({
+      status: "ok" as const,
+      toast: typeof toast === "function" ? toast(result) : toast,
+    });
   } catch (error) {
     // The one refusal an author will actually meet — removing or dropping a
     // language that posts still use — gets a localized sentence naming the
@@ -727,12 +731,23 @@ settingsRoutes.post("/language/remove", async (c) => {
   const body = parseValidated(LanguageTagSchema, await c.req.json());
   return respondToLanguageAction(
     c,
-    i18n._(
-      msg({
-        message: "Language removed.",
-        comment: "@context: Toast after removing a content language",
-      }),
-    ),
+    // The last language takes the feature with it, and that is the larger of
+    // the two facts — the author leaves this page single-language.
+    ({ multilingualDisabled }) =>
+      multilingualDisabled
+        ? i18n._(
+            msg({
+              message: "Language removed. Multilingual content is off.",
+              comment:
+                "@context: Toast after removing the last additional content language",
+            }),
+          )
+        : i18n._(
+            msg({
+              message: "Language removed.",
+              comment: "@context: Toast after removing a content language",
+            }),
+          ),
     () => c.var.services.language.removeLanguage(body.language),
   );
 });

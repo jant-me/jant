@@ -12,6 +12,6 @@ import type { Locale } from "./locales.js";
 
 export const SETTINGS_TRANSLATION_COVERAGE: Record<Locale, number> = {
   en: 1,
-  "zh-Hans": 0.9981203007518797,
-  "zh-Hant": 0.9981203007518797,
+  "zh-Hans": 1,
+  "zh-Hant": 1,
 } as const;
