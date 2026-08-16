@@ -26,15 +26,15 @@ Not built-in. May come later. For now you can embed third-party systems like gis
 
 ## Does Jant have standalone pages (like an About page)?
 
-There's no separate "page" type. Set a Note titled `About` to **Hidden from Latest** (off the homepage, direct link still works) and it becomes a standalone page. Jant builds the slug from the title, so the address defaults to `/about`; to use a different one, expand **Custom link** in the **Publish settings** panel next to the Publish button. See [Writing and organizing § Make a standalone page](writing-and-organizing.md#make-a-standalone-page-about).
+There's no separate "page" type. Set a Note titled `About` to **Hidden from Latest** (off the homepage, direct link still works) and it becomes a standalone page. Jant builds the slug from the title, so the address defaults to `/about`; to use a different one, open the control at the top right of the post (it reads `Now · /…`) and fill in **Custom link**. See [Writing and organizing § Make a standalone page](writing-and-organizing.md#make-a-standalone-page-about).
 
 ## How do I publish a post with a past date?
 
-Next to the **Publish** button in the composer there's a **Publish settings** panel — set **Published on** to an earlier date and the post drops into the timeline at that point. Handy for backfilling older posts brought over from elsewhere. You can only pick today or earlier; Jant doesn't schedule posts. See [Writing and organizing § Publish settings](writing-and-organizing.md#publish-settings).
+Each post in the composer has a control at its top right reading `Now · /…`. Open it and set **Published on** to an earlier date; the post drops into the timeline at that point. Handy for backfilling older posts brought over from elsewhere. You can only pick today or earlier; Jant doesn't schedule posts. See [Writing and organizing § Publish settings](writing-and-organizing.md#publish-settings).
 
 ## How do I give a post a custom URL?
 
-In the same **Publish settings** panel, expand **Custom link** and enter the slug you want before publishing. If the post is already published and you want to change its URL, use **Settings → Advanced → Custom URLs** instead — it 301-redirects the old address so you don't leave a dead link. See [Writing and organizing § Custom URLs](writing-and-organizing.md#custom-urls).
+Open the same control at the top right of the post and enter the slug you want under **Custom link** before publishing. If the post is already published and you want to change its URL, use **Settings → Advanced → Custom URLs** instead — it 301-redirects the old address so you don't leave a dead link. See [Writing and organizing § Custom URLs](writing-and-organizing.md#custom-urls).
 
 ## Can I customize the theme/appearance?
 

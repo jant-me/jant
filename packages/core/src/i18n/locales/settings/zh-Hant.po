@@ -21,12 +21,12 @@ msgstr "{count, plural, other {其中 # 篇還沒有語言，會標記為「{lan
 #. @context: Error when a content language that posts still use would be dropped
 #: src/routes/dash/settings.tsx
 msgid "{count, plural, one {# post is} other {# posts are}} still written in {language}. Change their language, or keep the language."
-msgstr "{count, plural, other {還有 # 篇{language}文章。先修改它們的語言，或保留該語言。}}"
+msgstr "{count, plural, other {還有 # 篇{language}貼文。先修改它們的語言，或保留該語言。}}"
 
 #. @context: Refusal in the multilingual dialog when the list drops a language that posts still use
 #: src/routes/dash/settings.tsx
 msgid "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
-msgstr "{count, plural, other {還有 # 篇{language}文章，但列表裡沒有這個語言。把它加回列表，或先修改這些文章的語言。}}"
+msgstr "{count, plural, other {還有 # 篇{language}貼文，但列表裡沒有這個語言。把它加回列表，或先修改這些貼文的語言。}}"
 
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -36,17 +36,17 @@ msgstr "{count} 個設定已顯示"
 #. @context: Body of the dialog confirming removal of the last additional language
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in."
-msgstr "移除 {language} 後就只剩主語言了，多語言會一併關閉。根位址將恢復顯示所有語言，{prefix} 不再可用，每篇文章的語言維持不變。"
+msgstr "移除 {language} 後就只剩主語言了，多語言會一併關閉。根位址將恢復顯示所有語言，{prefix} 不再可用，每篇貼文的語言維持不變。"
 
 #. @context: Body of the change-primary-language dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "{next} will be served at the root address (/, /feed, /archive), and {previous} moves to {prefix}. Post addresses do not change, but anyone subscribed to /feed starts receiving {next} posts."
-msgstr "根位址（/、/feed、/archive）將改為提供「{next}」的內容，「{previous}」移至 {prefix}。文章網址不會改變，但訂閱 /feed 的讀者從此收到的是「{next}」的文章。"
+msgstr "根位址（/、/feed、/archive）將改為提供「{next}」的內容，「{previous}」移至 {prefix}。貼文網址不會改變，但訂閱 /feed 的讀者從此收到的是「{next}」的貼文。"
 
 #. @context: Custom CSS textarea placeholder
 #: src/ui/dash/appearance/AdvancedContent.tsx
 msgid "/* Your custom CSS here */"
-msgstr "/* 在此放入您的自訂 CSS */"
+msgstr "/* 在此放入你的自訂 CSS */"
 
 #. @context: Compact conflict message when /about is occupied
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -76,7 +76,7 @@ msgstr "沉靜、偏冷的底色。"
 #. @context: Help text for site description field
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "A short intro shown on your home page."
-msgstr "顯示在您的主頁上的簡短介紹。"
+msgstr "顯示在你的主頁上的簡短介紹。"
 
 #. @context: Parchment color theme preview help line
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -145,6 +145,11 @@ msgstr "新增 {language}"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Add a custom link to any URL"
 msgstr "新增自訂連結到任何 URL"
+
+#. @context: Button that opens the link form with the pasted address filled in
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "Add as link"
+msgstr "新增為連結"
 
 #. @context: Validation message when the multilingual dialog has no second language
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -239,7 +244,7 @@ msgstr "所有可用的端點與請求格式。"
 #. @context: Message when every collection is already added to nav
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "All collections are already in your navigation."
-msgstr "所有選集已經在您的導覽中。"
+msgstr "所有選集已經在你的導覽中。"
 
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -250,6 +255,11 @@ msgstr "允許不使用 API 權杖讀取已發佈內容。"
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Allow search engines to index my site"
 msgstr "允許搜尋引擎收錄我的網站"
+
+#. @context: Shown when a pasted address is already a navigation item
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "Already in navigation. Drag it in the list above to move it."
+msgstr "已在導覽中。拖曳上面清單裡的它可以調整位置。"
 
 #. @context: Theme mode option description
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -269,7 +279,7 @@ msgstr "更偏暖、偏土的色調。"
 #. @context: Follow-up hint under the stamping warning
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Any post written in another language can be corrected from its own menu afterwards."
-msgstr "若有別的語言的文章，之後可以在那篇文章的選單裡單獨更正。"
+msgstr "若有別的語言的貼文，之後可以在那篇貼文的選單裡單獨更正。"
 
 #. @context: Code Injection security warning body
 #: src/ui/dash/appearance/CodeInjectionContent.tsx
@@ -298,7 +308,7 @@ msgstr "外觀"
 #. @context: Appearance settings description
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Applies to your entire site, including admin pages. Pick a palette, then choose whether it follows the system or stays fixed."
-msgstr "套用於整個網站, 包括管理頁面. 選擇一個調色盤, 然後決定它是跟隨系統還是維持固定."
+msgstr "套用於整個網站，包括管理頁面。選擇一個調色盤，然後決定它是跟隨系統還是維持固定。"
 
 #. @context: Custom URL target type badge for an archive view
 #. @context: Custom URL type option for filtered archive view
@@ -324,6 +334,11 @@ msgstr "封存篩選參數 (例如 format=note&view=list)"
 msgid "Ask search engines not to index public pages or include them in results."
 msgstr "要求搜尋引擎不要索引公開頁面或將它們包含在搜尋結果中。"
 
+#. @context: Heading above the page a pasted address resolved to
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "At that address"
+msgstr "該網址上的頁面"
+
 #. @context: Error toast when authentication secret is missing from server config
 #: src/routes/auth/setup.tsx
 msgid "Auth secret is missing. Check your environment variables."
@@ -337,7 +352,7 @@ msgstr "自動"
 #. @context: Description after theming guide link on Custom CSS page
 #: src/ui/dash/appearance/AdvancedContent.tsx
 msgid "available CSS variables, data attributes, and examples."
-msgstr "可用的 CSS 變數、data 屬性與範例."
+msgstr "可用的 CSS 變數、data 屬性與範例。"
 
 #. @context: Breadcrumb label
 #. @context: Settings item — avatar settings
@@ -351,7 +366,7 @@ msgstr "頭像"
 #: src/routes/dash/settings.tsx
 #: src/routes/dash/settings.tsx
 msgid "Avatar display updated."
-msgstr "頭像顯示已更新."
+msgstr "頭像顯示已更新。"
 
 #. @context: Button returning from page creation to page search
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -476,7 +491,7 @@ msgstr "選擇一則尚未加入導覽的有標題筆記，或建立新頁面。
 #. @context: Font theme settings description
 #: src/ui/dash/appearance/FontThemeContent.tsx
 msgid "Choose a typographic direction for your site. Each theme changes both the font pairing and the reading rhythm."
-msgstr "為您的網站選擇一種排版風格。每個主題會同時改變字體配對與閱讀節奏。"
+msgstr "為你的網站選擇一種排版風格。每個主題會同時改變字體配對與閱讀節奏。"
 
 #. @context: Config Editor linked setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -491,7 +506,7 @@ msgstr "選擇要向讀者與搜尋引擎宣告的內容語言。"
 #. @context: GitHub sync picker — page subtitle
 #: src/routes/dash/settings.tsx
 msgid "Choose the GitHub account and repository to sync with this site."
-msgstr "選擇要與此網站同步的 GitHub 帳號和儲存庫."
+msgstr "選擇要與此網站同步的 GitHub 帳號和儲存庫。"
 
 #. @context: Config Editor linked setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -607,7 +622,7 @@ msgstr "連接"
 #. @context: Intro text on GitHub Sync settings page when not connected
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 msgid "Connect a GitHub repository to automatically back up your posts as Markdown files. Edits on GitHub sync back to your site."
-msgstr "連接 GitHub 倉庫，自動將你的文章備份為 Markdown 檔案。GitHub 上的編輯會同步回你的網站。"
+msgstr "連接 GitHub 倉庫，自動把貼文備份成 Markdown。GitHub 上的修改會同步回網站。"
 
 #. @context: Intro text on the Telegram settings page when no bot is set up
 #: src/ui/dash/settings/TelegramContent.tsx
@@ -657,7 +672,7 @@ msgstr "已透過個人存取權杖連線"
 #. @context: GitHub sync picker — explanatory body for foreign-repo confirmation. Placeholder {repo} is the owner/repo slug.
 #: src/routes/dash/settings.tsx
 msgid "Connecting will sync your site onto {repo}'s default branch on top of its existing history. Existing files outside Jant's managed paths are kept. This can't be undone."
-msgstr "連線後會將您的網站同步到 {repo} 的預設分支，並疊加在其現有歷史之上。Jant 管理路徑外的既有檔案會保留。此操作無法復原。"
+msgstr "連線後會將你的網站同步到 {repo} 的預設分支，並疊加在其現有歷史之上。Jant 管理路徑外的既有檔案會保留。此操作無法復原。"
 
 #. @context: GitHub sync picker — primary action button while a request is in flight
 #: src/routes/dash/settings.tsx
@@ -716,12 +731,12 @@ msgstr "複製權杖"
 #. @context: Warning to copy newly created API token
 #: src/ui/dash/settings/ApiTokensContent.tsx
 msgid "Copy your token now — it won't be shown again."
-msgstr "請立即複製您的權杖 — 它不會再顯示。"
+msgstr "請立即複製你的權杖 — 它不會再顯示。"
 
 #. @context: Error toast when copying text to the clipboard fails
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Could not copy. Try again."
-msgstr "無法複製. 請再試一次."
+msgstr "無法複製。請再試一次。"
 
 #. @context: GitHub sync picker — generic failure message for Connect
 #: src/routes/dash/settings.tsx
@@ -877,7 +892,7 @@ msgstr "自訂 CSS"
 #. @context: Toast after saving custom CSS
 #: src/routes/dash/settings.tsx
 msgid "Custom CSS updated."
-msgstr "自訂 CSS 已更新."
+msgstr "自訂 CSS 已更新。"
 
 #. @context: Settings item — custom URL settings
 #. @context: Settings section heading
@@ -954,7 +969,7 @@ msgstr "刪除此自訂 URL？使用該 URL 的訪客將不會再被重新導向
 #. @context: Confirm dialog for deleting a custom navigation link
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Delete this navigation link? Visitors won't see it in your site header anymore."
-msgstr "刪除此導覽連結？訪客將不再在您的網站頁首看到它。"
+msgstr "刪除此導覽連結？訪客將不再在你的網站頁首看到它。"
 
 #. @context: Settings item description for account settings on the settings home page when demo restrictions are enabled
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -993,12 +1008,12 @@ msgstr "解除連線"
 #. @context: Confirmation message when disconnecting GitHub Sync
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 msgid "Disconnect from GitHub? The webhook will be removed. Your repository content will not be deleted."
-msgstr "要與 GitHub 斷開連線嗎? webhook 將會被移除。您的儲存庫內容不會被刪除。"
+msgstr "要與 GitHub 斷開連線嗎？webhook 會被移除。你的儲存庫內容不會被刪除。"
 
 #. @context: Confirmation message when disconnecting Telegram
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Disconnect Telegram? You can reconnect any time with a new binding code."
-msgstr "要斷開 Telegram？您可以隨時使用新的綁定代碼重新連接。"
+msgstr "要斷開 Telegram？你可以隨時使用新的綁定代碼重新連接。"
 
 #. @context: Checkbox to show avatar in the site header
 #: src/ui/dash/settings/AvatarContent.tsx
@@ -1008,7 +1023,7 @@ msgstr "在我的網站頁首顯示大頭貼"
 #. @context: Help text for site footer field
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Displayed at the bottom of all posts and pages."
-msgstr "顯示於所有文章與頁面的底部。"
+msgstr "顯示於所有貼文與頁面的底部。"
 
 #. @context: Settings item description for the hosted site management external link
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -1142,7 +1157,7 @@ msgstr "精選 RSS 來源"
 #. @context: Config Editor RSS feed enum option
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Featured posts"
-msgstr "精選文章"
+msgstr "精選貼文"
 
 #. @context: Toast after saving feed settings
 #: src/routes/dash/settings.tsx
@@ -1162,7 +1177,7 @@ msgstr "訂閱來源"
 #. @context: Error toast when file storage is not set up
 #: src/routes/dash/settings.tsx
 msgid "File storage isn't set up. Check your server config."
-msgstr "檔案儲存尚未設定。請檢查您的伺服器設定。"
+msgstr "檔案儲存尚未設定。請檢查你的伺服器設定。"
 
 #. @context: Settings item description for custom CSS
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -1234,7 +1249,7 @@ msgstr "GitHub 同步"
 #. @context: Help text for the multilingual content toggle
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Give each language its own home page, archive, and feed. Once it's on, you pick a language when you publish, and can link an existing post to a version of it in another language."
-msgstr "每種語言都有獨立的首頁、彙整和訂閱來源。啟用後，發佈時可以選擇不同的語言，也可以為既有的文章關聯一篇其他語言的文章。"
+msgstr "每種語言都有獨立的首頁、彙整和訂閱來源。啟用後，發佈時可以選擇不同的語言，也可以為既有的貼文關聯一篇其他語言的貼文。"
 
 #. @context: Section label for nav items shown in header
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1405,12 +1420,12 @@ msgstr "最新 RSS 來源"
 #. @context: Config Editor RSS feed enum option
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Latest posts"
-msgstr "最新文章"
+msgstr "最新貼文"
 
 #. @context: Suffix after Custom CSS link on color theme page
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "lets you override any theme variable."
-msgstr "讓您覆寫任何主題變數。"
+msgstr "讓你覆寫任何主題變數。"
 
 #. @context: Theme mode option label
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -1460,7 +1475,7 @@ msgstr "連結已新增到導覽。"
 #. @context: Label for list posts curl example
 #: src/ui/dash/settings/ApiTokensContent.tsx
 msgid "List posts:"
-msgstr "列出貼文:"
+msgstr "列出貼文："
 
 #. @context: GitHub sync picker — loading state
 #: src/routes/dash/settings.tsx
@@ -1575,7 +1590,7 @@ msgstr "多語言已啟用。"
 #. @context: Toast after turning multilingual content on with existing posts
 #: src/routes/dash/settings.tsx
 msgid "Multilingual content is on. {count, plural, one {# post was marked} other {# posts were marked}} as {language}."
-msgstr "多語言已啟用。{count, plural, other {# 篇文章}}已標記為「{language}」。"
+msgstr "多語言已啟用。{count, plural, other {# 篇貼文}}已標記為「{language}」。"
 
 #. @context: Link to multilingual documentation on the Language settings page
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -1603,6 +1618,11 @@ msgstr "站名、中繼資料、時區與搜尋預設值"
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Navigation"
 msgstr "導覽列"
+
+#. @context: Shown for a page on the site that can only be a link, such as an archive URL
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "Navigation holds that address as a link."
+msgstr "導覽只能把該網址存成連結。"
 
 #. @context: Section heading for nav items
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1676,7 +1696,7 @@ msgstr "目前還沒有選集。在這裡建立一個並加入導覽。"
 #. @context: Empty state message
 #: src/routes/dash/custom-urls.tsx
 msgid "No custom URLs yet. Create one to add redirects or custom paths for posts."
-msgstr "尚未有自訂 URL。建立一個自訂 URL 以為文章新增重新導向或自訂路徑。"
+msgstr "還沒有自訂 URL。建立一個，給貼文加重新導向或自訂路徑。"
 
 #. @context: Error toast when no file was selected for upload
 #: src/routes/dash/settings.tsx
@@ -1708,7 +1728,7 @@ msgstr "沒有可加入的頁面。建立頁面後即可加入導覽。"
 #. @context: GitHub sync picker — empty state when search returns nothing
 #: src/routes/dash/settings.tsx
 msgid "No repositories match."
-msgstr "沒有符合的儲存庫."
+msgstr "沒有符合的儲存庫。"
 
 #. @context: Config Editor linked setting status
 #. @context: Config Editor linked setting status
@@ -1729,6 +1749,11 @@ msgstr "尚未同步"
 msgid "Note"
 msgstr "筆記"
 
+#. @context: Shown when a pasted address matches no page on the site
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "Nothing at {address}. Check it, or search by title."
+msgstr "{address} 上沒有頁面。檢查網址，或按標題搜尋。"
+
 #. @context: Config Editor empty search state
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Nothing matches this search. Try a different name or description."
@@ -1747,12 +1772,12 @@ msgstr "已啟用"
 #. @context: Title of the stamping warning in the multilingual dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "One-time change to your existing posts"
-msgstr "啟用時會一次性標記既有文章"
+msgstr "啟用時會一次性標記既有貼文"
 
 #. @context: Caption inside the manual Telegram binding fallback. {linkOpen}/{linkClose} wrap the bot username as a t.me link — keep them around the @username token in translations.
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Open {linkOpen}@{botUsername}{linkClose} and send:"
-msgstr "啟用 {linkOpen}@{botUsername}{linkClose} 並傳送:"
+msgstr "啟用 {linkOpen}@{botUsername}{linkClose} 並傳送："
 
 #. @context: Config Editor link to a dedicated settings page
 #. @context: Config Editor link to a dedicated settings page
@@ -1848,7 +1873,7 @@ msgstr "密碼"
 #. @context: Toast after changing account password
 #: src/routes/dash/settings.tsx
 msgid "Password changed."
-msgstr "密碼已變更."
+msgstr "密碼已變更。"
 
 #. @context: Error shown when password changes are blocked in demo mode
 #: src/routes/dash/settings.tsx
@@ -1905,12 +1930,12 @@ msgstr "已釘選"
 #: src/routes/dash/custom-urls.tsx
 #: src/routes/dash/custom-urls.tsx
 msgid "Post"
-msgstr "文章"
+msgstr "貼文"
 
 #. @context: Reassurance line at the bottom of the multilingual dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Post addresses do not change, and you can turn this off again at any time."
-msgstr "所有文章的網址都不會改變，也可以隨時再關閉。"
+msgstr "所有貼文的網址都不會改變，也可以隨時再關閉。"
 
 #. @context: Settings item description for Telegram integration
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -1965,7 +1990,7 @@ msgstr "純白底配中性灰。不帶任何色偏。"
 #. @context: Description for manual push action on GitHub Sync settings
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 msgid "Push all posts to GitHub right now instead of waiting for the next automatic sync."
-msgstr "立即將所有文章推送到 GitHub，而不是等待下一次自動同步。"
+msgstr "立即將所有貼文推送到 GitHub，而不是等待下一次自動同步。"
 
 #. @context: Accessible label for the Telegram connect QR code
 #: src/ui/dash/settings/TelegramContent.tsx
@@ -2039,12 +2064,12 @@ msgstr "移除已儲存的機器人權杖？其 webhook 會被刪除，任何已
 #. @context: Description for disconnect action on GitHub Sync settings
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 msgid "Remove the webhook and stop syncing. Your repository content will not be deleted."
-msgstr "移除 webhook 並停止同步。您的儲存庫內容不會被刪除。"
+msgstr "移除 webhook 並停止同步。你的儲存庫內容不會被刪除。"
 
 #. @context: Confirm dialog for removing the blog avatar
 #: src/ui/dash/settings/AvatarContent.tsx
 msgid "Remove this avatar? Your favicon and header icon will go back to the default."
-msgstr "移除這個頭像？您的 favicon 與頁首圖示會回復為預設。"
+msgstr "移除這個頭像？你的 favicon 與頁首圖示會回復為預設。"
 
 #. @context: Confirm dialog for removing a collection nav item
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -2152,6 +2177,11 @@ msgstr "搜尋和編輯執行階段設定。變更會立即生效；重設會恢
 msgid "Search pages"
 msgstr "搜尋頁面"
 
+#. @context: Placeholder for the navigation page search, which also accepts a pasted URL or path
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "Search pages, or paste an address"
+msgstr "搜尋頁面，或貼上網址"
+
 #. @context: GitHub sync picker — search input placeholder
 #: src/routes/dash/settings.tsx
 msgid "Search repositories"
@@ -2206,7 +2236,7 @@ msgstr "找不到安全權杖。請重新整理頁面後再試一次。"
 #. @context: Settings item description for sessions
 #: src/ui/dash/settings/AccountMenuContent.tsx
 msgid "See where you're signed in and revoke old sessions"
-msgstr "查看您在哪裡已登入，並撤銷舊的工作階段"
+msgstr "查看你在哪裡已登入，並撤銷舊的工作階段"
 
 #. @context: GitHub sync picker — repo dropdown placeholder
 #: src/routes/dash/settings.tsx
@@ -2340,7 +2370,7 @@ msgstr "網站名稱"
 #. @context: Toast after saving site settings
 #: src/routes/dash/settings.tsx
 msgid "Site settings updated."
-msgstr "網站設定已更新."
+msgstr "網站設定已更新。"
 
 #. @context: Settings item description for code injection
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -2375,7 +2405,7 @@ msgstr "開始寫作"
 #. @context: Description for the Telegram disconnect action
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Stop accepting posts from Telegram. Your existing notes stay published."
-msgstr "停止接受來自 Telegram 的貼文。您現有的筆記會保持已發佈。"
+msgstr "停止接受來自 Telegram 的貼文。你現有的筆記會保持已發佈。"
 
 #. @context: Section heading for suggested nav links
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -2428,6 +2458,11 @@ msgstr "已設定 Telegram，但無法連線到機器人。請檢查機器人權
 msgid "That address is already in use. Choose another one."
 msgstr "此網址已被使用。請選擇其他網址。"
 
+#. @context: Shown when a pasted address points off the site
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "That address is on another site. Navigation holds it as a link."
+msgstr "該網址在別的網站上。導覽只能把它存成連結。"
+
 #. @context: Validation error for a reserved page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "That address is reserved. Choose another one."
@@ -2436,7 +2471,22 @@ msgstr "此網址為保留網址。請選擇其他網址。"
 #. @context: Error toast when selected font theme is not valid
 #: src/routes/dash/settings.tsx
 msgid "That font theme isn't available. Pick another one."
-msgstr "該字型主題無法使用. 請選擇其他主題."
+msgstr "該字型主題無法使用。請選擇其他主題。"
+
+#. @context: Shown when a pasted address resolves to an untitled post
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "That page has no title yet, so a menu has nothing to show."
+msgstr "該頁面還沒有標題，導覽裡顯示不出名字。"
+
+#. @context: Shown when a pasted address resolves to a draft
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "That page is a draft. Publish it, then add it."
+msgstr "該頁面是草稿。發佈後再新增。"
+
+#. @context: Shown when a pasted address resolves to a private page
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "That page is private, so nobody could open it from a menu."
+msgstr "該頁面是私密的，從導覽裡點進去也打不開。"
 
 #. @context: Error toast when selected theme is not valid
 #: src/routes/dash/settings.tsx
@@ -2496,12 +2546,12 @@ msgstr "根位址（/、/feed）顯示這個語言的內容。"
 #. @context: Body of the disable-multilingual dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "The root address goes back to showing every language, and addresses like {prefix} redirect to it, so existing links and feed subscriptions keep working. Post addresses and each post's language are unchanged, so you can turn this back on any time."
-msgstr "根位址將恢復顯示所有語言，{prefix} 這類位址會重新導向到它，既有的連結和訂閱仍然有效。文章網址和每篇文章的語言都不受影響，隨時可以重新啟用。"
+msgstr "根位址將恢復顯示所有語言，{prefix} 這類位址會重新導向到它，既有的連結和訂閱仍然有效。貼文網址和每篇貼文的語言都不受影響，隨時可以重新啟用。"
 
 #. @context: Custom URL target slug help text
 #: src/routes/dash/custom-urls.tsx
 msgid "The slug of the target post or collection"
-msgstr "目標文章或選集的 slug"
+msgstr "目標貼文或選集的 slug"
 
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -2516,7 +2566,7 @@ msgstr "主題指南"
 #. @context: Description for session management
 #: src/ui/dash/settings/SessionsContent.tsx
 msgid "These devices are currently signed in to your account. Revoke any session you don't recognize."
-msgstr "這些裝置目前已登入您的帳號。撤銷任何您不認識的工作階段。"
+msgstr "這些裝置目前已登入你的帳號。撤銷任何你不認識的工作階段。"
 
 #. @context: Generic fallback blog name in the delete-account confirmation phrase when the site name is unavailable
 #: src/ui/dash/settings/DeleteAccountContent.tsx
@@ -2526,7 +2576,7 @@ msgstr "此部落格"
 #. @context: Code Injection security warning headline
 #: src/ui/dash/appearance/CodeInjectionContent.tsx
 msgid "This code runs on every page of your site."
-msgstr "此程式碼會在您網站的每個頁面上執行。"
+msgstr "此程式碼會在你網站的每個頁面上執行。"
 
 #. @context: Help text for choosing whether /feed points to latest or featured posts
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -2546,7 +2596,7 @@ msgstr "這是選集連結的最後一部分。"
 #. @context: Help text for avatar upload
 #: src/ui/dash/settings/AvatarContent.tsx
 msgid "This is used for your favicon and apple-touch-icon. For best results, upload a square PNG with a solid background at least 512x512 pixels."
-msgstr "此圖會用於您的 favicon 和 apple-touch-icon。為達最佳效果，請上傳至少 512x512 像素、背景為純色的正方形 PNG。"
+msgstr "此圖會用於你的 favicon 和 apple-touch-icon。為達最佳效果，請上傳至少 512x512 像素、背景為純色的正方形 PNG。"
 
 #. @context: Reserved collection slug error in Navigation settings
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -2571,7 +2621,7 @@ msgstr "此儲存庫已有內容。"
 #. @context: GitHub sync picker — blocking message when marker belongs to another site. Placeholder {host} is the other site's host.
 #: src/routes/dash/settings.tsx
 msgid "This repository is already backing up another Jant site ({host}). Pick a different repository."
-msgstr "此儲存庫已在備份另一個 Jant 網站 ({host}). 請選擇其他儲存庫."
+msgstr "此儲存庫已在備份另一個 Jant 網站 ({host}). 請選擇其他儲存庫。"
 
 #. @context: GitHub sync picker — shown when the selected repo's marker matches this site
 #: src/routes/dash/settings.tsx
@@ -2586,7 +2636,7 @@ msgstr "此設定未儲存。請檢查設定值並再試一次。"
 #. @context: Warning text on account deletion page
 #: src/ui/dash/settings/DeleteAccountContent.tsx
 msgid "This will permanently delete all your data — posts, media, collections, settings, and your account. Your blog will be reset to its initial setup state. This cannot be undone."
-msgstr "這會永久刪除您所有的資料 — 文章、媒體、選集、設定，以及您的帳戶。您的部落格將被重設為初始設定狀態。此操作無法復原。"
+msgstr "這會永久刪除你的全部資料——貼文、媒體、選集、設定和帳戶。部落格會重設為初始設定狀態。此操作無法復原。"
 
 #. @context: Settings subsection heading for the time zone field
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -2623,7 +2673,7 @@ msgstr "權杖名稱 (API 權杖名稱欄位。)"
 #. @context: API tokens description
 #: src/ui/dash/settings/ApiTokensContent.tsx
 msgid "Tokens let you access the API from scripts, shortcuts, and other tools without signing in."
-msgstr "權杖讓您從腳本, 捷徑和其他工具存取 API 無需登入"
+msgstr "權杖讓你從腳本，捷徑和其他工具存取 API 無需登入"
 
 #. @context: GitHub sync picker — retry button
 #: src/routes/dash/settings.tsx
@@ -2633,7 +2683,7 @@ msgstr "重試"
 #. @context: Intro text on the settings home page below the title
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Tune how your site looks, reads, and runs."
-msgstr "調整您的網站外觀、可讀性與執行效能。"
+msgstr "調整你的網站外觀、可讀性與執行效能。"
 
 #. @context: Confirm button in the disable-multilingual dialog
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -2690,7 +2740,7 @@ msgstr "未知裝置"
 #. @context: Settings item description for password change
 #: src/ui/dash/settings/AccountMenuContent.tsx
 msgid "Update the password you use to sign in"
-msgstr "更新您用來登入的密碼"
+msgstr "更新你用來登入的密碼"
 
 #. @context: Button to upload avatar image
 #: src/ui/dash/settings/AvatarContent.tsx
@@ -2700,7 +2750,7 @@ msgstr "上傳大頭貼"
 #. @context: Error toast when avatar upload fails
 #: src/routes/dash/settings.tsx
 msgid "Upload didn't go through. Try again in a moment."
-msgstr "上傳未成功. 請稍後再試."
+msgstr "上傳未成功。請稍後再試。"
 
 #. @context: Error message when avatar upload fails
 #: src/ui/dash/settings/AvatarContent.tsx
@@ -2750,7 +2800,7 @@ msgstr "當你想要一個永遠不會改變的 feed URL 時，請使用這些�
 #. @context: Description for choosing featured posts as the main RSS feed
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Uses featured posts for /feed."
-msgstr "將精選文章用於 /feed."
+msgstr "將精選貼文用於 /feed。"
 
 #. @context: Description for choosing the latest posts as the main RSS feed
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -2770,7 +2820,7 @@ msgstr "檢視"
 #. @context: Link in the cannot-remove-language error, leading to that language's archive
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "View these posts"
-msgstr "查看這些文章"
+msgstr "查看這些貼文"
 
 #. @context: Prefix before Custom CSS link on color theme page
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -2870,7 +2920,7 @@ msgstr "每種語言是否擁有獨立的首頁、彙整和訂閱來源。在「
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Which post stream the canonical /feed URL returns."
-msgstr "正規的 /feed URL 會回傳哪個文章串流。"
+msgstr "正規的 /feed URL 會回傳哪個貼文串流。"
 
 #. @context: Parchment color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -2880,4 +2930,4 @@ msgstr "微黃的紙底，配橄欖綠。"
 #. @context: Fallback name when a connected Telegram account has no username
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "your Telegram account"
-msgstr "您的 Telegram 帳號"
+msgstr "你的 Telegram 帳號"

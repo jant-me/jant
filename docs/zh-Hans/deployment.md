@@ -87,11 +87,11 @@ npm install
 1. 打开 [R2 控制台](https://dash.cloudflare.com/?to=/:account/r2)，点开你的存储桶。
 2. **Settings** → **Public access** → **Custom Domains** → **Connect Domain**。
 3. 填一个属于你域名的子域，例如 `media.<your-domain>`。
-4. Cloudflare 自动写入 CNAME 并签发证书。状态从 "Initializing" 变为 "Active" 后，**完整复制 Public URL**（形如 `https://<media-domain>`，注意没有尾部斜杠）。
+4. Cloudflare 自动写入 CNAME 并签发证书。状态从 `Initializing` 变为 `Active` 后，**完整复制 Public URL**（形如 `https://<media-domain>`，注意没有尾部斜杠）。
 
 不要使用 r2.dev 的临时公开 URL——它有速率限制，不能用于生产。
 
-如果状态长时间停在 "Initializing"，通常是该子域已被其他 DNS 记录占用——到 Cloudflare DNS 页面删除冲突记录后会自动恢复。
+如果状态长时间停在 `Initializing`，通常是该子域已被其他 DNS 记录占用——到 Cloudflare DNS 页面删除冲突记录后会自动恢复。
 
 **把 URL 配给 Worker**，任选其一：
 

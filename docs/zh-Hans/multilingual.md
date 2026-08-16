@@ -62,7 +62,7 @@ Jant 站点默认只发布一种语言：设置一次，读者、搜索引擎和
 
 - **Change language**——设定这篇帖子（以及它所在的 Thread）是用什么语言写的。
 - **Write the {语言} version**——在编辑器里新开一篇该语言的帖子，并且已经和这篇关联好。写的时候原文留在屏幕上。
-- **Link a version you already wrote**——搜索你自己的帖子，关联一篇已经写好的。列表里只会出现真正能关联的帖子。
+- **Link a version you already wrote**——搜索你自己的帖子，关联一篇已经写好的。列表里只会出现真正能关联的帖子。也可以直接粘贴那篇帖子的网址——写译文的时候手边通常就是它；要是那篇不能关联，选择框会告诉你卡在下面哪条规则上。
 - **Other versions**——已经关联的帖子，每一篇都能打开，也能解除关联。
 
 关联起来的帖子构成一个**翻译组**：每种语言一篇，没有方向，也没有原文。谁都不是谁的译文——它们互为版本，解除其中一篇不影响其余的。
@@ -118,13 +118,14 @@ Jant 站点默认只发布一种语言：设置一次，读者、搜索引擎和
 
 每个语言操作都有对应的 HTTP 接口，脚本和 agent 可以做同样的事：
 
-| 接口                                         | 作用                     |
-| -------------------------------------------- | ------------------------ |
-| `PUT /api/posts/:id/language`                | 设置整个 Thread 的语言   |
-| `GET /api/posts/:id/translations`            | 列出与这篇关联的版本     |
-| `GET /api/posts/:id/translations/candidates` | 搜索可以关联的帖子       |
-| `POST /api/posts/:id/translations`           | 把另一篇关联为这篇的版本 |
-| `DELETE /api/posts/:id/translations`         | 把这篇移出它的翻译组     |
+| 接口                                         | 作用                               |
+| -------------------------------------------- | ---------------------------------- |
+| `PUT /api/posts/:id/language`                | 设置整个 Thread 的语言             |
+| `GET /api/posts/:id/translations`            | 列出与这篇关联的版本               |
+| `GET /api/posts/:id/translations/candidates` | 搜索可以关联的帖子                 |
+| `GET /api/posts/:id/translations/resolve`    | 按网址查一篇，或说明为什么不能关联 |
+| `POST /api/posts/:id/translations`           | 把另一篇关联为这篇的版本           |
+| `DELETE /api/posts/:id/translations`         | 把这篇移出它的翻译组               |
 
 通过 API 创建帖子时可以带 `language`，也可以用 `translationOfId` 在创建时就落进已有的翻译组。不带语言时由服务端判断。请求和响应的字段见 [API 参考（英文）](../API.md#language-and-translations)。
 

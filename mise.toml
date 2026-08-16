@@ -152,6 +152,10 @@ run = "npx prettier --write ."
 description = "Check code formatting"
 run = "npx prettier --check ."
 
+[tasks.check-copy]
+description = "Check user-facing copy against the writing style rules"
+run = "node scripts/check-copy.mjs"
+
 # =============================================================================
 # CI (full gate)
 # =============================================================================
@@ -160,6 +164,7 @@ description = "Run all CI checks (tests + i18n + template)"
 run = """
 # Phase 1: Core checks
 mise run check-tests
+mise run check-copy
 mise run i18n-check
 if [[ -n "${PG_SMOKE_DATABASE_URL:-}" ]]; then
   mise run check-pg-smoke

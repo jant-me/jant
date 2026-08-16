@@ -35,17 +35,20 @@ A post can carry an optional rating from 1 to 5, typically used for things with 
 
 ## Publish settings
 
-In the composer, next to the main **Publish** button, there's a **Publish settings** panel. Open it and, besides choosing visibility, you'll find two options that are easy to miss.
+Publishing settings sit in two places:
+
+- **Publish settings** (next to the main **Publish** button): visibility (Public / Hidden from Latest / Private, shared by the whole Thread), plus saving a draft and opening Drafts.
+- **Date and link** (top right of each post, reading `Now · /…` by default): sets the publish time and URL of that one post. It appears when you hover the post, and stays visible on narrow screens.
 
 ### Published on
 
-A post is published with the current time by default. If you're backfilling older content — articles brought over from another platform, things you wrote long ago — set **Published on** to an earlier date and the post drops into the timeline at that point (Latest and the archive are both ordered by publish time).
+A post is published with the current time by default. If you're backfilling older content — articles brought over from another platform, things you wrote long ago — open the date-and-link control at the top right of the post and set **Published on** to an earlier date; the post drops into the timeline at that point (Latest and the archive are both ordered by publish time).
 
 Leave it blank to use the current time. You can only pick today or earlier: Jant doesn't schedule posts, so future dates are rejected.
 
 ### Custom link
 
-A post's URL is generated from its title by default. Expand **Custom link** to set the slug you want before publishing — for example, turning `/my-first-blog-post` into a clean `/hello`. Leave it blank to generate one automatically.
+A post's URL is generated from its title by default. **Custom link**, in the same control, sets the slug you want before publishing — for example, turning `/my-first-blog-post` into a clean `/hello`. Leave it blank to generate one automatically.
 
 This is the simplest way to lock in a link when you first publish. Note: **changing this link after publishing makes the old address 404** — Jant won't redirect it. To change the URL of a post that's already published, use [Custom URLs](#custom-urls) below instead, which 301-redirects the old address to the new one.
 

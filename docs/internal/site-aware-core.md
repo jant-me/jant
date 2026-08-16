@@ -323,7 +323,7 @@ Recommended direction:
 - add supporting uniqueness needed for composite self-FKs
 - ensure replies and thread roots cannot cross site boundaries
 
-This is more important than simply filtering by `site_id` in service code.
+This is more important than filtering by `site_id` in service code.
 
 ## Exports, Imports, and Snapshots
 

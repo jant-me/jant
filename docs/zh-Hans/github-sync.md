@@ -104,7 +104,7 @@ Jant 会校验 token、保存配置，并在仓库里创建 webhook。不需要�
 
 webhook 处理是后写覆盖：webhook 到达时 Jant 直接用文件内容更新帖子，不和 Jant 当前状态做合并。如果你在 Jant UI 编辑的同时又在 GitHub 上改了同一篇帖子，最后到达的那次会赢。后续的 Jant push 也会把 GitHub 上未回流的中间状态覆盖掉。两边同时编辑同一篇帖子请避免。
 
-**不要改 `slug` 字段**：slug 是匹配键，改了之后这个文件会被当成"匹配不到的新文件"跳过，编辑不会落到 Jant 里。要改 URL 请在 Jant UI 里改。
+**不要改 `slug` 字段**：slug 是匹配键，改了之后这个文件会被当成「匹配不到的新文件」跳过，编辑不会落到 Jant 里。要改 URL 请在 Jant UI 里改。
 
 ## 后台处理
 
@@ -112,7 +112,7 @@ webhook 处理是后写覆盖：webhook 到达时 Jant 直接用文件内容更�
 
 push 进行中时 settings 页会显示 **Syncing…**，完成后切换为 **Last synced**。push 失败时错误会直接显示在状态卡上，不用翻日志。
 
-短时间内连续编辑会被合并：上一次 push 还没结束就来了新改动，新改动会被记成"待处理编辑"；当前 push 落地后再跑一轮，把最新状态推上去。不会丢内容、也不会出现并发 push。
+短时间内连续编辑会被合并：上一次 push 还没结束就来了新改动，新改动会被记成「待处理编辑」；当前 push 落地后再跑一轮，把最新状态推上去。不会丢内容、也不会出现并发 push。
 
 实现备注：基于 Cloudflare Workers 的 `executionCtx.waitUntil`，不需要 queue binding 或独立的 consumer worker。
 

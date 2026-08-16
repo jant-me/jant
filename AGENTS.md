@@ -112,7 +112,7 @@ Non-negotiable regardless of context:
 - **GitHub Actions**: new manually runnable workflows should include `workflow_dispatch:`.
 - **Verify proportionally**: choose verification based on the risk and surface area of the change instead of mechanically running the full suite every time.
   - Run `mise run check-tests` and `mise run check-lint` for behavior changes: routes, services, DB/schema/migrations, validation, auth, build tooling, shared infrastructure, interactive client logic, or anything with meaningful regression risk.
-  - For isolated visual or content-only changes, such as CSS-only tweaks, spacing, color, typography, copy, or docs, use judgment. A focused sanity check is usually enough if no logic, markup structure, or event handling changed.
+  - For isolated visual or content-only changes, such as CSS-only tweaks, spacing, color, typography, copy, or docs, use judgment. A focused sanity check is usually enough if no logic, markup structure, or event handling changed. For copy and docs, run `mise run check-copy` — style is verifiable, not a matter of taste.
   - If a change sits near the boundary, prefer the narrower relevant verification first, then escalate to full `check-tests`/`check-lint` if the impact is broader than expected.
   - Always state what you verified, and explicitly note when you skipped automated checks.
 
@@ -169,6 +169,8 @@ Cloudflare Workers, Hono v4, Vite + SWC, Tailwind v4 + BaseCoat, D1 + Drizzle OR
 ## UX Copy Guidelines
 
 All user-facing text follows a consistent voice. When writing or reviewing copy, apply these rules. They apply to every locale; the Chinese section at the end adds locale-specific rules.
+
+These rules govern **UI strings** — buttons, errors, empty states, settings descriptions. For **prose** (anything under `docs/`, `README.md`, multi-sentence `msgstr` values) see `docs/internal/writing-style.md`, which adds genre discipline and the bridge-sentence rule. Run `mise run check-copy` after touching either; it enforces the mechanical rules (`您`, 感叹号, 半角标点夹中文, tour-guide phrasing) and warns on judgment calls.
 
 ### Style Anchor
 
@@ -240,7 +242,7 @@ Chinese copy is written, not translated. Say it the way a native product would; 
 - **标点**：中文句子一律用全角标点（，。？「」（）），不允许半角逗号、句号夹在中文里。纯英文、数字、代码、URL 片段保持半角。
 - **语气**：不用感叹号，不用语气词卖萌（哦、啦、哟、呢）。「请稍后再试」这类惯用语可以用，但一条信息里最多一个「请」。
 - **反翻译腔**：先想中文里本来怎么说，再落笔。「{count} 个设置已显示」是翻译腔，「已显示 {count} 个设置」才像话。「进行…操作」「对…进行」一律改写成直接的动词。
-- **术语表**（新增术语先查 .po 保持一致）：Post→文章、Note→笔记、Link→链接、Quote→引用、Collection→合集（zh-Hant：選集）、Draft→草稿；「账户」不写「帐户」。
+- **术语表**（**以 `src/i18n/locales/glossary.zh-Hans.yml` / `glossary.zh-Hant.yml` 为准**，新增术语先改术语表）：Post→帖子（zh-Hant：貼文）、Note→笔记、Link→链接、Quote→引用、Collection→合集（zh-Hant：選集）、Thread→帖子串（zh-Hant：貼文串）、Draft→草稿；「账户」不写「帐户」。注意区分产品名词和普通名词：`帖子` 指 Jant 的 Post，泛指别人写的文章仍用 `文章`（「我分享一些好文章」是对的）。
 - **zh-Hant 不是简繁转换**：用词按台湾惯用（設定、選集），不要机械转换 zh-Hans。
 
 ## Reference
@@ -259,6 +261,7 @@ If you notice code contradicting this document, think about which side is correc
 ### Docs Index
 
 - **Coding standards** (module deps, error handling, testing): `docs/internal/coding-standards.md`
+- **Writing style** (long-form docs prose, genre discipline, 中文对照): `docs/internal/writing-style.md`
 - **Lit/Datastar conventions**: `docs/internal/lit-guide.md`
 - **Testing guide**: `docs/internal/testing-guide.md`
 - **Agent automation testing**: `docs/internal/agent-automation-testing.md`

@@ -23,8 +23,6 @@ Jant 的配置来自两个地方：
 | ------------- | ---------------------------------------------------------------------------- |
 | `AUTH_SECRET` | better-auth 用于签名 session cookie 的密钥，至少 32 个字符。不要提交进版本库 |
 
-不要把 `AUTH_SECRET` 提交进版本库。
-
 - Cloudflare 本地开发：放进 `.dev.vars`
 - Cloudflare 生产环境：用 `npx wrangler secret put AUTH_SECRET` 作为 Worker secret 设置
 - Node 和 Docker：放进 `.env` 或进程环境变量
@@ -40,7 +38,7 @@ Jant 的配置来自两个地方：
 
 只有在以下情况才需要设置：
 
-- **站点在反向代理后面，并且反向代理没有正确的传递 Host，导致自动推导的 host 不正确**：设置 `SITE_ORIGIN=https://example.com`
+- **站点在反向代理后面，而代理没有正确传递 Host，推导出的 origin 不对**：设置 `SITE_ORIGIN=https://example.com`
 - **挂在子路径下**（例如 `example.com/blog`）：设置 `SITE_PATH_PREFIX=/blog`
 - **需要写死域名**
 
@@ -131,13 +129,11 @@ session 和 Bearer API token 仍可使用这些接口。包括 `/search` 在内�
 | Cloudflare Workers | `r2`    | `r2`, `s3`    |
 | Node 和 Docker     | `local` | `local`, `s3` |
 
-Node 不支持 `r2`。
-
-Cloudflare 不支持 `local`。
+Node 不支持 `r2`，Cloudflare 不支持 `local`。
 
 通过 `STORAGE_DRIVER` 环境变量切换驱动，例如 `STORAGE_DRIVER=s3`。不设置时使用各运行时的默认值。
 
-对 Node 和 Docker 来说，`local` 是最快起步的方式；`s3` 通常是更适合长期生产环境的选择。
+Node 和 Docker 下 `local` 起步最快，`s3` 更适合长期生产。
 
 #### 本地存储（Node / Docker 下最快起步）
 
@@ -181,12 +177,12 @@ R2_PUBLIC_URL = "https://media.yourdomain.com"
 
 #### S3 兼容存储
 
-适合在这些场景下使用 S3 兼容存储：
+适合这些场景：
 
-- 你想在 Node 或 Docker 下使用更推荐的长期存储方案
-- 你想在 Cloudflare 和 Node 之间共用同一套存储后端
-- 你更偏好 S3、Backblaze B2、MinIO、DigitalOcean Spaces 或其他兼容服务
-- 你需要通过预签名 URL 做浏览器直传
+- Node 或 Docker 下想要更稳的长期存储方案
+- Cloudflare 和 Node 之间共用同一套存储后端
+- 偏好 S3、Backblaze B2、MinIO、DigitalOcean Spaces 或其他兼容服务
+- 需要通过预签名 URL 做浏览器直传
 
 | 变量                   | 说明                       |
 | ---------------------- | -------------------------- |
@@ -272,7 +268,7 @@ IMAGE_TRANSFORM_URL = "https://yourdomain.com/cdn-cgi/image"
 ASSET_BASE_URL = "https://cdn.yourdomain.com"
 ```
 
-**该 CDN 必须允许跨域。** Jant 的客户端代码以 ES module 形式加载（`<script type="module">`），浏览器对跨源 module 脚本会强制执行 CORS——虽然看起来和普通 JS 没区别，但规则不一样。如果 CDN 不返回 `Access-Control-Allow-Origin`，浏览器会丢弃响应，站点直接加载失败。
+**该 CDN 必须允许跨域。** Jant 的客户端代码以 ES module 形式加载（`<script type="module">`），浏览器对跨源 module 脚本会强制执行 CORS——虽然它们看起来和普通 JS 没区别。如果 CDN 不返回 `Access-Control-Allow-Origin`，浏览器会丢弃响应，站点直接加载失败。
 
 资源服务器有两种配置方式，根据你的部署情况二选一：
 
@@ -399,8 +395,8 @@ location /_assets/ {
 ### Config Editor
 
 打开 **Settings → Advanced → Config Editor**，或访问 `/settings/config`，
-即可在一个页面中搜索可安全地在运行时使用的设置。简单的 boolean、text、
-number 和 enum 值可以直接编辑。内容语言和时区会复用 General 设置中的受限
+即可在一个页面里搜索可以在运行时安全修改的设置。boolean、text、number 和
+enum 这类简单值可以直接编辑。内容语言和时区会复用 General 设置中的受限
 选项来源，因此不会保存无效的自由输入。Boolean 和 enum 更改会立即保存；
 text 和 number 更改会在按 Enter 或离开字段时保存，按 Escape 则恢复最近一次
 保存的值。使用 **Reset to default** 会删除数据库覆盖值，恢复环境变量或内置
@@ -411,9 +407,8 @@ text 和 number 更改会在按 Enter 或离开字段时保存，按 Escape 则�
 链接到 General 设置中的权威控件。Config Editor 只显示安全的当前值或配置
 状态，避免重复主要表单，也不会把长文本或 Markdown 挤进单行输入框。
 
-需要预览、上传、代码编辑器或多字段流程的安全设置也可以被搜索到，并以带有
-当前值的入口打开对应的专用 Settings 页面，而不是在 Config Editor 中复制一套
-简化界面。Theme、Font Theme、Theme Mode 和页眉头像显示这类安全标量也可以在
+需要预览、上传、代码编辑器或多字段流程的设置同样搜得到，但入口会带着当前值
+跳到对应的专用 Settings 页面，而不是在 Config Editor 里复制一套简化界面。Theme、Font Theme、Theme Mode 和页眉头像显示这类安全标量也可以在
 Config Editor 中重置；文件和自定义代码仍由原设置页的专门清理流程管理。
 GitHub Sync 和 Telegram 只显示安全的连接状态并跳转到对应集成页面；仓库
 令牌、Bot 令牌、Webhook secret 和临时同步状态仍保持隐藏。

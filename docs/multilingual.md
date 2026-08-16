@@ -62,7 +62,7 @@ Open a post's **⋯** menu and choose **Language**. It holds everything about th
 
 - **Change language** — set which language this post (and its Thread) is written in.
 - **Write the {language} version** — open the composer on a new post in that language, already linked to this one. The original stays on screen while you write.
-- **Link a version you already wrote** — search your posts and link one that exists. Only posts that can actually be linked are listed.
+- **Link a version you already wrote** — search your posts and link one that exists. Only posts that can actually be linked are listed. You can also paste the other post's URL, which is usually what you have to hand while writing a translation; if that post cannot be linked, the picker says which of the rules below is in the way.
 - **Other versions** — the posts already linked to this one, each openable, each unlinkable.
 
 Linked posts form a **translation group**: one post per language, with no direction and no original. Nothing is a translation _of_ anything — the posts are versions of each other, and unlinking one leaves the others intact.
@@ -123,6 +123,7 @@ Every language operation has an HTTP endpoint, so the same moves are available t
 | `PUT /api/posts/:id/language`                | Set the language of a post's whole Thread  |
 | `GET /api/posts/:id/translations`            | List the versions linked to this post      |
 | `GET /api/posts/:id/translations/candidates` | Search posts this one could be linked to   |
+| `GET /api/posts/:id/translations/resolve`    | Look one up by URL, or say why it can't be |
 | `POST /api/posts/:id/translations`           | Link another post as a version of this one |
 | `DELETE /api/posts/:id/translations`         | Unlink this post from its group            |
 

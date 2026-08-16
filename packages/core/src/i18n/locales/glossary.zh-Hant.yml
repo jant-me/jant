@@ -1,4 +1,20 @@
 terms:
+  - source: Post
+    target: 貼文
+    note: Jant 的核心內容單位。台灣慣用貼文，不用帖子。
+
+  - source: Posts
+    target: 貼文
+    note: Jant 的核心內容單位，可依語境補上量詞。
+
+  - source: post
+    target: 貼文
+    note: Jant 的核心內容單位。台灣慣用貼文，不用帖子。
+
+  - source: posts
+    target: 貼文
+    note: Jant 的核心內容單位，可依語境補上量詞。
+
   - source: Collection
     target: 選集
     note: Jant 的策展概念。不要譯成收藏夾、收藏集或集合。
@@ -89,7 +105,7 @@ terms:
 
   - source: Hidden from Latest
     target: 從最新中隱藏
-    note: 不出現在 Latest 中，但仍可透過固定連結和集合存取的狀態。
+    note: 不出現在 Latest 中，但仍可透過固定連結和選集存取的狀態。
 
   - source: API Tokens
     target: API 權杖

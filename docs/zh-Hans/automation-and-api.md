@@ -1,6 +1,6 @@
 # 自动化与 API
 
-如果你想让脚本、定时任务或 agent 操作自己的 Jant 站点，这是入口。读完你应该知道：怎么签发 token、调哪些接口、出错怎么排查。
+让脚本、定时任务或 agent 操作自己的 Jant 站点，从这里开始：怎么签发 token、调哪些接口、出错怎么排查。
 
 Jant 提供两条通道：
 
@@ -16,7 +16,7 @@ Jant 提供两条通道：
 - `.claude/skills/`
 - `examples/agent-content-automation/README.md`
 
-也就是说，agent 在生成项目里拿到的不只是 API token，还能直接看到项目约定和现成样例。
+agent 在生成项目里拿到的不只是 API token，还有项目约定和现成样例。
 
 ## 先选哪条路
 
@@ -158,7 +158,7 @@ curl -X POST "$JANT_URL/api/mcp" \
 
 ## 推荐起点：先跑通这三个调用
 
-如果目标只是"让 agent 能稳定发帖、传图、改设置"，先把这三个 HTTP 调用跑通就够了：
+如果目标只是「让 agent 能稳定发帖、传图、改设置」，先把这三个 HTTP 调用跑通就够了：
 
 1. `POST /api/posts`
 2. `POST /api/upload`

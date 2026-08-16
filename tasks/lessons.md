@@ -709,3 +709,30 @@ diff against itself: `git diff --stat src/i18n/locales/` before and after a
 second `mise run i18n-build` must be identical. A changed second run means the
 extraction is not settled — usually a `msgstr` written into a catalog Lingui is
 about to rewrite.
+
+## Terminology fixes need the English source, not a grep
+
+`grep -c` over a locale looks like evidence and usually is not. `文章` appeared
+14 times in `docs/zh-Hans/` against 115 `帖子`, which reads like systematic drift
+until you open each one: 13 are correct generic usage — `我分享一些好文章`,
+`这篇文章说明 Jant 的设计背景`, `文章里某句让你停下来的话`. Only the row whose
+English counterpart said "Post titles" was actually wrong. A blind `sed` would
+have corrupted 13 good sentences to fix one.
+
+The reliable signal is the English source, not the Chinese frequency. In `.po`
+that signal is `msgid`, so a terminology rule can be automated there. In prose
+there is no such signal, so it stays a human call — which is why
+`scripts/check-copy.mjs` only flags `文章` inside PO files. Any rule whose
+matches are mostly false positives gets ignored, taking the true positives with
+it.
+
+## `glossary.*.yml` outranks AGENTS.md on terminology
+
+AGENTS.md said `Post→文章`; `glossary.zh-Hans.yml` had no `Post` entry at all but
+every one of its `note:` fields assumed 帖子 (`Thread→帖子串`, Note as
+"Jant 的帖子格式之一"). The glossary was right and AGENTS.md was the outlier —
+`Thread→文章串` is nonsense, which settles it.
+
+When the two disagree, fix AGENTS.md and add the missing glossary entry, in that
+order. AGENTS.md carries a summary for convenience; the YAML is what translators
+and tooling actually read.

@@ -55,7 +55,7 @@
 要点：
 
 - 通过 `[data-post-end]` 插槽挂载，自动跟正文列宽和左边对齐；非帖子页面没有这个元素，等于内置的页面守卫。
-- `data-mapping="specific"` 配合动态 term，把 giscus 的"按术语搜讨论"模式当成精确匹配用。
+- `data-mapping="specific"` 配合动态 term，把 giscus 的「按术语搜讨论」模式当成精确匹配用。
 - term 取自 `<link rel="canonical">` 的路径，而不是 `location.pathname`。Jant 中同一条 thread 的所有 child URL 共用一个 canonical（指向根帖），这样整条 thread 落到同一份讨论上。
 - `data-strict="1"` 关闭 GitHub 模糊搜索，避免把不同 thread 误匹配到一起。
 - `data-theme="preferred_color_scheme"` 跟随 Jant 的浅 / 深色模式自动切换。

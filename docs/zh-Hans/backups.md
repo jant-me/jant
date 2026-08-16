@@ -137,7 +137,7 @@ aws s3 sync "s3://$S3_BUCKET" "./backups/media-$(date +%F)/" \
 aws s3 sync "./backups/media-2026-03-30/" "s3://$S3_BUCKET"
 ```
 
-如果 bucket 已开启版本控制，**优先走控制台还原**——`aws s3 sync` 默认不带 `--delete`，但任何后续误操作都可能把本地副本中的"缺失"传播到线上。生产环境也优先使用对象存储自身的版本控制或跨区域复制，本地 sync 仅作为离线副本补充。
+如果 bucket 已开启版本控制，**优先走控制台还原**——`aws s3 sync` 默认不带 `--delete`，但任何后续误操作都可能把本地副本中的「缺失」传播到线上。生产环境也优先使用对象存储自身的版本控制或跨区域复制，本地 sync 仅作为离线副本补充。
 
 ## Cloudflare Workers
 

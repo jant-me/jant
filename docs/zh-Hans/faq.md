@@ -2,7 +2,7 @@
 
 ## Jant 是开源的吗？
 
-是。完整源码在 [GitHub](https://github.com/jant-me/jant)。托管和自托管运行的是同一份代码，没有"托管专属功能"。
+是。完整源码在 [GitHub](https://github.com/jant-me/jant)。托管和自托管运行的是同一份代码，没有「托管专属功能」。
 
 ## 自托管和托管怎么选？
 
@@ -17,7 +17,7 @@
 ## 自定义域名怎么配？
 
 - **托管**：Dashboard → 选中站点 → **域名** → 添加，按提示配置 DNS。证书自动签发与续期。
-- **Cloudflare 自托管**：Workers & Pages → 你的 Worker → Settings → Domains & Routes → Add，详见 [部署到 Cloudflare](deployment.md) 中的"绑定自定义域名"。
+- **Cloudflare 自托管**：Workers & Pages → 你的 Worker → Settings → Domains & Routes → Add，详见 [部署到 Cloudflare](deployment.md) 中的「绑定自定义域名」。
 - **Docker 自托管**：在反向代理里指过来。
 
 ## 支持评论吗？
@@ -26,15 +26,15 @@
 
 ## Jant 有独立页面吗（比如 About 页）？
 
-没有单独的「页面」类型。把一篇标题为 `About` 的 Note 设为 **Hidden from Latest**（从首页隐去），它就是一个独立页面。Jant 用标题生成 slug，地址默认就是 `/about`；想用别的地址，在 **发布** 按钮旁边的 **Publish settings** 面板里展开 **Custom link** 手动填。详见 [写作与内容组织 § 创建独立页面](writing-and-organizing.md#创建独立页面about-页)。
+没有单独的「页面」类型。把一篇标题为 `About` 的 Note 设为 **Hidden from Latest**（从首页隐去），它就是一个独立页面。Jant 用标题生成 slug，地址默认就是 `/about`；想用别的地址，点帖子右上角显示 `Now · /…` 的按钮，在 **Custom link** 里手动填。详见 [写作与内容组织 § 创建独立页面](writing-and-organizing.md#创建独立页面about-页)。
 
 ## 怎么发布一篇日期是过去的帖子？
 
-撰写界面里 **发布** 按钮旁边有个 **Publish settings** 面板，把里面的 **Published on** 改成更早的日期即可——帖子会按那个时间排进时间线。常用于补录从别处搬来的旧文章。只能选今天或更早，Jant 不做定时发布。详见 [写作与内容组织 § 发布设置](writing-and-organizing.md#发布设置)。
+撰写界面里每条帖子右上角有个显示 `Now · /…` 的按钮，点开把 **Published on** 改成更早的日期——帖子会按那个时间排进时间线。常用于补录从别处搬来的旧文章。只能选今天或更早，Jant 不做定时发布。详见 [写作与内容组织 § 发布设置](writing-and-organizing.md#发布设置)。
 
 ## 怎么给帖子设一个自己想要的网址？
 
-同一个 **Publish settings** 面板里展开 **Custom link**，发布前填入想要的 slug 即可。如果帖子已经发布、又想换网址，改用 **设置 → 高级 → 自定义 URL**——它会把旧地址自动 301 跳转，不会留下死链。详见 [写作与内容组织 § 自定义 URL](writing-and-organizing.md#自定义-url)。
+发布前点开帖子右上角那个按钮，在 **Custom link** 里填入想要的 slug。如果帖子已经发布、又想换网址，改用 **设置 → 高级 → 自定义 URL**——它会把旧地址自动 301 跳转，不会留下死链。详见 [写作与内容组织 § 自定义 URL](writing-and-organizing.md#自定义-url)。
 
 ## 能改主题/外观吗？
 
@@ -50,7 +50,7 @@
 
 ## Cloudflare 免费额度真的够吗？
 
-对一个普通个人博客通常够。Workers 免费层每天 100,000 次请求，R2 免费层 10 GB 存储加每月 100 万次 Class A 操作。一个坑：媒体如果不配 `R2_PUBLIC_URL`，每次图片加载都会走 Worker 中转，免费额度会消耗得更快。配置方式见 [部署到 Cloudflare](deployment.md) 中的"部署后必做清单"。
+对一个普通个人博客通常够。Workers 免费层每天 100,000 次请求，R2 免费层 10 GB 存储加每月 100 万次 Class A 操作。一个坑：媒体如果不配 `R2_PUBLIC_URL`，每次图片加载都会走 Worker 中转，免费额度会消耗得更快。配置方式见 [部署到 Cloudflare](deployment.md) 中的「部署后必做清单」。
 
 ## 可以带着内容离开吗？
 
@@ -73,13 +73,11 @@
 
 ## 支持多语言吗？
 
-支持，而且是两件互不相干的事。
+支持。**Settings → Language** 下有三个设置，各管一件事：
 
-**只发布一种语言。** **Settings → Language → Content language** 是你写作使用的语言，它填进 `<html lang>` 和订阅源的 `<language>` 字段——搜索引擎、屏幕阅读器和订阅器读的就是这个。
-
-**同时发布多种语言。** 打开多语言内容后，每种语言在自己的 URL 前缀下拥有独立的首页、归档和订阅源，页头出现切换器，不同语言的帖子可以互相关联为版本。见[多语言内容](multilingual.md)。
-
-后台自己的显示语言是另一回事——**Settings → Language → Dashboard language**，只有你看得到。目前提供 English、简体中文、繁体中文，其他语言回退到 English。
+- **Content language**：站点发布内容用的语言，填进 `<html lang>` 和订阅源的 `<language>` 字段，搜索引擎、屏幕阅读器和订阅器读的是这个。
+- **Multilingual content**：打开后每种语言有自己的 URL 前缀、首页、归档和订阅源，页头出现语言切换器，不同语言的帖子可以互相关联为版本。见[多语言内容](multilingual.md)。
+- **Dashboard language**：后台显示语言，只有你看得到。目前提供 English、简体中文、繁体中文，其他语言回退到 English。
 
 ## 支持多作者吗？
 
@@ -87,7 +85,7 @@
 
 ## 为什么默认 `/feed` 是 Featured 而不是 Latest？
 
-Jant 把"发布到站点"和"广播给订阅者"看成两件事。默认 `/feed` 指向 Featured，让你可以写细碎记录而不打扰订阅者。要换回传统行为，**Settings → General → Feeds → Main RSS feed** 切到 Latest。三条 feed（`/featured/feed`、`/latest/feed`、`/archive/feed`）各管一段，详见 [写作与内容组织 § 为什么默认 feed 是 Featured](writing-and-organizing.md#为什么默认-feed-是-featured)。
+Jant 把「发布到站点」和「广播给订阅者」看成两件事。默认 `/feed` 指向 Featured，让你可以写细碎记录而不打扰订阅者。要换回传统行为，**Settings → General → Feeds → Main RSS feed** 切到 Latest。三条 feed（`/featured/feed`、`/latest/feed`、`/archive/feed`）各管一段，详见 [写作与内容组织 § 为什么默认 feed 是 Featured](writing-and-organizing.md#为什么默认-feed-是-featured)。
 
 ## 为什么刚发布的帖子没有立即出现在 RSS 里？
 
@@ -156,13 +154,15 @@ feeds。内容会立即显示在网页上，等待的只有 feed 分发。这段
 
 ## 为什么叫 Jant？
 
-来自 _Jantelagen_（扬特法则），北欧文化中"别把自己看得太重"的概念。设计动机见 [简介](overview.md#一种无压力的公开写作)。
+来自 _Jantelagen_（扬特法则），北欧文化中「别把自己看得太重」的概念。设计动机见 [简介](overview.md#关于这个名字)。
 
 ## 托管为什么定价 $10.46/年？
 
-我一直喜欢 .com 的定价：$10.46 / 年。
+$10.46 是 Cloudflare 注册和续费一个 .com 域名一年的价格。我认为我们在使用一个长期的订阅服务时必须考虑它的长期成本，$10.46 在我看来是一个公平合理的价格。
 
-这是 Cloudflare 提供的 .com 域名注册和续费的价格。它略高于免费，又足够正式。不会让开始变得摩擦力太大，但也不是完全没有成本，足够让你把它当回事。
+## 托管的 10 GB 媒体存储不够用怎么办？
+
+发邮件到 [support@jant.me](mailto:support@jant.me)，可以单独加。
 
 ## 接下来
 

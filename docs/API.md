@@ -904,6 +904,35 @@ Auth: `Session or token`
 
 Returns published Thread roots this post could actually be linked to: written in a language its group does not already hold, and — when this post already belongs to a group — not in a group of their own. Same entry shape as the endpoint above, newest first.
 
+### Look up a linkable post by address
+
+`GET /api/posts/:id/translations/resolve`
+
+Auth: `Session or token`
+
+| Query | Type   | Required | Default | Notes                                         |
+| ----- | ------ | -------- | ------- | --------------------------------------------- |
+| `url` | string | yes      | —       | A path or a full URL on this site, max `2048` |
+
+Answers the same question as the search above, about one address instead of a phrase. A full URL on any host the site answers on, a site path prefix, and a language prefix are all accepted — `/en/hello`, `/hello`, and `https://example.com/hello` name one post. Stored redirects are followed, and an address that lands on a reply names its Thread.
+
+```json
+{
+  "resolution": {
+    "kind": "ok",
+    "address": "/hello-world",
+    "candidate": {
+      "id": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
+      "slug": "hello-world",
+      "label": "Hello World",
+      "language": "en"
+    }
+  }
+}
+```
+
+When the post cannot be linked, `kind` says why instead: `external` (another site), `not_found`, `not_a_post`, `same_thread`, `unpublished`, `no_language`, `same_language`, `language_taken`, `group_conflict`, or `group_language_taken`. The last two carry the `language` in the way. Eligibility is decided here, not by the caller — `POST /api/posts/:id/translations` applies the same rules.
+
 ### Link a version
 
 `POST /api/posts/:id/translations`

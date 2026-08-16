@@ -1,4 +1,20 @@
 terms:
+  - source: Post
+    target: 帖子
+    note: Jant 的核心内容单位。泛指别人写的文章时仍用「文章」，不要混用。
+
+  - source: Posts
+    target: 帖子
+    note: Jant 的核心内容单位，可按语境补上量词。
+
+  - source: post
+    target: 帖子
+    note: Jant 的核心内容单位。泛指别人写的文章时仍用「文章」，不要混用。
+
+  - source: posts
+    target: 帖子
+    note: Jant 的核心内容单位，可按语境补上量词。
+
   - source: Collection
     target: 合集
     note: Jant 的策展概念。不要译成收藏夹、收藏集或集合。
@@ -89,7 +105,7 @@ terms:
 
   - source: Hidden from Latest
     target: 从最新中隐藏
-    note: 不出现在 Latest 中，但仍可通过固定链接和集合访问的状态。
+    note: 不出现在 Latest 中，但仍可通过固定链接和合集访问的状态。
 
   - source: API Tokens
     target: API 令牌

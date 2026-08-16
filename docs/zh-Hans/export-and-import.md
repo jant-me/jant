@@ -12,7 +12,7 @@
 | 导出原始数据库 SQL         | `db export`                                      |
 | 从别的博客或 CMS 迁入内容  | 交给 AI 助手（见下文）                           |
 
-`site export` 与 `site snapshot` 的差别不在于"用途"，而在于输出物本身：
+`site export` 与 `site snapshot` 的差别不在于「用途」，而在于输出物本身：
 
 | 维度                      | `site export`                                   | `site snapshot`                      |
 | ------------------------- | ----------------------------------------------- | ------------------------------------ |
@@ -193,7 +193,7 @@ npx jant site pull-media --path ./jant-site-export.zip --output ./pulled.zip
 
 支持的自定义方式：
 
-- **覆盖单个模板**：把 `themes/jant/layouts/<name>.html` 复制到根目录 `layouts/<name>.html`，对根目录副本进行编辑。Hugo 优先加载根目录模板，不需要 fork 整个主题。
+- **覆盖单个模板**：把 `themes/jant/layouts/<name>.html` 复制到根目录 `layouts/<name>.html`，然后编辑根目录副本。Hugo 优先加载根目录模板，不需要 fork 整个主题。
 - **新增静态文件**：放在根目录 `static/`，将以对应 URL 提供服务，并优先于 `themes/jant/static/` 下的同名文件。
 - **调整颜色、字体或布局细节**：用 Jant 中的 **Settings → Custom CSS**。该值在每次 export 时写入 `themes/jant/static/custom.css`，应通过 Settings 修改，而不是直接编辑仓库。
 
@@ -208,13 +208,13 @@ npx jant site pull-media --path ./jant-site-export.zip --output ./pulled.zip
 Import 不做合并、不做覆盖、不做事务回滚——它逐条把入站 post 与 collection 的 slug 与目标站点的 `path_registry` 比对：
 
 - 如果某个 slug 已被现有的 post、collection、alias 或 redirect 占用，命令立即终止；之前已经写入的内容**保留**在目标站点（部分写入状态需要手动清理）。
-- 也就是说：目标站点不必完全为空，但通常意义下你只会把一份导出导进一个干净站点——和源站重叠的内容几乎一定会撞 slug。
+- 目标站点不必完全为空，但实际上你只会把一份导出导进一个干净站点——和源站重叠的内容几乎一定会撞 slug。
 - 同一份导出内部如果存在重复 slug（例如手工编辑了多份 markdown 后再导入），同样会触发冲突并退出。
 - `--dry-run` 提前跑完整套校验，不写任何数据。推荐先 dry-run 再执行真正的 import。
 
 ### 清空目标站点
 
-迁移时如果遇到字段冲突或一次没导干净，目前没有"只清空内容、保留账号"的轻量入口。最快的做法是去 **Settings → Account & Data → Delete Account** 把账号连同内容一起删掉，再重新注册——这是初次迁移调试常用的快捷方式。流程会先强制下载一份 `site export` 作为最后的备份，再要求输入确认短语。
+迁移时如果遇到字段冲突或一次没导干净，目前没有「只清空内容、保留账号」的轻量入口。最快的做法是去 **Settings → Account & Data → Delete Account** 把账号连同内容一起删掉，再重新注册——这是初次迁移调试常用的快捷方式。流程会先强制下载一份 `site export` 作为最后的备份，再要求输入确认短语。
 
 托管站点上点这个 **Delete Account** 删的也是该站点的内容和账号，不影响计费、域名绑定和你在 jant.me 上的实例本身——重新注册后实例还在，可以直接重新初始化。
 
