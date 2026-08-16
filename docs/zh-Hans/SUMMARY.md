@@ -21,6 +21,7 @@
 ## 使用你的站点
 
 - [写作与内容组织](writing-and-organizing.md)
+- [多语言内容](multilingual.md)
 - [GitHub 同步](github-sync.md)
 - [主题定制](theming.md)
 - [代码注入](code-injection.md)

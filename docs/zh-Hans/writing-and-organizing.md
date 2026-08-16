@@ -236,5 +236,6 @@ Jant 动态生成的所有 Atom feeds 都使用同一段发布缓冲时间。新
 
 ## 接下来
 
+- [多语言内容](multilingual.md) —— 同时发布多种语言
 - [GitHub 同步](github-sync.md) —— 让内容自动同步到 GitHub 仓库
 - [主题定制](theming.md) —— 调整站点外观

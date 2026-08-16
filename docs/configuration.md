@@ -428,6 +428,8 @@ These settings can be changed on Jant's Settings page after setup. Each one can 
 | `PUBLIC_API_ENABLED`         | Allow JSON reads without a session or API token  |
 | `RSS_FEEDS_ENABLED`          | Publish Atom feeds and built-in feed links       |
 
+Multilingual sites carry two more settings, `ADDITIONAL_LANGUAGES` and `MULTILINGUAL_ENABLED`. Both are written by the Language page rather than set by hand, because their values have to stay consistent with the language stamped on your posts — see [Multilingual content](multilingual.md).
+
 Color theme, font theme, custom CSS, avatar, and other appearance details are also managed in Settings.
 
 ### Config Editor

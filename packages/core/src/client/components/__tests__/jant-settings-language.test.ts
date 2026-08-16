@@ -2,15 +2,21 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-const { showConfirmDialogMock, showToastMock } = vi.hoisted(() => ({
-  showConfirmDialogMock: vi.fn(),
-  showToastMock: vi.fn(),
-}));
+const { showConfirmDialogMock, showToastMock, queueToastMock } = vi.hoisted(
+  () => ({
+    showConfirmDialogMock: vi.fn(),
+    showToastMock: vi.fn(),
+    queueToastMock: vi.fn(),
+  }),
+);
 
 vi.mock("../../confirm.js", () => ({
   showConfirmDialog: showConfirmDialogMock,
 }));
-vi.mock("../../toast.js", () => ({ showToast: showToastMock }));
+vi.mock("../../toast.js", () => ({
+  showToast: showToastMock,
+  queueToastForNextPage: queueToastMock,
+}));
 
 import "../jant-settings-language.js";
 import type { JantSettingsLanguage } from "../jant-settings-language.js";
@@ -27,6 +33,9 @@ const labels = {
   followContent: "Follow content language",
   multilingual: "Multilingual content",
   multilingualHelp: "Give each language its own home page, archive, and feed.",
+  multilingualDocs: "Multilingual guide",
+  multilingualDocsHelp:
+    "URL structure, per-language feeds, and linking translations.",
   statusOn: "On",
   turnOn: "Turn on",
   addMissingLanguage: "Add {language}",
@@ -162,6 +171,7 @@ describe("JantSettingsLanguage", () => {
     document.body.innerHTML = "";
     showConfirmDialogMock.mockReset();
     showToastMock.mockReset();
+    queueToastMock.mockReset();
   });
 
   afterEach(() => {
@@ -428,6 +438,32 @@ describe("JantSettingsLanguage", () => {
       });
       expect(el.textContent).toContain(labels.languagesLabel);
       expect(el.textContent).toContain("English");
+    });
+
+    it("carries the confirmation across the reload", async () => {
+      const el = await createElement({ unmarkedPostCount: 3 });
+      mockFetch({
+        toast: "Multilingual content is on. 3 posts were marked as 简体中文.",
+      });
+
+      el.querySelector<HTMLButtonElement>("[data-multilingual-setup]")?.click();
+      await el.updateComplete;
+      el.querySelector<HTMLButtonElement>(
+        'button[aria-labelledby="language-enable-add-label"]',
+      )?.click();
+      await el.updateComplete;
+      findByText<HTMLButtonElement>(el, '[role="option"]', "English")?.click();
+      await el.updateComplete;
+      el.querySelector<HTMLButtonElement>("[data-enable-confirm]")?.click();
+      await vi.waitFor(() =>
+        expect(el.querySelector("[data-multilingual-off]")).not.toBeNull(),
+      );
+
+      // The stamped count is the one thing the reloaded page cannot show.
+      expect(queueToastMock).toHaveBeenCalledWith(
+        "Multilingual content is on. 3 posts were marked as 简体中文.",
+      );
+      expect(showToastMock).not.toHaveBeenCalled();
     });
 
     it("stays off when the dialog is cancelled", async () => {
@@ -699,6 +735,11 @@ describe("JantSettingsLanguage", () => {
       // The languages stay configured; only the views stop.
       expect(el.querySelector("[data-language-menu]")).toBeNull();
       expect(el.textContent).toContain(labels.contentLanguageHelp);
+      // Reloading is what removes the header switcher, so the confirmation
+      // has to survive it.
+      expect(queueToastMock).toHaveBeenCalledWith(
+        "Multilingual content is off.",
+      );
     });
   });
 

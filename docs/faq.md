@@ -73,12 +73,13 @@ No. Deletion is permanent — the post row, its paths, and its attachment media 
 
 ## Is multi-language supported?
 
-Site content can be in any language. **Settings → General → Language** sets the language. That setting drives two things:
+Yes, in two independent ways.
 
-- **Content metadata**: `<html lang>` and the `<language>` field in the RSS feed use the tag you set verbatim — this is what search engines, screen readers, and feed readers consume.
-- **Settings UI language**: today only English, Simplified Chinese, and Traditional Chinese are supported. Other values fall back to English.
+**One language, set once.** **Settings → Language → Content language** is the language you write in. It fills `<html lang>` and the `<language>` field in your feeds, which is what search engines, screen readers, and feed readers consume.
 
-Public-facing pages (home, Featured, Latest, navigation copy) are currently fixed to English.
+**Several languages at once.** Turn on multilingual content and each language gets its own home page, archive, and feed under a URL prefix, with a switcher in the header and posts linkable as versions of one another. See [Multilingual content](multilingual.md).
+
+The dashboard's own language is separate — **Settings → Language → Dashboard language**, which only you see. It ships in English, Simplified Chinese, and Traditional Chinese; other values fall back to English.
 
 ## Is multi-author supported?
 

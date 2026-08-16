@@ -73,12 +73,13 @@
 
 ## 支持多语言吗？
 
-站点内容本身可以是任何语言。**Settings → General → Language** 可以设置语言。这个设置驱动两件事：
+支持，而且是两件互不相干的事。
 
-- **内容元数据**：`<html lang>` 和 RSS feed 的 `<language>` 字段会原样使用你填的标签——这是给搜索引擎、屏幕阅读器、订阅器看的。
-- **Settings 界面语言**：目前仅支持 English、简体中文、繁体中文，其他语言会回退到 English。
+**只发布一种语言。** **Settings → Language → Content language** 是你写作使用的语言，它填进 `<html lang>` 和订阅源的 `<language>` 字段——搜索引擎、屏幕阅读器和订阅器读的就是这个。
 
-Public 页面（首页、Featured、Latest 等导航文案）当前固定为英文。
+**同时发布多种语言。** 打开多语言内容后，每种语言在自己的 URL 前缀下拥有独立的首页、归档和订阅源，页头出现切换器，不同语言的帖子可以互相关联为版本。见[多语言内容](multilingual.md)。
+
+后台自己的显示语言是另一回事——**Settings → Language → Dashboard language**，只有你看得到。目前提供 English、简体中文、繁体中文，其他语言回退到 English。
 
 ## 支持多作者吗？
 

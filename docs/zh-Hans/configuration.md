@@ -392,6 +392,8 @@ location /_assets/ {
 | `PUBLIC_API_ENABLED`         | 是否允许无 session 或 API token 读取 JSON |
 | `RSS_FEEDS_ENABLED`          | 是否发布 Atom feeds 和内置 feed 入口      |
 
+多语言站点还有两项设置：`ADDITIONAL_LANGUAGES` 和 `MULTILINGUAL_ENABLED`。它们由语言页写入，不建议手工设置——它们的值必须和帖子上标记的语言保持一致，见[多语言内容](multilingual.md)。
+
 颜色主题、字型主题、自定义 CSS、头像以及其他外观细节，也都在 Settings 里管理。
 
 ### Config Editor

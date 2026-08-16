@@ -658,27 +658,29 @@ Request body:
 
 Fields:
 
-| Field           | Type                                     | Required             | Default        | Notes                                                                     |
-| --------------- | ---------------------------------------- | -------------------- | -------------- | ------------------------------------------------------------------------- |
-| `format`        | `note` \| `link` \| `quote`              | yes                  | —              | Post format                                                               |
-| `title`         | string                                   | required for `link`  | —              | Max `300`; not allowed for `quote`                                        |
-| `sourceName`    | string                                   | no                   | `null`         | Quote attribution name, max `300`; only for `quote`                       |
-| `body`          | string                                   | no                   | `null`         | TipTap JSON string; mutually exclusive with `bodyMarkdown`                |
-| `bodyMarkdown`  | string                                   | no                   | `null`         | Recommended for scripts; mutually exclusive with `body`                   |
-| `slug`          | string                                   | no                   | auto-generated | Canonical slug; mutually exclusive with `path`                            |
-| `path`          | string                                   | no                   | —              | Create-time path helper; mutually exclusive with `slug`                   |
-| `status`        | `draft` \| `published`                   | no                   | `published`    | Post status                                                               |
-| `visibility`    | `public` \| `latest_hidden` \| `private` | no                   | `public`       | Post visibility                                                           |
-| `pinned`        | boolean                                  | no                   | `false`        | Pin the post; not allowed on replies                                      |
-| `featured`      | boolean                                  | no                   | `false`        | Mark as featured                                                          |
-| `url`           | absolute URL                             | required for `link`  | —              | Allows `http:`, `https:`, or `mailto:`; not allowed for `note` or `quote` |
-| `sourceUrl`     | absolute URL                             | no                   | `null`         | Quote attribution URL; not allowed for non-quote                          |
-| `quoteText`     | string                                   | required for `quote` | —              | Not allowed for `note` or `link`                                          |
-| `rating`        | integer                                  | no                   | `null`         | `1` to `5`; send `0` to clear on update                                   |
-| `collectionIds` | `col_*` string[]                         | no                   | `[]`           | Shared Thread Collection TypeIDs; max `20`                                |
-| `replyToId`     | `pst_*` string                           | no                   | `null`         | Make this post a thread reply                                             |
-| `publishedAt`   | integer                                  | no                   | current time   | Unix seconds; only valid when `status` is `published`                     |
-| `attachments`   | attachment[]                             | no                   | `[]`           | Ordered attachments, max `20`                                             |
+| Field             | Type                                     | Required             | Default        | Notes                                                                     |
+| ----------------- | ---------------------------------------- | -------------------- | -------------- | ------------------------------------------------------------------------- |
+| `format`          | `note` \| `link` \| `quote`              | yes                  | —              | Post format                                                               |
+| `title`           | string                                   | required for `link`  | —              | Max `300`; not allowed for `quote`                                        |
+| `sourceName`      | string                                   | no                   | `null`         | Quote attribution name, max `300`; only for `quote`                       |
+| `body`            | string                                   | no                   | `null`         | TipTap JSON string; mutually exclusive with `bodyMarkdown`                |
+| `bodyMarkdown`    | string                                   | no                   | `null`         | Recommended for scripts; mutually exclusive with `body`                   |
+| `slug`            | string                                   | no                   | auto-generated | Canonical slug; mutually exclusive with `path`                            |
+| `path`            | string                                   | no                   | —              | Create-time path helper; mutually exclusive with `slug`                   |
+| `status`          | `draft` \| `published`                   | no                   | `published`    | Post status                                                               |
+| `visibility`      | `public` \| `latest_hidden` \| `private` | no                   | `public`       | Post visibility                                                           |
+| `pinned`          | boolean                                  | no                   | `false`        | Pin the post; not allowed on replies                                      |
+| `featured`        | boolean                                  | no                   | `false`        | Mark as featured                                                          |
+| `url`             | absolute URL                             | required for `link`  | —              | Allows `http:`, `https:`, or `mailto:`; not allowed for `note` or `quote` |
+| `sourceUrl`       | absolute URL                             | no                   | `null`         | Quote attribution URL; not allowed for non-quote                          |
+| `quoteText`       | string                                   | required for `quote` | —              | Not allowed for `note` or `link`                                          |
+| `rating`          | integer                                  | no                   | `null`         | `1` to `5`; send `0` to clear on update                                   |
+| `collectionIds`   | `col_*` string[]                         | no                   | `[]`           | Shared Thread Collection TypeIDs; max `20`                                |
+| `replyToId`       | `pst_*` string                           | no                   | `null`         | Make this post a thread reply                                             |
+| `language`        | BCP 47 tag                               | no                   | detected       | Content language, e.g. `en`, `zh-Hans`; replies inherit the Thread's      |
+| `translationOfId` | `pst_*` string                           | no                   | `null`         | Link the new post into that post's translation group                      |
+| `publishedAt`     | integer                                  | no                   | current time   | Unix seconds; only valid when `status` is `published`                     |
+| `attachments`     | attachment[]                             | no                   | `[]`           | Ordered attachments, max `20`                                             |
 
 Important rules:
 
@@ -844,6 +846,87 @@ Response:
 ```json
 { "success": true }
 ```
+
+## Language and translations
+
+These endpoints only matter on a site with [multilingual content](multilingual.md) turned on. Post responses do not carry `language`; read it through the translation endpoints below, which return the language of every post they list.
+
+### Set a Thread's language
+
+`PUT /api/posts/:id/language`
+
+Auth: `Session or token`
+
+Language is uniform inside a Thread, so this sets it on the root and every reply. Pass any post in the Thread.
+
+```json
+{ "language": "zh-Hans" }
+```
+
+Rejected with `409` when another post in the same translation group already holds that language.
+
+Response: `200 OK` with `{ "success": true, "language": "zh-Hans" }`.
+
+### List a post's other versions
+
+`GET /api/posts/:id/translations`
+
+Auth: `Session or token`
+
+The Thread roots linked to this post as versions in other languages, excluding the post itself. Empty when it belongs to no translation group.
+
+```json
+{
+  "translations": [
+    {
+      "id": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
+      "slug": "hello-world",
+      "title": "Hello World",
+      "label": "Hello World",
+      "language": "en"
+    }
+  ]
+}
+```
+
+`label` is what to show in a list: the post's display title, falling back to its slug for untitled notes.
+
+### Find linkable posts
+
+`GET /api/posts/:id/translations/candidates`
+
+Auth: `Session or token`
+
+| Query   | Type    | Required | Default | Notes                                 |
+| ------- | ------- | -------- | ------- | ------------------------------------- |
+| `q`     | string  | yes      | —       | Substring of title or body, max `200` |
+| `limit` | integer | no       | `8`     | `1` to `20`                           |
+
+Returns published Thread roots this post could actually be linked to: written in a language its group does not already hold, and — when this post already belongs to a group — not in a group of their own. Same entry shape as the endpoint above, newest first.
+
+### Link a version
+
+`POST /api/posts/:id/translations`
+
+Auth: `Session or token`
+
+```json
+{ "postId": "pst_01jpyx3m7gw4w3h7m4bknq0v1d" }
+```
+
+Joins the side without a group into the other's group, minting one when neither has any. Rejected with `409` when the two languages clash or when both sides already have a group — merging two groups would silently restructure both.
+
+Response: `200 OK` with `{ "success": true }`.
+
+### Unlink a version
+
+`DELETE /api/posts/:id/translations`
+
+Auth: `Session or token`
+
+Removes this post from its translation group. The other members stay linked to each other.
+
+Response: `200 OK` with `{ "success": true }`.
 
 ---
 

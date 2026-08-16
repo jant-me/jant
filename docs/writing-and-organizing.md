@@ -238,5 +238,6 @@ When you're signed in, visiting `/new` takes you straight to the compose page �
 
 ## What's next
 
+- [Multilingual content](multilingual.md) — publish in more than one language
 - [GitHub Sync](github-sync.md) — keep your content synced to a GitHub repo
 - [Theming](theming.md) — adjust how your site looks

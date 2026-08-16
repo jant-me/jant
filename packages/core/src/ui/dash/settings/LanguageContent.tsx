@@ -148,8 +148,21 @@ export function LanguageContent({
     multilingualHelp: i18n._(
       msg({
         message:
-          "Give each language its own home page, archive, and feed. You pick a language when you publish, and can link posts as translations of one another.",
+          "Give each language its own home page, archive, and feed. Once it's on, you pick a language when you publish, and can link an existing post to a version of it in another language.",
         comment: "@context: Help text for the multilingual content toggle",
+      }),
+    ),
+    multilingualDocs: i18n._(
+      msg({
+        message: "Multilingual guide",
+        comment:
+          "@context: Link to multilingual documentation on the Language settings page",
+      }),
+    ),
+    multilingualDocsHelp: i18n._(
+      msg({
+        message: "URL structure, per-language feeds, and linking translations.",
+        comment: "@context: Description of the multilingual documentation link",
       }),
     ),
     statusOn: i18n._(

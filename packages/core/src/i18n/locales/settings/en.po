@@ -1228,8 +1228,8 @@ msgstr "GitHub Sync"
 
 #. @context: Help text for the multilingual content toggle
 #: src/ui/dash/settings/LanguageContent.tsx
-msgid "Give each language its own home page, archive, and feed. You pick a language when you publish, and can link posts as translations of one another."
-msgstr "Give each language its own home page, archive, and feed. You pick a language when you publish, and can link posts as translations of one another."
+msgid "Give each language its own home page, archive, and feed. Once it's on, you pick a language when you publish, and can link an existing post to a version of it in another language."
+msgstr "Give each language its own home page, archive, and feed. Once it's on, you pick a language when you publish, and can link an existing post to a version of it in another language."
 
 #. @context: Section label for nav items shown in header
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1566,6 +1566,11 @@ msgstr "Multilingual content is on."
 #: src/routes/dash/settings.tsx
 msgid "Multilingual content is on. {count, plural, one {# post was marked} other {# posts were marked}} as {language}."
 msgstr "Multilingual content is on. {count, plural, one {# post was marked} other {# posts were marked}} as {language}."
+
+#. @context: Link to multilingual documentation on the Language settings page
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "Multilingual guide"
+msgstr "Multilingual guide"
 
 #. @context: Clay color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -2699,6 +2704,11 @@ msgstr "Uploading..."
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "URL"
 msgstr "URL"
+
+#. @context: Description of the multilingual documentation link
+#: src/ui/dash/settings/LanguageContent.tsx
+msgid "URL structure, per-language feeds, and linking translations."
+msgstr "URL structure, per-language feeds, and linking translations."
 
 #. @context: Heading for API token usage examples
 #: src/ui/dash/settings/ApiTokensContent.tsx

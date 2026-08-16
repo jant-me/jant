@@ -16,7 +16,7 @@
 
 import { LitElement, html, nothing } from "lit";
 import { showConfirmDialog } from "../confirm.js";
-import { showToast } from "../toast.js";
+import { queueToastForNextPage, showToast } from "../toast.js";
 import { getJsonString, readJsonObject } from "../json.js";
 import {
   LOCALE_PICKER_TRIGGER_CLASS,
@@ -39,6 +39,8 @@ interface LanguageLabels {
   followContent: string;
   multilingual: string;
   multilingualHelp: string;
+  multilingualDocs: string;
+  multilingualDocsHelp: string;
   statusOn: string;
   turnOn: string;
   addMissingLanguage: string;
@@ -77,6 +79,14 @@ interface LanguageInitialState {
 
 /** Catalog locales the dashboard is translated into. */
 const DASHBOARD_LOCALES = ["", "en", "zh-Hans", "zh-Hant"] as const;
+
+/**
+ * The reference for everything this page cannot say in two lines: URL
+ * structure, per-language feeds, and how translation groups work. Same shape
+ * as the theming and API links elsewhere in settings.
+ */
+const MULTILINGUAL_DOCS_URL =
+  "https://github.com/jant-me/jant/blob/main/docs/multilingual.md";
 
 /**
  * Fill the `{name}` slots the server deliberately left intact.
@@ -406,6 +416,9 @@ export class JantSettingsLanguage extends LitElement {
       return;
     }
     this._multilingualEnabled = false;
+    // Queued for the same reason as the enable path: the reload below happens
+    // before a toast raised here could be read.
+    if (result.message) queueToastForNextPage(result.message);
     // The header's language switcher has to go away with the views.
     window.location.reload();
   }
@@ -460,6 +473,10 @@ export class JantSettingsLanguage extends LitElement {
     this._multilingualEnabled = true;
     this._unmarkedPostCount = 0;
     this.#closeEnableDialog();
+    // Queued rather than shown: the reload below would wipe a toast raised
+    // here, and this is the one confirmation that says how many posts were
+    // stamped — the number is gone from the page by the time it lands.
+    if (result.message) queueToastForNextPage(result.message);
     // The page's own chrome changed with the setting — the language switcher
     // exists now — and only the server can render it. Same pattern as the
     // dashboard-language change above.
@@ -928,6 +945,16 @@ export class JantSettingsLanguage extends LitElement {
           <h2 class="text-lg font-medium">${this.labels.multilingual}</h2>
           <p class="text-sm text-muted-foreground">
             ${this.labels.multilingualHelp}
+          </p>
+          <p class="text-sm text-muted-foreground">
+            <a
+              href=${MULTILINGUAL_DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline hover:text-foreground transition-colors"
+              >${this.labels.multilingualDocs}</a
+            >
+            — ${this.labels.multilingualDocsHelp}
           </p>
           <div class="flex items-center gap-3">
             ${
