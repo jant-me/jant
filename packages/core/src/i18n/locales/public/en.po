@@ -128,11 +128,6 @@ msgstr "A softer blue feels more like ink than product chrome."
 msgid "Accent should feel present, not loud."
 msgstr "Accent should feel present, not loud."
 
-#. @context: Setup form group - the admin account being created
-#: src/routes/auth/setup.tsx
-msgid "Account"
-msgstr "Account"
-
 #. @context: Add more attachments button
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Add"
@@ -287,11 +282,6 @@ msgstr "Article detail page"
 #: src/ui/pages/ArchivePage.tsx
 msgid "Audio"
 msgstr "Audio"
-
-#. @context: Error toast when authentication secret is missing from server config
-#: src/routes/auth/setup.tsx
-msgid "Auth secret is missing. Check your environment variables."
-msgstr "Auth secret is missing. Check your environment variables."
 
 #. @context: Error toast when authentication system is unavailable
 #: src/routes/auth/signin.tsx
@@ -517,11 +507,6 @@ msgstr "Combined Collections"
 msgid "Compare it against the theme controls"
 msgstr "Compare it against the theme controls"
 
-#. @context: Setup form submit button
-#: src/routes/auth/setup.tsx
-msgid "Complete Setup"
-msgstr "Complete Setup"
-
 #. @context: Accessible name for the compose dialog
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Compose"
@@ -531,13 +516,6 @@ msgstr "Compose"
 #: src/routes/auth/reset.tsx
 msgid "Confirm Password"
 msgstr "Confirm Password"
-
-#. @context: Setup form field - site content language
-#. @context: Setup form field - site content language
-#: src/routes/auth/setup.tsx
-#: src/routes/auth/setup.tsx
-msgid "Content language"
-msgstr "Content language"
 
 #. @context: Feed link from a truncated article excerpt to its full page
 #: src/ui/feed/NoteCard.tsx
@@ -558,11 +536,6 @@ msgstr "Controls"
 #: src/ui/shared/collection-management-labels.ts
 msgid "Couldn't add this collection to navigation. Try again."
 msgstr "Couldn't add this collection to navigation. Try again."
-
-#. @context: Error toast when account creation fails
-#: src/routes/auth/setup.tsx
-msgid "Couldn't create your account. Check the details and try again."
-msgstr "Couldn't create your account. Check the details and try again."
 
 #. @context: Toast shown when edit mode fails to load a post
 #: src/ui/compose/ComposeDialog.tsx
@@ -880,8 +853,6 @@ msgid "Editorial interfaces worth borrowing from"
 msgstr "Editorial interfaces worth borrowing from"
 
 #. @context: Setup/signin form field - email
-#. @context: Setup/signin form field - email
-#: src/routes/auth/setup.tsx
 #: src/routes/auth/signin.tsx
 msgid "Email"
 msgstr "Email"
@@ -1146,11 +1117,6 @@ msgstr "Interfaces for reading should guide the eye, not keep asking for attenti
 #: src/ui/pages/BrandPage.tsx
 msgid "iOS home screen"
 msgstr "iOS home screen"
-
-#. @context: Setup page description under the write-language question
-#: src/routes/auth/setup.tsx
-msgid "It sets the language readers and search engines see. Change it any time in Settings."
-msgstr "It sets the language readers and search engines see. Change it any time in Settings."
 
 #. @context: test fixture — not shipped anywhere
 #. @context: test fixture — not shipped anywhere
@@ -1481,11 +1447,6 @@ msgstr "No drafts yet. Save a draft to find it here."
 msgid "No file selected. Choose a file to upload."
 msgstr "No file selected. Choose a file to upload."
 
-#. @context: Empty state in the language picker
-#: src/routes/auth/setup.tsx
-msgid "No matches."
-msgstr "No matches."
-
 #. @context: Search empty results
 #: src/ui/pages/SearchPage.tsx
 msgid "No results. Try different keywords."
@@ -1605,8 +1566,6 @@ msgid "Outline"
 msgstr "Outline"
 
 #. @context: Setup/signin form field - password
-#. @context: Setup/signin form field - password
-#: src/routes/auth/setup.tsx
 #: src/routes/auth/signin.tsx
 msgid "Password"
 msgstr "Password"
@@ -1990,16 +1949,6 @@ msgstr "Search snippet"
 msgid "Search..."
 msgstr "Search..."
 
-#. @context: Placeholder in the language picker search box
-#: src/routes/auth/setup.tsx
-msgid "Search…"
-msgstr "Search…"
-
-#. @context: Setup page description
-#: src/routes/auth/setup.tsx
-msgid "Set up your site and the account you write from."
-msgstr "Set up your site and the account you write from."
-
 #. @context: Built-in navigation label for settings
 #: src/ui/shared/navigation-labels.ts
 msgctxt "nav"
@@ -2084,20 +2033,10 @@ msgstr "single posts"
 msgid "Single posts"
 msgstr "Single posts"
 
-#. @context: Setup form group - the site itself
-#: src/routes/auth/setup.tsx
-msgid "Site"
-msgstr "Site"
-
 #. @context: Token label on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Site accent"
 msgstr "Site accent"
-
-#. @context: Setup form field - site name
-#: src/routes/auth/setup.tsx
-msgid "Site Name"
-msgstr "Site Name"
 
 #. @context: Description for the favicon asset card
 #: src/ui/pages/BrandPage.tsx
@@ -2121,11 +2060,9 @@ msgstr "Some uploads failed. Saved as draft."
 
 #. @context: Fallback validation error for compose form
 #. @context: Fallback validation error for password reset form
-#. @context: Fallback validation error for setup form
 #. @context: Fallback validation error for sign-in form
 #. @context: Fallback validation error for thread compose form
 #: src/routes/auth/reset.tsx
-#: src/routes/auth/setup.tsx
 #: src/routes/auth/signin.tsx
 #: src/routes/compose.tsx
 #: src/routes/compose.tsx
@@ -2186,11 +2123,6 @@ msgstr "Square tile"
 #: src/ui/pages/BrandPage.tsx
 msgid "Start here"
 msgstr "Start here"
-
-#. @context: Setup submit button on a hosted site, after the language question
-#: src/routes/auth/setup.tsx
-msgid "Start writing"
-msgstr "Start writing"
 
 #. @context: Table cell in the sample detail article
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -2285,11 +2217,6 @@ msgstr "The default accent works best when it reads like a fountain-pen underlin
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "The image should sit quietly inside the article instead of feeling like a card preview."
 msgstr "The image should sit quietly inside the article instead of feeling like a card preview."
-
-#. @context: Setup form help text under the content language field
-#: src/routes/auth/setup.tsx
-msgid "The language your readers and search engines see."
-msgstr "The language your readers and search engines see."
 
 #. @context: Accessible name of the scrollable panel holding the post being translated
 #: src/ui/compose/ComposeDialog.tsx
@@ -2595,16 +2522,6 @@ msgstr "View mode"
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Visibility"
 msgstr "Visibility"
-
-#. @context: Setup page welcome heading
-#: src/routes/auth/setup.tsx
-msgid "Welcome to Jant"
-msgstr "Welcome to Jant"
-
-#. @context: Setup heading on a hosted site, where the language is all that is left to ask
-#: src/routes/auth/setup.tsx
-msgid "What language do you write in?"
-msgstr "What language do you write in?"
 
 #. @context: Table header in the sample detail article
 #: src/ui/pages/ThemeSamplePage.tsx

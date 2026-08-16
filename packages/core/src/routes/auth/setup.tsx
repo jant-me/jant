@@ -12,10 +12,17 @@
  * than two flows that drift apart. It is deliberately one screen in either case:
  * with four fields at most, a wizard would add steps, chrome, and a half-created
  * account to recover from, in exchange for nothing.
+ *
+ * Asking little is not the same as saying nothing. A hosted author reaches this
+ * page by following a link out of a control plane and lands on a domain they
+ * have never seen serve anything, so the screen names the step and the site it
+ * belongs to. That is the whole of it: one muted line above the question, no
+ * mark and no status summary, because chrome is what made a one-field form look
+ * like a gate in the first place.
  */
 
 import { Hono } from "hono";
-import type { FC } from "hono/jsx";
+import type { FC, PropsWithChildren } from "hono/jsx";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "../../i18n/context.js";
 import type { Bindings } from "../../types.js";
@@ -26,6 +33,7 @@ import { SetupLanguageSchema, SetupSchema } from "../../lib/schemas.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { mapIanaToTimezone } from "../../lib/timezones.js";
 import { getI18n } from "../../i18n/index.js";
+import type { I18n } from "../../i18n/i18n.js";
 import {
   getSupportedLocaleEntries,
   resolveSupportedLocaleTag,
@@ -94,7 +102,57 @@ const LocaleField: FC<{
   );
 };
 
-const SetupContent: FC<{
+/**
+ * What this screen is called, in the tab title and above the card alike, so
+ * the two never drift into naming the same page differently.
+ */
+function setupLabel(i18n: I18n): string {
+  return i18n._(
+    msg({
+      message: "Setup",
+      comment:
+        "@context: Name of the first-run setup screen — shown above the setup card and as the browser tab title",
+    }),
+  );
+}
+
+/**
+ * The frame both first-run screens share.
+ *
+ * One muted line carries everything this screen was missing: what step this is,
+ * and which site it belongs to. A mark, an address, and a summary of what the
+ * control plane already answered were all tried above it and all read as chrome
+ * stacked around a form with one field in it.
+ */
+const SetupShell: FC<
+  PropsWithChildren<{
+    /** Site being set up. Blank while it has no name yet. */
+    siteName?: string;
+    heading: string;
+    description: string;
+  }>
+> = ({ siteName, heading, description, children }) => {
+  const { i18n } = useLingui();
+  const name = siteName?.trim() ?? "";
+
+  return (
+    <div class="min-h-screen flex items-center justify-center p-4">
+      <div class="card max-w-md w-full">
+        <header>
+          <p class="mb-2 text-sm text-muted-foreground">
+            {setupLabel(i18n)}
+            {name ? ` · ${name}` : null}
+          </p>
+          <h2>{heading}</h2>
+          <p>{description}</p>
+        </header>
+        <section>{children}</section>
+      </div>
+    </div>
+  );
+};
+
+export const SetupContent: FC<{
   sitePathPrefix?: string;
   contentLanguage: string;
   /**
@@ -102,7 +160,7 @@ const SetupContent: FC<{
    * site a control plane already created, where that is all that is left.
    */
   mode: "full" | "language";
-  /** Shown above the question in `language` mode, so the site is identified. */
+  /** Shown beside the step name in `language` mode, so the site is identified. */
   siteName?: string;
 }> = ({ sitePathPrefix = "", contentLanguage, mode, siteName }) => {
   const { i18n } = useLingui();
@@ -139,237 +197,214 @@ const SetupContent: FC<{
 
   if (mode === "language") {
     return (
-      <div class="min-h-screen flex items-center justify-center">
-        <div class="card max-w-md w-full">
-          <header>
-            {siteName ? (
-              <p class="text-sm text-muted-foreground">{siteName}</p>
-            ) : null}
-            <h2>
+      <SetupShell
+        siteName={siteName}
+        heading={i18n._(
+          msg({
+            message: "What language do you write in?",
+            comment:
+              "@context: Setup heading on a hosted site, where the language is all that is left to ask",
+          }),
+        )}
+        description={i18n._(
+          msg({
+            message:
+              "It sets the language readers and search engines see. Change it any time in Settings.",
+            comment:
+              "@context: Setup page description under the write-language question",
+          }),
+        )}
+      >
+        <form
+          data-signals={`{contentLanguage: ${JSON.stringify(contentLanguage)}, language: ''}`}
+          data-init="$language = navigator.language || ''"
+          data-on:submit__prevent={action}
+          data-indicator="_loading"
+          class="flex flex-col gap-4"
+        >
+          <div class="field">
+            <span id="setup-language-label" class="sr-only">
               {i18n._(
                 msg({
-                  message: "What language do you write in?",
-                  comment:
-                    "@context: Setup heading on a hosted site, where the language is all that is left to ask",
+                  message: "Content language",
+                  comment: "@context: Setup form field - site content language",
                 }),
               )}
-            </h2>
-            <p>
-              {i18n._(
-                msg({
-                  message:
-                    "It sets the language readers and search engines see. Change it any time in Settings.",
-                  comment:
-                    "@context: Setup page description under the write-language question",
-                }),
-              )}
-            </p>
-          </header>
-          <section>
-            <form
-              data-signals={`{contentLanguage: ${JSON.stringify(contentLanguage)}, language: ''}`}
-              data-init="$language = navigator.language || ''"
-              data-on:submit__prevent={action}
-              data-indicator="_loading"
-              class="flex flex-col gap-4"
-            >
-              <div class="field">
-                <span id="setup-language-label" class="sr-only">
-                  {i18n._(
-                    msg({
-                      message: "Content language",
-                      comment:
-                        "@context: Setup form field - site content language",
-                    }),
-                  )}
-                </span>
-                <LocaleField
-                  id="setup-content-language"
-                  labelId="setup-language-label"
-                  contentLanguage={contentLanguage}
-                  searchLabel={searchLabel}
-                  emptyLabel={emptyLabel}
-                />
-              </div>
-              <button type="submit" class="btn" data-attr:disabled="$_loading">
-                {spinner}
-                {i18n._(
-                  msg({
-                    message: "Start writing",
-                    comment:
-                      "@context: Setup submit button on a hosted site, after the language question",
-                  }),
-                )}
-              </button>
-            </form>
-          </section>
-        </div>
-      </div>
+            </span>
+            <LocaleField
+              id="setup-content-language"
+              labelId="setup-language-label"
+              contentLanguage={contentLanguage}
+              searchLabel={searchLabel}
+              emptyLabel={emptyLabel}
+            />
+          </div>
+          <button type="submit" class="btn" data-attr:disabled="$_loading">
+            {spinner}
+            {i18n._(
+              msg({
+                message: "Start writing",
+                comment:
+                  "@context: Setup submit button on a hosted site, after the language question",
+              }),
+            )}
+          </button>
+        </form>
+      </SetupShell>
     );
   }
 
   return (
-    <div class="min-h-screen flex items-center justify-center">
-      <div class="card max-w-md w-full">
-        <header>
-          <h2>
-            {i18n._(
-              msg({
-                message: "Welcome to Jant",
-                comment: "@context: Setup page welcome heading",
-              }),
-            )}
-          </h2>
-          <p>
-            {i18n._(
-              msg({
-                message: "Set up your site and the account you write from.",
-                comment: "@context: Setup page description",
-              }),
-            )}
-          </p>
-        </header>
-        <section>
-          <form
-            data-signals={`{siteName: '', email: '', password: '', timezone: '', language: '', contentLanguage: ${JSON.stringify(contentLanguage)}}`}
-            data-init="$timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; $language = navigator.language || ''"
-            data-on:submit__prevent={action}
-            data-indicator="_loading"
-            class="flex flex-col gap-6"
-          >
-            {/* Two groups, not four loose fields: what the site is, then who
+    <SetupShell
+      heading={i18n._(
+        msg({
+          message: "Welcome to Jant",
+          comment: "@context: Setup page welcome heading",
+        }),
+      )}
+      description={i18n._(
+        msg({
+          message: "Set up your site and the account you write from.",
+          comment: "@context: Setup page description",
+        }),
+      )}
+    >
+      <form
+        data-signals={`{siteName: '', email: '', password: '', timezone: '', language: '', contentLanguage: ${JSON.stringify(contentLanguage)}}`}
+        data-init="$timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; $language = navigator.language || ''"
+        data-on:submit__prevent={action}
+        data-indicator="_loading"
+        class="flex flex-col gap-6"
+      >
+        {/* Two groups, not four loose fields: what the site is, then who
                 writes it. The order matters — the site is why someone is here,
                 and credentials read as the price of admission when they come
                 second rather than first. */}
-            <fieldset class="flex flex-col gap-4">
-              <legend class="mb-3 text-sm font-medium text-muted-foreground">
-                {i18n._(
-                  msg({
-                    message: "Site",
-                    comment: "@context: Setup form group - the site itself",
-                  }),
-                )}
-              </legend>
-              <div class="field">
-                <label class="label" for="setup-site-name">
-                  {i18n._(
-                    msg({
-                      message: "Site Name",
-                      comment: "@context: Setup form field - site name",
-                    }),
-                  )}
-                </label>
-                <input
-                  id="setup-site-name"
-                  type="text"
-                  data-bind="siteName"
-                  class="input"
-                  required
-                  placeholder="My Blog"
-                />
-              </div>
-              {/* Asked outright rather than inferred from the browser. The
+        <fieldset class="flex flex-col gap-4">
+          <legend class="mb-3 text-sm font-medium text-muted-foreground">
+            {i18n._(
+              msg({
+                message: "Site",
+                comment: "@context: Setup form group - the site itself",
+              }),
+            )}
+          </legend>
+          <div class="field">
+            <label class="label" for="setup-site-name">
+              {i18n._(
+                msg({
+                  message: "Site Name",
+                  comment: "@context: Setup form field - site name",
+                }),
+              )}
+            </label>
+            <input
+              id="setup-site-name"
+              type="text"
+              data-bind="siteName"
+              class="input"
+              required
+              placeholder="My Blog"
+            />
+          </div>
+          {/* Asked outright rather than inferred from the browser. The
                   inference is wrong exactly for the people it matters to — anyone
                   whose browser language is not their writing language — and it
                   silently mis-sets `<html lang>`, the feed language, and the CJK
                   font stack. `data-init` above prefills it, so confirming costs a
                   glance. */}
-              <div class="field">
-                <label class="label" id="setup-language-label">
-                  {i18n._(
-                    msg({
-                      message: "Content language",
-                      comment:
-                        "@context: Setup form field - site content language",
-                    }),
-                  )}
-                </label>
-                <LocaleField
-                  id="setup-content-language"
-                  labelId="setup-language-label"
-                  contentLanguage={contentLanguage}
-                  searchLabel={searchLabel}
-                  emptyLabel={emptyLabel}
-                />
-                <p class="text-sm text-muted-foreground mt-1">
-                  {i18n._(
-                    msg({
-                      message:
-                        "The language your readers and search engines see.",
-                      comment:
-                        "@context: Setup form help text under the content language field",
-                    }),
-                  )}
-                </p>
-              </div>
-            </fieldset>
-
-            {/* The rule lives on a wrapper, not the fieldset: a legend sits
-                inside its own fieldset's border box, so a border there would
-                run straight through the word. */}
-            <div class="border-t pt-6">
-              <fieldset class="flex flex-col gap-4">
-                <legend class="mb-3 text-sm font-medium text-muted-foreground">
-                  {i18n._(
-                    msg({
-                      message: "Account",
-                      comment:
-                        "@context: Setup form group - the admin account being created",
-                    }),
-                  )}
-                </legend>
-                <div class="field">
-                  <label class="label" for="setup-email">
-                    {i18n._(
-                      msg({
-                        message: "Email",
-                        comment: "@context: Setup/signin form field - email",
-                      }),
-                    )}
-                  </label>
-                  <input
-                    id="setup-email"
-                    type="email"
-                    data-bind="email"
-                    class="input"
-                    required
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <div class="field">
-                  <label class="label" for="setup-password">
-                    {i18n._(
-                      msg({
-                        message: "Password",
-                        comment: "@context: Setup/signin form field - password",
-                      }),
-                    )}
-                  </label>
-                  <input
-                    id="setup-password"
-                    type="password"
-                    data-bind="password"
-                    class="input"
-                    required
-                    minLength={8}
-                  />
-                </div>
-              </fieldset>
-            </div>
-
-            <button type="submit" class="btn" data-attr:disabled="$_loading">
-              {spinner}
+          <div class="field">
+            <label class="label" id="setup-language-label">
               {i18n._(
                 msg({
-                  message: "Complete Setup",
-                  comment: "@context: Setup form submit button",
+                  message: "Content language",
+                  comment: "@context: Setup form field - site content language",
                 }),
               )}
-            </button>
-          </form>
-        </section>
-      </div>
-    </div>
+            </label>
+            <LocaleField
+              id="setup-content-language"
+              labelId="setup-language-label"
+              contentLanguage={contentLanguage}
+              searchLabel={searchLabel}
+              emptyLabel={emptyLabel}
+            />
+            <p class="text-sm text-muted-foreground mt-1">
+              {i18n._(
+                msg({
+                  message: "The language your readers and search engines see.",
+                  comment:
+                    "@context: Setup form help text under the content language field",
+                }),
+              )}
+            </p>
+          </div>
+        </fieldset>
+
+        {/* The rule lives on a wrapper, not the fieldset: a legend sits
+                inside its own fieldset's border box, so a border there would
+                run straight through the word. */}
+        <div class="border-t pt-6">
+          <fieldset class="flex flex-col gap-4">
+            <legend class="mb-3 text-sm font-medium text-muted-foreground">
+              {i18n._(
+                msg({
+                  message: "Account",
+                  comment:
+                    "@context: Setup form group - the admin account being created",
+                }),
+              )}
+            </legend>
+            <div class="field">
+              <label class="label" for="setup-email">
+                {i18n._(
+                  msg({
+                    message: "Email",
+                    comment: "@context: Setup/signin form field - email",
+                  }),
+                )}
+              </label>
+              <input
+                id="setup-email"
+                type="email"
+                data-bind="email"
+                class="input"
+                required
+                placeholder="you@example.com"
+              />
+            </div>
+            <div class="field">
+              <label class="label" for="setup-password">
+                {i18n._(
+                  msg({
+                    message: "Password",
+                    comment: "@context: Setup/signin form field - password",
+                  }),
+                )}
+              </label>
+              <input
+                id="setup-password"
+                type="password"
+                data-bind="password"
+                class="input"
+                required
+                minLength={8}
+              />
+            </div>
+          </fieldset>
+        </div>
+
+        <button type="submit" class="btn" data-attr:disabled="$_loading">
+          {spinner}
+          {i18n._(
+            msg({
+              message: "Complete Setup",
+              comment: "@context: Setup form submit button",
+            }),
+          )}
+        </button>
+      </form>
+    </SetupShell>
   );
 };
 
@@ -386,8 +421,13 @@ setupRoutes.get("/setup", async (c) => {
   const isProvisioned = status === ONBOARDING_STATUS.PROVISIONED;
   if (isProvisioned && !c.var.isAuthenticated) return c.redirect(home);
 
+  const i18n = getI18n(c);
+
   return c.html(
-    <BaseLayout title={buildPageTitle("Setup", c.var.appConfig.siteName)} c={c}>
+    <BaseLayout
+      title={buildPageTitle(setupLabel(i18n), c.var.appConfig.siteName)}
+      c={c}
+    >
       <SetupContent
         sitePathPrefix={c.var.appConfig.sitePathPrefix}
         mode={isProvisioned ? "language" : "full"}
@@ -398,7 +438,9 @@ setupRoutes.get("/setup", async (c) => {
             ? c.var.appConfig.siteLanguage
             : resolveSupportedLocaleTag(c.req.header("Accept-Language"))
         }
-        siteName={c.var.appConfig.siteName}
+        // Only the provisioned screen has a name worth showing: before setup
+        // runs, `siteName` is still the built-in default.
+        siteName={isProvisioned ? c.var.appConfig.siteName : undefined}
       />
     </BaseLayout>,
   );

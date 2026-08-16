@@ -95,6 +95,8 @@ msgstr "Accent"
 
 #. @context: GitHub sync picker — owner dropdown label
 #. @context: Settings group label for account settings
+#. @context: Setup form group - the admin account being created
+#: src/routes/auth/setup.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Account"
@@ -316,6 +318,11 @@ msgstr "Archive filter parameters (e.g. format=note&view=list)"
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Ask search engines not to index public pages or include them in results."
 msgstr "Ask search engines not to index public pages or include them in results."
+
+#. @context: Error toast when authentication secret is missing from server config
+#: src/routes/auth/setup.tsx
+msgid "Auth secret is missing. Check your environment variables."
+msgstr "Auth secret is missing. Check your environment variables."
 
 #. @context: Theme mode option label
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -554,6 +561,11 @@ msgstr "Color theme"
 msgid "Color Theme"
 msgstr "Color Theme"
 
+#. @context: Setup form submit button
+#: src/routes/auth/setup.tsx
+msgid "Complete Setup"
+msgstr "Complete Setup"
+
 #. @context: Breadcrumb label
 #. @context: Config Editor page title
 #. @context: Settings item — Config Editor
@@ -648,6 +660,10 @@ msgid "Connecting…"
 msgstr "Connecting…"
 
 #. @context: Language settings field — the site's language
+#. @context: Setup form field - site content language
+#. @context: Setup form field - site content language
+#: src/routes/auth/setup.tsx
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Content language"
 msgstr "Content language"
@@ -716,6 +732,11 @@ msgstr "Couldn't create the collection. Check the details and try again."
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Couldn't create the page. Check the details and try again."
 msgstr "Couldn't create the page. Check the details and try again."
+
+#. @context: Error toast when account creation fails
+#: src/routes/auth/setup.tsx
+msgid "Couldn't create your account. Check the details and try again."
+msgstr "Couldn't create your account. Check the details and try again."
 
 #. @context: Error toast when nav delete fails
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1059,6 +1080,11 @@ msgstr "Edit the multi-line footer rendered at the bottom of public pages."
 msgid "Edit the multi-line introduction used on your home page and in metadata."
 msgstr "Edit the multi-line introduction used on your home page and in metadata."
 
+#. @context: Setup/signin form field - email
+#: src/routes/auth/setup.tsx
+msgid "Email"
+msgstr "Email"
+
 #. @context: GitHub sync picker — shown when the selected repo has no commits
 #: src/routes/dash/settings.tsx
 msgid "Empty repository. Ready to connect."
@@ -1276,6 +1302,11 @@ msgstr "Install the GitHub App to grant access without managing personal tokens.
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Integrations"
 msgstr "Integrations"
+
+#. @context: Setup page description under the write-language question
+#: src/routes/auth/setup.tsx
+msgid "It sets the language readers and search engines see. Change it any time in Settings."
+msgstr "It sets the language readers and search engines see. Change it any time in Settings."
 
 #. @context: Validation error for a long page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1638,6 +1669,8 @@ msgid "No file selected. Choose a file to upload."
 msgstr "No file selected. Choose a file to upload."
 
 #. @context: Empty state in the language picker
+#. @context: Empty state in the language picker
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "No matches."
 msgstr "No matches."
@@ -1790,6 +1823,8 @@ msgstr "Palette, surface tone, and overall mood"
 
 #. @context: Breadcrumb label
 #. @context: Settings item — password settings
+#. @context: Setup/signin form field - password
+#: src/routes/auth/setup.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/AccountMenuContent.tsx
 msgid "Password"
@@ -2122,6 +2157,8 @@ msgid "Search settings updated."
 msgstr "Search settings updated."
 
 #. @context: Placeholder in the language picker search box
+#. @context: Placeholder in the language picker search box
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Search…"
 msgstr "Search…"
@@ -2188,12 +2225,22 @@ msgstr "Set results per search page; reset to inherit the main page size."
 msgid "Set the default number of items shown per page."
 msgstr "Set the default number of items shown per page."
 
+#. @context: Setup page description
+#: src/routes/auth/setup.tsx
+msgid "Set up your site and the account you write from."
+msgstr "Set up your site and the account you write from."
+
 #. @context: Breadcrumb label
 #. @context: Page title for the settings home page
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Settings"
 msgstr "Settings"
+
+#. @context: Name of the first-run setup screen — shown above the setup card and as the browser tab title
+#: src/routes/auth/setup.tsx
+msgid "Setup"
+msgstr "Setup"
 
 #. @context: Checkbox for showing the optional Jant credit link on the home page
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -2243,6 +2290,8 @@ msgstr "Signed in {date}"
 #. @context: Language settings section for reader-facing settings
 #. @context: Settings group label for site settings
 #. @context: Settings subsection heading for basic site fields
+#. @context: Setup form group - the site itself
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -2262,6 +2311,8 @@ msgid "Site Header"
 msgstr "Site Header"
 
 #. @context: Settings form field
+#. @context: Setup form field - site name
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Site Name"
 msgstr "Site Name"
@@ -2290,6 +2341,16 @@ msgstr "Soft green"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Soft ivory"
 msgstr "Soft ivory"
+
+#. @context: Fallback validation error for setup form
+#: src/routes/auth/setup.tsx
+msgid "Something doesn't look right. Check the form and try again."
+msgstr "Something doesn't look right. Check the form and try again."
+
+#. @context: Setup submit button on a hosted site, after the language question
+#: src/routes/auth/setup.tsx
+msgid "Start writing"
+msgstr "Start writing"
 
 #. @context: Description for the Telegram disconnect action
 #: src/ui/dash/settings/TelegramContent.tsx
@@ -2386,6 +2447,11 @@ msgstr "The language used by the private Jant dashboard."
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "The language you write in."
 msgstr "The language you write in."
+
+#. @context: Setup form help text under the content language field
+#: src/routes/auth/setup.tsx
+msgid "The language your readers and search engines see."
+msgstr "The language your readers and search engines see."
 
 #. @context: Config Editor linked setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -2748,6 +2814,16 @@ msgstr "Warm-neutral and easy for long reading."
 #: src/routes/dash/settings.tsx
 msgid "We'll prefill the name {name}. The list refreshes on return."
 msgstr "We'll prefill the name {name}. The list refreshes on return."
+
+#. @context: Setup page welcome heading
+#: src/routes/auth/setup.tsx
+msgid "Welcome to Jant"
+msgstr "Welcome to Jant"
+
+#. @context: Setup heading on a hosted site, where the language is all that is left to ask
+#: src/routes/auth/setup.tsx
+msgid "What language do you write in?"
+msgstr "What language do you write in?"
 
 #. @context: Description for backup and restore documentation link in account settings
 #: src/ui/dash/settings/AccountMenuContent.tsx

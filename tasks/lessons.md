@@ -673,3 +673,25 @@ linking to, `navPath()` prefixes only the surfaces provably served per language
 and is for code like the command palette that navigates to settings, posts and
 archives through one branchless code path. Guarding the wrong one strips the
 prefix off exactly the collection links this whole entry is about.
+
+## A translated string only renders if its file is in the settings catalog
+
+`lingui.config.ts` splits messages by _file path_: `routes/dash/**` and
+`ui/dash/**` feed `locales/settings/{locale}`, everything else feeds
+`locales/public/{locale}`. The runtime (`i18n/i18n.ts`) imports only
+`public/en`, `settings/en`, `settings/zh-Hans`, `settings/zh-Hant` — so
+`public/zh-Hans.po` and `public/zh-Hant.po` are never loaded. Writing a Chinese
+`msgstr` there produces a green extraction summary, a translated `.po`, a
+compiled `.ts`, and English on screen.
+
+`i18n/middleware.ts` draws a second boundary that does not match: only
+`ADMIN_PATH_PREFIXES` (`/settings`, `/dash`, `/setup`) render in the author's
+locale at all; every other route is forced to `baseLocale`. A string is only
+translatable where both boundaries agree.
+
+So before writing translations, check both lists. If the route is an admin path
+but its file is not under `dash/`, add the file to the settings catalog's
+`include` **and** the public catalog's `exclude` (this is why
+`routes/auth/setup.tsx` is named explicitly in both). If the route is not an
+admin path, translating it is wasted work until the middleware says otherwise —
+`signin.tsx` and `reset.tsx` are in that state on purpose.

@@ -95,6 +95,8 @@ msgstr "强调色"
 
 #. @context: GitHub sync picker — owner dropdown label
 #. @context: Settings group label for account settings
+#. @context: Setup form group - the admin account being created
+#: src/routes/auth/setup.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Account"
@@ -316,6 +318,11 @@ msgstr "归档 筛选参数 (例如 format=笔记&view=list)"
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Ask search engines not to index public pages or include them in results."
 msgstr "请求搜索引擎不要对公开页面建立索引或将其包含在搜索结果中。"
+
+#. @context: Error toast when authentication secret is missing from server config
+#: src/routes/auth/setup.tsx
+msgid "Auth secret is missing. Check your environment variables."
+msgstr "缺少认证密钥，检查环境变量配置。"
 
 #. @context: Theme mode option label
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -554,6 +561,11 @@ msgstr "配色主题"
 msgid "Color Theme"
 msgstr "颜色主题"
 
+#. @context: Setup form submit button
+#: src/routes/auth/setup.tsx
+msgid "Complete Setup"
+msgstr "完成设置"
+
 #. @context: Breadcrumb label
 #. @context: Config Editor page title
 #. @context: Settings item — Config Editor
@@ -648,6 +660,10 @@ msgid "Connecting…"
 msgstr "连接中…"
 
 #. @context: Language settings field — the site's language
+#. @context: Setup form field - site content language
+#. @context: Setup form field - site content language
+#: src/routes/auth/setup.tsx
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Content language"
 msgstr "内容语言"
@@ -716,6 +732,11 @@ msgstr "无法创建合集。请检查信息后重试。"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Couldn't create the page. Check the details and try again."
 msgstr "无法创建页面。请检查详情并重试。"
+
+#. @context: Error toast when account creation fails
+#: src/routes/auth/setup.tsx
+msgid "Couldn't create your account. Check the details and try again."
+msgstr "账户创建失败，检查填写内容后重试。"
 
 #. @context: Error toast when nav delete fails
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1059,6 +1080,11 @@ msgstr "在完整表单中编辑显示在公共页面底部的多行页脚。"
 msgid "Edit the multi-line introduction used on your home page and in metadata."
 msgstr "在完整表单中编辑首页和元数据使用的多行简介。"
 
+#. @context: Setup/signin form field - email
+#: src/routes/auth/setup.tsx
+msgid "Email"
+msgstr "邮箱"
+
 #. @context: GitHub sync picker — shown when the selected repo has no commits
 #: src/routes/dash/settings.tsx
 msgid "Empty repository. Ready to connect."
@@ -1276,6 +1302,11 @@ msgstr "安装 GitHub App 以在无需管理个人令牌的情况下授予访问
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Integrations"
 msgstr "集成"
+
+#. @context: Setup page description under the write-language question
+#: src/routes/auth/setup.tsx
+msgid "It sets the language readers and search engines see. Change it any time in Settings."
+msgstr "它决定读者和搜索引擎看到的语言，之后可以在设置里更改。"
 
 #. @context: Validation error for a long page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1638,6 +1669,8 @@ msgid "No file selected. Choose a file to upload."
 msgstr "未选择文件。请选择要上传的文件。"
 
 #. @context: Empty state in the language picker
+#. @context: Empty state in the language picker
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "No matches."
 msgstr "无匹配结果。"
@@ -1790,6 +1823,8 @@ msgstr "调色板、表面色调与整体氛围"
 
 #. @context: Breadcrumb label
 #. @context: Settings item — password settings
+#. @context: Setup/signin form field - password
+#: src/routes/auth/setup.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/AccountMenuContent.tsx
 msgid "Password"
@@ -2122,6 +2157,8 @@ msgid "Search settings updated."
 msgstr "搜索设置已更新。"
 
 #. @context: Placeholder in the language picker search box
+#. @context: Placeholder in the language picker search box
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Search…"
 msgstr "搜索…"
@@ -2188,12 +2225,22 @@ msgstr "设置每页搜索结果数；重置后继承默认分页大小。"
 msgid "Set the default number of items shown per page."
 msgstr "设置默认每页显示的条目数。"
 
+#. @context: Setup page description
+#: src/routes/auth/setup.tsx
+msgid "Set up your site and the account you write from."
+msgstr "设置你的站点，以及写作用的账户。"
+
 #. @context: Breadcrumb label
 #. @context: Page title for the settings home page
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Settings"
 msgstr "设置"
+
+#. @context: Name of the first-run setup screen — shown above the setup card and as the browser tab title
+#: src/routes/auth/setup.tsx
+msgid "Setup"
+msgstr "初始设置"
 
 #. @context: Checkbox for showing the optional Jant credit link on the home page
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -2243,6 +2290,8 @@ msgstr "于 {date} 登录"
 #. @context: Language settings section for reader-facing settings
 #. @context: Settings group label for site settings
 #. @context: Settings subsection heading for basic site fields
+#. @context: Setup form group - the site itself
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -2262,6 +2311,8 @@ msgid "Site Header"
 msgstr "网站头部"
 
 #. @context: Settings form field
+#. @context: Setup form field - site name
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Site Name"
 msgstr "站点名称"
@@ -2290,6 +2341,16 @@ msgstr "柔绿"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Soft ivory"
 msgstr "柔象牙白"
+
+#. @context: Fallback validation error for setup form
+#: src/routes/auth/setup.tsx
+msgid "Something doesn't look right. Check the form and try again."
+msgstr "有内容填写不正确，检查后重试。"
+
+#. @context: Setup submit button on a hosted site, after the language question
+#: src/routes/auth/setup.tsx
+msgid "Start writing"
+msgstr "开始写作"
 
 #. @context: Description for the Telegram disconnect action
 #: src/ui/dash/settings/TelegramContent.tsx
@@ -2386,6 +2447,11 @@ msgstr "私有 Jant 仪表板使用的语言。"
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "The language you write in."
 msgstr "你写作使用的语言。"
+
+#. @context: Setup form help text under the content language field
+#: src/routes/auth/setup.tsx
+msgid "The language your readers and search engines see."
+msgstr "读者和搜索引擎看到的语言。"
 
 #. @context: Config Editor linked setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -2748,6 +2814,16 @@ msgstr "暖中性，适合长读。"
 #: src/routes/dash/settings.tsx
 msgid "We'll prefill the name {name}. The list refreshes on return."
 msgstr "我们会预先填充名称 {name}。返回时列表会刷新。"
+
+#. @context: Setup page welcome heading
+#: src/routes/auth/setup.tsx
+msgid "Welcome to Jant"
+msgstr "欢迎使用 Jant"
+
+#. @context: Setup heading on a hosted site, where the language is all that is left to ask
+#: src/routes/auth/setup.tsx
+msgid "What language do you write in?"
+msgstr "你写作的主要语言是？"
 
 #. @context: Description for backup and restore documentation link in account settings
 #: src/ui/dash/settings/AccountMenuContent.tsx
