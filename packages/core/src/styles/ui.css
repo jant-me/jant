@@ -5852,15 +5852,25 @@
     border-bottom-color: transparent;
   }
 
+  /* Matches the 16px above it, unlike a note's title. This one is boxed in on
+     both sides, so anything tighter below than above tips it into the body and
+     it reads as the body's opening line rather than its own field. */
   .compose-link-title {
     font-family: var(--font-heading);
     font-size: var(--compose-title-input-size);
     font-weight: var(--type-heading-weight);
     letter-spacing: var(--type-heading-tracking);
     line-height: var(--compose-title-input-leading);
-    margin-bottom: 10px;
+    margin-bottom: 16px;
     padding-left: 2px;
     text-wrap: pretty;
+  }
+
+  /* When the required-title message is showing it is the thing that has to sit
+     close to the field, so hand the gap over to it — its own bottom margin
+     carries the separation down to the body instead. */
+  .compose-link-title[aria-invalid="true"] {
+    margin-bottom: 6px;
   }
 
   /* --- Quote mode --------------------------------------------------------- */

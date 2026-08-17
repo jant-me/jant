@@ -6970,6 +6970,66 @@ describe("JantComposeDialog", () => {
     expect(el.querySelector("[data-compose-link-title-error]")).toBeNull();
   });
 
+  it("explains the missing link title once publish is attempted", async () => {
+    const el = await createElement();
+    el._format = "link";
+    await el.updateComplete;
+
+    const editor = requireElement(
+      el.querySelector<JantComposeEditor>("jant-compose-editor"),
+      "expected compose editor",
+    );
+    editor._url = "https://example.com";
+    await editor.updateComplete;
+
+    el.dispatchEvent(
+      new globalThis.KeyboardEvent("keydown", {
+        key: "Enter",
+        metaKey: true,
+        bubbles: true,
+      }),
+    );
+    await el.updateComplete;
+    await editor.updateComplete;
+
+    const error = requireElement(
+      el.querySelector("[data-compose-link-title-error]"),
+      "expected link title error",
+    );
+    expect(error.textContent?.trim()).toBe(
+      "Add a title before posting this link.",
+    );
+  });
+
+  it("explains the missing link URL once publish is attempted", async () => {
+    const el = await createElement();
+    el._format = "link";
+    await el.updateComplete;
+
+    const editor = requireElement(
+      el.querySelector<JantComposeEditor>("jant-compose-editor"),
+      "expected compose editor",
+    );
+
+    el.dispatchEvent(
+      new globalThis.KeyboardEvent("keydown", {
+        key: "Enter",
+        metaKey: true,
+        bubbles: true,
+      }),
+    );
+    await el.updateComplete;
+    await editor.updateComplete;
+
+    const error = requireElement(
+      el.querySelector("[data-compose-url-status]"),
+      "expected link url error",
+    );
+    expect(error.textContent?.trim()).toBe(
+      "Add a URL before posting this link.",
+    );
+  });
+
   it("Cmd/Ctrl+Enter finishes an attached text editor instead of publishing", async () => {
     const el = await createElement();
     (

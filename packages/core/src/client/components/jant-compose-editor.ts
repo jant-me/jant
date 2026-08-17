@@ -1025,20 +1025,6 @@ export class JantComposeEditor extends LitElement {
     return this._title.trim() ? null : this.labels.linkTitleRequired;
   }
 
-  private _getInlineUrlValidationMessage(): string | null {
-    if (this.format === "link" && !this._url.trim()) {
-      return null;
-    }
-    return this.getUrlValidationMessage();
-  }
-
-  private _getInlineLinkTitleValidationMessage(): string | null {
-    if (this.format !== "link" || !this._title.trim()) {
-      return null;
-    }
-    return this.getLinkTitleValidationMessage();
-  }
-
   revealUrlValidation(): string | null {
     this._showUrlValidation = true;
     return this.getUrlValidationMessage();
@@ -2129,10 +2115,10 @@ export class JantComposeEditor extends LitElement {
 
   private _renderLinkFields() {
     const urlError = this._showUrlValidation
-      ? this._getInlineUrlValidationMessage()
+      ? this.getUrlValidationMessage()
       : null;
     const titleError = this._showLinkTitleValidation
-      ? this._getInlineLinkTitleValidationMessage()
+      ? this.getLinkTitleValidationMessage()
       : null;
 
     return html`
@@ -2150,7 +2136,10 @@ export class JantComposeEditor extends LitElement {
             @input=${(e: Event) => this._onInput("_url", e)}
             @focus=${(e: Event) => this._onFieldFocus(e)}
             @blur=${() => {
-              this._showUrlValidation = true;
+              // Leaving a field empty is not yet a mistake — it becomes one at
+              // submit, where revealUrlValidation() opens this gate anyway.
+              // Blur only speaks up about something already typed and wrong.
+              if (this._url.trim()) this._showUrlValidation = true;
             }}
             class="compose-input compose-url-input"
             placeholder=${this.labels.urlPlaceholder}
@@ -2176,7 +2165,8 @@ export class JantComposeEditor extends LitElement {
           @focus=${(e: Event) => this._onFieldFocus(e)}
           @keydown=${this._handleTitleKeydown}
           @blur=${() => {
-            this._showLinkTitleValidation = true;
+            // Same gate as the URL above: quiet while empty, loud on submit.
+            if (this._title.trim()) this._showLinkTitleValidation = true;
           }}
           class="compose-input compose-link-title"
           placeholder=${this.labels.linkTitlePlaceholder}
