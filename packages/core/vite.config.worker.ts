@@ -99,6 +99,12 @@ export default defineConfig({
         if (id.startsWith("node:")) return true;
         if (id.startsWith("cloudflare:")) return true;
         if (id === "__STATIC_CONTENT_MANIFEST") return true;
+        // Bundled, not external: limax pulls in pinyin-pro, whose module scope
+        // has to stay free of the async scheduling Workers reject at deploy
+        // time (see the pinyin-pro override in pnpm-workspace.yaml). Freezing
+        // the version we tested into dist keeps every self-hosted deploy on
+        // it, whatever the consumer's package manager would resolve.
+        if (id === "limax" || id.startsWith("limax/")) return false;
         return Object.keys(pkg.dependencies ?? {}).some(
           (dep: string) => id === dep || id.startsWith(dep + "/"),
         );

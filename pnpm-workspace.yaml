@@ -6,3 +6,16 @@ catalog:
   "@types/node": ^25.5.0
   typescript: ^6.0.2
   wrangler: ^4.76.0
+
+onlyBuiltDependencies:
+  - better-sqlite3
+  - cn-font-split
+  - sharp
+
+overrides:
+  # pinyin-pro 3.29.1 schedules its Aho-Corasick build with setTimeout at
+  # module scope, which Cloudflare Workers reject at deploy time ("Disallowed
+  # operation called within global scope"). 3.29.0 builds it synchronously.
+  # Reachable from limax -> slugify. Unpin once upstream stops scheduling at
+  # import time: https://github.com/zh-lx/pinyin-pro/issues
+  pinyin-pro: 3.29.0

@@ -37,15 +37,5 @@
     "prettier": "^3.8.1",
     "typescript": "catalog:"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "cn-font-split",
-      "sharp"
-    ],
-    "overrides": {
-      "pinyin-pro": "3.29.0"
-    }
-  },
   "dependencies": {}
 }
