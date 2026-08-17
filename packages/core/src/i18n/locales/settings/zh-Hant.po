@@ -1785,7 +1785,7 @@ msgstr "筆記"
 #: src/ui/dash/appearance/NavigationContent.tsx
 #. @context: Shown when a pasted address matches no page on the site
 msgid "Nothing at {address}. Check it, or search by title."
-msgstr "在 {address} 找不到任何頁面. 請檢查或以標題搜尋."
+msgstr "在 {address} 找不到任何頁面。請檢查位址，或以標題搜尋。"
 
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 #. @context: Config Editor empty search state
@@ -2217,7 +2217,7 @@ msgstr "搜尋頁面"
 #: src/ui/dash/appearance/NavigationContent.tsx
 #. @context: Placeholder for the navigation page search, which also accepts a pasted URL or path
 msgid "Search pages, or paste an address"
-msgstr "搜尋頁面, 或貼上位址"
+msgstr "搜尋頁面，或貼上位址"
 
 #: src/routes/dash/settings.tsx
 #. @context: GitHub sync picker — search input placeholder
