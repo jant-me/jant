@@ -76,6 +76,14 @@ export function createAuth(
       // better-auth's default, but stated here because it sets the renewal
       // cadence and that shouldn't be invisible library behaviour.
       updateAge: 3600 * 24, // 1 day
+      // Turns off better-auth's re-authentication gate, whose default lets a
+      // session read `/list-sessions` only within 24 hours of sign-in — and it
+      // measures that from `createdAt`, which renewal never moves, so the
+      // Sessions page would answer "Session is not fresh" from day two onward.
+      // The gate also guards nothing here: revoking a session, the destructive
+      // half of that page, is not behind it, and the endpoints that would care
+      // (delete-user, unlink-account) are not part of Jant.
+      freshAge: 0,
       cookieCache: {
         enabled: true,
         maxAge: 60 * 5, // 5 minutes
