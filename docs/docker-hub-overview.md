@@ -69,8 +69,8 @@ With the default Compose file, that maps to `./data` on the host and includes:
 
 ## Documentation
 
-- Full Docker deployment guide: https://github.com/jant-me/jant/blob/main/docs/deployment-docker.md
-- Configuration reference: https://github.com/jant-me/jant/blob/main/docs/configuration.md
-- Backups and recovery: https://github.com/jant-me/jant/blob/main/docs/backups.md
-- Export and import: https://github.com/jant-me/jant/blob/main/docs/export-and-import.md
+- Full Docker deployment guide: https://jant.me/docs/deployment-docker
+- Configuration reference: https://jant.me/docs/configuration
+- Backups and recovery: https://jant.me/docs/backups
+- Export and import: https://jant.me/docs/export-and-import
 - Source repository: https://github.com/jant-me/jant

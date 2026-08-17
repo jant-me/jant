@@ -166,6 +166,22 @@ describe("Collection Routing", () => {
     expect(xml).toContain("Film log");
   });
 
+  it("leads the collection feed title with the site name", async () => {
+    // A reader's sidebar sorts by feed title, so every Jant feed leads with
+    // the site name — otherwise one site's feeds scatter across the alphabet.
+    const { app, services } = createCollectionRoutingTestApp();
+    await services.settings.set("SITE_NAME", "Jant");
+    await createCollectionWithPost(services, {
+      slug: "reading",
+      title: "Reading",
+      postTitle: "Book log",
+    });
+
+    const xml = await (await app.request("/reading/feed")).text();
+
+    expect(xml).toContain("<title>Jant - Reading</title>");
+  });
+
   it("applies the RSS publication delay to Collection feeds", async () => {
     const currentTime = 2_000_000;
     vi.spyOn(Date, "now").mockReturnValue(currentTime * 1000);

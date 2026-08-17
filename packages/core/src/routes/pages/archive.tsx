@@ -477,6 +477,9 @@ export async function renderArchivePage(
   };
 
   const feedQuery = buildArchiveFeedQuery(params);
+  const feedHref = appConfig.rssFeedsEnabled
+    ? `/archive/feed${feedQuery}`
+    : undefined;
 
   const availableCollectionsList = allCollections.map((col) => ({
     slug: col.slug,
@@ -491,6 +494,14 @@ export async function renderArchivePage(
       navData.siteName,
     ),
     alternateLanguages: buildSurfaceAlternates(c),
+    // The filters are part of the feed: a reader subscribing from a filtered
+    // archive gets that filtered feed, not the whole archive.
+    pageFeed: feedHref
+      ? {
+          href: toViewPath(c, feedHref),
+          title: buildArchiveFeedLabel(c, params, collection?.title),
+        }
+      : undefined,
     navData,
     content: (
       <ArchivePage
@@ -505,9 +516,7 @@ export async function renderArchivePage(
         isAuthenticated={navData.isAuthenticated}
         basePath={navData.basePath}
         timeZone={appConfig.timeZone}
-        feedHref={
-          appConfig.rssFeedsEnabled ? `/archive/feed${feedQuery}` : undefined
-        }
+        feedHref={feedHref}
       />
     ),
   });
@@ -538,20 +547,24 @@ archiveRoutes.get("/", renderArchiveRoute);
 // =============================================================================
 
 /**
- * Build a descriptive feed title from active filters.
+ * Build a descriptive label for the archive feed from the active filters.
+ *
+ * Shared by the feed document's own title and the autodiscovery link on the
+ * archive page, so a subscriber sees the same name in both places.
  *
  * @param c - Hono context
  * @param params - Parsed archive filter params
  * @param collectionTitle - Resolved collection title (if any)
- * @returns Feed title string, e.g. "Site - Archive: Notes without title"
+ * @returns Feed label, e.g. "Archive: Notes, without title"
+ * @example
+ * buildArchiveFeedLabel(c, params); // "Archive"
  */
-function buildArchiveFeedTitle(
+function buildArchiveFeedLabel(
   c: Context<Env>,
   params: ParsedArchiveParams,
   collectionTitle?: string,
 ): string {
   const i18n = getI18n(c);
-  const siteName = c.var.appConfig.siteName;
 
   const parts: string[] = [];
 
@@ -660,10 +673,10 @@ function buildArchiveFeedTitle(
   );
 
   if (parts.length === 0) {
-    return `${siteName} - ${archiveLabel}`;
+    return archiveLabel;
   }
 
-  return `${siteName} - ${archiveLabel}: ${parts.join(", ")}`;
+  return `${archiveLabel}: ${parts.join(", ")}`;
 }
 
 async function buildArchiveFeedData(
@@ -822,7 +835,10 @@ async function buildArchiveFeedData(
     siteDescription: toPlainText(appConfig.siteDescription),
     siteUrl: appConfig.siteUrl,
     siteLanguage: getViewLang(c) ?? appConfig.siteLanguage,
-    title: buildArchiveFeedTitle(c, params, collection?.title),
+    title: buildPageTitle(
+      appConfig.siteName,
+      buildArchiveFeedLabel(c, params, collection?.title),
+    ),
     selfUrl: toAbsoluteSiteUrl(
       `${viewBasePath(c)}${selfPath}${feedQuery}`,
       appConfig.siteUrl,

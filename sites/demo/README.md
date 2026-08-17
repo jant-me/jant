@@ -145,23 +145,23 @@ SITE_ORIGIN = "https://yourdomain.com"
 
 Start here:
 
-- [Introduction](https://github.com/jant-me/jant/blob/main/docs/overview.md)
-- [Deploy on Cloudflare](https://github.com/jant-me/jant/blob/main/docs/deployment.md)
-- [Configuration](https://github.com/jant-me/jant/blob/main/docs/configuration.md)
+- [Introduction](https://jant.me/docs)
+- [Deploy on Cloudflare](https://jant.me/docs/deployment)
+- [Configuration](https://jant.me/docs/configuration)
 
 For writing and customization:
 
-- [Writing and Organizing Posts](https://github.com/jant-me/jant/blob/main/docs/writing-and-organizing.md)
-- [Theming](https://github.com/jant-me/jant/blob/main/docs/theming.md)
+- [Writing and Organizing Posts](https://jant.me/docs/writing-and-organizing)
+- [Theming](https://jant.me/docs/theming)
 
 For operations:
 
-- [Export and Import](https://github.com/jant-me/jant/blob/main/docs/export-and-import.md)
-- [Backups and Recovery](https://github.com/jant-me/jant/blob/main/docs/backups.md)
+- [Export and Import](https://jant.me/docs/export-and-import)
+- [Backups and Recovery](https://jant.me/docs/backups)
 
 Reference:
 
-- [API Reference](https://github.com/jant-me/jant/blob/main/docs/API.md)
+- [API Reference](https://jant.me/docs/api)
 - [GitHub Repository](https://github.com/jant-me/jant)
 
 ## AI Coding Tools

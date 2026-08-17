@@ -5,6 +5,7 @@
 import { msg } from "@lingui/core/macro";
 import { coalesceDisplayText } from "../../../lib/display-text.js";
 import { useLingui } from "../../../i18n/context.js";
+import { getJantDocsUrl } from "../../../lib/jant-docs.js";
 import { extractDomain, toPublicPath } from "../../../lib/url.js";
 import { CORE_VERSION } from "../../../lib/version.js";
 import {
@@ -13,8 +14,7 @@ import {
   SettingsDirectorySection,
 } from "./SettingsDirectory.js";
 
-const BACKUPS_DOCS_URL =
-  "https://github.com/jant-me/jant/blob/main/docs/backups.md";
+const BACKUPS_DOCS_URL = getJantDocsUrl("backups");
 const GITHUB_COMMIT_BASE = "https://github.com/jant-me/jant/tree";
 
 const ICONS = {

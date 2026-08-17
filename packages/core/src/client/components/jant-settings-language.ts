@@ -18,6 +18,7 @@ import { LitElement, html, nothing } from "lit";
 import { showConfirmDialog } from "../confirm.js";
 import { queueToastForNextPage, showToast } from "../toast.js";
 import { getJsonString, readJsonObject } from "../json.js";
+import { getJantDocsUrl } from "../../lib/jant-docs.js";
 import {
   LOCALE_PICKER_TRIGGER_CLASS,
   type LocaleOption,
@@ -78,6 +79,12 @@ interface LanguageInitialState {
   additionalLanguages: string[];
   unmarkedPostCount: number;
   sitePathPrefix: string;
+  /**
+   * Docs link, resolved by the server. Vite's `define` does not reach modules
+   * the dev server hands the browser, so the environment's docs host is only
+   * known server-side.
+   */
+  multilingualDocsUrl: string;
 }
 
 /** Catalog locales the dashboard is translated into. */
@@ -86,10 +93,11 @@ const DASHBOARD_LOCALES = ["", "en", "zh-Hans", "zh-Hant"] as const;
 /**
  * The reference for everything this page cannot say in two lines: URL
  * structure, per-language feeds, and how translation groups work. Same shape
- * as the theming and API links elsewhere in settings.
+ * as the theming and API links elsewhere in settings. Used only if the server
+ * sent no link — it resolves the docs host for the deployed build, not for a
+ * dev server.
  */
-const MULTILINGUAL_DOCS_URL =
-  "https://github.com/jant-me/jant/blob/main/docs/multilingual.md";
+const MULTILINGUAL_DOCS_FALLBACK_URL = getJantDocsUrl("multilingual");
 
 /**
  * Fill the `{name}` slots the server deliberately left intact.
@@ -157,6 +165,12 @@ export class JantSettingsLanguage extends LitElement {
   declare _enablePrimary: string;
   declare _enableBusy: boolean;
 
+  /**
+   * Docs link for this page. Set from the server's initial state before the
+   * first render and never changed after, so it stays outside reactive state.
+   */
+  #multilingualDocsUrl = MULTILINGUAL_DOCS_FALLBACK_URL;
+
   createRenderRoot() {
     // Drop the server-rendered skeleton first. lit-html appends its parts
     // rather than replacing existing children, so leaving it would stack the
@@ -219,6 +233,8 @@ export class JantSettingsLanguage extends LitElement {
       : [];
     this._unmarkedPostCount = state.unmarkedPostCount ?? 0;
     this._sitePathPrefix = state.sitePathPrefix ?? "";
+    this.#multilingualDocsUrl =
+      state.multilingualDocsUrl || MULTILINGUAL_DOCS_FALLBACK_URL;
   }
 
   // ── Presentation helpers ──────────────────────────────────────────
@@ -989,7 +1005,7 @@ export class JantSettingsLanguage extends LitElement {
           </p>
           <p class="text-sm text-muted-foreground">
             <a
-              href=${MULTILINGUAL_DOCS_URL}
+              href=${this.#multilingualDocsUrl}
               target="_blank"
               rel="noopener noreferrer"
               class="underline hover:text-foreground transition-colors"

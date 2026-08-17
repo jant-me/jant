@@ -67,10 +67,10 @@ PORT=3030 npm run dev
 
 ## Documentation
 
-- [Getting Started](https://github.com/jant-me/jant/blob/main/docs/getting-started.md)
-- [Deploy on Cloudflare](https://github.com/jant-me/jant/blob/main/docs/deployment.md)
-- [Configuration](https://github.com/jant-me/jant/blob/main/docs/configuration.md)
-- [Theming](https://github.com/jant-me/jant/blob/main/docs/theming.md)
+- [Getting Started](https://jant.me/docs/getting-started)
+- [Deploy on Cloudflare](https://jant.me/docs/deployment)
+- [Configuration](https://jant.me/docs/configuration)
+- [Theming](https://jant.me/docs/theming)
 
 ## License
 

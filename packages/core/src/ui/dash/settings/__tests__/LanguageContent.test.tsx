@@ -73,6 +73,8 @@ describe("LanguageContent", () => {
       additionalLanguages: ["en", "ja"],
       unmarkedPostCount: 3,
       sitePathPrefix: "/blog",
+      // The browser bundle cannot resolve the docs host, so the server sends it.
+      multilingualDocsUrl: "https://jant.me/docs/multilingual",
     });
   });
 

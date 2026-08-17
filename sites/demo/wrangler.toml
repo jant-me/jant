@@ -19,18 +19,18 @@ port = 3000
 # Sensitive secrets (like AUTH_SECRET and INTERNAL_ADMIN_TOKEN) should be:
 # - Local dev: .dev.vars file (not committed)
 # - Production: wrangler secret put AUTH_SECRET
-# Full details: https://github.com/jant-me/jant/blob/main/docs/configuration.md
+# Full details: https://jant.me/docs/configuration
 
 [vars]
 # Optional: Pin your site's public origin (e.g. https://my-blog.example.com)
-# https://github.com/jant-me/jant/blob/main/docs/configuration.md#public-urls-and-subpaths
+# https://jant.me/docs/configuration#public-url-and-subpath
 SITE_ORIGIN = "https://demo.jant.me" # @create-jant: @remove
 # Optional: Mount the site under a subpath such as /blog
 # SITE_PATH_PREFIX = "/blog"
 
 # Optional: Site configuration
 # You can also set these from the Settings page at /settings
-# https://github.com/jant-me/jant/blob/main/docs/configuration.md#settings-page
+# https://jant.me/docs/configuration#settings-page-options
 # SITE_NAME = "My Blog"
 # SITE_DESCRIPTION = "A personal blog powered by Jant"
 # SITE_LANGUAGE = "en"
@@ -41,13 +41,13 @@ SITE_ORIGIN = "https://demo.jant.me" # @create-jant: @remove
 # ARCHIVE_PAGE_SIZE = 100
 
 # Optional: R2 Storage (for media uploads)
-# https://github.com/jant-me/jant/blob/main/docs/configuration.md#r2-default
+# https://jant.me/docs/configuration#r2-default
 # R2_PUBLIC_URL = "https://cdn.example.com"
 R2_PUBLIC_URL = "https://demo-media.jant.me" # @create-jant: @remove
 
 # Optional: Cloudflare Image Transformations
 # For automatic thumbnail generation and image optimization
-# https://github.com/jant-me/jant/blob/main/docs/configuration.md#image-transformations-optional
+# https://jant.me/docs/configuration#image-transformations-optional
 # IMAGE_TRANSFORM_URL = "https://example.com/cdn-cgi/image"
 IMAGE_TRANSFORM_URL = "https://demo-media.jant.me/cdn-cgi/image" # @create-jant: @remove
 
@@ -71,7 +71,7 @@ remote = true # @create-jant: @remove
 # Optional: S3-compatible storage (alternative to R2)
 # Set STORAGE_DRIVER = "s3" and configure the options below.
 # When using S3, the [[r2_buckets]] section can be removed.
-# https://github.com/jant-me/jant/blob/main/docs/configuration.md#s3-compatible-storage
+# https://jant.me/docs/configuration#s3-compatible-storage
 # STORAGE_DRIVER = "s3"
 # S3_ENDPOINT = "https://s3.example.com"
 # S3_BUCKET = "my-bucket"
