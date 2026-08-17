@@ -8,8 +8,27 @@
 
 :root {
   /* Typography — Font families */
-  --font-cjk-serif-fallback: "Jant Language Fallback";
-  --font-cjk-sans-fallback: "Jant Language Fallback";
+  /*
+   * CJK fallback slots, kept in sync with `DEFAULT_FONT_CJK_*_FALLBACK` in
+   * `ui/font-themes.ts` (a test asserts they match). A page whose language names
+   * a CJK profile overrides both with a stack that leads on its own glyph
+   * shapes; every other page keeps these, because the Latin families and the
+   * `serif` / `sans-serif` generics around them have no Han coverage and would
+   * otherwise drop the text to the OS last-resort font.
+   */
+  --font-cjk-serif-fallback:
+    "Songti SC", STSong, SimSun, "Noto Serif SC", "Noto Serif CJK SC",
+    "Songti TC", PMingLiU, MingLiU, "Noto Serif TC", "Noto Serif CJK TC",
+    "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Yu Mincho", YuMincho,
+    "Noto Serif JP", "Noto Serif CJK JP", "MS PMincho", "MS Mincho", Batang,
+    "Noto Serif KR", "Noto Serif CJK KR", NanumMyeongjo;
+  --font-cjk-sans-fallback:
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC",
+    "Noto Sans CJK SC", "PingFang TC", "Hiragino Sans CNS",
+    "Microsoft JhengHei", "Noto Sans TC", "Noto Sans CJK TC", "Hiragino Sans",
+    "Hiragino Kaku Gothic ProN", "Yu Gothic", YuGothic, "Noto Sans JP",
+    "Noto Sans CJK JP", Meiryo, "Apple SD Gothic Neo", "Noto Sans KR",
+    "Noto Sans CJK KR", "Malgun Gothic";
   --font-body:
     system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Helvetica, Arial, var(--font-cjk-sans-fallback),

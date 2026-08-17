@@ -749,3 +749,16 @@ unpickable.
 When several fixes address one report, name each one's own cost and let them
 compose. Reserve mutually exclusive options for genuine forks: two designs that
 cannot both exist.
+
+## A font stack has no "no opinion" slot
+
+`--font-cjk-serif-fallback` defaulted to the family name `"Jant Language
+Fallback"`, meant to read as "this page has no CJK opinion, keep the theme's
+stack". Nothing is named that, so the browser skipped it, the Latin families
+around it have no Han coverage, and `serif` / `sans-serif` resolve to Latin
+faces — leaving 中文 to the OS last-resort font, PingFang SC on Apple platforms.
+A serif blog rendered its Chinese in sans, and the site had no say in it.
+
+Every `font-family` fallback must name fonts that exist. If a value's purpose is
+"stay out of the way", it belongs in the code that decides whether to emit the
+declaration at all, not as an unmatchable name inside the stack.

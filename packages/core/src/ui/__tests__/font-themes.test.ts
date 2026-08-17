@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
 import {
   BUILTIN_FONT_THEMES,
@@ -141,10 +143,45 @@ describe("BUILTIN_FONT_THEMES", () => {
     expect(resolveCjkFontProfile()).toBeUndefined();
   });
 
-  it("keeps the default profile neutral", () => {
+  it("leaves a language without a profile on the token defaults", () => {
     expect(getCjkFontCssVariables("en")).toEqual({});
-    expect(DEFAULT_FONT_CJK_SERIF_FALLBACK).toBe('"Jant Language Fallback"');
-    expect(DEFAULT_FONT_CJK_SANS_FALLBACK).toBe('"Jant Language Fallback"');
+  });
+
+  it("keeps the default stacks real, script-neutral and generic-free", () => {
+    for (const stack of [
+      DEFAULT_FONT_CJK_SERIF_FALLBACK,
+      DEFAULT_FONT_CJK_SANS_FALLBACK,
+    ]) {
+      // A placeholder family name is skipped by the browser, which drops CJK
+      // text to the OS last-resort font — the whole point of these constants.
+      expect(stack).not.toContain("Jant Language Fallback");
+      // The generics belong to the theme stack, after this slot.
+      expect(stack).not.toMatch(/\b(?:ui-)?(?:serif|sans-serif)\b/);
+      // Every script the profiles cover is reachable from the default too.
+      for (const family of ["SC", "TC", "JP", "KR"]) {
+        expect(stack).toContain(family);
+      }
+    }
+    expect(DEFAULT_FONT_CJK_SERIF_FALLBACK).toMatch(/^"Songti SC",/);
+    expect(DEFAULT_FONT_CJK_SANS_FALLBACK).toMatch(/^"PingFang SC",/);
+  });
+
+  it("ships the same defaults in tokens.css", () => {
+    const tokens = readFileSync(
+      fileURLToPath(new URL("../../styles/tokens.css", import.meta.url)),
+      "utf8",
+    );
+    const declared = (name: string) => {
+      const match = tokens.match(new RegExp(`--${name}:([^;]*);`));
+      expect(match, `--${name} is missing from tokens.css`).not.toBeNull();
+      return match![1].trim().replace(/\s+/g, " ");
+    };
+    expect(declared("font-cjk-serif-fallback")).toBe(
+      DEFAULT_FONT_CJK_SERIF_FALLBACK,
+    );
+    expect(declared("font-cjk-sans-fallback")).toBe(
+      DEFAULT_FONT_CJK_SANS_FALLBACK,
+    );
   });
 
   it("puts language slots into every serif and sans theme stack", () => {

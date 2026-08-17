@@ -114,19 +114,27 @@ Transitions use these CSS variables:
 
 Self-hosted CJK font subsets live under `packages/core/src/styles/fonts/`.
 
-Font profiles resolve in this order:
+Font profiles resolve from the language of the page being rendered — a post's
+own language on a post page, the view language on a language-filtered list, and
+`SITE_LANGUAGE` otherwise:
 
-1. An adapted `SITE_LANGUAGE` (`zh-Hans`, `zh-Hant`, `ja`, or `ko`, including
-   equivalent regional BCP 47 tags) selects the matching profile.
-2. `CJK_SERIF_FONT` is used only as a manual fallback when the content
-   language has no profile. Its historical setting name is retained for stored
-   configuration compatibility, but the profile supplies both serif and sans
-   fallback stacks.
-3. Other languages keep the font theme's default stack.
+1. A language that maps to `zh-Hans`, `zh-Hant`, `ja`, or `ko` (including
+   equivalent regional BCP 47 tags) selects the matching profile, which
+   overrides both fallback variables and loads that profile's stylesheet.
+2. Every other language keeps the script-neutral defaults from `tokens.css`:
+   Simplified first, then Traditional, Japanese, and Korean.
+
+The default is a real stack, not a placeholder. The families around this slot
+are Latin-only and `serif` / `sans-serif` resolve to Latin faces too, so a
+default that matches nothing hands CJK text to the operating system's
+last-resort font — on Apple platforms that is PingFang SC, which renders a serif
+page in sans. `DEFAULT_FONT_CJK_SERIF_FALLBACK` and
+`DEFAULT_FONT_CJK_SANS_FALLBACK` in `ui/font-themes.ts` mirror the token values,
+and a test fails if the two drift.
 
 Every font theme retains control over whether a surface uses serif or sans.
 Profiles only fill `--font-cjk-serif-fallback` and
-`--font-cjk-sans-fallback`; they never change a theme's pairing. The optional
+`--font-cjk-sans-fallback`; they never change a theme's pairing. The profile
 stylesheet supplies the self-hosted serif face, while the sans profile prefers
 locale-appropriate system families before falling back across CJK variants.
 

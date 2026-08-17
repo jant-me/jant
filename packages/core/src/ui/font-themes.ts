@@ -33,8 +33,6 @@ export interface FontTheme {
   description: MessageDescriptor;
 }
 
-const DEFAULT_CJK_SERIF_FALLBACK = '"Jant Language Fallback"';
-const DEFAULT_CJK_SANS_FALLBACK = '"Jant Language Fallback"';
 const HANS_CJK_SERIF_FALLBACK =
   '"Songti SC", STSong, SimSun, "Noto Serif SC", "Noto Serif CJK SC", "Songti TC", PMingLiU, MingLiU, "Noto Serif TC", "Noto Serif CJK TC"';
 const HANS_CJK_SANS_FALLBACK =
@@ -51,6 +49,20 @@ const KO_CJK_SERIF_FALLBACK =
   'Batang, "Noto Serif KR", "Noto Serif CJK KR", NanumMyeongjo';
 const KO_CJK_SANS_FALLBACK =
   '"Apple SD Gothic Neo", "Noto Sans KR", "Noto Sans CJK KR", "Malgun Gothic"';
+/*
+ * Default stacks for a page whose language names no CJK profile.
+ *
+ * A font stack cannot express "no opinion": every Latin family in a theme stack
+ * lacks Han coverage, and `ui-serif` / `serif` resolve to Times or New York,
+ * which lack it too — so a placeholder name leaves Chinese, Japanese and Korean
+ * text to the OS last-resort font (PingFang SC on Apple platforms), rendering a
+ * serif page in sans. The default therefore has to be real. Simplified comes
+ * first because it is the most common CJK content here; a page that knows its
+ * language gets the profile stacks above instead, which put the right glyph
+ * shapes first.
+ */
+const DEFAULT_CJK_SERIF_FALLBACK = `${HANS_CJK_SERIF_FALLBACK}, ${JP_CJK_SERIF_FALLBACK}, ${KO_CJK_SERIF_FALLBACK}`;
+const DEFAULT_CJK_SANS_FALLBACK = `${HANS_CJK_SANS_FALLBACK}, ${JP_CJK_SANS_FALLBACK}, ${KO_CJK_SANS_FALLBACK}`;
 const CJK_SERIF_FALLBACK_VAR = "var(--font-cjk-serif-fallback)";
 const CJK_SANS_FALLBACK_VAR = "var(--font-cjk-sans-fallback)";
 
@@ -125,7 +137,7 @@ export function getFontThemeCssVariables(
  * language-filtered list, the site language otherwise.
  *
  * @param language - BCP 47 content language tag
- * @returns Resolved CJK font profile, or `undefined` for the default stack
+ * @returns Resolved CJK font profile, or `undefined` to keep the token default
  * @example
  * resolveCjkFontProfile("zh-TW") // "zh-Hant"
  * resolveCjkFontProfile("en")    // undefined
@@ -139,8 +151,12 @@ export function resolveCjkFontProfile(
 /**
  * Build serif and sans fallback variables for the resolved language profile.
  *
+ * Empty for a language with no profile: `tokens.css` already carries a real
+ * script-neutral stack in both variables, so there is nothing to override.
+ *
  * @param language - BCP 47 content language tag
- * @returns CSS variables consumed by every font theme
+ * @returns CSS variables consumed by every font theme, empty when the token
+ *   defaults already apply
  * @example
  * getCjkFontCssVariables("zh-Hans")
  * // => { "--font-cjk-serif-fallback": '"Songti SC", ...', ... }
@@ -174,7 +190,9 @@ export function getCjkFontCssVariables(
   }
 }
 
+/** The `--font-cjk-serif-fallback` value `tokens.css` ships as its default. */
 export const DEFAULT_FONT_CJK_SERIF_FALLBACK = DEFAULT_CJK_SERIF_FALLBACK;
+/** The `--font-cjk-sans-fallback` value `tokens.css` ships as its default. */
 export const DEFAULT_FONT_CJK_SANS_FALLBACK = DEFAULT_CJK_SANS_FALLBACK;
 
 export const BUILTIN_FONT_THEMES: FontTheme[] = [
