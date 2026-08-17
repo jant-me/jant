@@ -9,10 +9,11 @@ import { msg } from "@lingui/core/macro";
 import { useLingui } from "../../../i18n/context.js";
 import type { ApiToken } from "../../../types/entities.js";
 import { buildConfirmActionExpression } from "../../../lib/confirm.js";
+import { getJantDocsUrl } from "../../../lib/jant-docs.js";
 import { formatDate } from "../../../lib/time.js";
 import { toPublicPath } from "../../../lib/url.js";
 
-const API_DOCS_URL = "https://github.com/jant-me/jant/blob/main/docs/API.md";
+const API_DOCS_URL = getJantDocsUrl("api");
 
 function TokenRow({
   token,

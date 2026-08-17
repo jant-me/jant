@@ -15,6 +15,7 @@ import { msg } from "@lingui/core/macro";
 import { useLingui } from "../../../i18n/context.js";
 import { getSupportedLocaleEntries } from "../../../i18n/supported-locales.js";
 import type { Locale } from "../../../i18n/locales.js";
+import { getJantDocsUrl } from "../../../lib/jant-docs.js";
 
 /**
  * A value that renders as its own placeholder.
@@ -381,6 +382,9 @@ export function LanguageContent({
     additionalLanguages,
     unmarkedPostCount,
     sitePathPrefix,
+    // Resolved here because the docs host depends on the build environment,
+    // which the browser bundle cannot see.
+    multilingualDocsUrl: getJantDocsUrl("multilingual"),
   }).replace(/</g, "\\u003c");
 
   return (

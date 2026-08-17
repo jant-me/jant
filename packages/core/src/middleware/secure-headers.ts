@@ -14,7 +14,7 @@ import type { MiddlewareHandler } from "hono";
 import type { Bindings } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
 import { getConfiguredStorageDriver, getEnvString } from "../lib/env.js";
-import { IS_VITE_DEV } from "../lib/version.js";
+import { IS_VITE_DEV } from "../lib/build-env.js";
 import {
   buildCspDirectives,
   type ContentSecurityPolicyDirectives,

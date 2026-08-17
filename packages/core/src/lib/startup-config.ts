@@ -1,4 +1,5 @@
 import { escapeHtml } from "./html.js";
+import { getJantDocsUrl } from "./jant-docs.js";
 import {
   getAuthSecret,
   getHostedControlPlaneBaseUrl,
@@ -94,8 +95,7 @@ function getAuthSecretErrorHtml(kind: AuthSecretIssueKind): string {
   return renderConfigurationErrorPage({
     title: titleByKind[kind],
     bodyHtml: `${leadByKind[kind]}${runtimeInstructions}`,
-    docsHref:
-      "https://github.com/jant-me/jant/blob/main/docs/configuration.md#required",
+    docsHref: getJantDocsUrl("configuration#required"),
   });
 }
 
@@ -219,8 +219,7 @@ function getHostBasedConfigurationErrorHtml(
   return renderConfigurationErrorPage({
     title: "Hosted configuration is incomplete",
     bodyHtml: `<p>Jant is running with <code>SITE_RESOLUTION_MODE=host-based</code>, so hosted control-plane integration must be configured before the instance can serve requests.</p><ul>${itemsHtml}</ul>`,
-    docsHref:
-      "https://github.com/jant-me/jant/blob/main/docs/configuration.md#hosted-control-plane-integration-variables",
+    docsHref: getJantDocsUrl("configuration"),
   });
 }
 
@@ -243,8 +242,7 @@ export function getRuntimeConfigurationErrorPage(message: string): string {
   return renderConfigurationErrorPage({
     title: "Configuration Error",
     bodyHtml: `<p>${escapeHtml(message)}</p><p>Update your environment or instance data, then restart Jant.</p>`,
-    docsHref:
-      "https://github.com/jant-me/jant/blob/main/docs/configuration.md#site-resolution",
+    docsHref: getJantDocsUrl("configuration"),
   });
 }
 

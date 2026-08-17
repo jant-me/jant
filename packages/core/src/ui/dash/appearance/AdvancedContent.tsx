@@ -4,10 +4,10 @@
 
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "../../../i18n/context.js";
+import { getJantDocsUrl } from "../../../lib/jant-docs.js";
 import { toPublicPath } from "../../../lib/url.js";
 
-const THEMING_DOCS_URL =
-  "https://github.com/jant-me/jant/blob/main/docs/theming.md";
+const THEMING_DOCS_URL = getJantDocsUrl("theming");
 
 export function AdvancedContent({
   customCSS,

@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 
-vi.mock("../../lib/version.js", () => ({
+vi.mock("../../lib/build-env.js", () => ({
   IS_VITE_DEV: false,
 }));
 

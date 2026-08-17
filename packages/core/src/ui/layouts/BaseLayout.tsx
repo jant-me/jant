@@ -33,8 +33,8 @@ import {
   CLIENT_CSS_FILE,
   CLIENT_JS_FILE,
   CORE_VERSION,
-  IS_VITE_DEV,
 } from "../../lib/version.js";
+import { IS_VITE_DEV } from "../../lib/build-env.js";
 import { I18nProvider } from "../../i18n/index.js";
 import {
   getCjkFontCssVariables,
