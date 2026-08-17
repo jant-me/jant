@@ -222,6 +222,10 @@ export async function renderCollectionPage(
     }
   }
 
+  const feedHref = c.var.appConfig.rssFeedsEnabled
+    ? `${canonicalPagePath}/feed`
+    : undefined;
+
   return renderPublicPage(c, {
     title:
       page > 1
@@ -233,6 +237,9 @@ export async function renderCollectionPage(
         ? markdownToPlainText(primaryCollection.description)
         : undefined,
     alternateLanguages: buildSurfaceAlternates(c),
+    pageFeed: feedHref
+      ? { href: toViewPath(c, feedHref), title: selectionTitle }
+      : undefined,
     navData,
     composeCollectionId: !isAggregate ? primaryCollection.id : undefined,
     content: (
@@ -260,11 +267,7 @@ export async function renderCollectionPage(
         sitePathPrefix={navData.sitePathPrefix}
         basePath={navData.basePath}
         emptyInLanguage={emptyInLanguage}
-        feedHref={
-          c.var.appConfig.rssFeedsEnabled
-            ? `${canonicalPagePath}/feed`
-            : undefined
-        }
+        feedHref={feedHref}
       />
     ),
   });
@@ -403,7 +406,11 @@ export async function renderCollectionFeed(
   );
 
   const xml = defaultFeedRenderer({
-    siteName: buildPageTitle(selectionTitle, siteName),
+    siteName,
+    // Site name first, like every other feed: a reader's sidebar sorts by
+    // feed title, so leading with the collection would scatter one site's
+    // feeds across the alphabet.
+    title: buildPageTitle(siteName, selectionTitle),
     siteDescription:
       selection.collections.length === 1 && primaryCollection.description
         ? markdownToPlainText(primaryCollection.description)

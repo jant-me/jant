@@ -9,7 +9,11 @@ import type { Context } from "hono";
 import type { Child } from "hono/jsx";
 import type { SiteLayoutProps } from "../types.js";
 import { SETTINGS_KEYS } from "./constants.js";
-import { BaseLayout, type ToastProps } from "../ui/layouts/BaseLayout.js";
+import {
+  BaseLayout,
+  type PageFeedLink,
+  type ToastProps,
+} from "../ui/layouts/BaseLayout.js";
 import { SiteLayout } from "../ui/layouts/SiteLayout.js";
 import type { NavigationData } from "./navigation.js";
 import {
@@ -58,6 +62,12 @@ export interface RenderPublicPageOptions {
    * exist once for the whole site pass nothing.
    */
   alternateLanguages?: LanguageAlternate[];
+  /**
+   * The feed this page publishes, for `<link rel="alternate">` autodiscovery.
+   * Set on pages with a feed of their own — a collection, the archive — so a
+   * reader's extension finds that feed rather than only the site-wide ones.
+   */
+  pageFeed?: PageFeedLink;
   /**
    * Language switcher entries. Defaults to the current surface in each of the
    * site's languages; a post overrides it with its translations.
@@ -124,6 +134,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
     jsonLd,
     canonicalHref,
     alternateLanguages,
+    pageFeed,
     languageSwitcher,
     navData,
     content,
@@ -194,6 +205,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
       jsonLd={jsonLd}
       canonicalHref={canonicalHref}
       alternateLanguages={alternateLanguages}
+      pageFeed={pageFeed}
       faviconUrl={faviconUrl}
       faviconVersion={faviconVersion}
       noindex={resolvedNoindex}

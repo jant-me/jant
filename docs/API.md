@@ -2825,6 +2825,7 @@ Feed notes:
 - `GET /feed/all` and `GET /feed/all/atom.xml` are legacy aliases that redirect to `/latest/feed` with `308`, preserving the query string.
 - `GET /:slug/feed` returns an RSS feed for a single collection.
 - `GET /collections/:slug/feed` returns an RSS feed for a collection selection and redirects normalized selections to the canonical path with `301`.
+- Pages advertise feeds in the HTML head with `<link rel="alternate" type="application/atom+xml">`. Every page carries the main feed and its counterpart; Collection and Archive pages list their own feed first — the archive one carrying the active filters — so a reader subscribing from the page gets the feed it shows.
 - Disabling feeds also removes HTML autodiscovery, Archive and Collection feed buttons, and the built-in RSS navigation item. Saved navigation configuration is retained for later re-enabling.
 
 ### Sitemap and robots
