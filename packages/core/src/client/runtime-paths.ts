@@ -8,7 +8,12 @@ import { isPerLanguageSurface } from "../lib/per-language-surfaces.js";
 
 type FetchInput = Parameters<typeof fetch>[0];
 
-function sitePathPrefix(): string {
+/**
+ * The deployment's public path prefix, as the server stamped it on the page.
+ *
+ * @returns Prefix like `/blog`, or an empty string when the site is rooted
+ */
+export function sitePathPrefix(): string {
   return document.documentElement.dataset.sitePathPrefix || "";
 }
 

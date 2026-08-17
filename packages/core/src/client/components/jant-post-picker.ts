@@ -24,16 +24,29 @@ export interface PostPickerItem {
   meta?: string;
 }
 
+/**
+ * What one round of searching produced.
+ *
+ * The note carries an answer the list cannot: an author who pasted a URL is
+ * looking at a page they know exists, so "nothing matched" is the wrong thing
+ * to tell them — "that post is a draft" is the right thing.
+ */
+export interface PostPickerResult {
+  items: PostPickerItem[];
+  /** Shown in place of the empty hint. */
+  note?: string;
+}
+
 export interface PostPickerOptions {
   heading: string;
   /** One line under the heading saying what picking will do. */
   hint?: string;
   placeholder: string;
-  /** Shown when a search comes back with nothing. */
+  /** Shown when a search comes back with nothing and has nothing to add. */
   emptyHint: string;
   /** Shortest query worth sending. Defaults to 2. */
   minQueryLength?: number;
-  search(query: string): Promise<PostPickerItem[]>;
+  search(query: string): Promise<PostPickerResult>;
 }
 
 interface PickerRequest extends PostPickerOptions {
@@ -47,6 +60,7 @@ export class JantPostPicker extends LitElement {
     _open: { state: true },
     _query: { state: true },
     _items: { state: true },
+    _note: { state: true },
     _loading: { state: true },
     _searched: { state: true },
   };
@@ -54,6 +68,7 @@ export class JantPostPicker extends LitElement {
   declare _open: boolean;
   declare _query: string;
   declare _items: PostPickerItem[];
+  declare _note: string;
   declare _loading: boolean;
   declare _searched: boolean;
 
@@ -72,6 +87,7 @@ export class JantPostPicker extends LitElement {
     this._open = false;
     this._query = "";
     this._items = [];
+    this._note = "";
     this._loading = false;
     this._searched = false;
   }
@@ -95,6 +111,7 @@ export class JantPostPicker extends LitElement {
 
     this._query = "";
     this._items = [];
+    this._note = "";
     this._loading = false;
     this._searched = false;
     this._open = true;
@@ -135,6 +152,7 @@ export class JantPostPicker extends LitElement {
     if (query.trim().length < minLength) {
       this.#searchToken += 1;
       this._items = [];
+      this._note = "";
       this._loading = false;
       this._searched = false;
       return;
@@ -150,12 +168,14 @@ export class JantPostPicker extends LitElement {
   async #runSearch(query: string, request: PickerRequest) {
     const token = ++this.#searchToken;
     try {
-      const items = await request.search(query);
+      const result = await request.search(query);
       if (token !== this.#searchToken) return;
-      this._items = items;
+      this._items = result.items;
+      this._note = result.note ?? "";
     } catch {
       if (token !== this.#searchToken) return;
       this._items = [];
+      this._note = "";
     } finally {
       if (token === this.#searchToken) {
         this._loading = false;
@@ -227,9 +247,11 @@ export class JantPostPicker extends LitElement {
             <h2 id="picker-dialog-title" class="picker-dialog-title">
               ${request.heading}
             </h2>
-            ${request.hint
-              ? html`<p class="picker-dialog-hint">${request.hint}</p>`
-              : nothing}
+            ${
+              request.hint
+                ? html`<p class="picker-dialog-hint">${request.hint}</p>`
+                : nothing
+            }
           </header>
 
           <input
@@ -253,20 +275,28 @@ export class JantPostPicker extends LitElement {
                   @click=${() => this.#finish(item.id)}
                 >
                   <span class="picker-dialog-option-label">${item.label}</span>
-                  ${item.meta
-                    ? html`<span class="picker-dialog-option-meta"
-                        >${item.meta}</span
-                      >`
-                    : nothing}
+                  ${
+                    item.meta
+                      ? html`<span class="picker-dialog-option-meta"
+                          >${item.meta}</span
+                        >`
+                      : nothing
+                  }
                 </button>
               `,
             )}
-            ${this._loading
-              ? html`<p class="picker-dialog-status">Searching…</p>`
-              : nothing}
-            ${!this._loading && this._searched && this._items.length === 0
-              ? html`<p class="picker-dialog-status">${request.emptyHint}</p>`
-              : nothing}
+            ${
+              this._loading
+                ? html`<p class="picker-dialog-status">Searching…</p>`
+                : nothing
+            }
+            ${
+              !this._loading && this._searched && this._items.length === 0
+                ? html`<p class="picker-dialog-status">
+                    ${this._note || request.emptyHint}
+                  </p>`
+                : nothing
+            }
           </div>
 
           <footer

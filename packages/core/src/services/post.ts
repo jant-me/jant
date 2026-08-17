@@ -294,6 +294,35 @@ export interface SitemapPostEntry {
   translationGroupId: string | null;
 }
 
+/**
+ * What an address the author pasted turned out to be, for the one question the
+ * translation picker asks: can this Thread be linked to that one?
+ *
+ * Every "no" carries which one it is, because the author is looking at a page
+ * they know exists and needs to be told what is wrong with it, not that the
+ * search found nothing.
+ */
+export type TranslationCandidateResolution =
+  /** Linkable: the Thread root the address names. */
+  | { status: "ok"; post: Post }
+  /** No page at that address — a typo, or something since deleted. */
+  | { status: "not_found" }
+  /** A real page, but a collection or an archive rather than a Post. */
+  | { status: "not_a_post" }
+  /** The Thread the author is already linking from. */
+  | { status: "same_thread" }
+  | { status: "unpublished" }
+  /** Nothing to translate between until it has a language. */
+  | { status: "no_language" }
+  /** Written in the same language as this Thread. */
+  | { status: "same_language" }
+  /** A Thread already linked here speaks for that language. */
+  | { status: "language_taken"; language: string }
+  /** Both sides carry a group; linking would silently merge them. */
+  | { status: "group_conflict" }
+  /** Its group already holds this Thread's language. */
+  | { status: "group_language_taken"; language: string };
+
 export interface PostService {
   getById(id: string): Promise<Post | null>;
   getBodyContent(id: string): Promise<PostBodyContent | null>;
@@ -486,6 +515,26 @@ export interface PostService {
     postId: string,
     options: { query: string; limit?: number },
   ): Promise<Post[]>;
+  /**
+   * Resolve an address the author pasted into the Thread it names, and say
+   * whether this Post could be linked to it as a translation.
+   *
+   * The same rules as {@link PostService.listTranslationCandidates}, asked
+   * about one known Thread instead of searched for — so the answer can be a
+   * reason rather than an empty list. An address that lands on a reply names
+   * its Thread, because translations link whole Threads.
+   *
+   * @param postId - Any Post in the Thread looking for a translation
+   * @param path - Internal path, as produced by `toInternalPath()`
+   * @returns The Thread root to link, or why it cannot be
+   * @example
+   * await posts.resolveTranslationCandidate(id, "/hello-world");
+   * // { status: "unpublished" }
+   */
+  resolveTranslationCandidate(
+    postId: string,
+    path: string,
+  ): Promise<TranslationCandidateResolution>;
   /**
    * Link two already-published Thread roots as translations of each other.
    *
@@ -3087,8 +3136,7 @@ export function createPostService(
           ],
         );
         updateResult = results[updateIdx] as
-          | (typeof posts.$inferSelect)[]
-          | undefined;
+          (typeof posts.$inferSelect)[] | undefined;
       } else {
         await db.transaction(async (tx) => {
           if (needsCascade) {
@@ -3668,6 +3716,57 @@ export function createPostService(
         .limit(limit);
 
       return hydratePosts(rows);
+    },
+
+    async resolveTranslationCandidate(postId, path) {
+      const source = await this.getById(postId);
+      if (!source) return { status: "not_found" };
+      const root =
+        source.replyToId === null
+          ? source
+          : await this.getById(source.threadId);
+      if (!root?.language) return { status: "not_found" };
+
+      const target = await resolvedPaths.resolveTarget(path);
+      if (!target) return { status: "not_found" };
+      if (target.targetType !== "post" || !target.postId) {
+        return { status: "not_a_post" };
+      }
+
+      const found = await this.getById(target.postId);
+      if (!found) return { status: "not_found" };
+      // Translations link whole Threads, so an address that lands on a reply
+      // is taken as naming the Thread it belongs to.
+      const candidate =
+        found.replyToId === null ? found : await this.getById(found.threadId);
+      if (!candidate) return { status: "not_found" };
+
+      if (candidate.id === root.id) return { status: "same_thread" };
+      if (candidate.status !== "published") return { status: "unpublished" };
+      if (!candidate.language) return { status: "no_language" };
+      if (candidate.language === root.language) {
+        return { status: "same_language" };
+      }
+
+      const siblings = root.translationGroupId
+        ? await this.listTranslations(root.id)
+        : [];
+      if (siblings.some((post) => post.language === candidate.language)) {
+        return { status: "language_taken", language: candidate.language };
+      }
+
+      if (candidate.translationGroupId) {
+        // `linkTranslation` refuses to merge two groups, and refuses to join
+        // one that already speaks for this Thread's language.
+        if (root.translationGroupId) return { status: "group_conflict" };
+
+        const theirGroup = await this.listTranslations(candidate.id);
+        if (theirGroup.some((post) => post.language === root.language)) {
+          return { status: "group_language_taken", language: root.language };
+        }
+      }
+
+      return { status: "ok", post: candidate };
     },
 
     async getTranslationsMap(postIds) {

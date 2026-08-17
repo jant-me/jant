@@ -35,6 +35,21 @@ export interface CreatePathInput {
 export interface PathService {
   getByPath(path: string): Promise<PathRecord | null>;
   resolve(path: string): Promise<ResolvedPath | null>;
+  /**
+   * Resolve a path the way a browser would: following stored redirects until
+   * something that is not a redirect answers.
+   *
+   * Reach for this when an address has to name an *entity* — an author pasting
+   * a URL means the post at the end of it, not the hop they happened to copy.
+   * The plain {@link PathService.resolve} stays the right call for serving a
+   * request, which must emit the redirect rather than swallow it.
+   *
+   * @param path - Stored or public path, with or without a leading slash
+   * @returns What the address finally points at, or null when nothing does
+   * @example
+   * await paths.resolveTarget("/old-name"); // { targetType: "post", postId: "pst_…" }
+   */
+  resolveTarget(path: string): Promise<ResolvedPath | null>;
   isPathAvailable(path: string, excludeId?: string): Promise<boolean>;
   getPostSlug(postId: string): Promise<string | null>;
   getCollectionSlug(collectionId: string): Promise<string | null>;
@@ -174,6 +189,24 @@ export function createPathService(
               : "collection";
 
       return { ...record, targetType };
+    },
+
+    async resolveTarget(path) {
+      let current = await this.resolve(path);
+      const seen = new Set<string>();
+
+      while (
+        current?.targetType === "redirect" &&
+        current.redirectToPath &&
+        !seen.has(current.path)
+      ) {
+        seen.add(current.path);
+        current = await this.resolve(current.redirectToPath);
+      }
+
+      // A redirect chain that loops, or ends on another redirect with nothing
+      // to point at, names no entity.
+      return current?.targetType === "redirect" ? null : current;
     },
 
     async isPathAvailable(path, excludeId) {

@@ -69,6 +69,34 @@ describe("JantCommandPalette slash path mode", () => {
 
     expect(resultTitles(el)).toEqual(["Go to /notes", 'Search for "notes"']);
   });
+
+  it("treats a pasted URL of this site as the path it points at", async () => {
+    // Copied out of the address bar in another tab: the only sensible answer
+    // is to go there, so no search alternative is offered.
+    const el = await renderPalette(
+      `${globalThis.location.origin}/notes?page=2`,
+    );
+
+    expect(resultTitles(el)).toEqual(["Go to /notes?page=2"]);
+  });
+
+  it("drops the deployment prefix from a pasted URL", async () => {
+    document.documentElement.dataset.sitePathPrefix = "/blog";
+    const el = await renderPalette(`${globalThis.location.origin}/blog/notes`);
+
+    // navPath adds the prefix back when the jump happens; carrying it here
+    // would double it.
+    expect(resultTitles(el)).toEqual(["Go to /notes"]);
+  });
+
+  it("leaves somebody else's URL to full-text search", async () => {
+    // Looking for the post where you linked something is the likelier intent.
+    const el = await renderPalette("https://example.com/notes");
+
+    expect(resultTitles(el)).toEqual([
+      'Search all content for "https://example.com/notes"',
+    ]);
+  });
 });
 
 describe("JantCommandPalette persistent search action", () => {

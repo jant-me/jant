@@ -91,7 +91,7 @@ export function createServices(
   const site = createSiteService(db, databaseSchema);
   const settings = createSettingsService(db, siteId, databaseSchema, dialect);
   const paths = createPathService(db, siteId, databaseSchema);
-  const navItems = createNavItemService(db, siteId, databaseSchema);
+  const navItems = createNavItemService(db, siteId, databaseSchema, paths);
   const posts = createPostService(
     db,
     {

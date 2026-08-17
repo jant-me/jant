@@ -141,6 +141,162 @@ export function toSameSitePath(url: string, siteOrigin: string): string | null {
   return `${parsed.pathname}${parsed.search}${parsed.hash}` || "/";
 }
 
+/**
+ * Any `scheme:` at the start. `mailto:` and `tel:` address something real but
+ * never a page here, and an unrecognized scheme must not be read as a path.
+ */
+const ANY_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
+
+export interface InternalPathOptions {
+  /**
+   * Origins this site answers on. Pass the configured one *and* the origin of
+   * the current request: a hosted site is often reached on a custom domain the
+   * canonical URL knows nothing about.
+   */
+  siteOrigins?: readonly string[];
+  /** Public site path prefix, such as `/blog`. */
+  sitePathPrefix?: string;
+  /**
+   * Language URL prefixes the site serves, without slashes (`["en", "ja"]`).
+   * A leading one is removed, because `/en/about` and `/about` are the same
+   * page seen from two views.
+   */
+  languagePrefixes?: readonly string[];
+  /** Keep `?query` and `#hash`. Off by default: they name a spot, not a page. */
+  keepQuery?: boolean;
+}
+
+/**
+ * Whether a string is meant as an address rather than as search words.
+ *
+ * Deliberately narrow — a leading slash or a full `http(s)` URL. Anything
+ * looser would swallow real queries: a search for "about" is not a search for
+ * `/about`.
+ *
+ * @param input - What the author typed or pasted
+ * @returns True when the input should be resolved instead of searched
+ * @example
+ * looksLikeAddress("/about"); // true
+ * looksLikeAddress("https://example.com/about"); // true
+ * looksLikeAddress("about"); // false
+ */
+export function looksLikeAddress(input: string): boolean {
+  const trimmed = input.trim();
+  return trimmed.startsWith("/") || isFullUrl(trimmed);
+}
+
+/**
+ * Convert an address the author pasted into an internal app path.
+ *
+ * Accepts what a browser address bar would produce — a full URL on one of the
+ * site's own origins, or a path — and returns the path the router resolves
+ * against: no site path prefix, no language prefix, rooted at `/`. Returns
+ * `null` for anything that is not a page on this site, so callers can tell an
+ * external link apart from a bad one.
+ *
+ * Case is left alone; storage-level normalization belongs to the path
+ * registry, which lowercases on its own terms.
+ *
+ * A full URL has to sit inside the deployment to count. A typed path does not:
+ * `/about` on a site served from `/blog` is the About page, because that is
+ * what someone typing it means.
+ *
+ * @param input - A full URL, or a path
+ * @param options - The site's origins, prefixes, and what to keep
+ * @returns Internal path rooted at `/`, or `null` when the address is not ours
+ * @example
+ * toInternalPath("https://example.com/blog/en/about", {
+ *   siteOrigins: ["https://example.com"],
+ *   sitePathPrefix: "/blog",
+ *   languagePrefixes: ["en"],
+ * }); // "/about"
+ * toInternalPath("https://other.com/about", { siteOrigins: ["https://example.com"] }); // null
+ */
+export function toInternalPath(
+  input: string,
+  options: InternalPathOptions = {},
+): string | null {
+  const value = input.trim();
+  if (!value) return null;
+
+  const {
+    siteOrigins = [],
+    sitePathPrefix = "",
+    languagePrefixes = [],
+    keepQuery = false,
+  } = options;
+
+  const isFull = isFullUrl(value);
+  let candidate: string | null = null;
+  if (isFull) {
+    for (const origin of siteOrigins) {
+      const path = toSameSitePath(value, origin);
+      if (path !== null) {
+        candidate = path;
+        break;
+      }
+    }
+    // A full URL on a host we do not serve is somebody else's page.
+    if (candidate === null) return null;
+  } else if (
+    value.startsWith("//") ||
+    ANY_SCHEME_RE.test(value) ||
+    value.startsWith("#")
+  ) {
+    return null;
+  } else {
+    candidate = value;
+  }
+
+  let url: URL;
+  try {
+    // A fixed base resolves `..`, percent-encoding, and stray backslashes the
+    // same way the browser that produced the address did.
+    url = new URL(candidate, "https://jant.invalid");
+  } catch {
+    return null;
+  }
+
+  const withoutSite = stripSitePathPrefix(
+    url.pathname,
+    normalizeSitePathPrefix(sitePathPrefix),
+  );
+  if (withoutSite === null && isFull) {
+    // A URL on our host but outside the deployment: another app, not a page.
+    return null;
+  }
+
+  // A typed path that does not carry the prefix is already an internal one —
+  // an author writing `/about` on a site served from `/blog` means the About
+  // page, not a different site.
+  const internal = stripLanguagePrefix(
+    withoutSite ?? url.pathname,
+    languagePrefixes,
+  );
+  const trimmed =
+    internal.length > 1 ? internal.replace(/\/+$/, "") || "/" : internal;
+
+  return keepQuery ? `${trimmed}${url.search}${url.hash}` : trimmed;
+}
+
+/** Drop a leading `/en`-style segment when the site serves that language. */
+function stripLanguagePrefix(
+  pathname: string,
+  languagePrefixes: readonly string[],
+): string {
+  if (languagePrefixes.length === 0) return pathname;
+
+  const rest = pathname.startsWith("/") ? pathname.slice(1) : pathname;
+  const slash = rest.indexOf("/");
+  const first = (slash === -1 ? rest : rest.slice(0, slash)).toLowerCase();
+  if (!first) return pathname;
+  if (!languagePrefixes.some((prefix) => prefix.toLowerCase() === first)) {
+    return pathname;
+  }
+
+  return slash === -1 ? "/" : rest.slice(slash);
+}
+
 const HAN_GLOBAL_RE = /\p{Script=Han}/gu;
 const CONTENT_CHAR_RE = /[\p{L}\p{N}]/u;
 const ASCII_ALNUM_RE = /[a-zA-Z0-9]/;

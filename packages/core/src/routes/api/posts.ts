@@ -19,6 +19,8 @@ import { requireAuthApi } from "../../middleware/auth.js";
 import { toApiAttachment, toApiPost } from "../../lib/api-posts.js";
 import { getPostDisplayTitle } from "../../lib/post-meta.js";
 import { assertFound, NotFoundError, parseIdParam } from "../../lib/errors.js";
+import { AddressQuerySchema, requestInternalPath } from "../../lib/address.js";
+import { toPublicPath } from "../../lib/url.js";
 import { ID_PREFIX } from "../../lib/ids.js";
 import { triggerGitHubSyncInline } from "../../lib/github-sync-trigger.js";
 
@@ -401,6 +403,53 @@ postsApiRoutes.get(
     });
   },
 );
+
+/**
+ * The Thread a pasted address names, and whether it can be linked to this one.
+ *
+ * Separate from the candidate search so a URL never quietly becomes search
+ * words: this endpoint only ever answers about one address, and answers with a
+ * reason when the Thread it names is not eligible.
+ */
+postsApiRoutes.get("/:id/translations/resolve", requireAuthApi(), async (c) => {
+  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+  const { url } = parseValidated(AddressQuerySchema, c.req.query());
+
+  const path = requestInternalPath(c, url);
+  if (path === null) {
+    return c.json({ resolution: { kind: "external", address: url.trim() } });
+  }
+
+  const resolution = await c.var.services.posts.resolveTranslationCandidate(
+    id,
+    path,
+  );
+  const address = toPublicPath(path, c.var.appConfig.sitePathPrefix);
+
+  if (resolution.status === "ok") {
+    const post = resolution.post;
+    return c.json({
+      resolution: {
+        kind: "ok",
+        address,
+        candidate: {
+          id: post.id,
+          slug: post.slug,
+          label: getPostDisplayTitle(post) || post.slug,
+          language: post.language,
+        },
+      },
+    });
+  }
+
+  return c.json({
+    resolution: {
+      kind: resolution.status,
+      address,
+      ...("language" in resolution ? { language: resolution.language } : {}),
+    },
+  });
+});
 
 /** Link two already-published Threads as translations of each other. */
 postsApiRoutes.post("/:id/translations", requireAuthApi(), async (c) => {

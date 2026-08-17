@@ -28,6 +28,31 @@ export interface NavManagerPage {
   updatedAt: number;
 }
 
+/**
+ * What the server made of an address the author pasted into the page picker:
+ * the item it could become, or why it cannot become one.
+ *
+ * `address` is what to show back and what to prefill the link form with — the
+ * public path for anything on this site, the pasted URL for anything else.
+ */
+export type NavAddressResolution =
+  | { kind: "page"; address: string; page: NavManagerPage }
+  | {
+      kind: "collection";
+      address: string;
+      collection: { id: string; title: string; slug: string };
+    }
+  | {
+      kind:
+        | "external"
+        | "link_only"
+        | "untitled"
+        | "unpublished"
+        | "private"
+        | "not_found";
+      address: string;
+    };
+
 export interface SystemNavConfig {
   key: SystemNavKey;
   label: string;
@@ -88,7 +113,17 @@ export interface NavManagerLabels {
   addPageDescription: string;
   addPage: string;
   searchPages: string;
+  searchPagesHint: string;
   recentPages: string;
+  addressMatch: string;
+  addressAlreadyAdded: string;
+  addressNotFound: string;
+  addressUnpublished: string;
+  addressPrivate: string;
+  addressUntitled: string;
+  addressExternal: string;
+  addressLinkOnly: string;
+  addressAddAsLink: string;
   searchingPages: string;
   noMatchingPages: string;
   noPages: string;

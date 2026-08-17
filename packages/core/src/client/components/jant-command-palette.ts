@@ -13,7 +13,8 @@ import { classMap } from "lit/directives/class-map.js";
 import { unsafeSVG } from "lit/directives/unsafe-svg.js";
 import { NAVIGATION_SETTINGS_PATH } from "../../lib/settings-paths.js";
 import { openNewCompose } from "../compose-launch.js";
-import { navPath } from "../runtime-paths.js";
+import { isFullUrl, toInternalPath } from "../../lib/url.js";
+import { navPath, sitePathPrefix } from "../runtime-paths.js";
 import { getBestFieldSearchRank, normalizeSearch } from "../search-rank.js";
 
 // ---------------------------------------------------------------------------
@@ -71,6 +72,29 @@ const ICONS = {
 export function getPathCommandTarget(query: string): string {
   const stripped = query.trim().replace(/^[/／]+/, "");
   return stripped ? `/${stripped}` : "/";
+}
+
+/**
+ * The local path a pasted full URL points at, when it points at this site.
+ *
+ * Copying an address out of the browser bar and dropping it in the palette
+ * should go there, the same as typing `/`. Someone else's URL is left to
+ * navigate mode, where it falls through to a full-text search — looking for
+ * the post where you linked something is the likelier intent.
+ *
+ * @param query - Raw palette query
+ * @returns Internal path with its query string, or null when not our URL
+ */
+export function getPastedAddressTarget(query: string): string | null {
+  const trimmed = query.trim();
+  if (!isFullUrl(trimmed)) return null;
+
+  return toInternalPath(trimmed, {
+    siteOrigins: [window.location.origin],
+    sitePathPrefix: sitePathPrefix(),
+    // A pasted `/en/about` was copied from that view and belongs there.
+    keepQuery: true,
+  });
 }
 
 export function getPathCommandSearchQuery(query: string): string {
@@ -246,6 +270,7 @@ export class JantCommandPalette extends LitElement {
     if (first === ">" || first === "＞") return "command";
     if (first === "?" || first === "？") return "search";
     if (first === "/" || first === "／") return "path";
+    if (getPastedAddressTarget(this._query)) return "path";
     return "navigate";
   }
 
@@ -326,8 +351,11 @@ export class JantCommandPalette extends LitElement {
     }
 
     if (mode === "path") {
-      const target = getPathCommandTarget(this._query);
-      const searchQuery = getPathCommandSearchQuery(this._query);
+      const pasted = getPastedAddressTarget(this._query);
+      const target = pasted ?? getPathCommandTarget(this._query);
+      // A pasted URL is already an answer; only a typed path is also plausible
+      // as search words.
+      const searchQuery = pasted ? "" : getPathCommandSearchQuery(this._query);
       const items: DisplayItem[] = [
         {
           label: `Go to ${target}`,
@@ -641,8 +669,8 @@ export class JantCommandPalette extends LitElement {
                       resultItems.length > 0
                         ? html`<div class="command-palette-results">
                             ${resultItems.map(({ item, index }) =>
-                            this.#renderItem(item, index),
-                          )}
+                              this.#renderItem(item, index),
+                            )}
                           </div>`
                         : nothing
                     }

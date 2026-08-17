@@ -406,6 +406,225 @@ describe("GET /api/posts/:id/translations/candidates", () => {
   });
 });
 
+describe("GET /api/posts/:id/translations/resolve", () => {
+  let app: ReturnType<typeof createApiTestApp>["app"];
+  let services: ReturnType<typeof createApiTestApp>["services"];
+
+  beforeEach(async () => {
+    const testApp = createApiTestApp();
+    app = testApp.app;
+    services = testApp.services;
+    await services.settings.set("SITE_LANGUAGE", "zh-Hans");
+    await services.settings.set("ADDITIONAL_LANGUAGES", "en,ja");
+    await services.settings.set("MULTILINGUAL_ENABLED", "true");
+  });
+
+  async function resolveFor(postId: string, url: string) {
+    const res = await app.request(
+      `/api/posts/${postId}/translations/resolve?url=${encodeURIComponent(url)}`,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      resolution: { kind: string; candidate?: { id: string } };
+    };
+    return body.resolution;
+  }
+
+  async function publishedZh() {
+    return services.posts.create({
+      format: "note",
+      title: "咖啡笔记",
+      body: noteBody("中文"),
+      language: "zh-Hans",
+      status: "published",
+    });
+  }
+
+  it("finds the post at a pasted path", async () => {
+    const zh = await publishedZh();
+    const en = await services.posts.create({
+      format: "note",
+      title: "Coffee notes",
+      body: noteBody("English"),
+      language: "en",
+      status: "published",
+    });
+
+    expect(await resolveFor(zh.id, `/${en.slug}`)).toEqual(
+      expect.objectContaining({
+        kind: "ok",
+        candidate: expect.objectContaining({ id: en.id, language: "en" }),
+      }),
+    );
+  });
+
+  it("finds it through a full URL and a language prefix alike", async () => {
+    const zh = await publishedZh();
+    const en = await services.posts.create({
+      format: "note",
+      title: "Coffee notes",
+      body: noteBody("English"),
+      language: "en",
+      status: "published",
+    });
+
+    // What the browser's address bar hands over, and what the English view of
+    // the same page looks like — one post, three ways of naming it.
+    for (const address of [
+      `http://localhost:8787/${en.slug}`,
+      `/en/${en.slug}`,
+      `/${en.slug}?utm_source=newsletter`,
+    ]) {
+      expect(await resolveFor(zh.id, address)).toEqual(
+        expect.objectContaining({ kind: "ok" }),
+      );
+    }
+  });
+
+  it("follows a stored redirect to where the post lives now", async () => {
+    const zh = await publishedZh();
+    const en = await services.posts.create({
+      format: "note",
+      title: "Coffee notes",
+      body: noteBody("English"),
+      slug: "coffee-new",
+      language: "en",
+      status: "published",
+    });
+    await services.paths.create({
+      path: "coffee-old",
+      kind: "redirect",
+      redirectToPath: "coffee-new",
+      redirectType: 301,
+    });
+
+    // The author copied the address that still works in their browser; where
+    // it lands is the post they mean.
+    expect(await resolveFor(zh.id, "/coffee-old")).toEqual(
+      expect.objectContaining({
+        kind: "ok",
+        candidate: expect.objectContaining({ id: en.id }),
+      }),
+    );
+  });
+
+  it("names the reason instead of coming back empty", async () => {
+    const zh = await publishedZh();
+    const draft = await services.posts.create({
+      format: "note",
+      title: "Coffee draft",
+      body: noteBody("English"),
+      language: "en",
+      status: "draft",
+    });
+    const sameLanguage = await services.posts.create({
+      format: "note",
+      title: "另一篇",
+      body: noteBody("中文"),
+      language: "zh-Hans",
+      status: "published",
+    });
+
+    expect((await resolveFor(zh.id, `/${draft.slug}`)).kind).toBe(
+      "unpublished",
+    );
+    expect((await resolveFor(zh.id, `/${sameLanguage.slug}`)).kind).toBe(
+      "same_language",
+    );
+    expect((await resolveFor(zh.id, `/${zh.slug}`)).kind).toBe("same_thread");
+    expect((await resolveFor(zh.id, "/nothing-here")).kind).toBe("not_found");
+  });
+
+  it("says which language is in the way when one already is", async () => {
+    const zh = await publishedZh();
+    const en = await services.posts.create({
+      format: "note",
+      title: "Coffee notes",
+      body: noteBody("English"),
+      language: "en",
+      status: "published",
+    });
+    await services.posts.linkTranslation(zh.id, en.id);
+
+    const other = await services.posts.create({
+      format: "note",
+      title: "Coffee, again",
+      body: noteBody("English"),
+      language: "en",
+      status: "published",
+    });
+
+    expect(await resolveFor(zh.id, `/${other.slug}`)).toEqual(
+      expect.objectContaining({ kind: "language_taken", language: "en" }),
+    );
+  });
+
+  it("refuses a merge of two translation groups", async () => {
+    const zh = await publishedZh();
+    const ja = await services.posts.create({
+      format: "note",
+      title: "コーヒー",
+      body: noteBody("日本語"),
+      language: "ja",
+      status: "published",
+    });
+    await services.posts.linkTranslation(zh.id, ja.id);
+
+    const enA = await services.posts.create({
+      format: "note",
+      title: "Coffee A",
+      body: noteBody("English"),
+      language: "en",
+      status: "published",
+    });
+    const jaB = await services.posts.create({
+      format: "note",
+      title: "コーヒー B",
+      body: noteBody("日本語"),
+      language: "ja",
+      status: "published",
+    });
+    await services.posts.linkTranslation(enA.id, jaB.id);
+
+    expect((await resolveFor(zh.id, `/${enA.slug}`)).kind).toBe(
+      "group_conflict",
+    );
+  });
+
+  it("takes a reply's address as naming its thread", async () => {
+    const zh = await publishedZh();
+    const root = await services.posts.create({
+      format: "note",
+      title: "Coffee root",
+      body: noteBody("English"),
+      language: "en",
+      status: "published",
+    });
+    const reply = await services.posts.create({
+      format: "note",
+      body: noteBody("A reply"),
+      replyToId: root.id,
+      status: "published",
+    });
+
+    expect(await resolveFor(zh.id, `/${reply.slug}`)).toEqual(
+      expect.objectContaining({
+        kind: "ok",
+        candidate: expect.objectContaining({ id: root.id }),
+      }),
+    );
+  });
+
+  it("does not look up somebody else's URL", async () => {
+    const zh = await publishedZh();
+
+    expect(await resolveFor(zh.id, "https://example.com/coffee")).toEqual({
+      kind: "external",
+      address: "https://example.com/coffee",
+    });
+  });
+});
+
 describe("display labels", () => {
   let app: ReturnType<typeof createApiTestApp>["app"];
   let services: ReturnType<typeof createApiTestApp>["services"];

@@ -16,6 +16,8 @@ import {
   parseValidated,
 } from "../../lib/schemas.js";
 import { assertFound, parseIdParam, NotFoundError } from "../../lib/errors.js";
+import { AddressQuerySchema, requestInternalPath } from "../../lib/address.js";
+import { toPublicPath } from "../../lib/url.js";
 import { ID_PREFIX } from "../../lib/ids.js";
 import { renderSiteHeaderHtml } from "../../lib/site-header-fragment.js";
 
@@ -66,6 +68,41 @@ navItemsApiRoutes.get("/pages", requireAuthApi(), async (c) => {
     limit: query.limit,
   });
   return c.json({ pages });
+});
+
+/**
+ * What a pasted address could become in navigation.
+ *
+ * The author is holding a URL, not a title, so searching titles cannot answer
+ * them. The rules stay in the service; this only says which address was asked
+ * about, so the picker can name it back.
+ */
+navItemsApiRoutes.get("/resolve", requireAuthApi(), async (c) => {
+  const { url } = parseValidated(AddressQuerySchema, c.req.query());
+  const path = requestInternalPath(c, url);
+  if (path === null) {
+    return c.json({ resolution: { kind: "external", address: url.trim() } });
+  }
+
+  const resolution = await c.var.services.navItems.resolveNavTarget(path);
+  const address = toPublicPath(path, c.var.appConfig.sitePathPrefix);
+
+  if (resolution.status === "page") {
+    return c.json({
+      resolution: { kind: "page", address, page: resolution.page },
+    });
+  }
+  if (resolution.status === "collection") {
+    return c.json({
+      resolution: {
+        kind: "collection",
+        address,
+        collection: resolution.collection,
+      },
+    });
+  }
+
+  return c.json({ resolution: { kind: resolution.status, address } });
 });
 
 // Move nav item (requires auth) — must be before /:id

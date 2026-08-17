@@ -95,7 +95,19 @@ const labels: NavManagerLabels = {
     "Choose a titled note that isn't already in navigation, or create a new page.",
   addPage: "Add Page",
   searchPages: "Search pages",
+  searchPagesHint: "Search pages, or paste an address",
   recentPages: "Recently updated",
+  addressMatch: "At that address",
+  addressAlreadyAdded:
+    "Already in navigation. Drag it in the list above to move it.",
+  addressNotFound: "Nothing at {address}. Check it, or search by title.",
+  addressUnpublished: "That page is a draft. Publish it, then add it.",
+  addressPrivate: "That page is private, so nobody could open it from a menu.",
+  addressUntitled: "That page has no title yet, so a menu has nothing to show.",
+  addressExternal:
+    "That address is on another site. Navigation holds it as a link.",
+  addressLinkOnly: "Navigation holds that address as a link.",
+  addressAddAsLink: "Add as link",
   searchingPages: "Searching pages…",
   noMatchingPages: "No matching pages available to add.",
   noPages: "No pages available.",
@@ -1019,5 +1031,179 @@ describe("JantNavManager", () => {
     );
     expect(editPageLink.target).toBe("_blank");
     expect(editPageLink.rel).toContain("noopener");
+  });
+
+  describe("pasting an address into the page picker", () => {
+    /** Type into the picker and wait out the debounce. */
+    async function search(el: JantNavManager, value: string) {
+      const input = requireElement(
+        el.querySelector<HTMLInputElement>("#nav-page-search"),
+        "page search input",
+      );
+      input.value = value;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await flushAsyncWork();
+      await el.updateComplete;
+    }
+
+    async function openPicker(
+      resolution: unknown,
+    ): Promise<{ el: JantNavManager; fetchMock: ReturnType<typeof vi.fn> }> {
+      const el = await createElement();
+      const fetchMock = vi
+        .fn()
+        .mockImplementation((input: string, init?: globalThis.RequestInit) => {
+          if (input.startsWith("/api/nav-items/pages?")) {
+            return Promise.resolve({
+              ok: true,
+              status: 200,
+              json: async () => ({ pages: [] }),
+            });
+          }
+          if (input.startsWith("/api/nav-items/resolve?")) {
+            return Promise.resolve({
+              ok: true,
+              status: 200,
+              json: async () => ({ resolution }),
+            });
+          }
+          if (input === "/api/nav-items" && init?.method === "POST") {
+            return Promise.resolve({
+              ok: true,
+              status: 201,
+              json: async () => ({
+                id: "nav-added",
+                type: "page",
+                postId: "pst_about",
+                label: "About me",
+                url: "/about-me",
+                placement: "header",
+              }),
+            });
+          }
+          throw new Error(`Unexpected fetch: ${input}`);
+        });
+      vi.stubGlobal("fetch", fetchMock);
+
+      findButton(el, "Add Page").click();
+      await flushAsyncWork();
+      await el.updateComplete;
+      return { el, fetchMock };
+    }
+
+    it("looks the address up instead of searching titles", async () => {
+      const { el, fetchMock } = await openPicker({
+        kind: "page",
+        address: "/about-me",
+        page: {
+          id: "pst_about",
+          title: "About me",
+          slug: "about-me",
+          updatedAt: 123,
+        },
+      });
+
+      await search(el, "https://example.com/about-me");
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/nav-items/resolve?url=${encodeURIComponent("https://example.com/about-me")}`,
+        expect.objectContaining({
+          headers: expect.objectContaining({ Accept: "application/json" }),
+        }),
+      );
+      expect(el.textContent).toContain("At that address");
+
+      findButton(el, "About me").click();
+      await flushAsyncWork();
+      await el.updateComplete;
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/nav-items",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            type: "page",
+            postId: "pst_about",
+            placement: "header",
+          }),
+        }),
+      );
+    });
+
+    it("says why a page cannot be added, rather than showing nothing", async () => {
+      const { el } = await openPicker({
+        kind: "unpublished",
+        address: "/draft-page",
+      });
+
+      await search(el, "/draft-page");
+
+      expect(el.textContent).toContain("That page is a draft");
+      expect(el.textContent).not.toContain("No matching pages");
+    });
+
+    it("names the address it could not find", async () => {
+      const { el } = await openPicker({
+        kind: "not_found",
+        address: "/typo",
+      });
+
+      await search(el, "/typo");
+
+      expect(el.textContent).toContain("Nothing at /typo.");
+    });
+
+    it("hands an off-site address to the link form, filled in", async () => {
+      const { el } = await openPicker({
+        kind: "external",
+        address: "https://example.org/hello",
+      });
+
+      await search(el, "https://example.org/hello");
+      expect(el.textContent).toContain("That address is on another site");
+
+      findButton(el, "Add as link").click();
+      await el.updateComplete;
+
+      // The picker is out of the way and the URL is already in the form, so
+      // the only thing left to type is the label.
+      expect(el.querySelector("#nav-page-dialog")).toBeNull();
+      expect(
+        requireElement(
+          el.querySelector<HTMLInputElement>("#nav-link-url"),
+          "link url input",
+        ).value,
+      ).toBe("https://example.org/hello");
+    });
+
+    it("does not offer a page that is already in navigation", async () => {
+      const { el } = await openPicker({
+        kind: "page",
+        address: "/about",
+        page: {
+          id: "pst_nav_1",
+          title: "About",
+          slug: "about",
+          updatedAt: 123,
+        },
+      });
+      el.items = [
+        {
+          id: "nav-1",
+          type: "page",
+          postId: "pst_nav_1",
+          label: "About",
+          url: "/about",
+          placement: "header",
+        },
+      ];
+      await el.updateComplete;
+
+      await search(el, "/about");
+
+      expect(el.textContent).toContain("Already in navigation");
+      expect(el.querySelector(".nav-page-result")).toBeNull();
+    });
   });
 });

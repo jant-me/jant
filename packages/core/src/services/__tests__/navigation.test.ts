@@ -657,6 +657,65 @@ describe("NavItemService", () => {
     });
   });
 
+  describe("resolveNavTarget", () => {
+    it("resolves a page address to the item it can become", async () => {
+      insertTestPost(sqlite, {
+        id: TEST_POST_ID,
+        slug: "about",
+        title: "About this site",
+        visibility: "latest_hidden",
+      });
+
+      expect(await navItemService.resolveNavTarget("/about")).toEqual({
+        status: "page",
+        page: {
+          id: TEST_POST_ID,
+          title: "About this site",
+          slug: "about",
+          updatedAt: expect.any(Number),
+        },
+      });
+    });
+
+    it("reports an address navigation can only hold as a link", async () => {
+      // A custom archive URL is a real page with no post behind it, so no page
+      // item can track it.
+      insertTestPath(sqlite, {
+        id: "pth_archive000000000000000000",
+        path: "reading-2025",
+        kind: "archive",
+        archiveQuery: "year=2025",
+      });
+
+      expect(await navItemService.resolveNavTarget("/reading-2025")).toEqual({
+        status: "link_only",
+      });
+    });
+
+    it("resolves an alias to the post's canonical slug", async () => {
+      insertTestPost(sqlite, {
+        id: TEST_POST_ID,
+        slug: "about",
+        title: "About this site",
+      });
+      insertTestPath(sqlite, {
+        id: "pth_alias0000000000000000000000",
+        path: "about-us",
+        kind: "alias",
+        postId: TEST_POST_ID,
+      });
+
+      // The menu should show where the page lives, not the old address the
+      // author happened to have in their history.
+      expect(await navItemService.resolveNavTarget("/about-us")).toEqual(
+        expect.objectContaining({
+          status: "page",
+          page: expect.objectContaining({ slug: "about" }),
+        }),
+      );
+    });
+  });
+
   describe("listSuggestedLinks", () => {
     it("suggests a published /about page as a page nav item", async () => {
       insertTestPost(sqlite, {

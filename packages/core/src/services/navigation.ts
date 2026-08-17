@@ -16,12 +16,7 @@ import { createEntityId } from "../lib/ids.js";
 import { getCollectionPagePath } from "../lib/collection-paths.js";
 import { NotFoundError, ValidationError } from "../lib/errors.js";
 import { now } from "../lib/time.js";
-import {
-  normalizePath,
-  normalizeSitePathPrefix,
-  stripSitePathPrefix,
-  toSameSitePath,
-} from "../lib/url.js";
+import { normalizePath, toInternalPath } from "../lib/url.js";
 import {
   COLLECTION_FRESHNESS_WINDOW_SECONDS,
   DEFAULT_NAVIGATION_PROFILE,
@@ -51,6 +46,7 @@ export interface ListSuggestedLinksOptions {
 
 // Re-export shared constraint detection — see db/dialect.ts
 import { isUniqueConstraintError } from "../db/dialect.js";
+import { createPathService, type PathService } from "./path.js";
 
 export interface ListNavItemsOptions {
   /**
@@ -64,12 +60,53 @@ export interface ListNavItemsOptions {
   language?: string | null;
 }
 
+/**
+ * What an address the author pasted can become in navigation.
+ *
+ * An address that names something on this site should become an item that
+ * *follows* it — a page item tracks its post's title and slug, where a link
+ * item freezes both — so resolution is what turns a pasted URL into the right
+ * kind of item instead of a string that rots.
+ */
+export type NavTargetResolution =
+  /** A post navigation can point at, with the name it will show. */
+  | { status: "page"; page: NavigationPageCandidate }
+  | { status: "collection"; collection: NavTargetCollection }
+  /** A page on this site that navigation can only hold as a link. */
+  | { status: "link_only" }
+  /** Nothing to show in a menu until it has a title. */
+  | { status: "untitled" }
+  | { status: "unpublished" }
+  /** Published but private: a menu entry nobody could open. */
+  | { status: "private" }
+  | { status: "not_found" };
+
+export interface NavTargetCollection {
+  id: string;
+  title: string;
+  slug: string;
+}
+
 export interface NavItemService {
   list(options?: ListNavItemsOptions): Promise<NavItem[]>;
   listPageCandidates(options?: {
     query?: string;
     limit?: number;
   }): Promise<NavigationPageCandidate[]>;
+  /**
+   * Resolve an address the author pasted into the navigation item it could
+   * become.
+   *
+   * The picker searches titles, which is no help when the author is holding
+   * the URL rather than the name. Every "no" is specific, because the page is
+   * one they can see in another tab: a draft, a private post, an untitled one.
+   *
+   * @param path - Internal path, as produced by `toInternalPath()`
+   * @returns The target to add, or why it cannot be added
+   * @example
+   * await navItems.resolveNavTarget("/about"); // { status: "page", page: … }
+   */
+  resolveNavTarget(path: string): Promise<NavTargetResolution>;
   getById(id: string): Promise<NavItem | null>;
   create(data: CreateNavItem): Promise<NavItem>;
   /**
@@ -95,9 +132,11 @@ export function createNavItemService(
   db: Database,
   siteId: string,
   databaseSchema: DatabaseSchema = sqliteSchemaBundle,
+  paths?: PathService,
 ): NavItemService {
   const { navItems, threadCollections, posts, pathRegistry, collections } =
     databaseSchema;
+  const resolvedPaths = paths ?? createPathService(db, siteId, databaseSchema);
 
   function toNavItem(
     row: typeof navItems.$inferSelect,
@@ -375,39 +414,11 @@ export function createNavItemService(
     url: string,
     options: ListSuggestedLinksOptions = {},
   ): string | null {
-    const value = url.trim();
-    const sitePathPrefix = normalizeSitePathPrefix(
-      options.sitePathPrefix ?? "",
-    );
-    const sameSitePath = toSameSitePath(value, options.siteOrigin ?? "");
-    if (sameSitePath !== null) {
-      try {
-        const pathname = new URL(sameSitePath, "https://jant.invalid").pathname;
-        const internalPath = stripSitePathPrefix(pathname, sitePathPrefix);
-        return internalPath ? withLeadingSlash(internalPath) : null;
-      } catch {
-        return null;
-      }
-    }
-
-    if (
-      value.startsWith("http://") ||
-      value.startsWith("https://") ||
-      value.startsWith("//") ||
-      value.startsWith("mailto:") ||
-      value.startsWith("tel:") ||
-      value.startsWith("#")
-    ) {
-      return null;
-    }
-
-    try {
-      const pathname = new URL(value, "https://jant.invalid").pathname;
-      const internalPath = stripSitePathPrefix(pathname, sitePathPrefix);
-      return internalPath ? withLeadingSlash(internalPath) : null;
-    } catch {
-      return null;
-    }
+    const internalPath = toInternalPath(url, {
+      siteOrigins: options.siteOrigin ? [options.siteOrigin] : [],
+      sitePathPrefix: options.sitePathPrefix ?? "",
+    });
+    return internalPath ? withLeadingSlash(internalPath) : null;
   }
 
   function normalizeSuggestedLabel(
@@ -549,6 +560,67 @@ export function createNavItemService(
             ]
           : [],
       );
+    },
+
+    async resolveNavTarget(path) {
+      const target = await resolvedPaths.resolveTarget(path);
+      if (!target) return { status: "not_found" };
+
+      if (target.targetType === "collection" && target.collectionId) {
+        const rows = await db
+          .select({ id: collections.id, title: collections.title })
+          .from(collections)
+          .where(
+            and(
+              eq(collections.siteId, siteId),
+              eq(collections.id, target.collectionId),
+            ),
+          )
+          .limit(1);
+        const row = rows[0];
+        if (!row) return { status: "not_found" };
+
+        const slug = await resolvedPaths.getCollectionSlug(row.id);
+        return {
+          status: "collection",
+          collection: { id: row.id, title: row.title, slug: slug ?? "" },
+        };
+      }
+
+      if (target.targetType !== "post" || !target.postId) {
+        // A real address — an archive URL, say — that no navigation item can
+        // track. It can still be held as a plain link.
+        return { status: "link_only" };
+      }
+
+      const rows = await db
+        .select({
+          id: posts.id,
+          title: posts.title,
+          status: posts.status,
+          visibility: posts.visibility,
+          updatedAt: posts.updatedAt,
+        })
+        .from(posts)
+        .where(and(eq(posts.siteId, siteId), eq(posts.id, target.postId)))
+        .limit(1);
+      const row = rows[0];
+      if (!row) return { status: "not_found" };
+
+      if (row.status !== "published") return { status: "unpublished" };
+      if (row.visibility === "private") return { status: "private" };
+      const title = row.title?.trim() ?? "";
+      if (!title) return { status: "untitled" };
+
+      // The canonical slug rather than the address that was pasted: an alias
+      // resolves here too, and the item should show where the page lives.
+      const slug = await resolvedPaths.getPostSlug(row.id);
+      if (!slug) return { status: "not_found" };
+
+      return {
+        status: "page",
+        page: { id: row.id, title, slug, updatedAt: row.updatedAt },
+      };
     },
 
     async getById(id) {

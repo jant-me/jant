@@ -17,6 +17,7 @@ import {
   isPerLanguageSurface,
   isPrefixedLanguageView,
   languageScopeBasePath,
+  languageUrlPrefixes,
   resolveLanguageView,
   toLanguagePath,
   toViewPath,
@@ -140,6 +141,35 @@ describe("resolveLanguageView", () => {
 
       expect(resolveLanguageView(c)).toEqual({ kind: "redirect", to: "/feed" });
     });
+  });
+});
+
+describe("languageUrlPrefixes", () => {
+  it("lists every prefix a path can arrive under, primary included", () => {
+    // The primary language has no view of its own, but `/zh-hans/hello`
+    // redirects to `/hello` — so it still names the same page.
+    expect(
+      languageUrlPrefixes({
+        siteLanguage: "zh-Hans",
+        additionalLanguages: ["en", "ja"],
+      }),
+    ).toEqual(["zh-hans", "en", "ja"]);
+  });
+
+  it("is empty on a site with one language", () => {
+    // Nothing serves a view there, so `/en/hello` is just a post's address.
+    expect(
+      languageUrlPrefixes({
+        siteLanguage: "en",
+        additionalLanguages: [],
+      }),
+    ).toEqual([]);
+    expect(
+      languageUrlPrefixes({
+        siteLanguage: "en",
+        additionalLanguages: ["en"],
+      }),
+    ).toEqual([]);
   });
 });
 

@@ -110,6 +110,32 @@ export function resolveLanguageView(c: ViewContext): LanguageViewDecision {
 }
 
 /**
+ * Every URL prefix a path on this site can arrive under.
+ *
+ * The site's own languages, the primary one included: its prefix has no view
+ * of its own but still redirects to the root, so `/zh-hans/hello` names the
+ * same page as `/hello`. Empty on a site with one language, where a first
+ * segment that looks like a language tag is just a post's slug.
+ *
+ * Use it to resolve an address the author pasted; requests themselves are
+ * decided by {@link resolveLanguageView}, which knows view from redirect.
+ *
+ * @param config - Site language settings
+ * @returns Prefixes without slashes, e.g. `["zh-hans", "en"]`
+ */
+export function languageUrlPrefixes(config: {
+  siteLanguage: string;
+  additionalLanguages: readonly string[];
+}): string[] {
+  const primaryPrefix = toLanguagePrefix(config.siteLanguage);
+  const others = config.additionalLanguages
+    .map((tag) => toLanguagePrefix(tag))
+    .filter((prefix) => prefix !== primaryPrefix);
+
+  return others.length === 0 ? [] : [primaryPrefix, ...new Set(others)];
+}
+
+/**
  * Whether the current URL carries a language prefix.
  *
  * Distinct from `getViewLang()`: the root URLs of a multilingual site show the

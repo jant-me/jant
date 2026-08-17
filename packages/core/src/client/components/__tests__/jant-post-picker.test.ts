@@ -65,7 +65,7 @@ describe("JantPostPicker", () => {
 
   it("shows the caller's copy", async () => {
     const el = mountPicker();
-    void el.pick({ ...BASE, search: async () => [] });
+    void el.pick({ ...BASE, search: async () => ({ items: [] }) });
     await flush(el);
 
     expect(el.querySelector(".picker-dialog-title")?.textContent).toContain(
@@ -81,9 +81,9 @@ describe("JantPostPicker", () => {
     const picked = el.pick({
       ...BASE,
       minQueryLength: 1,
-      search: async () => [
-        { id: "pst_one", label: "Coffee notes", meta: "English" },
-      ],
+      search: async () => ({
+        items: [{ id: "pst_one", label: "Coffee notes", meta: "English" }],
+      }),
     });
     await flush(el);
 
@@ -99,7 +99,7 @@ describe("JantPostPicker", () => {
 
   it("resolves to null when dismissed", async () => {
     const el = mountPicker();
-    const picked = el.pick({ ...BASE, search: async () => [] });
+    const picked = el.pick({ ...BASE, search: async () => ({ items: [] }) });
     await flush(el);
 
     el.querySelector<HTMLDialogElement>(".picker-dialog")?.dispatchEvent(
@@ -111,7 +111,11 @@ describe("JantPostPicker", () => {
 
   it("says nothing matched rather than looking empty", async () => {
     const el = mountPicker();
-    void el.pick({ ...BASE, minQueryLength: 1, search: async () => [] });
+    void el.pick({
+      ...BASE,
+      minQueryLength: 1,
+      search: async () => ({ items: [] }),
+    });
     await flush(el);
 
     type(el, "nothing");
@@ -121,8 +125,28 @@ describe("JantPostPicker", () => {
     expect(el.textContent).toContain("Nothing matched that you could link.");
   });
 
+  it("lets a search explain itself instead of saying nothing matched", async () => {
+    const el = mountPicker();
+    void el.pick({
+      ...BASE,
+      minQueryLength: 1,
+      search: async () => ({
+        items: [],
+        note: "That post is a draft. Publish it, then link it.",
+      }),
+    });
+    await flush(el);
+
+    type(el, "/coffee");
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await flush(el);
+
+    expect(el.textContent).toContain("That post is a draft");
+    expect(el.textContent).not.toContain("Nothing matched");
+  });
+
   it("keeps quiet until the query is worth searching", async () => {
-    const search = vi.fn(async () => []);
+    const search = vi.fn(async () => ({ items: [] }));
     const el = mountPicker();
     void el.pick({ ...BASE, search });
     await flush(el);
@@ -145,9 +169,9 @@ describe("JantPostPicker", () => {
         // a debounce alone does not fix.
         if (query === "slow") {
           await new Promise((resolve) => setTimeout(resolve, 120));
-          return [{ id: "pst_stale", label: "Stale result" }];
+          return { items: [{ id: "pst_stale", label: "Stale result" }] };
         }
-        return [{ id: "pst_fresh", label: "Fresh result" }];
+        return { items: [{ id: "pst_fresh", label: "Fresh result" }] };
       },
     });
     await flush(el);
@@ -163,10 +187,10 @@ describe("JantPostPicker", () => {
 
   it("abandons an earlier request when reopened", async () => {
     const el = mountPicker();
-    const first = el.pick({ ...BASE, search: async () => [] });
+    const first = el.pick({ ...BASE, search: async () => ({ items: [] }) });
     await flush(el);
 
-    void el.pick({ ...BASE, search: async () => [] });
+    void el.pick({ ...BASE, search: async () => ({ items: [] }) });
 
     expect(await first).toBeNull();
   });

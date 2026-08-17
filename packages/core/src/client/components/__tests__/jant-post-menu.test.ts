@@ -967,6 +967,77 @@ describe("JantPostMenu", () => {
       expect(addSection.querySelector(".post-menu-section-label")).toBeNull();
     });
 
+    it("resolves an address pasted into the link picker, and says what is wrong", async () => {
+      // happy-dom has no modal dialog methods; the picker renders in light DOM
+      // either way.
+      Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+        configurable: true,
+        value(this: HTMLDialogElement) {
+          this.setAttribute("open", "");
+        },
+      });
+
+      const { menu } = await openLanguagePanel();
+      const existingFetch = globalThis.fetch as (
+        input: unknown,
+        init?: globalThis.RequestInit,
+      ) => Promise<Response>;
+      const fetchMock = vi.fn(
+        (input: unknown, init?: globalThis.RequestInit) => {
+          const url = String(input);
+          if (url.includes("/translations/resolve?")) {
+            return Promise.resolve(
+              jsonResponse({
+                resolution: { kind: "unpublished", address: "/coffee-notes" },
+              }),
+            );
+          }
+          return existingFetch(input, init);
+        },
+      );
+      vi.stubGlobal("fetch", fetchMock);
+
+      click(
+        requireElement(
+          Array.from(
+            menu.querySelectorAll<HTMLElement>(".post-menu-item-label"),
+          ).find((label) =>
+            label.textContent?.includes("Link a version you already wrote"),
+          ) ?? null,
+          "expected the link-a-translation entry",
+        ),
+      );
+      await menu.updateComplete;
+      await Promise.resolve();
+
+      const picker = requireElement(
+        document.querySelector("jant-post-picker"),
+        "expected the post picker",
+      );
+      const input = requireElement(
+        picker.querySelector<HTMLInputElement>(".picker-dialog-input"),
+        "expected the picker input",
+      );
+      input.value = "https://example.com/coffee-notes";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // A URL goes to the resolver, never to the title search.
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          String(url).includes("/api/posts/post-1/translations/resolve?url="),
+        ),
+      ).toBe(true);
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          String(url).includes("/translations/candidates"),
+        ),
+      ).toBe(false);
+      expect(picker.textContent).toContain("That post is a draft");
+    });
+
     it("answers in the order the questions get asked", async () => {
       // The entry that opened this panel said "Language · 简体中文", so landing
       // on a panel whose last row is that same value read as a mismatch.

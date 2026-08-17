@@ -82,6 +82,121 @@ describe("Nav Items API Routes", () => {
     });
   });
 
+  describe("GET /api/nav-items/resolve", () => {
+    it("requires authentication", async () => {
+      const { app } = createTestApp({ authenticated: false });
+      app.route("/api/nav-items", navItemsApiRoutes);
+
+      const res = await app.request("/api/nav-items/resolve?url=/about");
+
+      expect(res.status).toBe(401);
+    });
+
+    async function resolve(
+      app: ReturnType<typeof createTestApp>["app"],
+      url: string,
+    ) {
+      const res = await app.request(
+        `/api/nav-items/resolve?url=${encodeURIComponent(url)}`,
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        resolution: {
+          kind: string;
+          address: string;
+          page?: { id: string; title: string };
+          collection?: { id: string };
+        };
+      };
+      return body.resolution;
+    }
+
+    it("finds the page at a pasted address, however it was written", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/nav-items", navItemsApiRoutes);
+      const page = await services.posts.create({
+        format: "note",
+        title: "About this site",
+        slug: "about-this-site",
+        visibility: "latest_hidden",
+      });
+
+      for (const address of [
+        "/about-this-site",
+        "about-this-site",
+        "http://localhost:8787/about-this-site",
+        "/about-this-site?ref=twitter",
+      ]) {
+        expect(await resolve(app, address)).toEqual({
+          kind: "page",
+          address: "/about-this-site",
+          page: expect.objectContaining({
+            id: page.id,
+            title: "About this site",
+          }),
+        });
+      }
+    });
+
+    it("resolves a collection address to a collection item", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/nav-items", navItemsApiRoutes);
+      const collection = await services.collections.create({
+        title: "Reading",
+        slug: "reading",
+      });
+
+      expect(await resolve(app, "/reading")).toEqual({
+        kind: "collection",
+        address: "/reading",
+        collection: { id: collection.id, title: "Reading", slug: "reading" },
+      });
+    });
+
+    it("says what is wrong rather than coming back empty", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/nav-items", navItemsApiRoutes);
+      const draft = await services.posts.create({
+        format: "note",
+        title: "Draft page",
+        slug: "draft-page",
+        status: "draft",
+      });
+      const secret = await services.posts.create({
+        format: "note",
+        title: "Secret page",
+        slug: "secret-page",
+        visibility: "private",
+      });
+      const untitled = await services.posts.create({
+        format: "note",
+        slug: "untitled-page",
+        body: JSON.stringify({
+          type: "doc",
+          content: [{ type: "paragraph" }],
+        }),
+      });
+
+      expect((await resolve(app, `/${draft.slug}`)).kind).toBe("unpublished");
+      expect((await resolve(app, `/${secret.slug}`)).kind).toBe("private");
+      expect((await resolve(app, `/${untitled.slug}`)).kind).toBe("untitled");
+      expect(await resolve(app, "/no-such-page")).toEqual({
+        kind: "not_found",
+        address: "/no-such-page",
+      });
+    });
+
+    it("hands an off-site address back for the link form", async () => {
+      const { app } = createTestApp({ authenticated: true });
+      app.route("/api/nav-items", navItemsApiRoutes);
+
+      expect(await resolve(app, "https://example.com/hello")).toEqual({
+        kind: "external",
+        address: "https://example.com/hello",
+      });
+    });
+  });
+
   describe("POST /api/nav-items", () => {
     it("returns 401 when not authenticated", async () => {
       const { app } = createTestApp({ authenticated: false });
