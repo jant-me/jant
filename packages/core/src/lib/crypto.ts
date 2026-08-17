@@ -45,3 +45,43 @@ export function timingSafeEqualText(a: string, b: string): boolean {
   const encoder = new TextEncoder();
   return timingSafeEqualBytes(encoder.encode(a), encoder.encode(b));
 }
+
+/**
+ * Derive a hex HMAC-SHA256 of `message` under `secret`.
+ *
+ * Deriving a value instead of storing one is what lets a token be handed out
+ * repeatedly without a server-side record: the same inputs always produce the
+ * same output, so re-issuing is free and issuing twice cannot invalidate the
+ * first copy.
+ *
+ * @param secret - Key material, never leaves the server
+ * @param message - Value being signed
+ * @returns Lowercase hex signature, 64 characters
+ *
+ * @example
+ * ```ts
+ * const signature = await hmacHex(env.AUTH_SECRET, `delete-account:${sessionId}`);
+ * ```
+ */
+export async function hmacHex(
+  secret: string,
+  message: string,
+): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(message),
+  );
+
+  return Array.from(new Uint8Array(signature))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}

@@ -84,6 +84,8 @@ export function createServices(
     siteResolutionMode?: "single-site" | "host-based";
     enforceHostedMediaQuota?: boolean;
     hostedControlPlane?: HostedControlPlaneClient | null;
+    /** Signing key for derived tokens, e.g. the account-deletion CSRF token. */
+    authSecret?: string;
   },
 ): Services {
   const databaseSchema = config?.schema ?? sqliteSchemaBundle;
@@ -130,6 +132,7 @@ export function createServices(
       settings,
       {
         databaseDialect: dialect,
+        authSecret: config?.authSecret,
       },
       databaseSchema,
     ),

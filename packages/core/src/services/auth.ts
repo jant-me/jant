@@ -21,8 +21,12 @@ import {
 import type { SettingsService } from "./settings.js";
 import type { StorageDriver } from "../lib/storage.js";
 import { SETTINGS_KEYS } from "../lib/constants.js";
-import { timingSafeEqualText } from "../lib/crypto.js";
-import { ValidationError, NotFoundError } from "../lib/errors.js";
+import { hmacHex, timingSafeEqualText } from "../lib/crypto.js";
+import {
+  ConfigurationError,
+  ValidationError,
+  NotFoundError,
+} from "../lib/errors.js";
 import { hashPassword } from "../lib/password.js";
 
 /** Dependencies for account deletion */
@@ -53,20 +57,27 @@ export interface AuthService {
   resetPassword(token: string, newPassword: string): Promise<void>;
 
   /**
-   * Generate a short-lived CSRF token for account deletion.
-   * Stores the hash + expiry in settings and returns the plaintext.
+   * Derive the account-deletion CSRF token for a session.
    *
-   * @returns The plaintext CSRF token to embed in the page
+   * Derived, not stored: rendering the delete page is a GET, and a GET that
+   * wrote a fresh token somewhere would invalidate every copy handed out
+   * before it — a second tab, a prefetch, or a browser extension re-fetching
+   * the page would silently break the button the author is looking at. Same
+   * session in, same token out, however many times it is asked for.
+   *
+   * @param sessionId - The signed-in session this token is bound to
+   * @returns The token to embed in the page
    */
-  generateDeleteCsrfToken(): Promise<string>;
+  generateDeleteCsrfToken(sessionId: string): Promise<string>;
 
   /**
-   * Validate a CSRF token for account deletion.
+   * Validate an account-deletion CSRF token against the requesting session.
    *
-   * @param token - The plaintext CSRF token from the form
-   * @returns true if valid and not expired
+   * @param token - The token submitted with the request
+   * @param sessionId - The session the request arrived on
+   * @returns `true` when the token belongs to this session
    */
-  validateDeleteCsrfToken(token: string): Promise<boolean>;
+  validateDeleteCsrfToken(token: string, sessionId: string): Promise<boolean>;
 
   /**
    * Delete all user data and reset the instance to a pristine state.
@@ -87,6 +98,8 @@ export function createAuthService(
   settings: SettingsService,
   config?: {
     databaseDialect?: DatabaseDialect;
+    /** Signing key for derived tokens. Absent only where no route needs one. */
+    authSecret?: string;
   },
   databaseSchema: DatabaseSchema = sqliteSchemaBundle,
 ): AuthService {
@@ -108,6 +121,7 @@ export function createAuthService(
     apiTokens,
   } = databaseSchema;
   const databaseDialect = config?.databaseDialect ?? "sqlite";
+  const authSecret = config?.authSecret;
 
   async function deleteDataRows(targetDb: Database): Promise<void> {
     // Junction/dependent tables first
@@ -174,14 +188,21 @@ export function createAuthService(
     return timingSafeEqualText(tokenHash, storedHash);
   }
 
-  async function hashToken(token: string): Promise<string> {
-    const hashBuffer = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(token),
-    );
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+  /**
+   * The delete-account token for a session — a pure function of the session and
+   * the server's signing key, so nothing has to be written down to check it
+   * later. It stops being valid when the session does, which is the only
+   * lifetime that means anything here: the token is a second factor on top of
+   * the session cookie, useless to anyone who does not already hold it.
+   */
+  async function deriveDeleteCsrfToken(sessionId: string): Promise<string> {
+    if (!authSecret) {
+      throw new ConfigurationError(
+        "AUTH_SECRET is required to protect account deletion.",
+      );
+    }
+
+    return hmacHex(authSecret, `delete-account:${sessionId}`);
   }
 
   return {
@@ -217,39 +238,13 @@ export function createAuthService(
       await settings.remove(SETTINGS_KEYS.PASSWORD_RESET_TOKEN);
     },
 
-    async generateDeleteCsrfToken() {
-      const bytes = new Uint8Array(32);
-      crypto.getRandomValues(bytes);
-      const plaintext = Array.from(bytes)
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-
-      const tokenHash = await hashToken(plaintext);
-      // Token valid for 15 minutes
-      const expiry = Math.floor(Date.now() / 1000) + 15 * 60;
-
-      await settings.set(
-        SETTINGS_KEYS.DELETE_CSRF_TOKEN,
-        `${tokenHash}:${expiry}`,
-      );
-
-      return plaintext;
+    async generateDeleteCsrfToken(sessionId) {
+      return deriveDeleteCsrfToken(sessionId);
     },
 
-    async validateDeleteCsrfToken(token) {
-      const stored = await settings.get(SETTINGS_KEYS.DELETE_CSRF_TOKEN);
-      if (!stored) return false;
-
-      const separatorIndex = stored.lastIndexOf(":");
-      const storedHash = stored.substring(0, separatorIndex);
-      const expiry = parseInt(stored.substring(separatorIndex + 1), 10);
-      const now = Math.floor(Date.now() / 1000);
-
-      if (now > expiry) return false;
-
-      const tokenHash = await hashToken(token);
-
-      return timingSafeEqualText(tokenHash, storedHash);
+    async validateDeleteCsrfToken(token, sessionId) {
+      const expected = await deriveDeleteCsrfToken(sessionId);
+      return timingSafeEqualText(token, expected);
     },
 
     async deleteAllData(deps) {

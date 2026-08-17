@@ -1368,8 +1368,9 @@ export const ArchivePage: FC<ArchivePageProps> = ({
           <h1 class="page-intro-title">
             {i18n._(
               msg({
-                message: "Archive",
-                comment: "@context: Archive page title",
+                message: "All",
+                comment:
+                  "@context: Archive page title. Matches the nav label — the widest of Featured / Latest / All.",
               }),
             )}
           </h1>

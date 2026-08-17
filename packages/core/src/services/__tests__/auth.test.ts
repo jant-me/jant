@@ -305,20 +305,70 @@ describe("AuthService", () => {
       db = testDb.db as unknown as Database;
     });
 
+    function createTokenService(authSecret = "test-auth-secret") {
+      const settingsService = createSettingsService(db, DEFAULT_TEST_SITE_ID);
+      return createAuthService(db, settingsService, {
+        databaseDialect: "pg",
+        authSecret,
+      });
+    }
+
     it("validates delete CSRF tokens in Node runtimes", async () => {
+      const authService = createTokenService();
+
+      const token = await authService.generateDeleteCsrfToken("ses_1");
+
+      await expect(
+        authService.validateDeleteCsrfToken(token, "ses_1"),
+      ).resolves.toBe(true);
+      await expect(
+        authService.validateDeleteCsrfToken(`${token}nope`, "ses_1"),
+      ).resolves.toBe(false);
+    });
+
+    it("issues the same delete token however often a session asks", async () => {
+      // Rendering the delete page is a GET. Issuing twice must not invalidate
+      // the copy already sitting in an open tab — that turned any prefetch or
+      // browser extension re-fetching the page into a dead delete button.
+      const authService = createTokenService();
+
+      const first = await authService.generateDeleteCsrfToken("ses_1");
+      const second = await authService.generateDeleteCsrfToken("ses_1");
+
+      expect(second).toBe(first);
+      await expect(
+        authService.validateDeleteCsrfToken(first, "ses_1"),
+      ).resolves.toBe(true);
+    });
+
+    it("refuses a delete token minted for another session", async () => {
+      const authService = createTokenService();
+
+      const token = await authService.generateDeleteCsrfToken("ses_1");
+
+      await expect(
+        authService.validateDeleteCsrfToken(token, "ses_2"),
+      ).resolves.toBe(false);
+    });
+
+    it("refuses a delete token minted under another signing key", async () => {
+      const token =
+        await createTokenService("secret-a").generateDeleteCsrfToken("ses_1");
+
+      await expect(
+        createTokenService("secret-b").validateDeleteCsrfToken(token, "ses_1"),
+      ).resolves.toBe(false);
+    });
+
+    it("refuses to mint a delete token without a signing key", async () => {
       const settingsService = createSettingsService(db, DEFAULT_TEST_SITE_ID);
       const authService = createAuthService(db, settingsService, {
         databaseDialect: "pg",
       });
 
-      const token = await authService.generateDeleteCsrfToken();
-
-      await expect(authService.validateDeleteCsrfToken(token)).resolves.toBe(
-        true,
-      );
       await expect(
-        authService.validateDeleteCsrfToken(`${token}nope`),
-      ).resolves.toBe(false);
+        authService.generateDeleteCsrfToken("ses_1"),
+      ).rejects.toThrow(/AUTH_SECRET/);
     });
 
     it("validates password reset tokens in Node runtimes", async () => {

@@ -107,6 +107,7 @@ export async function createCloudflareRequestRuntime(
 
   const servicesConfig = {
     databaseDialect: "sqlite" as const,
+    authSecret,
     bootstrapSite: getSingleSiteBootstrapOptions(env),
     enforceHostedMediaQuota: getSiteResolutionMode(env) === "host-based",
     hostedControlPlane: createHostedControlPlaneClient(env),

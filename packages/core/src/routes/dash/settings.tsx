@@ -23,6 +23,7 @@ import { getOrBuildEntry } from "../../i18n/supported-locales.js";
 import {
   DomainError,
   LanguageInUseError,
+  UnauthorizedError,
   ValidationError,
 } from "../../lib/errors.js";
 import { SETTINGS_KEYS } from "../../lib/constants.js";
@@ -143,6 +144,22 @@ function publicPath(c: Context<Env>, path: string): string {
 
 function aboutEditPath(c: Context<Env>): string {
   return `${publicPath(c, "/about")}?edit=1`;
+}
+
+/**
+ * The session id behind the current request.
+ *
+ * Every `/settings` route sits behind `requireAuth`, so a missing session here
+ * is a wiring mistake rather than a signed-out visitor — hence a throw instead
+ * of a redirect.
+ */
+function requireSessionId(c: Context<Env>): string {
+  const sessionId = c.var.session?.session?.id;
+  if (!sessionId) {
+    throw new UnauthorizedError();
+  }
+
+  return sessionId;
 }
 
 /**
@@ -1595,7 +1612,9 @@ settingsRoutes.get("/account/delete-account", async (c) => {
   }
 
   const navData = await getNavigationData(c);
-  const csrfToken = await c.var.services.auth.generateDeleteCsrfToken();
+  const csrfToken = await c.var.services.auth.generateDeleteCsrfToken(
+    requireSessionId(c),
+  );
 
   return renderPublicPage(c, {
     title: buildPageTitle("Delete Account", navData.siteName),
@@ -1653,7 +1672,10 @@ settingsRoutes.post("/account/delete-account", async (c) => {
     );
   }
 
-  const isValid = await c.var.services.auth.validateDeleteCsrfToken(csrfToken);
+  const isValid = await c.var.services.auth.validateDeleteCsrfToken(
+    csrfToken,
+    requireSessionId(c),
+  );
   if (!isValid) {
     return dsToast(
       i18n._(
@@ -1667,11 +1689,26 @@ settingsRoutes.post("/account/delete-account", async (c) => {
     );
   }
 
+  // Sign the browser out first. Every row behind this session is about to
+  // disappear, and better-auth's cookie cache would keep answering "signed in"
+  // from the browser's own copy for minutes afterwards — a ticket to a site
+  // that no longer exists, handed to whoever completes the next setup.
+  let signOutHeaders: Headers | undefined;
+  try {
+    const signedOut = await c.var.auth.api.signOut({
+      headers: c.req.raw.headers,
+      asResponse: true,
+    });
+    signOutHeaders = signedOut.headers;
+  } catch {
+    // The wipe below removes the session either way.
+  }
+
   await c.var.services.auth.deleteAllData({
     storage: c.var.storage,
   });
 
-  return dsRedirect(publicPath(c, "/setup"));
+  return dsRedirect(publicPath(c, "/setup"), { headers: signOutHeaders });
 });
 
 // ===========================================================================

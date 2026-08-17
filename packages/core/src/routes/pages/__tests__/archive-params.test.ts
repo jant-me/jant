@@ -454,13 +454,13 @@ describe("archive page sort=updated", () => {
     await seedDivergingThreads(services);
 
     const byPublished = await (await app.request("/archive")).text();
-    expect(byPublished).toContain("<title>Archive - ");
+    expect(byPublished).toContain("<title>All - ");
     expect(byPublished).not.toContain("Recently updated");
 
     const byActivity = await (
       await app.request("/archive?sort=updated")
     ).text();
-    expect(byActivity).toContain("<title>Archive - Recently updated - ");
+    expect(byActivity).toContain("<title>All - Recently updated - ");
   });
 
   it("ignores an unknown sort value", async () => {

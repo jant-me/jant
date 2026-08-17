@@ -14,6 +14,7 @@ import { SigninSchema } from "../../lib/schemas.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { getI18n } from "../../i18n/index.js";
 import { getHostedControlPlaneSigninUrl } from "../../lib/hosted-signin.js";
+import { isCurrentSiteMember } from "../../middleware/auth.js";
 import { isSafeInternalRedirect, toPublicPath } from "../../lib/url.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -128,7 +129,10 @@ signinRoutes.get("/signin", async (c) => {
     ? rawRedirect
     : undefined;
 
-  if (c.var.isAuthenticated) {
+  // Membership, not merely a session: `requireAuth` sends non-members here, so
+  // reading `isAuthenticated` instead would send them straight back and the two
+  // would volley until the browser refused to follow another hop.
+  if (await isCurrentSiteMember(c)) {
     return c.redirect(
       toPublicPath(redirect ?? "/", c.var.appConfig.sitePathPrefix),
     );

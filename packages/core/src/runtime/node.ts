@@ -144,6 +144,7 @@ export async function createNodeRequestRuntime(
 
   const servicesConfig = {
     databaseDialect,
+    authSecret,
     bootstrapSite: getSingleSiteBootstrapOptions(env),
     enforceHostedMediaQuota: getSiteResolutionMode(env) === "host-based",
     hostedControlPlane: createHostedControlPlaneClient(env),

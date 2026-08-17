@@ -5,7 +5,7 @@
  * or Bearer API tokens.
  */
 
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import type { Bindings } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
 import { getDevApiToken, getInternalAdminToken } from "../lib/env.js";
@@ -111,6 +111,42 @@ function getPostSigninRedirect(requestUrl: string): string | null {
 }
 
 /**
+ * Whether the request's session belongs to a member of the current site.
+ *
+ * This is the single definition of "signed in *here*", and every entrance must
+ * ask it rather than `c.var.isAuthenticated`. That flag only answers "carries a
+ * session", which is a weaker claim: better-auth's cookie cache keeps answering
+ * from the browser's own copy for minutes after the rows behind it are gone, so
+ * a session routinely outlives the site it was issued for — a factory reset and
+ * a fresh setup being the obvious way. When a guard requires membership and an
+ * entrance settles for a session, the two disagree and bounce the visitor
+ * between them until the browser gives up.
+ *
+ * @param c - The request context, after `attachSession` has run
+ * @returns `true` when the session's user is a member of `c.var.currentSite`
+ *
+ * @example
+ * ```ts
+ * // /signin only sends someone away if they are signed in to *this* site.
+ * if (await isCurrentSiteMember(c)) return c.redirect("/");
+ * ```
+ */
+export async function isCurrentSiteMember(c: Context<Env>): Promise<boolean> {
+  const session = c.var.session;
+  if (!session?.user) return false;
+
+  // `siteMembers.get` resolves to `null` for "not a member", so a throw is
+  // always infrastructure and is left to propagate. Rewriting a failing
+  // database read into "not a member" would read to the user as being randomly
+  // signed out.
+  const membership = await c.var.services.siteMembers.get(
+    c.var.currentSite.id,
+    session.user.id,
+  );
+  return !!membership;
+}
+
+/**
  * Middleware that requires authentication.
  * Redirects to signin page if not authenticated.
  * Session-only — Bearer tokens are not accepted for settings pages.
@@ -136,22 +172,12 @@ export function requireAuth(redirectTo = "/signin"): MiddlewareHandler<Env> {
       return `${publicHref}${separator}redirect=${encodeURIComponent(postSignin)}`;
     };
 
-    // Session was already fetched by `attachSession` middleware.
-    const session = c.var.session;
-    if (!session?.user) {
-      return c.redirect(buildRedirectTarget());
-    }
-
-    // `siteMembers.get` resolves to `null` for "not a member", so a throw is
-    // always infrastructure. Both it and `next()` stay outside a catch: a
-    // failing database read or a route handler blowing up used to be rewritten
-    // into a redirect to sign-in, which reads to the user as being randomly
-    // signed out and loses whatever they were doing.
-    const membership = await c.var.services.siteMembers.get(
-      c.var.currentSite.id,
-      session.user.id,
-    );
-    if (!membership) {
+    // Session was already fetched by `attachSession` middleware. The membership
+    // read inside `isCurrentSiteMember` and `next()` both stay outside a catch:
+    // a failing database read or a route handler blowing up used to be
+    // rewritten into a redirect to sign-in, which reads to the user as being
+    // randomly signed out and loses whatever they were doing.
+    if (!(await isCurrentSiteMember(c))) {
       return c.redirect(buildRedirectTarget());
     }
 
@@ -167,18 +193,12 @@ export function requireAuth(redirectTo = "/signin"): MiddlewareHandler<Env> {
 export function requireAuthApi(): MiddlewareHandler<Env> {
   return async (c, next) => {
     // 1. Try session auth (session is pre-fetched by `attachSession` middleware).
-    const session = c.var.session;
-    if (session?.user) {
-      // Only the membership lookup falls through to Bearer on failure. `next()`
-      // must stay outside that catch, or a route handler throwing turns into a
-      // 401 and the client treats a server error as an expired login.
-      const membership = await c.var.services.siteMembers
-        .get(c.var.currentSite.id, session.user.id)
-        .catch(() => null);
-      if (membership) {
-        await next();
-        return;
-      }
+    // Only the membership lookup falls through to Bearer on failure. `next()`
+    // must stay outside that catch, or a route handler throwing turns into a
+    // 401 and the client treats a server error as an expired login.
+    if (await isCurrentSiteMember(c).catch(() => false)) {
+      await next();
+      return;
     }
 
     // 2. Try Bearer token auth

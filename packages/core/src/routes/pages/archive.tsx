@@ -486,7 +486,7 @@ export async function renderArchivePage(
   return renderPublicPage(c, {
     // Distinguishes a bookmarked or shared ?sort=updated view in the tab bar.
     title: buildPageTitle(
-      "Archive",
+      "All",
       params.sort === "updated" ? "Recently updated" : undefined,
       navData.siteName,
     ),

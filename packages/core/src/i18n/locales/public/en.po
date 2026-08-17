@@ -203,6 +203,17 @@ msgstr "Add to Navigation"
 msgid "Adding…"
 msgstr "Adding…"
 
+#. @context: Archive page title. Matches the nav label — the widest of Featured / Latest / All.
+#: src/ui/pages/ArchivePage.tsx
+msgid "All"
+msgstr "All"
+
+#. @context: Built-in navigation label for the archive page. Reads as the widest of Featured / Latest / All rather than 'old posts' — the page is the complete index, and its URL stays /archive.
+#: src/ui/shared/navigation-labels.ts
+msgctxt "nav"
+msgid "All"
+msgstr "All"
+
 #. @context: Archive filter - collection dropdown default
 #: src/ui/pages/ArchivePage.tsx
 msgid "All collections"
@@ -259,17 +270,9 @@ msgid "Apple touch icon"
 msgstr "Apple touch icon"
 
 #. @context: Archive feed title prefix
-#. @context: Archive page title
 #. @context: Inactive nav link label on sample page
 #: src/routes/pages/archive.tsx
-#: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
-msgid "Archive"
-msgstr "Archive"
-
-#. @context: Built-in navigation label for the archive page
-#: src/ui/shared/navigation-labels.ts
-msgctxt "nav"
 msgid "Archive"
 msgstr "Archive"
 

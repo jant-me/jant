@@ -476,11 +476,6 @@ export const CONFIG_FIELDS = {
     envOnly: false,
     internal: true,
   },
-  DELETE_CSRF_TOKEN: {
-    defaultValue: "",
-    envOnly: false,
-    internal: true,
-  },
 
   // GitHub Sync (DB-only, managed via GitHub Sync settings page)
   GITHUB_SYNC_ENABLED: {

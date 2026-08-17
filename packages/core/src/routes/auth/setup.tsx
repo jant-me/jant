@@ -33,6 +33,7 @@ import { SetupLanguageSchema, SetupSchema } from "../../lib/schemas.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { mapIanaToTimezone } from "../../lib/timezones.js";
 import { getI18n } from "../../i18n/index.js";
+import { isCurrentSiteMember } from "../../middleware/auth.js";
 import type { I18n } from "../../i18n/i18n.js";
 import {
   getSupportedLocaleEntries,
@@ -416,10 +417,10 @@ setupRoutes.get("/setup", async (c) => {
   if (status === ONBOARDING_STATUS.COMPLETED) return c.redirect(home);
 
   // On a provisioned site the remaining question belongs to its owner, and the
-  // site is perfectly readable meanwhile — so a signed-out visitor is sent to
-  // the site rather than shown a form they cannot submit.
+  // site is perfectly readable meanwhile — so a visitor who is not signed in to
+  // this site is sent to the site rather than shown a form they cannot submit.
   const isProvisioned = status === ONBOARDING_STATUS.PROVISIONED;
-  if (isProvisioned && !c.var.isAuthenticated) return c.redirect(home);
+  if (isProvisioned && !(await isCurrentSiteMember(c))) return c.redirect(home);
 
   const i18n = getI18n(c);
 
@@ -457,8 +458,10 @@ setupRoutes.post("/setup", async (c) => {
 
   if (status === ONBOARDING_STATUS.PROVISIONED) {
     // The account already exists, so this is the owner answering a question
-    // about their own site — never an anonymous request.
-    if (!c.var.isAuthenticated) {
+    // about their own site. Membership is the check that makes that true: a
+    // session alone can belong to someone this site has never heard of, and
+    // this branch writes the site's language.
+    if (!(await isCurrentSiteMember(c))) {
       return dsRedirect(
         toPublicPath("/signin?redirect=/setup", c.var.appConfig.sitePathPrefix),
       );

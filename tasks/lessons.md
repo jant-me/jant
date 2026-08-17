@@ -736,3 +736,16 @@ every one of its `note:` fields assumed 帖子 (`Thread→帖子串`, Note as
 When the two disagree, fix AGENTS.md and add the missing glossary entry, in that
 order. AGENTS.md carries a summary for convenience; the YAML is what translators
 and tooling actually read.
+
+## Offer scope options that stack, not options that exclude
+
+Diagnosing the post-factory-reset redirect loop produced three fixes — a shared
+definition of "signed in here", a `/signin` guard, and signing the browser out
+on delete. They were offered as one mutually exclusive choice, so the reply was
+"do I still need #1, or is #2 enough?" — a question the framing invented. The
+right answer was "#2 plus a three-line guard, skip #1", which the options made
+unpickable.
+
+When several fixes address one report, name each one's own cost and let them
+compose. Reserve mutually exclusive options for genuine forks: two designs that
+cannot both exist.

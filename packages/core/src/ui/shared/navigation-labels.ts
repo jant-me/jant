@@ -36,9 +36,10 @@ const BUILTIN_NAV_LABELS = {
     comment: "@context: Built-in navigation label for the collections page",
   }),
   archive: msg({
-    message: "Archive",
+    message: "All",
     context: "nav",
-    comment: "@context: Built-in navigation label for the archive page",
+    comment:
+      "@context: Built-in navigation label for the archive page. Reads as the widest of Featured / Latest / All rather than 'old posts' — the page is the complete index, and its URL stays /archive.",
   }),
   settings: msg({
     message: "Settings",
