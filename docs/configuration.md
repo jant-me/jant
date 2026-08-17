@@ -23,8 +23,6 @@ Every runtime requires this variable:
 | ------------- | --------------------------------------------------------------------------------------------------------- |
 | `AUTH_SECRET` | Key better-auth uses to sign session cookies. At least 32 characters. Don't commit it to version control. |
 
-Don't commit `AUTH_SECRET` to version control.
-
 - Cloudflare local development: put it in `.dev.vars`
 - Cloudflare production: set it as a Worker secret with `npx wrangler secret put AUTH_SECRET`
 - Node and Docker: put it in `.env` or process environment variables
@@ -136,9 +134,7 @@ Storage depends on the runtime:
 | Cloudflare Workers | `r2`    | `r2`, `s3`        |
 | Node and Docker    | `local` | `local`, `s3`     |
 
-Node does not support `r2`.
-
-Cloudflare does not support `local`.
+Node does not support `r2`, and Cloudflare does not support `local`.
 
 Switch drivers via the `STORAGE_DRIVER` environment variable, e.g. `STORAGE_DRIVER=s3`. When unset, the runtime default is used.
 

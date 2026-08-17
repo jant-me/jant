@@ -1,10 +1,10 @@
 # Multilingual content
 
-A Jant site publishes in one language by default: you set it once, and it tells readers, search engines, and feed readers what they are looking at.
+Jant is a single-language blog by default: set the language you write in under **Settings → Language**.
 
-Turn on multilingual content and the site starts serving one browsing surface per language. Each language gets its own home page, archive, and feed, readers get a switcher in the header, and posts written in different languages can be linked as versions of one another.
+If you have readers in more than one language, turn on multilingual content in the same place. You pick a primary language and the other languages alongside it.
 
-Every post keeps exactly one address through all of this. The languages change what a _list_ shows, never where a post lives.
+Once it is on, the primary language keeps the root: `/` is its home page. Every other language is served under a prefix — Japanese has `/ja` for its home page, `/ja/collections` for collections, `/ja/archive` for the archive, and `/ja/{collection-slug}` for a single collection. Posts stay off the prefix: every post keeps `/{slug}` as its permalink, which is what keeps addresses stable over the long run.
 
 ## What the prefix means
 
@@ -12,16 +12,17 @@ The primary language stays at the root. Every other language is served under a U
 
 On a site whose primary language is Simplified Chinese, also publishing English and Japanese:
 
-| Surface     | 简体中文       | English           | 日本語            |
-| ----------- | -------------- | ----------------- | ----------------- |
-| Home        | `/`            | `/en`             | `/ja`             |
-| Latest      | `/latest`      | `/en/latest`      | `/ja/latest`      |
-| Featured    | `/featured`    | `/en/featured`    | `/ja/featured`    |
-| Archive     | `/archive`     | `/en/archive`     | `/ja/archive`     |
-| Search      | `/search`      | `/en/search`      | `/ja/search`      |
-| Collections | `/collections` | `/en/collections` | `/ja/collections` |
-| Main feed   | `/feed`        | `/en/feed`        | `/ja/feed`        |
-| A post      | `/hello`       | `/hello`          | `/hello`          |
+| Surface               | 简体中文       | English           | 日本語            |
+| --------------------- | -------------- | ----------------- | ----------------- |
+| Home                  | `/`            | `/en`             | `/ja`             |
+| Latest                | `/latest`      | `/en/latest`      | `/ja/latest`      |
+| Featured              | `/featured`    | `/en/featured`    | `/ja/featured`    |
+| Archive               | `/archive`     | `/en/archive`     | `/ja/archive`     |
+| Search                | `/search`      | `/en/search`      | `/ja/search`      |
+| Collections directory | `/collections` | `/en/collections` | `/ja/collections` |
+| A collection          | `/reading`     | `/en/reading`     | `/ja/reading`     |
+| Main feed             | `/feed`        | `/en/feed`        | `/ja/feed`        |
+| A post                | `/hello`       | `/hello`          | `/hello`          |
 
 A prefix selects a **view**: the same page, filtered to that language. `/en/archive` is the archive of English posts, `/en/feed` is a feed of English posts, and paging inside a view stays inside it.
 

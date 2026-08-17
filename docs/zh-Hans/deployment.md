@@ -5,9 +5,9 @@ Cloudflare 是 Jant 推荐的部署平台。两条路径任选其一：
 - **一键部署**：点 Deploy 按钮，约 5 分钟完成。资源全部由 Cloudflare 在你账号下自动创建。
 - **本地开发后再部署**：先在本地跑通，再用 Wrangler 上线。适合想先调主题或做离线调试的人。
 
-部署完成后还需要绑定自定义域名、配置 R2 公开访问，否则媒体加载会走 Worker 中转、消耗免费额度。
+部署完成后还要绑定自定义域名、配置 R2 公开访问，否则媒体会经 Worker 中转，消耗免费额度。
 
-在自己服务器上部署请看 [使用 Docker 部署](deployment-docker.md)。
+> 想部署在自己的服务器上，见 [使用 Docker 部署](deployment-docker.md)。
 
 ## 占位符约定
 
@@ -27,9 +27,9 @@ Cloudflare 是 Jant 推荐的部署平台。两条路径任选其一：
 
 - **Cloudflare 账号**：[dash.cloudflare.com](https://dash.cloudflare.com/) 注册或登录。
 - **GitHub 账号**：一键部署会把代码托管到 GitHub。前往 [github.com](https://github.com/) 注册或登录。
-- **启用 R2**：进入 [R2 控制台](https://dash.cloudflare.com/?to=/:account/r2)，点 **Enable R2** 接受条款。这一步必须先做——跳过会让部署报 `uses R2 which is only available with an R2 subscription`。R2 用于存放上传的图片和视频，免费额度 10 GB 存储 + 每月 100 万次读取。
-- **自定义域名**（推荐）：托管在同一个 Cloudflare 账号下。如果还没添加，先在 Cloudflare 中接管 DNS。
-- **本地开发路线还需**：[Node.js](https://nodejs.org/) 24+、`git`、`openssl`。
+- **启用 R2**：进入 [R2 控制台](https://dash.cloudflare.com/?to=/:account/r2)，点 **Enable R2** 接受条款。这一步必须先做——跳过的话，部署会报 `uses R2 which is only available with an R2 subscription`。R2 用于存放上传的图片和视频，免费额度 10 GB 存储 + 每月 100 万次读取。
+- **自定义域名**（推荐）：托管在同一个 Cloudflare 账号下。如果还没有，先把域名的 DNS 托管到 Cloudflare。
+- **本地开发路线还需要**：[Node.js](https://nodejs.org/) 24+、`git`、`openssl`。
 
 ## 一键部署
 
@@ -42,21 +42,21 @@ Cloudflare 是 Jant 推荐的部署平台。两条路径任选其一：
 | 字段                       | 说明                                                                                                                                |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | **Git account**            | 选你的 GitHub 账号。首次使用时点 **New GitHub Connection** 完成授权，Cloudflare 会自动创建仓库。                                    |
-| **Project name**           | 默认为 `my-site`。这个值同时是站点子域 `<project>.<account>.workers.dev` 和 GitHub 仓库名。建议现在就改成你想要的，例如 `my-blog`。 |
+| **Project name**           | 默认为 `my-site`。这个值同时是站点子域 `<project>.<account>.workers.dev` 和 GitHub 仓库名。现在就改成你要用的名字，例如 `my-blog`。 |
 | **D1 database**            | 保持默认 **Create new**，名称用默认值。                                                                                             |
-| **Database location hint** | 选距离自己近的区域；保持默认也行。                                                                                                  |
+| **Database location hint** | 选离你近的区域，保持默认也行。                                                                                                      |
 | **R2 bucket**              | 保持默认 **Create new**，名称用默认值。                                                                                             |
-| **AUTH_SECRET**            | 保留自动生成的值，或换成自己的 32 字节以上随机字符串。这是用于会话签名的密钥，上线后不要修改。                                      |
+| **AUTH_SECRET**            | 保留自动生成的值，或换成自己的 32 字节以上随机字符串。它用于会话签名，上线后不要修改。                                              |
 
 部署完成后，Cloudflare 会显示形如 `https://<project>.<account>.workers.dev` 的地址。**先不要创建管理员账号**——下一步绑定自定义域名后再创建，避免会话在切换域名时失效。
 
 ### 克隆到本地（推荐）
 
-代码仓库已经在你的 GitHub 账号下创建。克隆到本地后可以：
+一键部署已经在你的 GitHub 账号下建好了仓库。克隆到本地后可以：
 
-- 直接改 `wrangler.toml` 配环境变量（下一节会用到）
+- 改 `wrangler.toml` 里的环境变量（下一节会用到）
 - 改主题、加页面、升级依赖
-- 推送到 `main` 自动触发重新部署
+- 推送到 `main`，自动触发重新部署
 
 ```bash
 git clone git@github.com:<github-user>/<repo>.git
@@ -76,18 +76,18 @@ npm install
 2. 进入 **Settings** → **Domains & Routes** → **Add**。
 3. 填入你的域名 `<your-domain>`。
 
-域名托管在同一个 Cloudflare 账号下时，DNS 会自动写入，证书签发通常 1–2 分钟内生效。
+域名在同一个 Cloudflare 账号下时，DNS 记录会自动写入，证书通常 1–2 分钟内签发。
 
 ### 2. 配置 R2 公开访问
 
-不配置时，每次访问图片或视频都要走 Worker 中转，速度慢且消耗 Worker 配额。配置 `R2_PUBLIC_URL` 后，媒体直接从 R2 公开域返回。
+不配置时，每次访问图片或视频都要经 Worker 中转，速度慢且消耗 Worker 配额。配置 `R2_PUBLIC_URL` 后，媒体直接从 R2 公开域返回。
 
 **给 R2 存储桶绑定一个公开子域**
 
 1. 打开 [R2 控制台](https://dash.cloudflare.com/?to=/:account/r2)，点开你的存储桶。
 2. **Settings** → **Public access** → **Custom Domains** → **Connect Domain**。
 3. 填一个属于你域名的子域，例如 `media.<your-domain>`。
-4. Cloudflare 自动写入 CNAME 并签发证书。状态从 `Initializing` 变为 `Active` 后，**完整复制 Public URL**（形如 `https://<media-domain>`，注意没有尾部斜杠）。
+4. Cloudflare 自动写入 CNAME 并签发证书。状态从 `Initializing` 变为 `Active` 后，**完整复制 Public URL**（形如 `https://<media-domain>`，末尾没有斜杠）。
 
 不要使用 r2.dev 的临时公开 URL——它有速率限制，不能用于生产。
 
@@ -105,7 +105,7 @@ npm install
 
   推送到 `main`，或运行 `npm run deploy`。
 
-验证：随便打开一张已上传的图片，查看页面源码里 `<img src>` 应该是 `https://<media-domain>/...`，而不是 `<project>.<account>.workers.dev/...`。
+验证：打开一张已上传的图片，页面源码里的 `<img src>` 应该是 `https://<media-domain>/...`，而不是 `<project>.<account>.workers.dev/...`。
 
 ### 3. 启用图片自动缩放（可选）
 
@@ -133,7 +133,7 @@ https://<media-domain>/cdn-cgi/image
 
 ## 本地开发后再部署
 
-如果你想先在本地搭好再上线，按下面操作。
+想先在本地搭好再上线，走这条路径。
 
 ```bash
 npm create jant@latest jant-site
@@ -173,7 +173,7 @@ PORT=8787 npm run dev
    npx wrangler login
    ```
 
-   浏览器跳转授权，回到终端看到 `Successfully logged in`。
+   浏览器会跳转到授权页面，授权后终端显示 `Successfully logged in`。
 
 2. **创建 D1 数据库**
 
@@ -198,7 +198,7 @@ PORT=8787 npm run dev
    npx wrangler r2 bucket create <project>-media
    ```
 
-   `wrangler.toml` 里 `[[r2_buckets]] bucket_name` 必须与之相同：
+   `wrangler.toml` 里 `[[r2_buckets]]` 的 `bucket_name` 必须与之一致：
 
    ```toml
    [[r2_buckets]]
@@ -208,7 +208,7 @@ PORT=8787 npm run dev
 
 4. **设置生产 `AUTH_SECRET`**
 
-   `.dev.vars` 中的密钥仅本地用。生产密钥用以下命令交互式写入：
+   `.dev.vars` 里的密钥只用于本地。生产密钥用下面的命令写入：
 
    ```bash
    openssl rand -base64 32 | npx wrangler secret put AUTH_SECRET
@@ -232,7 +232,7 @@ PORT=8787 npm run dev
 
 ### 通过 GitHub Actions 自动部署
 
-`create-jant` 创建的项目里已内置 `.github/workflows/deploy.yml`。在 GitHub 仓库添加两个 Secret，即可在每次推送 `main` 时自动部署：
+`create-jant` 创建的项目里已内置 `.github/workflows/deploy.yml`。在 GitHub 仓库加两个 Secret，之后每次推送 `main` 都会自动部署：
 
 - `CF_API_TOKEN`
 - `CF_ACCOUNT_ID`
@@ -248,7 +248,7 @@ PORT=8787 npm run dev
 
 把 Jant 挂在某个子路径下（如 `<your-domain>/blog`），主域留给其他服务，需要两步：
 
-1. 告知 Jant 子路径前缀：
+1. 告诉 Jant 子路径前缀：
 
    ```toml
    [vars]
@@ -263,7 +263,7 @@ PORT=8787 npm run dev
 
 ## 升级
 
-升级前先看一下 [发布说明](https://github.com/jant-me/jant/releases)，留意是否有破坏性变更。然后更新 `@jant/core` 并部署：
+升级前先读 [发布说明](https://github.com/jant-me/jant/releases)，留意破坏性变更。然后更新 `@jant/core` 并部署：
 
 ```bash
 npm install @jant/core@latest
@@ -273,10 +273,7 @@ npm run deploy   # 部署到 Cloudflare；远端迁移在部署时应用
 
 如果你的仓库已配置 push 自动部署（一键部署，或上面的 GitHub Actions 工作流），可以跳过本地命令：提交更新后的 `package.json` 与 lockfile，推送到 `main` 即可。远端迁移会作为部署的一部分自动执行。
 
-涉及替换或删除数据库表的升级，应先阅读发布说明。`jant deploy` 会先执行
-migration，再上传新版 Worker，因此破坏性 schema 切换可能需要短暂暂停写入。
-在 migration、新 Worker 上传和部署后检查全部完成前，停止或排空旧版本的写入实例。
-Migration 校验能够发现脏数据或数量不一致，但无法让表替换期间的并发写入变得安全。
+涉及替换或删除数据库表的升级，先读发布说明。`jant deploy` 会先执行迁移，再上传新版 Worker，因此破坏性的 schema 切换可能需要短暂停写。在迁移、Worker 上传和部署后检查全部完成前，停掉或排空旧版本的写入实例。迁移校验能发现脏数据和数量对不上，但表替换期间的并发写入仍然不安全。
 
 ## 常见错误
 

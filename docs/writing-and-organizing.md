@@ -56,7 +56,7 @@ This is the simplest way to lock in a link when you first publish. Note: **chang
 
 Save the post, open **Drafts**, then choose **… → Preview** on its row. Jant opens `/preview/{slug}` in a new tab using the same Note, Link, Quote, media, and Thread rendering as the published page. A status bar marks the page as a draft preview.
 
-Preview URLs require sign-in and are never indexed or cached. They are working URLs for the author, not public links to share.
+Preview URLs require sign-in and are never indexed or cached.
 
 ## Threads
 
