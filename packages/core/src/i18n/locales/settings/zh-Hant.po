@@ -146,6 +146,11 @@ msgstr "新增 {language}"
 msgid "Add a custom link to any URL"
 msgstr "新增自訂連結到任何 URL"
 
+#. @context: Button that opens the link form with the pasted address filled in
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "Add as link"
+msgstr ""
+
 #. @context: Validation message when the multilingual dialog has no second language
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Add at least one more language to turn this on."
@@ -251,6 +256,11 @@ msgstr "允許不使用 API 權杖讀取已發佈內容。"
 msgid "Allow search engines to index my site"
 msgstr "允許搜尋引擎收錄我的網站"
 
+#. @context: Shown when a pasted address is already a navigation item
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "Already in navigation. Drag it in the list above to move it."
+msgstr ""
+
 #. @context: Theme mode option description
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Always show the dark version of the theme."
@@ -323,6 +333,11 @@ msgstr "封存篩選參數 (例如 format=note&view=list)"
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Ask search engines not to index public pages or include them in results."
 msgstr "要求搜尋引擎不要索引公開頁面或將它們包含在搜尋結果中。"
+
+#. @context: Heading above the page a pasted address resolved to
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "At that address"
+msgstr ""
 
 #. @context: Error toast when authentication secret is missing from server config
 #: src/routes/auth/setup.tsx
@@ -1604,6 +1619,11 @@ msgstr "站名、中繼資料、時區與搜尋預設值"
 msgid "Navigation"
 msgstr "導覽列"
 
+#. @context: Shown for a page on the site that can only be a link, such as an archive URL
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "Navigation holds that address as a link."
+msgstr ""
+
 #. @context: Section heading for nav items
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Navigation items"
@@ -1728,6 +1748,11 @@ msgstr "尚未同步"
 #: src/ui/dash/FormatBadge.tsx
 msgid "Note"
 msgstr "筆記"
+
+#. @context: Shown when a pasted address matches no page on the site
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "Nothing at {address}. Check it, or search by title."
+msgstr ""
 
 #. @context: Config Editor empty search state
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -2152,6 +2177,11 @@ msgstr "搜尋和編輯執行階段設定。變更會立即生效；重設會恢
 msgid "Search pages"
 msgstr "搜尋頁面"
 
+#. @context: Placeholder for the navigation page search, which also accepts a pasted URL or path
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "Search pages, or paste an address"
+msgstr ""
+
 #. @context: GitHub sync picker — search input placeholder
 #: src/routes/dash/settings.tsx
 msgid "Search repositories"
@@ -2428,6 +2458,11 @@ msgstr "已設定 Telegram，但無法連線到機器人。請檢查機器人權
 msgid "That address is already in use. Choose another one."
 msgstr "此網址已被使用。請選擇其他網址。"
 
+#. @context: Shown when a pasted address points off the site
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "That address is on another site. Navigation holds it as a link."
+msgstr ""
+
 #. @context: Validation error for a reserved page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "That address is reserved. Choose another one."
@@ -2437,6 +2472,21 @@ msgstr "此網址為保留網址。請選擇其他網址。"
 #: src/routes/dash/settings.tsx
 msgid "That font theme isn't available. Pick another one."
 msgstr "該字型主題無法使用。請選擇其他主題。"
+
+#. @context: Shown when a pasted address resolves to an untitled post
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "That page has no title yet, so a menu has nothing to show."
+msgstr ""
+
+#. @context: Shown when a pasted address resolves to a draft
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "That page is a draft. Publish it, then add it."
+msgstr ""
+
+#. @context: Shown when a pasted address resolves to a private page
+#: src/ui/dash/appearance/NavigationContent.tsx
+msgid "That page is private, so nobody could open it from a menu."
+msgstr ""
 
 #. @context: Error toast when selected theme is not valid
 #: src/routes/dash/settings.tsx

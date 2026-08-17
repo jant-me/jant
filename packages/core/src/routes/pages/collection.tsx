@@ -439,6 +439,7 @@ export async function renderCollectionSelectionRoute(
   c: Context<Env>,
 ): Promise<Response> {
   const slugExpression = c.req.param("slug");
+  if (!slugExpression) return c.notFound();
 
   if (!isAggregateCollectionSelection(slugExpression)) {
     const collection =
@@ -466,6 +467,7 @@ export async function renderCollectionSelectionFeedRoute(
   c: Context<Env>,
 ): Promise<Response> {
   const slugExpression = c.req.param("slug");
+  if (!slugExpression) return c.notFound();
 
   if (!isAggregateCollectionSelection(slugExpression)) {
     const collection =
