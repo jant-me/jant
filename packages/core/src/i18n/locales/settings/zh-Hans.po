@@ -146,11 +146,6 @@ msgstr "添加 {language}"
 msgid "Add a custom link to any URL"
 msgstr "向任意 URL 添加自定义链接"
 
-#. @context: Button that opens the link form with the pasted address filled in
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Add as link"
-msgstr "添加为链接"
-
 #. @context: Validation message when the multilingual dialog has no second language
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Add at least one more language to turn this on."
@@ -256,11 +251,6 @@ msgstr "允许无需 API 令牌读取已发布内容。"
 msgid "Allow search engines to index my site"
 msgstr "允许搜索引擎索引我的网站"
 
-#. @context: Shown when a pasted address is already a navigation item
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Already in navigation. Drag it in the list above to move it."
-msgstr "已在导航中。拖动上面列表里的它可以调整位置。"
-
 #. @context: Theme mode option description
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Always show the dark version of the theme."
@@ -333,11 +323,6 @@ msgstr "归档 筛选参数 (例如 format=笔记&view=list)"
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Ask search engines not to index public pages or include them in results."
 msgstr "请求搜索引擎不要对公开页面建立索引或将其包含在搜索结果中。"
-
-#. @context: Heading above the page a pasted address resolved to
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "At that address"
-msgstr "该地址上的页面"
 
 #. @context: Error toast when authentication secret is missing from server config
 #: src/routes/auth/setup.tsx
@@ -1619,11 +1604,6 @@ msgstr "站名、元数据、时区与搜索默认设置"
 msgid "Navigation"
 msgstr "导航栏"
 
-#. @context: Shown for a page on the site that can only be a link, such as an archive URL
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Navigation holds that address as a link."
-msgstr "导航只能把该地址存成链接。"
-
 #. @context: Section heading for nav items
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Navigation items"
@@ -1748,11 +1728,6 @@ msgstr "尚未同步"
 #: src/ui/dash/FormatBadge.tsx
 msgid "Note"
 msgstr "笔记"
-
-#. @context: Shown when a pasted address matches no page on the site
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Nothing at {address}. Check it, or search by title."
-msgstr "{address} 上没有页面。检查地址，或按标题搜索。"
 
 #. @context: Config Editor empty search state
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -2177,11 +2152,6 @@ msgstr "搜索和编辑运行时设置。更改会立即生效；重置会恢复
 msgid "Search pages"
 msgstr "搜索页面"
 
-#. @context: Placeholder for the navigation page search, which also accepts a pasted URL or path
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Search pages, or paste an address"
-msgstr "搜索页面，或粘贴地址"
-
 #. @context: GitHub sync picker — search input placeholder
 #: src/routes/dash/settings.tsx
 msgid "Search repositories"
@@ -2458,11 +2428,6 @@ msgstr "Telegram 已设置，但无法连接到机器人。请检查机器人令
 msgid "That address is already in use. Choose another one."
 msgstr "此地址已被使用。请选择其他地址。"
 
-#. @context: Shown when a pasted address points off the site
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "That address is on another site. Navigation holds it as a link."
-msgstr "该地址在别的站点上。导航只能把它存成链接。"
-
 #. @context: Validation error for a reserved page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "That address is reserved. Choose another one."
@@ -2472,21 +2437,6 @@ msgstr "此地址为保留地址。请选择其他地址。"
 #: src/routes/dash/settings.tsx
 msgid "That font theme isn't available. Pick another one."
 msgstr "该字体主题不可用。请选择另一个。"
-
-#. @context: Shown when a pasted address resolves to an untitled post
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "That page has no title yet, so a menu has nothing to show."
-msgstr "该页面还没有标题，导航里显示不出名字。"
-
-#. @context: Shown when a pasted address resolves to a draft
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "That page is a draft. Publish it, then add it."
-msgstr "该页面是草稿。发布后再添加。"
-
-#. @context: Shown when a pasted address resolves to a private page
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "That page is private, so nobody could open it from a menu."
-msgstr "该页面是私密的，从导航里点进去也打不开。"
 
 #. @context: Error toast when selected theme is not valid
 #: src/routes/dash/settings.tsx

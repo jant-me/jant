@@ -73,13 +73,11 @@ No. Deletion is permanent — the post row, its paths, and its attachment media 
 
 ## Is multi-language supported?
 
-Yes, in two independent ways.
+Yes. **Settings → Language** holds three settings, each doing one thing:
 
-**One language, set once.** **Settings → Language → Content language** is the language you write in. It fills `<html lang>` and the `<language>` field in your feeds, which is what search engines, screen readers, and feed readers consume.
-
-**Several languages at once.** Turn on multilingual content and each language gets its own home page, archive, and feed under a URL prefix, with a switcher in the header and posts linkable as versions of one another. See [Multilingual content](multilingual.md).
-
-The dashboard's own language is separate — **Settings → Language → Dashboard language**, which only you see. It ships in English, Simplified Chinese, and Traditional Chinese; other values fall back to English.
+- **Content language**: the language the site publishes in. It fills `<html lang>` and the `<language>` field in your feeds, which is what search engines, screen readers, and feed readers consume.
+- **Multilingual content**: turn it on and each language gets its own URL prefix, home page, archive, and feed, with a switcher in the header and posts linkable as versions of one another. See [Multilingual content](multilingual.md).
+- **Dashboard language**: what your own dashboard is displayed in, which only you see. It ships in English, Simplified Chinese, and Traditional Chinese; other values fall back to English.
 
 ## Is multi-author supported?
 
@@ -157,13 +155,15 @@ There's no built-in path, but `site export` produces standard Markdown + YAML fr
 
 ## Why the name Jant?
 
-From _Jantelagen_ (the Law of Jante), a Nordic cultural concept of "don't think you're anything special." For the design rationale, see [Introduction](overview.md#a-quieter-way-to-write-in-public).
+From _Jantelagen_ (the Law of Jante), a Nordic cultural concept of "don't think you're anything special." For the design rationale, see [Introduction](overview.md#about-the-name).
 
 ## Why is hosted priced at $10.46/year?
 
-I've always liked `.com` pricing: $10.46/year.
+$10.46 is what Cloudflare charges to register and renew a `.com` domain for a year. A subscription you keep for years has to be judged on what it costs over those years, and $10.46 looks fair to me.
 
-That's what Cloudflare charges to register and renew a `.com`. It sits just above free, and just formal enough — low enough not to add friction at the start, but not so trivial that you don't take it seriously.
+## What if the hosted plan's 10 GB of media storage isn't enough?
+
+Email [support@jant.me](mailto:support@jant.me) and it can be raised separately.
 
 ## What's next
 

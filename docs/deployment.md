@@ -7,7 +7,7 @@ Cloudflare is the recommended deployment platform for Jant. Pick one of two path
 
 After the deploy itself, you still need to bind a custom domain and configure R2 public access — otherwise media loads through the Worker as a proxy and burns your free quota.
 
-To deploy on your own server instead, see [Deploy with Docker](deployment-docker.md).
+> To deploy on your own server instead, see [Deploy with Docker](deployment-docker.md).
 
 ## Placeholder conventions
 
@@ -87,11 +87,11 @@ Without this, every image and video request goes through the Worker — slower a
 1. Open the [R2 dashboard](https://dash.cloudflare.com/?to=/:account/r2) and click into your bucket.
 2. **Settings** → **Public access** → **Custom Domains** → **Connect Domain**.
 3. Enter a subdomain under your domain, e.g. `media.<your-domain>`.
-4. Cloudflare writes the CNAME and issues the certificate automatically. Once the status flips from "Initializing" to "Active", **copy the Public URL in full** (it looks like `https://<media-domain>` — no trailing slash).
+4. Cloudflare writes the CNAME and issues the certificate automatically. Once the status flips from `Initializing` to `Active`, **copy the Public URL in full** (it looks like `https://<media-domain>` — no trailing slash).
 
 Don't use the temporary r2.dev public URL — it has rate limits and isn't suitable for production.
 
-If the status sits on "Initializing" for a long time, the subdomain is usually already taken by another DNS record. Delete the conflicting record on the Cloudflare DNS page and it recovers automatically.
+If the status sits on `Initializing` for a long time, the subdomain is usually already taken by another DNS record. Delete the conflicting record on the Cloudflare DNS page and it recovers automatically.
 
 **Wire the URL into the Worker**, either way works:
 

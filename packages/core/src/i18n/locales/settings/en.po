@@ -146,11 +146,6 @@ msgstr "Add {language}"
 msgid "Add a custom link to any URL"
 msgstr "Add a custom link to any URL"
 
-#. @context: Button that opens the link form with the pasted address filled in
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Add as link"
-msgstr "Add as link"
-
 #. @context: Validation message when the multilingual dialog has no second language
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Add at least one more language to turn this on."
@@ -256,11 +251,6 @@ msgstr "Allow published content to be read without an API token."
 msgid "Allow search engines to index my site"
 msgstr "Allow search engines to index my site"
 
-#. @context: Shown when a pasted address is already a navigation item
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Already in navigation. Drag it in the list above to move it."
-msgstr "Already in navigation. Drag it in the list above to move it."
-
 #. @context: Theme mode option description
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Always show the dark version of the theme."
@@ -333,11 +323,6 @@ msgstr "Archive filter parameters (e.g. format=note&view=list)"
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Ask search engines not to index public pages or include them in results."
 msgstr "Ask search engines not to index public pages or include them in results."
-
-#. @context: Heading above the page a pasted address resolved to
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "At that address"
-msgstr "At that address"
 
 #. @context: Error toast when authentication secret is missing from server config
 #: src/routes/auth/setup.tsx
@@ -1619,11 +1604,6 @@ msgstr "Name, metadata, time zone, and search defaults"
 msgid "Navigation"
 msgstr "Navigation"
 
-#. @context: Shown for a page on the site that can only be a link, such as an archive URL
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Navigation holds that address as a link."
-msgstr "Navigation holds that address as a link."
-
 #. @context: Section heading for nav items
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Navigation items"
@@ -1748,11 +1728,6 @@ msgstr "Not synced yet"
 #: src/ui/dash/FormatBadge.tsx
 msgid "Note"
 msgstr "Note"
-
-#. @context: Shown when a pasted address matches no page on the site
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Nothing at {address}. Check it, or search by title."
-msgstr "Nothing at {address}. Check it, or search by title."
 
 #. @context: Config Editor empty search state
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -2177,11 +2152,6 @@ msgstr "Search and edit runtime settings. Changes apply immediately; reset resto
 msgid "Search pages"
 msgstr "Search pages"
 
-#. @context: Placeholder for the navigation page search, which also accepts a pasted URL or path
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Search pages, or paste an address"
-msgstr "Search pages, or paste an address"
-
 #. @context: GitHub sync picker — search input placeholder
 #: src/routes/dash/settings.tsx
 msgid "Search repositories"
@@ -2458,11 +2428,6 @@ msgstr "Telegram is set up, but the bot couldn't be reached. Check the bot token
 msgid "That address is already in use. Choose another one."
 msgstr "That address is already in use. Choose another one."
 
-#. @context: Shown when a pasted address points off the site
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "That address is on another site. Navigation holds it as a link."
-msgstr "That address is on another site. Navigation holds it as a link."
-
 #. @context: Validation error for a reserved page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "That address is reserved. Choose another one."
@@ -2472,21 +2437,6 @@ msgstr "That address is reserved. Choose another one."
 #: src/routes/dash/settings.tsx
 msgid "That font theme isn't available. Pick another one."
 msgstr "That font theme isn't available. Pick another one."
-
-#. @context: Shown when a pasted address resolves to an untitled post
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "That page has no title yet, so a menu has nothing to show."
-msgstr "That page has no title yet, so a menu has nothing to show."
-
-#. @context: Shown when a pasted address resolves to a draft
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "That page is a draft. Publish it, then add it."
-msgstr "That page is a draft. Publish it, then add it."
-
-#. @context: Shown when a pasted address resolves to a private page
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "That page is private, so nobody could open it from a menu."
-msgstr "That page is private, so nobody could open it from a menu."
 
 #. @context: Error toast when selected theme is not valid
 #: src/routes/dash/settings.tsx
