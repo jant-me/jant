@@ -54,8 +54,46 @@ is setting the content language, which the default stack no longer blocks on.
 - `mise run build` — the emitted `client-*.css` carries the real stack in
   `:root`, starting at `"Songti SC"` (serif) and `"PingFang SC"` (sans).
 - Browser check in Chrome (macOS): a `lang="en"` page using the `literary`
+
   theme's serif stack renders 中文 in Songti SC with the new fallback, matching
   an explicit `font-family: "Songti SC"` control and clearly distinct from the
   `"PingFang SC"` control. The old placeholder chain happened to resolve to
   Songti on this machine and to PingFang on the reporter's — which is the bug:
   the outcome was left to OS and browser defaults.
+
+## Fleet follow-up: the wrong content language itself
+
+The default stack stops the OS from deciding, but 36 sites were still serving
+`<html lang="en">` and English-tagged feeds for Chinese content, and none of
+them could reach the per-language glyph order or the self-hosted Noto Serif
+subsets. Owen confirmed the hosted fleet was recruited through a small mainland
+China promotion, which settles what the empty sites are too.
+
+Corrected with `scripts/ops/set-hosted-site-language.sh` on 2026-08-17: 102
+sites, 101 to `zh-Hans` and `foriforrest.jant.blog` to `zh-Hant` (its posts are
+Traditional and its author had set the removed `CJK_SERIF_FONT` to `zh-Hant`).
+`blog.jant.me` and `ggsddu.jant.blog` were left on English on purpose.
+
+Deliberately not a backfill: `src/db/backfills/` runs on every instance through
+`jant migrate`, and the premise is true only of this fleet. A self-hosted
+English blog must never be flipped to Chinese.
+
+Safe to do as one statement per site because every one of the 5391 posts had
+`language = NULL` and no site had `MULTILINGUAL_ENABLED`, so `SITE_LANGUAGE`
+alone decided every page. Settings are read per request with no cache, so it
+took effect immediately.
+
+Verified live: `heyhihello.jant.blog` now serves `lang="zh-Hans"`, the SC
+webfont pack, and a Songti-first serif stack; `foriforrest.jant.blog` serves
+`lang="zh-Hant"` with the TC pack; the two opt-outs are untouched. Rollback for
+all 102 rows is at `~/site-language-rollback-20260817-165149.sql` on
+prod-deploy.
+
+## Open follow-up
+
+New hosted sites can still land on the wrong language. `routes/auth/setup.tsx`
+offers the control plane's stored guess back to the author (`isProvisioned ?
+appConfig.siteLanguage : …`), so if jant-cloud provisions `en` by default, an
+author who clicks straight through keeps it — which is how these 102 sites got
+here. The self-hosted path already defaults from `Accept-Language`. Worth
+making the hosted default follow the browser too.

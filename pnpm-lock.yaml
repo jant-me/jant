@@ -16,6 +16,9 @@ catalogs:
       specifier: ^4.76.0
       version: 4.122.0
 
+overrides:
+  pinyin-pro: 3.29.0
+
 importers:
 
   .:
@@ -4781,8 +4784,8 @@ packages:
     resolution: {integrity: sha512-uB80kBFb/tfd68bVleG9T5GGsGPjJrLAUpR5PZIrhBnIaRTQRjqdJSsIKkOP6OAIFbj7GOrcudc5pNjZ+geV2g==}
     engines: {node: '>=6'}
 
-  pinyin-pro@3.29.1:
-    resolution: {integrity: sha512-GkdTguAt9JDAO7Xw71gyx3mtzgFXpmeigesM3XkcTcQdudg2v5k1ZFzWM30Oo4UkwZ9U8pE1pcLKKu8cx8icPg==}
+  pinyin-pro@3.29.0:
+    resolution: {integrity: sha512-CMKi2UygycqEtliM1P1QzcQPy5IcFkMqOcd8ZcuBpLZx/BsZGtNlzPwZQXJuzqb4eiDQm8tATayWiHq6mIGL9A==}
 
   pirates@4.0.7:
     resolution: {integrity: sha512-TfySrs/5nm8fQJDcBDuUng3VOUKsd7S+zqvbOTiGXHfxX4wK31ard+hoNuvkicM/2YFzlpDgABOevKSsB4G/FA==}
@@ -9257,7 +9260,7 @@ snapshots:
   limax@4.2.3:
     dependencies:
       hepburn: 1.3.0
-      pinyin-pro: 3.29.1
+      pinyin-pro: 3.29.0
       speakingurl: 14.0.1
 
   lines-and-columns@1.2.4: {}
@@ -9923,7 +9926,7 @@ snapshots:
 
   pify@4.0.1: {}
 
-  pinyin-pro@3.29.1: {}
+  pinyin-pro@3.29.0: {}
 
   pirates@4.0.7: {}
 

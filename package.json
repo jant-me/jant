@@ -42,7 +42,10 @@
       "better-sqlite3",
       "cn-font-split",
       "sharp"
-    ]
+    ],
+    "overrides": {
+      "pinyin-pro": "3.29.0"
+    }
   },
   "dependencies": {}
 }
