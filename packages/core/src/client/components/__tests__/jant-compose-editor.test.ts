@@ -152,6 +152,7 @@ const parseFromClipboard = (
 
 const labels: ComposeLabels = {
   cancel: "Cancel",
+  close: "Close",
   note: "Note",
   link: "Link",
   quote: "Quote",
@@ -201,7 +202,7 @@ const labels: ComposeLabels = {
   confirmCloseTitle: "Save to drafts?",
   confirmCloseSubtitle: "Save to drafts to edit and post at a later time.",
   confirmCloseSave: "Save",
-  confirmCloseCancel: "Cancel",
+  confirmCloseCancel: "Keep editing",
   confirmCloseDiscard: "Don't save",
   confirmAttachedTitle: "Save text attachment?",
   confirmAttachedSubtitle:
@@ -280,7 +281,6 @@ const labels: ComposeLabels = {
   threadLimitReached: "Threads can include up to 20 posts.",
   showMore: "Show more",
   showLess: "Show less",
-  closeCompose: "Close compose",
   editing: "Editing",
   composeDialogLabel: "Compose",
   slashHint: "Type / for commands",

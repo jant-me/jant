@@ -157,6 +157,7 @@ export interface LocalDraft {
 
 export interface ComposeLabels {
   cancel: string;
+  close: string;
   note: string;
   link: string;
   quote: string;
@@ -293,7 +294,6 @@ export interface ComposeLabels {
   threadLimitReached: string;
   showMore: string;
   showLess: string;
-  closeCompose: string;
   editing: string;
   composeDialogLabel: string;
   slashHint: string;

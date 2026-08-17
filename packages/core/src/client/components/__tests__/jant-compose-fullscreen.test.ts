@@ -18,7 +18,6 @@ const labels = {
   bodyPlaceholder: "What's on your mind...",
   showMore: "Show more",
   showLess: "Show less",
-  closeCompose: "Close compose",
   editing: "Editing",
   composeDialogLabel: "Compose",
 } as ComposeLabels;

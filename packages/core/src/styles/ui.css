@@ -6397,12 +6397,54 @@
 
   .compose-quick-actions-row {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: 0.5rem;
-    padding: 2px 12px 12px;
+    /* Left takes the action row's gutter so Cancel starts where the collection
+       pill does; right keeps the row's own inset, which is what lines the
+       switches up under Publish. */
+    padding: 2px 12px 12px var(--compose-gutter);
     background-color: var(--compose-paper-bg);
     border-bottom-left-radius: inherit;
     border-bottom-right-radius: inherit;
+  }
+
+  /* Leaving compose, at the row's near edge and in the register of the switches
+     it sits with rather than Publish across the way. `margin-inline-end: auto`
+     claims the gap the switches leave, so it sits under the collection pill
+     whether or not any switch is present. */
+  .compose-quick-actions-close {
+    /* Hangs back out of the row by its own padding, so it is the label that
+       starts on the gutter and not the button's box. */
+    --compose-close-hang: 0.55rem;
+
+    margin-inline-end: auto;
+    margin-inline-start: calc(-1 * var(--compose-close-hang));
+    padding: 0.5rem var(--compose-close-hang);
+    min-height: 36px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-caption);
+    line-height: 1.1;
+    color: color-mix(in srgb, var(--site-text-secondary) 78%, transparent);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  .compose-quick-actions-close:hover:not(:disabled),
+  .compose-quick-actions-close:focus-visible {
+    color: var(--site-text-secondary);
+    background-color: var(--compose-control-bg);
+  }
+
+  .compose-quick-actions-close:disabled {
+    opacity: 0.4;
+    cursor: default;
   }
 
   @media (min-width: 700px) {
@@ -6415,7 +6457,14 @@
     }
 
     .compose-quick-actions-row {
-      padding: 2px 18px 14px;
+      padding: 2px 18px 14px var(--compose-gutter);
+    }
+
+    .compose-quick-actions-close {
+      --compose-close-hang: 0.35rem;
+
+      padding: 0.3rem var(--compose-close-hang);
+      min-height: 0;
     }
   }
 

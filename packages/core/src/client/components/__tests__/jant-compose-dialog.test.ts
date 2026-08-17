@@ -159,6 +159,7 @@ function mockSlugApi(
 
 const labels: ComposeLabels = {
   cancel: "Cancel",
+  close: "Close",
   note: "Note",
   link: "Link",
   quote: "Quote",
@@ -208,7 +209,7 @@ const labels: ComposeLabels = {
   confirmCloseTitle: "Save to drafts?",
   confirmCloseSubtitle: "Save to drafts to edit and post at a later time.",
   confirmCloseSave: "Save",
-  confirmCloseCancel: "Cancel",
+  confirmCloseCancel: "Keep editing",
   confirmCloseDiscard: "Don't save",
   confirmAttachedTitle: "Save text attachment?",
   confirmAttachedSubtitle:
@@ -287,7 +288,6 @@ const labels: ComposeLabels = {
   threadLimitReached: "Threads can include up to 20 posts.",
   showMore: "Show more",
   showLess: "Show less",
-  closeCompose: "Close compose",
   editing: "Editing",
   composeDialogLabel: "Compose",
   slashHint: "Type / for commands",
@@ -2458,8 +2458,7 @@ describe("JantComposeDialog", () => {
     await editor.updateComplete;
 
     let receivedDetail:
-      | (ComposeSubmitDetail & { pendingAttachments: unknown[] })
-      | null = null;
+      (ComposeSubmitDetail & { pendingAttachments: unknown[] }) | null = null;
     el.addEventListener("jant:compose-submit-deferred", (event) => {
       const customEvent = event as CustomEvent<
         ComposeSubmitDetail & { pendingAttachments: unknown[] }
@@ -4109,8 +4108,7 @@ describe("JantComposeDialog", () => {
     await el.updateComplete;
 
     let receivedDetail:
-      | (ComposeSubmitDetail & { pendingAttachments: unknown[] })
-      | null = null;
+      (ComposeSubmitDetail & { pendingAttachments: unknown[] }) | null = null;
     el.addEventListener("jant:compose-submit-deferred", (event) => {
       const customEvent = event as CustomEvent<
         ComposeSubmitDetail & { pendingAttachments: unknown[] }
@@ -5756,8 +5754,7 @@ describe("JantComposeDialog", () => {
     await editor.updateComplete;
 
     let receivedDetail:
-      | (ComposeSubmitDetail & { pendingAttachments: unknown[] })
-      | null = null;
+      (ComposeSubmitDetail & { pendingAttachments: unknown[] }) | null = null;
     el.addEventListener("jant:compose-submit-deferred", (event) => {
       const customEvent = event as CustomEvent<
         ComposeSubmitDetail & { pendingAttachments: unknown[] }
@@ -5919,7 +5916,7 @@ describe("JantComposeDialog", () => {
       ),
       "expected close button in the post header",
     );
-    expect(closeBtn.getAttribute("aria-label")).toBe(labels.cancel);
+    expect(closeBtn.getAttribute("aria-label")).toBe(labels.close);
 
     closeBtn.click();
     await flushUpdates(el);
@@ -5927,7 +5924,7 @@ describe("JantComposeDialog", () => {
     expect(requestCloseSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("hands the header slot back to per-post remove in a thread, and moves the exit into the options panel", async () => {
+  it("hands the header slot back to per-post remove in a thread, and moves the exit to the quick actions row", async () => {
     const el = await createElement();
     el._threadItems = [
       { id: "thread-1", format: "note" },
@@ -5941,40 +5938,59 @@ describe("JantComposeDialog", () => {
       el.querySelectorAll(".compose-thread-post-remove").length,
     ).toBeGreaterThan(0);
 
-    await openPublishPanel(el);
-    const closeRow = requireElement(
-      Array.from(
-        el.querySelectorAll<HTMLButtonElement>(
-          ".compose-publish-panel .compose-sheet-row",
-        ),
-      ).find(
-        (row) =>
-          row.querySelector(".compose-sheet-title")?.textContent?.trim() ===
-          labels.closeCompose,
-      ) ?? null,
-      "expected a close row in the options panel",
+    const closeBtn = requireElement(
+      el.querySelector<HTMLButtonElement>(
+        ".compose-quick-actions-row .compose-quick-actions-close",
+      ),
+      "expected a close button in the quick actions row",
     );
+    expect(closeBtn.textContent?.trim()).toBe(labels.close);
 
     const requestCloseSpy = vi.spyOn(el, "requestClose");
-    closeRow.click();
+    closeBtn.click();
     await flushUpdates(el);
 
-    expect(el._showPublishPanel).toBe(false);
     expect(requestCloseSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the exit out of the options panel when the × already offers one", async () => {
+  it("keeps the thread exit out of single-post mode, where the × already offers one", async () => {
     const el = await createElement();
-    await openPublishPanel(el);
+    expect(el.querySelector(".compose-quick-actions-close")).toBeNull();
 
+    await openPublishPanel(el);
     const titles = Array.from(
       el.querySelectorAll<HTMLElement>(
         ".compose-publish-panel .compose-sheet-title",
       ),
     ).map((n) => n.textContent?.trim());
 
-    expect(titles).not.toContain(labels.closeCompose);
+    // The exit is never a row in the options sheet, in either mode.
+    expect(titles).not.toContain(labels.close);
     expect(titles).toContain("Drafts");
+  });
+
+  it("keeps the exit visible in a thread whose visibility row is locked", async () => {
+    const el = await createElement();
+    el._threadItems = [
+      { id: "thread-1", format: "note" },
+      { id: "thread-2", format: "note" },
+    ];
+    el._visibilityLocked = true;
+    await flushUpdates(el);
+
+    expect(el.querySelector(".compose-quick-actions-close")).not.toBeNull();
+  });
+
+  it("leaves the exit to the page's own Back link in page mode", async () => {
+    const el = await createElement();
+    el.pageMode = true;
+    el._threadItems = [
+      { id: "thread-1", format: "note" },
+      { id: "thread-2", format: "note" },
+    ];
+    await flushUpdates(el);
+
+    expect(el.querySelector(".compose-quick-actions-close")).toBeNull();
   });
 
   it("requestClose on empty form closes immediately without confirmation", async () => {
@@ -7243,7 +7259,7 @@ describe("JantComposeDialog", () => {
     ).toBe("Don't save");
     expect(
       el.querySelector(".compose-confirm-cancel")?.textContent?.trim(),
-    ).toBe("Cancel");
+    ).toBe("Keep editing");
   });
 
   it("cancel on attached text confirm returns focus to the attached editor", async () => {

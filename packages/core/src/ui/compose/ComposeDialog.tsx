@@ -58,7 +58,15 @@ export const ComposeForm: FC<ComposeFormProps> = ({
     cancel: i18n._(
       msg({
         message: "Cancel",
-        comment: "@context: Close compose dialog",
+        comment:
+          "@context: Back out of the attached-text sub-editor, paired with Done. Leaving the composer itself says Close instead — it may keep the work as a draft, so nothing is being cancelled.",
+      }),
+    ),
+    close: i18n._(
+      msg({
+        message: "Close",
+        comment:
+          "@context: Leaves the composer — the × on a single post, and the button in a thread. Prompts to save a draft first if there is unsaved work.",
       }),
     ),
     imageNotRehosted: i18n._(
@@ -408,9 +416,9 @@ export const ComposeForm: FC<ComposeFormProps> = ({
     ),
     confirmCloseCancel: i18n._(
       msg({
-        message: "Cancel",
+        message: "Keep editing",
         comment:
-          "@context: Confirm close action sheet - cancel and return to editor",
+          "@context: Confirm close action sheet - dismiss the sheet and return to the editor. Says what it does rather than 'Cancel', which the composer already spends on leaving.",
       }),
     ),
     confirmCloseDiscard: i18n._(
@@ -810,13 +818,6 @@ export const ComposeForm: FC<ComposeFormProps> = ({
         message: "Draft restored.",
         comment:
           "@context: Toast shown when a local draft is restored on compose open",
-      }),
-    ),
-    closeCompose: i18n._(
-      msg({
-        message: "Close compose",
-        comment:
-          "@context: Post options row that leaves the composer; prompts to save a draft first if there is unsaved work",
       }),
     ),
     editing: i18n._(
