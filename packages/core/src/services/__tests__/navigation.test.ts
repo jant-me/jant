@@ -446,15 +446,15 @@ describe("NavItemService", () => {
 
       expect(created.map((item) => item.systemKey)).toEqual([
         "featured",
-        "collections",
         "archive",
+        "collections",
         "rss",
         "settings",
       ]);
       expect(created.map((item) => item.placement)).toEqual([
         "header",
         "header",
-        "header",
+        "more",
         "more",
         "more",
       ]);
@@ -477,8 +477,8 @@ describe("NavItemService", () => {
 
       expect(created.map((item) => item.systemKey)).toEqual([
         "featured",
-        "collections",
         "archive",
+        "collections",
         "rss",
         "settings",
       ]);

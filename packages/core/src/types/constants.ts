@@ -59,10 +59,15 @@ export const SYSTEM_NAV_KEYS = {
   collections: {
     defaultLabel: "Collections",
     url: "/collections",
-    defaultPlacement: "header",
+    // The header switches between how much of one list you see (Featured /
+    // Latest / All). Collections is a different axis — what a post is about —
+    // and readers reach that through the collection tags on posts they are
+    // already reading, so it starts one level down instead of widening the
+    // header for everyone.
+    defaultPlacement: "more",
   },
   archive: {
-    defaultLabel: "Archive",
+    defaultLabel: "All",
     url: "/archive",
     defaultPlacement: "header",
   },
@@ -96,9 +101,16 @@ export const DEFAULT_NAVIGATION_PROFILES = {
     version: 1,
     systemKeys: ["featured", "collections", "archive", "rss", "settings"],
   },
+  // Featured and All sit next to each other because they are the same list at
+  // two widths; version 1 split that pair with Collections, which reads as a
+  // third unrelated section rather than the wide end of one range.
+  2: {
+    version: 2,
+    systemKeys: ["featured", "archive", "collections", "rss", "settings"],
+  },
 } as const satisfies Record<number, DefaultNavigationProfile>;
 
-export const DEFAULT_NAVIGATION_PROFILE_VERSION = 1 as const;
+export const DEFAULT_NAVIGATION_PROFILE_VERSION = 2 as const;
 export const DEFAULT_NAVIGATION_PROFILE =
   DEFAULT_NAVIGATION_PROFILES[DEFAULT_NAVIGATION_PROFILE_VERSION];
 

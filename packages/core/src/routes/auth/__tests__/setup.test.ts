@@ -46,8 +46,8 @@ describe("Setup bootstrap logic", () => {
 
     expect(navItemsList.map((item) => item.systemKey)).toEqual([
       "featured",
-      "collections",
       "archive",
+      "collections",
       "rss",
       "settings",
     ]);
