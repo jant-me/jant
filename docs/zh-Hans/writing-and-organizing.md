@@ -172,6 +172,8 @@ Feed：
 - `/{slug}/feed` 返回单个 Collection 的 feed
 - `/collections/{slug1}+{slug2}/feed` 返回组合 Collection 的 feed
 
+每个页面都会在 HTML head 里声明 feed，阅读器和浏览器插件不用你手动给地址也能嗅探到。Collection 页和归档页把自己的 feed 排在最前，并带上当前筛选条件，所以在某个页面上订阅，拿到的就是这个页面显示的内容。
+
 Jant 动态生成的 Atom feed 都有同一段发布缓冲：新帖子和 Reply 立即显示在网页上，默认五分钟后才进入 feed。这段时间可以用来检查刚发布的内容、改错，或者赶在 feed 阅读器抓取前撤回。详见[配置 § Feed 默认值](configuration.md#feed-默认值可选)。
 
 ## 自定义 URL

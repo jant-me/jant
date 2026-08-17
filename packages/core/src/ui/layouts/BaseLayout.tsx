@@ -49,6 +49,17 @@ export interface ToastProps {
   type?: "success" | "error";
 }
 
+/** One `<link rel="alternate" type="application/atom+xml">` autodiscovery target. */
+export interface PageFeedLink {
+  /** Public path (or absolute URL) of the feed. */
+  href: string;
+  /**
+   * Label feed readers show for this feed, e.g. a collection's title. Omitted
+   * when blank, so the reader falls back to the feed document's own title.
+   */
+  title?: string;
+}
+
 export interface BaseLayoutProps {
   title: string;
   description?: string;
@@ -93,6 +104,13 @@ export interface BaseLayoutProps {
    * language (list surfaces) or that have translations (posts).
    */
   alternateLanguages?: LanguageAlternate[];
+  /**
+   * The feed this page itself publishes — a collection's feed on a collection
+   * page, the filtered archive feed on `/archive`. Rendered ahead of the
+   * site-wide feed links, since a reader subscribing from a page means the
+   * page they are on.
+   */
+  pageFeed?: PageFeedLink;
   noindex?: boolean;
   isAuthenticated?: boolean;
   clientBundle?: "public" | "full";
@@ -118,6 +136,7 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
   articleModifiedTime,
   canonicalHref,
   alternateLanguages,
+  pageFeed,
   noindex,
   isAuthenticated = false,
   clientBundle,
@@ -321,6 +340,8 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
     appConfig?.mainRssFeed === "latest"
       ? { href: featuredFeedHref, title: featuredFeedTitle }
       : { href: latestFeedHref, title: latestFeedTitle };
+  const pageFeedHref = feedsEnabled ? pageFeed?.href.trim() || null : null;
+  const pageFeedTitle = pageFeed?.title?.trim() || undefined;
 
   return (
     <>
@@ -455,6 +476,14 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
               sitePathPrefix,
             )}
           />
+          {pageFeedHref && (
+            <link
+              rel="alternate"
+              type="application/atom+xml"
+              title={pageFeedTitle}
+              href={pageFeedHref}
+            />
+          )}
           {mainFeedHref && (
             <link
               rel="alternate"
