@@ -102,6 +102,11 @@ export interface ArchivePageProps {
   /** Flat timeline items used by list view (skips month grouping) */
   items?: TimelineItemView[];
   totalCount: number;
+  /**
+   * Matches the same view with every filter cleared. Lets the count say how
+   * much the active filter removed; omitted when nothing is filtered.
+   */
+  baselineCount?: number;
   currentPage: number;
   totalPages: number;
   filters: ArchiveFilters;

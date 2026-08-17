@@ -203,11 +203,6 @@ msgstr "Add to Navigation"
 msgid "Adding…"
 msgstr "Adding…"
 
-#. @context: Archive page title. Matches the nav label — the widest of Featured / Latest / All.
-#: src/ui/pages/ArchivePage.tsx
-msgid "All"
-msgstr "All"
-
 #. @context: Built-in navigation label for the archive page. Reads as the widest of Featured / Latest / All rather than 'old posts' — the page is the complete index, and its URL stays /archive.
 #: src/ui/shared/navigation-labels.ts
 msgctxt "nav"
@@ -224,8 +219,10 @@ msgstr "All collections"
 msgid "All formats"
 msgstr "All formats"
 
+#. @context: Archive page heading and document title when no filter is active. Names the surface, not the current selection — the nav calls the same destination 'All'.
 #. @context: Archive thread filter - threads and single posts
 #: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "All posts"
 msgstr "All posts"
 
@@ -282,7 +279,7 @@ msgid "Article detail page"
 msgstr "Article detail page"
 
 #. @context: Archive media filter - audio
-#: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Audio"
 msgstr "Audio"
 
@@ -904,9 +901,9 @@ msgstr "Favicon"
 #. @context: Page heading for the featured posts feed
 #. @context: Tooltip and screen reader label for the featured-post icon in the post footer when no featured date is available
 #: src/routes/pages/featured.tsx
-#: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/FeaturedPage.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
+#: src/ui/shared/archive-labels.ts
 #: src/ui/shared/PostFooter.tsx
 msgid "Featured"
 msgstr "Featured"
@@ -966,7 +963,7 @@ msgid "File uploaded."
 msgstr "File uploaded."
 
 #. @context: Archive media filter - files/documents
-#: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Files"
 msgstr "Files"
 
@@ -1023,7 +1020,7 @@ msgstr "Helps screen readers describe the image"
 #. @context: Archive visibility filter for posts hidden from Latest
 #. @context: Compose publish settings visibility option
 #: src/ui/compose/ComposeDialog.tsx
-#: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Hidden from Latest"
 msgstr "Hidden from Latest"
 
@@ -1075,7 +1072,7 @@ msgid "Image unavailable"
 msgstr "Image unavailable"
 
 #. @context: Archive media filter - images
-#: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Images"
 msgstr "Images"
 
@@ -1268,10 +1265,8 @@ msgstr "Link to your latest posts. Your homepage shows this feed."
 msgid "Link updated."
 msgstr "Link updated."
 
-#. @context: Archive feed title segment for link format filter
 #. @context: Post format label plural - links
-#: src/routes/pages/archive.tsx
-#: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Links"
 msgstr "Links"
 
@@ -1487,10 +1482,8 @@ msgstr "Note"
 msgid "note treatment"
 msgstr "note treatment"
 
-#. @context: Archive feed title segment for note format filter
 #. @context: Post format label plural - notes
-#: src/routes/pages/archive.tsx
-#: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Notes"
 msgstr "Notes"
 
@@ -1513,6 +1506,11 @@ msgstr "Nothing in Featured yet. Mark a post as featured to show it here."
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Now"
 msgstr "Now"
+
+#. @context: Archive page count when a filter narrows the view, following the matching count — reads as '42 of 1,240 threads'
+#: src/ui/pages/ArchivePage.tsx
+msgid "of {total} {unit}"
+msgstr "of {total} {unit}"
 
 #. @context: Collection sort order option
 #. @context: Collection sort order option
@@ -1668,14 +1666,14 @@ msgstr "Primary logo files"
 #. @context: Post status badge for a private post
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/feed/PostStatusBadges.tsx
-#: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Private"
 msgstr "Private"
 
 #. @context: Archive visibility filter - public posts
 #. @context: Compose publish settings visibility option
 #: src/ui/compose/ComposeDialog.tsx
-#: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Public"
 msgstr "Public"
 
@@ -1735,11 +1733,9 @@ msgstr "Quote"
 msgid "Quoted or highlighted passages should feel like annotations, not warnings."
 msgstr "Quoted or highlighted passages should feel like annotations, not warnings."
 
-#. @context: Archive feed title segment for quote format filter
 #. @context: Placeholder for the custom collections link label
 #. @context: Post format label plural - quotes
-#: src/routes/pages/archive.tsx
-#: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 #: src/ui/shared/collection-management-labels.ts
 msgid "Quotes"
 msgstr "Quotes"
@@ -2029,13 +2025,10 @@ msgstr "Sign In"
 msgid "Sign in to start writing."
 msgstr "Sign in to start writing."
 
-#. @context: Archive feed title segment for hasReplies=0 filter
-#: src/routes/pages/archive.tsx
-msgid "single posts"
-msgstr "single posts"
-
+#. @context: Archive thread filter - posts without replies
 #. @context: Archive thread filter - posts without replies
 #: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Single posts"
 msgstr "Single posts"
 
@@ -2190,7 +2183,7 @@ msgstr "Text"
 #. @context: Archive media filter - text file attachments
 #. @context: Attached text panel title
 #: src/ui/compose/ComposeDialog.tsx
-#: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Text attachment"
 msgstr "Text attachment"
 
@@ -2347,13 +2340,11 @@ msgstr "Thread accent"
 msgid "Thread accents"
 msgstr "Thread accents"
 
-#. @context: Archive feed title segment for hasReplies=1 filter
 #. @context: Archive month header count unit for multiple threads
 #. @context: Archive page summary unit for multiple matching threads
 #. @context: Plural thread count label
 #. @context: Plural thread count label
 #. @context: Plural thread count label on collection detail page
-#: src/routes/pages/archive.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/CollectionPage.tsx
@@ -2363,7 +2354,9 @@ msgid "threads"
 msgstr "threads"
 
 #. @context: Archive thread filter - thread roots with replies
+#. @context: Archive thread filter - thread roots with replies
 #: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Threads"
 msgstr "Threads"
 
@@ -2383,8 +2376,10 @@ msgstr "Title"
 
 #. @context: Archive filter - notes that have a title
 #. @context: Archive filter - notes that have a title
+#. @context: Archive filter - notes that have a title
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Titled"
 msgstr "Titled"
 
@@ -2435,10 +2430,12 @@ msgstr "Type the quote..."
 
 #. @context: Archive filter - notes without a title
 #. @context: Archive filter - notes without a title
+#. @context: Archive filter - notes without a title
 #. @context: Compose note title placeholder. States what the note is while the field is empty rather than asking for a title — untitled notes are a normal kind of note here, and Archive files them under this same word.
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Untitled"
 msgstr "Untitled"
 
@@ -2505,7 +2502,7 @@ msgid "Use this page to judge buttons, links, cards, forms, thread accents, and 
 msgstr "Use this page to judge buttons, links, cards, forms, thread accents, and quiet surfaces before changing a theme globally."
 
 #. @context: Archive media filter - video
-#: src/ui/pages/ArchivePage.tsx
+#: src/ui/shared/archive-labels.ts
 msgid "Video"
 msgstr "Video"
 
@@ -2584,25 +2581,15 @@ msgstr "White logo on the Jant green square tile for platforms and layouts that 
 msgid "Why the default accent should feel written, not branded"
 msgstr "Why the default accent should feel written, not branded"
 
-#. @context: Archive feed title segment for hasMedia=1 filter
-#: src/routes/pages/archive.tsx
-msgid "with media"
-msgstr "with media"
+#. @context: Archive filter - posts carrying any media attachment
+#: src/ui/shared/archive-labels.ts
+msgid "With media"
+msgstr "With media"
 
-#. @context: Archive feed title segment for hasTitle=1 filter
-#: src/routes/pages/archive.tsx
-msgid "with title"
-msgstr "with title"
-
-#. @context: Archive feed title segment for hasMedia=0 filter
-#: src/routes/pages/archive.tsx
-msgid "without media"
-msgstr "without media"
-
-#. @context: Archive feed title segment for hasTitle=0 filter
-#: src/routes/pages/archive.tsx
-msgid "without title"
-msgstr "without title"
+#. @context: Archive filter - posts with no media attachment
+#: src/ui/shared/archive-labels.ts
+msgid "Without media"
+msgstr "Without media"
 
 #. @context: Compose publish settings hint for quiet reply switch
 #: src/ui/compose/ComposeDialog.tsx

@@ -454,13 +454,46 @@ describe("archive page sort=updated", () => {
     await seedDivergingThreads(services);
 
     const byPublished = await (await app.request("/archive")).text();
-    expect(byPublished).toContain("<title>All - ");
+    expect(byPublished).toContain("<title>All posts - ");
     expect(byPublished).not.toContain("Recently updated");
 
     const byActivity = await (
       await app.request("/archive?sort=updated")
     ).text();
-    expect(byActivity).toContain("<title>All - Recently updated - ");
+    expect(byActivity).toContain("<title>All posts - Recently updated - ");
+  });
+
+  it("says how much a filter removed, and stays quiet when none did", async () => {
+    const { app, services } = setupApp();
+    await seedDivergingThreads(services);
+
+    // Two thread roots; asking for threads with replies leaves one of them.
+    const filtered = await (await app.request("/archive?replies=any")).text();
+    expect(filtered).toContain("of 2");
+
+    // Nothing filtered, so there is no baseline worth comparing against.
+    const unfiltered = await (await app.request("/archive")).text();
+    expect(unfiltered).not.toContain("of 2");
+  });
+
+  it("names the active filter in the document title", async () => {
+    const { app, services } = setupApp();
+    await seedDivergingThreads(services);
+
+    const byFormat = await (await app.request("/archive?format=note")).text();
+    expect(byFormat).toContain("<title>Notes - ");
+
+    // Title presence absorbs the format it refines, as the filter chip does.
+    const untitled = await (
+      await app.request("/archive?format=note&title=none")
+    ).text();
+    expect(untitled).toContain("<title>Untitled - ");
+
+    // A tab truncates from the right, so the description stops at two parts.
+    const capped = await (
+      await app.request("/archive?format=note&year=2019&replies=any")
+    ).text();
+    expect(capped).toContain("<title>Notes, 2019 - ");
   });
 
   it("ignores an unknown sort value", async () => {

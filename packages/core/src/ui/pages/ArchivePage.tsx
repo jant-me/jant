@@ -24,6 +24,13 @@ import { toMediaKind } from "../../lib/upload.js";
 import { PagePagination } from "../shared/Pagination.js";
 import { TimelineFeedItem } from "../feed/TimelineFeed.js";
 import { DecorativeQuoteMark } from "../shared/DecorativeQuoteMark.js";
+import {
+  ARCHIVE_ALL_POSTS_LABEL,
+  getFormatLabelPlural as getSharedFormatLabelPlural,
+  getMediaKindLabel as getSharedMediaKindLabel,
+  getVisibilityLabel as getSharedVisibilityLabel,
+  hasActiveArchiveFilter,
+} from "../shared/archive-labels.js";
 
 // =============================================================================
 // URL Builder
@@ -101,27 +108,7 @@ function getFormatLabel(format: string): string {
 
 function getFormatLabelPlural(format: string): string {
   const { i18n } = useLingui();
-  const labels: Record<string, string> = {
-    note: i18n._(
-      msg({
-        message: "Notes",
-        comment: "@context: Post format label plural - notes",
-      }),
-    ),
-    link: i18n._(
-      msg({
-        message: "Links",
-        comment: "@context: Post format label plural - links",
-      }),
-    ),
-    quote: i18n._(
-      msg({
-        message: "Quotes",
-        comment: "@context: Post format label plural - quotes",
-      }),
-    ),
-  };
-  return labels[format] ?? format + "s";
+  return getSharedFormatLabelPlural(format, i18n);
 }
 
 /** Icon name mapping for post formats. */
@@ -142,39 +129,7 @@ const MEDIA_KIND_ICONS: Record<MediaKind, string> = {
 
 function getMediaKindLabel(kind: MediaKind): string {
   const { i18n } = useLingui();
-  const labels: Record<MediaKind, string> = {
-    image: i18n._(
-      msg({
-        message: "Images",
-        comment: "@context: Archive media filter - images",
-      }),
-    ),
-    video: i18n._(
-      msg({
-        message: "Video",
-        comment: "@context: Archive media filter - video",
-      }),
-    ),
-    audio: i18n._(
-      msg({
-        message: "Audio",
-        comment: "@context: Archive media filter - audio",
-      }),
-    ),
-    text: i18n._(
-      msg({
-        message: "Text attachment",
-        comment: "@context: Archive media filter - text file attachments",
-      }),
-    ),
-    document: i18n._(
-      msg({
-        message: "Files",
-        comment: "@context: Archive media filter - files/documents",
-      }),
-    ),
-  };
-  return labels[kind] ?? kind;
+  return getSharedMediaKindLabel(kind, i18n);
 }
 
 // =============================================================================
@@ -593,34 +548,7 @@ const ARCHIVE_VISIBILITIES: ArchiveVisibility[] = [
 
 function getVisibilityLabel(v: ArchiveVisibility): string {
   const { i18n } = useLingui();
-  const labels: Record<ArchiveVisibility, string> = {
-    public: i18n._(
-      msg({
-        message: "Public",
-        comment: "@context: Archive visibility filter - public posts",
-      }),
-    ),
-    latest_hidden: i18n._(
-      msg({
-        message: "Hidden from Latest",
-        comment:
-          "@context: Archive visibility filter for posts hidden from Latest",
-      }),
-    ),
-    private: i18n._(
-      msg({
-        message: "Private",
-        comment: "@context: Archive visibility filter - private posts",
-      }),
-    ),
-    featured: i18n._(
-      msg({
-        message: "Featured",
-        comment: "@context: Archive visibility filter - featured posts",
-      }),
-    ),
-  };
-  return labels[v];
+  return getSharedVisibilityLabel(v, i18n);
 }
 
 const VISIBILITY_ICONS: Record<ArchiveVisibility, string> = {
@@ -1330,6 +1258,7 @@ export const ArchivePage: FC<ArchivePageProps> = ({
   groups,
   items,
   totalCount,
+  baselineCount,
   currentPage,
   totalPages,
   filters,
@@ -1361,26 +1290,37 @@ export const ArchivePage: FC<ArchivePageProps> = ({
           }),
         );
 
+  // A reader who arrives on a pre-filtered URL never applied the filter and has
+  // no way to know how much it removed. Naming the seven dimensions back at
+  // them is what the chip bar already does; what it cannot say is how much is
+  // left, so the count carries its own baseline instead.
+  const showsSubset =
+    hasActiveArchiveFilter(filters) &&
+    baselineCount !== undefined &&
+    baselineCount > totalCount;
+
+  const countRemainder = showsSubset
+    ? i18n._(
+        msg({
+          message: "of {total} {unit}",
+          comment:
+            "@context: Archive page count when a filter narrows the view, following the matching count — reads as '42 of 1,240 threads'",
+        }),
+        { total: baselineCount, unit: totalCountUnit },
+      )
+    : totalCountUnit;
+
+  const countSummary = `${totalCount} ${countRemainder}`;
+
   return (
     <div class="py-6" data-page="archive">
       <header class="archive-page-header page-intro">
         <div class="page-intro-title-row">
-          <h1 class="page-intro-title">
-            {i18n._(
-              msg({
-                message: "All",
-                comment:
-                  "@context: Archive page title. Matches the nav label — the widest of Featured / Latest / All.",
-              }),
-            )}
-          </h1>
+          <h1 class="page-intro-title">{i18n._(ARCHIVE_ALL_POSTS_LABEL)}</h1>
         </div>
-        <p
-          class="page-intro-meta archive-page-meta"
-          aria-label={`${totalCount} ${totalCountUnit}`}
-        >
+        <p class="page-intro-meta archive-page-meta" aria-label={countSummary}>
           <span class="archive-page-summary-count">{totalCount}</span>{" "}
-          {totalCountUnit}
+          {countRemainder}
           {sortsByActivity && (
             <>
               {" · "}

@@ -27,6 +27,12 @@ import type {
 } from "../../types/props.js";
 import { FORMATS, MEDIA_KINDS } from "../../types.js";
 import { ArchivePage } from "../../ui/pages/ArchivePage.js";
+import type { ArchiveFilterDescription } from "../../ui/shared/archive-labels.js";
+import {
+  describeArchiveFilters,
+  getArchiveViewTitle,
+  hasActiveArchiveFilter,
+} from "../../ui/shared/archive-labels.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   getFeedEntryUpdatedAt,
@@ -348,30 +354,81 @@ export async function renderArchivePage(
     lang: getViewLang(c) ?? undefined,
   });
 
+  // Only a signed-in reader can select a visibility, so for everyone else the
+  // dimension is not part of what this view is.
+  const effectiveVisibility = navData.isAuthenticated
+    ? params.visibilityAll
+      ? undefined
+      : (params.visibility ?? undefined)
+    : undefined;
+
+  const archiveFilterDescription: ArchiveFilterDescription = {
+    collectionTitle: collection?.title,
+    format: params.format,
+    year: params.validYear,
+    mediaKinds: params.mediaKinds,
+    hasMedia: params.hasMedia,
+    hasTitle: params.hasTitle,
+    hasReplies: params.hasReplies,
+    visibility: effectiveVisibility,
+  };
+
   // --- Parallel data fetches ------------------------------------------------
   // List view doesn't need month-based grouping, so skip countByYearMonth.
 
   const isListView = params.view === "list";
 
-  const [totalCount, monthlyCounts, posts, availableYears, allCollections] =
-    await Promise.all([
-      services.posts.count(filters),
-      isListView
-        ? Promise.resolve([] as { yearMonth: string; count: number }[])
-        : services.posts.countByYearMonth(filters),
-      services.posts.list({
-        ...filters,
-        limit: pageSize,
-        offset: (params.currentPage - 1) * pageSize,
-      }),
-      services.posts.getDistinctYears({
-        status: "published",
-        excludeReplies: true,
-        lang: filters.lang,
-        sortBy: filters.sortBy,
-      }),
-      services.collections.list(),
-    ]);
+  // The same view with every selection cleared, so the count can say how much
+  // the filter removed. Skipped entirely when nothing is filtered — the two
+  // numbers would be equal — which keeps the plain /archive page at its
+  // current query count. When it does run it is the cheapest of the three
+  // aggregates, since clearing the selections is what drops the collection and
+  // media EXISTS subqueries.
+  const baselineFilters = hasActiveArchiveFilter(archiveFilterDescription)
+    ? buildArchivePostFilters(
+        {
+          ...params,
+          format: undefined,
+          validYear: undefined,
+          collectionSlug: undefined,
+          mediaKinds: undefined,
+          hasMedia: undefined,
+          hasTitle: undefined,
+          hasReplies: undefined,
+          visibility: undefined,
+        },
+        { isAuthenticated: navData.isAuthenticated, lang: filters.lang },
+      )
+    : undefined;
+
+  const [
+    totalCount,
+    baselineCount,
+    monthlyCounts,
+    posts,
+    availableYears,
+    allCollections,
+  ] = await Promise.all([
+    services.posts.count(filters),
+    baselineFilters
+      ? services.posts.count(baselineFilters)
+      : Promise.resolve(undefined),
+    isListView
+      ? Promise.resolve([] as { yearMonth: string; count: number }[])
+      : services.posts.countByYearMonth(filters),
+    services.posts.list({
+      ...filters,
+      limit: pageSize,
+      offset: (params.currentPage - 1) * pageSize,
+    }),
+    services.posts.getDistinctYears({
+      status: "published",
+      excludeReplies: true,
+      lang: filters.lang,
+      sortBy: filters.sortBy,
+    }),
+    services.collections.list(),
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
@@ -456,22 +513,9 @@ export async function renderArchivePage(
 
   // --- Build active filter state for UI -------------------------------------
 
-  const effectiveVisibility = navData.isAuthenticated
-    ? params.visibilityAll
-      ? undefined
-      : (params.visibility ?? undefined)
-    : undefined;
-
   const archiveFilters: ArchiveFilters = {
-    year: params.validYear,
+    ...archiveFilterDescription,
     collectionSlug: params.collectionSlug,
-    collectionTitle: collection?.title,
-    format: params.format,
-    mediaKinds: params.mediaKinds,
-    hasMedia: params.hasMedia,
-    hasTitle: params.hasTitle,
-    hasReplies: params.hasReplies,
-    visibility: effectiveVisibility,
     view: params.view,
     sort: params.sort === "updated" ? "updated" : undefined,
   };
@@ -487,9 +531,11 @@ export async function renderArchivePage(
   }));
 
   return renderPublicPage(c, {
-    // Distinguishes a bookmarked or shared ?sort=updated view in the tab bar.
+    // A tab has no filter bar beside it, so unlike the page heading this has to
+    // name the selection itself — otherwise every bookmarked filtered view
+    // reads identically in the tab bar.
     title: buildPageTitle(
-      "All",
+      getArchiveViewTitle(archiveFilterDescription, getI18n(c)),
       params.sort === "updated" ? "Recently updated" : undefined,
       navData.siteName,
     ),
@@ -508,6 +554,7 @@ export async function renderArchivePage(
         groups={groups}
         items={flatItems}
         totalCount={totalCount}
+        baselineCount={baselineCount}
         currentPage={params.currentPage}
         totalPages={totalPages}
         filters={archiveFilters}
@@ -552,10 +599,14 @@ archiveRoutes.get("/", renderArchiveRoute);
  * Shared by the feed document's own title and the autodiscovery link on the
  * archive page, so a subscriber sees the same name in both places.
  *
+ * Unlike the page title this lists every active dimension. A feed name sits in
+ * someone's reader for years with no UI to inspect it, so two subscriptions
+ * that differ only in a dropped dimension must not arrive under one name.
+ *
  * @param c - Hono context
  * @param params - Parsed archive filter params
  * @param collectionTitle - Resolved collection title (if any)
- * @returns Feed label, e.g. "Archive: Notes, without title"
+ * @returns Feed label, e.g. "Archive: Untitled, 2024"
  * @example
  * buildArchiveFeedLabel(c, params); // "Archive"
  */
@@ -566,104 +617,18 @@ function buildArchiveFeedLabel(
 ): string {
   const i18n = getI18n(c);
 
-  const parts: string[] = [];
-
-  if (params.format) {
-    const formatLabels: Record<string, string> = {
-      note: i18n._(
-        msg({
-          message: "Notes",
-          comment:
-            "@context: Archive feed title segment for note format filter",
-        }),
-      ),
-      link: i18n._(
-        msg({
-          message: "Links",
-          comment:
-            "@context: Archive feed title segment for link format filter",
-        }),
-      ),
-      quote: i18n._(
-        msg({
-          message: "Quotes",
-          comment:
-            "@context: Archive feed title segment for quote format filter",
-        }),
-      ),
-    };
-    parts.push(formatLabels[params.format] ?? params.format);
-  }
-
-  if (collectionTitle) {
-    parts.push(collectionTitle);
-  }
-
-  if (params.hasTitle === false) {
-    parts.push(
-      i18n._(
-        msg({
-          message: "without title",
-          comment: "@context: Archive feed title segment for hasTitle=0 filter",
-        }),
-      ),
-    );
-  } else if (params.hasTitle === true) {
-    parts.push(
-      i18n._(
-        msg({
-          message: "with title",
-          comment: "@context: Archive feed title segment for hasTitle=1 filter",
-        }),
-      ),
-    );
-  }
-
-  if (params.hasMedia === true) {
-    parts.push(
-      i18n._(
-        msg({
-          message: "with media",
-          comment: "@context: Archive feed title segment for hasMedia=1 filter",
-        }),
-      ),
-    );
-  } else if (params.hasMedia === false) {
-    parts.push(
-      i18n._(
-        msg({
-          message: "without media",
-          comment: "@context: Archive feed title segment for hasMedia=0 filter",
-        }),
-      ),
-    );
-  }
-
-  if (params.hasReplies === true) {
-    parts.push(
-      i18n._(
-        msg({
-          message: "threads",
-          comment:
-            "@context: Archive feed title segment for hasReplies=1 filter",
-        }),
-      ),
-    );
-  } else if (params.hasReplies === false) {
-    parts.push(
-      i18n._(
-        msg({
-          message: "single posts",
-          comment:
-            "@context: Archive feed title segment for hasReplies=0 filter",
-        }),
-      ),
-    );
-  }
-
-  if (params.validYear) {
-    parts.push(String(params.validYear));
-  }
+  const parts = describeArchiveFilters(
+    {
+      collectionTitle,
+      format: params.format,
+      year: params.validYear,
+      mediaKinds: params.mediaKinds,
+      hasMedia: params.hasMedia,
+      hasTitle: params.hasTitle,
+      hasReplies: params.hasReplies,
+    },
+    i18n,
+  );
 
   const archiveLabel = i18n._(
     msg({
