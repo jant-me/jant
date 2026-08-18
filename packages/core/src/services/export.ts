@@ -121,6 +121,8 @@ export interface SiteConfig {
   rssFeedsEnabled: boolean;
   /** "latest" or "featured" — drives the default RSS nav link in the exported site. */
   mainRssFeed: string;
+  /** "list" or "grid" — the layout the exported archive page opens with. */
+  archiveDefaultLayout: string;
   siteFooter: string;
   showHeaderAvatar: boolean;
   siteAvatarUrl: string;
@@ -1491,6 +1493,7 @@ function buildHugoToml(config: SiteConfig): string {
     "[params]",
     `  description = "${escapeTomlString(config.siteDescription)}"`,
     `  main_rss_feed = "${escapeTomlString(config.mainRssFeed)}"`,
+    `  archive_default_layout = "${escapeTomlString(config.archiveDefaultLayout)}"`,
     `  public_api_enabled = ${config.publicApiEnabled}`,
     `  rss_feeds_enabled = ${config.rssFeedsEnabled}`,
     `  show_jant_branding_on_home = ${config.showJantBrandingOnHome}`,
@@ -1536,6 +1539,7 @@ function buildJantDataToml(
     `multilingual_enabled = ${config.multilingualEnabled}`,
     `additional_languages = "${escapeTomlString(config.additionalLanguages.join(","))}"`,
     `main_rss_feed = "${escapeTomlString(config.mainRssFeed)}"`,
+    `archive_default_layout = "${escapeTomlString(config.archiveDefaultLayout)}"`,
     `public_api_enabled = ${config.publicApiEnabled}`,
     `rss_feeds_enabled = ${config.rssFeedsEnabled}`,
     `show_jant_branding_on_home = ${config.showJantBrandingOnHome}`,

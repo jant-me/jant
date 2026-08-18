@@ -8,6 +8,7 @@ import {
   MAX_SITE_DESCRIPTION_LENGTH,
   MAX_SITE_FOOTER_LENGTH,
   MAX_SITE_NAME_LENGTH,
+  type ArchiveLayout,
   type FeedKind,
 } from "./constants.js";
 
@@ -163,6 +164,15 @@ export const CONFIG_FIELDS = {
     envOnly: false,
     envKeys: ["MAIN_RSS_FEED"],
     editor: { type: "enum", options: ["featured", "latest"] },
+  },
+  // The archive is the widest of Featured / Latest / All, and the other two
+  // render as timelines. `list` keeps the trio consistent; `grid` turns the
+  // page back into a tile catalogue.
+  ARCHIVE_DEFAULT_LAYOUT: {
+    defaultValue: "list",
+    envOnly: false,
+    envKeys: ["ARCHIVE_DEFAULT_LAYOUT"],
+    editor: { type: "enum", options: ["list", "grid"] },
   },
   // Environment-only (deployment/infrastructure config)
   DEFAULT_THEME: {
@@ -723,6 +733,8 @@ export interface AppConfig {
    */
   additionalLanguages: string[];
   mainRssFeed: FeedKind;
+  /** Layout `/archive` uses when the URL names no explicit layout. */
+  archiveDefaultLayout: ArchiveLayout;
   /** Canonical IANA timezone identifier used for date/time display. */
   timeZone: string;
   siteFooter: string;

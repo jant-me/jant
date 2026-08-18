@@ -12,7 +12,7 @@
 import type { Bindings } from "../types/bindings.js";
 import type { AppConfig } from "../types/config.js";
 import { CONFIG_FIELDS } from "../types/config.js";
-import type { FeedKind } from "../types/constants.js";
+import type { ArchiveLayout, FeedKind } from "../types/constants.js";
 import { ASSET_BASE_SEGMENT, getPublicAssetBasePath } from "./asset-path.js";
 import {
   getAuthSecret,
@@ -148,6 +148,13 @@ function parseFeedKind(value: string, fallback: FeedKind): FeedKind {
   return value === "latest" || value === "featured" ? value : fallback;
 }
 
+function parseArchiveLayout(
+  value: string,
+  fallback: ArchiveLayout,
+): ArchiveLayout {
+  return value === "list" || value === "grid" ? value : fallback;
+}
+
 /**
  * Build a complete AppConfig from environment bindings and DB settings.
  *
@@ -232,6 +239,10 @@ export function resolveConfig(
     mainRssFeed: parseFeedKind(
       resolve("MAIN_RSS_FEED", allSettings, env),
       "featured",
+    ),
+    archiveDefaultLayout: parseArchiveLayout(
+      resolve("ARCHIVE_DEFAULT_LAYOUT", allSettings, env),
+      "list",
     ),
     timeZone: normalizeTimeZone(resolve("TIME_ZONE", allSettings, env)),
     siteFooter: resolve("SITE_FOOTER", allSettings, env),

@@ -125,6 +125,19 @@ All three values accept integers from `1` to `100`. They can also be changed at
 runtime in Config Editor; the environment variables remain their deployment
 fallbacks.
 
+### Archive layout (optional)
+
+| Variable                 | Default | Description                                    |
+| ------------------------ | ------- | ---------------------------------------------- |
+| `ARCHIVE_DEFAULT_LAYOUT` | `list`  | Layout `/archive` opens with: `list` or `grid` |
+
+`list` renders full posts, the same timeline Latest and Featured use. `grid`
+renders the tile catalogue. Readers switch layouts from the page itself, and a
+`?layout=` link keeps its layout whatever this is set to.
+
+`?view=grid` was the earlier spelling of that link. It still works — `/archive`
+redirects it to `?layout=`, and stored custom archive URLs are read either way.
+
 ### Storage
 
 Storage depends on the runtime:
@@ -411,6 +424,7 @@ These settings can be changed on Jant's Settings page after setup. Each one can 
 | `CJK_SERIF_FONT`             | CJK serif fallback                               |
 | `TIME_ZONE`                  | Display time zone, e.g. `UTC` or `Asia/Shanghai` |
 | `MAIN_RSS_FEED`              | What `/feed` returns                             |
+| `ARCHIVE_DEFAULT_LAYOUT`     | Layout `/archive` opens with                     |
 | `PAGE_SIZE`                  | Default items per page (`1–100`)                 |
 | `SEARCH_PAGE_SIZE`           | Search results per page (`1–100`)                |
 | `ARCHIVE_PAGE_SIZE`          | Archive posts per page (`1–100`)                 |

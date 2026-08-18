@@ -18,6 +18,7 @@ describe("editable settings registry", () => {
       "SITE_LANGUAGE",
       "DASHBOARD_LANGUAGE",
       "MAIN_RSS_FEED",
+      "ARCHIVE_DEFAULT_LAYOUT",
       "PAGE_SIZE",
       "SEARCH_PAGE_SIZE",
       "ARCHIVE_PAGE_SIZE",

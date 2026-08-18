@@ -1204,6 +1204,11 @@ msgstr ""
 msgid "Latest posts"
 msgstr ""
 
+#. @context: Archive grid/list toggle group label
+#: src/ui/pages/ArchivePage.tsx
+msgid "Layout"
+msgstr ""
+
 #. @context: Compose publish settings slug help text
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Leave blank to generate one automatically."
@@ -2511,11 +2516,6 @@ msgstr ""
 #. @context: Thread link label on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "View earlier notes in this thread"
-msgstr ""
-
-#. @context: Archive grid/list toggle group label
-#: src/ui/pages/ArchivePage.tsx
-msgid "View mode"
 msgstr ""
 
 #. @context: Compose publish settings section label

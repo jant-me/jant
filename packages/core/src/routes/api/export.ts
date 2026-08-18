@@ -29,6 +29,7 @@ exportApiRoutes.post("/hugo", requireAuthApi(), async (c) => {
       publicApiEnabled: appConfig.publicApiEnabled,
       rssFeedsEnabled: appConfig.rssFeedsEnabled,
       mainRssFeed: appConfig.mainRssFeed,
+      archiveDefaultLayout: appConfig.archiveDefaultLayout,
       siteFooter: appConfig.siteFooter,
       showHeaderAvatar: appConfig.showHeaderAvatar,
       siteAvatarUrl: appConfig.siteAvatarUrl,

@@ -223,3 +223,35 @@ export function formatYearMonth(timestamp: number, timeZone = "UTC"): string {
   const month = parts.find((part) => part.type === "month")?.value ?? "01";
   return `${year}-${month}`;
 }
+
+/**
+ * Formats a "YYYY-MM" grouping key as a readable month label.
+ *
+ * The label is always en-US, matching the archive's other month copy — the
+ * grid header and the list marker read from this one function so their labels
+ * cannot drift apart.
+ *
+ * @param yearMonth - Year-month string in "YYYY-MM" format
+ * @returns Month label such as "February 2024", or null when the key is malformed
+ *
+ * @example
+ * ```ts
+ * const label = formatYearMonthLabel("2024-02");
+ * // Returns: "February 2024"
+ * ```
+ */
+export function formatYearMonthLabel(yearMonth: string): string | null {
+  const [year, month] = yearMonth.split("-");
+  if (!year || !month) return null;
+
+  const yearNumber = parseInt(year, 10);
+  const monthNumber = parseInt(month, 10);
+  if (!Number.isInteger(yearNumber) || !Number.isInteger(monthNumber)) {
+    return null;
+  }
+
+  return new Date(yearNumber, monthNumber - 1).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+  });
+}

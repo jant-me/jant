@@ -58,6 +58,9 @@ function renderArchivePage(
       availableCollections: [],
       isAuthenticated: false,
       timeZone: "UTC",
+      // The fixture above is grid data, so these cases pin the grid layout.
+      // The list default gets its own case at the end of the file.
+      defaultLayout: "grid",
       ...props,
     }),
   );
@@ -167,13 +170,38 @@ describe("ArchivePage", () => {
     expect(updated).toContain("newest changes first");
   });
 
-  it("keeps the sort selection in filter and view links", () => {
+  it("keeps the sort selection in filter and layout links", () => {
     const html = renderArchivePage({
       filters: { sort: "updated" },
       availableCollections: [{ slug: "tech", title: "Tech" }],
     });
 
     expect(html).toContain("collection=tech&amp;sort=updated");
-    expect(html).toContain("view=list&amp;sort=updated");
+    expect(html).toContain("layout=list&amp;sort=updated");
+  });
+
+  // Neither layout is implied by an absent param any more, so both toggle
+  // links name themselves. A link shared with a layout chosen keeps that layout
+  // even if the site's ARCHIVE_DEFAULT_LAYOUT later changes.
+  it("writes both layout options into the URL explicitly", () => {
+    const html = renderArchivePage();
+
+    expect(html).toContain('href="/archive?layout=grid"');
+    expect(html).toContain('href="/archive?layout=list"');
+    expect(html).not.toContain("view=grid");
+    expect(html).not.toContain("view=list");
+  });
+
+  it("renders the flat list when the site default layout is list", () => {
+    const html = renderArchivePage({
+      groups: [],
+      items: [],
+      defaultLayout: undefined,
+      totalCount: 0,
+    });
+
+    expect(html).toContain(
+      '<a href="/archive?layout=list" class="archive-view-btn archive-view-btn-active"',
+    );
   });
 });

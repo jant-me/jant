@@ -12637,11 +12637,25 @@
 
   /* --- Tiles -------------------------------------------------------------- */
 
+  /* The header is a size container so the filter bar's own shape — not the
+     viewport — can decide how much air sits under it. Its inline size is the
+     bar's inline size, so the 39rem split threshold below is the same
+     measurement the bar splits on. */
   .archive-page-header {
+    container: archive-header / inline-size;
     display: flex;
     flex-direction: column;
     gap: 0.95rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.75rem;
+  }
+
+  /* Split into two rows, the bar stops reading as a line and starts reading as
+     a block, and the ragged bottom edge lands closer to the first post than a
+     single row does. Give the block back the air the extra row took. */
+  @container archive-header (max-width: 39rem) {
+    .archive-filters {
+      margin-bottom: 0.5rem;
+    }
   }
 
   .archive-page-meta {
@@ -13098,29 +13112,7 @@
     opacity: 0.72;
   }
 
-  /* --- List view month headers --------------------------------------------- */
-
-  .archive-list-groups {
-    display: flex;
-    flex-direction: column;
-    gap: 2.5rem;
-  }
-
-  .archive-list-month-header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 0 12px;
-    margin-bottom: 18px;
-    background: linear-gradient(
-      to bottom,
-      var(--site-page-bg) 82%,
-      color-mix(in srgb, var(--site-page-bg) 0%, transparent) 100%
-    );
-  }
+  /* --- List view ------------------------------------------------------------ */
 
   .archive-list-items {
     display: flex;
@@ -13795,12 +13787,7 @@
   @media (max-width: 699px) {
     .archive-page-header {
       gap: 0.8rem;
-      margin-bottom: 1.25rem;
-    }
-
-    .archive-list-month-header {
-      top: 0;
-      padding-top: 8px;
+      margin-bottom: 1.5rem;
     }
 
     .archive-grid-wrapper {

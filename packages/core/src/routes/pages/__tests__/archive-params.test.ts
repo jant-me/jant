@@ -305,6 +305,39 @@ describe("archive page legacy param redirect", () => {
     expect(res.status).toBe(308);
     expect(res.headers.get("location")).toBe("/archive?title=any");
   });
+
+  // `view` was renamed to `layout` so `view` can name the saved-selection
+  // concept. Shared links and bookmarks predate the rename.
+  it("redirects the legacy view param to layout", async () => {
+    const { app } = setupApp();
+
+    const res = await app.request("/archive?view=grid");
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe("/archive?layout=grid");
+  });
+
+  it("keeps layout when a URL carries both spellings", async () => {
+    const { app } = setupApp();
+
+    const res = await app.request("/archive?layout=list&view=grid");
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe("/archive?layout=list");
+  });
+
+  it("drops a view value it cannot render", async () => {
+    const { app } = setupApp();
+
+    const res = await app.request("/archive?view=carousel");
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe("/archive");
+  });
+
+  it("leaves a canonical layout param alone", async () => {
+    const { app } = setupApp();
+
+    const res = await app.request("/archive?layout=grid");
+    expect(res.status).toBe(200);
+  });
 });
 
 describe("archive page ordering", () => {
@@ -354,7 +387,7 @@ describe("archive page ordering", () => {
       publishedAt: Date.UTC(2026, 0, 1) / 1000,
     });
 
-    const res = await app.request("/archive?view=list");
+    const res = await app.request("/archive?layout=list");
     expect(res.status).toBe(200);
     const html = await res.text();
 
@@ -408,16 +441,20 @@ describe("archive page sort=updated", () => {
     );
   });
 
+  // Month headers are a grid affordance, so the bucketing axis is asserted
+  // through the grid layout rather than the site default.
   it("buckets months on the same axis it sorts by", async () => {
     const { app, services } = setupApp();
     await seedDivergingThreads(services);
 
-    const byPublished = await (await app.request("/archive")).text();
+    const byPublished = await (
+      await app.request("/archive?layout=grid")
+    ).text();
     expect(byPublished).toContain("March 2019");
     expect(byPublished).not.toContain("August 2026");
 
     const byActivity = await (
-      await app.request("/archive?sort=updated")
+      await app.request("/archive?layout=grid&sort=updated")
     ).text();
     expect(byActivity).toContain("August 2026");
     expect(byActivity).not.toContain("March 2019");
@@ -532,7 +569,9 @@ describe("archive page sort=updated", () => {
       publishedAt: Date.UTC(2025, 0, 1) / 1000,
     });
 
-    const html = await (await app.request("/archive?sort=updated")).text();
+    const html = await (
+      await app.request("/archive?layout=grid&sort=updated")
+    ).text();
     expect(html.indexOf("Quietly extended thread")).toBeLessThan(
       html.indexOf("Untouched newer thread"),
     );

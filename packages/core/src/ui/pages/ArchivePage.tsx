@@ -11,7 +11,7 @@ import { useLingui } from "../../i18n/context.js";
 import type {
   ArchivePageProps,
   ArchiveFilters,
-  ArchiveView,
+  ArchiveLayout,
   ArchiveVisibility,
   MediaKind,
 } from "../../types.js";
@@ -68,7 +68,11 @@ function buildFilterUrl(
       merged.visibility === "latest_hidden" ? "hidden" : merged.visibility,
     );
   }
-  if (merged.view && merged.view !== "grid") params.set("view", merged.view);
+  // Both layouts are written out in full. An absent `layout` means "whatever
+  // this site defaults to", so a link shared with a layout chosen keeps that
+  // layout even if the site default changes later. Only `layout` is ever
+  // emitted; the older `view` spelling is read-only now.
+  if (merged.layout) params.set("layout", merged.layout);
   if (merged.sort === "updated") params.set("sort", "updated");
 
   const qs = params.toString();
@@ -442,12 +446,13 @@ const ToggleOption: FC<{
   </a>
 );
 
-const ViewToggle: FC<{
+const LayoutToggle: FC<{
   filters: ArchiveFilters;
+  defaultLayout: ArchiveLayout;
   basePath?: string;
-}> = ({ filters, basePath = "" }) => {
+}> = ({ filters, defaultLayout, basePath = "" }) => {
   const { i18n } = useLingui();
-  const currentView: ArchiveView = filters.view ?? "grid";
+  const currentLayout: ArchiveLayout = filters.layout ?? defaultLayout;
 
   return (
     <div
@@ -455,15 +460,15 @@ const ViewToggle: FC<{
       role="radiogroup"
       aria-label={i18n._(
         msg({
-          message: "View mode",
+          message: "Layout",
           comment: "@context: Archive grid/list toggle group label",
         }),
       )}
     >
       <ToggleOption
-        href={buildFilterUrl(filters, { view: undefined }, basePath)}
+        href={buildFilterUrl(filters, { layout: "grid" }, basePath)}
         icon="layout-grid"
-        active={currentView === "grid"}
+        active={currentLayout === "grid"}
         label={i18n._(
           msg({
             message: "Show as a grid of tiles",
@@ -472,9 +477,9 @@ const ViewToggle: FC<{
         )}
       />
       <ToggleOption
-        href={buildFilterUrl(filters, { view: "list" }, basePath)}
+        href={buildFilterUrl(filters, { layout: "list" }, basePath)}
         icon="list"
-        active={currentView === "list"}
+        active={currentLayout === "list"}
         label={i18n._(
           msg({
             message: "Show as a list with full posts",
@@ -580,12 +585,14 @@ const THREAD_ICONS = {
 
 const FilterBar: FC<{
   filters: ArchiveFilters;
+  defaultLayout: ArchiveLayout;
   availableYears: number[];
   availableCollections: { slug: string; title: string }[];
   isAuthenticated: boolean;
   basePath?: string;
 }> = ({
   filters,
+  defaultLayout,
   availableYears,
   availableCollections,
   isAuthenticated,
@@ -959,7 +966,11 @@ const FilterBar: FC<{
 
       <div class="archive-toolbar-toggles">
         <SortToggle filters={filters} basePath={basePath} />
-        <ViewToggle filters={filters} basePath={basePath} />
+        <LayoutToggle
+          filters={filters}
+          defaultLayout={defaultLayout}
+          basePath={basePath}
+        />
       </div>
     </div>
   );
@@ -1257,6 +1268,7 @@ const ArchiveTile: FC<{ post: PostView; timeZone?: string }> = ({
 export const ArchivePage: FC<ArchivePageProps> = ({
   groups,
   items,
+  defaultLayout = "list",
   totalCount,
   baselineCount,
   currentPage,
@@ -1270,7 +1282,7 @@ export const ArchivePage: FC<ArchivePageProps> = ({
   feedHref,
 }) => {
   const { i18n } = useLingui();
-  const currentView: ArchiveView = filters.view ?? "grid";
+  const currentLayout: ArchiveLayout = filters.layout ?? defaultLayout;
   const sortsByActivity = filters.sort === "updated";
   const paginationBaseUrl = buildFilterUrl(filters, {}, basePath);
   const totalCountUnit =
@@ -1360,6 +1372,7 @@ export const ArchivePage: FC<ArchivePageProps> = ({
 
         <FilterBar
           filters={filters}
+          defaultLayout={defaultLayout}
           availableYears={availableYears}
           availableCollections={availableCollections}
           isAuthenticated={isAuthenticated}
@@ -1378,7 +1391,7 @@ export const ArchivePage: FC<ArchivePageProps> = ({
               }),
             )}
           </p>
-        ) : currentView === "grid" ? (
+        ) : currentLayout === "grid" ? (
           <div class="archive-grid-wrapper">
             <div class="archive-grid">
               {groups.map((group, groupIndex) => (

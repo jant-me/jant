@@ -2,6 +2,7 @@ import { randomBytes, scryptSync } from "node:crypto";
 import { generateKeyBetween } from "fractional-indexing";
 import { typeidUnboxed } from "typeid-js";
 import { runLocalWrangler } from "../../bin/lib/wrangler-cli.js";
+import { extractWranglerJson } from "../../bin/lib/wrangler-json.js";
 import {
   DEFAULT_NAVIGATION_PROFILE,
   SYSTEM_NAV_KEYS,
@@ -61,7 +62,7 @@ function runWrangler(args, options = {}) {
 
 export function executeJson(flag, sql) {
   const stdout = runWrangler([flag, "--command", sql, "--json"]);
-  return JSON.parse(stdout);
+  return JSON.parse(extractWranglerJson(stdout));
 }
 
 export function executeSql(flag, sql) {

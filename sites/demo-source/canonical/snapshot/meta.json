@@ -1,43 +1,9 @@
 {
   "format": "jant-site-snapshot",
   "version": 2,
-  "scope": "content",
-  "createdAt": "2026-04-26T18:21:31.495Z",
-  "source": {
-    "runtime": "d1-remote",
-    "label": "remote D1"
-  },
+  "dialect": "sqlite",
   "site": {
     "id": "sit_01kn8jq3t4famtyg9hjd074ckr",
     "key": "default"
-  },
-  "tables": [
-    "site_setting",
-    "collection",
-    "nav_item",
-    "collection_directory_item",
-    "post",
-    "thread_collection",
-    "path_registry",
-    "media"
-  ],
-  "settingKeys": [
-    "SITE_NAME",
-    "SITE_DESCRIPTION",
-    "SITE_LANGUAGE",
-    "MAIN_RSS_FEED",
-    "THEME",
-    "CUSTOM_CSS",
-    "SITE_AVATAR",
-    "SHOW_HEADER_AVATAR",
-    "SITE_FAVICON_ICO",
-    "SITE_FAVICON_APPLE_TOUCH",
-    "SITE_FAVICON_VERSION",
-    "FONT_THEME",
-    "THEME_MODE",
-    "TIME_ZONE",
-    "SITE_FOOTER",
-    "SHOW_JANT_BRANDING_ON_HOME",
-    "NOINDEX"
-  ]
+  }
 }

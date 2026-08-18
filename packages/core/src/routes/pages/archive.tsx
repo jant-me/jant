@@ -21,8 +21,8 @@ import type {
 import type { AppVariables } from "../../types/app-context.js";
 import type {
   ArchiveFilters,
+  ArchiveLayout,
   ArchiveSort,
-  ArchiveView,
   ArchiveVisibility,
 } from "../../types/props.js";
 import { FORMATS, MEDIA_KINDS } from "../../types.js";
@@ -78,7 +78,7 @@ interface ParsedArchiveParams {
   hasReplies?: boolean;
   visibility?: ArchiveVisibility;
   visibilityAll: boolean;
-  view?: ArchiveView;
+  layout?: ArchiveLayout;
   sort: ArchiveSort;
   currentPage: number;
 }
@@ -152,11 +152,14 @@ function parseArchiveParams(
       ? (visibilityParam as ArchiveVisibility)
       : undefined;
 
-  const viewParam = q("view") as ArchiveView | undefined;
-  const view =
-    viewParam && (viewParam === "grid" || viewParam === "list")
-      ? viewParam
-      : undefined;
+  // `layout` is the current spelling; `view` is the pre-rename one, kept
+  // readable indefinitely so old bookmarks and stored custom archive URLs keep
+  // working. Custom archive URLs bypass the canonical redirect below, so this
+  // parser — not the redirect — is what actually keeps them alive. `layout`
+  // wins when a URL somehow carries both.
+  const readLayout = (value: string | undefined): ArchiveLayout | undefined =>
+    value === "grid" || value === "list" ? value : undefined;
+  const layout = readLayout(q("layout")) ?? readLayout(q("view"));
 
   // sort selects the time axis for ordering, month grouping, and the year
   // filter alike — they must stay on the same column or the month headers
@@ -177,7 +180,7 @@ function parseArchiveParams(
     hasReplies,
     visibility,
     visibilityAll,
-    view,
+    layout,
     sort,
     currentPage,
   };
@@ -250,7 +253,7 @@ function buildArchivePostFilters(
 
 /**
  * Build a query string from parsed archive params (for feed self-URL and
- * archive page feed link). Omits view and page — those shape the rendered
+ * archive page feed link). Omits layout and page — those shape the rendered
  * page, not the result set — but carries `sort`, so the feed button on an
  * updated-sorted page hands back the matching feed.
  */
@@ -315,6 +318,22 @@ function legacyArchiveParamsRedirect(c: Context<Env>): string | null {
     changed = true;
   }
 
+  // `view` became `layout` so `view` can name the saved-selection concept.
+  // Only a value this page actually renders is carried across; anything else
+  // is dropped, which lands the reader on the site default rather than on a
+  // URL that keeps a meaningless param alive.
+  const legacyLayout = params.get("view");
+  if (legacyLayout !== null) {
+    if (
+      !params.has("layout") &&
+      (legacyLayout === "grid" || legacyLayout === "list")
+    ) {
+      params.set("layout", legacyLayout);
+    }
+    params.delete("view");
+    changed = true;
+  }
+
   if (!changed) return null;
   const qs = params.toString();
   return `${url.pathname}${qs ? `?${qs}` : ""}`;
@@ -376,7 +395,11 @@ export async function renderArchivePage(
   // --- Parallel data fetches ------------------------------------------------
   // List view doesn't need month-based grouping, so skip countByYearMonth.
 
-  const isListView = params.view === "list";
+  // No layout in the URL means the site's configured default, not grid: the
+  // archive is the widest of Featured / Latest / All and the other two are
+  // timelines, so `list` is the default default.
+  const layout: ArchiveLayout = params.layout ?? appConfig.archiveDefaultLayout;
+  const isListView = layout === "list";
 
   // The same view with every selection cleared, so the count can say how much
   // the filter removed. Skipped entirely when nothing is filtered — the two
@@ -516,7 +539,7 @@ export async function renderArchivePage(
   const archiveFilters: ArchiveFilters = {
     ...archiveFilterDescription,
     collectionSlug: params.collectionSlug,
-    view: params.view,
+    layout: params.layout,
     sort: params.sort === "updated" ? "updated" : undefined,
   };
 
@@ -553,6 +576,7 @@ export async function renderArchivePage(
       <ArchivePage
         groups={groups}
         items={flatItems}
+        defaultLayout={appConfig.archiveDefaultLayout}
         totalCount={totalCount}
         baselineCount={baselineCount}
         currentPage={params.currentPage}
