@@ -32,6 +32,7 @@ import {
   formatDate,
   formatTime,
   formatRelativeTime,
+  formatYearMonthLabel,
 } from "./time.js";
 import { getCollectionPagePath } from "./collection-paths.js";
 import { getMediaUrl, getImageUrl, getPublicUrlForProvider } from "./image.js";
@@ -735,11 +736,8 @@ export function toArchiveGroups(
     const [year, month] = yearMonth.split("-");
     if (!year || !month) continue;
 
-    const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1);
-    const label = date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-    });
+    const label = formatYearMonthLabel(yearMonth);
+    if (!label) continue;
 
     groups.push({
       year,
@@ -769,11 +767,8 @@ export function toArchiveGroupsWithMedia(
     const [year, month] = yearMonth.split("-");
     if (!year || !month) continue;
 
-    const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1);
-    const label = date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-    });
+    const label = formatYearMonthLabel(yearMonth);
+    if (!label) continue;
 
     groups.push({
       year,

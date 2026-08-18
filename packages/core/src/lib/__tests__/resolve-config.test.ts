@@ -81,6 +81,34 @@ describe("resolveConfig", () => {
     expect(config.mainRssFeed).toBe("featured");
   });
 
+  it("resolves archiveDefaultLayout from DB, env, and defaults", () => {
+    const defaultConfig = resolveConfig(makeEnv(), {});
+    expect(defaultConfig.archiveDefaultLayout).toBe("list");
+
+    const envConfig = resolveConfig(
+      makeEnv({ ARCHIVE_DEFAULT_LAYOUT: "grid" }),
+      {},
+    );
+    expect(envConfig.archiveDefaultLayout).toBe("grid");
+
+    const dbConfig = resolveConfig(
+      makeEnv({ ARCHIVE_DEFAULT_LAYOUT: "list" }),
+      {
+        ARCHIVE_DEFAULT_LAYOUT: "grid",
+      },
+    );
+    expect(dbConfig.archiveDefaultLayout).toBe("grid");
+  });
+
+  it("falls back when the archive layout setting is invalid", () => {
+    const config = resolveConfig(
+      makeEnv({ ARCHIVE_DEFAULT_LAYOUT: "carousel" }),
+      {},
+    );
+
+    expect(config.archiveDefaultLayout).toBe("list");
+  });
+
   it("normalizes legacy time zone values from the database", () => {
     const config = resolveConfig(makeEnv(), { TIME_ZONE: "Beijing" });
 

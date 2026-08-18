@@ -1218,6 +1218,11 @@ msgstr "字体主题"
 msgid "Font Theme"
 msgstr "字体主题"
 
+#. @context: Config Editor archive layout enum option
+#: src/ui/dash/settings/ConfigEditorContent.tsx
+msgid "Full posts"
+msgstr "完整帖子"
+
 #. @context: Breadcrumb label
 #. @context: Settings item — general settings
 #. @context: Settings section heading
@@ -2638,6 +2643,11 @@ msgstr "此设置未保存。请检查该值并重试。"
 msgid "This will permanently delete all your data — posts, media, collections, settings, and your account. Your blog will be reset to its initial setup state. This cannot be undone."
 msgstr "这会永久删除你的全部数据——帖子、媒体、合集、设置和账户。博客会重置为初始设置状态。此操作无法撤销。"
 
+#. @context: Config Editor archive layout enum option
+#: src/ui/dash/settings/ConfigEditorContent.tsx
+msgid "Tile grid"
+msgstr "卡片网格"
+
 #. @context: Settings subsection heading for the time zone field
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Time"
@@ -2916,6 +2926,11 @@ msgstr "想要更冷、更利落的观感时。"
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Whether each language gets its own home page, archive, and feed. Managed on the Language page."
 msgstr "每种语言是否拥有独立的首页、归档和订阅源。在「语言」页管理。"
+
+#. @context: Config Editor setting description
+#: src/ui/dash/settings/ConfigEditorContent.tsx
+msgid "Which layout /archive opens with. Readers can switch layouts from the page."
+msgstr "/archive 打开时用哪种版式。读者可以在页面上自行切换。"
 
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx

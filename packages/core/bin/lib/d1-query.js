@@ -1,4 +1,5 @@
 import { runLocalWrangler } from "./wrangler-cli.js";
+import { extractWranglerJson } from "./wrangler-json.js";
 
 const DEFAULT_RETRY_ATTEMPTS = 4;
 const DEFAULT_RETRY_DELAY_MS = 500;
@@ -35,7 +36,7 @@ export function parseWranglerError(output) {
   }
 
   try {
-    const parsed = JSON.parse(output.trim());
+    const parsed = JSON.parse(extractWranglerJson(output).trim());
     const error = Array.isArray(parsed) ? parsed[0]?.error : parsed?.error;
     if (!error?.text) {
       return undefined;
@@ -73,18 +74,6 @@ export function isRetryableWranglerD1Failure(output, error) {
     "temporarily unavailable",
     "temporary failure",
   ].some((fragment) => combined.includes(fragment));
-}
-
-/**
- * Strip non-JSON preamble that Wrangler sometimes writes to stdout
- * (e.g. "Proxy environment variables detected…") before the actual JSON payload.
- */
-function extractJson(raw) {
-  const idx = raw.indexOf("[");
-  const idx2 = raw.indexOf("{");
-  if (idx === -1 && idx2 === -1) return raw;
-  const start = idx === -1 ? idx2 : idx2 === -1 ? idx : Math.min(idx, idx2);
-  return raw.slice(start);
 }
 
 function getWranglerExecutionOptions(options) {
@@ -153,7 +142,7 @@ export function executeD1(sql, runtime, options = {}) {
 
   if (options.quiet) {
     const output = runWrangler([...args, "--json"], options);
-    const parsed = JSON.parse(extractJson(output));
+    const parsed = JSON.parse(extractWranglerJson(output));
     const statements = Array.isArray(parsed) ? parsed : [parsed];
 
     for (const statement of statements) {
@@ -183,7 +172,7 @@ export function queryD1(sql, runtime, options = {}) {
     ),
     options,
   );
-  const parsed = JSON.parse(extractJson(output));
+  const parsed = JSON.parse(extractWranglerJson(output));
   const statement = Array.isArray(parsed) ? parsed[0] : parsed;
 
   if (statement?.error?.text) {
@@ -208,7 +197,7 @@ export function executeD1File(filePath, runtime, options = {}) {
 
   if (options.quiet) {
     const output = runWrangler([...args, "--json"], options);
-    const parsed = JSON.parse(extractJson(output));
+    const parsed = JSON.parse(extractWranglerJson(output));
     const statements = Array.isArray(parsed) ? parsed : [parsed];
 
     for (const statement of statements) {

@@ -2106,6 +2106,7 @@ All values are strings because they map directly to stored config values.
 | `DASHBOARD_LANGUAGE`         | Dashboard catalog language | `"zh-Hans"`         |
 | `CJK_SERIF_FONT`             | CJK serif fallback         | `"off"`             |
 | `MAIN_RSS_FEED`              | Canonical feed kind        | `"featured"`        |
+| `ARCHIVE_DEFAULT_LAYOUT`     | Archive default layout     | `"list"`            |
 | `PAGE_SIZE`                  | Default page size          | `"50"`              |
 | `SEARCH_PAGE_SIZE`           | Search page size           | `"50"`              |
 | `ARCHIVE_PAGE_SIZE`          | Archive page size          | `"50"`              |
@@ -2146,6 +2147,7 @@ Response:
     "SITE_DESCRIPTION": "Thoughts, links, and quotes — one post at a time",
     "SITE_LANGUAGE": "en",
     "MAIN_RSS_FEED": "featured",
+    "ARCHIVE_DEFAULT_LAYOUT": "list",
     "PAGE_SIZE": "50",
     "SEARCH_PAGE_SIZE": "50",
     "ARCHIVE_PAGE_SIZE": "50",
@@ -2216,6 +2218,7 @@ Example partial-apply response:
     "SITE_DESCRIPTION": "Thoughts, links, and quotes — one post at a time",
     "SITE_LANGUAGE": "en",
     "MAIN_RSS_FEED": "featured",
+    "ARCHIVE_DEFAULT_LAYOUT": "list",
     "TIME_ZONE": "UTC",
     "SITE_FOOTER": "",
     "SHOW_JANT_BRANDING_ON_HOME": "",

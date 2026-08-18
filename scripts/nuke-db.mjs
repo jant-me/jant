@@ -8,6 +8,7 @@
  */
 
 import { execSync } from "node:child_process";
+import { extractWranglerJson } from "../packages/core/bin/lib/wrangler-json.js";
 import { resolve } from "node:path";
 import { loadDemoWorkflowEnv } from "./demo-shared/env.mjs";
 
@@ -36,7 +37,7 @@ function d1Json(command) {
     `pnpm exec wrangler d1 execute DB --remote --json --command "${command}"`,
     { cwd, stdio: "pipe" },
   ).toString();
-  return JSON.parse(out)[0]?.results || [];
+  return JSON.parse(extractWranglerJson(out))[0]?.results || [];
 }
 
 const MAX_PASSES = 5;

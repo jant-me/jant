@@ -93,6 +93,7 @@ export function makeSiteConfig(over: Partial<SiteConfig> = {}): SiteConfig {
     publicApiEnabled: true,
     rssFeedsEnabled: true,
     mainRssFeed: "latest",
+    archiveDefaultLayout: "list",
     siteFooter: "",
     showHeaderAvatar: false,
     siteAvatarUrl: "",

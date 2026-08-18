@@ -14,6 +14,17 @@ export type Visibility = (typeof VISIBILITIES)[number];
 export const FEED_KINDS = ["latest", "featured"] as const;
 export type FeedKind = (typeof FEED_KINDS)[number];
 
+/**
+ * Layouts the archive page can render in. `list` renders the same timeline the
+ * rest of the nav trio uses; `grid` renders the tile catalogue.
+ *
+ * Named "layout", not "view": on the archive, `view` is reserved for the
+ * saved-selection concept, and the URL param follows the same split
+ * (`?layout=grid`, with `?view=` kept only as the legacy spelling).
+ */
+export const ARCHIVE_LAYOUTS = ["list", "grid"] as const;
+export type ArchiveLayout = (typeof ARCHIVE_LAYOUTS)[number];
+
 export const SORT_ORDERS = [
   "newest",
   "oldest",

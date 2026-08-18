@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { extractWranglerJson } from "../../../packages/core/bin/lib/wrangler-json.js";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readWranglerString } from "../../demo-shared/wrangler-config.mjs";
@@ -13,7 +14,7 @@ export const DEMO_SOURCE_WRANGLER_PATH = resolve(
 
 function parseWranglerError(output, fallbackMessage) {
   try {
-    const parsed = JSON.parse(output.trim());
+    const parsed = JSON.parse(extractWranglerJson(output).trim());
     if (parsed.error?.text) {
       const detail = parsed.error.notes?.[0]?.text;
       return `${parsed.error.text}${detail ? `\n  ${detail}` : ""}`;
@@ -83,7 +84,7 @@ export function queryDemoSourceRemote(sql) {
     );
   }
 
-  const parsed = JSON.parse(stdout);
+  const parsed = JSON.parse(extractWranglerJson(stdout));
   if (parsed.error?.text) {
     const detail = parsed.error.notes?.[0]?.text;
     throw new Error(

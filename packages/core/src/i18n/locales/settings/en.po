@@ -1218,6 +1218,11 @@ msgstr "Font theme"
 msgid "Font Theme"
 msgstr "Font Theme"
 
+#. @context: Config Editor archive layout enum option
+#: src/ui/dash/settings/ConfigEditorContent.tsx
+msgid "Full posts"
+msgstr "Full posts"
+
 #. @context: Breadcrumb label
 #. @context: Settings item — general settings
 #. @context: Settings section heading
@@ -2638,6 +2643,11 @@ msgstr "This setting wasn't saved. Check the value and try again."
 msgid "This will permanently delete all your data — posts, media, collections, settings, and your account. Your blog will be reset to its initial setup state. This cannot be undone."
 msgstr "This will permanently delete all your data — posts, media, collections, settings, and your account. Your blog will be reset to its initial setup state. This cannot be undone."
 
+#. @context: Config Editor archive layout enum option
+#: src/ui/dash/settings/ConfigEditorContent.tsx
+msgid "Tile grid"
+msgstr "Tile grid"
+
 #. @context: Settings subsection heading for the time zone field
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Time"
@@ -2916,6 +2926,11 @@ msgstr "When you want a cooler, sharper look."
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Whether each language gets its own home page, archive, and feed. Managed on the Language page."
 msgstr "Whether each language gets its own home page, archive, and feed. Managed on the Language page."
+
+#. @context: Config Editor setting description
+#: src/ui/dash/settings/ConfigEditorContent.tsx
+msgid "Which layout /archive opens with. Readers can switch layouts from the page."
+msgstr "Which layout /archive opens with. Readers can switch layouts from the page."
 
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx

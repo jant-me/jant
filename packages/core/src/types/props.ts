@@ -2,7 +2,12 @@
  * Page-Level Props & Feed Data Types
  */
 
-import type { CollectionSortOrder, Format, MediaKind } from "./constants.js";
+import type {
+  ArchiveLayout,
+  CollectionSortOrder,
+  Format,
+  MediaKind,
+} from "./constants.js";
 import type { Collection, CollectionDirectoryItem } from "./entities.js";
 import type {
   PostView,
@@ -60,13 +65,9 @@ export interface FeaturedPageProps {
 
 /** Visibility filter values for the archive page (includes "featured" as a virtual value). */
 export type ArchiveVisibility =
-  | "public"
-  | "latest_hidden"
-  | "private"
-  | "featured";
+  "public" | "latest_hidden" | "private" | "featured";
 
-/** View mode for the archive page. */
-export type ArchiveView = "grid" | "list";
+export type { ArchiveLayout };
 
 /**
  * Time axis for the archive page.
@@ -90,7 +91,8 @@ export interface ArchiveFilters {
   /** true = threads (roots with replies), false = single posts (no replies) */
   hasReplies?: boolean;
   visibility?: ArchiveVisibility;
-  view?: ArchiveView;
+  /** Omitted when the site's configured default layout is active */
+  layout?: ArchiveLayout;
   /** Omitted when the default `published` axis is active */
   sort?: ArchiveSort;
 }
@@ -101,6 +103,11 @@ export interface ArchivePageProps {
   groups: ArchiveGroup[];
   /** Flat timeline items used by list view (skips month grouping) */
   items?: TimelineItemView[];
+  /**
+   * Layout to use when the URL names none. Comes from the site's
+   * `ARCHIVE_DEFAULT_LAYOUT` setting.
+   */
+  defaultLayout?: ArchiveLayout;
   totalCount: number;
   /**
    * Matches the same view with every filter cleared. Lets the count say how

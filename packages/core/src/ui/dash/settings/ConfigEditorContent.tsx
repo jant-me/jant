@@ -116,6 +116,29 @@ export function ConfigEditorContent({
         ),
       },
     },
+    ARCHIVE_DEFAULT_LAYOUT: {
+      description: i18n._(
+        msg({
+          message:
+            "Which layout /archive opens with. Readers can switch layouts from the page.",
+          comment: "@context: Config Editor setting description",
+        }),
+      ),
+      optionLabels: {
+        list: i18n._(
+          msg({
+            message: "Full posts",
+            comment: "@context: Config Editor archive layout enum option",
+          }),
+        ),
+        grid: i18n._(
+          msg({
+            message: "Tile grid",
+            comment: "@context: Config Editor archive layout enum option",
+          }),
+        ),
+      },
+    },
     PAGE_SIZE: {
       description: i18n._(
         msg({
