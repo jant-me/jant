@@ -25,6 +25,31 @@ export type FeedKind = (typeof FEED_KINDS)[number];
 export const ARCHIVE_LAYOUTS = ["list", "grid"] as const;
 export type ArchiveLayout = (typeof ARCHIVE_LAYOUTS)[number];
 
+/**
+ * Visibility values a signed-out reader may select on the archive.
+ *
+ * `featured` is a virtual member: it is a separate flag rather than a stored
+ * visibility, and it lives here because the filter bar presents the two as one
+ * dimension.
+ *
+ * `private` is deliberately absent. It names a set only the author can see, so
+ * a reader who asks for it has to be told so — handing back a different set
+ * under the same name is the one answer that is never right.
+ */
+export const PUBLIC_ARCHIVE_VISIBILITIES = [
+  "public",
+  "featured",
+  "latest_hidden",
+] as const;
+
+/** Every visibility the author can select, in filter-bar order. */
+export const ARCHIVE_VISIBILITIES = [
+  ...PUBLIC_ARCHIVE_VISIBILITIES,
+  "private",
+] as const;
+
+export type ArchiveVisibility = (typeof ARCHIVE_VISIBILITIES)[number];
+
 export const SORT_ORDERS = [
   "newest",
   "oldest",

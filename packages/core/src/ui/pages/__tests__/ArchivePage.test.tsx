@@ -103,6 +103,26 @@ describe("ArchivePage", () => {
     expect(html).not.toContain("visibility=latest_hidden");
   });
 
+  // The archive already shows a signed-out reader every non-private post, so
+  // the dimension names sets they can reach. `private` is the exception, and
+  // it is absent rather than present-and-broken.
+  it("offers the visibility filter without private to a signed-out reader", () => {
+    const html = renderArchivePage();
+
+    expect(html).toContain('id="af-visibility"');
+    expect(html).toContain("visibility=public");
+    expect(html).toContain("visibility=hidden");
+    expect(html).toContain("visibility=featured");
+    expect(html).not.toContain("visibility=private");
+  });
+
+  it("offers private to the author", () => {
+    const html = renderArchivePage({ isAuthenticated: true });
+
+    expect(html).toContain('id="af-visibility"');
+    expect(html).toContain("visibility=private");
+  });
+
   it("marks the thread filter active when filtering single posts", () => {
     const html = renderArchivePage({ filters: { hasReplies: false } });
 

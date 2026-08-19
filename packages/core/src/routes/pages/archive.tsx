@@ -25,7 +25,12 @@ import type {
   ArchiveSort,
   ArchiveVisibility,
 } from "../../types/props.js";
-import { FORMATS, MEDIA_KINDS } from "../../types.js";
+import {
+  ARCHIVE_VISIBILITIES,
+  FORMATS,
+  MEDIA_KINDS,
+  PUBLIC_ARCHIVE_VISIBILITIES,
+} from "../../types.js";
 import { ArchivePage } from "../../ui/pages/ArchivePage.js";
 import type { ArchiveFilterDescription } from "../../ui/shared/archive-labels.js";
 import {
@@ -141,16 +146,16 @@ function parseArchiveParams(
   const hasTitle = parsePresence(q("title"), q("hasTitle"));
   const hasReplies = parsePresence(q("replies"), q("hasReplies"));
 
-  const VALID_VISIBILITIES = ["public", "latest_hidden", "private", "featured"];
   const rawVisibilityParam = q("visibility");
   // "hidden" is the URL spelling of the internal latest_hidden value
   const visibilityParam =
     rawVisibilityParam === "hidden" ? "latest_hidden" : rawVisibilityParam;
   const visibilityAll = visibilityParam === "all";
-  const visibility =
-    visibilityParam && VALID_VISIBILITIES.includes(visibilityParam)
-      ? (visibilityParam as ArchiveVisibility)
-      : undefined;
+  const visibility = (ARCHIVE_VISIBILITIES as readonly string[]).includes(
+    visibilityParam ?? "",
+  )
+    ? (visibilityParam as ArchiveVisibility)
+    : undefined;
 
   // `layout` is the current spelling; `view` is the pre-rename one, kept
   // readable indefinitely so old bookmarks and stored custom archive URLs keep
@@ -187,6 +192,47 @@ function parseArchiveParams(
 }
 
 /**
+ * Whether an archive query names a result set only a signed-in reader can see.
+ *
+ * Answered from the query alone, never from what the database happens to hold.
+ * A check that fired only when private posts existed would answer "does this
+ * site keep anything private?" to whoever asked.
+ *
+ * @param params - Parsed query params
+ * @returns `true` when rendering this query requires an authenticated reader
+ * @example
+ * archiveQueryRequiresAuth({ visibility: "private", ... }); // true
+ * archiveQueryRequiresAuth({ visibility: "latest_hidden", ... }); // false
+ */
+function archiveQueryRequiresAuth(params: ParsedArchiveParams): boolean {
+  if (params.visibility === undefined) return false;
+  return !(PUBLIC_ARCHIVE_VISIBILITIES as readonly string[]).includes(
+    params.visibility,
+  );
+}
+
+/**
+ * Translate the selected visibility into the matching `PostFilters` clause.
+ *
+ * `featured` is a virtual visibility — a separate flag rather than a stored
+ * value — so it maps to a different field than the other three. The page and
+ * the feed both need this mapping and must not drift on it.
+ *
+ * @param params - Parsed query params
+ * @returns The visibility clause, or an empty object when nothing is selected
+ * @example
+ * visibilityFilterClause({ visibility: "featured", ... }); // { featured: true }
+ */
+function visibilityFilterClause(
+  params: ParsedArchiveParams,
+): Pick<PostFilters, "featured" | "visibility"> {
+  const selected = params.visibilityAll ? undefined : params.visibility;
+  if (selected === "featured") return { featured: true };
+  if (selected) return { visibility: selected };
+  return {};
+}
+
+/**
  * Build PostFilters from parsed archive params.
  *
  * @param params - Parsed query params
@@ -203,13 +249,11 @@ function buildArchivePostFilters(
 ): PostFilters {
   const { isAuthenticated, collectionId, lang } = opts;
 
-  // Map visibility: feed routes force public; page respects auth
-  // Authenticated users default to showing all visibilities
-  const effectiveVisibility = isAuthenticated
-    ? params.visibilityAll
-      ? undefined
-      : (params.visibility ?? undefined)
-    : undefined;
+  // The visibility clause is applied as selected, with no auth-dependent
+  // degrade: a query naming `private` has already been redirected or 404'd by
+  // the time it reaches here (see `archiveQueryRequiresAuth`). Silently
+  // dropping the clause instead would render a different set under the same
+  // name. `excludePrivate` below stays the unconditional floor regardless.
 
   // The year filter follows the active axis, so every month bucket shown
   // under `year=N` really belongs to that year.
@@ -228,11 +272,7 @@ function buildArchivePostFilters(
     excludeReplies: true,
     excludePrivate: !isAuthenticated,
     excludeLatestHidden: false,
-    ...(effectiveVisibility === "featured"
-      ? { featured: true }
-      : effectiveVisibility
-        ? { visibility: effectiveVisibility }
-        : {}),
+    ...visibilityFilterClause(params),
     collectionId,
     ...(yearRange
       ? sortsByActivity
@@ -273,6 +313,15 @@ function buildArchiveFeedQuery(params: ParsedArchiveParams): string {
   if (params.hasReplies !== undefined) {
     qs.set("replies", params.hasReplies ? "any" : "none");
   }
+  // Emitted in the `hidden` URL spelling, like every other archive link. A
+  // feed that dropped this would hand a subscriber a different set than the
+  // page they subscribed from.
+  if (params.visibility && !params.visibilityAll) {
+    qs.set(
+      "visibility",
+      params.visibility === "latest_hidden" ? "hidden" : params.visibility,
+    );
+  }
   if (params.sort === "updated") qs.set("sort", "updated");
   const str = qs.toString();
   return str ? `?${str}` : "";
@@ -281,19 +330,30 @@ function buildArchiveFeedQuery(params: ParsedArchiveParams): string {
 export const archiveRoutes = new Hono<Env>();
 
 /**
- * Build a canonical redirect target when a request uses legacy archive
- * param spellings (hasMedia/hasTitle/hasReplies=1/0, visibility=latest_hidden).
+ * Build a canonical redirect for the archive page when the URL needs one.
  *
- * Only legacy params are rewritten; everything else (including unknown
- * params) is preserved. Returns null when the URL is already canonical.
- * Applies to the /archive page only — feeds and the public API accept
- * legacy spellings silently, and custom archive URLs (path_registry
- * query overrides) never reach this path.
+ * Two kinds of rewrite happen here, and they do not deserve the same status:
+ *
+ * - **Legacy spellings** (`hasMedia`/`hasTitle`/`hasReplies=1/0`,
+ *   `visibility=latest_hidden`, `view=`) are unconditional — the old spelling
+ *   is gone for everyone, so 308.
+ * - **`visibility=private` for a signed-out reader** is not. That URL moved
+ *   for *this* reader, *now*, and has to keep working once the author signs
+ *   in, so it is a 302. When both apply, the weaker claim wins and everything
+ *   is still resolved in a single hop.
+ *
+ * Only these params are touched; everything else, including unknown params, is
+ * preserved. Returns null when the URL is already canonical for this reader.
+ * Applies to the /archive page only — feeds and the public API accept legacy
+ * spellings silently, and custom archive URLs (path_registry query overrides)
+ * never reach this path.
  *
  * @param c - Hono context
- * @returns Canonical path + query to redirect to, or null
+ * @returns Redirect target and status code, or null
  */
-function legacyArchiveParamsRedirect(c: Context<Env>): string | null {
+function archiveParamsRedirect(
+  c: Context<Env>,
+): { location: string; status: 302 | 308 } | null {
   const url = new URL(c.req.url);
   const params = url.searchParams;
   let changed = false;
@@ -318,6 +378,18 @@ function legacyArchiveParamsRedirect(c: Context<Env>): string | null {
     changed = true;
   }
 
+  // A signed-out reader cannot select `private`, and the one answer that is
+  // never right is to drop the clause and render a different set under the
+  // same URL. Strip it here so the address bar and the page agree on what the
+  // reader is looking at. The decision reads the param and the session only,
+  // so it is identical whether or not this site holds a single private post.
+  let authStripped = false;
+  if (params.get("visibility") === "private" && !c.var.isAuthenticated) {
+    params.delete("visibility");
+    authStripped = true;
+    changed = true;
+  }
+
   // `view` became `layout` so `view` can name the saved-selection concept.
   // Only a value this page actually renders is carried across; anything else
   // is dropped, which lands the reader on the site default rather than on a
@@ -336,7 +408,10 @@ function legacyArchiveParamsRedirect(c: Context<Env>): string | null {
 
   if (!changed) return null;
   const qs = params.toString();
-  return `${url.pathname}${qs ? `?${qs}` : ""}`;
+  return {
+    location: `${url.pathname}${qs ? `?${qs}` : ""}`,
+    status: authStripped ? 302 : 308,
+  };
 }
 
 // =============================================================================
@@ -358,6 +433,20 @@ export async function renderArchivePage(
   const pageSize = appConfig.archivePageSize;
   const params = parseArchiveParams(c, queryOverrides);
 
+  // An owner-stored query is the path's own definition, so there is nothing to
+  // redirect to the way the /archive route redirects a reader's own params:
+  // the path names a set this reader cannot see, and the honest answer is that
+  // it does not exist for them. The presence of `queryOverrides` is exactly
+  // what separates the two cases, so every future caller passing a stored
+  // query inherits this guard.
+  if (
+    queryOverrides &&
+    archiveQueryRequiresAuth(params) &&
+    !c.var.isAuthenticated
+  ) {
+    return c.notFound();
+  }
+
   // --- Resolve collection slug to ID ----------------------------------------
 
   const collection = params.collectionSlug
@@ -373,13 +462,11 @@ export async function renderArchivePage(
     lang: getViewLang(c) ?? undefined,
   });
 
-  // Only a signed-in reader can select a visibility, so for everyone else the
-  // dimension is not part of what this view is.
-  const effectiveVisibility = navData.isAuthenticated
-    ? params.visibilityAll
-      ? undefined
-      : (params.visibility ?? undefined)
-    : undefined;
+  // `all` is a chip state, not a filter — describing it would name a dimension
+  // the reader has explicitly cleared.
+  const effectiveVisibility = params.visibilityAll
+    ? undefined
+    : params.visibility;
 
   const archiveFilterDescription: ArchiveFilterDescription = {
     collectionTitle: collection?.title,
@@ -544,9 +631,13 @@ export async function renderArchivePage(
   };
 
   const feedQuery = buildArchiveFeedQuery(params);
-  const feedHref = appConfig.rssFeedsEnabled
-    ? `/archive/feed${feedQuery}`
-    : undefined;
+  // A feed is unauthenticated by construction, so it cannot serve a selection
+  // only the author can see. Offering the link anyway would promise a feed
+  // that answers 404.
+  const feedHref =
+    appConfig.rssFeedsEnabled && !archiveQueryRequiresAuth(params)
+      ? `/archive/feed${feedQuery}`
+      : undefined;
 
   const availableCollectionsList = allCollections.map((col) => ({
     slug: col.slug,
@@ -606,8 +697,8 @@ export async function renderArchivePage(
 export function renderArchiveRoute(
   c: Context<Env>,
 ): Promise<Response> | Response {
-  const canonical = legacyArchiveParamsRedirect(c);
-  if (canonical) return c.redirect(canonical, 308);
+  const redirect = archiveParamsRedirect(c);
+  if (redirect) return c.redirect(redirect.location, redirect.status);
   return renderArchivePage(c);
 }
 
@@ -650,6 +741,7 @@ function buildArchiveFeedLabel(
       hasMedia: params.hasMedia,
       hasTitle: params.hasTitle,
       hasReplies: params.hasReplies,
+      visibility: params.visibilityAll ? undefined : params.visibility,
     },
     i18n,
   );
@@ -706,6 +798,7 @@ async function buildArchiveFeedData(
     excludeReplies: true,
     excludePrivate: true,
     excludeLatestHidden: false,
+    ...visibilityFilterClause(params),
     collectionId: collection?.id,
     mediaKinds: params.mediaKinds,
     hasMedia: params.hasMedia,
@@ -844,6 +937,11 @@ async function buildArchiveFeedData(
  * @returns Atom feed response
  */
 export async function renderArchiveFeed(c: Context<Env>): Promise<Response> {
+  // No session reaches a feed reader, so a selection only the author can see
+  // has no honest rendering here — not an empty feed, and certainly not the
+  // unfiltered one. The page already withholds the link; this is the backstop.
+  if (archiveQueryRequiresAuth(parseArchiveParams(c))) return c.notFound();
+
   const feedData = await buildArchiveFeedData(c, "/archive/feed");
   return new Response(defaultFeedRenderer(feedData), {
     headers: {

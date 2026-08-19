@@ -4,6 +4,7 @@
 
 import type {
   ArchiveLayout,
+  ArchiveVisibility,
   CollectionSortOrder,
   Format,
   MediaKind,
@@ -63,11 +64,7 @@ export interface FeaturedPageProps {
   baseUrl: string;
 }
 
-/** Visibility filter values for the archive page (includes "featured" as a virtual value). */
-export type ArchiveVisibility =
-  "public" | "latest_hidden" | "private" | "featured";
-
-export type { ArchiveLayout };
+export type { ArchiveLayout, ArchiveVisibility };
 
 /**
  * Time axis for the archive page.

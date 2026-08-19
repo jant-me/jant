@@ -16,7 +16,12 @@ import type {
   MediaKind,
 } from "../../types.js";
 import type { PostView } from "../../types/views.js";
-import { FORMATS, MEDIA_KINDS } from "../../types.js";
+import {
+  ARCHIVE_VISIBILITIES,
+  FORMATS,
+  MEDIA_KINDS,
+  PUBLIC_ARCHIVE_VISIBILITIES,
+} from "../../types.js";
 import { getFeaturedIconSvg } from "../../lib/featured-icons.js";
 import { getIconSvg } from "../../lib/icons.js";
 import { toPublicPath } from "../../lib/url.js";
@@ -544,13 +549,6 @@ const SortToggle: FC<{
 // Filter Bar
 // =============================================================================
 
-const ARCHIVE_VISIBILITIES: ArchiveVisibility[] = [
-  "public",
-  "featured",
-  "latest_hidden",
-  "private",
-];
-
 function getVisibilityLabel(v: ArchiveVisibility): string {
   const { i18n } = useLingui();
   return getSharedVisibilityLabel(v, i18n);
@@ -753,7 +751,15 @@ const FilterBar: FC<{
     })),
   ];
 
-  // --- Visibility options (authenticated only) --------------------------------
+  // --- Visibility options ------------------------------------------------------
+
+  // A signed-out reader gets the same dimension minus `private`: the archive
+  // already shows them Hidden-from-Latest posts, so those two values name sets
+  // they can actually reach. `private` names one they cannot, and the route
+  // redirects rather than quietly widening it.
+  const selectableVisibilities = isAuthenticated
+    ? ARCHIVE_VISIBILITIES
+    : PUBLIC_ARCHIVE_VISIBILITIES;
 
   // "All visibility" needs the explicit ?visibility=all param so the route
   // doesn't default back to "public". Build its URL by appending to the
@@ -778,7 +784,7 @@ const FilterBar: FC<{
       icon: FILTER_ICONS.visibility,
       value: allVisibilityUrl,
     },
-    ...ARCHIVE_VISIBILITIES.map((v) => ({
+    ...selectableVisibilities.map((v) => ({
       label: getVisibilityLabel(v),
       ...(v === "featured"
         ? { iconHtml: FEATURED_VISIBILITY_ICON_HTML }
@@ -937,31 +943,29 @@ const FilterBar: FC<{
           basePath={basePath}
         />
 
-        {isAuthenticated && (
-          <ChipSelect
-            id="af-visibility"
-            icon={FILTER_ICONS.visibility}
-            options={visibilityOptions}
-            currentValue={currentUrl}
-            clearUrl={allVisibilityUrl}
-            activeLabel={
-              filters.visibility
-                ? getVisibilityLabel(filters.visibility)
-                : undefined
-            }
-            activeIcon={
-              filters.visibility && filters.visibility !== "featured"
-                ? VISIBILITY_ICONS[filters.visibility]
-                : undefined
-            }
-            activeIconHtml={
-              filters.visibility === "featured"
-                ? FEATURED_VISIBILITY_ICON_HTML
-                : undefined
-            }
-            iconOnly
-          />
-        )}
+        <ChipSelect
+          id="af-visibility"
+          icon={FILTER_ICONS.visibility}
+          options={visibilityOptions}
+          currentValue={currentUrl}
+          clearUrl={allVisibilityUrl}
+          activeLabel={
+            filters.visibility
+              ? getVisibilityLabel(filters.visibility)
+              : undefined
+          }
+          activeIcon={
+            filters.visibility && filters.visibility !== "featured"
+              ? VISIBILITY_ICONS[filters.visibility]
+              : undefined
+          }
+          activeIconHtml={
+            filters.visibility === "featured"
+              ? FEATURED_VISIBILITY_ICON_HTML
+              : undefined
+          }
+          iconOnly
+        />
       </div>
 
       <div class="archive-toolbar-toggles">

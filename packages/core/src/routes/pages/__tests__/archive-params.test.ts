@@ -30,6 +30,12 @@ function setupApp(rssPublishDelaySeconds = 0) {
   return { app, services };
 }
 
+function setupAuthedApp() {
+  const { app, services } = createTestApp({ authenticated: true });
+  app.route("/archive", archiveRoutes);
+  return { app, services };
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -584,5 +590,129 @@ describe("archive page sort=updated", () => {
       excludeLatestHidden: true,
     });
     expect(roots[0]?.title).toBe("Untouched newer thread");
+  });
+});
+
+/**
+ * `visibility` is the one archive dimension whose values are not all reachable
+ * by every reader. The rule: `private` is never silently dropped. On the page
+ * the reader's own URL is rewritten so the address bar keeps describing what
+ * rendered; a stored archive path 404s instead (see custom-archive-url.test.ts,
+ * which has no URL to rewrite).
+ */
+describe("archive visibility without a session", () => {
+  async function seedVisibilities(services: {
+    posts: {
+      create: (input: Record<string, unknown>) => Promise<unknown>;
+    };
+  }) {
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "body on the stream",
+      status: "published",
+    });
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "body off the stream",
+      status: "published",
+      visibility: "latest_hidden",
+    });
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "body kept back",
+      status: "published",
+      visibility: "private",
+    });
+  }
+
+  it("filters by Hidden-from-Latest for a signed-out reader", async () => {
+    const { app, services } = setupApp();
+    await seedVisibilities(services);
+
+    const res = await app.request("/archive?visibility=hidden");
+    expect(res.status).toBe(200);
+
+    const html = await res.text();
+    expect(html).toContain("body off the stream");
+    expect(html).not.toContain("body on the stream");
+    expect(html).not.toContain("body kept back");
+  });
+
+  it("strips private from a signed-out reader's URL, keeping the rest", async () => {
+    const { app } = setupApp();
+
+    const res = await app.request("/archive?visibility=private&format=note");
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/archive?format=note");
+  });
+
+  // 302, not 308: the URL moved for this reader at this moment, and has to
+  // keep working once the author signs in.
+  it("uses a temporary redirect, and a permanent one for legacy spellings", async () => {
+    const { app } = setupApp();
+
+    const both = await app.request("/archive?visibility=private&hasTitle=1");
+    expect(both.status).toBe(302);
+    expect(both.headers.get("location")).toBe("/archive?title=any");
+
+    const legacyOnly = await app.request("/archive?hasTitle=1");
+    expect(legacyOnly.status).toBe(308);
+  });
+
+  // The redirect must answer from the param and the session alone. Firing only
+  // when private posts exist would tell any visitor whether this site keeps any.
+  it("redirects identically when the site holds no private posts", async () => {
+    const { app, services } = setupApp();
+    await services.posts.create({
+      format: "note",
+      bodyMarkdown: "the only post here",
+      status: "published",
+    });
+
+    const res = await app.request("/archive?visibility=private");
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/archive");
+  });
+
+  it("leaves the author's own private filter alone", async () => {
+    const { app, services } = setupAuthedApp();
+    await seedVisibilities(services);
+
+    const res = await app.request("/archive?visibility=private");
+    expect(res.status).toBe(200);
+
+    const html = await res.text();
+    expect(html).toContain("body kept back");
+    expect(html).not.toContain("body on the stream");
+  });
+
+  // A feed carries no session, so it cannot serve this selection. The page
+  // withholds the link rather than promising a feed that answers 404.
+  it("offers no feed link while the private filter is active", async () => {
+    const { app, services } = setupAuthedApp();
+    await seedVisibilities(services);
+
+    const filtered = await app.request("/archive?visibility=private");
+    expect(await filtered.text()).not.toContain("/archive/feed");
+
+    const plain = await app.request("/archive");
+    expect(await plain.text()).toContain("/archive/feed");
+  });
+
+  it("carries the visibility selection into the feed", async () => {
+    const { app, services } = setupApp();
+    await seedVisibilities(services);
+
+    const xml = await fetchFeed(app, "?visibility=hidden");
+    expect(xml).toContain("body off the stream");
+    expect(xml).not.toContain("body on the stream");
+  });
+
+  it("404s the feed for a selection it cannot serve", async () => {
+    const { app, services } = setupApp();
+    await seedVisibilities(services);
+
+    const res = await app.request("/archive/feed?visibility=private");
+    expect(res.status).toBe(404);
   });
 });
