@@ -164,19 +164,57 @@ still be listed bare, and the crawler can no longer read the `noindex` or
 
 ## Plan
 
-- [ ] A predicate of its own in `archive.tsx` — filter dimensions **plus**
-      `sort`, and only when the query came from the request rather than from
-      `path_registry`. Same `queryOverrides` seam phase 1 introduces.
-- [ ] **Do not widen `hasActiveArchiveFilter`.** It answers a different question
-      — whether to run the baseline count and render `42 of 1,240`. `sort` does
-      not change the count, so folding it in buys a wasted query and the label
-      `1,240 of 1,240`. Two questions, two named predicates.
-- [ ] `renderPublicPage({ noindex })` plus the `X-Robots-Tag` header, the shape
-      `brand.tsx:61` and `theme-sample.tsx:67` already use.
-- [ ] `canonicalHref` for the `layout`-only case — already a `BaseLayout` prop
-      (`:100`), already used by post pages; the archive passes neither today.
-- [ ] Tests: facet URL is noindex, `/archive` is not, a stored archive path is
-      not, `sort=updated` is, `layout=grid` gets a canonical and no noindex.
+- [x] `isReaderAssembledArchive()` in `archive.tsx` — filter dimensions **plus**
+      `sort`, and false whenever the query came from `path_registry`. Same
+      `queryOverrides` seam as the auth guard.
+- [x] **`hasActiveArchiveFilter` left alone.** It answers a different question —
+      whether to run the baseline count and render `42 of 1,240`. `sort` does
+      not change that count, so folding it in would buy a wasted query and the
+      label `1,240 of 1,240`. Two questions, two named predicates.
+- [x] `BaseLayout`'s `noindex` prop widened to `boolean | "follow"`, since the
+      hardcoded meta was `noindex, nofollow` and a facet needs its links walked.
+      Resolution moved into `BaseLayout` alone, and a site-wide noindex now wins
+      outright — a page policy may narrow further, never relax. (`render.tsx`
+      used to resolve the same thing a second time and now passes through.)
+- [x] `X-Robots-Tag: noindex, follow` alongside it, the shape `brand.tsx` and
+      `theme-sample.tsx` already use.
+- [x] `canonicalHref` on every non-facet archive URL, built from `c.req.path`
+      plus `page` when past the first. Everything else that can appear on such a
+      URL renders the same posts in the same order — `layout` is markup,
+      `visibility=all` selects nothing, tracking params select nothing — so they
+      consolidate onto the bare path.
+
+## Results
+
+`archive-indexing.test.ts` (new, 7 cases): the bare archive is indexable with a
+self-canonical; `layout=grid`, `visibility=all` and `utm_source` all consolidate
+onto `/archive`; `page=2` keeps its number; `format=note` is `noindex, follow`
+in both the meta tag and the header with no canonical; `sort=updated` is a facet
+too; a site-wide noindex still says `noindex, nofollow` on a facet; a stored
+archive path stays indexable and self-canonical even though its query is a
+filter.
+
+`check-tests` 3647 passed / 281 files, `check-lint` and `check-types` clean.
+
+## The hreflang set had to follow
+
+Adding a canonical put it in contradiction with the alternates already being
+emitted. `buildSurfaceAlternates` appends the request's own query string, so on
+`/archive?utm_source=nl` the canonical said `/archive` while the
+self-referential alternate said `/archive?utm_source=nl` — one page, two
+identities. Every member of an hreflang set has to be a canonical URL, so the
+set now mirrors the canonical: the same trimmed query where there is one, and
+nothing at all on a facet, which has no canonical to build a set from.
+
+The helper takes an optional `query` override; the five other surfaces that
+call it pass nothing and are untouched.
+
+## Not in this change
+
+`og:url` still carries the request's full query, so it disagrees with the
+canonical on the same URLs. It is set in `BaseLayout` for every surface and is
+an unfurl hint rather than an indexing signal, so it is a separate decision from
+this one.
 
 ## Consequence worth stating
 

@@ -111,7 +111,19 @@ export interface BaseLayoutProps {
    * page they are on.
    */
   pageFeed?: PageFeedLink;
-  noindex?: boolean;
+  /**
+   * Crawler policy for this page, overriding the site-wide setting.
+   *
+   * `true` is the blunt form for utility pages that should leave no trace:
+   * `noindex, nofollow`. `"follow"` keeps the URL out of the index while
+   * letting a crawler walk its links — for a page that is one URL out of a
+   * combinatorial family (a filtered archive) but whose links lead to the
+   * real pages.
+   *
+   * A site-wide noindex always wins: a page may be stricter than the site
+   * setting, never looser.
+   */
+  noindex?: boolean | "follow";
   isAuthenticated?: boolean;
   clientBundle?: "public" | "full";
 }
@@ -162,7 +174,9 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
     getJantIconHref("socialImage", appConfig?.sitePathPrefix || "");
   const resolvedFaviconVersion =
     faviconVersion ?? (appConfig?.faviconVersion || undefined);
-  const resolvedNoindex = noindex ?? appConfig?.noindex;
+  // A site-wide noindex is the strictest statement available, so it wins
+  // outright — a per-page policy can only narrow further, never relax.
+  const resolvedNoindex = appConfig?.noindex ? true : (noindex ?? false);
   const sitePathPrefix = appConfig?.sitePathPrefix || "";
   // Where "here" is for links the client builds. The server has `toViewPath`
   // for this; without the same base in the DOM, a client-rendered link to a
@@ -434,7 +448,14 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
             <meta name="twitter:image:alt" content={socialImageAltText} />
           )}
           {resolvedNoindex && (
-            <meta name="robots" content="noindex, nofollow" />
+            <meta
+              name="robots"
+              content={
+                resolvedNoindex === "follow"
+                  ? "noindex, follow"
+                  : "noindex, nofollow"
+              }
+            />
           )}
           {!resolvedNoindex && jsonLd != null && (
             <script

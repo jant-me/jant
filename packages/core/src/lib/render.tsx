@@ -85,8 +85,12 @@ export interface RenderPublicPageOptions {
   toast?: ToastProps;
   /** Whether to render the shared compose dialog shell */
   showComposeDialog?: boolean;
-  /** Override the site-wide crawler setting for sensitive utility pages. */
-  noindex?: boolean;
+  /**
+   * Override the site-wide crawler setting for this page. `true` means
+   * `noindex, nofollow`; `"follow"` keeps the URL unindexed while leaving its
+   * links crawlable. See `BaseLayoutProps["noindex"]`.
+   */
+  noindex?: boolean | "follow";
   /** Whether to render the site header */
   showHeader?: boolean;
   /** Whether to render the home branding credit after the site footer */
@@ -186,8 +190,8 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
   };
   const faviconUrl = appConfig.siteAvatarUrl || undefined;
   const faviconVersion = appConfig.faviconVersion || undefined;
-  const resolvedNoindex = noindex ?? appConfig.noindex;
-
+  // `noindex` is passed straight through: BaseLayout reads the site-wide
+  // setting from this same context and is the single place the two resolve.
   return c.html(
     <BaseLayout
       title={title}
@@ -208,7 +212,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
       pageFeed={pageFeed}
       faviconUrl={faviconUrl}
       faviconVersion={faviconVersion}
-      noindex={resolvedNoindex}
+      noindex={noindex}
       isAuthenticated={navData.isAuthenticated}
       toast={toast}
     >

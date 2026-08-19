@@ -384,7 +384,15 @@ export function buildLanguageSwitcher(
  * Returns an empty array on a single-language site, and when the site has no
  * absolute URL configured — an hreflang `href` must be absolute to be honoured.
  *
+ * The request's own query string rides along by default, so a filtered surface
+ * points at the same filter in each language. A page that also emits a
+ * `rel="canonical"` must pass `query` instead: every member of an hreflang set
+ * has to be a canonical URL, so the self-referential alternate cannot carry
+ * params the canonical strips — the two tags would give one page two
+ * identities.
+ *
  * @param c - Request context
+ * @param options - `query` overrides the request's own query string, leading `?` included
  * @returns Alternates for this surface, primary first
  * @example
  * // Rendering /en/archive on a zh-Hans + en site:
@@ -392,14 +400,20 @@ export function buildLanguageSwitcher(
  * // [{hreflang: "zh-Hans", href: "https://…/archive"},
  * //  {hreflang: "en", href: "https://…/en/archive"},
  * //  {hreflang: "x-default", href: "https://…/archive"}]
+ * @example
+ * // On /archive?utm_source=nl, whose canonical is /archive:
+ * buildSurfaceAlternates(c, { query: "" });
  */
-export function buildSurfaceAlternates(c: ViewContext): LanguageAlternate[] {
+export function buildSurfaceAlternates(
+  c: ViewContext,
+  options?: { query?: string },
+): LanguageAlternate[] {
   const languages = getViewLanguages(c);
   const { siteUrl, sitePathPrefix } = c.var.appConfig;
   if (languages.length === 0 || !siteUrl) return [];
 
   const path = viewRelativePath(c);
-  const query = queryString(c);
+  const query = options?.query ?? queryString(c);
   const primaryPrefix = toLanguagePrefix(c.var.appConfig.siteLanguage);
 
   const alternates = languages.map((lang) => {

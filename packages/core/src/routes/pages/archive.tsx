@@ -212,6 +212,45 @@ function archiveQueryRequiresAuth(params: ParsedArchiveParams): boolean {
 }
 
 /**
+ * Whether this URL is a selection a reader assembled rather than a page the
+ * site publishes.
+ *
+ * Deliberately not `hasActiveArchiveFilter`, which answers a different
+ * question: whether to run the baseline count and render `42 of 1,240`. `sort`
+ * does not change that count, so folding it in there would buy a wasted query
+ * and the label `1,240 of 1,240`. But `sort` does change which posts land on
+ * the first page, and together with `year` it changes the set outright — the
+ * year filter follows the sort axis. Two questions, two predicates.
+ *
+ * A stored query is never reader-assembled: the author declared that path, so
+ * it is a page like any other. Same `queryOverrides` seam the auth guard uses.
+ *
+ * @param params - Parsed query params
+ * @param queryOverrides - Stored query from the path registry, when there is one
+ * @returns `true` when the URL is one facet of a combinatorial family
+ * @example
+ * isReaderAssembledArchive({ format: "note", ... }, undefined); // true
+ * isReaderAssembledArchive({ format: "note", ... }, stored); // false
+ */
+function isReaderAssembledArchive(
+  params: ParsedArchiveParams,
+  queryOverrides: Record<string, string> | undefined,
+): boolean {
+  if (queryOverrides) return false;
+  return (
+    params.format !== undefined ||
+    params.validYear !== undefined ||
+    params.collectionSlug !== undefined ||
+    params.mediaKinds !== undefined ||
+    params.hasMedia !== undefined ||
+    params.hasTitle !== undefined ||
+    params.hasReplies !== undefined ||
+    params.visibility !== undefined ||
+    params.sort === "updated"
+  );
+}
+
+/**
  * Translate the selected visibility into the matching `PostFilters` clause.
  *
  * `featured` is a virtual visibility — a separate flag rather than a stored
@@ -644,6 +683,26 @@ export async function renderArchivePage(
     title: col.title,
   }));
 
+  // A facet is one URL out of a family with no ceiling: `media` alone is a
+  // comma-joined subset of kinds, multiplied by year x collection x format x
+  // title x replies x visibility x sort. None of them is a page the site
+  // publishes, and the archive sits in no cache, so every one a crawler walks
+  // is a Worker invocation and seven D1 queries. `follow`, not `nofollow`:
+  // the posts these URLs link to are the real pages.
+  const readerAssembled = isReaderAssembledArchive(params, queryOverrides);
+  if (readerAssembled) c.header("X-Robots-Tag", "noindex, follow");
+
+  // Everything left over renders the same posts in the same order as the bare
+  // path — `layout` is markup only, `visibility=all` selects nothing, and
+  // tracking params select nothing either — so they all consolidate onto it.
+  // `page` is the exception and stays: page 2 is different content, not a
+  // different rendering of page 1.
+  const canonicalQuery =
+    params.currentPage > 1 ? `?page=${params.currentPage}` : "";
+  const canonicalHref = readerAssembled
+    ? undefined
+    : `${toAbsoluteSiteUrl(c.req.path, appConfig.siteUrl, appConfig.sitePathPrefix)}${canonicalQuery}`;
+
   return renderPublicPage(c, {
     // A tab has no filter bar beside it, so unlike the page heading this has to
     // name the selection itself — otherwise every bookmarked filtered view
@@ -653,7 +712,14 @@ export async function renderArchivePage(
       params.sort === "updated" ? "Recently updated" : undefined,
       navData.siteName,
     ),
-    alternateLanguages: buildSurfaceAlternates(c),
+    // An hreflang set is made of canonical URLs, so it mirrors the canonical
+    // exactly: the same trimmed query where there is one, and nothing at all
+    // on a facet, which has no canonical for the set to be built from.
+    alternateLanguages: readerAssembled
+      ? undefined
+      : buildSurfaceAlternates(c, { query: canonicalQuery }),
+    noindex: readerAssembled ? "follow" : undefined,
+    canonicalHref,
     // The filters are part of the feed: a reader subscribing from a filtered
     // archive gets that filtered feed, not the whole archive.
     pageFeed: feedHref
