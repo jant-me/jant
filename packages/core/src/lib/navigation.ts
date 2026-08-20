@@ -38,6 +38,31 @@ export interface NavigationData {
 }
 
 /**
+ * Collect the collections and smart collections already placed in navigation.
+ *
+ * The directory offers both kinds the same "Add to Navigation" action, so it
+ * needs one list to check against; TypeID prefixes (`col_`, `smc_`) keep the
+ * two apart without a second field.
+ *
+ * @param links - Navigation items as rendered for this request
+ * @returns TypeIDs of every collection and smart collection in navigation
+ * @example
+ * const placed = collectNavigationCollectionIds(navData.links);
+ * // ["col_01abc", "smc_01xyz"]
+ */
+export function collectNavigationCollectionIds(links: NavItemView[]): string[] {
+  return links.flatMap((item) => {
+    if (item.type === "collection" && item.collectionId) {
+      return [item.collectionId];
+    }
+    if (item.type === "smart_collection" && item.smartCollectionId) {
+      return [item.smartCollectionId];
+    }
+    return [];
+  });
+}
+
+/**
  * Fetch navigation data for public pages.
  *
  * Returns NavItemView[] with pre-computed isActive/isExternal state.

@@ -10,7 +10,10 @@ import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { getCollectionsDirectoryPath } from "../../lib/collection-paths.js";
-import { getNavigationData } from "../../lib/navigation.js";
+import {
+  collectNavigationCollectionIds,
+  getNavigationData,
+} from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
 import { toPublicPath } from "../../lib/url.js";
@@ -91,11 +94,7 @@ export async function renderCollectionsDirectory(
       <CollectionsPage
         items={directoryData.items}
         isAuthenticated={navData.isAuthenticated ?? false}
-        navigationCollectionIds={navData.links.flatMap((item) =>
-          item.type === "collection" && item.collectionId
-            ? [item.collectionId]
-            : [],
-        )}
+        navigationCollectionIds={collectNavigationCollectionIds(navData.links)}
         sitePathPrefix={navData.sitePathPrefix}
         basePath={navData.basePath}
         siteOrigin={c.var.appConfig.siteOrigin}

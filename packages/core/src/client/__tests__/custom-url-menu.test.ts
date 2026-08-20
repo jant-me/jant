@@ -6,6 +6,7 @@ import { initCustomUrlMenus } from "../custom-url-menu.js";
 function renderMenus() {
   document.body.innerHTML = `
     <div data-custom-url-actions>
+      <code data-row-blank-space>/first</code>
       <button
         type="button"
         data-custom-url-action="toggle-menu"
@@ -46,6 +47,9 @@ function renderMenus() {
   const menuItems = document.querySelectorAll<HTMLElement>("[role='menuitem']");
 
   return {
+    firstRowBlankSpace: document.querySelector<HTMLElement>(
+      "[data-row-blank-space]",
+    ),
     firstTrigger: triggers[0],
     secondTrigger: triggers[1],
     firstMenu: menus[0],
@@ -70,6 +74,30 @@ describe("custom URL menus", () => {
 
     expect(firstMenu?.hidden).toBe(true);
     expect(firstTrigger?.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("closes when clicking blank space in its own row", () => {
+    const { firstTrigger, firstMenu, firstRowBlankSpace } = renderMenus();
+
+    firstTrigger?.click();
+    expect(firstMenu?.hidden).toBe(false);
+
+    firstRowBlankSpace?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+
+    expect(firstMenu?.hidden).toBe(true);
+    expect(firstTrigger?.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("stays open when clicking inside the menu", () => {
+    const { firstTrigger, firstMenu } = renderMenus();
+
+    firstTrigger?.click();
+    firstMenu?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(firstMenu?.hidden).toBe(false);
+    expect(firstTrigger?.getAttribute("aria-expanded")).toBe("true");
   });
 
   it("closes on Escape and returns focus to the trigger", () => {

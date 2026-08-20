@@ -28,7 +28,10 @@ import {
 import { showConfirmDialog } from "../confirm.js";
 import { publicPath, viewLang, viewPath } from "../runtime-paths.js";
 import { showToast, showToastWithAction } from "../toast.js";
-import { addCollectionToNavigation } from "../collection-navigation.js";
+import {
+  addCollectionToNavigation,
+  addSmartCollectionToNavigation,
+} from "../collection-navigation.js";
 import { consumeCollectionCreatedNotice } from "../collection-created-notice.js";
 import { getDividerCollectionGroup } from "../../lib/collection-groups.js";
 import {
@@ -126,6 +129,7 @@ export class JantCollectionsManager extends LitElement {
 
   declare items: CollectionManagerItem[];
   declare labels: CollectionManagerLabels;
+  /** Collections and smart collections already in the site navigation. */
   declare navigationCollectionIds: string[];
 
   declare _items: CollectionManagerItem[];
@@ -792,18 +796,29 @@ export class JantCollectionsManager extends LitElement {
     }
   }
 
-  async #addCollectionToNavigation(collectionId: string) {
-    if (!collectionId || this._addingToNavigationId) return;
+  /**
+   * Put a directory entry in the site navigation. Collections and smart
+   * collections differ only in which endpoint payload they send, so they share
+   * the pending state, the id list and the confirmation.
+   *
+   * @param targetId - TypeID of the collection or smart collection
+   * @param add - Helper that creates the navigation item for that kind
+   */
+  async #addToNavigation(
+    targetId: string,
+    add: (id: string) => Promise<string | undefined>,
+  ) {
+    if (!targetId || this._addingToNavigationId) return;
 
-    const usesInlineNotice = this._createdCollectionId === collectionId;
+    const usesInlineNotice = this._createdCollectionId === targetId;
     this._showItemMenuId = null;
-    this._addingToNavigationId = collectionId;
+    this._addingToNavigationId = targetId;
     document.removeEventListener("click", this.#closeItemMenu);
 
     try {
-      await addCollectionToNavigation(collectionId);
+      await add(targetId);
       this.navigationCollectionIds = [
-        ...new Set([...this.navigationCollectionIds, collectionId]),
+        ...new Set([...this.navigationCollectionIds, targetId]),
       ];
       if (!usesInlineNotice) {
         showToastWithAction(this.labels.addedToNavigation, {
@@ -1502,6 +1517,35 @@ export class JantCollectionsManager extends LitElement {
                       >
                         ${this.labels.edit}
                       </button>
+                      ${this.navigationCollectionIds.includes(
+                        smartCollection.id,
+                      )
+                        ? html`
+                            <a
+                              href=${publicPath(NAVIGATION_SETTINGS_PATH)}
+                              class="collections-page-menu-item"
+                            >
+                              ${this.labels.editNavigation}
+                            </a>
+                          `
+                        : html`
+                            <button
+                              type="button"
+                              class="collections-page-menu-item"
+                              ?disabled=${this._addingToNavigationId ===
+                              smartCollection.id}
+                              @click=${() =>
+                                void this.#addToNavigation(
+                                  smartCollection.id,
+                                  addSmartCollectionToNavigation,
+                                )}
+                            >
+                              ${this._addingToNavigationId ===
+                              smartCollection.id
+                                ? this.labels.addingToNavigation
+                                : this.labels.addToNavigation}
+                            </button>
+                          `}
                       <button
                         type="button"
                         class="collections-page-menu-item collections-page-menu-item-danger"
@@ -1541,8 +1585,9 @@ export class JantCollectionsManager extends LitElement {
                                 ?disabled=${this._addingToNavigationId ===
                                 collection.id}
                                 @click=${() =>
-                                  void this.#addCollectionToNavigation(
+                                  void this.#addToNavigation(
                                     collection.id,
+                                    addCollectionToNavigation,
                                   )}
                               >
                                 ${this._addingToNavigationId === collection.id
@@ -1823,7 +1868,10 @@ export class JantCollectionsManager extends LitElement {
                   class="collection-created-notice-action collection-created-notice-action-primary"
                   ?disabled=${this._addingToNavigationId === collection.id}
                   @click=${() =>
-                    void this.#addCollectionToNavigation(collection.id)}
+                    void this.#addToNavigation(
+                      collection.id,
+                      addCollectionToNavigation,
+                    )}
                 >
                   ${this._addingToNavigationId === collection.id
                     ? this.labels.addingToNavigation

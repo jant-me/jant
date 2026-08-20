@@ -20,6 +20,7 @@ const escapeJson = (data: unknown) =>
 
 export interface CollectionsManagerProps {
   items: CollectionDirectoryItem[];
+  /** Collections and smart collections already in the site navigation. */
   navigationCollectionIds?: string[];
   sitePathPrefix?: string;
   /**

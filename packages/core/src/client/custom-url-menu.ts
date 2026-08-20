@@ -1,8 +1,9 @@
 /**
  * Custom URL action menus on the settings page.
  *
- * Keeps row menus mutually exclusive and dismisses them on outside click
- * and Escape.
+ * Keeps row menus mutually exclusive and dismisses them on any click
+ * outside the trigger and the menu — including the rest of their own row —
+ * and on Escape.
  */
 
 import { openSmartCollectionDialog } from "./smart-collection-dialog-host.js";
@@ -128,11 +129,15 @@ export function initCustomUrlMenus(
         }
       });
 
+      // The row is the action root, but it is not the menu's dismiss region:
+      // the rest of the row is blank space like any other, so only the
+      // trigger and the menu itself count as a click inside.
       document.addEventListener("click", (event) => {
         if (!(event.target instanceof Node)) return;
-        if (!menuRoot.contains(event.target)) {
-          close(false);
+        if (trigger.contains(event.target) || menu.contains(event.target)) {
+          return;
         }
+        close(false);
       });
 
       document.addEventListener("jant:custom-url-menu", (event) => {

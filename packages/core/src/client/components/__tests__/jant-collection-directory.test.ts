@@ -290,6 +290,63 @@ describe("JantCollectionsManager", () => {
     ).toBe(new Date(1_763_619_400 * 1000).toISOString());
   });
 
+  // A smart collection is a collection to the reader, so its row offers the
+  // same navigation action a collection row does — and lands in the same
+  // placement, not buried under More.
+  it("adds a smart collection to navigation from its item menu", async () => {
+    const el = await createElementWithItems(itemsWithSmartCollection);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: "nav-1" }), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const { showToastWithAction } = await import("../../toast.js");
+
+    el._showItemMenuId = "directory-smart";
+    await el.updateComplete;
+
+    const addButton = Array.from(
+      el.querySelectorAll<HTMLButtonElement>(".collections-page-menu-item"),
+    ).find((button) => button.textContent?.includes("Add to Navigation"));
+    expect(addButton).toBeDefined();
+
+    addButton?.click();
+    await flushAsyncWork();
+    await el.updateComplete;
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/nav-items", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Jant-Site-Header": "include",
+      },
+      body: JSON.stringify({
+        type: "smart_collection",
+        smartCollectionId: "smc_1",
+        placement: "header",
+      }),
+    });
+    expect(el.navigationCollectionIds).toContain("smc_1");
+    expect(showToastWithAction).toHaveBeenCalledWith(
+      "Collection added to navigation.",
+      {
+        label: "Edit Navigation",
+        href: "/settings/navigation",
+      },
+    );
+
+    el._showItemMenuId = "directory-smart";
+    await el.updateComplete;
+    const editNavigationLink = Array.from(
+      el.querySelectorAll<HTMLAnchorElement>(".collections-page-menu-item"),
+    ).find((link) => link.textContent?.includes("Edit Navigation"));
+    expect(editNavigationLink?.getAttribute("href")).toBe(
+      "/settings/navigation",
+    );
+  });
+
   // The edit dialog deliberately has no delete of its own — this menu is where
   // a smart collection is destroyed, so this is where it has to be covered.
   it("deletes a smart collection from its item menu, after confirming", async () => {

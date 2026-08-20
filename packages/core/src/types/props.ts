@@ -221,6 +221,11 @@ export interface CollectionEditorPageProps {
 export interface CollectionsPageProps {
   items: CollectionDirectoryItem[];
   isAuthenticated: boolean;
+  /**
+   * TypeIDs of the collections and smart collections already in the site
+   * navigation. Both kinds share one list: the directory offers them the
+   * same action, and their ID prefixes keep them apart.
+   */
   navigationCollectionIds?: string[];
   /** Deployment path prefix. Used for links to admin surfaces. */
   sitePathPrefix?: string;

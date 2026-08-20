@@ -10,6 +10,7 @@
  */
 
 import { getCollectionsDirectoryPath } from "../lib/collection-paths.js";
+import { addSmartCollectionToNavigation } from "./collection-navigation.js";
 import { NAVIGATION_SETTINGS_PATH } from "../lib/settings-paths.js";
 import { showConfirmDialog } from "./confirm.js";
 import { showToast, showToastWithAction } from "./toast.js";
@@ -127,16 +128,7 @@ document
       if (label) label.textContent = labels.addingToNavigation;
 
       try {
-        const res = await fetch("/api/nav-items", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "smart_collection",
-            smartCollectionId,
-            placement: "more",
-          }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await addSmartCollectionToNavigation(smartCollectionId);
 
         addToNavigationButton.hidden = true;
         if (editNavigationLink) editNavigationLink.hidden = false;
