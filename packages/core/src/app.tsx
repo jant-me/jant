@@ -38,6 +38,7 @@ import { postsApiRoutes } from "./routes/api/posts.js";
 import { attachmentsApiRoutes } from "./routes/api/attachments.js";
 import { navItemsApiRoutes } from "./routes/api/nav-items.js";
 import { collectionsApiRoutes } from "./routes/api/collections.js";
+import { smartCollectionsApiRoutes } from "./routes/api/smart-collections.js";
 import { settingsApiRoutes } from "./routes/api/settings.js";
 import { uploadApiRoutes } from "./routes/api/upload.js";
 import { uploadsApiRoutes } from "./routes/api/uploads.js";
@@ -537,6 +538,7 @@ export function createApp(): App {
   app.route("/api/posts", postsApiRoutes);
   app.route("/api/nav-items", navItemsApiRoutes);
   app.route("/api/collections", collectionsApiRoutes);
+  app.route("/api/smart-collections", smartCollectionsApiRoutes);
   app.route("/api/settings", settingsApiRoutes);
   app.route("/api/custom-urls", customUrlsApiRoutes);
   app.route("/api/export", exportApiRoutes);

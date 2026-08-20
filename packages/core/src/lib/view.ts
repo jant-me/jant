@@ -531,8 +531,9 @@ function isLanguageScopedNavItem(item: NavItem): boolean {
     return LANGUAGE_SCOPED_SYSTEM_KEYS.has(item.systemKey ?? "");
   }
   // Collections keep their slug but filter by language; posts and free-form
-  // links have one address each.
-  return item.type === "collection";
+  // links have one address each. A smart collection is a collection in this
+  // respect too — `/en/quotes` is the English half of the same conditions.
+  return item.type === "collection" || item.type === "smart_collection";
 }
 
 export function toNavItemView(
@@ -601,6 +602,7 @@ export function toNavItemView(
     type: item.type as NavItemType,
     systemKey: item.systemKey,
     collectionId: item.collectionId,
+    smartCollectionId: item.smartCollectionId,
     postId: item.postId,
     label,
     url: publicUrl,

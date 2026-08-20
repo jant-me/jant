@@ -42,6 +42,10 @@ import { isTextAttachment } from "../../services/media.js";
 import type { Post } from "../../types.js";
 import { renderArchivePage } from "./archive.js";
 import { renderCollectionFeed, renderCollectionPage } from "./collection.js";
+import {
+  renderSmartCollectionFeed,
+  renderSmartCollectionPage,
+} from "./smart-collection.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -474,6 +478,23 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
 
     const resolvedCollection =
       await c.var.services.paths.resolve(collectionPath);
+
+    if (resolvedCollection?.smartCollectionId) {
+      const smartCollection = await c.var.services.smartCollections.getById(
+        resolvedCollection.smartCollectionId,
+      );
+      if (!smartCollection) return c.notFound();
+
+      const result = await renderSmartCollectionFeed(
+        c,
+        smartCollection.slug,
+        resolvedCollection.kind === "alias"
+          ? `/${resolvedCollection.path}/feed`
+          : undefined,
+      );
+      return result ?? c.notFound();
+    }
+
     if (resolvedCollection?.collectionId) {
       const collection = await c.var.services.collections.getById(
         resolvedCollection.collectionId,
@@ -609,6 +630,20 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     }
 
     return renderPost(c, post, { allowDraft });
+  }
+
+  if (resolved.smartCollectionId) {
+    const smartCollection = await c.var.services.smartCollections.getById(
+      resolved.smartCollectionId,
+    );
+    if (!smartCollection) return c.notFound();
+
+    const result = await renderSmartCollectionPage(
+      c,
+      smartCollection.slug,
+      resolved.kind === "alias" ? `/${resolved.path}` : undefined,
+    );
+    return result ?? c.notFound();
   }
 
   if (resolved.collectionId) {

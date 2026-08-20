@@ -115,6 +115,7 @@ export function createServices(
     paths,
     posts,
     databaseSchema,
+    config?.slugIdLength ?? 5,
   );
   const collections = createCollectionService(
     db,

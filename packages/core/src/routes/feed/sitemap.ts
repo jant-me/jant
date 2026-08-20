@@ -82,8 +82,12 @@ sitemapRoutes.get("/sitemap.xml", async (c) => {
     });
   }
 
-  const collections = await c.var.services.collections.list();
-  if (collections.length > 0) {
+  // The shard carries both kinds, so it is listed when either exists.
+  const [collections, smartCollections] = await Promise.all([
+    c.var.services.collections.list(),
+    c.var.services.smartCollections.list(),
+  ]);
+  if (collections.length > 0 || smartCollections.length > 0) {
     entries.push({
       loc: absoluteUrl("/sitemap-collections.xml", siteUrl, sitePathPrefix),
     });
@@ -206,7 +210,10 @@ sitemapRoutes.get("/sitemap-collections.xml", async (c) => {
   const { appConfig } = c.var;
   const { siteUrl, sitePathPrefix } = appConfig;
 
-  const collections = await c.var.services.collections.list();
+  const [collections, smartCollections] = await Promise.all([
+    c.var.services.collections.list(),
+    c.var.services.smartCollections.list(),
+  ]);
 
   // Resolve each collection's canonical URL (alias if one exists, else slug).
   // The `/collections` directory itself lives in `/sitemap-pages.xml`, since
@@ -225,6 +232,19 @@ sitemapRoutes.get("/sitemap-collections.xml", async (c) => {
       };
     }),
   );
+
+  // Smart collections are here unconditionally. A page a reader assembled out
+  // of archive parameters is one facet of a combinatorial family and stays out
+  // of the index; a smart collection is a page the author declared and gave an
+  // address, so it belongs in the sitemap like any other — and unlike an
+  // archive URL, it can never be one only its author can see.
+  for (const smartCollection of smartCollections) {
+    urls.push({
+      loc: absoluteUrl(`/${smartCollection.slug}`, siteUrl, sitePathPrefix),
+      lastmod: toIsoDate(smartCollection.updatedAt),
+      priority: "0.7",
+    });
+  }
 
   return xmlResponse(renderSitemapUrlSet(urls), CACHE_SHORT);
 });
@@ -260,8 +280,11 @@ sitemapRoutes.get("/sitemap-pages.xml", async (c) => {
   // collection exists. When there are no collections, `/collections` still
   // renders (as an empty directory), but indexing an empty aggregate page
   // adds no value.
-  const collections = await c.var.services.collections.list();
-  if (collections.length > 0) {
+  const [collections, smartCollections] = await Promise.all([
+    c.var.services.collections.list(),
+    c.var.services.smartCollections.list(),
+  ]);
+  if (collections.length > 0 || smartCollections.length > 0) {
     urls.push({
       loc: absoluteUrl("/collections", siteUrl, sitePathPrefix),
       priority: "0.5",

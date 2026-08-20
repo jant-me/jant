@@ -34,6 +34,8 @@ import {
   ValidationError,
 } from "../lib/errors.js";
 import { getCollectionPagePath } from "../lib/collection-paths.js";
+import { generatePostSlug } from "../lib/slug.js";
+import { getSlugValidationIssue } from "../lib/slug-format.js";
 import {
   PostFilterSelectionSchema,
   selectionFromRow,
@@ -79,6 +81,25 @@ export interface SmartCollectionService {
   ): Promise<SmartCollection | null>;
   delete(id: string): Promise<boolean>;
   /**
+   * A slug this smart collection could take, derived from a title.
+   *
+   * Same shape posts use, because the namespace is the same one: an address is
+   * free or it is not, whoever holds it.
+   */
+  suggestSlug(input: { title?: string; excludeId?: string }): Promise<string>;
+  /** Whether an address is free, ignoring the one this smart collection holds. */
+  checkSlugAvailability(slug: string, excludeId?: string): Promise<boolean>;
+  /**
+   * How many threads a set of conditions matches, next to the unfiltered total.
+   *
+   * What makes the editing dialog possible: without it an author is filling in
+   * a blind form and can save something that matches nothing.
+   */
+  preview(
+    selection: PostFilterSelection,
+    viewer: SmartCollectionViewer,
+  ): Promise<{ count: number; baseline: number }>;
+  /**
    * The `PostFilters` this smart collection's conditions imply, for one viewer.
    *
    * The only place conditions become a query. Page, feed, and count all read
@@ -107,6 +128,7 @@ export function createSmartCollectionService(
   resolvedPaths: PathService,
   posts: PostService,
   databaseSchema: DatabaseSchema = sqliteSchemaBundle,
+  slugIdLength = 5,
 ): SmartCollectionService {
   const {
     smartCollections,
@@ -197,6 +219,20 @@ export function createSmartCollectionService(
       ...(data.sort !== undefined ? { sort: data.sort } : {}),
       ...(data.layout !== undefined ? { layout: data.layout } : {}),
     };
+  }
+
+  /** Is this address free, ignoring the one this smart collection already holds? */
+  async function isSlugFree(
+    slug: string,
+    excludeId?: string,
+  ): Promise<boolean> {
+    const resolved = await resolvedPaths.resolve(toCollectionPath(slug));
+    if (!resolved) return true;
+    return Boolean(
+      excludeId &&
+      resolved.kind === "slug" &&
+      resolved.smartCollectionId === excludeId,
+    );
   }
 
   /**
@@ -450,6 +486,46 @@ export function createSmartCollectionService(
         )
         .returning();
       return result.length > 0;
+    },
+
+    async suggestSlug(input) {
+      return generatePostSlug({
+        title: input.title,
+        idLength: slugIdLength,
+        isAvailable: (candidate) => isSlugFree(candidate, input.excludeId),
+      });
+    },
+
+    async checkSlugAvailability(slug, excludeId) {
+      const issue = getSlugValidationIssue(slug);
+      if (issue === "invalid") {
+        throw new ValidationError("Slug contains invalid characters");
+      }
+      if (issue === "reserved") {
+        throw new ValidationError("Slug is reserved");
+      }
+      return isSlugFree(slug, excludeId);
+    },
+
+    async preview(selection, viewer) {
+      const parsed = parseValidated(PostFilterSelectionSchema, selection);
+      await assertSelectionResolvable(parsed);
+
+      const base: PostFilters = {
+        status: "published",
+        excludeReplies: true,
+        excludePrivate: !viewer.isAuthenticated,
+        excludeLatestHidden: false,
+        lang: viewer.lang,
+      };
+      // Both numbers in one round trip, and both through the same predicate
+      // builder the saved page will use — a preview that counted differently
+      // than the page would be worse than no preview.
+      const [count, baseline] = await posts.countMany(
+        [toPostFilters(parsed, {}), {}],
+        base,
+      );
+      return { count: count ?? 0, baseline: baseline ?? 0 };
     },
 
     toPostFilters(smartCollection, viewer) {

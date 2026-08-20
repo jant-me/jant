@@ -168,6 +168,7 @@ export interface NavItemView {
   type: NavItemType;
   systemKey?: SystemNavKey;
   collectionId?: string;
+  smartCollectionId?: string;
   postId?: string;
   /** Author's override, or `""` when the item follows its target's title */
   label: string;

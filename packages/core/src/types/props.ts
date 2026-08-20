@@ -6,9 +6,14 @@ import type {
   ArchiveLayout,
   ArchiveVisibility,
   CollectionSortOrder,
+  SmartCollectionSortOrder,
 } from "./constants.js";
 import type { PostFilterSelection } from "../lib/filter-dimensions.js";
-import type { Collection, CollectionDirectoryItem } from "./entities.js";
+import type {
+  Collection,
+  CollectionDirectoryItem,
+  SmartCollection,
+} from "./entities.js";
 import type {
   PostView,
   FeedPostView,
@@ -172,6 +177,35 @@ export interface CollectionPageProps {
     alternatives: LanguageSwitcherOption[];
   };
   /** Href for this collection selection's Atom feed when feeds are enabled. */
+  feedHref?: string;
+}
+
+/** Props for the smart collection page component */
+export interface SmartCollectionPageProps {
+  smartCollection: SmartCollection;
+  items: TimelineItemView[];
+  totalThreadCount: number;
+  currentPage: number;
+  totalPages: number;
+  pagePath: string;
+  baseUrl: string;
+  currentSort: SmartCollectionSortOrder;
+  defaultSort: SmartCollectionSortOrder;
+  showRatingSort: boolean;
+  /** One sentence naming what the conditions gather. Shown to every reader. */
+  conditionSummary: string;
+  /** Archive URL showing the same posts, for a reader who wants to narrow. */
+  conditionHref: string;
+  isAuthenticated: boolean;
+  isInNavigation?: boolean;
+  /** Deployment path prefix. Used for links to admin surfaces. */
+  sitePathPrefix?: string;
+  /**
+   * Public path prefix for reader-facing links, which in a language view also
+   * carries that language's prefix. Defaults to `sitePathPrefix`.
+   */
+  basePath?: string;
+  /** Href for this smart collection's Atom feed when feeds are enabled. */
   feedHref?: string;
 }
 
