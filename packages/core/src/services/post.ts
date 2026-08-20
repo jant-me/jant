@@ -209,6 +209,13 @@ export interface PostFilters {
   offset?: number; // offset for page-based pagination
 }
 
+/** What one filter measured over a set of Posts. See `aggregateMany`. */
+export interface PostFilterAggregate {
+  count: number;
+  /** Newest activity among the matched rows; `null` when nothing matched. */
+  recentActivityAt: number | null;
+}
+
 /** Config for automatic summary extraction */
 export interface SummaryConfig {
   maxParagraphs: number;
@@ -369,29 +376,37 @@ export interface PostService {
   /** Count posts matching filters up to a fixed limit (ignores cursor, offset, limit) */
   countUpTo(filters: PostFilters | undefined, limit: number): Promise<number>;
   /**
-   * Count several filters at once, in a single round trip.
+   * Measure several filters at once, in a single round trip.
    *
-   * One table scan with one `SUM(CASE …)` per filter, rather than one query per
-   * filter. On Workers the round trip is the cost that matters, and a page that
-   * lists twenty smart collections would otherwise pay twenty of them —
-   * `Promise.all` only turns "slow in sequence" into "expensive in parallel".
+   * One table scan with one `SUM(CASE …)` and one `MAX(CASE …)` per filter,
+   * rather than one query per filter. On Workers the round trip is the cost
+   * that matters, and a page that lists twenty smart collections would
+   * otherwise pay twenty of them — `Promise.all` only turns "slow in sequence"
+   * into "expensive in parallel".
    *
    * Every predicate is built by the same `buildFilterConditions` a single
    * `count` uses, so the numbers here and the numbers on the pages they link to
    * cannot drift.
    *
-   * @param filters - One filter per count, in order
-   * @param base - Applied to every count: the site, the reader's visibility
-   *   floor, and anything else common to all of them
-   * @returns Counts positionally matching `filters`
+   * `recentActivityAt` is the newest activity among the matched rows, on the
+   * one definition {@link buildRootActivityExpr} holds for everything that
+   * orders or dates a Thread. It reads the matched row's own columns, so it
+   * describes a Thread only when `base` excludes replies — which is what every
+   * caller does, because a reply is not a member of anything.
+   *
+   * @param filters - One filter per measurement, in order
+   * @param base - Applied to every measurement: the site, the reader's
+   *   visibility floor, and anything else common to all of them
+   * @returns Count and newest activity, positionally matching `filters`;
+   *   `recentActivityAt` is `null` where nothing matched
    * @example
-   * await posts.countMany([{ format: "note" }, { format: "quote" }], base);
-   * // [12, 5]
+   * await posts.aggregateMany([{ format: "note" }, { format: "quote" }], base);
+   * // [{ count: 12, recentActivityAt: 1706100000 }, { count: 5, … }]
    */
-  countMany(
+  aggregateMany(
     filters: readonly PostFilters[],
     base: PostFilters,
-  ): Promise<number[]>;
+  ): Promise<PostFilterAggregate[]>;
   /** Count posts grouped by year-month (YYYY-MM) on the `sortBy` time axis */
   countByYearMonth(
     filters?: PostFilters,
@@ -2100,21 +2115,37 @@ export function createPostService(
       return result[0]?.count ?? 0;
     },
 
-    async countMany(filters, base) {
+    async aggregateMany(filters, base) {
       if (filters.length === 0) return [];
 
       const baseConditions = buildFilterConditions(base);
-      // A `SUM(CASE …)` per filter, over one pass of the rows the base
-      // predicate already narrows to. The aliases are positional and generated
-      // here, so nothing a caller supplies reaches the SQL as an identifier.
+      // The row is its own Thread root here — callers exclude replies — so the
+      // activity expression reads the columns in hand. No correlated subquery.
+      const activityAt = buildRootActivityExpr({
+        lastActivityAt: posts.lastActivityAt,
+        publishedAt: posts.publishedAt,
+        updatedAt: posts.updatedAt,
+      });
+      // A `SUM(CASE …)` and a `MAX(CASE …)` per filter, over one pass of the
+      // rows the base predicate already narrows to. The aliases are positional
+      // and generated here, so nothing a caller supplies reaches the SQL as an
+      // identifier.
       const columns = Object.fromEntries(
-        filters.map((filter, index) => {
+        filters.flatMap((filter, index) => {
           const conditions = buildFilterConditions({ ...base, ...filter });
           const predicate =
             conditions.length > 0 ? and(...conditions) : sql`1 = 1`;
           return [
-            `n${index}`,
-            sql<number>`CAST(SUM(CASE WHEN (${predicate}) THEN 1 ELSE 0 END) AS INTEGER)`,
+            [
+              `n${index}`,
+              sql<number>`CAST(SUM(CASE WHEN (${predicate}) THEN 1 ELSE 0 END) AS INTEGER)`,
+            ],
+            [
+              `a${index}`,
+              sql<
+                number | null
+              >`MAX(CASE WHEN (${predicate}) THEN ${activityAt} END)`,
+            ],
           ];
         }),
       );
@@ -2125,7 +2156,16 @@ export function createPostService(
         .where(baseConditions.length > 0 ? and(...baseConditions) : undefined);
 
       const row = rows[0] as Record<string, number | null> | undefined;
-      return filters.map((_, index) => Number(row?.[`n${index}`] ?? 0));
+      return filters.map((_, index) => {
+        const activity = row?.[`a${index}`];
+        return {
+          count: Number(row?.[`n${index}`] ?? 0),
+          recentActivityAt:
+            activity === null || activity === undefined
+              ? null
+              : Number(activity),
+        };
+      });
     },
 
     async countUpTo(filters = {}, limit) {

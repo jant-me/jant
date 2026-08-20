@@ -285,7 +285,7 @@ describe("SmartCollectionService", () => {
     });
   });
 
-  describe("counts", () => {
+  describe("directory entries", () => {
     async function seed() {
       await posts.create({
         format: "quote",
@@ -321,8 +321,8 @@ describe("SmartCollectionService", () => {
         selection: { format: "quote" },
       });
 
-      const [asReader] = await smartCollections.listWithCounts(anonymous);
-      const [asAuthor] = await smartCollections.listWithCounts(author);
+      const [asReader] = await smartCollections.listDirectoryEntries(anonymous);
+      const [asAuthor] = await smartCollections.listDirectoryEntries(author);
 
       // Drafts never count. The private quote counts only for the author —
       // the same rule a manual collection's directory entry follows.
@@ -348,7 +348,7 @@ describe("SmartCollectionService", () => {
       });
 
       const [entries, postScans] = await countPostQueries(() =>
-        smartCollections.listWithCounts(anonymous),
+        smartCollections.listDirectoryEntries(anonymous),
       );
 
       expect(entries.map((entry) => [entry.slug, entry.threadCount])).toEqual([
@@ -361,8 +361,153 @@ describe("SmartCollectionService", () => {
     });
 
     it("returns nothing to count when there is nothing to count", async () => {
-      expect(await smartCollections.listWithCounts(anonymous)).toEqual([]);
-      expect(await posts.countMany([], {})).toEqual([]);
+      expect(await smartCollections.listDirectoryEntries(anonymous)).toEqual(
+        [],
+      );
+      expect(await posts.aggregateMany([], {})).toEqual([]);
+    });
+
+    // The directory prints a count and a date on every row, and the two kinds
+    // of row sit one above the other. A date that meant something different on
+    // a smart collection would be worse than no date at all.
+    it("dates each smart collection by the newest thread it matches", async () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+        await posts.create({
+          format: "quote",
+          quoteText: "An old quote",
+          status: "published",
+        });
+
+        vi.setSystemTime(new Date("2024-01-02T00:00:00Z"));
+        await posts.create({
+          format: "note",
+          bodyMarkdown: "a note",
+          status: "published",
+        });
+
+        vi.setSystemTime(new Date("2024-01-03T00:00:00Z"));
+        await posts.create({
+          format: "quote",
+          quoteText: "A new quote",
+          status: "published",
+        });
+
+        await smartCollections.create({
+          slug: "quotes",
+          title: "Quotes",
+          selection: { format: "quote" },
+        });
+        await smartCollections.create({
+          slug: "notes",
+          title: "Notes",
+          selection: { format: "note" },
+        });
+
+        const entries = await smartCollections.listDirectoryEntries(anonymous);
+
+        // Per filter, not one date for the whole page.
+        expect(
+          entries.map((entry) => [entry.slug, entry.recentActivityAt]),
+        ).toEqual([
+          ["quotes", 1704240000],
+          ["notes", 1704153600],
+        ]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("dates it by what the viewer can see, as it counts by it", async () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+        await posts.create({
+          format: "quote",
+          quoteText: "A public quote",
+          status: "published",
+        });
+
+        vi.setSystemTime(new Date("2024-01-02T00:00:00Z"));
+        await posts.create({
+          format: "quote",
+          quoteText: "A private quote",
+          status: "published",
+          visibility: "private",
+        });
+
+        await smartCollections.create({
+          slug: "quotes",
+          title: "Quotes",
+          selection: { format: "quote" },
+        });
+
+        const [asReader] =
+          await smartCollections.listDirectoryEntries(anonymous);
+        const [asAuthor] = await smartCollections.listDirectoryEntries(author);
+
+        // A reader is never told that something they cannot read just moved.
+        expect(asReader?.recentActivityAt).toBe(1704067200);
+        expect(asAuthor?.recentActivityAt).toBe(1704153600);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    // Same definition as everywhere else: a Thread's activity is when it
+    // gained a post, so fixing a typo does not drag a collection to the top.
+    it("counts a reply as activity and a later edit as none", async () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+        const root = await posts.create({
+          format: "note",
+          bodyMarkdown: "root",
+          status: "published",
+        });
+        await smartCollections.create({
+          slug: "notes",
+          title: "Notes",
+          selection: { format: "note" },
+        });
+
+        vi.setSystemTime(new Date("2024-01-01T00:01:00Z"));
+        await posts.update(root.id, { bodyMarkdown: "edited" });
+
+        const [afterEdit] =
+          await smartCollections.listDirectoryEntries(anonymous);
+        expect(afterEdit?.recentActivityAt).toBe(1704067200);
+
+        vi.setSystemTime(new Date("2024-01-01T00:02:00Z"));
+        await posts.create({
+          format: "note",
+          bodyMarkdown: "reply",
+          replyToId: root.id,
+          status: "published",
+        });
+
+        const [afterReply] =
+          await smartCollections.listDirectoryEntries(anonymous);
+        expect(afterReply?.recentActivityAt).toBe(1704067320);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("dates an empty smart collection by itself", async () => {
+      const created = await smartCollections.create({
+        slug: "quotes",
+        title: "Quotes",
+        selection: { format: "quote" },
+      });
+
+      const [entry] = await smartCollections.listDirectoryEntries(anonymous);
+
+      // Nothing matched, so there is no thread to date it by — the same
+      // fallback an empty manual collection takes.
+      expect(entry?.threadCount).toBe(0);
+      expect(entry?.recentActivityAt).toBe(created.updatedAt);
     });
   });
 

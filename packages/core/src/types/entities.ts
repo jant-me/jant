@@ -183,6 +183,14 @@ export interface SmartCollection {
 
 export interface SmartCollectionDirectoryEntry extends SmartCollection {
   threadCount: number;
+  /**
+   * Newest activity among the threads the conditions match, or the smart
+   * collection's own `updatedAt` when they match nothing.
+   *
+   * The same measure `CollectionDirectoryCollection` carries, on the same
+   * definition, because the two sit in one list and a reader compares them.
+   */
+  recentActivityAt: number;
 }
 
 /**

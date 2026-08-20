@@ -77,6 +77,7 @@ interface CollectionsResponse {
     sort: string;
     layout: string | null;
     threadCount: number;
+    recentActivityAt: number;
   }>;
   directoryItems?: Array<{
     id: string;
@@ -409,6 +410,7 @@ export class JantCollectionsManager extends LitElement {
         sort: smartCollection.sort,
         layout: smartCollection.layout,
         threadCount: smartCollection.threadCount ?? 0,
+        recentActivityAt: smartCollection.recentActivityAt,
       });
     }
 
@@ -1070,9 +1072,10 @@ export class JantCollectionsManager extends LitElement {
   /**
    * One smart collection row.
    *
-   * The same row shape as a collection, with the `funnel` marker in the slot
-   * the link rows already use and no "last activity" time — membership follows
-   * conditions, so there is no editorial act to date.
+   * The same row shape as a collection — count, then last activity — with the
+   * `funnel` marker in the slot the link rows already use. Only the marker
+   * says the membership came from conditions; the two measures beside it are
+   * the same two, and are meant to be read against the rows above and below.
    */
   #renderSmartCollectionItem(item: CollectionManagerItem, sequence: string) {
     const smartCollection = item.smartCollection;
@@ -1113,6 +1116,15 @@ export class JantCollectionsManager extends LitElement {
           <span class="collection-directory-meta"
             >${this.#countLabel(smartCollection.threadCount)}</span
           >
+          <span class="collection-directory-meta-separator" aria-hidden="true"
+            >/</span
+          >
+          <time
+            class="collection-directory-updated"
+            datetime=${toISOString(smartCollection.recentActivityAt)}
+          >
+            ${formatRelativeAge(smartCollection.recentActivityAt)}
+          </time>
         </p>
       </div>
     `;

@@ -185,6 +185,7 @@ const itemsWithSmartCollection: CollectionManagerItem[] = [
       sort: "newest",
       layout: null,
       threadCount: 4,
+      recentActivityAt: 1_763_619_400,
     },
   },
 ];
@@ -267,6 +268,28 @@ describe("JantCollectionsManager", () => {
     confirmMock.mockReset().mockResolvedValue(true);
   });
 
+  // The two kinds sit in one list and are read against each other, so a smart
+  // collection row carries the same two measures a collection row does.
+  it("dates a smart collection row the way it dates a collection row", async () => {
+    const el = await createElementWithItems([
+      ...items,
+      ...itemsWithSmartCollection,
+    ]);
+
+    const summaries = Array.from(
+      el.querySelectorAll(".collection-directory-summary"),
+    );
+    expect(summaries).toHaveLength(3);
+
+    const smartSummary = summaries.at(-1);
+    expect(smartSummary?.textContent).toContain("4 threads");
+    expect(
+      smartSummary
+        ?.querySelector(".collection-directory-updated")
+        ?.getAttribute("datetime"),
+    ).toBe(new Date(1_763_619_400 * 1000).toISOString());
+  });
+
   // The edit dialog deliberately has no delete of its own — this menu is where
   // a smart collection is destroyed, so this is where it has to be covered.
   it("deletes a smart collection from its item menu, after confirming", async () => {
@@ -321,6 +344,7 @@ describe("JantCollectionsManager", () => {
                   sort: "newest",
                   layout: null,
                   threadCount: 4,
+                  recentActivityAt: 1_763_619_400,
                 },
               ],
               directoryItems: [],

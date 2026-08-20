@@ -71,10 +71,10 @@ export interface ManagedCollection {
 /**
  * A smart collection as the directory manager sees it.
  *
- * `recentActivityAt` has no counterpart here. A manual collection's freshness
- * is when a thread was last added to it — an editorial act with a timestamp. A
- * smart collection has no such act: membership follows the conditions, so there
- * is nothing to date.
+ * `recentActivityAt` means what it means on a manual collection: the newest
+ * activity among the threads in it. Membership is what the two kinds disagree
+ * about — tagged by hand or decided by conditions — and freshness does not
+ * depend on how a thread got in.
  */
 export interface ManagedSmartCollection {
   id: string;
@@ -86,6 +86,7 @@ export interface ManagedSmartCollection {
   sort: string;
   layout: string | null;
   threadCount: number;
+  recentActivityAt: number;
 }
 
 export interface CollectionManagerItem {

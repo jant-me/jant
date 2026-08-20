@@ -94,12 +94,11 @@ smartCollectionsApiRoutes.post("/preview", requireAuthApi(), async (c) => {
 
 smartCollectionsApiRoutes.get("/", requireAuthApi(), async (c) => {
   const query = parseValidated(PreviewQuerySchema, c.req.query());
-  const smartCollections = await c.var.services.smartCollections.listWithCounts(
-    {
+  const smartCollections =
+    await c.var.services.smartCollections.listDirectoryEntries({
       isAuthenticated: c.var.isAuthenticated,
       lang: query.lang,
-    },
-  );
+    });
   return c.json({ smartCollections });
 });
 

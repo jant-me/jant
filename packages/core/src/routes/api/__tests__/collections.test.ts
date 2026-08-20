@@ -45,6 +45,30 @@ describe("Collections API Routes", () => {
       expect(body.directoryItems[0].collectionId).toBe(col.id);
     });
 
+    it("returns smart collections with the same two measures", async () => {
+      const { app, services } = createTestApp();
+      app.route("/api/collections", collectionsApiRoutes);
+
+      await services.smartCollections.create({
+        slug: "quotes",
+        title: "Quotes",
+        selection: { format: "quote" },
+      });
+      const quote = await services.posts.create({
+        format: "quote",
+        quoteText: "Worth keeping",
+      });
+
+      const res = await app.request("/api/collections");
+      const body = await res.json();
+
+      expect(body.smartCollections).toHaveLength(1);
+      expect(body.smartCollections[0].threadCount).toBe(1);
+      expect(body.smartCollections[0].recentActivityAt).toBe(
+        quote.lastActivityAt,
+      );
+    });
+
     it("returns divider labels", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/collections", collectionsApiRoutes);

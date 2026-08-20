@@ -351,6 +351,21 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                           }),
                         )}
                   </span>
+                  {/* The same two measures a collection row carries. The
+                      conditions are what differs between the two kinds; how
+                      full and how fresh the result is is not. */}
+                  <span
+                    class="collection-directory-meta-separator"
+                    aria-hidden="true"
+                  >
+                    /
+                  </span>
+                  <time
+                    class="collection-directory-updated"
+                    dateTime={toISOString(smartCollection.recentActivityAt)}
+                  >
+                    {formatRelativeAge(smartCollection.recentActivityAt)}
+                  </time>
                 </p>
               </div>
             </div>

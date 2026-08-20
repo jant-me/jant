@@ -1501,7 +1501,8 @@ Default response:
       "layout": null,
       "createdAt": 1706000000,
       "updatedAt": 1706000000,
-      "threadCount": 34
+      "threadCount": 34,
+      "recentActivityAt": 1706090000
     }
   ],
   "directoryItems": [
@@ -1523,7 +1524,7 @@ Default response:
 
 Notes:
 
-- The default response returns directory ordering in `directoryItems`, and every smart collection in `smartCollections`.
+- The default response returns directory ordering in `directoryItems`, and every smart collection in `smartCollections`. Both kinds carry `threadCount` and `recentActivityAt`, measured the same way, because the directory prints them side by side.
 - `view=compose` returns collections sorted by recent activity and always returns an empty `directoryItems` array. It carries no smart collections: a post cannot be added to one by hand, so offering it in a compose picker would be a control that does nothing.
 
 ### Get a collection
@@ -1818,19 +1819,20 @@ endpoints here — the conditions are the membership.
 
 Smart collection responses include these fields:
 
-| Field         | Type                                               | Notes                                             |
-| ------------- | -------------------------------------------------- | ------------------------------------------------- |
-| `id`          | `smc_*` string                                     | Smart collection ID                               |
-| `siteId`      | string                                             | Owning site                                       |
-| `slug`        | string                                             | Canonical address, in the same namespace as posts |
-| `title`       | string                                             | Display title. Required                           |
-| `description` | string \| `null`                                   | Optional description                              |
-| `selection`   | object                                             | The conditions. `{}` collects every post          |
-| `sort`        | `newest` \| `oldest` \| `updated` \| `rating_desc` | Order of the posts the conditions gather          |
-| `layout`      | `list` \| `grid` \| `null`                         | `null` follows the site's archive layout          |
-| `createdAt`   | integer                                            | Unix seconds                                      |
-| `updatedAt`   | integer                                            | Unix seconds                                      |
-| `threadCount` | integer                                            | Only present in list responses                    |
+| Field              | Type                                               | Notes                                             |
+| ------------------ | -------------------------------------------------- | ------------------------------------------------- |
+| `id`               | `smc_*` string                                     | Smart collection ID                               |
+| `siteId`           | string                                             | Owning site                                       |
+| `slug`             | string                                             | Canonical address, in the same namespace as posts |
+| `title`            | string                                             | Display title. Required                           |
+| `description`      | string \| `null`                                   | Optional description                              |
+| `selection`        | object                                             | The conditions. `{}` collects every post          |
+| `sort`             | `newest` \| `oldest` \| `updated` \| `rating_desc` | Order of the posts the conditions gather          |
+| `layout`           | `list` \| `grid` \| `null`                         | `null` follows the site's archive layout          |
+| `createdAt`        | integer                                            | Unix seconds                                      |
+| `updatedAt`        | integer                                            | Unix seconds                                      |
+| `threadCount`      | integer                                            | Only present in list responses                    |
+| `recentActivityAt` | integer                                            | Only present in list responses                    |
 
 ### The `selection` object
 
@@ -1859,10 +1861,17 @@ be an OR, which the conditions do not express.
 
 | Parameter | Type       | Required | Default | Notes                                      |
 | --------- | ---------- | -------- | ------- | ------------------------------------------ |
-| `lang`    | BCP 47 tag | no       | all     | Narrows `threadCount` to one language view |
+| `lang`    | BCP 47 tag | no       | all     | Narrows both measures to one language view |
 
 Response: `{ "smartCollections": SmartCollection[] }`, each carrying
-`threadCount`.
+`threadCount` and `recentActivityAt`.
+
+Both measures answer for the caller. A private thread is counted, and dates the
+smart collection, only for a caller who could read it — the same rule the
+collection directory follows. `recentActivityAt` is the newest activity among
+the threads the conditions match, where activity means the thread gained a
+post; editing one is not activity. A smart collection whose conditions match
+nothing reports its own `updatedAt`.
 
 ### Get a smart collection
 

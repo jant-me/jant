@@ -858,11 +858,12 @@ export function createCollectionService(
         orderedDirectoryItems,
       ] = await Promise.all([
         listDirectoryCollections(viewer),
-        // One aggregate for every smart collection, not one query each — see
-        // `posts.countMany`. Both kinds of number come from the same reader
-        // predicate, so a signed-out visitor sees a consistent directory.
+        // One pass for every smart collection, not one query each — see
+        // `posts.aggregateMany`. Both kinds of row are measured through the
+        // same reader predicate, so a signed-out visitor sees a directory
+        // whose counts and dates agree with the pages behind them.
         smartCollections
-          ? smartCollections.listWithCounts(viewer)
+          ? smartCollections.listDirectoryEntries(viewer)
           : Promise.resolve([] as SmartCollectionDirectoryEntry[]),
         this.listDirectoryItems(),
       ]);

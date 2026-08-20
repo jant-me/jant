@@ -75,8 +75,14 @@ export interface SmartCollectionService {
   getById(id: string): Promise<SmartCollection | null>;
   getBySlug(slug: string): Promise<SmartCollection | null>;
   list(): Promise<SmartCollection[]>;
-  /** Every smart collection with the thread count this viewer would see. */
-  listWithCounts(
+  /**
+   * Every smart collection with the count and freshness this viewer would see.
+   *
+   * Both measures are the viewer's own: a thread only the author can see is
+   * counted for the author alone, and it dates the collection for the author
+   * alone. A reader is never told that something they cannot read just moved.
+   */
+  listDirectoryEntries(
     viewer: SmartCollectionViewer,
   ): Promise<SmartCollectionDirectoryEntry[]>;
   create(data: CreateSmartCollection): Promise<SmartCollection>;
@@ -377,14 +383,14 @@ export function createSmartCollectionService(
       return hydrateMany(rows);
     },
 
-    async listWithCounts(viewer) {
+    async listDirectoryEntries(viewer) {
       const entries = await this.list();
       if (entries.length === 0) return [];
 
-      // One aggregate for every smart collection on the page, not one query
-      // each. Same predicate builder the pages use, so the number in the
-      // directory and the number on the page it links to agree.
-      const counts = await posts.countMany(
+      // One pass for every smart collection on the page, not one query each.
+      // Same predicate builder the pages use, so the number in the directory
+      // and the number on the page it links to agree.
+      const measured = await posts.aggregateMany(
         entries.map((entry) => toPostFilters(entry.selection, {})),
         {
           status: "published",
@@ -397,7 +403,10 @@ export function createSmartCollectionService(
 
       return entries.map((entry, index) => ({
         ...entry,
-        threadCount: counts[index] ?? 0,
+        threadCount: measured[index]?.count ?? 0,
+        // Nothing matched — no thread to date it by — so the collection dates
+        // itself, exactly as an empty manual collection does.
+        recentActivityAt: measured[index]?.recentActivityAt ?? entry.updatedAt,
       }));
     },
 
@@ -588,11 +597,11 @@ export function createSmartCollectionService(
       // Both numbers in one round trip, and both through the same predicate
       // builder the saved page will use — a preview that counted differently
       // than the page would be worse than no preview.
-      const [count, baseline] = await posts.countMany(
+      const [matched, all] = await posts.aggregateMany(
         [toPostFilters(parsed, {}), {}],
         base,
       );
-      return { count: count ?? 0, baseline: baseline ?? 0 };
+      return { count: matched?.count ?? 0, baseline: all?.count ?? 0 };
     },
 
     toPostFilters(smartCollection, viewer) {
