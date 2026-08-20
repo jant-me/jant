@@ -9,7 +9,7 @@ import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
 import { requirePublicApiAccess } from "../../middleware/public-content-access.js";
 import {
-  CollectionDirectoryItemIdSchema,
+  CollectionDirectoryRowIdSchema,
   CollectionDescriptionValueSchema,
   CollectionSortOrderSchema,
   ContentLanguageSchema,
@@ -37,8 +37,8 @@ const ThreadAssignSchema = z.object({
 });
 
 const MoveSchema = z.object({
-  after: CollectionDirectoryItemIdSchema.nullable().optional(),
-  before: CollectionDirectoryItemIdSchema.nullable().optional(),
+  after: CollectionDirectoryRowIdSchema.nullable().optional(),
+  before: CollectionDirectoryRowIdSchema.nullable().optional(),
 });
 
 const ListCollectionsQuerySchema = z.object({
@@ -114,13 +114,17 @@ collectionsApiRoutes.put(
 );
 
 // Move directory item — must be before /:id
+//
+// The moved row and its neighbours may each be named by a collection or smart
+// collection id: those are the rows the directory renders without one of its
+// own. The service places them before it moves anything.
 collectionsApiRoutes.put(
   "/directory-items/:id/move",
   requireAuthApi(),
   async (c) => {
-    const id = parseIdParam(
+    const id = parseValidated(
+      CollectionDirectoryRowIdSchema,
       c.req.param("id"),
-      ID_PREFIX.collectionDirectoryItem,
     );
     const body = parseValidated(MoveSchema, await c.req.json());
 

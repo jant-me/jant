@@ -458,6 +458,41 @@ describe("Collections API Routes", () => {
       expect(reordered[1]?.id).toBe(itemC?.id);
       expect(reordered[2]?.id).toBe(itemB?.id);
     });
+
+    it("moves a smart collection, which the directory names by its own id", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/collections", collectionsApiRoutes);
+
+      const a = await services.collections.create({ slug: "a", title: "A" });
+      const b = await services.collections.create({ slug: "b", title: "B" });
+      const quotes = await services.smartCollections.create({
+        slug: "quotes",
+        title: "Quotes",
+      });
+
+      const items = await services.collections.listDirectoryItems();
+
+      // The shape the drag surface sends: a smart collection id beside a
+      // directory row id.
+      const res = await app.request(
+        `/api/collections/directory-items/${quotes.id}/move`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            after: items[0]?.id ?? "",
+            before: items[1]?.id ?? "",
+          }),
+        },
+      );
+
+      expect(res.status).toBe(200);
+
+      const reordered = await services.collections.listDirectoryItems();
+      expect(
+        reordered.map((item) => item.collectionId ?? item.smartCollectionId),
+      ).toEqual([a.id, quotes.id, b.id]);
+    });
   });
 
   describe("POST /api/collections/:id/threads", () => {

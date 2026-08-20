@@ -136,6 +136,126 @@ describe("SmartCollectionService", () => {
     });
   });
 
+  describe("directory placement", () => {
+    it("takes a place in the directory, after what is already there", async () => {
+      const books = await collections.create({ slug: "books", title: "Books" });
+      const quotes = await smartCollections.create({
+        slug: "quotes",
+        title: "Quotes",
+      });
+
+      const items = await collections.listDirectoryItems();
+      expect(
+        items.map((item) => [
+          item.type,
+          item.collectionId ?? item.smartCollectionId,
+        ]),
+      ).toEqual([
+        ["collection", books.id],
+        ["smart_collection", quotes.id],
+      ]);
+    });
+
+    it("leaves no directory row behind when the address is taken", async () => {
+      await collections.create({ slug: "books", title: "Books" });
+
+      await expect(
+        smartCollections.create({ slug: "books", title: "Quotes" }),
+      ).rejects.toThrow(/already in use/);
+
+      const items = await collections.listDirectoryItems();
+      expect(items.filter((item) => item.type === "smart_collection")).toEqual(
+        [],
+      );
+    });
+
+    it("drags by its own id, which is how the directory names it", async () => {
+      const first = await collections.create({ slug: "books", title: "Books" });
+      const last = await collections.create({ slug: "notes", title: "Notes" });
+      const quotes = await smartCollections.create({
+        slug: "quotes",
+        title: "Quotes",
+      });
+
+      const placed = await collections.listDirectoryItems();
+      const [firstRow, lastRow] = placed;
+
+      // The drag surface sends the smart collection's own id, not its row's.
+      const moved = await collections.moveDirectoryItem(
+        quotes.id,
+        firstRow?.id ?? null,
+        lastRow?.id ?? null,
+      );
+      expect(moved?.smartCollectionId).toBe(quotes.id);
+
+      const reordered = await collections.listDirectoryItems();
+      expect(
+        reordered.map((item) => item.collectionId ?? item.smartCollectionId),
+      ).toEqual([first.id, quotes.id, last.id]);
+    });
+
+    it("places a smart collection that never had a row, then moves it", async () => {
+      const first = await collections.create({ slug: "books", title: "Books" });
+      const last = await collections.create({ slug: "notes", title: "Notes" });
+      const quotes = await smartCollections.create({
+        slug: "quotes",
+        title: "Quotes",
+      });
+
+      // A smart collection from before placement existed: the directory shows
+      // it appended at the end, with no row of its own.
+      sqlite
+        .prepare(
+          `DELETE FROM collection_directory_item WHERE smart_collection_id = ?`,
+        )
+        .run(quotes.id);
+      const unplaced = await collections.listDirectoryItems();
+      expect(unplaced).toHaveLength(2);
+
+      const [firstRow, lastRow] = unplaced;
+      await collections.moveDirectoryItem(
+        quotes.id,
+        firstRow?.id ?? null,
+        lastRow?.id ?? null,
+      );
+
+      const reordered = await collections.listDirectoryItems();
+      expect(
+        reordered.map((item) => item.collectionId ?? item.smartCollectionId),
+      ).toEqual([first.id, quotes.id, last.id]);
+    });
+
+    it("names an unplaced neighbour, without reshuffling what was on screen", async () => {
+      const books = await collections.create({ slug: "books", title: "Books" });
+      const quotes = await smartCollections.create({
+        slug: "quotes",
+        title: "Quotes",
+      });
+      sqlite
+        .prepare(
+          `DELETE FROM collection_directory_item WHERE smart_collection_id = ?`,
+        )
+        .run(quotes.id);
+
+      const divider = await collections.createDirectoryItem({
+        type: "divider",
+        label: "Reading",
+      });
+
+      // Dropping the divider between a placed collection and an unplaced smart
+      // collection: the smart collection has to become a row for the position
+      // to be computable, and it must land where the author already saw it.
+      await collections.moveDirectoryItem(divider.id, books.id, quotes.id);
+
+      const reordered = await collections.listDirectoryItems();
+      expect(
+        reordered.map(
+          (item) => item.collectionId ?? item.smartCollectionId ?? item.id,
+        ),
+      ).toEqual([books.id, divider.id, quotes.id]);
+    });
+  });
+
   describe("update", () => {
     it("clears a condition that was removed, rather than leaving it behind", async () => {
       const created = await smartCollections.create({

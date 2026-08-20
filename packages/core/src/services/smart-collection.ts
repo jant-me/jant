@@ -28,6 +28,11 @@ import {
 } from "../db/schema-bundle.js";
 import { createEntityId } from "../lib/ids.js";
 import { now } from "../lib/time.js";
+import { isUniqueConstraintError } from "../db/dialect.js";
+import {
+  DIRECTORY_POSITION_RETRY_ATTEMPTS,
+  getAppendDirectoryPosition,
+} from "./collection-directory-position.js";
 import {
   ConflictError,
   NotFoundError,
@@ -177,6 +182,55 @@ export function createSmartCollectionService(
         return slug ? toSmartCollection(row, slug) : null;
       })
       .filter((row): row is SmartCollection => row !== null);
+  }
+
+  /**
+   * Append this smart collection's row to the collections directory.
+   *
+   * The directory is one ordered list shared with manual collections, dividers,
+   * and links; the row is what gives a smart collection a position in it. The
+   * position rule itself lives in `collection-directory-position`, so both
+   * writers append the same way.
+   *
+   * @param id - The smart collection to place
+   * @param timestamp - Creation time, shared with the smart collection row
+   */
+  async function placeInDirectory(
+    id: string,
+    timestamp: number,
+  ): Promise<void> {
+    for (
+      let attempt = 0;
+      attempt < DIRECTORY_POSITION_RETRY_ATTEMPTS;
+      attempt += 1
+    ) {
+      try {
+        await db.insert(directoryItemsTable).values({
+          id: createEntityId("collectionDirectoryItem"),
+          siteId,
+          type: "smart_collection",
+          collectionId: null,
+          smartCollectionId: id,
+          label: null,
+          url: null,
+          position: await getAppendDirectoryPosition(
+            db,
+            directoryItemsTable,
+            siteId,
+          ),
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+        return;
+      } catch (err) {
+        if (
+          !isUniqueConstraintError(err) ||
+          attempt === DIRECTORY_POSITION_RETRY_ATTEMPTS - 1
+        ) {
+          throw err;
+        }
+      }
+    }
   }
 
   /** Validate and normalize the fields a create or update may set. */
@@ -377,8 +431,21 @@ export function createSmartCollectionService(
       } as typeof smartCollections.$inferInsert);
 
       try {
+        // A smart collection takes its place in the directory the way a manual
+        // one does — appended, with a row of its own. The directory would list
+        // it either way, but only a row can hold a position, so without this it
+        // sits below every manual collection and cannot be dragged out of there.
+        await placeInDirectory(id, timestamp);
         await resolvedPaths.createSmartCollectionSlug(id, normalized.slug);
       } catch (err) {
+        await db
+          .delete(directoryItemsTable)
+          .where(
+            and(
+              eq(directoryItemsTable.siteId, siteId),
+              eq(directoryItemsTable.smartCollectionId, id),
+            ),
+          );
         await db
           .delete(smartCollections)
           .where(

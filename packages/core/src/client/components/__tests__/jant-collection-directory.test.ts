@@ -300,6 +300,56 @@ describe("JantCollectionsManager", () => {
     expect(showToast).toHaveBeenCalledWith("Smart collection deleted.");
   });
 
+  // A refreshed list has to name rows the way the server-rendered one does: a
+  // smart collection with no directory row of its own carries its own id, and
+  // that is the id the move endpoint places before moving.
+  it("names a smart collection with no directory row by its own id", async () => {
+    const el = await createElementWithItems(itemsWithSmartCollection);
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      if (String(input).startsWith("/api/collections")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              collections: [],
+              smartCollections: [
+                {
+                  id: "smc_9",
+                  slug: "quotes",
+                  title: "Quotes",
+                  description: null,
+                  selection: { format: "quote" },
+                  sort: "newest",
+                  layout: null,
+                  threadCount: 4,
+                },
+              ],
+              directoryItems: [],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+
+    el._showItemMenuId = "directory-smart";
+    await el.updateComplete;
+
+    Array.from(
+      el.querySelectorAll<HTMLButtonElement>(".collections-page-menu-item"),
+    )
+      .find((button) => button.textContent?.trim() === "Delete")
+      ?.click();
+    await flushAsyncWork();
+    el._reorderMode = true;
+    await el.updateComplete;
+
+    const rows = Array.from(
+      el.querySelectorAll<HTMLElement>("[data-directory-item]"),
+    );
+    expect(rows.map((row) => row.dataset.directoryItem)).toEqual(["smc_9"]);
+  });
+
   it("leaves a smart collection alone when the confirmation is declined", async () => {
     confirmMock.mockResolvedValue(false);
     const el = await createElementWithItems(itemsWithSmartCollection);

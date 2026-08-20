@@ -670,6 +670,19 @@ export const CreateCollectionDirectoryItemSchema = z.discriminatedUnion(
   ],
 );
 
+/**
+ * A row in the collections directory, as the drag surface names it.
+ *
+ * A placed row is named by its directory row id. A collection or smart
+ * collection that has never been placed is named by its own id, because that is
+ * all the directory has to render — moving one is what gives it a row.
+ */
+export const CollectionDirectoryRowIdSchema = z.union([
+  CollectionDirectoryItemIdSchema,
+  CollectionIdSchema,
+  SmartCollectionIdSchema,
+]);
+
 export const UpdateCollectionDirectoryItemSchema = z.object({
   label: z.union([CollectionDirectoryLabelSchema, z.null()]).optional(),
   url: CollectionDirectoryLinkUrlSchema.optional(),

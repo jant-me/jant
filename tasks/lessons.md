@@ -851,3 +851,18 @@ Read the vendor's stylesheet for the exact selector before composing its classes
 If a class name looks like it modifies another, check whether the library instead
 enumerates every combination — and grep for the same stacking elsewhere, because
 one such mistake is never alone.
+
+## A read-side fallback hides a missing write path
+
+Smart collections appeared in the collections directory but could not be
+dragged: `collections.create` writes a `collection_directory_item` row,
+`smartCollections.create` never did. Nothing looked broken, because the reader
+appends whatever has no row — so the gap only surfaced as
+`{"error":"Invalid ID"}` on a move, and as smart collections silently sinking
+below every manual collection.
+
+When a second entity kind joins an ordered surface, give it the same
+row-writing path as the first, and check what the read side does when the row
+is missing. A fallback that renders the entity under its own id is a design
+decision about ordering, not a safety net — everything downstream that expects a
+row id (drag, neighbour references, position math) has to accept that id too.

@@ -24,7 +24,7 @@ import {
   sqliteSchemaBundle,
   type DatabaseSchema,
 } from "../db/schema-bundle.js";
-import { createEntityId } from "../lib/ids.js";
+import { createEntityId, isTypeId, ID_PREFIX } from "../lib/ids.js";
 import { now } from "../lib/time.js";
 import type {
   Collection,
@@ -53,6 +53,11 @@ import {
 import { getCollectionPagePath } from "../lib/collection-paths.js";
 import type { SmartCollectionService } from "./smart-collection.js";
 import {
+  DIRECTORY_POSITION_RETRY_ATTEMPTS as POSITION_RETRY_ATTEMPTS,
+  getAppendDirectoryPosition as appendDirectoryPosition,
+  getLastDirectoryPosition as lastDirectoryPosition,
+} from "./collection-directory-position.js";
+import {
   CreateCollectionDirectoryItemSchema,
   CollectionDirectoryLabelSchema,
   CollectionDirectoryLinkLabelSchema,
@@ -62,8 +67,6 @@ import {
   CollectionTitleSchema,
   parseValidated,
 } from "../lib/schemas.js";
-
-const POSITION_RETRY_ATTEMPTS = 5;
 
 // Re-export shared constraint detection — see db/dialect.ts
 import { isUniqueConstraintError } from "../db/dialect.js";
@@ -138,7 +141,14 @@ export interface CollectionService {
     id: string,
     data: UpdateCollectionDirectoryEntry,
   ): Promise<CollectionDirectoryEntry | null>;
-  /** Move a collection directory item between two neighbors */
+  /**
+   * Move a collection directory row between two neighbors.
+   *
+   * Each id is a directory row id, or — for a collection or smart collection
+   * the directory renders without one — that entry's own id. Naming one of
+   * those writes rows for everything unplaced, in the order the directory
+   * already shows, and then moves within them.
+   */
   moveDirectoryItem(
     id: string,
     after: string | null,
@@ -248,6 +258,7 @@ export function createCollectionService(
     collections,
     pathRegistry,
     collectionDirectoryItems: directoryItemsTable,
+    smartCollections: smartCollectionsTable,
     threadCollections,
     posts,
     navItems,
@@ -380,13 +391,7 @@ export function createCollectionService(
   }
 
   async function getLastDirectoryPosition(): Promise<string | null> {
-    const rows = await db
-      .select({ position: directoryItemsTable.position })
-      .from(directoryItemsTable)
-      .where(eq(directoryItemsTable.siteId, siteId))
-      .orderBy(sql`${directoryItemsTable.position} DESC`)
-      .limit(1);
-    return rows[0]?.position ?? null;
+    return lastDirectoryPosition(db, directoryItemsTable, siteId);
   }
 
   async function listOrderedDirectoryPositions(excludeId?: string) {
@@ -402,8 +407,7 @@ export function createCollectionService(
   }
 
   async function getAppendDirectoryPosition(): Promise<string> {
-    const lastPos = await getLastDirectoryPosition();
-    return generateKeyBetween(lastPos, null);
+    return appendDirectoryPosition(db, directoryItemsTable, siteId);
   }
 
   async function pathExists(path: string): Promise<boolean> {
@@ -453,6 +457,140 @@ export function createCollectionService(
     }
 
     return generateKeyBetween(rows.at(-1)?.position ?? null, null);
+  }
+
+  /**
+   * Write rows for the entries the directory only shows, in the order it shows
+   * them.
+   *
+   * A directory row is a position, not a membership: `buildDirectoryItems`
+   * appends every collection and smart collection that has none, so an unplaced
+   * entry is visible but has nothing to move and cannot be named as a
+   * neighbour. Materializing in exactly the render order is invisible — nothing
+   * on screen changes — and afterwards every row the author can see is a row
+   * the author can drag.
+   *
+   * @returns Directory row id, keyed by the collection or smart collection it places
+   */
+  async function materializeDirectoryRows(): Promise<Map<string, string>> {
+    const [directoryRows, collectionRows, smartCollectionRows] =
+      await Promise.all([
+        db
+          .select({
+            id: directoryItemsTable.id,
+            collectionId: directoryItemsTable.collectionId,
+            smartCollectionId: directoryItemsTable.smartCollectionId,
+            position: directoryItemsTable.position,
+          })
+          .from(directoryItemsTable)
+          .where(eq(directoryItemsTable.siteId, siteId))
+          .orderBy(asc(directoryItemsTable.position)),
+        db
+          .select({ id: collections.id })
+          .from(collections)
+          .where(eq(collections.siteId, siteId))
+          .orderBy(asc(collections.createdAt)),
+        db
+          .select({ id: smartCollectionsTable.id })
+          .from(smartCollectionsTable)
+          .where(eq(smartCollectionsTable.siteId, siteId))
+          .orderBy(asc(smartCollectionsTable.createdAt)),
+      ]);
+
+    const placed = new Map<string, string>();
+    let lastPosition: string | null = null;
+    for (const row of directoryRows) {
+      const entityId = row.collectionId ?? row.smartCollectionId;
+      if (entityId) placed.set(entityId, row.id);
+      lastPosition = row.position;
+    }
+
+    // Manual collections before smart ones, matching the two fallback loops in
+    // `buildDirectoryItems`. Read them in the other order and the first drag
+    // would reshuffle rows the author never touched.
+    const unplaced: { type: CollectionDirectoryEntryType; entityId: string }[] =
+      [
+        ...collectionRows
+          .filter((row) => !placed.has(row.id))
+          .map((row) => ({ type: "collection" as const, entityId: row.id })),
+        ...smartCollectionRows
+          .filter((row) => !placed.has(row.id))
+          .map((row) => ({
+            type: "smart_collection" as const,
+            entityId: row.id,
+          })),
+      ];
+
+    const timestamp = now();
+    for (const entry of unplaced) {
+      for (let attempt = 0; attempt < POSITION_RETRY_ATTEMPTS; attempt += 1) {
+        const id = createEntityId("collectionDirectoryItem");
+        const position = generateKeyBetween(lastPosition, null);
+        try {
+          await db.insert(directoryItemsTable).values({
+            id,
+            siteId,
+            type: entry.type,
+            collectionId: entry.type === "collection" ? entry.entityId : null,
+            smartCollectionId:
+              entry.type === "smart_collection" ? entry.entityId : null,
+            label: null,
+            url: null,
+            position,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          });
+          placed.set(entry.entityId, id);
+          lastPosition = position;
+          break;
+        } catch (err) {
+          if (
+            !isUniqueConstraintError(err) ||
+            attempt === POSITION_RETRY_ATTEMPTS - 1
+          ) {
+            throw err;
+          }
+          lastPosition = await getLastDirectoryPosition();
+        }
+      }
+    }
+
+    return placed;
+  }
+
+  /**
+   * Name the three rows a move talks about by their directory row id.
+   *
+   * The drag surface names an unplaced collection or smart collection by its
+   * own id, because that is all it has to render. Any such id here means the
+   * directory has to become explicit before a position can be computed.
+   *
+   * @returns Row ids, or `null` when the moved row no longer exists
+   */
+  async function resolveDirectoryMoveRows(
+    id: string,
+    afterId: string | null,
+    beforeId: string | null,
+  ): Promise<{
+    id: string;
+    after: string | null;
+    before: string | null;
+  } | null> {
+    const isRowId = (value: string | null) =>
+      value === null || isTypeId(value, ID_PREFIX.collectionDirectoryItem);
+
+    if (isRowId(id) && isRowId(afterId) && isRowId(beforeId)) {
+      return { id, after: afterId, before: beforeId };
+    }
+
+    const placed = await materializeDirectoryRows();
+    const toRowId = (value: string | null) =>
+      value === null || isRowId(value) ? value : (placed.get(value) ?? null);
+
+    const rowId = toRowId(id);
+    if (!rowId) return null;
+
+    return { id: rowId, after: toRowId(afterId), before: toRowId(beforeId) };
   }
 
   async function hydrateCollection(
@@ -569,6 +707,11 @@ export function createCollectionService(
    * there is no such thing as a collection missing from `/collections`, and no
    * "add to directory" picker to build. The rows exist only so a collection can
    * be interleaved with dividers and links and dragged around.
+   *
+   * Creating either kind writes its row, so the appended tail is for rows from
+   * before that was true and for imports. An entry in it is rendered under its
+   * own id, because there is no row id to render; moving one places it first —
+   * see `materializeDirectoryRows`.
    */
   function buildDirectoryItems(
     directoryCollections: CollectionDirectoryCollection[],
@@ -1127,13 +1270,16 @@ export function createCollectionService(
     },
 
     async moveDirectoryItem(id, afterId, beforeId) {
+      const rows = await resolveDirectoryMoveRows(id, afterId, beforeId);
+      if (!rows) return null;
+
       const items = await db
         .select()
         .from(directoryItemsTable)
         .where(
           and(
             eq(directoryItemsTable.siteId, siteId),
-            eq(directoryItemsTable.id, id),
+            eq(directoryItemsTable.id, rows.id),
           ),
         )
         .limit(1);
@@ -1145,13 +1291,17 @@ export function createCollectionService(
           const result = await db
             .update(directoryItemsTable)
             .set({
-              position: await getDirectoryMovePosition(id, afterId, beforeId),
+              position: await getDirectoryMovePosition(
+                rows.id,
+                rows.after,
+                rows.before,
+              ),
               updatedAt: timestamp,
             })
             .where(
               and(
                 eq(directoryItemsTable.siteId, siteId),
-                eq(directoryItemsTable.id, id),
+                eq(directoryItemsTable.id, rows.id),
               ),
             )
             .returning();

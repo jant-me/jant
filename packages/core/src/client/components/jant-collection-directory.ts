@@ -455,12 +455,14 @@ export class JantCollectionsManager extends LitElement {
     }
 
     // Anything with no directory row is appended, both kinds alike. That is
-    // what makes "a collection missing from /collections" an impossible state,
-    // and why creating a smart collection needs no placement step.
+    // what makes "a collection missing from /collections" an impossible state.
+    // Such a row carries its own id, exactly as the server renders it, because
+    // there is no row id to carry — the move endpoint reads that as "place this
+    // first, then move it".
     for (const collection of collections) {
       if (seenCollections.has(collection.id)) continue;
       orderedItems.push({
-        id: `collection-${collection.id}`,
+        id: collection.id,
         type: "collection",
         collectionId: collection.id,
         label: null,
@@ -473,7 +475,7 @@ export class JantCollectionsManager extends LitElement {
     for (const smartCollection of smartCollections) {
       if (seenSmartCollections.has(smartCollection.id)) continue;
       orderedItems.push({
-        id: `smart-collection-${smartCollection.id}`,
+        id: smartCollection.id,
         type: "smart_collection",
         smartCollectionId: smartCollection.id,
         label: null,
