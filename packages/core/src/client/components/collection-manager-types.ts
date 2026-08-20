@@ -10,6 +10,7 @@ export interface CollectionManagerLabels {
   editSmartCollection: string;
   deleteSmartCollection: string;
   confirmDeleteSmartCollection: string;
+  turnIntoSmartCollection: string;
   smartCollectionDeleted: string;
   organize: string;
   done: string;

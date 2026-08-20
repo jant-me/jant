@@ -46,14 +46,14 @@ async function seed(services: {
     status: "published",
     visibility: "private",
   });
-  await services.customUrls.create({
+  await services.paths.create({
     path: "/private-notes",
-    targetType: "archive",
+    kind: "archive",
     archiveQuery: "visibility=private",
   });
-  await services.customUrls.create({
+  await services.paths.create({
     path: "/every-note",
-    targetType: "archive",
+    kind: "archive",
     archiveQuery: "format=note",
   });
 }
@@ -107,9 +107,9 @@ describe("custom archive URLs", () => {
   it("404s a stored query naming a collection that is gone", async () => {
     const { app, services } = createPageTestApp();
     await seed(services);
-    await services.customUrls.create({
+    await services.paths.create({
       path: "/gone",
-      targetType: "archive",
+      kind: "archive",
       archiveQuery: "collection=deleted-collection",
     });
 

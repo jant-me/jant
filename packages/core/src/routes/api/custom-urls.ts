@@ -63,7 +63,6 @@ customUrlsApiRoutes.post("/", requireAuthApi(), async (c) => {
     targetId,
     toPath: body.toPath,
     redirectType,
-    archiveQuery: body.archiveQuery,
   });
 
   return c.json(customUrl, 201);

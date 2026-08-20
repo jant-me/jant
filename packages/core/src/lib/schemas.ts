@@ -176,13 +176,30 @@ export const SystemNavKeySchema = z.enum(SYSTEM_NAV_KEY_VALUES);
 export const RedirectTypeSchema = z.enum(["301", "302"]);
 
 /**
- * Custom URL target type enum schema
+ * Custom URL target type enum schema.
+ *
+ * Every kind a stored path can be, including `archive` — which is read and
+ * listed but no longer created. See {@link CreatableCustomUrlTargetTypeSchema}.
  */
 export const CustomUrlTargetTypeSchema = z.enum([
   "post",
   "collection",
   "redirect",
   "archive",
+]);
+
+/**
+ * The target kinds a new custom URL may take.
+ *
+ * `archive` is absent: hand-typing `format=note&title=none` into a text field
+ * is the problem smart collections exist to replace, and a form that stopped
+ * offering it while the endpoint still accepted it would not have stopped
+ * offering it. Existing archive paths keep working indefinitely.
+ */
+export const CreatableCustomUrlTargetTypeSchema = z.enum([
+  "post",
+  "collection",
+  "redirect",
 ]);
 
 /**
@@ -892,11 +909,10 @@ export const CreateCustomUrlSchema = z.object({
       "Path must contain only lowercase alphanumeric characters, hyphens, slashes, and dots",
     )
     .transform((p) => (p.startsWith("/") ? p : `/${p}`)),
-  targetType: CustomUrlTargetTypeSchema,
+  targetType: CreatableCustomUrlTargetTypeSchema,
   targetId: z.string().optional(),
   toPath: z.string().optional(),
   redirectType: RedirectTypeSchema.optional(),
-  archiveQuery: z.string().optional(),
 });
 
 // =============================================================================

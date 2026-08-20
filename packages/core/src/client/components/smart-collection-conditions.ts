@@ -276,6 +276,7 @@ export function setCollectionVocabulary(
   vocabulary = { idBySlug, slugById, titleById };
 }
 
-function collectionVocabulary() {
+/** The current lookups. Exported so the upgrade check can resolve a slug. */
+export function collectionVocabulary() {
   return vocabulary;
 }

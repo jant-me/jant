@@ -183,9 +183,9 @@ describe("archive indexing", () => {
   it("publishes a stored archive path despite its filter", async () => {
     const { app, services } = setupPageApp();
     await seed(services);
-    await services.customUrls.create({
+    await services.paths.create({
       path: "/every-note",
-      targetType: "archive",
+      kind: "archive",
       archiveQuery: "format=note&sort=updated",
     });
 

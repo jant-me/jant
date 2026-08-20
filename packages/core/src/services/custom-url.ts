@@ -20,6 +20,10 @@ import { createPathService, type PathService } from "./path.js";
 
 export interface CreateCustomUrl {
   path: string;
+  /**
+   * `archive` is readable but no longer creatable — {@link CustomUrlService.create}
+   * refuses it. Stored ones predate smart collections and keep working.
+   */
   targetType: "post" | "collection" | "redirect" | "archive";
   targetId?: string;
   toPath?: string;
@@ -134,26 +138,16 @@ export function createCustomUrlService(
       }
 
       if (data.targetType === "archive") {
-        if (!data.archiveQuery) {
-          throw new ValidationError("Archive query parameters are required");
-        }
-        const record = await resolvedPaths.create({
-          path: normalized,
-          kind: "archive",
-          archiveQuery: data.archiveQuery,
-        });
-        const row = await db
-          .select()
-          .from(pathRegistry)
-          .where(
-            and(
-              eq(pathRegistry.siteId, siteId),
-              eq(pathRegistry.id, record.id),
-            ),
-          )
-          .limit(1);
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- freshly inserted row exists
-        return toCustomUrl(row[0]!);
+        // Refused here, not only hidden in the settings form. Typing
+        // `format=note&title=none` into a text field was the problem smart
+        // collections were built to replace, and a UI that stops offering it
+        // while the API still accepts it has not stopped offering it.
+        //
+        // Reading, listing, and deleting these paths all stay: existing ones
+        // keep working indefinitely, and each carries an upgrade button.
+        throw new ValidationError(
+          "Archive addresses are no longer created here. Make a smart collection instead.",
+        );
       }
 
       if (data.targetType === "redirect") {

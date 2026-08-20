@@ -52,6 +52,11 @@ import type {
 import { getIconSvg } from "../../lib/icons.js";
 import { getCollectionPagePath } from "../../lib/collection-paths.js";
 import { openSmartCollectionDialog } from "../smart-collection-dialog-host.js";
+import {
+  collectionVocabulary,
+  setCollectionVocabulary,
+} from "./smart-collection-conditions.js";
+import { parseArchiveUrlForUpgrade } from "../../lib/smart-collection-upgrade.js";
 
 interface CollectionsResponse {
   collections?: Array<{
@@ -351,6 +356,30 @@ export class JantCollectionsManager extends LitElement {
     }
   }
 
+  /**
+   * Keep the shared collection vocabulary current.
+   *
+   * The upgrade check on a `/archive?collection=…` link has to resolve that
+   * slug, and this component already holds every collection on the site, so
+   * doing it here costs nothing — and means the menu item never disappears
+   * merely because a lookup had not happened yet.
+   */
+  #syncCollectionVocabulary() {
+    setCollectionVocabulary(
+      this._items.flatMap((item) =>
+        item.collection
+          ? [
+              {
+                id: item.collection.id,
+                slug: item.collection.slug,
+                title: item.collection.title,
+              },
+            ]
+          : [],
+      ),
+    );
+  }
+
   #toItems(json: CollectionsResponse): CollectionManagerItem[] {
     const collections = json.collections ?? [];
     const directoryItems = json.directoryItems ?? [];
@@ -557,6 +586,7 @@ export class JantCollectionsManager extends LitElement {
   ): void {
     this.#bindManagerRoot();
     this.#syncHeaderState();
+    this.#syncCollectionVocabulary();
 
     if (this._reorderMode) {
       this.#initSortable();
@@ -1134,6 +1164,50 @@ export class JantCollectionsManager extends LitElement {
     `;
   }
 
+  /**
+   * "Turn into a smart collection", for a link naming an archive URL this site
+   * can honor exactly.
+   *
+   * Hidden rather than shown-and-failing when the URL carries a parameter
+   * nobody declared, a value nobody can read, a collection that no longer
+   * exists, or `visibility=private`. Offering it there would be promising to
+   * keep answering a question that cannot be asked.
+   */
+  #renderUpgradeMenuItem(item: CollectionManagerItem) {
+    if (!item.url) return nothing;
+    const upgrade = parseArchiveUrlForUpgrade(item.url, {
+      collections: collectionVocabulary(),
+    });
+    if (!upgrade) return nothing;
+
+    return html`
+      <button
+        type="button"
+        class="collections-page-menu-item"
+        @click=${() => {
+          this._showItemMenuId = null;
+          document.removeEventListener("click", this.#closeItemMenu);
+          // Prefilled, never saved on the author's behalf: the title and
+          // description come from the link, the conditions from its query, and
+          // the author sees all of it before anything is written.
+          void openSmartCollectionDialog({
+            prefill: {
+              title: item.label ?? "",
+              description: item.description ?? "",
+              selection: upgrade.selection as Record<string, unknown>,
+              sort: upgrade.sort,
+              layout: upgrade.layout,
+            },
+          }).then((changed) => {
+            if (changed) void this.#refreshList();
+          });
+        }}
+      >
+        ${this.labels.turnIntoSmartCollection}
+      </button>
+    `;
+  }
+
   async #deleteSmartCollection(smartCollection: ManagedSmartCollection) {
     this._showItemMenuId = null;
     document.removeEventListener("click", this.#closeItemMenu);
@@ -1485,6 +1559,7 @@ export class JantCollectionsManager extends LitElement {
                         >
                           ${this.labels.edit}
                         </button>
+                        ${this.#renderUpgradeMenuItem(item)}
                         <button
                           type="button"
                           class="collections-page-menu-item collections-page-menu-item-danger"

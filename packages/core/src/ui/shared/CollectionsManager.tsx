@@ -62,6 +62,7 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
     editSmartCollection: smartLabels.editSmartCollection,
     deleteSmartCollection: smartLabels.deleteSmartCollection,
     confirmDeleteSmartCollection: smartLabels.confirmDelete,
+    turnIntoSmartCollection: smartLabels.turnIntoSmartCollection,
     smartCollectionDeleted: i18n._(
       msg({
         message: "Smart collection deleted.",
