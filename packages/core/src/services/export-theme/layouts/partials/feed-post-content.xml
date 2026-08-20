@@ -53,8 +53,23 @@
     {{- $sourceUrl := string ($post.Params.source_url | default "") -}}
     {{- $cite := "" -}}
     {{- if ne $sourceUrl "" -}}{{- $cite = printf ` cite=%q` $sourceUrl -}}{{- end -}}
-    {{- $block := printf "<blockquote%s><p>%s</p></blockquote>" $cite (transform.XMLEscape $quoteText) -}}
-    {{- $parts = $parts | append $block -}}
+    {{- /* Line breaks the author typed must survive as markup: the site
+         keeps them with `white-space: pre-line`, but feed readers strip
+         CSS. Blank lines split <p> blocks, single newlines become <br/>
+         (mirrors `renderPlainTextHtml` in `lib/feed.ts`). */ -}}
+    {{- $quoteBlocks := slice -}}
+    {{- range split (replaceRE `\r\n?` "\n" $quoteText) "\n\n" -}}
+      {{- $para := trim . " \t\n" -}}
+      {{- if ne $para "" -}}
+        {{- $lines := slice -}}
+        {{- range split $para "\n" -}}{{- $lines = $lines | append (transform.XMLEscape .) -}}{{- end -}}
+        {{- $quoteBlocks = $quoteBlocks | append (printf "<p>%s</p>" (delimit $lines "<br/>")) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if gt (len $quoteBlocks) 0 -}}
+      {{- $block := printf "<blockquote%s>%s</blockquote>" $cite (delimit $quoteBlocks "\n") -}}
+      {{- $parts = $parts | append $block -}}
+    {{- end -}}
     {{- /* Attribution line — prefer name, fall back to URL host or the
          raw URL itself (mirrors main site's extractDisplayDomain fallback
          chain in `lib/url.ts`). */ -}}

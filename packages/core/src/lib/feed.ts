@@ -186,6 +186,30 @@ function renderInlinePostHeader(
 }
 
 /**
+ * Render author-authored plain text as feed-safe HTML, preserving its breaks.
+ *
+ * The site keeps quote line breaks with `white-space: pre-line`, but feed
+ * readers strip CSS, so the breaks have to be structural: a blank line starts
+ * a new `<p>`, a single newline becomes a `<br/>`.
+ *
+ * @param text - Raw plain text as the author typed it
+ * @returns One or more `<p>` blocks, or an empty string for blank input
+ * @example
+ * renderPlainTextHtml("one\ntwo\n\nthree")
+ * // => "<p>one<br/>two</p>\n<p>three</p>"
+ */
+function renderPlainTextHtml(text: string): string {
+  return text
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\r", "\n")
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter((block) => block.length > 0)
+    .map((block) => `<p>${escapeXml(block).replaceAll("\n", "<br/>")}</p>`)
+    .join("\n");
+}
+
+/**
  * Render a star rating as HTML for feed content.
  */
 function renderRatingHtml(rating: number): string {
@@ -391,9 +415,10 @@ function buildSinglePostContent(
     const sourceUrl = post.url || "";
     const attribution = sourceName || sourceUrl;
     const cite = sourceUrl ? ` cite="${escapeXml(sourceUrl)}"` : "";
-    parts.push(
-      `<blockquote${cite}><p>${escapeXml(post.quoteText)}</p></blockquote>`,
-    );
+    const quoteHtml = renderPlainTextHtml(post.quoteText);
+    if (quoteHtml) {
+      parts.push(`<blockquote${cite}>${quoteHtml}</blockquote>`);
+    }
     if (attribution) {
       const source = sourceUrl
         ? `<a href="${escapeXml(sourceUrl)}">${escapeXml(sourceName || extractDisplayDomain(sourceUrl) || sourceUrl)}</a>`
@@ -551,10 +576,10 @@ export function defaultFeedRenderer(data: FeedData): string {
   const feedUpdated =
     posts
       .map((post) => post.feedUpdatedAt ?? post.updatedAt)
-      .reduce<
-        string | null
-      >((latest, value) => (latest === null || value > latest ? value : latest), null) ??
-    new Date().toISOString();
+      .reduce<string | null>(
+        (latest, value) => (latest === null || value > latest ? value : latest),
+        null,
+      ) ?? new Date().toISOString();
 
   // A feed states its own language: at the root that is the site's, and in a
   // language view it is that view's, so a reader subscribing to /en/feed gets
@@ -586,13 +611,7 @@ export interface SitemapUrlEntry {
   /** ISO date (YYYY-MM-DD) or full ISO datetime */
   lastmod?: string;
   changefreq?:
-    | "always"
-    | "hourly"
-    | "daily"
-    | "weekly"
-    | "monthly"
-    | "yearly"
-    | "never";
+    "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
   /** "0.0" – "1.0" */
   priority?: string;
   /**
