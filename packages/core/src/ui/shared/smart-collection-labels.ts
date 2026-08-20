@@ -6,8 +6,12 @@ import type {
 } from "../../lib/filter-dimensions.js";
 import {
   describeFilterSelection,
+  FILTER_DIMENSION_KEYS,
+  FILTER_DIMENSIONS,
+  getMediaKindLabel,
   serializePostFilterSelection,
 } from "../../lib/filter-dimensions.js";
+import { MEDIA_KINDS } from "../../types/constants.js";
 
 type Translator = Pick<I18n, "_">;
 
@@ -134,3 +138,256 @@ export const getSmartCollectionLabels = (i18n: Translator) => ({
 });
 
 export type SmartCollectionLabels = ReturnType<typeof getSmartCollectionLabels>;
+
+/**
+ * Every string the editing dialog renders, translated on the server.
+ *
+ * The dialog is a Lit component and cannot reach the i18n catalogs itself, so
+ * the page that can open it hands them down. Dimension names and value labels
+ * come from the shared registry, so the words in the dialog and the words on
+ * the condition line are the same words.
+ */
+export function getSmartCollectionDialogLabels(i18n: Translator) {
+  const dimensions: Record<string, string> = {};
+  const values: Record<string, string> = {};
+
+  for (const key of FILTER_DIMENSION_KEYS) {
+    const dimension = FILTER_DIMENSIONS[key];
+    dimensions[key] = i18n._(dimension.label);
+
+    const control = dimension.control;
+    if (control.kind === "enum") {
+      for (const option of control.options) {
+        // Stored under the URL spelling, because that is what the control
+        // emits and what the registry parses back.
+        const spelled =
+          serializePostFilterSelection(
+            { [key]: option } as PostFilterSelection,
+            {},
+          ).get(dimension.url.param) ?? option;
+        values[`${key}.${spelled}`] = i18n._(control.labelOf(option));
+      }
+    }
+    if (control.kind === "presence") {
+      values[`${key}.any`] = i18n._(control.yes);
+      values[`${key}.none`] = i18n._(control.no);
+    }
+  }
+
+  // The media control folds presence and kinds into one vocabulary, so its
+  // value labels are assembled rather than enumerated from a single shape.
+  values["media.any"] = i18n._(
+    msg({
+      message: "With media",
+      comment: "@context: Archive filter - posts carrying any media attachment",
+    }),
+  );
+  values["media.none"] = i18n._(
+    msg({
+      message: "Without media",
+      comment: "@context: Archive filter - posts with no media attachment",
+    }),
+  );
+  for (const kind of MEDIA_KINDS) {
+    values[`media.${kind}`] = getMediaKindLabel(kind, i18n);
+  }
+
+  return {
+    createHeading: i18n._(smartCollectionMessages.newSmartCollection),
+    editHeading: i18n._(smartCollectionMessages.editSmartCollection),
+    title: i18n._(
+      msg({
+        message: "Title",
+        comment: "@context: Smart collection dialog field",
+      }),
+    ),
+    address: i18n._(
+      msg({
+        message: "Address",
+        comment: "@context: Smart collection dialog field — the page's URL",
+      }),
+    ),
+    addressTaken: i18n._(
+      msg({
+        message: "This address is taken. Choose another.",
+        comment:
+          "@context: Smart collection dialog — the typed address is already in use",
+      }),
+    ),
+    addressMovesWarning: i18n._(
+      msg({
+        message: "Changing the address breaks the old one immediately.",
+        comment:
+          "@context: Smart collection dialog warning shown when editing moves an existing address",
+      }),
+    ),
+    description: i18n._(
+      msg({
+        message: "Description",
+        comment: "@context: Smart collection dialog field",
+      }),
+    ),
+    conditionsHeading: i18n._(
+      msg({
+        message: "Conditions",
+        comment: "@context: Smart collection dialog section heading",
+      }),
+    ),
+    matchAllHint: i18n._(
+      msg({
+        message: "Posts matching all of these",
+        comment:
+          "@context: Smart collection dialog — conditions are combined with AND",
+      }),
+    ),
+    noConditions: i18n._(
+      msg({
+        message: "No conditions yet. Add one to choose what lands here.",
+        comment: "@context: Smart collection dialog with no conditions set",
+      }),
+    ),
+    addCondition: i18n._(
+      msg({
+        message: "Add condition",
+        comment: "@context: Smart collection dialog button",
+      }),
+    ),
+    removeCondition: i18n._(
+      msg({
+        message: "Remove condition",
+        comment: "@context: Smart collection dialog condition row button",
+      }),
+    ),
+    // Interpolated in the browser, where the numbers live. The placeholders
+    // stay in the message so translators can reorder them.
+    countSummary: i18n._(
+      msg({
+        message: "{count} of {total} threads",
+        comment:
+          "@context: Smart collection dialog live count — how many threads the conditions gather out of the site total",
+      }),
+      { count: "{count}", total: "{total}" },
+    ),
+    counting: i18n._(
+      msg({
+        message: "Counting…",
+        comment: "@context: Smart collection dialog while the count is loading",
+      }),
+    ),
+    displayHeading: i18n._(
+      msg({
+        message: "Display",
+        comment: "@context: Smart collection dialog section heading",
+      }),
+    ),
+    orderBy: i18n._(
+      msg({
+        message: "Order by",
+        comment: "@context: Smart collection dialog field",
+      }),
+    ),
+    layout: i18n._(
+      msg({
+        message: "Layout",
+        comment: "@context: Smart collection dialog field",
+      }),
+    ),
+    deleteSmartCollection: i18n._(
+      smartCollectionMessages.deleteSmartCollection,
+    ),
+    confirmDelete: i18n._(smartCollectionMessages.confirmDelete),
+    cancel: i18n._(
+      msg({ message: "Cancel", comment: "@context: Dialog cancel button" }),
+    ),
+    save: i18n._(
+      msg({
+        message: "Save",
+        comment: "@context: Smart collection dialog primary button",
+      }),
+    ),
+    saved: i18n._(
+      msg({
+        message: "Smart collection saved.",
+        comment: "@context: Confirmation after saving a smart collection",
+      }),
+    ),
+    deleted: i18n._(
+      msg({
+        message: "Smart collection deleted.",
+        comment: "@context: Confirmation after deleting a smart collection",
+      }),
+    ),
+    saveFailed: i18n._(
+      msg({
+        message: "Could not save. Try again.",
+        comment: "@context: Smart collection dialog save failure",
+      }),
+    ),
+    loadFailed: i18n._(
+      msg({
+        message: "Could not open this smart collection. Try again.",
+        comment: "@context: Smart collection dialog load failure",
+      }),
+    ),
+    titleAndAddressRequired: i18n._(
+      msg({
+        message: "A smart collection needs a title and an address.",
+        comment: "@context: Smart collection dialog validation message",
+      }),
+    ),
+    dimensions,
+    values,
+    sortOptions: {
+      newest: i18n._(
+        msg({
+          message: "Newest first",
+          comment: "@context: Collection sort order option",
+        }),
+      ),
+      oldest: i18n._(
+        msg({
+          message: "Oldest first",
+          comment: "@context: Collection sort order option",
+        }),
+      ),
+      updated: i18n._(
+        msg({
+          message: "Recently updated",
+          comment:
+            "@context: Smart collection sort order option — threads that changed most recently",
+        }),
+      ),
+      rating_desc: i18n._(
+        msg({
+          message: "Highest rated",
+          comment: "@context: Collection sort order option",
+        }),
+      ),
+    },
+    layoutOptions: {
+      "": i18n._(
+        msg({
+          message: "Follow site default",
+          comment:
+            "@context: Smart collection layout option — use the site's configured archive layout",
+        }),
+      ),
+      list: i18n._(
+        msg({
+          message: "List",
+          comment: "@context: Smart collection layout option",
+        }),
+      ),
+      grid: i18n._(
+        msg({
+          message: "Grid",
+          comment: "@context: Smart collection layout option",
+        }),
+      ),
+    },
+  };
+}
+
+export type SmartCollectionDialogLabels = ReturnType<
+  typeof getSmartCollectionDialogLabels
+>;

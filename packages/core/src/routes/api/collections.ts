@@ -57,6 +57,11 @@ collectionsApiRoutes.get("/", requirePublicApiAccess(), async (c) => {
 
   if (query.view === "compose") {
     c.header("Cache-Control", "no-store");
+    // Smart collections are deliberately absent. A post cannot be added to one
+    // by hand — its conditions decide, permanently — so offering it here would
+    // be a control that does nothing. Every "add this post to a collection"
+    // surface leaves them out for the same reason; see the smart collections
+    // design notes on the asymmetry, which is not a gap to be filled in later.
     const collections = await c.var.services.collections.listByRecentActivity();
     return c.json({
       collections,
@@ -71,6 +76,7 @@ collectionsApiRoutes.get("/", requirePublicApiAccess(), async (c) => {
 
   return c.json({
     collections: directoryData.collections,
+    smartCollections: directoryData.smartCollections,
     directoryItems: directoryData.directoryItems,
   });
 });

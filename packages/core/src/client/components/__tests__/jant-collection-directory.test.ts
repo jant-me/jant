@@ -30,6 +30,11 @@ import type { JantCollectionsManager } from "../jant-collection-directory.js";
 
 const labels: CollectionManagerLabels = {
   collectionsTitle: "Collections",
+  newSmartCollection: "New Smart Collection",
+  editSmartCollection: "Edit Smart Collection",
+  deleteSmartCollection: "Delete Smart Collection",
+  confirmDeleteSmartCollection: "Delete this smart collection?",
+  smartCollectionDeleted: "Smart collection deleted.",
   organize: "Organize",
   done: "Done",
   organizeHint: "Drag to reorder.",

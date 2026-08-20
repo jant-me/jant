@@ -30,6 +30,7 @@ import "./client/post-form-bridge.js";
 import "./client/components/jant-nav-manager.js";
 import "./client/components/jant-post-menu.js";
 import "./client/collection-page-actions.js";
+import "./client/smart-collection-page-actions.js";
 import "./client/custom-url-menu.js";
 import "./client/components/jant-command-palette.js";
 import "./client/palette-shortcuts.js";

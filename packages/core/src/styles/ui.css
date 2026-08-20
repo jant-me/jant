@@ -2068,6 +2068,48 @@
     user-select: none;
   }
 
+  /* What a smart collection gathers. Quiet, one line, under the count —
+     information a reader needs, not a control. */
+  .smart-collection-conditions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+    font-size: var(--type-content-small);
+    color: var(--site-text-secondary);
+  }
+
+  .smart-collection-conditions a {
+    color: inherit;
+    text-decoration-color: color-mix(
+      in srgb,
+      var(--site-text-secondary) 40%,
+      transparent
+    );
+  }
+
+  .smart-collection-conditions a:hover {
+    color: var(--foreground);
+  }
+
+  .smart-collection-conditions-icon,
+  .collection-directory-smart-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--muted-foreground);
+  }
+
+  .smart-collection-conditions-icon svg,
+  .collection-directory-smart-icon svg {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  .collection-directory-smart-icon {
+    margin-left: 0.4rem;
+    flex: none;
+  }
+
   .collection-page-owner-tools {
     display: flex;
     align-items: center;
@@ -9858,6 +9900,150 @@
   .picker-dialog-actions {
     display: flex;
     justify-content: flex-end;
+  }
+
+  /* --- Smart collection dialog ------------------------------------------- */
+
+  .smart-collection-dialog {
+    margin: 0;
+  }
+
+  .smart-collection-dialog-panel {
+    width: min(34rem, calc(100vw - 2rem));
+    max-height: calc(100dvh - 4rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    outline: none;
+  }
+
+  .smart-collection-dialog-title {
+    font-family: var(--font-heading);
+    font-size: var(--type-content-body);
+    font-weight: var(--type-heading-weight);
+  }
+
+  .smart-collection-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    overflow-y: auto;
+  }
+
+  .smart-collection-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .smart-collection-section-title {
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--site-text-secondary);
+  }
+
+  .smart-collection-section-hint,
+  .smart-collection-count {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    color: var(--site-text-secondary);
+  }
+
+  .smart-collection-warning {
+    color: var(--destructive);
+  }
+
+  .smart-condition-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .smart-condition-row {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr auto;
+    align-items: start;
+    gap: 0.6rem;
+  }
+
+  .smart-condition-label {
+    padding-top: 0.45rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    color: var(--site-text-secondary);
+  }
+
+  .smart-condition-control {
+    min-width: 0;
+  }
+
+  .smart-condition-remove {
+    cursor: pointer;
+  }
+
+  .smart-condition-media {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .smart-condition-media-kinds {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.9rem;
+  }
+
+  .smart-condition-kind {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-meta);
+    cursor: pointer;
+  }
+
+  .smart-condition-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .smart-collection-dialog-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .smart-collection-dialog-actions-end {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  .smart-collection-delete {
+    color: var(--destructive);
+  }
+
+  @media (max-width: 30rem) {
+    .smart-condition-row {
+      grid-template-columns: 1fr auto;
+    }
+
+    .smart-condition-label {
+      grid-column: 1 / -1;
+      padding-top: 0;
+    }
   }
 
   /* --- Shared confirm dialog --------------------------------------------- */

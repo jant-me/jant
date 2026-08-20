@@ -2,7 +2,12 @@ import { msg } from "@lingui/core/macro";
 import type { FC } from "hono/jsx";
 import { useLingui } from "../../i18n/context.js";
 import type { CollectionDirectoryItem } from "../../types.js";
-import { getCollectionSelectionPath } from "../../lib/collection-paths.js";
+import {
+  getCollectionPagePath,
+  getCollectionSelectionPath,
+} from "../../lib/collection-paths.js";
+import { getIconSvg } from "../../lib/icons.js";
+import { describeSmartCollection } from "./smart-collection-labels.js";
 import { getDividerCollectionGroup } from "../../lib/collection-groups.js";
 import { render as renderMarkdown } from "../../lib/markdown.js";
 import { formatRelativeAge, toISOString } from "../../lib/time.js";
@@ -28,6 +33,7 @@ const hasDirectoryContent = (items: CollectionDirectoryItem[]) =>
   items.some(
     (item) =>
       (item.type === "collection" && item.collection) ||
+      (item.type === "smart_collection" && item.smartCollection) ||
       (item.type === "link" && item.label && item.url),
   );
 
@@ -46,6 +52,7 @@ const hasDirectoryContent = (items: CollectionDirectoryItem[]) =>
 const computeSequenceLabels = (items: CollectionDirectoryItem[]): string[] => {
   const isContentItem = (item: CollectionDirectoryItem) =>
     (item.type === "collection" && item.collection) ||
+    (item.type === "smart_collection" && item.smartCollection) ||
     (item.type === "link" && item.label && item.url);
 
   // First pass: determine group sizes.
@@ -259,6 +266,84 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                     </span>
                   </p>
                 )}
+              </div>
+            </div>
+          );
+        }
+
+        if (item.type === "smart_collection") {
+          const smartCollection = item.smartCollection;
+          if (!smartCollection) return null;
+          const sequence = sequenceLabels[index];
+          // The condition summary is the icon's tooltip and accessible name.
+          // The directory is an index; the full sentence lives on the page.
+          const conditions = describeSmartCollection(
+            smartCollection.selection,
+            i18n,
+          );
+
+          return (
+            <div
+              key={item.id}
+              class="collection-directory-item"
+              data-smart-collection={smartCollection.slug}
+            >
+              <div class="collection-directory-main">
+                <span class="collection-directory-sequence" aria-hidden="true">
+                  {sequence}
+                </span>
+                <div class="collection-directory-title-row">
+                  <a
+                    href={toPublicPath(
+                      getCollectionPagePath(smartCollection.slug),
+                      basePath,
+                    )}
+                    class="collection-directory-title-link"
+                  >
+                    <span class="collection-directory-title">
+                      {smartCollection.title}
+                    </span>
+                  </a>
+                  {/* Shown to every reader, not only the author: which kind of
+                      collection this is changes how the list reads. */}
+                  <span
+                    class="collection-directory-smart-icon"
+                    title={conditions}
+                    aria-label={conditions}
+                    role="img"
+                    dangerouslySetInnerHTML={{
+                      __html: getIconSvg("list-filter") ?? "",
+                    }}
+                  />
+                </div>
+                {smartCollection.description && (
+                  <div
+                    class="collection-directory-description prose"
+                    dangerouslySetInnerHTML={{
+                      __html: renderMarkdown(smartCollection.description, {
+                        namespace: smartCollection.id,
+                      }),
+                    }}
+                  />
+                )}
+                <p class="collection-directory-summary">
+                  <span class="collection-directory-meta">
+                    {smartCollection.threadCount}{" "}
+                    {smartCollection.threadCount === 1
+                      ? i18n._(
+                          msg({
+                            message: "thread",
+                            comment: "@context: Singular thread count label",
+                          }),
+                        )
+                      : i18n._(
+                          msg({
+                            message: "threads",
+                            comment: "@context: Plural thread count label",
+                          }),
+                        )}
+                  </span>
+                </p>
               </div>
             </div>
           );

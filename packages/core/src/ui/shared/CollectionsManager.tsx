@@ -9,6 +9,11 @@ import {
 import { toPublicPath } from "../../lib/url.js";
 import { CollectionDirectory } from "./CollectionDirectory.js";
 import { getCollectionMutationLabels } from "./collection-management-labels.js";
+import {
+  getSmartCollectionDialogLabels,
+  getSmartCollectionLabels,
+} from "./smart-collection-labels.js";
+import { getIconSvg } from "../../lib/icons.js";
 
 const escapeJson = (data: unknown) =>
   JSON.stringify(data).replace(/</g, "\\u003c");
@@ -45,11 +50,22 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
   );
   const mutationLabels = getCollectionMutationLabels(i18n);
 
+  const smartLabels = getSmartCollectionLabels(i18n);
   const labels = {
     collectionsTitle: i18n._(
       msg({
         message: "Collections",
         comment: "@context: Collections page heading",
+      }),
+    ),
+    newSmartCollection: smartLabels.newSmartCollection,
+    editSmartCollection: smartLabels.editSmartCollection,
+    deleteSmartCollection: smartLabels.deleteSmartCollection,
+    confirmDeleteSmartCollection: smartLabels.confirmDelete,
+    smartCollectionDeleted: i18n._(
+      msg({
+        message: "Smart collection deleted.",
+        comment: "@context: Confirmation after deleting a smart collection",
       }),
     ),
     organize: i18n._(
@@ -258,6 +274,25 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
                         {labels.organize}
                       </span>
                     </button>
+                    {/* Beside Add link and Add divider, not a second `+`:
+                        the `+` is where a collection is created, and two plus
+                        signs would immediately raise "which plus". */}
+                    <button
+                      type="button"
+                      class="collections-page-menu-item"
+                      data-collections-action="smart-collection"
+                    >
+                      <span
+                        class="collections-page-menu-item-icon"
+                        aria-hidden="true"
+                        dangerouslySetInnerHTML={{
+                          __html: getIconSvg("list-filter") ?? "",
+                        }}
+                      />
+                      <span class="collections-page-menu-item-label">
+                        {smartLabels.newSmartCollection}
+                      </span>
+                    </button>
                     <button
                       type="button"
                       class="collections-page-menu-item"
@@ -325,6 +360,15 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
           </p>
         </div>
       </header>
+
+      {/* The dialog is a Lit component and cannot reach the i18n catalogs, so
+          the page that can open it carries its strings. */}
+      <div
+        hidden
+        data-smart-collection-dialog-labels={escapeJson(
+          getSmartCollectionDialogLabels(i18n),
+        )}
+      />
 
       <jant-collections-manager
         items={escapeJson(items)}

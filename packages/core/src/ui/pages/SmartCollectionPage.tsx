@@ -19,7 +19,10 @@ import { formatPageLabel } from "../../lib/pagination.js";
 import { toPublicPath } from "../../lib/url.js";
 import { TimelineFeed } from "../feed/TimelineFeed.js";
 import { getCollectionMutationLabels } from "../shared/collection-management-labels.js";
-import { getSmartCollectionLabels } from "../shared/smart-collection-labels.js";
+import {
+  getSmartCollectionDialogLabels,
+  getSmartCollectionLabels,
+} from "../shared/smart-collection-labels.js";
 import { getIconSvg } from "../../lib/icons.js";
 import { NAVIGATION_SETTINGS_PATH } from "../../lib/settings-paths.js";
 
@@ -287,11 +290,30 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
 
           {isAuthenticated ? (
             <div class="collection-page-owner-tools">
+              {/* The dialog is a Lit component and cannot reach the i18n
+                  catalogs, so the page that can open it carries its strings. */}
+              <div
+                hidden
+                data-smart-collection-dialog-labels={escapeJson(
+                  getSmartCollectionDialogLabels(i18n),
+                )}
+              />
               <div
                 class="collection-page-manage"
                 data-smart-collection-page-actions
                 data-smart-collection-id={smartCollection.id}
-                data-collection-page-labels={escapeJson(mutationLabels)}
+                data-collection-page-labels={escapeJson({
+                  ...mutationLabels,
+                  confirmDelete: labels.confirmDelete,
+                  deleteCollection: labels.deleteSmartCollection,
+                  deleted: i18n._(
+                    msg({
+                      message: "Smart collection deleted.",
+                      comment:
+                        "@context: Confirmation after deleting a smart collection",
+                    }),
+                  ),
+                })}
                 data-collection-in-navigation={String(isInNavigation)}
                 data-collection-page-redirect-url={toPublicPath(
                   getCollectionsDirectoryPath(),
