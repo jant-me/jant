@@ -10,6 +10,7 @@ export const ID_PREFIX = {
   media: "med",
   uploadSession: "upl",
   collection: "col",
+  smartCollection: "smc",
   path: "pth",
   collectionDirectoryItem: "cdi",
   navItem: "nav",

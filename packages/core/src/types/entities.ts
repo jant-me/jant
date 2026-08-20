@@ -8,6 +8,8 @@ import type {
   Status,
   Visibility,
   CollectionSortOrder,
+  SmartCollectionSortOrder,
+  ArchiveLayout,
   NavItemType,
   NavItemPlacement,
   SystemNavKey,
@@ -17,6 +19,8 @@ import type {
   SiteDomainKind,
   SiteMemberRole,
 } from "./constants.js";
+
+import type { PostFilterSelection } from "../lib/filter-dimensions.js";
 
 export type { CollectionDirectoryEntryType };
 
@@ -153,11 +157,52 @@ export interface CollectionDirectoryCollection extends Collection {
   recentActivityAt: number;
 }
 
+/**
+ * A collection whose members are decided by conditions rather than by tagging.
+ *
+ * To a reader this is a collection: a root-level address, a title, a
+ * description, a list of posts, a feed. The asymmetries are permanent and
+ * deliberate — nothing can be added to it by hand, nothing pinned, nothing
+ * reordered — so every "add this post to a collection" surface has to leave it
+ * out. See `selection` for what decides membership.
+ */
+export interface SmartCollection {
+  id: string;
+  siteId: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  /** The conditions, in the shared dimension vocabulary. Empty = every post. */
+  selection: PostFilterSelection;
+  sort: SmartCollectionSortOrder;
+  /** `null` follows the site's configured archive layout. */
+  layout: ArchiveLayout | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SmartCollectionDirectoryEntry extends SmartCollection {
+  threadCount: number;
+}
+
+/**
+ * One entry in the collections directory, either kind.
+ *
+ * The two are told apart by `kind`, not by which optional field happens to be
+ * present. Surfaces that treat them alike — the directory, the navigation
+ * picker, the command palette — take this; surfaces where the difference
+ * matters take one or the other.
+ */
+export type AnyCollectionEntry =
+  | { kind: "manual"; collection: CollectionDirectoryCollection }
+  | { kind: "smart"; smartCollection: SmartCollectionDirectoryEntry };
+
 export interface CollectionDirectoryEntry {
   id: string;
   siteId: string;
   type: CollectionDirectoryEntryType;
   collectionId: string | null;
+  smartCollectionId: string | null;
   label: string | null;
   url: string | null;
   description: string | null;
@@ -173,10 +218,12 @@ export interface CollectionDirectoryItem {
   url?: string | null;
   description?: string | null;
   collection?: CollectionDirectoryCollection;
+  smartCollection?: SmartCollectionDirectoryEntry;
 }
 
 export interface CollectionsDirectoryData {
   collections: CollectionDirectoryCollection[];
+  smartCollections: SmartCollectionDirectoryEntry[];
   items: CollectionDirectoryItem[];
   directoryItems: CollectionDirectoryEntry[];
 }
@@ -193,6 +240,7 @@ export interface NavItem {
   type: NavItemType;
   systemKey?: SystemNavKey;
   collectionId?: string;
+  smartCollectionId?: string;
   postId?: string;
   /**
    * Author's override, or `""` when the item follows whatever it points at.
@@ -234,6 +282,7 @@ export interface PathRecord {
   kind: PathKind;
   postId: string | null;
   collectionId: string | null;
+  smartCollectionId: string | null;
   redirectToPath: string | null;
   redirectType: 301 | 302 | null;
   archiveQuery: string | null;

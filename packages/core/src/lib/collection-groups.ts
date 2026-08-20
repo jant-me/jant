@@ -3,7 +3,7 @@
  */
 
 export interface GroupableCollectionItem {
-  type: "collection" | "divider" | "link";
+  type: "collection" | "smart_collection" | "divider" | "link";
   label?: string | null;
   url?: string | null;
   collection?: {
@@ -22,6 +22,10 @@ export interface DividerCollectionGroup {
  * A divider maps to the consecutive collection items that follow it until the
  * next divider. Groups with fewer than two collections do not produce an
  * aggregate selection.
+ *
+ * A smart collection sitting in the group contributes nothing and does not
+ * break it: `/collections/{a+b}` is a union of tagged sets, and a set defined
+ * by conditions has no slug to union in. It is skipped the same way a link is.
  *
  * @param items - Ordered collection directory items
  * @param dividerIndex - Index of the divider item to inspect

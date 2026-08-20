@@ -3,14 +3,17 @@
  */
 
 import type {
+  ArchiveLayout,
   Format,
   Status,
   Visibility,
   CollectionSortOrder,
+  SmartCollectionSortOrder,
   SystemNavKey,
   NavItemPlacement,
   TextAttachmentContentFormat,
 } from "./constants.js";
+import type { PostFilterSelection } from "../lib/filter-dimensions.js";
 
 export type PostAttachmentInput =
   | {
@@ -165,6 +168,15 @@ export type CreateNavItem =
       position?: string;
     }
   | {
+      // Same shape as `collection`: the URL comes from the smart collection's
+      // slug, and an omitted label follows its title.
+      type: "smart_collection";
+      smartCollectionId: string;
+      label?: string;
+      placement?: NavItemPlacement;
+      position?: string;
+    }
+  | {
       type: "page";
       postId: string;
       label?: string;
@@ -193,10 +205,40 @@ export interface UpdateCollection {
   sortOrder?: CollectionSortOrder;
 }
 
+/**
+ * A smart collection's editable fields.
+ *
+ * `title` is required and stays required: the dialog asks for one, so no
+ * surface ever has to invent a name for an untitled smart collection in a page
+ * heading, a browser tab, a feed, or the directory.
+ */
+export interface CreateSmartCollection {
+  slug: string;
+  title: string;
+  description?: string | null;
+  /** The conditions. Omitted or empty means every post. */
+  selection?: PostFilterSelection;
+  sort?: SmartCollectionSortOrder;
+  layout?: ArchiveLayout | null;
+}
+
+export interface UpdateSmartCollection {
+  slug?: string;
+  title?: string;
+  description?: string | null;
+  selection?: PostFilterSelection;
+  sort?: SmartCollectionSortOrder;
+  layout?: ArchiveLayout | null;
+}
+
 export type CreateCollectionDirectoryEntry =
   | {
       type: "collection";
       collectionId: string;
+    }
+  | {
+      type: "smart_collection";
+      smartCollectionId: string;
     }
   | {
       type: "divider";

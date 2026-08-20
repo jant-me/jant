@@ -134,8 +134,14 @@ export function createNavItemService(
   databaseSchema: DatabaseSchema = sqliteSchemaBundle,
   paths?: PathService,
 ): NavItemService {
-  const { navItems, threadCollections, posts, pathRegistry, collections } =
-    databaseSchema;
+  const {
+    navItems,
+    threadCollections,
+    posts,
+    pathRegistry,
+    collections,
+    smartCollections,
+  } = databaseSchema;
   const resolvedPaths = paths ?? createPathService(db, siteId, databaseSchema);
 
   function toNavItem(
@@ -149,6 +155,7 @@ export function createNavItemService(
       type: row.type as NavItemType,
       systemKey: (row.systemKey as SystemNavKey | null) ?? undefined,
       collectionId: row.collectionId ?? undefined,
+      smartCollectionId: row.smartCollectionId ?? undefined,
       postId: row.postId ?? undefined,
       label: row.label,
       url: row.url,
@@ -177,6 +184,7 @@ export function createNavItemService(
         postTitle: posts.title,
         postTranslationGroupId: posts.translationGroupId,
         collectionTitle: collections.title,
+        smartCollectionTitle: smartCollections.title,
       })
       .from(navItems)
       .leftJoin(
@@ -189,6 +197,13 @@ export function createNavItemService(
           eq(collections.siteId, siteId),
           eq(collections.id, navItems.collectionId),
         ),
+      )
+      .leftJoin(
+        smartCollections,
+        and(
+          eq(smartCollections.siteId, siteId),
+          eq(smartCollections.id, navItems.smartCollectionId),
+        ),
       );
   }
 
@@ -199,6 +214,7 @@ export function createNavItemService(
   function targetTitleOf(row: NavItemWithTargetRow): string | null {
     if (row.nav.type === "page") return row.postTitle;
     if (row.nav.type === "collection") return row.collectionTitle;
+    if (row.nav.type === "smart_collection") return row.smartCollectionTitle;
     return null;
   }
 
@@ -284,6 +300,7 @@ export function createNavItemService(
         type: data.type,
         systemKey: data.systemKey,
         collectionId: null,
+        smartCollectionId: null,
         postId: null,
         label: "",
         url: config.url,
@@ -323,12 +340,53 @@ export function createNavItemService(
         type: data.type,
         systemKey: null,
         collectionId: data.collectionId,
+        smartCollectionId: null,
         postId: null,
         // Stored empty unless the author typed something: the item then shows
         // the collection's current title, and follows it when renamed.
         label: (data.label?.trim() ?? "").slice(0, 100),
         url: getCollectionPagePath(collection.slug),
         targetTitle: collection.title,
+        placement: data.placement ?? "header",
+        position: data.position,
+      };
+    }
+
+    if (data.type === "smart_collection") {
+      // Same shape as the collection branch: the slug lives in `path_registry`,
+      // and an omitted label means the item follows the title.
+      const rows = await db
+        .select({ title: smartCollections.title, slug: pathRegistry.path })
+        .from(smartCollections)
+        .innerJoin(
+          pathRegistry,
+          and(
+            eq(pathRegistry.siteId, siteId),
+            eq(pathRegistry.smartCollectionId, smartCollections.id),
+            eq(pathRegistry.kind, "slug"),
+          ),
+        )
+        .where(
+          and(
+            eq(smartCollections.siteId, siteId),
+            eq(smartCollections.id, data.smartCollectionId),
+          ),
+        )
+        .limit(1);
+      const smartCollection = rows[0];
+      if (!smartCollection) {
+        throw new NotFoundError("Smart collection");
+      }
+
+      return {
+        type: data.type,
+        systemKey: null,
+        collectionId: null,
+        smartCollectionId: data.smartCollectionId,
+        postId: null,
+        label: (data.label?.trim() ?? "").slice(0, 100),
+        url: getCollectionPagePath(smartCollection.slug),
+        targetTitle: smartCollection.title,
         placement: data.placement ?? "header",
         position: data.position,
       };
@@ -372,6 +430,7 @@ export function createNavItemService(
         type: data.type,
         systemKey: null,
         collectionId: null,
+        smartCollectionId: null,
         postId: data.postId,
         // Stored empty unless the author typed something: the item then shows
         // the page's current title, and follows it when renamed.
@@ -387,6 +446,7 @@ export function createNavItemService(
       type: data.type,
       systemKey: null,
       collectionId: null,
+      smartCollectionId: null,
       postId: null,
       label: data.label,
       url: data.url,
@@ -692,6 +752,7 @@ export function createNavItemService(
             type: normalized.type,
             systemKey: normalized.systemKey,
             collectionId: normalized.collectionId,
+            smartCollectionId: normalized.smartCollectionId,
             postId: normalized.postId,
             label: normalized.label,
             url: normalized.url,
@@ -716,6 +777,7 @@ export function createNavItemService(
               type: normalized.type,
               systemKey: normalized.systemKey,
               collectionId: normalized.collectionId,
+              smartCollectionId: normalized.smartCollectionId,
               postId: normalized.postId,
               label: normalized.label,
               url: normalized.url,

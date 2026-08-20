@@ -35,6 +35,7 @@ import type {
   CollectionsDirectoryData,
   CreateCollection,
   CreateCollectionDirectoryEntry,
+  SmartCollectionDirectoryEntry,
   UpdateCollection,
   UpdateCollectionDirectoryEntry,
   CollectionSortOrder,
@@ -50,6 +51,7 @@ import {
   type PathService,
 } from "./path.js";
 import { getCollectionPagePath } from "../lib/collection-paths.js";
+import type { SmartCollectionService } from "./smart-collection.js";
 import {
   CreateCollectionDirectoryItemSchema,
   CollectionDirectoryLabelSchema,
@@ -231,6 +233,15 @@ export function createCollectionService(
   paths: PathService | undefined,
   databaseSchema: DatabaseSchema = sqliteSchemaBundle,
   databaseDialect: DatabaseDialect = "sqlite",
+  /**
+   * Consulted before a collection is deleted, so a smart collection that
+   * filters by it is named rather than silently widened.
+   *
+   * Passed as a dependency rather than reached for, following the same shape
+   * `storage?: StorageDriver` uses for media cleanup — the route stays out of
+   * cross-service orchestration.
+   */
+  smartCollections?: SmartCollectionService,
 ): CollectionService {
   const resolvedPaths = paths ?? createPathService(db, siteId, databaseSchema);
   const {
@@ -305,6 +316,7 @@ export function createCollectionService(
       siteId: row.siteId,
       type: row.type as CollectionDirectoryEntryType,
       collectionId: row.collectionId,
+      smartCollectionId: row.smartCollectionId,
       label: row.label,
       url: row.url,
       description: row.description,
@@ -549,14 +561,28 @@ export function createCollectionService(
       .filter((row): row is CollectionDirectoryCollection => row !== null);
   }
 
+  /**
+   * Order the directory: explicitly placed rows first, then everything else.
+   *
+   * A directory row is a *position*, not a membership. Both kinds of collection
+   * appear whether or not one exists — anything unplaced is appended here — so
+   * there is no such thing as a collection missing from `/collections`, and no
+   * "add to directory" picker to build. The rows exist only so a collection can
+   * be interleaved with dividers and links and dragged around.
+   */
   function buildDirectoryItems(
     directoryCollections: CollectionDirectoryCollection[],
+    directorySmartCollections: SmartCollectionDirectoryEntry[],
     orderedDirectoryItems: CollectionDirectoryEntry[],
   ): CollectionDirectoryItem[] {
     const collectionMap = new Map(
       directoryCollections.map((collection) => [collection.id, collection]),
     );
+    const smartCollectionMap = new Map(
+      directorySmartCollections.map((entry) => [entry.id, entry]),
+    );
     const seenCollections = new Set<string>();
+    const seenSmartCollections = new Set<string>();
     const items: CollectionDirectoryItem[] = [];
 
     for (const item of orderedDirectoryItems) {
@@ -581,6 +607,21 @@ export function createCollectionService(
         continue;
       }
 
+      if (item.type === "smart_collection") {
+        const smartCollection = item.smartCollectionId
+          ? smartCollectionMap.get(item.smartCollectionId)
+          : undefined;
+        if (!smartCollection) continue;
+
+        seenSmartCollections.add(smartCollection.id);
+        items.push({
+          id: item.id,
+          type: "smart_collection",
+          smartCollection,
+        });
+        continue;
+      }
+
       const collection = item.collectionId
         ? collectionMap.get(item.collectionId)
         : undefined;
@@ -600,6 +641,15 @@ export function createCollectionService(
         id: collection.id,
         type: "collection",
         collection,
+      });
+    }
+
+    for (const smartCollection of directorySmartCollections) {
+      if (seenSmartCollections.has(smartCollection.id)) continue;
+      items.push({
+        id: smartCollection.id,
+        type: "smart_collection",
+        smartCollection,
       });
     }
 
@@ -659,14 +709,29 @@ export function createCollectionService(
     },
 
     async listDirectoryData(viewer) {
-      const [directoryCollections, orderedDirectoryItems] = await Promise.all([
+      const [
+        directoryCollections,
+        directorySmartCollections,
+        orderedDirectoryItems,
+      ] = await Promise.all([
         listDirectoryCollections(viewer),
+        // One aggregate for every smart collection, not one query each — see
+        // `posts.countMany`. Both kinds of number come from the same reader
+        // predicate, so a signed-out visitor sees a consistent directory.
+        smartCollections
+          ? smartCollections.listWithCounts(viewer)
+          : Promise.resolve([] as SmartCollectionDirectoryEntry[]),
         this.listDirectoryItems(),
       ]);
 
       return {
         collections: directoryCollections,
-        items: buildDirectoryItems(directoryCollections, orderedDirectoryItems),
+        smartCollections: directorySmartCollections,
+        items: buildDirectoryItems(
+          directoryCollections,
+          directorySmartCollections,
+          orderedDirectoryItems,
+        ),
         directoryItems: orderedDirectoryItems,
       };
     },
@@ -871,6 +936,12 @@ export function createCollectionService(
     },
 
     async delete(id) {
+      // Refused, not repaired: clearing the condition would quietly widen a
+      // smart collection the author never edited. The database says the same
+      // thing through `ON DELETE restrict`; this is the version with a name in
+      // it.
+      await smartCollections?.assertCollectionUnused(id);
+
       await db
         .delete(threadCollections)
         .where(

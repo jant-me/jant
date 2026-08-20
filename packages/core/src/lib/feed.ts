@@ -576,10 +576,10 @@ export function defaultFeedRenderer(data: FeedData): string {
   const feedUpdated =
     posts
       .map((post) => post.feedUpdatedAt ?? post.updatedAt)
-      .reduce<string | null>(
-        (latest, value) => (latest === null || value > latest ? value : latest),
-        null,
-      ) ?? new Date().toISOString();
+      .reduce<
+        string | null
+      >((latest, value) => (latest === null || value > latest ? value : latest), null) ??
+    new Date().toISOString();
 
   // A feed states its own language: at the root that is the site's, and in a
   // language view it is that view's, so a reader subscribing to /en/feed gets
@@ -611,7 +611,13 @@ export interface SitemapUrlEntry {
   /** ISO date (YYYY-MM-DD) or full ISO datetime */
   lastmod?: string;
   changefreq?:
-    "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
+    | "always"
+    | "hourly"
+    | "daily"
+    | "weekly"
+    | "monthly"
+    | "yearly"
+    | "never";
   /** "0.0" – "1.0" */
   priority?: string;
   /**

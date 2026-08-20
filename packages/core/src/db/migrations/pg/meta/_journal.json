@@ -218,6 +218,13 @@
       "when": 1786069149825,
       "tag": "0030_abandoned_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1787212376706,
+      "tag": "0031_cute_shaman",
+      "breakpoints": true
     }
   ]
 }

@@ -24,6 +24,7 @@
 
 import { msg } from "@lingui/core/macro";
 import type { MessageDescriptor } from "@lingui/core";
+import { z } from "zod";
 import type { I18n } from "../i18n/i18n.js";
 // Imported from `types/constants.js` rather than `types/props.js`: the props
 // module reads this one for `PostFilterSelection`, and the vocabulary should not
@@ -33,7 +34,12 @@ import type {
   Format,
   MediaKind,
 } from "../types/constants.js";
-import { FORMATS, MEDIA_KINDS } from "../types/constants.js";
+import {
+  FORMATS,
+  MEDIA_KINDS,
+  PUBLIC_ARCHIVE_VISIBILITIES,
+} from "../types/constants.js";
+import { createTypeIdSchema, ID_PREFIX } from "./ids.js";
 import type { PostFilters } from "../services/post.js";
 
 type Translator = Pick<I18n, "_">;
@@ -66,6 +72,13 @@ export type FilterDimensionKey = (typeof FILTER_DIMENSION_KEYS)[number];
  * to carry two fields.
  */
 export type MediaSelection = "any" | "none" | readonly MediaKind[];
+
+/** Validator for a {@link MediaSelection}, in either of its two shapes. */
+export const MediaSelectionSchema: z.ZodType<MediaSelection> = z.union([
+  z.literal("any"),
+  z.literal("none"),
+  z.array(z.enum(MEDIA_KINDS)).min(1).readonly(),
+]);
 
 /** The value type each dimension carries once parsed. */
 export interface FilterDimensionValues {
@@ -179,6 +192,36 @@ export interface FilterParseIssue {
 }
 
 // =============================================================================
+// Reading stored columns
+// =============================================================================
+
+/**
+ * Read a stored boolean, whichever way the dialect spells one.
+ *
+ * SQLite keeps booleans as `0`/`1` integers and Postgres as real booleans, and
+ * a value that arrives as neither is not a third state — it is a column this
+ * dimension cannot read, which reads as "not selected".
+ */
+function readStoredBoolean(raw: unknown): boolean | null {
+  if (typeof raw === "boolean") return raw;
+  if (raw === 1 || raw === 0) return raw === 1;
+  return null;
+}
+
+/** Read a stored {@link MediaSelection} back out of its folded column. */
+function readStoredMediaSelection(raw: unknown): MediaSelection | null {
+  if (typeof raw !== "string" || raw === "") return null;
+  if (raw === "any" || raw === "none") return raw;
+  const kinds = raw
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part): part is MediaKind =>
+      (MEDIA_KINDS as readonly string[]).includes(part),
+    );
+  return kinds.length > 0 ? kinds : null;
+}
+
+// =============================================================================
 // Dimension declarations
 // =============================================================================
 
@@ -198,12 +241,67 @@ interface DimensionUrl<V> {
   serialize(value: V, ctx: DimensionContext): string | null;
 }
 
+/**
+ * How a stored selection keeps this dimension.
+ *
+ * A smart collection is a selection written down, so every dimension needs one
+ * column, one validator for what may go in it, and the two conversions between
+ * the column and the value. Declaring them here is what keeps a schema change
+ * from needing an edit in the service, the API, and the editor as well.
+ */
+interface DimensionStorage<V> {
+  /**
+   * The Drizzle property this dimension occupies on `smart_collection`.
+   *
+   * Both dialect schemas name it identically; the SQL column is its snake_case
+   * form. `null` in the column always means "not selected".
+   */
+  column: string;
+  /** What a stored value may be — narrower than the URL vocabulary can parse. */
+  schema: z.ZodType<V>;
+  /** The column value for this dimension's value. */
+  toColumn(value: V): string | number | boolean;
+  /** Read a column back, or `null` when it is unset or unreadable. */
+  fromColumn(raw: unknown): V | null;
+}
+
+/**
+ * The control an editor renders for this dimension.
+ *
+ * Two rules make this small enough to stay small.
+ *
+ * First: there is no "unset" option in any of them. A condition row exists or it
+ * does not, and that is already how "unset" is said. Offering it twice would be
+ * two switches for one state.
+ *
+ * Second: **a control produces the same string the URL does.** Whatever the
+ * reader picks is handed back through `url.parse` and written with
+ * `url.serialize`, so a control never carries a parser of its own. That is what
+ * keeps the union to rendering shapes — a hypothetical `rating` dimension is an
+ * `enum` over `"1".."5"`, not a new kind — and it is why `media` gets one folded
+ * vocabulary rather than a presence flag beside a kind list.
+ */
+export type DimensionControl =
+  | {
+      kind: "enum";
+      options: readonly string[];
+      labelOf(value: string): MessageDescriptor;
+    }
+  | { kind: "year" }
+  | { kind: "collection" }
+  /** any / none / a multi-select of kinds, over the one folded vocabulary. */
+  | { kind: "media" }
+  /** Two states. "Unset" is the row not being there. */
+  | { kind: "presence"; yes: MessageDescriptor; no: MessageDescriptor };
+
 interface Dimension<K extends FilterDimensionKey> {
   /** Stable identity, and the row key in an editing UI. */
   key: K;
   /** The dimension's own name, for a menu of dimensions. */
   label: MessageDescriptor;
   url: DimensionUrl<FilterDimensionValues[K]>;
+  storage: DimensionStorage<FilterDimensionValues[K]>;
+  control: DimensionControl;
   /** This value's slice of a `PostFilters`. */
   toPostFilter(
     value: FilterDimensionValues[K],
@@ -302,6 +400,25 @@ const COLLECTION_DIMENSION: Dimension<"collection"> = {
       return slugs.length > 0 ? slugs.join(",") : null;
     },
   },
+  storage: {
+    column: "collectionId",
+    // The archive can OR several collections together; a smart collection
+    // deliberately cannot (see the feature notes on OR within a dimension), so
+    // the column is a single foreign key and the stored value is a list of one.
+    // Keeping the value shape identical either way is what lets one registry
+    // serve both.
+    schema: z
+      .array(createTypeIdSchema(ID_PREFIX.collection))
+      .length(1)
+      .readonly(),
+    toColumn(value) {
+      return value[0] as string;
+    },
+    fromColumn(raw) {
+      return typeof raw === "string" && raw ? [raw] : null;
+    },
+  },
+  control: { kind: "collection" },
   toPostFilter(value) {
     return { collectionIds: [...value] };
   },
@@ -352,6 +469,23 @@ const FORMAT_DIMENSION: Dimension<"format"> = {
     serialize(value) {
       return value;
     },
+  },
+  storage: {
+    column: "format",
+    schema: z.enum(FORMATS),
+    toColumn(value) {
+      return value;
+    },
+    fromColumn(raw) {
+      return (FORMATS as readonly string[]).includes(raw as string)
+        ? (raw as Format)
+        : null;
+    },
+  },
+  control: {
+    kind: "enum",
+    options: FORMATS,
+    labelOf: (value) => FORMAT_LABELS_PLURAL[value as Format],
   },
   toPostFilter(value) {
     return { format: value };
@@ -444,6 +578,19 @@ const TITLE_DIMENSION: Dimension<"title"> = {
       return value ? "any" : "none";
     },
   },
+  storage: {
+    column: "hasTitle",
+    schema: z.boolean(),
+    toColumn(value) {
+      return value;
+    },
+    fromColumn: readStoredBoolean,
+  },
+  control: {
+    kind: "presence",
+    yes: TITLE_PRESENT_LABEL,
+    no: TITLE_ABSENT_LABEL,
+  },
   toPostFilter(value) {
     return { hasTitle: value };
   },
@@ -486,6 +633,17 @@ const YEAR_DIMENSION: Dimension<"year"> = {
       return String(value);
     },
   },
+  storage: {
+    column: "year",
+    schema: z.number().int().min(EARLIEST_FILTERABLE_YEAR),
+    toColumn(value) {
+      return value;
+    },
+    fromColumn(raw) {
+      return typeof raw === "number" && Number.isInteger(raw) ? raw : null;
+    },
+  },
+  control: { kind: "year" },
   toPostFilter(value, ctx) {
     const after = Date.UTC(value, 0, 1) / 1000;
     const before = Date.UTC(value + 1, 0, 1) / 1000;
@@ -577,6 +735,17 @@ const MEDIA_DIMENSION: Dimension<"media"> = {
       return value.length > 0 ? value.join(",") : null;
     },
   },
+  storage: {
+    column: "media",
+    schema: MediaSelectionSchema,
+    // The column holds the same folded string the URL does, so what is stored
+    // and what is shared are one vocabulary rather than two.
+    toColumn(value) {
+      return typeof value === "string" ? value : value.join(",");
+    },
+    fromColumn: readStoredMediaSelection,
+  },
+  control: { kind: "media" },
   toPostFilter(value) {
     // The one dimension whose single value spans two `PostFilters` fields.
     if (value === "any") return { hasMedia: true };
@@ -635,6 +804,19 @@ const REPLIES_DIMENSION: Dimension<"replies"> = {
       return value ? "any" : "none";
     },
   },
+  storage: {
+    column: "hasReplies",
+    schema: z.boolean(),
+    toColumn(value) {
+      return value;
+    },
+    fromColumn: readStoredBoolean,
+  },
+  control: {
+    kind: "presence",
+    yes: REPLIES_PRESENT_LABEL,
+    no: REPLIES_ABSENT_LABEL,
+  },
   toPostFilter(value) {
     return { hasReplies: value };
   },
@@ -658,6 +840,11 @@ const VISIBILITY_URL_SPELLING = {
   latest_hidden: "hidden",
   private: "private",
 } as const satisfies Record<ArchiveVisibility, string>;
+
+/** Every visibility a dimension value may hold, for reading a column back. */
+const ARCHIVE_VISIBILITY_VALUES = Object.keys(
+  VISIBILITY_URL_SPELLING,
+) as ArchiveVisibility[];
 
 const VISIBILITY_BY_URL_VALUE = new Map<string, ArchiveVisibility>(
   Object.entries(VISIBILITY_URL_SPELLING).map(([stored, url]) => [
@@ -729,6 +916,29 @@ const VISIBILITY_DIMENSION: Dimension<"visibility"> = {
       return VISIBILITY_URL_SPELLING[value];
     },
   },
+  storage: {
+    column: "visibility",
+    // Narrower than the URL vocabulary on purpose: a smart collection is a
+    // published page, so it can never name the one set only its author sees.
+    // `private` parses here and fails validation, which is exactly what lets
+    // the "turn this link into a smart collection" flow refuse it by name.
+    schema: z.enum(PUBLIC_ARCHIVE_VISIBILITIES),
+    toColumn(value) {
+      return value;
+    },
+    fromColumn(raw) {
+      return (ARCHIVE_VISIBILITY_VALUES as readonly string[]).includes(
+        raw as string,
+      )
+        ? (raw as ArchiveVisibility)
+        : null;
+    },
+  },
+  control: {
+    kind: "enum",
+    options: PUBLIC_ARCHIVE_VISIBILITIES,
+    labelOf: (value) => VISIBILITY_LABELS[value as ArchiveVisibility],
+  },
   toPostFilter(value) {
     // `featured` is a virtual visibility — a separate flag rather than a stored
     // value — so it lands in a different field than the other three.
@@ -781,6 +991,93 @@ export const FILTER_DIMENSION_PARAMS: readonly string[] =
     FILTER_DIMENSIONS[key].url.param,
     ...(FILTER_DIMENSIONS[key].url.legacy ?? []),
   ]);
+
+// =============================================================================
+// Storing a whole selection
+// =============================================================================
+
+/**
+ * What a stored selection may hold — the validator a create or update request
+ * runs its conditions through.
+ *
+ * Assembled from the registry rather than restated, so a new dimension is
+ * accepted by every endpoint the moment it is declared, and a dimension whose
+ * stored vocabulary is narrower than its URL one (`visibility`) is narrow
+ * everywhere at once.
+ */
+export const PostFilterSelectionSchema = z
+  .object(
+    Object.fromEntries(
+      FILTER_DIMENSION_KEYS.map((key) => [
+        key,
+        FILTER_DIMENSIONS[key].storage.schema.optional(),
+      ]),
+    ),
+  )
+  .strict() as unknown as z.ZodType<PostFilterSelection>;
+
+/**
+ * The column values a selection writes, every dimension named.
+ *
+ * Dimensions with no value are written as `null`, not omitted: removing a
+ * condition has to clear its column, and an object that simply left it out
+ * would leave the old condition in place.
+ *
+ * @param selection - The selection to store
+ * @returns One entry per dimension, keyed by its storage column
+ * @example
+ * selectionToColumns({ format: "note" });
+ * // { collectionId: null, format: "note", hasTitle: null, ... }
+ */
+export function selectionToColumns(
+  selection: PostFilterSelection,
+): Record<string, string | number | boolean | null> {
+  const columns: Record<string, string | number | boolean | null> = {};
+  for (const key of FILTER_DIMENSION_KEYS) {
+    const { storage } = FILTER_DIMENSIONS[key];
+    const value = selection[key];
+    columns[storage.column] =
+      value === undefined ? null : storeDimension(key, value);
+  }
+  return columns;
+}
+
+function storeDimension<K extends FilterDimensionKey>(
+  key: K,
+  value: FilterDimensionValues[K],
+): string | number | boolean {
+  const toColumn = FILTER_DIMENSIONS[key].storage.toColumn as unknown as (
+    value: FilterDimensionValues[K],
+  ) => string | number | boolean;
+  return toColumn(value);
+}
+
+/**
+ * Read a stored row back into a selection.
+ *
+ * A column this dimension cannot read is treated as unset. That is the honest
+ * reading: the alternative is a smart collection that refuses to render because
+ * one condition is malformed, which turns a bad column into a broken page.
+ *
+ * @param row - A `smart_collection` row, in either dialect's shape
+ * @returns The selection the row stores
+ * @example
+ * selectionFromRow({ format: "note", hasTitle: 0 });
+ * // { format: "note", title: false }
+ */
+export function selectionFromRow(
+  row: Record<string, unknown>,
+): PostFilterSelection {
+  const selection: Record<string, unknown> = {};
+  for (const key of FILTER_DIMENSION_KEYS) {
+    const { storage } = FILTER_DIMENSIONS[key];
+    const raw = row[storage.column];
+    if (raw === null || raw === undefined) continue;
+    const value = storage.fromColumn(raw);
+    if (value !== null) selection[key] = value;
+  }
+  return selection as PostFilterSelection;
+}
 
 // =============================================================================
 // Parsing a whole selection

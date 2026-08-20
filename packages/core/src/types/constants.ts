@@ -65,7 +65,34 @@ export const COLLECTION_SORT_ORDERS = [
 ] as const;
 export type CollectionSortOrder = (typeof COLLECTION_SORT_ORDERS)[number];
 
-export const NAV_ITEM_TYPES = ["link", "system", "collection", "page"] as const;
+/**
+ * How a smart collection orders the posts its conditions gather.
+ *
+ * The collection page's three orders, plus `updated`. That fourth one has no
+ * counterpart on a manual collection because a manual collection is a reading
+ * order the author arranged; a smart collection has no arrangement to preserve,
+ * so "what changed most recently" is a question it can answer.
+ *
+ * Not to be confused with the archive's `?sort=`, which names a *time axis*
+ * (`published` / `updated`) and always runs newest-first. Two vocabularies, and
+ * mixing them is how month headers stop agreeing with the order beneath them.
+ */
+export const SMART_COLLECTION_SORT_ORDERS = [
+  "newest",
+  "oldest",
+  "updated",
+  "rating_desc",
+] as const;
+export type SmartCollectionSortOrder =
+  (typeof SMART_COLLECTION_SORT_ORDERS)[number];
+
+export const NAV_ITEM_TYPES = [
+  "link",
+  "system",
+  "collection",
+  "smart_collection",
+  "page",
+] as const;
 export type NavItemType = (typeof NAV_ITEM_TYPES)[number];
 
 export const NAV_ITEM_PLACEMENTS = ["header", "more"] as const;
@@ -189,6 +216,7 @@ export type PathKind = (typeof PATH_KINDS)[number];
  */
 export const COLLECTION_DIRECTORY_ENTRY_TYPES = [
   "collection",
+  "smart_collection",
   "divider",
   "link",
 ] as const;

@@ -247,11 +247,9 @@ export class JantPostPicker extends LitElement {
             <h2 id="picker-dialog-title" class="picker-dialog-title">
               ${request.heading}
             </h2>
-            ${
-              request.hint
-                ? html`<p class="picker-dialog-hint">${request.hint}</p>`
-                : nothing
-            }
+            ${request.hint
+              ? html`<p class="picker-dialog-hint">${request.hint}</p>`
+              : nothing}
           </header>
 
           <input
@@ -275,28 +273,22 @@ export class JantPostPicker extends LitElement {
                   @click=${() => this.#finish(item.id)}
                 >
                   <span class="picker-dialog-option-label">${item.label}</span>
-                  ${
-                    item.meta
-                      ? html`<span class="picker-dialog-option-meta"
-                          >${item.meta}</span
-                        >`
-                      : nothing
-                  }
+                  ${item.meta
+                    ? html`<span class="picker-dialog-option-meta"
+                        >${item.meta}</span
+                      >`
+                    : nothing}
                 </button>
               `,
             )}
-            ${
-              this._loading
-                ? html`<p class="picker-dialog-status">Searching…</p>`
-                : nothing
-            }
-            ${
-              !this._loading && this._searched && this._items.length === 0
-                ? html`<p class="picker-dialog-status">
-                    ${this._note || request.emptyHint}
-                  </p>`
-                : nothing
-            }
+            ${this._loading
+              ? html`<p class="picker-dialog-status">Searching…</p>`
+              : nothing}
+            ${!this._loading && this._searched && this._items.length === 0
+              ? html`<p class="picker-dialog-status">
+                  ${this._note || request.emptyHint}
+                </p>`
+              : nothing}
           </div>
 
           <footer

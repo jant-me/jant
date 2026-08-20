@@ -5,7 +5,10 @@ import {
   FILTER_DIMENSION_PARAMS,
   parsePostFilterSelection,
   parsePostFilterSelectionStrict,
+  PostFilterSelectionSchema,
   readCollectionSlugs,
+  selectionFromRow,
+  selectionToColumns,
   serializePostFilterSelection,
   toPostFilters,
   type DimensionContext,
@@ -266,5 +269,92 @@ describe("the registry itself", () => {
     expect(new Set(FILTER_DIMENSION_PARAMS).size).toBe(
       FILTER_DIMENSION_PARAMS.length,
     );
+  });
+});
+
+describe("storing a selection", () => {
+  it("names every dimension, writing null for the ones not selected", () => {
+    const columns = selectionToColumns({ format: "note", title: false });
+
+    expect(columns).toEqual({
+      collectionId: null,
+      format: "note",
+      hasTitle: false,
+      year: null,
+      media: null,
+      hasReplies: null,
+      visibility: null,
+    });
+  });
+
+  it("round trips a full selection through storage", () => {
+    const selection: PostFilterSelection = {
+      collection: ["col_tech"],
+      format: "quote",
+      title: true,
+      year: 2024,
+      media: ["image", "video"],
+      replies: false,
+      visibility: "latest_hidden",
+    };
+
+    expect(selectionFromRow(selectionToColumns(selection))).toEqual(selection);
+  });
+
+  it("reads a boolean column in either dialect's spelling", () => {
+    // SQLite stores 0/1; Postgres stores real booleans.
+    expect(selectionFromRow({ hasTitle: 1, hasReplies: 0 })).toEqual({
+      title: true,
+      replies: false,
+    });
+    expect(selectionFromRow({ hasTitle: true, hasReplies: false })).toEqual({
+      title: true,
+      replies: false,
+    });
+  });
+
+  it("treats a column it cannot read as unset, rather than failing to render", () => {
+    expect(selectionFromRow({ format: "banana", year: 2024 })).toEqual({
+      year: 2024,
+    });
+  });
+});
+
+describe("PostFilterSelectionSchema", () => {
+  it("accepts a selection a smart collection may store", () => {
+    const result = PostFilterSelectionSchema.safeParse({
+      format: "note",
+      media: "any",
+      visibility: "featured",
+      collection: ["col_01m0f291t3fzvte3vj2g8d611z"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("refuses the private visibility a smart collection can never name", () => {
+    expect(
+      PostFilterSelectionSchema.safeParse({ visibility: "private" }).success,
+    ).toBe(false);
+  });
+
+  it("refuses more than one collection, which would be an OR", () => {
+    expect(
+      PostFilterSelectionSchema.safeParse({
+        collection: [
+          "col_01m0f291t3fzvte3vj2g8d611z",
+          "col_01m0f291t3fzvte3vj2g8d6120",
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("refuses a key that is not a dimension", () => {
+    expect(
+      PostFilterSelectionSchema.safeParse({ language: "en" }).success,
+    ).toBe(false);
+  });
+
+  it("accepts the empty selection, which means every post", () => {
+    expect(PostFilterSelectionSchema.safeParse({}).success).toBe(true);
   });
 });

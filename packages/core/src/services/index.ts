@@ -21,6 +21,10 @@ import {
   createCollectionService,
   type CollectionService,
 } from "./collection.js";
+import {
+  createSmartCollectionService,
+  type SmartCollectionService,
+} from "./smart-collection.js";
 import { createSearchService, type SearchService } from "./search.js";
 import { createNavItemService, type NavItemService } from "./navigation.js";
 import { createAuthService, type AuthService } from "./auth.js";
@@ -58,6 +62,7 @@ export interface Services {
   media: MediaService;
   uploads: UploadSessionService;
   collections: CollectionService;
+  smartCollections: SmartCollectionService;
   search: SearchService;
   navItems: NavItemService;
   auth: AuthService;
@@ -104,12 +109,20 @@ export function createServices(
     paths,
     databaseSchema,
   );
+  const smartCollections = createSmartCollectionService(
+    db,
+    siteId,
+    paths,
+    posts,
+    databaseSchema,
+  );
   const collections = createCollectionService(
     db,
     siteId,
     paths,
     databaseSchema,
     dialect,
+    smartCollections,
   );
   const media = createMediaService(db, siteId, databaseSchema, dialect, {
     enforceHostedQuota: config?.enforceHostedMediaQuota ?? false,
@@ -125,6 +138,7 @@ export function createServices(
     media,
     uploads: createUploadSessionService(db, siteId, media, databaseSchema),
     collections,
+    smartCollections,
     search: createSearchService(rawQuery, siteId, dialect),
     navItems,
     auth: createAuthService(
@@ -161,6 +175,7 @@ export function createServices(
       paths,
       posts,
       collections,
+      smartCollections,
     }),
     language: createLanguageService({ settings, posts, paths }),
     githubAppInstallations: createGitHubAppInstallationsService(
@@ -176,6 +191,10 @@ export type { SiteService } from "./site.js";
 export type { PathService } from "./path.js";
 export type { PostService, PostFilters, PostDeleteDeps } from "./post.js";
 export type { CustomUrlService } from "./custom-url.js";
+export type {
+  SmartCollectionService,
+  SmartCollectionViewer,
+} from "./smart-collection.js";
 export type { MediaService, MediaFilters } from "./media.js";
 export type { UploadSessionService } from "./upload-session.js";
 export type { CollectionService } from "./collection.js";

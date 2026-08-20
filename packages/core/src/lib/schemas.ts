@@ -10,11 +10,13 @@
 
 import { z } from "zod";
 import {
+  ARCHIVE_LAYOUTS,
   FORMATS,
   STATUSES,
   VISIBILITIES,
   SORT_ORDERS,
   COLLECTION_SORT_ORDERS,
+  SMART_COLLECTION_SORT_ORDERS,
   NAV_ITEM_TYPES,
   SYSTEM_NAV_KEY_VALUES,
   MAX_MEDIA_ATTACHMENTS,
@@ -39,6 +41,7 @@ import {
 } from "../i18n/locales.js";
 import { ValidationError } from "./errors.js";
 import { createTypeIdSchema, ID_PREFIX } from "./ids.js";
+import { PostFilterSelectionSchema } from "./filter-dimensions.js";
 import { normalizeSlug } from "./slug-format.js";
 import { isReservedPath } from "./constants.js";
 import { sanitizeUrl, normalizePath } from "./url.js";
@@ -697,6 +700,32 @@ export const CreateCollectionSchema = z.object({
  * API request body schema for updating a collection
  */
 export const UpdateCollectionSchema = CreateCollectionSchema.partial();
+
+/**
+ * API request body schema for creating a smart collection.
+ *
+ * The conditions come from the dimension registry rather than being restated
+ * here, so a new dimension is accepted the moment it is declared and a stored
+ * vocabulary narrower than the URL one (`visibility` never being `private`)
+ * is narrow at every entry point at once.
+ */
+export const CreateSmartCollectionSchema = z.object({
+  slug: CollectionSlugSchema,
+  title: CollectionTitleSchema,
+  description: CollectionDescriptionValueSchema.nullable().optional(),
+  // Omitted means no conditions, which is the honest spelling of "every post".
+  selection: PostFilterSelectionSchema.optional(),
+  sort: z.enum(SMART_COLLECTION_SORT_ORDERS).optional(),
+  layout: z.enum(ARCHIVE_LAYOUTS).nullable().optional(),
+});
+
+export const UpdateSmartCollectionSchema =
+  CreateSmartCollectionSchema.partial();
+
+/** The body of a preview request: the conditions, and nothing else. */
+export const SmartCollectionPreviewSchema = z.object({
+  selection: PostFilterSelectionSchema.optional(),
+});
 
 export const SiteNameSettingSchema = sanitizeSettingText(MAX_SITE_NAME_LENGTH);
 export const SiteDescriptionSettingSchema = sanitizeSettingText(

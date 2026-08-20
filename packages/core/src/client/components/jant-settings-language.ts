@@ -593,22 +593,20 @@ export class JantSettingsLanguage extends LitElement {
     return html`
       <div class="flex flex-wrap items-center gap-2" role="alert">
         <p class="text-sm text-destructive">${error.message}</p>
-        ${
-          error.language
-            ? html`
-                <button
-                  type="button"
-                  class="btn-sm-outline"
-                  data-enable-add-back
-                  @click=${() => this.#addBackLanguage(error.language ?? "")}
-                >
-                  ${interpolate(this.labels.addMissingLanguage, {
-                    language: this.#displayName(error.language),
-                  })}
-                </button>
-              `
-            : nothing
-        }
+        ${error.language
+          ? html`
+              <button
+                type="button"
+                class="btn-sm-outline"
+                data-enable-add-back
+                @click=${() => this.#addBackLanguage(error.language ?? "")}
+              >
+                ${interpolate(this.labels.addMissingLanguage, {
+                  language: this.#displayName(error.language),
+                })}
+              </button>
+            `
+          : nothing}
       </div>
     `;
   }
@@ -735,52 +733,46 @@ export class JantSettingsLanguage extends LitElement {
               </div>
             </div>
 
-            ${
-              warning
-                ? html`
-                    <div class="alert">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"
-                        />
-                        <path d="M12 9v4" />
-                        <path d="M12 17h.01" />
-                      </svg>
-                      <strong>${this.labels.enableMarkTitle}</strong>
-                      <section>
-                        <p>${warning}</p>
-                        <p>${this.labels.enableFixHint}</p>
-                      </section>
-                    </div>
-                  `
-                : nothing
-            }
+            ${warning
+              ? html`
+                  <div class="alert">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"
+                      />
+                      <path d="M12 9v4" />
+                      <path d="M12 17h.01" />
+                    </svg>
+                    <strong>${this.labels.enableMarkTitle}</strong>
+                    <section>
+                      <p>${warning}</p>
+                      <p>${this.labels.enableFixHint}</p>
+                    </section>
+                  </div>
+                `
+              : nothing}
 
             <p class="text-sm text-muted-foreground">
               ${this.labels.enableReassurance}
             </p>
 
-            ${
-              this._enableAdditional.length === 0
-                ? html`<p class="text-sm text-muted-foreground">
-                    ${this.labels.enableNeedsLanguage}
-                  </p>`
-                : nothing
-            }
-            ${
-              this._enableError
-                ? this.#renderEnableError(this._enableError)
-                : nothing
-            }
+            ${this._enableAdditional.length === 0
+              ? html`<p class="text-sm text-muted-foreground">
+                  ${this.labels.enableNeedsLanguage}
+                </p>`
+              : nothing}
+            ${this._enableError
+              ? this.#renderEnableError(this._enableError)
+              : nothing}
           </div>
 
           <footer class="confirm-dialog-actions">
@@ -795,9 +787,8 @@ export class JantSettingsLanguage extends LitElement {
               type="button"
               class="btn"
               data-enable-confirm
-              ?disabled=${
-                this._enableAdditional.length === 0 || this._enableBusy
-              }
+              ?disabled=${this._enableAdditional.length === 0 ||
+              this._enableBusy}
               @click=${() => void this.#confirmEnable()}
             >
               ${this._enableBusy ? this.labels.saving : this.labels.save}
@@ -835,42 +826,40 @@ export class JantSettingsLanguage extends LitElement {
         >
           ⋯
         </button>
-        ${
-          open
-            ? html`
-                <div
-                  role="menu"
-                  class="absolute right-0 top-full z-20 mt-1 min-w-40 rounded-md border bg-popover py-1 text-popover-foreground shadow-md"
+        ${open
+          ? html`
+              <div
+                role="menu"
+                class="absolute right-0 top-full z-20 mt-1 min-w-40 rounded-md border bg-popover py-1 text-popover-foreground shadow-md"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent"
+                  ?disabled=${this._savingSite}
+                  @click=${() => {
+                    this._rowMenuOpen = null;
+                    void this.#selectPrimary(tag);
+                  }}
                 >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-accent"
-                    ?disabled=${this._savingSite}
-                    @click=${() => {
-                      this._rowMenuOpen = null;
-                      void this.#selectPrimary(tag);
-                    }}
-                  >
-                    ${this.labels.makePrimary}
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="block w-full cursor-pointer px-3 py-2 text-left text-sm text-destructive hover:bg-accent"
-                    @click=${() => {
-                      this._rowMenuOpen = null;
-                      void this.#removeLanguage(tag);
-                    }}
-                  >
-                    ${interpolate(this.labels.removeLanguage, {
-                      language: name,
-                    })}
-                  </button>
-                </div>
-              `
-            : nothing
-        }
+                  ${this.labels.makePrimary}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="block w-full cursor-pointer px-3 py-2 text-left text-sm text-destructive hover:bg-accent"
+                  @click=${() => {
+                    this._rowMenuOpen = null;
+                    void this.#removeLanguage(tag);
+                  }}
+                >
+                  ${interpolate(this.labels.removeLanguage, {
+                    language: name,
+                  })}
+                </button>
+              </div>
+            `
+          : nothing}
       </span>
     `;
   }
@@ -888,9 +877,9 @@ export class JantSettingsLanguage extends LitElement {
     return html`
       <div class="field">
         <span id="language-list-label" class="label"
-          >${this.labels.languagesLabel}${
-            this._savingSite ? ` ${this.labels.saving}` : ""
-          }</span
+          >${this.labels.languagesLabel}${this._savingSite
+            ? ` ${this.labels.saving}`
+            : ""}</span
         >
         <ul
           class="flex flex-col rounded-md border divide-y"
@@ -918,35 +907,29 @@ export class JantSettingsLanguage extends LitElement {
                       >${url}</code
                     >
                   </a>
-                  ${
-                    isPrimary
-                      ? html`<span class="badge-secondary ml-auto"
-                          >${this.labels.primaryBadge}</span
-                        >`
-                      : this.#renderRowMenu(tag)
-                  }
+                  ${isPrimary
+                    ? html`<span class="badge-secondary ml-auto"
+                        >${this.labels.primaryBadge}</span
+                      >`
+                    : this.#renderRowMenu(tag)}
                 </div>
-                ${
-                  this._removeError?.tag === tag
-                    ? html`
-                        <p class="pb-1 text-sm text-destructive" role="alert">
-                          ${this._removeError.message}${
-                            this._multilingualEnabled
-                              ? html`
-                                  <a
-                                    class="underline underline-offset-2"
-                                    href=${`${this.#prefixFor(tag)}/archive`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >${this.labels.viewPosts}</a
-                                  >
-                                `
-                              : nothing
-                          }
-                        </p>
-                      `
-                    : nothing
-                }
+                ${this._removeError?.tag === tag
+                  ? html`
+                      <p class="pb-1 text-sm text-destructive" role="alert">
+                        ${this._removeError.message}${this._multilingualEnabled
+                          ? html`
+                              <a
+                                class="underline underline-offset-2"
+                                href=${`${this.#prefixFor(tag)}/archive`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                >${this.labels.viewPosts}</a
+                              >
+                            `
+                          : nothing}
+                      </p>
+                    `
+                  : nothing}
               </li>
             `;
           })}
@@ -972,30 +955,28 @@ export class JantSettingsLanguage extends LitElement {
         <section class="flex flex-col gap-4">
           <h2 class="text-lg font-medium">${this.labels.siteSection}</h2>
 
-          ${
-            this._multilingualEnabled
-              ? this.#renderLanguagesList()
-              : html`
-                  <div class="field">
-                    <span id="language-primary-label" class="label"
-                      >${this.labels.contentLanguage}</span
-                    >
-                    ${this.#renderLanguagePicker({
-                      labelId: "language-primary-label",
-                      current: this._contentLanguage,
-                      exclude: [],
-                      triggerLabel: this.#displayName(this._contentLanguage),
-                      triggerClass: LOCALE_PICKER_TRIGGER_CLASS,
-                      onSelect: (tag) => void this.#selectPrimary(tag),
-                    })}
-                    <p class="text-sm text-muted-foreground mt-1">
-                      ${this.labels.contentLanguageHelp}${
-                        this._savingSite ? ` ${this.labels.saving}` : ""
-                      }
-                    </p>
-                  </div>
-                `
-          }
+          ${this._multilingualEnabled
+            ? this.#renderLanguagesList()
+            : html`
+                <div class="field">
+                  <span id="language-primary-label" class="label"
+                    >${this.labels.contentLanguage}</span
+                  >
+                  ${this.#renderLanguagePicker({
+                    labelId: "language-primary-label",
+                    current: this._contentLanguage,
+                    exclude: [],
+                    triggerLabel: this.#displayName(this._contentLanguage),
+                    triggerClass: LOCALE_PICKER_TRIGGER_CLASS,
+                    onSelect: (tag) => void this.#selectPrimary(tag),
+                  })}
+                  <p class="text-sm text-muted-foreground mt-1">
+                    ${this.labels.contentLanguageHelp}${this._savingSite
+                      ? ` ${this.labels.saving}`
+                      : ""}
+                  </p>
+                </div>
+              `}
         </section>
 
         <section class="flex flex-col gap-3 border-t pt-8">
@@ -1014,30 +995,28 @@ export class JantSettingsLanguage extends LitElement {
             — ${this.labels.multilingualDocsHelp}
           </p>
           <div class="flex items-center gap-3">
-            ${
-              this._multilingualEnabled
-                ? html`
-                    <span class="badge-secondary">${this.labels.statusOn}</span>
-                    <button
-                      type="button"
-                      class="btn-link h-auto p-0 text-sm text-muted-foreground"
-                      data-multilingual-off
-                      @click=${() => void this.#turnOffMultilingual()}
-                    >
-                      ${this.labels.disableConfirm}
-                    </button>
-                  `
-                : html`
-                    <button
-                      type="button"
-                      class="btn-sm-outline"
-                      data-multilingual-setup
-                      @click=${() => this.#openEnableDialog()}
-                    >
-                      ${this.labels.turnOn}
-                    </button>
-                  `
-            }
+            ${this._multilingualEnabled
+              ? html`
+                  <span class="badge-secondary">${this.labels.statusOn}</span>
+                  <button
+                    type="button"
+                    class="btn-link h-auto p-0 text-sm text-muted-foreground"
+                    data-multilingual-off
+                    @click=${() => void this.#turnOffMultilingual()}
+                  >
+                    ${this.labels.disableConfirm}
+                  </button>
+                `
+              : html`
+                  <button
+                    type="button"
+                    class="btn-sm-outline"
+                    data-multilingual-setup
+                    @click=${() => this.#openEnableDialog()}
+                  >
+                    ${this.labels.turnOn}
+                  </button>
+                `}
           </div>
         </section>
 
@@ -1063,11 +1042,9 @@ export class JantSettingsLanguage extends LitElement {
                     value=${tag}
                     ?selected=${this._dashboardLanguage === tag}
                   >
-                    ${
-                      tag === ""
-                        ? this.labels.followContent
-                        : this.#displayName(tag)
-                    }
+                    ${tag === ""
+                      ? this.labels.followContent
+                      : this.#displayName(tag)}
                   </option>
                 `,
               )}

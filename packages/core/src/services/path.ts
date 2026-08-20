@@ -19,7 +19,12 @@ import { normalizePath } from "../lib/url.js";
 import type { PathKind, PathRecord, Status } from "../types.js";
 
 export interface ResolvedPath extends PathRecord {
-  targetType: "post" | "collection" | "redirect" | "archive";
+  targetType:
+    | "post"
+    | "collection"
+    | "smart_collection"
+    | "redirect"
+    | "archive";
 }
 
 export interface CreatePathInput {
@@ -27,6 +32,7 @@ export interface CreatePathInput {
   kind: PathKind;
   postId?: string | null;
   collectionId?: string | null;
+  smartCollectionId?: string | null;
   redirectToPath?: string | null;
   redirectType?: 301 | 302 | null;
   archiveQuery?: string | null;
@@ -53,14 +59,28 @@ export interface PathService {
   isPathAvailable(path: string, excludeId?: string): Promise<boolean>;
   getPostSlug(postId: string): Promise<string | null>;
   getCollectionSlug(collectionId: string): Promise<string | null>;
+  getSmartCollectionSlug(smartCollectionId: string): Promise<string | null>;
   getPostSlugMap(postIds: string[]): Promise<Map<string, string>>;
   getCollectionSlugMap(collectionIds: string[]): Promise<Map<string, string>>;
+  getSmartCollectionSlugMap(
+    smartCollectionIds: string[],
+  ): Promise<Map<string, string>>;
   create(input: CreatePathInput): Promise<PathRecord>;
   createPostSlug(postId: string, slug: string): Promise<PathRecord>;
   updatePostSlug(postId: string, slug: string): Promise<void>;
   createCollectionSlug(collectionId: string, slug: string): Promise<PathRecord>;
   updateCollectionSlug(collectionId: string, slug: string): Promise<void>;
+  createSmartCollectionSlug(
+    smartCollectionId: string,
+    slug: string,
+  ): Promise<PathRecord>;
+  updateSmartCollectionSlug(
+    smartCollectionId: string,
+    slug: string,
+  ): Promise<void>;
   deleteByPostId(postId: string): Promise<void>;
+  /** Release every path a smart collection holds, slug and aliases alike. */
+  deleteBySmartCollectionId(smartCollectionId: string): Promise<void>;
   getPostAliases(postIds: string[]): Promise<Map<string, string[]>>;
   listNavigableItems(): Promise<NavigableItem[]>;
   /**
@@ -113,6 +133,7 @@ export function createPathService(
       kind: row.kind as PathKind,
       postId: row.postId,
       collectionId: row.collectionId,
+      smartCollectionId: row.smartCollectionId,
       redirectToPath: row.redirectToPath,
       redirectType: row.redirectType as 301 | 302 | null,
       archiveQuery: row.archiveQuery,
@@ -139,6 +160,7 @@ export function createPathService(
           kind: input.kind,
           postId: input.postId ?? null,
           collectionId: input.collectionId ?? null,
+          smartCollectionId: input.smartCollectionId ?? null,
           redirectToPath: input.redirectToPath
             ? normalizeStoredPath(input.redirectToPath)
             : null,
@@ -186,7 +208,9 @@ export function createPathService(
             ? "redirect"
             : record.postId
               ? "post"
-              : "collection";
+              : record.smartCollectionId
+                ? "smart_collection"
+                : "collection";
 
       return { ...record, targetType };
     },
@@ -256,6 +280,21 @@ export function createPathService(
       return result[0] ? fromCollectionPath(result[0].path) : null;
     },
 
+    async getSmartCollectionSlug(smartCollectionId) {
+      const result = await db
+        .select({ path: pathRegistry.path })
+        .from(pathRegistry)
+        .where(
+          and(
+            eq(pathRegistry.siteId, siteId),
+            eq(pathRegistry.smartCollectionId, smartCollectionId),
+            eq(pathRegistry.kind, "slug"),
+          ),
+        )
+        .limit(1);
+      return result[0] ? fromCollectionPath(result[0].path) : null;
+    },
+
     async getPostSlugMap(postIds) {
       if (postIds.length === 0) return new Map<string, string>();
 
@@ -306,6 +345,35 @@ export function createPathService(
         for (const row of rows) {
           if (row.collectionId) {
             result.set(row.collectionId, fromCollectionPath(row.path));
+          }
+        }
+        return result;
+      });
+    },
+
+    async getSmartCollectionSlugMap(smartCollectionIds) {
+      if (smartCollectionIds.length === 0) return new Map<string, string>();
+
+      return batchQuery(smartCollectionIds, async (chunk) => {
+        const result = new Map<string, string>();
+        const rows = await db
+          .select({
+            smartCollectionId: pathRegistry.smartCollectionId,
+            path: pathRegistry.path,
+          })
+          .from(pathRegistry)
+          .where(
+            and(
+              eq(pathRegistry.siteId, siteId),
+              inArray(pathRegistry.smartCollectionId, chunk),
+              eq(pathRegistry.kind, "slug"),
+              isNotNull(pathRegistry.smartCollectionId),
+            ),
+          );
+
+        for (const row of rows) {
+          if (row.smartCollectionId) {
+            result.set(row.smartCollectionId, fromCollectionPath(row.path));
           }
         }
         return result;
@@ -378,6 +446,51 @@ export function createPathService(
         }
         throw err;
       }
+    },
+
+    async createSmartCollectionSlug(smartCollectionId, slug) {
+      return insertPath({
+        path: toCollectionPath(slug),
+        kind: "slug",
+        smartCollectionId,
+      });
+    },
+
+    async updateSmartCollectionSlug(smartCollectionId, slug) {
+      const timestamp = now();
+      const normalized = toCollectionPath(slug);
+
+      try {
+        await db
+          .update(pathRegistry)
+          .set({
+            path: normalized,
+            updatedAt: timestamp,
+          })
+          .where(
+            and(
+              eq(pathRegistry.siteId, siteId),
+              eq(pathRegistry.smartCollectionId, smartCollectionId),
+              eq(pathRegistry.kind, "slug"),
+            ),
+          );
+      } catch (err) {
+        if (isUniqueConstraintError(err)) {
+          throw new ConflictError(`Path "${normalized}" is already in use`);
+        }
+        throw err;
+      }
+    },
+
+    async deleteBySmartCollectionId(smartCollectionId) {
+      await db
+        .delete(pathRegistry)
+        .where(
+          and(
+            eq(pathRegistry.siteId, siteId),
+            eq(pathRegistry.smartCollectionId, smartCollectionId),
+          ),
+        );
     },
 
     async deleteByPostId(postId) {

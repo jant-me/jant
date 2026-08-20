@@ -319,14 +319,30 @@ export function createExportService(
         allPosts,
         collectionsByRoot,
       );
-      const exportedCollectionDirectoryItems =
-        buildExportedCollectionDirectoryItems(
-          collectionDirectoryData?.items ??
-            allCollections.map((collection) => ({
-              id: collection.id,
+      // Smart collections are left out of a static export. Their membership is
+      // a query, and the exported site has no database to run it against, so
+      // the honest options are "omit" or "freeze today's matches under a name
+      // that promises to keep updating". Round-tripping them is out of scope
+      // (see the smart collections design notes); omitting is what that
+      // decision means here.
+      const exportableDirectoryItems: ExportCollectionDirectorySourceItem[] =
+        collectionDirectoryData?.items
+          ? collectionDirectoryData.items
+              .filter((item) => item.type !== "smart_collection")
+              .map((item) => ({
+                type: item.type as "collection" | "divider" | "link",
+                label: item.label,
+                url: item.url,
+                description: item.description,
+                collection: item.collection,
+              }))
+          : allCollections.map((collection) => ({
               type: "collection" as const,
               collection,
-            })),
+            }));
+      const exportedCollectionDirectoryItems =
+        buildExportedCollectionDirectoryItems(
+          exportableDirectoryItems,
           collectionSlugMap,
           collectionMetrics,
         );

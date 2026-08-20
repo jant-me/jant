@@ -9,6 +9,7 @@
 import { ValidationError } from "../lib/errors.js";
 import type { Visibility } from "../types.js";
 import type { CollectionService } from "./collection.js";
+import type { SmartCollectionService } from "./smart-collection.js";
 import type { PathService } from "./path.js";
 import type { PostService } from "./post.js";
 
@@ -34,7 +35,12 @@ export type AboutPageStatus =
       state: "conflict";
       path: typeof ABOUT_PAGE_PATH;
       conflict: {
-        targetType: "collection" | "redirect" | "archive" | "post";
+        targetType:
+          | "collection"
+          | "smart_collection"
+          | "redirect"
+          | "archive"
+          | "post";
         id: string | null;
         title: string | null;
       };
@@ -49,6 +55,7 @@ export function createAboutPageService(deps: {
   paths: PathService;
   posts: PostService;
   collections: CollectionService;
+  smartCollections: SmartCollectionService;
 }): AboutPageService {
   async function readStatus(): Promise<AboutPageStatus> {
     const resolved = await deps.paths.resolve(ABOUT_PAGE_SLUG);
@@ -95,6 +102,24 @@ export function createAboutPageService(deps: {
           targetType: "collection",
           id: resolved.collectionId,
           title: collection?.title ?? null,
+        },
+      };
+    }
+
+    if (
+      resolved.targetType === "smart_collection" &&
+      resolved.smartCollectionId
+    ) {
+      const smartCollection = await deps.smartCollections.getById(
+        resolved.smartCollectionId,
+      );
+      return {
+        ...base,
+        state: "conflict",
+        conflict: {
+          targetType: "smart_collection",
+          id: resolved.smartCollectionId,
+          title: smartCollection?.title ?? null,
         },
       };
     }
