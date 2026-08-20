@@ -19,62 +19,76 @@ import { publicPath } from "./runtime-paths.js";
 
 const LABELS_ATTRIBUTE = "data-smart-collection-dialog-labels";
 
+let labels: SmartCollectionDialogLabels | null = null;
+let element: JantSmartCollectionDialog | null = null;
+let collections: Promise<SiteCollection[]> | null = null;
+
+interface SiteCollection {
+  id: string;
+  slug: string;
+  title: string;
+}
+
 /**
  * The dialog's strings, rendered into the page by whichever surface can open
- * it. Read once and cached: they are the same on every surface of a page.
+ * it. Read once and cached: they are the same on every surface of a page, and
+ * the collection vocabulary is written into this object once it loads.
  */
 function readLabels(): SmartCollectionDialogLabels | null {
+  if (labels) return labels;
   const holder = document.querySelector<HTMLElement>(`[${LABELS_ATTRIBUTE}]`);
   const raw = holder?.getAttribute(LABELS_ATTRIBUTE);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as SmartCollectionDialogLabels;
+    labels = JSON.parse(raw) as SmartCollectionDialogLabels;
+    return labels;
   } catch {
     return null;
   }
 }
 
-let element: JantSmartCollectionDialog | null = null;
-let vocabularyLoaded = false;
-
 /**
  * Load the site's collections so the collection condition can offer them.
  *
- * Done once per page and only when the dialog is actually opened — most page
- * loads never open it.
+ * Fetched at most once per page, and only when the dialog is actually opened —
+ * most page loads never open it. The names are written into the labels on every
+ * open rather than only on the first: an opened-once flag would leave the
+ * second open with a collection menu that lists nothing.
  */
 async function ensureCollectionVocabulary(
-  labels: SmartCollectionDialogLabels,
+  target: SmartCollectionDialogLabels,
 ): Promise<void> {
-  if (vocabularyLoaded) return;
-  vocabularyLoaded = true;
+  collections ??= fetchCollections();
+  const loaded = await collections;
+  setCollectionVocabulary(loaded);
+  for (const collection of loaded) {
+    target.values[`collection.${collection.slug}`] = collection.title;
+  }
+}
+
+async function fetchCollections(): Promise<SiteCollection[]> {
   try {
     const res = await fetch(publicPath("/api/collections"));
-    if (!res.ok) return;
-    const json = (await res.json()) as {
-      collections?: Array<{ id: string; slug: string; title: string }>;
-    };
-    const collections = json.collections ?? [];
-    setCollectionVocabulary(collections);
-    for (const collection of collections) {
-      labels.values[`collection.${collection.slug}`] = collection.title;
-    }
+    if (!res.ok) return [];
+    const json = (await res.json()) as { collections?: SiteCollection[] };
+    return json.collections ?? [];
   } catch {
     // The condition is still offered; it simply lists nothing to choose.
+    return [];
   }
 }
 
 function ensureElement(
-  labels: SmartCollectionDialogLabels,
+  dialogLabels: SmartCollectionDialogLabels,
 ): JantSmartCollectionDialog {
   if (element?.isConnected) {
-    element.labels = labels;
+    element.labels = dialogLabels;
     return element;
   }
   element = document.createElement(
     "jant-smart-collection-dialog",
   ) as JantSmartCollectionDialog;
-  element.labels = labels;
+  element.labels = dialogLabels;
   document.body.appendChild(element);
   return element;
 }
@@ -93,10 +107,10 @@ export async function openSmartCollectionDialog(options: {
   smartCollectionId?: string;
   prefill?: SmartCollectionDialogState;
 }): Promise<boolean> {
-  const labels = readLabels();
-  if (!labels) return false;
+  const dialogLabels = readLabels();
+  if (!dialogLabels) return false;
 
-  await ensureCollectionVocabulary(labels);
-  const dialog = ensureElement(labels);
+  await ensureCollectionVocabulary(dialogLabels);
+  const dialog = ensureElement(dialogLabels);
   return dialog.open(options);
 }

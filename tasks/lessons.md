@@ -817,3 +817,37 @@ the service, so no future caller can reach past the schema.
 When a capability is withdrawn, the boundary that validates it has to withdraw it
 too. Keep the _read_ path untouched and say so out loud — what is being retired
 is the ability to make new ones, never the ability to serve the ones that exist.
+
+## Adding a value to a shared enum is not adding it to the boundary
+
+`NAV_ITEM_TYPES` grew a `smart_collection` value, the DB CHECK constraints took
+it, the service grew a branch for it, and the picker sent it — but
+`CreateNavItemSchema` is a hand-written discriminated union with one `z.object`
+per type, and it never got a fifth member. Every layer was ready except the
+door, so the only error the author saw was a save that failed, with `type:
+["Invalid input"]` in a response nobody reads.
+
+A discriminated union written by hand off a shared enum is a second copy of that
+enum, and the compiler cannot see the gap: the route's `else` branch absorbed
+the missing case as `link`. When a shared vocabulary constant grows a value,
+grep the value — not the constant — across schemas, route branches, and client
+types, and add an end-to-end test through the HTTP boundary. A service-level
+test would have passed the whole time.
+
+## A class that reads like a modifier can be a whole variant
+
+The "Add condition" button was `class="btn-outline btn-sm"`, and its label was
+invisible. `btn-sm` is not a size modifier on top of `btn-outline` — it is the
+small _primary_ variant, which paints `text-primary-foreground`. `btn-outline`
+paints a light background and never resets the colour, so the label was white on
+white. BaseCoat spells the intended button `btn-sm-outline`, one class.
+
+The same shape bit the controls beside it: `class="input"` on a `<select>` and a
+`<textarea>` does nothing at all, because BaseCoat only ever writes
+`.input[type="…"]` — a `<select>` has no `type`. They were unstyled native
+controls, which is what "the rows don't line up" turned out to mean.
+
+Read the vendor's stylesheet for the exact selector before composing its classes.
+If a class name looks like it modifies another, check whether the library instead
+enumerates every combination — and grep for the same stacking elsewhere, because
+one such mistake is never alone.

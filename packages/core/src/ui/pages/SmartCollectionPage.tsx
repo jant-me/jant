@@ -30,8 +30,12 @@ const escapeJson = (data: unknown) =>
   JSON.stringify(data).replace(/</g, "\\u003c");
 
 /** Inline SVG by lucide name, matching the collection page's icon treatment. */
-const Icon: FC<{ name: string; size?: number }> = ({ name, size = 16 }) => {
-  const svg = getIconSvg(name);
+const Icon: FC<{ name: string; size?: number; class?: string }> = ({
+  name,
+  size = 16,
+  class: cls,
+}) => {
+  const svg = getIconSvg(name, cls);
   if (!svg) return null;
   return (
     <span
@@ -426,7 +430,7 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
             can only be made of public information. */}
         <p class="smart-collection-conditions">
           <span class="smart-collection-conditions-icon" aria-hidden="true">
-            <Icon name="list-filter" size={14} />
+            <Icon name="funnel" size={14} class="icon-fine" />
           </span>
           <a href={toPublicPath(conditionHref, basePath)}>{conditionSummary}</a>
         </p>

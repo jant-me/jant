@@ -29,10 +29,19 @@ export interface SmartCollectionDialogState {
 export interface SmartCollectionDialogLabels {
   createHeading: string;
   editHeading: string;
+  /** What a smart collection is, shown once, when creating one. */
+  whatItIs: string;
   title: string;
-  address: string;
-  addressTaken: string;
-  addressMovesWarning: string;
+  /** The collection link, in the collection form's own words. */
+  link: string;
+  linkHelp: string;
+  editLink: string;
+  resetLink: string;
+  linkTaken: string;
+  linkInvalid: string;
+  linkReserved: string;
+  linkTooLong: string;
+  linkMovesWarning: string;
   description: string;
   conditionsHeading: string;
   matchAllHint: string;
@@ -44,15 +53,12 @@ export interface SmartCollectionDialogLabels {
   displayHeading: string;
   orderBy: string;
   layout: string;
-  deleteSmartCollection: string;
-  confirmDelete: string;
   cancel: string;
   save: string;
   saved: string;
-  deleted: string;
   saveFailed: string;
   loadFailed: string;
-  titleAndAddressRequired: string;
+  titleAndLinkRequired: string;
   /** Dimension names, keyed by dimension key. */
   dimensions: Record<string, string>;
   /** Value labels, keyed by `<dimension>.<value>`. */

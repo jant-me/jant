@@ -102,6 +102,16 @@ navItemsApiRoutes.get("/resolve", requireAuthApi(), async (c) => {
     });
   }
 
+  if (resolution.status === "smart_collection") {
+    return c.json({
+      resolution: {
+        kind: "smart_collection",
+        address,
+        smartCollection: resolution.smartCollection,
+      },
+    });
+  }
+
   return c.json({ resolution: { kind: resolution.status, address } });
 });
 
@@ -137,6 +147,13 @@ navItemsApiRoutes.post("/", requireAuthApi(), async (c) => {
     item = await c.var.services.navItems.create({
       type: "collection",
       collectionId: body.collectionId,
+      label: body.label,
+      placement: body.placement,
+    });
+  } else if (body.type === "smart_collection") {
+    item = await c.var.services.navItems.create({
+      type: "smart_collection",
+      smartCollectionId: body.smartCollectionId,
       label: body.label,
       placement: body.placement,
     });

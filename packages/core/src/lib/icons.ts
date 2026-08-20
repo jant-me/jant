@@ -24,17 +24,24 @@ function toPascalCase(name: string): string {
  * Get SVG markup for a Lucide icon by kebab-case name.
  *
  * @param name - Kebab-case icon name
+ * @param className - Extra classes for the `<svg>`, appended to Lucide's own.
+ *   `icon-fine` is the project's lighter stroke.
  * @returns SVG string or null when the icon is unknown
  *
  * @example
  * ```ts
  * getIconSvg("book-open");
+ * getIconSvg("funnel", "icon-fine");
  * ```
  */
-export function getIconSvg(name: string): string | null {
+export function getIconSvg(name: string, className?: string): string | null {
   const pascalName = toPascalCase(name);
   const svg = (lucideIcons as Record<string, string>)[pascalName];
-  return typeof svg === "string" ? svg : null;
+  if (typeof svg !== "string") return null;
+  if (!className) return svg;
+  // Lucide always ships a `class="lucide lucide-…"`, so extend it rather than
+  // adding a second class attribute the parser would drop.
+  return svg.replace(/class="([^"]*)"/, `class="$1 ${className}"`);
 }
 
 /**

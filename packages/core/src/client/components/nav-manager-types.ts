@@ -44,6 +44,11 @@ export type NavAddressResolution =
       collection: { id: string; title: string; slug: string };
     }
   | {
+      kind: "smart_collection";
+      address: string;
+      smartCollection: { id: string; title: string; slug: string };
+    }
+  | {
       kind:
         | "external"
         | "link_only"

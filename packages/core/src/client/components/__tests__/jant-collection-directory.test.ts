@@ -20,6 +20,11 @@ vi.mock("../../toast.js", () => ({
   showToastWithAction: vi.fn(),
 }));
 
+const { confirmMock } = vi.hoisted(() => ({ confirmMock: vi.fn() }));
+vi.mock("../../confirm.js", () => ({
+  showConfirmDialog: confirmMock,
+}));
+
 import type {
   CollectionManagerItem,
   CollectionManagerLabels,
@@ -30,9 +35,10 @@ import type { JantCollectionsManager } from "../jant-collection-directory.js";
 
 const labels: CollectionManagerLabels = {
   collectionsTitle: "Collections",
+  smartCollectionNoun: "Smart Collection",
   newSmartCollection: "New Smart Collection",
   editSmartCollection: "Edit Smart Collection",
-  deleteSmartCollection: "Delete Smart Collection",
+  deleteSmartCollection: "Delete",
   confirmDeleteSmartCollection: "Delete this smart collection?",
   turnIntoSmartCollection: "Turn into a smart collection",
   smartCollectionDeleted: "Smart collection deleted.",
@@ -164,6 +170,25 @@ const groupedItems: CollectionManagerItem[] = [
   },
 ];
 
+const itemsWithSmartCollection: CollectionManagerItem[] = [
+  {
+    id: "directory-smart",
+    type: "smart_collection",
+    smartCollectionId: "smc_1",
+    position: "a0",
+    smartCollection: {
+      id: "smc_1",
+      slug: "quotes",
+      title: "Quotes",
+      description: null,
+      selection: { format: "quote" },
+      sort: "newest",
+      layout: null,
+      threadCount: 4,
+    },
+  },
+];
+
 const itemsWithLink: CollectionManagerItem[] = [
   {
     id: "link-1",
@@ -239,6 +264,60 @@ describe("JantCollectionsManager", () => {
     vi.clearAllMocks();
     sortableCreateMock.mockClear();
     sortableDestroyMock.mockClear();
+    confirmMock.mockReset().mockResolvedValue(true);
+  });
+
+  // The edit dialog deliberately has no delete of its own — this menu is where
+  // a smart collection is destroyed, so this is where it has to be covered.
+  it("deletes a smart collection from its item menu, after confirming", async () => {
+    const el = await createElementWithItems(itemsWithSmartCollection);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const { showToast } = await import("../../toast.js");
+
+    el._showItemMenuId = "directory-smart";
+    await el.updateComplete;
+
+    const remove = Array.from(
+      el.querySelectorAll<HTMLButtonElement>(".collections-page-menu-item"),
+    ).find((button) => button.textContent?.trim() === "Delete");
+    expect(remove).toBeDefined();
+
+    remove?.click();
+    await flushAsyncWork();
+    await el.updateComplete;
+
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Delete this smart collection?",
+        tone: "danger",
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith("/api/smart-collections/smc_1", {
+      method: "DELETE",
+    });
+    expect(showToast).toHaveBeenCalledWith("Smart collection deleted.");
+  });
+
+  it("leaves a smart collection alone when the confirmation is declined", async () => {
+    confirmMock.mockResolvedValue(false);
+    const el = await createElementWithItems(itemsWithSmartCollection);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+
+    el._showItemMenuId = "directory-smart";
+    await el.updateComplete;
+
+    Array.from(
+      el.querySelectorAll<HTMLButtonElement>(".collections-page-menu-item"),
+    )
+      .find((button) => button.textContent?.trim() === "Delete")
+      ?.click();
+    await flushAsyncWork();
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("uses responsive sortable settings in reorder mode", async () => {

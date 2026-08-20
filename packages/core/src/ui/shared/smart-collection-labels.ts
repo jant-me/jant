@@ -12,6 +12,7 @@ import {
   serializePostFilterSelection,
 } from "../../lib/filter-dimensions.js";
 import { MEDIA_KINDS } from "../../types/constants.js";
+import { getCollectionFormLabels } from "./collection-management-labels.js";
 
 type Translator = Pick<I18n, "_">;
 
@@ -105,11 +106,12 @@ const smartCollectionMessages = {
     comment: "@context: Dialog title when editing an existing smart collection",
   }),
   deleteSmartCollection: msg({
-    message: "Delete Smart Collection",
-    comment: "@context: Destructive action in the smart collection dialog",
+    message: "Delete",
+    comment:
+      "@context: Destructive menu item on a smart collection's row and page. The row says which one; the confirmation names what is lost.",
   }),
   confirmDelete: msg({
-    message: "Delete this smart collection? Its address stops working.",
+    message: "Delete this smart collection? Its link stops working.",
     comment:
       "@context: Confirmation before deleting a smart collection, naming what is lost",
   }),
@@ -121,6 +123,12 @@ const smartCollectionMessages = {
     message: "Turn into a smart collection",
     comment:
       "@context: Menu item that opens the smart collection dialog prefilled from an archive URL",
+  }),
+  whatItIs: msg({
+    message:
+      "Conditions choose what belongs here, not you. Posts you write later join on their own.",
+    comment:
+      "@context: One line under the New Smart Collection heading, saying how it differs from an ordinary collection",
   }),
 } as const;
 
@@ -148,6 +156,7 @@ export type SmartCollectionLabels = ReturnType<typeof getSmartCollectionLabels>;
  * the condition line are the same words.
  */
 export function getSmartCollectionDialogLabels(i18n: Translator) {
+  const form = getCollectionFormLabels(i18n);
   const dimensions: Record<string, string> = {};
   const values: Record<string, string> = {};
 
@@ -195,30 +204,32 @@ export function getSmartCollectionDialogLabels(i18n: Translator) {
   return {
     createHeading: i18n._(smartCollectionMessages.newSmartCollection),
     editHeading: i18n._(smartCollectionMessages.editSmartCollection),
+    whatItIs: i18n._(smartCollectionMessages.whatItIs),
     title: i18n._(
       msg({
         message: "Title",
         comment: "@context: Smart collection dialog field",
       }),
     ),
-    address: i18n._(
+    link: form.slugLabel,
+    linkHelp: form.slugHelp,
+    editLink: form.editSlugLabel,
+    resetLink: form.resetSlugLabel,
+    linkInvalid: form.slugInvalidHelp,
+    linkReserved: form.slugReservedHelp,
+    linkTooLong: form.slugTooLongHelp,
+    linkTaken: i18n._(
       msg({
-        message: "Address",
-        comment: "@context: Smart collection dialog field — the page's URL",
+        message: "This link is taken. Choose another.",
+        comment:
+          "@context: Smart collection dialog — the typed collection link is already in use",
       }),
     ),
-    addressTaken: i18n._(
+    linkMovesWarning: i18n._(
       msg({
-        message: "This address is taken. Choose another.",
+        message: "Changing the link breaks the old one immediately.",
         comment:
-          "@context: Smart collection dialog — the typed address is already in use",
-      }),
-    ),
-    addressMovesWarning: i18n._(
-      msg({
-        message: "Changing the address breaks the old one immediately.",
-        comment:
-          "@context: Smart collection dialog warning shown when editing moves an existing address",
+          "@context: Smart collection dialog warning shown when editing moves an existing collection link",
       }),
     ),
     description: i18n._(
@@ -292,10 +303,6 @@ export function getSmartCollectionDialogLabels(i18n: Translator) {
         comment: "@context: Smart collection dialog field",
       }),
     ),
-    deleteSmartCollection: i18n._(
-      smartCollectionMessages.deleteSmartCollection,
-    ),
-    confirmDelete: i18n._(smartCollectionMessages.confirmDelete),
     cancel: i18n._(
       msg({ message: "Cancel", comment: "@context: Dialog cancel button" }),
     ),
@@ -311,12 +318,6 @@ export function getSmartCollectionDialogLabels(i18n: Translator) {
         comment: "@context: Confirmation after saving a smart collection",
       }),
     ),
-    deleted: i18n._(
-      msg({
-        message: "Smart collection deleted.",
-        comment: "@context: Confirmation after deleting a smart collection",
-      }),
-    ),
     saveFailed: i18n._(
       msg({
         message: "Could not save. Try again.",
@@ -329,9 +330,9 @@ export function getSmartCollectionDialogLabels(i18n: Translator) {
         comment: "@context: Smart collection dialog load failure",
       }),
     ),
-    titleAndAddressRequired: i18n._(
+    titleAndLinkRequired: i18n._(
       msg({
-        message: "A smart collection needs a title and an address.",
+        message: "A smart collection needs a title and a link.",
         comment: "@context: Smart collection dialog validation message",
       }),
     ),

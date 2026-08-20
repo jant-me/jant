@@ -491,8 +491,8 @@ export class JantRepoPicker extends LitElement {
         ${this.#renderOwner()} ${this.#renderRepo()}
         ${this.#renderClassification()} ${this.#renderActions()}
         ${this._error
-          ? html`<div class="alert alert-destructive text-sm">
-              ${this._error}
+          ? html`<div class="alert-destructive text-sm" role="alert">
+              <section><p>${this._error}</p></section>
             </div>`
           : nothing}
       </div>
@@ -638,7 +638,7 @@ export class JantRepoPicker extends LitElement {
           />
           <button
             type="button"
-            class="btn-ghost btn-icon"
+            class="btn-icon-ghost"
             title=${this.labels.refreshRepos}
             aria-label=${this.labels.refreshRepos}
             @click=${() => this.#refreshRepos()}
@@ -730,17 +730,21 @@ export class JantRepoPicker extends LitElement {
       </p>`;
     }
     if (c.kind === "owned-by-other-site") {
-      return html`<div class="alert alert-destructive text-sm">
-        ${this.labels.classificationOwnedByOther.replace(
-          "{host}",
-          c.marker.site_host,
-        )}
+      return html`<div class="alert-destructive text-sm" role="alert">
+        <section>
+          <p>
+            ${this.labels.classificationOwnedByOther.replace(
+              "{host}",
+              c.marker.site_host,
+            )}
+          </p>
+        </section>
       </div>`;
     }
     // foreign — show confirm input
     const full = this._selectedRepo.fullName;
     return html`
-      <div class="alert alert-warning flex flex-col gap-3 text-sm">
+      <div class="alert flex flex-col gap-3 text-sm">
         <div>
           <strong class="block mb-1">${this.labels.confirmHeading}</strong>
           <span>${this.labels.confirmBody.replace("{repo}", full)}</span>

@@ -33,11 +33,7 @@ export function CodeInjectionContent({
       data-indicator="_codeLoading"
       class="max-w-form"
     >
-      <div
-        role="note"
-        class="alert alert-destructive mb-6"
-        style="display:flex;gap:.75rem;align-items:flex-start"
-      >
+      <div role="note" class="alert-destructive mb-6">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="20"
@@ -54,16 +50,16 @@ export function CodeInjectionContent({
           <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
           <path d="M12 17h.01" />
         </svg>
-        <div>
-          <p class="font-medium">
-            {i18n._(
-              msg({
-                message: "This code runs on every page of your site.",
-                comment: "@context: Code Injection security warning headline",
-              }),
-            )}
-          </p>
-          <p class="text-sm" style="margin-top:.25rem">
+        <strong>
+          {i18n._(
+            msg({
+              message: "This code runs on every page of your site.",
+              comment: "@context: Code Injection security warning headline",
+            }),
+          )}
+        </strong>
+        <section>
+          <p>
             {i18n._(
               msg({
                 message:
@@ -72,7 +68,7 @@ export function CodeInjectionContent({
               }),
             )}
           </p>
-        </div>
+        </section>
       </div>
 
       <fieldset class="mb-6">

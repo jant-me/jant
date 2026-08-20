@@ -1784,6 +1784,11 @@ export class JantNavManager extends LitElement {
         (item) => item.collectionId === resolution.collection.id,
       );
     }
+    if (resolution.kind === "smart_collection") {
+      return this._items.some(
+        (item) => item.smartCollectionId === resolution.smartCollection.id,
+      );
+    }
     return false;
   }
 
@@ -1854,6 +1859,20 @@ export class JantNavManager extends LitElement {
         this._addingCollectionId === collection.id,
         () => {
           void this.#handleAddCollection(collection.id).then(() => {
+            this.#closePageDialog();
+          });
+        },
+      );
+    }
+
+    if (resolution.kind === "smart_collection" && !alreadyAdded) {
+      const smartCollection = resolution.smartCollection;
+      return this.#renderPageAddressResult(
+        smartCollection.title,
+        publicPath(getCollectionPagePath(smartCollection.slug)),
+        this._addingCollectionId === smartCollection.id,
+        () => {
+          void this.#handleAddCollection(smartCollection.id, true).then(() => {
             this.#closePageDialog();
           });
         },
@@ -2588,7 +2607,7 @@ export class JantNavManager extends LitElement {
                                   title=${this.labels.smartCollectionLabel ??
                                   ""}
                                   >${unsafeHTML(
-                                    getIconSvg("list-filter") ?? "",
+                                    getIconSvg("funnel", "icon-fine") ?? "",
                                   )}</span
                                 >`
                               : nothing}

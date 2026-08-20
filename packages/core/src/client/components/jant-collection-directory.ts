@@ -1068,9 +1068,9 @@ export class JantCollectionsManager extends LitElement {
   /**
    * One smart collection row.
    *
-   * The same row shape as a collection, with the `list-filter` icon after the
-   * title and no "last activity" time — membership follows conditions, so there
-   * is no editorial act to date.
+   * The same row shape as a collection, with the `funnel` marker in the slot
+   * the link rows already use and no "last activity" time — membership follows
+   * conditions, so there is no editorial act to date.
    */
   #renderSmartCollectionItem(item: CollectionManagerItem, sequence: string) {
     const smartCollection = item.smartCollection;
@@ -1085,16 +1085,16 @@ export class JantCollectionsManager extends LitElement {
         <div class="collection-directory-title-row">
           <a href=${publicPath(href)} class="collection-directory-title-link">
             <span class="collection-directory-title"
-              >${smartCollection.title}</span
+              >${smartCollection.title}
+              <span
+                class="collection-directory-smart-icon"
+                role="img"
+                aria-label=${this.labels.smartCollectionNoun}
+                title=${this.labels.smartCollectionNoun}
+                >${unsafeHTML(getIconSvg("funnel", "icon-fine") ?? "")}</span
+              ></span
             >
           </a>
-          <span
-            class="collection-directory-smart-icon"
-            role="img"
-            aria-label=${this.labels.newSmartCollection}
-            title=${this.labels.newSmartCollection}
-            >${unsafeHTML(getIconSvg("list-filter") ?? "")}</span
-          >
         </div>
         ${smartCollection.description
           ? html`

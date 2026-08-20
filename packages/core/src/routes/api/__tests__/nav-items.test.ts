@@ -153,6 +153,26 @@ describe("Nav Items API Routes", () => {
       });
     });
 
+    it("resolves a smart collection address to a smart collection item", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/nav-items", navItemsApiRoutes);
+      const smartCollection = await services.smartCollections.create({
+        title: "Quotes",
+        slug: "quotes",
+        selection: { format: "quote" },
+      });
+
+      expect(await resolve(app, "/quotes")).toEqual({
+        kind: "smart_collection",
+        address: "/quotes",
+        smartCollection: {
+          id: smartCollection.id,
+          title: "Quotes",
+          slug: "quotes",
+        },
+      });
+    });
+
     it("says what is wrong rather than coming back empty", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/nav-items", navItemsApiRoutes);
@@ -591,6 +611,76 @@ describe("Nav Items API Routes", () => {
       });
 
       expect(res.status).toBe(400);
+    });
+  });
+
+  describe("POST /api/nav-items (smart collection)", () => {
+    it("creates a smart collection nav item with auto-resolved label and URL", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/nav-items", navItemsApiRoutes);
+
+      const smartCollection = await services.smartCollections.create({
+        title: "Quotes",
+        slug: "quotes",
+        selection: { format: "quote" },
+      });
+
+      const res = await app.request("/api/nav-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "smart_collection",
+          smartCollectionId: smartCollection.id,
+          placement: "header",
+        }),
+      });
+
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.type).toBe("smart_collection");
+      expect(body.smartCollectionId).toBe(smartCollection.id);
+      // No label of its own: the item follows the smart collection's title.
+      expect(body.label).toBe("");
+      expect(body.targetTitle).toBe("Quotes");
+      expect(body.url).toBe("/quotes");
+    });
+
+    it("returns 400 for duplicate smart collection nav items", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/nav-items", navItemsApiRoutes);
+
+      const smartCollection = await services.smartCollections.create({
+        title: "Quotes",
+        slug: "quotes",
+      });
+      const add = () =>
+        app.request("/api/nav-items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "smart_collection",
+            smartCollectionId: smartCollection.id,
+          }),
+        });
+
+      expect((await add()).status).toBe(201);
+      expect((await add()).status).toBe(400);
+    });
+
+    it("returns 404 for non-existent smart collection", async () => {
+      const { app } = createTestApp({ authenticated: true });
+      app.route("/api/nav-items", navItemsApiRoutes);
+
+      const res = await app.request("/api/nav-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "smart_collection",
+          smartCollectionId: createEntityId("smartCollection"),
+        }),
+      });
+
+      expect(res.status).toBe(404);
     });
   });
 

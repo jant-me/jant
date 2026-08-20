@@ -1530,7 +1530,9 @@
     right: 0;
     top: calc(100% + 0.45rem);
     z-index: 30;
+    width: max-content;
     min-width: 11rem;
+    max-width: min(20rem, calc(100vw - 2rem));
     padding: 0.28rem;
     border: 1px solid var(--border);
     border-radius: 14px;
@@ -1541,7 +1543,7 @@
   }
 
   .collections-page-menu-item {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 0.7rem;
     width: 100%;
@@ -2096,18 +2098,39 @@
   .collection-directory-smart-icon {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     color: var(--muted-foreground);
   }
 
+  /* Lucide draws at stroke-width 2 on a 24-unit grid, which at this size lays
+     down more ink than the text beside it — the glyph read heavier than the
+     words it annotates. The lighter stroke comes from `icon-fine` on the svg
+     itself, because the rule that sets stroke width is unlayered and nothing
+     in this file can outrank it. */
   .smart-collection-conditions-icon svg,
   .collection-directory-smart-icon svg {
-    width: 0.85rem;
-    height: 0.85rem;
+    width: 0.75rem;
+    height: 0.75rem;
   }
 
   .collection-directory-smart-icon {
-    margin-left: 0.4rem;
     flex: none;
+  }
+
+  /* Inside the title, in the slot the link rows put their marker in — the
+     title is an inline-flex row that already centres its children, so this
+     needs no line-box arithmetic. A marker, not a peer of the title: it sits
+     well below the words, and hover lifts it only to the meta colour rather
+     than all the way to the title's. Standing alone — the picker row, the
+     page's condition line — it keeps the meta colour, because there it is the
+     only thing carrying the meaning. */
+  .collection-directory-title .collection-directory-smart-icon {
+    color: color-mix(in srgb, var(--muted-foreground) 55%, transparent);
+    transition: color 0.15s ease;
+  }
+
+  .collection-directory-title-link:hover .collection-directory-smart-icon {
+    color: var(--muted-foreground);
   }
 
   .collection-page-owner-tools {
@@ -9904,77 +9927,140 @@
 
   /* --- Smart collection dialog ------------------------------------------- */
 
+  /* The panel is styled by `.dialog > *` alone. It used to also carry `.card`,
+     which pads its own header and footer — that is why the title sat indented
+     from every field under it. */
   .smart-collection-dialog {
     margin: 0;
   }
 
-  .smart-collection-dialog-panel {
+  .smart-collection-dialog > .smart-collection-dialog-panel {
     width: min(34rem, calc(100vw - 2rem));
     max-height: calc(100dvh - 4rem);
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.15rem;
     outline: none;
   }
 
-  .smart-collection-dialog-title {
+  .smart-collection-dialog-header .smart-collection-dialog-title {
+    margin: 0;
     font-family: var(--font-heading);
-    font-size: var(--type-content-body);
+    font-size: 1.15rem;
     font-weight: var(--type-heading-weight);
+    line-height: 1.3;
+    text-wrap: balance;
   }
 
   .smart-collection-dialog-body {
     display: flex;
     flex-direction: column;
-    gap: 0.9rem;
+    gap: 1.15rem;
     overflow-y: auto;
+    /* The focus ring on an edge control is drawn outside its box; without the
+       breathing room the scroll container clips it. */
+    margin-inline: -0.25rem;
+    padding-inline: 0.25rem;
   }
 
   .smart-collection-section {
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
-    padding-top: 0.9rem;
+    padding-top: 1.15rem;
     border-top: 1px solid var(--border);
+    /* One line height for the whole section: the label and the remove button
+       centre on the control's first line, so a control that stacks (media)
+       does not drag them down with it. */
+    --smart-condition-line: 2.25rem;
+  }
+
+  .smart-collection-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
   }
 
   .smart-collection-section-title {
+    margin: 0;
     font-family: var(--font-ui);
-    font-size: var(--type-ui-meta);
+    font-size: var(--type-ui-hint);
+    font-weight: var(--fw-semibold);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--site-text-secondary);
   }
 
   .smart-collection-section-hint,
-  .smart-collection-count {
+  .smart-collection-dialog-note,
+  .field > .smart-collection-link-help,
+  .field > .smart-collection-link-preview,
+  .field > .smart-collection-link-problem,
+  .collection-quick-link-box > .smart-collection-link-problem {
     margin: 0;
     font-family: var(--font-ui);
-    font-size: var(--type-ui-meta);
+    font-size: var(--type-ui-hint);
+    line-height: 1.45;
+    text-wrap: pretty;
     color: var(--site-text-secondary);
   }
 
-  .smart-collection-warning {
+  .field > .smart-collection-link-preview {
+    overflow-wrap: anywhere;
+  }
+
+  /* Scoped past `.field > p`, which is muted: a refusal has to read as one. */
+  .field > .smart-collection-link-problem,
+  .collection-quick-link-box > .smart-collection-link-problem {
     color: var(--destructive);
+  }
+
+  .collection-quick-link-box > .smart-collection-link-problem {
+    padding-top: 0.35rem;
+  }
+
+  /* The live count is the only thing in the dialog that answers "and what does
+     that gather" — it reads as a value, not as another hint. */
+  .smart-collection-count {
+    margin: 0;
+    flex: 0 0 auto;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: var(--muted);
+    font-family: var(--font-ui);
+    font-size: var(--type-ui-hint);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--muted-foreground);
   }
 
   .smart-condition-rows {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
   }
 
   .smart-condition-row {
     display: grid;
-    grid-template-columns: 6.5rem 1fr auto;
+    grid-template-columns: 6rem minmax(0, 1fr) auto;
     align-items: start;
-    gap: 0.6rem;
+    gap: 0.4rem 0.75rem;
+    padding: 0.4rem 0.4rem 0.4rem 0.7rem;
+  }
+
+  .smart-condition-row + .smart-condition-row {
+    border-top: 1px solid var(--border);
   }
 
   .smart-condition-label {
-    padding-top: 0.45rem;
+    display: flex;
+    align-items: center;
+    min-height: var(--smart-condition-line);
     font-family: var(--font-ui);
-    font-size: var(--type-ui-meta);
+    font-size: var(--type-ui-hint);
     color: var(--site-text-secondary);
   }
 
@@ -9982,45 +10068,93 @@
     min-width: 0;
   }
 
+  .smart-condition-select {
+    max-width: 100%;
+  }
+
+  /* Scoped past BaseCoat's `.input[type=number]`, which is full width. */
+  .smart-condition-control .smart-condition-year {
+    width: 7rem;
+  }
+
+  /* Taller than a `size-8` icon button so it centres on the control beside it. */
   .smart-condition-remove {
+    height: var(--smart-condition-line);
+    color: var(--site-text-secondary);
     cursor: pointer;
+  }
+
+  .smart-condition-remove:hover,
+  .smart-condition-remove:focus-visible {
+    color: var(--destructive);
   }
 
   .smart-condition-media {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    align-items: flex-start;
+    gap: 0.45rem;
   }
 
   .smart-condition-media-kinds {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 0.9rem;
+    gap: 0.35rem 0.9rem;
+    padding-bottom: 0.2rem;
   }
 
   .smart-condition-kind {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.4rem;
     font-family: var(--font-ui);
-    font-size: var(--type-ui-meta);
+    font-size: var(--type-ui-hint);
     cursor: pointer;
   }
 
-  .smart-condition-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+  .smart-condition-kind input {
+    cursor: pointer;
   }
 
-  .smart-collection-dialog-actions {
+  .smart-condition-add {
+    position: relative;
+  }
+
+  /* Full width, under the rows: it reads as the next row, which is what it is. */
+  .smart-condition-add-trigger {
+    width: 100%;
+  }
+
+  .smart-condition-add-trigger[disabled] {
+    cursor: not-allowed;
+  }
+
+  /* The shared menu, anchored to this trigger's left edge and capped so a long
+     list cannot outgrow the scrolling body it opens inside. */
+  .smart-condition-menu {
+    right: auto;
+    left: 0;
+    max-height: 15rem;
+    overflow-y: auto;
+  }
+
+  .smart-collection-display {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .smart-collection-display .field > select {
+    width: 100%;
+  }
+
+  .smart-collection-dialog-panel > .smart-collection-dialog-actions {
     display: flex;
+    flex-direction: row;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    padding-top: 0.9rem;
+    padding-top: 1.15rem;
     border-top: 1px solid var(--border);
   }
 
@@ -10031,18 +10165,18 @@
     margin-left: auto;
   }
 
-  .smart-collection-delete {
-    color: var(--destructive);
-  }
-
   @media (max-width: 30rem) {
     .smart-condition-row {
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(0, 1fr) auto;
     }
 
     .smart-condition-label {
       grid-column: 1 / -1;
-      padding-top: 0;
+      min-height: 0;
+    }
+
+    .smart-collection-display {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 

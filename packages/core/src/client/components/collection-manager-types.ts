@@ -6,6 +6,8 @@ import type { CollectionFormLabels } from "./collection-types.js";
 
 export interface CollectionManagerLabels {
   collectionsTitle: string;
+  /** The kind itself, for the marker beside a smart collection's title. */
+  smartCollectionNoun: string;
   newSmartCollection: string;
   editSmartCollection: string;
   deleteSmartCollection: string;

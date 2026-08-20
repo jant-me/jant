@@ -72,6 +72,8 @@ export type NavTargetResolution =
   /** A post navigation can point at, with the name it will show. */
   | { status: "page"; page: NavigationPageCandidate }
   | { status: "collection"; collection: NavTargetCollection }
+  /** A smart collection, which navigation follows exactly like a collection. */
+  | { status: "smart_collection"; smartCollection: NavTargetCollection }
   /** A page on this site that navigation can only hold as a link. */
   | { status: "link_only" }
   /** Nothing to show in a menu until it has a title. */
@@ -647,6 +649,30 @@ export function createNavItemService(
         };
       }
 
+      if (
+        target.targetType === "smart_collection" &&
+        target.smartCollectionId
+      ) {
+        const rows = await db
+          .select({ id: smartCollections.id, title: smartCollections.title })
+          .from(smartCollections)
+          .where(
+            and(
+              eq(smartCollections.siteId, siteId),
+              eq(smartCollections.id, target.smartCollectionId),
+            ),
+          )
+          .limit(1);
+        const row = rows[0];
+        if (!row) return { status: "not_found" };
+
+        const slug = await resolvedPaths.getSmartCollectionSlug(row.id);
+        return {
+          status: "smart_collection",
+          smartCollection: { id: row.id, title: row.title, slug: slug ?? "" },
+        };
+      }
+
       if (target.targetType !== "post" || !target.postId) {
         // A real address — an archive URL, say — that no navigation item can
         // track. It can still be held as a plain link.
@@ -723,6 +749,25 @@ export function createNavItemService(
 
         if (existingCollectionItem[0]) {
           throw new ValidationError("Collection already added to navigation");
+        }
+      }
+
+      if (normalized.smartCollectionId) {
+        const existingSmartCollectionItem = await db
+          .select({ id: navItems.id })
+          .from(navItems)
+          .where(
+            and(
+              eq(navItems.siteId, siteId),
+              eq(navItems.smartCollectionId, normalized.smartCollectionId),
+            ),
+          )
+          .limit(1);
+
+        if (existingSmartCollectionItem[0]) {
+          throw new ValidationError(
+            "Smart collection already added to navigation",
+          );
         }
       }
 

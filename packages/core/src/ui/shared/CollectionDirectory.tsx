@@ -7,7 +7,10 @@ import {
   getCollectionSelectionPath,
 } from "../../lib/collection-paths.js";
 import { getIconSvg } from "../../lib/icons.js";
-import { describeSmartCollection } from "./smart-collection-labels.js";
+import {
+  describeSmartCollection,
+  getSmartCollectionLabels,
+} from "./smart-collection-labels.js";
 import { getDividerCollectionGroup } from "../../lib/collection-groups.js";
 import { render as renderMarkdown } from "../../lib/markdown.js";
 import { formatRelativeAge, toISOString } from "../../lib/time.js";
@@ -275,12 +278,14 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
           const smartCollection = item.smartCollection;
           if (!smartCollection) return null;
           const sequence = sequenceLabels[index];
-          // The condition summary is the icon's tooltip and accessible name.
-          // The directory is an index; the full sentence lives on the page.
+          // The full sentence is the marker's tooltip; its accessible name is
+          // just the kind, because the marker sits inside the title link and a
+          // whole sentence there would swamp the link's name.
           const conditions = describeSmartCollection(
             smartCollection.selection,
             i18n,
           );
+          const smartCollectionNoun = getSmartCollectionLabels(i18n).noun;
 
           return (
             <div
@@ -302,19 +307,22 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                   >
                     <span class="collection-directory-title">
                       {smartCollection.title}
+                      {/* Shown to every reader, not only the author: which
+                          kind of collection this is changes how the list
+                          reads. It goes in the same slot the link rows put
+                          their marker in, which centres it on the title
+                          without any arithmetic. */}
+                      <span
+                        class="collection-directory-smart-icon"
+                        title={conditions}
+                        aria-label={smartCollectionNoun}
+                        role="img"
+                        dangerouslySetInnerHTML={{
+                          __html: getIconSvg("funnel", "icon-fine") ?? "",
+                        }}
+                      />
                     </span>
                   </a>
-                  {/* Shown to every reader, not only the author: which kind of
-                      collection this is changes how the list reads. */}
-                  <span
-                    class="collection-directory-smart-icon"
-                    title={conditions}
-                    aria-label={conditions}
-                    role="img"
-                    dangerouslySetInnerHTML={{
-                      __html: getIconSvg("list-filter") ?? "",
-                    }}
-                  />
                 </div>
                 {smartCollection.description && (
                   <div

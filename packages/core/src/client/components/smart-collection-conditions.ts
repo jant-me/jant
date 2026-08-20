@@ -47,7 +47,7 @@ function selectControl(
 ): DimensionControl["render"] {
   return (value, emit, labels) => html`
     <select
-      class="input"
+      class="select smart-condition-select"
       .value=${value}
       @change=${(event: Event) =>
         emit((event.target as HTMLSelectElement).value)}
@@ -89,7 +89,7 @@ const mediaControl: DimensionControl["render"] = (value, emit, labels) => {
   return html`
     <div class="smart-condition-media">
       <select
-        class="input"
+        class="select smart-condition-select"
         .value=${value === "none" ? "none" : "any"}
         @change=${(event: Event) =>
           emit((event.target as HTMLSelectElement).value)}
@@ -109,6 +109,7 @@ const mediaControl: DimensionControl["render"] = (value, emit, labels) => {
                 (kind) => html`
                   <label class="smart-condition-kind">
                     <input
+                      class="input"
                       type="checkbox"
                       .checked=${kinds.includes(kind)}
                       @change=${(event: Event) =>
@@ -130,7 +131,7 @@ const mediaControl: DimensionControl["render"] = (value, emit, labels) => {
 /** A year, typed. Bounded below by the first year a Unix timestamp can name. */
 const yearControl: DimensionControl["render"] = (value, emit) => html`
   <input
-    class="input"
+    class="input smart-condition-year"
     type="number"
     min="1971"
     step="1"
@@ -152,7 +153,7 @@ const collectionControl: DimensionControl["render"] = (value, emit, labels) => {
 
   return html`
     <select
-      class="input"
+      class="select smart-condition-select"
       .value=${value}
       @change=${(event: Event) =>
         emit((event.target as HTMLSelectElement).value)}

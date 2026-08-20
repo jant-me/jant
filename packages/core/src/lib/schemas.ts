@@ -231,6 +231,7 @@ export const ContentLanguageSchema = z
 const PostIdSchema = createTypeIdSchema(ID_PREFIX.post);
 const MediaIdSchema = createTypeIdSchema(ID_PREFIX.media);
 const CollectionIdSchema = createTypeIdSchema(ID_PREFIX.collection);
+const SmartCollectionIdSchema = createTypeIdSchema(ID_PREFIX.smartCollection);
 const CollectionDirectoryItemIdSchema = createTypeIdSchema(
   ID_PREFIX.collectionDirectoryItem,
 );
@@ -607,6 +608,14 @@ export const CreateNavItemSchema = z.discriminatedUnion("type", [
     label: sanitizeText(100).pipe(z.string().min(1)).optional(),
     placement: z.enum(["header", "more"]).optional(),
   }),
+  // Placed exactly like a collection — the label follows the target's title
+  // and the URL follows its address; only which column holds the key differs.
+  z.object({
+    type: z.literal("smart_collection"),
+    smartCollectionId: SmartCollectionIdSchema,
+    label: sanitizeText(100).pipe(z.string().min(1)).optional(),
+    placement: z.enum(["header", "more"]).optional(),
+  }),
   z.object({
     type: z.literal("page"),
     postId: PostIdSchema,
@@ -674,6 +683,7 @@ export {
   NavItemIdSchema,
   PathIdSchema,
   PostIdSchema,
+  SmartCollectionIdSchema,
 };
 
 /**

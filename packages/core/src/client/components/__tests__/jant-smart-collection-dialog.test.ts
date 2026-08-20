@@ -7,11 +7,6 @@ vi.mock("../../toast.js", () => ({
   showToastWithAction: vi.fn(),
 }));
 
-const { confirmMock } = vi.hoisted(() => ({ confirmMock: vi.fn() }));
-vi.mock("../../confirm.js", () => ({
-  showConfirmDialog: confirmMock,
-}));
-
 import "../jant-smart-collection-dialog.js";
 import type { JantSmartCollectionDialog } from "../jant-smart-collection-dialog.js";
 import { setCollectionVocabulary } from "../smart-collection-conditions.js";
@@ -27,10 +22,18 @@ import type { SmartCollectionDialogLabels } from "../smart-collection-dialog-typ
 const labels: SmartCollectionDialogLabels = {
   createHeading: "New Smart Collection",
   editHeading: "Edit Smart Collection",
+  whatItIs:
+    "Conditions choose what belongs here, not you. Posts you write later join on their own.",
   title: "Title",
-  address: "Address",
-  addressTaken: "This address is taken. Choose another.",
-  addressMovesWarning: "Changing the address breaks the old one immediately.",
+  link: "Collection link",
+  linkHelp: "This is the last part of the collection link.",
+  editLink: "Edit link",
+  resetLink: "Reset link",
+  linkTaken: "This link is taken. Choose another.",
+  linkInvalid: "Use lowercase letters, numbers, and hyphens only.",
+  linkReserved: "This link is reserved. Choose something else.",
+  linkTooLong: "Keep this link under 200 characters.",
+  linkMovesWarning: "Changing the link breaks the old one immediately.",
   description: "Description",
   conditionsHeading: "Conditions",
   matchAllHint: "Posts matching all of these",
@@ -42,15 +45,12 @@ const labels: SmartCollectionDialogLabels = {
   displayHeading: "Display",
   orderBy: "Order by",
   layout: "Layout",
-  deleteSmartCollection: "Delete Smart Collection",
-  confirmDelete: "Delete this smart collection? Its address stops working.",
   cancel: "Cancel",
   save: "Save",
   saved: "Smart collection saved.",
-  deleted: "Smart collection deleted.",
   saveFailed: "Could not save. Try again.",
   loadFailed: "Could not open this smart collection. Try again.",
-  titleAndAddressRequired: "A smart collection needs a title and an address.",
+  titleAndLinkRequired: "A smart collection needs a title and a link.",
   dimensions: {
     collection: "Collection",
     format: "Format",
@@ -101,7 +101,6 @@ async function settle(element: JantSmartCollectionDialog) {
 beforeEach(() => {
   document.body.innerHTML = "";
   vi.useFakeTimers();
-  confirmMock.mockReset().mockResolvedValue(true);
   setCollectionVocabulary([{ id: "col_books", slug: "books", title: "Books" }]);
 
   responses = {
@@ -171,6 +170,103 @@ describe("JantSmartCollectionDialog", () => {
     expect(offered).toHaveLength(6);
     expect(offered).not.toContain("Format");
     expect(offered).toContain("Year");
+  });
+
+  it("dismisses the condition menu on a click elsewhere in the dialog", async () => {
+    const element = mountDialog();
+    void element.open({});
+    await settle(element);
+
+    const trigger =
+      element.querySelector<HTMLButtonElement>("[data-add-trigger]");
+    trigger?.click();
+    await element.updateComplete;
+    expect(element.querySelector("[data-add-menu]")).not.toBeNull();
+
+    // Not the backdrop — the panel stops that click, so a menu that only
+    // listened to the backdrop would stay open over the fields it covers.
+    element
+      .querySelector<HTMLElement>(".smart-collection-dialog-body")
+      ?.click();
+    await element.updateComplete;
+
+    expect(element.querySelector("[data-add-menu]")).toBeNull();
+  });
+
+  it("closes the condition menu on Escape, and leaves the dialog open", async () => {
+    const element = mountDialog();
+    const closed = element.open({});
+    await settle(element);
+
+    element.querySelector<HTMLButtonElement>("[data-add-trigger]")?.click();
+    await element.updateComplete;
+
+    element.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    await element.updateComplete;
+
+    expect(element.querySelector("[data-add-menu]")).toBeNull();
+    expect(element.querySelector("dialog")?.open).toBe(true);
+
+    // A second Escape, now that the menu is gone, closes the dialog itself.
+    element.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    await expect(closed).resolves.toBe(false);
+  });
+
+  it("walks the condition menu with the arrow keys", async () => {
+    const element = mountDialog();
+    void element.open({});
+    await settle(element);
+
+    element.querySelector<HTMLButtonElement>("[data-add-trigger]")?.click();
+    await element.updateComplete;
+    await Promise.resolve();
+
+    const items = [
+      ...element.querySelectorAll<HTMLButtonElement>(
+        "[data-add-menu] [role='menuitem']",
+      ),
+    ];
+    items[0]?.focus();
+
+    element.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+    );
+    expect(document.activeElement).toBe(items[1]);
+
+    // Up from the first item wraps to the last rather than falling out.
+    items[0]?.focus();
+    element.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }),
+    );
+    expect(document.activeElement).toBe(items[items.length - 1]);
+  });
+
+  it("picks a condition on Enter instead of saving", async () => {
+    const element = mountDialog();
+    void element.open({ prefill: { title: "Quotes" } });
+    await settle(element);
+
+    element.querySelector<HTMLButtonElement>("[data-add-trigger]")?.click();
+    await element.updateComplete;
+
+    const item = element.querySelector<HTMLButtonElement>(
+      "[data-add-menu] [role='menuitem']",
+    );
+    item?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+    await settle(element);
+
+    expect(
+      requests.some(
+        (request) =>
+          request.method === "POST" && !request.url.includes("/preview"),
+      ),
+    ).toBe(false);
   });
 
   it("saves the conditions it was given, in the shared vocabulary", async () => {
@@ -310,7 +406,128 @@ describe("JantSmartCollectionDialog", () => {
     ).toBe(true);
   });
 
-  it("says an address is taken rather than failing on save", async () => {
+  it("holds Save shut until there is a title and a free address", async () => {
+    const element = mountDialog();
+    void element.open({});
+    await settle(element);
+
+    const save = () =>
+      [...element.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Save",
+      );
+    expect(save()?.disabled).toBe(true);
+
+    const input = element.querySelector<HTMLInputElement>(
+      "[data-field='title']",
+    );
+    if (input) {
+      input.value = "Quotes";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    await settle(element);
+
+    expect(save()?.disabled).toBe(false);
+  });
+
+  it("holds Save shut on an address that is taken", async () => {
+    responses["/api/smart-collections/slug"] = {
+      slug: "books",
+      available: false,
+    };
+    const element = mountDialog();
+    void element.open({ prefill: { title: "Books" } });
+    await settle(element);
+
+    const save = [...element.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Save",
+    );
+    expect(save?.disabled).toBe(true);
+
+    // Enter must not walk around the button it agrees with.
+    element
+      .querySelector("[data-field='title']")
+      ?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+    await settle(element);
+
+    expect(
+      requests.some(
+        (request) =>
+          request.method === "POST" && !request.url.includes("/preview"),
+      ),
+    ).toBe(false);
+  });
+
+  it("says why it cannot save when Enter is pressed on an empty form", async () => {
+    const element = mountDialog();
+    void element.open({});
+    await settle(element);
+
+    element
+      .querySelector("[data-field='title']")
+      ?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+    await settle(element);
+
+    // In one line the alert can lay out, not a bare text node in a grid whose
+    // first column is zero wide.
+    const alert = element.querySelector("[role='alert'] section p");
+    expect(alert?.textContent?.trim()).toBe(
+      "A smart collection needs a title and a link.",
+    );
+  });
+
+  it("drops a complaint the author has already answered", async () => {
+    const element = mountDialog();
+    void element.open({});
+    await settle(element);
+
+    element
+      .querySelector("[data-field='title']")
+      ?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+    await settle(element);
+    expect(element.querySelector("[role='alert']")).not.toBeNull();
+
+    const input = element.querySelector<HTMLInputElement>(
+      "[data-field='title']",
+    );
+    if (input) {
+      input.value = "Quotes";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    await settle(element);
+
+    expect(element.querySelector("[role='alert']")).toBeNull();
+  });
+
+  it("shows the whole link, folded away until asked", async () => {
+    const element = mountDialog();
+    void element.open({ prefill: { title: "Quotes" } });
+    await settle(element);
+
+    // Collapsed: the URL and a way in, no second labelled field.
+    const preview = element.querySelector(".collection-quick-link-preview");
+    expect(preview?.textContent?.trim()).toMatch(/\/quotes$/);
+    expect(element.querySelector("[data-field='slug']")).toBeNull();
+
+    const edit = [...element.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Edit link",
+    );
+    edit?.click();
+    await settle(element);
+
+    const input = element.querySelector<HTMLInputElement>(
+      "[data-field='slug']",
+    );
+    expect(input?.value).toBe("quotes");
+    expect(element.textContent).toContain("Collection link");
+  });
+
+  it("says a link is taken rather than failing on save", async () => {
     responses["/api/smart-collections/slug"] = {
       slug: "books",
       available: false,
@@ -320,11 +537,36 @@ describe("JantSmartCollectionDialog", () => {
     await settle(element);
 
     expect(element.textContent).toContain(
-      "This address is taken. Choose another.",
+      "This link is taken. Choose another.",
     );
   });
 
-  it("warns before an existing address moves", async () => {
+  it("names the real reason a link is refused, not always a collision", async () => {
+    const element = mountDialog();
+    void element.open({ prefill: { title: "Quotes" } });
+    await settle(element);
+
+    [...element.querySelectorAll("button")]
+      .find((button) => button.textContent?.trim() === "Edit link")
+      ?.click();
+    await settle(element);
+
+    const input = element.querySelector<HTMLInputElement>(
+      "[data-field='slug']",
+    );
+    if (input) {
+      input.value = "Not A Slug";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    await settle(element);
+
+    expect(element.textContent).toContain(
+      "Use lowercase letters, numbers, and hyphens only.",
+    );
+    expect(element.textContent).not.toContain("This link is taken");
+  });
+
+  it("warns before an existing link moves", async () => {
     responses["/api/smart-collections/smc_1"] = {
       smartCollection: {
         id: "smc_1",
@@ -340,11 +582,16 @@ describe("JantSmartCollectionDialog", () => {
     await settle(element);
 
     expect(element.textContent).not.toContain(
-      "Changing the address breaks the old one immediately.",
+      "Changing the link breaks the old one immediately.",
     );
 
+    [...element.querySelectorAll("button")]
+      .find((button) => button.textContent?.trim() === "Edit link")
+      ?.click();
+    await settle(element);
+
     const slugInput = element.querySelector<HTMLInputElement>(
-      "#smart-collection-slug",
+      "[data-field='slug']",
     );
     if (slugInput) {
       slugInput.value = "citations";
@@ -353,11 +600,37 @@ describe("JantSmartCollectionDialog", () => {
     await settle(element);
 
     expect(element.textContent).toContain(
-      "Changing the address breaks the old one immediately.",
+      "Changing the link breaks the old one immediately.",
     );
   });
 
-  it("confirms before deleting, naming what is lost", async () => {
+  it("says what a smart collection is when creating one, and not when editing", async () => {
+    const creating = mountDialog();
+    void creating.open({});
+    await settle(creating);
+    expect(creating.textContent).toContain(
+      "Conditions choose what belongs here",
+    );
+
+    responses["/api/smart-collections/smc_1"] = {
+      smartCollection: {
+        id: "smc_1",
+        slug: "quotes",
+        title: "Quotes",
+        selection: {},
+        sort: "newest",
+        layout: null,
+      },
+    };
+    const editing = mountDialog();
+    void editing.open({ smartCollectionId: "smc_1" });
+    await settle(editing);
+    expect(editing.textContent).not.toContain(
+      "Conditions choose what belongs here",
+    );
+  });
+
+  it("leaves deleting to the menus that open it", async () => {
     responses["/api/smart-collections/smc_1"] = {
       smartCollection: {
         id: "smc_1",
@@ -369,21 +642,10 @@ describe("JantSmartCollectionDialog", () => {
       },
     };
     const element = mountDialog();
-    const closed = element.open({ smartCollectionId: "smc_1" });
+    void element.open({ smartCollectionId: "smc_1" });
     await settle(element);
 
-    const remove = [...element.querySelectorAll("button")].find(
-      (button) => button.textContent?.trim() === "Delete Smart Collection",
-    );
-    remove?.click();
-    await settle(element);
-
-    expect(confirmMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: "Delete this smart collection? Its address stops working.",
-        tone: "danger",
-      }),
-    );
-    await expect(closed).resolves.toBe(true);
+    // Nothing destructive shares a row with Save.
+    expect(element.textContent).not.toContain("Delete");
   });
 });

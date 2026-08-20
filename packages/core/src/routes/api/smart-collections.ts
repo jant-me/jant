@@ -10,18 +10,17 @@ import { requireAuthApi } from "../../middleware/auth.js";
 import {
   ContentLanguageSchema,
   CreateSmartCollectionSchema,
+  SmartCollectionIdSchema,
   SmartCollectionPreviewSchema,
   UpdateSmartCollectionSchema,
   parseValidated,
 } from "../../lib/schemas.js";
 import { assertFound, parseIdParam } from "../../lib/errors.js";
-import { createTypeIdSchema, ID_PREFIX } from "../../lib/ids.js";
+import { ID_PREFIX } from "../../lib/ids.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const smartCollectionsApiRoutes = new Hono<Env>();
-
-const SmartCollectionIdSchema = createTypeIdSchema(ID_PREFIX.smartCollection);
 
 /**
  * Address availability, in the shape posts already use.

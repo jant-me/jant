@@ -125,8 +125,8 @@ msgstr "A single ZIP with the main logo, reverse logo, square PNG, rounded, squa
 
 #. @context: Smart collection dialog validation message
 #: src/ui/shared/smart-collection-labels.ts
-msgid "A smart collection needs a title and an address."
-msgstr "A smart collection needs a title and an address."
+msgid "A smart collection needs a title and a link."
+msgstr "A smart collection needs a title and a link."
 
 #. @context: Main sample article title
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -217,11 +217,6 @@ msgstr "Add to Navigation"
 #: src/ui/shared/collection-management-labels.ts
 msgid "Adding…"
 msgstr "Adding…"
-
-#. @context: Smart collection dialog field — the page's URL
-#: src/ui/shared/smart-collection-labels.ts
-msgid "Address"
-msgstr "Address"
 
 #. @context: Built-in navigation label for the archive page. Reads as the widest of Featured / Latest / All rather than 'old posts' — the page is the complete index, and its URL stays /archive.
 #: src/ui/shared/navigation-labels.ts
@@ -404,10 +399,10 @@ msgstr "Buttons can stay steady, but links, thread markers, and subtle emphasis 
 msgid "Cancel"
 msgstr "Cancel"
 
-#. @context: Smart collection dialog warning shown when editing moves an existing address
+#. @context: Smart collection dialog warning shown when editing moves an existing collection link
 #: src/ui/shared/smart-collection-labels.ts
-msgid "Changing the address breaks the old one immediately."
-msgstr "Changing the address breaks the old one immediately."
+msgid "Changing the link breaks the old one immediately."
+msgstr "Changing the link breaks the old one immediately."
 
 #. @context: Compose custom slug helper while checking whether a manual slug is available
 #: src/ui/compose/ComposeDialog.tsx
@@ -558,6 +553,11 @@ msgstr "Compose"
 msgid "Conditions"
 msgstr "Conditions"
 
+#. @context: One line under the New Smart Collection heading, saying how it differs from an ordinary collection
+#: src/ui/shared/smart-collection-labels.ts
+msgid "Conditions choose what belongs here, not you. Posts you write later join on their own."
+msgstr "Conditions choose what belongs here, not you. Posts you write later join on their own."
+
 #. @context: Password reset form field
 #: src/routes/auth/reset.tsx
 msgid "Confirm Password"
@@ -668,7 +668,9 @@ msgid "Default preview image for social shares and link unfurls."
 msgstr "Default preview image for social shares and link unfurls."
 
 #. @context: Delete collection action
+#. @context: Destructive menu item on a smart collection's row and page. The row says which one; the confirmation names what is lost.
 #: src/ui/shared/collection-management-labels.ts
+#: src/ui/shared/smart-collection-labels.ts
 msgid "Delete"
 msgstr "Delete"
 
@@ -692,11 +694,6 @@ msgstr "Delete image"
 msgid "Delete row"
 msgstr "Delete row"
 
-#. @context: Destructive action in the smart collection dialog
-#: src/ui/shared/smart-collection-labels.ts
-msgid "Delete Smart Collection"
-msgstr "Delete Smart Collection"
-
 #. @context: Destructive compose table action
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Delete table"
@@ -709,8 +706,8 @@ msgstr "Delete this collection permanently? Threads inside won't be removed."
 
 #. @context: Confirmation before deleting a smart collection, naming what is lost
 #: src/ui/shared/smart-collection-labels.ts
-msgid "Delete this smart collection? Its address stops working."
-msgstr "Delete this smart collection? Its address stops working."
+msgid "Delete this smart collection? Its link stops working."
+msgstr "Delete this smart collection? Its link stops working."
 
 #. @context: Hint shown on signin page when demo credentials are pre-filled
 #: src/routes/auth/signin.tsx
@@ -2221,10 +2218,8 @@ msgstr "Smart Collection"
 
 #. @context: Confirmation after deleting a smart collection
 #. @context: Confirmation after deleting a smart collection
-#. @context: Confirmation after deleting a smart collection
 #: src/ui/pages/SmartCollectionPage.tsx
 #: src/ui/shared/CollectionsManager.tsx
-#: src/ui/shared/smart-collection-labels.ts
 msgid "Smart collection deleted."
 msgstr "Smart collection deleted."
 
@@ -2437,11 +2432,6 @@ msgstr "Theme sample"
 msgid "These are actual feed components with real footers, summaries, and inline links. Use this section to judge whether the theme still feels calm once it is applied to realistic content."
 msgstr "These are actual feed components with real footers, summaries, and inline links. Use this section to judge whether the theme still feels calm once it is applied to realistic content."
 
-#. @context: Smart collection dialog — the typed address is already in use
-#: src/ui/shared/smart-collection-labels.ts
-msgid "This address is taken. Choose another."
-msgstr "This address is taken. Choose another."
-
 #. @context: Opening paragraph on the sample detail article
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "This article is here to answer a specific question: does the default accent still feel calm once it has to carry a full reading experience?"
@@ -2482,6 +2472,11 @@ msgstr "This link is already in use. Choose something else."
 #: src/ui/shared/collection-management-labels.ts
 msgid "This link is reserved. Choose something else."
 msgstr "This link is reserved. Choose something else."
+
+#. @context: Smart collection dialog — the typed collection link is already in use
+#: src/ui/shared/smart-collection-labels.ts
+msgid "This link is taken. Choose another."
+msgstr "This link is taken. Choose another."
 
 #. @context: Explanation in the draft preview status bar
 #: src/ui/shared/DraftPreviewBar.tsx

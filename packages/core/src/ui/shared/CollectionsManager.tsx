@@ -58,6 +58,7 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
         comment: "@context: Collections page heading",
       }),
     ),
+    smartCollectionNoun: smartLabels.noun,
     newSmartCollection: smartLabels.newSmartCollection,
     editSmartCollection: smartLabels.editSmartCollection,
     deleteSmartCollection: smartLabels.deleteSmartCollection,
@@ -287,7 +288,7 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
                         class="collections-page-menu-item-icon"
                         aria-hidden="true"
                         dangerouslySetInnerHTML={{
-                          __html: getIconSvg("list-filter") ?? "",
+                          __html: getIconSvg("funnel", "icon-fine") ?? "",
                         }}
                       />
                       <span class="collections-page-menu-item-label">
