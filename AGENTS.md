@@ -2,102 +2,65 @@
 
 ## What is Jant
 
-Jant (short for Jantelagen) is a personal microblogging system — self-hosted, single-author, and stripped of all social mechanics. No followers, no likes, no algorithmic feed. It combines Tumblr-style multi-format posts (notes, links, quotes), Threads-style threading for connected thoughts, and curated Collections to organize content by topic. Just a clean space for one person to think out loud.
+Jant (short for Jantelagen) is a personal microblogging system — self-hosted, single-author, and stripped of all social mechanics. No followers, no likes, no algorithmic feed. It combines Tumblr-style multi-format posts — Note (your own words), Link (shared reference), Quote (cited text) — Threads-style threading for connected thoughts, and curated Collections to organize content by topic. Just a clean space for one person to think out loud.
 
-It runs on Cloudflare Workers with minimal infrastructure. The UI follows an "Organic Minimalism" aesthetic: generous whitespace, single-column layout, smooth animations, mobile-first. Content comes in three formats — Note (), Link (shared reference), Quote (cited text) — organized through Threads and Collections.
+It runs on Cloudflare Workers with minimal infrastructure. The UI follows an "Organic Minimalism" aesthetic: generous whitespace, single-column layout, smooth animations, mobile-first.
 
 The project is in **pre-1.0 development**. Breaking changes are expected and welcome when they improve the design. Always follow best practices over minimal-change conservatism. Update all references in the same change and document what changed in the commit message.
 
-## Workflow Orchestration
+## Workflow
 
-### 1. Planning Default
-
-– For non-trivial tasks (3+ steps), write a short plan before changing files
-– Check in before starting when the plan introduces meaningful scope, trade-offs, or risk
-– If something goes sideways, stop and re-plan before continuing
-
-### 2. Subagent Strategy
-
-– Use subagents for complex, parallelizable, or context-isolated work
-– Give each subagent one focused task
-– Avoid subagents for simple or tightly sequential work
-
-### 3. Self-Improvement Loop
-
-– After a correction, update `tasks/lessons.md` only when there is a reusable rule that should prevent future mistakes
-– Write lessons as concrete rules, not task logs
-– Keep lessons concise so the file remains useful
-
-### 4. Verification Before Done
-
-– Never mark a task complete without proving it works
-– Ask yourself: “Would a staff engineer approve this?”
-– Run tests, check logs, demonstrate correctness
-
-### 5. Demand Elegance (Balanced)
-
-– Pause and ask “is there a more elegant way?”
-– Skip this for simple fixes — don’t over-engineer
-
-### 6. Autonomous Bug Fixing
-
-– When given a bug report: just fix it
-– Zero context switching required from the user
-
-## Task Management
-
-1. Plan First: For non-trivial tasks, create or update a task-specific file under `tasks/todos/`. Prefer issue or Linear IDs when available (for example, `tasks/todos/JANT-123-fix-auth-redirect.md`); otherwise use `YYYY-MM-DD-HHMM-<slug>.md` (for example, `tasks/todos/2026-07-06-1430-fix-auth-redirect.md`). Do not use the shared `tasks/todo.md` for new work; it is legacy and conflict-prone.
-2. Verify Plan: Check in before starting when the plan introduces meaningful scope, trade-offs, or risk.
-3. Track Progress: Mark items complete in the same task file as you go.
-4. Explain Changes: High-level summary at each step.
-5. Document Results: Add the review/results section to the same task file.
-6. Clean Up Completed Tasks: After the work is verified, documented, and committed, remove the task-specific file from `tasks/todos/` by default. Keep `tasks/todos/` focused on active or handoff-ready work. Only retain a completed task file when it has long-term reference value; if retained for history, move it out of `tasks/todos/` into an archive location.
-7. Capture Lessons: Update `tasks/lessons.md` after corrections, but only for reusable rules that should prevent future mistakes.
+- **Plan first**: for non-trivial tasks (3+ steps), write a short plan in a task file under `tasks/todos/` before changing files. Name it by issue ID when available (`JANT-123-fix-auth-redirect.md`), otherwise `YYYY-MM-DD-HHMM-<slug>.md`.
+- **Check in before starting** when the plan introduces meaningful scope, trade-offs, or risk. If something goes sideways mid-task, stop and re-plan.
+- **Track work in the task file**: mark items complete as you go, record results at the end, and delete the file before committing once nothing in it is left unchecked. A task file with open items is active work — keep it. Completed files with long-term reference value move to an archive location, not `tasks/todos/`.
+- **Bug reports**: just fix them, at the root cause. No temporary patches, no context switching required from the user.
+- **Verify before done**: never mark a task complete without proving it works — tests, logs, or looking at the running result. Scope it with "Verify proportionally" below.
+- **Capture lessons**: after a correction, update `tasks/lessons.md` only when there is a reusable rule that prevents future mistakes. Write concrete rules, not task logs.
 
 ## Development Philosophy
 
 These principles explain _why_ the codebase is structured the way it is. When you encounter a situation not covered by a specific rule, use these to guide your judgment.
 
-- **Challenge before complying**: when the user proposes an approach that conflicts with best practices or this document, push back with a clear explanation of the trade-offs and ask for confirmation before proceeding. Silently following a suboptimal instruction is worse than a brief discussion.
+- **Implementation cost is not a design constraint**: every line of this codebase is AI-written. What is scarce is the author's review attention and the code's future — not agent hours. Between the cheap way and the maintainable way, always choose the maintainable one. "That's a big change" is not an objection, and scope never shrinks to save effort.
 
-- **Separation of concerns**: routes handle HTTP, services own business logic and all DB access, UI renders data. Each layer should be replaceable without affecting the others. Module dependency direction: `routes → services → db`, `routes → viewmodels → ui`. Detailed rules in `docs/internal/coding-standards.md`.
+- **Challenge before complying**: when the user proposes an approach that conflicts with best practices or this document, push back with the trade-offs and ask for confirmation before proceeding. Silently following a suboptimal instruction is worse than a brief discussion.
 
-- **Routes are thin adapters**: a route handler should only parse/validate the request, call one or more service methods, and format the response. Multi-service orchestration (e.g. "delete a post and clean up its media files") belongs in the service layer, not in routes. **Litmus test**: if two routes need the same sequence of service calls, that sequence must be extracted into a service method. Cross-cutting concerns like storage file cleanup are passed to services via optional dependency parameters (e.g. `storage?: StorageDriver | null`) rather than being handled in routes.
+- **Separation of concerns**: routes handle HTTP, services own business logic and all DB access, UI renders data. Module dependency direction: `routes → services → db`, `routes → viewmodels → ui`. Detailed rules in `docs/internal/coding-standards.md`.
 
-- **Type safety as communication**: TypeScript strict mode with no `any` and fully typed exports prevents silent contract drift between layers. When a service return type changes, the compiler should catch every consumer.
-- **Normalize interpolated copy inputs before rendering**: when user-facing copy interpolates labels, hosts, dates, counts, or settings, normalize the value first. Empty or whitespace-only strings must fall back explicitly before they reach the UI. Do not rely on truthiness fallbacks for numeric or boolean values because `0` and `false` are often valid data. In translated copy, never bake runtime values into the `message` string itself; use placeholders plus `values` so extraction, translation, and fallback behavior stay correct.
-- **Hosted integrations stay neutral in core**: when `jant-core` integrates with a hosted control plane, keep the runtime and copy provider-neutral. Brand names belong in the control plane, not in core. Core may show a configured provider label, and when no label is configured it should fall back to the provider host/domain instead of hardcoding product branding.
-- **Hosted control-plane metadata is a projection, not a second truth source**: hosted site display metadata belongs to `jant-core`. Any control-plane copy (for example cached site name or primary host shown in a dashboard) must be treated as a denormalized projection synced from core, never as an independently editable second source of truth.
-- **Separate public URLs from internal URLs**: hosted control-plane redirects used by browsers should go through the public control-plane URL. Server-to-server calls should use explicit internal URLs and tokens when available instead of reusing public entrypoints by name.
-- **Hosted site lifecycle belongs to the control plane**: billing state, cancel/delete/restore policy, and retained-window rules belong in `jant-cloud`. `jant-core` may link to those flows and expose internal execution APIs, but it must not invent separate hosted billing or deletion semantics of its own.
+- **Type safety as communication**: TypeScript strict mode, no `any`, fully typed exports. When a service return type changes, the compiler should catch every consumer.
 
-- **Tokens and components over raw values**: CSS tokens (`styles/tokens.css`) and BaseCoat semantic classes (`.alert`, `.btn`, `.badge`, `.card`, `.input`, `.field`) encode design decisions in one place. Hardcoding a color or spacing value means it can't evolve with the theme. See `docs/internal/theming.md` and `references/basecoat/`.
+- **Hosted split**: `jant-core` owns the runtime, the copy, and site display metadata; `jant-cloud` owns billing state, cancel/delete/restore policy, and retained-window rules — core links to those flows but never invents its own hosted billing or deletion semantics. Core stays provider-neutral: show the configured provider label, or fall back to the provider host — never hardcoded product branding. Control-plane copies of core data (cached site name, primary host) are synced projections, never a second editable source of truth. Browser-facing redirects go through the public control-plane URL; server-to-server calls use explicit internal URLs and tokens.
 
-- **Cohesion over small files**: organize code by responsibility and keep related logic together. A well-structured 400-line file is better than four fragmented 100-line files that constantly import each other.
+- **Tokens and components over raw values**: CSS tokens (`styles/tokens.css`) and BaseCoat semantic classes (`.alert`, `.btn`, `.badge`, `.card`, `.input`, `.field`) encode design decisions in one place; never hardcode a color or spacing value. BaseCoat variants (`.btn-outline`, `.btn-ghost`, `.badge-outline`, …) are self-contained — never combine them with the base class. See `docs/internal/theming.md` and `references/basecoat/`.
+
+- **Cohesion over small files**: organize code by responsibility. A well-structured 400-line file beats four fragmented 100-line files that constantly import each other.
 
 - **Strict boundaries, free internals**: validate and convert at boundaries (HTTP entry, DB queries). Once data is inside a layer, trust the types.
 
 - **Data flows down**: DB → Service → ViewModel → Component. Never in the other direction.
 
 - **Fail fast**: missing required config should crash at startup with a clear error, not silently degrade at runtime.
-- **External links should be intentional**: links that open in a new tab must include `rel="noopener noreferrer"`. Do not add `nofollow` to normal editorial links by default; reserve it for ads, sponsored placements, or future user-generated content.
 
-- **Keyboard-first interactions**: every dialog, panel, and overlay must support standard keyboard shortcuts — `Escape` to close/cancel, `Enter` to confirm the primary action, `Tab` for focus navigation. Never rely solely on mouse/touch. Note that `<dialog>` native cancel events may not fire when inner elements (e.g. TipTap/ProseMirror) intercept `Escape` at the keydown level; always handle keyboard events directly on the component in addition to native dialog events.
-- **Dismiss transient UI predictably**: menus, popovers, dropdowns, and other temporary overlays must close on outside click/tap and `Escape`, and opening one should close peers of the same kind. Do not rely on browser defaults like `<details>` dismissal behavior; wire dismissal explicitly and cover it with a test.
-- **Preserve interaction affordances**: custom-styled interactive controls must still feel interactive. Ensure clickable elements expose expected affordances such as `cursor: pointer`, visible hover/focus states, sensible disabled states, and correct initial focus when opening dialogs or overlays.
+- **External links are intentional**: links that open in a new tab need `rel="noopener noreferrer"`. No `nofollow` on normal editorial links; reserve it for ads, sponsored placements, or future user-generated content.
+
+- **Keyboard-first interactions**: every dialog, panel, and overlay supports `Escape` to close, `Enter` to confirm, `Tab` for focus navigation. `<dialog>` native cancel events may not fire when inner elements (TipTap/ProseMirror) intercept `Escape` at keydown — handle keyboard events on the component directly, not only via native dialog events.
+
+- **Dismiss transient UI predictably**: menus, popovers, and dropdowns close on outside click/tap and `Escape`, and opening one closes peers of the same kind. Wire dismissal explicitly (never rely on browser defaults like `<details>`) and cover it with a test.
+
+- **Preserve interaction affordances**: custom-styled controls still need `cursor: pointer`, visible hover/focus states, sensible disabled states, and correct initial focus when opening dialogs or overlays.
 
 ### Hard Constraints
 
 Non-negotiable regardless of context:
 
 - **No DB in routes**: routes must never contain direct DB calls, raw SQL, or import DB drivers. All data access goes through `src/services/`.
-- **No business logic in routes**: routes must not orchestrate multi-service operations, coordinate side effects, or duplicate logic that belongs in a service. If two routes would need the same logic, it must live in a service method.
-- **Migrations are append-only and schema-first**: never edit or replace an existing migration file in `src/db/migrations/`. Applied migrations are tracked by filename — changing their content causes drift between the migration history and the actual database state, breaking local and production environments. Always create a new migration file for schema changes, even if the previous migration was recently added. For example, to undo migration `0016`, create `0017` with the reverse DDL rather than rewriting `0016`. For normal schema changes, update `src/db/schema.ts` first, then run `drizzle-kit generate` (via `mise run db-schema-generate`) to produce the migration file. Rare manual schema migrations are allowed only when Drizzle cannot express the schema object, such as FTS virtual tables or triggers. Keep those exceptions in `src/db/migrations/`, use the same `0000_name.sql` numbering, and update the journal/snapshot metadata in the same change. Historical data compatibility fixes are a separate track: put them in `src/db/backfills/` as append-only numbered SQL files, make them idempotent, run them via `jant migrate`, and never insert ad-hoc files like `0004z_*` into `src/db/migrations/`.
-- **Dual-dialect schema: SQLite AND Postgres must stay in sync**: Jant runs on both SQLite/D1 (`src/db/schema.ts`) and Postgres (`src/db/pg/schema.ts`). When adding or modifying columns, **always update both schema files**. Migrations also exist in two directories: `src/db/migrations/` (SQLite/D1) and `src/db/migrations/pg/` (Postgres). Generate SQLite migrations with `mise run db-schema-generate` and Postgres migrations with `mise run db-schema-generate-pg`. If auto-generation produces "no changes", write the Postgres migration manually and update its `meta/_journal.json`. Forgetting to update the Postgres schema will cause silent data loss — Drizzle will ignore columns it doesn't know about.
+- **No business logic in routes**: a route handler only parses/validates the request, calls service methods, and formats the response. If two routes need the same sequence of service calls, extract it into a service method. Cross-cutting concerns like storage file cleanup are passed to services via optional dependency parameters (e.g. `storage?: StorageDriver | null`), never handled in routes.
+- **Migrations are append-only and schema-first**: never edit or replace an existing migration in `src/db/migrations/` — applied migrations are tracked by filename, and rewriting one desyncs the history from real databases. To undo `0016`, create `0017` with the reverse DDL. For normal schema changes, update `src/db/schema.ts` first, then run `drizzle-kit generate` via `mise run db-schema-generate`. Manual migrations are allowed only for what Drizzle cannot express (FTS virtual tables, triggers); keep them in `src/db/migrations/` with the same `0000_name.sql` numbering and update the journal/snapshot metadata in the same change. Historical data fixes are a separate track: append-only numbered SQL in `src/db/backfills/`, idempotent, run via `jant migrate` — never ad-hoc files like `0004z_*` in `src/db/migrations/`.
+- **Dual-dialect schema: SQLite AND Postgres must stay in sync**: Jant runs on both SQLite/D1 (`src/db/schema.ts`) and Postgres (`src/db/pg/schema.ts`). When adding or modifying columns, **always update both schema files** and both migration directories (`src/db/migrations/`, `src/db/migrations/pg/`; generate with `mise run db-schema-generate` / `db-schema-generate-pg`). If auto-generation produces "no changes", write the Postgres migration manually and update its `meta/_journal.json`. Forgetting the Postgres schema causes silent data loss — Drizzle ignores columns it doesn't know about.
 - **Seed/import SQL must declare columns and validate against current schema**: committed SQL snapshots and export scripts must use `INSERT INTO table (col, ...) VALUES (...)`, never bare `INSERT INTO table VALUES (...)`. After schema changes, validate seed/import SQL against a fresh local D1 with the current migrations before treating it as safe.
 - **Relative imports only**: no `@/` path aliases anywhere in the codebase.
 - **Data attributes with care**: `data-page`, `data-post`, `data-format`, etc. are consumed by themes and external scripts. Design them thoughtfully and update all references when changing.
-- **No raw strings in `dangerouslySetInnerHTML`**: every string passed to `dangerouslySetInnerHTML` must be either (a) HTML produced by a trusted renderer (TipTap, `getHtmlExcerpt`), or (b) plain text that has been passed through `escapeHtml()` first. Never concatenate plain-text fields into HTML strings without escaping. When injecting highlight markers into escaped text, use `escapeHtml()` first, then replace control-character sentinels with `<mark>` tags — never inject `<mark>` directly into unescaped text.
+- **No raw strings in `dangerouslySetInnerHTML`**: every string passed to it must be either (a) HTML from a trusted renderer (TipTap, `getHtmlExcerpt`), or (b) plain text passed through `escapeHtml()` first — even single-author content can contain `<`, `>`, `&`. For highlighted output, escape first, then replace control-character sentinels: `escapeHtml(text).replace(/\x02/g, "<mark>").replace(/\x03/g, "</mark>")`, where `char(2)`/`char(3)` (STX/ETX) are the FTS5 snippet markers in SQL. Never inject `<mark>` into unescaped text.
 
 ## Working with the Codebase
 
@@ -108,12 +71,12 @@ Non-negotiable regardless of context:
 - **Debug**: `mise run dev-debug` prepares local auth helpers automatically and uses the first free debug port starting at `19020`. For browser testing, use the printed `http://localhost:19xxx/__dev/login?token=...&redirect=/settings` URL with `DEV_API_TOKEN` from `packages/core/.dev.vars`, then continue on `http://localhost:19xxx/settings`. `jant.localtest.me` is still accepted locally, but some browsers upgrade it to HTTPS and break local HTTP dev ports. HTTP agents can call the same local login URL directly and reuse the returned `Set-Cookie`. Stop background processes when done.
 - **Verify before changing**: never assume CLI flags; confirm with `--help` or docs.
 - **Latest packages**: when adding dependencies, check the latest stable version and compatibility first, then let the package manager lock the resolved version.
-- **Generated template is read-only**: never edit `packages/create-jant/template/`.
+- **Generated template is read-only**: never edit `packages/create-jant/template/` — it is auto-generated and will be overwritten.
 - **GitHub Actions**: new manually runnable workflows should include `workflow_dispatch:`.
-- **Verify proportionally**: choose verification based on the risk and surface area of the change instead of mechanically running the full suite every time.
+- **Verify proportionally**: choose verification by the risk and surface area of the change.
   - Run `mise run check-tests` and `mise run check-lint` for behavior changes: routes, services, DB/schema/migrations, validation, auth, build tooling, shared infrastructure, interactive client logic, or anything with meaningful regression risk.
-  - For isolated visual or content-only changes, such as CSS-only tweaks, spacing, color, typography, copy, or docs, use judgment. A focused sanity check is usually enough if no logic, markup structure, or event handling changed. For copy and docs, run `mise run check-copy` — style is verifiable, not a matter of taste.
-  - If a change sits near the boundary, prefer the narrower relevant verification first, then escalate to full `check-tests`/`check-lint` if the impact is broader than expected.
+  - For isolated visual or content-only changes (CSS tweaks, spacing, copy, docs), a focused sanity check is usually enough if no logic, markup structure, or event handling changed. For copy and docs, run `mise run check-copy` — style is verifiable, not a matter of taste.
+  - Near the boundary, run the narrower relevant verification first, then escalate if the impact is broader than expected.
   - Always state what you verified, and explicitly note when you skipped automated checks.
 
 ### Conventions
@@ -163,77 +126,34 @@ i18n._(
 );
 ```
 
+Rules that recur:
+
+- Never bake runtime values into the `message` string — placeholders plus `values`, or extraction and translations silently break.
+- Normalize blank labels before passing them into `values`, and never use truthiness fallbacks for numbers or booleans — `0` and `false` are valid data.
+- Import `useLingui` from the local i18n context as shown above, never from `@lingui/react/macro`; no raw `t({ ... })` calls.
+
 ### Tech Stack
 
 Cloudflare Workers, Hono v4, Vite + SWC, Tailwind v4 + BaseCoat, D1 + Drizzle ORM, better-auth, @lingui/core, Datastar v1.0.0-RC.7 (vendored — version matters, APIs vary between releases), Lit (Web Components), Zod, ESLint + Prettier
 
 ## UX Copy Guidelines
 
-All user-facing text follows a consistent voice. When writing or reviewing copy, apply these rules. They apply to every locale; the Chinese section at the end adds locale-specific rules.
+These rules govern **UI strings** — buttons, errors, empty states, settings descriptions — in every locale; the Chinese section adds locale-specific rules. For **prose** (anything under `docs/`, `README.md`, multi-sentence `msgstr` values) see `docs/internal/writing-style.md`. Run `mise run check-copy` after touching either.
 
-These rules govern **UI strings** — buttons, errors, empty states, settings descriptions. For **prose** (anything under `docs/`, `README.md`, multi-sentence `msgstr` values) see `docs/internal/writing-style.md`, which adds genre discipline and the bridge-sentence rule. Run `mise run check-copy` after touching either; it enforces the mechanical rules (`您`, 感叹号, 半角标点夹中文, tour-guide phrasing) and warns on judgment calls.
+**Style anchor**: write like iA Writer or Bear — a quiet tool, not a companion. Declarative sentences, short lines, no praise, no mascot energy. If a line would fit in a marketing email or an onboarding tour, rewrite it.
 
-### Style Anchor
+**Match the existing corpus**: before writing or changing any string, read the neighboring strings — the surrounding component and the same area of `src/i18n/locales/*/en.po` — and match their register, terminology, and casing. The existing copy is the style guide of record.
 
-Write like iA Writer or Bear: a quiet tool, not a companion. Declarative sentences, short lines, no exclamation points, no praise, no mascot energy. Jant is a workroom for one person — copy should read like the label on a well-made object, not a brand talking. If a line would fit in a marketing email or an onboarding tour, rewrite it.
+Banned in any locale: exclamation points; cheerleading ("Awesome", "You're all set", "Oops"); tour-guide framing ("Let's …", "your journey"); marketing adverbs ("seamlessly", "effortlessly", "instantly"); filler ("please", "simply", "just"); "successfully"; emoji; vague failure ("Something went wrong" with no cause or next step).
 
-### Match the Existing Corpus
+Patterns, each with the shape to copy:
 
-Before writing or changing any user-facing string, read the neighboring strings — the surrounding component and the same area of `src/i18n/locales/*/en.po` — and match their register, terminology, and casing. The existing copy is the style guide of record; new copy must be indistinguishable from it.
-
-### Voice & Tone
-
-- Write like a knowledgeable friend — warm but not cute, confident but not arrogant.
-- Use plain English. If you can say it in 5 words, don't use 10.
-- Avoid filler words: "please", "simply", "just", "easily", "feel free to".
-- Never say "successfully" — if it worked, the user knows.
-
-### Banned AI-isms
-
-Never use, in any locale:
-
-- Exclamation points — `"Published!"` → `"Post published."`
-- Cheerleading: "Awesome", "Great job", "Perfect", "You're all set", "Oops"
-- Tour-guide framing: "Let's …", "Welcome aboard", "your journey", "Ready to …?"
-- Marketing adverbs: "seamlessly", "effortlessly", "instantly", "powerful"
-- Emoji in UI copy
-- Vague failure: "Something went wrong" with no cause or next step
-
-### Empty States
-
-- Never show "No [thing] found" or "No [thing] yet" alone. Always pair it with a next action or brief reason the space is empty.
-- Good: `"Nothing published yet. Write your first post to get started."`
-- Bad: `"No posts."`
-
-### Buttons & CTAs
-
-- Verb-first, action-specific labels. Avoid generic text.
-- Good: `"Publish"`, `"Write your first post"`, `"Delete Media"`
-- Bad: `"Submit"`, `"OK"`, `"Confirm"`
-
-### Error Messages
-
-- Always tell the user (1) what went wrong, (2) what they can do about it. Never blame the user.
-- Good: `"Wrong email or password. Check your credentials and try again."`
-- Bad: `"Invalid input"`
-
-### Success & Confirmation
-
-- Acknowledge the action briefly. Don't say "Success" or "[action] successfully."
-- Good: `"Post published."`, `"Settings updated."`, `"Password changed."`
-- Bad: `"Operation completed successfully."`
-
-### Destructive Actions
-
-- Be specific about what will be lost. Make it irreversible-sounding if it is.
-- Good: `"Delete this post permanently? This can't be undone."`
-- Bad: `"Are you sure?"`
-
-### Settings Descriptions
-
-- Describe what a setting **does**, not what it **is**.
-- Good: `"Hide this post from search engines and RSS feeds"`
-- Bad: `"Visibility: Private"`
+- **Empty states**: pair the absence with a next action or reason. `"Nothing published yet. Write your first post to get started."` — never a bare `"No posts."`
+- **Buttons**: verb-first, action-specific. `"Publish"`, `"Delete Media"` — never `"Submit"`, `"OK"`, `"Confirm"`.
+- **Errors**: what went wrong + what to do, without blaming the user. `"Wrong email or password. Check your credentials and try again."` — never `"Invalid input"`.
+- **Success**: brief acknowledgment. `"Post published."`, `"Settings updated."` — never `"Operation completed successfully."`
+- **Destructive actions**: name what will be lost, irreversible-sounding if it is. `"Delete this post permanently? This can't be undone."` — never `"Are you sure?"`
+- **Settings descriptions**: what the setting does, not what it is. `"Hide this post from search engines and RSS feeds"` — never `"Visibility: Private"`.
 
 ### 中文文案（zh-Hans / zh-Hant）
 
@@ -250,15 +170,6 @@ Chinese copy is written, not translated. Say it the way a native product would; 
 
 If you notice code contradicting this document, think about which side is correct, then update whichever is wrong.
 
-### Common Pitfalls
-
-- Combining `.btn` or `.badge` with variant classes (`.btn-outline`, `.btn-ghost`, `.badge-outline`, etc.) — BaseCoat variants are self-contained and combining produces broken styles.
-- Importing `useLingui` from `@lingui/react/macro` or writing raw `t({ ... })` calls — in this codebase, prefer `msg(...)` from `@lingui/core/macro` plus `useLingui` from the local i18n context and call `i18n._(msg(...), values?)`.
-- Editing `packages/create-jant/template/` — this is auto-generated and will be overwritten.
-- Putting multi-service orchestration in route handlers — if two routes need the same sequence of service calls, extract it into a service method. Routes should be thin adapters: parse request → call service → format response.
-- Passing plain text to `dangerouslySetInnerHTML` without `escapeHtml()` — even single-author content can contain `<`, `>`, `&`. The pattern for safe highlighted output: `escapeHtml(text).replace(/\x02/g, '<mark>').replace(/\x03/g, '</mark>')` where `char(2)`/`char(3)` (STX/ETX) are used as FTS5 snippet markers in SQL.
-- Interpolating runtime values directly into a Lingui `message` template literal — this breaks extraction, makes translations drift, and often hides empty-string / `0` bugs. Use `message: "Found {count} results"` with `values: { count }`, and normalize blank labels before passing them into `values`.
-
 ### Docs Index
 
 - **Coding standards** (module deps, error handling, testing): `docs/internal/coding-standards.md`
@@ -273,9 +184,3 @@ If you notice code contradicting this document, think about which side is correc
 - **Theming (internal design guide)**: `docs/internal/theming.md`
 - **Releasing**: `docs/RELEASING.md`
 - **Developer onboarding**: `README.md`, `mise tasks`
-
-## Core Principles
-
-– Simplicity First: Make every change as simple as possible
-– No Laziness: Find root causes. No temporary fixes
-– Minimal Impact: Only touch what’s necessary
