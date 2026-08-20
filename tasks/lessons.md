@@ -804,3 +804,16 @@ A path segment's spelling does not transfer to a query parameter. Before reusing
 check what the framework hands the handler (`app.request` in a throwaway script settles
 it in seconds). Pick a separator that survives both encodings — a comma — and keep
 reading the old one, plus the space it decodes to.
+
+## Removing something from the UI is not removing it
+
+The archive custom URL was retired by deleting its `<option>` from the settings
+form. That is not retirement — the endpoint still accepted `targetType:
+"archive"`, so anything speaking to the API could still create one, and the
+thing the replacement exists to prevent stayed possible. Two more places had to
+say no: the create schema, so a request gets a `400` rather than a surprise, and
+the service, so no future caller can reach past the schema.
+
+When a capability is withdrawn, the boundary that validates it has to withdraw it
+too. Keep the _read_ path untouched and say so out loud — what is being retired
+is the ability to make new ones, never the ability to serve the ones that exist.

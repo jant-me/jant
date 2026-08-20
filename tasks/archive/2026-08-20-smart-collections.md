@@ -1,7 +1,17 @@
 # Smart Collections（智能合集）
 
 日期：2026-08-20
-状态：设计，未实现
+状态：**已实现**（2026-08-20）。这份文档保留为设计记录——为什么是两张表、为什么永远公开、
+为什么没有编辑页、为什么不做 backfill，代码里的注释只写了结论，理由在这里。附录 B 的 11 条
+教训对后来的改动仍然有效，其中教训 2（drizzle-kit 重建表引用新列）在这次原样复现了三次。
+
+实现记录见 6 次提交：`539cd1bf`（前置：归档词表收编）、`63faf072`（schema + 服务）、
+`457fa35c`（页面 + feed + API）、`e6238d0f`（弹窗 + 目录）、`b56e4feb`（升级 + 存量退役）、
+`0a46a470`（枚举面 + 文档 + 词表）。
+
+与文档的偏差，只有一处，且是文档没写到的地方：`/settings/navigation` 的合集选择器也列出了
+智能合集（带 `list-filter` 图标区分）。§9 第 15 步的枚举面清单里没有它，但 §1 的表格写着
+「能放进导航：是」，只让智能合集页的 ⋯ 菜单能加、设置页不能加，是没理由的不对称。
 
 ## 工作方式（作者定，先读这条）
 
@@ -739,34 +749,34 @@ mise run db-wrangler-migrate && mise run db-node-migrate
 
 （没有 `db-migrate-local` 这个任务；本地 D1 的迁移任务叫 `db-wrangler-migrate`。）
 
-- [ ] 1. **维度注册表**（§4）：补上智能合集要的 `column` / `control` / `schema` 三段。
+- [x] 1. **维度注册表**（§4）：补上智能合集要的 `column` / `control` / `schema` 三段。
      注册表本身和它的 `url` / `toPostFilter` / `describe` 已经由前置的归档收编落地，
      归档正在用——**不要重写它，只加段**。纯逻辑，先写测试，不碰数据库不碰 UI。
      写完拿一个假想维度在纸上走一遍五步验收
-- [ ] 2. **双方言 schema**（§3）+ `drizzle-kit generate` ×2 + **逐行读迁移文件**
+- [x] 2. **双方言 schema**（§3）+ `drizzle-kit generate` ×2 + **逐行读迁移文件**
      （附录 B 教训 2）
-- [ ] 3. **类型 / Zod / `ID_PREFIX.smartCollection = "smc"`**，Zod 由注册表拼出来
-- [ ] 4. **`services/smart-collection.ts`** + 接进 `Services`。含 `toPostFilters()`、
+- [x] 3. **类型 / Zod / `ID_PREFIX.smartCollection = "smc"`**，Zod 由注册表拼出来
+- [x] 4. **`services/smart-collection.ts`** + 接进 `Services`。含 `toPostFilters()`、
      路径可用性检查、合集删除拦截
-- [ ] 5. **计数**（§6）。`posts.countMany(filters[], base)` → 一条条件聚合。单独测，含
+- [x] 5. **计数**（§6）。`posts.countMany(filters[], base)` → 一条条件聚合。单独测，含
      0 个、1 个、20 个的情况
-- [ ] 6. **`routes/api/smart-collections.ts`**：CRUD + `/preview` + `/slug`
-- [ ] 7. **页面渲染**（§5）。feed、canonical、hreflang、站点地图、空态
-- [ ] 8. **放置**（§3）：三张表的类型和约束 + **直接插真实行的测试** + 导航标题活读
+- [x] 6. **`routes/api/smart-collections.ts`**：CRUD + `/preview` + `/slug`
+- [x] 7. **页面渲染**（§5）。feed、canonical、hreflang、站点地图、空态
+- [x] 8. **放置**（§3）：三张表的类型和约束 + **直接插真实行的测试** + 导航标题活读
      （JOIN + `targetTitleOf`）和改地址时的 `nav_item.url` 重写
-- [ ] 9. **弹窗**（§2.3）。渐进条件行 + 实时计数 + 地址检查 + 删除 + 键盘
-- [ ] 10. **`/collections`**（§2.1）：`⋯` 菜单里的 New Smart Collection、目录行的
+- [x] 9. **弹窗**（§2.3）。渐进条件行 + 实时计数 + 地址检查 + 删除 + 键盘
+- [x] 10. **`/collections`**（§2.1）：`⋯` 菜单里的 New Smart Collection、目录行的
       `list-filter` 图标、条目菜单、计数。**没有「自动放置」要写**——`buildDirectoryItems`
       的末尾追加已经做到了，只要让它认识 smart collection
-- [ ] 11. **智能合集页**（§2.2）：条件行 + 照抄合集页的 ⋯ 动作菜单（Edit 开弹窗 /
+- [x] 11. **智能合集页**（§2.2）：条件行 + 照抄合集页的 ⋯ 动作菜单（Edit 开弹窗 /
       Add to navigation / Edit navigation / Delete）+ `?sort=` 切换
-- [ ] 12. **「升级链接」**（§2.3）：严格解析 → 预填弹窗
-- [ ] 13. **撰写面板排除智能合集**（§1 的不对称），加注释说明为什么
-- [ ] 14. **存量**（§7）：撤掉 archive 创建入口（**UI 和 service create 分支一起撤**），
+- [x] 12. **「升级链接」**（§2.3）：严格解析 → 预填弹窗
+- [x] 13. **撰写面板排除智能合集**（§1 的不对称），加注释说明为什么
+- [x] 14. **存量**（§7）：撤掉 archive 创建入口（**UI 和 service create 分支一起撤**），
       legacy 记录改成只读 + `Turn into a smart collection`（复用第 12 步的解析器和弹窗）
-- [ ] 15. **枚举面**：站点快照、SQL 导出、站点地图、命令面板、语言视图
-- [ ] 16. **文案 + 术语表 + `.po` 重新提取**
-- [ ] 17. **文档**：`writing-and-organizing` 中英、`API.md`、`export-and-import` 中英
+- [x] 15. **枚举面**：站点快照、SQL 导出、站点地图、命令面板、语言视图
+- [x] 16. **文案 + 术语表 + `.po` 重新提取**
+- [x] 17. **文档**：`writing-and-organizing` 中英、`API.md`、`export-and-import` 中英
 
 ---
 
