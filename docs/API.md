@@ -474,7 +474,7 @@ Notes:
 
 Auth: `Public`
 
-The archive endpoint mirrors the `/archive` page: it returns every public thread root, **including `latest_hidden` posts**, with archive-style filters (year, media kind, presence of media, title, or replies). Use this when you want a complete corpus instead of the curated Latest feed.
+The archive endpoint carries the same filters as the `/archive` page — year, collection, media kind, presence of media, title, or replies, and visibility — and returns every public thread root, **including `latest_hidden` posts**. Use this when you want a complete corpus instead of the curated Latest feed. Ordering is fixed at newest-first; the page's `?sort=` switch has no counterpart here, because the cursor is keyed off the post `id`.
 
 Query parameters:
 
@@ -482,10 +482,12 @@ Query parameters:
 | ------------ | ---------------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `format`     | `note` \| `link` \| `quote`                    | no       | all     | Format filter                                                                                                                                                                          |
 | `collection` | string                                         | no       | none    | Filter by collection slug(s). Single slug (`design`) or multiple comma-separated (`tech,art`)                                                                                          |
+| `lang`       | BCP 47 tag                                     | no       | all     | Restrict to one content language, as `/api/public/posts` does                                                                                                                          |
 | `year`       | integer                                        | no       | none    | Only posts whose `publishedAt` falls in this calendar year (UTC)                                                                                                                       |
 | `media`      | comma-separated `MediaKind` \| `any` \| `none` | no       | none    | Kinds (`image`, `video`, `audio`, `text`, `document`): posts with at least one attachment of one of these kinds. `any` = posts with any attachment, `none` = posts without attachments |
 | `title`      | `any` \| `none`                                | no       | none    | `any` = posts with a title, `none` = posts without                                                                                                                                     |
 | `replies`    | `any` \| `none`                                | no       | none    | `any` = thread roots with published replies (threads), `none` = single posts without replies                                                                                           |
+| `visibility` | `public` \| `featured` \| `hidden`             | no       | all     | `hidden` is the URL spelling of `latest_hidden`. `private` names a set no anonymous caller can see and returns `400`, as does any other value                                          |
 | `hasMedia`   | `0` \| `1`                                     | no       | none    | **Deprecated** — use `media=any` / `media=none`                                                                                                                                        |
 | `hasTitle`   | `0` \| `1`                                     | no       | none    | **Deprecated** — use `title=any` / `title=none`                                                                                                                                        |
 | `cursor`     | string                                         | no       | none    | Pass the previous `nextCursor` back unchanged                                                                                                                                          |
@@ -499,7 +501,7 @@ Notes:
 - Returns published public thread roots **and** `latest_hidden` posts.
 - Drafts, private posts, and replies are excluded.
 - Posts are returned in newest-first order. Cursor pagination is keyed off the post `id`.
-- An invalid `media` value returns `400`. An unknown `collection` slug returns an empty result set.
+- An invalid `media` or `visibility` value returns `400`. An unknown `collection` slug returns an empty result set.
 - `content=markdown` returns `bodyMarkdown` and omits `bodyHtml/bodyText`.
 
 ### List posts
@@ -2823,7 +2825,7 @@ Feed notes:
 - Invalid `format` values are ignored rather than rejected.
 - Latest feeds include published root posts only, excluding private posts and `latest_hidden` posts.
 - Featured feeds include published featured root posts and exclude private posts.
-- `GET /archive/feed` returns the complete published record (including `latest_hidden`) and accepts the archive filters `?year=`, `?format=`, `?collection=`, `?media=`.
+- `GET /archive/feed` returns the complete published record (including `latest_hidden`) and accepts the archive filters `?year=`, `?format=`, `?collection=`, `?media=`, `?title=`, `?replies=`, `?visibility=`, and `?sort=`. A `?collection=` slug that names no collection returns `404`, as the page does — handing back the unfiltered archive under the collection's name would give a subscriber a set they never asked for.
 - `GET /feed/latest` and `GET /feed/featured` are kept indefinitely as `308` redirects to the canonical `/latest/feed` and `/featured/feed`, so existing subscribers never break.
 - `GET /feed/all` and `GET /feed/all/atom.xml` are legacy aliases that redirect to `/latest/feed` with `308`, preserving the query string.
 - `GET /:slug/feed` returns an RSS feed for a single collection.

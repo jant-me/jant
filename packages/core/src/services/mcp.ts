@@ -433,7 +433,9 @@ const mcpTools: McpToolDefinition[] = [
         };
       }
 
-      return context.services.collections.listDirectoryData();
+      return context.services.collections.listDirectoryData({
+        isAuthenticated: true,
+      });
     },
   },
   {

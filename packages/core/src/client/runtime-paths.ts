@@ -26,6 +26,22 @@ function viewBasePath(): string {
   return base === undefined ? sitePathPrefix() : base;
 }
 
+/**
+ * Content language of the view the reader is in, as the server stamped it.
+ *
+ * The primary language is served at the root and stamps nothing, so `undefined`
+ * means "this site's default view", not "unknown". Send it to an API that
+ * narrows by language so the numbers it returns match the ones the page was
+ * rendered with.
+ *
+ * @returns BCP 47 tag like `en`, or undefined in the root view
+ * @example
+ * viewLang(); // "ja" on /ja/collections, undefined on /collections
+ */
+export function viewLang(): string | undefined {
+  return document.documentElement.dataset.viewLang || undefined;
+}
+
 export function publicPath(path: string): string {
   if (isAssetPath(path)) {
     return toPublicAssetPath(path, assetBasePath());

@@ -3,6 +3,7 @@
  */
 
 import type {
+  CollectionDirectoryEntryType,
   Format,
   Status,
   Visibility,
@@ -16,6 +17,8 @@ import type {
   SiteDomainKind,
   SiteMemberRole,
 } from "./constants.js";
+
+export type { CollectionDirectoryEntryType };
 
 export interface Site {
   id: string;
@@ -149,8 +152,6 @@ export interface CollectionDirectoryCollection extends Collection {
   threadCount: number;
   recentActivityAt: number;
 }
-
-export type CollectionDirectoryEntryType = "collection" | "divider" | "link";
 
 export interface CollectionDirectoryEntry {
   id: string;

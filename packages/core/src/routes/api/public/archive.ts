@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Bindings } from "../../../types.js";
 import type { AppVariables } from "../../../types/app-context.js";
-import { MEDIA_KINDS } from "../../../types.js";
+import { MEDIA_KINDS, PUBLIC_ARCHIVE_VISIBILITIES } from "../../../types.js";
 import {
   ContentLanguageSchema,
   FormatSchema,
@@ -21,6 +21,38 @@ const MediaKindSchema = z.enum(MEDIA_KINDS);
 const MEDIA_KIND_LIST = MEDIA_KINDS.join(", ");
 const INVALID_MEDIA_MESSAGE =
   "Invalid media value. Allowed: any, none, or kinds: " + MEDIA_KIND_LIST;
+
+/**
+ * How each selectable visibility is spelled in a URL.
+ *
+ * `latest_hidden` is the stored value; `hidden` is the word every surface puts
+ * in a query string. Keyed by the shared list rather than restating it, so a
+ * fourth public visibility fails to compile here until it is given a spelling.
+ */
+const VISIBILITY_URL_SPELLING = {
+  public: "public",
+  featured: "featured",
+  latest_hidden: "hidden",
+} as const satisfies Record<
+  (typeof PUBLIC_ARCHIVE_VISIBILITIES)[number],
+  string
+>;
+
+type ArchiveVisibilityUrlValue =
+  (typeof VISIBILITY_URL_SPELLING)[keyof typeof VISIBILITY_URL_SPELLING];
+
+const VISIBILITY_BY_URL_VALUE = Object.fromEntries(
+  Object.entries(VISIBILITY_URL_SPELLING).map(([stored, url]) => [url, stored]),
+) as Record<
+  ArchiveVisibilityUrlValue,
+  (typeof PUBLIC_ARCHIVE_VISIBILITIES)[number]
+>;
+
+const VISIBILITY_URL_VALUE_LIST = Object.values(VISIBILITY_URL_SPELLING).join(
+  ", ",
+);
+const INVALID_VISIBILITY_MESSAGE =
+  "Invalid visibility value. Allowed: " + VISIBILITY_URL_VALUE_LIST;
 
 const BoolFlagSchema = z.enum(["0", "1"]).transform((value) => value === "1");
 const PresenceSchema = z
@@ -58,6 +90,26 @@ const ListPublicArchiveQuerySchema = z.object({
     }),
   title: PresenceSchema.optional(),
   replies: PresenceSchema.optional(),
+  // The archive page's vocabulary, minus the one value this endpoint cannot
+  // answer. `private` names a set no anonymous caller may see, so it is
+  // rejected rather than dropped: silently widening the result to the whole
+  // archive would answer a different question under the caller's own words.
+  visibility: z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value) return undefined;
+      const stored =
+        VISIBILITY_BY_URL_VALUE[value as ArchiveVisibilityUrlValue];
+      if (!stored) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: INVALID_VISIBILITY_MESSAGE,
+        });
+        return z.NEVER;
+      }
+      return stored;
+    }),
   // Deprecated: use media=any|none and title=any|none instead.
   hasMedia: BoolFlagSchema.optional(),
   hasTitle: BoolFlagSchema.optional(),
@@ -75,6 +127,7 @@ publicArchiveApiRoutes.get("/", async (c) => {
     media,
     title,
     replies,
+    visibility,
     hasMedia,
     hasTitle,
     cursor,
@@ -119,6 +172,14 @@ publicArchiveApiRoutes.get("/", async (c) => {
     hasMedia: mediaPresence ?? hasMedia,
     hasTitle: title ?? hasTitle,
     hasReplies: replies,
+    // `featured` is a virtual visibility — a flag rather than a stored value —
+    // so it maps to a different field than the other two. Same split the page
+    // makes in `visibilityFilterClause`.
+    ...(visibility === "featured"
+      ? { featured: true }
+      : visibility
+        ? { visibility }
+        : {}),
     ignorePinnedSort: true,
   });
 

@@ -37,6 +37,7 @@ import {
   buildRootActivityExpr,
   rootActivityColumns,
 } from "../db/thread-activity.js";
+import { buildReaderVisibilityConditions } from "../db/post-visibility.js";
 import { createEntityId } from "../lib/ids.js";
 import { now } from "../lib/time.js";
 import { trimTiptapBody } from "../lib/tiptap-render.js";
@@ -911,11 +912,6 @@ export function createPostService(
       : sql<string>`strftime('%Y', ${column}, 'unixepoch')`;
   }
 
-  const effectiveVisibilityExpr = sql<string>`coalesce(
-    ${posts.visibility},
-    (SELECT root.visibility FROM post AS root WHERE root.id = ${posts.threadId} AND root.site_id = ${siteId})
-  )`;
-
   /** Check if a slug is available (not used by posts or path_registry) */
   async function isSlugAvailable(slug: string): Promise<boolean> {
     return resolvedPaths.isPathAvailable(slug);
@@ -1182,20 +1178,11 @@ export function createPostService(
 
   /** Build WHERE conditions from filters (shared by list and count) */
   function buildFilterConditions(filters: PostFilters) {
-    const conditions = [eq(posts.siteId, siteId)];
+    const conditions = [
+      eq(posts.siteId, siteId),
+      ...buildReaderVisibilityConditions(posts, siteId, filters),
+    ];
 
-    if (filters.status) {
-      conditions.push(eq(posts.status, filters.status));
-    }
-    if (filters.visibility !== undefined) {
-      conditions.push(sql`${effectiveVisibilityExpr} = ${filters.visibility}`);
-    }
-    if (filters.excludeLatestHidden) {
-      conditions.push(sql`${effectiveVisibilityExpr} != 'latest_hidden'`);
-    }
-    if (filters.excludePrivate) {
-      conditions.push(sql`${effectiveVisibilityExpr} != 'private'`);
-    }
     if (filters.pinned !== undefined) {
       conditions.push(
         filters.pinned
@@ -1209,9 +1196,6 @@ export function createPostService(
           ? sql`${posts.featuredAt} IS NOT NULL`
           : isNull(posts.featuredAt),
       );
-    }
-    if (filters.lang) {
-      conditions.push(eq(posts.language, filters.lang));
     }
     if (filters.format) {
       conditions.push(eq(posts.format, filters.format));
@@ -1606,21 +1590,10 @@ export function createPostService(
   }
 
   function buildThreadRootPageConditions(options?: ThreadRootPageOptions) {
-    const conditions: SQL[] = [eq(posts.siteId, siteId)];
-    const status = options?.status;
-
-    if (status) {
-      conditions.push(eq(posts.status, status));
-    }
-    if (options?.excludePrivate) {
-      conditions.push(sql`${effectiveVisibilityExpr} != 'private'`);
-    }
-    if (options?.excludeLatestHidden) {
-      conditions.push(sql`${effectiveVisibilityExpr} != 'latest_hidden'`);
-    }
-    if (options?.lang) {
-      conditions.push(eq(posts.language, options.lang));
-    }
+    const conditions: SQL[] = [
+      eq(posts.siteId, siteId),
+      ...buildReaderVisibilityConditions(posts, siteId, options ?? {}),
+    ];
     if (options?.publishedBefore !== undefined) {
       conditions.push(
         sql`${posts.publishedAt} < ${options.publishedBefore}`,
@@ -3136,7 +3109,8 @@ export function createPostService(
           ],
         );
         updateResult = results[updateIdx] as
-          (typeof posts.$inferSelect)[] | undefined;
+          | (typeof posts.$inferSelect)[]
+          | undefined;
       } else {
         await db.transaction(async (tx) => {
           if (needsCascade) {

@@ -19,26 +19,32 @@ import {
   customType,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { SYSTEM_NAV_KEY_VALUES } from "../../types/constants.js";
+import {
+  COLLECTION_DIRECTORY_ENTRY_TYPES,
+  COLLECTION_SORT_ORDERS,
+  CONTENT_DISPOSITIONS,
+  FORMATS,
+  GITHUB_APP_ACCOUNT_TYPES,
+  NAV_ITEM_PLACEMENTS,
+  NAV_ITEM_TYPES,
+  PATH_KINDS,
+  SITE_DOMAIN_KINDS,
+  SITE_MEMBER_ROLES,
+  SITE_STATUSES,
+  STATUSES,
+  SYSTEM_NAV_KEY_VALUES,
+  UPLOAD_SESSION_STATES,
+  VISIBILITIES,
+} from "../../types/constants.js";
 
-const SITE_STATUSES = ["active", "suspended"] as const;
-const SITE_DOMAIN_KINDS = ["primary", "alias"] as const;
-const SITE_MEMBER_ROLES = ["owner", "admin", "editor"] as const;
-const FORMATS = ["note", "link", "quote"] as const;
-const STATUSES = ["draft", "published"] as const;
-const VISIBILITIES = ["public", "latest_hidden", "private"] as const;
-const COLLECTION_SORT_ORDERS = ["newest", "oldest", "rating_desc"] as const;
-const NAV_ITEM_TYPES = ["link", "system", "collection", "page"] as const;
-const NAV_ITEM_PLACEMENTS = ["header", "more"] as const;
-const UPLOAD_SESSION_STATES = [
-  "pending",
-  "uploaded",
-  "completed",
-  "aborted",
-  "failed",
-] as const;
-const CONTENT_DISPOSITIONS = ["inline", "attachment"] as const;
-
+/**
+ * Render a value list as the `IN (...)` body of a CHECK constraint.
+ *
+ * Every list it is handed comes from `types/constants.ts`. Declaring one
+ * locally instead is how a CHECK once shipped missing an enum value: the
+ * shared list grew, the schema's private copy did not, and the generated
+ * constraint rejected rows the application treats as valid.
+ */
 function sqlTextEnum(values: readonly string[]) {
   return sql.raw(values.map((value) => `'${value}'`).join(", "));
 }
@@ -515,7 +521,7 @@ export const pathRegistry = pgTable(
   (table) => [
     check(
       "chk_path_registry_kind",
-      sql`${table.kind} IN ('slug', 'alias', 'redirect', 'archive')`,
+      sql`${table.kind} IN (${sqlTextEnum(PATH_KINDS)})`,
     ),
     uniqueIndex("uq_path_registry_site_path").on(table.siteId, table.path),
     uniqueIndex("uq_path_registry_site_post_slug")
@@ -584,7 +590,7 @@ export const collectionDirectoryItems = pgTable(
   (table) => [
     check(
       "chk_collection_directory_item_type",
-      sql`${table.type} IN ('collection', 'divider', 'link')`,
+      sql`${table.type} IN (${sqlTextEnum(COLLECTION_DIRECTORY_ENTRY_TYPES)})`,
     ),
     index("idx_collection_directory_item_site_collection_id").on(
       table.siteId,
@@ -885,8 +891,6 @@ export const verification = pgTable("verification", {
 // ---------------------------------------------------------------------------
 // GitHub App Installations (junction table: installation ↔ site, many-to-many)
 // ---------------------------------------------------------------------------
-
-const GITHUB_APP_ACCOUNT_TYPES = ["User", "Organization"] as const;
 
 export const githubAppInstallation = pgTable(
   "github_app_installation",

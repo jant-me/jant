@@ -229,6 +229,90 @@ async function main() {
     assert.equal(archivePage.status, 200);
     assert.match(await archivePage.text(), /Hello from Postgres smoke\./);
 
+    // The collections directory aggregates with COUNT(DISTINCT) under a LEFT
+    // JOIN whose ON clause carries the reader's visibility, plus a correlated
+    // subquery inside MAX(). That combination is where the two dialects are
+    // most likely to part ways, and the number it produces is shown to
+    // signed-out readers — a wrong one leaks how much is unpublished.
+    const collectionResponse = await handler.fetch(
+      new Request("http://127.0.0.1:3000/api/collections", {
+        method: "POST",
+        headers: {
+          Cookie: cookieHeader,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ slug: "smoke", title: "Smoke" }),
+      }),
+    );
+    assert.equal(collectionResponse.status, 201);
+    const collection = await collectionResponse.json();
+
+    const publishedResponse = await handler.fetch(
+      new Request("http://127.0.0.1:3000/api/posts", {
+        method: "POST",
+        headers: {
+          Cookie: cookieHeader,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          format: "note",
+          bodyMarkdown: "Published thread in the smoke collection.",
+          status: "published",
+        }),
+      }),
+    );
+    const publishedForCollection = await publishedResponse.json();
+
+    const draftResponse = await handler.fetch(
+      new Request("http://127.0.0.1:3000/api/posts", {
+        method: "POST",
+        headers: {
+          Cookie: cookieHeader,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          format: "note",
+          bodyMarkdown: "Draft that must not be counted.",
+          status: "draft",
+        }),
+      }),
+    );
+    const draft = await draftResponse.json();
+
+    for (const threadId of [publishedForCollection.id, draft.id]) {
+      const attach = await handler.fetch(
+        new Request(
+          `http://127.0.0.1:3000/api/collections/${collection.id}/threads`,
+          {
+            method: "POST",
+            headers: {
+              Cookie: cookieHeader,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ threadId }),
+          },
+        ),
+      );
+      assert.equal(attach.status, 201);
+    }
+
+    const directoryResponse = await handler.fetch(
+      new Request("http://127.0.0.1:3000/api/collections"),
+    );
+    assert.equal(directoryResponse.status, 200);
+    const directory = await directoryResponse.json();
+    const smokeRow = directory.collections.find(
+      (entry) => entry.slug === "smoke",
+    );
+    assert.equal(smokeRow?.threadCount, 1);
+
+    // A collection slug that names nothing is answered, not dropped — the
+    // whole archive under the reader's own word is never the right response.
+    const missingCollection = await handler.fetch(
+      new Request("http://127.0.0.1:3000/archive?collection=no-such-thing"),
+    );
+    assert.equal(missingCollection.status, 404);
+
     const searchPage = await handler.fetch(
       new Request("http://127.0.0.1:3000/search?q=Postgres"),
     );

@@ -179,6 +179,22 @@ export type StorageDriver = (typeof STORAGE_DRIVERS)[number];
 export const PATH_KINDS = ["slug", "alias", "redirect", "archive"] as const;
 export type PathKind = (typeof PATH_KINDS)[number];
 
+/**
+ * Row kinds the collections directory can hold.
+ *
+ * A `collection` row points at a collection and carries no text of its own; a
+ * `divider` and a `link` carry text and point at nothing. The table CHECK in
+ * both dialects is generated from this list, so a new kind is one edit here
+ * plus the shape branch that describes which columns it fills.
+ */
+export const COLLECTION_DIRECTORY_ENTRY_TYPES = [
+  "collection",
+  "divider",
+  "link",
+] as const;
+export type CollectionDirectoryEntryType =
+  (typeof COLLECTION_DIRECTORY_ENTRY_TYPES)[number];
+
 /** How long a collection nav item stays "fresh" after new content is added */
 export const COLLECTION_FRESHNESS_WINDOW_SECONDS = 48 * 60 * 60;
 
@@ -190,3 +206,19 @@ export type SiteDomainKind = (typeof SITE_DOMAIN_KINDS)[number];
 
 export const SITE_MEMBER_ROLES = ["owner", "admin", "editor"] as const;
 export type SiteMemberRole = (typeof SITE_MEMBER_ROLES)[number];
+
+export const UPLOAD_SESSION_STATES = [
+  "pending",
+  "uploaded",
+  "completed",
+  "aborted",
+  "failed",
+] as const;
+export type UploadSessionState = (typeof UPLOAD_SESSION_STATES)[number];
+
+/** How a stored object is served: rendered in place, or downloaded. */
+export const CONTENT_DISPOSITIONS = ["inline", "attachment"] as const;
+export type ContentDisposition = (typeof CONTENT_DISPOSITIONS)[number];
+
+export const GITHUB_APP_ACCOUNT_TYPES = ["User", "Organization"] as const;
+export type GithubAppAccountType = (typeof GITHUB_APP_ACCOUNT_TYPES)[number];

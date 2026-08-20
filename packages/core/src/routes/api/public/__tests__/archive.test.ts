@@ -52,6 +52,75 @@ describe("Public Archive API Routes", () => {
       expect(hidden.visibility).toBe("latest_hidden");
     });
 
+    it("answers the visibility question it was asked", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/archive", publicArchiveApiRoutes);
+
+      const plain = await services.posts.create({
+        format: "note",
+        title: "Plain root",
+        bodyMarkdown: "plain",
+      });
+      const hidden = await services.posts.create({
+        format: "note",
+        title: "Hidden root",
+        bodyMarkdown: "hidden",
+        visibility: "latest_hidden",
+      });
+      const featured = await services.posts.create({
+        format: "note",
+        title: "Featured root",
+        bodyMarkdown: "featured",
+        featured: true,
+      });
+
+      const hiddenOnly = await app.request(
+        "/api/public/archive?visibility=hidden",
+      );
+      expect(hiddenOnly.status).toBe(200);
+      const hiddenBody = await hiddenOnly.json();
+      expect(hiddenBody.posts.map((p: { id: string }) => p.id)).toEqual([
+        hidden.id,
+      ]);
+
+      const featuredOnly = await app.request(
+        "/api/public/archive?visibility=featured",
+      );
+      const featuredBody = await featuredOnly.json();
+      expect(featuredBody.posts.map((p: { id: string }) => p.id)).toEqual([
+        featured.id,
+      ]);
+
+      const publicOnly = await app.request(
+        "/api/public/archive?visibility=public",
+      );
+      const publicBody = await publicOnly.json();
+      const publicIds = publicBody.posts.map((p: { id: string }) => p.id);
+      expect(publicIds).toContain(plain.id);
+      expect(publicIds).not.toContain(hidden.id);
+    });
+
+    // The failure this guards: an unknown key is stripped by the schema, so a
+    // caller asking for something this endpoint cannot serve used to get the
+    // whole archive back and no way to tell.
+    it("rejects a visibility it cannot serve instead of widening", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/archive", publicArchiveApiRoutes);
+
+      await services.posts.create({
+        format: "note",
+        title: "Plain root",
+        bodyMarkdown: "plain",
+      });
+
+      for (const value of ["private", "latest_hidden", "nonsense"]) {
+        const res = await app.request(
+          `/api/public/archive?visibility=${value}`,
+        );
+        expect(res.status).toBe(400);
+      }
+    });
+
     it("supports format and limit filters with cursor", async () => {
       const { app, services } = createTestApp({ authenticated: false });
       app.route("/api/public/archive", publicArchiveApiRoutes);

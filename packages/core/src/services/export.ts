@@ -267,7 +267,10 @@ export function createExportService(
     async generateHugoFiles() {
       const collectionDirectoryDataPromise =
         typeof services.collections.listDirectoryData === "function"
-          ? services.collections.listDirectoryData()
+          ? // The export builds a public static site, so it sees what a
+            // signed-out reader sees. Language narrowing is not applied: the
+            // export walks every language itself.
+            services.collections.listDirectoryData({ isAuthenticated: false })
           : Promise.resolve(null);
 
       // 1. Query all data

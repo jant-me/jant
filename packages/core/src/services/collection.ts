@@ -15,7 +15,11 @@ import {
   supportsDrizzleTransaction,
 } from "../db/index.js";
 import type { DatabaseDialect } from "../db/dialect.js";
-import { buildRootActivityExpr } from "../db/thread-activity.js";
+import {
+  buildRootActivityExpr,
+  rootActivityColumns,
+} from "../db/thread-activity.js";
+import { buildReaderVisibilityConditions } from "../db/post-visibility.js";
 import {
   sqliteSchemaBundle,
   type DatabaseSchema,
@@ -88,6 +92,21 @@ function parseCollectionSelectionSlugs(
   return slugs.length > 0 ? slugs : null;
 }
 
+/**
+ * Who is looking at the collections directory.
+ *
+ * The directory lists every collection in every language view — that is site
+ * skeleton, and it does not depend on the reader. Its *numbers* do: they answer
+ * "how many threads will I see if I click this", so they carry the same
+ * visibility and language narrowing the collection page applies.
+ */
+export interface CollectionDirectoryViewer {
+  /** Signed-in authors see their private threads counted; readers do not. */
+  isAuthenticated: boolean;
+  /** Content language of the current view, when the site has more than one. */
+  lang?: string;
+}
+
 export interface CollectionService {
   getById(id: string): Promise<Collection | null>;
   getBySlug(slug: string): Promise<Collection | null>;
@@ -96,7 +115,9 @@ export interface CollectionService {
     slugExpression: string,
   ): Promise<ResolvedCollectionSelection | null>;
   list(): Promise<Collection[]>;
-  listDirectoryData(): Promise<CollectionsDirectoryData>;
+  listDirectoryData(
+    viewer: CollectionDirectoryViewer,
+  ): Promise<CollectionsDirectoryData>;
   /** List collections sorted by most recent Thread addition (for compose dialog) */
   listByRecentActivity(): Promise<Collection[]>;
   create(data: CreateCollection): Promise<Collection>;
@@ -446,31 +467,38 @@ export function createCollectionService(
       .filter((row): row is Collection => row !== null);
   }
 
-  async function listDirectoryCollections(): Promise<
-    CollectionDirectoryCollection[]
-  > {
-    // `posts` is joined on thread_collections.thread_id, so each row is
-    // already the Thread root — the definition applies to it directly.
-    const threadActivityAt = buildRootActivityExpr({
-      lastActivityAt: posts.lastActivityAt,
-      publishedAt: posts.publishedAt,
-      updatedAt: posts.updatedAt,
+  async function listDirectoryCollections(
+    viewer: CollectionDirectoryViewer,
+  ): Promise<CollectionDirectoryCollection[]> {
+    // Joined on thread_id rather than id, so a Thread counts once no matter
+    // which of its posts matched — the same shape
+    // `posts.countCollectionThreadRootsForCollections` uses for the collection
+    // page. The two numbers are shown one click apart and have to agree.
+    const readerConditions = buildReaderVisibilityConditions(posts, siteId, {
+      status: "published",
+      excludePrivate: !viewer.isAuthenticated,
+      lang: viewer.lang,
     });
-    const threadCount = sql<number>`
-      CAST(COUNT(
-        CASE
-          WHEN ${posts.id} IS NOT NULL THEN 1
-        END
-      ) AS INTEGER)
-    `.as("thread_count");
-    const recentActivityAt = sql<number | null>`
-      MAX(
-        CASE
-          WHEN ${posts.id} IS NOT NULL
-          THEN ${threadActivityAt}
-        END
+
+    const threadCount =
+      sql<number>`CAST(COUNT(DISTINCT ${posts.threadId}) AS INTEGER)`.as(
+        "thread_count",
+      );
+    // Rows here are Thread *members*, so the root's activity is reached
+    // through a correlated subquery; the outer MAX only collapses the group.
+    // A member whose root row is missing falls back to its own timestamps.
+    const recentActivityAt = sql<number | null>`MAX(
+      COALESCE(
+        (
+          SELECT ${buildRootActivityExpr(rootActivityColumns("root"))}
+          FROM post AS root
+          WHERE root.site_id = ${siteId}
+            AND root.id = ${posts.threadId}
+        ),
+        ${posts.publishedAt},
+        ${posts.updatedAt}
       )
-    `.as("recent_activity_at");
+    )`.as("recent_activity_at");
 
     const rows = await db
       .select({
@@ -486,11 +514,15 @@ export function createCollectionService(
           eq(collections.id, threadCollections.collectionId),
         ),
       )
+      // The reader's conditions belong in ON, not WHERE: a collection this
+      // reader can see nothing in stays listed and reads `0 threads`, which is
+      // what the directory promises — every collection in every view.
       .leftJoin(
         posts,
         and(
           eq(posts.siteId, threadCollections.siteId),
-          eq(threadCollections.threadId, posts.id),
+          eq(posts.threadId, threadCollections.threadId),
+          ...readerConditions,
         ),
       )
       .where(eq(collections.siteId, siteId))
@@ -626,9 +658,9 @@ export function createCollectionService(
       return hydrateCollections(rows);
     },
 
-    async listDirectoryData() {
+    async listDirectoryData(viewer) {
       const [directoryCollections, orderedDirectoryItems] = await Promise.all([
-        listDirectoryCollections(),
+        listDirectoryCollections(viewer),
         this.listDirectoryItems(),
       ]);
 

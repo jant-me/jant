@@ -13,6 +13,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import type {
   Bindings,
+  Collection,
   FeedData,
   Format,
   MediaKind,
@@ -248,6 +249,45 @@ function isReaderAssembledArchive(
     params.visibility !== undefined ||
     params.sort === "updated"
   );
+}
+
+/**
+ * What the `collection` parameter named, including "nothing at all".
+ *
+ * Three states, spelled out, because the missing one used to be folded into
+ * `undefined` — see {@link resolveArchiveCollection}.
+ */
+type ArchiveCollectionSelection =
+  | { kind: "unfiltered" }
+  | { kind: "resolved"; collection: Collection }
+  | { kind: "missing" };
+
+/**
+ * Resolve `?collection=` to a collection, or report that it names none.
+ *
+ * A slug that resolves to nothing must never fall through as "no collection
+ * filter": that renders the whole archive under a name the reader chose, with
+ * the heading, the chip bar, and the feed title all pretending the word was
+ * never typed. The same rule `visibility=private` follows — a selection that
+ * cannot be honored is answered, not erased. `/collections/{slug}` already
+ * answers this exact question with a 404, and so does every caller here.
+ *
+ * @param c - Hono context
+ * @param params - Parsed query params
+ * @returns The selection, distinguishing "none asked" from "none found"
+ * @example
+ * await resolveArchiveCollection(c, params); // { kind: "missing" }
+ */
+async function resolveArchiveCollection(
+  c: Context<Env>,
+  params: ParsedArchiveParams,
+): Promise<ArchiveCollectionSelection> {
+  if (!params.collectionSlug) return { kind: "unfiltered" };
+
+  const collection = await c.var.services.collections.getBySlug(
+    params.collectionSlug,
+  );
+  return collection ? { kind: "resolved", collection } : { kind: "missing" };
 }
 
 /**
@@ -488,9 +528,10 @@ export async function renderArchivePage(
 
   // --- Resolve collection slug to ID ----------------------------------------
 
-  const collection = params.collectionSlug
-    ? await services.collections.getBySlug(params.collectionSlug)
-    : undefined;
+  const selection = await resolveArchiveCollection(c, params);
+  if (selection.kind === "missing") return c.notFound();
+  const collection =
+    selection.kind === "resolved" ? selection.collection : undefined;
   const collectionId = collection?.id;
 
   const navData = await getNavigationData(c);
@@ -829,13 +870,14 @@ function buildArchiveFeedLabel(
 async function buildArchiveFeedData(
   c: Context<Env>,
   selfPath: string,
-): Promise<FeedData> {
+): Promise<FeedData | null> {
   const { appConfig, services } = c.var;
   const params = parseArchiveParams(c);
 
-  const collection = params.collectionSlug
-    ? await services.collections.getBySlug(params.collectionSlug)
-    : undefined;
+  const selection = await resolveArchiveCollection(c, params);
+  if (selection.kind === "missing") return null;
+  const collection =
+    selection.kind === "resolved" ? selection.collection : undefined;
   const rssPublishedBefore = getRssPublishedBefore(
     appConfig.rssPublishDelaySeconds,
   );
@@ -1009,6 +1051,10 @@ export async function renderArchiveFeed(c: Context<Env>): Promise<Response> {
   if (archiveQueryRequiresAuth(parseArchiveParams(c))) return c.notFound();
 
   const feedData = await buildArchiveFeedData(c, "/archive/feed");
+  // A collection slug that names nothing: the same 404 the page gives, rather
+  // than handing a subscriber the entire archive under the collection's name.
+  if (!feedData) return c.notFound();
+
   return new Response(defaultFeedRenderer(feedData), {
     headers: {
       "Content-Type": "application/atom+xml; charset=utf-8",

@@ -14,7 +14,10 @@ import { getNavigationData } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
 import { toPublicPath } from "../../lib/url.js";
-import { buildSurfaceAlternates } from "../../lib/view-language.js";
+import {
+  buildSurfaceAlternates,
+  getViewLang,
+} from "../../lib/view-language.js";
 import { CollectionEditorPage } from "../../ui/pages/CollectionEditorPage.js";
 import { CollectionsPage } from "../../ui/pages/CollectionsPage.js";
 
@@ -72,10 +75,13 @@ collectionsPageRoutes.get("/new", async (c) => {
 export async function renderCollectionsDirectory(
   c: Context<Env>,
 ): Promise<Response> {
-  const [directoryData, navData] = await Promise.all([
-    c.var.services.collections.listDirectoryData(),
-    getNavigationData(c),
-  ]);
+  const navData = await getNavigationData(c);
+  // The numbers have to match the collection pages these rows link to, so they
+  // carry this reader's visibility and this view's language.
+  const directoryData = await c.var.services.collections.listDirectoryData({
+    isAuthenticated: navData.isAuthenticated,
+    lang: getViewLang(c) ?? undefined,
+  });
 
   return renderPublicPage(c, {
     title: buildPageTitle("Collections", navData.siteName),

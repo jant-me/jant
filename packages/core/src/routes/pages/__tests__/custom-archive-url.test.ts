@@ -100,4 +100,20 @@ describe("custom archive URLs", () => {
     expect(html).toContain("body kept back");
     expect(html).not.toContain("body on the stream");
   });
+
+  // Same rule, reached through a stored query: a collection that was deleted
+  // after the path was saved leaves the path naming nothing, and the honest
+  // answer is that it no longer resolves — not the whole archive.
+  it("404s a stored query naming a collection that is gone", async () => {
+    const { app, services } = createPageTestApp();
+    await seed(services);
+    await services.customUrls.create({
+      path: "/gone",
+      targetType: "archive",
+      archiveQuery: "collection=deleted-collection",
+    });
+
+    const res = await app.request("/gone");
+    expect(res.status).toBe(404);
+  });
 });

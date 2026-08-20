@@ -762,3 +762,31 @@ A serif blog rendered its Chinese in sans, and the site had no say in it.
 Every `font-family` fallback must name fonts that exist. If a value's purpose is
 "stay out of the way", it belongs in the code that decides whether to emit the
 declaration at all, not as an unmatchable name inside the stack.
+
+## An unresolvable selection is answered, not dropped
+
+Twice now the same shape: a query parameter the reader chose could not be
+honored, and the code let it fall through as `undefined` — which reads to the
+query builder as "no filter", so the surface rendered _everything_ under the
+name the reader typed. `visibility=private` did it first; `collection=<gone>`
+was still doing it on the archive page and its feed, where a subscriber got the
+whole archive in place of one collection. Nothing leaked either time, and that
+is exactly why neither was noticed.
+
+When a filter cannot be applied, the honest answers are 404, an explicit error,
+or a redirect that rewrites the URL so it still describes what rendered. Never
+the unfiltered set. Reach for a three-state result (`unfiltered` / `resolved` /
+`missing`) rather than a nullable one — the bug lives in the collapse of "none
+asked" and "none found" into a single `undefined`.
+
+## Deduplicating one copy of a list is not deduplicating the list
+
+`db/schema.ts` once had a private `NAV_ITEM_TYPES` that drifted from the shared
+one and shipped a CHECK missing an enum value. The fix imported _one_ constant,
+`SYSTEM_NAV_KEY_VALUES`, and left nine other private copies in place — including
+`NAV_ITEM_TYPES` itself. The next schema change to any of them would have
+reproduced the original accident exactly.
+
+After fixing a duplication bug, sweep the file for every other instance of the
+same shape, then leave behind a check that fails on the next one. A rule that
+lives only in a commit message is not a rule.

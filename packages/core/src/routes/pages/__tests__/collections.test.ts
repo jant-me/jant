@@ -52,7 +52,9 @@ describe("Collections Listing Page - Data Logic", () => {
     await collectionService.addThread(recipes.id, p1.id);
     await collectionService.addThread(recipes.id, p2.id);
 
-    const directory = await collectionService.listDirectoryData();
+    const directory = await collectionService.listDirectoryData({
+      isAuthenticated: false,
+    });
 
     expect(directory.collections).toHaveLength(2);
     const recipesResult = directory.collections.find(
@@ -66,7 +68,9 @@ describe("Collections Listing Page - Data Logic", () => {
   });
 
   it("returns empty list when no collections exist", async () => {
-    const directory = await collectionService.listDirectoryData();
+    const directory = await collectionService.listDirectoryData({
+      isAuthenticated: false,
+    });
     expect(directory.collections).toHaveLength(0);
     expect(directory.items).toHaveLength(0);
   });
@@ -91,7 +95,9 @@ describe("Collections Listing Page - Data Logic", () => {
 
     await postService.delete(post.id);
 
-    const directory = await collectionService.listDirectoryData();
+    const directory = await collectionService.listDirectoryData({
+      isAuthenticated: false,
+    });
     expect(directory.collections[0]?.threadCount).toBe(1);
     expect(directory.collections[0]?.recentActivityAt).toBe(
       post2.lastActivityAt,

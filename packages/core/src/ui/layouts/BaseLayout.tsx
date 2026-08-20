@@ -366,6 +366,7 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         data-theme-mode={themeMode}
         data-site-path-prefix={sitePathPrefix}
         data-view-base-path={viewBasePath}
+        data-view-lang={viewLang ?? undefined}
         data-asset-base-path={assetBasePath}
         data-media-base={mediaBase}
       >

@@ -267,6 +267,102 @@ describe("CollectionService", () => {
   });
 
   describe("listDirectoryData", () => {
+    it("counts only what this reader can see", async () => {
+      const reading = await collectionService.create({
+        slug: "reading",
+        title: "Reading",
+      });
+
+      const published = await postService.create({
+        format: "note",
+        bodyMarkdown: "Published",
+      });
+      const draft = await postService.create({
+        format: "note",
+        bodyMarkdown: "Draft",
+        status: "draft",
+      });
+      const secret = await postService.create({
+        format: "note",
+        bodyMarkdown: "Private",
+        visibility: "private",
+      });
+      for (const post of [published, draft, secret]) {
+        await collectionService.addThread(reading.id, post.id);
+      }
+
+      // A stranger who could subtract the directory's number from the
+      // collection page's would learn how much unpublished work is in here.
+      const anonymous = await collectionService.listDirectoryData({
+        isAuthenticated: false,
+      });
+      expect(anonymous.collections[0]?.threadCount).toBe(1);
+      expect(anonymous.collections[0]?.recentActivityAt).toBe(
+        published.lastActivityAt,
+      );
+
+      const author = await collectionService.listDirectoryData({
+        isAuthenticated: true,
+      });
+      expect(author.collections[0]?.threadCount).toBe(2);
+    });
+
+    it("counts a Thread once, whichever of its posts matched", async () => {
+      const reading = await collectionService.create({
+        slug: "reading",
+        title: "Reading",
+      });
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "Root",
+      });
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "Reply",
+        replyToId: root.id,
+      });
+      await collectionService.addThread(reading.id, root.id);
+
+      const directory = await collectionService.listDirectoryData({
+        isAuthenticated: false,
+      });
+      expect(directory.collections[0]?.threadCount).toBe(1);
+    });
+
+    it("narrows counts to the view's language", async () => {
+      const reading = await collectionService.create({
+        slug: "reading",
+        title: "Reading",
+      });
+      const english = await postService.create({
+        format: "note",
+        bodyMarkdown: "English",
+        language: "en",
+      });
+      const japanese = await postService.create({
+        format: "note",
+        bodyMarkdown: "Japanese",
+        language: "ja",
+      });
+      for (const post of [english, japanese]) {
+        await collectionService.addThread(reading.id, post.id);
+      }
+
+      const englishView = await collectionService.listDirectoryData({
+        isAuthenticated: false,
+        lang: "en",
+      });
+      expect(englishView.collections[0]?.threadCount).toBe(1);
+
+      // The row itself stays listed in every view — only its number narrows.
+      const japaneseView = await collectionService.listDirectoryData({
+        isAuthenticated: false,
+        lang: "ja",
+      });
+      expect(japaneseView.collections).toHaveLength(1);
+      expect(japaneseView.collections[0]?.threadCount).toBe(1);
+    });
+
     it("returns collections with recent activity and labeled dividers", async () => {
       const reading = await collectionService.create({
         slug: "reading",
@@ -283,7 +379,9 @@ describe("CollectionService", () => {
       });
       await collectionService.addThread(reading.id, post.id);
 
-      const directory = await collectionService.listDirectoryData();
+      const directory = await collectionService.listDirectoryData({
+        isAuthenticated: false,
+      });
 
       expect(directory.collections).toHaveLength(1);
       expect(directory.collections[0]?.recentActivityAt).toBe(
@@ -329,7 +427,9 @@ describe("CollectionService", () => {
         vi.setSystemTime(new Date("2024-01-01T00:01:00Z"));
         await postService.update(root.id, { bodyMarkdown: "after" });
 
-        const directory = await collectionService.listDirectoryData();
+        const directory = await collectionService.listDirectoryData({
+          isAuthenticated: false,
+        });
         expect(directory.collections[0]?.recentActivityAt).toBe(1704067200);
       } finally {
         vi.useRealTimers();
@@ -357,7 +457,9 @@ describe("CollectionService", () => {
           replyToId: root.id,
         });
 
-        const directory = await collectionService.listDirectoryData();
+        const directory = await collectionService.listDirectoryData({
+          isAuthenticated: false,
+        });
         expect(directory.collections[0]?.recentActivityAt).toBe(1704067260);
       } finally {
         vi.useRealTimers();
@@ -371,7 +473,9 @@ describe("CollectionService", () => {
         url: "/archive?format=quote",
       });
 
-      const directory = await collectionService.listDirectoryData();
+      const directory = await collectionService.listDirectoryData({
+        isAuthenticated: false,
+      });
 
       expect(directory.directoryItems).toContainEqual(
         expect.objectContaining({

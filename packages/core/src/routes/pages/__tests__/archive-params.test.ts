@@ -716,3 +716,67 @@ describe("archive visibility without a session", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("archive collection selection", () => {
+  async function seedOneCollectedPost(services: {
+    posts: {
+      create: (input: Record<string, unknown>) => Promise<{ id: string }>;
+    };
+    collections: {
+      create: (input: Record<string, unknown>) => Promise<{ id: string }>;
+      addThread: (collectionId: string, threadId: string) => Promise<unknown>;
+    };
+  }) {
+    const collection = await services.collections.create({
+      slug: "recipes",
+      title: "Recipes",
+    });
+    const collected = await services.posts.create({
+      format: "note",
+      title: "Collected Post",
+      bodyMarkdown: "in the collection",
+      status: "published",
+    });
+    await services.collections.addThread(collection.id, collected.id);
+    await services.posts.create({
+      format: "note",
+      title: "Loose Post",
+      bodyMarkdown: "in no collection",
+      status: "published",
+    });
+  }
+
+  it("filters the page by a collection that exists", async () => {
+    const { app, services } = setupApp();
+    await seedOneCollectedPost(services);
+
+    const res = await app.request("/archive?collection=recipes");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Collected Post");
+    expect(html).not.toContain("Loose Post");
+  });
+
+  // Rendering the whole archive here would answer a question nobody asked,
+  // under the name the reader typed — the failure `visibility=private` was
+  // fixed for. `/collections/{slug}` answers the same question with a 404.
+  it("404s the page for a collection that does not exist", async () => {
+    const { app, services } = setupApp();
+    await seedOneCollectedPost(services);
+
+    const res = await app.request("/archive?collection=nope");
+    expect(res.status).toBe(404);
+  });
+
+  it("404s the feed for a collection that does not exist", async () => {
+    const { app, services } = setupApp();
+    await seedOneCollectedPost(services);
+
+    expect((await app.request("/archive/feed?collection=recipes")).status).toBe(
+      200,
+    );
+    expect((await app.request("/archive/feed?collection=nope")).status).toBe(
+      404,
+    );
+  });
+});

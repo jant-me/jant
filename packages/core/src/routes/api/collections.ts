@@ -12,6 +12,7 @@ import {
   CollectionDirectoryItemIdSchema,
   CollectionDescriptionValueSchema,
   CollectionSortOrderSchema,
+  ContentLanguageSchema,
   CreateCollectionDirectoryItemSchema,
   CreateCollectionSchema,
   PostIdSchema,
@@ -42,6 +43,12 @@ const MoveSchema = z.object({
 
 const ListCollectionsQuerySchema = z.object({
   view: z.enum(["compose"]).optional(),
+  /**
+   * Content language of the calling view. The directory's Thread counts are
+   * narrowed by it, so the page and this endpoint have to be asked the same
+   * question — see `jant-collection-directory`.
+   */
+  lang: ContentLanguageSchema.optional(),
 });
 
 // List collections (includes Thread counts and directory items)
@@ -57,7 +64,10 @@ collectionsApiRoutes.get("/", requirePublicApiAccess(), async (c) => {
     });
   }
 
-  const directoryData = await c.var.services.collections.listDirectoryData();
+  const directoryData = await c.var.services.collections.listDirectoryData({
+    isAuthenticated: c.var.isAuthenticated,
+    lang: query.lang,
+  });
 
   return c.json({
     collections: directoryData.collections,

@@ -4,7 +4,7 @@
  * Shared file validation and storage key generation for upload routes.
  */
 
-import type { MediaKind } from "../types/constants.js";
+import type { ContentDisposition, MediaKind } from "../types/constants.js";
 import { createEntityId } from "./ids.js";
 
 const MEDIA_ROOT_PREFIX = "media";
@@ -183,7 +183,7 @@ export type MediaCategory =
   | "3d"
   | "code";
 
-export type UploadContentDisposition = "inline" | "attachment";
+export type UploadContentDisposition = ContentDisposition;
 
 export interface StoredUploadPolicy {
   contentDisposition: UploadContentDisposition;
