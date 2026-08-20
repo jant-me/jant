@@ -80,11 +80,11 @@ describe("archive indexing", () => {
 
   // `layout` changes the markup, not the posts or their order, so the two
   // renderings are one page with one canonical.
-  it("consolidates layout, the cleared visibility chip, and tracking params", async () => {
+  it("consolidates layout and tracking params onto the bare path", async () => {
     const { app, services } = setupApp();
     await seed(services);
 
-    for (const query of ["?layout=grid", "?visibility=all", "?utm_source=nl"]) {
+    for (const query of ["?layout=grid", "?utm_source=nl"]) {
       const html = await (await app.request(`/archive${query}`)).text();
       expect(readRobotsMeta(html)).toBeNull();
       expect(readCanonical(html)).toBe(`${SITE_URL}/archive`);

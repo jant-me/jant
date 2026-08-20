@@ -113,12 +113,54 @@ describe("Public Archive API Routes", () => {
         bodyMarkdown: "plain",
       });
 
-      for (const value of ["private", "latest_hidden", "nonsense"]) {
+      for (const value of ["private", "nonsense"]) {
         const res = await app.request(
           `/api/public/archive?visibility=${value}`,
         );
         expect(res.status).toBe(400);
       }
+    });
+
+    // `latest_hidden` is the stored spelling of `hidden`, which the page and
+    // the feed both read. This endpoint used to be the one surface that called
+    // it nonsense — a value it can serve perfectly, rejected only because it
+    // kept a private copy of the vocabulary.
+    it("reads the stored spelling of hidden, like every other surface", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/archive", publicArchiveApiRoutes);
+
+      await services.posts.create({
+        format: "note",
+        title: "Plain root",
+        bodyMarkdown: "plain",
+      });
+      const hidden = await services.posts.create({
+        format: "note",
+        title: "Hidden root",
+        bodyMarkdown: "hidden",
+        visibility: "latest_hidden",
+      });
+
+      const res = await app.request(
+        "/api/public/archive?visibility=latest_hidden",
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.posts.map((p: { id: string }) => p.id)).toEqual([hidden.id]);
+    });
+
+    it("rejects a parameter it does not know", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/archive", publicArchiveApiRoutes);
+
+      await services.posts.create({
+        format: "note",
+        title: "Plain root",
+        bodyMarkdown: "plain",
+      });
+
+      const res = await app.request("/api/public/archive?formta=note");
+      expect(res.status).toBe(400);
     });
 
     it("supports format and limit filters with cursor", async () => {

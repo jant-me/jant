@@ -53,7 +53,7 @@ function renderArchivePage(
       totalCount: 1,
       currentPage: 1,
       totalPages: 1,
-      filters: {},
+      filters: { selection: {} },
       availableYears: [2026],
       availableCollections: [],
       isAuthenticated: false,
@@ -96,7 +96,7 @@ describe("ArchivePage", () => {
   it("serializes visibility latest_hidden as the hidden URL alias", () => {
     const html = renderArchivePage({
       isAuthenticated: true,
-      filters: { visibility: "latest_hidden" },
+      filters: { selection: { visibility: "latest_hidden" } },
     });
 
     expect(html).toContain("visibility=hidden");
@@ -124,14 +124,18 @@ describe("ArchivePage", () => {
   });
 
   it("marks the thread filter active when filtering single posts", () => {
-    const html = renderArchivePage({ filters: { hasReplies: false } });
+    const html = renderArchivePage({
+      filters: { selection: { replies: false } },
+    });
 
     expect(html).toContain("archive-chip-active");
     expect(html).toContain("Single posts");
   });
 
   it("uses a recognizable quote mark for the quote format filter", () => {
-    const html = renderArchivePage({ filters: { format: "quote" } });
+    const html = renderArchivePage({
+      filters: { selection: { format: "quote" } },
+    });
 
     expect(html).toContain('class="lucide lucide-quote"');
     expect(html).not.toContain('class="lucide lucide-text-quote"');
@@ -155,7 +159,9 @@ describe("ArchivePage", () => {
   });
 
   it("marks the updated sort active and keeps a way back", () => {
-    const html = renderArchivePage({ filters: { sort: "updated" } });
+    const html = renderArchivePage({
+      filters: { selection: {}, sort: "updated" },
+    });
 
     expect(html).toContain(
       '<a href="/archive?sort=updated" class="archive-view-btn archive-view-btn-active" role="radio" aria-checked="true" aria-label="Sort by when each thread was last added to"',
@@ -183,7 +189,9 @@ describe("ArchivePage", () => {
       '<span class="archive-month-header-label">March 2026</span>',
     );
 
-    const updated = renderArchivePage({ filters: { sort: "updated" } });
+    const updated = renderArchivePage({
+      filters: { selection: {}, sort: "updated" },
+    });
     expect(updated).toContain(
       '<span class="archive-month-header-label">Updated March 2026</span>',
     );
@@ -192,7 +200,7 @@ describe("ArchivePage", () => {
 
   it("keeps the sort selection in filter and layout links", () => {
     const html = renderArchivePage({
-      filters: { sort: "updated" },
+      filters: { selection: {}, sort: "updated" },
       availableCollections: [{ slug: "tech", title: "Tech" }],
     });
 

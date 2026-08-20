@@ -790,3 +790,17 @@ reproduced the original accident exactly.
 After fixing a duplication bug, sweep the file for every other instance of the
 same shape, then leave behind a check that fails on the next one. A rule that
 lives only in a commit message is not a rule.
+
+## A `+` in a query string is a space, not a plus
+
+`/collections/{a+b}` spells a collection union with a plus, so `?collection=tech+art`
+looked like the same vocabulary in a query string. It never worked. Hono decodes
+query values as form-urlencoded, where `+` means space, so the parameter arrived as
+`"tech art"`, split on nothing, and resolved to no collection — which the public API
+answered with an empty list. The documented spelling had been broken since it was
+written, and the failure mode was silence.
+
+A path segment's spelling does not transfer to a query parameter. Before reusing one,
+check what the framework hands the handler (`app.request` in a throwaway script settles
+it in seconds). Pick a separator that survives both encodings — a comma — and keep
+reading the old one, plus the space it decodes to.

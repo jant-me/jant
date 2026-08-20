@@ -6,9 +6,8 @@ import type {
   ArchiveLayout,
   ArchiveVisibility,
   CollectionSortOrder,
-  Format,
-  MediaKind,
 } from "./constants.js";
+import type { PostFilterSelection } from "../lib/filter-dimensions.js";
 import type { Collection, CollectionDirectoryItem } from "./entities.js";
 import type {
   PostView,
@@ -76,18 +75,17 @@ export type { ArchiveLayout, ArchiveVisibility };
  */
 export type ArchiveSort = "published" | "updated";
 
-/** Filters currently active on the archive page */
+/**
+ * What the archive page is currently showing.
+ *
+ * The selection itself is the shared dimension vocabulary — the chip bar builds
+ * its links by handing an edited copy back to the same serializer the route
+ * parses with, so a chip can never spell a filter the route cannot read.
+ * `layout` and `sort` sit beside it because they shape the rendering, not the
+ * result set.
+ */
 export interface ArchiveFilters {
-  year?: number;
-  collectionSlug?: string;
-  collectionTitle?: string;
-  format?: Format;
-  mediaKinds?: MediaKind[];
-  hasMedia?: boolean;
-  hasTitle?: boolean;
-  /** true = threads (roots with replies), false = single posts (no replies) */
-  hasReplies?: boolean;
-  visibility?: ArchiveVisibility;
+  selection: PostFilterSelection;
   /** Omitted when the site's configured default layout is active */
   layout?: ArchiveLayout;
   /** Omitted when the default `published` axis is active */
@@ -115,7 +113,7 @@ export interface ArchivePageProps {
   totalPages: number;
   filters: ArchiveFilters;
   availableYears: number[];
-  availableCollections: { slug: string; title: string }[];
+  availableCollections: { id: string; slug: string; title: string }[];
   isAuthenticated: boolean;
   /**
    * Public path this page's own URLs are built from — the deployment prefix

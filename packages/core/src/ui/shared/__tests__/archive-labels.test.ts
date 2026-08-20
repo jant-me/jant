@@ -4,10 +4,17 @@ import {
   getArchiveViewTitle,
   hasActiveArchiveFilter,
 } from "../archive-labels.js";
+import { buildCollectionVocabulary } from "../../../lib/filter-dimensions.js";
 
 const i18n = {
   _: (descriptor: { message?: string } | string) =>
     typeof descriptor === "string" ? descriptor : (descriptor.message ?? ""),
+};
+
+const ctx = {
+  collections: buildCollectionVocabulary([
+    { id: "col_books", slug: "books", title: "Books" },
+  ]),
 };
 
 describe("describeArchiveFilters", () => {
@@ -19,38 +26,42 @@ describe("describeArchiveFilters", () => {
   it("leads with the collection, which identifies a view best", () => {
     expect(
       describeArchiveFilters(
-        { collectionTitle: "Books", format: "quote", year: 2024 },
+        { collection: ["col_books"], format: "quote", year: 2024 },
         i18n,
+        ctx,
       ),
     ).toEqual(["Books", "Quotes", "2024"]);
   });
 
   it("lets title presence absorb the format it refines", () => {
     expect(
-      describeArchiveFilters({ format: "note", hasTitle: false }, i18n),
+      describeArchiveFilters({ format: "note", title: false }, i18n),
     ).toEqual(["Untitled"]);
     expect(
-      describeArchiveFilters({ format: "note", hasTitle: true }, i18n),
+      describeArchiveFilters({ format: "note", title: true }, i18n),
     ).toEqual(["Titled"]);
   });
 
   it("names a single media kind but summarises several", () => {
-    expect(describeArchiveFilters({ mediaKinds: ["image"] }, i18n)).toEqual([
+    expect(describeArchiveFilters({ media: ["image"] }, i18n)).toEqual([
       "Images",
     ]);
-    expect(
-      describeArchiveFilters({ mediaKinds: ["image", "video"] }, i18n),
-    ).toEqual(["With media"]);
-    expect(describeArchiveFilters({ hasMedia: false }, i18n)).toEqual([
+    expect(describeArchiveFilters({ media: ["image", "video"] }, i18n)).toEqual(
+      ["With media"],
+    );
+    expect(describeArchiveFilters({ media: "none" }, i18n)).toEqual([
       "Without media",
+    ]);
+    expect(describeArchiveFilters({ media: "any" }, i18n)).toEqual([
+      "With media",
     ]);
   });
 
   it("describes the thread and visibility dimensions", () => {
-    expect(describeArchiveFilters({ hasReplies: true }, i18n)).toEqual([
+    expect(describeArchiveFilters({ replies: true }, i18n)).toEqual([
       "Threads",
     ]);
-    expect(describeArchiveFilters({ hasReplies: false }, i18n)).toEqual([
+    expect(describeArchiveFilters({ replies: false }, i18n)).toEqual([
       "Single posts",
     ]);
     expect(describeArchiveFilters({ visibility: "private" }, i18n)).toEqual([
@@ -58,9 +69,12 @@ describe("describeArchiveFilters", () => {
     ]);
   });
 
-  it("treats an empty media kind list as no filter", () => {
-    expect(hasActiveArchiveFilter({ mediaKinds: [] })).toBe(false);
-    expect(describeArchiveFilters({ mediaKinds: [] }, i18n)).toEqual([]);
+  it("says nothing about a collection it cannot name", () => {
+    // The id resolves to no title here, so the dimension is left undescribed
+    // rather than described with a raw id.
+    expect(describeArchiveFilters({ collection: ["col_gone"] }, i18n)).toEqual(
+      [],
+    );
   });
 });
 
@@ -73,12 +87,13 @@ describe("getArchiveViewTitle", () => {
     expect(
       getArchiveViewTitle(
         {
-          collectionTitle: "Books",
+          collection: ["col_books"],
           format: "quote",
           year: 2024,
-          hasReplies: true,
+          replies: true,
         },
         i18n,
+        ctx,
       ),
     ).toBe("Books, Quotes");
   });

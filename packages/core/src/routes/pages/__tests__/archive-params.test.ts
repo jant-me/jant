@@ -304,6 +304,20 @@ describe("archive page legacy param redirect", () => {
     expect(res.headers.get("location")).toBe("/archive?visibility=hidden");
   });
 
+  // `visibility=all` filtered nothing, exactly like an absent parameter — a
+  // second spelling of "nothing selected" that only the parser knew about.
+  it("drops the visibility=all chip state, which selected nothing", async () => {
+    const { app } = setupApp();
+
+    const res = await app.request("/archive?visibility=all");
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe("/archive");
+
+    const withOthers = await app.request("/archive?format=note&visibility=all");
+    expect(withOthers.status).toBe(308);
+    expect(withOthers.headers.get("location")).toBe("/archive?format=note");
+  });
+
   it("drops a legacy param without overriding an explicit new one", async () => {
     const { app } = setupApp();
 
@@ -778,5 +792,64 @@ describe("archive collection selection", () => {
     expect((await app.request("/archive/feed?collection=nope")).status).toBe(
       404,
     );
+  });
+
+  // The page read a single slug while `/api/public/archive` read a list, so one
+  // spelling meant two things depending on which surface you asked. Both now
+  // read the same vocabulary.
+  it("selects the union of several collections", async () => {
+    const { app, services } = setupApp();
+    const recipes = await services.collections.create({
+      slug: "recipes",
+      title: "Recipes",
+    });
+    const travel = await services.collections.create({
+      slug: "travel",
+      title: "Travel",
+    });
+    const inRecipes = await services.posts.create({
+      format: "note",
+      title: "Recipe Post",
+      bodyMarkdown: "in recipes",
+      status: "published",
+    });
+    const inTravel = await services.posts.create({
+      format: "note",
+      title: "Travel Post",
+      bodyMarkdown: "in travel",
+      status: "published",
+    });
+    await services.posts.create({
+      format: "note",
+      title: "Loose Post",
+      bodyMarkdown: "in no collection",
+      status: "published",
+    });
+    await services.collections.addThread(recipes.id, inRecipes.id);
+    await services.collections.addThread(travel.id, inTravel.id);
+
+    const res = await app.request("/archive?collection=recipes,travel");
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("Recipe Post");
+    expect(html).toContain("Travel Post");
+    expect(html).not.toContain("Loose Post");
+
+    // Hono decodes a query value as form-urlencoded, so the `+` that separates
+    // slugs in `/collections/{a+b}` arrives here as a space. It is read anyway;
+    // a comma is what gets written back.
+    const plusSpelling = await app.request(
+      "/archive?collection=recipes+travel",
+    );
+    expect(plusSpelling.status).toBe(200);
+    expect(await plusSpelling.text()).toContain("Travel Post");
+  });
+
+  it("404s when only one of several collections is missing", async () => {
+    const { app, services } = setupApp();
+    await seedOneCollectedPost(services);
+
+    const res = await app.request("/archive?collection=recipes,nope");
+    expect(res.status).toBe(404);
   });
 });

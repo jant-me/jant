@@ -23,8 +23,10 @@
    口径、归档 `?collection=` 静默失效、public API 吞 `visibility`，并把两份 schema 里
    9 个本地常量副本收回 `types/constants.ts`——**其中就有第 8 步要改的
    `NAV_ITEM_TYPES`**，不先收回去，那一步会原样重演教训 4。
-2. **归档词表收编**（见 §4 末尾）。注册表连同它的 `url` / `toPostFilter` 段先落地，
-   由归档用起来。本文档 §9 第 1 步假定它已经存在。
+2. **归档词表收编**（见 §4 末尾，**已完成**）。`src/lib/filter-dimensions.ts` 落地，
+   7 个维度各声明一次（`key` / `label` / `url` / `toPostFilter` / `describe`），归档
+   页面、feed、chip 栏、public API 四份实现全部改走它。§9 第 1 步只需补上智能合集要的
+   `column` / `control` / `schema` 三段。
 
 ---
 

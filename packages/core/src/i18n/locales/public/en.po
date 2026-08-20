@@ -279,7 +279,7 @@ msgid "Article detail page"
 msgstr "Article detail page"
 
 #. @context: Archive media filter - audio
-#: src/ui/shared/archive-labels.ts
+#: src/lib/filter-dimensions.ts
 msgid "Audio"
 msgstr "Audio"
 
@@ -430,6 +430,8 @@ msgid "collection"
 msgstr "collection"
 
 #. @context: Compose collection selector trigger label
+#. @context: Post filter dimension name - collection membership
+#: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Collection"
 msgstr "Collection"
@@ -900,10 +902,10 @@ msgstr "Favicon"
 #. @context: Inactive browse tab label on sample page
 #. @context: Page heading for the featured posts feed
 #. @context: Tooltip and screen reader label for the featured-post icon in the post footer when no featured date is available
+#: src/lib/filter-dimensions.ts
 #: src/routes/pages/featured.tsx
 #: src/ui/pages/FeaturedPage.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
-#: src/ui/shared/archive-labels.ts
 #: src/ui/shared/PostFooter.tsx
 msgid "Featured"
 msgstr "Featured"
@@ -963,7 +965,7 @@ msgid "File uploaded."
 msgstr "File uploaded."
 
 #. @context: Archive media filter - files/documents
-#: src/ui/shared/archive-labels.ts
+#: src/lib/filter-dimensions.ts
 msgid "Files"
 msgstr "Files"
 
@@ -971,6 +973,11 @@ msgstr "Files"
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "For the same reason, inline code should stay neutral. Something like theme.siteAccent = soften(green, 12%) should not suddenly become the loudest thing on the page."
 msgstr "For the same reason, inline code should stay neutral. Something like theme.siteAccent = soften(green, 12%) should not suddenly become the loudest thing on the page."
+
+#. @context: Post filter dimension name - note, link, or quote
+#: src/lib/filter-dimensions.ts
+msgid "Format"
+msgstr "Format"
 
 #. @context: Compose dialog - open fullscreen editor
 #: src/ui/compose/ComposeDialog.tsx
@@ -1019,8 +1026,8 @@ msgstr "Helps screen readers describe the image"
 
 #. @context: Archive visibility filter for posts hidden from Latest
 #. @context: Compose publish settings visibility option
+#: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
-#: src/ui/shared/archive-labels.ts
 msgid "Hidden from Latest"
 msgstr "Hidden from Latest"
 
@@ -1072,7 +1079,7 @@ msgid "Image unavailable"
 msgstr "Image unavailable"
 
 #. @context: Archive media filter - images
-#: src/ui/shared/archive-labels.ts
+#: src/lib/filter-dimensions.ts
 msgid "Images"
 msgstr "Images"
 
@@ -1271,7 +1278,7 @@ msgid "Link updated."
 msgstr "Link updated."
 
 #. @context: Post format label plural - links
-#: src/ui/shared/archive-labels.ts
+#: src/lib/filter-dimensions.ts
 msgid "Links"
 msgstr "Links"
 
@@ -1329,6 +1336,8 @@ msgid "March 15"
 msgstr "March 15"
 
 #. @context: Compose toolbar - media tooltip
+#. @context: Post filter dimension name - attached media
+#: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Media"
 msgstr "Media"
@@ -1488,7 +1497,7 @@ msgid "note treatment"
 msgstr "note treatment"
 
 #. @context: Post format label plural - notes
-#: src/ui/shared/archive-labels.ts
+#: src/lib/filter-dimensions.ts
 msgid "Notes"
 msgstr "Notes"
 
@@ -1669,16 +1678,16 @@ msgstr "Primary logo files"
 #. @context: Archive visibility filter - private posts
 #. @context: Compose publish settings visibility option
 #. @context: Post status badge for a private post
+#: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/feed/PostStatusBadges.tsx
-#: src/ui/shared/archive-labels.ts
 msgid "Private"
 msgstr "Private"
 
 #. @context: Archive visibility filter - public posts
 #. @context: Compose publish settings visibility option
+#: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
-#: src/ui/shared/archive-labels.ts
 msgid "Public"
 msgstr "Public"
 
@@ -1740,7 +1749,7 @@ msgstr "Quoted or highlighted passages should feel like annotations, not warning
 
 #. @context: Placeholder for the custom collections link label
 #. @context: Post format label plural - quotes
-#: src/ui/shared/archive-labels.ts
+#: src/lib/filter-dimensions.ts
 #: src/ui/shared/collection-management-labels.ts
 msgid "Quotes"
 msgstr "Quotes"
@@ -1826,6 +1835,8 @@ msgid "Replace image"
 msgstr "Replace image"
 
 #. @context: Archive tile label for multiple thread replies
+#. @context: Post filter dimension name - whether a thread has replies
+#: src/lib/filter-dimensions.ts
 #: src/ui/pages/ArchivePage.tsx
 msgid "Replies"
 msgstr "Replies"
@@ -2032,8 +2043,8 @@ msgstr "Sign in to start writing."
 
 #. @context: Archive thread filter - posts without replies
 #. @context: Archive thread filter - posts without replies
+#: src/lib/filter-dimensions.ts
 #: src/ui/pages/ArchivePage.tsx
-#: src/ui/shared/archive-labels.ts
 msgid "Single posts"
 msgstr "Single posts"
 
@@ -2187,8 +2198,8 @@ msgstr "Text"
 
 #. @context: Archive media filter - text file attachments
 #. @context: Attached text panel title
+#: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
-#: src/ui/shared/archive-labels.ts
 msgid "Text attachment"
 msgstr "Text attachment"
 
@@ -2360,8 +2371,8 @@ msgstr "threads"
 
 #. @context: Archive thread filter - thread roots with replies
 #. @context: Archive thread filter - thread roots with replies
+#: src/lib/filter-dimensions.ts
 #: src/ui/pages/ArchivePage.tsx
-#: src/ui/shared/archive-labels.ts
 msgid "Threads"
 msgstr "Threads"
 
@@ -2373,6 +2384,8 @@ msgstr "Threads can include up to {count} posts."
 #. @context: Collection form field
 #. @context: Compose toolbar - show or hide the title field
 #. @context: Input label on sample page
+#. @context: Post filter dimension name - whether a post is titled
+#: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 #: src/ui/shared/collection-management-labels.ts
@@ -2382,9 +2395,9 @@ msgstr "Title"
 #. @context: Archive filter - notes that have a title
 #. @context: Archive filter - notes that have a title
 #. @context: Archive filter - notes that have a title
+#: src/lib/filter-dimensions.ts
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
-#: src/ui/shared/archive-labels.ts
 msgid "Titled"
 msgstr "Titled"
 
@@ -2437,10 +2450,10 @@ msgstr "Type the quote..."
 #. @context: Archive filter - notes without a title
 #. @context: Archive filter - notes without a title
 #. @context: Compose note title placeholder. States what the note is while the field is empty rather than asking for a title — untitled notes are a normal kind of note here, and Archive files them under this same word.
+#: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
-#: src/ui/shared/archive-labels.ts
 msgid "Untitled"
 msgstr "Untitled"
 
@@ -2507,7 +2520,7 @@ msgid "Use this page to judge buttons, links, cards, forms, thread accents, and 
 msgstr "Use this page to judge buttons, links, cards, forms, thread accents, and quiet surfaces before changing a theme globally."
 
 #. @context: Archive media filter - video
-#: src/ui/shared/archive-labels.ts
+#: src/lib/filter-dimensions.ts
 msgid "Video"
 msgstr "Video"
 
@@ -2522,6 +2535,8 @@ msgid "View earlier notes in this thread"
 msgstr "View earlier notes in this thread"
 
 #. @context: Compose publish settings section label
+#. @context: Post filter dimension name - who can see a post
+#: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Visibility"
 msgstr "Visibility"
@@ -2582,12 +2597,14 @@ msgid "Why the default accent should feel written, not branded"
 msgstr "Why the default accent should feel written, not branded"
 
 #. @context: Archive filter - posts carrying any media attachment
-#: src/ui/shared/archive-labels.ts
+#. @context: Archive filter - posts carrying any media attachment
+#: src/lib/filter-dimensions.ts
+#: src/ui/pages/ArchivePage.tsx
 msgid "With media"
 msgstr "With media"
 
 #. @context: Archive filter - posts with no media attachment
-#: src/ui/shared/archive-labels.ts
+#: src/lib/filter-dimensions.ts
 msgid "Without media"
 msgstr "Without media"
 
@@ -2605,6 +2622,11 @@ msgstr "Write your first post to get started."
 #: src/routes/auth/signin.tsx
 msgid "Wrong email or password. Check your credentials and try again."
 msgstr "Wrong email or password. Check your credentials and try again."
+
+#. @context: Post filter dimension name - year of publication
+#: src/lib/filter-dimensions.ts
+msgid "Year"
+msgstr "Year"
 
 #. @context: Confirm close action sheet title when editing a published post
 #: src/ui/compose/ComposeDialog.tsx

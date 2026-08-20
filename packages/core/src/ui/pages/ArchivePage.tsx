@@ -12,7 +12,9 @@ import type {
   ArchivePageProps,
   ArchiveFilters,
   ArchiveLayout,
+  ArchiveSort,
   ArchiveVisibility,
+  Format,
   MediaKind,
 } from "../../types.js";
 import type { PostView } from "../../types/views.js";
@@ -22,6 +24,16 @@ import {
   MEDIA_KINDS,
   PUBLIC_ARCHIVE_VISIBILITIES,
 } from "../../types.js";
+import type {
+  DimensionContext,
+  FilterDimensionValues,
+  MediaSelection,
+} from "../../lib/filter-dimensions.js";
+import {
+  buildCollectionVocabulary,
+  FILTER_DIMENSIONS,
+  serializePostFilterSelection,
+} from "../../lib/filter-dimensions.js";
 import { getFeaturedIconSvg } from "../../lib/featured-icons.js";
 import { getIconSvg } from "../../lib/icons.js";
 import { toPublicPath } from "../../lib/url.js";
@@ -41,44 +53,43 @@ import {
 // URL Builder
 // =============================================================================
 
+/**
+ * One chip's edit to the current view.
+ *
+ * Dimensions are named exactly as the shared registry names them, so a chip
+ * cannot spell a filter the route is unable to read back. An explicit
+ * `undefined` clears a dimension, the same way spreading it does.
+ */
+type FilterUpdates = Partial<FilterDimensionValues> & {
+  layout?: ArchiveLayout;
+  sort?: ArchiveSort;
+  /** Drop every selection and return to the bare archive. */
+  clear?: boolean;
+};
+
 /** Build an archive URL preserving existing filter params, overriding with updates. */
 function buildFilterUrl(
   current: ArchiveFilters,
-  updates: Partial<ArchiveFilters & { clear?: boolean }>,
+  updates: FilterUpdates,
+  ctx: DimensionContext,
   basePath = "",
 ): string {
   if (updates.clear) return toPublicPath("/archive", basePath);
 
-  const merged = { ...current, ...updates };
-  const params = new URLSearchParams();
+  const { layout, sort, clear: _clear, ...selectionUpdates } = updates;
+  const params = serializePostFilterSelection(
+    { ...current.selection, ...selectionUpdates },
+    ctx,
+  );
 
-  if (merged.year) params.set("year", String(merged.year));
-  if (merged.collectionSlug) params.set("collection", merged.collectionSlug);
-  if (merged.format) params.set("format", merged.format);
-  if (merged.mediaKinds && merged.mediaKinds.length > 0) {
-    params.set("media", merged.mediaKinds.join(","));
-  } else if (merged.hasMedia !== undefined) {
-    params.set("media", merged.hasMedia ? "any" : "none");
-  }
-  if (merged.hasTitle !== undefined) {
-    params.set("title", merged.hasTitle ? "any" : "none");
-  }
-  if (merged.hasReplies !== undefined) {
-    params.set("replies", merged.hasReplies ? "any" : "none");
-  }
-  if (merged.visibility) {
-    // "hidden" is the URL spelling of the internal latest_hidden value
-    params.set(
-      "visibility",
-      merged.visibility === "latest_hidden" ? "hidden" : merged.visibility,
-    );
-  }
   // Both layouts are written out in full. An absent `layout` means "whatever
   // this site defaults to", so a link shared with a layout chosen keeps that
   // layout even if the site default changes later. Only `layout` is ever
   // emitted; the older `view` spelling is read-only now.
-  if (merged.layout) params.set("layout", merged.layout);
-  if (merged.sort === "updated") params.set("sort", "updated");
+  const mergedLayout = "layout" in updates ? layout : current.layout;
+  if (mergedLayout) params.set("layout", mergedLayout);
+  const mergedSort = "sort" in updates ? sort : current.sort;
+  if (mergedSort === "updated") params.set("sort", "updated");
 
   const qs = params.toString();
   return qs
@@ -115,7 +126,7 @@ function getFormatLabel(format: string): string {
   return labels[format] ?? format;
 }
 
-function getFormatLabelPlural(format: string): string {
+function getFormatLabelPlural(format: Format): string {
   const { i18n } = useLingui();
   return getSharedFormatLabelPlural(format, i18n);
 }
@@ -139,6 +150,20 @@ const MEDIA_KIND_ICONS: Record<MediaKind, string> = {
 function getMediaKindLabel(kind: MediaKind): string {
   const { i18n } = useLingui();
   return getSharedMediaKindLabel(kind, i18n);
+}
+
+/**
+ * The kinds a media selection names, or none when it only asks about presence.
+ *
+ * `any`/`none` and a list of kinds are one value in the shared vocabulary; the
+ * chip's multi-select only has something to highlight in the list case.
+ */
+function selectedMediaKinds(
+  selection: MediaSelection | undefined,
+): readonly MediaKind[] {
+  return selection === undefined || selection === "any" || selection === "none"
+    ? []
+    : selection;
 }
 
 // =============================================================================
@@ -316,28 +341,25 @@ const ChipMediaSelect: FC<{
   id: string;
   icon: string;
   filters: ArchiveFilters;
+  ctx: DimensionContext;
   activeLabel?: string;
   clearUrl: string;
   basePath?: string;
-}> = ({ id, icon, filters: f, activeLabel, clearUrl, basePath = "" }) => {
+}> = ({ id, icon, filters: f, ctx, activeLabel, clearUrl, basePath = "" }) => {
   const { i18n } = useLingui();
   const isActive = !!activeLabel;
-  const activeKinds = f.mediaKinds ?? [];
+  const activeKinds = selectedMediaKinds(f.selection.media);
 
   const singleKind = activeKinds.length === 1 ? activeKinds[0] : undefined;
   const activeMediaIcon = isActive
-    ? f.hasMedia === false
+    ? f.selection.media === "none"
       ? "text"
       : singleKind
         ? MEDIA_KIND_ICONS[singleKind]
         : icon
     : undefined;
 
-  const textOnlyUrl = buildFilterUrl(
-    { ...f, mediaKinds: undefined, hasMedia: undefined },
-    { hasMedia: false, mediaKinds: undefined },
-    basePath,
-  );
+  const textOnlyUrl = buildFilterUrl(f, { media: "none" }, ctx, basePath);
   const clearLabel = i18n._(
     msg({
       message: "Clear filter",
@@ -351,7 +373,7 @@ const ChipMediaSelect: FC<{
       id={id}
       class="archive-chip-select archive-chip-dropdown archive-chip-media select"
       data-select-initialized
-      data-filter-key="media"
+      data-filter-key={FILTER_DIMENSIONS.media.url.param}
     >
       <button
         type="button"
@@ -384,7 +406,7 @@ const ChipMediaSelect: FC<{
             role="option"
             data-value={textOnlyUrl}
             data-navigate="true"
-            aria-selected={f.hasMedia === false ? "true" : undefined}
+            aria-selected={f.selection.media === "none" ? "true" : undefined}
           >
             <span class="flex items-center gap-2">
               <Icon name="text" class="[&>svg]:size-4 text-muted-foreground" />
@@ -453,9 +475,10 @@ const ToggleOption: FC<{
 
 const LayoutToggle: FC<{
   filters: ArchiveFilters;
+  ctx: DimensionContext;
   defaultLayout: ArchiveLayout;
   basePath?: string;
-}> = ({ filters, defaultLayout, basePath = "" }) => {
+}> = ({ filters, ctx, defaultLayout, basePath = "" }) => {
   const { i18n } = useLingui();
   const currentLayout: ArchiveLayout = filters.layout ?? defaultLayout;
 
@@ -471,7 +494,7 @@ const LayoutToggle: FC<{
       )}
     >
       <ToggleOption
-        href={buildFilterUrl(filters, { layout: "grid" }, basePath)}
+        href={buildFilterUrl(filters, { layout: "grid" }, ctx, basePath)}
         icon="layout-grid"
         active={currentLayout === "grid"}
         label={i18n._(
@@ -482,7 +505,7 @@ const LayoutToggle: FC<{
         )}
       />
       <ToggleOption
-        href={buildFilterUrl(filters, { layout: "list" }, basePath)}
+        href={buildFilterUrl(filters, { layout: "list" }, ctx, basePath)}
         icon="list"
         active={currentLayout === "list"}
         label={i18n._(
@@ -502,8 +525,9 @@ const LayoutToggle: FC<{
  */
 const SortToggle: FC<{
   filters: ArchiveFilters;
+  ctx: DimensionContext;
   basePath?: string;
-}> = ({ filters, basePath = "" }) => {
+}> = ({ filters, ctx, basePath = "" }) => {
   const { i18n } = useLingui();
   const sortsByActivity = filters.sort === "updated";
 
@@ -519,7 +543,7 @@ const SortToggle: FC<{
       )}
     >
       <ToggleOption
-        href={buildFilterUrl(filters, { sort: undefined }, basePath)}
+        href={buildFilterUrl(filters, { sort: undefined }, ctx, basePath)}
         icon="clock"
         active={!sortsByActivity}
         label={i18n._(
@@ -530,7 +554,7 @@ const SortToggle: FC<{
         )}
       />
       <ToggleOption
-        href={buildFilterUrl(filters, { sort: "updated" }, basePath)}
+        href={buildFilterUrl(filters, { sort: "updated" }, ctx, basePath)}
         icon="history"
         active={sortsByActivity}
         label={i18n._(
@@ -585,7 +609,7 @@ const FilterBar: FC<{
   filters: ArchiveFilters;
   defaultLayout: ArchiveLayout;
   availableYears: number[];
-  availableCollections: { slug: string; title: string }[];
+  availableCollections: { id: string; slug: string; title: string }[];
   isAuthenticated: boolean;
   basePath?: string;
 }> = ({
@@ -597,7 +621,13 @@ const FilterBar: FC<{
   basePath = "",
 }) => {
   const { i18n } = useLingui();
-  const currentUrl = buildFilterUrl(filters, {}, basePath);
+  // Every link on this bar is this page with one dimension edited, so the bar
+  // spells them with the same serializer the route parses with.
+  const ctx: DimensionContext = {
+    collections: buildCollectionVocabulary(availableCollections),
+  };
+  const currentUrl = buildFilterUrl(filters, {}, ctx, basePath);
+  const selection = filters.selection;
 
   // --- Year options ---------------------------------------------------------
 
@@ -610,19 +640,23 @@ const FilterBar: FC<{
         }),
       ),
       icon: FILTER_ICONS.year,
-      value: buildFilterUrl(
-        { ...filters, year: undefined },
-        { year: undefined },
-        basePath,
-      ),
+      value: buildFilterUrl(filters, { year: undefined }, ctx, basePath),
     },
     ...availableYears.map((year) => ({
       label: String(year),
-      value: buildFilterUrl(filters, { year }, basePath),
+      value: buildFilterUrl(filters, { year }, ctx, basePath),
     })),
   ];
 
   // --- Collection options ---------------------------------------------------
+
+  // The chip picks one collection at a time. A URL may name several — the
+  // vocabulary supports it and the page renders it — but a dropdown that
+  // replaces the selection is the honest control for a single click.
+  const selectedCollectionIds = selection.collection ?? [];
+  const selectedCollectionTitles = selectedCollectionIds
+    .map((id) => ctx.collections?.titleById.get(id))
+    .filter((title): title is string => Boolean(title));
 
   const collectionOptions: ChipSelectOption[] = [
     {
@@ -633,48 +667,40 @@ const FilterBar: FC<{
         }),
       ),
       icon: FILTER_ICONS.collection,
-      value: buildFilterUrl(
-        {
-          ...filters,
-          collectionSlug: undefined,
-          collectionTitle: undefined,
-        },
-        { collectionSlug: undefined, collectionTitle: undefined },
-        basePath,
-      ),
+      value: buildFilterUrl(filters, { collection: undefined }, ctx, basePath),
     },
     ...availableCollections.map((col) => ({
       label: col.title,
-      value: buildFilterUrl(filters, { collectionSlug: col.slug }, basePath),
+      value: buildFilterUrl(filters, { collection: [col.id] }, ctx, basePath),
     })),
   ];
 
   // --- Format options (Notes split into All / Titled / Untitled) -----------
 
-  const formatActiveLabel = filters.format
-    ? filters.hasTitle === true
+  const formatActiveLabel = selection.format
+    ? selection.title === true
       ? i18n._(
           msg({
             message: "Titled",
             comment: "@context: Archive filter - notes that have a title",
           }),
         )
-      : filters.hasTitle === false
+      : selection.title === false
         ? i18n._(
             msg({
               message: "Untitled",
               comment: "@context: Archive filter - notes without a title",
             }),
           )
-        : getFormatLabelPlural(filters.format)
+        : getFormatLabelPlural(selection.format)
     : undefined;
 
-  const formatActiveIcon = filters.format
-    ? filters.hasTitle === true
+  const formatActiveIcon = selection.format
+    ? selection.title === true
       ? "type"
-      : filters.hasTitle === false
+      : selection.title === false
         ? "text"
-        : FORMAT_ICONS[filters.format]
+        : FORMAT_ICONS[selection.format]
     : undefined;
 
   const formatOptions: ChipSelectOption[] = [
@@ -687,8 +713,9 @@ const FilterBar: FC<{
       ),
       icon: FILTER_ICONS.format,
       value: buildFilterUrl(
-        { ...filters, format: undefined, hasTitle: undefined },
-        { format: undefined, hasTitle: undefined },
+        filters,
+        { format: undefined, title: undefined },
+        ctx,
         basePath,
       ),
     },
@@ -697,10 +724,8 @@ const FilterBar: FC<{
       icon: FORMAT_ICONS.note,
       value: buildFilterUrl(
         filters,
-        {
-          format: "note",
-          hasTitle: undefined,
-        },
+        { format: "note", title: undefined },
+        ctx,
         basePath,
       ),
     },
@@ -715,10 +740,8 @@ const FilterBar: FC<{
       indent: true,
       value: buildFilterUrl(
         filters,
-        {
-          format: "note",
-          hasTitle: true,
-        },
+        { format: "note", title: true },
+        ctx,
         basePath,
       ),
     },
@@ -733,10 +756,8 @@ const FilterBar: FC<{
       indent: true,
       value: buildFilterUrl(
         filters,
-        {
-          format: "note",
-          hasTitle: false,
-        },
+        { format: "note", title: false },
+        ctx,
         basePath,
       ),
     },
@@ -745,7 +766,8 @@ const FilterBar: FC<{
       icon: FORMAT_ICONS[f],
       value: buildFilterUrl(
         filters,
-        { format: f, hasTitle: undefined },
+        { format: f, title: undefined },
+        ctx,
         basePath,
       ),
     })),
@@ -761,17 +783,16 @@ const FilterBar: FC<{
     ? ARCHIVE_VISIBILITIES
     : PUBLIC_ARCHIVE_VISIBILITIES;
 
-  // "All visibility" needs the explicit ?visibility=all param so the route
-  // doesn't default back to "public". Build its URL by appending to the
-  // base URL (which has no visibility param since we merge undefined).
-  const allVisibilityBaseUrl = buildFilterUrl(
-    { ...filters, visibility: undefined },
+  // "All visibility" is the absence of the parameter, not a value of it. The
+  // page once emitted `?visibility=all` here, which read back as exactly the
+  // same thing — a second spelling of "nothing selected" that only the parser
+  // knew about. It is still read, for URLs already written; it is not written.
+  const allVisibilityUrl = buildFilterUrl(
+    filters,
     { visibility: undefined },
+    ctx,
     basePath,
   );
-  const allVisibilityUrl = allVisibilityBaseUrl.includes("?")
-    ? `${allVisibilityBaseUrl}&visibility=all`
-    : `${allVisibilityBaseUrl}?visibility=all`;
 
   const visibilityOptions: ChipSelectOption[] = [
     {
@@ -789,15 +810,16 @@ const FilterBar: FC<{
       ...(v === "featured"
         ? { iconHtml: FEATURED_VISIBILITY_ICON_HTML }
         : { icon: VISIBILITY_ICONS[v] }),
-      value: buildFilterUrl(filters, { visibility: v }, basePath),
+      value: buildFilterUrl(filters, { visibility: v }, ctx, basePath),
     })),
   ];
 
   // --- Thread options ---------------------------------------------------------
 
   const threadClearUrl = buildFilterUrl(
-    { ...filters, hasReplies: undefined },
-    { hasReplies: undefined },
+    filters,
+    { replies: undefined },
+    ctx,
     basePath,
   );
 
@@ -828,31 +850,31 @@ const FilterBar: FC<{
     {
       label: threadsLabel,
       icon: THREAD_ICONS.threads,
-      value: buildFilterUrl(filters, { hasReplies: true }, basePath),
+      value: buildFilterUrl(filters, { replies: true }, ctx, basePath),
     },
     {
       label: singlePostsLabel,
       icon: THREAD_ICONS.single,
-      value: buildFilterUrl(filters, { hasReplies: false }, basePath),
+      value: buildFilterUrl(filters, { replies: false }, ctx, basePath),
     },
   ];
 
   const threadActiveLabel =
-    filters.hasReplies === true
+    selection.replies === true
       ? threadsLabel
-      : filters.hasReplies === false
+      : selection.replies === false
         ? singlePostsLabel
         : undefined;
   const threadActiveIcon =
-    filters.hasReplies === true
+    selection.replies === true
       ? THREAD_ICONS.threads
-      : filters.hasReplies === false
+      : selection.replies === false
         ? THREAD_ICONS.single
         : undefined;
 
-  const activeKinds = filters.mediaKinds ?? [];
+  const activeKinds = selectedMediaKinds(selection.media);
   const mediaActiveLabel =
-    filters.hasMedia === false
+    selection.media === "none"
       ? i18n._(
           msg({
             message: "Text",
@@ -865,10 +887,19 @@ const FilterBar: FC<{
           getMediaKindLabel(activeKinds[0]!)
         : activeKinds.length > 1
           ? String(activeKinds.length)
-          : undefined;
+          : selection.media === "any"
+            ? i18n._(
+                msg({
+                  message: "With media",
+                  comment:
+                    "@context: Archive filter - posts carrying any media attachment",
+                }),
+              )
+            : undefined;
   const mediaClearUrl = buildFilterUrl(
-    { ...filters, mediaKinds: undefined, hasMedia: undefined },
-    { mediaKinds: undefined, hasMedia: undefined },
+    filters,
+    { media: undefined },
+    ctx,
     basePath,
   );
 
@@ -882,11 +913,12 @@ const FilterBar: FC<{
             options={yearOptions}
             currentValue={currentUrl}
             clearUrl={buildFilterUrl(
-              { ...filters, year: undefined },
+              filters,
               { year: undefined },
+              ctx,
               basePath,
             )}
-            activeLabel={filters.year ? String(filters.year) : undefined}
+            activeLabel={selection.year ? String(selection.year) : undefined}
           />
         )}
         {availableCollections.length > 0 && (
@@ -896,15 +928,16 @@ const FilterBar: FC<{
             options={collectionOptions}
             currentValue={currentUrl}
             clearUrl={buildFilterUrl(
-              {
-                ...filters,
-                collectionSlug: undefined,
-                collectionTitle: undefined,
-              },
-              { collectionSlug: undefined, collectionTitle: undefined },
+              filters,
+              { collection: undefined },
+              ctx,
               basePath,
             )}
-            activeLabel={filters.collectionTitle}
+            activeLabel={
+              selectedCollectionTitles.length > 0
+                ? selectedCollectionTitles.join(", ")
+                : undefined
+            }
             iconOnly
           />
         )}
@@ -914,8 +947,9 @@ const FilterBar: FC<{
           options={formatOptions}
           currentValue={currentUrl}
           clearUrl={buildFilterUrl(
-            { ...filters, format: undefined, hasTitle: undefined },
-            { format: undefined, hasTitle: undefined },
+            filters,
+            { format: undefined, title: undefined },
+            ctx,
             basePath,
           )}
           activeLabel={formatActiveLabel}
@@ -938,6 +972,7 @@ const FilterBar: FC<{
           id="af-media"
           icon={FILTER_ICONS.media}
           filters={filters}
+          ctx={ctx}
           activeLabel={mediaActiveLabel}
           clearUrl={mediaClearUrl}
           basePath={basePath}
@@ -950,17 +985,17 @@ const FilterBar: FC<{
           currentValue={currentUrl}
           clearUrl={allVisibilityUrl}
           activeLabel={
-            filters.visibility
-              ? getVisibilityLabel(filters.visibility)
+            selection.visibility
+              ? getVisibilityLabel(selection.visibility)
               : undefined
           }
           activeIcon={
-            filters.visibility && filters.visibility !== "featured"
-              ? VISIBILITY_ICONS[filters.visibility]
+            selection.visibility && selection.visibility !== "featured"
+              ? VISIBILITY_ICONS[selection.visibility]
               : undefined
           }
           activeIconHtml={
-            filters.visibility === "featured"
+            selection.visibility === "featured"
               ? FEATURED_VISIBILITY_ICON_HTML
               : undefined
           }
@@ -969,9 +1004,10 @@ const FilterBar: FC<{
       </div>
 
       <div class="archive-toolbar-toggles">
-        <SortToggle filters={filters} basePath={basePath} />
+        <SortToggle filters={filters} ctx={ctx} basePath={basePath} />
         <LayoutToggle
           filters={filters}
+          ctx={ctx}
           defaultLayout={defaultLayout}
           basePath={basePath}
         />
@@ -1288,7 +1324,10 @@ export const ArchivePage: FC<ArchivePageProps> = ({
   const { i18n } = useLingui();
   const currentLayout: ArchiveLayout = filters.layout ?? defaultLayout;
   const sortsByActivity = filters.sort === "updated";
-  const paginationBaseUrl = buildFilterUrl(filters, {}, basePath);
+  const dimensionCtx: DimensionContext = {
+    collections: buildCollectionVocabulary(availableCollections),
+  };
+  const paginationBaseUrl = buildFilterUrl(filters, {}, dimensionCtx, basePath);
   const totalCountUnit =
     totalCount === 1
       ? i18n._(
@@ -1311,7 +1350,7 @@ export const ArchivePage: FC<ArchivePageProps> = ({
   // them is what the chip bar already does; what it cannot say is how much is
   // left, so the count carries its own baseline instead.
   const showsSubset =
-    hasActiveArchiveFilter(filters) &&
+    hasActiveArchiveFilter(filters.selection) &&
     baselineCount !== undefined &&
     baselineCount > totalCount;
 
