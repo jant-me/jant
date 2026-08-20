@@ -311,9 +311,7 @@ msgid "Applies to your entire site, including admin pages. Pick a palette, then 
 msgstr "套用於整個網站，包括管理頁面。選擇一個調色盤，然後決定它是跟隨系統還是維持固定。"
 
 #. @context: Custom URL target type badge for an archive view
-#. @context: Custom URL type option for filtered archive view
 #. @context: Suggested navigation link target type
-#: src/routes/dash/custom-urls.tsx
 #: src/routes/dash/custom-urls.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Archive"
@@ -323,11 +321,6 @@ msgstr "封存"
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Archive feed"
 msgstr "封存 RSS 來源"
-
-#. @context: Help text for archive custom URL query params
-#: src/routes/dash/custom-urls.tsx
-msgid "Archive filter parameters (e.g. format=note&view=list)"
-msgstr "封存篩選參數 (例如 format=note&view=list)"
 
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -2001,11 +1994,6 @@ msgstr "立即將所有貼文推送到 GitHub，而不是等待下一次自動�
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "QR code linking to the Telegram bot"
 msgstr "連結至 Telegram 機器人的 QR 碼"
-
-#. @context: Archive custom URL query params field
-#: src/routes/dash/custom-urls.tsx
-msgid "Query Parameters"
-msgstr "查詢參數"
 
 #. @context: Post format badge - quote
 #: src/ui/dash/FormatBadge.tsx

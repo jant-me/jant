@@ -80,6 +80,8 @@ Good for:
 
 Each Collection has its own page and feed.
 
+If you want a Collection whose members follow a rule instead of your tagging, see [Smart Collections](#smart-collections).
+
 You can also combine multiple Collections in the URL:
 
 - `/collections/reading+movies`
@@ -91,6 +93,52 @@ Jant treats this as a combined view across multiple Collections:
 - A Thread that belongs to more than one of those Collections shows up only once
 - Every matching Thread is shown in full, including all of its published replies
 - The same pattern works for feeds: `/collections/{slug1}+{slug2}/feed`
+
+## Smart Collections
+
+A Smart Collection is a Collection whose members are decided by conditions rather than by tagging. You write the conditions once — "all Quotes", "Notes with images from 2024" — and every post that matches is in it, including the ones you write later.
+
+To a reader it is a Collection: it lives at `/{slug}`, has a title, a description, a list of posts, and its own feed. One line under the count says what gathers them, and links to the archive showing the same posts, so a reader who wants to narrow further has somewhere to go.
+
+Create one from **Collections → ⋯ → New Smart Collection**. The dialog counts matches as you type, so you can see what a condition does before saving it.
+
+The conditions are combined with AND — a post has to match all of them. Each condition can appear once:
+
+| Condition    | Chooses                                                   |
+| ------------ | --------------------------------------------------------- |
+| `Collection` | Threads in one Collection                                 |
+| `Format`     | Notes, Links, or Quotes                                   |
+| `Title`      | Titled or untitled posts                                  |
+| `Year`       | Posts published in one calendar year                      |
+| `Media`      | Posts with any attachment, none, or attachments of a kind |
+| `Replies`    | Threads with replies, or single posts                     |
+| `Visibility` | Public, Featured, or Hidden from Latest                   |
+
+Saving with no conditions is allowed: that Smart Collection collects every post.
+
+### What a Smart Collection cannot do
+
+The conditions decide membership, so some things a Collection can do have no counterpart:
+
+|                        | Collection            | Smart Collection      |
+| ---------------------- | --------------------- | --------------------- |
+| Add one post to it     | Tick it while writing | The conditions decide |
+| Pin a Thread inside it | Yes                   | No                    |
+| Reorder by hand        | Yes                   | No                    |
+| Sort order             | You choose            | You choose            |
+| Layout                 | —                     | List or grid          |
+| Appears in Collections | Yes                   | Yes                   |
+| Can go in navigation   | Yes                   | Yes                   |
+
+Because of the first row, Smart Collections do not appear in the Collection picker while you write. There is nothing to pick: a post lands in one by matching, not by being added.
+
+### Always public
+
+There is no private Smart Collection. `Visibility` can only be `Public`, `Featured`, or `Hidden from Latest`, so a Smart Collection page never answers 404 to a visitor.
+
+That is not the same as leaking private posts. Every page applies the same per-post rules a Collection page does: a visitor sees only what they could see anywhere else, and you may see a larger count when signed in.
+
+If you want a private filtered view for yourself, filter `/archive` and bookmark the URL — that address already works, and what you give up is only the name.
 
 ## Make a standalone page (About)
 
@@ -207,13 +255,11 @@ Once set, the new path becomes the canonical URL for that piece of content (perm
 
 Useful when you want to graft content imported from another platform back onto its original URLs.
 
-### Custom archive views
+### Custom archive views (retired)
 
-If you frequently browse "a particular kind of post," you can save the matching archive filters under a short, memorable entry point:
+Custom URLs used to include an `Archive` type: a short path holding a hand-typed archive query. [Smart Collections](#smart-collections) replace it — same result, without writing `format=note&title=none` into a text field, and with a title, a description, and a feed.
 
-- **Path**: for example, `notes`
-- **Type**: choose `Archive`
-- **Query Parameters**: any filters the archive supports — for example, `format=note&view=list` or `format=link&visibility=public`
+Existing archive paths keep working, and there are no plans to change that. Each one gets a **Turn into a smart collection** action in its row menu, which opens the dialog with the conditions filled in so you can give it a real name before saving. A path whose query cannot be read exactly — or one that filters on `Private`, which a Smart Collection can never do — keeps working as it is and offers no upgrade.
 
 ### Redirect rules
 

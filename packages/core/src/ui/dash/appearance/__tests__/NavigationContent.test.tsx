@@ -21,7 +21,12 @@ function renderNavigationContent(
   return renderToString(
     NavigationContent({
       navItems: [],
-      directoryData: { collections: [], items: [], directoryItems: [] },
+      directoryData: {
+        collections: [],
+        smartCollections: [],
+        items: [],
+        directoryItems: [],
+      },
       suggestedLinks: [],
       mainRssFeed: "latest",
       rssFeedsEnabled: true,

@@ -137,6 +137,9 @@ export function buildSiteContentResetSql(
   statements.push(
     `DELETE FROM "media" WHERE "site_id" = '${escapedSiteId}';`,
     `DELETE FROM "post" WHERE "site_id" = '${escapedSiteId}';`,
+    // Before `collection`: a smart collection may hold a foreign key into one,
+    // and that key is ON DELETE restrict on purpose.
+    `DELETE FROM "smart_collection" WHERE "site_id" = '${escapedSiteId}';`,
     `DELETE FROM "collection" WHERE "site_id" = '${escapedSiteId}';`,
   );
 

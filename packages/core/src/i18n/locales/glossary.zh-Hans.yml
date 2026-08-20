@@ -15,6 +15,22 @@ terms:
     target: 帖子
     note: Jant 的核心内容单位，可按语境补上量词。
 
+  - source: Smart Collection
+    target: 智能合集
+    note: 成员由条件决定的合集。不要译成智能收藏夹或智能分组；「智能」修饰的是收录方式，不是它本身。
+
+  - source: Smart Collections
+    target: 智能合集
+    note: 成员由条件决定的合集，可按语境补上量词。
+
+  - source: smart collection
+    target: 智能合集
+    note: 成员由条件决定的合集。不要译成智能收藏夹或智能分组。
+
+  - source: smart collections
+    target: 智能合集
+    note: 成员由条件决定的合集，可按语境补上量词。
+
   - source: Collection
     target: 合集
     note: Jant 的策展概念。不要译成收藏夹、收藏集或集合。

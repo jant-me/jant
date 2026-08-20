@@ -122,6 +122,15 @@ const tables = [
      ORDER BY created_at, id`,
   ],
   [
+    // After `collection`, because a smart collection may hold a foreign key
+    // into one; before `nav_item` and `collection_directory_item`, which hold
+    // keys into it.
+    "smart_collection",
+    `SELECT * FROM smart_collection
+     WHERE site_id = '${escapedSiteId}'
+     ORDER BY created_at, id`,
+  ],
+  [
     "nav_item",
     `SELECT * FROM nav_item
      WHERE site_id = '${escapedSiteId}'
@@ -145,11 +154,13 @@ const tables = [
     `SELECT pr.* FROM path_registry pr
      LEFT JOIN post p ON p.id = pr.post_id
      LEFT JOIN collection c ON c.id = pr.collection_id
+     LEFT JOIN smart_collection sc ON sc.id = pr.smart_collection_id
      WHERE pr.site_id = '${escapedSiteId}'
        AND (
          pr.kind = 'redirect'
         OR (pr.post_id IS NOT NULL AND p.id IS NOT NULL)
         OR (pr.collection_id IS NOT NULL AND c.id IS NOT NULL)
+        OR (pr.smart_collection_id IS NOT NULL AND sc.id IS NOT NULL)
        )
      ORDER BY pr.path, pr.id`,
   ],

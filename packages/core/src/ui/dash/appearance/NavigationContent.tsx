@@ -11,6 +11,7 @@ import type {
   SystemNavKey,
 } from "../../../types.js";
 import { SYSTEM_NAV_KEYS } from "../../../types.js";
+import { getSmartCollectionLabels } from "../../shared/smart-collection-labels.js";
 import type {
   NavManagerCollection,
   NavManagerLabels,
@@ -210,14 +211,33 @@ export function NavigationContent({
           slug: item.collection.slug,
           group: currentGroup,
         });
+      } else if (item.type === "smart_collection" && item.smartCollection) {
+        result.push({
+          id: item.smartCollection.id,
+          title: item.smartCollection.title,
+          slug: item.smartCollection.slug,
+          group: currentGroup,
+          isSmart: true,
+        });
       }
     }
 
-    // Append collections not in directory items
+    // Append anything with no directory row, both kinds alike.
     const includedIds = new Set(result.map((c) => c.id));
     for (const c of directoryData.collections) {
       if (!includedIds.has(c.id)) {
         result.push({ id: c.id, title: c.title, slug: c.slug, group: null });
+      }
+    }
+    for (const c of directoryData.smartCollections) {
+      if (!includedIds.has(c.id)) {
+        result.push({
+          id: c.id,
+          title: c.title,
+          slug: c.slug,
+          group: null,
+          isSmart: true,
+        });
       }
     }
 
@@ -714,6 +734,7 @@ export function NavigationContent({
         comment: "@context: Button for adding a collection to nav",
       }),
     ),
+    smartCollectionLabel: getSmartCollectionLabels(i18n).noun,
     addCollectionToNavigation: i18n._(
       msg({
         message: "Add collection to navigation",

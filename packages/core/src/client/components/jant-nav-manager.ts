@@ -33,6 +33,8 @@ import {
   getCollectionEditPath,
   getCollectionPagePath,
 } from "../../lib/collection-paths.js";
+import { getIconSvg } from "../../lib/icons.js";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { getSlugValidationIssue } from "../../lib/slug-format.js";
 import {
   looksLikeAddress,
@@ -1118,7 +1120,7 @@ export class JantNavManager extends LitElement {
   // Add collection handler
   // ===========================================================================
 
-  async #handleAddCollection(collectionId: string) {
+  async #handleAddCollection(collectionId: string, isSmart = false) {
     if (!collectionId || this._addingCollectionId) return;
 
     this._addingCollectionId = collectionId;
@@ -1126,11 +1128,22 @@ export class JantNavManager extends LitElement {
       const res = await fetch("/api/nav-items", {
         method: "POST",
         headers: this.#jsonMutationHeaders(),
-        body: JSON.stringify({
-          type: "collection",
-          collectionId,
-          placement: "header",
-        }),
+        // Both kinds land in the same menu and behave identically once there:
+        // the label follows the target's title, and the URL follows its
+        // address. Only which column holds the key differs.
+        body: JSON.stringify(
+          isSmart
+            ? {
+                type: "smart_collection",
+                smartCollectionId: collectionId,
+                placement: "header",
+              }
+            : {
+                type: "collection",
+                collectionId,
+                placement: "header",
+              },
+        ),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -2432,9 +2445,13 @@ export class JantNavManager extends LitElement {
     }
 
     const addedCollectionIds = new Set(
-      this._items
-        .filter((i) => i.type === "collection" && i.collectionId)
-        .map((i) => i.collectionId),
+      this._items.flatMap((i) =>
+        i.type === "collection" && i.collectionId
+          ? [i.collectionId]
+          : i.type === "smart_collection" && i.smartCollectionId
+            ? [i.smartCollectionId]
+            : [],
+      ),
     );
     const available = this.collections.filter(
       (c) => !addedCollectionIds.has(c.id),
@@ -2556,11 +2573,25 @@ export class JantNavManager extends LitElement {
                             class="collection-picker-item"
                             ?disabled=${adding ||
                             this._addingCollectionId !== null}
-                            @click=${() => this.#handleAddCollection(c.id)}
+                            @click=${() =>
+                              this.#handleAddCollection(c.id, c.isSmart)}
                           >
                             <span class="collection-picker-title">
                               ${c.title}
                             </span>
+                            ${c.isSmart
+                              ? html`<span
+                                  class="collection-directory-smart-icon"
+                                  role="img"
+                                  aria-label=${this.labels
+                                    .smartCollectionLabel ?? ""}
+                                  title=${this.labels.smartCollectionLabel ??
+                                  ""}
+                                  >${unsafeHTML(
+                                    getIconSvg("list-filter") ?? "",
+                                  )}</span
+                                >`
+                              : nothing}
                             ${adding
                               ? html`<svg
                                   xmlns="http://www.w3.org/2000/svg"

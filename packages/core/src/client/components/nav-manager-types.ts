@@ -7,9 +7,10 @@ import type { CollectionFormLabels } from "./collection-types.js";
 
 export interface NavManagerItem {
   id: string;
-  type: "link" | "system" | "collection" | "page";
+  type: "link" | "system" | "collection" | "smart_collection" | "page";
   systemKey?: SystemNavKey;
   collectionId?: string;
+  smartCollectionId?: string;
   postId?: string;
   /** Author's override, or `""` when the item follows its target's title */
   label: string;
@@ -66,6 +67,14 @@ export interface NavManagerCollection {
   slug: string;
   /** Group label from directory divider, if this collection belongs to one */
   group?: string | null;
+  /**
+   * True for a collection whose members come from conditions.
+   *
+   * Both kinds belong in navigation — a reader following either lands on a
+   * page of posts — so the picker lists them together and marks which is
+   * which, rather than keeping two lists that would need two empty states.
+   */
+  isSmart?: boolean;
 }
 
 export interface NavManagerSuggestedLink {
@@ -150,6 +159,8 @@ export interface NavManagerLabels {
   back: string;
   collection: string;
   addCollection: string;
+  /** Tooltip on the icon marking a smart collection in the picker. */
+  smartCollectionLabel?: string;
   addCollectionToNavigation: string;
   addCollectionDescription: string;
   allCollectionsAdded: string;

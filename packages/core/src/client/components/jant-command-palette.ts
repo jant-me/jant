@@ -24,7 +24,7 @@ import { getBestFieldSearchRank, normalizeSearch } from "../search-rank.js";
 interface PaletteItem {
   title: string;
   path: string;
-  type: "post" | "collection" | "system";
+  type: "post" | "collection" | "smart_collection" | "system";
   status?: "draft" | "published";
 }
 
@@ -59,6 +59,9 @@ const ICONS = {
   post: `<svg ${ICON_ATTRS}><path d="M8 2v4"/><path d="M12 2v4"/><path d="M16 2v4"/><rect width="16" height="18" x="4" y="4" rx="2"/><path d="M8 10h6"/><path d="M8 14h8"/><path d="M8 18h5"/></svg>`,
   // clipboard/collection icon from PostFooter
   collection: `<svg ${ICON_ATTRS} viewBox="0 0 16 16" stroke-width="1.35"><rect x="3" y="5.05" width="10" height="8.15" rx="2.2"/><path d="M5.1 5.05V4.2a1.1 1.1 0 0 1 1.1-1.1h3.6a1.1 1.1 0 0 1 1.1 1.1v.85"/></svg>`,
+  // list-filter — the same icon the directory and the page use, so a smart
+  // collection reads as a collection with a rule behind it everywhere at once.
+  smart_collection: `<svg ${ICON_ATTRS}><path d="M2 5h20"/><path d="M6 12h12"/><path d="M9 19h6"/></svg>`,
   // settings gear from SettingsRootContent
   system: `<svg ${ICON_ATTRS}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
   // zap/lightning for commands
@@ -466,6 +469,10 @@ export class JantCommandPalette extends LitElement {
         window.location.href = navPath(item.path);
       } else if (item.type === "collection") {
         window.location.href = navPath(`/collections/${item.path}`);
+      } else if (item.type === "smart_collection") {
+        // Straight to its address. `/collections/{slug}` redirects for a
+        // collection but names nothing for a smart collection.
+        window.location.href = navPath(`/${item.path}`);
       } else {
         window.location.href = navPath(
           item.status === "draft"

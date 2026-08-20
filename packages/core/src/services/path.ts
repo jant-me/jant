@@ -102,7 +102,7 @@ export interface PathService {
 export interface NavigableItem {
   title: string;
   path: string;
-  type: "post" | "collection";
+  type: "post" | "collection" | "smart_collection";
   format?: string;
   status?: Status;
 }
@@ -123,7 +123,7 @@ export function createPathService(
   siteId: string,
   databaseSchema: DatabaseSchema = sqliteSchemaBundle,
 ): PathService {
-  const { pathRegistry, posts, collections } = databaseSchema;
+  const { pathRegistry, posts, collections, smartCollections } = databaseSchema;
 
   function toPathRecord(row: typeof pathRegistry.$inferSelect): PathRecord {
     return {
@@ -575,6 +575,31 @@ export function createPathService(
           ),
         );
 
+      // A smart collection is a page with an address, so it is reachable from
+      // anywhere addresses are listed. Its own row rather than a collection's:
+      // a collection also answers at `/collections/{slug}`, through a redirect,
+      // and a smart collection does not.
+      const smartCollectionRows = await db
+        .select({
+          title: smartCollections.title,
+          path: pathRegistry.path,
+        })
+        .from(pathRegistry)
+        .innerJoin(
+          smartCollections,
+          and(
+            eq(smartCollections.id, pathRegistry.smartCollectionId),
+            eq(smartCollections.siteId, siteId),
+          ),
+        )
+        .where(
+          and(
+            eq(pathRegistry.siteId, siteId),
+            eq(pathRegistry.kind, "slug"),
+            isNotNull(pathRegistry.smartCollectionId),
+          ),
+        );
+
       const items: NavigableItem[] = [];
 
       for (const row of postRows) {
@@ -593,6 +618,14 @@ export function createPathService(
           title: row.title,
           path: fromCollectionPath(row.path),
           type: "collection",
+        });
+      }
+
+      for (const row of smartCollectionRows) {
+        items.push({
+          title: row.title,
+          path: fromCollectionPath(row.path),
+          type: "smart_collection",
         });
       }
 

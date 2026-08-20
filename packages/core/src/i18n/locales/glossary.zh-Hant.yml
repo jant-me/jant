@@ -15,6 +15,22 @@ terms:
     target: 貼文
     note: Jant 的核心內容單位，可依語境補上量詞。
 
+  - source: Smart Collection
+    target: 智慧選集
+    note: 成員由條件決定的選集。不要譯成智慧收藏夾或智慧分組；「智慧」修飾的是收錄方式，不是它本身。
+
+  - source: Smart Collections
+    target: 智慧選集
+    note: 成員由條件決定的選集，可依語境補上量詞。
+
+  - source: smart collection
+    target: 智慧選集
+    note: 成員由條件決定的選集。不要譯成智慧收藏夾或智慧分組。
+
+  - source: smart collections
+    target: 智慧選集
+    note: 成員由條件決定的選集，可依語境補上量詞。
+
   - source: Collection
     target: 選集
     note: Jant 的策展概念。不要譯成收藏夾、收藏集或集合。

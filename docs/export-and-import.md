@@ -100,6 +100,7 @@ Not included:
 
 - users, sessions, accounts, verifications, API tokens — account and auth data isn't portable across sites.
 - Site-level runtime config (`wrangler.toml`, environment variables, bindings).
+- **Smart Collections.** Membership is a query, and an exported Hugo site has no database to run it against. The two honest options were to leave them out or to freeze today's matches under a name that promises to keep updating; the export leaves them out. The posts themselves are all there — a Smart Collection gathers posts, it does not own them — so nothing is lost but the gathering, which you recreate on the target site.
 
 ### Export structure
 

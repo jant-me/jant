@@ -56,18 +56,19 @@ Authorization: Bearer jnt_...
 
 ### 常用端点
 
-| 端点                  | 方法                        | 用途                                                                                                   |
-| --------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `/api/posts`          | GET / POST / PUT / DELETE   | 列出、读取、创建、更新、删除帖子                                                                       |
-| `/api/public/posts`   | GET                         | 公开读取已发布的帖子（无需 token）                                                                     |
-| `/api/public/archive` | GET                         | 公开归档接口——包含 `latest_hidden`，支持按年份、合集、语言、媒体、标题、回复和可见性过滤（无需 token） |
-| `/api/upload`         | POST / GET / PATCH / DELETE | 一次性 multipart 上传，单次一文件，脚本首选                                                            |
-| `/api/uploads`        | POST → PUT → POST           | 分片上传会话，大文件或不稳定网络用                                                                     |
-| `/api/attachments`    | GET                         | 按 id 读取附件原始内容                                                                                 |
-| `/api/collections`    | GET / POST / PUT / DELETE   | 合集（GET 不需要 token）                                                                               |
-| `/api/settings`       | GET / PUT                   | 站点设置                                                                                               |
-| `/api/search`         | GET                         | 全文搜索（公开，按 IP 限速）                                                                           |
-| `/api/mcp`            | POST                        | MCP JSON-RPC（`initialize` / `tools/list` 等）                                                         |
+| 端点                     | 方法                        | 用途                                                                                                   |
+| ------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `/api/posts`             | GET / POST / PUT / DELETE   | 列出、读取、创建、更新、删除帖子                                                                       |
+| `/api/public/posts`      | GET                         | 公开读取已发布的帖子（无需 token）                                                                     |
+| `/api/public/archive`    | GET                         | 公开归档接口——包含 `latest_hidden`，支持按年份、合集、语言、媒体、标题、回复和可见性过滤（无需 token） |
+| `/api/upload`            | POST / GET / PATCH / DELETE | 一次性 multipart 上传，单次一文件，脚本首选                                                            |
+| `/api/uploads`           | POST → PUT → POST           | 分片上传会话，大文件或不稳定网络用                                                                     |
+| `/api/attachments`       | GET                         | 按 id 读取附件原始内容                                                                                 |
+| `/api/collections`       | GET / POST / PUT / DELETE   | 合集（GET 不需要 token）                                                                               |
+| `/api/smart-collections` | GET / POST / PUT / DELETE   | 智能合集——成员由条件决定的合集（读写都需要 token）                                                     |
+| `/api/settings`          | GET / PUT                   | 站点设置                                                                                               |
+| `/api/search`            | GET                         | 全文搜索（公开，按 IP 限速）                                                                           |
+| `/api/mcp`               | POST                        | MCP JSON-RPC（`initialize` / `tools/list` 等）                                                         |
 
 `/api/upload` 与 `/api/uploads` 只差一个 s，但语义完全不同——前者是单文件 multipart 一次完成，后者是 init/part/complete 三步分片会话。脚本首选 `/api/upload`，遇到大文件或不稳定连接再换 `/api/uploads`。
 

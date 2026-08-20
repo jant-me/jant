@@ -1439,20 +1439,22 @@ Collection responses include these fields:
 
 Directory item responses include these fields:
 
-| Field          | Type                                | Notes                            |
-| -------------- | ----------------------------------- | -------------------------------- |
-| `id`           | `cdi_*` string                      | Directory item ID                |
-| `siteId`       | string                              | Owning site                      |
-| `type`         | `collection` \| `divider` \| `link` | Item kind                        |
-| `collectionId` | `col_*` string \| `null`            | Present for `type: "collection"` |
-| `label`        | string \| `null`                    | Divider label or link label      |
-| `url`          | string \| `null`                    | Present for `type: "link"`       |
-| `position`     | string                              | Fractional ordering key          |
-| `createdAt`    | integer                             | Unix seconds                     |
-| `updatedAt`    | integer                             | Unix seconds                     |
+| Field               | Type                                                      | Notes                                  |
+| ------------------- | --------------------------------------------------------- | -------------------------------------- |
+| `id`                | `cdi_*` string                                            | Directory item ID                      |
+| `siteId`            | string                                                    | Owning site                            |
+| `type`              | `collection` \| `smart_collection` \| `divider` \| `link` | Item kind                              |
+| `collectionId`      | `col_*` string \| `null`                                  | Present for `type: "collection"`       |
+| `smartCollectionId` | `smc_*` string \| `null`                                  | Present for `type: "smart_collection"` |
+| `label`             | string \| `null`                                          | Divider label or link label            |
+| `url`               | string \| `null`                                          | Present for `type: "link"`             |
+| `position`          | string                                                    | Fractional ordering key                |
+| `createdAt`         | integer                                                   | Unix seconds                           |
+| `updatedAt`         | integer                                                   | Unix seconds                           |
 
 Notes:
 
+- A directory item is a _position_, not a membership. Every collection and smart collection appears in the directory whether or not one exists — unplaced entries are appended — so a directory item exists only to interleave an entry with dividers and links and to drag it around.
 - Creating a collection automatically creates a `type: "collection"` directory item.
 - Deleting a collection also deletes its `type: "collection"` directory item.
 - `POST /api/collections/directory-items` only accepts `divider` and `link`. Collection-backed items are managed through collection CRUD, not this endpoint.
@@ -1487,12 +1489,28 @@ Default response:
       "recentActivityAt": 1706100000
     }
   ],
+  "smartCollections": [
+    {
+      "id": "smc_01jpyxa2k4d7n6r9s1t3v5w8xz",
+      "siteId": "sit_01jpyx1v6z9k4c7b2m5q8r3nfh",
+      "slug": "quotes",
+      "title": "Quotes",
+      "description": "Things worth keeping.",
+      "selection": { "format": "quote" },
+      "sort": "newest",
+      "layout": null,
+      "createdAt": 1706000000,
+      "updatedAt": 1706000000,
+      "threadCount": 34
+    }
+  ],
   "directoryItems": [
     {
       "id": "cdi_01jpyx8r7s3v8m1q5c9k2f6gth",
       "siteId": "sit_01jpyx1v6z9k4c7b2m5q8r3nfh",
       "type": "collection",
       "collectionId": "col_01jpyx5qds8y79w2dd6sv4rznj",
+      "smartCollectionId": null,
       "label": null,
       "url": null,
       "position": "a0",
@@ -1505,8 +1523,8 @@ Default response:
 
 Notes:
 
-- The default response returns directory ordering in `directoryItems`.
-- `view=compose` returns collections sorted by recent activity and always returns an empty `directoryItems` array.
+- The default response returns directory ordering in `directoryItems`, and every smart collection in `smartCollections`.
+- `view=compose` returns collections sorted by recent activity and always returns an empty `directoryItems` array. It carries no smart collections: a post cannot be added to one by hand, so offering it in a compose picker would be a control that does nothing.
 
 ### Get a collection
 
@@ -1787,6 +1805,149 @@ Thread membership. Response:
 
 ---
 
+## Smart Collections
+
+Base path: `/api/smart-collections`
+
+Auth: `Session or token` on every endpoint. A smart collection's _page_ is
+public; managing one is not.
+
+A smart collection is a collection whose members come from conditions rather
+than from tagging. Nothing is added to one by hand, so there are no membership
+endpoints here — the conditions are the membership.
+
+Smart collection responses include these fields:
+
+| Field         | Type                                               | Notes                                             |
+| ------------- | -------------------------------------------------- | ------------------------------------------------- |
+| `id`          | `smc_*` string                                     | Smart collection ID                               |
+| `siteId`      | string                                             | Owning site                                       |
+| `slug`        | string                                             | Canonical address, in the same namespace as posts |
+| `title`       | string                                             | Display title. Required                           |
+| `description` | string \| `null`                                   | Optional description                              |
+| `selection`   | object                                             | The conditions. `{}` collects every post          |
+| `sort`        | `newest` \| `oldest` \| `updated` \| `rating_desc` | Order of the posts the conditions gather          |
+| `layout`      | `list` \| `grid` \| `null`                         | `null` follows the site's archive layout          |
+| `createdAt`   | integer                                            | Unix seconds                                      |
+| `updatedAt`   | integer                                            | Unix seconds                                      |
+| `threadCount` | integer                                            | Only present in list responses                    |
+
+### The `selection` object
+
+Each key is one condition, and a key may appear once. Conditions are combined
+with AND. Omitting a key means that dimension is not part of the conditions —
+there is no "any" value, because a key that is absent already says that.
+
+| Key          | Value                                                                     |
+| ------------ | ------------------------------------------------------------------------- |
+| `collection` | Array of exactly one `col_*` id                                           |
+| `format`     | `note` \| `link` \| `quote`                                               |
+| `title`      | boolean — `true` has a title, `false` has none                            |
+| `year`       | integer, 1971 or later                                                    |
+| `media`      | `"any"` \| `"none"` \| array of `image` `video` `audio` `text` `document` |
+| `replies`    | boolean — `true` threads with replies, `false` single posts               |
+| `visibility` | `public` \| `featured` \| `latest_hidden`                                 |
+
+`visibility` never accepts `private`, and `collection` never accepts more than
+one id. The first is because a smart collection is a published page and can
+never name a set only its author can see; the second is because two ids would
+be an OR, which the conditions do not express.
+
+### List smart collections
+
+`GET /api/smart-collections`
+
+| Parameter | Type       | Required | Default | Notes                                      |
+| --------- | ---------- | -------- | ------- | ------------------------------------------ |
+| `lang`    | BCP 47 tag | no       | all     | Narrows `threadCount` to one language view |
+
+Response: `{ "smartCollections": SmartCollection[] }`, each carrying
+`threadCount`.
+
+### Get a smart collection
+
+`GET /api/smart-collections/:id`
+
+Response: `{ "smartCollection": SmartCollection }`.
+
+### Create a smart collection
+
+`POST /api/smart-collections`
+
+Body:
+
+```json
+{
+  "slug": "quotes",
+  "title": "Quotes",
+  "description": "Things worth keeping.",
+  "selection": { "format": "quote", "media": "any" },
+  "sort": "newest",
+  "layout": null
+}
+```
+
+`slug` and `title` are required; everything else is optional. Returns `201` with
+`{ "smartCollection": SmartCollection }`. A slug already used by a post, a
+collection, or another smart collection returns `409` — they share one address
+space.
+
+### Update a smart collection
+
+`PUT /api/smart-collections/:id`
+
+Same body, every field optional. Sending `selection` **replaces** the conditions
+entirely: a dimension you leave out is cleared, not kept.
+
+Changing `slug` moves the address immediately and does not leave a redirect
+behind. Any navigation item pointing at this smart collection follows.
+
+### Delete a smart collection
+
+`DELETE /api/smart-collections/:id`
+
+Response: `{ "success": true }`. The address stops working at once.
+
+### Preview a selection
+
+`POST /api/smart-collections/preview`
+
+Counts what a set of conditions would gather, without saving anything.
+
+Body: `{ "selection": { … } }` — the same shape create validates. `POST` rather
+than `GET` because the conditions are a typed body; spelling them into a URL
+would mean inventing a second encoding for them.
+
+| Parameter | Type       | Required | Default | Notes                             |
+| --------- | ---------- | -------- | ------- | --------------------------------- |
+| `lang`    | BCP 47 tag | no       | all     | Narrows both counts to a language |
+
+Response:
+
+```json
+{ "count": 34, "baseline": 1240 }
+```
+
+`count` is how many threads match; `baseline` is how many there are in total.
+Both are counted for the caller, so a signed-in author may see larger numbers
+than the page shows an anonymous reader — the same rule as everywhere else.
+
+### Check an address
+
+`GET /api/smart-collections/slug`
+
+| Parameter           | Type                 | Required  | Notes                                        |
+| ------------------- | -------------------- | --------- | -------------------------------------------- |
+| `mode`              | `suggest` \| `check` | yes       | Derive one from a title, or test a typed one |
+| `title`             | string               | `suggest` | Title to derive from                         |
+| `slug`              | string               | `check`   | Address to test                              |
+| `smartCollectionId` | `smc_*` string       | no        | Ignore the address this one already holds    |
+
+`mode=suggest` returns `{ "slug": "…" }`; `mode=check` returns
+`{ "slug": "…", "available": true }`.
+
+---
+
 ## Navigation Items
 
 Base path: `/api/nav-items`
@@ -1795,17 +1956,20 @@ Navigation items power the header navigation.
 
 Nav item responses include these fields:
 
-| Field       | Type                                              | Notes                             |
-| ----------- | ------------------------------------------------- | --------------------------------- |
-| `id`        | `nav_*` string                                    | Nav item ID                       |
-| `siteId`    | string                                            | Owning site                       |
-| `type`      | `link` \| `system`                                | Custom link or built-in item      |
-| `systemKey` | `rss` \| `settings` \| `collections` \| `archive` | Only present for `type: "system"` |
-| `label`     | string                                            | Display label                     |
-| `url`       | string                                            | Stored URL or path                |
-| `position`  | string                                            | Fractional ordering key           |
-| `createdAt` | integer                                           | Unix seconds                      |
-| `updatedAt` | integer                                           | Unix seconds                      |
+| Field               | Type                                                               | Notes                                           |
+| ------------------- | ------------------------------------------------------------------ | ----------------------------------------------- |
+| `id`                | `nav_*` string                                                     | Nav item ID                                     |
+| `siteId`            | string                                                             | Owning site                                     |
+| `type`              | `link` \| `system` \| `collection` \| `smart_collection` \| `page` | What the item points at                         |
+| `systemKey`         | `rss` \| `settings` \| `collections` \| `archive`                  | Only present for `type: "system"`               |
+| `collectionId`      | `col_*` string                                                     | Only present for `type: "collection"`           |
+| `smartCollectionId` | `smc_*` string                                                     | Only present for `type: "smart_collection"`     |
+| `postId`            | `pst_*` string                                                     | Only present for `type: "page"`                 |
+| `label`             | string                                                             | Author's override, or `""` to follow the target |
+| `url`               | string                                                             | Stored URL or path                              |
+| `position`          | string                                                             | Fractional ordering key                         |
+| `createdAt`         | integer                                                            | Unix seconds                                    |
+| `updatedAt`         | integer                                                            | Unix seconds                                    |
 
 ### List nav items
 
@@ -1858,13 +2022,17 @@ Create a built-in item:
 
 Fields by type:
 
-| Field       | Type                                              | Required           | Default | Notes                                                         |
-| ----------- | ------------------------------------------------- | ------------------ | ------- | ------------------------------------------------------------- |
-| `type`      | `link`                                            | yes                | —       | Creates a custom nav link                                     |
-| `label`     | string                                            | yes (for `link`)   | —       | Link label, 1-100 chars after trim                            |
-| `url`       | string                                            | yes (for `link`)   | —       | Relative path or absolute `http:`, `https:`, or `mailto:` URL |
-| `type`      | `system`                                          | yes                | —       | Creates a built-in nav item                                   |
-| `systemKey` | `rss` \| `settings` \| `collections` \| `archive` | yes (for `system`) | —       | Built-in destination key                                      |
+| Field               | Type                                              | Required                     | Default | Notes                                                            |
+| ------------------- | ------------------------------------------------- | ---------------------------- | ------- | ---------------------------------------------------------------- |
+| `type`              | `link`                                            | yes                          | —       | Creates a custom nav link                                        |
+| `label`             | string                                            | yes (for `link`)             | —       | Link label, 1-100 chars after trim                               |
+| `url`               | string                                            | yes (for `link`)             | —       | Relative path or absolute `http:`, `https:`, or `mailto:` URL    |
+| `type`              | `system`                                          | yes                          | —       | Creates a built-in nav item                                      |
+| `systemKey`         | `rss` \| `settings` \| `collections` \| `archive` | yes (for `system`)           | —       | Built-in destination key                                         |
+| `type`              | `collection` \| `smart_collection` \| `page`      | yes                          | —       | Points at a collection, a smart collection, or a standalone page |
+| `collectionId`      | `col_*` string                                    | yes (for `collection`)       | —       | Collection to point at                                           |
+| `smartCollectionId` | `smc_*` string                                    | yes (for `smart_collection`) | —       | Smart collection to point at                                     |
+| `postId`            | `pst_*` string                                    | yes (for `page`)             | —       | Published, non-private, titled Note to point at                  |
 
 System keys:
 
@@ -1877,6 +2045,7 @@ Notes:
 
 - Built-in items get their label and URL automatically.
 - Jant rejects duplicate built-in items.
+- A `collection`, `smart_collection`, or `page` item stores its `label` empty unless you send one. It then shows its target's current title and follows it when the target is renamed, and its URL follows when the target's address moves. Only a label you typed is stored, and it then wins in every language view.
 
 Response: `201 Created` with the new nav item.
 

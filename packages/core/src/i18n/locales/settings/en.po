@@ -311,9 +311,7 @@ msgid "Applies to your entire site, including admin pages. Pick a palette, then 
 msgstr "Applies to your entire site, including admin pages. Pick a palette, then choose whether it follows the system or stays fixed."
 
 #. @context: Custom URL target type badge for an archive view
-#. @context: Custom URL type option for filtered archive view
 #. @context: Suggested navigation link target type
-#: src/routes/dash/custom-urls.tsx
 #: src/routes/dash/custom-urls.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Archive"
@@ -323,11 +321,6 @@ msgstr "Archive"
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Archive feed"
 msgstr "Archive feed"
-
-#. @context: Help text for archive custom URL query params
-#: src/routes/dash/custom-urls.tsx
-msgid "Archive filter parameters (e.g. format=note&view=list)"
-msgstr "Archive filter parameters (e.g. format=note&view=list)"
 
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -2001,11 +1994,6 @@ msgstr "Push all posts to GitHub right now instead of waiting for the next autom
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "QR code linking to the Telegram bot"
 msgstr "QR code linking to the Telegram bot"
-
-#. @context: Archive custom URL query params field
-#: src/routes/dash/custom-urls.tsx
-msgid "Query Parameters"
-msgstr "Query Parameters"
 
 #. @context: Post format badge - quote
 #: src/ui/dash/FormatBadge.tsx
