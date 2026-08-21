@@ -276,11 +276,15 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
                       class="collections-page-menu-item"
                       data-collections-action="smart-collection"
                     >
+                      {/* Full stroke, unlike the funnel that marks a smart
+                          collection beside its title: here it sits among
+                          menu icons drawn at the same weight, and `icon-fine`
+                          would single it out as the lighter one. */}
                       <span
                         class="collections-page-menu-item-icon"
                         aria-hidden="true"
                         dangerouslySetInnerHTML={{
-                          __html: getIconSvg("funnel", "icon-fine") ?? "",
+                          __html: getIconSvg("funnel") ?? "",
                         }}
                       />
                       <span class="collections-page-menu-item-label">

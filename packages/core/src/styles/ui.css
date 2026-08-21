@@ -1574,6 +1574,15 @@
     color: var(--site-text-secondary);
   }
 
+  /* The slot decides the size, not the glyph: icons reach these menus both
+     hand-inlined at 16px and injected from lucide-static, which ships a
+     24px width/height on every icon it hands out. Without this the injected
+     ones draw half again as large as the rest of the menu. */
+  .collections-page-menu-item-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
   .collections-page-menu-item-label {
     min-width: 0;
     flex: 1;
