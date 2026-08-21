@@ -427,6 +427,15 @@ Books is used by the smart collection Quotes. Change or delete that first.
 多于一个时列出名字。**不用 `ON DELETE SET NULL`**：那会让条件静默消失、智能合集悄悄
 变宽，而这个项目已经有一条明确的立场——不静默改变作者没主动改的东西。
 
+> **2026-08-21 补记。** 初版实现给 `smart_collection.collection_id` 加了
+> `ON DELETE restrict` 当兜底，上线前的 review 把它去掉了——整个外键去掉，不换成别的
+> 动作。三种动作没有一种是对的（CASCADE 会因为一个合集没了就删掉一个有地址的页面，
+> SET NULL 就是上面否掉的那条），而 RESTRICT 只能报 `FOREIGN KEY constraint failed`，
+> 同时把每一条批量删除路径都变成一条没人守的顺序约束——当时三条里有两条是错的，
+> 且 SQLite/D1 上不走事务，失败会留下删了一半的站点。点名的拒绝仍然在
+> `assertCollectionUnused()`，也就是本节描述的东西；悬空的 id 读出来是「什么都不匹配」，
+> 不是「匹配全站」。详见 `tasks/lessons.md`。
+
 ---
 
 ## 4. 维度注册表

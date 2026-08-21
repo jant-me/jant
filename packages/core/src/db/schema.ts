@@ -20,8 +20,10 @@ import {
   COLLECTION_DIRECTORY_ENTRY_TYPES,
   COLLECTION_SORT_ORDERS,
   CONTENT_DISPOSITIONS,
+  EARLIEST_FILTERABLE_YEAR,
   FORMATS,
   GITHUB_APP_ACCOUNT_TYPES,
+  LATEST_FILTERABLE_YEAR,
   NAV_ITEM_PLACEMENTS,
   NAV_ITEM_TYPES,
   PATH_KINDS,
@@ -499,6 +501,21 @@ export const collections = sqliteTable(
  * there is no such thing as a smart collection page that answers 404 to a
  * reader. Per-post visibility still applies exactly as it does on a manual
  * collection page.
+ *
+ * `collection_id` carries no foreign key, which makes it the one id column here
+ * that does not. None of the three actions is the right one: CASCADE would
+ * delete a smart collection — a page, with an address — because a collection it
+ * filters by went away, SET NULL would silently widen it from "Rust notes" to
+ * every post, and RESTRICT can only say `FOREIGN KEY constraint failed`, which
+ * no one should ever be shown. The refusal that belongs here is
+ * `smartCollections.assertCollectionUnused()`, which names the smart
+ * collections standing in the way; a constraint underneath it would add no
+ * answer, only turn every bulk delete into an ordering rule nothing enforces.
+ *
+ * What a dangling id costs is bounded: the condition compiles to an `IN` over a
+ * collection no `thread_collection` row carries, so the smart collection matches
+ * nothing. Visible and repairable by editing the conditions — not a page that
+ * quietly grew to the whole archive.
  */
 export const smartCollections = sqliteTable(
   "smart_collection",
@@ -513,12 +530,9 @@ export const smartCollections = sqliteTable(
     // --- Conditions (see lib/filter-dimensions.ts) --------------------------
     format: text("format", { enum: FORMATS }),
     year: integer("year"),
-    // Deliberately neither CASCADE nor SET NULL: deleting a collection a smart
-    // collection filters by is refused in the service, by name. Either database
-    // action would silently widen the smart collection instead.
-    collectionId: text("collection_id").references(() => collections.id, {
-      onDelete: "restrict",
-    }),
+    // No foreign key, alone among this schema's id columns — see the note under
+    // the table on why this one is held in the service instead.
+    collectionId: text("collection_id"),
     /** `any` | `none` | comma-joined MEDIA_KINDS. One folded vocabulary. */
     media: text("media"),
     hasTitle: integer("has_title", { mode: "boolean" }),
@@ -554,7 +568,7 @@ export const smartCollections = sqliteTable(
     ),
     check(
       "chk_smart_collection_year",
-      sql`${table.year} IS NULL OR ${table.year} >= 1971`,
+      sql`${table.year} IS NULL OR ${table.year} BETWEEN ${sql.raw(String(EARLIEST_FILTERABLE_YEAR))} AND ${sql.raw(String(LATEST_FILTERABLE_YEAR))}`,
     ),
     index("idx_smart_collection_site_created_at").on(
       table.siteId,

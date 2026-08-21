@@ -218,6 +218,7 @@ export function createSiteAdminService(
     media,
     navItems,
     pathRegistry,
+    smartCollections,
     threadCollections,
     posts,
     settings,
@@ -514,6 +515,14 @@ export function createSiteAdminService(
     );
     await targetDb.delete(posts).where(eq(posts.siteId, siteId));
 
+    // Both kinds of collection, and smart ones first — a smart collection holds
+    // a `collection_id`. There is no constraint forcing that order any more
+    // (see the note on the column in `db/schema.ts`), but this function names
+    // every table it clears, and leaving one to an implicit cascade from `site`
+    // is how the next table gets forgotten.
+    await targetDb
+      .delete(smartCollections)
+      .where(eq(smartCollections.siteId, siteId));
     await targetDb.delete(collections).where(eq(collections.siteId, siteId));
     await targetDb.delete(apiTokens).where(eq(apiTokens.siteId, siteId));
     await targetDb.delete(settings).where(eq(settings.siteId, siteId));

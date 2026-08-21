@@ -110,6 +110,7 @@ export function createAuthService(
     verification,
     media,
     collections,
+    smartCollections,
     threadCollections,
     pathRegistry,
     collectionDirectoryItems: directoryItemsTable,
@@ -139,6 +140,12 @@ export function createAuthService(
     );
     await executeStatement(targetDb, sql`DELETE FROM post`);
 
+    // Both kinds of collection, and smart ones first — a smart collection holds
+    // a `collection_id`. There is no constraint forcing that order any more
+    // (see the note on the column in `db/schema.ts`), but a reset that walks
+    // every table by hand should not leave one of them to an implicit cascade
+    // from `site` at the very end.
+    await targetDb.delete(smartCollections);
     await targetDb.delete(collections);
     await targetDb.delete(apiTokens);
     await targetDb.delete(settingsTable);

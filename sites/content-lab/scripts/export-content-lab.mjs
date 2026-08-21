@@ -158,6 +158,10 @@ const tables = [
      WHERE pr.site_id = '${escapedSiteId}'
        AND (
          pr.kind = 'redirect'
+        -- Like a redirect, an archive path points at no row, so there is no
+        -- dangling target to filter out. It is also the one kind nothing
+        -- creates any more, which makes a snapshot the only place it survives.
+        OR pr.kind = 'archive'
         OR (pr.post_id IS NOT NULL AND p.id IS NOT NULL)
         OR (pr.collection_id IS NOT NULL AND c.id IS NOT NULL)
         OR (pr.smart_collection_id IS NOT NULL AND sc.id IS NOT NULL)

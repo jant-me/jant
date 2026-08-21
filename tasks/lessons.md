@@ -883,3 +883,62 @@ Before shipping a size, a colour, or a variant, check the computed value in the
 browser rather than the source. A custom property is not a contract until some
 rule consumes it, and a descendant selector claims every matching element
 underneath, not the one you had in mind — `>` when you mean the direct child.
+
+## `ON DELETE restrict` is a promise every bulk delete has to keep
+
+`smart_collection.collection_id` shipped as the schema's only RESTRICT among 32
+foreign keys, as a backstop under the service's named refusal. It turned three
+delete-everything paths into an ordering constraint, and two of them were
+already wrong: `auth.deleteDataRows` (Settings → delete all data) and
+`siteAdmin.deleteSiteRows` (the hosted delete endpoint) both cleared `collection`
+without clearing `smart_collection` first. Neither runs in a transaction on
+SQLite or D1, so the failure was not a rejected request — it was posts, media,
+paths and nav already gone and the site stuck half-erased.
+
+CASCADE and SET NULL were both wrong for that column too (delete a page because
+its filter's target went away; silently widen a curated page to the whole
+archive), which is the tell: when no ON DELETE action fits, the constraint is
+not the right tool. Put the rule where it can name what is in the way, and check
+what a dangling id actually does on the read side — here it compiles to an `IN`
+over an id nothing carries, so the page shows nothing rather than everything.
+
+Before adding a non-CASCADE foreign key, grep every place that deletes the
+referenced table in bulk — resets, site deletion, import and content-reset
+scripts — and ask what a mid-sequence failure leaves behind.
+
+## drizzle-kit's table rebuild copies a column the old table does not have
+
+Regenerating a migration that adds a column to a SQLite table drizzle has to
+rebuild produced `INSERT INTO __new_x("…","new_col",…) SELECT "…","new_col",…
+FROM x` — selecting the new column from the table that does not have it yet.
+Every statement before it applied cleanly, so the file looked right; it failed
+only when replayed, with `no such column`.
+
+The generated SQL for a rebuild is not reviewed by the type checker and not
+covered by any test that does not actually run the migrations. After
+`db-schema-generate`, replay the whole directory against a scratch database
+**with rows already in the affected tables**, and diff the row counts across the
+rebuild. The `SELECT` list has to say `NULL` for anything the old table lacks.
+
+## Rewriting a migration is free only until something has run it — including your own dev database
+
+Regenerating `0033` (SQLite) and `0031` (PG) was safe for production, which had
+never seen them, and broke both local dev databases the moment `mise run
+dev-node` started: `relation "smart_collection" already exists`.
+
+The two runtimes disagree on what "already applied" means, so both have to be
+handled and neither can be papered over:
+
+- **D1** records `d1_migrations.name`, the filename. A regenerated file has a
+  new tag, so it is pending again.
+- **Postgres** records `drizzle.__drizzle_migrations.created_at` and applies
+  everything whose journal `when` is greater. Regenerating stamps a new `when`,
+  so it is pending again.
+
+Renaming the new file back, or restoring the old `when`, makes the error go away
+and leaves the dev database holding the _old_ definition while the code assumes
+the new one — the exact drift the change was undoing. Repair the database
+instead: an empty one is quickest to drop and re-migrate; one with content worth
+keeping takes the delta by hand (rebuild the table, then rewrite the tracking
+row to the new name or timestamp). Check both dev databases, not the one that
+happened to fail first.

@@ -39,7 +39,10 @@ export interface SmartCollectionUpgrade {
 const PRESENTATION_PARAMS = ["sort", "layout", "view"] as const;
 
 /** Everything after `?` in an archive path, or null when it is not one. */
-function readArchiveQuery(url: string): URLSearchParams | null {
+function readArchiveQuery(
+  url: string,
+  origin: string | undefined,
+): URLSearchParams | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
 
@@ -51,6 +54,13 @@ function readArchiveQuery(url: string): URLSearchParams | null {
   if (/^https?:\/\//i.test(trimmed)) {
     try {
       const parsed = new URL(trimmed);
+      // A directory link is whatever the author typed, so an absolute URL here
+      // can name someone else's site. `https://elsewhere.example/archive?…` is
+      // a page this site cannot answer for, and offering to "keep answering
+      // what that URL answers" about it would be a promise made to a stranger.
+      // A caller that cannot say which origin is its own gets no absolute form
+      // at all, rather than a guess.
+      if (!origin || parsed.origin !== origin) return null;
       path = parsed.pathname;
       query = parsed.search.slice(1);
     } catch {
@@ -76,6 +86,9 @@ function readArchiveQuery(url: string): URLSearchParams | null {
  *
  * @param url - An archive path, a bare query string, or an absolute URL
  * @param ctx - Collection vocabulary, so a `?collection=` slug can resolve
+ * @param opts.origin - This site's origin, for callers that hold URLs an author
+ *   typed. An absolute URL is read only when it matches; omit it and only
+ *   relative forms are accepted.
  * @returns The prefill, or `null` when the URL cannot be honored exactly
  *
  * @example
@@ -85,13 +98,19 @@ function readArchiveQuery(url: string): URLSearchParams | null {
  *
  * parseArchiveUrlForUpgrade("/archive?visibility=private", ctx);
  * // null — a smart collection is a published page and can never name that set
+ *
+ * parseArchiveUrlForUpgrade("https://elsewhere.example/archive?format=note", ctx, {
+ *   origin: "https://mine.example",
+ * });
+ * // null — another site's archive is not this site's to gather
  * ```
  */
 export function parseArchiveUrlForUpgrade(
   url: string,
   ctx: DimensionContext = {},
+  opts: { origin?: string } = {},
 ): SmartCollectionUpgrade | null {
-  const query = readArchiveQuery(url);
+  const query = readArchiveQuery(url, opts.origin);
   if (!query) return null;
 
   const parsed = parsePostFilterSelectionStrict(

@@ -18,6 +18,7 @@ import {
   siteDomains,
   siteMembers,
   sites,
+  smartCollections,
   user,
   verification,
 } from "../../db/schema.js";
@@ -172,6 +173,56 @@ describe("AuthService", () => {
       createdAt: timestamp,
     });
 
+    // A smart collection that filters *by* the collection above, with every row
+    // that hangs off it. This is the shape a factory reset used to die on: the
+    // condition column once carried `ON DELETE restrict`, so clearing
+    // `collection` threw halfway through a reset that runs without a
+    // transaction on SQLite and D1, leaving a half-erased site behind.
+    await db.insert(smartCollections).values({
+      id: "smc_01km9authdelete00000000000",
+      siteId: DEFAULT_TEST_SITE_ID,
+      title: "Untitled notes",
+      collectionId: "col_01km9authdelete00000000000",
+      format: "note",
+      hasTitle: false,
+      sort: "newest",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.insert(pathRegistry).values({
+      id: "pth_01km9authsmart0000000000000",
+      siteId: DEFAULT_TEST_SITE_ID,
+      path: "untitled-notes",
+      kind: "slug",
+      smartCollectionId: "smc_01km9authdelete00000000000",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.insert(collectionDirectoryItems).values({
+      id: "cdi_01km9authsmart0000000000000",
+      siteId: DEFAULT_TEST_SITE_ID,
+      type: "smart_collection",
+      smartCollectionId: "smc_01km9authdelete00000000000",
+      label: null,
+      position: "a1",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    await db.insert(navItems).values({
+      id: "nav_01km9authsmart0000000000000",
+      siteId: DEFAULT_TEST_SITE_ID,
+      type: "smart_collection",
+      smartCollectionId: "smc_01km9authdelete00000000000",
+      label: "",
+      url: "/untitled-notes",
+      position: "a1",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
     await db.insert(navItems).values({
       id: "nav_01km9authdelete00000000000",
       siteId: DEFAULT_TEST_SITE_ID,
@@ -241,6 +292,9 @@ describe("AuthService", () => {
       const remainingPosts = await db.select().from(posts);
       const remainingMedia = await db.select().from(media);
       const remainingCollections = await db.select().from(collections);
+      const remainingSmartCollections = await db
+        .select()
+        .from(smartCollections);
       const remainingPaths = await db.select().from(pathRegistry);
       const remainingDirectoryItems = await db
         .select()
@@ -262,6 +316,7 @@ describe("AuthService", () => {
       expect(remainingPosts).toHaveLength(0);
       expect(remainingMedia).toHaveLength(0);
       expect(remainingCollections).toHaveLength(0);
+      expect(remainingSmartCollections).toHaveLength(0);
       expect(remainingPaths).toHaveLength(0);
       expect(remainingDirectoryItems).toHaveLength(0);
       expect(remainingThreadCollections).toHaveLength(0);
@@ -287,12 +342,16 @@ describe("AuthService", () => {
       const remainingSiteMembers = await db.select().from(siteMembers);
       const remainingUsers = await db.select().from(user);
       const remainingPosts = await db.select().from(posts);
+      const remainingSmartCollections = await db
+        .select()
+        .from(smartCollections);
       const remainingSettings = await db.select().from(settingsTable);
       const existingSites = await db.select().from(sites);
       const existingSiteDomains = await db.select().from(siteDomains);
       expect(remainingSiteMembers).toHaveLength(0);
       expect(remainingUsers).toHaveLength(0);
       expect(remainingPosts).toHaveLength(0);
+      expect(remainingSmartCollections).toHaveLength(0);
       expect(remainingSettings).toHaveLength(0);
       expect(existingSites).toHaveLength(0);
       expect(existingSiteDomains).toHaveLength(0);

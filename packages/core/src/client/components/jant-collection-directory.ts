@@ -1221,14 +1221,20 @@ export class JantCollectionsManager extends LitElement {
    *
    * Hidden rather than shown-and-failing when the URL carries a parameter
    * nobody declared, a value nobody can read, a collection that no longer
-   * exists, or `visibility=private`. Offering it there would be promising to
-   * keep answering a question that cannot be asked.
+   * exists, `visibility=private`, or an origin that is not this site's.
+   * Offering it there would be promising to keep answering a question that
+   * cannot be asked.
    */
   #renderUpgradeMenuItem(item: CollectionManagerItem) {
     if (!item.url) return nothing;
-    const upgrade = parseArchiveUrlForUpgrade(item.url, {
-      collections: collectionVocabulary(),
-    });
+    const upgrade = parseArchiveUrlForUpgrade(
+      item.url,
+      { collections: collectionVocabulary() },
+      // A link's URL is whatever the author typed, so it may name another site.
+      // Only this component knows which origin is ours; the parser stays free of
+      // `window` because the settings page calls it on the server.
+      { origin: window.location.origin },
+    );
     if (!upgrade) return nothing;
 
     return html`

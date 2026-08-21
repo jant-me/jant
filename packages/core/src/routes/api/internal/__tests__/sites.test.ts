@@ -407,6 +407,28 @@ describe("Internal site admin routes", () => {
          VALUES (?, 'SITE_AVATAR', 'sites/${siteId}/avatar.webp', 1774200003)`,
       )
       .run(siteId);
+    // A smart collection filtering by a collection on the same site. The pair
+    // is the shape this endpoint used to die on: the condition column once
+    // carried `ON DELETE restrict`, so clearing `collection` threw partway
+    // through a delete that runs without a transaction on SQLite and D1.
+    sqlite
+      .prepare(
+        `INSERT INTO "collection" ("id", "site_id", "title", "sort_order", "created_at", "updated_at")
+         VALUES ('col_delete_1', ?, 'Notes', 'newest', 1774200004, 1774200004)`,
+      )
+      .run(siteId);
+    sqlite
+      .prepare(
+        `INSERT INTO "smart_collection" ("id", "site_id", "title", "collection_id", "format", "sort", "created_at", "updated_at")
+         VALUES ('smc_delete_1', ?, 'Untitled notes', 'col_delete_1', 'note', 'newest', 1774200005, 1774200005)`,
+      )
+      .run(siteId);
+    sqlite
+      .prepare(
+        `INSERT INTO "path_registry" ("id", "site_id", "path", "kind", "smart_collection_id", "created_at", "updated_at")
+         VALUES ('pth_delete_1', ?, 'untitled-notes', 'slug', 'smc_delete_1', 1774200006, 1774200006)`,
+      )
+      .run(siteId);
 
     const deleteRes = await app.request(`/api/internal/sites/${siteId}`, {
       method: "DELETE",
@@ -438,6 +460,19 @@ describe("Internal site admin routes", () => {
         'SELECT COUNT(*) AS count FROM "site_setting" WHERE "site_id" = ?',
       )
       .get(siteId) as { count: number };
+    const deletedCollectionCount = sqlite
+      .prepare('SELECT COUNT(*) AS count FROM "collection" WHERE "site_id" = ?')
+      .get(siteId) as { count: number };
+    const deletedSmartCollectionCount = sqlite
+      .prepare(
+        'SELECT COUNT(*) AS count FROM "smart_collection" WHERE "site_id" = ?',
+      )
+      .get(siteId) as { count: number };
+    const deletedPathCount = sqlite
+      .prepare(
+        'SELECT COUNT(*) AS count FROM "path_registry" WHERE "site_id" = ?',
+      )
+      .get(siteId) as { count: number };
     const defaultSiteCount = sqlite
       .prepare('SELECT COUNT(*) AS count FROM "site" WHERE "id" = ?')
       .get(DEFAULT_TEST_SITE_ID) as { count: number };
@@ -447,6 +482,9 @@ describe("Internal site admin routes", () => {
     expect(deletedMemberCount.count).toBe(0);
     expect(deletedPostCount.count).toBe(0);
     expect(deletedSettingsCount.count).toBe(0);
+    expect(deletedCollectionCount.count).toBe(0);
+    expect(deletedSmartCollectionCount.count).toBe(0);
+    expect(deletedPathCount.count).toBe(0);
     expect(defaultSiteCount.count).toBe(1);
   });
 

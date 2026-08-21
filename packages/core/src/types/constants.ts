@@ -50,6 +50,22 @@ export const ARCHIVE_VISIBILITIES = [
 
 export type ArchiveVisibility = (typeof ARCHIVE_VISIBILITIES)[number];
 
+/**
+ * The range a `year` filter may name, inclusive at both ends.
+ *
+ * Unix timestamps start in 1970, so anything at or below it is a parse failure
+ * rather than a very old archive.
+ *
+ * The ceiling is not pedantry. A year is translated into a pair of bounds with
+ * `Date.UTC`, which returns `NaN` past year 275760 — and a `NaN` bound is a
+ * comparison every row silently fails, so the page renders empty with nothing
+ * to explain it. Four digits is the largest year a post can honestly carry, and
+ * it is bounded in three places at once: the URL parser, the stored condition's
+ * validator, and the table CHECK in both dialects.
+ */
+export const EARLIEST_FILTERABLE_YEAR = 1971;
+export const LATEST_FILTERABLE_YEAR = 9999;
+
 export const SORT_ORDERS = [
   "newest",
   "oldest",

@@ -35,7 +35,9 @@ import type {
   MediaKind,
 } from "../types/constants.js";
 import {
+  EARLIEST_FILTERABLE_YEAR,
   FORMATS,
+  LATEST_FILTERABLE_YEAR,
   MEDIA_KINDS,
   PUBLIC_ARCHIVE_VISIBILITIES,
 } from "../types/constants.js";
@@ -601,14 +603,6 @@ const TITLE_DIMENSION: Dimension<"title"> = {
 
 // --- year --------------------------------------------------------------------
 
-/**
- * The earliest year a post can carry.
- *
- * Unix timestamps start in 1970, so anything at or below it is a parse failure
- * rather than a very old archive.
- */
-const EARLIEST_FILTERABLE_YEAR = 1971;
-
 const YEAR_DIMENSION: Dimension<"year"> = {
   key: "year",
   label: msg({
@@ -621,10 +615,18 @@ const YEAR_DIMENSION: Dimension<"year"> = {
       const raw = read("year");
       if (!raw) return { state: "absent" };
       const year = Number.parseInt(raw, 10);
-      if (!Number.isFinite(year) || year < EARLIEST_FILTERABLE_YEAR) {
+      // Bounded at both ends, and the ceiling is the load-bearing one:
+      // `toPostFilter` turns a year into `Date.UTC` bounds, which go `NaN` past
+      // year 275760. A NaN bound is a comparison every row fails, so the page
+      // would render empty with nothing to say why.
+      if (
+        !Number.isFinite(year) ||
+        year < EARLIEST_FILTERABLE_YEAR ||
+        year > LATEST_FILTERABLE_YEAR
+      ) {
         return {
           state: "invalid",
-          message: `Invalid year value. Allowed: ${EARLIEST_FILTERABLE_YEAR} and later`,
+          message: `Invalid year value. Allowed: ${EARLIEST_FILTERABLE_YEAR} to ${LATEST_FILTERABLE_YEAR}`,
         };
       }
       return { state: "value", value: year };
@@ -635,7 +637,11 @@ const YEAR_DIMENSION: Dimension<"year"> = {
   },
   storage: {
     column: "year",
-    schema: z.number().int().min(EARLIEST_FILTERABLE_YEAR),
+    schema: z
+      .number()
+      .int()
+      .min(EARLIEST_FILTERABLE_YEAR)
+      .max(LATEST_FILTERABLE_YEAR),
     toColumn(value) {
       return value;
     },

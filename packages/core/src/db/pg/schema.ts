@@ -24,8 +24,10 @@ import {
   COLLECTION_DIRECTORY_ENTRY_TYPES,
   COLLECTION_SORT_ORDERS,
   CONTENT_DISPOSITIONS,
+  EARLIEST_FILTERABLE_YEAR,
   FORMATS,
   GITHUB_APP_ACCOUNT_TYPES,
+  LATEST_FILTERABLE_YEAR,
   NAV_ITEM_PLACEMENTS,
   NAV_ITEM_TYPES,
   PATH_KINDS,
@@ -519,11 +521,9 @@ export const smartCollections = pgTable(
     // --- Conditions (see lib/filter-dimensions.ts) --------------------------
     format: text("format", { enum: FORMATS }),
     year: integer("year"),
-    // Neither CASCADE nor SET NULL: deleting a collection a smart collection
-    // filters by is refused in the service, by name.
-    collectionId: text("collection_id").references(() => collections.id, {
-      onDelete: "restrict",
-    }),
+    // No foreign key, alone among this schema's id columns. See the SQLite
+    // schema for why the refusal is held in the service instead.
+    collectionId: text("collection_id"),
     /** `any` | `none` | comma-joined MEDIA_KINDS. One folded vocabulary. */
     media: text("media"),
     hasTitle: boolean("has_title"),
@@ -559,7 +559,7 @@ export const smartCollections = pgTable(
     ),
     check(
       "chk_smart_collection_year",
-      sql`${table.year} IS NULL OR ${table.year} >= 1971`,
+      sql`${table.year} IS NULL OR ${table.year} BETWEEN ${sql.raw(String(EARLIEST_FILTERABLE_YEAR))} AND ${sql.raw(String(LATEST_FILTERABLE_YEAR))}`,
     ),
     index("idx_smart_collection_site_created_at").on(
       table.siteId,

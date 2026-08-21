@@ -110,11 +110,38 @@ describe("parseArchiveUrlForUpgrade", () => {
 
   it("reads an absolute URL on this site", () => {
     expect(
-      parseArchiveUrlForUpgrade("https://example.com/archive?format=link", ctx),
+      parseArchiveUrlForUpgrade(
+        "https://example.com/archive?format=link",
+        ctx,
+        {
+          origin: "https://example.com",
+        },
+      ),
     ).toEqual({
       selection: { format: "link" },
       sort: "newest",
       layout: null,
     });
+  });
+
+  it("refuses an absolute URL on another site", () => {
+    // A directory link holds whatever the author typed. Reading someone else's
+    // archive URL and offering to keep answering what it answers would be a
+    // promise about a page this site has no say over.
+    expect(
+      parseArchiveUrlForUpgrade(
+        "https://elsewhere.example/archive?format=link",
+        ctx,
+        { origin: "https://example.com" },
+      ),
+    ).toBeNull();
+  });
+
+  it("refuses any absolute URL when the caller names no origin", () => {
+    // Not a guess either way: a caller that cannot say which origin is its own
+    // gets the relative forms only.
+    expect(
+      parseArchiveUrlForUpgrade("https://example.com/archive?format=link", ctx),
+    ).toBeNull();
   });
 });

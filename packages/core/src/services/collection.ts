@@ -1093,9 +1093,10 @@ export function createCollectionService(
 
     async delete(id) {
       // Refused, not repaired: clearing the condition would quietly widen a
-      // smart collection the author never edited. The database says the same
-      // thing through `ON DELETE restrict`; this is the version with a name in
-      // it.
+      // smart collection the author never edited. This is the only place that
+      // refusal lives — `smart_collection.collection_id` carries no foreign key,
+      // precisely so the answer can name the smart collections in the way
+      // instead of failing a constraint.
       await smartCollections?.assertCollectionUnused(id);
 
       await db

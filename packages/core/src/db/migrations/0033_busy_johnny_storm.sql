@@ -15,12 +15,11 @@ CREATE TABLE `smart_collection` (
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`site_id`) REFERENCES `site`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`collection_id`) REFERENCES `collection`(`id`) ON UPDATE no action ON DELETE restrict,
 	CONSTRAINT "chk_smart_collection_format" CHECK("smart_collection"."format" IS NULL OR "smart_collection"."format" IN ('note', 'link', 'quote')),
 	CONSTRAINT "chk_smart_collection_visibility" CHECK("smart_collection"."visibility" IS NULL OR "smart_collection"."visibility" IN ('public', 'featured', 'latest_hidden')),
 	CONSTRAINT "chk_smart_collection_sort" CHECK("smart_collection"."sort" IN ('newest', 'oldest', 'updated', 'rating_desc')),
 	CONSTRAINT "chk_smart_collection_layout" CHECK("smart_collection"."layout" IS NULL OR "smart_collection"."layout" IN ('list', 'grid')),
-	CONSTRAINT "chk_smart_collection_year" CHECK("smart_collection"."year" IS NULL OR "smart_collection"."year" >= 1971)
+	CONSTRAINT "chk_smart_collection_year" CHECK("smart_collection"."year" IS NULL OR "smart_collection"."year" BETWEEN 1971 AND 9999)
 );
 --> statement-breakpoint
 CREATE INDEX `idx_smart_collection_site_created_at` ON `smart_collection` (`site_id`,`created_at`);--> statement-breakpoint
@@ -73,7 +72,6 @@ CREATE TABLE `__new_collection_directory_item` (
 INSERT INTO `__new_collection_directory_item`("id", "site_id", "type", "collection_id", "smart_collection_id", "label", "url", "description", "position", "created_at", "updated_at") SELECT "id", "site_id", "type", "collection_id", NULL, "label", "url", "description", "position", "created_at", "updated_at" FROM `collection_directory_item`;--> statement-breakpoint
 DROP TABLE `collection_directory_item`;--> statement-breakpoint
 ALTER TABLE `__new_collection_directory_item` RENAME TO `collection_directory_item`;--> statement-breakpoint
-PRAGMA foreign_keys=ON;--> statement-breakpoint
 CREATE INDEX `idx_collection_directory_item_site_collection_id` ON `collection_directory_item` (`site_id`,`collection_id`);--> statement-breakpoint
 CREATE INDEX `idx_collection_directory_item_site_smart_collection_id` ON `collection_directory_item` (`site_id`,`smart_collection_id`);--> statement-breakpoint
 CREATE UNIQUE INDEX `uq_collection_directory_item_site_position` ON `collection_directory_item` (`site_id`,`position`);--> statement-breakpoint
@@ -190,6 +188,7 @@ CREATE TABLE `__new_path_registry` (
 INSERT INTO `__new_path_registry`("id", "site_id", "path", "kind", "post_id", "collection_id", "smart_collection_id", "redirect_to_path", "redirect_type", "archive_query", "created_at", "updated_at") SELECT "id", "site_id", "path", "kind", "post_id", "collection_id", NULL, "redirect_to_path", "redirect_type", "archive_query", "created_at", "updated_at" FROM `path_registry`;--> statement-breakpoint
 DROP TABLE `path_registry`;--> statement-breakpoint
 ALTER TABLE `__new_path_registry` RENAME TO `path_registry`;--> statement-breakpoint
+PRAGMA foreign_keys=ON;--> statement-breakpoint
 CREATE UNIQUE INDEX `uq_path_registry_site_path` ON `path_registry` (`site_id`,`path`);--> statement-breakpoint
 CREATE UNIQUE INDEX `uq_path_registry_site_post_slug` ON `path_registry` (`site_id`,`post_id`) WHERE "path_registry"."kind" = 'slug' AND "path_registry"."post_id" IS NOT NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX `uq_path_registry_site_collection_slug` ON `path_registry` (`site_id`,`collection_id`) WHERE "path_registry"."kind" = 'slug' AND "path_registry"."collection_id" IS NOT NULL;--> statement-breakpoint

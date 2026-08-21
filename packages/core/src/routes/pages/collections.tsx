@@ -37,13 +37,18 @@ export const collectionsPageRoutes = new Hono<Env>();
 export async function renderCollectionsDirectory(
   c: Context<Env>,
 ): Promise<Response> {
-  const navData = await getNavigationData(c);
   // The numbers have to match the collection pages these rows link to, so they
-  // carry this reader's visibility and this view's language.
-  const directoryData = await c.var.services.collections.listDirectoryData({
-    isAuthenticated: navData.isAuthenticated,
-    lang: getViewLang(c) ?? undefined,
-  });
+  // carry this reader's visibility and this view's language. Both come from the
+  // request rather than from `navData` — `navData.isAuthenticated` is
+  // `c.var.isAuthenticated` verbatim — so the two round trips stay parallel on
+  // the widest page under `/collections`.
+  const [directoryData, navData] = await Promise.all([
+    c.var.services.collections.listDirectoryData({
+      isAuthenticated: c.var.isAuthenticated,
+      lang: getViewLang(c) ?? undefined,
+    }),
+    getNavigationData(c),
+  ]);
 
   return renderPublicPage(c, {
     title: buildPageTitle("Collections", navData.siteName),

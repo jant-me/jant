@@ -18,7 +18,7 @@ CREATE TABLE "smart_collection" (
 	CONSTRAINT "chk_smart_collection_visibility" CHECK ("smart_collection"."visibility" IS NULL OR "smart_collection"."visibility" IN ('public', 'featured', 'latest_hidden')),
 	CONSTRAINT "chk_smart_collection_sort" CHECK ("smart_collection"."sort" IN ('newest', 'oldest', 'updated', 'rating_desc')),
 	CONSTRAINT "chk_smart_collection_layout" CHECK ("smart_collection"."layout" IS NULL OR "smart_collection"."layout" IN ('list', 'grid')),
-	CONSTRAINT "chk_smart_collection_year" CHECK ("smart_collection"."year" IS NULL OR "smart_collection"."year" >= 1971)
+	CONSTRAINT "chk_smart_collection_year" CHECK ("smart_collection"."year" IS NULL OR "smart_collection"."year" BETWEEN 1971 AND 9999)
 );
 --> statement-breakpoint
 ALTER TABLE "collection_directory_item" DROP CONSTRAINT "chk_collection_directory_item_type";--> statement-breakpoint
@@ -31,7 +31,6 @@ ALTER TABLE "collection_directory_item" ADD COLUMN "smart_collection_id" text;--
 ALTER TABLE "nav_item" ADD COLUMN "smart_collection_id" text;--> statement-breakpoint
 ALTER TABLE "path_registry" ADD COLUMN "smart_collection_id" text;--> statement-breakpoint
 ALTER TABLE "smart_collection" ADD CONSTRAINT "smart_collection_site_id_site_id_fk" FOREIGN KEY ("site_id") REFERENCES "public"."site"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "smart_collection" ADD CONSTRAINT "smart_collection_collection_id_collection_id_fk" FOREIGN KEY ("collection_id") REFERENCES "public"."collection"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "idx_smart_collection_site_created_at" ON "smart_collection" USING btree ("site_id","created_at");--> statement-breakpoint
 CREATE INDEX "idx_smart_collection_site_collection_id" ON "smart_collection" USING btree ("site_id","collection_id");--> statement-breakpoint
 ALTER TABLE "collection_directory_item" ADD CONSTRAINT "collection_directory_item_smart_collection_id_smart_collection_id_fk" FOREIGN KEY ("smart_collection_id") REFERENCES "public"."smart_collection"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

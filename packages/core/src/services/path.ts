@@ -79,8 +79,6 @@ export interface PathService {
     slug: string,
   ): Promise<void>;
   deleteByPostId(postId: string): Promise<void>;
-  /** Release every path a smart collection holds, slug and aliases alike. */
-  deleteBySmartCollectionId(smartCollectionId: string): Promise<void>;
   getPostAliases(postIds: string[]): Promise<Map<string, string[]>>;
   listNavigableItems(): Promise<NavigableItem[]>;
   /**
@@ -480,17 +478,6 @@ export function createPathService(
         }
         throw err;
       }
-    },
-
-    async deleteBySmartCollectionId(smartCollectionId) {
-      await db
-        .delete(pathRegistry)
-        .where(
-          and(
-            eq(pathRegistry.siteId, siteId),
-            eq(pathRegistry.smartCollectionId, smartCollectionId),
-          ),
-        );
     },
 
     async deleteByPostId(postId) {

@@ -69,6 +69,27 @@ describe("parsePostFilterSelection", () => {
     expect(selection.title).toBe(false);
   });
 
+  it("refuses a year outside the range a timestamp can carry", () => {
+    // The ceiling is the load-bearing one: `Date.UTC` goes NaN past year
+    // 275760, and a NaN bound is a comparison every row fails silently — an
+    // empty page with nothing to explain it.
+    for (const raw of ["1970", "0", "-5", "10000", "999999999"]) {
+      const { selection, issues } = parsePostFilterSelection(
+        reader(`year=${raw}`),
+        ctx,
+      );
+      expect(selection.year).toBeUndefined();
+      expect(issues.map((issue) => issue.param)).toEqual(["year"]);
+    }
+
+    expect(
+      parsePostFilterSelection(reader("year=1971"), ctx).selection,
+    ).toEqual({ year: 1971 });
+    expect(
+      parsePostFilterSelection(reader("year=9999"), ctx).selection,
+    ).toEqual({ year: 9999 });
+  });
+
   it("drops a value it cannot read, and says which one", () => {
     const { selection, issues } = parsePostFilterSelection(
       reader("format=banana&year=2024"),

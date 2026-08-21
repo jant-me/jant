@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "cec60fcf-aba4-4483-8764-466d1ad84d1f",
+  "id": "3fe1664e-4d8b-4f5c-9ff2-ddbb91092ff6",
   "prevId": "620cfa39-51b3-42e8-9aea-73a532fe4619",
   "tables": {
     "account": {
@@ -1982,15 +1982,6 @@
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        },
-        "smart_collection_collection_id_collection_id_fk": {
-          "name": "smart_collection_collection_id_collection_id_fk",
-          "tableFrom": "smart_collection",
-          "tableTo": "collection",
-          "columnsFrom": ["collection_id"],
-          "columnsTo": ["id"],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2014,7 +2005,7 @@
         },
         "chk_smart_collection_year": {
           "name": "chk_smart_collection_year",
-          "value": "\"smart_collection\".\"year\" IS NULL OR \"smart_collection\".\"year\" >= 1971"
+          "value": "\"smart_collection\".\"year\" IS NULL OR \"smart_collection\".\"year\" BETWEEN 1971 AND 9999"
         }
       }
     },

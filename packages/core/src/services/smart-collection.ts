@@ -15,9 +15,10 @@
  *   unchanged: the same base predicate a manual collection page applies, so a
  *   signed-in author may see a larger count than an anonymous reader — exactly
  *   as on a manual collection.
- * - **A collection another object depends on is not deleted silently.** The
- *   foreign key is `ON DELETE restrict`; this service turns that into a refusal
- *   that names the smart collections in the way.
+ * - **A collection another object depends on is not deleted silently.**
+ *   `collection_id` carries no foreign key — no ON DELETE action was the right
+ *   one, and a constraint could only fail anonymously — so `assertCollectionUnused`
+ *   is the whole of that rule, and it refuses by name.
  */
 
 import { and, asc, eq, inArray } from "drizzle-orm";

@@ -546,6 +546,36 @@ describe("SmartCollectionService", () => {
       expect(await collections.delete(books.id)).toBe(true);
     });
 
+    it("gathers nothing, not everything, when a condition is left dangling", async () => {
+      // `smart_collection.collection_id` carries no foreign key: no ON DELETE
+      // action was the right one, and RESTRICT would only turn every bulk
+      // delete into an ordering rule that fails anonymously. What makes that
+      // safe is this — the refusal above is the normal path, and the state it
+      // guards against degrades to an empty page rather than to the whole
+      // archive under someone's curated name.
+      const books = await collections.create({ slug: "books", title: "Books" });
+      const created = await smartCollections.create({
+        slug: "book-notes",
+        title: "Book Notes",
+        selection: { collection: [books.id] },
+      });
+      await posts.create({
+        format: "note",
+        bodyMarkdown: "a note in no collection",
+        status: "published",
+      });
+
+      // Straight past the service, the way an import or a hand-run statement
+      // would reach it.
+      sqlite.prepare('DELETE FROM "collection" WHERE "id" = ?').run(books.id);
+
+      const reread = await smartCollections.getById(created.id);
+      expect(reread?.selection).toEqual({ collection: [books.id] });
+      expect(
+        await posts.count(smartCollections.toPostFilters(reread!, author)),
+      ).toBe(0);
+    });
+
     it("releases the address when the smart collection is deleted", async () => {
       const created = await smartCollections.create({
         slug: "quotes",

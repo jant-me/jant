@@ -1,5 +1,5 @@
 {
-  "id": "d218b66e-a8f1-4a15-ab7a-40238b59859f",
+  "id": "029ef57b-d22b-4675-b57d-a243bb1d811b",
   "prevId": "d6cd0fa7-f6cf-4075-b3c1-76402f2bb821",
   "version": "7",
   "dialect": "postgresql",
@@ -2646,15 +2646,6 @@
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        },
-        "smart_collection_collection_id_collection_id_fk": {
-          "name": "smart_collection_collection_id_collection_id_fk",
-          "tableFrom": "smart_collection",
-          "tableTo": "collection",
-          "columnsFrom": ["collection_id"],
-          "columnsTo": ["id"],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2679,7 +2670,7 @@
         },
         "chk_smart_collection_year": {
           "name": "chk_smart_collection_year",
-          "value": "\"smart_collection\".\"year\" IS NULL OR \"smart_collection\".\"year\" >= 1971"
+          "value": "\"smart_collection\".\"year\" IS NULL OR \"smart_collection\".\"year\" BETWEEN 1971 AND 9999"
         }
       },
       "isRLSEnabled": false

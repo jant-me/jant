@@ -348,16 +348,55 @@ describe("smart collection placement constraints", () => {
       ).toThrow();
     });
 
-    it("refuses to let a referenced collection be deleted", () => {
+    it("leaves a deleted collection's id in place rather than widening", () => {
       sqlite
         .prepare(`UPDATE smart_collection SET collection_id = ? WHERE id = ?`)
         .run(collectionA, smartA);
 
-      // ON DELETE restrict, not SET NULL: clearing the condition would widen
-      // the smart collection without the author touching it.
+      // No foreign key on this column, alone in the schema. RESTRICT would fail
+      // anonymously and make every bulk delete an ordering rule; SET NULL would
+      // turn a curated page into the whole archive. The refusal an author sees
+      // is `smartCollections.assertCollectionUnused()`, and what is left if
+      // something reaches around it is a condition naming a collection that no
+      // longer exists — which matches nothing.
       expect(() =>
         sqlite.prepare(`DELETE FROM collection WHERE id = ?`).run(collectionA),
-      ).toThrow();
+      ).not.toThrow();
+
+      const row = sqlite
+        .prepare(`SELECT collection_id FROM smart_collection WHERE id = ?`)
+        .get(smartA) as { collection_id: string | null };
+      expect(row.collection_id).toBe(collectionA);
+    });
+
+    it("refuses a year no timestamp could carry", () => {
+      // `Date.UTC` returns NaN past year 275760, and a NaN bound is a
+      // comparison every row fails with nothing to report.
+      for (const year of [1970, 10000]) {
+        expect(() =>
+          sqlite
+            .prepare(
+              `INSERT INTO smart_collection (id, site_id, title, year, sort, created_at, updated_at)
+               VALUES (?, ?, 'Bad year', ?, 'newest', ?, ?)`,
+            )
+            .run(
+              `smc_year${year}000000000000000000`.slice(0, 30),
+              SITE,
+              year,
+              NOW,
+              NOW,
+            ),
+        ).toThrow();
+      }
+
+      expect(() =>
+        sqlite
+          .prepare(
+            `INSERT INTO smart_collection (id, site_id, title, year, sort, created_at, updated_at)
+             VALUES (?, ?, 'Edge years', 9999, 'newest', ?, ?)`,
+          )
+          .run(`smc_year9999000000000000000000`.slice(0, 30), SITE, NOW, NOW),
+      ).not.toThrow();
     });
   });
 });
