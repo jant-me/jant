@@ -364,13 +364,6 @@ msgstr ""
 msgid "Brand tile"
 msgstr ""
 
-#. @context: Breadcrumb label on collection detail page
-#. @context: Breadcrumb label on collection detail page
-#: src/ui/pages/CollectionPage.tsx
-#: src/ui/pages/SmartCollectionPage.tsx
-msgid "Breadcrumb"
-msgstr ""
-
 #. @context: Secondary hero button label to jump to the file list
 #: src/ui/pages/BrandPage.tsx
 msgid "Browse files"
@@ -506,11 +499,11 @@ msgstr ""
 msgid "collections"
 msgstr ""
 
-#. @context: Breadcrumb link to collections page
-#. @context: Breadcrumb link to collections page
 #. @context: Collections page heading
 #. @context: Collections page heading
 #. @context: Inactive nav link label on sample page
+#. @context: Link back to the collections directory from a collection page
+#. @context: Link back to the collections directory from a collection page
 #: src/ui/pages/CollectionPage.tsx
 #: src/ui/pages/CollectionsPage.tsx
 #: src/ui/pages/SmartCollectionPage.tsx

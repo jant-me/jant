@@ -123,34 +123,22 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
     >
       <header class="collection-page-header">
         <div class="collection-page-topbar">
-          <nav
-            class="collection-breadcrumb"
-            aria-label={i18n._(
+          {/* Only the return trip is left. A breadcrumb's last crumb named this
+              page, which the title one line below already does, word for
+              word — so the trail was two thirds repetition. */}
+          <a
+            class="collection-page-back"
+            href={toPublicPath(getCollectionsDirectoryPath(), basePath)}
+          >
+            <Icon name="arrow-left" class="collection-page-back-icon" />
+            {i18n._(
               msg({
-                message: "Breadcrumb",
-                comment: "@context: Breadcrumb label on collection detail page",
+                message: "Collections",
+                comment:
+                  "@context: Link back to the collections directory from a collection page",
               }),
             )}
-          >
-            <ol>
-              <li>
-                <a href={toPublicPath(getCollectionsDirectoryPath(), basePath)}>
-                  {i18n._(
-                    msg({
-                      message: "Collections",
-                      comment: "@context: Breadcrumb link to collections page",
-                    }),
-                  )}
-                </a>
-              </li>
-              <li aria-hidden="true">
-                <Icon name="chevron-right" size={14} />
-              </li>
-              <li>
-                <span>{smartCollection.title}</span>
-              </li>
-            </ol>
-          </nav>
+          </a>
         </div>
 
         <div class="collection-page-title-block">

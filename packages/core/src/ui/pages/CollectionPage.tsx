@@ -21,6 +21,7 @@ import {
   getCollectionMutationLabels,
 } from "../shared/collection-management-labels.js";
 import { getIconSvg } from "../../lib/icons.js";
+import { Icon } from "../shared/Icon.js";
 import { NAVIGATION_SETTINGS_PATH } from "../../lib/settings-paths.js";
 
 const escapeJson = (data: unknown) =>
@@ -176,46 +177,22 @@ export const CollectionPage: FC<CollectionPageProps> = ({
     >
       <header class="collection-page-header">
         <div class="collection-page-topbar">
-          <nav
-            class="collection-breadcrumb"
-            aria-label={i18n._(
+          {/* Only the return trip is left. A breadcrumb's last crumb named this
+              page, which the title one line below already does, word for
+              word — so the trail was two thirds repetition. */}
+          <a
+            class="collection-page-back"
+            href={toPublicPath(getCollectionsDirectoryPath(), basePath)}
+          >
+            <Icon name="arrow-left" class="collection-page-back-icon" />
+            {i18n._(
               msg({
-                message: "Breadcrumb",
-                comment: "@context: Breadcrumb label on collection detail page",
+                message: "Collections",
+                comment:
+                  "@context: Link back to the collections directory from a collection page",
               }),
             )}
-          >
-            <ol>
-              <li>
-                <a href={toPublicPath(getCollectionsDirectoryPath(), basePath)}>
-                  {i18n._(
-                    msg({
-                      message: "Collections",
-                      comment: "@context: Breadcrumb link to collections page",
-                    }),
-                  )}
-                </a>
-              </li>
-              <li aria-hidden="true">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="m9 18 6-6-6-6" />
-                </svg>
-              </li>
-              <li>
-                <span>{selectionTitle}</span>
-              </li>
-            </ol>
-          </nav>
+          </a>
         </div>
 
         <div class="collection-page-title-block">

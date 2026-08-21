@@ -1955,53 +1955,64 @@
     transform: scale(1.01);
   }
 
+  /* Three groups, not four stacked lines: the way back, the collection itself
+     (title with what it holds), and the row that counts and orders it. The
+     distance between the groups has to beat the distance inside them, or the
+     header reads as one undifferentiated pile — which is what makes a header
+     this sparse still feel crowded. */
   .collection-page-header {
     display: flex;
     flex-direction: column;
-    gap: 1.05rem;
+    gap: 1.7rem;
     margin-bottom: 4rem;
     max-width: 55%;
   }
 
+  /* Shrink-wraps the link. Left as a block it took the inherited body leading
+     and carried dead space under the text, which the eye reads as a smaller
+     gap above the title than below the description. */
   .collection-page-topbar {
-    min-width: 0;
-  }
-
-  .collection-breadcrumb {
-    min-width: 0;
-  }
-
-  .collection-breadcrumb ol {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.45rem;
-    font-size: var(--type-secondary);
-    color: var(--muted-foreground);
+    min-width: 0;
   }
 
-  .collection-breadcrumb a {
-    color: inherit;
+  /* The quietest thing in the header, and the only one above the title: the
+     title is the only size that carries, everything else reads at meta size. */
+  .collection-page-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+    /* Lucide's arrow sits 3/24 into its own box, so a flush box would push the
+       mark off the text column the title, description and meta share. Pull the
+       box left by that inset and the glyph lands on the edge. */
+    margin-left: -0.1rem;
+    font-size: var(--type-sm);
+    line-height: 1.3;
+    color: var(--muted-foreground);
+    overflow-wrap: anywhere;
     transition: color 0.15s ease;
   }
 
-  .collection-breadcrumb a:hover {
+  .collection-page-back:hover {
     color: var(--foreground);
   }
 
-  .collection-breadcrumb li:last-child {
-    min-width: 0;
+  /* Tied to the text so the chevron cannot drift the next time this line
+     changes size. */
+  .collection-page-back-icon {
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
   }
 
-  .collection-breadcrumb span {
-    overflow-wrap: anywhere;
-  }
-
+  /* Title and what the collection holds are one thing said in two lines, so
+     they sit closer to each other than to anything else in the header. */
   .collection-page-title-block {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.7rem;
+    gap: 0.45rem;
   }
 
   .collection-page-title {
@@ -2042,16 +2053,24 @@
     margin-bottom: 0;
   }
 
+  /* Counts and the aggregate's "Includes" line. Meta sits under the
+     description, never over it: same size as the description here, as the
+     directory row's own meta, and as the post footers further down the page. */
   .collection-page-meta {
     margin: 0;
     font-family: var(--font-ui);
-    font-size: var(--type-secondary);
+    font-size: var(--type-sm);
     color: var(--muted-foreground);
     line-height: 1.3;
     font-variant-numeric: tabular-nums;
   }
 
+  /* Touch-sized controls overhang this line instead of setting it: left to
+     size the row, the owner's 2.1rem buttons pushed the meta text down by
+     5.6px, so the header kept a different rhythm for its owner than for a
+     visitor who has no buttons at all. */
   .collection-page-subhead {
+    --collection-subhead-line: calc(var(--type-sm) * 1.5);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2065,6 +2084,8 @@
     gap: 0.55rem;
     flex-wrap: wrap;
     min-width: 0;
+    font-size: var(--type-sm);
+    line-height: 1.5;
   }
 
   .collection-page-meta-divider {
@@ -2171,6 +2192,7 @@
     display: flex;
     align-items: center;
     gap: 0.2rem;
+    height: var(--collection-subhead-line);
   }
 
   .collection-page-manage {
@@ -2261,7 +2283,7 @@
     border-radius: 999px;
     background: transparent;
     color: var(--foreground);
-    font-size: var(--type-xs);
+    font-size: var(--type-sm);
     font-weight: 500;
     line-height: 1.3;
     cursor: pointer;
@@ -14236,6 +14258,13 @@
  * actually rendered. Re-apply both `color` and `--tw-prose-body` here to
  * override `.prose`. Tuned a touch lighter than the original to give meta/
  * description copy a clearly-secondary feel next to the collection title.
+ *
+ * `line-height` was losing the same way: both rules declare their own leading
+ * in @layer components and both were rendering at the prose body's 1.7, which
+ * left a description sitting further from its title than the layout intends.
+ * The values below are the ones those rules already ask for. Prose styles the
+ * paragraph itself, not just the wrapper, so the paragraph has to be named
+ * here too or it keeps inheriting nothing and rendering at 1.7.
  */
 .collection-directory-description,
 .collection-page-description {
@@ -14245,6 +14274,16 @@
     transparent
   );
   color: color-mix(in srgb, var(--site-text-secondary) 80%, transparent);
+}
+
+.collection-directory-description,
+.collection-directory-description p {
+  line-height: 1.45;
+}
+
+.collection-page-description,
+.collection-page-description p {
+  line-height: 1.5;
 }
 
 /*
