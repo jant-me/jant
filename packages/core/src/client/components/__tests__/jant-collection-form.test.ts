@@ -15,25 +15,6 @@ vi.mock("../../lazy-slugify.js", () => ({
   preloadSlug: () => {},
 }));
 
-// Mock the TipTap editor factory — happy-dom doesn't support contenteditable
-let lastEditorOnUpdate: ((markdown: string) => void) | undefined;
-vi.mock("../../tiptap/create-editor.js", () => ({
-  createSettingsEditor: (opts: {
-    element: HTMLElement;
-    content?: string;
-    onUpdate?: (markdown: string) => void;
-  }) => {
-    lastEditorOnUpdate = opts.onUpdate;
-    opts.element.innerHTML =
-      '<div class="ProseMirror" contenteditable="true"></div>';
-    return {
-      getJSON: () => ({ type: "doc", content: [] }),
-      destroy: () => {},
-    };
-  },
-  jsonToMarkdown: () => "",
-}));
-
 import type {
   CollectionFormInitial,
   CollectionFormLabels,
@@ -59,22 +40,10 @@ const labels: CollectionFormLabels = {
   quickHint: "More options are available after you create it.",
   quickSubmitLabel: "Done",
   createdLabel: "Collection created.",
-  descriptionLabel: "Description",
-  descriptionPlaceholder: "Placeholder Description",
-  sortOrderLabel: "Sort Order",
-  sortNewest: "Newest first",
-  sortOldest: "Oldest first",
-  sortRatingDesc: "Highest rated",
-  submitLabel: "Create Collection",
   cancelLabel: "Cancel",
 };
 
-const initial: CollectionFormInitial = {
-  title: "",
-  slug: "",
-  description: "",
-  sortOrder: "newest",
-};
+const initial: CollectionFormInitial = { title: "", slug: "" };
 
 async function createElement(
   overrides: Partial<JantCollectionForm> = {},
@@ -85,13 +54,8 @@ async function createElement(
   el.labels = labels;
   el.initial = initial;
   el.action = "/api/collections";
-  el.cancelHref = "/api/collections";
-  el.isEdit = false;
   Object.assign(el, overrides);
   document.body.appendChild(el);
-  await el.updateComplete;
-  // Wait for the editor init that happens in updateComplete.then()
-  await new Promise((resolve) => setTimeout(resolve, 0));
   await el.updateComplete;
   return el;
 }
@@ -101,222 +65,103 @@ async function flushSlugify(el: JantCollectionForm) {
   await el.updateComplete;
 }
 
+function openSlugEditor(el: JantCollectionForm) {
+  Array.from(el.querySelectorAll<HTMLButtonElement>("button"))
+    .find((button) => button.textContent?.includes("Edit link"))
+    ?.click();
+  return el.updateComplete;
+}
+
 describe("JantCollectionForm", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
-    lastEditorOnUpdate = undefined;
   });
 
-  it("renders the core form fields", async () => {
+  it("asks for a title and nothing else", async () => {
     const el = await createElement();
-    const select = el.querySelector("select") as HTMLSelectElement | null;
     const titleInput = el.querySelector<HTMLInputElement>(
       "[data-collection-title-input]",
-    );
-    const slugInput = el.querySelector<HTMLInputElement>(
-      "[data-collection-slug-input]",
-    );
-    const editorContainer = el.querySelector<HTMLElement>(
-      "[data-collection-desc-editor]",
     );
 
     expect(titleInput).not.toBeNull();
-    expect(slugInput).not.toBeNull();
-    expect(editorContainer).not.toBeNull();
-    if (!select || !titleInput || !slugInput || !editorContainer) {
-      throw new Error("Expected core form fields");
-    }
-
-    expect(titleInput.maxLength).toBe(MAX_COLLECTION_TITLE_LENGTH);
-    expect(slugInput.maxLength).toBe(MAX_COLLECTION_SLUG_LENGTH);
-    expect(editorContainer.classList.contains("settings-tiptap-editor")).toBe(
-      true,
-    );
-    expect(Array.from(select.options).map((option) => option.value)).toEqual([
-      "newest",
-      "oldest",
-      "rating_desc",
-    ]);
-    expect(
-      el.querySelector<HTMLButtonElement>("button[type=submit]")?.textContent,
-    ).toContain("Create Collection");
+    expect(titleInput?.maxLength).toBe(MAX_COLLECTION_TITLE_LENGTH);
+    // The description and the ordering belong to the collection dialog; a
+    // quick create only needs what a collection cannot exist without.
+    expect(el.querySelector("select")).toBeNull();
+    expect(el.querySelector("[data-collection-slug-input]")).toBeNull();
   });
 
-  it("auto-generates a slug when creating", async () => {
+  it("auto-generates a link from the title", async () => {
     const el = await createElement();
     const titleInput = el.querySelector<HTMLInputElement>(
       "[data-collection-title-input]",
     );
-    const slugInput = el.querySelector<HTMLInputElement>(
-      "[data-collection-slug-input]",
-    );
-
-    if (!titleInput || !slugInput) {
-      throw new Error("Expected title and slug inputs");
-    }
+    if (!titleInput) throw new Error("Expected title input");
 
     titleInput.value = "My Great Collection!";
     titleInput.dispatchEvent(new Event("input", { bubbles: true }));
     await flushSlugify(el);
 
-    expect(slugInput.value).toBe("my-great-collection");
+    expect(
+      el.querySelector<HTMLElement>(".collection-quick-link-preview")
+        ?.textContent,
+    ).toContain("/my-great-collection");
   });
 
-  it("truncates auto-generated slugs to the configured maximum length", async () => {
+  it("truncates auto-generated links to the configured maximum length", async () => {
     const el = await createElement();
     const titleInput = el.querySelector<HTMLInputElement>(
       "[data-collection-title-input]",
     );
-    const slugInput = el.querySelector<HTMLInputElement>(
-      "[data-collection-slug-input]",
-    );
-
-    if (!titleInput || !slugInput) {
-      throw new Error("Expected title and slug inputs");
-    }
+    if (!titleInput) throw new Error("Expected title input");
 
     titleInput.value = "alpha ".repeat(30).trim();
     titleInput.dispatchEvent(new Event("input", { bubbles: true }));
     await flushSlugify(el);
+    await openSlugEditor(el);
 
-    expect(slugInput.value.length).toBeLessThanOrEqual(
+    const slugInput = el.querySelector<HTMLInputElement>(
+      "[data-collection-slug-input]",
+    );
+    expect(slugInput?.value.length).toBeLessThanOrEqual(
       MAX_COLLECTION_SLUG_LENGTH,
     );
-    expect(slugInput.value.endsWith("-")).toBe(false);
+    expect(slugInput?.value.endsWith("-")).toBe(false);
   });
 
-  it("enforces the configured title maximum length in the rendered form", async () => {
+  it("stops following the title once the link is edited by hand", async () => {
     const el = await createElement();
     const titleInput = el.querySelector<HTMLInputElement>(
       "[data-collection-title-input]",
     );
+    if (!titleInput) throw new Error("Expected title input");
 
-    if (!titleInput) {
-      throw new Error("Expected title input");
-    }
+    titleInput.value = "Books";
+    titleInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await flushSlugify(el);
+    await openSlugEditor(el);
 
-    expect(titleInput.maxLength).toBe(MAX_COLLECTION_TITLE_LENGTH);
-  });
-
-  it("does not overwrite an existing slug while editing", async () => {
-    const el = await createElement({
-      isEdit: true,
-      initial: {
-        ...initial,
-        title: "Existing",
-        slug: "existing-slug",
-      },
-    });
-    await el.updateComplete;
-
-    const titleInput = el.querySelector<HTMLInputElement>(
-      "[data-collection-title-input]",
-    );
     const slugInput = el.querySelector<HTMLInputElement>(
       "[data-collection-slug-input]",
     );
+    if (!slugInput) throw new Error("Expected slug input");
+    slugInput.value = "reading";
+    slugInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await el.updateComplete;
 
-    if (!titleInput || !slugInput) {
-      throw new Error("Expected title and slug inputs");
-    }
-
-    titleInput.value = "Updated Title";
+    titleInput.value = "Books and More";
     titleInput.dispatchEvent(new Event("input", { bubbles: true }));
     await flushSlugify(el);
 
-    expect(slugInput.value).toBe("existing-slug");
+    expect(slugInput.value).toBe("reading");
   });
 
-  it("dispatches submit detail for the full form", async () => {
+  it("dispatches a title and a link on submit", async () => {
     const el = await createElement();
     const titleInput = el.querySelector<HTMLInputElement>(
       "[data-collection-title-input]",
     );
-    const slugInput = el.querySelector<HTMLInputElement>(
-      "[data-collection-slug-input]",
-    );
-    const select = el.querySelector("select") as HTMLSelectElement | null;
-
-    if (!titleInput || !slugInput || !select) {
-      throw new Error("Expected full form inputs");
-    }
-
-    titleInput.value = "Books";
-    titleInput.dispatchEvent(new Event("input", { bubbles: true }));
-    slugInput.value = "books";
-    slugInput.dispatchEvent(new Event("input", { bubbles: true }));
-    select.value = "rating_desc";
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-
-    // Simulate TipTap editor updating the description via the onUpdate callback
-    lastEditorOnUpdate?.("All about books");
-
-    let submittedData: CollectionSubmitDetail["data"] | null = null;
-    el.addEventListener("jant:collection-submit", (event) => {
-      submittedData = (event as CustomEvent<CollectionSubmitDetail>).detail
-        .data;
-    });
-
-    el.querySelector("form")?.dispatchEvent(
-      new Event("submit", { bubbles: true, cancelable: true }),
-    );
-
-    expect(submittedData).toEqual({
-      title: "Books",
-      slug: "books",
-      description: "All about books",
-      sortOrder: "rating_desc",
-    });
-  });
-
-  it("shows a slug error and blocks submit when the slug is invalid", async () => {
-    const el = await createElement();
-    const titleInput = el.querySelector<HTMLInputElement>(
-      "[data-collection-title-input]",
-    );
-    const slugInput = el.querySelector<HTMLInputElement>(
-      "[data-collection-slug-input]",
-    );
-
-    if (!titleInput || !slugInput) {
-      throw new Error("Expected title and slug inputs");
-    }
-
-    titleInput.value = "Books";
-    titleInput.dispatchEvent(new Event("input", { bubbles: true }));
-    slugInput.value = "books/2025";
-    slugInput.dispatchEvent(new Event("input", { bubbles: true }));
-    await el.updateComplete;
-
-    let detail: CollectionSubmitDetail | null = null;
-    el.addEventListener("jant:collection-submit", (event) => {
-      detail = (event as CustomEvent<CollectionSubmitDetail>).detail;
-    });
-
-    el.querySelector("form")?.dispatchEvent(
-      new Event("submit", { bubbles: true, cancelable: true }),
-    );
-    await el.updateComplete;
-
-    expect(detail).toBeNull();
-    expect(
-      el.querySelector("[data-collection-slug-error]")?.textContent?.trim(),
-    ).toBe(labels.slugInvalidHelp);
-  });
-
-  it("uses the quick variant without rendering extra fields", async () => {
-    const el = await createElement({ variant: "quick" });
-
-    expect(el.querySelector("[data-collection-desc-editor]")).toBeNull();
-    expect(el.querySelector("select")).toBeNull();
-    expect(el.querySelector("[data-collection-slug-input]")).toBeNull();
-
-    const titleInput = el.querySelector<HTMLInputElement>(
-      "[data-collection-title-input]",
-    );
-    if (!titleInput) {
-      throw new Error("Expected title input");
-    }
+    if (!titleInput) throw new Error("Expected title input");
 
     titleInput.value = "Reading Notes";
     titleInput.dispatchEvent(new Event("input", { bubbles: true }));
@@ -336,5 +181,41 @@ describe("JantCollectionForm", () => {
       title: "Reading Notes",
       slug: "reading-notes",
     });
+  });
+
+  it("opens the link editor and blocks submit when the link is invalid", async () => {
+    const el = await createElement();
+    const titleInput = el.querySelector<HTMLInputElement>(
+      "[data-collection-title-input]",
+    );
+    if (!titleInput) throw new Error("Expected title input");
+
+    titleInput.value = "Books";
+    titleInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await flushSlugify(el);
+    await openSlugEditor(el);
+
+    const slugInput = el.querySelector<HTMLInputElement>(
+      "[data-collection-slug-input]",
+    );
+    if (!slugInput) throw new Error("Expected slug input");
+    slugInput.value = "books/2025";
+    slugInput.dispatchEvent(new Event("input", { bubbles: true }));
+    await el.updateComplete;
+
+    let detail: CollectionSubmitDetail | null = null;
+    el.addEventListener("jant:collection-submit", (event) => {
+      detail = (event as CustomEvent<CollectionSubmitDetail>).detail;
+    });
+
+    el.querySelector("form")?.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+    await el.updateComplete;
+
+    expect(detail).toBeNull();
+    expect(
+      el.querySelector("[data-collection-slug-error]")?.textContent?.trim(),
+    ).toBe(labels.slugInvalidHelp);
   });
 });

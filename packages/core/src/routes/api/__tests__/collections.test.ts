@@ -167,6 +167,61 @@ describe("Collections API Routes", () => {
     });
   });
 
+  describe("GET /api/collections/slug", () => {
+    it("answers whether an address is free", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/collections", collectionsApiRoutes);
+
+      await services.collections.create({ slug: "tech", title: "Tech" });
+
+      const taken = await app.request(
+        "/api/collections/slug?mode=check&slug=tech",
+      );
+      expect(taken.status).toBe(200);
+      expect(await taken.json()).toEqual({ slug: "tech", available: false });
+
+      const free = await app.request(
+        "/api/collections/slug?mode=check&slug=reading",
+      );
+      expect(await free.json()).toEqual({ slug: "reading", available: true });
+    });
+
+    it("ignores the address the named collection already holds", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/collections", collectionsApiRoutes);
+
+      const collection = await services.collections.create({
+        slug: "tech",
+        title: "Tech",
+      });
+
+      const res = await app.request(
+        `/api/collections/slug?mode=check&slug=tech&collectionId=${collection.id}`,
+      );
+      expect(await res.json()).toEqual({ slug: "tech", available: true });
+    });
+
+    it("refuses a reserved address rather than calling it taken", async () => {
+      const { app } = createTestApp({ authenticated: true });
+      app.route("/api/collections", collectionsApiRoutes);
+
+      const res = await app.request(
+        "/api/collections/slug?mode=check&slug=settings",
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 401 when not authenticated", async () => {
+      const { app } = createTestApp({ authenticated: false });
+      app.route("/api/collections", collectionsApiRoutes);
+
+      const res = await app.request(
+        "/api/collections/slug?mode=check&slug=tech",
+      );
+      expect(res.status).toBe(401);
+    });
+  });
+
   describe("POST /api/collections", () => {
     it("returns 401 when not authenticated", async () => {
       const { app } = createTestApp({ authenticated: false });

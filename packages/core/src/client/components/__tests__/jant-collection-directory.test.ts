@@ -25,11 +25,17 @@ vi.mock("../../confirm.js", () => ({
   showConfirmDialog: confirmMock,
 }));
 
+const { openCollectionDialogMock } = vi.hoisted(() => ({
+  openCollectionDialogMock: vi.fn(),
+}));
+vi.mock("../../collection-dialog-host.js", () => ({
+  openCollectionDialog: openCollectionDialogMock,
+}));
+
 import type {
   CollectionManagerItem,
   CollectionManagerLabels,
 } from "../collection-manager-types.js";
-import { queueCollectionCreatedNotice } from "../../collection-created-notice.js";
 import "../jant-collection-directory.js";
 import type { JantCollectionsManager } from "../jant-collection-directory.js";
 
@@ -77,6 +83,7 @@ const labels: CollectionManagerLabels = {
   threadPlural: "threads",
   emptyState: "Create a collection to get started.",
   orderSaved: "Collection order updated.",
+  save: "Save",
   saved: "Collection saved.",
   linkCreated: "Link added.",
   linkSaved: "Link updated.",
@@ -95,13 +102,6 @@ const labels: CollectionManagerLabels = {
     quickHint: "More options are available after you create it.",
     quickSubmitLabel: "Done",
     createdLabel: "Collection created.",
-    descriptionLabel: "Description",
-    descriptionPlaceholder: "What's this collection about?",
-    sortOrderLabel: "Sort order",
-    sortNewest: "Newest first",
-    sortOldest: "Oldest first",
-    sortRatingDesc: "Highest rated",
-    submitLabel: "Save",
     cancelLabel: "Cancel",
   },
 };
@@ -266,6 +266,53 @@ describe("JantCollectionsManager", () => {
     sortableCreateMock.mockClear();
     sortableDestroyMock.mockClear();
     confirmMock.mockReset().mockResolvedValue(true);
+    openCollectionDialogMock.mockReset().mockResolvedValue({ changed: false });
+  });
+
+  it("creates a collection from the toolbar, and points at the new row", async () => {
+    const el = await createElementWithManagerRoot();
+    const toolbar = document.querySelector<HTMLElement>(
+      "[data-collections-toolbar]",
+    );
+    const createButton = document.createElement("button");
+    createButton.setAttribute("data-collections-action", "collection");
+    toolbar?.appendChild(createButton);
+
+    openCollectionDialogMock.mockResolvedValue({
+      changed: true,
+      collection: { id: "collection-1", slug: "reading", title: "Reading" },
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ collections: [], directoryItems: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    createButton.click();
+    await flushAsyncWork();
+    await el.updateComplete;
+
+    expect(openCollectionDialogMock).toHaveBeenCalledWith();
+    expect(el._createdCollectionId).toBe("collection-1");
+  });
+
+  it("edits a collection from its row menu rather than leaving the page", async () => {
+    const el = await createElement();
+    el._showItemMenuId = items[0]?.id ?? null;
+    await el.updateComplete;
+
+    const editButton = Array.from(
+      el.querySelectorAll<HTMLButtonElement>(".collections-page-menu-item"),
+    ).find((button) => button.textContent?.trim() === "Edit");
+    expect(editButton).toBeDefined();
+
+    editButton?.click();
+    await flushAsyncWork();
+
+    expect(openCollectionDialogMock).toHaveBeenCalledWith({
+      collectionId: "collection-1",
+    });
   });
 
   // The two kinds sit in one list and are read against each other, so a smart
@@ -591,8 +638,9 @@ describe("JantCollectionsManager", () => {
   });
 
   it("shows a one-time post-create notice in the Collections content", async () => {
-    queueCollectionCreatedNotice("collection-1");
     const el = await createElement();
+    el._createdCollectionId = "collection-1";
+    await el.updateComplete;
 
     const notice = el.querySelector<HTMLElement>(".collection-created-notice");
     expect(notice?.textContent).toContain("Collection created.");
@@ -663,7 +711,6 @@ describe("JantCollectionsManager", () => {
   });
 
   it("adds the newly created Collection from the inline notice", async () => {
-    queueCollectionCreatedNotice("collection-1");
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ id: "nav-1" }), {
         status: 201,
@@ -672,6 +719,8 @@ describe("JantCollectionsManager", () => {
     );
     const { showToastWithAction } = await import("../../toast.js");
     const el = await createElement();
+    el._createdCollectionId = "collection-1";
+    await el.updateComplete;
     const notice = el.querySelector<HTMLElement>(".collection-created-notice");
     const addButton = Array.from(
       notice?.querySelectorAll<HTMLButtonElement>("button") ?? [],

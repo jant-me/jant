@@ -1,30 +1,28 @@
 /**
- * Collection Form Component
+ * Collection Quick-Create Form
  *
- * Handles create/edit collection form interactions for:
- * - title, slug, description, and sort order
- * - quick-create slug preview/editing
- * - dispatching `jant:collection-submit` for the bridge layer
+ * A title and an address, nothing else — the two things a collection cannot be
+ * created without. It exists for the places where creating a collection is a
+ * step inside another task: picking one while composing, or putting one in the
+ * navigation. Everything a collection *can* have is decided in the collection
+ * dialog, which is where an author who came to make a collection already is.
+ *
+ * Submitting dispatches `jant:collection-submit`; the surrounding dialog owns
+ * the request and what happens after it.
  *
  * Light DOM only — BaseCoat and Tailwind classes apply directly.
  */
 
 import { LitElement, html, nothing } from "lit";
 import type { PropertyValueMap } from "lit";
-import type { Editor } from "@tiptap/core";
 import {
   MAX_COLLECTION_SLUG_LENGTH,
   MAX_COLLECTION_TITLE_LENGTH,
-  type CollectionSortOrder,
 } from "../../types.js";
 import { getCollectionPagePath } from "../../lib/collection-paths.js";
 import { getSlugValidationIssue, truncateSlug } from "../../lib/slug-format.js";
 import { slugify } from "../lazy-slugify.js";
 import { publicPath } from "../runtime-paths.js";
-import {
-  createSettingsEditor,
-  jsonToMarkdown,
-} from "../tiptap/create-editor.js";
 import type {
   CollectionFormInitial,
   CollectionFormLabels,
@@ -36,14 +34,9 @@ export class JantCollectionForm extends LitElement {
     labels: { type: Object },
     initial: { type: Object },
     action: { type: String },
-    cancelHref: { type: String, attribute: "cancel-href" },
-    isEdit: { type: Boolean, attribute: "is-edit" },
-    variant: { type: String },
 
     _title: { state: true },
     _slug: { state: true },
-    _description: { state: true },
-    _sortOrder: { state: true },
     _showSlugEditor: { state: true },
     _slugEdited: { state: true },
     _suggestedSlug: { state: true },
@@ -53,21 +46,15 @@ export class JantCollectionForm extends LitElement {
   declare labels: CollectionFormLabels;
   declare initial: CollectionFormInitial;
   declare action: string;
-  declare cancelHref: string;
-  declare isEdit: boolean;
-  declare variant: "full" | "quick";
 
   declare _title: string;
   declare _slug: string;
-  declare _description: string;
-  declare _sortOrder: CollectionSortOrder;
   declare _showSlugEditor: boolean;
   declare _slugEdited: boolean;
   declare _suggestedSlug: string;
   declare _loading: boolean;
 
   #initialized = false;
-  private _descEditor: Editor | null = null;
   #boundKeydown: ((e: KeyboardEvent) => void) | null = null;
 
   createRenderRoot() {
@@ -78,21 +65,11 @@ export class JantCollectionForm extends LitElement {
   constructor() {
     super();
     this.labels = {} as CollectionFormLabels;
-    this.initial = {
-      title: "",
-      slug: "",
-      description: "",
-      sortOrder: "newest",
-    };
+    this.initial = { title: "", slug: "" };
     this.action = "";
-    this.cancelHref = "/";
-    this.isEdit = false;
-    this.variant = "full";
 
     this._title = "";
     this._slug = "";
-    this._description = "";
-    this._sortOrder = "newest";
     this._showSlugEditor = false;
     this._slugEdited = false;
     this._suggestedSlug = "";
@@ -117,8 +94,6 @@ export class JantCollectionForm extends LitElement {
       this.#boundKeydown = null;
     }
     super.disconnectedCallback();
-    this._descEditor?.destroy();
-    this._descEditor = null;
   }
 
   protected update(
@@ -144,46 +119,15 @@ export class JantCollectionForm extends LitElement {
     this._title = this.initial.title ?? "";
     this._slug = this.initial.slug ?? "";
     this._suggestedSlug = this.initial.slug ?? "";
-    this._description = this.initial.description ?? "";
-    this._sortOrder = this.initial.sortOrder ?? "newest";
-    this._slugEdited = this.isEdit || Boolean(this._slug.trim());
-    this._showSlugEditor = this.variant !== "quick";
-
-    if (this.variant !== "quick") {
-      this.updateComplete.then(() => this.#initDescEditor());
-    }
-  }
-
-  #initDescEditor() {
-    const container = this.querySelector<HTMLElement>(
-      "[data-collection-desc-editor]",
-    );
-    if (!container || this._descEditor) return;
-
-    this._descEditor = createSettingsEditor({
-      element: container,
-      placeholder: this.isEdit ? undefined : this.labels.descriptionPlaceholder,
-      content: this._description || undefined,
-      onUpdate: (markdown) => {
-        this._description = markdown;
-      },
-    });
-
-    // Normalize initial markdown through the editor round-trip
-    this._description = jsonToMarkdown(this._descEditor.getJSON());
-
-    const pm = container.querySelector<HTMLElement>(".ProseMirror");
-    if (pm) {
-      pm.style.outline = "none";
-      pm.style.minHeight = "5rem";
-    }
+    this._slugEdited = Boolean(this._slug.trim());
+    this._showSlugEditor = false;
   }
 
   async #handleTitleInput(event: Event) {
     const target = event.target as HTMLInputElement;
     this._title = target.value;
 
-    if (this.isEdit || this._slugEdited) {
+    if (this._slugEdited) {
       return;
     }
 
@@ -237,9 +181,7 @@ export class JantCollectionForm extends LitElement {
     if (!this._suggestedSlug) return;
     this._slug = this._suggestedSlug;
     this._slugEdited = false;
-    if (this.variant === "quick") {
-      this._showSlugEditor = false;
-    }
+    this._showSlugEditor = false;
   }
 
   #getCollectionLinkPreview(): string {
@@ -276,7 +218,7 @@ export class JantCollectionForm extends LitElement {
     </p>`;
   }
 
-  #renderQuickSlugControls() {
+  #renderSlugControls() {
     const hasPreview = Boolean(this._slug.trim());
     const canResetToTitle =
       this._showSlugEditor &&
@@ -369,9 +311,7 @@ export class JantCollectionForm extends LitElement {
     }
 
     if (!slug || this.#getSlugValidationMessage()) {
-      if (this.variant === "quick" && !this._showSlugEditor) {
-        this.#showSlugEditor();
-      }
+      this.#showSlugEditor();
       this.updateComplete.then(() => {
         this.querySelector<HTMLInputElement>(
           "[data-collection-slug-input]",
@@ -382,17 +322,7 @@ export class JantCollectionForm extends LitElement {
 
     const detail: CollectionSubmitDetail = {
       endpoint: this.action,
-      isEdit: this.isEdit,
-      data: {
-        title,
-        slug,
-        description:
-          this.variant === "quick"
-            ? undefined
-            : this._description.trim() || undefined,
-        sortOrder:
-          this.variant === "quick" ? undefined : this._sortOrder || undefined,
-      },
+      data: { title, slug },
     };
 
     this.dispatchEvent(
@@ -404,141 +334,30 @@ export class JantCollectionForm extends LitElement {
   }
 
   render() {
-    const isQuick = this.variant === "quick";
-    const formClass = isQuick
-      ? "flex flex-col gap-4"
-      : "collection-editor-form";
-
     return html`
       <form
-        class=${formClass}
+        class="flex flex-col gap-4"
         @submit=${(event: Event) => void this.#handleSubmit(event)}
       >
-        ${isQuick
-          ? html`
-              <div class="field">
-                <label class="label">${this.labels.titleLabel}</label>
-                <input
-                  type="text"
-                  class="input"
-                  data-collection-title-input
-                  required
-                  maxlength=${MAX_COLLECTION_TITLE_LENGTH}
-                  .value=${this._title}
-                  placeholder=${this.isEdit
-                    ? nothing
-                    : this.labels.titlePlaceholder}
-                  @input=${(event: Event) => void this.#handleTitleInput(event)}
-                />
-              </div>
+        <div class="field">
+          <label class="label">${this.labels.titleLabel}</label>
+          <input
+            type="text"
+            class="input"
+            data-collection-title-input
+            required
+            maxlength=${MAX_COLLECTION_TITLE_LENGTH}
+            .value=${this._title}
+            placeholder=${this.labels.titlePlaceholder}
+            @input=${(event: Event) => void this.#handleTitleInput(event)}
+          />
+        </div>
 
-              ${this.#renderQuickSlugControls()}
-            `
-          : html`
-              <div class="collection-editor-primary-grid">
-                <div class="field collection-editor-title-field">
-                  <label class="label">${this.labels.titleLabel}</label>
-                  <input
-                    type="text"
-                    class="input"
-                    data-collection-title-input
-                    required
-                    maxlength=${MAX_COLLECTION_TITLE_LENGTH}
-                    .value=${this._title}
-                    placeholder=${this.isEdit
-                      ? nothing
-                      : this.labels.titlePlaceholder}
-                    @input=${(event: Event) =>
-                      void this.#handleTitleInput(event)}
-                  />
-                </div>
+        ${this.#renderSlugControls()}
 
-                <div class="field collection-editor-slug-field">
-                  <label class="label">${this.labels.slugLabel}</label>
-                  <input
-                    type="text"
-                    class="input"
-                    data-collection-slug-input
-                    required
-                    pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                    maxlength=${MAX_COLLECTION_SLUG_LENGTH}
-                    .value=${this._slug}
-                    aria-invalid=${this.#getSlugValidationMessage()
-                      ? "true"
-                      : "false"}
-                    placeholder=${this.isEdit ? nothing : "my-collection"}
-                    @input=${(event: Event) => this.#handleSlugInput(event)}
-                  />
-                  ${this.#renderSlugHelper()}
-                </div>
-              </div>
-
-              <div class="collection-editor-secondary-grid">
-                <div class="field collection-editor-description-field">
-                  <label class="label">${this.labels.descriptionLabel}</label>
-                  <div
-                    class="settings-tiptap-editor"
-                    data-collection-desc-editor
-                  ></div>
-                </div>
-
-                <div class="field collection-editor-sort-field">
-                  <label class="label">${this.labels.sortOrderLabel}</label>
-                  <select
-                    class="select"
-                    .value=${this._sortOrder}
-                    @change=${(event: Event) => {
-                      const target = event.target as HTMLSelectElement;
-                      this._sortOrder = target.value as CollectionSortOrder;
-                    }}
-                  >
-                    <option value="newest">${this.labels.sortNewest}</option>
-                    <option value="oldest">${this.labels.sortOldest}</option>
-                    <option value="rating_desc">
-                      ${this.labels.sortRatingDesc}
-                    </option>
-                  </select>
-                </div>
-              </div>
-            `}
-        ${isQuick
-          ? html`
-              <button type="submit" class="sr-only">
-                ${this.labels.quickSubmitLabel}
-              </button>
-            `
-          : html`
-              <div class="collection-editor-actions">
-                <button
-                  type="submit"
-                  class="btn collection-editor-submit"
-                  ?disabled=${this._loading}
-                >
-                  ${this._loading
-                    ? html`<svg
-                        class="animate-spin size-4"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        role="status"
-                      >
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                      </svg>`
-                    : nothing}
-                  ${this.labels.submitLabel}
-                </button>
-                <a
-                  href=${this.cancelHref}
-                  class="btn-outline collection-editor-cancel"
-                >
-                  ${this.labels.cancelLabel}
-                </a>
-              </div>
-            `}
+        <button type="submit" class="sr-only">
+          ${this.labels.quickSubmitLabel}
+        </button>
       </form>
     `;
   }

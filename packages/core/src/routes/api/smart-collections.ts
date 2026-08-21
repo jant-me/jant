@@ -26,9 +26,7 @@ export const smartCollectionsApiRoutes = new Hono<Env>();
  * Address availability, in the shape posts already use.
  *
  * `suggest` derives one from a title; `check` answers whether a typed one is
- * free. The collection form has no server-side check of its own — it validates
- * in the browser and finds out about a clash on write — so this follows the
- * post editor, which is the better precedent.
+ * free. Collections answer the same question at `/api/collections/slug`.
  */
 const SlugQuerySchema = z.discriminatedUnion("mode", [
   z.object({

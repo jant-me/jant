@@ -20,7 +20,10 @@ import type {
 } from "../../../client/components/nav-manager-types.js";
 import type { CollectionFormLabels } from "../../../client/components/collection-types.js";
 import { toPublicHref, toPublicPath } from "../../../lib/url.js";
-import { getCollectionFormLabels } from "../../shared/collection-management-labels.js";
+import {
+  getCollectionDialogLabels,
+  getCollectionFormLabels,
+} from "../../shared/collection-management-labels.js";
 import {
   getNavItemDisplayLabel,
   getSystemNavDescription,
@@ -821,6 +824,14 @@ export function NavigationContent({
 
   return (
     <div class="max-w-3xl flex flex-col gap-8">
+      {/* The dialog is a Lit component and cannot reach the i18n catalogs, so
+          the page that can open it carries its strings. */}
+      <div
+        hidden
+        data-collection-dialog-labels={escapeJson(
+          getCollectionDialogLabels(i18n),
+        )}
+      />
       <jant-nav-manager
         items={escapeJson(itemsData)}
         labels={escapeJson(labels)}

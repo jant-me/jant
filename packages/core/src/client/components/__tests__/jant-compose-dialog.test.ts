@@ -317,13 +317,6 @@ const labels: ComposeLabels = {
     quickHint: "More options are available after you create it.",
     quickSubmitLabel: "Done",
     createdLabel: "Collection created.",
-    descriptionLabel: "Description (optional)",
-    descriptionPlaceholder: "What's this collection about?",
-    sortOrderLabel: "Sort Order",
-    sortNewest: "Newest first",
-    sortOldest: "Oldest first",
-    sortRatingDesc: "Highest rated",
-    submitLabel: "Save",
     cancelLabel: "Cancel",
   },
 };

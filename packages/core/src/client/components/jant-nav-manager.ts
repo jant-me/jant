@@ -28,11 +28,7 @@ import { showConfirmDialog } from "../confirm.js";
 import { showToast } from "../toast.js";
 import { publicPath, sitePathPrefix } from "../runtime-paths.js";
 import { applySiteHeaderHtml } from "../site-header-fragment.js";
-import { NAVIGATION_SETTINGS_PATH } from "../../lib/settings-paths.js";
-import {
-  getCollectionEditPath,
-  getCollectionPagePath,
-} from "../../lib/collection-paths.js";
+import { getCollectionPagePath } from "../../lib/collection-paths.js";
 import { getIconSvg } from "../../lib/icons.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { getSlugValidationIssue } from "../../lib/slug-format.js";
@@ -43,6 +39,7 @@ import {
 } from "../../lib/url.js";
 import type { CollectionSubmitDetail } from "./collection-types.js";
 import "./jant-collection-form.js";
+import { openCollectionDialog } from "../collection-dialog-host.js";
 import type {
   NavAddressResolution,
   NavManagerCollection,
@@ -2653,12 +2650,7 @@ export class JantNavManager extends LitElement {
   }
 
   #renderCreateCollection() {
-    const initial = {
-      title: "",
-      slug: "",
-      description: "",
-      sortOrder: "newest" as const,
-    };
+    const initial = { title: "", slug: "" };
 
     return html`
       <header>
@@ -2669,11 +2661,9 @@ export class JantNavManager extends LitElement {
       </header>
       <section>
         <jant-collection-form
-          variant="quick"
           .labels=${this.labels.collectionFormLabels}
           .initial=${initial}
           action=${publicPath("/api/collections")}
-          cancel-href=${publicPath(NAVIGATION_SETTINGS_PATH)}
           @jant:collection-submit=${(event: Event) =>
             void this.#handleCreateCollectionSubmit(event)}
         ></jant-collection-form>
@@ -2706,14 +2696,29 @@ export class JantNavManager extends LitElement {
     `;
   }
 
+  /**
+   * Edit the collection just created, without leaving the navigation step.
+   *
+   * Its title and address can both move, so the picker's copy of it and the
+   * card showing it are re-read from what the dialog saved.
+   */
+  async #editCreatedCollection(collectionId: string) {
+    const { changed, collection } = await openCollectionDialog({
+      collectionId,
+    });
+    if (!changed || !collection) return;
+
+    this._createdCollection = collection;
+    this.collections = this.collections.map((entry) =>
+      entry.id === collection.id
+        ? { ...entry, title: collection.title, slug: collection.slug }
+        : entry,
+    );
+  }
+
   #renderCreatedCollection() {
     const collection = this._createdCollection;
     if (!collection) return nothing;
-
-    const returnTo = publicPath(NAVIGATION_SETTINGS_PATH);
-    const editHref = `${publicPath(
-      getCollectionEditPath(collection.slug),
-    )}?returnTo=${encodeURIComponent(returnTo)}`;
 
     return html`
       <header class="nav-create-success-header">
@@ -2746,15 +2751,16 @@ export class JantNavManager extends LitElement {
         </div>
       </section>
       <footer>
-        <a
+        <!-- The collection dialog opens on top of this one rather than in a
+             new tab: there is no editor page to send the author to, and the
+             navigation step they came for is still waiting underneath. -->
+        <button
+          type="button"
           class="btn-outline"
-          href=${editHref}
-          target="_blank"
-          rel="noopener noreferrer"
+          @click=${() => void this.#editCreatedCollection(collection.id)}
         >
           ${this.labels.editCollection}
-          <span aria-hidden="true">↗</span>
-        </a>
+        </button>
         <button
           type="button"
           class="btn"

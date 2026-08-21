@@ -2,13 +2,11 @@ import { msg } from "@lingui/core/macro";
 import type { FC } from "hono/jsx";
 import { useLingui } from "../../i18n/context.js";
 import type { CollectionDirectoryItem } from "../../types.js";
-import {
-  getCollectionsDirectoryPath,
-  getNewCollectionPath,
-} from "../../lib/collection-paths.js";
-import { toPublicPath } from "../../lib/url.js";
 import { CollectionDirectory } from "./CollectionDirectory.js";
-import { getCollectionMutationLabels } from "./collection-management-labels.js";
+import {
+  getCollectionDialogLabels,
+  getCollectionMutationLabels,
+} from "./collection-management-labels.js";
 import {
   getSmartCollectionDialogLabels,
   getSmartCollectionLabels,
@@ -41,14 +39,6 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
   siteOrigin = "",
 }) => {
   const { i18n } = useLingui();
-  const collectionsHref = toPublicPath(
-    getCollectionsDirectoryPath(),
-    sitePathPrefix,
-  );
-  const newCollectionHref = toPublicPath(
-    `${getNewCollectionPath()}?returnTo=${encodeURIComponent(collectionsHref)}`,
-    sitePathPrefix,
-  );
   const mutationLabels = getCollectionMutationLabels(i18n);
 
   const smartLabels = getSmartCollectionLabels(i18n);
@@ -196,11 +186,12 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
                 class="collections-page-action-group"
                 data-collections-toolbar
               >
-                <a
-                  href={newCollectionHref}
+                <button
+                  type="button"
                   class="collections-page-toolbar-button"
                   aria-label={labels.newCollection}
                   title={labels.newCollection}
+                  data-collections-action="collection"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -217,7 +208,7 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
                     <path d="M12 5v14" />
                     <path d="M5 12h14" />
                   </svg>
-                </a>
+                </button>
                 <div class="relative">
                   <button
                     type="button"
@@ -368,6 +359,9 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
           the page that can open it carries its strings. */}
       <div
         hidden
+        data-collection-dialog-labels={escapeJson(
+          getCollectionDialogLabels(i18n),
+        )}
         data-smart-collection-dialog-labels={escapeJson(
           getSmartCollectionDialogLabels(i18n),
         )}

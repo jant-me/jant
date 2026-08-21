@@ -1,5 +1,6 @@
 import { getCollectionsDirectoryPath } from "../lib/collection-paths.js";
 import { NAVIGATION_SETTINGS_PATH } from "../lib/settings-paths.js";
+import { openCollectionDialog } from "./collection-dialog-host.js";
 import { addCollectionToNavigation } from "./collection-navigation.js";
 import { showConfirmDialog } from "./confirm.js";
 import { showToast, showToastWithAction } from "./toast.js";
@@ -93,6 +94,27 @@ document
         const firstItem = menu.querySelector<HTMLElement>("[role='menuitem']");
         firstItem?.focus();
       }
+    };
+
+    const handleEdit = async () => {
+      closeMenu(false);
+      const { changed, collection } = await openCollectionDialog({
+        collectionId,
+      });
+      if (!changed) return;
+
+      // The address can have moved, and the old one stops resolving the moment
+      // it does — so the page follows it rather than reloading into a 404.
+      // Only the last segment changes: whatever site or language prefix this
+      // reader arrived under is theirs to keep.
+      const nextPath = collection?.slug
+        ? window.location.pathname.replace(/[^/]*$/, collection.slug)
+        : null;
+      if (nextPath && nextPath !== window.location.pathname) {
+        window.location.href = `${nextPath}${window.location.search}`;
+        return;
+      }
+      window.location.reload();
     };
 
     const handleDelete = async () => {
@@ -197,6 +219,10 @@ document
       if (!actionEl || !root.contains(actionEl)) return;
 
       const action = actionEl.dataset.collectionPageAction;
+      if (action === "edit") {
+        event.preventDefault();
+        void handleEdit();
+      }
       if (action === "delete") {
         event.preventDefault();
         void handleDelete();

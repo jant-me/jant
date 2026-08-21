@@ -12,7 +12,7 @@ import {
   serializePostFilterSelection,
 } from "../../lib/filter-dimensions.js";
 import { MEDIA_KINDS } from "../../types/constants.js";
-import { getCollectionFormLabels } from "./collection-management-labels.js";
+import { getCollectionDialogLabels } from "./collection-management-labels.js";
 
 type Translator = Pick<I18n, "_">;
 
@@ -156,7 +156,9 @@ export type SmartCollectionLabels = ReturnType<typeof getSmartCollectionLabels>;
  * the condition line are the same words.
  */
 export function getSmartCollectionDialogLabels(i18n: Translator) {
-  const form = getCollectionFormLabels(i18n);
+  // The address, the ordering and the buttons are the same decisions a
+  // collection's dialog asks about, in the same words.
+  const shared = getCollectionDialogLabels(i18n);
   const dimensions: Record<string, string> = {};
   const values: Record<string, string> = {};
 
@@ -211,27 +213,15 @@ export function getSmartCollectionDialogLabels(i18n: Translator) {
         comment: "@context: Smart collection dialog field",
       }),
     ),
-    link: form.slugLabel,
-    linkHelp: form.slugHelp,
-    editLink: form.editSlugLabel,
-    resetLink: form.resetSlugLabel,
-    linkInvalid: form.slugInvalidHelp,
-    linkReserved: form.slugReservedHelp,
-    linkTooLong: form.slugTooLongHelp,
-    linkTaken: i18n._(
-      msg({
-        message: "This link is taken. Choose another.",
-        comment:
-          "@context: Smart collection dialog — the typed collection link is already in use",
-      }),
-    ),
-    linkMovesWarning: i18n._(
-      msg({
-        message: "Changing the link breaks the old one immediately.",
-        comment:
-          "@context: Smart collection dialog warning shown when editing moves an existing collection link",
-      }),
-    ),
+    link: shared.link,
+    linkHelp: shared.linkHelp,
+    editLink: shared.editLink,
+    resetLink: shared.resetLink,
+    linkInvalid: shared.linkInvalid,
+    linkReserved: shared.linkReserved,
+    linkTooLong: shared.linkTooLong,
+    linkTaken: shared.linkTaken,
+    linkMovesWarning: shared.linkMovesWarning,
     description: i18n._(
       msg({
         message: "Description",
@@ -291,27 +281,15 @@ export function getSmartCollectionDialogLabels(i18n: Translator) {
         comment: "@context: Smart collection dialog section heading",
       }),
     ),
-    orderBy: i18n._(
-      msg({
-        message: "Order by",
-        comment: "@context: Smart collection dialog field",
-      }),
-    ),
+    orderBy: shared.orderBy,
     layout: i18n._(
       msg({
         message: "Layout",
         comment: "@context: Smart collection dialog field",
       }),
     ),
-    cancel: i18n._(
-      msg({ message: "Cancel", comment: "@context: Dialog cancel button" }),
-    ),
-    save: i18n._(
-      msg({
-        message: "Save",
-        comment: "@context: Smart collection dialog primary button",
-      }),
-    ),
+    cancel: shared.cancel,
+    save: shared.save,
     saved: i18n._(
       msg({
         message: "Smart collection saved.",
@@ -339,18 +317,10 @@ export function getSmartCollectionDialogLabels(i18n: Translator) {
     dimensions,
     values,
     sortOptions: {
-      newest: i18n._(
-        msg({
-          message: "Newest first",
-          comment: "@context: Collection sort order option",
-        }),
-      ),
-      oldest: i18n._(
-        msg({
-          message: "Oldest first",
-          comment: "@context: Collection sort order option",
-        }),
-      ),
+      newest: shared.sortOptions.newest,
+      oldest: shared.sortOptions.oldest,
+      // Only a smart collection offers it: an ordinary collection is ordered
+      // by when a thread was put in it, not by when it last changed.
       updated: i18n._(
         msg({
           message: "Recently updated",
@@ -358,12 +328,7 @@ export function getSmartCollectionDialogLabels(i18n: Translator) {
             "@context: Smart collection sort order option — threads that changed most recently",
         }),
       ),
-      rating_desc: i18n._(
-        msg({
-          message: "Highest rated",
-          comment: "@context: Collection sort order option",
-        }),
-      ),
+      rating_desc: shared.sortOptions.rating_desc,
     },
     layoutOptions: {
       "": i18n._(

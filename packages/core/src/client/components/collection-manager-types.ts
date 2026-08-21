@@ -49,6 +49,7 @@ export interface CollectionManagerLabels {
   threadPlural: string;
   emptyState: string;
   orderSaved: string;
+  save: string;
   saved: string;
   linkCreated: string;
   linkSaved: string;

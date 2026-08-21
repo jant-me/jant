@@ -9,7 +9,6 @@ import type { FC } from "hono/jsx";
 import { useLingui } from "../../i18n/context.js";
 import type { CollectionPageProps } from "../../types.js";
 import {
-  getCollectionEditPath,
   getCollectionSelectionPath,
   getCollectionsDirectoryPath,
 } from "../../lib/collection-paths.js";
@@ -17,7 +16,10 @@ import { render as renderMarkdown } from "../../lib/markdown.js";
 import { formatPageLabel } from "../../lib/pagination.js";
 import { toPublicPath } from "../../lib/url.js";
 import { TimelineFeed } from "../feed/TimelineFeed.js";
-import { getCollectionMutationLabels } from "../shared/collection-management-labels.js";
+import {
+  getCollectionDialogLabels,
+  getCollectionMutationLabels,
+} from "../shared/collection-management-labels.js";
 import { getIconSvg } from "../../lib/icons.js";
 import { NAVIGATION_SETTINGS_PATH } from "../../lib/settings-paths.js";
 
@@ -57,12 +59,6 @@ export const CollectionPage: FC<CollectionPageProps> = ({
       )
     : collections.map((collection) => collection.title).join(" + ");
   const collectionUrl = toPublicPath(pagePath, basePath);
-  const editCollectionUrl = toPublicPath(
-    `${getCollectionEditPath(primaryCollection.slug)}?returnTo=${encodeURIComponent(
-      collectionUrl,
-    )}`,
-    sitePathPrefix,
-  );
   const navigationSettingsUrl = toPublicPath(
     NAVIGATION_SETTINGS_PATH,
     sitePathPrefix,
@@ -456,6 +452,14 @@ export const CollectionPage: FC<CollectionPageProps> = ({
                 </svg>
               </button>
 
+              {/* The dialog is a Lit component and cannot reach the i18n
+                  catalogs, so the page that can open it carries its strings. */}
+              <div
+                hidden
+                data-collection-dialog-labels={escapeJson(
+                  getCollectionDialogLabels(i18n),
+                )}
+              />
               <div
                 class="collection-page-manage"
                 data-collection-page-actions
@@ -494,10 +498,13 @@ export const CollectionPage: FC<CollectionPageProps> = ({
                   data-collection-page-menu
                   hidden
                 >
-                  <a
-                    href={editCollectionUrl}
+                  {/* Opens the dialog, not an editor page: creating and
+                      editing a collection are one surface. */}
+                  <button
+                    type="button"
                     class="collections-page-menu-item"
                     role="menuitem"
+                    data-collection-page-action="edit"
                   >
                     <span
                       class="collections-page-menu-item-icon"
@@ -521,7 +528,7 @@ export const CollectionPage: FC<CollectionPageProps> = ({
                     <span class="collections-page-menu-item-label">
                       {mutationLabels.edit}
                     </span>
-                  </a>
+                  </button>
                   <button
                     type="button"
                     class="collections-page-menu-item"

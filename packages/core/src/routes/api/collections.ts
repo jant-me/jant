@@ -11,6 +11,7 @@ import { requirePublicApiAccess } from "../../middleware/public-content-access.j
 import {
   CollectionDirectoryRowIdSchema,
   CollectionDescriptionValueSchema,
+  CollectionIdSchema,
   CollectionSortOrderSchema,
   ContentLanguageSchema,
   CreateCollectionDirectoryItemSchema,
@@ -39,6 +40,12 @@ const ThreadAssignSchema = z.object({
 const MoveSchema = z.object({
   after: CollectionDirectoryRowIdSchema.nullable().optional(),
   before: CollectionDirectoryRowIdSchema.nullable().optional(),
+});
+
+const SlugQuerySchema = z.object({
+  mode: z.literal("check"),
+  slug: z.string().trim().toLowerCase().min(1).max(200),
+  collectionId: CollectionIdSchema.optional(),
 });
 
 const ListCollectionsQuerySchema = z.object({
@@ -154,6 +161,22 @@ collectionsApiRoutes.delete(
     return c.json({ success: true });
   },
 );
+
+/**
+ * Address availability, in the shape smart collections already use.
+ *
+ * Declared before `/:id` so the literal path wins. The editing dialog asks
+ * while the author types, so a clash is answered where the decision is being
+ * made rather than on write.
+ */
+collectionsApiRoutes.get("/slug", requireAuthApi(), async (c) => {
+  const query = parseValidated(SlugQuerySchema, c.req.query());
+  const available = await c.var.services.collections.checkSlugAvailability(
+    query.slug,
+    query.collectionId,
+  );
+  return c.json({ slug: query.slug, available });
+});
 
 // Get single collection
 collectionsApiRoutes.get("/:id", requirePublicApiAccess(), async (c) => {

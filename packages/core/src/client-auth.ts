@@ -24,7 +24,6 @@ import "./client/settings-bridge.js";
 import "./client/components/jant-repo-picker.js";
 import "./client/components/jant-collection-form.js";
 import "./client/components/jant-collection-directory.js";
-import "./client/collection-form-bridge.js";
 import "./client/components/jant-post-form.js";
 import "./client/post-form-bridge.js";
 import "./client/components/jant-nav-manager.js";

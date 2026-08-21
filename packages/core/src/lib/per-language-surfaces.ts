@@ -25,22 +25,20 @@ const PER_LANGUAGE_SURFACES = new Set([
 
 /**
  * Surfaces whose sub-paths are all per-language too. `/collections/` is absent
- * on purpose: it also holds the editors, which are not.
+ * on purpose: aggregate selections and their feeds are, but nothing else
+ * nested under it is.
  */
 const PER_LANGUAGE_SURFACE_PREFIXES = ["/latest/", "/featured/", "/archive/"];
 
 const COLLECTIONS_PREFIX = "/collections/";
 
-/**
- * `/collections/{selection}` and its feed are per-language; `/collections/new`
- * and `/collections/{slug}/edit` are the collection editors, which exist once.
- */
+/** `/collections/{selection}` and its feed, and nothing else under it. */
 function isCollectionSelectionSurface(path: string): boolean {
   const rest = path.slice(COLLECTIONS_PREFIX.length);
   if (!rest) return false;
 
   const segments = rest.split("/");
-  if (segments[0] === "" || segments[0] === "new") return false;
+  if (segments[0] === "") return false;
   if (segments.length === 1) return true;
   return segments.length === 2 && segments[1] === "feed";
 }
@@ -53,7 +51,7 @@ function isCollectionSelectionSurface(path: string): boolean {
  * @returns True when `/ja{path}` is a page rather than a 404
  * @example
  * isPerLanguageSurface("/archive?media=any"); // true — /ja/archive exists
- * isPerLanguageSurface("/collections/recipes/edit"); // false — one editor
+ * isPerLanguageSurface("/collections/a+b/feed"); // true — /ja/collections/a+b/feed exists
  * isPerLanguageSurface("/settings/language"); // false — the dash is one place
  */
 export function isPerLanguageSurface(path: string): boolean {

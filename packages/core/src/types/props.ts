@@ -209,14 +209,6 @@ export interface SmartCollectionPageProps {
   feedHref?: string;
 }
 
-/** Props for the collection editor page component */
-export interface CollectionEditorPageProps {
-  mode: "create" | "edit";
-  collection?: Collection;
-  cancelHref: string;
-  sitePathPrefix?: string;
-}
-
 /** Props for the collections list page component */
 export interface CollectionsPageProps {
   items: CollectionDirectoryItem[];

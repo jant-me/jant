@@ -49,13 +49,6 @@ const collectionFormLabels: CollectionFormLabels = {
   quickHint: "More options are available after you create it.",
   quickSubmitLabel: "Create Collection",
   createdLabel: "Collection created.",
-  descriptionLabel: "Description",
-  descriptionPlaceholder: "What's this collection about?",
-  sortOrderLabel: "Sort Order",
-  sortNewest: "Newest first",
-  sortOldest: "Oldest first",
-  sortRatingDesc: "Highest rated",
-  submitLabel: "Save",
   cancelLabel: "Cancel",
 };
 
@@ -460,14 +453,9 @@ describe("JantNavManager", () => {
         body: JSON.stringify({ title: "Books", slug: "books" }),
       }),
     );
-    const editLink = requireElement(
-      el.querySelector<HTMLAnchorElement>(
-        'a[href="/collections/books/edit?returnTo=%2Fsettings%2Fnavigation"]',
-      ),
-      "expected collection edit link",
-    );
-    expect(editLink.target).toBe("_blank");
-    expect(editLink.rel).toContain("noopener");
+    // The full editor is the collection dialog opened on top of this one,
+    // not a link out to a page that no longer exists.
+    expect(findButton(el, "Edit Collection").tagName).toBe("BUTTON");
     expect(el.collections).toContainEqual({
       id: "col-books",
       title: "Books",

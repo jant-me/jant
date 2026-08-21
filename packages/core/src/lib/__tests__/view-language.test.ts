@@ -396,12 +396,12 @@ describe("isPerLanguageSurface", () => {
     expect(isPerLanguageSurface("/my-post")).toBe(false);
   });
 
-  it("separates collection pages from the collection editors", () => {
-    // `langGet()` serves /collections/:slug and its feed, and nothing else
-    // under /collections — the editors are registered once, outside it.
+  it("counts a collection selection and its feed, and nothing deeper", () => {
+    // `langGet()` serves /collections/:selection and its feed, and nothing
+    // else under /collections.
     expect(isPerLanguageSurface("/collections/a+b")).toBe(true);
     expect(isPerLanguageSurface("/collections/a+b/feed")).toBe(true);
-    expect(isPerLanguageSurface("/collections/new")).toBe(false);
+    expect(isPerLanguageSurface("/collections/a+b/feed/atom")).toBe(false);
     expect(isPerLanguageSurface("/collections/reading/edit")).toBe(false);
   });
 

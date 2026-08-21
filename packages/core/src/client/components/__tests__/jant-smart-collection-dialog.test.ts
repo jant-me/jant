@@ -185,9 +185,7 @@ describe("JantSmartCollectionDialog", () => {
 
     // Not the backdrop — the panel stops that click, so a menu that only
     // listened to the backdrop would stay open over the fields it covers.
-    element
-      .querySelector<HTMLElement>(".smart-collection-dialog-body")
-      ?.click();
+    element.querySelector<HTMLElement>(".collection-dialog-body")?.click();
     await element.updateComplete;
 
     expect(element.querySelector("[data-add-menu]")).toBeNull();

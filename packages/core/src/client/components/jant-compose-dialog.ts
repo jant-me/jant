@@ -4649,13 +4649,7 @@ export class JantComposeDialog extends LitElement {
   private _renderAddCollectionPanel() {
     if (!this._addCollectionPanelOpen) return nothing;
 
-    const initial = {
-      title: "",
-      slug: "",
-      description: "",
-      sortOrder: "newest",
-      icon: "",
-    };
+    const initial = { title: "", slug: "" };
 
     return html`
       <div
@@ -4689,11 +4683,9 @@ export class JantComposeDialog extends LitElement {
         </div>
         <div class="collection-quick-dialog-body">
           <jant-collection-form
-            variant="quick"
             .labels=${this.labels.collectionFormLabels}
             .initial=${initial}
             action=${publicPath("/api/collections")}
-            cancel-href="javascript:void(0)"
             @jant:collection-submit=${(e: Event) =>
               this._handleAddCollectionSubmit(e)}
           ></jant-collection-form>

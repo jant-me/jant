@@ -32,12 +32,10 @@ import {
   addCollectionToNavigation,
   addSmartCollectionToNavigation,
 } from "../collection-navigation.js";
-import { consumeCollectionCreatedNotice } from "../collection-created-notice.js";
 import { getDividerCollectionGroup } from "../../lib/collection-groups.js";
 import {
-  getCollectionEditPath,
+  getCollectionPagePath,
   getCollectionSelectionPath,
-  getCollectionsDirectoryPath,
 } from "../../lib/collection-paths.js";
 import { NAVIGATION_SETTINGS_PATH } from "../../lib/settings-paths.js";
 import { render as renderMarkdown } from "../../lib/markdown.js";
@@ -53,7 +51,7 @@ import type {
   ManagedSmartCollection,
 } from "./collection-manager-types.js";
 import { getIconSvg } from "../../lib/icons.js";
-import { getCollectionPagePath } from "../../lib/collection-paths.js";
+import { openCollectionDialog } from "../collection-dialog-host.js";
 import { openSmartCollectionDialog } from "../smart-collection-dialog-host.js";
 import {
   collectionVocabulary,
@@ -211,6 +209,9 @@ export class JantCollectionsManager extends LitElement {
       case "link":
         this.#openLinkForm();
         break;
+      case "collection":
+        void this.#createCollection();
+        break;
       case "smart-collection":
         // Beside Add link and Add divider rather than a second `+` button:
         // the `+` is where a collection is created, and two plus signs would
@@ -232,10 +233,31 @@ export class JantCollectionsManager extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.#bindManagerRoot();
-    const createdCollectionId = consumeCollectionCreatedNotice();
-    if (createdCollectionId) {
-      this._createdCollectionId = createdCollectionId;
+  }
+
+  /**
+   * Create a collection, then point at the row it became.
+   *
+   * The inline notice offering navigation is the reason the new collection's
+   * id is carried back out of the dialog: without it the author would have to
+   * find the row themselves to do the one thing they are most likely to want
+   * next.
+   */
+  async #createCollection() {
+    const result = await openCollectionDialog();
+    if (!result.changed) return;
+    await this.#refreshList();
+    if (result.collection) {
+      this._createdCollectionId = result.collection.id;
     }
+  }
+
+  /** Edit a collection from its directory row, then re-read the row. */
+  async #editCollection(collectionId: string) {
+    this._showItemMenuId = null;
+    document.removeEventListener("click", this.#closeItemMenu);
+    const { changed } = await openCollectionDialog({ collectionId });
+    if (changed) await this.#refreshList();
   }
 
   constructor() {
@@ -1321,9 +1343,7 @@ export class JantCollectionsManager extends LitElement {
             >
               ${this.labels.cancel}
             </button>
-            <button type="submit" class="btn-sm">
-              ${this.labels.formLabels.submitLabel}
-            </button>
+            <button type="submit" class="btn-sm">${this.labels.save}</button>
           </div>
         </form>
       </div>
@@ -1557,18 +1577,14 @@ export class JantCollectionsManager extends LitElement {
                     `
                   : collection
                     ? html`
-                        <a
-                          href=${publicPath(
-                            `${getCollectionEditPath(
-                              collection.slug,
-                            )}?returnTo=${encodeURIComponent(
-                              viewPath(getCollectionsDirectoryPath()),
-                            )}`,
-                          )}
+                        <button
+                          type="button"
                           class="collections-page-menu-item"
+                          @click=${() =>
+                            void this.#editCollection(collection.id)}
                         >
                           ${this.labels.edit}
-                        </a>
+                        </button>
                         ${this.navigationCollectionIds.includes(collection.id)
                           ? html`
                               <a

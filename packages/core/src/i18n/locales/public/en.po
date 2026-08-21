@@ -75,6 +75,11 @@ msgstr "A calmer accent makes"
 msgid "A calmer, warmer accent makes the default theme feel quieter and more intentional."
 msgstr "A calmer, warmer accent makes the default theme feel quieter and more intentional."
 
+#. @context: Collection dialog validation message
+#: src/ui/shared/collection-management-labels.ts
+msgid "A collection needs a title and a link."
+msgstr "A collection needs a title and a link."
+
 #. @context: Section title for the usage guidance section on the brand asset page
 #: src/ui/pages/BrandPage.tsx
 msgid "A few simple rules."
@@ -361,8 +366,6 @@ msgstr "Brand tile"
 
 #. @context: Breadcrumb label on collection detail page
 #. @context: Breadcrumb label on collection detail page
-#. @context: Breadcrumb label on collection editor page
-#: src/ui/pages/CollectionEditorPage.tsx
 #: src/ui/pages/CollectionPage.tsx
 #: src/ui/pages/SmartCollectionPage.tsx
 msgid "Breadcrumb"
@@ -391,16 +394,14 @@ msgstr "Buttons can stay steady, but links, thread markers, and subtle emphasis 
 #. @context: Back out of the attached-text sub-editor, paired with Done. Leaving the composer itself says Close instead — it may keep the work as a draft, so nothing is being cancelled.
 #. @context: Button label to dismiss a dialog or action
 #. @context: Button to cancel form
-#. @context: Dialog cancel button
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/shared/collection-management-labels.ts
 #: src/ui/shared/collection-management-labels.ts
-#: src/ui/shared/smart-collection-labels.ts
 msgid "Cancel"
 msgstr "Cancel"
 
-#. @context: Smart collection dialog warning shown when editing moves an existing collection link
-#: src/ui/shared/smart-collection-labels.ts
+#. @context: Collection editing dialog warning shown when editing moves an existing collection link
+#: src/ui/shared/collection-management-labels.ts
 msgid "Changing the link breaks the old one immediately."
 msgstr "Changing the link breaks the old one immediately."
 
@@ -507,11 +508,9 @@ msgstr "collections"
 
 #. @context: Breadcrumb link to collections page
 #. @context: Breadcrumb link to collections page
-#. @context: Breadcrumb link to collections page
 #. @context: Collections page heading
 #. @context: Collections page heading
 #. @context: Inactive nav link label on sample page
-#: src/ui/pages/CollectionEditorPage.tsx
 #: src/ui/pages/CollectionPage.tsx
 #: src/ui/pages/CollectionsPage.tsx
 #: src/ui/pages/SmartCollectionPage.tsx
@@ -577,6 +576,11 @@ msgstr "Continue writing this draft"
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Controls"
 msgstr "Controls"
+
+#. @context: Collection dialog load failure
+#: src/ui/shared/collection-management-labels.ts
+msgid "Could not open this collection. Try again."
+msgstr "Could not open this collection. Try again."
 
 #. @context: Smart collection dialog load failure
 #: src/ui/shared/smart-collection-labels.ts
@@ -882,13 +886,14 @@ msgid "Drag collections, links, and dividers into the order you want."
 msgstr "Drag collections, links, and dividers into the order you want."
 
 #. @context: Per-collection edit action
-#. @context: Per-collection edit action
-#. @context: Per-collection edit action
-#: src/ui/pages/CollectionEditorPage.tsx
-#: src/ui/pages/CollectionEditorPage.tsx
 #: src/ui/shared/collection-management-labels.ts
 msgid "Edit"
 msgstr "Edit"
+
+#. @context: Title of the dialog that edits an existing collection
+#: src/ui/shared/collection-management-labels.ts
+msgid "Edit Collection"
+msgstr "Edit Collection"
 
 #. @context: Compose action to reopen the custom link field from the action row summary
 #: src/ui/compose/ComposeDialog.tsx
@@ -1142,11 +1147,9 @@ msgstr "Hide the original"
 #. @context: Collection sort order option
 #. @context: Collection sort order option
 #. @context: Collection sort order option
-#. @context: Collection sort order option
 #: src/ui/pages/CollectionPage.tsx
 #: src/ui/pages/SmartCollectionPage.tsx
 #: src/ui/shared/collection-management-labels.ts
-#: src/ui/shared/smart-collection-labels.ts
 msgid "Highest rated"
 msgstr "Highest rated"
 
@@ -1487,10 +1490,8 @@ msgid "Navigation and reading states"
 msgstr "Navigation and reading states"
 
 #. @context: Button to create a collection from collections page
-#. @context: Page title for new collection
-#. @context: Page title for new collection
-#: src/ui/pages/CollectionEditorPage.tsx
-#: src/ui/pages/CollectionEditorPage.tsx
+#. @context: Title of the dialog that creates a collection
+#: src/ui/shared/collection-management-labels.ts
 #: src/ui/shared/CollectionsManager.tsx
 msgid "New Collection"
 msgstr "New Collection"
@@ -1534,11 +1535,9 @@ msgstr "newest changes first"
 #. @context: Collection sort order option
 #. @context: Collection sort order option
 #. @context: Collection sort order option
-#. @context: Collection sort order option
 #: src/ui/pages/CollectionPage.tsx
 #: src/ui/pages/SmartCollectionPage.tsx
 #: src/ui/shared/collection-management-labels.ts
-#: src/ui/shared/smart-collection-labels.ts
 msgid "Newest first"
 msgstr "Newest first"
 
@@ -1652,11 +1651,9 @@ msgstr "of {total} {unit}"
 #. @context: Collection sort order option
 #. @context: Collection sort order option
 #. @context: Collection sort order option
-#. @context: Collection sort order option
 #: src/ui/pages/CollectionPage.tsx
 #: src/ui/pages/SmartCollectionPage.tsx
 #: src/ui/shared/collection-management-labels.ts
-#: src/ui/shared/smart-collection-labels.ts
 msgid "Oldest first"
 msgstr "Oldest first"
 
@@ -1700,8 +1697,8 @@ msgstr "Open raw SVG"
 msgid "Open the original in a new tab"
 msgstr "Open the original in a new tab"
 
-#. @context: Smart collection dialog field
-#: src/ui/shared/smart-collection-labels.ts
+#. @context: Collection editing dialog field
+#: src/ui/shared/collection-management-labels.ts
 msgid "Order by"
 msgstr "Order by"
 
@@ -2044,11 +2041,9 @@ msgstr "RSS feed for this view"
 #. @context: Button to save collection
 #. @context: Confirm action sheet - save text attachment changes button
 #. @context: Confirm close action sheet - save draft button
-#. @context: Smart collection dialog primary button
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/shared/collection-management-labels.ts
-#: src/ui/shared/smart-collection-labels.ts
 msgid "Save"
 msgstr "Save"
 
@@ -2276,11 +2271,6 @@ msgstr "Sort by when each thread was published"
 msgid "Sort order"
 msgstr "Sort order"
 
-#. @context: Collection form field
-#: src/ui/shared/collection-management-labels.ts
-msgid "Sort Order"
-msgstr "Sort Order"
-
 #. @context: Compose quote source link placeholder
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Source link (optional)"
@@ -2473,8 +2463,8 @@ msgstr "This link is already in use. Choose something else."
 msgid "This link is reserved. Choose something else."
 msgstr "This link is reserved. Choose something else."
 
-#. @context: Smart collection dialog — the typed collection link is already in use
-#: src/ui/shared/smart-collection-labels.ts
+#. @context: Collection editing dialog — the typed collection link is already in use
+#: src/ui/shared/collection-management-labels.ts
 msgid "This link is taken. Choose another."
 msgstr "This link is taken. Choose another."
 

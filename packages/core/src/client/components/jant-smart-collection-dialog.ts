@@ -253,9 +253,7 @@ export class JantSmartCollectionDialog extends LitElement {
   }
 
   #showDialog() {
-    const dialog = this.querySelector<HTMLDialogElement>(
-      ".smart-collection-dialog",
-    );
+    const dialog = this.querySelector<HTMLDialogElement>(".collection-dialog");
     if (!dialog) return;
     if (!dialog.open) dialog.showModal();
     // Initial focus lands on the first thing the author types into, not on the
@@ -264,9 +262,7 @@ export class JantSmartCollectionDialog extends LitElement {
   }
 
   #close(changed: boolean) {
-    const dialog = this.querySelector<HTMLDialogElement>(
-      ".smart-collection-dialog",
-    );
+    const dialog = this.querySelector<HTMLDialogElement>(".collection-dialog");
     if (dialog?.open) dialog.close();
     this._open = false;
     this._addMenuOpen = false;
@@ -532,7 +528,7 @@ export class JantSmartCollectionDialog extends LitElement {
             </button>
           </div>
           ${problem
-            ? html`<p class="smart-collection-link-problem">${problem}</p>`
+            ? html`<p class="collection-dialog-link-problem">${problem}</p>`
             : nothing}
         </div>
       `;
@@ -576,16 +572,16 @@ export class JantSmartCollectionDialog extends LitElement {
               this.#onSlugInput((event.target as HTMLInputElement).value)}
           />
           ${problem
-            ? html`<p class="smart-collection-link-problem">${problem}</p>`
+            ? html`<p class="collection-dialog-link-problem">${problem}</p>`
             : this._slug
-              ? html`<p class="smart-collection-link-preview">
+              ? html`<p class="collection-dialog-link-preview">
                   ${this.#linkPreview()}
                 </p>`
-              : html`<p class="smart-collection-link-help">
+              : html`<p class="collection-dialog-link-help">
                   ${this.labels.linkHelp}
                 </p>`}
           ${moved
-            ? html`<p class="smart-collection-link-problem">
+            ? html`<p class="collection-dialog-link-problem">
                 ${this.labels.linkMovesWarning}
               </p>`
             : nothing}
@@ -831,7 +827,7 @@ export class JantSmartCollectionDialog extends LitElement {
         : this.labels.createHeading;
     return html`
       <dialog
-        class="dialog smart-collection-dialog"
+        class="dialog collection-dialog"
         @cancel=${(event: Event) => {
           event.preventDefault();
           this.#close(false);
@@ -842,10 +838,10 @@ export class JantSmartCollectionDialog extends LitElement {
         }}
       >
         <div
-          class="smart-collection-dialog-panel"
+          class="collection-dialog-panel"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="smart-collection-dialog-title"
+          aria-labelledby="collection-dialog-title"
           @click=${(event: Event) => {
             event.stopPropagation();
             // The trigger and the menu stop their own clicks, so anything that
@@ -853,24 +849,21 @@ export class JantSmartCollectionDialog extends LitElement {
             this.#closeAddMenu(false);
           }}
         >
-          <header class="smart-collection-dialog-header">
-            <h2
-              id="smart-collection-dialog-title"
-              class="smart-collection-dialog-title"
-            >
+          <header class="collection-dialog-header">
+            <h2 id="collection-dialog-title" class="collection-dialog-title">
               ${heading}
             </h2>
             <!-- Said once, where it is needed: by the time anyone edits one
                  they know what it is. -->
             ${this._mode === "create"
-              ? html`<p class="smart-collection-dialog-note">
+              ? html`<p class="collection-dialog-note">
                   ${this.labels.whatItIs}
                 </p>`
               : nothing}
           </header>
 
           <div
-            class="smart-collection-dialog-body"
+            class="collection-dialog-body"
             @input=${() => {
               this._error = "";
             }}
@@ -977,24 +970,22 @@ export class JantSmartCollectionDialog extends LitElement {
               : nothing}
           </div>
 
-          <footer class="smart-collection-dialog-actions">
-            <div class="smart-collection-dialog-actions-end">
-              <button
-                type="button"
-                class="btn-outline"
-                @click=${() => this.#close(false)}
-              >
-                ${this.labels.cancel}
-              </button>
-              <button
-                type="button"
-                class="btn"
-                ?disabled=${this._saving || this.#blockingIssue() !== null}
-                @click=${() => void this.#save()}
-              >
-                ${this.labels.save}
-              </button>
-            </div>
+          <footer class="collection-dialog-actions">
+            <button
+              type="button"
+              class="btn-outline"
+              @click=${() => this.#close(false)}
+            >
+              ${this.labels.cancel}
+            </button>
+            <button
+              type="button"
+              class="btn"
+              ?disabled=${this._saving || this.#blockingIssue() !== null}
+              @click=${() => void this.#save()}
+            >
+              ${this.labels.save}
+            </button>
           </footer>
         </div>
       </dialog>

@@ -8,62 +8,21 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
-import { requireAuth } from "../../middleware/auth.js";
-import { getCollectionsDirectoryPath } from "../../lib/collection-paths.js";
 import {
   collectNavigationCollectionIds,
   getNavigationData,
 } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
-import { toPublicPath } from "../../lib/url.js";
 import {
   buildSurfaceAlternates,
   getViewLang,
 } from "../../lib/view-language.js";
-import { CollectionEditorPage } from "../../ui/pages/CollectionEditorPage.js";
 import { CollectionsPage } from "../../ui/pages/CollectionsPage.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const collectionsPageRoutes = new Hono<Env>();
-
-function resolveReturnHref(
-  value: string | undefined,
-  fallback: string,
-): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return fallback;
-  }
-
-  return value;
-}
-
-collectionsPageRoutes.use("/new", requireAuth());
-
-collectionsPageRoutes.get("/new", async (c) => {
-  const navData = await getNavigationData(c);
-  const defaultReturnHref = toPublicPath(
-    getCollectionsDirectoryPath(),
-    navData.sitePathPrefix,
-  );
-  const cancelHref = resolveReturnHref(
-    c.req.query("returnTo"),
-    defaultReturnHref,
-  );
-
-  return renderPublicPage(c, {
-    title: buildPageTitle("New Collection", navData.siteName),
-    navData,
-    content: (
-      <CollectionEditorPage
-        mode="create"
-        cancelHref={cancelHref}
-        sitePathPrefix={navData.sitePathPrefix}
-      />
-    ),
-  });
-});
 
 /**
  * Render the collections directory.

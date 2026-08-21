@@ -2212,146 +2212,6 @@
       color-mix(in srgb, var(--site-accent) 12%, transparent);
   }
 
-  .collection-editor-shell {
-    display: flex;
-    flex-direction: column;
-    gap: clamp(1.35rem, 3vw, 2.5rem);
-    max-width: var(--max-width-form);
-  }
-
-  .collection-editor-header {
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-  }
-
-  .collection-editor-title-block {
-    max-width: none;
-  }
-
-  .collection-editor-title {
-    text-wrap: balance;
-  }
-
-  .collection-editor-card {
-    padding-top: 0.2rem;
-  }
-
-  .collection-editor-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    width: 100%;
-    max-width: none;
-  }
-
-  .collection-editor-primary-grid,
-  .collection-editor-secondary-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1rem 1.1rem;
-  }
-
-  .collection-editor-form .field {
-    gap: 0.45rem;
-  }
-
-  .collection-editor-form .label {
-    color: var(--site-text-secondary);
-    font-size: var(--type-2xs);
-    font-weight: var(--fw-medium);
-    letter-spacing: 0.03em;
-  }
-
-  .collection-editor-form .input,
-  .collection-editor-form .textarea,
-  .collection-editor-form .select {
-    width: 100%;
-    border-color: color-mix(in srgb, var(--site-divider) 72%, transparent);
-    background-color: color-mix(
-      in srgb,
-      var(--site-elevated-bg) 88%,
-      var(--site-page-bg) 12%
-    );
-    box-shadow: none;
-  }
-
-  .collection-editor-form .input:focus,
-  .collection-editor-form .textarea:focus,
-  .collection-editor-form .select:focus,
-  .collection-editor-form .input:focus-visible,
-  .collection-editor-form .textarea:focus-visible,
-  .collection-editor-form .select:focus-visible {
-    border-color: color-mix(
-      in srgb,
-      var(--site-accent) 24%,
-      var(--site-divider)
-    );
-    box-shadow: 0 0 0 3px
-      color-mix(in srgb, var(--site-accent) 10%, transparent);
-  }
-
-  .collection-editor-description-field .textarea {
-    min-height: 8.5rem;
-    resize: vertical;
-  }
-
-  .collection-editor-sort-field {
-    max-width: 15rem;
-  }
-
-  .collection-editor-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding-top: 0.35rem;
-  }
-
-  .collection-editor-submit,
-  .collection-editor-cancel {
-    min-height: 2.75rem;
-    border-radius: 999px;
-  }
-
-  .collection-editor-submit {
-    min-width: 7.5rem;
-    justify-content: center;
-  }
-
-  .collection-editor-cancel {
-    color: var(--site-text-secondary);
-  }
-
-  .collection-editor-card jant-collection-form {
-    display: block;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .collection-editor-card jant-collection-form form {
-    max-width: none;
-  }
-
-  @media (min-width: 640px) {
-    .collection-editor-primary-grid,
-    .collection-editor-secondary-grid {
-      align-items: start;
-    }
-  }
-
-  @media (max-width: 639px) {
-    .collection-editor-actions {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .collection-editor-submit,
-    .collection-editor-cancel {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
   .collection-sort-menu {
     position: relative;
   }
@@ -9925,16 +9785,18 @@
     justify-content: flex-end;
   }
 
-  /* --- Smart collection dialog ------------------------------------------- */
+  /* --- Collection editing dialogs ---------------------------------------- */
+  /* One shell for both: a collection and a smart collection are edited in the
+     same kind of dialog, and only the conditions below belong to one of them. */
 
   /* The panel is styled by `.dialog > *` alone. It used to also carry `.card`,
      which pads its own header and footer — that is why the title sat indented
      from every field under it. */
-  .smart-collection-dialog {
+  .collection-dialog {
     margin: 0;
   }
 
-  .smart-collection-dialog > .smart-collection-dialog-panel {
+  .collection-dialog > .collection-dialog-panel {
     width: min(34rem, calc(100vw - 2rem));
     max-height: calc(100dvh - 4rem);
     display: flex;
@@ -9943,7 +9805,7 @@
     outline: none;
   }
 
-  .smart-collection-dialog-header .smart-collection-dialog-title {
+  .collection-dialog-header .collection-dialog-title {
     margin: 0;
     font-family: var(--font-heading);
     font-size: 1.15rem;
@@ -9952,7 +9814,7 @@
     text-wrap: balance;
   }
 
-  .smart-collection-dialog-body {
+  .collection-dialog-body {
     display: flex;
     flex-direction: column;
     gap: 1.15rem;
@@ -9961,6 +9823,19 @@
        breathing room the scroll container clips it. */
     margin-inline: -0.25rem;
     padding-inline: 0.25rem;
+  }
+
+  .collection-dialog-body .settings-tiptap-editor {
+    min-height: 5rem;
+  }
+
+  .collection-dialog-panel > .collection-dialog-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-top: 1.15rem;
+    border-top: 1px solid var(--border);
   }
 
   .smart-collection-section {
@@ -9993,11 +9868,11 @@
   }
 
   .smart-collection-section-hint,
-  .smart-collection-dialog-note,
-  .field > .smart-collection-link-help,
-  .field > .smart-collection-link-preview,
-  .field > .smart-collection-link-problem,
-  .collection-quick-link-box > .smart-collection-link-problem {
+  .collection-dialog-note,
+  .field > .collection-dialog-link-help,
+  .field > .collection-dialog-link-preview,
+  .field > .collection-dialog-link-problem,
+  .collection-quick-link-box > .collection-dialog-link-problem {
     margin: 0;
     font-family: var(--font-ui);
     font-size: var(--type-ui-hint);
@@ -10006,17 +9881,17 @@
     color: var(--site-text-secondary);
   }
 
-  .field > .smart-collection-link-preview {
+  .field > .collection-dialog-link-preview {
     overflow-wrap: anywhere;
   }
 
   /* Scoped past `.field > p`, which is muted: a refusal has to read as one. */
-  .field > .smart-collection-link-problem,
-  .collection-quick-link-box > .smart-collection-link-problem {
+  .field > .collection-dialog-link-problem,
+  .collection-quick-link-box > .collection-dialog-link-problem {
     color: var(--destructive);
   }
 
-  .collection-quick-link-box > .smart-collection-link-problem {
+  .collection-quick-link-box > .collection-dialog-link-problem {
     padding-top: 0.35rem;
   }
 
@@ -10146,23 +10021,6 @@
 
   .smart-collection-display .field > select {
     width: 100%;
-  }
-
-  .smart-collection-dialog-panel > .smart-collection-dialog-actions {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding-top: 1.15rem;
-    border-top: 1px solid var(--border);
-  }
-
-  .smart-collection-dialog-actions-end {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-left: auto;
   }
 
   @media (max-width: 30rem) {

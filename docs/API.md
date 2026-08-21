@@ -1548,6 +1548,22 @@ Response:
 }
 ```
 
+### Check an address
+
+`GET /api/collections/slug`
+
+Auth: `Session or token`
+
+| Parameter      | Type           | Required | Notes                                     |
+| -------------- | -------------- | -------- | ----------------------------------------- |
+| `mode`         | `check`        | yes      | Test a typed address                      |
+| `slug`         | string         | yes      | Address to test                           |
+| `collectionId` | `col_*` string | no       | Ignore the address this one already holds |
+
+Returns `{ "slug": "…", "available": true }`. A collection shares the root URL
+namespace with posts and smart collections, so anything holding the address
+makes it unavailable.
+
 ### Create a collection
 
 `POST /api/collections`

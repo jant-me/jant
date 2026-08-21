@@ -5,10 +5,8 @@
 import { Hono, type Context } from "hono";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
-import { requireAuth } from "../../middleware/auth.js";
 import { CollectionPage } from "../../ui/pages/CollectionPage.js";
 import type { CollectionPageProps } from "../../types.js";
-import { CollectionEditorPage } from "../../ui/pages/CollectionEditorPage.js";
 import { getNavigationData } from "../../lib/navigation.js";
 import { formatPageLabel, parsePageNumber } from "../../lib/pagination.js";
 import { buildPageTitle } from "../../lib/page-title.js";
@@ -28,7 +26,7 @@ import {
 import { toPlainText as markdownToPlainText } from "../../lib/markdown.js";
 import { buildMediaMap } from "../../lib/media-helpers.js";
 import { createMediaContext, toPostViews } from "../../lib/view.js";
-import { toAbsoluteSiteUrl, toPublicPath } from "../../lib/url.js";
+import { toAbsoluteSiteUrl } from "../../lib/url.js";
 import {
   buildLanguageSwitcher,
   buildSurfaceAlternates,
@@ -66,52 +64,6 @@ function buildCollectionSelectionTitle(
   }
   return collections.map((collection) => collection.title).join(" + ");
 }
-
-function resolveReturnHref(
-  value: string | undefined,
-  fallback: string,
-): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return fallback;
-  }
-
-  return value;
-}
-
-collectionRoutes.use("/:slug/edit", requireAuth());
-
-collectionRoutes.get("/:slug/edit", async (c) => {
-  const slug = c.req.param("slug");
-  if (isAggregateCollectionSelection(slug)) return c.notFound();
-
-  const [collection, navData] = await Promise.all([
-    c.var.services.collections.getBySlug(slug),
-    getNavigationData(c),
-  ]);
-  if (!collection) return c.notFound();
-
-  const defaultReturnHref = toPublicPath(
-    getCollectionPagePath(collection.slug),
-    navData.sitePathPrefix,
-  );
-  const cancelHref = resolveReturnHref(
-    c.req.query("returnTo"),
-    defaultReturnHref,
-  );
-
-  return renderPublicPage(c, {
-    title: buildPageTitle("Edit", collection.title, navData.siteName),
-    navData,
-    content: (
-      <CollectionEditorPage
-        mode="edit"
-        collection={collection}
-        cancelHref={cancelHref}
-        sitePathPrefix={navData.sitePathPrefix}
-      />
-    ),
-  });
-});
 
 /**
  * Render a collection selection page. Used by root-level single-collection

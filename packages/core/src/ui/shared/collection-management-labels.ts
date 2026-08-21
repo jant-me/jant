@@ -55,6 +55,28 @@ const collectionFormMessages = {
     message: "Collection created.",
     comment: "@context: Confirmation shown after creating a collection",
   }),
+  cancelLabel: msg({
+    message: "Cancel",
+    comment: "@context: Button to cancel form",
+  }),
+} as const;
+
+/**
+ * The editing dialog's own strings.
+ *
+ * The address and validation wording it shares with the quick-create form
+ * stays in {@link collectionFormMessages}; only what the dialog alone says
+ * lives here.
+ */
+const collectionDialogMessages = {
+  createHeading: msg({
+    message: "New Collection",
+    comment: "@context: Title of the dialog that creates a collection",
+  }),
+  editHeading: msg({
+    message: "Edit Collection",
+    comment: "@context: Title of the dialog that edits an existing collection",
+  }),
   descriptionLabel: msg({
     message: "Description (optional)",
     comment: "@context: Collection form field",
@@ -63,9 +85,9 @@ const collectionFormMessages = {
     message: "What's this collection about?",
     comment: "@context: Collection description placeholder",
   }),
-  sortOrderLabel: msg({
-    message: "Sort Order",
-    comment: "@context: Collection form field",
+  orderBy: msg({
+    message: "Order by",
+    comment: "@context: Collection editing dialog field",
   }),
   sortNewest: msg({
     message: "Newest first",
@@ -79,17 +101,40 @@ const collectionFormMessages = {
     message: "Highest rated",
     comment: "@context: Collection sort order option",
   }),
-  submitLabel: msg({
-    message: "Save",
-    comment: "@context: Button to save collection",
+  loadFailed: msg({
+    message: "Could not open this collection. Try again.",
+    comment: "@context: Collection dialog load failure",
   }),
-  cancelLabel: msg({
-    message: "Cancel",
-    comment: "@context: Button to cancel form",
+  titleAndLinkRequired: msg({
+    message: "A collection needs a title and a link.",
+    comment: "@context: Collection dialog validation message",
+  }),
+} as const;
+
+/**
+ * Address wording both editing dialogs share.
+ *
+ * A collection and a smart collection take the same kind of address out of the
+ * same namespace, so a clash and a move read the same in both.
+ */
+const collectionLinkMessages = {
+  linkTaken: msg({
+    message: "This link is taken. Choose another.",
+    comment:
+      "@context: Collection editing dialog — the typed collection link is already in use",
+  }),
+  linkMovesWarning: msg({
+    message: "Changing the link breaks the old one immediately.",
+    comment:
+      "@context: Collection editing dialog warning shown when editing moves an existing collection link",
   }),
 } as const;
 
 const collectionMutationMessages = {
+  save: msg({
+    message: "Save",
+    comment: "@context: Button to save collection",
+  }),
   edit: msg({
     message: "Edit",
     comment: "@context: Per-collection edit action",
@@ -222,17 +267,50 @@ export const getCollectionFormLabels = (i18n: Translator) => ({
   quickHint: i18n._(collectionFormMessages.quickHint),
   quickSubmitLabel: i18n._(collectionFormMessages.quickSubmitLabel),
   createdLabel: i18n._(collectionFormMessages.createdLabel),
-  descriptionLabel: i18n._(collectionFormMessages.descriptionLabel),
-  descriptionPlaceholder: i18n._(collectionFormMessages.descriptionPlaceholder),
-  sortOrderLabel: i18n._(collectionFormMessages.sortOrderLabel),
-  sortNewest: i18n._(collectionFormMessages.sortNewest),
-  sortOldest: i18n._(collectionFormMessages.sortOldest),
-  sortRatingDesc: i18n._(collectionFormMessages.sortRatingDesc),
-  submitLabel: i18n._(collectionFormMessages.submitLabel),
   cancelLabel: i18n._(collectionFormMessages.cancelLabel),
 });
 
+/**
+ * Every string the editing dialog renders, translated on the server.
+ *
+ * The dialog is a Lit component and cannot reach the i18n catalogs itself, so
+ * whichever page can open it hands them down \u2014 the same arrangement the
+ * smart collection dialog uses.
+ */
+export const getCollectionDialogLabels = (i18n: Translator) => ({
+  createHeading: i18n._(collectionDialogMessages.createHeading),
+  editHeading: i18n._(collectionDialogMessages.editHeading),
+  title: i18n._(collectionFormMessages.titleLabel),
+  titlePlaceholder: i18n._(collectionFormMessages.titlePlaceholder),
+  link: i18n._(collectionFormMessages.slugLabel),
+  linkHelp: i18n._(collectionFormMessages.slugHelp),
+  editLink: i18n._(collectionFormMessages.editSlugLabel),
+  resetLink: i18n._(collectionFormMessages.resetSlugLabel),
+  linkInvalid: i18n._(collectionFormMessages.slugInvalidHelp),
+  linkReserved: i18n._(collectionFormMessages.slugReservedHelp),
+  linkTooLong: i18n._(collectionFormMessages.slugTooLongHelp),
+  linkTaken: i18n._(collectionLinkMessages.linkTaken),
+  linkMovesWarning: i18n._(collectionLinkMessages.linkMovesWarning),
+  description: i18n._(collectionDialogMessages.descriptionLabel),
+  descriptionPlaceholder: i18n._(
+    collectionDialogMessages.descriptionPlaceholder,
+  ),
+  orderBy: i18n._(collectionDialogMessages.orderBy),
+  sortOptions: {
+    newest: i18n._(collectionDialogMessages.sortNewest),
+    oldest: i18n._(collectionDialogMessages.sortOldest),
+    rating_desc: i18n._(collectionDialogMessages.sortRatingDesc),
+  },
+  cancel: i18n._(collectionMutationMessages.cancel),
+  save: i18n._(collectionMutationMessages.save),
+  saved: i18n._(collectionMutationMessages.saved),
+  saveFailed: i18n._(collectionMutationMessages.saveFailed),
+  loadFailed: i18n._(collectionDialogMessages.loadFailed),
+  titleAndLinkRequired: i18n._(collectionDialogMessages.titleAndLinkRequired),
+});
+
 export const getCollectionMutationLabels = (i18n: Translator) => ({
+  save: i18n._(collectionMutationMessages.save),
   edit: i18n._(collectionMutationMessages.edit),
   addToNavigation: i18n._(collectionMutationMessages.addToNavigation),
   addingToNavigation: i18n._(collectionMutationMessages.addingToNavigation),

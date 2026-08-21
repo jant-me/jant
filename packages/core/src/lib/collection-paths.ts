@@ -1,8 +1,9 @@
 /**
  * Collection URL helpers.
  *
- * Single collections use root-level paths. Collection directories, editors,
- * and aggregate views live under `/collections`.
+ * Single collections use root-level paths. The collections directory and
+ * aggregate views live under `/collections`. There is no editor path: a
+ * collection is created and edited in a dialog.
  */
 
 export const COLLECTIONS_DIRECTORY_PATH = "/collections";
@@ -29,12 +30,4 @@ export function getCollectionSelectionPath(slugExpression: string): string {
 
 export function getCollectionSelectionFeedPath(slugExpression: string): string {
   return `${getCollectionSelectionPath(slugExpression)}/feed`;
-}
-
-export function getNewCollectionPath(): string {
-  return `${COLLECTIONS_DIRECTORY_PATH}/new`;
-}
-
-export function getCollectionEditPath(slug: string): string {
-  return `${COLLECTIONS_DIRECTORY_PATH}/${slug}/edit`;
 }

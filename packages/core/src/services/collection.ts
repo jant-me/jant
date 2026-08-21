@@ -51,6 +51,7 @@ import {
   type PathService,
 } from "./path.js";
 import { getCollectionPagePath } from "../lib/collection-paths.js";
+import { getSlugValidationIssue } from "../lib/slug-format.js";
 import type { SmartCollectionService } from "./smart-collection.js";
 import {
   DIRECTORY_POSITION_RETRY_ATTEMPTS as POSITION_RETRY_ATTEMPTS,
@@ -128,6 +129,17 @@ export interface CollectionService {
   create(data: CreateCollection): Promise<Collection>;
   update(id: string, data: UpdateCollection): Promise<Collection | null>;
   delete(id: string): Promise<boolean>;
+  /**
+   * Whether a collection can take this address.
+   *
+   * A collection shares the root namespace with posts and smart collections,
+   * so the whole path registry answers this, not the collection table.
+   *
+   * @param slug - Address to test, already lowercased
+   * @param excludeId - Ignore the address this collection already holds
+   * @returns True when nothing else holds the address
+   */
+  checkSlugAvailability(slug: string, excludeId?: string): Promise<boolean>;
   /** List all collection directory items ordered by position */
   listDirectoryItems(): Promise<CollectionDirectoryEntry[]>;
   /** Create a collection directory item (collection, divider, or link) */
@@ -1110,6 +1122,24 @@ export function createCollectionService(
         .where(and(eq(collections.siteId, siteId), eq(collections.id, id)))
         .returning();
       return result.length > 0;
+    },
+
+    async checkSlugAvailability(slug, excludeId) {
+      const issue = getSlugValidationIssue(slug);
+      if (issue === "invalid") {
+        throw new ValidationError("Slug contains invalid characters");
+      }
+      if (issue === "reserved") {
+        throw new ValidationError("Slug is reserved");
+      }
+
+      const resolved = await resolvedPaths.resolve(toCollectionPath(slug));
+      if (!resolved) return true;
+      return Boolean(
+        excludeId &&
+        resolved.kind === "slug" &&
+        resolved.collectionId === excludeId,
+      );
     },
 
     async listDirectoryItems() {

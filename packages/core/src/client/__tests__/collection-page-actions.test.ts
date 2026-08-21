@@ -11,6 +11,10 @@ vi.mock("../confirm.js", () => ({
   showConfirmDialog: vi.fn(),
 }));
 
+vi.mock("../collection-dialog-host.js", () => ({
+  openCollectionDialog: vi.fn(),
+}));
+
 function createMarkup() {
   document.body.innerHTML = `
     <div id="toast-container"></div>
@@ -29,9 +33,9 @@ function createMarkup() {
         More actions
       </button>
       <div data-collection-page-menu hidden>
-        <a href="/collections/original-slug/edit?returnTo=%2Foriginal-slug" role="menuitem">
+        <button type="button" role="menuitem" data-collection-page-action="edit">
           Edit
-        </a>
+        </button>
         <button
           type="button"
           role="menuitem"
@@ -130,6 +134,51 @@ describe("collection detail page actions", () => {
     });
     expect(showToast).toHaveBeenCalledWith("Deleted");
     expect(window.location.pathname).toBe("/collections");
+  });
+
+  it("edits the collection in the dialog, and follows a moved address", async () => {
+    createMarkup();
+    const { openCollectionDialog } =
+      await import("../collection-dialog-host.js");
+    vi.mocked(openCollectionDialog).mockResolvedValue({
+      changed: true,
+      collection: { id: "collection-1", slug: "renamed", title: "Renamed" },
+    });
+    await import("../collection-page-actions.js");
+
+    document
+      .querySelector<HTMLElement>("[data-collection-page-action='toggle-menu']")
+      ?.click();
+    document
+      .querySelector<HTMLElement>("[data-collection-page-action='edit']")
+      ?.click();
+    await flushAsyncWork();
+
+    expect(openCollectionDialog).toHaveBeenCalledWith({
+      collectionId: "collection-1",
+    });
+    expect(window.location.pathname).toBe("/renamed");
+  });
+
+  it("leaves the page where it is when the dialog is dismissed", async () => {
+    createMarkup();
+    const { openCollectionDialog } =
+      await import("../collection-dialog-host.js");
+    vi.mocked(openCollectionDialog).mockResolvedValue({ changed: false });
+    const reload = vi.fn();
+    vi.spyOn(window.location, "reload").mockImplementation(reload);
+    await import("../collection-page-actions.js");
+
+    document
+      .querySelector<HTMLElement>("[data-collection-page-action='toggle-menu']")
+      ?.click();
+    document
+      .querySelector<HTMLElement>("[data-collection-page-action='edit']")
+      ?.click();
+    await flushAsyncWork();
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(window.location.pathname).toBe("/original-slug");
   });
 
   it("adds the collection to navigation and reveals the settings action", async () => {
