@@ -1288,6 +1288,10 @@ svg[stroke-width].icon-fine {
     opacity: 0.7;
   }
 
+  /* Anchored to the row as a fallback; script promotes it to the top layer,
+     where it is positioned against the viewport instead. Without that, the
+     rounded `.settings-group` clips it — a stacking order cannot escape an
+     ancestor's `overflow: hidden`. */
   .custom-url-menu {
     position: absolute;
     right: 0;
@@ -1305,6 +1309,15 @@ svg[stroke-width].icon-fine {
     );
     box-shadow: 0 20px 38px -28px
       color-mix(in srgb, var(--color-foreground) 26%, transparent);
+  }
+
+  /* In the top layer the user-agent styles centre the popover in the
+     viewport; script supplies the real coordinates. */
+  .custom-url-menu:popover-open {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    overflow: visible;
   }
 
   .custom-url-menu-item {

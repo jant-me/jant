@@ -289,6 +289,7 @@ function CustomUrlsListContent({
                         class="custom-url-menu"
                         role="menu"
                         data-custom-url-menu
+                        popover="manual"
                         hidden
                       >
                         {/* A stored archive path predates smart collections.
