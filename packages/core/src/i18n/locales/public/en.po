@@ -318,15 +318,15 @@ msgstr "Author (optional)"
 msgid "Auto"
 msgstr "Auto"
 
-#. @context: Smart collection page — what it gathers. {conditions} is the list of conditions, already joined.
-#: src/ui/shared/smart-collection-labels.ts
-msgid "Automatically collects {conditions}"
-msgstr "Automatically collects {conditions}"
-
 #. @context: Smart collection page — what it gathers, when no condition narrows it
 #: src/ui/shared/smart-collection-labels.ts
 msgid "Automatically collects every post."
 msgstr "Automatically collects every post."
+
+#. @context: Smart collection page — what it gathers. {conditions} is the list of conditions, already joined. A label and a list, not a sentence: the conditions are named in the archive's own words, which are noun fragments like "Titled" or "With media".
+#: src/ui/shared/smart-collection-labels.ts
+msgid "Automatically collects: {conditions}"
+msgstr "Automatically collects: {conditions}"
 
 #. @context: Usage label for the circle tile asset card
 #: src/ui/pages/BrandPage.tsx

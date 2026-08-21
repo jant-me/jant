@@ -2,11 +2,14 @@
  * Smart Collection Page
  *
  * The same shape as a collection page — title, description, thread count, feed
- * link, timeline — plus one line saying what gathers the posts, and minus the
- * archive's chip bar. A collection page has no filter bar either, and this one
- * is not a place to filter: the conditions are edited in a dialog, and the
- * condition line links out to the archive for anyone who wants to narrow
- * further.
+ * link, timeline — minus the archive's chip bar. A collection page has no
+ * filter bar either, and this one is not a place to filter: the conditions are
+ * edited in a dialog.
+ *
+ * What marks it as smart is the funnel after the title, the same marker the
+ * directory puts on a smart row, and the same tooltip. The conditions
+ * themselves stand in for a description the owner has not written; once one is
+ * written, it takes the slot and the marker carries the signal alone.
  */
 
 import { msg } from "@lingui/core/macro";
@@ -24,27 +27,11 @@ import {
   getSmartCollectionLabels,
 } from "../shared/smart-collection-labels.js";
 import { getIconSvg } from "../../lib/icons.js";
+import { Icon } from "../shared/Icon.js";
 import { NAVIGATION_SETTINGS_PATH } from "../../lib/settings-paths.js";
 
 const escapeJson = (data: unknown) =>
   JSON.stringify(data).replace(/</g, "\\u003c");
-
-/** Inline SVG by lucide name, matching the collection page's icon treatment. */
-const Icon: FC<{ name: string; size?: number; class?: string }> = ({
-  name,
-  size = 16,
-  class: cls,
-}) => {
-  const svg = getIconSvg(name, cls);
-  if (!svg) return null;
-  return (
-    <span
-      class="shrink-0 inline-flex"
-      style={`--icon-size:${size}px`}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
-  );
-};
 
 export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
   smartCollection,
@@ -168,7 +155,24 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
 
         <div class="collection-page-title-block">
           <h1 class="collection-page-title">
-            <span>{smartCollection.title}</span>
+            <span>
+              {smartCollection.title}
+              {/* The marker every reader gets, in the same slot and the same
+                  words the directory uses: which kind of collection this is
+                  changes how an absence reads. Unlike the directory's — which
+                  sits inside the row's link and so cannot be one itself — this
+                  one carries the way to the archive, so a description written
+                  over the condition line does not take it away. */}
+              <a
+                href={toPublicPath(conditionHref, basePath)}
+                class="collection-page-smart-icon"
+                title={conditionSummary}
+                aria-label={conditionSummary}
+                dangerouslySetInnerHTML={{
+                  __html: getIconSvg("funnel", "icon-fine") ?? "",
+                }}
+              />
+            </span>
           </h1>
           {smartCollection.description ? (
             <div
@@ -179,7 +183,16 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
                 }),
               }}
             />
-          ) : null}
+          ) : (
+            /* Nothing written, so the conditions describe the page — and the
+               link is there for a reader who wants to narrow further, since
+               the archive already reads this vocabulary. */
+            <p class="collection-page-description smart-collection-conditions">
+              <a href={toPublicPath(conditionHref, basePath)}>
+                {conditionSummary}
+              </a>
+            </p>
+          )}
         </div>
 
         <div class="collection-page-subhead">
@@ -424,16 +437,6 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
             </div>
           ) : null}
         </div>
-
-        {/* Visible to everyone. What gathers these posts changes how the page
-            is read, and a smart collection is always public, so its conditions
-            can only be made of public information. */}
-        <p class="smart-collection-conditions">
-          <span class="smart-collection-conditions-icon" aria-hidden="true">
-            <Icon name="funnel" size={14} class="icon-fine" />
-          </span>
-          <a href={toPublicPath(conditionHref, basePath)}>{conditionSummary}</a>
-        </p>
       </header>
 
       <main>

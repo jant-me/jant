@@ -866,3 +866,20 @@ row-writing path as the first, and check what the read side does when the row
 is missing. A fallback that renders the entity under its own id is a design
 decision about ordering, not a safety net — everything downstream that expects a
 row id (drag, neighbour references, position math) has to accept that id too.
+
+## A style hook only exists if a rule reads it
+
+`SmartCollectionPage`'s local `Icon` took a `size` prop and wrote it as
+`--icon-size` on a wrapper span. No stylesheet anywhere read that property, so
+every icon on the page kept lucide's own `width="24" height="24"` — a 24px sort
+chevron beside the collection page's 14px one. The prop looked like an API and
+was inert.
+
+Moving the funnel marker into the page title hit the mirror image: the title's
+`.collection-page-title span { display: block }` matched the nested marker as
+well as the wrapper it was written for, so the marker dropped onto its own line.
+
+Before shipping a size, a colour, or a variant, check the computed value in the
+browser rather than the source. A custom property is not a contract until some
+rule consumes it, and a descendant selector claims every matching element
+underneath, not the one you had in mind — `>` when you mean the direct child.

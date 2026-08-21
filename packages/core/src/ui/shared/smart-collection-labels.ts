@@ -33,10 +33,11 @@ const CONDITION_SEPARATOR = " · ";
  * @param selection - The conditions
  * @param i18n - Translator
  * @param ctx - Collection vocabulary, for naming a selected collection
- * @returns One sentence, conditions joined by a middle dot
+ * @returns A label and its conditions, joined by a middle dot — or one plain
+ *   sentence when nothing narrows the selection
  * @example
  * describeSmartCollection({ format: "quote" }, i18n, ctx);
- * // "Automatically collects Quotes"
+ * // "Automatically collects: Quotes"
  */
 export function describeSmartCollection(
   selection: PostFilterSelection,
@@ -58,9 +59,9 @@ export function describeSmartCollection(
 
   return i18n._(
     msg({
-      message: "Automatically collects {conditions}",
+      message: "Automatically collects: {conditions}",
       comment:
-        "@context: Smart collection page — what it gathers. {conditions} is the list of conditions, already joined.",
+        '@context: Smart collection page — what it gathers. {conditions} is the list of conditions, already joined. A label and a list, not a sentence: the conditions are named in the archive\'s own words, which are noun fragments like "Titled" or "With media".',
     }),
     { conditions: parts.join(CONDITION_SEPARATOR) },
   );

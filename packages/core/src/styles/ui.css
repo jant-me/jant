@@ -2012,7 +2012,9 @@
     user-select: all;
   }
 
-  .collection-page-title span {
+  /* Direct child only: the title's own wrapper is the block that sets the
+     measure. A marker nested inside it stays inline, in the words. */
+  .collection-page-title > span {
     display: block;
     max-width: min(18ch, 100%);
     overflow-wrap: anywhere;
@@ -2070,31 +2072,34 @@
     user-select: none;
   }
 
-  /* What a smart collection gathers. Quiet, one line, under the count —
-     information a reader needs, not a control. */
+  /* What a smart collection gathers, standing in for the description its owner
+     has not written. It takes the description's slot and the description's
+     weight; only the link colour is its own, because the sentence is also the
+     way to the archive. */
   .smart-collection-conditions {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin-top: 0.5rem;
-    font-size: var(--type-content-small);
-    color: var(--site-text-secondary);
+    margin: 0;
   }
 
   .smart-collection-conditions a {
     color: inherit;
+  }
+
+  /* Description at rest, and the way to the archive under the pointer. An
+     underline here would make the one line of description look like a control,
+     which is the thing this page has no room for. */
+  .smart-collection-conditions a:hover,
+  .smart-collection-conditions a:focus-visible {
+    color: var(--foreground);
+    text-decoration: underline;
     text-decoration-color: color-mix(
       in srgb,
-      var(--site-text-secondary) 40%,
+      var(--foreground) 40%,
       transparent
     );
+    text-underline-offset: 3px;
   }
 
-  .smart-collection-conditions a:hover {
-    color: var(--foreground);
-  }
-
-  .smart-collection-conditions-icon,
+  .collection-page-smart-icon,
   .collection-directory-smart-icon {
     display: inline-flex;
     align-items: center;
@@ -2107,10 +2112,39 @@
      words it annotates. The lighter stroke comes from `icon-fine` on the svg
      itself, because the rule that sets stroke width is unlayered and nothing
      in this file can outrank it. */
-  .smart-collection-conditions-icon svg,
+  .collection-page-smart-icon svg,
   .collection-directory-smart-icon svg {
     width: 0.75rem;
     height: 0.75rem;
+  }
+
+  /* After the title, at the directory's size rather than the heading's: scaled
+     to the page title it would read as a peer of the title instead of a note
+     about it. Inline, so a wrapped title carries it along to the last line.
+     The negative margins pay back the padding, so a 12px glyph answers to a
+     24px pointer without moving the words around it. */
+  .collection-page-smart-icon {
+    margin-left: 0.15rem;
+    padding: 0.45rem;
+    margin-top: -0.45rem;
+    margin-bottom: -0.45rem;
+    margin-right: -0.45rem;
+    border-radius: 999px;
+    vertical-align: middle;
+    color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  .collection-page-smart-icon:hover {
+    color: var(--muted-foreground);
+  }
+
+  .collection-page-smart-icon:focus-visible {
+    outline: none;
+    color: var(--foreground);
+    background: color-mix(in srgb, var(--accent) 42%, transparent);
   }
 
   .collection-directory-smart-icon {

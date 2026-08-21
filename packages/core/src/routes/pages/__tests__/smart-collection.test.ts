@@ -43,7 +43,7 @@ async function seedQuotes(services: {
 }
 
 describe("smart collection page", () => {
-  it("renders for a signed-out reader, with title, count, and conditions", async () => {
+  it("renders for a signed-out reader, with title, count, and description", async () => {
     const { app, services } = setup();
     await seedQuotes(services);
     await services.smartCollections.create({
@@ -59,11 +59,30 @@ describe("smart collection page", () => {
 
     expect(html).toContain("Quotes");
     expect(html).toContain("Things worth keeping.");
-    expect(html).toContain("Automatically collects Quotes");
+    // A written description takes the slot; the conditions — and the way to
+    // the archive — stay reachable through the marker beside the title.
+    expect(html).not.toContain(">Automatically collects: Quotes<");
+    expect(html).toContain('title="Automatically collects: Quotes"');
+    expect(html).toContain(
+      '<a href="/archive?format=quote" class="collection-page-smart-icon"',
+    );
     expect(html).toContain("public quote body");
     expect(html).not.toContain("a plain note body");
     // The archive has a chip bar; this page does not.
     expect(html).not.toContain("archive-filters-chips");
+  });
+
+  it("describes itself by its conditions until a description is written", async () => {
+    const { app, services } = setup();
+    await seedQuotes(services);
+    await services.smartCollections.create({
+      slug: "quotes",
+      title: "Quotes",
+      selection: { format: "quote" },
+    });
+
+    const html = await (await app.request("/quotes")).text();
+    expect(html).toContain(">Automatically collects: Quotes<");
   });
 
   it("links its conditions to the archive showing the same posts", async () => {
