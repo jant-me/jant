@@ -84,16 +84,6 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
         }),
       ),
     },
-    {
-      value: "updated",
-      label: i18n._(
-        msg({
-          message: "Recently updated",
-          comment:
-            "@context: Smart collection sort order option — threads that changed most recently",
-        }),
-      ),
-    },
     ...(showRatingSort
       ? [
           {

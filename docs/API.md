@@ -1835,20 +1835,20 @@ endpoints here — the conditions are the membership.
 
 Smart collection responses include these fields:
 
-| Field              | Type                                               | Notes                                             |
-| ------------------ | -------------------------------------------------- | ------------------------------------------------- |
-| `id`               | `smc_*` string                                     | Smart collection ID                               |
-| `siteId`           | string                                             | Owning site                                       |
-| `slug`             | string                                             | Canonical address, in the same namespace as posts |
-| `title`            | string                                             | Display title. Required                           |
-| `description`      | string \| `null`                                   | Optional description                              |
-| `selection`        | object                                             | The conditions. `{}` collects every post          |
-| `sort`             | `newest` \| `oldest` \| `updated` \| `rating_desc` | Order of the posts the conditions gather          |
-| `layout`           | `list` \| `grid` \| `null`                         | `null` follows the site's archive layout          |
-| `createdAt`        | integer                                            | Unix seconds                                      |
-| `updatedAt`        | integer                                            | Unix seconds                                      |
-| `threadCount`      | integer                                            | Only present in list responses                    |
-| `recentActivityAt` | integer                                            | Only present in list responses                    |
+| Field              | Type                                  | Notes                                             |
+| ------------------ | ------------------------------------- | ------------------------------------------------- |
+| `id`               | `smc_*` string                        | Smart collection ID                               |
+| `siteId`           | string                                | Owning site                                       |
+| `slug`             | string                                | Canonical address, in the same namespace as posts |
+| `title`            | string                                | Display title. Required                           |
+| `description`      | string \| `null`                      | Optional description                              |
+| `selection`        | object                                | The conditions. `{}` collects every post          |
+| `sort`             | `newest` \| `oldest` \| `rating_desc` | Order of the posts the conditions gather          |
+| `layout`           | `list` \| `grid` \| `null`            | `null` follows the site's archive layout          |
+| `createdAt`        | integer                               | Unix seconds                                      |
+| `updatedAt`        | integer                               | Unix seconds                                      |
+| `threadCount`      | integer                               | Only present in list responses                    |
+| `recentActivityAt` | integer                               | Only present in list responses                    |
 
 ### The `selection` object
 

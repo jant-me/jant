@@ -8,6 +8,7 @@ import { createPathService } from "../path.js";
 import { createPostService } from "../post.js";
 import { createSmartCollectionService } from "../smart-collection.js";
 import type { Database } from "../../db/index.js";
+import type { SmartCollectionSortOrder } from "../../types.js";
 
 describe("SmartCollectionService", () => {
   let db: Database;
@@ -593,7 +594,7 @@ describe("SmartCollectionService", () => {
         slug: "twenty-four",
         title: "2024",
         selection: { year: 2024 },
-        sort: "updated",
+        sort: "newest",
       });
 
       const filters = smartCollections.toPostFilters(created, anonymous);
@@ -603,7 +604,34 @@ describe("SmartCollectionService", () => {
       expect(filters.publishedAfter).toBe(Date.UTC(2024, 0, 1) / 1000);
       expect(filters.publishedBefore).toBe(Date.UTC(2025, 0, 1) / 1000);
       expect(filters.axisAfter).toBeUndefined();
-      expect(filters.sortBy).toBe("thread_updated");
+      expect(filters.sortBy).toBe("activity");
+    });
+
+    it("orders on the same axes a manual collection does", async () => {
+      const axisFor = async (sort: SmartCollectionSortOrder, slug: string) => {
+        const created = await smartCollections.create({
+          slug,
+          title: slug,
+          sort,
+        });
+        const filters = smartCollections.toPostFilters(created, anonymous);
+        return { sortBy: filters.sortBy, sortOrder: filters.sortOrder };
+      };
+
+      // `newest` and the rating tie-break follow the Thread; only `oldest`
+      // reads publication, because a reply must not make a Thread older.
+      expect(await axisFor("newest", "recent")).toEqual({
+        sortBy: "activity",
+        sortOrder: "newest",
+      });
+      expect(await axisFor("rating_desc", "best")).toEqual({
+        sortBy: "activity",
+        sortOrder: "rating_desc",
+      });
+      expect(await axisFor("oldest", "first")).toEqual({
+        sortBy: "published",
+        sortOrder: "oldest",
+      });
     });
 
     it("holds the private floor for a signed-out reader", async () => {

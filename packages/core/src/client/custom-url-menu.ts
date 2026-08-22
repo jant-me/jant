@@ -13,8 +13,6 @@
  * is clipped but still usable.
  */
 
-import { openSmartCollectionDialog } from "./smart-collection-dialog-host.js";
-
 /** Space between the trigger and the menu, in pixels. */
 const MENU_GAP = 6;
 /** Closest the menu may sit to a viewport edge, in pixels. */
@@ -156,27 +154,6 @@ export function initCustomUrlMenus(
         if (!actionEl || !menuRoot.contains(actionEl)) return;
         if (actionEl.dataset.customUrlAction === "delete") {
           close(false);
-        }
-        if (actionEl.dataset.customUrlAction === "upgrade") {
-          event.preventDefault();
-          close(false);
-          // Prefilled and shown, never saved on the author's behalf. The
-          // stored path becomes the starting title, which is the one thing an
-          // automatic conversion could not have supplied honestly.
-          const raw = actionEl.dataset.customUrlUpgrade;
-          if (!raw) return;
-          try {
-            void openSmartCollectionDialog({
-              prefill: JSON.parse(raw) as Parameters<
-                typeof openSmartCollectionDialog
-              >[0]["prefill"],
-            }).then((changed) => {
-              if (changed) window.location.reload();
-            });
-          } catch {
-            // A malformed payload is not worth an error toast: the menu item
-            // simply does nothing, and the stored path keeps working.
-          }
         }
       });
 

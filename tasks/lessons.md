@@ -975,3 +975,13 @@ macro compiled there and the same code worked under `mise run dev`.
 - Verify a client-side fix against the built bundle — load the emitted
   `client-auth.js` in a browser and check the elements registered. The dev
   server compiles different output.
+- Branch on a union with a `switch` whose cases each return, never an if/else
+  chain ending in a bare `else`. A trailing `else` written for one member
+  silently absorbs every member added later: `PostService.list()` had a final
+  branch meant for `rating_asc`, so `sortOrder: "newest"` ordered posts by
+  rating instead of by time wherever it was passed explicitly, and nothing
+  failed. With an annotated return type, a missing case is a compile error.
+- A default that means "same as X" and an explicit value X must reach the same
+  code path. The bug above only reached users because passing `newest`
+  explicitly and passing nothing at all took different branches, so every test
+  that relied on the default kept passing.

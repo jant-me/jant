@@ -259,7 +259,7 @@ Useful when you want to graft content imported from another platform back onto i
 
 Custom URLs used to include an `Archive` type: a short path holding a hand-typed archive query. [Smart Collections](#smart-collections) replace it — same result, without writing `format=note&title=none` into a text field, and with a title, a description, and a feed.
 
-Existing archive paths keep working, and there are no plans to change that. Each one gets a **Turn into a smart collection** action in its row menu, which opens the dialog with the conditions filled in so you can give it a real name before saving. A path whose query cannot be read exactly — or one that filters on `Private`, which a Smart Collection can never do — keeps working as it is and offers no upgrade.
+Existing archive paths keep working, and there are no plans to change that. To move one over, read the query printed on its row — `/archive?format=note&title=none` — then delete the custom URL and create a Smart Collection with the same conditions at the same path. Deleting comes first because the custom URL holds that address for as long as it exists, and nothing else can be saved there. A path that filters on `Private` has no Smart Collection form at all, since a Smart Collection is always public; leave that one as it is.
 
 ### Redirect rules
 

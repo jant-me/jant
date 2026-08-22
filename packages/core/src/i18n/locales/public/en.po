@@ -1931,13 +1931,6 @@ msgstr "Reading"
 msgid "Real post components"
 msgstr "Real post components"
 
-#. @context: Smart collection sort order option — threads that changed most recently
-#. @context: Smart collection sort order option — threads that changed most recently
-#: src/ui/pages/SmartCollectionPage.tsx
-#: src/ui/shared/smart-collection-labels.ts
-msgid "Recently updated"
-msgstr "Recently updated"
-
 #. @context: Collection tag on sample link post
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "References"

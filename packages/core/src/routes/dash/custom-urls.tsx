@@ -21,19 +21,6 @@ import { AdminBreadcrumb } from "../../ui/shared/AdminBreadcrumb.js";
 import { PagePagination } from "../../ui/shared/Pagination.js";
 import { buildConfirmActionExpression } from "../../lib/confirm.js";
 import { toPublicPath } from "../../lib/url.js";
-import { buildCollectionVocabulary } from "../../lib/filter-dimensions.js";
-import {
-  parseArchiveUrlForUpgrade,
-  type SmartCollectionUpgrade,
-} from "../../lib/smart-collection-upgrade.js";
-import {
-  getSmartCollectionDialogLabels,
-  getSmartCollectionLabels,
-} from "../../ui/shared/smart-collection-labels.js";
-import { getI18n } from "../../i18n/index.js";
-
-const escapeJson = (data: unknown) =>
-  JSON.stringify(data).replace(/</g, "\\u003c");
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -148,21 +135,17 @@ function targetPath(
 function CustomUrlsListContent({
   customUrls,
   targetSlugs,
-  upgradableArchiveIds,
   currentPage,
   totalPages,
   sitePathPrefix = "",
 }: {
   customUrls: CustomUrl[];
   targetSlugs: Record<string, string>;
-  /** Stored archive paths whose query can become a smart collection exactly. */
-  upgradableArchiveIds: Map<string, SmartCollectionUpgrade>;
   currentPage: number;
   totalPages: number;
   sitePathPrefix?: string;
 }) {
   const { i18n } = useLingui();
-  const smartLabels = getSmartCollectionLabels(i18n);
   const hasCustomUrls = customUrls.length > 0;
   const targetTypeLabels = {
     post: i18n._(
@@ -292,31 +275,6 @@ function CustomUrlsListContent({
                         popover="manual"
                         hidden
                       >
-                        {/* A stored archive path predates smart collections.
-                            Offered only when its query can be honored exactly
-                            — the same strict read a directory link gets, and
-                            the same prefilled dialog, so the title is one the
-                            author typed rather than a path turned into a
-                            heading. */}
-                        {cu.targetType === "archive" &&
-                        upgradableArchiveIds.has(cu.id) ? (
-                          <button
-                            type="button"
-                            class="custom-url-menu-item"
-                            role="menuitem"
-                            data-custom-url-action="upgrade"
-                            data-custom-url-upgrade={escapeJson({
-                              title: cu.path,
-                              selection:
-                                upgradableArchiveIds.get(cu.id)?.selection ??
-                                {},
-                              sort: upgradableArchiveIds.get(cu.id)?.sort,
-                              layout: upgradableArchiveIds.get(cu.id)?.layout,
-                            })}
-                          >
-                            {smartLabels.turnIntoSmartCollection}
-                          </button>
-                        ) : null}
                         <button
                           type="button"
                           class="custom-url-menu-item custom-url-menu-item-danger"
@@ -626,29 +584,6 @@ customUrlsRoutes.get("/", async (c) => {
     }
   }
 
-  // A stored archive path can only become a smart collection when its query is
-  // fully understood, so the check runs where the collections are — resolving
-  // `?collection=` needs them, and offering a button that would then refuse is
-  // worse than not offering it.
-  const upgradableArchiveIds = new Map<string, SmartCollectionUpgrade>();
-  const archiveRows = customUrlsList.filter(
-    (cu) => cu.targetType === "archive" && cu.archiveQuery,
-  );
-  if (archiveRows.length > 0) {
-    const dimensionCtx = {
-      collections: buildCollectionVocabulary(
-        await c.var.services.collections.list(),
-      ),
-    };
-    for (const cu of archiveRows) {
-      const upgrade = parseArchiveUrlForUpgrade(
-        `/archive?${cu.archiveQuery ?? ""}`,
-        dimensionCtx,
-      );
-      if (upgrade) upgradableArchiveIds.set(cu.id, upgrade);
-    }
-  }
-
   const navData = await getNavigationData(c);
 
   return renderPublicPage(c, {
@@ -661,18 +596,9 @@ customUrlsRoutes.get("/", async (c) => {
           parentHref={toPublicPath("/settings", c.var.appConfig.sitePathPrefix)}
           current="Custom URLs"
         />
-        {/* The dialog is a Lit component and cannot reach the i18n catalogs,
-            so the page that can open it carries its strings. */}
-        <div
-          hidden
-          data-smart-collection-dialog-labels={escapeJson(
-            getSmartCollectionDialogLabels(getI18n(c)),
-          )}
-        />
         <CustomUrlsListContent
           customUrls={customUrlsList}
           targetSlugs={targetSlugs}
-          upgradableArchiveIds={upgradableArchiveIds}
           currentPage={currentPage}
           totalPages={totalPages}
           sitePathPrefix={c.var.appConfig.sitePathPrefix}

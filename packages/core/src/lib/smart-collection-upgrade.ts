@@ -1,16 +1,22 @@
 /**
  * Turning an archive URL into a smart collection.
  *
- * Two surfaces offer this — a directory link pointing at `/archive?…`, and a
- * legacy stored archive path in Settings — and both go through here, because
- * both are making the same promise: *this page will keep answering what that
- * URL answers*. A promise like that cannot be made about a URL that was only
- * partly understood.
+ * One surface offers this: a directory link pointing at `/archive?…`. It makes
+ * a promise — *this page will keep answering what that URL answers* — and a
+ * promise like that cannot be made about a URL that was only partly understood.
  *
  * So this parse is **strict**, unlike the one that renders the archive. A
  * renderer that cannot read a value drops it and still shows a page; a decision
  * that drops it silently commits to something different from what was asked
  * for. Same vocabulary, two policies — see `lib/filter-dimensions.ts`.
+ *
+ * A stored `kind='archive'` path in Settings is deliberately not offered the
+ * same button. That row *is* the registration of its own address, so the smart
+ * collection it would become can never be saved at the URL the offer is about —
+ * the address is taken by the very row being upgraded. Freeing it first —
+ * delete the custom URL, then build the collection at that slug — is the honest
+ * order, and both halves already exist. The row prints its `/archive?…` query,
+ * which is the one thing the conversion knew that the author might not.
  */
 
 import {
@@ -46,8 +52,8 @@ function readArchiveQuery(
   const trimmed = url.trim();
   if (!trimmed) return null;
 
-  // Accepts a stored path (`/archive?…`), a bare query (`?…` or `format=…`),
-  // and an absolute URL on this site. Anything else is not an archive URL.
+  // Accepts a relative archive path (`/archive?…`) and an absolute URL on this
+  // site. Anything else is not an archive URL.
   let path = trimmed;
   let query = "";
 
@@ -74,9 +80,11 @@ function readArchiveQuery(
     }
   }
 
+  // A link's URL is read against the page it sits on, so a query with no path
+  // in front of it (`?format=note`) names whatever page that is — not the
+  // archive.
   const normalized = path.replace(/^\/+/, "").replace(/\/+$/, "");
-  // A bare query with no path is what a stored archive path carries.
-  if (normalized !== "" && normalized !== "archive") return null;
+  if (normalized !== "archive") return null;
 
   return new URLSearchParams(query);
 }
@@ -84,7 +92,7 @@ function readArchiveQuery(
 /**
  * Read an archive URL into the smart collection it could become.
  *
- * @param url - An archive path, a bare query string, or an absolute URL
+ * @param url - An archive path, relative or absolute
  * @param ctx - Collection vocabulary, so a `?collection=` slug can resolve
  * @param opts.origin - This site's origin, for callers that hold URLs an author
  *   typed. An absolute URL is read only when it matches; omit it and only
@@ -127,11 +135,12 @@ export function parseArchiveUrlForUpgrade(
   const stored = readStorableSelection(parsed.selection);
   if (stored === null) return null;
 
-  // The archive's `?sort=` names a *time axis* and always runs newest-first; a
-  // smart collection's `sort` names an order. `updated` is the one value the
-  // two vocabularies share a meaning for.
-  const sort: SmartCollectionSortOrder =
-    query.get("sort") === "updated" ? "updated" : "newest";
+  // The archive's `?sort=` names a *time axis* — `published` or `updated` —
+  // and always runs newest-first. A smart collection has one newest-first
+  // order and it reads Thread activity, which is near enough to either axis
+  // that offering the reader a choice here would be a distinction without a
+  // difference. So the prefill always opens on `newest`.
+  const sort: SmartCollectionSortOrder = "newest";
 
   const readLayout = (value: string | null): ArchiveLayout | null =>
     value !== null && (ARCHIVE_LAYOUTS as readonly string[]).includes(value)

@@ -66,41 +66,42 @@ export type ArchiveVisibility = (typeof ARCHIVE_VISIBILITIES)[number];
 export const EARLIEST_FILTERABLE_YEAR = 1971;
 export const LATEST_FILTERABLE_YEAR = 9999;
 
-export const SORT_ORDERS = [
-  "newest",
-  "oldest",
-  "rating_desc",
-  "rating_asc",
-] as const;
-export type SortOrder = (typeof SORT_ORDERS)[number];
-
-export const COLLECTION_SORT_ORDERS = [
-  "newest",
-  "oldest",
-  "rating_desc",
-] as const;
-export type CollectionSortOrder = (typeof COLLECTION_SORT_ORDERS)[number];
-
 /**
- * How a smart collection orders the posts its conditions gather.
+ * How a chronological query orders its results.
  *
- * The collection page's three orders, plus `updated`. That fourth one has no
- * counterpart on a manual collection because a manual collection is a reading
- * order the author arranged; a smart collection has no arrangement to preserve,
- * so "what changed most recently" is a question it can answer.
+ * `newest` and `oldest` read whichever time axis `PostFilters.sortBy` selects,
+ * so "newest" on the activity axis means "last gained a post" and on the
+ * published axis means "published last".
  *
  * Not to be confused with the archive's `?sort=`, which names a *time axis*
  * (`published` / `updated`) and always runs newest-first. Two vocabularies, and
  * mixing them is how month headers stop agreeing with the order beneath them.
  */
-export const SMART_COLLECTION_SORT_ORDERS = [
-  "newest",
-  "oldest",
-  "updated",
-  "rating_desc",
-] as const;
-export type SmartCollectionSortOrder =
-  (typeof SMART_COLLECTION_SORT_ORDERS)[number];
+export const SORT_ORDERS = ["newest", "oldest", "rating_desc"] as const;
+export type SortOrder = (typeof SORT_ORDERS)[number];
+
+/**
+ * The orders a collection offers its readers — the same three, deliberately.
+ *
+ * Kept as its own name because the two vocabularies answer different questions
+ * (one orders a query, one is stored on a collection row and shown in a menu),
+ * and pointing them at one array is what keeps them from drifting apart the way
+ * the smart collection's fourth order once did.
+ */
+export const COLLECTION_SORT_ORDERS = SORT_ORDERS;
+export type CollectionSortOrder = SortOrder;
+
+/**
+ * How a smart collection orders the posts its conditions gather.
+ *
+ * Identical to a manual collection's orders, and for the same reasons: on both,
+ * `newest` means the Thread that last gained a post, not the Thread published
+ * last. A smart collection briefly carried a fourth order named `updated` that
+ * said the same thing in different words; folding it into `newest` left one
+ * menu the reader can learn once.
+ */
+export const SMART_COLLECTION_SORT_ORDERS = COLLECTION_SORT_ORDERS;
+export type SmartCollectionSortOrder = CollectionSortOrder;
 
 export const NAV_ITEM_TYPES = [
   "link",

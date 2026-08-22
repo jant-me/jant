@@ -67,10 +67,14 @@ function readSort(
   fallback: SmartCollectionSortOrder,
   showRatingSort: boolean,
 ): SmartCollectionSortOrder {
+  // `updated` was a fourth order before `newest` came to mean the same thing.
+  // Links to it are still in the wild, and they still resolve to what the
+  // reader chose, so the accept-old rule costs one line here.
+  const named = value === "updated" ? "newest" : value;
   const requested = (
     SMART_COLLECTION_SORT_ORDERS as readonly string[]
-  ).includes(value ?? "")
-    ? (value as SmartCollectionSortOrder)
+  ).includes(named ?? "")
+    ? (named as SmartCollectionSortOrder)
     : fallback;
   // Silently falls back rather than showing an order that would look arbitrary
   // on a set where almost nothing is rated — the same rule a collection page

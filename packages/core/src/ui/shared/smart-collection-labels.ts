@@ -320,15 +320,6 @@ export function getSmartCollectionDialogLabels(i18n: Translator) {
     sortOptions: {
       newest: shared.sortOptions.newest,
       oldest: shared.sortOptions.oldest,
-      // Only a smart collection offers it: an ordinary collection is ordered
-      // by when a thread was put in it, not by when it last changed.
-      updated: i18n._(
-        msg({
-          message: "Recently updated",
-          comment:
-            "@context: Smart collection sort order option — threads that changed most recently",
-        }),
-      ),
       rating_desc: shared.sortOptions.rating_desc,
     },
     layoutOptions: {

@@ -570,20 +570,53 @@ describe("PostService", () => {
       const descending = await postService.list({
         sortOrder: "rating_desc",
       });
-      const ascending = await postService.list({
-        sortOrder: "rating_asc",
-      });
 
       expect(descending.map((post) => post.bodyText)).toEqual([
         "five stars",
         "three stars",
         "unrated newest",
       ]);
-      expect(ascending.map((post) => post.bodyText)).toEqual([
-        "three stars",
-        "five stars",
-        "unrated newest",
+    });
+
+    it("orders by time for an explicit newest, ratings and all", async () => {
+      // `newest` used to have no branch of its own in the ORDER BY and fell
+      // into the one written for the ascending rating order, so anything that
+      // named it — a smart collection page, most visibly — got its posts
+      // grouped by rating instead of dated. Rated rows here on purpose.
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "oldest, best",
+        publishedAt: 1000,
+        rating: 5,
+      });
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "middle, worst",
+        publishedAt: 2000,
+        rating: 1,
+      });
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "newest, unrated",
+        publishedAt: 3000,
+      });
+
+      const ordered = await postService.list({ sortOrder: "newest" });
+      expect(ordered.map((post) => post.bodyText)).toEqual([
+        "newest, unrated",
+        "middle, worst",
+        "oldest, best",
       ]);
+
+      // The keyset cursor reads the same keys or pagination skips rows.
+      expect(
+        (
+          await postService.list({
+            sortOrder: "newest",
+            cursor: ordered[0]?.id,
+          })
+        ).map((post) => post.bodyText),
+      ).toEqual(["middle, worst", "oldest, best"]);
     });
 
     it("orders drafts by updatedAt descending", async () => {

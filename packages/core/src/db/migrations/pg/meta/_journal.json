@@ -225,6 +225,13 @@
       "when": 1787282384249,
       "tag": "0031_strong_ultimatum",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1787425868269,
+      "tag": "0032_furry_multiple_man",
+      "breakpoints": true
     }
   ]
 }

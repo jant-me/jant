@@ -1422,80 +1422,61 @@ export function createPostService(
             ...keys,
           ];
 
-    if (filters.featured || filters.sortOrder === undefined) {
-      if (filters.featured) {
+    if (filters.featured) {
+      return buildLexicographicCursorCondition(
+        withPinnedSortKey([
+          {
+            direction: "desc",
+            expr: featuredPublishedSortExpr,
+            value: cursorFeaturedPublishedAt,
+          },
+          { direction: "desc", expr: posts.id, value: cursorPost.id },
+        ]),
+      );
+    }
+
+    // One case per sort order, mirroring `list()` key for key.
+    switch (filters.sortOrder ?? "newest") {
+      case "oldest":
+        return buildLexicographicCursorCondition(
+          withPinnedSortKey([
+            {
+              direction: "asc",
+              expr: sortTimestampSortExpr,
+              value: cursorSortTimestamp,
+            },
+            { direction: "asc", expr: posts.id, value: cursorPost.id },
+          ]),
+        );
+      case "rating_desc":
         return buildLexicographicCursorCondition(
           withPinnedSortKey([
             {
               direction: "desc",
-              expr: featuredPublishedSortExpr,
-              value: cursorFeaturedPublishedAt,
+              expr: ratingPresenceExpr,
+              value: cursorRatingPresence,
+            },
+            { direction: "desc", expr: ratingSortExpr, value: cursorRating },
+            {
+              direction: "desc",
+              expr: sortTimestampSortExpr,
+              value: cursorSortTimestamp,
             },
             { direction: "desc", expr: posts.id, value: cursorPost.id },
           ]),
         );
-      }
-
-      return buildLexicographicCursorCondition(
-        withPinnedSortKey([
-          {
-            direction: "desc",
-            expr: sortTimestampSortExpr,
-            value: cursorSortTimestamp,
-          },
-          { direction: "desc", expr: posts.id, value: cursorPost.id },
-        ]),
-      );
+      case "newest":
+        return buildLexicographicCursorCondition(
+          withPinnedSortKey([
+            {
+              direction: "desc",
+              expr: sortTimestampSortExpr,
+              value: cursorSortTimestamp,
+            },
+            { direction: "desc", expr: posts.id, value: cursorPost.id },
+          ]),
+        );
     }
-
-    if (filters.sortOrder === "oldest") {
-      return buildLexicographicCursorCondition(
-        withPinnedSortKey([
-          {
-            direction: "asc",
-            expr: sortTimestampSortExpr,
-            value: cursorSortTimestamp,
-          },
-          { direction: "asc", expr: posts.id, value: cursorPost.id },
-        ]),
-      );
-    }
-
-    if (filters.sortOrder === "rating_desc") {
-      return buildLexicographicCursorCondition(
-        withPinnedSortKey([
-          {
-            direction: "desc",
-            expr: ratingPresenceExpr,
-            value: cursorRatingPresence,
-          },
-          { direction: "desc", expr: ratingSortExpr, value: cursorRating },
-          {
-            direction: "desc",
-            expr: sortTimestampSortExpr,
-            value: cursorSortTimestamp,
-          },
-          { direction: "desc", expr: posts.id, value: cursorPost.id },
-        ]),
-      );
-    }
-
-    return buildLexicographicCursorCondition(
-      withPinnedSortKey([
-        {
-          direction: "desc",
-          expr: ratingPresenceExpr,
-          value: cursorRatingPresence,
-        },
-        { direction: "asc", expr: ratingSortExpr, value: cursorRating },
-        {
-          direction: "desc",
-          expr: sortTimestampSortExpr,
-          value: cursorSortTimestamp,
-        },
-        { direction: "desc", expr: posts.id, value: cursorPost.id },
-      ]),
-    );
   }
 
   function toPost(
@@ -1964,36 +1945,39 @@ export function createPostService(
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .limit(filters.limit ?? 100);
 
-      let query =
-        filters.featured || filters.sortOrder === undefined
-          ? baseQuery.orderBy(
+      // A case per sort order, and no shared fallthrough. This was an if/else
+      // chain whose last branch was written for one order and silently caught
+      // another, so `newest` ordered by rating instead of by time wherever it
+      // was passed explicitly — a smart collection page, most visibly.
+      const buildOrderBy = (): SQL<unknown>[] => {
+        if (filters.featured) {
+          return [
+            ...pinnedOrder,
+            desc(featuredPublishedSortExpr),
+            desc(posts.id),
+          ];
+        }
+        switch (filters.sortOrder ?? "newest") {
+          case "oldest":
+            return [...pinnedOrder, asc(sortTimestampSortExpr), asc(posts.id)];
+          case "rating_desc":
+            return [
               ...pinnedOrder,
-              filters.featured
-                ? desc(featuredPublishedSortExpr)
-                : desc(sortTimestampSortExpr),
+              desc(ratingPresence),
+              desc(posts.rating),
+              desc(sortTimestampSortExpr),
               desc(posts.id),
-            )
-          : filters.sortOrder === "oldest"
-            ? baseQuery.orderBy(
-                ...pinnedOrder,
-                asc(sortTimestampSortExpr),
-                asc(posts.id),
-              )
-            : filters.sortOrder === "rating_desc"
-              ? baseQuery.orderBy(
-                  ...pinnedOrder,
-                  desc(ratingPresence),
-                  desc(posts.rating),
-                  desc(sortTimestampSortExpr),
-                  desc(posts.id),
-                )
-              : baseQuery.orderBy(
-                  ...pinnedOrder,
-                  desc(ratingPresence),
-                  asc(posts.rating),
-                  desc(sortTimestampSortExpr),
-                  desc(posts.id),
-                );
+            ];
+          case "newest":
+            return [
+              ...pinnedOrder,
+              desc(sortTimestampSortExpr),
+              desc(posts.id),
+            ];
+        }
+      };
+
+      let query = baseQuery.orderBy(...buildOrderBy());
 
       if (filters.offset !== undefined) {
         query = query.offset(filters.offset) as typeof query;
@@ -3201,8 +3185,7 @@ export function createPostService(
           ],
         );
         updateResult = results[updateIdx] as
-          | (typeof posts.$inferSelect)[]
-          | undefined;
+          (typeof posts.$inferSelect)[] | undefined;
       } else {
         await db.transaction(async (tx) => {
           if (needsCascade) {

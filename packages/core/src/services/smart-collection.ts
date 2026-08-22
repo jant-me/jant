@@ -325,7 +325,15 @@ export function createSmartCollectionService(
     smartCollection: SmartCollection,
     viewer: SmartCollectionViewer,
   ): PostFilters {
-    const sortsByActivity = smartCollection.sort === "updated";
+    // The same axes a manual collection sorts on, so the two kinds of
+    // collection cannot rank the same Thread differently: `newest` and the
+    // rating order's tie-break read Thread activity — when the Thread last
+    // gained an announced post — while `oldest` reads publication, which is
+    // the only reading of "oldest" that does not move when a reply lands.
+    const axis =
+      smartCollection.sort === "oldest"
+        ? ("published" as const)
+        : ("activity" as const);
     return {
       lang: viewer.lang,
       status: "published",
@@ -337,16 +345,8 @@ export function createSmartCollectionService(
       // Membership never depends on presentation, so the year condition is
       // pinned to the publication axis whatever the chosen order is.
       ...toPostFilters(smartCollection.selection, { yearAxis: "published" }),
-      ...(sortsByActivity
-        ? { sortBy: "thread_updated" as const }
-        : { sortBy: "published" as const }),
-      ...(smartCollection.sort === "oldest"
-        ? { sortOrder: "oldest" as const }
-        : smartCollection.sort === "rating_desc"
-          ? { sortOrder: "rating_desc" as const }
-          : smartCollection.sort === "newest"
-            ? { sortOrder: "newest" as const }
-            : {}),
+      sortBy: axis,
+      sortOrder: smartCollection.sort,
       ignorePinnedSort: true,
     };
   }

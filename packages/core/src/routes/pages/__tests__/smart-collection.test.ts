@@ -202,6 +202,68 @@ describe("smart collection page", () => {
     );
   });
 
+  it("orders newest by date, not by rating", async () => {
+    const { app, services } = setup();
+    await services.posts.create({
+      format: "quote",
+      quoteText: "Older",
+      bodyMarkdown: "older body",
+      status: "published",
+      publishedAt: Date.UTC(2024, 0, 1) / 1000,
+      rating: 5,
+    });
+    await services.posts.create({
+      format: "quote",
+      quoteText: "Newer",
+      bodyMarkdown: "newer body",
+      status: "published",
+      publishedAt: Date.UTC(2026, 0, 1) / 1000,
+      rating: 1,
+    });
+    await services.smartCollections.create({
+      slug: "quotes",
+      title: "Quotes",
+      selection: { format: "quote" },
+      sort: "newest",
+    });
+
+    // The page once handed `newest` to a query that read it as the ascending
+    // rating order, which put the worst-rated post on top of a dated page.
+    const page = await (await app.request("/quotes")).text();
+    expect(page.indexOf("newer body")).toBeLessThan(page.indexOf("older body"));
+  });
+
+  it("still answers a link to the retired ?sort=updated", async () => {
+    const { app, services } = setup();
+    await services.posts.create({
+      format: "quote",
+      quoteText: "Older",
+      bodyMarkdown: "older body",
+      status: "published",
+      publishedAt: Date.UTC(2024, 0, 1) / 1000,
+    });
+    await services.posts.create({
+      format: "quote",
+      quoteText: "Newer",
+      bodyMarkdown: "newer body",
+      status: "published",
+      publishedAt: Date.UTC(2026, 0, 1) / 1000,
+    });
+    await services.smartCollections.create({
+      slug: "quotes",
+      title: "Quotes",
+      selection: { format: "quote" },
+      // A stored order the legacy value must not fall back to, or the test
+      // would pass on the fallback rather than on the mapping.
+      sort: "oldest",
+    });
+
+    const legacy = await (await app.request("/quotes?sort=updated")).text();
+    expect(legacy.indexOf("newer body")).toBeLessThan(
+      legacy.indexOf("older body"),
+    );
+  });
+
   it("404s an address no smart collection holds", async () => {
     const { app } = setup();
     expect((await app.request("/nothing-here")).status).toBe(404);

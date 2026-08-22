@@ -34,13 +34,12 @@ describe("parseArchiveUrlForUpgrade", () => {
     });
   });
 
-  it("accepts the stored query form, with no path in front of it", () => {
-    // What `path_registry.archive_query` holds.
-    expect(parseArchiveUrlForUpgrade("?format=note&title=none", ctx)).toEqual({
-      selection: { format: "note", title: false },
-      sort: "newest",
-      layout: null,
-    });
+  it("refuses a query with no path in front of it", () => {
+    // A link is read against the page it sits on, so `?format=note` names that
+    // page and not the archive.
+    expect(
+      parseArchiveUrlForUpgrade("?format=note&title=none", ctx),
+    ).toBeNull();
   });
 
   it("reads legacy spellings, which stored URLs really carry", () => {
@@ -54,6 +53,8 @@ describe("parseArchiveUrlForUpgrade", () => {
   });
 
   it("carries presentation across without counting it as unknown", () => {
+    // The layout survives; the archive's time axis does not, because a smart
+    // collection has one newest-first order and it already reads activity.
     expect(
       parseArchiveUrlForUpgrade(
         "/archive?format=note&sort=updated&view=grid",
@@ -61,7 +62,7 @@ describe("parseArchiveUrlForUpgrade", () => {
       ),
     ).toEqual({
       selection: { format: "note" },
-      sort: "updated",
+      sort: "newest",
       layout: "grid",
     });
   });
