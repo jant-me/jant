@@ -24,7 +24,6 @@
 
 import { msg } from "@lingui/core/macro";
 import type { MessageDescriptor } from "@lingui/core";
-import { z } from "zod";
 import type { I18n } from "../i18n/i18n.js";
 // Imported from `types/constants.js` rather than `types/props.js`: the props
 // module reads this one for `PostFilterSelection`, and the vocabulary should not
@@ -41,7 +40,7 @@ import {
   MEDIA_KINDS,
   PUBLIC_ARCHIVE_VISIBILITIES,
 } from "../types/constants.js";
-import { createTypeIdSchema, ID_PREFIX } from "./ids.js";
+import { ID_PREFIX, isTypeId } from "./ids.js";
 import type { PostFilters } from "../services/post.js";
 
 type Translator = Pick<I18n, "_">;
@@ -75,12 +74,25 @@ export type FilterDimensionKey = (typeof FILTER_DIMENSION_KEYS)[number];
  */
 export type MediaSelection = "any" | "none" | readonly MediaKind[];
 
-/** Validator for a {@link MediaSelection}, in either of its two shapes. */
-export const MediaSelectionSchema: z.ZodType<MediaSelection> = z.union([
-  z.literal("any"),
-  z.literal("none"),
-  z.array(z.enum(MEDIA_KINDS)).min(1).readonly(),
-]);
+/**
+ * Is this a {@link MediaSelection}, in either of its two shapes?
+ *
+ * A predicate rather than a schema, like every other storage check here: the
+ * editing dialog compiles this registry into the browser bundle, and a
+ * validation library is not something a page should download in order to read a
+ * query string. The one schema an API boundary needs is assembled from these
+ * predicates in `lib/schemas.ts`.
+ */
+export function isMediaSelection(value: unknown): value is MediaSelection {
+  if (value === "any" || value === "none") return true;
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((kind) =>
+      (MEDIA_KINDS as readonly string[]).includes(kind as string),
+    )
+  );
+}
 
 /** The value type each dimension carries once parsed. */
 export interface FilterDimensionValues {
@@ -259,8 +271,12 @@ interface DimensionStorage<V> {
    * form. `null` in the column always means "not selected".
    */
   column: string;
-  /** What a stored value may be — narrower than the URL vocabulary can parse. */
-  schema: z.ZodType<V>;
+  /**
+   * May the column hold this value? Narrower than the URL vocabulary can parse:
+   * `visibility=private` is a URL a reader may write and a value a smart
+   * collection may never store.
+   */
+  isStorable(value: unknown): value is V;
   /** The column value for this dimension's value. */
   toColumn(value: V): string | number | boolean;
   /** Read a column back, or `null` when it is unset or unreadable. */
@@ -409,10 +425,14 @@ const COLLECTION_DIMENSION: Dimension<"collection"> = {
     // the column is a single foreign key and the stored value is a list of one.
     // Keeping the value shape identical either way is what lets one registry
     // serve both.
-    schema: z
-      .array(createTypeIdSchema(ID_PREFIX.collection))
-      .length(1)
-      .readonly(),
+    isStorable(value): value is readonly string[] {
+      return (
+        Array.isArray(value) &&
+        value.length === 1 &&
+        typeof value[0] === "string" &&
+        isTypeId(value[0], ID_PREFIX.collection)
+      );
+    },
     toColumn(value) {
       return value[0] as string;
     },
@@ -474,7 +494,12 @@ const FORMAT_DIMENSION: Dimension<"format"> = {
   },
   storage: {
     column: "format",
-    schema: z.enum(FORMATS),
+    isStorable(value): value is Format {
+      return (
+        typeof value === "string" &&
+        (FORMATS as readonly string[]).includes(value)
+      );
+    },
     toColumn(value) {
       return value;
     },
@@ -582,7 +607,9 @@ const TITLE_DIMENSION: Dimension<"title"> = {
   },
   storage: {
     column: "hasTitle",
-    schema: z.boolean(),
+    isStorable(value): value is boolean {
+      return typeof value === "boolean";
+    },
     toColumn(value) {
       return value;
     },
@@ -637,11 +664,14 @@ const YEAR_DIMENSION: Dimension<"year"> = {
   },
   storage: {
     column: "year",
-    schema: z
-      .number()
-      .int()
-      .min(EARLIEST_FILTERABLE_YEAR)
-      .max(LATEST_FILTERABLE_YEAR),
+    isStorable(value): value is number {
+      return (
+        typeof value === "number" &&
+        Number.isInteger(value) &&
+        value >= EARLIEST_FILTERABLE_YEAR &&
+        value <= LATEST_FILTERABLE_YEAR
+      );
+    },
     toColumn(value) {
       return value;
     },
@@ -743,7 +773,7 @@ const MEDIA_DIMENSION: Dimension<"media"> = {
   },
   storage: {
     column: "media",
-    schema: MediaSelectionSchema,
+    isStorable: isMediaSelection,
     // The column holds the same folded string the URL does, so what is stored
     // and what is shared are one vocabulary rather than two.
     toColumn(value) {
@@ -812,7 +842,9 @@ const REPLIES_DIMENSION: Dimension<"replies"> = {
   },
   storage: {
     column: "hasReplies",
-    schema: z.boolean(),
+    isStorable(value): value is boolean {
+      return typeof value === "boolean";
+    },
     toColumn(value) {
       return value;
     },
@@ -928,7 +960,12 @@ const VISIBILITY_DIMENSION: Dimension<"visibility"> = {
     // published page, so it can never name the one set only its author sees.
     // `private` parses here and fails validation, which is exactly what lets
     // the "turn this link into a smart collection" flow refuse it by name.
-    schema: z.enum(PUBLIC_ARCHIVE_VISIBILITIES),
+    isStorable(value): value is ArchiveVisibility {
+      return (
+        typeof value === "string" &&
+        (PUBLIC_ARCHIVE_VISIBILITIES as readonly string[]).includes(value)
+      );
+    },
     toColumn(value) {
       return value;
     },
@@ -1003,24 +1040,49 @@ export const FILTER_DIMENSION_PARAMS: readonly string[] =
 // =============================================================================
 
 /**
- * What a stored selection may hold — the validator a create or update request
- * runs its conditions through.
+ * Read a value that claims to be a storable selection.
+ *
+ * Every condition has to be one its column may hold, and a key no dimension
+ * declares is a refusal rather than something to drop quietly: the callers here
+ * are deciding whether a page can promise to keep answering what a URL answers,
+ * and a promise about conditions that were silently discarded is a different
+ * promise.
  *
  * Assembled from the registry rather than restated, so a new dimension is
- * accepted by every endpoint the moment it is declared, and a dimension whose
- * stored vocabulary is narrower than its URL one (`visibility`) is narrow
- * everywhere at once.
+ * accepted the moment it is declared, and a dimension whose stored vocabulary
+ * is narrower than its URL one (`visibility`) is narrow everywhere at once.
+ * `lib/schemas.ts` wraps the same per-dimension checks into the Zod schema the
+ * API boundary validates request bodies with.
+ *
+ * @param value - Anything: parsed JSON, or a selection read out of a URL
+ * @returns The selection, or `null` when it names something unstorable
+ * @example
+ * readStorableSelection({ format: "note" }); // { format: "note" }
+ * readStorableSelection({ visibility: "private" }); // null — never storable
  */
-export const PostFilterSelectionSchema = z
-  .object(
-    Object.fromEntries(
-      FILTER_DIMENSION_KEYS.map((key) => [
-        key,
-        FILTER_DIMENSIONS[key].storage.schema.optional(),
-      ]),
-    ),
-  )
-  .strict() as unknown as z.ZodType<PostFilterSelection>;
+export function readStorableSelection(
+  value: unknown,
+): PostFilterSelection | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+  const selection: Record<string, unknown> = {};
+  for (const [key, condition] of Object.entries(value)) {
+    if (condition === undefined) continue;
+    if (!(FILTER_DIMENSION_KEYS as readonly string[]).includes(key))
+      return null;
+    if (!isStorableValue(key as FilterDimensionKey, condition)) return null;
+    selection[key] = condition;
+  }
+  return selection as PostFilterSelection;
+}
+
+function isStorableValue(key: FilterDimensionKey, value: unknown): boolean {
+  const isStorable = FILTER_DIMENSIONS[key].storage.isStorable as (
+    value: unknown,
+  ) => boolean;
+  return isStorable(value);
+}
 
 /**
  * The column values a selection writes, every dimension named.

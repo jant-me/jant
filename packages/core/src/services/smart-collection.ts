@@ -43,7 +43,6 @@ import { getCollectionPagePath } from "../lib/collection-paths.js";
 import { generatePostSlug } from "../lib/slug.js";
 import { getSlugValidationIssue } from "../lib/slug-format.js";
 import {
-  PostFilterSelectionSchema,
   selectionFromRow,
   selectionToColumns,
   toPostFilters,
@@ -54,6 +53,7 @@ import {
   CollectionSlugSchema,
   CollectionTitleSchema,
   parseValidated,
+  PostFilterSelectionSchema,
 } from "../lib/schemas.js";
 import type {
   CreateSmartCollection,

@@ -41,7 +41,11 @@ import {
 } from "../i18n/locales.js";
 import { ValidationError } from "./errors.js";
 import { createTypeIdSchema, ID_PREFIX } from "./ids.js";
-import { PostFilterSelectionSchema } from "./filter-dimensions.js";
+import {
+  FILTER_DIMENSION_KEYS,
+  FILTER_DIMENSIONS,
+  type PostFilterSelection,
+} from "./filter-dimensions.js";
 import { normalizeSlug } from "./slug-format.js";
 import { isReservedPath } from "./constants.js";
 import { sanitizeUrl, normalizePath } from "./url.js";
@@ -740,6 +744,35 @@ export const CreateCollectionSchema = z.object({
  * API request body schema for updating a collection
  */
 export const UpdateCollectionSchema = CreateCollectionSchema.partial();
+
+/**
+ * What a stored selection may hold — the validator a create or update request
+ * runs its conditions through.
+ *
+ * Assembled from the dimension registry rather than restated, so a new
+ * dimension is accepted by every endpoint the moment it is declared, and a
+ * dimension whose stored vocabulary is narrower than its URL one (`visibility`)
+ * is narrow everywhere at once.
+ *
+ * The registry itself carries plain predicates, not schemas, because the smart
+ * collection dialog compiles it into the browser bundle. The Zod wrapper lives
+ * here, on the server side of that line, where request bodies are validated and
+ * a rejected condition still has to say which one it was.
+ */
+export const PostFilterSelectionSchema = z
+  .object(
+    Object.fromEntries(
+      FILTER_DIMENSION_KEYS.map((key) => [
+        key,
+        z
+          .custom((value) => FILTER_DIMENSIONS[key].storage.isStorable(value), {
+            message: `Invalid value for the ${key} condition`,
+          })
+          .optional(),
+      ]),
+    ),
+  )
+  .strict() as unknown as z.ZodType<PostFilterSelection>;
 
 /**
  * API request body schema for creating a smart collection.

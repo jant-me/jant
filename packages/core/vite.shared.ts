@@ -7,8 +7,10 @@
  * - CLIENT_TARGET: browser target for client asset compilation
  * - clientBuildOptions: rollup input/output for public/auth JS and CSS assets
  * - swcPlugin: SWC with Hono JSX + Lingui macro transforms
+ * - clientPlugins: the transform stack and build guard both browser bundles use
  */
 
+import type { Plugin } from "vite";
 import swc from "unplugin-swc";
 import { resolve } from "path";
 import { readFileSync } from "fs";
@@ -102,7 +104,10 @@ export const clientBuildOptions = {
 
 /**
  * SWC plugin for Hono JSX transforms and Lingui macro rewrites.
- * Server-side only (dev + worker builds). Client code uses Vite's default esbuild.
+ *
+ * Every bundle needs it, browser bundles included: `lib/` modules are shared
+ * between the worker and the client, and some of them declare their
+ * reader-facing strings with the Lingui macro.
  */
 export const swcPlugin = () =>
   swc.vite({
@@ -132,3 +137,63 @@ export const swcPlugin = () =>
     },
     module: { type: "es6" },
   });
+
+/**
+ * Everything the two browser bundles (`vite.config.client.ts`,
+ * `vite.config.site.ts`) need beyond their own entry points.
+ *
+ * One export rather than a list each config assembles itself, because that is
+ * exactly how the client build lost the Lingui transform: `lib/` modules are
+ * shared with the worker, some declare their strings with the Lingui macro, and
+ * a browser build without SWC leaves `@lingui/core/macro` standing in the graph
+ * — where it resolves to a Babel plugin whose own `babel-plugin-macros` import
+ * resolves to nothing. See {@link failOnUnresolvedImport} for why that shipped.
+ */
+export const clientPlugins = (): Plugin[] => [
+  {
+    // Vite 8 transforms with Oxc by default. SWC owns the transform here, and
+    // running both over the same file is one pass too many.
+    name: "jant:client-oxc-off",
+    config: () => ({ oxc: false as const }),
+  },
+  swcPlugin(),
+  failOnUnresolvedImport(),
+];
+
+/** Rolldown's stand-in for a module it could not resolve. */
+const UNRESOLVED_STUB =
+  /Could not resolve "([^"]+)" imported by "([^"]+)"\. Is it installed\?/g;
+
+/**
+ * Fails the build when a chunk carries a module that only throws.
+ *
+ * An import nothing resolves does not stop a rolldown build: the missing module
+ * is replaced by one that throws when the browser evaluates it, and the build
+ * still exits 0. Nothing is logged — a `require()` inside a CJS dependency does
+ * not even reach `onLog` — so the first report is a blank page and a stack
+ * trace in someone's console, with every custom element after the throw
+ * silently unregistered. Read the emitted chunks instead, where the stub is
+ * unambiguous, and fail there.
+ */
+function failOnUnresolvedImport(): Plugin {
+  return {
+    name: "jant:fail-on-unresolved-import",
+    generateBundle(_options, bundle) {
+      const unresolved = new Set<string>();
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== "chunk") continue;
+        for (const [, missing, importer] of chunk.code.matchAll(
+          UNRESOLVED_STUB,
+        )) {
+          unresolved.add(`  "${missing}" imported by "${importer}"`);
+        }
+      }
+      if (unresolved.size === 0) return;
+      throw new Error(
+        `Browser bundle contains ${unresolved.size} unresolved import(s), which rolldown compiled into modules that throw on load:\n` +
+          `${[...unresolved].sort().join("\n")}\n` +
+          `Install the dependency, or keep the module that pulls it in out of the browser graph.`,
+      );
+    },
+  };
+}

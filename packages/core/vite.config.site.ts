@@ -15,7 +15,7 @@
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
-import { CLIENT_TARGET } from "./vite.shared";
+import { CLIENT_TARGET, clientPlugins } from "./vite.shared";
 
 const dir = import.meta.dirname;
 
@@ -25,7 +25,7 @@ export default defineConfig({
     target: CLIENT_TARGET,
     emptyOutDir: true,
     minify: true,
-    assetInlineLimit: 0,
+    assetsInlineLimit: 0,
     cssCodeSplit: false,
     rollupOptions: {
       input: {
@@ -45,5 +45,5 @@ export default defineConfig({
     },
   },
 
-  plugins: [tailwindcss()],
+  plugins: [tailwindcss(), clientPlugins()],
 });

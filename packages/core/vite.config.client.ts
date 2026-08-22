@@ -10,7 +10,7 @@
 
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
-import { buildVersion, clientBuildOptions } from "./vite.shared";
+import { buildVersion, clientBuildOptions, clientPlugins } from "./vite.shared";
 
 export default defineConfig({
   // Keep Vite's base at `/`. Asset URLs already include the reserved
@@ -19,7 +19,7 @@ export default defineConfig({
     ...clientBuildOptions,
     // Keep fonts and other assets as real files so CSP can stay at
     // `font-src 'self'` without needing `data:`.
-    assetInlineLimit: 0,
+    assetsInlineLimit: 0,
     emptyOutDir: true,
     minify: true,
     // Manifest maps entry source paths → hashed output filenames so the
@@ -31,5 +31,5 @@ export default defineConfig({
     __JANT_VERSION__: JSON.stringify(buildVersion),
   },
 
-  plugins: [tailwindcss()],
+  plugins: [tailwindcss(), clientPlugins()],
 });

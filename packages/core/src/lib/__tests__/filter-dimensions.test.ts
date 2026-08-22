@@ -5,8 +5,8 @@ import {
   FILTER_DIMENSION_PARAMS,
   parsePostFilterSelection,
   parsePostFilterSelectionStrict,
-  PostFilterSelectionSchema,
   readCollectionSlugs,
+  readStorableSelection,
   selectionFromRow,
   selectionToColumns,
   serializePostFilterSelection,
@@ -341,41 +341,65 @@ describe("storing a selection", () => {
   });
 });
 
-describe("PostFilterSelectionSchema", () => {
+describe("readStorableSelection", () => {
   it("accepts a selection a smart collection may store", () => {
-    const result = PostFilterSelectionSchema.safeParse({
+    expect(
+      readStorableSelection({
+        format: "note",
+        media: "any",
+        visibility: "featured",
+        collection: ["col_01m0f291t3fzvte3vj2g8d611z"],
+      }),
+    ).toEqual({
       format: "note",
       media: "any",
       visibility: "featured",
       collection: ["col_01m0f291t3fzvte3vj2g8d611z"],
     });
-    expect(result.success).toBe(true);
   });
 
   it("refuses the private visibility a smart collection can never name", () => {
-    expect(
-      PostFilterSelectionSchema.safeParse({ visibility: "private" }).success,
-    ).toBe(false);
+    expect(readStorableSelection({ visibility: "private" })).toBeNull();
   });
 
   it("refuses more than one collection, which would be an OR", () => {
     expect(
-      PostFilterSelectionSchema.safeParse({
+      readStorableSelection({
         collection: [
           "col_01m0f291t3fzvte3vj2g8d611z",
           "col_01m0f291t3fzvte3vj2g8d6120",
         ],
-      }).success,
-    ).toBe(false);
+      }),
+    ).toBeNull();
+  });
+
+  it("refuses an id that is not a collection", () => {
+    expect(
+      readStorableSelection({ collection: ["pst_01m0f291t3fzvte3vj2g8d611z"] }),
+    ).toBeNull();
+  });
+
+  it("refuses a year outside the range a timestamp can carry", () => {
+    expect(readStorableSelection({ year: 1970 })).toBeNull();
+    expect(readStorableSelection({ year: 300000 })).toBeNull();
+    expect(readStorableSelection({ year: 2024 })).toEqual({ year: 2024 });
   });
 
   it("refuses a key that is not a dimension", () => {
-    expect(
-      PostFilterSelectionSchema.safeParse({ language: "en" }).success,
-    ).toBe(false);
+    expect(readStorableSelection({ language: "en" })).toBeNull();
+  });
+
+  it("reads an unset condition as absent rather than a refusal", () => {
+    expect(readStorableSelection({ format: undefined })).toEqual({});
   });
 
   it("accepts the empty selection, which means every post", () => {
-    expect(PostFilterSelectionSchema.safeParse({}).success).toBe(true);
+    expect(readStorableSelection({})).toEqual({});
+  });
+
+  it("refuses anything that is not an object of conditions", () => {
+    expect(readStorableSelection(null)).toBeNull();
+    expect(readStorableSelection("format=note")).toBeNull();
+    expect(readStorableSelection([{ format: "note" }])).toBeNull();
   });
 });

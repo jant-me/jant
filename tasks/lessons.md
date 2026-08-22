@@ -942,3 +942,36 @@ instead: an empty one is quickest to drop and re-migrate; one with content worth
 keeping takes the delta by hand (rebuild the table, then rewrite the tracking
 row to the new name or timestamp). Check both dev databases, not the one that
 happened to fail first.
+
+## A browser build that loses a transform fails in the browser, not in the build
+
+`src/lib/filter-dimensions.ts` writes its labels with the Lingui macro, and the
+smart collection dialog put it in the client graph. `vite.config.client.ts`
+assembled its own plugin list and never had `swcPlugin()`, so the macro survived
+into the browser bundle, where `@lingui/core/macro` resolves to a Babel plugin
+that imports `babel-plugin-macros` — a package nothing installs.
+
+Rolldown does not fail that build. It replaces the missing module with one that
+throws when the browser evaluates it, logs nothing (a `require()` inside a CJS
+dependency never reaches `onLog`), and exits 0. The build looked fine; what
+shipped was a `client-auth.js` that threw on load, so every custom element
+registered after the throw — the post menu included — silently stopped existing.
+
+Dev hid it: `vite.config.ts` applies `swcPlugin()` to the whole graph, so the
+macro compiled there and the same code worked under `mise run dev`.
+
+- Every config that emits browser JS takes the shared plugin stack
+  (`clientPlugins()`), never a list it assembles itself. Anything under
+  `src/lib/` can end up in the browser graph, and it is compiled by whichever
+  build pulls it in.
+- The same reach applies to a shared module's _dependencies_. `filter-dimensions.ts`
+  described stored values with Zod schemas, so the dialog that reads the URL
+  vocabulary downloaded 18 kB gzipped of validator with it. A shared vocabulary
+  carries plain predicates; the Zod wrapper around them lives in
+  `lib/schemas.ts`, on the server side of the line, where request bodies are
+  validated anyway.
+- A plugin the dev server applies is not a plugin the production build applies.
+  Dev passing says nothing about `vite build`.
+- Verify a client-side fix against the built bundle — load the emitted
+  `client-auth.js` in a browser and check the elements registered. The dev
+  server compiles different output.

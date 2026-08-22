@@ -15,7 +15,7 @@
 
 import {
   parsePostFilterSelectionStrict,
-  PostFilterSelectionSchema,
+  readStorableSelection,
   type DimensionContext,
   type PostFilterSelection,
 } from "./filter-dimensions.js";
@@ -124,8 +124,8 @@ export function parseArchiveUrlForUpgrade(
   // The URL vocabulary is wider than what a smart collection may store —
   // `visibility=private` parses and then fails here, which is exactly how this
   // flow refuses it by name rather than by guessing.
-  const stored = PostFilterSelectionSchema.safeParse(parsed.selection);
-  if (!stored.success) return null;
+  const stored = readStorableSelection(parsed.selection);
+  if (stored === null) return null;
 
   // The archive's `?sort=` names a *time axis* and always runs newest-first; a
   // smart collection's `sort` names an order. `updated` is the one value the
@@ -140,5 +140,5 @@ export function parseArchiveUrlForUpgrade(
   const layout =
     readLayout(query.get("layout")) ?? readLayout(query.get("view"));
 
-  return { selection: stored.data, sort, layout };
+  return { selection: stored, sort, layout };
 }

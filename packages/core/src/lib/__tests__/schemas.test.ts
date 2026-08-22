@@ -14,6 +14,7 @@ import {
   UpdateSiteSettingsSchema,
   normalizeEmail,
   parseFormData,
+  PostFilterSelectionSchema,
   parseFormDataOptional,
   validateAttachmentCount,
 } from "../schemas.js";
@@ -813,6 +814,44 @@ describe("validateAttachmentCount", () => {
     const error = validateAttachmentCount(tooMany);
     expect(error).toBe(
       `Posts allow at most ${MAX_MEDIA_ATTACHMENTS} attachments`,
+    );
+  });
+});
+
+describe("PostFilterSelectionSchema", () => {
+  it("accepts a selection a smart collection may store", () => {
+    const result = PostFilterSelectionSchema.safeParse({
+      format: "note",
+      media: "any",
+      visibility: "featured",
+      collection: ["col_01m0f291t3fzvte3vj2g8d611z"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts the empty selection, which means every post", () => {
+    expect(PostFilterSelectionSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("refuses the private visibility a smart collection can never name", () => {
+    expect(
+      PostFilterSelectionSchema.safeParse({ visibility: "private" }).success,
+    ).toBe(false);
+  });
+
+  it("refuses a key that is not a dimension", () => {
+    expect(
+      PostFilterSelectionSchema.safeParse({ language: "en" }).success,
+    ).toBe(false);
+  });
+
+  it("names the condition it rejected", () => {
+    const result = PostFilterSelectionSchema.safeParse({ year: 1970 });
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues[0]?.path).toEqual(["year"]);
+    expect(result.error.issues[0]?.message).toBe(
+      "Invalid value for the year condition",
     );
   });
 });
