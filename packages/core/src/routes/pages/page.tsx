@@ -485,13 +485,7 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
       );
       if (!smartCollection) return c.notFound();
 
-      const result = await renderSmartCollectionFeed(
-        c,
-        smartCollection.slug,
-        resolvedCollection.kind === "alias"
-          ? `/${resolvedCollection.path}/feed`
-          : undefined,
-      );
+      const result = await renderSmartCollectionFeed(c, smartCollection.slug);
       return result ?? c.notFound();
     }
 
@@ -638,11 +632,7 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     );
     if (!smartCollection) return c.notFound();
 
-    const result = await renderSmartCollectionPage(
-      c,
-      smartCollection.slug,
-      resolved.kind === "alias" ? `/${resolved.path}` : undefined,
-    );
+    const result = await renderSmartCollectionPage(c, smartCollection.slug);
     return result ?? c.notFound();
   }
 

@@ -83,13 +83,11 @@ function readSort(
  *
  * @param c - Hono context
  * @param slug - The smart collection's address
- * @param pagePathOverride - Public page path, when reached through an alias
  * @returns The rendered page, or null when no smart collection lives there
  */
 export async function renderSmartCollectionPage(
   c: Context<Env>,
   slug: string,
-  pagePathOverride?: string,
 ): Promise<Response | null> {
   const page = parsePageNumber(c.req.query("page"));
   const paginatedPageTitle = formatPageLabel(page);
@@ -100,8 +98,7 @@ export async function renderSmartCollectionPage(
   ]);
   if (!smartCollection) return null;
 
-  const canonicalPagePath =
-    pagePathOverride ?? getCollectionPagePath(smartCollection.slug);
+  const canonicalPagePath = getCollectionPagePath(smartCollection.slug);
   const viewer = {
     isAuthenticated: navData.isAuthenticated,
     lang: getViewLang(c) ?? undefined,
@@ -218,20 +215,19 @@ export async function renderSmartCollectionPage(
  *
  * @param c - Hono context
  * @param slug - The smart collection's address
- * @param feedPathOverride - Public feed path, when reached through an alias
  * @returns The feed response, or null when no smart collection lives there
  */
 export async function renderSmartCollectionFeed(
   c: Context<Env>,
   slug: string,
-  feedPathOverride?: string,
 ): Promise<Response | null> {
   const smartCollection = await c.var.services.smartCollections.getBySlug(slug);
   if (!smartCollection) return null;
 
   const { appConfig, services } = c.var;
-  const canonicalFeedPath =
-    feedPathOverride ?? `${getCollectionPagePath(smartCollection.slug)}/feed`;
+  const canonicalFeedPath = `${getCollectionPagePath(
+    smartCollection.slug,
+  )}/feed`;
   const publishedBefore = getRssPublishedBefore(
     appConfig.rssPublishDelaySeconds,
   );
