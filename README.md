@@ -10,7 +10,7 @@
 
 Jant is a small blog system for one author. It supports three post formats — **Note, Link, Quote** — that you can connect into Threads and group into Collections. Publishing feels closer to Twitter or Threads than to a WordPress or Ghost dashboard.
 
-![Jant Home](https://jant-me-media.jant.me/assets/jant-home.png)
+![Jant Home](https://jant-me-media.jant.me/assets/jant-home-800-0816.webp)
 
 The name comes from _Jantelagen_ — a concept from a 1933 Nordic satirical novel, often summarized as "don't show off, don't compare."
 

@@ -6,7 +6,7 @@
 
 Jant 是一个为单作者设计的小型博客系统，支持 **Note、Link、Quote** 三种内容格式，可以串成 Thread，也可以归到 Collection 里。发布体验更接近 Twitter / Threads，而不是 WordPress / Ghost 的后台。
 
-![Jant Home](https://jant-me-media.jant.me/assets/jant-home-800.png)
+![Jant Home](https://jant-me-media.jant.me/assets/jant-home-800-0816.webp)
 
 在线演示：[demo.jant.me](https://demo.jant.me)。点击 `More` 菜单里的[登录](https://demo.jant.me/signin)直接体验，演示账号已自动填充，数据每日清空。
 
@@ -51,7 +51,7 @@ Link 和 Quote 是一等格式，不是「文章」的变体。我博客里一�
 
 常用操作都有快捷键：任意页面按 `n` 新建（`l` 发链接，`q` 发引用），`Cmd + K` 搜索；在帖子页按 `e` 编辑、`f` 加入 Featured、`c` 改合集。正文是 Markdown 编辑器，输入 `/` 唤出命令。
 
-![Jant 撰写界面](https://jant-me-media.jant.me/assets/jant-compose.png)
+![Jant 撰写界面](https://jant-me-media.jant.me/assets/jant-compose-800-0816.webp)
 
 ## Jant 特性
 

@@ -6,7 +6,7 @@
 
 Jant is a small blog system for one author. It supports three post formats — **Note, Link, Quote** — that you can connect into Threads and group into Collections. Publishing feels closer to Twitter or Threads than to a WordPress or Ghost dashboard.
 
-![Jant Home](https://jant-me-media.jant.me/assets/jant-home-800.png)
+![Jant Home](https://jant-me-media.jant.me/assets/jant-home-800-0816.webp)
 
 Live demo: [demo.jant.me](https://demo.jant.me). Click [Sign in](https://demo.jant.me/signin) under the `More` menu — demo credentials are pre-filled, and the data resets daily.
 
@@ -51,7 +51,7 @@ Link and Quote are first-class formats, not variants of an article. More than ha
 
 The common moves have keyboard shortcuts: `n` opens a new post from any page (`l` for a link, `q` for a quote), `Cmd + K` searches; on a post page, `e` edits, `f` features, `c` changes Collections. The body is a Markdown editor — type `/` for commands.
 
-![Jant compose screen](https://jant-me-media.jant.me/assets/jant-compose.png)
+![Jant compose screen](https://jant-me-media.jant.me/assets/jant-compose-800-0816.webp)
 
 ## What Jant has
 
