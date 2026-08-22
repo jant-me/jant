@@ -26,7 +26,7 @@ Most blog systems treat "published" and "broadcast" as a single decision — you
 
 A traditional blog gives you a form: title, body, category, tags, excerpt, SEO, cover image. That's an interface for managing content, not for writing. Jant takes the cue from Twitter and Threads instead — title is optional, you can extend any post into a Thread later, and publishing is a single action.
 
-![Jant compose screen](https://jant-me-media.jant.me/assets/new.png)
+![Jant compose screen](https://jant-me-media.jant.me/assets/jant-compose-800-0816.webp)
 
 Jant also borrows one of Tumblr's instincts: Note, Link, and Quote are three native formats, not subtypes wedged into a single article template.
 
