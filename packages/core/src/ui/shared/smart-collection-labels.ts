@@ -120,11 +120,6 @@ const smartCollectionMessages = {
     message: "Nothing matches these conditions yet.",
     comment: "@context: Smart collection page when no post matches",
   }),
-  turnIntoSmartCollection: msg({
-    message: "Turn into a smart collection",
-    comment:
-      "@context: Menu item that opens the smart collection dialog prefilled from an archive URL",
-  }),
   whatItIs: msg({
     message:
       "Conditions choose what belongs here, not you. Posts you write later join on their own.",
@@ -141,9 +136,6 @@ export const getSmartCollectionLabels = (i18n: Translator) => ({
   deleteSmartCollection: i18n._(smartCollectionMessages.deleteSmartCollection),
   confirmDelete: i18n._(smartCollectionMessages.confirmDelete),
   emptyMatches: i18n._(smartCollectionMessages.emptyMatches),
-  turnIntoSmartCollection: i18n._(
-    smartCollectionMessages.turnIntoSmartCollection,
-  ),
 });
 
 export type SmartCollectionLabels = ReturnType<typeof getSmartCollectionLabels>;

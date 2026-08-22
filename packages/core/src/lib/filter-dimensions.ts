@@ -1040,51 +1040,6 @@ export const FILTER_DIMENSION_PARAMS: readonly string[] =
 // =============================================================================
 
 /**
- * Read a value that claims to be a storable selection.
- *
- * Every condition has to be one its column may hold, and a key no dimension
- * declares is a refusal rather than something to drop quietly: the callers here
- * are deciding whether a page can promise to keep answering what a URL answers,
- * and a promise about conditions that were silently discarded is a different
- * promise.
- *
- * Assembled from the registry rather than restated, so a new dimension is
- * accepted the moment it is declared, and a dimension whose stored vocabulary
- * is narrower than its URL one (`visibility`) is narrow everywhere at once.
- * `lib/schemas.ts` wraps the same per-dimension checks into the Zod schema the
- * API boundary validates request bodies with.
- *
- * @param value - Anything: parsed JSON, or a selection read out of a URL
- * @returns The selection, or `null` when it names something unstorable
- * @example
- * readStorableSelection({ format: "note" }); // { format: "note" }
- * readStorableSelection({ visibility: "private" }); // null — never storable
- */
-export function readStorableSelection(
-  value: unknown,
-): PostFilterSelection | null {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return null;
-  }
-  const selection: Record<string, unknown> = {};
-  for (const [key, condition] of Object.entries(value)) {
-    if (condition === undefined) continue;
-    if (!(FILTER_DIMENSION_KEYS as readonly string[]).includes(key))
-      return null;
-    if (!isStorableValue(key as FilterDimensionKey, condition)) return null;
-    selection[key] = condition;
-  }
-  return selection as PostFilterSelection;
-}
-
-function isStorableValue(key: FilterDimensionKey, value: unknown): boolean {
-  const isStorable = FILTER_DIMENSIONS[key].storage.isStorable as (
-    value: unknown,
-  ) => boolean;
-  return isStorable(value);
-}
-
-/**
  * The column values a selection writes, every dimension named.
  *
  * Dimensions with no value are written as `null`, not omitted: removing a

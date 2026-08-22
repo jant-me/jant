@@ -6,7 +6,6 @@ import {
   parsePostFilterSelection,
   parsePostFilterSelectionStrict,
   readCollectionSlugs,
-  readStorableSelection,
   selectionFromRow,
   selectionToColumns,
   serializePostFilterSelection,
@@ -338,68 +337,5 @@ describe("storing a selection", () => {
     expect(selectionFromRow({ format: "banana", year: 2024 })).toEqual({
       year: 2024,
     });
-  });
-});
-
-describe("readStorableSelection", () => {
-  it("accepts a selection a smart collection may store", () => {
-    expect(
-      readStorableSelection({
-        format: "note",
-        media: "any",
-        visibility: "featured",
-        collection: ["col_01m0f291t3fzvte3vj2g8d611z"],
-      }),
-    ).toEqual({
-      format: "note",
-      media: "any",
-      visibility: "featured",
-      collection: ["col_01m0f291t3fzvte3vj2g8d611z"],
-    });
-  });
-
-  it("refuses the private visibility a smart collection can never name", () => {
-    expect(readStorableSelection({ visibility: "private" })).toBeNull();
-  });
-
-  it("refuses more than one collection, which would be an OR", () => {
-    expect(
-      readStorableSelection({
-        collection: [
-          "col_01m0f291t3fzvte3vj2g8d611z",
-          "col_01m0f291t3fzvte3vj2g8d6120",
-        ],
-      }),
-    ).toBeNull();
-  });
-
-  it("refuses an id that is not a collection", () => {
-    expect(
-      readStorableSelection({ collection: ["pst_01m0f291t3fzvte3vj2g8d611z"] }),
-    ).toBeNull();
-  });
-
-  it("refuses a year outside the range a timestamp can carry", () => {
-    expect(readStorableSelection({ year: 1970 })).toBeNull();
-    expect(readStorableSelection({ year: 300000 })).toBeNull();
-    expect(readStorableSelection({ year: 2024 })).toEqual({ year: 2024 });
-  });
-
-  it("refuses a key that is not a dimension", () => {
-    expect(readStorableSelection({ language: "en" })).toBeNull();
-  });
-
-  it("reads an unset condition as absent rather than a refusal", () => {
-    expect(readStorableSelection({ format: undefined })).toEqual({});
-  });
-
-  it("accepts the empty selection, which means every post", () => {
-    expect(readStorableSelection({})).toEqual({});
-  });
-
-  it("refuses anything that is not an object of conditions", () => {
-    expect(readStorableSelection(null)).toBeNull();
-    expect(readStorableSelection("format=note")).toBeNull();
-    expect(readStorableSelection([{ format: "note" }])).toBeNull();
   });
 });

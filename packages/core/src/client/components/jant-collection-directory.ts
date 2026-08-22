@@ -53,11 +53,7 @@ import type {
 import { getIconSvg } from "../../lib/icons.js";
 import { openCollectionDialog } from "../collection-dialog-host.js";
 import { openSmartCollectionDialog } from "../smart-collection-dialog-host.js";
-import {
-  collectionVocabulary,
-  setCollectionVocabulary,
-} from "./smart-collection-conditions.js";
-import { parseArchiveUrlForUpgrade } from "../../lib/smart-collection-upgrade.js";
+import { setCollectionVocabulary } from "./smart-collection-conditions.js";
 
 interface CollectionsResponse {
   collections?: Array<{
@@ -1028,17 +1024,19 @@ export class JantCollectionsManager extends LitElement {
             <span class="collection-directory-title">${collection.title}</span>
           </a>
         </div>
-        ${collection.description
-          ? html`
-              <div class="collection-directory-description prose">
-                ${unsafeHTML(
+        ${
+          collection.description
+            ? html`
+                <div class="collection-directory-description prose">
+                  ${unsafeHTML(
                   renderMarkdown(collection.description, {
                     namespace: collection.id,
                   }),
                 )}
-              </div>
-            `
-          : nothing}
+                </div>
+              `
+            : nothing
+        }
         <p class="collection-directory-summary">
           <span class="collection-directory-meta"
             >${this.#countLabel(collection.threadCount)}</span
@@ -1138,17 +1136,19 @@ export class JantCollectionsManager extends LitElement {
             >
           </a>
         </div>
-        ${smartCollection.description
-          ? html`
-              <div class="collection-directory-description prose">
-                ${unsafeHTML(
+        ${
+          smartCollection.description
+            ? html`
+                <div class="collection-directory-description prose">
+                  ${unsafeHTML(
                   renderMarkdown(smartCollection.description, {
                     namespace: smartCollection.id,
                   }),
                 )}
-              </div>
-            `
-          : nothing}
+                </div>
+              `
+            : nothing
+        }
         <p class="collection-directory-summary">
           <span class="collection-directory-meta"
             >${this.#countLabel(smartCollection.threadCount)}</span
@@ -1212,56 +1212,6 @@ export class JantCollectionsManager extends LitElement {
         </div>
         ${this.#renderItemMenu(item)}
       </div>
-    `;
-  }
-
-  /**
-   * "Turn into a smart collection", for a link naming an archive URL this site
-   * can honor exactly.
-   *
-   * Hidden rather than shown-and-failing when the URL carries a parameter
-   * nobody declared, a value nobody can read, a collection that no longer
-   * exists, `visibility=private`, or an origin that is not this site's.
-   * Offering it there would be promising to keep answering a question that
-   * cannot be asked.
-   */
-  #renderUpgradeMenuItem(item: CollectionManagerItem) {
-    if (!item.url) return nothing;
-    const upgrade = parseArchiveUrlForUpgrade(
-      item.url,
-      { collections: collectionVocabulary() },
-      // A link's URL is whatever the author typed, so it may name another site.
-      // Only this component knows which origin is ours; the parser stays free of
-      // `window` because the settings page calls it on the server.
-      { origin: window.location.origin },
-    );
-    if (!upgrade) return nothing;
-
-    return html`
-      <button
-        type="button"
-        class="collections-page-menu-item"
-        @click=${() => {
-          this._showItemMenuId = null;
-          document.removeEventListener("click", this.#closeItemMenu);
-          // Prefilled, never saved on the author's behalf: the title and
-          // description come from the link, the conditions from its query, and
-          // the author sees all of it before anything is written.
-          void openSmartCollectionDialog({
-            prefill: {
-              title: item.label ?? "",
-              description: item.description ?? "",
-              selection: upgrade.selection as Record<string, unknown>,
-              sort: upgrade.sort,
-              layout: upgrade.layout,
-            },
-          }).then((changed) => {
-            if (changed) void this.#refreshList();
-          });
-        }}
-      >
-        ${this.labels.turnIntoSmartCollection}
-      </button>
     `;
   }
 
@@ -1403,21 +1353,23 @@ export class JantCollectionsManager extends LitElement {
             </span>
           </a>
         </div>
-        ${item.description
-          ? html`
-              <div class="collection-directory-description prose">
-                ${unsafeHTML(
+        ${
+          item.description
+            ? html`
+                <div class="collection-directory-description prose">
+                  ${unsafeHTML(
                   renderMarkdown(item.description, { namespace: item.id }),
                 )}
-              </div>
-            `
-          : html`
-              <p class="collection-directory-summary">
-                <span class="collection-directory-meta"
-                  >${this.labels.linkDescriptionPlaceholder}</span
-                >
-              </p>
-            `}
+                </div>
+              `
+            : html`
+                <p class="collection-directory-summary">
+                  <span class="collection-directory-meta"
+                    >${this.labels.linkDescriptionPlaceholder}</span
+                  >
+                </p>
+              `
+        }
       </div>
     `;
 
@@ -1511,24 +1463,26 @@ export class JantCollectionsManager extends LitElement {
             <circle cx="19" cy="12" r="2" />
           </svg>
         </button>
-        ${isOpen
-          ? html`
-              <div
-                class="collections-page-menu"
-                @click=${(e: Event) => e.stopPropagation()}
-              >
-                ${smartCollection
-                  ? html`
-                      <!-- Opens the dialog, not an editor page: creating and
+        ${
+          isOpen
+            ? html`
+                <div
+                  class="collections-page-menu"
+                  @click=${(e: Event) => e.stopPropagation()}
+                >
+                  ${
+                  smartCollection
+                    ? html`
+                        <!-- Opens the dialog, not an editor page: creating and
                            editing a smart collection are one surface. There is
                            deliberately no "Remove from Collections" — a
                            directory row is only a position, and deleting it
                            would move the entry to the end rather than hide it,
                            so the menu item would not do what it says. -->
-                      <button
-                        type="button"
-                        class="collections-page-menu-item"
-                        @click=${() => {
+                        <button
+                          type="button"
+                          class="collections-page-menu-item"
+                          @click=${() => {
                           this._showItemMenuId = null;
                           document.removeEventListener(
                             "click",
@@ -1540,58 +1494,13 @@ export class JantCollectionsManager extends LitElement {
                             if (changed) void this.#refreshList();
                           });
                         }}
-                      >
-                        ${this.labels.edit}
-                      </button>
-                      ${this.navigationCollectionIds.includes(
-                        smartCollection.id,
-                      )
-                        ? html`
-                            <a
-                              href=${publicPath(NAVIGATION_SETTINGS_PATH)}
-                              class="collections-page-menu-item"
-                            >
-                              ${this.labels.editNavigation}
-                            </a>
-                          `
-                        : html`
-                            <button
-                              type="button"
-                              class="collections-page-menu-item"
-                              ?disabled=${this._addingToNavigationId ===
-                              smartCollection.id}
-                              @click=${() =>
-                                void this.#addToNavigation(
-                                  smartCollection.id,
-                                  addSmartCollectionToNavigation,
-                                )}
-                            >
-                              ${this._addingToNavigationId ===
-                              smartCollection.id
-                                ? this.labels.addingToNavigation
-                                : this.labels.addToNavigation}
-                            </button>
-                          `}
-                      <button
-                        type="button"
-                        class="collections-page-menu-item collections-page-menu-item-danger"
-                        @click=${() =>
-                          void this.#deleteSmartCollection(smartCollection)}
-                      >
-                        ${this.labels.deleteSmartCollection}
-                      </button>
-                    `
-                  : collection
-                    ? html`
-                        <button
-                          type="button"
-                          class="collections-page-menu-item"
-                          @click=${() =>
-                            void this.#editCollection(collection.id)}
                         >
                           ${this.labels.edit}
                         </button>
-                        ${this.navigationCollectionIds.includes(collection.id)
+                        ${
+                        this.navigationCollectionIds.includes(
+                          smartCollection.id,
+                        )
                           ? html`
                               <a
                                 href=${publicPath(NAVIGATION_SETTINGS_PATH)}
@@ -1604,32 +1513,88 @@ export class JantCollectionsManager extends LitElement {
                               <button
                                 type="button"
                                 class="collections-page-menu-item"
-                                ?disabled=${this._addingToNavigationId ===
-                                collection.id}
+                                ?disabled=${
+                                this._addingToNavigationId ===
+                                smartCollection.id
+                              }
                                 @click=${() =>
+                                void this.#addToNavigation(
+                                  smartCollection.id,
+                                  addSmartCollectionToNavigation,
+                                )}
+                              >
+                                ${
+                                this._addingToNavigationId ===
+                                smartCollection.id
+                                  ? this.labels.addingToNavigation
+                                  : this.labels.addToNavigation
+                              }
+                              </button>
+                            `
+                      }
+                        <button
+                          type="button"
+                          class="collections-page-menu-item collections-page-menu-item-danger"
+                          @click=${() =>
+                          void this.#deleteSmartCollection(smartCollection)}
+                        >
+                          ${this.labels.deleteSmartCollection}
+                        </button>
+                      `
+                    : collection
+                      ? html`
+                          <button
+                            type="button"
+                            class="collections-page-menu-item"
+                            @click=${() =>
+                            void this.#editCollection(collection.id)}
+                          >
+                            ${this.labels.edit}
+                          </button>
+                          ${
+                          this.navigationCollectionIds.includes(collection.id)
+                            ? html`
+                                <a
+                                  href=${publicPath(NAVIGATION_SETTINGS_PATH)}
+                                  class="collections-page-menu-item"
+                                >
+                                  ${this.labels.editNavigation}
+                                </a>
+                              `
+                            : html`
+                                <button
+                                  type="button"
+                                  class="collections-page-menu-item"
+                                  ?disabled=${
+                                  this._addingToNavigationId === collection.id
+                                }
+                                  @click=${() =>
                                   void this.#addToNavigation(
                                     collection.id,
                                     addCollectionToNavigation,
                                   )}
-                              >
-                                ${this._addingToNavigationId === collection.id
-                                  ? this.labels.addingToNavigation
-                                  : this.labels.addToNavigation}
-                              </button>
-                            `}
-                        <button
-                          type="button"
-                          class="collections-page-menu-item collections-page-menu-item-danger"
-                          @click=${() => this.#deleteCollection(collection)}
-                        >
-                          ${this.labels.deleteCollection}
-                        </button>
-                      `
-                    : html`
-                        <button
-                          type="button"
-                          class="collections-page-menu-item"
-                          @click=${() => {
+                                >
+                                  ${
+                                  this._addingToNavigationId === collection.id
+                                    ? this.labels.addingToNavigation
+                                    : this.labels.addToNavigation
+                                }
+                                </button>
+                              `
+                        }
+                          <button
+                            type="button"
+                            class="collections-page-menu-item collections-page-menu-item-danger"
+                            @click=${() => this.#deleteCollection(collection)}
+                          >
+                            ${this.labels.deleteCollection}
+                          </button>
+                        `
+                      : html`
+                          <button
+                            type="button"
+                            class="collections-page-menu-item"
+                            @click=${() => {
                             this._showItemMenuId = null;
                             document.removeEventListener(
                               "click",
@@ -1637,21 +1602,22 @@ export class JantCollectionsManager extends LitElement {
                             );
                             this.#toggleLinkEdit(item);
                           }}
-                        >
-                          ${this.labels.edit}
-                        </button>
-                        ${this.#renderUpgradeMenuItem(item)}
-                        <button
-                          type="button"
-                          class="collections-page-menu-item collections-page-menu-item-danger"
-                          @click=${() => this.#deleteLink(item)}
-                        >
-                          ${this.labels.deleteLink}
-                        </button>
-                      `}
-              </div>
-            `
-          : nothing}
+                          >
+                            ${this.labels.edit}
+                          </button>
+                          <button
+                            type="button"
+                            class="collections-page-menu-item collections-page-menu-item-danger"
+                            @click=${() => this.#deleteLink(item)}
+                          >
+                            ${this.labels.deleteLink}
+                          </button>
+                        `
+                }
+                </div>
+              `
+            : nothing
+        }
       </div>
     `;
   }
@@ -1745,27 +1711,31 @@ export class JantCollectionsManager extends LitElement {
           class="collection-directory-divider-row"
           aria-hidden=${hasLabel ? nothing : "true"}
         >
-          ${hasLabel
-            ? html`
-                ${group
-                  ? html`
-                      <a
-                        href=${viewPath(
+          ${
+            hasLabel
+              ? html`
+                  ${
+                  group
+                    ? html`
+                        <a
+                          href=${viewPath(
                           getCollectionSelectionPath(group.slugExpression),
                         )}
-                        class="collection-directory-divider-link collection-directory-divider-text"
-                      >
-                        ${item.label}
-                      </a>
-                    `
-                  : html`
-                      <span class="collection-directory-divider-text">
-                        ${item.label}
-                      </span>
-                    `}
-                <hr class="collection-directory-divider-line" />
-              `
-            : html`<hr class="collection-directory-divider-line" />`}
+                          class="collection-directory-divider-link collection-directory-divider-text"
+                        >
+                          ${item.label}
+                        </a>
+                      `
+                    : html`
+                        <span class="collection-directory-divider-text">
+                          ${item.label}
+                        </span>
+                      `
+                }
+                  <hr class="collection-directory-divider-line" />
+                `
+              : html`<hr class="collection-directory-divider-line" />`
+          }
         </div>
       </div>
     `;
@@ -1870,36 +1840,42 @@ export class JantCollectionsManager extends LitElement {
           id="collection-created-notice-title"
           class="collection-created-notice-message"
         >
-          ${isInNavigation
-            ? this.labels.addedToNavigation
-            : this.labels.formLabels.createdLabel}
+          ${
+            isInNavigation
+              ? this.labels.addedToNavigation
+              : this.labels.formLabels.createdLabel
+          }
         </p>
         <div class="collection-created-notice-actions">
-          ${isInNavigation
-            ? html`
-                <a
-                  href=${publicPath(NAVIGATION_SETTINGS_PATH)}
-                  class="collection-created-notice-action collection-created-notice-action-primary"
-                >
-                  ${this.labels.editNavigation}
-                </a>
-              `
-            : html`
-                <button
-                  type="button"
-                  class="collection-created-notice-action collection-created-notice-action-primary"
-                  ?disabled=${this._addingToNavigationId === collection.id}
-                  @click=${() =>
+          ${
+            isInNavigation
+              ? html`
+                  <a
+                    href=${publicPath(NAVIGATION_SETTINGS_PATH)}
+                    class="collection-created-notice-action collection-created-notice-action-primary"
+                  >
+                    ${this.labels.editNavigation}
+                  </a>
+                `
+              : html`
+                  <button
+                    type="button"
+                    class="collection-created-notice-action collection-created-notice-action-primary"
+                    ?disabled=${this._addingToNavigationId === collection.id}
+                    @click=${() =>
                     void this.#addToNavigation(
                       collection.id,
                       addCollectionToNavigation,
                     )}
-                >
-                  ${this._addingToNavigationId === collection.id
-                    ? this.labels.addingToNavigation
-                    : this.labels.addToNavigation}
-                </button>
-              `}
+                  >
+                    ${
+                    this._addingToNavigationId === collection.id
+                      ? this.labels.addingToNavigation
+                      : this.labels.addToNavigation
+                  }
+                  </button>
+                `
+          }
           <button
             type="button"
             class="collection-created-notice-dismiss"
@@ -1933,10 +1909,11 @@ export class JantCollectionsManager extends LitElement {
   render() {
     return html`
       ${this.#renderCreatedCollectionNotice()} ${this.#renderCreateLinkForm()}
-      ${this.#hasDirectoryContent()
-        ? html`
-            <div id="collections-manager-list" class="collection-directory">
-              ${(() => {
+      ${
+        this.#hasDirectoryContent()
+          ? html`
+              <div id="collections-manager-list" class="collection-directory">
+                ${(() => {
                 const labels = this.#computeSequenceLabels();
                 return this._items.map((item, index) => {
                   if (item.type === "collection") {
@@ -1951,9 +1928,10 @@ export class JantCollectionsManager extends LitElement {
                   return this.#renderDividerItem(item, index);
                 });
               })()}
-            </div>
-          `
-        : html`<p class="text-muted-foreground">${this.labels.emptyState}</p>`}
+              </div>
+            `
+          : html`<p class="text-muted-foreground">${this.labels.emptyState}</p>`
+      }
     `;
   }
 }

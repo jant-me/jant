@@ -46,7 +46,6 @@ const labels: CollectionManagerLabels = {
   editSmartCollection: "Edit Smart Collection",
   deleteSmartCollection: "Delete",
   confirmDeleteSmartCollection: "Delete this smart collection?",
-  turnIntoSmartCollection: "Turn into a smart collection",
   smartCollectionDeleted: "Smart collection deleted.",
   organize: "Organize",
   done: "Done",

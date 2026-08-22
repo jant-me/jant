@@ -2596,11 +2596,6 @@ msgstr ""
 msgid "Tune color in a real reading context"
 msgstr ""
 
-#. @context: Menu item that opens the smart collection dialog prefilled from an archive URL
-#: src/ui/shared/smart-collection-labels.ts
-msgid "Turn into a smart collection"
-msgstr ""
-
 #. @context: First-use hint shown over the compose editor to surface the slash command menu
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Type / for commands"
