@@ -151,7 +151,7 @@ export const SYSTEM_NAV_KEYS = {
     url: "/archive",
     defaultPlacement: "header",
   },
-  rss: { defaultLabel: "Feed", url: "/feed", defaultPlacement: "more" },
+  rss: { defaultLabel: "RSS", url: "/feed", defaultPlacement: "more" },
   settings: {
     defaultLabel: "Settings",
     url: "/settings",

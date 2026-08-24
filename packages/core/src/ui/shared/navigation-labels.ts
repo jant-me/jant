@@ -47,9 +47,10 @@ const BUILTIN_NAV_LABELS = {
     comment: "@context: Built-in navigation label for settings",
   }),
   rss: msg({
-    message: "Feed",
+    message: "RSS",
     context: "nav",
-    comment: "@context: Built-in navigation label for feed",
+    comment:
+      "@context: Built-in navigation label for the feed. Keep the acronym in every locale — it is what readers scan for. The document /feed serves is Atom, but RSS is the category name readers and feed apps use, and it matches the vocabulary the rest of the product already speaks (systemKey `rss`, `mainRssFeed`). 'Feed' would collide with Featured/Latest/All, which are feeds too.",
   }),
   signIn: msg({
     message: "Sign in",

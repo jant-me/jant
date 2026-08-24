@@ -1009,12 +1009,6 @@ msgstr "Featured on {date} at {time}"
 msgid "Featured posts"
 msgstr "Featured posts"
 
-#. @context: Built-in navigation label for feed
-#: src/ui/shared/navigation-labels.ts
-msgctxt "nav"
-msgid "Feed"
-msgstr "Feed"
-
 #. @context: Search snippet suffix on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "feel deliberate instead of washed out."
@@ -2011,6 +2005,12 @@ msgstr "Reset Password"
 #: src/ui/pages/BrandPage.tsx
 msgid "Reverse logo"
 msgstr "Reverse logo"
+
+#. @context: Built-in navigation label for the feed. Keep the acronym in every locale — it is what readers scan for. The document /feed serves is Atom, but RSS is the category name readers and feed apps use, and it matches the vocabulary the rest of the product already speaks (systemKey `rss`, `mainRssFeed`). 'Feed' would collide with Featured/Latest/All, which are feeds too.
+#: src/ui/shared/navigation-labels.ts
+msgctxt "nav"
+msgid "RSS"
+msgstr "RSS"
 
 #. @context: Tooltip for the RSS feed link on a collection page
 #. @context: Tooltip for the RSS feed link on a collection page
