@@ -188,6 +188,14 @@ const FileIcon = ({
   );
 };
 
+/*
+ * No `h-*` Tailwind utility belongs on anything inside a post: a microformats2
+ * parser treats every `h-`-prefixed class as a microformat root, so `h-auto` on
+ * a single image published a phantom `h-auto` child microformat — carrying the
+ * thumbnail as its `photo` — on the h-entry of every post with a picture.
+ * Nothing was lost by dropping it: Preflight already declares
+ * `img, video { max-width: 100%; height: auto }`.
+ */
 export const MediaGallery: FC<MediaGalleryProps> = ({
   attachments,
   postPermalink,
@@ -351,7 +359,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                       style={imageStyle}
                       class={
                         singleVisual
-                          ? "media-visual w-full h-auto rounded-lg"
+                          ? "media-visual w-full rounded-lg"
                           : "media-visual w-full object-cover"
                       }
                       loading="lazy"
@@ -424,7 +432,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                           style={videoStyle}
                           class={
                             singleVisual
-                              ? "media-visual w-full h-auto"
+                              ? "media-visual w-full"
                               : "media-visual w-full object-cover"
                           }
                         />
@@ -488,7 +496,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                       style={videoStyle}
                       class={
                         singleVisual
-                          ? "media-visual w-full h-auto"
+                          ? "media-visual w-full"
                           : "media-visual w-full object-cover"
                       }
                     />

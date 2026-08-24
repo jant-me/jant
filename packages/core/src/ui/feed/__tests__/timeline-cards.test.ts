@@ -91,6 +91,256 @@ describe("timeline cards", () => {
     expect(detailHtml).not.toContain("feed-card");
   });
 
+  it("marks a link post's referenced article as u-bookmark-of, never as the entry's own u-url", () => {
+    const post = createPostView({ format: "link" });
+
+    const feedHtml = renderWithI18n(LinkCard({ post, mode: "feed" }));
+    const compactHtml = renderWithI18n(LinkCard({ post, mode: "compact" }));
+    const detailHtml = renderWithI18n(LinkCard({ post, mode: "detail" }));
+
+    for (const html of [feedHtml, compactHtml, detailHtml]) {
+      expect(html).toContain(
+        '<a href="https://example.com/article" class="u-bookmark-of feed-link-title-link"',
+      );
+    }
+
+    // The entry's own URL is the permalink, and it is emitted exactly once —
+    // a second `u-url` on the referenced article would make parsers read that
+    // article as this post.
+    expect(feedHtml.match(/u-url/g)).toHaveLength(1);
+    expect(detailHtml.match(/u-url/g)).toHaveLength(1);
+    expect(feedHtml).toContain('class="u-url post-footer-link"');
+    expect(detailHtml).toContain('class="u-url post-footer-link"');
+  });
+
+  it("omits u-bookmark-of when a link post has no referenced article", () => {
+    const post = createPostView({ format: "link", url: undefined });
+
+    const feedHtml = renderWithI18n(LinkCard({ post, mode: "feed" }));
+    const detailHtml = renderWithI18n(LinkCard({ post, mode: "detail" }));
+
+    // The title falls back to the permalink; a post does not bookmark itself.
+    for (const html of [feedHtml, detailHtml]) {
+      expect(html).toContain('<a href="/post-1" class="feed-link-title-link"');
+      expect(html).not.toContain("u-bookmark-of");
+      expect(html.match(/u-url/g)).toHaveLength(1);
+    }
+  });
+
+  it("scopes a quote post's citation to an h-cite and keeps e-content on the commentary", () => {
+    const post = createPostView({ format: "quote" });
+
+    const feedHtml = renderWithI18n(QuoteCard({ post, mode: "feed" }));
+    const detailHtml = renderWithI18n(QuoteCard({ post, mode: "detail" }));
+
+    for (const html of [feedHtml, detailHtml]) {
+      expect(html).toContain('<figure class="feed-quote-cite h-cite">');
+      // The quotation is the citation's content, not the entry's.
+      expect(html).toContain('class="p-content feed-quote-content');
+      expect(html).not.toContain("e-content feed-quote-content");
+      expect(html).toContain('class="e-content feed-quote-commentary prose');
+
+      // Source URL and attribution belong to the cited work, so they have to
+      // sit inside the h-cite — outside it they would land on the h-entry.
+      const cite = html.slice(
+        html.indexOf('<figure class="feed-quote-cite h-cite">'),
+        html.indexOf("</figure>"),
+      );
+      expect(cite).toContain(
+        '<a href="https://example.com/article" class="u-url p-name feed-quote-source"',
+      );
+      expect(cite).toContain('<figcaption class="feed-quote-attribution">');
+    }
+  });
+
+  it("keeps a quote attribution without a source link addressable as p-name", () => {
+    const post = createPostView({ format: "quote", url: undefined });
+
+    const feedHtml = renderWithI18n(QuoteCard({ post, mode: "feed" }));
+
+    expect(feedHtml).toContain('<span class="p-name">Card title</span>');
+    expect(feedHtml.match(/u-url/g)).toHaveLength(1);
+  });
+
+  it("leaves note card microformats untouched", () => {
+    const post = createPostView({ format: "note" });
+
+    const feedHtml = renderWithI18n(NoteCard({ post, mode: "feed" }));
+    const detailHtml = renderWithI18n(NoteCard({ post, mode: "detail" }));
+
+    expect(feedHtml).toContain('<h2 class="p-name feed-note-title">');
+    expect(feedHtml).toContain('<a href="/post-1" class="hover:underline"');
+    expect(feedHtml).toContain('class="e-content prose');
+    expect(feedHtml).not.toContain("u-bookmark-of");
+    expect(feedHtml).not.toContain("h-cite");
+
+    expect(detailHtml).toContain('<h1 class="p-name post-detail-title">');
+    expect(detailHtml).toContain('class="u-url post-header-meta-link"');
+    expect(detailHtml).toContain('class="e-content prose post-detail-body"');
+    expect(detailHtml).not.toContain("u-bookmark-of");
+    expect(detailHtml).not.toContain("h-cite");
+  });
+
+  it("gives every card exactly one u-url, pointing at its permalink", () => {
+    // A titled note's heading used to link the permalink as a second `u-url`.
+    // Same value as the footer's, so no parser read the wrong post — but the
+    // entry's URL is one fact, and the footer is where all three cards state it.
+    const cards = [
+      NoteCard({ post: createPostView({ format: "note" }), mode: "feed" }),
+      NoteCard({ post: createPostView({ format: "note" }), mode: "detail" }),
+      NoteCard({
+        post: createPostView({ format: "note", title: undefined }),
+        mode: "feed",
+      }),
+      LinkCard({ post: createPostView({ format: "link" }), mode: "feed" }),
+      LinkCard({ post: createPostView({ format: "link" }), mode: "detail" }),
+      QuoteCard({ post: createPostView({ format: "quote" }), mode: "feed" }),
+      QuoteCard({ post: createPostView({ format: "quote" }), mode: "detail" }),
+    ];
+
+    for (const card of cards) {
+      // A quote's source link is a `u-url` too, but it belongs to the nested
+      // h-cite. Drop the citation before counting what the entry claims.
+      const entry = renderWithI18n(card).replace(
+        /<figure class="feed-quote-cite h-cite">[\s\S]*?<\/figure>/,
+        "",
+      );
+      expect(entry.match(/u-url/g)).toHaveLength(1);
+      expect(entry).toMatch(/<a href="\/post-1" class="u-url /);
+    }
+  });
+
+  it("states empty content outright when a card has no name and nothing to say", () => {
+    // The status badges are always in the DOM and hidden with CSS, which a
+    // microformats parser does not run. With no `p-name` and no `e-content` to
+    // go on, it names the entry after whatever text it finds — the badge
+    // labels. An explicit empty `e-content` says what is true and stops that.
+    const empty = { title: undefined, bodyHtml: undefined, media: [] };
+
+    for (const mode of ["feed", "detail", "compact"] as const) {
+      const cards = {
+        note: NoteCard({
+          post: createPostView({ format: "note", ...empty }),
+          mode,
+        }),
+        link: LinkCard({
+          post: createPostView({ format: "link", ...empty }),
+          mode,
+        }),
+        quote: QuoteCard({
+          post: createPostView({
+            format: "quote",
+            ...empty,
+            quoteText: undefined,
+            url: undefined,
+          }),
+          mode,
+        }),
+      };
+      for (const [format, card] of Object.entries(cards)) {
+        const html = renderWithI18n(card);
+        expect(`${format}/${mode}: ${html}`).toContain(
+          '<div class="e-content"></div>',
+        );
+      }
+    }
+  });
+
+  it("keeps stray h-* utilities out of post markup", () => {
+    // A microformats2 parser reads every `h-`-prefixed class as a microformat
+    // root, so a Tailwind height utility inside a card becomes a phantom child
+    // microformat on the entry. Only real roots may appear.
+    const withMedia = createPostView({
+      format: "note",
+      media: [createMediaView(), createMediaView({ id: "media-2" })],
+    });
+    const cards = {
+      "note with one image": NoteCard({
+        post: { ...withMedia, media: [createMediaView()] },
+        mode: "feed",
+      }),
+      "note with a gallery": NoteCard({ post: withMedia, mode: "feed" }),
+      "link post": LinkCard({
+        post: createPostView({ format: "link" }),
+        mode: "detail",
+      }),
+      "quote post": QuoteCard({
+        post: createPostView({ format: "quote" }),
+        mode: "feed",
+      }),
+    };
+
+    for (const [label, card] of Object.entries(cards)) {
+      const html = renderWithI18n(card);
+      const roots = [...html.matchAll(/class="([^"]*)"/g)]
+        .flatMap((m) => m[1].split(/\s+/))
+        .filter((c) => /^h-/.test(c));
+      const unexpected = roots.filter((c) => c !== "h-entry" && c !== "h-cite");
+      expect(`${label}: ${unexpected.join(", ")}`).toBe(`${label}: `);
+    }
+  });
+
+  it("omits the empty content marker when the card carries a name or content", () => {
+    const cards = {
+      "titled note": NoteCard({
+        post: createPostView({ format: "note", bodyHtml: undefined }),
+        mode: "feed",
+      }),
+      "untitled note with a body": NoteCard({
+        post: createPostView({ format: "note", title: undefined }),
+        mode: "feed",
+      }),
+      "titled link": LinkCard({
+        post: createPostView({ format: "link", bodyHtml: undefined }),
+        mode: "feed",
+      }),
+      // A quotation is a nested h-cite, which is enough on its own.
+      "quote without commentary": QuoteCard({
+        post: createPostView({ format: "quote", bodyHtml: undefined }),
+        mode: "feed",
+      }),
+    };
+
+    for (const [label, card] of Object.entries(cards)) {
+      const html = renderWithI18n(card);
+      expect(`${label}: ${html}`).not.toContain(
+        '<div class="e-content"></div>',
+      );
+    }
+  });
+
+  it("styles post titles by their own classes, never by their microformats class", () => {
+    const css = readFileSync(
+      new URL("../../../styles/ui.css", import.meta.url),
+      "utf8",
+    );
+
+    // `.p-name` is parsed API; styling it would silently retypeset any element
+    // that later needs the property — the quote attribution, for one.
+    expect(css).not.toMatch(/^\s*\.p-name\s*\{/m);
+    expect(css).toMatch(
+      /\.post-detail-title,\s*\.feed-compact-title\s*\{[^}]*font-family:\s*var\(--font-heading\);/,
+    );
+    // Compact note titles have no other class carrying the heading face.
+    const compactHtml = renderWithI18n(
+      NoteCard({ post: createPostView({ format: "note" }), mode: "compact" }),
+    );
+    expect(compactHtml).toContain("feed-compact-title");
+  });
+
+  it("keeps embedded quotes on the host panel's type scale", () => {
+    const css = readFileSync(
+      new URL("../../../styles/ui.css", import.meta.url),
+      "utf8",
+    );
+
+    // The quote body dropped `.e-content`, which is how this rule used to
+    // reach it; without the explicit class it would out-size the panel.
+    expect(css).toMatch(
+      /\.compose-reply-context-body\s*:is\(\s*\.prose,\s*\.e-content,\s*\.feed-quote,\s*\.feed-quote-content\s*\)\s*\{[^}]*font-size:\s*inherit;/,
+    );
+  });
+
   it("renders quote attachments in feed and detail modes", () => {
     const post = createPostView({ format: "quote" });
 
@@ -524,7 +774,7 @@ describe("timeline cards", () => {
     );
 
     expect(css).toMatch(
-      /\.feed-quote-attribution:has\(\+ \.post-menu-footer\)\s*\{[^}]*margin-bottom:\s*0\.45rem;/,
+      /\.feed-quote-cite:has\(\+ \.post-menu-footer\) \.feed-quote-attribution\s*\{[^}]*margin-bottom:\s*0\.45rem;/,
     );
   });
 

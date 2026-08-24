@@ -9,6 +9,7 @@ import { msg } from "@lingui/core/macro";
 import type { FC } from "hono/jsx";
 import { useLingui } from "../../i18n/context.js";
 import type { TimelineCardProps } from "../../types.js";
+import { EmptyPostContent } from "../shared/EmptyPostContent.js";
 import { MediaGallery } from "../shared/MediaGallery.js";
 import { getPostArticleAttributes } from "../shared/post-article-attributes.js";
 import { StarRating } from "../shared/StarRating.js";
@@ -104,20 +105,22 @@ export const NoteCard: FC<TimelineCardProps> = ({
           </div>
         ) : (
           <h2
-            class={`p-name ${isCompact ? "text-sm mb-1" : "feed-note-title"}`}
+            class={`p-name ${isCompact ? "feed-compact-title text-sm mb-1" : "feed-note-title"}`}
           >
-            <a href={post.permalink} class="u-url hover:underline">
+            <a href={post.permalink} class="hover:underline">
               {post.title}
             </a>
           </h2>
         ))}
-      {displayHtml && (
+      {displayHtml ? (
         <div
           class={`e-content prose ${isCompact ? "prose-sm" : isDetail || showFullBody ? "post-detail-body" : isArticle ? "post-body-summary" : ""}`}
           data-post-body
           {...(clampNote ? { "data-note-clamp": "" } : {})}
           dangerouslySetInnerHTML={{ __html: displayHtml }}
         />
+      ) : (
+        !isArticle && <EmptyPostContent />
       )}
       {(() => {
         const tail = (

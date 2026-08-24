@@ -8,6 +8,7 @@
 
 import type { FC } from "hono/jsx";
 import type { TimelineCardProps } from "../../types.js";
+import { EmptyPostContent } from "../shared/EmptyPostContent.js";
 import { StarRating } from "../shared/StarRating.js";
 import { getPostArticleAttributes } from "../shared/post-article-attributes.js";
 import { PostFooter } from "../shared/PostFooter.js";
@@ -31,6 +32,14 @@ export const LinkCard: FC<TimelineCardProps> = ({
 
   const safeUrl = post.url ? sanitizeUrl(post.url) : "";
   const domain = safeUrl ? extractDisplayDomain(safeUrl) : null;
+
+  /* The h-entry's own `u-url` is the permalink, emitted once by PostFooter.
+     The title points at the referenced article instead, which is what
+     `u-bookmark-of` means — and only when there is one: without a link the
+     href falls back to the permalink, and a post cannot bookmark itself. */
+  const titleLinkClass = safeUrl
+    ? "u-bookmark-of feed-link-title-link"
+    : "feed-link-title-link";
 
   const domainEl =
     domain &&
@@ -68,6 +77,11 @@ export const LinkCard: FC<TimelineCardProps> = ({
     />
   );
 
+  /* No title and no commentary leaves the entry with neither `p-name` nor
+     `e-content`, which is the shape a parser fills in by guessing. The title
+     is the `p-name`, so this only ever renders when there is none. */
+  const emptyContentEl = !post.title && !bodyEl && <EmptyPostContent />;
+
   const mediaEl = !isCompact && post.media.length > 0 && (
     <div class="mt-3" data-post-media>
       <MediaGallery attachments={post.media} postPermalink={post.permalink} />
@@ -86,7 +100,7 @@ export const LinkCard: FC<TimelineCardProps> = ({
         <h2 class={`p-name feed-link-title ${isCompact ? "text-sm" : ""}`}>
           <a
             href={safeUrl || post.permalink}
-            class="u-url feed-link-title-link"
+            class={titleLinkClass}
             target={safeUrl ? "_blank" : undefined}
             rel={safeUrl ? "noopener noreferrer" : undefined}
           >
@@ -113,7 +127,7 @@ export const LinkCard: FC<TimelineCardProps> = ({
               <h1 class="p-name post-detail-title feed-link-title">
                 <a
                   href={safeUrl || post.permalink}
-                  class="u-url feed-link-title-link"
+                  class={titleLinkClass}
                   target={safeUrl ? "_blank" : undefined}
                   rel={safeUrl ? "noopener noreferrer" : undefined}
                 >
@@ -137,6 +151,7 @@ export const LinkCard: FC<TimelineCardProps> = ({
       {(() => {
         const tail = (
           <>
+            {emptyContentEl}
             {mediaEl}
             {ratingEl}
             <PostFooter
