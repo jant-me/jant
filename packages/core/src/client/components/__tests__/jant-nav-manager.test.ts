@@ -127,6 +127,7 @@ const labels: NavManagerLabels = {
   back: "Back",
   headerSection: "Header",
   moreSection: "More",
+  previewMore: "More",
   moreEmptyHint: "Move links here to hide them under More.",
   placementSaved: "Navigation placement updated.",
   cancel: "Cancel",
@@ -554,6 +555,23 @@ describe("JantNavManager", () => {
         }),
       }),
     );
+  });
+
+  it("labels the preview overflow button with the site header's own wording", async () => {
+    const el = await createElement();
+    el.labels = { ...labels, moreSection: "Overflow", previewMore: "More" };
+    await el.updateComplete;
+
+    const trigger = requireElement(
+      el.querySelector<HTMLElement>("[data-preview-more-trigger]"),
+      "expected preview more trigger",
+    );
+    const sectionHeading = Array.from(el.querySelectorAll("section > h2")).map(
+      (heading) => heading.textContent?.trim(),
+    );
+
+    expect(trigger.textContent?.trim()).toBe("More");
+    expect(sectionHeading).toContain("Overflow");
   });
 
   it("opens and dismisses the preview More popover", async () => {

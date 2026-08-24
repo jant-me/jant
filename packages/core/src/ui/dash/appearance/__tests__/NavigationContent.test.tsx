@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import type { Context } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
 import { describe, expect, it } from "vitest";
@@ -97,5 +98,20 @@ describe("NavigationContent", () => {
 
     expect(html).toContain("suggested-links=");
     expect(html).toContain("&quot;targetLabel&quot;:&quot;Collection&quot;");
+  });
+
+  it("leaves the preview frame unclipped so the More menu can escape it", () => {
+    const css = readFileSync(
+      new URL("../../../../styles/components.css", import.meta.url),
+      "utf8",
+    );
+    const frame = css.match(/\.nav-preview \{[^}]*\}/)?.[0] ?? "";
+
+    // The menu opens below the frame's own bottom edge. Clipping here cuts it
+    // off entirely — a stacking order cannot escape an ancestor's overflow.
+    expect(frame).not.toContain("overflow-hidden");
+    expect(css).toMatch(
+      /\.nav-preview-chrome \{[\s\S]*?border-top-left-radius/,
+    );
   });
 });

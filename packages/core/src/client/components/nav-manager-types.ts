@@ -181,6 +181,12 @@ export interface NavManagerLabels {
   confirmDeleteCollection: string;
   headerSection: string;
   moreSection: string;
+  /**
+   * Label on the preview's overflow button. Mirrors the real site header, so it
+   * comes from the public nav catalog (untranslated) rather than `moreSection`,
+   * which is the translated settings section heading.
+   */
+  previewMore: string;
   moreEmptyHint: string;
   placementSaved: string;
   cancel: string;

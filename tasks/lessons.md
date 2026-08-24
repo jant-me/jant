@@ -985,3 +985,14 @@ macro compiled there and the same code worked under `mise run dev`.
   code path. The bug above only reached users because passing `newest`
   explicitly and passing nothing at all took different branches, so every test
   that relied on the default kept passing.
+- A popover is dead the moment any ancestor clips. `overflow: hidden` added to
+  round a container's corners cannot be escaped by `z-index`, so the menu keeps
+  reporting itself open — `aria-expanded="true"`, `visibility: visible`, a real
+  bounding rect — while nothing is on screen. Measure both rects before
+  concluding the JS is broken. The container almost never needs the clip:
+  round the inner strip's own top corners instead. Same root cause as the
+  custom-URL row menu (26cbbe50) and the nav preview frame.
+- A floating menu inherits its readability from whatever it lands on. The site
+  header's More menu is a hairline and bare text because the page scrolls under
+  it by design; reused inside a settings preview it lands on rows of cards, so
+  it needs a surface of its own there.

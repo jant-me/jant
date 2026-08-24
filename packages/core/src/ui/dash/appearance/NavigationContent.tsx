@@ -429,6 +429,7 @@ export function NavigationContent({
           "@context: Section label for nav items hidden under More dropdown",
       }),
     ),
+    previewMore: moreLabel,
     moreEmptyHint: i18n._(
       msg({
         message: "Drag links here to show them under the More menu",

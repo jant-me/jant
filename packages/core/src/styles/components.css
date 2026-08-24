@@ -1418,14 +1418,20 @@ svg[stroke-width].icon-fine {
 
 /* Navigation preview — browser-chrome frame for nav preview */
 @layer components {
+  /* Deliberately not clipped: the More popover has to escape the frame, and a
+     stacking order cannot escape an ancestor's `overflow: hidden`. The chrome
+     strip rounds its own top corners instead of relying on the frame to cut
+     them. */
   .nav-preview {
-    @apply border rounded-lg overflow-hidden;
+    @apply border rounded-lg;
     background-color: var(--color-card);
   }
 
   .nav-preview-chrome {
     @apply flex items-center gap-3 px-4 py-2.5 border-b;
     background-color: var(--color-muted);
+    border-top-left-radius: calc(var(--radius-lg, 0.5rem) - 1px);
+    border-top-right-radius: calc(var(--radius-lg, 0.5rem) - 1px);
   }
 
   .nav-preview-dots {
@@ -1449,6 +1455,26 @@ svg[stroke-width].icon-fine {
 
   .nav-preview-content .site-header-top {
     justify-content: flex-start;
+  }
+
+  /* On the real site this menu floats over the page with no backdrop, and the
+     hairline down its left edge is the whole frame. Here it lands on the
+     settings sheet, where bare text would collide with the rows below, so the
+     preview gives it a surface of its own. */
+  .nav-preview .site-header-more-popover {
+    padding: 0.35rem 0;
+    border: 1px solid
+      color-mix(in srgb, var(--color-border) 84%, var(--site-accent) 8%);
+    border-radius: 0.85rem;
+    background-color: var(--color-card);
+    box-shadow: 0 20px 38px -28px
+      color-mix(in srgb, var(--color-foreground) 26%, transparent);
+  }
+
+  /* The site's left padding is indentation off that hairline; a full border
+     wants it even. */
+  .nav-preview .site-header-more-link {
+    padding: 0.38rem 0.85rem;
   }
 }
 
