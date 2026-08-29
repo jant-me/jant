@@ -6264,24 +6264,38 @@
     justify-content: center;
     width: 44px;
     height: 44px;
-    /* The button keeps its 44px touch target; only the paint is inset, so the
-       chip a hovered or switched-on tool wears is 36px and sits closer to the
-       glyph than to its neighbours. `background-clip` shrinks the corner radii
-       with the box, which is why 12px here reads as 8px on the chip. */
     padding: 4px;
-    background-clip: content-box;
     border-radius: 12px;
     border: none;
     background-color: transparent;
     cursor: pointer;
-    transition: all 0.18s ease;
+    transition: color 0.18s ease;
     flex-shrink: 0;
     color: var(--compose-tool-ink);
+  }
+
+  /* The button keeps its 44px touch target; only the chip a hovered or
+     switched-on tool wears is inset, so it is 36px tall and sits closer to the
+     glyph than to its neighbours. It is a layer of its own rather than the
+     button's own background clipped to the content box: a tool that has grown
+     a label needs padding *inside* the chip, and content-box clipping would
+     have eaten exactly that padding — the label ended up flush against the
+     chip's edge. */
+  .compose-tool-btn::before {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    border-radius: 8px;
+    background-color: transparent;
+    transition: background-color 0.18s ease;
   }
 
   /* One weight for the whole row, stated here rather than per icon, so the
      stroked glyphs and the star's outline read as one set. */
   .compose-tool-icon {
+    /* Above the chip: it is positioned, so a static child would paint under
+       it. Same for `.compose-tool-label`. */
+    position: relative;
     display: block;
     width: 20px;
     height: 20px;
@@ -6290,7 +6304,7 @@
     stroke-width: 1.42;
   }
 
-  .compose-tool-btn:hover {
+  .compose-tool-btn:hover::before {
     background-color: var(--compose-control-bg);
   }
 
@@ -6300,7 +6314,7 @@
      once; here the glyph is left in the row's faded ink and the chip does the
      talking on its own, a little under the row's hover tint. It is the only
      edge in the row, so it needs no help to be found. */
-  .compose-tool-btn-active {
+  .compose-tool-btn-active::before {
     background-color: color-mix(
       in srgb,
       var(--compose-control-bg) 85%,
@@ -6309,7 +6323,7 @@
   }
 
   /* Hover has to stay a step above a button that already carries a chip. */
-  .compose-tool-btn-active:hover {
+  .compose-tool-btn-active:hover::before {
     background-color: var(--compose-control-bg-strong);
   }
 
@@ -6318,13 +6332,17 @@
   .compose-tool-btn-add {
     width: auto;
     gap: 4px;
-    /* Same 4px of inset paint as the icon-only buttons; only the sides open up
-       to make room for the label. */
-    padding: 4px 10px 4px 8px;
+    /* The first 4px on every side is the chip's inset, as on the icon-only
+       buttons; the rest is room inside the chip. 8px before the glyph is the
+       gap an icon-only button already keeps, so the icon does not shift when a
+       label appears; 10px after the label, because text ends flush where the
+       glyph carries slack of its own. */
+    padding: 4px 14px 4px 12px;
     color: var(--site-text-secondary);
   }
 
   .compose-tool-label {
+    position: relative;
     font-size: var(--type-ui-hint);
     font-weight: var(--fw-medium);
     white-space: nowrap;
