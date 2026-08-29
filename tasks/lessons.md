@@ -369,6 +369,22 @@ in a novel treatment can buy back. Notes from the detour:
 And don't lean on "the panel it opened is the state display" — icon-only
 toggles have no label, so the button has to answer on its own.
 
+## A task file states the design; it does not argue for it
+
+A plan is read by whoever implements it, and they need the current design plus
+the constraints that must not be broken — not the deliberation that produced it.
+Sections like "why this replaced the earlier scheme", corrections to previous
+drafts, or the trade-offs of rejected alternatives are dead weight at
+implementation time: the reader has to work out which of two designs is the live
+one, and every later edit has to keep the retrospective consistent too.
+
+Keep in the file only what changes what gets built: the design, the invariants
+that are the point of it ("every shown post gets at least MIN_DWELL"), and
+explicit non-goals ("no counts, ever") — non-goals earn their place because
+without them the feature grows them back. Decision history belongs in memory
+and in the commit message, where it is looked up on purpose rather than being
+re-read on every pass through the plan.
+
 ## Delete the task file before committing, not after
 
 `tasks/todos/` accumulated nine finished task files because cleanup was treated
