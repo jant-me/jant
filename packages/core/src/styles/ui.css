@@ -12195,15 +12195,26 @@
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
   }
 
+  /* The arrow tracks the anchor (`--floating-arrow-x`, set when the menu is
+     positioned) so it keeps pointing at the selection after the menu is
+     clamped against the container edge. */
   .tiptap-bubble-menu::after {
     content: "";
     position: absolute;
     bottom: -4px;
-    left: 50%;
+    left: var(--floating-arrow-x, 50%);
     transform: translateX(-50%);
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
     border-top: 5px solid var(--color-foreground);
+  }
+
+  /* Flipped under the selection when there is no room above. */
+  .tiptap-bubble-menu[data-placement="bottom"]::after {
+    bottom: auto;
+    top: -4px;
+    border-top: 0;
+    border-bottom: 5px solid var(--color-foreground);
   }
 
   .tiptap-bubble-btn {
@@ -12281,7 +12292,7 @@
     content: "";
     position: absolute;
     bottom: -7px;
-    left: 50%;
+    left: var(--floating-arrow-x, 50%);
     transform: translateX(-50%);
     border-left: 6px solid transparent;
     border-right: 6px solid transparent;
@@ -12292,11 +12303,25 @@
     content: "";
     position: absolute;
     bottom: -5px;
-    left: 50%;
+    left: var(--floating-arrow-x, 50%);
     transform: translateX(-50%);
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
     border-top: 5px solid var(--color-background);
+  }
+
+  .tiptap-link-input[data-placement="bottom"]::before {
+    bottom: auto;
+    top: -7px;
+    border-top: 0;
+    border-bottom: 6px solid var(--color-border);
+  }
+
+  .tiptap-link-input[data-placement="bottom"]::after {
+    bottom: auto;
+    top: -5px;
+    border-top: 0;
+    border-bottom: 5px solid var(--color-background);
   }
 
   .tiptap-link-input-field {

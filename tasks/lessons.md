@@ -996,3 +996,12 @@ macro compiled there and the same code worked under `mise run dev`.
   header's More menu is a hairline and bare text because the page scrolls under
   it by design; reused inside a settings preview it lands on rows of cards, so
   it needs a surface of its own there.
+- Selection-gated editor UI must accept `AllSelection`, not only
+  `TextSelection`. Select-all dispatches an `AllSelection` whose `$from`
+  resolves at the document rather than inside a textblock, so both an
+  `instanceof TextSelection` guard and an `$from.parent.isTextblock` check
+  silently drop it.
+- Anchor floating editor UI to the selection's visible line boxes, not to the
+  caret coordinates at `from` and `to`. Once a selection wraps, those endpoints
+  describe a box that contains neither line, and a selection scrolled past the
+  viewport anchors somewhere the reader cannot see.
