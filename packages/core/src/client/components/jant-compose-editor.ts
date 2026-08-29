@@ -1624,14 +1624,44 @@ export class JantComposeEditor extends LitElement {
   }
 
   /**
+   * Where the current pointer gesture over the body went down and came up. A
+   * `click` reports the nearest common ancestor of the two, so these are the
+   * only way to tell a press on blank paper from a drag that merely started or
+   * ended there.
+   */
+  #bodyPressTarget: globalThis.EventTarget | null = null;
+  #bodyReleaseTarget: globalThis.EventTarget | null = null;
+
+  private _recordBodyPress = (e: MouseEvent) => {
+    this.#bodyPressTarget = e.target;
+    this.#bodyReleaseTarget = null;
+  };
+
+  private _recordBodyRelease = (e: MouseEvent) => {
+    this.#bodyReleaseTarget = e.target;
+  };
+
+  /**
    * Puts the caret in the body when the click landed on blank section instead
    * of on the editor. The surfaces that reserve height — the `/new` page, the
    * dialog on a phone — leave a stretch of empty paper under a two-line
    * editor, and it should behave like paper: click it, write there. Only the
    * layout wrappers forward; a click that reached a real control belongs to
    * that control.
+   *
+   * Selecting a line right-to-left normally lifts the pointer off the text and
+   * over one of those wrappers, and the resulting click is retargeted to the
+   * wrapper — indistinguishable from a click on blank paper by its target
+   * alone. Requiring the press and the release to have landed on that same
+   * blank space keeps a drag-selection from being thrown away.
    */
   private _focusBodyFromBlankSpace = (e: MouseEvent) => {
+    const pressTarget = this.#bodyPressTarget;
+    const releaseTarget = this.#bodyReleaseTarget;
+    this.#bodyPressTarget = null;
+    this.#bodyReleaseTarget = null;
+    if (pressTarget !== e.target || releaseTarget !== e.target) return;
+
     const target = e.target as HTMLElement | null;
     if (!target) return;
     const forwards =
@@ -2074,15 +2104,17 @@ export class JantComposeEditor extends LitElement {
         <span class="compose-attachment-preview-fallback-label">
           ${unavailableLabel}
         </span>
-        ${category === "video"
-          ? html`
-              <div class="compose-attachment-play-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </div>
-            `
-          : nothing}
+        ${
+          category === "video"
+            ? html`
+                <div class="compose-attachment-play-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+              `
+            : nothing
+        }
       </div>
     `;
   }
@@ -2092,17 +2124,19 @@ export class JantComposeEditor extends LitElement {
   private _renderNoteFields() {
     return html`
       <div class="compose-field-enter">
-        ${this._showTitle
-          ? html`<input
-              type="text"
-              .value=${this._title}
-              @input=${(e: Event) => this._onInput("_title", e)}
-              @focus=${(e: Event) => this._onFieldFocus(e)}
-              @keydown=${this._handleTitleKeydown}
-              class="compose-input compose-note-title"
-              placeholder=${this.labels.titlePlaceholder}
-            />`
-          : nothing}
+        ${
+          this._showTitle
+            ? html`<input
+                type="text"
+                .value=${this._title}
+                @input=${(e: Event) => this._onInput("_title", e)}
+                @focus=${(e: Event) => this._onFieldFocus(e)}
+                @keydown=${this._handleTitleKeydown}
+                class="compose-input compose-note-title"
+                placeholder=${this.labels.titlePlaceholder}
+              />`
+            : nothing
+        }
         <div class="compose-tiptap-wrap">
           <div class="compose-tiptap-body"></div>
           <span class="compose-slash-discovery-hint" aria-hidden="true">
@@ -2149,15 +2183,17 @@ export class JantComposeEditor extends LitElement {
             )}
           />
         </div>
-        ${urlError
-          ? html`<p
-              id=${this._urlStatusId}
-              class="compose-url-status compose-url-status-error"
-              data-compose-url-status="error"
-            >
-              ${urlError}
-            </p>`
-          : nothing}
+        ${
+          urlError
+            ? html`<p
+                id=${this._urlStatusId}
+                class="compose-url-status compose-url-status-error"
+                data-compose-url-status="error"
+              >
+                ${urlError}
+              </p>`
+            : nothing
+        }
         <input
           type="text"
           .value=${this._title}
@@ -2172,14 +2208,16 @@ export class JantComposeEditor extends LitElement {
           placeholder=${this.labels.linkTitlePlaceholder}
           aria-invalid=${titleError ? "true" : "false"}
         />
-        ${titleError
-          ? html`<p
-              class="compose-url-status compose-url-status-error"
-              data-compose-link-title-error="error"
-            >
-              ${titleError}
-            </p>`
-          : nothing}
+        ${
+          titleError
+            ? html`<p
+                class="compose-url-status compose-url-status-error"
+                data-compose-link-title-error="error"
+              >
+                ${titleError}
+              </p>`
+            : nothing
+        }
         <div class="compose-divider"></div>
         <div class="compose-tiptap-wrap">
           <div class="compose-tiptap-body compose-tiptap-link"></div>
@@ -2236,15 +2274,17 @@ export class JantComposeEditor extends LitElement {
               urlError ? this._urlStatusId : undefined,
             )}
           />
-          ${urlError
-            ? html`<p
-                id=${this._urlStatusId}
-                class="compose-url-status compose-url-status-error"
-                data-compose-url-status="error"
-              >
-                ${urlError}
-              </p>`
-            : nothing}
+          ${
+            urlError
+              ? html`<p
+                  id=${this._urlStatusId}
+                  class="compose-url-status compose-url-status-error"
+                  data-compose-url-status="error"
+                >
+                  ${urlError}
+                </p>`
+              : nothing
+          }
         </div>
         <div
           class="compose-divider compose-divider-quote"
@@ -2279,9 +2319,11 @@ export class JantComposeEditor extends LitElement {
             </button>
           `,
         )}
-        ${this._rating > 0
-          ? html`<span class="compose-star-label">${this._rating}/5</span>`
-          : nothing}
+        ${
+          this._rating > 0
+            ? html`<span class="compose-star-label">${this._rating}/5</span>`
+            : nothing
+        }
       </div>
     `;
   }
@@ -2355,16 +2397,20 @@ export class JantComposeEditor extends LitElement {
             ${this._renderFileIcon(a.file.type, 20)}
           </div>
           <span class="compose-attachment-file-name">${a.file.name}</span>
-          ${a.summary
-            ? html`<span class="compose-attachment-text-summary"
-                >${a.summary}</span
-              >`
-            : nothing}
-          ${typeof a.chars === "number" && a.chars > 0
-            ? html`<span class="compose-attachment-file-size"
-                >${this._formatChars(a.chars)}</span
-              >`
-            : nothing}
+          ${
+            a.summary
+              ? html`<span class="compose-attachment-text-summary"
+                  >${a.summary}</span
+                >`
+              : nothing
+          }
+          ${
+            typeof a.chars === "number" && a.chars > 0
+              ? html`<span class="compose-attachment-file-size"
+                  >${this._formatChars(a.chars)}</span
+                >`
+              : nothing
+          }
         </div>
       `;
     }
@@ -2394,46 +2440,52 @@ export class JantComposeEditor extends LitElement {
 
   private _renderAttachmentOverlay(a: ComposeAttachment, index: number) {
     return html`
-      ${a.status === "error"
-        ? html`
-            <button
-              type="button"
-              class="compose-attachment-overlay compose-attachment-retry"
-              @click=${(e: Event) => {
+      ${
+        a.status === "error"
+          ? html`
+              <button
+                type="button"
+                class="compose-attachment-overlay compose-attachment-retry"
+                @click=${(e: Event) => {
                 e.stopPropagation();
                 this._retryAllFailed();
               }}
-            >
-              <span class="compose-retry-content">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path
-                    d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
-                  />
-                  <path d="M3 3v5h5" />
-                  <path
-                    d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"
-                  />
-                  <path d="M16 16h5v5" />
-                </svg>
-                <span class="compose-retry-label">${this.labels.retryAll}</span>
-              </span>
-              ${a.error
-                ? html`<span class="compose-attachment-error-msg"
-                    >${a.error}</span
-                  >`
-                : nothing}
-            </button>
-          `
-        : nothing}
+              >
+                <span class="compose-retry-content">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                    />
+                    <path d="M3 3v5h5" />
+                    <path
+                      d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"
+                    />
+                    <path d="M16 16h5v5" />
+                  </svg>
+                  <span class="compose-retry-label"
+                    >${this.labels.retryAll}</span
+                  >
+                </span>
+                ${
+                a.error
+                  ? html`<span class="compose-attachment-error-msg"
+                      >${a.error}</span
+                    >`
+                  : nothing
+              }
+              </button>
+            `
+          : nothing
+      }
       ${this._renderAttachmentRemoveButton((e: Event) => {
         e.stopPropagation();
         this._removeAttachment(index);
@@ -2483,13 +2535,15 @@ export class JantComposeEditor extends LitElement {
               ${this._renderFileIcon("text/html; charset=utf-8", 20)}
             </div>
             <span class="compose-attachment-text-summary">${item.summary}</span>
-            ${item.bodyJson
-              ? html`<span class="compose-attachment-file-size"
-                  >${this._formatChars(
+            ${
+              item.bodyJson
+                ? html`<span class="compose-attachment-file-size"
+                    >${this._formatChars(
                     this._extractPlainText(item.bodyJson).length,
                   )}</span
-                >`
-              : nothing}
+                  >`
+                : nothing
+            }
           </div>
           ${this._renderAttachmentRemoveButton((e: Event) => {
             e.stopPropagation();
@@ -2508,115 +2562,121 @@ export class JantComposeEditor extends LitElement {
 
     return html`
       <div class="compose-attachment" data-attachment-id=${a.clientId}>
-        ${isFileCard
-          ? html`
-              <div class="compose-attachment-thumb">
-                <div
-                  class="compose-attachment-sortable"
-                  data-attachment-sortable
-                  tabindex="0"
-                  @keydown=${(e: globalThis.KeyboardEvent) =>
+        ${
+          isFileCard
+            ? html`
+                <div class="compose-attachment-thumb">
+                  <div
+                    class="compose-attachment-sortable"
+                    data-attachment-sortable
+                    tabindex="0"
+                    @keydown=${(e: globalThis.KeyboardEvent) =>
                     this._handleAttachmentKeydown(a.clientId, e)}
-                >
-                  ${this._renderAttachmentPreview(a)}
+                  >
+                    ${this._renderAttachmentPreview(a)}
+                  </div>
+                  ${this._renderAttachmentOverlay(a, i)}
                 </div>
-                ${this._renderAttachmentOverlay(a, i)}
-              </div>
-            `
-          : html`
-              <div class="compose-attachment-thumb">
-                <div
-                  class="compose-attachment-sortable"
-                  data-attachment-sortable
-                  tabindex="0"
-                  @keydown=${(e: globalThis.KeyboardEvent) =>
+              `
+            : html`
+                <div class="compose-attachment-thumb">
+                  <div
+                    class="compose-attachment-sortable"
+                    data-attachment-sortable
+                    tabindex="0"
+                    @keydown=${(e: globalThis.KeyboardEvent) =>
                     this._handleAttachmentKeydown(a.clientId, e)}
-                >
-                  ${previewFailed
-                    ? this._renderAttachmentPreviewFallback(visualCategory)
-                    : category === "video"
-                      ? html`
-                          <video
-                            src=${a.previewUrl}
-                            poster=${a.posterUrl ?? nothing}
-                            class="compose-attachment-img"
-                            preload="metadata"
-                            .playsInline=${true}
-                            .muted=${true}
-                            @loadeddata=${() =>
+                  >
+                    ${
+                    previewFailed
+                      ? this._renderAttachmentPreviewFallback(visualCategory)
+                      : category === "video"
+                        ? html`
+                            <video
+                              src=${a.previewUrl}
+                              poster=${a.posterUrl ?? nothing}
+                              class="compose-attachment-img"
+                              preload="metadata"
+                              .playsInline=${true}
+                              .muted=${true}
+                              @loadeddata=${() =>
                               this._setAttachmentPreviewFailure(
                                 a.clientId,
                                 false,
                               )}
-                            @error=${() =>
+                              @error=${() =>
                               this._setAttachmentPreviewFailure(
                                 a.clientId,
                                 true,
                               )}
-                          ></video>
-                          <div class="compose-attachment-play-icon">
-                            <svg
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="white"
-                            >
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          </div>
-                        `
-                      : a.status === "processing"
-                        ? html`
-                            <div class="compose-attachment-processing">
+                            ></video>
+                            <div class="compose-attachment-play-icon">
                               <svg
-                                class="animate-spin size-5"
+                                width="24"
+                                height="24"
                                 viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
+                                fill="white"
                               >
-                                <path
-                                  d="M12 2a10 10 0 1 0 10 10"
-                                  stroke-linecap="round"
-                                />
+                                <path d="M8 5v14l11-7z" />
                               </svg>
                             </div>
                           `
-                        : html`
-                            <img
-                              src=${a.previewUrl}
-                              alt=""
-                              class="compose-attachment-img"
-                              @load=${() =>
+                        : a.status === "processing"
+                          ? html`
+                              <div class="compose-attachment-processing">
+                                <svg
+                                  class="animate-spin size-5"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  stroke-width="2"
+                                >
+                                  <path
+                                    d="M12 2a10 10 0 1 0 10 10"
+                                    stroke-linecap="round"
+                                  />
+                                </svg>
+                              </div>
+                            `
+                          : html`
+                              <img
+                                src=${a.previewUrl}
+                                alt=""
+                                class="compose-attachment-img"
+                                @load=${() =>
                                 this._setAttachmentPreviewFailure(
                                   a.clientId,
                                   false,
                                 )}
-                              @error=${() =>
+                                @error=${() =>
                                 this._setAttachmentPreviewFailure(
                                   a.clientId,
                                   true,
                                 )}
-                            />
-                          `}
+                              />
+                            `
+                  }
+                  </div>
+                  ${this._renderAttachmentOverlay(a, i)}
                 </div>
-                ${this._renderAttachmentOverlay(a, i)}
-              </div>
-            `}
-        ${category === "image"
-          ? html`
-              <button
-                type="button"
-                class=${classMap({
+              `
+        }
+        ${
+          category === "image"
+            ? html`
+                <button
+                  type="button"
+                  class=${classMap({
                   "compose-attachment-alt": true,
                   "compose-attachment-alt-set": a.alt.length > 0,
                 })}
-                @click=${() => this._openAltPanel(i)}
-              >
-                ${a.alt.length > 0 ? "ALT" : "+ ALT"}
-              </button>
-            `
-          : nothing}
+                  @click=${() => this._openAltPanel(i)}
+                >
+                  ${a.alt.length > 0 ? "ALT" : "+ ALT"}
+                </button>
+              `
+            : nothing
+        }
       </div>
     `;
   }
@@ -2675,11 +2735,13 @@ export class JantComposeEditor extends LitElement {
           @click=${() => this._openFilePicker()}
         >
           ${renderComposeToolbarIcon(COMPOSE_TOOLBAR_ICONS.media)}
-          ${this._attachments.length > 0
-            ? html`<span class="compose-tool-label"
-                >${this.labels.addMore}</span
-              >`
-            : nothing}
+          ${
+            this._attachments.length > 0
+              ? html`<span class="compose-tool-label"
+                  >${this.labels.addMore}</span
+                >`
+              : nothing
+          }
         </button>
 
         <button
@@ -2692,11 +2754,13 @@ export class JantComposeEditor extends LitElement {
           @click=${() => this._openAttachedText()}
         >
           ${renderComposeToolbarIcon(COMPOSE_TOOLBAR_ICONS.attachedText)}
-          ${hasAttached
-            ? html`<span class="compose-tool-label"
-                >${this.labels.addMore}</span
-              >`
-            : nothing}
+          ${
+            hasAttached
+              ? html`<span class="compose-tool-label"
+                  >${this.labels.addMore}</span
+                >`
+              : nothing
+          }
         </button>
 
         <button
@@ -2738,17 +2802,18 @@ export class JantComposeEditor extends LitElement {
           ${renderComposeToolbarIcon(COMPOSE_TOOLBAR_ICONS.rate)}
         </button>
 
-        ${this.format === "note"
-          ? html`
-              <button
-                type="button"
-                class=${classMap({
+        ${
+          this.format === "note"
+            ? html`
+                <button
+                  type="button"
+                  class=${classMap({
                   "compose-tool-btn": true,
                   "compose-tool-btn-active": this._showTitle,
                 })}
-                title=${this.labels.title}
-                aria-pressed=${this._showTitle ? "true" : "false"}
-                @click=${() => {
+                  title=${this.labels.title}
+                  aria-pressed=${this._showTitle ? "true" : "false"}
+                  @click=${() => {
                   const willShow = !this._showTitle;
                   this._showTitle = willShow;
                   // Only this deliberate click is worth remembering. The other
@@ -2769,26 +2834,29 @@ export class JantComposeEditor extends LitElement {
                     });
                   }
                 }}
-              >
-                ${renderComposeToolbarIcon(COMPOSE_TOOLBAR_ICONS.title)}
-              </button>
-            `
-          : nothing}
-        ${this.format === "note"
-          ? html`
-              <div class="compose-tool-view-group">
-                <button
-                  type="button"
-                  class="compose-tool-btn compose-tool-btn-view"
-                  title=${this.labels.fullscreen}
-                  aria-label=${this.labels.fullscreen}
-                  @click=${() => this.openFullscreen()}
                 >
-                  ${renderComposeToolbarIcon(COMPOSE_TOOLBAR_ICONS.fullscreen)}
+                  ${renderComposeToolbarIcon(COMPOSE_TOOLBAR_ICONS.title)}
                 </button>
-              </div>
-            `
-          : nothing}
+              `
+            : nothing
+        }
+        ${
+          this.format === "note"
+            ? html`
+                <div class="compose-tool-view-group">
+                  <button
+                    type="button"
+                    class="compose-tool-btn compose-tool-btn-view"
+                    title=${this.labels.fullscreen}
+                    aria-label=${this.labels.fullscreen}
+                    @click=${() => this.openFullscreen()}
+                  >
+                    ${renderComposeToolbarIcon(COMPOSE_TOOLBAR_ICONS.fullscreen)}
+                  </button>
+                </div>
+              `
+            : nothing
+        }
       </div>
     `;
   }
@@ -2832,42 +2900,48 @@ export class JantComposeEditor extends LitElement {
             `,
           )}
         </div>
-        ${this.positionLabel
-          ? html`<span class="compose-post-position"
-              >${this.positionLabel}</span
-            >`
-          : nothing}
-        ${this.badgeLabel
-          ? html`<span class="compose-post-position compose-post-badge"
-              >${this.badgeLabel}</span
-            >`
-          : nothing}
+        ${
+          this.positionLabel
+            ? html`<span class="compose-post-position"
+                >${this.positionLabel}</span
+              >`
+            : nothing
+        }
+        ${
+          this.badgeLabel
+            ? html`<span class="compose-post-position compose-post-badge"
+                >${this.badgeLabel}</span
+              >`
+            : nothing
+        }
         ${this.headerExtra ?? nothing}
-        ${this.removable
-          ? html`<button
-              type="button"
-              class="compose-thread-post-remove"
-              title="Remove post"
-              @click=${() => {
+        ${
+          this.removable
+            ? html`<button
+                type="button"
+                class="compose-thread-post-remove"
+                title="Remove post"
+                @click=${() => {
                 this.dispatchEvent(
                   new CustomEvent("jant:thread-remove", { bubbles: true }),
                 );
               }}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                aria-hidden="true"
               >
-                ${unsafeSVG(CLOSE_ICON)}
-              </svg>
-            </button>`
-          : nothing}
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  aria-hidden="true"
+                >
+                  ${unsafeSVG(CLOSE_ICON)}
+                </svg>
+              </button>`
+            : nothing
+        }
       </div>
     `;
   }
@@ -2888,12 +2962,19 @@ export class JantComposeEditor extends LitElement {
     // thread item alike — so there is exactly one place it can be.
     return html`
       ${this._renderFormatHeader()}
-      <section class="compose-body" @click=${this._focusBodyFromBlankSpace}>
-        ${this.format === "note"
-          ? this._renderNoteFields()
-          : this.format === "link"
-            ? this._renderLinkFields()
-            : this._renderQuoteFields()}
+      <section
+        class="compose-body"
+        @mousedown=${this._recordBodyPress}
+        @mouseup=${this._recordBodyRelease}
+        @click=${this._focusBodyFromBlankSpace}
+      >
+        ${
+          this.format === "note"
+            ? this._renderNoteFields()
+            : this.format === "link"
+              ? this._renderLinkFields()
+              : this._renderQuoteFields()
+        }
       </section>
       ${this._renderAttachmentDock()} ${this._renderStarRating()}
       ${this._renderToolsRow()}

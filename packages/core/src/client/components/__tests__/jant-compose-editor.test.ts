@@ -348,6 +348,22 @@ function tiptapParagraph(text: string): JSONContent {
   };
 }
 
+/**
+ * Replays a pointer gesture. The browser retargets a click to the nearest
+ * common ancestor of the press and the release, so `clickTarget` is separate
+ * from the two — a drag that starts on the text and ends over a layout wrapper
+ * reports the wrapper.
+ */
+function pressAndClick(
+  pressTarget: HTMLElement,
+  releaseTarget: HTMLElement,
+  clickTarget: HTMLElement = releaseTarget,
+) {
+  pressTarget.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+  releaseTarget.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+  clickTarget.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+}
+
 async function toggleEmojiPicker(el: JantComposeEditor) {
   (
     el as unknown as {
@@ -1434,5 +1450,54 @@ describe("JantComposeEditor", () => {
     expect(el._attachments.map((attachment) => attachment.file.name)).toEqual([
       "clipboard.png",
     ]);
+  });
+
+  it("focuses the body end when blank space around the editor is clicked", async () => {
+    const el = await createElement("note");
+    const editor = requireEditor(el);
+    editor.commands.setContent(
+      tiptapDoc(tiptapParagraph("One two three"), tiptapParagraph("Tail")),
+    );
+    editor.commands.setTextSelection(1);
+
+    const blank = requireElement(
+      el.querySelector<HTMLElement>(".compose-tiptap-wrap"),
+      "expected compose tiptap wrapper",
+    );
+    pressAndClick(blank, blank);
+
+    expect(editor.state.selection.empty).toBe(true);
+    expect(editor.state.selection.from).toBe(editor.state.doc.content.size - 1);
+  });
+
+  it("keeps a drag-selection that lifts off the text onto blank space", async () => {
+    const el = await createElement("note");
+    const editor = requireEditor(el);
+    editor.commands.setContent(
+      tiptapDoc(
+        {
+          type: "blockquote",
+          content: [tiptapParagraph("One two three four five six")],
+        },
+        tiptapParagraph("Tail after the quote"),
+      ),
+    );
+    // Right-to-left drag across the quote: anchor after "six", head before "One".
+    editor.commands.setTextSelection({ from: 2, to: 29 });
+
+    const quote = requireElement(
+      el.querySelector<HTMLElement>(".compose-tiptap-body blockquote p"),
+      "expected blockquote paragraph",
+    );
+    const blank = requireElement(
+      el.querySelector<HTMLElement>(".compose-tiptap-wrap"),
+      "expected compose tiptap wrapper",
+    );
+    // The pointer went down on the text and came up over the wrapper, so the
+    // browser retargets the click to their common ancestor.
+    pressAndClick(quote, blank, blank);
+
+    expect(editor.state.selection.from).toBe(2);
+    expect(editor.state.selection.to).toBe(29);
   });
 });

@@ -7,14 +7,23 @@
  */
 
 import { Extension, type Editor } from "@tiptap/core";
-import { Plugin, PluginKey, Selection, TextSelection } from "@tiptap/pm/state";
+import {
+  AllSelection,
+  Plugin,
+  PluginKey,
+  Selection,
+  TextSelection,
+} from "@tiptap/pm/state";
 import { liftTarget } from "@tiptap/pm/transform";
 import type { EditorView } from "@tiptap/pm/view";
 import { isLinkToolbarInputActive } from "./link-toolbar.js";
 import type { FormattingToolbarMode } from "./toolbar-mode.js";
 import {
   getFixedFloatingContainerRect,
+  getFloatingArrowOffset,
   getFloatingPosition,
+  getRangeAnchorRect,
+  getVisibleClipRect,
 } from "./floating-position.js";
 
 const bubbleMenuKey = new PluginKey("bubbleMenu");
@@ -315,20 +324,22 @@ export const BubbleMenu = Extension.create({
       if (!el) return;
       el.style.display = "flex";
 
-      // Position above selection center
+      // Anchor on the first visible line of the selection, centered on its
+      // horizontal span. Select-all lands on the text you are looking at
+      // rather than at the top of a document scrolled out of view.
       const { from, to } = view.state.selection;
-      const start = view.coordsAtPos(from);
-      const end = view.coordsAtPos(to);
       const dialog = view.dom.closest("dialog");
+      const containerRect = getFixedFloatingContainerRect(dialog);
+      const anchorRect = getRangeAnchorRect(
+        view,
+        from,
+        to,
+        getVisibleClipRect(view.dom, containerRect),
+      );
       const rect = el.getBoundingClientRect();
       const layout = getFloatingPosition({
-        anchorRect: {
-          left: start.left,
-          right: end.right,
-          top: Math.min(start.top, end.top),
-          bottom: Math.max(start.bottom, end.bottom),
-        },
-        containerRect: getFixedFloatingContainerRect(dialog),
+        anchorRect,
+        containerRect,
         floatingWidth: rect.width,
         floatingHeight: rect.height,
         preferredPlacement: "top",
@@ -338,6 +349,16 @@ export const BubbleMenu = Extension.create({
 
       el.style.left = `${layout.left}px`;
       el.style.top = `${layout.top}px`;
+      el.dataset.placement = layout.placement;
+      el.style.setProperty(
+        "--floating-arrow-x",
+        `${getFloatingArrowOffset({
+          anchorRect,
+          containerRect,
+          floatingLeft: layout.left,
+          floatingWidth: rect.width,
+        })}px`,
+      );
 
       syncActive();
     }
@@ -358,13 +379,23 @@ export const BubbleMenu = Extension.create({
     function shouldShow(view: EditorView): boolean {
       const { state } = view;
       const { selection } = state;
-      // Only show for non-empty text selections (not node selections)
-      if (!(selection instanceof TextSelection) || selection.empty)
-        return false;
-      if (!selection.$from.parent.isTextblock) return false;
+      if (selection.empty) return false;
       // Hide when link input popup is open
       if (isLinkToolbarInputActive()) return false;
-      return true;
+
+      // Select-all reports an AllSelection, not a TextSelection. Clearing
+      // formatting off a pasted draft and quoting a whole note are exactly
+      // what a document-wide selection is for, so it gets the same toolbar as
+      // dragging over everything — as long as there is text to format.
+      if (selection instanceof AllSelection) {
+        return (
+          state.doc.textBetween(selection.from, selection.to, " ").trim() !== ""
+        );
+      }
+
+      // Otherwise only non-empty text selections (not node selections)
+      if (!(selection instanceof TextSelection)) return false;
+      return selection.$from.parent.isTextblock;
     }
 
     return [

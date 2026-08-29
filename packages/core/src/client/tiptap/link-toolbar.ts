@@ -15,7 +15,10 @@ import type { EditorState } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import {
   getFixedFloatingContainerRect,
+  getFloatingArrowOffset,
   getFloatingPosition,
+  getRangeAnchorRect,
+  getVisibleClipRect,
 } from "./floating-position.js";
 
 const linkToolbarKey = new PluginKey("linkToolbar");
@@ -195,17 +198,17 @@ export const LinkToolbar = Extension.create({
       el.style.display = "flex";
 
       const dialog = view.dom.closest("dialog");
-      const start = view.coordsAtPos(from);
-      const end = view.coordsAtPos(to);
+      const containerRect = getFixedFloatingContainerRect(dialog);
+      const anchorRect = getRangeAnchorRect(
+        view,
+        from,
+        to,
+        getVisibleClipRect(view.dom, containerRect),
+      );
       const rect = el.getBoundingClientRect();
       const layout = getFloatingPosition({
-        anchorRect: {
-          left: start.left,
-          right: end.right,
-          top: Math.min(start.top, end.top),
-          bottom: Math.max(start.bottom, end.bottom),
-        },
-        containerRect: getFixedFloatingContainerRect(dialog),
+        anchorRect,
+        containerRect,
         floatingWidth: rect.width,
         floatingHeight: rect.height,
         preferredPlacement: "top",
@@ -215,6 +218,16 @@ export const LinkToolbar = Extension.create({
 
       el.style.left = `${layout.left}px`;
       el.style.top = `${layout.top}px`;
+      el.dataset.placement = layout.placement;
+      el.style.setProperty(
+        "--floating-arrow-x",
+        `${getFloatingArrowOffset({
+          anchorRect,
+          containerRect,
+          floatingLeft: layout.left,
+          floatingWidth: rect.width,
+        })}px`,
+      );
     }
 
     interface ShowInputOptions {
