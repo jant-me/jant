@@ -117,6 +117,7 @@ const labels: SettingsLabels = {
   copy: "Copy",
   copyFailed: "Could not copy. Try again.",
   feedUrlCopied: "Feed URL copied.",
+  feedsDocs: "All feed addresses",
 };
 
 const timezones: SettingsTimezone[] = [

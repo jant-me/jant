@@ -41,6 +41,7 @@ export class JantSettingsGeneral extends LitElement {
     latestFeedUrl: { type: String, attribute: "latest-feed-url" },
     featuredFeedUrl: { type: String, attribute: "featured-feed-url" },
     archiveFeedUrl: { type: String, attribute: "archive-feed-url" },
+    feedsDocsUrl: { type: String, attribute: "feeds-docs-url" },
     aboutPage: { type: Object, attribute: "about-page" },
     aboutEditUrl: { type: String, attribute: "about-edit-url" },
     aboutCreateUrl: {
@@ -88,6 +89,7 @@ export class JantSettingsGeneral extends LitElement {
   declare latestFeedUrl: string;
   declare featuredFeedUrl: string;
   declare archiveFeedUrl: string;
+  declare feedsDocsUrl: string;
   declare aboutPage: SettingsAboutPageStatus;
   declare aboutEditUrl: string;
   declare aboutCreateUrl: string;
@@ -149,6 +151,7 @@ export class JantSettingsGeneral extends LitElement {
     this.latestFeedUrl = "/latest/feed";
     this.featuredFeedUrl = "/featured/feed";
     this.archiveFeedUrl = "/archive/feed";
+    this.feedsDocsUrl = "";
     this.aboutPage = {
       state: "missing",
       path: "/about",
@@ -750,6 +753,17 @@ export class JantSettingsGeneral extends LitElement {
                 </p>
                 <p class="text-sm text-muted-foreground">
                   ${this.labels.availableFeedUrlsHelp}
+                  ${this.feedsDocsUrl
+                    ? html`
+                        <a
+                          href=${this.feedsDocsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="underline hover:text-foreground transition-colors"
+                          >${this.labels.feedsDocs}</a
+                        >
+                      `
+                    : ""}
                 </p>
               </div>
 

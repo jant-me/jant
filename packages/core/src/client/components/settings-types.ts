@@ -37,6 +37,7 @@ export interface SettingsLabels {
   mainRssFeedWarning: string;
   availableFeedUrls: string;
   availableFeedUrlsHelp: string;
+  feedsDocs: string;
   mainFeedUrl: string;
   latestFeedUrl: string;
   featuredFeedUrl: string;

@@ -219,6 +219,12 @@ export interface CollectionsPageProps {
    * same action, and their ID prefixes keep them apart.
    */
   navigationCollectionIds?: string[];
+  /**
+   * Whether each collection offers its feed. `/subscribe` lists only the
+   * site-wide feeds, so the directory is where a reader is handed a
+   * collection's — beside the collection itself.
+   */
+  feedsEnabled?: boolean;
   /** Deployment path prefix. Used for links to admin surfaces. */
   sitePathPrefix?: string;
   /**

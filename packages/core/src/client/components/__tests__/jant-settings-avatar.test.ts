@@ -74,6 +74,7 @@ const labels: SettingsLabels = {
   copy: "Copy",
   copyFailed: "Could not copy. Try again.",
   feedUrlCopied: "Feed URL copied.",
+  feedsDocs: "All feed addresses",
 };
 
 async function createElement(

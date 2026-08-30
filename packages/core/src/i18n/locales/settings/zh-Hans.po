@@ -246,6 +246,11 @@ msgstr "所有可用的端点和请求格式。"
 msgid "All collections are already in your navigation."
 msgstr "所有合集已在你的导航中。"
 
+#. @context: Link text to the feeds documentation, under the fixed feed URLs in General settings
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "All feed addresses"
+msgstr "全部 feed 地址"
+
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Allow published content to be read without an API token."

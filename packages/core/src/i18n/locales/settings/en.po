@@ -246,6 +246,11 @@ msgstr "all available endpoints and request formats."
 msgid "All collections are already in your navigation."
 msgstr "All collections are already in your navigation."
 
+#. @context: Link text to the feeds documentation, under the fixed feed URLs in General settings
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "All feed addresses"
+msgstr "All feed addresses"
+
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Allow published content to be read without an API token."

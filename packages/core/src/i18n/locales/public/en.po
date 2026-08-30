@@ -2048,10 +2048,12 @@ msgctxt "nav"
 msgid "RSS"
 msgstr "RSS"
 
+#. @context: Tooltip for the RSS feed icon beside a collection in the collections directory
 #. @context: Tooltip for the RSS feed link on a collection page
 #. @context: Tooltip for the RSS feed link on a collection page
 #: src/ui/pages/CollectionPage.tsx
 #: src/ui/pages/SmartCollectionPage.tsx
+#: src/ui/shared/CollectionDirectory.tsx
 msgid "RSS feed"
 msgstr "RSS feed"
 

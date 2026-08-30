@@ -15,6 +15,7 @@ export const CollectionsPage: FC<CollectionsPageProps> = ({
   items,
   isAuthenticated,
   navigationCollectionIds = [],
+  feedsEnabled = false,
   sitePathPrefix = "",
   basePath = sitePathPrefix,
   siteOrigin = "",
@@ -65,6 +66,7 @@ export const CollectionsPage: FC<CollectionsPageProps> = ({
           sitePathPrefix={sitePathPrefix}
           basePath={basePath}
           siteOrigin={siteOrigin}
+          feedsEnabled={feedsEnabled}
         />
       </div>
     </div>

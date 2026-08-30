@@ -1,7 +1,7 @@
 # 订阅页 `/subscribe`
 
 日期：2026-08-30
-状态：**进行中**（commit 1 / 5 完成）
+状态：**进行中**（4 个提交完成；原计划 5 个，commit 3 与 4 合并，见 §3.3）
 
 ## 0. 要解决的问题
 
@@ -144,7 +144,8 @@ Jant 的立意是无压力公开写作。这个页面本身**没有反馈回路*
 
 ## 3. 实现
 
-分 5 个 commit，按顺序。每个 commit 自身可用、可验证。
+分 4 个 commit，按顺序。每个 commit 自身可用、可验证。（原计划 5 个，导航的 key 和
+那对对照文案没法拆开，见 §3.3。）
 
 ### 3.1 commit 1 — 复制字段（**已完成**）
 
@@ -275,6 +276,39 @@ zh-Hans / zh-Hant 都补了译文。
 （这条值得记住：`text({ enum })` 本身确实不产生约束，但这张表另外用 `check()` 显式声明过
 同名约束，光看列定义会得出错误结论。）
 
+### 3.4 commit 4 — 就近入口与文档（**已完成**，原 3.6）
+
+**偏离计划：不给 `/` 和 `/featured` 加 RSS 图标。**
+
+计划里这条是我自己提的，理由是「这两个页面是最多人看的，却是唯一没有订阅入口的」。实现时
+看了代码才发现前提就不对：这两个页面在第一页**刻意不渲染任何页头** ——
+`HomePage.tsx` 和 `FeaturedPage.tsx` 都是
+`<PaginatedPageHeader ... hideOnFirstPage showTitle={false} />`，时间线直接从第一条帖子开始。
+
+archive 页和合集页的图标之所以自然，是因为它们本来就有一行元信息（「N 篇 / 最近更新 ⌁」）
+可以挂。这两个页面没有那行。加图标等于**在刻意留白的地方凭空造出一块 chrome**，而且是在全站
+最安静的两个阅读面上。
+
+而这条计划项要补的那个洞，`/subscribe` 已经补上了：主 feed 和精选 feed 都在那页上列着、带
+复制按钮和说明，而且入口在默认导航里。为了一个已经关闭的缺口去破坏这两个页面的留白，不划算。
+
+**已做的：**
+
+- **`/collections` 目录每行的 RSS 图标。** 这是合集 feed 从订阅页拿掉之后**唯一**的交付路径，
+  所以它不是可选项。普通合集和智能合集两类行都有 `collection-directory-summary` 元信息行，
+  图标挂在那儿，跟 archive / 合集页同一个 `.feed-link` 样式。分组标题没有加 —— 它链向
+  `/collections/{a+b}` 聚合页，那个页面自己带图标，分组标题是导航不是合集。
+  `feedsEnabled` 从路由的 `appConfig.rssFeedsEnabled` 一路传下来，默认 `false`，所以
+  dashboard 的合集管理器（那里的目的是整理不是订阅）不会莫名长出图标。
+- **`docs/feeds.md`**，并登记进 `docs/SUMMARY.md`。写的时候查出一处计划外的事实：
+  **`?format=` 在 `/feed` 上无效** —— `renderMainFeed` 不传 `format`，只有
+  `renderLatestFeed` 调 `parseFormatQuery`。文档按实际行为写。
+- **`/settings/general` 的 Feeds 区块链到那篇文档**，用 `getJantDocsUrl("feeds")`。URL 在
+  服务端算好、通过 `feeds-docs-url` 属性传给 Lit 组件 —— 客户端组件自己解析不了（AGENTS.md
+  明写 Vite 的 `define` 到不了 dev-server 模块）。
+- **`/subscribe` 上不放这个链接**：那是 jant.me 的产品文档，对读者答非所问，也等于告诉读者
+  这站用的是 Jant。
+
 ### 3.5 现有站点怎么换（不用写代码，验证时要走一遍）
 
 `/settings/appearance` →「System links」区（`jant-nav-manager.ts:2874` 的
@@ -288,32 +322,6 @@ zh-Hans / zh-Hant 都补了译文。
 - **顺序**：`#handleSystemToggle` 是 `[...this._items, created]` 追加，落在 more 组末尾
   （可能排到 Settings 后面）
 - **自定义标签**：改过 "RSS" 的话新项拿 `defaultLabel`，要重改
-
-### 3.6 commit 5 — 就近入口补齐与文档
-
-**`/` 和 `/featured` 补 RSS 图标** —— 照 `ArchivePage.tsx:1391` 的 `feed-link` 同款，指向
-`/feed` 与 `/featured/feed`，`rssFeedsEnabled` 关时不渲染。这两个页面是最多人看的，却是唯一
-没有订阅入口的。
-
-**`/collections` 目录页每行补 RSS 图标** —— 合集 feed 从订阅页拿掉后，这是它唯一的交付路径。
-注意 `CollectionDirectory.tsx` 有**四处**链接站点、三类实体：分组（`:172`）、普通合集
-（`:219`、`:386`）、智能合集（`:301`）。四处都要，别只改一处。
-
-**新建 `docs/feeds.md`** —— 把页面上刻意不写的都放这：完整 feed 路由表、`{page}/feed` 规则、
-`/collections/{a+b}/feed` 聚合地址、`?format=`（只在 latest 系有效）、archive 的
-`?sort=updated`、`rssFeedLimit` 截断、`rssPublishDelaySeconds` 延迟、多语言前缀下的行为、
-`/feed/latest` 等 308 老地址。写完跑 `mise run check-copy`。
-
-**从 `/settings/general` 的 Feeds 区块链过去**，用 `getJantDocsUrl()`（`lib/jant-docs.ts`），
-不要手写 URL。
-
-**不要从 `/subscribe` 链出去** —— 那是 jant.me 的产品文档：对读者答非所问，且等于告诉读者
-「这站用的是 Jant」。作者面链产品文档才对。
-
-`/collections` 目录页本身**没有** feed（`isCollectionSelectionSurface` 只放行
-`/collections/{selection}` 和它的 feed），文案别写得像有。
-
----
 
 ## 4. 验证
 
