@@ -18,16 +18,8 @@ import {
   BufferTarget,
   BlobSource,
   Conversion,
-  Quality,
   ALL_FORMATS,
 } from "mediabunny";
-
-/**
- * Quality used when a re-encode is unavoidable (non-AAC source). AAC only
- * accepts a fixed set of bitrates, so this lands on the highest mediabunny
- * will pick, 192 kbps.
- */
-const REENCODE_QUALITY = new Quality("very-high");
 
 export interface AudioProcessResult {
   file: File;
@@ -66,21 +58,15 @@ async function processToFile(
 
   try {
     // Setting a quality on the track is what disables mediabunny's copy fast
-    // path, so only set one when the source is not already AAC — otherwise a
-    // needless decode/encode round trip costs a generation of quality. An
-    // unknown codec (`null`) is treated as needing one.
-    const audioTrack = await input.getPrimaryAudioTrack();
-    const sourceCodec = audioTrack ? await audioTrack.getCodec() : undefined;
-    const needsReencode = sourceCodec !== undefined && sourceCodec !== "aac";
-
+    // path, and a needless decode/encode round trip costs a generation of
+    // quality. Leaving it unset lets an AAC source be copied outright;
+    // anything else falls back to mediabunny's default, which for AAC lands
+    // on 192 kbps — the highest rate it will pick at any quality level.
     const conversion = await Conversion.init({
       input,
       output,
       video: { discard: true },
-      audio: {
-        codec: "aac",
-        ...(needsReencode ? { quality: REENCODE_QUALITY } : {}),
-      },
+      audio: { codec: "aac" },
     });
 
     if (onProgress) {

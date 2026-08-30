@@ -8084,6 +8084,11 @@
   /* --- Attachment gallery -------------------------------------------------- */
 
   .compose-attachments {
+    /* One row height for every kind of attachment. A picture is content and
+       keeps its aspect inside this height; a card is chrome and simply fills
+       it. Sharing the number is what makes the row read as a strip and lands
+       every control row on the same line. */
+    --compose-strip-height: min(340px, 40dvh);
     display: flex;
     flex-shrink: 0;
     gap: 8px;
@@ -8127,6 +8132,13 @@
 
   .compose-attachment:only-child:has(.compose-attachment-preview-fallback) {
     width: min(100%, 160px);
+  }
+
+  /* Strip-tall, so it needs a card's width rather than a thumbnail's. */
+  .compose-attachment:not(:only-child):has(
+      .compose-attachment-preview-fallback
+    ) {
+    width: 150px;
   }
 
   .compose-attachment-thumb {
@@ -8246,9 +8258,9 @@
     aspect-ratio: 4 / 3;
   }
 
-  /* Multiple images: one shared height so the row reads as a strip, cover */
+  /* Multiple attachments: one shared height so the row reads as a strip, cover */
   .compose-attachment:not(:only-child) .compose-attachment-img {
-    height: min(340px, 40dvh);
+    height: var(--compose-strip-height);
     width: auto;
     min-width: 120px;
     object-fit: cover;
@@ -8256,7 +8268,8 @@
 
   .compose-attachment:not(:only-child) .compose-attachment-preview-fallback {
     width: 100%;
-    aspect-ratio: 4 / 3;
+    height: 200px;
+    aspect-ratio: auto;
   }
 
   .compose-attachment:only-child .compose-attachment-preview-fallback svg {
@@ -8510,6 +8523,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     gap: 8px;
     width: 120px;
     height: 160px;
@@ -8552,6 +8566,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     gap: 8px;
     width: 120px;
     height: 160px;
@@ -8566,6 +8581,20 @@
   .compose-attachment:not(:only-child) .compose-attachment-text-card {
     width: 150px;
     height: 200px;
+  }
+
+  /* A card is chrome, not content: with a picture in the strip it takes the
+     picture row's height, so the row reads as one strip and every control row
+     lands on the same line. Nothing is cropped by growing — the card centres
+     its content. A strip of cards alone keeps its compact height. */
+  .compose-attachments:has(.compose-attachment-img)
+    .compose-attachment:not(:only-child)
+    :is(
+      .compose-attachment-file-card,
+      .compose-attachment-text-card,
+      .compose-attachment-preview-fallback
+    ) {
+    height: var(--compose-strip-height);
   }
 
   .compose-attachment-text-summary {
