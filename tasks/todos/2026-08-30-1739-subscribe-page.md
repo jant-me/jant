@@ -225,60 +225,55 @@ lit-html **追加**自己的 parts 而不替换既有子节点，`createRenderRo
   两个宽度），页面结构和导航结构互相印证
 - BaseCoat 语义类 + `tokens.css`，不硬编码颜色间距；单列、移动优先
 
-### 3.3 commit 3 — 导航新增 `subscribe` 系统项
+### 3.3 commit 3 — 导航新增 `subscribe` 系统项（含原 commit 4 的文案）
 
-- `SYSTEM_NAV_KEY_VALUES` 追加 `"subscribe"`（`types/constants.ts:118`）
-- `SYSTEM_NAV_KEYS` 追加
-  `subscribe: { defaultLabel: "Subscribe", url: "/subscribe", defaultPlacement: "more" }`
-- `DEFAULT_NAVIGATION_PROFILES` 追加 v3 = v2 把 `rss` 换成 `subscribe`，
-  `DEFAULT_NAVIGATION_PROFILE_VERSION = 3`。**v1/v2 一个字不改**
-- `BUILTIN_NAV_LABELS`（`navigation-labels.ts:22`）和 `SYSTEM_NAV_DESCRIPTIONS`（`:85`）各补一项
+**与计划的两处偏离，都在实现时才看清：**
 
-**两处 `rssFeedsEnabled` 过滤必须同时覆盖新 key**，漏了的话 feeds 关掉后导航会留一个
-Subscribe、点进去是列着三条失效地址的页面：
+**偏离一：原 commit 3 和 commit 4 合并成一个。** 计划把「加 key」和「写那对对照文案」拆成
+两个提交，但 `SYSTEM_NAV_DESCRIPTIONS` 是 `Record<SystemNavKey, ...>`，加 key 就必须同时给
+描述，否则类型都过不去。而且那两行本来就是一对，拆开提交等于让第一个提交留下一行凑数的文案。
 
-- `lib/navigation.ts:120`（服务端渲染投影）
-- `jant-nav-manager.ts:1335`（`#isVisibleInPreview`，设置页预览）
+**偏离二：那个「重复」的特判不是重复，是 catalog 放置。** 计划说
+`NavigationContent.tsx:262` 特判了 `key === "rss"` 的描述、把 `navigation-labels.ts` 里那条
+覆盖掉了，属于该清掉的重复。**错了** —— `lingui.config` 按路径切目录：
 
-两处现在都写死 `systemKey !== "rss"`。
+- `routes/dash/**`、`ui/dash/**`、`routes/auth/setup.tsx` → `locales/settings/` 目录，**翻译**
+- 其余一切 → `locales/public/` 目录，**只维护 en**（公开面在每个视图下都是英文）
 
-**双方言 schema 要改，但不用迁移**：`SYSTEM_NAV_KEY_VALUES` 是 `nav_item.system_key` 的列
-枚举（`db/schema.ts:819`、`db/pg/schema.ts:810`），两边都要加 —— 但两边都是
-`text(..., { enum })`，Drizzle 只在 TypeScript 层收紧，不生成 CHECK、不是 `pgEnum`，所以
-**两个 migrations 目录都不动**。`lib/schemas.ts:174` 的 `SystemNavKeySchema` 由同一个常量
-派生，自动跟上。
+`navigation-labels.ts` 在 `ui/shared/`，所以那里的描述全都进了不翻译的目录。那个特判存在的
+理由就是把 RSS 那条挪进 `ui/dash/` 从而拿到翻译。照计划「去重」会把它也变成英文。
 
-### 3.4 commit 4 — 两行对照文案（这不是附带项）
+正确的修法不是留着特判，是**把整张描述表搬到 `ui/dash/appearance/system-nav-descriptions.ts`**。
+顺带修掉一个既有缺陷：另外五条描述此前一直没被翻译，现在七条一起进了 settings 目录，
+zh-Hans / zh-Hant 都补了译文。
 
-机制上换过去只要翻两个开关（§3.5），但**能不能称为「容易」全看这两行说明**。作者会看到两个
-长得差不多的开关，得一眼知道选哪个。
+导航**标签**留在 `ui/shared/navigation-labels.ts` 不动 —— 它们渲染在公开站点导航里，本来
+就该是英文。
 
-`NavigationContent.tsx:262` 现在特判了 `key === "rss"` 的描述，那段文案在新语境下会变成误导，
-改掉。（顺带：这个特判把 `SYSTEM_NAV_DESCRIPTIONS.rss`（`navigation-labels.ts:94`）在这条
-路径上整个覆盖掉了 —— 同一个改动里清掉这份重复。）
+**已做的改动：**
 
-两行写成**一对对照**：
+- `SYSTEM_NAV_KEY_VALUES` 追加 `"subscribe"`；`SYSTEM_NAV_KEYS` 追加该项
+  （`defaultLabel: "Subscribe"`、`url: "/subscribe"`、`defaultPlacement: "more"`）
+- `DEFAULT_NAVIGATION_PROFILES` 追加 v3 = v2 把 `rss` 换成 `subscribe`，版本号指向 3。
+  **v1/v2 一个字没动**
+- 新增 `FEED_NAV_KEYS` / `isFeedNavKey()`（`types/constants.ts`），两处 `rssFeedsEnabled`
+  过滤改走它：`lib/navigation.ts` 的服务端投影、`jant-nav-manager.ts` 的
+  `#isVisibleInPreview` 预览。两处都加了测试
+- `getSystemNavDescription` 增加 `values` 参数，`NavigationContent.tsx` 不再自带那份文案。
+  注意 `Translator` 要用仓库自己的 `i18n/i18n.ts` 里的 `I18n`（它声明了
+  `_(descriptor, values)`），不是 `@lingui/core` 的 —— 后者的 `_` 只有 `(descriptor)` 和
+  `(id, values)` 两个重载，传描述符 + values 过不了类型
 
-> **RSS** — Links straight to /feed — the raw Atom file, currently your {feed} feed.
-> Best for readers who already use a feed reader.
->
-> **Subscribe** — Links to /subscribe, a page listing your feeds with copy buttons.
-> Best for readers who don't already use one.
+**关于迁移：结论仍是不需要，但计划里给的理由是错的。**
 
-中文（全角标点、无主语、不用「您」）：
+计划说「两边都是 `text(..., { enum })`，Drizzle 只在 TS 层收紧，不生成 CHECK」。实际上
+`nav_item.system_key` **曾经**有过值白名单约束：`0000_baseline.sql` 是四个值，
+`0010_futuristic_preak.sql` 重建成六个。真正的理由是**后来的迁移把它去掉了** —— 当前
+`schema.ts` 不再声明 `chk_nav_item_system_key`，`meta/0034_snapshot.json` 里没有它，本地已
+迁移的 D1 实际 DDL 里也只剩 `chk_nav_item_shape`。三处都查过了。
 
-> **RSS** —— 直接指向 /feed，即 Atom 原文件，当前是你的{feed}。适合已经在用阅读器的读者。
->
-> **Subscribe** —— 指向 /subscribe，一个列出你所有 feed 地址、带复制按钮的页面。
-> 适合还没在用阅读器的读者。
-
-`{feed}` 插值（显示「你的 Latest feed」还是「Featured feed」）保留在 RSS 行上，确实有用。
-
-**不要加互斥。** 两个都打开有点傻但不算坏，而隐藏的互斥规则会让作者困惑（「我怎么打不开
-另一个」）。靠文案说清就够。
-
-三个 locale（`i18n/locales/public/`、`settings/`，各 en / zh-Hans / zh-Hant）都要有。
-zh-Hant 按台湾惯用词，不是简繁转换。
+（这条值得记住：`text({ enum })` 本身确实不产生约束，但这张表另外用 `check()` 显式声明过
+同名约束，光看列定义会得出错误结论。）
 
 ### 3.5 现有站点怎么换（不用写代码，验证时要走一遍）
 

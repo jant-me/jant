@@ -121,6 +121,7 @@ export const SYSTEM_NAV_KEY_VALUES = [
   "collections",
   "archive",
   "rss",
+  "subscribe",
   "settings",
 ] as const;
 export type SystemNavKey = (typeof SYSTEM_NAV_KEY_VALUES)[number];
@@ -151,7 +152,19 @@ export const SYSTEM_NAV_KEYS = {
     url: "/archive",
     defaultPlacement: "header",
   },
+  // Two entries, two audiences. `rss` links straight at the Atom document, for
+  // an author whose readers already run a feed reader; `subscribe` links at the
+  // page that explains the feeds, for everyone else. Repointing `rss` at
+  // /subscribe instead of adding this would have destroyed the first case, and
+  // left a key named `rss` addressing an HTML page — nav data themes read.
   rss: { defaultLabel: "RSS", url: "/feed", defaultPlacement: "more" },
+  subscribe: {
+    defaultLabel: "Subscribe",
+    url: "/subscribe",
+    // A once-in-a-reader's-lifetime utility page, not a section to come back
+    // and read, so it sits with Settings rather than beside Featured and All.
+    defaultPlacement: "more",
+  },
   settings: {
     defaultLabel: "Settings",
     url: "/settings",
@@ -165,6 +178,32 @@ export const SYSTEM_NAV_KEYS = {
     defaultPlacement: NavItemPlacement;
   }
 >;
+
+/**
+ * The system nav entries that exist only while RSS feeds do.
+ *
+ * `rss` addresses the Atom document; `subscribe` addresses the page that
+ * explains it, which 404s without feeds. Both disappear from the rendered
+ * navigation when feeds are switched off — while staying in the database, so
+ * placement and custom labels survive being switched back on.
+ */
+export const FEED_NAV_KEYS = [
+  "rss",
+  "subscribe",
+] as const satisfies readonly SystemNavKey[];
+
+/**
+ * Whether a system nav key is one of the feed entries.
+ *
+ * @param key - A system nav key, or nothing for a non-system item
+ * @returns Whether the entry depends on feeds being enabled
+ * @example
+ * isFeedNavKey("subscribe"); // true
+ * isFeedNavKey("archive"); // false
+ */
+export function isFeedNavKey(key: string | null | undefined): boolean {
+  return (FEED_NAV_KEYS as readonly string[]).includes(key ?? "");
+}
 
 export interface DefaultNavigationProfile {
   version: number;
@@ -188,9 +227,17 @@ export const DEFAULT_NAVIGATION_PROFILES = {
     version: 2,
     systemKeys: ["featured", "archive", "collections", "rss", "settings"],
   },
+  // `rss` handed a browser a screen of Atom XML, which is a dead end for a
+  // reader who does not already know what to do with it. New sites point at
+  // /subscribe instead; existing rows keep `rss`, and an author who wants the
+  // new entry turns it on beside the old one in Appearance.
+  3: {
+    version: 3,
+    systemKeys: ["featured", "archive", "collections", "subscribe", "settings"],
+  },
 } as const satisfies Record<number, DefaultNavigationProfile>;
 
-export const DEFAULT_NAVIGATION_PROFILE_VERSION = 2 as const;
+export const DEFAULT_NAVIGATION_PROFILE_VERSION = 3 as const;
 export const DEFAULT_NAVIGATION_PROFILE =
   DEFAULT_NAVIGATION_PROFILES[DEFAULT_NAVIGATION_PROFILE_VERSION];
 

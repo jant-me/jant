@@ -448,7 +448,7 @@ describe("NavItemService", () => {
         "featured",
         "archive",
         "collections",
-        "rss",
+        "subscribe",
         "settings",
       ]);
       expect(created.map((item) => item.placement)).toEqual([
@@ -479,7 +479,7 @@ describe("NavItemService", () => {
         "featured",
         "archive",
         "collections",
-        "rss",
+        "subscribe",
         "settings",
       ]);
       expect(items.find((item) => item.id === latest.id)).toEqual(
@@ -511,7 +511,7 @@ describe("NavItemService", () => {
       expect(created.map((item) => item.systemKey)).toEqual([
         "featured",
         "collections",
-        "rss",
+        "subscribe",
         "settings",
       ]);
       expect(items.slice(0, 2).map((item) => item.id)).toEqual([

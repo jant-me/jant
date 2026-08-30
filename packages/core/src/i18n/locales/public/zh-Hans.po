@@ -158,11 +158,6 @@ msgstr ""
 msgid "Add a label and URL."
 msgstr ""
 
-#. @context: Description for the RSS system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Add a link to your main RSS feed. Change what /feed returns in General."
-msgstr ""
-
 #. @context: Compose link title required error
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Add a title before posting this link."
@@ -1375,26 +1370,6 @@ msgstr ""
 msgid "Link removed."
 msgstr ""
 
-#. @context: Description for the featured system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Link to posts you've marked as featured."
-msgstr ""
-
-#. @context: Description for the archive system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Link to the post archive"
-msgstr ""
-
-#. @context: Description for the collections system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Link to your collections page"
-msgstr ""
-
-#. @context: Description for the latest system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Link to your latest posts. Your homepage shows this feed."
-msgstr ""
-
 #. @context: Toast after saving a custom collections link
 #: src/ui/shared/collection-management-labels.ts
 msgid "Link updated."
@@ -2208,11 +2183,6 @@ msgstr ""
 msgid "Show the original"
 msgstr ""
 
-#. @context: Description for the settings system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Shows 'Settings' when logged in, 'Sign in' when logged out"
-msgstr ""
-
 #. @context: Built-in navigation label shown when auth is required
 #: src/ui/shared/navigation-labels.ts
 msgctxt "nav"
@@ -2354,6 +2324,12 @@ msgstr ""
 #. @context: Page title for the feed subscription page
 #: src/routes/pages/subscribe.tsx
 #: src/ui/pages/SubscribePage.tsx
+msgid "Subscribe"
+msgstr ""
+
+#. @context: Built-in navigation label for the page that explains the site's feeds. Names what the reader wants to do, unlike the sibling RSS entry which names the format and links at the Atom document itself.
+#: src/ui/shared/navigation-labels.ts
+msgctxt "nav"
 msgid "Subscribe"
 msgstr ""
 

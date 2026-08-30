@@ -1259,11 +1259,6 @@ msgstr "Header"
 msgid "Header links, built-in destinations, and overflow menu"
 msgstr "Header links, built-in destinations, and overflow menu"
 
-#. @context: Description for the RSS system navigation toggle. {feed} is either Latest or Featured.
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Header RSS points to your {feed} feed (/feed). Change what /feed returns in General."
-msgstr "Header RSS points to your {feed} feed (/feed). Change what /feed returns in General."
-
 #. @context: Fallback color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Headings, body text, and links in this theme."
@@ -1469,6 +1464,36 @@ msgstr "Link"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Link added to navigation."
 msgstr "Link added to navigation."
+
+#. @context: Description for the featured system navigation toggle
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Link to posts you've marked as featured."
+msgstr "Link to posts you've marked as featured."
+
+#. @context: Description for the archive system navigation toggle
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Link to the post archive"
+msgstr "Link to the post archive"
+
+#. @context: Description for the collections system navigation toggle
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Link to your collections page"
+msgstr "Link to your collections page"
+
+#. @context: Description for the latest system navigation toggle
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Link to your latest posts. Your homepage shows this feed."
+msgstr "Link to your latest posts. Your homepage shows this feed."
+
+#. @context: Description for the RSS system navigation toggle. {feed} is either Latest or Featured. Pairs with the Subscribe toggle's description.
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Links straight to /feed — the raw Atom file, currently your {feed} feed. Best for readers who already use a feed reader."
+msgstr "Links straight to /feed — the raw Atom file, currently your {feed} feed. Best for readers who already use a feed reader."
+
+#. @context: Description for the Subscribe system navigation toggle. Pairs with the RSS toggle's description.
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Links to /subscribe, a page listing your feeds with copy buttons. Best for readers who don't already use one."
+msgstr "Links to /subscribe, a page listing your feeds with copy buttons. Best for readers who don't already use one."
 
 #. @context: Label for list posts curl example
 #: src/ui/dash/settings/ApiTokensContent.tsx
@@ -2314,6 +2339,11 @@ msgstr "Show the site avatar in the public header."
 #: src/routes/dash/settings.tsx
 msgid "Showing {shown} of {total}"
 msgstr "Showing {shown} of {total}"
+
+#. @context: Description for the settings system navigation toggle
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Shows 'Settings' when logged in, 'Sign in' when logged out"
+msgstr "Shows 'Settings' when logged in, 'Sign in' when logged out"
 
 #. @context: Settings link — sign out action
 #: src/ui/dash/settings/SettingsRootContent.tsx

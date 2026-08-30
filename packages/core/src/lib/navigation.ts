@@ -6,6 +6,7 @@
 
 import type { Context } from "hono";
 import type { Collection, NavItem, NavItemView } from "../types.js";
+import { isFeedNavKey } from "../types/constants.js";
 import { toNavItemViews } from "./view.js";
 import { languageScopeBasePath, viewBasePath } from "./view-language.js";
 import { render as renderMarkdown, toPlainText } from "./markdown.js";
@@ -113,12 +114,15 @@ export async function getNavigationData(
     options?.preloadedItems ??
     (await c.var.services.navItems.list({ language: scopeLanguage }));
   const currentPath = c.var.publicPath;
-  // Keep the saved RSS item untouched so its placement and custom label come
-  // back when feeds are re-enabled. Only the rendered projection is filtered.
+  // Keep the saved feed items untouched so their placement and custom labels
+  // come back when feeds are re-enabled. Only the rendered projection is
+  // filtered. Both entries go: `rss` addresses a feed that is off, and
+  // `subscribe` a page that 404s without one.
   const items = appConfig.rssFeedsEnabled
     ? savedItems
     : savedItems.filter(
-        (item: NavItem) => item.type !== "system" || item.systemKey !== "rss",
+        (item: NavItem) =>
+          item.type !== "system" || !isFeedNavKey(item.systemKey),
       );
 
   const siteName = appConfig.siteName;
