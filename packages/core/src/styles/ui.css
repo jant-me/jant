@@ -8416,6 +8416,77 @@
     opacity: 0.8;
   }
 
+  /* --- Attachment action row (compose) ------------------------------------- */
+
+  .compose-attachment-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .compose-attachment-move-group {
+    display: flex;
+    align-items: center;
+  }
+
+  /* Reordering by tap, because dragging a near-full-width thumbnail competes
+     with the strip's own horizontal scroll. */
+  .compose-attachment-move {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--site-text-secondary);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease,
+      opacity 0.15s ease;
+  }
+
+  /* A finger needs more than the pointer-sized box. Only the target grows —
+     the icon stays the same weight in both. */
+  @media (pointer: coarse) {
+    .compose-attachment-move {
+      width: 40px;
+      height: 36px;
+    }
+  }
+
+  .compose-attachment-move:hover:not(:disabled) {
+    color: var(--site-text-primary);
+    background-color: var(--site-nav-hover-bg);
+  }
+
+  /* Touch has no hover, so without this a tap reads as nothing happening —
+     which matters most at either end, where the order does not change. */
+  .compose-attachment-move:active:not(:disabled) {
+    color: var(--site-text-primary);
+    background-color: var(--site-nav-hover-bg);
+  }
+
+  .compose-attachment-move:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .compose-attachment-move:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .compose-attachment-move svg {
+    display: block;
+    pointer-events: none;
+  }
+
   /* --- Video play icon overlay (compose) ----------------------------------- */
 
   .compose-attachment-play-icon {

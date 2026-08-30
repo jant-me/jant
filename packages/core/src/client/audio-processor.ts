@@ -1,9 +1,12 @@
 /**
  * Client-side Audio Processor
  *
- * Transcodes audio files to AAC in an M4A container (MP4 audio-only)
- * using mediabunny. Mirrors the video-processor pattern but discards
- * any video track and skips poster/blurhash extraction.
+ * Remuxes audio files into an M4A container (MP4 audio-only) using
+ * mediabunny, transcoding to AAC only when the source is not already AAC.
+ * A source that needs nothing has its encoded packets copied across, so it
+ * arrives without a generation of re-encoding loss. Mirrors the
+ * video-processor pattern but discards any video track and skips
+ * poster/blurhash extraction.
  *
  * Requires WebCodecs API support — check `isSupported()` before use.
  */
@@ -15,9 +18,16 @@ import {
   BufferTarget,
   BlobSource,
   Conversion,
-  QUALITY_HIGH,
+  Quality,
   ALL_FORMATS,
 } from "mediabunny";
+
+/**
+ * Quality used when a re-encode is unavoidable (non-AAC source). AAC only
+ * accepts a fixed set of bitrates, so this lands on the highest mediabunny
+ * will pick, 192 kbps.
+ */
+const REENCODE_QUALITY = new Quality("very-high");
 
 export interface AudioProcessResult {
   file: File;
@@ -33,7 +43,8 @@ function isSupported(): boolean {
 }
 
 /**
- * Process an audio file: transcode to AAC in an M4A (MP4) container.
+ * Process an audio file: remux into an M4A (MP4) container, transcoding to
+ * AAC only when the source is not already AAC.
  *
  * @param file - Source audio file
  * @param onProgress - Optional callback receiving progress from 0 to 1
@@ -54,11 +65,22 @@ async function processToFile(
   });
 
   try {
+    // Setting a quality on the track is what disables mediabunny's copy fast
+    // path, so only set one when the source is not already AAC — otherwise a
+    // needless decode/encode round trip costs a generation of quality. An
+    // unknown codec (`null`) is treated as needing one.
+    const audioTrack = await input.getPrimaryAudioTrack();
+    const sourceCodec = audioTrack ? await audioTrack.getCodec() : undefined;
+    const needsReencode = sourceCodec !== undefined && sourceCodec !== "aac";
+
     const conversion = await Conversion.init({
       input,
       output,
       video: { discard: true },
-      audio: { codec: "aac", bitrate: QUALITY_HIGH },
+      audio: {
+        codec: "aac",
+        ...(needsReencode ? { quality: REENCODE_QUALITY } : {}),
+      },
     });
 
     if (onProgress) {

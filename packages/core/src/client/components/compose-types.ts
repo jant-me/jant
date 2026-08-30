@@ -196,6 +196,8 @@ export interface ComposeLabels {
   altHint: string;
   addMore: string;
   removeAttachment: string;
+  moveAttachmentEarlier: string;
+  moveAttachmentLater: string;
   uploading: string;
   /** Toast when exactly one pasted remote image couldn't be rehosted. */
   imageNotRehosted?: string;

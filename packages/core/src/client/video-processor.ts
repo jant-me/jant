@@ -2,7 +2,10 @@
  * Client-side Video Processor
  *
  * Processes videos before upload using mediabunny:
- * - Transcodes to H.264/AAC MP4 (universal playback)
+ * - Remuxes to MP4, transcoding to H.264/AAC only when the source is not
+ *   already in those codecs or does not fit the size caps. A source that
+ *   needs nothing has its encoded packets copied straight across, so it
+ *   reaches the server without a generation of re-encoding loss
  * - Resizes to max 1920px long edge / 1080px short edge
  * - Strips spurious rotation metadata from the output (mediabunny may
  *   bake rotation into pixels AND write a display matrix, causing the
@@ -22,8 +25,10 @@ import {
   BlobSource,
   CanvasSink,
   Conversion,
-  QUALITY_HIGH,
+  Quality,
   ALL_FORMATS,
+  type VideoCodec,
+  type AudioCodec,
 } from "mediabunny";
 import { encode } from "blurhash";
 import { normalizeDurationSeconds } from "../lib/video-playback.js";
@@ -35,6 +40,15 @@ const MAX_LONG_EDGE = 1920;
 const MAX_SHORT_EDGE = 1080;
 const POSTER_WIDTH = 640;
 const BLURHASH_SIZE = 32;
+
+/**
+ * Quality used when a re-encode is unavoidable (non-H.264 source, or a
+ * source above the size caps). Maps to AVC quantizer 16 — visually close
+ * to the source, at the cost of a larger file. Sources that need no
+ * re-encode never reach an encoder at all, so this only ever applies to
+ * material that was going to lose a generation regardless.
+ */
+const REENCODE_QUALITY = new Quality("very-high");
 
 export interface VideoProcessResult {
   file: File;
@@ -54,23 +68,31 @@ function isSupported(): boolean {
   return typeof VideoEncoder !== "undefined";
 }
 
-/**
- * Extract a poster frame, blurhash, and source dimensions from a video file.
- * Seeks to `min(duration × 0.1, 1s)` and captures the frame.
- * Also returns the original video dimensions so the caller can compute
- * the correct output size without opening a second Input instance.
- *
- * @param file - Source video file
- * @returns Poster blob (640px-wide WebP), blurhash string, and source dimensions
- */
-async function extractPoster(file: File): Promise<{
+interface SourceProbe {
   poster?: Blob;
   blurhash?: string;
   sourceWidth?: number;
   sourceHeight?: number;
   rotation?: number;
   durationSeconds?: number;
-}> {
+  /** Source video codec, or `null` when it could not be determined. */
+  videoCodec?: VideoCodec | null;
+  /** Source audio codec; `undefined` when the file carries no audio track. */
+  audioCodec?: AudioCodec | null;
+}
+
+/**
+ * Probe a video file and extract its poster frame and blurhash in one pass.
+ * Seeks to `min(duration × 0.1, 1s)` and captures the frame.
+ *
+ * Returns the source dimensions and track codecs alongside, so the caller can
+ * decide whether a re-encode is needed at all — and compute the output size —
+ * without opening a second Input instance.
+ *
+ * @param file - Source video file
+ * @returns Poster blob (640px-wide WebP), blurhash, dimensions, and codecs
+ */
+async function probeSource(file: File): Promise<SourceProbe> {
   const input = new Input({
     source: new BlobSource(file),
     formats: ALL_FORMATS,
@@ -82,16 +104,28 @@ async function extractPoster(file: File): Promise<{
     const sourceWidth = videoTrack.displayWidth;
     const sourceHeight = videoTrack.displayHeight;
     const rotation = videoTrack.rotation;
+    const videoCodec = await videoTrack.getCodec();
+    const audioTrack = await input.getPrimaryAudioTrack();
+    const audioCodec = audioTrack ? await audioTrack.getCodec() : undefined;
 
     const duration = await input.computeDuration();
     const durationSeconds = normalizeDurationSeconds(duration);
     const seekTime = Math.min(duration * 0.1, 1);
 
+    // Everything the caller needs to plan the conversion. Poster and blurhash
+    // are best-effort on top — each bail-out below still returns this much.
+    const base: SourceProbe = {
+      sourceWidth,
+      sourceHeight,
+      rotation,
+      durationSeconds,
+      videoCodec,
+      audioCodec,
+    };
+
     const sink = new CanvasSink(videoTrack);
     const wrapped = await sink.getCanvas(seekTime);
-    if (!wrapped) {
-      return { sourceWidth, sourceHeight, rotation, durationSeconds };
-    }
+    if (!wrapped) return base;
 
     const canvas = wrapped.canvas as HTMLCanvasElement;
 
@@ -106,7 +140,7 @@ async function extractPoster(file: File): Promise<{
     posterCanvas.width = pw;
     posterCanvas.height = ph;
     const pCtx = posterCanvas.getContext("2d");
-    if (!pCtx) return { sourceWidth, sourceHeight };
+    if (!pCtx) return base;
     pCtx.drawImage(canvas, 0, 0, pw, ph);
 
     const poster = await new Promise<Blob | undefined>((resolve) => {
@@ -126,20 +160,13 @@ async function extractPoster(file: File): Promise<{
     bhCanvas.width = bw;
     bhCanvas.height = bh;
     const bhCtx = bhCanvas.getContext("2d");
-    if (!bhCtx) return { poster, sourceWidth, sourceHeight };
+    if (!bhCtx) return { ...base, poster };
     bhCtx.drawImage(canvas, 0, 0, bw, bh);
 
     const imageData = bhCtx.getImageData(0, 0, bw, bh);
     const blurhash = encode(imageData.data, bw, bh, 4, 3);
 
-    return {
-      poster,
-      blurhash,
-      sourceWidth,
-      sourceHeight,
-      rotation,
-      durationSeconds,
-    };
+    return { ...base, poster, blurhash };
   } catch {
     return {};
   } finally {
@@ -147,9 +174,97 @@ async function extractPoster(file: File): Promise<{
   }
 }
 
+/** What a given source needs done to it before upload. */
+export interface VideoProcessPlan {
+  /** True when the video must be scaled down to fit the size caps. */
+  needsResize: boolean;
+  /** Target dimensions — equal to the source dimensions when not resizing. */
+  width: number;
+  height: number;
+  /** True when the video track must be decoded and re-encoded. */
+  videoNeedsReencode: boolean;
+  /** True when the audio track must be decoded and re-encoded. */
+  audioNeedsReencode: boolean;
+}
+
 /**
- * Process a video file: transcode to H.264/AAC MP4, resize to fit within
- * 1920×1080, and extract poster frame + blurhash.
+ * Decide what a source video needs: a resize, a video re-encode, an audio
+ * re-encode, or nothing at all.
+ *
+ * Asking for a size or a quality is what disables mediabunny's copy fast
+ * path, so anything already within the caps and already in the target codecs
+ * must come back with every flag false — its encoded packets are then copied
+ * across untouched, sparing it a generation of quality. An unknown codec
+ * (`null`) counts as needing a re-encode, since we can't vouch for it playing
+ * everywhere. A missing audio track (`undefined`) needs nothing.
+ *
+ * Dimensions are the source's *display* dimensions, i.e. post-rotation, so
+ * the caps apply orientation-agnostically.
+ *
+ * @param source - Display dimensions and track codecs of the source
+ * @param options - `maxLongEdge` and `maxShortEdge` caps
+ * @returns The processing plan
+ *
+ * @example
+ * ```ts
+ * // Already H.264/AAC and within the caps — copied, not re-encoded
+ * planVideoProcessing(
+ *   { width: 1280, height: 720, videoCodec: "avc", audioCodec: "aac" },
+ *   { maxLongEdge: 1920, maxShortEdge: 1080 },
+ * );
+ * // { needsResize: false, width: 1280, height: 720,
+ * //   videoNeedsReencode: false, audioNeedsReencode: false }
+ * ```
+ */
+export function planVideoProcessing(
+  source: {
+    width?: number;
+    height?: number;
+    videoCodec?: VideoCodec | null;
+    audioCodec?: AudioCodec | null;
+  },
+  options: { maxLongEdge: number; maxShortEdge: number },
+): VideoProcessPlan {
+  const { width: sourceWidth, height: sourceHeight } = source;
+
+  // Fall back to the caps when the probe could not read the dimensions;
+  // without a source size there is nothing to scale against.
+  let width = sourceWidth || options.maxLongEdge;
+  let height = sourceHeight || options.maxShortEdge;
+  let needsResize = false;
+
+  if (sourceWidth && sourceHeight) {
+    const longSide = Math.max(sourceWidth, sourceHeight);
+    const shortSide = Math.min(sourceWidth, sourceHeight);
+    const scale = Math.min(
+      options.maxLongEdge / longSide,
+      options.maxShortEdge / shortSide,
+      1,
+    );
+    needsResize = scale < 1;
+    if (needsResize) {
+      width = Math.round(sourceWidth * scale);
+      height = Math.round(sourceHeight * scale);
+      // H.264 requires even dimensions
+      width += width % 2;
+      height += height % 2;
+    }
+  }
+
+  return {
+    needsResize,
+    width,
+    height,
+    videoNeedsReencode: needsResize || source.videoCodec !== "avc",
+    audioNeedsReencode:
+      source.audioCodec !== undefined && source.audioCodec !== "aac",
+  };
+}
+
+/**
+ * Process a video file: remux to MP4, re-encoding to H.264/AAC only when the
+ * source needs it, resize to fit within 1920×1080, and extract poster frame
+ * + blurhash.
  *
  * @param file - Source video file
  * @param onProgress - Optional callback receiving progress from 0 to 1
@@ -159,8 +274,8 @@ async function processToFile(
   file: File,
   onProgress?: (progress: number) => void,
 ): Promise<VideoProcessResult> {
-  // Extract poster + blurhash + source dimensions (separate Input instance,
-  // so the transcoding Input below starts with clean demuxer state).
+  // Probe the source and grab poster + blurhash (separate Input instance,
+  // so the conversion Input below starts with clean demuxer state).
   const {
     poster,
     blurhash,
@@ -168,28 +283,27 @@ async function processToFile(
     sourceHeight,
     rotation,
     durationSeconds,
-  } = await extractPoster(file);
+    videoCodec,
+    audioCodec,
+  } = await probeSource(file);
 
-  // Compute output size from display dimensions (post-rotation).
-  // Orientation-agnostic: long edge ≤ 1920, short edge ≤ 1080.
-  let targetW = sourceWidth || MAX_LONG_EDGE;
-  let targetH = sourceHeight || MAX_SHORT_EDGE;
-  if (sourceWidth && sourceHeight) {
-    const longSide = Math.max(sourceWidth, sourceHeight);
-    const shortSide = Math.min(sourceWidth, sourceHeight);
-    const scale = Math.min(
-      MAX_LONG_EDGE / longSide,
-      MAX_SHORT_EDGE / shortSide,
-      1,
-    );
-    targetW = Math.round(sourceWidth * scale);
-    targetH = Math.round(sourceHeight * scale);
-  }
-  // H.264 requires even dimensions
-  targetW += targetW % 2;
-  targetH += targetH % 2;
+  const {
+    needsResize,
+    width: targetW,
+    height: targetH,
+    videoNeedsReencode,
+    audioNeedsReencode,
+  } = planVideoProcessing(
+    {
+      width: sourceWidth,
+      height: sourceHeight,
+      videoCodec,
+      audioCodec,
+    },
+    { maxLongEdge: MAX_LONG_EDGE, maxShortEdge: MAX_SHORT_EDGE },
+  );
 
-  // Transcode to MP4 H.264/AAC (fresh Input — not shared with extractPoster)
+  // Convert to MP4 (fresh Input — not shared with probeSource)
   const input = new Input({
     source: new BlobSource(file),
     formats: ALL_FORMATS,
@@ -206,13 +320,14 @@ async function processToFile(
       output,
       video: {
         codec: "avc",
-        width: targetW,
-        height: targetH,
-        fit: "contain",
-        bitrate: QUALITY_HIGH,
+        ...(needsResize
+          ? { width: targetW, height: targetH, fit: "contain" as const }
+          : {}),
+        ...(videoNeedsReencode ? { quality: REENCODE_QUALITY } : {}),
       },
       audio: {
         codec: "aac",
+        ...(audioNeedsReencode ? { quality: REENCODE_QUALITY } : {}),
       },
     });
 
@@ -237,7 +352,8 @@ async function processToFile(
     // Safari's WebCodecs does NOT bake rotation, so the matrix is needed.
     // Strategy: probe the output as-is; if the dimensions already match
     // the expected display size, leave the file alone.  Otherwise strip
-    // the matrix and re-probe.
+    // the matrix and re-probe.  A copied (not re-encoded) track never hits
+    // this — no encoder touched the pixels — so it falls out via dimsMatch.
     const originalName = file.name.replace(/\.[^.]+$/, "");
     let mp4File = new File([buffer], `${originalName}.mp4`, {
       type: "video/mp4",

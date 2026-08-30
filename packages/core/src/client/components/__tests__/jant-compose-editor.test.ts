@@ -7,11 +7,12 @@ vi.mock("../../upload-with-metadata.js", () => ({
 import type { Editor, JSONContent } from "@tiptap/core";
 import type { Slice } from "@tiptap/pm/model";
 import * as ProseMirrorView from "@tiptap/pm/view";
-import type { ComposeLabels } from "../compose-types.js";
+import type { ComposeAttachment, ComposeLabels } from "../compose-types.js";
 import { renderTiptapJson } from "../../../lib/tiptap-render.js";
 import "../jant-compose-editor.js";
 import type { JantComposeEditor } from "../jant-compose-editor.js";
 import { uploadWithMetadata } from "../../upload-with-metadata.js";
+import Sortable from "sortablejs";
 
 function requireElement<T extends globalThis.Element>(
   element: T | null,
@@ -191,6 +192,8 @@ const labels: ComposeLabels = {
   altHint: "Alt text improves accessibility",
   addMore: "Add",
   removeAttachment: "Remove attachment",
+  moveAttachmentEarlier: "Move attachment earlier",
+  moveAttachmentLater: "Move attachment later",
   uploading: "Uploading...",
   loadingPost: "Loading post...",
   loadPostFailed: "Couldn't load this post. Try again.",
@@ -327,6 +330,58 @@ async function createElement(
   document.body.appendChild(el);
   await el.updateComplete;
   return el;
+}
+
+function mediaAttachment(clientId: string, mediaId: string): ComposeAttachment {
+  const blob = new Blob(["fake"], { type: "image/png" });
+  return {
+    clientId,
+    file: new File([blob], `${clientId}.png`, { type: "image/png" }),
+    previewUrl: URL.createObjectURL(blob),
+    status: "done",
+    progress: null,
+    mediaId,
+    alt: "",
+    error: null,
+    posterUrl: null,
+    remoteUrl: null,
+    summary: null,
+    chars: null,
+  };
+}
+
+/**
+ * Forces the primary-pointer media query, and returns a restore function.
+ * Every call site restores in a `finally` so one test cannot leak into another.
+ */
+function stubPrimaryPointer(kind: "coarse" | "fine"): () => void {
+  const original = window.matchMedia;
+  // Overrides `matches` on a real MediaQueryList, so the component still gets
+  // a live object to subscribe to.
+  window.matchMedia = (query: string) => {
+    const list = original.call(window, query);
+    Object.defineProperty(list, "matches", {
+      configurable: true,
+      value: query.includes(`pointer: ${kind}`),
+    });
+    return list;
+  };
+  return () => {
+    window.matchMedia = original;
+  };
+}
+
+function moveButton(
+  el: JantComposeEditor,
+  clientId: string,
+  direction: "earlier" | "later",
+): HTMLButtonElement {
+  return requireElement(
+    el.querySelector<HTMLButtonElement>(
+      `[data-attachment-id="${clientId}"] [data-attachment-move="${direction}"]`,
+    ),
+    `expected ${direction} move button for ${clientId}`,
+  );
 }
 
 function tiptapDoc(...content: JSONContent[]): JSONContent {
@@ -1286,37 +1341,9 @@ describe("JantComposeEditor", () => {
 
   it("moves attachments later with keyboard controls", async () => {
     const el = await createElement("note");
-    const blob = new Blob(["fake"], { type: "image/png" });
-    const file = new File([blob], "test.png", { type: "image/png" });
     el._attachments = [
-      {
-        clientId: "a1",
-        file,
-        previewUrl: URL.createObjectURL(blob),
-        status: "done",
-        progress: null,
-        mediaId: "m1",
-        alt: "",
-        error: null,
-        posterUrl: null,
-        remoteUrl: null,
-        summary: null,
-        chars: null,
-      },
-      {
-        clientId: "a2",
-        file,
-        previewUrl: URL.createObjectURL(blob),
-        status: "done",
-        progress: null,
-        mediaId: "m2",
-        alt: "",
-        error: null,
-        posterUrl: null,
-        remoteUrl: null,
-        summary: null,
-        chars: null,
-      },
+      mediaAttachment("a1", "m1"),
+      mediaAttachment("a2", "m2"),
     ];
     el._attachmentOrder = ["a1", "a2"];
     await el.updateComplete;
@@ -1336,6 +1363,127 @@ describe("JantComposeEditor", () => {
     await el.updateComplete;
 
     expect(el._attachmentOrder).toEqual(["a2", "a1"]);
+  });
+
+  it("reorders attachments with the move buttons", async () => {
+    const el = await createElement("note");
+    el._attachments = [
+      mediaAttachment("a1", "m1"),
+      mediaAttachment("a2", "m2"),
+      mediaAttachment("a3", "m3"),
+    ];
+    el._attachmentOrder = ["a1", "a2", "a3"];
+    await el.updateComplete;
+
+    moveButton(el, "a1", "later").click();
+    await el.updateComplete;
+    expect(el._attachmentOrder).toEqual(["a2", "a1", "a3"]);
+
+    moveButton(el, "a1", "earlier").click();
+    await el.updateComplete;
+    expect(el._attachmentOrder).toEqual(["a1", "a2", "a3"]);
+  });
+
+  it("disables the move button at each end of the strip", async () => {
+    const el = await createElement("note");
+    el._attachments = [
+      mediaAttachment("a1", "m1"),
+      mediaAttachment("a2", "m2"),
+    ];
+    el._attachmentOrder = ["a1", "a2"];
+    await el.updateComplete;
+
+    expect(moveButton(el, "a1", "earlier").disabled).toBe(true);
+    expect(moveButton(el, "a1", "later").disabled).toBe(false);
+    expect(moveButton(el, "a2", "earlier").disabled).toBe(false);
+    expect(moveButton(el, "a2", "later").disabled).toBe(true);
+  });
+
+  it("keeps focus on the attachment that moved", async () => {
+    const el = await createElement("note");
+    el._attachments = [
+      mediaAttachment("a1", "m1"),
+      mediaAttachment("a2", "m2"),
+      mediaAttachment("a3", "m3"),
+    ];
+    el._attachmentOrder = ["a1", "a2", "a3"];
+    await el.updateComplete;
+
+    const later = moveButton(el, "a1", "later");
+    later.focus();
+    later.click();
+    await el.updateComplete;
+
+    expect(document.activeElement).toBe(moveButton(el, "a1", "later"));
+  });
+
+  it("falls back to the opposite button when a move reaches the end", async () => {
+    const el = await createElement("note");
+    el._attachments = [
+      mediaAttachment("a1", "m1"),
+      mediaAttachment("a2", "m2"),
+    ];
+    el._attachmentOrder = ["a1", "a2"];
+    await el.updateComplete;
+
+    const later = moveButton(el, "a1", "later");
+    later.focus();
+    later.click();
+    await el.updateComplete;
+
+    expect(el._attachmentOrder).toEqual(["a2", "a1"]);
+    expect(moveButton(el, "a1", "later").disabled).toBe(true);
+    expect(document.activeElement).toBe(moveButton(el, "a1", "earlier"));
+  });
+
+  it("omits move buttons when there is nothing to reorder", async () => {
+    const el = await createElement("note");
+    el._attachments = [mediaAttachment("a1", "m1")];
+    el._attachmentOrder = ["a1"];
+    await el.updateComplete;
+
+    expect(el.querySelector("[data-attachment-move]")).toBeNull();
+    expect(el.querySelector(".compose-attachment-alt")).not.toBeNull();
+  });
+
+  it("leaves drag reordering off on a touch device", async () => {
+    const create = vi.spyOn(Sortable, "create");
+    const restorePointer = stubPrimaryPointer("coarse");
+    try {
+      const el = await createElement("note");
+      el._attachments = [
+        mediaAttachment("a1", "m1"),
+        mediaAttachment("a2", "m2"),
+      ];
+      el._attachmentOrder = ["a1", "a2"];
+      await el.updateComplete;
+
+      expect(create).not.toHaveBeenCalled();
+      // The buttons are the whole reordering path there, so they must stay.
+      expect(moveButton(el, "a1", "later").disabled).toBe(false);
+    } finally {
+      restorePointer();
+      create.mockRestore();
+    }
+  });
+
+  it("keeps drag reordering on a pointer device", async () => {
+    const create = vi.spyOn(Sortable, "create");
+    const restorePointer = stubPrimaryPointer("fine");
+    try {
+      const el = await createElement("note");
+      el._attachments = [
+        mediaAttachment("a1", "m1"),
+        mediaAttachment("a2", "m2"),
+      ];
+      el._attachmentOrder = ["a1", "a2"];
+      await el.updateComplete;
+
+      expect(create).toHaveBeenCalledTimes(1);
+    } finally {
+      restorePointer();
+      create.mockRestore();
+    }
   });
 
   it("preserves mixed attachment order when populate provides one", async () => {
