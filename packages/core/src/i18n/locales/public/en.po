@@ -1459,6 +1459,16 @@ msgstr "More actions"
 msgid "More options are available after you create it."
 msgstr "More options are available after you create it."
 
+#. @context: Button that moves an attachment one place toward the start in compose
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Move attachment earlier"
+msgstr "Move attachment earlier"
+
+#. @context: Button that moves an attachment one place toward the end in compose
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Move attachment later"
+msgstr "Move attachment later"
+
 #. @context: Secondary badge label on sample page
 #. @context: Token label on sample page
 #: src/ui/pages/ThemeSamplePage.tsx

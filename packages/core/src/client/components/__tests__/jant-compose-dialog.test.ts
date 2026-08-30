@@ -198,6 +198,8 @@ const labels: ComposeLabels = {
   altHint: "Alt text improves accessibility",
   addMore: "Add",
   removeAttachment: "Remove attachment",
+  moveAttachmentEarlier: "Move attachment earlier",
+  moveAttachmentLater: "Move attachment later",
   uploading: "Uploading...",
   loadingPost: "Loading post...",
   loadPostFailed: "Couldn't load this post. Try again.",
@@ -2451,8 +2453,7 @@ describe("JantComposeDialog", () => {
     await editor.updateComplete;
 
     let receivedDetail:
-      | (ComposeSubmitDetail & { pendingAttachments: unknown[] })
-      | null = null;
+      (ComposeSubmitDetail & { pendingAttachments: unknown[] }) | null = null;
     el.addEventListener("jant:compose-submit-deferred", (event) => {
       const customEvent = event as CustomEvent<
         ComposeSubmitDetail & { pendingAttachments: unknown[] }
@@ -4102,8 +4103,7 @@ describe("JantComposeDialog", () => {
     await el.updateComplete;
 
     let receivedDetail:
-      | (ComposeSubmitDetail & { pendingAttachments: unknown[] })
-      | null = null;
+      (ComposeSubmitDetail & { pendingAttachments: unknown[] }) | null = null;
     el.addEventListener("jant:compose-submit-deferred", (event) => {
       const customEvent = event as CustomEvent<
         ComposeSubmitDetail & { pendingAttachments: unknown[] }
@@ -5749,8 +5749,7 @@ describe("JantComposeDialog", () => {
     await editor.updateComplete;
 
     let receivedDetail:
-      | (ComposeSubmitDetail & { pendingAttachments: unknown[] })
-      | null = null;
+      (ComposeSubmitDetail & { pendingAttachments: unknown[] }) | null = null;
     el.addEventListener("jant:compose-submit-deferred", (event) => {
       const customEvent = event as CustomEvent<
         ComposeSubmitDetail & { pendingAttachments: unknown[] }

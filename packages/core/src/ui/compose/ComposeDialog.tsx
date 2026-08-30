@@ -347,6 +347,20 @@ export const ComposeForm: FC<ComposeFormProps> = ({
         comment: "@context: Button to remove an uploaded attachment in compose",
       }),
     ),
+    moveAttachmentEarlier: i18n._(
+      msg({
+        message: "Move attachment earlier",
+        comment:
+          "@context: Button that moves an attachment one place toward the start in compose",
+      }),
+    ),
+    moveAttachmentLater: i18n._(
+      msg({
+        message: "Move attachment later",
+        comment:
+          "@context: Button that moves an attachment one place toward the end in compose",
+      }),
+    ),
     uploading: i18n._(
       msg({
         message: "Uploading...",
