@@ -5224,12 +5224,35 @@ describe("JantComposeDialog", () => {
     expect(css).toMatch(
       /\.compose-attachment:only-child\s+\.compose-attachment-img\s*\{[\s\S]*max-height:\s*min\(460px,\s*52dvh\);/,
     );
+    // The strip's row height is one variable every kind of attachment reads,
+    // so the number is asserted where it is declared.
     expect(css).toMatch(
-      /\.compose-attachment:not\(:only-child\)\s+\.compose-attachment-img\s*\{[\s\S]*height:\s*min\(340px,\s*40dvh\);/,
+      /\.compose-attachments\s*\{[\s\S]*?--compose-strip-height:\s*min\(340px,\s*40dvh\);/,
+    );
+    expect(css).toMatch(
+      /\.compose-attachment:not\(:only-child\)\s+\.compose-attachment-img\s*\{[\s\S]*height:\s*var\(--compose-strip-height\);/,
     );
     // Reply compose no longer shrinks its previews to 96×72 to spare the
     // toolbar — one preview size everywhere.
     expect(css).not.toMatch(/--compose-reply-attachment-width/);
+  });
+
+  it("gives a card in the strip the same height as the pictures beside it", () => {
+    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+
+    // A card is chrome, not content: it fills the height a picture sets, so a
+    // mixed strip reads as one row and every control row lands on one line.
+    expect(css).toMatch(
+      /\.compose-attachments:has\(\.compose-attachment-img\)\s+\.compose-attachment:not\(:only-child\)\s+:is\(\s*\.compose-attachment-file-card,\s*\.compose-attachment-text-card,\s*\.compose-attachment-preview-fallback\s*\)\s*\{\s*height:\s*var\(--compose-strip-height\);/,
+    );
+    // With no picture to match, cards keep their own compact height rather
+    // than growing into a row of empty boxes.
+    expect(css).toMatch(
+      /\.compose-attachment:not\(:only-child\)\s+\.compose-attachment-file-card\s*\{[\s\S]*?height:\s*200px;/,
+    );
+    expect(css).toMatch(
+      /\.compose-attachment:not\(:only-child\)\s+\.compose-attachment-text-card\s*\{[\s\S]*?height:\s*200px;/,
+    );
   });
 
   it("routes a format change straight off the single-post editor", async () => {
