@@ -11,6 +11,7 @@ import "./client/audio-player.js";
 import "./client/feed-video-player.js";
 import "./client/media-scroll-hint.js";
 import "./client/form-enter-submit.js";
+import "./client/copy-field.js";
 import "./client/components/jant-media-lightbox.js";
 import "./client/components/jant-text-preview.js";
 // First-run setup is a signed-out page, so the language picker it shares with

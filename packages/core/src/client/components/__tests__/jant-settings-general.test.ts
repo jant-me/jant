@@ -308,26 +308,37 @@ describe("JantSettingsGeneral", () => {
     ]);
   });
 
-  it("copies a feed URL from the info block", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(globalThis.navigator, "clipboard", {
-      value: { writeText },
-      configurable: true,
-    });
-
+  it("marks up each feed URL for the copy-field enhancer", async () => {
     const el = await createElement();
     const feedSection = requireElement(
       findSectionByHeading(el, labels.feeds),
       "expected feeds section",
     );
-    const copyButtons = feedSection.querySelectorAll<HTMLButtonElement>(
-      "button[data-copy-feed-url]",
+    const fields = feedSection.querySelectorAll("[data-copy-field-root]");
+
+    expect(fields).toHaveLength(4);
+
+    const firstField = requireElement(
+      fields[0],
+      "expected the main feed field",
+    );
+    const input = requireElement(
+      firstField.querySelector<HTMLInputElement>(
+        "input[data-copy-field-value]",
+      ),
+      "expected the address input",
+    );
+    const button = requireElement(
+      firstField.querySelector<HTMLButtonElement>("button[data-copy-field]"),
+      "expected the copy button",
     );
 
-    copyButtons[0]?.click();
-    await Promise.resolve();
-
-    expect(writeText).toHaveBeenCalledWith("/feed");
+    expect(input.value).toBe("/feed");
+    expect(button.getAttribute("data-copy-field")).toBe(labels.feedUrlCopied);
+    expect(button.getAttribute("data-copy-field-failed")).toBe(
+      labels.copyFailed,
+    );
+    expect(button.textContent).toContain(labels.copy);
   });
 
   it("tracks site group dirty state on input", async () => {

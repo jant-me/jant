@@ -16,7 +16,12 @@ import type {
   SettingsTimezone,
   SettingsAboutPageStatus,
 } from "./settings-types.js";
-import { showToast } from "../toast.js";
+import {
+  COPY_FIELD_BUTTON_CLASS,
+  COPY_FIELD_CLASS,
+  COPY_FIELD_CONTROL_CLASS,
+  COPY_FIELD_INPUT_CLASS,
+} from "../../lib/copy-field.js";
 import {
   createSettingsEditor,
   jsonToMarkdown,
@@ -530,47 +535,37 @@ export class JantSettingsGeneral extends LitElement {
     `;
   }
 
-  private async _copyFeedUrl(value: string) {
-    try {
-      if (!globalThis.navigator.clipboard?.writeText) {
-        throw new Error("Clipboard unavailable");
-      }
-
-      await globalThis.navigator.clipboard.writeText(value);
-      showToast(this.labels.feedUrlCopied);
-    } catch {
-      showToast(this.labels.copyFailed, "error");
-    }
-  }
-
-  private _renderFeedInfoRow(
-    label: string,
-    value: string,
-    description?: string,
-  ) {
+  /**
+   * One feed address with a copy button.
+   *
+   * The same field `ui/shared/CopyField.tsx` renders on the public subscribe
+   * page, driven by the same `client/copy-field.ts` enhancer — hence the shared
+   * classes. lit-html cannot interpolate attribute names, so the enhancer's
+   * hooks are spelled out; `jant-settings-general.test.ts` asserts they match.
+   * Unlike the public page the button is not rendered hidden: settings is
+   * behind auth, where the client bundle is always present.
+   */
+  private _renderFeedUrl(label: string, value: string, description?: string) {
     return html`
-      <div class="flex min-w-0 flex-col gap-1">
+      <div class=${COPY_FIELD_CLASS} data-copy-field-root>
         <p class="text-sm font-medium">${label}</p>
         ${description
           ? html`<p class="text-sm text-muted-foreground">${description}</p>`
           : ""}
-        <div class="relative">
+        <div class=${COPY_FIELD_CONTROL_CLASS}>
           <input
             type="text"
-            class="input w-full pr-20 font-mono text-sm"
+            class=${COPY_FIELD_INPUT_CLASS}
             .value=${value}
             readonly
             aria-label=${label}
-            @click=${(e: Event) =>
-              (e.currentTarget as HTMLInputElement).select()}
-            @focus=${(e: Event) =>
-              (e.currentTarget as HTMLInputElement).select()}
+            data-copy-field-value
           />
           <button
             type="button"
-            class="btn-sm-outline absolute right-2 top-1/2 h-7 -translate-y-1/2 px-2.5 text-xs"
-            data-copy-feed-url
-            @click=${() => void this._copyFeedUrl(value)}
+            class=${COPY_FIELD_BUTTON_CLASS}
+            data-copy-field=${this.labels.feedUrlCopied}
+            data-copy-field-failed=${this.labels.copyFailed}
           >
             ${this.labels.copy}
           </button>
@@ -758,19 +753,16 @@ export class JantSettingsGeneral extends LitElement {
                 </p>
               </div>
 
-              ${this._renderFeedInfoRow(
-                this.labels.mainFeedUrl,
-                this.mainFeedUrl,
-              )}
-              ${this._renderFeedInfoRow(
+              ${this._renderFeedUrl(this.labels.mainFeedUrl, this.mainFeedUrl)}
+              ${this._renderFeedUrl(
                 this.labels.latestFeedUrl,
                 this.latestFeedUrl,
               )}
-              ${this._renderFeedInfoRow(
+              ${this._renderFeedUrl(
                 this.labels.featuredFeedUrl,
                 this.featuredFeedUrl,
               )}
-              ${this._renderFeedInfoRow(
+              ${this._renderFeedUrl(
                 this.labels.archiveFeedUrl,
                 this.archiveFeedUrl,
                 this.labels.archiveFeedUrlHelp,
