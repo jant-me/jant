@@ -223,6 +223,11 @@ msgstr "Add to Navigation"
 msgid "Adding…"
 msgstr "Adding…"
 
+#. @context: Subscribe page name for the full archive feed. Matches the Archive page's own nav label.
+#: src/routes/pages/subscribe.tsx
+msgid "All"
+msgstr "All"
+
 #. @context: Built-in navigation label for the archive page. Reads as the widest of Featured / Latest / All rather than 'old posts' — the page is the complete index, and its URL stays /archive.
 #: src/ui/shared/navigation-labels.ts
 msgctxt "nav"
@@ -518,6 +523,11 @@ msgctxt "nav"
 msgid "Collections"
 msgstr "Collections"
 
+#. @context: Subscribe page closing note, pointing at the per-page feed icons instead of listing every collection
+#: src/ui/pages/SubscribePage.tsx
+msgid "Collections and filtered archive views have their own feeds. Look for the feed icon on those pages."
+msgstr "Collections and filtered archive views have their own feeds. Look for the feed icon on those pages."
+
 #. @context: Alert title on theme sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Color check"
@@ -569,6 +579,16 @@ msgstr "Continue writing this draft"
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Controls"
 msgstr "Controls"
+
+#. @context: Button that copies a feed address to the clipboard
+#: src/ui/pages/SubscribePage.tsx
+msgid "Copy"
+msgstr "Copy"
+
+#. @context: Toast when the clipboard is unavailable, pointing at selecting the address by hand
+#: src/ui/pages/SubscribePage.tsx
+msgid "Could not copy. Select the address and copy it."
+msgstr "Could not copy. Select the address and copy it."
 
 #. @context: Collection dialog load failure
 #: src/ui/shared/collection-management-labels.ts
@@ -953,6 +973,11 @@ msgstr "Enter a valid date."
 msgid "Enter a valid URL starting with http://, https://, or mailto:."
 msgstr "Enter a valid URL starting with http://, https://, or mailto:."
 
+#. @context: Subscribe page description of the full archive feed
+#: src/routes/pages/subscribe.tsx
+msgid "Every published post, including ones hidden from Latest."
+msgstr "Every published post, including ones hidden from Latest."
+
 #. @context: Usage label for the brand pack card
 #: src/ui/pages/BrandPage.tsx
 msgid "Everything in one download"
@@ -982,9 +1007,11 @@ msgstr "Favicon"
 #. @context: Browser page title for the featured feed
 #. @context: Inactive browse tab label on sample page
 #. @context: Page heading for the featured posts feed
+#. @context: Subscribe page name for the featured posts feed
 #. @context: Tooltip and screen reader label for the featured-post icon in the post footer when no featured date is available
 #: src/lib/filter-dimensions.ts
 #: src/routes/pages/featured.tsx
+#: src/routes/pages/subscribe.tsx
 #: src/ui/pages/FeaturedPage.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 #: src/ui/shared/PostFooter.tsx
@@ -1008,6 +1035,11 @@ msgstr "Featured on {date} at {time}"
 #: src/ui/layouts/BaseLayout.tsx
 msgid "Featured posts"
 msgstr "Featured posts"
+
+#. @context: Toast after copying a feed URL to the clipboard
+#: src/ui/pages/SubscribePage.tsx
+msgid "Feed URL copied."
+msgstr "Feed URL copied."
 
 #. @context: Search snippet suffix on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -1279,7 +1311,9 @@ msgstr "Last edited on {date} at {time}"
 #. @context: Active browse tab label on sample page
 #. @context: Browser page title for the latest feed
 #. @context: Page heading for the latest posts feed
+#. @context: Subscribe page name for the latest public posts feed
 #: src/routes/pages/home.tsx
+#: src/routes/pages/subscribe.tsx
 #: src/ui/pages/HomePage.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Latest"
@@ -1420,6 +1454,8 @@ msgid "Look at the footer metadata last, to make sure the accent is not fighting
 msgstr "Look at the footer metadata last, to make sure the accent is not fighting the typography."
 
 #. @context: Feed autodiscovery title for the site's main feed
+#. @context: Subscribe page name for the site's main feed
+#: src/routes/pages/subscribe.tsx
 #: src/ui/layouts/BaseLayout.tsx
 msgid "Main feed"
 msgstr "Main feed"
@@ -1518,6 +1554,11 @@ msgstr "New Password"
 #: src/ui/pages/ComposePage.tsx
 msgid "New post"
 msgstr "New post"
+
+#. @context: Subscribe page description of the latest posts feed
+#: src/routes/pages/subscribe.tsx
+msgid "New posts as they are published."
+msgstr "New posts as they are published."
 
 #. @context: Menu item on the collections page that opens the smart collection dialog
 #: src/ui/shared/smart-collection-labels.ts
@@ -1760,6 +1801,11 @@ msgstr "Post hidden"
 msgid "Post privately"
 msgstr "Post privately"
 
+#. @context: Subscribe page description of the featured posts feed
+#: src/routes/pages/subscribe.tsx
+msgid "Posts marked as featured, and nothing else."
+msgstr "Posts marked as featured, and nothing else."
+
 #. @context: Smart collection dialog — conditions are combined with AND
 #: src/ui/shared/smart-collection-labels.ts
 msgid "Posts matching all of these"
@@ -1850,6 +1896,11 @@ msgstr "Published on {date} at {time}"
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Published!"
 msgstr "Published!"
+
+#. @context: Subscribe page introduction, above the feed addresses
+#: src/ui/pages/SubscribePage.tsx
+msgid "Put an address into any feed reader."
+msgstr "Put an address into any feed reader."
 
 #. @context: Search highlight text on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -2301,6 +2352,13 @@ msgstr "Start here"
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Stay sturdy and readable."
 msgstr "Stay sturdy and readable."
+
+#. @context: Browser page title for the subscribe page
+#. @context: Page title for the feed subscription page
+#: src/routes/pages/subscribe.tsx
+#: src/ui/pages/SubscribePage.tsx
+msgid "Subscribe"
+msgstr "Subscribe"
 
 #. @context: Compose custom slug helper label for the suggested slug
 #: src/ui/compose/ComposeDialog.tsx
