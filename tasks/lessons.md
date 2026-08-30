@@ -1005,3 +1005,17 @@ macro compiled there and the same code worked under `mise run dev`.
   caret coordinates at `from` and `to`. Once a selection wraps, those endpoints
   describe a box that contains neither line, and a selection scrolled past the
   viewport anchors somewhere the reader cannot see.
+- A quality _level_ on a media encoder is not a size budget. mediabunny maps
+  a `Quality` level to a quantizer whenever the codec supports one, and
+  quantizer mode has no size ceiling: a frugally-encoded source re-encoded at
+  QP 16 comes back several times larger, the extra bits spent reproducing its
+  own compression artifacts. When output size matters, pass an explicit
+  `new Quality({ bitrate })` — and note the number shorthand `new Quality(0.85)`
+  means a quality level, not a bitrate. Cap the target by what the source
+  actually carries (its bitrate, adjusted for the codec swap and any
+  downscale); spending more than that buys detail the source never had.
+- Never recommend an encoder setting from the library's nominal numbers alone.
+  The documented bitrate for a quality level can be a fallback that the real
+  encoder never uses. Measure with the actual encoder and the user's actual
+  media first — on macOS, ffmpeg's `h264_videotoolbox` is the same hardware
+  encoder Safari's WebCodecs uses, so it reproduces browser output closely.

@@ -28,7 +28,6 @@ import {
   Quality,
   ALL_FORMATS,
   type VideoCodec,
-  type AudioCodec,
 } from "mediabunny";
 import { encode } from "blurhash";
 import { normalizeDurationSeconds } from "../lib/video-playback.js";
@@ -42,13 +41,64 @@ const POSTER_WIDTH = 640;
 const BLURHASH_SIZE = 32;
 
 /**
- * Quality used when a re-encode is unavoidable (non-H.264 source, or a
- * source above the size caps). Maps to AVC quantizer 16 — visually close
- * to the source, at the cost of a larger file. Sources that need no
- * re-encode never reach an encoder at all, so this only ever applies to
- * material that was going to lose a generation regardless.
+ * Bitrate targeted for a 1080p H.264 re-encode; every other size scales from
+ * here. Around 8 Mbps — enough to hold up against the source on a phone or a
+ * laptop, low enough that a clip stays servable over the web.
+ *
+ * This is expressed as a bitrate on purpose. Given a quality *level*,
+ * mediabunny prefers quantizer-based encoding, which has no size ceiling at
+ * all: a frugally-encoded source gets faithfully reproduced — its own
+ * compression artifacts included — at several times its original size. A
+ * bitrate keeps the output predictable.
  */
-const REENCODE_QUALITY = new Quality("very-high");
+const REFERENCE_BITRATE = 7_900_000;
+const REFERENCE_PIXELS = 1920 * 1080;
+
+/** Bitrate scales slightly sub-linearly with pixel count. */
+const PIXEL_SCALE_EXPONENT = 0.95;
+
+/**
+ * Bits H.264 needs to carry one bit of the source codec at the same quality.
+ * H.264 is the baseline; HEVC and VP9 fit roughly 40% more picture into a
+ * bit, AV1 around 60%. Used to cap the target at what the source content
+ * actually carries — spending more than that reproduces the source's
+ * artifacts in high fidelity and buys nothing, because the detail was never
+ * there to begin with.
+ */
+const CODEC_BITRATE_RATIO: Partial<Record<VideoCodec, number>> = {
+  avc: 1,
+  hevc: 1 / 0.6,
+  vp9: 1 / 0.6,
+  av1: 1 / 0.4,
+  vp8: 1 / 1.2,
+};
+
+/**
+ * Pick the bitrate for a re-encode: the size-appropriate target, but never
+ * more than the source content itself warrants.
+ */
+function reencodeBitrate(
+  source: {
+    pixels: number;
+    bitrate: number | undefined;
+    codec: VideoCodec | null | undefined;
+  },
+  targetPixels: number,
+): number {
+  const target =
+    REFERENCE_BITRATE *
+    (targetPixels / REFERENCE_PIXELS) ** PIXEL_SCALE_EXPONENT;
+
+  if (!source.bitrate || !source.pixels) return Math.round(target);
+
+  const ratio = (source.codec && CODEC_BITRATE_RATIO[source.codec]) ?? 1;
+  const sourceCap =
+    source.bitrate *
+    ratio *
+    (targetPixels / source.pixels) ** PIXEL_SCALE_EXPONENT;
+
+  return Math.round(Math.min(target, sourceCap));
+}
 
 export interface VideoProcessResult {
   file: File;
@@ -77,20 +127,20 @@ interface SourceProbe {
   durationSeconds?: number;
   /** Source video codec, or `null` when it could not be determined. */
   videoCodec?: VideoCodec | null;
-  /** Source audio codec; `undefined` when the file carries no audio track. */
-  audioCodec?: AudioCodec | null;
+  /** Average bitrate of the source video track, in bits per second. */
+  videoBitrate?: number;
 }
 
 /**
  * Probe a video file and extract its poster frame and blurhash in one pass.
  * Seeks to `min(duration × 0.1, 1s)` and captures the frame.
  *
- * Returns the source dimensions and track codecs alongside, so the caller can
- * decide whether a re-encode is needed at all — and compute the output size —
+ * Returns the source dimensions, codec, and bitrate alongside, so the caller
+ * can decide whether a re-encode is needed at all — and at what bitrate —
  * without opening a second Input instance.
  *
  * @param file - Source video file
- * @returns Poster blob (640px-wide WebP), blurhash, dimensions, and codecs
+ * @returns Poster blob (640px-wide WebP), blurhash, dimensions, codec, bitrate
  */
 async function probeSource(file: File): Promise<SourceProbe> {
   const input = new Input({
@@ -105,8 +155,9 @@ async function probeSource(file: File): Promise<SourceProbe> {
     const sourceHeight = videoTrack.displayHeight;
     const rotation = videoTrack.rotation;
     const videoCodec = await videoTrack.getCodec();
-    const audioTrack = await input.getPrimaryAudioTrack();
-    const audioCodec = audioTrack ? await audioTrack.getCodec() : undefined;
+    // Metadata-only scan of the sample table — milliseconds even on a large
+    // file, and exact, unlike dividing file size by duration.
+    const videoBitrate = (await videoTrack.computePacketStats()).averageBitrate;
 
     const duration = await input.computeDuration();
     const durationSeconds = normalizeDurationSeconds(duration);
@@ -120,7 +171,7 @@ async function probeSource(file: File): Promise<SourceProbe> {
       rotation,
       durationSeconds,
       videoCodec,
-      audioCodec,
+      videoBitrate,
     };
 
     const sink = new CanvasSink(videoTrack);
@@ -183,37 +234,45 @@ export interface VideoProcessPlan {
   height: number;
   /** True when the video track must be decoded and re-encoded. */
   videoNeedsReencode: boolean;
-  /** True when the audio track must be decoded and re-encoded. */
-  audioNeedsReencode: boolean;
+  /**
+   * Target video bitrate in bits per second, or `undefined` when the track
+   * is copied rather than re-encoded.
+   */
+  videoBitrate?: number;
 }
 
 /**
- * Decide what a source video needs: a resize, a video re-encode, an audio
- * re-encode, or nothing at all.
+ * Decide what a source video needs: a resize, a re-encode, or nothing at all.
  *
  * Asking for a size or a quality is what disables mediabunny's copy fast
- * path, so anything already within the caps and already in the target codecs
- * must come back with every flag false — its encoded packets are then copied
+ * path, so anything already within the caps and already in H.264 must come
+ * back with `videoNeedsReencode` false — its encoded packets are then copied
  * across untouched, sparing it a generation of quality. An unknown codec
  * (`null`) counts as needing a re-encode, since we can't vouch for it playing
- * everywhere. A missing audio track (`undefined`) needs nothing.
+ * everywhere.
+ *
+ * When a re-encode is unavoidable, the bitrate is the smaller of what the
+ * output size warrants and what the source content actually carries. The
+ * second half matters: an efficiently-encoded source re-encoded at constant
+ * quality can come out several times larger than it went in, all of those
+ * bits spent preserving its own compression artifacts.
  *
  * Dimensions are the source's *display* dimensions, i.e. post-rotation, so
  * the caps apply orientation-agnostically.
  *
- * @param source - Display dimensions and track codecs of the source
+ * @param source - Display dimensions, codec, and bitrate of the source
  * @param options - `maxLongEdge` and `maxShortEdge` caps
  * @returns The processing plan
  *
  * @example
  * ```ts
- * // Already H.264/AAC and within the caps — copied, not re-encoded
+ * // Already H.264 and within the caps — copied, not re-encoded
  * planVideoProcessing(
- *   { width: 1280, height: 720, videoCodec: "avc", audioCodec: "aac" },
+ *   { width: 1280, height: 720, videoCodec: "avc" },
  *   { maxLongEdge: 1920, maxShortEdge: 1080 },
  * );
  * // { needsResize: false, width: 1280, height: 720,
- * //   videoNeedsReencode: false, audioNeedsReencode: false }
+ * //   videoNeedsReencode: false, videoBitrate: undefined }
  * ```
  */
 export function planVideoProcessing(
@@ -221,7 +280,7 @@ export function planVideoProcessing(
     width?: number;
     height?: number;
     videoCodec?: VideoCodec | null;
-    audioCodec?: AudioCodec | null;
+    videoBitrate?: number;
   },
   options: { maxLongEdge: number; maxShortEdge: number },
 ): VideoProcessPlan {
@@ -251,13 +310,23 @@ export function planVideoProcessing(
     }
   }
 
+  const videoNeedsReencode = needsResize || source.videoCodec !== "avc";
+
   return {
     needsResize,
     width,
     height,
-    videoNeedsReencode: needsResize || source.videoCodec !== "avc",
-    audioNeedsReencode:
-      source.audioCodec !== undefined && source.audioCodec !== "aac",
+    videoNeedsReencode,
+    videoBitrate: videoNeedsReencode
+      ? reencodeBitrate(
+          {
+            pixels: (sourceWidth ?? 0) * (sourceHeight ?? 0),
+            bitrate: source.videoBitrate,
+            codec: source.videoCodec,
+          },
+          width * height,
+        )
+      : undefined,
   };
 }
 
@@ -284,21 +353,20 @@ async function processToFile(
     rotation,
     durationSeconds,
     videoCodec,
-    audioCodec,
+    videoBitrate,
   } = await probeSource(file);
 
   const {
     needsResize,
     width: targetW,
     height: targetH,
-    videoNeedsReencode,
-    audioNeedsReencode,
+    videoBitrate: targetBitrate,
   } = planVideoProcessing(
     {
       width: sourceWidth,
       height: sourceHeight,
       videoCodec,
-      audioCodec,
+      videoBitrate,
     },
     { maxLongEdge: MAX_LONG_EDGE, maxShortEdge: MAX_SHORT_EDGE },
   );
@@ -323,12 +391,13 @@ async function processToFile(
         ...(needsResize
           ? { width: targetW, height: targetH, fit: "contain" as const }
           : {}),
-        ...(videoNeedsReencode ? { quality: REENCODE_QUALITY } : {}),
+        ...(targetBitrate !== undefined
+          ? { quality: new Quality({ bitrate: targetBitrate }) }
+          : {}),
       },
-      audio: {
-        codec: "aac",
-        ...(audioNeedsReencode ? { quality: REENCODE_QUALITY } : {}),
-      },
+      // No quality set: an AAC track is copied, and anything else falls back
+      // to mediabunny's default, which for AAC lands on 192 kbps either way.
+      audio: { codec: "aac" },
     });
 
     if (onProgress) {
