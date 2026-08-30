@@ -132,12 +132,65 @@ interface SourceProbe {
 }
 
 /**
+ * Report a probe step that failed. Every step here is optional — the upload
+ * proceeds without it — so the failure has to be visible somewhere, or a
+ * broken decoder reads as a video that merely has no thumbnail.
+ */
+function warnProbeFailure(step: string, error: unknown): void {
+  // eslint-disable-next-line no-console -- an optional step failing is silent by design; say so
+  console.warn(`[jant] video probe: ${step} failed`, error);
+}
+
+/**
+ * Run one optional probe step, returning `undefined` when it fails.
+ *
+ * Each step feeds a different part of the result, and none of them is worth
+ * the others: an unreadable bitrate should not cost the poster, and an
+ * undecodable frame should not cost the codec that decides whether the file
+ * needs re-encoding at all.
+ */
+async function optional<T>(
+  step: string,
+  run: () => Promise<T>,
+): Promise<T | undefined> {
+  try {
+    return await run();
+  } catch (error) {
+    warnProbeFailure(step, error);
+    return undefined;
+  }
+}
+
+/**
+ * Draw the captured frame into a canvas of the given size.
+ * Returns null when the browser refuses a 2D context.
+ */
+function drawFrame(
+  source: HTMLCanvasElement,
+  width: number,
+  height: number,
+): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(source, 0, 0, width, height);
+  return { canvas, ctx };
+}
+
+/**
  * Probe a video file and extract its poster frame and blurhash in one pass.
  * Seeks to `min(duration × 0.1, 1s)` and captures the frame.
  *
  * Returns the source dimensions, codec, and bitrate alongside, so the caller
  * can decide whether a re-encode is needed at all — and at what bitrate —
  * without opening a second Input instance.
+ *
+ * Every field is optional and probed independently. A file whose frames will
+ * not decode still reports its codec and duration; one whose bitrate cannot be
+ * read still yields a poster. Only the container being unreadable — no video
+ * track at all — returns nothing, because then there is nothing to report.
  *
  * @param file - Source video file
  * @returns Poster blob (640px-wide WebP), blurhash, dimensions, codec, bitrate
@@ -148,78 +201,83 @@ async function probeSource(file: File): Promise<SourceProbe> {
     formats: ALL_FORMATS,
   });
   try {
-    const videoTrack = await input.getPrimaryVideoTrack();
+    const videoTrack = await optional("open video track", () =>
+      input.getPrimaryVideoTrack(),
+    );
     if (!videoTrack) return {};
 
-    const sourceWidth = videoTrack.displayWidth;
-    const sourceHeight = videoTrack.displayHeight;
-    const rotation = videoTrack.rotation;
-    const videoCodec = await videoTrack.getCodec();
+    const videoCodec = await optional("read codec", () =>
+      videoTrack.getCodec(),
+    );
     // Metadata-only scan of the sample table — milliseconds even on a large
-    // file, and exact, unlike dividing file size by duration.
-    const videoBitrate = (await videoTrack.computePacketStats()).averageBitrate;
+    // file, and exact, unlike dividing file size by duration. Only an input
+    // to the re-encode bitrate, so `undefined` degrades to the size-based
+    // target rather than failing the probe.
+    const videoBitrate = await optional(
+      "compute bitrate",
+      async () => (await videoTrack.computePacketStats()).averageBitrate,
+    );
+    const duration = await optional("compute duration", () =>
+      input.computeDuration(),
+    );
 
-    const duration = await input.computeDuration();
-    const durationSeconds = normalizeDurationSeconds(duration);
-    const seekTime = Math.min(duration * 0.1, 1);
-
-    // Everything the caller needs to plan the conversion. Poster and blurhash
-    // are best-effort on top — each bail-out below still returns this much.
+    // Everything the caller needs to plan the conversion.
     const base: SourceProbe = {
-      sourceWidth,
-      sourceHeight,
-      rotation,
-      durationSeconds,
+      sourceWidth: videoTrack.displayWidth,
+      sourceHeight: videoTrack.displayHeight,
+      rotation: videoTrack.rotation,
+      durationSeconds:
+        duration === undefined ? undefined : normalizeDurationSeconds(duration),
       videoCodec,
       videoBitrate,
     };
 
-    const sink = new CanvasSink(videoTrack);
-    const wrapped = await sink.getCanvas(seekTime);
+    // A tenth of the way in, so the still is not the fade-from-black most
+    // clips open on. With no duration to take a tenth of, the opening frame
+    // is the only one we can name.
+    const seekTime = duration === undefined ? 0 : Math.min(duration * 0.1, 1);
+    const wrapped = await optional("capture frame", () =>
+      new CanvasSink(videoTrack).getCanvas(seekTime),
+    );
     if (!wrapped) return base;
 
     const canvas = wrapped.canvas as HTMLCanvasElement;
-
-    // Poster: 640px wide WebP
     const srcW = canvas.width;
     const srcH = canvas.height;
+
+    // Poster: 640px wide WebP
     const posterScale = Math.min(POSTER_WIDTH / srcW, 1);
-    const pw = Math.round(srcW * posterScale);
-    const ph = Math.round(srcH * posterScale);
-
-    const posterCanvas = document.createElement("canvas");
-    posterCanvas.width = pw;
-    posterCanvas.height = ph;
-    const pCtx = posterCanvas.getContext("2d");
-    if (!pCtx) return base;
-    pCtx.drawImage(canvas, 0, 0, pw, ph);
-
-    const poster = await new Promise<Blob | undefined>((resolve) => {
-      posterCanvas.toBlob(
-        (blob) => resolve(blob ?? undefined),
-        "image/webp",
-        0.8,
-      );
-    });
+    const posterFrame = drawFrame(
+      canvas,
+      Math.round(srcW * posterScale),
+      Math.round(srcH * posterScale),
+    );
+    const poster = posterFrame
+      ? await optional(
+          "encode poster",
+          () =>
+            new Promise<Blob | undefined>((resolve) => {
+              posterFrame.canvas.toBlob(
+                (blob) => resolve(blob ?? undefined),
+                "image/webp",
+                0.8,
+              );
+            }),
+        )
+      : undefined;
 
     // Blurhash: 32px canvas, 4×3 components
     const bhScale = Math.min(BLURHASH_SIZE / srcW, BLURHASH_SIZE / srcH, 1);
     const bw = Math.max(Math.round(srcW * bhScale), 1);
     const bh = Math.max(Math.round(srcH * bhScale), 1);
-
-    const bhCanvas = document.createElement("canvas");
-    bhCanvas.width = bw;
-    bhCanvas.height = bh;
-    const bhCtx = bhCanvas.getContext("2d");
-    if (!bhCtx) return { ...base, poster };
-    bhCtx.drawImage(canvas, 0, 0, bw, bh);
-
-    const imageData = bhCtx.getImageData(0, 0, bw, bh);
-    const blurhash = encode(imageData.data, bw, bh, 4, 3);
+    const bhFrame = drawFrame(canvas, bw, bh);
+    const blurhash = bhFrame
+      ? await optional("encode blurhash", async () =>
+          encode(bhFrame.ctx.getImageData(0, 0, bw, bh).data, bw, bh, 4, 3),
+        )
+      : undefined;
 
     return { ...base, poster, blurhash };
-  } catch {
-    return {};
   } finally {
     input.dispose();
   }

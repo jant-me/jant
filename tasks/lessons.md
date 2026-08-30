@@ -1035,3 +1035,18 @@ macro compiled there and the same code worked under `mise run dev`.
   encoder never uses. Measure with the actual encoder and the user's actual
   media first — on macOS, ffmpeg's `h264_videotoolbox` is the same hardware
   encoder Safari's WebCodecs uses, so it reproduces browser output closely.
+- Independent optional results must not share one `try`. A probe that gathers
+  a codec, a bitrate, a duration and a poster frame in one block returns
+  nothing at all when any single step throws — so an unrelated API mismatch
+  reads as "this video has no thumbnail". Wrap each step that the caller can
+  live without on its own, and say on the console which one failed; a
+  best-effort step that fails silently is indistinguishable from a file that
+  legitimately has nothing to give.
+- A git worktree's `node_modules` does not follow the lockfile. Merging a
+  dependency bump into a worktree leaves the old version installed, and Vite
+  strips types without checking them, so a call to an API the installed
+  version lacks reaches the browser and throws there. When behaviour differs
+  between two worktrees on the same code, compare installed versions before
+  reading the diff — `pnpm-workspace.yaml` now sets `verifyDepsBeforeRun:
+error` to make that state fail the next `pnpm run` instead, and
+  `mise run check-types` catches the same mismatch at the call site.

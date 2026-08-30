@@ -56,6 +56,7 @@ export default [
         HTMLVideoElement: "readonly",
         HTMLAudioElement: "readonly",
         HTMLCanvasElement: "readonly",
+        CanvasRenderingContext2D: "readonly",
         HTMLAnchorElement: "readonly",
         HTMLSourceElement: "readonly",
         Audio: "readonly",

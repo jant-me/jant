@@ -265,10 +265,15 @@ async function uploadFile(
 
       // Capture the first frame quickly so Safari shows a preview while
       // the heavy transcoding runs. Chrome shows it natively via
-      // <video preload="metadata">, Safari does not.
-      captureQuickPoster(file).then((blob) => {
-        if (blob) editor?.updateAttachmentPoster(clientId, blob);
-      });
+      // <video preload="metadata">, Safari does not. Kept, rather than shown
+      // and dropped: it is also the fallback for the upload below, so the
+      // card and the stored media can never disagree about having a poster.
+      const quickPoster = captureQuickPoster(file)
+        .then((blob) => {
+          if (blob) editor?.updateAttachmentPoster(clientId, blob);
+          return blob;
+        })
+        .catch(() => null);
 
       editor?.updateAttachmentStatus(clientId, "processing", null, null);
       const result = await VideoProcessor.processToFile(file, (progress) => {
@@ -281,7 +286,11 @@ async function uploadFile(
       height = result.height;
       durationSeconds = result.durationSeconds;
       blurhash = result.blurhash;
-      poster = result.poster;
+      // The probe's poster is the better one — a frame from a tenth of the way
+      // in, at full decode quality. Falling back to the quick one costs a
+      // slightly worse still; not falling back costs a thumbnail entirely, on
+      // exactly the files whose frames the probe could not read.
+      poster = result.poster ?? (await quickPoster) ?? undefined;
       if (poster) {
         editor?.updateAttachmentPoster(clientId, poster);
       }
