@@ -696,6 +696,15 @@ but its file is not under `dash/`, add the file to the settings catalog's
 admin path, translating it is wasted work until the middleware says otherwise —
 `signin.tsx` and `reset.tsx` are in that state on purpose.
 
+The corollary is an anti-pattern trap: a string defined under `ui/shared/` and
+_again_ under `ui/dash/` usually looks like drift worth deduplicating. It is
+often deliberate placement — the `dash/` copy is the one that gets translated,
+and folding it back into the shared module silently reverts the string to
+English while every check stays green. Before removing an apparent duplicate,
+check which side of the catalog boundary each copy sits on. If the shared
+module is the only consumer's own directory anyway, move the whole table into
+`ui/dash/` rather than deleting one side.
+
 ## `mise run i18n-check` answers a question about HEAD, not about your tree
 
 The task runs `i18n:build` and then `git diff --exit-code` over
@@ -1019,3 +1028,52 @@ macro compiled there and the same code worked under `mise run dev`.
   encoder never uses. Measure with the actual encoder and the user's actual
   media first — on macOS, ffmpeg's `h264_videotoolbox` is the same hardware
   encoder Safari's WebCodecs uses, so it reproduces browser output closely.
+
+## lit-html appends its parts, so a fallback inside a Lit tag survives upgrade
+
+A server-rendered skeleton written _inside_ a custom element is not replaced
+when the component upgrades. `createRenderRoot()` runs before the tag's
+children are parsed, so `this.innerHTML = ""` there clears nothing, the parser
+then appends the fallback, and lit-html inserts its own content after it. Both
+render, stacked. `jant-copy-field` was written this way and produced
+`<input data-fallback><!---->` in a test that asserted the fallback was gone.
+
+The pattern that works here is a **sibling**: the custom element ships empty,
+the fallback sits next to it, and CSS hides one of them — `setup.tsx` renders a
+plain `<select>` beside an empty `<jant-locale-picker>`, with
+`jant-locale-picker:not(:defined)` keeping the picker out of the layout until
+it upgrades.
+
+Before reaching for either, ask whether the thing needs Lit at all. If it is
+static markup plus one handler, server-render it and enhance with a delegated
+listener the way `client/form-enter-submit.ts` does — no upgrade timing, no
+duplicate render, and the content is in the HTML for a reader with scripts off.
+That matters most when the content _is_ the page: `/subscribe` is three feed
+addresses and nothing else, so rendering them client-side would have made it
+the one content page in Jant that needs JavaScript to say anything.
+
+## `text({ enum })` is a TypeScript refinement; the database constraint is separate
+
+Adding a value to a shared enum constant like `SYSTEM_NAV_KEY_VALUES` looks
+migration-free because the column reads `text("system_key", { enum: … })`, and
+Drizzle emits no CHECK from that option. But the same table can declare an
+explicit `check()` over the same column, generated into the migration under a
+name like `chk_nav_item_system_key` — and then a new value is rejected at write
+time by a constraint the column definition never mentions.
+
+Answer it from three places, not one: whether `schema.ts` still declares the
+`check()`, whether the newest `meta/*_snapshot.json` carries it, and what
+`SELECT sql FROM sqlite_master` says on a migrated database. History is not
+enough either — `nav_item.system_key` did carry a value whitelist through
+`0010` and a later migration dropped it, so reading only the older migrations
+gives the opposite wrong answer.
+
+## Two D1 tests take minutes each and time out inside the full suite
+
+`db/__tests__/demo-canonical-snapshot.test.ts` and
+`db/__tests__/migration-rehearsal.test.ts` shell out to wrangler and rebuild a
+local D1; each runs about five minutes. Under `vitest run` they can exceed the
+timeout and report as failures, with the count varying between runs — which
+reads exactly like a flaky regression from whatever you just changed. Re-run
+the named file on its own before investigating; if it passes there, the suite
+result was a timeout, not your change.

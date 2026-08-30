@@ -1,7 +1,8 @@
 # 订阅页 `/subscribe`
 
 日期：2026-08-30
-状态：**进行中**（4 个提交完成；原计划 5 个，commit 3 与 4 合并，见 §3.3）
+状态：**已实现**（5 个提交：`51a50183` `6dd5ada9` `d07dc240` `86573ffe` `c5b4f6a2`）。
+原计划 4 个实现提交 + 1 个实测查出的文案修正。
 
 ## 0. 要解决的问题
 
@@ -323,29 +324,47 @@ archive 页和合集页的图标之所以自然，是因为它们本来就有一
   （可能排到 Settings 后面）
 - **自定义标签**：改过 "RSS" 的话新项拿 `defaultLabel`，要重改
 
-## 4. 验证
+## 4. 验证（**已完成**）
 
-按 AGENTS.md「按比例验证」，这次涉及路由、导航服务、双方言 schema 常量、客户端交互逻辑，
-属于「行为改动」，**`mise run check-tests` 和 `mise run check-lint` 都要跑**，文档和文案部分
-另跑 `mise run check-copy`。
+**自动化**：`vitest run` 全绿 —— 295 个文件 / 3891 个测试。`check-lint`、`check-types`、
+`check-copy` 均通过。
 
-要新写的测试：
+注意 `src/db/__tests__/demo-canonical-snapshot.test.ts` 和 `migration-rehearsal.test.ts`
+会 shell out 到 wrangler 重建本地 D1，单个耗时约 5 分钟，全量跑时会超时，看起来像失败。
+**单跑都通过**，与本次改动无关。
 
-- `/subscribe` 在 `rssFeedsEnabled` 开/关下的 200 / 404
-- `/{lang}/subscribe` 存在，且页面上给的是**带语言前缀的绝对地址**
-- 三条地址在 `mainRssFeed` 为 latest / featured 两种配置下都正确，且主 feed 那条的说明随之变
-- `subscribe` 在 `RESERVED_PATHS` 里 —— 建同名 slug 的 post/collection 被拒
-- feeds 关掉时，`subscribe` 系统导航项在**服务端投影和客户端预览两处**都不出现
-- `/`、`/featured`、`/collections` 上 RSS 图标的存在与 `rssFeedsEnabled` 关时的消失
+`packages/core/src/client/video-processor.ts` 有 2 个 typecheck 报错，来自 `c8c6e99a`，
+本次没碰那个文件 —— **是既有失败，仍未修**。
 
-手动走一遍（`mise run dev-debug`）：
+新增测试：
 
-- §3.5 那条路径：在一个 profile v2 的既有站点上翻两个开关，确认导航换过去、预览当场更新
-- 复制按钮：HTTPS 下能复制；**故意在 http 端口下点一次**，确认 input 全选降级还在、错误
-  toast 出来
-- 移动端宽度下卡片和长 URL 不撑破布局
+- `src/client/__tests__/copy-field.test.ts`（7）—— 复制、两条失败路径、点击/聚焦全选、揭开按钮
+- `src/routes/pages/__tests__/subscribe.test.ts`（8）—— 三条 feed、两种 `mainRssFeed`
+  的配对、archive 描述、无 JS 可用、feeds 关闭时 404、语言视图、slug 不能占用该路径
+- `src/routes/pages/__tests__/collections-feed-links.test.ts`（2）—— 目录每行的 feed、
+  feeds 关闭时消失
+- `src/ui/dash/appearance/__tests__/system-nav-descriptions.test.ts`（3）—— 含那对对照文案
+- `lib/__tests__/navigation.test.ts` 和 `jant-nav-manager.test.ts` 各补一条 `subscribe`
+  的过滤用例
 
----
+**浏览器实测**（`mise run dev-debug`，已停止）：
+
+- `/subscribe` 渲染符合设计：一张卡 + 两条低权重项 + 末尾指路。层级读得出来
+- 复制按钮工作，toast「Feed URL copied.」
+- **两条降级路径在真实浏览器里都验过**：把 `navigator.clipboard` 置为 undefined 后点击
+  → 错误 toast「Could not copy. Select the address and copy it.」；点 input → 整条地址被选中
+- 窄屏（把容器压到 360px）：卡片和字段收得住，长 URL 在 input 内裁切，页面不横向溢出
+- `/settings/navigation` 的 RSS / Subscribe 两行并排、对照可读，**中文已翻译**
+- 走了一遍 §3.5 的切换路径：打开 Subscribe、关掉 RSS → 预览当场更新，站点 More 菜单里
+  出现 `<a href="/subscribe">`。新项确实落在 more 组末尾、排到了 Settings 后面 ——
+  §3.5 里记的那条注意事项属实
+
+**实测查出一个文案 bug，catalog 查不出来**：`{feed}` 插进来的是已翻译的标签，所以中文那句
+渲染成「当前是你的 精选。」—— 中文词前多一个空格，而且是英文语序。改成围绕插值写：
+「目前返回的是{feed}帖子」（→「目前返回的是精选帖子」/「最新帖子」）。见提交 `c5b4f6a2`。
+
+**留下的本地副作用**：dev 数据库（`Test33`）的导航被我在验证时切成了 Subscribe、关掉了
+RSS。是本地 D1，不影响任何真实站点。
 
 ## 5. 明确不做
 
