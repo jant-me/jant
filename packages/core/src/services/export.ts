@@ -85,6 +85,7 @@ import type { StorageDriver } from "../lib/storage.js";
 import { base64ToUint8Array } from "../lib/favicon.js";
 import {
   SYSTEM_NAV_KEYS,
+  isFeedNavKey,
   type Collection,
   type Media,
   type NavItem,
@@ -1433,7 +1434,10 @@ function resolveNavItemUrl(
   }
   if (item.systemKey === "collections") return "/collections/";
   if (item.systemKey === "archive") return "/archive/";
-  if (item.systemKey === "rss") {
+  // `subscribe` addresses a Jant route, and the exported site has no page at
+  // it. Rather than exporting a nav entry that 404s, it resolves to the feed
+  // that page would have recommended — the same file `rss` points at.
+  if (item.systemKey === "rss" || item.systemKey === "subscribe") {
     return mainRssFeed === "featured" ? "/featured/index.xml" : "/index.xml";
   }
   return item.url;
@@ -1598,10 +1602,12 @@ function buildJantDataToml(
     // `settings` is authenticated-only and has no corresponding page in the
     // static Hugo site — drop it at export time so it never shows up in nav.
     if (item.systemKey === "settings") continue;
+    // Both feed entries resolve to a feed file, so with feeds off both would
+    // export a link to something that was never written.
     if (
       !config.rssFeedsEnabled &&
       item.type === "system" &&
-      item.systemKey === "rss"
+      isFeedNavKey(item.systemKey)
     ) {
       continue;
     }

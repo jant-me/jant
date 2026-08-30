@@ -79,7 +79,14 @@ const BUILTIN_NAV_LABELS = {
  */
 export const NAV_MORE_LABEL = BUILTIN_NAV_LABELS.more;
 
-const SYSTEM_NAV_TITLES: Partial<Record<SystemNavKey, MessageDescriptor>> = {
+/**
+ * The default label for every system nav entry.
+ *
+ * Total on purpose: this is the map both the settings toggle list and the
+ * rendered navigation read, so a new `SystemNavKey` without an entry here is a
+ * compile error rather than a nav item that renders blank.
+ */
+const SYSTEM_NAV_TITLES: Record<SystemNavKey, MessageDescriptor> = {
   latest: BUILTIN_NAV_LABELS.latest,
   featured: BUILTIN_NAV_LABELS.featured,
   collections: BUILTIN_NAV_LABELS.collections,
@@ -114,26 +121,8 @@ function getBuiltinNavLabelDescriptor(
 ): MessageDescriptor | null {
   if (item.type !== "system" || !item.systemKey) return null;
 
-  if (item.systemKey === "collections") {
-    return BUILTIN_NAV_LABELS.collections;
-  }
-
-  if (item.systemKey === "latest") {
-    return BUILTIN_NAV_LABELS.latest;
-  }
-
-  if (item.systemKey === "featured") {
-    return BUILTIN_NAV_LABELS.featured;
-  }
-
-  if (item.systemKey === "archive") {
-    return BUILTIN_NAV_LABELS.archive;
-  }
-
-  if (item.systemKey === "rss") {
-    return BUILTIN_NAV_LABELS.rss;
-  }
-
+  // Settings is the one entry whose label depends on where it currently
+  // points, so it cannot be read from the key alone.
   if (item.systemKey === "settings") {
     const path = getInternalNavPath(item.url, sitePathPrefix);
     return path === "/signin"
@@ -141,7 +130,7 @@ function getBuiltinNavLabelDescriptor(
       : BUILTIN_NAV_LABELS.settings;
   }
 
-  return null;
+  return SYSTEM_NAV_TITLES[item.systemKey] ?? null;
 }
 
 /**
@@ -175,5 +164,5 @@ export function getSystemNavDisplayLabel(
   key: SystemNavKey,
   i18n: Translator,
 ): string {
-  return i18n._(SYSTEM_NAV_TITLES[key] ?? BUILTIN_NAV_LABELS.rss);
+  return i18n._(SYSTEM_NAV_TITLES[key]);
 }

@@ -1077,3 +1077,37 @@ timeout and report as failures, with the count varying between runs — which
 reads exactly like a flaky regression from whatever you just changed. Re-run
 the named file on its own before investigating; if it passes there, the suite
 result was a timeout, not your change.
+
+## A new enum value needs every map it feeds, so make the maps total
+
+Adding `subscribe` to `SYSTEM_NAV_KEY_VALUES` meant updating four places that
+key off it. Three were obvious — the definition, the built-in label, the
+settings toggle list. The fourth, `getBuiltinNavLabelDescriptor`, was a
+hand-written `if` chain per key, so the missing branch returned `null` and
+`getNavItemDisplayLabel` fell through to the empty stored label. The nav item
+rendered as a link with no text, and nothing failed: not the compiler, not the
+tests, not lint.
+
+An `if` chain or a `Partial<Record<…>>` over an enum is where this hides. Give
+the map the total type — `Record<SystemNavKey, MessageDescriptor>` — and derive
+the lookup from it instead of restating the cases. Then the next key is a
+compile error at the one place that needs a decision, rather than a blank in
+the UI. Where the total map cannot answer (`settings` picks its label from the
+URL it currently points at), keep that one case explicit and let everything
+else fall through to the map.
+
+The same value also reaches the Hugo export, which has its own per-key `if`
+chain and its own feeds-off skip. Grep every `systemKey ===` before assuming
+the list is short.
+
+## Reading the attribute is not reading what the reader sees
+
+The blank label above survived a browser check because the check grepped the
+rendered HTML for `<a href="/subscribe"` and stopped at the match. The href was
+right; the element had no text. The same curl one field wider would have shown
+it.
+
+When verifying that something renders, assert on the rendered text, not on the
+attribute that points at it — `<a href="…">(.*?)</a>` rather than `<a href="…"`.
+Attributes come from the code you just wrote and tend to be right; the text
+comes from a lookup somewhere else, which is where the gap is.

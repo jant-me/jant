@@ -496,6 +496,57 @@ describe("createExportService (Hugo)", () => {
     expect(data).toContain('url = "/index.xml"');
   });
 
+  it("resolves the nav Subscribe link to the feed the page would recommend", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig({
+        mainRssFeed: "featured",
+        navItems: [
+          {
+            type: "system",
+            systemKey: "subscribe",
+            label: "",
+            url: "/subscribe",
+            position: 0,
+            placement: "more",
+          },
+        ],
+      }),
+    );
+    const data = filesToMap(await service.generateHugoFiles()).get(
+      "data/jant.toml",
+    ) as string;
+
+    // There is no /subscribe page in the exported site to link at.
+    expect(data).not.toContain('url = "/subscribe"');
+    expect(data).toContain('url = "/featured/index.xml"');
+    expect(data).toContain('label = "Subscribe"');
+  });
+
+  it("hides system Subscribe navigation when feeds are off", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig({
+        rssFeedsEnabled: false,
+        navItems: [
+          {
+            type: "system",
+            systemKey: "subscribe",
+            label: "System subscribe",
+            url: "/subscribe",
+            position: 0,
+            placement: "more",
+          },
+        ],
+      }),
+    );
+    const data = filesToMap(await service.generateHugoFiles()).get(
+      "data/jant.toml",
+    ) as string;
+
+    expect(data).not.toContain('label = "System subscribe"');
+  });
+
   it("emits last_activity_at on root post front matter so feed <updated> tracks thread bumps", async () => {
     const post = makePost({
       id: "post-1",
