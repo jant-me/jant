@@ -66,7 +66,6 @@ export class JantSettingsGeneral extends LitElement {
     // Feed group
     _mainRssFeed: { state: true },
     _origMainRssFeed: { state: true },
-    _feedDirty: { state: true },
     _feedLoading: { state: true },
 
     // Home auto-save
@@ -118,7 +117,6 @@ export class JantSettingsGeneral extends LitElement {
   // Feed
   declare _mainRssFeed: string;
   declare _origMainRssFeed: string;
-  declare _feedDirty: boolean;
   declare _feedLoading: boolean;
 
   // Home
@@ -178,7 +176,6 @@ export class JantSettingsGeneral extends LitElement {
 
     this._mainRssFeed = "featured";
     this._origMainRssFeed = "featured";
-    this._feedDirty = false;
     this._feedLoading = false;
 
     this._noindex = false;
@@ -247,7 +244,6 @@ export class JantSettingsGeneral extends LitElement {
       this._localeLoading = false;
     } else if (section === "feeds") {
       this._origMainRssFeed = this._mainRssFeed;
-      this._feedDirty = false;
       this._feedLoading = false;
     } else if (section === "home") {
       this._origShowJantBrandingOnHome = this._showJantBrandingOnHome;
@@ -265,6 +261,7 @@ export class JantSettingsGeneral extends LitElement {
     } else if (section === "time") {
       this._localeLoading = false;
     } else if (section === "feeds") {
+      this._mainRssFeed = this._origMainRssFeed;
       this._feedLoading = false;
     } else if (section === "home") {
       this._showJantBrandingOnHome = this._origShowJantBrandingOnHome;
@@ -382,14 +379,11 @@ export class JantSettingsGeneral extends LitElement {
     );
   }
 
-  // ── Feed group helpers ────────────────────────────────────────────
+  // ── Feed auto-save helpers ────────────────────────────────────────
 
-  private _syncFeedDirty() {
-    this._feedDirty = this._mainRssFeed !== this._origMainRssFeed;
-  }
-
-  private _saveFeeds() {
-    if (this._feedLoading || !this._feedDirty) return;
+  private _saveMainRssFeed(value: string) {
+    if (this._feedLoading || value === this._mainRssFeed) return;
+    this._mainRssFeed = value;
     this._feedLoading = true;
     this.dispatchEvent(
       new CustomEvent("jant:settings-save", {
@@ -397,7 +391,7 @@ export class JantSettingsGeneral extends LitElement {
         detail: {
           endpoint: "/settings/general/feeds",
           data: {
-            mainRssFeed: this._mainRssFeed,
+            mainRssFeed: value,
           },
           section: "feeds",
         },
@@ -480,21 +474,23 @@ export class JantSettingsGeneral extends LitElement {
           ?disabled=${loading || !dirty}
           @click=${onSave}
         >
-          ${loading
-            ? html`<svg
-                class="animate-spin size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                role="status"
-              >
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>`
-            : nothing}
+          ${
+            loading
+              ? html`<svg
+                  class="animate-spin size-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  role="status"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>`
+              : nothing
+          }
           ${this.labels.save}
         </button>
       </div>
@@ -525,10 +521,8 @@ export class JantSettingsGeneral extends LitElement {
           value=${value}
           class="mt-1"
           .checked=${checked}
-          @change=${() => {
-            this._mainRssFeed = value;
-            this._syncFeedDirty();
-          }}
+          ?disabled=${this._feedLoading}
+          @change=${() => this._saveMainRssFeed(value)}
         />
         <div>
           <div class="font-medium">${title}</div>
@@ -552,9 +546,11 @@ export class JantSettingsGeneral extends LitElement {
     return html`
       <div class=${COPY_FIELD_CLASS} data-copy-field-root>
         <p class="text-sm font-medium">${label}</p>
-        ${description
-          ? html`<p class="text-sm text-muted-foreground">${description}</p>`
-          : ""}
+        ${
+          description
+            ? html`<p class="text-sm text-muted-foreground">${description}</p>`
+            : ""
+        }
         <div class=${COPY_FIELD_CONTROL_CLASS}>
           <input
             type="text"
@@ -583,35 +579,37 @@ export class JantSettingsGeneral extends LitElement {
     return html`
       <div class="mt-2 text-sm text-muted-foreground" data-about-page-row>
         ${this.labels.aboutPagePrompt}
-        ${status.state === "ready"
-          ? html`
-              <a
-                class="font-medium text-foreground underline-offset-4 hover:underline"
-                href=${this.aboutEditUrl}
-              >
-                ${this.labels.editAboutPage}
-              </a>
-            `
-          : status.state === "missing"
+        ${
+          status.state === "ready"
             ? html`
-                <form
-                  class="inline"
-                  method="post"
-                  action=${this.aboutCreateUrl}
+                <a
+                  class="font-medium text-foreground underline-offset-4 hover:underline"
+                  href=${this.aboutEditUrl}
                 >
-                  <button
-                    type="submit"
-                    class="inline cursor-pointer border-0 bg-transparent p-0 font-medium text-foreground underline-offset-4 hover:underline"
-                  >
-                    ${this.labels.createAboutPage}
-                  </button>
-                </form>
+                  ${this.labels.editAboutPage}
+                </a>
               `
-            : html`
-                <span class="text-destructive"
-                  >${this.labels.aboutPageConflict}</span
-                >
-              `}
+            : status.state === "missing"
+              ? html`
+                  <form
+                    class="inline"
+                    method="post"
+                    action=${this.aboutCreateUrl}
+                  >
+                    <button
+                      type="submit"
+                      class="inline cursor-pointer border-0 bg-transparent p-0 font-medium text-foreground underline-offset-4 hover:underline"
+                    >
+                      ${this.labels.createAboutPage}
+                    </button>
+                  </form>
+                `
+              : html`
+                  <span class="text-destructive"
+                    >${this.labels.aboutPageConflict}</span
+                  >
+                `
+        }
       </div>
     `;
   }
@@ -712,16 +710,7 @@ export class JantSettingsGeneral extends LitElement {
           )}
         </section>
 
-        <section
-          class="flex flex-col gap-4 border-t pt-8"
-          @keydown=${(e: globalThis.KeyboardEvent) =>
-            this._onKeydown(
-              e,
-              () => this._saveFeeds(),
-              this._feedDirty,
-              this._feedLoading,
-            )}
-        >
+        <section class="flex flex-col gap-4 border-t pt-8">
           ${this._renderSectionTitle(this.labels.feeds)}
           <div class="field">
             <p class="label">${this.labels.mainRssFeed}</p>
@@ -753,17 +742,19 @@ export class JantSettingsGeneral extends LitElement {
                 </p>
                 <p class="text-sm text-muted-foreground">
                   ${this.labels.availableFeedUrlsHelp}
-                  ${this.feedsDocsUrl
-                    ? html`
-                        <a
-                          href=${this.feedsDocsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="underline hover:text-foreground transition-colors"
-                          >${this.labels.feedsDocs}</a
-                        >
-                      `
-                    : ""}
+                  ${
+                    this.feedsDocsUrl
+                      ? html`
+                          <a
+                            href=${this.feedsDocsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="underline hover:text-foreground transition-colors"
+                            >${this.labels.feedsDocs}</a
+                          >
+                        `
+                      : ""
+                  }
                 </p>
               </div>
 
@@ -783,10 +774,6 @@ export class JantSettingsGeneral extends LitElement {
               )}
             </div>
           </div>
-
-          ${this._renderSaveAction(this._feedLoading, this._feedDirty, () =>
-            this._saveFeeds(),
-          )}
         </section>
 
         <section class="flex flex-col gap-4 border-t pt-8 pb-6">
@@ -822,11 +809,13 @@ export class JantSettingsGeneral extends LitElement {
           />
           <span>${this.labels.allowIndexing}</span>
         </label>
-        ${this.demoMode
-          ? html`<p class="text-sm text-muted-foreground">
-              ${this.labels.demoSeoLocked}
-            </p>`
-          : nothing}
+        ${
+          this.demoMode
+            ? html`<p class="text-sm text-muted-foreground">
+                ${this.labels.demoSeoLocked}
+              </p>`
+            : nothing
+        }
       </section>
     `;
   }
