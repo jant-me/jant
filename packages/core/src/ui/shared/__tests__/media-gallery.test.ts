@@ -1,7 +1,7 @@
 import { renderToString } from "hono/jsx/dom/server";
 import { describe, expect, it } from "vitest";
 import type { MediaView } from "../../../types.js";
-import { MediaGallery } from "../MediaGallery.js";
+import { getGalleryRowHeight, MediaGallery } from "../MediaGallery.js";
 
 const HASH = "LEHV6nWB2yk8pyo0adR*.7kCMdnj";
 
@@ -258,5 +258,73 @@ describe("MediaGallery", () => {
       expect(html).not.toContain("u-video");
       expect(html).not.toContain("u-audio");
     });
+  });
+});
+
+describe("getGalleryRowHeight", () => {
+  it("holds the widest item to the strip budget instead of the opener's wish", () => {
+    // A portrait screenshot asks for 320 / 0.46 = 692px of height. Granting it
+    // would make the 16:9 video beside it 1231px wide — wider than the whole
+    // content column. The 520px per-item budget decides instead.
+    expect(getGalleryRowHeight([1170 / 2532, 16 / 9])).toBe(293);
+  });
+
+  it("lets a portrait opener run to the cap when nothing after it is wide", () => {
+    expect(getGalleryRowHeight([1170 / 2532, 900 / 1600])).toBe(384);
+  });
+
+  it("never exceeds the 24rem height a lone visual already gets", () => {
+    // Otherwise a second attachment would make the first picture grow.
+    expect(getGalleryRowHeight([9 / 16, 9 / 16, 9 / 16])).toBe(384);
+  });
+
+  it("floors an all-landscape strip rather than letting it go squat", () => {
+    expect(getGalleryRowHeight([16 / 9, 16 / 9])).toBe(240);
+  });
+
+  it("falls back to the floor when the strip carries no visuals", () => {
+    expect(getGalleryRowHeight([])).toBe(240);
+  });
+});
+
+describe("MediaGallery row geometry", () => {
+  const portrait = createMediaView({ id: "m-1", width: 1170, height: 2532 });
+  const video = createMediaView({
+    id: "m-2",
+    url: "/media/clip.mp4",
+    thumbnailUrl: "/media/clip.mp4",
+    mimeType: "video/mp4",
+    width: 1920,
+    height: 1080,
+  });
+  const text = createMediaView({
+    id: "m-3",
+    mimeType: "text/html; charset=utf-8",
+    summary: "haha hahah",
+    chars: 10,
+  });
+
+  it("sizes pictures the same whether or not a text file rides along", () => {
+    const withoutText = renderToString(
+      MediaGallery({ attachments: [portrait, video] }),
+    );
+    const withText = renderToString(
+      MediaGallery({ attachments: [portrait, video, text] }),
+    );
+
+    expect(withoutText).toContain("height:293px");
+    expect(withText).toContain("height:293px");
+    // ...and the video stays inside its 520px budget in both.
+    expect(withoutText).toContain("width:521px");
+    expect(withText).toContain("width:521px");
+  });
+
+  it("sizes non-visual cards from the row height, 3:4 portrait", () => {
+    const html = renderToString(
+      MediaGallery({ attachments: [portrait, video, text] }),
+    );
+
+    // 293 * 0.75, rounded.
+    expect(html).toContain("width:220px;height:293px");
   });
 });

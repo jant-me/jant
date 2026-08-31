@@ -79,6 +79,57 @@ function getSingleVisualWidth(ratio: number): string {
   return `min(100%, calc(24rem * ${ratio}), var(--layout-content-width))`;
 }
 
+/** Shortest a gallery strip gets, in CSS pixels. */
+const ROW_MIN = 240;
+/** Tallest a gallery strip gets — the 24rem cap a lone visual already has. */
+const ROW_MAX = 384;
+/** No single item in a strip is wider than this, in CSS pixels. */
+const ITEM_MAX_WIDTH = 520;
+/** Width the opening visual is measured at when it sets the row height. */
+const NOMINAL_ITEM_WIDTH = 320;
+
+/**
+ * Shared height for a multi-item gallery strip.
+ *
+ * Every visual in a strip gets this height and a width of
+ * `rowHeight * its own aspect ratio`, so one number decides the whole row.
+ * Three rules pick it, in order:
+ *
+ * 1. **The opener leads.** `NOMINAL_ITEM_WIDTH / leadRatio` is the height the
+ *    first visual would have at a nominal 320px width, so a portrait opener
+ *    earns a taller row than a landscape one.
+ * 2. **Nothing outgrows the strip.** The widest visual is held to
+ *    `ITEM_MAX_WIDTH`, which stops a 16:9 video following a portrait picture
+ *    from swallowing the whole content column.
+ * 3. **One band.** `ROW_MAX` matches the cap a lone visual gets on its own, so
+ *    a second attachment never makes the first picture grow.
+ *
+ * Non-visual attachments stay out of this deliberately: a text file beside a
+ * picture is no reason to resize the picture. Their cards are sized *from* the
+ * result instead.
+ *
+ * @param visualRatios - Aspect ratios of the strip's images and videos in
+ *   display order, each from {@link getMediaAspectRatio} so every value is
+ *   finite and positive. Empty when the strip holds no visuals at all.
+ * @returns Row height in CSS pixels.
+ * @example
+ * getGalleryRowHeight([0.53, 1.78]); // 292 - portrait opener, then a 16:9 video
+ * getGalleryRowHeight([0.53, 0.53]); // 384 - two portraits
+ * getGalleryRowHeight([1.78, 1.78]); // 240 - two landscapes
+ * getGalleryRowHeight([]); // 240 - documents only
+ */
+export function getGalleryRowHeight(visualRatios: number[]): number {
+  const leadRatio = visualRatios[0];
+  if (leadRatio === undefined) return ROW_MIN;
+
+  const byLead = NOMINAL_ITEM_WIDTH / leadRatio;
+  const byWidestItem = ITEM_MAX_WIDTH / Math.max(...visualRatios);
+
+  return Math.round(
+    Math.min(ROW_MAX, Math.max(ROW_MIN, Math.min(byLead, byWidestItem))),
+  );
+}
+
 /**
  * Format-specific file icon. Each MIME type gets a visually distinct icon
  * built on the same document silhouette base.
@@ -214,12 +265,6 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
 }) => {
   if (attachments.length === 0) return null;
 
-  // Category checks for layout decisions
-  const hasNonVisualAttachment = attachments.some((a) => {
-    const cat = getMediaCategory(a.mimeType);
-    return cat !== "image" && cat !== "video";
-  });
-
   // Build lightbox group from images + videos in position order
   // (documents/texts don't use lightbox)
   const lightboxItems = attachments
@@ -271,28 +316,13 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
     firstItem !== undefined &&
     (firstItem._kind === "image" || firstItem._kind === "video");
 
-  // When non-visual attachments are mixed with visuals, use a compact row
-  const hasNonVisual = hasNonVisualAttachment;
-  const COMPACT_HEIGHT = 220;
-
-  // Row height adapts to the first visual item's aspect ratio
-  const ROW_MIN = hasNonVisual ? 220 : 280;
-  const ROW_MAX = hasNonVisual ? 300 : 440;
-  let rowHeight = hasNonVisual ? COMPACT_HEIGHT : 360;
-  if (!singleVisual && galleryItems.length > 1) {
-    const firstVisual = galleryItems.find(
-      (item) => item._kind === "image" || item._kind === "video",
-    );
-    if (firstVisual && "width" in firstVisual && "height" in firstVisual) {
-      const firstRatio = getMediaAspectRatio(
-        firstVisual.width,
-        firstVisual.height,
-      );
-      rowHeight = Math.round(
-        Math.min(ROW_MAX, Math.max(ROW_MIN, 320 / Math.max(firstRatio, 0.5))),
-      );
-    }
-  }
+  // Strip geometry. A lone visual never reads this — it keeps its natural
+  // ratio — but every other shape does, cards included.
+  const rowHeight = getGalleryRowHeight(
+    galleryItems
+      .filter((item) => item._kind === "image" || item._kind === "video")
+      .map((item) => getMediaAspectRatio(item.width, item.height)),
+  );
 
   // Document card: 3:4 portrait, same height as row
   const DOC_RATIO = 3 / 4;
@@ -310,7 +340,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                 ? JSON.stringify(lightboxItems)
                 : undefined
             }
-            class={`flex gap-2 ${singleVisual ? "" : "overflow-x-auto scroll-smooth"}`}
+            class={`flex gap-3 ${singleVisual ? "" : "overflow-x-auto scroll-smooth"}`}
             style={
               singleVisual
                 ? undefined
