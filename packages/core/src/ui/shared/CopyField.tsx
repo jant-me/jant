@@ -1,4 +1,5 @@
 import type { FC } from "hono/jsx";
+import { getIconSvg } from "../../lib/icons.js";
 import {
   COPY_FIELD_BUTTON_ATTR,
   COPY_FIELD_BUTTON_CLASS,
@@ -74,15 +75,25 @@ export const CopyField: FC<CopyFieldProps> = ({
   <div class={COPY_FIELD_CLASS} data-copy-field-root>
     <p class="text-sm font-medium">
       {labelHref ? (
-        // Underlined at rest, not only on hover: an affordance nobody can see
-        // is one nobody uses, and this is the page's only way through to the
-        // posts a feed carries.
+        // The affordance is the arrow, not an underline. Three underlined
+        // labels stacked over three inputs read as a mis-styled form, and the
+        // rule under a two-word label is heavy enough to compete with the
+        // address it introduces. An arrow is visible at rest — which the
+        // underline was there to be — and says where the link goes besides.
+        // The underline still arrives on hover, where it costs nothing.
         <a
           href={labelHref}
           title={labelTitle}
-          class="underline decoration-1 underline-offset-4 opacity-90 hover:opacity-100"
+          class="group inline-flex items-center gap-1 underline-offset-4 hover:underline focus-visible:underline"
         >
           {label}
+          <span
+            class="text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5"
+            aria-hidden="true"
+            dangerouslySetInnerHTML={{
+              __html: getIconSvg("arrow-right", "size-3.5 icon-fine") ?? "",
+            }}
+          />
         </a>
       ) : (
         label

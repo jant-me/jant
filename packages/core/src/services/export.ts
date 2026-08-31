@@ -429,10 +429,25 @@ export function createExportService(
       const usedSlugs = new Set<string>();
       for (const s of slugMap.values()) usedSlugs.add(s);
       for (const s of collectionSlugMap.values()) usedSlugs.add(s);
-      if (!usedSlugs.has("featured")) {
+      const hasFeaturedSection = !usedSlugs.has("featured");
+      if (hasFeaturedSection) {
         exportFiles.push({
           path: "content/featured/_index.md",
           content: await buildFeaturedSection(siteConfig.rssFeedsEnabled),
+        });
+      }
+
+      // Feed subscribers are the one audience the export can lose silently:
+      // their reader polls a `/feed` address that this site does not serve.
+      // With feeds off there is nothing to redirect to, and the live site had
+      // no feeds to have been subscribed to either.
+      if (siteConfig.rssFeedsEnabled) {
+        exportFiles.push({
+          path: "static/_redirects",
+          content: buildFeedRedirects(
+            siteConfig.mainRssFeed,
+            hasFeaturedSection,
+          ),
         });
       }
 
@@ -578,7 +593,7 @@ export function createExportService(
 
       exportFiles.push({
         path: "README.md",
-        content: buildReadme(siteConfig.siteName),
+        content: buildReadme(siteConfig, hasFeaturedSection),
       });
       exportFiles.push({
         path: ".gitignore",
@@ -1668,8 +1683,94 @@ function buildJantDataToml(
 }
 
 // ---------------------------------------------------------------------------
-// README + .gitignore
+// README + .gitignore + _redirects
 // ---------------------------------------------------------------------------
+
+/**
+ * Build the `static/_redirects` file that keeps existing feed subscribers
+ * working after the site moves to this export.
+ *
+ * Jant serves its feeds under `/feed` (`/feed`, `/latest/feed`,
+ * `/featured/feed`, `/archive/feed`, `/{collection}/feed`); Hugo serves the
+ * same documents as `index.xml` inside each section. The two namespaces do
+ * not overlap, so every subscriber's saved address 404s the moment the
+ * exported site goes up.
+ *
+ * Hugo's `aliases:` mechanism cannot cover this the way it covers post URLs:
+ * an alias page is a meta-refresh plus a script, and feed readers fetch and
+ * parse XML without running either. Only an HTTP redirect reaches them, which
+ * is host configuration rather than Hugo output — so the export emits the one
+ * format two common static hosts read verbatim (Cloudflare Pages and Netlify).
+ * Hosts that do not read `_redirects` ignore the file; the README carries the
+ * rule for them to translate.
+ *
+ * @param mainRssFeed - The site's main feed setting, "latest" or "featured".
+ * @param hasFeaturedSection - Whether the export emitted a featured section.
+ *   It is skipped when a post or collection already owns the `featured` slug,
+ *   and pointing a redirect at a feed that was never built would turn a live
+ *   subscription into a 404 rather than leaving it merely stale.
+ * @returns The `_redirects` file body.
+ * @example
+ * buildFeedRedirects("latest", true); // "# ...\n/feed  /index.xml  301\n..."
+ */
+function buildFeedRedirects(
+  mainRssFeed: string,
+  hasFeaturedSection: boolean,
+): string {
+  const LATEST = "/index.xml";
+  const FEATURED = "/featured/index.xml";
+  // `/feed` follows the site's main-feed setting, mirroring `renderMainFeed`.
+  // Without a featured section there is nothing to point it at, so it falls
+  // back to the latest feed: a wider feed than the reader subscribed to, but
+  // a live one.
+  const main =
+    mainRssFeed === "featured" && hasFeaturedSection ? FEATURED : LATEST;
+  const featured = hasFeaturedSection ? FEATURED : LATEST;
+
+  const rules: [string, string][] = [
+    ["/feed", main],
+    ["/latest/feed", LATEST],
+    ["/featured/feed", featured],
+    ["/archive/feed", "/archive/index.xml"],
+  ];
+  const legacy: [string, string][] = [
+    ["/feed/latest", LATEST],
+    ["/feed/all", LATEST],
+    ["/feed/featured", featured],
+    ["/feed/atom.xml", main],
+    ["/feed/latest/atom.xml", LATEST],
+    ["/feed/all/atom.xml", LATEST],
+    ["/feed/featured/atom.xml", featured],
+  ];
+
+  // The format only needs whitespace between the columns; padding to the
+  // widest source path keeps the file readable for whoever has to translate
+  // it into another host's redirect syntax.
+  const width = Math.max(
+    ...[...rules, ...legacy].map(([from]) => from.length),
+    "/:slug/feed".length,
+  );
+  const line = ([from, to]: [string, string]) =>
+    `${from.padEnd(width)}  ${to}  301`;
+
+  return `# Feed addresses moved in this export.
+#
+# Jant served its feeds under /feed; Hugo serves them as index.xml inside each
+# section. Cloudflare Pages and Netlify read this file and issue the redirects
+# below, so readers who subscribed to the old addresses keep receiving posts.
+# Other hosts ignore this file — see README.md for the same rules to translate
+# into your host's configuration.
+
+${rules.map(line).join("\n")}
+
+# Aliases the live site answered with a 308. They would die at the same moment.
+${legacy.map(line).join("\n")}
+
+# Collection feeds, by slug. Collections are the only root-level sections that
+# emit Atom, so any other slug 404s here exactly as it did on the live site.
+${line(["/:slug/feed", "/:slug/index.xml"])}
+`;
+}
 
 function buildGitignore(): string {
   return `# Hugo build output
@@ -1688,7 +1789,90 @@ Thumbs.db
 `;
 }
 
-function buildReadme(siteName: string): string {
+/**
+ * Render a two-column Markdown table with padded cells.
+ *
+ * The values differ per site, so building the rows by hand would leave the
+ * committed README ragged for some exports and aligned for others.
+ *
+ * @param headers - The two column headers.
+ * @param rows - Cell pairs; each cell is wrapped in backticks.
+ * @returns The table as Markdown, without a trailing newline.
+ * @example
+ * renderMarkdownTable(["Jant", "This export"], [["/feed", "/index.xml"]]);
+ */
+function renderMarkdownTable(
+  headers: [string, string],
+  rows: [string, string][],
+): string {
+  const cells = rows.map(
+    ([from, to]) => [`\`${from}\``, `\`${to}\``] as [string, string],
+  );
+  const widths: [number, number] = [
+    Math.max(headers[0].length, ...cells.map((r) => r[0].length)),
+    Math.max(headers[1].length, ...cells.map((r) => r[1].length)),
+  ];
+  const line = (a: string, b: string) =>
+    `| ${a.padEnd(widths[0])} | ${b.padEnd(widths[1])} |`;
+  return [
+    line(headers[0], headers[1]),
+    `| ${"-".repeat(widths[0])} | ${"-".repeat(widths[1])} |`,
+    ...cells.map((r) => line(r[0], r[1])),
+  ].join("\n");
+}
+
+/**
+ * Build the export's README.
+ *
+ * @param config - The exported site's configuration.
+ * @param hasFeaturedSection - Whether a featured section was emitted, which
+ *   decides where the feed redirects point.
+ * @returns Markdown for `README.md` at the root of the export.
+ * @example
+ * buildReadme(config, true); // "# My Site — Hugo Export\n..."
+ */
+function buildReadme(config: SiteConfig, hasFeaturedSection: boolean): string {
+  const siteName = config.siteName;
+  const featuredFeed = hasFeaturedSection
+    ? "/featured/index.xml"
+    : "/index.xml";
+  const mainFeed =
+    config.mainRssFeed === "featured" ? featuredFeed : "/index.xml";
+  // Nothing to say about feeds on a site that publishes none, and no
+  // `_redirects` file was written for it either.
+  const staticListing = config.rssFeedsEnabled
+    ? "\n  _redirects              — Feed redirects (see Feeds above)"
+    : "";
+  // The Notes list below says post URLs survive the move. Left alone, that
+  // reads as a promise about every URL, and feed addresses are the exception.
+  const feedNote = config.rssFeedsEnabled
+    ? "\n- Feed addresses are the exception: they move to `index.xml` and stay reachable only through `static/_redirects`. See [Feeds](#feeds)."
+    : "";
+  // Nothing to say about feeds on a site that publishes none, and no
+  // `_redirects` file was written for it either.
+  const feedRows: [string, string][] = [
+    ["/feed", mainFeed],
+    ["/latest/feed", "/index.xml"],
+    ["/featured/feed", featuredFeed],
+    ["/archive/feed", "/archive/index.xml"],
+    ["/{collection}/feed", "/{collection}/index.xml"],
+  ];
+  const feedTable = renderMarkdownTable(["Jant", "This export"], feedRows);
+  const feedsSection = config.rssFeedsEnabled
+    ? `## Feeds
+
+The feed addresses changed. Jant served them under \`/feed\`; Hugo serves them as \`index.xml\` inside each section:
+
+${feedTable}
+
+A reader who is already subscribed holds one of the old addresses, and a feed reader that gets a 404 stops delivering posts. \`static/_redirects\` maps every old address to its new one with a 301. Cloudflare Pages and Netlify read that file as published; on any other host, translate its rules into that host's redirect configuration before you point the domain here.
+
+Hugo's \`aliases:\` cannot cover this. An alias page redirects with a meta refresh and a script, and feed readers fetch XML without running either — only an HTTP redirect reaches them.
+
+The **Subscribe** entry in the site navigation points at \`${mainFeed}\`. The exported site has no \`/subscribe\` page; that page belongs to the Jant runtime.
+
+`
+    : "";
   return `# ${siteName} — Hugo Export
 
 This is a static site exported from [Jant](https://github.com/jant-me/jant), ready to build with [Hugo](https://gohugo.io/).
@@ -1733,7 +1917,7 @@ hugo --minify
 
 The output goes to the \`public/\` directory. Upload it to any static host (Netlify, Vercel, Cloudflare Pages, GitHub Pages, etc.).
 
-## Project structure
+${feedsSection}## Project structure
 
 \`\`\`
 hugo.toml                 — Site configuration (baseURL, title, theme, params)
@@ -1749,7 +1933,7 @@ content/
 data/
   jant.toml               — Nav items, branding, display preferences, ordered collections directory
 themes/jant/              — Bundled Hugo theme (overrideable via layouts/ at the site root)
-static/                   — Copy files here to add them to the published site
+static/                   — Copy files here to add them to the published site${staticListing}
 \`\`\`
 
 ## Customizing
@@ -1775,7 +1959,7 @@ Safe to re-run; files already on disk are reused. Anything that fails to downloa
 ## Notes
 
 - Each thread is a Hugo branch bundle. Replies live as nested leaf bundles with \`build.render = "never"\` so they do not produce standalone URLs; they render inside the thread page.
-- \`/{reply-slug}/\` URLs are preserved via \`aliases:\` on the root post, so old links still land on the right thread anchor.
+- \`/{reply-slug}/\` URLs are preserved via \`aliases:\` on the root post, so old links still land on the right thread anchor.${feedNote}
 - Media is emitted under \`static/media/{id}.ext\` and referenced from a flat \`media:\` array on each post. When a storage provider has a configured public URL (R2/S3/local proxy), the exporter links to the provider URL instead of re-bundling the bytes.
 - Posts with \`draft: true\` in front matter are only built when you pass \`--buildDrafts\` to \`hugo\` / \`hugo serve\`.
 `;

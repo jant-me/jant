@@ -523,6 +523,113 @@ describe("createExportService (Hugo)", () => {
     expect(data).toContain('label = "Subscribe"');
   });
 
+  it("redirects every runtime feed address to its exported counterpart", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig({ mainRssFeed: "latest" }),
+    );
+    const redirects = filesToMap(await service.generateHugoFiles()).get(
+      "static/_redirects",
+    ) as string;
+
+    // Feed readers hold the runtime addresses; nothing in the Hugo tree
+    // answers them without these.
+    const rules = redirects
+      .split("\n")
+      .filter((l) => l.startsWith("/"))
+      .map((l) => l.split(/\s+/));
+    expect(new Map(rules.map((r) => [r[0], r[1]]))).toEqual(
+      new Map([
+        ["/feed", "/index.xml"],
+        ["/latest/feed", "/index.xml"],
+        ["/featured/feed", "/featured/index.xml"],
+        ["/archive/feed", "/archive/index.xml"],
+        // The 308 aliases the live site still answers.
+        ["/feed/latest", "/index.xml"],
+        ["/feed/all", "/index.xml"],
+        ["/feed/featured", "/featured/index.xml"],
+        ["/feed/atom.xml", "/index.xml"],
+        ["/feed/latest/atom.xml", "/index.xml"],
+        ["/feed/all/atom.xml", "/index.xml"],
+        ["/feed/featured/atom.xml", "/featured/index.xml"],
+        ["/:slug/feed", "/:slug/index.xml"],
+      ]),
+    );
+    // A feed reader follows a 301 and rewrites its stored address; a 302
+    // would leave it polling the dead one forever.
+    expect(rules.every((r) => r[2] === "301")).toBe(true);
+    // First match wins in both hosts that read this file, so the collection
+    // catch-all must not shadow the fixed sections.
+    expect(rules.at(-1)?.[0]).toBe("/:slug/feed");
+  });
+
+  it("points /feed at the featured feed when that is the site's main feed", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig({ mainRssFeed: "featured" }),
+    );
+    const redirects = filesToMap(await service.generateHugoFiles()).get(
+      "static/_redirects",
+    ) as string;
+
+    expect(redirects).toMatch(/^\/feed\s+\/featured\/index\.xml\s+301$/m);
+    expect(redirects).toMatch(
+      /^\/feed\/atom\.xml\s+\/featured\/index\.xml\s+301$/m,
+    );
+  });
+
+  it("falls back to the latest feed when no featured section was emitted", async () => {
+    // A post owning the `featured` slug takes the section's place, so
+    // /featured/index.xml is never built. Redirecting there would turn a live
+    // subscription into a 404; the latest feed is wider but real.
+    const service = createExportService(
+      buildServices({ posts: [makePost({ id: "post-1", slug: "featured" })] }),
+      makeSiteConfig({ mainRssFeed: "featured" }),
+    );
+    const files = filesToMap(await service.generateHugoFiles());
+    const redirects = files.get("static/_redirects") as string;
+
+    // The post took the path the featured section would have used, so the
+    // section — and /featured/index.xml with it — was never built.
+    expect(files.get("content/featured/_index.md") as string).not.toContain(
+      "type: featured",
+    );
+    expect(redirects).not.toContain("/featured/index.xml");
+    expect(redirects).toMatch(/^\/feed\s+\/index\.xml\s+301$/m);
+    expect(redirects).toMatch(/^\/featured\/feed\s+\/index\.xml\s+301$/m);
+  });
+
+  it("writes no feed redirects when the site publishes no feeds", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig({ rssFeedsEnabled: false }),
+    );
+    const files = filesToMap(await service.generateHugoFiles());
+
+    expect(files.has("static/_redirects")).toBe(false);
+    expect(files.get("README.md") as string).not.toContain("## Feeds");
+  });
+
+  it("tells the README reader that feed addresses are the exception to URL continuity", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig({ mainRssFeed: "latest" }),
+    );
+    const readme = filesToMap(await service.generateHugoFiles()).get(
+      "README.md",
+    ) as string;
+
+    // The Notes list advertises that post URLs survive the move; without this
+    // it reads as a promise covering every URL.
+    expect(readme).toContain("## Feeds");
+    expect(readme).toContain("`/latest/feed`");
+    expect(readme).toContain("static/_redirects");
+    expect(readme).toContain("Feed addresses are the exception");
+    // No /subscribe page exists in the export, and the README says where the
+    // nav entry lands instead.
+    expect(readme).toContain("has no `/subscribe` page");
+  });
+
   it("hides system Subscribe navigation when feeds are off", async () => {
     const service = createExportService(
       buildServices({ posts: [] }),
