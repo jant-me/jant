@@ -5,6 +5,14 @@ type EnvSource = object | undefined | null;
 
 export const DEFAULT_APP_PORT = 3000;
 
+/**
+ * Jant's own directory.
+ *
+ * A long-lived public contract: shipped self-hosted versions POST here for
+ * years, so it is baked in rather than configured, and it never moves.
+ */
+export const DEFAULT_DISCOVER_PING_URL = "https://jant.me/api/discover/ping";
+
 function toEnvRecord(env: EnvSource): Record<string, unknown> {
   return (env ?? {}) as Record<string, unknown>;
 }
@@ -198,6 +206,33 @@ export function getHostedControlPlaneInternalToken(
   env: EnvSource,
 ): string | undefined {
   return getEnvString(env, "HOSTED_CONTROL_PLANE_INTERNAL_TOKEN");
+}
+
+/**
+ * Where a site announces itself when its owner turns Jant Discover on.
+ *
+ * Read presence-aware rather than through `getEnvString`, because the two
+ * states that matter are spelled differently: an **absent** binding means
+ * "use Jant's directory", while a binding set to the **empty string** means
+ * "announce nowhere". `getEnvString` collapses both into undefined, which
+ * would make the documented way of switching the ping off silently fall back
+ * to switching it on.
+ *
+ * @param env - Worker bindings or `process.env`
+ * @returns The endpoint to announce to, or undefined when announcing is off
+ * @example
+ * ```ts
+ * getDiscoverPingUrl({}); // the default directory
+ * getDiscoverPingUrl({ DISCOVER_PING_URL: "" }); // undefined — off
+ * ```
+ */
+export function getDiscoverPingUrl(env: EnvSource): string | undefined {
+  const record = toEnvRecord(env);
+  if (Object.hasOwn(record, "DISCOVER_PING_URL")) {
+    const configured = normalizeEnvScalar(record["DISCOVER_PING_URL"]);
+    return configured?.trim() || undefined;
+  }
+  return DEFAULT_DISCOVER_PING_URL;
 }
 
 export function getStorageDriverEnv(env: EnvSource): string | undefined {

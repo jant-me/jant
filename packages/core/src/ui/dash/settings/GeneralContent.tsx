@@ -11,6 +11,39 @@ import { msg } from "@lingui/core/macro";
 import { useLingui } from "../../../i18n/context.js";
 import type { TimezoneEntry } from "../../../lib/timezones.js";
 import type { AboutPageStatus } from "../../../services/about-page.js";
+import type { DiscoverMode } from "../../../lib/discover.js";
+
+/**
+ * Where the site stands in the directory, as far as the site itself can tell.
+ *
+ * Every field is local evidence. The directory takes no status queries — see
+ * `docs/discover.md` — so nothing here is fetched, and nothing here can say
+ * whether a person has moderated the site.
+ */
+export interface DiscoverStatus {
+  /** Last announcement succeeded, failed, or was never made. */
+  announced: boolean | null;
+  /** Why the last announcement failed. */
+  announceError: string | null;
+  /** Unix seconds of the last announcement attempt. */
+  announceAt: number | null;
+  /** A directory is configured at all. */
+  hasDirectory: boolean;
+  /** The directory's manual submission form, when there is one. */
+  submitUrl: string | null;
+  /** What this site's feeds actually declare right now. */
+  declaredMode: DiscoverMode;
+  publicPostCount: number;
+  /** Featured thread roots — what a `featured` feed would actually carry. */
+  featuredPostCount: number;
+  /** Whole days since the oldest public post, or null when there are none. */
+  ageDays: number | null;
+  /** Both of the directory's thresholds are met. */
+  established: boolean;
+  minPublicPosts: number;
+  minAgeDays: number;
+  firstReadMaxHours: number;
+}
 
 export function GeneralContent({
   siteName,
@@ -26,6 +59,10 @@ export function GeneralContent({
   siteFooter,
   showJantBrandingOnHome,
   noindex,
+  discover,
+  discoverDocsUrl,
+  discoverStatus,
+  rssFeedsEnabled,
   demoMode,
   timezones,
   aboutPage,
@@ -45,6 +82,11 @@ export function GeneralContent({
   siteFooter: string;
   showJantBrandingOnHome: boolean;
   noindex: boolean;
+  /** The stored choice, or "" when the owner has never used the control. */
+  discover: string;
+  discoverDocsUrl: string;
+  discoverStatus: DiscoverStatus;
+  rssFeedsEnabled: boolean;
   demoMode: boolean;
   timezones: TimezoneEntry[];
   aboutPage: AboutPageStatus;
@@ -113,9 +155,9 @@ export function GeneralContent({
     ),
     search: i18n._(
       msg({
-        message: "Search",
+        message: "Site visibility",
         comment:
-          "@context: Settings section heading for search engine indexing settings",
+          "@context: Settings section heading covering search engine indexing and the Jant Discover directory",
       }),
     ),
     siteName: i18n._(
@@ -280,6 +322,95 @@ export function GeneralContent({
           "@context: Help text explaining that SEO indexing is locked in demo mode",
       }),
     ),
+    discoverEnabled: i18n._(
+      msg({
+        message: "Show my site and posts in Jant Discover",
+        comment: "@context: Checkbox for joining the Jant Discover directory",
+      }),
+    ),
+    discoverIntro: i18n._(
+      msg({
+        message:
+          "Discover is a public list of Jant blogs. It shows one of your posts at a time, never sooner than a day after you publish it, and links back to your site.",
+        comment:
+          "@context: Introduction to the Jant Discover settings section. Deliberately states only the stable promises; the tunable intervals live in the docs.",
+      }),
+    ),
+    discoverAnnounce: i18n._(
+      msg({
+        message:
+          "Turning this on sends your feed address to the directory once, so it knows your site exists.",
+        comment:
+          "@context: Help text saying plainly what enabling Jant Discover transmits",
+      }),
+    ),
+    discoverDocs: i18n._(
+      msg({
+        message: "How Discover picks posts",
+        comment: "@context: Link to the Jant Discover documentation page",
+      }),
+    ),
+    discoverLatest: i18n._(
+      msg({
+        message: "Latest",
+        comment:
+          "@context: Jant Discover option drawing from the site's latest public posts",
+      }),
+    ),
+    discoverLatestHint: i18n._(
+      msg({
+        message: "Draws from your latest public posts.",
+        comment: "@context: Description of the Discover Latest option",
+      }),
+    ),
+    discoverFeatured: i18n._(
+      msg({
+        message: "Featured only",
+        comment:
+          "@context: Jant Discover option drawing only from featured posts",
+      }),
+    ),
+    discoverFeaturedHint: i18n._(
+      msg({
+        message: "Draws only from posts you have marked Featured.",
+        comment: "@context: Description of the Discover Featured option",
+      }),
+    ),
+    discoverStatusHeading: i18n._(
+      msg({
+        message: "Where your site stands",
+        comment:
+          "@context: Heading of the Discover status block on the settings page. Everything under it is the site's own evidence, not an answer fetched from the directory.",
+      }),
+    ),
+    discoverAnnounceRetry: i18n._(
+      msg({
+        message: "Announce again",
+        comment:
+          "@context: Button retrying the Discover announcement after it failed",
+      }),
+    ),
+    discoverAnnounceManual: i18n._(
+      msg({
+        message: "Or submit your address by hand",
+        comment:
+          "@context: Link to the directory's manual submission form, shown only when the automatic announcement failed",
+      }),
+    ),
+    discoverDemoLocked: i18n._(
+      msg({
+        message: "Demo sites are never listed in Discover.",
+        comment:
+          "@context: Help text explaining that Discover is locked off in demo mode",
+      }),
+    ),
+    discoverFeedsOffLocked: i18n._(
+      msg({
+        message: "Discover reads your Atom feed, so it needs feeds turned on.",
+        comment:
+          "@context: Help text explaining that Discover cannot work while Atom feeds are disabled",
+      }),
+    ),
     save: i18n._(
       msg({
         message: "Save",
@@ -328,7 +459,139 @@ export function GeneralContent({
     siteFooter,
     showJantBrandingOnHome,
     noindex,
+    discover,
   }).replace(/</g, "\\u003c");
+
+  // The status sentences carry runtime numbers, so they are translated here
+  // rather than handed to the component as templates — values belong with the
+  // `i18n._` call that has them. The component renders what it is given.
+  const statusLines: string[] = [];
+
+  if (discoverStatus.declaredMode === "none") {
+    statusLines.push(
+      i18n._(
+        msg({
+          message: "Your feed says none, so no directory will list this site.",
+          comment:
+            "@context: Discover status line when the feed declares it does not want to be listed",
+        }),
+      ),
+    );
+  } else {
+    statusLines.push(
+      i18n._(
+        msg({
+          message: "Your feed says {mode}.",
+          comment:
+            "@context: Discover status line confirming what the site's Atom feed declares. {mode} is the literal value in the feed, `latest` or `featured`.",
+        }),
+        { mode: discoverStatus.declaredMode },
+      ),
+    );
+
+    if (discoverStatus.hasDirectory) {
+      statusLines.push(
+        discoverStatus.announced === true
+          ? i18n._(
+              msg({
+                message: "Feed address sent to the directory.",
+                comment:
+                  "@context: Discover status line when the one-off announcement reached the directory",
+              }),
+            )
+          : discoverStatus.announced === false
+            ? i18n._(
+                msg({
+                  message: "The directory could not be reached: {reason}",
+                  comment:
+                    "@context: Discover status line when the announcement failed. {reason} is the error, such as an HTTP status or a network message.",
+                }),
+                { reason: discoverStatus.announceError ?? "" },
+              )
+            : i18n._(
+                msg({
+                  message:
+                    "Not announced yet. Save this section to announce your site.",
+                  comment:
+                    "@context: Discover status line before the site has ever announced itself",
+                }),
+              ),
+      );
+    }
+
+    if (
+      discoverStatus.declaredMode === "featured" &&
+      discoverStatus.publicPostCount > 0 &&
+      discoverStatus.featuredPostCount === 0
+    ) {
+      statusLines.push(
+        i18n._(
+          msg({
+            message:
+              "Featured only is selected and no post is marked Featured, so your feed carries nothing to show.",
+            comment:
+              "@context: Discover status line when the featured-only mode is on but the site has no featured posts",
+          }),
+        ),
+      );
+    }
+
+    statusLines.push(
+      discoverStatus.established
+        ? i18n._(
+            msg({
+              message:
+                "{count, plural, one {# public post} other {# public posts}}, oldest {days, plural, one {# day} other {# days}} ago. Enough for jant.me to list you.",
+              comment:
+                "@context: Discover status line when the site meets the jant.me directory's threshold",
+            }),
+            {
+              count: discoverStatus.publicPostCount,
+              days: discoverStatus.ageDays ?? 0,
+            },
+          )
+        : i18n._(
+            msg({
+              message:
+                "{count, plural, one {# public post} other {# public posts}}. jant.me lists a blog once it has {minCount} and its oldest is {minDays} days old.",
+              comment:
+                "@context: Discover status line when the site does not meet the directory's threshold yet. Stated as jant.me's rule, because a directory of your own may decide differently.",
+            }),
+            {
+              count: discoverStatus.publicPostCount,
+              minCount: discoverStatus.minPublicPosts,
+              minDays: discoverStatus.minAgeDays,
+            },
+          ),
+    );
+
+    if (discoverStatus.announced === true) {
+      statusLines.push(
+        i18n._(
+          msg({
+            message:
+              "A directory reads a newly announced feed within {hours} hours.",
+            comment:
+              "@context: Discover status line saying how long the first crawl takes",
+          }),
+          { hours: discoverStatus.firstReadMaxHours },
+        ),
+      );
+    }
+  }
+
+  const statusView = {
+    lines: statusLines,
+    // The manual form is offered only when the automatic path failed. Shown
+    // next to a working announcement it would read as a normal route in, which
+    // is what made it look like the primary one.
+    showRetry:
+      discoverStatus.announced === false &&
+      discoverStatus.hasDirectory &&
+      discoverStatus.declaredMode !== "none",
+    submitUrl:
+      discoverStatus.announced === false ? discoverStatus.submitUrl : null,
+  };
 
   return (
     <>
@@ -343,6 +606,9 @@ export function GeneralContent({
           featured-feed-url={featuredFeedUrl}
           archive-feed-url={archiveFeedUrl}
           demo-mode={demoMode || undefined}
+          discover-docs-url={discoverDocsUrl}
+          discover-status={JSON.stringify(statusView)}
+          feeds-enabled={rssFeedsEnabled || undefined}
           about-page={aboutPageJson}
           about-edit-url={aboutEditUrl}
           about-create-url={aboutCreateUrl}

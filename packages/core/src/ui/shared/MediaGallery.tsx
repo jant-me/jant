@@ -4,6 +4,18 @@
  * Renders media attachments in a unified horizontal row: images with
  * lightbox support, videos with play overlay, audio/documents as 3:4
  * styled card tiles, and attached texts as summary cards.
+ *
+ * Attachments sit beside `e-content`, not inside it, so a consumer reading
+ * the h-entry would otherwise see a post with no media at all. The visual
+ * ones carry `u-photo` / `u-video` / `u-audio` — the standard microformats2
+ * properties, the same ones W3C Post Type Discovery reads — so what the
+ * timeline shows is what a parser gets. Placement follows the mf2 implied
+ * value rules: on the element whose own attribute already holds the URL,
+ * never on a wrapper that would resolve to something else.
+ *
+ * Documents and attached texts stay unmarked. There is no standard property
+ * for them, and inventing one would put a private vocabulary in public
+ * markup.
  */
 
 import type { FC } from "hono/jsx";
@@ -357,11 +369,17 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                       width={item.width}
                       height={item.height}
                       style={imageStyle}
-                      class={
+                      /* `u-photo` here rather than on the enclosing link:
+                         `img.u-photo` resolves to `src` and carries `alt`
+                         with it, so a consumer gets the same thumbnail the
+                         timeline shows and the text describing it. The link
+                         wraps the full-size original, which is a click
+                         target rather than the post's photo. */
+                      class={`u-photo ${
                         singleVisual
                           ? "media-visual w-full rounded-lg"
                           : "media-visual w-full object-cover"
-                      }
+                      }`}
                       loading="lazy"
                       decoding="async"
                     />
@@ -382,6 +400,11 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                   ? undefined
                   : `${Math.round(Math.max(160, rowHeight * ratio))}px`;
                 const posterSrc = item.posterUrl || placeholder;
+                /* `video.u-photo` resolves to `poster`, which is the still
+                   the timeline already shows. Only a real poster qualifies:
+                   the blurhash fallback is a data URL, and publishing one as
+                   a photo would hand a consumer a 20-pixel smear. */
+                const posterClass = item.posterUrl ? "u-photo " : "";
                 const aspectRatio =
                   item.width && item.height
                     ? `${item.width}/${item.height}`
@@ -416,7 +439,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                       <a
                         href={item.url}
                         data-lightbox-index={item._lbIdx}
-                        class="media-visual-frame media-video-link"
+                        class="u-video media-visual-frame media-video-link"
                       >
                         <video
                           preload="none"
@@ -430,11 +453,11 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                           data-video-src={item.url}
                           data-feed-video-id={item.id}
                           style={videoStyle}
-                          class={
+                          class={`${posterClass}${
                             singleVisual
                               ? "media-visual w-full"
                               : "media-visual w-full object-cover"
-                          }
+                          }`}
                         />
                       </a>
                       <button
@@ -476,7 +499,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                     key={item.id}
                     href={item.url}
                     data-lightbox-index={item._lbIdx}
-                    class={`${singleVisual ? "" : "shrink-0"} media-video-wrap media-visual-frame`}
+                    class={`u-video ${singleVisual ? "" : "shrink-0"} media-video-wrap media-visual-frame`}
                     style={
                       singleVisual
                         ? {
@@ -494,11 +517,11 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                       width={item.width}
                       height={item.height}
                       style={videoStyle}
-                      class={
+                      class={`${posterClass}${
                         singleVisual
                           ? "media-visual w-full"
                           : "media-visual w-full object-cover"
-                      }
+                      }`}
                     />
                     <div class="media-video-play-overlay">
                       <svg viewBox="0 0 24 24" fill="white">
@@ -522,7 +545,11 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                   >
                     {/* Hidden audio element — JS controls it */}
                     <audio preload="none" class="media-audio-el">
-                      <source src={item.url} type={item.mimeType} />
+                      <source
+                        class="u-audio"
+                        src={item.url}
+                        type={item.mimeType}
+                      />
                     </audio>
 
                     {/* Artwork area */}

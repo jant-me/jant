@@ -17,6 +17,7 @@ import type {
   MediaView,
   PostView,
 } from "../types.js";
+import { DISCOVER_NAMESPACE_URI } from "./discover.js";
 import { getLinkPreviewProviderLabel } from "./link-preview.js";
 import { extractDisplayDomain } from "./url.js";
 import { getMediaCategory } from "./upload.js";
@@ -519,6 +520,10 @@ export function defaultFeedRenderer(data: FeedData): string {
     title,
     selfUrl,
     posts,
+    siteIconUrl,
+    discover,
+    discoverFeedUrl,
+    languageAlternates,
   } = data;
   const feedTitle = title ?? siteName;
 
@@ -576,24 +581,68 @@ export function defaultFeedRenderer(data: FeedData): string {
   const feedUpdated =
     posts
       .map((post) => post.feedUpdatedAt ?? post.updatedAt)
-      .reduce<
-        string | null
-      >((latest, value) => (latest === null || value > latest ? value : latest), null) ??
-    new Date().toISOString();
+      .reduce<string | null>(
+        (latest, value) => (latest === null || value > latest ? value : latest),
+        null,
+      ) ?? new Date().toISOString();
 
   // A feed states its own language: at the root that is the site's, and in a
   // language view it is that view's, so a reader subscribing to /en/feed gets
   // a feed their reader can label and their screen reader can pronounce.
   const langAttr = siteLanguage ? ` xml:lang="${escapeXml(siteLanguage)}"` : "";
 
+  // The jant namespace is only declared when something in it is emitted, the
+  // same way the sitemap declares xhtml only for alternates.
+  const jantNs = discover
+    ? ` xmlns:jant="${escapeXml(DISCOVER_NAMESPACE_URI)}"`
+    : "";
+
+  // Sibling-language feeds. `type` is carried because Atom forbids two
+  // `rel="alternate"` links sharing a type/hreflang pair, and the site's own
+  // HTML alternate above has neither.
+  const alternateFeedLinks = (languageAlternates ?? [])
+    .map(
+      (alternate) =>
+        `\n  <link href="${escapeXml(alternate.href)}" rel="alternate" type="application/atom+xml" hreflang="${escapeXml(alternate.hreflang)}"/>`,
+    )
+    .join("");
+
+  // The Discover declaration. It rides in every feed the site emits, so a
+  // crawler holding any one of them learns the site's answer and which feed
+  // to poll for it. `feed` is omitted when the site is not listed — there is
+  // nothing to point at.
+  const discoverFeedAttr = discoverFeedUrl
+    ? ` feed="${escapeXml(discoverFeedUrl)}"`
+    : "";
+  const discoverElement = discover
+    ? `\n  <jant:discover${discoverFeedAttr}>${escapeXml(discover)}</jant:discover>`
+    : "";
+
+  // The feed's title is composed — "<site> - Latest posts" — because a reader's
+  // sidebar sorts by it and one site's feeds should stay together there. That
+  // leaves nothing carrying the site's own name, which is what a directory
+  // needs to label a blog. `atom:author` is where a single-author blog's name
+  // belongs anyway, and every feed reader already knows what to do with it.
+  const authorBlock = siteName
+    ? `\n  <author><name>${escapeXml(siteName)}</name></author>`
+    : "";
+
+  // `atom:icon` is the site's avatar. A reader puts it in its sidebar, and a
+  // directory listing this blog has nowhere else to read one from — the feed
+  // is the only machine-readable surface it is guaranteed to have fetched.
+  // Atom requires an IRI, so a stored path is resolved against the site URL.
+  const iconBlock = siteIconUrl
+    ? `\n  <icon>${escapeXml(toAbsoluteFeedUrl(siteIconUrl, siteUrl))}</icon>`
+    : "";
+
   return `<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"${langAttr}>
+<feed xmlns="http://www.w3.org/2005/Atom"${jantNs}${langAttr}>
   <title>${escapeXml(feedTitle)}</title>
-  <subtitle>${escapeXml(siteDescription)}</subtitle>
+  <subtitle>${escapeXml(siteDescription)}</subtitle>${authorBlock}${iconBlock}
   <link href="${escapeXml(siteUrl)}" rel="alternate"/>
-  <link href="${escapeXml(selfUrl)}" rel="self"/>
+  <link href="${escapeXml(selfUrl)}" rel="self"/>${alternateFeedLinks}
   <id>${escapeXml(selfUrl)}</id>
-  <updated>${feedUpdated}</updated>
+  <updated>${feedUpdated}</updated>${discoverElement}
   ${entries}
 </feed>`;
 }
@@ -611,13 +660,7 @@ export interface SitemapUrlEntry {
   /** ISO date (YYYY-MM-DD) or full ISO datetime */
   lastmod?: string;
   changefreq?:
-    | "always"
-    | "hourly"
-    | "daily"
-    | "weekly"
-    | "monthly"
-    | "yearly"
-    | "never";
+    "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
   /** "0.0" – "1.0" */
   priority?: string;
   /**

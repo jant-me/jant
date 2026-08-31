@@ -28,6 +28,16 @@ msgstr "{count, plural, one {# post is} other {# posts are}} still written in {l
 msgid "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 msgstr "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 
+#. @context: Discover status line when the site meets the jant.me directory's threshold
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "{count, plural, one {# public post} other {# public posts}}, oldest {days, plural, one {# day} other {# days}} ago. Enough for jant.me to list you."
+msgstr "{count, plural, one {# public post} other {# public posts}}, oldest {days, plural, one {# day} other {# days}} ago. Enough for jant.me to list you."
+
+#. @context: Discover status line when the site does not meet the directory's threshold yet. Stated as jant.me's rule, because a directory of your own may decide differently.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "{count, plural, one {# public post} other {# public posts}}. jant.me lists a blog once it has {minCount} and its oldest is {minDays} days old."
+msgstr "{count, plural, one {# public post} other {# public posts}}. jant.me lists a blog once it has {minCount} and its oldest is {minDays} days old."
+
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "{count} settings shown"
@@ -72,6 +82,11 @@ msgstr "302 (Temporary)"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "A calm, cool backdrop."
 msgstr "A calm, cool backdrop."
+
+#. @context: Discover status line saying how long the first crawl takes
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "A directory reads a newly announced feed within {hours} hours."
+msgstr "A directory reads a newly announced feed within {hours} hours."
 
 #. @context: Help text for site description field
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -275,6 +290,16 @@ msgstr "Always show the light version of the theme."
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "An earthier, warmer tone."
 msgstr "An earthier, warmer tone."
+
+#. @context: Button retrying the Discover announcement after it failed
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Announce again"
+msgstr "Announce again"
+
+#. @context: Toast after retrying the Discover announcement. It runs in the background, so the page does not yet know how it went.
+#: src/routes/dash/settings.tsx
+msgid "Announcing again. Reload to see the result."
+msgstr "Announcing again. Reload to see the result."
 
 #. @context: Follow-up hint under the stamping warning
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -979,6 +1004,11 @@ msgstr "Demo mode hides sessions, password changes, and account deletion. Export
 msgid "Demo sites always stay hidden from search engines."
 msgstr "Demo sites always stay hidden from search engines."
 
+#. @context: Help text explaining that Discover is locked off in demo mode
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Demo sites are never listed in Discover."
+msgstr "Demo sites are never listed in Discover."
+
 #. @context: Color theme preview collection label
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Design"
@@ -1007,6 +1037,16 @@ msgstr "Disconnect from GitHub? The webhook will be removed. Your repository con
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Disconnect Telegram? You can reconnect any time with a new binding code."
 msgstr "Disconnect Telegram? You can reconnect any time with a new binding code."
+
+#. @context: Introduction to the Jant Discover settings section. Deliberately states only the stable promises; the tunable intervals live in the docs.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Discover is a public list of Jant blogs. It shows one of your posts at a time, never sooner than a day after you publish it, and links back to your site."
+msgstr "Discover is a public list of Jant blogs. It shows one of your posts at a time, never sooner than a day after you publish it, and links back to your site."
+
+#. @context: Help text explaining that Discover cannot work while Atom feeds are disabled
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Discover reads your Atom feed, so it needs feeds turned on."
+msgstr "Discover reads your Atom feed, so it needs feeds turned on."
 
 #. @context: Checkbox to show avatar in the site header
 #: src/ui/dash/settings/AvatarContent.tsx
@@ -1052,6 +1092,16 @@ msgstr "Draft"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Drag links here to show them under the More menu"
 msgstr "Drag links here to show them under the More menu"
+
+#. @context: Description of the Discover Latest option
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Draws from your latest public posts."
+msgstr "Draws from your latest public posts."
+
+#. @context: Description of the Discover Featured option
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Draws only from posts you have marked Featured."
+msgstr "Draws only from posts you have marked Featured."
 
 #. @context: Placeholder for API token name input
 #: src/ui/dash/settings/ApiTokensContent.tsx
@@ -1147,10 +1197,25 @@ msgstr "Featured"
 msgid "Featured feed"
 msgstr "Featured feed"
 
+#. @context: Jant Discover option drawing only from featured posts
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Featured only"
+msgstr "Featured only"
+
+#. @context: Discover status line when the featured-only mode is on but the site has no featured posts
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Featured only is selected and no post is marked Featured, so your feed carries nothing to show."
+msgstr "Featured only is selected and no post is marked Featured, so your feed carries nothing to show."
+
 #. @context: Config Editor RSS feed enum option
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Featured posts"
 msgstr "Featured posts"
+
+#. @context: Discover status line when the one-off announcement reached the directory
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Feed address sent to the directory."
+msgstr "Feed address sent to the directory."
 
 #. @context: Toast after saving feed settings
 #: src/routes/dash/settings.tsx
@@ -1291,6 +1356,11 @@ msgstr "Home settings updated."
 msgid "Hosted account"
 msgstr "Hosted account"
 
+#. @context: Link to the Jant Discover documentation page
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "How Discover picks posts"
+msgstr "How Discover picks posts"
+
 #. @context: Confirmation phrase the user must type to delete their account. {siteName} is the blog name.
 #: src/ui/dash/settings/DeleteAccountContent.tsx
 msgid "I want to delete {siteName}"
@@ -1404,8 +1474,10 @@ msgid "Last used {date}"
 msgstr "Last used {date}"
 
 #. @context: Browse filter label for latest posts
+#. @context: Jant Discover option drawing from the site's latest public posts
 #. @context: Select option for using latest posts as the main RSS feed
 #: src/ui/dash/appearance/NavigationContent.tsx
+#: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Latest"
 msgstr "Latest"
@@ -1728,6 +1800,11 @@ msgstr "No pages available. Create one to add it to navigation."
 msgid "No repositories match."
 msgstr "No repositories match."
 
+#. @context: Discover status line before the site has ever announced itself
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Not announced yet. Save this section to announce your site."
+msgstr "Not announced yet. Save this section to announce your site."
+
 #. @context: Config Editor linked setting status
 #. @context: Config Editor linked setting status
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -1803,6 +1880,11 @@ msgstr "Options for {language}"
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "or"
 msgstr "or"
+
+#. @context: Link to the directory's manual submission form, shown only when the automatic announcement failed
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Or submit your address by hand"
+msgstr "Or submit your address by hand"
 
 #. @context: Ember color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -2155,11 +2237,6 @@ msgstr "Saved"
 msgid "Saving…"
 msgstr "Saving…"
 
-#. @context: Settings section heading for search engine indexing settings
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Search"
-msgstr "Search"
-
 #. @context: Config Editor page description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Search and edit runtime settings. Changes apply immediately; reset restores the environment or built-in default."
@@ -2290,6 +2367,11 @@ msgstr "Setup"
 msgid "Show \"Build with Jant\" at the bottom of the home page"
 msgstr "Show \"Build with Jant\" at the bottom of the home page"
 
+#. @context: Checkbox for joining the Jant Discover directory
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Show my site and posts in Jant Discover"
+msgstr "Show my site and posts in Jant Discover"
+
 #. @context: Config Editor filter checkbox
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Show only modified"
@@ -2364,6 +2446,18 @@ msgstr "Site Name"
 #: src/routes/dash/settings.tsx
 msgid "Site settings updated."
 msgstr "Site settings updated."
+
+#. @context: Settings section heading covering search engine indexing and the Jant Discover directory
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Site visibility"
+msgstr "Site visibility"
+
+#. @context: Toast after saving the site visibility settings
+#. @context: Toast after saving the site visibility settings
+#: src/routes/dash/settings.tsx
+#: src/routes/dash/settings.tsx
+msgid "Site visibility updated."
+msgstr "Site visibility updated."
 
 #. @context: Settings item description for code injection
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -2496,6 +2590,11 @@ msgstr "The cleanest, most neutral option."
 msgid "The default. Calm and easy for long reading."
 msgstr "The default. Calm and easy for long reading."
 
+#. @context: Discover status line when the announcement failed. {reason} is the error, such as an HTTP status or a network message.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "The directory could not be reached: {reason}"
+msgstr "The directory could not be reached: {reason}"
+
 #. @context: Help text for the dashboard language field
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "The language of your admin pages. Only you see this."
@@ -2626,6 +2725,11 @@ msgstr "This repository is already backing up this site."
 msgid "This setting wasn't saved. Check the value and try again."
 msgstr "This setting wasn't saved. Check the value and try again."
 
+#. @context: Toast when the Discover announcement cannot be retried because no directory is configured, or the site cannot be listed at all
+#: src/routes/dash/settings.tsx
+msgid "This site has no directory to announce to."
+msgstr "This site has no directory to announce to."
+
 #. @context: Warning text on account deletion page
 #: src/ui/dash/settings/DeleteAccountContent.tsx
 msgid "This will permanently delete all your data — posts, media, collections, settings, and your account. Your blog will be reset to its initial setup state. This cannot be undone."
@@ -2704,6 +2808,11 @@ msgstr "Turn on"
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Turn on multilingual content"
 msgstr "Turn on multilingual content"
+
+#. @context: Help text saying plainly what enabling Jant Discover transmits
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Turning this on sends your feed address to the directory once, so it knows your site exists."
+msgstr "Turning this on sends your feed address to the directory once, so it knows your site exists."
 
 #. @context: Custom URL form field
 #: src/routes/dash/custom-urls.tsx
@@ -2910,6 +3019,11 @@ msgstr "When to use site export, database backups, and recovery drills."
 msgid "When you want a cooler, sharper look."
 msgstr "When you want a cooler, sharper look."
 
+#. @context: Heading of the Discover status block on the settings page. Everything under it is the site's own evidence, not an answer fetched from the directory.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Where your site stands"
+msgstr "Where your site stands"
+
 #. @context: Config Editor linked setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Whether each language gets its own home page, archive, and feed. Managed on the Language page."
@@ -2929,6 +3043,16 @@ msgstr "Which post stream the canonical /feed URL returns."
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Yellow-tinted paper with an olive-green accent."
 msgstr "Yellow-tinted paper with an olive-green accent."
+
+#. @context: Discover status line confirming what the site's Atom feed declares. {mode} is the literal value in the feed, `latest` or `featured`.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Your feed says {mode}."
+msgstr "Your feed says {mode}."
+
+#. @context: Discover status line when the feed declares it does not want to be listed
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Your feed says none, so no directory will list this site."
+msgstr "Your feed says none, so no directory will list this site."
 
 #. @context: Fallback name when a connected Telegram account has no username
 #: src/ui/dash/settings/TelegramContent.tsx

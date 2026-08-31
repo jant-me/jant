@@ -210,6 +210,38 @@ describe("createS3Driver", () => {
       "x-amz-checksum-sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     });
   });
+
+  it("omits a request checksum when the caller did not supply one", async () => {
+    const driver = createS3Driver({
+      endpoint: "https://s3.example.com",
+      bucket: "jant-media",
+      accessKeyId: "access-key",
+      secretAccessKey: "secret-key",
+      region: "auto",
+    });
+
+    const presigned = await driver.presignPut?.("media/test.webp", {
+      contentType: "image/webp",
+      contentDisposition: "inline",
+      cacheControl: "public, max-age=31536000, immutable",
+      expiresInSeconds: 900,
+    });
+
+    if (!presigned) {
+      throw new Error("Expected presigned PUT target");
+    }
+
+    // Presigning runs with an empty body, so a default request checksum would
+    // pin CRC32-of-nothing to the URL and every real upload would 400.
+    const params = new URL(presigned.url).searchParams;
+    expect(params.has("x-amz-checksum-crc32")).toBe(false);
+    expect(params.has("x-amz-sdk-checksum-algorithm")).toBe(false);
+    expect(presigned.headers).toEqual({
+      "Content-Type": "image/webp",
+      "Content-Disposition": "inline",
+      "Cache-Control": "public, max-age=31536000, immutable",
+    });
+  });
 });
 
 describe("createR2Driver", () => {

@@ -14,6 +14,7 @@ import type { AppConfig } from "../types/config.js";
 import { CONFIG_FIELDS } from "../types/config.js";
 import type { ArchiveLayout, FeedKind } from "../types/constants.js";
 import { ASSET_BASE_SEGMENT, getPublicAssetBasePath } from "./asset-path.js";
+import { resolveDiscoverMode } from "./discover.js";
 import {
   getAuthSecret,
   getConfiguredSingleSiteUrl,
@@ -224,6 +225,16 @@ export function resolveConfig(
     ? !!dbDescription
     : !!envDescription;
 
+  // Discover is "explicitly chosen" only when a value was actually stored or
+  // configured. An absent row is what makes the noindex rule apply, so the
+  // registry default must not stand in for it.
+  const discoverExplicitValue = Object.hasOwn(allSettings, "DISCOVER")
+    ? allSettings["DISCOVER"]
+    : getEnvString(env, "DISCOVER");
+  const noindex = demoMode || resolve("NOINDEX", allSettings, env) === "true";
+  const rssFeedsEnabled =
+    resolve("RSS_FEEDS_ENABLED", allSettings, env) === "true";
+
   return {
     // Site identity (DB > ENV > Default)
     siteName: resolve("SITE_NAME", allSettings, env),
@@ -248,10 +259,16 @@ export function resolveConfig(
     siteFooter: resolve("SITE_FOOTER", allSettings, env),
     showJantBrandingOnHome:
       resolve("SHOW_JANT_BRANDING_ON_HOME", allSettings, env) === "true",
-    noindex: demoMode || resolve("NOINDEX", allSettings, env) === "true",
+    noindex,
+    discover: resolveDiscoverMode({
+      explicitValue: discoverExplicitValue,
+      demoMode,
+      noindex,
+      rssFeedsEnabled,
+    }),
     publicApiEnabled:
       resolve("PUBLIC_API_ENABLED", allSettings, env) === "true",
-    rssFeedsEnabled: resolve("RSS_FEEDS_ENABLED", allSettings, env) === "true",
+    rssFeedsEnabled,
 
     // Infrastructure (ENV only)
     siteUrl,

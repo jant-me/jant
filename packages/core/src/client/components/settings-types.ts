@@ -53,6 +53,19 @@ export interface SettingsLabels {
   // Search
   allowIndexing: string;
   demoSeoLocked: string;
+  discoverEnabled: string;
+  discoverIntro: string;
+  discoverAnnounce: string;
+  discoverDocs: string;
+  discoverLatest: string;
+  discoverLatestHint: string;
+  discoverFeatured: string;
+  discoverFeaturedHint: string;
+  discoverDemoLocked: string;
+  discoverFeedsOffLocked: string;
+  discoverStatusHeading: string;
+  discoverAnnounceRetry: string;
+  discoverAnnounceManual: string;
 
   // Actions
   save: string;
@@ -76,6 +89,8 @@ export interface SettingsInitialData {
   siteFooter: string;
   showJantBrandingOnHome: boolean;
   noindex: boolean;
+  /** Stored Discover choice; "" when the owner has never used the control. */
+  discover: string;
 }
 
 export type SettingsAboutPageStatus =

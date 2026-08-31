@@ -432,6 +432,13 @@ export function createS3Driver(config: S3DriverConfig): StorageDriver {
           // uploaded object checksums during finalize, so only enable response
           // checksum verification when a request explicitly asks for it.
           responseChecksumValidation: "WHEN_REQUIRED",
+          // Presigning runs with an empty body, so the SDK's default
+          // "WHEN_SUPPORTED" request checksums bake CRC32-of-nothing
+          // (x-amz-checksum-crc32=AAAAAA==) into every presigned PUT URL. The
+          // browser then uploads real bytes and the storage provider rejects
+          // the mismatch. Only send a request checksum when the caller asked
+          // for one (presignPut passes ChecksumSHA256 explicitly).
+          requestChecksumCalculation: "WHEN_REQUIRED",
         });
         return {
           send: (cmd: unknown) => client.send(cmd as never),

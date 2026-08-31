@@ -81,6 +81,23 @@ describe("feed renderers", () => {
     expect(feedUpdated).toBe("2026-05-09T00:00:00.000Z");
   });
 
+  // A directory listing this blog has no other machine-readable place to read
+  // an avatar from, so the feed is where it has to be.
+  it("emits the site avatar as an absolute atom:icon", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      siteIconUrl: "/media/avatar.png",
+    });
+
+    expect(xml).toContain("<icon>https://example.com/media/avatar.png</icon>");
+  });
+
+  it("leaves atom:icon out when the site has no avatar", () => {
+    const xml = defaultFeedRenderer(makeFeedData(makePostView()));
+
+    expect(xml).not.toContain("<icon>");
+  });
+
   it("falls back to the render time for an empty feed", () => {
     const xml = defaultFeedRenderer({
       ...makeFeedData(makePostView()),
@@ -778,5 +795,128 @@ describe("feed renderers", () => {
 
     expect(xml).not.toContain('rel="enclosure"');
     expect(xml).not.toContain("<figure>");
+  });
+});
+
+describe("feed Discover declaration", () => {
+  it("declares the mode and the feed to poll", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      discover: "latest",
+      discoverFeedUrl: "https://example.com/latest/feed",
+    });
+
+    expect(xml).toContain('xmlns:jant="https://jant.me/ns"');
+    expect(xml).toContain(
+      '<jant:discover feed="https://example.com/latest/feed">latest</jant:discover>',
+    );
+  });
+
+  it("points featured sites at the featured feed", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      discover: "featured",
+      discoverFeedUrl: "https://example.com/featured/feed",
+    });
+
+    expect(xml).toContain(
+      '<jant:discover feed="https://example.com/featured/feed">featured</jant:discover>',
+    );
+  });
+
+  // `none` is an answer, so it is still declared — a crawler that already
+  // knows the site has to be told to stop, and silence would read as "this
+  // site predates Discover" instead.
+  it("declares none without a feed attribute", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      discover: "none",
+      discoverFeedUrl: null,
+    });
+
+    expect(xml).toContain("<jant:discover>none</jant:discover>");
+    expect(xml).not.toContain("feed=");
+  });
+
+  it("declares nothing, and no namespace, when the field is absent", () => {
+    const xml = defaultFeedRenderer(makeFeedData(makePostView()));
+
+    expect(xml).not.toContain("jant:discover");
+    expect(xml).not.toContain("xmlns:jant");
+  });
+
+  it("keeps a sitePathPrefix in the polled feed URL", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      siteUrl: "https://example.com/blog",
+      discover: "latest",
+      discoverFeedUrl: "https://example.com/blog/latest/feed",
+    });
+
+    expect(xml).toContain('feed="https://example.com/blog/latest/feed"');
+  });
+});
+
+describe("feed language alternates", () => {
+  it("links each language's copy of the same feed", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      languageAlternates: [
+        { hreflang: "zh-Hans", href: "https://example.com/latest/feed" },
+        { hreflang: "en", href: "https://example.com/en/latest/feed" },
+      ],
+    });
+
+    expect(xml).toContain(
+      '<link href="https://example.com/latest/feed" rel="alternate" type="application/atom+xml" hreflang="zh-Hans"/>',
+    );
+    expect(xml).toContain(
+      '<link href="https://example.com/en/latest/feed" rel="alternate" type="application/atom+xml" hreflang="en"/>',
+    );
+  });
+
+  it("emits nothing extra for a single-language site", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      languageAlternates: [],
+    });
+
+    expect(xml).not.toContain("hreflang");
+  });
+});
+
+describe("feed author", () => {
+  // The feed title is composed, so it is not a name. A consumer that wants to
+  // label the blog needs the site's own name somewhere, and this is the place
+  // Atom already has for it.
+  it("names the blog, separately from the composed feed title", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      siteName: "A blog",
+      title: "A blog - Latest posts",
+    });
+
+    expect(xml).toContain("<author><name>A blog</name></author>");
+    expect(xml).toContain("<title>A blog - Latest posts</title>");
+  });
+
+  it("escapes a name that contains markup characters", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      siteName: "Q&A <notes>",
+    });
+
+    expect(xml).toContain(
+      "<author><name>Q&amp;A &lt;notes&gt;</name></author>",
+    );
+  });
+
+  it("emits nothing when the site has no name", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      siteName: "",
+    });
+
+    expect(xml).not.toContain("<author>");
   });
 });

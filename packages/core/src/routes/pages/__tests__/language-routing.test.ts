@@ -250,6 +250,45 @@ describe("language views filter content", () => {
     expect(xml).toContain('xml:lang="zh-Hans"');
   });
 
+  // A directory holding one of a site's feeds has no other way to learn the
+  // site publishes a second language: the feed is already filtered to one.
+  it("links each language's copy of the feed from every feed", async () => {
+    const { app } = await seedTwoLanguages();
+
+    const xml = await (await app.request("/en/latest/feed")).text();
+
+    expect(xml).toContain(
+      '<link href="http://localhost:3000/latest/feed" rel="alternate" type="application/atom+xml" hreflang="zh-Hans"/>',
+    );
+    expect(xml).toContain(
+      '<link href="http://localhost:3000/en/latest/feed" rel="alternate" type="application/atom+xml" hreflang="en"/>',
+    );
+  });
+
+  // `x-default` is defined for web pages a search engine ranks. A feed reader
+  // has no use for it, and Atom has no notion of a default alternate.
+  it("omits x-default from feed alternates", async () => {
+    const { app } = await seedTwoLanguages();
+
+    const xml = await (await app.request("/en/latest/feed")).text();
+
+    expect(xml).not.toContain("x-default");
+  });
+
+  it("declares Discover in each language's feed, pointing at that language", async () => {
+    const { app } = await seedTwoLanguages();
+
+    const root = await (await app.request("/latest/feed")).text();
+    const english = await (await app.request("/en/latest/feed")).text();
+
+    expect(root).toContain(
+      '<jant:discover feed="http://localhost:3000/latest/feed">latest</jant:discover>',
+    );
+    expect(english).toContain(
+      '<jant:discover feed="http://localhost:3000/en/latest/feed">latest</jant:discover>',
+    );
+  });
+
   it("keeps in-view links inside the view", async () => {
     const { app } = await seedTwoLanguages();
 

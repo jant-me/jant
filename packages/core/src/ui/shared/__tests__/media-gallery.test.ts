@@ -140,4 +140,123 @@ describe("MediaGallery", () => {
     expect(html).not.toContain("media-gallery-nav");
     expect(html).not.toContain('tabindex="0"');
   });
+
+  // Attachments render beside `e-content`, so without these a parser reading
+  // the h-entry sees a post with no media. Placement matters as much as
+  // presence: mf2 takes a `u-*` value from the element's own attribute, so a
+  // mark on the wrong element publishes the wrong URL.
+  describe("microformats", () => {
+    it("marks the image thumbnail, not the link to the original", () => {
+      const html = renderToString(
+        MediaGallery({
+          attachments: [
+            createMediaView({
+              width: 1600,
+              height: 900,
+              altText: "A harbour at dusk",
+            }),
+          ],
+        }),
+      );
+
+      expect(html).toMatch(
+        /<img[^>]*src="\/media\/thumb\.jpg"[^>]*class="u-photo /,
+      );
+      expect(html).toContain('alt="A harbour at dusk"');
+      // The anchor holds the full-size original — a click target, not the
+      // post's photo.
+      expect(html).not.toMatch(/<a[^>]*class="u-photo/);
+    });
+
+    it("marks a video by its file URL and its poster by the poster frame", () => {
+      const html = renderToString(
+        MediaGallery({
+          attachments: [
+            createMediaView({
+              id: "media-video",
+              url: "/media/clip.mp4",
+              mimeType: "video/mp4",
+              posterUrl: "/media/clip.jpg",
+              width: 1280,
+              height: 720,
+              durationSeconds: 120,
+            }),
+          ],
+        }),
+      );
+
+      expect(html).toMatch(
+        /<a[^>]*href="\/media\/clip\.mp4"[^>]*class="u-video/,
+      );
+      expect(html).toMatch(/<video[^>]*class="u-photo /);
+    });
+
+    it("leaves a posterless video unmarked as a photo", () => {
+      // The fallback poster is a blurhash data URL. Publishing one as
+      // `u-photo` would hand a consumer a smear instead of a picture.
+      const html = renderToString(
+        MediaGallery({
+          attachments: [
+            createMediaView({
+              id: "media-video",
+              url: "/media/clip.mp4",
+              mimeType: "video/mp4",
+              blurhash: HASH,
+              width: 1280,
+              height: 720,
+              durationSeconds: 120,
+            }),
+          ],
+        }),
+      );
+
+      expect(html).toContain("u-video");
+      expect(html).not.toContain("u-photo");
+    });
+
+    it("marks audio on the source element that carries the URL", () => {
+      const html = renderToString(
+        MediaGallery({
+          attachments: [
+            createMediaView({
+              id: "media-audio",
+              url: "/media/track.mp3",
+              mimeType: "audio/mpeg",
+            }),
+          ],
+        }),
+      );
+
+      // `<audio>` has no `src` of its own here, so the mark belongs on
+      // `<source>` or it would resolve to nothing.
+      expect(html).toMatch(
+        /<source[^>]*class="u-audio"[^>]*src="\/media\/track\.mp3"/,
+      );
+    });
+
+    it("leaves documents and attached texts unmarked", () => {
+      const html = renderToString(
+        MediaGallery({
+          attachments: [
+            createMediaView({
+              id: "media-doc",
+              url: "/media/report.pdf",
+              mimeType: "application/pdf",
+              originalName: "report.pdf",
+            }),
+            createMediaView({
+              id: "media-text",
+              url: "/media/notes.md",
+              mimeType: "text/markdown",
+              summary: "Field notes",
+            }),
+          ],
+        }),
+      );
+
+      expect(html).not.toContain("u-photo");
+      expect(html).not.toContain("u-video");
+      expect(html).not.toContain("u-audio");
+    });
+  });
 });

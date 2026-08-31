@@ -46,6 +46,7 @@ import {
 } from "../../lib/filter-dimensions.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
+  buildFeedDiscoveryFields,
   getFeedEntryUpdatedAt,
   getRssPublishedBefore,
   RSS_FEED_CACHE_CONTROL,
@@ -879,6 +880,7 @@ async function buildArchiveFeedData(
   const feedQuery = buildArchiveFeedQuery(params, dimensionCtx);
 
   return {
+    ...buildFeedDiscoveryFields(c, { query: feedQuery }),
     siteName: appConfig.siteName,
     siteDescription: toPlainText(appConfig.siteDescription),
     siteUrl: appConfig.siteUrl,

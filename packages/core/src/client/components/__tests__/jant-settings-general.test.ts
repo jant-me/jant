@@ -112,6 +112,21 @@ const labels: SettingsLabels = {
   markdownSupported: "Markdown supported",
   allowIndexing: "Allow search engines to index my site",
   demoSeoLocked: "Demo sites always stay hidden from search engines.",
+  discoverEnabled: "Show my site and posts in Jant Discover",
+  discoverIntro: "Discover is a public list of Jant blogs.",
+  discoverAnnounce:
+    "Turning this on sends your feed address to the directory once.",
+  discoverDocs: "How Discover picks posts",
+  discoverLatest: "Latest",
+  discoverLatestHint: "Draws from your latest public posts.",
+  discoverFeatured: "Featured only",
+  discoverFeaturedHint: "Draws only from posts you have marked Featured.",
+  discoverDemoLocked: "Demo sites are never listed in Discover.",
+  discoverFeedsOffLocked:
+    "Discover reads your Atom feed, so it needs feeds turned on.",
+  discoverStatusHeading: "Where your site stands",
+  discoverAnnounceRetry: "Announce again",
+  discoverAnnounceManual: "Or submit your address by hand",
   save: "Save",
   cancel: "Cancel",
   copy: "Copy",
@@ -132,6 +147,7 @@ const initialData = {
   siteFooter: "Footer text",
   showJantBrandingOnHome: false,
   noindex: false,
+  discover: "",
 };
 
 function findCheckboxByLabel(
@@ -148,6 +164,7 @@ function findCheckboxByLabel(
 async function createElement(
   opts: {
     demoMode?: boolean;
+    feedsEnabled?: boolean;
     aboutPage?: SettingsAboutPageStatus;
   } = {},
 ): Promise<JantSettingsGeneral> {
@@ -171,6 +188,8 @@ async function createElement(
   el.aboutEditUrl = "/about?edit=1";
   el.aboutCreateUrl = "/settings/general/about-page";
   el.demoMode = opts.demoMode ?? false;
+  el.discoverDocsUrl = "https://jant.me/docs/discover";
+  el.feedsEnabled = opts.feedsEnabled ?? true;
   document.body.appendChild(el);
   await el.updateComplete;
   el.initData(initialData);
@@ -589,5 +608,113 @@ describe("JantSettingsGeneral", () => {
     expect(saveBtn?.disabled).toBe(true);
     const spinner = saveBtn?.querySelector("svg.animate-spin");
     expect(spinner).not.toBeNull();
+  });
+
+  /**
+   * Unlike the indexing checkbox beside it, this group saves on its own
+   * button. The checkbox and the mode are one decision, and a site happy with
+   * the default has to be able to confirm it — that confirmation is what tells
+   * the directory the site exists.
+   */
+  describe("Discover", () => {
+    it("renders the section under Site visibility", async () => {
+      const el = await createElement();
+
+      expect(findSectionByHeading(el, labels.search)).not.toBeNull();
+      expect(el.textContent).toContain(labels.discoverEnabled);
+      expect(el.textContent).toContain(labels.discoverIntro);
+    });
+
+    it("shows the mode choice only while it is switched on", async () => {
+      const el = await createElement();
+      expect(el.textContent).toContain(labels.discoverLatestHint);
+
+      const toggle = requireElement(
+        findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
+        "expected the Discover checkbox",
+      );
+      toggle.click();
+      await el.updateComplete;
+
+      expect(el.textContent).not.toContain(labels.discoverLatestHint);
+    });
+
+    // The whole reason this group has a Save button.
+    it("lets a site that never chose confirm the default", async () => {
+      const el = await createElement();
+      const save = requireElement(
+        findSectionByHeading(
+          el,
+          labels.search,
+        )?.querySelectorAll<HTMLButtonElement>(".btn")[0] ?? null,
+        "expected the Discover save button",
+      );
+
+      expect(save.disabled).toBe(false);
+
+      let detail: SettingsSaveDetail | null = null;
+      el.addEventListener("jant:settings-save", (event) => {
+        detail = (event as CustomEvent<SettingsSaveDetail>).detail;
+      });
+      save.click();
+      await el.updateComplete;
+
+      const d = detail as unknown as SettingsSaveDetail;
+      expect(d.endpoint).toBe("/settings/general/discover");
+      expect(d.section).toBe("discover");
+      expect(d.data.discover).toBe("latest");
+    });
+
+    it("sends off when the box is unticked", async () => {
+      const el = await createElement();
+      let detail: SettingsSaveDetail | null = null;
+      el.addEventListener("jant:settings-save", (event) => {
+        detail = (event as CustomEvent<SettingsSaveDetail>).detail;
+      });
+
+      requireElement(
+        findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
+        "expected the Discover checkbox",
+      ).click();
+      await el.updateComplete;
+
+      const save = requireElement(
+        findSectionByHeading(
+          el,
+          labels.search,
+        )?.querySelectorAll<HTMLButtonElement>(".btn")[0] ?? null,
+        "expected the Discover save button",
+      );
+      save.click();
+      await el.updateComplete;
+
+      expect((detail as unknown as SettingsSaveDetail).data.discover).toBe(
+        "off",
+      );
+    });
+
+    it("locks the control off for a demo site", async () => {
+      const el = await createElement({ demoMode: true });
+      const toggle = requireElement(
+        findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
+        "expected the Discover checkbox",
+      );
+
+      expect(toggle.disabled).toBe(true);
+      expect(toggle.checked).toBe(false);
+      expect(el.textContent).toContain(labels.discoverDemoLocked);
+    });
+
+    // Discover reads the Atom feed, so with feeds off there is nothing to read.
+    it("locks the control off when the site publishes no feeds", async () => {
+      const el = await createElement({ feedsEnabled: false });
+      const toggle = requireElement(
+        findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
+        "expected the Discover checkbox",
+      );
+
+      expect(toggle.disabled).toBe(true);
+      expect(el.textContent).toContain(labels.discoverFeedsOffLocked);
+    });
   });
 });

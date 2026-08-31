@@ -123,6 +123,10 @@ terms:
     target: 从最新中隐藏
     note: 不出现在 Latest 中，但仍可通过固定链接和合集访问的状态。
 
+  - source: Discover
+    target: 发现
+    note: Jant 的公开博客目录。中文产品里「发现」就是这类页面的固定说法，不要译成探索或发掘。
+
   - source: API Tokens
     target: API 令牌
     note: API 访问凭证设置项。

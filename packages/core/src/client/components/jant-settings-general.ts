@@ -32,6 +32,9 @@ export class JantSettingsGeneral extends LitElement {
       attribute: "sitedescription-fallback",
     },
     demoMode: { type: Boolean, attribute: "demo-mode" },
+    discoverDocsUrl: { type: String, attribute: "discover-docs-url" },
+    discoverStatus: { type: String, attribute: "discover-status" },
+    feedsEnabled: { type: Boolean, attribute: "feeds-enabled" },
     mainFeedUrl: { type: String, attribute: "main-feed-url" },
     latestFeedUrl: { type: String, attribute: "latest-feed-url" },
     featuredFeedUrl: { type: String, attribute: "featured-feed-url" },
@@ -72,6 +75,12 @@ export class JantSettingsGeneral extends LitElement {
     _noindex: { state: true },
     _origNoindex: { state: true },
     _searchLoading: { state: true },
+
+    // Discover group
+    _discover: { state: true },
+    _origDiscover: { state: true },
+    _discoverDirty: { state: true },
+    _discoverLoading: { state: true },
   };
 
   declare labels: SettingsLabels;
@@ -79,6 +88,15 @@ export class JantSettingsGeneral extends LitElement {
   declare siteNameFallback: string;
   declare siteDescriptionFallback: string;
   declare demoMode: boolean;
+  declare discoverDocsUrl: string;
+  /**
+   * JSON status block, already translated by the server.
+   *
+   * The sentences carry runtime numbers, so they are built where the values
+   * are. This component only decides where they go.
+   */
+  declare discoverStatus: string;
+  declare feedsEnabled: boolean;
   declare mainFeedUrl: string;
   declare latestFeedUrl: string;
   declare featuredFeedUrl: string;
@@ -123,6 +141,13 @@ export class JantSettingsGeneral extends LitElement {
   declare _noindex: boolean;
   declare _origNoindex: boolean;
   declare _searchLoading: boolean;
+
+  // Discover. "" means the owner has never used the control, which is not the
+  // same as "off" — an untouched site still follows the default.
+  declare _discover: string;
+  declare _origDiscover: string;
+  declare _discoverDirty: boolean;
+  declare _discoverLoading: boolean;
 
   // TipTap editor instances
   private _descEditor: Editor | null = null;
@@ -179,6 +204,14 @@ export class JantSettingsGeneral extends LitElement {
     this._origShowJantBrandingOnHome = false;
     this._homeLoading = false;
     this._searchLoading = false;
+
+    this.discoverDocsUrl = "";
+    this.discoverStatus = "";
+    this.feedsEnabled = false;
+    this._discover = "";
+    this._origDiscover = "";
+    this._discoverDirty = false;
+    this._discoverLoading = false;
   }
 
   connectedCallback() {
@@ -210,6 +243,10 @@ export class JantSettingsGeneral extends LitElement {
 
     this._noindex = data.noindex;
     this._origNoindex = data.noindex;
+
+    this._discover = data.discover;
+    this._origDiscover = data.discover;
+    this._discoverDirty = false;
 
     // Defer editor init to after Lit renders the containers
     this.updateComplete.then(() => {
@@ -247,6 +284,10 @@ export class JantSettingsGeneral extends LitElement {
     } else if (section === "search") {
       this._origNoindex = this._noindex;
       this._searchLoading = false;
+    } else if (section === "discover") {
+      this._origDiscover = this._discover;
+      this._discoverDirty = false;
+      this._discoverLoading = false;
     }
   }
 
@@ -264,6 +305,10 @@ export class JantSettingsGeneral extends LitElement {
     } else if (section === "search") {
       this._noindex = this._origNoindex;
       this._searchLoading = false;
+    } else if (section === "discover") {
+      this._discover = this._origDiscover;
+      this._discoverDirty = false;
+      this._discoverLoading = false;
     }
   }
 
@@ -437,6 +482,43 @@ export class JantSettingsGeneral extends LitElement {
     );
   }
 
+  // ── Discover helpers ──────────────────────────────────────────────
+
+  private _onDiscoverToggle(enabled: boolean) {
+    // Turning it back on returns to the default rather than to whatever was
+    // chosen before being switched off; the sub-choice below says which.
+    this._discover = enabled
+      ? this._origDiscover === "featured"
+        ? "featured"
+        : "latest"
+      : "off";
+    this._discoverDirty = true;
+  }
+
+  private _onDiscoverMode(mode: "latest" | "featured") {
+    this._discover = mode;
+    this._discoverDirty = true;
+  }
+
+  private _saveDiscover() {
+    if (this._discoverLoading) return;
+    // Sent even when the value is unchanged from the default, because saying
+    // "yes, list me" out loud is the act this control exists for.
+    const value = this._discover === "" ? "latest" : this._discover;
+    this._discover = value;
+    this._discoverLoading = true;
+    this.dispatchEvent(
+      new CustomEvent("jant:settings-save", {
+        bubbles: true,
+        detail: {
+          endpoint: "/settings/general/discover",
+          data: { discover: value },
+          section: "discover",
+        },
+      }),
+    );
+  }
+
   /** Submit on Enter from non-textarea fields */
   private _onKeydown(
     e: globalThis.KeyboardEvent,
@@ -472,21 +554,23 @@ export class JantSettingsGeneral extends LitElement {
           ?disabled=${loading || !dirty}
           @click=${onSave}
         >
-          ${loading
-            ? html`<svg
-                class="animate-spin size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                role="status"
-              >
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>`
-            : nothing}
+          ${
+            loading
+              ? html`<svg
+                  class="animate-spin size-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  role="status"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>`
+              : nothing
+          }
           ${this.labels.save}
         </button>
       </div>
@@ -551,9 +635,11 @@ export class JantSettingsGeneral extends LitElement {
     return html`
       <div class="flex min-w-0 flex-col gap-1">
         <p class="text-sm font-medium">${label}</p>
-        ${description
-          ? html`<p class="text-sm text-muted-foreground">${description}</p>`
-          : ""}
+        ${
+          description
+            ? html`<p class="text-sm text-muted-foreground">${description}</p>`
+            : ""
+        }
         <div class="relative">
           <input
             type="text"
@@ -585,35 +671,37 @@ export class JantSettingsGeneral extends LitElement {
     return html`
       <div class="mt-2 text-sm text-muted-foreground" data-about-page-row>
         ${this.labels.aboutPagePrompt}
-        ${status.state === "ready"
-          ? html`
-              <a
-                class="font-medium text-foreground underline-offset-4 hover:underline"
-                href=${this.aboutEditUrl}
-              >
-                ${this.labels.editAboutPage}
-              </a>
-            `
-          : status.state === "missing"
+        ${
+          status.state === "ready"
             ? html`
-                <form
-                  class="inline"
-                  method="post"
-                  action=${this.aboutCreateUrl}
+                <a
+                  class="font-medium text-foreground underline-offset-4 hover:underline"
+                  href=${this.aboutEditUrl}
                 >
-                  <button
-                    type="submit"
-                    class="inline cursor-pointer border-0 bg-transparent p-0 font-medium text-foreground underline-offset-4 hover:underline"
-                  >
-                    ${this.labels.createAboutPage}
-                  </button>
-                </form>
+                  ${this.labels.editAboutPage}
+                </a>
               `
-            : html`
-                <span class="text-destructive"
-                  >${this.labels.aboutPageConflict}</span
-                >
-              `}
+            : status.state === "missing"
+              ? html`
+                  <form
+                    class="inline"
+                    method="post"
+                    action=${this.aboutCreateUrl}
+                  >
+                    <button
+                      type="submit"
+                      class="inline cursor-pointer border-0 bg-transparent p-0 font-medium text-foreground underline-offset-4 hover:underline"
+                    >
+                      ${this.labels.createAboutPage}
+                    </button>
+                  </form>
+                `
+              : html`
+                  <span class="text-destructive"
+                    >${this.labels.aboutPageConflict}</span
+                  >
+                `
+        }
       </div>
     `;
   }
@@ -803,25 +891,238 @@ export class JantSettingsGeneral extends LitElement {
 
   private _renderSearchForm() {
     return html`
-      <section class="flex flex-col gap-4 border-t pt-8">
+      <section class="flex flex-col gap-6 border-t pt-8">
         ${this._renderSectionTitle(this.labels.search)}
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              class="checkbox"
+              .checked=${!this._noindex}
+              ?disabled=${this.demoMode || this._searchLoading}
+              @change=${(e: Event) =>
+                this._saveSearchToggle((e.target as HTMLInputElement).checked)}
+            />
+            <span>${this.labels.allowIndexing}</span>
+          </label>
+          ${
+            this.demoMode
+              ? html`<p class="text-sm text-muted-foreground">
+                  ${this.labels.demoSeoLocked}
+                </p>`
+              : nothing
+          }
+        </div>
+        ${this._renderDiscoverForm()}
+      </section>
+    `;
+  }
+
+  /**
+   * Jant Discover.
+   *
+   * Unlike the indexing checkbox next to it, this group saves on its own
+   * button rather than on change. Two reasons, and both are the point: the
+   * checkbox and the mode are one decision, and a site that is happy with the
+   * default has to be able to confirm it — that confirmation is what tells the
+   * directory the site exists, and there is no way to express it by toggling
+   * something that is already on.
+   */
+  private _renderDiscoverForm() {
+    // "" means never chosen, and the default is to take part.
+    const enabled = this._discover === "" ? true : this._discover !== "off";
+    const mode = this._discover === "featured" ? "featured" : "latest";
+    const locked = this.demoMode || !this.feedsEnabled;
+
+    return html`
+      <div class="flex flex-col gap-3">
+        <p class="text-sm text-muted-foreground">
+          ${this.labels.discoverIntro}
+          <a
+            class="link"
+            href=${this.discoverDocsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            >${this.labels.discoverDocs}</a
+          >
+        </p>
         <label class="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
             class="checkbox"
-            .checked=${!this._noindex}
-            ?disabled=${this.demoMode || this._searchLoading}
+            .checked=${enabled && !locked}
+            ?disabled=${locked || this._discoverLoading}
             @change=${(e: Event) =>
-              this._saveSearchToggle((e.target as HTMLInputElement).checked)}
+              this._onDiscoverToggle((e.target as HTMLInputElement).checked)}
           />
-          <span>${this.labels.allowIndexing}</span>
+          <span>${this.labels.discoverEnabled}</span>
         </label>
-        ${this.demoMode
-          ? html`<p class="text-sm text-muted-foreground">
-              ${this.labels.demoSeoLocked}
-            </p>`
-          : nothing}
-      </section>
+        ${
+          locked
+            ? html`<p class="text-sm text-muted-foreground">
+                ${
+                this.demoMode
+                  ? this.labels.discoverDemoLocked
+                  : this.labels.discoverFeedsOffLocked
+              }
+              </p>`
+            : nothing
+        }
+        ${
+          enabled && !locked
+            ? html`
+                <div class="flex flex-col gap-2 pl-6">
+                  ${this._renderDiscoverMode("latest", mode)}
+                  ${this._renderDiscoverMode("featured", mode)}
+                </div>
+                <p class="text-sm text-muted-foreground">
+                  ${this.labels.discoverAnnounce}
+                </p>
+              `
+            : nothing
+        }
+        ${
+          locked
+            ? nothing
+            : html`
+                <div>
+                  <button
+                    type="button"
+                    class="btn"
+                    ?disabled=${
+                    this._discoverLoading ||
+                    (!this._discoverDirty && this._origDiscover !== "")
+                  }
+                    @click=${() => this._saveDiscover()}
+                  >
+                    ${this.labels.save}
+                  </button>
+                </div>
+              `
+        }
+        ${locked ? nothing : this._renderDiscoverStatus()}
+      </div>
+    `;
+  }
+
+  /**
+   * What the site can say about its own standing.
+   *
+   * Deliberately all local evidence: the directory takes no status queries, so
+   * nothing here was fetched and nothing here can say whether a person has
+   * moderated the site. The retry and the manual form appear only when the
+   * announcement failed — beside a working one they would read as a normal
+   * route in rather than the recovery they are.
+   */
+  private _renderDiscoverStatus() {
+    const status = this._parsedDiscoverStatus();
+    if (!status || status.lines.length === 0) return nothing;
+
+    return html`
+      <div class="flex flex-col gap-1 border-t pt-3">
+        <p class="text-sm font-medium">${this.labels.discoverStatusHeading}</p>
+        ${status.lines.map(
+          (line) => html`<p class="text-sm text-muted-foreground">${line}</p>`,
+        )}
+        ${
+          status.showRetry
+            ? html`
+                <div class="flex flex-wrap items-center gap-3 mt-1">
+                  <button
+                    type="button"
+                    class="btn btn-outline"
+                    ?disabled=${this._discoverLoading}
+                    @click=${() => this._retryAnnounce()}
+                  >
+                    ${this.labels.discoverAnnounceRetry}
+                  </button>
+                  ${
+                  status.submitUrl
+                    ? html`<a
+                        class="link text-sm"
+                        href=${status.submitUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        >${this.labels.discoverAnnounceManual}</a
+                      >`
+                    : nothing
+                }
+                </div>
+              `
+            : nothing
+        }
+      </div>
+    `;
+  }
+
+  private _parsedDiscoverStatus(): {
+    lines: string[];
+    showRetry: boolean;
+    submitUrl: string | null;
+  } | null {
+    if (!this.discoverStatus) return null;
+    try {
+      const parsed: unknown = JSON.parse(this.discoverStatus);
+      if (typeof parsed !== "object" || parsed === null) return null;
+      const value = parsed as Record<string, unknown>;
+      const lines = Array.isArray(value["lines"])
+        ? value["lines"].filter(
+            (line): line is string => typeof line === "string",
+          )
+        : [];
+      return {
+        lines,
+        showRetry: value["showRetry"] === true,
+        submitUrl:
+          typeof value["submitUrl"] === "string" ? value["submitUrl"] : null,
+      };
+    } catch {
+      // A settings page that renders without its status block is far better
+      // than one that does not render.
+      return null;
+    }
+  }
+
+  private _retryAnnounce() {
+    if (this._discoverLoading) return;
+    this._discoverLoading = true;
+    this.dispatchEvent(
+      new CustomEvent("jant:settings-save", {
+        bubbles: true,
+        detail: {
+          endpoint: "/settings/general/discover/announce",
+          data: {},
+          section: "discover",
+        },
+      }),
+    );
+  }
+
+  private _renderDiscoverMode(value: "latest" | "featured", current: string) {
+    const label =
+      value === "latest"
+        ? this.labels.discoverLatest
+        : this.labels.discoverFeatured;
+    const hint =
+      value === "latest"
+        ? this.labels.discoverLatestHint
+        : this.labels.discoverFeaturedHint;
+
+    return html`
+      <label class="flex items-start gap-2 cursor-pointer">
+        <input
+          type="radio"
+          class="mt-1"
+          name="discover-mode"
+          .checked=${current === value}
+          ?disabled=${this._discoverLoading}
+          @change=${() => this._onDiscoverMode(value)}
+        />
+        <span class="flex flex-col">
+          <span>${label}</span>
+          <span class="text-sm text-muted-foreground">${hint}</span>
+        </span>
+      </label>
     `;
   }
 

@@ -28,6 +28,7 @@ import type {
 import type { AppVariables } from "../../types/app-context.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
+  buildFeedDiscoveryFields,
   getFeedEntryUpdatedAt,
   getRssPublishedBefore,
   RSS_FEED_CACHE_CONTROL,
@@ -301,6 +302,7 @@ export async function buildFeedData(
       : await buildLatestFeedData(c, feedLimit, publishedBefore, opts.format);
 
   return {
+    ...buildFeedDiscoveryFields(c),
     siteName,
     siteDescription,
     siteUrl,
@@ -326,6 +328,7 @@ export async function buildFeedData(
       siteUrl,
       appConfig.sitePathPrefix,
     ),
+    siteIconUrl: appConfig.siteAvatarUrl || undefined,
     posts: postViews,
   };
 }

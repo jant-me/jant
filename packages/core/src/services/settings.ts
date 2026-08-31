@@ -35,8 +35,48 @@ import {
 import { arrayBufferToBase64 } from "../lib/favicon.js";
 import { ValidationError } from "../lib/errors.js";
 import { normalizeEditableSettingValue } from "../lib/schemas.js";
+import { parseDiscoverSetting, type DiscoverSetting } from "../lib/discover.js";
+import {
+  sendDiscoverPing,
+  type DiscoverAnnounceOutcome,
+} from "../lib/discover-ping.js";
 import { isSupportedTimeZone, normalizeTimeZone } from "../lib/timezones.js";
 import type { FeedKind } from "../types/constants.js";
+
+/**
+ * Read a stored announcement outcome back.
+ *
+ * Tolerant on purpose: this is a settings row a person can edit or an older
+ * version can have written differently, and the worst honest answer is "no
+ * attempt recorded" — never a crashed settings page.
+ *
+ * @param raw - The stored JSON, if any
+ * @returns The outcome, or null when absent or unreadable
+ */
+function parseAnnounceState(
+  raw: string | null,
+): DiscoverAnnounceOutcome | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const value = parsed as Record<string, unknown>;
+    if (typeof value["at"] !== "number") return null;
+    if (typeof value["ok"] !== "boolean") return null;
+    if (typeof value["feedUrl"] !== "string") return null;
+    return {
+      at: value["at"],
+      ok: value["ok"],
+      feedUrl: value["feedUrl"],
+      ...(typeof value["status"] === "number"
+        ? { status: value["status"] }
+        : {}),
+      ...(typeof value["error"] === "string" ? { error: value["error"] } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
 
 export interface GeneralSettingsData {
   siteName: string;
@@ -142,6 +182,46 @@ export interface SettingsService {
     allowIndexing: boolean,
     opts: { demoMode: boolean },
   ): Promise<void>;
+  /**
+   * Record the site's Jant Discover choice.
+   *
+   * Always stores an explicit value, including `off`. Once someone has used
+   * this control their answer is their own, and the rule that reads `noindex`
+   * as a refusal stops applying to them.
+   *
+   * @param mode - The choice the owner just made
+   * @param opts - Demo sites never announce themselves
+   * @returns Whether this save is the moment the site opted in, and so should
+   *   announce itself to the configured directory
+   */
+  updateDiscoverSetting(
+    mode: DiscoverSetting,
+    opts: { demoMode: boolean },
+  ): Promise<{ shouldAnnounce: boolean }>;
+  /**
+   * Announce this site's feed to the configured directory, and remember how it
+   * went.
+   *
+   * The remembering is the point. An announcement that fails silently leaves
+   * the owner with a setting that reads "on" and a directory that has never
+   * heard of them, and no way to tell the two apart.
+   *
+   * Never throws: the caller runs this as background work behind a settings
+   * save, which must not fail because a directory is down.
+   *
+   * @param input - The directory endpoint and the feed address to announce
+   * @returns What the attempt came to
+   */
+  announceToDiscover(input: {
+    endpoint: string;
+    feedUrl: string;
+  }): Promise<DiscoverAnnounceOutcome>;
+  /**
+   * The last announcement attempt, or `null` if the site has never made one.
+   *
+   * @returns The stored outcome, or null when absent or unreadable
+   */
+  getDiscoverAnnounceState(): Promise<DiscoverAnnounceOutcome | null>;
   /**
    * Update general site settings with trim/set/remove logic.
    * Empty strings are removed. Default values are removed to keep the DB clean.
@@ -431,6 +511,34 @@ export function createSettingsService(
       } else {
         await this.remove("NOINDEX");
       }
+    },
+
+    async updateDiscoverSetting(mode, opts) {
+      const previous = parseDiscoverSetting(await this.get("DISCOVER"));
+      await this.set("DISCOVER", mode);
+
+      // The moment a site opts in is the only moment worth announcing. Coming
+      // from `off` is obvious; coming from unset matters just as much, because
+      // a site that has never touched this control has never told anyone it
+      // exists — and switching between `latest` and `featured` while already
+      // listed changes nothing a directory needs to be told twice.
+      const optedIn =
+        mode !== "off" && (previous === null || previous === "off");
+      return { shouldAnnounce: optedIn && !opts.demoMode };
+    },
+
+    async announceToDiscover(input) {
+      const outcome = await sendDiscoverPing({
+        endpoint: input.endpoint,
+        feedUrl: input.feedUrl,
+        now,
+      });
+      await this.set("DISCOVER_ANNOUNCE_STATE", JSON.stringify(outcome));
+      return outcome;
+    },
+
+    async getDiscoverAnnounceState() {
+      return parseAnnounceState(await this.get("DISCOVER_ANNOUNCE_STATE"));
     },
 
     async updateGeneral(data, opts) {

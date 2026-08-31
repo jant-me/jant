@@ -100,6 +100,22 @@ Set `RSS_FEEDS_ENABLED=false` to make canonical and legacy feed URLs return
 `404` and hide built-in feed discovery and navigation. A successful response
 already in the Worker cache can remain visible for up to 60 seconds.
 
+### Jant Discover (optional)
+
+| Variable            | Default              | Description                                                              |
+| ------------------- | -------------------- | ------------------------------------------------------------------------ |
+| `DISCOVER`          | `latest`             | Which stream Jant Discover may draw from: `latest`, `featured`, or `off` |
+| `DISCOVER_PING_URL` | Jant's own directory | Where the site announces itself; set it empty to announce nowhere        |
+
+Jant Discover is a public directory of Jant blogs. Every Atom feed declares
+whether the site takes part, so no directory can list a site that has not said
+yes. Two cases resolve to `off` on their own: a site with `NOINDEX=true` that
+has never chosen, and a site with `RSS_FEEDS_ENABLED=false`, which publishes no
+feed to read.
+
+See [Discover](discover.md) for how a post is picked, how to take one out
+again, and what a third-party directory needs to honour.
+
 ### Public API access (optional)
 
 | Variable             | Default | Description                                                    |
@@ -437,6 +453,7 @@ These settings can be changed on Jant's Settings page after setup. Each one can 
 | `NOINDEX`                    | Ask search engines not to index the site         |
 | `PUBLIC_API_ENABLED`         | Allow JSON reads without a session or API token  |
 | `RSS_FEEDS_ENABLED`          | Publish Atom feeds and built-in feed links       |
+| `DISCOVER`                   | Whether posts may appear in Jant Discover        |
 
 Multilingual sites carry two more settings, `ADDITIONAL_LANGUAGES` and `MULTILINGUAL_ENABLED`. Both are written by the Language page rather than set by hand, because their values have to stay consistent with the language stamped on your posts — see [Multilingual content](multilingual.md).
 

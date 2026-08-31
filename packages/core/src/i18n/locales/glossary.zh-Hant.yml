@@ -123,6 +123,10 @@ terms:
     target: 從最新中隱藏
     note: 不出現在 Latest 中，但仍可透過固定連結和選集存取的狀態。
 
+  - source: Discover
+    target: 探索
+    note: Jant 的公開部落格目錄。台灣繁中慣用「探索」，不用「發現」。
+
   - source: API Tokens
     target: API 權杖
     note: API 存取憑證設定項。台灣繁中優先用權杖，不用令牌。

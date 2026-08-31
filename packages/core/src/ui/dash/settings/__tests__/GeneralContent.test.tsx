@@ -47,6 +47,24 @@ function createProps(
     siteFooter: "Footer text",
     showJantBrandingOnHome: false,
     noindex: false,
+    discover: "",
+    discoverDocsUrl: "https://jant.me/docs/discover",
+    discoverStatus: {
+      announced: true,
+      announceError: null,
+      announceAt: 1_800_000_000,
+      hasDirectory: true,
+      submitUrl: "https://jant.me/discover/submit",
+      declaredMode: "latest" as const,
+      publicPostCount: 5,
+      featuredPostCount: 2,
+      ageDays: 30,
+      established: true,
+      minPublicPosts: 3,
+      minAgeDays: 7,
+      firstReadMaxHours: 6,
+    },
+    rssFeedsEnabled: true,
     demoMode,
     aboutPage: {
       state: "missing" as const,
@@ -77,5 +95,81 @@ describe("GeneralContent", () => {
     const html = await renderGeneralContent(createProps(true));
 
     expect(html).toMatch(/<jant-settings-general[^>]*demo-mode(?:=|\s|>)/);
+  });
+
+  // The status sentences carry runtime numbers, so they are translated here
+  // rather than in the browser. What reaches the component is finished text.
+  it("hands the component finished status sentences", async () => {
+    const html = await renderGeneralContent(createProps(false));
+
+    expect(html).toContain("Your feed says latest.");
+    expect(html).toContain("Feed address sent to the directory.");
+    expect(html).toContain("5 public posts");
+    // Nothing failed, so neither the retry nor the manual form is offered.
+    expect(html).toContain("&quot;showRetry&quot;:false");
+    expect(html).toContain("&quot;submitUrl&quot;:null");
+  });
+
+  it("offers the manual form only when the announcement failed", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          announced: false,
+          announceError: "The directory answered 503.",
+          announceAt: 1_800_000_000,
+          hasDirectory: true,
+          submitUrl: "https://jant.me/discover/submit",
+          declaredMode: "latest",
+          publicPostCount: 5,
+          featuredPostCount: 2,
+          ageDays: 30,
+          established: true,
+          minPublicPosts: 3,
+          minAgeDays: 7,
+          firstReadMaxHours: 6,
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      "The directory could not be reached: The directory answered 503.",
+    );
+    expect(html).toContain("&quot;showRetry&quot;:true");
+    expect(html).toContain("https://jant.me/discover/submit");
+  });
+
+  it("says nothing about announcing when the feed declares none", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          announced: null,
+          announceError: null,
+          announceAt: null,
+          hasDirectory: true,
+          submitUrl: "https://jant.me/discover/submit",
+          declaredMode: "none",
+          publicPostCount: 5,
+          featuredPostCount: 2,
+          ageDays: 30,
+          established: true,
+          minPublicPosts: 3,
+          minAgeDays: 7,
+          firstReadMaxHours: 6,
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      "Your feed says none, so no directory will list this site.",
+    );
+    // A site that has said no is told that and nothing else: not how close it
+    // is to a threshold it has opted out of, and not whether an announcement
+    // it never made got through. ("public posts" appears elsewhere on the
+    // page, in the mode hints, so the assertion reads the status block.)
+    expect(html).toContain(
+      'discover-status="{&quot;lines&quot;:[&quot;Your feed says none, ' +
+        "so no directory will list this site.&quot;]",
+    );
+    expect(html).toContain("&quot;showRetry&quot;:false");
   });
 });

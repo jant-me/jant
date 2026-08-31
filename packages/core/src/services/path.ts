@@ -20,11 +20,7 @@ import type { PathKind, PathRecord, Status } from "../types.js";
 
 export interface ResolvedPath extends PathRecord {
   targetType:
-    | "post"
-    | "collection"
-    | "smart_collection"
-    | "redirect"
-    | "archive";
+    "post" | "collection" | "smart_collection" | "redirect" | "archive";
 }
 
 export interface CreatePathInput {
@@ -79,6 +75,13 @@ export interface PathService {
     slug: string,
   ): Promise<void>;
   deleteByPostId(postId: string): Promise<void>;
+  /**
+   * Custom paths registered for each Post, oldest first.
+   *
+   * The order is load-bearing: `aliases[0]` becomes the Post's permalink and
+   * therefore its Atom `<id>`, so a Post that gains a second custom URL must
+   * not have its feed identity reassigned to the newer one.
+   */
   getPostAliases(postIds: string[]): Promise<Map<string, string[]>>;
   listNavigableItems(): Promise<NavigableItem[]>;
   /**
@@ -506,7 +509,12 @@ export function createPathService(
               inArray(pathRegistry.kind, ["alias", "redirect"]),
               isNotNull(pathRegistry.postId),
             ),
-          );
+          )
+          // Oldest first, and never at the storage engine's discretion: the
+          // first alias is the Post's permalink, so an unordered read lets a
+          // second custom URL silently take over the Post's identity in feeds
+          // and in the sitemap. `id` breaks ties within the same second.
+          .orderBy(asc(pathRegistry.createdAt), asc(pathRegistry.id));
 
         for (const row of rows) {
           if (!row.postId) continue;

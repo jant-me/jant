@@ -373,6 +373,16 @@ export interface PostService {
   getSitemapIdAt(offset: number): Promise<string | null>;
   /** Count posts matching filters (ignores cursor, offset, limit) */
   count(filters?: PostFilters): Promise<number>;
+  /**
+   * Oldest publication date among posts matching filters.
+   *
+   * How long a site has been publishing, in one round trip, without loading a
+   * post. Ignores cursor, offset, and limit like `count`.
+   *
+   * @param filters - Same filter shape `count` takes
+   * @returns Unix seconds of the earliest match, or null when there are none
+   */
+  getEarliestPublishedAt(filters?: PostFilters): Promise<number | null>;
   /** Count posts matching filters up to a fixed limit (ignores cursor, offset, limit) */
   countUpTo(filters: PostFilters | undefined, limit: number): Promise<number>;
   /**
@@ -2097,6 +2107,21 @@ export function createPostService(
         .where(conditions.length > 0 ? and(...conditions) : undefined);
 
       return result[0]?.count ?? 0;
+    },
+
+    async getEarliestPublishedAt(filters = {}) {
+      const conditions = buildFilterConditions(filters);
+
+      const result = await db
+        .select({
+          earliest: sql<number | null>`min(${posts.publishedAt})`.as(
+            "earliest",
+          ),
+        })
+        .from(posts)
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+      return result[0]?.earliest ?? null;
     },
 
     async aggregateMany(filters, base) {

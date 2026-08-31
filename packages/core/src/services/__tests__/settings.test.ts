@@ -558,4 +558,65 @@ describe("SettingsService", () => {
       ).toBeNull();
     });
   });
+
+  /**
+   * The ping exists so a self-hosted site can be found at all. What it fires
+   * on is therefore the interesting part: the moment somebody says yes, and
+   * only that moment.
+   */
+  describe("updateDiscoverSetting", () => {
+    it("stores the choice explicitly, including off", async () => {
+      await settingsService.updateDiscoverSetting("off", { demoMode: false });
+      expect(await settingsService.get("DISCOVER")).toBe("off");
+
+      await settingsService.updateDiscoverSetting("featured", {
+        demoMode: false,
+      });
+      expect(await settingsService.get("DISCOVER")).toBe("featured");
+    });
+
+    // A site that has never used the control has never told anyone it exists,
+    // so confirming the default is exactly as much of an opt-in as ticking a
+    // box that was off.
+    it("announces when an untouched site opts in", async () => {
+      const result = await settingsService.updateDiscoverSetting("latest", {
+        demoMode: false,
+      });
+      expect(result.shouldAnnounce).toBe(true);
+    });
+
+    it("announces when a site that had opted out comes back", async () => {
+      await settingsService.updateDiscoverSetting("off", { demoMode: false });
+      const result = await settingsService.updateDiscoverSetting("latest", {
+        demoMode: false,
+      });
+      expect(result.shouldAnnounce).toBe(true);
+    });
+
+    // The directory already knows about a listed site; which of its posts it
+    // draws from is not news.
+    it("says nothing when an enrolled site changes which posts it offers", async () => {
+      await settingsService.updateDiscoverSetting("latest", {
+        demoMode: false,
+      });
+      const result = await settingsService.updateDiscoverSetting("featured", {
+        demoMode: false,
+      });
+      expect(result.shouldAnnounce).toBe(false);
+    });
+
+    it("says nothing when a site opts out", async () => {
+      const result = await settingsService.updateDiscoverSetting("off", {
+        demoMode: false,
+      });
+      expect(result.shouldAnnounce).toBe(false);
+    });
+
+    it("never announces a demo site", async () => {
+      const result = await settingsService.updateDiscoverSetting("latest", {
+        demoMode: true,
+      });
+      expect(result.shouldAnnounce).toBe(false);
+    });
+  });
 });
