@@ -487,9 +487,16 @@
   cursor: pointer;
 }
 
+/*
+ * No height cap here: the gallery already owns a video's height. In a row it
+ * hands every item the same inline `height` so pictures and videos line up; a
+ * lone visual gets `min(100%, 24rem * ratio, …)` for its width, which caps its
+ * height at 24rem on its own. A `max-height` in this rule only re-entered as a
+ * second opinion — a row taller than the cap (a portrait first picture pushes
+ * it to 440px) left the video short, with the frame showing underneath it.
+ */
 .media-video-wrap video {
   width: 100%;
-  max-height: 24rem;
   object-fit: contain;
   background-color: var(--color-muted);
 }

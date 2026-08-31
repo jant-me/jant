@@ -8,10 +8,14 @@
   `<jant-media-lightbox>` delegates clicks on those anchors.
 
   Layout: mirrors MediaGallery.tsx — one horizontal row with a computed
-  `rowHeight` (driven by the first visual's aspect ratio) so mixed sizes
-  align into a clean strip. Single-visual posts expand to their natural
-  aspect ratio (capped at 24rem / 85% width). Non-visual attachments
-  (audio/doc/text) use a 3:4 portrait card sized to the row height.
+  `rowHeight` so mixed sizes align into a clean strip. The opening visual
+  leads (320px / its ratio), the widest visual is held to 520px so a landscape
+  video never swallows the column, and the result is clamped to 240–384px —
+  384 being the same 24rem cap a lone visual gets, so a second attachment
+  never makes the first picture grow. Non-visual attachments (audio/doc/text)
+  do not enter that math; their 3:4 portrait cards are sized from its result.
+  Single-visual posts skip the strip and expand to their natural aspect ratio
+  (capped at 24rem / 85% width).
 
   Inline styles (not Tailwind utilities) because the exported theme ships
   no utility CSS — only tokens.css + main.css + theme.css + site-media.css.
@@ -27,8 +31,7 @@
   {{- $items := slice -}}
   {{- $lightbox := slice -}}
   {{- $lbIdx := 0 -}}
-  {{- $hasNonVisual := false -}}
-  {{- $firstRatio := 0.0 -}}
+  {{- $visualRatios := slice -}}
   {{- range $media -}}
     {{- $kind := .kind | default "file" -}}
     {{- $item := . -}}
@@ -46,13 +49,15 @@
       {{- $lightbox = $lightbox | append $lbEntry -}}
       {{- $items = $items | append (merge $item (dict "_kind" $kind "_lbIdx" $lbIdx)) -}}
       {{- $lbIdx = add $lbIdx 1 -}}
-      {{- /* Capture first visual's aspect ratio */ -}}
-      {{- if and (eq $firstRatio 0.0) $item.width $item.height (gt (float $item.width) 0.0) (gt (float $item.height) 0.0) -}}
-        {{- $firstRatio = div (float $item.width) (float $item.height) -}}
+      {{- /* Every visual's aspect ratio, in display order — 4:3 when unknown,
+             matching getMediaAspectRatio() in MediaGallery.tsx. */ -}}
+      {{- $ratio := 1.3333 -}}
+      {{- if and $item.width $item.height (gt (float $item.width) 0.0) (gt (float $item.height) 0.0) -}}
+        {{- $ratio = div (float $item.width) (float $item.height) -}}
       {{- end -}}
+      {{- $visualRatios = $visualRatios | append $ratio -}}
     {{- else -}}
       {{- $items = $items | append (merge $item (dict "_kind" $kind)) -}}
-      {{- $hasNonVisual = true -}}
     {{- end -}}
   {{- end -}}
 
@@ -62,14 +67,19 @@
   {{- $firstKind := $first._kind -}}
   {{- $singleVisual := and $single (or (eq $firstKind "image") (eq $firstKind "video")) -}}
 
-  {{- /* rowHeight — mirrors MediaGallery.tsx. 4/3 fallback when no visuals. */ -}}
-  {{- $rowMin := cond $hasNonVisual 220 280 -}}
-  {{- $rowMax := cond $hasNonVisual 300 440 -}}
-  {{- $rowHeight := cond $hasNonVisual 220 360 -}}
-  {{- if and (not $singleVisual) (gt $count 1) (gt $firstRatio 0.0) -}}
-    {{- $ratio := cond (lt $firstRatio 0.5) 0.5 $firstRatio -}}
-    {{- $computed := math.Round (div 320.0 $ratio) -}}
-    {{- $rowHeight = cond (gt $computed $rowMax) $rowMax (cond (lt $computed $rowMin) $rowMin (int $computed)) -}}
+  {{- /* rowHeight — mirrors getGalleryRowHeight() in MediaGallery.tsx. */ -}}
+  {{- $rowMin := 240 -}}
+  {{- $rowMax := 384 -}}
+  {{- $rowHeight := $rowMin -}}
+  {{- if $visualRatios -}}
+    {{- $widest := 0.0 -}}
+    {{- range $visualRatios -}}
+      {{- if gt . $widest }}{{ $widest = . }}{{ end -}}
+    {{- end -}}
+    {{- $byLead := div 320.0 (index $visualRatios 0) -}}
+    {{- $byWidestItem := div 520.0 $widest -}}
+    {{- $computed := math.Round (cond (lt $byWidestItem $byLead) $byWidestItem $byLead) -}}
+    {{- $rowHeight = cond (gt $computed (float $rowMax)) $rowMax (cond (lt $computed (float $rowMin)) $rowMin (int $computed)) -}}
   {{- end -}}
   {{- $docCardWidth := int (math.Round (mul (float $rowHeight) 0.75)) -}}
 
@@ -80,7 +90,7 @@
     <div data-post-media
       {{- if $lightbox }} data-lightbox-group="{{ $lightbox | jsonify }}"{{- end -}}
       {{- if not $singleVisual }} tabindex="0" role="group" aria-label="Media gallery"{{- end -}}
-      style="display: flex; gap: 0.5rem;
+      style="display: flex; gap: 0.75rem;
         {{- if not $singleVisual }} overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none;{{- end }}">
       {{- range $items -}}
         {{- $k := ._kind -}}
