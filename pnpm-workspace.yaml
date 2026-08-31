@@ -2,6 +2,17 @@ packages:
   - "packages/*"
   - "sites/*"
 
+# Refuse to run a script against a `node_modules` that lags `pnpm-lock.yaml`.
+# Each git worktree carries its own `node_modules`, and nothing reinstalls it
+# when a merge moves the lockfile — so a worktree can sit on a dependency
+# version the code no longer targets. That does not fail loudly: Vite strips
+# types without checking them, so a call to an API the installed version does
+# not have reaches the browser and throws at runtime, where a `catch` may well
+# swallow it. Verified against the real shape of the mistake — replacing
+# `package.json` + `pnpm-lock.yaml` under an installed `node_modules` now
+# fails the next `pnpm run` with ERR_PNPM_VERIFY_DEPS_BEFORE_RUN.
+verifyDepsBeforeRun: error
+
 catalog:
   "@types/node": ^25.5.0
   typescript: ^6.0.2
