@@ -117,6 +117,36 @@ describe("subscribe page", () => {
     expect(/<button[^>]*hidden[^>]*data-copy-field=/.test(html)).toBe(true);
   });
 
+  // The page is about feeds and used to carry no feed mark at all, while its
+  // closing note tells the reader to look for that glyph on other pages. The
+  // note only works once the glyph has been shown here.
+  it("shows the feed glyph it tells readers to look for", async () => {
+    const { app } = createSubscribeTestApp();
+
+    const html = await (await app.request("/subscribe")).text();
+
+    // Once beside the page title, once as the specimen the closing note
+    // points at.
+    expect([...html.matchAll(/lucide-rss/g)]).toHaveLength(2);
+    expect(html).toContain("Look for this icon on those pages.");
+  });
+
+  // A reader who has never used a feed reader is handed three addresses and no
+  // idea what to do with them — the same dead end this page exists to end, one
+  // step later. No product names: the list would be identical on every Jant
+  // site, and it would rot.
+  it("explains what a feed reader is without naming one", async () => {
+    const { app } = createSubscribeTestApp();
+
+    const html = await (await app.request("/subscribe")).text();
+
+    expect(html).toContain("What a feed reader does");
+    expect(html).toContain(
+      "A feed reader checks these addresses for new posts",
+    );
+    expect(html).toContain("Subscribing creates no account here.");
+  });
+
   it("404s when feeds are switched off site-wide", async () => {
     const { app, services } = createSubscribeTestApp();
     await services.settings.set("RSS_FEEDS_ENABLED", "false");

@@ -80,6 +80,11 @@ msgstr "A calmer, warmer accent makes the default theme feel quieter and more in
 msgid "A collection needs a title and a link."
 msgstr "A collection needs a title and a link."
 
+#. @context: Subscribe page explanation of what a feed reader is and where it runs
+#: src/ui/pages/SubscribePage.tsx
+msgid "A feed reader checks these addresses for new posts and collects them in one place. Most are an app on your phone or computer; some are a website you sign in to."
+msgstr "A feed reader checks these addresses for new posts and collects them in one place. Most are an app on your phone or computer; some are a website you sign in to."
+
 #. @context: Section title for the usage guidance section on the brand asset page
 #: src/ui/pages/BrandPage.tsx
 msgid "A few simple rules."
@@ -518,10 +523,10 @@ msgctxt "nav"
 msgid "Collections"
 msgstr "Collections"
 
-#. @context: Subscribe page closing note, pointing at the per-page feed icons instead of listing every collection
+#. @context: Subscribe page closing note, next to a small feed icon standing in for the ones on collection and archive pages
 #: src/ui/pages/SubscribePage.tsx
-msgid "Collections and filtered archive views have their own feeds. Look for the feed icon on those pages."
-msgstr "Collections and filtered archive views have their own feeds. Look for the feed icon on those pages."
+msgid "Collections and filtered archive views have their own feeds. Look for this icon on those pages."
+msgstr "Collections and filtered archive views have their own feeds. Look for this icon on those pages."
 
 #. @context: Alert title on theme sample page
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -2338,6 +2343,11 @@ msgctxt "nav"
 msgid "Subscribe"
 msgstr "Subscribe"
 
+#. @context: Subscribe page note that subscribing is one-sided and how to undo it
+#: src/ui/pages/SubscribePage.tsx
+msgid "Subscribing creates no account here. To stop, delete the address from your reader."
+msgstr "Subscribing creates no account here. To stop, delete the address from your reader."
+
 #. @context: Compose custom slug helper label for the suggested slug
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Suggested link"
@@ -2749,6 +2759,11 @@ msgstr "View earlier notes in this thread"
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Visibility"
 msgstr "Visibility"
+
+#. @context: Subscribe page heading over the explanation of feed readers, for readers who have not used one
+#: src/ui/pages/SubscribePage.tsx
+msgid "What a feed reader does"
+msgstr "What a feed reader does"
 
 #. @context: Table header in the sample detail article
 #: src/ui/pages/ThemeSamplePage.tsx

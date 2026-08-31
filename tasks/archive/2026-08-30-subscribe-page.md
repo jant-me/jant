@@ -377,3 +377,77 @@ RSS。是本地 D1，不影响任何真实站点。
   另一个页面上的一行字。在设置界面里撒谎比不给开关糟得多
 - 订阅数统计（见 §2.8）
 - 迁移现有站点的导航（append-only，见 §2.5）
+
+---
+
+## 6. 后续：外观修整 + 阅读器说明（2026-08-30，同日）
+
+作者实测后两条意见：页面丑（没有 RSS 图标、输入框太长）、能不能顺带跟读者讲一下 RSS 阅读器。
+不推翻上面任何决定，只补三处。
+
+### 6.1 收窄内容栏到 `max-w-xl`，不动 `CopyField`
+
+`.site-page > main` 的内容区上限就是 `--layout-body-max-width`(1088px)，而
+`COPY_FIELD_INPUT_CLASS` 是 `w-full` —— 一条 35 字符的地址躺在 1090px 的框里，
+**复制按钮离它要复制的文字约 700px**，三条摞起来读着像设置表单。
+
+修的是**这个页面的栏宽**，不是组件：`CopyField` 在设置页的窄栏里一直长得好好的，改它会
+无谓波及设置页。给 `data-page="subscribe"` 加 `max-w-xl` 就够。
+
+注意实际是 **540px 不是 576px** —— 站点根字号 15px，`max-w-xl` = 36rem。540px 够完整显示
+带语言前缀的长地址（`https://blog.example.com/zh/archive/feed`）。
+
+标题一起收窄：只收窄字段会让 h1 悬空。
+
+### 6.2 两个 RSS 图标，各有各的活
+
+- **h1 旁边**（走 `PaginatedPageHeader` 已有的 `iconHtml`，`size-6 text-muted-foreground`）：
+  给页面一个主题标记。`size-5` 试过，太瘦 —— lucide 的 rss 字形墨迹集中在方框左下约 60%，
+  20px 看着只有 13px
+- **末尾那句里**（`size-3.5`，`aria-hidden`）：原文写着「Look for **the feed** icon on those
+  pages」，指着一个读者在本页从没见过的字形 —— 这是个真的可用性 bug，不只是难看。改成
+  「Look for **this** icon」并把字形摆在句子前面。字形跟 `CollectionDirectory` /
+  `ArchivePage` 用的是同一个 `getIconSvg("rss")`，指的确实是同一个东西
+
+### 6.3 阅读器说明：只解释，不点名 App
+
+跟作者确认过，否掉了另外两案：
+
+- **写死一份阅读器名单在 core 里** → 每个 Jant 站点都长一样，等于 **Jant 替所有作者背书**
+  （读者只会读成「站长推荐」）；且要跟着 App 停运、改名、改定价一起维护；还没法匹配读者的
+  平台和地区，一份对一半读者是错的名单比没有更糟
+- **作者自填一段** → 要动 settings UI + 两套 schema + i18n，是独立功能，不是这次的修整；
+  也会破坏 §2.2 那条「页面完全不碰数据库」
+
+只解释 → 零维护、不会失效、不替谁背书。缺口本来就是「读者不知道这三个地址拿来干嘛」，
+解释就补上了。
+
+放**页面最末**、一条 `border-t` 之下、带标题 `What a feed reader does`：已经在用阅读器的人
+一眼跳过，不会用的人靠标题扫得到。顺带把下半页的空白填上。
+
+文案守 §2.8 那条硬线（说明书不是邀请函）：
+
+> A feed reader checks these addresses for new posts and collects them in one place. Most are
+> an app on your phone or computer; some are a website you sign in to.
+>
+> Subscribing creates no account here. To stop, delete the address from your reader.
+
+第二句同时答掉「订阅了会不会被看到 / 怎么退订」—— 这是没用过 RSS 的人最常见的顾虑，而且
+说的是机制事实。**没写**「不会有人知道你订阅了」这类话：自建站点的日志我们管不着，
+承诺不了的别承诺。
+
+### 6.4 验证
+
+- `vitest run`（除掉两个 shell 到 wrangler 的慢用例）：**297 文件 / 3903 用例全绿**
+- `tsc --noEmit`：干净。§4 里记的 `video-processor.ts` 那 2 个既有报错**已经不在了**
+- `check-copy` 0 error / 0 warning；prettier 已格式化
+- `lingui extract --clean`：只动了本次这 4 条（3 新 + 1 改），没误删别的
+- 浏览器实测：宽屏（1200px）、窄屏（360px，无横向溢出、图标+文字行悬挂缩进正确）、
+  **暗色模式**、复制按钮仍工作（toast「Feed URL copied.」）
+
+新增 2 个用例（`subscribe.test.ts`，共 10 个）：字形出现两次且末句措辞对得上；
+说明块在且不含产品名。
+
+**注意**：`mise run check-lint` / `check-tests` / `i18n-build` 这几个走 pnpm 的任务当时在本
+worktree 跑不动（`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`，有个改了 `pnpm-workspace.yaml` 的
+合并没做完）。上面这些是绕开 pnpm 直接用 `npx vitest` / `npx tsc` / `npx lingui` 跑的。
