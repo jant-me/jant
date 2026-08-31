@@ -16,6 +16,7 @@ export const RESERVED_PATHS = [
   "api",
   "feed",
   "search",
+  "subscribe",
   "archive",
   "media",
   "pages",

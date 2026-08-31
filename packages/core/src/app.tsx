@@ -22,6 +22,7 @@ import { collectionRoutes } from "./routes/pages/collection.js";
 import { archiveRoutes } from "./routes/pages/archive.js";
 import { searchRoutes } from "./routes/pages/search.js";
 import { featuredRoutes } from "./routes/pages/featured.js";
+import { subscribeRoutes } from "./routes/pages/subscribe.js";
 import { latestRoutes } from "./routes/pages/latest.js";
 import { collectionsPageRoutes } from "./routes/pages/collections.js";
 import { newPostRoutes } from "./routes/pages/new.js";
@@ -578,6 +579,7 @@ export function createApp(): App {
   app.route("/", newPostRoutes);
   app.route("/archive", archiveRoutes);
   app.route("/featured", featuredRoutes);
+  app.route("/subscribe", subscribeRoutes);
   app.route("/latest", latestRoutes);
   app.route("/", partialPageRoutes);
   app.route("/_", brandRoutes);

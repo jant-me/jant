@@ -24,6 +24,7 @@ import {
   responsiveSortableOptions,
   revertSortableDomMove,
 } from "../sortable-list.js";
+import { isFeedNavKey } from "../../types/constants.js";
 import { showConfirmDialog } from "../confirm.js";
 import { showToast } from "../toast.js";
 import { publicPath, sitePathPrefix } from "../runtime-paths.js";
@@ -1330,9 +1331,13 @@ export class JantNavManager extends LitElement {
     return this._items.filter((i) => i.placement === "more");
   }
 
+  // Mirrors the server's projection in `lib/navigation.ts`: with feeds off,
+  // neither feed entry renders, so neither may show in the preview either.
   #isVisibleInPreview(item: NavManagerItem): boolean {
     return (
-      this.rssFeedsEnabled || item.type !== "system" || item.systemKey !== "rss"
+      this.rssFeedsEnabled ||
+      item.type !== "system" ||
+      !isFeedNavKey(item.systemKey)
     );
   }
 

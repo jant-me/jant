@@ -55,7 +55,7 @@ describe("SiteAdminService", () => {
       { systemKey: "featured", placement: "header" },
       { systemKey: "archive", placement: "header" },
       { systemKey: "collections", placement: "more" },
-      { systemKey: "rss", placement: "more" },
+      { systemKey: "subscribe", placement: "more" },
       { systemKey: "settings", placement: "more" },
     ]);
   });
@@ -184,7 +184,7 @@ describe("SiteAdminService", () => {
       "featured",
       "archive",
       "collections",
-      "rss",
+      "subscribe",
       "settings",
     ]);
     expect(onboarding.value).toBe("provisioned");

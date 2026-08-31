@@ -140,6 +140,25 @@ The root `layouts/` and `static/` directories are yours to maintain. Hugo loads 
 
 Page size is controlled by Jant's **Settings → Posts per page**.
 
+Atom feeds are emitted alongside the pages they carry, when **Settings → Feeds** is on:
+
+| URL                            | Carries           |
+| ------------------------------ | ----------------- |
+| `/index.xml`                   | The home timeline |
+| `/featured/index.xml`          | Featured          |
+| `/archive/index.xml`           | The full archive  |
+| `/{collection-slug}/index.xml` | One collection    |
+
+### Feed addresses change
+
+Jant serves its feeds under `/feed` — `/feed`, `/latest/feed`, `/featured/feed`, `/archive/feed`, `/{collection-slug}/feed`. Hugo serves the same documents as `index.xml` inside each section, so none of the old addresses exist on the exported site, and every reader subscribed in a feed reader is holding one of them.
+
+The export writes `static/_redirects`, mapping each old address to its new one with a 301. Cloudflare Pages and Netlify read that file as published, so a site moved to either host keeps its subscribers. Other hosts ignore it — translate its rules into that host's redirect configuration before you point the domain at the export.
+
+The `aliases:` mechanism that preserves `/{reply-slug}/` links cannot cover feeds. An alias page redirects with a meta refresh and a script, and feed readers fetch XML without running either.
+
+The exported site has no `/subscribe` page either — that page belongs to the Jant runtime. The **Subscribe** navigation entry resolves to the main feed file instead.
+
 ### Round-trip fidelity
 
 A `site export` → `site import` round-trip preserves every post's Featured and pinned state, plus every Thread's collection membership:

@@ -629,6 +629,33 @@ describe("JantNavManager", () => {
     expect(getPreviewHeaderLabels(el)).toContain("Feed");
   });
 
+  // `subscribe` addresses a page that 404s without feeds, so it has to drop out
+  // of the preview alongside `rss` — the server's projection drops both.
+  it("hides a saved Subscribe item from the preview too", async () => {
+    const el = await createElement();
+    el.items = [
+      ...items,
+      {
+        id: "nav-subscribe",
+        type: "system",
+        systemKey: "subscribe",
+        label: "Subscribe",
+        displayLabel: "Subscribe",
+        url: "/subscribe",
+        placement: "header",
+      },
+    ];
+    el.rssFeedsEnabled = false;
+    await el.updateComplete;
+
+    expect(getPreviewHeaderLabels(el)).not.toContain("Subscribe");
+    expect(el.querySelector('[data-nav-id="nav-subscribe"]')).not.toBeNull();
+
+    el.rssFeedsEnabled = true;
+    await el.updateComplete;
+    expect(getPreviewHeaderLabels(el)).toContain("Subscribe");
+  });
+
   it("adds a suggested collection link through the nav items API", async () => {
     const el = await createElement();
     el.suggestedLinks = suggestedLinks;

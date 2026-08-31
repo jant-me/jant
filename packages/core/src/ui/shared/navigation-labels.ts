@@ -52,6 +52,12 @@ const BUILTIN_NAV_LABELS = {
     comment:
       "@context: Built-in navigation label for the feed. Keep the acronym in every locale — it is what readers scan for. The document /feed serves is Atom, but RSS is the category name readers and feed apps use, and it matches the vocabulary the rest of the product already speaks (systemKey `rss`, `mainRssFeed`). 'Feed' would collide with Featured/Latest/All, which are feeds too.",
   }),
+  subscribe: msg({
+    message: "Subscribe",
+    context: "nav",
+    comment:
+      "@context: Built-in navigation label for the page that explains the site's feeds. Names what the reader wants to do, unlike the sibling RSS entry which names the format and links at the Atom document itself.",
+  }),
   signIn: msg({
     message: "Sign in",
     context: "nav",
@@ -73,42 +79,21 @@ const BUILTIN_NAV_LABELS = {
  */
 export const NAV_MORE_LABEL = BUILTIN_NAV_LABELS.more;
 
-const SYSTEM_NAV_TITLES: Partial<Record<SystemNavKey, MessageDescriptor>> = {
+/**
+ * The default label for every system nav entry.
+ *
+ * Total on purpose: this is the map both the settings toggle list and the
+ * rendered navigation read, so a new `SystemNavKey` without an entry here is a
+ * compile error rather than a nav item that renders blank.
+ */
+const SYSTEM_NAV_TITLES: Record<SystemNavKey, MessageDescriptor> = {
   latest: BUILTIN_NAV_LABELS.latest,
   featured: BUILTIN_NAV_LABELS.featured,
   collections: BUILTIN_NAV_LABELS.collections,
   archive: BUILTIN_NAV_LABELS.archive,
   settings: BUILTIN_NAV_LABELS.settings,
   rss: BUILTIN_NAV_LABELS.rss,
-};
-
-const SYSTEM_NAV_DESCRIPTIONS: Record<SystemNavKey, MessageDescriptor> = {
-  latest: msg({
-    message: "Link to your latest posts. Your homepage shows this feed.",
-    comment: "@context: Description for the latest system navigation toggle",
-  }),
-  featured: msg({
-    message: "Link to posts you've marked as featured.",
-    comment: "@context: Description for the featured system navigation toggle",
-  }),
-  rss: msg({
-    message:
-      "Add a link to your main RSS feed. Change what /feed returns in General.",
-    comment: "@context: Description for the RSS system navigation toggle",
-  }),
-  settings: msg({
-    message: "Shows 'Settings' when logged in, 'Sign in' when logged out",
-    comment: "@context: Description for the settings system navigation toggle",
-  }),
-  collections: msg({
-    message: "Link to your collections page",
-    comment:
-      "@context: Description for the collections system navigation toggle",
-  }),
-  archive: msg({
-    message: "Link to the post archive",
-    comment: "@context: Description for the archive system navigation toggle",
-  }),
+  subscribe: BUILTIN_NAV_LABELS.subscribe,
 };
 
 function getInternalNavPath(url: string, sitePathPrefix = ""): string | null {
@@ -136,26 +121,8 @@ function getBuiltinNavLabelDescriptor(
 ): MessageDescriptor | null {
   if (item.type !== "system" || !item.systemKey) return null;
 
-  if (item.systemKey === "collections") {
-    return BUILTIN_NAV_LABELS.collections;
-  }
-
-  if (item.systemKey === "latest") {
-    return BUILTIN_NAV_LABELS.latest;
-  }
-
-  if (item.systemKey === "featured") {
-    return BUILTIN_NAV_LABELS.featured;
-  }
-
-  if (item.systemKey === "archive") {
-    return BUILTIN_NAV_LABELS.archive;
-  }
-
-  if (item.systemKey === "rss") {
-    return BUILTIN_NAV_LABELS.rss;
-  }
-
+  // Settings is the one entry whose label depends on where it currently
+  // points, so it cannot be read from the key alone.
   if (item.systemKey === "settings") {
     const path = getInternalNavPath(item.url, sitePathPrefix);
     return path === "/signin"
@@ -163,7 +130,7 @@ function getBuiltinNavLabelDescriptor(
       : BUILTIN_NAV_LABELS.settings;
   }
 
-  return null;
+  return SYSTEM_NAV_TITLES[item.systemKey] ?? null;
 }
 
 /**
@@ -197,12 +164,5 @@ export function getSystemNavDisplayLabel(
   key: SystemNavKey,
   i18n: Translator,
 ): string {
-  return i18n._(SYSTEM_NAV_TITLES[key] ?? BUILTIN_NAV_LABELS.rss);
-}
-
-export function getSystemNavDescription(
-  key: SystemNavKey,
-  i18n: Translator,
-): string {
-  return i18n._(SYSTEM_NAV_DESCRIPTIONS[key]);
+  return i18n._(SYSTEM_NAV_TITLES[key]);
 }

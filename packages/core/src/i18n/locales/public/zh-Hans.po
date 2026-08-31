@@ -80,6 +80,11 @@ msgstr ""
 msgid "A collection needs a title and a link."
 msgstr ""
 
+#. @context: Subscribe page explanation of what a feed reader is and where it runs
+#: src/ui/pages/SubscribePage.tsx
+msgid "A feed reader checks these addresses for new posts and collects them in one place. Most are an app on your phone or computer; some are a website you sign in to."
+msgstr ""
+
 #. @context: Section title for the usage guidance section on the brand asset page
 #: src/ui/pages/BrandPage.tsx
 msgid "A few simple rules."
@@ -97,6 +102,11 @@ msgstr ""
 #: src/ui/pages/ThemeSamplePage.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "A long-form article sample for checking the default palette in a true reading context."
+msgstr ""
+
+#. @context: Subscribe page link to the independent aboutfeeds.com explainer. The whole sentence is the link text.
+#: src/ui/pages/SubscribePage.tsx
+msgid "A longer introduction to feeds and readers, at aboutfeeds.com"
 msgstr ""
 
 #. @context: Subheading in the sample detail article
@@ -158,11 +168,6 @@ msgstr ""
 msgid "Add a label and URL."
 msgstr ""
 
-#. @context: Description for the RSS system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Add a link to your main RSS feed. Change what /feed returns in General."
-msgstr ""
-
 #. @context: Compose link title required error
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Add a title before posting this link."
@@ -221,6 +226,11 @@ msgstr ""
 #. @context: Loading label while adding a Collection to site navigation
 #: src/ui/shared/collection-management-labels.ts
 msgid "Adding…"
+msgstr ""
+
+#. @context: Subscribe page name for the full archive feed. Matches the Archive page's own nav label.
+#: src/routes/pages/subscribe.tsx
+msgid "All"
 msgstr ""
 
 #. @context: Built-in navigation label for the archive page. Reads as the widest of Featured / Latest / All rather than 'old posts' — the page is the complete index, and its URL stays /archive.
@@ -518,6 +528,11 @@ msgctxt "nav"
 msgid "Collections"
 msgstr ""
 
+#. @context: Subscribe page closing note, next to a small feed icon standing in for the ones on collection and archive pages
+#: src/ui/pages/SubscribePage.tsx
+msgid "Collections and filtered archive views have their own feeds. Look for this icon on those pages."
+msgstr ""
+
 #. @context: Alert title on theme sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Color check"
@@ -568,6 +583,16 @@ msgstr ""
 #. @context: Controls section heading on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Controls"
+msgstr ""
+
+#. @context: Button that copies a feed address to the clipboard
+#: src/ui/pages/SubscribePage.tsx
+msgid "Copy"
+msgstr ""
+
+#. @context: Toast when the clipboard is unavailable, pointing at selecting the address by hand
+#: src/ui/pages/SubscribePage.tsx
+msgid "Could not copy. Select the address and copy it."
 msgstr ""
 
 #. @context: Collection dialog load failure
@@ -953,6 +978,11 @@ msgstr ""
 msgid "Enter a valid URL starting with http://, https://, or mailto:."
 msgstr ""
 
+#. @context: Subscribe page description of the full archive feed. Says what it adds over the other two rather than sounding like the default pick.
+#: src/routes/pages/subscribe.tsx
+msgid "Every published post, including those kept off the home page."
+msgstr ""
+
 #. @context: Usage label for the brand pack card
 #: src/ui/pages/BrandPage.tsx
 msgid "Everything in one download"
@@ -982,9 +1012,11 @@ msgstr ""
 #. @context: Browser page title for the featured feed
 #. @context: Inactive browse tab label on sample page
 #. @context: Page heading for the featured posts feed
+#. @context: Subscribe page name for the featured posts feed
 #. @context: Tooltip and screen reader label for the featured-post icon in the post footer when no featured date is available
 #: src/lib/filter-dimensions.ts
 #: src/routes/pages/featured.tsx
+#: src/routes/pages/subscribe.tsx
 #: src/ui/pages/FeaturedPage.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 #: src/ui/shared/PostFooter.tsx
@@ -1007,6 +1039,11 @@ msgstr ""
 #: src/routes/feed/feed.ts
 #: src/ui/layouts/BaseLayout.tsx
 msgid "Featured posts"
+msgstr ""
+
+#. @context: Toast after copying a feed URL to the clipboard
+#: src/ui/pages/SubscribePage.tsx
+msgid "Feed URL copied."
 msgstr ""
 
 #. @context: Search snippet suffix on sample page
@@ -1279,7 +1316,9 @@ msgstr ""
 #. @context: Active browse tab label on sample page
 #. @context: Browser page title for the latest feed
 #. @context: Page heading for the latest posts feed
+#. @context: Subscribe page name for the latest public posts feed
 #: src/routes/pages/home.tsx
+#: src/routes/pages/subscribe.tsx
 #: src/ui/pages/HomePage.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Latest"
@@ -1341,26 +1380,6 @@ msgstr ""
 msgid "Link removed."
 msgstr ""
 
-#. @context: Description for the featured system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Link to posts you've marked as featured."
-msgstr ""
-
-#. @context: Description for the archive system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Link to the post archive"
-msgstr ""
-
-#. @context: Description for the collections system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Link to your collections page"
-msgstr ""
-
-#. @context: Description for the latest system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Link to your latest posts. Your homepage shows this feed."
-msgstr ""
-
 #. @context: Toast after saving a custom collections link
 #: src/ui/shared/collection-management-labels.ts
 msgid "Link updated."
@@ -1420,6 +1439,8 @@ msgid "Look at the footer metadata last, to make sure the accent is not fighting
 msgstr ""
 
 #. @context: Feed autodiscovery title for the site's main feed
+#. @context: Subscribe page name for the site's main feed
+#: src/routes/pages/subscribe.tsx
 #: src/ui/layouts/BaseLayout.tsx
 msgid "Main feed"
 msgstr ""
@@ -1654,6 +1675,11 @@ msgstr ""
 msgid "Oldest first"
 msgstr ""
 
+#. @context: Subscribe page description of the featured posts feed
+#: src/routes/pages/subscribe.tsx
+msgid "Only the posts marked as featured."
+msgstr ""
+
 #. @context: Compose publish settings help text for private visibility
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Only visible when signed in."
@@ -1692,6 +1718,11 @@ msgstr ""
 #. @context: Tooltip on the source post link above the compose editor while writing a translation
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Open the original in a new tab"
+msgstr ""
+
+#. @context: Tooltip on the subscribe page feed names, which link to the page whose posts that feed carries
+#: src/ui/pages/SubscribePage.tsx
+msgid "Open the page this feed carries"
 msgstr ""
 
 #. @context: Collection editing dialog field
@@ -2019,10 +2050,12 @@ msgctxt "nav"
 msgid "RSS"
 msgstr ""
 
+#. @context: Tooltip for the RSS feed icon beside a collection in the collections directory
 #. @context: Tooltip for the RSS feed link on a collection page
 #. @context: Tooltip for the RSS feed link on a collection page
 #: src/ui/pages/CollectionPage.tsx
 #: src/ui/pages/SmartCollectionPage.tsx
+#: src/ui/shared/CollectionDirectory.tsx
 msgid "RSS feed"
 msgstr ""
 
@@ -2155,11 +2188,6 @@ msgstr ""
 #. @context: Accessible name of the button that brings back the folded-away post being translated
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Show the original"
-msgstr ""
-
-#. @context: Description for the settings system navigation toggle
-#: src/ui/shared/navigation-labels.ts
-msgid "Shows 'Settings' when logged in, 'Sign in' when logged out"
 msgstr ""
 
 #. @context: Built-in navigation label shown when auth is required
@@ -2299,6 +2327,24 @@ msgstr ""
 msgid "Stay sturdy and readable."
 msgstr ""
 
+#. @context: Browser page title for the subscribe page
+#. @context: Page title for the feed subscription page
+#: src/routes/pages/subscribe.tsx
+#: src/ui/pages/SubscribePage.tsx
+msgid "Subscribe"
+msgstr ""
+
+#. @context: Built-in navigation label for the page that explains the site's feeds. Names what the reader wants to do, unlike the sibling RSS entry which names the format and links at the Atom document itself.
+#: src/ui/shared/navigation-labels.ts
+msgctxt "nav"
+msgid "Subscribe"
+msgstr ""
+
+#. @context: Subscribe page note that subscribing is one-sided and how to undo it
+#: src/ui/pages/SubscribePage.tsx
+msgid "Subscribing creates no account here. To stop, delete the address from your reader."
+msgstr ""
+
 #. @context: Compose custom slug helper label for the suggested slug
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Suggested link"
@@ -2398,6 +2444,11 @@ msgstr ""
 msgid "The right accent should disappear into the writing until you need it."
 msgstr ""
 
+#. @context: Subscribe page description of the latest posts feed. The home page and this feed run the same query, so they carry the same posts.
+#: src/routes/pages/subscribe.tsx
+msgid "The same posts as the home page."
+msgstr ""
+
 #. @context: Section heading for theme picker pills
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Theme"
@@ -2479,6 +2530,11 @@ msgstr ""
 #. @context: Hosted SSO expired link message segment shown before the hosted control-plane link
 #: src/routes/auth/hosted-sso-expired-page.tsx
 msgid "This sign-in link has expired. Return to "
+msgstr ""
+
+#. @context: Subscribe page introduction, above the feed addresses. States the format the site serves, then the one action to take.
+#: src/ui/pages/SubscribePage.tsx
+msgid "This site publishes Atom feeds. Copy one of these addresses into a feed reader."
 msgstr ""
 
 #. @context: Error shown when a hosted upload would exceed the shared account media limit
@@ -2709,6 +2765,11 @@ msgstr ""
 #: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Visibility"
+msgstr ""
+
+#. @context: Subscribe page heading over the explanation of feed readers, for readers who have not used one
+#: src/ui/pages/SubscribePage.tsx
+msgid "What a feed reader does"
 msgstr ""
 
 #. @context: Table header in the sample detail article

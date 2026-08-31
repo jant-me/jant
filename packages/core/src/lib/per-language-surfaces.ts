@@ -20,6 +20,7 @@ const PER_LANGUAGE_SURFACES = new Set([
   "/featured",
   "/archive",
   "/search",
+  "/subscribe",
   "/collections",
 ]);
 

@@ -196,6 +196,9 @@ describe("Hugo smoke build", () => {
       "public/hello-world/index.html",
       // Alias page for the reply slug (root aliases include /hello-reply/).
       "public/hello-reply/index.html",
+      // The feed redirects are useless unless Hugo copies them to the root of
+      // the published directory, where Cloudflare Pages and Netlify look.
+      "public/_redirects",
     ]) {
       expect(await fileExists(join(tempDir, rel)), `missing ${rel}`).toBe(true);
     }

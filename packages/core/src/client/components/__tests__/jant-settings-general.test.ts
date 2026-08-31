@@ -132,6 +132,7 @@ const labels: SettingsLabels = {
   copy: "Copy",
   copyFailed: "Could not copy. Try again.",
   feedUrlCopied: "Feed URL copied.",
+  feedsDocs: "All feed addresses",
 };
 
 const timezones: SettingsTimezone[] = [
@@ -327,26 +328,37 @@ describe("JantSettingsGeneral", () => {
     ]);
   });
 
-  it("copies a feed URL from the info block", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(globalThis.navigator, "clipboard", {
-      value: { writeText },
-      configurable: true,
-    });
-
+  it("marks up each feed URL for the copy-field enhancer", async () => {
     const el = await createElement();
     const feedSection = requireElement(
       findSectionByHeading(el, labels.feeds),
       "expected feeds section",
     );
-    const copyButtons = feedSection.querySelectorAll<HTMLButtonElement>(
-      "button[data-copy-feed-url]",
+    const fields = feedSection.querySelectorAll("[data-copy-field-root]");
+
+    expect(fields).toHaveLength(4);
+
+    const firstField = requireElement(
+      fields[0],
+      "expected the main feed field",
+    );
+    const input = requireElement(
+      firstField.querySelector<HTMLInputElement>(
+        "input[data-copy-field-value]",
+      ),
+      "expected the address input",
+    );
+    const button = requireElement(
+      firstField.querySelector<HTMLButtonElement>("button[data-copy-field]"),
+      "expected the copy button",
     );
 
-    copyButtons[0]?.click();
-    await Promise.resolve();
-
-    expect(writeText).toHaveBeenCalledWith("/feed");
+    expect(input.value).toBe("/feed");
+    expect(button.getAttribute("data-copy-field")).toBe(labels.feedUrlCopied);
+    expect(button.getAttribute("data-copy-field-failed")).toBe(
+      labels.copyFailed,
+    );
+    expect(button.textContent).toContain(labels.copy);
   });
 
   it("tracks site group dirty state on input", async () => {
@@ -424,7 +436,35 @@ describe("JantSettingsGeneral", () => {
     );
   });
 
-  it("includes mainRssFeed in feed section save", async () => {
+  it("auto-saves the main RSS feed choice without a save button", async () => {
+    const el = await createElement();
+    const latestRadio = requireElement(
+      findRadioByValue(el, "main-rss-feed", "latest"),
+      "expected latest radio option",
+    );
+
+    expect(findSaveButtonByHeading(el, labels.feeds)).toBeNull();
+
+    let detail: SettingsSaveDetail | null = null;
+    el.addEventListener("jant:settings-save", (event) => {
+      detail = (event as CustomEvent<SettingsSaveDetail>).detail;
+    });
+
+    latestRadio.click();
+    await el.updateComplete;
+
+    expect(detail).not.toBeNull();
+    expect((detail as unknown as SettingsSaveDetail).endpoint).toBe(
+      "/settings/general/feeds",
+    );
+    expect((detail as unknown as SettingsSaveDetail).section).toBe("feeds");
+    expect((detail as unknown as SettingsSaveDetail).data.mainRssFeed).toBe(
+      "latest",
+    );
+    expect(latestRadio.checked).toBe(true);
+  });
+
+  it("sectionError for the feed choice restores the saved value", async () => {
     const el = await createElement();
     const latestRadio = requireElement(
       findRadioByValue(el, "main-rss-feed", "latest"),
@@ -433,23 +473,18 @@ describe("JantSettingsGeneral", () => {
 
     latestRadio.click();
     await el.updateComplete;
+    expect(latestRadio.checked).toBe(true);
 
-    let detail: SettingsSaveDetail | null = null;
-    el.addEventListener("jant:settings-save", (event) => {
-      detail = (event as CustomEvent<SettingsSaveDetail>).detail;
-    });
-
-    const saveBtn = findSaveButtonByHeading(el, labels.feeds);
-    saveBtn?.click();
+    el.sectionError("feeds");
     await el.updateComplete;
 
-    expect(detail).not.toBeNull();
-    expect((detail as unknown as SettingsSaveDetail).endpoint).toBe(
-      "/settings/general/feeds",
-    );
-    expect((detail as unknown as SettingsSaveDetail).data.mainRssFeed).toBe(
-      "latest",
-    );
+    expect(latestRadio.checked).toBe(false);
+    expect(
+      requireElement(
+        findRadioByValue(el, "main-rss-feed", "featured"),
+        "expected featured radio option",
+      ).checked,
+    ).toBe(true);
   });
 
   it("sectionSaved resets site dirty state and updates originals", async () => {

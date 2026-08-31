@@ -62,6 +62,7 @@ export async function renderCollectionsDirectory(
         sitePathPrefix={navData.sitePathPrefix}
         basePath={navData.basePath}
         siteOrigin={c.var.appConfig.siteOrigin}
+        feedsEnabled={c.var.appConfig.rssFeedsEnabled}
       />
     ),
   });

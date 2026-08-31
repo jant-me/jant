@@ -38,6 +38,7 @@ import {
   renderCollectionSelectionRoute,
 } from "./collection.js";
 import { renderCollectionsDirectory } from "./collections.js";
+import { renderSubscribePage } from "./subscribe.js";
 import {
   redirectLegacyFeaturedFeed,
   renderFeaturedFeed,
@@ -99,6 +100,8 @@ langGet("/archive/feed", renderArchiveFeed);
 langGet("/archive/feed/atom.xml", redirectLegacyArchiveFeed);
 
 langGet("/search", renderSearchPage);
+
+langGet("/subscribe", renderSubscribePage);
 
 langGet("/collections", renderCollectionsDirectory);
 langGet("/collections/:slug", renderCollectionSelectionRoute);

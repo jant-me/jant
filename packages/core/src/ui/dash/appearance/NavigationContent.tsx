@@ -11,6 +11,7 @@ import type {
   SystemNavKey,
 } from "../../../types.js";
 import { SYSTEM_NAV_KEYS } from "../../../types.js";
+import { getSystemNavDescription } from "./system-nav-descriptions.js";
 import { getSmartCollectionLabels } from "../../shared/smart-collection-labels.js";
 import type {
   NavManagerCollection,
@@ -26,7 +27,6 @@ import {
 } from "../../shared/collection-management-labels.js";
 import {
   getNavItemDisplayLabel,
-  getSystemNavDescription,
   getSystemNavDisplayLabel,
   NAV_MORE_LABEL,
 } from "../../shared/navigation-labels.js";
@@ -260,20 +260,17 @@ export function NavigationContent({
   ).map((key) => ({
     key,
     label: getSystemNavDisplayLabel(key, i18n),
-    description:
+    // Only the RSS line takes a value: it names which end /feed currently
+    // returns. The strings live in `system-nav-descriptions.ts` so the RSS and
+    // Subscribe pair stays written — and edited — together, and so they land in
+    // the translated catalog rather than the English-only public one.
+    description: getSystemNavDescription(
+      key,
+      i18n,
       key === "rss"
-        ? i18n._(
-            msg({
-              message:
-                "Header RSS points to your {feed} feed (/feed). Change what /feed returns in General.",
-              comment:
-                "@context: Description for the RSS system navigation toggle. {feed} is either Latest or Featured.",
-            }),
-            {
-              feed: mainRssFeed === "latest" ? latestLabel : featuredLabel,
-            },
-          )
-        : getSystemNavDescription(key, i18n),
+        ? { feed: mainRssFeed === "latest" ? latestLabel : featuredLabel }
+        : undefined,
+    ),
   }));
 
   const labels: NavManagerLabels = {

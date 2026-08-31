@@ -30,6 +30,18 @@ export interface CollectionDirectoryProps {
    */
   basePath: string;
   siteOrigin?: string;
+  /**
+   * Whether to offer each collection's feed beside it.
+   *
+   * This is the only place a reader is handed a collection feed: `/subscribe`
+   * deliberately lists the site-wide feeds only, because wanting one collection
+   * and not the rest is a rare intent that would tax every reader's attention
+   * there. Here it sits next to the collection someone is already looking at.
+   *
+   * Defaults off so the dashboard's collection manager — where the point is
+   * organizing, not subscribing — does not grow feed icons by accident.
+   */
+  feedsEnabled?: boolean;
 }
 
 const hasDirectoryContent = (items: CollectionDirectoryItem[]) =>
@@ -128,14 +140,43 @@ const computeSequenceLabels = (items: CollectionDirectoryItem[]): string[] => {
   return labels;
 };
 
+/**
+ * The feed icon that rides a directory row's summary line.
+ *
+ * Same affordance as the one on the collection's own page and on the archive:
+ * small, quiet, and recognizable to a reader who knows what it means. Readers
+ * who do not are served by /subscribe instead, which is why collection feeds
+ * are not listed there.
+ *
+ * @param props - Where the feed lives and what to call it
+ * @returns The icon link, or nothing when feeds are switched off
+ */
+const CollectionFeedLink: FC<{
+  href: string | null;
+  title: string;
+}> = ({ href, title }) =>
+  href ? (
+    <a href={href} class="feed-link" title={title} rel="noopener noreferrer">
+      <span dangerouslySetInnerHTML={{ __html: getIconSvg("rss") ?? "" }} />
+    </a>
+  ) : null;
+
 export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
   items,
   emptyMessage,
   sitePathPrefix = "",
   basePath,
   siteOrigin = "",
+  feedsEnabled = false,
 }) => {
   const { i18n } = useLingui();
+  const feedTitle = i18n._(
+    msg({
+      message: "RSS feed",
+      comment:
+        "@context: Tooltip for the RSS feed icon beside a collection in the collections directory",
+    }),
+  );
 
   if (!hasDirectoryContent(items)) {
     return (
@@ -366,6 +407,14 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                   >
                     {formatRelativeAge(smartCollection.recentActivityAt)}
                   </time>
+                  <CollectionFeedLink
+                    href={
+                      feedsEnabled
+                        ? `${toPublicPath(getCollectionPagePath(smartCollection.slug), basePath)}/feed`
+                        : null
+                    }
+                    title={feedTitle}
+                  />
                 </p>
               </div>
             </div>
@@ -434,6 +483,14 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                 >
                   {formatRelativeAge(collection.recentActivityAt)}
                 </time>
+                <CollectionFeedLink
+                  href={
+                    feedsEnabled
+                      ? `${toPublicPath(getCollectionSelectionPath(collection.slug), basePath)}/feed`
+                      : null
+                  }
+                  title={feedTitle}
+                />
               </p>
             </div>
           </div>

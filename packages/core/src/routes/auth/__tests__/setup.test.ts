@@ -48,7 +48,7 @@ describe("Setup bootstrap logic", () => {
       "featured",
       "archive",
       "collections",
-      "rss",
+      "subscribe",
       "settings",
     ]);
   });

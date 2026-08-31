@@ -12,6 +12,9 @@ import { useLingui } from "../../../i18n/context.js";
 import type { TimezoneEntry } from "../../../lib/timezones.js";
 import type { AboutPageStatus } from "../../../services/about-page.js";
 import type { DiscoverMode } from "../../../lib/discover.js";
+import { getJantDocsUrl } from "../../../lib/jant-docs.js";
+
+const FEEDS_DOCS_URL = getJantDocsUrl("feeds");
 
 /**
  * Where the site stands in the directory, as far as the site itself can tell.
@@ -222,6 +225,13 @@ export function GeneralContent({
       msg({
         message: "Fixed feed URLs",
         comment: "@context: Label for the list of stable RSS feed URLs",
+      }),
+    ),
+    feedsDocs: i18n._(
+      msg({
+        message: "All feed addresses",
+        comment:
+          "@context: Link text to the feeds documentation, under the fixed feed URLs in General settings",
       }),
     ),
     availableFeedUrlsHelp: i18n._(
@@ -605,6 +615,7 @@ export function GeneralContent({
           latest-feed-url={latestFeedUrl}
           featured-feed-url={featuredFeedUrl}
           archive-feed-url={archiveFeedUrl}
+          feeds-docs-url={FEEDS_DOCS_URL}
           demo-mode={demoMode || undefined}
           discover-docs-url={discoverDocsUrl}
           discover-status={JSON.stringify(statusView)}

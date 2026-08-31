@@ -276,6 +276,17 @@ sitemapRoutes.get("/sitemap-pages.xml", async (c) => {
     changefreq: "daily",
   });
 
+  // The subscribe page exists only while feeds do, and its content never
+  // changes on its own — it lists the same three addresses for the life of the
+  // site.
+  if (appConfig.rssFeedsEnabled) {
+    urls.push({
+      loc: absoluteUrl("/subscribe", siteUrl, sitePathPrefix),
+      priority: "0.3",
+      changefreq: "yearly",
+    });
+  }
+
   // Include the collections directory landing page when at least one
   // collection exists. When there are no collections, `/collections` still
   // renders (as an empty directory), but indexing an empty aggregate page

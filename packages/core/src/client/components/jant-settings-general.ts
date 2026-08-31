@@ -16,7 +16,12 @@ import type {
   SettingsTimezone,
   SettingsAboutPageStatus,
 } from "./settings-types.js";
-import { showToast } from "../toast.js";
+import {
+  COPY_FIELD_BUTTON_CLASS,
+  COPY_FIELD_CLASS,
+  COPY_FIELD_CONTROL_CLASS,
+  COPY_FIELD_INPUT_CLASS,
+} from "../../lib/copy-field.js";
 import {
   createSettingsEditor,
   jsonToMarkdown,
@@ -39,6 +44,7 @@ export class JantSettingsGeneral extends LitElement {
     latestFeedUrl: { type: String, attribute: "latest-feed-url" },
     featuredFeedUrl: { type: String, attribute: "featured-feed-url" },
     archiveFeedUrl: { type: String, attribute: "archive-feed-url" },
+    feedsDocsUrl: { type: String, attribute: "feeds-docs-url" },
     aboutPage: { type: Object, attribute: "about-page" },
     aboutEditUrl: { type: String, attribute: "about-edit-url" },
     aboutCreateUrl: {
@@ -63,7 +69,6 @@ export class JantSettingsGeneral extends LitElement {
     // Feed group
     _mainRssFeed: { state: true },
     _origMainRssFeed: { state: true },
-    _feedDirty: { state: true },
     _feedLoading: { state: true },
 
     // Home auto-save
@@ -101,6 +106,7 @@ export class JantSettingsGeneral extends LitElement {
   declare latestFeedUrl: string;
   declare featuredFeedUrl: string;
   declare archiveFeedUrl: string;
+  declare feedsDocsUrl: string;
   declare aboutPage: SettingsAboutPageStatus;
   declare aboutEditUrl: string;
   declare aboutCreateUrl: string;
@@ -129,7 +135,6 @@ export class JantSettingsGeneral extends LitElement {
   // Feed
   declare _mainRssFeed: string;
   declare _origMainRssFeed: string;
-  declare _feedDirty: boolean;
   declare _feedLoading: boolean;
 
   // Home
@@ -169,6 +174,7 @@ export class JantSettingsGeneral extends LitElement {
     this.latestFeedUrl = "/latest/feed";
     this.featuredFeedUrl = "/featured/feed";
     this.archiveFeedUrl = "/archive/feed";
+    this.feedsDocsUrl = "";
     this.aboutPage = {
       state: "missing",
       path: "/about",
@@ -195,7 +201,6 @@ export class JantSettingsGeneral extends LitElement {
 
     this._mainRssFeed = "featured";
     this._origMainRssFeed = "featured";
-    this._feedDirty = false;
     this._feedLoading = false;
 
     this._noindex = false;
@@ -276,7 +281,6 @@ export class JantSettingsGeneral extends LitElement {
       this._localeLoading = false;
     } else if (section === "feeds") {
       this._origMainRssFeed = this._mainRssFeed;
-      this._feedDirty = false;
       this._feedLoading = false;
     } else if (section === "home") {
       this._origShowJantBrandingOnHome = this._showJantBrandingOnHome;
@@ -298,6 +302,7 @@ export class JantSettingsGeneral extends LitElement {
     } else if (section === "time") {
       this._localeLoading = false;
     } else if (section === "feeds") {
+      this._mainRssFeed = this._origMainRssFeed;
       this._feedLoading = false;
     } else if (section === "home") {
       this._showJantBrandingOnHome = this._origShowJantBrandingOnHome;
@@ -419,14 +424,11 @@ export class JantSettingsGeneral extends LitElement {
     );
   }
 
-  // ── Feed group helpers ────────────────────────────────────────────
+  // ── Feed auto-save helpers ────────────────────────────────────────
 
-  private _syncFeedDirty() {
-    this._feedDirty = this._mainRssFeed !== this._origMainRssFeed;
-  }
-
-  private _saveFeeds() {
-    if (this._feedLoading || !this._feedDirty) return;
+  private _saveMainRssFeed(value: string) {
+    if (this._feedLoading || value === this._mainRssFeed) return;
+    this._mainRssFeed = value;
     this._feedLoading = true;
     this.dispatchEvent(
       new CustomEvent("jant:settings-save", {
@@ -434,7 +436,7 @@ export class JantSettingsGeneral extends LitElement {
         detail: {
           endpoint: "/settings/general/feeds",
           data: {
-            mainRssFeed: this._mainRssFeed,
+            mainRssFeed: value,
           },
           section: "feeds",
         },
@@ -601,10 +603,8 @@ export class JantSettingsGeneral extends LitElement {
           value=${value}
           class="mt-1"
           .checked=${checked}
-          @change=${() => {
-            this._mainRssFeed = value;
-            this._syncFeedDirty();
-          }}
+          ?disabled=${this._feedLoading}
+          @change=${() => this._saveMainRssFeed(value)}
         />
         <div>
           <div class="font-medium">${title}</div>
@@ -614,49 +614,39 @@ export class JantSettingsGeneral extends LitElement {
     `;
   }
 
-  private async _copyFeedUrl(value: string) {
-    try {
-      if (!globalThis.navigator.clipboard?.writeText) {
-        throw new Error("Clipboard unavailable");
-      }
-
-      await globalThis.navigator.clipboard.writeText(value);
-      showToast(this.labels.feedUrlCopied);
-    } catch {
-      showToast(this.labels.copyFailed, "error");
-    }
-  }
-
-  private _renderFeedInfoRow(
-    label: string,
-    value: string,
-    description?: string,
-  ) {
+  /**
+   * One feed address with a copy button.
+   *
+   * The same field `ui/shared/CopyField.tsx` renders on the public subscribe
+   * page, driven by the same `client/copy-field.ts` enhancer — hence the shared
+   * classes. lit-html cannot interpolate attribute names, so the enhancer's
+   * hooks are spelled out; `jant-settings-general.test.ts` asserts they match.
+   * Unlike the public page the button is not rendered hidden: settings is
+   * behind auth, where the client bundle is always present.
+   */
+  private _renderFeedUrl(label: string, value: string, description?: string) {
     return html`
-      <div class="flex min-w-0 flex-col gap-1">
+      <div class=${COPY_FIELD_CLASS} data-copy-field-root>
         <p class="text-sm font-medium">${label}</p>
         ${
           description
             ? html`<p class="text-sm text-muted-foreground">${description}</p>`
             : ""
         }
-        <div class="relative">
+        <div class=${COPY_FIELD_CONTROL_CLASS}>
           <input
             type="text"
-            class="input w-full pr-20 font-mono text-sm"
+            class=${COPY_FIELD_INPUT_CLASS}
             .value=${value}
             readonly
             aria-label=${label}
-            @click=${(e: Event) =>
-              (e.currentTarget as HTMLInputElement).select()}
-            @focus=${(e: Event) =>
-              (e.currentTarget as HTMLInputElement).select()}
+            data-copy-field-value
           />
           <button
             type="button"
-            class="btn-sm-outline absolute right-2 top-1/2 h-7 -translate-y-1/2 px-2.5 text-xs"
-            data-copy-feed-url
-            @click=${() => void this._copyFeedUrl(value)}
+            class=${COPY_FIELD_BUTTON_CLASS}
+            data-copy-field=${this.labels.feedUrlCopied}
+            data-copy-field-failed=${this.labels.copyFailed}
           >
             ${this.labels.copy}
           </button>
@@ -802,16 +792,7 @@ export class JantSettingsGeneral extends LitElement {
           )}
         </section>
 
-        <section
-          class="flex flex-col gap-4 border-t pt-8"
-          @keydown=${(e: globalThis.KeyboardEvent) =>
-            this._onKeydown(
-              e,
-              () => this._saveFeeds(),
-              this._feedDirty,
-              this._feedLoading,
-            )}
-        >
+        <section class="flex flex-col gap-4 border-t pt-8">
           ${this._renderSectionTitle(this.labels.feeds)}
           <div class="field">
             <p class="label">${this.labels.mainRssFeed}</p>
@@ -843,32 +824,38 @@ export class JantSettingsGeneral extends LitElement {
                 </p>
                 <p class="text-sm text-muted-foreground">
                   ${this.labels.availableFeedUrlsHelp}
+                  ${
+                    this.feedsDocsUrl
+                      ? html`
+                          <a
+                            href=${this.feedsDocsUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="underline hover:text-foreground transition-colors"
+                            >${this.labels.feedsDocs}</a
+                          >
+                        `
+                      : ""
+                  }
                 </p>
               </div>
 
-              ${this._renderFeedInfoRow(
-                this.labels.mainFeedUrl,
-                this.mainFeedUrl,
-              )}
-              ${this._renderFeedInfoRow(
+              ${this._renderFeedUrl(this.labels.mainFeedUrl, this.mainFeedUrl)}
+              ${this._renderFeedUrl(
                 this.labels.latestFeedUrl,
                 this.latestFeedUrl,
               )}
-              ${this._renderFeedInfoRow(
+              ${this._renderFeedUrl(
                 this.labels.featuredFeedUrl,
                 this.featuredFeedUrl,
               )}
-              ${this._renderFeedInfoRow(
+              ${this._renderFeedUrl(
                 this.labels.archiveFeedUrl,
                 this.archiveFeedUrl,
                 this.labels.archiveFeedUrlHelp,
               )}
             </div>
           </div>
-
-          ${this._renderSaveAction(this._feedLoading, this._feedDirty, () =>
-            this._saveFeeds(),
-          )}
         </section>
 
         <section class="flex flex-col gap-4 border-t pt-8 pb-6">
@@ -961,10 +948,10 @@ export class JantSettingsGeneral extends LitElement {
           locked
             ? html`<p class="text-sm text-muted-foreground">
                 ${
-                this.demoMode
-                  ? this.labels.discoverDemoLocked
-                  : this.labels.discoverFeedsOffLocked
-              }
+                  this.demoMode
+                    ? this.labels.discoverDemoLocked
+                    : this.labels.discoverFeedsOffLocked
+                }
               </p>`
             : nothing
         }
@@ -990,9 +977,9 @@ export class JantSettingsGeneral extends LitElement {
                     type="button"
                     class="btn"
                     ?disabled=${
-                    this._discoverLoading ||
-                    (!this._discoverDirty && this._origDiscover !== "")
-                  }
+                      this._discoverLoading ||
+                      (!this._discoverDirty && this._origDiscover !== "")
+                    }
                     @click=${() => this._saveDiscover()}
                   >
                     ${this.labels.save}
@@ -1037,16 +1024,16 @@ export class JantSettingsGeneral extends LitElement {
                     ${this.labels.discoverAnnounceRetry}
                   </button>
                   ${
-                  status.submitUrl
-                    ? html`<a
-                        class="link text-sm"
-                        href=${status.submitUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        >${this.labels.discoverAnnounceManual}</a
-                      >`
-                    : nothing
-                }
+                    status.submitUrl
+                      ? html`<a
+                          class="link text-sm"
+                          href=${status.submitUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          >${this.labels.discoverAnnounceManual}</a
+                        >`
+                      : nothing
+                  }
                 </div>
               `
             : nothing

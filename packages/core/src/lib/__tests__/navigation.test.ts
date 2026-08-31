@@ -103,6 +103,61 @@ describe("getNavigationData", () => {
     expect(result.links[1]?.url).toBe("/");
   });
 
+  it("hides the built-in Subscribe item when feeds are disabled", async () => {
+    const context = {
+      var: {
+        publicPath: "/",
+        appConfig: {
+          siteName: "Jant",
+          sitePathPrefix: "",
+          siteOrigin: "https://example.com",
+          siteDescription: "",
+          siteDescriptionExplicit: false,
+          siteAvatarUrl: "",
+          showHeaderAvatar: false,
+          siteFooter: "",
+          rssFeedsEnabled: false,
+        },
+        services: {
+          navItems: {
+            list: async () => [
+              {
+                id: "nav_subscribe",
+                type: "system",
+                systemKey: "subscribe",
+                label: "Subscribe",
+                url: "/subscribe",
+                placement: "header",
+                position: "a0",
+                createdAt: 1,
+                updatedAt: 1,
+              },
+              {
+                id: "nav_archive",
+                type: "system",
+                systemKey: "archive",
+                label: "All",
+                url: "/archive",
+                placement: "header",
+                position: "a1",
+                createdAt: 1,
+                updatedAt: 1,
+              },
+            ],
+          },
+          collections: { list: async () => [] },
+        },
+        isAuthenticated: false,
+        session: null,
+      },
+    } as unknown as Context;
+
+    const result = await getNavigationData(context);
+
+    // The page it addresses 404s without feeds, so the entry has to go too.
+    expect(result.links.map((link) => link.url)).toEqual(["/archive"]);
+  });
+
   it("hides only the built-in RSS item when feeds are disabled", async () => {
     const context = {
       var: {

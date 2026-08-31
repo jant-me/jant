@@ -22,6 +22,7 @@
 
 - [Writing and organizing](writing-and-organizing.md)
 - [Multilingual content](multilingual.md)
+- [Feeds](feeds.md)
 - [Discover](discover.md)
 - [GitHub Sync](github-sync.md)
 - [Theming](theming.md)

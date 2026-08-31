@@ -1,8 +1,8 @@
 import type { I18n, MessageDescriptor } from "@lingui/core";
 import { describe, expect, it } from "vitest";
+import { SYSTEM_NAV_KEY_VALUES } from "../../../types.js";
 import {
   getNavItemDisplayLabel,
-  getSystemNavDescription,
   getSystemNavDisplayLabel,
 } from "../navigation-labels.js";
 
@@ -13,6 +13,17 @@ const i18n = {
 } satisfies Pick<I18n, "_">;
 
 describe("getNavItemDisplayLabel", () => {
+  it("gives every system key a default label", () => {
+    for (const key of SYSTEM_NAV_KEY_VALUES) {
+      const label = getNavItemDisplayLabel(
+        { type: "system", systemKey: key, label: "", url: `/${key}` },
+        i18n,
+      );
+
+      expect(label, `system key "${key}" has no default label`).not.toBe("");
+    }
+  });
+
   it("translates system items with empty label (default)", () => {
     expect(
       getNavItemDisplayLabel(
@@ -133,20 +144,5 @@ describe("system nav labels", () => {
     );
     expect(getSystemNavDisplayLabel("archive", i18n)).toBe("translated:All");
     expect(getSystemNavDisplayLabel("rss", i18n)).toBe("translated:RSS");
-  });
-
-  it("translates system nav descriptions", () => {
-    expect(getSystemNavDescription("latest", i18n)).toBe(
-      "translated:Link to your latest posts. Your homepage shows this feed.",
-    );
-    expect(getSystemNavDescription("featured", i18n)).toBe(
-      "translated:Link to posts you've marked as featured.",
-    );
-    expect(getSystemNavDescription("archive", i18n)).toBe(
-      "translated:Link to the post archive",
-    );
-    expect(getSystemNavDescription("rss", i18n)).toBe(
-      "translated:Add a link to your main RSS feed. Change what /feed returns in General.",
-    );
   });
 });

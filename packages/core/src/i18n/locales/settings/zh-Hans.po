@@ -261,6 +261,11 @@ msgstr "所有可用的端点和请求格式。"
 msgid "All collections are already in your navigation."
 msgstr "所有合集已在你的导航中。"
 
+#. @context: Link text to the feeds documentation, under the fixed feed URLs in General settings
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "All feed addresses"
+msgstr "全部 feed 地址"
+
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Allow published content to be read without an API token."
@@ -1324,11 +1329,6 @@ msgstr "导航栏"
 msgid "Header links, built-in destinations, and overflow menu"
 msgstr "导航链接、内置目标和更多菜单"
 
-#. @context: Description for the RSS system navigation toggle. {feed} is either Latest or Featured.
-#: src/ui/dash/appearance/NavigationContent.tsx
-msgid "Header RSS points to your {feed} feed (/feed). Change what /feed returns in General."
-msgstr "导航栏 RSS 指向你的 {feed} 订阅源 (/feed)。在“常规”中更改 /feed 返回的内容。"
-
 #. @context: Fallback color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Headings, body text, and links in this theme."
@@ -1541,6 +1541,36 @@ msgstr "链接"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Link added to navigation."
 msgstr "链接已添加到导航。"
+
+#. @context: Description for the featured system navigation toggle
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Link to posts you've marked as featured."
+msgstr "链接到你标为精选的帖子。"
+
+#. @context: Description for the archive system navigation toggle
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Link to the post archive"
+msgstr "链接到帖子归档。"
+
+#. @context: Description for the collections system navigation toggle
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Link to your collections page"
+msgstr "链接到合集页。"
+
+#. @context: Description for the latest system navigation toggle
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Link to your latest posts. Your homepage shows this feed."
+msgstr "链接到最新帖子。首页展示的就是这个列表。"
+
+#. @context: Description for the RSS system navigation toggle. {feed} is either Latest or Featured. Pairs with the Subscribe toggle's description.
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Links straight to /feed — the raw Atom file, currently your {feed} feed. Best for readers who already use a feed reader."
+msgstr "直接指向 /feed，即 Atom 原始文件，目前返回的是{feed}帖子。适合已经在用阅读器的读者。"
+
+#. @context: Description for the Subscribe system navigation toggle. Pairs with the RSS toggle's description.
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Links to /subscribe, a page listing your feeds with copy buttons. Best for readers who don't already use one."
+msgstr "指向 /subscribe，一个列出你所有 feed 地址、带复制按钮的页面。适合还没在用阅读器的读者。"
 
 #. @context: Label for list posts curl example
 #: src/ui/dash/settings/ApiTokensContent.tsx
@@ -2396,6 +2426,11 @@ msgstr "在公共页眉中显示站点头像。"
 #: src/routes/dash/settings.tsx
 msgid "Showing {shown} of {total}"
 msgstr "显示 {shown} 共 {total}"
+
+#. @context: Description for the settings system navigation toggle
+#: src/ui/dash/appearance/system-nav-descriptions.ts
+msgid "Shows 'Settings' when logged in, 'Sign in' when logged out"
+msgstr "登录后显示「设置」，未登录时显示「登录」。"
 
 #. @context: Settings link — sign out action
 #: src/ui/dash/settings/SettingsRootContent.tsx
