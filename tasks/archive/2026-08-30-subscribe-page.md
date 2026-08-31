@@ -451,3 +451,98 @@ RSS。是本地 D1，不影响任何真实站点。
 **注意**：`mise run check-lint` / `check-tests` / `i18n-build` 这几个走 pnpm 的任务当时在本
 worktree 跑不动（`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`，有个改了 `pnpm-workspace.yaml` 的
 合并没做完）。上面这些是绕开 pnpm 直接用 `npx vitest` / `npx tsc` / `npx lingui` 跑的。
+
+---
+
+## 7. 第二轮：文案改准 + 每条 feed 链到它的页面（2026-08-31）
+
+作者读了 §6 的成品，四条意见。都成立，四条都改了。
+
+### 7.1 三条描述全部重写：说**是哪一批帖子**，别说废话
+
+原文和问题：
+
+|          | 原文                                                     | 毛病                                                                                  |
+| -------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Latest   | New posts as they are published.                         | 看不懂。"as they are published" 是废话（feed 当然是发布了才有），而且没说是**哪一批** |
+| Featured | Posts marked as featured, and nothing else.              | "and nothing else" 是凑字数                                                           |
+| All      | Every published post, including ones hidden from Latest. | "hidden from Latest" 是内部术语，读者不知道 Latest 是什么                             |
+
+现在：
+
+- Latest → **The same posts as the home page.**
+- Featured → **Only the posts marked as featured.**
+- All → **Every published post, including those kept off the home page.**
+
+**「首页」这个说法是查过代码才敢写的**，不是意译：
+
+- `routes/pages/latest.ts` 的注释明写「The homepage is the canonical latest timeline, so /latest redirects to /」，`/latest` 是 302 到 `/`
+- `buildLatestFeedData`（`routes/feed/feed.ts`）的查询是
+  `status: published, excludeReplies: true, excludeLatestHidden: true, excludePrivate`
+- `lib/timeline.ts:363-378`（首页时间线）**逐字相同**
+
+所以「同首页那批帖子」是**事实**，不是近似。三处都核过。
+
+同理 `buildFeaturedFeedData` 的注释自己写着「Uses the same query strategy as the featured
+timeline page」，archive 用 `excludeLatestHidden: false`。
+
+**一处克制**：Latest 那条一度写成「Every post on the home page.」，改掉了 —— feed 有
+`rssFeedLimit` 上限，首页是翻页翻到底的，说「every」是假话。「The same posts as」只声称
+**是哪一批**，不声称有多少。三条 feed 的上限一样，条数本来也不是它们的区别。
+
+### 7.2 每条 feed 的名字链到它的页面
+
+作者提的，而且正好落在架构上 —— `feed.ts` 开头那条「a feed is a sub-resource of the page
+it represents」终于有了用武之地（§2.4 曾说它「省不掉任何一条罗列，就只是装饰」）：
+
+- Main feed → `/` 或 `/featured`（跟着 `mainRssFeed`）
+- Latest → **`/`**，不是 `/latest`。后者只是个 302，没必要让读者多跳一次
+- All → `/archive`
+
+**页面是这条 feed 唯一诚实的预览** —— 一句话描述再准也只是近似，点进去看到的才是真的。
+
+实现上给 `CopyField` 加了可选的 `labelHref` / `labelTitle`。设置页不传，那边一个字没变。
+链接**常态就带下划线**，不是 hover 才出现：看不见的可供性等于没有。链接文字是 feed 名
+（"Latest"、"All"），单看不知道会去哪，所以挂 `title="Open the page this feed carries"` ——
+`title` 是补充可及名称、不覆盖可见文字，不违反 WCAG 2.5.3。
+
+### 7.3 main feed 与它对应那条**不可能不一致**
+
+作者要求两者描述一致。原本就一致（共用同一个 `latestDescription` / `featuredDescription`
+常量），这轮**页面链接也共用同一个常量**（`latestPageUrl` / `featuredPageUrl`）。
+
+不是靠人记得同步，是结构上没有第二个可写的地方。新增用例
+`gives the main feed the same description and page as the feed it is` 两种 `mainRssFeed`
+都断言了顺序和配对。
+
+### 7.4 开头那句：说清楚这个站发的是什么
+
+`Put an address into any feed reader.` → **`This site publishes Atom feeds. Copy one of
+these addresses into a feed reader.`**
+
+「Atom」是核过的：`lib/feed.ts:590` 发的是 `<feed xmlns="http://www.w3.org/2005/Atom">`。
+（注意 `?format=` 是**帖子类型**过滤 note/link/quote，不是序列化格式，别搞混。）
+
+这正是 §2.8 给的那个句式：「这个站发布 Atom feed，地址是……」是工具，不是渠道。
+
+### 7.5 外链 aboutfeeds.com
+
+作者要一篇通用、权威的 RSS 入门。`https://aboutfeeds.com/`（Matt Webb）就是为这个读者写的
+——「刚碰上一个 feed 地址，然后呢」，个人站点事实上的标准外链。已核实在线。
+
+**它列了四个阅读器（Feedly / Inoreader / NetNewsWire / The Old Reader）—— 这恰好解决了
+§6.3 的两难**：需要有人推荐阅读器，但不能是 Jant 推荐（那会变成每个 Jant 站点都在替它们
+背书）。第三方推荐，我们只给路。
+
+`target="_blank"` + `rel="noopener noreferrer"`（AGENTS.md 硬性）。**整句话就是链接本体**，
+不做「句子 + 中间嵌一个 a」的碎片拼接 —— 可及名称直接描述目的地，i18n 也只有一条消息。
+真哪天它挂了，上面两段说明照样自足。
+
+### 7.6 验证
+
+- `check-lint`、`check-types`、`check-copy` 全过（**pnpm 那个 `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`
+  随合并完成消失了，`mise run` 任务都恢复正常**）
+- `vitest run`（除掉两个 wrangler 慢用例）：**297 文件 / 3907 用例全绿**
+- 浏览器实测：三个链接目标 `/`、`/featured`、`/archive` 都真的 200，`/latest` 确认 302 到 `/`；
+  暗色模式复查过（第一张截图是主题切换的过渡帧，等稳定后正常）
+- `subscribe.test.ts` 13 个用例（新增 3 个）：链接目标、main feed 配对、外链的 rel/target

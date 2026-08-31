@@ -13,6 +13,14 @@ export interface SubscribeFeed {
   url: string;
   /** One line on what this feed carries that the others do not. */
   description: string;
+  /**
+   * The page whose posts this feed carries, linked from the label.
+   *
+   * Feeds live at `{page}/feed`, so each one has a page a reader can open to
+   * see exactly what they would be subscribing to. That page is the only
+   * honest preview — describing a feed in a sentence can only approximate it.
+   */
+  pageUrl: string;
 }
 
 export interface SubscribePageProps {
@@ -67,6 +75,15 @@ export const SubscribePage: FC<SubscribePageProps> = ({
       comment: "@context: Toast after copying a feed URL to the clipboard",
     }),
   );
+  // One string for all three rows: it explains the affordance, and the row's
+  // own description already names which page it opens.
+  const pageLinkTitle = i18n._(
+    msg({
+      message: "Open the page this feed carries",
+      comment:
+        "@context: Tooltip on the subscribe page feed names, which link to the page whose posts that feed carries",
+    }),
+  );
   const failedMessage = i18n._(
     msg({
       message: "Could not copy. Select the address and copy it.",
@@ -92,9 +109,10 @@ export const SubscribePage: FC<SubscribePageProps> = ({
         }
         description={i18n._(
           msg({
-            message: "Put an address into any feed reader.",
+            message:
+              "This site publishes Atom feeds. Copy one of these addresses into a feed reader.",
             comment:
-              "@context: Subscribe page introduction, above the feed addresses",
+              "@context: Subscribe page introduction, above the feed addresses. States the format the site serves, then the one action to take.",
           }),
         )}
       />
@@ -102,6 +120,8 @@ export const SubscribePage: FC<SubscribePageProps> = ({
       <div class="card p-5">
         <CopyField
           label={mainFeed.label}
+          labelHref={mainFeed.pageUrl}
+          labelTitle={pageLinkTitle}
           value={mainFeed.url}
           description={mainFeed.description}
           copyLabel={copyLabel}
@@ -115,6 +135,8 @@ export const SubscribePage: FC<SubscribePageProps> = ({
           <CopyField
             key={feed.url}
             label={feed.label}
+            labelHref={feed.pageUrl}
+            labelTitle={pageLinkTitle}
             value={feed.url}
             description={feed.description}
             copyLabel={copyLabel}
@@ -182,6 +204,31 @@ export const SubscribePage: FC<SubscribePageProps> = ({
                 "@context: Subscribe page note that subscribing is one-sided and how to undo it",
             }),
           )}
+        </p>
+        {/* The whole sentence is the link, so its accessible name describes
+            where it goes and no fragment has to be assembled around an anchor.
+            aboutfeeds.com is the one widely used vendor-neutral explainer
+            written for exactly this reader — someone who just met a feed
+            address. It does name a few readers, which is the point: a third
+            party can recommend them without every Jant site appearing to. If
+            it ever goes dark the two paragraphs above still stand on their
+            own. */}
+        <p class="mt-4 text-sm">
+          <a
+            href="https://aboutfeeds.com/"
+            class="underline decoration-1 underline-offset-4"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {i18n._(
+              msg({
+                message:
+                  "A longer introduction to feeds and readers, at aboutfeeds.com",
+                comment:
+                  "@context: Subscribe page link to the independent aboutfeeds.com explainer. The whole sentence is the link text.",
+              }),
+            )}
+          </a>
         </p>
       </section>
     </div>

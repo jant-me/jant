@@ -66,6 +66,11 @@ export async function renderSubscribePage(c: Context<Env>): Promise<Response> {
       appConfig.sitePathPrefix,
     );
 
+  // The page each feed is the feed of. Relative, unlike the addresses: these
+  // are links to follow here and now, not strings to paste elsewhere.
+  const pageUrl = (path: string): string =>
+    toPublicPath(`${viewBasePath(c)}${path}`, appConfig.sitePathPrefix);
+
   const latestLabel = i18n._(
     msg({
       message: "Latest",
@@ -74,10 +79,14 @@ export async function renderSubscribePage(c: Context<Env>): Promise<Response> {
   );
   const latestDescription = i18n._(
     msg({
-      message: "New posts as they are published.",
-      comment: "@context: Subscribe page description of the latest posts feed",
+      message: "The same posts as the home page.",
+      comment:
+        "@context: Subscribe page description of the latest posts feed. The home page and this feed run the same query, so they carry the same posts.",
     }),
   );
+  // `/latest` redirects to `/` — the home page is the canonical latest
+  // timeline, and its query is the one this feed runs.
+  const latestPageUrl = pageUrl("/");
   const featuredLabel = i18n._(
     msg({
       message: "Featured",
@@ -86,11 +95,12 @@ export async function renderSubscribePage(c: Context<Env>): Promise<Response> {
   );
   const featuredDescription = i18n._(
     msg({
-      message: "Posts marked as featured, and nothing else.",
+      message: "Only the posts marked as featured.",
       comment:
         "@context: Subscribe page description of the featured posts feed",
     }),
   );
+  const featuredPageUrl = pageUrl("/featured");
 
   const mainIsLatest = appConfig.mainRssFeed === "latest";
 
@@ -104,7 +114,10 @@ export async function renderSubscribePage(c: Context<Env>): Promise<Response> {
     url: feedUrl("/feed"),
     // Named for what it currently carries. `/feed` is either end of the list
     // depending on the site's setting, and "main feed" alone says neither.
+    // The description and the page it links to are the same pair the row
+    // below uses for that feed, so the two rows can never disagree.
     description: mainIsLatest ? latestDescription : featuredDescription,
+    pageUrl: mainIsLatest ? latestPageUrl : featuredPageUrl,
   };
 
   // The other end of the same list. Offering `/latest/feed` beside a `/feed`
@@ -116,11 +129,13 @@ export async function renderSubscribePage(c: Context<Env>): Promise<Response> {
         label: featuredLabel,
         url: feedUrl("/featured/feed"),
         description: featuredDescription,
+        pageUrl: featuredPageUrl,
       }
     : {
         label: latestLabel,
         url: feedUrl("/latest/feed"),
         description: latestDescription,
+        pageUrl: latestPageUrl,
       };
 
   const archiveFeed: SubscribeFeed = {
@@ -137,11 +152,13 @@ export async function renderSubscribePage(c: Context<Env>): Promise<Response> {
     // wants the main line knows to skip it.
     description: i18n._(
       msg({
-        message: "Every published post, including ones hidden from Latest.",
+        message:
+          "Every published post, including those kept off the home page.",
         comment:
-          "@context: Subscribe page description of the full archive feed",
+          "@context: Subscribe page description of the full archive feed. Says what it adds over the other two rather than sounding like the default pick.",
       }),
     ),
+    pageUrl: pageUrl("/archive"),
   };
 
   return renderPublicPage(c, {

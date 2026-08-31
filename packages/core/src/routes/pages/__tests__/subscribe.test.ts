@@ -48,6 +48,13 @@ function feedPaths(html: string): string[] {
   return feedAddresses(html).map((address) => new URL(address).pathname);
 }
 
+/** Where each feed's name links, in document order. */
+function labelLinks(html: string): string[] {
+  return [
+    ...html.matchAll(/<a href="([^"]*)" title="Open the page[^"]*"/g),
+  ].map((match) => match[1] ?? "");
+}
+
 describe("subscribe page", () => {
   it("offers the main feed, the other end of the list, and the archive", async () => {
     const { app, services } = createSubscribeTestApp();
@@ -83,8 +90,55 @@ describe("subscribe page", () => {
     await services.settings.set("MAIN_RSS_FEED", "featured");
     const featured = await (await app.request("/subscribe")).text();
 
-    expect(latest).toContain("New posts as they are published.");
-    expect(featured).toContain("Posts marked as featured, and nothing else.");
+    expect(latest).toContain("The same posts as the home page.");
+    expect(featured).toContain("Only the posts marked as featured.");
+  });
+
+  // Each feed is the feed of a page, and the page is the only honest preview
+  // of what subscribing gets you — a sentence can only approximate it.
+  it("links each feed to the page whose posts it carries", async () => {
+    const { app, services } = createSubscribeTestApp();
+    await services.settings.set("MAIN_RSS_FEED", "latest");
+
+    const html = await (await app.request("/subscribe")).text();
+
+    // `/latest` only redirects to `/`, so the latest feed links straight at
+    // the home page rather than sending readers through a 302.
+    expect(labelLinks(html)).toEqual(["/", "/featured", "/archive"]);
+  });
+
+  // The main feed is one of the other two under a different name. If its
+  // description and its page link were built separately they could drift, and
+  // the page would be describing one feed while linking at another.
+  it("gives the main feed the same description and page as the feed it is", async () => {
+    const { app, services } = createSubscribeTestApp();
+
+    await services.settings.set("MAIN_RSS_FEED", "featured");
+    const featured = await (await app.request("/subscribe")).text();
+    // Main feed first, then the opposite end (`latest`), then the archive.
+    expect(labelLinks(featured)).toEqual(["/featured", "/", "/archive"]);
+    expect([
+      ...featured.matchAll(/Only the posts marked as featured\./g),
+    ]).toHaveLength(1);
+
+    await services.settings.set("MAIN_RSS_FEED", "latest");
+    const latest = await (await app.request("/subscribe")).text();
+    expect(labelLinks(latest)).toEqual(["/", "/featured", "/archive"]);
+  });
+
+  // A reader who wants more than these two paragraphs needs somewhere to go,
+  // and it must not be a page about Jant.
+  it("points at an outside introduction, opened safely", async () => {
+    const { app } = createSubscribeTestApp();
+
+    const html = await (await app.request("/subscribe")).text();
+
+    const link = /<a[^>]*href="https:\/\/aboutfeeds\.com\/"[^>]*>/.exec(
+      html,
+    )?.[0];
+    expect(link).toBeDefined();
+    expect(link).toContain('rel="noopener noreferrer"');
+    expect(link).toContain('target="_blank"');
   });
 
   // The description has to say what the archive feed adds, not sound like the
@@ -95,7 +149,7 @@ describe("subscribe page", () => {
     const html = await (await app.request("/subscribe")).text();
 
     expect(html).toContain(
-      "Every published post, including ones hidden from Latest.",
+      "Every published post, including those kept off the home page.",
     );
   });
 

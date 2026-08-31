@@ -104,6 +104,11 @@ msgstr "A good default accent in Jant should feel like editorial structure, not 
 msgid "A long-form article sample for checking the default palette in a true reading context."
 msgstr "A long-form article sample for checking the default palette in a true reading context."
 
+#. @context: Subscribe page link to the independent aboutfeeds.com explainer. The whole sentence is the link text.
+#: src/ui/pages/SubscribePage.tsx
+msgid "A longer introduction to feeds and readers, at aboutfeeds.com"
+msgstr "A longer introduction to feeds and readers, at aboutfeeds.com"
+
 #. @context: Subheading in the sample detail article
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "A practical checklist"
@@ -973,10 +978,10 @@ msgstr "Enter a valid date."
 msgid "Enter a valid URL starting with http://, https://, or mailto:."
 msgstr "Enter a valid URL starting with http://, https://, or mailto:."
 
-#. @context: Subscribe page description of the full archive feed
+#. @context: Subscribe page description of the full archive feed. Says what it adds over the other two rather than sounding like the default pick.
 #: src/routes/pages/subscribe.tsx
-msgid "Every published post, including ones hidden from Latest."
-msgstr "Every published post, including ones hidden from Latest."
+msgid "Every published post, including those kept off the home page."
+msgstr "Every published post, including those kept off the home page."
 
 #. @context: Usage label for the brand pack card
 #: src/ui/pages/BrandPage.tsx
@@ -1535,11 +1540,6 @@ msgstr "New Password"
 msgid "New post"
 msgstr "New post"
 
-#. @context: Subscribe page description of the latest posts feed
-#: src/routes/pages/subscribe.tsx
-msgid "New posts as they are published."
-msgstr "New posts as they are published."
-
 #. @context: Menu item on the collections page that opens the smart collection dialog
 #: src/ui/shared/smart-collection-labels.ts
 msgid "New Smart Collection"
@@ -1675,6 +1675,11 @@ msgstr "of {total} {unit}"
 msgid "Oldest first"
 msgstr "Oldest first"
 
+#. @context: Subscribe page description of the featured posts feed
+#: src/routes/pages/subscribe.tsx
+msgid "Only the posts marked as featured."
+msgstr "Only the posts marked as featured."
+
 #. @context: Compose publish settings help text for private visibility
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Only visible when signed in."
@@ -1714,6 +1719,11 @@ msgstr "Open raw SVG"
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Open the original in a new tab"
 msgstr "Open the original in a new tab"
+
+#. @context: Tooltip on the subscribe page feed names, which link to the page whose posts that feed carries
+#: src/ui/pages/SubscribePage.tsx
+msgid "Open the page this feed carries"
+msgstr "Open the page this feed carries"
 
 #. @context: Collection editing dialog field
 #: src/ui/shared/collection-management-labels.ts
@@ -1780,11 +1790,6 @@ msgstr "Post hidden"
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Post privately"
 msgstr "Post privately"
-
-#. @context: Subscribe page description of the featured posts feed
-#: src/routes/pages/subscribe.tsx
-msgid "Posts marked as featured, and nothing else."
-msgstr "Posts marked as featured, and nothing else."
 
 #. @context: Smart collection dialog — conditions are combined with AND
 #: src/ui/shared/smart-collection-labels.ts
@@ -1876,11 +1881,6 @@ msgstr "Published on {date} at {time}"
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Published!"
 msgstr "Published!"
-
-#. @context: Subscribe page introduction, above the feed addresses
-#: src/ui/pages/SubscribePage.tsx
-msgid "Put an address into any feed reader."
-msgstr "Put an address into any feed reader."
 
 #. @context: Search highlight text on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
@@ -2447,6 +2447,11 @@ msgstr "The original"
 msgid "The right accent should disappear into the writing until you need it."
 msgstr "The right accent should disappear into the writing until you need it."
 
+#. @context: Subscribe page description of the latest posts feed. The home page and this feed run the same query, so they carry the same posts.
+#: src/routes/pages/subscribe.tsx
+msgid "The same posts as the home page."
+msgstr "The same posts as the home page."
+
 #. @context: Section heading for theme picker pills
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Theme"
@@ -2529,6 +2534,11 @@ msgstr "This reset link is no longer valid. Request a new one to continue."
 #: src/routes/auth/hosted-sso-expired-page.tsx
 msgid "This sign-in link has expired. Return to "
 msgstr "This sign-in link has expired. Return to "
+
+#. @context: Subscribe page introduction, above the feed addresses. States the format the site serves, then the one action to take.
+#: src/ui/pages/SubscribePage.tsx
+msgid "This site publishes Atom feeds. Copy one of these addresses into a feed reader."
+msgstr "This site publishes Atom feeds. Copy one of these addresses into a feed reader."
 
 #. @context: Error shown when a hosted upload would exceed the shared account media limit
 #. @context: Error shown when a hosted upload would exceed the shared account media limit
