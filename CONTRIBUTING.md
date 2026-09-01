@@ -463,6 +463,66 @@ export/import` round-trips and local Node database seeding. The old local SQL
 export/import workflow was removed to keep the site-aware tool chain smaller
 and less ambiguous.
 
+### Local Postgres
+
+Node development defaults to SQLite, which needs no setup. Reach for Postgres when you
+are working on dialect-specific behavior — `src/db/pg/schema.ts`, the migrations under
+`src/db/migrations/pg/`, or a bug that only reproduces on Postgres.
+
+If you do not already run Postgres, start one. The container creates the user,
+password, and database from these variables on first boot, so nothing else has to be
+provisioned:
+
+```bash
+docker run -d --name jant-postgres \
+  -e POSTGRES_USER=jant \
+  -e POSTGRES_PASSWORD=jant \
+  -e POSTGRES_DB=jant_dev \
+  -p 5432:5432 \
+  postgres:18-alpine
+```
+
+Those three values are the whole connection string. Put it in
+`packages/core/.env.node`:
+
+```bash
+DATABASE_URL=postgres://jant:jant@localhost:5432/jant_dev
+```
+
+Then migrate, and optionally load the canonical demo site:
+
+```bash
+mise run db-node-migrate
+mise run db-node-load-demo
+```
+
+Already running Postgres? Jant never creates the database itself — `DATABASE_URL` has
+to point at one that exists — so create it with your own credentials and use those in
+the URL:
+
+```bash
+createdb jant_dev
+```
+
+Give each worktree its own database. Sharing one mixes the content of two sites, and
+the failure is silent. Add the extra ones to the running container, naming them after
+the worktree so a stale `DATABASE_URL` cannot write into the wrong site:
+
+```bash
+docker exec jant-postgres createdb -U jant jant_dev_2
+```
+
+The Postgres dialect is covered on every push by the `pg-smoke` job in
+`.github/workflows/ci.yml`, which runs `mise run check-pg-smoke` against a throwaway
+Postgres service container. To reproduce that locally, point both variables at a
+database you can afford to lose — the smoke test drops and recreates it:
+
+```bash
+PG_SMOKE_ADMIN_DATABASE_URL=postgres://jant:jant@localhost:5432/postgres \
+PG_SMOKE_DATABASE_URL=postgres://jant:jant@localhost:5432/jant_pg_smoke \
+mise run check-pg-smoke
+```
+
 ### Reset
 
 ```bash
