@@ -209,8 +209,7 @@ export const SetupContent: FC<{
         )}
         description={i18n._(
           msg({
-            message:
-              "It sets the language readers and search engines see. Change it any time in Settings.",
+            message: "Change it any time in Settings.",
             comment:
               "@context: Setup page description under the write-language question",
           }),

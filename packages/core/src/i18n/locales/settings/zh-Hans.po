@@ -479,6 +479,11 @@ msgstr "平静自然，看着舒服。"
 msgid "Cancel"
 msgstr "取消"
 
+#. @context: Setup page description under the write-language question
+#: src/routes/auth/setup.tsx
+msgid "Change it any time in Settings."
+msgstr "之后也可以在设置中更改。"
+
 #. @context: Button to change password
 #. @context: Settings section heading
 #: src/ui/dash/settings/AccountContent.tsx
@@ -1390,11 +1395,6 @@ msgstr "安装 GitHub App 以在无需管理个人令牌的情况下授予访问
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Integrations"
 msgstr "集成"
-
-#. @context: Setup page description under the write-language question
-#: src/routes/auth/setup.tsx
-msgid "It sets the language readers and search engines see. Change it any time in Settings."
-msgstr "它决定读者和搜索引擎看到的语言，之后可以在设置里更改。"
 
 #. @context: Validation error for a long page slug
 #: src/ui/dash/appearance/NavigationContent.tsx

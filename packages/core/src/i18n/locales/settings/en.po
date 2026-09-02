@@ -479,6 +479,11 @@ msgstr "Calm and natural, easy on the eyes."
 msgid "Cancel"
 msgstr "Cancel"
 
+#. @context: Setup page description under the write-language question
+#: src/routes/auth/setup.tsx
+msgid "Change it any time in Settings."
+msgstr "Change it any time in Settings."
+
 #. @context: Button to change password
 #. @context: Settings section heading
 #: src/ui/dash/settings/AccountContent.tsx
@@ -1390,11 +1395,6 @@ msgstr "Install the GitHub App to grant access without managing personal tokens.
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Integrations"
 msgstr "Integrations"
-
-#. @context: Setup page description under the write-language question
-#: src/routes/auth/setup.tsx
-msgid "It sets the language readers and search engines see. Change it any time in Settings."
-msgstr "It sets the language readers and search engines see. Change it any time in Settings."
 
 #. @context: Validation error for a long page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
