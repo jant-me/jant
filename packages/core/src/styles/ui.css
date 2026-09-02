@@ -5067,10 +5067,16 @@
     display: none;
   }
 
+  /* The hint only ever shows over an empty editor, whose floor is two lines
+     (see .compose-tiptap-body .tiptap). It sits on the second one, directly
+     under the body placeholder: one line box down from the top of the wrap,
+     which is also the top of the first paragraph (its margin-top is zeroed).
+     `lh` already carries the leading, so this is exactly one line — anything
+     more drops the hint out of the two-line floor and onto the toolbar. */
   @media (min-width: 700px) {
     .compose-slash-discovery-hint {
       position: absolute;
-      top: calc(1.4rem + 1.7lh);
+      top: 1lh;
       left: 0;
       display: block;
       pointer-events: none;
