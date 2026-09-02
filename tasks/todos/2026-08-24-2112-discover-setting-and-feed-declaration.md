@@ -168,18 +168,18 @@ ping, and `docs/discover.md`.
       custom URL could take over a post's permalink, its Atom `<id>`, and its
       sitemap `<loc>`. Now ordered by `createdAt`, then `id`.
 
-      **`<id>` is still not stable across a slug rename**, and that is
-          accepted rather than fixed. `updatePostSlug` rewrites the `kind:'slug'`
-          row in place and creates no alias, so an ordinary post — one with no
-          custom URL — gets a new permalink and therefore a new `<id>`. A crawler
-          reads that as a withdrawal plus a new post: the old id leaves the feed
-          while older entries remain, its permalink 404s, and the new id arrives
-          carrying the original `published`, so it lands outside the candidate
-          band and can only return as the blog's fallback representative. Bounded,
-          and cheaper than either alternative — a `<jant:id>` per entry, or moving
-          Atom `<id>` to a `tag:` URI, which would make every existing subscriber
-          re-see every post once. `docs/discover.md` must say so, and so must the
-          cloud plan.
+  **`<id>` is still not stable across a slug rename**, and that is
+  accepted rather than fixed. `updatePostSlug` rewrites the `kind:'slug'`
+  row in place and creates no alias, so an ordinary post — one with no
+  custom URL — gets a new permalink and therefore a new `<id>`. A crawler
+  reads that as a withdrawal plus a new post: the old id leaves the feed
+  while older entries remain, its permalink 404s, and the new id arrives
+  carrying the original `published`, so it lands outside the candidate
+  band and can only return as the blog's fallback representative. Bounded,
+  and cheaper than either alternative — a `<jant:id>` per entry, or moving
+  Atom `<id>` to a `tag:` URI, which would make every existing subscriber
+  re-see every post once. `docs/discover.md` must say so, and so must the
+  cloud plan.
 
 - [x] Docs: `docs/discover.md` (published as `/docs/discover`) — the single
       place where the behaviour is described in full, so the UI copy can stay
@@ -229,10 +229,10 @@ ping, and `docs/discover.md`.
       locked states). The save round-trip was exercised against a running
       site through the documented `__dev/login` helper.
 
-      One thing left alone: an invalid body on this endpoint answers 500, not
-          400. That is `parseValidated`'s existing behaviour — the neighbouring
-          `/settings/general/search` does the same — so fixing it belongs to a
-          change that covers every settings endpoint, not to this one.
+  One thing left alone: an invalid body on this endpoint answers 500, not 400.
+  That is `parseValidated`'s existing behaviour — the neighbouring
+  `/settings/general/search` does the same — so fixing it belongs to a
+  change that covers every settings endpoint, not to this one.
 
 - [ ] Verify: `mise run check-tests`, `mise run check-lint`,
       `mise run check-copy`.
