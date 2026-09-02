@@ -63,6 +63,9 @@ coverage/
 *.swo
 *~
 
+# Claude Code local state (agent worktrees are registered git worktrees, per-machine)
+.claude/worktrees/
+
 # OS
 .DS_Store
 Thumbs.db
