@@ -91,6 +91,29 @@ describe("timeline cards", () => {
     expect(detailHtml).not.toContain("feed-card");
   });
 
+  it("keeps the link preview above the commentary in every mode", () => {
+    const post = createPostView({
+      format: "link",
+      previewImageUrl: "https://example.com/preview.jpg",
+      previewKind: "video",
+      previewProvider: "youtube",
+    });
+
+    for (const mode of ["feed", "detail"] as const) {
+      const html = renderWithI18n(LinkCard({ post, mode }));
+
+      // The preview is part of the reference, so commentary follows it —
+      // detail used to invert this and read as a note about nothing.
+      expect(html.indexOf('class="link-preview"')).toBeGreaterThan(-1);
+      expect(html.indexOf('class="link-preview"')).toBeLessThan(
+        html.indexOf("data-post-body"),
+      );
+      expect(html.indexOf("feed-link-title")).toBeLessThan(
+        html.indexOf('class="link-preview"'),
+      );
+    }
+  });
+
   it("marks a link post's referenced article as u-bookmark-of, never as the entry's own u-url", () => {
     const post = createPostView({ format: "link" });
 

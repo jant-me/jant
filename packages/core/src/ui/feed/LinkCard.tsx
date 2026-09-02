@@ -1,9 +1,10 @@
 /**
  * Link Card
  *
- * Author commentary renders as first-class prose (same level as Note body).
- * The link reference (domain, title, preview) sits in a compact card below,
- * keeping the author's voice visually distinct from the referenced content.
+ * The link reference (domain, title, preview) comes first, then the author's
+ * commentary as first-class prose (same level as a Note body) — the reader
+ * sees what is being referenced before what is said about it. Feed, compact
+ * and detail differ only in heading level, never in that order.
  */
 
 import type { FC } from "hono/jsx";
@@ -60,6 +61,33 @@ export const LinkCard: FC<TimelineCardProps> = ({
       </div>
     ));
 
+  const titleLinkEl = post.title && (
+    <a
+      href={safeUrl || post.permalink}
+      class={titleLinkClass}
+      target={safeUrl ? "_blank" : undefined}
+      rel={safeUrl ? "noopener noreferrer" : undefined}
+    >
+      {post.title}
+    </a>
+  );
+
+  /* Detail promotes the title to the page heading and carries the rating with
+     it; feed and compact keep it a card heading. Only the wrapper differs —
+     the link itself, and where the title sits in the reference, do not. */
+  const titleEl =
+    post.title &&
+    (isDetail ? (
+      <div class="post-header-block">
+        <h1 class="p-name post-detail-title feed-link-title">{titleLinkEl}</h1>
+        {showHeaderRating && <StarRating rating={post.rating} />}
+      </div>
+    ) : (
+      <h2 class={`p-name feed-link-title ${isCompact ? "text-sm" : ""}`}>
+        {titleLinkEl}
+      </h2>
+    ));
+
   const previewEl = !isCompact && post.previewImageUrl && (
     <LinkPreview
       imageUrl={post.previewImageUrl}
@@ -92,22 +120,14 @@ export const LinkCard: FC<TimelineCardProps> = ({
     <StarRating rating={post.rating} />
   );
 
-  /* -- Link reference: domain + title + preview (feed & compact only) -- */
+  /* -- Link reference: domain + title + preview, in that order in every mode.
+     The preview is part of what is being referenced, so the author's
+     commentary always follows it — a detail page that led with the body read
+     as a comment on something the reader had not seen yet. -- */
   const linkRef = (
     <>
       {domainEl}
-      {post.title && (
-        <h2 class={`p-name feed-link-title ${isCompact ? "text-sm" : ""}`}>
-          <a
-            href={safeUrl || post.permalink}
-            class={titleLinkClass}
-            target={safeUrl ? "_blank" : undefined}
-            rel={safeUrl ? "noopener noreferrer" : undefined}
-          >
-            {post.title}
-          </a>
-        </h2>
-      )}
+      {titleEl}
       {previewEl}
     </>
   );
@@ -119,35 +139,8 @@ export const LinkCard: FC<TimelineCardProps> = ({
       {...getPostArticleAttributes(post)}
     >
       {!isCompact && !display?.hideStatusBadges && <PostStatusBadges />}
-      {isDetail ? (
-        <>
-          {domainEl}
-          {post.title && (
-            <div class="post-header-block">
-              <h1 class="p-name post-detail-title feed-link-title">
-                <a
-                  href={safeUrl || post.permalink}
-                  class={titleLinkClass}
-                  target={safeUrl ? "_blank" : undefined}
-                  rel={safeUrl ? "noopener noreferrer" : undefined}
-                >
-                  {post.title}
-                </a>
-              </h1>
-              {showHeaderRating && <StarRating rating={post.rating} />}
-            </div>
-          )}
-          {bodyEl}
-          {previewEl}
-        </>
-      ) : isCompact ? (
-        linkRef
-      ) : (
-        <>
-          {linkRef}
-          {bodyEl}
-        </>
-      )}
+      {linkRef}
+      {bodyEl}
       {(() => {
         const tail = (
           <>
