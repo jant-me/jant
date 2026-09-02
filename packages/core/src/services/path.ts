@@ -20,11 +20,7 @@ import type { PathKind, PathRecord, Status } from "../types.js";
 
 export interface ResolvedPath extends PathRecord {
   targetType:
-    | "post"
-    | "collection"
-    | "smart_collection"
-    | "redirect"
-    | "archive";
+    "post" | "collection" | "smart_collection" | "redirect" | "archive";
 }
 
 export interface CreatePathInput {

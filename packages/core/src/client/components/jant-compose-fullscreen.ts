@@ -371,53 +371,61 @@ export class JantComposeFullscreen extends LitElement {
           </header>
           <div class="compose-fullscreen-content">
             <div class="compose-fullscreen-inner">
-              ${replyContext
-                ? html`
-                    <div
-                      class="compose-thread-layout compose-fullscreen-thread-layout"
-                    >
-                      <div class="compose-reply-row">
-                        <div class="compose-thread-dot"></div>
-                        <div
-                          class=${classMap({
-                            "compose-reply-context": true,
-                            expanded: this._replyExpanded,
-                          })}
-                        >
-                          <div class="compose-reply-context-body">
-                            ${unsafeHTML(replyContext.contentHtml)}
+              ${
+                replyContext
+                  ? html`
+                      <div
+                        class="compose-thread-layout compose-fullscreen-thread-layout"
+                      >
+                        <div class="compose-reply-row">
+                          <div class="compose-thread-dot"></div>
+                          <div
+                            class=${classMap({
+                              "compose-reply-context": true,
+                              expanded: this._replyExpanded,
+                            })}
+                          >
+                            <div class="compose-reply-context-body">
+                              ${unsafeHTML(replyContext.contentHtml)}
+                            </div>
+                            ${
+                              !this._replyExpanded
+                                ? html`<div class="compose-reply-fade"></div>`
+                                : nothing
+                            }
                           </div>
-                          ${!this._replyExpanded
-                            ? html`<div class="compose-reply-fade"></div>`
-                            : nothing}
+                        </div>
+                        <div class="compose-reply-meta">
+                          ${
+                            replyContext.dateText
+                              ? html`<span>${replyContext.dateText}</span
+                                  ><span>·</span>`
+                              : nothing
+                          }
+                          <button
+                            type="button"
+                            class="compose-reply-toggle"
+                            @click=${() => {
+                              this._replyExpanded = !this._replyExpanded;
+                            }}
+                          >
+                            ${
+                              this._replyExpanded
+                                ? this.labels.showLess
+                                : this.labels.showMore
+                            }
+                          </button>
+                        </div>
+                        <div
+                          class="compose-editor-row compose-fullscreen-editor-row is-current"
+                        >
+                          <div class="compose-thread-dot"></div>
+                          ${editorSurface("reply")}
                         </div>
                       </div>
-                      <div class="compose-reply-meta">
-                        ${replyContext.dateText
-                          ? html`<span>${replyContext.dateText}</span
-                              ><span>·</span>`
-                          : nothing}
-                        <button
-                          type="button"
-                          class="compose-reply-toggle"
-                          @click=${() => {
-                            this._replyExpanded = !this._replyExpanded;
-                          }}
-                        >
-                          ${this._replyExpanded
-                            ? this.labels.showLess
-                            : this.labels.showMore}
-                        </button>
-                      </div>
-                      <div
-                        class="compose-editor-row compose-fullscreen-editor-row is-current"
-                      >
-                        <div class="compose-thread-dot"></div>
-                        ${editorSurface("reply")}
-                      </div>
-                    </div>
-                  `
-                : editorSurface("note")}
+                    `
+                  : editorSurface("note")
+              }
             </div>
           </div>
         </div>

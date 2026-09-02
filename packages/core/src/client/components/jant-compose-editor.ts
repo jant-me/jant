@@ -2782,15 +2782,15 @@ export class JantComposeEditor extends LitElement {
                                 .playsInline=${true}
                                 .muted=${true}
                                 @loadeddata=${() =>
-                                this._setAttachmentPreviewFailure(
-                                  a.clientId,
-                                  false,
-                                )}
+                                  this._setAttachmentPreviewFailure(
+                                    a.clientId,
+                                    false,
+                                  )}
                                 @error=${() =>
-                                this._setAttachmentPreviewFailure(
-                                  a.clientId,
-                                  true,
-                                )}
+                                  this._setAttachmentPreviewFailure(
+                                    a.clientId,
+                                    true,
+                                  )}
                               ></video>
                               <div class="compose-attachment-play-icon">
                                 <svg
@@ -2826,15 +2826,15 @@ export class JantComposeEditor extends LitElement {
                                   alt=""
                                   class="compose-attachment-img"
                                   @load=${() =>
-                                  this._setAttachmentPreviewFailure(
-                                    a.clientId,
-                                    false,
-                                  )}
+                                    this._setAttachmentPreviewFailure(
+                                      a.clientId,
+                                      false,
+                                    )}
                                   @error=${() =>
-                                  this._setAttachmentPreviewFailure(
-                                    a.clientId,
-                                    true,
-                                  )}
+                                    this._setAttachmentPreviewFailure(
+                                      a.clientId,
+                                      true,
+                                    )}
                                 />
                               `
                     }

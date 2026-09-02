@@ -527,9 +527,11 @@ export class JantSmartCollectionDialog extends LitElement {
               ${this.labels.editLink}
             </button>
           </div>
-          ${problem
-            ? html`<p class="collection-dialog-link-problem">${problem}</p>`
-            : nothing}
+          ${
+            problem
+              ? html`<p class="collection-dialog-link-problem">${problem}</p>`
+              : nothing
+          }
         </div>
       `;
     }
@@ -544,17 +546,19 @@ export class JantSmartCollectionDialog extends LitElement {
             <label class="label mb-0" for="smart-collection-slug"
               >${this.labels.link}</label
             >
-            ${canReset
-              ? html`
-                  <button
-                    type="button"
-                    class="collection-quick-link-action"
-                    @click=${() => this.#resetSlug()}
-                  >
-                    ${this.labels.resetLink}
-                  </button>
-                `
-              : nothing}
+            ${
+              canReset
+                ? html`
+                    <button
+                      type="button"
+                      class="collection-quick-link-action"
+                      @click=${() => this.#resetSlug()}
+                    >
+                      ${this.labels.resetLink}
+                    </button>
+                  `
+                : nothing
+            }
           </div>
           <input
             id="smart-collection-slug"
@@ -571,20 +575,24 @@ export class JantSmartCollectionDialog extends LitElement {
             @input=${(event: Event) =>
               this.#onSlugInput((event.target as HTMLInputElement).value)}
           />
-          ${problem
-            ? html`<p class="collection-dialog-link-problem">${problem}</p>`
-            : this._slug
-              ? html`<p class="collection-dialog-link-preview">
-                  ${this.#linkPreview()}
+          ${
+            problem
+              ? html`<p class="collection-dialog-link-problem">${problem}</p>`
+              : this._slug
+                ? html`<p class="collection-dialog-link-preview">
+                    ${this.#linkPreview()}
+                  </p>`
+                : html`<p class="collection-dialog-link-help">
+                    ${this.labels.linkHelp}
+                  </p>`
+          }
+          ${
+            moved
+              ? html`<p class="collection-dialog-link-problem">
+                  ${this.labels.linkMovesWarning}
                 </p>`
-              : html`<p class="collection-dialog-link-help">
-                  ${this.labels.linkHelp}
-                </p>`}
-          ${moved
-            ? html`<p class="collection-dialog-link-problem">
-                ${this.labels.linkMovesWarning}
-              </p>`
-            : nothing}
+              : nothing
+          }
         </div>
       </div>
     `;
@@ -755,11 +763,13 @@ export class JantSmartCollectionDialog extends LitElement {
           <!-- The count belongs to the whole section, not to the last row:
                it answers "what did that just do" from a fixed place. -->
           <p class="smart-collection-count" aria-live="polite">
-            ${this._preview
-              ? this.labels.countSummary
-                  .replace("{count}", String(this._preview.count))
-                  .replace("{total}", String(this._preview.baseline))
-              : this.labels.counting}
+            ${
+              this._preview
+                ? this.labels.countSummary
+                    .replace("{count}", String(this._preview.count))
+                    .replace("{total}", String(this._preview.baseline))
+                : this.labels.counting
+            }
           </p>
         </div>
 
@@ -767,13 +777,15 @@ export class JantSmartCollectionDialog extends LitElement {
           ${hasRows ? this.labels.matchAllHint : this.labels.noConditions}
         </p>
 
-        ${hasRows
-          ? html`
-              <div class="smart-condition-rows">
-                ${this._rows.map((row) => this.#renderConditionRow(row))}
-              </div>
-            `
-          : nothing}
+        ${
+          hasRows
+            ? html`
+                <div class="smart-condition-rows">
+                  ${this._rows.map((row) => this.#renderConditionRow(row))}
+                </div>
+              `
+            : nothing
+        }
 
         <div class="smart-condition-add">
           <button
@@ -790,29 +802,31 @@ export class JantSmartCollectionDialog extends LitElement {
           >
             ${PLUS_ICON}${this.labels.addCondition}
           </button>
-          ${this._addMenuOpen
-            ? html`
-                <div
-                  class="collections-page-menu smart-condition-menu"
-                  data-add-menu
-                  role="menu"
-                  @click=${(event: Event) => event.stopPropagation()}
-                >
-                  ${available.map(
-                    (key) => html`
-                      <button
-                        type="button"
-                        class="collections-page-menu-item"
-                        role="menuitem"
-                        @click=${() => this.#addRow(key)}
-                      >
-                        ${this.labels.dimensions[key] ?? key}
-                      </button>
-                    `,
-                  )}
-                </div>
-              `
-            : nothing}
+          ${
+            this._addMenuOpen
+              ? html`
+                  <div
+                    class="collections-page-menu smart-condition-menu"
+                    data-add-menu
+                    role="menu"
+                    @click=${(event: Event) => event.stopPropagation()}
+                  >
+                    ${available.map(
+                      (key) => html`
+                        <button
+                          type="button"
+                          class="collections-page-menu-item"
+                          role="menuitem"
+                          @click=${() => this.#addRow(key)}
+                        >
+                          ${this.labels.dimensions[key] ?? key}
+                        </button>
+                      `,
+                    )}
+                  </div>
+                `
+              : nothing
+          }
         </div>
       </section>
     `;
@@ -855,11 +869,13 @@ export class JantSmartCollectionDialog extends LitElement {
             </h2>
             <!-- Said once, where it is needed: by the time anyone edits one
                  they know what it is. -->
-            ${this._mode === "create"
-              ? html`<p class="collection-dialog-note">
-                  ${this.labels.whatItIs}
-                </p>`
-              : nothing}
+            ${
+              this._mode === "create"
+                ? html`<p class="collection-dialog-note">
+                    ${this.labels.whatItIs}
+                  </p>`
+                : nothing
+            }
           </header>
 
           <div
@@ -962,12 +978,14 @@ export class JantSmartCollectionDialog extends LitElement {
               </div>
             </section>
 
-            ${this._error
-              ? html`<div class="alert-destructive" role="alert">
-                  ${ALERT_ICON}
-                  <section><p>${this._error}</p></section>
-                </div>`
-              : nothing}
+            ${
+              this._error
+                ? html`<div class="alert-destructive" role="alert">
+                    ${ALERT_ICON}
+                    <section><p>${this._error}</p></section>
+                  </div>`
+                : nothing
+            }
           </div>
 
           <footer class="collection-dialog-actions">

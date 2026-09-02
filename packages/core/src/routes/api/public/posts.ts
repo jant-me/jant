@@ -107,8 +107,7 @@ export type PublicPostMarkdownResponse = PublicPostBaseResponse & {
 };
 
 export type PublicPostResponse =
-  | PublicPostRenderedResponse
-  | PublicPostMarkdownResponse;
+  PublicPostRenderedResponse | PublicPostMarkdownResponse;
 
 function isPublicDetailVisible(post: Post | null): post is Post {
   return (

@@ -36,8 +36,7 @@ function createPostView(overrides: Partial<PostView> = {}): PostView {
 
 function renderWithI18n(
   render: () =>
-    | ReturnType<typeof ThreadPreview>
-    | ReturnType<typeof CuratedThreadPreview>,
+    ReturnType<typeof ThreadPreview> | ReturnType<typeof CuratedThreadPreview>,
 ) {
   const i18n = createI18n("en");
   const c = {

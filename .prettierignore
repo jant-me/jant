@@ -24,6 +24,12 @@ sites/demo-source/canonical/site-export/themes/jant/static/_jant/
 *.pot
 pnpm-lock.yaml
 
+# Vendored upstream bundles, kept byte-identical to the reference copy under
+# `references/datastar/` so a version bump reads as a clean diff. Prettier's own
+# formatting drift between releases (`for (; n; )` vs `for (; n;)`) would
+# otherwise rewrite them on every upgrade.
+packages/core/src/vendor/
+
 # Config
 .lingui/
 references/

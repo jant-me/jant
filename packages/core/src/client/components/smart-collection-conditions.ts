@@ -101,29 +101,31 @@ const mediaControl: DimensionControl["render"] = (value, emit, labels) => {
           ${labels.values["media.none"] ?? "none"}
         </option>
       </select>
-      ${value === "none"
-        ? null
-        : html`
-            <div class="smart-condition-media-kinds">
-              ${MEDIA_KINDS.map(
-                (kind) => html`
-                  <label class="smart-condition-kind">
-                    <input
-                      class="input"
-                      type="checkbox"
-                      .checked=${kinds.includes(kind)}
-                      @change=${(event: Event) =>
-                        toggleKind(
-                          kind,
-                          (event.target as HTMLInputElement).checked,
-                        )}
-                    />
-                    <span>${labels.values[`media.${kind}`] ?? kind}</span>
-                  </label>
-                `,
-              )}
-            </div>
-          `}
+      ${
+        value === "none"
+          ? null
+          : html`
+              <div class="smart-condition-media-kinds">
+                ${MEDIA_KINDS.map(
+                  (kind) => html`
+                    <label class="smart-condition-kind">
+                      <input
+                        class="input"
+                        type="checkbox"
+                        .checked=${kinds.includes(kind)}
+                        @change=${(event: Event) =>
+                          toggleKind(
+                            kind,
+                            (event.target as HTMLInputElement).checked,
+                          )}
+                      />
+                      <span>${labels.values[`media.${kind}`] ?? kind}</span>
+                    </label>
+                  `,
+                )}
+              </div>
+            `
+      }
     </div>
   `;
 };

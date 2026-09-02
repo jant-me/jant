@@ -185,18 +185,20 @@ export class JantSettingsAvatar extends LitElement {
                   />
                 </label>
               </form>
-              ${this.avatarUrl
-                ? html`
-                    <button
-                      type="button"
-                      class="btn-outline text-sm"
-                      ?disabled=${this._removeLoading}
-                      @click=${() => void this._removeAvatar()}
-                    >
-                      ${this.labels.remove}
-                    </button>
-                  `
-                : nothing}
+              ${
+                this.avatarUrl
+                  ? html`
+                      <button
+                        type="button"
+                        class="btn-outline text-sm"
+                        ?disabled=${this._removeLoading}
+                        @click=${() => void this._removeAvatar()}
+                      >
+                        ${this.labels.remove}
+                      </button>
+                    `
+                  : nothing
+              }
             </div>
           </div>
           <p class="text-sm text-muted-foreground">${this.labels.avatarHelp}</p>
@@ -216,21 +218,23 @@ export class JantSettingsAvatar extends LitElement {
               ?disabled=${this._loading || !this._dirty}
               @click=${this._saveDisplay}
             >
-              ${this._loading
-                ? html`<svg
-                    class="animate-spin size-4"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    role="status"
-                  >
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                  </svg>`
-                : nothing}
+              ${
+                this._loading
+                  ? html`<svg
+                      class="animate-spin size-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      role="status"
+                    >
+                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                    </svg>`
+                  : nothing
+              }
               ${this.labels.save}
             </button>
             <button

@@ -235,17 +235,19 @@ export class JantCollectionForm extends LitElement {
           <div class="field">
             <div class="collection-quick-link-row">
               <label class="label mb-0">${this.labels.slugLabel}</label>
-              ${canResetToTitle
-                ? html`
-                    <button
-                      type="button"
-                      class="collection-quick-link-action"
-                      @click=${() => this.#resetSlugToSuggested()}
-                    >
-                      ${this.labels.resetSlugLabel}
-                    </button>
-                  `
-                : nothing}
+              ${
+                canResetToTitle
+                  ? html`
+                      <button
+                        type="button"
+                        class="collection-quick-link-action"
+                        @click=${() => this.#resetSlugToSuggested()}
+                      >
+                        ${this.labels.resetSlugLabel}
+                      </button>
+                    `
+                  : nothing
+              }
             </div>
             <input
               type="text"
@@ -255,9 +257,9 @@ export class JantCollectionForm extends LitElement {
               pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
               maxlength=${MAX_COLLECTION_SLUG_LENGTH}
               .value=${this._slug}
-              aria-invalid=${this.#getSlugValidationMessage()
-                ? "true"
-                : "false"}
+              aria-invalid=${
+                this.#getSlugValidationMessage() ? "true" : "false"
+              }
               placeholder="my-collection"
               @input=${(event: Event) => this.#handleSlugInput(event)}
             />

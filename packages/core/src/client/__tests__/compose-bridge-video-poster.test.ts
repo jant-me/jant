@@ -85,8 +85,7 @@ async function settle() {
 
 function uploadedPoster(): Blob | undefined {
   const metadata = uploadViaSession.mock.calls[0]?.[1] as
-    | { poster?: Blob }
-    | undefined;
+    { poster?: Blob } | undefined;
   return metadata?.poster;
 }
 

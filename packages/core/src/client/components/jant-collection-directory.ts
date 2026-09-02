@@ -1029,10 +1029,10 @@ export class JantCollectionsManager extends LitElement {
             ? html`
                 <div class="collection-directory-description prose">
                   ${unsafeHTML(
-                  renderMarkdown(collection.description, {
-                    namespace: collection.id,
-                  }),
-                )}
+                    renderMarkdown(collection.description, {
+                      namespace: collection.id,
+                    }),
+                  )}
                 </div>
               `
             : nothing
@@ -1141,10 +1141,10 @@ export class JantCollectionsManager extends LitElement {
             ? html`
                 <div class="collection-directory-description prose">
                   ${unsafeHTML(
-                  renderMarkdown(smartCollection.description, {
-                    namespace: smartCollection.id,
-                  }),
-                )}
+                    renderMarkdown(smartCollection.description, {
+                      namespace: smartCollection.id,
+                    }),
+                  )}
                 </div>
               `
             : nothing
@@ -1358,8 +1358,8 @@ export class JantCollectionsManager extends LitElement {
             ? html`
                 <div class="collection-directory-description prose">
                   ${unsafeHTML(
-                  renderMarkdown(item.description, { namespace: item.id }),
-                )}
+                    renderMarkdown(item.description, { namespace: item.id }),
+                  )}
                 </div>
               `
             : html`
@@ -1471,149 +1471,153 @@ export class JantCollectionsManager extends LitElement {
                   @click=${(e: Event) => e.stopPropagation()}
                 >
                   ${
-                  smartCollection
-                    ? html`
-                        <!-- Opens the dialog, not an editor page: creating and
+                    smartCollection
+                      ? html`
+                          <!-- Opens the dialog, not an editor page: creating and
                            editing a smart collection are one surface. There is
                            deliberately no "Remove from Collections" — a
                            directory row is only a position, and deleting it
                            would move the entry to the end rather than hide it,
                            so the menu item would not do what it says. -->
-                        <button
-                          type="button"
-                          class="collections-page-menu-item"
-                          @click=${() => {
-                          this._showItemMenuId = null;
-                          document.removeEventListener(
-                            "click",
-                            this.#closeItemMenu,
-                          );
-                          void openSmartCollectionDialog({
-                            smartCollectionId: smartCollection.id,
-                          }).then((changed) => {
-                            if (changed) void this.#refreshList();
-                          });
-                        }}
-                        >
-                          ${this.labels.edit}
-                        </button>
-                        ${
-                        this.navigationCollectionIds.includes(
-                          smartCollection.id,
-                        )
-                          ? html`
-                              <a
-                                href=${publicPath(NAVIGATION_SETTINGS_PATH)}
-                                class="collections-page-menu-item"
-                              >
-                                ${this.labels.editNavigation}
-                              </a>
-                            `
-                          : html`
-                              <button
-                                type="button"
-                                class="collections-page-menu-item"
-                                ?disabled=${
-                                this._addingToNavigationId ===
-                                smartCollection.id
-                              }
-                                @click=${() =>
-                                void this.#addToNavigation(
-                                  smartCollection.id,
-                                  addSmartCollectionToNavigation,
-                                )}
-                              >
-                                ${
-                                this._addingToNavigationId ===
-                                smartCollection.id
-                                  ? this.labels.addingToNavigation
-                                  : this.labels.addToNavigation
-                              }
-                              </button>
-                            `
-                      }
-                        <button
-                          type="button"
-                          class="collections-page-menu-item collections-page-menu-item-danger"
-                          @click=${() =>
-                          void this.#deleteSmartCollection(smartCollection)}
-                        >
-                          ${this.labels.deleteSmartCollection}
-                        </button>
-                      `
-                    : collection
-                      ? html`
-                          <button
-                            type="button"
-                            class="collections-page-menu-item"
-                            @click=${() =>
-                            void this.#editCollection(collection.id)}
-                          >
-                            ${this.labels.edit}
-                          </button>
-                          ${
-                          this.navigationCollectionIds.includes(collection.id)
-                            ? html`
-                                <a
-                                  href=${publicPath(NAVIGATION_SETTINGS_PATH)}
-                                  class="collections-page-menu-item"
-                                >
-                                  ${this.labels.editNavigation}
-                                </a>
-                              `
-                            : html`
-                                <button
-                                  type="button"
-                                  class="collections-page-menu-item"
-                                  ?disabled=${
-                                  this._addingToNavigationId === collection.id
-                                }
-                                  @click=${() =>
-                                  void this.#addToNavigation(
-                                    collection.id,
-                                    addCollectionToNavigation,
-                                  )}
-                                >
-                                  ${
-                                  this._addingToNavigationId === collection.id
-                                    ? this.labels.addingToNavigation
-                                    : this.labels.addToNavigation
-                                }
-                                </button>
-                              `
-                        }
-                          <button
-                            type="button"
-                            class="collections-page-menu-item collections-page-menu-item-danger"
-                            @click=${() => this.#deleteCollection(collection)}
-                          >
-                            ${this.labels.deleteCollection}
-                          </button>
-                        `
-                      : html`
                           <button
                             type="button"
                             class="collections-page-menu-item"
                             @click=${() => {
-                            this._showItemMenuId = null;
-                            document.removeEventListener(
-                              "click",
-                              this.#closeItemMenu,
-                            );
-                            this.#toggleLinkEdit(item);
-                          }}
+                              this._showItemMenuId = null;
+                              document.removeEventListener(
+                                "click",
+                                this.#closeItemMenu,
+                              );
+                              void openSmartCollectionDialog({
+                                smartCollectionId: smartCollection.id,
+                              }).then((changed) => {
+                                if (changed) void this.#refreshList();
+                              });
+                            }}
                           >
                             ${this.labels.edit}
                           </button>
+                          ${
+                            this.navigationCollectionIds.includes(
+                              smartCollection.id,
+                            )
+                              ? html`
+                                  <a
+                                    href=${publicPath(NAVIGATION_SETTINGS_PATH)}
+                                    class="collections-page-menu-item"
+                                  >
+                                    ${this.labels.editNavigation}
+                                  </a>
+                                `
+                              : html`
+                                  <button
+                                    type="button"
+                                    class="collections-page-menu-item"
+                                    ?disabled=${
+                                      this._addingToNavigationId ===
+                                      smartCollection.id
+                                    }
+                                    @click=${() =>
+                                      void this.#addToNavigation(
+                                        smartCollection.id,
+                                        addSmartCollectionToNavigation,
+                                      )}
+                                  >
+                                    ${
+                                      this._addingToNavigationId ===
+                                      smartCollection.id
+                                        ? this.labels.addingToNavigation
+                                        : this.labels.addToNavigation
+                                    }
+                                  </button>
+                                `
+                          }
                           <button
                             type="button"
                             class="collections-page-menu-item collections-page-menu-item-danger"
-                            @click=${() => this.#deleteLink(item)}
+                            @click=${() =>
+                              void this.#deleteSmartCollection(smartCollection)}
                           >
-                            ${this.labels.deleteLink}
+                            ${this.labels.deleteSmartCollection}
                           </button>
                         `
-                }
+                      : collection
+                        ? html`
+                            <button
+                              type="button"
+                              class="collections-page-menu-item"
+                              @click=${() =>
+                                void this.#editCollection(collection.id)}
+                            >
+                              ${this.labels.edit}
+                            </button>
+                            ${
+                              this.navigationCollectionIds.includes(
+                                collection.id,
+                              )
+                                ? html`
+                                    <a
+                                      href=${publicPath(NAVIGATION_SETTINGS_PATH)}
+                                      class="collections-page-menu-item"
+                                    >
+                                      ${this.labels.editNavigation}
+                                    </a>
+                                  `
+                                : html`
+                                    <button
+                                      type="button"
+                                      class="collections-page-menu-item"
+                                      ?disabled=${
+                                        this._addingToNavigationId ===
+                                        collection.id
+                                      }
+                                      @click=${() =>
+                                        void this.#addToNavigation(
+                                          collection.id,
+                                          addCollectionToNavigation,
+                                        )}
+                                    >
+                                      ${
+                                        this._addingToNavigationId ===
+                                        collection.id
+                                          ? this.labels.addingToNavigation
+                                          : this.labels.addToNavigation
+                                      }
+                                    </button>
+                                  `
+                            }
+                            <button
+                              type="button"
+                              class="collections-page-menu-item collections-page-menu-item-danger"
+                              @click=${() => this.#deleteCollection(collection)}
+                            >
+                              ${this.labels.deleteCollection}
+                            </button>
+                          `
+                        : html`
+                            <button
+                              type="button"
+                              class="collections-page-menu-item"
+                              @click=${() => {
+                                this._showItemMenuId = null;
+                                document.removeEventListener(
+                                  "click",
+                                  this.#closeItemMenu,
+                                );
+                                this.#toggleLinkEdit(item);
+                              }}
+                            >
+                              ${this.labels.edit}
+                            </button>
+                            <button
+                              type="button"
+                              class="collections-page-menu-item collections-page-menu-item-danger"
+                              @click=${() => this.#deleteLink(item)}
+                            >
+                              ${this.labels.deleteLink}
+                            </button>
+                          `
+                  }
                 </div>
               `
             : nothing
@@ -1715,23 +1719,23 @@ export class JantCollectionsManager extends LitElement {
             hasLabel
               ? html`
                   ${
-                  group
-                    ? html`
-                        <a
-                          href=${viewPath(
-                          getCollectionSelectionPath(group.slugExpression),
-                        )}
-                          class="collection-directory-divider-link collection-directory-divider-text"
-                        >
-                          ${item.label}
-                        </a>
-                      `
-                    : html`
-                        <span class="collection-directory-divider-text">
-                          ${item.label}
-                        </span>
-                      `
-                }
+                    group
+                      ? html`
+                          <a
+                            href=${viewPath(
+                              getCollectionSelectionPath(group.slugExpression),
+                            )}
+                            class="collection-directory-divider-link collection-directory-divider-text"
+                          >
+                            ${item.label}
+                          </a>
+                        `
+                      : html`
+                          <span class="collection-directory-divider-text">
+                            ${item.label}
+                          </span>
+                        `
+                  }
                   <hr class="collection-directory-divider-line" />
                 `
               : html`<hr class="collection-directory-divider-line" />`
@@ -1863,16 +1867,16 @@ export class JantCollectionsManager extends LitElement {
                     class="collection-created-notice-action collection-created-notice-action-primary"
                     ?disabled=${this._addingToNavigationId === collection.id}
                     @click=${() =>
-                    void this.#addToNavigation(
-                      collection.id,
-                      addCollectionToNavigation,
-                    )}
+                      void this.#addToNavigation(
+                        collection.id,
+                        addCollectionToNavigation,
+                      )}
                   >
                     ${
-                    this._addingToNavigationId === collection.id
-                      ? this.labels.addingToNavigation
-                      : this.labels.addToNavigation
-                  }
+                      this._addingToNavigationId === collection.id
+                        ? this.labels.addingToNavigation
+                        : this.labels.addToNavigation
+                    }
                   </button>
                 `
           }
@@ -1914,20 +1918,23 @@ export class JantCollectionsManager extends LitElement {
           ? html`
               <div id="collections-manager-list" class="collection-directory">
                 ${(() => {
-                const labels = this.#computeSequenceLabels();
-                return this._items.map((item, index) => {
-                  if (item.type === "collection") {
-                    return this.#renderCollectionItem(item, labels[index]);
-                  }
-                  if (item.type === "smart_collection") {
-                    return this.#renderSmartCollectionItem(item, labels[index]);
-                  }
-                  if (item.type === "link") {
-                    return this.#renderLinkItem(item, labels[index]);
-                  }
-                  return this.#renderDividerItem(item, index);
-                });
-              })()}
+                  const labels = this.#computeSequenceLabels();
+                  return this._items.map((item, index) => {
+                    if (item.type === "collection") {
+                      return this.#renderCollectionItem(item, labels[index]);
+                    }
+                    if (item.type === "smart_collection") {
+                      return this.#renderSmartCollectionItem(
+                        item,
+                        labels[index],
+                      );
+                    }
+                    if (item.type === "link") {
+                      return this.#renderLinkItem(item, labels[index]);
+                    }
+                    return this.#renderDividerItem(item, index);
+                  });
+                })()}
               </div>
             `
           : html`<p class="text-muted-foreground">${this.labels.emptyState}</p>`

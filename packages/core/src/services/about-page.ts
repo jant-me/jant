@@ -36,11 +36,7 @@ export type AboutPageStatus =
       path: typeof ABOUT_PAGE_PATH;
       conflict: {
         targetType:
-          | "collection"
-          | "smart_collection"
-          | "redirect"
-          | "archive"
-          | "post";
+          "collection" | "smart_collection" | "redirect" | "archive" | "post";
         id: string | null;
         title: string | null;
       };

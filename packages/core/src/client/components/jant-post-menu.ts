@@ -101,11 +101,7 @@ interface ThreadCollectionsResponse {
 }
 
 type PostMenuView =
-  | "menu"
-  | "collections"
-  | "visibility"
-  | "language"
-  | "language-switch";
+  "menu" | "collections" | "visibility" | "language" | "language-switch";
 
 /**
  * Where the language panel puts focus, in document order rather than in the
@@ -722,8 +718,7 @@ export class JantPostMenu extends LitElement {
     this.#close({ restoreFocus: false });
 
     const composeEl = document.querySelector("jant-compose-dialog") as
-      | import("./jant-compose-dialog.js").JantComposeDialog
-      | null;
+      import("./jant-compose-dialog.js").JantComposeDialog | null;
     if (composeEl) {
       await composeEl.openTranslation(data.threadId, tag);
       return;
@@ -1022,8 +1017,7 @@ export class JantPostMenu extends LitElement {
       "compose-dialog",
     ) as HTMLDialogElement | null;
     const composeEl = dialog?.querySelector("jant-compose-dialog") as
-      | import("./jant-compose-dialog.js").JantComposeDialog
-      | null;
+      import("./jant-compose-dialog.js").JantComposeDialog | null;
     if (composeEl) {
       await composeEl.openEdit(postId);
     }
@@ -1428,8 +1422,7 @@ export class JantPostMenu extends LitElement {
     if (!detail) return;
 
     const formEl = this.querySelector("jant-collection-form") as
-      | (HTMLElement & { loading: boolean })
-      | null;
+      (HTMLElement & { loading: boolean }) | null;
     if (formEl) formEl.loading = true;
 
     try {
@@ -1492,15 +1485,13 @@ export class JantPostMenu extends LitElement {
   /** Get collection form labels from the compose dialog (already on the page) */
   #getCollectionFormLabels() {
     const composeEl = document.querySelector("jant-compose-dialog") as
-      | import("./jant-compose-dialog.js").JantComposeDialog
-      | null;
+      import("./jant-compose-dialog.js").JantComposeDialog | null;
     return composeEl?.labels?.collectionFormLabels ?? null;
   }
 
   #getAddCollectionLabel() {
     const composeEl = document.querySelector("jant-compose-dialog") as
-      | import("./jant-compose-dialog.js").JantComposeDialog
-      | null;
+      import("./jant-compose-dialog.js").JantComposeDialog | null;
     return composeEl?.labels?.addCollection ?? "Add Collection";
   }
 
@@ -1727,116 +1718,126 @@ export class JantPostMenu extends LitElement {
             <span>Collections</span>
           </div>
         </div>
-        ${collections.length > 0
-          ? html`<div class="post-menu-picker-search">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search collections..."
-                autocomplete="off"
-                autocorrect="off"
-                spellcheck="false"
-                .value=${this._collectionSearch}
-                @keydown=${this.#handleCollectionSearchKeydown}
-                @input=${(e: Event) => {
-                  this._collectionSearch = (e.target as HTMLInputElement).value;
-                }}
-              />
-            </div>`
-          : nothing}
+        ${
+          collections.length > 0
+            ? html`<div class="post-menu-picker-search">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search collections..."
+                  autocomplete="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  .value=${this._collectionSearch}
+                  @keydown=${this.#handleCollectionSearchKeydown}
+                  @input=${(e: Event) => {
+                    this._collectionSearch = (
+                      e.target as HTMLInputElement
+                    ).value;
+                  }}
+                />
+              </div>`
+            : nothing
+        }
         <div
           class="post-menu-picker-list"
           role="listbox"
           aria-multiselectable="true"
         >
-          ${this._collectionsLoading
-            ? html`<div class="post-menu-picker-empty">Loading...</div>`
-            : filtered.length > 0
-              ? filtered.map((c) => {
-                  const selected = this._threadCollectionIds.includes(c.id);
-                  return html`
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected=${selected ? "true" : "false"}
-                      class=${`post-menu-picker-option${
-                        selected ? " post-menu-picker-option-selected" : ""
-                      }`}
-                      @keydown=${(event: globalThis.KeyboardEvent) =>
-                        this.#handleCollectionOptionKeydown(event, c.id)}
-                      @click=${(event: globalThis.MouseEvent) =>
-                        this.#handleCollectionOptionClick(event, c.id)}
-                    >
-                      <span class="post-menu-picker-title">${c.title}</span>
-                      ${selected
-                        ? html`<span
-                            class="post-menu-picker-marker post-menu-picker-marker-selected"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              aria-hidden="true"
-                            >
-                              <circle
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                fill="currentColor"
-                              />
-                              <path
-                                d="M8 12.5 10.7 15.2 16.4 9.5"
-                                stroke="var(--site-page-bg)"
-                                stroke-width="2.3"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                              />
-                            </svg>
-                          </span>`
-                        : html`<span
-                            class="post-menu-picker-marker post-menu-picker-marker-add"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              aria-hidden="true"
-                            >
-                              <circle
-                                cx="12"
-                                cy="12"
-                                r="9"
-                                stroke="currentColor"
-                                stroke-width="1.8"
-                              />
-                              <path
-                                d="M12 8v8M8 12h8"
-                                stroke="currentColor"
-                                stroke-width="1.9"
-                                stroke-linecap="round"
-                              />
-                            </svg>
-                          </span>`}
-                    </button>
-                  `;
-                })
-              : html`<div class="post-menu-picker-empty">
-                  ${hasSearch
-                    ? "No matching collections"
-                    : "No collections yet"}
-                </div>`}
+          ${
+            this._collectionsLoading
+              ? html`<div class="post-menu-picker-empty">Loading...</div>`
+              : filtered.length > 0
+                ? filtered.map((c) => {
+                    const selected = this._threadCollectionIds.includes(c.id);
+                    return html`
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected=${selected ? "true" : "false"}
+                        class=${`post-menu-picker-option${
+                          selected ? " post-menu-picker-option-selected" : ""
+                        }`}
+                        @keydown=${(event: globalThis.KeyboardEvent) =>
+                          this.#handleCollectionOptionKeydown(event, c.id)}
+                        @click=${(event: globalThis.MouseEvent) =>
+                          this.#handleCollectionOptionClick(event, c.id)}
+                      >
+                        <span class="post-menu-picker-title">${c.title}</span>
+                        ${
+                          selected
+                            ? html`<span
+                                class="post-menu-picker-marker post-menu-picker-marker-selected"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  aria-hidden="true"
+                                >
+                                  <circle
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    fill="currentColor"
+                                  />
+                                  <path
+                                    d="M8 12.5 10.7 15.2 16.4 9.5"
+                                    stroke="var(--site-page-bg)"
+                                    stroke-width="2.3"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  />
+                                </svg>
+                              </span>`
+                            : html`<span
+                                class="post-menu-picker-marker post-menu-picker-marker-add"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  aria-hidden="true"
+                                >
+                                  <circle
+                                    cx="12"
+                                    cy="12"
+                                    r="9"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                  />
+                                  <path
+                                    d="M12 8v8M8 12h8"
+                                    stroke="currentColor"
+                                    stroke-width="1.9"
+                                    stroke-linecap="round"
+                                  />
+                                </svg>
+                              </span>`
+                        }
+                      </button>
+                    `;
+                  })
+                : html`<div class="post-menu-picker-empty">
+                    ${
+                      hasSearch
+                        ? "No matching collections"
+                        : "No collections yet"
+                    }
+                  </div>`
+          }
         </div>
         <div class="post-menu-picker-footer">
           <button
@@ -1906,111 +1907,119 @@ export class JantPostMenu extends LitElement {
         <div role="menu" class="post-menu-list">
           <!-- Both sections stand or fall together: with every other language
                spoken for there is nothing to switch to and nothing to add. -->
-          ${free.length > 0
-            ? html`
-                <div class="post-menu-section">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="post-menu-item"
-                    data-post-menu-open-language-switch
-                    ?disabled=${this._translationBusy}
-                    @click=${() => this.#openLanguageSwitch()}
-                  >
-                    <span class="post-menu-item-label">Change language</span>
-                    <span class="post-menu-item-meta"
-                      >${this.#languageLabel(current)}</span
+          ${
+            free.length > 0
+              ? html`
+                  <div class="post-menu-section">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="post-menu-item"
+                      data-post-menu-open-language-switch
+                      ?disabled=${this._translationBusy}
+                      @click=${() => this.#openLanguageSwitch()}
                     >
-                    <span class="post-menu-item-trailing post-menu-item-chevron"
-                      >${this.#iconChevronRight()}</span
-                    >
-                  </button>
-                </div>
-                <div class="post-menu-section">
-                  ${free.map(
-                    (language, index) => html`
-                      <button
-                        type="button"
-                        role="menuitem"
-                        class="post-menu-item"
-                        ?data-post-menu-translation-first=${index === 0}
-                        @click=${() => this.#writeTranslation(language.tag)}
+                      <span class="post-menu-item-label">Change language</span>
+                      <span class="post-menu-item-meta"
+                        >${this.#languageLabel(current)}</span
                       >
-                        <span class="post-menu-item-label"
-                          >Write the ${language.label} version</span
-                        >
-                        <span
-                          class="post-menu-item-trailing post-menu-item-chevron"
-                          >${this.#iconChevronRight()}</span
-                        >
-                      </button>
-                    `,
-                  )}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="post-menu-item"
-                    @click=${() => this.#openLinkPicker()}
-                  >
-                    <span class="post-menu-item-label"
-                      >Link a version you already wrote</span
-                    >
-                    <span class="post-menu-item-trailing post-menu-item-chevron"
-                      >${this.#iconChevronRight()}</span
-                    >
-                  </button>
-                </div>
-              `
-            : nothing}
-          ${linked.length > 0
-            ? html`
-                <div class="post-menu-section">
-                  <p class="post-menu-section-label">Other versions</p>
-                  ${linked.map((translation) => {
-                    const languageLabel = this.#languageLabel(
-                      translation.language,
-                    );
-                    return html`
-                      <div class="post-menu-row" data-post-menu-translation>
-                        <a
-                          role="menuitem"
-                          class="post-menu-item post-menu-row-main"
-                          href=${publicPath(`/${translation.slug}`)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title=${translation.label}
-                          aria-label=${`Open the ${languageLabel} version, ${translation.label}, in a new tab`}
-                        >
-                          <span
-                            class="post-menu-item-label"
-                            lang=${translation.language ?? nothing}
-                            >${languageLabel}</span
-                          >
-                          <span
-                            class="post-menu-item-trailing post-menu-item-chevron"
-                            >${this.#iconExternal()}</span
-                          >
-                        </a>
+                      <span
+                        class="post-menu-item-trailing post-menu-item-chevron"
+                        >${this.#iconChevronRight()}</span
+                      >
+                    </button>
+                  </div>
+                  <div class="post-menu-section">
+                    ${free.map(
+                      (language, index) => html`
                         <button
                           type="button"
                           role="menuitem"
-                          class="post-menu-row-action post-menu-row-action-danger"
-                          data-post-menu-translation-unlink
-                          ?disabled=${this._translationBusy}
-                          aria-label=${`Unlink the ${languageLabel} version`}
-                          @click=${() => this.#unlinkTranslation(translation)}
+                          class="post-menu-item"
+                          ?data-post-menu-translation-first=${index === 0}
+                          @click=${() => this.#writeTranslation(language.tag)}
                         >
-                          Unlink
+                          <span class="post-menu-item-label"
+                            >Write the ${language.label} version</span
+                          >
+                          <span
+                            class="post-menu-item-trailing post-menu-item-chevron"
+                            >${this.#iconChevronRight()}</span
+                          >
                         </button>
-                      </div>
-                    `;
-                  })}
-                </div>
-              `
-            : nothing}
-          ${this._translationsLoading
-            ? html`<p class="post-menu-hint">Loading…</p>`
-            : nothing}
+                      `,
+                    )}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="post-menu-item"
+                      @click=${() => this.#openLinkPicker()}
+                    >
+                      <span class="post-menu-item-label"
+                        >Link a version you already wrote</span
+                      >
+                      <span
+                        class="post-menu-item-trailing post-menu-item-chevron"
+                        >${this.#iconChevronRight()}</span
+                      >
+                    </button>
+                  </div>
+                `
+              : nothing
+          }
+          ${
+            linked.length > 0
+              ? html`
+                  <div class="post-menu-section">
+                    <p class="post-menu-section-label">Other versions</p>
+                    ${linked.map((translation) => {
+                      const languageLabel = this.#languageLabel(
+                        translation.language,
+                      );
+                      return html`
+                        <div class="post-menu-row" data-post-menu-translation>
+                          <a
+                            role="menuitem"
+                            class="post-menu-item post-menu-row-main"
+                            href=${publicPath(`/${translation.slug}`)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title=${translation.label}
+                            aria-label=${`Open the ${languageLabel} version, ${translation.label}, in a new tab`}
+                          >
+                            <span
+                              class="post-menu-item-label"
+                              lang=${translation.language ?? nothing}
+                              >${languageLabel}</span
+                            >
+                            <span
+                              class="post-menu-item-trailing post-menu-item-chevron"
+                              >${this.#iconExternal()}</span
+                            >
+                          </a>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            class="post-menu-row-action post-menu-row-action-danger"
+                            data-post-menu-translation-unlink
+                            ?disabled=${this._translationBusy}
+                            aria-label=${`Unlink the ${languageLabel} version`}
+                            @click=${() => this.#unlinkTranslation(translation)}
+                          >
+                            Unlink
+                          </button>
+                        </div>
+                      `;
+                    })}
+                  </div>
+                `
+              : nothing
+          }
+          ${
+            this._translationsLoading
+              ? html`<p class="post-menu-hint">Loading…</p>`
+              : nothing
+          }
         </div>
       </div>
     `;
@@ -2070,12 +2079,14 @@ export class JantPostMenu extends LitElement {
                       : this.#setLanguage(language.tag)}
                 >
                   <span class="post-menu-item-label">${language.label}</span>
-                  ${selected
-                    ? html`<span
-                        class="post-menu-item-trailing post-menu-item-check"
-                        >${this.#iconCheck()}</span
-                      >`
-                    : nothing}
+                  ${
+                    selected
+                      ? html`<span
+                          class="post-menu-item-trailing post-menu-item-check"
+                          >${this.#iconCheck()}</span
+                        >`
+                      : nothing
+                  }
                 </button>
               `;
             })}
@@ -2115,9 +2126,9 @@ export class JantPostMenu extends LitElement {
               role="menuitemradio"
               aria-checked=${visibility === "public" ? "true" : "false"}
               data-post-menu-visibility-option
-              data-post-menu-visibility-current=${visibility === "public"
-                ? "true"
-                : "false"}
+              data-post-menu-visibility-current=${
+                visibility === "public" ? "true" : "false"
+              }
               class=${`post-menu-item${
                 visibility === "public" ? " post-menu-item-active" : ""
               }`}
@@ -2127,12 +2138,14 @@ export class JantPostMenu extends LitElement {
                   : this.#setVisibility("public")}
             >
               <span class="post-menu-item-label">Public</span>
-              ${visibility === "public"
-                ? html`<span
-                    class="post-menu-item-trailing post-menu-item-check"
-                    >${this.#iconCheck()}</span
-                  >`
-                : nothing}
+              ${
+                visibility === "public"
+                  ? html`<span
+                      class="post-menu-item-trailing post-menu-item-check"
+                      >${this.#iconCheck()}</span
+                    >`
+                  : nothing
+              }
             </button>
 
             <button
@@ -2140,9 +2153,9 @@ export class JantPostMenu extends LitElement {
               role="menuitemradio"
               aria-checked=${visibility === "latest_hidden" ? "true" : "false"}
               data-post-menu-visibility-option
-              data-post-menu-visibility-current=${visibility === "latest_hidden"
-                ? "true"
-                : "false"}
+              data-post-menu-visibility-current=${
+                visibility === "latest_hidden" ? "true" : "false"
+              }
               class=${`post-menu-item${
                 visibility === "latest_hidden" ? " post-menu-item-active" : ""
               }`}
@@ -2152,12 +2165,14 @@ export class JantPostMenu extends LitElement {
                   : this.#setVisibility("latest_hidden")}
             >
               <span class="post-menu-item-label">Hidden from Latest</span>
-              ${visibility === "latest_hidden"
-                ? html`<span
-                    class="post-menu-item-trailing post-menu-item-check"
-                    >${this.#iconCheck()}</span
-                  >`
-                : nothing}
+              ${
+                visibility === "latest_hidden"
+                  ? html`<span
+                      class="post-menu-item-trailing post-menu-item-check"
+                      >${this.#iconCheck()}</span
+                    >`
+                  : nothing
+              }
             </button>
 
             <button
@@ -2165,9 +2180,9 @@ export class JantPostMenu extends LitElement {
               role="menuitemradio"
               aria-checked=${visibility === "private" ? "true" : "false"}
               data-post-menu-visibility-option
-              data-post-menu-visibility-current=${visibility === "private"
-                ? "true"
-                : "false"}
+              data-post-menu-visibility-current=${
+                visibility === "private" ? "true" : "false"
+              }
               class=${`post-menu-item${
                 visibility === "private" ? " post-menu-item-active" : ""
               }`}
@@ -2177,12 +2192,14 @@ export class JantPostMenu extends LitElement {
                   : this.#setVisibility("private")}
             >
               <span class="post-menu-item-label">Private</span>
-              ${visibility === "private"
-                ? html`<span
-                    class="post-menu-item-trailing post-menu-item-check"
-                    >${this.#iconCheck()}</span
-                  >`
-                : nothing}
+              ${
+                visibility === "private"
+                  ? html`<span
+                      class="post-menu-item-trailing post-menu-item-check"
+                      >${this.#iconCheck()}</span
+                    >`
+                  : nothing
+              }
             </button>
           </div>
         </div>
@@ -2284,137 +2301,164 @@ export class JantPostMenu extends LitElement {
               <span class="post-menu-item-trailing">${this.#iconEdit()}</span>
             </button>
 
-            ${this._data.isDraft
-              ? html`
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="post-menu-item"
-                    @click=${() => this.#publish()}
-                  >
-                    <span class="post-menu-item-label">Publish</span>
-                    <span class="post-menu-item-trailing"
-                      >${this.#iconPublish()}</span
+            ${
+              this._data.isDraft
+                ? html`
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="post-menu-item"
+                      @click=${() => this.#publish()}
                     >
-                  </button>
-                `
-              : nothing}
-            ${this._data.isReply
-              ? nothing
-              : html`
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="post-menu-item"
-                    data-post-menu-open-collections
-                    @click=${() => this.#openCollectionPicker()}
-                  >
-                    <span class="post-menu-item-label">Add to collection</span>
-                    <span class="post-menu-item-trailing post-menu-item-chevron"
-                      >${this.#iconChevronRight()}</span
+                      <span class="post-menu-item-label">Publish</span>
+                      <span class="post-menu-item-trailing"
+                        >${this.#iconPublish()}</span
+                      >
+                    </button>
+                  `
+                : nothing
+            }
+            ${
+              this._data.isReply
+                ? nothing
+                : html`
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="post-menu-item"
+                      data-post-menu-open-collections
+                      @click=${() => this.#openCollectionPicker()}
                     >
-                  </button>
-                `}
-            ${this._data.isReply
-              ? nothing
-              : html`
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="post-menu-item"
-                    data-post-menu-open-visibility
-                    @click=${() => this.#openVisibilityPanel()}
-                  >
-                    <span class="post-menu-item-label">Visibility</span>
-                    <span class="post-menu-item-meta"
-                      >${this.#getVisibilityLabel(visibility)}</span
+                      <span class="post-menu-item-label"
+                        >Add to collection</span
+                      >
+                      <span
+                        class="post-menu-item-trailing post-menu-item-chevron"
+                        >${this.#iconChevronRight()}</span
+                      >
+                    </button>
+                  `
+            }
+            ${
+              this._data.isReply
+                ? nothing
+                : html`
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="post-menu-item"
+                      data-post-menu-open-visibility
+                      @click=${() => this.#openVisibilityPanel()}
                     >
-                    <span class="post-menu-item-trailing post-menu-item-chevron"
-                      >${this.#iconChevronRight()}</span
+                      <span class="post-menu-item-label">Visibility</span>
+                      <span class="post-menu-item-meta"
+                        >${this.#getVisibilityLabel(visibility)}</span
+                      >
+                      <span
+                        class="post-menu-item-trailing post-menu-item-chevron"
+                        >${this.#iconChevronRight()}</span
+                      >
+                    </button>
+                  `
+            }
+            ${
+              this._data.isReply || !this.#multilingual
+                ? nothing
+                : html`
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="post-menu-item"
+                      data-post-menu-open-language
+                      @click=${() => this.#openLanguagePanel()}
                     >
-                  </button>
-                `}
-            ${this._data.isReply || !this.#multilingual
-              ? nothing
-              : html`
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="post-menu-item"
-                    data-post-menu-open-language
-                    @click=${() => this.#openLanguagePanel()}
-                  >
-                    <span class="post-menu-item-label">Language</span>
-                    <span class="post-menu-item-meta"
-                      >${this.#languageLabel(this._data.language)}</span
-                    >
-                    <span class="post-menu-item-trailing post-menu-item-chevron"
-                      >${this.#iconChevronRight()}</span
-                    >
-                  </button>
-                `}
+                      <span class="post-menu-item-label">Language</span>
+                      <span class="post-menu-item-meta"
+                        >${this.#languageLabel(this._data.language)}</span
+                      >
+                      <span
+                        class="post-menu-item-trailing post-menu-item-chevron"
+                        >${this.#iconChevronRight()}</span
+                      >
+                    </button>
+                  `
+            }
           </div>
 
           <div class="post-menu-section">
-            ${this._data.isDraft
-              ? nothing
-              : html`
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="post-menu-item"
-                    @click=${() => this.#setFeatured(!isFeatured)}
-                  >
-                    <span class="post-menu-item-label"
-                      >${isFeatured
-                        ? "Remove from Featured"
-                        : "Add to Featured"}</span
+            ${
+              this._data.isDraft
+                ? nothing
+                : html`
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="post-menu-item"
+                      @click=${() => this.#setFeatured(!isFeatured)}
                     >
-                    <span class="post-menu-item-trailing"
-                      >${isFeatured
-                        ? this.#iconFeaturedOff()
-                        : this.#iconFeatured()}</span
+                      <span class="post-menu-item-label"
+                        >${
+                          isFeatured
+                            ? "Remove from Featured"
+                            : "Add to Featured"
+                        }</span
+                      >
+                      <span class="post-menu-item-trailing"
+                        >${
+                          isFeatured
+                            ? this.#iconFeaturedOff()
+                            : this.#iconFeatured()
+                        }</span
+                      >
+                    </button>
+                  `
+            }
+            ${
+              this._data.isReply
+                ? nothing
+                : html`
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="post-menu-item"
+                      @click=${() => this.#togglePin()}
                     >
-                  </button>
-                `}
-            ${this._data.isReply
-              ? nothing
-              : html`
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="post-menu-item"
-                    @click=${() => this.#togglePin()}
-                  >
-                    <span class="post-menu-item-label"
-                      >${isPinned ? "Unpin" : "Pin this post"}</span
+                      <span class="post-menu-item-label"
+                        >${isPinned ? "Unpin" : "Pin this post"}</span
+                      >
+                      <span class="post-menu-item-trailing"
+                        >${isPinned ? this.#iconPinOff() : this.#iconPin()}</span
+                      >
+                    </button>
+                  `
+            }
+            ${
+              collectionId && !this._data.isReply
+                ? html`
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="post-menu-item"
+                      @click=${() => this.#toggleCollectionPin()}
                     >
-                    <span class="post-menu-item-trailing"
-                      >${isPinned ? this.#iconPinOff() : this.#iconPin()}</span
-                    >
-                  </button>
-                `}
-            ${collectionId && !this._data.isReply
-              ? html`
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="post-menu-item"
-                    @click=${() => this.#toggleCollectionPin()}
-                  >
-                    <span class="post-menu-item-label"
-                      >${isPinnedInCollection
-                        ? "Unpin from collection"
-                        : "Pin in collection"}</span
-                    >
-                    <span class="post-menu-item-trailing"
-                      >${isPinnedInCollection
-                        ? this.#iconPinOff()
-                        : this.#iconPin()}</span
-                    >
-                  </button>
-                `
-              : nothing}
+                      <span class="post-menu-item-label"
+                        >${
+                          isPinnedInCollection
+                            ? "Unpin from collection"
+                            : "Pin in collection"
+                        }</span
+                      >
+                      <span class="post-menu-item-trailing"
+                        >${
+                          isPinnedInCollection
+                            ? this.#iconPinOff()
+                            : this.#iconPin()
+                        }</span
+                      >
+                    </button>
+                  `
+                : nothing
+            }
           </div>
 
           <div class="post-menu-section post-menu-section-danger">
@@ -2445,34 +2489,40 @@ export class JantPostMenu extends LitElement {
     const showMenuSurface = !this._addCollectionPanelOpen;
 
     return html`
-      ${showMenuSurface
-        ? html`
-            <div
-              class="post-menu-backdrop"
-              @click=${() => this.#close({ restoreFocus: false })}
-            ></div>
-            <div class="dropdown-menu" style=${wrapperStyle}>
+      ${
+        showMenuSurface
+          ? html`
               <div
-                data-popover
-                aria-hidden="false"
-                class="!static post-menu-panel"
-              >
-                ${this._view === "collections"
-                  ? this.#renderCollectionPicker()
-                  : this._view === "visibility"
-                    ? this.#renderVisibilityPanel()
-                    : this._view === "language"
-                      ? this.#renderLanguagePanel()
-                      : this._view === "language-switch"
-                        ? this.#renderLanguageSwitchPanel()
-                        : this.#renderMenu()}
+                class="post-menu-backdrop"
+                @click=${() => this.#close({ restoreFocus: false })}
+              ></div>
+              <div class="dropdown-menu" style=${wrapperStyle}>
+                <div
+                  data-popover
+                  aria-hidden="false"
+                  class="!static post-menu-panel"
+                >
+                  ${
+                    this._view === "collections"
+                      ? this.#renderCollectionPicker()
+                      : this._view === "visibility"
+                        ? this.#renderVisibilityPanel()
+                        : this._view === "language"
+                          ? this.#renderLanguagePanel()
+                          : this._view === "language-switch"
+                            ? this.#renderLanguageSwitchPanel()
+                            : this.#renderMenu()
+                  }
+                </div>
               </div>
-            </div>
-          `
-        : nothing}
-      ${this._addCollectionPanelOpen
-        ? this.#renderAddCollectionPanel()
-        : nothing}
+            `
+          : nothing
+      }
+      ${
+        this._addCollectionPanelOpen
+          ? this.#renderAddCollectionPanel()
+          : nothing
+      }
     `;
   }
 }

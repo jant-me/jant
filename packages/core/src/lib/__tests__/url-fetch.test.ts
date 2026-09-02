@@ -83,8 +83,7 @@ describe("fetchImageBytes", () => {
     );
 
     const headers = fetchMock.mock.calls[0]?.[1]?.headers as
-      | Record<string, string>
-      | undefined;
+      Record<string, string> | undefined;
     expect(headers?.Referer).toBe("https://img9.doubanio.com/");
   });
 

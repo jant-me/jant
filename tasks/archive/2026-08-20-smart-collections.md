@@ -759,20 +759,20 @@ mise run db-wrangler-migrate && mise run db-node-migrate
 （没有 `db-migrate-local` 这个任务；本地 D1 的迁移任务叫 `db-wrangler-migrate`。）
 
 - [x] 1. **维度注册表**（§4）：补上智能合集要的 `column` / `control` / `schema` 三段。
-     注册表本身和它的 `url` / `toPostFilter` / `describe` 已经由前置的归档收编落地，
-     归档正在用——**不要重写它，只加段**。纯逻辑，先写测试，不碰数据库不碰 UI。
-     写完拿一个假想维度在纸上走一遍五步验收
+      注册表本身和它的 `url` / `toPostFilter` / `describe` 已经由前置的归档收编落地，
+      归档正在用——**不要重写它，只加段**。纯逻辑，先写测试，不碰数据库不碰 UI。
+      写完拿一个假想维度在纸上走一遍五步验收
 - [x] 2. **双方言 schema**（§3）+ `drizzle-kit generate` ×2 + **逐行读迁移文件**
-     （附录 B 教训 2）
+      （附录 B 教训 2）
 - [x] 3. **类型 / Zod / `ID_PREFIX.smartCollection = "smc"`**，Zod 由注册表拼出来
 - [x] 4. **`services/smart-collection.ts`** + 接进 `Services`。含 `toPostFilters()`、
-     路径可用性检查、合集删除拦截
+      路径可用性检查、合集删除拦截
 - [x] 5. **计数**（§6）。`posts.countMany(filters[], base)` → 一条条件聚合。单独测，含
-     0 个、1 个、20 个的情况
+      0 个、1 个、20 个的情况
 - [x] 6. **`routes/api/smart-collections.ts`**：CRUD + `/preview` + `/slug`
 - [x] 7. **页面渲染**（§5）。feed、canonical、hreflang、站点地图、空态
 - [x] 8. **放置**（§3）：三张表的类型和约束 + **直接插真实行的测试** + 导航标题活读
-     （JOIN + `targetTitleOf`）和改地址时的 `nav_item.url` 重写
+      （JOIN + `targetTitleOf`）和改地址时的 `nav_item.url` 重写
 - [x] 9. **弹窗**（§2.3）。渐进条件行 + 实时计数 + 地址检查 + 删除 + 键盘
 - [x] 10. **`/collections`**（§2.1）：`⋯` 菜单里的 New Smart Collection、目录行的
       `list-filter` 图标、条目菜单、计数。**没有「自动放置」要写**——`buildDirectoryItems`

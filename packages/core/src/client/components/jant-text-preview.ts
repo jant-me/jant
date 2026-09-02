@@ -310,47 +310,51 @@ export class JantTextPreview extends LitElement {
               </svg>
             </button>
             <div class="text-preview-toolbar-actions">
-              ${this.#shareHref
-                ? html`<button
-                    type="button"
-                    class="text-preview-btn"
-                    @click=${() => this.#copyLink()}
-                    ?disabled=${this._loading}
-                    title="Copy link"
-                    aria-label="Copy shareable link"
-                  >
-                    ${this._linkCopied
-                      ? html`<svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        >
-                          <path d="M20 6 9 17l-5-5" />
-                        </svg>`
-                      : html`<svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        >
-                          <path
-                            d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
-                          />
-                          <path
-                            d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
-                          />
-                        </svg>`}
-                  </button>`
-                : nothing}
+              ${
+                this.#shareHref
+                  ? html`<button
+                      type="button"
+                      class="text-preview-btn"
+                      @click=${() => this.#copyLink()}
+                      ?disabled=${this._loading}
+                      title="Copy link"
+                      aria-label="Copy shareable link"
+                    >
+                      ${
+                        this._linkCopied
+                          ? html`<svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path d="M20 6 9 17l-5-5" />
+                            </svg>`
+                          : html`<svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path
+                                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                              />
+                              <path
+                                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                              />
+                            </svg>`
+                      }
+                    </button>`
+                  : nothing
+              }
               <button
                 type="button"
                 class="text-preview-btn"
@@ -359,54 +363,58 @@ export class JantTextPreview extends LitElement {
                 title="Copy text"
                 aria-label="Copy text content"
               >
-                ${this._copied
-                  ? html`<svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <path d="M20 6 9 17l-5-5" />
-                    </svg>`
-                  : html`<svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <rect width="14" height="14" x="8" y="8" rx="2" />
-                      <path
-                        d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-                      />
-                    </svg>`}
+                ${
+                  this._copied
+                    ? html`<svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>`
+                    : html`<svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <rect width="14" height="14" x="8" y="8" rx="2" />
+                        <path
+                          d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+                        />
+                      </svg>`
+                }
               </button>
             </div>
           </div>
-          ${this._loading
-            ? html`<div class="text-preview-loading">
-                <svg
-                  class="animate-spin size-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                </svg>
-              </div>`
-            : html`<div class="text-preview-body prose">
-                ${unsafeHTML(this._html)}
-              </div>`}
+          ${
+            this._loading
+              ? html`<div class="text-preview-loading">
+                  <svg
+                    class="animate-spin size-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                </div>`
+              : html`<div class="text-preview-body prose">
+                  ${unsafeHTML(this._html)}
+                </div>`
+          }
         </div>
       </dialog>
     `;

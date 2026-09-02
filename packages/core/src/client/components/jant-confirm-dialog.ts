@@ -205,22 +205,24 @@ export class JantConfirmDialog extends LitElement {
           tabindex="-1"
           role="document"
           aria-labelledby="confirm-dialog-title"
-          aria-describedby=${message
-            ? "confirm-dialog-message"
-            : "confirm-dialog-title"}
+          aria-describedby=${
+            message ? "confirm-dialog-message" : "confirm-dialog-title"
+          }
         >
           <header class="confirm-dialog-header">
             <h2 id="confirm-dialog-title" class="confirm-dialog-title">
               ${title}
             </h2>
-            ${message
-              ? html`<p
-                  id="confirm-dialog-message"
-                  class="confirm-dialog-message"
-                >
-                  ${message}
-                </p>`
-              : nothing}
+            ${
+              message
+                ? html`<p
+                    id="confirm-dialog-message"
+                    class="confirm-dialog-message"
+                  >
+                    ${message}
+                  </p>`
+                : nothing
+            }
           </header>
           <footer class="confirm-dialog-actions">
             <button
