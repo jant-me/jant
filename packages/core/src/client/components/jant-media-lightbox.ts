@@ -688,158 +688,168 @@ export class JantMediaLightbox extends LitElement {
             </svg>
           </button>
 
-          ${multiple
-            ? html`<div class="media-lightbox-counter">
-                ${this._currentIndex + 1} / ${this._images.length}
-              </div>`
-            : nothing}
+          ${
+            multiple
+              ? html`<div class="media-lightbox-counter">
+                  ${this._currentIndex + 1} / ${this._images.length}
+                </div>`
+              : nothing
+          }
           <div
             class=${`media-lightbox-stage${isScrollableImage ? " media-lightbox-stage-scroll" : ""}`}
           >
-            ${isVideo
-              ? usesShortVideoControls
-                ? html`<div
-                    class=${`media-lightbox-short-frame${shortVideoFrameSize ? " media-lightbox-short-frame-contained" : ""}${isPortraitShortVideo ? " media-lightbox-short-frame-portrait" : " media-lightbox-short-frame-landscape"}`}
-                    style=${shortVideoFrameStyle}
-                  >
-                    <div class="media-lightbox-short-viewport">
-                      <video
-                        class="media-lightbox-video media-lightbox-video-short"
-                        src=${img?.url ?? ""}
-                        poster=${img?.posterUrl ?? ""}
-                        ?autoplay=${!this._videoPaused}
-                        playsinline
-                        loop
-                        ?muted=${this._videoMuted}
-                        @click=${this.#handleShortVideoPlaybackToggle}
-                        @focus=${this.#handleVideoFocus}
-                        @loadedmetadata=${this.#handleShortVideoLoadedMetadata}
-                        @timeupdate=${this.#handleShortVideoTimeUpdate}
-                        @play=${this.#handleShortVideoPlay}
-                        @pause=${this.#handleShortVideoPause}
-                      ></video>
-                    </div>
-                    <div
-                      class=${`media-lightbox-short-controls${isPortraitShortVideo ? " media-lightbox-short-controls-portrait" : ""}`}
+            ${
+              isVideo
+                ? usesShortVideoControls
+                  ? html`<div
+                      class=${`media-lightbox-short-frame${shortVideoFrameSize ? " media-lightbox-short-frame-contained" : ""}${isPortraitShortVideo ? " media-lightbox-short-frame-portrait" : " media-lightbox-short-frame-landscape"}`}
+                      style=${shortVideoFrameStyle}
                     >
-                      <button
-                        type="button"
-                        class="media-lightbox-short-playback"
-                        @click=${this.#handleShortVideoPlaybackToggle}
-                        aria-label=${this._videoPaused
-                          ? "Play video"
-                          : "Pause video"}
+                      <div class="media-lightbox-short-viewport">
+                        <video
+                          class="media-lightbox-video media-lightbox-video-short"
+                          src=${img?.url ?? ""}
+                          poster=${img?.posterUrl ?? ""}
+                          ?autoplay=${!this._videoPaused}
+                          playsinline
+                          loop
+                          ?muted=${this._videoMuted}
+                          @click=${this.#handleShortVideoPlaybackToggle}
+                          @focus=${this.#handleVideoFocus}
+                          @loadedmetadata=${this.#handleShortVideoLoadedMetadata}
+                          @timeupdate=${this.#handleShortVideoTimeUpdate}
+                          @play=${this.#handleShortVideoPlay}
+                          @pause=${this.#handleShortVideoPause}
+                        ></video>
+                      </div>
+                      <div
+                        class=${`media-lightbox-short-controls${isPortraitShortVideo ? " media-lightbox-short-controls-portrait" : ""}`}
                       >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          aria-hidden="true"
+                        <button
+                          type="button"
+                          class="media-lightbox-short-playback"
+                          @click=${this.#handleShortVideoPlaybackToggle}
+                          aria-label=${
+                            this._videoPaused ? "Play video" : "Pause video"
+                          }
                         >
-                          ${this._videoPaused
-                            ? svg`<path d="M8 5v14l11-7z" />`
-                            : svg`<path d="M6 5h4v14H6zM14 5h4v14h-4z" />`}
-                        </svg>
-                      </button>
-                      <input
-                        class="media-lightbox-short-progress"
-                        type="range"
-                        min="0"
-                        max=${progressMax}
-                        step="0.01"
-                        .value=${String(progressValue)}
-                        style=${`--media-progress:${progressPercent}%`}
-                        aria-label="Video progress"
-                        @input=${this.#handleShortVideoSeek}
-                      />
-                      <button
-                        type="button"
-                        class="media-lightbox-short-mute"
-                        @click=${this.#handleShortVideoMuteToggle}
-                        aria-label=${this._videoMuted
-                          ? "Unmute video"
-                          : "Mute video"}
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 48 48"
-                          fill="currentColor"
-                          color="#fff"
-                          aria-hidden="true"
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            aria-hidden="true"
+                          >
+                            ${
+                              this._videoPaused
+                                ? svg`<path d="M8 5v14l11-7z" />`
+                                : svg`<path d="M6 5h4v14H6zM14 5h4v14h-4z" />`
+                            }
+                          </svg>
+                        </button>
+                        <input
+                          class="media-lightbox-short-progress"
+                          type="range"
+                          min="0"
+                          max=${progressMax}
+                          step="0.01"
+                          .value=${String(progressValue)}
+                          style=${`--media-progress:${progressPercent}%`}
+                          aria-label="Video progress"
+                          @input=${this.#handleShortVideoSeek}
+                        />
+                        <button
+                          type="button"
+                          class="media-lightbox-short-mute"
+                          @click=${this.#handleShortVideoMuteToggle}
+                          aria-label=${
+                            this._videoMuted ? "Unmute video" : "Mute video"
+                          }
                         >
-                          ${this._videoMuted
-                            ? svg`
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 48 48"
+                            fill="currentColor"
+                            color="#fff"
+                            aria-hidden="true"
+                          >
+                            ${
+                              this._videoMuted
+                                ? svg`
                                 <path d="M1.5 13.3c-.8 0-1.5.7-1.5 1.5v18.4c0 .8.7 1.5 1.5 1.5h8.7l12.9 12.9c.9.9 2.5.3 2.5-1v-9.8c0-.4-.2-.8-.4-1.1l-22-22c-.3-.3-.7-.4-1.1-.4h-.6zm46.8 31.4-5.5-5.5C44.9 36.6 48 31.4 48 24c0-11.4-7.2-17.4-7.2-17.4-.6-.6-1.6-.6-2.2 0L37.2 8c-.6.6-.6 1.6 0 2.2 0 0 5.7 5 5.7 13.8 0 5.4-2.1 9.3-3.8 11.6L35.5 32c1.1-1.7 2.3-4.4 2.3-8 0-6.8-4.1-10.3-4.1-10.3-.6-.6-1.6-.6-2.2 0l-1.4 1.4c-.6.6-.6 1.6 0 2.2 0 0 2.6 2 2.6 6.7 0 1.8-.4 3.2-.9 4.3L25.5 22V1.4c0-1.3-1.6-1.9-2.5-1L13.5 10 3.3-.3c-.6-.6-1.5-.6-2.1 0L-.2 1.1c-.6.6-.6 1.5 0 2.1L4 7.6l26.8 26.8 13.9 13.9c.6.6 1.5.6 2.1 0l1.4-1.4c.7-.6.7-1.6.1-2.2z" />
                               `
-                            : svg`
+                                : svg`
                                 <path d="M1.5 13.3c-.8 0-1.5.7-1.5 1.5v18.4c0 .8.7 1.5 1.5 1.5h8.7l12.9 12.9c.9.9 2.5.3 2.5-1V1.4c0-1.3-1.6-1.9-2.5-1L10.2 13.3H1.5z" />
                                 <path d="M30.1 15.9c-.6-.6-.6-1.6 0-2.2l1.4-1.4c.6-.6 1.6-.6 2.2 0 0 0 4.1 3.5 4.1 11.7s-4.1 11.7-4.1 11.7c-.6.6-1.6.6-2.2 0l-1.4-1.4c-.6-.6-.6-1.6 0-2.2 0 0 2.6-2 2.6-8.1s-2.6-8.1-2.6-8.1z" />
                                 <path d="M37.2 8c-.6-.6-.6-1.6 0-2.2l1.4-1.4c.6-.6 1.6-.6 2.2 0 0 0 5.7 5.1 5.7 19.6s-5.7 19.6-5.7 19.6c-.6.6-1.6.6-2.2 0L37.2 42c-.6-.6-.6-1.6 0-2.2 0 0 4.3-4.4 4.3-15.8S37.2 8 37.2 8z" />
-                              `}
-                        </svg>
-                      </button>
-                    </div>
-                  </div>`
-                : html`<video
-                    class="media-lightbox-video"
+                              `
+                            }
+                          </svg>
+                        </button>
+                      </div>
+                    </div>`
+                  : html`<video
+                      class="media-lightbox-video"
+                      src=${img?.url ?? ""}
+                      poster=${img?.posterUrl ?? ""}
+                      controls
+                      autoplay
+                      playsinline
+                      @focus=${this.#handleVideoFocus}
+                    ></video>`
+                : html`<img
+                    class=${`media-lightbox-img${isScrollableEligible ? " media-lightbox-img-zoomable" : ""}${isScrollableImage ? " media-lightbox-img-scroll" : ""}`}
                     src=${img?.url ?? ""}
-                    poster=${img?.posterUrl ?? ""}
-                    controls
-                    autoplay
-                    playsinline
-                    @focus=${this.#handleVideoFocus}
-                  ></video>`
-              : html`<img
-                  class=${`media-lightbox-img${isScrollableEligible ? " media-lightbox-img-zoomable" : ""}${isScrollableImage ? " media-lightbox-img-scroll" : ""}`}
-                  src=${img?.url ?? ""}
-                  alt=${img?.alt ?? ""}
-                  @click=${this.#handleImageClick}
-                />`}
+                    alt=${img?.alt ?? ""}
+                    @click=${this.#handleImageClick}
+                  />`
+            }
           </div>
-          ${multiple
-            ? html`
-                <button
-                  type="button"
-                  class="media-lightbox-nav media-lightbox-nav-prev"
-                  @click=${() => this.#prev()}
-                  aria-label="Previous"
-                >
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+          ${
+            multiple
+              ? html`
+                  <button
+                    type="button"
+                    class="media-lightbox-nav media-lightbox-nav-prev"
+                    @click=${() => this.#prev()}
+                    aria-label="Previous"
                   >
-                    <path d="m15 18-6-6 6-6" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  class="media-lightbox-nav media-lightbox-nav-next"
-                  @click=${() => this.#next()}
-                  aria-label="Next"
-                >
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="media-lightbox-nav media-lightbox-nav-next"
+                    @click=${() => this.#next()}
+                    aria-label="Next"
                   >
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
-                </button>
-              `
-            : nothing}
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
+                `
+              : nothing
+          }
         </div>
       </dialog>
     `;

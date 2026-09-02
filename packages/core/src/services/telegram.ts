@@ -483,28 +483,26 @@ export function createTelegramService(
         )
         .returning();
       return rows
-        .map(
-          (row): TelegramMediaGroupItem => ({
-            id: row.id,
-            siteId: row.siteId,
-            botId: row.botId,
-            telegramUserId: row.telegramUserId,
-            mediaGroupId: row.mediaGroupId,
-            chatId: row.chatId,
-            messageId: row.messageId,
-            updateId: row.updateId,
-            fileId: row.fileId,
-            mediaKind: row.mediaKind as TelegramMediaGroupKind,
-            mimeType: row.mimeType,
-            originalName: row.originalName,
-            captionMarkdown: row.captionMarkdown,
-            width: row.width,
-            height: row.height,
-            durationSeconds: row.durationSeconds,
-            posterFileId: row.posterFileId,
-            createdAt: row.createdAt,
-          }),
-        )
+        .map((row): TelegramMediaGroupItem => ({
+          id: row.id,
+          siteId: row.siteId,
+          botId: row.botId,
+          telegramUserId: row.telegramUserId,
+          mediaGroupId: row.mediaGroupId,
+          chatId: row.chatId,
+          messageId: row.messageId,
+          updateId: row.updateId,
+          fileId: row.fileId,
+          mediaKind: row.mediaKind as TelegramMediaGroupKind,
+          mimeType: row.mimeType,
+          originalName: row.originalName,
+          captionMarkdown: row.captionMarkdown,
+          width: row.width,
+          height: row.height,
+          durationSeconds: row.durationSeconds,
+          posterFileId: row.posterFileId,
+          createdAt: row.createdAt,
+        }))
         .sort((a, b) => a.messageId - b.messageId);
     },
 

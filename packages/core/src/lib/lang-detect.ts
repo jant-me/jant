@@ -71,12 +71,7 @@ const TRADITIONAL_SET = new Set(TRADITIONAL_ONLY);
  * that publishes only one of the two variants it is all the answer needed.
  */
 export type DetectedScript =
-  | "ko"
-  | "ja"
-  | "zh-Hans"
-  | "zh-Hant"
-  | "han"
-  | "latin";
+  "ko" | "ja" | "zh-Hans" | "zh-Hant" | "han" | "latin";
 
 interface ScriptCounts {
   hangul: number;

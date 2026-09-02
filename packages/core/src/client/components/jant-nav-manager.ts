@@ -1411,8 +1411,8 @@ export class JantNavManager extends LitElement {
                           data-preview-more-trigger
                           aria-haspopup="menu"
                           aria-expanded=${
-                          this._showPreviewMore ? "true" : "false"
-                        }
+                            this._showPreviewMore ? "true" : "false"
+                          }
                           @click=${this.#togglePreviewMore}
                         >
                           ${this.labels.previewMore}
@@ -1437,14 +1437,14 @@ export class JantNavManager extends LitElement {
                           @click=${(event: Event) => event.stopPropagation()}
                         >
                           ${repeat(
-                          moreItems,
-                          (item) => item.id,
-                          (item) => html`
-                            <span class="site-header-more-link">
-                              ${item.displayLabel ?? item.label}
-                            </span>
-                          `,
-                        )}
+                            moreItems,
+                            (item) => item.id,
+                            (item) => html`
+                              <span class="site-header-more-link">
+                                ${item.displayLabel ?? item.label}
+                              </span>
+                            `,
+                          )}
                         </div>
                       </div>
                     `
@@ -2018,10 +2018,10 @@ export class JantNavManager extends LitElement {
                 ? html`
                     <p class="nav-page-results-label">
                       ${
-                      this._pageQuery.trim()
-                        ? this.labels.searchPages
-                        : this.labels.recentPages
-                    }
+                        this._pageQuery.trim()
+                          ? this.labels.searchPages
+                          : this.labels.recentPages
+                      }
                     </p>
                     <div
                       id="nav-page-results"
@@ -2029,58 +2029,58 @@ export class JantNavManager extends LitElement {
                       role="listbox"
                     >
                       ${this._pages.map((page, index) => {
-                      const selected = index === this._selectedPageIndex;
-                      const adding = this._addingPageId === page.id;
-                      return html`
-                        <button
-                          id=${`nav-page-result-${index}`}
-                          type="button"
-                          role="option"
-                          aria-selected=${selected ? "true" : "false"}
-                          class=${`nav-page-result${
-                            selected ? " nav-page-result-selected" : ""
-                          }`}
-                          ?disabled=${this._addingPageId !== null}
-                          @mouseenter=${() => {
-                            this._selectedPageIndex = index;
-                          }}
-                          @click=${() => void this.#addPageToNavigation(page)}
-                        >
-                          <span class="nav-page-result-copy">
-                            <span class="nav-page-result-title"
-                              >${page.title}</span
-                            >
-                            <span class="nav-page-result-path"
-                              >${publicPath(`/${page.slug}`)}</span
-                            >
-                          </span>
-                          ${
-                            adding
-                              ? html`<span
-                                  class="nav-page-spinner"
-                                  aria-hidden="true"
-                                ></span>`
-                              : html`
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
+                        const selected = index === this._selectedPageIndex;
+                        const adding = this._addingPageId === page.id;
+                        return html`
+                          <button
+                            id=${`nav-page-result-${index}`}
+                            type="button"
+                            role="option"
+                            aria-selected=${selected ? "true" : "false"}
+                            class=${`nav-page-result${
+                              selected ? " nav-page-result-selected" : ""
+                            }`}
+                            ?disabled=${this._addingPageId !== null}
+                            @mouseenter=${() => {
+                              this._selectedPageIndex = index;
+                            }}
+                            @click=${() => void this.#addPageToNavigation(page)}
+                          >
+                            <span class="nav-page-result-copy">
+                              <span class="nav-page-result-title"
+                                >${page.title}</span
+                              >
+                              <span class="nav-page-result-path"
+                                >${publicPath(`/${page.slug}`)}</span
+                              >
+                            </span>
+                            ${
+                              adding
+                                ? html`<span
+                                    class="nav-page-spinner"
                                     aria-hidden="true"
-                                  >
-                                    <path d="M12 5v14" />
-                                    <path d="M5 12h14" />
-                                  </svg>
-                                `
-                          }
-                        </button>
-                      `;
-                    })}
+                                  ></span>`
+                                : html`
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="16"
+                                      height="16"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      stroke-width="2"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      aria-hidden="true"
+                                    >
+                                      <path d="M12 5v14" />
+                                      <path d="M5 12h14" />
+                                    </svg>
+                                  `
+                            }
+                          </button>
+                        `;
+                      })}
                     </div>
                   `
                 : html`<p class="nav-page-status" role="status">${status}</p>`
@@ -2415,9 +2415,9 @@ export class JantNavManager extends LitElement {
                       <form
                         class="form grid gap-2"
                         @submit=${(e: Event) => {
-                        e.preventDefault();
-                        this.#handleAddLink();
-                      }}
+                          e.preventDefault();
+                          this.#handleAddLink();
+                        }}
                       >
                         <div class="grid grid-cols-3 items-center gap-4">
                           <label for="nav-link-label"
@@ -2431,10 +2431,10 @@ export class JantNavManager extends LitElement {
                             required
                             .value=${this._newLinkLabel}
                             @input=${(e: Event) => {
-                            this._newLinkLabel = (
-                              e.target as HTMLInputElement
-                            ).value;
-                          }}
+                              this._newLinkLabel = (
+                                e.target as HTMLInputElement
+                              ).value;
+                            }}
                             autofocus
                           />
                         </div>
@@ -2448,10 +2448,10 @@ export class JantNavManager extends LitElement {
                             required
                             .value=${this._newLinkUrl}
                             @input=${(e: Event) => {
-                            this._newLinkUrl = (
-                              e.target as HTMLInputElement
-                            ).value;
-                          }}
+                              this._newLinkUrl = (
+                                e.target as HTMLInputElement
+                              ).value;
+                            }}
                           />
                         </div>
                         <button
@@ -2609,70 +2609,70 @@ export class JantNavManager extends LitElement {
                     @click=${(e: Event) => e.stopPropagation()}
                   >
                     ${groups.map(
-                    (group) => html`
-                      ${
-                        group.label
-                          ? html`<div class="collection-picker-group">
-                              ${group.label}
-                            </div>`
-                          : nothing
-                      }
-                      ${group.items.map((c) => {
-                        const adding = this._addingCollectionId === c.id;
-                        return html`
-                          <button
-                            type="button"
-                            role="menuitem"
-                            class="collection-picker-item"
-                            ?disabled=${
-                              adding || this._addingCollectionId !== null
-                            }
-                            @click=${() =>
-                              this.#handleAddCollection(c.id, c.isSmart)}
-                          >
-                            <span class="collection-picker-title">
-                              ${c.title}
-                            </span>
-                            ${
-                              c.isSmart
-                                ? html`<span
-                                    class="collection-directory-smart-icon"
-                                    role="img"
-                                    aria-label=${
-                                    this.labels.smartCollectionLabel ?? ""
-                                  }
-                                    title=${
-                                    this.labels.smartCollectionLabel ?? ""
-                                  }
-                                    >${unsafeHTML(
-                                    getIconSvg("funnel", "icon-fine") ?? "",
-                                  )}</span
-                                  >`
-                                : nothing
-                            }
-                            ${
-                              adding
-                                ? html`<svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="14"
-                                    height="14"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    class="animate-spin shrink-0 text-muted-foreground"
-                                  >
-                                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                                  </svg>`
-                                : nothing
-                            }
-                          </button>
-                        `;
-                      })}
-                    `,
-                  )}
+                      (group) => html`
+                        ${
+                          group.label
+                            ? html`<div class="collection-picker-group">
+                                ${group.label}
+                              </div>`
+                            : nothing
+                        }
+                        ${group.items.map((c) => {
+                          const adding = this._addingCollectionId === c.id;
+                          return html`
+                            <button
+                              type="button"
+                              role="menuitem"
+                              class="collection-picker-item"
+                              ?disabled=${
+                                adding || this._addingCollectionId !== null
+                              }
+                              @click=${() =>
+                                this.#handleAddCollection(c.id, c.isSmart)}
+                            >
+                              <span class="collection-picker-title">
+                                ${c.title}
+                              </span>
+                              ${
+                                c.isSmart
+                                  ? html`<span
+                                      class="collection-directory-smart-icon"
+                                      role="img"
+                                      aria-label=${
+                                        this.labels.smartCollectionLabel ?? ""
+                                      }
+                                      title=${
+                                        this.labels.smartCollectionLabel ?? ""
+                                      }
+                                      >${unsafeHTML(
+                                        getIconSvg("funnel", "icon-fine") ?? "",
+                                      )}</span
+                                    >`
+                                  : nothing
+                              }
+                              ${
+                                adding
+                                  ? html`<svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="14"
+                                      height="14"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      stroke-width="2"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      class="animate-spin shrink-0 text-muted-foreground"
+                                    >
+                                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                                    </svg>`
+                                  : nothing
+                              }
+                            </button>
+                          `;
+                        })}
+                      `,
+                    )}
                     <div class="collection-picker-footer">
                       <button
                         type="button"

@@ -48,8 +48,7 @@ export interface TiptapRenderOptions {
 }
 
 export type TiptapRenderResult =
-  | { ok: true; html: string }
-  | { ok: false; error: string };
+  { ok: true; html: string } | { ok: false; error: string };
 
 interface FootnoteReferencePlan {
   definitionId: string;

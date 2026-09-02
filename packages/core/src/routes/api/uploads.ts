@@ -116,8 +116,7 @@ function scheduleExpiredUploadCleanup(
     .catch(() => {});
 
   let executionCtx:
-    | { waitUntil: (promise: Promise<unknown>) => void }
-    | undefined;
+    { waitUntil: (promise: Promise<unknown>) => void } | undefined;
   try {
     executionCtx = c.executionCtx;
   } catch {

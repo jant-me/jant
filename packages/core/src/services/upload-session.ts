@@ -91,9 +91,7 @@ export interface PutTransport extends PresignedPutTarget {
 }
 
 export type UploadTransport =
-  | RelayTransport
-  | MultipartRelayTransport
-  | PutTransport;
+  RelayTransport | MultipartRelayTransport | PutTransport;
 
 export interface InitiateUploadResult {
   id: string;

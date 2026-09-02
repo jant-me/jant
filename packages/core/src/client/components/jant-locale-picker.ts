@@ -315,9 +315,9 @@ export class JantLocalePicker extends LitElement {
 
     return html`
       <div
-        class=${this.fullWidth
-          ? "relative w-full"
-          : "relative w-fit max-w-full"}
+        class=${
+          this.fullWidth ? "relative w-full" : "relative w-fit max-w-full"
+        }
         data-language-picker
       >
         <button
@@ -331,77 +331,85 @@ export class JantLocalePicker extends LitElement {
         >
           <span class="min-w-0 truncate">${label}</span>
         </button>
-        ${this.open
-          ? html`
-              <div
-                class="absolute left-0 top-full z-20 mt-1 w-80 min-w-full max-w-[calc(100vw-2rem)] max-h-72 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md"
-              >
-                <div class="border-b p-2">
-                  <input
-                    type="text"
-                    class="input w-full"
-                    data-language-search
-                    role="combobox"
-                    aria-expanded="true"
-                    aria-controls=${listId}
-                    aria-autocomplete="list"
-                    aria-activedescendant=${filtered[this._active]
-                      ? `${this.#id}-option-${this._active}`
-                      : nothing}
-                    placeholder=${this.labels.search}
-                    autocomplete="off"
-                    spellcheck="false"
-                    .value=${this._query}
-                    @input=${(e: Event) => {
-                      this._query = (e.target as HTMLInputElement).value;
-                      this._active = 0;
-                    }}
-                  />
-                </div>
+        ${
+          this.open
+            ? html`
                 <div
-                  role="listbox"
-                  id=${listId}
-                  class="max-h-56 overflow-auto py-1"
+                  class="absolute left-0 top-full z-20 mt-1 w-80 min-w-full max-w-[calc(100vw-2rem)] max-h-72 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md"
                 >
-                  ${filtered.length === 0
-                    ? html`<div class="px-3 py-2 text-sm text-muted-foreground">
-                        ${this.labels.empty}
-                      </div>`
-                    : filtered.map((locale, index) => {
-                        const active = index === this._active;
-                        return html`
-                          <button
-                            type="button"
-                            role="option"
-                            id=${`${this.#id}-option-${index}`}
-                            data-language-option
-                            ?data-active=${active}
-                            aria-selected=${locale.tag === this.value
-                              ? "true"
-                              : "false"}
-                            class=${[
-                              "flex w-full cursor-pointer flex-col px-3 py-2 text-left text-sm hover:bg-accent",
-                              active ? "bg-accent" : "",
-                              locale.tag === this.value && !active
-                                ? "bg-accent/60"
-                                : "",
-                            ].join(" ")}
-                            @mousemove=${() => {
-                              this._active = index;
-                            }}
-                            @click=${() => this.#select(locale.tag)}
+                  <div class="border-b p-2">
+                    <input
+                      type="text"
+                      class="input w-full"
+                      data-language-search
+                      role="combobox"
+                      aria-expanded="true"
+                      aria-controls=${listId}
+                      aria-autocomplete="list"
+                      aria-activedescendant=${
+                        filtered[this._active]
+                          ? `${this.#id}-option-${this._active}`
+                          : nothing
+                      }
+                      placeholder=${this.labels.search}
+                      autocomplete="off"
+                      spellcheck="false"
+                      .value=${this._query}
+                      @input=${(e: Event) => {
+                        this._query = (e.target as HTMLInputElement).value;
+                        this._active = 0;
+                      }}
+                    />
+                  </div>
+                  <div
+                    role="listbox"
+                    id=${listId}
+                    class="max-h-56 overflow-auto py-1"
+                  >
+                    ${
+                      filtered.length === 0
+                        ? html`<div
+                            class="px-3 py-2 text-sm text-muted-foreground"
                           >
-                            <span lang=${locale.tag}>${locale.native}</span>
-                            <span class="text-xs text-muted-foreground"
-                              >${locale.english} · ${locale.tag}</span
-                            >
-                          </button>
-                        `;
-                      })}
+                            ${this.labels.empty}
+                          </div>`
+                        : filtered.map((locale, index) => {
+                            const active = index === this._active;
+                            return html`
+                              <button
+                                type="button"
+                                role="option"
+                                id=${`${this.#id}-option-${index}`}
+                                data-language-option
+                                ?data-active=${active}
+                                aria-selected=${
+                                  locale.tag === this.value ? "true" : "false"
+                                }
+                                class=${[
+                                  "flex w-full cursor-pointer flex-col px-3 py-2 text-left text-sm hover:bg-accent",
+                                  active ? "bg-accent" : "",
+                                  locale.tag === this.value && !active
+                                    ? "bg-accent/60"
+                                    : "",
+                                ].join(" ")}
+                                @mousemove=${() => {
+                                  this._active = index;
+                                }}
+                                @click=${() => this.#select(locale.tag)}
+                              >
+                                <span lang=${locale.tag}>${locale.native}</span>
+                                <span class="text-xs text-muted-foreground"
+                                  >${locale.english} · ${locale.tag}</span
+                                >
+                              </button>
+                            `;
+                          })
+                    }
+                  </div>
                 </div>
-              </div>
-            `
-          : nothing}
+              `
+            : nothing
+        }
       </div>
     `;
   }

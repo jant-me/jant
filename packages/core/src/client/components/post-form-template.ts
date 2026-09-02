@@ -193,13 +193,15 @@ export function renderPostForm(component: JantPostForm) {
           .value=${component._slug}
           @input=${(e: Event) => component.handleSlugInput(e)}
         />
-        ${component._slug
-          ? html`<p class="text-xs text-muted-foreground mt-1">
-              ${component.siteUrl}/${component._slug}
-            </p>`
-          : html`<p class="text-xs text-muted-foreground mt-1">
-              ${component.labels.slugHelp}
-            </p>`}
+        ${
+          component._slug
+            ? html`<p class="text-xs text-muted-foreground mt-1">
+                ${component.siteUrl}/${component._slug}
+              </p>`
+            : html`<p class="text-xs text-muted-foreground mt-1">
+                ${component.labels.slugHelp}
+              </p>`
+        }
       </div>
 
       <div class="field">
@@ -220,18 +222,20 @@ export function renderPostForm(component: JantPostForm) {
         />
       </div>
 
-      ${component._format === "quote"
-        ? html`<div class="field">
-            <label class="label">${component.labels.quoteTextLabel}</label>
-            <textarea
-              class="textarea"
-              rows="3"
-              placeholder=${component.labels.quoteTextPlaceholder}
-              .value=${component._quoteText}
-              @input=${(e: Event) => component.handleInput("_quoteText", e)}
-            ></textarea>
-          </div>`
-        : nothing}
+      ${
+        component._format === "quote"
+          ? html`<div class="field">
+              <label class="label">${component.labels.quoteTextLabel}</label>
+              <textarea
+                class="textarea"
+                rows="3"
+                placeholder=${component.labels.quoteTextPlaceholder}
+                .value=${component._quoteText}
+                @input=${(e: Event) => component.handleInput("_quoteText", e)}
+              ></textarea>
+            </div>`
+          : nothing
+      }
 
       <div class="field">
         <label class="label">${component.labels.mediaLabel}</label>
@@ -296,21 +300,23 @@ export function renderPostForm(component: JantPostForm) {
 
       <div class="flex gap-2">
         <button type="submit" class="btn" ?disabled=${component._loading}>
-          ${component._loading
-            ? html`<svg
-                class="animate-spin size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                role="status"
-              >
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>`
-            : nothing}
+          ${
+            component._loading
+              ? html`<svg
+                  class="animate-spin size-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  role="status"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>`
+              : nothing
+          }
           ${component.labels.submitLabel}
         </button>
         <a href=${component.cancelHref} class="btn-outline"

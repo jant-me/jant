@@ -146,7 +146,24 @@ run = "pnpm lint"
 
 [tasks.fix-format]
 description = "Format code with Prettier"
-run = "npx prettier --write ."
+run = """
+# Loop to a fixed point rather than formatting once. Prettier does not converge
+# in a single pass on nested Lit `html` templates — each pass settles one more
+# level of indentation, and the components under src/client/components have
+# needed five. check-format compares against the fixed point, so formatting once
+# can leave a tree that looks clean locally and still fails CI.
+for pass in 1 2 3 4 5 6 7 8; do
+  npx prettier --write . > /dev/null
+  if npx prettier --check . > /dev/null 2>&1; then
+    echo "Formatted. Converged after $pass pass(es)."
+    exit 0
+  fi
+done
+
+echo "Prettier did not converge after 8 passes. Still unformatted:" >&2
+npx prettier --check .
+exit 1
+"""
 
 [tasks.check-format]
 description = "Check code formatting"
@@ -160,9 +177,15 @@ run = "node scripts/check-copy.mjs"
 # CI (full gate)
 # =============================================================================
 [tasks.check-ci]
-description = "Run all CI checks (tests + i18n + template)"
+description = "Run all CI checks (format + lint + tests + i18n + template)"
 run = """
-# Phase 1: Core checks
+# Phase 1: Static checks. Cheapest signal first, and CI has to be the real gate
+# here: the pre-commit hook formats staged files but can fail to restage the
+# result, which lands unformatted code without failing the commit.
+mise run check-format
+mise run check-lint
+
+# Phase 2: Core checks
 mise run check-tests
 mise run check-copy
 mise run i18n-check
@@ -170,7 +193,7 @@ if [[ -n "${PG_SMOKE_DATABASE_URL:-}" ]]; then
   mise run check-pg-smoke
 fi
 
-# Phase 2: Template integration
+# Phase 3: Template integration
 mise run check-template
 """
 

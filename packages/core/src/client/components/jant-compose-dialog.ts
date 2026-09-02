@@ -792,10 +792,7 @@ export class JantComposeDialog extends LitElement {
   private _pageLeaveRequested = false;
   private _replyThreadRootId: string | null = null;
   private _replyRefreshKind:
-    | "timeline-item"
-    | "post-card"
-    | "post-view"
-    | null = null;
+    "timeline-item" | "post-card" | "post-view" | null = null;
   private _replyRefreshId: string | null = null;
   private _publishedAtTimeMinutes: number | null = null;
   private _originalPublishedAt: number | null = null;
@@ -3031,8 +3028,7 @@ export class JantComposeDialog extends LitElement {
       const res = await fetch("/api/posts?status=draft&limit=50");
       if (!res.ok) throw new Error("Failed to load drafts");
       const json = (await res.json()) as
-        | DraftsResponse
-        | Record<string, unknown>[];
+        DraftsResponse | Record<string, unknown>[];
       const posts = Array.isArray(json) ? json : (json.posts ?? []);
       const allDraftItems = (posts as Record<string, unknown>[]).map(
         (p): DraftItem => ({
@@ -3163,8 +3159,7 @@ export class JantComposeDialog extends LitElement {
         const draftsRes = await fetch("/api/posts?status=draft&limit=50");
         if (draftsRes.ok) {
           const draftsJson = (await draftsRes.json()) as
-            | { posts?: Record<string, unknown>[] }
-            | Record<string, unknown>[];
+            { posts?: Record<string, unknown>[] } | Record<string, unknown>[];
           const allDrafts = Array.isArray(draftsJson)
             ? draftsJson
             : (draftsJson.posts ?? []);
@@ -3950,37 +3945,43 @@ export class JantComposeDialog extends LitElement {
           </button>
           <span class="compose-alt-title">${this.labels.drafts}</span>
         </div>
-        ${this._draftsLoading
-          ? html`<div class="compose-drafts-loading">
-              <svg
-                class="animate-spin size-5"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>
-            </div>`
-          : this._draftsError
-            ? html`<div class="compose-drafts-empty">${this._draftsError}</div>`
-            : this._drafts.length === 0
+        ${
+          this._draftsLoading
+            ? html`<div class="compose-drafts-loading">
+                <svg
+                  class="animate-spin size-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+              </div>`
+            : this._draftsError
               ? html`<div class="compose-drafts-empty">
-                  ${this.labels.draftsEmpty}
+                  ${this._draftsError}
                 </div>`
-              : html`<div class="compose-drafts-list">
-                  ${this._drafts.map(
-                    (draft, i) => html`
-                      ${i > 0
-                        ? html`<div class="compose-drafts-divider"></div>`
-                        : nothing}
-                      ${this._renderDraftItem(draft)}
-                    `,
-                  )}
-                </div>`}
+              : this._drafts.length === 0
+                ? html`<div class="compose-drafts-empty">
+                    ${this.labels.draftsEmpty}
+                  </div>`
+                : html`<div class="compose-drafts-list">
+                    ${this._drafts.map(
+                      (draft, i) => html`
+                        ${
+                          i > 0
+                            ? html`<div class="compose-drafts-divider"></div>`
+                            : nothing
+                        }
+                        ${this._renderDraftItem(draft)}
+                      `,
+                    )}
+                  </div>`
+        }
       </div>
     `;
   }
@@ -3994,13 +3995,15 @@ export class JantComposeDialog extends LitElement {
     return html`
       <div class="compose-draft-item" @click=${() => this.openDraft(draft.id)}>
         <div class="compose-draft-content">
-          ${preview
-            ? html`<div class="compose-draft-preview">${preview}</div>`
-            : html`<div
-                class="compose-draft-preview compose-draft-preview-empty"
-              >
-                Empty draft
-              </div>`}
+          ${
+            preview
+              ? html`<div class="compose-draft-preview">${preview}</div>`
+              : html`<div
+                  class="compose-draft-preview compose-draft-preview-empty"
+                >
+                  Empty draft
+                </div>`
+          }
           <div class="compose-draft-meta">
             <span class="compose-draft-format">${formatLabel}</span>
             <span aria-hidden="true">·</span>
@@ -4008,15 +4011,17 @@ export class JantComposeDialog extends LitElement {
           </div>
         </div>
         <div class="relative">
-          ${menuOpen
-            ? html`<div
-                class="compose-dropdown-backdrop"
-                @click=${(e: Event) => {
-                  e.stopPropagation();
-                  this._draftMenuOpenId = null;
-                }}
-              ></div>`
-            : nothing}
+          ${
+            menuOpen
+              ? html`<div
+                  class="compose-dropdown-backdrop"
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    this._draftMenuOpenId = null;
+                  }}
+                ></div>`
+              : nothing
+          }
           <button
             type="button"
             class="compose-draft-more"
@@ -4036,44 +4041,46 @@ export class JantComposeDialog extends LitElement {
               <circle cx="12" cy="8" r="1.2" />
             </svg>
           </button>
-          ${menuOpen
-            ? html`
-                <div
-                  id=${menuId}
-                  class="compose-dropdown compose-dropdown-right"
-                  role="menu"
-                >
-                  <a
-                    class="compose-dropdown-item"
-                    href=${publicPath(`/preview/${draft.slug}`)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    role="menuitem"
-                    @click=${(e: Event) => {
-                      e.stopPropagation();
-                      this._draftMenuOpenId = null;
-                    }}
-                  >
-                    ${this.labels.previewDraft}
-                  </a>
+          ${
+            menuOpen
+              ? html`
                   <div
-                    class="compose-dropdown-separator"
-                    role="separator"
-                  ></div>
-                  <button
-                    type="button"
-                    class="compose-dropdown-item compose-dropdown-item-danger"
-                    role="menuitem"
-                    @click=${(e: Event) => {
-                      e.stopPropagation();
-                      this._deleteDraft(draft.id);
-                    }}
+                    id=${menuId}
+                    class="compose-dropdown compose-dropdown-right"
+                    role="menu"
                   >
-                    ${this.labels.deleteDraft}
-                  </button>
-                </div>
-              `
-            : nothing}
+                    <a
+                      class="compose-dropdown-item"
+                      href=${publicPath(`/preview/${draft.slug}`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      role="menuitem"
+                      @click=${(e: Event) => {
+                        e.stopPropagation();
+                        this._draftMenuOpenId = null;
+                      }}
+                    >
+                      ${this.labels.previewDraft}
+                    </a>
+                    <div
+                      class="compose-dropdown-separator"
+                      role="separator"
+                    ></div>
+                    <button
+                      type="button"
+                      class="compose-dropdown-item compose-dropdown-item-danger"
+                      role="menuitem"
+                      @click=${(e: Event) => {
+                        e.stopPropagation();
+                        this._deleteDraft(draft.id);
+                      }}
+                    >
+                      ${this.labels.deleteDraft}
+                    </button>
+                  </div>
+                `
+              : nothing
+          }
         </div>
       </div>
     `;
@@ -4124,30 +4131,34 @@ export class JantComposeDialog extends LitElement {
 
     return html`
       <div class="compose-translation-context">
-        ${collapsed
-          ? nothing
-          : source.previewHtml
-            ? html`<div
-                class="compose-translation-original"
-                tabindex="0"
-                role="region"
-                aria-label=${this.labels.translationContextOriginal}
-              >
-                <div class="compose-translation-preview">
-                  ${unsafeHTML(source.previewHtml)}
-                </div>
-              </div>`
-            : html`<p class="compose-translation-fallback">
-                ${source.href
-                  ? html`<a
-                      href=${source.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title=${this.labels.translationContextOpen}
-                      >${source.title}</a
-                    >`
-                  : source.title}
-              </p>`}
+        ${
+          collapsed
+            ? nothing
+            : source.previewHtml
+              ? html`<div
+                  class="compose-translation-original"
+                  tabindex="0"
+                  role="region"
+                  aria-label=${this.labels.translationContextOriginal}
+                >
+                  <div class="compose-translation-preview">
+                    ${unsafeHTML(source.previewHtml)}
+                  </div>
+                </div>`
+              : html`<p class="compose-translation-fallback">
+                  ${
+                    source.href
+                      ? html`<a
+                          href=${source.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title=${this.labels.translationContextOpen}
+                          >${source.title}</a
+                        >`
+                      : source.title
+                  }
+                </p>`
+        }
         <div class="compose-translation-seam">
           <span class="compose-translation-seam-label">
             ${this._iconArrowDown()}${seam}
@@ -4157,16 +4168,20 @@ export class JantComposeDialog extends LitElement {
             type="button"
             class="compose-translation-seam-toggle"
             aria-expanded=${collapsed ? "false" : "true"}
-            aria-label=${collapsed
-              ? this.labels.translationContextShowLong
-              : this.labels.translationContextHideLong}
+            aria-label=${
+              collapsed
+                ? this.labels.translationContextShowLong
+                : this.labels.translationContextHideLong
+            }
             @click=${() => {
               this._translationCollapsed = !this._translationCollapsed;
             }}
           >
-            ${collapsed
-              ? this.labels.translationContextShow
-              : this.labels.translationContextHide}
+            ${
+              collapsed
+                ? this.labels.translationContextShow
+                : this.labels.translationContextHide
+            }
           </button>
         </div>
       </div>
@@ -4251,42 +4266,44 @@ export class JantComposeDialog extends LitElement {
         >
           <div class="compose-reply-context-body">
             ${unsafeHTML(contentHtml)}
-            ${media?.length
-              ? html`<div
-                  class="compose-reply-context-media"
-                  data-post-media
-                  data-lightbox-group=${JSON.stringify(
-                    media.map((m) => ({
-                      url: m.url,
-                      alt: m.alt ?? "",
-                      width: m.width,
-                      height: m.height,
-                      mimeType: m.mimeType,
-                    })),
-                  )}
-                >
-                  ${media.map(
-                    (m, i) => html`
-                      <a
-                        href=${m.url}
-                        data-lightbox-index=${i}
-                        class="compose-reply-context-media-link"
-                      >
-                        <img
-                          src=${m.previewUrl}
-                          alt=${m.alt ?? ""}
-                          class="compose-reply-context-media-img"
-                          loading="lazy"
-                        />
-                      </a>
-                    `,
-                  )}
-                </div>`
-              : nothing}
+            ${
+              media?.length
+                ? html`<div
+                    class="compose-reply-context-media"
+                    data-post-media
+                    data-lightbox-group=${JSON.stringify(
+                      media.map((m) => ({
+                        url: m.url,
+                        alt: m.alt ?? "",
+                        width: m.width,
+                        height: m.height,
+                        mimeType: m.mimeType,
+                      })),
+                    )}
+                  >
+                    ${media.map(
+                      (m, i) => html`
+                        <a
+                          href=${m.url}
+                          data-lightbox-index=${i}
+                          class="compose-reply-context-media-link"
+                        >
+                          <img
+                            src=${m.previewUrl}
+                            alt=${m.alt ?? ""}
+                            class="compose-reply-context-media-img"
+                            loading="lazy"
+                          />
+                        </a>
+                      `,
+                    )}
+                  </div>`
+                : nothing
+            }
           </div>
-          ${!isExpanded
-            ? html`<div class="compose-reply-fade"></div>`
-            : nothing}
+          ${
+            !isExpanded ? html`<div class="compose-reply-fade"></div>` : nothing
+          }
         </div>
       </div>
       <div class="compose-reply-meta">
@@ -4404,12 +4421,14 @@ export class JantComposeDialog extends LitElement {
 
     return html`
       <div class="flex-1 min-w-0">
-        ${this._showCollection
-          ? html`<div
-              class="compose-dropdown-backdrop"
-              @click=${() => this._closeCollectionPicker()}
-            ></div>`
-          : nothing}
+        ${
+          this._showCollection
+            ? html`<div
+                class="compose-dropdown-backdrop"
+                @click=${() => this._closeCollectionPicker()}
+              ></div>`
+            : nothing
+        }
         <div
           class="select compose-collection-select"
           data-select-initialized
@@ -4449,100 +4468,106 @@ export class JantComposeDialog extends LitElement {
             data-popover
             aria-hidden=${this._showCollection ? "false" : "true"}
           >
-            ${collections.length > 0
-              ? html`<div class="compose-collection-popover-header">
-                  <label class="compose-collection-search-shell">
-                    ${renderComposeCollectionPickerIcon(
-                      COMPOSE_COLLECTION_PICKER_ICONS.search,
-                      "compose-collection-search-icon",
-                    )}
-                    <input
-                      type="text"
-                      role="combobox"
-                      class="compose-collection-search-input"
-                      placeholder=${this.labels.searchCollections}
-                      autocomplete="off"
-                      autocorrect="off"
-                      spellcheck="false"
-                      .value=${this._collectionSearch}
-                      @keydown=${this._handleCollectionSearchKeydown}
-                      @input=${(e: Event) => {
-                        this._collectionSearch = (
-                          e.target as HTMLInputElement
-                        ).value;
-                      }}
-                    />
-                  </label>
-                </div>`
-              : nothing}
+            ${
+              collections.length > 0
+                ? html`<div class="compose-collection-popover-header">
+                    <label class="compose-collection-search-shell">
+                      ${renderComposeCollectionPickerIcon(
+                        COMPOSE_COLLECTION_PICKER_ICONS.search,
+                        "compose-collection-search-icon",
+                      )}
+                      <input
+                        type="text"
+                        role="combobox"
+                        class="compose-collection-search-input"
+                        placeholder=${this.labels.searchCollections}
+                        autocomplete="off"
+                        autocorrect="off"
+                        spellcheck="false"
+                        .value=${this._collectionSearch}
+                        @keydown=${this._handleCollectionSearchKeydown}
+                        @input=${(e: Event) => {
+                          this._collectionSearch = (
+                            e.target as HTMLInputElement
+                          ).value;
+                        }}
+                      />
+                    </label>
+                  </div>`
+                : nothing
+            }
             <div
               role="listbox"
               class="compose-collection-options"
               aria-multiselectable="true"
             >
-              ${filtered.length > 0
-                ? filtered.map((col) => {
-                    const selected = this._collectionIds.includes(col.id);
+              ${
+                filtered.length > 0
+                  ? filtered.map((col) => {
+                      const selected = this._collectionIds.includes(col.id);
 
-                    return html`
-                      <button
-                        type="button"
-                        class=${classMap({
-                          "compose-collection-option": true,
-                          "compose-collection-option-selected": selected,
-                        })}
-                        role="option"
-                        data-value=${col.id}
-                        aria-selected=${selected ? "true" : "false"}
-                        @keydown=${(event: globalThis.KeyboardEvent) =>
-                          this._handleCollectionOptionKeydown(event, col.id)}
-                        @click=${() =>
-                          this._handleCollectionOptionClick(col.id)}
-                      >
-                        <span class="compose-collection-option-label"
-                          >${col.title}</span
-                        >
-                        <span
+                      return html`
+                        <button
+                          type="button"
                           class=${classMap({
-                            "compose-collection-option-marker": true,
-                            "compose-collection-option-marker-selected":
-                              selected,
-                            "compose-collection-option-marker-add": !selected,
+                            "compose-collection-option": true,
+                            "compose-collection-option-selected": selected,
                           })}
+                          role="option"
+                          data-value=${col.id}
+                          aria-selected=${selected ? "true" : "false"}
+                          @keydown=${(event: globalThis.KeyboardEvent) =>
+                            this._handleCollectionOptionKeydown(event, col.id)}
+                          @click=${() =>
+                            this._handleCollectionOptionClick(col.id)}
                         >
-                          ${selected
-                            ? html`<svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="compose-collection-option-check-circle"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                aria-hidden="true"
-                              >
-                                <circle
-                                  cx="12"
-                                  cy="12"
-                                  r="10"
-                                  fill="currentColor"
-                                />
-                                <path
-                                  d="M8 12.5 10.7 15.2 16.4 9.5"
-                                  stroke="var(--site-page-bg)"
-                                  stroke-width="2.3"
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                />
-                              </svg>`
-                            : renderComposeCollectionPickerIcon(
-                                COMPOSE_COLLECTION_PICKER_ICONS.plusCircle,
-                                "compose-collection-option-plus-circle",
-                              )}
-                        </span>
-                      </button>
-                    `;
-                  })
-                : html`<div class="compose-collection-empty">
-                    ${emptyLabel}
-                  </div>`}
+                          <span class="compose-collection-option-label"
+                            >${col.title}</span
+                          >
+                          <span
+                            class=${classMap({
+                              "compose-collection-option-marker": true,
+                              "compose-collection-option-marker-selected":
+                                selected,
+                              "compose-collection-option-marker-add": !selected,
+                            })}
+                          >
+                            ${
+                              selected
+                                ? html`<svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="compose-collection-option-check-circle"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    aria-hidden="true"
+                                  >
+                                    <circle
+                                      cx="12"
+                                      cy="12"
+                                      r="10"
+                                      fill="currentColor"
+                                    />
+                                    <path
+                                      d="M8 12.5 10.7 15.2 16.4 9.5"
+                                      stroke="var(--site-page-bg)"
+                                      stroke-width="2.3"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                    />
+                                  </svg>`
+                                : renderComposeCollectionPickerIcon(
+                                    COMPOSE_COLLECTION_PICKER_ICONS.plusCircle,
+                                    "compose-collection-option-plus-circle",
+                                  )
+                            }
+                          </span>
+                        </button>
+                      `;
+                    })
+                  : html`<div class="compose-collection-empty">
+                      ${emptyLabel}
+                    </div>`
+              }
             </div>
             <div class="compose-collection-footer">
               <button
@@ -4586,8 +4611,7 @@ export class JantComposeDialog extends LitElement {
     if (!detail) return;
 
     const formEl = this.querySelector("jant-collection-form") as
-      | (HTMLElement & { loading: boolean })
-      | null;
+      (HTMLElement & { loading: boolean }) | null;
     if (formEl) formEl.loading = true;
 
     try {
@@ -4768,22 +4792,24 @@ export class JantComposeDialog extends LitElement {
           <span class="compose-alt-title">${this.labels.addAltTitle}</span>
         </div>
         <div class="compose-alt-preview">
-          ${category === "image"
-            ? html`<img
-                src=${attachment.previewUrl}
-                alt=""
-                class="compose-alt-preview-img"
-              />`
-            : category === "video"
-              ? html`<video
+          ${
+            category === "image"
+              ? html`<img
                   src=${attachment.previewUrl}
+                  alt=""
                   class="compose-alt-preview-img"
-                  preload="metadata"
-                  muted
-                ></video>`
-              : html`<span class="text-sm text-muted-foreground"
-                  >${attachment.file.name}</span
-                >`}
+                />`
+              : category === "video"
+                ? html`<video
+                    src=${attachment.previewUrl}
+                    class="compose-alt-preview-img"
+                    preload="metadata"
+                    muted
+                  ></video>`
+                : html`<span class="text-sm text-muted-foreground"
+                    >${attachment.file.name}</span
+                  >`
+          }
         </div>
         <div class="compose-alt-input-row">
           <input
@@ -5207,14 +5233,16 @@ export class JantComposeDialog extends LitElement {
           <span class="compose-sheet-title">${label}</span>
           <span class="compose-sheet-sub">${hint}</span>
         </span>
-        ${selected
-          ? html`<span class="compose-sheet-check" aria-hidden="true">
-              ${renderComposePublishActionIcon(
-                COMPOSE_PUBLISH_ACTION_ICONS.check,
-                "compose-sheet-check-icon",
-              )}
-            </span>`
-          : nothing}
+        ${
+          selected
+            ? html`<span class="compose-sheet-check" aria-hidden="true">
+                ${renderComposePublishActionIcon(
+                  COMPOSE_PUBLISH_ACTION_ICONS.check,
+                  "compose-sheet-check-icon",
+                )}
+              </span>`
+            : nothing
+        }
       </button>
     `;
   }
@@ -5402,18 +5430,22 @@ export class JantComposeDialog extends LitElement {
       >
         <span class="compose-sheet-main">
           <span class="compose-sheet-title">${label}</span>
-          ${hint
-            ? html`<span class="compose-sheet-sub">${hint}</span>`
-            : nothing}
+          ${
+            hint
+              ? html`<span class="compose-sheet-sub">${hint}</span>`
+              : nothing
+          }
         </span>
-        ${selected
-          ? html`<span class="compose-sheet-check" aria-hidden="true">
-              ${renderComposePublishActionIcon(
-                COMPOSE_PUBLISH_ACTION_ICONS.check,
-                "compose-sheet-check-icon",
-              )}
-            </span>`
-          : nothing}
+        ${
+          selected
+            ? html`<span class="compose-sheet-check" aria-hidden="true">
+                ${renderComposePublishActionIcon(
+                  COMPOSE_PUBLISH_ACTION_ICONS.check,
+                  "compose-sheet-check-icon",
+                )}
+              </span>`
+            : nothing
+        }
       </button>
     `;
   }
@@ -5493,12 +5525,14 @@ export class JantComposeDialog extends LitElement {
           "compose-language-open": open,
         })}
       >
-        ${open
-          ? html`<div
-              class="compose-dropdown-backdrop"
-              @click=${() => this._closeLanguagePicker(true)}
-            ></div>`
-          : nothing}
+        ${
+          open
+            ? html`<div
+                class="compose-dropdown-backdrop"
+                @click=${() => this._closeLanguagePicker(true)}
+              ></div>`
+            : nothing
+        }
         <button
           type="button"
           class=${classMap({
@@ -5529,13 +5563,15 @@ export class JantComposeDialog extends LitElement {
           >
             ${unsafeSVG(COMPOSE_LANGUAGE_ICON)}
           </svg>
-          ${named
-            ? html`<span
-                class="compose-language-label"
-                lang=${ifDefined(effective ?? undefined)}
-                >${effectiveLabel}</span
-              >`
-            : nothing}
+          ${
+            named
+              ? html`<span
+                  class="compose-language-label"
+                  lang=${ifDefined(effective ?? undefined)}
+                  >${effectiveLabel}</span
+                >`
+              : nothing
+          }
         </button>
         ${open ? this._renderLanguagePicker() : nothing}
       </div>
@@ -5563,14 +5599,16 @@ export class JantComposeDialog extends LitElement {
         aria-label=${this.labels.languageLabel}
       >
         <p class="compose-sheet-label">${this.labels.languageLabel}</p>
-        ${this._translationOf
-          ? html`<p class="compose-sheet-note">
-              ${this.labels.translationOf.replace(
-                "{title}",
-                this._translationOf.title,
-              )}
-            </p>`
-          : nothing}
+        ${
+          this._translationOf
+            ? html`<p class="compose-sheet-note">
+                ${this.labels.translationOf.replace(
+                  "{title}",
+                  this._translationOf.title,
+                )}
+              </p>`
+            : nothing
+        }
         <div role="radiogroup" aria-label=${this.labels.languageLabel}>
           ${this._renderLanguageRow(null, this.labels.languageAuto, autoHint)}
           ${this.languages.map((language) =>
@@ -5673,17 +5711,19 @@ export class JantComposeDialog extends LitElement {
             )}
           </button>
         </div>
-        ${publishedAtError
-          ? html`<p
-              class="compose-publish-date-status compose-publish-date-status-error"
-            >
-              ${publishedAtError}
-            </p>`
-          : hasValue
-            ? nothing
-            : html`<p class="compose-sheet-hint">
-                ${this.labels.publishDateHint}
-              </p>`}
+        ${
+          publishedAtError
+            ? html`<p
+                class="compose-publish-date-status compose-publish-date-status-error"
+              >
+                ${publishedAtError}
+              </p>`
+            : hasValue
+              ? nothing
+              : html`<p class="compose-sheet-hint">
+                  ${this.labels.publishDateHint}
+                </p>`
+        }
       </div>
     `;
   }
@@ -5729,64 +5769,68 @@ export class JantComposeDialog extends LitElement {
             @input=${(e: Event) => this._onSlugInput(e, index)}
           />
         </div>
-        ${showSuggestion
-          ? html`
-              <button
-                type="button"
-                class="compose-slug-suggestion"
-                @click=${() => this._useSuggestedSlug()}
-              >
-                <span class="compose-slug-suggestion-label"
-                  >${this.labels.publishSlugSuggested}</span
+        ${
+          showSuggestion
+            ? html`
+                <button
+                  type="button"
+                  class="compose-slug-suggestion"
+                  @click=${() => this._useSuggestedSlug()}
                 >
-                <span class="compose-slug-suggestion-value"
-                  >/${this._suggestedSlug}</span
-                >
-                <span class="compose-slug-suggestion-icon" aria-hidden="true">
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.4"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+                  <span class="compose-slug-suggestion-label"
+                    >${this.labels.publishSlugSuggested}</span
                   >
-                    <path d="M3 7h8" />
-                    <path d="m8 3 4 4-4 4" />
-                  </svg>
-                </span>
-              </button>
-            `
-          : nothing}
-        ${slugStatus
-          ? html`<p
-              class=${classMap({
-                "compose-publish-slug-status": true,
-                "compose-publish-slug-status-error": Boolean(slugError),
-              })}
-              data-compose-slug-error=${slugError ? "true" : nothing}
-            >
-              ${slugStatus}
-            </p>`
-          : slugPreview
+                  <span class="compose-slug-suggestion-value"
+                    >/${this._suggestedSlug}</span
+                  >
+                  <span class="compose-slug-suggestion-icon" aria-hidden="true">
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M3 7h8" />
+                      <path d="m8 3 4 4-4 4" />
+                    </svg>
+                  </span>
+                </button>
+              `
+            : nothing
+        }
+        ${
+          slugStatus
             ? html`<p
-                class="compose-publish-slug-preview"
-                data-compose-slug-preview
-                title=${slugPreview.full}
+                class=${classMap({
+                  "compose-publish-slug-status": true,
+                  "compose-publish-slug-status-error": Boolean(slugError),
+                })}
+                data-compose-slug-error=${slugError ? "true" : nothing}
               >
-                <span class="compose-publish-slug-preview-origin"
-                  >${slugPreview.origin}</span
-                ><span class="compose-publish-slug-preview-path"
-                  >${slugPreview.path}</span
-                >
+                ${slugStatus}
               </p>`
-            : this._hasPostManualSlug(index)
-              ? nothing
-              : html`<p class="compose-sheet-hint">
-                  ${this.labels.publishSlugHint}
-                </p>`}
+            : slugPreview
+              ? html`<p
+                  class="compose-publish-slug-preview"
+                  data-compose-slug-preview
+                  title=${slugPreview.full}
+                >
+                  <span class="compose-publish-slug-preview-origin"
+                    >${slugPreview.origin}</span
+                  ><span class="compose-publish-slug-preview-path"
+                    >${slugPreview.path}</span
+                  >
+                </p>`
+              : this._hasPostManualSlug(index)
+                ? nothing
+                : html`<p class="compose-sheet-hint">
+                    ${this.labels.publishSlugHint}
+                  </p>`
+        }
       </div>
     `;
   }
@@ -5986,12 +6030,14 @@ export class JantComposeDialog extends LitElement {
           "compose-post-meta-open": open,
         })}
       >
-        ${open
-          ? html`<div
-              class="compose-dropdown-backdrop"
-              @click=${() => this._closePostMeta()}
-            ></div>`
-          : nothing}
+        ${
+          open
+            ? html`<div
+                class="compose-dropdown-backdrop"
+                @click=${() => this._closePostMeta()}
+              ></div>`
+            : nothing
+        }
         <button
           type="button"
           class="compose-post-meta-pill"
@@ -6026,28 +6072,30 @@ export class JantComposeDialog extends LitElement {
             >${this._getPostSlugRowValue(index)}</span
           >
         </button>
-        ${open
-          ? html`<div
-              class="compose-post-meta-panel"
-              role="dialog"
-              aria-label=${this.labels.publishSettings}
-              tabindex="-1"
-              data-compose-post-meta-panel
-            >
-              ${this._renderPublishDateSection(index)}
-              ${this._renderPublishSlugSection(index)}
-              <div class="compose-post-meta-footer">
-                <button
-                  type="button"
-                  class="compose-publish-done"
-                  data-compose-post-meta-done
-                  @click=${() => this._closePostMeta()}
-                >
-                  ${this.labels.done}
-                </button>
-              </div>
-            </div>`
-          : nothing}
+        ${
+          open
+            ? html`<div
+                class="compose-post-meta-panel"
+                role="dialog"
+                aria-label=${this.labels.publishSettings}
+                tabindex="-1"
+                data-compose-post-meta-panel
+              >
+                ${this._renderPublishDateSection(index)}
+                ${this._renderPublishSlugSection(index)}
+                <div class="compose-post-meta-footer">
+                  <button
+                    type="button"
+                    class="compose-publish-done"
+                    data-compose-post-meta-done
+                    @click=${() => this._closePostMeta()}
+                  >
+                    ${this.labels.done}
+                  </button>
+                </div>
+              </div>`
+            : nothing
+        }
       </div>
     `;
   }
@@ -6224,40 +6272,46 @@ export class JantComposeDialog extends LitElement {
 
     return html`
       <div class="compose-sheet">
-        ${this._visibilityLocked
-          ? nothing
-          : html`
-              <p class="compose-sheet-label">
-                ${this.labels.publishVisibilityLabel}
-              </p>
-              <div
-                role="radiogroup"
-                aria-label=${this.labels.publishVisibilityLabel}
-              >
-                ${this._renderVisibilityRow(
-                  "public",
-                  this.labels.publishVisibilityPublic,
-                  this.labels.publishVisibilityPublicHint,
-                )}
-                ${this._renderVisibilityRow(
-                  "latest_hidden",
-                  this.labels.publishVisibilityHiddenFromLatest,
-                  this.labels.publishVisibilityHiddenFromLatestHint,
-                )}
-                ${this._renderVisibilityRow(
-                  "private",
-                  this.labels.publishVisibilityPrivate,
-                  this.labels.publishVisibilityPrivateHint,
-                )}
-              </div>
-            `}
-        ${this._replyToId
-          ? html`${this._visibilityLocked ? nothing : divider}
-            ${this._renderQuietReplySection()}`
-          : nothing}
-        ${hasSessionRows
-          ? html`${divider} ${saveDraftRow} ${draftsRow}`
-          : nothing}
+        ${
+          this._visibilityLocked
+            ? nothing
+            : html`
+                <p class="compose-sheet-label">
+                  ${this.labels.publishVisibilityLabel}
+                </p>
+                <div
+                  role="radiogroup"
+                  aria-label=${this.labels.publishVisibilityLabel}
+                >
+                  ${this._renderVisibilityRow(
+                    "public",
+                    this.labels.publishVisibilityPublic,
+                    this.labels.publishVisibilityPublicHint,
+                  )}
+                  ${this._renderVisibilityRow(
+                    "latest_hidden",
+                    this.labels.publishVisibilityHiddenFromLatest,
+                    this.labels.publishVisibilityHiddenFromLatestHint,
+                  )}
+                  ${this._renderVisibilityRow(
+                    "private",
+                    this.labels.publishVisibilityPrivate,
+                    this.labels.publishVisibilityPrivateHint,
+                  )}
+                </div>
+              `
+        }
+        ${
+          this._replyToId
+            ? html`${this._visibilityLocked ? nothing : divider}
+              ${this._renderQuietReplySection()}`
+            : nothing
+        }
+        ${
+          hasSessionRows
+            ? html`${divider} ${saveDraftRow} ${draftsRow}`
+            : nothing
+        }
       </div>
     `;
   }
@@ -6491,12 +6545,14 @@ export class JantComposeDialog extends LitElement {
             "compose-publish-group-open": this._showPublishPanel,
           })}
         >
-          ${this._showPublishPanel && !this._publishPanelFullscreen
-            ? html`<div
-                class="compose-dropdown-backdrop"
-                @click=${() => this._closePublishPanel(true)}
-              ></div>`
-            : nothing}
+          ${
+            this._showPublishPanel && !this._publishPanelFullscreen
+              ? html`<div
+                  class="compose-dropdown-backdrop"
+                  @click=${() => this._closePublishPanel(true)}
+                ></div>`
+              : nothing
+          }
           <div
             role="group"
             class=${classMap({
@@ -6519,35 +6575,37 @@ export class JantComposeDialog extends LitElement {
           <!-- Options sits past Publish as its own control rather than a
                chevron welded to it: a split button reads as one button, which
                is why nobody found the settings. -->
-          ${this._hasPublishPanelContent()
-            ? html`<button
-                type="button"
-                class=${classMap({
-                  "compose-options-trigger": true,
-                  "compose-options-trigger-open": this._showPublishPanel,
-                })}
-                ?disabled=${this._loading}
-                aria-haspopup="dialog"
-                aria-expanded=${this._showPublishPanel ? "true" : "false"}
-                aria-label=${this.labels.publishSettings}
-                title=${this.labels.publishSettings}
-                @click=${() => this._togglePublishPanel()}
-              >
-                <svg
-                  class="compose-options-trigger-icon"
-                  width="22"
-                  height="22"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
+          ${
+            this._hasPublishPanelContent()
+              ? html`<button
+                  type="button"
+                  class=${classMap({
+                    "compose-options-trigger": true,
+                    "compose-options-trigger-open": this._showPublishPanel,
+                  })}
+                  ?disabled=${this._loading}
+                  aria-haspopup="dialog"
+                  aria-expanded=${this._showPublishPanel ? "true" : "false"}
+                  aria-label=${this.labels.publishSettings}
+                  title=${this.labels.publishSettings}
+                  @click=${() => this._togglePublishPanel()}
                 >
-                  ${unsafeSVG(COMPOSE_PUBLISH_ACTION_ICONS.options)}
-                </svg>
-              </button>`
-            : nothing}
+                  <svg
+                    class="compose-options-trigger-icon"
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    ${unsafeSVG(COMPOSE_PUBLISH_ACTION_ICONS.options)}
+                  </svg>
+                </button>`
+              : nothing
+          }
           ${this._renderDesktopPublishPanel()}
         </div>
       </div>
@@ -6963,9 +7021,11 @@ export class JantComposeDialog extends LitElement {
         })}
         @jant:compose-content-changed=${() => this._scheduleDraftSave()}
       >
-        ${isReply
-          ? this._renderReplyContext()
-          : this._renderTranslationContext()}
+        ${
+          isReply
+            ? this._renderReplyContext()
+            : this._renderTranslationContext()
+        }
         <!-- Keyed by row id, not by position: an editor holds its own content,
              so an unkeyed list would reuse elements by position and drop the
              last one when a middle post is removed — taking that post's text
@@ -7066,41 +7126,46 @@ export class JantComposeDialog extends LitElement {
         ?inert=${this._addCollectionPanelOpen}
       >
         <div class="compose-scroll">
-          ${isOpeningEdit
-            ? this._renderEditLoadingState()
-            : isThreadMode
-              ? this._renderThreadComposeLayout()
-              : isReply
-                ? html`
-                    <div
-                      class="compose-thread-layout compose-reply-compose-layout"
-                    >
-                      ${this._renderReplyContext()}
-                      <div class="compose-editor-row is-current">
-                        <div class="compose-thread-dot"></div>
-                        ${editor}
+          ${
+            isOpeningEdit
+              ? this._renderEditLoadingState()
+              : isThreadMode
+                ? this._renderThreadComposeLayout()
+                : isReply
+                  ? html`
+                      <div
+                        class="compose-thread-layout compose-reply-compose-layout"
+                      >
+                        ${this._renderReplyContext()}
+                        <div class="compose-editor-row is-current">
+                          <div class="compose-thread-dot"></div>
+                          ${editor}
+                        </div>
+                        ${addThreadRow}
                       </div>
-                      ${addThreadRow}
-                    </div>
-                  `
-                : html`${this._renderTranslationContext()}${editor}${addThreadRow}`}
+                    `
+                  : html`${this._renderTranslationContext()}${editor}${addThreadRow}`
+          }
         </div>
-        ${isOpeningEdit
-          ? nothing
-          : html`<div
-                class=${classMap({
-                  "compose-action-row": true,
-                  "compose-action-row-without-collection": !!this._replyToId,
-                  "compose-action-row-overlay-open":
-                    this._showPublishPanel ||
-                    this._showCollection ||
-                    this._showLanguagePicker,
-                })}
-              >
-                ${this._replyToId ? nothing : this._renderCollectionSelector()}
-                ${this._renderLanguageControl()} ${this._renderPublishButton()}
-              </div>
-              ${this._renderQuickActionsRow()}`}
+        ${
+          isOpeningEdit
+            ? nothing
+            : html`<div
+                  class=${classMap({
+                    "compose-action-row": true,
+                    "compose-action-row-without-collection": !!this._replyToId,
+                    "compose-action-row-overlay-open":
+                      this._showPublishPanel ||
+                      this._showCollection ||
+                      this._showLanguagePicker,
+                  })}
+                >
+                  ${this._replyToId ? nothing : this._renderCollectionSelector()}
+                  ${this._renderLanguageControl()}
+                  ${this._renderPublishButton()}
+                </div>
+                ${this._renderQuickActionsRow()}`
+        }
         ${this._renderMobilePublishPanel()} ${this._renderAttachedPanel()}
         ${this._renderAltPanel()} ${this._renderDraftsPanel()}
         ${this._renderConfirmPanel()}

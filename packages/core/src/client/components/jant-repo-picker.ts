@@ -490,11 +490,13 @@ export class JantRepoPicker extends LitElement {
 
         ${this.#renderOwner()} ${this.#renderRepo()}
         ${this.#renderClassification()} ${this.#renderActions()}
-        ${this._error
-          ? html`<div class="alert-destructive text-sm" role="alert">
-              <section><p>${this._error}</p></section>
-            </div>`
-          : nothing}
+        ${
+          this._error
+            ? html`<div class="alert-destructive text-sm" role="alert">
+                <section><p>${this._error}</p></section>
+              </div>`
+            : nothing
+        }
       </div>
     `;
   }
@@ -512,23 +514,29 @@ export class JantRepoPicker extends LitElement {
           aria-expanded=${this._ownerOpen}
         >
           <span class="flex items-center gap-2 truncate">
-            ${selected
-              ? html`
-                  ${selected.account.avatarUrl
-                    ? html`<img
-                        src=${selected.account.avatarUrl}
-                        alt=""
-                        class="w-5 h-5 rounded-full"
-                        loading="lazy"
-                      />`
-                    : nothing}
-                  <span class="truncate">${selected.account.login}</span>
-                `
-              : html`<span class="text-muted-foreground"
-                  >${this._installations.length === 0
-                    ? this.labels.ownerEmpty
-                    : this.labels.ownerPlaceholder}</span
-                >`}
+            ${
+              selected
+                ? html`
+                    ${
+                      selected.account.avatarUrl
+                        ? html`<img
+                            src=${selected.account.avatarUrl}
+                            alt=""
+                            class="w-5 h-5 rounded-full"
+                            loading="lazy"
+                          />`
+                        : nothing
+                    }
+                    <span class="truncate">${selected.account.login}</span>
+                  `
+                : html`<span class="text-muted-foreground"
+                    >${
+                      this._installations.length === 0
+                        ? this.labels.ownerEmpty
+                        : this.labels.ownerPlaceholder
+                    }</span
+                  >`
+            }
           </span>
           <span class="text-muted-foreground">▾</span>
         </button>
@@ -552,17 +560,20 @@ export class JantRepoPicker extends LitElement {
                   class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
                   @click=${() => this.#selectOwner(inst)}
                   role="option"
-                  aria-selected=${this._selectedOwner?.installationId ===
-                  inst.installationId}
+                  aria-selected=${
+                    this._selectedOwner?.installationId === inst.installationId
+                  }
                 >
-                  ${inst.account.avatarUrl
-                    ? html`<img
-                        src=${inst.account.avatarUrl}
-                        alt=""
-                        class="w-5 h-5 rounded-full"
-                        loading="lazy"
-                      />`
-                    : nothing}
+                  ${
+                    inst.account.avatarUrl
+                      ? html`<img
+                          src=${inst.account.avatarUrl}
+                          alt=""
+                          class="w-5 h-5 rounded-full"
+                          loading="lazy"
+                        />`
+                      : nothing
+                  }
                   <span class="truncate">${inst.account.login}</span>
                   <span class="ml-auto text-xs text-muted-foreground">
                     ${inst.account.type === "Organization" ? "Org" : ""}
@@ -571,18 +582,20 @@ export class JantRepoPicker extends LitElement {
               </li>
             `,
           )}
-          ${this.installUrl
-            ? html`
-                <li class="border-t mt-1 pt-1">
-                  <a
-                    href=${this.installUrl}
-                    class="block px-3 py-2 text-sm text-primary hover:bg-muted"
-                  >
-                    ${this.labels.installAnother}
-                  </a>
-                </li>
-              `
-            : nothing}
+          ${
+            this.installUrl
+              ? html`
+                  <li class="border-t mt-1 pt-1">
+                    <a
+                      href=${this.installUrl}
+                      class="block px-3 py-2 text-sm text-primary hover:bg-muted"
+                    >
+                      ${this.labels.installAnother}
+                    </a>
+                  </li>
+                `
+              : nothing
+          }
         </ul>
       </div>
     `;
@@ -603,17 +616,23 @@ export class JantRepoPicker extends LitElement {
           ?disabled=${disabled}
         >
           <span class="truncate">
-            ${selected
-              ? html`<span>${selected.name}</span> ${selected.private
-                    ? html`<span class="text-xs text-muted-foreground ml-1"
-                        >${this.labels.privateBadge}</span
-                      >`
-                    : nothing}`
-              : html`<span class="text-muted-foreground"
-                  >${disabled
-                    ? this.labels.repoPlaceholderNoOwner
-                    : this.labels.repoPlaceholder}</span
-                >`}
+            ${
+              selected
+                ? html`<span>${selected.name}</span> ${
+                      selected.private
+                        ? html`<span class="text-xs text-muted-foreground ml-1"
+                            >${this.labels.privateBadge}</span
+                          >`
+                        : nothing
+                    }`
+                : html`<span class="text-muted-foreground"
+                    >${
+                      disabled
+                        ? this.labels.repoPlaceholderNoOwner
+                        : this.labels.repoPlaceholder
+                    }</span
+                  >`
+            }
           </span>
           <span class="text-muted-foreground">▾</span>
         </button>
@@ -648,45 +667,52 @@ export class JantRepoPicker extends LitElement {
             <span aria-hidden="true">⟳</span>
           </button>
         </div>
-        ${this._hasMore && this._reposMode === "list"
-          ? html`<p class="px-3 pt-2 text-xs text-muted-foreground">
-              ${this.labels.repoShowingOf
-                .replace("{shown}", String(this._repos.length))
-                .replace("{total}", String(this._totalCount))}
-              — ${this.labels.repoSearchHint}
-            </p>`
-          : nothing}
+        ${
+          this._hasMore && this._reposMode === "list"
+            ? html`<p class="px-3 pt-2 text-xs text-muted-foreground">
+                ${this.labels.repoShowingOf
+                  .replace("{shown}", String(this._repos.length))
+                  .replace("{total}", String(this._totalCount))}
+                — ${this.labels.repoSearchHint}
+              </p>`
+            : nothing
+        }
         <ul class="max-h-64 overflow-y-auto py-1" role="listbox">
-          ${this._loadingRepos
-            ? html`<li class="px-3 py-2 text-sm text-muted-foreground">
-                ${this.labels.repoLoading}
-              </li>`
-            : items.length === 0
+          ${
+            this._loadingRepos
               ? html`<li class="px-3 py-2 text-sm text-muted-foreground">
-                  ${this.labels.repoEmpty}
+                  ${this.labels.repoLoading}
                 </li>`
-              : items.map(
-                  (r) => html`
-                    <li>
-                      <button
-                        type="button"
-                        class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
-                        @click=${() => this.#selectRepo(r)}
-                        role="option"
-                        aria-selected=${this._selectedRepo?.fullName ===
-                        r.fullName}
-                      >
-                        <span class="truncate">${r.name}</span>
-                        ${r.private
-                          ? html`<span
-                              class="ml-auto text-xs text-muted-foreground"
-                              >${this.labels.privateBadge}</span
-                            >`
-                          : nothing}
-                      </button>
-                    </li>
-                  `,
-                )}
+              : items.length === 0
+                ? html`<li class="px-3 py-2 text-sm text-muted-foreground">
+                    ${this.labels.repoEmpty}
+                  </li>`
+                : items.map(
+                    (r) => html`
+                      <li>
+                        <button
+                          type="button"
+                          class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                          @click=${() => this.#selectRepo(r)}
+                          role="option"
+                          aria-selected=${
+                            this._selectedRepo?.fullName === r.fullName
+                          }
+                        >
+                          <span class="truncate">${r.name}</span>
+                          ${
+                            r.private
+                              ? html`<span
+                                  class="ml-auto text-xs text-muted-foreground"
+                                  >${this.labels.privateBadge}</span
+                                >`
+                              : nothing
+                          }
+                        </button>
+                      </li>
+                    `,
+                  )
+          }
         </ul>
         <div class="border-t p-2">
           <button
@@ -696,14 +722,16 @@ export class JantRepoPicker extends LitElement {
           >
             <span class="flex flex-col">
               <span class="font-medium">${this.labels.createOnGitHub} →</span>
-              ${this.createRepoNameHint
-                ? html`<span class="text-xs text-muted-foreground">
-                    ${this.labels.createOnGitHubHint.replace(
-                      "{name}",
-                      this.createRepoNameHint,
-                    )}
-                  </span>`
-                : nothing}
+              ${
+                this.createRepoNameHint
+                  ? html`<span class="text-xs text-muted-foreground">
+                      ${this.labels.createOnGitHubHint.replace(
+                        "{name}",
+                        this.createRepoNameHint,
+                      )}
+                    </span>`
+                  : nothing
+              }
             </span>
           </button>
         </div>

@@ -593,19 +593,23 @@ export class JantCommandPalette extends LitElement {
         <span class="command-palette-result-icon">${unsafeSVG(item.icon)}</span>
         <span class="command-palette-result-body">
           <span class="command-palette-result-title">${item.label}</span>
-          ${item.secondary
-            ? html`<span class="command-palette-result-path"
-                >${item.secondary}</span
-              >`
-            : nothing}
+          ${
+            item.secondary
+              ? html`<span class="command-palette-result-path"
+                  >${item.secondary}</span
+                >`
+              : nothing
+          }
         </span>
-        ${item.shortcut
-          ? html`<kbd
-              class="command-palette-result-shortcut"
-              aria-label="Command or Control plus Enter"
-              >${item.shortcut}</kbd
-            >`
-          : nothing}
+        ${
+          item.shortcut
+            ? html`<kbd
+                class="command-palette-result-shortcut"
+                aria-label="Command or Control plus Enter"
+                >${item.shortcut}</kbd
+              >`
+            : nothing
+        }
       </div>
     `;
   }
@@ -645,39 +649,47 @@ export class JantCommandPalette extends LitElement {
               role="combobox"
               aria-expanded="true"
               aria-controls="command-palette-results"
-              aria-activedescendant=${items.length > 0
-                ? `command-palette-item-${this._selectedIndex}`
-                : ""}
+              aria-activedescendant=${
+                items.length > 0
+                  ? `command-palette-item-${this._selectedIndex}`
+                  : ""
+              }
               autocomplete="off"
               spellcheck="false"
             />
-            ${this._loading
-              ? html`<span class="command-palette-spinner"></span>`
-              : nothing}
+            ${
+              this._loading
+                ? html`<span class="command-palette-spinner"></span>`
+                : nothing
+            }
           </div>
 
-          ${items.length > 0
-            ? html`
-                <div
-                  id="command-palette-results"
-                  class="command-palette-results-container"
-                  role="listbox"
-                >
-                  ${resultItems.length > 0
-                    ? html`<div class="command-palette-results">
-                        ${resultItems.map(({ item, index }) =>
-                          this.#renderItem(item, index),
-                        )}
-                      </div>`
-                    : nothing}
-                  ${footerItems.map(({ item, index }) =>
-                    this.#renderItem(item, index, true),
-                  )}
-                </div>
-              `
-            : this._query.trim() && !this._loading
-              ? html`<div class="command-palette-empty">No results</div>`
-              : nothing}
+          ${
+            items.length > 0
+              ? html`
+                  <div
+                    id="command-palette-results"
+                    class="command-palette-results-container"
+                    role="listbox"
+                  >
+                    ${
+                      resultItems.length > 0
+                        ? html`<div class="command-palette-results">
+                            ${resultItems.map(({ item, index }) =>
+                              this.#renderItem(item, index),
+                            )}
+                          </div>`
+                        : nothing
+                    }
+                    ${footerItems.map(({ item, index }) =>
+                      this.#renderItem(item, index, true),
+                    )}
+                  </div>
+                `
+              : this._query.trim() && !this._loading
+                ? html`<div class="command-palette-empty">No results</div>`
+                : nothing
+          }
         </div>
       </dialog>
     `;

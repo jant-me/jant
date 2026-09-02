@@ -583,25 +583,31 @@ export class JantConfigEditor extends LitElement {
       >
         <div class="config-editor-copy">
           <div class="config-editor-heading">
-            ${item.mode === "edit"
-              ? html`<label for=${id}
-                  ><code class="config-editor-key" translate="no"
+            ${
+              item.mode === "edit"
+                ? html`<label for=${id}
+                    ><code class="config-editor-key" translate="no"
+                      >${item.key}</code
+                    ></label
+                  >`
+                : html`<code class="config-editor-key" translate="no"
                     >${item.key}</code
-                  ></label
-                >`
-              : html`<code class="config-editor-key" translate="no"
-                  >${item.key}</code
-                >`}
-            ${item.modified
-              ? html`<span class="config-editor-state config-editor-modified"
-                  >${this._labels.modified}</span
-                >`
-              : nothing}
-            ${item.locked
-              ? html`<span class="config-editor-state config-editor-locked"
-                  >${this._labels.locked}</span
-                >`
-              : nothing}
+                  >`
+            }
+            ${
+              item.modified
+                ? html`<span class="config-editor-state config-editor-modified"
+                    >${this._labels.modified}</span
+                  >`
+                : nothing
+            }
+            ${
+              item.locked
+                ? html`<span class="config-editor-state config-editor-locked"
+                    >${this._labels.locked}</span
+                  >`
+                : nothing
+            }
           </div>
           <p class="config-editor-description" id=${`${id}-description`}>
             ${item.description}
@@ -609,35 +615,39 @@ export class JantConfigEditor extends LitElement {
         </div>
         <div class="config-editor-value-column">
           <div class=${controlRowClass}>
-            ${item.mode === "link"
-              ? this._renderLinkedSetting(item)
-              : this._renderControl(item)}
-            ${this._canReset(item)
-              ? html`<button
-                  type="button"
-                  class="config-editor-reset"
-                  aria-label=${this._labels.reset}
-                  title=${this._labels.reset}
-                  ?disabled=${Boolean(this._pending[item.key])}
-                  @click=${() => void this._reset(item)}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
+            ${
+              item.mode === "link"
+                ? this._renderLinkedSetting(item)
+                : this._renderControl(item)
+            }
+            ${
+              this._canReset(item)
+                ? html`<button
+                    type="button"
+                    class="config-editor-reset"
+                    aria-label=${this._labels.reset}
+                    title=${this._labels.reset}
+                    ?disabled=${Boolean(this._pending[item.key])}
+                    @click=${() => void this._reset(item)}
                   >
-                    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-                    <path d="M3 3v5h5" />
-                  </svg>
-                </button>`
-              : nothing}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                      <path d="M3 3v5h5" />
+                    </svg>
+                  </button>`
+                : nothing
+            }
           </div>
           ${this._renderStatus(item)}
         </div>
@@ -706,13 +716,15 @@ export class JantConfigEditor extends LitElement {
           <span>${this._labels.modifiedOnly}</span>
         </label>
       </div>
-      ${items.length > 0
-        ? html`<ul class="config-editor-list">
-            ${items.map((item) => this._renderRow(item))}
-          </ul>`
-        : html`<div class="config-editor-empty" role="status">
-            <p>${this._labels.noMatches}</p>
-          </div>`}
+      ${
+        items.length > 0
+          ? html`<ul class="config-editor-list">
+              ${items.map((item) => this._renderRow(item))}
+            </ul>`
+          : html`<div class="config-editor-empty" role="status">
+              <p>${this._labels.noMatches}</p>
+            </div>`
+      }
     `;
   }
 }

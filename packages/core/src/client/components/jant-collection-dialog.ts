@@ -389,14 +389,18 @@ export class JantCollectionDialog extends LitElement {
               ${this.labels.editLink}
             </button>
           </div>
-          ${problem
-            ? html`<p class="collection-dialog-link-problem">${problem}</p>`
-            : nothing}
-          ${moved
-            ? html`<p class="collection-dialog-link-problem">
-                ${this.labels.linkMovesWarning}
-              </p>`
-            : nothing}
+          ${
+            problem
+              ? html`<p class="collection-dialog-link-problem">${problem}</p>`
+              : nothing
+          }
+          ${
+            moved
+              ? html`<p class="collection-dialog-link-problem">
+                  ${this.labels.linkMovesWarning}
+                </p>`
+              : nothing
+          }
         </div>
       `;
     }
@@ -411,17 +415,19 @@ export class JantCollectionDialog extends LitElement {
             <label class="label mb-0" for="collection-dialog-slug"
               >${this.labels.link}</label
             >
-            ${canReset
-              ? html`
-                  <button
-                    type="button"
-                    class="collection-quick-link-action"
-                    @click=${() => this.#resetSlug()}
-                  >
-                    ${this.labels.resetLink}
-                  </button>
-                `
-              : nothing}
+            ${
+              canReset
+                ? html`
+                    <button
+                      type="button"
+                      class="collection-quick-link-action"
+                      @click=${() => this.#resetSlug()}
+                    >
+                      ${this.labels.resetLink}
+                    </button>
+                  `
+                : nothing
+            }
           </div>
           <input
             id="collection-dialog-slug"
@@ -438,20 +444,24 @@ export class JantCollectionDialog extends LitElement {
             @input=${(event: Event) =>
               this.#onSlugInput((event.target as HTMLInputElement).value)}
           />
-          ${problem
-            ? html`<p class="collection-dialog-link-problem">${problem}</p>`
-            : this._slug
-              ? html`<p class="collection-dialog-link-preview">
-                  ${this.#linkPreview()}
+          ${
+            problem
+              ? html`<p class="collection-dialog-link-problem">${problem}</p>`
+              : this._slug
+                ? html`<p class="collection-dialog-link-preview">
+                    ${this.#linkPreview()}
+                  </p>`
+                : html`<p class="collection-dialog-link-help">
+                    ${this.labels.linkHelp}
+                  </p>`
+          }
+          ${
+            moved
+              ? html`<p class="collection-dialog-link-problem">
+                  ${this.labels.linkMovesWarning}
                 </p>`
-              : html`<p class="collection-dialog-link-help">
-                  ${this.labels.linkHelp}
-                </p>`}
-          ${moved
-            ? html`<p class="collection-dialog-link-problem">
-                ${this.labels.linkMovesWarning}
-              </p>`
-            : nothing}
+              : nothing
+          }
         </div>
       </div>
     `;
@@ -508,8 +518,7 @@ export class JantCollectionDialog extends LitElement {
         },
       );
       const json = (await res.json().catch(() => null)) as
-        | (Partial<Collection> & { error?: string })
-        | null;
+        (Partial<Collection> & { error?: string }) | null;
 
       if (!res.ok) {
         this._error = json?.error ?? this.labels.saveFailed;
@@ -630,9 +639,9 @@ export class JantCollectionDialog extends LitElement {
                 data-field="title"
                 required
                 maxlength=${MAX_COLLECTION_TITLE_LENGTH}
-                placeholder=${this._mode === "edit"
-                  ? nothing
-                  : this.labels.titlePlaceholder}
+                placeholder=${
+                  this._mode === "edit" ? nothing : this.labels.titlePlaceholder
+                }
                 .value=${this._title}
                 @input=${(event: Event) =>
                   this.#onTitleInput((event.target as HTMLInputElement).value)}
@@ -675,12 +684,14 @@ export class JantCollectionDialog extends LitElement {
               </select>
             </div>
 
-            ${this._error
-              ? html`<div class="alert-destructive" role="alert">
-                  ${ALERT_ICON}
-                  <section><p>${this._error}</p></section>
-                </div>`
-              : nothing}
+            ${
+              this._error
+                ? html`<div class="alert-destructive" role="alert">
+                    ${ALERT_ICON}
+                    <section><p>${this._error}</p></section>
+                  </div>`
+                : nothing
+            }
           </div>
 
           <footer class="collection-dialog-actions">
