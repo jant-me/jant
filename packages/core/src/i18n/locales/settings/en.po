@@ -28,16 +28,6 @@ msgstr "{count, plural, one {# post is} other {# posts are}} still written in {l
 msgid "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 msgstr "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 
-#. @context: Discover status line when the site meets the jant.me directory's threshold
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "{count, plural, one {# public post} other {# public posts}}, oldest {days, plural, one {# day} other {# days}} ago. Enough for jant.me to list you."
-msgstr "{count, plural, one {# public post} other {# public posts}}, oldest {days, plural, one {# day} other {# days}} ago. Enough for jant.me to list you."
-
-#. @context: Discover status line when the site does not meet the directory's threshold yet. Stated as jant.me's rule, because a directory of your own may decide differently.
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "{count, plural, one {# public post} other {# public posts}}. jant.me lists a blog once it has {minCount} and its oldest is {minDays} days old."
-msgstr "{count, plural, one {# public post} other {# public posts}}. jant.me lists a blog once it has {minCount} and its oldest is {minDays} days old."
-
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "{count} settings shown"
@@ -1824,6 +1814,11 @@ msgstr "No navigation items yet. Add links or enable system items below."
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "No pages available. Create one to add it to navigation."
 msgstr "No pages available. Create one to add it to navigation."
+
+#. @context: Discover status line when the site has nothing public. There is no threshold to state — a directory has nothing to list until the blog publishes something.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "No public posts yet, so your feed carries nothing to show."
+msgstr "No public posts yet, so your feed carries nothing to show."
 
 #. @context: GitHub sync picker — empty state when search returns nothing
 #: src/routes/dash/settings.tsx

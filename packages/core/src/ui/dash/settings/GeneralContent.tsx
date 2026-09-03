@@ -39,12 +39,6 @@ export interface DiscoverStatus {
   publicPostCount: number;
   /** Featured thread roots — what a `featured` feed would actually carry. */
   featuredPostCount: number;
-  /** Whole days since the oldest public post, or null when there are none. */
-  ageDays: number | null;
-  /** Both of the directory's thresholds are met. */
-  established: boolean;
-  minPublicPosts: number;
-  minAgeDays: number;
   firstReadMaxHours: number;
 }
 
@@ -529,6 +523,19 @@ export function GeneralContent({
       );
     }
 
+    if (discoverStatus.publicPostCount === 0) {
+      statusLines.push(
+        i18n._(
+          msg({
+            message:
+              "No public posts yet, so your feed carries nothing to show.",
+            comment:
+              "@context: Discover status line when the site has nothing public. There is no threshold to state — a directory has nothing to list until the blog publishes something.",
+          }),
+        ),
+      );
+    }
+
     if (
       discoverStatus.declaredMode === "featured" &&
       discoverStatus.publicPostCount > 0 &&
@@ -545,35 +552,6 @@ export function GeneralContent({
         ),
       );
     }
-
-    statusLines.push(
-      discoverStatus.established
-        ? i18n._(
-            msg({
-              message:
-                "{count, plural, one {# public post} other {# public posts}}, oldest {days, plural, one {# day} other {# days}} ago. Enough for jant.me to list you.",
-              comment:
-                "@context: Discover status line when the site meets the jant.me directory's threshold",
-            }),
-            {
-              count: discoverStatus.publicPostCount,
-              days: discoverStatus.ageDays ?? 0,
-            },
-          )
-        : i18n._(
-            msg({
-              message:
-                "{count, plural, one {# public post} other {# public posts}}. jant.me lists a blog once it has {minCount} and its oldest is {minDays} days old.",
-              comment:
-                "@context: Discover status line when the site does not meet the directory's threshold yet. Stated as jant.me's rule, because a directory of your own may decide differently.",
-            }),
-            {
-              count: discoverStatus.publicPostCount,
-              minCount: discoverStatus.minPublicPosts,
-              minDays: discoverStatus.minAgeDays,
-            },
-          ),
-    );
 
     if (discoverStatus.announced === true) {
       statusLines.push(

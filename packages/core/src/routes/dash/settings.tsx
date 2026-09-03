@@ -19,7 +19,6 @@ import { getNavigationData } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { AdminBreadcrumb } from "../../ui/shared/AdminBreadcrumb.js";
 import { getTimeZoneOptions } from "../../lib/timezones.js";
-import { now } from "../../lib/time.js";
 import { getOrBuildEntry } from "../../i18n/supported-locales.js";
 import {
   DomainError,
@@ -30,11 +29,8 @@ import {
 import { SETTINGS_KEYS } from "../../lib/constants.js";
 import {
   DISCOVER_FIRST_READ_MAX_HOURS,
-  DISCOVER_MIN_AGE_DAYS,
-  DISCOVER_MIN_PUBLIC_POSTS,
   getDiscoverFeedPath,
   getDiscoverSubmitUrl,
-  measureDiscoverMaturity,
   parseDiscoverSetting,
   resolveDiscoverMode,
 } from "../../lib/discover.js";
@@ -397,14 +393,12 @@ settingsRoutes.get("/general", async (c) => {
     aboutPage,
     announceState,
     publicPostCount,
-    earliestPublishedAt,
     featuredPostCount,
   ] = await Promise.all([
     getNavigationData(c),
     c.var.services.aboutPage.getStatus(),
     c.var.services.settings.getDiscoverAnnounceState(),
     c.var.services.posts.count(publicPostFilters),
-    c.var.services.posts.getEarliestPublishedAt(publicPostFilters),
     c.var.services.posts.countFeaturedThreadRoots({
       status: "published",
       excludePrivate: true,
@@ -471,14 +465,8 @@ settingsRoutes.get("/general", async (c) => {
               noindex: appConfig.noindex,
               rssFeedsEnabled: appConfig.rssFeedsEnabled,
             }),
-            ...measureDiscoverMaturity({
-              now: now(),
-              publicPostCount,
-              earliestPublishedAt,
-            }),
+            publicPostCount,
             featuredPostCount,
-            minPublicPosts: DISCOVER_MIN_PUBLIC_POSTS,
-            minAgeDays: DISCOVER_MIN_AGE_DAYS,
             firstReadMaxHours: DISCOVER_FIRST_READ_MAX_HOURS,
           }}
           rssFeedsEnabled={appConfig.rssFeedsEnabled}

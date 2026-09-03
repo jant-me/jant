@@ -54,11 +54,11 @@ A directory cannot list a self-hosted site it has never heard of. When you save 
 - The request body is the URL of your feed. No site name, no version, no counts, no identifier.
 - Being announced is not the same as being listed. The directory still fetches your feed and reads what it says, and that declaration is what decides the outcome.
 
-**Site visibility shows you what happened.** Whether the announcement reached the directory, what your feed declares, and how your site stands against the threshold below. All of it is read from your own site — a directory answers no questions about who it lists, so there is nothing to ask it. When an announcement does not get through, that section is also where you retry, or open the directory's form and submit the address by hand.
+**Site visibility shows you what happened.** Whether the announcement reached the directory, and what your feed declares. All of it is read from your own site — a directory answers no questions about who it lists, so there is nothing to ask it. When an announcement does not get through, that section is also where you retry, or open the directory's form and submit the address by hand.
 
 ### When your site becomes eligible
 
-jant.me lists a blog once it has **at least three public posts** and its **oldest public post is at least seven days old**. It keeps day-one test sites out without anyone reviewing anything, and there is nothing to apply for: the next read after you cross the line is the one that lists you. A directory of your own may decide differently.
+jant.me lists a blog as soon as it has **one public post**. There is no waiting period and nothing to apply for: the next read after your feed declares itself is the one that lists you. A directory of your own may decide differently.
 
 A newly announced feed is read within six hours.
 

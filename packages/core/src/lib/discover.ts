@@ -126,72 +126,8 @@ export function getDiscoverFeedPath(mode: DiscoverMode): string | null {
   }
 }
 
-/**
- * Public posts a blog needs before the jant.me directory will list it.
- *
- * Not core's rule — the directory's, published on the Discover page — but
- * core states it so a site owner can see where they stand without asking
- * anybody. A directory of your own may decide differently; the numbers on the
- * settings page are your site's own either way.
- */
-export const DISCOVER_MIN_PUBLIC_POSTS = 3;
-
-/** Days between a blog's first public post and the directory listing it. */
-export const DISCOVER_MIN_AGE_DAYS = 7;
-
 /** Longest a directory waits before reading a newly announced feed. */
 export const DISCOVER_FIRST_READ_MAX_HOURS = 6;
-
-/** Where a site stands against the directory's threshold. */
-export interface DiscoverMaturity {
-  publicPostCount: number;
-  /** Whole days since the oldest public post, or null when there are none. */
-  ageDays: number | null;
-  /** Both thresholds met. */
-  established: boolean;
-}
-
-/**
- * Measure a site against the directory's threshold.
- *
- * Both signals have to hold: a blog that has existed for a week with nothing
- * in it is not ready, and neither is one that published three posts this
- * morning. Age is measured from the oldest public post rather than from any
- * site-creation date, because that is the only evidence a directory can see.
- *
- * @param input - Now, and the site's own public-post evidence
- * @returns The counts to show, and whether the threshold is met
- * @example
- * ```ts
- * measureDiscoverMaturity({
- *   now, publicPostCount: 5, earliestPublishedAt: now - 8 * 86_400,
- * }); // { publicPostCount: 5, ageDays: 8, established: true }
- * ```
- */
-export function measureDiscoverMaturity(input: {
-  /** Unix seconds. */
-  now: number;
-  publicPostCount: number;
-  /** Unix seconds of the oldest public post, or null when there are none. */
-  earliestPublishedAt: number | null;
-}): DiscoverMaturity {
-  const ageDays =
-    input.earliestPublishedAt === null
-      ? null
-      : Math.max(
-          0,
-          Math.floor((input.now - input.earliestPublishedAt) / (24 * 60 * 60)),
-        );
-
-  return {
-    publicPostCount: input.publicPostCount,
-    ageDays,
-    established:
-      input.publicPostCount >= DISCOVER_MIN_PUBLIC_POSTS &&
-      ageDays !== null &&
-      ageDays >= DISCOVER_MIN_AGE_DAYS,
-  };
-}
 
 /**
  * The directory's manual submission form, derived from its ping endpoint.

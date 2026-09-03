@@ -58,10 +58,6 @@ function createProps(
       declaredMode: "latest" as const,
       publicPostCount: 5,
       featuredPostCount: 2,
-      ageDays: 30,
-      established: true,
-      minPublicPosts: 3,
-      minAgeDays: 7,
       firstReadMaxHours: 6,
     },
     rssFeedsEnabled: true,
@@ -104,7 +100,9 @@ describe("GeneralContent", () => {
 
     expect(html).toContain("Your feed says latest.");
     expect(html).toContain("Feed address sent to the directory.");
-    expect(html).toContain("5 public posts");
+    expect(html).toContain(
+      "A directory reads a newly announced feed within 6 hours.",
+    );
     // Nothing failed, so neither the retry nor the manual form is offered.
     expect(html).toContain("&quot;showRetry&quot;:false");
     expect(html).toContain("&quot;submitUrl&quot;:null");
@@ -122,10 +120,6 @@ describe("GeneralContent", () => {
           declaredMode: "latest",
           publicPostCount: 5,
           featuredPostCount: 2,
-          ageDays: 30,
-          established: true,
-          minPublicPosts: 3,
-          minAgeDays: 7,
           firstReadMaxHours: 6,
         },
       }),
@@ -136,6 +130,28 @@ describe("GeneralContent", () => {
     );
     expect(html).toContain("&quot;showRetry&quot;:true");
     expect(html).toContain("https://jant.me/discover/submit");
+  });
+
+  it("names the one thing that leaves a directory nothing to list", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          announced: true,
+          announceError: null,
+          announceAt: 1_800_000_000,
+          hasDirectory: true,
+          submitUrl: "https://jant.me/discover/submit",
+          declaredMode: "latest",
+          publicPostCount: 0,
+          featuredPostCount: 0,
+          firstReadMaxHours: 6,
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      "No public posts yet, so your feed carries nothing to show.",
+    );
   });
 
   it("says nothing about announcing when the feed declares none", async () => {
@@ -150,10 +166,6 @@ describe("GeneralContent", () => {
           declaredMode: "none",
           publicPostCount: 5,
           featuredPostCount: 2,
-          ageDays: 30,
-          established: true,
-          minPublicPosts: 3,
-          minAgeDays: 7,
           firstReadMaxHours: 6,
         },
       }),
@@ -162,10 +174,9 @@ describe("GeneralContent", () => {
     expect(html).toContain(
       "Your feed says none, so no directory will list this site.",
     );
-    // A site that has said no is told that and nothing else: not how close it
-    // is to a threshold it has opted out of, and not whether an announcement
-    // it never made got through. ("public posts" appears elsewhere on the
-    // page, in the mode hints, so the assertion reads the status block.)
+    // A site that has said no is told that and nothing else: not what its feed
+    // would otherwise carry, and not whether an announcement it never made got
+    // through.
     expect(html).toContain(
       'discover-status="{&quot;lines&quot;:[&quot;Your feed says none, ' +
         "so no directory will list this site.&quot;]",

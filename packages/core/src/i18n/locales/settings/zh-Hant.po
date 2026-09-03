@@ -28,16 +28,6 @@ msgstr "{count, plural, other {還有 # 篇{language}貼文。先修改它們的
 msgid "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 msgstr "{count, plural, other {還有 # 篇{language}貼文，但列表裡沒有這個語言。把它加回列表，或先修改這些貼文的語言。}}"
 
-#. @context: Discover status line when the site meets the jant.me directory's threshold
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "{count, plural, one {# public post} other {# public posts}}, oldest {days, plural, one {# day} other {# days}} ago. Enough for jant.me to list you."
-msgstr "{count, plural, other {# 篇公開貼文}}，最早一篇發布於 {days, plural, other {# 天}}前。已達到 jant.me 的收錄條件。"
-
-#. @context: Discover status line when the site does not meet the directory's threshold yet. Stated as jant.me's rule, because a directory of your own may decide differently.
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "{count, plural, one {# public post} other {# public posts}}. jant.me lists a blog once it has {minCount} and its oldest is {minDays} days old."
-msgstr "{count, plural, other {# 篇公開貼文}}。jant.me 的收錄條件是滿 {minCount} 篇，且最早一篇發布滿 {minDays} 天。"
-
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "{count} settings shown"
@@ -1824,6 +1814,11 @@ msgstr "目前尚無導覽項目。請新增連結或在下方啟用系統項目
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "No pages available. Create one to add it to navigation."
 msgstr "沒有可加入的頁面。建立頁面後即可加入導覽。"
+
+#. @context: Discover status line when the site has nothing public. There is no threshold to state — a directory has nothing to list until the blog publishes something.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "No public posts yet, so your feed carries nothing to show."
+msgstr "還沒有公開貼文，訂閱源裡沒有可顯示的內容。"
 
 #. @context: GitHub sync picker — empty state when search returns nothing
 #: src/routes/dash/settings.tsx

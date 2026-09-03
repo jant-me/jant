@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   getDiscoverFeedPath,
   getDiscoverSubmitUrl,
-  measureDiscoverMaturity,
   parseDiscoverSetting,
   resolveDiscoverMode,
 } from "../discover.js";
@@ -108,62 +107,6 @@ describe("getDiscoverPingUrl", () => {
         DISCOVER_PING_URL: "https://directory.example/api/discover/ping",
       }),
     ).toBe("https://directory.example/api/discover/ping");
-  });
-});
-
-describe("measureDiscoverMaturity", () => {
-  const now = 1_800_000_000;
-  const day = 24 * 60 * 60;
-
-  it("passes a blog that clears both thresholds", () => {
-    expect(
-      measureDiscoverMaturity({
-        now,
-        publicPostCount: 5,
-        earliestPublishedAt: now - 8 * day,
-      }),
-    ).toEqual({ publicPostCount: 5, ageDays: 8, established: true });
-  });
-
-  it("holds back a blog that published everything this morning", () => {
-    // Three posts is enough on its own; a week of them is the other half.
-    expect(
-      measureDiscoverMaturity({
-        now,
-        publicPostCount: 9,
-        earliestPublishedAt: now - 3 * 60 * 60,
-      }),
-    ).toMatchObject({ ageDays: 0, established: false });
-  });
-
-  it("holds back an old blog with almost nothing in it", () => {
-    expect(
-      measureDiscoverMaturity({
-        now,
-        publicPostCount: 2,
-        earliestPublishedAt: now - 400 * day,
-      }),
-    ).toMatchObject({ established: false });
-  });
-
-  it("reports no age at all for a blog that has published nothing", () => {
-    expect(
-      measureDiscoverMaturity({
-        now,
-        publicPostCount: 0,
-        earliestPublishedAt: null,
-      }),
-    ).toEqual({ publicPostCount: 0, ageDays: null, established: false });
-  });
-
-  it("never reports a negative age from a future-dated post", () => {
-    expect(
-      measureDiscoverMaturity({
-        now,
-        publicPostCount: 4,
-        earliestPublishedAt: now + 10 * day,
-      }),
-    ).toMatchObject({ ageDays: 0, established: false });
   });
 });
 
