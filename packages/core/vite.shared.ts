@@ -62,6 +62,8 @@ export const CLIENT_TARGET = "es2022" as const;
  * - `client-compose.js`, `client-settings.js`, `client-manage.js`, loaded by
  *   the shell on demand (see `src/client/lazy-entries.ts`)
  * - `client.css` for the shared site styles
+ * - `client-author.css`, the composer/settings/editor styles, linked only on
+ *   authenticated pages
  * - `client-cjk.css` for optional Simplified Chinese font assets
  * - `client-cjk-tc.css` for optional Traditional Chinese font assets
  * - `client-cjk-jp.css` for optional Japanese font assets
@@ -78,6 +80,7 @@ export const clientBuildOptions = {
       "client-settings": resolve(dir, "src/client-settings.ts"),
       "client-manage": resolve(dir, "src/client-manage.ts"),
       style: resolve(dir, "src/style.css"),
+      "style-author": resolve(dir, "src/style-author.css"),
       "style-cjk": resolve(dir, "src/style-cjk.css"),
       "style-cjk-tc": resolve(dir, "src/style-cjk-tc.css"),
       "style-cjk-jp": resolve(dir, "src/style-cjk-jp.css"),
@@ -106,6 +109,8 @@ export const clientBuildOptions = {
         switch (assetInfo.name) {
           case "style.css":
             return `${ASSET_BASE_SEGMENT}/client-[hash].css`;
+          case "style-author.css":
+            return `${ASSET_BASE_SEGMENT}/client-author-[hash].css`;
           case "style-cjk.css":
             return `${ASSET_BASE_SEGMENT}/client-cjk-[hash].css`;
           case "style-cjk-tc.css":
@@ -299,6 +304,20 @@ const ENTRY_BUDGETS_GZIP: Record<string, number> = {
   "client-manage": 290 * 1024,
 };
 
+/**
+ * Gzipped byte budget for the render-blocking stylesheets, keyed by the
+ * source entry's asset name.
+ *
+ * `client.css` is the one a signed-out visitor waits on before anything
+ * paints, so it is budgeted the same way the entry scripts are: author-only
+ * component CSS belongs in `client-author.css` (see `styles/ui-author.css`),
+ * and this stops it drifting back.
+ */
+const STYLE_BUDGETS_GZIP: Record<string, number> = {
+  // Measured 2026-09 after the author split: 54.1 KB (was 73.8 KB before it).
+  "style.css": 60 * 1024,
+};
+
 const NODE_MODULES_PACKAGE_RE =
   /node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?((?:@[^/]+\/)?[^/]+)\//;
 
@@ -385,11 +404,28 @@ export function enforceClientBundleBudget(): Plugin {
         }
       }
 
+      for (const output of Object.values(bundle)) {
+        if (output.type !== "asset") continue;
+        // Keyed on the source entry's name (`style.css`), not the hashed
+        // output name, so the lookup cannot drift with the hash format.
+        const budget = STYLE_BUDGETS_GZIP[output.name ?? ""];
+        if (budget === undefined) continue;
+        const gzipped = gzipSync(output.source).length;
+        report.push(
+          `  ${output.name}: ${kb(gzipped)} gzipped (budget ${kb(budget)})`,
+        );
+        if (gzipped > budget) {
+          problems.add(
+            `  stylesheet "${output.name}" is ${kb(gzipped)} gzipped, over its ${kb(budget)} budget`,
+          );
+        }
+      }
+
       console.log(`\nclient bundle budget\n${report.join("\n")}\n`);
       if (problems.size === 0) return;
       throw new Error(
         `Client bundle budget exceeded:\n${[...problems].sort().join("\n")}\n` +
-          `Load the package behind an import() at the point of use, or move the code that needs it out of the entry graph. Budgets live in vite.shared.ts.`,
+          `For a script: load the package behind an import() at the point of use, or move the code that needs it out of the entry graph. For a stylesheet: move author-only rules to styles/ui-author.css. Budgets live in vite.shared.ts.`,
       );
     },
   };

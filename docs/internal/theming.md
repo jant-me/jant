@@ -44,7 +44,7 @@ Jant follows an **Organic Minimalism** (Soft UI) design language. Every UI decis
 
 1. BaseCoat defaults (`:root`)
 2. Design tokens (`styles/tokens.css`)
-3. Component styles (`styles/ui.css`)
+3. Component styles (`styles/ui.css`, plus `styles/ui-author.css` on signed-in pages)
 4. Selected color theme (`:root:root` specificity)
 5. `cssVariables` from `createApp()` config
 6. Custom CSS injection from settings

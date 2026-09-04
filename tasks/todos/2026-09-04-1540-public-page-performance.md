@@ -35,6 +35,13 @@ payload we choose to ship.
       The viewer is bound once per render in `lib/viewer-context.ts`, from the
       same `c.var.isAuthenticated` that `BaseLayout` writes into
       `data-authenticated`, rather than threaded through six component layers.
+- [x] 3. Author-only CSS is out of the reader stylesheet. `styles/ui.css`
+      keeps what a visitor needs (386 KB -> 181 KB of source); the composer,
+      the editor chrome, the command palette, the settings pages and the draft
+      preview bar moved to `styles/ui-author.css`, built as `client-author.css`
+      and linked by `BaseLayout` only when the page is authenticated. Built
+      `client.css` fell 568,404 -> 422,441 bytes, 58.0 -> 43.5 KB brotli
+      (-25%), off the critical path of every public page.
 - [x] 4. Both images that skipped `getImageUrl` now go through it:
       `lib/media-helpers.ts` sizes the timeline video poster the way
       `lib/view.ts` already did (a raw 244 KB PNG on the live homepage), and
@@ -44,10 +51,17 @@ payload we choose to ship.
 
 ## Verified
 
-- `mise run check-tests`: 304 files, 3,971 tests, all passing. New coverage:
+- `mise run check-tests`: 305 files, 3,976 tests, all passing. New coverage:
   reader vs author footers and badges, `buildMediaMap` poster sizing, avatar
-  thumb derivation with and without a configured transform.
+  thumb derivation with and without a configured transform, and the stylesheet
+  split (`src/__tests__/stylesheet-audience.test.ts` plus the `BaseLayout`
+  link gate).
 - `mise run check-lint`, `pnpm format:check`: clean.
+- The stylesheet split was A/B'd against `HEAD` in a browser: `/`, `/archive`,
+  a post page, `/_/theme-sample`, `/settings` and the open composer, 3,240
+  elements over 34 computed properties each, zero differences. Cascade layers
+  confirmed live — the author sheet's `@layer components` joins the layer
+  `client.css` opens, so utilities still win.
 - Local dev instance, same 15-post feed rendered both ways:
   anonymous 236 elements / 30 KB, author 587 elements / 66 KB. Anonymous
   carries 0 badges, 0 menu triggers, 0 reply triggers and exactly the one
@@ -57,11 +71,6 @@ payload we choose to ship.
 
 ## Still open
 
-- [ ] 3. Split author-only CSS out of the reader stylesheet. Written up in
-      full, with the build mechanism and the cascade risks, in
-      `2026-09-05-0100-split-author-css.md`. Sharpened estimate: ~147 KB of the
-      568 KB stylesheet is author-only, worth ~20 KB brotli and ~100 ms of FCP
-      on every page. Largest of the remaining items, and the riskiest.
 - [ ] 5. `content-visibility: auto` + `contain-intrinsic-size` on off-screen
       timeline items. Worth re-measuring after 1 and 2 — a 25-post feed may no
       longer be tall enough to justify it.

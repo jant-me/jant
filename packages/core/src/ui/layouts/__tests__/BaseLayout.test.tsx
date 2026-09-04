@@ -362,6 +362,34 @@ describe("BaseLayout", () => {
     expect(html).not.toContain("modulepreload");
   });
 
+  it("links the author stylesheet only once someone is signed in", async () => {
+    const { BaseLayout } = await loadBaseLayout();
+    const render = (isAuthenticated: boolean) =>
+      renderToString(
+        BaseLayout({
+          title: "Jant",
+          c: createContext("featured", {
+            sitePathPrefix: "/blog",
+            siteUrl: "https://example.com/blog",
+            assetBasePath: "/blog/_assets",
+          }),
+          ...(isAuthenticated ? { isAuthenticated } : {}),
+          children: "Test",
+        }),
+      );
+
+    // The composer, editor and settings CSS is the bulk of the hand-written
+    // component styles and none of it renders for a visitor; shipping it on a
+    // public page would put it back on the critical path of every page view.
+    expect(render(false)).not.toContain("client-author.css");
+    expect(render(true)).toContain(
+      '<link rel="stylesheet" href="/blog/_assets/client-author.css"',
+    );
+    // Both pages still share the one reader stylesheet.
+    expect(render(false)).toContain(`href="/blog/_assets/client.css"`);
+    expect(render(true)).toContain(`href="/blog/_assets/client.css"`);
+  });
+
   it("uses the public asset base path from appConfig in production", async () => {
     const { BaseLayout } = await loadBaseLayout();
     const html = renderToString(

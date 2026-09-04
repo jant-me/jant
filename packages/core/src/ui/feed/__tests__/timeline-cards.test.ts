@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import type { Context } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
 import { describe, expect, it } from "vitest";
+import { readComponentCss } from "../../../__tests__/helpers/component-css.js";
 import type { MediaView, PostView } from "../../../types.js";
 import { I18nProvider } from "../../../i18n/context.js";
 import { createI18n } from "../../../i18n/i18n.js";
@@ -336,10 +337,7 @@ describe("timeline cards", () => {
   });
 
   it("styles post titles by their own classes, never by their microformats class", () => {
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
 
     // `.p-name` is parsed API; styling it would silently retypeset any element
     // that later needs the property — the quote attribution, for one.
@@ -355,10 +353,7 @@ describe("timeline cards", () => {
   });
 
   it("keeps embedded quotes on the host panel's type scale", () => {
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
 
     // The quote body dropped `.e-content`, which is how this rule used to
     // reach it; without the explicit class it would out-size the panel.
@@ -384,10 +379,7 @@ describe("timeline cards", () => {
       new URL("../../../styles/tokens.css", import.meta.url),
       "utf8",
     );
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
     const exportCss = readFileSync(
       new URL(
         "../../../services/export-theme/styles/main.css",
@@ -447,10 +439,7 @@ describe("timeline cards", () => {
       new URL("../../../preset.css", import.meta.url),
       "utf8",
     );
-    const uiCss = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const uiCss = readComponentCss();
     const exportCss = readFileSync(
       new URL(
         "../../../services/export-theme/styles/main.css",
@@ -567,10 +556,7 @@ describe("timeline cards", () => {
       new URL("../../../preset.css", import.meta.url),
       "utf8",
     );
-    const uiCss = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const uiCss = readComponentCss();
     const exportCss = readFileSync(
       new URL(
         "../../../services/export-theme/styles/main.css",
@@ -622,10 +608,7 @@ describe("timeline cards", () => {
   });
 
   it("keeps quote footers on the shared card spacing baseline", () => {
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
 
     expect(css).toContain(".feed-quote-post [data-post-meta] {");
     expect(css).not.toContain(
@@ -634,10 +617,7 @@ describe("timeline cards", () => {
   });
 
   it("uses inset-note styling for compose editor blockquotes", () => {
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
 
     expect(css).toMatch(
       /\.compose-tiptap-body\s+\.tiptap\s+blockquote\s*\{[\s\S]*background:\s*linear-gradient\(/,
@@ -654,10 +634,7 @@ describe("timeline cards", () => {
   });
 
   it("keeps quote compose aligned with quote-card typography", () => {
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
 
     expect(css).toMatch(
       /\.compose-quote-wrap\s*\{[\s\S]*background-color:\s*color-mix\(/,
@@ -669,10 +646,7 @@ describe("timeline cards", () => {
   });
 
   it("keeps reply context previews on thread-context type tokens", () => {
-    const uiCss = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const uiCss = readComponentCss();
     const tokenCss = readFileSync(
       new URL("../../../styles/tokens.css", import.meta.url),
       "utf8",
@@ -692,10 +666,7 @@ describe("timeline cards", () => {
   });
 
   it("resets cloned reply previews away from feed/detail width constraints", () => {
-    const uiCss = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const uiCss = readComponentCss();
     const unlayeredCssStart = uiCss.indexOf(" * Home description");
     const resetRule = uiCss.match(
       /\.compose-reply-context-body\s*:is\([^{}]*\[data-post-body\]\.prose[^{}]*\)\s*\{[^{}]*width:\s*100%;[^{}]*max-width:\s*none;[^{}]*\}/,
@@ -763,10 +734,7 @@ describe("timeline cards", () => {
   });
 
   it("keeps titled detail headers spaced as one reading group", () => {
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
 
     expect(css).toMatch(
       /\.post-header-block\s*\{[\s\S]*margin-bottom:\s*1\.7rem;/,
@@ -777,10 +745,7 @@ describe("timeline cards", () => {
   });
 
   it("keeps detail dates quiet while preserving standalone footer spacing", () => {
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
 
     expect(css).toMatch(
       /\.post-header-meta-link\s*\{[^}]*font-size:\s*var\(--type-ui-hint\);/,
@@ -794,10 +759,7 @@ describe("timeline cards", () => {
   });
 
   it("adds breathing room when a quote source leads directly into its footer", () => {
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
 
     expect(css).toMatch(
       /\.feed-quote-cite:has\(\+ \.post-menu-footer\) \.feed-quote-attribution\s*\{[^}]*margin-bottom:\s*0\.45rem;/,
@@ -818,10 +780,7 @@ describe("timeline cards", () => {
   });
 
   it("progressively enhances canonical endnotes on wide detail and timeline posts", () => {
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
     const tokens = readFileSync(
       new URL("../../../styles/tokens.css", import.meta.url),
       "utf8",
