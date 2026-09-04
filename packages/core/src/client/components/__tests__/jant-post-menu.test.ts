@@ -10,6 +10,15 @@ const { showConfirmDialogMock, showToastMock } = vi.hoisted(() => ({
 // Paths are relative to the *component*, which lives one level up from this
 // folder — `../confirm.js` from here names a file that does not exist, so the
 // mock silently never applied and the real dialog ran instead.
+// The composer's bundle loads on first use; the stub dialog below stands in
+// for the upgraded element, so loading is a no-op here.
+vi.mock("../../lazy-entries.js", () => ({
+  ensureCompose: async () => {},
+  ensureSettings: async () => {},
+  ensureManage: async () => {},
+  loadEntriesForPage: () => {},
+}));
+
 vi.mock("../../confirm.js", () => ({
   showConfirmDialog: showConfirmDialogMock,
 }));

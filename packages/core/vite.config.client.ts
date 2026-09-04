@@ -10,7 +10,12 @@
 
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
-import { buildVersion, clientBuildOptions, clientPlugins } from "./vite.shared";
+import {
+  buildVersion,
+  clientBuildOptions,
+  clientPlugins,
+  enforceClientBundleBudget,
+} from "./vite.shared";
 
 export default defineConfig({
   // Keep Vite's base at `/`. Asset URLs already include the reserved
@@ -31,5 +36,5 @@ export default defineConfig({
     __JANT_VERSION__: JSON.stringify(buildVersion),
   },
 
-  plugins: [tailwindcss(), clientPlugins()],
+  plugins: [tailwindcss(), clientPlugins(), enforceClientBundleBudget()],
 });

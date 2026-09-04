@@ -8,6 +8,8 @@
  * - clientBuildOptions: rollup input/output for public/auth JS and CSS assets
  * - swcPlugin: SWC with Hono JSX + Lingui macro transforms
  * - clientPlugins: the transform stack and build guard both browser bundles use
+ * - enforceClientBundleBudget: keeps heavy packages lazy and entry bundles
+ *   under their gzipped byte budgets
  */
 
 import type { Plugin } from "vite";
@@ -15,6 +17,7 @@ import swc from "unplugin-swc";
 import { resolve } from "path";
 import { readFileSync } from "fs";
 import { execSync } from "child_process";
+import { gzipSync } from "zlib";
 import {
   ASSET_BASE_SEGMENT,
   ASSET_CHUNK_SEGMENT,
@@ -55,7 +58,9 @@ export const CLIENT_TARGET = "es2022" as const;
  *
  * Produces:
  * - `client.js` for public-page interactions
- * - `client-auth.js` for authenticated/editor interactions
+ * - `client-auth.js`, the shell for authenticated pages
+ * - `client-compose.js`, `client-settings.js`, `client-manage.js`, loaded by
+ *   the shell on demand (see `src/client/lazy-entries.ts`)
  * - `client.css` for the shared site styles
  * - `client-cjk.css` for optional Simplified Chinese font assets
  * - `client-cjk-tc.css` for optional Traditional Chinese font assets
@@ -69,6 +74,9 @@ export const clientBuildOptions = {
     input: {
       client: resolve(dir, "src/client.ts"),
       "client-auth": resolve(dir, "src/client-auth.ts"),
+      "client-compose": resolve(dir, "src/client-compose.ts"),
+      "client-settings": resolve(dir, "src/client-settings.ts"),
+      "client-manage": resolve(dir, "src/client-manage.ts"),
       style: resolve(dir, "src/style.css"),
       "style-cjk": resolve(dir, "src/style-cjk.css"),
       "style-cjk-tc": resolve(dir, "src/style-cjk-tc.css"),
@@ -81,6 +89,18 @@ export const clientBuildOptions = {
       // import in client-auth.js hits the immutably-cached old file after a
       // deploy that changes the shared exports.
       entryFileNames: `${ASSET_BASE_SEGMENT}/[name]-[hash].js`,
+      // Name the on-demand chunks after their package. Rolldown otherwise
+      // names a chunk after its first module's directory, which for
+      // mediabunny's `dist/modules/src/index.js` is `src-<hash>.js`.
+      advancedChunks: {
+        groups: [
+          { name: "mediabunny", test: /node_modules\/mediabunny\// },
+          {
+            name: "emoji-mart",
+            test: /node_modules\/(emoji-mart|@emoji-mart)\//,
+          },
+        ],
+      },
       chunkFileNames: `${ASSET_BASE_SEGMENT}/${ASSET_CHUNK_SEGMENT}/[name]-[hash].js`,
       assetFileNames: (assetInfo) => {
         switch (assetInfo.name) {
@@ -193,6 +213,166 @@ function failOnUnresolvedImport(): Plugin {
         `Browser bundle contains ${unresolved.size} unresolved import(s), which rolldown compiled into modules that throw on load:\n` +
           `${[...unresolved].sort().join("\n")}\n` +
           `Install the dependency, or keep the module that pulls it in out of the browser graph.`,
+      );
+    },
+  };
+}
+
+/**
+ * The entries a page loads from a script tag. Everything else in
+ * {@link ENTRY_BUDGETS_GZIP} is reached through `import()` from these.
+ */
+const INITIAL_ENTRIES = new Set(["client", "client-auth"]);
+
+/**
+ * Packages that may not be in an initial entry's static import graph.
+ *
+ * Each of these is large enough on its own to dominate a bundle, and none is
+ * needed before the reader (or author) does something specific. A static
+ * import anywhere in an initial entry's graph pulls the whole package into
+ * the first page view — which is exactly how the public bundle once carried
+ * the `pinyin-pro` dictionary behind a single URL helper. A prefix ending in
+ * `/` or `-` matches every package under it.
+ */
+const LAZY_ONLY_PACKAGES = [
+  // The editor: `client-compose.ts`.
+  "@tiptap/",
+  "prosemirror-",
+  "marked",
+  "linkifyjs",
+  // Drag ordering in the composer, navigation manager, collection directory.
+  "sortablejs",
+  // Slug transliteration: `lib/slugify.ts`, loaded via `client/lazy-slugify.ts`.
+  "limax",
+  "pinyin-pro",
+  "speakingurl",
+  "hepburn",
+  // The full Lucide index is for server rendering (`lib/icons.ts`); client
+  // components inline the few icons they draw (`client/icons.ts`).
+  "lucide-static",
+  // Upload-time media processing (`client/mediabunny.ts`, `compose-bridge.ts`).
+  "mediabunny",
+  "heic-to",
+  // Emoji picker, opened from the editor toolbar.
+  "emoji-mart",
+  "@emoji-mart/data",
+];
+
+/**
+ * Gzipped byte budget for each browser entry, counting the entry chunk plus
+ * every chunk it imports statically — what a first page view downloads before
+ * any script runs. Every `build:client` run prints the current figures next
+ * to these, so remeasuring is just building.
+ *
+ * Raise a budget only with a reason in the commit message; the numbers are
+ * the point of this table.
+ */
+const ENTRY_BUDGETS_GZIP: Record<string, number> = {
+  // Measured 2026-09: 37 KB. Datastar, Lit, and the reading interactions.
+  client: 48 * 1024,
+  // Measured 2026-09: 60 KB, public bundle included. Post menu, command
+  // palette, shortcuts, composer triggers.
+  "client-auth": 72 * 1024,
+  // Measured 2026-09: 279 KB. TipTap and the editor (shared `create-editor`
+  // chunk counted here and in the two entries below).
+  "client-compose": 320 * 1024,
+  // Measured 2026-09: 218 KB, mostly the shared editor chunk.
+  "client-settings": 250 * 1024,
+  // Measured 2026-09: 251 KB, mostly the shared editor chunk plus Sortable.
+  "client-manage": 290 * 1024,
+};
+
+const NODE_MODULES_PACKAGE_RE =
+  /node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?((?:@[^/]+\/)?[^/]+)\//;
+
+function lazyOnlyPackage(moduleId: string): string | null {
+  const name = NODE_MODULES_PACKAGE_RE.exec(moduleId)?.[1];
+  if (!name) return null;
+  const hit = LAZY_ONLY_PACKAGES.some((pattern) =>
+    /[/-]$/.test(pattern) ? name.startsWith(pattern) : name === pattern,
+  );
+  return hit ? name : null;
+}
+
+function kb(bytes: number): string {
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+/**
+ * Fails the client build when a bundle grows past what a page view should
+ * pay for.
+ *
+ * Two checks, both over the static import closure of each entry (the entry
+ * chunk plus the chunks it imports without `import()`):
+ *
+ * 1. For the {@link INITIAL_ENTRIES}, none of {@link LAZY_ONLY_PACKAGES} is
+ *    in that closure. A chunk reached through `import()` may carry them —
+ *    that is where they belong.
+ * 2. The closure's gzipped size is within {@link ENTRY_BUDGETS_GZIP}.
+ *
+ * Runs in `generateBundle`, after code splitting, so it judges the chunks as
+ * they will be served rather than the import graph as written.
+ */
+export function enforceClientBundleBudget(): Plugin {
+  return {
+    name: "jant:client-bundle-budget",
+    generateBundle(_options, bundle) {
+      type Chunk = Extract<(typeof bundle)[string], { type: "chunk" }>;
+      const byFile = new Map<string, Chunk>();
+      for (const output of Object.values(bundle)) {
+        if (output.type === "chunk") byFile.set(output.fileName, output);
+      }
+
+      const problems = new Set<string>();
+      const report: string[] = [];
+      for (const entry of byFile.values()) {
+        // CSS entries surface here as empty facade chunks that Vite drops
+        // before writing; they are not scripts a page loads.
+        if (!entry.isEntry || entry.facadeModuleId?.endsWith(".css")) continue;
+
+        const closure: Chunk[] = [];
+        const pending = [entry.fileName];
+        const seen = new Set<string>();
+        while (pending.length > 0) {
+          const fileName = pending.pop()!;
+          if (seen.has(fileName)) continue;
+          seen.add(fileName);
+          const chunk = byFile.get(fileName);
+          if (!chunk) continue;
+          closure.push(chunk);
+          pending.push(...chunk.imports);
+        }
+
+        let gzipped = 0;
+        for (const chunk of closure) {
+          gzipped += gzipSync(chunk.code).length;
+          if (!INITIAL_ENTRIES.has(entry.name)) continue;
+          for (const moduleId of Object.keys(chunk.modules)) {
+            const pkg = lazyOnlyPackage(moduleId);
+            if (pkg) {
+              problems.add(
+                `  "${pkg}" is loaded statically by entry "${entry.name}" (in ${chunk.fileName}); it must only be reached through a dynamic import()`,
+              );
+            }
+          }
+        }
+
+        const budget = ENTRY_BUDGETS_GZIP[entry.name];
+        report.push(
+          `  ${entry.name}: ${kb(gzipped)} gzipped${budget === undefined ? "" : ` (budget ${kb(budget)})`}`,
+        );
+        if (budget !== undefined && gzipped > budget) {
+          problems.add(
+            `  entry "${entry.name}" is ${kb(gzipped)} gzipped, over its ${kb(budget)} budget`,
+          );
+        }
+      }
+
+      console.log(`\nclient bundle budget\n${report.join("\n")}\n`);
+      if (problems.size === 0) return;
+      throw new Error(
+        `Client bundle budget exceeded:\n${[...problems].sort().join("\n")}\n` +
+          `Load the package behind an import() at the point of use, or move the code that needs it out of the entry graph. Budgets live in vite.shared.ts.`,
       );
     },
   };

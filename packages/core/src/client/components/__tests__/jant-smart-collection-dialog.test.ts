@@ -7,6 +7,22 @@ vi.mock("../../toast.js", () => ({
   showToastWithAction: vi.fn(),
 }));
 
+// The real slugify loads the transliteration dictionary through a dynamic
+// import, which fake timers never advance past; the dialog's behaviour does
+// not depend on which slug comes back.
+vi.mock("../../lazy-slugify.js", () => ({
+  slugify: (text: string) =>
+    Promise.resolve(
+      text
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, "")
+        .replace(/[\s_-]+/g, "-")
+        .replace(/^-+|-+$/g, ""),
+    ),
+  preloadSlug: () => {},
+}));
+
 import "../jant-smart-collection-dialog.js";
 import type { JantSmartCollectionDialog } from "../jant-smart-collection-dialog.js";
 import { setCollectionVocabulary } from "../smart-collection-conditions.js";

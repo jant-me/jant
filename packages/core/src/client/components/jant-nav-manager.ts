@@ -30,7 +30,7 @@ import { showToast } from "../toast.js";
 import { publicPath, sitePathPrefix } from "../runtime-paths.js";
 import { applySiteHeaderHtml } from "../site-header-fragment.js";
 import { getCollectionPagePath } from "../../lib/collection-paths.js";
-import { getIconSvg } from "../../lib/icons.js";
+import { FUNNEL_ICON_SVG } from "../icons.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { getSlugValidationIssue } from "../../lib/slug-format.js";
 import {
@@ -2644,9 +2644,7 @@ export class JantNavManager extends LitElement {
                                       title=${
                                         this.labels.smartCollectionLabel ?? ""
                                       }
-                                      >${unsafeHTML(
-                                        getIconSvg("funnel", "icon-fine") ?? "",
-                                      )}</span
+                                      >${unsafeHTML(FUNNEL_ICON_SVG)}</span
                                     >`
                                   : nothing
                               }

@@ -3,6 +3,8 @@ import {
   getComposeDialog,
   getCurrentDetailPostArticle,
   getReplyTargetArticle,
+  openDraftForPost,
+  openEditForPost,
   openNewCompose,
   openReplyForArticle,
 } from "./compose-launch.js";
@@ -64,14 +66,13 @@ function openEditFromQueryParam() {
 
   const article = getCurrentDetailPostArticle();
   const postId = article?.dataset.postId;
-  const composeEl = getComposeDialog();
-  if (!postId || !composeEl) return;
+  if (!postId || !getComposeDialog()) return;
 
   consumeEditQueryParam();
   if (document.querySelector("[data-preview-status]")) {
-    void composeEl.openDraft(postId);
+    void openDraftForPost(postId);
   } else {
-    void composeEl.openEdit(postId);
+    void openEditForPost(postId);
   }
 }
 
@@ -141,10 +142,7 @@ document.addEventListener("keydown", (event: globalThis.KeyboardEvent) => {
     const postId = article.dataset.postId;
     if (!postId) return;
     event.preventDefault();
-    const composeEl = getComposeDialog();
-    if (composeEl) {
-      void composeEl.openEdit(postId);
-    }
+    void openEditForPost(postId);
     return;
   }
 

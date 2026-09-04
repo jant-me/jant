@@ -26,6 +26,7 @@ import type { LanguageAlternate } from "../../lib/view-language.js";
 import { toLanguagePrefix } from "../../i18n/locales.js";
 import {
   CLIENT_AUTH_JS_FILE,
+  CLIENT_COMPOSE_PRELOAD,
   CLIENT_CJK_CSS_FILE,
   CLIENT_CJK_JP_CSS_FILE,
   CLIENT_CJK_KR_CSS_FILE,
@@ -275,6 +276,15 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         resolvedClientBundle === "full" ? CLIENT_AUTH_JS_FILE : CLIENT_JS_FILE,
         assetBasePath,
       );
+  // The composer loads on first use; fetching its files now means the first
+  // open costs no round trip. Dev serves modules straight from source, so
+  // there is nothing to preload there.
+  const composePreloadPaths =
+    !IS_VITE_DEV && resolvedClientBundle === "full"
+      ? CLIENT_COMPOSE_PRELOAD.map((file) =>
+          toPublicAssetPath(file, assetBasePath),
+        )
+      : [];
   const faviconAssetVersion = resolvedFaviconVersion || CORE_VERSION;
   const resolvedFaviconHref =
     faviconHref ??
@@ -556,6 +566,9 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
           )}
           {customHeadHtml && raw(customHeadHtml)}
           <script type="module" src={clientScriptPath} />
+          {composePreloadPaths.map((href) => (
+            <link rel="modulepreload" href={href} />
+          ))}
         </head>
         <body
           class="bg-background text-foreground antialiased"

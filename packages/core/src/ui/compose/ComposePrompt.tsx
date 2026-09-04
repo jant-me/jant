@@ -25,11 +25,7 @@ export const ComposePrompt: FC<ComposePromptProps> = ({
         composeOpenShortcutDiscovered ? "true" : "false"
       }
     >
-      <button
-        type="button"
-        class="compose-prompt-trigger"
-        data-on:click="document.getElementById('compose-dialog')?.querySelector('jant-compose-dialog')?.openNew()"
-      >
+      <button type="button" class="compose-prompt-trigger" data-compose-open>
         <span class="compose-prompt-avatar">
           <svg
             xmlns="http://www.w3.org/2000/svg"

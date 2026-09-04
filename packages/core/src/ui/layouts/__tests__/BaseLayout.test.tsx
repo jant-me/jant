@@ -5,6 +5,10 @@ vi.stubGlobal("__JANT_DEV__", false);
 vi.stubGlobal("__JANT_VERSION__", "test-version");
 vi.stubGlobal("__CLIENT_JS_FILE__", "/_assets/client.js");
 vi.stubGlobal("__CLIENT_AUTH_JS_FILE__", "/_assets/client-auth.js");
+vi.stubGlobal("__CLIENT_COMPOSE_PRELOAD__", [
+  "/_assets/client-compose.js",
+  "/_assets/chunks/create-editor.js",
+]);
 
 function createContext(
   mainRssFeed: "featured" | "latest",
@@ -318,6 +322,44 @@ describe("BaseLayout", () => {
 
     expect(html).not.toContain('type="application/atom+xml"');
     expect(html).not.toContain('href="/feed"');
+  });
+
+  it("preloads the composer's files on signed-in pages, under the asset base path", async () => {
+    const { BaseLayout } = await loadBaseLayout();
+    const html = renderToString(
+      BaseLayout({
+        title: "Jant",
+        c: createContext("featured", {
+          sitePathPrefix: "/blog",
+          siteUrl: "https://example.com/blog",
+          assetBasePath: "/blog/_assets",
+        }),
+        isAuthenticated: true,
+        children: "Test",
+      }),
+    );
+
+    expect(html).toContain(`src="/blog/_assets/client-auth.js"`);
+    expect(html).toContain(
+      `<link rel="modulepreload" href="/blog/_assets/client-compose.js"`,
+    );
+    expect(html).toContain(
+      `<link rel="modulepreload" href="/blog/_assets/chunks/create-editor.js"`,
+    );
+  });
+
+  it("preloads nothing for readers, who never open the composer", async () => {
+    const { BaseLayout } = await loadBaseLayout();
+    const html = renderToString(
+      BaseLayout({
+        title: "Jant",
+        c: createContext("featured"),
+        children: "Test",
+      }),
+    );
+
+    expect(html).toContain(`src="/_assets/client.js"`);
+    expect(html).not.toContain("modulepreload");
   });
 
   it("uses the public asset base path from appConfig in production", async () => {

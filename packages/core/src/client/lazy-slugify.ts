@@ -1,7 +1,7 @@
 /**
  * Lazy-loaded slug generation
  *
- * Wraps the `slugify` function from `url.ts` behind a dynamic import so
+ * Wraps the `slugify` function from `lib/slugify.ts` behind a dynamic import so
  * `limax` (used for i18n-aware transliteration) doesn't bloat the main
  * client bundle. Vite code-splits it into a separate chunk.
  *
@@ -22,7 +22,7 @@ let loadingPromise: Promise<SlugifyFn> | undefined;
 function load(): Promise<SlugifyFn> {
   if (slugifyFn) return Promise.resolve(slugifyFn);
   if (!loadingPromise) {
-    loadingPromise = import("../lib/url.js").then((mod) => {
+    loadingPromise = import("../lib/slugify.js").then((mod) => {
       slugifyFn = mod.slugify;
       return mod.slugify;
     });

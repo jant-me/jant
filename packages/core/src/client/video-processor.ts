@@ -17,18 +17,8 @@
  * Requires WebCodecs API support — check `isSupported()` before use.
  */
 
-import {
-  Input,
-  Output,
-  Mp4OutputFormat,
-  BufferTarget,
-  BlobSource,
-  CanvasSink,
-  Conversion,
-  Quality,
-  ALL_FORMATS,
-  type VideoCodec,
-} from "mediabunny";
+import type { VideoCodec } from "mediabunny";
+import { loadMediabunny } from "./mediabunny.js";
 import { encode } from "blurhash";
 import { normalizeDurationSeconds } from "../lib/video-playback.js";
 import { zeroTrackAlternateGroups } from "../lib/mp4-track-flags.js";
@@ -196,6 +186,7 @@ function drawFrame(
  * @returns Poster blob (640px-wide WebP), blurhash, dimensions, codec, bitrate
  */
 async function probeSource(file: File): Promise<SourceProbe> {
+  const { Input, BlobSource, ALL_FORMATS, CanvasSink } = await loadMediabunny();
   const input = new Input({
     source: new BlobSource(file),
     formats: ALL_FORMATS,
@@ -430,6 +421,16 @@ async function processToFile(
   );
 
   // Convert to MP4 (fresh Input — not shared with probeSource)
+  const {
+    Input,
+    Output,
+    Mp4OutputFormat,
+    BufferTarget,
+    BlobSource,
+    Conversion,
+    Quality,
+    ALL_FORMATS,
+  } = await loadMediabunny();
   const input = new Input({
     source: new BlobSource(file),
     formats: ALL_FORMATS,

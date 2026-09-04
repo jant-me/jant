@@ -11,15 +11,7 @@
  * Requires WebCodecs API support — check `isSupported()` before use.
  */
 
-import {
-  Input,
-  Output,
-  Mp4OutputFormat,
-  BufferTarget,
-  BlobSource,
-  Conversion,
-  ALL_FORMATS,
-} from "mediabunny";
+import { loadMediabunny } from "./mediabunny.js";
 
 export interface AudioProcessResult {
   file: File;
@@ -46,6 +38,15 @@ async function processToFile(
   file: File,
   onProgress?: (progress: number) => void,
 ): Promise<AudioProcessResult> {
+  const {
+    Input,
+    Output,
+    Mp4OutputFormat,
+    BufferTarget,
+    BlobSource,
+    Conversion,
+    ALL_FORMATS,
+  } = await loadMediabunny();
   const input = new Input({
     source: new BlobSource(file),
     formats: ALL_FORMATS,

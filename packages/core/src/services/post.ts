@@ -53,7 +53,8 @@ import { tiptapJsonToMarkdown } from "../lib/tiptap-to-markdown.js";
 import { generatePostSlug } from "../lib/slug.js";
 import { getSlugValidationIssue } from "../lib/slug-format.js";
 import { isReservedPath } from "../lib/constants.js";
-import { normalizePath, slugify } from "../lib/url.js";
+import { normalizePath } from "../lib/url.js";
+import { slugify } from "../lib/slugify.js";
 import type { StorageDriver } from "../lib/storage.js";
 import type { MediaService } from "./media.js";
 import {

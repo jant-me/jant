@@ -661,11 +661,6 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
   const showMobileComposeFab = Boolean(
     (isHomePage || composeCollectionId) && isAuthenticated && showComposeDialog,
   );
-  const mobileComposeFabClick = composeCollectionId
-    ? `document.getElementById('compose-dialog')?.querySelector('jant-compose-dialog')?.openNew(${JSON.stringify(
-        { collectionId: composeCollectionId },
-      )})`
-    : "document.getElementById('compose-dialog')?.querySelector('jant-compose-dialog')?.openNew()";
   const contentClass = [
     "site-content",
     isHomePage ? "site-content-home" : "",
@@ -732,7 +727,10 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
           type="button"
           class="site-mobile-compose-fab"
           aria-label={newPostLabel}
-          data-on:click={mobileComposeFabClick}
+          data-compose-open
+          {...(composeCollectionId
+            ? { "data-compose-collection-id": composeCollectionId }
+            : {})}
         >
           <ComposeFeatherIcon class="site-mobile-compose-fab-icon" />
         </button>

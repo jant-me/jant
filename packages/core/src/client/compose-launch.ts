@@ -1,4 +1,5 @@
 import type { JantComposeDialog } from "./components/jant-compose-dialog.js";
+import { ensureCompose } from "./lazy-entries.js";
 import { showToast } from "./toast.js";
 
 interface ReplyToData {
@@ -17,10 +18,62 @@ export interface ComposeOpenOptions {
   initialFormat?: "note" | "link" | "quote";
 }
 
+/**
+ * The composer element the server rendered, upgraded or not.
+ *
+ * Use it to ask whether the page has a composer; to call it, go through
+ * {@link ensureComposeDialog}.
+ *
+ * @returns The element, or null when the page has no composer
+ */
 export function getComposeDialog(): JantComposeDialog | null {
   return document.querySelector(
     "jant-compose-dialog",
   ) as JantComposeDialog | null;
+}
+
+/**
+ * The composer, ready to take calls.
+ *
+ * The composer ships in its own bundle, loaded on first use, so the element
+ * the server rendered may still be an unupgraded tag when a button is
+ * clicked. This loads the bundle — which defines the element and upgrades it
+ * in place — before handing the element back.
+ *
+ * @returns The upgraded composer, or null when the page has no composer
+ * @example
+ * ```ts
+ * const dialog = await ensureComposeDialog();
+ * await dialog?.openTranslation(threadId, "zh-Hans");
+ * ```
+ */
+export async function ensureComposeDialog(): Promise<JantComposeDialog | null> {
+  const dialog = getComposeDialog();
+  if (!dialog) return null;
+  await ensureCompose();
+  return dialog;
+}
+
+/**
+ * The composer's translated strings, readable before its bundle has loaded.
+ *
+ * The post menu borrows labels the server rendered onto the composer for its
+ * inline collection form. Until the element upgrades, Lit has not parsed the
+ * `labels` attribute into a property, so read the attribute directly then.
+ *
+ * @returns The labels, or null when the page has no composer or no labels
+ */
+export function readComposeDialogLabels(): JantComposeDialog["labels"] | null {
+  const dialog = getComposeDialog();
+  if (!dialog) return null;
+  if (dialog.labels) return dialog.labels;
+  const raw = dialog.getAttribute("labels");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as JantComposeDialog["labels"];
+  } catch {
+    return null;
+  }
 }
 
 export function getActiveCollectionId(): string | undefined {
@@ -133,14 +186,35 @@ function getReplyData(article: HTMLElement): ReplyToData {
 export async function openNewCompose(
   options?: ComposeOpenOptions,
 ): Promise<void> {
-  await getComposeDialog()?.openNew(options);
+  const dialog = await ensureComposeDialog();
+  await dialog?.openNew(options);
+}
+
+/**
+ * Open a post in the composer for editing.
+ *
+ * @param postId - The post to edit
+ */
+export async function openEditForPost(postId: string): Promise<void> {
+  const dialog = await ensureComposeDialog();
+  await dialog?.openEdit(postId);
+}
+
+/**
+ * Open a draft in the composer, from the draft preview page.
+ *
+ * @param postId - The draft to continue
+ */
+export async function openDraftForPost(postId: string): Promise<void> {
+  const dialog = await ensureComposeDialog();
+  await dialog?.openDraft(postId);
 }
 
 export async function openReplyForArticle(article: HTMLElement): Promise<void> {
   const postId = article.dataset.postId;
   if (!postId) return;
 
-  const dialog = getComposeDialog();
+  const dialog = await ensureComposeDialog();
   if (!dialog) return;
 
   // Only surfaces that hide the trailing draft redirect to it — the feed hands

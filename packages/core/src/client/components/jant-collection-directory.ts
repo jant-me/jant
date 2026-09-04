@@ -50,7 +50,7 @@ import type {
   ManagedCollection,
   ManagedSmartCollection,
 } from "./collection-manager-types.js";
-import { getIconSvg } from "../../lib/icons.js";
+import { FUNNEL_ICON_SVG } from "../icons.js";
 import { openCollectionDialog } from "../collection-dialog-host.js";
 import { openSmartCollectionDialog } from "../smart-collection-dialog-host.js";
 import { setCollectionVocabulary } from "./smart-collection-conditions.js";
@@ -1131,7 +1131,7 @@ export class JantCollectionsManager extends LitElement {
                 role="img"
                 aria-label=${this.labels.smartCollectionNoun}
                 title=${this.labels.smartCollectionNoun}
-                >${unsafeHTML(getIconSvg("funnel", "icon-fine") ?? "")}</span
+                >${unsafeHTML(FUNNEL_ICON_SVG)}</span
               ></span
             >
           </a>

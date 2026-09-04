@@ -5,7 +5,7 @@
  * Handles three cases: user-provided slug, title-based slug, and random-only slug.
  */
 
-import { slugify } from "./url.js";
+import { slugify } from "./slugify.js";
 import { generateRandomId } from "./nanoid.js";
 import { isReservedPath } from "./constants.js";
 import { ValidationError, ConflictError } from "./errors.js";
