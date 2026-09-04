@@ -410,7 +410,8 @@ export const CollectionPage: FC<CollectionPageProps> = ({
                 class="collection-page-compose-trigger"
                 aria-label={newPostLabel}
                 title={newPostLabel}
-                data-on:click={`document.getElementById('compose-dialog')?.querySelector('jant-compose-dialog')?.openNew(${escapeJson({ collectionId: primaryCollection.id })})`}
+                data-compose-open
+                data-compose-collection-id={primaryCollection.id}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

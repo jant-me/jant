@@ -14,6 +14,7 @@ import {
   buildVersion,
   clientBuildOptions,
   clientPlugins,
+  enforceClientBundleBudget,
   workerBuildOptions,
 } from "./vite.shared";
 
@@ -38,5 +39,5 @@ export default defineConfig({
     __JANT_VERSION__: JSON.stringify(buildVersion),
   },
 
-  plugins: [tailwindcss(), clientPlugins()],
+  plugins: [tailwindcss(), clientPlugins(), enforceClientBundleBudget()],
 });

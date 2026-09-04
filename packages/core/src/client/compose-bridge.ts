@@ -23,7 +23,6 @@ import {
   replaceWithAutoClose,
   queueToastForNextPage,
 } from "./toast.js";
-import { getComposeDialog, openReplyForArticle } from "./compose-launch.js";
 import {
   refreshPostCardView,
   refreshPostPageView,
@@ -475,38 +474,6 @@ document.addEventListener("jant:files-selected", (e: Event) => {
     uploadPromises.set(clientId, promise);
     promise.finally(() => uploadPromises.delete(clientId));
   }
-});
-
-// ── Reply trigger handler ───────────────────────────────────────────
-
-document.addEventListener("click", (e: MouseEvent) => {
-  const trigger = (e.target as HTMLElement).closest<HTMLButtonElement>(
-    "[data-reply-trigger]",
-  );
-  if (!trigger) return;
-
-  const article = trigger.closest<HTMLElement>("article[data-post]");
-  if (!article) return;
-  void openReplyForArticle(article);
-});
-
-// ── Draft badge → editor ────────────────────────────────────────────
-//
-// The badge on an inline draft doubles as its most likely next action. Publish
-// and Delete live in the post menu with every other post action.
-
-document.addEventListener("click", (e: MouseEvent) => {
-  const trigger = (e.target as HTMLElement).closest<HTMLElement>(
-    "[data-draft-continue]",
-  );
-  if (!trigger) return;
-
-  const postId =
-    trigger.dataset.postId ??
-    trigger.closest<HTMLElement>("article[data-post]")?.dataset.postId;
-  if (!postId) return;
-
-  void getComposeDialog()?.openEdit(postId);
 });
 
 // ── Submit handler ──────────────────────────────────────────────────
