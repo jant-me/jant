@@ -5,8 +5,8 @@
  * feeds of sites that opt in and shows one recent post per blog at a time.
  * Core owns the protocol, not the directory — this module holds the site
  * setting's effective-mode rules and the identifiers the feed declaration is
- * built from. The behaviour of the directory itself is documented at
- * `/docs/discover`.
+ * built from. The declaration is specified in `docs/feeds.md`; how a directory
+ * behaves is that directory's own business, documented where it lives.
  */
 
 /**
@@ -67,25 +67,45 @@ export function parseDiscoverSetting(
  *    same lock already applies to search indexing.
  * 2. A site with feeds turned off has nothing to poll — every feed path
  *    404s — so it cannot honestly declare that it is listed.
- * 3. An explicit choice wins over anything derived. Someone who ticked the
- *    box meant it.
- * 4. Without an explicit choice, `noindex` implies `none`: hiding from
- *    search engines and being surfaced by a directory contradict each other,
- *    and the quieter reading is the safe one.
- * 5. Otherwise `latest` — Discover is opt-out for ordinary sites.
+ * 3. The owner's stored choice wins over anything derived, including
+ *    `noindex`. Someone who ticked the box meant it.
+ * 4. Without a stored choice, `noindex` implies `none`: hiding from search
+ *    engines and being surfaced by a directory contradict each other, and the
+ *    quieter reading is the safe one.
+ * 5. Then the deployment default, from the `DISCOVER` binding. Hosted Jant
+ *    sets it, so every blog it serves takes part until its owner says
+ *    otherwise. It sits below `noindex` on purpose: a deployment saying
+ *    "list my sites" is a default, not the answer of the person who hid this
+ *    one from search engines.
+ * 6. Otherwise `none`. A site nobody configured has not opted in, and the
+ *    declaration is the consent record a directory reads — a site listed on
+ *    the strength of a default its owner never chose was never asked.
  *
  * @param input - Resolved site configuration relevant to Discover
  * @returns The mode this site's feeds should declare
  * @example
  * ```ts
  * resolveDiscoverMode({
- *   explicitValue: null, demoMode: false, noindex: true, rssFeedsEnabled: true,
- * }); // "none" — hidden from search engines, never explicitly enrolled
+ *   storedValue: null, defaultValue: null,
+ *   demoMode: false, noindex: false, rssFeedsEnabled: true,
+ * }); // "none" — self-hosted, never opted in
+ * resolveDiscoverMode({
+ *   storedValue: null, defaultValue: "latest",
+ *   demoMode: false, noindex: false, rssFeedsEnabled: true,
+ * }); // "latest" — a deployment that lists its sites by default
  * ```
  */
 export function resolveDiscoverMode(input: {
-  /** Explicitly stored setting, from the DB or an environment binding. */
-  explicitValue: string | undefined | null;
+  /** The owner's own choice, stored in this site's settings. */
+  storedValue: string | undefined | null;
+  /**
+   * What this deployment lists by default, from the `DISCOVER` binding.
+   *
+   * Absent for a self-hosted site, which is what makes Discover opt-in
+   * there; hosted Jant sets it so its fleet is listed without every owner
+   * having to ask.
+   */
+  defaultValue?: string | undefined | null;
   demoMode: boolean;
   /** Effective `noindex`, as resolved onto `AppConfig`. */
   noindex: boolean;
@@ -94,10 +114,15 @@ export function resolveDiscoverMode(input: {
   if (input.demoMode) return "none";
   if (!input.rssFeedsEnabled) return "none";
 
-  const explicit = parseDiscoverSetting(input.explicitValue);
-  if (explicit) return explicit === "off" ? "none" : explicit;
+  const stored = parseDiscoverSetting(input.storedValue);
+  if (stored) return stored === "off" ? "none" : stored;
 
-  return input.noindex ? "none" : "latest";
+  if (input.noindex) return "none";
+
+  const fallback = parseDiscoverSetting(input.defaultValue);
+  if (fallback) return fallback === "off" ? "none" : fallback;
+
+  return "none";
 }
 
 /**
@@ -131,13 +156,15 @@ export function getDiscoverFeedPath(mode: DiscoverMode): string | null {
  *
  * Not core's rule — the directory's, published on the Discover page — but
  * core states it so a site owner can see where they stand without asking
- * anybody. A directory of your own may decide differently; the numbers on the
- * settings page are your site's own either way.
+ * anybody. A directory of your own may decide differently.
+ *
+ * One post, and no minimum history at all. The directory used to ask for a
+ * week of it as well, and dropped that: for a self-hosted blog the age can
+ * only be read off the oldest post the feed still carries, which is strict
+ * against an honest blog and no obstacle whatsoever to one that backdates.
+ * What keeps day-one throwaways out is the opt-in itself.
  */
-export const DISCOVER_MIN_PUBLIC_POSTS = 3;
-
-/** Days between a blog's first public post and the directory listing it. */
-export const DISCOVER_MIN_AGE_DAYS = 7;
+export const DISCOVER_MIN_PUBLIC_POSTS = 1;
 
 /** Longest a directory waits before reading a newly announced feed. */
 export const DISCOVER_FIRST_READ_MAX_HOURS = 6;
@@ -145,52 +172,55 @@ export const DISCOVER_FIRST_READ_MAX_HOURS = 6;
 /** Where a site stands against the directory's threshold. */
 export interface DiscoverMaturity {
   publicPostCount: number;
-  /** Whole days since the oldest public post, or null when there are none. */
-  ageDays: number | null;
-  /** Both thresholds met. */
+  /** The threshold is met. */
   established: boolean;
 }
 
 /**
  * Measure a site against the directory's threshold.
  *
- * Both signals have to hold: a blog that has existed for a week with nothing
- * in it is not ready, and neither is one that published three posts this
- * morning. Age is measured from the oldest public post rather than from any
- * site-creation date, because that is the only evidence a directory can see.
- *
- * @param input - Now, and the site's own public-post evidence
- * @returns The counts to show, and whether the threshold is met
+ * @param input - The site's own public-post evidence
+ * @returns The count to show, and whether the threshold is met
  * @example
  * ```ts
- * measureDiscoverMaturity({
- *   now, publicPostCount: 5, earliestPublishedAt: now - 8 * 86_400,
- * }); // { publicPostCount: 5, ageDays: 8, established: true }
+ * measureDiscoverMaturity({ publicPostCount: 5 });
+ * // { publicPostCount: 5, established: true }
  * ```
  */
 export function measureDiscoverMaturity(input: {
-  /** Unix seconds. */
-  now: number;
   publicPostCount: number;
-  /** Unix seconds of the oldest public post, or null when there are none. */
-  earliestPublishedAt: number | null;
 }): DiscoverMaturity {
-  const ageDays =
-    input.earliestPublishedAt === null
-      ? null
-      : Math.max(
-          0,
-          Math.floor((input.now - input.earliestPublishedAt) / (24 * 60 * 60)),
-        );
-
   return {
     publicPostCount: input.publicPostCount,
-    ageDays,
-    established:
-      input.publicPostCount >= DISCOVER_MIN_PUBLIC_POSTS &&
-      ageDays !== null &&
-      ageDays >= DISCOVER_MIN_AGE_DAYS,
+    established: input.publicPostCount >= DISCOVER_MIN_PUBLIC_POSTS,
   };
+}
+
+/**
+ * The directory itself, derived from its ping endpoint.
+ *
+ * What "Jant Discover" means is best answered by the list itself, so the
+ * settings page links here rather than to a page describing it. Derived for
+ * the same reason as the submission form: a site announcing to a directory of
+ * its own must link to that one, not to jant.me.
+ *
+ * @param pingUrl - The configured `DISCOVER_PING_URL`
+ * @returns Absolute URL of the directory, or `null` when there is none
+ * @example
+ * ```ts
+ * getDiscoverDirectoryUrl("https://jant.me/api/discover/ping");
+ * // "https://jant.me/discover"
+ * ```
+ */
+export function getDiscoverDirectoryUrl(
+  pingUrl: string | undefined | null,
+): string | null {
+  if (!pingUrl) return null;
+  try {
+    return new URL("/discover", pingUrl).toString();
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -1,5 +1,7 @@
 # Discover: site setting + feed declaration (jant-core side)
 
+> **Superseded in part** by `2026-09-04-1500-discover-opt-in-for-self-hosted.md`: the setting no longer defaults to `latest`. A site with nothing stored and no `DISCOVER` binding declares `none`, the binding is read as the deployment's default rather than as the site's answer, and the settings checkbox starts unticked. Everything else below still holds.
+
 Core's half of the Jant Discover feature (the community pulse page it feeds).
 Core owns the protocol — the site setting, the `<jant:discover>` element and the
 ping — and `docs/discover.md` (published at `/docs/discover`) is where it is

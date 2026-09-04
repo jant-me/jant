@@ -19,6 +19,7 @@ import {
   getAuthSecret,
   getConfiguredSingleSiteUrl,
   getConfiguredStorageDriver,
+  getDiscoverDefault,
   getEnvString,
 } from "./env.js";
 import { parseLanguageList } from "../i18n/locales.js";
@@ -225,12 +226,12 @@ export function resolveConfig(
     ? !!dbDescription
     : !!envDescription;
 
-  // Discover is "explicitly chosen" only when a value was actually stored or
-  // configured. An absent row is what makes the noindex rule apply, so the
-  // registry default must not stand in for it.
-  const discoverExplicitValue = Object.hasOwn(allSettings, "DISCOVER")
-    ? allSettings["DISCOVER"]
-    : getEnvString(env, "DISCOVER");
+  // The owner's stored choice and the deployment's default stay apart, and
+  // the registry default must not stand in for either: an absent row is what
+  // lets `noindex` decide, and an absent binding is what makes Discover
+  // opt-in for a self-hosted site.
+  const discoverStoredValue = allSettings["DISCOVER"];
+  const discoverDefaultValue = getDiscoverDefault(env);
   const noindex = demoMode || resolve("NOINDEX", allSettings, env) === "true";
   const rssFeedsEnabled =
     resolve("RSS_FEEDS_ENABLED", allSettings, env) === "true";
@@ -261,7 +262,8 @@ export function resolveConfig(
       resolve("SHOW_JANT_BRANDING_ON_HOME", allSettings, env) === "true",
     noindex,
     discover: resolveDiscoverMode({
-      explicitValue: discoverExplicitValue,
+      storedValue: discoverStoredValue,
+      defaultValue: discoverDefaultValue,
       demoMode,
       noindex,
       rssFeedsEnabled,

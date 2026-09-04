@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getDiscoverDirectoryUrl,
   getDiscoverFeedPath,
   getDiscoverSubmitUrl,
   measureDiscoverMaturity,
@@ -12,7 +13,8 @@ function resolve(
   overrides: Partial<Parameters<typeof resolveDiscoverMode>[0]>,
 ) {
   return resolveDiscoverMode({
-    explicitValue: null,
+    storedValue: null,
+    defaultValue: null,
     demoMode: false,
     noindex: false,
     rssFeedsEnabled: true,
@@ -37,13 +39,32 @@ describe("parseDiscoverSetting", () => {
 });
 
 describe("resolveDiscoverMode", () => {
-  it("lists an ordinary site that never touched the setting", () => {
-    expect(resolve({})).toBe("latest");
+  // The declaration is the consent record. A self-hosted site nobody
+  // configured has said nothing, and a directory must read that as a no.
+  it("keeps an untouched self-hosted site out", () => {
+    expect(resolve({})).toBe("none");
   });
 
-  it("honours an explicit choice", () => {
-    expect(resolve({ explicitValue: "featured" })).toBe("featured");
-    expect(resolve({ explicitValue: "off" })).toBe("none");
+  it("honours the owner's stored choice", () => {
+    expect(resolve({ storedValue: "featured" })).toBe("featured");
+    expect(resolve({ storedValue: "latest" })).toBe("latest");
+    expect(resolve({ storedValue: "off" })).toBe("none");
+  });
+
+  // How hosted Jant lists its fleet without asking every owner.
+  it("takes the deployment default when nothing is stored", () => {
+    expect(resolve({ defaultValue: "latest" })).toBe("latest");
+    expect(resolve({ defaultValue: "featured" })).toBe("featured");
+    expect(resolve({ defaultValue: "off" })).toBe("none");
+  });
+
+  it("lets the owner overrule the deployment default", () => {
+    expect(resolve({ defaultValue: "latest", storedValue: "off" })).toBe(
+      "none",
+    );
+    expect(resolve({ defaultValue: "off", storedValue: "latest" })).toBe(
+      "latest",
+    );
   });
 
   // Hiding from search engines and being surfaced by a directory contradict
@@ -52,9 +73,15 @@ describe("resolveDiscoverMode", () => {
     expect(resolve({ noindex: true })).toBe("none");
   });
 
-  it("lets an explicit choice override noindex", () => {
-    expect(resolve({ noindex: true, explicitValue: "latest" })).toBe("latest");
-    expect(resolve({ noindex: true, explicitValue: "featured" })).toBe(
+  // The whole reason the two are separate: a deployment-wide "list my blogs"
+  // is a default, not the answer of the owner who hid this one from search.
+  it("puts noindex above the deployment default", () => {
+    expect(resolve({ noindex: true, defaultValue: "latest" })).toBe("none");
+  });
+
+  it("lets a stored choice override noindex", () => {
+    expect(resolve({ noindex: true, storedValue: "latest" })).toBe("latest");
+    expect(resolve({ noindex: true, storedValue: "featured" })).toBe(
       "featured",
     );
   });
@@ -62,20 +89,23 @@ describe("resolveDiscoverMode", () => {
   // Demos exist to be thrown away; nothing they publish belongs in a directory.
   it("locks demo sites out even when they ask to be listed", () => {
     expect(resolve({ demoMode: true })).toBe("none");
-    expect(resolve({ demoMode: true, explicitValue: "featured" })).toBe("none");
+    expect(resolve({ demoMode: true, storedValue: "featured" })).toBe("none");
+    expect(resolve({ demoMode: true, defaultValue: "latest" })).toBe("none");
   });
 
   // Every feed path 404s with feeds off, so there would be nothing to poll.
   it("declares none when the site publishes no feeds", () => {
     expect(resolve({ rssFeedsEnabled: false })).toBe("none");
-    expect(resolve({ rssFeedsEnabled: false, explicitValue: "latest" })).toBe(
+    expect(resolve({ rssFeedsEnabled: false, storedValue: "latest" })).toBe(
       "none",
     );
   });
 
-  it("ignores a stored value it does not recognize", () => {
-    expect(resolve({ explicitValue: "sometimes" })).toBe("latest");
-    expect(resolve({ explicitValue: "sometimes", noindex: true })).toBe("none");
+  it("ignores values it does not recognize, on either side", () => {
+    expect(resolve({ storedValue: "sometimes", defaultValue: "latest" })).toBe(
+      "latest",
+    );
+    expect(resolve({ defaultValue: "sometimes" })).toBe("none");
   });
 });
 
@@ -112,58 +142,25 @@ describe("getDiscoverPingUrl", () => {
 });
 
 describe("measureDiscoverMaturity", () => {
-  const now = 1_800_000_000;
-  const day = 24 * 60 * 60;
-
-  it("passes a blog that clears both thresholds", () => {
-    expect(
-      measureDiscoverMaturity({
-        now,
-        publicPostCount: 5,
-        earliestPublishedAt: now - 8 * day,
-      }),
-    ).toEqual({ publicPostCount: 5, ageDays: 8, established: true });
+  it("passes a blog that has published something", () => {
+    expect(measureDiscoverMaturity({ publicPostCount: 5 })).toEqual({
+      publicPostCount: 5,
+      established: true,
+    });
   });
 
-  it("holds back a blog that published everything this morning", () => {
-    // Three posts is enough on its own; a week of them is the other half.
-    expect(
-      measureDiscoverMaturity({
-        now,
-        publicPostCount: 9,
-        earliestPublishedAt: now - 3 * 60 * 60,
-      }),
-    ).toMatchObject({ ageDays: 0, established: false });
+  // One post is the whole threshold; what keeps throwaways out is the opt-in.
+  it("passes a blog with a single public post", () => {
+    expect(measureDiscoverMaturity({ publicPostCount: 1 })).toMatchObject({
+      established: true,
+    });
   });
 
-  it("holds back an old blog with almost nothing in it", () => {
-    expect(
-      measureDiscoverMaturity({
-        now,
-        publicPostCount: 2,
-        earliestPublishedAt: now - 400 * day,
-      }),
-    ).toMatchObject({ established: false });
-  });
-
-  it("reports no age at all for a blog that has published nothing", () => {
-    expect(
-      measureDiscoverMaturity({
-        now,
-        publicPostCount: 0,
-        earliestPublishedAt: null,
-      }),
-    ).toEqual({ publicPostCount: 0, ageDays: null, established: false });
-  });
-
-  it("never reports a negative age from a future-dated post", () => {
-    expect(
-      measureDiscoverMaturity({
-        now,
-        publicPostCount: 4,
-        earliestPublishedAt: now + 10 * day,
-      }),
-    ).toMatchObject({ ageDays: 0, established: false });
+  it("holds back a blog with nothing public in it", () => {
+    expect(measureDiscoverMaturity({ publicPostCount: 0 })).toEqual({
+      publicPostCount: 0,
+      established: false,
+    });
   });
 });
 
@@ -186,5 +183,27 @@ describe("getDiscoverSubmitUrl", () => {
     expect(getDiscoverSubmitUrl(undefined)).toBeNull();
     expect(getDiscoverSubmitUrl("")).toBeNull();
     expect(getDiscoverSubmitUrl("not a url")).toBeNull();
+  });
+});
+
+describe("getDiscoverDirectoryUrl", () => {
+  // The settings page links the directory's name to the directory itself, so
+  // "what is Discover" is answered by the list rather than by a page about it.
+  it("finds the directory behind its own ping endpoint", () => {
+    expect(getDiscoverDirectoryUrl("https://jant.me/api/discover/ping")).toBe(
+      "https://jant.me/discover",
+    );
+  });
+
+  it("follows a directory of your own", () => {
+    expect(
+      getDiscoverDirectoryUrl("https://directory.example/api/discover/ping"),
+    ).toBe("https://directory.example/discover");
+  });
+
+  it("has nothing to link to when no directory is configured", () => {
+    expect(getDiscoverDirectoryUrl(undefined)).toBeNull();
+    expect(getDiscoverDirectoryUrl("")).toBeNull();
+    expect(getDiscoverDirectoryUrl("not a url")).toBeNull();
   });
 });

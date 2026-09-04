@@ -468,12 +468,16 @@ export const CONFIG_FIELDS = {
     editor: { type: "boolean" },
   },
   // No default value, and deliberately no `editor`. "Never chosen" has to stay
-  // tellable apart from an explicit choice — an unset site that also hides
-  // from search engines resolves to `none`, an explicit one does not — and
-  // Config Editor has no way to show a field whose default is "unset": it
+  // tellable apart from an explicit choice — an unset site falls through to
+  // `noindex` and then to the deployment default, an explicit one does not —
+  // and Config Editor has no way to show a field whose default is "unset": it
   // requires every editable field to resolve to a concrete valid value. The
   // effective mode is derived in `lib/discover.ts`, and the checkbox in
   // settings/general is where this is edited.
+  //
+  // The binding is read as this deployment's default rather than as the
+  // site's answer, which is how hosted Jant lists its fleet while a
+  // self-hosted site, with nothing set anywhere, stays out until asked.
   DISCOVER: {
     defaultValue: "",
     envOnly: false,

@@ -30,13 +30,8 @@ msgstr "{count, plural, other {還有 # 篇{language}貼文，但列表裡沒有
 
 #. @context: Discover status line when the site meets the jant.me directory's threshold
 #: src/ui/dash/settings/GeneralContent.tsx
-msgid "{count, plural, one {# public post} other {# public posts}}, oldest {days, plural, one {# day} other {# days}} ago. Enough for jant.me to list you."
-msgstr "{count, plural, other {# 篇公開貼文}}，最早一篇發布於 {days, plural, other {# 天}}前。已達到 jant.me 的收錄條件。"
-
-#. @context: Discover status line when the site does not meet the directory's threshold yet. Stated as jant.me's rule, because a directory of your own may decide differently.
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "{count, plural, one {# public post} other {# public posts}}. jant.me lists a blog once it has {minCount} and its oldest is {minDays} days old."
-msgstr "{count, plural, other {# 篇公開貼文}}。jant.me 的收錄條件是滿 {minCount} 篇，且最早一篇發布滿 {minDays} 天。"
+msgid "{count, plural, one {# public post} other {# public posts}}. Enough for jant.me to list you."
+msgstr "{count, plural, other {# 篇公開貼文}}。已達到 jant.me 的收錄條件。"
 
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -87,6 +82,11 @@ msgstr "沉靜、偏冷的底色。"
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "A directory reads a newly announced feed within {hours} hours."
 msgstr "目錄會在 {hours} 小時內讀取新回報的訂閱源。"
+
+#. @context: Help text under the Jant Discover checkbox. Deliberately states only the stable promises; the rest is the directory's own business.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "A public list of Jant blogs. It shows your blog's latest post 24 hours after you publish it, and links back to your site."
+msgstr "公開的 Jant 部落格列表，延遲 24 小時顯示你的部落格最新一篇貼文，並連回你的網站。"
 
 #. @context: Help text for site description field
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -265,6 +265,11 @@ msgstr "所有選集已經在你的導覽中。"
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "All feed addresses"
 msgstr "全部 feed 網址"
+
+#. @context: Checkbox for joining the Jant Discover directory. {name} is the directory's name and is rendered as a link to it, so keep it as one run of text.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Allow {name} to list my site"
+msgstr "允許 {name} 收錄我的網站"
 
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -1048,11 +1053,6 @@ msgstr "要與 GitHub 斷開連線嗎？webhook 會被移除。你的儲存庫�
 msgid "Disconnect Telegram? You can reconnect any time with a new binding code."
 msgstr "要斷開 Telegram？你可以隨時使用新的綁定代碼重新連接。"
 
-#. @context: Introduction to the Jant Discover settings section. Deliberately states only the stable promises; the tunable intervals live in the docs.
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Discover is a public list of Jant blogs. It shows one of your posts at a time, never sooner than a day after you publish it, and links back to your site."
-msgstr "探索是一份公開的 Jant 部落格清單。同時只顯示你的一篇貼文，最早也要在發佈一天之後，並連回你的網站。"
-
 #. @context: Help text explaining that Discover cannot work while Atom feeds are disabled
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Discover reads your Atom feed, so it needs feeds turned on."
@@ -1361,11 +1361,6 @@ msgstr "首頁設定已更新。"
 msgid "Hosted account"
 msgstr "託管帳號"
 
-#. @context: Link to the Jant Discover documentation page
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "How Discover picks posts"
-msgstr "探索如何挑選貼文"
-
 #. @context: Confirmation phrase the user must type to delete their account. {siteName} is the blog name.
 #: src/ui/dash/settings/DeleteAccountContent.tsx
 msgid "I want to delete {siteName}"
@@ -1395,6 +1390,11 @@ msgstr "安裝 GitHub App，以授予存取權而無需管理個人權杖。權�
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Integrations"
 msgstr "第三方整合"
+
+#. @context: Name of the Jant blog directory. Appears inside the Discover checkbox label as the link to the directory itself.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Jant Discover"
+msgstr "Jant 探索"
 
 #. @context: Validation error for a long page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1863,6 +1863,11 @@ msgstr "在 {address} 找不到任何頁面。請檢查位址，或以標題搜�
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Nothing matches this search. Try a different name or description."
 msgstr "沒有任何項目符合此搜尋。請嘗試不同的名稱或描述。"
+
+#. @context: Discover status line when the site does not meet the directory's threshold yet. Stated as jant.me's rule, because a directory of your own may decide differently.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Nothing published yet. jant.me lists a blog once it has {minCount, plural, one {one public post} other {# public posts}}."
+msgstr "還沒有公開貼文。jant.me 的收錄條件是{minCount, plural, other {滿 # 篇}}。"
 
 #. @context: Tufte color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -2397,11 +2402,6 @@ msgstr "初始設定"
 msgid "Show \"Build with Jant\" at the bottom of the home page"
 msgstr "在首頁底部顯示「Build with Jant」"
 
-#. @context: Checkbox for joining the Jant Discover directory
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Show my site and posts in Jant Discover"
-msgstr "在 Jant 探索中顯示我的網站和貼文"
-
 #. @context: Config Editor filter checkbox
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Show only modified"
@@ -2844,11 +2844,6 @@ msgstr "啟用"
 msgid "Turn on multilingual content"
 msgstr "啟用多語言"
 
-#. @context: Help text saying plainly what enabling Jant Discover transmits
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Turning this on sends your feed address to the directory once, so it knows your site exists."
-msgstr "開啟後會向目錄傳送一次你的訂閱源網址，讓它知道你的網站存在。"
-
 #. @context: Custom URL form field
 #: src/routes/dash/custom-urls.tsx
 msgid "Type"
@@ -3083,11 +3078,6 @@ msgstr "微黃的紙底，配橄欖綠。"
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Your feed says {mode}."
 msgstr "你的訂閱源宣告為 {mode}。"
-
-#. @context: Discover status line when the feed declares it does not want to be listed
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Your feed says none, so no directory will list this site."
-msgstr "你的訂閱源宣告為 none，任何目錄都不會收錄這個站點。"
 
 #. @context: Fallback name when a connected Telegram account has no username
 #: src/ui/dash/settings/TelegramContent.tsx

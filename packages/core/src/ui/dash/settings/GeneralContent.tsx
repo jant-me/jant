@@ -19,9 +19,9 @@ const FEEDS_DOCS_URL = getJantDocsUrl("feeds");
 /**
  * Where the site stands in the directory, as far as the site itself can tell.
  *
- * Every field is local evidence. The directory takes no status queries — see
- * `docs/discover.md` — so nothing here is fetched, and nothing here can say
- * whether a person has moderated the site.
+ * Every field is local evidence. The directory takes no status queries, so
+ * nothing here is fetched, and nothing here can say whether a person has
+ * moderated the site.
  */
 export interface DiscoverStatus {
   /** Last announcement succeeded, failed, or was never made. */
@@ -32,6 +32,18 @@ export interface DiscoverStatus {
   announceAt: number | null;
   /** A directory is configured at all. */
   hasDirectory: boolean;
+  /**
+   * A control plane runs this deployment and enrols its blogs itself.
+   *
+   * The announcement exists because a directory cannot list a site it has
+   * never heard of. That is not this site's situation: the platform hosting it
+   * registers its whole fleet, so "never announced" is not a defect here and
+   * there is nothing for the owner to send. The ping still fires when they
+   * switch this back on — a directory reads it as "read me now" and re-polls
+   * at once instead of waiting out the backstop — but that is plumbing, not a
+   * task, and it is reported nowhere.
+   */
+  managedByHost: boolean;
   /** The directory's manual submission form, when there is one. */
   submitUrl: string | null;
   /** What this site's feeds actually declare right now. */
@@ -39,12 +51,9 @@ export interface DiscoverStatus {
   publicPostCount: number;
   /** Featured thread roots — what a `featured` feed would actually carry. */
   featuredPostCount: number;
-  /** Whole days since the oldest public post, or null when there are none. */
-  ageDays: number | null;
-  /** Both of the directory's thresholds are met. */
+  /** The directory's threshold is met. */
   established: boolean;
   minPublicPosts: number;
-  minAgeDays: number;
   firstReadMaxHours: number;
 }
 
@@ -63,7 +72,8 @@ export function GeneralContent({
   showJantBrandingOnHome,
   noindex,
   discover,
-  discoverDocsUrl,
+  discoverDefault,
+  discoverUrl,
   discoverStatus,
   rssFeedsEnabled,
   demoMode,
@@ -87,7 +97,10 @@ export function GeneralContent({
   noindex: boolean;
   /** The stored choice, or "" when the owner has never used the control. */
   discover: string;
-  discoverDocsUrl: string;
+  /** What the site declares while that choice is unmade. */
+  discoverDefault: DiscoverMode;
+  /** The directory's own page, or `null` when none is configured. */
+  discoverUrl: string | null;
   discoverStatus: DiscoverStatus;
   rssFeedsEnabled: boolean;
   demoMode: boolean;
@@ -98,7 +111,19 @@ export function GeneralContent({
 }) {
   const { i18n } = useLingui();
 
+  // The directory's name, split out so the checkbox label can carry it as a
+  // placeholder: the component wraps this run of text in the link to the
+  // directory, and word order stays free per locale.
+  const discoverName = i18n._(
+    msg({
+      message: "Jant Discover",
+      comment:
+        "@context: Name of the Jant blog directory. Appears inside the Discover checkbox label as the link to the directory itself.",
+    }),
+  );
+
   const labels = JSON.stringify({
+    discoverName,
     general: i18n._(
       msg({
         message: "General",
@@ -334,30 +359,18 @@ export function GeneralContent({
     ),
     discoverEnabled: i18n._(
       msg({
-        message: "Show my site and posts in Jant Discover",
-        comment: "@context: Checkbox for joining the Jant Discover directory",
+        message: "Allow {name} to list my site",
+        comment:
+          "@context: Checkbox for joining the Jant Discover directory. {name} is the directory's name and is rendered as a link to it, so keep it as one run of text.",
       }),
+      { name: discoverName },
     ),
     discoverIntro: i18n._(
       msg({
         message:
-          "Discover is a public list of Jant blogs. It shows one of your posts at a time, never sooner than a day after you publish it, and links back to your site.",
+          "A public list of Jant blogs. It shows your blog's latest post 24 hours after you publish it, and links back to your site.",
         comment:
-          "@context: Introduction to the Jant Discover settings section. Deliberately states only the stable promises; the tunable intervals live in the docs.",
-      }),
-    ),
-    discoverAnnounce: i18n._(
-      msg({
-        message:
-          "Turning this on sends your feed address to the directory once, so it knows your site exists.",
-        comment:
-          "@context: Help text saying plainly what enabling Jant Discover transmits",
-      }),
-    ),
-    discoverDocs: i18n._(
-      msg({
-        message: "How Discover picks posts",
-        comment: "@context: Link to the Jant Discover documentation page",
+          "@context: Help text under the Jant Discover checkbox. Deliberately states only the stable promises; the rest is the directory's own business.",
       }),
     ),
     discoverLatest: i18n._(
@@ -477,17 +490,9 @@ export function GeneralContent({
   // `i18n._` call that has them. The component renders what it is given.
   const statusLines: string[] = [];
 
-  if (discoverStatus.declaredMode === "none") {
-    statusLines.push(
-      i18n._(
-        msg({
-          message: "Your feed says none, so no directory will list this site.",
-          comment:
-            "@context: Discover status line when the feed declares it does not want to be listed",
-        }),
-      ),
-    );
-  } else {
+  // A site that is not listed gets no status block at all: every line under
+  // that heading would only restate the unticked checkbox above it.
+  if (discoverStatus.declaredMode !== "none") {
     statusLines.push(
       i18n._(
         msg({
@@ -499,7 +504,7 @@ export function GeneralContent({
       ),
     );
 
-    if (discoverStatus.hasDirectory) {
+    if (discoverStatus.hasDirectory && !discoverStatus.managedByHost) {
       statusLines.push(
         discoverStatus.announced === true
           ? i18n._(
@@ -551,31 +556,24 @@ export function GeneralContent({
         ? i18n._(
             msg({
               message:
-                "{count, plural, one {# public post} other {# public posts}}, oldest {days, plural, one {# day} other {# days}} ago. Enough for jant.me to list you.",
+                "{count, plural, one {# public post} other {# public posts}}. Enough for jant.me to list you.",
               comment:
                 "@context: Discover status line when the site meets the jant.me directory's threshold",
             }),
-            {
-              count: discoverStatus.publicPostCount,
-              days: discoverStatus.ageDays ?? 0,
-            },
+            { count: discoverStatus.publicPostCount },
           )
         : i18n._(
             msg({
               message:
-                "{count, plural, one {# public post} other {# public posts}}. jant.me lists a blog once it has {minCount} and its oldest is {minDays} days old.",
+                "Nothing published yet. jant.me lists a blog once it has {minCount, plural, one {one public post} other {# public posts}}.",
               comment:
                 "@context: Discover status line when the site does not meet the directory's threshold yet. Stated as jant.me's rule, because a directory of your own may decide differently.",
             }),
-            {
-              count: discoverStatus.publicPostCount,
-              minCount: discoverStatus.minPublicPosts,
-              minDays: discoverStatus.minAgeDays,
-            },
+            { minCount: discoverStatus.minPublicPosts },
           ),
     );
 
-    if (discoverStatus.announced === true) {
+    if (discoverStatus.announced === true && !discoverStatus.managedByHost) {
       statusLines.push(
         i18n._(
           msg({
@@ -598,9 +596,12 @@ export function GeneralContent({
     showRetry:
       discoverStatus.announced === false &&
       discoverStatus.hasDirectory &&
+      !discoverStatus.managedByHost &&
       discoverStatus.declaredMode !== "none",
     submitUrl:
-      discoverStatus.announced === false ? discoverStatus.submitUrl : null,
+      discoverStatus.announced === false && !discoverStatus.managedByHost
+        ? discoverStatus.submitUrl
+        : null,
   };
 
   return (
@@ -617,7 +618,8 @@ export function GeneralContent({
           archive-feed-url={archiveFeedUrl}
           feeds-docs-url={FEEDS_DOCS_URL}
           demo-mode={demoMode || undefined}
-          discover-docs-url={discoverDocsUrl}
+          discover-default={discoverDefault}
+          discover-url={discoverUrl ?? undefined}
           discover-status={JSON.stringify(statusView)}
           feeds-enabled={rssFeedsEnabled || undefined}
           about-page={aboutPageJson}

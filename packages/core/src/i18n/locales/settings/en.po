@@ -30,13 +30,8 @@ msgstr "{count, plural, one {# post is} other {# posts are}} written in {languag
 
 #. @context: Discover status line when the site meets the jant.me directory's threshold
 #: src/ui/dash/settings/GeneralContent.tsx
-msgid "{count, plural, one {# public post} other {# public posts}}, oldest {days, plural, one {# day} other {# days}} ago. Enough for jant.me to list you."
-msgstr "{count, plural, one {# public post} other {# public posts}}, oldest {days, plural, one {# day} other {# days}} ago. Enough for jant.me to list you."
-
-#. @context: Discover status line when the site does not meet the directory's threshold yet. Stated as jant.me's rule, because a directory of your own may decide differently.
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "{count, plural, one {# public post} other {# public posts}}. jant.me lists a blog once it has {minCount} and its oldest is {minDays} days old."
-msgstr "{count, plural, one {# public post} other {# public posts}}. jant.me lists a blog once it has {minCount} and its oldest is {minDays} days old."
+msgid "{count, plural, one {# public post} other {# public posts}}. Enough for jant.me to list you."
+msgstr "{count, plural, one {# public post} other {# public posts}}. Enough for jant.me to list you."
 
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -87,6 +82,11 @@ msgstr "A calm, cool backdrop."
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "A directory reads a newly announced feed within {hours} hours."
 msgstr "A directory reads a newly announced feed within {hours} hours."
+
+#. @context: Help text under the Jant Discover checkbox. Deliberately states only the stable promises; the rest is the directory's own business.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "A public list of Jant blogs. It shows your blog's latest post 24 hours after you publish it, and links back to your site."
+msgstr "A public list of Jant blogs. It shows your blog's latest post 24 hours after you publish it, and links back to your site."
 
 #. @context: Help text for site description field
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -265,6 +265,11 @@ msgstr "All collections are already in your navigation."
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "All feed addresses"
 msgstr "All feed addresses"
+
+#. @context: Checkbox for joining the Jant Discover directory. {name} is the directory's name and is rendered as a link to it, so keep it as one run of text.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Allow {name} to list my site"
+msgstr "Allow {name} to list my site"
 
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -1048,11 +1053,6 @@ msgstr "Disconnect from GitHub? The webhook will be removed. Your repository con
 msgid "Disconnect Telegram? You can reconnect any time with a new binding code."
 msgstr "Disconnect Telegram? You can reconnect any time with a new binding code."
 
-#. @context: Introduction to the Jant Discover settings section. Deliberately states only the stable promises; the tunable intervals live in the docs.
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Discover is a public list of Jant blogs. It shows one of your posts at a time, never sooner than a day after you publish it, and links back to your site."
-msgstr "Discover is a public list of Jant blogs. It shows one of your posts at a time, never sooner than a day after you publish it, and links back to your site."
-
 #. @context: Help text explaining that Discover cannot work while Atom feeds are disabled
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Discover reads your Atom feed, so it needs feeds turned on."
@@ -1361,11 +1361,6 @@ msgstr "Home settings updated."
 msgid "Hosted account"
 msgstr "Hosted account"
 
-#. @context: Link to the Jant Discover documentation page
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "How Discover picks posts"
-msgstr "How Discover picks posts"
-
 #. @context: Confirmation phrase the user must type to delete their account. {siteName} is the blog name.
 #: src/ui/dash/settings/DeleteAccountContent.tsx
 msgid "I want to delete {siteName}"
@@ -1395,6 +1390,11 @@ msgstr "Install the GitHub App to grant access without managing personal tokens.
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Integrations"
 msgstr "Integrations"
+
+#. @context: Name of the Jant blog directory. Appears inside the Discover checkbox label as the link to the directory itself.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Jant Discover"
+msgstr "Jant Discover"
 
 #. @context: Validation error for a long page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1863,6 +1863,11 @@ msgstr "Nothing at {address}. Check it, or search by title."
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Nothing matches this search. Try a different name or description."
 msgstr "Nothing matches this search. Try a different name or description."
+
+#. @context: Discover status line when the site does not meet the directory's threshold yet. Stated as jant.me's rule, because a directory of your own may decide differently.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Nothing published yet. jant.me lists a blog once it has {minCount, plural, one {one public post} other {# public posts}}."
+msgstr "Nothing published yet. jant.me lists a blog once it has {minCount, plural, one {one public post} other {# public posts}}."
 
 #. @context: Tufte color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -2397,11 +2402,6 @@ msgstr "Setup"
 msgid "Show \"Build with Jant\" at the bottom of the home page"
 msgstr "Show \"Build with Jant\" at the bottom of the home page"
 
-#. @context: Checkbox for joining the Jant Discover directory
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Show my site and posts in Jant Discover"
-msgstr "Show my site and posts in Jant Discover"
-
 #. @context: Config Editor filter checkbox
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Show only modified"
@@ -2844,11 +2844,6 @@ msgstr "Turn on"
 msgid "Turn on multilingual content"
 msgstr "Turn on multilingual content"
 
-#. @context: Help text saying plainly what enabling Jant Discover transmits
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Turning this on sends your feed address to the directory once, so it knows your site exists."
-msgstr "Turning this on sends your feed address to the directory once, so it knows your site exists."
-
 #. @context: Custom URL form field
 #: src/routes/dash/custom-urls.tsx
 msgid "Type"
@@ -3083,11 +3078,6 @@ msgstr "Yellow-tinted paper with an olive-green accent."
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Your feed says {mode}."
 msgstr "Your feed says {mode}."
-
-#. @context: Discover status line when the feed declares it does not want to be listed
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Your feed says none, so no directory will list this site."
-msgstr "Your feed says none, so no directory will list this site."
 
 #. @context: Fallback name when a connected Telegram account has no username
 #: src/ui/dash/settings/TelegramContent.tsx

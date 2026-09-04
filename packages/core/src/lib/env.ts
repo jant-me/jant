@@ -235,6 +235,29 @@ export function getDiscoverPingUrl(env: EnvSource): string | undefined {
   return DEFAULT_DISCOVER_PING_URL;
 }
 
+/**
+ * What this deployment lists in Jant Discover by default.
+ *
+ * Absent for a self-hosted site, and that is the point: with nothing stored
+ * and nothing configured, a site declares `none` and stays out of every
+ * directory until its owner turns it on. Hosted Jant sets `DISCOVER=latest`,
+ * so the blogs it serves are listed without each owner having to ask.
+ *
+ * A default, not a choice — the site's own stored setting overrides it, and
+ * so does `noindex`. See `resolveDiscoverMode`.
+ *
+ * @param env - Worker bindings or `process.env`
+ * @returns The raw binding value, for `resolveDiscoverMode` to parse
+ * @example
+ * ```ts
+ * getDiscoverDefault({}); // undefined — opt-in
+ * getDiscoverDefault({ DISCOVER: "latest" }); // "latest"
+ * ```
+ */
+export function getDiscoverDefault(env: EnvSource): string | undefined {
+  return getEnvString(env, "DISCOVER");
+}
+
 export function getStorageDriverEnv(env: EnvSource): string | undefined {
   return getEnvString(env, "STORAGE_DRIVER");
 }

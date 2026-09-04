@@ -276,7 +276,10 @@ describe("language views filter content", () => {
   });
 
   it("declares Discover in each language's feed, pointing at that language", async () => {
-    const { app } = await seedTwoLanguages();
+    const { app, services } = await seedTwoLanguages();
+    // Discover is opt-in, so the declaration under test only exists once the
+    // site has actually asked to be listed.
+    await services.settings.set("DISCOVER", "latest");
 
     const root = await (await app.request("/latest/feed")).text();
     const english = await (await app.request("/en/latest/feed")).text();

@@ -37,7 +37,8 @@ export class JantSettingsGeneral extends LitElement {
       attribute: "sitedescription-fallback",
     },
     demoMode: { type: Boolean, attribute: "demo-mode" },
-    discoverDocsUrl: { type: String, attribute: "discover-docs-url" },
+    discoverDefault: { type: String, attribute: "discover-default" },
+    discoverUrl: { type: String, attribute: "discover-url" },
     discoverStatus: { type: String, attribute: "discover-status" },
     feedsEnabled: { type: Boolean, attribute: "feeds-enabled" },
     mainFeedUrl: { type: String, attribute: "main-feed-url" },
@@ -93,7 +94,9 @@ export class JantSettingsGeneral extends LitElement {
   declare siteNameFallback: string;
   declare siteDescriptionFallback: string;
   declare demoMode: boolean;
-  declare discoverDocsUrl: string;
+  /** What the site declares while the owner has not chosen: the deployment default. */
+  declare discoverDefault: string;
+  declare discoverUrl: string;
   /**
    * JSON status block, already translated by the server.
    *
@@ -210,7 +213,8 @@ export class JantSettingsGeneral extends LitElement {
     this._homeLoading = false;
     this._searchLoading = false;
 
-    this.discoverDocsUrl = "";
+    this.discoverDefault = "none";
+    this.discoverUrl = "";
     this.discoverStatus = "";
     this.feedsEnabled = false;
     this._discover = "";
@@ -489,12 +493,22 @@ export class JantSettingsGeneral extends LitElement {
   private _onDiscoverToggle(enabled: boolean) {
     // Turning it back on returns to the default rather than to whatever was
     // chosen before being switched off; the sub-choice below says which.
-    this._discover = enabled
-      ? this._origDiscover === "featured"
-        ? "featured"
-        : "latest"
-      : "off";
+    this._discover = enabled ? this._defaultDiscoverMode() : "off";
     this._discoverDirty = true;
+  }
+
+  /**
+   * Which stream a freshly enabled site draws from.
+   *
+   * `featured` only when something already says so — the site's own previous
+   * answer, or a deployment that defaults to it. Otherwise `latest`.
+   */
+  private _defaultDiscoverMode(): "latest" | "featured" {
+    if (this._origDiscover === "featured") return "featured";
+    if (this._origDiscover === "" && this.discoverDefault === "featured") {
+      return "featured";
+    }
+    return "latest";
   }
 
   private _onDiscoverMode(mode: "latest" | "featured") {
@@ -504,9 +518,15 @@ export class JantSettingsGeneral extends LitElement {
 
   private _saveDiscover() {
     if (this._discoverLoading) return;
-    // Sent even when the value is unchanged from the default, because saying
-    // "yes, list me" out loud is the act this control exists for.
-    const value = this._discover === "" ? "latest" : this._discover;
+    // Unreachable while nothing has been touched — the button is disabled —
+    // but an unset value still has to resolve to a storable one rather than
+    // to the empty string the server would reject.
+    const value =
+      this._discover === ""
+        ? this.discoverDefault === "none"
+          ? "off"
+          : this._defaultDiscoverMode()
+        : this._discover;
     this._discover = value;
     this._discoverLoading = true;
     this.dispatchEvent(
@@ -909,52 +929,46 @@ export class JantSettingsGeneral extends LitElement {
    * Jant Discover.
    *
    * Unlike the indexing checkbox next to it, this group saves on its own
-   * button rather than on change. Two reasons, and both are the point: the
-   * checkbox and the mode are one decision, and a site that is happy with the
-   * default has to be able to confirm it — that confirmation is what tells the
-   * directory the site exists, and there is no way to express it by toggling
-   * something that is already on.
+   * button rather than on change: the checkbox and the mode below it are one
+   * decision, and half of it is not worth sending. The save is also what
+   * announces a self-hosted site to the directory, so it is the moment the
+   * owner opts in — which is why the button waits for an actual change rather
+   * than offering to re-confirm what is already stored.
    */
   private _renderDiscoverForm() {
-    // "" means never chosen, and the default is to take part.
-    const enabled = this._discover === "" ? true : this._discover !== "off";
-    const mode = this._discover === "featured" ? "featured" : "latest";
+    // "" means never chosen, and what the site declares meanwhile is the
+    // deployment's default: `none` when self-hosted, `latest` on a
+    // deployment that lists its blogs.
+    const effective =
+      this._discover === "" ? this.discoverDefault : this._discover;
+    const enabled = effective !== "off" && effective !== "none";
+    const mode = effective === "featured" ? "featured" : "latest";
     const locked = this.demoMode || !this.feedsEnabled;
 
     return html`
       <div class="flex flex-col gap-3">
-        <p class="text-sm text-muted-foreground">
-          ${this.labels.discoverIntro}
-          <a
-            class="link"
-            href=${this.discoverDocsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            >${this.labels.discoverDocs}</a
-          >
-        </p>
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            class="checkbox"
-            .checked=${enabled && !locked}
-            ?disabled=${locked || this._discoverLoading}
-            @change=${(e: Event) =>
-              this._onDiscoverToggle((e.target as HTMLInputElement).checked)}
-          />
-          <span>${this.labels.discoverEnabled}</span>
-        </label>
-        ${
-          locked
-            ? html`<p class="text-sm text-muted-foreground">
-                ${
-                  this.demoMode
-                    ? this.labels.discoverDemoLocked
-                    : this.labels.discoverFeedsOffLocked
-                }
-              </p>`
-            : nothing
-        }
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              class="checkbox"
+              .checked=${enabled && !locked}
+              ?disabled=${locked || this._discoverLoading}
+              @change=${(e: Event) =>
+                this._onDiscoverToggle((e.target as HTMLInputElement).checked)}
+            />
+            <span>${this._renderDiscoverLabel()}</span>
+          </label>
+          <p class="text-sm text-muted-foreground">
+            ${
+              locked
+                ? this.demoMode
+                  ? this.labels.discoverDemoLocked
+                  : this.labels.discoverFeedsOffLocked
+                : this.labels.discoverIntro
+            }
+          </p>
+        </div>
         ${
           enabled && !locked
             ? html`
@@ -962,9 +976,6 @@ export class JantSettingsGeneral extends LitElement {
                   ${this._renderDiscoverMode("latest", mode)}
                   ${this._renderDiscoverMode("featured", mode)}
                 </div>
-                <p class="text-sm text-muted-foreground">
-                  ${this.labels.discoverAnnounce}
-                </p>
               `
             : nothing
         }
@@ -976,10 +987,7 @@ export class JantSettingsGeneral extends LitElement {
                   <button
                     type="button"
                     class="btn"
-                    ?disabled=${
-                      this._discoverLoading ||
-                      (!this._discoverDirty && this._origDiscover !== "")
-                    }
+                    ?disabled=${this._discoverLoading || !this._discoverDirty}
                     @click=${() => this._saveDiscover()}
                   >
                     ${this.labels.save}
@@ -993,6 +1001,34 @@ export class JantSettingsGeneral extends LitElement {
   }
 
   /**
+   * The checkbox label, with the directory's name linking to the directory.
+   *
+   * The label reads as one sentence in every locale, so the link is found by
+   * splitting the translated string on the translated name rather than by
+   * gluing fragments together. A translation that drops or rewrites the name
+   * simply renders as plain text — a sentence without a link, never a broken
+   * one. What Discover is, is best answered by the list itself, which is why
+   * the link goes there rather than to a page about it. `stopPropagation`
+   * keeps a click on it from reaching the `<label>`, which would otherwise
+   * toggle the checkbox on the way out.
+   */
+  private _renderDiscoverLabel() {
+    const text = this.labels.discoverEnabled ?? "";
+    const name = this.labels.discoverName ?? "";
+    const at = name ? text.indexOf(name) : -1;
+    if (at === -1 || !this.discoverUrl) return text;
+
+    return html`${text.slice(0, at)}<a
+        href=${this.discoverUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline hover:text-foreground transition-colors"
+        @click=${(e: Event) => e.stopPropagation()}
+        >${name}</a
+      >${text.slice(at + name.length)}`;
+  }
+
+  /**
    * What the site can say about its own standing.
    *
    * Deliberately all local evidence: the directory takes no status queries, so
@@ -1000,6 +1036,12 @@ export class JantSettingsGeneral extends LitElement {
    * moderated the site. The retry and the manual form appear only when the
    * announcement failed — beside a working one they would read as a normal
    * route in rather than the recovery they are.
+   *
+   * A site that declares `none` is handed no lines at all, so the block does
+   * not render: it would only restate the unticked checkbox above it. The
+   * lines describe what is *stored*, so this follows the saved state rather
+   * than the checkbox — a tick that has not been saved yet changes nothing
+   * here.
    */
   private _renderDiscoverStatus() {
     const status = this._parsedDiscoverStatus();
@@ -1026,7 +1068,7 @@ export class JantSettingsGeneral extends LitElement {
                   ${
                     status.submitUrl
                       ? html`<a
-                          class="link text-sm"
+                          class="text-sm underline hover:text-foreground transition-colors"
                           href=${status.submitUrl}
                           target="_blank"
                           rel="noopener noreferrer"

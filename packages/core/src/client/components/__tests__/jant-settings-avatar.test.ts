@@ -69,11 +69,10 @@ const labels: SettingsLabels = {
     'Show "Build with Jant" at the bottom of the home page',
   allowIndexing: "Allow search engines to index my site",
   demoSeoLocked: "Demo sites always stay hidden from search engines.",
-  discoverEnabled: "Show my site and posts in Jant Discover",
-  discoverIntro: "Discover is a public list of Jant blogs.",
-  discoverAnnounce:
-    "Turning this on sends your feed address to the directory once.",
-  discoverDocs: "How Discover picks posts",
+  discoverName: "Jant Discover",
+  discoverEnabled: "Allow Jant Discover to list my site",
+  discoverIntro:
+    "A public list of Jant blogs. It shows your blog's latest post 24 hours after you publish it, and links back to your site.",
   discoverLatest: "Latest",
   discoverLatestHint: "Draws from your latest public posts.",
   discoverFeatured: "Featured only",

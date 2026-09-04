@@ -102,19 +102,25 @@ already in the Worker cache can remain visible for up to 60 seconds.
 
 ### Jant Discover (optional)
 
-| Variable            | Default              | Description                                                              |
-| ------------------- | -------------------- | ------------------------------------------------------------------------ |
-| `DISCOVER`          | `latest`             | Which stream Jant Discover may draw from: `latest`, `featured`, or `off` |
-| `DISCOVER_PING_URL` | Jant's own directory | Where the site announces itself; set it empty to announce nowhere        |
+| Variable            | Default              | Description                                                           |
+| ------------------- | -------------------- | --------------------------------------------------------------------- |
+| `DISCOVER`          | `off`                | What this deployment lists by default: `latest`, `featured`, or `off` |
+| `DISCOVER_PING_URL` | Jant's own directory | Where the site announces itself; set it empty to announce nowhere     |
 
 Jant Discover is a public directory of Jant blogs. Every Atom feed declares
-whether the site takes part, so no directory can list a site that has not said
-yes. Two cases resolve to `off` on their own: a site with `NOINDEX=true` that
-has never chosen, and a site with `RSS_FEEDS_ENABLED=false`, which publishes no
-feed to read.
+whether the site takes part, and nothing is listed without that declaration —
+so a site you never turned it on for stays out of every directory, including
+ones you have never heard of.
 
-See [Discover](discover.md) for how a post is picked, how to take one out
-again, and what a third-party directory needs to honour.
+`DISCOVER` is the default for sites this deployment serves, not their answer.
+The site's own Site visibility setting overrides it, and so does
+`NOINDEX=true` while that setting is unchosen. Leave it alone when self-hosting
+a single blog; set `DISCOVER=latest` when you run a platform whose blogs should
+be listed unless their owners say otherwise. A site with
+`RSS_FEEDS_ENABLED=false` resolves to `off` regardless, having no feed to read.
+
+See [Feeds](feeds.md#discover) for what your feed declares and what a
+third-party directory needs to honour.
 
 ### Public API access (optional)
 
@@ -453,7 +459,7 @@ These settings can be changed on Jant's Settings page after setup. Each one can 
 | `NOINDEX`                    | Ask search engines not to index the site         |
 | `PUBLIC_API_ENABLED`         | Allow JSON reads without a session or API token  |
 | `RSS_FEEDS_ENABLED`          | Publish Atom feeds and built-in feed links       |
-| `DISCOVER`                   | Whether posts may appear in Jant Discover        |
+| `DISCOVER`                   | Whether the site appears in Jant Discover        |
 
 Multilingual sites carry two more settings, `ADDITIONAL_LANGUAGES` and `MULTILINGUAL_ENABLED`. Both are written by the Language page rather than set by hand, because their values have to stay consistent with the language stamped on your posts — see [Multilingual content](multilingual.md).
 

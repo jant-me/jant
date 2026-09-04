@@ -19,7 +19,6 @@ import { getNavigationData } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { AdminBreadcrumb } from "../../ui/shared/AdminBreadcrumb.js";
 import { getTimeZoneOptions } from "../../lib/timezones.js";
-import { now } from "../../lib/time.js";
 import { getOrBuildEntry } from "../../i18n/supported-locales.js";
 import {
   DomainError,
@@ -30,15 +29,14 @@ import {
 import { SETTINGS_KEYS } from "../../lib/constants.js";
 import {
   DISCOVER_FIRST_READ_MAX_HOURS,
-  DISCOVER_MIN_AGE_DAYS,
   DISCOVER_MIN_PUBLIC_POSTS,
   getDiscoverFeedPath,
+  getDiscoverDirectoryUrl,
   getDiscoverSubmitUrl,
   measureDiscoverMaturity,
   parseDiscoverSetting,
   resolveDiscoverMode,
 } from "../../lib/discover.js";
-import { getJantDocsUrl } from "../../lib/jant-docs.js";
 import { getAvailableThemes } from "../../lib/theme.js";
 import { THEME_MODES, type ThemeMode } from "../../types/config.js";
 import { BUILTIN_FONT_THEMES } from "../../ui/font-themes.js";
@@ -82,9 +80,11 @@ import {
   getHostedControlPlaneProviderLabel,
   getHostedControlPlaneSiteDeleteUrl,
   getHostedControlPlaneSiteSettingsUrl,
+  isHostedControlPlaneEnabled,
 } from "../../lib/hosted-signin.js";
 import { syncHostedControlPlaneSiteAvatar } from "../../lib/hosted-control-plane-sync.js";
 import {
+  getDiscoverDefault,
   getDiscoverPingUrl,
   getGitHubAppConfig,
   getHostedControlPlaneSsoSecret,
@@ -379,13 +379,25 @@ settingsRoutes.get("/general", async (c) => {
   const dbSiteName = allSettings["SITE_NAME"] ?? "";
   const dbSiteDescription = allSettings["SITE_DESCRIPTION"] ?? "";
   // The stored choice, not the effective mode: the control has to be able to
-  // show "never chosen", which is what makes the `noindex` default apply.
+  // show "never chosen", which is what lets `noindex` and then the deployment
+  // default decide instead.
   const discoverSetting = parseDiscoverSetting(allSettings["DISCOVER"]);
+  // What this site declares while the owner has not answered: `none` for an
+  // ordinary self-hosted site, `latest` on a deployment that lists its fleet.
+  // The checkbox reads it so an untouched hosted site does not show as off
+  // while its feeds say otherwise.
+  const discoverDefault = resolveDiscoverMode({
+    storedValue: null,
+    defaultValue: getDiscoverDefault(c.env),
+    demoMode: appConfig.demoMode,
+    noindex: appConfig.noindex,
+    rssFeedsEnabled: appConfig.rssFeedsEnabled,
+  });
 
   const saved = c.req.query("saved") !== undefined;
   // What the site can answer about its own standing in the directory, without
-  // asking one. The directory deliberately does not take status queries — see
-  // `docs/discover.md` — so everything shown here is local evidence.
+  // asking one. The directory deliberately does not take status queries, so
+  // everything shown here is local evidence.
   const publicPostFilters = {
     status: "published" as const,
     excludeReplies: true,
@@ -397,14 +409,12 @@ settingsRoutes.get("/general", async (c) => {
     aboutPage,
     announceState,
     publicPostCount,
-    earliestPublishedAt,
     featuredPostCount,
   ] = await Promise.all([
     getNavigationData(c),
     c.var.services.aboutPage.getStatus(),
     c.var.services.settings.getDiscoverAnnounceState(),
     c.var.services.posts.count(publicPostFilters),
-    c.var.services.posts.getEarliestPublishedAt(publicPostFilters),
     c.var.services.posts.countFeaturedThreadRoots({
       status: "published",
       excludePrivate: true,
@@ -456,7 +466,8 @@ settingsRoutes.get("/general", async (c) => {
           showJantBrandingOnHome={appConfig.showJantBrandingOnHome}
           noindex={appConfig.noindex}
           discover={discoverSetting ?? ""}
-          discoverDocsUrl={getJantDocsUrl("discover")}
+          discoverDefault={discoverDefault}
+          discoverUrl={getDiscoverDirectoryUrl(getDiscoverPingUrl(c.env))}
           discoverStatus={{
             announced: announceState?.ok ?? null,
             announceError: announceState?.error ?? null,
@@ -464,21 +475,17 @@ settingsRoutes.get("/general", async (c) => {
             // No directory configured means nothing to announce to, and the
             // whole announcement block is beside the point.
             hasDirectory: getDiscoverPingUrl(c.env) !== undefined,
+            // A hosted fleet is enrolled by its control plane, so there is no
+            // announcement for the owner to make, chase, or retry.
+            managedByHost: isHostedControlPlaneEnabled(c.env),
             submitUrl: getDiscoverSubmitUrl(getDiscoverPingUrl(c.env)),
-            declaredMode: resolveDiscoverMode({
-              explicitValue: allSettings["DISCOVER"],
-              demoMode: appConfig.demoMode,
-              noindex: appConfig.noindex,
-              rssFeedsEnabled: appConfig.rssFeedsEnabled,
-            }),
-            ...measureDiscoverMaturity({
-              now: now(),
-              publicPostCount,
-              earliestPublishedAt,
-            }),
+            // The mode the feeds actually declare, already derived once on
+            // `appConfig` — re-deriving it here is how this block used to
+            // miss the deployment default.
+            declaredMode: appConfig.discover,
+            ...measureDiscoverMaturity({ publicPostCount }),
             featuredPostCount,
             minPublicPosts: DISCOVER_MIN_PUBLIC_POSTS,
-            minAgeDays: DISCOVER_MIN_AGE_DAYS,
             firstReadMaxHours: DISCOVER_FIRST_READ_MAX_HOURS,
           }}
           rssFeedsEnabled={appConfig.rssFeedsEnabled}
@@ -887,14 +894,14 @@ settingsRoutes.post("/general/home", async (c) => {
  * reason this is not fire-and-forget any more.
  *
  * @param c - Request context, for the runtime's background-work hook
- * @param explicitValue - The stored Discover choice. Passed in rather than read
+ * @param storedValue - The stored Discover choice. Passed in rather than read
  *   from `c.var.allSettings`, which is the snapshot taken before the request
  *   ran — on the save that triggers this it still holds the previous answer.
  * @returns Whether an announcement was started at all
  */
 function announceInBackground(
   c: Context<{ Bindings: Bindings; Variables: AppVariables }>,
-  explicitValue: string | undefined,
+  storedValue: string | undefined,
 ): boolean {
   const { appConfig } = c.var;
   const endpoint = getDiscoverPingUrl(c.env);
@@ -904,7 +911,8 @@ function announceInBackground(
   // that cannot actually be polled — feeds switched off, `noindex` set, demo
   // mode — never announces an address that would answer 404.
   const mode = resolveDiscoverMode({
-    explicitValue,
+    storedValue,
+    defaultValue: getDiscoverDefault(c.env),
     demoMode: appConfig.demoMode,
     noindex: appConfig.noindex,
     rssFeedsEnabled: appConfig.rssFeedsEnabled,

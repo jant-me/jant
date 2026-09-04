@@ -54,10 +54,9 @@ export interface SettingsLabels {
   // Search
   allowIndexing: string;
   demoSeoLocked: string;
+  discoverName: string;
   discoverEnabled: string;
   discoverIntro: string;
-  discoverAnnounce: string;
-  discoverDocs: string;
   discoverLatest: string;
   discoverLatestHint: string;
   discoverFeatured: string;

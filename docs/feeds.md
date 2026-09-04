@@ -60,6 +60,43 @@ By default the archive feed is ordered by publication, like the page it belongs 
 
 On a multilingual site every feed exists once per language, under that language's prefix: `/ja/feed`, `/ja/archive/feed`, `/ja/reading/feed`. Each carries only that language's posts and declares itself in that language. The primary language keeps the unprefixed addresses. See [Multilingual content](multilingual.md).
 
+## Discover
+
+[Jant Discover](https://jant.me/discover) is a public list of Jant blogs. It shows one post from each blog at a time and links back to the blog it came from — no counts, no ranking, no trending list.
+
+Your site takes part once you say so, under **Settings → General → Site visibility**. Nothing is listed on a default: a directory reads your feed for an answer, and a site that has never been asked has not given one. `latest` lets a directory show any of your public posts; `featured` limits it to the ones you have marked Featured. A demo site, a site with `RSS_FEEDS_ENABLED=false`, and — until you choose for yourself — a site with `NOINDEX=true` stay out whatever the control says.
+
+Turning it on sends your feed address to the directory once, so it knows your site exists. Nothing else is sent, and nothing is sent again. `DISCOVER_PING_URL` picks the directory; set it empty to announce nowhere.
+
+To pull a post back out, remove it from your latest feed — tick **Hidden from Latest**, set it private, or move it back to draft — and it leaves on the next read.
+
+What a directory does with the feed is its own policy: how a post is picked, how long it stays, and what a blog needs before it is listed are answered where the directory lives.
+
+### What your feed declares
+
+Every Atom feed carries the setting in its header, so a directory holding any one of your feeds can read your answer without being told separately.
+
+```xml
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:jant="https://jant.me/ns" xml:lang="en">
+  <title>A blog</title>
+  <link href="https://example.com/" rel="alternate"/>
+  <link href="https://example.com/latest/feed" rel="self"/>
+  <jant:discover feed="https://example.com/latest/feed">latest</jant:discover>
+</feed>
+```
+
+The rules a directory should follow:
+
+- The namespace is `https://jant.me/ns`. It is a fixed identifier, not an address to fetch, and the prefix it is bound to is arbitrary.
+- The element's text is `latest`, `featured`, or `none`. Anything else should be ignored.
+- The `feed` attribute is the absolute URL to poll, and it is present for `latest` and `featured` only. Honour it only when it is on the same origin as the feed that declared it; otherwise a site could have somebody else's posts listed under its name.
+- **An absent element is not `none`.** It means the site runs a version of Jant from before Discover, which is a different thing from a site that is not listed. It does not mean yes forever either: a feed that declared once and then goes quiet is a downgrade, a feed template that broke, or a domain that changed hands. A directory should stop listing a feed whose element has been missing for a long while — jant.me waits thirty days — and list it again on the first read that carries the element.
+- `none` means stop, and it means stop now. It covers both a site that has taken itself out and a site that has never opted in; both answers are no.
+
+On a multilingual site each language's feed declares itself and lists the others with `hreflang`, which is how a directory finds a bilingual blog's other language from whichever feed it happens to hold.
+
+Two details decide what a directory sees. Feeds are cached for a minute, so a change to the setting takes effect on the next read that misses the cache. And renaming a post's slug changes its Atom `<id>`, which a directory reads as the old post removed and a new one published — so a renamed post may take its turn a second time. Custom URLs are stable: the first one a post is given stays its identity for good.
+
 ## Older addresses
 
 These still work and always will, so nobody's subscription breaks. New links should use the canonical address on the right.
