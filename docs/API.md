@@ -2304,9 +2304,9 @@ All values are strings because they map directly to stored config values.
 | `CJK_SERIF_FONT`             | CJK serif fallback         | `"off"`             |
 | `MAIN_RSS_FEED`              | Canonical feed kind        | `"featured"`        |
 | `ARCHIVE_DEFAULT_LAYOUT`     | Archive default layout     | `"list"`            |
-| `PAGE_SIZE`                  | Default page size          | `"50"`              |
-| `SEARCH_PAGE_SIZE`           | Search page size           | `"50"`              |
-| `ARCHIVE_PAGE_SIZE`          | Archive page size          | `"50"`              |
+| `PAGE_SIZE`                  | Default page size          | `"25"`              |
+| `SEARCH_PAGE_SIZE`           | Search page size           | `"25"`              |
+| `ARCHIVE_PAGE_SIZE`          | Archive page size          | `"25"`              |
 | `SUMMARY_MAX_PARAGRAPHS`     | Summary paragraph limit    | `"5"`               |
 | `SUMMARY_MAX_CHARS`          | Summary character limit    | `"500"`             |
 | `RSS_FEED_LIMIT`             | RSS item limit             | `"50"`              |
@@ -2345,9 +2345,9 @@ Response:
     "SITE_LANGUAGE": "en",
     "MAIN_RSS_FEED": "featured",
     "ARCHIVE_DEFAULT_LAYOUT": "list",
-    "PAGE_SIZE": "50",
-    "SEARCH_PAGE_SIZE": "50",
-    "ARCHIVE_PAGE_SIZE": "50",
+    "PAGE_SIZE": "25",
+    "SEARCH_PAGE_SIZE": "25",
+    "ARCHIVE_PAGE_SIZE": "25",
     "SUMMARY_MAX_PARAGRAPHS": "5",
     "SUMMARY_MAX_CHARS": "500",
     "RSS_FEED_LIMIT": "50",

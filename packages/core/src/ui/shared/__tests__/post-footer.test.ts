@@ -49,11 +49,13 @@ function renderPostFooter(
   detail = false,
   locale: "en" = "en",
   display?: PostFooterDisplayOptions,
+  isAuthenticated = true,
 ): string {
   const i18n = createI18n(locale);
   const c = {
     get(key: string) {
       if (key === "i18n") return i18n;
+      if (key === "isAuthenticated") return isAuthenticated;
       return undefined;
     },
   } as unknown as Context;
@@ -158,5 +160,35 @@ describe("PostFooter", () => {
 
     expect(html).not.toContain("data-reply-trigger");
     expect(html).toContain("data-post-menu-trigger");
+  });
+
+  it("omits the action group for a reader, who can never see it", () => {
+    const html = renderPostFooter(
+      createPostView(),
+      false,
+      "en",
+      undefined,
+      false,
+    );
+
+    expect(html).not.toContain("data-post-menu-trigger");
+    expect(html).not.toContain("data-reply-trigger");
+    expect(html).not.toContain("post-menu-actions");
+    // The reader still gets the footer itself.
+    expect(html).toContain('href="/hello-world"');
+  });
+
+  it("keeps the featured mark for the author and drops it for a reader", () => {
+    const featured = createPostView({ featured: true });
+
+    expect(renderPostFooter(createPostView())).toContain(
+      "post-footer-featured",
+    );
+    expect(
+      renderPostFooter(createPostView(), false, "en", undefined, false),
+    ).not.toContain("post-footer-featured");
+    expect(renderPostFooter(featured, false, "en", undefined, false)).toContain(
+      "post-footer-featured",
+    );
   });
 });

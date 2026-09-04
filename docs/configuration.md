@@ -116,7 +116,7 @@ unchanged.
 
 | Variable            | Default              | Description                              |
 | ------------------- | -------------------- | ---------------------------------------- |
-| `PAGE_SIZE`         | `50`                 | Default page size for timelines and APIs |
+| `PAGE_SIZE`         | `25`                 | Default page size for timelines and APIs |
 | `SEARCH_PAGE_SIZE`  | inherits `PAGE_SIZE` | Override search pagination only          |
 | `ARCHIVE_PAGE_SIZE` | inherits `PAGE_SIZE` | Override archive pagination only         |
 

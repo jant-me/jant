@@ -138,7 +138,9 @@ export const LinkCard: FC<TimelineCardProps> = ({
       {...(isDetail ? { "data-page": "post" } : {})}
       {...getPostArticleAttributes(post)}
     >
-      {!isCompact && !display?.hideStatusBadges && <PostStatusBadges />}
+      {!isCompact && !display?.hideStatusBadges && (
+        <PostStatusBadges post={post} />
+      )}
       {linkRef}
       {bodyEl}
       {(() => {

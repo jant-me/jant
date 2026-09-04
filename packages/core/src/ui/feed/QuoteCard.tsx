@@ -45,7 +45,9 @@ export const QuoteCard: FC<TimelineCardProps> = ({
       {...(isDetail ? { "data-page": "post" } : {})}
       {...getPostArticleAttributes(post)}
     >
-      {!isCompact && !display?.hideStatusBadges && <PostStatusBadges />}
+      {!isCompact && !display?.hideStatusBadges && (
+        <PostStatusBadges post={post} />
+      )}
       {showCite && (
         /* The h-cite spans both the quoted text and its attribution, because
            mf2 properties bind to descendants: a `u-url` on the source link

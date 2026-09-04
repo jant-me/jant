@@ -21,7 +21,7 @@ import {
   getEnvString,
 } from "./env.js";
 import { parseLanguageList } from "../i18n/locales.js";
-import { getPublicUrlForProvider, getMediaUrl } from "./image.js";
+import { getPublicUrlForProvider, getMediaUrl, getImageUrl } from "./image.js";
 import { normalizeTimeZone } from "./timezones.js";
 import { getSiteOrigin, getSitePathPrefix, normalizeSiteUrl } from "./url.js";
 
@@ -206,6 +206,7 @@ export function resolveConfig(
   // Resolve avatar URL from storage key
   const siteAvatar = allSettings["SITE_AVATAR"] ?? "";
   let siteAvatarUrl = "";
+  let siteAvatarThumbUrl = "";
   if (siteAvatar) {
     const publicUrl = getPublicUrlForProvider(
       storageDriver,
@@ -214,6 +215,17 @@ export function resolveConfig(
       localPublicUrl,
     );
     siteAvatarUrl = getMediaUrl(siteAvatar, publicUrl, sitePathPrefix);
+    // The header and drawer marks render this at 32px and 24px, on every page,
+    // in parallel with the render-blocking stylesheet. An untransformed avatar
+    // is whatever the author uploaded — commonly a 512px PNG — so it competes
+    // for the critical path with tens of times the bytes it can use. 128px
+    // still covers a high-DPR header and a theme that enlarges the mark.
+    siteAvatarThumbUrl = getImageUrl(siteAvatarUrl, imageTransformUrl, {
+      width: 128,
+      quality: 80,
+      format: "auto",
+      fit: "scale-down",
+    });
   }
 
   // Description is "explicit" when set in DB or ENV (not just the default)
@@ -334,6 +346,7 @@ export function resolveConfig(
     siteAvatar,
     showHeaderAvatar: allSettings["SHOW_HEADER_AVATAR"] === "true",
     siteAvatarUrl,
+    siteAvatarThumbUrl,
     faviconVersion: allSettings["SITE_FAVICON_VERSION"] ?? "",
 
     // Rate limiting (ENV only). Defaults are conservative enough for a

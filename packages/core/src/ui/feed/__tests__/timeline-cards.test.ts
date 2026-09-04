@@ -50,11 +50,13 @@ function renderWithI18n(
     | ReturnType<typeof NoteCard>
     | ReturnType<typeof LinkCard>
     | ReturnType<typeof QuoteCard>,
+  isAuthenticated = true,
 ) {
   const i18n = createI18n("en");
   const c = {
     get(key: string) {
       if (key === "i18n") return i18n;
+      if (key === "isAuthenticated") return isAuthenticated;
       return undefined;
     },
   } as unknown as Context;
@@ -234,10 +236,11 @@ describe("timeline cards", () => {
   });
 
   it("states empty content outright when a card has no name and nothing to say", () => {
-    // The status badges are always in the DOM and hidden with CSS, which a
-    // microformats parser does not run. With no `p-name` and no `e-content` to
-    // go on, it names the entry after whatever text it finds — the badge
-    // labels. An explicit empty `e-content` says what is true and stops that.
+    // The author's card carries every status badge in the DOM, hidden with
+    // CSS, which a microformats parser does not run. With no `p-name` and no
+    // `e-content` to go on, it names the entry after whatever text it finds —
+    // the badge labels. An explicit empty `e-content` says what is true and
+    // stops that.
     const empty = { title: undefined, bodyHtml: undefined, media: [] };
 
     for (const mode of ["feed", "detail", "compact"] as const) {
@@ -1036,5 +1039,35 @@ describe("timeline cards", () => {
 
     expect(html).not.toContain("data-reply-trigger");
     expect(html).toContain("data-post-menu-trigger");
+  });
+
+  it("ships every status badge to the author so the menu can reveal one", () => {
+    const html = renderWithI18n(
+      NoteCard({ post: createPostView({ format: "note" }), mode: "feed" }),
+    );
+
+    expect(html).toContain("post-status-pinned");
+    expect(html).toContain("post-status-private");
+    expect(html).toContain("post-status-draft");
+  });
+
+  it("gives a reader only the badges that apply", () => {
+    const plain = renderWithI18n(
+      NoteCard({ post: createPostView({ format: "note" }), mode: "feed" }),
+      false,
+    );
+    // Nothing to announce, so not even the wrapper.
+    expect(plain).not.toContain("post-status-badges");
+
+    const pinned = renderWithI18n(
+      NoteCard({
+        post: createPostView({ format: "note", pinned: true }),
+        mode: "feed",
+      }),
+      false,
+    );
+    expect(pinned).toContain("post-status-pinned");
+    expect(pinned).not.toContain("post-status-private");
+    expect(pinned).not.toContain("post-status-draft");
   });
 });

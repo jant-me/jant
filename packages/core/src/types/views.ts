@@ -314,7 +314,7 @@ export interface SiteLayoutProps {
   basePath?: string;
   isAuthenticated?: boolean;
   collections?: Collection[];
-  siteAvatarUrl?: string;
+  siteAvatarThumbUrl?: string;
   showHeaderAvatar?: boolean;
   siteDescriptionHtml?: string;
   siteFooterHtml?: string;

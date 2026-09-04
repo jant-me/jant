@@ -38,9 +38,9 @@ describe("Settings API Routes", () => {
       expect(body.settings.SITE_NAME).toBe("Jant");
       expect(body.settings.SITE_DESCRIPTION).toBe("");
       expect(body.settings.SITE_LANGUAGE).toBe("en");
-      expect(body.settings.PAGE_SIZE).toBe("50");
-      expect(body.settings.SEARCH_PAGE_SIZE).toBe("50");
-      expect(body.settings.ARCHIVE_PAGE_SIZE).toBe("50");
+      expect(body.settings.PAGE_SIZE).toBe("25");
+      expect(body.settings.SEARCH_PAGE_SIZE).toBe("25");
+      expect(body.settings.ARCHIVE_PAGE_SIZE).toBe("25");
       expect(body.settings.RSS_PUBLISH_DELAY_SECONDS).toBe("0");
     });
 

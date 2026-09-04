@@ -226,7 +226,7 @@ export const CONFIG_FIELDS = {
     envKeys: ["DEMO_MODE"],
   },
   PAGE_SIZE: {
-    defaultValue: "50",
+    defaultValue: "25",
     envOnly: false,
     envKeys: ["PAGE_SIZE"],
     editor: { type: "number", min: 1, max: 100, step: 1 },
@@ -799,8 +799,14 @@ export interface AppConfig {
   // Site appearance (DB internal)
   siteAvatar: string;
   showHeaderAvatar: boolean;
-  /** Derived: getMediaUrl(siteAvatar, publicUrl) */
+  /** Derived: getMediaUrl(siteAvatar, publicUrl) — full resolution, for the
+   *  social card, the settings editor, and anything that syncs the canonical
+   *  asset. */
   siteAvatarUrl: string;
+  /** Derived: `siteAvatarUrl` sized for the header and drawer marks, which
+   *  render it at 32px and 24px. Falls back to `siteAvatarUrl` when no image
+   *  transform is configured. */
+  siteAvatarThumbUrl: string;
   faviconVersion: string;
 
   // Rate limiting (ENV only)

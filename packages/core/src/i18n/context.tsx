@@ -1,9 +1,15 @@
 /**
- * Request-scoped i18n access for Hono JSX renders.
+ * Request-scoped render state for Hono JSX renders.
+ *
+ * Primarily the i18n instance, which is what components reach for. It also
+ * binds the viewer (`lib/viewer-context.ts`), because this provider is the one
+ * wrapper every server render already passes through — pages via `BaseLayout`,
+ * fragments via the partial routes — and both facts come from the same request.
  */
 
 import type { Context } from "hono";
 import type { FC, PropsWithChildren } from "hono/jsx";
+import { bindViewer } from "../lib/viewer-context.js";
 import type { I18n } from "./i18n.js";
 import { getI18n as getI18nFromContext } from "./i18n.js";
 
@@ -11,7 +17,8 @@ import { getI18n as getI18nFromContext } from "./i18n.js";
 let currentI18n: I18n | null = null;
 
 /**
- * I18nProvider - binds the current request's i18n instance for this render.
+ * I18nProvider - binds this render's request-scoped state: the i18n instance
+ * and the viewer.
  *
  * @example
  * ```tsx
@@ -33,6 +40,9 @@ export const I18nProvider: FC<I18nProviderProps> = ({ c, children }) => {
   // Note: In Hono JSX, rendering is synchronous and single-threaded per request
   // so we can safely set global context without cleanup
   currentI18n = getI18nFromContext(c);
+  // The same flag `BaseLayout` writes into `data-authenticated`, so what a card
+  // renders and what the CSS reveals can never disagree.
+  bindViewer(c.get("isAuthenticated") === true);
   return <>{children}</>;
 };
 

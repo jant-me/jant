@@ -36,7 +36,7 @@ SITE_ORIGIN = "https://demo.jant.me" # @create-jant: @remove
 # SITE_LANGUAGE = "en"
 
 # Optional: Pagination defaults
-# PAGE_SIZE = 50
+# PAGE_SIZE = 25
 # SEARCH_PAGE_SIZE = 25
 # ARCHIVE_PAGE_SIZE = 100
 

@@ -30,7 +30,7 @@ export async function renderSiteHeaderHtml(c: Context<Env>): Promise<string> {
         currentPath={navData.currentPath}
         sitePathPrefix={navData.sitePathPrefix}
         basePath={navData.basePath}
-        siteAvatarUrl={navData.siteAvatarUrl}
+        siteAvatarThumbUrl={navData.siteAvatarThumbUrl}
         showHeaderAvatar={navData.showHeaderAvatar}
       />
     </I18nProvider>,

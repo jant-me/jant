@@ -31,9 +31,9 @@ describe("resolveConfig", () => {
     expect(config.publicApiEnabled).toBe(true);
     expect(config.rssFeedsEnabled).toBe(true);
     expect(config.demoMode).toBe(false);
-    expect(config.pageSize).toBe(50);
-    expect(config.searchPageSize).toBe(50);
-    expect(config.archivePageSize).toBe(50);
+    expect(config.pageSize).toBe(25);
+    expect(config.searchPageSize).toBe(25);
+    expect(config.archivePageSize).toBe(25);
     expect(config.rssFeedLimit).toBe(50);
     expect(config.rssPublishDelaySeconds).toBe(300);
   });
@@ -200,6 +200,39 @@ describe("resolveConfig", () => {
     expect(config.siteAvatarUrl).toBe(
       "https://r2.example.com/media/sit_test00000000000000000000000/assets/avatar/avatar.jpg",
     );
+    // Without a transform there is nothing to size it down with, so the
+    // header falls back to the canonical asset.
+    expect(config.siteAvatarThumbUrl).toBe(config.siteAvatarUrl);
+  });
+
+  it("sizes the header avatar down when an image transform is configured", () => {
+    const config = resolveConfig(
+      makeEnv({
+        R2_PUBLIC_URL: "https://r2.example.com",
+        IMAGE_TRANSFORM_URL: "https://r2.example.com/cdn-cgi/image",
+        STORAGE_DRIVER: "r2",
+      }),
+      {
+        SITE_AVATAR:
+          "media/sit_test00000000000000000000000/assets/avatar/avatar.jpg",
+      },
+    );
+
+    // The canonical URL stays full-resolution: it is what the social card and
+    // the settings editor need.
+    expect(config.siteAvatarUrl).toBe(
+      "https://r2.example.com/media/sit_test00000000000000000000000/assets/avatar/avatar.jpg",
+    );
+    expect(config.siteAvatarThumbUrl).toBe(
+      "https://r2.example.com/cdn-cgi/image/width=128,quality=80,format=auto,fit=scale-down/https://r2.example.com/media/sit_test00000000000000000000000/assets/avatar/avatar.jpg",
+    );
+  });
+
+  it("leaves both avatar URLs empty without a stored avatar", () => {
+    const config = resolveConfig(makeEnv({}), {});
+
+    expect(config.siteAvatarUrl).toBe("");
+    expect(config.siteAvatarThumbUrl).toBe("");
   });
 
   it("returns empty siteAvatarUrl when no avatar set", () => {

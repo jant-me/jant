@@ -380,7 +380,7 @@ Link 格式的帖子，后端根据 URL 在 API 返回时计算渲染信息（�
 | `SITE_ORIGIN`             | 单站点模式下可选的公开 origin 覆盖 |
 | `SITE_PATH_PREFIX`        | 单站点模式下的公开路径前缀         |
 | `MAIN_RSS_FEED`           | 主 RSS Feed（featured / latest）   |
-| `PAGE_SIZE`               | 默认分页大小（默认 50）            |
+| `PAGE_SIZE`               | 默认分页大小（默认 25）            |
 | `SEARCH_PAGE_SIZE`        | 搜索页分页覆盖                     |
 | `ARCHIVE_PAGE_SIZE`       | 归档页分页覆盖                     |
 | `R2_PUBLIC_URL`           | R2 公开 URL（CDN 直接访问）        |
