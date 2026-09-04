@@ -57,13 +57,11 @@ payload we choose to ship.
 
 ## Still open
 
-- [ ] 3. Split author-only CSS out of the reader stylesheet. `client.css` is
-      568 KB uncompressed (83 KB br) and render-blocking on every page;
-      `@layer components` is 462 KB of it, including `.compose-*` (105 KB) and
-      `.tiptap-*` (28 KB) plus settings/dash/command-palette. Mirror the JS
-      budget rule in AGENTS.md: a second entry linked only when
-      `resolvedClientBundle === "full"`. This is the largest remaining win and
-      the only one that helps every page equally.
+- [ ] 3. Split author-only CSS out of the reader stylesheet. Written up in
+      full, with the build mechanism and the cascade risks, in
+      `2026-09-05-0100-split-author-css.md`. Sharpened estimate: ~147 KB of the
+      568 KB stylesheet is author-only, worth ~20 KB brotli and ~100 ms of FCP
+      on every page. Largest of the remaining items, and the riskiest.
 - [ ] 5. `content-visibility: auto` + `contain-intrinsic-size` on off-screen
       timeline items. Worth re-measuring after 1 and 2 — a 25-post feed may no
       longer be tall enough to justify it.
