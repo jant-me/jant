@@ -1111,7 +1111,7 @@ msgstr "从你最新的公开帖子中挑选。"
 #. @context: Description of the Discover Featured option
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Draws only from posts you have marked Featured."
-msgstr "只从你标为精选的帖子中挑选。"
+msgstr "只从你标为 Featured 的帖子中挑选。"
 
 #. @context: Placeholder for API token name input
 #: src/ui/dash/settings/ApiTokensContent.tsx
@@ -1200,27 +1200,27 @@ msgstr "Favicon 和站点顶部的个人标识"
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/StatusBadge.tsx
 msgid "Featured"
-msgstr "精选"
+msgstr "Featured"
 
 #. @context: Label for the explicit featured RSS feed URL
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Featured feed"
-msgstr "精选订阅源"
+msgstr "Featured 订阅源"
 
 #. @context: Jant Discover option drawing only from featured posts
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Featured only"
-msgstr "仅精选"
+msgstr "Featured only"
 
 #. @context: Discover status line when the featured-only mode is on but the site has no featured posts
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Featured only is selected and no post is marked Featured, so your feed carries nothing to show."
-msgstr "当前选的是「仅精选」，但没有任何帖子标为精选，订阅源里没有可展示的内容。"
+msgstr "当前选的是「Featured only」，但没有任何帖子标为 Featured，订阅源里没有可展示的内容。"
 
 #. @context: Config Editor RSS feed enum option
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Featured posts"
-msgstr "精选帖子"
+msgstr "Featured 帖子"
 
 #. @context: Discover status line when the one-off announcement reached the directory
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -1342,7 +1342,7 @@ msgstr "这个主题下的标题、正文和链接。"
 #. @context: Post badge for posts hidden from Latest
 #: src/ui/dash/StatusBadge.tsx
 msgid "Hidden from Latest"
-msgstr "从最新中隐藏 (不出现在 Latest 中，但仍可通过固定链接和集合访问的状态。)"
+msgstr "Hidden from Latest"
 
 #. @context: Settings subsection heading for home page settings
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -1480,17 +1480,17 @@ msgstr "上次使用 {date}"
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Latest"
-msgstr "最新"
+msgstr "Latest"
 
 #. @context: Label for the explicit latest RSS feed URL
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Latest feed"
-msgstr "最新订阅源"
+msgstr "Latest 订阅源"
 
 #. @context: Config Editor RSS feed enum option
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Latest posts"
-msgstr "最新帖子"
+msgstr "Latest 帖子"
 
 #. @context: Suffix after Custom CSS link on color theme page
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -1545,7 +1545,7 @@ msgstr "链接已添加到导航。"
 #. @context: Description for the featured system navigation toggle
 #: src/ui/dash/appearance/system-nav-descriptions.ts
 msgid "Link to posts you've marked as featured."
-msgstr "链接到你标为精选的帖子。"
+msgstr "链接到你标为 Featured 的帖子。"
 
 #. @context: Description for the archive system navigation toggle
 #: src/ui/dash/appearance/system-nav-descriptions.ts
@@ -1560,12 +1560,12 @@ msgstr "链接到合集页。"
 #. @context: Description for the latest system navigation toggle
 #: src/ui/dash/appearance/system-nav-descriptions.ts
 msgid "Link to your latest posts. Your homepage shows this feed."
-msgstr "链接到最新帖子。首页展示的就是这个列表。"
+msgstr "链接到 Latest。首页展示的就是这个列表。"
 
 #. @context: Description for the RSS system navigation toggle. {feed} is either Latest or Featured. Pairs with the Subscribe toggle's description.
 #: src/ui/dash/appearance/system-nav-descriptions.ts
 msgid "Links straight to /feed — the raw Atom file, currently your {feed} feed. Best for readers who already use a feed reader."
-msgstr "直接指向 /feed，即 Atom 原始文件，目前返回的是{feed}帖子。适合已经在用阅读器的读者。"
+msgstr "直接指向 /feed，即 Atom 原始文件，目前返回的是「{feed}」。适合已经在用阅读器的读者。"
 
 #. @context: Description for the Subscribe system navigation toggle. Pairs with the RSS toggle's description.
 #: src/ui/dash/appearance/system-nav-descriptions.ts
@@ -2937,7 +2937,7 @@ msgstr "当你想要一个永远不变的订阅源 URL 时使用它们。"
 #. @context: Description for choosing featured posts as the main RSS feed
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Uses featured posts for /feed."
-msgstr "将精选帖子用于 /feed。"
+msgstr "将 Featured 帖子用于 /feed。"
 
 #. @context: Description for choosing the latest posts as the main RSS feed
 #: src/ui/dash/settings/GeneralContent.tsx

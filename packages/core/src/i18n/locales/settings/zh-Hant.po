@@ -1111,7 +1111,7 @@ msgstr "從你最新的公開貼文中挑選。"
 #. @context: Description of the Discover Featured option
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Draws only from posts you have marked Featured."
-msgstr "只從你標為精選的貼文中挑選。"
+msgstr "只從你標為 Featured 的貼文中挑選。"
 
 #. @context: Placeholder for API token name input
 #: src/ui/dash/settings/ApiTokensContent.tsx
@@ -1200,27 +1200,27 @@ msgstr "頁首上的網站圖示與個人標記"
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/StatusBadge.tsx
 msgid "Featured"
-msgstr "精選"
+msgstr "Featured"
 
 #. @context: Label for the explicit featured RSS feed URL
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Featured feed"
-msgstr "精選 RSS 來源"
+msgstr "Featured RSS 來源"
 
 #. @context: Jant Discover option drawing only from featured posts
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Featured only"
-msgstr "僅精選"
+msgstr "Featured only"
 
 #. @context: Discover status line when the featured-only mode is on but the site has no featured posts
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Featured only is selected and no post is marked Featured, so your feed carries nothing to show."
-msgstr "目前選的是「僅精選」，但沒有任何貼文標為精選，訂閱源裡沒有可顯示的內容。"
+msgstr "目前選的是「Featured only」，但沒有任何貼文標為 Featured，訂閱源裡沒有可顯示的內容。"
 
 #. @context: Config Editor RSS feed enum option
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Featured posts"
-msgstr "精選貼文"
+msgstr "Featured 貼文"
 
 #. @context: Discover status line when the one-off announcement reached the directory
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -1342,7 +1342,7 @@ msgstr "這個主題下的標題、正文和連結。"
 #. @context: Post badge for posts hidden from Latest
 #: src/ui/dash/StatusBadge.tsx
 msgid "Hidden from Latest"
-msgstr "從最新中隱藏 (不出現在 Latest 中，但仍可透過固定連結和集合存取的狀態。)"
+msgstr "Hidden from Latest"
 
 #. @context: Settings subsection heading for home page settings
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -1480,17 +1480,17 @@ msgstr "最後使用於 {date}"
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Latest"
-msgstr "最新"
+msgstr "Latest"
 
 #. @context: Label for the explicit latest RSS feed URL
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Latest feed"
-msgstr "最新 RSS 來源"
+msgstr "Latest RSS 來源"
 
 #. @context: Config Editor RSS feed enum option
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Latest posts"
-msgstr "最新貼文"
+msgstr "Latest 貼文"
 
 #. @context: Suffix after Custom CSS link on color theme page
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -1545,7 +1545,7 @@ msgstr "連結已新增到導覽。"
 #. @context: Description for the featured system navigation toggle
 #: src/ui/dash/appearance/system-nav-descriptions.ts
 msgid "Link to posts you've marked as featured."
-msgstr "連結到你標為精選的貼文。"
+msgstr "連結到你標為 Featured 的貼文。"
 
 #. @context: Description for the archive system navigation toggle
 #: src/ui/dash/appearance/system-nav-descriptions.ts
@@ -1560,12 +1560,12 @@ msgstr "連結到選集頁。"
 #. @context: Description for the latest system navigation toggle
 #: src/ui/dash/appearance/system-nav-descriptions.ts
 msgid "Link to your latest posts. Your homepage shows this feed."
-msgstr "連結到最新貼文。首頁展示的就是這個列表。"
+msgstr "連結到 Latest。首頁展示的就是這個列表。"
 
 #. @context: Description for the RSS system navigation toggle. {feed} is either Latest or Featured. Pairs with the Subscribe toggle's description.
 #: src/ui/dash/appearance/system-nav-descriptions.ts
 msgid "Links straight to /feed — the raw Atom file, currently your {feed} feed. Best for readers who already use a feed reader."
-msgstr "直接指向 /feed，即 Atom 原始檔案，目前返回的是{feed}貼文。適合已經在用閱讀器的讀者。"
+msgstr "直接指向 /feed，即 Atom 原始檔案，目前返回的是「{feed}」。適合已經在用閱讀器的讀者。"
 
 #. @context: Description for the Subscribe system navigation toggle. Pairs with the RSS toggle's description.
 #: src/ui/dash/appearance/system-nav-descriptions.ts
@@ -2937,7 +2937,7 @@ msgstr "當你想要一個永遠不會改變的 feed URL 時，請使用這些�
 #. @context: Description for choosing featured posts as the main RSS feed
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Uses featured posts for /feed."
-msgstr "將精選貼文用於 /feed。"
+msgstr "將 Featured 貼文用於 /feed。"
 
 #. @context: Description for choosing the latest posts as the main RSS feed
 #: src/ui/dash/settings/GeneralContent.tsx
