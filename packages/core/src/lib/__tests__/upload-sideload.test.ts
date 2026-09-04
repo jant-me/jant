@@ -64,6 +64,20 @@ describe("sniffImageMimeType", () => {
     expect(sniffImageMimeType(bytes)).toBe("image/avif");
   });
 
+  it.each(["heic", "heix", "hevc", "hevx", "mif1", "msf1"])(
+    "detects HEIC/HEIF via the %s ftyp brand",
+    (brand) => {
+      const bytes = new Uint8Array(16);
+      bytes.set([...new TextEncoder().encode("ftyp")], 4);
+      bytes.set([...new TextEncoder().encode(brand)], 8);
+      expect(sniffImageMimeType(bytes)).toBe("image/heic");
+    },
+  );
+
+  it("keeps HEIC out of the sideload formats", () => {
+    expect(isAllowedSideloadImageType("image/heic")).toBe(false);
+  });
+
   it("detects SVG from an <svg> root", () => {
     const svg = new TextEncoder().encode(
       '<?xml version="1.0"?>\n<svg xmlns="http://www.w3.org/2000/svg"></svg>',

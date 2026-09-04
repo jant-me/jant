@@ -15,6 +15,7 @@ import {
   clientBuildOptions,
   clientPlugins,
   enforceClientBundleBudget,
+  workerBuildOptions,
 } from "./vite.shared";
 
 export default defineConfig({
@@ -31,6 +32,8 @@ export default defineConfig({
     // Worker build can embed the correct content-addressed paths.
     manifest: true,
   },
+
+  worker: workerBuildOptions,
 
   define: {
     __JANT_VERSION__: JSON.stringify(buildVersion),

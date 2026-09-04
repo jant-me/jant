@@ -161,16 +161,6 @@ const MIME_CATEGORY_MAP = new Map<string, MediaCategory>([
   ...CODE_MIME_TYPES.map((t) => [t, "code" as const] as const),
 ]);
 
-/**
- * Accept string for file inputs. Accepts all file types.
- *
- * @example
- * ```ts
- * <input type="file" accept={UPLOAD_ACCEPT} />
- * ```
- */
-export const UPLOAD_ACCEPT = "*/*";
-
 export type MediaCategory =
   | "image"
   | "video"
@@ -326,10 +316,22 @@ export function imageExtensionForMimeType(contentType: string): string | null {
   return IMAGE_MIME_EXTENSIONS[contentType] ?? null;
 }
 
+/** ISO BMFF `ftyp` major brands that mean a HEIC/HEIF still image. */
+const HEIC_FTYP_BRANDS = new Set([
+  "heic",
+  "heix",
+  "hevc",
+  "hevx",
+  "mif1",
+  "msf1",
+]);
+
 /**
  * Identify an image format from its leading bytes (magic numbers), so a remote
  * sideload can trust the actual content rather than the server's content-type
- * header. Recognizes every {@link isAllowedSideloadImageType} format.
+ * header. Recognizes every {@link isAllowedSideloadImageType} format, plus
+ * HEIC/HEIF — which no browser decodes natively and no sideload accepts, but
+ * which the composer converts before upload once it knows what it holds.
  *
  * @param bytes - The leading bytes of the file (≥ ~256 bytes recommended)
  * @returns The detected image MIME type, or null if unrecognized
@@ -367,6 +369,7 @@ export function sniffImageMimeType(bytes: Uint8Array): string | null {
   if (bytes.length >= 12 && readAscii(bytes, 4, 4) === "ftyp") {
     const brand = readAscii(bytes, 8, 4);
     if (brand === "avif" || brand === "avis") return "image/avif";
+    if (HEIC_FTYP_BRANDS.has(brand)) return "image/heic";
   }
   if (bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d) {
     return "image/bmp";

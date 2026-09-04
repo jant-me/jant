@@ -37,11 +37,7 @@ import {
   promoteLeadingH1Title as getLeadingH1TitlePromotion,
   type LeadingH1TitlePromotion,
 } from "./compose-title-from-heading.js";
-import {
-  UPLOAD_ACCEPT,
-  getMediaCategory,
-  validateUploadFile,
-} from "../../lib/upload.js";
+import { getMediaCategory, validateUploadFile } from "../../lib/upload.js";
 import type { MediaCategory } from "../../lib/upload.js";
 import {
   DECORATIVE_QUOTE_MARK_SVG_CONTENT,
@@ -1786,7 +1782,9 @@ export class JantComposeEditor extends LitElement {
     if (!this._fileInput) {
       this._fileInput = document.createElement("input");
       this._fileInput.type = "file";
-      this._fileInput.accept = UPLOAD_ACCEPT;
+      // No `accept`: the composer takes any file, and leaving the attribute
+      // off is how HTML says so. `*/*` is not a valid accept token, so every
+      // browser had to work out what it meant before the dialog could open.
       this._fileInput.multiple = true;
       this._fileInput.style.display = "none";
       this._fileInput.addEventListener("change", () =>
