@@ -9,7 +9,7 @@ account_id = "03e7294bdb3750ed5a0d6afef6d770e4"
 port = 3000
 
 [vars]
-# PAGE_SIZE = 50
+# PAGE_SIZE = 25
 # SITE_ORIGIN = "https://jant.localtest.me"
 # R2_PUBLIC_URL = "https://demo-media.jant.me"
 # IMAGE_TRANSFORM_URL = "https://demo-media.jant.me/cdn-cgi/image"
@@ -41,7 +41,7 @@ directory = "dist/client"
 [env.preview.vars]
 SITE_ORIGIN = "https://preview.jant.me"
 SITE_PATH_PREFIX = "/blog"
-PAGE_SIZE = 50
+PAGE_SIZE = 25
 
 [[env.preview.d1_databases]]
 binding = "DB"

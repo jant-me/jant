@@ -58,8 +58,20 @@ export function buildMediaMap(
               fit: "scale-down",
             })
           : mediaUrl;
-        const posterUrl = m.posterKey
+        // A poster is a still frame at whatever resolution the source video
+        // had, so it needs the same transform as any other image — without it
+        // a 4K clip puts a multi-megabyte PNG in the feed. Matches the limits
+        // `toMediaView` uses for the same field.
+        const posterRawUrl = m.posterKey
           ? getMediaUrl(m.posterKey, publicUrl, sitePathPrefix)
+          : null;
+        const posterUrl = posterRawUrl
+          ? getImageUrl(posterRawUrl, imageTransformUrl, {
+              width: 640,
+              quality: 80,
+              format: "auto",
+              fit: "scale-down",
+            })
           : null;
         return {
           id: m.id,

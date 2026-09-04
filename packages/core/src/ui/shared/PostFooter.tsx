@@ -14,6 +14,7 @@ import type {
 } from "../../types.js";
 import { useLingui } from "../../i18n/context.js";
 import { sanitizeUrl } from "../../lib/url.js";
+import { useViewer } from "../../lib/viewer-context.js";
 import { Icon } from "./Icon.js";
 
 interface PostFooterProps {
@@ -178,6 +179,7 @@ export const PostMenuTriggerButton: FC<{ className?: string }> = ({
 
 export const PostFooter: FC<PostFooterProps> = ({ post, detail, display }) => {
   const { i18n } = useLingui();
+  const { isAuthor } = useViewer();
   const featuredLabel =
     post.featuredAtFormatted && post.featuredAtTime
       ? i18n._(
@@ -218,16 +220,21 @@ export const PostFooter: FC<PostFooterProps> = ({ post, detail, display }) => {
       data-post-meta
     >
       <div class="post-footer-meta">
-        <span
-          class="post-footer-featured"
-          tabindex={0}
-          role="img"
-          aria-label={featuredLabel}
-          data-tooltip={featuredLabel}
-          data-align="center"
-        >
-          <Icon name="featured-sparkle" />
-        </span>
+        {/* Shown only under `article[data-post-featured]`, which the post menu
+            toggles in place — so the author's card keeps the icon ready and a
+            reader's carries it only when the post really is featured. */}
+        {(isAuthor || post.featured) && (
+          <span
+            class="post-footer-featured"
+            tabindex={0}
+            role="img"
+            aria-label={featuredLabel}
+            data-tooltip={featuredLabel}
+            data-align="center"
+          >
+            <Icon name="featured-sparkle" />
+          </span>
+        )}
         {showTimestamp && (
           <PostPublishedLink post={post} className="u-url post-footer-link" />
         )}
@@ -254,7 +261,9 @@ export const PostFooter: FC<PostFooterProps> = ({ post, detail, display }) => {
           showIcon={detail}
         />
       </div>
-      {!hideActions && (
+      {/* Both triggers are revealed by `body[data-authenticated]` alone, so for
+          a reader this whole group is markup nothing can ever surface. */}
+      {!hideActions && isAuthor && (
         <div class="post-menu-actions">
           {showReply && (
             <button

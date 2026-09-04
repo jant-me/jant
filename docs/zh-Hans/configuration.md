@@ -112,7 +112,7 @@ session 和 Bearer API token 仍可使用这些接口。包括 `/search` 在内�
 
 | 变量                | 默认值           | 说明                             |
 | ------------------- | ---------------- | -------------------------------- |
-| `PAGE_SIZE`         | `50`             | timelines 和 APIs 的默认分页大小 |
+| `PAGE_SIZE`         | `25`             | timelines 和 APIs 的默认分页大小 |
 | `SEARCH_PAGE_SIZE`  | 继承 `PAGE_SIZE` | 只覆盖搜索页分页                 |
 | `ARCHIVE_PAGE_SIZE` | 继承 `PAGE_SIZE` | 只覆盖归档页分页                 |
 

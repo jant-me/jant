@@ -33,7 +33,8 @@ export interface NavigationData {
   siteDescriptionHtml?: string;
   isAuthenticated: boolean;
   collections: Collection[];
-  siteAvatarUrl?: string;
+  /** Header/drawer mark, already sized down — not the canonical asset. */
+  siteAvatarThumbUrl?: string;
   showHeaderAvatar?: boolean;
   siteFooterHtml?: string;
 }
@@ -140,8 +141,10 @@ export async function getNavigationData(
       })
     : undefined;
 
-  // Avatar URL and display flag come from appConfig
-  const siteAvatarUrl = appConfig.siteAvatarUrl || undefined;
+  // Avatar URL and display flag come from appConfig. The chrome takes the
+  // sized variant: the full-resolution asset belongs to the social card and
+  // the settings editor, not to a 32px mark on every page.
+  const siteAvatarThumbUrl = appConfig.siteAvatarThumbUrl || undefined;
   const showHeaderAvatar = appConfig.showHeaderAvatar;
 
   // Render footer markdown
@@ -194,8 +197,8 @@ export async function getNavigationData(
     siteDescriptionHtml,
     isAuthenticated,
     collections,
-    siteAvatarUrl,
-    showHeaderAvatar: showHeaderAvatar && !!siteAvatarUrl,
+    siteAvatarThumbUrl,
+    showHeaderAvatar: showHeaderAvatar && !!siteAvatarThumbUrl,
     siteFooterHtml,
   };
 }

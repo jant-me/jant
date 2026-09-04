@@ -148,7 +148,7 @@ describe("editable settings registry", () => {
       mode: "edit",
       type: "number",
       value: "80",
-      fallbackValue: "50",
+      fallbackValue: "25",
       modified: true,
       min: 1,
       max: 100,

@@ -90,7 +90,9 @@ export const NoteCard: FC<TimelineCardProps> = ({
       {...(isDetail ? { "data-page": "post" } : {})}
       {...getPostArticleAttributes(post)}
     >
-      {!isCompact && !display?.hideStatusBadges && <PostStatusBadges />}
+      {!isCompact && !display?.hideStatusBadges && (
+        <PostStatusBadges post={post} />
+      )}
       {isArticle &&
         (isDetail ? (
           <div class="post-header-block post-header-block-detail">
