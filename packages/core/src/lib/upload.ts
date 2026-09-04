@@ -161,16 +161,6 @@ const MIME_CATEGORY_MAP = new Map<string, MediaCategory>([
   ...CODE_MIME_TYPES.map((t) => [t, "code" as const] as const),
 ]);
 
-/**
- * Accept string for file inputs. Accepts all file types.
- *
- * @example
- * ```ts
- * <input type="file" accept={UPLOAD_ACCEPT} />
- * ```
- */
-export const UPLOAD_ACCEPT = "*/*";
-
 export type MediaCategory =
   | "image"
   | "video"
