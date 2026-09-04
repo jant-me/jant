@@ -1127,3 +1127,15 @@ comes from a lookup somewhere else, which is where the gap is.
   reading the diff — `pnpm-workspace.yaml` now sets `verifyDepsBeforeRun:
 error` to make that state fail the next `pnpm run` instead, and
   `mise run check-types` catches the same mismatch at the call site.
+
+## Vite dev serves worker sources under a query, and unplugin-swc skips them
+
+A `?worker` / `?worker&inline` module reaches the dev transform pipeline as
+`image-worker.ts?worker_file&type=module`. unplugin-swc's default filter is
+`/\.m?[jt]sx?$/`, anchored at the extension, so SWC never ran and the browser
+received raw TypeScript — the worker died on its first line with an `error`
+event that carries no message, file, or line. Production was unaffected because
+`worker.plugins` bundles the worker without a query. `swcPlugin()` in
+`vite.shared.ts` now passes an `include` that admits the `worker_file` suffix;
+when a worker "works in the build but not in dev" with an empty `ErrorEvent`,
+fetch its dev URL and check whether type annotations survived.

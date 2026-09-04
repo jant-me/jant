@@ -15,10 +15,7 @@ import type { PostAttachmentInput } from "../types.js";
 import { AudioProcessor } from "./audio-processor.js";
 import { ImageProcessor } from "./image-processor.js";
 import { VideoProcessor } from "./video-processor.js";
-import {
-  extractMediaMetadata,
-  extractAudioWaveform,
-} from "./media-metadata.js";
+import { extractAudioWaveform } from "./audio-waveform.js";
 import {
   showToast,
   showPersistentToast,
@@ -37,7 +34,7 @@ import { uploadViaSession } from "./upload-session.js";
 import type { UploadSessionResult } from "./upload-session.js";
 import { publicPath } from "./runtime-paths.js";
 import { tiptapJsonToMarkdown } from "../lib/tiptap-to-markdown.js";
-import { getMediaCategory } from "../lib/upload.js";
+import { getMediaCategory, sniffImageMimeType } from "../lib/upload.js";
 import {
   resolveInlineImageUrls,
   hasPendingInlineImagePlaceholders,
@@ -225,6 +222,19 @@ function captureQuickPoster(file: File): Promise<Blob | null> {
   });
 }
 
+/** Bytes that settle whether a file is HEIC: the `ftyp` box and its brand. */
+const HEIC_SNIFF_BYTES = 12;
+
+/**
+ * Whether the file's bytes say HEIC/HEIF, whatever its name or type claims.
+ * Reads the header only — the decoder's own check pulled the whole file into
+ * memory to look at four bytes of it.
+ */
+async function isHeicFile(file: File): Promise<boolean> {
+  const head = await file.slice(0, HEIC_SNIFF_BYTES).arrayBuffer();
+  return sniffImageMimeType(new Uint8Array(head)) === "image/heic";
+}
+
 /**
  * Upload a single file: process locally, then send it through the upload
  * session API so the backend can choose relay vs direct transport.
@@ -327,8 +337,10 @@ async function uploadFile(
       // Image: convert HEIC/HEIF if needed, then resize + convert to WebP
       let imageFile = file;
       try {
-        const { isHeic, heicTo } = await import("heic-to");
-        if (await isHeic(imageFile)) {
+        if (await isHeicFile(imageFile)) {
+          // heic-to carries libheif — a 3MB chunk — so it is fetched for a
+          // file whose bytes say HEIC, not for every photo on the off chance.
+          const { heicTo } = await import("heic-to");
           editor?.updateAttachmentStatus(clientId, "processing", null, null);
           const blob = await heicTo({
             blob: imageFile,
@@ -344,6 +356,7 @@ async function uploadFile(
         toUpload = result.file;
         width = result.width;
         height = result.height;
+        blurhash = result.blurhash;
         file = null as unknown as File;
         imageFile = null as unknown as File;
       } catch {
@@ -357,20 +370,6 @@ async function uploadFile(
 
     // Update status to uploading
     editor?.updateAttachmentStatus(clientId, "uploading", null, null);
-
-    // Extract metadata for non-video files (video metadata comes from VideoProcessor)
-    // Audio waveform is already extracted above (before AudioProcessor runs).
-    if (!fileType.startsWith("video/")) {
-      const meta = await extractMediaMetadata(toUpload);
-      width ??= meta.width;
-      height ??= meta.height;
-      blurhash ??= meta.blurhash;
-      waveform ??= meta.waveform;
-      if (!poster && meta.poster) {
-        poster = meta.poster;
-        editor?.updateAttachmentPoster(clientId, poster);
-      }
-    }
 
     // Text attachments keep summary/chars in the media record. This covers
     // plain text-file uploads (.md, .txt, .csv). Jant-composed rich text

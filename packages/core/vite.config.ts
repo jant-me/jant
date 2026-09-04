@@ -9,7 +9,12 @@ import { defineConfig, loadEnv } from "vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { parsePortValue } from "./src/lib/env.js";
-import { buildVersion, clientBuildOptions, swcPlugin } from "./vite.shared";
+import {
+  buildVersion,
+  clientBuildOptions,
+  swcPlugin,
+  workerBuildOptions,
+} from "./vite.shared";
 import { linguiAutoExtract, ssrReload } from "./vite.dev-plugins";
 
 interface WorkerDevProcessOptions {
@@ -71,6 +76,8 @@ export default defineConfig(({ mode }) => {
         build: clientBuildOptions,
       },
     },
+
+    worker: workerBuildOptions,
 
     plugins: [
       tailwindcss(),

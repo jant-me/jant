@@ -103,6 +103,18 @@ export const clientBuildOptions = {
 };
 
 /**
+ * Worker bundle options for the browser builds.
+ *
+ * `image-worker.ts` comes in through `?worker&inline`, so Vite compiles it as
+ * a bundle of its own: SWC has to run there as well, and ES output keeps it
+ * the same kind of module as the rest of the client.
+ */
+export const workerBuildOptions = {
+  format: "es" as const,
+  plugins: () => [swcPlugin()],
+};
+
+/**
  * SWC plugin for Hono JSX transforms and Lingui macro rewrites.
  *
  * Every bundle needs it, browser bundles included: `lib/` modules are shared
@@ -111,6 +123,11 @@ export const clientBuildOptions = {
  */
 export const swcPlugin = () =>
   swc.vite({
+    // The dev server hands a worker's source over as
+    // `image-worker.ts?worker_file&type=module`. unplugin-swc's default filter
+    // stops at the extension, so without this the browser is sent TypeScript
+    // and the worker dies on its first line.
+    include: /\.m?[jt]sx?(\?worker_file\b.*)?$/,
     jsc: {
       parser: { syntax: "typescript", tsx: true },
       transform: {

@@ -5,10 +5,19 @@
  * - Resizes oversized images (caps the short side; the long side rides free)
  * - Strips all metadata (privacy)
  * - Converts to WebP format (JPEG fallback when WebP encoding is unavailable)
+ * - Samples a blurhash placeholder from the decoded pixels
  *
- * EXIF orientation is handled automatically by the browser — modern
- * engines (Chrome 81+, Safari 13.1+, Firefox 93+) apply orientation
- * both in `<img>` rendering and in canvas `drawImage`.
+ * The work runs in a Web Worker (`image-worker.ts`) wherever the browser can
+ * decode and encode there — every engine with OffscreenCanvas. Decoding a
+ * photo and encoding the result are the heaviest things the composer does on
+ * the client; on the main thread they froze the page for their whole
+ * duration, and several photos at once froze it for seconds. Browsers without
+ * OffscreenCanvas, and any file the worker cannot decode, take the in-page
+ * canvas path below.
+ *
+ * EXIF orientation is handled by the browser on both paths — `<img>`, canvas
+ * `drawImage`, and `createImageBitmap` with `imageOrientation: "from-image"`
+ * all report and draw the oriented image.
  *
  * Long and wide screenshots (chat logs, articles, wide tables) lose their
  * text legibility if the short side is scaled down, so the resize step caps
@@ -17,25 +26,104 @@
  * untouched, so images of any length are supported.
  */
 
-/** Cap for the shorter image side — the side that determines text sharpness. */
-const MAX_SHORT_SIDE = 1920;
+import { encode } from "blurhash";
+import {
+  DEFAULT_IMAGE_PROCESS_OPTIONS,
+  blurhashDimensions,
+  planImageProcessing,
+  resolveEncodedMimeType,
+  type ImageProcessOptions,
+  type ImageWorkerRequest,
+  type ImageWorkerResponse,
+} from "./image-plan.js";
+import {
+  createImageWorker,
+  supportsImageWorker,
+} from "./image-worker-client.js";
 
-/**
- * Largest long side we can still redraw on a canvas. A canvas bounded by
- * MAX_SHORT_SIDE × MAX_LONG_SIDE (1920 × 8192 ≈ 15.7M px) stays under the
- * ~16.7M-pixel area limit older mobile Safari enforces. Anything longer
- * can't be re-encoded, so it uploads as-is.
- */
-const MAX_LONG_SIDE = 8192;
+type ProcessOptions = Partial<ImageProcessOptions>;
 
-const DEFAULT_OPTIONS = {
-  maxShortSide: MAX_SHORT_SIDE,
-  maxLongSide: MAX_LONG_SIDE,
-  quality: 0.85,
-  mimeType: "image/webp" as const,
-};
+export interface ProcessResult {
+  blob: Blob;
+  width: number;
+  height: number;
+  /** False when `blob` is the untouched original (too large to re-encode). */
+  processed: boolean;
+  /** Absent only when the pixels could not be sampled. */
+  blurhash?: string;
+}
 
-type ProcessOptions = Partial<typeof DEFAULT_OPTIONS>;
+export interface ProcessToFileResult {
+  file: File;
+  width: number;
+  height: number;
+  blurhash?: string;
+}
+
+// ── Worker path ──────────────────────────────────────────────────────────
+
+interface PendingRequest {
+  resolve(result: ProcessResult): void;
+  reject(error: Error): void;
+}
+
+let worker: Worker | null = null;
+let nextRequestId = 1;
+const pending = new Map<number, PendingRequest>();
+
+/** One worker for the page, started on the first image and kept warm. */
+function getWorker(): Worker {
+  if (worker) return worker;
+  const created = createImageWorker();
+  created.addEventListener(
+    "message",
+    (event: MessageEvent<ImageWorkerResponse>) => {
+      const response = event.data;
+      const request = pending.get(response.id);
+      if (!request) return;
+      pending.delete(response.id);
+      if (response.ok) {
+        request.resolve({
+          blob: response.blob,
+          width: response.width,
+          height: response.height,
+          processed: response.processed,
+          blurhash: response.blurhash,
+        });
+      } else {
+        request.reject(new Error(response.error));
+      }
+    },
+  );
+  // A worker that dies takes every in-flight image with it. Fail them over to
+  // the in-page path and start clean for the next one.
+  created.addEventListener("error", (event) => {
+    if (worker !== created) return;
+    worker = null;
+    created.terminate();
+    const requests = [...pending.values()];
+    pending.clear();
+    const error = new Error(event.message || "Image worker failed");
+    for (const request of requests) request.reject(error);
+  });
+  worker = created;
+  return created;
+}
+
+function processInWorker(
+  file: File,
+  options: ImageProcessOptions,
+): Promise<ProcessResult> {
+  const target = getWorker();
+  return new Promise((resolve, reject) => {
+    const id = nextRequestId++;
+    pending.set(id, { resolve, reject });
+    const request: ImageWorkerRequest = { id, file, options };
+    target.postMessage(request);
+  });
+}
+
+// ── In-page path ─────────────────────────────────────────────────────────
 
 /**
  * Load image from file
@@ -52,115 +140,73 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
-export interface ImageProcessPlan {
-  /** When true, upload the original file untouched (too large to re-encode). */
-  passthrough: boolean;
-  /** Target dimensions — equal to the source dimensions when `passthrough`. */
-  width: number;
-  height: number;
+function createCanvas(width: number, height: number) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Failed to get canvas context");
+  return { canvas, ctx };
 }
 
-/**
- * Decide how to handle an image given its source dimensions.
- *
- * - Long side over `maxLongSide` → `passthrough` (canvas can't redraw it).
- * - Short side within `maxShortSide` → keep dimensions, just re-encode.
- * - Otherwise → scale down so the short side hits `maxShortSide`.
- *
- * @param sourceWidth - Natural image width in pixels
- * @param sourceHeight - Natural image height in pixels
- * @param options - `maxShortSide` and `maxLongSide` caps
- * @returns The processing plan
- *
- * @example
- * ```ts
- * planImageProcessing(1080, 6000, { maxShortSide: 1920, maxLongSide: 8192 });
- * // { passthrough: false, width: 1080, height: 6000 }
- * ```
- */
-export function planImageProcessing(
-  sourceWidth: number,
-  sourceHeight: number,
-  options: { maxShortSide: number; maxLongSide: number },
-): ImageProcessPlan {
-  const longSide = Math.max(sourceWidth, sourceHeight);
-  if (longSide > options.maxLongSide) {
-    return { passthrough: true, width: sourceWidth, height: sourceHeight };
-  }
-
-  const shortSide = Math.min(sourceWidth, sourceHeight);
-  if (shortSide <= options.maxShortSide) {
-    return { passthrough: false, width: sourceWidth, height: sourceHeight };
-  }
-
-  const scale = options.maxShortSide / shortSide;
-  return {
-    passthrough: false,
-    width: Math.round(sourceWidth * scale),
-    height: Math.round(sourceHeight * scale),
-  };
-}
-
-/**
- * Convert canvas to Blob, falling back to JPEG when the requested format
- * (typically WebP) is not supported by the browser (e.g. Safari).
- */
-async function canvasToBlob(
+function canvasToBlob(
   canvas: HTMLCanvasElement,
-  mimeType: string,
+  type: string,
   quality: number,
 ): Promise<Blob> {
-  const blob = await new Promise<Blob>((resolve, reject) => {
+  return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error("Failed to create blob"))),
-      mimeType,
+      type,
       quality,
     );
   });
+}
 
-  // Browser silently falls back to PNG when it can't encode the requested
-  // format. PNG ignores the quality parameter, producing oversized files.
-  // Re-encode as JPEG instead so lossy compression still applies.
-  if (mimeType !== "image/png" && blob.type === "image/png") {
-    return new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (b) => (b ? resolve(b) : reject(new Error("Failed to create blob"))),
-        "image/jpeg",
-        quality,
-      );
-    });
+const pageEncodeTypeByRequest = new Map<string, Promise<string>>();
+
+/** The format `toBlob` really produces for `requested`, probed once. */
+function resolveEncodeTypeOnPage(
+  requested: string,
+  quality: number,
+): Promise<string> {
+  let pending = pageEncodeTypeByRequest.get(requested);
+  if (!pending) {
+    pending = canvasToBlob(createCanvas(1, 1).canvas, requested, quality).then(
+      (probe) => resolveEncodedMimeType(requested, probe.type),
+    );
+    pageEncodeTypeByRequest.set(requested, pending);
   }
-
-  return blob;
+  return pending;
 }
 
-export interface ProcessResult {
-  blob: Blob;
-  width: number;
-  height: number;
-  /** False when `blob` is the untouched original (too large to re-encode). */
-  processed: boolean;
+/** Best-effort: no blurhash beats no upload. */
+function blurhashOf(img: HTMLImageElement): string | undefined {
+  try {
+    const { width, height } = blurhashDimensions(img.width, img.height);
+    const { ctx } = createCanvas(width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+    return encode(
+      ctx.getImageData(0, 0, width, height).data,
+      width,
+      height,
+      4,
+      3,
+    );
+  } catch {
+    return undefined;
+  }
 }
 
-export interface ProcessToFileResult {
-  file: File;
-  width: number;
-  height: number;
-}
-
-/**
- * Process image file
- */
-async function process(
+async function processOnPage(
   file: File,
-  options: ProcessOptions = {},
+  options: ImageProcessOptions,
 ): Promise<ProcessResult> {
-  const opts = { ...DEFAULT_OPTIONS, ...options };
-
   const img = await loadImage(file);
 
   // img.width / img.height already reflect EXIF orientation in modern browsers
-  const plan = planImageProcessing(img.width, img.height, opts);
+  const plan = planImageProcessing(img.width, img.height, options);
+  const blurhash = blurhashOf(img);
 
   // Too large to redraw on a canvas without crushing detail — keep the
   // original bytes so images of any length upload at full quality.
@@ -170,22 +216,48 @@ async function process(
       width: plan.width,
       height: plan.height,
       processed: false,
+      blurhash,
     };
   }
 
-  const canvas = document.createElement("canvas");
-  canvas.width = plan.width;
-  canvas.height = plan.height;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Failed to get canvas context");
-
+  const { canvas, ctx } = createCanvas(plan.width, plan.height);
   // drawImage respects EXIF orientation — no manual rotation needed
   ctx.drawImage(img, 0, 0, plan.width, plan.height);
 
-  const blob = await canvasToBlob(canvas, opts.mimeType, opts.quality);
+  const type = await resolveEncodeTypeOnPage(options.mimeType, options.quality);
+  const blob = await canvasToBlob(canvas, type, options.quality);
 
-  return { blob, width: plan.width, height: plan.height, processed: true };
+  return {
+    blob,
+    width: plan.width,
+    height: plan.height,
+    processed: true,
+    blurhash,
+  };
+}
+
+// ── Facade ───────────────────────────────────────────────────────────────
+
+/**
+ * Process image file
+ */
+async function process(
+  file: File,
+  options: ProcessOptions = {},
+): Promise<ProcessResult> {
+  const opts = { ...DEFAULT_IMAGE_PROCESS_OPTIONS, ...options };
+
+  if (supportsImageWorker()) {
+    try {
+      return await processInWorker(file, opts);
+    } catch {
+      // The worker could not decode this file, or never started. `<img>`
+      // accepts a few things `createImageBitmap` does not, and if it fails
+      // too, that is the error worth reporting.
+    }
+  }
+
+  return processOnPage(file, opts);
 }
 
 /**
@@ -199,7 +271,12 @@ async function processToFile(
 
   // Original kept untouched — upload the file as-is.
   if (!result.processed) {
-    return { file, width: result.width, height: result.height };
+    return {
+      file,
+      width: result.width,
+      height: result.height,
+      blurhash: result.blurhash,
+    };
   }
 
   // Use actual blob type — Safari falls back to JPEG when WebP encoding isn't supported
@@ -216,6 +293,7 @@ async function processToFile(
     file: new File([result.blob], newName, { type: result.blob.type }),
     width: result.width,
     height: result.height,
+    blurhash: result.blurhash,
   };
 }
 

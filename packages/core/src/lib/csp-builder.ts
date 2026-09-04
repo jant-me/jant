@@ -71,7 +71,8 @@ export function buildCspDirectives(
   } = input;
 
   // Base script-src: same-origin, Datastar's `unsafe-eval` for data-on-* /
-  // data-signals expressions, blob: for media workers (heic-to, mediabunny).
+  // data-signals expressions, blob: for media workers (heic-to, mediabunny,
+  // the inline image worker).
   const scriptSrc = ["'self'", "'unsafe-eval'", "blob:"];
   if (allowInlineScript) scriptSrc.push("'unsafe-inline'");
   appendUnique(scriptSrc, assetOrigin);

@@ -10,7 +10,12 @@
 
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
-import { buildVersion, clientBuildOptions, clientPlugins } from "./vite.shared";
+import {
+  buildVersion,
+  clientBuildOptions,
+  clientPlugins,
+  workerBuildOptions,
+} from "./vite.shared";
 
 export default defineConfig({
   // Keep Vite's base at `/`. Asset URLs already include the reserved
@@ -26,6 +31,8 @@ export default defineConfig({
     // Worker build can embed the correct content-addressed paths.
     manifest: true,
   },
+
+  worker: workerBuildOptions,
 
   define: {
     __JANT_VERSION__: JSON.stringify(buildVersion),
