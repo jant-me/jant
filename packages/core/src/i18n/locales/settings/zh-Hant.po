@@ -301,15 +301,15 @@ msgstr "永遠顯示主題的淺色版本。"
 msgid "An earthier, warmer tone."
 msgstr "更偏暖、偏土的色調。"
 
-#. @context: Button retrying the Discover announcement after it failed
+#. @context: Button sending the Discover announcement, shown when the site has never announced itself or when the announcement failed
 #: src/ui/dash/settings/GeneralContent.tsx
-msgid "Announce again"
-msgstr "重新回報"
+msgid "Announce my site"
+msgstr "回報我的網站"
 
-#. @context: Toast after retrying the Discover announcement. It runs in the background, so the page does not yet know how it went.
+#. @context: Toast after sending the Discover announcement. It runs in the background, so the page does not yet know how it went.
 #: src/routes/dash/settings.tsx
-msgid "Announcing again. Reload to see the result."
-msgstr "正在重新回報，重新整理後可以看到結果。"
+msgid "Announcing your site. Reload to see the result."
+msgstr "正在回報網站，重新整理後可以看到結果。"
 
 #. @context: Follow-up hint under the stamping warning
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -1830,10 +1830,10 @@ msgstr "沒有可加入的頁面。建立頁面後即可加入導覽。"
 msgid "No repositories match."
 msgstr "沒有符合的儲存庫。"
 
-#. @context: Discover status line before the site has ever announced itself
+#. @context: Discover status line before the site has ever announced itself. The button under the lines is how it is sent.
 #: src/ui/dash/settings/GeneralContent.tsx
-msgid "Not announced yet. Save this section to announce your site."
-msgstr "尚未回報。儲存這一節即可把站點回報給目錄。"
+msgid "Not announced yet. No directory has been told this site exists."
+msgstr "尚未回報。還沒有目錄知道這個網站存在。"
 
 #. @context: Config Editor linked setting status
 #. @context: Config Editor linked setting status
@@ -2760,7 +2760,7 @@ msgstr "此儲存庫已在備份本網站。"
 msgid "This setting wasn't saved. Check the value and try again."
 msgstr "此設定未儲存。請檢查設定值並再試一次。"
 
-#. @context: Toast when the Discover announcement cannot be retried because no directory is configured, or the site cannot be listed at all
+#. @context: Toast when the Discover announcement cannot be sent because no directory is configured, or the site cannot be listed at all
 #: src/routes/dash/settings.tsx
 msgid "This site has no directory to announce to."
 msgstr "這個站點沒有可回報的目錄。"

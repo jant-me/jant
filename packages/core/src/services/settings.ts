@@ -534,6 +534,26 @@ export function createSettingsService(
         now,
       });
       await this.set("DISCOVER_ANNOUNCE_STATE", JSON.stringify(outcome));
+
+      // The stored outcome is for the owner, and it does not always reach
+      // them: the announcement runs behind the settings save so the response
+      // cannot carry it, and a hosted site's settings page hides the status
+      // block altogether. Log it as well, so an announcement that never got
+      // through is answerable by whoever runs the deployment — a directory
+      // pointed at the wrong host answers 404 and looks, from the dashboard,
+      // exactly like one that worked.
+      if (outcome.ok) {
+        // eslint-disable-next-line no-console -- One-line audit trail for a rare write.
+        console.log(
+          `[Jant] Discover announced: feed=${outcome.feedUrl} directory=${input.endpoint}`,
+        );
+      } else {
+        // eslint-disable-next-line no-console -- A lost announcement must be visible.
+        console.error(
+          `[Jant] Discover announcement failed: ${outcome.error ?? "Unknown error."} feed=${outcome.feedUrl} directory=${input.endpoint}`,
+        );
+      }
+
       return outcome;
     },
 

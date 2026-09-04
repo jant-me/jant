@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   createTestDatabase,
   DEFAULT_TEST_SITE_ID,
@@ -617,6 +617,68 @@ describe("SettingsService", () => {
         demoMode: true,
       });
       expect(result.shouldAnnounce).toBe(false);
+    });
+  });
+
+  /**
+   * The stored outcome is the owner's record of the announcement, and it does
+   * not always reach them — a hosted site's settings page hides the status
+   * block entirely. The log is how a deployment answers "did that get through"
+   * when the dashboard cannot.
+   */
+  describe("announceToDiscover", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    function stubDirectory(response: Response | Error) {
+      return vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(() =>
+          response instanceof Error
+            ? Promise.reject(response)
+            : Promise.resolve(response.clone()),
+        );
+    }
+
+    it("records and logs an announcement that got through", async () => {
+      stubDirectory(new Response(null, { status: 202 }));
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const outcome = await settingsService.announceToDiscover({
+        endpoint: "https://cloud.example/api/discover/ping",
+        feedUrl: "https://blog.example/latest/feed",
+      });
+
+      expect(outcome.ok).toBe(true);
+      expect(
+        JSON.parse(
+          (await settingsService.get("DISCOVER_ANNOUNCE_STATE")) ?? "",
+        ),
+      ).toMatchObject({
+        ok: true,
+        feedUrl: "https://blog.example/latest/feed",
+      });
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining("https://cloud.example/api/discover/ping"),
+      );
+    });
+
+    // The failure this exists for: a directory that answers, but not about
+    // this site. Silently stored, it reads from the dashboard like a success.
+    it("logs the reason an announcement failed", async () => {
+      stubDirectory(new Response(null, { status: 404 }));
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const outcome = await settingsService.announceToDiscover({
+        endpoint: "https://jant.me/api/discover/ping",
+        feedUrl: "https://blog.example/latest/feed",
+      });
+
+      expect(outcome).toMatchObject({ ok: false, status: 404 });
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining("The directory answered 404."),
+      );
     });
   });
 });

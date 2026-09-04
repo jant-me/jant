@@ -64,7 +64,7 @@ export interface SettingsLabels {
   discoverDemoLocked: string;
   discoverFeedsOffLocked: string;
   discoverStatusHeading: string;
-  discoverAnnounceRetry: string;
+  discoverAnnounce: string;
   discoverAnnounceManual: string;
 
   // Actions

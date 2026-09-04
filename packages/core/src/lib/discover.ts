@@ -197,53 +197,55 @@ export function measureDiscoverMaturity(input: {
 }
 
 /**
- * The directory itself, derived from its ping endpoint.
+ * The directory itself, derived from its base address.
  *
  * What "Jant Discover" means is best answered by the list itself, so the
  * settings page links here rather than to a page describing it. Derived for
  * the same reason as the submission form: a site announcing to a directory of
  * its own must link to that one, not to jant.me.
  *
- * @param pingUrl - The configured `DISCOVER_PING_URL`
+ * @param directoryBaseUrl - The directory this deployment belongs to, from
+ *   `getDiscoverDirectoryBaseUrl`
  * @returns Absolute URL of the directory, or `null` when there is none
  * @example
  * ```ts
- * getDiscoverDirectoryUrl("https://jant.me/api/discover/ping");
+ * getDiscoverDirectoryUrl("https://jant.me/");
  * // "https://jant.me/discover"
  * ```
  */
 export function getDiscoverDirectoryUrl(
-  pingUrl: string | undefined | null,
+  directoryBaseUrl: string | undefined | null,
 ): string | null {
-  if (!pingUrl) return null;
+  if (!directoryBaseUrl) return null;
   try {
-    return new URL("/discover", pingUrl).toString();
+    return new URL("/discover", directoryBaseUrl).toString();
   } catch {
     return null;
   }
 }
 
 /**
- * The directory's manual submission form, derived from its ping endpoint.
+ * The directory's manual submission form, derived from its base address.
  *
  * Never hardcoded: a site announcing to a directory of its own must not be
  * sent to somebody else's form. Both paths are part of the same directory, so
- * its ping URL is enough to find the other.
+ * one address is enough to find the other.
  *
- * @param pingUrl - The configured `DISCOVER_PING_URL`
+ * @param directoryBaseUrl - The directory this deployment belongs to, from
+ *   `getDiscoverDirectoryBaseUrl`
  * @returns Absolute URL of the form, or `null` when there is no directory
  * @example
  * ```ts
- * getDiscoverSubmitUrl("https://jant.me/api/discover/ping");
+ * getDiscoverSubmitUrl("https://jant.me/");
  * // "https://jant.me/discover/submit"
  * ```
  */
 export function getDiscoverSubmitUrl(
-  pingUrl: string | undefined | null,
+  directoryBaseUrl: string | undefined | null,
 ): string | null {
-  if (!pingUrl) return null;
+  if (!directoryBaseUrl) return null;
   try {
-    return new URL("/discover/submit", pingUrl).toString();
+    return new URL("/discover/submit", directoryBaseUrl).toString();
   } catch {
     return null;
   }

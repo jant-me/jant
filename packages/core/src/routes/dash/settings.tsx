@@ -85,6 +85,7 @@ import {
 import { syncHostedControlPlaneSiteAvatar } from "../../lib/hosted-control-plane-sync.js";
 import {
   getDiscoverDefault,
+  getDiscoverDirectoryBaseUrl,
   getDiscoverPingUrl,
   getGitHubAppConfig,
   getHostedControlPlaneSsoSecret,
@@ -467,7 +468,9 @@ settingsRoutes.get("/general", async (c) => {
           noindex={appConfig.noindex}
           discover={discoverSetting ?? ""}
           discoverDefault={discoverDefault}
-          discoverUrl={getDiscoverDirectoryUrl(getDiscoverPingUrl(c.env))}
+          discoverUrl={getDiscoverDirectoryUrl(
+            getDiscoverDirectoryBaseUrl(c.env),
+          )}
           discoverStatus={{
             announced: announceState?.ok ?? null,
             announceError: announceState?.error ?? null,
@@ -478,7 +481,7 @@ settingsRoutes.get("/general", async (c) => {
             // A hosted fleet is enrolled by its control plane, so there is no
             // announcement for the owner to make, chase, or retry.
             managedByHost: isHostedControlPlaneEnabled(c.env),
-            submitUrl: getDiscoverSubmitUrl(getDiscoverPingUrl(c.env)),
+            submitUrl: getDiscoverSubmitUrl(getDiscoverDirectoryBaseUrl(c.env)),
             // The mode the feeds actually declare, already derived once on
             // `appConfig` — re-deriving it here is how this block used to
             // miss the deployment default.
@@ -938,11 +941,13 @@ function announceInBackground(
 }
 
 /**
- * Announce again, because the owner asked.
+ * Announce, because the owner asked.
  *
- * The recovery path a lost announcement never had. Retrying is safe at any
- * time: the receiving end treats a repeat as a no-op for a site it already
- * knows, and the announcement carries nothing but the feed address.
+ * The route the settings page offers whenever the directory has not heard from
+ * this site: an announcement that failed, and one that was never made at all.
+ * Sending it is safe at any time — the receiving end treats a repeat as a
+ * no-op for a site it already knows, and it carries nothing but the feed
+ * address.
  */
 settingsRoutes.post("/general/discover/announce", async (c) => {
   const i18n = getI18n(c);
@@ -957,7 +962,7 @@ settingsRoutes.post("/general/discover/announce", async (c) => {
         msg({
           message: "This site has no directory to announce to.",
           comment:
-            "@context: Toast when the Discover announcement cannot be retried because no directory is configured, or the site cannot be listed at all",
+            "@context: Toast when the Discover announcement cannot be sent because no directory is configured, or the site cannot be listed at all",
         }),
       ),
     );
@@ -966,9 +971,9 @@ settingsRoutes.post("/general/discover/announce", async (c) => {
   return dsToast(
     i18n._(
       msg({
-        message: "Announcing again. Reload to see the result.",
+        message: "Announcing your site. Reload to see the result.",
         comment:
-          "@context: Toast after retrying the Discover announcement. It runs in the background, so the page does not yet know how it went.",
+          "@context: Toast after sending the Discover announcement. It runs in the background, so the page does not yet know how it went.",
       }),
     ),
   );

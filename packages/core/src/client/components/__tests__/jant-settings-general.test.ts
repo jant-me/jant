@@ -124,7 +124,7 @@ const labels: SettingsLabels = {
   discoverFeedsOffLocked:
     "Discover reads your Atom feed, so it needs feeds turned on.",
   discoverStatusHeading: "Where your site stands",
-  discoverAnnounceRetry: "Announce again",
+  discoverAnnounce: "Announce my site",
   discoverAnnounceManual: "Or submit your address by hand",
   save: "Save",
   cancel: "Cancel",
@@ -159,6 +159,16 @@ function findCheckboxByLabel(
   ).find((checkbox) =>
     checkbox.closest("label")?.textContent?.includes(labelText),
   );
+}
+
+/** The Discover mode radios carry no value attribute — find them by label. */
+function findRadioByLabel(
+  el: HTMLElement,
+  labelText: string,
+): HTMLInputElement | undefined {
+  return Array.from(
+    el.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+  ).find((radio) => radio.closest("label")?.textContent?.includes(labelText));
 }
 
 async function createElement(
@@ -651,10 +661,10 @@ describe("JantSettingsGeneral", () => {
   });
 
   /**
-   * Unlike the indexing checkbox beside it, this group saves on its own
-   * button: the checkbox and the mode below it are one decision. Ticking the
-   * box is how a self-hosted site opts in, and saving is what announces it to
-   * the directory.
+   * Every control here saves on change, like the indexing checkbox beside it:
+   * ticking the box stores the default mode, and a mode is stored the moment
+   * it is picked. Ticking the box is also how a self-hosted site opts in, and
+   * that first save is what announces it to the directory.
    */
   describe("Discover", () => {
     it("renders the section under Site visibility", async () => {
@@ -697,19 +707,16 @@ describe("JantSettingsGeneral", () => {
       expect(el.textContent).toContain(labels.discoverLatestHint);
     });
 
-    // Nothing to confirm any more: opting in is a change, and Save waits for
-    // one rather than offering to re-send what is already stored.
-    it("keeps Save disabled until something changes", async () => {
+    // The section carries no Save button of its own: the only button it can
+    // render is the announcement retry, which needs a failed announcement.
+    it("offers no Save button", async () => {
       const el = await createElement();
-      const save = requireElement(
-        findSectionByHeading(
-          el,
-          labels.search,
-        )?.querySelectorAll<HTMLButtonElement>(".btn")[0] ?? null,
-        "expected the Discover save button",
+      const section = requireElement(
+        findSectionByHeading(el, labels.search),
+        "expected the Site visibility section",
       );
 
-      expect(save.disabled).toBe(true);
+      expect(section.querySelectorAll("button").length).toBe(0);
     });
 
     it("sends latest when the box is ticked", async () => {
@@ -723,17 +730,6 @@ describe("JantSettingsGeneral", () => {
         findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
         "expected the Discover checkbox",
       ).click();
-      await el.updateComplete;
-
-      const save = requireElement(
-        findSectionByHeading(
-          el,
-          labels.search,
-        )?.querySelectorAll<HTMLButtonElement>(".btn")[0] ?? null,
-        "expected the Discover save button",
-      );
-      expect(save.disabled).toBe(false);
-      save.click();
       await el.updateComplete;
 
       const d = detail as unknown as SettingsSaveDetail;
@@ -755,19 +751,75 @@ describe("JantSettingsGeneral", () => {
       ).click();
       await el.updateComplete;
 
-      const save = requireElement(
-        findSectionByHeading(
-          el,
-          labels.search,
-        )?.querySelectorAll<HTMLButtonElement>(".btn")[0] ?? null,
-        "expected the Discover save button",
-      );
-      save.click();
-      await el.updateComplete;
-
       expect((detail as unknown as SettingsSaveDetail).data.discover).toBe(
         "off",
       );
+    });
+
+    // Picking a mode is a whole answer too, so it is stored on the spot
+    // rather than waiting for the tick above it to be re-confirmed.
+    it("sends the mode as soon as it is picked", async () => {
+      const el = await createElement({ discoverDefault: "latest" });
+      const details: SettingsSaveDetail[] = [];
+      el.addEventListener("jant:settings-save", (event) => {
+        details.push((event as CustomEvent<SettingsSaveDetail>).detail);
+      });
+
+      const featured = requireElement(
+        findRadioByLabel(el, labels.discoverFeatured),
+        "expected the featured-only radio",
+      );
+      featured.click();
+      await el.updateComplete;
+
+      expect(details).toHaveLength(1);
+      expect(details[0]?.data.discover).toBe("featured");
+    });
+
+    // The controls stay disabled until the save answers, so a second click
+    // cannot race the first.
+    it("disables the controls while a save is in flight", async () => {
+      const el = await createElement({ discoverDefault: "latest" });
+      const toggle = requireElement(
+        findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
+        "expected the Discover checkbox",
+      );
+
+      toggle.click();
+      await el.updateComplete;
+
+      expect(toggle.disabled).toBe(true);
+
+      el.sectionSaved("discover");
+      await el.updateComplete;
+
+      expect(
+        requireElement(
+          findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
+          "expected the Discover checkbox",
+        ).disabled,
+      ).toBe(false);
+    });
+
+    // A failed save leaves the page describing the site as it still is.
+    it("restores the stored choice when the save fails", async () => {
+      const el = await createElement({ discoverDefault: "latest" });
+      const toggle = requireElement(
+        findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
+        "expected the Discover checkbox",
+      );
+
+      toggle.click();
+      await el.updateComplete;
+      el.sectionError("discover");
+      await el.updateComplete;
+
+      expect(
+        requireElement(
+          findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
+          "expected the Discover checkbox",
+        ).checked,
+      ).toBe(true);
     });
 
     it("locks the control off for a demo site", async () => {
@@ -835,14 +887,14 @@ describe("JantSettingsGeneral", () => {
       expect(toggle.checked).toBe(false);
     });
 
-    // The status describes what is stored, so a site that is not listed is
-    // handed no lines and the block does not render. Ticking the box does not
-    // conjure one: nothing is stored until Save.
+    // The status is what the server sent with the page, so a site that is not
+    // listed is handed no lines and the block does not render. Ticking the box
+    // does not conjure one: the lines are recomputed on the next page load.
     it("drops the status block when the server sends no lines", async () => {
       const el = await createElement({
         discoverStatus: JSON.stringify({
           lines: [],
-          showRetry: false,
+          showAnnounce: false,
           submitUrl: null,
         }),
       });
@@ -863,7 +915,7 @@ describe("JantSettingsGeneral", () => {
         discoverDefault: "latest",
         discoverStatus: JSON.stringify({
           lines: ["Your feed says latest."],
-          showRetry: false,
+          showAnnounce: false,
           submitUrl: null,
         }),
       });

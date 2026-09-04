@@ -406,11 +406,11 @@ export function GeneralContent({
           "@context: Heading of the Discover status block on the settings page. Everything under it is the site's own evidence, not an answer fetched from the directory.",
       }),
     ),
-    discoverAnnounceRetry: i18n._(
+    discoverAnnounce: i18n._(
       msg({
-        message: "Announce again",
+        message: "Announce my site",
         comment:
-          "@context: Button retrying the Discover announcement after it failed",
+          "@context: Button sending the Discover announcement, shown when the site has never announced itself or when the announcement failed",
       }),
     ),
     discoverAnnounceManual: i18n._(
@@ -526,9 +526,9 @@ export function GeneralContent({
             : i18n._(
                 msg({
                   message:
-                    "Not announced yet. Save this section to announce your site.",
+                    "Not announced yet. No directory has been told this site exists.",
                   comment:
-                    "@context: Discover status line before the site has ever announced itself",
+                    "@context: Discover status line before the site has ever announced itself. The button under the lines is how it is sent.",
                 }),
               ),
       );
@@ -590,11 +590,14 @@ export function GeneralContent({
 
   const statusView = {
     lines: statusLines,
-    // The manual form is offered only when the automatic path failed. Shown
-    // next to a working announcement it would read as a normal route in, which
-    // is what made it look like the primary one.
-    showRetry:
-      discoverStatus.announced === false &&
+    // The button covers both halves of "the directory has not heard from us":
+    // an announcement that failed, and one that was never made — a site whose
+    // mode came from the deployment default has nothing else to send it with.
+    // The manual form, by contrast, is offered only when the automatic path
+    // failed. Shown next to a working announcement it would read as a normal
+    // route in, which is what made it look like the primary one.
+    showAnnounce:
+      discoverStatus.announced !== true &&
       discoverStatus.hasDirectory &&
       !discoverStatus.managedByHost &&
       discoverStatus.declaredMode !== "none",

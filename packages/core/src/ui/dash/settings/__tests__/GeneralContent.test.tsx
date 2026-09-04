@@ -119,7 +119,7 @@ describe("GeneralContent", () => {
     expect(html).toContain("Feed address sent to the directory.");
     expect(html).toContain("5 public posts");
     // Nothing failed, so neither the retry nor the manual form is offered.
-    expect(html).toContain("&quot;showRetry&quot;:false");
+    expect(html).toContain("&quot;showAnnounce&quot;:false");
     expect(html).toContain("&quot;submitUrl&quot;:null");
   });
 
@@ -146,8 +146,39 @@ describe("GeneralContent", () => {
     expect(html).toContain(
       "The directory could not be reached: The directory answered 503.",
     );
-    expect(html).toContain("&quot;showRetry&quot;:true");
+    expect(html).toContain("&quot;showAnnounce&quot;:true");
     expect(html).toContain("https://jant.me/discover/submit");
+  });
+
+  // A site whose mode came from the deployment's own default declares itself
+  // without ever having announced. Nothing else on the page sends the address
+  // now that the section saves on change, so the button has to.
+  it("offers the announcement to a site that has never made one", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          announced: null,
+          announceError: null,
+          announceAt: null,
+          hasDirectory: true,
+          managedByHost: false,
+          submitUrl: "https://jant.me/discover/submit",
+          declaredMode: "latest",
+          publicPostCount: 5,
+          featuredPostCount: 2,
+          established: true,
+          minPublicPosts: 1,
+          firstReadMaxHours: 6,
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      "Not announced yet. No directory has been told this site exists.",
+    );
+    expect(html).toContain("&quot;showAnnounce&quot;:true");
+    // The manual form stays with the failure it belongs to.
+    expect(html).toContain("&quot;submitUrl&quot;:null");
   });
 
   it("reports nothing at all when the feed declares none", async () => {
@@ -176,7 +207,7 @@ describe("GeneralContent", () => {
     // through. With no lines the component drops the whole block.
     expect(html).toContain('discover-status="{&quot;lines&quot;:[]');
     expect(html).not.toContain("Your feed says");
-    expect(html).toContain("&quot;showRetry&quot;:false");
+    expect(html).toContain("&quot;showAnnounce&quot;:false");
   });
 
   // The announcement answers "does the directory know my address". A blog on
@@ -205,7 +236,7 @@ describe("GeneralContent", () => {
 
     expect(html).not.toContain("Not announced yet");
     expect(html).not.toContain("https://jant.me/discover/submit");
-    expect(html).toContain("&quot;showRetry&quot;:false");
+    expect(html).toContain("&quot;showAnnounce&quot;:false");
     expect(html).toContain("&quot;submitUrl&quot;:null");
     // What is left is the part the owner can act on.
     expect(html).toContain("Your feed says latest.");
@@ -236,7 +267,7 @@ describe("GeneralContent", () => {
     );
 
     expect(html).not.toContain("The directory could not be reached");
-    expect(html).toContain("&quot;showRetry&quot;:false");
+    expect(html).toContain("&quot;showAnnounce&quot;:false");
     expect(html).toContain("&quot;submitUrl&quot;:null");
   });
 });

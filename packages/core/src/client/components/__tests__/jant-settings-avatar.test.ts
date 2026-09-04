@@ -81,7 +81,7 @@ const labels: SettingsLabels = {
   discoverFeedsOffLocked:
     "Discover reads your Atom feed, so it needs feeds turned on.",
   discoverStatusHeading: "Where your site stands",
-  discoverAnnounceRetry: "Announce again",
+  discoverAnnounce: "Announce my site",
   discoverAnnounceManual: "Or submit your address by hand",
   save: "Save",
   cancel: "Cancel",

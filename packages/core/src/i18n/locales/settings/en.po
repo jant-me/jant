@@ -301,15 +301,15 @@ msgstr "Always show the light version of the theme."
 msgid "An earthier, warmer tone."
 msgstr "An earthier, warmer tone."
 
-#. @context: Button retrying the Discover announcement after it failed
+#. @context: Button sending the Discover announcement, shown when the site has never announced itself or when the announcement failed
 #: src/ui/dash/settings/GeneralContent.tsx
-msgid "Announce again"
-msgstr "Announce again"
+msgid "Announce my site"
+msgstr "Announce my site"
 
-#. @context: Toast after retrying the Discover announcement. It runs in the background, so the page does not yet know how it went.
+#. @context: Toast after sending the Discover announcement. It runs in the background, so the page does not yet know how it went.
 #: src/routes/dash/settings.tsx
-msgid "Announcing again. Reload to see the result."
-msgstr "Announcing again. Reload to see the result."
+msgid "Announcing your site. Reload to see the result."
+msgstr "Announcing your site. Reload to see the result."
 
 #. @context: Follow-up hint under the stamping warning
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -1830,10 +1830,10 @@ msgstr "No pages available. Create one to add it to navigation."
 msgid "No repositories match."
 msgstr "No repositories match."
 
-#. @context: Discover status line before the site has ever announced itself
+#. @context: Discover status line before the site has ever announced itself. The button under the lines is how it is sent.
 #: src/ui/dash/settings/GeneralContent.tsx
-msgid "Not announced yet. Save this section to announce your site."
-msgstr "Not announced yet. Save this section to announce your site."
+msgid "Not announced yet. No directory has been told this site exists."
+msgstr "Not announced yet. No directory has been told this site exists."
 
 #. @context: Config Editor linked setting status
 #. @context: Config Editor linked setting status
@@ -2760,7 +2760,7 @@ msgstr "This repository is already backing up this site."
 msgid "This setting wasn't saved. Check the value and try again."
 msgstr "This setting wasn't saved. Check the value and try again."
 
-#. @context: Toast when the Discover announcement cannot be retried because no directory is configured, or the site cannot be listed at all
+#. @context: Toast when the Discover announcement cannot be sent because no directory is configured, or the site cannot be listed at all
 #: src/routes/dash/settings.tsx
 msgid "This site has no directory to announce to."
 msgstr "This site has no directory to announce to."

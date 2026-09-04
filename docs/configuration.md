@@ -102,10 +102,10 @@ already in the Worker cache can remain visible for up to 60 seconds.
 
 ### Jant Discover (optional)
 
-| Variable            | Default              | Description                                                           |
-| ------------------- | -------------------- | --------------------------------------------------------------------- |
-| `DISCOVER`          | `off`                | What this deployment lists by default: `latest`, `featured`, or `off` |
-| `DISCOVER_PING_URL` | Jant's own directory | Where the site announces itself; set it empty to announce nowhere     |
+| Variable            | Default                                     | Description                                                           |
+| ------------------- | ------------------------------------------- | --------------------------------------------------------------------- |
+| `DISCOVER`          | `off`                                       | What this deployment lists by default: `latest`, `featured`, or `off` |
+| `DISCOVER_PING_URL` | Your control plane, or Jant's own directory | Where the site announces itself; set it empty to announce nowhere     |
 
 Jant Discover is a public directory of Jant blogs. Every Atom feed declares
 whether the site takes part, and nothing is listed without that declaration —
@@ -118,6 +118,14 @@ The site's own Site visibility setting overrides it, and so does
 a single blog; set `DISCOVER=latest` when you run a platform whose blogs should
 be listed unless their owners say otherwise. A site with
 `RSS_FEEDS_ENABLED=false` resolves to `off` regardless, having no feed to read.
+
+`DISCOVER_PING_URL` names the directory a site announces itself to. Left
+unset, a deployment that runs a control plane announces to that control plane,
+and everything else announces to Jant's own directory — so the two never have
+to be kept in step by hand. Set it to point somewhere else, or to the empty
+string to announce nowhere. The announcement is one request carrying one feed
+address, sent when a site opts in and never again; its outcome is logged, and
+the site's Site visibility settings report it.
 
 See [Feeds](feeds.md#discover) for what your feed declares and what a
 third-party directory needs to honour.

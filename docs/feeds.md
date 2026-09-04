@@ -66,7 +66,7 @@ On a multilingual site every feed exists once per language, under that language'
 
 Your site takes part once you say so, under **Settings → General → Site visibility**. Nothing is listed on a default: a directory reads your feed for an answer, and a site that has never been asked has not given one. `latest` lets a directory show any of your public posts; `featured` limits it to the ones you have marked Featured. A demo site, a site with `RSS_FEEDS_ENABLED=false`, and — until you choose for yourself — a site with `NOINDEX=true` stay out whatever the control says.
 
-Turning it on sends your feed address to the directory once, so it knows your site exists. Nothing else is sent, and nothing is sent again. `DISCOVER_PING_URL` picks the directory; set it empty to announce nowhere.
+Turning it on sends your feed address to the directory once, so it knows your site exists. Nothing else is sent, and nothing is sent again. The directory is the one your deployment belongs to: your own control plane when you run one, otherwise Jant's. `DISCOVER_PING_URL` overrides that; set it empty to announce nowhere.
 
 To pull a post back out, remove it from your latest feed — tick **Hidden from Latest**, set it private, or move it back to draft — and it leaves on the next read.
 

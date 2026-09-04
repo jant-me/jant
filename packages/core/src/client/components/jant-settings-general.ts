@@ -1,8 +1,10 @@
 /**
  * General Settings Component
  *
- * Main container for the General settings page. Saveable groups track dirty
- * state independently, while checkbox-only sections save immediately.
+ * Main container for the General settings page. Typed fields are grouped
+ * behind a Save button and track their dirty state independently; every
+ * control whose value is complete the moment it is set — checkbox, radio,
+ * select — saves on change.
  *
  * Light DOM only — BaseCoat and Tailwind classes apply directly.
  */
@@ -85,7 +87,6 @@ export class JantSettingsGeneral extends LitElement {
     // Discover group
     _discover: { state: true },
     _origDiscover: { state: true },
-    _discoverDirty: { state: true },
     _discoverLoading: { state: true },
   };
 
@@ -154,7 +155,6 @@ export class JantSettingsGeneral extends LitElement {
   // same as "off" — an untouched site still follows the default.
   declare _discover: string;
   declare _origDiscover: string;
-  declare _discoverDirty: boolean;
   declare _discoverLoading: boolean;
 
   // TipTap editor instances
@@ -219,7 +219,6 @@ export class JantSettingsGeneral extends LitElement {
     this.feedsEnabled = false;
     this._discover = "";
     this._origDiscover = "";
-    this._discoverDirty = false;
     this._discoverLoading = false;
   }
 
@@ -255,7 +254,6 @@ export class JantSettingsGeneral extends LitElement {
 
     this._discover = data.discover;
     this._origDiscover = data.discover;
-    this._discoverDirty = false;
 
     // Defer editor init to after Lit renders the containers
     this.updateComplete.then(() => {
@@ -294,7 +292,6 @@ export class JantSettingsGeneral extends LitElement {
       this._searchLoading = false;
     } else if (section === "discover") {
       this._origDiscover = this._discover;
-      this._discoverDirty = false;
       this._discoverLoading = false;
     }
   }
@@ -316,7 +313,6 @@ export class JantSettingsGeneral extends LitElement {
       this._searchLoading = false;
     } else if (section === "discover") {
       this._discover = this._origDiscover;
-      this._discoverDirty = false;
       this._discoverLoading = false;
     }
   }
@@ -493,8 +489,7 @@ export class JantSettingsGeneral extends LitElement {
   private _onDiscoverToggle(enabled: boolean) {
     // Turning it back on returns to the default rather than to whatever was
     // chosen before being switched off; the sub-choice below says which.
-    this._discover = enabled ? this._defaultDiscoverMode() : "off";
-    this._discoverDirty = true;
+    this._saveDiscover(enabled ? this._defaultDiscoverMode() : "off");
   }
 
   /**
@@ -512,21 +507,18 @@ export class JantSettingsGeneral extends LitElement {
   }
 
   private _onDiscoverMode(mode: "latest" | "featured") {
-    this._discover = mode;
-    this._discoverDirty = true;
+    this._saveDiscover(mode);
   }
 
-  private _saveDiscover() {
+  /**
+   * Store the choice the owner just made.
+   *
+   * The controls are disabled while a save is in flight, so a second call
+   * cannot arrive before the first has answered; the guard covers the event
+   * that is already queued when that happens.
+   */
+  private _saveDiscover(value: "latest" | "featured" | "off") {
     if (this._discoverLoading) return;
-    // Unreachable while nothing has been touched — the button is disabled —
-    // but an unset value still has to resolve to a storable one rather than
-    // to the empty string the server would reject.
-    const value =
-      this._discover === ""
-        ? this.discoverDefault === "none"
-          ? "off"
-          : this._defaultDiscoverMode()
-        : this._discover;
     this._discover = value;
     this._discoverLoading = true;
     this.dispatchEvent(
@@ -928,12 +920,16 @@ export class JantSettingsGeneral extends LitElement {
   /**
    * Jant Discover.
    *
-   * Unlike the indexing checkbox next to it, this group saves on its own
-   * button rather than on change: the checkbox and the mode below it are one
-   * decision, and half of it is not worth sending. The save is also what
-   * announces a self-hosted site to the directory, so it is the moment the
-   * owner opts in — which is why the button waits for an actual change rather
-   * than offering to re-confirm what is already stored.
+   * Saves on change, like the indexing checkbox next to it: every control here
+   * is a complete answer on its own — ticking the box stores the default mode,
+   * and a mode is stored as soon as it is picked — so there is nothing a Save
+   * button would be waiting for.
+   *
+   * Ticking the box is also what announces a self-hosted site to the
+   * directory. Only that transition announces, so picking a mode afterwards
+   * sends no second ping, and a site announced under `latest` that switches to
+   * `featured` a moment later is not stranded: every feed declares the feed a
+   * crawler should poll, so the next read follows the site to /featured/feed.
    */
   private _renderDiscoverForm() {
     // "" means never chosen, and what the site declares meanwhile is the
@@ -979,22 +975,6 @@ export class JantSettingsGeneral extends LitElement {
               `
             : nothing
         }
-        ${
-          locked
-            ? nothing
-            : html`
-                <div>
-                  <button
-                    type="button"
-                    class="btn"
-                    ?disabled=${this._discoverLoading || !this._discoverDirty}
-                    @click=${() => this._saveDiscover()}
-                  >
-                    ${this.labels.save}
-                  </button>
-                </div>
-              `
-        }
         ${locked ? nothing : this._renderDiscoverStatus()}
       </div>
     `;
@@ -1033,15 +1013,15 @@ export class JantSettingsGeneral extends LitElement {
    *
    * Deliberately all local evidence: the directory takes no status queries, so
    * nothing here was fetched and nothing here can say whether a person has
-   * moderated the site. The retry and the manual form appear only when the
-   * announcement failed — beside a working one they would read as a normal
-   * route in rather than the recovery they are.
+   * moderated the site. The announce button appears when the directory has not
+   * heard from this site; the manual form only when an announcement actually
+   * failed — beside a working one it would read as a normal route in rather
+   * than the recovery it is.
    *
    * A site that declares `none` is handed no lines at all, so the block does
    * not render: it would only restate the unticked checkbox above it. The
-   * lines describe what is *stored*, so this follows the saved state rather
-   * than the checkbox — a tick that has not been saved yet changes nothing
-   * here.
+   * lines are what the server sent with the page, so ticking the box does not
+   * rewrite them; the next load does.
    */
   private _renderDiscoverStatus() {
     const status = this._parsedDiscoverStatus();
@@ -1054,16 +1034,16 @@ export class JantSettingsGeneral extends LitElement {
           (line) => html`<p class="text-sm text-muted-foreground">${line}</p>`,
         )}
         ${
-          status.showRetry
+          status.showAnnounce
             ? html`
                 <div class="flex flex-wrap items-center gap-3 mt-1">
                   <button
                     type="button"
                     class="btn btn-outline"
                     ?disabled=${this._discoverLoading}
-                    @click=${() => this._retryAnnounce()}
+                    @click=${() => this._announce()}
                   >
-                    ${this.labels.discoverAnnounceRetry}
+                    ${this.labels.discoverAnnounce}
                   </button>
                   ${
                     status.submitUrl
@@ -1086,7 +1066,7 @@ export class JantSettingsGeneral extends LitElement {
 
   private _parsedDiscoverStatus(): {
     lines: string[];
-    showRetry: boolean;
+    showAnnounce: boolean;
     submitUrl: string | null;
   } | null {
     if (!this.discoverStatus) return null;
@@ -1101,7 +1081,7 @@ export class JantSettingsGeneral extends LitElement {
         : [];
       return {
         lines,
-        showRetry: value["showRetry"] === true,
+        showAnnounce: value["showAnnounce"] === true,
         submitUrl:
           typeof value["submitUrl"] === "string" ? value["submitUrl"] : null,
       };
@@ -1112,7 +1092,7 @@ export class JantSettingsGeneral extends LitElement {
     }
   }
 
-  private _retryAnnounce() {
+  private _announce() {
     if (this._discoverLoading) return;
     this._discoverLoading = true;
     this.dispatchEvent(

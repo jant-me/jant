@@ -7,7 +7,11 @@ import {
   parseDiscoverSetting,
   resolveDiscoverMode,
 } from "../discover.js";
-import { DEFAULT_DISCOVER_PING_URL, getDiscoverPingUrl } from "../env.js";
+import {
+  DEFAULT_DISCOVER_PING_URL,
+  getDiscoverDirectoryBaseUrl,
+  getDiscoverPingUrl,
+} from "../env.js";
 
 function resolve(
   overrides: Partial<Parameters<typeof resolveDiscoverMode>[0]>,
@@ -138,6 +142,85 @@ describe("getDiscoverPingUrl", () => {
         DISCOVER_PING_URL: "https://directory.example/api/discover/ping",
       }),
     ).toBe("https://directory.example/api/discover/ping");
+  });
+
+  // Naming the directory twice is what let a hosted deployment announce its
+  // blogs to jant.me, which had never heard of them.
+  it("announces to the control plane that hosts this deployment", () => {
+    expect(
+      getDiscoverPingUrl({
+        HOSTED_CONTROL_PLANE_BASE_URL: "https://cloud.example",
+      }),
+    ).toBe("https://cloud.example/api/discover/ping");
+  });
+
+  // Server-to-server, like every other core to control-plane call.
+  it("prefers the control plane's internal address", () => {
+    expect(
+      getDiscoverPingUrl({
+        HOSTED_CONTROL_PLANE_BASE_URL: "https://cloud.example",
+        HOSTED_CONTROL_PLANE_INTERNAL_BASE_URL: "http://127.0.0.1:3300",
+      }),
+    ).toBe("http://127.0.0.1:3300/api/discover/ping");
+  });
+
+  it("lets an explicit directory override the control plane", () => {
+    expect(
+      getDiscoverPingUrl({
+        DISCOVER_PING_URL: "https://directory.example/api/discover/ping",
+        HOSTED_CONTROL_PLANE_BASE_URL: "https://cloud.example",
+      }),
+    ).toBe("https://directory.example/api/discover/ping");
+  });
+
+  it("still announces nowhere when a hosted deployment empties the binding", () => {
+    expect(
+      getDiscoverPingUrl({
+        DISCOVER_PING_URL: "",
+        HOSTED_CONTROL_PLANE_BASE_URL: "https://cloud.example",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("falls back to Jant's directory when the control plane URL is unusable", () => {
+    expect(
+      getDiscoverPingUrl({ HOSTED_CONTROL_PLANE_BASE_URL: "not a url" }),
+    ).toBe(DEFAULT_DISCOVER_PING_URL);
+  });
+});
+
+/**
+ * The address a browser opens, for the same directory the ping goes to. The
+ * two must never name different directories, which is why they share a source.
+ */
+describe("getDiscoverDirectoryBaseUrl", () => {
+  it("uses Jant's directory when nothing is configured", () => {
+    expect(getDiscoverDirectoryBaseUrl({})).toBe("https://jant.me/");
+  });
+
+  // The public address, not the internal one the ping uses: this ends up in an
+  // href, and `127.0.0.1` is not a directory anybody can visit.
+  it("links to the control plane's public address", () => {
+    expect(
+      getDiscoverDirectoryBaseUrl({
+        HOSTED_CONTROL_PLANE_BASE_URL: "https://cloud.example",
+        HOSTED_CONTROL_PLANE_INTERNAL_BASE_URL: "http://127.0.0.1:3300",
+      }),
+    ).toBe("https://cloud.example/");
+  });
+
+  it("follows an explicitly configured directory", () => {
+    expect(
+      getDiscoverDirectoryBaseUrl({
+        DISCOVER_PING_URL: "https://directory.example/api/discover/ping",
+      }),
+    ).toBe("https://directory.example/");
+  });
+
+  it("has nothing to link to when announcing is off", () => {
+    expect(
+      getDiscoverDirectoryBaseUrl({ DISCOVER_PING_URL: "" }),
+    ).toBeUndefined();
   });
 });
 
