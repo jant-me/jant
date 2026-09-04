@@ -1,9 +1,18 @@
 // @vitest-environment happy-dom
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const lazyEntries = vi.hoisted(() => ({
+  ensureCompose: vi.fn(async () => {}),
+}));
+
+vi.mock("../lazy-entries.js", () => lazyEntries);
+
 import {
+  ensureComposeDialog,
   getReplyRefreshTarget,
   getReplyTargetArticle,
+  readComposeDialogLabels,
 } from "../compose-launch.js";
 
 function getArticle(): HTMLElement {
@@ -165,5 +174,57 @@ describe("getReplyTargetArticle", () => {
     expect(getReplyTargetArticle(document)).toBe(
       getArticleByPostId("pst_single"),
     );
+  });
+});
+
+describe("ensureComposeDialog", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+    lazyEntries.ensureCompose.mockClear();
+  });
+
+  it("loads the composer's bundle before handing the element back", async () => {
+    document.body.innerHTML = `<jant-compose-dialog></jant-compose-dialog>`;
+
+    const dialog = await ensureComposeDialog();
+
+    expect(lazyEntries.ensureCompose).toHaveBeenCalledTimes(1);
+    expect(dialog).toBe(document.querySelector("jant-compose-dialog"));
+  });
+
+  it("loads nothing on a page without a composer", async () => {
+    expect(await ensureComposeDialog()).toBeNull();
+    expect(lazyEntries.ensureCompose).not.toHaveBeenCalled();
+  });
+});
+
+describe("readComposeDialogLabels", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("reads the server-rendered attribute before the element upgrades", () => {
+    document.body.innerHTML = `<jant-compose-dialog labels='{"addCollection":"Add Collection"}'></jant-compose-dialog>`;
+
+    expect(readComposeDialogLabels()?.addCollection).toBe("Add Collection");
+  });
+
+  it("prefers the upgraded element's property", () => {
+    document.body.innerHTML = `<jant-compose-dialog labels='{"addCollection":"stale"}'></jant-compose-dialog>`;
+    const dialog = document.querySelector(
+      "jant-compose-dialog",
+    ) as HTMLElement & {
+      labels?: unknown;
+    };
+    dialog.labels = { addCollection: "Add Collection" };
+
+    expect(readComposeDialogLabels()?.addCollection).toBe("Add Collection");
+  });
+
+  it("returns null without a composer or with unreadable labels", () => {
+    expect(readComposeDialogLabels()).toBeNull();
+
+    document.body.innerHTML = `<jant-compose-dialog labels="{not json"></jant-compose-dialog>`;
+    expect(readComposeDialogLabels()).toBeNull();
   });
 });

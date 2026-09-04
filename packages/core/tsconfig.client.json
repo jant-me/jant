@@ -11,6 +11,9 @@
   "include": [
     "src/client.ts",
     "src/client-auth.ts",
+    "src/client-compose.ts",
+    "src/client-settings.ts",
+    "src/client-manage.ts",
     "src/client-site.ts",
     "src/client/**/*.ts",
     "src/types/**/*.d.ts"

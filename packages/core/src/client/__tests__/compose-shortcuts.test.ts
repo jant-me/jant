@@ -1,6 +1,16 @@
 // @vitest-environment happy-dom
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// The composer's bundle loads on first use; the harness element below stands
+// in for the upgraded dialog, so loading is a no-op here.
+vi.mock("../lazy-entries.js", () => ({
+  ensureCompose: async () => {},
+  ensureSettings: async () => {},
+  ensureManage: async () => {},
+  loadEntriesForPage: () => {},
+}));
+
 import { __testOnly as composeDiscoveryTestOnly } from "../compose-discovery.js";
 import { __testOnly as composeShortcutsTestOnly } from "../compose-shortcuts.js";
 
@@ -22,6 +32,11 @@ function dispatchShortcut(
   });
   target.dispatchEvent(event);
   return event;
+}
+
+/** Let a shortcut's trip through the lazy loader settle. */
+async function flush(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function createComposeHarness(): ComposeHarness {
@@ -108,7 +123,7 @@ describe("compose shortcuts", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
   });
 
-  it("opens a collection-scoped composer on collection pages with n", () => {
+  it("opens a collection-scoped composer on collection pages with n", async () => {
     const composeEl = createComposeHarness();
 
     const collectionPage = document.createElement("div");
@@ -118,6 +133,8 @@ describe("compose shortcuts", () => {
 
     const event = dispatchShortcut(document, "n");
 
+    await flush();
+
     expect(event.defaultPrevented).toBe(true);
     expect(composeEl.openNew).toHaveBeenCalledWith({ collectionId: "col-2" });
   });
@@ -126,7 +143,8 @@ describe("compose shortcuts", () => {
     createComposeHarness();
 
     dispatchShortcut(document, "n");
-    await Promise.resolve();
+
+    await flush();
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
       composeDiscoveryTestOnly.COMPOSE_OPEN_SHORTCUT_DISCOVERY_API_PATH,
@@ -139,7 +157,7 @@ describe("compose shortcuts", () => {
     });
   });
 
-  it("ignores n while focus is inside an input", () => {
+  it("ignores n while focus is inside an input", async () => {
     const composeEl = createComposeHarness();
 
     const input = document.createElement("textarea");
@@ -147,10 +165,12 @@ describe("compose shortcuts", () => {
 
     dispatchShortcut(input, "n");
 
+    await flush();
+
     expect(composeEl.openNew).not.toHaveBeenCalled();
   });
 
-  it("opens a reply composer for the latest thread post on detail pages with r", () => {
+  it("opens a reply composer for the latest thread post on detail pages with r", async () => {
     const composeEl = createComposeHarness();
 
     const postView = document.createElement("div");
@@ -201,6 +221,8 @@ describe("compose shortcuts", () => {
 
     const event = dispatchShortcut(document, "r");
 
+    await flush();
+
     expect(event.defaultPrevented).toBe(true);
     expect(composeEl.openReply).toHaveBeenCalledTimes(1);
 
@@ -224,7 +246,7 @@ describe("compose shortcuts", () => {
     );
   });
 
-  it("targets the latest thread post for reply shortcuts even when an older post is hovered", () => {
+  it("targets the latest thread post for reply shortcuts even when an older post is hovered", async () => {
     const composeEl = createComposeHarness();
     const { hoveredArticle } = renderThreadDetailPage();
     const originalQuerySelector = document.querySelector.bind(document);
@@ -239,6 +261,8 @@ describe("compose shortcuts", () => {
     );
 
     const event = dispatchShortcut(document, "r");
+
+    await flush();
 
     expect(event.defaultPrevented).toBe(true);
     expect(composeEl.openReply).toHaveBeenCalledWith(
@@ -265,7 +289,8 @@ describe("compose shortcuts", () => {
     );
 
     const event = dispatchShortcut(document, "e");
-    await Promise.resolve();
+
+    await flush();
 
     expect(event.defaultPrevented).toBe(true);
     expect(composeEl.openEdit).toHaveBeenCalledWith("post-hovered");
@@ -279,7 +304,8 @@ describe("compose shortcuts", () => {
     globalThis.history.pushState({}, "", "/about?edit=1");
 
     composeShortcutsTestOnly.openEditFromQueryParam();
-    await Promise.resolve();
+
+    await flush();
 
     expect(composeEl.openEdit).toHaveBeenCalledWith("post-current");
     expect(window.location.pathname).toBe("/about");
@@ -296,7 +322,8 @@ describe("compose shortcuts", () => {
     globalThis.history.pushState({}, "", "/preview/draft-post?edit=1");
 
     composeShortcutsTestOnly.openEditFromQueryParam();
-    await Promise.resolve();
+
+    await flush();
 
     expect(composeEl.openDraft).toHaveBeenCalledWith("post-current");
     expect(composeEl.openEdit).not.toHaveBeenCalled();
@@ -304,7 +331,7 @@ describe("compose shortcuts", () => {
     expect(window.location.search).toBe("");
   });
 
-  it("keeps using the hovered post for reply shortcuts in the timeline", () => {
+  it("keeps using the hovered post for reply shortcuts in the timeline", async () => {
     const composeEl = createComposeHarness();
     const article = document.createElement("article");
     article.dataset.post = "";
@@ -331,6 +358,8 @@ describe("compose shortcuts", () => {
     );
 
     const event = dispatchShortcut(document, "r");
+
+    await flush();
 
     expect(event.defaultPrevented).toBe(true);
     expect(composeEl.openReply).toHaveBeenCalledTimes(1);

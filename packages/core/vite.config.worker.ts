@@ -16,6 +16,23 @@ import { buildVersion, pkg, swcPlugin } from "./vite.shared";
 
 const dir = import.meta.dirname;
 
+type ClientManifest = Record<string, { file?: string; imports?: string[] }>;
+
+/** The client build manifest, or null before the client has been built. */
+function readClientManifest(): ClientManifest | null {
+  const manifestPath = resolve(dir, "dist/client/.vite/manifest.json");
+  if (!existsSync(manifestPath)) return null;
+  try {
+    return JSON.parse(readFileSync(manifestPath, "utf-8")) as ClientManifest;
+  } catch {
+    return null;
+  }
+}
+
+function toAssetPath(file: string): string {
+  return `${ASSET_BASE_PATH}/${file.replace(/^_assets\//, "")}`;
+}
+
 /**
  * Read the client build manifest to get a content-hashed asset file path.
  * Returns a `/_assets/<fallbackName><ext>` fallback when the manifest is not yet built.
@@ -25,19 +42,37 @@ function readClientManifestFile(
   fallbackName: string,
   ext: string,
 ): string {
-  const manifestPath = resolve(dir, "dist/client/.vite/manifest.json");
-  if (existsSync(manifestPath)) {
-    try {
-      const manifest = JSON.parse(
-        readFileSync(manifestPath, "utf-8"),
-      ) as Record<string, { file?: string }>;
-      const file = manifest[entryKey]?.file;
-      if (file) return `${ASSET_BASE_PATH}/${file.replace(/^_assets\//, "")}`;
-    } catch {
-      // Fall through to default
-    }
+  const file = readClientManifest()?.[entryKey]?.file;
+  return file ? toAssetPath(file) : `${ASSET_BASE_PATH}/${fallbackName}${ext}`;
+}
+
+/**
+ * Every file a page has to fetch before an entry can run: the entry chunk and,
+ * transitively, the chunks it imports statically. The layout emits these as
+ * `modulepreload` links so an entry loaded on demand is already cached when
+ * it is needed — browsers do not reliably preload a module's own imports.
+ */
+function readClientManifestPreload(
+  entryKey: string,
+  fallbackName: string,
+): string[] {
+  const manifest = readClientManifest();
+  if (!manifest?.[entryKey]?.file) {
+    return [`${ASSET_BASE_PATH}/${fallbackName}.js`];
   }
-  return `${ASSET_BASE_PATH}/${fallbackName}${ext}`;
+  const files: string[] = [];
+  const seen = new Set<string>();
+  const pending = [entryKey];
+  while (pending.length > 0) {
+    const key = pending.pop()!;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const chunk = manifest[key];
+    if (!chunk?.file) continue;
+    files.push(toAssetPath(chunk.file));
+    pending.push(...(chunk.imports ?? []));
+  }
+  return files;
 }
 
 const clientJsFile = readClientManifestFile("src/client.ts", "client", ".js");
@@ -45,6 +80,10 @@ const clientAuthJsFile = readClientManifestFile(
   "src/client-auth.ts",
   "client-auth",
   ".js",
+);
+const clientComposePreload = readClientManifestPreload(
+  "src/client-compose.ts",
+  "client-compose",
 );
 const clientCssFile = readClientManifestFile("src/style.css", "client", ".css");
 const clientCjkCssFile = readClientManifestFile(
@@ -76,6 +115,7 @@ export default defineConfig({
     __JANT_VERSION__: JSON.stringify(buildVersion),
     __CLIENT_JS_FILE__: JSON.stringify(clientJsFile),
     __CLIENT_AUTH_JS_FILE__: JSON.stringify(clientAuthJsFile),
+    __CLIENT_COMPOSE_PRELOAD__: JSON.stringify(clientComposePreload),
     __CLIENT_CSS_FILE__: JSON.stringify(clientCssFile),
     __CLIENT_CJK_CSS_FILE__: JSON.stringify(clientCjkCssFile),
     __CLIENT_CJK_TC_CSS_FILE__: JSON.stringify(clientCjkTcCssFile),

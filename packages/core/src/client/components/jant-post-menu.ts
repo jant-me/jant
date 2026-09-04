@@ -22,6 +22,10 @@ import { readErrorMessage } from "../json.js";
 import { publicPath } from "../runtime-paths.js";
 import { looksLikeAddress } from "../../lib/url.js";
 import { pickPost } from "../post-picker.js";
+import {
+  ensureComposeDialog,
+  readComposeDialogLabels,
+} from "../compose-launch.js";
 import type { PostPickerResult } from "./jant-post-picker.js";
 import {
   applyItemOrder,
@@ -717,8 +721,7 @@ export class JantPostMenu extends LitElement {
     if (!data) return;
     this.#close({ restoreFocus: false });
 
-    const composeEl = document.querySelector("jant-compose-dialog") as
-      import("./jant-compose-dialog.js").JantComposeDialog | null;
+    const composeEl = await ensureComposeDialog();
     if (composeEl) {
       await composeEl.openTranslation(data.threadId, tag);
       return;
@@ -1013,11 +1016,7 @@ export class JantPostMenu extends LitElement {
     const postId = this._data.id;
     this.#close({ restoreFocus: false });
 
-    const dialog = document.getElementById(
-      "compose-dialog",
-    ) as HTMLDialogElement | null;
-    const composeEl = dialog?.querySelector("jant-compose-dialog") as
-      import("./jant-compose-dialog.js").JantComposeDialog | null;
+    const composeEl = await ensureComposeDialog();
     if (composeEl) {
       await composeEl.openEdit(postId);
     }
@@ -1482,24 +1481,23 @@ export class JantPostMenu extends LitElement {
     }
   }
 
-  /** Get collection form labels from the compose dialog (already on the page) */
+  /** Collection form labels the server rendered onto the compose dialog. */
   #getCollectionFormLabels() {
-    const composeEl = document.querySelector("jant-compose-dialog") as
-      import("./jant-compose-dialog.js").JantComposeDialog | null;
-    return composeEl?.labels?.collectionFormLabels ?? null;
+    return readComposeDialogLabels()?.collectionFormLabels ?? null;
   }
 
   #getAddCollectionLabel() {
-    const composeEl = document.querySelector("jant-compose-dialog") as
-      import("./jant-compose-dialog.js").JantComposeDialog | null;
-    return composeEl?.labels?.addCollection ?? "Add Collection";
+    return readComposeDialogLabels()?.addCollection ?? "Add Collection";
   }
 
+  /**
+   * The composer reads its collections from server-rendered markup, so a
+   * collection created here would be missing from it until the next page
+   * load. Loading the composer to refresh it is the price of staying right.
+   */
   async #refreshComposeCollections() {
-    const composeEl = document.querySelector("jant-compose-dialog") as {
-      refreshCollections?: () => Promise<boolean>;
-    } | null;
-    await composeEl?.refreshCollections?.();
+    const composeEl = await ensureComposeDialog();
+    await composeEl?.refreshCollections();
   }
 
   #getVisibilityLabel(visibility: string) {
