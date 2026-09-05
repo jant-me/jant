@@ -86,6 +86,11 @@ const clientComposePreload = readClientManifestPreload(
   "client-compose",
 );
 const clientCssFile = readClientManifestFile("src/style.css", "client", ".css");
+const clientAuthCssFile = readClientManifestFile(
+  "src/style-author.css",
+  "client-author",
+  ".css",
+);
 const clientCjkCssFile = readClientManifestFile(
   "src/style-cjk.css",
   "client-cjk",
@@ -117,6 +122,7 @@ export default defineConfig({
     __CLIENT_AUTH_JS_FILE__: JSON.stringify(clientAuthJsFile),
     __CLIENT_COMPOSE_PRELOAD__: JSON.stringify(clientComposePreload),
     __CLIENT_CSS_FILE__: JSON.stringify(clientCssFile),
+    __CLIENT_AUTHOR_CSS_FILE__: JSON.stringify(clientAuthCssFile),
     __CLIENT_CJK_CSS_FILE__: JSON.stringify(clientCjkCssFile),
     __CLIENT_CJK_TC_CSS_FILE__: JSON.stringify(clientCjkTcCssFile),
     __CLIENT_CJK_JP_CSS_FILE__: JSON.stringify(clientCjkJpCssFile),

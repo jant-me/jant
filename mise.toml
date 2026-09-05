@@ -57,6 +57,14 @@ run = "pnpm --filter @jant/core build"
 description = "Build @jant/core library for publishing"
 run = "pnpm --filter @jant/core build:lib"
 
+[tasks.build-site]
+description = "Rebuild the exported theme's site bundle (commit the result)"
+# Writes packages/core/src/services/export-theme/assets/client-site.{js,css},
+# which are committed so the worker build can ?raw-inline them. Run this after
+# touching anything src/client-site.ts pulls in; `check-site-bundle` fails CI
+# when the committed bytes fall behind.
+run = "pnpm --filter @jant/core build:site"
+
 [tasks.build-packages]
 description = "Build all publishable packages"
 run = """
@@ -173,6 +181,22 @@ run = "npx prettier --check ."
 description = "Check user-facing copy against the writing style rules"
 run = "node scripts/check-copy.mjs"
 
+[tasks.check-site-bundle]
+description = "Check the exported theme's site bundle is in sync with its sources"
+# The bundle is a committed build output, so nothing fails when it goes stale —
+# exported themes just quietly ship older reading-surface code than the site.
+# That has now happened twice (8d14ca06, 4f8f16bb), which is why this is a gate
+# rather than a line in AGENTS.md.
+run = """
+pnpm --filter @jant/core build:site
+if ! git diff --exit-code packages/core/src/services/export-theme/assets/; then
+  echo ""
+  echo "The exported theme's site bundle is out of sync!"
+  echo "Run 'mise run build-site' locally and commit the changes."
+  exit 1
+fi
+"""
+
 # =============================================================================
 # CI (full gate)
 # =============================================================================
@@ -189,6 +213,7 @@ mise run check-lint
 mise run check-tests
 mise run check-copy
 mise run i18n-check
+mise run check-site-bundle
 if [[ -n "${PG_SMOKE_DATABASE_URL:-}" ]]; then
   mise run check-pg-smoke
 fi

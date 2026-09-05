@@ -26,6 +26,7 @@ import type { LanguageAlternate } from "../../lib/view-language.js";
 import { toLanguagePrefix } from "../../i18n/locales.js";
 import {
   CLIENT_AUTH_JS_FILE,
+  CLIENT_AUTHOR_CSS_FILE,
   CLIENT_COMPOSE_PRELOAD,
   CLIENT_CJK_CSS_FILE,
   CLIENT_CJK_JP_CSS_FILE,
@@ -265,6 +266,16 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
               ? assetPath("/src/style-cjk-kr.css")
               : toPublicAssetPath(CLIENT_CJK_KR_CSS_FILE, assetBasePath)
             : null;
+  // The composer, the editor chrome, the settings pages and the draft preview
+  // bar are the bulk of the hand-written component CSS, and none of it renders
+  // for a signed-out visitor. Linking it only here keeps it off the critical
+  // path of every public page.
+  const authorStylesheetPath =
+    resolvedClientBundle === "full"
+      ? IS_VITE_DEV
+        ? assetPath("/src/style-author.css")
+        : toPublicAssetPath(CLIENT_AUTHOR_CSS_FILE, assetBasePath)
+      : null;
   const clientScriptPath = IS_VITE_DEV
     ? resolvedClientBundle === "full"
       ? assetPath("/src/client-auth.ts")
@@ -545,6 +556,9 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
           />
           {cjkStylesheetPath && (
             <link rel="stylesheet" href={cjkStylesheetPath} />
+          )}
+          {authorStylesheetPath && (
+            <link rel="stylesheet" href={authorStylesheetPath} />
           )}
           {/* Critical inline style: prevent mobile nav jitter by applying
               responsive header layout before external CSS/JS loads */}

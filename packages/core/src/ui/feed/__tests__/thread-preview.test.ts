@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import type { Context } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
 import { describe, expect, it } from "vitest";
+import { readComponentCss } from "../../../__tests__/helpers/component-css.js";
 import { I18nProvider } from "../../../i18n/context.js";
 import { createI18n } from "../../../i18n/i18n.js";
 import type { PostView, TimelineItemView } from "../../../types.js";
@@ -156,10 +156,7 @@ describe("getThreadPreviewState", () => {
   });
 
   it("keeps thread preview items shrinkable within the grid track", () => {
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
 
     expect(css).toMatch(
       /\.thread-item\s*\{[\s\S]*min-width:\s*0;[\s\S]*max-width:\s*100%;/,
@@ -167,10 +164,7 @@ describe("getThreadPreviewState", () => {
   });
 
   it("adds extra mobile inset before the thread rail reaches the viewport edge", () => {
-    const css = readFileSync(
-      new URL("../../../styles/ui.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
 
     expect(css).toMatch(
       /@media\s*\(max-width:\s*760px\)\s*\{[\s\S]*\.thread-group-preview,\s*\.thread-group-detail\s*\{[\s\S]*--site-thread-rail-indent:\s*8px;[\s\S]*--site-thread-rail-line-left:\s*-11px;/,

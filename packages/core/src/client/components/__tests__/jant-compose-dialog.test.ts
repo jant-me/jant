@@ -1,8 +1,7 @@
 // @vitest-environment happy-dom
 
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { readComponentCss } from "../../../__tests__/helpers/component-css.js";
 import type { Editor } from "@tiptap/core";
 import { MAX_THREAD_POSTS } from "../../../types.js";
 
@@ -1535,7 +1534,7 @@ describe("JantComposeDialog", () => {
 
     // Inline coordinates only mean anything if the panel is out of the
     // scroller — `position: absolute` here is the bug, not a style choice.
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
     expect(css).toMatch(
       /\.compose-post-meta-panel\s*\{\s*position:\s*fixed;[\s\S]*max-height:\s*var\(--compose-post-meta-panel-max-height,\s*none\);\s*overflow-y:\s*auto;/,
     );
@@ -5189,7 +5188,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("scrolls in exactly one place across every compose mode", async () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // `.compose-scroll` owns the scrolling for single-post, reply and thread
     // alike. Anything nested inside it that scrolls on its own is the bug this
@@ -5216,7 +5215,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("lets attachment previews take the room the pinned toolbar used to need", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     expect(css).toMatch(
       /\.compose-attachment-img\s*\{[\s\S]*max-height:\s*min\(420px,\s*46dvh\);/,
@@ -5238,7 +5237,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("gives a card in the strip the same height as the pictures beside it", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // A card is chrome, not content: it fills the height a picture sets, so a
     // mixed strip reads as one row and every control row lands on one line.
@@ -5274,7 +5273,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("shows the replied-to post at the same scale as the reply", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // Same ceiling as the composer's own previews — the parent is not a
     // thumbnail strip.
@@ -5299,7 +5298,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("keeps reply compose tools inside the editor's text column", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // `flex: 1` on the editor is horizontal — it claims the width the rail dot
     // leaves. Height comes from content.
@@ -5350,7 +5349,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("opens every compose text surface at a floor stated in lines", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // Two lines for the editor, four for the quote — as multiples of the
     // leading, not pixels, so the floor follows the type instead of going
@@ -5368,7 +5367,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("runs the thread rail from the first dot to the last post's, and no further", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // Drawn per row rather than as one strip down the layout, which is what
     // lets both ends be trimmed back to a dot.
@@ -5395,7 +5394,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("starts every compose row's ink on one text column", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // One knob for the column itself, read by every row rather than restated
     // as a literal per row.
@@ -5445,7 +5444,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("declares one marker vocabulary for the compose and reading rails", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // Both rails draw the same dot; only the surface behind it differs.
     // `[^}]*` rather than `[\s\S]*` throughout: a greedy any-char run walks past
@@ -5503,7 +5502,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("punches the dot's gap with the surface colour on both rails", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // Compose stops at the punch-out; reading layers its ring inside the same
     // radius, so the outermost layer — the one that breaks the rail line — is
@@ -5527,7 +5526,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("marks the post a view is about with an accent fill, not a bigger dot", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // Feed hero, curated highlight and the opened detail post share one rule,
     // matching compose's `.is-current`. Size is not a second signal.
@@ -5553,7 +5552,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("centres every rail child on the line by giving them a shared track", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // The line's x is derived from the track, never from a dot's own size — a
     // hardcoded half-marker is what put the line down the dot's edge before.
@@ -5578,7 +5577,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("accents the dot of the post holding the cursor, not every editor row", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     // Which selector carries the highlight — the colour itself is pinned by
     // "marks the post a view is about…", so this stays token-agnostic.
@@ -5623,7 +5622,7 @@ describe("JantComposeDialog", () => {
   });
 
   it("keeps passive footnote references quiet until the editor selects them", () => {
-    const css = readFileSync(resolve("src/styles/ui.css"), "utf8");
+    const css = readComponentCss();
 
     expect(css).toMatch(
       /\.compose-tiptap-body \.tiptap \.tiptap-footnote-reference\s*\{[^}]*color:\s*var\(--site-footnote-marker\);/,
