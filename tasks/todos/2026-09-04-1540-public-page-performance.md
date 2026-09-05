@@ -60,6 +60,39 @@ payload we choose to ship.
       12,694 on `client-cjk.css`. Across `_assets`: 23.6 MB -> 18.2 MB.
       **This one change beats both stylesheet splits combined** (which saved
       26,797 at the CDN's own compression level) and carries no maintenance.
+- [x] 6. `private, no-store` is now `private, no-cache` for anonymous
+      responses; a signed-in author keeps `no-store`
+      (`middleware/cache-control.ts`). `private` is what keeps shared caches
+      out, and it is untouched — this only lets the browser hold its own copy.
+      The win is not the 304s this item originally asked for: `no-store` also
+      **disables the browser's back/forward cache**, so going back re-requested
+      and re-rendered the page instead of restoring it instantly. Measured with
+      `PerformanceNavigationTiming.notRestoredReasons` on a back navigation:
+
+      | | reasons bfcache was refused |
+              | --- | --- |
+              | before | `masked`, `response-cache-control-no-store`, `websocket`, `websocket-used-with-ccns` |
+              | after | `masked`, `websocket` |
+
+              The remaining `websocket` is Vite dev's HMR channel, which production
+              does not have — the reader bundle opens no `EventSource` or `WebSocket`
+              of its own (checked in the built `client.js`).
+
+              An author keeps `no-store` on purpose: the back/forward cache restores a
+              whole page snapshot without asking the server, so an authenticated view
+              would survive signing out — on a shared machine that shows the previous
+              session. Readers are the traffic that matters for this anyway.
+
+              **ETag deliberately not added.** Under `no-cache` the browser still
+              revalidates on every navigation and the server still renders in full, so
+              an ETag would save only the ~9 KB gzipped HTML transfer, not the TTFB.
+              Against that it needs a cache key covering every render input —
+              `isAuthenticated`, page language and CJK font profile, theme and font
+              theme, custom CSS and head HTML, `CORE_VERSION`, nav, collections, site
+              settings, content — where one missed input is a wrong 304 in someone's
+              browser, `private` so it reproduces nowhere else. Bad trade; the bfcache
+              win above needed none of it.
+
 - [x] 4. Both images that skipped `getImageUrl` now go through it:
       `lib/media-helpers.ts` sizes the timeline video poster the way
       `lib/view.ts` already did (a raw 244 KB PNG on the live homepage), and
@@ -69,7 +102,7 @@ payload we choose to ship.
 
 ## Verified
 
-- `mise run check-tests`: 304 files, 3,977 tests, all passing. New coverage:
+- `mise run check-tests`: 304 files, 3,979 tests, all passing. New coverage:
   reader vs author footers and badges, `buildMediaMap` poster sizing, avatar
   thumb derivation with and without a configured transform, and the stylesheet
   split (`src/__tests__/stylesheet-audience.test.ts` plus the `BaseLayout`
@@ -98,11 +131,6 @@ payload we choose to ship.
 - [ ] 5. `content-visibility: auto` + `contain-intrinsic-size` on off-screen
       timeline items. Worth re-measuring after 1 and 2 — a 25-post feed may no
       longer be tall enough to justify it.
-- [ ] 6. Revisit `private, no-store` (`middleware/cache-control.ts:36`).
-      The auth-variant reasoning is right, but `no-store` also forbids the
-      browser's own copy, so back/forward and repeat visits re-download and
-      re-render. `private, no-cache` + ETag keeps shared caches out and lets
-      repeat visits be 304s.
 - [ ] 7. Small: `preconnect` to the asset origin in `<head>`; Caddy's
       `encode gzip zstd` hands Chrome gzip (61.5 KB) instead of zstd (57 KB) —
       that one lives in `/srv/caddy/config/snippets/cache.caddy`, not in core.
