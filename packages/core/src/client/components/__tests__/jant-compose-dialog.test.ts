@@ -5309,7 +5309,7 @@ describe("JantComposeDialog", () => {
       /\.compose-reply-compose-layout\s+\.compose-thread-post-header\s*\+\s*\.compose-body\s*\{[\s\S]*padding-top:\s*12px;/,
     );
     expect(css).toMatch(
-      /@media \(max-width:\s*760px\),\s*\(hover:\s*none\) and \(pointer:\s*coarse\)\s*\{[\s\S]*\.compose-thread-layout\s*\{[\s\S]*padding-top:\s*0\.75rem;/,
+      /@media \(max-width:\s*699px\),\s*\(hover:\s*none\) and \(pointer:\s*coarse\)\s*\{[\s\S]*\.compose-thread-layout\s*\{[\s\S]*padding-top:\s*0\.75rem;/,
     );
     expect(css).toMatch(
       /\.compose-dialog,[\s\S]*\.compose-page-shell\s*>\s*jant-compose-dialog\s*\{[\s\S]*--compose-quote-input-size:\s*var\(--type-content-subtitle\);[\s\S]*--compose-quote-input-leading:\s*1\.32;/,

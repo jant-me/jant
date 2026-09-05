@@ -53,7 +53,7 @@
     margin-right: auto;
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 699px) {
     .site-page > header,
     .site-page > main,
     .site-page > footer,
@@ -1177,7 +1177,7 @@
     gap: clamp(1.25rem, 3vw, 1.75rem);
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 699px) {
     .collections-page-shell {
       width: 100%;
     }
@@ -2263,7 +2263,7 @@
     color: inherit;
   }
 
-  @media (max-width: 767px) {
+  @media (max-width: 699px) {
     .collections-page-actions {
       margin-left: 0;
     }
@@ -3015,7 +3015,7 @@
     --site-thread-rail-line-left: -27px;
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 699px) {
     .thread-group-preview,
     .thread-group-detail {
       --site-thread-rail-indent: 8px;
@@ -4859,7 +4859,7 @@
     }
   }
 
-  @media (max-width: 760px), (hover: none) and (pointer: coarse) {
+  @media (max-width: 699px), (hover: none) and (pointer: coarse) {
     .post-menu-footer {
       gap: 12px;
     }
@@ -5219,7 +5219,12 @@
     width: 100%;
   }
 
-  @media (max-width: 30rem) {
+  /* 480px, not the 30rem this used to say. A `rem` in a media query resolves
+     against the initial font-size, never the 15px this document sets on
+     `html`, so the two were already the same number — but only by accident,
+     and the next person to change the root would have moved one and not the
+     other. Stated in the ledger's own unit. */
+  @media (max-width: 480px) {
     .smart-condition-row {
       grid-template-columns: minmax(0, 1fr) auto;
     }
@@ -5567,7 +5572,7 @@
     font-size: var(--type-xs);
   }
 
-  @media (max-width: 760px) {
+  @media (max-width: 699px) {
     .archive-chip-label-collapsible {
       display: none;
     }
@@ -5679,7 +5684,7 @@
     }
   }
 
-  @media (max-width: 760px), (hover: none) and (pointer: coarse) {
+  @media (max-width: 699px), (hover: none) and (pointer: coarse) {
     .archive-chip {
       gap: 0.42rem;
       height: 2.25rem;
