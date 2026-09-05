@@ -8,12 +8,21 @@
  * bucket — they are immutable. Non-hashed files (e.g. CSS in older builds)
  * are always uploaded.
  *
+ * Text assets are uploaded brotli-compressed at maximum quality, with
+ * `Content-Encoding: br`. The CDN in front of the bucket compresses at a fixed
+ * low quality — measured as brotli q4, which is worse than its own gzip — and
+ * offers no way to raise it, so the only route to q11 is to compress here and
+ * store the result. A client that cannot take brotli is unaffected: the edge
+ * decompresses and re-encodes for it (verified against R2 behind a Cloudflare
+ * custom domain: `br` is passed through, `gzip` is re-encoded, `identity` is
+ * decompressed, all three byte-identical after decoding).
+ *
  * Intended CI order: build → upload-assets → deploy container
  */
 
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, relative, extname } from "node:path";
-import { createReadStream } from "node:fs";
+import { brotliCompressSync, constants } from "node:zlib";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -39,6 +48,59 @@ function getContentType(filePath) {
   return (
     CONTENT_TYPES[extname(filePath).toLowerCase()] ?? "application/octet-stream"
   );
+}
+
+/**
+ * Extensions worth pre-compressing. Fonts (woff2), images and icons already
+ * carry their own compression, and running brotli over them costs build time
+ * for nothing — usually for a slightly larger file.
+ */
+const COMPRESSIBLE_EXTENSIONS = new Set([
+  ".js",
+  ".css",
+  ".json",
+  ".map",
+  ".svg",
+  ".txt",
+  ".html",
+]);
+
+/**
+ * Brotli-compress an asset for storage, at a quality only a build can afford.
+ *
+ * Quality 11 is far too slow to run per request, which is why CDNs compress
+ * lower. Here it runs once per file per release, and every visitor gets the
+ * result.
+ *
+ * @param {string} filePath - Source path, used only for its extension.
+ * @param {Buffer} body - The file's bytes.
+ * @returns {Buffer | null} The compressed body, or `null` when the type is not
+ * worth compressing or compression failed to shrink it — upload `body` as-is
+ * and omit `Content-Encoding` in that case.
+ * @example
+ * const packed = compressForUpload("client.css", body);
+ * // packed.length < body.length, or null for a .woff2
+ */
+export function compressForUpload(filePath, body) {
+  if (!COMPRESSIBLE_EXTENSIONS.has(extname(filePath).toLowerCase())) {
+    return null;
+  }
+  const compressed = brotliCompressSync(body, {
+    params: {
+      [constants.BROTLI_PARAM_QUALITY]: constants.BROTLI_MAX_QUALITY,
+      [constants.BROTLI_PARAM_SIZE_HINT]: body.length,
+    },
+  });
+  // Tiny or already-dense files can come back bigger. Storing that would make
+  // every request pay for the encoding header and gain nothing.
+  return compressed.length < body.length ? compressed : null;
+}
+
+/** Human-readable byte count for the upload log. */
+function formatBytes(bytes) {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
+    : `${(bytes / 1024).toFixed(1)} KB`;
 }
 
 /**
@@ -115,6 +177,8 @@ export async function run(argv) {
       prefix: { type: "string", default: "_assets" },
       "source-dir": { type: "string" },
       "dry-run": { type: "boolean", default: false },
+      force: { type: "boolean", default: false },
+      "no-compress": { type: "boolean", default: false },
     },
   });
 
@@ -134,6 +198,12 @@ export async function run(argv) {
     );
     console.log(
       "      --dry-run             Print what would be uploaded without uploading",
+    );
+    console.log(
+      "      --force               Re-upload keys that already exist in the bucket",
+    );
+    console.log(
+      "      --no-compress         Upload raw bytes instead of brotli-compressed",
     );
     process.exit(0);
   }
@@ -171,6 +241,8 @@ export async function run(argv) {
   const sourceDir = values["source-dir"] ?? resolveDefaultSourceDir();
   const prefix = values.prefix.replace(/^\/+|\/+$/g, "");
   const dryRun = values["dry-run"];
+  const force = values.force;
+  const compress = !values["no-compress"];
 
   // Verify source directory exists
   try {
@@ -181,10 +253,12 @@ export async function run(argv) {
     process.exit(1);
   }
 
-  console.log(`Source:  ${sourceDir}`);
-  console.log(`Bucket:  ${bucket}`);
-  console.log(`Prefix:  ${prefix}`);
-  if (dryRun) console.log("Dry run: no files will be uploaded");
+  console.log(`Source:   ${sourceDir}`);
+  console.log(`Bucket:   ${bucket}`);
+  console.log(`Prefix:   ${prefix}`);
+  console.log(`Encoding: ${compress ? "brotli (quality 11)" : "raw"}`);
+  if (force) console.log("Force:    re-uploading keys that already exist");
+  if (dryRun) console.log("Dry run:  no files will be uploaded");
   console.log("");
 
   const s3 = await loadS3({
@@ -208,16 +282,32 @@ export async function run(argv) {
   for (const filePath of files) {
     const relPath = relative(sourceDir, filePath).replace(/\\/g, "/");
     const key = prefix ? `${prefix}/${relPath}` : relPath;
-    if (existingKeys.has(key)) {
+    if (existingKeys.has(key) && !force) {
       skipped++;
     } else {
       toUpload.push({ filePath, key });
     }
   }
 
+  // Bytes as stored, against bytes as built — what the compression bought.
+  let rawTotal = 0;
+  let storedTotal = 0;
+
+  /** Read a file and decide how it should be stored. */
+  async function prepare(filePath) {
+    const body = await readFile(filePath);
+    const packed = compress ? compressForUpload(filePath, body) : null;
+    rawTotal += body.length;
+    storedTotal += (packed ?? body).length;
+    return { body: packed ?? body, encoded: packed !== null };
+  }
+
   if (dryRun) {
-    for (const { key } of toUpload) {
-      console.log(`  [dry-run] upload ${key}`);
+    for (const { filePath, key } of toUpload) {
+      const { body, encoded } = await prepare(filePath);
+      console.log(
+        `  [dry-run] upload ${key} (${formatBytes(body.length)}${encoded ? ", br" : ""})`,
+      );
     }
     uploaded = toUpload.length;
   } else {
@@ -226,16 +316,17 @@ export async function run(argv) {
       const batch = toUpload.slice(i, i + CONCURRENCY);
       await Promise.all(
         batch.map(async ({ filePath, key }) => {
-          const body = await readFile(filePath);
+          const { body, encoded } = await prepare(filePath);
           const command = new s3.PutObjectCommand({
             Bucket: s3.bucket,
             Key: key,
             Body: body,
             ContentType: getContentType(filePath),
             CacheControl: "public, max-age=31536000, immutable",
+            ...(encoded ? { ContentEncoding: "br" } : {}),
           });
           await s3.client.send(command);
-          process.stdout.write(`  uploaded ${key}\n`);
+          process.stdout.write(`  uploaded ${key}${encoded ? " (br)" : ""}\n`);
           uploaded++;
         }),
       );
@@ -244,4 +335,11 @@ export async function run(argv) {
 
   console.log("");
   console.log(`Done. ${uploaded} uploaded, ${skipped} skipped.`);
+  if (compress && rawTotal > 0) {
+    const saved = rawTotal - storedTotal;
+    console.log(
+      `Stored ${formatBytes(storedTotal)} of ${formatBytes(rawTotal)} built ` +
+        `(${formatBytes(saved)} saved, ${((saved / rawTotal) * 100).toFixed(1)}%).`,
+    );
+  }
 }
