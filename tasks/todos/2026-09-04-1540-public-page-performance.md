@@ -48,6 +48,18 @@ payload we choose to ship.
       `styles/components-author.css`. `client.css` fell a further 420,302 ->
       380,027 bytes, 43.5 -> **39.4 KB brotli**. Cumulative from the start of
       this file: 58.0 -> 39.4 KB brotli, **-32%**.
+- [x] 3c. Assets upload brotli-compressed at quality 11
+      (`bin/commands/assets/upload.js`). The bucket sits behind a CDN that
+      compresses at a fixed low quality — measured as brotli q4 (50,359 bytes
+      for `client.css`), _worse_ than its own gzip (49,446) — with no setting
+      to raise it. Compressing at build time reaches 39,427. Verified against
+      the live bucket that a client without brotli is unaffected: the edge
+      decompresses and re-encodes, byte-identical after decoding.
+      First view for a signed-out reader (`client.css` + `client.js`):
+      70,309 -> **56,703 bytes**. A Chinese-language site saves a further
+      12,694 on `client-cjk.css`. Across `_assets`: 23.6 MB -> 18.2 MB.
+      **This one change beats both stylesheet splits combined** (which saved
+      26,797 at the CDN's own compression level) and carries no maintenance.
 - [x] 4. Both images that skipped `getImageUrl` now go through it:
       `lib/media-helpers.ts` sizes the timeline video poster the way
       `lib/view.ts` already did (a raw 244 KB PNG on the live homepage), and
@@ -57,7 +69,7 @@ payload we choose to ship.
 
 ## Verified
 
-- `mise run check-tests`: 303 files, 3,973 tests, all passing. New coverage:
+- `mise run check-tests`: 304 files, 3,977 tests, all passing. New coverage:
   reader vs author footers and badges, `buildMediaMap` poster sizing, avatar
   thumb derivation with and without a configured transform, and the stylesheet
   split (`src/__tests__/stylesheet-audience.test.ts` plus the `BaseLayout`
