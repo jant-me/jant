@@ -314,8 +314,9 @@ const ENTRY_BUDGETS_GZIP: Record<string, number> = {
  * and this stops it drifting back.
  */
 const STYLE_BUDGETS_GZIP: Record<string, number> = {
-  // Measured 2026-09 after the author split: 54.1 KB (was 73.8 KB before it).
-  "style.css": 60 * 1024,
+  // Measured 2026-09: 48.7 KB. Was 73.8 KB before the author split, 54.1 KB
+  // after `ui.css` was split and 48.7 KB after `components.css` followed.
+  "style.css": 54 * 1024,
 };
 
 const NODE_MODULES_PACKAGE_RE =

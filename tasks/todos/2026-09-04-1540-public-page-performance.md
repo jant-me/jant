@@ -42,6 +42,12 @@ payload we choose to ship.
       and linked by `BaseLayout` only when the page is authenticated. Built
       `client.css` fell 568,404 -> 422,441 bytes, 58.0 -> 43.5 KB brotli
       (-25%), off the critical path of every public page.
+- [x] 3b. `components.css` followed. 171 of its 205 rules (32 KB of 41 KB) were
+      the settings pages, the config editor, the navigation manager, the custom
+      URL manager, the dash chrome and the form skeletons; they moved to
+      `styles/components-author.css`. `client.css` fell a further 420,302 ->
+      380,027 bytes, 43.5 -> **39.4 KB brotli**. Cumulative from the start of
+      this file: 58.0 -> 39.4 KB brotli, **-32%**.
 - [x] 4. Both images that skipped `getImageUrl` now go through it:
       `lib/media-helpers.ts` sizes the timeline video poster the way
       `lib/view.ts` already did (a raw 244 KB PNG on the live homepage), and
@@ -51,7 +57,7 @@ payload we choose to ship.
 
 ## Verified
 
-- `mise run check-tests`: 305 files, 3,976 tests, all passing. New coverage:
+- `mise run check-tests`: 303 files, 3,973 tests, all passing. New coverage:
   reader vs author footers and badges, `buildMediaMap` poster sizing, avatar
   thumb derivation with and without a configured transform, and the stylesheet
   split (`src/__tests__/stylesheet-audience.test.ts` plus the `BaseLayout`
@@ -62,6 +68,12 @@ payload we choose to ship.
   elements over 34 computed properties each, zero differences. Cascade layers
   confirmed live — the author sheet's `@layer components` joins the layer
   `client.css` opens, so utilities still win.
+- The `components.css` split was A/B'd the same way over `/`, `/archive`,
+  `/collections`, `/settings`, `/settings/navigation`, `/settings/config` and
+  `/settings/custom-urls` — 2,869 elements, zero differences. That pass caught
+  one real cascade flip (`.config-editor-value-input`'s monospace declaration,
+  dead since `preset.css` overrode it, would have come back to life); a static
+  scan for the same shape across the whole tree found no others.
 - Local dev instance, same 15-post feed rendered both ways:
   anonymous 236 elements / 30 KB, author 587 elements / 66 KB. Anonymous
   carries 0 badges, 0 menu triggers, 0 reply triggers and exactly the one

@@ -9,36 +9,57 @@ import { resolve } from "node:path";
  */
 const STYLES_DIR = resolve(process.cwd(), "src/styles");
 
+/** Hand-written component CSS a signed-out visitor downloads. */
+const READER_SHEETS = ["ui.css", "components.css"] as const;
+
+/** Hand-written component CSS that only loads on an authenticated page. */
+const AUTHOR_SHEETS = ["ui-author.css", "components-author.css"] as const;
+
+function read(names: readonly string[]): string {
+  return names
+    .map((name) => readFileSync(resolve(STYLES_DIR, name), "utf8"))
+    .join("\n");
+}
+
 /**
- * The hand-written component CSS, both halves concatenated.
+ * Every `@layer components` rule Jant hand-writes, both audiences together.
  *
- * `styles/ui.css` carries what readers need and `styles/ui-author.css` the
- * composer, editor, settings and draft chrome that only loads once someone is
- * signed in. A test asserting that a rule is declared cares that it exists in
- * the component CSS, not which half it landed in — so moving a rule between
- * them must never break a test.
+ * `ui.css`/`components.css` carry what readers need; `ui-author.css` and
+ * `components-author.css` carry the composer, editor, settings, config editor
+ * and dash chrome that only load once someone is signed in. A test asserting
+ * that a rule is declared cares that it exists at all, not which half it
+ * landed in — so moving a rule between them must never break a test.
  *
- * @returns Every `@layer components` rule Jant hand-writes, as one string.
+ * @returns The concatenated contents of all four stylesheets.
  * @example
  * expect(readComponentCss()).toMatch(/\.compose-post-meta-panel\s*\{/);
  */
 export function readComponentCss(): string {
-  return [
-    readFileSync(resolve(STYLES_DIR, "ui.css"), "utf8"),
-    readFileSync(resolve(STYLES_DIR, "ui-author.css"), "utf8"),
-  ].join("\n");
+  return read([...READER_SHEETS, ...AUTHOR_SHEETS]);
 }
 
 /**
- * Only the reader half of the component CSS.
+ * Only the reader halves.
  *
  * Use when the point of the assertion is that a rule ships to signed-out
  * visitors — or, with a negative matcher, that it does not.
  *
- * @returns The contents of `styles/ui.css`.
+ * @returns The concatenated contents of `ui.css` and `components.css`.
  * @example
- * expect(readReaderCss()).not.toMatch(/\.compose-/);
+ * expect(readReaderCss()).not.toMatch(/\.compose-dialog\s*\{/);
  */
 export function readReaderCss(): string {
-  return readFileSync(resolve(STYLES_DIR, "ui.css"), "utf8");
+  return read(READER_SHEETS);
+}
+
+/**
+ * Only the author halves.
+ *
+ * @returns The concatenated contents of `ui-author.css` and
+ * `components-author.css`.
+ * @example
+ * expect(readAuthorCss()).toMatch(/\.settings-root\s*\{/);
+ */
+export function readAuthorCss(): string {
+  return read(AUTHOR_SHEETS);
 }

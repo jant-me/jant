@@ -6,6 +6,11 @@
  * plus every design token these rules reference; importing Tailwind again
  * would ship a second copy of all of it.
  *
+ * `@reference` is how the author half sees the theme without emitting it:
+ * `components-author.css` uses `@apply`, which needs Tailwind's utility and
+ * theme definitions in scope. A reference import resolves them and outputs
+ * nothing, so the layers stay in `client.css` where they already are.
+ *
  * The layer order below is the one `client.css` establishes. Layer names are
  * document-wide, so re-declaring it is a no-op there and only matters if this
  * sheet is ever parsed on its own — it keeps `@layer components` joining the
@@ -14,4 +19,9 @@
 
 @layer properties, theme, base, components, utilities;
 
+@reference "./style.css";
+
+/* Same relative order as `preset.css` imports their reader halves, so two
+   rules of equal specificity resolve the way they always have. */
+@import "./styles/components-author.css";
 @import "./styles/ui-author.css";

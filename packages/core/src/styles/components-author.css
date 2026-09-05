@@ -1,0 +1,1622 @@
+/**
+ * Author-only component styles
+ *
+ * The settings pages, the config editor, the navigation manager, the custom
+ * URL manager and the dash chrome — the half of `components.css` that only
+ * renders once someone is signed in. `BaseLayout` links this sheet only on
+ * authenticated pages, so a reader never downloads it.
+ *
+ * Same audience rule as `ui-author.css`: a selector belongs here when every one
+ * of its comma-separated parts names an author-only class. Unlike that file
+ * these rules use `@apply`, which is why `style-author.css` carries an
+ * `@reference` — see the comment there.
+ */
+
+@layer components {
+  .config-editor-page {
+    display: flex;
+    flex-direction: column;
+    width: min(54rem, 100%);
+    gap: clamp(1rem, 2vw, 1.25rem);
+    padding-bottom: 1rem;
+  }
+
+  .config-editor-toolbar,
+  .config-editor-search {
+    min-width: 0;
+  }
+
+  .config-editor-search {
+    position: relative;
+  }
+
+  .config-editor-search > svg {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 0.78rem;
+    transform: translateY(-50%);
+    color: var(--color-muted-foreground);
+    pointer-events: none;
+  }
+
+  .config-editor-search .config-editor-search-input {
+    width: 100%;
+    min-height: 2.65rem;
+    padding-left: 2.35rem;
+    border-radius: var(--radius);
+    font-family: var(--font-ui);
+  }
+
+  .config-editor-fallback .config-editor-search-input {
+    padding-left: 0.8rem;
+  }
+
+  .config-editor-toolbar-meta {
+    display: flex;
+    min-height: 1.85rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0.35rem 0.1rem 0.25rem;
+  }
+
+  .config-editor-count {
+    margin: 0;
+    color: var(--color-muted-foreground);
+    font-family: var(--font-ui);
+    font-size: var(--type-2xs);
+    line-height: 1.35;
+  }
+
+  .config-editor-modified-filter {
+    display: inline-flex;
+    min-height: 1.85rem;
+    align-items: center;
+    gap: 0.42rem;
+    color: var(--color-muted-foreground);
+    font-family: var(--font-ui);
+    font-size: var(--type-2xs);
+    cursor: pointer;
+    touch-action: manipulation;
+    white-space: nowrap;
+  }
+
+  .config-editor-modified-filter:hover,
+  .config-editor-modified-filter:focus-within {
+    color: var(--color-foreground);
+  }
+
+  .config-editor-modified-filter:focus-within {
+    outline: 2px solid color-mix(in srgb, var(--site-accent) 26%, transparent);
+    outline-offset: 2px;
+  }
+
+  .config-editor-list {
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    list-style: none;
+  }
+
+  .config-editor-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 18rem);
+    align-items: center;
+    gap: clamp(1.25rem, 3vw, 2.25rem);
+    min-width: 0;
+    padding: 0.88rem 0.1rem;
+    border-bottom: 1px solid
+      color-mix(in srgb, var(--color-border) 78%, transparent);
+  }
+
+  .config-editor-row:last-child {
+    border-bottom: 0;
+  }
+
+  .config-editor-row[aria-busy="true"] {
+    background: color-mix(in srgb, var(--site-accent) 2.5%, transparent);
+  }
+
+  .config-editor-copy,
+  .config-editor-value-column,
+  .config-editor-control-row {
+    min-width: 0;
+  }
+
+  .config-editor-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .config-editor-heading > label {
+    cursor: pointer;
+  }
+
+  .config-editor-key {
+    overflow-wrap: anywhere;
+    color: var(--color-foreground);
+    font-family: var(--font-mono);
+    font-size: var(--type-xs);
+    font-weight: var(--fw-medium);
+    line-height: 1.35;
+  }
+
+  .config-editor-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--color-muted-foreground);
+    font-family: var(--font-ui);
+    font-size: var(--type-2xs);
+    line-height: 1.3;
+  }
+
+  .config-editor-state::before {
+    width: 0.28rem;
+    height: 0.28rem;
+    flex: none;
+    border-radius: 999px;
+    background: currentColor;
+    content: "";
+  }
+
+  .config-editor-modified {
+    color: color-mix(in srgb, var(--site-accent) 72%, var(--color-foreground));
+  }
+
+  .config-editor-locked::before {
+    border-radius: 0.05rem;
+  }
+
+  .config-editor-description {
+    margin: 0.28rem 0 0;
+    color: var(--color-muted-foreground);
+    font-family: var(--font-ui);
+    font-size: var(--type-xs);
+    line-height: 1.42;
+    text-wrap: pretty;
+  }
+
+  .config-editor-value-column {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.28rem;
+  }
+
+  .config-editor-control-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 2rem;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .config-editor-control-row-select {
+    grid-template-columns: minmax(0, 1fr) 2rem;
+  }
+
+  .config-editor-control-row-number {
+    grid-template-columns: minmax(0, 8rem) 2rem;
+    justify-content: start;
+  }
+
+  .config-editor-control-row > input[role="switch"] {
+    justify-self: end;
+  }
+
+  .config-editor-control-row .config-editor-select,
+  .config-editor-value-input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    font-size: var(--type-xs);
+  }
+
+  /*
+   * Monospace applies to the select only, not to `.config-editor-value-input`.
+   * That input renders as `class="input config-editor-value-input"`, and
+   * `preset.css`'s UI-voice rule — `.input { font-family: var(--font-ui) }` —
+   * has the same specificity and has always come later, so a mono declaration
+   * on the bare class never won. Splitting this file moved it after
+   * `preset.css` and would have silently flipped the font, so the declaration
+   * is written where it actually applies instead.
+   *
+   * If the value inputs are meant to be monospace, that is a deliberate visual
+   * change and needs a selector that outranks `.input` — not a move.
+   */
+  .config-editor-control-row .config-editor-select {
+    font-family: var(--font-mono);
+  }
+
+  .config-editor-control-row .config-editor-select {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .config-editor-status {
+    align-self: flex-end;
+    color: var(--color-muted-foreground);
+    font-family: var(--font-ui);
+    font-size: var(--type-2xs);
+    line-height: 1.35;
+  }
+
+  .config-editor-status-saved {
+    color: color-mix(in srgb, var(--site-accent) 68%, var(--color-foreground));
+  }
+
+  .config-editor-status-error {
+    max-width: 100%;
+    color: var(--color-destructive);
+    text-align: right;
+    text-wrap: pretty;
+  }
+
+  .config-editor-reset {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .config-editor-reset:hover,
+  .config-editor-reset:focus-visible {
+    background: var(--color-muted);
+    color: var(--color-foreground);
+  }
+
+  .config-editor-reset:focus-visible,
+  .config-editor-open-control:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--site-accent) 28%, transparent);
+    outline-offset: 3px;
+  }
+
+  .config-editor-reset:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .config-editor-open-control {
+    display: flex;
+    min-width: 0;
+    min-height: 2.35rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 0.35rem 0.1rem;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .config-editor-linked-value {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--site-text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--type-xs);
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .config-editor-open-action {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--color-muted-foreground);
+    font-family: var(--font-ui);
+    font-size: var(--type-2xs);
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  .config-editor-open-control:hover .config-editor-linked-value,
+  .config-editor-open-control:hover .config-editor-open-action,
+  .config-editor-open-control:focus-visible .config-editor-linked-value,
+  .config-editor-open-control:focus-visible .config-editor-open-action {
+    color: var(--color-foreground);
+  }
+
+  .config-editor-fallback-value {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    padding-block: 0.35rem;
+    color: var(--site-text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--type-xs);
+    line-height: 1.4;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .config-editor-empty {
+    display: grid;
+    min-height: 9rem;
+    place-items: center;
+    padding: 2rem;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-muted-foreground);
+    font-family: var(--font-ui);
+    font-size: var(--type-sm);
+    line-height: 1.45;
+    text-align: center;
+  }
+
+  .config-editor-empty p {
+    max-width: 28rem;
+    margin: 0;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .config-editor-row .config-editor-reset {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .config-editor-row:hover .config-editor-reset,
+    .config-editor-row:focus-within .config-editor-reset {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+  @media (max-width: 760px) {
+    .config-editor-row {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: stretch;
+      gap: 0.62rem;
+      padding-block: 0.85rem;
+    }
+
+    .config-editor-control-row > input[role="switch"] {
+      justify-self: start;
+    }
+
+    .config-editor-fallback-value {
+      text-align: left;
+    }
+  }
+  .dash-header {
+    padding: 20px 0 0;
+  }
+  @media (min-width: 700px) {
+    .dash-header {
+      padding: 24px 0 0;
+    }
+  }
+
+  .dash-header-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 12px;
+  }
+
+  .dash-header-avatar-link {
+    flex-shrink: 0;
+    line-height: 0;
+  }
+
+  .dash-header-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+  }
+
+  .dash-header-avatar:is(img) {
+    object-fit: cover;
+  }
+
+  .dash-header-avatar-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: var(--type-2xs);
+    font-weight: var(--fw-semibold);
+    line-height: 1;
+  }
+
+  .dash-header-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .dash-header-nav-sep {
+    display: none;
+  }
+
+  .dash-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .dash-header-link {
+    font-size: var(--type-xs);
+    color: var(--color-muted-foreground);
+    transition: color 0.15s;
+
+    &:hover {
+      color: var(--color-foreground);
+    }
+  }
+
+  .dash-header-link-active {
+    color: var(--color-foreground);
+    font-weight: var(--fw-medium);
+  }
+
+  .dash-header-visit {
+    @apply flex items-center gap-3;
+    font-size: var(--type-sm);
+    color: var(--color-muted-foreground);
+    transition: color 0.15s;
+
+    &:hover {
+      color: var(--color-foreground);
+    }
+  }
+
+  .dash-header-visit-text {
+    display: none;
+  }
+  @media (min-width: 700px) {
+    .dash-header-visit-text {
+      display: inline;
+    }
+
+    .dash-header-visit-icon {
+      display: none;
+    }
+  }
+
+  .dash-header-menu-btn {
+    @apply flex items-center justify-center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius);
+    border: none;
+    background: transparent;
+    color: var(--color-muted-foreground);
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      background-color 0.15s;
+
+    &:hover {
+      color: var(--color-foreground);
+      background-color: var(--color-accent);
+    }
+  }
+
+  .dash-header-menu-btn + [data-popover] {
+    min-width: 170px;
+  }
+  .dash-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 0;
+    font-size: var(--type-base);
+    line-height: 1.35;
+  }
+
+  .dash-breadcrumb-parent {
+    color: var(--color-muted-foreground);
+    transition: color 0.15s;
+
+    &:hover {
+      color: var(--color-foreground);
+    }
+  }
+
+  .dash-breadcrumb-sep {
+    color: var(--color-muted-foreground);
+    opacity: 0.5;
+  }
+
+  .dash-breadcrumb-current {
+    color: var(--color-foreground);
+    font-weight: var(--fw-medium);
+  }
+  .settings-root {
+    @apply flex flex-col;
+    width: var(--layout-content-width);
+    gap: clamp(1.15rem, 2.8vw, 1.65rem);
+    padding-bottom: 0.15rem;
+  }
+  @media (max-width: 760px) {
+    .settings-root {
+      width: 100%;
+    }
+  }
+
+  .settings-directory-section {
+    @apply flex flex-col;
+    gap: 0.22rem;
+  }
+
+  .settings-directory-section + .settings-directory-section {
+    padding-top: 0.34rem;
+  }
+
+  .settings-directory-section-title {
+    margin: 0;
+    font-family: var(--font-ui);
+    color: var(--site-text-secondary);
+    font-size: var(--type-xs);
+    font-weight: var(--fw-medium);
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+  }
+
+  .settings-directory-section-title[data-tone="danger"] {
+    color: color-mix(
+      in srgb,
+      var(--color-destructive) 72%,
+      var(--site-text-secondary)
+    );
+  }
+
+  .settings-directory-list {
+    @apply flex flex-col;
+    gap: 0.35rem;
+  }
+
+  .settings-directory-item {
+    @apply flex items-center w-full text-left;
+    gap: 0.68rem;
+    padding: 0.85rem 0.6rem 0.85rem 0;
+    border: none;
+    border-radius: 0.85rem;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    text-decoration: none;
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease;
+  }
+
+  button.settings-directory-item {
+    appearance: none;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .settings-directory-item:hover {
+    background: color-mix(
+      in srgb,
+      var(--color-foreground) 4%,
+      var(--color-background)
+    );
+  }
+
+  .settings-directory-item:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--site-accent) 28%, transparent);
+    outline-offset: 3px;
+    background: color-mix(in srgb, var(--site-accent) 6%, var(--color-card));
+  }
+
+  .settings-directory-item[data-tone="subtle"] {
+    color: inherit;
+  }
+
+  .settings-directory-item[data-tone="danger"] {
+    color: inherit;
+  }
+
+  .settings-directory-item[data-tone="danger"]:hover,
+  .settings-directory-item[data-tone="danger"]:focus-visible {
+    background: color-mix(
+      in srgb,
+      var(--color-destructive) 7%,
+      var(--color-background)
+    );
+  }
+
+  .settings-directory-item-icon {
+    @apply flex items-center justify-center shrink-0;
+    width: 2.55rem;
+    height: 2.55rem;
+    border: 1px solid color-mix(in srgb, var(--color-border) 76%, white 24%);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-foreground);
+  }
+
+  .settings-directory-item[data-tone="subtle"] .settings-directory-item-icon {
+    color: color-mix(
+      in srgb,
+      var(--color-foreground) 86%,
+      var(--color-muted-foreground)
+    );
+  }
+
+  .settings-directory-item[data-tone="danger"] .settings-directory-item-icon {
+    border-color: color-mix(
+      in srgb,
+      var(--color-destructive) 16%,
+      var(--color-border)
+    );
+    color: color-mix(
+      in srgb,
+      var(--color-destructive) 86%,
+      var(--color-foreground)
+    );
+  }
+
+  .settings-directory-item-icon svg {
+    width: 1.08rem;
+    height: 1.08rem;
+    stroke-width: 1.9;
+  }
+
+  .settings-directory-item-copy {
+    @apply flex flex-col flex-1 min-w-0;
+    gap: 0.3rem;
+  }
+
+  .settings-directory-item-name {
+    font-family: var(--font-ui);
+    font-size: var(--type-secondary);
+    font-weight: var(--fw-regular);
+    line-height: 1.3;
+    color: var(--color-foreground);
+    text-wrap: pretty;
+  }
+
+  .settings-directory-item-desc {
+    font-family: var(--font-ui);
+    font-size: var(--type-sm);
+    line-height: 1.4;
+    color: var(--muted-foreground);
+    text-wrap: pretty;
+  }
+
+  .settings-directory-item-chevron {
+    @apply shrink-0;
+    color: color-mix(
+      in srgb,
+      var(--color-muted-foreground) 82%,
+      var(--color-foreground)
+    );
+    opacity: 0.72;
+    transition:
+      transform 0.18s ease,
+      opacity 0.18s ease,
+      color 0.18s ease;
+  }
+
+  .settings-directory-item:hover .settings-directory-item-chevron,
+  .settings-directory-item:focus-visible .settings-directory-item-chevron {
+    transform: translateX(1px);
+    opacity: 1;
+    color: color-mix(
+      in srgb,
+      var(--color-foreground) 62%,
+      var(--color-muted-foreground)
+    );
+  }
+
+  .settings-root-version {
+    text-align: center;
+    font-size: var(--type-2xs);
+    font-family: var(--font-mono, monospace);
+    color: var(--color-muted-foreground);
+    opacity: 0.45;
+    margin: 0 0 0.6rem;
+    user-select: all;
+  }
+
+  .settings-root-version-link {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 2px;
+  }
+
+  .settings-root-version-link:hover {
+    opacity: 0.75;
+  }
+
+  .settings-root-signout {
+    @apply flex justify-center;
+    padding-top: 0.1rem;
+  }
+
+  .settings-root-signout-btn {
+    @apply inline-flex items-center justify-center cursor-pointer;
+    min-height: 1.8rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-destructive);
+    font-size: var(--type-xs);
+    font-weight: var(--fw-medium);
+    letter-spacing: -0.01em;
+    transition:
+      opacity 0.18s ease,
+      color 0.18s ease;
+  }
+
+  .settings-root-signout-btn:hover,
+  .settings-root-signout-btn:focus-visible {
+    opacity: 0.78;
+  }
+
+  .settings-root-signout-btn:focus-visible {
+    outline: 2px solid
+      color-mix(in srgb, var(--color-destructive) 28%, transparent);
+    outline-offset: 3px;
+  }
+
+  .settings-group-label {
+    margin: 0 0 0.55rem;
+    padding-inline: 0.15rem;
+    font-size: var(--type-xs);
+    font-weight: var(--fw-medium);
+    line-height: 1.3;
+    letter-spacing: 0.04em;
+    color: color-mix(
+      in srgb,
+      var(--color-foreground) 72%,
+      var(--color-muted-foreground)
+    );
+  }
+
+  .settings-group {
+    overflow: hidden;
+    border: 1px solid
+      color-mix(in srgb, var(--color-border) 84%, var(--site-accent) 8%);
+    border-radius: 0.95rem;
+    background-color: color-mix(
+      in srgb,
+      var(--color-card) 97%,
+      var(--site-accent) 3%
+    );
+    box-shadow: 0 10px 24px -22px
+      color-mix(in srgb, var(--color-foreground) 18%, transparent);
+  }
+
+  .settings-item {
+    @apply flex items-center;
+    gap: 0.75rem;
+    padding: 0.82rem 0.9rem;
+    --settings-item-icon-accent: var(--site-accent);
+    --settings-item-icon-bg-strength: 13%;
+    --settings-item-icon-border-strength: 22%;
+    --settings-item-icon-fg-strength: 70%;
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease;
+    border-bottom: 1px solid
+      color-mix(in srgb, var(--color-border) 78%, transparent);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--settings-item-icon-accent) 5%,
+        var(--color-card)
+      );
+    }
+
+    &:focus-visible {
+      outline: 2px solid
+        color-mix(in srgb, var(--settings-item-icon-accent) 24%, transparent);
+      outline-offset: -2px;
+      background-color: color-mix(
+        in srgb,
+        var(--settings-item-icon-accent) 6%,
+        var(--color-card)
+      );
+    }
+  }
+
+  .settings-item[data-tone="subtle"] {
+    --settings-item-icon-bg-strength: 8%;
+    --settings-item-icon-border-strength: 16%;
+    --settings-item-icon-fg-strength: 56%;
+  }
+
+  .settings-item[data-tone="danger"] {
+    --settings-item-icon-accent: var(--color-destructive);
+    --settings-item-icon-bg-strength: 10%;
+    --settings-item-icon-border-strength: 20%;
+    --settings-item-icon-fg-strength: 76%;
+  }
+
+  .settings-item-icon {
+    @apply flex items-center justify-center shrink-0;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--settings-item-icon-accent)
+          var(--settings-item-icon-border-strength),
+        var(--color-border)
+      );
+    background-color: color-mix(
+      in srgb,
+      var(--settings-item-icon-accent) var(--settings-item-icon-bg-strength),
+      var(--color-card)
+    );
+    color: color-mix(
+      in srgb,
+      var(--settings-item-icon-accent) var(--settings-item-icon-fg-strength),
+      var(--color-foreground)
+    );
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease;
+  }
+
+  .settings-item-text {
+    @apply flex flex-col flex-1 min-w-0;
+    gap: 0.08rem;
+  }
+
+  .settings-item-name {
+    font-size: var(--type-base);
+    font-weight: var(--fw-medium);
+    line-height: 1.3;
+    color: var(--color-foreground);
+  }
+
+  .settings-item-desc {
+    font-family: var(--font-ui);
+    font-size: var(--type-xs);
+    line-height: 1.4;
+    color: var(--color-muted-foreground);
+  }
+
+  .settings-item-chevron {
+    @apply shrink-0;
+    color: var(--color-muted-foreground);
+    opacity: 0.38;
+    transition:
+      opacity 0.18s ease,
+      color 0.18s ease;
+  }
+
+  .settings-item:hover .settings-item-chevron,
+  .settings-item:focus-visible .settings-item-chevron {
+    opacity: 0.62;
+    color: color-mix(
+      in srgb,
+      var(--color-foreground) 46%,
+      var(--color-muted-foreground)
+    );
+  }
+
+  .settings-export-form {
+    display: block;
+  }
+  @media (max-width: 699px) {
+    .settings-directory-item {
+      gap: 0.62rem;
+      padding: 0.78rem 0.52rem 0.78rem 0;
+      border-radius: 0.8rem;
+    }
+
+    .settings-directory-item-icon {
+      width: 2.38rem;
+      height: 2.38rem;
+    }
+
+    .settings-root-version {
+      text-align: left;
+    }
+
+    .settings-root-signout {
+      justify-content: flex-start;
+    }
+  }
+
+  button.settings-item {
+    @apply w-full text-left cursor-pointer;
+    background: none;
+    border: none;
+    font: inherit;
+    border-bottom: 1px solid
+      color-mix(in srgb, var(--color-border) 78%, transparent);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .custom-url-row {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    padding: 0.8rem 0.9rem 0.78rem;
+    transition: background-color 0.18s ease;
+    border-bottom: 1px solid
+      color-mix(in srgb, var(--color-border) 78%, transparent);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--site-accent) 4%,
+        var(--color-card)
+      );
+    }
+
+    &:focus-within {
+      background-color: color-mix(
+        in srgb,
+        var(--site-accent) 5%,
+        var(--color-card)
+      );
+    }
+  }
+
+  .custom-url-row-main {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.28rem;
+    padding-right: 2.1rem;
+  }
+
+  .custom-url-row-header {
+    position: relative;
+    min-width: 0;
+  }
+
+  .custom-url-row-flow {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.16rem;
+    min-width: 0;
+    padding-top: 0.04rem;
+  }
+
+  .custom-url-row-target {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.24rem 0.56rem;
+    min-width: 0;
+  }
+
+  .custom-url-row-menu {
+    position: absolute;
+    top: -0.18rem;
+    right: -0.24rem;
+    z-index: 2;
+  }
+
+  .custom-url-path {
+    display: block;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: var(--type-base);
+    line-height: 1.3;
+    letter-spacing: -0.018em;
+    color: color-mix(
+      in srgb,
+      var(--color-foreground) 94%,
+      var(--site-accent) 6%
+    );
+  }
+
+  .custom-url-target-path {
+    display: inline;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-size: var(--type-xs);
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    color: color-mix(
+      in srgb,
+      var(--color-foreground) 74%,
+      var(--color-muted-foreground)
+    );
+  }
+
+  .custom-url-menu-trigger {
+    @apply flex items-center justify-center cursor-pointer;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: color-mix(
+      in srgb,
+      var(--color-muted-foreground) 88%,
+      var(--color-foreground)
+    );
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease;
+
+    &:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--site-accent) 5%,
+        var(--color-card)
+      );
+      border-color: color-mix(
+        in srgb,
+        var(--color-border) 72%,
+        var(--site-accent) 12%
+      );
+      color: var(--color-foreground);
+    }
+
+    &:focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--site-accent) 20%, transparent);
+      outline-offset: 2px;
+      background-color: color-mix(
+        in srgb,
+        var(--site-accent) 6%,
+        var(--color-card)
+      );
+      border-color: color-mix(
+        in srgb,
+        var(--color-border) 72%,
+        var(--site-accent) 14%
+      );
+      color: var(--color-foreground);
+    }
+  }
+
+  .custom-url-flow-arrow {
+    @apply flex items-center justify-center;
+    width: 0.9rem;
+    height: 0.9rem;
+    color: color-mix(
+      in srgb,
+      var(--color-muted-foreground) 82%,
+      var(--site-accent) 18%
+    );
+    opacity: 0.7;
+  }
+
+  /* Anchored to the row as a fallback; script promotes it to the top layer,
+     where it is positioned against the viewport instead. Without that, the
+     rounded `.settings-group` clips it — a stacking order cannot escape an
+     ancestor's `overflow: hidden`. */
+  .custom-url-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.35rem);
+    z-index: 30;
+    min-width: 8.5rem;
+    padding: 0.35rem;
+    border: 1px solid
+      color-mix(in srgb, var(--color-border) 84%, var(--site-accent) 8%);
+    border-radius: 0.85rem;
+    background-color: color-mix(
+      in srgb,
+      var(--color-card) 98%,
+      var(--site-accent) 2%
+    );
+    box-shadow: 0 20px 38px -28px
+      color-mix(in srgb, var(--color-foreground) 26%, transparent);
+  }
+
+  /* In the top layer the user-agent styles centre the popover in the
+     viewport; script supplies the real coordinates. */
+  .custom-url-menu:popover-open {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    overflow: visible;
+  }
+
+  .custom-url-menu-item {
+    @apply w-full text-left cursor-pointer;
+    border: none;
+    background: transparent;
+    border-radius: 0.6rem;
+    padding: 0.58rem 0.72rem;
+    font-size: var(--type-sm);
+    line-height: 1.35;
+    color: var(--color-foreground);
+    transition:
+      background-color 0.18s ease,
+      color 0.18s ease;
+
+    &:hover,
+    &:focus-visible {
+      background-color: color-mix(
+        in srgb,
+        var(--site-accent) 7%,
+        var(--color-card)
+      );
+      color: var(--color-foreground);
+      outline: none;
+    }
+  }
+
+  .custom-url-menu-item-danger {
+    color: var(--color-destructive);
+
+    &:hover,
+    &:focus-visible {
+      background-color: color-mix(
+        in srgb,
+        var(--color-destructive) 8%,
+        var(--color-card)
+      );
+      color: var(--color-destructive);
+    }
+  }
+
+  .custom-url-target-meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.38rem;
+    min-width: 0;
+  }
+
+  .custom-url-type-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.26rem;
+    font-size: var(--type-2xs);
+    line-height: 1.32;
+    letter-spacing: 0.02em;
+    color: var(--color-muted-foreground);
+  }
+
+  .custom-url-type-icon {
+    flex-shrink: 0;
+    color: color-mix(
+      in srgb,
+      var(--site-accent) 28%,
+      var(--color-muted-foreground)
+    );
+    opacity: 0.9;
+  }
+
+  .custom-url-redirect-code {
+    font-size: var(--type-2xs);
+    line-height: 1.3;
+    letter-spacing: 0.05em;
+    color: var(--color-muted-foreground);
+  }
+  @media (max-width: 640px) {
+    .custom-url-row {
+      padding-inline: 0.8rem;
+    }
+
+    .custom-url-row-main {
+      padding-right: 1.95rem;
+    }
+
+    .custom-url-menu {
+      min-width: 7.75rem;
+    }
+  }
+  .dash-heading {
+    font-family: var(--font-ui);
+  }
+  /* Deliberately not clipped: the More popover has to escape the frame, and a
+     stacking order cannot escape an ancestor's `overflow: hidden`. The chrome
+     strip rounds its own top corners instead of relying on the frame to cut
+     them. */
+  .nav-preview {
+    @apply border rounded-lg;
+    background-color: var(--color-card);
+  }
+
+  .nav-preview-chrome {
+    @apply flex items-center gap-3 px-4 py-2.5 border-b;
+    background-color: var(--color-muted);
+    border-top-left-radius: calc(var(--radius-lg, 0.5rem) - 1px);
+    border-top-right-radius: calc(var(--radius-lg, 0.5rem) - 1px);
+  }
+
+  .nav-preview-dots {
+    @apply flex gap-1.5;
+
+    > span {
+      @apply block size-2.5 rounded-full;
+      background-color: var(--color-muted-foreground);
+      opacity: 0.3;
+    }
+  }
+
+  .nav-preview-label {
+    @apply text-xs;
+    color: var(--color-muted-foreground);
+  }
+
+  .nav-preview-content {
+    @apply px-5 py-3;
+  }
+
+  .nav-preview-content .site-header-top {
+    justify-content: flex-start;
+  }
+
+  /* On the real site this menu floats over the page with no backdrop, and the
+     hairline down its left edge is the whole frame. Here it lands on the
+     settings sheet, where bare text would collide with the rows below, so the
+     preview gives it a surface of its own. */
+  .nav-preview .site-header-more-popover {
+    padding: 0.35rem 0;
+    border: 1px solid
+      color-mix(in srgb, var(--color-border) 84%, var(--site-accent) 8%);
+    border-radius: 0.85rem;
+    background-color: var(--color-card);
+    box-shadow: 0 20px 38px -28px
+      color-mix(in srgb, var(--color-foreground) 26%, transparent);
+  }
+
+  /* The site's left padding is indentation off that hairline; a full border
+     wants it even. */
+  .nav-preview .site-header-more-link {
+    padding: 0.38rem 0.85rem;
+  }
+  .nav-items-list {
+    @apply flex flex-col gap-2;
+  }
+
+  .nav-items-list-drop {
+    min-height: 3rem;
+    border: 1.5px dashed
+      color-mix(in srgb, var(--color-border) 60%, transparent);
+    border-radius: 0.75rem;
+    padding: 0.5rem;
+    transition: border-color 0.15s;
+  }
+
+  .nav-items-list-drop:has(.nav-item) {
+    border-color: transparent;
+    padding: 0;
+  }
+
+  .nav-items-empty-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 2rem;
+    font-size: var(--type-xs);
+    color: var(--muted-foreground);
+    opacity: 0.6;
+    text-align: center;
+    margin: 0;
+  }
+
+  .nav-item {
+    @apply border rounded-lg;
+  }
+
+  .nav-item-editing {
+    @apply ring-1 ring-ring;
+  }
+
+  .nav-item-row {
+    @apply flex items-center gap-1 px-1 py-1;
+  }
+
+  .nav-item-handle {
+    @apply flex items-center justify-center w-8 h-8 shrink-0 cursor-grab rounded;
+    transition: background-color 0.15s;
+
+    &:hover {
+      background-color: var(--color-accent);
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  .nav-item-info {
+    @apply flex flex-col flex-1 min-w-0 py-1.5 px-1.5 rounded cursor-pointer;
+    transition: background-color 0.15s;
+
+    &:hover {
+      background-color: var(--color-accent);
+    }
+  }
+
+  .nav-item-toggle {
+    @apply flex items-center justify-center w-8 h-8 shrink-0 rounded border-0 bg-transparent cursor-pointer;
+    color: var(--color-muted-foreground);
+    transition:
+      color 0.15s,
+      background-color 0.15s;
+
+    &:hover {
+      color: var(--color-foreground);
+      background-color: var(--color-accent);
+    }
+  }
+
+  .nav-item-edit {
+    @apply flex flex-col gap-3 px-4 pb-3 pt-3 border-t mx-1 mb-1;
+    border-color: var(--color-border);
+  }
+
+  .nav-suggestions-list {
+    @apply flex flex-col gap-2;
+  }
+
+  .nav-suggestion-item {
+    @apply flex items-center justify-between gap-3 rounded-lg border px-3 py-2;
+  }
+
+  .nav-suggestion-info {
+    @apply flex min-w-0 flex-col;
+  }
+
+  .nav-suggestion-title {
+    @apply truncate text-sm font-medium;
+  }
+
+  .nav-suggestion-meta {
+    @apply truncate text-xs text-muted-foreground;
+  }
+
+  /* Collection picker dropdown menu */
+  .collection-picker {
+    @apply absolute left-0 z-10 mt-1.5 w-64 overflow-y-auto rounded-lg border py-1.5;
+    max-height: 20rem;
+    background-color: var(--color-popover);
+    box-shadow: var(--shadow-md);
+  }
+
+  .collection-picker-group {
+    @apply px-3 pb-1 pt-3 text-xs font-medium;
+    color: var(--color-muted-foreground);
+
+    &:first-child {
+      padding-top: 0.5rem;
+    }
+  }
+
+  .collection-picker-item {
+    @apply flex items-center gap-2 rounded-md text-left border-0 bg-transparent cursor-pointer;
+    font-size: 0.9375rem;
+    line-height: 1.35;
+    padding: 0.5rem 0.625rem;
+    margin: 0 0.25rem;
+    width: calc(100% - 0.5rem);
+    color: var(--color-foreground);
+    transition: background-color 0.1s;
+
+    &:hover:not(:disabled) {
+      background-color: var(--color-accent);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .collection-picker-title {
+    @apply truncate flex-1;
+  }
+
+  .collection-picker-footer {
+    @apply sticky mt-1 border-t px-1 pb-1 pt-1;
+    bottom: -0.375rem;
+    background-color: var(--color-popover);
+  }
+
+  .collection-picker-create {
+    @apply flex w-full cursor-pointer items-center gap-1 rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-sm font-normal;
+    color: var(--color-muted-foreground);
+    transition:
+      background-color 0.1s,
+      color 0.1s;
+
+    &:hover,
+    &:focus-visible {
+      background-color: var(--color-accent);
+      color: var(--color-foreground);
+      outline: none;
+    }
+  }
+
+  /* Page picker — a focused search/create flow inside Navigation settings */
+  .nav-page-dialog > .nav-page-dialog-panel {
+    width: min(34rem, calc(100% - 2rem));
+    gap: 1.25rem;
+  }
+
+  .nav-page-picker-section {
+    min-height: 16rem;
+  }
+
+  .nav-page-search-wrap {
+    @apply relative;
+
+    > svg {
+      @apply pointer-events-none absolute left-3 top-1/2 -translate-y-1/2;
+      color: var(--color-muted-foreground);
+    }
+  }
+
+  .nav-page-search-wrap .nav-page-search-input.nav-page-search-input {
+    padding-inline-start: 2.5rem;
+  }
+
+  .nav-page-results-label {
+    @apply mb-1.5 mt-4 text-xs font-medium;
+    color: var(--color-muted-foreground);
+  }
+
+  .nav-page-results {
+    @apply -mx-2 flex flex-col gap-1 overflow-y-auto px-2;
+    max-height: min(18rem, 42vh);
+  }
+
+  .nav-page-result {
+    @apply flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left;
+    color: var(--color-foreground);
+    transition:
+      background-color 0.12s,
+      color 0.12s;
+
+    &:hover:not(:disabled),
+    &:focus-visible,
+    &.nav-page-result-selected {
+      background-color: var(--color-accent);
+      outline: none;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    > svg {
+      @apply shrink-0;
+      color: var(--color-muted-foreground);
+    }
+  }
+
+  .nav-page-result-copy {
+    @apply flex min-w-0 flex-col gap-0.5;
+  }
+
+  .nav-page-result-title {
+    @apply truncate text-sm font-medium;
+  }
+
+  .nav-page-result-path {
+    @apply truncate text-xs;
+    color: var(--color-muted-foreground);
+  }
+
+  .nav-page-status {
+    @apply flex min-h-44 items-center justify-center px-6 text-center text-sm;
+    color: var(--color-muted-foreground);
+  }
+
+  .nav-page-dialog-footer.nav-page-dialog-footer {
+    @apply sm:justify-between;
+  }
+
+  .nav-page-create-link {
+    @apply gap-2;
+  }
+
+  .nav-page-spinner {
+    @apply size-4 shrink-0 animate-spin rounded-full border-2;
+    border-color: var(--color-border);
+    border-top-color: var(--color-foreground);
+  }
+
+  .nav-page-slug-field {
+    @apply flex items-center overflow-hidden rounded-md border;
+    background-color: var(--color-background);
+    border-color: var(--color-input);
+
+    &:focus-within {
+      border-color: var(--color-ring);
+      box-shadow: 0 0 0 1px var(--color-ring);
+    }
+  }
+
+  .nav-page-slug-prefix {
+    @apply shrink-0 pl-3 text-sm;
+    color: var(--color-muted-foreground);
+  }
+
+  .nav-page-slug-input.nav-page-slug-input {
+    @apply min-w-0 flex-1 border-0 pl-0 shadow-none outline-none;
+
+    &:focus {
+      box-shadow: none;
+    }
+  }
+
+  .nav-page-visibility-note {
+    @apply flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm;
+    color: var(--color-muted-foreground);
+    background-color: var(--color-muted);
+
+    > svg {
+      @apply mt-0.5 shrink-0;
+    }
+  }
+
+  .nav-collection-dialog > .nav-collection-dialog-panel {
+    width: min(32rem, calc(100% - 2rem));
+    gap: 1.25rem;
+  }
+
+  .nav-create-success-header {
+    @apply items-center text-center;
+  }
+
+  .nav-create-success-icon {
+    @apply mb-1 flex size-10 items-center justify-center rounded-full;
+    color: var(--color-primary);
+    background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  }
+
+  .nav-create-success-card {
+    @apply flex flex-col gap-1 rounded-lg border px-4 py-3;
+    background-color: var(--color-muted);
+  }
+  .skel-label {
+    min-height: 1.5rem;
+  }
+
+  .skel-input {
+    height: 2.75rem;
+  }
+
+  .skel-textarea {
+    height: 6rem;
+  }
+
+  .skel-section-sm {
+    min-height: 180px;
+  }
+
+  .skel-section-md {
+    min-height: 200px;
+  }
+
+  .skel-section-lg {
+    min-height: 300px;
+  }
+}

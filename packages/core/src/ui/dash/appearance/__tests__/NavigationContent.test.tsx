@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import type { Context } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
 import { describe, expect, it } from "vitest";
+import { readComponentCss } from "../../../../__tests__/helpers/component-css.js";
 import { I18nProvider } from "../../../../i18n/context.js";
 import { createI18n } from "../../../../i18n/i18n.js";
 import { NavigationContent } from "../NavigationContent.js";
@@ -105,10 +105,7 @@ describe("NavigationContent", () => {
   });
 
   it("leaves the preview frame unclipped so the More menu can escape it", () => {
-    const css = readFileSync(
-      new URL("../../../../styles/components.css", import.meta.url),
-      "utf8",
-    );
+    const css = readComponentCss();
     const frame = css.match(/\.nav-preview \{[^}]*\}/)?.[0] ?? "";
 
     // The menu opens below the frame's own bottom edge. Clipping here cuts it

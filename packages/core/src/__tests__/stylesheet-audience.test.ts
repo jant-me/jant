@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { readComponentCss, readReaderCss } from "./helpers/component-css.js";
+import {
+  readAuthorCss,
+  readComponentCss,
+  readReaderCss,
+} from "./helpers/component-css.js";
 
 /**
  * `client.css` is what a signed-out visitor waits on before the page paints,
- * and `styles/ui.css` is the hand-written half of it. Author-only component
- * CSS belongs in `styles/ui-author.css`, which `BaseLayout` links only on
+ * and `styles/ui.css` plus `styles/components.css` are the hand-written half
+ * of it. Author-only component CSS belongs in `styles/ui-author.css` and
+ * `styles/components-author.css`, which `BaseLayout` links only on
  * authenticated pages.
  *
  * Class families that only ever appear in authenticated markup. The editor's
@@ -19,6 +24,17 @@ const AUTHOR_ONLY = [
   "confirm",
   "draft",
   "theme-preview",
+  // From `components.css`: the config editor, the navigation manager, the
+  // custom URL manager, the dash chrome and the form skeletons. `.nav-*` here
+  // is `jant-nav-manager`, not the site header — that is `.site-header-nav`.
+  // `.collection-picker-*` is spelled out because plain `.collection-*` is a
+  // reader family (the collection pages).
+  "config",
+  "nav",
+  "custom",
+  "dash",
+  "skel",
+  "collection-picker",
 ];
 
 /** TipTap class names that land in reader-rendered post HTML. */
@@ -117,9 +133,23 @@ describe("stylesheet audience", () => {
   it("moved real weight, not a handful of rules", () => {
     // The split is only worth its complexity while the author half is
     // substantial. If it ever shrinks to a rounding error, fold it back in.
-    const reader = readReaderCss();
-    const author = readComponentCss().length - reader.length;
+    expect(readAuthorCss().length).toBeGreaterThan(readReaderCss().length / 2);
+  });
 
-    expect(author).toBeGreaterThan(reader.length / 2);
+  it("keeps the author half of components.css out of the reader sheet", () => {
+    // `preset.css` imports `components.css` on every page, so the settings
+    // pages and the config editor must not be left in it.
+    const author = readAuthorCss();
+    expect(author).toContain(".settings-root");
+    expect(author).toContain(".config-editor-page");
+  });
+
+  it("leaves the reader-side families of components.css in place", () => {
+    // Verified against every `class=` usage in the tree: `BaseLayout` renders
+    // the toast container on every page, and `.page-intro-*` is the header of
+    // the archive and collections pages, both public.
+    const reader = readReaderCss();
+    expect(reader).toContain(".toast-container");
+    expect(reader).toContain(".page-intro");
   });
 });
