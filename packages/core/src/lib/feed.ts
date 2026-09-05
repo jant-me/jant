@@ -560,13 +560,30 @@ export function defaultFeedRenderer(data: FeedData): string {
         })
         .join("");
 
+      // What kind of post this is, in Jant's own namespace. Atom has no field
+      // for it, and `<category>` is the wrong place: a reader would show
+      // "quote" as a tag the author never wrote. A namespaced element is
+      // invisible to readers that do not know it.
+      //
+      // A link post is already tellable from the `rel="related"` above, but a
+      // quote and an untitled note are identical from the feed alone — both
+      // carry an empty `<title>` and a body — so anything reading feeds had to
+      // fetch the post's page to tell them apart. It rides on every entry
+      // rather than only the ambiguous ones, because a consumer should be able
+      // to read one field instead of inferring three cases.
+      //
+      // Core's own three formats, not a consumer's rendering distinctions: a
+      // titled note is still a note here, and whether that is drawn as an
+      // article is the reader's call, made from this and `<title>`.
+      const formatElement = `\n    <jant:format>${escapeXml(post.format)}</jant:format>`;
+
       return `
   <entry>
     <title>${escapeXml(title)}</title>
     <link href="${alternateLink}" rel="alternate"/>${relatedLink}${enclosureLinks}
     <id>${escapedPermalink}</id>
     <published>${publishedAt}</published>
-    <updated>${updatedAt}</updated>
+    <updated>${updatedAt}</updated>${formatElement}
     <summary type="text">${escapeXml(summary)}</summary>
     <content type="html"><![CDATA[${escapeCdata(buildFeedContent(post, siteUrl, permalinkUrl))}]]></content>
   </entry>`;
@@ -592,10 +609,14 @@ export function defaultFeedRenderer(data: FeedData): string {
   const langAttr = siteLanguage ? ` xml:lang="${escapeXml(siteLanguage)}"` : "";
 
   // The jant namespace is only declared when something in it is emitted, the
-  // same way the sitemap declares xhtml only for alternates.
-  const jantNs = discover
-    ? ` xmlns:jant="${escapeXml(DISCOVER_NAMESPACE_URI)}"`
-    : "";
+  // same way the sitemap declares xhtml only for alternates. Two things live
+  // in it now: the Discover declaration below, and every entry's format — so
+  // only a feed with neither, which means an empty feed on a site that has
+  // never answered Discover, leaves it out.
+  const jantNs =
+    discover || posts.length > 0
+      ? ` xmlns:jant="${escapeXml(DISCOVER_NAMESPACE_URI)}"`
+      : "";
 
   // Sibling-language feeds. `type` is carried because Atom forbids two
   // `rel="alternate"` links sharing a type/hreflang pair, and the site's own

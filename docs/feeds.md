@@ -56,6 +56,8 @@ By default the archive feed is ordered by publication, like the page it belongs 
 
 **Threads** arrive as one entry, with the replies included in the body, so a thread does not fill a reader with fragments.
 
+**Post format.** Each entry declares what kind of post it is — `<jant:format>quote</jant:format>`, in the `https://jant.me/ns` namespace — because a quote and an untitled note are otherwise identical in Atom. A thread is declared by its root. Readers that do not know the namespace ignore it.
+
 ## Feeds and languages
 
 On a multilingual site every feed exists once per language, under that language's prefix: `/ja/feed`, `/ja/archive/feed`, `/ja/reading/feed`. Each carries only that language's posts and declares itself in that language. The primary language keeps the unprefixed addresses. See [Multilingual content](multilingual.md).

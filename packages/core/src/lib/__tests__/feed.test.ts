@@ -838,10 +838,21 @@ describe("feed Discover declaration", () => {
     expect(xml).not.toContain("feed=");
   });
 
-  it("declares nothing, and no namespace, when the field is absent", () => {
+  it("declares nothing when the field is absent", () => {
     const xml = defaultFeedRenderer(makeFeedData(makePostView()));
 
     expect(xml).not.toContain("jant:discover");
+  });
+
+  // The namespace is declared for whatever is emitted in it, and an entry's
+  // format is emitted whatever the site answered about Discover. So the only
+  // feed that leaves the declaration out is one with nothing in it at all.
+  it("declares no namespace when nothing in it is emitted", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      posts: [],
+    });
+
     expect(xml).not.toContain("xmlns:jant");
   });
 
@@ -918,5 +929,61 @@ describe("feed author", () => {
     });
 
     expect(xml).not.toContain("<author>");
+  });
+});
+
+describe("feed entry format", () => {
+  // A quote and an untitled note are identical from the feed alone — both have
+  // an empty <title> and a body — so this element is the only way to tell them
+  // apart without fetching the post's page.
+  it.each([
+    ["note", "note"],
+    ["link", "link"],
+    ["quote", "quote"],
+  ] as const)("declares a %s post as %s", (format, declared) => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          format,
+          url: format === "link" ? "https://external.com/article" : undefined,
+          quoteText: format === "quote" ? "A quote worth keeping" : undefined,
+        }),
+      ),
+    );
+
+    expect(xml).toContain(`<jant:format>${declared}</jant:format>`);
+    expect(xml).toContain('xmlns:jant="https://jant.me/ns"');
+  });
+
+  // Core's own three formats. A titled note stays a note; drawing it as an
+  // article is a decision the consumer makes from this and <title>.
+  it("calls a titled note a note", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(makePostView({ format: "note", title: "A titled note" })),
+    );
+
+    expect(xml).toContain("<jant:format>note</jant:format>");
+  });
+
+  // Threads arrive as one entry keyed to the root, so the format is the root's.
+  it("declares a thread by its root post", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          format: "quote",
+          quoteText: "A quote worth keeping",
+          threadReplies: [
+            makePostView({
+              id: "post-2",
+              permalink: "/post-2",
+              format: "note",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain("<jant:format>quote</jant:format>");
+    expect(xml).not.toContain("<jant:format>note</jant:format>");
   });
 });
