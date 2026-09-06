@@ -18,9 +18,25 @@ import type {
   PostView,
 } from "../types.js";
 import { DISCOVER_NAMESPACE_URI } from "./discover.js";
+import {
+  extractSummaryHtml,
+  ARTICLE_SUMMARY_MAX_BLOCKS,
+  ARTICLE_SUMMARY_MAX_CHARS,
+  NOTE_SUMMARY_MAX_BLOCKS,
+  NOTE_SUMMARY_MAX_CHARS,
+  NOTE_SUMMARY_MIN_HIDDEN_CHARS,
+} from "./summary.js";
 import { getLinkPreviewProviderLabel } from "./link-preview.js";
 import { extractDisplayDomain } from "./url.js";
 import { getMediaCategory } from "./upload.js";
+
+/**
+ * Media RSS namespace. Atom's own `<link rel="enclosure">` has no slots for
+ * pixel dimensions, duration, or a description, so the richer per-attachment
+ * metadata rides in this extension alongside it — enclosure stays because it
+ * is the only attachment mechanism a plain Atom parser understands.
+ */
+const MEDIA_RSS_NAMESPACE_URI = "http://search.yahoo.com/mrss/";
 
 /**
  * Escape special XML characters.
@@ -150,6 +166,11 @@ interface SinglePostContentOptions {
    * through Atom fields.
    */
   inline?: boolean;
+  /**
+   * Render what the site's timeline shows — the truncated body, no media —
+   * rather than the post's full page. Used to build `<summary>`.
+   */
+  summary?: boolean;
 }
 
 function renderLinkedText(text: string, href?: string): string {
@@ -314,7 +335,6 @@ function renderMediaItem(
 ): string {
   const category = getMediaCategory(item.mimeType);
   const url = escapeXml(toAbsoluteFeedUrl(item.url, siteUrl));
-  const name = item.originalName ?? "";
   const altText = item.altText ?? "";
   const caption = item.altText?.trim() || "";
   const meta = getMediaMeta(item);
@@ -331,22 +351,38 @@ function renderMediaItem(
   }
 
   if (category === "video") {
-    const poster = toAbsoluteFeedUrl(
-      item.posterUrl || item.thumbnailUrl,
-      siteUrl,
-    );
+    // One rendering whether or not the clip has a poster frame — the still is
+    // an attribute here, not a branch. `preload="none"` is load-bearing: a
+    // reader painting a timeline must not start pulling a 28 MB file.
+    //
+    // `thumbnailUrl` is a real still only for images; the media pipeline
+    // leaves it pointing at the file itself for everything else, so a clip
+    // with no poster key would otherwise poster itself with its own MP4.
+    //
+    // The link sits in the `<figcaption>`, outside the `<video>`, rather than
+    // as its fallback child: a sanitizer that drops a disallowed element takes
+    // its children with it, and out here the clip stays reachable whichever
+    // way a reader's allowlist goes. That makes inlining the player a pure
+    // upgrade over the old poster-thumbnail rendering — worst case it degrades
+    // to exactly the link that rendering already offered.
+    const posterSource = (item.posterUrl || item.thumbnailUrl)?.trim();
+    const posterAttr =
+      posterSource && posterSource !== item.url
+        ? ` poster="${escapeXml(toAbsoluteFeedUrl(posterSource, siteUrl))}"`
+        : "";
     const dims =
       item.width && item.height
         ? ` width="${item.width}" height="${item.height}"`
         : "";
-    // Prefix the caption with a ▶ glyph as a video cue. A CSS overlay would
-    // be stripped by most feed-reader sanitizers, so a plain-text play
-    // character is the only marker that renders reliably everywhere. Link
-    // only the "Watch video" action label (so it's clickable like the
-    // thumbnail and reads cleanly to screen readers); metadata stays outside
-    // the link in parens, matching the audio/text/document attachment style.
     const metaSuffix = meta ? ` (${escapeXml(meta)})` : "";
-    return `<figure><a href="${url}"><img src="${escapeXml(poster)}" alt="${escapeXml(altText || name)}"${dims}/></a><figcaption><a href="${url}">▶ Watch video</a>${metaSuffix}</figcaption></figure>`;
+    // `<video>` has no `alt`, so the description a poster image used to carry
+    // moves into the caption rather than being dropped.
+    const altSuffix = caption ? `: ${escapeXml(caption)}` : "";
+    return (
+      `<figure><video controls preload="none"${posterAttr}${dims}>` +
+      `<source src="${url}" type="${escapeXml(cleanMimeType(item.mimeType))}"/>` +
+      `</video><figcaption><a href="${url}">▶ Watch video</a>${metaSuffix}${altSuffix}</figcaption></figure>`
+    );
   }
 
   if (category === "audio") {
@@ -393,6 +429,38 @@ function renderMediaForFeed(
 }
 
 /**
+ * The truncated body the site's timeline renders for this post, at the same
+ * boundary the page uses.
+ *
+ * Derived here rather than read off `PostView.summaryHtml`, which exists only
+ * for titled posts: an untitled note expands in place on the page, so the card
+ * renders the full body with a break marker and never needs a second HTML
+ * string. `NoteCard` reads `summaryHtml ?? bodyHtml`, so populating it for
+ * notes to serve the feed would silently switch the site off expand-in-place.
+ * `PostView.body` carries the source document, so the feed derives its own.
+ *
+ * @param post - Post view data, carrying the TipTap document in `body`
+ * @returns Truncated HTML and whether content continues, or null when the post
+ *   has no TipTap document to truncate
+ * @example
+ * getTimelineSummary(post) // { html: "<p>Intro</p>", hasMore: true }
+ */
+function getTimelineSummary(
+  post: PostView,
+): { html: string; hasMore: boolean } | null {
+  if (!post.body) return null;
+  const isArticle = !!post.title;
+  const result = extractSummaryHtml(
+    post.body,
+    isArticle ? ARTICLE_SUMMARY_MAX_BLOCKS : NOTE_SUMMARY_MAX_BLOCKS,
+    isArticle ? ARTICLE_SUMMARY_MAX_CHARS : NOTE_SUMMARY_MAX_CHARS,
+    isArticle ? 0 : NOTE_SUMMARY_MIN_HIDDEN_CHARS,
+    { namespace: post.id },
+  );
+  return result ? { html: result.html, hasMore: result.hasMore } : null;
+}
+
+/**
  * Build the HTML content for a single post (root or reply).
  *
  * @param post - Post view data
@@ -411,37 +479,62 @@ function buildSinglePostContent(
     parts.push(...renderInlinePostHeader(post, permalinkUrl));
   }
 
+  let quoteRendered = false;
   if (post.format === "quote" && post.quoteText) {
     const sourceName = post.title || "";
     const sourceUrl = post.url || "";
     const attribution = sourceName || sourceUrl;
     const cite = sourceUrl ? ` cite="${escapeXml(sourceUrl)}"` : "";
     const quoteHtml = renderPlainTextHtml(post.quoteText);
-    if (quoteHtml) {
-      parts.push(`<blockquote${cite}>${quoteHtml}</blockquote>`);
-    }
-    if (attribution) {
-      const source = sourceUrl
+    const source = attribution
+      ? sourceUrl
         ? `<a href="${escapeXml(sourceUrl)}">${escapeXml(sourceName || extractDisplayDomain(sourceUrl) || sourceUrl)}</a>`
-        : escapeXml(attribution);
+        : escapeXml(attribution)
+      : "";
+    if (quoteHtml) {
+      // `<figure>`/`<figcaption>` is how the site card groups the quote with
+      // its source (`h-cite`), and how this renderer already pairs media with
+      // a caption. A loose `<p>— source</p>` sibling said neither.
+      const caption = source ? `<figcaption>— ${source}</figcaption>` : "";
+      parts.push(
+        `<figure><blockquote${cite}>${quoteHtml}</blockquote>${caption}</figure>`,
+      );
+      quoteRendered = true;
+    } else if (source) {
       parts.push(`<p>— ${source}</p>`);
     }
   }
 
-  const linkPreviewHtml = renderLinkPreviewForFeed(post, siteUrl);
-  if (linkPreviewHtml) {
-    parts.push(linkPreviewHtml);
+  if (!options.summary) {
+    const linkPreviewHtml = renderLinkPreviewForFeed(post, siteUrl);
+    if (linkPreviewHtml) {
+      parts.push(linkPreviewHtml);
+    }
   }
 
-  if (post.bodyHtml) {
-    parts.push(
-      absolutizeFeedHtmlUrls(stripUnsafeFeedHtml(post.bodyHtml), siteUrl),
-    );
+  // In summary mode the body is the timeline's truncated rendering; a post
+  // without a TipTap document (legacy plain-text rows) has nothing to truncate
+  // and keeps its full body.
+  const bodyHtml = options.summary
+    ? (getTimelineSummary(post)?.html ?? post.bodyHtml)
+    : post.bodyHtml;
+
+  if (bodyHtml) {
+    // The site draws a hairline between a quote and the author's commentary
+    // (`.feed-quote-commentary::before` in ui.css). Feed readers strip CSS, so
+    // that separator only survives as an element.
+    if (quoteRendered) parts.push("<hr/>");
+    parts.push(absolutizeFeedHtmlUrls(stripUnsafeFeedHtml(bodyHtml), siteUrl));
   }
 
-  const mediaHtml = renderMediaForFeed(post.media, siteUrl, permalinkUrl);
-  if (mediaHtml) {
-    parts.push(mediaHtml);
+  // Media rides in `<content>` only. `<summary>` is a teaser that sits in the
+  // same entry, and shipping every image twice per entry is a real cost for a
+  // preview a reader may never render.
+  if (!options.summary) {
+    const mediaHtml = renderMediaForFeed(post.media, siteUrl, permalinkUrl);
+    if (mediaHtml) {
+      parts.push(mediaHtml);
+    }
   }
 
   if (post.rating && post.rating > 0) {
@@ -497,6 +590,142 @@ function buildFeedContent(
   return parts.join("\n");
 }
 
+/**
+ * Build the HTML for a feed entry's `<summary>` — what the site's timeline
+ * shows, as `<content>` is what the post's own page shows.
+ *
+ * Returns null when the timeline shows no less than the page does: a note that
+ * fits without truncation, a lone reply, a quote rendered in full. Sending a
+ * `<summary>` there would duplicate `<content>` verbatim, and Atom only
+ * requires one for `src`/base64 content (RFC 4287 §4.1.2).
+ *
+ * @param post - Root post view data
+ * @param siteUrl - Site base URL for absolute permalinks
+ * @param permalinkUrl - Absolute permalink URL for the root post
+ * @returns Summary HTML, or null when there is nothing shorter to say
+ * @example
+ * buildFeedSummary(post, "https://example.com", "https://example.com/hello")
+ * // "<p>Intro</p>\n<hr/>\n<p><small><a …>2 more posts</a></small></p>…"
+ */
+function buildFeedSummary(
+  post: FeedPostView,
+  siteUrl: string,
+  permalinkUrl?: string,
+): string | null {
+  const replies = post.threadReplies ?? [];
+  const latestReply = replies.at(-1);
+  // The timeline keeps the root as context and the newest reply as the hero,
+  // collapsing everything between into a count. One reply is the hero, so
+  // nothing is hidden.
+  const hiddenCount = Math.max(0, replies.length - 1);
+
+  const rootTruncated = getTimelineSummary(post)?.hasMore === true;
+  const replyTruncated = latestReply
+    ? getTimelineSummary(latestReply)?.hasMore === true
+    : false;
+
+  if (!rootTruncated && !replyTruncated && hiddenCount === 0) return null;
+
+  const parts = [
+    buildSinglePostContent(post, siteUrl, permalinkUrl, { summary: true }),
+  ];
+
+  const firstHidden = replies[0];
+  if (hiddenCount > 0 && firstHidden) {
+    // The site's gap marker is a link to the first post it hides
+    // (`ThreadPreview`'s `gapHref`), not just a count — in a feed there is no
+    // toggle to expand context, so the link is the only way through.
+    const gapHref = escapeXml(
+      toAbsoluteFeedUrl(firstHidden.permalink, siteUrl),
+    );
+    const label =
+      hiddenCount === 1 ? "1 more post" : `${hiddenCount} more posts`;
+    parts.push("<hr/>");
+    parts.push(`<p><small><a href="${gapHref}">${label}</a></small></p>`);
+  }
+
+  if (latestReply) {
+    const replyPermalink = new URL(latestReply.permalink, siteUrl).toString();
+    parts.push("<hr/>");
+    parts.push(
+      `<p><small><time datetime="${escapeXml(latestReply.publishedAt)}">${escapeXml(latestReply.publishedAtFormatted)}</time></small></p>`,
+    );
+    parts.push(
+      buildSinglePostContent(latestReply, siteUrl, replyPermalink, {
+        inline: true,
+        summary: true,
+      }),
+    );
+  }
+
+  return parts.join("\n");
+}
+
+/**
+ * Media RSS `medium` for an attachment. The vocabulary is fixed
+ * (image/audio/video/document/executable), so everything that is not a
+ * playable or visual file is a document.
+ */
+function getMediaRssMedium(mimeType: string): string {
+  const category = getMediaCategory(mimeType);
+  if (category === "image") return "image";
+  if (category === "video") return "video";
+  if (category === "audio") return "audio";
+  return "document";
+}
+
+/**
+ * Render one attachment as `<media:content>`, carrying the dimensions,
+ * duration, size, and description that Atom's `<link rel="enclosure">` has
+ * nowhere to put.
+ *
+ * @param item - Attachment view data
+ * @param siteUrl - Site base URL, for absolutizing stored paths
+ * @returns A `<media:content>` element, newline-prefixed for entry indentation
+ * @example
+ * renderMediaRssContent(photo, "https://example.com")
+ * // '\n    <media:content url="…" type="image/jpeg" medium="image" …/>'
+ */
+function renderMediaRssContent(item: MediaView, siteUrl: string): string {
+  const attrs = [
+    `url="${escapeXml(toAbsoluteFeedUrl(item.url, siteUrl))}"`,
+    `type="${escapeXml(item.mimeType)}"`,
+    `medium="${getMediaRssMedium(item.mimeType)}"`,
+  ];
+  if (item.size != null && item.size > 0) attrs.push(`fileSize="${item.size}"`);
+  if (item.width != null && item.width > 0) attrs.push(`width="${item.width}"`);
+  if (item.height != null && item.height > 0) {
+    attrs.push(`height="${item.height}"`);
+  }
+  if (item.durationSeconds != null && item.durationSeconds > 0) {
+    attrs.push(`duration="${Math.round(item.durationSeconds)}"`);
+  }
+
+  const children: string[] = [];
+  const title = item.originalName?.trim();
+  if (title) {
+    children.push(
+      `<media:title type="plain">${escapeXml(title)}</media:title>`,
+    );
+  }
+  const description = item.altText?.trim();
+  if (description) {
+    children.push(
+      `<media:description type="plain">${escapeXml(description)}</media:description>`,
+    );
+  }
+  const thumbnail = (item.posterUrl || item.thumbnailUrl)?.trim();
+  if (thumbnail && thumbnail !== item.url) {
+    children.push(
+      `<media:thumbnail url="${escapeXml(toAbsoluteFeedUrl(thumbnail, siteUrl))}"/>`,
+    );
+  }
+
+  return children.length > 0
+    ? `\n    <media:content ${attrs.join(" ")}>${children.join("")}</media:content>`
+    : `\n    <media:content ${attrs.join(" ")}/>`;
+}
+
 function getEntryMedia(post: FeedPostView): MediaView[] {
   const media = [...post.media];
   for (const reply of post.threadReplies ?? []) {
@@ -537,7 +766,6 @@ export function defaultFeedRenderer(data: FeedData): string {
         ? escapeXml(alternateUrl)
         : escapedPermalink;
       const title = getAtomTitle(post);
-      const summary = getFeedSummaryText(post);
       const publishedAt = post.feedPublishedAt ?? post.publishedAt;
       const updatedAt = post.feedUpdatedAt ?? post.updatedAt;
 
@@ -546,10 +774,18 @@ export function defaultFeedRenderer(data: FeedData): string {
         ? `\n    <link href="${escapedPermalink}" rel="related"/>`
         : "";
 
-      // One <link rel="enclosure"> per attachment so podcast/offline readers
-      // can fetch them. Atom omits length when size is unknown; mimeType is
-      // always known from the upload pipeline.
+      // One <link rel="enclosure"> per attachment the content cannot already
+      // show, so podcast/offline readers can fetch it. Atom omits length when
+      // size is unknown; mimeType is always known from the upload pipeline.
+      //
+      // Images are excluded: the content already renders them full size inside
+      // a link to the original, so an enclosure adds nothing a plain Atom
+      // parser could not already see — it only asks readers with an attachment
+      // shelf to list the picture a second time under the post. Every podcast
+      // feed works this way, enclosing the audio it cannot inline while
+      // leaving its inline show-note images alone.
       const enclosureLinks = getEntryMedia(post)
+        .filter((m) => getMediaCategory(m.mimeType) !== "image")
         .map((m) => {
           const lengthAttr =
             m.size != null && m.size > 0 ? ` length="${m.size}"` : "";
@@ -559,6 +795,26 @@ export function defaultFeedRenderer(data: FeedData): string {
           return `\n    <link rel="enclosure" type="${escapeXml(m.mimeType)}" href="${escapeXml(toAbsoluteFeedUrl(m.url, siteUrl))}"${lengthAttr}${titleAttr}/>`;
         })
         .join("");
+
+      // The same attachments again, with the metadata Atom's `<link>` cannot
+      // carry — pixel dimensions, duration, alt text, poster. Enclosure stays
+      // above because it is what a plain Atom parser reads; this is the layer
+      // a reader that knows Media RSS can lay out without fetching the file.
+      const mediaContentElements = getEntryMedia(post)
+        .map((m) => renderMediaRssContent(m, siteUrl))
+        .join("");
+
+      // The entry's representative image, for readers that lay out cards or a
+      // grid. A link post's preview is a thumbnail of someone else's page, not
+      // a file the author published, so it gets no `rel="enclosure"` — that
+      // would tell podcast and download clients to fetch it as content. Left
+      // out, a reader has to scrape the first `<img>` out of the content HTML.
+      // Dimensions are unknown: the URL is a scale-down transform of a stored
+      // key, and Media RSS makes width/height optional.
+      const previewImageUrl = post.previewImageUrl?.trim();
+      const thumbnailElement = previewImageUrl
+        ? `\n    <media:thumbnail url="${escapeXml(toAbsoluteFeedUrl(previewImageUrl, siteUrl))}"/>`
+        : "";
 
       // What kind of post this is, in Jant's own namespace. Atom has no field
       // for it, and `<category>` is the wrong place: a reader would show
@@ -577,14 +833,21 @@ export function defaultFeedRenderer(data: FeedData): string {
       // article is the reader's call, made from this and `<title>`.
       const formatElement = `\n    <jant:format>${escapeXml(post.format)}</jant:format>`;
 
+      // `<summary>` is the timeline's rendering, `<content>` the post page's.
+      // It is omitted rather than duplicated when the two would say the same
+      // thing — see buildFeedSummary.
+      const summaryMarkup = buildFeedSummary(post, siteUrl, permalinkUrl);
+      const summaryElement = summaryMarkup
+        ? `\n    <summary type="html"><![CDATA[${escapeCdata(summaryMarkup)}]]></summary>`
+        : "";
+
       return `
   <entry>
     <title>${escapeXml(title)}</title>
     <link href="${alternateLink}" rel="alternate"/>${relatedLink}${enclosureLinks}
     <id>${escapedPermalink}</id>
     <published>${publishedAt}</published>
-    <updated>${updatedAt}</updated>${formatElement}
-    <summary type="text">${escapeXml(summary)}</summary>
+    <updated>${updatedAt}</updated>${formatElement}${thumbnailElement}${mediaContentElements}${summaryElement}
     <content type="html"><![CDATA[${escapeCdata(buildFeedContent(post, siteUrl, permalinkUrl))}]]></content>
   </entry>`;
     })
@@ -617,6 +880,15 @@ export function defaultFeedRenderer(data: FeedData): string {
     discover || posts.length > 0
       ? ` xmlns:jant="${escapeXml(DISCOVER_NAMESPACE_URI)}"`
       : "";
+
+  // Media RSS rides along only when an entry actually carries an attachment or
+  // a representative image, on the same rule as the jant namespace above.
+  const mediaNs = posts.some(
+    (post) =>
+      getEntryMedia(post).length > 0 || Boolean(post.previewImageUrl?.trim()),
+  )
+    ? ` xmlns:media="${escapeXml(MEDIA_RSS_NAMESPACE_URI)}"`
+    : "";
 
   // Sibling-language feeds. `type` is carried because Atom forbids two
   // `rel="alternate"` links sharing a type/hreflang pair, and the site's own
@@ -657,7 +929,7 @@ export function defaultFeedRenderer(data: FeedData): string {
     : "";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"${jantNs}${langAttr}>
+<feed xmlns="http://www.w3.org/2005/Atom"${jantNs}${mediaNs}${langAttr}>
   <title>${escapeXml(feedTitle)}</title>
   <subtitle>${escapeXml(siteDescription)}</subtitle>${authorBlock}${iconBlock}
   <link href="${escapeXml(siteUrl)}" rel="alternate"/>

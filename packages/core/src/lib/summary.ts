@@ -23,6 +23,21 @@ interface TiptapNode {
 }
 
 /**
+ * Summary limits for titled, article-style posts — the excerpt is a teaser
+ * and the reader continues on the post's own page.
+ */
+export const ARTICLE_SUMMARY_MAX_BLOCKS = 5;
+export const ARTICLE_SUMMARY_MAX_CHARS = 500;
+/**
+ * Larger limits for untitled notes — the body itself is the content, so the
+ * preview only exists to cap runaway length.
+ */
+export const NOTE_SUMMARY_MAX_BLOCKS = 10;
+export const NOTE_SUMMARY_MAX_CHARS = 1500;
+/** Don't truncate an untitled note just to hide a tail under this many chars. */
+export const NOTE_SUMMARY_MIN_HIDDEN_CHARS = 200;
+
+/**
  * Block node types that carry user-visible content for summary extraction.
  * Structural nodes (horizontalRule, moreBreak, image) are excluded.
  */

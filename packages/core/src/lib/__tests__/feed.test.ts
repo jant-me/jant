@@ -124,7 +124,9 @@ describe("feed renderers", () => {
     );
 
     expect(xml).toContain("<title></title>");
-    expect(xml).toContain('<summary type="text">哈哈哈😍</summary>');
+    // A note this short is not truncated on the timeline, so `<summary>` would
+    // only repeat `<content>`.
+    expect(xml).not.toContain("<summary");
     expect(xml).toContain("<![CDATA[<p>哈哈哈😍</p>]]>");
     expect(xml).not.toContain("data-jant-meta");
     expect(xml).not.toContain('{"kind":"text"}');
@@ -203,10 +205,14 @@ describe("feed renderers", () => {
 
     expect(xml).toContain("<title></title>");
     expect(xml).toContain(
-      '<summary type="text">What stands in the way becomes the way.</summary>',
+      '<blockquote cite="https://example.com/meditations">' +
+        "<p>What stands in the way becomes the way.</p></blockquote>",
     );
     expect(xml).toContain("Marcus Aurelius");
     expect(xml).toContain("https://example.com/meditations");
+    // The timeline renders a quote in full, so there is no shorter rendering
+    // for `<summary>` to carry.
+    expect(xml).not.toContain("<summary");
   });
 
   // The site keeps quote line breaks with `white-space: pre-line`; feed
@@ -246,7 +252,7 @@ describe("feed renderers", () => {
         xml,
       )?.[1];
     expect(content).toBe(
-      "<blockquote><p>First line<br/>Second line</p></blockquote>",
+      "<figure><blockquote><p>First line<br/>Second line</p></blockquote></figure>",
     );
   });
 
@@ -565,12 +571,12 @@ describe("feed renderers", () => {
       '<img src="https://example.com/media/photo.jpg" alt="A red bicycle" width="1200" height="800"/>',
     );
     expect(xml).toContain("<figcaption>A red bicycle</figcaption>");
-    expect(xml).toContain(
-      '<link rel="enclosure" type="image/jpeg" href="https://example.com/media/photo.jpg" length="245000"',
-    );
+    // The content already shows the picture inside a link to the original, so
+    // an enclosure would only ask an attachment shelf to list it again.
+    expect(xml).not.toContain('rel="enclosure"');
   });
 
-  it("renders video attachments as poster + caption (never inline <video>)", () => {
+  it("inlines a video player with the poster as an attribute", () => {
     const post = makePostView({
       media: [
         makeMediaView({
@@ -588,17 +594,92 @@ describe("feed renderers", () => {
     });
     const xml = defaultFeedRenderer(makeFeedData(post));
 
-    expect(xml).not.toContain("<video");
     expect(xml).toContain(
-      '<img src="https://example.com/media/clip-poster.jpg"',
+      '<video controls preload="none" ' +
+        'poster="https://example.com/media/clip-poster.jpg" ' +
+        'width="1920" height="1080">' +
+        '<source src="https://example.com/media/clip.mp4" type="video/mp4"/>' +
+        "</video>",
     );
-    // The action label is a link (not just the thumbnail); metadata sits
-    // outside the link in parens, matching the audio/text attachment style.
+    // The poster is an attribute now, not an <img> the reader might show
+    // beside the player.
+    expect(xml).not.toContain("<img");
+    // The action label stays a link outside the <video>, so it survives a
+    // sanitizer that drops the player; metadata sits outside the link in
+    // parens, matching the audio/text attachment style.
     expect(xml).toContain(
       '<figcaption><a href="https://example.com/media/clip.mp4">▶ Watch video</a> (0:42 · 1.1 MB)</figcaption>',
     );
     expect(xml).toContain(
       '<link rel="enclosure" type="video/mp4" href="https://example.com/media/clip.mp4" length="1200000"',
+    );
+  });
+
+  // The media pipeline only transforms image MIME types, so a video's
+  // `thumbnailUrl` is the file itself. Feeding that to `<img src>` produced a
+  // broken image pointing at an MP4.
+  it("omits the poster for a video with no poster frame", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          media: [
+            makeMediaView({
+              id: "med_clip",
+              url: "https://example.com/media/clip.mp4",
+              thumbnailUrl: "https://example.com/media/clip.mp4",
+              mimeType: "video/mp4",
+              size: 28_000_000,
+              width: 960,
+              height: 448,
+              originalName: "clip.mp4",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    // No <img>, and crucially no poster pointing at the video file itself.
+    expect(xml).not.toContain("<img");
+    expect(xml).not.toContain("poster=");
+    expect(xml).toContain(
+      '<video controls preload="none" width="960" height="448">' +
+        '<source src="https://example.com/media/clip.mp4" type="video/mp4"/>' +
+        "</video>",
+    );
+    // The play cue, the link, and the size all survive without the still.
+    expect(xml).toContain(
+      '<figcaption><a href="https://example.com/media/clip.mp4">▶ Watch video</a> (26.7 MB)</figcaption>',
+    );
+    // Media RSS must not invent a thumbnail out of the video either.
+    expect(xml).not.toContain("<media:thumbnail");
+    // The enclosure is what lets a reader offer its own player.
+    expect(xml).toContain(
+      '<link rel="enclosure" type="video/mp4" href="https://example.com/media/clip.mp4"',
+    );
+  });
+
+  // `<video>` has no `alt` attribute, so a described clip would lose its
+  // description entirely if the caption did not carry it.
+  it("moves a video's alt text into its caption", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          media: [
+            makeMediaView({
+              id: "med_described",
+              url: "https://example.com/media/described.mp4",
+              thumbnailUrl: "https://example.com/media/described.mp4",
+              mimeType: "video/mp4",
+              altText: "A heron takes off",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain(
+      '<figcaption><a href="https://example.com/media/described.mp4">' +
+        "▶ Watch video</a>: A heron takes off</figcaption>",
     );
   });
 
@@ -617,7 +698,10 @@ describe("feed renderers", () => {
     const xml = defaultFeedRenderer(makeFeedData(post));
 
     expect(xml).toContain(
-      '<a href="https://example.com/media/local-clip.mp4"><img src="https://example.com/media/local-clip-poster.jpg"',
+      'poster="https://example.com/media/local-clip-poster.jpg"',
+    );
+    expect(xml).toContain(
+      '<source src="https://example.com/media/local-clip.mp4" type="video/mp4"/>',
     );
     expect(xml).toContain(
       '<a href="https://example.com/media/local-clip.mp4">▶ Watch video</a>',
@@ -985,5 +1069,355 @@ describe("feed entry format", () => {
 
     expect(xml).toContain("<jant:format>quote</jant:format>");
     expect(xml).not.toContain("<jant:format>note</jant:format>");
+  });
+});
+
+/**
+ * `<summary>` carries what the site's timeline shows; `<content>` carries what
+ * the post's own page shows. The two only both appear when they differ.
+ */
+describe("feed entry summary", () => {
+  function makeBody(paragraphs: string[]): string {
+    return JSON.stringify({
+      type: "doc",
+      content: paragraphs.map((text) => ({
+        type: "paragraph",
+        content: [{ type: "text", text }],
+      })),
+    });
+  }
+
+  const longBody = makeBody([
+    "Alpha ".repeat(40).trim(),
+    "Bravo ".repeat(40).trim(),
+    "Charlie ".repeat(40).trim(),
+    "Delta ".repeat(40).trim(),
+  ]);
+
+  function getSummary(xml: string): string | undefined {
+    return /<summary type="html"><!\[CDATA\[([\s\S]*?)\]\]><\/summary>/.exec(
+      xml,
+    )?.[1];
+  }
+
+  function getContent(xml: string): string | undefined {
+    return /<content type="html"><!\[CDATA\[([\s\S]*?)\]\]><\/content>/.exec(
+      xml,
+    )?.[1];
+  }
+
+  it("sends a truncated summary alongside the full content", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          title: "A long read",
+          body: longBody,
+          bodyHtml: "<p>Alpha</p><p>Bravo</p><p>Charlie</p><p>Delta</p>",
+        }),
+      ),
+    );
+
+    const summary = getSummary(xml);
+    const content = getContent(xml);
+    expect(summary).toBeDefined();
+    expect(summary).toContain("Alpha");
+    expect(summary).not.toContain("Delta");
+    expect(content).toContain("Delta");
+  });
+
+  it("omits the summary when the timeline shows the whole post", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          title: "Short",
+          body: makeBody(["Just the one line."]),
+          bodyHtml: "<p>Just the one line.</p>",
+        }),
+      ),
+    );
+
+    expect(xml).not.toContain("<summary");
+    expect(getContent(xml)).toContain("Just the one line.");
+  });
+
+  // The site draws this separator with `.feed-quote-commentary::before`, which
+  // feed readers strip along with the rest of the CSS.
+  it("separates a quote from its commentary with a rule", () => {
+    const content = getContent(
+      defaultFeedRenderer(
+        makeFeedData(
+          makePostView({
+            format: "quote",
+            title: "Marcus Aurelius",
+            url: "https://example.com/meditations",
+            quoteText: "What stands in the way becomes the way.",
+            bodyHtml: "<p>Still true.</p>",
+          }),
+        ),
+      ),
+    );
+
+    expect(content).toContain(
+      "<figcaption>— " +
+        '<a href="https://example.com/meditations">Marcus Aurelius</a>' +
+        "</figcaption></figure>\n<hr/>\n<p>Still true.</p>",
+    );
+  });
+
+  it("keeps the rating in the summary but leaves media to the content", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          title: "A long read",
+          body: longBody,
+          bodyHtml: "<p>Alpha</p><p>Delta</p>",
+          rating: 4,
+          media: [
+            makeMediaView({
+              url: "https://example.com/media/photo.jpg",
+              mimeType: "image/jpeg",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    const summary = getSummary(xml);
+    expect(summary).toContain("★★★★☆ 4/5");
+    expect(summary).not.toContain("photo.jpg");
+    expect(getContent(xml)).toContain("photo.jpg");
+  });
+
+  it("collapses a thread to root, a gap link, and the latest reply", () => {
+    const reply = (n: number) =>
+      makePostView({
+        id: `reply-${n}`,
+        permalink: `/reply-${n}`,
+        body: makeBody([`Reply ${n} body.`]),
+        bodyHtml: `<p>Reply ${n} body.</p>`,
+      });
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          title: "Thread root",
+          body: longBody,
+          bodyHtml: "<p>Alpha</p><p>Delta</p>",
+          threadReplies: [reply(1), reply(2), reply(3)],
+        }),
+      ),
+    );
+
+    const summary = getSummary(xml);
+    expect(summary).toContain(
+      '<p><small><a href="https://example.com/reply-1">2 more posts</a></small></p>',
+    );
+    expect(summary).toContain("Reply 3 body.");
+    expect(summary).not.toContain("Reply 2 body.");
+
+    // The content still carries every reply.
+    const content = getContent(xml);
+    expect(content).toContain("Reply 1 body.");
+    expect(content).toContain("Reply 2 body.");
+    expect(content).toContain("Reply 3 body.");
+  });
+
+  it("writes the gap count in the singular for a single hidden post", () => {
+    const reply = (n: number) =>
+      makePostView({
+        id: `reply-${n}`,
+        permalink: `/reply-${n}`,
+        body: makeBody([`Reply ${n}.`]),
+        bodyHtml: `<p>Reply ${n}.</p>`,
+      });
+    const summary = getSummary(
+      defaultFeedRenderer(
+        makeFeedData(
+          makePostView({
+            body: makeBody(["Root."]),
+            bodyHtml: "<p>Root.</p>",
+            threadReplies: [reply(1), reply(2)],
+          }),
+        ),
+      ),
+    );
+
+    expect(summary).toContain(">1 more post</a>");
+  });
+
+  it("omits the summary for a thread with nothing hidden or truncated", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          body: makeBody(["Root."]),
+          bodyHtml: "<p>Root.</p>",
+          threadReplies: [
+            makePostView({
+              id: "reply-1",
+              permalink: "/reply-1",
+              body: makeBody(["Only reply."]),
+              bodyHtml: "<p>Only reply.</p>",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).not.toContain("<summary");
+  });
+});
+
+/**
+ * Atom's `<link rel="enclosure">` has nowhere to put dimensions, duration, or
+ * a description, so Media RSS carries them alongside it.
+ */
+describe("feed attachment metadata", () => {
+  it("describes an image with Media RSS instead of an enclosure", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          media: [
+            makeMediaView({
+              url: "https://example.com/media/photo.jpg",
+              thumbnailUrl: "https://example.com/media/photo-thumb.jpg",
+              mimeType: "image/jpeg",
+              size: 245000,
+              width: 1600,
+              height: 1200,
+              altText: "A quiet street",
+              originalName: "photo.jpg",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain('xmlns:media="http://search.yahoo.com/mrss/"');
+    expect(xml).toContain(
+      '<media:content url="https://example.com/media/photo.jpg" ' +
+        'type="image/jpeg" medium="image" fileSize="245000" ' +
+        'width="1600" height="1200">',
+    );
+    expect(xml).toContain(
+      '<media:description type="plain">A quiet street</media:description>',
+    );
+    expect(xml).toContain(
+      '<media:thumbnail url="https://example.com/media/photo-thumb.jpg"/>',
+    );
+    // No enclosure for a picture the content already renders in full.
+    expect(xml).not.toContain('rel="enclosure"');
+  });
+
+  // An enclosure is for a file the content cannot inline. Audio is exactly
+  // that; a picture the reader is already looking at is not.
+  it("encloses audio but not the image beside it, and describes both", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          media: [
+            makeMediaView({
+              id: "med_img",
+              url: "https://example.com/media/photo.jpg",
+              thumbnailUrl: "https://example.com/media/photo.jpg",
+              mimeType: "image/jpeg",
+              size: 245000,
+            }),
+            makeMediaView({
+              id: "med_audio",
+              url: "https://example.com/media/song.mp3",
+              thumbnailUrl: "https://example.com/media/song.mp3",
+              mimeType: "audio/mpeg",
+              size: 5242880,
+              durationSeconds: 201,
+              originalName: "song.mp3",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain(
+      '<link rel="enclosure" type="audio/mpeg" href="https://example.com/media/song.mp3"',
+    );
+    expect(xml).not.toContain('<link rel="enclosure" type="image/jpeg"');
+
+    // Media RSS still describes both — it is a metadata layer, not a shelf.
+    expect(xml).toContain('medium="image"');
+    expect(xml).toContain('medium="audio"');
+    expect(xml).toContain('duration="201"');
+  });
+
+  it("carries duration for timed media and resolves relative URLs", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          media: [
+            makeMediaView({
+              url: "/media/clip.mp4",
+              thumbnailUrl: "/media/clip-poster.jpg",
+              mimeType: "video/mp4",
+              durationSeconds: 42.4,
+              width: 1920,
+              height: 1080,
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain(
+      '<media:content url="https://example.com/media/clip.mp4" ' +
+        'type="video/mp4" medium="video" width="1920" height="1080" ' +
+        'duration="42">',
+    );
+  });
+
+  it("calls non-visual attachments documents", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          media: [
+            makeMediaView({
+              url: "https://example.com/media/spec.pdf",
+              thumbnailUrl: "https://example.com/media/spec.pdf",
+              mimeType: "application/pdf",
+              originalName: "spec.pdf",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain('medium="document"');
+    expect(xml).toContain('<media:title type="plain">spec.pdf</media:title>');
+  });
+
+  // Card and grid views need a representative image. Without one declared, a
+  // reader has to scrape the first `<img>` out of the content HTML.
+  it("declares a link preview as the entry's representative image", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          format: "link",
+          url: "https://external.com/article",
+          title: "An article",
+          previewImageUrl: "/previews/article.jpg",
+        }),
+      ),
+    );
+
+    expect(xml).toContain('xmlns:media="http://search.yahoo.com/mrss/"');
+    expect(xml).toContain(
+      '<media:thumbnail url="https://example.com/previews/article.jpg"/>',
+    );
+    // A scraped thumbnail of someone else's page is not a published file, so
+    // it must not tell podcast and download clients to fetch it.
+    expect(xml).not.toContain('rel="enclosure"');
+  });
+
+  it("leaves the Media RSS namespace out of a feed with no attachments", () => {
+    const xml = defaultFeedRenderer(makeFeedData(makePostView()));
+    expect(xml).not.toContain("xmlns:media");
+    expect(xml).not.toContain("<media:content");
+    expect(xml).not.toContain("<media:thumbnail");
   });
 });
