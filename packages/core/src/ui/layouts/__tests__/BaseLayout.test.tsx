@@ -24,6 +24,8 @@ function createContext(
     /** Language of the page being rendered (post language or view language). */
     lang?: string;
     rssFeedsEnabled?: boolean;
+    storageDriver?: string;
+    r2PublicUrl?: string;
   },
 ) {
   const values = {
@@ -40,6 +42,8 @@ function createContext(
       themeId: overrides?.themeId ?? overrides?.defaultThemeId ?? "linen",
       defaultThemeId: overrides?.defaultThemeId ?? "linen",
       assetBasePath: overrides?.assetBasePath ?? "/_assets",
+      storageDriver: overrides?.storageDriver ?? "r2",
+      r2PublicUrl: overrides?.r2PublicUrl,
     },
     lang: overrides?.lang ?? overrides?.siteLanguage ?? "en",
     i18n: {
@@ -407,6 +411,95 @@ describe("BaseLayout", () => {
     expect(html).toContain(`src="/blog/_assets/client.js"`);
     expect(html).toContain(`href="/blog/_assets/client.css"`);
     expect(html).toContain('data-asset-base-path="/blog/_assets"');
+  });
+
+  it("preconnects to the asset host when assets are served from a CDN", async () => {
+    const { BaseLayout } = await loadBaseLayout();
+    const html = renderToString(
+      BaseLayout({
+        title: "Jant",
+        c: createContext("featured", {
+          siteUrl: "https://example.com",
+          assetBasePath: "https://cdn.example.com/jant",
+        }),
+        children: "Test",
+      }),
+    );
+
+    expect(html).toContain(
+      '<link rel="preconnect" href="https://cdn.example.com"/>',
+    );
+    expect(html).toContain(
+      '<link rel="preconnect" href="https://cdn.example.com" crossorigin="anonymous"/>',
+    );
+    // Before the stylesheet it warms the connection for.
+    expect(html.indexOf('rel="preconnect"')).toBeLessThan(
+      html.indexOf('rel="stylesheet"'),
+    );
+  });
+
+  it("preconnects to the media host as well when it is a separate one", async () => {
+    const { BaseLayout } = await loadBaseLayout();
+    const html = renderToString(
+      BaseLayout({
+        title: "Jant",
+        c: createContext("featured", {
+          siteUrl: "https://example.com",
+          assetBasePath: "https://cdn.example.com/jant",
+          r2PublicUrl: "https://media.example.com",
+        }),
+        children: "Test",
+      }),
+    );
+
+    expect(html).toContain(
+      '<link rel="preconnect" href="https://media.example.com"/>',
+    );
+    expect(html).not.toContain(
+      '<link rel="preconnect" href="https://media.example.com" crossorigin="anonymous"/>',
+    );
+  });
+
+  it("preconnects once to a host that serves both assets and media", async () => {
+    const { BaseLayout } = await loadBaseLayout();
+    const html = renderToString(
+      BaseLayout({
+        title: "Jant",
+        c: createContext("featured", {
+          siteUrl: "https://example.com",
+          assetBasePath: "https://cdn.example.com/_assets",
+          r2PublicUrl: "https://cdn.example.com/media",
+        }),
+        children: "Test",
+      }),
+    );
+
+    expect(html.match(/rel="preconnect"/g)).toHaveLength(2);
+  });
+
+  it("preconnects to nothing when assets and media share the site's origin", async () => {
+    const { BaseLayout } = await loadBaseLayout();
+    const sameOrigin = renderToString(
+      BaseLayout({
+        title: "Jant",
+        c: createContext("featured", {
+          siteUrl: "https://example.com",
+          assetBasePath: "https://example.com/_assets",
+          r2PublicUrl: "https://example.com/media",
+        }),
+        children: "Test",
+      }),
+    );
+    const samePath = renderToString(
+      BaseLayout({
+        title: "Jant",
+        c: createContext("featured", { assetBasePath: "/_assets" }),
+        children: "Test",
+      }),
+    );
+
+    expect(sameOrigin).not.toContain('rel="preconnect"');
+    expect(samePath).not.toContain('rel="preconnect"');
   });
 
   it("loads the CJK stylesheet for the site language", async () => {

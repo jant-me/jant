@@ -2,7 +2,9 @@
  * Static asset path helpers.
  *
  * Build outputs live under an internal `/_assets` directory, while the public
- * asset base path may be prefixed by the site's deployment path.
+ * asset base path may be prefixed by the site's deployment path, or replaced
+ * by an absolute CDN URL. The connection hints a page needs are derived from
+ * those same base URLs, so they live here too.
  */
 
 import { toPublicPath } from "./url.js";
@@ -65,6 +67,101 @@ export function isAssetPath(path: string, basePath = ASSET_BASE_PATH): boolean {
   return (
     path === normalizedBasePath || path.startsWith(`${normalizedBasePath}/`)
   );
+}
+
+/** One `<link rel="preconnect">` the layout should emit. */
+export interface PreconnectHint {
+  /** Origin to open a connection to. */
+  href: string;
+  /**
+   * Whether this is the CORS-mode connection. A browser pools credentialed
+   * and uncredentialed connections separately, so an origin serving both a
+   * stylesheet (no CORS) and a module script (CORS) needs one of each.
+   */
+  crossorigin: boolean;
+}
+
+/**
+ * The origin of `base`, or `null` when it is not a cross-origin absolute URL.
+ */
+function crossOrigin(base: string | undefined, siteOrigin: string | null) {
+  const trimmed = base?.trim();
+  if (
+    !trimmed ||
+    (!trimmed.startsWith("http://") && !trimmed.startsWith("https://"))
+  ) {
+    return null;
+  }
+  try {
+    const { origin } = new URL(trimmed);
+    return origin === siteOrigin ? null : origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Origins worth a `<link rel="preconnect">` for the subresources of a page.
+ *
+ * Only a host the page does not already have a connection to earns a hint:
+ * the site's own origin is connected by the time the HTML arrives, and a
+ * same-origin base path resolves to it. What is left is a CDN asset host and
+ * a media host, and warming DNS, TCP and TLS while the rest of `<head>` parses
+ * takes that round trip off the critical path.
+ *
+ * The asset host serves the render-blocking stylesheet and the module script,
+ * so it gets both connection kinds; the media host serves images, so it gets
+ * the uncredentialed one. When the two are the same host, the asset hints
+ * already cover the images.
+ *
+ * @param options - Resolved base URLs for the page's subresources
+ * @param options.assetBasePath - Public asset base path or absolute CDN URL
+ * @param options.mediaBaseUrl - Public media base URL, empty when same-origin
+ * @param options.siteUrl - The site's own URL, so its origin is never hinted
+ * @returns Hints in the order they should be emitted, possibly empty
+ *
+ * @example
+ * ```ts
+ * getPreconnectHints({
+ *   assetBasePath: "https://cdn.example.com/a",
+ *   mediaBaseUrl: "https://media.example.com",
+ *   siteUrl: "https://example.com",
+ * });
+ * // [
+ * //   { href: "https://cdn.example.com", crossorigin: false },
+ * //   { href: "https://cdn.example.com", crossorigin: true },
+ * //   { href: "https://media.example.com", crossorigin: false },
+ * // ]
+ * ```
+ */
+export function getPreconnectHints(options: {
+  assetBasePath: string;
+  mediaBaseUrl?: string;
+  siteUrl?: string;
+}): PreconnectHint[] {
+  let siteOrigin: string | null = null;
+  if (options.siteUrl) {
+    try {
+      siteOrigin = new URL(options.siteUrl).origin;
+    } catch {
+      // An unparseable siteUrl tells us nothing; hint the other hosts anyway.
+    }
+  }
+
+  const assetOrigin = crossOrigin(options.assetBasePath, siteOrigin);
+  const mediaOrigin = crossOrigin(options.mediaBaseUrl, siteOrigin);
+
+  const hints: PreconnectHint[] = [];
+  if (assetOrigin) {
+    hints.push(
+      { href: assetOrigin, crossorigin: false },
+      { href: assetOrigin, crossorigin: true },
+    );
+  }
+  if (mediaOrigin && mediaOrigin !== assetOrigin) {
+    hints.push({ href: mediaOrigin, crossorigin: false });
+  }
+  return hints;
 }
 
 /**
