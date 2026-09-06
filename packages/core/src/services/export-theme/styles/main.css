@@ -2010,7 +2010,7 @@ hr.feed-divider {
 .pagination {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 1rem;
   padding: 1.5rem 0;

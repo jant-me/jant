@@ -2314,11 +2314,10 @@
        the next post has no leading dead space. */
     margin: calc(var(--site-feed-rhythm) - var(--post-footer-overshoot)) 0
       var(--site-feed-rhythm);
-    /* Center over the post-body column. On desktop the body column is
-       `var(--layout-content-width)` (55%). Between 760-1024px it switches
-       to `min(100%, 35rem)` via preset.css, so the hr must track that
-       same rule — otherwise the glyph drifts left of the content center. */
-    margin-left: calc(var(--layout-content-width) / 2 - 15px);
+    /* Center over the post-body column, whatever that column currently is —
+       `--layout-reading-width` is the same value preset.css sizes the body
+       with, in both tiers, so the glyph cannot drift off the content center. */
+    margin-left: calc(var(--layout-reading-width) / 2 - 15px);
     color: var(--site-feed-divider-color);
     background-color: currentColor;
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 45 13'%3E%3Cpath fill='black' transform='translate(0,0) rotate(90 6 6.5)' d='M6.765.5.177 6.093l2.61 5.966 8.39-3.17L6.765.5Z'/%3E%3Cpath fill='black' transform='translate(16,0) rotate(100 6 6.5)' d='M6.765.5.177 6.093l2.61 5.966 8.39-3.17L6.765.5Z'/%3E%3Cpath fill='black' transform='translate(32,0) rotate(80 6 6.5)' d='M6.765.5.177 6.093l2.61 5.966 8.39-3.17L6.765.5Z'/%3E%3C/svg%3E");
@@ -2329,14 +2328,6 @@
     mask-position: center;
     -webkit-mask-size: contain;
     mask-size: contain;
-  }
-
-  @media (max-width: 1024px) {
-    .site-content hr.feed-divider {
-      /* Match preset.css `min(100%, 35rem)` body-column width so the hr
-         stays visually aligned with the post column at this breakpoint. */
-      margin-left: calc(min(100%, 35rem) / 2 - 15px);
-    }
   }
 
   .feed-card {
@@ -2818,7 +2809,7 @@
   .link-preview {
     display: block;
     position: relative;
-    width: min(100%, calc(24rem * 16 / 9), var(--layout-content-width));
+    width: min(100%, calc(24rem * 16 / 9), var(--layout-reading-width));
     max-width: 100%;
     margin-top: 0.55rem;
     border-radius: var(--radius-lg, 0.5rem);

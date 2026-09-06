@@ -51,7 +51,7 @@ describe("MediaGallery", () => {
 
     expect(html).toContain("aspect-ratio:900/1600");
     expect(html).toMatch(
-      /width:min\(100%, ?calc\(24rem ?\* ?0\.5625\), ?var\(--layout-content-width\)\)/,
+      /width:min\(100%, ?calc\(24rem ?\* ?0\.5625\), ?var\(--layout-reading-width\)\)/,
     );
     expect(html).not.toContain("object-contain");
   });

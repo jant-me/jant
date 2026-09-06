@@ -4263,7 +4263,12 @@
      Where `zoom` is unsupported the preview simply renders at page scale —
      larger than intended, still correct. */
   .compose-translation-preview {
+    /* Both halves of the column story, because the panel is the column: the
+       proportion has no gutter to leave here, and the reading measure is
+       derived from the proportion at `:root`, so overriding one does not
+       reach the other. */
     --layout-content-width: 100%;
+    --layout-reading-width: 100%;
 
     zoom: 0.9;
     min-width: 0;
