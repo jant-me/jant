@@ -77,6 +77,8 @@ CLI 启动时会输出一行 `[jant] target = ...`，用于核对实际选中的
 
 CLI 启动时会自动加载 `<cwd>/.env.node`，但已通过 `export` 设置的 shell 变量优先级更高、不会被覆盖。把这些变量写进 `.env.node` 即可，不需要每次手动 `source`。
 
+用 `JANT_ENV_FILE` 可以指定加载另一个文件，一台机器管理多个部署时会用到。把 `JANT_ENV_FILE` 设为空值则完全跳过该文件 —— 自动化任务用这种方式把本地 `.env.node` 挡在环境之外。
+
 完整的环境变量列表见 [配置](configuration.md)。
 
 ## 站点导出（`site export`）
