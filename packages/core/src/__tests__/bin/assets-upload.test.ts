@@ -40,3 +40,29 @@ describe("compressForUpload", () => {
     expect(compressForUpload("STYLE.CSS", body)).not.toBeNull();
   });
 });
+
+describe("stale encoding detection", () => {
+  // `findStaleEncodingKeys` is not exported — it needs a live S3 client — so
+  // these pin the decision it is built on: which files we expect to find
+  // stored as brotli, and which correctly have no `Content-Encoding`.
+  it("expects compression for the types that carry the reader payload", () => {
+    const body = Buffer.from(".x{color:red}".repeat(400), "utf8");
+
+    // A CJK stylesheet is the case that motivated this: its key never changes,
+    // so it was skipped forever and kept being compressed at the CDN's own low
+    // quality on every request.
+    for (const name of ["client-cjk-B7Z0snDu.css", "client-CDPZMBLo.js"]) {
+      expect(compressForUpload(name, body)).not.toBeNull();
+    }
+  });
+
+  it("expects no compression where storing raw is the right answer", () => {
+    // Anything here would be re-uploaded on every run if a missing
+    // `Content-Encoding` counted as stale.
+    const dense = Buffer.from("y".repeat(4000), "utf8");
+    expect(compressForUpload("subset.woff2", dense)).toBeNull();
+
+    const tiny = Buffer.from([0x7a, 0x1b, 0x4f, 0x22]);
+    expect(compressForUpload("meta.json", tiny)).toBeNull();
+  });
+});
