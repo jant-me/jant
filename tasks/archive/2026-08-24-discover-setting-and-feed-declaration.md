@@ -1,6 +1,19 @@
 # Discover: site setting + feed declaration (jant-core side)
 
-> **Superseded in part** by `2026-09-04-1500-discover-opt-in-for-self-hosted.md`: the setting no longer defaults to `latest`. A site with nothing stored and no `DISCOVER` binding declares `none`, the binding is read as the deployment's default rather than as the site's answer, and the settings checkbox starts unticked. Everything else below still holds.
+> **Superseded in part.** Read the two follow-ups beside this one in
+> `tasks/archive/` before trusting a detail here:
+>
+> - `2026-09-04-discover-opt-in-for-self-hosted.md` — the setting no longer
+>   defaults to `latest`. A site with nothing stored and no `DISCOVER` binding
+>   declares `none`, the binding is read as the deployment's default rather
+>   than as the site's answer, and the settings checkbox starts unticked. The
+>   maturity threshold dropped to 1 public post with no age requirement.
+> - `2026-09-04-discover-settings-copy-trim.md` — `docs/discover.md` is gone in
+>   both locales. What core owns now lives in `docs/feeds.md` under
+>   `## Discover`, and the settings page links the directory itself rather than
+>   a page about it. Every `/docs/discover` reference below is stale.
+>
+> Everything else here still holds.
 
 Core's half of the Jant Discover feature (the community pulse page it feeds).
 Core owns the protocol — the site setting, the `<jant:discover>` element and the
@@ -217,11 +230,12 @@ ping, and `docs/discover.md`.
       single-author blog, useful to every feed reader, and no new namespace.
       The cloud can now name a self-hosted blog instead of falling back to its
       host.
-- [ ] **Consider ETag / Last-Modified on feed responses.** The crawler sends
-      conditional-GET headers and core never answers with validators, so every
-      poll transfers the whole feed. Cheap to add next to
-      `RSS_FEED_CACHE_CONTROL`, and it makes every feed reader cheaper too, not
-      just Discover.
+- [—] **ETag / Last-Modified on feed responses.** Split out rather than done:
+  it is a feed-performance change that happens to help the crawler, not
+  part of the Discover protocol, and holding this whole document open for
+  it served nothing. Carried to
+  `tasks/todos/2026-09-06-1445-feed-conditional-get.md` with the four call
+  sites and the open design questions written down.
 - [x] Tests for C2: `lib/__tests__/discover-ping.test.ts` (what is sent, the
       empty-binding case, failures swallowed and logged, no `executionCtx`),
       `lib/__tests__/discover.test.ts` (the presence-aware URL),
@@ -236,8 +250,11 @@ ping, and `docs/discover.md`.
   `/settings/general/search` does the same — so fixing it belongs to a
   change that covers every settings endpoint, not to this one.
 
-- [ ] Verify: `mise run check-tests`, `mise run check-lint`,
-      `mise run check-copy`.
+- [x] Verify: `check-tests` (307 files, 4097 tests, all passing — the
+      `cli-site-snapshot` failure the two later Discover tasks recorded as
+      pre-existing no longer reproduces), `check-lint`, `check-copy`
+      (0 errors, 0 warnings across 65 files) and `check-types`, all green on
+      the committed tree at `713ec95d`.
 
 ## Explicitly out of scope (core)
 
