@@ -533,7 +533,22 @@ export function createSettingsService(
         feedUrl: input.feedUrl,
         now,
       });
-      await this.set("DISCOVER_ANNOUNCE_STATE", JSON.stringify(outcome));
+      // Recording is best-effort, and the try/catch is what makes the "never
+      // throws" above true. The caller runs this as background work with
+      // nothing awaiting it, so a rejection here has nobody to reject to — on
+      // a Node runtime that ends the process. A settings row that could not be
+      // written is worth a log and a status block the owner cannot read; it is
+      // not worth the site.
+      try {
+        await this.set("DISCOVER_ANNOUNCE_STATE", JSON.stringify(outcome));
+      } catch (error) {
+        // eslint-disable-next-line no-console -- The owner's status block is now stale; say why.
+        console.error(
+          `[Jant] Discover announcement could not be recorded: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
 
       // The stored outcome is for the owner, and it does not always reach
       // them: the announcement runs behind the settings save so the response

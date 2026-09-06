@@ -27,6 +27,7 @@ import {
   ValidationError,
 } from "../../lib/errors.js";
 import { SETTINGS_KEYS } from "../../lib/constants.js";
+import { runDeferred } from "../../lib/deferred.js";
 import {
   DISCOVER_FIRST_READ_MAX_HOURS,
   DISCOVER_MIN_PUBLIC_POSTS,
@@ -923,20 +924,20 @@ function announceInBackground(
   const feedPath = getDiscoverFeedPath(mode);
   if (!feedPath) return false;
 
-  const run = c.var.services.settings.announceToDiscover({
-    endpoint,
-    feedUrl: toAbsoluteSiteUrl(
-      feedPath,
-      appConfig.siteUrl,
-      appConfig.sitePathPrefix,
-    ),
+  // Deferred, so the save answers without waiting on a directory. The helper
+  // is what keeps the orphaned promise from taking a Node process down with
+  // it: `announceToDiscover` already resolves rather than throws, and this is
+  // what holds if it ever stops being.
+  runDeferred(c, "Discover announcement", async () => {
+    await c.var.services.settings.announceToDiscover({
+      endpoint,
+      feedUrl: toAbsoluteSiteUrl(
+        feedPath,
+        appConfig.siteUrl,
+        appConfig.sitePathPrefix,
+      ),
+    });
   });
-  try {
-    c.executionCtx?.waitUntil(run);
-  } catch {
-    // executionCtx not available (e.g. tests, Node) — let the promise resolve
-    // on its own; the HTTP response still returns immediately.
-  }
   return true;
 }
 
@@ -953,30 +954,36 @@ settingsRoutes.post("/general/discover/announce", async (c) => {
   const i18n = getI18n(c);
   const { appConfig } = c.var;
 
-  if (
-    appConfig.demoMode ||
-    !announceInBackground(c, c.var.allSettings["DISCOVER"])
-  ) {
-    return dsToast(
-      i18n._(
+  const started =
+    !appConfig.demoMode &&
+    announceInBackground(c, c.var.allSettings["DISCOVER"]);
+
+  const toast = started
+    ? i18n._(
+        msg({
+          message: "Announcing your site. Reload to see the result.",
+          comment:
+            "@context: Toast after sending the Discover announcement. It runs in the background, so the page does not yet know how it went.",
+        }),
+      )
+    : i18n._(
         msg({
           message: "This site has no directory to announce to.",
           comment:
             "@context: Toast when the Discover announcement cannot be sent because no directory is configured, or the site cannot be listed at all",
         }),
-      ),
-    );
+      );
+
+  // The settings bridge is the only caller, and it always asks for JSON — a
+  // Datastar toast reaches it as a body it cannot parse, which it reports as a
+  // failed save whatever the server actually did. Every other settings route
+  // answers both shapes; this one has to as well.
+  const wantsJson = c.req.header("accept")?.includes("application/json");
+  if (wantsJson) {
+    return c.json({ status: "ok" as const, toast });
   }
 
-  return dsToast(
-    i18n._(
-      msg({
-        message: "Announcing your site. Reload to see the result.",
-        comment:
-          "@context: Toast after sending the Discover announcement. It runs in the background, so the page does not yet know how it went.",
-      }),
-    ),
-  );
+  return dsToast(toast);
 });
 
 settingsRoutes.post("/general/discover", async (c) => {

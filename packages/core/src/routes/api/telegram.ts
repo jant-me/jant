@@ -25,6 +25,7 @@ import {
   getTelegramWebhookSecret,
 } from "../../lib/env.js";
 import { timingSafeEqualText } from "../../lib/crypto.js";
+import { runDeferred } from "../../lib/deferred.js";
 import {
   answerCallbackQuery,
   buildDeepLink,
@@ -316,7 +317,7 @@ async function processUpdate(
       posterFileId: media.posterFileId ?? null,
     });
 
-    runDeferred(c, async () => {
+    runDeferred(c, "Telegram", async () => {
       await sleep(ALBUM_BUFFER_DELAY_MS);
       const claimed = await telegram.claimAlbumGroup(botId, mediaGroupId);
       if (claimed.length === 0) return;
@@ -369,45 +370,6 @@ async function processUpdate(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Schedules background work that must outlive the current HTTP response so
- * Telegram can deliver the next webhook in this chat without waiting.
- *
- * On Cloudflare Workers `c.executionCtx.waitUntil` keeps the worker alive
- * until the promise settles. In Node / tests there's no such API, so we just
- * let the promise float — Node's event loop keeps running it. Either way the
- * promise has its own try/catch so unhandled rejections never bubble up.
- *
- * Background work also tracks the pending-promises array we register on the
- * env binding for tests so a vitest can `await` them after advancing timers.
- */
-function runDeferred(
-  c: {
-    env: Bindings;
-    executionCtx?: { waitUntil: (promise: Promise<unknown>) => void };
-  },
-  work: () => Promise<void>,
-): void {
-  const promise = work().catch((err) => {
-    const message = err instanceof Error ? err.message : String(err);
-    // eslint-disable-next-line no-console -- Background failures must be visible.
-    console.error(`[Jant] Telegram background error: ${message}`);
-  });
-  try {
-    c.executionCtx?.waitUntil(promise);
-  } catch {
-    // executionCtx not available (e.g. Node, tests) — promise still runs.
-  }
-  const pending = (
-    c.env as Bindings & {
-      __telegramPending?: Promise<unknown>[];
-    }
-  ).__telegramPending;
-  if (Array.isArray(pending)) {
-    pending.push(promise);
-  }
 }
 
 /**

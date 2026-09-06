@@ -680,5 +680,28 @@ describe("SettingsService", () => {
         expect.stringContaining("The directory answered 404."),
       );
     });
+
+    // The caller orphans this promise behind `waitUntil`, so a rejection has
+    // nobody to reject to — on a Node runtime an unhandled one ends the
+    // process. A settings row that could not be written is worth a log, not
+    // the site.
+    it("resolves even when the outcome cannot be recorded", async () => {
+      stubDirectory(new Response(null, { status: 202 }));
+      vi.spyOn(console, "log").mockImplementation(() => {});
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.spyOn(settingsService, "set").mockRejectedValue(
+        new Error("D1_ERROR: database is locked"),
+      );
+
+      const outcome = await settingsService.announceToDiscover({
+        endpoint: "https://jant.me/api/discover/ping",
+        feedUrl: "https://blog.example/latest/feed",
+      });
+
+      expect(outcome.ok).toBe(true);
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining("database is locked"),
+      );
+    });
   });
 });
