@@ -6,7 +6,9 @@
  * Uses the same S3_* environment variables as media storage. Files with
  * content-hashed names (JS, fonts) are skipped if already present in the
  * bucket — they are immutable. Non-hashed files (e.g. CSS in older builds)
- * are always uploaded.
+ * are always uploaded. An object stored without the compression it should
+ * have is re-uploaded even though its key exists, so a change to the
+ * compression policy reaches assets whose content never changed.
  *
  * Text assets are uploaded brotli-compressed at maximum quality, with
  * `Content-Encoding: br`. The CDN in front of the bucket compresses at a fixed
@@ -126,8 +128,12 @@ async function walkDir(dir) {
 }
 
 async function loadS3(config) {
-  const { S3Client, PutObjectCommand, ListObjectsV2Command } =
-    await import("@aws-sdk/client-s3");
+  const {
+    S3Client,
+    PutObjectCommand,
+    ListObjectsV2Command,
+    HeadObjectCommand,
+  } = await import("@aws-sdk/client-s3");
   const forcePathStyle = !config.endpoint.includes("amazonaws.com");
   const client = new S3Client({
     endpoint: config.endpoint,
@@ -142,6 +148,7 @@ async function loadS3(config) {
     client,
     PutObjectCommand,
     ListObjectsV2Command,
+    HeadObjectCommand,
     bucket: config.bucket,
   };
 }
@@ -167,6 +174,53 @@ async function listExistingKeys(s3, prefix) {
   }
 
   return keys;
+}
+
+/**
+ * Of the keys that already exist, the ones stored without the compression they
+ * should have.
+ *
+ * Objects are content-addressed, so a key that exists is assumed to hold the
+ * right bytes and is skipped. That assumption breaks when the *encoding*
+ * changes rather than the content: every asset uploaded before compression was
+ * introduced keeps its key, keeps being skipped, and never picks it up. The
+ * CDN then compresses those at its own low quality on every request, which is
+ * the whole thing compression was meant to avoid.
+ *
+ * Only worth asking about types we would compress, and only when compression
+ * is on. A file that brotli cannot shrink is stored raw on purpose, so its
+ * missing `Content-Encoding` is correct and must not read as stale — otherwise
+ * it would be re-uploaded on every run, forever.
+ *
+ * @param {object} s3 - The client bundle from `loadS3`.
+ * @param {Array<{filePath: string, key: string}>} candidates - Local files
+ * whose key already exists in the bucket.
+ * @returns {Promise<Set<string>>} Keys to upload again.
+ * @example
+ * const stale = await findStaleEncodingKeys(s3, existing);
+ * // Set { "_assets/client-cjk-B7Z0snDu.css" }
+ */
+async function findStaleEncodingKeys(s3, candidates) {
+  const { client, HeadObjectCommand, bucket } = s3;
+  const stale = new Set();
+  const CONCURRENCY = 25;
+
+  for (let i = 0; i < candidates.length; i += CONCURRENCY) {
+    await Promise.all(
+      candidates.slice(i, i + CONCURRENCY).map(async ({ filePath, key }) => {
+        const head = await client.send(
+          new HeadObjectCommand({ Bucket: bucket, Key: key }),
+        );
+        if (head.ContentEncoding === "br") return;
+        // Read it only now: the answer is only interesting for the few objects
+        // that are missing the encoding.
+        const body = await readFile(filePath);
+        if (compressForUpload(filePath, body) !== null) stale.add(key);
+      }),
+    );
+  }
+
+  return stale;
 }
 
 export async function run(argv) {
@@ -200,7 +254,7 @@ export async function run(argv) {
       "      --dry-run             Print what would be uploaded without uploading",
     );
     console.log(
-      "      --force               Re-upload keys that already exist in the bucket",
+      "      --force               Re-upload every key, including ones already compressed",
     );
     console.log(
       "      --no-compress         Upload raw bytes instead of brotli-compressed",
@@ -279,14 +333,36 @@ export async function run(argv) {
   let skipped = 0;
 
   const toUpload = [];
+  const alreadyThere = [];
   for (const filePath of files) {
     const relPath = relative(sourceDir, filePath).replace(/\\/g, "/");
     const key = prefix ? `${prefix}/${relPath}` : relPath;
     if (existingKeys.has(key) && !force) {
-      skipped++;
+      alreadyThere.push({ filePath, key });
     } else {
       toUpload.push({ filePath, key });
     }
+  }
+
+  // A key that exists is normally left alone, but that skips objects stored
+  // before compression was introduced — they would keep their old encoding
+  // forever. Re-upload those, and only those.
+  let restored = 0;
+  if (compress && alreadyThere.length > 0) {
+    process.stdout.write("Checking stored encodings... ");
+    const stale = await findStaleEncodingKeys(s3, alreadyThere);
+    for (const entry of alreadyThere) {
+      if (stale.has(entry.key)) toUpload.push(entry);
+      else skipped++;
+    }
+    restored = stale.size;
+    console.log(
+      stale.size === 0
+        ? "all compressed"
+        : `${stale.size} stored uncompressed, re-uploading`,
+    );
+  } else {
+    skipped += alreadyThere.length;
   }
 
   // Bytes as stored, against bytes as built — what the compression bought.
@@ -334,7 +410,10 @@ export async function run(argv) {
   }
 
   console.log("");
-  console.log(`Done. ${uploaded} uploaded, ${skipped} skipped.`);
+  console.log(
+    `Done. ${uploaded} uploaded, ${skipped} skipped` +
+      `${restored > 0 ? `, ${restored} re-uploaded for compression` : ""}.`,
+  );
   if (compress && rawTotal > 0) {
     const saved = rawTotal - storedTotal;
     console.log(
