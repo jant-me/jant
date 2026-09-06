@@ -69,29 +69,29 @@ payload we choose to ship.
       and re-rendered the page instead of restoring it instantly. Measured with
       `PerformanceNavigationTiming.notRestoredReasons` on a back navigation:
 
-      | | reasons bfcache was refused |
-              | --- | --- |
-              | before | `masked`, `response-cache-control-no-store`, `websocket`, `websocket-used-with-ccns` |
-              | after | `masked`, `websocket` |
+  |        | reasons bfcache was refused                                                          |
+  | ------ | ------------------------------------------------------------------------------------ |
+  | before | `masked`, `response-cache-control-no-store`, `websocket`, `websocket-used-with-ccns` |
+  | after  | `masked`, `websocket`                                                                |
 
-              The remaining `websocket` is Vite dev's HMR channel, which production
-              does not have — the reader bundle opens no `EventSource` or `WebSocket`
-              of its own (checked in the built `client.js`).
+  The remaining `websocket` is Vite dev's HMR channel, which production
+  does not have — the reader bundle opens no `EventSource` or `WebSocket`
+  of its own (checked in the built `client.js`).
 
-              An author keeps `no-store` on purpose: the back/forward cache restores a
-              whole page snapshot without asking the server, so an authenticated view
-              would survive signing out — on a shared machine that shows the previous
-              session. Readers are the traffic that matters for this anyway.
+  An author keeps `no-store` on purpose: the back/forward cache restores a
+  whole page snapshot without asking the server, so an authenticated view
+  would survive signing out — on a shared machine that shows the previous
+  session. Readers are the traffic that matters for this anyway.
 
-              **ETag deliberately not added.** Under `no-cache` the browser still
-              revalidates on every navigation and the server still renders in full, so
-              an ETag would save only the ~9 KB gzipped HTML transfer, not the TTFB.
-              Against that it needs a cache key covering every render input —
-              `isAuthenticated`, page language and CJK font profile, theme and font
-              theme, custom CSS and head HTML, `CORE_VERSION`, nav, collections, site
-              settings, content — where one missed input is a wrong 304 in someone's
-              browser, `private` so it reproduces nowhere else. Bad trade; the bfcache
-              win above needed none of it.
+  **ETag deliberately not added.** Under `no-cache` the browser still
+  revalidates on every navigation and the server still renders in full, so
+  an ETag would save only the ~9 KB gzipped HTML transfer, not the TTFB.
+  Against that it needs a cache key covering every render input —
+  `isAuthenticated`, page language and CJK font profile, theme and font
+  theme, custom CSS and head HTML, `CORE_VERSION`, nav, collections, site
+  settings, content — where one missed input is a wrong 304 in someone's
+  browser, `private` so it reproduces nowhere else. Bad trade; the bfcache
+  win above needed none of it.
 
 - [x] 4. Both images that skipped `getImageUrl` now go through it:
       `lib/media-helpers.ts` sizes the timeline video poster the way

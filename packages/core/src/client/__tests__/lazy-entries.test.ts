@@ -8,6 +8,12 @@ const loaded = {
   manage: vi.fn(),
 };
 
+/**
+ * One turn of the event loop — enough for the observer to see a mutation, and
+ * all a negative assertion needs. A load that is expected to happen is waited
+ * for with `vi.waitFor` instead: a dynamic import can take more than a tick
+ * when the whole suite is running.
+ */
 async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
@@ -57,9 +63,8 @@ describe("lazy entries", () => {
 
     const { loadEntriesForPage } = await freshLazyEntries();
     loadEntriesForPage();
-    await settle();
 
-    expect(loaded.settings).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(loaded.settings).toHaveBeenCalledTimes(1));
     expect(loaded.manage).not.toHaveBeenCalled();
   });
 
@@ -68,9 +73,8 @@ describe("lazy entries", () => {
 
     const { loadEntriesForPage } = await freshLazyEntries();
     loadEntriesForPage();
-    await settle();
 
-    expect(loaded.compose).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(loaded.compose).toHaveBeenCalledTimes(1));
   });
 
   it("keeps watching for markup that arrives after load", async () => {
@@ -82,8 +86,7 @@ describe("lazy entries", () => {
     const hook = document.createElement("div");
     hook.setAttribute("data-collection-page-actions", "");
     document.body.appendChild(hook);
-    await settle();
 
-    expect(loaded.manage).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(loaded.manage).toHaveBeenCalledTimes(1));
   });
 });
