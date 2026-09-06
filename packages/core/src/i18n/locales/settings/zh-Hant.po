@@ -2648,7 +2648,7 @@ msgstr "你寫作使用的語言。"
 #. @context: Setup form help text under the content language field
 #: src/routes/auth/setup.tsx
 msgid "The language your readers and search engines see."
-msgstr "讀者和搜尋引擎看到的語言。"
+msgstr "搜尋引擎看到的語言。"
 
 #. @context: Config Editor linked setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
