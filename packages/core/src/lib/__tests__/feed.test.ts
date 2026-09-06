@@ -330,8 +330,15 @@ describe("feed renderers", () => {
     expect(xml).toContain(
       '<figure><a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"><img src="https://example.com/media/previews/youtube.jpg" alt="A useful video"/></a><figcaption><a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">▶ Watch on YouTube</a></figcaption></figure>',
     );
-    expect(xml.indexOf("<figure>")).toBeLessThan(
-      xml.indexOf("My notes on the video."),
+    // The reference comes before the commentary. Scoped to the content: the
+    // summary carries the commentary without the preview, so a whole-document
+    // search would find the note there first.
+    const content =
+      /<content type="html"><!\[CDATA\[([\s\S]*?)\]\]><\/content>/.exec(
+        xml,
+      )?.[1] ?? "";
+    expect(content.indexOf("<figure>")).toBeLessThan(
+      content.indexOf("My notes on the video."),
     );
     expect(xml).not.toContain("<iframe");
     expect(xml).not.toContain('rel="enclosure"');
@@ -1125,7 +1132,10 @@ describe("feed entry summary", () => {
     expect(content).toContain("Delta");
   });
 
-  it("omits the summary when the timeline shows the whole post", () => {
+  // Nothing to leave out and nothing to cut: the two renderings come out
+  // byte-identical, and an entry that says the same thing twice is worse than
+  // one that says it once.
+  it("omits the summary when it would match the content exactly", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
         makePostView({
@@ -1138,6 +1148,77 @@ describe("feed entry summary", () => {
 
     expect(xml).not.toContain("<summary");
     expect(getContent(xml)).toContain("Just the one line.");
+  });
+
+  // Truncation is not the only way the timeline shows less. A short note with
+  // photos has a one-line summary and a gallery for content, and that sentence
+  // is exactly the preview a reader wants for its list.
+  it("summarises a short post that carries media", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          body: makeBody(["嘿嘿嘿"]),
+          bodyHtml: "<p>嘿嘿嘿</p>",
+          media: [
+            makeMediaView({
+              id: "med_a",
+              url: "https://example.com/media/one.webp",
+              thumbnailUrl: "https://example.com/media/one.webp",
+              mimeType: "image/webp",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(getSummary(xml)).toBe("<p>嘿嘿嘿</p>");
+    expect(getContent(xml)).toContain("one.webp");
+  });
+
+  it("summarises a link post as its commentary, without the preview", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          format: "link",
+          title: "A useful video",
+          url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          body: makeBody(["My notes."]),
+          bodyHtml: "<p>My notes.</p>",
+          previewImageUrl: "/media/previews/youtube.jpg",
+        }),
+      ),
+    );
+
+    const summary = getSummary(xml);
+    expect(summary).toContain("<p>My notes.</p>");
+    expect(summary).not.toContain("youtube.jpg");
+    expect(getContent(xml)).toContain("youtube.jpg");
+  });
+
+  // A post that is nothing but attachments has no text to summarise. The
+  // content's non-empty fallback would put a bare `Post #<id>` there, which is
+  // worse than saying nothing.
+  it("omits the summary for a post carrying only attachments", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          media: [
+            makeMediaView({
+              id: "med_pdf",
+              url: "https://example.com/media/1031.pdf",
+              thumbnailUrl: "https://example.com/media/1031.pdf",
+              mimeType: "application/pdf",
+              size: 915872,
+              originalName: "1031.pdf",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).not.toContain("<summary");
+    expect(xml).not.toContain("Post #");
+    expect(getContent(xml)).toContain("1031.pdf");
   });
 
   // The site draws this separator with `.feed-quote-commentary::before`, which

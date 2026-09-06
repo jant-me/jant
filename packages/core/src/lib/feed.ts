@@ -541,7 +541,12 @@ function buildSinglePostContent(
     parts.push(renderRatingHtml(post.rating));
   }
 
-  if (parts.length === 0) {
+  // An entry's content cannot be empty, so a post with nothing but a title or
+  // a URL falls back to its plain-text projection. A summary can be empty —
+  // that is what "there is no shorter rendering" looks like — and must be: a
+  // post carrying only attachments has no text to summarise, and the fallback
+  // would put a bare `Post #<id>` where a teaser belongs.
+  if (parts.length === 0 && !options.summary) {
     parts.push(`<p>${escapeXml(getFeedSummaryText(post))}</p>`);
   }
 
@@ -594,15 +599,17 @@ function buildFeedContent(
  * Build the HTML for a feed entry's `<summary>` — what the site's timeline
  * shows, as `<content>` is what the post's own page shows.
  *
- * Returns null when the timeline shows no less than the page does: a note that
- * fits without truncation, a lone reply, a quote rendered in full. Sending a
- * `<summary>` there would duplicate `<content>` verbatim, and Atom only
- * requires one for `src`/base64 content (RFC 4287 §4.1.2).
+ * Always builds; the caller drops it when it comes out identical to the
+ * content, which is the only case Atom would rather see nothing than a copy
+ * (a `<summary>` is only mandatory for `src`/base64 content, RFC 4287 §4.1.2).
+ * Comparing the two strings is the whole test: truncation is one way they
+ * diverge, but a short note carrying photos diverges too — its summary is the
+ * sentence without the gallery, which is exactly the teaser a reader wants.
  *
  * @param post - Root post view data
  * @param siteUrl - Site base URL for absolute permalinks
  * @param permalinkUrl - Absolute permalink URL for the root post
- * @returns Summary HTML, or null when there is nothing shorter to say
+ * @returns The timeline's rendering of this entry
  * @example
  * buildFeedSummary(post, "https://example.com", "https://example.com/hello")
  * // "<p>Intro</p>\n<hr/>\n<p><small><a …>2 more posts</a></small></p>…"
@@ -611,7 +618,7 @@ function buildFeedSummary(
   post: FeedPostView,
   siteUrl: string,
   permalinkUrl?: string,
-): string | null {
+): string {
   const replies = post.threadReplies ?? [];
   const latestReply = replies.at(-1);
   // The timeline keeps the root as context and the newest reply as the hero,
@@ -619,16 +626,11 @@ function buildFeedSummary(
   // nothing is hidden.
   const hiddenCount = Math.max(0, replies.length - 1);
 
-  const rootTruncated = getTimelineSummary(post)?.hasMore === true;
-  const replyTruncated = latestReply
-    ? getTimelineSummary(latestReply)?.hasMore === true
-    : false;
-
-  if (!rootTruncated && !replyTruncated && hiddenCount === 0) return null;
-
-  const parts = [
-    buildSinglePostContent(post, siteUrl, permalinkUrl, { summary: true }),
-  ];
+  const parts: string[] = [];
+  const rootMarkup = buildSinglePostContent(post, siteUrl, permalinkUrl, {
+    summary: true,
+  });
+  if (rootMarkup) parts.push(rootMarkup);
 
   const firstHidden = replies[0];
   if (hiddenCount > 0 && firstHidden) {
@@ -640,22 +642,25 @@ function buildFeedSummary(
     );
     const label =
       hiddenCount === 1 ? "1 more post" : `${hiddenCount} more posts`;
-    parts.push("<hr/>");
+    if (parts.length > 0) parts.push("<hr/>");
     parts.push(`<p><small><a href="${gapHref}">${label}</a></small></p>`);
   }
 
   if (latestReply) {
     const replyPermalink = new URL(latestReply.permalink, siteUrl).toString();
-    parts.push("<hr/>");
-    parts.push(
-      `<p><small><time datetime="${escapeXml(latestReply.publishedAt)}">${escapeXml(latestReply.publishedAtFormatted)}</time></small></p>`,
+    const replyMarkup = buildSinglePostContent(
+      latestReply,
+      siteUrl,
+      replyPermalink,
+      { inline: true, summary: true },
     );
-    parts.push(
-      buildSinglePostContent(latestReply, siteUrl, replyPermalink, {
-        inline: true,
-        summary: true,
-      }),
-    );
+    if (replyMarkup) {
+      if (parts.length > 0) parts.push("<hr/>");
+      parts.push(
+        `<p><small><time datetime="${escapeXml(latestReply.publishedAt)}">${escapeXml(latestReply.publishedAtFormatted)}</time></small></p>`,
+      );
+      parts.push(replyMarkup);
+    }
   }
 
   return parts.join("\n");
@@ -834,12 +839,16 @@ export function defaultFeedRenderer(data: FeedData): string {
       const formatElement = `\n    <jant:format>${escapeXml(post.format)}</jant:format>`;
 
       // `<summary>` is the timeline's rendering, `<content>` the post page's.
-      // It is omitted rather than duplicated when the two would say the same
-      // thing — see buildFeedSummary.
+      // A bare text note renders the same either way, and an entry saying the
+      // same thing twice is worse than one that says it once — so the summary
+      // is dropped exactly when it matches, and kept whenever the timeline
+      // genuinely shows something else.
+      const contentMarkup = buildFeedContent(post, siteUrl, permalinkUrl);
       const summaryMarkup = buildFeedSummary(post, siteUrl, permalinkUrl);
-      const summaryElement = summaryMarkup
-        ? `\n    <summary type="html"><![CDATA[${escapeCdata(summaryMarkup)}]]></summary>`
-        : "";
+      const summaryElement =
+        !summaryMarkup || summaryMarkup === contentMarkup
+          ? ""
+          : `\n    <summary type="html"><![CDATA[${escapeCdata(summaryMarkup)}]]></summary>`;
 
       return `
   <entry>
@@ -848,7 +857,7 @@ export function defaultFeedRenderer(data: FeedData): string {
     <id>${escapedPermalink}</id>
     <published>${publishedAt}</published>
     <updated>${updatedAt}</updated>${formatElement}${thumbnailElement}${mediaContentElements}${summaryElement}
-    <content type="html"><![CDATA[${escapeCdata(buildFeedContent(post, siteUrl, permalinkUrl))}]]></content>
+    <content type="html"><![CDATA[${escapeCdata(contentMarkup)}]]></content>
   </entry>`;
     })
     .join("");
