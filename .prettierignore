@@ -39,5 +39,10 @@ packages/create-jant/template/
 **/src/assets/
 sites/demo/static-site-export/templates/
 
+# In-flight task notes. Scratch working files that get deleted once their items
+# are done, so a formatting nit in one should not fail CI. `tasks/lessons.md`
+# and `tasks/archive/` are kept — those are read long after the work is over.
+tasks/todos/
+
 # Logs
 *.log
