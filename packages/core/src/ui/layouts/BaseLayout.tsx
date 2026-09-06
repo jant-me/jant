@@ -14,6 +14,7 @@ import { raw } from "hono/utils/html";
 import { escapeHtml } from "../../lib/html.js";
 import { msg } from "@lingui/core/macro";
 import {
+  getPreconnectHints,
   getPublicAssetBasePath,
   toAssetPath,
   toPublicAssetPath,
@@ -200,6 +201,13 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
       appConfig?.s3PublicUrl,
       appConfig?.localPublicUrl,
     ) ?? "";
+  // Empty unless assets or media live on their own host; the two collapse to
+  // one set of hints when they share a host.
+  const preconnectHints = getPreconnectHints({
+    assetBasePath,
+    mediaBaseUrl: mediaBase,
+    siteUrl: appConfig?.siteUrl,
+  });
   const currentUrl = c ? c.get("publicRequestUrl") : undefined;
   const rawPath = c?.req?.path ?? "/";
   const manifestStartPath = sitePathPrefix
@@ -397,6 +405,13 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
             name="viewport"
             content="width=device-width, initial-scale=1.0"
           />
+          {preconnectHints.map((hint) => (
+            <link
+              rel="preconnect"
+              href={hint.href}
+              {...(hint.crossorigin ? { crossorigin: "anonymous" } : {})}
+            />
+          ))}
           {themeMode === "dark" ? (
             <meta name="theme-color" content={browserThemeColors.dark} />
           ) : themeMode === "light" ? (

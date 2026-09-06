@@ -99,6 +99,22 @@ payload we choose to ship.
       `lib/resolve-config.ts` derives `siteAvatarThumbUrl` at 128px for the
       header and drawer marks. `siteAvatarUrl` stays full-resolution for the
       social card, the settings editor and the control-plane sync.
+- [x] 7. `<link rel="preconnect">` to the hosts a page's subresources come
+      from, emitted first thing in `<head>` (`getPreconnectHints` in
+      `lib/asset-path.ts`, rendered by `BaseLayout`). DNS, TCP and TLS now
+      start while the rest of `<head>` is still parsing, instead of after the
+      parser reaches the stylesheet.
+      Which hosts, and how many links each: the asset host (`ASSET_BASE_URL`)
+      gets two, because the stylesheet is fetched without CORS and the module
+      script with it, and a browser pools those separately. The media host
+      (`R2_PUBLIC_URL` / `S3_PUBLIC_URL`) serves images, so it gets the
+      uncredentialed one only. A host equal to the site's own origin is already
+      connected and gets none, and when assets and media share a host the asset
+      hints already cover the images — so the common single-CDN setup emits two
+      links, not three.
+      The other half of this item — Caddy handing Chrome gzip (61.5 KB) rather
+      than zstd (57 KB) — is dropped: it lives in
+      `/srv/caddy/config/snippets/cache.caddy`, not in core.
 
 ## Verified
 
@@ -108,6 +124,11 @@ payload we choose to ship.
   split (`src/__tests__/stylesheet-audience.test.ts` plus the `BaseLayout`
   link gate).
 - `mise run check-lint`, `pnpm format:check`: clean.
+- The preconnect hints are covered both ways: `getPreconnectHints` unit tests
+  for a CDN asset host, a separate media host, a shared one, same-origin, and
+  missing or unparseable URLs; `BaseLayout` tests asserting the links render,
+  that a shared asset/media host produces exactly two, that a same-origin setup
+  produces none, and that they precede the stylesheet they warm.
 - The stylesheet split was A/B'd against `HEAD` in a browser: `/`, `/archive`,
   a post page, `/_/theme-sample`, `/settings` and the open composer, 3,240
   elements over 34 computed properties each, zero differences. Cascade layers
@@ -126,11 +147,13 @@ payload we choose to ship.
   `/archive`, `/search` all 200 with no author-only markers; the author's
   view still shows compose, reply and menu controls.
 
-## Still open
+## Dropped
 
-- [ ] 5. `content-visibility: auto` + `contain-intrinsic-size` on off-screen
-      timeline items. Worth re-measuring after 1 and 2 — a 25-post feed may no
-      longer be tall enough to justify it.
-- [ ] 7. Small: `preconnect` to the asset origin in `<head>`; Caddy's
-      `encode gzip zstd` hands Chrome gzip (61.5 KB) instead of zstd (57 KB) —
-      that one lives in `/srv/caddy/config/snippets/cache.caddy`, not in core.
+- 5. `content-visibility: auto` + `contain-intrinsic-size` on off-screen
+     timeline items. The premise was a 50-post feed whose style and layout cost
+     1,069 ms; item 1 halved that feed to 25 posts, so the saving this would
+     buy is roughly half of what it was measured against, against a real cost:
+     every card needs a `contain-intrinsic-size` guess, and a wrong guess moves
+     the scrollbar under the reader and lands in-page anchors in the wrong
+     place. Not worth it unmeasured. Re-open only if `Style & Layout` on the
+     25-post feed is still the largest render cost.

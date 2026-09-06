@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ASSET_BASE_PATH,
+  getPreconnectHints,
   getPublicAssetBasePath,
   isAssetPath,
   toAssetPath,
@@ -50,5 +51,96 @@ describe("toPublicAssetPath", () => {
     expect(toPublicAssetPath("/blog/_assets/client.js", "/blog/_assets")).toBe(
       "/blog/_assets/client.js",
     );
+  });
+});
+
+describe("getPreconnectHints", () => {
+  const site = "https://example.com";
+
+  it("hints both connection kinds for a CDN asset host", () => {
+    expect(
+      getPreconnectHints({
+        assetBasePath: "https://cdn.example.com/jant",
+        siteUrl: site,
+      }),
+    ).toEqual([
+      { href: "https://cdn.example.com", crossorigin: false },
+      { href: "https://cdn.example.com", crossorigin: true },
+    ]);
+  });
+
+  it("adds the media host after the asset host", () => {
+    expect(
+      getPreconnectHints({
+        assetBasePath: "https://cdn.example.com/jant",
+        mediaBaseUrl: "https://media.example.com",
+        siteUrl: site,
+      }),
+    ).toEqual([
+      { href: "https://cdn.example.com", crossorigin: false },
+      { href: "https://cdn.example.com", crossorigin: true },
+      { href: "https://media.example.com", crossorigin: false },
+    ]);
+  });
+
+  it("hints a shared asset and media host only once", () => {
+    expect(
+      getPreconnectHints({
+        assetBasePath: "https://cdn.example.com/_assets",
+        mediaBaseUrl: "https://cdn.example.com/media",
+        siteUrl: site,
+      }),
+    ).toEqual([
+      { href: "https://cdn.example.com", crossorigin: false },
+      { href: "https://cdn.example.com", crossorigin: true },
+    ]);
+  });
+
+  it("hints the media host on its own when assets are same-origin", () => {
+    expect(
+      getPreconnectHints({
+        assetBasePath: "/_assets",
+        mediaBaseUrl: "https://media.example.com",
+        siteUrl: site,
+      }),
+    ).toEqual([{ href: "https://media.example.com", crossorigin: false }]);
+  });
+
+  it("hints nothing when everything shares the site's origin", () => {
+    expect(
+      getPreconnectHints({
+        assetBasePath: "/blog/_assets",
+        mediaBaseUrl: "",
+        siteUrl: "https://example.com/blog",
+      }),
+    ).toEqual([]);
+    expect(
+      getPreconnectHints({
+        assetBasePath: "https://example.com/_assets",
+        mediaBaseUrl: "https://example.com/media",
+        siteUrl: site,
+      }),
+    ).toEqual([]);
+  });
+
+  it("hints anyway when the site URL is missing or unparseable", () => {
+    expect(
+      getPreconnectHints({ assetBasePath: "https://cdn.example.com" }),
+    ).toEqual([
+      { href: "https://cdn.example.com", crossorigin: false },
+      { href: "https://cdn.example.com", crossorigin: true },
+    ]);
+    expect(
+      getPreconnectHints({
+        assetBasePath: "https://cdn.example.com",
+        siteUrl: "not a url",
+      }),
+    ).toHaveLength(2);
+  });
+
+  it("skips a base URL it cannot parse", () => {
+    expect(
+      getPreconnectHints({ assetBasePath: "https://", siteUrl: site }),
+    ).toEqual([]);
   });
 });
