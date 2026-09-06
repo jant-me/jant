@@ -1324,7 +1324,7 @@ msgstr "集成"
 #. @context: Setup page description under the write-language question
 #: src/routes/auth/setup.tsx
 msgid "It sets the language readers and search engines see. Change it any time in Settings."
-msgstr "它决定读者和搜索引擎看到的语言，之后可以在设置里更改。"
+msgstr "它决定搜索引擎看到的语言，之后可以在设置里更改。"
 
 #. @context: Validation error for a long page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -2549,7 +2549,7 @@ msgstr "你写作使用的语言。"
 #. @context: Setup form help text under the content language field
 #: src/routes/auth/setup.tsx
 msgid "The language your readers and search engines see."
-msgstr "读者和搜索引擎看到的语言。"
+msgstr "搜索引擎看到的语言。"
 
 #. @context: Config Editor linked setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx

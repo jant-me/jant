@@ -622,7 +622,7 @@ html {
 [data-post-body].prose,
 [data-post-meta],
 [data-post-end] {
-  width: var(--layout-content-width);
+  width: var(--layout-reading-width);
 }
 
 .post-detail-title {
@@ -639,7 +639,7 @@ html {
    actions follow the gallery's right edge. */
 .post-attached-group {
   width: fit-content;
-  min-width: var(--layout-content-width);
+  min-width: var(--layout-reading-width);
   max-width: 100%;
 }
 
@@ -647,26 +647,12 @@ html {
   width: 100%;
 }
 
+/* Everything above already tracks the reading column through the token; only
+   the title needs saying twice, because its desktop measure is narrower than
+   the column (Tufte sets titles short) and there is no gutter left to keep it
+   short for down here. */
 @media (max-width: 1024px) {
-  [data-page="search"],
-  .site-home-header,
-  .post-detail-title,
-  .post-detail-body,
-  .post-body-summary,
-  .feed-note-title,
-  .feed-link-title,
-  .feed-quote,
-  .feed-quote-attribution,
-  .feed-quote-commentary,
-  .feed-link-domain,
-  .feed-continue-link,
-  [data-post-body].prose,
-  [data-post-meta],
-  [data-post-end] {
-    width: min(100%, 35rem);
-  }
-
-  .post-attached-group {
-    min-width: min(100%, 35rem);
+  .post-detail-title {
+    width: var(--layout-reading-width);
   }
 }

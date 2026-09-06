@@ -63,8 +63,22 @@ export function getMediaPlaceholderDataUrl(
   return blurhashToDataUrl(blurhash, decodeSize.width, decodeSize.height);
 }
 
+/**
+ * Width for a post's only visual: its natural shape, capped at 24rem tall and
+ * never wider than the reading column the post's own text gets.
+ *
+ * The cap is `--layout-reading-width`, not `--layout-content-width` — below
+ * 1024px the latter flattens to 100% and a wide picture would outgrow the body
+ * copy it sits under. See the token comments in `styles/tokens.css`.
+ *
+ * @param ratio - Aspect ratio (width / height) from `getMediaAspectRatio`.
+ * @returns A CSS `width` value.
+ * @example
+ * getSingleVisualWidth(16 / 9);
+ * // "min(100%, calc(24rem * 1.777...), var(--layout-reading-width))"
+ */
 function getSingleVisualWidth(ratio: number): string {
-  return `min(100%, calc(24rem * ${ratio}), var(--layout-content-width))`;
+  return `min(100%, calc(24rem * ${ratio}), var(--layout-reading-width))`;
 }
 
 /** Shortest a gallery strip gets, in CSS pixels. */

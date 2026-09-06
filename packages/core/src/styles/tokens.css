@@ -143,7 +143,26 @@
   --form-max-width: 42rem;
   /* compose dialogs + feed content cap */
   --layout-body-max-width: 1088px;
+  /*
+   * Two widths, one column — keep the distinction straight.
+   *
+   * `--layout-content-width` is the Tufte proportion: how much of a page
+   * section its content occupies, leaving the rest as sidenote gutter. Page
+   * shells that should fill the frame once the gutter is gone (settings,
+   * the collections directory) read this one, which is why it flattens to
+   * 100% below 1024px.
+   *
+   * `--layout-reading-width` is the reading column a post's text actually
+   * gets. It tracks the proportion while the gutter exists, then keeps a
+   * measure of its own instead of going full-width. Anything that must line
+   * up with body copy — the text blocks in preset.css, a lone image
+   * (MediaGallery `getSingleVisualWidth`), a link preview, the feed divider
+   * that centers over the column — reads this one. Before it existed those
+   * consumers capped on the proportion and quietly outgrew the text between
+   * 700px and 1024px.
+   */
   --layout-content-width: 55%;
+  --layout-reading-width: var(--layout-content-width);
   --layout-sidenote-width: 50%;
   --layout-sidenote-gap: 10%;
   --layout-sidenote-margin: -60%;
@@ -494,17 +513,18 @@
 
 /* Tufte two-column → single-column collapse.
  *
- * Below this width the post column is already narrowed to `min(100%, 35rem)`
- * (preset.css) and there is no room for a 45% sidenote gutter, so all content
- * goes full-width. Single images (MediaGallery getSingleVisualWidth) and link
- * previews (.link-preview) read this token directly, so they collapse here too.
+ * There is no room for a 45% sidenote gutter here, so page shells go
+ * full-width — but the reading column does not follow them. It keeps a 35rem
+ * measure, and everything sized to the text (preset.css blocks, single images,
+ * link previews, the feed divider) tracks that through
+ * `--layout-reading-width` rather than restating the number.
  *
- * Keep this breakpoint in sync with the post-column collapse (preset.css /
- * ui.css feed-divider, both `max-width: 1024px`) and the sidenote float→inline
- * collapse (ui.css). They are one layout switch; do not let them drift apart. */
+ * Keep this breakpoint in sync with the sidenote float→inline collapse
+ * (ui.css). They are one layout switch; do not let them drift apart. */
 @media (max-width: 1024px) {
   :root {
     --layout-content-width: 100%;
+    --layout-reading-width: min(100%, 35rem);
   }
 }
 
