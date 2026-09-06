@@ -24,6 +24,38 @@ onlyBuiltDependencies:
   - sharp
 
 overrides:
+  # `@lingui/swc-plugin` is a Wasm plugin: the `swc_core` ABI it targets is
+  # fixed when the plugin is compiled, so the host `@swc/core` has to match it
+  # exactly. 1.16.2 does not — every transform fails with "Failed to
+  # deserialize program received from host", which surfaces as an SSR module
+  # evaluation error on the first request, not at install time.
+  #
+  # Pinning the direct dependency is not enough: `tsup` takes `@swc/core` as an
+  # optional peer with an open range, and that resolution is what the plugin
+  # binds against. A lockfile is not enough either — `mise run clean-reset`
+  # deletes it by design, so a fresh install re-resolves every `^` to latest.
+  # This override is the only thing that survives both.
+  #
+  # Raise it only together with a `@lingui/swc-plugin` release built for the
+  # newer `swc_core`, and verify by actually requesting a page from
+  # `mise run dev-node` — the error does not appear until a module is evaluated.
+  "@swc/core": 1.15.47
+
+  # better-auth 1.7 made `issuer` a required column on `account` AND changed
+  # account lookup from (providerId, accountId) to (issuer, accountId)
+  # (`findAccountByKey`). Jant's `account` table has no such column, so taking
+  # 1.7 means a dual-dialect schema change, a migration, and a backfill whose
+  # values must match byte-for-byte what the runtime writes — get that wrong
+  # and existing users cannot sign in. That is its own piece of work with its
+  # own verification against a database that has real rows in it, not
+  # something to carry along with an unrelated branch.
+  #
+  # 1.6.27 is what the lockfile held before a `clean-reset` re-resolved `^1.5.5`
+  # to 1.7.2. Pinned here rather than left to the range so the next reset does
+  # not silently upgrade authentication again. Remove this once the 1.7
+  # migration lands.
+  better-auth: 1.6.27
+
   # pinyin-pro 3.29.1 schedules its Aho-Corasick build with setTimeout at
   # module scope, which Cloudflare Workers reject at deploy time ("Disallowed
   # operation called within global scope"). 3.29.0 builds it synchronously.

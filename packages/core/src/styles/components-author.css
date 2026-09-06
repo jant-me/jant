@@ -376,7 +376,7 @@
       pointer-events: auto;
     }
   }
-  @media (max-width: 760px) {
+  @media (max-width: 699px) {
     .config-editor-row {
       grid-template-columns: minmax(0, 1fr);
       align-items: stretch;
@@ -545,7 +545,7 @@
     gap: clamp(1.15rem, 2.8vw, 1.65rem);
     padding-bottom: 0.15rem;
   }
-  @media (max-width: 760px) {
+  @media (max-width: 699px) {
     .settings-root {
       width: 100%;
     }

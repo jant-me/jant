@@ -418,7 +418,7 @@
     min-height: clamp(8rem, 22vh, 12rem);
   }
 
-  @media (min-width: 701px) and (min-height: 761px) {
+  @media (min-width: 700px) and (min-height: 760px) {
     .compose-page {
       position: static;
       background-color: transparent;
@@ -789,8 +789,8 @@
 
   /* Treat touch-first browsers as mobile here too. iOS Safari can expose a
    * desktop-sized layout viewport for dialogs while still behaving like phone UI. */
-  @media (max-width: 700px),
-    (max-height: 760px),
+  @media (max-width: 699px),
+    (max-height: 759px),
     (hover: none) and (pointer: coarse) {
     .compose-dialog {
       --compose-margin-top: 0px;
@@ -1570,8 +1570,8 @@
     color: var(--site-text-primary);
   }
 
-  @media (max-width: 700px),
-    (max-height: 760px),
+  @media (max-width: 699px),
+    (max-height: 759px),
     (hover: none) and (pointer: coarse) {
     .compose-tool-view-group {
       display: none;
@@ -2608,18 +2608,24 @@
     transition: opacity 0.18s ease;
   }
 
-  /* Narrow screens show the pill outright instead of revealing it. "Quiet until
-     approached" needs a pointer to approach with, and this width is mostly
-     touch, where there is none — an invisible-until-focused control is just a
-     missing one.
+  /* Touch shows the pill outright instead of revealing it. "Quiet until
+     approached" needs a pointer to approach with, and a finger is not one — an
+     invisible-until-focused control is just a missing one.
+
+     Asked of the pointer, not the width. It used to say `max-width: 760px`,
+     reading narrow as a stand-in for touch, which both revealed the pill on a
+     narrow desktop window that has a cursor and hid it on a wide tablet that
+     does not. `(hover: none)` is the same question asked of the thing it was
+     always about; the sibling rule on `.collection-directory-item-menu` in
+     ui.css asks it the same way.
 
      It must also stay in the layout. Gating `display` on
      `jant-compose-editor:focus-within` made pressing the pill destroy it:
      pointerdown moves focus off the editor, the pill unmounts before mouseup,
      and a press that starts and ends on different elements never becomes a
-     click. The pill was unclickable at this width — only `.click()` from script
-     could open the panel. */
-  @media (max-width: 760px) {
+     click. The pill was unclickable there — only `.click()` from script could
+     open the panel. */
+  @media (hover: none) {
     .compose-post-meta {
       opacity: 1;
     }
@@ -4415,7 +4421,7 @@
     height: 0.82rem;
     opacity: 0.75;
   }
-  @media (max-width: 760px), (hover: none) and (pointer: coarse) {
+  @media (max-width: 699px), (hover: none) and (pointer: coarse) {
     /* Touch keeps the roomier set: the reference's 36px box is tuned for a
        cursor, and a thumb needs the millimetres back. Width still comes from
        the word — only the box around it grows. */

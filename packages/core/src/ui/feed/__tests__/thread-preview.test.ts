@@ -167,11 +167,11 @@ describe("getThreadPreviewState", () => {
     const css = readComponentCss();
 
     expect(css).toMatch(
-      /@media\s*\(max-width:\s*760px\)\s*\{[\s\S]*\.thread-group-preview,\s*\.thread-group-detail\s*\{[\s\S]*--site-thread-rail-indent:\s*8px;[\s\S]*--site-thread-rail-line-left:\s*-11px;/,
+      /@media\s*\(max-width:\s*699px\)\s*\{[\s\S]*\.thread-group-preview,\s*\.thread-group-detail\s*\{[\s\S]*--site-thread-rail-indent:\s*8px;[\s\S]*--site-thread-rail-line-left:\s*-11px;/,
     );
     // dot-left is no longer hardcoded — derived via calc() from line-left
     expect(css).not.toMatch(
-      /@media\s*\(max-width:\s*760px\)\s*\{[\s\S]*--site-thread-rail-dot-left:/,
+      /@media\s*\(max-width:\s*699px\)\s*\{[\s\S]*--site-thread-rail-dot-left:/,
     );
   });
 

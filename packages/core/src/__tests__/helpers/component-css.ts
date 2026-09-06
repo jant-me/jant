@@ -63,3 +63,29 @@ export function readReaderCss(): string {
 export function readAuthorCss(): string {
   return read(AUTHOR_SHEETS);
 }
+
+/**
+ * Every stylesheet Jant hand-writes, each paired with its filename.
+ *
+ * `readComponentCss()` and friends concatenate, which is right for asking
+ * whether a rule exists. This one keeps the files apart so a failure can name
+ * the file and line it found the problem on — `tokens.css` and `preset.css`
+ * are in here too, because breakpoints live in all six.
+ *
+ * @returns One entry per stylesheet, in load order.
+ * @example
+ * for (const { name, css } of readAllStylesheets()) {
+ *   expect(css, name).not.toMatch(/@media \(max-width: 767px\)/);
+ * }
+ */
+export function readAllStylesheets(): readonly {
+  name: string;
+  css: string;
+}[] {
+  return [
+    { name: "preset.css", path: resolve(process.cwd(), "src/preset.css") },
+    ...[...READER_SHEETS, ...AUTHOR_SHEETS, "tokens.css", "site-media.css"].map(
+      (name) => ({ name, path: resolve(STYLES_DIR, name) }),
+    ),
+  ].map(({ name, path }) => ({ name, css: readFileSync(path, "utf8") }));
+}

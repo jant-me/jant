@@ -455,7 +455,38 @@
   --dash-card-radius: 10px;
 }
 
-@media (max-width: 760px) {
+/* =========================================================================
+ * Breakpoint ledger
+ *
+ * Every width breakpoint in the stylesheets comes from this list, and each
+ * entry names the one job it does. `src/__tests__/stylesheet-breakpoints.test.ts`
+ * fails the build on anything else, because a second number for a job that
+ * already has one is how the phone switch drifted apart before: the composer
+ * once went full-screen at 700px while its own controls took their touch
+ * sizing at 760px, so a 750px window got thumb-sized buttons inside a windowed
+ * dialog.
+ *
+ *   480px   Header hamburger; the composer's post-meta pill sheds its words.
+ *   580px   Nav collapse tier-sm (hides the 3rd inline link).
+ *   640px   Media grid and lightbox chrome.
+ *   700px   THE PHONE SWITCH. Below it the layout is a phone's: the composer
+ *           is a full-screen sheet, the compose FAB appears, page gutters and
+ *           the content type scale go narrow. Written `max-width: 699px` on
+ *           the phone side and `min-width: 700px` on the desktop side, so the
+ *           two never both match at 700px itself.
+ *   780px   Nav collapse tier-md (also hides the 4th inline link).
+ *   960px   Nav collapse tier-lg (hides the 5th+ inline link into More).
+ *   1024px  Tufte two-column → single-column (see the note below).
+ *   1079px  Collections sidebar drops out.
+ *   1200px  Header search collapses to an icon.
+ *
+ * Touch is NOT a width. Thumb-sized controls and always-visible affordances
+ * belong to `(hover: none) and (pointer: coarse)`, which is what actually
+ * catches a phone or a tablet; a narrow desktop window is still a mouse.
+ * Rules that want both say both.
+ * ========================================================================= */
+
+@media (max-width: 699px) {
   :root {
     --site-padding: 1.875rem;
   }
@@ -583,7 +614,7 @@
   );
 }
 
-@media (max-width: 760px), (hover: none) and (pointer: coarse) {
+@media (max-width: 699px), (hover: none) and (pointer: coarse) {
   :root {
     /* Content layer — tighter scale for mobile reading.
        Ratio ≈ 1.88 : 1.42 : 1.15 : 1 (display:title:subtitle:body).
