@@ -394,9 +394,9 @@ function renderMediaItem(
   }
 
   if (category === "text") {
-    const previewHref = postPermalinkUrl
-      ? escapeXml(`${postPermalinkUrl}/text/${item.id}`)
-      : url;
+    const previewHref = escapeXml(
+      getMediaPageUrl(item, siteUrl, postPermalinkUrl),
+    );
     const linkText = buildAttachmentLinkText(item, "Attached text");
     // Prefer character count over byte size — more meaningful for text.
     const textMeta =
@@ -425,9 +425,17 @@ function renderMediaForFeed(
   postPermalinkUrl?: string,
 ): string {
   if (media.length === 0) return "";
-  return media
+  const items = media
     .map((item) => renderMediaItem(item, siteUrl, postPermalinkUrl))
     .join("\n");
+  // The site lays a post's attachments out as one horizontally scrolling strip
+  // and marks that container `data-post-media`, which is part of the markup
+  // contract themes and external scripts already read. Carrying the same
+  // container into the feed lets a consumer style the strip instead of
+  // reassembling it from the Media RSS elements — and in a thread it puts each
+  // post's attachments next to that post's own text, which a flat list cannot.
+  // A reader that ignores the attribute stacks the figures exactly as before.
+  return `<div data-post-media>\n${items}\n</div>`;
 }
 
 /**
@@ -679,6 +687,27 @@ function buildFeedSummary(
 }
 
 /**
+ * Whether the summary's text is shorter than the post's own.
+ *
+ * `<summary>` is sent whenever an entry has text, so its presence says nothing
+ * about truncation — but a consumer drawing the timeline needs to know whether
+ * to offer the "Read more" the site offers. Covers the newest reply too, since
+ * that is the post a thread's summary shows in full.
+ *
+ * @param post - Root post view data
+ * @returns true when some text in the summary was cut
+ * @example
+ * isEntryTruncated(longArticle); // true
+ */
+function isEntryTruncated(post: FeedPostView): boolean {
+  if (getTimelineSummary(post)?.hasMore === true) return true;
+  const latestReply = post.threadReplies?.at(-1);
+  return latestReply
+    ? getTimelineSummary(latestReply)?.hasMore === true
+    : false;
+}
+
+/**
  * Media RSS `medium` for an attachment. The vocabulary is fixed
  * (image/audio/video/document/executable), so everything that is not a
  * playable or visual file is a document.
@@ -703,12 +732,17 @@ function getMediaRssMedium(mimeType: string): string {
  * renderMediaRssContent(photo, "https://example.com")
  * // '\n    <media:content url="…" type="image/jpeg" medium="image" …/>'
  */
-function renderMediaRssContent(item: MediaView, siteUrl: string): string {
+function renderMediaRssContent(
+  { item, postPermalinkUrl }: EntryMedia,
+  siteUrl: string,
+): string {
+  const fileUrl = toAbsoluteFeedUrl(item.url, siteUrl);
   const attrs = [
-    `url="${escapeXml(toAbsoluteFeedUrl(item.url, siteUrl))}"`,
+    `url="${escapeXml(fileUrl)}"`,
     `type="${escapeXml(item.mimeType)}"`,
     `medium="${getMediaRssMedium(item.mimeType)}"`,
   ];
+
   if (item.size != null && item.size > 0) attrs.push(`fileSize="${item.size}"`);
   if (item.width != null && item.width > 0) attrs.push(`width="${item.width}"`);
   if (item.height != null && item.height > 0) {
@@ -718,6 +752,15 @@ function renderMediaRssContent(item: MediaView, siteUrl: string): string {
     attrs.push(`duration="${Math.round(item.durationSeconds)}"`);
   }
 
+  // Where to send someone who clicks the attachment, after the Media RSS
+  // attributes so the foreign one stays out of their way. Only carried when it
+  // is not the file itself — today that means text attachments — so a consumer
+  // reads `jant:page ?? url` and needs no rule per attachment kind.
+  const pageUrl = getMediaPageUrl(item, siteUrl, postPermalinkUrl);
+  if (pageUrl !== fileUrl) {
+    attrs.push(`jant:page="${escapeXml(pageUrl)}"`);
+  }
+
   const children: string[] = [];
   const title = item.originalName?.trim();
   if (title) {
@@ -725,7 +768,10 @@ function renderMediaRssContent(item: MediaView, siteUrl: string): string {
       `<media:title type="plain">${escapeXml(title)}</media:title>`,
     );
   }
-  const description = item.altText?.trim();
+  // Alt text describes a picture; a text attachment has none but carries an
+  // excerpt, which is what the site prints on its card. One slot, because to a
+  // consumer both answer "what is this file".
+  const description = item.altText?.trim() || item.summary?.trim();
   if (description) {
     children.push(
       `<media:description type="plain">${escapeXml(description)}</media:description>`,
@@ -743,12 +789,55 @@ function renderMediaRssContent(item: MediaView, siteUrl: string): string {
     : `\n    <media:content ${attrs.join(" ")}/>`;
 }
 
-function getEntryMedia(post: FeedPostView): MediaView[] {
-  const media = [...post.media];
+/**
+ * One attachment plus the post it hangs off, since an entry's media is drawn
+ * from a whole thread and a text attachment's page lives under its own post.
+ */
+interface EntryMedia {
+  item: MediaView;
+  /** Absolute permalink of the post carrying this attachment. */
+  postPermalinkUrl: string;
+}
+
+function getEntryMedia(post: FeedPostView, siteUrl: string): EntryMedia[] {
+  const collect = (from: PostView): EntryMedia[] => {
+    const postPermalinkUrl = new URL(from.permalink, siteUrl).toString();
+    return from.media.map((item) => ({ item, postPermalinkUrl }));
+  };
+
+  const media = collect(post);
   for (const reply of post.threadReplies ?? []) {
-    media.push(...reply.media);
+    media.push(...collect(reply));
   }
   return media;
+}
+
+/**
+ * The URL a browser can usefully open for an attachment.
+ *
+ * For a picture, a clip or a PDF that is the file itself. A text attachment's
+ * file is markdown or plain text, which a browser downloads or dumps unstyled,
+ * so it points at the page that renders it instead. Consumers laying out their
+ * own card follow this rather than `url`, which stays the file for fetching
+ * and for the enclosure.
+ *
+ * @param item - Attachment view data
+ * @param siteUrl - Site base URL, for absolutizing a stored path
+ * @param postPermalinkUrl - Absolute permalink of the post carrying it
+ * @returns An absolute URL worth opening in a browser
+ * @example
+ * getMediaPageUrl(note, "https://example.com", "https://example.com/hn2v7")
+ * // "https://example.com/hn2v7/text/med_01m13xhg"
+ */
+function getMediaPageUrl(
+  item: MediaView,
+  siteUrl: string,
+  postPermalinkUrl?: string,
+): string {
+  if (getMediaCategory(item.mimeType) === "text" && postPermalinkUrl) {
+    return `${postPermalinkUrl}/text/${item.id}`;
+  }
+  return toAbsoluteFeedUrl(item.url, siteUrl);
 }
 
 /**
@@ -801,7 +890,9 @@ export function defaultFeedRenderer(data: FeedData): string {
       // shelf to list the picture a second time under the post. Every podcast
       // feed works this way, enclosing the audio it cannot inline while
       // leaving its inline show-note images alone.
-      const enclosureLinks = getEntryMedia(post)
+      const entryMedia = getEntryMedia(post, siteUrl);
+      const enclosureLinks = entryMedia
+        .map(({ item }) => item)
         .filter((m) => getMediaCategory(m.mimeType) !== "image")
         .map((m) => {
           const lengthAttr =
@@ -817,7 +908,7 @@ export function defaultFeedRenderer(data: FeedData): string {
       // carry — pixel dimensions, duration, alt text, poster. Enclosure stays
       // above because it is what a plain Atom parser reads; this is the layer
       // a reader that knows Media RSS can lay out without fetching the file.
-      const mediaContentElements = getEntryMedia(post)
+      const mediaContentElements = entryMedia
         .map((m) => renderMediaRssContent(m, siteUrl))
         .join("");
 
@@ -850,6 +941,27 @@ export function defaultFeedRenderer(data: FeedData): string {
       // article is the reader's call, made from this and `<title>`.
       const formatElement = `\n    <jant:format>${escapeXml(post.format)}</jant:format>`;
 
+      // The site's own tags for this post, which Atom has a field for — unlike
+      // `<jant:format>` above, a collection is a label the author chose, so
+      // showing it as one is right. Replies inherit their root's, and the site
+      // prints them on the root alone, so they ride on the entry once.
+      // `jant:page` because a single collection lives in the root URL
+      // namespace and a site path prefix makes it unguessable from the term.
+      const categoryElements = post.collections
+        .map(
+          (collection) =>
+            `\n    <category term="${escapeXml(collection.slug)}" label="${escapeXml(collection.title)}" jant:page="${escapeXml(toAbsoluteFeedUrl(collection.url, siteUrl))}"/>`,
+        )
+        .join("");
+
+      // Whether the summary's text was cut. `<summary>` is present whenever
+      // there is text, so only this says whether the site would offer a
+      // "Read more" — a consumer drawing its own timeline cannot tell without
+      // fetching and comparing the content.
+      const truncatedElement = isEntryTruncated(post)
+        ? "\n    <jant:truncated/>"
+        : "";
+
       // `<summary>` is the entry's text, `<content>` the post's full page. It
       // is present whenever there is text — a bare note repeats itself here,
       // which costs the words and nothing else, and buys a field that means one
@@ -867,7 +979,7 @@ export function defaultFeedRenderer(data: FeedData): string {
     <link href="${alternateLink}" rel="alternate"/>${relatedLink}${enclosureLinks}
     <id>${escapedPermalink}</id>
     <published>${publishedAt}</published>
-    <updated>${updatedAt}</updated>${formatElement}${thumbnailElement}${mediaContentElements}${summaryElement}
+    <updated>${updatedAt}</updated>${formatElement}${truncatedElement}${categoryElements}${thumbnailElement}${mediaContentElements}${summaryElement}
     <content type="html"><![CDATA[${escapeCdata(contentMarkup)}]]></content>
   </entry>`;
     })
@@ -905,7 +1017,8 @@ export function defaultFeedRenderer(data: FeedData): string {
   // a representative image, on the same rule as the jant namespace above.
   const mediaNs = posts.some(
     (post) =>
-      getEntryMedia(post).length > 0 || Boolean(post.previewImageUrl?.trim()),
+      getEntryMedia(post, siteUrl).length > 0 ||
+      Boolean(post.previewImageUrl?.trim()),
   )
     ? ` xmlns:media="${escapeXml(MEDIA_RSS_NAMESPACE_URI)}"`
     : "";

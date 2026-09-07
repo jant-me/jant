@@ -1333,6 +1333,109 @@ describe("feed entry summary", () => {
   });
 });
 
+/**
+ * What an entry says about itself beyond its text: whether the timeline cuts
+ * it, and which collections the author filed it under.
+ */
+describe("feed entry metadata", () => {
+  function makeBody(paragraphs: string[]): string {
+    return JSON.stringify({
+      type: "doc",
+      content: paragraphs.map((text) => ({
+        type: "paragraph",
+        content: [{ type: "text", text }],
+      })),
+    });
+  }
+
+  // `<summary>` is sent whenever there is text, so only this tells a consumer
+  // whether the site would offer a "Read more".
+  it("marks an entry whose summary text was cut", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          title: "A long read",
+          body: makeBody([
+            "Alpha ".repeat(90).trim(),
+            "Omega ".repeat(90).trim(),
+          ]),
+          bodyHtml: "<p>Alpha</p><p>Omega</p>",
+        }),
+      ),
+    );
+
+    expect(xml).toContain("<jant:truncated/>");
+  });
+
+  it("leaves the mark off an entry the timeline shows in full", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          body: makeBody(["Short enough."]),
+          bodyHtml: "<p>Short enough.</p>",
+        }),
+      ),
+    );
+
+    expect(xml).not.toContain("<jant:truncated/>");
+  });
+
+  it("marks an entry whose newest reply was cut", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          body: makeBody(["Root."]),
+          bodyHtml: "<p>Root.</p>",
+          threadReplies: [
+            makePostView({
+              id: "reply-1",
+              permalink: "/reply-1",
+              title: "A long reply",
+              body: makeBody([
+                "Alpha ".repeat(90).trim(),
+                "Omega ".repeat(90).trim(),
+              ]),
+              bodyHtml: "<p>Alpha</p><p>Omega</p>",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain("<jant:truncated/>");
+  });
+
+  // A collection is a label the author chose, which is what `<category>` is
+  // for — unlike the format, which no author typed.
+  it("files an entry under its collections", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          collections: [
+            { slug: "reading", title: "Reading", url: "/reading" },
+            { slug: "notes", title: "Field Notes", url: "/notes" },
+          ],
+        }),
+      ),
+    );
+
+    // A single collection lives in the root URL namespace and a site path
+    // prefix makes it unguessable from the term, so the URL rides along.
+    expect(xml).toContain(
+      '<category term="reading" label="Reading" jant:page="https://example.com/reading"/>',
+    );
+    expect(xml).toContain(
+      '<category term="notes" label="Field Notes" jant:page="https://example.com/notes"/>',
+    );
+  });
+
+  it("emits no categories for a post in no collection", () => {
+    expect(defaultFeedRenderer(makeFeedData(makePostView()))).not.toContain(
+      "<category",
+    );
+  });
+});
+
 describe("feed attachment metadata", () => {
   it("describes an image with Media RSS instead of an enclosure", () => {
     const xml = defaultFeedRenderer(
@@ -1475,6 +1578,138 @@ describe("feed attachment metadata", () => {
     // A scraped thumbnail of someone else's page is not a published file, so
     // it must not tell podcast and download clients to fetch it.
     expect(xml).not.toContain('rel="enclosure"');
+  });
+
+  // The site lays a post's attachments out as one strip and marks the container
+  // `data-post-media`. Carrying it into the feed lets a consumer style the
+  // strip instead of reassembling it from the Media RSS elements.
+  it("groups a post's attachments in one container", () => {
+    const content =
+      /<content type="html"><!\[CDATA\[([\s\S]*?)\]\]><\/content>/.exec(
+        defaultFeedRenderer(
+          makeFeedData(
+            makePostView({
+              bodyHtml: "<p>Look.</p>",
+              media: [
+                makeMediaView({
+                  id: "med_a",
+                  url: "https://example.com/media/a.webp",
+                  thumbnailUrl: "https://example.com/media/a.webp",
+                  mimeType: "image/webp",
+                }),
+                makeMediaView({
+                  id: "med_b",
+                  url: "https://example.com/media/b.webp",
+                  thumbnailUrl: "https://example.com/media/b.webp",
+                  mimeType: "image/webp",
+                }),
+              ],
+            }),
+          ),
+        ),
+      )?.[1];
+
+    expect(content).toContain("<div data-post-media>");
+    expect(content?.match(/<div data-post-media>/g)).toHaveLength(1);
+    expect(content).toContain("a.webp");
+    expect(content).toContain("b.webp");
+  });
+
+  // A flat list cannot say which post in a thread an attachment belongs to.
+  // The content can, because each post's strip sits beside its own text.
+  it("gives each post in a thread its own container", () => {
+    const content =
+      /<content type="html"><!\[CDATA\[([\s\S]*?)\]\]><\/content>/.exec(
+        defaultFeedRenderer(
+          makeFeedData(
+            makePostView({
+              bodyHtml: "<p>Root.</p>",
+              media: [
+                makeMediaView({
+                  id: "med_root",
+                  url: "https://example.com/media/root.webp",
+                  thumbnailUrl: "https://example.com/media/root.webp",
+                  mimeType: "image/webp",
+                }),
+              ],
+              threadReplies: [
+                makePostView({
+                  id: "reply-1",
+                  permalink: "/reply-1",
+                  bodyHtml: "<p>Reply.</p>",
+                  media: [
+                    makeMediaView({
+                      id: "med_reply",
+                      url: "https://example.com/media/reply.webp",
+                      thumbnailUrl: "https://example.com/media/reply.webp",
+                      mimeType: "image/webp",
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          ),
+        ),
+      )?.[1];
+
+    expect(content?.match(/<div data-post-media>/g)).toHaveLength(2);
+    // Each strip sits after its own post's text.
+    expect(content?.indexOf("root.webp")).toBeLessThan(
+      content?.indexOf("Reply.") ?? -1,
+    );
+    expect(content?.indexOf("Reply.")).toBeLessThan(
+      content?.indexOf("reply.webp") ?? -1,
+    );
+  });
+
+  // A markdown file is not worth opening raw — the browser downloads it or
+  // dumps it unstyled — so a text attachment points at the page that renders
+  // it while `url` stays the file.
+  it("points a text attachment at the page that renders it", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          permalink: "/hn2v7",
+          media: [
+            makeMediaView({
+              id: "med_txt",
+              url: "https://cdn.example.com/files/med_txt.md",
+              thumbnailUrl: "https://cdn.example.com/files/med_txt.md",
+              mimeType: "text/markdown; charset=utf-8",
+              size: 21,
+              summary: "松松哈哈哈",
+              originalName: "attached-text.md",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain('jant:page="https://example.com/hn2v7/text/med_txt"');
+    // `url` stays the file, for fetching and for the enclosure.
+    expect(xml).toContain('url="https://cdn.example.com/files/med_txt.md"');
+    // A text attachment has no alt text; its excerpt is what the card prints.
+    expect(xml).toContain(
+      '<media:description type="plain">松松哈哈哈</media:description>',
+    );
+  });
+
+  it("gives an attachment no page of its own when the file is the page", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          media: [
+            makeMediaView({
+              url: "https://example.com/media/photo.jpg",
+              thumbnailUrl: "https://example.com/media/photo.jpg",
+              mimeType: "image/jpeg",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).not.toContain("jant:page");
   });
 
   it("leaves the Media RSS namespace out of a feed with no attachments", () => {
