@@ -109,6 +109,26 @@ function triggerEditorPaste(el: JantComposeEditor, files: File[]) {
   return { handled, event };
 }
 
+/**
+ * Drops files on the element itself, the way a drag onto the composer chrome
+ * (rather than into the ProseMirror body) arrives.
+ */
+function triggerEditorDrop(el: JantComposeEditor, files: File[]) {
+  const event = new Event("drop", { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "dataTransfer", {
+    value: {
+      items: files.map((file) => ({
+        kind: "file",
+        type: file.type,
+        getAsFile: () => file,
+      })),
+      files,
+    },
+  });
+  el.dispatchEvent(event);
+  return event;
+}
+
 function parsePastedText(el: JantComposeEditor, text: string): Slice | null {
   const editor = requireEditor(el);
   let slice: Slice | null = null;
@@ -1600,6 +1620,60 @@ describe("JantComposeEditor", () => {
     expect(uploadWithMetadataMock).not.toHaveBeenCalled();
     expect(el._attachments.map((attachment) => attachment.file.name)).toEqual([
       "clipboard.png",
+    ]);
+  });
+
+  it("pastes images as attachments in a link, title or no title", async () => {
+    const uploadWithMetadataMock = vi.mocked(uploadWithMetadata);
+    const el = await createElement("link");
+    // A link's title is required to publish, so it is filled in every link
+    // worth pasting into — it can't be the signal that picks inline.
+    el._title = "An article worth linking";
+    await el.updateComplete;
+
+    const image = new File(["image"], "clipboard.png", { type: "image/png" });
+    const { handled } = triggerEditorPaste(el, [image]);
+    await el.updateComplete;
+
+    expect(handled).toBe(true);
+    expect(uploadWithMetadataMock).not.toHaveBeenCalled();
+    expect(el._attachments.map((attachment) => attachment.file.name)).toEqual([
+      "clipboard.png",
+    ]);
+  });
+
+  it("pastes images as attachments in a quote carrying a title from a format switch", async () => {
+    const uploadWithMetadataMock = vi.mocked(uploadWithMetadata);
+    const el = await createElement("quote");
+    // A quote has no title field, but switching over from a note leaves one
+    // behind. Nothing the author can see may decide where the image lands.
+    el._title = "Essay";
+    await el.updateComplete;
+
+    const image = new File(["image"], "clipboard.png", { type: "image/png" });
+    const { handled } = triggerEditorPaste(el, [image]);
+    await el.updateComplete;
+
+    expect(handled).toBe(true);
+    expect(uploadWithMetadataMock).not.toHaveBeenCalled();
+    expect(el._attachments.map((attachment) => attachment.file.name)).toEqual([
+      "clipboard.png",
+    ]);
+  });
+
+  it("drops images into a link as attachments, same as pasting them", async () => {
+    const uploadWithMetadataMock = vi.mocked(uploadWithMetadata);
+    const el = await createElement("link");
+    el._title = "An article worth linking";
+    await el.updateComplete;
+
+    const image = new File(["image"], "dropped.png", { type: "image/png" });
+    triggerEditorDrop(el, [image]);
+    await el.updateComplete;
+
+    expect(uploadWithMetadataMock).not.toHaveBeenCalled();
+    expect(el._attachments.map((attachment) => attachment.file.name)).toEqual([
+      "dropped.png",
     ]);
   });
 
