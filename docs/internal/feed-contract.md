@@ -25,8 +25,7 @@ page. The entry carries both.
 - `<content type="html">` is the **whole post page**.
 
 `<summary>` holds the timeline's body, a quote post's quotation and attribution,
-the star rating, and a thread folded to its root plus a gap link and its newest
-reply. It does not hold media, a link post's preview image, or the `★`
+the star rating, and a thread folded the way the timeline folds it. It does not hold media, a link post's preview image, or the `★`
 permalink — those are the post's content, not a summary of it.
 
 Inside a thread both constructs close each post's block with that post's own
@@ -86,7 +85,7 @@ Declare a namespace only where something in it is emitted.
 | `link[@rel="enclosure"]` | 0–n   | Non-image attachments. See below.                                                                                                                                                                                                                                                                                             |
 | `published` / `updated`  | 1     | A curated feed may date an entry by the curation, hence `feedPublishedAt` / `feedUpdatedAt`.                                                                                                                                                                                                                                  |
 | `jant:format`            | 1     | `note`, `link`, or `quote`, for the entry — which is the root. A reply's own format is on its `<jant:post>` row. Atom has no field for it, and `<category>` would show `quote` as a tag no author typed.                                                                                                                      |
-| `jant:truncated`         | 0–1   | Empty element. Present when the timeline cut the root's text or the newest reply's. Never on a Quote.                                                                                                                                                                                                                         |
+| `jant:truncated`         | 0–1   | Empty element. Present when the summary cut the root's text or the newest reply's; a row's `truncated` says which. Never on a Quote.                                                                                                                                                                                          |
 | `jant:thread`            | 0–1   | The entry is a whole thread, and this is its shape, with a `<jant:post>` row per post. Absent means a lone post. See below.                                                                                                                                                                                                   |
 | `category`               | 0–n   | One per collection. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL — a single collection lives in the root URL namespace, so a site path prefix makes it unguessable from the term. Replies inherit their root's collections and the site prints them on the root alone, so they ride the entry once. |
 | `media:thumbnail`        | 0–1   | **Direct child of the entry**: a link post's preview image, for card and grid views. A scraped thumbnail of someone else's page is not a published file, so it gets no enclosure.                                                                                                                                             |
@@ -100,31 +99,76 @@ A thread is one entry. Both text constructs therefore run several posts
 together — `<content>` the whole chain, `<summary>` the folded card — and three
 things let a consumer take that apart.
 
+The fold is the site's, not the feed's: the first two replies as context, the
+last three with the newest as the hero, and the run between them collapsed into
+a gap link. Up to six posts, so a thread that fits arrives whole and hides
+nothing. `lib/thread-fold.ts` owns the rule — the site selects its posts in SQL
+because a page of timeline items must not load whole threads, the feed slices
+the chain it already holds for `<content>`, and both read their thresholds and
+their hidden count from that one module.
+
+The gap link opens **the first post it hides**, on both surfaces. The site used
+to open the last visible post instead, so that the detail page began just above
+the missing stretch — a deliberate choice, but one that makes the link mean
+something other than its label, and one `gap` could not follow without handing a
+consumer a post that is on screen.
+
 **`<jant:thread>`** declares it, for a consumer that never parses the HTML.
 
 | Attribute | Notes                                                                                                                                                                         |
 | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `posts`   | Total posts in the thread, root included                                                                                                                                      |
 | `hidden`  | How many the summary folds away. Stated, not derived: the fold is the site's decision, and `posts - 2` only holds while that decision is "keep the root and the newest reply" |
-| `gap`     | Where the folded middle starts. Only when `hidden` is above zero                                                                                                              |
+| `gap`     | The first post the fold hides. Only when `hidden` is above zero                                                                                                               |
 | `latest`  | The newest reply — the post the summary shows in full, and the one whose `media:content` belongs beside it                                                                    |
 
 ```xml
-<jant:thread posts="2" hidden="0" latest="https://ex.com/r1">
-  <jant:post href="https://ex.com/root" format="note"  published="2026-03-14T09:00:00.000Z"/>
-  <jant:post href="https://ex.com/r1"   format="quote" published="2026-03-15T09:00:00.000Z"/>
+<jant:thread posts="4" hidden="2" gap="https://ex.com/r1" latest="https://ex.com/r3">
+  <jant:post href="https://ex.com/dialing-in" format="note" published="2026-03-14T09:00:00.000Z"/>
+  <jant:post href="https://ex.com/r1" format="link" published="2026-03-15T09:00:00.000Z"
+             title="The AeroPress guide" url="https://other.example/aeropress"
+             thumbnail="https://ex.com/m/prev.jpg"/>
+  <jant:post href="https://ex.com/r2" format="quote" published="2026-03-16T09:00:00.000Z"/>
+  <jant:post href="https://ex.com/r3" format="note" published="2026-03-17T09:00:00.000Z"
+             title="Got it" truncated="true"/>
 </jant:thread>
 ```
 
-`<jant:format>` describes the entry, and an entry is its root. A reply that is
-a Quote or a Link declares it nowhere else: the `<blockquote>` in the content
-is a rendering, not something a consumer laying the thread out itself can read.
+| Attribute   | Count | Notes                                                                                                |
+| ----------- | ----- | ---------------------------------------------------------------------------------------------------- |
+| `href`      | 1     | The post's permalink. What `gap`, `latest` and `media:content/@jant:post` name                       |
+| `format`    | 1     | `note`, `link`, or `quote`, for this post                                                            |
+| `published` | 1     | This post's own timestamp                                                                            |
+| `title`     | 0–1   | Absent when the post has none, and on every Quote — the entry's rule for `<title>`, applied per post |
+| `url`       | 0–1   | Link posts only: where it points. The row's `link[@rel="alternate"]`                                 |
+| `thumbnail` | 0–1   | Link posts only: the preview image. The row's `media:thumbnail`                                      |
+| `truncated` | 0–1   | `"true"` when the summary cut this post's block                                                      |
 
-The rows carry **identity and kind only** — `href`, `format`, `published`. No
-title, no text, no excerpt. This is the thread's table of contents, and
-`<content>` stays the only place the posts' words appear. `gap` and `latest`
-point into it, and `media:content`'s `jant:post` resolves against it: the
-attribute references, the row declares.
+**What belongs on a row:** what Atom itself would put on this post's entry —
+its links, its title, its date — plus what Jant adds at entry level, `format`
+and `truncated`. Never the body, a summary, or an excerpt. `<content>` stays
+the only place the posts' words appear, and this stays a table of contents.
+
+The rule exists because every entry-level field describes the **root**.
+`<jant:format>` says `note` for a thread whose newest reply is a Quote;
+`<title>` and `link[@rel="alternate"]` say nothing about a titled reply or a
+Link reply. In `<content>` those show up as an `<h2>` and a `<blockquote>` —
+renderings, not declarations a consumer laying the thread out itself can read.
+
+The root gets a full row like every reply, repeating what the entry already
+says about it. A consumer walking the rows should not have to know that one of
+them is described somewhere else instead.
+
+`gap` and `latest` point into this list, and `media:content`'s `jant:post`
+resolves against it: the attribute references, the row declares.
+
+**`truncated` sits at both levels, and they answer different questions.**
+`<jant:truncated/>` on the entry says the summary cut something, which is what
+a reader drawing one card per entry needs — and it is the only place a lone
+post can say it, having no rows. A row's `truncated` says which post. Any post
+the fold renders can carry it; a post behind the gap cannot, having no block to
+cut. **Its absence therefore means "not cut here", never "this post arrived
+whole."**
 
 **The tail meta** marks the joints, in both text constructs:
 
@@ -197,6 +241,12 @@ that is the case the element exists for. Every podcast feed works this way.
 
 - Every `<media:content>` file is also presented in `<content>`. There is no
   attachment reachable from one and not the other.
+- **A folded post's attachments are here too.** An entry's media is the whole
+  thread's, and `<content>` shows every post, so a file belonging to a post the
+  summary hid behind the gap link still arrives, carrying its `jant:post`. A
+  consumer drawing only the summary can tell which those are — its
+  `jant:post` matches a `<jant:post>` row that is neither the root nor
+  `latest` — and whether to draw them is its own call.
 - Do not match the two by URL. A text attachment's content link points at its
   rendered page, not at the file.
 - `medium` is Media RSS's fixed vocabulary, so anything that is not a picture or

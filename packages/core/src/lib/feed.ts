@@ -22,6 +22,8 @@ import { extractTimelineSummary } from "./summary.js";
 import { getLinkPreviewProviderLabel } from "./link-preview.js";
 import { extractDisplayDomain } from "./url.js";
 import { getMediaCategory } from "./upload.js";
+import { foldThreadReplies } from "./thread-fold.js";
+import type { ThreadFold } from "./thread-fold.js";
 
 /**
  * Media RSS namespace. Atom's own `<link rel="enclosure">` has no slots for
@@ -597,22 +599,20 @@ function buildSinglePostContent(
  */
 function renderThreadElement(post: FeedPostView, siteUrl: string): string {
   const replies = post.threadReplies ?? [];
-  const latestReply = replies.at(-1);
-  if (!latestReply) return "";
+  const fold = foldThreadReplies(replies);
+  if (!fold) return "";
 
-  // The same fold `buildFeedSummary` applies: the root stays as context, the
-  // newest reply is the hero, everything between becomes a count.
-  const hiddenCount = Math.max(0, replies.length - 1);
-  const firstHidden = replies[0];
-
-  const attrs = [`posts="${replies.length + 1}"`, `hidden="${hiddenCount}"`];
-  if (hiddenCount > 0 && firstHidden) {
+  const attrs = [
+    `posts="${replies.length + 1}"`,
+    `hidden="${fold.hiddenCount}"`,
+  ];
+  if (fold.hiddenCount > 0 && fold.firstHiddenReply) {
     attrs.push(
-      `gap="${escapeXml(toAbsoluteFeedUrl(firstHidden.permalink, siteUrl))}"`,
+      `gap="${escapeXml(toAbsoluteFeedUrl(fold.firstHiddenReply.permalink, siteUrl))}"`,
     );
   }
   attrs.push(
-    `latest="${escapeXml(toAbsoluteFeedUrl(latestReply.permalink, siteUrl))}"`,
+    `latest="${escapeXml(toAbsoluteFeedUrl(fold.latestReply.permalink, siteUrl))}"`,
   );
 
   // One row per post, in thread order. `<jant:format>` above describes the
@@ -623,16 +623,57 @@ function renderThreadElement(post: FeedPostView, siteUrl: string): string {
   // This is where `gap` and `latest` point, and where `media:content`'s
   // `jant:post` resolves: the attribute references, this declares.
   //
-  // Identity and kind only — `href`, `format`, `published`. No title, no text,
-  // no excerpt. It is the thread's table of contents, not a second copy of the
-  // posts, and `<content>` remains the only place their words appear.
+  // A row carries what Atom itself would put on this post's entry — its links,
+  // its title, its date — plus what Jant adds at entry level: `format` and
+  // `truncated`. Never the body, a summary, or an excerpt: `<content>` remains
+  // the only place the posts' words appear, and this stays a table of contents.
+  //
+  // The root gets the same row as every reply, repeating what the entry
+  // already says about it. A consumer walking the rows should not have to know
+  // that one of them is described somewhere else instead.
+  const summaryPosts = getSummaryPosts(post, fold);
   const rows = [post, ...replies]
-    .map(
-      (member) =>
-        `\n      <jant:post href="${escapeXml(toAbsoluteFeedUrl(member.permalink, siteUrl))}"` +
-        ` format="${escapeXml(member.format)}"` +
-        ` published="${escapeXml(member.publishedAt)}"/>`,
-    )
+    .map((member) => {
+      const rowAttrs = [
+        `href="${escapeXml(toAbsoluteFeedUrl(member.permalink, siteUrl))}"`,
+        `format="${escapeXml(member.format)}"`,
+        `published="${escapeXml(member.publishedAt)}"`,
+      ];
+
+      // The entry's own rule for `<title>`, applied per post: a quote's
+      // attribution is not its title, and `getAtomTitle` is where that is
+      // decided, so a quote row carries none.
+      const rowTitle = getAtomTitle(member);
+      if (rowTitle) rowAttrs.push(`title="${escapeXml(rowTitle)}"`);
+
+      // Where a Link post points — the row's answer to the entry's
+      // `link[rel="alternate"]`, which only ever describes the root.
+      if (member.format === "link" && member.url) {
+        rowAttrs.push(`url="${escapeXml(member.url)}"`);
+      }
+
+      // A Link post's preview image, the row's `media:thumbnail`. It is a
+      // scrape of someone else's page rather than a published file, which is
+      // why it is an attribute here and not a `media:content` of its own.
+      const rowThumbnail = member.previewImageUrl?.trim();
+      if (rowThumbnail) {
+        rowAttrs.push(
+          `thumbnail="${escapeXml(toAbsoluteFeedUrl(rowThumbnail, siteUrl))}"`,
+        );
+      }
+
+      // Truncation happens only in `<summary>`, and only to the posts the fold
+      // renders. A post it hid has no block to cut, so its row never carries
+      // this — absence means "not cut here", never "shown whole".
+      if (
+        summaryPosts.has(member) &&
+        getTimelineSummary(member)?.hasMore === true
+      ) {
+        rowAttrs.push(`truncated="true"`);
+      }
+
+      return `\n      <jant:post ${rowAttrs.join(" ")}/>`;
+    })
     .join("");
 
   return `\n    <jant:thread ${attrs.join(" ")}>${rows}\n    </jant:thread>`;
@@ -752,57 +793,70 @@ function buildFeedSummary(
   siteUrl: string,
   permalinkUrl?: string,
 ): string {
-  const replies = post.threadReplies ?? [];
-  const latestReply = replies.at(-1);
-  // The timeline keeps the root as context and the newest reply as the hero,
-  // collapsing everything between into a count. One reply is the hero, so
-  // nothing is hidden.
-  const hiddenCount = Math.max(0, replies.length - 1);
-
-  const isThread = replies.length > 0;
+  const fold = foldThreadReplies(post.threadReplies ?? []);
   const rootPermalink =
     permalinkUrl ?? new URL(post.permalink, siteUrl).toString();
 
   const parts: string[] = [];
-  const rootMarkup = buildSinglePostContent(post, siteUrl, permalinkUrl, {
-    summary: true,
-  });
-  if (rootMarkup) {
-    parts.push(rootMarkup);
-    // Only inside a thread, and only behind text there was something to end.
-    // A photo with no caption contributes no block here, so it gets no marker
-    // and "every marker ends the block before it" still holds.
-    if (isThread) parts.push(renderPostTailMeta(post, rootPermalink));
+
+  const appendPost = (
+    member: PostView,
+    memberPermalink: string,
+    options: SinglePostContentOptions,
+  ) => {
+    const markup = buildSinglePostContent(
+      member,
+      siteUrl,
+      memberPermalink,
+      options,
+    );
+    if (!markup) return;
+    if (parts.length > 0) parts.push("<hr/>");
+    parts.push(markup);
+    // A thread runs several posts through one field, so each block closes with
+    // its own dated permalink. A lone post needs no marker: `<published>`
+    // dates it and there is no second block to tell it apart from.
+    if (fold) parts.push(renderPostTailMeta(member, memberPermalink));
+  };
+
+  appendPost(post, rootPermalink, { summary: true });
+
+  if (!fold) return parts.join("\n");
+
+  const absolutePermalink = (member: PostView) =>
+    new URL(member.permalink, siteUrl).toString();
+
+  for (const reply of fold.leadingReplies) {
+    appendPost(reply, absolutePermalink(reply), {
+      inline: true,
+      summary: true,
+    });
   }
 
-  const firstHidden = replies[0];
-  if (hiddenCount > 0 && firstHidden) {
-    // The site's gap marker is a link to the first post it hides
-    // (`ThreadPreview`'s `gapHref`), not just a count — in a feed there is no
-    // toggle to expand context, so the link is the only way through.
+  if (fold.hiddenCount > 0 && fold.firstHiddenReply) {
+    // The same gap the site draws: a link to the first post it hides, not just
+    // a count. It matters more here — a feed has no toggle to expand context,
+    // so the link is the only way through.
     const gapHref = escapeXml(
-      toAbsoluteFeedUrl(firstHidden.permalink, siteUrl),
+      toAbsoluteFeedUrl(fold.firstHiddenReply.permalink, siteUrl),
     );
     const label =
-      hiddenCount === 1 ? "1 more post" : `${hiddenCount} more posts`;
+      fold.hiddenCount === 1 ? "1 more post" : `${fold.hiddenCount} more posts`;
     if (parts.length > 0) parts.push("<hr/>");
     parts.push(`<p><small><a href="${gapHref}">${label}</a></small></p>`);
   }
 
-  if (latestReply) {
-    const replyPermalink = new URL(latestReply.permalink, siteUrl).toString();
-    const replyMarkup = buildSinglePostContent(
-      latestReply,
-      siteUrl,
-      replyPermalink,
-      { inline: true, summary: true },
-    );
-    if (replyMarkup) {
-      if (parts.length > 0) parts.push("<hr/>");
-      parts.push(replyMarkup);
-      parts.push(renderPostTailMeta(latestReply, replyPermalink));
-    }
+  for (const reply of fold.trailingReplies) {
+    appendPost(reply, absolutePermalink(reply), {
+      inline: true,
+      summary: true,
+    });
   }
+
+  appendPost(fold.latestReply, absolutePermalink(fold.latestReply), {
+    inline: true,
+    summary: true,
+  });
 
   return parts.join("\n");
 }
@@ -821,11 +875,39 @@ function buildFeedSummary(
  * isEntryTruncated(longArticle); // true
  */
 function isEntryTruncated(post: FeedPostView): boolean {
-  if (getTimelineSummary(post)?.hasMore === true) return true;
-  const latestReply = post.threadReplies?.at(-1);
-  return latestReply
-    ? getTimelineSummary(latestReply)?.hasMore === true
-    : false;
+  for (const member of getSummaryPosts(
+    post,
+    foldThreadReplies(post.threadReplies ?? []),
+  )) {
+    if (getTimelineSummary(member)?.hasMore === true) return true;
+  }
+  return false;
+}
+
+/**
+ * The posts `<summary>` renders, root first.
+ *
+ * The fold decides which replies survive; this is the one place that turns it
+ * into "everything with a block", which is what truncation is asked about — at
+ * the entry, and per row.
+ *
+ * @param post - Root post view data
+ * @param fold - The thread's fold, or null when the entry is a lone post
+ * @returns Every post the summary renders, the root always included
+ * @example
+ * getSummaryPosts(root, fold).has(reply); // whether the summary shows it
+ */
+function getSummaryPosts(
+  post: FeedPostView,
+  fold: ThreadFold<PostView> | null,
+): Set<PostView> {
+  if (!fold) return new Set([post]);
+  return new Set([
+    post,
+    ...fold.leadingReplies,
+    ...fold.trailingReplies,
+    fold.latestReply,
+  ]);
 }
 
 /**

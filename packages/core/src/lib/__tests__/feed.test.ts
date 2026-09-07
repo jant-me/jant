@@ -1254,7 +1254,10 @@ describe("feed entry summary", () => {
     );
   });
 
-  it("collapses a thread to root, a gap link, and the latest reply", () => {
+  // The same fold the site's timeline applies: the first two replies as
+  // context, the last three with the newest as the hero, the run between them
+  // collapsed into a gap link.
+  it("folds a long thread the way the timeline does", () => {
     const reply = (n: number) =>
       makePostView({
         id: `reply-${n}`,
@@ -1268,23 +1271,58 @@ describe("feed entry summary", () => {
           title: "Thread root",
           body: longBody,
           bodyHtml: "<p>Alpha</p><p>Delta</p>",
-          threadReplies: [reply(1), reply(2), reply(3)],
+          threadReplies: [1, 2, 3, 4, 5, 6, 7].map(reply),
         }),
       ),
     );
 
     const summary = getSummary(xml);
+    // Leading context.
+    expect(summary).toContain("Reply 1 body.");
+    expect(summary).toContain("Reply 2 body.");
+    // The gap stands for replies 3 and 4, and opens the first of them.
     expect(summary).toContain(
-      '<p><small><a href="https://example.com/reply-1">2 more posts</a></small></p>',
+      '<p><small><a href="https://example.com/reply-3">2 more posts</a></small></p>',
     );
-    expect(summary).toContain("Reply 3 body.");
-    expect(summary).not.toContain("Reply 2 body.");
+    expect(summary).not.toContain("Reply 3 body.");
+    expect(summary).not.toContain("Reply 4 body.");
+    // Trailing context, then the hero.
+    expect(summary).toContain("Reply 5 body.");
+    expect(summary).toContain("Reply 6 body.");
+    expect(summary).toContain("Reply 7 body.");
 
     // The content still carries every reply.
     const content = getContent(xml);
-    expect(content).toContain("Reply 1 body.");
-    expect(content).toContain("Reply 2 body.");
-    expect(content).toContain("Reply 3 body.");
+    for (const n of [1, 2, 3, 4, 5, 6, 7]) {
+      expect(content).toContain(`Reply ${n} body.`);
+    }
+  });
+
+  // Up to six posts fit the fold, so a shorter thread hides nothing at all.
+  it("hides nothing in a thread the fold fits whole", () => {
+    const reply = (n: number) =>
+      makePostView({
+        id: `reply-${n}`,
+        permalink: `/reply-${n}`,
+        body: makeBody([`Reply ${n} body.`]),
+        bodyHtml: `<p>Reply ${n} body.</p>`,
+      });
+    const summary = getSummary(
+      defaultFeedRenderer(
+        makeFeedData(
+          makePostView({
+            body: makeBody(["Root."]),
+            bodyHtml: "<p>Root.</p>",
+            threadReplies: [1, 2, 3, 4, 5].map(reply),
+          }),
+        ),
+      ),
+    );
+
+    for (const n of [1, 2, 3, 4, 5]) {
+      expect(summary).toContain(`Reply ${n} body.`);
+    }
+    expect(summary).not.toContain("more post");
   });
 
   it("writes the gap count in the singular for a single hidden post", () => {
@@ -1295,13 +1333,14 @@ describe("feed entry summary", () => {
         body: makeBody([`Reply ${n}.`]),
         bodyHtml: `<p>Reply ${n}.</p>`,
       });
+    // Six replies: two lead, three trail, one falls in the gap.
     const summary = getSummary(
       defaultFeedRenderer(
         makeFeedData(
           makePostView({
             body: makeBody(["Root."]),
             bodyHtml: "<p>Root.</p>",
-            threadReplies: [reply(1), reply(2)],
+            threadReplies: [1, 2, 3, 4, 5, 6].map(reply),
           }),
         ),
       ),
@@ -1863,13 +1902,14 @@ describe("feed entry thread segmentation", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
         makeRoot({
-          threadReplies: [makeReply(1), makeReply(2), makeReply(3)],
+          threadReplies: [1, 2, 3, 4, 5, 6, 7].map((n) => makeReply(n)),
         }),
       ),
     );
 
+    // Seven replies: 1 and 2 lead, 5-7 trail, 3 and 4 fall in the gap.
     expect(xml).toContain(
-      '<jant:thread posts="4" hidden="2" gap="https://example.com/reply-1" latest="https://example.com/reply-3">',
+      '<jant:thread posts="8" hidden="2" gap="https://example.com/reply-3" latest="https://example.com/reply-7">',
     );
   });
 
@@ -1911,6 +1951,94 @@ describe("feed entry thread segmentation", () => {
     );
     // The entry still declares the root's format, unchanged.
     expect(xml).toContain("<jant:format>note</jant:format>");
+  });
+
+  // A row carries what Atom would put on this post's entry. `<title>` and
+  // `link[rel="alternate"]` only ever describe the root, so a titled reply and
+  // a Link reply had nowhere to say either.
+  it("gives a row the title, target and preview its own entry would carry", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          threadReplies: [
+            makeReply(1, {
+              format: "link",
+              title: "The AeroPress guide",
+              url: "https://other.example/aeropress",
+              previewImageUrl: "/media/preview.jpg",
+            }),
+            makeReply(2, { title: "A titled reply" }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain(
+      '<jant:post href="https://example.com/reply-1" format="link" published="2026-03-21T00:00:00.000Z"' +
+        ' title="The AeroPress guide" url="https://other.example/aeropress"' +
+        ' thumbnail="https://example.com/media/preview.jpg"/>',
+    );
+    expect(xml).toContain(
+      '<jant:post href="https://example.com/reply-2" format="note" published="2026-03-22T00:00:00.000Z" title="A titled reply"/>',
+    );
+  });
+
+  // The entry's own `<title>` is empty for a quote because the attribution is
+  // not a title. A row follows the same rule.
+  it("keeps a quote reply's attribution out of its row title", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          threadReplies: [
+            makeReply(1, {
+              format: "quote",
+              title: "Marcus Aurelius",
+              quoteText: "What stands in the way becomes the way.",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain(
+      '<jant:post href="https://example.com/reply-1" format="quote" published="2026-03-21T00:00:00.000Z"/>',
+    );
+    expect(xml).not.toContain('title="Marcus Aurelius"');
+  });
+
+  // Truncation lives in `<summary>`, which renders the root and the newest
+  // reply. A folded post has no block to cut, so its row must stay silent
+  // rather than claim it arrived whole.
+  it("marks every cut post's row, and no folded post's", () => {
+    const longBody = makeBody([
+      "Alpha ".repeat(80).trim(),
+      "Bravo ".repeat(80).trim(),
+      "Charlie ".repeat(80).trim(),
+      "Delta ".repeat(80).trim(),
+    ]);
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          threadReplies: [1, 2, 3, 4, 5, 6, 7].map((n) =>
+            makeReply(n, { body: longBody }),
+          ),
+        }),
+      ),
+    );
+
+    // Reply 1 leads and reply 7 is the hero: both render, so both can be cut.
+    expect(xml).toContain(
+      '<jant:post href="https://example.com/reply-1" format="note" published="2026-03-21T00:00:00.000Z" truncated="true"/>',
+    );
+    expect(xml).toContain(
+      '<jant:post href="https://example.com/reply-7" format="note" published="2026-03-27T00:00:00.000Z" truncated="true"/>',
+    );
+    // Reply 3 is behind the gap. Its body is just as long and its row is silent.
+    expect(xml).toContain(
+      '<jant:post href="https://example.com/reply-3" format="note" published="2026-03-23T00:00:00.000Z"/>',
+    );
+    // The entry still answers the single-card reader with one boolean.
+    expect(xml).toContain("<jant:truncated/>");
   });
 
   it("lists no thread rows on a lone post", () => {

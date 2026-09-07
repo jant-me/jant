@@ -322,5 +322,10 @@ export interface ThreadTimelineContext {
   /** Published replies immediately before latest, in chronological order. */
   trailingReplies: Post[];
   latestReply: Post;
+  /**
+   * First reply the fold hides, which is where the gap link points. Null when
+   * nothing is hidden. Fetched for its address only — never rendered.
+   */
+  firstHiddenReply: Post | null;
   totalReplyCount: number;
 }

@@ -36,6 +36,7 @@ export const ThreadPreview: FC<ThreadPreviewProps> = ({
   leadingReplies,
   trailingReplies,
   latestReply,
+  gapHref,
   totalReplyCount,
 }) => {
   const { i18n } = useLingui();
@@ -81,7 +82,10 @@ export const ThreadPreview: FC<ThreadPreviewProps> = ({
     });
   const renderedLeadingReplies = dedupeReplies(leadingReplies);
   const renderedTrailingReplies = dedupeReplies(trailingReplies);
-  const gapHref = renderedLeadingReplies[0]?.permalink ?? latestReply.permalink;
+  // The gap opens the first post it hides — the rule in `lib/thread-fold.ts`,
+  // which the feed follows too. The fallback only covers a gap target that
+  // went unpublished between the count and the fetch.
+  const gapLinkHref = gapHref ?? latestReply.permalink;
 
   // Always render the collapsible shell + toggle: the cap and fade are a
   // constant "this is context" affordance. The toggle's *initial* visibility
@@ -116,7 +120,7 @@ export const ThreadPreview: FC<ThreadPreviewProps> = ({
   const gapItem =
     hiddenCount > 0 ? (
       <div class="thread-item thread-item-gap">
-        <a href={gapHref} class="thread-gap-link">
+        <a href={gapLinkHref} class="thread-gap-link">
           {hiddenPostsLabel}
         </a>
       </div>

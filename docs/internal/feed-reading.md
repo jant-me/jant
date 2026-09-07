@@ -37,22 +37,22 @@ An Atom reader that knows neither extension still gets a working feed. Everythin
 </entry>
 ```
 
-| Element                  | Count | Read it for                                                                                     |
-| ------------------------ | ----- | ----------------------------------------------------------------------------------------------- |
-| `id`                     | 1     | The post's permalink. Always — even on a Link post, whose `alternate` points elsewhere          |
-| `title`                  | 1     | The title. **Empty, not absent**, on untitled Notes and every Quote                             |
-| `link[@rel="alternate"]` | 1     | Where the entry points: the external URL on a Link post, the permalink otherwise                |
-| `link[@rel="related"]`   | 0–1   | Link posts only: the permalink, since `alternate` was spent on the external URL                 |
-| `link[@rel="enclosure"]` | 0–n   | Attachments a plain Atom parser can fetch. Images are excluded — the content already shows them |
-| `published` / `updated`  | 1     | Timestamps. A curated feed may date an entry by the curation rather than the post               |
-| `jant:format`            | 1     | `note`, `link`, or `quote` — the entry's, which is the root's in a thread                       |
-| `jant:thread`            | 0–1   | The entry is a thread. Absent means a lone post                                                 |
-| `jant:truncated`         | 0–1   | The summary's text was cut. Offer a "read more". Never on a Quote                               |
-| `category`               | 0–n   | Collections. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL             |
-| `media:thumbnail`        | 0–1   | A Link post's preview image, for a card or grid                                                 |
-| `media:content`          | 0–n   | One per attachment, with dimensions and duration                                                |
-| `summary`                | 0–1   | The post's text, as the timeline renders it                                                     |
-| `content`                | 1     | The whole post page                                                                             |
+| Element                  | Count | Read it for                                                                                            |
+| ------------------------ | ----- | ------------------------------------------------------------------------------------------------------ |
+| `id`                     | 1     | The post's permalink. Always — even on a Link post, whose `alternate` points elsewhere                 |
+| `title`                  | 1     | The title. **Empty, not absent**, on untitled Notes and every Quote                                    |
+| `link[@rel="alternate"]` | 1     | Where the entry points: the external URL on a Link post, the permalink otherwise                       |
+| `link[@rel="related"]`   | 0–1   | Link posts only: the permalink, since `alternate` was spent on the external URL                        |
+| `link[@rel="enclosure"]` | 0–n   | Attachments a plain Atom parser can fetch. Images are excluded — the content already shows them        |
+| `published` / `updated`  | 1     | Timestamps. A curated feed may date an entry by the curation rather than the post                      |
+| `jant:format`            | 1     | `note`, `link`, or `quote` — the entry's, which is the root's in a thread                              |
+| `jant:thread`            | 0–1   | The entry is a thread. Absent means a lone post                                                        |
+| `jant:truncated`         | 0–1   | The summary's text was cut. Offer a "read more". A row's `truncated` says which post. Never on a Quote |
+| `category`               | 0–n   | Collections. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL                    |
+| `media:thumbnail`        | 0–1   | A Link post's preview image, for a card or grid                                                        |
+| `media:content`          | 0–n   | One per attachment, with dimensions and duration                                                       |
+| `summary`                | 0–1   | The post's text, as the timeline renders it                                                            |
+| `content`                | 1     | The whole post page                                                                                    |
 
 A Quote's attribution is not its title — it is inside the text, as a `<figure>` with a `<figcaption>`. A star rating is inside the text too, as `★★★★☆ 4/5`.
 
@@ -73,28 +73,54 @@ To draw a timeline you need `<summary>`, not `<content>`.
 
 ## Threads
 
-A thread arrives as one entry — root and replies together, so a reader does not fill with fragments. `<summary>` folds it the way the site's timeline does: the root, a link across the gap, the newest reply. `<content>` carries the whole chain.
+A thread arrives as one entry — root and replies together, so a reader does not fill with fragments. `<content>` carries the whole chain; `<summary>` folds it exactly the way the site's timeline does: the root, the first two replies, a gap link standing for the run between, then the last three replies with the newest as the hero. Up to six posts, so a thread that fits arrives whole and hides nothing.
 
 ```xml
 <jant:thread posts="4" hidden="2" gap="https://ex.com/r1" latest="https://ex.com/r3">
-  <jant:post href="https://ex.com/dialing-in" format="note"  published="2026-03-14T09:00:00.000Z"/>
-  <jant:post href="https://ex.com/r1"         format="note"  published="2026-03-15T09:00:00.000Z"/>
-  <jant:post href="https://ex.com/r2"         format="quote" published="2026-03-16T09:00:00.000Z"/>
-  <jant:post href="https://ex.com/r3"         format="note"  published="2026-03-17T09:00:00.000Z"/>
+  <jant:post href="https://ex.com/dialing-in" format="note" published="2026-03-14T09:00:00.000Z"/>
+  <jant:post href="https://ex.com/r1" format="link" published="2026-03-15T09:00:00.000Z"
+             title="The AeroPress guide" url="https://other.example/aeropress"
+             thumbnail="https://ex.com/m/prev.jpg"/>
+  <jant:post href="https://ex.com/r2" format="quote" published="2026-03-16T09:00:00.000Z"/>
+  <jant:post href="https://ex.com/r3" format="note" published="2026-03-17T09:00:00.000Z"
+             title="Got it" truncated="true"/>
 </jant:thread>
 ```
 
-| Attribute | Means                                                            |
-| --------- | ---------------------------------------------------------------- |
-| `posts`   | Posts in the thread, root included                               |
-| `hidden`  | How many the summary folds away                                  |
-| `gap`     | Where the folded middle starts. Only when `hidden` is above zero |
-| `latest`  | The newest reply — the one the summary shows in full             |
+| Attribute | Means                                                           |
+| --------- | --------------------------------------------------------------- |
+| `posts`   | Posts in the thread, root included                              |
+| `hidden`  | How many the summary folds away                                 |
+| `gap`     | The first post the fold hides. Only when `hidden` is above zero |
+| `latest`  | The newest reply — the one the summary shows in full            |
 
-Read a reply's format here. The entry's `<jant:format>` is the root's, and a
-reply that is a Quote or a Link says so on its row and nowhere else. The rows
-carry identity and kind only — no title, no text. `gap`, `latest`, and every
+One row per post, in thread order. `gap`, `latest`, and every
 `media:content/@jant:post` name a `href` from this list.
+
+| Row attribute | Count | Notes                                             |
+| ------------- | ----- | ------------------------------------------------- |
+| `href`        | 1     | The post's permalink                              |
+| `format`      | 1     | `note`, `link`, or `quote`, for this post         |
+| `published`   | 1     | This post's own timestamp                         |
+| `title`       | 0–1   | Absent when the post has none, and on every Quote |
+| `url`         | 0–1   | Link posts only: where it points                  |
+| `thumbnail`   | 0–1   | Link posts only: the preview image                |
+| `truncated`   | 0–1   | `"true"` when the summary cut this post's block   |
+
+**Read a reply here, not from the entry.** Every entry-level field describes
+the root: `<jant:format>` says `note` for a thread whose newest reply is a
+Quote, and `<title>` and `link[@rel="alternate"]` say nothing about a titled
+reply or a Link reply. The root carries a full row too, so you can walk the
+rows without special-casing it.
+
+A row carries what Atom would put on that post's entry — links, title, date —
+plus `format` and `truncated`. Never the body or an excerpt: those are in
+`<content>`.
+
+**`truncated` on a row means the summary cut that post's block.** Any post the
+fold renders can carry it. On a post behind the gap its absence means "not cut
+here", **not** "this post arrived whole". The entry's `<jant:truncated/>` is the same answer for the whole card,
+and the only form a lone post has.
 
 Inside both text constructs, each post's block **ends** with that post's own dated permalink:
 
@@ -121,6 +147,7 @@ Three surfaces, three jobs.
 **`<media:content>`** describes them: `type`, `medium`, `fileSize`, `width`, `height`, `duration`, a `media:title` holding the filename, a `media:description` holding alt text or a text file's excerpt, and a nested `media:thumbnail` for a video's poster.
 
 - `@jant:post` names the post carrying the file. In a thread every attachment has it, the root's included; a lone post's entry has none, because its one post is the entry.
+- **Files from folded posts arrive too.** An entry's media is the whole thread's. When a file's `jant:post` names a row that is neither the root nor `latest`, it belongs to a post behind the gap link — drawing it is your call.
 - `@jant:page` is where a click should land, written only when it differs from `@url` — text attachments, whose file a browser downloads. Read `jant:page ?? url`.
 - `medium` is Media RSS's fixed vocabulary, so anything that is not a picture or playable is `document`.
 
