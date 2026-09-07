@@ -142,7 +142,16 @@ consumer a post that is on screen.
 | `title`     | 0–1   | Absent when the post has none, and on every Quote — the entry's rule for `<title>`, applied per post |
 | `url`       | 0–1   | Link posts only: where it points. The row's `link[@rel="alternate"]`                                 |
 | `thumbnail` | 0–1   | Link posts only: the preview image. The row's `media:thumbnail`                                      |
+| `folded`    | 0–1   | `"true"` when the fold hid this post. Absence means the summary renders it                           |
 | `truncated` | 0–1   | `"true"` when the summary cut this post's block                                                      |
+
+**`folded` is stated, not inferred.** A consumer cannot read it off the
+summary: `<summary>` is text, and a post with none — a photo with no caption,
+which is an ordinary Jant post — contributes no block and no tail meta, leaving
+it indistinguishable from a post the fold hid. Believing that would drop its
+attachments and lose the post. The count of `folded="true"` rows equals
+`@hidden`, which makes that attribute and `@gap` a cross-check rather than the
+only answer.
 
 **What belongs on a row:** what Atom itself would put on this post's entry —
 its links, its title, its date — plus what Jant adds at entry level, `format`
@@ -198,6 +207,23 @@ Nothing should parse it.
 
 **`media:content/@jant:post`** names the post each file hangs off, so the text
 segments and the attachments join on permalinks. See below.
+
+### A reply's header
+
+Only a reply carries its title and, on a Link post, its source line inside the
+text — the root's live in the entry's `<title>` and `link[@rel="alternate"]`.
+That chrome is wrapped in `<header>`:
+
+```xml
+<header><p><a href="https://other.example/x">other.example</a></p>
+<h2><a href="https://other.example/x">The AeroPress guide</a></h2></header>
+```
+
+A reader renders it and needs to know nothing more. A consumer drawing its own
+card drops the `<header>` and redraws from the row, which carries `title`,
+`url` and `thumbnail` — the last of which the text has no way to show. Matching
+the shape instead would be guesswork: a body's own first paragraph can be a
+link. The rule comes out uniform, since a root block has no `<header>` to drop.
 
 ## Attachments
 

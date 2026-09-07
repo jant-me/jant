@@ -2033,12 +2033,109 @@ describe("feed entry thread segmentation", () => {
     expect(xml).toContain(
       '<jant:post href="https://example.com/reply-7" format="note" published="2026-03-27T00:00:00.000Z" truncated="true"/>',
     );
-    // Reply 3 is behind the gap. Its body is just as long and its row is silent.
+    // Reply 3 is behind the gap. Its body is just as long, and its row says it
+    // was folded rather than that it arrived whole.
     expect(xml).toContain(
-      '<jant:post href="https://example.com/reply-3" format="note" published="2026-03-23T00:00:00.000Z"/>',
+      '<jant:post href="https://example.com/reply-3" format="note" published="2026-03-23T00:00:00.000Z" folded="true"/>',
     );
     // The entry still answers the single-card reader with one boolean.
     expect(xml).toContain("<jant:truncated/>");
+  });
+
+  // Every other decision on a row is declared. This one used to be left to a
+  // consumer reading the summary's shape, which misreads a photo with no
+  // caption: the site renders it, it contributes no text, and it comes out
+  // looking exactly like a post the fold hid.
+  it("declares which posts the fold hid", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          threadReplies: [1, 2, 3, 4, 5, 6, 7].map((n) => makeReply(n)),
+        }),
+      ),
+    );
+
+    const folded = [...xml.matchAll(/<jant:post [^>]*folded="true"[^>]*\/>/g)];
+    expect(folded).toHaveLength(2);
+    // The same two the gap stands for, and the same count `@hidden` reports.
+    expect(xml).toContain(
+      '<jant:post href="https://example.com/reply-3" format="note" published="2026-03-23T00:00:00.000Z" folded="true"/>',
+    );
+    expect(xml).toContain(
+      '<jant:post href="https://example.com/reply-4" format="note" published="2026-03-24T00:00:00.000Z" folded="true"/>',
+    );
+    expect(xml).toContain('hidden="2"');
+  });
+
+  // A caption-less photo is a normal Jant post. It renders on the site, so its
+  // row must not claim the fold hid it — a consumer that believed otherwise
+  // would drop its attachments and the post would vanish.
+  it("leaves a rendered post with no text unfolded", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          threadReplies: [
+            makePostView({
+              id: "reply-1",
+              permalink: "/reply-1",
+              slug: "reply-1",
+              media: [
+                makeMediaView({
+                  url: "https://example.com/media/photo.jpg",
+                  thumbnailUrl: "https://example.com/media/photo.jpg",
+                  mimeType: "image/jpeg",
+                }),
+              ],
+            }),
+            makeReply(2),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain('hidden="0"');
+    expect(xml).not.toContain('folded="true"');
+    // It contributes nothing to the summary, which is exactly why the row has
+    // to speak for it.
+    expect(getSummary(xml)).not.toContain("https://example.com/reply-1");
+    expect(xml).toContain('jant:post="https://example.com/reply-1"');
+  });
+
+  // A reply carries chrome the entry's own fields carry for the root, so a
+  // consumer drawing native cards has to drop it before redrawing from the
+  // row. Matching it by shape is fragile — a body can open with a link.
+  it("wraps a reply's title and source line in a header element", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          threadReplies: [
+            makeReply(1, {
+              format: "link",
+              title: "The AeroPress guide",
+              url: "https://other.example/aeropress",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(getSummary(xml)).toContain(
+      '<header><p><a href="https://other.example/aeropress">other.example</a></p>' +
+        '<h2><a href="https://other.example/aeropress">The AeroPress guide</a></h2></header>',
+    );
+    // The root's chrome stays in the entry's own fields, so its block has no
+    // header to drop and a consumer needs no special case for it.
+    expect(getSummary(xml)?.indexOf("<header>")).toBeGreaterThan(
+      getSummary(xml)?.indexOf("Root body.") ?? -1,
+    );
+  });
+
+  it("gives a reply with no title and no source no header at all", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(makeRoot({ threadReplies: [makeReply(1)] })),
+    );
+
+    expect(getSummary(xml)).not.toContain("<header>");
   });
 
   it("lists no thread rows on a lone post", () => {

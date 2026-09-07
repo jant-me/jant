@@ -175,7 +175,37 @@ function renderLinkedText(text: string, href?: string): string {
   return href ? `<a href="${escapeXml(href)}">${label}</a>` : label;
 }
 
-function renderInlinePostHeader(
+/**
+ * The title and source line a reply needs, since only the entry's own root has
+ * `<title>` and `link[@rel="alternate"]` to carry them.
+ *
+ * Wrapped in `<header>`, which is the whole point of the element here: a
+ * consumer drawing its own card takes this post's title, target and preview
+ * from its `<jant:post>` row, and has to drop what the text already says or
+ * print it twice. Removing one named element beats matching "a leading `<p>`
+ * holding a link, then an `<h2>`" — a body's own first paragraph can be
+ * exactly that. The rule ends up uniform: drop any `<header>`, draw the chrome
+ * from the row. A root block has none to drop and needs no special case.
+ *
+ * A reader that knows nothing about any of this still sees the heading, which
+ * is why the markup stays in `<summary>` rather than moving to the row alone.
+ *
+ * @param post - The reply being rendered inline
+ * @param permalinkUrl - Absolute permalink, for a titled note's heading link
+ * @returns A `<header>` block, or "" when the post has no chrome to show
+ * @example
+ * renderInlinePostHeader(linkReply, url);
+ * // '<header><p><a …>example.com</a></p><h2><a …>Title</a></h2></header>'
+ */
+function renderInlinePostHeader(post: PostView, permalinkUrl?: string): string {
+  return wrapInlineHeader(collectInlineHeaderParts(post, permalinkUrl));
+}
+
+function wrapInlineHeader(parts: string[]): string {
+  return parts.length > 0 ? `<header>${parts.join("")}</header>` : "";
+}
+
+function collectInlineHeaderParts(
   post: PostView,
   permalinkUrl?: string,
 ): string[] {
@@ -486,7 +516,8 @@ function buildSinglePostContent(
   const parts: string[] = [];
 
   if (options.inline) {
-    parts.push(...renderInlinePostHeader(post, permalinkUrl));
+    const header = renderInlinePostHeader(post, permalinkUrl);
+    if (header) parts.push(header);
   }
 
   let quoteRendered = false;
@@ -660,6 +691,17 @@ function renderThreadElement(post: FeedPostView, siteUrl: string): string {
         rowAttrs.push(
           `thumbnail="${escapeXml(toAbsoluteFeedUrl(rowThumbnail, siteUrl))}"`,
         );
+      }
+
+      // Whether the fold hid this post. Every other decision on this row is
+      // declared rather than inferred, and this was the last one a consumer
+      // had to reverse-engineer from the summary's shape — which does not
+      // work: a photo with no caption renders on the site and contributes no
+      // text, so it leaves the summary looking exactly like a folded post.
+      // Written only when true, the same as `truncated`, so a thread that
+      // hides nothing pays nothing. The count of these equals `@hidden`.
+      if (!summaryPosts.has(member)) {
+        rowAttrs.push(`folded="true"`);
       }
 
       // Truncation happens only in `<summary>`, and only to the posts the fold

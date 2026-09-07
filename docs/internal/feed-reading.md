@@ -97,15 +97,16 @@ A thread arrives as one entry — root and replies together, so a reader does no
 One row per post, in thread order. `gap`, `latest`, and every
 `media:content/@jant:post` name a `href` from this list.
 
-| Row attribute | Count | Notes                                             |
-| ------------- | ----- | ------------------------------------------------- |
-| `href`        | 1     | The post's permalink                              |
-| `format`      | 1     | `note`, `link`, or `quote`, for this post         |
-| `published`   | 1     | This post's own timestamp                         |
-| `title`       | 0–1   | Absent when the post has none, and on every Quote |
-| `url`         | 0–1   | Link posts only: where it points                  |
-| `thumbnail`   | 0–1   | Link posts only: the preview image                |
-| `truncated`   | 0–1   | `"true"` when the summary cut this post's block   |
+| Row attribute | Count | Notes                                                                     |
+| ------------- | ----- | ------------------------------------------------------------------------- |
+| `href`        | 1     | The post's permalink                                                      |
+| `format`      | 1     | `note`, `link`, or `quote`, for this post                                 |
+| `published`   | 1     | This post's own timestamp                                                 |
+| `title`       | 0–1   | Absent when the post has none, and on every Quote                         |
+| `url`         | 0–1   | Link posts only: where it points                                          |
+| `thumbnail`   | 0–1   | Link posts only: the preview image                                        |
+| `folded`      | 0–1   | `"true"` when the fold hid this post; absent means the summary renders it |
+| `truncated`   | 0–1   | `"true"` when the summary cut this post's block                           |
 
 **Read a reply here, not from the entry.** Every entry-level field describes
 the root: `<jant:format>` says `note` for a thread whose newest reply is a
@@ -116,6 +117,11 @@ rows without special-casing it.
 A row carries what Atom would put on that post's entry — links, title, date —
 plus `format` and `truncated`. Never the body or an excerpt: those are in
 `<content>`.
+
+**Read `folded` rather than looking for the post in the summary.** A rendered
+post with no text — a photo with no caption — contributes no block and no tail
+meta, so its absence from the summary says nothing about whether it was hidden.
+Treating it as folded drops its attachments and the post disappears.
 
 **`truncated` on a row means the summary cut that post's block.** Any post the
 fold renders can carry it. On a post behind the gap its absence means "not cut
@@ -135,6 +141,12 @@ Inside both text constructs, each post's block **ends** with that post's own dat
 Every marker ends the block before it and names the post that wrote it, the root's included. That is how you split one field into several posts. The markup is microformats2 (`u-url`, `dt-published`), so an mf2 parser gets it without a special case, and the `<a>` wrapping a `<time datetime>` still identifies it when `class` is stripped.
 
 A post with no text contributes no block and leaves no marker. A lone post has no marker at all — `<published>` already dates it.
+
+A reply's title, and a Link reply's source line, sit in a `<header>` inside
+its block — the root's are in the entry's own `<title>` and
+`link[@rel="alternate"]` instead. Render it as it stands, or drop that one
+element and redraw from the row, which also has the `thumbnail` the text cannot
+show.
 
 **Do not parse `<hr/>`.** It is drawn between posts, but it also separates a Quote from the author's commentary, and an author can type one.
 
