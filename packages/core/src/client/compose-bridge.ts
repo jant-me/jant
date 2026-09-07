@@ -40,6 +40,73 @@ import {
 } from "./tiptap/inline-image-upload.js";
 
 /**
+ * POST a compose payload, treating a dropped connection as a failed response.
+ *
+ * A publish that never reaches the server and a publish the server rejects are
+ * the same event to the author: the post did not go up. Letting `fetch` reject
+ * here would send only one of them down the recovery path, so the request that
+ * failed hardest — no connection at all — would be the one that skipped saving
+ * a draft.
+ *
+ * @param url - Compose endpoint to post to
+ * @param body - Request body, already serialized
+ * @param method - HTTP method, defaulting to POST
+ * @returns The response, or null when the request never completed
+ * @example
+ * const res = await postCompose("/compose/thread", JSON.stringify(threadBody));
+ * if (!res?.ok) await saveAsDraftInstead();
+ */
+async function postCompose(
+  url: string,
+  body: string,
+  method = "POST",
+): Promise<globalThis.Response | null> {
+  try {
+    return await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body,
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * What to tell the author when a compose request did not land.
+ *
+ * Prefers the server's own words, because it knows what was wrong with the
+ * post. A request that never completed has no words of its own, so it says so
+ * — "no connection" and "the server refused this" call for different next
+ * steps from the author.
+ *
+ * @param res - The response, or null when the request never completed
+ * @param labels - Composer labels, absent before the element has upgraded
+ * @returns A message ready to show in a toast
+ * @example
+ * await handleSubmitError(await submitErrorMessage(res, labels));
+ */
+async function submitErrorMessage(
+  res: globalThis.Response | null,
+  labels: JantComposeDialog["labels"] | undefined,
+): Promise<string> {
+  if (!res) {
+    return (
+      labels?.publishFailedOffline ?? "Couldn't reach the server. Try again."
+    );
+  }
+  const data = await readJsonObject(res);
+  return (
+    getJsonString(data, "error") ??
+    labels?.publishFailed ??
+    "Couldn't publish. Try again."
+  );
+}
+
+/**
  * Whether a serialized post body still references inline image placeholders
  * pending upload or paste-rehost. Drives the "uploading" toast and whether to
  * resolve placeholders before submit.
@@ -835,30 +902,23 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
         threadBody.replaceThreadId = detail.editPostId;
       }
 
-      const res = await fetch("/compose/thread", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(threadBody),
-      });
+      const res = await postCompose(
+        "/compose/thread",
+        JSON.stringify(threadBody),
+      );
 
-      if (!res.ok) {
-        // Server error on publish: retry as draft
+      if (!res?.ok) {
+        // The publish did not land — whether the server refused it or the
+        // request never arrived. Try to keep the work as a draft either way.
         if (detail.status === "published" && !draftFallback) {
           const retryPayload = {
             posts: postsPayload.map((p) => ({ ...p, status: "draft" })),
           };
-          const retryRes = await fetch("/compose/thread", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify(retryPayload),
-          });
-          if (retryRes.ok) {
+          const retryRes = await postCompose(
+            "/compose/thread",
+            JSON.stringify(retryPayload),
+          );
+          if (retryRes?.ok) {
             draftFallback = "server";
             clearRecoveredLocalDraft();
             const fallbackMsg =
@@ -869,10 +929,7 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
             return;
           }
         }
-        const data = await readJsonObject(res);
-        await handleSubmitError(
-          getJsonString(data, "error") ?? "Something went wrong",
-        );
+        await handleSubmitError(await submitErrorMessage(res, labels));
         return;
       }
 
@@ -955,29 +1012,24 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
       requestAttachments,
     );
 
-    const res = await fetch(endpoint, {
+    const res = await postCompose(
+      endpoint,
+      JSON.stringify(bodyPayload),
       method,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(bodyPayload),
-    });
+    );
 
-    if (!res.ok) {
-      // Server error on a new publish: retry as draft
+    if (!res?.ok) {
+      // As in thread mode: a refused request and a request that never arrived
+      // both mean the post is not up, so both get the save-as-draft attempt.
       if (detail.status === "published" && !isEdit && !draftFallback) {
         const retryPayload = { ...bodyPayload, status: "draft" };
-        const retryRes = await fetch(endpoint, {
+        const retryRes = await postCompose(
+          endpoint,
+          JSON.stringify(retryPayload),
           method,
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(retryPayload),
-        });
+        );
 
-        if (retryRes.ok) {
+        if (retryRes?.ok) {
           draftFallback = "server";
           clearRecoveredLocalDraft();
           const retryData = await readJsonObject(retryRes);
@@ -994,10 +1046,7 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
         }
       }
 
-      const data = await readJsonObject(res);
-      await handleSubmitError(
-        getJsonString(data, "error") ?? "Something went wrong",
-      );
+      await handleSubmitError(await submitErrorMessage(res, labels));
       return;
     }
 
@@ -1149,7 +1198,7 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
       dispatchSubmitComplete(composeEl, "draft");
     }
   } catch {
-    await handleSubmitError("Something went wrong");
+    await handleSubmitError(await submitErrorMessage(null, labels));
   }
 });
 

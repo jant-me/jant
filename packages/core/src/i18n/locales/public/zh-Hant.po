@@ -625,6 +625,16 @@ msgstr ""
 msgid "Couldn't publish. Saved as draft."
 msgstr ""
 
+#. @context: Toast when publish fails and the server gave no reason
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Couldn't publish. Try again."
+msgstr ""
+
+#. @context: Toast when a publish request never reached the server
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Couldn't reach the server. Try again."
+msgstr ""
+
 #. @context: Toast when save fails
 #: src/ui/shared/collection-management-labels.ts
 msgid "Couldn't save. Try again in a moment."
@@ -2469,6 +2479,11 @@ msgstr ""
 #. @context: Opening paragraph on the sample detail article
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "This article is here to answer a specific question: does the default accent still feel calm once it has to carry a full reading experience?"
+msgstr ""
+
+#. @context: Toast shown when the composer cannot write its local draft to browser storage
+#: src/ui/compose/ComposeDialog.tsx
+msgid "This browser can't keep a local copy. Save as a draft."
 msgstr ""
 
 #. @context: Empty state message

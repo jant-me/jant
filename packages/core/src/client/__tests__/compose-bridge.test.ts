@@ -43,6 +43,36 @@ async function flushBridgeWork(times = 4) {
   }
 }
 
+/** A minimal published-post detail, as the composer dispatches it. */
+function singlePostDetail(overrides: Record<string, unknown> = {}) {
+  return {
+    format: "quote",
+    title: "",
+    body: '{"type":"doc","content":[]}',
+    url: "",
+    quoteText: "A borrowed sentence.",
+    quoteAuthor: "",
+    slug: "",
+    status: "published",
+    visibility: "public",
+    rating: 0,
+    collectionIds: [],
+    attachments: [],
+    ...overrides,
+  };
+}
+
+/** The same, as a two-quote thread. */
+function threadSubmitDetail(overrides: Record<string, unknown> = {}) {
+  const first = singlePostDetail();
+  return {
+    ...first,
+    pendingAttachments: [],
+    threadPosts: [first, singlePostDetail({ quoteText: "And its answer." })],
+    ...overrides,
+  };
+}
+
 function renderPostView(postId: string) {
   const postView = document.createElement("div");
   postView.dataset.postView = "";
@@ -967,5 +997,133 @@ describe("compose bridge", () => {
     await flushBridgeWork();
 
     expect(assignSpy).toHaveBeenCalledWith("/blog/published-post");
+  });
+
+  it("saves a thread as a draft when the connection drops, not just when the server refuses", async () => {
+    // A publish that never reaches the server and one the server rejects are
+    // the same event to the author: the post did not go up. Both earn the
+    // save-as-draft attempt.
+    const composeEl = document.createElement(
+      "jant-compose-dialog",
+    ) as ComposeHarness;
+    composeEl.refreshCollections = vi.fn(async () => true);
+    composeEl.pageMode = false;
+    composeEl.openNew = vi.fn(async () => {});
+    composeEl.clearLocalDraftFromStorage = vi.fn();
+    composeEl.labels = {
+      publishFailedDraft: "Couldn't publish. Saved as draft.",
+    };
+    document.body.appendChild(composeEl);
+
+    const bodies: string[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const raw =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      if (new URL(raw, "http://localhost").pathname !== "/compose/thread") {
+        throw new Error(`Unexpected fetch: ${raw}`);
+      }
+      const body = String(init?.body ?? "");
+      bodies.push(body);
+      // The publish attempt never completes; the draft attempt gets through.
+      if (bodies.length === 1) throw new TypeError("Failed to fetch");
+      return new Response(JSON.stringify({ status: "draft" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    composeEl.dispatchEvent(
+      new CustomEvent("jant:compose-submit-deferred", {
+        bubbles: true,
+        detail: threadSubmitDetail(),
+      }),
+    );
+    await flushBridgeWork();
+
+    expect(bodies).toHaveLength(2);
+    expect(JSON.parse(bodies[1]).posts[0].status).toBe("draft");
+    // The work reached the server, so the local copy is no longer the only one.
+    expect(composeEl.clearLocalDraftFromStorage).toHaveBeenCalled();
+    expect(composeEl.openNew).not.toHaveBeenCalled();
+  });
+
+  it("reopens the composer with its local draft when the connection stays down", async () => {
+    const composeEl = document.createElement(
+      "jant-compose-dialog",
+    ) as ComposeHarness;
+    composeEl.refreshCollections = vi.fn(async () => true);
+    composeEl.pageMode = false;
+    composeEl.openNew = vi.fn(async () => {});
+    composeEl.clearLocalDraftFromStorage = vi.fn();
+    document.body.appendChild(composeEl);
+
+    let calls = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      calls += 1;
+      throw new TypeError("Failed to fetch");
+    });
+
+    composeEl.dispatchEvent(
+      new CustomEvent("jant:compose-submit-deferred", {
+        bubbles: true,
+        detail: threadSubmitDetail(),
+      }),
+    );
+    await flushBridgeWork();
+
+    // Publish, then the draft attempt — both dropped.
+    expect(calls).toBe(2);
+    expect(composeEl.openNew).toHaveBeenCalledWith({
+      restoreDraft: true,
+      restoreToast: false,
+      restoreMedia: [],
+    });
+    // Nothing reached the server, so the local copy must stay.
+    expect(composeEl.clearLocalDraftFromStorage).not.toHaveBeenCalled();
+  });
+
+  it("saves a single post as a draft when the connection drops", async () => {
+    const composeEl = document.createElement(
+      "jant-compose-dialog",
+    ) as ComposeHarness;
+    composeEl.refreshCollections = vi.fn(async () => true);
+    composeEl.pageMode = false;
+    composeEl.openNew = vi.fn(async () => {});
+    composeEl.clearLocalDraftFromStorage = vi.fn();
+    document.body.appendChild(composeEl);
+
+    const bodies: string[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const raw =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      if (new URL(raw, "http://localhost").pathname !== "/compose") {
+        throw new Error(`Unexpected fetch: ${raw}`);
+      }
+      bodies.push(String(init?.body ?? ""));
+      if (bodies.length === 1) throw new TypeError("Failed to fetch");
+      return new Response(JSON.stringify({ status: "draft" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    composeEl.dispatchEvent(
+      new CustomEvent("jant:compose-submit-deferred", {
+        bubbles: true,
+        detail: { ...singlePostDetail(), pendingAttachments: [] },
+      }),
+    );
+    await flushBridgeWork();
+
+    expect(bodies).toHaveLength(2);
+    expect(JSON.parse(bodies[1]).status).toBe("draft");
   });
 });

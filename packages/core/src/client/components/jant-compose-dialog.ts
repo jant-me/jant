@@ -27,6 +27,7 @@ import type {
   ComposeAttachment,
   ComposeRowStatus,
   DraftItem,
+  DraftRestoreOutcome,
   LocalDraft,
   LocalDraftMedia,
   ComposeFullscreenOpenDetail,
@@ -787,6 +788,20 @@ export class JantComposeDialog extends LitElement {
   private _confirmForAttachedText = false;
   private _draftSaveTimer: ReturnType<typeof setTimeout> | null = null;
   private _draftRestored = false;
+  /**
+   * Whether this composer has ever held content under its current storage key.
+   *
+   * The stored draft is shared: one key answers for new posts and for replies,
+   * across every tab. A composer that opens empty — a reply whose parent does
+   * not match the stored draft, a restore that bailed, a second tab sitting
+   * idle — is empty because it never loaded anything, not because the author
+   * threw the draft away. Only a composer that actually held the content may
+   * decide it is gone; without this, any empty composer deletes work it never
+   * showed.
+   */
+  private _hasOwnedContent = false;
+  /** Whether the author has already been told this composer cannot store drafts. */
+  private _reportedStorageFailure = false;
   private _initialSnapshot: string | null = null;
   private _pageFocusApplied = false;
   private _pageLeaveRequested = false;
@@ -1042,6 +1057,8 @@ export class JantComposeDialog extends LitElement {
     this._confirmForDrafts = false;
     this._confirmForAttachedText = false;
     this._initialSnapshot = null;
+    this._hasOwnedContent = false;
+    this._reportedStorageFailure = false;
     this._pageFocusApplied = false;
     this._pageLeaveRequested = false;
     this._slugSuggestRequestId += 1;
@@ -1199,8 +1216,9 @@ export class JantComposeDialog extends LitElement {
     // answer, which is right: that one belongs to the draft, not to the habit.
     this._editor?.setTitleDefault(JantComposeDialog._getNoteTitleDefault());
 
+    let restored: DraftRestoreOutcome = "none";
     if (options?.restoreDraft !== false) {
-      await this.restoreLocalDraft({
+      restored = await this.restoreLocalDraft({
         notify: options?.restoreToast,
         extraMedia: options?.restoreMedia,
       });
@@ -1217,12 +1235,18 @@ export class JantComposeDialog extends LitElement {
       this._collectionIds = [options.collectionId, ...this._collectionIds];
     }
 
-    // Restore per-collection visibility preference (only for new posts, not restored drafts)
+    // The collection's remembered visibility is a default for a fresh post. A
+    // restored draft already carries the answer the author gave it, and a
+    // default must not quietly overwrite a choice — unlike the collection
+    // itself just above, visibility is one value, so applying it here would
+    // replace what they picked rather than add to it, with nothing on screen
+    // to show that it changed.
     if (options?.collectionId) {
       this._sourceCollectionId = options.collectionId;
-      const saved = JantComposeDialog._getCollectionVisibility(
-        options.collectionId,
-      );
+      const saved =
+        restored === "restored"
+          ? null
+          : JantComposeDialog._getCollectionVisibility(options.collectionId);
       if (saved) {
         this._visibility = saved;
       }
@@ -3406,7 +3430,7 @@ export class JantComposeDialog extends LitElement {
       });
 
       if (!hasContent) {
-        globalThis.localStorage.removeItem(this._currentDraftStorageKey());
+        this._releaseStoredDraft();
         return;
       }
 
@@ -3463,14 +3487,7 @@ export class JantComposeDialog extends LitElement {
         savedAt: Date.now(),
       };
 
-      try {
-        globalThis.localStorage.setItem(
-          this._currentDraftStorageKey(),
-          JSON.stringify(draft),
-        );
-      } catch {
-        // Storage full or unavailable — silently ignore
-      }
+      this._writeStoredDraft(draft);
       return;
     }
 
@@ -3482,7 +3499,7 @@ export class JantComposeDialog extends LitElement {
     // for edit (or restoring a draft) would write a local draft of the
     // unchanged content, since loading fires content-change events.
     if (!this._hasUnsavedChanges()) {
-      globalThis.localStorage.removeItem(this._currentDraftStorageKey());
+      this._releaseStoredDraft();
       return;
     }
 
@@ -3498,7 +3515,7 @@ export class JantComposeDialog extends LitElement {
       data.attachedTexts.length > 0;
 
     if (!hasContent) {
-      globalThis.localStorage.removeItem(this._currentDraftStorageKey());
+      this._releaseStoredDraft();
       return;
     }
 
@@ -3536,18 +3553,49 @@ export class JantComposeDialog extends LitElement {
       savedAt: Date.now(),
     };
 
+    this._writeStoredDraft(draft);
+  }
+
+  /**
+   * Persist the draft and take ownership of the key it went to.
+   *
+   * A write that does not stick is the one failure the author must hear about:
+   * the local copy is the last thing standing between a dropped connection and
+   * lost work, and a composer that cannot store one looks exactly like a
+   * composer that can. Said once per composer, not once per keystroke.
+   */
+  private _writeStoredDraft(draft: LocalDraft) {
     try {
       globalThis.localStorage.setItem(
         this._currentDraftStorageKey(),
         JSON.stringify(draft),
       );
-    } catch {
-      // Storage full or unavailable — silently ignore
+      this._hasOwnedContent = true;
+    } catch (error) {
+      // eslint-disable-next-line no-console -- the local copy is the last safety net; a lost one must be visible
+      console.warn("[jant] compose draft could not be stored", error);
+      if (!this._reportedStorageFailure) {
+        this._reportedStorageFailure = true;
+        showToast(this.labels.draftStoreFailed, "error");
+      }
     }
+  }
+
+  /**
+   * Drop the stored draft, but only when this composer is the one holding it.
+   *
+   * See `_hasOwnedContent`: an empty composer that never loaded anything has
+   * nothing to say about a draft written by another composer or another tab.
+   */
+  private _releaseStoredDraft() {
+    if (!this._hasOwnedContent) return;
+    this._hasOwnedContent = false;
+    globalThis.localStorage.removeItem(this._currentDraftStorageKey());
   }
 
   private _clearDraftFromStorage() {
     this._cancelDraftSaveTimer();
+    this._hasOwnedContent = false;
     globalThis.localStorage.removeItem(this._currentDraftStorageKey());
   }
 
@@ -3621,39 +3669,44 @@ export class JantComposeDialog extends LitElement {
     notify?: boolean;
     /** Completed uploads known to the bridge at failure time */
     extraMedia?: LocalDraftMedia[];
-  }) {
+  }): Promise<DraftRestoreOutcome> {
+    const key = JantComposeDialog._DRAFT_KEY;
     // Don't restore if already in edit or draft-load mode
-    if (this._editPostId || this._draftSourceId) return;
+    if (this._editPostId || this._draftSourceId) {
+      return this._reportRestoreOutcome("composer-busy", key);
+    }
     // Don't restore if the editor already has content (e.g. reopened dialog)
-    if (this._hasContent()) return;
+    if (this._hasContent()) {
+      return this._reportRestoreOutcome("composer-has-content", key);
+    }
 
     let raw: string | null;
     try {
-      raw = globalThis.localStorage.getItem(JantComposeDialog._DRAFT_KEY);
+      raw = globalThis.localStorage.getItem(key);
     } catch {
-      return;
+      return "none";
     }
-    if (!raw) return;
+    if (!raw) return "none";
 
     let draft: LocalDraft;
     try {
       draft = JSON.parse(raw) as LocalDraft;
     } catch {
-      globalThis.localStorage.removeItem(JantComposeDialog._DRAFT_KEY);
-      return;
+      // Deliberately kept: bytes we cannot parse are still something the author
+      // wrote, and deleting them here would turn a bad read into a lost draft.
+      return this._reportRestoreOutcome("unreadable", key, raw);
     }
 
-    // Discard stale drafts
+    // Too old to put back, but still theirs — leave it where it is.
     if (Date.now() - draft.savedAt > JantComposeDialog._DRAFT_MAX_AGE) {
-      globalThis.localStorage.removeItem(JantComposeDialog._DRAFT_KEY);
-      return;
+      return this._reportRestoreOutcome("expired", key, raw, draft);
     }
 
     if (
       options?.expectedReplyToId !== undefined &&
       draft.replyToId !== options.expectedReplyToId
     ) {
-      return;
+      return this._reportRestoreOutcome("other-reply", key, raw, draft);
     }
 
     this._collectionIds = draft.replyToId
@@ -3745,11 +3798,12 @@ export class JantComposeDialog extends LitElement {
       }
 
       this._draftRestored = true;
+      this._hasOwnedContent = true;
       if (options?.notify !== false) showToast(this.labels.draftRestored);
       globalThis.requestAnimationFrame(() => {
         this._captureInitialSnapshot();
       });
-      return;
+      return "restored";
     }
 
     // ── Single-post draft restore ────────────────────────────────────
@@ -3795,10 +3849,59 @@ export class JantComposeDialog extends LitElement {
     });
 
     this._draftRestored = true;
+    this._hasOwnedContent = true;
     if (options?.notify !== false) showToast(this.labels.draftRestored);
     globalThis.requestAnimationFrame(() => {
       this._captureInitialSnapshot();
     });
+    return "restored";
+  }
+
+  /**
+   * Say why a stored draft did not reach the composer.
+   *
+   * A composer that opens empty looks the same whether there was nothing to
+   * restore or something went wrong reading what was there. That costs nothing
+   * until an author asks where their work went, at which point there is nothing
+   * to look at. `none` — the ordinary "no draft stored" case — stays quiet;
+   * everything else means bytes existed and did not come back, which is worth
+   * saying out loud.
+   *
+   * @param outcome - Why the restore stopped
+   * @param key - Storage key that was read
+   * @param raw - The stored string, when one was found
+   * @param draft - The parsed draft, when it parsed
+   * @returns The outcome, so callers can `return` this directly
+   * @example
+   * return this._reportRestoreOutcome("expired", key, raw, draft);
+   */
+  private _reportRestoreOutcome(
+    outcome: DraftRestoreOutcome,
+    key: string,
+    raw?: string | null,
+    draft?: LocalDraft,
+  ): DraftRestoreOutcome {
+    if (outcome === "restored" || outcome === "none") return outcome;
+
+    let stored = raw;
+    if (stored === undefined) {
+      try {
+        stored = globalThis.localStorage.getItem(key);
+      } catch {
+        stored = null;
+      }
+    }
+    // Nothing was stored, so nothing was lost — the composer just opened empty.
+    if (!stored) return "none";
+
+    // eslint-disable-next-line no-console -- the one record of why recovered work did not come back
+    console.warn(`[jant] compose draft not restored: ${outcome}`, {
+      key,
+      bytes: stored.length,
+      savedAt: draft?.savedAt ? new Date(draft.savedAt).toISOString() : null,
+      thread: draft?.threadItems?.length ?? null,
+    });
+    return outcome;
   }
 
   /**
@@ -3823,12 +3926,13 @@ export class JantComposeDialog extends LitElement {
     try {
       draft = JSON.parse(raw) as LocalDraft;
     } catch {
-      globalThis.localStorage.removeItem(key);
+      // Kept, not deleted: see `restoreLocalDraft`.
+      this._reportRestoreOutcome("unreadable", key, raw);
       return false;
     }
 
     if (Date.now() - draft.savedAt > JantComposeDialog._DRAFT_MAX_AGE) {
-      globalThis.localStorage.removeItem(key);
+      this._reportRestoreOutcome("expired", key, raw, draft);
       return false;
     }
 
@@ -3875,6 +3979,7 @@ export class JantComposeDialog extends LitElement {
     });
 
     this._draftRestored = true;
+    this._hasOwnedContent = true;
     if (notify !== false) showToast(this.labels.draftRestored);
     return true;
   }

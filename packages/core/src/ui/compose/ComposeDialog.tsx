@@ -549,6 +549,20 @@ export const ComposeForm: FC<ComposeFormProps> = ({
           "@context: Toast when publish fails and post is auto-saved as draft",
       }),
     ),
+    publishFailed: i18n._(
+      msg({
+        message: "Couldn't publish. Try again.",
+        comment:
+          "@context: Toast when publish fails and the server gave no reason",
+      }),
+    ),
+    publishFailedOffline: i18n._(
+      msg({
+        message: "Couldn't reach the server. Try again.",
+        comment:
+          "@context: Toast when a publish request never reached the server",
+      }),
+    ),
     uploadFailedDraft: i18n._(
       msg({
         message: "Some uploads failed. Saved as draft.",
@@ -832,6 +846,13 @@ export const ComposeForm: FC<ComposeFormProps> = ({
         message: "Draft restored.",
         comment:
           "@context: Toast shown when a local draft is restored on compose open",
+      }),
+    ),
+    draftStoreFailed: i18n._(
+      msg({
+        message: "This browser can't keep a local copy. Save as a draft.",
+        comment:
+          "@context: Toast shown when the composer cannot write its local draft to browser storage",
       }),
     ),
     editing: i18n._(

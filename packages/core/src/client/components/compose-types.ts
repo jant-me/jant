@@ -99,6 +99,29 @@ export interface LocalDraftMedia {
   chars?: number | null;
 }
 
+/**
+ * Why a stored local draft did or did not reach the composer.
+ *
+ * Every exit from a restore leaves the composer looking the same — empty — so
+ * without a reported reason there is nothing to inspect when an author asks
+ * where their work went. `none` is the ordinary case (the composer opened and
+ * there was simply no draft); every other non-`restored` value means bytes
+ * existed and did not come back.
+ */
+export type DraftRestoreOutcome =
+  | "restored"
+  | "none"
+  /** The composer is already committed to an edit or a server-side draft. */
+  | "composer-busy"
+  /** The composer already holds content a restore would overwrite. */
+  | "composer-has-content"
+  /** Stored, but not parseable as a draft. */
+  | "unreadable"
+  /** Older than the retention window. */
+  | "expired"
+  /** A reply draft belonging to a different parent post. */
+  | "other-reply";
+
 export interface LocalDraft {
   format: ComposeFormat;
   title: string;
@@ -239,10 +262,13 @@ export interface ComposeLabels {
   deleteDraft: string;
   draftDeleted: string;
   publishFailedDraft: string;
+  publishFailed: string;
+  publishFailedOffline: string;
   uploadFailedDraft: string;
   addCollection: string;
   collectionCountLabel: string;
   draftRestored: string;
+  draftStoreFailed: string;
   reply: string;
   publishHideFromLatest: string;
   publishPrivate: string;
