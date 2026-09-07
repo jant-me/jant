@@ -402,7 +402,7 @@ describe("feed renderers", () => {
     expect(xml).toContain("<updated>2026-03-20T09:45:00.000Z</updated>");
   });
 
-  it("renders thread replies with hr separator and time element", () => {
+  it("renders thread replies with hr separator and a dated permalink", () => {
     const reply = makePostView({
       id: "reply-1",
       permalink: "/reply-1",
@@ -427,7 +427,9 @@ describe("feed renderers", () => {
 
     expect(xml).toContain("<p>Root content</p>");
     expect(xml).toContain("<hr/>");
-    expect(xml).toContain('<time datetime="2026-03-19T12:00:00.000Z">');
+    expect(xml).toContain(
+      '<time class="dt-published" datetime="2026-03-19T12:00:00.000Z">',
+    );
     expect(xml).toContain("<p>This is a reply</p>");
   });
 
@@ -1717,5 +1719,182 @@ describe("feed attachment metadata", () => {
     expect(xml).not.toContain("xmlns:media");
     expect(xml).not.toContain("<media:content");
     expect(xml).not.toContain("<media:thumbnail");
+  });
+});
+
+/**
+ * A thread arrives as one entry, so both text constructs run several posts
+ * together. These are the three things that let a consumer take it apart:
+ * which entries are threads, where one post's words end, and which post owns
+ * each file.
+ */
+describe("feed entry thread segmentation", () => {
+  function makeBody(paragraphs: string[]): string {
+    return JSON.stringify({
+      type: "doc",
+      content: paragraphs.map((text) => ({
+        type: "paragraph",
+        content: [{ type: "text", text }],
+      })),
+    });
+  }
+
+  function getSummary(xml: string): string | undefined {
+    return /<summary type="html"><!\[CDATA\[([\s\S]*?)\]\]><\/summary>/.exec(
+      xml,
+    )?.[1];
+  }
+
+  function getContent(xml: string): string | undefined {
+    return /<content type="html"><!\[CDATA\[([\s\S]*?)\]\]><\/content>/.exec(
+      xml,
+    )?.[1];
+  }
+
+  function makeReply(n: number, overrides: Partial<FeedPostView> = {}) {
+    return makePostView({
+      id: `reply-${n}`,
+      permalink: `/reply-${n}`,
+      slug: `reply-${n}`,
+      body: makeBody([`Reply ${n} body.`]),
+      bodyHtml: `<p>Reply ${n} body.</p>`,
+      publishedAt: `2026-03-2${n}T00:00:00.000Z`,
+      publishedAtFormatted: `Mar 2${n}, 2026`,
+      ...overrides,
+    });
+  }
+
+  function makeRoot(overrides: Partial<FeedPostView> = {}) {
+    return makePostView({
+      body: makeBody(["Root body."]),
+      bodyHtml: "<p>Root body.</p>",
+      ...overrides,
+    });
+  }
+
+  // The root's own marker is what makes the rule "every marker ends the block
+  // before it" hold. Without it the root and the first reply share a segment.
+  it("closes the root's own block in a thread, not just the replies'", () => {
+    const summary = getSummary(
+      defaultFeedRenderer(
+        makeFeedData(makeRoot({ threadReplies: [makeReply(1)] })),
+      ),
+    );
+
+    expect(summary).toContain(
+      '<p>Root body.</p>\n<p><small><a href="https://example.com/post-1" class="u-url"><time class="dt-published" datetime="2026-03-19T00:00:00.000Z">Mar 19, 2026</time></a></small></p>',
+    );
+    expect(summary).toContain(
+      '<p>Reply 1 body.</p>\n<p><small><a href="https://example.com/reply-1" class="u-url"><time class="dt-published" datetime="2026-03-21T00:00:00.000Z">Mar 21, 2026</time></a></small></p>',
+    );
+  });
+
+  // A reader prints <published> itself, so a lone post that also ended with
+  // its own date would show it twice.
+  it("leaves a standalone entry unmarked", () => {
+    const xml = defaultFeedRenderer(makeFeedData(makeRoot()));
+
+    expect(getSummary(xml)).not.toContain("dt-published");
+    expect(getContent(xml)).not.toContain("dt-published");
+    expect(xml).not.toContain("<jant:thread");
+  });
+
+  // The marker ends a block, so a post that contributed no block to the
+  // summary — a photo with no caption — must not leave one behind.
+  it("marks no block for a thread root with no text", () => {
+    const summary = getSummary(
+      defaultFeedRenderer(
+        makeFeedData(
+          makePostView({
+            media: [
+              makeMediaView({
+                url: "https://example.com/media/photo.jpg",
+                mimeType: "image/jpeg",
+              }),
+            ],
+            threadReplies: [makeReply(1)],
+          }),
+        ),
+      ),
+    );
+
+    expect(summary).not.toContain("https://example.com/post-1");
+    expect(summary).toContain('href="https://example.com/reply-1"');
+  });
+
+  it("closes every reply's block in the content, in order", () => {
+    const content = getContent(
+      defaultFeedRenderer(
+        makeFeedData(makeRoot({ threadReplies: [makeReply(1), makeReply(2)] })),
+      ),
+    );
+
+    const markers = [...(content ?? "").matchAll(/class="u-url"/g)];
+    expect(markers).toHaveLength(3);
+    expect(content?.indexOf("Reply 1 body.")).toBeLessThan(
+      content?.indexOf("Reply 2 body.") ?? -1,
+    );
+  });
+
+  it("declares a thread's shape so a consumer need not read the HTML", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          threadReplies: [makeReply(1), makeReply(2), makeReply(3)],
+        }),
+      ),
+    );
+
+    expect(xml).toContain(
+      '<jant:thread posts="4" hidden="2" gap="https://example.com/reply-1" latest="https://example.com/reply-3"/>',
+    );
+  });
+
+  // One reply is the hero, so nothing folds away and there is nowhere to send
+  // a reader who wants the middle.
+  it("declares no gap when a thread hides nothing", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(makeRoot({ threadReplies: [makeReply(1)] })),
+    );
+
+    expect(xml).toContain(
+      '<jant:thread posts="2" hidden="0" latest="https://example.com/reply-1"/>',
+    );
+  });
+
+  it("names the post carrying each attachment, and only when it is not the entry", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          media: [
+            makeMediaView({
+              id: "med_root",
+              url: "https://example.com/media/beans.jpg",
+              thumbnailUrl: "https://example.com/media/beans.jpg",
+              mimeType: "image/jpeg",
+            }),
+          ],
+          threadReplies: [
+            makeReply(1, {
+              media: [
+                makeMediaView({
+                  id: "med_reply",
+                  url: "https://example.com/media/cup.jpg",
+                  thumbnailUrl: "https://example.com/media/cup.jpg",
+                  mimeType: "image/jpeg",
+                }),
+              ],
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain(
+      '<media:content url="https://example.com/media/beans.jpg" type="image/jpeg" medium="image"/>',
+    );
+    expect(xml).toContain(
+      '<media:content url="https://example.com/media/cup.jpg" type="image/jpeg" medium="image" jant:post="https://example.com/reply-1"/>',
+    );
   });
 });

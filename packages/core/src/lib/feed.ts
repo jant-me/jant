@@ -562,6 +562,91 @@ function buildSinglePostContent(
 }
 
 /**
+ * Declare that an entry is a thread, and give its shape.
+ *
+ * The text constructs answer this only to something willing to parse HTML: the
+ * tail meta marks the joints, and the gap link states the hidden count in a
+ * sentence. A consumer that reads the entry's elements and draws its own card
+ * from `<summary>` plus `<media:content>` should not have to. Absence is the
+ * whole of its rule: no element, not a thread.
+ *
+ * `hidden` is stated rather than derived. How many posts fold away is the
+ * site's decision, and `posts - 2` only holds while that decision is "keep the
+ * root and the newest reply" — a consumer that derived it would silently
+ * disagree with the summary the day the rule changed. It also carries the count
+ * as a number, which the gap link only has as hardcoded English.
+ *
+ * @param post - Root post view data
+ * @param siteUrl - Site base URL for absolute permalinks
+ * @returns The element, newline-prefixed, or "" when the entry is a lone post
+ * @example
+ * renderThreadElement(root, "https://example.com");
+ * // '\n    <jant:thread posts="4" hidden="2" gap="…/r1" latest="…/r3"/>'
+ */
+function renderThreadElement(post: FeedPostView, siteUrl: string): string {
+  const replies = post.threadReplies ?? [];
+  const latestReply = replies.at(-1);
+  if (!latestReply) return "";
+
+  // The same fold `buildFeedSummary` applies: the root stays as context, the
+  // newest reply is the hero, everything between becomes a count.
+  const hiddenCount = Math.max(0, replies.length - 1);
+  const firstHidden = replies[0];
+
+  const attrs = [`posts="${replies.length + 1}"`, `hidden="${hiddenCount}"`];
+  if (hiddenCount > 0 && firstHidden) {
+    attrs.push(
+      `gap="${escapeXml(toAbsoluteFeedUrl(firstHidden.permalink, siteUrl))}"`,
+    );
+  }
+  attrs.push(
+    `latest="${escapeXml(toAbsoluteFeedUrl(latestReply.permalink, siteUrl))}"`,
+  );
+
+  return `\n    <jant:thread ${attrs.join(" ")}/>`;
+}
+
+/**
+ * Close one post's block inside a thread with its own dated permalink.
+ *
+ * A thread arrives as one entry, so both text constructs run several posts
+ * together and a consumer has to find the joints. `<hr/>` cannot say where
+ * they are — it also separates a quote from its commentary, and the author can
+ * type one — so the joint has to be something only this renderer emits.
+ *
+ * The site already has the shape: `PostFooter`'s `PostPublishedLink` puts the
+ * timestamp *after* the post and links it, carrying microformats2 `u-url` and
+ * `dt-published` inside its `h-entry`. Emitting the same thing here means a
+ * consumer with an mf2 parser gets the segmentation for free, and one without
+ * still has an unambiguous marker: a `<time datetime>` wrapped in an `<a>` is
+ * a shape no post body produces, and it survives a reader that strips `class`.
+ *
+ * Trailing, not leading, for a reason beyond matching the site: with markers
+ * after each block the rule is "every marker ends the block before it", which
+ * holds for the root as well. A leading marker leaves the root's own block
+ * unnamed. The root therefore carries one too, and the redundancy with the
+ * entry's `<published>` is confined to threads, where the date has stopped
+ * being the entry's only one.
+ *
+ * `title` is left off: the site's is a translated sentence, and the feed's
+ * strings are hardcoded English already.
+ *
+ * @param post - The post whose block is ending
+ * @param permalinkUrl - Absolute permalink of that post
+ * @returns A paragraph carrying the post's date, linked to the post
+ * @example
+ * renderPostTailMeta(reply, "https://example.com/reply-1");
+ * // '<p><small><a href="…" class="u-url"><time class="dt-published" …>…</time></a></small></p>'
+ */
+function renderPostTailMeta(post: PostView, permalinkUrl: string): string {
+  return (
+    `<p><small><a href="${escapeXml(permalinkUrl)}" class="u-url">` +
+    `<time class="dt-published" datetime="${escapeXml(post.publishedAt)}">` +
+    `${escapeXml(post.publishedAtFormatted)}</time></a></small></p>`
+  );
+}
+
+/**
  * Build the full HTML content for a feed entry, including thread replies.
  *
  * @param post - Root post view data
@@ -576,21 +661,25 @@ function buildFeedContent(
   const rootContent = buildSinglePostContent(post, siteUrl, permalinkUrl);
   const replies = post.threadReplies;
 
+  // A standalone post needs no marker: the entry's own `<published>` dates it,
+  // and there is no second block to tell it apart from.
   if (!replies || replies.length === 0) {
     return rootContent;
   }
 
-  const parts = [rootContent];
+  const rootPermalink =
+    permalinkUrl ?? new URL(post.permalink, siteUrl).toString();
+  const parts = [rootContent, renderPostTailMeta(post, rootPermalink)];
 
   for (const reply of replies) {
     const replyPermalink = new URL(reply.permalink, siteUrl).toString();
+    // Kept as the visual joint the site draws between cards. It is no longer
+    // the structural one — the tail meta above is.
     parts.push("<hr/>");
-    parts.push(
-      `<p><small><time datetime="${escapeXml(reply.publishedAt)}">${escapeXml(reply.publishedAtFormatted)}</time></small></p>`,
-    );
     parts.push(
       buildSinglePostContent(reply, siteUrl, replyPermalink, { inline: true }),
     );
+    parts.push(renderPostTailMeta(reply, replyPermalink));
   }
 
   return parts.join("\n");
@@ -600,6 +689,11 @@ function buildFeedContent(
  * Build the HTML for a feed entry's `<summary>` — the entry's text, as the
  * timeline shows it: truncated at the same boundary, quoted text and rating
  * included, a thread folded to its root, a gap link and its newest reply.
+ *
+ * In a thread each rendered post's block closes with `renderPostTailMeta`, so
+ * a consumer can tell the root's words from the reply's and attribute either
+ * to a permalink — which is also how it lines the text up with the entry's
+ * `<media:content>`, each of which names its own post.
  *
  * Text only. Media is in `<content>` and, structured, in the Media RSS
  * elements — and it has to be read from there anyway, because a feed cannot
@@ -618,7 +712,8 @@ function buildFeedContent(
  * @returns The entry's text as the timeline renders it, or "" when it has none
  * @example
  * buildFeedSummary(post, "https://example.com", "https://example.com/hello")
- * // "<p>Intro</p>\n<hr/>\n<p><small><a …>2 more posts</a></small></p>…"
+ * // "<p>Intro</p>\n<p><small><a …><time …>Mar 19, 2026</time></a></small></p>
+ * //  \n<hr/>\n<p><small><a …>2 more posts</a></small></p>…"
  */
 function buildFeedSummary(
   post: FeedPostView,
@@ -632,11 +727,21 @@ function buildFeedSummary(
   // nothing is hidden.
   const hiddenCount = Math.max(0, replies.length - 1);
 
+  const isThread = replies.length > 0;
+  const rootPermalink =
+    permalinkUrl ?? new URL(post.permalink, siteUrl).toString();
+
   const parts: string[] = [];
   const rootMarkup = buildSinglePostContent(post, siteUrl, permalinkUrl, {
     summary: true,
   });
-  if (rootMarkup) parts.push(rootMarkup);
+  if (rootMarkup) {
+    parts.push(rootMarkup);
+    // Only inside a thread, and only behind text there was something to end.
+    // A photo with no caption contributes no block here, so it gets no marker
+    // and "every marker ends the block before it" still holds.
+    if (isThread) parts.push(renderPostTailMeta(post, rootPermalink));
+  }
 
   const firstHidden = replies[0];
   if (hiddenCount > 0 && firstHidden) {
@@ -662,10 +767,8 @@ function buildFeedSummary(
     );
     if (replyMarkup) {
       if (parts.length > 0) parts.push("<hr/>");
-      parts.push(
-        `<p><small><time datetime="${escapeXml(latestReply.publishedAt)}">${escapeXml(latestReply.publishedAtFormatted)}</time></small></p>`,
-      );
       parts.push(replyMarkup);
+      parts.push(renderPostTailMeta(latestReply, replyPermalink));
     }
   }
 
@@ -713,14 +816,16 @@ function getMediaRssMedium(mimeType: string): string {
  *
  * @param item - Attachment view data
  * @param siteUrl - Site base URL, for absolutizing stored paths
+ * @param entryPermalinkUrl - Absolute permalink of the entry's root post
  * @returns A `<media:content>` element, newline-prefixed for entry indentation
  * @example
- * renderMediaRssContent(photo, "https://example.com")
+ * renderMediaRssContent(photo, "https://example.com", "https://example.com/a")
  * // '\n    <media:content url="…" type="image/jpeg" medium="image" …/>'
  */
 function renderMediaRssContent(
   { item, postPermalinkUrl }: EntryMedia,
   siteUrl: string,
+  entryPermalinkUrl: string,
 ): string {
   const fileUrl = toAbsoluteFeedUrl(item.url, siteUrl);
   const attrs = [
@@ -745,6 +850,16 @@ function renderMediaRssContent(
   const pageUrl = getMediaPageUrl(item, siteUrl, postPermalinkUrl);
   if (pageUrl !== fileUrl) {
     attrs.push(`jant:page="${escapeXml(pageUrl)}"`);
+  }
+
+  // Which post in the thread carries this file. An entry's media is drawn from
+  // the whole thread, so without this the list is flat and a consumer laying
+  // out the folded card would hang a hidden reply's photo under the root.
+  // Omitted when the owner is the entry itself, the same economy `jant:page`
+  // uses: a consumer reads `jant:post ?? id` and a single-post entry pays
+  // nothing.
+  if (postPermalinkUrl !== entryPermalinkUrl) {
+    attrs.push(`jant:post="${escapeXml(postPermalinkUrl)}"`);
   }
 
   const children: string[] = [];
@@ -895,7 +1010,7 @@ export function defaultFeedRenderer(data: FeedData): string {
       // above because it is what a plain Atom parser reads; this is the layer
       // a reader that knows Media RSS can lay out without fetching the file.
       const mediaContentElements = entryMedia
-        .map((m) => renderMediaRssContent(m, siteUrl))
+        .map((m) => renderMediaRssContent(m, siteUrl, permalinkUrl))
         .join("");
 
       // The entry's representative image, for readers that lay out cards or a
@@ -948,6 +1063,11 @@ export function defaultFeedRenderer(data: FeedData): string {
         ? "\n    <jant:truncated/>"
         : "";
 
+      // Whether this entry is a whole thread, and how much of it the summary
+      // folded away. The text says so only in prose a consumer would have to
+      // parse.
+      const threadElement = renderThreadElement(post, siteUrl);
+
       // `<summary>` is the entry's text, `<content>` the post's full page. It
       // is present whenever there is text — a bare note repeats itself here,
       // which costs the words and nothing else, and buys a field that means one
@@ -965,7 +1085,7 @@ export function defaultFeedRenderer(data: FeedData): string {
     <link href="${alternateLink}" rel="alternate"/>${relatedLink}${enclosureLinks}
     <id>${escapedPermalink}</id>
     <published>${publishedAt}</published>
-    <updated>${updatedAt}</updated>${formatElement}${truncatedElement}${categoryElements}${thumbnailElement}${mediaContentElements}${summaryElement}
+    <updated>${updatedAt}</updated>${formatElement}${threadElement}${truncatedElement}${categoryElements}${thumbnailElement}${mediaContentElements}${summaryElement}
     <content type="html"><![CDATA[${escapeCdata(contentMarkup)}]]></content>
   </entry>`;
     })

@@ -26,6 +26,10 @@ the star rating, and a thread folded to its root plus a gap link and its newest
 reply. It does not hold media, a link post's preview image, or the `★`
 permalink — those are the post's content, not a summary of it.
 
+Inside a thread both constructs close each post's block with that post's own
+dated permalink, so several posts in one field can still be told apart. See
+Threads.
+
 It is present whenever the entry has any text, including when that text is the
 whole post and repeats `<content>` verbatim. That costs the words and buys a
 field with a meaning of its own rather than one a consumer has to derive from a
@@ -72,11 +76,61 @@ Declare a namespace only where something in it is emitted.
 | `published` / `updated`  | 1     | A curated feed may date an entry by the curation, hence `feedPublishedAt` / `feedUpdatedAt`.                                                                                                                                                                                                                                  |
 | `jant:format`            | 1     | `note`, `link`, or `quote`. Atom has no field for it, and `<category>` would show `quote` as a tag no author typed.                                                                                                                                                                                                           |
 | `jant:truncated`         | 0–1   | Empty element. Present when the timeline cut the root's text or the newest reply's.                                                                                                                                                                                                                                           |
+| `jant:thread`            | 0–1   | The entry is a whole thread, and this is its shape. Absent means a lone post. See below.                                                                                                                                                                                                                                      |
 | `category`               | 0–n   | One per collection. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL — a single collection lives in the root URL namespace, so a site path prefix makes it unguessable from the term. Replies inherit their root's collections and the site prints them on the root alone, so they ride the entry once. |
 | `media:thumbnail`        | 0–1   | **Direct child of the entry**: a link post's preview image, for card and grid views. A scraped thumbnail of someone else's page is not a published file, so it gets no enclosure.                                                                                                                                             |
 | `media:content`          | 0–n   | One per attachment, root and replies together. See below.                                                                                                                                                                                                                                                                     |
 | `summary`                | 0–1   | See above.                                                                                                                                                                                                                                                                                                                    |
 | `content`                | 1     | Never empty: a post with only a title or a URL falls back to its plain-text projection.                                                                                                                                                                                                                                       |
+
+## Threads
+
+A thread is one entry. Both text constructs therefore run several posts
+together — `<content>` the whole chain, `<summary>` the folded card — and three
+things let a consumer take that apart.
+
+**`<jant:thread>`** declares it, for a consumer that never parses the HTML.
+
+| Attribute | Notes                                                                                                                                                                         |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `posts`   | Total posts in the thread, root included                                                                                                                                      |
+| `hidden`  | How many the summary folds away. Stated, not derived: the fold is the site's decision, and `posts - 2` only holds while that decision is "keep the root and the newest reply" |
+| `gap`     | Where the folded middle starts. Only when `hidden` is above zero                                                                                                              |
+| `latest`  | The newest reply — the post the summary shows in full, and the one whose `media:content` belongs beside it                                                                    |
+
+**The tail meta** marks the joints, in both text constructs:
+
+```html
+<p>
+  <small
+    ><a href="{permalink}" class="u-url">
+      <time class="dt-published" datetime="{ISO}">Mar 19, 2026</time>
+    </a></small
+  >
+</p>
+```
+
+Every rendered post's block ends with one, **the root's included** — without
+that the root and the first reply share a segment. So the rule is one line:
+**every marker ends the block before it**, and names the post that wrote it. A
+post that contributed no block contributes no marker: a photo with no caption
+has no text in the summary, so nothing there is attributed to it.
+
+This is the site's own markup. `PostFooter`'s `PostPublishedLink` puts the
+timestamp after the post, links it, and carries microformats2 `u-url` and
+`dt-published` inside its `h-entry` — so an mf2 parser gets the segmentation
+free, and a reader that strips `class` still has an unambiguous shape: a
+`<time datetime>` wrapped in an `<a>` is not something a post body produces.
+
+A **lone post gets no marker at all.** The entry's `<published>` already dates
+it and every reader prints that itself.
+
+`<hr/>` is still drawn between posts, but it is decoration now, not structure —
+it also separates a quote from its commentary, and an author can type one.
+Nothing should parse it.
+
+**`media:content/@jant:post`** names the post each file hangs off, so the text
+segments and the attachments join on permalinks. See below.
 
 ## Attachments
 
@@ -85,14 +139,18 @@ Three surfaces, three audiences. None of them repeats another's job.
 **`<content>`** presents them. Each post's attachments sit in one
 `<div data-post-media>` beside that post's own text — the same attribute the
 site puts on its gallery strip, so themes and external scripts read one
-contract. In a thread this is the only surface that says which post an
-attachment belongs to.
+contract. It is the only surface that puts an attachment in the running order
+of a thread's text.
 
 **`<media:content>`** describes them: `type`, `medium`, `fileSize`, `width`,
 `height`, `duration`, `media:title` (filename), `media:description`, and a
 nested `media:thumbnail` for a video's poster. Atom's `<link>` has nowhere to
 put any of it.
 
+- `@jant:post` is the post carrying the file, emitted only where that is not
+  the entry itself. A consumer reads `jant:post ?? entry/id`, and a single-post
+  entry pays nothing. This is what lines an attachment up with the tail-meta
+  segment naming the same permalink.
 - `@url` is the file. `@jant:page` is where a click should land, and is emitted
   only where the two differ — today that means text attachments, whose markdown
   a browser downloads or dumps unstyled. A consumer reads `jant:page ?? url` and
@@ -155,10 +213,19 @@ text      = entry/summary ?? ""    // HTML; render it, do not strip it
 media     = entry/media:content[]  // in document order
 tags      = entry/category[]
 readMore  = entry/jant:truncated exists
+thread    = entry/jant:thread      // absent on a lone post
 ```
 
 `<content>` is not needed. The quotation, the rating and the folded thread are
 already inside `text`.
+
+A thread costs one more step, and only if the consumer draws the root and the
+reply as separate cards. Split `text` on the tail meta — each marker ends the
+block before it and carries that post's permalink — and take each block's files
+from `media:content` where `jant:post ?? entry/id` matches. Attachments left
+over belong to the posts the fold hid, and whether to show them is the
+consumer's call. `jant:thread/@hidden` is the gap count as a number, so the gap
+line can be written in the reader's own language rather than the feed's.
 
 Layout is the consumer's, not the feed's: no feed format can express the site's
 justified strip. The dimensions to compute it are on `media:content` — width is
@@ -168,11 +235,6 @@ photo is no reason to resize the photo.
 
 ## Known Limits
 
-- **`media:content` is flat across a thread.** Root and reply attachments arrive
-  in one list with nothing saying which post carries them. A consumer that needs
-  the attribution reads `<content>`, where each post has its own
-  `data-post-media` container. Adding an attribute would duplicate an answer the
-  markup already gives.
 - **A text attachment's character count is not exposed.** Media RSS has no slot
   and `fileSize` is bytes. The card's excerpt is in `media:description`; the
   count is a meta line the feed leaves out.
@@ -189,6 +251,11 @@ photo is no reason to resize the photo.
   `<media:thumbnail>` nor the preview figure in its content. Adding it means
   touching the exporter's media pipeline, which handles `previewImageKey` on a
   different path from attachments.
+- **A thread's text and its attachments interleave only in `<content>`.** The
+  tail meta and `@jant:post` say which post owns which words and which files,
+  but `<summary>` is text alone, so a consumer placing a gallery _between_ two
+  posts' paragraphs decides that position itself — or reads `<content>`, where
+  each `data-post-media` already sits in the running order.
 - **Feed strings are hardcoded English** — `▶ Watch video`, `📎`,
   `3 more posts`. The feed is a user-facing surface and this contradicts the
   i18n rule in AGENTS.md. Fixing it means threading an `i18n` instance into the
