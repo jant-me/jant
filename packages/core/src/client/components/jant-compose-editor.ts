@@ -1772,9 +1772,25 @@ export class JantComposeEditor extends LitElement {
     this._rating = this._rating === star ? 0 : star;
   }
 
+  /**
+   * Where a pasted or dropped image lands: inline in the body, or in the
+   * attachment dock.
+   *
+   * Only a note has an article mode to fall into, and a visible, filled title
+   * is what says the body is prose an image belongs inside. A link's body is
+   * commentary beside a link card and a quote's is commentary beside the
+   * quotation — images there are attachments, always. `_title` couldn't answer
+   * this for them anyway: a link's title is required, so it is never empty
+   * once the post is publishable, and a quote has no title field at all yet
+   * can still be holding one carried over from a format switch.
+   *
+   * Only the default moves — the slash `/image` command inserts inline in
+   * every format.
+   */
   private _shouldPasteInlineImage(file: File): boolean {
     if (!file.type.startsWith("image/")) return false;
-    if (this.format === "note" && !this._showTitle) return false;
+    if (this.format !== "note") return false;
+    if (!this._showTitle) return false;
     return this._title.trim().length > 0;
   }
 
