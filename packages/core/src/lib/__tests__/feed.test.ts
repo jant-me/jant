@@ -1333,6 +1333,29 @@ describe("feed entry summary", () => {
     expect(summary).toContain("<p>Only reply.</p>");
     expect(summary).not.toContain("more post");
   });
+
+  // The site renders a quote's commentary whole — `QuoteCard` passes `bodyHtml`
+  // through and nothing clamps `.feed-quote-commentary` — so a summary that cut
+  // it would not be the timeline's rendering.
+  it("keeps a quote's commentary whole, however long it runs", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makePostView({
+          format: "quote",
+          title: "Marcus Aurelius",
+          url: "https://example.com/meditations",
+          quoteText: "What stands in the way becomes the way.",
+          body: longBody,
+          bodyHtml: "<p>Alpha</p><p>Bravo</p><p>Charlie</p><p>Delta</p>",
+        }),
+      ),
+    );
+
+    const summary = getSummary(xml);
+    expect(summary).toContain("<p>Delta</p>");
+    expect(summary).toBe(getContent(xml));
+    expect(xml).not.toContain("<jant:truncated/>");
+  });
 });
 
 /**

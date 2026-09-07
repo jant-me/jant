@@ -442,15 +442,27 @@ function renderMediaForFeed(
  * notes to serve the feed would silently switch the site off expand-in-place.
  * `PostView.body` carries the source document, so the feed derives its own.
  *
+ * A Quote is not cut at all. `QuoteCard` passes `bodyHtml` straight through and
+ * nothing clamps `.feed-quote-commentary`, so the site shows a quote's
+ * commentary whole however long it runs — and `<summary>` is the timeline's
+ * rendering, not a shorter one of the feed's own. The quoted text is not cut
+ * either, so a Quote arrives entire on both halves.
+ *
+ * This is the one exception. An untitled note's body *is* cut here even though
+ * the site renders it whole, because the site hides the tail with CSS the
+ * reader strips.
+ *
  * @param post - Post view data, carrying the TipTap document in `body`
- * @returns Truncated HTML and whether content continues, or null when the post
- *   has no TipTap document to truncate
+ * @returns Truncated HTML and whether content continues, null when the post has
+ *   no TipTap document to truncate or is a Quote
  * @example
  * getTimelineSummary(post) // { html: "<p>Intro</p>", hasMore: true }
  */
 function getTimelineSummary(
   post: PostView,
 ): { html: string; hasMore: boolean } | null {
+  if (post.format === "quote") return null;
+
   return extractTimelineSummary(post.body, !!post.title, {
     namespace: post.id,
   });

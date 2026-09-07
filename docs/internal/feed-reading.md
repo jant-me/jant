@@ -1,0 +1,143 @@
+# Reading a Jant feed
+
+Jant's Atom feed carries enough to redraw the site's own timeline: what kind of post each entry is, the text as the timeline cuts it, the attachments with their dimensions, and the shape of a thread. Hand this page to whoever writes the consumer — an app, a directory, a script, an AI given the feed and asked to render it.
+
+It says what arrives and how to read it. Why each field is shaped that way is in [the feed contract](feed-contract.md); feed addresses and settings are in [Feeds](../feeds.md).
+
+## Namespaces
+
+| Prefix  | URI                             | Carries                        |
+| ------- | ------------------------------- | ------------------------------ |
+| —       | `http://www.w3.org/2005/Atom`   | Everything standard            |
+| `jant`  | `https://jant.me/ns`            | Post format, threads, Discover |
+| `media` | `http://search.yahoo.com/mrss/` | Attachment metadata            |
+
+Both extensions are declared only when the feed emits something in them. The URIs are fixed identifiers, not addresses to fetch, and the prefixes bound to them are arbitrary — match on the URI.
+
+An Atom reader that knows neither extension still gets a working feed. Everything Jant adds is either an element in its own namespace or an attribute on a Media RSS element.
+
+## One entry
+
+```xml
+<entry>
+  <title></title>
+  <link href="https://ex.com/roasting-again" rel="alternate"/>
+  <id>https://ex.com/roasting-again</id>
+  <published>2026-03-19T09:00:00.000Z</published>
+  <updated>2026-03-19T09:00:00.000Z</updated>
+  <jant:format>note</jant:format>
+  <category term="coffee" label="Coffee" jant:page="https://ex.com/coffee"/>
+  <media:content url="https://ex.com/m/beans.jpg" type="image/jpeg" medium="image"
+                width="1600" height="1200">
+    <media:description type="plain">Roasted beans cooling on a tray</media:description>
+  </media:content>
+  <summary type="html"><![CDATA[<p>Roasting again.</p>]]></summary>
+  <content type="html"><![CDATA[<p>Roasting again.</p>
+<div data-post-media>…</div>]]></content>
+</entry>
+```
+
+| Element                  | Count | Read it for                                                                                     |
+| ------------------------ | ----- | ----------------------------------------------------------------------------------------------- |
+| `id`                     | 1     | The post's permalink. Always — even on a Link post, whose `alternate` points elsewhere          |
+| `title`                  | 1     | The title. **Empty, not absent**, on untitled Notes and every Quote                             |
+| `link[@rel="alternate"]` | 1     | Where the entry points: the external URL on a Link post, the permalink otherwise                |
+| `link[@rel="related"]`   | 0–1   | Link posts only: the permalink, since `alternate` was spent on the external URL                 |
+| `link[@rel="enclosure"]` | 0–n   | Attachments a plain Atom parser can fetch. Images are excluded — the content already shows them |
+| `published` / `updated`  | 1     | Timestamps. A curated feed may date an entry by the curation rather than the post               |
+| `jant:format`            | 1     | `note`, `link`, or `quote`                                                                      |
+| `jant:thread`            | 0–1   | The entry is a thread. Absent means a lone post                                                 |
+| `jant:truncated`         | 0–1   | The summary's text was cut. Offer a "read more". Never on a Quote                               |
+| `category`               | 0–n   | Collections. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL             |
+| `media:thumbnail`        | 0–1   | A Link post's preview image, for a card or grid                                                 |
+| `media:content`          | 0–n   | One per attachment, with dimensions and duration                                                |
+| `summary`                | 0–1   | The post's text, as the timeline renders it                                                     |
+| `content`                | 1     | The whole post page                                                                             |
+
+A Quote's attribution is not its title — it is inside the text, as a `<figure>` with a `<figcaption>`. A star rating is inside the text too, as `★★★★☆ 4/5`.
+
+## Two renderings
+
+The site draws every post twice: cut down in the timeline, whole on its own page. The entry carries both.
+
+- **`<summary>`** is the post's text as the timeline shows it — cut at the same place, a Quote's quotation and attribution, the rating, a thread folded down. No media, no Link preview image.
+- **`<content>`** is the whole post page, attachments included.
+
+Both are HTML in CDATA, with every URL absolute. Render them; do not strip the markup.
+
+`<summary>` is present whenever the entry has any text, including when that text is the whole post. **Missing says one thing: this post has no text** — a photo with no caption. So `summary ?? ""` is the whole rule, and truncation is `jant:truncated`, never a comparison against `<content>`.
+
+A Quote arrives whole: neither its quoted text nor its commentary is cut, because the site does not cut them either. So a Quote entry never carries `jant:truncated`, and its `<summary>` and `<content>` hold the same text.
+
+To draw a timeline you need `<summary>`, not `<content>`.
+
+## Threads
+
+A thread arrives as one entry — root and replies together, so a reader does not fill with fragments. `<summary>` folds it the way the site's timeline does: the root, a link across the gap, the newest reply. `<content>` carries the whole chain.
+
+```xml
+<jant:thread posts="4" hidden="2" gap="https://ex.com/r1" latest="https://ex.com/r3"/>
+```
+
+| Attribute | Means                                                            |
+| --------- | ---------------------------------------------------------------- |
+| `posts`   | Posts in the thread, root included                               |
+| `hidden`  | How many the summary folds away                                  |
+| `gap`     | Where the folded middle starts. Only when `hidden` is above zero |
+| `latest`  | The newest reply — the one the summary shows in full             |
+
+Inside both text constructs, each post's block **ends** with that post's own dated permalink:
+
+```xml
+<p>Dialing in a new bag.</p>
+<p><small><a href="https://ex.com/dialing-in" class="u-url"><time class="dt-published"
+   datetime="2026-03-14T09:00:00.000Z">Mar 14, 2026</time></a></small></p>
+<hr/>
+<p><small><a href="https://ex.com/r1">2 more posts</a></small></p>
+```
+
+Every marker ends the block before it and names the post that wrote it, the root's included. That is how you split one field into several posts. The markup is microformats2 (`u-url`, `dt-published`), so an mf2 parser gets it without a special case, and the `<a>` wrapping a `<time datetime>` still identifies it when `class` is stripped.
+
+A post with no text contributes no block and leaves no marker. A lone post has no marker at all — `<published>` already dates it.
+
+**Do not parse `<hr/>`.** It is drawn between posts, but it also separates a Quote from the author's commentary, and an author can type one.
+
+## Attachments
+
+Three surfaces, three jobs.
+
+**`<content>`** shows them, each post's own inside a `<div data-post-media>` beside that post's text. It is the only place an attachment sits in the running order of a thread.
+
+**`<media:content>`** describes them: `type`, `medium`, `fileSize`, `width`, `height`, `duration`, a `media:title` holding the filename, a `media:description` holding alt text or a text file's excerpt, and a nested `media:thumbnail` for a video's poster.
+
+- `@jant:post` names the post carrying the file, written only when that is not the entry itself. Read `jant:post ?? entry/id`.
+- `@jant:page` is where a click should land, written only when it differs from `@url` — text attachments, whose file a browser downloads. Read `jant:page ?? url`.
+- `medium` is Media RSS's fixed vocabulary, so anything that is not a picture or playable is `document`.
+
+**`<link rel="enclosure">`** is what a plain Atom parser reads. Images are left out — the content already shows them full size — while audio, video and documents keep theirs, the way a podcast feed encloses its audio and not its show-note images.
+
+Do not match `<media:content>` to `<content>` by URL: a text attachment's link points at its rendered page, not at the file.
+
+## Rendering a timeline
+
+```
+permalink = entry/id
+title     = entry/title                // no heading when empty
+text      = entry/summary ?? ""        // HTML; render it
+media     = entry/media:content[]      // document order
+tags      = entry/category[]
+readMore  = entry/jant:truncated exists
+thread    = entry/jant:thread          // absent on a lone post
+```
+
+For a thread drawn as separate cards, split `text` on the tail markers and match each block's files by `jant:post ?? entry/id`. Files left over belong to the posts the fold hid; showing them is your call. `hidden` is a number, so the gap line can be written in your reader's own language.
+
+Layout is yours. No feed format can express the site's justified media strip — compute it from the dimensions on `media:content`, where a picture or clip is `rowHeight * aspectRatio` wide, everything else is a 3:4 card, and only pictures and clips set the row height.
+
+## What the feed does not carry
+
+- **A rating as a number.** It is `★★★★☆ 4/5` inside the text.
+- **A text attachment's character count.** Media RSS has no slot for it and `fileSize` is bytes.
+- **Attachments interleaved inside a summary.** `<summary>` is text alone. If you place a gallery between two posts' paragraphs, either decide that position yourself or read `<content>`, where each `data-post-media` already sits in order.
+- **Translated strings.** `▶ Watch video` and `2 more posts` are English in every feed.
+- **Anything a self-hosted export promises.** A site exported to a static theme writes its own feed, and that one carries less. Read the served feed when you need this contract.

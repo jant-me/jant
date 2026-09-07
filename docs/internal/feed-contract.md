@@ -2,6 +2,9 @@
 
 This document defines what a Jant Atom entry carries and who each field is for.
 
+A consumer-facing handout — what arrives and how to read it, without the
+reasoning — is in [Reading a Jant feed](feed-reading.md).
+
 The implementation lives in:
 
 - `packages/core/src/lib/feed.ts` — the renderer
@@ -21,7 +24,7 @@ page. The entry carries both.
 - `<summary type="html">` is the post's **text**, as the timeline renders it.
 - `<content type="html">` is the **whole post page**.
 
-`<summary>` holds the truncated body, a quote post's quotation and attribution,
+`<summary>` holds the timeline's body, a quote post's quotation and attribution,
 the star rating, and a thread folded to its root plus a gap link and its newest
 reply. It does not hold media, a link post's preview image, or the `★`
 permalink — those are the post's content, not a summary of it.
@@ -38,6 +41,14 @@ text.** A photo with no caption is the normal case.
 
 Because the summary is always present, it says nothing about truncation.
 `<jant:truncated/>` does.
+
+**A Quote is never cut**, on either half. Its quoted text never was, and its
+commentary is not either: `QuoteCard` passes `bodyHtml` straight through and
+nothing clamps `.feed-quote-commentary`, so the site shows the whole thing
+however long it runs. Cutting it here would make `<summary>` a shorter
+rendering of the feed's own rather than the timeline's. The exception runs the
+other way for an untitled note, whose body _is_ cut here even though the site
+renders it whole — there the site hides the tail with CSS the reader strips.
 
 ## Namespaces
 
@@ -75,7 +86,7 @@ Declare a namespace only where something in it is emitted.
 | `link[@rel="enclosure"]` | 0–n   | Non-image attachments. See below.                                                                                                                                                                                                                                                                                             |
 | `published` / `updated`  | 1     | A curated feed may date an entry by the curation, hence `feedPublishedAt` / `feedUpdatedAt`.                                                                                                                                                                                                                                  |
 | `jant:format`            | 1     | `note`, `link`, or `quote`. Atom has no field for it, and `<category>` would show `quote` as a tag no author typed.                                                                                                                                                                                                           |
-| `jant:truncated`         | 0–1   | Empty element. Present when the timeline cut the root's text or the newest reply's.                                                                                                                                                                                                                                           |
+| `jant:truncated`         | 0–1   | Empty element. Present when the timeline cut the root's text or the newest reply's. Never on a Quote.                                                                                                                                                                                                                         |
 | `jant:thread`            | 0–1   | The entry is a whole thread, and this is its shape. Absent means a lone post. See below.                                                                                                                                                                                                                                      |
 | `category`               | 0–n   | One per collection. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL — a single collection lives in the root URL namespace, so a site path prefix makes it unguessable from the term. Replies inherit their root's collections and the site prints them on the root alone, so they ride the entry once. |
 | `media:thumbnail`        | 0–1   | **Direct child of the entry**: a link post's preview image, for card and grid views. A scraped thumbnail of someone else's page is not a published file, so it gets no enclosure.                                                                                                                                             |
@@ -100,14 +111,9 @@ things let a consumer take that apart.
 
 **The tail meta** marks the joints, in both text constructs:
 
-```html
-<p>
-  <small
-    ><a href="{permalink}" class="u-url">
-      <time class="dt-published" datetime="{ISO}">Mar 19, 2026</time>
-    </a></small
-  >
-</p>
+```xml
+<p><small><a href="{permalink}" class="u-url"><time class="dt-published"
+   datetime="{ISO}">Mar 19, 2026</time></a></small></p>
 ```
 
 Every rendered post's block ends with one, **the root's included** — without

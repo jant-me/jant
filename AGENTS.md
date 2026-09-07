@@ -178,6 +178,7 @@ If you notice code contradicting this document, think about which side is correc
 - **Coding standards** (module deps, error handling, testing): `docs/internal/coding-standards.md`
 - **Writing style** (long-form docs prose, genre discipline, 中文对照): `docs/internal/writing-style.md`
 - **Feed contract** (what an Atom entry carries, and who each field is for): `docs/internal/feed-contract.md`
+- **Reading a Jant feed** (the same contract as a handout for a consumer): `docs/internal/feed-reading.md`
 - **Lit/Datastar conventions**: `docs/internal/lit-guide.md`
 - **Testing guide**: `docs/internal/testing-guide.md`
 - **Agent automation testing**: `docs/internal/agent-automation-testing.md`
