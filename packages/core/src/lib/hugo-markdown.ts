@@ -104,6 +104,11 @@ export interface HugoFrontMatter {
   status?: string;
   visibility?: string;
   summary_text?: string;
+  /**
+   * The timeline cuts this post's text short. Written only when true, so a
+   * consumer reads its presence rather than its value.
+   */
+  truncated?: boolean;
   link_url?: string;
   source_name?: string;
   source_url?: string;
@@ -215,6 +220,7 @@ const FRONT_MATTER_KEY_ORDER: readonly string[] = [
   "status",
   "visibility",
   "summary_text",
+  "truncated",
   "link_url",
   "source_name",
   "source_url",

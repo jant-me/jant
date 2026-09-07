@@ -221,6 +221,30 @@ describe("Hugo smoke build", () => {
     expect(collectionFeed).toContain("Follow-up");
     expect(collectionFeed.match(/<entry>/g)).toHaveLength(1);
 
+    // The exported feed carries the same entry payload the served one does,
+    // minus what Known Limits in docs/internal/feed-contract.md records. A
+    // template that stops compiling these silently drops them from every
+    // self-hosted export.
+    expect(collectionFeed).toContain('xmlns:jant="https://jant.me/ns"');
+    expect(collectionFeed).toContain(
+      'xmlns:media="http://search.yahoo.com/mrss/"',
+    );
+    expect(collectionFeed).toContain("<jant:format>note</jant:format>");
+    expect(collectionFeed).toContain(
+      '<category term="ideas" label="Ideas" jant:page="https://example.com/ideas/"/>',
+    );
+    // Media RSS describes the attachment; the content shows it in the same
+    // `data-post-media` container the site marks its gallery strip with.
+    expect(collectionFeed).toContain('medium="image"');
+    expect(collectionFeed).toContain('width="800" height="600"');
+    expect(collectionFeed).toContain(
+      '<media:description type="plain">A photo</media:description>',
+    );
+    expect(collectionFeed).toContain("<div data-post-media>");
+    // An image is already shown full size inside a link to the original, so it
+    // gets no enclosure.
+    expect(collectionFeed).not.toContain('rel="enclosure"');
+
     const featuredHtml = await readFile(
       join(tempDir, "public/featured/index.html"),
       "utf-8",

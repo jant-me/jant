@@ -18,14 +18,7 @@ import type {
   PostView,
 } from "../types.js";
 import { DISCOVER_NAMESPACE_URI } from "./discover.js";
-import {
-  extractSummaryHtml,
-  ARTICLE_SUMMARY_MAX_BLOCKS,
-  ARTICLE_SUMMARY_MAX_CHARS,
-  NOTE_SUMMARY_MAX_BLOCKS,
-  NOTE_SUMMARY_MAX_CHARS,
-  NOTE_SUMMARY_MIN_HIDDEN_CHARS,
-} from "./summary.js";
+import { extractTimelineSummary } from "./summary.js";
 import { getLinkPreviewProviderLabel } from "./link-preview.js";
 import { extractDisplayDomain } from "./url.js";
 import { getMediaCategory } from "./upload.js";
@@ -458,16 +451,9 @@ function renderMediaForFeed(
 function getTimelineSummary(
   post: PostView,
 ): { html: string; hasMore: boolean } | null {
-  if (!post.body) return null;
-  const isArticle = !!post.title;
-  const result = extractSummaryHtml(
-    post.body,
-    isArticle ? ARTICLE_SUMMARY_MAX_BLOCKS : NOTE_SUMMARY_MAX_BLOCKS,
-    isArticle ? ARTICLE_SUMMARY_MAX_CHARS : NOTE_SUMMARY_MAX_CHARS,
-    isArticle ? 0 : NOTE_SUMMARY_MIN_HIDDEN_CHARS,
-    { namespace: post.id },
-  );
-  return result ? { html: result.html, hasMore: result.hasMore } : null;
+  return extractTimelineSummary(post.body, !!post.title, {
+    namespace: post.id,
+  });
 }
 
 /**
