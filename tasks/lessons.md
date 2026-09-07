@@ -1139,3 +1139,32 @@ event that carries no message, file, or line. Production was unaffected because
 `vite.shared.ts` now passes an `include` that admits the `worker_file` suffix;
 when a worker "works in the build but not in dev" with an empty `ErrorEvent`,
 fetch its dev URL and check whether type annotations survived.
+
+## A shared storage key may only be cleared by whoever put something in it
+
+`jant:compose-draft` answers for new posts and for replies, in every open tab.
+The save path treated "this composer is empty" as "the author threw the draft
+away" and called `removeItem` — so a reply composer, whose parent guard means it
+never restores a new-post draft, deleted one every time its debounced autosave
+ran. Anything that opens empty had the same power: a restore that bailed, a
+second tab, a composer whose content had not loaded yet.
+
+_Is_ empty and _was_ emptied are different claims. Before clearing shared
+storage, require evidence that this writer is the one holding the value —
+`_hasOwnedContent` in `jant-compose-dialog.ts`. The same rule applies to reads:
+`restoreLocalDraft` used to delete a draft it could not parse or that had
+expired, which turns a bad read into lost work. Not restoring is enough.
+
+- Additive state can merge; single-value state cannot. Opening the composer
+  inside a collection adds that collection to a restored draft, which is fine —
+  collections are a set, and the chips show what happened. Applying the same
+  collection's remembered _visibility_ replaced the answer the author had
+  already given that draft, with nothing on screen to say so. Ask whether the
+  context is contributing to a set or overwriting a choice before letting a
+  default reach restored content.
+- Recovery paths need to say why they gave up. Eight exits from the compose
+  restore path were silent and three of them deleted; every one of them looked
+  identical to the author (an empty composer) and left nothing to inspect
+  afterwards. Return a reason, and log it whenever stored bytes existed and did
+  not come back — "there was nothing stored" is the ordinary case and stays
+  quiet.
