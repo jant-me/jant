@@ -167,8 +167,10 @@ interface SinglePostContentOptions {
    */
   inline?: boolean;
   /**
-   * Render what the site's timeline shows — the truncated body, no media —
-   * rather than the post's full page. Used to build `<summary>`.
+   * Render only what a summary carries: the timeline's truncated body, the
+   * quoted text, the rating. Media, link previews and the ★ permalink are the
+   * post's content, and a consumer reads those from `<content>` or from the
+   * Media RSS elements.
    */
   summary?: boolean;
 }
@@ -505,6 +507,8 @@ function buildSinglePostContent(
     }
   }
 
+  // The preview image is media: `<media:thumbnail>` carries it for a consumer
+  // laying out its own card, so the summary has no reason to repeat the markup.
   if (!options.summary) {
     const linkPreviewHtml = renderLinkPreviewForFeed(post, siteUrl);
     if (linkPreviewHtml) {
@@ -527,9 +531,10 @@ function buildSinglePostContent(
     parts.push(absolutizeFeedHtmlUrls(stripUnsafeFeedHtml(bodyHtml), siteUrl));
   }
 
-  // Media rides in `<content>` only. `<summary>` is a teaser that sits in the
-  // same entry, and shipping every image twice per entry is a real cost for a
-  // preview a reader may never render.
+  // Media belongs to `<content>` and to `<media:content>`, not here. A feed
+  // cannot express the timeline's justified row anyway — the consumer computes
+  // it from the dimensions on `<media:content>` — so a consumer that lays out
+  // its own card wants this field to be the text and nothing else.
   if (!options.summary) {
     const mediaHtml = renderMediaForFeed(post.media, siteUrl, permalinkUrl);
     if (mediaHtml) {
@@ -550,8 +555,10 @@ function buildSinglePostContent(
     parts.push(`<p>${escapeXml(getFeedSummaryText(post))}</p>`);
   }
 
-  // For link posts, append a ★ permalink back to the blog post (Daring Fireball style)
-  if (post.format === "link" && permalinkUrl) {
+  // For link posts, append a ★ permalink back to the blog post (Daring Fireball
+  // style). A feed convention, not something the site's card shows, so it stays
+  // out of the summary.
+  if (post.format === "link" && permalinkUrl && !options.summary) {
     parts.push(
       `<p><a href="${escapeXml(permalinkUrl)}" title="Permalink">&nbsp;★&nbsp;</a></p>`,
     );
@@ -596,20 +603,25 @@ function buildFeedContent(
 }
 
 /**
- * Build the HTML for a feed entry's `<summary>` — what the site's timeline
- * shows, as `<content>` is what the post's own page shows.
+ * Build the HTML for a feed entry's `<summary>` — the entry's text, as the
+ * timeline shows it: truncated at the same boundary, quoted text and rating
+ * included, a thread folded to its root, a gap link and its newest reply.
  *
- * Always builds; the caller drops it when it comes out identical to the
- * content, which is the only case Atom would rather see nothing than a copy
- * (a `<summary>` is only mandatory for `src`/base64 content, RFC 4287 §4.1.2).
- * Comparing the two strings is the whole test: truncation is one way they
- * diverge, but a short note carrying photos diverges too — its summary is the
- * sentence without the gallery, which is exactly the teaser a reader wants.
+ * Text only. Media is in `<content>` and, structured, in the Media RSS
+ * elements — and it has to be read from there anyway, because a feed cannot
+ * express the timeline's justified row and a consumer has to compute it from
+ * the dimensions. So the field a consumer reaches for to draw its own card
+ * carries the words, and nothing it would have to strip back out.
+ *
+ * Comes back empty for a post with no text at all — a photo with no caption —
+ * and the caller drops the element there. That is the only reason it is ever
+ * missing, which makes `summary ?? ""` the whole of a consumer's rule; Atom
+ * only mandates a summary for `src`/base64 content (RFC 4287 §4.1.2).
  *
  * @param post - Root post view data
  * @param siteUrl - Site base URL for absolute permalinks
  * @param permalinkUrl - Absolute permalink URL for the root post
- * @returns The timeline's rendering of this entry
+ * @returns The entry's text as the timeline renders it, or "" when it has none
  * @example
  * buildFeedSummary(post, "https://example.com", "https://example.com/hello")
  * // "<p>Intro</p>\n<hr/>\n<p><small><a …>2 more posts</a></small></p>…"
@@ -838,17 +850,16 @@ export function defaultFeedRenderer(data: FeedData): string {
       // article is the reader's call, made from this and `<title>`.
       const formatElement = `\n    <jant:format>${escapeXml(post.format)}</jant:format>`;
 
-      // `<summary>` is the timeline's rendering, `<content>` the post page's.
-      // A bare text note renders the same either way, and an entry saying the
-      // same thing twice is worse than one that says it once — so the summary
-      // is dropped exactly when it matches, and kept whenever the timeline
-      // genuinely shows something else.
+      // `<summary>` is the entry's text, `<content>` the post's full page. It
+      // is present whenever there is text — a bare note repeats itself here,
+      // which costs the words and nothing else, and buys a field that means one
+      // thing on its own rather than one defined by what content happens to
+      // hold. Missing therefore says exactly one thing: this post has no text.
       const contentMarkup = buildFeedContent(post, siteUrl, permalinkUrl);
       const summaryMarkup = buildFeedSummary(post, siteUrl, permalinkUrl);
-      const summaryElement =
-        !summaryMarkup || summaryMarkup === contentMarkup
-          ? ""
-          : `\n    <summary type="html"><![CDATA[${escapeCdata(summaryMarkup)}]]></summary>`;
+      const summaryElement = summaryMarkup
+        ? `\n    <summary type="html"><![CDATA[${escapeCdata(summaryMarkup)}]]></summary>`
+        : "";
 
       return `
   <entry>

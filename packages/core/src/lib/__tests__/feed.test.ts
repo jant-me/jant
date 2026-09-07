@@ -124,9 +124,10 @@ describe("feed renderers", () => {
     );
 
     expect(xml).toContain("<title></title>");
-    // A note this short is not truncated on the timeline, so `<summary>` would
-    // only repeat `<content>`.
-    expect(xml).not.toContain("<summary");
+    // The summary carries the entry's text whether or not it was truncated.
+    expect(xml).toContain(
+      '<summary type="html"><![CDATA[<p>哈哈哈😍</p>]]></summary>',
+    );
     expect(xml).toContain("<![CDATA[<p>哈哈哈😍</p>]]>");
     expect(xml).not.toContain("data-jant-meta");
     expect(xml).not.toContain('{"kind":"text"}');
@@ -210,9 +211,10 @@ describe("feed renderers", () => {
     );
     expect(xml).toContain("Marcus Aurelius");
     expect(xml).toContain("https://example.com/meditations");
-    // The timeline renders a quote in full, so there is no shorter rendering
-    // for `<summary>` to carry.
-    expect(xml).not.toContain("<summary");
+    // The quoted text is the entry's text, so it rides in the summary too.
+    expect(xml).toContain(
+      '<summary type="html"><![CDATA[<figure><blockquote cite=',
+    );
   });
 
   // The site keeps quote line breaks with `white-space: pre-line`; feed
@@ -1080,8 +1082,9 @@ describe("feed entry format", () => {
 });
 
 /**
- * `<summary>` carries what the site's timeline shows; `<content>` carries what
- * the post's own page shows. The two only both appear when they differ.
+ * `<summary>` is the entry's text as the timeline renders it; `<content>` is
+ * the post's full page. Media lives in the content and in the Media RSS
+ * elements, never here.
  */
 describe("feed entry summary", () => {
   function makeBody(paragraphs: string[]): string {
@@ -1125,43 +1128,41 @@ describe("feed entry summary", () => {
     );
 
     const summary = getSummary(xml);
-    const content = getContent(xml);
     expect(summary).toBeDefined();
     expect(summary).toContain("Alpha");
     expect(summary).not.toContain("Delta");
-    expect(content).toContain("Delta");
+    expect(getContent(xml)).toContain("Delta");
   });
 
-  // Nothing to leave out and nothing to cut: the two renderings come out
-  // byte-identical, and an entry that says the same thing twice is worse than
-  // one that says it once.
-  it("omits the summary when it would match the content exactly", () => {
+  // The field means one thing on its own — "this entry's text" — rather than
+  // one defined by what the content happens to hold, so a short note repeats
+  // itself here. That costs the words and buys `summary ?? ""` as the whole of
+  // a consumer's rule.
+  it("sends the summary even when it repeats the content", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
         makePostView({
-          title: "Short",
           body: makeBody(["Just the one line."]),
           bodyHtml: "<p>Just the one line.</p>",
         }),
       ),
     );
 
-    expect(xml).not.toContain("<summary");
-    expect(getContent(xml)).toContain("Just the one line.");
+    expect(getSummary(xml)).toBe("<p>Just the one line.</p>");
   });
 
-  // Truncation is not the only way the timeline shows less. A short note with
-  // photos has a one-line summary and a gallery for content, and that sentence
-  // is exactly the preview a reader wants for its list.
-  it("summarises a short post that carries media", () => {
+  // A feed cannot express the timeline's justified row, so a consumer computes
+  // it from the dimensions on `<media:content>`. Repeating the markup here
+  // would only give it something to strip back out.
+  it("leaves media out of the summary and keeps the rating", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
         makePostView({
           body: makeBody(["嘿嘿嘿"]),
           bodyHtml: "<p>嘿嘿嘿</p>",
+          rating: 4,
           media: [
             makeMediaView({
-              id: "med_a",
               url: "https://example.com/media/one.webp",
               thumbnailUrl: "https://example.com/media/one.webp",
               mimeType: "image/webp",
@@ -1171,11 +1172,11 @@ describe("feed entry summary", () => {
       ),
     );
 
-    expect(getSummary(xml)).toBe("<p>嘿嘿嘿</p>");
+    expect(getSummary(xml)).toBe("<p>嘿嘿嘿</p>\n<p>★★★★☆ 4/5</p>");
     expect(getContent(xml)).toContain("one.webp");
   });
 
-  it("summarises a link post as its commentary, without the preview", () => {
+  it("leaves a link post's preview and ★ permalink out of the summary", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
         makePostView({
@@ -1189,22 +1190,19 @@ describe("feed entry summary", () => {
       ),
     );
 
-    const summary = getSummary(xml);
-    expect(summary).toContain("<p>My notes.</p>");
-    expect(summary).not.toContain("youtube.jpg");
-    expect(getContent(xml)).toContain("youtube.jpg");
+    expect(getSummary(xml)).toBe("<p>My notes.</p>");
+    const content = getContent(xml);
+    expect(content).toContain("youtube.jpg");
+    expect(content).toContain("★");
   });
 
-  // A post that is nothing but attachments has no text to summarise. The
-  // content's non-empty fallback would put a bare `Post #<id>` there, which is
-  // worse than saying nothing.
-  it("omits the summary for a post carrying only attachments", () => {
+  // Missing says exactly one thing: this post has no text.
+  it("omits the summary for a post with no text at all", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
         makePostView({
           media: [
             makeMediaView({
-              id: "med_pdf",
               url: "https://example.com/media/1031.pdf",
               thumbnailUrl: "https://example.com/media/1031.pdf",
               mimeType: "application/pdf",
@@ -1217,8 +1215,17 @@ describe("feed entry summary", () => {
     );
 
     expect(xml).not.toContain("<summary");
-    expect(xml).not.toContain("Post #");
     expect(getContent(xml)).toContain("1031.pdf");
+  });
+
+  // An entry's content may not be empty, so a post with no body, no media and
+  // no title falls back to a bare `Post #<id>`. A summary may be empty, and
+  // must be — that placeholder is not text the author wrote.
+  it("omits the summary rather than falling back to a placeholder", () => {
+    const xml = defaultFeedRenderer(makeFeedData(makePostView()));
+
+    expect(xml).not.toContain("<summary");
+    expect(getContent(xml)).toContain("Post #post-1");
   });
 
   // The site draws this separator with `.feed-quote-commentary::before`, which
@@ -1243,30 +1250,6 @@ describe("feed entry summary", () => {
         '<a href="https://example.com/meditations">Marcus Aurelius</a>' +
         "</figcaption></figure>\n<hr/>\n<p>Still true.</p>",
     );
-  });
-
-  it("keeps the rating in the summary but leaves media to the content", () => {
-    const xml = defaultFeedRenderer(
-      makeFeedData(
-        makePostView({
-          title: "A long read",
-          body: longBody,
-          bodyHtml: "<p>Alpha</p><p>Delta</p>",
-          rating: 4,
-          media: [
-            makeMediaView({
-              url: "https://example.com/media/photo.jpg",
-              mimeType: "image/jpeg",
-            }),
-          ],
-        }),
-      ),
-    );
-
-    const summary = getSummary(xml);
-    expect(summary).toContain("★★★★☆ 4/5");
-    expect(summary).not.toContain("photo.jpg");
-    expect(getContent(xml)).toContain("photo.jpg");
   });
 
   it("collapses a thread to root, a gap link, and the latest reply", () => {
@@ -1325,7 +1308,7 @@ describe("feed entry summary", () => {
     expect(summary).toContain(">1 more post</a>");
   });
 
-  it("omits the summary for a thread with nothing hidden or truncated", () => {
+  it("keeps a thread's root and newest reply without a gap when none is hidden", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
         makePostView({
@@ -1343,14 +1326,13 @@ describe("feed entry summary", () => {
       ),
     );
 
-    expect(xml).not.toContain("<summary");
+    const summary = getSummary(xml);
+    expect(summary).toContain("<p>Root.</p>");
+    expect(summary).toContain("<p>Only reply.</p>");
+    expect(summary).not.toContain("more post");
   });
 });
 
-/**
- * Atom's `<link rel="enclosure">` has nowhere to put dimensions, duration, or
- * a description, so Media RSS carries them alongside it.
- */
 describe("feed attachment metadata", () => {
   it("describes an image with Media RSS instead of an enclosure", () => {
     const xml = defaultFeedRenderer(
