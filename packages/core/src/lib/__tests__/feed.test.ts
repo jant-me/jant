@@ -1869,7 +1869,7 @@ describe("feed entry thread segmentation", () => {
     );
 
     expect(xml).toContain(
-      '<jant:thread posts="4" hidden="2" gap="https://example.com/reply-1" latest="https://example.com/reply-3"/>',
+      '<jant:thread posts="4" hidden="2" gap="https://example.com/reply-1" latest="https://example.com/reply-3">',
     );
   });
 
@@ -1881,11 +1881,46 @@ describe("feed entry thread segmentation", () => {
     );
 
     expect(xml).toContain(
-      '<jant:thread posts="2" hidden="0" latest="https://example.com/reply-1"/>',
+      '<jant:thread posts="2" hidden="0" latest="https://example.com/reply-1">',
     );
   });
 
-  it("names the post carrying each attachment, and only when it is not the entry", () => {
+  // `<jant:format>` describes the entry, which is the root. A reply that is a
+  // Quote says so nowhere else — the `<blockquote>` in the content is not a
+  // declaration a consumer laying the thread out itself can read.
+  it("lists every post in the thread with its own format and date", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          threadReplies: [
+            makeReply(1, {
+              format: "quote",
+              title: "Marcus Aurelius",
+              quoteText: "What stands in the way becomes the way.",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain(
+      '<jant:post href="https://example.com/post-1" format="note" published="2026-03-19T00:00:00.000Z"/>',
+    );
+    expect(xml).toContain(
+      '<jant:post href="https://example.com/reply-1" format="quote" published="2026-03-21T00:00:00.000Z"/>',
+    );
+    // The entry still declares the root's format, unchanged.
+    expect(xml).toContain("<jant:format>note</jant:format>");
+  });
+
+  it("lists no thread rows on a lone post", () => {
+    const xml = defaultFeedRenderer(makeFeedData(makeRoot()));
+
+    expect(xml).not.toContain("<jant:post");
+    expect(xml).not.toContain("jant:post=");
+  });
+
+  it("names the post carrying every attachment in a thread, the root's included", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
         makeRoot({
@@ -1913,11 +1948,34 @@ describe("feed entry thread segmentation", () => {
       ),
     );
 
+    // The root's file names its post too. Guessing wrong here hangs a photo
+    // under the wrong post, which is not what a missing attribute should mean.
     expect(xml).toContain(
-      '<media:content url="https://example.com/media/beans.jpg" type="image/jpeg" medium="image"/>',
+      '<media:content url="https://example.com/media/beans.jpg" type="image/jpeg" medium="image" jant:post="https://example.com/post-1"/>',
     );
     expect(xml).toContain(
       '<media:content url="https://example.com/media/cup.jpg" type="image/jpeg" medium="image" jant:post="https://example.com/reply-1"/>',
     );
+  });
+
+  // A lone post's entry has exactly one post, so the attribute would only
+  // repeat `<id>` on every file.
+  it("leaves a lone post's attachment unattributed", () => {
+    const xml = defaultFeedRenderer(
+      makeFeedData(
+        makeRoot({
+          media: [
+            makeMediaView({
+              url: "https://example.com/media/beans.jpg",
+              thumbnailUrl: "https://example.com/media/beans.jpg",
+              mimeType: "image/jpeg",
+            }),
+          ],
+        }),
+      ),
+    );
+
+    expect(xml).toContain("<media:content");
+    expect(xml).not.toContain("jant:post=");
   });
 });

@@ -45,7 +45,7 @@ An Atom reader that knows neither extension still gets a working feed. Everythin
 | `link[@rel="related"]`   | 0–1   | Link posts only: the permalink, since `alternate` was spent on the external URL                 |
 | `link[@rel="enclosure"]` | 0–n   | Attachments a plain Atom parser can fetch. Images are excluded — the content already shows them |
 | `published` / `updated`  | 1     | Timestamps. A curated feed may date an entry by the curation rather than the post               |
-| `jant:format`            | 1     | `note`, `link`, or `quote`                                                                      |
+| `jant:format`            | 1     | `note`, `link`, or `quote` — the entry's, which is the root's in a thread                       |
 | `jant:thread`            | 0–1   | The entry is a thread. Absent means a lone post                                                 |
 | `jant:truncated`         | 0–1   | The summary's text was cut. Offer a "read more". Never on a Quote                               |
 | `category`               | 0–n   | Collections. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL             |
@@ -76,7 +76,12 @@ To draw a timeline you need `<summary>`, not `<content>`.
 A thread arrives as one entry — root and replies together, so a reader does not fill with fragments. `<summary>` folds it the way the site's timeline does: the root, a link across the gap, the newest reply. `<content>` carries the whole chain.
 
 ```xml
-<jant:thread posts="4" hidden="2" gap="https://ex.com/r1" latest="https://ex.com/r3"/>
+<jant:thread posts="4" hidden="2" gap="https://ex.com/r1" latest="https://ex.com/r3">
+  <jant:post href="https://ex.com/dialing-in" format="note"  published="2026-03-14T09:00:00.000Z"/>
+  <jant:post href="https://ex.com/r1"         format="note"  published="2026-03-15T09:00:00.000Z"/>
+  <jant:post href="https://ex.com/r2"         format="quote" published="2026-03-16T09:00:00.000Z"/>
+  <jant:post href="https://ex.com/r3"         format="note"  published="2026-03-17T09:00:00.000Z"/>
+</jant:thread>
 ```
 
 | Attribute | Means                                                            |
@@ -85,6 +90,11 @@ A thread arrives as one entry — root and replies together, so a reader does no
 | `hidden`  | How many the summary folds away                                  |
 | `gap`     | Where the folded middle starts. Only when `hidden` is above zero |
 | `latest`  | The newest reply — the one the summary shows in full             |
+
+Read a reply's format here. The entry's `<jant:format>` is the root's, and a
+reply that is a Quote or a Link says so on its row and nowhere else. The rows
+carry identity and kind only — no title, no text. `gap`, `latest`, and every
+`media:content/@jant:post` name a `href` from this list.
 
 Inside both text constructs, each post's block **ends** with that post's own dated permalink:
 
@@ -110,7 +120,7 @@ Three surfaces, three jobs.
 
 **`<media:content>`** describes them: `type`, `medium`, `fileSize`, `width`, `height`, `duration`, a `media:title` holding the filename, a `media:description` holding alt text or a text file's excerpt, and a nested `media:thumbnail` for a video's poster.
 
-- `@jant:post` names the post carrying the file, written only when that is not the entry itself. Read `jant:post ?? entry/id`.
+- `@jant:post` names the post carrying the file. In a thread every attachment has it, the root's included; a lone post's entry has none, because its one post is the entry.
 - `@jant:page` is where a click should land, written only when it differs from `@url` — text attachments, whose file a browser downloads. Read `jant:page ?? url`.
 - `medium` is Media RSS's fixed vocabulary, so anything that is not a picture or playable is `document`.
 
@@ -130,7 +140,7 @@ readMore  = entry/jant:truncated exists
 thread    = entry/jant:thread          // absent on a lone post
 ```
 
-For a thread drawn as separate cards, split `text` on the tail markers and match each block's files by `jant:post ?? entry/id`. Files left over belong to the posts the fold hid; showing them is your call. `hidden` is a number, so the gap line can be written in your reader's own language.
+For a thread drawn as separate cards, split `text` on the tail markers and match each block's files by `jant:post`. Each block's permalink also names a `<jant:post>` row, which is where that post's own format lives. Files left over belong to the posts the fold hid; showing them is your call. `hidden` is a number, so the gap line can be written in your reader's own language.
 
 Layout is yours. No feed format can express the site's justified media strip — compute it from the dimensions on `media:content`, where a picture or clip is `rowHeight * aspectRatio` wide, everything else is a 3:4 card, and only pictures and clips set the row height.
 

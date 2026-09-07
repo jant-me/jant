@@ -615,7 +615,27 @@ function renderThreadElement(post: FeedPostView, siteUrl: string): string {
     `latest="${escapeXml(toAbsoluteFeedUrl(latestReply.permalink, siteUrl))}"`,
   );
 
-  return `\n    <jant:thread ${attrs.join(" ")}/>`;
+  // One row per post, in thread order. `<jant:format>` above describes the
+  // entry, which is the root — a reply that is a Quote or a Link says so
+  // nowhere else, and a consumer laying the thread out itself rather than
+  // injecting the HTML cannot see the `<blockquote>` that would have told it.
+  //
+  // This is where `gap` and `latest` point, and where `media:content`'s
+  // `jant:post` resolves: the attribute references, this declares.
+  //
+  // Identity and kind only — `href`, `format`, `published`. No title, no text,
+  // no excerpt. It is the thread's table of contents, not a second copy of the
+  // posts, and `<content>` remains the only place their words appear.
+  const rows = [post, ...replies]
+    .map(
+      (member) =>
+        `\n      <jant:post href="${escapeXml(toAbsoluteFeedUrl(member.permalink, siteUrl))}"` +
+        ` format="${escapeXml(member.format)}"` +
+        ` published="${escapeXml(member.publishedAt)}"/>`,
+    )
+    .join("");
+
+  return `\n    <jant:thread ${attrs.join(" ")}>${rows}\n    </jant:thread>`;
 }
 
 /**
@@ -828,16 +848,17 @@ function getMediaRssMedium(mimeType: string): string {
  *
  * @param item - Attachment view data
  * @param siteUrl - Site base URL, for absolutizing stored paths
- * @param entryPermalinkUrl - Absolute permalink of the entry's root post
+ * @param inThread - Whether the entry carries a whole thread, in which case
+ *   every attachment names its post
  * @returns A `<media:content>` element, newline-prefixed for entry indentation
  * @example
- * renderMediaRssContent(photo, "https://example.com", "https://example.com/a")
+ * renderMediaRssContent(photo, "https://example.com", false)
  * // '\n    <media:content url="…" type="image/jpeg" medium="image" …/>'
  */
 function renderMediaRssContent(
   { item, postPermalinkUrl }: EntryMedia,
   siteUrl: string,
-  entryPermalinkUrl: string,
+  inThread: boolean,
 ): string {
   const fileUrl = toAbsoluteFeedUrl(item.url, siteUrl);
   const attrs = [
@@ -867,10 +888,16 @@ function renderMediaRssContent(
   // Which post in the thread carries this file. An entry's media is drawn from
   // the whole thread, so without this the list is flat and a consumer laying
   // out the folded card would hang a hidden reply's photo under the root.
-  // Omitted when the owner is the entry itself, the same economy `jant:page`
-  // uses: a consumer reads `jant:post ?? id` and a single-post entry pays
-  // nothing.
-  if (postPermalinkUrl !== entryPermalinkUrl) {
+  //
+  // In a thread every attachment carries it, the root's included. `jant:page`
+  // earns its omission because guessing wrong there only lands you on the file
+  // instead of its page; guessing wrong here hangs a photo under the wrong
+  // post. A bare `<media:content>` should answer "whose is this" by itself
+  // rather than through a rule about what a missing attribute means.
+  //
+  // A lone post's entry has exactly one post, so nothing there is ambiguous
+  // and the attribute would only repeat `<id>` on every file.
+  if (inThread) {
     attrs.push(`jant:post="${escapeXml(postPermalinkUrl)}"`);
   }
 
@@ -1004,6 +1031,7 @@ export function defaultFeedRenderer(data: FeedData): string {
       // feed works this way, enclosing the audio it cannot inline while
       // leaving its inline show-note images alone.
       const entryMedia = getEntryMedia(post, siteUrl);
+      const isThreadEntry = (post.threadReplies?.length ?? 0) > 0;
       const enclosureLinks = entryMedia
         .map(({ item }) => item)
         .filter((m) => getMediaCategory(m.mimeType) !== "image")
@@ -1022,7 +1050,7 @@ export function defaultFeedRenderer(data: FeedData): string {
       // above because it is what a plain Atom parser reads; this is the layer
       // a reader that knows Media RSS can lay out without fetching the file.
       const mediaContentElements = entryMedia
-        .map((m) => renderMediaRssContent(m, siteUrl, permalinkUrl))
+        .map((m) => renderMediaRssContent(m, siteUrl, isThreadEntry))
         .join("");
 
       // The entry's representative image, for readers that lay out cards or a

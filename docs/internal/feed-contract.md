@@ -85,9 +85,9 @@ Declare a namespace only where something in it is emitted.
 | `link[@rel="related"]`   | 0–1   | Link posts only: the permalink.                                                                                                                                                                                                                                                                                               |
 | `link[@rel="enclosure"]` | 0–n   | Non-image attachments. See below.                                                                                                                                                                                                                                                                                             |
 | `published` / `updated`  | 1     | A curated feed may date an entry by the curation, hence `feedPublishedAt` / `feedUpdatedAt`.                                                                                                                                                                                                                                  |
-| `jant:format`            | 1     | `note`, `link`, or `quote`. Atom has no field for it, and `<category>` would show `quote` as a tag no author typed.                                                                                                                                                                                                           |
+| `jant:format`            | 1     | `note`, `link`, or `quote`, for the entry — which is the root. A reply's own format is on its `<jant:post>` row. Atom has no field for it, and `<category>` would show `quote` as a tag no author typed.                                                                                                                      |
 | `jant:truncated`         | 0–1   | Empty element. Present when the timeline cut the root's text or the newest reply's. Never on a Quote.                                                                                                                                                                                                                         |
-| `jant:thread`            | 0–1   | The entry is a whole thread, and this is its shape. Absent means a lone post. See below.                                                                                                                                                                                                                                      |
+| `jant:thread`            | 0–1   | The entry is a whole thread, and this is its shape, with a `<jant:post>` row per post. Absent means a lone post. See below.                                                                                                                                                                                                   |
 | `category`               | 0–n   | One per collection. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL — a single collection lives in the root URL namespace, so a site path prefix makes it unguessable from the term. Replies inherit their root's collections and the site prints them on the root alone, so they ride the entry once. |
 | `media:thumbnail`        | 0–1   | **Direct child of the entry**: a link post's preview image, for card and grid views. A scraped thumbnail of someone else's page is not a published file, so it gets no enclosure.                                                                                                                                             |
 | `media:content`          | 0–n   | One per attachment, root and replies together. See below.                                                                                                                                                                                                                                                                     |
@@ -108,6 +108,23 @@ things let a consumer take that apart.
 | `hidden`  | How many the summary folds away. Stated, not derived: the fold is the site's decision, and `posts - 2` only holds while that decision is "keep the root and the newest reply" |
 | `gap`     | Where the folded middle starts. Only when `hidden` is above zero                                                                                                              |
 | `latest`  | The newest reply — the post the summary shows in full, and the one whose `media:content` belongs beside it                                                                    |
+
+```xml
+<jant:thread posts="2" hidden="0" latest="https://ex.com/r1">
+  <jant:post href="https://ex.com/root" format="note"  published="2026-03-14T09:00:00.000Z"/>
+  <jant:post href="https://ex.com/r1"   format="quote" published="2026-03-15T09:00:00.000Z"/>
+</jant:thread>
+```
+
+`<jant:format>` describes the entry, and an entry is its root. A reply that is
+a Quote or a Link declares it nowhere else: the `<blockquote>` in the content
+is a rendering, not something a consumer laying the thread out itself can read.
+
+The rows carry **identity and kind only** — `href`, `format`, `published`. No
+title, no text, no excerpt. This is the thread's table of contents, and
+`<content>` stays the only place the posts' words appear. `gap` and `latest`
+point into it, and `media:content`'s `jant:post` resolves against it: the
+attribute references, the row declares.
 
 **The tail meta** marks the joints, in both text constructs:
 
@@ -153,10 +170,14 @@ of a thread's text.
 nested `media:thumbnail` for a video's poster. Atom's `<link>` has nowhere to
 put any of it.
 
-- `@jant:post` is the post carrying the file, emitted only where that is not
-  the entry itself. A consumer reads `jant:post ?? entry/id`, and a single-post
-  entry pays nothing. This is what lines an attachment up with the tail-meta
-  segment naming the same permalink.
+- `@jant:post` is the post carrying the file. **In a thread every attachment
+  carries it, the root's included**, and it lines the file up with both the
+  tail-meta segment and the `<jant:post>` row naming the same permalink.
+  `jant:page` below earns its omission because guessing wrong there lands you on
+  the file instead of its page; guessing wrong here hangs a photo under the
+  wrong post, so nothing is left to a rule about what a missing attribute means.
+  A lone post's entry has one post and carries the attribute nowhere — it would
+  only repeat `<id>` on every file.
 - `@url` is the file. `@jant:page` is where a click should land, and is emitted
   only where the two differ — today that means text attachments, whose markdown
   a browser downloads or dumps unstyled. A consumer reads `jant:page ?? url` and
@@ -228,7 +249,7 @@ already inside `text`.
 A thread costs one more step, and only if the consumer draws the root and the
 reply as separate cards. Split `text` on the tail meta — each marker ends the
 block before it and carries that post's permalink — and take each block's files
-from `media:content` where `jant:post ?? entry/id` matches. Attachments left
+from `media:content` where `jant:post` matches. Attachments left
 over belong to the posts the fold hid, and whether to show them is the
 consumer's call. `jant:thread/@hidden` is the gap count as a number, so the gap
 line can be written in the reader's own language rather than the feed's.
