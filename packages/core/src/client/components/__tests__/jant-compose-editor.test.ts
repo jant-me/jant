@@ -129,6 +129,37 @@ function triggerEditorDrop(el: JantComposeEditor, files: File[]) {
   return event;
 }
 
+/** Every image src currently in the editor's document, in document order. */
+function imageSrcs(el: JantComposeEditor): string[] {
+  const srcs: string[] = [];
+  requireEditor(el).state.doc.descendants((node) => {
+    if (node.type.name === "image") srcs.push(node.attrs.src as string);
+  });
+  return srcs;
+}
+
+/** The same, read off the JSON the composer would submit. */
+function bodyImageSrcs(json: unknown): string[] {
+  const srcs: string[] = [];
+  const walk = (node: unknown) => {
+    if (!node || typeof node !== "object") return;
+    const candidate = node as {
+      type?: string;
+      attrs?: { src?: unknown };
+      content?: unknown[];
+    };
+    if (
+      candidate.type === "image" &&
+      typeof candidate.attrs?.src === "string"
+    ) {
+      srcs.push(candidate.attrs.src);
+    }
+    for (const child of candidate.content ?? []) walk(child);
+  };
+  walk(json);
+  return srcs;
+}
+
 function parsePastedText(el: JantComposeEditor, text: string): Slice | null {
   const editor = requireEditor(el);
   let slice: Slice | null = null;
@@ -1658,6 +1689,43 @@ describe("JantComposeEditor", () => {
     expect(uploadWithMetadataMock).not.toHaveBeenCalled();
     expect(el._attachments.map((attachment) => attachment.file.name)).toEqual([
       "clipboard.png",
+    ]);
+  });
+
+  it("carries an in-flight inline upload across a format switch", async () => {
+    const uploadWithMetadataMock = vi.mocked(uploadWithMetadata);
+    let finishUpload: (value: { url: string; id: string }) => void = () => {};
+    uploadWithMetadataMock.mockReturnValue(
+      new Promise((resolve) => {
+        finishUpload = resolve;
+      }),
+    );
+
+    const el = await createElement("note");
+    el._title = "Essay";
+    await el.updateComplete;
+
+    const image = new File(["image"], "clipboard.png", { type: "image/png" });
+    triggerEditorPaste(el, [image]);
+    await el.updateComplete;
+    expect(imageSrcs(el).every((src) => src.startsWith("blob:"))).toBe(true);
+    expect(imageSrcs(el)).toHaveLength(1);
+
+    // The body survives the switch, so the upload watching it has to survive
+    // too — otherwise the blob: placeholder is what gets published.
+    el.format = "quote";
+    await el.updateComplete;
+    await el.updateComplete;
+
+    finishUpload({
+      url: "https://example.test/clipboard.webp",
+      id: "med_test",
+    });
+    await vi.waitFor(() => {
+      expect(imageSrcs(el)).toEqual(["https://example.test/clipboard.webp"]);
+    });
+    expect(bodyImageSrcs(el._bodyJson)).toEqual([
+      "https://example.test/clipboard.webp",
     ]);
   });
 
