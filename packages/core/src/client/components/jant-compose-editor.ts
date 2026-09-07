@@ -1177,7 +1177,14 @@ export class JantComposeEditor extends LitElement {
       // Format changed — recreate editor with appropriate placeholder
       this._destroyEditor();
       // Schedule init after Lit re-renders the new template
-      this.updateComplete.then(() => this._initEditor());
+      this.updateComplete.then(() => {
+        this._initEditor();
+        // The new editor inherits the body, so it has to inherit the uploads
+        // still working on it. Without this the `blob:` placeholder is left
+        // with nothing watching it: the finished upload has no editor to write
+        // into, and publishing puts the blob URL in the post.
+        this.adoptPendingUploads();
+      });
     }
 
     if (

@@ -204,7 +204,9 @@ export async function rehostInlineImage(
  * Scans the editor's document for image srcs that match pending registry entries
  * (`blob:` placeholders from the insert flow, or remote/`data:` placeholders
  * from the paste-rehost flow). For each match, takes ownership from the original
- * editor and sets up replacement/removal watchers on the new editor.
+ * editor and sets up replacement/removal watchers on the new editor. Content can
+ * pass through several editors before it is submitted, so an upload adopted once
+ * can be adopted again.
  *
  * Call this immediately after `setContent` with JSON that may contain pending
  * placeholders (e.g. after fullscreen close transfers content back to compose).
@@ -223,12 +225,14 @@ export function adoptPendingInlineImageUploads(
     const src = node.attrs.src as string;
     if (typeof src !== "string") return;
 
-    const uploaded = inflightUploads.get(src);
+    const uploaded = inflightUploads.get(src) ?? adoptedUploads.get(src);
     if (!uploaded) return;
 
     // Take ownership — prevents original editor's finally from revoking the URL.
     // Move to adoptedUploads so resolveInlineImageUrls can still find the promise
-    // if the user submits before the upload completes.
+    // if the user submits before the upload completes. Content can be handed on
+    // more than once (fullscreen → compose → a format switch), so an entry
+    // already sitting in adoptedUploads is adopted again rather than skipped.
     inflightUploads.delete(src);
     adoptedUploads.set(src, uploaded);
 

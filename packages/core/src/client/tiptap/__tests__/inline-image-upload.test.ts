@@ -5,9 +5,11 @@ import { Editor, type JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { ImageNode } from "../image-node.js";
 import {
+  adoptPendingInlineImageUploads,
   rehostInlineImage,
   resolveInlineImageUrls,
   hasPendingInlineImagePlaceholders,
+  uploadAndInsertInlineImage,
 } from "../inline-image-upload.js";
 
 const editors: Editor[] = [];
@@ -139,5 +141,40 @@ describe("resolveInlineImageUrls + hasPendingInlineImagePlaceholders", () => {
     expect(hasPendingInlineImagePlaceholders(json)).toBe(false);
     const resolved = await resolveInlineImageUrls(json);
     expect(resolved).toBe(json);
+  });
+});
+
+describe("adoptPendingInlineImageUploads", () => {
+  it("hands an in-flight upload on through a second adoption", async () => {
+    const first = createEditor();
+    let finishUpload: (value: { url: string }) => void = () => {};
+    const insert = uploadAndInsertInlineImage(
+      first,
+      new File(["image"], "shot.png", { type: "image/png" }),
+      () =>
+        new Promise((resolve) => {
+          finishUpload = resolve;
+        }),
+    );
+    expect(imageSrcs(first)[0]?.startsWith("blob:")).toBe(true);
+
+    // Content can move more than once — fullscreen hands it to compose, and a
+    // format switch then rebuilds compose's editor under it.
+    const second = createEditor();
+    second.commands.setContent(first.getJSON());
+    adoptPendingInlineImageUploads(second);
+
+    const third = createEditor();
+    third.commands.setContent(second.getJSON());
+    const adopted = adoptPendingInlineImageUploads(third);
+    expect(adopted).toHaveLength(1);
+    // Submitting from here still knows the image is on its way.
+    expect(hasPendingInlineImagePlaceholders(third.getJSON())).toBe(true);
+
+    finishUpload({ url: "https://cdn.test/shot.webp" });
+    await insert;
+    await Promise.all(adopted);
+
+    expect(imageSrcs(third)).toEqual(["https://cdn.test/shot.webp"]);
   });
 });
