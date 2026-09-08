@@ -338,6 +338,17 @@ export function dismissToast(id: string): void {
 }
 
 /**
+ * Re-promote the container holding a persistent toast before its message
+ * changes. A dialog may have opened since the toast appeared — a failed
+ * publish reopens the composer — and the container would otherwise be left
+ * behind in the inert tree, painted under the dialog and unclickable.
+ */
+function promoteAgain(toast: HTMLElement): void {
+  const container = toast.parentElement;
+  if (container) ensureTopLayer(container);
+}
+
+/**
  * Replace a persistent toast with an auto-dismissing one.
  *
  * @param id - The toast identifier
@@ -358,6 +369,7 @@ export function replaceWithAutoClose(
     return;
   }
 
+  promoteAgain(toast);
   toast.className = `toast toast-${type}`;
   toast.replaceChildren();
   setToastContent(toast, type, message);
@@ -388,6 +400,7 @@ export function replaceWithAutoCloseAction(
     return;
   }
 
+  promoteAgain(toast);
   toast.className = `toast toast-${type}`;
   toast.replaceChildren();
   setToastContent(toast, type, message, action);

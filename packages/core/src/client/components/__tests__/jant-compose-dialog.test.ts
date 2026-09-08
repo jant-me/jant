@@ -200,6 +200,8 @@ const labels: ComposeLabels = {
   moveAttachmentEarlier: "Move attachment earlier",
   moveAttachmentLater: "Move attachment later",
   uploading: "Uploading...",
+  publishing: "Publishing...",
+  saving: "Saving...",
   loadingPost: "Loading post...",
   loadPostFailed: "Couldn't load this post. Try again.",
   published: "Published!",

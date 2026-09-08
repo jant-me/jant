@@ -73,6 +73,16 @@ function threadSubmitDetail(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** Text of the compose progress toast, which the result message takes over. */
+function progressToastText(): string {
+  return (
+    document
+      .getElementById("toast-compose-deferred")
+      ?.querySelector("span")
+      ?.textContent?.trim() ?? ""
+  );
+}
+
 function renderPostView(postId: string) {
   const postView = document.createElement("div");
   postView.dataset.postView = "";
@@ -1125,5 +1135,109 @@ describe("compose bridge", () => {
 
     expect(bodies).toHaveLength(2);
     expect(JSON.parse(bodies[1]).status).toBe("draft");
+  });
+
+  it("names the publish in a toast while the request is still running", async () => {
+    const composeEl = document.createElement(
+      "jant-compose-dialog",
+    ) as ComposeHarness;
+    composeEl.refreshCollections = vi.fn(async () => true);
+    composeEl.pageMode = true;
+    composeEl.reset = vi.fn();
+    composeEl.updateComplete = Promise.resolve();
+    document.body.appendChild(composeEl);
+
+    let release: (() => void) | undefined;
+    const inFlight = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const raw =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      if (new URL(raw, "http://localhost").pathname !== "/compose") {
+        throw new Error(`Unexpected fetch: ${raw}`);
+      }
+      // A Link post waits on the server while its preview thumbnail is
+      // fetched and stored — the toast has to survive that whole wait.
+      await inFlight;
+      return new Response(
+        JSON.stringify({ status: "published", permalink: "/a-link" }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    });
+
+    composeEl.dispatchEvent(
+      new CustomEvent("jant:compose-submit-deferred", {
+        bubbles: true,
+        detail: {
+          ...singlePostDetail({
+            format: "link",
+            url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            quoteText: "",
+          }),
+          pendingAttachments: [],
+        },
+      }),
+    );
+
+    await flushBridgeWork();
+    expect(progressToastText()).toBe("Publishing...");
+
+    release?.();
+    await flushBridgeWork();
+    expect(progressToastText()).toBe("Published!");
+  });
+
+  it("names a draft save while the request is still running", async () => {
+    const composeEl = document.createElement(
+      "jant-compose-dialog",
+    ) as ComposeHarness;
+    composeEl.refreshCollections = vi.fn(async () => true);
+    composeEl.pageMode = false;
+    document.body.appendChild(composeEl);
+
+    let release: (() => void) | undefined;
+    const inFlight = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const raw =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      if (new URL(raw, "http://localhost").pathname !== "/compose") {
+        throw new Error(`Unexpected fetch: ${raw}`);
+      }
+      await inFlight;
+      return new Response(
+        JSON.stringify({ status: "draft", toast: "Draft saved." }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    });
+
+    composeEl.dispatchEvent(
+      new CustomEvent("jant:compose-submit-deferred", {
+        bubbles: true,
+        detail: {
+          ...singlePostDetail({ status: "draft" }),
+          pendingAttachments: [],
+        },
+      }),
+    );
+
+    await flushBridgeWork();
+    expect(progressToastText()).toBe("Saving...");
+
+    release?.();
+    await flushBridgeWork();
+    expect(progressToastText()).toBe("Draft saved.");
   });
 });

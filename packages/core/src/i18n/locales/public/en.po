@@ -1892,6 +1892,11 @@ msgstr "Published on {date} at {time}"
 msgid "Published!"
 msgstr "Published!"
 
+#. @context: Toast shown while a post is being published
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Publishing..."
+msgstr "Publishing..."
+
 #. @context: Search highlight text on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "quiet design"
@@ -2125,6 +2130,11 @@ msgstr "Save to drafts to edit and post at a later time."
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Save to drafts?"
 msgstr "Save to drafts?"
+
+#. @context: Toast shown while a draft or an edited post is being saved
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Saving..."
+msgstr "Saving..."
 
 #. @context: Search page title
 #. @context: Search submit button
