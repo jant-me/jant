@@ -63,7 +63,7 @@ export interface SettingsLabels {
   discoverFeaturedHint: string;
   discoverDemoLocked: string;
   discoverFeedsOffLocked: string;
-  discoverStatusHeading: string;
+  discoverSearchOff: string;
   discoverAnnounce: string;
   discoverAnnounceManual: string;
 

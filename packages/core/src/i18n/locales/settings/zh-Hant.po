@@ -28,11 +28,6 @@ msgstr "{count, plural, other {還有 # 篇{language}貼文。先修改它們的
 msgid "{count, plural, one {# post is} other {# posts are}} written in {language}, which is not on this list. Add it back, or change their language first."
 msgstr "{count, plural, other {還有 # 篇{language}貼文，但列表裡沒有這個語言。把它加回列表，或先修改這些貼文的語言。}}"
 
-#. @context: Discover status line when the site meets the jant.me directory's threshold
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "{count, plural, one {# public post} other {# public posts}}. Enough for jant.me to list you."
-msgstr "{count, plural, other {# 篇公開貼文}}。已達到 jant.me 的收錄條件。"
-
 #. @context: Config Editor live search result count
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "{count} settings shown"
@@ -78,12 +73,9 @@ msgstr "302 (暫時)"
 msgid "A calm, cool backdrop."
 msgstr "沉靜、偏冷的底色。"
 
-#. @context: Discover status line saying how long the first crawl takes
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "A directory reads a newly announced feed within {hours} hours."
-msgstr "目錄會在 {hours} 小時內讀取新提交的訂閱源。"
-
 #. @context: Help text under the Jant Discover checkbox. Deliberately states only the stable promises; the rest is the directory's own business.
+#. @context: The same help line under the Discover checkbox, on the first-run setup screen.
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "A public list of Jant blogs. It shows your blog's latest post 24 hours after you publish it, and links back to your site."
 msgstr "公開的 Jant 部落格列表，延遲 24 小時顯示你的部落格最新一篇貼文，並連回你的網站。"
@@ -267,6 +259,8 @@ msgid "All feed addresses"
 msgstr "全部 feed 網址"
 
 #. @context: Checkbox for joining the Jant Discover directory. {name} is the directory's name and is rendered as a link to it, so keep it as one run of text.
+#. @context: The settings page's Discover checkbox, asked once on the first-run setup screen. Here {name} is plain text rather than a link; keep it as one run of text either way.
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Allow {name} to list my site"
 msgstr "允許 {name} 收錄我的網站"
@@ -1222,10 +1216,10 @@ msgstr "目前選的是「Featured only」，但沒有任何貼文標為 Feature
 msgid "Featured posts"
 msgstr "Featured 貼文"
 
-#. @context: Discover status line when the one-off announcement reached the directory
+#. @context: Discover status line right after a successful announcement, while the first crawl is still due
 #: src/ui/dash/settings/GeneralContent.tsx
-msgid "Feed address sent to the directory."
-msgstr "訂閱源網址已送達目錄。"
+msgid "Feed address sent. A directory reads a newly announced feed within {hours} hours."
+msgstr "訂閱源網址已送達。目錄會在 {hours} 小時內首次讀取。"
 
 #. @context: Toast after saving feed settings
 #: src/routes/dash/settings.tsx
@@ -2277,6 +2271,11 @@ msgstr "儲存中…"
 msgid "Search and edit runtime settings. Changes apply immediately; reset restores the environment or built-in default."
 msgstr "搜尋和編輯執行階段設定。變更會立即生效；重設會恢復環境變數或內建預設值。"
 
+#. @context: Shown under the Jant Discover checkbox when the site has turned search engines away and has never answered Discover itself, which is what unticks the box. Says why the box moved, and that it is still the owner's to tick.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Search engine indexing is off, so this site is not listed by default. Ticking the box above lists it anyway."
+msgstr "已關閉搜尋引擎收錄，所以預設不會出現在 Jant Discover。勾選上面的選項仍會加入。"
+
 #. @context: Placeholder for the navigation page search
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Search pages"
@@ -3049,11 +3048,6 @@ msgstr "何時使用網站匯出、資料庫備份與復原演練。"
 msgid "When you want a cooler, sharper look."
 msgstr "想要更冷、更利落的觀感時。"
 
-#. @context: Heading of the Discover status block on the settings page. Everything under it is the site's own evidence, not an answer fetched from the directory.
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Where your site stands"
-msgstr "目前狀態"
-
 #. @context: Config Editor linked setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Whether each language gets its own home page, archive, and feed. Managed on the Language page."
@@ -3073,11 +3067,6 @@ msgstr "正規的 /feed URL 會回傳哪個貼文串流。"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Yellow-tinted paper with an olive-green accent."
 msgstr "微黃的紙底，配橄欖綠。"
-
-#. @context: Discover status line confirming what the site's Atom feed declares. {mode} is the literal value in the feed, `latest` or `featured`.
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Your feed says {mode}."
-msgstr "你的訂閱源宣告為 {mode}。"
 
 #. @context: Fallback name when a connected Telegram account has no username
 #: src/ui/dash/settings/TelegramContent.tsx

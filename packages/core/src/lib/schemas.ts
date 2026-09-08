@@ -994,6 +994,14 @@ export const SetupSchema = z.object({
   contentLanguage: ContentLanguageSchema.optional().or(
     z.literal("").transform(() => undefined),
   ),
+  /**
+   * The Jant Discover answer, from the checkbox on the setup screen.
+   *
+   * Optional, and absence is not `false`: an older client or a scripted setup
+   * sends nothing, and that has to keep meaning "leave the deployment default
+   * in force" rather than "the author said no".
+   */
+  discover: z.boolean().optional(),
 });
 
 /**
@@ -1005,6 +1013,14 @@ export const SetupSchema = z.object({
  */
 export const SetupLanguageSchema = z.object({
   contentLanguage: ContentLanguageSchema,
+  /**
+   * The Jant Discover answer, from the checkbox on the setup screen.
+   *
+   * Optional, and absence is not `false`: an older client or a scripted setup
+   * sends nothing, and that has to keep meaning "leave the deployment default
+   * in force" rather than "the author said no".
+   */
+  discover: z.boolean().optional(),
 });
 
 /**

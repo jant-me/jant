@@ -31,6 +31,8 @@ describe("SetupContent — provisioned site", () => {
     mode: "language",
     contentLanguage: "en",
     siteName: "My Blog",
+    discoverAvailable: true,
+    discoverDefault: true,
   };
 
   it("names the step and the site in one line", () => {
@@ -54,7 +56,7 @@ describe("SetupContent — provisioned site", () => {
     expect(html).not.toContain("·");
   });
 
-  it("asks nothing but the language", () => {
+  it("asks nothing but the language and Discover", () => {
     const html = render(provisioned);
 
     expect(html).toContain("setup-content-language");
@@ -64,8 +66,67 @@ describe("SetupContent — provisioned site", () => {
   });
 });
 
+/**
+ * The box's state is carried by the Datastar signal, not by a `checked`
+ * attribute: `data-bind` initialises the control from the signal on upgrade, so
+ * the signal is what the server actually decides.
+ */
+describe("SetupContent — the Discover question", () => {
+  const base: SetupProps = {
+    mode: "full",
+    contentLanguage: "en",
+    discoverAvailable: true,
+    discoverDefault: false,
+  };
+
+  it("starts clear where the deployment lists nothing by default", () => {
+    const html = render(base);
+
+    expect(html).toContain("setup-discover");
+    expect(html).toContain("discover: false");
+  });
+
+  // Hosted Jant sets `DISCOVER=latest`, and the box has to say so rather than
+  // showing a refusal the site would not honour.
+  it("starts ticked where the deployment lists its blogs", () => {
+    const html = render({ ...base, discoverDefault: true });
+
+    expect(html).toContain("discover: true");
+  });
+
+  it("is asked on the hosted screen too", () => {
+    const html = render({
+      ...base,
+      mode: "language",
+      siteName: "My Blog",
+      discoverDefault: true,
+    });
+
+    expect(html).toContain("setup-discover");
+    expect(html).toContain("discover: true");
+  });
+
+  // Demo mode and feeds-off both outlive setup, so the question would be a
+  // promise the next screen breaks.
+  it("is not asked where the answer could not be honoured", () => {
+    const html = render({
+      ...base,
+      discoverAvailable: false,
+      discoverDefault: true,
+    });
+
+    expect(html).not.toContain("setup-discover");
+    expect(html).toContain("discover: false");
+  });
+});
+
 describe("SetupContent — fresh install", () => {
-  const fresh: SetupProps = { mode: "full", contentLanguage: "en" };
+  const fresh: SetupProps = {
+    mode: "full",
+    contentLanguage: "en",
+    discoverAvailable: true,
+    discoverDefault: false,
+  };
 
   it("wears the same one-line shell as the hosted screen", () => {
     const html = render(fresh);

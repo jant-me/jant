@@ -48,12 +48,13 @@ function createProps(
     showJantBrandingOnHome: false,
     noindex: false,
     discover: "",
-    discoverDefault: "none" as const,
+    // The deployment has no answer of its own; a self-hosted site opts in.
+    discoverDefault: "" as const,
     discoverUrl: "https://jant.me/discover",
     discoverStatus: {
       announced: true,
       announceError: null,
-      announceAt: 1_800_000_000,
+      announceAt: STALE_ANNOUNCE_AT,
       hasDirectory: true,
       managedByHost: false,
       submitUrl: "https://jant.me/discover/submit",
@@ -84,6 +85,12 @@ function createProps(
   };
 }
 
+// The first-read line is the one status sentence that expires, so the fixtures
+// place the announcement relative to the clock rather than on a fixed date that
+// drifts in and out of the window as time passes.
+const STALE_ANNOUNCE_AT = Math.floor(Date.now() / 1000) - 7 * 24 * 3600;
+const FRESH_ANNOUNCE_AT = Math.floor(Date.now() / 1000) - 60;
+
 describe("GeneralContent", () => {
   it("omits the demo-mode attribute when demo mode is disabled", async () => {
     const html = await renderGeneralContent(createProps(false));
@@ -110,17 +117,79 @@ describe("GeneralContent", () => {
     );
   });
 
-  // The status sentences carry runtime numbers, so they are translated here
-  // rather than in the browser. What reaches the component is finished text.
-  it("hands the component finished status sentences", async () => {
+  // The browser decides what the site declares, because two of the inputs are
+  // controls on this page. Resolving `noindex` into the default here would put
+  // that decision back on the server and freeze it at page load — the checkbox
+  // would then go on claiming a listing the feed had already dropped.
+  it("hands the browser the deployment default with noindex unresolved", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, { discoverDefault: "latest", noindex: true }),
+    );
+
+    expect(html).toContain('discover-default="latest"');
+  });
+
+  // The controls above the block already say that the site is listed and what
+  // its feed declares, and a site past the directory's threshold has nothing
+  // to do about being past it. A site in that state is told nothing at all.
+  it("says nothing when the setting is already doing what it says", async () => {
     const html = await renderGeneralContent(createProps(false));
 
-    expect(html).toContain("Your feed says latest.");
-    expect(html).toContain("Feed address sent to the directory.");
-    expect(html).toContain("5 public posts");
+    expect(html).toContain('discover-status="{&quot;lines&quot;:[]');
     // Nothing failed, so neither the retry nor the manual form is offered.
     expect(html).toContain("&quot;showAnnounce&quot;:false");
     expect(html).toContain("&quot;submitUrl&quot;:null");
+  });
+
+  // The status sentences carry runtime numbers, so they are translated on the
+  // server rather than in the browser. What reaches the component is finished
+  // text — and this one only for as long as the answer is outstanding.
+  it("confirms an announcement while its first read is still due", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          ...createProps(false).discoverStatus,
+          announceAt: FRESH_ANNOUNCE_AT,
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      "Feed address sent. A directory reads a newly announced feed within 6 hours.",
+    );
+  });
+
+  // An opt-in that cannot take effect is worth saying, because the ticked box
+  // above claims the opposite.
+  it("says the opt-in is not yet effective without a public post", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          ...createProps(false).discoverStatus,
+          publicPostCount: 0,
+          featuredPostCount: 0,
+          established: false,
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      "Nothing published yet. jant.me lists a blog once it has one public post.",
+    );
+  });
+
+  it("says a featured-only feed has nothing to carry", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          ...createProps(false).discoverStatus,
+          declaredMode: "featured" as const,
+          featuredPostCount: 0,
+        },
+      }),
+    );
+
+    expect(html).toContain("no post is marked Featured");
   });
 
   it("offers the manual form only when the announcement failed", async () => {
@@ -129,7 +198,7 @@ describe("GeneralContent", () => {
         discoverStatus: {
           announced: false,
           announceError: "The directory answered 503.",
-          announceAt: 1_800_000_000,
+          announceAt: STALE_ANNOUNCE_AT,
           hasDirectory: true,
           managedByHost: false,
           submitUrl: "https://jant.me/discover/submit",
@@ -206,7 +275,8 @@ describe("GeneralContent", () => {
     // has opted out of, and not whether an announcement it never made got
     // through. With no lines the component drops the whole block.
     expect(html).toContain('discover-status="{&quot;lines&quot;:[]');
-    expect(html).not.toContain("Your feed says");
+    expect(html).not.toContain("Not announced yet");
+    expect(html).not.toContain("jant.me lists a blog once");
     expect(html).toContain("&quot;showAnnounce&quot;:false");
   });
 
@@ -238,9 +308,9 @@ describe("GeneralContent", () => {
     expect(html).not.toContain("https://jant.me/discover/submit");
     expect(html).toContain("&quot;showAnnounce&quot;:false");
     expect(html).toContain("&quot;submitUrl&quot;:null");
-    // What is left is the part the owner can act on.
-    expect(html).toContain("Your feed says latest.");
-    expect(html).toContain("Enough for jant.me to list you.");
+    // Nothing is left: the announcement was the only part of this block a
+    // hosted owner could ever have acted on.
+    expect(html).toContain('discover-status="{&quot;lines&quot;:[]');
   });
 
   // A failed announcement is the one case that used to leave a hosted owner
@@ -252,7 +322,7 @@ describe("GeneralContent", () => {
         discoverStatus: {
           announced: false,
           announceError: "The directory answered 503.",
-          announceAt: 1_800_000_000,
+          announceAt: STALE_ANNOUNCE_AT,
           hasDirectory: true,
           managedByHost: true,
           submitUrl: "https://jant.me/discover/submit",

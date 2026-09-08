@@ -560,9 +560,10 @@ describe("SettingsService", () => {
   });
 
   /**
-   * The ping exists so a self-hosted site can be found at all. What it fires
-   * on is therefore the interesting part: the moment somebody says yes, and
-   * only that moment.
+   * The ping exists so a self-hosted site can be found at all, and it says
+   * "read me now" rather than "list me". What it fires on is therefore the
+   * interesting part: the two moments the answer changes, and neither of the
+   * moments it does not.
    */
   describe("updateDiscoverSetting", () => {
     it("stores the choice explicitly, including off", async () => {
@@ -605,7 +606,22 @@ describe("SettingsService", () => {
       expect(result.shouldAnnounce).toBe(false);
     });
 
-    it("says nothing when a site opts out", async () => {
+    // The half that used to be missing. A directory that is not told keeps the
+    // blog until its next scheduled read of the feed, and the owner watches
+    // something they just removed sit there for another hour.
+    it("announces when a listed site opts out", async () => {
+      await settingsService.updateDiscoverSetting("latest", {
+        demoMode: false,
+      });
+      const result = await settingsService.updateDiscoverSetting("off", {
+        demoMode: false,
+      });
+      expect(result.shouldAnnounce).toBe(true);
+    });
+
+    // Nothing changed, so there is nothing to say: this site was not in any
+    // directory a moment ago either.
+    it("says nothing when a site that was never listed sets off", async () => {
       const result = await settingsService.updateDiscoverSetting("off", {
         demoMode: false,
       });

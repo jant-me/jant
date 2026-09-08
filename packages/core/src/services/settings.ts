@@ -517,14 +517,18 @@ export function createSettingsService(
       const previous = parseDiscoverSetting(await this.get("DISCOVER"));
       await this.set("DISCOVER", mode);
 
-      // The moment a site opts in is the only moment worth announcing. Coming
-      // from `off` is obvious; coming from unset matters just as much, because
-      // a site that has never touched this control has never told anyone it
-      // exists — and switching between `latest` and `featured` while already
+      // A ping says "read me now", so both edges of this setting are worth
+      // sending one. Opting in is the obvious half — and coming from unset
+      // counts, because a site that has never touched this control has never
+      // told anyone it exists. Opting out is the half that used to be missed:
+      // a directory that is not told keeps the blog until its next scheduled
+      // read, and the owner watches a blog they just removed sit there for
+      // another hour. Switching between `latest` and `featured` while already
       // listed changes nothing a directory needs to be told twice.
-      const optedIn =
-        mode !== "off" && (previous === null || previous === "off");
-      return { shouldAnnounce: optedIn && !opts.demoMode };
+      const wasListed = previous !== null && previous !== "off";
+      const isListed = mode !== "off";
+      const changed = wasListed !== isListed;
+      return { shouldAnnounce: changed && !opts.demoMode };
     },
 
     async announceToDiscover(input) {

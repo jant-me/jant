@@ -384,17 +384,13 @@ settingsRoutes.get("/general", async (c) => {
   // show "never chosen", which is what lets `noindex` and then the deployment
   // default decide instead.
   const discoverSetting = parseDiscoverSetting(allSettings["DISCOVER"]);
-  // What this site declares while the owner has not answered: `none` for an
-  // ordinary self-hosted site, `latest` on a deployment that lists its fleet.
-  // The checkbox reads it so an untouched hosted site does not show as off
-  // while its feeds say otherwise.
-  const discoverDefault = resolveDiscoverMode({
-    storedValue: null,
-    defaultValue: getDiscoverDefault(c.env),
-    demoMode: appConfig.demoMode,
-    noindex: appConfig.noindex,
-    rssFeedsEnabled: appConfig.rssFeedsEnabled,
-  });
+  // The deployment's own answer, and nothing else folded into it: `latest` on
+  // a deployment that lists its fleet, absent on an ordinary self-hosted site.
+  // The gates that sit above it — `noindex` most of all — are applied in the
+  // browser instead, because they are controls on this same page and a value
+  // resolved here would freeze at page load. The component runs the same
+  // `resolveDiscoverMode` this route would have.
+  const discoverDefault = parseDiscoverSetting(getDiscoverDefault(c.env)) ?? "";
 
   const saved = c.req.query("saved") !== undefined;
   // What the site can answer about its own standing in the directory, without
@@ -921,7 +917,22 @@ function announceInBackground(
     noindex: appConfig.noindex,
     rssFeedsEnabled: appConfig.rssFeedsEnabled,
   });
-  const feedPath = getDiscoverFeedPath(mode);
+  // A site that has just switched Discover off resolves to `none` and so has
+  // no feed of its own to name — but that is exactly the site with something
+  // to say, and the declaration a directory needs to read sits in every feed,
+  // not only the one it was polling. `/latest/feed` is the address that is
+  // always served, so the stop is sent there.
+  //
+  // Only for an owner's own `off`, never for the other ways a site resolves to
+  // `none`: a demo site or one with feeds switched off would be naming an
+  // address that answers 404.
+  const feedPath =
+    getDiscoverFeedPath(mode) ??
+    (parseDiscoverSetting(storedValue) === "off" &&
+    appConfig.rssFeedsEnabled &&
+    !appConfig.demoMode
+      ? getDiscoverFeedPath("latest")
+      : null);
   if (!feedPath) return false;
 
   // Deferred, so the save answers without waiting on a directory. The helper

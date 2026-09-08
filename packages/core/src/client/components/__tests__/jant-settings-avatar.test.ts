@@ -80,7 +80,8 @@ const labels: SettingsLabels = {
   discoverDemoLocked: "Demo sites are never listed in Discover.",
   discoverFeedsOffLocked:
     "Discover reads your Atom feed, so it needs feeds turned on.",
-  discoverStatusHeading: "Where your site stands",
+  discoverSearchOff:
+    "Search engine indexing is off, so this site is not listed by default. Ticking the box above lists it anyway.",
   discoverAnnounce: "Announce my site",
   discoverAnnounceManual: "Or submit your address by hand",
   save: "Save",

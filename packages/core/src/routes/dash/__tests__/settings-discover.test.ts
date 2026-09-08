@@ -159,6 +159,41 @@ describe("POST /settings/general/discover", () => {
     );
   });
 
+  /**
+   * A ping means "read me now", and the moment a blog leaves is the moment
+   * that matters most: without it the directory keeps the blog until its next
+   * scheduled read, and the owner watches something they just removed sit
+   * there for another hour.
+   */
+  it("pings the always-served feed when the owner switches Discover off", async () => {
+    const { app, announceToDiscover } = createDiscoverTestApp({
+      storedDiscover: "featured",
+    });
+
+    await postJson(app, "/settings/general/discover", { discover: "off" });
+
+    // `/featured/feed` is not it: the mode that named it is gone, and the
+    // declaration a directory has to read sits in every feed.
+    expect(announceToDiscover).toHaveBeenCalledWith(
+      expect.objectContaining({
+        feedUrl: "https://blog.example/latest/feed",
+      }),
+    );
+  });
+
+  // The other ways a site resolves to `none` are not an owner saying stop, and
+  // the address they would name answers 404.
+  it("sends no stop ping from a site whose feeds are off", async () => {
+    const { app, announceToDiscover } = createDiscoverTestApp({
+      storedDiscover: "latest",
+      rssFeedsEnabled: false,
+    });
+
+    await postJson(app, "/settings/general/discover", { discover: "off" });
+
+    expect(announceToDiscover).not.toHaveBeenCalled();
+  });
+
   it("does not announce when the save was not an opt-in", async () => {
     const { app, announceToDiscover, updateDiscoverSetting } =
       createDiscoverTestApp({ storedDiscover: "latest" });

@@ -12,6 +12,7 @@
 import { LitElement, html, nothing } from "lit";
 import type { Editor } from "@tiptap/core";
 import { MAX_SITE_NAME_LENGTH } from "../../types.js";
+import { resolveDiscoverMode } from "../../lib/discover.js";
 import type {
   SettingsInitialData,
   SettingsLabels,
@@ -95,7 +96,12 @@ export class JantSettingsGeneral extends LitElement {
   declare siteNameFallback: string;
   declare siteDescriptionFallback: string;
   declare demoMode: boolean;
-  /** What the site declares while the owner has not chosen: the deployment default. */
+  /**
+   * The deployment's own answer, unresolved: `""` when it has none.
+   *
+   * What the site actually declares is derived from this and from the controls
+   * around it — see `_effectiveDiscoverMode`.
+   */
   declare discoverDefault: string;
   declare discoverUrl: string;
   /**
@@ -213,7 +219,7 @@ export class JantSettingsGeneral extends LitElement {
     this._homeLoading = false;
     this._searchLoading = false;
 
-    this.discoverDefault = "none";
+    this.discoverDefault = "";
     this.discoverUrl = "";
     this.discoverStatus = "";
     this.feedsEnabled = false;
@@ -485,6 +491,27 @@ export class JantSettingsGeneral extends LitElement {
   }
 
   // ── Discover helpers ──────────────────────────────────────────────
+
+  /**
+   * What this site's feeds declare, as of the controls on screen right now.
+   *
+   * The same `resolveDiscoverMode` the server runs, over the same inputs, so
+   * the checkbox cannot disagree with the feed. It has to be computed here
+   * rather than sent down resolved because two of its inputs — search
+   * indexing and the feed switch — are controls on this page: a value resolved
+   * on the server is correct until the first click and wrong from then until
+   * the next page load, which is exactly the state an owner reads it in.
+   */
+  private _effectiveDiscoverMode(overrides: { noindex?: boolean } = {}) {
+    return resolveDiscoverMode({
+      // "" is never chosen, which is what lets the rules below decide.
+      storedValue: this._discover || null,
+      defaultValue: this.discoverDefault || null,
+      demoMode: this.demoMode,
+      noindex: overrides.noindex ?? this._noindex,
+      rssFeedsEnabled: this.feedsEnabled,
+    });
+  }
 
   private _onDiscoverToggle(enabled: boolean) {
     // Turning it back on returns to the default rather than to whatever was
@@ -932,14 +959,20 @@ export class JantSettingsGeneral extends LitElement {
    * crawler should poll, so the next read follows the site to /featured/feed.
    */
   private _renderDiscoverForm() {
-    // "" means never chosen, and what the site declares meanwhile is the
-    // deployment's default: `none` when self-hosted, `latest` on a
-    // deployment that lists its blogs.
-    const effective =
-      this._discover === "" ? this.discoverDefault : this._discover;
-    const enabled = effective !== "off" && effective !== "none";
+    const effective = this._effectiveDiscoverMode();
+    const enabled = effective !== "none";
     const mode = effective === "featured" ? "featured" : "latest";
     const locked = this.demoMode || !this.feedsEnabled;
+    // The box unticks itself when search indexing goes off, and a control that
+    // moves on its own has to say why. Asked as a counterfactual rather than
+    // read off `noindex`, so the line appears only where it is the reason: a
+    // site the deployment would have listed, held back by that one setting.
+    // A site nobody would list either way is not being held back by anything,
+    // and an owner who ticked the box is not affected at all.
+    const heldBackBySearch =
+      !locked &&
+      !enabled &&
+      this._effectiveDiscoverMode({ noindex: false }) !== "none";
 
     return html`
       <div class="flex flex-col gap-3">
@@ -948,7 +981,7 @@ export class JantSettingsGeneral extends LitElement {
             <input
               type="checkbox"
               class="checkbox"
-              .checked=${enabled && !locked}
+              .checked=${enabled}
               ?disabled=${locked || this._discoverLoading}
               @change=${(e: Event) =>
                 this._onDiscoverToggle((e.target as HTMLInputElement).checked)}
@@ -964,6 +997,13 @@ export class JantSettingsGeneral extends LitElement {
                 : this.labels.discoverIntro
             }
           </p>
+          ${
+            heldBackBySearch
+              ? html`<p class="text-sm text-muted-foreground">
+                  ${this.labels.discoverSearchOff}
+                </p>`
+              : nothing
+          }
         </div>
         ${
           enabled && !locked
@@ -1009,27 +1049,31 @@ export class JantSettingsGeneral extends LitElement {
   }
 
   /**
-   * What the site can say about its own standing.
+   * What is left to say once the controls above have spoken.
    *
-   * Deliberately all local evidence: the directory takes no status queries, so
-   * nothing here was fetched and nothing here can say whether a person has
-   * moderated the site. The announce button appears when the directory has not
-   * heard from this site; the manual form only when an announcement actually
-   * failed — beside a working one it would read as a normal route in rather
-   * than the recovery it is.
+   * Not a status report — a site whose Discover setting is doing exactly what
+   * it says gets nothing here, and no heading announces a block that is
+   * usually absent. The server sends a line only for a problem, a task, or an
+   * answer still outstanding; deliberately all local evidence, because the
+   * directory takes no status queries and cannot be asked whether a person has
+   * moderated the site.
    *
-   * A site that declares `none` is handed no lines at all, so the block does
-   * not render: it would only restate the unticked checkbox above it. The
-   * lines are what the server sent with the page, so ticking the box does not
-   * rewrite them; the next load does.
+   * The announce button appears when the directory has not heard from this
+   * site; the manual form only when an announcement actually failed — beside a
+   * working one it would read as a normal route in rather than the recovery it
+   * is. The lines are what the server sent with the page, so ticking the box
+   * does not rewrite them; the next load does.
    */
   private _renderDiscoverStatus() {
     const status = this._parsedDiscoverStatus();
-    if (!status || status.lines.length === 0) return nothing;
+    if (!status) return nothing;
+    // The server wrote these for the mode the page loaded with. A blog that
+    // has just switched itself off is not the blog they describe.
+    if (this._effectiveDiscoverMode() === "none") return nothing;
+    if (status.lines.length === 0 && !status.showAnnounce) return nothing;
 
     return html`
       <div class="flex flex-col gap-1 border-t pt-3">
-        <p class="text-sm font-medium">${this.labels.discoverStatusHeading}</p>
         ${status.lines.map(
           (line) => html`<p class="text-sm text-muted-foreground">${line}</p>`,
         )}
