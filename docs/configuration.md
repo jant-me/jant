@@ -124,8 +124,9 @@ unset, a deployment that runs a control plane announces to that control plane,
 and everything else announces to Jant's own directory — so the two never have
 to be kept in step by hand. Set it to point somewhere else, or to the empty
 string to announce nowhere. The announcement is one request carrying one feed
-address, sent when a site opts in and never again; its outcome is logged, and
-the site's Site visibility settings report it.
+address, sent when a site opts in — again if it opts out and back in, or when
+its owner presses **Announce my site**; its outcome is logged, and the site's
+Site visibility settings report it.
 
 See [Feeds](feeds.md#discover) for what your feed declares and what a
 third-party directory needs to honour.

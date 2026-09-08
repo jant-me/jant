@@ -12,7 +12,7 @@ It says what arrives and how to read it. Why each field is shaped that way is in
 | `jant`  | `https://jant.me/ns`            | Post format, threads, Discover |
 | `media` | `http://search.yahoo.com/mrss/` | Attachment metadata            |
 
-Both extensions are declared only when the feed emits something in them. The URIs are fixed identifiers, not addresses to fetch, and the prefixes bound to them are arbitrary — match on the URI.
+Both extensions are declared only when the feed emits something in them — which for `jant` is every served feed, since each carries `<jant:discover>`. The URIs are fixed identifiers, not addresses to fetch, and the prefixes bound to them are arbitrary — match on the URI.
 
 An Atom reader that knows neither extension still gets a working feed. Everything Jant adds is either an element in its own namespace or an attribute on a Media RSS element.
 
@@ -156,7 +156,7 @@ Three surfaces, three jobs.
 
 **`<content>`** shows them, each post's own inside a `<div data-post-media>` beside that post's text. It is the only place an attachment sits in the running order of a thread.
 
-**`<media:content>`** describes them: `type`, `medium`, `fileSize`, `width`, `height`, `duration`, a `media:title` holding the filename, a `media:description` holding alt text or a text file's excerpt, and a nested `media:thumbnail` for a video's poster.
+**`<media:content>`** describes them: `type`, `medium`, `fileSize`, `width`, `height`, `duration`, a `media:title` holding the filename, a `media:description` holding alt text or a text file's excerpt, and a nested `media:thumbnail` when the file has a still that is not the file itself: a video's poster, or a picture's resized rendering.
 
 - `@jant:post` names the post carrying the file. In a thread every attachment has it, the root's included; a lone post's entry has none, because its one post is the entry.
 - **Files from folded posts arrive too.** An entry's media is the whole thread's. When a file's `jant:post` names a row that is neither the root nor `latest`, it belongs to a post behind the gap link — drawing it is your call.

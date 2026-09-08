@@ -128,8 +128,8 @@ terms:
     note: 站点时间线的名称，界面上保留英文，不要译成「最新」。小写的 latest 只是「最新的」，照常翻译。
 
   - source: Discover
-    target: 发现
-    note: Jant 的公开博客目录。中文产品里「发现」就是这类页面的固定说法，不要译成探索或发掘。
+    target: Discover
+    note: Jant 公开博客目录的名称，界面上保留英文，不要译成「发现」或「探索」。「Jant Discover」整体是产品名。
 
   - source: API Tokens
     target: API 令牌

@@ -128,8 +128,8 @@ terms:
     note: 網站時間軸的名稱，介面上保留英文，不要譯成「最新」。小寫的 latest 只是「最新的」，照常翻譯。
 
   - source: Discover
-    target: 探索
-    note: Jant 的公開部落格目錄。台灣繁中慣用「探索」，不用「發現」。
+    target: Discover
+    note: Jant 公開部落格目錄的名稱，介面上保留英文，不要譯成「探索」或「發現」。「Jant Discover」整體是產品名。
 
   - source: API Tokens
     target: API 權杖

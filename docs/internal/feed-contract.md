@@ -54,25 +54,28 @@ renders it whole — there the site hides the tail with CSS the reader strips.
 | Prefix  | URI                             | Declared when                                   |
 | ------- | ------------------------------- | ----------------------------------------------- |
 | —       | `http://www.w3.org/2005/Atom`   | always                                          |
-| `jant`  | `https://jant.me/ns`            | the feed has entries, or answers Discover       |
+| `jant`  | `https://jant.me/ns`            | always on the served feed; see below            |
 | `media` | `http://search.yahoo.com/mrss/` | some entry has an attachment or a preview image |
 
-Declare a namespace only where something in it is emitted.
+Declare a namespace only where something in it is emitted. On the served feed
+that leaves `jant` always declared, because every feed carries
+`<jant:discover>` — `none` included. Only the exported feed, which has no
+Discover declaration, can omit it, and does so when it has no entries.
 
 ## Feed Elements
 
-| Element                             | Notes                                                                                                                  |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `title`                             | Composed — `<site> - Latest posts` — so a reader's sidebar sorts one site's feeds together                             |
-| `author/name`                       | The site's own name. A directory reads the blog's name from here, not from `title`                                     |
-| `subtitle`                          | Site description; may be empty                                                                                         |
-| `icon`                              | Site avatar, absolutized against the site URL                                                                          |
-| `link[@rel="alternate"]`            | The site's home page                                                                                                   |
-| `link[@rel="self"]`                 | This feed                                                                                                              |
-| `link[@rel="alternate"][@hreflang]` | Sibling-language feeds; carries `type` because Atom forbids two alternates sharing a type/hreflang pair                |
-| `updated`                           | The newest entry's timestamp, never the render time — stamping "now" tells every reader the feed changed on every poll |
-| `@xml:lang`                         | The feed's content language                                                                                            |
-| `jant:discover`                     | The site's Discover answer, `latest` or `featured`, with the feed to poll                                              |
+| Element                             | Notes                                                                                                                                                                                                                                |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `title`                             | Composed — `<site> - Latest posts` — so a reader's sidebar sorts one site's feeds together                                                                                                                                           |
+| `author/name`                       | The site's own name. A directory reads the blog's name from here, not from `title`                                                                                                                                                   |
+| `subtitle`                          | Site description; may be empty                                                                                                                                                                                                       |
+| `icon`                              | Site avatar, absolutized against the site URL                                                                                                                                                                                        |
+| `link[@rel="alternate"]`            | The site's home page                                                                                                                                                                                                                 |
+| `link[@rel="self"]`                 | This feed                                                                                                                                                                                                                            |
+| `link[@rel="alternate"][@hreflang]` | Sibling-language feeds; carries `type` because Atom forbids two alternates sharing a type/hreflang pair                                                                                                                              |
+| `updated`                           | The newest entry's timestamp, never the render time — stamping "now" tells every reader the feed changed on every poll                                                                                                               |
+| `@xml:lang`                         | The feed's content language                                                                                                                                                                                                          |
+| `jant:discover`                     | The site's Discover answer. `latest` or `featured` carries the feed to poll; `none` — opted out, or never opted in — carries none. Always present, so a site that said no is tellable from one running a Jant that predates Discover |
 
 ## Entry Elements
 
@@ -85,7 +88,7 @@ Declare a namespace only where something in it is emitted.
 | `link[@rel="enclosure"]` | 0–n   | Non-image attachments. See below.                                                                                                                                                                                                                                                                                             |
 | `published` / `updated`  | 1     | A curated feed may date an entry by the curation, hence `feedPublishedAt` / `feedUpdatedAt`.                                                                                                                                                                                                                                  |
 | `jant:format`            | 1     | `note`, `link`, or `quote`, for the entry — which is the root. A reply's own format is on its `<jant:post>` row. Atom has no field for it, and `<category>` would show `quote` as a tag no author typed.                                                                                                                      |
-| `jant:truncated`         | 0–1   | Empty element. Present when the summary cut the root's text or the newest reply's; a row's `truncated` says which. Never on a Quote.                                                                                                                                                                                          |
+| `jant:truncated`         | 0–1   | Empty element. Present when the summary cut any post it renders — the root, or a reply the fold shows; a row's `truncated` says which. Never on a Quote.                                                                                                                                                                      |
 | `jant:thread`            | 0–1   | The entry is a whole thread, and this is its shape, with a `<jant:post>` row per post. Absent means a lone post. See below.                                                                                                                                                                                                   |
 | `category`               | 0–n   | One per collection. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL — a single collection lives in the root URL namespace, so a site path prefix makes it unguessable from the term. Replies inherit their root's collections and the site prints them on the root alone, so they ride the entry once. |
 | `media:thumbnail`        | 0–1   | **Direct child of the entry**: a link post's preview image, for card and grid views. A scraped thumbnail of someone else's page is not a published file, so it gets no enclosure.                                                                                                                                             |
@@ -237,8 +240,9 @@ of a thread's text.
 
 **`<media:content>`** describes them: `type`, `medium`, `fileSize`, `width`,
 `height`, `duration`, `media:title` (filename), `media:description`, and a
-nested `media:thumbnail` for a video's poster. Atom's `<link>` has nowhere to
-put any of it.
+nested `media:thumbnail` wherever the file has a still that is not the file
+itself: a video's poster, or a picture's resized rendering on a deployment
+with image transforms. Atom's `<link>` has nowhere to put any of it.
 
 - `@jant:post` is the post carrying the file. **In a thread every attachment
   carries it, the root's included**, and it lines the file up with both the
@@ -347,8 +351,17 @@ photo is no reason to resize the photo.
   and Hugo would cut somewhere else. The `<jant:truncated/>` beside it is
   accurate — the exporter computes it and writes `truncated` into front matter —
   but the recipe under Rendering A Timeline does not transfer: an exported
-  feed's summary is not the timeline's text. Everything else on an entry is
-  there, attachments included.
+  feed's summary is not the timeline's text.
+- **An exported thread has no `<jant:thread>`.** The template emits no rows,
+  so `posts`, `hidden`, `gap`, `latest` and a reply's `format`, `title`, `url`
+  and `truncated` are not there to read; a consumer has only the tail meta
+  inside `<content>` to take a thread apart.
+- **An exported `<media:content>` carries no `jant:post`.** Attachments from
+  every post in the thread arrive, but nothing says which post each hangs
+  off.
+- **An exported feed has no `<jant:discover>`.** A static site has no setting
+  to declare, so a directory reads the absence as "predates Discover", and
+  `xmlns:jant` is declared only when the feed has entries.
 - **A link post's preview image is not exported at all.** No front-matter field
   carries it, so an exported feed has neither the entry-level
   `<media:thumbnail>` nor the preview figure in its content. Adding it means

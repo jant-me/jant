@@ -81,7 +81,7 @@ msgstr "沉静、偏冷的底色。"
 #. @context: Discover status line saying how long the first crawl takes
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "A directory reads a newly announced feed within {hours} hours."
-msgstr "目录会在 {hours} 小时内读取新报告的订阅源。"
+msgstr "目录会在 {hours} 小时内读取新提交的订阅源。"
 
 #. @context: Help text under the Jant Discover checkbox. Deliberately states only the stable promises; the rest is the directory's own business.
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -304,12 +304,12 @@ msgstr "更偏暖、偏土的色调。"
 #. @context: Button sending the Discover announcement, shown when the site has never announced itself or when the announcement failed
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Announce my site"
-msgstr "报告我的站点"
+msgstr "提交我的站点"
 
 #. @context: Toast after sending the Discover announcement. It runs in the background, so the page does not yet know how it went.
 #: src/routes/dash/settings.tsx
 msgid "Announcing your site. Reload to see the result."
-msgstr "正在报告站点，刷新后可以看到结果。"
+msgstr "正在提交站点，刷新后可以看到结果。"
 
 #. @context: Follow-up hint under the stamping warning
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -1022,7 +1022,7 @@ msgstr "演示站点始终对搜索引擎隐藏。"
 #. @context: Help text explaining that Discover is locked off in demo mode
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Demo sites are never listed in Discover."
-msgstr "演示站点不会出现在发现中。"
+msgstr "演示站点不会出现在 Discover 中。"
 
 #. @context: Color theme preview collection label
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -1056,7 +1056,7 @@ msgstr "断开 Telegram？你可以随时使用新的绑定码重新连接。"
 #. @context: Help text explaining that Discover cannot work while Atom feeds are disabled
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Discover reads your Atom feed, so it needs feeds turned on."
-msgstr "发现读取的是 Atom 订阅源，需要先开启订阅源。"
+msgstr "Discover 读取的是 Atom 订阅源，需要先开启订阅源。"
 
 #. @context: Checkbox to show avatar in the site header
 #: src/ui/dash/settings/AvatarContent.tsx
@@ -1394,7 +1394,7 @@ msgstr "集成"
 #. @context: Name of the Jant blog directory. Appears inside the Discover checkbox label as the link to the directory itself.
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Jant Discover"
-msgstr "Jant 发现"
+msgstr "Jant Discover"
 
 #. @context: Validation error for a long page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1833,7 +1833,7 @@ msgstr "没有匹配的仓库。"
 #. @context: Discover status line before the site has ever announced itself. The button under the lines is how it is sent.
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Not announced yet. No directory has been told this site exists."
-msgstr "尚未报告。还没有目录知道这个站点存在。"
+msgstr "尚未提交。还没有目录知道这个站点存在。"
 
 #. @context: Config Editor linked setting status
 #. @context: Config Editor linked setting status
@@ -2763,7 +2763,7 @@ msgstr "此设置未保存。请检查该值并重试。"
 #. @context: Toast when the Discover announcement cannot be sent because no directory is configured, or the site cannot be listed at all
 #: src/routes/dash/settings.tsx
 msgid "This site has no directory to announce to."
-msgstr "这个站点没有可报告的目录。"
+msgstr "这个站点没有可提交的目录。"
 
 #. @context: Warning text on account deletion page
 #: src/ui/dash/settings/DeleteAccountContent.tsx
