@@ -168,6 +168,13 @@ interface SinglePostContentOptions {
    * Media RSS elements.
    */
   summary?: boolean;
+  /**
+   * The post's timeline summary, read only in summary mode. `buildFeedEntry`
+   * computes it once per post because three elements ask for it, so this is
+   * handed in rather than derived here. Null means the post has no TipTap
+   * document to truncate and keeps its full body.
+   */
+  timelineSummary?: TimelineSummary | null;
 }
 
 function renderLinkedText(text: string, href?: string): string {
@@ -463,6 +470,12 @@ function renderMediaForFeed(
   return `<div data-post-media>\n${items}\n</div>`;
 }
 
+/** The timeline's truncated rendering of a post, and whether it was cut. */
+interface TimelineSummary {
+  html: string;
+  hasMore: boolean;
+}
+
 /**
  * The truncated body the site's timeline renders for this post, at the same
  * boundary the page uses.
@@ -484,15 +497,19 @@ function renderMediaForFeed(
  * the site renders it whole, because the site hides the tail with CSS the
  * reader strips.
  *
+ * Each call parses and renders the TipTap document, and three elements of an
+ * entry want the answer — `<summary>`, the `<jant:post>` row, and
+ * `<jant:truncated/>`. `buildFeedEntry` therefore calls this once per post
+ * and the elements read `FeedEntry.summaryPosts`; nothing else should call it
+ * inside the entry render.
+ *
  * @param post - Post view data, carrying the TipTap document in `body`
  * @returns Truncated HTML and whether content continues, null when the post has
  *   no TipTap document to truncate or is a Quote
  * @example
  * getTimelineSummary(post) // { html: "<p>Intro</p>", hasMore: true }
  */
-function getTimelineSummary(
-  post: PostView,
-): { html: string; hasMore: boolean } | null {
+function getTimelineSummary(post: PostView): TimelineSummary | null {
   if (post.format === "quote") return null;
 
   return extractTimelineSummary(post.body, !!post.title, {
@@ -559,7 +576,7 @@ function buildSinglePostContent(
   // without a TipTap document (legacy plain-text rows) has nothing to truncate
   // and keeps its full body.
   const bodyHtml = options.summary
-    ? (getTimelineSummary(post)?.html ?? post.bodyHtml)
+    ? (options.timelineSummary?.html ?? post.bodyHtml)
     : post.bodyHtml;
 
   if (bodyHtml) {
@@ -621,17 +638,17 @@ function buildSinglePostContent(
  * disagree with the summary the day the rule changed. It also carries the count
  * as a number, which the gap link only has as hardcoded English.
  *
- * @param post - Root post view data
+ * @param entry - The entry, with its fold and the posts its summary renders
  * @param siteUrl - Site base URL for absolute permalinks
  * @returns The element, newline-prefixed, or "" when the entry is a lone post
  * @example
- * renderThreadElement(root, "https://example.com");
+ * renderThreadElement(entry, "https://example.com");
  * // '\n    <jant:thread posts="4" hidden="2" gap="…/r1" latest="…/r3"/>'
  */
-function renderThreadElement(post: FeedPostView, siteUrl: string): string {
-  const replies = post.threadReplies ?? [];
-  const fold = foldThreadReplies(replies);
+function renderThreadElement(entry: FeedEntry, siteUrl: string): string {
+  const { post, fold, summaryPosts } = entry;
   if (!fold) return "";
+  const replies = post.threadReplies ?? [];
 
   const attrs = [
     `posts="${replies.length + 1}"`,
@@ -662,7 +679,6 @@ function renderThreadElement(post: FeedPostView, siteUrl: string): string {
   // The root gets the same row as every reply, repeating what the entry
   // already says about it. A consumer walking the rows should not have to know
   // that one of them is described somewhere else instead.
-  const summaryPosts = getSummaryPosts(post, fold);
   const rows = [post, ...replies]
     .map((member) => {
       const rowAttrs = [
@@ -705,12 +721,10 @@ function renderThreadElement(post: FeedPostView, siteUrl: string): string {
       }
 
       // Truncation happens only in `<summary>`, and only to the posts the fold
-      // renders. A post it hid has no block to cut, so its row never carries
-      // this — absence means "not cut here", never "shown whole".
-      if (
-        summaryPosts.has(member) &&
-        getTimelineSummary(member)?.hasMore === true
-      ) {
+      // renders. A post it hid has no block to cut — and no timeline summary
+      // in the entry — so its row never carries this: absence means "not cut
+      // here", never "shown whole".
+      if (summaryPosts.get(member)?.hasMore === true) {
         rowAttrs.push(`truncated="true"`);
       }
 
@@ -821,21 +835,21 @@ function buildFeedContent(
  * missing, which makes `summary ?? ""` the whole of a consumer's rule; Atom
  * only mandates a summary for `src`/base64 content (RFC 4287 §4.1.2).
  *
- * @param post - Root post view data
+ * @param entry - The entry, with its fold and the posts its summary renders
  * @param siteUrl - Site base URL for absolute permalinks
  * @param permalinkUrl - Absolute permalink URL for the root post
  * @returns The entry's text as the timeline renders it, or "" when it has none
  * @example
- * buildFeedSummary(post, "https://example.com", "https://example.com/hello")
+ * buildFeedSummary(entry, "https://example.com", "https://example.com/hello")
  * // "<p>Intro</p>\n<p><small><a …><time …>Mar 19, 2026</time></a></small></p>
  * //  \n<hr/>\n<p><small><a …>2 more posts</a></small></p>…"
  */
 function buildFeedSummary(
-  post: FeedPostView,
+  entry: FeedEntry,
   siteUrl: string,
   permalinkUrl?: string,
 ): string {
-  const fold = foldThreadReplies(post.threadReplies ?? []);
+  const { post, fold, summaryPosts } = entry;
   const rootPermalink =
     permalinkUrl ?? new URL(post.permalink, siteUrl).toString();
 
@@ -844,14 +858,13 @@ function buildFeedSummary(
   const appendPost = (
     member: PostView,
     memberPermalink: string,
-    options: SinglePostContentOptions,
+    inline: boolean,
   ) => {
-    const markup = buildSinglePostContent(
-      member,
-      siteUrl,
-      memberPermalink,
-      options,
-    );
+    const markup = buildSinglePostContent(member, siteUrl, memberPermalink, {
+      inline,
+      summary: true,
+      timelineSummary: summaryPosts.get(member),
+    });
     if (!markup) return;
     if (parts.length > 0) parts.push("<hr/>");
     parts.push(markup);
@@ -861,7 +874,7 @@ function buildFeedSummary(
     if (fold) parts.push(renderPostTailMeta(member, memberPermalink));
   };
 
-  appendPost(post, rootPermalink, { summary: true });
+  appendPost(post, rootPermalink, false);
 
   if (!fold) return parts.join("\n");
 
@@ -869,10 +882,7 @@ function buildFeedSummary(
     new URL(member.permalink, siteUrl).toString();
 
   for (const reply of fold.leadingReplies) {
-    appendPost(reply, absolutePermalink(reply), {
-      inline: true,
-      summary: true,
-    });
+    appendPost(reply, absolutePermalink(reply), true);
   }
 
   if (fold.hiddenCount > 0 && fold.firstHiddenReply) {
@@ -889,16 +899,10 @@ function buildFeedSummary(
   }
 
   for (const reply of fold.trailingReplies) {
-    appendPost(reply, absolutePermalink(reply), {
-      inline: true,
-      summary: true,
-    });
+    appendPost(reply, absolutePermalink(reply), true);
   }
 
-  appendPost(fold.latestReply, absolutePermalink(fold.latestReply), {
-    inline: true,
-    summary: true,
-  });
+  appendPost(fold.latestReply, absolutePermalink(fold.latestReply), true);
 
   return parts.join("\n");
 }
@@ -911,45 +915,73 @@ function buildFeedSummary(
  * to offer the "Read more" the site offers. Covers the newest reply too, since
  * that is the post a thread's summary shows in full.
  *
- * @param post - Root post view data
+ * @param entry - The entry, with the posts its summary renders
  * @returns true when some text in the summary was cut
  * @example
- * isEntryTruncated(longArticle); // true
+ * isEntryTruncated(longArticleEntry); // true
  */
-function isEntryTruncated(post: FeedPostView): boolean {
-  for (const member of getSummaryPosts(
-    post,
-    foldThreadReplies(post.threadReplies ?? []),
-  )) {
-    if (getTimelineSummary(member)?.hasMore === true) return true;
+function isEntryTruncated(entry: FeedEntry): boolean {
+  for (const summary of entry.summaryPosts.values()) {
+    if (summary?.hasMore === true) return true;
   }
   return false;
 }
 
 /**
- * The posts `<summary>` renders, root first.
+ * What one entry's elements share, derived once.
  *
- * The fold decides which replies survive; this is the one place that turns it
- * into "everything with a block", which is what truncation is asked about — at
- * the entry, and per row.
+ * `<summary>`, the `<jant:post>` rows and `<jant:truncated/>` all ask which
+ * posts the fold shows and where each is cut; `<jant:thread>` and the gap
+ * link ask for the fold; the enclosures, the Media RSS elements and the
+ * namespace declaration all ask for the attachments. Each answer used to be
+ * re-derived at every asking, and the timeline summary is the expensive one —
+ * it parses and renders the post's TipTap document — so a page of six-post
+ * threads paid three renders per post for one rendering. The entry derives
+ * them here and every element reads the result. Per request, not cached
+ * across them: the feed route's own cache is the only one.
+ */
+interface FeedEntry {
+  post: FeedPostView;
+  /** The thread's fold, or null when the entry is a lone post. */
+  fold: ThreadFold<PostView> | null;
+  /**
+   * The posts `<summary>` renders, root first, each with its timeline summary
+   * — null when the post has no TipTap document to truncate. The fold decides
+   * which replies survive; this is the one place that turns it into
+   * "everything with a block", which is what `folded` and `truncated` are
+   * asked about, per row and at the entry.
+   */
+  summaryPosts: Map<PostView, TimelineSummary | null>;
+  /** Every attachment in the thread, root first, each naming its post. */
+  media: EntryMedia[];
+}
+
+/**
+ * Derive what an entry's elements share, once.
+ *
+ * The fold has already dropped a reply that falls in two windows, so each
+ * post below appears once and its summary is rendered once.
  *
  * @param post - Root post view data
- * @param fold - The thread's fold, or null when the entry is a lone post
- * @returns Every post the summary renders, the root always included
+ * @param siteUrl - Site base URL, for the attachments' post permalinks
+ * @returns The entry, ready for every element that describes it
  * @example
- * getSummaryPosts(root, fold).has(reply); // whether the summary shows it
+ * buildFeedEntry(root, "https://example.com").summaryPosts.has(reply);
+ * // whether the summary shows it
  */
-function getSummaryPosts(
-  post: FeedPostView,
-  fold: ThreadFold<PostView> | null,
-): Set<PostView> {
-  if (!fold) return new Set([post]);
-  return new Set([
+function buildFeedEntry(post: FeedPostView, siteUrl: string): FeedEntry {
+  const fold = foldThreadReplies(post.threadReplies ?? []);
+  const shown: PostView[] = fold
+    ? [post, ...fold.leadingReplies, ...fold.trailingReplies, fold.latestReply]
+    : [post];
+  return {
     post,
-    ...fold.leadingReplies,
-    ...fold.trailingReplies,
-    fold.latestReply,
-  ]);
+    fold,
+    summaryPosts: new Map(
+      shown.map((member) => [member, getTimelineSummary(member)] as const),
+    ),
+    media: getEntryMedia(post, siteUrl),
+  };
 }
 
 /**
@@ -1126,8 +1158,11 @@ export function defaultFeedRenderer(data: FeedData): string {
   } = data;
   const feedTitle = title ?? siteName;
 
-  const entries = posts
-    .map((post) => {
+  const feedEntries = posts.map((post) => buildFeedEntry(post, siteUrl));
+
+  const entries = feedEntries
+    .map((entry) => {
+      const { post } = entry;
       const permalinkUrl = new URL(post.permalink, siteUrl).toString();
       const escapedPermalink = escapeXml(permalinkUrl);
       // Link-format posts point <link rel="alternate"> to the original URL
@@ -1154,9 +1189,8 @@ export function defaultFeedRenderer(data: FeedData): string {
       // shelf to list the picture a second time under the post. Every podcast
       // feed works this way, enclosing the audio it cannot inline while
       // leaving its inline show-note images alone.
-      const entryMedia = getEntryMedia(post, siteUrl);
       const isThreadEntry = (post.threadReplies?.length ?? 0) > 0;
-      const enclosureLinks = entryMedia
+      const enclosureLinks = entry.media
         .map(({ item }) => item)
         .filter((m) => getMediaCategory(m.mimeType) !== "image")
         .map((m) => {
@@ -1173,7 +1207,7 @@ export function defaultFeedRenderer(data: FeedData): string {
       // carry — pixel dimensions, duration, alt text, poster. Enclosure stays
       // above because it is what a plain Atom parser reads; this is the layer
       // a reader that knows Media RSS can lay out without fetching the file.
-      const mediaContentElements = entryMedia
+      const mediaContentElements = entry.media
         .map((m) => renderMediaRssContent(m, siteUrl, isThreadEntry))
         .join("");
 
@@ -1223,14 +1257,14 @@ export function defaultFeedRenderer(data: FeedData): string {
       // there is text, so only this says whether the site would offer a
       // "Read more" — a consumer drawing its own timeline cannot tell without
       // fetching and comparing the content.
-      const truncatedElement = isEntryTruncated(post)
+      const truncatedElement = isEntryTruncated(entry)
         ? "\n    <jant:truncated/>"
         : "";
 
       // Whether this entry is a whole thread, and how much of it the summary
       // folded away. The text says so only in prose a consumer would have to
       // parse.
-      const threadElement = renderThreadElement(post, siteUrl);
+      const threadElement = renderThreadElement(entry, siteUrl);
 
       // `<summary>` is the entry's text, `<content>` the post's full page. It
       // is present whenever there is text — a bare note repeats itself here,
@@ -1238,7 +1272,7 @@ export function defaultFeedRenderer(data: FeedData): string {
       // thing on its own rather than one defined by what content happens to
       // hold. Missing therefore says exactly one thing: this post has no text.
       const contentMarkup = buildFeedContent(post, siteUrl, permalinkUrl);
-      const summaryMarkup = buildFeedSummary(post, siteUrl, permalinkUrl);
+      const summaryMarkup = buildFeedSummary(entry, siteUrl, permalinkUrl);
       const summaryElement = summaryMarkup
         ? `\n    <summary type="html"><![CDATA[${escapeCdata(summaryMarkup)}]]></summary>`
         : "";
@@ -1285,10 +1319,9 @@ export function defaultFeedRenderer(data: FeedData): string {
 
   // Media RSS rides along only when an entry actually carries an attachment or
   // a representative image, on the same rule as the jant namespace above.
-  const mediaNs = posts.some(
-    (post) =>
-      getEntryMedia(post, siteUrl).length > 0 ||
-      Boolean(post.previewImageUrl?.trim()),
+  const mediaNs = feedEntries.some(
+    (entry) =>
+      entry.media.length > 0 || Boolean(entry.post.previewImageUrl?.trim()),
   )
     ? ` xmlns:media="${escapeXml(MEDIA_RSS_NAMESPACE_URI)}"`
     : "";
