@@ -139,13 +139,21 @@
   {{- end -}}
   {{- if eq $summaryText "" -}}{{- $summaryText = printf "Post %s" (string (.Params.id | default "")) -}}{{- end -}}
 
-  {{- /* Whether the timeline cut this entry's text. Written into front matter
-       by the exporter, which shares the boundary with the served feed; Hugo's
-       own summary rule would cut somewhere else. Covers the newest reply too,
-       since that is the post a thread's card shows in full. */ -}}
+  {{- /* Whether the timeline cut the text of any post the entry's card shows.
+       Per post it is written into front matter by the exporter, which shares
+       the boundary with the served feed; Hugo's own summary rule would cut
+       somewhere else. Per entry the rule is `isEntryTruncated` in
+       `lib/feed.ts`: the root plus every reply the fold keeps — the first
+       THREAD_LEADING_REPLIES (2) and the last THREAD_TRAILING_REPLIES (3),
+       newest included — as `lib/thread-fold.ts` defines it. A thread of five
+       replies or fewer is shown whole; `first` and `last` clamp to the slice,
+       so the two windows simply overlap there. */ -}}
   {{- $replies := (where $post.Pages "Params.visibility" "public").ByDate -}}
   {{- $truncated := $post.Params.truncated | default false -}}
-  {{- range last 1 $replies -}}
+  {{- range first 2 $replies -}}
+    {{- if .Params.truncated -}}{{- $truncated = true -}}{{- end -}}
+  {{- end -}}
+  {{- range last 3 $replies -}}
     {{- if .Params.truncated -}}{{- $truncated = true -}}{{- end -}}
   {{- end -}}
 

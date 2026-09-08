@@ -152,7 +152,11 @@
     {{- if eq $kind "image" -}}
       {{- $caption := "" -}}
       {{- if ne $alt "" -}}{{- $caption = printf "<figcaption>%s</figcaption>" (transform.XMLEscape $alt) -}}{{- end -}}
-      {{- $items = $items | append (printf `<figure><a href=%q><img src=%q alt=%q%s/></a>%s</figure>` $src $src $alt $dims $caption) -}}
+      {{- /* `%q` is Go string quoting, not attribute escaping: a `"` or `\`
+           in the alt would leave the attribute malformed. URLs go through
+           `%q` because they never carry either; author text goes through
+           `transform.XMLEscape`, the same as the caption beside it. */ -}}
+      {{- $items = $items | append (printf `<figure><a href=%q><img src=%q alt="%s"%s/></a>%s</figure>` $src $src (transform.XMLEscape $alt) $dims $caption) -}}
     {{- else if eq $kind "video" -}}
       {{- /* A poster is written only when there is a real still; the pipeline
            leaves nothing usable otherwise, and `<img src="clip.mp4">` was the
