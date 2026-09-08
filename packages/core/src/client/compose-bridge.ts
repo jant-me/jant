@@ -683,32 +683,49 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
   // Get labels for toast messages
   const labels = composeEl?.labels;
   const uploadingMsg = labels?.uploading ?? "Uploading...";
+  const publishingMsg = labels?.publishing ?? "Publishing...";
+  const savingMsg = labels?.saving ?? "Saving...";
   const hasInlinePending = detail.threadPosts
     ? detail.threadPosts.some((p) => bodyHasPendingInline(p.body))
     : bodyHasPendingInline(detail.body);
   const hasPending = detail.pendingAttachments.length > 0 || hasInlinePending;
   const publishedMsg = labels?.published ?? "Published!";
   const viewLabel = labels?.view ?? "View";
+  const isEdit = !!detail.editPostId;
+  const isThread = !!(detail.threadPosts && detail.threadPosts.length >= 2);
+  // Publishing a draft goes through the edit endpoint but still ends published.
+  const willPublish =
+    detail.status === "published" && (!isEdit || !!detail.draftSourceId);
 
-  // Show persistent toast only when uploads are still in flight
-  if (hasPending) {
-    showPersistentToast("compose-deferred", uploadingMsg);
-    if (detail.pendingAttachments.length > 0) {
-      activeUploadToast = {
-        clientIds: detail.pendingAttachments.map((a) => a.clientId),
-        baseMsg: uploadingMsg,
-      };
-      refreshUploadToast();
-    }
+  // The composer closes the moment it dispatches, so this toast is the only
+  // sign that work is still running. Uploads name themselves and grow a
+  // percentage; everything else says what it is doing — a Link post can sit on
+  // the server for seconds while its preview thumbnail is fetched and stored.
+  let progressToastOpen = true;
+  showPersistentToast(
+    "compose-deferred",
+    hasPending ? uploadingMsg : willPublish ? publishingMsg : savingMsg,
+  );
+  if (detail.pendingAttachments.length > 0) {
+    activeUploadToast = {
+      clientIds: detail.pendingAttachments.map((a) => a.clientId),
+      baseMsg: uploadingMsg,
+    };
+    refreshUploadToast();
   }
 
-  /** Show result toast — replaces persistent toast if one exists, otherwise shows a new one */
+  /**
+   * Show a result toast. The first one takes over the progress toast in place;
+   * a later message (a retry result, say) gets its own toast instead of
+   * overwriting one that has not been read yet.
+   */
   const toastMsg = (msg: string, type: "success" | "error" = "success") => {
     if (activeUploadToast) {
       for (const id of activeUploadToast.clientIds) uploadProgress.delete(id);
       activeUploadToast = null;
     }
-    if (hasPending) {
+    if (progressToastOpen) {
+      progressToastOpen = false;
       replaceWithAutoClose("compose-deferred", msg, type);
     } else {
       showToast(msg, type);
@@ -831,8 +848,6 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
     globalThis.location.assign(composeEl.closeHref || publicPath("/"));
     return true;
   };
-  const isEdit = !!detail.editPostId;
-  const isThread = !!(detail.threadPosts && detail.threadPosts.length >= 2);
   let draftFallback: "upload" | "server" | null = null;
 
   try {

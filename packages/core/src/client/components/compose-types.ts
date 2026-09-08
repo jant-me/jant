@@ -222,6 +222,10 @@ export interface ComposeLabels {
   moveAttachmentEarlier: string;
   moveAttachmentLater: string;
   uploading: string;
+  /** Toast shown while the submitted post is being published. */
+  publishing: string;
+  /** Toast shown while a draft or an edited post is being saved. */
+  saving: string;
   /** Toast when exactly one pasted remote image couldn't be rehosted. */
   imageNotRehosted?: string;
   /** Toast when several pasted remote images couldn't be rehosted (uses a {count} placeholder). */

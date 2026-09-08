@@ -5,6 +5,8 @@ import {
   QUEUED_TOAST_STORAGE_KEY,
   consumeQueuedToast,
   queueToastForNextPage,
+  replaceWithAutoClose,
+  showPersistentToast,
   showToast,
   showToastWithAction,
 } from "../toast.js";
@@ -108,6 +110,27 @@ describe("toast", () => {
     // the dialog close event is dispatched in a queued task
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(container?.parentElement).toBe(document.body);
+  });
+
+  it("follows a dialog that opened after the progress toast did", async () => {
+    showPersistentToast("compose-deferred", "Publishing...");
+
+    // A failed publish reopens the composer, which makes everything outside
+    // it inert — the result toast has to move in with it.
+    const dialog = document.createElement("dialog");
+    document.body.appendChild(dialog);
+    dialog.showModal();
+
+    replaceWithAutoClose("compose-deferred", "Couldn't publish.", "error");
+
+    const container = document.getElementById("toast-container");
+    expect(container?.parentElement).toBe(dialog);
+    expect(container?.querySelector(".toast span")?.textContent).toBe(
+      "Couldn't publish.",
+    );
+
+    dialog.close();
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
   it("keeps action toasts available longer than passive notifications", () => {

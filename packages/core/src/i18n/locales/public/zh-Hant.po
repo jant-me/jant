@@ -1889,6 +1889,11 @@ msgstr ""
 msgid "Published!"
 msgstr ""
 
+#. @context: Toast shown while a post is being published
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Publishing..."
+msgstr ""
+
 #. @context: Search highlight text on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "quiet design"
@@ -2121,6 +2126,11 @@ msgstr ""
 #. @context: Confirm close action sheet title
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Save to drafts?"
+msgstr ""
+
+#. @context: Toast shown while a draft or an edited post is being saved
+#: src/ui/compose/ComposeDialog.tsx
+msgid "Saving..."
 msgstr ""
 
 #. @context: Search page title
