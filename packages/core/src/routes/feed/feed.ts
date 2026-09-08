@@ -31,7 +31,7 @@ import {
   buildFeedDiscoveryFields,
   getFeedEntryUpdatedAt,
   getRssPublishedBefore,
-  RSS_FEED_CACHE_CONTROL,
+  renderFeed,
 } from "../../lib/feed-policy.js";
 import { buildMediaMap } from "../../lib/media-helpers.js";
 import { getI18n } from "../../i18n/index.js";
@@ -365,15 +365,6 @@ export function parseFormatQuery(c: Context<Env>): Format | undefined {
     return raw as Format;
   }
   return undefined;
-}
-
-export function renderFeed(xml: string) {
-  return new Response(xml, {
-    headers: {
-      "Content-Type": "application/atom+xml; charset=utf-8",
-      "Cache-Control": RSS_FEED_CACHE_CONTROL,
-    },
-  });
 }
 
 /**

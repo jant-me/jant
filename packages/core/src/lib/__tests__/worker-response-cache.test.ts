@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Bindings } from "../../types.js";
 import { POST_BODY_HTML_VERSION } from "../post-body-html.js";
+import { withConditionalResponse } from "../http-cache.js";
 import {
   normalizeWorkerCacheKeyUrl,
   withWorkerResponseCache,
@@ -324,5 +325,94 @@ describe("withWorkerResponseCache", () => {
 
     expect(await response.text()).toBe("fresh");
     expect(nextCallCount).toBe(1);
+  });
+});
+
+/**
+ * Revalidation composed with the cache, the way `createApp()` composes them:
+ * conditional handling on the outside, so it sees a cache hit and a cache miss
+ * alike.
+ */
+describe("withWorkerResponseCache under conditional requests", () => {
+  const FEED_URL = "https://example.com/feed";
+  const ETAG = '"feed-v1"';
+
+  function feedResponse() {
+    return new Response("<feed/>", {
+      headers: {
+        "Cache-Control": "public, max-age=60",
+        "Content-Type": "application/atom+xml; charset=utf-8",
+        ETag: ETAG,
+      },
+    });
+  }
+
+  async function poll(
+    cache: ReturnType<typeof createMemoryCache>,
+    ifNoneMatch: string | undefined,
+    next: () => Promise<Response>,
+  ) {
+    const request = new Request(
+      FEED_URL,
+      ifNoneMatch ? { headers: { "If-None-Match": ifNoneMatch } } : undefined,
+    );
+
+    return withConditionalResponse(
+      request,
+      await withWorkerResponseCache({
+        bindings: createCloudflareBindings(),
+        cache,
+        request,
+        next,
+      }),
+    );
+  }
+
+  it("stores the full document even when the poll that filled the cache got a 304", async () => {
+    const cache = createMemoryCache();
+    let renders = 0;
+    const render = async () => {
+      renders += 1;
+      return feedResponse();
+    };
+
+    // A reader that already holds this version, arriving on a cache miss.
+    const conditional = await poll(cache, ETAG, render);
+    expect(conditional.status).toBe(304);
+    expect(await conditional.text()).toBe("");
+    expect(renders).toBe(1);
+
+    // The next reader gets the document from the cache, not another render.
+    const unconditional = await poll(cache, undefined, render);
+    expect(unconditional.status).toBe(200);
+    expect(await unconditional.text()).toBe("<feed/>");
+    expect(renders).toBe(1);
+  });
+
+  it("revalidates a cache hit without reaching a route", async () => {
+    const cache = createMemoryCache();
+    let renders = 0;
+    const render = async () => {
+      renders += 1;
+      return feedResponse();
+    };
+
+    await poll(cache, undefined, render);
+    const revalidated = await poll(cache, ETAG, render);
+
+    expect(revalidated.status).toBe(304);
+    expect(revalidated.headers.get("ETag")).toBe(ETAG);
+    expect(revalidated.headers.get("Cache-Control")).toBe("public, max-age=60");
+    expect(renders).toBe(1);
+  });
+
+  it("serves the document again once the cached version no longer matches", async () => {
+    const cache = createMemoryCache();
+
+    await poll(cache, undefined, async () => feedResponse());
+    const stale = await poll(cache, '"feed-v0"', async () => feedResponse());
+
+    expect(stale.status).toBe(200);
+    expect(await stale.text()).toBe("<feed/>");
   });
 });

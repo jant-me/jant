@@ -10,7 +10,8 @@ import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { toViewPath } from "../../lib/view-language.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
-import { buildFeedData, parseFormatQuery, renderFeed } from "../feed/feed.js";
+import { renderFeed } from "../../lib/feed-policy.js";
+import { buildFeedData, parseFormatQuery } from "../feed/feed.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 

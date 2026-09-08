@@ -1184,3 +1184,25 @@ expired, which turns a bad read into lost work. Not restoring is enough.
   afterwards. Return a reason, and log it whenever stored bytes existed and did
   not come back — "there was nothing stored" is the ordinary case and stays
   quiet.
+
+## Response-header work is not verified until it has been over the wire
+
+Feed ETags passed 24 route tests and did nothing in a browser.
+`withWorkerResponseCache` sits at `app.fetch`, ahead of every route, and puts
+public feed, sitemap, and icon responses into `caches.default`. A cache hit
+returned the stored `200` and the handler that read `If-None-Match` never ran.
+`curl -D -` against `mise run dev-debug` showed it in one line:
+`cf-cache-status: HIT`.
+
+Two rules out of it:
+
+- A route test exercises the route. Anything a layer above the router can
+  intercept — headers, status, caching, redirects — needs one real HTTP request
+  before it counts as verified. `app.request()` enters below `app.fetch`, so
+  everything wrapped around `app.fetch` is invisible to it.
+- Put revalidation outside the cache, not inside the handler. Answering
+  `If-None-Match` in the route means a cache miss returns a `304` that
+  `canStoreWorkerCacheResponse` refuses to store, so a reader who always sends
+  a validator keeps the cache permanently empty and re-renders every poll. The
+  handler emits the tag; `withConditionalResponse` at the edge answers with it,
+  and the miss still stores the whole document on its way out.

@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import type { Bindings, FeedData, Post } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
 import { getDiscoverFeedPath } from "./discover.js";
+import { strongETag } from "./http-cache.js";
 import { now, toISOString } from "./time.js";
 import { toAbsoluteSiteUrl } from "./url.js";
 import { buildSurfaceAlternates, viewBasePath } from "./view-language.js";
@@ -9,7 +10,42 @@ import { buildSurfaceAlternates, viewBasePath } from "./view-language.js";
 type FeedContext = Context<{ Bindings: Bindings; Variables: AppVariables }>;
 
 /** Cache policy for dynamic Atom feed responses. */
-export const RSS_FEED_CACHE_CONTROL = "public, max-age=60";
+const RSS_FEED_CACHE_CONTROL = "public, max-age=60";
+
+/** Media type every Jant Atom feed is served as. */
+const FEED_CONTENT_TYPE = "application/atom+xml; charset=utf-8";
+
+/**
+ * Serve a rendered Atom document.
+ *
+ * Every feed on the site goes through here, so the cache policy and the
+ * validator are decided once rather than per route. The tag is derived from
+ * the rendered bytes, which is what lets it cover everything a feed varies by
+ * — the posts, the site name, the language view, the `jant:discover`
+ * declaration — without enumerating those inputs.
+ *
+ * Emitting the validator is all this does with it. Answering a conditional
+ * request is `withConditionalResponse`'s job at the edge of the app, outside
+ * the Worker response cache, so that a poll is answered from a cache hit and
+ * a cache miss alike — and so that a miss still stores the full document
+ * instead of a `304` nobody can serve to the next reader.
+ *
+ * @param xml - Serialized Atom document
+ * @returns The feed response, carrying its entity tag
+ * @example
+ * ```ts
+ * return renderFeed(defaultFeedRenderer(feedData));
+ * ```
+ */
+export async function renderFeed(xml: string): Promise<Response> {
+  return new Response(xml, {
+    headers: {
+      "Content-Type": FEED_CONTENT_TYPE,
+      "Cache-Control": RSS_FEED_CACHE_CONTROL,
+      ETag: await strongETag(xml),
+    },
+  });
+}
 
 /**
  * Convert an RSS publication delay into the exclusive upper bound expected by

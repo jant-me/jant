@@ -93,6 +93,10 @@ import {
 import { isAssetPath } from "./lib/asset-path.js";
 import { getHostedCanonicalRedirect } from "./lib/hosted-domain.js";
 import { stripSitePathPrefix, toPublicHref } from "./lib/url.js";
+import {
+  matchesIfNoneMatch,
+  withConditionalResponse,
+} from "./lib/http-cache.js";
 import { withWorkerResponseCache } from "./lib/worker-response-cache.js";
 import { createRequestRuntime } from "./runtime/index.js";
 import { getInstanceReadiness } from "./runtime/readiness.js";
@@ -268,22 +272,30 @@ export function createApp(): App {
   const app = new Hono<{ Bindings: Bindings; Variables: AppVariables }>();
   const defaultFetch = app.fetch.bind(app);
 
-  app.fetch = (request, env, executionCtx) => {
+  app.fetch = async (request, env, executionCtx) => {
     const bindings = env as Bindings | undefined;
     const preparedRequest = prepareRequestForRouting(
       request,
       getConfiguredSingleSitePathPrefix(bindings),
     );
     if (preparedRequest instanceof Response) {
-      return Promise.resolve(preparedRequest);
+      return preparedRequest;
     }
-    return withWorkerResponseCache({
-      bindings,
-      executionCtx,
+    // Revalidation sits outside the response cache, so a reader holding the
+    // current version is answered from a cache hit as cheaply as from a miss,
+    // and a miss still stores the full document on its way out.
+    return withConditionalResponse(
       request,
-      next: () =>
-        Promise.resolve(defaultFetch(preparedRequest, bindings, executionCtx)),
-    });
+      await withWorkerResponseCache({
+        bindings,
+        executionCtx,
+        request,
+        next: () =>
+          Promise.resolve(
+            defaultFetch(preparedRequest, bindings, executionCtx),
+          ),
+      }),
+    );
   };
 
   // Global error handler: maps DomainError → HTTP responses
@@ -401,8 +413,10 @@ export function createApp(): App {
     const storage = c.var.storage;
     if (!storage) return c.notFound();
 
+    // The outer conditional layer would answer this too, but only after the
+    // object has been fetched and rendered; matching here skips that work.
     const etag = `"${media.updatedAt}"`;
-    if (c.req.header("If-None-Match") === etag) {
+    if (matchesIfNoneMatch(c.req.header("If-None-Match"), etag)) {
       return new Response(null, { status: 304, headers: { ETag: etag } });
     }
 
