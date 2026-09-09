@@ -38,6 +38,16 @@ msgstr "{count} settings shown"
 msgid "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in."
 msgstr "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in."
 
+#. @context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing."
+msgstr "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing."
+
+#. @context: The help line under the Discover checkbox on the first-run setup screen. The settings page's own line, plus the way back to the setting — which only this screen needs, since the settings page is already there. {directory} is rendered as the link to the directory, so keep it as one run of text.
+#: src/routes/auth/setup.tsx
+msgid "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing. You can change this later in {path}."
+msgstr "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing. You can change this later in {path}."
+
 #. @context: Body of the change-primary-language dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "{next} will be served at the root address (/, /feed, /archive), and {previous} moves to {prefix}. Post addresses do not change, but anyone subscribed to /feed starts receiving {next} posts."
@@ -72,13 +82,6 @@ msgstr "302 (Temporary)"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "A calm, cool backdrop."
 msgstr "A calm, cool backdrop."
-
-#. @context: Help text under the Jant Discover checkbox. Deliberately states only the stable promises; the rest is the directory's own business.
-#. @context: The same help line under the Discover checkbox, on the first-run setup screen.
-#: src/routes/auth/setup.tsx
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "A public list of Jant blogs. It shows your blog's latest post 24 hours after you publish it, and links back to your site."
-msgstr "A public list of Jant blogs. It shows your blog's latest post 24 hours after you publish it, and links back to your site."
 
 #. @context: Help text for site description field
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -258,8 +261,8 @@ msgstr "All collections are already in your navigation."
 msgid "All feed addresses"
 msgstr "All feed addresses"
 
-#. @context: Checkbox for joining the Jant Discover directory. {name} is the directory's name and is rendered as a link to it, so keep it as one run of text.
-#. @context: The settings page's Discover checkbox, asked once on the first-run setup screen. Here {name} is plain text rather than a link; keep it as one run of text either way.
+#. @context: Checkbox for joining the Jant Discover directory. {name} is the directory's name, kept as one run of text.
+#. @context: The settings page's Discover checkbox, asked once on the first-run setup screen. {name} is the directory's name, kept as one run of text.
 #: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Allow {name} to list my site"
@@ -1028,6 +1031,13 @@ msgstr "Design"
 msgid "Destination"
 msgstr "Destination"
 
+#. @context: The noun for the Jant Discover list, used inside the help line under the Discover checkbox. This run of text is rendered as the link to the directory, so translate it as it should read inside that sentence.
+#. @context: The same noun for the Jant Discover list, on the first-run setup screen.
+#: src/routes/auth/setup.tsx
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "directory"
+msgstr "directory"
+
 #. @context: Button to disconnect GitHub repository on GitHub Sync settings
 #. @context: Button to disconnect Telegram
 #. @context: Section heading for disconnect action on GitHub Sync settings
@@ -1288,6 +1298,8 @@ msgstr "Full posts"
 #. @context: Breadcrumb label
 #. @context: Settings item — general settings
 #. @context: Settings section heading
+#. @context: The General settings page's own name, used inside the directions back to the Discover setting on the first-run setup screen.
+#: src/routes/auth/setup.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -1385,7 +1397,9 @@ msgstr "Install the GitHub App to grant access without managing personal tokens.
 msgid "Integrations"
 msgstr "Integrations"
 
-#. @context: Name of the Jant blog directory. Appears inside the Discover checkbox label as the link to the directory itself.
+#. @context: Name of the Jant blog directory. Appears inside the Discover checkbox label.
+#. @context: The same name of the Jant blog directory, on the first-run setup screen.
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Jant Discover"
 msgstr "Jant Discover"
@@ -2386,6 +2400,8 @@ msgstr "Set up your site and the account you write from."
 
 #. @context: Breadcrumb label
 #. @context: Page title for the settings home page
+#. @context: The settings area's own name, used inside the directions back to the Discover setting on the first-run setup screen.
+#: src/routes/auth/setup.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Settings"
@@ -2482,6 +2498,8 @@ msgid "Site settings updated."
 msgstr "Site settings updated."
 
 #. @context: Settings section heading covering search engine indexing and the Jant Discover directory
+#. @context: The settings section's own heading, used inside the directions back to the Discover setting on the first-run setup screen.
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Site visibility"
 msgstr "Site visibility"

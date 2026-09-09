@@ -42,8 +42,15 @@ import {
 } from "../../i18n/supported-locales.js";
 import { toPublicPath } from "../../lib/url.js";
 import { ONBOARDING_STATUS } from "../../lib/constants.js";
-import { resolveDiscoverMode } from "../../lib/discover.js";
-import { getDiscoverDefault } from "../../lib/env.js";
+import {
+  getDiscoverDirectoryUrl,
+  resolveDiscoverMode,
+  splitLinkedTerm,
+} from "../../lib/discover.js";
+import {
+  getDiscoverDefault,
+  getDiscoverDirectoryBaseUrl,
+} from "../../lib/env.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -112,33 +119,65 @@ const LocaleField: FC<{
  * It earns a place on a screen that asks as little as it can because the
  * setting behind it is otherwise three clicks into Settings, and an author who
  * never goes looking never learns a directory exists. The wording is the
- * settings page's own, word for word: one control appearing twice should not
- * describe itself two ways.
+ * settings page's own: one control appearing twice should not describe itself
+ * two ways.
  *
- * Both the label and the help line are shared catalog entries rather than
- * setup-specific copy, which is what keeps the two surfaces from drifting when
- * either is edited.
+ * The label is a shared catalog entry rather than setup-specific copy, which
+ * is what keeps the two surfaces from drifting when either is edited. The help
+ * line is the settings page's own sentence plus one this screen alone needs —
+ * where to find the setting again — and so is an entry of its own; edits to
+ * one belong in the other.
  */
-const DiscoverField: FC<{ label: string; hint: string }> = ({
-  label,
-  hint,
-}) => (
-  <div class="field">
-    {/* Classes copied from the settings page's own Discover checkbox
-        (`jant-settings-general.ts`), so the control a hosted author meets here
-        and the one they find later in Settings are the same object. */}
-    <label class="flex items-center gap-2 cursor-pointer" for="setup-discover">
-      <input
-        id="setup-discover"
-        type="checkbox"
-        data-bind="discover"
-        class="checkbox"
-      />
-      <span>{label}</span>
-    </label>
-    <p class="text-sm text-muted-foreground mt-1">{hint}</p>
-  </div>
-);
+const DiscoverField: FC<{
+  label: string;
+  hint: string;
+  /** The word in `hint` the link sits on, and where it goes. */
+  directory: string;
+  directoryUrl: string | null;
+}> = ({ label, hint, directory, directoryUrl }) => {
+  const parts = directoryUrl ? splitLinkedTerm(hint, directory) : null;
+
+  return (
+    // Held a little further from the field above it than the form's own gap:
+    // every other field on this screen is about the site itself, and this one
+    // is about the world outside it.
+    <div class="field mt-2">
+      {/* Classes copied from the settings page's own Discover checkbox
+          (`jant-settings-general.ts`), so the control a hosted author meets here
+          and the one they find later in Settings are the same object. */}
+      <label
+        class="flex items-center gap-2 cursor-pointer"
+        for="setup-discover"
+      >
+        <input
+          id="setup-discover"
+          type="checkbox"
+          data-bind="discover"
+          class="checkbox"
+        />
+        <span>{label}</span>
+      </label>
+      <p class="text-sm text-muted-foreground mt-1">
+        {parts ? (
+          <>
+            {parts.before}
+            <a
+              href={directoryUrl ?? undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline hover:text-foreground transition-colors"
+            >
+              {parts.term}
+            </a>
+            {parts.after}
+          </>
+        ) : (
+          hint
+        )}
+      </p>
+    </div>
+  );
+};
 
 /**
  * What this screen is called, in the tab title and above the card alike, so
@@ -214,6 +253,11 @@ export const SetupContent: FC<{
    * configured finds it clear.
    */
   discoverDefault: boolean;
+  /**
+   * The directory itself, for the link in the help line. Null when this
+   * deployment announces to no directory, and the line is then plain text.
+   */
+  discoverUrl: string | null;
 }> = ({
   sitePathPrefix = "",
   contentLanguage,
@@ -221,6 +265,7 @@ export const SetupContent: FC<{
   siteName,
   discoverAvailable,
   discoverDefault,
+  discoverUrl,
 }) => {
   const { i18n } = useLingui();
   const action = `@post('${toPublicPath("/setup", sitePathPrefix)}')`;
@@ -254,6 +299,48 @@ export const SetupContent: FC<{
     </svg>
   );
 
+  const discoverName = i18n._(
+    msg({
+      message: "Jant Discover",
+      comment:
+        "@context: The same name of the Jant blog directory, on the first-run setup screen.",
+    }),
+  );
+  // Passed twice over: once as the value inside the sentence, once as the run
+  // of text the link goes on, so the two can never be different words.
+  const discoverDirectory = i18n._(
+    msg({
+      message: "directory",
+      comment:
+        "@context: The same noun for the Jant Discover list, on the first-run setup screen.",
+    }),
+  );
+  // The way back to this setting, spelled out of the labels those screens
+  // render themselves. Written out by hand it would name a page that no longer
+  // exists the first time one of them is renamed or retranslated.
+  const discoverSettingsPath = [
+    i18n._(
+      msg({
+        message: "Settings",
+        comment:
+          "@context: The settings area's own name, used inside the directions back to the Discover setting on the first-run setup screen.",
+      }),
+    ),
+    i18n._(
+      msg({
+        message: "General",
+        comment:
+          "@context: The General settings page's own name, used inside the directions back to the Discover setting on the first-run setup screen.",
+      }),
+    ),
+    i18n._(
+      msg({
+        message: "Site visibility",
+        comment:
+          "@context: The settings section's own heading, used inside the directions back to the Discover setting on the first-run setup screen.",
+      }),
+    ),
+  ].join(" → ");
   // Rendered even when the question is not asked, so both forms can name the
   // signal unconditionally; `discoverAvailable` decides whether the control
   // appears, and an absent field simply sends the default back.
@@ -263,18 +350,25 @@ export const SetupContent: FC<{
         msg({
           message: "Allow {name} to list my site",
           comment:
-            "@context: The settings page's Discover checkbox, asked once on the first-run setup screen. Here {name} is plain text rather than a link; keep it as one run of text either way.",
+            "@context: The settings page's Discover checkbox, asked once on the first-run setup screen. {name} is the directory's name, kept as one run of text.",
         }),
-        { name: "Jant Discover" },
+        { name: discoverName },
       )}
       hint={i18n._(
         msg({
           message:
-            "A public list of Jant blogs. It shows your blog's latest post 24 hours after you publish it, and links back to your site.",
+            "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing. You can change this later in {path}.",
           comment:
-            "@context: The same help line under the Discover checkbox, on the first-run setup screen.",
+            "@context: The help line under the Discover checkbox on the first-run setup screen. The settings page's own line, plus the way back to the setting — which only this screen needs, since the settings page is already there. {directory} is rendered as the link to the directory, so keep it as one run of text.",
         }),
+        {
+          name: discoverName,
+          directory: discoverDirectory,
+          path: discoverSettingsPath,
+        },
       )}
+      directory={discoverDirectory}
+      directoryUrl={discoverUrl}
     />
   ) : null;
   const discoverSignal = `discover: ${discoverAvailable && discoverDefault}`;
@@ -564,6 +658,12 @@ setupRoutes.get("/setup", async (c) => {
         // ticked box here would be a promise the next screen breaks.
         discoverAvailable={!appConfig.demoMode && appConfig.rssFeedsEnabled}
         discoverDefault={discoverDefault}
+        // The same directory the settings page links to, derived from the same
+        // configuration, so this screen can never point at one directory while
+        // the site announces to another.
+        discoverUrl={getDiscoverDirectoryUrl(
+          getDiscoverDirectoryBaseUrl(c.env),
+        )}
         contentLanguage={
           // On a provisioned site the control plane's guess is already stored,
           // so offering it back is offering the site's current language.

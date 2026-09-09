@@ -144,18 +144,28 @@ export function GeneralContent({
   const { i18n } = useLingui();
 
   // The directory's name, split out so the checkbox label can carry it as a
-  // placeholder: the component wraps this run of text in the link to the
-  // directory, and word order stays free per locale.
+  // placeholder and word order stays free per locale.
   const discoverName = i18n._(
     msg({
       message: "Jant Discover",
       comment:
-        "@context: Name of the Jant blog directory. Appears inside the Discover checkbox label as the link to the directory itself.",
+        "@context: Name of the Jant blog directory. Appears inside the Discover checkbox label.",
+    }),
+  );
+
+  // The word the directory link sits on, in the help line under the checkbox.
+  // A placeholder for the same reason as the name: the component wraps this
+  // run of text in the link, and the sentence can be built any way round.
+  const discoverDirectory = i18n._(
+    msg({
+      message: "directory",
+      comment:
+        "@context: The noun for the Jant Discover list, used inside the help line under the Discover checkbox. This run of text is rendered as the link to the directory, so translate it as it should read inside that sentence.",
     }),
   );
 
   const labels = JSON.stringify({
-    discoverName,
+    discoverDirectory,
     general: i18n._(
       msg({
         message: "General",
@@ -393,17 +403,18 @@ export function GeneralContent({
       msg({
         message: "Allow {name} to list my site",
         comment:
-          "@context: Checkbox for joining the Jant Discover directory. {name} is the directory's name and is rendered as a link to it, so keep it as one run of text.",
+          "@context: Checkbox for joining the Jant Discover directory. {name} is the directory's name, kept as one run of text.",
       }),
       { name: discoverName },
     ),
     discoverIntro: i18n._(
       msg({
         message:
-          "A public list of Jant blogs. It shows your blog's latest post 24 hours after you publish it, and links back to your site.",
+          "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing.",
         comment:
-          "@context: Help text under the Jant Discover checkbox. Deliberately states only the stable promises; the rest is the directory's own business.",
+          "@context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.",
       }),
+      { name: discoverName, directory: discoverDirectory },
     ),
     discoverLatest: i18n._(
       msg({

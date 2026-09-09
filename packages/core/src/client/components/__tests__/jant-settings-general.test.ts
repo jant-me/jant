@@ -112,10 +112,10 @@ const labels: SettingsLabels = {
   markdownSupported: "Markdown supported",
   allowIndexing: "Allow search engines to index my site",
   demoSeoLocked: "Demo sites always stay hidden from search engines.",
-  discoverName: "Jant Discover",
+  discoverDirectory: "directory",
   discoverEnabled: "Allow Jant Discover to list my site",
   discoverIntro:
-    "A public list of Jant blogs. It shows your blog's latest post 24 hours after you publish it, and links back to your site.",
+    "Jant Discover is a directory of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing.",
   discoverLatest: "Latest",
   discoverLatestHint: "Draws from your latest public posts.",
   discoverFeatured: "Featured only",
@@ -159,6 +159,18 @@ function findCheckboxByLabel(
     el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
   ).find((checkbox) =>
     checkbox.closest("label")?.textContent?.includes(labelText),
+  );
+}
+
+/**
+ * The Discover help line, found by its text: it is one of several muted
+ * paragraphs in the section, and only this one carries the directory link.
+ */
+function findIntroParagraph(el: HTMLElement): HTMLElement | null {
+  return (
+    Array.from(el.querySelectorAll<HTMLElement>("p")).find(
+      (paragraph) => paragraph.textContent?.trim() === labels.discoverIntro,
+    ) ?? null
   );
 }
 
@@ -847,45 +859,54 @@ describe("JantSettingsGeneral", () => {
       expect(el.textContent).toContain(labels.discoverFeedsOffLocked);
     });
 
-    // The name of the directory is the way into it. What Discover is, is
-    // best answered by the list itself, so the label links there.
-    it("links the directory's name to the directory", async () => {
+    // What Discover is, is best answered by the list itself, so the sentence
+    // explaining the list is the way into it.
+    it("links the word for the directory to the directory", async () => {
+      const el = await createElement();
+      const intro = requireElement(
+        findIntroParagraph(el),
+        "expected the Discover help line",
+      );
+      const link = requireElement(
+        intro.querySelector<HTMLAnchorElement>("a"),
+        "expected the directory link inside the Discover help line",
+      );
+
+      expect(link.textContent).toBe(labels.discoverDirectory);
+      expect(link.getAttribute("href")).toBe("https://jant.me/discover");
+      expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+      expect(link.className).toContain("underline");
+      // The whole line still reads as one sentence.
+      expect(intro.textContent?.trim()).toBe(labels.discoverIntro);
+    });
+
+    // A `<label>` forwards a click on any descendant to its control, so a link
+    // inside it would open the directory and flip the setting on the way out.
+    it("keeps the directory link out of the checkbox label", async () => {
       const el = await createElement();
       const label = requireElement(
         findCheckboxByLabel(el, labels.discoverEnabled)?.closest("label"),
         "expected the Discover checkbox label",
       );
-      const link = requireElement(
-        label.querySelector<HTMLAnchorElement>("a"),
-        "expected the directory link inside the Discover label",
-      );
 
-      expect(link.textContent).toBe(labels.discoverName);
-      expect(link.getAttribute("href")).toBe("https://jant.me/discover");
-      expect(link.getAttribute("rel")).toBe("noopener noreferrer");
-      expect(link.className).toContain("underline");
-      // The whole label still reads as one sentence.
+      expect(label.querySelector("a")).toBeNull();
       expect(label.textContent).toContain(labels.discoverEnabled);
     });
 
-    // A `<label>` forwards a click on any descendant to its control, so an
-    // unguarded link would open the directory and flip the setting on the way
-    // out.
-    it("does not toggle the checkbox when the directory link is clicked", async () => {
+    // A directory this deployment does not announce to has no address to
+    // link, and a sentence with a dead link in it is worse than a plain one.
+    it("renders the help line as plain text with no directory configured", async () => {
       const el = await createElement();
-      const toggle = requireElement(
-        findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
-        "expected the Discover checkbox",
-      );
-      const link = requireElement(
-        toggle.closest("label")?.querySelector<HTMLAnchorElement>("a"),
-        "expected the directory link inside the Discover label",
-      );
-
-      link.click();
+      el.discoverUrl = "";
       await el.updateComplete;
 
-      expect(toggle.checked).toBe(false);
+      const intro = requireElement(
+        findIntroParagraph(el),
+        "expected the Discover help line",
+      );
+
+      expect(intro.querySelector("a")).toBeNull();
+      expect(intro.textContent?.trim()).toBe(labels.discoverIntro);
     });
 
     // The two checkboxes are one rule read twice. Search indexing gates the

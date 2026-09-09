@@ -12,7 +12,7 @@
 import { LitElement, html, nothing } from "lit";
 import type { Editor } from "@tiptap/core";
 import { MAX_SITE_NAME_LENGTH } from "../../types.js";
-import { resolveDiscoverMode } from "../../lib/discover.js";
+import { resolveDiscoverMode, splitLinkedTerm } from "../../lib/discover.js";
 import type {
   SettingsInitialData,
   SettingsLabels,
@@ -986,7 +986,7 @@ export class JantSettingsGeneral extends LitElement {
               @change=${(e: Event) =>
                 this._onDiscoverToggle((e.target as HTMLInputElement).checked)}
             />
-            <span>${this._renderDiscoverLabel()}</span>
+            <span>${this.labels.discoverEnabled}</span>
           </label>
           <p class="text-sm text-muted-foreground">
             ${
@@ -994,7 +994,7 @@ export class JantSettingsGeneral extends LitElement {
                 ? this.demoMode
                   ? this.labels.discoverDemoLocked
                   : this.labels.discoverFeedsOffLocked
-                : this.labels.discoverIntro
+                : this._renderDiscoverIntro()
             }
           </p>
           ${
@@ -1021,31 +1021,30 @@ export class JantSettingsGeneral extends LitElement {
   }
 
   /**
-   * The checkbox label, with the directory's name linking to the directory.
+   * The help line, with the word for the list linking to the list.
    *
-   * The label reads as one sentence in every locale, so the link is found by
-   * splitting the translated string on the translated name rather than by
-   * gluing fragments together. A translation that drops or rewrites the name
+   * The line reads as one sentence in every locale, so the link is found by
+   * splitting the translated string on the translated word rather than by
+   * gluing fragments together. A translation that drops or rewrites the word
    * simply renders as plain text — a sentence without a link, never a broken
    * one. What Discover is, is best answered by the list itself, which is why
-   * the link goes there rather than to a page about it. `stopPropagation`
-   * keeps a click on it from reaching the `<label>`, which would otherwise
-   * toggle the checkbox on the way out.
+   * the link goes there rather than to a page about it, and why it sits in the
+   * sentence that explains the list rather than on the checkbox label.
    */
-  private _renderDiscoverLabel() {
-    const text = this.labels.discoverEnabled ?? "";
-    const name = this.labels.discoverName ?? "";
-    const at = name ? text.indexOf(name) : -1;
-    if (at === -1 || !this.discoverUrl) return text;
+  private _renderDiscoverIntro() {
+    const text = this.labels.discoverIntro ?? "";
+    const parts = this.discoverUrl
+      ? splitLinkedTerm(text, this.labels.discoverDirectory ?? "")
+      : null;
+    if (!parts) return text;
 
-    return html`${text.slice(0, at)}<a
+    return html`${parts.before}<a
         href=${this.discoverUrl}
         target="_blank"
         rel="noopener noreferrer"
         class="underline hover:text-foreground transition-colors"
-        @click=${(e: Event) => e.stopPropagation()}
-        >${name}</a
-      >${text.slice(at + name.length)}`;
+        >${parts.term}</a
+      >${parts.after}`;
   }
 
   /**

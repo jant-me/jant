@@ -33,6 +33,7 @@ describe("SetupContent — provisioned site", () => {
     siteName: "My Blog",
     discoverAvailable: true,
     discoverDefault: true,
+    discoverUrl: "https://jant.me/discover",
   };
 
   it("names the step and the site in one line", () => {
@@ -77,6 +78,7 @@ describe("SetupContent — the Discover question", () => {
     contentLanguage: "en",
     discoverAvailable: true,
     discoverDefault: false,
+    discoverUrl: "https://jant.me/discover",
   };
 
   it("starts clear where the deployment lists nothing by default", () => {
@@ -118,6 +120,36 @@ describe("SetupContent — the Discover question", () => {
     expect(html).not.toContain("setup-discover");
     expect(html).toContain("discover: false");
   });
+
+  // What Discover is, is best answered by the list itself, so the word for it
+  // in the help line is the way there.
+  it("links the word for the directory to the directory", () => {
+    const html = render(base);
+
+    expect(html).toContain(
+      '<a href="https://jant.me/discover" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground transition-colors">directory</a>',
+    );
+  });
+
+  // A self-hosted site that announces to no directory has no address to link,
+  // and a sentence with a dead link in it is worse than a plain one.
+  it("leaves the help line plain when no directory is configured", () => {
+    const html = render({ ...base, discoverUrl: null });
+
+    expect(html).toContain("Jant Discover is a directory of Jant blogs");
+    expect(html).not.toContain("<a href");
+  });
+
+  // Only this screen says where the setting lives, and it spells the route out
+  // of the labels those screens render — so a renamed page renames the
+  // directions with it rather than sending the author somewhere that is gone.
+  it("says where the setting can be changed later", () => {
+    const html = render(base);
+
+    expect(html).toContain(
+      "You can change this later in Settings → General → Site visibility.",
+    );
+  });
 });
 
 describe("SetupContent — fresh install", () => {
@@ -126,6 +158,7 @@ describe("SetupContent — fresh install", () => {
     contentLanguage: "en",
     discoverAvailable: true,
     discoverDefault: false,
+    discoverUrl: "https://jant.me/discover",
   };
 
   it("wears the same one-line shell as the hosted screen", () => {

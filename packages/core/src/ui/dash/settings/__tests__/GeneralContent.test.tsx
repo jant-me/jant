@@ -104,16 +104,16 @@ describe("GeneralContent", () => {
     expect(html).toMatch(/<jant-settings-general[^>]*demo-mode(?:=|\s|>)/);
   });
 
-  // The client turns the directory's name into the docs link by finding it in
-  // the checkbox label, so the two labels have to agree character for
-  // character. A translation that renamed one and not the other would only
+  // The client turns the word for the list into the directory link by finding
+  // it in the help line, so the two labels have to agree character for
+  // character. A translation that reworded one and not the other would only
   // lose the link, but this catches it here rather than in a screenshot.
-  it("carries the directory name verbatim inside the checkbox label", async () => {
+  it("carries the directory noun verbatim inside the help line", async () => {
     const html = await renderGeneralContent(createProps(false));
 
-    expect(html).toContain("Allow Jant Discover to list my site");
+    expect(html).toContain("Jant Discover is a directory of Jant blogs");
     expect(html).toContain(
-      "&quot;discoverName&quot;:&quot;Jant Discover&quot;",
+      "&quot;discoverDirectory&quot;:&quot;directory&quot;",
     );
   });
 

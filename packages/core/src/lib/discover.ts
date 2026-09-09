@@ -250,3 +250,34 @@ export function getDiscoverSubmitUrl(
     return null;
   }
 }
+
+/**
+ * Split a sentence around the run of text that carries the directory link.
+ *
+ * The Discover help line reads as one sentence in every locale, so the link is
+ * found by splitting the translated line on the translated word rather than by
+ * gluing fragments together. A translation that drops or rewrites the word
+ * simply renders as plain text — a sentence without a link, never a broken one.
+ *
+ * @param text - The translated sentence
+ * @param term - The translated run of text the link belongs on
+ * @returns The three parts, or `null` when the term is not in the sentence
+ * @example
+ * ```ts
+ * splitLinkedTerm("A directory of blogs.", "directory");
+ * // { before: "A ", term: "directory", after: " of blogs." }
+ * ```
+ */
+export function splitLinkedTerm(
+  text: string,
+  term: string,
+): { before: string; term: string; after: string } | null {
+  if (!text || !term) return null;
+  const at = text.indexOf(term);
+  if (at === -1) return null;
+  return {
+    before: text.slice(0, at),
+    term,
+    after: text.slice(at + term.length),
+  };
+}
