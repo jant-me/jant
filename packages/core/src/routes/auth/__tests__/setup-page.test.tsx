@@ -31,6 +31,9 @@ describe("SetupContent — provisioned site", () => {
     mode: "language",
     contentLanguage: "en",
     siteName: "My Blog",
+    discoverAvailable: true,
+    discoverDefault: true,
+    discoverUrl: "https://jant.me/discover",
   };
 
   it("names the step and the site in one line", () => {
@@ -54,7 +57,7 @@ describe("SetupContent — provisioned site", () => {
     expect(html).not.toContain("·");
   });
 
-  it("asks nothing but the language", () => {
+  it("asks nothing but the language and Discover", () => {
     const html = render(provisioned);
 
     expect(html).toContain("setup-content-language");
@@ -64,8 +67,99 @@ describe("SetupContent — provisioned site", () => {
   });
 });
 
+/**
+ * The box's state is carried by the Datastar signal, not by a `checked`
+ * attribute: `data-bind` initialises the control from the signal on upgrade, so
+ * the signal is what the server actually decides.
+ */
+describe("SetupContent — the Discover question", () => {
+  const base: SetupProps = {
+    mode: "full",
+    contentLanguage: "en",
+    discoverAvailable: true,
+    discoverDefault: false,
+    discoverUrl: "https://jant.me/discover",
+  };
+
+  it("starts clear where the deployment lists nothing by default", () => {
+    const html = render(base);
+
+    expect(html).toContain("setup-discover");
+    expect(html).toContain("discover: false");
+  });
+
+  // Hosted Jant sets `DISCOVER=latest`, and the box has to say so rather than
+  // showing a refusal the site would not honour.
+  it("starts ticked where the deployment lists its blogs", () => {
+    const html = render({ ...base, discoverDefault: true });
+
+    expect(html).toContain("discover: true");
+  });
+
+  it("is asked on the hosted screen too", () => {
+    const html = render({
+      ...base,
+      mode: "language",
+      siteName: "My Blog",
+      discoverDefault: true,
+    });
+
+    expect(html).toContain("setup-discover");
+    expect(html).toContain("discover: true");
+  });
+
+  // Demo mode and feeds-off both outlive setup, so the question would be a
+  // promise the next screen breaks.
+  it("is not asked where the answer could not be honoured", () => {
+    const html = render({
+      ...base,
+      discoverAvailable: false,
+      discoverDefault: true,
+    });
+
+    expect(html).not.toContain("setup-discover");
+    expect(html).toContain("discover: false");
+  });
+
+  // What Discover is, is best answered by the list itself, so the word for it
+  // in the help line is the way there.
+  it("links the word for the directory to the directory", () => {
+    const html = render(base);
+
+    expect(html).toContain(
+      '<a href="https://jant.me/discover" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground transition-colors">directory</a>',
+    );
+  });
+
+  // A self-hosted site that announces to no directory has no address to link,
+  // and a sentence with a dead link in it is worse than a plain one.
+  it("leaves the help line plain when no directory is configured", () => {
+    const html = render({ ...base, discoverUrl: null });
+
+    expect(html).toContain("Jant Discover is a directory of Jant blogs");
+    expect(html).not.toContain("<a href");
+  });
+
+  // Only this screen says where the setting lives, and it spells the route out
+  // of the labels those screens render — so a renamed page renames the
+  // directions with it rather than sending the author somewhere that is gone.
+  it("says where the setting can be changed later", () => {
+    const html = render(base);
+
+    expect(html).toContain(
+      "You can change this later in Settings → General → Site visibility.",
+    );
+  });
+});
+
 describe("SetupContent — fresh install", () => {
-  const fresh: SetupProps = { mode: "full", contentLanguage: "en" };
+  const fresh: SetupProps = {
+    mode: "full",
+    contentLanguage: "en",
+    discoverAvailable: true,
+    discoverDefault: false,
+    discoverUrl: "https://jant.me/discover",
+  };
 
   it("wears the same one-line shell as the hosted screen", () => {
     const html = render(fresh);

@@ -702,6 +702,37 @@ describe("Atom Feed Routes", () => {
       expect(xml).toContain("<hr/>");
     });
 
+    it("names a reply by its alias, the way the site does", async () => {
+      const { app, services } = createFeedTestApp();
+
+      const root = await services.posts.create({
+        format: "note",
+        title: "Aliased Thread Root",
+        bodyMarkdown: "Root content",
+        status: "published",
+        featured: true,
+      });
+      const reply = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "Reply content",
+        status: "published",
+        replyToId: root.id,
+      });
+      await services.paths.create({
+        path: "/notes/the-reply",
+        kind: "alias",
+        postId: reply.id,
+      });
+
+      for (const path of ["/latest/feed", "/featured/feed"]) {
+        const xml = await (await app.request(path)).text();
+        // The row, the fold's `latest`, and the inline reply link all name
+        // the reply by the address the site uses, not by its slug.
+        expect(xml).toContain('href="http://localhost:3000/notes/the-reply"');
+        expect(xml).not.toContain(`/${reply.slug}"`);
+      }
+    });
+
     it("delays new replies inside an already eligible Thread", async () => {
       const currentTime = 2_000_000;
       const dateNow = vi.spyOn(Date, "now").mockReturnValue(currentTime * 1000);

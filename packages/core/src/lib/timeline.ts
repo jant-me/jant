@@ -16,6 +16,7 @@ import type { AppVariables } from "../types/app-context.js";
 import { buildMediaMap } from "./media-helpers.js";
 import { createMediaContext, resolveDraftTailId, toPostView } from "./view.js";
 import { getViewLang } from "./view-language.js";
+import { toPublicPath } from "./url.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -102,11 +103,15 @@ async function buildTimelineItems(
 
   // Batch load media for the bounded leading/trailing thread context.
   const contextPostIds = new Set<string>();
+  const gapPostIds = new Set<string>();
   for (const ctx of threadContexts.values()) {
     contextPostIds.add(ctx.latestReply.id);
     for (const reply of [...ctx.leadingReplies, ...ctx.trailingReplies]) {
       contextPostIds.add(reply.id);
     }
+    // The gap target is never rendered, so it needs no media or collections —
+    // only the alias that decides its address.
+    if (ctx.firstHiddenReply) gapPostIds.add(ctx.firstHiddenReply.id);
   }
   const [contextMediaMap, contextCollectionsMap, contextAliasesMap] =
     contextPostIds.size > 0
@@ -126,7 +131,12 @@ async function buildTimelineItems(
           c.var.services.collections.getCollectionsByPostIds([
             ...contextPostIds,
           ]),
-          c.var.services.paths.getPostAliases([...contextPostIds]),
+          // Gap targets ride along here and nowhere else: their address is
+          // all the gap link needs.
+          c.var.services.paths.getPostAliases([
+            ...contextPostIds,
+            ...gapPostIds,
+          ]),
         ])
       : [new Map(), new Map(), new Map<string, string[]>()];
 
@@ -192,6 +202,12 @@ async function buildTimelineItems(
           leadingReplies: leadingReplyViews,
           trailingReplies: trailingReplyViews,
           latestReply: latestReplyView,
+          gapHref: threadCtx.firstHiddenReply
+            ? toPublicPath(
+                `/${firstContextAlias(threadCtx.firstHiddenReply.id) ?? threadCtx.firstHiddenReply.slug}`,
+                mediaCtx.sitePathPrefix,
+              )
+            : undefined,
           totalReplyCount: threadCtx.totalReplyCount,
         },
       };

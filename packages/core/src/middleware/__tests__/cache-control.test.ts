@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
-import { defaultCacheControl } from "../cache-control.js";
+import { defaultCacheControl, noStore } from "../cache-control.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -71,6 +71,48 @@ describe("defaultCacheControl", () => {
   it("defaults not-found responses too", async () => {
     const response = await buildApp().request("/missing");
     expect(response.status).toBe(404);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-cache");
+  });
+});
+
+describe("noStore", () => {
+  function buildCredentialApp(): Hono<Env> {
+    const app = new Hono<Env>();
+    app.use("*", async (c, next) => {
+      c.set("isAuthenticated", false);
+      await next();
+    });
+    app.use("*", defaultCacheControl());
+    // Mounted exactly as `app.tsx` does: after the default, before the route.
+    app.use("/reset", noStore());
+    app.use("/api/auth/*", noStore());
+
+    app.get("/reset", (c) => c.html("<form/>"));
+    // A terminal handler that never calls next(), like better-auth's.
+    app.all("/api/auth/*", (c) => c.json({ ok: true }));
+    app.get("/", (c) => c.html("<h1>home</h1>"));
+
+    return app;
+  }
+
+  it("keeps an anonymous credential page out of the browser's disk cache", async () => {
+    // The reset URL carries a one-time token, so the anonymous `no-cache`
+    // default — which lets the browser keep the page — is the wrong answer.
+    const response = await buildCredentialApp().request("/reset");
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+  });
+
+  it("still reaches a terminal handler that never calls next()", async () => {
+    // better-auth's `/api/auth/*` handler returns without yielding, so the
+    // middleware only runs if it was registered first.
+    const response = await buildCredentialApp().request(
+      "/api/auth/get-session",
+    );
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+  });
+
+  it("leaves every other anonymous page on the default", async () => {
+    const response = await buildCredentialApp().request("/");
     expect(response.headers.get("Cache-Control")).toBe("private, no-cache");
   });
 });

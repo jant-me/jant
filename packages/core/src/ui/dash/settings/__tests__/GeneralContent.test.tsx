@@ -47,6 +47,25 @@ function createProps(
     siteFooter: "Footer text",
     showJantBrandingOnHome: false,
     noindex: false,
+    discover: "",
+    // The deployment has no answer of its own; a self-hosted site opts in.
+    discoverDefault: "" as const,
+    discoverUrl: "https://jant.me/discover",
+    discoverStatus: {
+      announced: true,
+      announceError: null,
+      announceAt: STALE_ANNOUNCE_AT,
+      hasDirectory: true,
+      managedByHost: false,
+      submitUrl: "https://jant.me/discover/submit",
+      declaredMode: "latest" as const,
+      publicPostCount: 5,
+      featuredPostCount: 2,
+      established: true,
+      minPublicPosts: 1,
+      firstReadMaxHours: 6,
+    },
+    rssFeedsEnabled: true,
     demoMode,
     aboutPage: {
       state: "missing" as const,
@@ -66,6 +85,12 @@ function createProps(
   };
 }
 
+// The first-read line is the one status sentence that expires, so the fixtures
+// place the announcement relative to the clock rather than on a fixed date that
+// drifts in and out of the window as time passes.
+const STALE_ANNOUNCE_AT = Math.floor(Date.now() / 1000) - 7 * 24 * 3600;
+const FRESH_ANNOUNCE_AT = Math.floor(Date.now() / 1000) - 60;
+
 describe("GeneralContent", () => {
   it("omits the demo-mode attribute when demo mode is disabled", async () => {
     const html = await renderGeneralContent(createProps(false));
@@ -77,5 +102,242 @@ describe("GeneralContent", () => {
     const html = await renderGeneralContent(createProps(true));
 
     expect(html).toMatch(/<jant-settings-general[^>]*demo-mode(?:=|\s|>)/);
+  });
+
+  // The client turns the word for the list into the directory link by finding
+  // it in the help line, so the two labels have to agree character for
+  // character. A translation that reworded one and not the other would only
+  // lose the link, but this catches it here rather than in a screenshot.
+  it("carries the directory noun verbatim inside the help line", async () => {
+    const html = await renderGeneralContent(createProps(false));
+
+    expect(html).toContain("Jant Discover is a directory of Jant blogs");
+    expect(html).toContain(
+      "&quot;discoverDirectory&quot;:&quot;directory&quot;",
+    );
+  });
+
+  // The browser decides what the site declares, because two of the inputs are
+  // controls on this page. Resolving `noindex` into the default here would put
+  // that decision back on the server and freeze it at page load — the checkbox
+  // would then go on claiming a listing the feed had already dropped.
+  it("hands the browser the deployment default with noindex unresolved", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, { discoverDefault: "latest", noindex: true }),
+    );
+
+    expect(html).toContain('discover-default="latest"');
+  });
+
+  // The controls above the block already say that the site is listed and what
+  // its feed declares, and a site past the directory's threshold has nothing
+  // to do about being past it. A site in that state is told nothing at all.
+  it("says nothing when the setting is already doing what it says", async () => {
+    const html = await renderGeneralContent(createProps(false));
+
+    expect(html).toContain('discover-status="{&quot;lines&quot;:[]');
+    // Nothing failed, so neither the retry nor the manual form is offered.
+    expect(html).toContain("&quot;showAnnounce&quot;:false");
+    expect(html).toContain("&quot;submitUrl&quot;:null");
+  });
+
+  // The status sentences carry runtime numbers, so they are translated on the
+  // server rather than in the browser. What reaches the component is finished
+  // text — and this one only for as long as the answer is outstanding.
+  it("confirms an announcement while its first read is still due", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          ...createProps(false).discoverStatus,
+          announceAt: FRESH_ANNOUNCE_AT,
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      "Feed address sent. A directory reads a newly announced feed within 6 hours.",
+    );
+  });
+
+  // An opt-in that cannot take effect is worth saying, because the ticked box
+  // above claims the opposite.
+  it("says the opt-in is not yet effective without a public post", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          ...createProps(false).discoverStatus,
+          publicPostCount: 0,
+          featuredPostCount: 0,
+          established: false,
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      "Nothing published yet. jant.me lists a blog once it has one public post.",
+    );
+  });
+
+  it("says a featured-only feed has nothing to carry", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          ...createProps(false).discoverStatus,
+          declaredMode: "featured" as const,
+          featuredPostCount: 0,
+        },
+      }),
+    );
+
+    expect(html).toContain("no post is marked Featured");
+  });
+
+  it("offers the manual form only when the announcement failed", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          announced: false,
+          announceError: "The directory answered 503.",
+          announceAt: STALE_ANNOUNCE_AT,
+          hasDirectory: true,
+          managedByHost: false,
+          submitUrl: "https://jant.me/discover/submit",
+          declaredMode: "latest",
+          publicPostCount: 5,
+          featuredPostCount: 2,
+          established: true,
+          minPublicPosts: 1,
+          firstReadMaxHours: 6,
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      "The directory could not be reached: The directory answered 503.",
+    );
+    expect(html).toContain("&quot;showAnnounce&quot;:true");
+    expect(html).toContain("https://jant.me/discover/submit");
+  });
+
+  // A site whose mode came from the deployment's own default declares itself
+  // without ever having announced. Nothing else on the page sends the address
+  // now that the section saves on change, so the button has to.
+  it("offers the announcement to a site that has never made one", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          announced: null,
+          announceError: null,
+          announceAt: null,
+          hasDirectory: true,
+          managedByHost: false,
+          submitUrl: "https://jant.me/discover/submit",
+          declaredMode: "latest",
+          publicPostCount: 5,
+          featuredPostCount: 2,
+          established: true,
+          minPublicPosts: 1,
+          firstReadMaxHours: 6,
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      "Not announced yet. No directory has been told this site exists.",
+    );
+    expect(html).toContain("&quot;showAnnounce&quot;:true");
+    // The manual form stays with the failure it belongs to.
+    expect(html).toContain("&quot;submitUrl&quot;:null");
+  });
+
+  it("reports nothing at all when the feed declares none", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          announced: null,
+          announceError: null,
+          announceAt: null,
+          hasDirectory: true,
+          managedByHost: false,
+          submitUrl: "https://jant.me/discover/submit",
+          declaredMode: "none",
+          publicPostCount: 5,
+          featuredPostCount: 2,
+          established: true,
+          minPublicPosts: 1,
+          firstReadMaxHours: 6,
+        },
+      }),
+    );
+
+    // A site that is not listed is told nothing: not that it is not listed —
+    // the unticked checkbox says that — not how close it is to a threshold it
+    // has opted out of, and not whether an announcement it never made got
+    // through. With no lines the component drops the whole block.
+    expect(html).toContain('discover-status="{&quot;lines&quot;:[]');
+    expect(html).not.toContain("Not announced yet");
+    expect(html).not.toContain("jant.me lists a blog once");
+    expect(html).toContain("&quot;showAnnounce&quot;:false");
+  });
+
+  // The announcement answers "does the directory know my address". A blog on
+  // a hosted platform never has to ask: the control plane enrols its whole
+  // fleet, so an owner who has never touched this control is already listed,
+  // and telling them otherwise sends them after a task that does not exist.
+  it("says nothing about announcing on a hosted blog", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          announced: null,
+          announceError: null,
+          announceAt: null,
+          hasDirectory: true,
+          managedByHost: true,
+          submitUrl: "https://jant.me/discover/submit",
+          declaredMode: "latest",
+          publicPostCount: 5,
+          featuredPostCount: 2,
+          established: true,
+          minPublicPosts: 1,
+          firstReadMaxHours: 6,
+        },
+      }),
+    );
+
+    expect(html).not.toContain("Not announced yet");
+    expect(html).not.toContain("https://jant.me/discover/submit");
+    expect(html).toContain("&quot;showAnnounce&quot;:false");
+    expect(html).toContain("&quot;submitUrl&quot;:null");
+    // Nothing is left: the announcement was the only part of this block a
+    // hosted owner could ever have acted on.
+    expect(html).toContain('discover-status="{&quot;lines&quot;:[]');
+  });
+
+  // A failed announcement is the one case that used to leave a hosted owner
+  // reading an error about their own host's plumbing, with a Retry and a
+  // manual submission form for a directory that already has them.
+  it("hides the retry and the manual form on a hosted blog", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, {
+        discoverStatus: {
+          announced: false,
+          announceError: "The directory answered 503.",
+          announceAt: STALE_ANNOUNCE_AT,
+          hasDirectory: true,
+          managedByHost: true,
+          submitUrl: "https://jant.me/discover/submit",
+          declaredMode: "latest",
+          publicPostCount: 5,
+          featuredPostCount: 2,
+          established: true,
+          minPublicPosts: 1,
+          firstReadMaxHours: 6,
+        },
+      }),
+    );
+
+    expect(html).not.toContain("The directory could not be reached");
+    expect(html).toContain("&quot;showAnnounce&quot;:false");
+    expect(html).toContain("&quot;submitUrl&quot;:null");
   });
 });

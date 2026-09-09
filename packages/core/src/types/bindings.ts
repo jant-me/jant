@@ -43,6 +43,8 @@ export interface Bindings {
   NOINDEX?: EnvBindingValue;
   PUBLIC_API_ENABLED?: EnvBindingValue;
   RSS_FEEDS_ENABLED?: EnvBindingValue;
+  DISCOVER?: EnvBindingValue;
+  DISCOVER_PING_URL?: EnvBindingValue;
   R2_PUBLIC_URL?: EnvBindingValue;
   IMAGE_TRANSFORM_URL?: EnvBindingValue;
   DEMO_EMAIL?: EnvBindingValue;

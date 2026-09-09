@@ -5,6 +5,21 @@ type EnvSource = object | undefined | null;
 
 export const DEFAULT_APP_PORT = 3000;
 
+/** Jant's own directory, for a deployment that belongs to no other. */
+const DEFAULT_DISCOVER_DIRECTORY_URL = "https://jant.me";
+
+/**
+ * Where a directory receives announcements.
+ *
+ * The same path at every directory, which is what lets one base address stand
+ * for the whole of it — and a long-lived public contract at Jant's own:
+ * shipped self-hosted versions POST here for years, so it never moves.
+ */
+const DISCOVER_PING_PATH = "/api/discover/ping";
+
+/** Where a deployment announces when nothing else names a directory. */
+export const DEFAULT_DISCOVER_PING_URL = `${DEFAULT_DISCOVER_DIRECTORY_URL}${DISCOVER_PING_PATH}`;
+
 function toEnvRecord(env: EnvSource): Record<string, unknown> {
   return (env ?? {}) as Record<string, unknown>;
 }
@@ -198,6 +213,125 @@ export function getHostedControlPlaneInternalToken(
   env: EnvSource,
 ): string | undefined {
   return getEnvString(env, "HOSTED_CONTROL_PLANE_INTERNAL_TOKEN");
+}
+
+/**
+ * Which directory this deployment belongs to, resolved against one base.
+ *
+ * `DISCOVER_PING_URL` is read presence-aware rather than through
+ * `getEnvString`, because the two states that matter are spelled differently:
+ * an **absent** binding means "work it out", while a binding set to the
+ * **empty string** means "announce nowhere". `getEnvString` collapses both
+ * into undefined, which would make the documented way of switching the ping
+ * off silently fall back to switching it on.
+ *
+ * With nothing configured, a deployment that hosts blogs belongs to its own
+ * control plane's directory. Naming that twice is what let the two drift: a
+ * hosted deployment pointed at one control plane announced its blogs to
+ * jant.me, which knows nothing about them, and the failure was recorded where
+ * nobody reads it.
+ *
+ * @param env - Worker bindings or `process.env`
+ * @param controlPlaneBaseUrl - The control plane to fall back to, public or
+ *   internal depending on who is asking
+ * @returns A URL on the directory's origin, or undefined when there is none
+ */
+function resolveDiscoverDirectory(
+  env: EnvSource,
+  controlPlaneBaseUrl: string | undefined,
+): string | undefined {
+  const record = toEnvRecord(env);
+  if (Object.hasOwn(record, "DISCOVER_PING_URL")) {
+    const configured = normalizeEnvScalar(record["DISCOVER_PING_URL"]);
+    return configured?.trim() || undefined;
+  }
+
+  if (controlPlaneBaseUrl) {
+    try {
+      return new URL(DISCOVER_PING_PATH, controlPlaneBaseUrl).toString();
+    } catch {
+      // A base URL this malformed fails louder elsewhere; announcing to Jant's
+      // own directory is a better answer here than taking a settings save down.
+    }
+  }
+
+  return DEFAULT_DISCOVER_PING_URL;
+}
+
+/**
+ * Where a site announces itself when its owner turns Jant Discover on.
+ *
+ * Server-to-server, so a hosted deployment reaches its control plane by the
+ * internal address like every other core→cloud call — the ping carries no
+ * secret, but the internal route is the one that works without depending on
+ * the public hostname resolving and its certificate being trusted from inside.
+ *
+ * @param env - Worker bindings or `process.env`
+ * @returns The endpoint to announce to, or undefined when announcing is off
+ * @example
+ * ```ts
+ * getDiscoverPingUrl({}); // the default directory
+ * getDiscoverPingUrl({ DISCOVER_PING_URL: "" }); // undefined — off
+ * ```
+ */
+export function getDiscoverPingUrl(env: EnvSource): string | undefined {
+  return resolveDiscoverDirectory(
+    env,
+    getHostedControlPlaneInternalBaseUrl(env),
+  );
+}
+
+/**
+ * The directory a site owner is sent to, for the links on the settings page.
+ *
+ * The public counterpart of `getDiscoverPingUrl`: same directory, the address
+ * a browser can open. Both derive from the same configuration, so the page can
+ * never link to one directory while announcing to another.
+ *
+ * @param env - Worker bindings or `process.env`
+ * @returns The directory's base URL, or undefined when there is no directory
+ * @example
+ * ```ts
+ * getDiscoverDirectoryBaseUrl({}); // "https://jant.me/"
+ * getDiscoverDirectoryBaseUrl({ DISCOVER_PING_URL: "" }); // undefined
+ * ```
+ */
+export function getDiscoverDirectoryBaseUrl(
+  env: EnvSource,
+): string | undefined {
+  const resolved = resolveDiscoverDirectory(
+    env,
+    getHostedControlPlaneBaseUrl(env),
+  );
+  if (!resolved) return undefined;
+  try {
+    return new URL("/", resolved).toString();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * What this deployment lists in Jant Discover by default.
+ *
+ * Absent for a self-hosted site, and that is the point: with nothing stored
+ * and nothing configured, a site declares `none` and stays out of every
+ * directory until its owner turns it on. Hosted Jant sets `DISCOVER=latest`,
+ * so the blogs it serves are listed without each owner having to ask.
+ *
+ * A default, not a choice — the site's own stored setting overrides it, and
+ * so does `noindex`. See `resolveDiscoverMode`.
+ *
+ * @param env - Worker bindings or `process.env`
+ * @returns The raw binding value, for `resolveDiscoverMode` to parse
+ * @example
+ * ```ts
+ * getDiscoverDefault({}); // undefined — opt-in
+ * getDiscoverDefault({ DISCOVER: "latest" }); // "latest"
+ * ```
+ */
+export function getDiscoverDefault(env: EnvSource): string | undefined {
+  return getEnvString(env, "DISCOVER");
 }
 
 export function getStorageDriverEnv(env: EnvSource): string | undefined {

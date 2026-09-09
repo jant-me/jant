@@ -74,7 +74,7 @@ import { siteSkillRoutes } from "./routes/site-skill.js";
 // Middleware
 import { requireAuth } from "./middleware/auth.js";
 import { attachSession } from "./middleware/session.js";
-import { defaultCacheControl } from "./middleware/cache-control.js";
+import { defaultCacheControl, noStore } from "./middleware/cache-control.js";
 import { requireRssFeedsEnabled } from "./middleware/public-content-access.js";
 import { requireOnboarding } from "./middleware/onboarding.js";
 import { errorHandler } from "./middleware/error-handler.js";
@@ -93,6 +93,10 @@ import {
 import { isAssetPath } from "./lib/asset-path.js";
 import { getHostedCanonicalRedirect } from "./lib/hosted-domain.js";
 import { stripSitePathPrefix, toPublicHref } from "./lib/url.js";
+import {
+  matchesIfNoneMatch,
+  withConditionalResponse,
+} from "./lib/http-cache.js";
 import { withWorkerResponseCache } from "./lib/worker-response-cache.js";
 import { createRequestRuntime } from "./runtime/index.js";
 import { getInstanceReadiness } from "./runtime/readiness.js";
@@ -268,22 +272,30 @@ export function createApp(): App {
   const app = new Hono<{ Bindings: Bindings; Variables: AppVariables }>();
   const defaultFetch = app.fetch.bind(app);
 
-  app.fetch = (request, env, executionCtx) => {
+  app.fetch = async (request, env, executionCtx) => {
     const bindings = env as Bindings | undefined;
     const preparedRequest = prepareRequestForRouting(
       request,
       getConfiguredSingleSitePathPrefix(bindings),
     );
     if (preparedRequest instanceof Response) {
-      return Promise.resolve(preparedRequest);
+      return preparedRequest;
     }
-    return withWorkerResponseCache({
-      bindings,
-      executionCtx,
+    // Revalidation sits outside the response cache, so a reader holding the
+    // current version is answered from a cache hit as cheaply as from a miss,
+    // and a miss still stores the full document on its way out.
+    return withConditionalResponse(
       request,
-      next: () =>
-        Promise.resolve(defaultFetch(preparedRequest, bindings, executionCtx)),
-    });
+      await withWorkerResponseCache({
+        bindings,
+        executionCtx,
+        request,
+        next: () =>
+          Promise.resolve(
+            defaultFetch(preparedRequest, bindings, executionCtx),
+          ),
+      }),
+    );
   };
 
   // Global error handler: maps DomainError → HTTP responses
@@ -331,11 +343,34 @@ export function createApp(): App {
   // downstream handlers don't each call auth.api.getSession themselves.
   app.use("*", attachSession());
 
-  // Default every response without an explicit Cache-Control to
-  // `private, no-store`. Jant pages are auth-variant, so a shared/CDN cache
-  // must never store them; routes serving genuinely public resources (media,
-  // feeds, sitemaps, favicons) set their own Cache-Control and are untouched.
+  // Default every response without an explicit Cache-Control: `private,
+  // no-cache` for an anonymous reader, `private, no-store` once signed in.
+  // Jant pages are auth-variant, so a shared/CDN cache must never store them
+  // — that is what `private` is for in both — while a reader's own browser
+  // keeps the page and its back/forward cache. Routes serving genuinely public
+  // resources (media, feeds, sitemaps, favicons) set their own Cache-Control
+  // and are untouched.
   app.use("*", defaultCacheControl());
+
+  // Credential surfaces override that default. Each of these is served to
+  // someone with no session yet, so the anonymous branch above would let the
+  // browser keep it — and its URL — on disk: a reset link's one-time token, a
+  // sign-in form, an SSO handoff. One list rather than a `use()` beside each
+  // route group, because it has to be registered up here anyway: `/api/auth/*`
+  // ends in a terminal handler that never yields, so a middleware registered
+  // after it never runs. The handlers themselves live under "Auth routes"
+  // below and in `app.all("/api/auth/*")`; a new one belongs in both places.
+  for (const path of [
+    "/setup",
+    "/signin",
+    "/signout",
+    "/reset",
+    "/__sso",
+    "/__dev/login",
+    "/api/auth/*",
+  ]) {
+    app.use(path, noStore());
+  }
 
   app.use("*", async (c, next) => {
     const redirectUrl = await getHostedCanonicalRedirect({
@@ -378,8 +413,10 @@ export function createApp(): App {
     const storage = c.var.storage;
     if (!storage) return c.notFound();
 
+    // The outer conditional layer would answer this too, but only after the
+    // object has been fetched and rendered; matching here skips that work.
     const etag = `"${media.updatedAt}"`;
-    if (c.req.header("If-None-Match") === etag) {
+    if (matchesIfNoneMatch(c.req.header("If-None-Match"), etag)) {
       return new Response(null, { status: 304, headers: { ETag: etag } });
     }
 
@@ -545,7 +582,8 @@ export function createApp(): App {
   app.route("/api/export", exportApiRoutes);
   app.route("/api/github-sync", githubSyncAdminRoutes);
 
-  // Auth routes
+  // Auth routes. Their paths are also listed in the `noStore()` block above,
+  // which is what keeps a credential page out of the browser's disk cache.
   app.route("/", setupRoutes);
   app.route("/", signinRoutes);
   app.route("/", resetRoutes);

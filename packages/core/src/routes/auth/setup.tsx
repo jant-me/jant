@@ -22,6 +22,7 @@
  */
 
 import { Hono } from "hono";
+import type { Context } from "hono";
 import type { FC, PropsWithChildren } from "hono/jsx";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "../../i18n/context.js";
@@ -41,6 +42,15 @@ import {
 } from "../../i18n/supported-locales.js";
 import { toPublicPath } from "../../lib/url.js";
 import { ONBOARDING_STATUS } from "../../lib/constants.js";
+import {
+  getDiscoverDirectoryUrl,
+  resolveDiscoverMode,
+  splitLinkedTerm,
+} from "../../lib/discover.js";
+import {
+  getDiscoverDefault,
+  getDiscoverDirectoryBaseUrl,
+} from "../../lib/env.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -104,6 +114,72 @@ const LocaleField: FC<{
 };
 
 /**
+ * The one question setup asks about the world outside this site.
+ *
+ * It earns a place on a screen that asks as little as it can because the
+ * setting behind it is otherwise three clicks into Settings, and an author who
+ * never goes looking never learns a directory exists. The wording is the
+ * settings page's own: one control appearing twice should not describe itself
+ * two ways.
+ *
+ * The label is a shared catalog entry rather than setup-specific copy, which
+ * is what keeps the two surfaces from drifting when either is edited. The help
+ * line is the settings page's own sentence plus one this screen alone needs —
+ * where to find the setting again — and so is an entry of its own; edits to
+ * one belong in the other.
+ */
+const DiscoverField: FC<{
+  label: string;
+  hint: string;
+  /** The word in `hint` the link sits on, and where it goes. */
+  directory: string;
+  directoryUrl: string | null;
+}> = ({ label, hint, directory, directoryUrl }) => {
+  const parts = directoryUrl ? splitLinkedTerm(hint, directory) : null;
+
+  return (
+    // Held a little further from the field above it than the form's own gap:
+    // every other field on this screen is about the site itself, and this one
+    // is about the world outside it.
+    <div class="field mt-2">
+      {/* Classes copied from the settings page's own Discover checkbox
+          (`jant-settings-general.ts`), so the control a hosted author meets here
+          and the one they find later in Settings are the same object. */}
+      <label
+        class="flex items-center gap-2 cursor-pointer"
+        for="setup-discover"
+      >
+        <input
+          id="setup-discover"
+          type="checkbox"
+          data-bind="discover"
+          class="checkbox"
+        />
+        <span>{label}</span>
+      </label>
+      <p class="text-sm text-muted-foreground mt-1">
+        {parts ? (
+          <>
+            {parts.before}
+            <a
+              href={directoryUrl ?? undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline hover:text-foreground transition-colors"
+            >
+              {parts.term}
+            </a>
+            {parts.after}
+          </>
+        ) : (
+          hint
+        )}
+      </p>
+    </div>
+  );
+};
+
+/**
  * What this screen is called, in the tab title and above the card alike, so
  * the two never drift into naming the same page differently.
  */
@@ -163,7 +239,34 @@ export const SetupContent: FC<{
   mode: "full" | "language";
   /** Shown beside the step name in `language` mode, so the site is identified. */
   siteName?: string;
-}> = ({ sitePathPrefix = "", contentLanguage, mode, siteName }) => {
+  /**
+   * Whether to ask the Discover question at all.
+   *
+   * False where the answer could not be honoured — a demo site, or feeds
+   * switched off — and a control nobody can act on is worse than none.
+   */
+  discoverAvailable: boolean;
+  /**
+   * The state the Discover box starts in, derived from the deployment rather
+   * than hardcoded per install kind. Hosted Jant sets `DISCOVER=latest`, so a
+   * hosted author finds it ticked; a self-hosted install with nothing
+   * configured finds it clear.
+   */
+  discoverDefault: boolean;
+  /**
+   * The directory itself, for the link in the help line. Null when this
+   * deployment announces to no directory, and the line is then plain text.
+   */
+  discoverUrl: string | null;
+}> = ({
+  sitePathPrefix = "",
+  contentLanguage,
+  mode,
+  siteName,
+  discoverAvailable,
+  discoverDefault,
+  discoverUrl,
+}) => {
   const { i18n } = useLingui();
   const action = `@post('${toPublicPath("/setup", sitePathPrefix)}')`;
   const searchLabel = i18n._(
@@ -196,6 +299,80 @@ export const SetupContent: FC<{
     </svg>
   );
 
+  const discoverName = i18n._(
+    msg({
+      message: "Jant Discover",
+      comment:
+        "@context: The same name of the Jant blog directory, on the first-run setup screen.",
+    }),
+  );
+  // Passed twice over: once as the value inside the sentence, once as the run
+  // of text the link goes on, so the two can never be different words.
+  const discoverDirectory = i18n._(
+    msg({
+      message: "directory",
+      comment:
+        "@context: The same noun for the Jant Discover list, on the first-run setup screen.",
+    }),
+  );
+  // The way back to this setting, spelled out of the labels those screens
+  // render themselves. Written out by hand it would name a page that no longer
+  // exists the first time one of them is renamed or retranslated.
+  const discoverSettingsPath = [
+    i18n._(
+      msg({
+        message: "Settings",
+        comment:
+          "@context: The settings area's own name, used inside the directions back to the Discover setting on the first-run setup screen.",
+      }),
+    ),
+    i18n._(
+      msg({
+        message: "General",
+        comment:
+          "@context: The General settings page's own name, used inside the directions back to the Discover setting on the first-run setup screen.",
+      }),
+    ),
+    i18n._(
+      msg({
+        message: "Site visibility",
+        comment:
+          "@context: The settings section's own heading, used inside the directions back to the Discover setting on the first-run setup screen.",
+      }),
+    ),
+  ].join(" → ");
+  // Rendered even when the question is not asked, so both forms can name the
+  // signal unconditionally; `discoverAvailable` decides whether the control
+  // appears, and an absent field simply sends the default back.
+  const discoverField = discoverAvailable ? (
+    <DiscoverField
+      label={i18n._(
+        msg({
+          message: "Allow {name} to list my site",
+          comment:
+            "@context: The settings page's Discover checkbox, asked once on the first-run setup screen. {name} is the directory's name, kept as one run of text.",
+        }),
+        { name: discoverName },
+      )}
+      hint={i18n._(
+        msg({
+          message:
+            "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing. You can change this later in {path}.",
+          comment:
+            "@context: The help line under the Discover checkbox on the first-run setup screen. The settings page's own line, plus the way back to the setting — which only this screen needs, since the settings page is already there. {directory} is rendered as the link to the directory, so keep it as one run of text.",
+        }),
+        {
+          name: discoverName,
+          directory: discoverDirectory,
+          path: discoverSettingsPath,
+        },
+      )}
+      directory={discoverDirectory}
+      directoryUrl={discoverUrl}
+    />
+  ) : null;
+  const discoverSignal = `discover: ${discoverAvailable && discoverDefault}`;
+
   if (mode === "language") {
     return (
       <SetupShell
@@ -209,15 +386,14 @@ export const SetupContent: FC<{
         )}
         description={i18n._(
           msg({
-            message:
-              "It sets the language readers and search engines see. Change it any time in Settings.",
+            message: "Change it any time in Settings.",
             comment:
               "@context: Setup page description under the write-language question",
           }),
         )}
       >
         <form
-          data-signals={`{contentLanguage: ${JSON.stringify(contentLanguage)}, language: ''}`}
+          data-signals={`{contentLanguage: ${JSON.stringify(contentLanguage)}, language: '', ${discoverSignal}}`}
           data-init="$language = navigator.language || ''"
           data-on:submit__prevent={action}
           data-indicator="_loading"
@@ -240,6 +416,7 @@ export const SetupContent: FC<{
               emptyLabel={emptyLabel}
             />
           </div>
+          {discoverField}
           <button type="submit" class="btn" data-attr:disabled="$_loading">
             {spinner}
             {i18n._(
@@ -271,7 +448,7 @@ export const SetupContent: FC<{
       )}
     >
       <form
-        data-signals={`{siteName: '', email: '', password: '', timezone: '', language: '', contentLanguage: ${JSON.stringify(contentLanguage)}}`}
+        data-signals={`{siteName: '', email: '', password: '', timezone: '', language: '', contentLanguage: ${JSON.stringify(contentLanguage)}, ${discoverSignal}}`}
         data-init="$timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; $language = navigator.language || ''"
         data-on:submit__prevent={action}
         data-indicator="_loading"
@@ -340,6 +517,7 @@ export const SetupContent: FC<{
               )}
             </p>
           </div>
+          {discoverField}
         </fieldset>
 
         {/* The rule lives on a wrapper, not the fieldset: a legend sits
@@ -409,6 +587,36 @@ export const SetupContent: FC<{
   );
 };
 
+/**
+ * Record the Discover answer the setup form carried.
+ *
+ * Stored either way, including a refusal: from here on the author's own answer
+ * outranks the deployment's `DISCOVER` default and the `noindex` reading, which
+ * is the whole point of asking. An absent field is not a refusal — an older
+ * client or a scripted setup sends none — and leaves the default in force.
+ *
+ * **Nothing is announced.** At first run a self-hosted site is usually not
+ * reachable from the internet yet: DNS unpointed, still on localhost. The ping
+ * answers 202 for everything, so announcing then would record a success against
+ * an address that answers nothing — and that stored success is exactly what
+ * hides the retry the owner would later need. The settings page shows "not
+ * announced yet" beside the button instead, which is the true state of a site
+ * that is not live.
+ *
+ * @param c - The setup request, for its services and its config
+ * @param answer - The checkbox, or undefined when the form carried no field
+ */
+async function storeDiscoverAnswer(
+  c: Context<Env>,
+  answer: boolean | undefined,
+): Promise<void> {
+  if (answer === undefined) return;
+  await c.var.services.settings.updateDiscoverSetting(
+    answer ? "latest" : "off",
+    { demoMode: c.var.appConfig.demoMode },
+  );
+}
+
 export const setupRoutes = new Hono<Env>();
 
 setupRoutes.get("/setup", async (c) => {
@@ -423,6 +631,19 @@ setupRoutes.get("/setup", async (c) => {
   if (isProvisioned && !(await isCurrentSiteMember(c))) return c.redirect(home);
 
   const i18n = getI18n(c);
+  const { appConfig } = c.var;
+
+  // Read through the same derivation the feed uses, so the box shows what this
+  // site would declare if the author changed nothing. `storedValue` is null by
+  // construction: setup runs before anyone has answered.
+  const discoverDefault =
+    resolveDiscoverMode({
+      storedValue: null,
+      defaultValue: getDiscoverDefault(c.env),
+      demoMode: appConfig.demoMode,
+      noindex: appConfig.noindex,
+      rssFeedsEnabled: appConfig.rssFeedsEnabled,
+    }) !== "none";
 
   return c.html(
     <BaseLayout
@@ -432,6 +653,17 @@ setupRoutes.get("/setup", async (c) => {
       <SetupContent
         sitePathPrefix={c.var.appConfig.sitePathPrefix}
         mode={isProvisioned ? "language" : "full"}
+        // Not asked where it could not be honoured. Both locks outlive setup —
+        // a demo site is never listed, and Discover reads an Atom feed — so a
+        // ticked box here would be a promise the next screen breaks.
+        discoverAvailable={!appConfig.demoMode && appConfig.rssFeedsEnabled}
+        discoverDefault={discoverDefault}
+        // The same directory the settings page links to, derived from the same
+        // configuration, so this screen can never point at one directory while
+        // the site announces to another.
+        discoverUrl={getDiscoverDirectoryUrl(
+          getDiscoverDirectoryBaseUrl(c.env),
+        )}
         contentLanguage={
           // On a provisioned site the control plane's guess is already stored,
           // so offering it back is offering the site's current language.
@@ -482,6 +714,8 @@ setupRoutes.post("/setup", async (c) => {
       },
       { oldLanguage: c.var.appConfig.siteLanguage },
     );
+
+    await storeDiscoverAnswer(c, parsed.data.discover);
 
     return dsRedirect(toPublicPath("/", c.var.appConfig.sitePathPrefix));
   }
@@ -535,6 +769,8 @@ setupRoutes.post("/setup", async (c) => {
         contentLanguage ?? resolveSupportedLocaleTag(browserLanguage),
       browserLanguage,
     });
+
+    await storeDiscoverAnswer(c, parsed.data.discover);
 
     return dsRedirect(
       toPublicPath("/signin?setup", c.var.appConfig.sitePathPrefix),

@@ -77,6 +77,8 @@ The CLI prints a `[jant] target = ...` line at startup so you can confirm which 
 
 The CLI auto-loads `<cwd>/.env.node` at startup, but variables already exported in the shell take precedence and won't be overwritten. Drop your variables into `.env.node` once and skip the manual `source` step.
 
+Set `JANT_ENV_FILE` to load a different file — handy when one machine drives several deployments. An empty `JANT_ENV_FILE` skips the file entirely, which is how automated runs keep a local `.env.node` out of their environment.
+
 For the full environment variable list, see [Configuration](configuration.md).
 
 ## Site export (`site export`)

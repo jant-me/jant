@@ -29,7 +29,7 @@ import {
 } from "../lib/jant-branding.js";
 import { getRootActivityAt } from "../db/thread-activity.js";
 import { tiptapJsonToMarkdown } from "../lib/tiptap-to-markdown.js";
-import { extractBodyText } from "../lib/summary.js";
+import { extractBodyText, extractTimelineSummary } from "../lib/summary.js";
 import { getMediaUrl, getPublicUrlForProvider } from "../lib/image.js";
 import { render as renderMarkdown } from "../lib/markdown.js";
 import { formatRelativeAge, toISOString } from "../lib/time.js";
@@ -723,6 +723,25 @@ function buildExportedCollectionEntriesForThread(
   return resolved;
 }
 
+/**
+ * Whether the site's timeline cuts this post's text short.
+ *
+ * Shares the boundary with the served feed rather than approximating it: Hugo
+ * has its own summary rule and would cut somewhere else, so the answer is
+ * computed here and carried as front matter.
+ *
+ * @param post - The post being exported
+ * @returns true when the timeline shows less than the post's page
+ * @example
+ * isPostTruncated(longArticle); // true
+ */
+function isPostTruncated(post: Post): boolean {
+  return (
+    extractTimelineSummary(post.body, !!post.title, { namespace: post.id })
+      ?.hasMore === true
+  );
+}
+
 function collectionEntriesToRefs(
   entries: readonly ExportedCollectionEntry[],
 ): HugoCollectionRef[] {
@@ -939,6 +958,7 @@ async function buildThreadBundle(
     language: root.language ?? undefined,
     translation_group: root.translationGroupId ?? undefined,
     summary_text: getArchiveSummaryText(root) ?? undefined,
+    truncated: isPostTruncated(root) || undefined,
     link_url: root.format === "link" && root.url ? root.url : undefined,
     source_name: root.format === "quote" && root.title ? root.title : undefined,
     source_url: root.format === "quote" && root.url ? root.url : undefined,
@@ -1021,6 +1041,7 @@ async function buildThreadBundle(
       status: reply.status,
       visibility: reply.visibility,
       summary_text: getArchiveSummaryText(reply) ?? undefined,
+      truncated: isPostTruncated(reply) || undefined,
       link_url: reply.format === "link" && reply.url ? reply.url : undefined,
       source_name:
         reply.format === "quote" && reply.title ? reply.title : undefined,

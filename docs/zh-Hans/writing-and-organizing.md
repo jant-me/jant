@@ -68,6 +68,8 @@ Thread 把多条帖子按时间顺序串在一起：先写一条根帖，之后�
 
 在帖子详情页底部点 **Reply**，就能接着往下写。
 
+在列表页上，一个 Thread 占一张卡片，是折叠的：根帖、开头两条 Reply，然后是最后三条，最新的排在底部。六条以内的 Thread 放得下，会整个显示。更长的就把中间收成一个「3 more posts」链接，点它会打开被折叠的第一条。Feed 用同一套折法，所以一个 Thread 在阅读器里和在站点上读起来一样。Thread 自己的页面始终显示全部帖子。
+
 ## Collections
 
 Collection 是一组你自己策展的内容，地址是 `/{slug}`。同一个 Thread 可以同时属于多个 Collection，根帖和它的所有 Reply 始终属于同一批 Collection。

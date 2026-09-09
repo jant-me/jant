@@ -19,9 +19,10 @@ import {
 import { assembleCollectionTimeline } from "../../lib/timeline.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
+  buildFeedDiscoveryFields,
   getFeedEntryUpdatedAt,
   getRssPublishedBefore,
-  RSS_FEED_CACHE_CONTROL,
+  renderFeed,
 } from "../../lib/feed-policy.js";
 import { toPlainText as markdownToPlainText } from "../../lib/markdown.js";
 import { buildMediaMap } from "../../lib/media-helpers.js";
@@ -358,6 +359,7 @@ export async function renderCollectionFeed(
   );
 
   const xml = defaultFeedRenderer({
+    ...buildFeedDiscoveryFields(c),
     siteName,
     // Site name first, like every other feed: a reader's sidebar sorts by
     // feed title, so leading with the collection would scatter one site's
@@ -377,12 +379,7 @@ export async function renderCollectionFeed(
     posts: postViews,
   });
 
-  return new Response(xml, {
-    headers: {
-      "Content-Type": "application/atom+xml; charset=utf-8",
-      "Cache-Control": RSS_FEED_CACHE_CONTROL,
-    },
-  });
+  return renderFeed(xml);
 }
 
 /**

@@ -108,8 +108,8 @@ terms:
     note: 尚未發佈內容。
 
   - source: Featured
-    target: 精選
-    note: 網站精選內容。
+    target: Featured
+    note: 貼文標記的名稱，介面上保留英文，不要譯成「精選」。
 
   - source: Pinned
     target: 已釘選
@@ -120,8 +120,16 @@ terms:
     note: 已發佈狀態標籤。
 
   - source: Hidden from Latest
-    target: 從最新中隱藏
-    note: 不出現在 Latest 中，但仍可透過固定連結和選集存取的狀態。
+    target: Hidden from Latest
+    note: 貼文狀態的名稱，介面上保留英文。句子裡描述這個狀態時可以寫「從 Latest 中隱藏」。
+
+  - source: Latest
+    target: Latest
+    note: 網站時間軸的名稱，介面上保留英文，不要譯成「最新」。小寫的 latest 只是「最新的」，照常翻譯。
+
+  - source: Discover
+    target: Discover
+    note: Jant 公開部落格目錄的名稱，介面上保留英文，不要譯成「探索」或「發現」。「Jant Discover」整體是產品名。
 
   - source: API Tokens
     target: API 權杖

@@ -34,6 +34,12 @@
  * would still be there after signing out — on a shared machine that shows the
  * previous session's view. Trading the author's back-button latency for that
  * is not worth it; readers are the traffic that matters here anyway.
+ *
+ * Credential surfaces are the exception to "anonymous has nothing to protect".
+ * A sign-in form, a setup form, a reset page whose URL carries a one-time
+ * token, an SSO handoff: all of them are served to someone with no session
+ * yet, so the anonymous default would let the browser write them to disk.
+ * `noStore()` marks those paths, and `app.tsx` mounts it on every one of them.
  */
 
 import type { MiddlewareHandler } from "hono";
@@ -43,11 +49,14 @@ import type { AppVariables } from "../types/app-context.js";
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
 /**
- * Default for a signed-in author's responses. `private` forbids shared/CDN
- * caches from storing the response; `no-store` prevents any cache — the
- * browser's own, and its back/forward cache — from keeping a copy.
+ * Nothing keeps a copy. `private` forbids shared/CDN caches from storing the
+ * response; `no-store` prevents any cache — the browser's own, and its
+ * back/forward cache — from keeping one either.
+ *
+ * The default for a signed-in author, and the rule for every credential
+ * surface whatever the audience.
  */
-const AUTHENTICATED_CACHE_CONTROL = "private, no-store";
+const NO_STORE_CACHE_CONTROL = "private, no-store";
 
 /**
  * Default for anonymous responses. `private` still keeps shared/CDN caches
@@ -79,9 +88,38 @@ export function defaultCacheControl(): MiddlewareHandler<Env> {
     if (c.res.headers.has("Cache-Control")) return;
     c.res.headers.set(
       "Cache-Control",
-      c.var.isAuthenticated
-        ? AUTHENTICATED_CACHE_CONTROL
-        : ANONYMOUS_CACHE_CONTROL,
+      c.var.isAuthenticated ? NO_STORE_CACHE_CONTROL : ANONYMOUS_CACHE_CONTROL,
     );
+  };
+}
+
+/**
+ * Middleware for a path that must never be written to any cache.
+ *
+ * For the credential surfaces: sign-in, sign-out, setup, password reset, the
+ * SSO handoff, the dev login, and better-auth's own endpoints. Every one of
+ * them is reached without a session, so `defaultCacheControl` would hand them
+ * the anonymous `no-cache` — which lets the browser keep the page, and the URL
+ * it came from, on disk. A reset link's one-time token then outlives the visit
+ * on a shared machine.
+ *
+ * Unconditional, unlike the default: this is a rule about the path, not a
+ * fallback for a path that said nothing. Mount it after
+ * `defaultCacheControl()` so the header is already set by the time that one
+ * looks, and before the handler it protects — a terminal handler registered
+ * first ends the chain and this never runs.
+ *
+ * @returns Hono middleware forcing `private, no-store`.
+ *
+ * @example
+ * ```ts
+ * app.use("/reset", noStore());
+ * app.route("/", resetRoutes);
+ * ```
+ */
+export function noStore(): MiddlewareHandler<Env> {
+  return async (c, next) => {
+    await next();
+    c.res.headers.set("Cache-Control", NO_STORE_CACHE_CONTROL);
   };
 }

@@ -27,6 +27,17 @@ import {
   ValidationError,
 } from "../../lib/errors.js";
 import { SETTINGS_KEYS } from "../../lib/constants.js";
+import { runDeferred } from "../../lib/deferred.js";
+import {
+  DISCOVER_FIRST_READ_MAX_HOURS,
+  DISCOVER_MIN_PUBLIC_POSTS,
+  getDiscoverFeedPath,
+  getDiscoverDirectoryUrl,
+  getDiscoverSubmitUrl,
+  measureDiscoverMaturity,
+  parseDiscoverSetting,
+  resolveDiscoverMode,
+} from "../../lib/discover.js";
 import { getAvailableThemes } from "../../lib/theme.js";
 import { THEME_MODES, type ThemeMode } from "../../types/config.js";
 import { BUILTIN_FONT_THEMES } from "../../ui/font-themes.js";
@@ -70,9 +81,13 @@ import {
   getHostedControlPlaneProviderLabel,
   getHostedControlPlaneSiteDeleteUrl,
   getHostedControlPlaneSiteSettingsUrl,
+  isHostedControlPlaneEnabled,
 } from "../../lib/hosted-signin.js";
 import { syncHostedControlPlaneSiteAvatar } from "../../lib/hosted-control-plane-sync.js";
 import {
+  getDiscoverDefault,
+  getDiscoverDirectoryBaseUrl,
+  getDiscoverPingUrl,
   getGitHubAppConfig,
   getHostedControlPlaneSsoSecret,
   getTelegramBotPool,
@@ -136,6 +151,10 @@ const UpdateHomeSettingsSchema = z.object({
 
 const UpdateSearchSettingsSchema = z.object({
   allowIndexing: z.boolean(),
+});
+
+const UpdateDiscoverSettingsSchema = z.object({
+  discover: z.enum(["latest", "featured", "off"]),
 });
 
 function publicPath(c: Context<Env>, path: string): string {
@@ -361,11 +380,44 @@ settingsRoutes.get("/general", async (c) => {
 
   const dbSiteName = allSettings["SITE_NAME"] ?? "";
   const dbSiteDescription = allSettings["SITE_DESCRIPTION"] ?? "";
+  // The stored choice, not the effective mode: the control has to be able to
+  // show "never chosen", which is what lets `noindex` and then the deployment
+  // default decide instead.
+  const discoverSetting = parseDiscoverSetting(allSettings["DISCOVER"]);
+  // The deployment's own answer, and nothing else folded into it: `latest` on
+  // a deployment that lists its fleet, absent on an ordinary self-hosted site.
+  // The gates that sit above it — `noindex` most of all — are applied in the
+  // browser instead, because they are controls on this same page and a value
+  // resolved here would freeze at page load. The component runs the same
+  // `resolveDiscoverMode` this route would have.
+  const discoverDefault = parseDiscoverSetting(getDiscoverDefault(c.env)) ?? "";
 
   const saved = c.req.query("saved") !== undefined;
-  const [navData, aboutPage] = await Promise.all([
+  // What the site can answer about its own standing in the directory, without
+  // asking one. The directory deliberately does not take status queries, so
+  // everything shown here is local evidence.
+  const publicPostFilters = {
+    status: "published" as const,
+    excludeReplies: true,
+    excludeLatestHidden: true,
+    excludePrivate: true,
+  };
+  const [
+    navData,
+    aboutPage,
+    announceState,
+    publicPostCount,
+    featuredPostCount,
+  ] = await Promise.all([
     getNavigationData(c),
     c.var.services.aboutPage.getStatus(),
+    c.var.services.settings.getDiscoverAnnounceState(),
+    c.var.services.posts.count(publicPostFilters),
+    c.var.services.posts.countFeaturedThreadRoots({
+      status: "published",
+      excludePrivate: true,
+      excludeLatestHidden: true,
+    }),
   ]);
   const siteUrlForDisplay =
     appConfig.siteUrl || new URL(publicPath(c, "/"), c.req.url).toString();
@@ -411,6 +463,32 @@ settingsRoutes.get("/general", async (c) => {
           siteFooter={appConfig.siteFooter}
           showJantBrandingOnHome={appConfig.showJantBrandingOnHome}
           noindex={appConfig.noindex}
+          discover={discoverSetting ?? ""}
+          discoverDefault={discoverDefault}
+          discoverUrl={getDiscoverDirectoryUrl(
+            getDiscoverDirectoryBaseUrl(c.env),
+          )}
+          discoverStatus={{
+            announced: announceState?.ok ?? null,
+            announceError: announceState?.error ?? null,
+            announceAt: announceState?.at ?? null,
+            // No directory configured means nothing to announce to, and the
+            // whole announcement block is beside the point.
+            hasDirectory: getDiscoverPingUrl(c.env) !== undefined,
+            // A hosted fleet is enrolled by its control plane, so there is no
+            // announcement for the owner to make, chase, or retry.
+            managedByHost: isHostedControlPlaneEnabled(c.env),
+            submitUrl: getDiscoverSubmitUrl(getDiscoverDirectoryBaseUrl(c.env)),
+            // The mode the feeds actually declare, already derived once on
+            // `appConfig` — re-deriving it here is how this block used to
+            // miss the deployment default.
+            declaredMode: appConfig.discover,
+            ...measureDiscoverMaturity({ publicPostCount }),
+            featuredPostCount,
+            minPublicPosts: DISCOVER_MIN_PUBLIC_POSTS,
+            firstReadMaxHours: DISCOVER_FIRST_READ_MAX_HOURS,
+          }}
+          rssFeedsEnabled={appConfig.rssFeedsEnabled}
           demoMode={appConfig.demoMode}
           timezones={getTimeZoneOptions(appConfig.timeZone)}
           aboutPage={aboutPage}
@@ -805,6 +883,155 @@ settingsRoutes.post("/general/home", async (c) => {
   }
 
   return dsToast(toast);
+});
+
+/**
+ * Tell the configured directory where this site's feed is, in the background.
+ *
+ * The settings save must not wait for a directory to answer, and must not fail
+ * because one is down — but the outcome is recorded either way, so the owner
+ * can tell "announced" from "never got through". That distinction is the whole
+ * reason this is not fire-and-forget any more.
+ *
+ * @param c - Request context, for the runtime's background-work hook
+ * @param storedValue - The stored Discover choice. Passed in rather than read
+ *   from `c.var.allSettings`, which is the snapshot taken before the request
+ *   ran — on the save that triggers this it still holds the previous answer.
+ * @returns Whether an announcement was started at all
+ */
+function announceInBackground(
+  c: Context<{ Bindings: Bindings; Variables: AppVariables }>,
+  storedValue: string | undefined,
+): boolean {
+  const { appConfig } = c.var;
+  const endpoint = getDiscoverPingUrl(c.env);
+  if (!endpoint) return false;
+
+  // Read the mode back through the same derivation the feed uses, so a site
+  // that cannot actually be polled — feeds switched off, `noindex` set, demo
+  // mode — never announces an address that would answer 404.
+  const mode = resolveDiscoverMode({
+    storedValue,
+    defaultValue: getDiscoverDefault(c.env),
+    demoMode: appConfig.demoMode,
+    noindex: appConfig.noindex,
+    rssFeedsEnabled: appConfig.rssFeedsEnabled,
+  });
+  // A site that has just switched Discover off resolves to `none` and so has
+  // no feed of its own to name — but that is exactly the site with something
+  // to say, and the declaration a directory needs to read sits in every feed,
+  // not only the one it was polling. `/latest/feed` is the address that is
+  // always served, so the stop is sent there.
+  //
+  // Only for an owner's own `off`, never for the other ways a site resolves to
+  // `none`: a demo site or one with feeds switched off would be naming an
+  // address that answers 404.
+  const feedPath =
+    getDiscoverFeedPath(mode) ??
+    (parseDiscoverSetting(storedValue) === "off" &&
+    appConfig.rssFeedsEnabled &&
+    !appConfig.demoMode
+      ? getDiscoverFeedPath("latest")
+      : null);
+  if (!feedPath) return false;
+
+  // Deferred, so the save answers without waiting on a directory. The helper
+  // is what keeps the orphaned promise from taking a Node process down with
+  // it: `announceToDiscover` already resolves rather than throws, and this is
+  // what holds if it ever stops being.
+  runDeferred(c, "Discover announcement", async () => {
+    await c.var.services.settings.announceToDiscover({
+      endpoint,
+      feedUrl: toAbsoluteSiteUrl(
+        feedPath,
+        appConfig.siteUrl,
+        appConfig.sitePathPrefix,
+      ),
+    });
+  });
+  return true;
+}
+
+/**
+ * Announce, because the owner asked.
+ *
+ * The route the settings page offers whenever the directory has not heard from
+ * this site: an announcement that failed, and one that was never made at all.
+ * Sending it is safe at any time — the receiving end treats a repeat as a
+ * no-op for a site it already knows, and it carries nothing but the feed
+ * address.
+ */
+settingsRoutes.post("/general/discover/announce", async (c) => {
+  const i18n = getI18n(c);
+  const { appConfig } = c.var;
+
+  const started =
+    !appConfig.demoMode &&
+    announceInBackground(c, c.var.allSettings["DISCOVER"]);
+
+  const toast = started
+    ? i18n._(
+        msg({
+          message: "Announcing your site. Reload to see the result.",
+          comment:
+            "@context: Toast after sending the Discover announcement. It runs in the background, so the page does not yet know how it went.",
+        }),
+      )
+    : i18n._(
+        msg({
+          message: "This site has no directory to announce to.",
+          comment:
+            "@context: Toast when the Discover announcement cannot be sent because no directory is configured, or the site cannot be listed at all",
+        }),
+      );
+
+  // The settings bridge is the only caller, and it always asks for JSON — a
+  // Datastar toast reaches it as a body it cannot parse, which it reports as a
+  // failed save whatever the server actually did. Every other settings route
+  // answers both shapes; this one has to as well.
+  const wantsJson = c.req.header("accept")?.includes("application/json");
+  if (wantsJson) {
+    return c.json({ status: "ok" as const, toast });
+  }
+
+  return dsToast(toast);
+});
+
+settingsRoutes.post("/general/discover", async (c) => {
+  const i18n = getI18n(c);
+  const body = parseValidated(UpdateDiscoverSettingsSchema, await c.req.json());
+  const { appConfig } = c.var;
+
+  const { shouldAnnounce } =
+    await c.var.services.settings.updateDiscoverSetting(body.discover, {
+      demoMode: appConfig.demoMode,
+    });
+
+  if (shouldAnnounce) {
+    announceInBackground(c, body.discover);
+  }
+
+  const wantsJson = c.req.header("accept")?.includes("application/json");
+  if (wantsJson) {
+    return c.json({
+      status: "ok" as const,
+      toast: i18n._(
+        msg({
+          message: "Site visibility updated.",
+          comment: "@context: Toast after saving the site visibility settings",
+        }),
+      ),
+    });
+  }
+
+  return dsToast(
+    i18n._(
+      msg({
+        message: "Site visibility updated.",
+        comment: "@context: Toast after saving the site visibility settings",
+      }),
+    ),
+  );
 });
 
 settingsRoutes.post("/general/search", async (c) => {

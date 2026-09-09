@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadNodeEnvFile } from "../../../bin/lib/node-env.js";
+import { findNodeEnvPath, loadNodeEnvFile } from "../../../bin/lib/node-env.js";
 import {
   formatRuntimeBanner,
   resolveCliRuntime,
@@ -103,6 +103,53 @@ describe("loadNodeEnvFile", () => {
     expect(env.SITE_NAME).toBe("Quoted Title");
     expect(env.PUBLIC_URL).toBe("https://example.com");
     expect(env.MIXED).toBe('"left only');
+  });
+});
+
+describe("findNodeEnvPath", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "jant-env-path-"));
+  });
+
+  it("finds .env.node in the given directory when JANT_ENV_FILE is unset", () => {
+    const envPath = join(tmpDir, ".env.node");
+    writeFileSync(envPath, "DATABASE_URL=file:./jant.sqlite\n");
+
+    expect(findNodeEnvPath(tmpDir, {})).toBe(envPath);
+  });
+
+  it("loads nothing when JANT_ENV_FILE is empty", () => {
+    writeFileSync(
+      join(tmpDir, ".env.node"),
+      "DATABASE_URL=file:./local.sqlite\n",
+    );
+
+    expect(findNodeEnvPath(tmpDir, { JANT_ENV_FILE: "" })).toBeNull();
+    expect(findNodeEnvPath(tmpDir, { JANT_ENV_FILE: "  " })).toBeNull();
+  });
+
+  it("uses the file JANT_ENV_FILE names, resolved against the directory", () => {
+    writeFileSync(
+      join(tmpDir, ".env.node"),
+      "DATABASE_URL=file:./local.sqlite\n",
+    );
+    const overridePath = join(tmpDir, "staging.env");
+    writeFileSync(overridePath, "DATABASE_URL=postgres://example/db\n");
+
+    expect(findNodeEnvPath(tmpDir, { JANT_ENV_FILE: "staging.env" })).toBe(
+      overridePath,
+    );
+    expect(findNodeEnvPath(tmpDir, { JANT_ENV_FILE: overridePath })).toBe(
+      overridePath,
+    );
+  });
+
+  it("throws when JANT_ENV_FILE names a file that does not exist", () => {
+    expect(() =>
+      findNodeEnvPath(tmpDir, { JANT_ENV_FILE: "missing.env" }),
+    ).toThrow(/JANT_ENV_FILE points at "missing.env"/);
   });
 });
 

@@ -68,6 +68,8 @@ The whole Thread shares the visibility of the root post (Public / Hidden / Priva
 
 To extend a Thread, click "Reply" at the bottom of the post detail page.
 
+On a list page a Thread takes one card, folded: the root post, its first two replies, then the last three with the newest at the bottom. A Thread of six posts or fewer fits and is shown whole. Anything longer collapses the middle into a "3 more posts" link, which opens the first of the posts it hides. The feeds fold the same way, so a Thread reads the same in a reader as it does on the site. The Thread's own page always shows every post.
+
 ## Collections
 
 A Collection is a curated grouping organized under `/{slug}`. The same Thread can belong to multiple Collections; its root and replies always share one membership set.

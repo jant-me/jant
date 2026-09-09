@@ -28,9 +28,10 @@ import type {
 import type { AppVariables } from "../../types/app-context.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
+  buildFeedDiscoveryFields,
   getFeedEntryUpdatedAt,
   getRssPublishedBefore,
-  RSS_FEED_CACHE_CONTROL,
+  renderFeed,
 } from "../../lib/feed-policy.js";
 import { buildMediaMap } from "../../lib/media-helpers.js";
 import { getI18n } from "../../i18n/index.js";
@@ -83,12 +84,18 @@ async function loadMediaMap(
 
 /**
  * Build thread replies as PostView[] for a given root post from a thread map.
+ *
+ * Replies take the alias map too. A reply's permalink is what `<jant:post>`
+ * rows, the fold's `gap` and `latest`, and every `media:content` name it by,
+ * and a consumer keys on that address — so it has to be the address the site
+ * itself uses, which is the reply's first alias when it has one.
  */
 function buildThreadReplies(
   rootId: string,
   threadMap: Map<string, Post[]>,
   mediaMap: ReturnType<typeof buildMediaMap>,
   mediaCtx: ReturnType<typeof createMediaContext>,
+  aliasMap: Map<string, string>,
 ) {
   const thread = threadMap.get(rootId);
   if (!thread || thread.length <= 1) return undefined;
@@ -101,7 +108,18 @@ function buildThreadReplies(
         mediaAttachments: mediaMap.get(r.id) ?? [],
       })),
     mediaCtx,
+    undefined,
+    aliasMap,
   );
+}
+
+/** The first alias of each post that has one: the address the site uses. */
+function toAliasMap(aliasesMap: Map<string, string[]>): Map<string, string> {
+  const aliasMap = new Map<string, string>();
+  for (const [id, aliases] of aliasesMap) {
+    if (aliases[0]) aliasMap.set(id, aliases[0]);
+  }
+  return aliasMap;
 }
 
 /**
@@ -148,17 +166,19 @@ async function buildLatestFeedData(
     c.var.services.paths.getPostAliases(postIds),
   ]);
 
-  // Load media for replies
+  // Replies are only known once the threads are, so their media and aliases
+  // come in a second round.
   const replyIds = collectReplyIds(threadMap);
-  const replyMediaMap =
-    replyIds.length > 0 ? await loadMediaMap(c, replyIds, mediaCtx) : mediaMap;
+  const [replyMediaMap, replyAliasesMap] =
+    replyIds.length > 0
+      ? await Promise.all([
+          loadMediaMap(c, replyIds, mediaCtx),
+          c.var.services.paths.getPostAliases(replyIds),
+        ])
+      : [mediaMap, new Map<string, string[]>()];
   // Merge reply media into main map
   const mergedMediaMap = new Map([...mediaMap, ...replyMediaMap]);
-
-  const aliasMap = new Map<string, string>();
-  for (const [id, aliases] of aliasesMap) {
-    if (aliases[0]) aliasMap.set(id, aliases[0]);
-  }
+  const aliasMap = toAliasMap(new Map([...aliasesMap, ...replyAliasesMap]));
 
   const postViews = toPostViews(
     posts.map((p) => ({
@@ -179,6 +199,7 @@ async function buildLatestFeedData(
         threadMap,
         mergedMediaMap,
         mediaCtx,
+        aliasMap,
       ),
     };
   });
@@ -227,7 +248,7 @@ async function buildFeaturedFeedData(
   const postIds = posts.map((p) => p.id);
   const mediaCtx = createMediaContext(c.var.appConfig);
 
-  // Collect all post IDs (roots + replies) for media loading
+  // Collect all post IDs (roots + replies) for media and alias loading
   const allPostIds = new Set(postIds);
   for (const thread of threadMap.values()) {
     for (const post of thread) {
@@ -237,13 +258,9 @@ async function buildFeaturedFeedData(
 
   const [mediaMap, aliasesMap] = await Promise.all([
     loadMediaMap(c, [...allPostIds], mediaCtx),
-    c.var.services.paths.getPostAliases(postIds),
+    c.var.services.paths.getPostAliases([...allPostIds]),
   ]);
-
-  const aliasMap = new Map<string, string>();
-  for (const [id, aliases] of aliasesMap) {
-    if (aliases[0]) aliasMap.set(id, aliases[0]);
-  }
+  const aliasMap = toAliasMap(aliasesMap);
 
   const postViews = toPostViews(
     posts.map((p) => ({
@@ -260,7 +277,13 @@ async function buildFeaturedFeedData(
     return {
       ...postView,
       feedUpdatedAt: getFeedEntryUpdatedAt(post, thread),
-      threadReplies: buildThreadReplies(post.id, threadMap, mediaMap, mediaCtx),
+      threadReplies: buildThreadReplies(
+        post.id,
+        threadMap,
+        mediaMap,
+        mediaCtx,
+        aliasMap,
+      ),
     };
   });
 
@@ -301,6 +324,7 @@ export async function buildFeedData(
       : await buildLatestFeedData(c, feedLimit, publishedBefore, opts.format);
 
   return {
+    ...buildFeedDiscoveryFields(c),
     siteName,
     siteDescription,
     siteUrl,
@@ -326,6 +350,7 @@ export async function buildFeedData(
       siteUrl,
       appConfig.sitePathPrefix,
     ),
+    siteIconUrl: appConfig.siteAvatarUrl || undefined,
     posts: postViews,
   };
 }
@@ -340,15 +365,6 @@ export function parseFormatQuery(c: Context<Env>): Format | undefined {
     return raw as Format;
   }
   return undefined;
-}
-
-export function renderFeed(xml: string) {
-  return new Response(xml, {
-    headers: {
-      "Content-Type": "application/atom+xml; charset=utf-8",
-      "Cache-Control": RSS_FEED_CACHE_CONTROL,
-    },
-  });
 }
 
 /**

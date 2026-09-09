@@ -1,27 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const MIGRATE_ENV_KEYS = [
+  "DATABASE_URL",
+  "DATA_DIR",
+  "JANT_DEBUG_MIGRATE",
+  "JANT_ENV_FILE",
+] as const;
+
 describe("jant migrate", () => {
-  const originalDatabaseUrl = process.env.DATABASE_URL;
-  const originalDataDir = process.env.DATA_DIR;
-  const originalDebugFlag = process.env.JANT_DEBUG_MIGRATE;
+  const originalEnv = Object.fromEntries(
+    MIGRATE_ENV_KEYS.map((key) => [key, process.env[key]]),
+  ) as Record<(typeof MIGRATE_ENV_KEYS)[number], string | undefined>;
 
   afterEach(() => {
-    if (originalDatabaseUrl === undefined) {
-      delete process.env.DATABASE_URL;
-    } else {
-      process.env.DATABASE_URL = originalDatabaseUrl;
-    }
-
-    if (originalDataDir === undefined) {
-      delete process.env.DATA_DIR;
-    } else {
-      process.env.DATA_DIR = originalDataDir;
-    }
-
-    if (originalDebugFlag === undefined) {
-      delete process.env.JANT_DEBUG_MIGRATE;
-    } else {
-      process.env.JANT_DEBUG_MIGRATE = originalDebugFlag;
+    for (const key of MIGRATE_ENV_KEYS) {
+      const value = originalEnv[key];
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
     }
 
     vi.restoreAllMocks();
@@ -33,6 +31,10 @@ describe("jant migrate", () => {
       "postgres://shell_user:super-secret@db.example.com:5432/shell_db";
     delete process.env.DATA_DIR;
     process.env.JANT_DEBUG_MIGRATE = "1";
+    // This test is about the auto-located `.env.node` itself, so it opts back
+    // into the search the suite disables in `vitest.config.ts`. `node:fs` is
+    // mocked below, so the file it finds is the mock's content, not a real one.
+    delete process.env.JANT_ENV_FILE;
 
     const migrate = vi.fn(async () => {});
     const poolQuery = vi

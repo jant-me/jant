@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   createTestDatabase,
   DEFAULT_TEST_SITE_ID,
@@ -556,6 +556,168 @@ describe("SettingsService", () => {
       expect(
         await settingsService.get("SHOW_JANT_BRANDING_ON_HOME"),
       ).toBeNull();
+    });
+  });
+
+  /**
+   * The ping exists so a self-hosted site can be found at all, and it says
+   * "read me now" rather than "list me". What it fires on is therefore the
+   * interesting part: the two moments the answer changes, and neither of the
+   * moments it does not.
+   */
+  describe("updateDiscoverSetting", () => {
+    it("stores the choice explicitly, including off", async () => {
+      await settingsService.updateDiscoverSetting("off", { demoMode: false });
+      expect(await settingsService.get("DISCOVER")).toBe("off");
+
+      await settingsService.updateDiscoverSetting("featured", {
+        demoMode: false,
+      });
+      expect(await settingsService.get("DISCOVER")).toBe("featured");
+    });
+
+    // A site that has never used the control has never told anyone it exists,
+    // so confirming the default is exactly as much of an opt-in as ticking a
+    // box that was off.
+    it("announces when an untouched site opts in", async () => {
+      const result = await settingsService.updateDiscoverSetting("latest", {
+        demoMode: false,
+      });
+      expect(result.shouldAnnounce).toBe(true);
+    });
+
+    it("announces when a site that had opted out comes back", async () => {
+      await settingsService.updateDiscoverSetting("off", { demoMode: false });
+      const result = await settingsService.updateDiscoverSetting("latest", {
+        demoMode: false,
+      });
+      expect(result.shouldAnnounce).toBe(true);
+    });
+
+    // The directory already knows about a listed site; which of its posts it
+    // draws from is not news.
+    it("says nothing when an enrolled site changes which posts it offers", async () => {
+      await settingsService.updateDiscoverSetting("latest", {
+        demoMode: false,
+      });
+      const result = await settingsService.updateDiscoverSetting("featured", {
+        demoMode: false,
+      });
+      expect(result.shouldAnnounce).toBe(false);
+    });
+
+    // The half that used to be missing. A directory that is not told keeps the
+    // blog until its next scheduled read of the feed, and the owner watches
+    // something they just removed sit there for another hour.
+    it("announces when a listed site opts out", async () => {
+      await settingsService.updateDiscoverSetting("latest", {
+        demoMode: false,
+      });
+      const result = await settingsService.updateDiscoverSetting("off", {
+        demoMode: false,
+      });
+      expect(result.shouldAnnounce).toBe(true);
+    });
+
+    // Nothing changed, so there is nothing to say: this site was not in any
+    // directory a moment ago either.
+    it("says nothing when a site that was never listed sets off", async () => {
+      const result = await settingsService.updateDiscoverSetting("off", {
+        demoMode: false,
+      });
+      expect(result.shouldAnnounce).toBe(false);
+    });
+
+    it("never announces a demo site", async () => {
+      const result = await settingsService.updateDiscoverSetting("latest", {
+        demoMode: true,
+      });
+      expect(result.shouldAnnounce).toBe(false);
+    });
+  });
+
+  /**
+   * The stored outcome is the owner's record of the announcement, and it does
+   * not always reach them — a hosted site's settings page hides the status
+   * block entirely. The log is how a deployment answers "did that get through"
+   * when the dashboard cannot.
+   */
+  describe("announceToDiscover", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    function stubDirectory(response: Response | Error) {
+      return vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(() =>
+          response instanceof Error
+            ? Promise.reject(response)
+            : Promise.resolve(response.clone()),
+        );
+    }
+
+    it("records and logs an announcement that got through", async () => {
+      stubDirectory(new Response(null, { status: 202 }));
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const outcome = await settingsService.announceToDiscover({
+        endpoint: "https://cloud.example/api/discover/ping",
+        feedUrl: "https://blog.example/latest/feed",
+      });
+
+      expect(outcome.ok).toBe(true);
+      expect(
+        JSON.parse(
+          (await settingsService.get("DISCOVER_ANNOUNCE_STATE")) ?? "",
+        ),
+      ).toMatchObject({
+        ok: true,
+        feedUrl: "https://blog.example/latest/feed",
+      });
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining("https://cloud.example/api/discover/ping"),
+      );
+    });
+
+    // The failure this exists for: a directory that answers, but not about
+    // this site. Silently stored, it reads from the dashboard like a success.
+    it("logs the reason an announcement failed", async () => {
+      stubDirectory(new Response(null, { status: 404 }));
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const outcome = await settingsService.announceToDiscover({
+        endpoint: "https://jant.me/api/discover/ping",
+        feedUrl: "https://blog.example/latest/feed",
+      });
+
+      expect(outcome).toMatchObject({ ok: false, status: 404 });
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining("The directory answered 404."),
+      );
+    });
+
+    // The caller orphans this promise behind `waitUntil`, so a rejection has
+    // nobody to reject to — on a Node runtime an unhandled one ends the
+    // process. A settings row that could not be written is worth a log, not
+    // the site.
+    it("resolves even when the outcome cannot be recorded", async () => {
+      stubDirectory(new Response(null, { status: 202 }));
+      vi.spyOn(console, "log").mockImplementation(() => {});
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.spyOn(settingsService, "set").mockRejectedValue(
+        new Error("D1_ERROR: database is locked"),
+      );
+
+      const outcome = await settingsService.announceToDiscover({
+        endpoint: "https://jant.me/api/discover/ping",
+        feedUrl: "https://blog.example/latest/feed",
+      });
+
+      expect(outcome.ok).toBe(true);
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining("database is locked"),
+      );
     });
   });
 });
