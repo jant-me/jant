@@ -31,7 +31,7 @@ These principles explain _why_ the codebase is structured the way it is. When yo
 
 - **Hosted split**: `jant-core` owns the runtime, the copy, and site display metadata; `jant-cloud` owns billing state, cancel/delete/restore policy, and retained-window rules — core links to those flows but never invents its own hosted billing or deletion semantics. Core stays provider-neutral: show the configured provider label, or fall back to the provider host — never hardcoded product branding. Control-plane copies of core data (cached site name, primary host) are synced projections, never a second editable source of truth. Browser-facing redirects go through the public control-plane URL; server-to-server calls use explicit internal URLs and tokens.
 
-- **Tokens and components over raw values**: CSS tokens (`styles/tokens.css`) and BaseCoat semantic classes (`.alert`, `.btn`, `.badge`, `.card`, `.input`, `.field`) encode design decisions in one place; never hardcode a color or spacing value. BaseCoat variants (`.btn-outline`, `.btn-ghost`, `.badge-outline`, …) are self-contained — never combine them with the base class. See `docs/internal/theming.md` and `references/basecoat/`.
+- **Tokens and components over raw values**: CSS tokens (`styles/tokens.css`) and BaseCoat semantic classes (`.alert`, `.btn`, `.badge`, `.card`, `.input`, `.field`) encode design decisions in one place; never hardcode a color or spacing value. BaseCoat variants (`.btn-outline`, `.btn-ghost`, `.badge-outline`, …) are self-contained — never combine them with the base class. `class="btn btn-outline"` produces an invisible button: equal specificity means source order decides, so the variant wins the background while the base's `text-primary-foreground` survives, and the label only appears on hover. `src/__tests__/basecoat-variants.test.ts` fails the build on any such pairing. See `docs/internal/theming.md` and `references/basecoat/`.
 
 - **Cohesion over small files**: organize code by responsibility. A well-structured 400-line file beats four fragmented 100-line files that constantly import each other.
 
@@ -165,6 +165,7 @@ Chinese copy is written, not translated. Say it the way a native product would; 
 - **人称**：统一用「你」，禁止「您」。能省则省 — 优先无主语句式（「已发布」，不是「你的文章已发布」），只有指代不清时才写「你」。
 - **标点**：中文句子一律用全角标点（，。？「」（）），不允许半角逗号、句号夹在中文里。纯英文、数字、代码、URL 片段保持半角。
 - **语气**：不用感叹号，不用语气词卖萌（哦、啦、哟、呢）。「请稍后再试」这类惯用语可以用，但一条信息里最多一个「请」。
+- **屏幕已经说过的，别再说一遍**：UI 文案的上下文是它周围那一屏，复述它不买信息。标题已经是「欢迎使用 Jant」，`创建你写作用的账户。` 就该是 `创建账户`；第二屏问的本来就是站点设置，`这些之后都可以在设置中更改。` 就该是 `之后可以在设置中更改。` 这是「能省则省」的一般形式——要删的不止主语，是这一屏已经给过的任何词。正误对照见 `.claude/skills/copy-style/SKILL.md`「中文」。
 - **反翻译腔**：先想中文里本来怎么说，再落笔。「{count} 个设置已显示」是翻译腔，「已显示 {count} 个设置」才像话。「进行…操作」「对…进行」一律改写成直接的动词。
 - **术语表**（**以 `src/i18n/locales/glossary.zh-Hans.yml` / `glossary.zh-Hant.yml` 为准**，新增术语先改术语表）：Post→帖子（zh-Hant：貼文）、Note→笔记、Link→链接、Quote→引用、Collection→合集（zh-Hant：選集）、Thread→帖子串（zh-Hant：貼文串）、Draft→草稿；「账户」不写「帐户」。注意区分产品名词和普通名词：`帖子` 指 Jant 的 Post，泛指别人写的文章仍用 `文章`（「我分享一些好文章」是对的）。
 - **zh-Hant 不是简繁转换**：用词按台湾惯用（設定、選集），不要机械转换 zh-Hans。

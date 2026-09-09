@@ -78,6 +78,17 @@ shapes strung with commas is a feature list smuggled into prose.
 - **别过度纠正**：`V 的是 N`、`A，不是 B` 合法用例远多于问题用例。只在后半句不买信息时才动。
 - **zh-Hant 不是简繁转换**：台湾惯用（設定、選集、貼文、權杖）。
 
+**屏幕已经说过的，别再说一遍。** UI 文案的上下文是它周围那一屏，复述它不买信息：
+
+❌ 创建你写作用的账户。
+✅ 创建账户
+
+❌ 这些之后都可以在设置中更改。
+✅ 之后可以在设置中更改。
+
+标题已经是「欢迎使用 Jant」，第二屏问的本来就是站点设置。「你写作用的」和「这些…都」删掉之后，
+读者没少知道任何东西——这是删除测试用在一句 UI 说明上，判据是这一屏，不是这一句。
+
 ## After writing
 
 1. **Run the deletion test on every clause.** Catches more than the rest combined. Then reverse it:

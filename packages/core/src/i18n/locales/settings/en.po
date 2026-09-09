@@ -110,8 +110,6 @@ msgstr "Accent"
 
 #. @context: GitHub sync picker — owner dropdown label
 #. @context: Settings group label for account settings
-#. @context: Setup form group - the admin account being created
-#: src/routes/auth/setup.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Account"
@@ -611,11 +609,6 @@ msgstr "Color theme"
 msgid "Color Theme"
 msgstr "Color Theme"
 
-#. @context: Setup form submit button
-#: src/routes/auth/setup.tsx
-msgid "Complete Setup"
-msgstr "Complete Setup"
-
 #. @context: Breadcrumb label
 #. @context: Config Editor page title
 #. @context: Settings item — Config Editor
@@ -722,6 +715,11 @@ msgstr "Content language"
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Content language, dashboard language, multilingual"
 msgstr "Content language, dashboard language, multilingual"
+
+#. @context: Setup submit button on the first screen, which is followed by the site screen
+#: src/routes/auth/setup.tsx
+msgid "Continue"
+msgstr "Continue"
 
 #. @context: Slate color theme preview title
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -872,6 +870,11 @@ msgstr "Create one on GitHub"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Create Page"
 msgstr "Create Page"
+
+#. @context: Setup page description on the first screen, which asks only for credentials
+#: src/routes/auth/setup.tsx
+msgid "Create the account you write from."
+msgstr "Create the account you write from."
 
 #. @context: Help text for GitHub repository input on GitHub Sync settings, telling users they must create the repo themselves
 #: src/ui/dash/settings/GitHubSyncContent.tsx
@@ -2393,10 +2396,10 @@ msgstr "Set results per search page; reset to inherit the main page size."
 msgid "Set the default number of items shown per page."
 msgstr "Set the default number of items shown per page."
 
-#. @context: Setup page description
+#. @context: Setup heading on the second self-hosted screen, which asks for the site's name and language
 #: src/routes/auth/setup.tsx
-msgid "Set up your site and the account you write from."
-msgstr "Set up your site and the account you write from."
+msgid "Set up your site"
+msgstr "Set up your site"
 
 #. @context: Breadcrumb label
 #. @context: Page title for the settings home page
@@ -2465,8 +2468,6 @@ msgstr "Signed in {date}"
 #. @context: Language settings section for reader-facing settings
 #. @context: Settings group label for site settings
 #. @context: Settings subsection heading for basic site fields
-#. @context: Setup form group - the site itself
-#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -2536,10 +2537,15 @@ msgstr "Soft ivory"
 msgid "Something doesn't look right. Check the form and try again."
 msgstr "Something doesn't look right. Check the form and try again."
 
-#. @context: Setup submit button on a hosted site, after the language question
+#. @context: Setup submit button on the last screen, after which the site is live
 #: src/routes/auth/setup.tsx
 msgid "Start writing"
 msgstr "Start writing"
+
+#. @context: How far along first-run setup is, shown beside the screen's name on a self-hosted install
+#: src/routes/auth/setup.tsx
+msgid "Step {current} of {total}"
+msgstr "Step {current} of {total}"
 
 #. @context: Description for the Telegram disconnect action
 #: src/ui/dash/settings/TelegramContent.tsx
@@ -3085,6 +3091,11 @@ msgstr "Which post stream the canonical /feed URL returns."
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Yellow-tinted paper with an olive-green accent."
 msgstr "Yellow-tinted paper with an olive-green accent."
+
+#. @context: Setup page description on the second self-hosted screen
+#: src/routes/auth/setup.tsx
+msgid "You can change all of this later in Settings."
+msgstr "You can change all of this later in Settings."
 
 #. @context: Fallback name when a connected Telegram account has no username
 #: src/ui/dash/settings/TelegramContent.tsx

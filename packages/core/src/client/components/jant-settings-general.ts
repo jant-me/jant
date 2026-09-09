@@ -1082,7 +1082,7 @@ export class JantSettingsGeneral extends LitElement {
                 <div class="flex flex-wrap items-center gap-3 mt-1">
                   <button
                     type="button"
-                    class="btn btn-outline"
+                    class="btn-outline"
                     ?disabled=${this._discoverLoading}
                     @click=${() => this._announce()}
                   >

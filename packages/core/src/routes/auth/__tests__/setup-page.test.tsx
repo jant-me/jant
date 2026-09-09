@@ -1,10 +1,11 @@
 /**
- * Tests for what the first-run screen says.
+ * Tests for what the first-run screens say.
  *
  * These render the component rather than the route: the point under test is
- * that a hosted author landing on an unfamiliar domain is told which step this
- * is and whose site it belongs to — neither of which the POST handler or the
- * onboarding middleware can vouch for.
+ * that an author is told which step this is — a hosted one landing on an
+ * unfamiliar domain, whose site it belongs to; a self-hosted one, how much of
+ * setup is left. Neither is something the POST handler or the onboarding
+ * middleware can vouch for.
  */
 
 import type { Context } from "hono";
@@ -26,9 +27,10 @@ function render(props: SetupProps): string {
   return renderToString(SetupContent(props));
 }
 
-describe("SetupContent — provisioned site", () => {
+describe("SetupContent — hosted site", () => {
   const provisioned: SetupProps = {
-    mode: "language",
+    mode: "site",
+    askSiteName: false,
     contentLanguage: "en",
     siteName: "My Blog",
     discoverAvailable: true,
@@ -65,6 +67,23 @@ describe("SetupContent — provisioned site", () => {
     expect(html).not.toContain("setup-password");
     expect(html).not.toContain("setup-site-name");
   });
+
+  // A hosted author never saw a first screen — they created their account in
+  // the control plane — so counting steps at them would name one they cannot
+  // account for.
+  it("counts no steps on the only screen it shows", () => {
+    const html = render(provisioned);
+
+    expect(html).not.toContain("Step");
+  });
+
+  // The control plane already set the clock; this screen can be opened from
+  // anywhere, and the browser reporting another zone is not a decision.
+  it("reports no time zone", () => {
+    const html = render(provisioned);
+
+    expect(html).not.toContain("timezone");
+  });
 });
 
 /**
@@ -74,7 +93,8 @@ describe("SetupContent — provisioned site", () => {
  */
 describe("SetupContent — the Discover question", () => {
   const base: SetupProps = {
-    mode: "full",
+    mode: "site",
+    askSiteName: true,
     contentLanguage: "en",
     discoverAvailable: true,
     discoverDefault: false,
@@ -99,7 +119,7 @@ describe("SetupContent — the Discover question", () => {
   it("is asked on the hosted screen too", () => {
     const html = render({
       ...base,
-      mode: "language",
+      askSiteName: false,
       siteName: "My Blog",
       discoverDefault: true,
     });
@@ -152,28 +172,76 @@ describe("SetupContent — the Discover question", () => {
   });
 });
 
-describe("SetupContent — fresh install", () => {
-  const fresh: SetupProps = {
-    mode: "full",
+describe("SetupContent — self-hosted, first screen", () => {
+  const account: SetupProps = { mode: "account" };
+
+  it("wears the same one-line shell as the hosted screen, plus the count", () => {
+    const html = render(account);
+
+    expect(html).toContain("Setup · Step 1 of 2");
+    expect(html).toContain("Welcome to Jant");
+  });
+
+  // The whole reason credentials get a screen of their own: an email and a
+  // password with nothing between them is the shape password managers look for.
+  it("asks for credentials and nothing else", () => {
+    const html = render(account);
+
+    expect(html).toContain("setup-email");
+    expect(html).toContain("setup-password");
+    expect(html).not.toContain("setup-site-name");
+    expect(html).not.toContain("setup-content-language");
+    expect(html).not.toContain("setup-discover");
+  });
+
+  // "Complete Setup" here would make the next screen read as a rejection.
+  it("says it continues rather than finishes", () => {
+    const html = render(account);
+
+    expect(html).toContain(">Continue</button>");
+    expect(html).not.toContain("Complete Setup");
+  });
+});
+
+describe("SetupContent — self-hosted, second screen", () => {
+  const site: SetupProps = {
+    mode: "site",
+    askSiteName: true,
     contentLanguage: "en",
     discoverAvailable: true,
     discoverDefault: false,
     discoverUrl: "https://jant.me/discover",
   };
 
-  it("wears the same one-line shell as the hosted screen", () => {
-    const html = render(fresh);
+  it("counts itself as the last step and names no site yet", () => {
+    const html = render(site);
 
-    expect(html).toContain(">Setup</p>");
-    expect(html).toContain("Welcome to Jant");
+    expect(html).toContain("Setup · Step 2 of 2");
+    expect(html).toContain("Set up your site");
   });
 
-  it("asks for the site and the account", () => {
-    const html = render(fresh);
+  it("asks for the site and not the account", () => {
+    const html = render(site);
 
     expect(html).toContain("setup-site-name");
     expect(html).toContain("setup-content-language");
-    expect(html).toContain("setup-email");
-    expect(html).toContain("setup-password");
+    expect(html).toContain("setup-discover");
+    expect(html).not.toContain("setup-email");
+    expect(html).not.toContain("setup-password");
+  });
+
+  // The install that is still choosing its own clock is the one that reports
+  // it, so the site's time zone is settled by the screen that names the site.
+  it("reports the browser's time zone", () => {
+    const html = render(site);
+
+    expect(html).toContain("timezone");
+  });
+
+  it("ends the flow rather than continuing it", () => {
+    const html = render(site);
+
+    expect(html).toContain("Start writing");
+    expect(html).not.toContain(">Continue</button>");
   });
 });

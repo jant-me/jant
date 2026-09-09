@@ -110,8 +110,6 @@ msgstr "强调色"
 
 #. @context: GitHub sync picker — owner dropdown label
 #. @context: Settings group label for account settings
-#. @context: Setup form group - the admin account being created
-#: src/routes/auth/setup.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Account"
@@ -611,11 +609,6 @@ msgstr "配色主题"
 msgid "Color Theme"
 msgstr "颜色主题"
 
-#. @context: Setup form submit button
-#: src/routes/auth/setup.tsx
-msgid "Complete Setup"
-msgstr "完成设置"
-
 #. @context: Breadcrumb label
 #. @context: Config Editor page title
 #. @context: Settings item — Config Editor
@@ -722,6 +715,11 @@ msgstr "内容语言"
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Content language, dashboard language, multilingual"
 msgstr "内容语言、界面语言、多语言"
+
+#. @context: Setup submit button on the first screen, which is followed by the site screen
+#: src/routes/auth/setup.tsx
+msgid "Continue"
+msgstr "继续"
 
 #. @context: Slate color theme preview title
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -872,6 +870,11 @@ msgstr "在 GitHub 上创建一个"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Create Page"
 msgstr "创建页面"
+
+#. @context: Setup page description on the first screen, which asks only for credentials
+#: src/routes/auth/setup.tsx
+msgid "Create the account you write from."
+msgstr "创建账户"
 
 #. @context: Help text for GitHub repository input on GitHub Sync settings, telling users they must create the repo themselves
 #: src/ui/dash/settings/GitHubSyncContent.tsx
@@ -2393,10 +2396,10 @@ msgstr "设置每页搜索结果数；重置后继承默认分页大小。"
 msgid "Set the default number of items shown per page."
 msgstr "设置默认每页显示的条目数。"
 
-#. @context: Setup page description
+#. @context: Setup heading on the second self-hosted screen, which asks for the site's name and language
 #: src/routes/auth/setup.tsx
-msgid "Set up your site and the account you write from."
-msgstr "设置你的站点，以及写作用的账户。"
+msgid "Set up your site"
+msgstr "设置你的站点"
 
 #. @context: Breadcrumb label
 #. @context: Page title for the settings home page
@@ -2465,8 +2468,6 @@ msgstr "于 {date} 登录"
 #. @context: Language settings section for reader-facing settings
 #. @context: Settings group label for site settings
 #. @context: Settings subsection heading for basic site fields
-#. @context: Setup form group - the site itself
-#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -2536,10 +2537,15 @@ msgstr "柔象牙白"
 msgid "Something doesn't look right. Check the form and try again."
 msgstr "有内容填写不正确，检查后重试。"
 
-#. @context: Setup submit button on a hosted site, after the language question
+#. @context: Setup submit button on the last screen, after which the site is live
 #: src/routes/auth/setup.tsx
 msgid "Start writing"
 msgstr "开始写作"
+
+#. @context: How far along first-run setup is, shown beside the screen's name on a self-hosted install
+#: src/routes/auth/setup.tsx
+msgid "Step {current} of {total}"
+msgstr "第 {current} 步，共 {total} 步"
 
 #. @context: Description for the Telegram disconnect action
 #: src/ui/dash/settings/TelegramContent.tsx
@@ -3085,6 +3091,11 @@ msgstr "规范的 /feed URL 返回哪个帖子流。"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Yellow-tinted paper with an olive-green accent."
 msgstr "微黄的纸底，配橄榄绿。"
+
+#. @context: Setup page description on the second self-hosted screen
+#: src/routes/auth/setup.tsx
+msgid "You can change all of this later in Settings."
+msgstr "之后可以在设置中更改。"
 
 #. @context: Fallback name when a connected Telegram account has no username
 #: src/ui/dash/settings/TelegramContent.tsx

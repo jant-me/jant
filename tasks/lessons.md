@@ -1206,3 +1206,10 @@ Two rules out of it:
   a validator keeps the cache permanently empty and re-renders every poll. The
   handler emits the tag; `withConditionalResponse` at the edge answers with it,
   and the miss still stores the whole document on its way out.
+- A rule that only lives in prose does not hold for anything invisible. The
+  BaseCoat "never combine a variant with its base class" rule was in AGENTS.md's
+  Hard Constraints and was still broken repeatedly, because `class="btn
+btn-outline"` compiles, passes every test, and only shows up as a button whose
+  label is missing until hover. When a constraint's violation has no failing
+  signal, write the guard, not another sentence:
+  `src/__tests__/basecoat-variants.test.ts`.

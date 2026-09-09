@@ -10,10 +10,13 @@
  *
  * - `pending` — nobody owns the site and it holds nothing. Readers have no
  *   business being anywhere but setup, so the public root is gated too.
- * - `provisioned` — a control plane already created the site and its owner, so
- *   the site is real and must serve readers normally. Only the author's own
- *   entrances are gated, and only once they are signed in, because the one
- *   remaining question is theirs to answer.
+ * - `provisioned` — the site has an owner and owes setup its last answers. A
+ *   control plane leaves a hosted site here at creation, and a self-hosted one
+ *   sits here between its two setup screens. Either way the site is real, so
+ *   readers are served normally; only the author's own entrances are gated,
+ *   and only once they are signed in, because the remaining questions are
+ *   theirs to answer. `/signin` staying open is what lets a self-hosted author
+ *   who lost the session mid-setup get back to the screen they left.
  */
 
 import type { MiddlewareHandler } from "hono";
