@@ -109,8 +109,25 @@ const RULES = [
     langs: ZH,
     severity: "warn",
     pattern:
-      /轻松|輕鬆|轻而易举|輕而易舉|瞬间完成|瞬間完成|强大的|強大的|完美地|无缝|無縫|一目了然/gu,
+      /轻松|輕鬆|轻而易举|輕而易舉|瞬间完成|瞬間完成|无缝|無縫|一目了然/gu,
     message: "删掉效率形容词——不携带信息",
+  },
+  {
+    // `不完美` is an ordinary word, not a boast.
+    id: "zh-hyperbole",
+    langs: ZH,
+    severity: "warn",
+    pattern:
+      /(?<!不)完美|极致|極致|超强|超強|最强|最強|神器|黑科技|颠覆|顛覆|革命性|惊艳|驚豔|惊人|驚人|丝滑|絲滑|超好用|史上最/gu,
+    message: "删掉夸张词——陈述事实或给出数字",
+  },
+  {
+    id: "zh-marketing",
+    langs: ZH,
+    severity: "warn",
+    pattern:
+      /强大|強大|赋能|賦能|打造|一站式|全方位|沉浸式|闭环|閉環|抓手|解锁|解鎖|尽享|盡享|畅享|暢享/gu,
+    message: "删掉营销黑话——说它做什么",
   },
   {
     id: "zh-translationese",
@@ -208,11 +225,21 @@ const RULES = [
     message: "filler — delete it",
   },
   {
-    id: "en-powerful",
+    id: "en-hyperbole",
     langs: ["en"],
     severity: "warn",
-    pattern: /\bpowerful\b/giu,
-    message: "marketing adjective — say what it does instead",
+    pattern:
+      /\b(ultimate|revolutionary|game[- ]chang(?:er|ing)|best[- ]in[- ]class|world[- ]class|cutting[- ]edge|(?:blazing(?:ly)?|lightning)[- ]fast|incredibl[ey]|amazing(?:ly)?|stunning|next[- ]generation|state[- ]of[- ]the[- ]art)\b/giu,
+    message: "hyperbole — state the fact or the number instead",
+  },
+  {
+    // "Unlocked" and "elevated" stay out: both name real states in UI and CSS.
+    id: "en-marketing",
+    langs: ["en"],
+    severity: "warn",
+    pattern:
+      /\b(powerful|unlock(?:s|ing)?|unleash(?:es|ed|ing)?|empower(?:s|ed|ing)?|supercharg(?:e|es|ed|ing)|elevates?|leverag(?:e|es|ed|ing)|synerg(?:y|ies)|hassle[- ]free|all[- ]in[- ]one|one[- ]stop)\b/giu,
+    message: "marketing language — say what it does instead",
   },
   {
     id: "en-significance-claim",

@@ -1,6 +1,6 @@
 ---
 name: copy-style
-description: Jant's writing rules for user-facing prose and copy. Use when writing or editing anything under docs/, README.md, or translations in src/i18n/locales/**/*.po, and when writing or reviewing UI strings (button labels, error messages, empty states, settings descriptions) in any locale. Also use when the user says copy reads "AI-flavored", 有 AI 味, too chatty, or asks to tighten documentation prose.
+description: Jant's writing rules for user-facing prose and copy. Use when writing or editing anything under docs/, README.md, or translations in src/i18n/locales/**/*.po, and when writing or reviewing UI strings (button labels, error messages, empty states, settings descriptions) in any locale. Also use when the user says copy reads "AI-flavored", 有 AI 味, too chatty, salesy, 营销腔, or asks to tighten documentation prose.
 ---
 
 # Jant Copy Style
@@ -37,11 +37,12 @@ and `这样事后可以持续完善` (what threading is for).
 
 `check-copy` handles these: `您`, exclamation marks, half-width punctuation in Chinese,
 reassurance (`什么都不用选`, `别担心`), tour guide (`让我们`, `欢迎来到`), effort adjectives
-(`轻松`, `只需`, `瞬间`, "simply", "easily", "seamlessly"). Also never: emoji, "successfully",
-"Something went wrong" with no cause, cheerleading.
+(`轻松`, `一目了然`, "simply", "effortlessly", "seamlessly"), hyperbole (`极致`, `神器`,
+"ultimate", "blazing fast"), marketing jargon (`赋能`, `打造`, "unlock", "empower"). Also never:
+emoji, "successfully", "Something went wrong" with no cause, cheerleading.
 
-Two it cannot express: a metaphor is not a name (`Hidden from Latest`, not a softer synonym), and
-a count can be an ease claim (`发布只有一步` sells, `发布一步完成` describes — but `一键部署` is a
+Two it cannot express: a name is literal (`Hidden from Latest` — not a softer synonym, not a
+playful coinage), and a count can be an ease claim (`发布只有一步` sells, `发布一步完成` describes — but `一键部署` is a
 product name and stays).
 
 ## Waste only reading aloud catches

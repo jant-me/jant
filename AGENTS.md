@@ -143,11 +143,13 @@ Cloudflare Workers, Hono v4, Vite + SWC, Tailwind v4 + BaseCoat, D1 + Drizzle OR
 
 These rules govern **UI strings** — buttons, errors, empty states, settings descriptions — in every locale; the Chinese section adds locale-specific rules. For **prose** (anything under `docs/`, `README.md`, multi-sentence `msgstr` values) see `docs/internal/writing-style.md`. Run `mise run check-copy` after touching either.
 
-**Style anchor**: write like iA Writer or Bear — a quiet tool, not a companion. Declarative sentences, short lines, no praise, no mascot energy. If a line would fit in a marketing email or an onboarding tour, rewrite it.
+**Style anchor**: write like iA Writer or Bear — a quiet tool, not a companion. No praise, no mascot energy. If a line would fit in a marketing email or an onboarding tour, rewrite it.
+
+**Plain and scannable**: people scan a screen before they read it. Labels, buttons, headings, and settings descriptions are short phrases with the key word first; messages (errors, empty states, confirmations) are short declarative sentences, one idea each. Words are plain and objective — everyday terms over jargon, what a thing does rather than how good it is. Name each feature and state by what it is: `Hidden from Latest`, never a playful coinage or a softer synonym for an existing label.
 
 **Match the existing corpus**: before writing or changing any string, read the neighboring strings — the surrounding component and the same area of `src/i18n/locales/*/en.po` — and match their register, terminology, and casing. The existing copy is the style guide of record.
 
-Banned in any locale: exclamation points; cheerleading ("Awesome", "You're all set", "Oops"); tour-guide framing ("Let's …", "your journey"); marketing adverbs ("seamlessly", "effortlessly", "instantly"); filler ("please", "simply", "just"); "successfully"; emoji; vague failure ("Something went wrong" with no cause or next step).
+Banned in any locale: exclamation points; cheerleading ("Awesome", "You're all set", "Oops"); tour-guide framing ("Let's …", "your journey"); marketing language — adverbs ("seamlessly", "effortlessly", "instantly") and jargon ("unlock", "empower", "supercharge"); hyperbole ("ultimate", "blazing fast", "revolutionary"); filler ("please", "simply", "just"); "successfully"; emoji; vague failure ("Something went wrong" with no cause or next step).
 
 Patterns, each with the shape to copy:
 
@@ -164,7 +166,7 @@ Chinese copy is written, not translated. Say it the way a native product would; 
 
 - **人称**：统一用「你」，禁止「您」。能省则省 — 优先无主语句式（「已发布」，不是「你的文章已发布」），只有指代不清时才写「你」。
 - **标点**：中文句子一律用全角标点（，。？「」（）），不允许半角逗号、句号夹在中文里。纯英文、数字、代码、URL 片段保持半角。
-- **语气**：不用感叹号，不用语气词卖萌（哦、啦、哟、呢）。「请稍后再试」这类惯用语可以用，但一条信息里最多一个「请」。
+- **语气**：不用感叹号，不用语气词卖萌（哦、啦、哟、呢），不用夸张词（极致、完美、神器）和营销黑话（赋能、打造、一站式）。「请稍后再试」这类惯用语可以用，但一条信息里最多一个「请」。
 - **屏幕已经说过的，别再说一遍**：UI 文案的上下文是它周围那一屏，复述它不买信息。标题已经是「欢迎使用 Jant」，`创建你写作用的账户。` 就该是 `创建账户`；第二屏问的本来就是站点设置，`这些之后都可以在设置中更改。` 就该是 `之后可以在设置中更改。` 这是「能省则省」的一般形式——要删的不止主语，是这一屏已经给过的任何词。正误对照见 `.claude/skills/copy-style/SKILL.md`「中文」。
 - **反翻译腔**：先想中文里本来怎么说，再落笔。「{count} 个设置已显示」是翻译腔，「已显示 {count} 个设置」才像话。「进行…操作」「对…进行」一律改写成直接的动词。
 - **术语表**（**以 `src/i18n/locales/glossary.zh-Hans.yml` / `glossary.zh-Hant.yml` 为准**，新增术语先改术语表）：Post→帖子（zh-Hant：貼文）、Note→笔记、Link→链接、Quote→引用、Collection→合集（zh-Hant：選集）、Thread→帖子串（zh-Hant：貼文串）、Draft→草稿；「账户」不写「帐户」。注意区分产品名词和普通名词：`帖子` 指 Jant 的 Post，泛指别人写的文章仍用 `文章`（「我分享一些好文章」是对的）。

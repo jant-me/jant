@@ -42,13 +42,15 @@ feature. Move it to an Explanation section or cut it.
 
 `check-copy` handles these, so they are not judgment calls. Errors: `您`, exclamation marks,
 half-width punctuation inside Chinese, reassurance (`什么都不用选`, `别担心`), tour guide
-(`让我们`, `欢迎来到`). Warnings: effort adjectives (`轻松`, `只需`, `瞬间`, "simply", "easily",
-"seamlessly").
+(`让我们`, `欢迎来到`). Warnings: effort adjectives (`轻松`, `一目了然`, "simply", "effortlessly",
+"seamlessly"), hyperbole (`极致`, `神器`, "ultimate", "blazing fast"), marketing jargon (`赋能`,
+`打造`, "unlock", "empower").
 
 Two traps in the same family that no rule can express:
 
-- **A metaphor is not a name.** If the UI says `Hidden from Latest`, the prose says
-  `Hidden from Latest`. Never invent a softer synonym for something that already has a label.
+- **A name is literal.** If the UI says `Hidden from Latest`, the prose says
+  `Hidden from Latest`. Never invent a softer synonym for something that already has a label,
+  and never give a feature a playful name.
 - **A count can be an ease claim.** `发布只有一步` sells; `发布一步完成` describes. But
   `一键部署` is Cloudflare's "one-click deploy" flow — naming a thing, not selling it.
 
