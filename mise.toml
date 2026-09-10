@@ -7,6 +7,16 @@ pnpm = "10.28.2"
 hugo-extended = "0.160.1"
 
 # =============================================================================
+# Environment (applies to every mise task)
+# =============================================================================
+[env]
+# Trust this machine's own CA store on top of Node's bundled roots, so local
+# HTTPS targets signed by a mkcert/Caddy root (https://jant-cloud.localtest.me)
+# verify normally instead of needing verification turned off. macOS reads the
+# Keychain trust settings. Node >= 22.15.
+NODE_OPTIONS = "--use-system-ca"
+
+# =============================================================================
 # Dev (packages/core dev environment)
 # =============================================================================
 [tasks.dev]
