@@ -160,15 +160,73 @@ describe("SetupContent — the Discover question", () => {
     expect(html).not.toContain("<a href");
   });
 
-  // Only this screen says where the setting lives, and it spells the route out
-  // of the labels those screens render — so a renamed page renames the
-  // directions with it rather than sending the author somewhere that is gone.
-  it("says where the setting can be changed later", () => {
+  // The screen's footnote already says every answer here can change later.
+  // Saying it again under one checkbox was saying it twice.
+  it("does not repeat the way back to Settings", () => {
     const html = render(base);
 
+    expect(html).not.toContain("→");
     expect(html).toContain(
-      "You can change this later in Settings → General → Site visibility.",
+      "so readers can find new blogs and new writing.</p>",
     );
+  });
+});
+
+/**
+ * Where "you can change this later" sits. Under the heading, before the
+ * questions, it reads as permission to leave them blank; after the button it is
+ * only what it is.
+ */
+describe("SetupContent — the note that nothing is final", () => {
+  const site: SetupProps = {
+    mode: "site",
+    askSiteName: true,
+    contentLanguage: "en",
+    discoverAvailable: true,
+    discoverDefault: false,
+    discoverUrl: null,
+  };
+  const note = "You can change all of this later in Settings.";
+
+  it("sits in the card's footer, after the button", () => {
+    const html = render(site);
+
+    expect(html).toContain(
+      `<footer><p class="text-sm text-muted-foreground">${note}</p></footer>`,
+    );
+    expect(html.indexOf(note)).toBeGreaterThan(html.indexOf("</button>"));
+  });
+
+  it("leaves nothing under the heading", () => {
+    const html = render(site);
+    const header = html.slice(
+      html.indexOf("<header>"),
+      html.indexOf("</header>"),
+    );
+
+    expect(header).toContain("<h2>");
+    expect(header).not.toContain(note);
+    expect(header.match(/<p/g)).toHaveLength(1);
+  });
+
+  // Same component, same reason: the hosted variant asks a question in its
+  // heading, and a reassurance sitting right under it dilutes the question.
+  it("sits in the same place on the hosted screen", () => {
+    const html = render({ ...site, askSiteName: false, siteName: "My Blog" });
+    const header = html.slice(
+      html.indexOf("<header>"),
+      html.indexOf("</header>"),
+    );
+
+    expect(header).not.toContain(note);
+    expect(html.indexOf(note)).toBeGreaterThan(html.indexOf("</button>"));
+  });
+
+  // The account screen has no answers to reassure anyone about.
+  it("is absent from the account screen", () => {
+    const html = render({ mode: "account" });
+
+    expect(html).not.toContain("<footer>");
   });
 });
 

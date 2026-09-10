@@ -39,14 +39,11 @@ msgid "{language} is the only other language on this site, so removing it turns 
 msgstr "移除 {language} 后就只剩主语言了，多语言会一并关闭。根地址将恢复显示所有语言，{prefix} 不再可用，每篇帖子的语言保持不变。"
 
 #. @context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.
+#. @context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.
+#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing."
 msgstr "{name} 是 Jant 社区人工维护的一个{directory}，延迟 24 小时展示你的博客最新一篇帖子，旨在帮助用户发现新的 Jant 博客和内容。"
-
-#. @context: The help line under the Discover checkbox on the first-run setup screen. The settings page's own line, plus the way back to the setting — which only this screen needs, since the settings page is already there. {directory} is rendered as the link to the directory, so keep it as one run of text.
-#: src/routes/auth/setup.tsx
-msgid "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing. You can change this later in {path}."
-msgstr "{name} 是 Jant 社区人工维护的一个{directory}，延迟 24 小时展示你的博客最新一篇帖子，旨在帮助用户发现新的 Jant 博客和内容，之后也可以在「{path}」中更改。"
 
 #. @context: Body of the change-primary-language dialog
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -478,11 +475,6 @@ msgstr "平静自然，看着舒服。"
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Cancel"
 msgstr "取消"
-
-#. @context: Setup page description under the write-language question
-#: src/routes/auth/setup.tsx
-msgid "Change it any time in Settings."
-msgstr "之后也可以在设置中更改。"
 
 #. @context: Button to change password
 #. @context: Settings section heading
@@ -1301,8 +1293,6 @@ msgstr "完整帖子"
 #. @context: Breadcrumb label
 #. @context: Settings item — general settings
 #. @context: Settings section heading
-#. @context: The General settings page's own name, used inside the directions back to the Discover setting on the first-run setup screen.
-#: src/routes/auth/setup.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -2403,8 +2393,6 @@ msgstr "设置你的站点"
 
 #. @context: Breadcrumb label
 #. @context: Page title for the settings home page
-#. @context: The settings area's own name, used inside the directions back to the Discover setting on the first-run setup screen.
-#: src/routes/auth/setup.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Settings"
@@ -2499,8 +2487,6 @@ msgid "Site settings updated."
 msgstr "站点设置已更新。"
 
 #. @context: Settings section heading covering search engine indexing and the Jant Discover directory
-#. @context: The settings section's own heading, used inside the directions back to the Discover setting on the first-run setup screen.
-#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Site visibility"
 msgstr "站点可见性"
@@ -3092,7 +3078,7 @@ msgstr "规范的 /feed URL 返回哪个帖子流。"
 msgid "Yellow-tinted paper with an olive-green accent."
 msgstr "微黄的纸底，配橄榄绿。"
 
-#. @context: Setup page description on the second self-hosted screen
+#. @context: Note at the foot of the last setup screen, after the submit button
 #: src/routes/auth/setup.tsx
 msgid "You can change all of this later in Settings."
 msgstr "之后可以在设置中更改。"

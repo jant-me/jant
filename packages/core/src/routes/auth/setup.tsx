@@ -146,11 +146,11 @@ const LocaleField: FC<{
  * settings page's own: one control appearing twice should not describe itself
  * two ways.
  *
- * The label is a shared catalog entry rather than setup-specific copy, which
- * is what keeps the two surfaces from drifting when either is edited. The help
- * line is the settings page's own sentence plus one this screen alone needs —
- * where to find the setting again — and so is an entry of its own; edits to
- * one belong in the other.
+ * The help line is the settings page's own catalog entry, message for message,
+ * which is what keeps the two surfaces from drifting when either is edited. It
+ * used to carry one more sentence — where to find the setting again — but the
+ * screen's footnote says that once for every answer on it, and saying it here
+ * as well was saying it twice.
  */
 const DiscoverField: FC<{
   label: string;
@@ -240,9 +240,16 @@ const SetupShell: FC<
     /** Which of the self-hosted screens this is. Absent on a hosted site. */
     step?: number;
     heading: string;
-    description: string;
+    /** What this screen is for, under the heading. Omitted where the heading says it. */
+    description?: string;
+    /**
+     * A note that belongs to the screen but not to the question — set in the
+     * card's footer, after the button, where it is read once the answers are
+     * given rather than before.
+     */
+    footnote?: string;
   }>
-> = ({ siteName, step, heading, description, children }) => {
+> = ({ siteName, step, heading, description, footnote, children }) => {
   const { i18n } = useLingui();
   const name = siteName?.trim() ?? "";
   const parts = [setupLabel(i18n)];
@@ -266,9 +273,14 @@ const SetupShell: FC<
         <header>
           <p class="mb-2 text-sm text-muted-foreground">{parts.join(" · ")}</p>
           <h2>{heading}</h2>
-          <p>{description}</p>
+          {description ? <p>{description}</p> : null}
         </header>
         <section>{children}</section>
+        {footnote ? (
+          <footer>
+            <p class="text-sm text-muted-foreground">{footnote}</p>
+          </footer>
+        ) : null}
       </div>
     </div>
   );
@@ -474,32 +486,6 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
         "@context: The same noun for the Jant Discover list, on the first-run setup screen.",
     }),
   );
-  // The way back to this setting, spelled out of the labels those screens
-  // render themselves. Written out by hand it would name a page that no longer
-  // exists the first time one of them is renamed or retranslated.
-  const discoverSettingsPath = [
-    i18n._(
-      msg({
-        message: "Settings",
-        comment:
-          "@context: The settings area's own name, used inside the directions back to the Discover setting on the first-run setup screen.",
-      }),
-    ),
-    i18n._(
-      msg({
-        message: "General",
-        comment:
-          "@context: The General settings page's own name, used inside the directions back to the Discover setting on the first-run setup screen.",
-      }),
-    ),
-    i18n._(
-      msg({
-        message: "Site visibility",
-        comment:
-          "@context: The settings section's own heading, used inside the directions back to the Discover setting on the first-run setup screen.",
-      }),
-    ),
-  ].join(" → ");
   // Rendered even when the question is not asked, so the form can name the
   // signal unconditionally; `discoverAvailable` decides whether the control
   // appears, and an absent field simply sends the default back.
@@ -516,15 +502,11 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
       hint={i18n._(
         msg({
           message:
-            "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing. You can change this later in {path}.",
+            "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing.",
           comment:
-            "@context: The help line under the Discover checkbox on the first-run setup screen. The settings page's own line, plus the way back to the setting — which only this screen needs, since the settings page is already there. {directory} is rendered as the link to the directory, so keep it as one run of text.",
+            "@context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.",
         }),
-        {
-          name: discoverName,
-          directory: discoverDirectory,
-          path: discoverSettingsPath,
-        },
+        { name: discoverName, directory: discoverDirectory },
       )}
       directory={discoverDirectory}
       directoryUrl={discoverUrl}
@@ -573,23 +555,16 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
               }),
             )
       }
-      description={
-        askSiteName
-          ? i18n._(
-              msg({
-                message: "You can change all of this later in Settings.",
-                comment:
-                  "@context: Setup page description on the second self-hosted screen",
-              }),
-            )
-          : i18n._(
-              msg({
-                message: "Change it any time in Settings.",
-                comment:
-                  "@context: Setup page description under the write-language question",
-              }),
-            )
-      }
+      // Not under the heading. Said there, before the questions, it reads as
+      // permission to leave them blank; said after the button, it is what it
+      // is — a note that nothing here is final.
+      footnote={i18n._(
+        msg({
+          message: "You can change all of this later in Settings.",
+          comment:
+            "@context: Note at the foot of the last setup screen, after the submit button",
+        }),
+      )}
     >
       <form
         data-signals={`{${signals}}`}
