@@ -1213,3 +1213,11 @@ btn-outline"` compiles, passes every test, and only shows up as a button whose
   label is missing until hover. When a constraint's violation has no failing
   signal, write the guard, not another sentence:
   `src/__tests__/basecoat-variants.test.ts`.
+- When a route's request or response contract changes (payload fields,
+  redirect target, number of steps), grep `dev/scripts/` as well as `src/`.
+  `dev/scripts/pg-smoke.mjs` drives setup, sign-in, and compose over real
+  requests against Postgres, and only CI runs it (`check-pg-smoke` needs
+  `PG_SMOKE_DATABASE_URL`, and `check-tests` does not include it), so a stale
+  payload there passes every local check and fails only after push. To run it
+  locally, start a throwaway `postgres:17` container and point
+  `PG_SMOKE_ADMIN_DATABASE_URL` / `PG_SMOKE_DATABASE_URL` at it.
