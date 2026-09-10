@@ -64,15 +64,15 @@ On a multilingual site every feed exists once per language, under that language'
 
 ## Discover
 
-[Jant Discover](https://jant.me/discover) is a public list of Jant blogs. It shows one post from each blog at a time and links back to the blog it came from — no counts, no ranking, no trending list.
+[Jant Discover](https://jant.me/discover) is a public list of Jant blogs and their posts. Its home shows the posts blogs have marked Featured; its Links and Quotes lists show every link and quote post. Each links back to the blog it came from — no counts, no ranking, no trending list.
 
-Your site takes part once you say so, under **Settings → General → Site visibility**, or on the last screen of first-run setup, which asks the same question once. Nothing is listed on a default: a directory reads your feed for an answer, and a site that has never been asked has not given one. `latest` lets a directory show any of your public posts; `featured` limits it to the ones you have marked Featured. A demo site, a site with `RSS_FEEDS_ENABLED=false`, and — until you choose for yourself — a site with `NOINDEX=true` stay out whatever the control says.
+Your site takes part once you say so, under **Settings → General → Site visibility**, or on the last screen of first-run setup, which asks the same question once. Nothing is listed on a default: a directory reads your feed for an answer, and a site that has never been asked has not given one. A demo site, a site with `RSS_FEEDS_ENABLED=false`, and — until you choose for yourself — a site with `NOINDEX=true` stay out whatever the control says.
 
-Turning it on sends your feed address to the directory, so it knows your site exists. Nothing else is sent. It is sent again when you turn Discover off and back on, or when you press **Announce my site** under the setting; switching between `latest` and `featured` sends nothing. Answering yes during setup sends it there and then — a directory decides for itself what a blog needs before it is listed, and re-reads the feed on its own schedule, so a site with nothing published yet loses nothing by saying hello early. The directory is the one your deployment belongs to: your own control plane when you run one, otherwise Jant's. `DISCOVER_PING_URL` overrides that; set it empty to announce nowhere.
+Turning it on sends your feed address to the directory, so it knows your site exists. Nothing else is sent. It is sent again when you turn Discover off and back on, or when you press **Announce my site** under the setting. Answering yes during setup sends it there and then — a directory decides for itself what a blog needs before it is listed, and re-reads the feed on its own schedule, so a site with nothing published yet loses nothing by saying hello early. The directory is the one your deployment belongs to: your own control plane when you run one, otherwise Jant's. `DISCOVER_PING_URL` overrides that; set it empty to announce nowhere.
 
-To pull a post back out, remove it from your latest feed — tick **Hidden from Latest**, set it private, or move it back to draft — and it leaves on the next read.
+To pull a post back out, remove it from the feed it was read from — unmark it Featured, tick **Hidden from Latest**, set it private, or move it back to draft — and it leaves on the next read.
 
-What a directory does with the feed is its own policy: how a post is picked, how long it stays, and what a blog needs before it is listed are answered where the directory lives.
+What a directory does with the feeds is its own policy: which list a post reaches, how long it waits before it is shown, and what a blog needs before it is listed are answered where the directory lives.
 
 ### What your feed declares
 
@@ -83,15 +83,16 @@ Every Atom feed carries the setting in its header, so a directory holding any on
   <title>A blog</title>
   <link href="https://example.com/" rel="alternate"/>
   <link href="https://example.com/latest/feed" rel="self"/>
-  <jant:discover feed="https://example.com/latest/feed">latest</jant:discover>
+  <jant:discover feed="https://example.com/latest/feed" featured="https://example.com/featured/feed">latest</jant:discover>
 </feed>
 ```
 
 The rules a directory should follow:
 
 - The namespace is `https://jant.me/ns`. It is a fixed identifier, not an address to fetch, and the prefix it is bound to is arbitrary.
-- The element's text is `latest`, `featured`, or `none`. Anything else should be ignored.
+- The element's text is `latest`, `featured`, or `none`. Anything else should be ignored. `latest` is what the setting writes today: the directory may read any public post. `featured` is what older releases wrote for a site that chose to offer only its featured posts; a directory should keep honouring it, and read only the one feed it names.
 - The `feed` attribute is the absolute URL to poll, and it is present for `latest` and `featured` only. Honour it only when it is on the same origin as the feed that declared it; otherwise a site could have somebody else's posts listed under its name.
+- The `featured` attribute is the absolute URL of the site's featured feed, present beside `feed` under `latest`, so a directory can show featured posts on one list and everything on another without guessing the address. The same-origin rule applies. A feed from before this attribute omits it; the featured feed then sits beside the latest one at the same base path, `/featured/feed` for `/latest/feed`.
 - **An absent element is not `none`.** It means the site runs a version of Jant from before Discover, which is a different thing from a site that is not listed. It does not mean yes forever either: a feed that declared once and then goes quiet is a downgrade, a feed template that broke, or a domain that changed hands. A directory should stop listing a feed whose element has been missing for a long while — jant.me waits thirty days — and list it again on the first read that carries the element.
 - `none` means stop, and it means stop now. It covers both a site that has taken itself out and a site that has never opted in; both answers are no.
 

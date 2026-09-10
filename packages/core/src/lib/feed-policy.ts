@@ -129,20 +129,33 @@ export function getFeedEntryUpdatedAt(
 export function buildFeedDiscoveryFields(
   c: FeedContext,
   options?: { query?: string },
-): Pick<FeedData, "discover" | "discoverFeedUrl" | "languageAlternates"> {
+): Pick<
+  FeedData,
+  | "discover"
+  | "discoverFeedUrl"
+  | "discoverFeaturedFeedUrl"
+  | "languageAlternates"
+> {
   const { appConfig } = c.var;
+  const absoluteFeedUrl = (feedPath: string) =>
+    toAbsoluteSiteUrl(
+      `${viewBasePath(c)}${feedPath}`,
+      appConfig.siteUrl,
+      appConfig.sitePathPrefix,
+    );
   const feedPath = getDiscoverFeedPath(appConfig.discover);
-  const discoverFeedUrl = feedPath
-    ? toAbsoluteSiteUrl(
-        `${viewBasePath(c)}${feedPath}`,
-        appConfig.siteUrl,
-        appConfig.sitePathPrefix,
-      )
-    : null;
+  const discoverFeedUrl = feedPath ? absoluteFeedUrl(feedPath) : null;
+  // Only beside `latest`: under `featured` the `feed` attribute already is the
+  // featured feed, and there is nothing wider to name.
+  const discoverFeaturedFeedUrl =
+    appConfig.discover === "latest"
+      ? absoluteFeedUrl(getDiscoverFeedPath("featured") ?? "/featured/feed")
+      : null;
 
   return {
     discover: appConfig.discover,
     discoverFeedUrl,
+    discoverFeaturedFeedUrl,
     // Alternates follow the feed's canonical URL, not the request's, so a feed
     // reached with tracking params still points its siblings at the canonical
     // form. `x-default` is defined for web pages a search engine ranks; it

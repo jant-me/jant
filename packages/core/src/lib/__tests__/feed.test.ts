@@ -894,14 +894,27 @@ describe("feed renderers", () => {
 });
 
 describe("feed Discover declaration", () => {
-  it("declares the mode and the feed to poll", () => {
+  it("declares the mode and the feeds to poll", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(makePostView()),
+      discover: "latest",
+      discoverFeedUrl: "https://example.com/latest/feed",
+      discoverFeaturedFeedUrl: "https://example.com/featured/feed",
+    });
+
+    expect(xml).toContain('xmlns:jant="https://jant.me/ns"');
+    expect(xml).toContain(
+      '<jant:discover feed="https://example.com/latest/feed" featured="https://example.com/featured/feed">latest</jant:discover>',
+    );
+  });
+
+  it("names no featured feed when none was given", () => {
     const xml = defaultFeedRenderer({
       ...makeFeedData(makePostView()),
       discover: "latest",
       discoverFeedUrl: "https://example.com/latest/feed",
     });
 
-    expect(xml).toContain('xmlns:jant="https://jant.me/ns"');
     expect(xml).toContain(
       '<jant:discover feed="https://example.com/latest/feed">latest</jant:discover>',
     );

@@ -38,12 +38,15 @@ msgstr "{count} 個設定已顯示"
 msgid "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in."
 msgstr "移除 {language} 後就只剩主語言了，多語言會一併關閉。根位址將恢復顯示所有語言，{prefix} 不再可用，每篇貼文的語言維持不變。"
 
-#. @context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.
-#. @context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.
+#. @context: Help text under the Jant Discover checkbox on the first-run setup screen, shorter than the settings page's. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. 'Featured' is the mark on a post, as this site's own UI spells it.
 #: src/routes/auth/setup.tsx
+msgid "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. Posts you mark Featured appear on it."
+msgstr "{name} 是 Jant 社群人工維護的一個{directory}，你設為精選（Featured）的貼文會出現在上面。"
+
+#. @context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. 'Featured' is the mark on a post, as this site's own UI spells it; 'Links' and 'Quotes' are the directory's list names and stay in English. States only the stable promises; the rest is the directory's own business.
 #: src/ui/dash/settings/GeneralContent.tsx
-msgid "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing."
-msgstr "{name} 是 Jant 社群人工維護的一個{directory}，延遲 24 小時顯示你的部落格最新一篇貼文，旨在幫助使用者發現新的 Jant 部落格和內容。"
+msgid "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. Posts you mark Featured appear on its home page; your link and quote posts appear on its Links and Quotes lists, a day after Discover reads them."
+msgstr "{name} 是 Jant 社群人工維護的一個{directory}。你設為精選（Featured）的貼文會出現在它的首頁，連結和引用類型的貼文會出現在 Links 和 Quotes 列表，均在 Discover 讀到後延遲一天顯示。"
 
 #. @context: Body of the change-primary-language dialog
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -1102,16 +1105,6 @@ msgstr "草稿"
 msgid "Drag links here to show them under the More menu"
 msgstr "將連結拖到此處以顯示於「更多」選單下方"
 
-#. @context: Description of the Discover Latest option
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Draws from your latest public posts."
-msgstr "從你最新的公開貼文中挑選。"
-
-#. @context: Description of the Discover Featured option
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Draws only from posts you have marked Featured."
-msgstr "只從你標為 Featured 的貼文中挑選。"
-
 #. @context: Placeholder for API token name input
 #: src/ui/dash/settings/ApiTokensContent.tsx
 msgid "e.g. iOS Shortcuts"
@@ -1205,16 +1198,6 @@ msgstr "Featured"
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Featured feed"
 msgstr "Featured RSS 來源"
-
-#. @context: Jant Discover option drawing only from featured posts
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Featured only"
-msgstr "Featured only"
-
-#. @context: Discover status line when the featured-only mode is on but the site has no featured posts
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Featured only is selected and no post is marked Featured, so your feed carries nothing to show."
-msgstr "目前選的是「Featured only」，但沒有任何貼文標為 Featured，訂閱源裡沒有可顯示的內容。"
 
 #. @context: Config Editor RSS feed enum option
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -1475,10 +1458,8 @@ msgid "Last used {date}"
 msgstr "最後使用於 {date}"
 
 #. @context: Browse filter label for latest posts
-#. @context: Jant Discover option drawing from the site's latest public posts
 #. @context: Select option for using latest posts as the main RSS feed
 #: src/ui/dash/appearance/NavigationContent.tsx
-#: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Latest"
 msgstr "Latest"
@@ -2773,6 +2754,11 @@ msgstr "此設定未儲存。請檢查設定值並再試一次。"
 #: src/routes/dash/settings.tsx
 msgid "This site has no directory to announce to."
 msgstr "這個站點沒有可提交的目錄。"
+
+#. @context: Discover status line for a site that chose the old featured-only mode and has no featured posts. Says how to move to the current setting, which reads every public post.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "This site still limits Discover to featured posts, and no post is marked Featured, so your feed carries nothing to show. Untick and tick the box to let Discover read every public post."
+msgstr "目前仍只向 Discover 提供精選貼文，但沒有任何貼文標為 Featured，訂閱源裡沒有可顯示的內容。取消勾選再重新勾選，即可讓 Discover 讀取全部公開貼文。"
 
 #. @context: Warning text on account deletion page
 #: src/ui/dash/settings/DeleteAccountContent.tsx

@@ -410,37 +410,11 @@ export function GeneralContent({
     discoverIntro: i18n._(
       msg({
         message:
-          "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing.",
+          "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. Posts you mark Featured appear on its home page; your link and quote posts appear on its Links and Quotes lists, a day after Discover reads them.",
         comment:
-          "@context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.",
+          "@context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. 'Featured' is the mark on a post, as this site's own UI spells it; 'Links' and 'Quotes' are the directory's list names and stay in English. States only the stable promises; the rest is the directory's own business.",
       }),
       { name: discoverName, directory: discoverDirectory },
-    ),
-    discoverLatest: i18n._(
-      msg({
-        message: "Latest",
-        comment:
-          "@context: Jant Discover option drawing from the site's latest public posts",
-      }),
-    ),
-    discoverLatestHint: i18n._(
-      msg({
-        message: "Draws from your latest public posts.",
-        comment: "@context: Description of the Discover Latest option",
-      }),
-    ),
-    discoverFeatured: i18n._(
-      msg({
-        message: "Featured only",
-        comment:
-          "@context: Jant Discover option drawing only from featured posts",
-      }),
-    ),
-    discoverFeaturedHint: i18n._(
-      msg({
-        message: "Draws only from posts you have marked Featured.",
-        comment: "@context: Description of the Discover Featured option",
-      }),
     ),
     discoverSearchOff: i18n._(
       msg({
@@ -587,6 +561,9 @@ export function GeneralContent({
       }
     }
 
+    // A site that stored `featured` under an older release: the directory
+    // reads only its featured feed, on every list. The box still reads as on,
+    // and only the owner ticking it again widens what the directory may show.
     if (
       discoverStatus.declaredMode === "featured" &&
       discoverStatus.publicPostCount > 0 &&
@@ -596,9 +573,9 @@ export function GeneralContent({
         i18n._(
           msg({
             message:
-              "Featured only is selected and no post is marked Featured, so your feed carries nothing to show.",
+              "This site still limits Discover to featured posts, and no post is marked Featured, so your feed carries nothing to show. Untick and tick the box to let Discover read every public post.",
             comment:
-              "@context: Discover status line when the featured-only mode is on but the site has no featured posts",
+              "@context: Discover status line for a site that chose the old featured-only mode and has no featured posts. Says how to move to the current setting, which reads every public post.",
           }),
         ),
       );

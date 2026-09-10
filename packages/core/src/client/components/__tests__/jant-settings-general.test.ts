@@ -115,11 +115,7 @@ const labels: SettingsLabels = {
   discoverDirectory: "directory",
   discoverEnabled: "Allow Jant Discover to list my site",
   discoverIntro:
-    "Jant Discover is a directory of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing.",
-  discoverLatest: "Latest",
-  discoverLatestHint: "Draws from your latest public posts.",
-  discoverFeatured: "Featured only",
-  discoverFeaturedHint: "Draws only from posts you have marked Featured.",
+    "Jant Discover is a directory of Jant blogs, curated by hand by the Jant community. Posts you mark Featured appear on its home page; your link and quote posts appear on its Links and Quotes lists, a day after Discover reads them.",
   discoverDemoLocked: "Demo sites are never listed in Discover.",
   discoverFeedsOffLocked:
     "Discover reads your Atom feed, so it needs feeds turned on.",
@@ -172,16 +168,6 @@ function findIntroParagraph(el: HTMLElement): HTMLElement | null {
       (paragraph) => paragraph.textContent?.trim() === labels.discoverIntro,
     ) ?? null
   );
-}
-
-/** The Discover mode radios carry no value attribute — find them by label. */
-function findRadioByLabel(
-  el: HTMLElement,
-  labelText: string,
-): HTMLInputElement | undefined {
-  return Array.from(
-    el.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
-  ).find((radio) => radio.closest("label")?.textContent?.includes(labelText));
 }
 
 async function createElement(
@@ -688,8 +674,7 @@ describe("JantSettingsGeneral", () => {
       expect(el.textContent).toContain(labels.discoverIntro);
     });
 
-    // Opt-in: a self-hosted site nobody configured shows the box unticked,
-    // and the mode choice under it stays hidden until it is ticked.
+    // Opt-in: a self-hosted site nobody configured shows the box unticked.
     it("starts off for a site with no deployment default", async () => {
       const el = await createElement();
       const toggle = requireElement(
@@ -698,12 +683,11 @@ describe("JantSettingsGeneral", () => {
       );
 
       expect(toggle.checked).toBe(false);
-      expect(el.textContent).not.toContain(labels.discoverLatestHint);
 
       toggle.click();
       await el.updateComplete;
 
-      expect(el.textContent).toContain(labels.discoverLatestHint);
+      expect(toggle.checked).toBe(true);
     });
 
     // Hosted Jant sets `DISCOVER=latest`, and an owner who has never opened
@@ -717,7 +701,6 @@ describe("JantSettingsGeneral", () => {
           "expected the Discover checkbox",
         ).checked,
       ).toBe(true);
-      expect(el.textContent).toContain(labels.discoverLatestHint);
     });
 
     // The section carries no Save button of its own: the only button it can
@@ -769,24 +752,36 @@ describe("JantSettingsGeneral", () => {
       );
     });
 
-    // Picking a mode is a whole answer too, so it is stored on the spot
-    // rather than waiting for the tick above it to be re-confirmed.
-    it("sends the mode as soon as it is picked", async () => {
-      const el = await createElement({ discoverDefault: "latest" });
+    // A site that chose the old featured-only mode reads as on, and the box
+    // widens it only when the owner ticks it again — never on its own.
+    it("keeps a stored featured choice ticked, and writes latest on re-tick", async () => {
+      const el = await createElement();
+      el.initData({ ...initialData, discover: "featured" });
+      await el.updateComplete;
       const details: SettingsSaveDetail[] = [];
       el.addEventListener("jant:settings-save", (event) => {
         details.push((event as CustomEvent<SettingsSaveDetail>).detail);
       });
 
-      const featured = requireElement(
-        findRadioByLabel(el, labels.discoverFeatured),
-        "expected the featured-only radio",
+      const toggle = requireElement(
+        findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
+        "expected the Discover checkbox",
       );
-      featured.click();
-      await el.updateComplete;
+      expect(toggle.checked).toBe(true);
+      expect(details).toHaveLength(0);
 
-      expect(details).toHaveLength(1);
-      expect(details[0]?.data.discover).toBe("featured");
+      toggle.click();
+      await el.updateComplete;
+      expect(details[0]?.data.discover).toBe("off");
+
+      el.sectionSaved("discover");
+      await el.updateComplete;
+      requireElement(
+        findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
+        "expected the Discover checkbox",
+      ).click();
+      await el.updateComplete;
+      expect(details[1]?.data.discover).toBe("latest");
     });
 
     // The controls stay disabled until the save answers, so a second click
@@ -929,9 +924,6 @@ describe("JantSettingsGeneral", () => {
       await el.updateComplete;
 
       expect(discover.checked).toBe(false);
-      // The mode radios go with it, and nothing was stored: the owner has
-      // still not answered Discover either way.
-      expect(el.textContent).not.toContain(labels.discoverLatestHint);
     });
 
     // A control that moves on its own has to say why it moved.

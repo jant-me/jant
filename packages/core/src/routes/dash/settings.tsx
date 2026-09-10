@@ -151,8 +151,11 @@ const UpdateSearchSettingsSchema = z.object({
   allowIndexing: z.boolean(),
 });
 
+// Only the two values the control writes. `featured` is still a stored value
+// older releases wrote and the feed still declares, but nothing writes it any
+// more: which of a blog's posts reach which list is the directory's rule.
 const UpdateDiscoverSettingsSchema = z.object({
-  discover: z.enum(["latest", "featured", "off"]),
+  discover: z.enum(["latest", "off"]),
 });
 
 function publicPath(c: Context<Env>, path: string): string {

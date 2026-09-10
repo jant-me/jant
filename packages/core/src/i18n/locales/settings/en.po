@@ -38,12 +38,15 @@ msgstr "{count} settings shown"
 msgid "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in."
 msgstr "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in."
 
-#. @context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.
-#. @context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.
+#. @context: Help text under the Jant Discover checkbox on the first-run setup screen, shorter than the settings page's. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. 'Featured' is the mark on a post, as this site's own UI spells it.
 #: src/routes/auth/setup.tsx
+msgid "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. Posts you mark Featured appear on it."
+msgstr "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. Posts you mark Featured appear on it."
+
+#. @context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. 'Featured' is the mark on a post, as this site's own UI spells it; 'Links' and 'Quotes' are the directory's list names and stay in English. States only the stable promises; the rest is the directory's own business.
 #: src/ui/dash/settings/GeneralContent.tsx
-msgid "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing."
-msgstr "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing."
+msgid "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. Posts you mark Featured appear on its home page; your link and quote posts appear on its Links and Quotes lists, a day after Discover reads them."
+msgstr "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. Posts you mark Featured appear on its home page; your link and quote posts appear on its Links and Quotes lists, a day after Discover reads them."
 
 #. @context: Body of the change-primary-language dialog
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -1102,16 +1105,6 @@ msgstr "Draft"
 msgid "Drag links here to show them under the More menu"
 msgstr "Drag links here to show them under the More menu"
 
-#. @context: Description of the Discover Latest option
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Draws from your latest public posts."
-msgstr "Draws from your latest public posts."
-
-#. @context: Description of the Discover Featured option
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Draws only from posts you have marked Featured."
-msgstr "Draws only from posts you have marked Featured."
-
 #. @context: Placeholder for API token name input
 #: src/ui/dash/settings/ApiTokensContent.tsx
 msgid "e.g. iOS Shortcuts"
@@ -1205,16 +1198,6 @@ msgstr "Featured"
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Featured feed"
 msgstr "Featured feed"
-
-#. @context: Jant Discover option drawing only from featured posts
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Featured only"
-msgstr "Featured only"
-
-#. @context: Discover status line when the featured-only mode is on but the site has no featured posts
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Featured only is selected and no post is marked Featured, so your feed carries nothing to show."
-msgstr "Featured only is selected and no post is marked Featured, so your feed carries nothing to show."
 
 #. @context: Config Editor RSS feed enum option
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -1475,10 +1458,8 @@ msgid "Last used {date}"
 msgstr "Last used {date}"
 
 #. @context: Browse filter label for latest posts
-#. @context: Jant Discover option drawing from the site's latest public posts
 #. @context: Select option for using latest posts as the main RSS feed
 #: src/ui/dash/appearance/NavigationContent.tsx
-#: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Latest"
 msgstr "Latest"
@@ -2773,6 +2754,11 @@ msgstr "This setting wasn't saved. Check the value and try again."
 #: src/routes/dash/settings.tsx
 msgid "This site has no directory to announce to."
 msgstr "This site has no directory to announce to."
+
+#. @context: Discover status line for a site that chose the old featured-only mode and has no featured posts. Says how to move to the current setting, which reads every public post.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "This site still limits Discover to featured posts, and no post is marked Featured, so your feed carries nothing to show. Untick and tick the box to let Discover read every public post."
+msgstr "This site still limits Discover to featured posts, and no post is marked Featured, so your feed carries nothing to show. Untick and tick the box to let Discover read every public post."
 
 #. @context: Warning text on account deletion page
 #: src/ui/dash/settings/DeleteAccountContent.tsx

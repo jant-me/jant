@@ -513,38 +513,27 @@ export class JantSettingsGeneral extends LitElement {
     });
   }
 
-  private _onDiscoverToggle(enabled: boolean) {
-    // Turning it back on returns to the default rather than to whatever was
-    // chosen before being switched off; the sub-choice below says which.
-    this._saveDiscover(enabled ? this._defaultDiscoverMode() : "off");
-  }
-
   /**
-   * Which stream a freshly enabled site draws from.
+   * On writes `latest`: the directory may read any public post, and decides
+   * itself which list each one reaches — featured posts on its home, links
+   * and quotes on their own lists.
    *
-   * `featured` only when something already says so — the site's own previous
-   * answer, or a deployment that defaults to it. Otherwise `latest`.
+   * A site that stored `featured` under an older release still reads as
+   * ticked, and stays `featured` until its owner touches the box: widening
+   * what the directory may show is the owner's to do, not an upgrade's.
    */
-  private _defaultDiscoverMode(): "latest" | "featured" {
-    if (this._origDiscover === "featured") return "featured";
-    if (this._origDiscover === "" && this.discoverDefault === "featured") {
-      return "featured";
-    }
-    return "latest";
-  }
-
-  private _onDiscoverMode(mode: "latest" | "featured") {
-    this._saveDiscover(mode);
+  private _onDiscoverToggle(enabled: boolean) {
+    this._saveDiscover(enabled ? "latest" : "off");
   }
 
   /**
    * Store the choice the owner just made.
    *
-   * The controls are disabled while a save is in flight, so a second call
+   * The control is disabled while a save is in flight, so a second call
    * cannot arrive before the first has answered; the guard covers the event
    * that is already queued when that happens.
    */
-  private _saveDiscover(value: "latest" | "featured" | "off") {
+  private _saveDiscover(value: "latest" | "off") {
     if (this._discoverLoading) return;
     this._discover = value;
     this._discoverLoading = true;
@@ -947,21 +936,17 @@ export class JantSettingsGeneral extends LitElement {
   /**
    * Jant Discover.
    *
-   * Saves on change, like the indexing checkbox next to it: every control here
-   * is a complete answer on its own — ticking the box stores the default mode,
-   * and a mode is stored as soon as it is picked — so there is nothing a Save
-   * button would be waiting for.
+   * Saves on change, like the indexing checkbox next to it: the box is a
+   * complete answer on its own, so there is nothing a Save button would be
+   * waiting for. One box and no sub-choice — which of a blog's posts reach
+   * which list is the directory's own rule, stated on the directory.
    *
    * Ticking the box is also what announces a self-hosted site to the
-   * directory. Only that transition announces, so picking a mode afterwards
-   * sends no second ping, and a site announced under `latest` that switches to
-   * `featured` a moment later is not stranded: every feed declares the feed a
-   * crawler should poll, so the next read follows the site to /featured/feed.
+   * directory.
    */
   private _renderDiscoverForm() {
     const effective = this._effectiveDiscoverMode();
     const enabled = effective !== "none";
-    const mode = effective === "featured" ? "featured" : "latest";
     const locked = this.demoMode || !this.feedsEnabled;
     // The box unticks itself when search indexing goes off, and a control that
     // moves on its own has to say why. Asked as a counterfactual rather than
@@ -1005,16 +990,6 @@ export class JantSettingsGeneral extends LitElement {
               : nothing
           }
         </div>
-        ${
-          enabled && !locked
-            ? html`
-                <div class="flex flex-col gap-2 pl-6">
-                  ${this._renderDiscoverMode("latest", mode)}
-                  ${this._renderDiscoverMode("featured", mode)}
-                </div>
-              `
-            : nothing
-        }
         ${locked ? nothing : this._renderDiscoverStatus()}
       </div>
     `;
@@ -1148,34 +1123,6 @@ export class JantSettingsGeneral extends LitElement {
         },
       }),
     );
-  }
-
-  private _renderDiscoverMode(value: "latest" | "featured", current: string) {
-    const label =
-      value === "latest"
-        ? this.labels.discoverLatest
-        : this.labels.discoverFeatured;
-    const hint =
-      value === "latest"
-        ? this.labels.discoverLatestHint
-        : this.labels.discoverFeaturedHint;
-
-    return html`
-      <label class="flex items-start gap-2 cursor-pointer">
-        <input
-          type="radio"
-          class="mt-1"
-          name="discover-mode"
-          .checked=${current === value}
-          ?disabled=${this._discoverLoading}
-          @change=${() => this._onDiscoverMode(value)}
-        />
-        <span class="flex flex-col">
-          <span>${label}</span>
-          <span class="text-sm text-muted-foreground">${hint}</span>
-        </span>
-      </label>
-    `;
   }
 
   render() {

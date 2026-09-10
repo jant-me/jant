@@ -166,9 +166,7 @@ describe("SetupContent — the Discover question", () => {
     const html = render(base);
 
     expect(html).not.toContain("→");
-    expect(html).toContain(
-      "so readers can find new blogs and new writing.</p>",
-    );
+    expect(html).toContain("Posts you mark Featured appear on it.</p>");
   });
 });
 

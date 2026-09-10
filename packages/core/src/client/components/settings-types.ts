@@ -57,10 +57,6 @@ export interface SettingsLabels {
   discoverDirectory: string;
   discoverEnabled: string;
   discoverIntro: string;
-  discoverLatest: string;
-  discoverLatestHint: string;
-  discoverFeatured: string;
-  discoverFeaturedHint: string;
   discoverDemoLocked: string;
   discoverFeedsOffLocked: string;
   discoverSearchOff: string;

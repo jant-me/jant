@@ -502,9 +502,9 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
       hint={i18n._(
         msg({
           message:
-            "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing.",
+            "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. Posts you mark Featured appear on it.",
           comment:
-            "@context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.",
+            "@context: Help text under the Jant Discover checkbox on the first-run setup screen, shorter than the settings page's. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. 'Featured' is the mark on a post, as this site's own UI spells it.",
         }),
         { name: discoverName, directory: discoverDirectory },
       )}

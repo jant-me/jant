@@ -266,6 +266,13 @@ export interface FeedData {
   /** Absolute URL of the feed a Discover crawler should poll, if any. */
   discoverFeedUrl?: string | null;
   /**
+   * Absolute URL of the site's featured feed, named beside `discoverFeedUrl`
+   * under `latest` so a directory can show featured posts on one list and
+   * everything on another. Null under `featured`, where `discoverFeedUrl`
+   * already is that feed, and under `none`.
+   */
+  discoverFeaturedFeedUrl?: string | null;
+  /**
    * The same feed in the site's other languages. Empty on a single-language
    * site.
    */

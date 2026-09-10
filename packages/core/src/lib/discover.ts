@@ -2,11 +2,16 @@
  * Jant Discover
  *
  * Discover is a public directory of Jant blogs: a crawler polls the Atom
- * feeds of sites that opt in and shows one recent post per blog at a time.
- * Core owns the protocol, not the directory — this module holds the site
- * setting's effective-mode rules and the identifiers the feed declaration is
- * built from. The declaration is specified in `docs/feeds.md`; how a directory
+ * feeds of sites that opt in and lists their posts — the ones marked
+ * Featured on its home, link and quote posts on lists of their own. Core owns
+ * the protocol, not the directory — this module holds the site setting's
+ * effective-mode rules and the identifiers the feed declaration is built
+ * from. The declaration is specified in `docs/feeds.md`; how a directory
  * behaves is that directory's own business, documented where it lives.
+ *
+ * `featured` survives as a stored value: older releases offered it as a
+ * choice, and a site that made it still declares it, which a directory reads
+ * as "only this feed". Nothing writes it any more.
  */
 
 /**

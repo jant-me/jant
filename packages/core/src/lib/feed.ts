@@ -1154,6 +1154,7 @@ export function defaultFeedRenderer(data: FeedData): string {
     siteIconUrl,
     discover,
     discoverFeedUrl,
+    discoverFeaturedFeedUrl,
     languageAlternates,
   } = data;
   const feedTitle = title ?? siteName;
@@ -1337,14 +1338,19 @@ export function defaultFeedRenderer(data: FeedData): string {
     .join("");
 
   // The Discover declaration. It rides in every feed the site emits, so a
-  // crawler holding any one of them learns the site's answer and which feed
+  // crawler holding any one of them learns the site's answer and which feeds
   // to poll for it. `feed` is omitted when the site is not listed — there is
-  // nothing to point at.
+  // nothing to point at. `featured` names the featured feed beside it under
+  // `latest`, so a directory can keep featured posts and everything else on
+  // separate lists without guessing the address from the site root.
   const discoverFeedAttr = discoverFeedUrl
     ? ` feed="${escapeXml(discoverFeedUrl)}"`
     : "";
+  const discoverFeaturedAttr = discoverFeaturedFeedUrl
+    ? ` featured="${escapeXml(discoverFeaturedFeedUrl)}"`
+    : "";
   const discoverElement = discover
-    ? `\n  <jant:discover${discoverFeedAttr}>${escapeXml(discover)}</jant:discover>`
+    ? `\n  <jant:discover${discoverFeedAttr}${discoverFeaturedAttr}>${escapeXml(discover)}</jant:discover>`
     : "";
 
   // The feed's title is composed — "<site> - Latest posts" — because a reader's
