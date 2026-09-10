@@ -206,18 +206,45 @@ function refreshUploadToast() {
 /**
  * Track completed upload results by clientId.
  *
- * When an attachment is migrated between editor instances (e.g. entering thread
- * mode while an upload is in-flight), `updateAttachmentStatus` fires on the old
- * detached editor — not the new thread editor. By the time the user submits,
- * the upload promise has been deleted from `uploadPromises`, so the deferred
- * handler can't look it up. This map provides a fallback: we record the result
- * here as soon as any upload succeeds, and `buildRequestAttachments` reads it
- * when `attachment.mediaId` is null and the clientId isn't in `uploadPromises`.
+ * By the time the user submits, a finished upload's promise has been deleted
+ * from `uploadPromises`, so the deferred handler can't look it up. This map
+ * provides a fallback: we record the result here as soon as any upload
+ * succeeds, and `buildRequestAttachments` reads it when `attachment.mediaId`
+ * is null and the clientId isn't in `uploadPromises`.
  *
  * The full result (not just the id) is kept so a failed publish can restore
  * uploaded attachments into the reopened compose dialog.
  */
 const completedUploads = new Map<string, UploadSessionResult>();
+
+/**
+ * The editor holding an attachment now.
+ *
+ * Entering or leaving thread mode renders the post in a new editor element,
+ * which takes the attachments over from the one it replaced. An upload that
+ * outlives the swap has to follow the attachment: reporting to the editor it
+ * started in leaves the new one showing "uploading" forever, never showing an
+ * error, and keeping the finished file out of the local draft. Until a
+ * connected editor holds the attachment — the moment between the swap and the
+ * handover — the starting editor is still the one with the latest copy.
+ *
+ * @param started - The editor the upload was started from
+ * @param clientId - The attachment's client-side id
+ * @returns The editor to report progress and status to
+ */
+function attachmentOwner(
+  started: JantComposeEditor | null,
+  clientId: string,
+): JantComposeEditor | null {
+  if (!started || started.isConnected) return started;
+  const editors = document.querySelectorAll<JantComposeEditor>(
+    "jant-compose-editor",
+  );
+  for (const editor of editors) {
+    if (editor.hasAttachment(clientId)) return editor;
+  }
+  return started;
+}
 
 /**
  * Quickly grab the very first decoded frame of a video as a small poster.
@@ -311,6 +338,7 @@ async function uploadFile(
   clientId: string,
   editor: JantComposeEditor | null,
 ): Promise<string | null> {
+  const owner = () => attachmentOwner(editor, clientId);
   // Capture cheap metadata up-front so we can release `file` (the original
   // potentially-huge blob) as soon as transcoding finishes. On iOS Safari
   // holding a 300MB+ source blob alongside the transcoded output, upload
@@ -330,7 +358,7 @@ async function uploadFile(
     if (fileType.startsWith("video/")) {
       // Video: transcode with mediabunny (requires WebCodecs)
       if (!VideoProcessor.isSupported()) {
-        editor?.updateAttachmentStatus(
+        owner()?.updateAttachmentStatus(
           clientId,
           "error",
           null,
@@ -346,14 +374,14 @@ async function uploadFile(
       // card and the stored media can never disagree about having a poster.
       const quickPoster = captureQuickPoster(file)
         .then((blob) => {
-          if (blob) editor?.updateAttachmentPoster(clientId, blob);
+          if (blob) owner()?.updateAttachmentPoster(clientId, blob);
           return blob;
         })
         .catch(() => null);
 
-      editor?.updateAttachmentStatus(clientId, "processing", null, null);
+      owner()?.updateAttachmentStatus(clientId, "processing", null, null);
       const result = await VideoProcessor.processToFile(file, (progress) => {
-        editor?.updateAttachmentProgress(clientId, progress);
+        owner()?.updateAttachmentProgress(clientId, progress);
       });
       toUpload = result.file;
       // Drop the original blob ref now that we have the transcoded output.
@@ -368,12 +396,12 @@ async function uploadFile(
       // exactly the files whose frames the probe could not read.
       poster = result.poster ?? (await quickPoster) ?? undefined;
       if (poster) {
-        editor?.updateAttachmentPoster(clientId, poster);
+        owner()?.updateAttachmentPoster(clientId, poster);
       }
     } else if (fileType.startsWith("audio/")) {
       // Audio: transcode to AAC (.m4a) (requires WebCodecs)
       if (!AudioProcessor.isSupported()) {
-        editor?.updateAttachmentStatus(
+        owner()?.updateAttachmentStatus(
           clientId,
           "error",
           null,
@@ -389,9 +417,9 @@ async function uploadFile(
         // Waveform extraction is best-effort
       }
 
-      editor?.updateAttachmentStatus(clientId, "processing", null, null);
+      owner()?.updateAttachmentStatus(clientId, "processing", null, null);
       const result = await AudioProcessor.processToFile(file, (progress) => {
-        editor?.updateAttachmentProgress(clientId, progress);
+        owner()?.updateAttachmentProgress(clientId, progress);
       });
       toUpload = result.file;
       file = null as unknown as File;
@@ -407,7 +435,7 @@ async function uploadFile(
           // heic-to carries libheif — a 3MB chunk — so it is fetched for a
           // file whose bytes say HEIC, not for every photo on the off chance.
           const { heicTo } = await import("heic-to");
-          editor?.updateAttachmentStatus(clientId, "processing", null, null);
+          owner()?.updateAttachmentStatus(clientId, "processing", null, null);
           const blob = await heicTo({
             blob: imageFile,
             type: "image/jpeg",
@@ -416,7 +444,7 @@ async function uploadFile(
           imageFile = new File([blob], fileName.replace(/\.heic$/i, ".jpg"), {
             type: "image/jpeg",
           });
-          editor?.updateAttachmentPreview(clientId, imageFile);
+          owner()?.updateAttachmentPreview(clientId, imageFile);
         }
         const result = await ImageProcessor.processToFile(imageFile);
         toUpload = result.file;
@@ -426,7 +454,7 @@ async function uploadFile(
         file = null as unknown as File;
         imageFile = null as unknown as File;
       } catch {
-        editor?.removeAttachment(clientId);
+        owner()?.removeAttachment(clientId);
         showToast("Image format not supported.", "error");
         return null;
       }
@@ -435,7 +463,7 @@ async function uploadFile(
     }
 
     // Update status to uploading
-    editor?.updateAttachmentStatus(clientId, "uploading", null, null);
+    owner()?.updateAttachmentStatus(clientId, "uploading", null, null);
 
     // Text attachments keep summary/chars in the media record. This covers
     // plain text-file uploads (.md, .txt, .csv). Jant-composed rich text
@@ -472,7 +500,7 @@ async function uploadFile(
         chars,
       },
       (progress) => {
-        editor?.updateAttachmentProgress(clientId, progress);
+        owner()?.updateAttachmentProgress(clientId, progress);
         uploadProgress.set(clientId, progress);
         refreshUploadToast();
       },
@@ -480,7 +508,7 @@ async function uploadFile(
 
     uploadProgress.set(clientId, 1);
     refreshUploadToast();
-    editor?.updateAttachmentStatus(
+    owner()?.updateAttachmentStatus(
       clientId,
       "done",
       result.id,
@@ -493,7 +521,7 @@ async function uploadFile(
     uploadProgress.delete(clientId);
     refreshUploadToast();
     const message = error instanceof Error ? error.message : "Upload failed";
-    editor?.updateAttachmentStatus(clientId, "error", null, message);
+    owner()?.updateAttachmentStatus(clientId, "error", null, message);
     // Error is shown on the attachment thumbnail; only toast when there's no editor context.
     if (!editor) showToast(message, "error");
     return null;

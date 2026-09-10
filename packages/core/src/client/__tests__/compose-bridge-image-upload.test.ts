@@ -9,6 +9,11 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  ComposeAttachment,
+  ComposeLabels,
+} from "../components/compose-types.js";
+import type { JantComposeEditor } from "../components/jant-compose-editor.js";
 
 const processToFile = vi.fn();
 const uploadViaSession = vi.fn();
@@ -31,6 +36,7 @@ vi.mock("heic-to", () => {
 });
 
 await import("../compose-bridge.js");
+await import("../components/jant-compose-editor.js");
 
 const PROCESSED = new File(["webp"], "photo.webp", { type: "image/webp" });
 const BLURHASH = "LEHV6nWB2yk8pyo0adR*.7kCMdnj";
@@ -117,6 +123,74 @@ describe("compose bridge image upload", () => {
     expect(converted.type).toBe("image/jpeg");
     expect(uploadViaSession.mock.calls[0][1]).toMatchObject({
       blurhash: BLURHASH,
+    });
+  });
+
+  it("reports to the editor that took the post over, not the one it started in", async () => {
+    // Entering or leaving thread mode renders the post in a new editor. An
+    // upload still running then used to keep reporting to the old one, so the
+    // new editor showed "uploading" forever and the file never reached the
+    // local draft.
+    let finishUpload: (value: unknown) => void = () => {};
+    uploadViaSession.mockReset().mockReturnValue(
+      new Promise((resolve) => {
+        finishUpload = resolve;
+      }),
+    );
+    const editor = async () => {
+      const el = document.createElement(
+        "jant-compose-editor",
+      ) as JantComposeEditor;
+      el.labels = {} as ComposeLabels;
+      document.body.appendChild(el);
+      await el.updateComplete;
+      return el;
+    };
+    const file = jpegFile();
+    const pending: ComposeAttachment = {
+      clientId: "attachment-1",
+      file,
+      previewUrl: "blob:preview",
+      posterUrl: null,
+      status: "pending",
+      progress: null,
+      mediaId: null,
+      remoteUrl: null,
+      alt: "",
+      error: null,
+      summary: null,
+      chars: null,
+    };
+
+    const started = await editor();
+    started._attachments = [pending];
+    started._attachmentOrder = [pending.clientId];
+    started.dispatchEvent(
+      new CustomEvent("jant:files-selected", {
+        bubbles: true,
+        detail: { files: [{ file, clientId: pending.clientId }] },
+      }),
+    );
+    await settle();
+    expect(uploadViaSession).toHaveBeenCalledTimes(1);
+
+    started.remove();
+    const next = await editor();
+    next.takeOver(started);
+
+    finishUpload({
+      id: "med_1",
+      filename: "photo.webp",
+      url: "/media/photo.webp",
+      mimeType: "image/webp",
+      size: 4,
+    });
+    await settle();
+
+    expect(next._attachments[0]).toMatchObject({
+      status: "done",
+      mediaId: "med_1",
+      remoteUrl: "/media/photo.webp",
     });
   });
 });

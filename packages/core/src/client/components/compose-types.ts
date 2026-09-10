@@ -166,6 +166,10 @@ export interface LocalDraft {
     url: string;
     quoteText: string;
     quoteAuthor: string;
+    /** Optional: drafts stored before thread posts kept these lack them. */
+    rating?: number;
+    showTitle?: boolean;
+    showRating?: boolean;
     attachedTexts: Array<{
       clientId: string;
       bodyJson: JSONContent | null;

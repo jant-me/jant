@@ -285,6 +285,12 @@ export class JantComposeEditor extends LitElement {
    * to run this cycle.
    */
   private _suppressContentChangedOnce = false;
+  /**
+   * Set when the title toggle arrives with the post rather than from the
+   * owner's default — a handed-over editor keeps the answer it was given
+   * instead of having the first update reseed it from `titleByDefault`.
+   */
+  #showTitleHandedOver = false;
   #inlineImageUploadGeneration = 0;
   #inlineImageUploadPromises = new Set<Promise<void>>();
   #rehostFailureCount = 0;
@@ -1126,6 +1132,12 @@ export class JantComposeEditor extends LitElement {
       tableControlLabels: this.labels.tableControls,
     });
     this._lastEditorSelection = this._readEditorSelection();
+    // An editor built from existing content — after a format switch, or on a
+    // replacement element that took over a post — inherits the uploads still
+    // working on that content. Without this the `blob:` placeholder is left
+    // with nothing watching it: the finished upload has no editor to write
+    // into, and publishing puts the blob URL in the post.
+    this.adoptPendingUploads();
   }
 
   private _destroyEditor() {
@@ -1154,7 +1166,7 @@ export class JantComposeEditor extends LitElement {
     // `titleByDefault` is an owner-supplied prop, so it is only known once the
     // first update runs. Seed the toggle from it there and leave it alone after
     // that — from then on the value belongs to the user (and to `reset()`).
-    if (!this.hasUpdated) {
+    if (!this.hasUpdated && !this.#showTitleHandedOver) {
       this._showTitle = this.titleByDefault;
     }
   }
@@ -1177,14 +1189,7 @@ export class JantComposeEditor extends LitElement {
       // Format changed — recreate editor with appropriate placeholder
       this._destroyEditor();
       // Schedule init after Lit re-renders the new template
-      this.updateComplete.then(() => {
-        this._initEditor();
-        // The new editor inherits the body, so it has to inherit the uploads
-        // still working on it. Without this the `blob:` placeholder is left
-        // with nothing watching it: the finished upload has no editor to write
-        // into, and publishing puts the blob URL in the post.
-        this.adoptPendingUploads();
-      });
+      this.updateComplete.then(() => this._initEditor());
     }
 
     if (
@@ -1267,6 +1272,63 @@ export class JantComposeEditor extends LitElement {
     this._quoteAuthor = fields.quoteAuthor;
     this._showTitle = fields.showTitle;
     this._bodyJson = fields.bodyJson;
+  }
+
+  /**
+   * Take over everything another editor holds for its post.
+   *
+   * Entering or leaving thread mode renders a different editor element for the
+   * same post, and the element being replaced has the only copy of what was
+   * written. Every field that belongs to the post moves here, in this one
+   * place: a caller picking fields out by hand drops whichever one it forgets,
+   * which is how a quote's source link used to vanish on "Add to thread".
+   * Fields hidden by the current format move too, so switching back still
+   * finds them.
+   *
+   * Safe before or after this editor's first render, and on a `previous` that
+   * has already left the DOM — its TipTap instance is gone by then, but
+   * `_bodyJson` tracks every edit.
+   *
+   * @param previous - The editor this one replaces
+   * @example
+   * await dialog.updateComplete;
+   * threadRootEditor.takeOver(singlePostEditor);
+   */
+  takeOver(previous: JantComposeEditor) {
+    this._title = previous._title;
+    this._showTitle = previous._showTitle;
+    this.#showTitleHandedOver = true;
+    this._bodyJson = previous._editor?.getJSON() ?? previous._bodyJson;
+    this._url = previous._url;
+    this._quoteText = previous._quoteText;
+    this._quoteAuthor = previous._quoteAuthor;
+    this._rating = previous._rating;
+    this._showRating = previous._showRating;
+    this._attachedTexts = [...previous._attachedTexts];
+    this._attachments = [...previous._attachments];
+    this._attachmentOrder = [...previous._attachmentOrder];
+    this._lastEditorSelection = previous.getEditorSelection();
+    // Before the first render there is no TipTap instance yet; `_initEditor`
+    // builds it from `_bodyJson` and adopts the uploads then.
+    if (this._editor) {
+      this._editor.commands.setContent(
+        this._bodyJson ?? { type: "doc", content: [{ type: "paragraph" }] },
+      );
+      this.adoptPendingUploads();
+    }
+    this.#notifyStatus();
+  }
+
+  /**
+   * Whether this editor holds the attachment an upload is working on.
+   *
+   * @param clientId - The attachment's client-side id
+   * @returns True when the attachment strip includes it
+   * @example
+   * editor.hasAttachment(clientId); // false once the post moved to another editor
+   */
+  hasAttachment(clientId: string): boolean {
+    return this._attachments.some((a) => a.clientId === clientId);
   }
 
   /** Pre-fill all fields for edit mode or draft restore */

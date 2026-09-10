@@ -1796,3 +1796,139 @@ describe("JantComposeEditor", () => {
     expect(editor.state.selection.to).toBe(29);
   });
 });
+
+describe("JantComposeEditor.takeOver", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    vi.clearAllMocks();
+  });
+
+  /** An editor the dialog is about to render in place of another one. */
+  function unrenderedEditor(format: "note" | "link" | "quote") {
+    const el = document.createElement(
+      "jant-compose-editor",
+    ) as JantComposeEditor;
+    el.format = format;
+    el.labels = labels;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  it("hands every post field to the editor that replaces it", async () => {
+    // One sample per field the editor holds for its post. The first assertion
+    // keeps this table complete: a field the editor gains without a way across
+    // is how a quote's source link used to vanish on "Add to thread".
+    const samples: Record<string, unknown> = {
+      _title: "Left behind by a format switch",
+      _showTitle: false,
+      _bodyJson: tiptapDoc(tiptapParagraph("My thoughts on it")),
+      _url: "https://example.com/source",
+      _quoteText: "A borrowed sentence.",
+      _quoteAuthor: "Someone Else",
+      _rating: 4,
+      _showRating: true,
+      _attachedTexts: [
+        {
+          clientId: "text-1",
+          bodyJson: tiptapDoc(tiptapParagraph("Attached")),
+          bodyHtml: "",
+          summary: "Attached",
+        },
+      ],
+      _attachments: [mediaAttachment("media-1", "med_1")],
+      _attachmentOrder: ["text-1", "media-1"],
+    };
+    const contentProps = (
+      customElements.get("jant-compose-editor") as unknown as {
+        _CONTENT_PROPS: Set<string>;
+      }
+    )._CONTENT_PROPS;
+    expect(Object.keys(samples).sort()).toEqual(
+      [...contentProps, "_attachments"].sort(),
+    );
+
+    const previous = await createElement("quote");
+    for (const [key, value] of Object.entries(samples)) {
+      if (key === "_bodyJson") continue;
+      (previous as unknown as Record<string, unknown>)[key] = value;
+    }
+    requireEditor(previous).commands.setContent(
+      samples._bodyJson as JSONContent,
+    );
+    await previous.updateComplete;
+    // The dialog swaps elements before handing over, so the old one has
+    // already left the DOM — and taken its TipTap instance with it.
+    previous.remove();
+
+    const next = await createElement("quote");
+    next.takeOver(previous);
+    await next.updateComplete;
+
+    for (const [key, value] of Object.entries(samples)) {
+      if (key === "_bodyJson") continue;
+      expect((next as unknown as Record<string, unknown>)[key], key).toEqual(
+        value,
+      );
+    }
+    expect(next.getNormalizedBodyJson()).toEqual(
+      previous.getNormalizedBodyJson(),
+    );
+    expect(requireEditor(next).getText()).toBe("My thoughts on it");
+    expect(next.getData().url).toBe("https://example.com/source");
+  });
+
+  it("keeps a handed-over title toggle through its first render", async () => {
+    const previous = await createElement("note", { titleByDefault: true });
+    previous._showTitle = false;
+    previous.remove();
+
+    const next = unrenderedEditor("note");
+    next.titleByDefault = true;
+    next.takeOver(previous);
+    await next.updateComplete;
+
+    expect(next._showTitle).toBe(false);
+  });
+
+  it.each([
+    ["after", true],
+    ["before", false],
+  ])(
+    "carries an in-flight inline upload to an editor taking over %s its first render",
+    async (_when, renderFirst) => {
+      const uploadWithMetadataMock = vi.mocked(uploadWithMetadata);
+      let finishUpload: (value: { url: string; id: string }) => void = () => {};
+      uploadWithMetadataMock.mockReturnValue(
+        new Promise((resolve) => {
+          finishUpload = resolve;
+        }),
+      );
+
+      const previous = await createElement("note");
+      previous._title = "Essay";
+      await previous.updateComplete;
+      const image = new File(["image"], "clipboard.png", { type: "image/png" });
+      triggerEditorPaste(previous, [image]);
+      await previous.updateComplete;
+      expect(imageSrcs(previous)).toHaveLength(1);
+      expect(imageSrcs(previous)[0]).toMatch(/^blob:/);
+      previous.remove();
+
+      const next = unrenderedEditor("note");
+      if (renderFirst) await next.updateComplete;
+      next.takeOver(previous);
+      await next.updateComplete;
+      expect(imageSrcs(next)[0]).toMatch(/^blob:/);
+
+      finishUpload({ url: "https://example.test/clipboard.webp", id: "med_1" });
+      await vi.waitFor(() => {
+        expect(imageSrcs(next)).toEqual([
+          "https://example.test/clipboard.webp",
+        ]);
+      });
+      expect(bodyImageSrcs(next._bodyJson)).toEqual([
+        "https://example.test/clipboard.webp",
+      ]);
+    },
+  );
+});
