@@ -3,6 +3,7 @@ import { createTestApp } from "../../../__tests__/helpers/app.js";
 import { DEFAULT_TEST_SITE_ID } from "../../../__tests__/helpers/db.js";
 import { telegramWebhookRoutes } from "../telegram.js";
 import type { StorageDriver } from "../../../lib/storage.js";
+import type { DeferredPendingEnv } from "../../../lib/deferred.js";
 
 const BOT_ID = "111111";
 const BOT_TOKEN = `${BOT_ID}:AA-test-token`;
@@ -117,13 +118,13 @@ function setup(
 
   // The webhook ACKs Telegram immediately and runs the album flush in
   // detached promises so subsequent webhooks on the same chat aren't
-  // serialized behind it. Tests have no `executionCtx.waitUntil`, so the
-  // route falls back to writing each promise into `env.__telegramPending`
-  // — collect them here so tests can await the flush before asserting.
+  // serialized behind it. Tests have no `executionCtx.waitUntil`, so
+  // `runDeferred` falls back to writing each promise into
+  // `env.__pendingDeferred` — collect them here so tests can await the flush
+  // before asserting.
   const pending: Promise<unknown>[] = [];
   ctx.app.use("/api/telegram/*", async (c, next) => {
-    (c.env as { __telegramPending?: Promise<unknown>[] }).__telegramPending =
-      pending;
+    (c.env as DeferredPendingEnv).__pendingDeferred = pending;
     return next();
   });
   ctx.app.route("/api/telegram", telegramWebhookRoutes);

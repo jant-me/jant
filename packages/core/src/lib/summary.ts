@@ -23,6 +23,21 @@ interface TiptapNode {
 }
 
 /**
+ * Summary limits for titled, article-style posts — the excerpt is a teaser
+ * and the reader continues on the post's own page.
+ */
+export const ARTICLE_SUMMARY_MAX_BLOCKS = 5;
+export const ARTICLE_SUMMARY_MAX_CHARS = 500;
+/**
+ * Larger limits for untitled notes — the body itself is the content, so the
+ * preview only exists to cap runaway length.
+ */
+export const NOTE_SUMMARY_MAX_BLOCKS = 10;
+export const NOTE_SUMMARY_MAX_CHARS = 1500;
+/** Don't truncate an untitled note just to hide a tail under this many chars. */
+export const NOTE_SUMMARY_MIN_HIDDEN_CHARS = 200;
+
+/**
  * Block node types that carry user-visible content for summary extraction.
  * Structural nodes (horizontalRule, moreBreak, image) are excluded.
  */
@@ -347,4 +362,39 @@ export function extractSummaryHtml(
     hasMore,
     breakAtIndex: lastSelectedIdx + 1,
   };
+}
+
+/**
+ * Extract the summary the site's timeline shows for a post, at the boundary
+ * the timeline uses.
+ *
+ * Wraps {@link extractSummaryHtml} with the limits that decide where a card
+ * stops: a titled post is an article whose excerpt is a teaser, an untitled one
+ * is a note whose body is the content and only needs a cap. Callers that need
+ * that boundary — the feed renderer, the theme exporter — share this rather
+ * than repeating five numbers each.
+ *
+ * @param bodyJson - TipTap JSON body, or null/undefined for a post without one
+ * @param hasTitle - Whether the post has a title, which makes it an article
+ * @param renderOptions - Renderer options, notably the footnote namespace
+ * @returns The truncated HTML and whether content continues, or null when
+ *   there is no TipTap document to truncate
+ * @example
+ * extractTimelineSummary(post.body, !!post.title, { namespace: post.id });
+ * // { html: "<p>Intro</p>", hasMore: true }
+ */
+export function extractTimelineSummary(
+  bodyJson: string | null | undefined,
+  hasTitle: boolean,
+  renderOptions: TiptapRenderOptions = {},
+): { html: string; hasMore: boolean } | null {
+  if (!bodyJson) return null;
+  const result = extractSummaryHtml(
+    bodyJson,
+    hasTitle ? ARTICLE_SUMMARY_MAX_BLOCKS : NOTE_SUMMARY_MAX_BLOCKS,
+    hasTitle ? ARTICLE_SUMMARY_MAX_CHARS : NOTE_SUMMARY_MAX_CHARS,
+    hasTitle ? 0 : NOTE_SUMMARY_MIN_HIDDEN_CHARS,
+    renderOptions,
+  );
+  return result ? { html: result.html, hasMore: result.hasMore } : null;
 }

@@ -100,6 +100,37 @@ Set `RSS_FEEDS_ENABLED=false` to make canonical and legacy feed URLs return
 `404` and hide built-in feed discovery and navigation. A successful response
 already in the Worker cache can remain visible for up to 60 seconds.
 
+### Jant Discover (optional)
+
+| Variable            | Default                                     | Description                                                           |
+| ------------------- | ------------------------------------------- | --------------------------------------------------------------------- |
+| `DISCOVER`          | `off`                                       | What this deployment lists by default: `latest`, `featured`, or `off` |
+| `DISCOVER_PING_URL` | Your control plane, or Jant's own directory | Where the site announces itself; set it empty to announce nowhere     |
+
+Jant Discover is a public directory of Jant blogs. Every Atom feed declares
+whether the site takes part, and nothing is listed without that declaration —
+so a site you never turned it on for stays out of every directory, including
+ones you have never heard of.
+
+`DISCOVER` is the default for sites this deployment serves, not their answer.
+The site's own Site visibility setting overrides it, and so does
+`NOINDEX=true` while that setting is unchosen. Leave it alone when self-hosting
+a single blog; set `DISCOVER=latest` when you run a platform whose blogs should
+be listed unless their owners say otherwise. A site with
+`RSS_FEEDS_ENABLED=false` resolves to `off` regardless, having no feed to read.
+
+`DISCOVER_PING_URL` names the directory a site announces itself to. Left
+unset, a deployment that runs a control plane announces to that control plane,
+and everything else announces to Jant's own directory — so the two never have
+to be kept in step by hand. Set it to point somewhere else, or to the empty
+string to announce nowhere. The announcement is one request carrying one feed
+address, sent when a site opts in — again if it opts out and back in, or when
+its owner presses **Announce my site**; its outcome is logged, and the site's
+Site visibility settings report it.
+
+See [Feeds](feeds.md#discover) for what your feed declares and what a
+third-party directory needs to honour.
+
 ### Public API access (optional)
 
 | Variable             | Default | Description                                                    |
@@ -437,6 +468,7 @@ These settings can be changed on Jant's Settings page after setup. Each one can 
 | `NOINDEX`                    | Ask search engines not to index the site         |
 | `PUBLIC_API_ENABLED`         | Allow JSON reads without a session or API token  |
 | `RSS_FEEDS_ENABLED`          | Publish Atom feeds and built-in feed links       |
+| `DISCOVER`                   | Whether the site appears in Jant Discover        |
 
 Multilingual sites carry two more settings, `ADDITIONAL_LANGUAGES` and `MULTILINGUAL_ENABLED`. Both are written by the Language page rather than set by hand, because their values have to stay consistent with the language stamped on your posts — see [Multilingual content](multilingual.md).
 

@@ -38,6 +38,13 @@ msgstr "{count} 個設定已顯示"
 msgid "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in."
 msgstr "移除 {language} 後就只剩主語言了，多語言會一併關閉。根位址將恢復顯示所有語言，{prefix} 不再可用，每篇貼文的語言維持不變。"
 
+#. @context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.
+#. @context: Help text under the Jant Discover checkbox. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. States only the stable promises; the rest is the directory's own business.
+#: src/routes/auth/setup.tsx
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. It shows your blog's latest post 24 hours after you publish it, so readers can find new blogs and new writing."
+msgstr "{name} 是 Jant 社群人工維護的一個{directory}，延遲 24 小時顯示你的部落格最新一篇貼文，旨在幫助使用者發現新的 Jant 部落格和內容。"
+
 #. @context: Body of the change-primary-language dialog
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "{next} will be served at the root address (/, /feed, /archive), and {previous} moves to {prefix}. Post addresses do not change, but anyone subscribed to /feed starts receiving {next} posts."
@@ -100,8 +107,6 @@ msgstr "強調色"
 
 #. @context: GitHub sync picker — owner dropdown label
 #. @context: Settings group label for account settings
-#. @context: Setup form group - the admin account being created
-#: src/routes/auth/setup.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Account"
@@ -251,6 +256,13 @@ msgstr "所有選集已經在你的導覽中。"
 msgid "All feed addresses"
 msgstr "全部 feed 網址"
 
+#. @context: Checkbox for joining the Jant Discover directory. {name} is the directory's name, kept as one run of text.
+#. @context: The settings page's Discover checkbox, asked once on the first-run setup screen. {name} is the directory's name, kept as one run of text.
+#: src/routes/auth/setup.tsx
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Allow {name} to list my site"
+msgstr "在 {name} 上列出我的網站"
+
 #. @context: Config Editor setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Allow published content to be read without an API token."
@@ -280,6 +292,16 @@ msgstr "永遠顯示主題的淺色版本。"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "An earthier, warmer tone."
 msgstr "更偏暖、偏土的色調。"
+
+#. @context: Button sending the Discover announcement, shown when the site has never announced itself or when the announcement failed
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Announce my site"
+msgstr "提交我的網站"
+
+#. @context: Toast after sending the Discover announcement. It runs in the background, so the page does not yet know how it went.
+#: src/routes/dash/settings.tsx
+msgid "Announcing your site. Reload to see the result."
+msgstr "正在提交網站，重新整理後可以看到結果。"
 
 #. @context: Follow-up hint under the stamping warning
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -579,11 +601,6 @@ msgstr "色彩主題"
 msgid "Color Theme"
 msgstr "色彩主題"
 
-#. @context: Setup form submit button
-#: src/routes/auth/setup.tsx
-msgid "Complete Setup"
-msgstr "完成設定"
-
 #. @context: Breadcrumb label
 #. @context: Config Editor page title
 #. @context: Settings item — Config Editor
@@ -690,6 +707,11 @@ msgstr "內容語言"
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Content language, dashboard language, multilingual"
 msgstr "內容語言、介面語言、多語言"
+
+#. @context: Setup submit button on the first screen, which is followed by the site screen
+#: src/routes/auth/setup.tsx
+msgid "Continue"
+msgstr "繼續"
 
 #. @context: Slate color theme preview title
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -841,6 +863,11 @@ msgstr "在 GitHub 上建立一個"
 msgid "Create Page"
 msgstr "建立頁面"
 
+#. @context: Setup page description on the first screen, which asks only for credentials
+#: src/routes/auth/setup.tsx
+msgid "Create the account you write from."
+msgstr "建立帳戶"
+
 #. @context: Help text for GitHub repository input on GitHub Sync settings, telling users they must create the repo themselves
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 msgid "Create the repository on GitHub first — it can be empty."
@@ -984,6 +1011,11 @@ msgstr "示範模式會隱藏會話、密碼更改與帳號刪除。匯出功能
 msgid "Demo sites always stay hidden from search engines."
 msgstr "示範網站會始終對搜尋引擎保持隱藏。"
 
+#. @context: Help text explaining that Discover is locked off in demo mode
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Demo sites are never listed in Discover."
+msgstr "示範網站不會出現在 Discover 中。"
+
 #. @context: Color theme preview collection label
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Design"
@@ -993,6 +1025,13 @@ msgstr "設計"
 #: src/routes/dash/custom-urls.tsx
 msgid "Destination"
 msgstr "目標網址"
+
+#. @context: The noun for the Jant Discover list, used inside the help line under the Discover checkbox. This run of text is rendered as the link to the directory, so translate it as it should read inside that sentence.
+#. @context: The same noun for the Jant Discover list, on the first-run setup screen.
+#: src/routes/auth/setup.tsx
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "directory"
+msgstr "目錄"
 
 #. @context: Button to disconnect GitHub repository on GitHub Sync settings
 #. @context: Button to disconnect Telegram
@@ -1012,6 +1051,11 @@ msgstr "要與 GitHub 斷開連線嗎？webhook 會被移除。你的儲存庫�
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Disconnect Telegram? You can reconnect any time with a new binding code."
 msgstr "要斷開 Telegram？你可以隨時使用新的綁定代碼重新連接。"
+
+#. @context: Help text explaining that Discover cannot work while Atom feeds are disabled
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Discover reads your Atom feed, so it needs feeds turned on."
+msgstr "Discover 讀取的是 Atom 訂閱源，需要先開啟訂閱源。"
 
 #. @context: Checkbox to show avatar in the site header
 #: src/ui/dash/settings/AvatarContent.tsx
@@ -1057,6 +1101,16 @@ msgstr "草稿"
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Drag links here to show them under the More menu"
 msgstr "將連結拖到此處以顯示於「更多」選單下方"
+
+#. @context: Description of the Discover Latest option
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Draws from your latest public posts."
+msgstr "從你最新的公開貼文中挑選。"
+
+#. @context: Description of the Discover Featured option
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Draws only from posts you have marked Featured."
+msgstr "只從你標為 Featured 的貼文中挑選。"
 
 #. @context: Placeholder for API token name input
 #: src/ui/dash/settings/ApiTokensContent.tsx
@@ -1145,17 +1199,32 @@ msgstr "頁首上的網站圖示與個人標記"
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/StatusBadge.tsx
 msgid "Featured"
-msgstr "精選"
+msgstr "Featured"
 
 #. @context: Label for the explicit featured RSS feed URL
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Featured feed"
-msgstr "精選 RSS 來源"
+msgstr "Featured RSS 來源"
+
+#. @context: Jant Discover option drawing only from featured posts
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Featured only"
+msgstr "Featured only"
+
+#. @context: Discover status line when the featured-only mode is on but the site has no featured posts
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Featured only is selected and no post is marked Featured, so your feed carries nothing to show."
+msgstr "目前選的是「Featured only」，但沒有任何貼文標為 Featured，訂閱源裡沒有可顯示的內容。"
 
 #. @context: Config Editor RSS feed enum option
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Featured posts"
-msgstr "精選貼文"
+msgstr "Featured 貼文"
+
+#. @context: Discover status line right after a successful announcement, while the first crawl is still due
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Feed address sent. A directory reads a newly announced feed within {hours} hours."
+msgstr "訂閱源網址已送達。目錄會在 {hours} 小時內首次讀取。"
 
 #. @context: Toast after saving feed settings
 #: src/routes/dash/settings.tsx
@@ -1272,7 +1341,7 @@ msgstr "這個主題下的標題、正文和連結。"
 #. @context: Post badge for posts hidden from Latest
 #: src/ui/dash/StatusBadge.tsx
 msgid "Hidden from Latest"
-msgstr "從最新中隱藏 (不出現在 Latest 中，但仍可透過固定連結和集合存取的狀態。)"
+msgstr "Hidden from Latest"
 
 #. @context: Settings subsection heading for home page settings
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -1321,10 +1390,12 @@ msgstr "安裝 GitHub App，以授予存取權而無需管理個人權杖。權�
 msgid "Integrations"
 msgstr "第三方整合"
 
-#. @context: Setup page description under the write-language question
+#. @context: Name of the Jant blog directory. Appears inside the Discover checkbox label.
+#. @context: The same name of the Jant blog directory, on the first-run setup screen.
 #: src/routes/auth/setup.tsx
-msgid "It sets the language readers and search engines see. Change it any time in Settings."
-msgstr "它決定讀者和搜尋引擎看到的語言，之後可以在設定中更改。"
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Jant Discover"
+msgstr "Jant Discover"
 
 #. @context: Validation error for a long page slug
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -1404,21 +1475,23 @@ msgid "Last used {date}"
 msgstr "最後使用於 {date}"
 
 #. @context: Browse filter label for latest posts
+#. @context: Jant Discover option drawing from the site's latest public posts
 #. @context: Select option for using latest posts as the main RSS feed
 #: src/ui/dash/appearance/NavigationContent.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
+#: src/ui/dash/settings/GeneralContent.tsx
 msgid "Latest"
-msgstr "最新"
+msgstr "Latest"
 
 #. @context: Label for the explicit latest RSS feed URL
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Latest feed"
-msgstr "最新 RSS 來源"
+msgstr "Latest RSS 來源"
 
 #. @context: Config Editor RSS feed enum option
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Latest posts"
-msgstr "最新貼文"
+msgstr "Latest 貼文"
 
 #. @context: Suffix after Custom CSS link on color theme page
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -1473,7 +1546,7 @@ msgstr "連結已新增到導覽。"
 #. @context: Description for the featured system navigation toggle
 #: src/ui/dash/appearance/system-nav-descriptions.ts
 msgid "Link to posts you've marked as featured."
-msgstr "連結到你標為精選的貼文。"
+msgstr "連結到你標為 Featured 的貼文。"
 
 #. @context: Description for the archive system navigation toggle
 #: src/ui/dash/appearance/system-nav-descriptions.ts
@@ -1488,12 +1561,12 @@ msgstr "連結到選集頁。"
 #. @context: Description for the latest system navigation toggle
 #: src/ui/dash/appearance/system-nav-descriptions.ts
 msgid "Link to your latest posts. Your homepage shows this feed."
-msgstr "連結到最新貼文。首頁展示的就是這個列表。"
+msgstr "連結到 Latest。首頁展示的就是這個列表。"
 
 #. @context: Description for the RSS system navigation toggle. {feed} is either Latest or Featured. Pairs with the Subscribe toggle's description.
 #: src/ui/dash/appearance/system-nav-descriptions.ts
 msgid "Links straight to /feed — the raw Atom file, currently your {feed} feed. Best for readers who already use a feed reader."
-msgstr "直接指向 /feed，即 Atom 原始檔案，目前返回的是{feed}貼文。適合已經在用閱讀器的讀者。"
+msgstr "直接指向 /feed，即 Atom 原始檔案，目前返回的是「{feed}」。適合已經在用閱讀器的讀者。"
 
 #. @context: Description for the Subscribe system navigation toggle. Pairs with the RSS toggle's description.
 #: src/ui/dash/appearance/system-nav-descriptions.ts
@@ -1758,6 +1831,11 @@ msgstr "沒有可加入的頁面。建立頁面後即可加入導覽。"
 msgid "No repositories match."
 msgstr "沒有符合的儲存庫。"
 
+#. @context: Discover status line before the site has ever announced itself. The button under the lines is how it is sent.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Not announced yet. No directory has been told this site exists."
+msgstr "尚未提交。還沒有目錄知道這個網站存在。"
+
 #. @context: Config Editor linked setting status
 #. @context: Config Editor linked setting status
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -1786,6 +1864,11 @@ msgstr "在 {address} 找不到任何頁面。請檢查位址，或以標題搜�
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Nothing matches this search. Try a different name or description."
 msgstr "沒有任何項目符合此搜尋。請嘗試不同的名稱或描述。"
+
+#. @context: Discover status line when the site does not meet the directory's threshold yet. Stated as jant.me's rule, because a directory of your own may decide differently.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Nothing published yet. jant.me lists a blog once it has {minCount, plural, one {one public post} other {# public posts}}."
+msgstr "還沒有公開貼文。jant.me 的收錄條件是{minCount, plural, other {滿 # 篇}}。"
 
 #. @context: Tufte color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -1833,6 +1916,11 @@ msgstr "{language}的操作"
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "or"
 msgstr "或"
+
+#. @context: Link to the directory's manual submission form, shown only when the automatic announcement failed
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Or submit your address by hand"
+msgstr "或手動提交網址"
 
 #. @context: Ember color theme preview body
 #: src/ui/dash/appearance/ColorThemeContent.tsx
@@ -2185,15 +2273,15 @@ msgstr "已儲存"
 msgid "Saving…"
 msgstr "儲存中…"
 
-#. @context: Settings section heading for search engine indexing settings
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "Search"
-msgstr "搜尋"
-
 #. @context: Config Editor page description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Search and edit runtime settings. Changes apply immediately; reset restores the environment or built-in default."
 msgstr "搜尋和編輯執行階段設定。變更會立即生效；重設會恢復環境變數或內建預設值。"
+
+#. @context: Shown under the Jant Discover checkbox when the site has turned search engines away and has never answered Discover itself, which is what unticks the box. Says why the box moved, and that it is still the owner's to tick.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Search engine indexing is off, so this site is not listed by default. Ticking the box above lists it anyway."
+msgstr "已關閉搜尋引擎收錄，所以預設不會出現在 Jant Discover。勾選上面的選項仍會加入。"
 
 #. @context: Placeholder for the navigation page search
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -2298,10 +2386,10 @@ msgstr "設定每頁搜尋結果數；重設後繼承預設分頁大小。"
 msgid "Set the default number of items shown per page."
 msgstr "設定預設每頁顯示的項目數。"
 
-#. @context: Setup page description
+#. @context: Setup heading on the second self-hosted screen, which asks for the site's name and language
 #: src/routes/auth/setup.tsx
-msgid "Set up your site and the account you write from."
-msgstr "設定你的網站，以及寫作用的帳戶。"
+msgid "Set up your site"
+msgstr "設定你的網站"
 
 #. @context: Breadcrumb label
 #. @context: Page title for the settings home page
@@ -2368,8 +2456,6 @@ msgstr "已於 {date} 登入"
 #. @context: Language settings section for reader-facing settings
 #. @context: Settings group label for site settings
 #. @context: Settings subsection heading for basic site fields
-#. @context: Setup form group - the site itself
-#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
@@ -2400,6 +2486,18 @@ msgstr "網站名稱"
 msgid "Site settings updated."
 msgstr "網站設定已更新。"
 
+#. @context: Settings section heading covering search engine indexing and the Jant Discover directory
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "Site visibility"
+msgstr "網站可見性"
+
+#. @context: Toast after saving the site visibility settings
+#. @context: Toast after saving the site visibility settings
+#: src/routes/dash/settings.tsx
+#: src/routes/dash/settings.tsx
+msgid "Site visibility updated."
+msgstr "網站可見性已更新。"
+
 #. @context: Settings item description for code injection
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Site-wide HTML for analytics and widgets"
@@ -2425,10 +2523,15 @@ msgstr "柔象牙白"
 msgid "Something doesn't look right. Check the form and try again."
 msgstr "有欄位填寫不正確，檢查後重試。"
 
-#. @context: Setup submit button on a hosted site, after the language question
+#. @context: Setup submit button on the last screen, after which the site is live
 #: src/routes/auth/setup.tsx
 msgid "Start writing"
 msgstr "開始寫作"
+
+#. @context: How far along first-run setup is, shown beside the screen's name on a self-hosted install
+#: src/routes/auth/setup.tsx
+msgid "Step {current} of {total}"
+msgstr "第 {current} 步，共 {total} 步"
 
 #. @context: Description for the Telegram disconnect action
 #: src/ui/dash/settings/TelegramContent.tsx
@@ -2531,6 +2634,11 @@ msgstr "最乾淨、最中性的一檔。"
 msgid "The default. Calm and easy for long reading."
 msgstr "預設主題。沉靜，適合長時間閱讀。"
 
+#. @context: Discover status line when the announcement failed. {reason} is the error, such as an HTTP status or a network message.
+#: src/ui/dash/settings/GeneralContent.tsx
+msgid "The directory could not be reached: {reason}"
+msgstr "無法連線目錄：{reason}"
+
 #. @context: Help text for the dashboard language field
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "The language of your admin pages. Only you see this."
@@ -2549,7 +2657,7 @@ msgstr "你寫作使用的語言。"
 #. @context: Setup form help text under the content language field
 #: src/routes/auth/setup.tsx
 msgid "The language your readers and search engines see."
-msgstr "讀者和搜尋引擎看到的語言。"
+msgstr "搜尋引擎看到的語言。"
 
 #. @context: Config Editor linked setting description
 #: src/ui/dash/settings/ConfigEditorContent.tsx
@@ -2660,6 +2768,11 @@ msgstr "此儲存庫已在備份本網站。"
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "This setting wasn't saved. Check the value and try again."
 msgstr "此設定未儲存。請檢查設定值並再試一次。"
+
+#. @context: Toast when the Discover announcement cannot be sent because no directory is configured, or the site cannot be listed at all
+#: src/routes/dash/settings.tsx
+msgid "This site has no directory to announce to."
+msgstr "這個站點沒有可提交的目錄。"
 
 #. @context: Warning text on account deletion page
 #: src/ui/dash/settings/DeleteAccountContent.tsx
@@ -2833,7 +2946,7 @@ msgstr "當你想要一個永遠不會改變的 feed URL 時，請使用這些�
 #. @context: Description for choosing featured posts as the main RSS feed
 #: src/ui/dash/settings/GeneralContent.tsx
 msgid "Uses featured posts for /feed."
-msgstr "將精選貼文用於 /feed。"
+msgstr "將 Featured 貼文用於 /feed。"
 
 #. @context: Description for choosing the latest posts as the main RSS feed
 #: src/ui/dash/settings/GeneralContent.tsx
@@ -2964,6 +3077,11 @@ msgstr "正規的 /feed URL 會回傳哪個貼文串流。"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Yellow-tinted paper with an olive-green accent."
 msgstr "微黃的紙底，配橄欖綠。"
+
+#. @context: Note at the foot of the last setup screen, after the submit button
+#: src/routes/auth/setup.tsx
+msgid "You can change all of this later in Settings."
+msgstr "之後可以在設定中更改。"
 
 #. @context: Fallback name when a connected Telegram account has no username
 #: src/ui/dash/settings/TelegramContent.tsx

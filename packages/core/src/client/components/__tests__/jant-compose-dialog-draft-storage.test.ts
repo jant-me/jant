@@ -149,6 +149,50 @@ describe("compose local draft storage", () => {
     expect(globalThis.localStorage.getItem(DRAFT_KEY)).toBeNull();
   });
 
+  it("brings back each thread post's rating and toggles", async () => {
+    // A single-post draft always kept these; a thread's posts dropped them.
+    const parked = await createElement();
+    (parked as unknown as Internals)._threadItems = [
+      { id: "t1", format: "note" },
+      { id: "t2", format: "note" },
+    ];
+    await flushUpdates(parked);
+    const [first, second] = Array.from(
+      parked.querySelectorAll<JantComposeEditor>("jant-compose-editor"),
+    );
+    first._bodyJson = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "One" }] },
+      ],
+    };
+    first._rating = 4;
+    first._showRating = true;
+    first._showTitle = false;
+    second._bodyJson = {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Two" }] },
+      ],
+    };
+    // Opened but still empty — the draft puts the field back as it was left.
+    second._showTitle = true;
+    await flushUpdates(parked);
+    (parked as unknown as Internals)._saveDraftToStorage();
+
+    const el = await createElement();
+    await el.openNew();
+    await flushUpdates(el);
+
+    const [restoredFirst, restoredSecond] = Array.from(
+      el.querySelectorAll<JantComposeEditor>("jant-compose-editor"),
+    );
+    expect(restoredFirst._rating).toBe(4);
+    expect(restoredFirst._showRating).toBe(true);
+    expect(restoredFirst._showTitle).toBe(false);
+    expect(restoredSecond._showTitle).toBe(true);
+  });
+
   it("leaves an unreadable draft in place instead of deleting it", async () => {
     globalThis.localStorage.setItem(DRAFT_KEY, "{not json");
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});

@@ -81,6 +81,11 @@ interface ThreadItem {
   slug?: string;
   /** Last availability answer for this post's slug. */
   slugTaken?: boolean;
+  /**
+   * The saved draft post this row was loaded from, if any. Its slug already
+   * belongs to that post, so the availability check leaves it out.
+   */
+  sourcePostId?: string;
 }
 
 interface ApiMediaAttachment {
@@ -1647,7 +1652,12 @@ export class JantComposeDialog extends LitElement {
     }
   }
 
-  /** Build the submit payload for a single thread editor (index-aware). */
+  /**
+   * Build the submit payload for the post at `index` — the single post, or one
+   * post of a thread. The one builder for both, so a field the single post
+   * gains reaches a thread's root too: the thread path used to be a copy that
+   * never learned about language or translations.
+   */
   private _buildEditorPostDetail(
     editor: JantComposeEditor,
     format: ComposeFormat,
@@ -1720,6 +1730,17 @@ export class JantComposeDialog extends LitElement {
         ? (this._replyRefreshKind ?? undefined)
         : undefined,
       replyRefreshId: isRoot ? (this._replyRefreshId ?? undefined) : undefined,
+      // Only a Thread's root carries a language: its other posts, and a reply
+      // to an existing Thread, inherit it server-side. An automatic choice
+      // resolves here to whatever the pill beside this button has been showing
+      // — what detection read, or the page's language while it has read
+      // nothing. Absent only on a single-language site, where the server
+      // decides.
+      language:
+        isRoot && !this._replyToId
+          ? (this._effectiveLanguage() ?? undefined)
+          : undefined,
+      translationOfId: isRoot ? this._translationOf?.id : undefined,
     };
   }
 
@@ -1729,77 +1750,10 @@ export class JantComposeDialog extends LitElement {
     const editor = this._editor;
     if (!editor) return null;
 
-    editor.promoteLeadingH1Title({ force: true });
-    const editorData = editor.getData();
-    const mediaAttachments = new Map(
-      (editorData.attachments ?? []).map((attachment) => [
-        attachment.clientId,
-        attachment,
-      ]),
-    );
-    const textAttachments = new Map(
-      editorData.attachedTexts.map((item) => [item.clientId, item]),
-    );
-    const orderedAttachments: ComposeSubmitAttachment[] = [];
-    for (const clientId of editorData.attachmentOrder) {
-      const mediaAttachment = mediaAttachments.get(clientId);
-      if (mediaAttachment) {
-        orderedAttachments.push({
-          type: "media",
-          clientId,
-          mediaId: mediaAttachment.mediaId,
-          alt: mediaAttachment.alt || undefined,
-        });
-        continue;
-      }
-
-      const textAttachment = textAttachments.get(clientId);
-      if (textAttachment?.bodyJson) {
-        orderedAttachments.push({
-          type: "text",
-          clientId,
-          bodyJson: textAttachment.bodyJson,
-          summary: textAttachment.summary,
-          mediaId: textAttachment.mediaId,
-          originalBodyJson: normalizeComposeDoc(
-            textAttachment.originalBodyJson ?? null,
-          ),
-        });
-      }
-    }
-
     return {
-      format: this._format,
-      title: editorData.title,
-      body: editorData.body,
-      url: editorData.url,
-      quoteText: editorData.quoteText,
-      quoteAuthor: editorData.quoteAuthor,
-      slug: this._slug.trim() || undefined,
-      publishedAt: this._getPublishedAtSubmitValue(status),
-      status,
-      visibility: this._visibilityLocked ? undefined : this._visibility,
-      rating: editorData.rating,
-      collectionIds: this._replyToId ? [] : [...this._collectionIds],
-      attachments: orderedAttachments,
+      ...this._buildEditorPostDetail(editor, this._format, 0, status),
       editPostId: this._editPostId ?? this._draftSourceId ?? undefined,
       draftSourceId: this._draftSourceId ?? undefined,
-      replyToId: this._replyToId ?? undefined,
-      quietReply: this._canReplyQuietly()
-        ? this._quietReply || undefined
-        : undefined,
-      replyThreadRootId: this._replyThreadRootId ?? undefined,
-      replyRefreshKind: this._replyRefreshKind ?? undefined,
-      replyRefreshId: this._replyRefreshId ?? undefined,
-      // Only the root carries a language: a reply belongs to its Thread and
-      // inherits it server-side. An automatic choice resolves here to whatever
-      // the pill beside this button has been showing — what detection read, or
-      // the page's language while it has read nothing. Absent only on a
-      // single-language site, where the server decides.
-      language: this._replyToId
-        ? undefined
-        : (this._effectiveLanguage() ?? undefined),
-      translationOfId: this._translationOf?.id,
     };
   }
 
@@ -2435,7 +2389,12 @@ export class JantComposeDialog extends LitElement {
       mode: "check",
       slug,
     });
-    const postId = this._currentSlugOwnerId();
+    // Each post is checked against its own saved copy: a reply's slug is not
+    // the root's to release, and the root's is not the reply's.
+    const postId =
+      index === 0
+        ? this._currentSlugOwnerId()
+        : this._threadItems[index]?.sourcePostId;
     if (postId) params.set("postId", postId);
 
     try {
@@ -3199,6 +3158,7 @@ export class JantComposeDialog extends LitElement {
             .map((p) => ({
               id: p.id as string,
               format: p.format as ComposeFormat,
+              slug: (p.slug as string | null) ?? null,
               replyToId: (p.replyToId as string) ?? null,
               title: (p.title as string) ?? null,
               body: (p.body as string) ?? null,
@@ -3226,12 +3186,16 @@ export class JantComposeDialog extends LitElement {
               if (!ordered.includes(p)) ordered.push(p);
             }
 
-            // Enter thread mode
+            // Enter thread mode. Each reply keeps its own permalink: saving
+            // recreates the thread, so a slug left behind here would come back
+            // as a random id.
             this._threadItems = [
               { id: randomUUID(), format: post.format },
               ...ordered.map((p) => ({
                 id: randomUUID(),
                 format: p.format,
+                slug: p.slug ?? "",
+                sourcePostId: p.id,
               })),
             ];
             this._focusedThreadIndex = 0;
@@ -3449,6 +3413,10 @@ export class JantComposeDialog extends LitElement {
             url: data.url,
             quoteText: data.quoteText,
             quoteAuthor: data.quoteAuthor,
+            // Same rules as the single-post draft below.
+            rating: data.rating,
+            showTitle: item.format === "note" ? editor._showTitle : false,
+            showRating: data.rating > 0 ? editor._showRating : false,
             attachedTexts: data.attachedTexts.map((t) => ({
               clientId: t.clientId,
               bodyJson: t.bodyJson,
@@ -3787,6 +3755,9 @@ export class JantComposeDialog extends LitElement {
           url: item.url || undefined,
           quoteText: item.quoteText || undefined,
           quoteAuthor: item.quoteAuthor || undefined,
+          rating: item.rating || undefined,
+          showTitle: item.showTitle,
+          showRating: item.showRating,
           media: media.length
             ? JantComposeDialog._restoredMediaToPopulate(media)
             : undefined,
@@ -4438,23 +4409,30 @@ export class JantComposeDialog extends LitElement {
     return !!(this._editPostId || this._draftSourceId);
   }
 
+  /**
+   * Fold fields the target format can't hold into the body before the format
+   * change recreates the editor from `_bodyJson`. Only a post that already
+   * exists on the server needs it — anything else keeps hidden fields in the
+   * editor, so switching back finds them — and every post of a saved thread
+   * draft is one. Synchronous, so the old Tiptap instance can't fire onUpdate
+   * and clobber what we just wrote. `applyConvertedFields` suppresses the one
+   * content-change event the conversion emits, so the switch itself never
+   * schedules a draft save.
+   */
+  private _convertForFormatSwitch(
+    editor: JantComposeEditor | null,
+    from: ComposeFormat,
+    to: ComposeFormat,
+  ) {
+    if (!editor || from === to || !this._shouldConvertOnFormatSwitch()) return;
+    editor.applyConvertedFields(
+      convertComposeFormat(from, to, editor.getConvertibleFields()),
+    );
+  }
+
   private _switchFormat(target: ComposeFormat) {
     if (this._format === target) return;
-    const editor = this._editor;
-    if (editor && this._shouldConvertOnFormatSwitch()) {
-      // Fold fields the target can't hold into the body before the format
-      // change recreates the editor from `_bodyJson`. Synchronous, so the old
-      // Tiptap instance can't fire onUpdate and clobber what we just wrote.
-      // `applyConvertedFields` suppresses the one content-change event the
-      // conversion emits, so the switch itself never schedules a draft save.
-      editor.applyConvertedFields(
-        convertComposeFormat(
-          this._format,
-          target,
-          editor.getConvertibleFields(),
-        ),
-      );
-    }
+    this._convertForFormatSwitch(this._editor, this._format, target);
     // A bare format switch shouldn't persist a local draft, so drop any save
     // already pending from loading the post.
     this._cancelDraftSaveTimer();
@@ -6843,70 +6821,21 @@ export class JantComposeDialog extends LitElement {
         : this._format;
 
     if (this._threadItems.length === 0) {
-      // Entering thread mode: snapshot current single editor's state
-      const currentEditor = this._editor;
-      const editorState = currentEditor?.getEditorState() ?? null;
-      const editorData = currentEditor?.getData();
-      const bodyJson = currentEditor?.getNormalizedBodyJson() ?? null;
-
+      // Entering thread mode renders the post in a new editor element, so the
+      // single-post editor hands it everything once the swap has rendered.
+      // Reading the old element then, not now, picks up any upload that
+      // finished during the render.
+      const singleEditor = this._editor;
       this._threadItems = [
         { id: randomUUID(), format: this._format },
         { id: randomUUID(), format: lastFormat },
       ];
-
-      // Capture rating state before re-render (these can't change asynchronously)
-      const capturedRating = currentEditor?._rating ?? 0;
-      const capturedShowRating = currentEditor?._showRating ?? false;
-
-      // Restore first thread item's content from the snapshot
-      if (editorState || editorData) {
-        this.updateComplete.then(() => {
-          const editors = this.querySelectorAll<JantComposeEditor>(
-            "jant-compose-editor",
-          );
-          const firstEditor = editors[0];
-          if (!firstEditor) return;
-          if (editorState) {
-            firstEditor.setEditorState(
-              editorState.json,
-              editorState.title,
-              editorState.showTitle,
-              editorState.selection,
-            );
-          }
-          if (editorData) {
-            if (this._format === "link" && editorData.url) {
-              firstEditor._url = editorData.url;
-            } else if (this._format === "quote") {
-              if (editorData.quoteText)
-                firstEditor._quoteText = editorData.quoteText;
-              if (editorData.quoteAuthor)
-                firstEditor._quoteAuthor = editorData.quoteAuthor;
-            }
-            if (bodyJson) {
-              firstEditor._bodyJson = bodyJson;
-            }
-          }
-          // Read attachment state from the old editor NOW (after re-render) so
-          // we get the latest mediaId for any uploads that completed during the
-          // render cycle. The old editor element is still in memory even though
-          // it has been removed from the DOM.
-          const latestAttachments = currentEditor?._attachments ?? [];
-          const latestAttachmentOrder = currentEditor?._attachmentOrder ?? [];
-          const latestAttachedTexts = currentEditor?._attachedTexts ?? [];
-          if (latestAttachments.length > 0) {
-            firstEditor._attachments = [...latestAttachments];
-            firstEditor._attachmentOrder = [...latestAttachmentOrder];
-          }
-          if (latestAttachedTexts.length > 0) {
-            firstEditor._attachedTexts = [...latestAttachedTexts];
-          }
-          if (capturedRating > 0) {
-            firstEditor._rating = capturedRating;
-            firstEditor._showRating = capturedShowRating;
-          }
-        });
-      }
+      this.updateComplete.then(() => {
+        const rootEditor = this.querySelector<JantComposeEditor>(
+          "jant-compose-editor",
+        );
+        if (singleEditor && rootEditor) rootEditor.takeOver(singleEditor);
+      });
     } else {
       this._threadItems = [
         ...this._threadItems,
@@ -6931,67 +6860,32 @@ export class JantComposeDialog extends LitElement {
     if (this._threadItems.length <= 1) return;
     const newItems = this._threadItems.filter((_, i) => i !== index);
 
-    if (newItems.length === 1) {
-      // Exiting thread mode: capture remaining thread editor's state and restore
-      // it to the single-post editor after thread mode is cleared.
-      const editors = this.querySelectorAll<JantComposeEditor>(
-        "jant-compose-editor",
-      );
-      const remainingIndex = index === 0 ? 1 : 0;
-      const remainingEditor = editors[remainingIndex] ?? null;
-      const editorState = remainingEditor?.getEditorState() ?? null;
-      const editorData = remainingEditor?.getData();
-      const bodyJson = remainingEditor?.getNormalizedBodyJson() ?? null;
-      const remainingFormat = newItems[0].format;
-      // Capture rating state before re-render (can't change asynchronously)
-      const capturedRating = remainingEditor?._rating ?? 0;
-      const capturedShowRating = remainingEditor?._showRating ?? false;
+    // The root's permalink and date live on the dialog rather than on its
+    // thread item, so removing the root has to move the next post's own
+    // values up — otherwise the removed post's permalink and date stay behind
+    // on the post that replaces it, and that post's own are dropped.
+    if (index === 0) {
+      const promoted = newItems[0];
+      this._slug = promoted.slug ?? "";
+      this._slugTaken = promoted.slugTaken ?? false;
+      this._publishedAtInput = promoted.publishedAtInput ?? "";
+      this._publishedAtTimeMinutes = promoted.publishedAtTimeMinutes ?? null;
+    }
 
+    if (newItems.length === 1) {
+      // Leaving thread mode renders the last post in the single-post editor,
+      // which takes everything over from the thread editor it replaces.
+      const remainingEditor = this.querySelector<JantComposeEditor>(
+        `jant-compose-editor[data-thread-id="${newItems[0].id}"]`,
+      );
       this._threadItems = [];
       this._focusedThreadIndex = 0;
-      this._format = remainingFormat;
+      this._format = newItems[0].format;
 
       this.updateComplete.then(() => {
         const singleEditor = this._editor;
         if (!singleEditor) return;
-        singleEditor.format = remainingFormat;
-        if (editorState) {
-          singleEditor.setEditorState(
-            editorState.json,
-            editorState.title,
-            editorState.showTitle,
-            editorState.selection,
-          );
-        }
-        if (editorData) {
-          if (remainingFormat === "link" && editorData.url) {
-            singleEditor._url = editorData.url;
-          } else if (remainingFormat === "quote") {
-            if (editorData.quoteText)
-              singleEditor._quoteText = editorData.quoteText;
-            if (editorData.quoteAuthor)
-              singleEditor._quoteAuthor = editorData.quoteAuthor;
-          }
-          if (bodyJson) {
-            singleEditor._bodyJson = bodyJson;
-          }
-        }
-        // Read attachment state from the old editor NOW so we capture any
-        // mediaIds set by uploads that completed during the render cycle.
-        const latestAttachments = remainingEditor?._attachments ?? [];
-        const latestAttachmentOrder = remainingEditor?._attachmentOrder ?? [];
-        const latestAttachedTexts = remainingEditor?._attachedTexts ?? [];
-        if (latestAttachments.length > 0) {
-          singleEditor._attachments = [...latestAttachments];
-          singleEditor._attachmentOrder = [...latestAttachmentOrder];
-        }
-        if (latestAttachedTexts.length > 0) {
-          singleEditor._attachedTexts = [...latestAttachedTexts];
-        }
-        if (capturedRating > 0) {
-          singleEditor._rating = capturedRating;
-          singleEditor._showRating = capturedShowRating;
-        }
+        if (remainingEditor) singleEditor.takeOver(remainingEditor);
         singleEditor.focusInput();
       });
     } else {
@@ -7049,6 +6943,11 @@ export class JantComposeDialog extends LitElement {
         }}
         @jant:format-change=${(e: CustomEvent<{ format: ComposeFormat }>) => {
           e.stopPropagation();
+          this._convertForFormatSwitch(
+            e.target as JantComposeEditor,
+            item.format,
+            e.detail.format,
+          );
           this._threadItems = this._threadItems.map((it, i) =>
             i === index ? { ...it, format: e.detail.format } : it,
           );

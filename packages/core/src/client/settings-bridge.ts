@@ -24,6 +24,7 @@ function parseSettingsInitialData(data: unknown): SettingsInitialData | null {
   const siteFooter = getJsonString(data, "siteFooter");
   const showJantBrandingOnHome = getJsonBoolean(data, "showJantBrandingOnHome");
   const noindex = getJsonBoolean(data, "noindex");
+  const discover = getJsonString(data, "discover");
 
   if (
     siteName === undefined ||
@@ -32,7 +33,8 @@ function parseSettingsInitialData(data: unknown): SettingsInitialData | null {
     timeZone === undefined ||
     siteFooter === undefined ||
     showJantBrandingOnHome === undefined ||
-    noindex === undefined
+    noindex === undefined ||
+    discover === undefined
   ) {
     return null;
   }
@@ -45,6 +47,7 @@ function parseSettingsInitialData(data: unknown): SettingsInitialData | null {
     siteFooter,
     showJantBrandingOnHome,
     noindex,
+    discover,
   };
 }
 

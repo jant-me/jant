@@ -53,10 +53,13 @@ describe("jant reset-password", () => {
           new Date().toISOString(),
           new Date().toISOString(),
         );
-      await bootstrap.completeInitialSetup({
+      await bootstrap.provisionOwnerAccount({
         ownerUserId: "usr_reset_password_test",
-        siteName: "Reset Password Test",
       });
+      await bootstrap.completeSiteSetup(
+        { siteName: "Reset Password Test" },
+        { oldLanguage: "" },
+      );
     } finally {
       sqlite.close();
     }

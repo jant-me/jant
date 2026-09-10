@@ -1,8 +1,10 @@
 /**
  * General Settings Component
  *
- * Main container for the General settings page. Saveable groups track dirty
- * state independently, while checkbox-only sections save immediately.
+ * Main container for the General settings page. Typed fields are grouped
+ * behind a Save button and track their dirty state independently; every
+ * control whose value is complete the moment it is set — checkbox, radio,
+ * select — saves on change.
  *
  * Light DOM only — BaseCoat and Tailwind classes apply directly.
  */
@@ -10,6 +12,7 @@
 import { LitElement, html, nothing } from "lit";
 import type { Editor } from "@tiptap/core";
 import { MAX_SITE_NAME_LENGTH } from "../../types.js";
+import { resolveDiscoverMode, splitLinkedTerm } from "../../lib/discover.js";
 import type {
   SettingsInitialData,
   SettingsLabels,
@@ -37,6 +40,10 @@ export class JantSettingsGeneral extends LitElement {
       attribute: "sitedescription-fallback",
     },
     demoMode: { type: Boolean, attribute: "demo-mode" },
+    discoverDefault: { type: String, attribute: "discover-default" },
+    discoverUrl: { type: String, attribute: "discover-url" },
+    discoverStatus: { type: String, attribute: "discover-status" },
+    feedsEnabled: { type: Boolean, attribute: "feeds-enabled" },
     mainFeedUrl: { type: String, attribute: "main-feed-url" },
     latestFeedUrl: { type: String, attribute: "latest-feed-url" },
     featuredFeedUrl: { type: String, attribute: "featured-feed-url" },
@@ -77,6 +84,11 @@ export class JantSettingsGeneral extends LitElement {
     _noindex: { state: true },
     _origNoindex: { state: true },
     _searchLoading: { state: true },
+
+    // Discover group
+    _discover: { state: true },
+    _origDiscover: { state: true },
+    _discoverLoading: { state: true },
   };
 
   declare labels: SettingsLabels;
@@ -84,6 +96,22 @@ export class JantSettingsGeneral extends LitElement {
   declare siteNameFallback: string;
   declare siteDescriptionFallback: string;
   declare demoMode: boolean;
+  /**
+   * The deployment's own answer, unresolved: `""` when it has none.
+   *
+   * What the site actually declares is derived from this and from the controls
+   * around it — see `_effectiveDiscoverMode`.
+   */
+  declare discoverDefault: string;
+  declare discoverUrl: string;
+  /**
+   * JSON status block, already translated by the server.
+   *
+   * The sentences carry runtime numbers, so they are built where the values
+   * are. This component only decides where they go.
+   */
+  declare discoverStatus: string;
+  declare feedsEnabled: boolean;
   declare mainFeedUrl: string;
   declare latestFeedUrl: string;
   declare featuredFeedUrl: string;
@@ -128,6 +156,12 @@ export class JantSettingsGeneral extends LitElement {
   declare _noindex: boolean;
   declare _origNoindex: boolean;
   declare _searchLoading: boolean;
+
+  // Discover. "" means the owner has never used the control, which is not the
+  // same as "off" — an untouched site still follows the default.
+  declare _discover: string;
+  declare _origDiscover: string;
+  declare _discoverLoading: boolean;
 
   // TipTap editor instances
   private _descEditor: Editor | null = null;
@@ -184,6 +218,14 @@ export class JantSettingsGeneral extends LitElement {
     this._origShowJantBrandingOnHome = false;
     this._homeLoading = false;
     this._searchLoading = false;
+
+    this.discoverDefault = "";
+    this.discoverUrl = "";
+    this.discoverStatus = "";
+    this.feedsEnabled = false;
+    this._discover = "";
+    this._origDiscover = "";
+    this._discoverLoading = false;
   }
 
   connectedCallback() {
@@ -215,6 +257,9 @@ export class JantSettingsGeneral extends LitElement {
 
     this._noindex = data.noindex;
     this._origNoindex = data.noindex;
+
+    this._discover = data.discover;
+    this._origDiscover = data.discover;
 
     // Defer editor init to after Lit renders the containers
     this.updateComplete.then(() => {
@@ -251,6 +296,9 @@ export class JantSettingsGeneral extends LitElement {
     } else if (section === "search") {
       this._origNoindex = this._noindex;
       this._searchLoading = false;
+    } else if (section === "discover") {
+      this._origDiscover = this._discover;
+      this._discoverLoading = false;
     }
   }
 
@@ -269,6 +317,9 @@ export class JantSettingsGeneral extends LitElement {
     } else if (section === "search") {
       this._noindex = this._origNoindex;
       this._searchLoading = false;
+    } else if (section === "discover") {
+      this._discover = this._origDiscover;
+      this._discoverLoading = false;
     }
   }
 
@@ -434,6 +485,76 @@ export class JantSettingsGeneral extends LitElement {
             allowIndexing: nextAllowIndexing,
           },
           section: "search",
+        },
+      }),
+    );
+  }
+
+  // ── Discover helpers ──────────────────────────────────────────────
+
+  /**
+   * What this site's feeds declare, as of the controls on screen right now.
+   *
+   * The same `resolveDiscoverMode` the server runs, over the same inputs, so
+   * the checkbox cannot disagree with the feed. It has to be computed here
+   * rather than sent down resolved because two of its inputs — search
+   * indexing and the feed switch — are controls on this page: a value resolved
+   * on the server is correct until the first click and wrong from then until
+   * the next page load, which is exactly the state an owner reads it in.
+   */
+  private _effectiveDiscoverMode(overrides: { noindex?: boolean } = {}) {
+    return resolveDiscoverMode({
+      // "" is never chosen, which is what lets the rules below decide.
+      storedValue: this._discover || null,
+      defaultValue: this.discoverDefault || null,
+      demoMode: this.demoMode,
+      noindex: overrides.noindex ?? this._noindex,
+      rssFeedsEnabled: this.feedsEnabled,
+    });
+  }
+
+  private _onDiscoverToggle(enabled: boolean) {
+    // Turning it back on returns to the default rather than to whatever was
+    // chosen before being switched off; the sub-choice below says which.
+    this._saveDiscover(enabled ? this._defaultDiscoverMode() : "off");
+  }
+
+  /**
+   * Which stream a freshly enabled site draws from.
+   *
+   * `featured` only when something already says so — the site's own previous
+   * answer, or a deployment that defaults to it. Otherwise `latest`.
+   */
+  private _defaultDiscoverMode(): "latest" | "featured" {
+    if (this._origDiscover === "featured") return "featured";
+    if (this._origDiscover === "" && this.discoverDefault === "featured") {
+      return "featured";
+    }
+    return "latest";
+  }
+
+  private _onDiscoverMode(mode: "latest" | "featured") {
+    this._saveDiscover(mode);
+  }
+
+  /**
+   * Store the choice the owner just made.
+   *
+   * The controls are disabled while a save is in flight, so a second call
+   * cannot arrive before the first has answered; the guard covers the event
+   * that is already queued when that happens.
+   */
+  private _saveDiscover(value: "latest" | "featured" | "off") {
+    if (this._discoverLoading) return;
+    this._discover = value;
+    this._discoverLoading = true;
+    this.dispatchEvent(
+      new CustomEvent("jant:settings-save", {
+        bubbles: true,
+        detail: {
+          endpoint: "/settings/general/discover",
+          data: { discover: value },
+          section: "discover",
         },
       }),
     );
@@ -796,27 +917,264 @@ export class JantSettingsGeneral extends LitElement {
 
   private _renderSearchForm() {
     return html`
-      <section class="flex flex-col gap-4 border-t pt-8">
+      <section class="flex flex-col gap-6 border-t pt-8">
         ${this._renderSectionTitle(this.labels.search)}
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            class="checkbox"
-            .checked=${!this._noindex}
-            ?disabled=${this.demoMode || this._searchLoading}
-            @change=${(e: Event) =>
-              this._saveSearchToggle((e.target as HTMLInputElement).checked)}
-          />
-          <span>${this.labels.allowIndexing}</span>
-        </label>
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              class="checkbox"
+              .checked=${!this._noindex}
+              ?disabled=${this.demoMode || this._searchLoading}
+              @change=${(e: Event) =>
+                this._saveSearchToggle((e.target as HTMLInputElement).checked)}
+            />
+            <span>${this.labels.allowIndexing}</span>
+          </label>
+          ${
+            this.demoMode
+              ? html`<p class="text-sm text-muted-foreground">
+                  ${this.labels.demoSeoLocked}
+                </p>`
+              : nothing
+          }
+        </div>
+        ${this._renderDiscoverForm()}
+      </section>
+    `;
+  }
+
+  /**
+   * Jant Discover.
+   *
+   * Saves on change, like the indexing checkbox next to it: every control here
+   * is a complete answer on its own — ticking the box stores the default mode,
+   * and a mode is stored as soon as it is picked — so there is nothing a Save
+   * button would be waiting for.
+   *
+   * Ticking the box is also what announces a self-hosted site to the
+   * directory. Only that transition announces, so picking a mode afterwards
+   * sends no second ping, and a site announced under `latest` that switches to
+   * `featured` a moment later is not stranded: every feed declares the feed a
+   * crawler should poll, so the next read follows the site to /featured/feed.
+   */
+  private _renderDiscoverForm() {
+    const effective = this._effectiveDiscoverMode();
+    const enabled = effective !== "none";
+    const mode = effective === "featured" ? "featured" : "latest";
+    const locked = this.demoMode || !this.feedsEnabled;
+    // The box unticks itself when search indexing goes off, and a control that
+    // moves on its own has to say why. Asked as a counterfactual rather than
+    // read off `noindex`, so the line appears only where it is the reason: a
+    // site the deployment would have listed, held back by that one setting.
+    // A site nobody would list either way is not being held back by anything,
+    // and an owner who ticked the box is not affected at all.
+    const heldBackBySearch =
+      !locked &&
+      !enabled &&
+      this._effectiveDiscoverMode({ noindex: false }) !== "none";
+
+    return html`
+      <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              class="checkbox"
+              .checked=${enabled}
+              ?disabled=${locked || this._discoverLoading}
+              @change=${(e: Event) =>
+                this._onDiscoverToggle((e.target as HTMLInputElement).checked)}
+            />
+            <span>${this.labels.discoverEnabled}</span>
+          </label>
+          <p class="text-sm text-muted-foreground">
+            ${
+              locked
+                ? this.demoMode
+                  ? this.labels.discoverDemoLocked
+                  : this.labels.discoverFeedsOffLocked
+                : this._renderDiscoverIntro()
+            }
+          </p>
+          ${
+            heldBackBySearch
+              ? html`<p class="text-sm text-muted-foreground">
+                  ${this.labels.discoverSearchOff}
+                </p>`
+              : nothing
+          }
+        </div>
         ${
-          this.demoMode
-            ? html`<p class="text-sm text-muted-foreground">
-                ${this.labels.demoSeoLocked}
-              </p>`
+          enabled && !locked
+            ? html`
+                <div class="flex flex-col gap-2 pl-6">
+                  ${this._renderDiscoverMode("latest", mode)}
+                  ${this._renderDiscoverMode("featured", mode)}
+                </div>
+              `
             : nothing
         }
-      </section>
+        ${locked ? nothing : this._renderDiscoverStatus()}
+      </div>
+    `;
+  }
+
+  /**
+   * The help line, with the word for the list linking to the list.
+   *
+   * The line reads as one sentence in every locale, so the link is found by
+   * splitting the translated string on the translated word rather than by
+   * gluing fragments together. A translation that drops or rewrites the word
+   * simply renders as plain text — a sentence without a link, never a broken
+   * one. What Discover is, is best answered by the list itself, which is why
+   * the link goes there rather than to a page about it, and why it sits in the
+   * sentence that explains the list rather than on the checkbox label.
+   */
+  private _renderDiscoverIntro() {
+    const text = this.labels.discoverIntro ?? "";
+    const parts = this.discoverUrl
+      ? splitLinkedTerm(text, this.labels.discoverDirectory ?? "")
+      : null;
+    if (!parts) return text;
+
+    return html`${parts.before}<a
+        href=${this.discoverUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="underline hover:text-foreground transition-colors"
+        >${parts.term}</a
+      >${parts.after}`;
+  }
+
+  /**
+   * What is left to say once the controls above have spoken.
+   *
+   * Not a status report — a site whose Discover setting is doing exactly what
+   * it says gets nothing here, and no heading announces a block that is
+   * usually absent. The server sends a line only for a problem, a task, or an
+   * answer still outstanding; deliberately all local evidence, because the
+   * directory takes no status queries and cannot be asked whether a person has
+   * moderated the site.
+   *
+   * The announce button appears when the directory has not heard from this
+   * site; the manual form only when an announcement actually failed — beside a
+   * working one it would read as a normal route in rather than the recovery it
+   * is. The lines are what the server sent with the page, so ticking the box
+   * does not rewrite them; the next load does.
+   */
+  private _renderDiscoverStatus() {
+    const status = this._parsedDiscoverStatus();
+    if (!status) return nothing;
+    // The server wrote these for the mode the page loaded with. A blog that
+    // has just switched itself off is not the blog they describe.
+    if (this._effectiveDiscoverMode() === "none") return nothing;
+    if (status.lines.length === 0 && !status.showAnnounce) return nothing;
+
+    return html`
+      <div class="flex flex-col gap-1 border-t pt-3">
+        ${status.lines.map(
+          (line) => html`<p class="text-sm text-muted-foreground">${line}</p>`,
+        )}
+        ${
+          status.showAnnounce
+            ? html`
+                <div class="flex flex-wrap items-center gap-3 mt-1">
+                  <button
+                    type="button"
+                    class="btn-outline"
+                    ?disabled=${this._discoverLoading}
+                    @click=${() => this._announce()}
+                  >
+                    ${this.labels.discoverAnnounce}
+                  </button>
+                  ${
+                    status.submitUrl
+                      ? html`<a
+                          class="text-sm underline hover:text-foreground transition-colors"
+                          href=${status.submitUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          >${this.labels.discoverAnnounceManual}</a
+                        >`
+                      : nothing
+                  }
+                </div>
+              `
+            : nothing
+        }
+      </div>
+    `;
+  }
+
+  private _parsedDiscoverStatus(): {
+    lines: string[];
+    showAnnounce: boolean;
+    submitUrl: string | null;
+  } | null {
+    if (!this.discoverStatus) return null;
+    try {
+      const parsed: unknown = JSON.parse(this.discoverStatus);
+      if (typeof parsed !== "object" || parsed === null) return null;
+      const value = parsed as Record<string, unknown>;
+      const lines = Array.isArray(value["lines"])
+        ? value["lines"].filter(
+            (line): line is string => typeof line === "string",
+          )
+        : [];
+      return {
+        lines,
+        showAnnounce: value["showAnnounce"] === true,
+        submitUrl:
+          typeof value["submitUrl"] === "string" ? value["submitUrl"] : null,
+      };
+    } catch {
+      // A settings page that renders without its status block is far better
+      // than one that does not render.
+      return null;
+    }
+  }
+
+  private _announce() {
+    if (this._discoverLoading) return;
+    this._discoverLoading = true;
+    this.dispatchEvent(
+      new CustomEvent("jant:settings-save", {
+        bubbles: true,
+        detail: {
+          endpoint: "/settings/general/discover/announce",
+          data: {},
+          section: "discover",
+        },
+      }),
+    );
+  }
+
+  private _renderDiscoverMode(value: "latest" | "featured", current: string) {
+    const label =
+      value === "latest"
+        ? this.labels.discoverLatest
+        : this.labels.discoverFeatured;
+    const hint =
+      value === "latest"
+        ? this.labels.discoverLatestHint
+        : this.labels.discoverFeaturedHint;
+
+    return html`
+      <label class="flex items-start gap-2 cursor-pointer">
+        <input
+          type="radio"
+          class="mt-1"
+          name="discover-mode"
+          .checked=${current === value}
+          ?disabled=${this._discoverLoading}
+          @change=${() => this._onDiscoverMode(value)}
+        />
+        <span class="flex flex-col">
+          <span>${label}</span>
+          <span class="text-sm text-muted-foreground">${hint}</span>
+        </span>
+      </label>
     `;
   }
 

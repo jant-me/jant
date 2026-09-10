@@ -17,5 +17,7 @@ if [[ -z "$TOKEN" ]]; then
 fi
 
 export JANT_API_TOKEN="$TOKEN"
-export NODE_TLS_REJECT_UNAUTHORIZED=0
+# Trust the machine's own CA store (mkcert/Caddy roots) so a self-signed
+# local target verifies normally. mise sets this too; repeated is harmless.
+export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--use-system-ca"
 exec ./packages/core/bin/jant.js site import "$URL" --path sites/demo-source/canonical/site-export

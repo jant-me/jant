@@ -9,7 +9,7 @@ import {
   CreatePostApiSchema,
   UpdatePostSchema,
   UpdatePostApiSchema,
-  SetupSchema,
+  SetupAccountSchema,
   SigninSchema,
   UpdateSiteSettingsSchema,
   normalizeEmail,
@@ -76,10 +76,9 @@ describe("normalizeEmail", () => {
   });
 });
 
-describe("SetupSchema", () => {
+describe("SetupAccountSchema", () => {
   it("normalizes email before returning parsed data", () => {
-    const result = SetupSchema.parse({
-      siteName: "Jant",
+    const result = SetupAccountSchema.parse({
       email: "  Admin@Example.COM ",
       password: "password123",
     });

@@ -369,6 +369,22 @@ in a novel treatment can buy back. Notes from the detour:
 And don't lean on "the panel it opened is the state display" — icon-only
 toggles have no label, so the button has to answer on its own.
 
+## A task file states the design; it does not argue for it
+
+A plan is read by whoever implements it, and they need the current design plus
+the constraints that must not be broken — not the deliberation that produced it.
+Sections like "why this replaced the earlier scheme", corrections to previous
+drafts, or the trade-offs of rejected alternatives are dead weight at
+implementation time: the reader has to work out which of two designs is the live
+one, and every later edit has to keep the retrospective consistent too.
+
+Keep in the file only what changes what gets built: the design, the invariants
+that are the point of it ("every shown post gets at least MIN_DWELL"), and
+explicit non-goals ("no counts, ever") — non-goals earn their place because
+without them the feature grows them back. Decision history belongs in memory
+and in the commit message, where it is looked up on purpose rather than being
+re-read on every pass through the plan.
+
 ## Delete the task file before committing, not after
 
 `tasks/todos/` accumulated nine finished task files because cleanup was treated
@@ -1168,3 +1184,40 @@ expired, which turns a bad read into lost work. Not restoring is enough.
   afterwards. Return a reason, and log it whenever stored bytes existed and did
   not come back — "there was nothing stored" is the ordinary case and stays
   quiet.
+
+## Response-header work is not verified until it has been over the wire
+
+Feed ETags passed 24 route tests and did nothing in a browser.
+`withWorkerResponseCache` sits at `app.fetch`, ahead of every route, and puts
+public feed, sitemap, and icon responses into `caches.default`. A cache hit
+returned the stored `200` and the handler that read `If-None-Match` never ran.
+`curl -D -` against `mise run dev-debug` showed it in one line:
+`cf-cache-status: HIT`.
+
+Two rules out of it:
+
+- A route test exercises the route. Anything a layer above the router can
+  intercept — headers, status, caching, redirects — needs one real HTTP request
+  before it counts as verified. `app.request()` enters below `app.fetch`, so
+  everything wrapped around `app.fetch` is invisible to it.
+- Put revalidation outside the cache, not inside the handler. Answering
+  `If-None-Match` in the route means a cache miss returns a `304` that
+  `canStoreWorkerCacheResponse` refuses to store, so a reader who always sends
+  a validator keeps the cache permanently empty and re-renders every poll. The
+  handler emits the tag; `withConditionalResponse` at the edge answers with it,
+  and the miss still stores the whole document on its way out.
+- A rule that only lives in prose does not hold for anything invisible. The
+  BaseCoat "never combine a variant with its base class" rule was in AGENTS.md's
+  Hard Constraints and was still broken repeatedly, because `class="btn
+btn-outline"` compiles, passes every test, and only shows up as a button whose
+  label is missing until hover. When a constraint's violation has no failing
+  signal, write the guard, not another sentence:
+  `src/__tests__/basecoat-variants.test.ts`.
+- When a route's request or response contract changes (payload fields,
+  redirect target, number of steps), grep `dev/scripts/` as well as `src/`.
+  `dev/scripts/pg-smoke.mjs` drives setup, sign-in, and compose over real
+  requests against Postgres, and only CI runs it (`check-pg-smoke` needs
+  `PG_SMOKE_DATABASE_URL`, and `check-tests` does not include it), so a stale
+  payload there passes every local check and fails only after push. To run it
+  locally, start a throwaway `postgres:17` container and point
+  `PG_SMOKE_ADMIN_DATABASE_URL` / `PG_SMOKE_DATABASE_URL` at it.

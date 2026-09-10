@@ -1290,10 +1290,12 @@ async function apiCall(method, path, apiUrl, token, body) {
       cause === "UNABLE_TO_VERIFY_LEAF_SIGNATURE" ||
       cause?.includes("certificate")
     ) {
-      console.error(`\nSSL certificate error connecting to ${apiUrl}`);
-      console.error("If using a local/self-signed certificate, run with:");
-      console.error("  NODE_TLS_REJECT_UNAUTHORIZED=0 jant import-site ...");
-      console.error("Or use: node --use-system-ca bin/jant.js import-site ...");
+      console.error(`\nCertificate error connecting to ${apiUrl}`);
+      console.error(
+        "The certificate is not signed by a CA that Node trusts. For a local",
+      );
+      console.error("or self-signed target, trust this machine's CA store:");
+      console.error("  NODE_OPTIONS=--use-system-ca jant site import ...");
       process.exit(1);
     }
     throw new Error(

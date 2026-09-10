@@ -103,6 +103,94 @@
   {{- end -}}
 {{- end -}}
 
+{{- /* --- Attachments --- */ -}}
+{{- /* One container per post, marked `data-post-media` — the attribute the
+     site puts on its gallery strip, so a consumer styles the strip instead of
+     reassembling it from the Media RSS elements. In a thread this is also the
+     only surface that says which post an attachment belongs to. Mirrors
+     `renderMediaItem` in `packages/core/src/lib/feed.ts`. */ -}}
+{{- $mediaList := $post.Params.media | default slice -}}
+{{- if gt (len $mediaList) 0 -}}
+  {{- $items := slice -}}
+  {{- range $mediaList -}}
+    {{- $kind := string (.kind | default "document") -}}
+    {{- $mime := string (.mime_type | default "application/octet-stream") -}}
+    {{- /* `trim` wraps the index rather than piping into it: a Go template
+         pipe binds to the last argument, so `index … 0 | trim " "` would trim
+         the index instead of the result. */ -}}
+    {{- $mimeLabel := trim (index (split $mime ";") 0) " " -}}
+    {{- $src := (string .src) | absURL -}}
+    {{- $name := string (.original_name | default "") -}}
+    {{- $alt := string (.alt | default "") -}}
+    {{- /* Duration and size, in the shapes `formatFeedDuration` and
+         `formatFeedBytes` produce. */ -}}
+    {{- $metaParts := slice -}}
+    {{- with .duration_seconds -}}
+      {{- $total := int (math.Round .) -}}
+      {{- if gt $total 0 -}}
+        {{- $metaParts = $metaParts | append (printf "%d:%02d" (div $total 60) (mod $total 60)) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- with .size -}}
+      {{- $b := int . -}}
+      {{- if gt $b 0 -}}
+        {{- if lt $b 1024 -}}
+          {{- $metaParts = $metaParts | append (printf "%d B" $b) -}}
+        {{- else if lt $b 1048576 -}}
+          {{- $metaParts = $metaParts | append (printf "%d KB" (int (math.Round (div (float $b) 1024.0)))) -}}
+        {{- else -}}
+          {{- $metaParts = $metaParts | append (printf "%.1f MB" (div (float $b) 1048576.0)) -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $meta := delimit $metaParts " · " -}}
+    {{- $metaSuffix := "" -}}
+    {{- if ne $meta "" -}}{{- $metaSuffix = printf " (%s)" (transform.XMLEscape $meta) -}}{{- end -}}
+    {{- $dims := "" -}}
+    {{- if and .width .height -}}{{- $dims = printf ` width="%d" height="%d"` (int .width) (int .height) -}}{{- end -}}
+
+    {{- if eq $kind "image" -}}
+      {{- $caption := "" -}}
+      {{- if ne $alt "" -}}{{- $caption = printf "<figcaption>%s</figcaption>" (transform.XMLEscape $alt) -}}{{- end -}}
+      {{- /* `%q` is Go string quoting, not attribute escaping: a `"` or `\`
+           in the alt would leave the attribute malformed. URLs go through
+           `%q` because they never carry either; author text goes through
+           `transform.XMLEscape`, the same as the caption beside it. */ -}}
+      {{- $items = $items | append (printf `<figure><a href=%q><img src=%q alt="%s"%s/></a>%s</figure>` $src $src (transform.XMLEscape $alt) $dims $caption) -}}
+    {{- else if eq $kind "video" -}}
+      {{- /* A poster is written only when there is a real still; the pipeline
+           leaves nothing usable otherwise, and `<img src="clip.mp4">` was the
+           bug that taught us. The link sits outside the <video> so it survives
+           a sanitizer that drops the player with its children, and
+           `preload="none"` keeps a reader from pulling the whole file. */ -}}
+      {{- $posterAttr := "" -}}
+      {{- with .poster -}}{{- $posterAttr = printf ` poster=%q` ((string .) | absURL) -}}{{- end -}}
+      {{- $altSuffix := "" -}}
+      {{- if ne $alt "" -}}{{- $altSuffix = printf ": %s" (transform.XMLEscape $alt) -}}{{- end -}}
+      {{- $items = $items | append (printf `<figure><video controls preload="none"%s%s><source src=%q type=%q/></video><figcaption><a href=%q>▶ Watch video</a>%s%s</figcaption></figure>` $posterAttr $dims $src $mimeLabel $src $metaSuffix $altSuffix) -}}
+    {{- else if eq $kind "text" -}}
+      {{- /* Markdown a browser would download or dump unstyled, so the link
+           goes to the page that renders it. */ -}}
+      {{- $href := printf "%s/text/%s" (strings.TrimSuffix "/" $permalink) (string .id) -}}
+      {{- $label := printf "📎 [%s] %s" (transform.XMLEscape $mimeLabel) (transform.XMLEscape (or $name "Attached text")) -}}
+      {{- $textMeta := $metaSuffix -}}
+      {{- with .chars -}}
+        {{- if gt (int .) 0 -}}{{- $textMeta = printf " (%d chars)" (int .) -}}{{- end -}}
+      {{- end -}}
+      {{- $summarySuffix := "" -}}
+      {{- with .summary -}}
+        {{- if ne (string .) "" -}}{{- $summarySuffix = printf ": %s" (transform.XMLEscape (string .)) -}}{{- end -}}
+      {{- end -}}
+      {{- $items = $items | append (printf `<p><a href=%q>%s</a>%s%s</p>` $href $label $textMeta $summarySuffix) -}}
+    {{- else -}}
+      {{- $fallbackName := cond (eq $kind "audio") "Audio" "Attachment" -}}
+      {{- $label := printf "📎 [%s] %s" (transform.XMLEscape $mimeLabel) (transform.XMLEscape (or $name $fallbackName)) -}}
+      {{- $items = $items | append (printf `<p><a href=%q>%s</a>%s</p>` $src $label $metaSuffix) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $parts = $parts | append (printf "<div data-post-media>\n%s\n</div>" (delimit $items "\n")) -}}
+{{- end -}}
+
 {{- /* --- Star rating --- */ -}}
 {{- with $post.Params.rating -}}
   {{- $r := int . -}}

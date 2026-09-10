@@ -99,6 +99,79 @@ function filesToMap(
 }
 
 describe("createExportService (Hugo)", () => {
+  // Hugo has its own summary rule and would cut somewhere else, so whether the
+  // timeline truncates a post is decided here and carried as front matter.
+  // Written only when true — a consumer reads its presence.
+  it("marks a truncated post in front matter and leaves a short one unmarked", async () => {
+    const para = (text: string) => ({
+      type: "paragraph",
+      content: [{ type: "text", text }],
+    });
+    const long = makePost({
+      id: "post-long",
+      slug: "long-read",
+      title: "A long read",
+      threadId: "post-long",
+      body: JSON.stringify({
+        type: "doc",
+        content: [
+          para("Alpha ".repeat(90).trim()),
+          para("Omega ".repeat(90).trim()),
+        ],
+      }),
+    });
+    const short = makePost({
+      id: "post-short",
+      slug: "short-note",
+      title: null,
+      threadId: "post-short",
+      body: JSON.stringify({ type: "doc", content: [para("Short enough.")] }),
+    });
+
+    const files = await createExportService(
+      {
+        posts: { list: async () => [long, short] },
+        paths: {
+          getPostSlugMap: async () =>
+            new Map([
+              ["post-long", "long-read"],
+              ["post-short", "short-note"],
+            ]),
+          getPostAliases: async () => new Map(),
+          getCollectionSlugMap: async () => new Map(),
+        },
+        collections: {
+          list: async () => [],
+          listDirectoryData: async () => ({
+            collections: [],
+            items: [],
+            directoryItems: [],
+          }),
+          getCollectionsByPostIds: async () => new Map(),
+          getCollectionEntriesByThreadIds: async () => new Map(),
+        },
+        media: { getByPostIds: async () => new Map() },
+      } as unknown as ServicesArg,
+      makeSiteConfig(),
+    ).generateHugoFiles();
+
+    const read = async (path: string) => {
+      const file = files.find((f) => f.path === path);
+      expect(file, `missing ${path}`).toBeDefined();
+      const { frontMatter } = await parseFrontMatter(
+        typeof file!.content === "string"
+          ? file!.content
+          : new TextDecoder().decode(file!.content),
+      );
+      return frontMatter;
+    };
+
+    expect((await read("content/long-read/_index.md")).truncated).toBe(true);
+    expect(
+      (await read("content/short-note/_index.md")).truncated,
+    ).toBeUndefined();
+  });
+
   it("emits a branch bundle per root post with YAML front matter in stable key order", async () => {
     const root = makePost({
       id: "post-root",

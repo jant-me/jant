@@ -1,5 +1,19 @@
 import type { PostView } from "../../types.js";
+import { getThreadHiddenCount } from "../../lib/thread-fold.js";
 
+/**
+ * What the preview needs to know about its own fold.
+ *
+ * The count itself lives in `lib/thread-fold.ts`, where the feed reads it too —
+ * a card and a feed entry that disagreed about how many posts are hidden would
+ * be describing different threads.
+ *
+ * @param selection - The replies this preview shows, and the thread's total
+ * @returns The hidden-post count the gap link announces
+ * @example
+ * getThreadPreviewState({ leadingReplies, trailingReplies, latestReply,
+ *   totalReplyCount: 8 }); // { hiddenCount: 3 }
+ */
 export function getThreadPreviewState({
   leadingReplies,
   trailingReplies,
@@ -11,13 +25,13 @@ export function getThreadPreviewState({
   latestReply: PostView;
   totalReplyCount: number;
 }) {
-  const visibleReplyIds = new Set(
-    [...leadingReplies, ...trailingReplies, latestReply].map((post) => post.id),
-  );
-  const hiddenCount = Math.max(0, totalReplyCount - visibleReplyIds.size);
-
   return {
-    hiddenCount,
+    hiddenCount: getThreadHiddenCount({
+      leadingReplies,
+      trailingReplies,
+      latestReply,
+      totalReplyCount,
+    }),
   };
 }
 

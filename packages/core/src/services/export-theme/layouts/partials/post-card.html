@@ -5,6 +5,10 @@
 {{- $collections := $post.Params.collections | default slice -}}
 {{- $slug := $post.Params.slug | default $post.Slug -}}
 {{- $linkUrl := $post.Params.link_url -}}
+{{- /* A reply is not rendered as a page (`build: render: never`), so its
+     `.RelPermalink` is empty. The exporter registers every reply slug as an
+     alias on the root, and that alias is the address a reply has. */ -}}
+{{- $permalink := $post.RelPermalink | default (printf "/%s/" $slug | relURL) -}}
 <article class="post-card post-card-{{ $format }}" data-format="{{ $format }}" data-slug="{{ $slug }}"
   {{- if $post.Params.pinned_at }} data-post-pinned{{ end -}}
   {{- if $post.Params.featured_at }} data-post-featured{{ end -}}
@@ -27,7 +31,7 @@
         <a href="{{ $linkUrl }}" rel="noopener noreferrer" target="_blank">{{ $post.Title }}</a>
       </h2>
     {{- else if $post.Title -}}
-      <h2 class="post-card-title post-card-link-title"><a href="{{ $post.RelPermalink }}">{{ $post.Title }}</a></h2>
+      <h2 class="post-card-title post-card-link-title"><a href="{{ $permalink }}">{{ $post.Title }}</a></h2>
     {{- end -}}
     {{- /* Prefer Hugo's rendered HTML body — preserves paragraphs, links,
          emphasis, lists. Falls back to the plain-text `summary_text` stored
@@ -73,7 +77,7 @@
     {{- end -}}
   {{- else -}}
     {{- with $post.Title -}}
-      <h2 class="post-card-title"><a href="{{ $post.RelPermalink }}">{{ . }}</a></h2>
+      <h2 class="post-card-title"><a href="{{ $permalink }}">{{ . }}</a></h2>
     {{- end -}}
     {{- /* Prefer Hugo's rendered HTML summary — preserves paragraphs, links,
          emphasis, lists. Falls back to the plain-text `summary_text` stored
@@ -85,7 +89,7 @@
     {{- end -}}
   {{- end -}}
 
-  {{ partial "media-gallery.html" (dict "media" $media "permalink" $post.RelPermalink) }}
+  {{ partial "media-gallery.html" (dict "media" $media "permalink" $permalink) }}
 
   <footer class="post-card-footer post-menu-footer" data-post-meta>
     <div class="post-footer-meta">
@@ -96,7 +100,7 @@
           </svg>
         </span>
       {{- end -}}
-      <a class="post-footer-link post-card-permalink" href="{{ $post.RelPermalink }}">
+      <a class="post-footer-link post-card-permalink" href="{{ $permalink }}">
         <time datetime="{{ $post.Date.Format "2006-01-02T15:04:05Z07:00" }}">
           {{ $post.Date.Format "Jan 2, 2006" }}
         </time>

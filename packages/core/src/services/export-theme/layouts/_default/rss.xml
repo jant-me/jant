@@ -97,7 +97,16 @@
 {{- $selfUrl := .Permalink -}}
 {{- $now := now.UTC.Format "2006-01-02T15:04:05Z" -}}
 <?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
+{{- /* Namespaces ride along only when something in them is emitted, the same
+     rule `lib/feed.ts` follows. */ -}}
+{{- $anyMedia := false -}}
+{{- range $posts -}}
+  {{- if .Params.media -}}{{- $anyMedia = true -}}{{- end -}}
+  {{- range .Pages -}}{{- if .Params.media -}}{{- $anyMedia = true -}}{{- end -}}{{- end -}}
+{{- end -}}
+{{- $jantNs := cond (gt (len $posts) 0) ` xmlns:jant="https://jant.me/ns"` "" -}}
+{{- $mediaNs := cond $anyMedia ` xmlns:media="http://search.yahoo.com/mrss/"` "" -}}
+<feed xmlns="http://www.w3.org/2005/Atom"{{ $jantNs | safeHTMLAttr }}{{ $mediaNs | safeHTMLAttr }}>
   <title>{{ $feedTitle | transform.XMLEscape }}</title>
   <subtitle>{{ $siteDescription | transform.XMLEscape }}</subtitle>
   <link href="{{ $siteBase | transform.XMLEscape }}" rel="alternate"/>
@@ -129,15 +138,82 @@
     {{- $summaryText = or (string (.Params.summary_text | default "")) (.Title | default "") (string (.Params.link_url | default "")) -}}
   {{- end -}}
   {{- if eq $summaryText "" -}}{{- $summaryText = printf "Post %s" (string (.Params.id | default "")) -}}{{- end -}}
+
+  {{- /* Whether the timeline cut the text of any post the entry's card shows.
+       Per post it is written into front matter by the exporter, which shares
+       the boundary with the served feed; Hugo's own summary rule would cut
+       somewhere else. Per entry the rule is `isEntryTruncated` in
+       `lib/feed.ts`: the root plus every reply the fold keeps — the first
+       THREAD_LEADING_REPLIES (2) and the last THREAD_TRAILING_REPLIES (3),
+       newest included — as `lib/thread-fold.ts` defines it. A thread of five
+       replies or fewer is shown whole; `first` and `last` clamp to the slice,
+       so the two windows simply overlap there. */ -}}
+  {{- $replies := (where $post.Pages "Params.visibility" "public").ByDate -}}
+  {{- $truncated := $post.Params.truncated | default false -}}
+  {{- range first 2 $replies -}}
+    {{- if .Params.truncated -}}{{- $truncated = true -}}{{- end -}}
+  {{- end -}}
+  {{- range last 3 $replies -}}
+    {{- if .Params.truncated -}}{{- $truncated = true -}}{{- end -}}
+  {{- end -}}
+
+  {{- /* Every attachment in the thread, each paired with the post that carries
+       it — a text attachment's page lives under its own post. */ -}}
+  {{- $entryMedia := slice -}}
+  {{- range ($post.Params.media | default slice) -}}
+    {{- $entryMedia = $entryMedia | append (dict "m" . "page" $permalink) -}}
+  {{- end -}}
+  {{- range $replies -}}
+    {{- $replyPermalink := .Permalink -}}
+    {{- range (.Params.media | default slice) -}}
+      {{- $entryMedia = $entryMedia | append (dict "m" . "page" $replyPermalink) -}}
+    {{- end -}}
+  {{- end -}}
   <entry>
     <title>{{ $entryTitle | transform.XMLEscape }}</title>
     <link href="{{ $alternate | transform.XMLEscape }}" rel="alternate"/>
     {{- if $isLink }}
     <link href="{{ $permalink | transform.XMLEscape }}" rel="related"/>
     {{- end }}
+    {{- /* Images carry no enclosure: the content already shows them full size
+         inside a link to the original, so one would only ask an attachment
+         shelf to list the picture again. */ -}}
+    {{- range $entryMedia }}
+    {{- $m := .m }}
+    {{- if ne (string ($m.kind | default "document")) "image" }}
+    <link rel="enclosure" type="{{ (string ($m.mime_type | default "application/octet-stream")) | transform.XMLEscape }}" href="{{ (string $m.src) | absURL | transform.XMLEscape }}"{{ with $m.size }} length="{{ . }}"{{ end }}{{ with $m.original_name }} title="{{ . | transform.XMLEscape }}"{{ end }}/>
+    {{- end }}
+    {{- end }}
     <id>{{ $permalink | transform.XMLEscape }}</id>
     <published>{{ $published }}</published>
     <updated>{{ $updated }}</updated>
+    <jant:format>{{ $format | transform.XMLEscape }}</jant:format>
+    {{- if $truncated }}
+    <jant:truncated/>
+    {{- end }}
+    {{- /* A collection is a label the author chose, which is what <category>
+         is for. `jant:page` carries the URL because a single collection lives
+         in the root URL namespace. */ -}}
+    {{- range ($post.Params.collections | default slice) }}
+    <category term="{{ (string .slug) | transform.XMLEscape }}" label="{{ (string (.title | default .slug)) | transform.XMLEscape }}" jant:page="{{ (printf "/%s/" (string .slug)) | absURL | transform.XMLEscape }}"/>
+    {{- end }}
+    {{- range $entryMedia }}
+    {{- $m := .m }}
+    {{- $kind := string ($m.kind | default "document") }}
+    {{- $medium := cond (or (eq $kind "image") (or (eq $kind "video") (eq $kind "audio"))) $kind "document" }}
+    {{- $fileUrl := (string $m.src) | absURL }}
+    {{- /* Where a click should land. Only emitted where it is not the file:
+         a text attachment's markdown would download or dump unstyled. */ -}}
+    {{- $pageUrl := $fileUrl }}
+    {{- if eq $kind "text" }}{{ $pageUrl = printf "%s/text/%s" (strings.TrimSuffix "/" .page) (string $m.id) }}{{ end }}
+    {{- $desc := string ($m.alt | default ($m.summary | default "")) }}
+    {{- $poster := string ($m.poster | default "") }}
+    <media:content url="{{ $fileUrl | transform.XMLEscape }}" type="{{ (string ($m.mime_type | default "application/octet-stream")) | transform.XMLEscape }}" medium="{{ $medium }}"{{ with $m.size }} fileSize="{{ . }}"{{ end }}{{ with $m.width }} width="{{ . }}"{{ end }}{{ with $m.height }} height="{{ . }}"{{ end }}{{ with $m.duration_seconds }} duration="{{ math.Round . }}"{{ end }}{{ if ne $pageUrl $fileUrl }} jant:page="{{ $pageUrl | transform.XMLEscape }}"{{ end }}>
+      {{- with $m.original_name }}<media:title type="plain">{{ . | transform.XMLEscape }}</media:title>{{ end }}
+      {{- if ne $desc "" }}<media:description type="plain">{{ $desc | transform.XMLEscape }}</media:description>{{ end }}
+      {{- if ne $poster "" }}<media:thumbnail url="{{ $poster | absURL | transform.XMLEscape }}"/>{{ end -}}
+    </media:content>
+    {{- end }}
     <summary type="text">{{ $summaryText | transform.XMLEscape }}</summary>
     <content type="html"><![CDATA[
 {{- partial "feed-post-content.xml" (dict "post" $post "permalink" $permalink "includeReplies" true) -}}

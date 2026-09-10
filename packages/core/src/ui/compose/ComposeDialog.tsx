@@ -367,6 +367,19 @@ export const ComposeForm: FC<ComposeFormProps> = ({
         comment: "@context: Toast shown during background upload",
       }),
     ),
+    publishing: i18n._(
+      msg({
+        message: "Publishing...",
+        comment: "@context: Toast shown while a post is being published",
+      }),
+    ),
+    saving: i18n._(
+      msg({
+        message: "Saving...",
+        comment:
+          "@context: Toast shown while a draft or an edited post is being saved",
+      }),
+    ),
     loadingPost: i18n._(
       msg({
         message: "Loading post...",

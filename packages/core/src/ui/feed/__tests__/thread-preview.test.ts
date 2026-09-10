@@ -393,7 +393,7 @@ describe("getThreadPreviewState", () => {
     expect(toggleTag(html)).not.toContain("hidden");
   });
 
-  it("points the hidden-posts gap link to the second reply so the detail page opens just above the hidden range", () => {
+  it("points the hidden-posts gap link at the first post it hides", () => {
     const html = renderWithI18n(() =>
       ThreadPreview({
         rootPost: createPostView({ bodyHtml: "<p>Root</p>" }),
@@ -420,16 +420,20 @@ describe("getThreadPreviewState", () => {
           bodyHtml: "<p>Latest</p>",
           isLastInThread: true,
         }),
+        gapHref: "/post-3",
         totalReplyCount: 4,
       }),
     );
 
     expect(html).toMatch(
-      /<a[^>]*\bhref="\/post-2"[^>]*\bclass="thread-gap-link"|<a[^>]*\bclass="thread-gap-link"[^>]*\bhref="\/post-2"/,
+      /<a[^>]*\bhref="\/post-3"[^>]*\bclass="thread-gap-link"|<a[^>]*\bclass="thread-gap-link"[^>]*\bhref="\/post-3"/,
     );
   });
 
-  it("falls back to the latest reply for the gap link when there is no second reply", () => {
+  // The gap target comes from the service, one rank past the leading window.
+  // It can be missing where the count and the fetch disagree — a reply
+  // unpublished between them — and the link still has to go somewhere.
+  it("falls back to the latest reply when no gap target arrives", () => {
     const html = renderWithI18n(() =>
       ThreadPreview({
         rootPost: createPostView({ bodyHtml: "<p>Root</p>" }),

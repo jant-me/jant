@@ -148,14 +148,12 @@ signinRoutes.get("/signin", async (c) => {
   }
 
   const i18n = getI18n(c);
-  const isSetup = c.req.query("setup") !== undefined;
+  // No `?setup` counterpart: setup signs its new owner in on the spot and
+  // hands them straight to the next screen, so nobody arrives here from it.
   const isReset = c.req.query("reset") !== undefined;
-  let toast: { message: string } | undefined;
-  if (isSetup) {
-    toast = { message: "Account created. Sign in to get started." };
-  } else if (isReset) {
-    toast = { message: "Password reset. Sign in with your new password." };
-  }
+  const toast = isReset
+    ? { message: "Password reset. Sign in with your new password." }
+    : undefined;
 
   return c.html(
     <BaseLayout

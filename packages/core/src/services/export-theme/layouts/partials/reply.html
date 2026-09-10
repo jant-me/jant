@@ -69,7 +69,8 @@
     </div>
   {{- end -}}
 
-  {{ partial "media-gallery.html" (dict "media" $media "permalink" $reply.RelPermalink) }}
+  {{- /* Replies are not rendered as pages, so the address is the reply's alias on the root. */ -}}
+  {{ partial "media-gallery.html" (dict "media" $media "permalink" ($reply.RelPermalink | default (printf "/%s/" $slug | relURL))) }}
 
   <footer class="reply-footer post-menu-footer" data-post-meta>
     <div class="post-footer-meta">

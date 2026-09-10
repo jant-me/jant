@@ -1,9 +1,10 @@
 /**
- * Tests for who may answer the remaining setup question on a provisioned site.
+ * Tests for who may answer the last setup question on a provisioned site.
  *
  * A provisioned site already has an owner, so `POST /setup` writes the site's
- * language on behalf of that owner. Carrying a session is not enough to be that
- * owner — the session may belong to someone this site has never heard of.
+ * name and language on behalf of that owner. Carrying a session is not enough
+ * to be that owner — the session may belong to someone this site has never
+ * heard of.
  */
 
 import { describe, expect, it, vi } from "vitest";
@@ -41,7 +42,7 @@ function createProvisionedSetupApp(options: {
   signedIn: boolean;
   isMember: boolean;
 }) {
-  const confirmFirstRunLanguage = vi.fn(async () => {});
+  const completeSiteSetup = vi.fn(async () => {});
 
   const app = new Hono<Env>();
   app.use("*", async (c, next) => {
@@ -50,8 +51,9 @@ function createProvisionedSetupApp(options: {
     c.set("services", {
       settings: {
         getOnboardingStatus: async () => ONBOARDING_STATUS.PROVISIONED,
-        confirmFirstRunLanguage,
+        get: async () => "My Blog",
       },
+      bootstrap: { completeSiteSetup },
       siteMembers: {
         get: async () =>
           options.isMember
@@ -84,7 +86,7 @@ function createProvisionedSetupApp(options: {
   app.use("*", attachSession());
   app.route("/", setupRoutes);
 
-  return { app, confirmFirstRunLanguage };
+  return { app, completeSiteSetup };
 }
 
 function postLanguage(app: Hono<Env>) {
@@ -97,7 +99,7 @@ function postLanguage(app: Hono<Env>) {
 
 describe("POST /setup on a provisioned site", () => {
   it("refuses a session that is not a member of this site", async () => {
-    const { app, confirmFirstRunLanguage } = createProvisionedSetupApp({
+    const { app, completeSiteSetup } = createProvisionedSetupApp({
       signedIn: true,
       isMember: false,
     });
@@ -105,18 +107,18 @@ describe("POST /setup on a provisioned site", () => {
     const res = await postLanguage(app);
 
     await expect(res.text()).resolves.toContain("/signin");
-    expect(confirmFirstRunLanguage).not.toHaveBeenCalled();
+    expect(completeSiteSetup).not.toHaveBeenCalled();
   });
 
   it("lets the site's own owner answer", async () => {
-    const { app, confirmFirstRunLanguage } = createProvisionedSetupApp({
+    const { app, completeSiteSetup } = createProvisionedSetupApp({
       signedIn: true,
       isMember: true,
     });
 
     await postLanguage(app);
 
-    expect(confirmFirstRunLanguage).toHaveBeenCalledOnce();
+    expect(completeSiteSetup).toHaveBeenCalledOnce();
   });
 });
 

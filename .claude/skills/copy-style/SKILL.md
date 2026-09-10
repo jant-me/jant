@@ -1,6 +1,6 @@
 ---
 name: copy-style
-description: Jant's writing rules for user-facing prose and copy. Use when writing or editing anything under docs/, README.md, or translations in src/i18n/locales/**/*.po, and when writing or reviewing UI strings (button labels, error messages, empty states, settings descriptions) in any locale. Also use when the user says copy reads "AI-flavored", 有 AI 味, too chatty, or asks to tighten documentation prose.
+description: Jant's writing rules for user-facing prose and copy. Use when writing or editing anything under docs/, README.md, or translations in src/i18n/locales/**/*.po, and when writing or reviewing UI strings (button labels, error messages, empty states, settings descriptions) in any locale. Also use when the user says copy reads "AI-flavored", 有 AI 味, too chatty, salesy, 营销腔, or asks to tighten documentation prose.
 ---
 
 # Jant Copy Style
@@ -37,11 +37,12 @@ and `这样事后可以持续完善` (what threading is for).
 
 `check-copy` handles these: `您`, exclamation marks, half-width punctuation in Chinese,
 reassurance (`什么都不用选`, `别担心`), tour guide (`让我们`, `欢迎来到`), effort adjectives
-(`轻松`, `只需`, `瞬间`, "simply", "easily", "seamlessly"). Also never: emoji, "successfully",
-"Something went wrong" with no cause, cheerleading.
+(`轻松`, `一目了然`, "simply", "effortlessly", "seamlessly"), hyperbole (`极致`, `神器`,
+"ultimate", "blazing fast"), marketing jargon (`赋能`, `打造`, "unlock", "empower"). Also never:
+emoji, "successfully", "Something went wrong" with no cause, cheerleading.
 
-Two it cannot express: a metaphor is not a name (`Hidden from Latest`, not a softer synonym), and
-a count can be an ease claim (`发布只有一步` sells, `发布一步完成` describes — but `一键部署` is a
+Two it cannot express: a name is literal (`Hidden from Latest` — not a softer synonym, not a
+playful coinage), and a count can be an ease claim (`发布只有一步` sells, `发布一步完成` describes — but `一键部署` is a
 product name and stays).
 
 ## Waste only reading aloud catches
@@ -77,6 +78,17 @@ shapes strung with commas is a feature list smuggled into prose.
 - 区分产品名词和普通名词：`帖子` 是 Jant 的 Post，`文章` 是别人写的。`我分享一些好文章` 是对的。
 - **别过度纠正**：`V 的是 N`、`A，不是 B` 合法用例远多于问题用例。只在后半句不买信息时才动。
 - **zh-Hant 不是简繁转换**：台湾惯用（設定、選集、貼文、權杖）。
+
+**屏幕已经说过的，别再说一遍。** UI 文案的上下文是它周围那一屏，复述它不买信息：
+
+❌ 创建你写作用的账户。
+✅ 创建账户
+
+❌ 这些之后都可以在设置中更改。
+✅ 之后可以在设置中更改。
+
+标题已经是「欢迎使用 Jant」，第二屏问的本来就是站点设置。「你写作用的」和「这些…都」删掉之后，
+读者没少知道任何东西——这是删除测试用在一句 UI 说明上，判据是这一屏，不是这一句。
 
 ## After writing
 

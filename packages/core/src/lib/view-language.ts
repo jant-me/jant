@@ -376,10 +376,10 @@ export function buildLanguageSwitcher(
  * List surfaces exist once per language at the same path, so every language's
  * copy of the current path is an alternate of it.
  *
- * No `x-default` is emitted: it would have to point at the primary language's
- * URL, and hono/jsx collapses `<link>` elements that share an `href`, so it
- * would silently replace the primary language's own alternate. It is optional
- * in the spec, and search engines fall back to the primary language anyway.
+ * An `x-default` alternate pointing at the primary language closes the set,
+ * so a reader whose language the site does not publish lands somewhere
+ * deliberate. Surfaces where it has no defined meaning — Atom feeds — opt out
+ * with `xDefault: false`.
  *
  * Returns an empty array on a single-language site, and when the site has no
  * absolute URL configured — an hreflang `href` must be absolute to be honoured.
@@ -392,7 +392,8 @@ export function buildLanguageSwitcher(
  * identities.
  *
  * @param c - Request context
- * @param options - `query` overrides the request's own query string, leading `?` included
+ * @param options - `query` overrides the request's own query string, leading
+ *   `?` included; `xDefault: false` omits the trailing `x-default` entry
  * @returns Alternates for this surface, primary first
  * @example
  * // Rendering /en/archive on a zh-Hans + en site:
@@ -406,7 +407,7 @@ export function buildLanguageSwitcher(
  */
 export function buildSurfaceAlternates(
   c: ViewContext,
-  options?: { query?: string },
+  options?: { query?: string; xDefault?: boolean },
 ): LanguageAlternate[] {
   const languages = getViewLanguages(c);
   const { siteUrl, sitePathPrefix } = c.var.appConfig;
@@ -428,7 +429,7 @@ export function buildSurfaceAlternates(
 
   // A reader whose language the site does not publish lands on the primary one.
   const primary = alternates[0];
-  if (primary) {
+  if (primary && options?.xDefault !== false) {
     alternates.push({ hreflang: "x-default", href: primary.href });
   }
   return alternates;

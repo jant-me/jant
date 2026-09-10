@@ -48,6 +48,10 @@ import {
   tryPreparePostBodyHtml,
 } from "../lib/post-body-html.js";
 import { extractSummary, extractBodyText } from "../lib/summary.js";
+import {
+  THREAD_LEADING_REPLIES,
+  THREAD_TRAILING_REPLIES,
+} from "../lib/thread-fold.js";
 import { markdownToTiptapJson } from "../lib/markdown-to-tiptap.js";
 import { tiptapJsonToMarkdown } from "../lib/tiptap-to-markdown.js";
 import { generatePostSlug } from "../lib/slug.js";
@@ -4093,8 +4097,11 @@ export function createPostService(
         .from(rankedReplies)
         .where(
           or(
-            lte(rankedReplies.firstReplyRank, 2),
-            lte(rankedReplies.latestReplyRank, 3),
+            // One past the leading window: that extra row is never rendered,
+            // it is only where the gap link points. Without it the gap has to
+            // aim at a reply already on screen.
+            lte(rankedReplies.firstReplyRank, THREAD_LEADING_REPLIES + 1),
+            lte(rankedReplies.latestReplyRank, THREAD_TRAILING_REPLIES),
           ),
         );
 
@@ -4108,6 +4115,7 @@ export function createPostService(
           leadingReplyIds: Map<number, string>;
           trailingReplyIds: Map<number, string>;
           latestReplyId: string | null;
+          firstHiddenReplyId: string | null;
           totalReplyCount: number;
         }
       >();
@@ -4116,13 +4124,20 @@ export function createPostService(
           leadingReplyIds: new Map<number, string>(),
           trailingReplyIds: new Map<number, string>(),
           latestReplyId: null,
+          firstHiddenReplyId: null,
           totalReplyCount: row.totalReplyCount,
         };
 
-        if (row.firstReplyRank <= 2) {
+        if (row.firstReplyRank <= THREAD_LEADING_REPLIES) {
           existing.leadingReplyIds.set(row.firstReplyRank, row.id);
         }
-        if (row.latestReplyRank === 2 || row.latestReplyRank === 3) {
+        if (row.firstReplyRank === THREAD_LEADING_REPLIES + 1) {
+          existing.firstHiddenReplyId = row.id;
+        }
+        if (
+          row.latestReplyRank > 1 &&
+          row.latestReplyRank <= THREAD_TRAILING_REPLIES
+        ) {
           existing.trailingReplyIds.set(row.latestReplyRank, row.id);
         }
         if (row.latestReplyRank === 1) {
@@ -4144,16 +4159,36 @@ export function createPostService(
             .map((id) => (id ? hydratedPosts.get(id) : undefined))
             .filter((post): post is Post => post !== undefined);
 
+        const leadingReplies = hydrateReplyIds(
+          Array.from({ length: THREAD_LEADING_REPLIES }, (_unused, index) =>
+            context.leadingReplyIds.get(index + 1),
+          ),
+        );
+        // Ranked newest-first, so walking down to rank 2 puts them back in
+        // thread order. Rank 1 is the hero and is carried separately.
+        const trailingReplies = hydrateReplyIds(
+          Array.from(
+            { length: THREAD_TRAILING_REPLIES - 1 },
+            (_unused, index) =>
+              context.trailingReplyIds.get(THREAD_TRAILING_REPLIES - index),
+          ),
+        );
+        const firstHiddenReply =
+          (context.firstHiddenReplyId
+            ? hydratedPosts.get(context.firstHiddenReplyId)
+            : undefined) ?? null;
+
         result.set(threadId, {
-          leadingReplies: hydrateReplyIds([
-            context.leadingReplyIds.get(1),
-            context.leadingReplyIds.get(2),
-          ]),
-          trailingReplies: hydrateReplyIds([
-            context.trailingReplyIds.get(3),
-            context.trailingReplyIds.get(2),
-          ]),
+          leadingReplies,
+          // Left overlapping on purpose. These are the ranked buckets, not the
+          // rendered fold: on a short thread a reply lands in both windows, and
+          // dropping the duplicate is a presentation rule that `ThreadPreview`
+          // and `getThreadHiddenCount` each already apply.
+          trailingReplies,
           latestReply,
+          // Only a gap target: the query fetches it one past the leading
+          // window, and nothing renders it.
+          firstHiddenReply,
           totalReplyCount: context.totalReplyCount,
         });
       }

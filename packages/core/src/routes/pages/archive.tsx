@@ -46,9 +46,10 @@ import {
 } from "../../lib/filter-dimensions.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
+  buildFeedDiscoveryFields,
   getFeedEntryUpdatedAt,
   getRssPublishedBefore,
-  RSS_FEED_CACHE_CONTROL,
+  renderFeed,
 } from "../../lib/feed-policy.js";
 import { getNavigationData } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
@@ -879,6 +880,7 @@ async function buildArchiveFeedData(
   const feedQuery = buildArchiveFeedQuery(params, dimensionCtx);
 
   return {
+    ...buildFeedDiscoveryFields(c, { query: feedQuery }),
     siteName: appConfig.siteName,
     siteDescription: toPlainText(appConfig.siteDescription),
     siteUrl: appConfig.siteUrl,
@@ -916,12 +918,7 @@ export async function renderArchiveFeed(c: Context<Env>): Promise<Response> {
   // than handing a subscriber the entire archive under the collection's name.
   if (!feedData) return c.notFound();
 
-  return new Response(defaultFeedRenderer(feedData), {
-    headers: {
-      "Content-Type": "application/atom+xml; charset=utf-8",
-      "Cache-Control": RSS_FEED_CACHE_CONTROL,
-    },
-  });
+  return renderFeed(defaultFeedRenderer(feedData));
 }
 
 // Atom — /archive/feed

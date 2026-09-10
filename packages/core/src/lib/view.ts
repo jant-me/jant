@@ -36,7 +36,15 @@ import {
 } from "./time.js";
 import { getCollectionPagePath } from "./collection-paths.js";
 import { getMediaUrl, getImageUrl, getPublicUrlForProvider } from "./image.js";
-import { extractSummaryHtml, extractBodyText } from "./summary.js";
+import {
+  extractSummaryHtml,
+  extractBodyText,
+  ARTICLE_SUMMARY_MAX_BLOCKS,
+  ARTICLE_SUMMARY_MAX_CHARS,
+  NOTE_SUMMARY_MAX_BLOCKS,
+  NOTE_SUMMARY_MAX_CHARS,
+  NOTE_SUMMARY_MIN_HIDDEN_CHARS,
+} from "./summary.js";
 import { renderTiptapDocumentAroundBoundary } from "./tiptap-render.js";
 import { highlightText } from "./search-snippet.js";
 import { isFullUrl, toPublicPath, toSameSitePath } from "./url.js";
@@ -140,15 +148,6 @@ export function toMediaView(media: Media, ctx: MediaContext): MediaView {
 // =============================================================================
 // Post Conversions
 // =============================================================================
-
-/** Feed summary limits for titled, article-style posts (the excerpt is a teaser). */
-const ARTICLE_SUMMARY_MAX_BLOCKS = 5;
-const ARTICLE_SUMMARY_MAX_CHARS = 500;
-/** Larger feed summary limits for untitled notes — the body itself is the content. */
-const NOTE_SUMMARY_MAX_BLOCKS = 10;
-const NOTE_SUMMARY_MAX_CHARS = 1500;
-/** Don't truncate an untitled note just to hide a tail under this many chars. */
-const NOTE_SUMMARY_MIN_HIDDEN_CHARS = 200;
 
 /**
  * Splice a zero-width marker into rendered body HTML at a summary boundary.

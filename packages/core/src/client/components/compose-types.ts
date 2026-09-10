@@ -166,6 +166,10 @@ export interface LocalDraft {
     url: string;
     quoteText: string;
     quoteAuthor: string;
+    /** Optional: drafts stored before thread posts kept these lack them. */
+    rating?: number;
+    showTitle?: boolean;
+    showRating?: boolean;
     attachedTexts: Array<{
       clientId: string;
       bodyJson: JSONContent | null;
@@ -222,6 +226,10 @@ export interface ComposeLabels {
   moveAttachmentEarlier: string;
   moveAttachmentLater: string;
   uploading: string;
+  /** Toast shown while the submitted post is being published. */
+  publishing: string;
+  /** Toast shown while a draft or an edited post is being saved. */
+  saving: string;
   /** Toast when exactly one pasted remote image couldn't be rehosted. */
   imageNotRehosted?: string;
   /** Toast when several pasted remote images couldn't be rehosted (uses a {count} placeholder). */

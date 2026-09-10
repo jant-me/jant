@@ -207,7 +207,9 @@ export type { AuthService, DeleteAccountDeps } from "./auth.js";
 export type { ApiTokenService } from "./api-token.js";
 export type {
   BootstrapService,
-  CompleteInitialSetupData,
+  CompleteSiteSetupData,
+  CompleteSiteSetupDeps,
+  ProvisionOwnerAccountData,
 } from "./bootstrap.js";
 export type { SiteMemberService } from "./site-member.js";
 export type { SiteProfileService } from "./site-profile.js";

@@ -77,6 +77,27 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/**
+ * A display name to open an account under, before the author has given one.
+ *
+ * The first setup screen asks for credentials only, so better-auth needs a
+ * name it can create the row with; the second screen overwrites it with the
+ * site's name. This stands in only for the gap between the two, and for the
+ * setup that is abandoned in it — which is why it is the address the author
+ * just typed rather than a placeholder they would not recognise.
+ *
+ * @param email - The normalized address the account is being opened under
+ * @returns The part before the `@`, or the whole address when there is none
+ * @example
+ * ```ts
+ * deriveAccountName("owner@example.com");
+ * // Returns: "owner"
+ * ```
+ */
+export function deriveAccountName(email: string): string {
+  return email.split("@")[0]?.trim() || email;
+}
+
 /** Trim, strip control characters, and collapse to undefined when empty. */
 function sanitizeText(maxLength: number) {
   return z
@@ -976,10 +997,13 @@ export const CreateCustomUrlSchema = z.object({
 // =============================================================================
 
 /**
- * Setup form validation schema
+ * The first of the two screens a self-hosted site is set up through.
+ *
+ * Credentials and nothing else. Everything about the site itself waits for the
+ * second screen, which is the same screen a hosted site shows — so the two
+ * install kinds converge instead of keeping two forms that drift.
  */
-export const SetupSchema = z.object({
-  siteName: z.string().min(1, "Site name is required"),
+export const SetupAccountSchema = z.object({
   email: z
     .string()
     .transform(normalizeEmail)
@@ -988,16 +1012,10 @@ export const SetupSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters")
     .max(128),
-  // Prefilled from Accept-Language and confirmed by the author. Optional so an
-  // older client or a scripted setup still succeeds; the route falls back to
-  // the same detection the form used.
-  contentLanguage: ContentLanguageSchema.optional().or(
-    z.literal("").transform(() => undefined),
-  ),
 });
 
 /**
- * Setup on a site whose shell already exists.
+ * Setup on a site whose shell already exists and is already named.
  *
  * A control plane created the site and its owner, so the only thing left to
  * settle is the language its author writes in — the one fact no header, host,
@@ -1005,7 +1023,36 @@ export const SetupSchema = z.object({
  */
 export const SetupLanguageSchema = z.object({
   contentLanguage: ContentLanguageSchema,
+  /**
+   * The Jant Discover answer, from the checkbox on the setup screen.
+   *
+   * Optional, and absence is not `false`: an older client or a scripted setup
+   * sends nothing, and that has to keep meaning "leave the deployment default
+   * in force" rather than "the author said no".
+   */
+  discover: z.boolean().optional(),
 });
+
+/**
+ * The second of the two self-hosted screens: the same questions the hosted
+ * screen asks, plus the name only a self-hosted site is still missing.
+ *
+ * Which of the two applies is not a property of the form but of the site — a
+ * site that already has a name is never asked for one — so the route picks the
+ * schema by reading the stored name rather than trusting a field.
+ */
+export const SetupSiteSchema = SetupLanguageSchema.extend({
+  // The message is set twice over on purpose: `.min(1)` catches a field left
+  // blank, and the type-level `error` catches a form that carried no field at
+  // all. Without the second, a scripted setup is told "expected string,
+  // received undefined" — which names nothing the author can act on.
+  siteName: z
+    .string({ error: "Site name is required" })
+    .min(1, "Site name is required"),
+});
+
+/** The answers the last setup screen collects from either install kind. */
+export type SetupLanguageAnswers = z.infer<typeof SetupLanguageSchema>;
 
 /**
  * Sign-in form validation schema

@@ -17,11 +17,13 @@ import type {
 import type {
   PostView,
   FeedPostView,
+  LanguageAlternate,
   LanguageSwitcherOption,
   TimelineItemView,
   SearchResultView,
   ArchiveGroup,
 } from "./views.js";
+import type { DiscoverMode } from "../lib/discover.js";
 
 // =============================================================================
 // Page-Level Props
@@ -249,6 +251,25 @@ export interface FeedData {
   title?: string;
   selfUrl: string;
   posts: FeedPostView[];
+  /**
+   * The site's avatar, for `atom:icon`. Readers show it beside the feed, and
+   * a directory listing the site has no other machine-readable place to find
+   * it. Omitted when the site has no avatar; Atom has no empty-icon form.
+   */
+  siteIconUrl?: string;
+  /**
+   * Effective Jant Discover mode, declared in the feed header. Omitted means
+   * the feed says nothing about Discover — which a crawler reads as "this
+   * site predates the protocol", not as `none`.
+   */
+  discover?: DiscoverMode;
+  /** Absolute URL of the feed a Discover crawler should poll, if any. */
+  discoverFeedUrl?: string | null;
+  /**
+   * The same feed in the site's other languages. Empty on a single-language
+   * site.
+   */
+  languageAlternates?: LanguageAlternate[];
 }
 
 // =============================================================================
@@ -290,6 +311,8 @@ export interface ThreadPreviewProps {
   leadingReplies: PostView[];
   trailingReplies: PostView[];
   latestReply: PostView;
+  /** Where the gap link points: the first post the fold hides. */
+  gapHref?: string;
   totalReplyCount: number;
 }
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createTestDatabase } from "../../../__tests__/helpers/db.js";
 import { sql } from "drizzle-orm";
 import { navItems, settings, siteDomains, sites } from "../../../db/schema.js";
@@ -7,20 +7,21 @@ import type { Database } from "../../../db/index.js";
 import type { BootstrapService } from "../../../services/bootstrap.js";
 
 /**
- * Reproduces the shell bootstrap logic from POST /setup to verify
- * setup stays idempotent even when managed shell data already exists.
+ * Reproduces both halves of POST /setup back to back — the shape a self-hosted
+ * install ends up in — to verify setup stays idempotent even when managed shell
+ * data already exists.
  */
 async function runSetupBootstrap(
   services: { bootstrap: BootstrapService },
-  overrides: Partial<
-    Parameters<BootstrapService["completeInitialSetup"]>[0]
-  > = {},
+  overrides: Partial<Parameters<BootstrapService["completeSiteSetup"]>[0]> = {},
 ) {
-  await services.bootstrap.completeInitialSetup({
+  await services.bootstrap.provisionOwnerAccount({
     ownerUserId: "usr_test-owner",
-    siteName: "Jant Demo",
-    ...overrides,
   });
+  await services.bootstrap.completeSiteSetup(
+    { siteName: "Jant Demo", ...overrides },
+    { oldLanguage: "" },
+  );
 }
 
 describe("Setup bootstrap logic", () => {
@@ -59,6 +60,80 @@ describe("Setup bootstrap logic", () => {
     const rows = await services.db.select().from(settings);
     const onboardingRow = rows.find((row) => row.key === "ONBOARDING_STATUS");
     expect(onboardingRow?.value).toBe("completed");
+  });
+
+  // The state the site rests in between the two setup screens. It has to be
+  // `provisioned` and not `pending`: that is what lets an author who lost the
+  // session in between sign back in and finish, rather than being bounced back
+  // to a form that would try to create their account a second time.
+  it("leaves the site provisioned and unnamed after the account step", async () => {
+    await services.bootstrap.provisionOwnerAccount({
+      ownerUserId: "usr_test-owner",
+    });
+
+    const rows = await services.db.select().from(settings);
+    expect(rows.find((row) => row.key === "ONBOARDING_STATUS")?.value).toBe(
+      "provisioned",
+    );
+    expect(rows.find((row) => row.key === "SITE_NAME")).toBeUndefined();
+
+    const navItemsList = await services.db.select().from(navItems);
+    expect(navItemsList).toHaveLength(5);
+  });
+
+  // The hosted path through the same method: the control plane named the site
+  // at creation, and the author answering the last screen must not blank it.
+  it("leaves an existing name alone when the last screen asked for none", async () => {
+    await runSetupBootstrap(services);
+    await services.bootstrap.completeSiteSetup(
+      { siteLanguage: "en" },
+      { oldLanguage: "en" },
+    );
+
+    const rows = await services.db.select().from(settings);
+    expect(rows.find((row) => row.key === "SITE_NAME")?.value).toBe(
+      "Jant Demo",
+    );
+  });
+
+  it("renames the operator's account to match the site", async () => {
+    const updateCurrentUserName = vi.fn(async () => undefined);
+
+    await services.bootstrap.provisionOwnerAccount({
+      ownerUserId: "usr_test-owner",
+    });
+    await services.bootstrap.completeSiteSetup(
+      { siteName: "  Jant Demo  " },
+      { oldLanguage: "" },
+      { updateCurrentUserName },
+    );
+
+    expect(updateCurrentUserName).toHaveBeenCalledWith("Jant Demo");
+  });
+
+  // The rename runs before onboarding closes, so a better-auth failure leaves
+  // the author on the screen they were already on instead of inside a finished
+  // site under a stale account name.
+  it("leaves setup open when the account rename fails", async () => {
+    await services.bootstrap.provisionOwnerAccount({
+      ownerUserId: "usr_test-owner",
+    });
+    await expect(
+      services.bootstrap.completeSiteSetup(
+        { siteName: "Jant Demo" },
+        { oldLanguage: "" },
+        {
+          updateCurrentUserName: async () => {
+            throw new Error("better-auth unavailable");
+          },
+        },
+      ),
+    ).rejects.toThrow("better-auth unavailable");
+
+    const rows = await services.db.select().from(settings);
+    expect(rows.find((row) => row.key === "ONBOARDING_STATUS")?.value).toBe(
+      "provisioned",
+    );
   });
 
   it("stores the chosen content language and timezone during setup", async () => {

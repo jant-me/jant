@@ -1,12 +1,17 @@
 {{- /*
   Thread preview partial.
 
-  Matches the main site's `ThreadPreview` component layout:
-    root post  (full card, as "context")
-    second reply (full card, as "context")  ← if distinct
-    "N more posts" gap pill ← if there are hidden middle replies
-    penultimate reply (full card, as "context") ← if distinct
-    latest reply (full card, as "hero")
+  Matches the main site's `ThreadPreview` component, and the fold both it and
+  the feed take from `lib/thread-fold.ts` (`foldThreadReplies`):
+    root post                                (full card, as "context")
+    the first THREAD_LEADING_REPLIES (2)     (full cards, as "context")
+    "N more posts" gap pill                  ← only when the fold hides any
+    the two before the newest reply          (full cards, as "context")
+    newest reply                             (full card, as "hero")
+
+  The trailing window is THREAD_TRAILING_REPLIES (3) with the hero inside it.
+  On a short thread the windows overlap, so each list drops whatever an
+  earlier one already shows, hero first — the same order the site dedupes in.
 
   Each entry is wrapped in a `.thread-item` so the rail dot markers
   line up the same way the main site does via `.thread-item::before`.
@@ -20,29 +25,34 @@
 {{- if eq $replyCount 0 -}}
   {{ partial "post-card.html" $root }}
 {{- else -}}
-  {{- /* First-in / last-in replies, with overlap handled below. */ -}}
   {{- $latest := index $replies (sub $replyCount 1) -}}
-  {{- $second := index $replies 0 -}}
-  {{- $penultimate := cond (gt $replyCount 2) (index $replies (sub $replyCount 2)) false -}}
-
-  {{- $renderSecond := ne $second.File.UniqueID $latest.File.UniqueID -}}
-  {{- $renderPenultimate := and $penultimate (ne $penultimate.File.UniqueID $latest.File.UniqueID) -}}
-  {{- if $penultimate -}}
-    {{- if eq $penultimate.File.UniqueID $second.File.UniqueID -}}
-      {{- $renderPenultimate = false -}}
+  {{- $leading := slice -}}
+  {{- range first 2 $replies -}}
+    {{- if ne .File.UniqueID $latest.File.UniqueID -}}
+      {{- $leading = $leading | append . -}}
     {{- end -}}
   {{- end -}}
+  {{- $trailing := slice -}}
+  {{- range last 3 $replies -}}
+    {{- $reply := . -}}
+    {{- $shown := eq $reply.File.UniqueID $latest.File.UniqueID -}}
+    {{- range $leading -}}
+      {{- if eq .File.UniqueID $reply.File.UniqueID -}}{{- $shown = true -}}{{- end -}}
+    {{- end -}}
+    {{- if not $shown -}}{{- $trailing = $trailing | append $reply -}}{{- end -}}
+  {{- end -}}
 
-  {{- /* Count of context posts actually rendered above the hero (second
-       + penultimate when distinct from latest and each other). The
-       remainder of replies is the "hidden middle" count. Mirrors
-       `getThreadPreviewState` in thread-preview-state.ts. */ -}}
-  {{- $visibleContextReplies := 0 -}}
-  {{- if $renderSecond -}}{{- $visibleContextReplies = add $visibleContextReplies 1 -}}{{- end -}}
-  {{- if $renderPenultimate -}}{{- $visibleContextReplies = add $visibleContextReplies 1 -}}{{- end -}}
-  {{- /* Total replies rendered = visibleContextReplies + 1 (hero). */ -}}
-  {{- $hiddenCount := sub $replyCount (add $visibleContextReplies 1) -}}
-  {{- if lt $hiddenCount 0 -}}{{- $hiddenCount = 0 -}}{{- end -}}
+  {{- /* Whatever neither window shows is the hidden middle. It is never
+       negative: the three lists are disjoint and all drawn from $replies. */ -}}
+  {{- $hiddenCount := sub $replyCount (add (add (len $leading) (len $trailing)) 1) -}}
+  {{- /* The gap leads to the first hidden reply, as the site's does. A fold
+       only hides anything once both windows are full, so that reply sits
+       right after the leading window. Replies are not rendered as pages
+       (`build: render: never`), so their `.RelPermalink` is empty; the
+       exporter registers every reply slug as an alias on the root, and
+       that is the address a reply has. */ -}}
+  {{- $gapHref := $root.RelPermalink -}}
+  {{- if gt $hiddenCount 0 -}}{{- $gapHref = printf "/%s/" (index $replies 2).Slug | relURL -}}{{- end -}}
 
   {{- $slug := $root.Params.slug | default $root.Slug -}}
   <article class="thread-preview" data-slug="{{ $slug }}" data-reply-count="{{ $replyCount }}">
@@ -51,23 +61,23 @@
         {{ partial "post-card.html" $root }}
       </div>
 
-      {{- if $renderSecond -}}
+      {{- range $leading -}}
         <div class="thread-item thread-item-context">
-          {{ partial "post-card.html" $second }}
+          {{ partial "post-card.html" . }}
         </div>
       {{- end -}}
 
       {{- if gt $hiddenCount 0 -}}
         <div class="thread-item thread-item-gap">
-          <a class="thread-preview-gap" href="{{ $root.RelPermalink }}">
+          <a class="thread-preview-gap" href="{{ $gapHref }}">
             {{ $hiddenCount }} more {{ if eq $hiddenCount 1 }}post{{ else }}posts{{ end }}
           </a>
         </div>
       {{- end -}}
 
-      {{- if $renderPenultimate -}}
+      {{- range $trailing -}}
         <div class="thread-item thread-item-context">
-          {{ partial "post-card.html" $penultimate }}
+          {{ partial "post-card.html" . }}
         </div>
       {{- end -}}
     </div>

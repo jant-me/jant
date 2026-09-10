@@ -39,6 +39,14 @@ function cookieHeaderFromSetCookies(cookies) {
     .join("; ");
 }
 
+async function readSetting(pool, key) {
+  const result = await pool.query(
+    'SELECT "value" FROM "site_setting" WHERE "key" = $1',
+    [key],
+  );
+  return result.rows[0]?.value;
+}
+
 async function recreateDatabase(adminDatabaseUrl, databaseName) {
   const adminPool = new Pool({
     connectionString: adminDatabaseUrl,
@@ -153,29 +161,63 @@ async function main() {
     );
     assert.equal(siteCountAfterGet.rows[0]?.count, "0");
 
-    const setupResponse = await handler.fetch(
+    // Setup is two screens. The first opens the account through better-auth,
+    // stands the site row up around it, and signs the owner in; the second is
+    // answered from that session and closes onboarding. Each is checked against
+    // the database rather than the redirect alone, since a Postgres-only failure
+    // would show up as a status that never advanced.
+    const accountResponse = await handler.fetch(
       new Request("http://127.0.0.1:3000/setup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          siteName: "PG Smoke",
           email: "pg-smoke@example.com",
           password: "pg-smoke-password",
-          timezone: "Asia/Shanghai",
-          language: "en-US",
         }),
       }),
     );
 
-    assert.equal(setupResponse.status, 200);
-    assert.match(await setupResponse.text(), /\/signin\?setup/);
+    assert.equal(accountResponse.status, 200);
+    assert.match(await accountResponse.text(), /href='\/setup'/);
+    const setupCookieHeader = cookieHeaderFromSetCookies(
+      accountResponse.headers.getSetCookie(),
+    );
+    assert.match(setupCookieHeader, /better-auth\.session_token=/);
 
-    const siteCountAfterSetup = await assertPool.query(
+    const siteCountAfterAccount = await assertPool.query(
       'SELECT COUNT(*)::text AS "count" FROM "site"',
     );
-    assert.equal(siteCountAfterSetup.rows[0]?.count, "1");
+    assert.equal(siteCountAfterAccount.rows[0]?.count, "1");
+    assert.equal(
+      await readSetting(assertPool, "ONBOARDING_STATUS"),
+      "provisioned",
+    );
+
+    const siteResponse = await handler.fetch(
+      new Request("http://127.0.0.1:3000/setup", {
+        method: "POST",
+        headers: {
+          Cookie: setupCookieHeader,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          siteName: "PG Smoke",
+          contentLanguage: "en",
+          language: "en-US",
+          timezone: "Asia/Shanghai",
+        }),
+      }),
+    );
+
+    assert.equal(siteResponse.status, 200);
+    assert.match(await siteResponse.text(), /href='\/'/);
+    assert.equal(
+      await readSetting(assertPool, "ONBOARDING_STATUS"),
+      "completed",
+    );
+    assert.equal(await readSetting(assertPool, "SITE_NAME"), "PG Smoke");
 
     const signinResponse = await handler.fetch(
       new Request("http://127.0.0.1:3000/signin", {
