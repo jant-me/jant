@@ -39,16 +39,45 @@ function normalizePathPrefix(value) {
   return normalized || null;
 }
 
-function resolveSelector(options = {}) {
-  if (typeof options.site === "string" && options.site.trim()) {
-    return {
-      kind: "site",
-      siteId: options.site.trim(),
-    };
+/**
+ * Printed when a host-based command names no site. Kept word for word with
+ * `resolveCliSite` in `src/runtime/site.ts`, which the Node path uses.
+ */
+const HOST_BASED_SITE_REQUIRED_MESSAGE =
+  "host-based mode needs a target site. Pass --site <key|id>, --host <host>, or --url <url>.";
+
+function getTrimmedOption(value) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/**
+ * Turn the site flags a command parsed into the selector both resolvers take:
+ * this file's raw-SQL `resolveCliSite` and `createNodeCliRuntime`.
+ *
+ * @param {{ site?: string, host?: string, pathPrefix?: string, url?: string }} [options]
+ *   The `--site`, `--host`, `--path-prefix` and `--url` values
+ * @returns {{ kind: "site", idOrKey: string } | { kind: "host", host: string, pathPrefix: string | null } | null}
+ *   The selector, or null when no site flag was passed
+ * @throws {Error} When more than one of `--site`, `--host` and `--url` is set
+ * @example
+ * parseCliSiteSelector({ url: "https://example.com/blog/" });
+ * // { kind: "host", host: "example.com", pathPrefix: "/blog" }
+ */
+export function parseCliSiteSelector(options = {}) {
+  const site = getTrimmedOption(options.site);
+  const host = getTrimmedOption(options.host);
+  const url = getTrimmedOption(options.url);
+
+  if ([site, host, url].filter(Boolean).length > 1) {
+    throw new Error("Choose only one of --site, --host, or --url.");
   }
 
-  if (typeof options.url === "string" && options.url.trim()) {
-    const parsed = new URL(options.url.trim());
+  if (site) {
+    return { kind: "site", idOrKey: site };
+  }
+
+  if (url) {
+    const parsed = new URL(url);
     return {
       kind: "host",
       host: parsed.host,
@@ -56,10 +85,10 @@ function resolveSelector(options = {}) {
     };
   }
 
-  if (typeof options.host === "string" && options.host.trim()) {
+  if (host) {
     return {
       kind: "host",
-      host: options.host.trim(),
+      host,
       pathPrefix: normalizePathPrefix(options.pathPrefix),
     };
   }
@@ -67,21 +96,26 @@ function resolveSelector(options = {}) {
   return null;
 }
 
-async function resolveSiteById(queryRunner, siteId) {
+// Mirrors `SiteService.getByIdOrKey`: an id match wins over a key match.
+async function resolveSiteByIdOrKey(queryRunner, idOrKey) {
+  const escaped = escapeSqlString(idOrKey);
   const rows = await queryRunner.query(`
     SELECT "id", "key", "status", "created_at", "updated_at"
     FROM "site"
-    WHERE "id" = '${escapeSqlString(siteId)}'
-    LIMIT 1
+    WHERE "id" = '${escaped}' OR "key" = '${escaped}'
+    LIMIT 2
   `);
 
-  if (rows.length === 0) {
-    throw new Error(`No site found for --site ${siteId}.`);
+  const row =
+    rows.find((candidate) => getOptionalString(candidate, "id") === idOrKey) ??
+    rows[0];
+  if (!row) {
+    throw new Error(`No site found for --site ${idOrKey}.`);
   }
 
   return {
     created: false,
-    site: toSite(rows[0]),
+    site: toSite(row),
   };
 }
 
@@ -148,16 +182,46 @@ export function getCliSiteResolutionMode(env = process.env) {
     : "single-site";
 }
 
+/**
+ * Resolve the site a command acts on with raw SQL, for runtimes that cannot
+ * run the site service (D1 through Wrangler, snapshot tooling).
+ *
+ * A site flag wins in either mode. Without one, single-site mode uses the
+ * instance's one site, and host-based mode fails before querying: a hosted
+ * database holds every tenant, so there is no default to fall back to.
+ *
+ * @param {{ query(sql: string): Promise<Record<string, unknown>[]>, execute?(sql: string): Promise<void> }} queryRunner
+ *   Runs SQL against the target database
+ * @param {{ env?: Record<string, string | undefined>, site?: string, host?: string, pathPrefix?: string, url?: string, createIfMissing?: boolean, bootstrapSite?: { id?: string, key?: string } }} [options]
+ *   The environment, the command's site flags, and whether single-site mode
+ *   may create the site shell when none exists
+ * @returns {Promise<{ created: boolean, site: { id: string, key: string, status: string, createdAt: number, updatedAt: number } }>}
+ *   The site, and whether this call created it
+ * @throws {Error} When the flags match no site, when host-based mode has none,
+ *   or when single-site mode finds zero sites it may not create or several
+ * @example
+ * const { site } = await resolveCliSite(context, {
+ *   env: process.env,
+ *   site: values.site,
+ *   host: values.host,
+ *   pathPrefix: values["path-prefix"],
+ *   url: values.url,
+ * });
+ */
 export async function resolveCliSite(queryRunner, options = {}) {
   const resolutionMode = getCliSiteResolutionMode(options.env);
-  const selector = resolveSelector(options);
+  const selector = parseCliSiteSelector(options);
 
   if (selector?.kind === "site") {
-    return resolveSiteById(queryRunner, selector.siteId);
+    return resolveSiteByIdOrKey(queryRunner, selector.idOrKey);
   }
 
   if (selector?.kind === "host") {
     return resolveSiteByHost(queryRunner, selector.host, selector.pathPrefix);
+  }
+
+  if (resolutionMode === "host-based") {
+    throw new Error(HOST_BASED_SITE_REQUIRED_MESSAGE);
   }
 
   const rows = await queryRunner.query(`
@@ -168,12 +232,6 @@ export async function resolveCliSite(queryRunner, options = {}) {
   `);
 
   if (rows.length === 0) {
-    if (resolutionMode !== "single-site") {
-      throw new Error(
-        "No site configured for this instance. Create a site before using host-based mode.",
-      );
-    }
-
     if (!options.createIfMissing || typeof queryRunner.execute !== "function") {
       throw new Error(
         "single-site mode requires an initialized site. Complete /setup first or run a command that can bootstrap the site shell.",
@@ -208,11 +266,9 @@ export async function resolveCliSite(queryRunner, options = {}) {
   }
 
   if (rows.length > 1) {
-    const message =
-      resolutionMode === "single-site"
-        ? `single-site mode found multiple sites in the database: ${formatSiteSummary(rows)}. Restore SITE_RESOLUTION_MODE=host-based for this database, or remove the extra sites before restarting in single-site mode.`
-        : "host-based mode requires --site, --host, or --url when the database contains multiple sites.";
-    throw new Error(message);
+    throw new Error(
+      `single-site mode found multiple sites in the database: ${formatSiteSummary(rows)}. Restore SITE_RESOLUTION_MODE=host-based for this database, or remove the extra sites before restarting in single-site mode.`,
+    );
   }
 
   return {

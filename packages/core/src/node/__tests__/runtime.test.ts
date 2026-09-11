@@ -204,6 +204,43 @@ describe("resolveNodeAssetRoot", () => {
     ).rejects.toThrow("single-site mode found multiple sites in the database:");
   });
 
+  // The single-site readiness check blames SITE_RESOLUTION_MODE for extra
+  // sites, which on a hosted database are just its tenants.
+  it("starts in host-based mode when the database holds several sites", async () => {
+    const root = await mkdtemp(join(tmpdir(), "jant-node-host-based-sites-"));
+    tempDirs.push(root);
+    const databasePath = join(root, "data", "jant.sqlite");
+
+    await migrate({
+      DATABASE_URL: `file:${databasePath}`,
+    } as Bindings);
+
+    const sqlite = new Database(databasePath);
+    try {
+      sqlite
+        .prepare(
+          `
+            INSERT INTO site (id, key, status, created_at, updated_at)
+            VALUES
+              ('sit_primary00000000000000000000', 'primary', 'active', 1774200000, 1774200000),
+              ('sit_extra000000000000000000000', 'extra', 'active', 1774200001, 1774200001)
+          `,
+        )
+        .run();
+    } finally {
+      sqlite.close();
+    }
+
+    const handler = await createNodeRequestHandler({
+      assetRoot: null,
+      env: {
+        DATABASE_URL: `file:${databasePath}`,
+        ...VALID_HOST_BASED_NODE_ENV,
+      } as Bindings,
+    });
+    await handler.close();
+  });
+
   it("fails fast when host-based mode is missing hosted control-plane config", async () => {
     const root = await mkdtemp(join(tmpdir(), "jant-node-host-based-config-"));
     tempDirs.push(root);

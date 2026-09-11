@@ -124,40 +124,107 @@ export async function resolveRequestSite(
   return resolved;
 }
 
+/**
+ * The site a CLI command was told to act on. The `jant` CLI builds it from
+ * `--site <key|id>`, `--host <host>` with `--path-prefix`, or `--url <url>`
+ * (see `parseCliSiteSelector` in `bin/lib/site-selection.js`).
+ */
+export type CliSiteSelector =
+  | { kind: "site"; idOrKey: string }
+  | {
+      kind: "host";
+      host: string;
+      /** The domain's stored prefix (`/blog`), or null for a root domain. */
+      pathPrefix: string | null;
+    };
+
+/**
+ * Printed when a host-based CLI command names no site. Kept word for word with
+ * the raw-SQL resolver the D1 path uses in `bin/lib/site-selection.js`.
+ */
+const HOST_BASED_CLI_SITE_REQUIRED_MESSAGE =
+  "host-based mode needs a target site. Pass --site <key|id>, --host <host>, or --url <url>.";
+
+async function resolveSelectedCliSite(
+  db: Database,
+  selector: CliSiteSelector,
+  databaseSchema: DatabaseSchema,
+): Promise<SiteLookupResult> {
+  const siteService = createSiteService(db, databaseSchema);
+
+  if (selector.kind === "site") {
+    const site = await siteService.getByIdOrKey(selector.idOrKey);
+    if (!site) {
+      throw new Error(`No site found for --site ${selector.idOrKey}.`);
+    }
+    return {
+      site,
+      domain: await siteService.getPrimaryDomainForSite(site.id),
+    };
+  }
+
+  const resolved = await siteService.resolveByHost(
+    selector.host,
+    selector.pathPrefix,
+  );
+  if (!resolved) {
+    throw new Error(
+      `No site found for host "${selector.host}"${selector.pathPrefix ? ` and path prefix "${selector.pathPrefix}"` : ""}.`,
+    );
+  }
+  return resolved;
+}
+
+/**
+ * Resolve the site a CLI command acts on.
+ *
+ * A selector wins in either mode. Without one, single-site mode uses the
+ * instance's one site, and host-based mode fails before touching the
+ * database: a hosted database holds every tenant, so there is no default to
+ * fall back to — not even when it happens to hold one site today.
+ *
+ * @param db - The database
+ * @param env - Bindings that carry `SITE_RESOLUTION_MODE` and the single-site
+ *   origin
+ * @param selector - The site the command was told to act on, if any
+ * @param databaseSchema - The schema bundle for the database's dialect
+ * @returns The site and its domain
+ * @throws {Error} When the selector matches no site, when host-based mode has
+ *   no selector, or when single-site mode has not finished setup
+ * @example
+ * ```ts
+ * await resolveCliSite(db, env, { kind: "site", idOrKey: "demo" });
+ * ```
+ */
 export async function resolveCliSite(
   db: Database,
   env: Bindings,
+  selector: CliSiteSelector | null = null,
   databaseSchema: DatabaseSchema = sqliteSchemaBundle,
 ): Promise<SiteLookupResult> {
-  const siteService = createSiteService(db, databaseSchema);
-  const resolutionMode = getSiteResolutionMode(env);
-
-  if (resolutionMode === "single-site") {
-    const resolved = await siteService.resolveSingleSite({
-      ...getSingleSiteBootstrapOptions(env),
-      createIfMissing: false,
-    });
-
-    if (resolved.site.id === TRANSIENT_SINGLE_SITE_ID) {
-      throw new Error(
-        "No site is configured for this instance yet. Finish /setup before running this command.",
-      );
-    }
-
-    return resolved;
+  if (selector) {
+    return resolveSelectedCliSite(db, selector, databaseSchema);
   }
 
-  const onlySite = await siteService.getOnlySite();
-  if (!onlySite) {
+  if (getSiteResolutionMode(env) === "host-based") {
+    throw new Error(HOST_BASED_CLI_SITE_REQUIRED_MESSAGE);
+  }
+
+  const resolved = await createSiteService(
+    db,
+    databaseSchema,
+  ).resolveSingleSite({
+    ...getSingleSiteBootstrapOptions(env),
+    createIfMissing: false,
+  });
+
+  if (resolved.site.id === TRANSIENT_SINGLE_SITE_ID) {
     throw new Error(
-      "CLI site selection for host-based mode is not implemented yet.",
+      "No site is configured for this instance yet. Finish /setup before running this command.",
     );
   }
 
-  return {
-    site: onlySite,
-    domain: null,
-  };
+  return resolved;
 }
 
 export function getResolvedSiteBaseUrl(

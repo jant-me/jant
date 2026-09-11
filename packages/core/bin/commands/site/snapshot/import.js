@@ -204,7 +204,7 @@ export async function run(argv) {
     console.log(
       "  --replace               Replace the current content scope before importing",
     );
-    console.log("  --site                  Target site id");
+    console.log("  --site                  Target site key or id");
     console.log("  --host                  Target site host");
     console.log("  --url                   Target site URL");
     console.log("  --path-prefix           Path prefix used with --host");

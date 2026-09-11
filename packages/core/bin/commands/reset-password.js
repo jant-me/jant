@@ -7,7 +7,7 @@ import {
   bootstrapCliRuntime,
   getCliRuntimeLabel,
 } from "../lib/runtime-target.js";
-import { resolveCliSite } from "../lib/site-selection.js";
+import { parseCliSiteSelector, resolveCliSite } from "../lib/site-selection.js";
 
 export async function run(argv) {
   const { values } = parseArgs({
@@ -29,7 +29,9 @@ export async function run(argv) {
   });
 
   if (values.help) {
-    console.log("Usage: jant reset-password [--local | --remote | --node]");
+    console.log(
+      "Usage: jant reset-password [--local | --remote | --node] [--site <key|id> | --host <host> | --url <url>]",
+    );
     console.log("");
     console.log("Generate a password reset token (expires in 15 minutes).");
     console.log("");
@@ -37,7 +39,7 @@ export async function run(argv) {
     console.log("  --local   Force local D1 instead of DATABASE_URL");
     console.log("  --remote  Run against remote D1 database (default: local)");
     console.log("  --node    Force Node runtime even if DATABASE_URL is unset");
-    console.log("  --site    Target site id");
+    console.log("  --site    Target site key or id");
     console.log("  --host    Target site host");
     console.log("  --url     Target site URL");
     console.log("  --path-prefix Path prefix used with --host");
@@ -53,10 +55,20 @@ export async function run(argv) {
       "If DATABASE_URL or DATA_DIR is then set and no runtime flag is passed,",
     );
     console.log("this command uses the Node database runtime.");
+    console.log("");
+    console.log(
+      "With SITE_RESOLUTION_MODE=host-based, pass one of --site, --host, or --url.",
+    );
     process.exit(0);
   }
 
   const { runtime } = bootstrapCliRuntime(values);
+  const siteFlags = {
+    host: values.host,
+    pathPrefix: values["path-prefix"],
+    site: values.site,
+    url: values.url,
+  };
 
   const token = randomBytes(32).toString("hex");
   const hash = createHash("sha256").update(token).digest("hex");
@@ -65,11 +77,15 @@ export async function run(argv) {
   const timestamp = Math.floor(Date.now() / 1000);
 
   if (runtime === "node") {
+    const siteSelector = parseCliSiteSelector(siteFlags);
     const { createNodeCliRuntime } = await loadNodeRuntime();
     const nodeDatabase = await openNodeDatabase(process.env);
 
     try {
-      const nodeRuntime = await createNodeCliRuntime(nodeDatabase.bindings);
+      const nodeRuntime = await createNodeCliRuntime(
+        nodeDatabase.bindings,
+        siteSelector,
+      );
       await nodeRuntime.services.settings.set("PASSWORD_RESET_TOKEN", value);
     } finally {
       await nodeDatabase.close();
@@ -95,10 +111,7 @@ export async function run(argv) {
       },
       {
         env: process.env,
-        host: values.host,
-        pathPrefix: values["path-prefix"],
-        site: values.site,
-        url: values.url,
+        ...siteFlags,
       },
     );
 

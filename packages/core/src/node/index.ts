@@ -7,6 +7,7 @@ export {
   createNodeCliRuntime,
   createNodeRequestRuntime,
 } from "../runtime/node.js";
+export type { CliSiteSelector } from "../runtime/site.js";
 export { createExportService } from "../services/export.js";
 export { createStorageDriver } from "../lib/storage.js";
 export { resolveConfig } from "../lib/resolve-config.js";

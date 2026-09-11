@@ -27,6 +27,7 @@ import {
   getResolvedSiteBaseUrl,
   resolveCliSite,
   resolveRequestSite,
+  type CliSiteSelector,
 } from "./site.js";
 
 export interface NodeRequestRuntime {
@@ -176,9 +177,24 @@ export async function createNodeRequestRuntime(
  * Builds the runtime objects needed by local CLI commands.
  *
  * Unlike the request runtime, this path does not require auth configuration.
+ *
+ * @param env - Bindings with a resolved `NODE_DATABASE` or `NODE_SQLITE`
+ * @param selector - The site the command acts on. Required in host-based
+ *   mode; single-site mode falls back to the instance's one site.
+ * @returns Services, storage and database scoped to that site
+ * @throws {Error} When host-based mode has no selector, or the selector
+ *   matches no site
+ * @example
+ * ```ts
+ * const runtime = await createNodeCliRuntime(bindings, {
+ *   kind: "site",
+ *   idOrKey: "demo",
+ * });
+ * ```
  */
 export async function createNodeCliRuntime(
   env: Bindings,
+  selector: CliSiteSelector | null = null,
 ): Promise<NodeCliRuntime> {
   const nodeDatabase = env.NODE_DATABASE;
   const sqlite = env.NODE_SQLITE;
@@ -195,7 +211,7 @@ export async function createNodeCliRuntime(
 
   const slugIdLength =
     parseInt(getEnvString(env, "SLUG_ID_LENGTH") ?? "5", 10) || 5;
-  const siteLookup = await resolveCliSite(db, env, databaseSchema);
+  const siteLookup = await resolveCliSite(db, env, selector, databaseSchema);
 
   return {
     currentSite: siteLookup.site,

@@ -5,7 +5,8 @@ import {
 } from "../../__tests__/helpers/db.js";
 import { sqliteSchemaBundle } from "../../db/schema-bundle.js";
 import { createRequestRuntime } from "../index.js";
-import { createNodeRequestRuntime } from "../node.js";
+import { createNodeCliRuntime, createNodeRequestRuntime } from "../node.js";
+import type { CliSiteSelector } from "../site.js";
 import type { Bindings } from "../../types.js";
 import { siteDomains, sites } from "../../db/schema.js";
 import {
@@ -258,5 +259,125 @@ describe("createNodeRequestRuntime", () => {
     expect(consoleError).toHaveBeenCalledWith(
       "[Jant] Hosted site resolution failed: host=suspended.localtest.me path=/ reason=site-not-active siteId=sit_test00000000000000000000000 siteKey=default siteStatus=suspended",
     );
+  });
+});
+
+describe("createNodeCliRuntime", () => {
+  const OTHER_SITE_ID = "sit_other0000000000000000000000";
+
+  function nodeDatabaseBindings(
+    testDb: ReturnType<typeof createTestDatabase>,
+    env: Partial<Bindings> = {},
+  ): Bindings {
+    return {
+      NODE_DATABASE: {
+        db: testDb.db,
+        dialect: "sqlite",
+        rawQuery: createSqliteRawQuery(testDb.sqlite),
+        schema: sqliteSchemaBundle,
+      },
+      ...env,
+    } as Bindings;
+  }
+
+  /** The default test site plus a second tenant on its own host. */
+  function createDatabaseWithTwoSites() {
+    const testDb = createTestDatabase();
+    testDb.sqlite
+      .prepare(
+        `
+          INSERT INTO site (id, key, status, created_at, updated_at)
+          VALUES (?, 'other', 'active', 1774200001, 1774200001)
+        `,
+      )
+      .run(OTHER_SITE_ID);
+    testDb.sqlite
+      .prepare(
+        `
+          INSERT INTO site_domain (id, site_id, host, path_prefix, kind, redirect_to_primary, created_at, updated_at)
+          VALUES ('std_other_1', ?, 'other.localtest.me', NULL, 'primary', 1, 1774200001, 1774200001)
+        `,
+      )
+      .run(OTHER_SITE_ID);
+    return testDb;
+  }
+
+  // A hosted database holds every tenant, so there is no "only site" to fall
+  // back to. The single-site lookup would blame SITE_RESOLUTION_MODE, which is
+  // already host-based; the CLI has to say which flag picks the site.
+  it("requires a site selector in host-based mode with several sites", async () => {
+    const testDb = createDatabaseWithTwoSites();
+
+    await expect(
+      createNodeCliRuntime(
+        nodeDatabaseBindings(testDb, { SITE_RESOLUTION_MODE: "host-based" }),
+      ),
+    ).rejects.toThrow(
+      "host-based mode needs a target site. Pass --site <key|id>, --host <host>, or --url <url>.",
+    );
+  });
+
+  it.each<[string, CliSiteSelector]>([
+    ["key", { kind: "site", idOrKey: "other" }],
+    ["id", { kind: "site", idOrKey: OTHER_SITE_ID }],
+    ["host", { kind: "host", host: "other.localtest.me", pathPrefix: null }],
+  ])(
+    "scopes a host-based runtime to the site selected by %s",
+    async (_label, selector) => {
+      const testDb = createDatabaseWithTwoSites();
+
+      const runtime = await createNodeCliRuntime(
+        nodeDatabaseBindings(testDb, { SITE_RESOLUTION_MODE: "host-based" }),
+        selector,
+      );
+      await runtime.services.settings.set("PASSWORD_RESET_TOKEN", "hash:1");
+
+      expect(runtime.currentSite.id).toBe(OTHER_SITE_ID);
+      expect(runtime.currentSiteDomain?.host).toBe("other.localtest.me");
+      expect(
+        testDb.sqlite
+          .prepare(
+            `SELECT site_id FROM site_setting WHERE key = 'PASSWORD_RESET_TOKEN'`,
+          )
+          .pluck()
+          .all(),
+      ).toEqual([OTHER_SITE_ID]);
+    },
+  );
+
+  it("names the selector that matched no site", async () => {
+    const testDb = createDatabaseWithTwoSites();
+    const env = nodeDatabaseBindings(testDb, {
+      SITE_RESOLUTION_MODE: "host-based",
+    });
+
+    await expect(
+      createNodeCliRuntime(env, { kind: "site", idOrKey: "missing" }),
+    ).rejects.toThrow("No site found for --site missing.");
+    await expect(
+      createNodeCliRuntime(env, {
+        kind: "host",
+        host: "other.localtest.me",
+        pathPrefix: "/blog",
+      }),
+    ).rejects.toThrow(
+      'No site found for host "other.localtest.me" and path prefix "/blog".',
+    );
+  });
+
+  it("uses the instance's one site in single-site mode", async () => {
+    const runtime = await createNodeCliRuntime(
+      nodeDatabaseBindings(createTestDatabase()),
+    );
+
+    expect(runtime.currentSite.id).toBe(DEFAULT_TEST_SITE_ID);
+  });
+
+  // Here the single-site error is the accurate one: the database really does
+  // belong to a host-based install.
+  it("reports a multi-site database in single-site mode as misconfigured", async () => {
+    await expect(
+      createNodeCliRuntime(nodeDatabaseBindings(createDatabaseWithTwoSites())),
+    ).rejects.toThrow("single-site mode found multiple sites in the database:");
   });
 });

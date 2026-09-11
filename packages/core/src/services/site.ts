@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, or } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import {
   sqliteSchemaBundle,
@@ -27,14 +27,76 @@ export interface ResolveSingleSiteOptions extends EnsureSingleSiteOptions {
   createIfMissing?: boolean;
 }
 
+/**
+ * Site lookups.
+ *
+ * `getOnlySite`, `resolveSingleSite` and `ensureSingleSite` belong to
+ * single-site mode. They answer "which site is this instance?", which has no
+ * answer on a hosted database, and once a second site exists they throw a
+ * `ConfigurationError` telling the operator to restore
+ * `SITE_RESOLUTION_MODE=host-based`. A host-based caller names its site
+ * instead — by host (`resolveByHost`), or by id or key (`getByIdOrKey`) — and
+ * never reaches those three.
+ */
 export interface SiteService {
   list(): Promise<Site[]>;
   getById(id: string): Promise<Site | null>;
+  /**
+   * Find the site an operator named by id or by key.
+   *
+   * Both columns are unique, and a managed key cannot contain the `_` every id
+   * carries, so at most one site answers in practice. If a hand-edited key
+   * ever equals another site's id, the id match wins.
+   *
+   * @param idOrKey - A site id (`sit_…`) or key
+   * @returns The site, or null when neither column matches
+   * @example
+   * ```ts
+   * await siteService.getByIdOrKey("demo");
+   * ```
+   */
+  getByIdOrKey(idOrKey: string): Promise<Site | null>;
   getPrimaryDomainForSite(siteId: string): Promise<SiteDomain | null>;
+  /**
+   * The instance's one site. Single-site mode only.
+   *
+   * @returns The site, or null before setup has created it
+   * @throws {ConfigurationError} When the database holds more than one site,
+   *   which in single-site mode means it belongs to a host-based install
+   * @example
+   * ```ts
+   * await siteService.getOnlySite();
+   * ```
+   */
   getOnlySite(): Promise<Site | null>;
+  /**
+   * The instance's one site and its domain, or the transient placeholder
+   * before setup has created it. Single-site mode only.
+   *
+   * @param options - Where a new site's row and domain come from, and whether
+   *   to create them when missing
+   * @returns The site and its domain
+   * @throws {ConfigurationError} When the database holds more than one site
+   * @example
+   * ```ts
+   * await siteService.resolveSingleSite({ createIfMissing: false });
+   * ```
+   */
   resolveSingleSite(
     options?: ResolveSingleSiteOptions,
   ): Promise<SiteLookupResult>;
+  /**
+   * `resolveSingleSite` that creates the site when it is missing. Single-site
+   * mode only.
+   *
+   * @param options - Where the new site's row and domain come from
+   * @returns The site and its domain
+   * @throws {ConfigurationError} When the database holds more than one site
+   * @example
+   * ```ts
+   * await siteService.ensureSingleSite({ host: "example.com" });
+   * ```
+   */
   ensureSingleSite(
     options?: EnsureSingleSiteOptions,
   ): Promise<SiteLookupResult>;
@@ -95,6 +157,10 @@ export function createSiteService(
 ): SiteService {
   const { siteDomains, sites } = databaseSchema;
 
+  /**
+   * Its error assumes single-site mode, which is the only mode that may reach
+   * it — see `SiteService`.
+   */
   async function loadSingleSiteRow() {
     const rows = await db
       .select()
@@ -122,6 +188,16 @@ export function createSiteService(
         .where(eq(sites.id, id))
         .limit(1);
       return rows[0] ? toSite(rows[0]) : null;
+    },
+
+    async getByIdOrKey(idOrKey) {
+      const rows = await db
+        .select()
+        .from(sites)
+        .where(or(eq(sites.id, idOrKey), eq(sites.key, idOrKey)))
+        .limit(2);
+      const row = rows.find((candidate) => candidate.id === idOrKey) ?? rows[0];
+      return row ? toSite(row) : null;
     },
 
     async getPrimaryDomainForSite(siteId) {

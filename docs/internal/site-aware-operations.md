@@ -119,22 +119,39 @@ against a shared host-based database.
 
 ## CLI Resolution Contract
 
-Site-scoped CLI commands should use this resolution order:
+Site-scoped CLI commands resolve their site in this order:
 
-1. explicit `--site <siteId>`
-2. explicit `--host <host>`
+1. explicit `--site <key|id>`
+2. explicit `--host <host>`, with `--path-prefix` for a prefixed domain
 3. explicit `--url <url>`
 4. single-site mode with exactly one site in the instance
 5. otherwise fail
 
-Host-based mode must not keep the current behavior of “more than one site means
-CLI is unsupported.” That is only acceptable as a temporary blocker.
+Passing more than one of `--site`, `--host`, and `--url` is an error, not a
+precedence question.
 
-Recommended requirement:
+Host-based mode always needs a selector, even when the database holds one site
+today. A hosted database holds every tenant, so a fallback to "the only site"
+works until the second tenant signs up and then fails. Without a selector the
+command stops before it queries anything, and the error names the three flags.
 
-- finish `resolveCliSite()` so host-based mode can select a site by `--host` or
-  `--url`
-- do not allow multi-site commands to run without one of those selectors
+Two resolvers implement the contract, with the same messages:
+
+- `resolveCliSite()` in `packages/core/src/runtime/site.ts`, through the site
+  service, for `createNodeCliRuntime()`
+- `resolveCliSite()` in `packages/core/bin/lib/site-selection.js`, in raw SQL,
+  for the D1 path and snapshot tooling
+
+`parseCliSiteSelector()` in the same bin file turns the flags into the selector
+both take. Neither resolver may call the site service's single-site lookups
+(`getOnlySite`, `resolveSingleSite`, `ensureSingleSite`) in host-based mode:
+their error tells the operator to restore `SITE_RESOLUTION_MODE=host-based`,
+which is only true in single-site mode.
+
+There is no environment variable for the target site. `JANT_SITE` already names
+the site URL in the public agent skill (`docs/skill.md`), and an exported
+variable that silently picks a tenant is the wrong default for commands like
+`reset-password`.
 
 ## Import / Snapshot Boundary
 
@@ -289,16 +306,14 @@ For all instance-scoped tooling:
 ### P2
 
 - remote export/verify helpers still assume one-site-per-database
-- CLI host-based site selection is unfinished
 
 ## Recommended Execution Order
 
-1. finish host-based CLI site selection
-2. add shared helpers for site-scoped SQL selection in ops scripts
-3. fix all remote site scripts to filter by `site_id`
-4. migrate storage scripts from `setting` to `site_setting`
-5. quarantine local dev instance scripts behind explicit naming and docs
-6. only after that, decide whether any remaining instance-wide tools belong in
+1. add shared helpers for site-scoped SQL selection in ops scripts
+2. fix all remote site scripts to filter by `site_id`
+3. migrate storage scripts from `setting` to `site_setting`
+4. quarantine local dev instance scripts behind explicit naming and docs
+5. only after that, decide whether any remaining instance-wide tools belong in
    `jant core` or should move to `jant-cloud`
 
 ## Decision Summary
