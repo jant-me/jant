@@ -6,7 +6,7 @@
  * docs/internal/writing-style.md across user-facing prose and translations.
  *
  * Scans:
- *   - docs/ **.md and README.md
+ *   - docs/ **.md (except `internal/`, which is never published) and README.md
  *   - packages/core/src/i18n/locales/ ** /*.po (msgstr values only)
  *
  * Judgment calls stay with the author. Errors fail the run; warnings do not.
@@ -20,7 +20,7 @@
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
@@ -36,6 +36,22 @@ const EXCLUDED = new Set([
   join("docs", "internal", "writing-style.md"),
   join(".claude", "skills", "copy-style", "SKILL.md"),
 ]);
+
+/**
+ * Whether a doc reaches readers. The jant-cloud docs sync skips every
+ * `internal` directory under docs/, so those files are working notes for
+ * whoever builds Jant, not reader-facing prose.
+ *
+ * @param {string} path Repo-relative path.
+ * @returns {boolean}
+ * @example
+ * isPublished("docs/multilingual.md"); // => true
+ * isPublished("docs/internal/lit-guide.md"); // => false
+ */
+function isPublished(path) {
+  const segments = path.split(sep);
+  return !(segments[0] === "docs" && segments.includes("internal"));
+}
 
 const ZH = ["zhHans", "zhHant"];
 
@@ -480,6 +496,7 @@ function main() {
 
   const byFile = new Map();
   const corpus = [];
+  let checked = 0;
   let errors = 0;
   let warnings = 0;
 
@@ -494,7 +511,10 @@ function main() {
       continue;
     }
 
+    // Unpublished docs are still repo text a ✅ example may quote.
     corpus.push(raw);
+    if (!isPublished(path)) continue;
+    checked += 1;
 
     const locale = localeOf(path);
     const findings = [];
@@ -572,7 +592,7 @@ function main() {
   }
 
   console.log(
-    `\n${errors} error(s), ${warnings} warning(s) across ${targets.length} file(s).`,
+    `\n${errors} error(s), ${warnings} warning(s) across ${checked} file(s).`,
   );
   if (errors > 0) {
     console.log("Fix the errors, or mark an intentional line with `copy-ok`.");

@@ -141,7 +141,7 @@ Cloudflare Workers, Hono v4, Vite + SWC, Tailwind v4 + BaseCoat, D1 + Drizzle OR
 
 ## UX Copy Guidelines
 
-These rules govern **UI strings** — buttons, errors, empty states, settings descriptions — in every locale; the Chinese section adds locale-specific rules. For **prose** (anything under `docs/`, `README.md`, multi-sentence `msgstr` values) see `docs/internal/writing-style.md`. Run `mise run check-copy` after touching either.
+These rules govern **UI strings** — buttons, errors, empty states, settings descriptions — in every locale; the Chinese section adds locale-specific rules. For **prose** (anything under `docs/` except the unpublished `docs/internal/`, `README.md`, multi-sentence `msgstr` values) see `docs/internal/writing-style.md`. Run `mise run check-copy` after touching either.
 
 **Style anchor**: write like iA Writer or Bear — a quiet tool, not a companion. No praise, no mascot energy. If a line would fit in a marketing email or an onboarding tour, rewrite it.
 

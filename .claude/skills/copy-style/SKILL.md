@@ -1,6 +1,6 @@
 ---
 name: copy-style
-description: Jant's writing rules for user-facing prose and copy. Use when writing or editing anything under docs/, README.md, or translations in src/i18n/locales/**/*.po, and when writing or reviewing UI strings (button labels, error messages, empty states, settings descriptions) in any locale. Also use when the user says copy reads "AI-flavored", 有 AI 味, too chatty, salesy, 营销腔, or asks to tighten documentation prose.
+description: Jant's writing rules for user-facing prose and copy. Use when writing or editing anything under docs/ (except docs/internal/), README.md, or translations in src/i18n/locales/**/*.po, and when writing or reviewing UI strings (button labels, error messages, empty states, settings descriptions) in any locale. Also use when the user says copy reads "AI-flavored", 有 AI 味, too chatty, salesy, 营销腔, or asks to tighten documentation prose.
 ---
 
 # Jant Copy Style

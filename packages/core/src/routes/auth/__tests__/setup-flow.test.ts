@@ -13,13 +13,17 @@ import { describe, expect, it, vi } from "vitest";
 import { createTestApp } from "../../../__tests__/helpers/app.js";
 import { createAuth } from "../../../auth.js";
 import { attachSession } from "../../../middleware/session.js";
-import { settings as settingsTable, user } from "../../../db/schema.js";
+import {
+  settings as settingsTable,
+  siteMembers,
+  user,
+} from "../../../db/schema.js";
 import { setupRoutes } from "../setup.js";
 
 const PASSWORD = "correct-horse-battery";
 
-function createSetupApp() {
-  const { app, services, db } = createTestApp();
+function createSetupApp(options: Parameters<typeof createTestApp>[0] = {}) {
+  const { app, services, db } = createTestApp(options);
 
   // The helper installs a stub that answers every session question the same
   // way. Setup needs the real thing: it mints a session on the first screen and
@@ -36,7 +40,7 @@ function createSetupApp() {
   app.use("*", attachSession());
   app.route("/", setupRoutes);
 
-  return { app, services, db };
+  return { app, services, db, auth };
 }
 
 function post(
@@ -229,6 +233,38 @@ describe("self-hosted setup, both screens", () => {
 
     await expect(res.text()).resolves.toContain("Couldn't create your");
     expect((await db.select().from(user)).length).toBe(1);
+    expect(await services.settings.getOnboardingStatus()).toBe("pending");
+  });
+});
+
+// A hosted site's owner arrives through the control plane's handoff, never
+// through this screen. The control plane creates each hosted site already
+// provisioned, so a `pending` one is a site that lost its status somehow — and
+// the database behind it holds every tenant's accounts. Signing in here with
+// any of them must not come away owning the site.
+describe("setup on a host-based install", () => {
+  it("never makes an existing account the owner of a hosted site", async () => {
+    const { app, services, db, auth } = createSetupApp({
+      siteResolutionMode: "host-based",
+    });
+    // Another tenant's owner. Being the first account, it also closes
+    // registration, as it is closed on any hosted database.
+    await auth.api.signUpEmail({
+      body: {
+        name: "Other Tenant",
+        email: "other@example.com",
+        password: PASSWORD,
+      },
+    });
+
+    const res = await post(app, {
+      email: "other@example.com",
+      password: PASSWORD,
+    });
+
+    await expect(res.text()).resolves.toContain("Couldn't create your");
+    expect(res.headers.getSetCookie()).toHaveLength(0);
+    expect(await db.select().from(siteMembers)).toHaveLength(0);
     expect(await services.settings.getOnboardingStatus()).toBe("pending");
   });
 });

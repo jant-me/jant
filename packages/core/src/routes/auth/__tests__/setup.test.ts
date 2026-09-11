@@ -4,7 +4,7 @@ import {
   createTestDatabase,
   DEFAULT_TEST_SITE_ID,
 } from "../../../__tests__/helpers/db.js";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   navItems,
   settings,
@@ -326,8 +326,9 @@ describe("Setup bootstrap logic", () => {
 });
 
 // A hosted database holds every tenant, so "the only site" has no answer there.
-// Setup must write to the site the request's host resolved — the one the
-// route's membership check just read — and leave every other tenant alone.
+// Setup's last screen must write to the site the request's host resolved — the
+// one the route's membership check just read — and leave every other tenant
+// alone. The account screen has no hosted use at all.
 describe("Setup bootstrap on a host-based install", () => {
   function createHostedServices() {
     const { services, db } = createTestApp({
@@ -356,31 +357,25 @@ describe("Setup bootstrap on a host-based install", () => {
     expect(rows.filter((row) => row.siteId === otherSiteId)).toHaveLength(0);
   });
 
-  it("attaches the owner to the request's site and creates none", async () => {
+  // A hosted site's owner arrives through the control plane's handoff. The
+  // account step would make whoever signed in the owner of the site the host
+  // resolved, so it refuses before writing anything to any tenant.
+  it("refuses the account step and writes nothing", async () => {
     const { services, db } = createHostedServices();
-    const otherSiteId = await insertOtherSite(db);
+    await insertOtherSite(db);
 
-    await services.bootstrap.provisionOwnerAccount({
-      ownerUserId: "usr_test-owner",
-    });
+    await expect(
+      services.bootstrap.provisionOwnerAccount({
+        ownerUserId: "usr_test-owner",
+      }),
+    ).rejects.toThrow(
+      "provisionOwnerAccount runs on self-hosted installs only",
+    );
 
     expect(await db.select().from(sites)).toHaveLength(2);
-    const members = await db
-      .select()
-      .from(siteMembers)
-      .where(eq(siteMembers.userId, "usr_test-owner"));
-    expect(members.map((member) => [member.siteId, member.role])).toEqual([
-      [DEFAULT_TEST_SITE_ID, "owner"],
-    ]);
-    const navRows = await db.select().from(navItems);
-    expect(navRows.length).toBeGreaterThan(0);
-    expect(navRows.every((row) => row.siteId === DEFAULT_TEST_SITE_ID)).toBe(
-      true,
-    );
-    const settingRows = await db.select().from(settings);
-    expect(
-      settingRows.filter((row) => row.siteId === otherSiteId),
-    ).toHaveLength(0);
+    expect(await db.select().from(siteMembers)).toHaveLength(0);
+    expect(await db.select().from(navItems)).toHaveLength(0);
+    expect(await db.select().from(settings)).toHaveLength(0);
   });
 
   // The control plane creates hosted sites. Materializing one here would add a
@@ -393,7 +388,9 @@ describe("Setup bootstrap on a host-based install", () => {
       createBootstrapService(db, TRANSIENT_SINGLE_SITE_ID, {
         siteResolutionMode: "host-based",
       }).provisionOwnerAccount({ ownerUserId: "usr_test-owner" }),
-    ).rejects.toThrow("provisionOwnerAccount needs an existing site");
+    ).rejects.toThrow(
+      "provisionOwnerAccount runs on self-hosted installs only",
+    );
 
     expect(await db.select().from(sites)).toHaveLength(0);
   });

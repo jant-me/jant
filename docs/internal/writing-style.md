@@ -2,7 +2,8 @@
 
 AGENTS.md's **UX Copy Guidelines** govern UI strings. This document governs **prose**: everything
 under `docs/`, `README.md`, and multi-sentence `msgstr` values in `src/i18n/locales/**/*.po`.
-Where the two overlap, AGENTS.md wins.
+Where the two overlap, AGENTS.md wins. `docs/internal/` is exempt: the docs site never publishes
+it, so `mise run check-copy` skips it.
 
 Every ✅ below is live text from this repo, verified by `mise run check-copy`. Change the doc and
 you must change the example here, or the check fails. This file is a projection, never a second

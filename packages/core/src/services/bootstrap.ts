@@ -8,9 +8,11 @@
  * state a control plane leaves a hosted site in, so the second act is one code
  * path for both install kinds.
  *
- * Both acts write to the site the request resolved, the same site the route's
- * membership check reads. On a hosted install the database holds every tenant,
- * so "the only site" is not a question with an answer there.
+ * The first act belongs to self-hosted installs alone. A hosted site gets its
+ * owner through the control plane's handoff, so on a host-based install only
+ * the second act runs, against the site the request resolved — the same site
+ * the route's membership check reads. On a hosted install the database holds
+ * every tenant, so "the only site" is not a question with an answer there.
  */
 
 import type { DatabaseDialect } from "../db/dialect.js";
@@ -85,6 +87,8 @@ export interface BootstrapService {
    * the session before finishing signs back in and lands on the second screen.
    *
    * @param data - The account the first screen created
+   * @throws {Error} On a host-based install, where a site's owner arrives
+   *   through the control plane's handoff instead
    */
   provisionOwnerAccount(data: ProvisionOwnerAccountData): Promise<void>;
 
@@ -150,12 +154,20 @@ export function createBootstrapService(
   /**
    * The site the account step stands up. A self-hosted install has no row
    * until now, so this is the step that creates it — along with its domain,
-   * when one is configured. A hosted site was created by the control plane
-   * and resolved from the request's host; the account attaches to that one.
+   * when one is configured.
+   *
+   * A host-based install refuses before anything is written. The control
+   * plane creates each hosted site already provisioned, and its owner arrives
+   * through the hosted handoff, the only way anyone becomes a member of one.
+   * Attaching whoever just signed in to the site the host resolved would let
+   * any account in a database every tenant shares take a site that had lost
+   * its onboarding status.
    */
   async function siteToProvision(): Promise<string> {
     if (siteResolutionMode === "host-based") {
-      return existingSiteId("provisionOwnerAccount");
+      throw new Error(
+        "provisionOwnerAccount runs on self-hosted installs only. A hosted site's owner arrives through the control plane's handoff.",
+      );
     }
     const { site } = await createSiteService(
       db,
