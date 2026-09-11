@@ -1,10 +1,35 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { createTestDatabase } from "../../../__tests__/helpers/db.js";
-import { sql } from "drizzle-orm";
-import { navItems, settings, siteDomains, sites } from "../../../db/schema.js";
+import { createTestApp } from "../../../__tests__/helpers/app.js";
+import {
+  createTestDatabase,
+  DEFAULT_TEST_SITE_ID,
+} from "../../../__tests__/helpers/db.js";
+import { eq, sql } from "drizzle-orm";
+import {
+  navItems,
+  settings,
+  siteDomains,
+  siteMembers,
+  sites,
+} from "../../../db/schema.js";
 import { createBootstrapService } from "../../../services/bootstrap.js";
+import {
+  createSiteService,
+  TRANSIENT_SINGLE_SITE_ID,
+} from "../../../services/site.js";
 import type { Database } from "../../../db/index.js";
 import type { BootstrapService } from "../../../services/bootstrap.js";
+
+/**
+ * The bootstrap service one self-hosted setup request gets: bound to the site
+ * that request resolved, the way the runtime binds it. Resolved afresh for
+ * each screen, because the account step is what creates the site the second
+ * screen finds.
+ */
+async function bootstrapForRequest(db: Database): Promise<BootstrapService> {
+  const { site } = await createSiteService(db).resolveSingleSite();
+  return createBootstrapService(db, site.id);
+}
 
 /**
  * Reproduces both halves of POST /setup back to back — the shape a self-hosted
@@ -12,16 +37,36 @@ import type { BootstrapService } from "../../../services/bootstrap.js";
  * data already exists.
  */
 async function runSetupBootstrap(
-  services: { bootstrap: BootstrapService },
+  services: { db: Database },
   overrides: Partial<Parameters<BootstrapService["completeSiteSetup"]>[0]> = {},
 ) {
-  await services.bootstrap.provisionOwnerAccount({
+  await (
+    await bootstrapForRequest(services.db)
+  ).provisionOwnerAccount({
     ownerUserId: "usr_test-owner",
   });
-  await services.bootstrap.completeSiteSetup(
+  await (
+    await bootstrapForRequest(services.db)
+  ).completeSiteSetup(
     { siteName: "Jant Demo", ...overrides },
     { oldLanguage: "" },
   );
+}
+
+/** Adds a second tenant, which is what a hosted database always has. */
+async function insertOtherSite(
+  db: Database,
+  id = "sit_other00000000000000000000",
+) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  await db.insert(sites).values({
+    id,
+    key: "other",
+    status: "active",
+    createdAt: timestamp - 60,
+    updatedAt: timestamp - 60,
+  });
+  return id;
 }
 
 describe("Setup bootstrap logic", () => {
@@ -35,7 +80,8 @@ describe("Setup bootstrap logic", () => {
     const db = testDb.db as unknown as Database;
     services = {
       db,
-      bootstrap: createBootstrapService(db),
+      // The site both screens resolve once its row exists.
+      bootstrap: createBootstrapService(db, DEFAULT_TEST_SITE_ID),
     };
   });
 
@@ -257,5 +303,98 @@ describe("Setup bootstrap logic", () => {
     const domainRows = await services.db.select().from(siteDomains);
     expect(siteRows).toHaveLength(1);
     expect(domainRows).toHaveLength(0);
+
+    const rows = await services.db.select().from(settings);
+    expect(rows.find((row) => row.key === "SITE_NAME")?.siteId).toBe(
+      siteRows[0]?.id,
+    );
+  });
+
+  // Settings written under the placeholder would belong to no site at all.
+  it("refuses to finish a site the account step has not created", async () => {
+    await services.db.run(sql`DELETE FROM "site"`);
+
+    await expect(
+      createBootstrapService(
+        services.db,
+        TRANSIENT_SINGLE_SITE_ID,
+      ).completeSiteSetup({ siteName: "Jant Demo" }, { oldLanguage: "" }),
+    ).rejects.toThrow("completeSiteSetup needs an existing site");
+
+    expect(await services.db.select().from(settings)).toHaveLength(0);
+  });
+});
+
+// A hosted database holds every tenant, so "the only site" has no answer there.
+// Setup must write to the site the request's host resolved — the one the
+// route's membership check just read — and leave every other tenant alone.
+describe("Setup bootstrap on a host-based install", () => {
+  function createHostedServices() {
+    const { services, db } = createTestApp({
+      siteResolutionMode: "host-based",
+    });
+    return { services, db };
+  }
+
+  it("finishes the request's site while other sites share the database", async () => {
+    const { services, db } = createHostedServices();
+    const otherSiteId = await insertOtherSite(db);
+
+    await services.bootstrap.completeSiteSetup(
+      { siteLanguage: "en" },
+      { oldLanguage: "" },
+    );
+
+    const rows = await db.select().from(settings);
+    expect(
+      rows.find(
+        (row) =>
+          row.siteId === DEFAULT_TEST_SITE_ID &&
+          row.key === "ONBOARDING_STATUS",
+      )?.value,
+    ).toBe("completed");
+    expect(rows.filter((row) => row.siteId === otherSiteId)).toHaveLength(0);
+  });
+
+  it("attaches the owner to the request's site and creates none", async () => {
+    const { services, db } = createHostedServices();
+    const otherSiteId = await insertOtherSite(db);
+
+    await services.bootstrap.provisionOwnerAccount({
+      ownerUserId: "usr_test-owner",
+    });
+
+    expect(await db.select().from(sites)).toHaveLength(2);
+    const members = await db
+      .select()
+      .from(siteMembers)
+      .where(eq(siteMembers.userId, "usr_test-owner"));
+    expect(members.map((member) => [member.siteId, member.role])).toEqual([
+      [DEFAULT_TEST_SITE_ID, "owner"],
+    ]);
+    const navRows = await db.select().from(navItems);
+    expect(navRows.length).toBeGreaterThan(0);
+    expect(navRows.every((row) => row.siteId === DEFAULT_TEST_SITE_ID)).toBe(
+      true,
+    );
+    const settingRows = await db.select().from(settings);
+    expect(
+      settingRows.filter((row) => row.siteId === otherSiteId),
+    ).toHaveLength(0);
+  });
+
+  // The control plane creates hosted sites. Materializing one here would add a
+  // stray tenant to a database that holds real ones.
+  it("never creates a site when the request resolved none", async () => {
+    const db = createTestDatabase().db as unknown as Database;
+    await db.run(sql`DELETE FROM "site"`);
+
+    await expect(
+      createBootstrapService(db, TRANSIENT_SINGLE_SITE_ID, {
+        siteResolutionMode: "host-based",
+      }).provisionOwnerAccount({ ownerUserId: "usr_test-owner" }),
+    ).rejects.toThrow("provisionOwnerAccount needs an existing site");
+
+    expect(await db.select().from(sites)).toHaveLength(0);
   });
 });

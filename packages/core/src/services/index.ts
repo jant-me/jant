@@ -152,9 +152,11 @@ export function createServices(
       databaseSchema,
     ),
     apiTokens: createApiTokenService(db, siteId, databaseSchema),
-    bootstrap: createBootstrapService(db, {
+    bootstrap: createBootstrapService(db, siteId, {
       schema: databaseSchema,
+      databaseDialect: dialect,
       bootstrapSite: config?.bootstrapSite,
+      siteResolutionMode: config?.siteResolutionMode,
     }),
     siteAdmin: createSiteAdminService(db, databaseSchema, dialect, {
       siteResolutionMode: config?.siteResolutionMode,

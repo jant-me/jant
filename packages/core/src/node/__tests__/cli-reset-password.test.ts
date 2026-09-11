@@ -7,6 +7,7 @@ import { run } from "../../../bin/commands/reset-password.js";
 import { migrate } from "../runtime.js";
 import type { Bindings } from "../../types.js";
 import { createBootstrapService } from "../../services/bootstrap.js";
+import { createSiteService } from "../../services/site.js";
 import { createNodeDatabase } from "../../db/index.js";
 
 describe("jant reset-password", () => {
@@ -37,7 +38,14 @@ describe("jant reset-password", () => {
 
     const sqlite = new Database(databasePath);
     try {
-      const bootstrap = createBootstrapService(createNodeDatabase(sqlite));
+      const db = createNodeDatabase(sqlite);
+      // Each setup screen is its own request, bound to the site it resolved:
+      // none before the account step, the one it created after.
+      const bootstrapForRequest = async () =>
+        createBootstrapService(
+          db,
+          (await createSiteService(db).resolveSingleSite()).site.id,
+        );
       await sqlite
         .prepare(
           `
@@ -53,10 +61,14 @@ describe("jant reset-password", () => {
           new Date().toISOString(),
           new Date().toISOString(),
         );
-      await bootstrap.provisionOwnerAccount({
+      await (
+        await bootstrapForRequest()
+      ).provisionOwnerAccount({
         ownerUserId: "usr_reset_password_test",
       });
-      await bootstrap.completeSiteSetup(
+      await (
+        await bootstrapForRequest()
+      ).completeSiteSetup(
         { siteName: "Reset Password Test" },
         { oldLanguage: "" },
       );

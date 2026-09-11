@@ -7,8 +7,13 @@
  * between them — `markSiteProvisioned` closes the first act, which is the same
  * state a control plane leaves a hosted site in, so the second act is one code
  * path for both install kinds.
+ *
+ * Both acts write to the site the request resolved, the same site the route's
+ * membership check reads. On a hosted install the database holds every tenant,
+ * so "the only site" is not a question with an answer there.
  */
 
+import type { DatabaseDialect } from "../db/dialect.js";
 import type { Database } from "../db/index.js";
 import {
   sqliteSchemaBundle,
@@ -17,7 +22,11 @@ import {
 import { createNavItemService } from "./navigation.js";
 import { createSettingsService } from "./settings.js";
 import { createSiteMemberService } from "./site-member.js";
-import { createSiteService, type EnsureSingleSiteOptions } from "./site.js";
+import {
+  createSiteService,
+  TRANSIENT_SINGLE_SITE_ID,
+  type EnsureSingleSiteOptions,
+} from "./site.js";
 
 export interface ProvisionOwnerAccountData {
   /** The account the first setup screen just created. */
@@ -99,37 +108,90 @@ export interface BootstrapService {
   ): Promise<void>;
 }
 
+/**
+ * Create the first-run setup service for one request.
+ *
+ * @param db - The database
+ * @param siteId - The site the request resolved. On a self-hosted install that
+ *   has not finished the account step this is the transient placeholder, since
+ *   no site row exists yet.
+ * @param options - The schema, dialect and resolution mode the runtime uses,
+ *   and where a self-hosted site's row and domain come from
+ * @returns The bootstrap service bound to that site
+ */
 export function createBootstrapService(
   db: Database,
+  siteId: string,
   options?: {
     schema?: DatabaseSchema;
+    databaseDialect?: DatabaseDialect;
     bootstrapSite?: EnsureSingleSiteOptions;
+    siteResolutionMode?: "single-site" | "host-based";
   },
 ): BootstrapService {
   const databaseSchema = options?.schema ?? sqliteSchemaBundle;
+  const dialect = options?.databaseDialect ?? "sqlite";
+  const siteResolutionMode = options?.siteResolutionMode ?? "single-site";
 
-  async function resolveSiteSettings() {
-    const siteService = createSiteService(db, databaseSchema);
-    const { site } = await siteService.ensureSingleSite(options?.bootstrapSite);
-    return {
-      site,
-      settings: createSettingsService(db, site.id, databaseSchema),
-    };
+  /**
+   * The request's site, which must be a real row by the time anything is
+   * written to it. The placeholder only stands in for a self-hosted site the
+   * account step has yet to create.
+   */
+  function existingSiteId(step: string): string {
+    if (siteId === TRANSIENT_SINGLE_SITE_ID) {
+      throw new Error(
+        `${step} needs an existing site, but the request resolved none.`,
+      );
+    }
+    return siteId;
+  }
+
+  /**
+   * The site the account step stands up. A self-hosted install has no row
+   * until now, so this is the step that creates it — along with its domain,
+   * when one is configured. A hosted site was created by the control plane
+   * and resolved from the request's host; the account attaches to that one.
+   */
+  async function siteToProvision(): Promise<string> {
+    if (siteResolutionMode === "host-based") {
+      return existingSiteId("provisionOwnerAccount");
+    }
+    const { site } = await createSiteService(
+      db,
+      databaseSchema,
+    ).ensureSingleSite(options?.bootstrapSite);
+    return site.id;
   }
 
   return {
     async provisionOwnerAccount(data) {
-      const { site, settings } = await resolveSiteSettings();
-      const navItems = createNavItemService(db, site.id, databaseSchema);
+      const provisionedSiteId = await siteToProvision();
+      const settings = createSettingsService(
+        db,
+        provisionedSiteId,
+        databaseSchema,
+        dialect,
+      );
+      const navItems = createNavItemService(
+        db,
+        provisionedSiteId,
+        databaseSchema,
+      );
       const siteMembers = createSiteMemberService(db, databaseSchema);
 
-      await siteMembers.ensure(site.id, data.ownerUserId, "owner");
+      await siteMembers.ensure(provisionedSiteId, data.ownerUserId, "owner");
       await navItems.materializeDefaultNavigation();
       await settings.markSiteProvisioned();
     },
 
     async completeSiteSetup(data, opts, deps) {
-      const { settings } = await resolveSiteSettings();
+      const settings = createSettingsService(
+        db,
+        existingSiteId("completeSiteSetup"),
+        databaseSchema,
+        dialect,
+      );
 
       const siteName = data.siteName?.trim();
       if (siteName) {
