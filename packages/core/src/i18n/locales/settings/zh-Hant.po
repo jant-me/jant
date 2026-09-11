@@ -1689,8 +1689,8 @@ msgstr "我的選集"
 
 #. @context: Settings item description for general
 #: src/ui/dash/settings/SettingsRootContent.tsx
-msgid "Name, metadata, time zone, and search defaults"
-msgstr "站名、中繼資料、時區與搜尋預設值"
+msgid "Name, visibility, feeds, and time zone"
+msgstr "站名、可見性、訂閱來源與時區"
 
 #. @context: Breadcrumb label
 #. @context: Settings item — navigation settings

@@ -42,13 +42,18 @@ function findRadioByValue(
   );
 }
 
+/**
+ * Matched exactly: "Site" is a prefix of "Site visibility", so a substring
+ * match would find whichever of the two comes first on the page.
+ */
 function findSectionByHeading(
   el: HTMLElement,
   headingText: string,
 ): HTMLElement | null {
   return (
-    Array.from(el.querySelectorAll<HTMLElement>("section")).find((section) =>
-      section.querySelector("h3")?.textContent?.includes(headingText),
+    Array.from(el.querySelectorAll<HTMLElement>("section")).find(
+      (section) =>
+        section.querySelector("h3")?.textContent?.trim() === headingText,
     ) ?? null
   );
 }
@@ -84,7 +89,7 @@ const labels: SettingsLabels = {
   editAboutPage: "Edit About page",
   timeSection: "Time",
   home: "Home",
-  search: "Search",
+  siteVisibility: "Site visibility",
   siteName: "Site Name",
   aboutBlog: "About this blog",
   aboutBlogHelp: "Displayed above your blog posts.",
@@ -235,10 +240,10 @@ describe("JantSettingsGeneral", () => {
     expect(el.querySelector("h2")?.textContent).toBe("General");
     expect(groupTitles).toEqual([
       labels.site,
-      labels.timeSection,
+      labels.siteVisibility,
       labels.feeds,
+      labels.timeSection,
       labels.home,
-      labels.search,
     ]);
 
     const siteSection = requireElement(
@@ -678,7 +683,7 @@ describe("JantSettingsGeneral", () => {
     it("renders the section under Site visibility", async () => {
       const el = await createElement();
 
-      expect(findSectionByHeading(el, labels.search)).not.toBeNull();
+      expect(findSectionByHeading(el, labels.siteVisibility)).not.toBeNull();
       expect(el.textContent).toContain(labels.discoverEnabled);
       expect(el.textContent).toContain(labels.discoverIntro);
     });
@@ -717,7 +722,7 @@ describe("JantSettingsGeneral", () => {
     it("offers no Save button", async () => {
       const el = await createElement();
       const section = requireElement(
-        findSectionByHeading(el, labels.search),
+        findSectionByHeading(el, labels.siteVisibility),
         "expected the Site visibility section",
       );
 

@@ -35,6 +35,15 @@ import {
   jsonToMarkdown,
 } from "../tiptap/create-editor.js";
 
+/**
+ * Spacing every section shares, whatever its position.
+ *
+ * The container's `divide-y` draws the rule under each section but the last;
+ * this pads both sides of each rule and drops the padding at either end. The
+ * gap between a section's own children is left to the section.
+ */
+const SECTION_CLASS = "flex flex-col py-8 first:pt-0 last:pb-0";
+
 export class JantSettingsGeneral extends LitElement {
   static properties = {
     labels: { type: Object },
@@ -69,7 +78,7 @@ export class JantSettingsGeneral extends LitElement {
     _siteDirty: { state: true },
     _siteLoading: { state: true },
 
-    // Language, CJK & time group
+    // Time group
     _timeZone: { state: true },
     _origLocale: { state: true },
     _localeDirty: { state: true },
@@ -139,8 +148,8 @@ export class JantSettingsGeneral extends LitElement {
   declare _siteDirty: boolean;
   declare _siteLoading: boolean;
 
-  // Language, CJK & time
-  /** Admin dashboard UI locale (one of the translated catalog locales). */
+  // Time
+  /** IANA time zone name, such as `"America/New_York"`. */
   declare _timeZone: string;
   declare _origLocale: {
     timeZone: string;
@@ -730,190 +739,75 @@ export class JantSettingsGeneral extends LitElement {
     `;
   }
 
-  private _renderGeneralForm() {
+  // ── Sections, in the order `render()` lists them ──────────────────
+  //
+  // Each section carries only its own spacing (`SECTION_CLASS`); the rules
+  // between them are drawn by the container, so reordering is a change to
+  // `render()` alone.
+
+  private _renderSiteSection() {
     return html`
-      <div class="flex flex-col gap-8">
-        <div>
-          <h2 class="text-lg font-semibold">${this.labels.general}</h2>
+      <section
+        class="${SECTION_CLASS} gap-4"
+        @keydown=${(e: globalThis.KeyboardEvent) =>
+          this._onKeydown(
+            e,
+            () => this._saveSite(),
+            this._siteDirty,
+            this._siteLoading,
+          )}
+      >
+        ${this._renderSectionTitle(this.labels.site)}
+        <div class="field">
+          <label class="label">${this.labels.siteName}</label>
+          <input
+            type="text"
+            class="input"
+            maxlength=${MAX_SITE_NAME_LENGTH}
+            .value=${this._siteName}
+            placeholder=${this.siteNameFallback}
+            @input=${(e: Event) => {
+              this._siteName = (e.target as HTMLInputElement).value;
+              this._syncSiteDirty();
+            }}
+          />
         </div>
 
-        <section
-          class="flex flex-col gap-4"
-          @keydown=${(e: globalThis.KeyboardEvent) =>
-            this._onKeydown(
-              e,
-              () => this._saveSite(),
-              this._siteDirty,
-              this._siteLoading,
-            )}
-        >
-          ${this._renderSectionTitle(this.labels.site)}
-          <div class="field">
-            <label class="label">${this.labels.siteName}</label>
-            <input
-              type="text"
-              class="input"
-              maxlength=${MAX_SITE_NAME_LENGTH}
-              .value=${this._siteName}
-              placeholder=${this.siteNameFallback}
-              @input=${(e: Event) => {
-                this._siteName = (e.target as HTMLInputElement).value;
-                this._syncSiteDirty();
-              }}
-            />
-          </div>
+        <div class="field">
+          <label class="label">${this.labels.aboutBlog}</label>
+          <div class="settings-tiptap-editor" data-settings-desc-editor></div>
+          <p class="text-sm text-muted-foreground mt-1">
+            ${this.labels.aboutBlogHelp}
+          </p>
+          ${this._renderAboutPageRow()}
+        </div>
 
-          <div class="field">
-            <label class="label">${this.labels.aboutBlog}</label>
-            <div class="settings-tiptap-editor" data-settings-desc-editor></div>
-            <p class="text-sm text-muted-foreground mt-1">
-              ${this.labels.aboutBlogHelp}
-            </p>
-            ${this._renderAboutPageRow()}
-          </div>
+        <div class="field">
+          <label class="label">${this.labels.siteFooter}</label>
+          <div class="settings-tiptap-editor" data-settings-footer-editor></div>
+          <p class="text-sm text-muted-foreground mt-1">
+            ${this.labels.footerHelp}
+          </p>
+        </div>
 
-          <div class="field">
-            <label class="label">${this.labels.siteFooter}</label>
-            <div
-              class="settings-tiptap-editor"
-              data-settings-footer-editor
-            ></div>
-            <p class="text-sm text-muted-foreground mt-1">
-              ${this.labels.footerHelp}
-            </p>
-          </div>
-
-          ${this._renderSaveAction(this._siteLoading, this._siteDirty, () =>
-            this._saveSite(),
-          )}
-        </section>
-
-        <section
-          class="flex flex-col gap-4 border-t pt-8"
-          @keydown=${(e: globalThis.KeyboardEvent) =>
-            this._onKeydown(
-              e,
-              () => this._saveLocale(),
-              this._localeDirty,
-              this._localeLoading,
-            )}
-        >
-          ${this._renderSectionTitle(this.labels.timeSection)}
-          <div class="field">
-            <label class="label">${this.labels.timeZone}</label>
-            <select
-              class="select"
-              @change=${(e: Event) => {
-                this._timeZone = (e.target as HTMLSelectElement).value;
-                this._syncLocaleDirty();
-              }}
-            >
-              ${this.timezones.map(
-                (tz) => html`
-                  <option
-                    value=${tz.value}
-                    ?selected=${this._timeZone === tz.value}
-                  >
-                    ${tz.label}
-                  </option>
-                `,
-              )}
-            </select>
-          </div>
-
-          ${this._renderSaveAction(this._localeLoading, this._localeDirty, () =>
-            this._saveLocale(),
-          )}
-        </section>
-
-        <section class="flex flex-col gap-4 border-t pt-8">
-          ${this._renderSectionTitle(this.labels.feeds)}
-          <div class="field">
-            <p class="label">${this.labels.mainRssFeed}</p>
-            <p class="text-sm text-muted-foreground mt-1">
-              ${this.labels.mainRssFeedHelp}
-            </p>
-            <div class="mt-3 flex flex-col gap-2">
-              ${this._renderMainRssFeedOption(
-                "featured",
-                this.labels.featuredFeedOption,
-                this.labels.featuredFeedOptionDescription,
-              )}
-              ${this._renderMainRssFeedOption(
-                "latest",
-                this.labels.latestFeedOption,
-                this.labels.latestFeedOptionDescription,
-              )}
-            </div>
-            <p class="text-sm text-muted-foreground mt-2">
-              ${this.labels.mainRssFeedWarning}
-            </p>
-          </div>
-
-          <div class="rounded-xl border border-border/70 bg-muted/30 p-4">
-            <div class="flex flex-col gap-4">
-              <div class="flex flex-col gap-1">
-                <p class="text-sm font-medium">
-                  ${this.labels.availableFeedUrls}
-                </p>
-                <p class="text-sm text-muted-foreground">
-                  ${this.labels.availableFeedUrlsHelp}
-                  ${
-                    this.feedsDocsUrl
-                      ? html`
-                          <a
-                            href=${this.feedsDocsUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="underline hover:text-foreground transition-colors"
-                            >${this.labels.feedsDocs}</a
-                          >
-                        `
-                      : ""
-                  }
-                </p>
-              </div>
-
-              ${this._renderFeedUrl(this.labels.mainFeedUrl, this.mainFeedUrl)}
-              ${this._renderFeedUrl(
-                this.labels.latestFeedUrl,
-                this.latestFeedUrl,
-              )}
-              ${this._renderFeedUrl(
-                this.labels.featuredFeedUrl,
-                this.featuredFeedUrl,
-              )}
-              ${this._renderFeedUrl(
-                this.labels.archiveFeedUrl,
-                this.archiveFeedUrl,
-                this.labels.archiveFeedUrlHelp,
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section class="flex flex-col gap-4 border-t pt-8 pb-6">
-          ${this._renderSectionTitle(this.labels.home)}
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              class="checkbox"
-              .checked=${this._showJantBrandingOnHome}
-              ?disabled=${this._homeLoading}
-              @change=${(e: Event) =>
-                this._saveHomeToggle((e.target as HTMLInputElement).checked)}
-            />
-            <span>${this.labels.showJantBrandingOnHome}</span>
-          </label>
-        </section>
-      </div>
+        ${this._renderSaveAction(this._siteLoading, this._siteDirty, () =>
+          this._saveSite(),
+        )}
+      </section>
     `;
   }
 
-  private _renderSearchForm() {
+  /**
+   * Search engine indexing and Jant Discover.
+   *
+   * The two groups sit further apart than a section's heading sits from its
+   * first control, so the Discover help text does not read as belonging to
+   * the indexing checkbox.
+   */
+  private _renderVisibilitySection() {
     return html`
-      <section class="flex flex-col gap-6 border-t pt-8">
-        ${this._renderSectionTitle(this.labels.search)}
+      <section class="${SECTION_CLASS} gap-6">
+        ${this._renderSectionTitle(this.labels.siteVisibility)}
         <div class="flex flex-col gap-2">
           <label class="flex items-center gap-2 cursor-pointer">
             <input
@@ -935,6 +829,137 @@ export class JantSettingsGeneral extends LitElement {
           }
         </div>
         ${this._renderDiscoverForm()}
+      </section>
+    `;
+  }
+
+  private _renderFeedsSection() {
+    return html`
+      <section class="${SECTION_CLASS} gap-4">
+        ${this._renderSectionTitle(this.labels.feeds)}
+        <div class="field">
+          <p class="label">${this.labels.mainRssFeed}</p>
+          <p class="text-sm text-muted-foreground mt-1">
+            ${this.labels.mainRssFeedHelp}
+          </p>
+          <div class="mt-3 flex flex-col gap-2">
+            ${this._renderMainRssFeedOption(
+              "featured",
+              this.labels.featuredFeedOption,
+              this.labels.featuredFeedOptionDescription,
+            )}
+            ${this._renderMainRssFeedOption(
+              "latest",
+              this.labels.latestFeedOption,
+              this.labels.latestFeedOptionDescription,
+            )}
+          </div>
+          <p class="text-sm text-muted-foreground mt-2">
+            ${this.labels.mainRssFeedWarning}
+          </p>
+        </div>
+
+        <div class="rounded-xl border border-border/70 bg-muted/30 p-4">
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-1">
+              <p class="text-sm font-medium">
+                ${this.labels.availableFeedUrls}
+              </p>
+              <p class="text-sm text-muted-foreground">
+                ${this.labels.availableFeedUrlsHelp}
+                ${
+                  this.feedsDocsUrl
+                    ? html`
+                        <a
+                          href=${this.feedsDocsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="underline hover:text-foreground transition-colors"
+                          >${this.labels.feedsDocs}</a
+                        >
+                      `
+                    : ""
+                }
+              </p>
+            </div>
+
+            ${this._renderFeedUrl(this.labels.mainFeedUrl, this.mainFeedUrl)}
+            ${this._renderFeedUrl(
+              this.labels.latestFeedUrl,
+              this.latestFeedUrl,
+            )}
+            ${this._renderFeedUrl(
+              this.labels.featuredFeedUrl,
+              this.featuredFeedUrl,
+            )}
+            ${this._renderFeedUrl(
+              this.labels.archiveFeedUrl,
+              this.archiveFeedUrl,
+              this.labels.archiveFeedUrlHelp,
+            )}
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  private _renderTimeSection() {
+    return html`
+      <section
+        class="${SECTION_CLASS} gap-4"
+        @keydown=${(e: globalThis.KeyboardEvent) =>
+          this._onKeydown(
+            e,
+            () => this._saveLocale(),
+            this._localeDirty,
+            this._localeLoading,
+          )}
+      >
+        ${this._renderSectionTitle(this.labels.timeSection)}
+        <div class="field">
+          <label class="label">${this.labels.timeZone}</label>
+          <select
+            class="select"
+            @change=${(e: Event) => {
+              this._timeZone = (e.target as HTMLSelectElement).value;
+              this._syncLocaleDirty();
+            }}
+          >
+            ${this.timezones.map(
+              (tz) => html`
+                <option
+                  value=${tz.value}
+                  ?selected=${this._timeZone === tz.value}
+                >
+                  ${tz.label}
+                </option>
+              `,
+            )}
+          </select>
+        </div>
+
+        ${this._renderSaveAction(this._localeLoading, this._localeDirty, () =>
+          this._saveLocale(),
+        )}
+      </section>
+    `;
+  }
+
+  private _renderHomeSection() {
+    return html`
+      <section class="${SECTION_CLASS} gap-4">
+        ${this._renderSectionTitle(this.labels.home)}
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            class="checkbox"
+            .checked=${this._showJantBrandingOnHome}
+            ?disabled=${this._homeLoading}
+            @change=${(e: Event) =>
+              this._saveHomeToggle((e.target as HTMLInputElement).checked)}
+          />
+          <span>${this.labels.showJantBrandingOnHome}</span>
+        </label>
       </section>
     `;
   }
@@ -1143,8 +1168,13 @@ export class JantSettingsGeneral extends LitElement {
 
   render() {
     return html`
-      <div class="flex flex-col">
-        ${this._renderGeneralForm()} ${this._renderSearchForm()}
+      <div class="flex flex-col gap-8">
+        <h2 class="text-lg font-semibold">${this.labels.general}</h2>
+        <div class="flex flex-col divide-y">
+          ${this._renderSiteSection()} ${this._renderVisibilitySection()}
+          ${this._renderFeedsSection()} ${this._renderTimeSection()}
+          ${this._renderHomeSection()}
+        </div>
       </div>
     `;
   }

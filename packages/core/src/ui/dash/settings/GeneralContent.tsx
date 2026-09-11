@@ -2,8 +2,8 @@
  * General settings form
  *
  * Server-side template that renders the <jant-settings-general> Lit
- * component for site name, description, footer, homepage branding, language,
- * timezone, and search settings.
+ * component: site name, description, and footer; site visibility (search
+ * indexing and Jant Discover); feeds; time zone; and home page branding.
  * The settings-bridge.ts script handles server communication.
  */
 
@@ -231,7 +231,7 @@ export function GeneralContent({
         comment: "@context: Settings subsection heading for home page settings",
       }),
     ),
-    search: i18n._(
+    siteVisibility: i18n._(
       msg({
         message: "Site visibility",
         comment:

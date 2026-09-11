@@ -1689,8 +1689,8 @@ msgstr "My Collection"
 
 #. @context: Settings item description for general
 #: src/ui/dash/settings/SettingsRootContent.tsx
-msgid "Name, metadata, time zone, and search defaults"
-msgstr "Name, metadata, time zone, and search defaults"
+msgid "Name, visibility, feeds, and time zone"
+msgstr "Name, visibility, feeds, and time zone"
 
 #. @context: Breadcrumb label
 #. @context: Settings item — navigation settings

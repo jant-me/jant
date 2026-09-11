@@ -25,7 +25,7 @@ export interface SettingsLabels {
   editAboutPage: string;
   timeSection: string;
   home: string;
-  search: string;
+  siteVisibility: string;
   siteName: string;
   aboutBlog: string;
   aboutBlogHelp: string;

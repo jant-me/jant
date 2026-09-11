@@ -40,7 +40,7 @@ const labels: SettingsLabels = {
   editAboutPage: "Edit About page",
   timeSection: "Time",
   home: "Home",
-  search: "Search",
+  siteVisibility: "Site visibility",
   siteName: "Site Name",
   aboutBlog: "About this blog",
   aboutBlogHelp: "Displayed above your blog posts.",

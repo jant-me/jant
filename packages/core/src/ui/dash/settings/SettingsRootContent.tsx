@@ -115,7 +115,7 @@ export function SettingsRootContent({
           )}
           description={i18n._(
             msg({
-              message: "Name, metadata, time zone, and search defaults",
+              message: "Name, visibility, feeds, and time zone",
               comment: "@context: Settings item description for general",
             }),
           )}
