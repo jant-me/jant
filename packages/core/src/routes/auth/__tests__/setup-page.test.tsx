@@ -141,14 +141,15 @@ describe("SetupContent — the Discover question", () => {
     expect(html).toContain("discover: false");
   });
 
-  // What Discover is, is best answered by the list itself, so the word for it
-  // in the help line is the way there.
-  it("links the word for the directory to the directory", () => {
+  // What Discover is, is best answered by the list itself, so its name in the
+  // help line is the way there — the same link the settings page puts on it.
+  it("links the directory's name in the help line to the directory", () => {
     const html = render(base);
 
     expect(html).toContain(
-      '<a href="https://jant.me/discover" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground transition-colors">directory</a>',
+      '<a href="https://jant.me/discover" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground transition-colors">Jant Discover</a> is a directory of Jant blogs',
     );
+    expect(html.match(/<a href/g)).toHaveLength(1);
   });
 
   // A self-hosted site that announces to no directory has no address to link,
@@ -166,7 +167,9 @@ describe("SetupContent — the Discover question", () => {
     const html = render(base);
 
     expect(html).not.toContain("→");
-    expect(html).toContain("Posts you mark Featured appear on it.</p>");
+    expect(html).toContain(
+      "Posts you mark Featured appear on the Discover home page.</p>",
+    );
   });
 });
 

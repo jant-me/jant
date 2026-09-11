@@ -12,7 +12,12 @@
 import { LitElement, html, nothing } from "lit";
 import type { Editor } from "@tiptap/core";
 import { MAX_SITE_NAME_LENGTH } from "../../types.js";
-import { resolveDiscoverMode, splitLinkedTerm } from "../../lib/discover.js";
+import {
+  DISCOVER_LIST_NAMES,
+  linkTerms,
+  resolveDiscoverMode,
+  type DiscoverPageUrls,
+} from "../../lib/discover.js";
 import type {
   SettingsInitialData,
   SettingsLabels,
@@ -41,7 +46,7 @@ export class JantSettingsGeneral extends LitElement {
     },
     demoMode: { type: Boolean, attribute: "demo-mode" },
     discoverDefault: { type: String, attribute: "discover-default" },
-    discoverUrl: { type: String, attribute: "discover-url" },
+    discoverPages: { type: Object, attribute: "discover-pages" },
     discoverStatus: { type: String, attribute: "discover-status" },
     feedsEnabled: { type: Boolean, attribute: "feeds-enabled" },
     mainFeedUrl: { type: String, attribute: "main-feed-url" },
@@ -103,7 +108,8 @@ export class JantSettingsGeneral extends LitElement {
    * around it — see `_effectiveDiscoverMode`.
    */
   declare discoverDefault: string;
-  declare discoverUrl: string;
+  /** The directory's own pages, or `null` when none is configured. */
+  declare discoverPages: DiscoverPageUrls | null;
   /**
    * JSON status block, already translated by the server.
    *
@@ -220,7 +226,7 @@ export class JantSettingsGeneral extends LitElement {
     this._searchLoading = false;
 
     this.discoverDefault = "";
-    this.discoverUrl = "";
+    this.discoverPages = null;
     this.discoverStatus = "";
     this.feedsEnabled = false;
     this._discover = "";
@@ -996,30 +1002,40 @@ export class JantSettingsGeneral extends LitElement {
   }
 
   /**
-   * The help line, with the word for the list linking to the list.
+   * The help line, with each page it names linking to that page.
    *
-   * The line reads as one sentence in every locale, so the link is found by
-   * splitting the translated string on the translated word rather than by
-   * gluing fragments together. A translation that drops or rewrites the word
-   * simply renders as plain text — a sentence without a link, never a broken
-   * one. What Discover is, is best answered by the list itself, which is why
-   * the link goes there rather than to a page about it, and why it sits in the
-   * sentence that explains the list rather than on the checkbox label.
+   * The directory's name goes to its home, the two list names to the lists,
+   * and the rules to the page of rules. The line reads as one sentence in every
+   * locale, so each link is found by searching the translated string for its
+   * translated term rather than by gluing fragments together; a term a
+   * translation drops simply stays plain text. What Discover is, is best
+   * answered by the list itself, which is why the name links there rather than
+   * to a page about it, and why every link sits in the sentence that explains
+   * the list rather than on the checkbox label.
    */
   private _renderDiscoverIntro() {
     const text = this.labels.discoverIntro ?? "";
-    const parts = this.discoverUrl
-      ? splitLinkedTerm(text, this.labels.discoverDirectory ?? "")
-      : null;
-    if (!parts) return text;
+    const pages = this.discoverPages;
+    if (!pages) return text;
 
-    return html`${parts.before}<a
-        href=${this.discoverUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="underline hover:text-foreground transition-colors"
-        >${parts.term}</a
-      >${parts.after}`;
+    const runs = linkTerms(text, [
+      { term: this.labels.discoverName ?? "", href: pages.home },
+      { term: DISCOVER_LIST_NAMES.links, href: pages.links },
+      { term: DISCOVER_LIST_NAMES.quotes, href: pages.quotes },
+      { term: this.labels.discoverRules ?? "", href: pages.rules },
+    ]);
+
+    return runs.map((run) =>
+      run.href
+        ? html`<a
+            href=${run.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline hover:text-foreground transition-colors"
+            >${run.text}</a
+          >`
+        : run.text,
+    );
   }
 
   /**

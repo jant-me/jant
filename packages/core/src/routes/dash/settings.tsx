@@ -31,7 +31,7 @@ import { announceInBackground } from "../discover-announce.js";
 import {
   DISCOVER_FIRST_READ_MAX_HOURS,
   DISCOVER_MIN_PUBLIC_POSTS,
-  getDiscoverDirectoryUrl,
+  getDiscoverPageUrls,
   getDiscoverSubmitUrl,
   measureDiscoverMaturity,
   parseDiscoverSetting,
@@ -466,7 +466,7 @@ settingsRoutes.get("/general", async (c) => {
           noindex={appConfig.noindex}
           discover={discoverSetting ?? ""}
           discoverDefault={discoverDefault}
-          discoverUrl={getDiscoverDirectoryUrl(
+          discoverPages={getDiscoverPageUrls(
             getDiscoverDirectoryBaseUrl(c.env),
           )}
           discoverStatus={{

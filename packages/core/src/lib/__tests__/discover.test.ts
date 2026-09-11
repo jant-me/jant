@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  getDiscoverDirectoryUrl,
   getDiscoverFeedPath,
+  getDiscoverPageUrls,
   getDiscoverSubmitUrl,
+  linkTerms,
   measureDiscoverMaturity,
   parseDiscoverSetting,
   resolveDiscoverMode,
@@ -269,24 +270,110 @@ describe("getDiscoverSubmitUrl", () => {
   });
 });
 
-describe("getDiscoverDirectoryUrl", () => {
+describe("getDiscoverPageUrls", () => {
   // The settings page links the directory's name to the directory itself, so
   // "what is Discover" is answered by the list rather than by a page about it.
-  it("finds the directory behind its own ping endpoint", () => {
-    expect(getDiscoverDirectoryUrl("https://jant.me/api/discover/ping")).toBe(
-      "https://jant.me/discover",
-    );
+  // The three lists sit flat on jant.me; only the rules sit under /discover.
+  it("finds the directory's pages behind its own ping endpoint", () => {
+    expect(getDiscoverPageUrls("https://jant.me/api/discover/ping")).toEqual({
+      home: "https://jant.me/discover",
+      links: "https://jant.me/links",
+      quotes: "https://jant.me/quotes",
+      rules: "https://jant.me/discover/about",
+    });
   });
 
   it("follows a directory of your own", () => {
     expect(
-      getDiscoverDirectoryUrl("https://directory.example/api/discover/ping"),
-    ).toBe("https://directory.example/discover");
+      getDiscoverPageUrls("https://directory.example/api/discover/ping"),
+    ).toEqual({
+      home: "https://directory.example/discover",
+      links: "https://directory.example/links",
+      quotes: "https://directory.example/quotes",
+      rules: "https://directory.example/discover/about",
+    });
   });
 
   it("has nothing to link to when no directory is configured", () => {
-    expect(getDiscoverDirectoryUrl(undefined)).toBeNull();
-    expect(getDiscoverDirectoryUrl("")).toBeNull();
-    expect(getDiscoverDirectoryUrl("not a url")).toBeNull();
+    expect(getDiscoverPageUrls(undefined)).toBeNull();
+    expect(getDiscoverPageUrls("")).toBeNull();
+    expect(getDiscoverPageUrls("not a url")).toBeNull();
+  });
+});
+
+describe("linkTerms", () => {
+  const links = [
+    { term: "Jant Discover", href: "/discover" },
+    { term: "Links", href: "/links" },
+    { term: "Quotes", href: "/quotes" },
+    { term: "Discover community rules", href: "/discover/about" },
+  ];
+
+  it("links every term where the sentence puts it", () => {
+    expect(
+      linkTerms(
+        "Jant Discover lists link and quote posts on Links and Quotes. See the Discover community rules.",
+        links,
+      ),
+    ).toEqual([
+      { text: "Jant Discover", href: "/discover" },
+      { text: " lists link and quote posts on " },
+      { text: "Links", href: "/links" },
+      { text: " and " },
+      { text: "Quotes", href: "/quotes" },
+      { text: ". See the " },
+      { text: "Discover community rules", href: "/discover/about" },
+      { text: "." },
+    ]);
+  });
+
+  // A translation owns its word order; the links follow the words, not the
+  // order they were given in.
+  it("follows the translation's word order", () => {
+    expect(
+      linkTerms("详见 Discover 社区规则。Jant Discover 是一个目录。", [
+        { term: "Jant Discover", href: "/discover" },
+        { term: "Discover 社区规则", href: "/discover/about" },
+      ]),
+    ).toEqual([
+      { text: "详见 " },
+      { text: "Discover 社区规则", href: "/discover/about" },
+      { text: "。" },
+      { text: "Jant Discover", href: "/discover" },
+      { text: " 是一个目录。" },
+    ]);
+  });
+
+  // "Discover" alone sits inside "Jant Discover"; whichever the sentence
+  // mentions first, the longer name keeps its whole run.
+  it("never lets a term inside another take the longer one's place", () => {
+    expect(
+      linkTerms("Jant Discover reads your feed. Discover shows it.", [
+        { term: "Discover", href: "/about" },
+        { term: "Jant Discover", href: "/discover" },
+      ]),
+    ).toEqual([
+      { text: "Jant Discover", href: "/discover" },
+      { text: " reads your feed. " },
+      { text: "Discover", href: "/about" },
+      { text: " shows it." },
+    ]);
+  });
+
+  it("leaves a term the translation dropped as plain text", () => {
+    expect(
+      linkTerms("A directory of Jant blogs.", [
+        { term: "Jant Discover", href: "/discover" },
+      ]),
+    ).toEqual([{ text: "A directory of Jant blogs." }]);
+  });
+
+  it("links nothing for an empty term or address", () => {
+    expect(
+      linkTerms("See Links.", [
+        { term: "", href: "/links" },
+        { term: "Links", href: "" },
+      ]),
+    ).toEqual([{ text: "See Links." }]);
   });
 });

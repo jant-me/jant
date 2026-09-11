@@ -8,6 +8,7 @@ import type {
   SettingsAboutPageStatus,
 } from "../settings-types.js";
 import { MAX_SITE_NAME_LENGTH } from "../../../types.js";
+import type { DiscoverPageUrls } from "../../../lib/discover.js";
 import "../jant-settings-general.js";
 import type { JantSettingsGeneral } from "../jant-settings-general.js";
 
@@ -112,10 +113,11 @@ const labels: SettingsLabels = {
   markdownSupported: "Markdown supported",
   allowIndexing: "Allow search engines to index my site",
   demoSeoLocked: "Demo sites always stay hidden from search engines.",
-  discoverDirectory: "directory",
+  discoverName: "Jant Discover",
+  discoverRules: "Discover community rules",
   discoverEnabled: "Allow Jant Discover to list my site",
   discoverIntro:
-    "Jant Discover is a directory of Jant blogs, curated by hand by the Jant community. Posts you mark Featured appear on its home page; your link and quote posts appear on its Links and Quotes lists, a day after Discover reads them.",
+    "Jant Discover is a directory of Jant blogs, curated by hand by the Jant community to help people find new Jant blogs and posts. A post you mark Featured appears on the Discover home page 24 hours later, and link and quote posts appear on the Links and Quotes lists 24 hours after they are published. You can keep editing them in the meantime. See the Discover community rules.",
   discoverDemoLocked: "Demo sites are never listed in Discover.",
   discoverFeedsOffLocked:
     "Discover reads your Atom feed, so it needs feeds turned on.",
@@ -147,6 +149,13 @@ const initialData = {
   discover: "",
 };
 
+const discoverPages: DiscoverPageUrls = {
+  home: "https://jant.me/discover",
+  links: "https://jant.me/links",
+  quotes: "https://jant.me/quotes",
+  rules: "https://jant.me/discover/about",
+};
+
 function findCheckboxByLabel(
   el: HTMLElement,
   labelText: string,
@@ -160,7 +169,7 @@ function findCheckboxByLabel(
 
 /**
  * The Discover help line, found by its text: it is one of several muted
- * paragraphs in the section, and only this one carries the directory link.
+ * paragraphs in the section, and only this one carries the directory's links.
  */
 function findIntroParagraph(el: HTMLElement): HTMLElement | null {
   return (
@@ -201,7 +210,7 @@ async function createElement(
   el.aboutEditUrl = "/about?edit=1";
   el.aboutCreateUrl = "/settings/general/about-page";
   el.demoMode = opts.demoMode ?? false;
-  el.discoverUrl = "https://jant.me/discover";
+  el.discoverPages = discoverPages;
   el.discoverDefault = opts.discoverDefault ?? "";
   el.discoverStatus = opts.discoverStatus ?? "";
   el.feedsEnabled = opts.feedsEnabled ?? true;
@@ -855,22 +864,29 @@ describe("JantSettingsGeneral", () => {
     });
 
     // What Discover is, is best answered by the list itself, so the sentence
-    // explaining the list is the way into it.
-    it("links the word for the directory to the directory", async () => {
+    // explaining the list is the way into it: the name goes to the home, the
+    // list names to the lists, and the rules to the page of rules.
+    it("links each page the help line names to that page", async () => {
       const el = await createElement();
       const intro = requireElement(
         findIntroParagraph(el),
         "expected the Discover help line",
       );
-      const link = requireElement(
-        intro.querySelector<HTMLAnchorElement>("a"),
-        "expected the directory link inside the Discover help line",
-      );
+      const links = Array.from(intro.querySelectorAll<HTMLAnchorElement>("a"));
 
-      expect(link.textContent).toBe(labels.discoverDirectory);
-      expect(link.getAttribute("href")).toBe("https://jant.me/discover");
-      expect(link.getAttribute("rel")).toBe("noopener noreferrer");
-      expect(link.className).toContain("underline");
+      expect(
+        links.map((link) => [link.textContent, link.getAttribute("href")]),
+      ).toEqual([
+        [labels.discoverName, discoverPages.home],
+        ["Links", discoverPages.links],
+        ["Quotes", discoverPages.quotes],
+        [labels.discoverRules, discoverPages.rules],
+      ]);
+      for (const link of links) {
+        expect(link.getAttribute("target")).toBe("_blank");
+        expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+        expect(link.className).toContain("underline");
+      }
       // The whole line still reads as one sentence.
       expect(intro.textContent?.trim()).toBe(labels.discoverIntro);
     });
@@ -892,7 +908,7 @@ describe("JantSettingsGeneral", () => {
     // link, and a sentence with a dead link in it is worse than a plain one.
     it("renders the help line as plain text with no directory configured", async () => {
       const el = await createElement();
-      el.discoverUrl = "";
+      el.discoverPages = null;
       await el.updateComplete;
 
       const intro = requireElement(

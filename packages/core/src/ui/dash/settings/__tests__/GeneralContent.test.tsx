@@ -11,8 +11,9 @@ async function loadGeneralContent() {
 
 function renderGeneralContent(
   props: Parameters<Awaited<ReturnType<typeof loadGeneralContent>>>[0],
+  locale: Parameters<typeof createI18n>[0] = "en",
 ) {
-  const i18n = createI18n("en");
+  const i18n = createI18n(locale);
   const c = {
     get(key: string) {
       if (key === "i18n") return i18n;
@@ -50,7 +51,12 @@ function createProps(
     discover: "",
     // The deployment has no answer of its own; a self-hosted site opts in.
     discoverDefault: "" as const,
-    discoverUrl: "https://jant.me/discover",
+    discoverPages: {
+      home: "https://jant.me/discover",
+      links: "https://jant.me/links",
+      quotes: "https://jant.me/quotes",
+      rules: "https://jant.me/discover/about",
+    },
     discoverStatus: {
       announced: true,
       announceError: null,
@@ -104,17 +110,72 @@ describe("GeneralContent", () => {
     expect(html).toMatch(/<jant-settings-general[^>]*demo-mode(?:=|\s|>)/);
   });
 
-  // The client turns the word for the list into the directory link by finding
-  // it in the help line, so the two labels have to agree character for
+  // The client turns the name and the rules into links by finding them in the
+  // help line, so the labels have to agree with the sentence character for
   // character. A translation that reworded one and not the other would only
-  // lose the link, but this catches it here rather than in a screenshot.
-  it("carries the directory noun verbatim inside the help line", async () => {
+  // lose that link, but this catches it here rather than in a screenshot.
+  it("carries every linked term verbatim inside the help line", async () => {
     const html = await renderGeneralContent(createProps(false));
 
-    expect(html).toContain("Jant Discover is a directory of Jant blogs");
     expect(html).toContain(
-      "&quot;discoverDirectory&quot;:&quot;directory&quot;",
+      "Jant Discover is a directory of Jant blogs, curated by hand by the Jant community",
     );
+    expect(html).toContain(
+      "appear on the Links and Quotes lists 24 hours after they are published",
+    );
+    expect(html).toContain("See the Discover community rules.");
+    expect(html).toContain(
+      "&quot;discoverName&quot;:&quot;Jant Discover&quot;",
+    );
+    expect(html).toContain(
+      "&quot;discoverRules&quot;:&quot;Discover community rules&quot;",
+    );
+  });
+
+  // Translations are written by hand or by a model, and one that rewords a
+  // placeholder's value, or drops the placeholder, loses that link without a
+  // word. Every catalog has to keep all four runs verbatim.
+  it.each(["en", "zh-Hans", "zh-Hant"] as const)(
+    "keeps every linked term inside the %s help line",
+    async (locale) => {
+      const html = await renderGeneralContent(createProps(false), locale);
+      const attribute = /<jant-settings-general[^>]*\slabels="([^"]*)"/.exec(
+        html,
+      )?.[1];
+      const labels = JSON.parse(
+        (attribute ?? "{}").replaceAll("&quot;", '"').replaceAll("&amp;", "&"),
+      ) as Record<string, string>;
+      const intro = labels["discoverIntro"] ?? "";
+
+      for (const term of [
+        labels["discoverName"],
+        "Links",
+        "Quotes",
+        labels["discoverRules"],
+      ]) {
+        expect(term).toBeTruthy();
+        expect(intro).toContain(term);
+      }
+      // And the delay, so an author knows how long they have to edit.
+      expect(intro).toContain("24");
+    },
+  );
+
+  it("hands the browser every page the help line links to", async () => {
+    const html = await renderGeneralContent(createProps(false));
+
+    expect(html).toContain(
+      'discover-pages="{&quot;home&quot;:&quot;https://jant.me/discover&quot;,&quot;links&quot;:&quot;https://jant.me/links&quot;,&quot;quotes&quot;:&quot;https://jant.me/quotes&quot;,&quot;rules&quot;:&quot;https://jant.me/discover/about&quot;}"',
+    );
+  });
+
+  // No directory, no addresses: the help line then renders as plain text.
+  it("omits the directory's pages when none is configured", async () => {
+    const html = await renderGeneralContent(
+      createProps(false, { discoverPages: null }),
+    );
+
+    expect(html).not.toContain("discover-pages");
   });
 
   // The browser decides what the site declares, because two of the inputs are

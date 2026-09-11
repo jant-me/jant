@@ -54,7 +54,8 @@ export interface SettingsLabels {
   // Search
   allowIndexing: string;
   demoSeoLocked: string;
-  discoverDirectory: string;
+  discoverName: string;
+  discoverRules: string;
   discoverEnabled: string;
   discoverIntro: string;
   discoverDemoLocked: string;

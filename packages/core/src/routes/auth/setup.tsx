@@ -67,9 +67,9 @@ import { toPublicPath } from "../../lib/url.js";
 import { ONBOARDING_STATUS } from "../../lib/constants.js";
 import { announceInBackground } from "../discover-announce.js";
 import {
-  getDiscoverDirectoryUrl,
+  getDiscoverPageUrls,
+  linkTerms,
   resolveDiscoverMode,
-  splitLinkedTerm,
 } from "../../lib/discover.js";
 import {
   getDiscoverDefault,
@@ -146,20 +146,24 @@ const LocaleField: FC<{
  * settings page's own: one control appearing twice should not describe itself
  * two ways.
  *
- * The help line is the settings page's own catalog entry, message for message,
- * which is what keeps the two surfaces from drifting when either is edited. It
- * used to carry one more sentence — where to find the setting again — but the
- * screen's footnote says that once for every answer on it, and saying it here
- * as well was saying it twice.
+ * The label is the settings page's own catalog entry, message for message,
+ * which is what keeps the two surfaces from drifting when either is edited.
+ * The help line opens with the settings page's first sentence and stops after
+ * one more: the delay, the lists and the rules matter to an author with posts
+ * to show, and this screen comes before the first one. Where to find the
+ * setting again is left to the screen's footnote, which says it once for
+ * every answer on it.
  */
 const DiscoverField: FC<{
   label: string;
   hint: string;
-  /** The word in `hint` the link sits on, and where it goes. */
-  directory: string;
+  /** The directory's name in `hint`, which the link sits on. */
+  name: string;
   directoryUrl: string | null;
-}> = ({ label, hint, directory, directoryUrl }) => {
-  const parts = directoryUrl ? splitLinkedTerm(hint, directory) : null;
+}> = ({ label, hint, name, directoryUrl }) => {
+  const runs = directoryUrl
+    ? linkTerms(hint, [{ term: name, href: directoryUrl }])
+    : [{ text: hint }];
 
   return (
     // Held a little further from the field above it than the form's own gap:
@@ -182,21 +186,19 @@ const DiscoverField: FC<{
         <span>{label}</span>
       </label>
       <p class="text-sm text-muted-foreground mt-1">
-        {parts ? (
-          <>
-            {parts.before}
+        {runs.map((run) =>
+          run.href ? (
             <a
-              href={directoryUrl ?? undefined}
+              href={run.href}
               target="_blank"
               rel="noopener noreferrer"
               class="underline hover:text-foreground transition-colors"
             >
-              {parts.term}
+              {run.text}
             </a>
-            {parts.after}
-          </>
-        ) : (
-          hint
+          ) : (
+            run.text
+          ),
         )}
       </p>
     </div>
@@ -470,20 +472,13 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
     }),
   );
 
+  // Passed twice over: once as the value inside the sentences, once as the run
+  // of text the link goes on, so the two can never be different words.
   const discoverName = i18n._(
     msg({
       message: "Jant Discover",
       comment:
-        "@context: The same name of the Jant blog directory, on the first-run setup screen.",
-    }),
-  );
-  // Passed twice over: once as the value inside the sentence, once as the run
-  // of text the link goes on, so the two can never be different words.
-  const discoverDirectory = i18n._(
-    msg({
-      message: "directory",
-      comment:
-        "@context: The same noun for the Jant Discover list, on the first-run setup screen.",
+        "@context: The same name of the Jant blog directory, on the first-run setup screen, where the help line also links it to the directory.",
     }),
   );
   // Rendered even when the question is not asked, so the form can name the
@@ -502,13 +497,13 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
       hint={i18n._(
         msg({
           message:
-            "{name} is a {directory} of Jant blogs, curated by hand by the Jant community. Posts you mark Featured appear on it.",
+            "{name} is a directory of Jant blogs, curated by hand by the Jant community to help people find new Jant blogs and posts. Posts you mark Featured appear on the Discover home page.",
           comment:
-            "@context: Help text under the Jant Discover checkbox on the first-run setup screen, shorter than the settings page's. {name} is the directory's name; {directory} is the noun for the list itself and is rendered as the link to it, so keep it as one run of text. 'Featured' is the mark on a post, as this site's own UI spells it.",
+            "@context: Help text under the Jant Discover checkbox on the first-run setup screen, shorter than the settings page's and opening with the same sentence. {name} is the directory's name and is rendered as the link to it, so keep it as one run of text. 'Featured' is the mark on a post, as this site's own UI spells it.",
         }),
-        { name: discoverName, directory: discoverDirectory },
+        { name: discoverName },
       )}
-      directory={discoverDirectory}
+      name={discoverName}
       directoryUrl={discoverUrl}
     />
   ) : null;
@@ -766,9 +761,9 @@ setupRoutes.get("/setup", async (c) => {
         // The same directory the settings page links to, derived from the same
         // configuration, so this screen can never point at one directory while
         // the site announces to another.
-        discoverUrl={getDiscoverDirectoryUrl(
-          getDiscoverDirectoryBaseUrl(c.env),
-        )}
+        discoverUrl={
+          getDiscoverPageUrls(getDiscoverDirectoryBaseUrl(c.env))?.home ?? null
+        }
         contentLanguage={
           // On a named site the control plane's guess is already stored, so
           // offering it back is offering the site's current language. On an

@@ -174,6 +174,30 @@ export const DISCOVER_MIN_PUBLIC_POSTS = 1;
 /** Longest a directory waits before reading a newly announced feed. */
 export const DISCOVER_FIRST_READ_MAX_HOURS = 6;
 
+/**
+ * How long the jant.me directory holds a post it has read before showing it.
+ *
+ * The directory's rule — its `PUBLIC_DELAY_SECONDS` — stated here for the same
+ * reason as `DISCOVER_MIN_PUBLIC_POSTS`: the help line under the Discover
+ * checkbox tells an author how long they have to edit a post before it shows.
+ * A tuning value on the directory's side; this moves with it.
+ */
+export const DISCOVER_PUBLIC_DELAY_HOURS = 24;
+
+/**
+ * The directory's names for its two format lists.
+ *
+ * Proper names that stay in English in every locale, as the directory's own
+ * tabs spell them. They are placeholder values rather than catalog entries: a
+ * catalog entry for a word that must not be translated is one a later
+ * translation pass can quietly "fix", and the help line links each list by
+ * finding this exact run of text.
+ */
+export const DISCOVER_LIST_NAMES = {
+  links: "Links",
+  quotes: "Quotes",
+} as const;
+
 /** Where a site stands against the directory's threshold. */
 export interface DiscoverMaturity {
   publicPostCount: number;
@@ -201,29 +225,55 @@ export function measureDiscoverMaturity(input: {
   };
 }
 
+/** The directory's public pages that the Discover help line links to. */
+export interface DiscoverPageUrls {
+  /** The directory's home: the posts blogs have marked Featured. */
+  home: string;
+  /** Every link post, under the list name `Links`. */
+  links: string;
+  /** Every quote post, under the list name `Quotes`. */
+  quotes: string;
+  /** How blogs are listed: joining, review, and what takes a blog off. */
+  rules: string;
+}
+
 /**
- * The directory itself, derived from its base address.
+ * The directory's public pages, derived from its base address.
  *
- * What "Jant Discover" means is best answered by the list itself, so the
- * settings page links here rather than to a page describing it. Derived for
- * the same reason as the submission form: a site announcing to a directory of
- * its own must link to that one, not to jant.me.
+ * What "Jant Discover" means is best answered by the list itself, so the name
+ * links to the home rather than to a page describing it; the rules page is
+ * linked separately, for an author asking how their own posts get there.
+ * Derived for the same reason as the submission form: a site announcing to a
+ * directory of its own must link to that one, not to jant.me. The paths are
+ * jant.me's, where the three lists sit flat and the rules sit under
+ * `/discover`.
  *
  * @param directoryBaseUrl - The directory this deployment belongs to, from
  *   `getDiscoverDirectoryBaseUrl`
- * @returns Absolute URL of the directory, or `null` when there is none
+ * @returns Absolute URLs of the pages, or `null` when there is no directory
  * @example
  * ```ts
- * getDiscoverDirectoryUrl("https://jant.me/");
- * // "https://jant.me/discover"
+ * getDiscoverPageUrls("https://jant.me/");
+ * // {
+ * //   home: "https://jant.me/discover",
+ * //   links: "https://jant.me/links",
+ * //   quotes: "https://jant.me/quotes",
+ * //   rules: "https://jant.me/discover/about",
+ * // }
  * ```
  */
-export function getDiscoverDirectoryUrl(
+export function getDiscoverPageUrls(
   directoryBaseUrl: string | undefined | null,
-): string | null {
+): DiscoverPageUrls | null {
   if (!directoryBaseUrl) return null;
   try {
-    return new URL("/discover", directoryBaseUrl).toString();
+    const at = (path: string) => new URL(path, directoryBaseUrl).toString();
+    return {
+      home: at("/discover"),
+      links: at("/links"),
+      quotes: at("/quotes"),
+      rules: at("/discover/about"),
+    };
   } catch {
     return null;
   }
@@ -256,33 +306,70 @@ export function getDiscoverSubmitUrl(
   }
 }
 
+/** One run of a sentence, and where it links when it is a link. */
+export interface TextRun {
+  text: string;
+  href?: string;
+}
+
 /**
- * Split a sentence around the run of text that carries the directory link.
+ * Split a sentence into runs, making each given term a link.
  *
- * The Discover help line reads as one sentence in every locale, so the link is
- * found by splitting the translated line on the translated word rather than by
- * gluing fragments together. A translation that drops or rewrites the word
- * simply renders as plain text — a sentence without a link, never a broken one.
+ * The Discover help line reads as one sentence in every locale, so each link is
+ * found by searching the translated line for its translated term rather than by
+ * gluing fragments together. A term the translation drops or rewrites stays
+ * plain text — a sentence short one link, never a broken one. Each term links
+ * once, at its first occurrence no other link has claimed; longer terms are
+ * placed first, so a term inside another cannot take its place.
  *
  * @param text - The translated sentence
- * @param term - The translated run of text the link belongs on
- * @returns The three parts, or `null` when the term is not in the sentence
+ * @param links - Each run of text to link, and where it goes
+ * @returns The whole sentence as consecutive runs, in order
  * @example
  * ```ts
- * splitLinkedTerm("A directory of blogs.", "directory");
- * // { before: "A ", term: "directory", after: " of blogs." }
+ * linkTerms("See Links and Quotes.", [
+ *   { term: "Links", href: "/links" },
+ *   { term: "Quotes", href: "/quotes" },
+ * ]);
+ * // [
+ * //   { text: "See " },
+ * //   { text: "Links", href: "/links" },
+ * //   { text: " and " },
+ * //   { text: "Quotes", href: "/quotes" },
+ * //   { text: "." },
+ * // ]
  * ```
  */
-export function splitLinkedTerm(
+export function linkTerms(
   text: string,
-  term: string,
-): { before: string; term: string; after: string } | null {
-  if (!text || !term) return null;
-  const at = text.indexOf(term);
-  if (at === -1) return null;
-  return {
-    before: text.slice(0, at),
-    term,
-    after: text.slice(at + term.length),
-  };
+  links: readonly { term: string; href: string }[],
+): TextRun[] {
+  const claimed: { start: number; end: number; href: string }[] = [];
+  const ordered = links
+    .filter((link) => link.term && link.href)
+    .sort((a, b) => b.term.length - a.term.length);
+
+  for (const { term, href } of ordered) {
+    for (
+      let start = text.indexOf(term);
+      start !== -1;
+      start = text.indexOf(term, start + 1)
+    ) {
+      const end = start + term.length;
+      if (claimed.some((run) => start < run.end && run.start < end)) continue;
+      claimed.push({ start, end, href });
+      break;
+    }
+  }
+
+  claimed.sort((a, b) => a.start - b.start);
+  const runs: TextRun[] = [];
+  let at = 0;
+  for (const { start, end, href } of claimed) {
+    if (start > at) runs.push({ text: text.slice(at, start) });
+    runs.push({ text: text.slice(start, end), href });
+    at = end;
+  }
+  if (at < text.length) runs.push({ text: text.slice(at) });
+  return runs;
 }
