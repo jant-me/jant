@@ -67,14 +67,19 @@ import { toPublicPath } from "../../lib/url.js";
 import { ONBOARDING_STATUS } from "../../lib/constants.js";
 import { announceInBackground } from "../discover-announce.js";
 import {
+  discoverIntroRuns,
   getDiscoverPageUrls,
-  linkTerms,
   resolveDiscoverMode,
+  type DiscoverPageUrls,
 } from "../../lib/discover.js";
 import {
   getDiscoverDefault,
   getDiscoverDirectoryBaseUrl,
 } from "../../lib/env.js";
+import {
+  getDiscoverCopy,
+  type DiscoverCopy,
+} from "../../ui/dash/settings/discover-copy.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -146,24 +151,21 @@ const LocaleField: FC<{
  * settings page's own: one control appearing twice should not describe itself
  * two ways.
  *
- * The label is the settings page's own catalog entry, message for message,
+ * The words come from the same `getDiscoverCopy` the settings page uses,
  * which is what keeps the two surfaces from drifting when either is edited.
- * The help line opens with the settings page's first sentence and stops after
- * one more: the delay, the lists and the rules matter to an author with posts
- * to show, and this screen comes before the first one. Where to find the
- * setting again is left to the screen's footnote, which says it once for
- * every answer on it.
+ * The label is the settings page's; the help line is the settings page's
+ * opening sentence and nothing after it. The delay, the lists and the rules
+ * matter to an author with posts to show, and this screen comes before the
+ * first one — the directory's name links to the directory for anyone who wants
+ * more. Where to find the setting again is left to the screen's footnote, which
+ * says it once for every answer on it.
  */
 const DiscoverField: FC<{
-  label: string;
-  hint: string;
-  /** The directory's name in `hint`, which the link sits on. */
-  name: string;
-  directoryUrl: string | null;
-}> = ({ label, hint, name, directoryUrl }) => {
-  const runs = directoryUrl
-    ? linkTerms(hint, [{ term: name, href: directoryUrl }])
-    : [{ text: hint }];
+  copy: DiscoverCopy;
+  /** The directory's pages, or null when this deployment announces to none. */
+  pages: DiscoverPageUrls | null;
+}> = ({ copy, pages }) => {
+  const runs = discoverIntroRuns(copy.about, copy, pages);
 
   return (
     // Held a little further from the field above it than the form's own gap:
@@ -183,7 +185,7 @@ const DiscoverField: FC<{
           data-bind="discover"
           class="checkbox"
         />
-        <span>{label}</span>
+        <span>{copy.label}</span>
       </label>
       <p class="text-sm text-muted-foreground mt-1">
         {runs.map((run) =>
@@ -418,10 +420,10 @@ export type SetupContentProps = {
        */
       discoverDefault: boolean;
       /**
-       * The directory itself, for the link in the help line. Null when this
+       * The directory's pages, for the links in the help line. Null when this
        * deployment announces to no directory, and the line is then plain text.
        */
-      discoverUrl: string | null;
+      discoverPages: DiscoverPageUrls | null;
     }
 );
 
@@ -456,7 +458,7 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
     siteName,
     discoverAvailable,
     discoverDefault,
-    discoverUrl,
+    discoverPages,
   } = props;
 
   const searchLabel = i18n._(
@@ -472,40 +474,11 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
     }),
   );
 
-  // Passed twice over: once as the value inside the sentences, once as the run
-  // of text the link goes on, so the two can never be different words.
-  const discoverName = i18n._(
-    msg({
-      message: "Jant Discover",
-      comment:
-        "@context: The same name of the Jant blog directory, on the first-run setup screen, where the help line also links it to the directory.",
-    }),
-  );
   // Rendered even when the question is not asked, so the form can name the
   // signal unconditionally; `discoverAvailable` decides whether the control
   // appears, and an absent field simply sends the default back.
   const discoverField = discoverAvailable ? (
-    <DiscoverField
-      label={i18n._(
-        msg({
-          message: "Allow {name} to list my site",
-          comment:
-            "@context: The settings page's Discover checkbox, asked once on the first-run setup screen. {name} is the directory's name, kept as one run of text.",
-        }),
-        { name: discoverName },
-      )}
-      hint={i18n._(
-        msg({
-          message:
-            "{name} is a directory of Jant blogs, curated by hand by the Jant community to help people find new Jant blogs and posts. Posts you mark Featured appear on the Discover home page.",
-          comment:
-            "@context: Help text under the Jant Discover checkbox on the first-run setup screen, shorter than the settings page's and opening with the same sentence. {name} is the directory's name and is rendered as the link to it, so keep it as one run of text. 'Featured' is the mark on a post, as this site's own UI spells it.",
-        }),
-        { name: discoverName },
-      )}
-      name={discoverName}
-      directoryUrl={discoverUrl}
-    />
+    <DiscoverField copy={getDiscoverCopy(i18n)} pages={discoverPages} />
   ) : null;
 
   const signals = [
@@ -761,9 +734,7 @@ setupRoutes.get("/setup", async (c) => {
         // The same directory the settings page links to, derived from the same
         // configuration, so this screen can never point at one directory while
         // the site announces to another.
-        discoverUrl={
-          getDiscoverPageUrls(getDiscoverDirectoryBaseUrl(c.env))?.home ?? null
-        }
+        discoverPages={getDiscoverPageUrls(getDiscoverDirectoryBaseUrl(c.env))}
         contentLanguage={
           // On a named site the control plane's guess is already stored, so
           // offering it back is offering the site's current language. On an

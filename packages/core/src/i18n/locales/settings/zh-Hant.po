@@ -13,6 +13,11 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. @context: Help text under the Jant Discover checkbox on the settings page. {about} is the sentence saying what the directory is, translated on its own and shown alone on the setup screen; keep it, and join it to what follows as your language joins two sentences. {links} and {quotes} are the directory's two list names, which stay in English, and {rules} is the name of its rules page; each is rendered as a link, so keep every placeholder as one run of text. {hours} is how long the directory waits before showing a post, which is the time left to edit it. 'Featured' is the mark on a post, as this site's own UI spells it; the lowercase 'link and quote' are the post formats, not the lists.
+#: src/ui/dash/settings/discover-copy.ts
+msgid "{about} A post you mark Featured appears on the Discover home page {hours} hours later, and link and quote posts appear on the {links} and {quotes} lists {hours} hours after they are published. You can keep editing them in the meantime. See the {rules}."
+msgstr "{about}貼文設為 Featured {hours} 小時後會出現在 Discover 首頁，Link 和 Quote 類型的貼文發佈 {hours} 小時後出現在 {links} 和 {quotes} 列表。這段期間你可以繼續修改，詳見 {rules}。"
+
 #. @context: Warning in the multilingual dialog about stamping posts that have no language
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "{count, plural, one {# existing post} other {# existing posts}} with no language yet will be marked as {language}."
@@ -38,15 +43,10 @@ msgstr "{count} 個設定已顯示"
 msgid "{language} is the only other language on this site, so removing it turns multilingual content off. The root address goes back to showing every language, {prefix} stops working, and each post keeps the language it is written in."
 msgstr "移除 {language} 後就只剩主語言了，多語言會一併關閉。根位址將恢復顯示所有語言，{prefix} 不再可用，每篇貼文的語言維持不變。"
 
-#. @context: Help text under the Jant Discover checkbox. {name} is the directory's name, {links} and {quotes} are its two list names, which stay in English, and {rules} is the name of its rules page; each is rendered as a link, so keep every placeholder as one run of text. {hours} is how long the directory waits before showing a post, which is the time left to edit it. 'Featured' is the mark on a post, as this site's own UI spells it; the lowercase 'link and quote' are the post formats, not the lists.
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "{name} is a directory of Jant blogs, curated by hand by the Jant community to help people find new Jant blogs and posts. A post you mark Featured appears on the Discover home page {hours} hours later, and link and quote posts appear on the {links} and {quotes} lists {hours} hours after they are published. You can keep editing them in the meantime. See the {rules}."
-msgstr "{name} 是 Jant 社群人工維護的目錄，旨在幫助使用者發現新的 Jant 部落格和內容。貼文設為 Featured {hours} 小時後會出現在 Discover 首頁，Link 和 Quote 類型的貼文發佈 {hours} 小時後出現在 {links} 和 {quotes} 列表。這段期間你可以繼續修改，詳見 {rules}。"
-
-#. @context: Help text under the Jant Discover checkbox on the first-run setup screen, shorter than the settings page's and opening with the same sentence. {name} is the directory's name and is rendered as the link to it, so keep it as one run of text. 'Featured' is the mark on a post, as this site's own UI spells it.
-#: src/routes/auth/setup.tsx
-msgid "{name} is a directory of Jant blogs, curated by hand by the Jant community to help people find new Jant blogs and posts. Posts you mark Featured appear on the Discover home page."
-msgstr "{name} 是 Jant 社群人工維護的目錄，旨在幫助使用者發現新的 Jant 部落格和內容。設為 Featured 的貼文會出現在 Discover 首頁。"
+#. @context: What the Jant Discover directory is, in one sentence. The whole help line under the Discover checkbox on the first-run setup screen, and the opening of the settings page's longer one. {name} is the directory's name and is rendered as the link to it, so keep it as one run of text.
+#: src/ui/dash/settings/discover-copy.ts
+msgid "{name} is a directory of Jant blogs, curated by hand by the Jant community to help people find new Jant blogs and posts."
+msgstr "{name} 是 Jant 社群人工維護的目錄，旨在幫助使用者發現新的 Jant 部落格和內容。"
 
 #. @context: Body of the change-primary-language dialog
 #: src/ui/dash/settings/LanguageContent.tsx
@@ -259,10 +259,8 @@ msgstr "所有選集已經在你的導覽中。"
 msgid "All feed addresses"
 msgstr "全部 feed 網址"
 
-#. @context: Checkbox for joining the Jant Discover directory. {name} is the directory's name, kept as one run of text.
-#. @context: The settings page's Discover checkbox, asked once on the first-run setup screen. {name} is the directory's name, kept as one run of text.
-#: src/routes/auth/setup.tsx
-#: src/ui/dash/settings/GeneralContent.tsx
+#. @context: Checkbox for joining the Jant Discover directory, on the settings page and once on the first-run setup screen. {name} is the directory's name, kept as one run of text.
+#: src/ui/dash/settings/discover-copy.ts
 msgid "Allow {name} to list my site"
 msgstr "允許我的部落格出現在 {name} 中"
 
@@ -1049,7 +1047,7 @@ msgid "Disconnect Telegram? You can reconnect any time with a new binding code."
 msgstr "要斷開 Telegram？你可以隨時使用新的綁定代碼重新連接。"
 
 #. @context: Link text at the end of the help line under the Discover checkbox, leading to the directory's page on how blogs are listed: joining, review, and what takes a blog off. This run of text is rendered as the link, so translate it as it should read inside that sentence.
-#: src/ui/dash/settings/GeneralContent.tsx
+#: src/ui/dash/settings/discover-copy.ts
 msgid "Discover community rules"
 msgstr "Discover 社群規則"
 
@@ -1372,9 +1370,7 @@ msgid "Integrations"
 msgstr "第三方整合"
 
 #. @context: Name of the Jant blog directory. Appears inside the Discover checkbox label, and in the help line under it as the link to the directory.
-#. @context: The same name of the Jant blog directory, on the first-run setup screen, where the help line also links it to the directory.
-#: src/routes/auth/setup.tsx
-#: src/ui/dash/settings/GeneralContent.tsx
+#: src/ui/dash/settings/discover-copy.ts
 msgid "Jant Discover"
 msgstr "Jant Discover"
 

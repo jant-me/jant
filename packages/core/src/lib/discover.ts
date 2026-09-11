@@ -389,3 +389,49 @@ export function linkTerms(
   if (at < text.length) runs.push({ text: text.slice(at) });
   return runs;
 }
+
+/**
+ * The Discover help line as runs, each page it names linking to that page.
+ *
+ * The directory's name goes to its home, the two list names to the lists, and
+ * the rules to the page of rules. What Discover is, is best answered by the
+ * list itself, which is why the name links there rather than to a page about
+ * it, and why every link sits in the sentence that explains the list rather
+ * than on the checkbox label. The settings page and the setup screen both
+ * render their line through here, so the two can never link different words;
+ * setup's line is the settings line's opening sentence, so only the name is
+ * there to find.
+ *
+ * @param intro - The translated help line
+ * @param terms - The translated directory and rules-page names, as `intro`
+ *   carries them
+ * @param pages - The directory's pages, or `null` when there is no directory
+ * @returns The line as runs; a single plain run when there is nothing to link to
+ * @example
+ * ```ts
+ * discoverIntroRuns(
+ *   "Jant Discover is a directory. See the Discover community rules.",
+ *   { name: "Jant Discover", rules: "Discover community rules" },
+ *   getDiscoverPageUrls("https://jant.me/"),
+ * );
+ * // [
+ * //   { text: "Jant Discover", href: "https://jant.me/discover" },
+ * //   { text: " is a directory. See the " },
+ * //   { text: "Discover community rules", href: "https://jant.me/discover/about" },
+ * //   { text: "." },
+ * // ]
+ * ```
+ */
+export function discoverIntroRuns(
+  intro: string,
+  terms: { name: string; rules: string },
+  pages: DiscoverPageUrls | null,
+): TextRun[] {
+  if (!pages) return [{ text: intro }];
+  return linkTerms(intro, [
+    { term: terms.name, href: pages.home },
+    { term: DISCOVER_LIST_NAMES.links, href: pages.links },
+    { term: DISCOVER_LIST_NAMES.quotes, href: pages.quotes },
+    { term: terms.rules, href: pages.rules },
+  ]);
+}

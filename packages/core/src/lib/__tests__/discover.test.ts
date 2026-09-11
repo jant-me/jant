@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  discoverIntroRuns,
   getDiscoverFeedPath,
   getDiscoverPageUrls,
   getDiscoverSubmitUrl,
@@ -375,5 +376,35 @@ describe("linkTerms", () => {
         { term: "Links", href: "" },
       ]),
     ).toEqual([{ text: "See Links." }]);
+  });
+});
+
+describe("discoverIntroRuns", () => {
+  const terms = { name: "Jant Discover", rules: "Discover community rules" };
+  const intro =
+    "Jant Discover lists link and quote posts on Links and Quotes. See the Discover community rules.";
+
+  // The settings page and the setup screen both render the line through here,
+  // so this is the one place that says which words go where.
+  it("links the name, both lists and the rules to their pages", () => {
+    expect(
+      discoverIntroRuns(intro, terms, getDiscoverPageUrls("https://jant.me/")),
+    ).toEqual([
+      { text: "Jant Discover", href: "https://jant.me/discover" },
+      { text: " lists link and quote posts on " },
+      { text: "Links", href: "https://jant.me/links" },
+      { text: " and " },
+      { text: "Quotes", href: "https://jant.me/quotes" },
+      { text: ". See the " },
+      {
+        text: "Discover community rules",
+        href: "https://jant.me/discover/about",
+      },
+      { text: "." },
+    ]);
+  });
+
+  it("leaves the whole line plain when there is no directory", () => {
+    expect(discoverIntroRuns(intro, terms, null)).toEqual([{ text: intro }]);
   });
 });

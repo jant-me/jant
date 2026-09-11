@@ -13,9 +13,18 @@ import { renderToString } from "hono/jsx/dom/server";
 import { describe, expect, it } from "vitest";
 import { I18nProvider } from "../../../i18n/context.js";
 import { createI18n } from "../../../i18n/i18n.js";
+import type { DiscoverPageUrls } from "../../../lib/discover.js";
+import { getDiscoverCopy } from "../../../ui/dash/settings/discover-copy.js";
 import { SetupContent } from "../setup.js";
 
 type SetupProps = Parameters<typeof SetupContent>[0];
+
+const PAGES: DiscoverPageUrls = {
+  home: "https://jant.me/discover",
+  links: "https://jant.me/links",
+  quotes: "https://jant.me/quotes",
+  rules: "https://jant.me/discover/about",
+};
 
 function render(props: SetupProps): string {
   const i18n = createI18n("en");
@@ -35,7 +44,7 @@ describe("SetupContent — hosted site", () => {
     siteName: "My Blog",
     discoverAvailable: true,
     discoverDefault: true,
-    discoverUrl: "https://jant.me/discover",
+    discoverPages: PAGES,
   };
 
   it("names the step and the site in one line", () => {
@@ -98,7 +107,7 @@ describe("SetupContent — the Discover question", () => {
     contentLanguage: "en",
     discoverAvailable: true,
     discoverDefault: false,
-    discoverUrl: "https://jant.me/discover",
+    discoverPages: PAGES,
   };
 
   it("starts clear where the deployment lists nothing by default", () => {
@@ -141,13 +150,28 @@ describe("SetupContent — the Discover question", () => {
     expect(html).toContain("discover: false");
   });
 
+  // One control appearing twice should not describe itself two ways: the
+  // label is the settings page's, and the help line is the settings page's
+  // opening sentence rather than a wording of setup's own. The delay, the
+  // lists and the rules wait for Settings, where an author has posts to show.
+  it("opens the way the settings page does, and stops there", () => {
+    const copy = getDiscoverCopy(createI18n("en"));
+    const html = render({ ...base, discoverPages: null });
+
+    expect(copy.intro.startsWith(copy.about)).toBe(true);
+    expect(html).toContain(`<span>${copy.label}</span>`);
+    expect(html).toContain(`${copy.about}</p>`);
+    expect(html).not.toContain("Featured");
+    expect(html).not.toContain(copy.rules);
+  });
+
   // What Discover is, is best answered by the list itself, so its name in the
   // help line is the way there — the same link the settings page puts on it.
   it("links the directory's name in the help line to the directory", () => {
     const html = render(base);
 
     expect(html).toContain(
-      '<a href="https://jant.me/discover" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground transition-colors">Jant Discover</a> is a directory of Jant blogs',
+      `<a href="${PAGES.home}" target="_blank" rel="noopener noreferrer" class="underline hover:text-foreground transition-colors">Jant Discover</a> is a directory of Jant blogs`,
     );
     expect(html.match(/<a href/g)).toHaveLength(1);
   });
@@ -155,7 +179,7 @@ describe("SetupContent — the Discover question", () => {
   // A self-hosted site that announces to no directory has no address to link,
   // and a sentence with a dead link in it is worse than a plain one.
   it("leaves the help line plain when no directory is configured", () => {
-    const html = render({ ...base, discoverUrl: null });
+    const html = render({ ...base, discoverPages: null });
 
     expect(html).toContain("Jant Discover is a directory of Jant blogs");
     expect(html).not.toContain("<a href");
@@ -164,12 +188,11 @@ describe("SetupContent — the Discover question", () => {
   // The screen's footnote already says every answer here can change later.
   // Saying it again under one checkbox was saying it twice.
   it("does not repeat the way back to Settings", () => {
-    const html = render(base);
+    const copy = getDiscoverCopy(createI18n("en"));
+    const html = render({ ...base, discoverPages: null });
 
     expect(html).not.toContain("→");
-    expect(html).toContain(
-      "Posts you mark Featured appear on the Discover home page.</p>",
-    );
+    expect(html).toContain(`${copy.about}</p>`);
   });
 });
 
@@ -185,7 +208,7 @@ describe("SetupContent — the note that nothing is final", () => {
     contentLanguage: "en",
     discoverAvailable: true,
     discoverDefault: false,
-    discoverUrl: null,
+    discoverPages: null,
   };
   const note = "You can change all of this later in Settings.";
 
@@ -269,7 +292,7 @@ describe("SetupContent — self-hosted, second screen", () => {
     contentLanguage: "en",
     discoverAvailable: true,
     discoverDefault: false,
-    discoverUrl: "https://jant.me/discover",
+    discoverPages: PAGES,
   };
 
   it("counts itself as the last step and names no site yet", () => {

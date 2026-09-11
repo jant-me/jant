@@ -13,8 +13,7 @@ import { LitElement, html, nothing } from "lit";
 import type { Editor } from "@tiptap/core";
 import { MAX_SITE_NAME_LENGTH } from "../../types.js";
 import {
-  DISCOVER_LIST_NAMES,
-  linkTerms,
+  discoverIntroRuns,
   resolveDiscoverMode,
   type DiscoverPageUrls,
 } from "../../lib/discover.js";
@@ -1029,26 +1028,18 @@ export class JantSettingsGeneral extends LitElement {
   /**
    * The help line, with each page it names linking to that page.
    *
-   * The directory's name goes to its home, the two list names to the lists,
-   * and the rules to the page of rules. The line reads as one sentence in every
-   * locale, so each link is found by searching the translated string for its
-   * translated term rather than by gluing fragments together; a term a
-   * translation drops simply stays plain text. What Discover is, is best
-   * answered by the list itself, which is why the name links there rather than
-   * to a page about it, and why every link sits in the sentence that explains
-   * the list rather than on the checkbox label.
+   * Which words link where is `discoverIntroRuns`'s to decide, so the setup
+   * screen, which shows the same line, links the same words.
    */
   private _renderDiscoverIntro() {
-    const text = this.labels.discoverIntro ?? "";
-    const pages = this.discoverPages;
-    if (!pages) return text;
-
-    const runs = linkTerms(text, [
-      { term: this.labels.discoverName ?? "", href: pages.home },
-      { term: DISCOVER_LIST_NAMES.links, href: pages.links },
-      { term: DISCOVER_LIST_NAMES.quotes, href: pages.quotes },
-      { term: this.labels.discoverRules ?? "", href: pages.rules },
-    ]);
+    const runs = discoverIntroRuns(
+      this.labels.discoverIntro ?? "",
+      {
+        name: this.labels.discoverName ?? "",
+        rules: this.labels.discoverRules ?? "",
+      },
+      this.discoverPages,
+    );
 
     return runs.map((run) =>
       run.href

@@ -11,15 +11,14 @@ import { msg } from "@lingui/core/macro";
 import { useLingui } from "../../../i18n/context.js";
 import type { TimezoneEntry } from "../../../lib/timezones.js";
 import type { AboutPageStatus } from "../../../services/about-page.js";
-import {
-  DISCOVER_LIST_NAMES,
-  DISCOVER_PUBLIC_DELAY_HOURS,
-  type DiscoverMode,
-  type DiscoverPageUrls,
-  type DiscoverSetting,
+import type {
+  DiscoverMode,
+  DiscoverPageUrls,
+  DiscoverSetting,
 } from "../../../lib/discover.js";
 import { getJantDocsUrl } from "../../../lib/jant-docs.js";
 import { now } from "../../../lib/time.js";
+import { getDiscoverCopy } from "./discover-copy.js";
 
 const FEEDS_DOCS_URL = getJantDocsUrl("feeds");
 
@@ -149,31 +148,16 @@ export function GeneralContent({
 }) {
   const { i18n } = useLingui();
 
-  // The directory's name, split out so the checkbox label and the help line
-  // can carry it as a placeholder and word order stays free per locale. In the
-  // help line the component also finds it to make it the link to the directory.
-  const discoverName = i18n._(
-    msg({
-      message: "Jant Discover",
-      comment:
-        "@context: Name of the Jant blog directory. Appears inside the Discover checkbox label, and in the help line under it as the link to the directory.",
-    }),
-  );
-
-  // The run of text the rules link sits on, at the end of the help line. A
-  // placeholder for the same reason as the name: the component wraps this run
-  // in the link, and the sentence can be built any way round.
-  const discoverRules = i18n._(
-    msg({
-      message: "Discover community rules",
-      comment:
-        "@context: Link text at the end of the help line under the Discover checkbox, leading to the directory's page on how blogs are listed: joining, review, and what takes a blog off. This run of text is rendered as the link, so translate it as it should read inside that sentence.",
-    }),
-  );
+  // Shared with the setup screen, which asks the same question once.
+  const discoverCopy = getDiscoverCopy(i18n);
 
   const labels = JSON.stringify({
-    discoverName,
-    discoverRules,
+    // The component finds the name and the rules in the help line to make
+    // them links, so it gets them on their own as well as inside the line.
+    discoverName: discoverCopy.name,
+    discoverRules: discoverCopy.rules,
+    discoverEnabled: discoverCopy.label,
+    discoverIntro: discoverCopy.intro,
     general: i18n._(
       msg({
         message: "General",
@@ -406,29 +390,6 @@ export function GeneralContent({
         comment:
           "@context: Help text explaining that SEO indexing is locked in demo mode",
       }),
-    ),
-    discoverEnabled: i18n._(
-      msg({
-        message: "Allow {name} to list my site",
-        comment:
-          "@context: Checkbox for joining the Jant Discover directory. {name} is the directory's name, kept as one run of text.",
-      }),
-      { name: discoverName },
-    ),
-    discoverIntro: i18n._(
-      msg({
-        message:
-          "{name} is a directory of Jant blogs, curated by hand by the Jant community to help people find new Jant blogs and posts. A post you mark Featured appears on the Discover home page {hours} hours later, and link and quote posts appear on the {links} and {quotes} lists {hours} hours after they are published. You can keep editing them in the meantime. See the {rules}.",
-        comment:
-          "@context: Help text under the Jant Discover checkbox. {name} is the directory's name, {links} and {quotes} are its two list names, which stay in English, and {rules} is the name of its rules page; each is rendered as a link, so keep every placeholder as one run of text. {hours} is how long the directory waits before showing a post, which is the time left to edit it. 'Featured' is the mark on a post, as this site's own UI spells it; the lowercase 'link and quote' are the post formats, not the lists.",
-      }),
-      {
-        name: discoverName,
-        hours: DISCOVER_PUBLIC_DELAY_HOURS,
-        links: DISCOVER_LIST_NAMES.links,
-        quotes: DISCOVER_LIST_NAMES.quotes,
-        rules: discoverRules,
-      },
     ),
     discoverSearchOff: i18n._(
       msg({
