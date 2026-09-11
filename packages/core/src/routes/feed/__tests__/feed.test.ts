@@ -6,6 +6,7 @@ import type { AppVariables } from "../../../types/app-context.js";
 import {
   createTestDatabase,
   DEFAULT_TEST_SITE_ID,
+  enforceD1BoundParameterLimit,
 } from "../../../__tests__/helpers/db.js";
 import { posts as postTable } from "../../../db/schema.js";
 import { createPostService } from "../../../services/post.js";
@@ -22,7 +23,7 @@ import type { Database } from "../../../db/index.js";
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
 function createFeedTestApp(envOverrides: Partial<Bindings> = {}) {
-  const { db } = createTestDatabase();
+  const { db, sqlite } = createTestDatabase();
   const pathService = createPathService(db as never, DEFAULT_TEST_SITE_ID);
 
   const services = {
@@ -65,7 +66,12 @@ function createFeedTestApp(envOverrides: Partial<Bindings> = {}) {
   app.route("/latest", latestRoutes);
   app.route("/featured", featuredRoutes);
 
-  return { app, services, db: db as unknown as Database };
+  return { app, services, db: db as unknown as Database, sqlite };
+}
+
+/** Count the `<entry>` elements in an Atom document. */
+function countEntries(xml: string): number {
+  return xml.match(/<entry>/g)?.length ?? 0;
 }
 
 afterEach(() => {
@@ -594,6 +600,132 @@ describe("Atom Feed Routes", () => {
       expect(xml).toContain("Post 2");
       expect(xml).not.toContain("Post 1");
       expect(xml).not.toContain("Post 0");
+    });
+  });
+
+  describe("Discover fields", () => {
+    it("gives every entry the post's own ID beside its permalink id", async () => {
+      const { app, services } = createFeedTestApp();
+      const post = await services.posts.create({
+        format: "note",
+        title: "Identified",
+        bodyMarkdown: "Body",
+        status: "published",
+        slug: "identified",
+      });
+
+      const xml = await (await app.request("/latest/feed")).text();
+
+      expect(xml).toContain(
+        `<id>http://localhost:${DEFAULT_APP_PORT}/identified</id>\n    <jant:id>${post.id}</jant:id>`,
+      );
+    });
+
+    it("names the status endpoint in the declaration while the site is listed", async () => {
+      const { app, services } = createFeedTestApp();
+      await services.settings.set("DISCOVER", "latest");
+
+      const xml = await (await app.request("/latest/feed")).text();
+
+      expect(xml).toContain(
+        ` status="http://localhost:${DEFAULT_APP_PORT}/api/discover/posts">latest</jant:discover>`,
+      );
+    });
+
+    it("names no status endpoint under none", async () => {
+      const { app, services } = createFeedTestApp();
+      await services.settings.set("DISCOVER", "off");
+
+      const xml = await (await app.request("/latest/feed")).text();
+
+      expect(xml).toContain("<jant:discover>none</jant:discover>");
+    });
+  });
+
+  describe("?limit=", () => {
+    async function createNotes(
+      services: ReturnType<typeof createFeedTestApp>["services"],
+      count: number,
+      options: { featured?: boolean } = {},
+    ) {
+      for (let i = 0; i < count; i++) {
+        await services.posts.create({
+          format: "note",
+          title: `Post ${i}`,
+          bodyMarkdown: `Body ${i}`,
+          status: "published",
+          featured: options.featured,
+        });
+      }
+    }
+
+    it("carries more than RSS_FEED_LIMIT when asked", async () => {
+      const { app, services } = createFeedTestApp({ RSS_FEED_LIMIT: "2" });
+      await createNotes(services, 4);
+
+      const xml = await (await app.request("/latest/feed?limit=3")).text();
+
+      expect(countEntries(xml)).toBe(3);
+      expect(xml).toContain("Post 3");
+      expect(xml).toContain("Post 1");
+      expect(xml).not.toContain("Post 0");
+    });
+
+    it("carries fewer when asked", async () => {
+      const { app, services } = createFeedTestApp();
+      await createNotes(services, 3);
+
+      const xml = await (await app.request("/latest/feed?limit=1")).text();
+
+      expect(countEntries(xml)).toBe(1);
+      expect(xml).toContain("Post 2");
+    });
+
+    it("keeps the site's length for a value it cannot read", async () => {
+      const { app, services } = createFeedTestApp({ RSS_FEED_LIMIT: "2" });
+      await createNotes(services, 4);
+
+      for (const query of ["limit=abc", "limit=0", "limit=-1", "limit=1.5"]) {
+        const res = await app.request(`/latest/feed?${query}`);
+        expect(res.status).toBe(200);
+        expect(countEntries(await res.text())).toBe(2);
+      }
+    });
+
+    it("applies to the featured and main feeds", async () => {
+      const { app, services } = createFeedTestApp({ RSS_FEED_LIMIT: "1" });
+      await createNotes(services, 3, { featured: true });
+
+      const featured = await (
+        await app.request("/featured/feed?limit=2")
+      ).text();
+      const main = await (await app.request("/feed?limit=2")).text();
+
+      expect(countEntries(featured)).toBe(2);
+      expect(countEntries(main)).toBe(2);
+    });
+
+    it("leaves the feed's self link on the address without it", async () => {
+      const { app, services } = createFeedTestApp();
+      await createNotes(services, 1);
+
+      const xml = await (await app.request("/latest/feed?limit=10")).text();
+
+      expect(xml).toContain(
+        `<link href="http://localhost:${DEFAULT_APP_PORT}/latest/feed" rel="self"/>`,
+      );
+    });
+
+    it("renders past a hundred entries within D1's bound-parameter limit", async () => {
+      const { app, services, sqlite } = createFeedTestApp();
+      await createNotes(services, 120, { featured: true });
+      enforceD1BoundParameterLimit(sqlite);
+
+      for (const path of ["/latest/feed", "/featured/feed"]) {
+        const res = await app.request(`${path}?limit=120`);
+        expect(res.status).toBe(200);
+        expect(countEntries(await res.text())).toBe(120);
+      }
     });
   });
 

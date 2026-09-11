@@ -21,6 +21,7 @@ import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
   getFeedEntryUpdatedAt,
+  getFeedLimit,
   getRssPublishedBefore,
   renderFeed,
 } from "../../lib/feed-policy.js";
@@ -249,7 +250,7 @@ export async function renderSmartCollectionFeed(
       filters.publishedBefore === undefined
         ? publishedBefore
         : Math.min(filters.publishedBefore, publishedBefore),
-    limit: appConfig.rssFeedLimit,
+    limit: getFeedLimit(c),
   });
 
   const rootIds = posts.filter((p) => p.threadId === p.id).map((p) => p.id);

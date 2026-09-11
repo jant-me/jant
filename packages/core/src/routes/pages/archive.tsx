@@ -48,6 +48,7 @@ import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
   getFeedEntryUpdatedAt,
+  getFeedLimit,
   getRssPublishedBefore,
   renderFeed,
 } from "../../lib/feed-policy.js";
@@ -759,9 +760,9 @@ async function buildArchiveFeedData(
   // so its feed must match.
   //
   // Ordered by publication by default, like the page it belongs to. Ordering
-  // by activity would make the feed's contents shift under a fixed
-  // `rssFeedLimit` — a new reply pulls an old Thread back into the window and
-  // pushes something else out — and it buys nothing in return, because readers
+  // by activity would make the feed's contents shift under a fixed length — a
+  // new reply pulls an old Thread back into the window and pushes something
+  // else out — and it buys nothing in return, because readers
   // key entries by id and will not re-surface one that merely moved.
   // /latest/feed is the activity feed; this one is the chronological record.
   //
@@ -787,7 +788,7 @@ async function buildArchiveFeedData(
       selectionFilters.publishedBefore === undefined
         ? rssPublishedBefore
         : Math.min(selectionFilters.publishedBefore, rssPublishedBefore),
-    limit: appConfig.rssFeedLimit,
+    limit: getFeedLimit(c),
   };
 
   const posts = await services.posts.list(filters);

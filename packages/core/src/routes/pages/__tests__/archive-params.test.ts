@@ -66,6 +66,31 @@ describe("archive feed filter params", () => {
     expect(xml).not.toContain("Recent Archive Post");
   });
 
+  it("carries the number of entries ?limit= asks for", async () => {
+    const { app, services } = setupApp();
+    await services.posts.create({
+      format: "note",
+      title: "Older Archive Post",
+      bodyMarkdown: "Older",
+      status: "published",
+      publishedAt: 1_000,
+    });
+    await services.posts.create({
+      format: "note",
+      title: "Newer Archive Post",
+      bodyMarkdown: "Newer",
+      status: "published",
+      publishedAt: 2_000,
+    });
+
+    const xml = await fetchFeed(app, "?limit=1");
+
+    expect(xml).toContain("Newer Archive Post");
+    expect(xml).not.toContain("Older Archive Post");
+    // Not a filter, so the feed's own address does not carry it.
+    expect(xml).not.toContain("limit=1");
+  });
+
   it("filters by title with the new param and the legacy fallback", async () => {
     const { app, services } = setupApp();
     await services.posts.create({

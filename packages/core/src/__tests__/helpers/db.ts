@@ -134,3 +134,36 @@ export function createTestDatabase(options?: { fts?: boolean }) {
 
   return { db, sqlite };
 }
+
+/** The most bound parameters Cloudflare D1 accepts in one statement. */
+export const D1_MAX_BOUND_PARAMETERS = 100;
+
+/**
+ * Make a test database refuse what D1 refuses: a statement with more than
+ * {@link D1_MAX_BOUND_PARAMETERS} bound parameters.
+ *
+ * better-sqlite3 accepts tens of thousands, so a query that puts every id in
+ * one `IN (…)` list passes every test and fails in production once the list
+ * grows. Install this after seeding, so only the code under test is held to it.
+ *
+ * @param sqlite - The handle `createTestDatabase` or `createTestApp` returned
+ * @returns Nothing; the handle is changed in place
+ * @example
+ * ```ts
+ * const { app, sqlite } = createTestApp();
+ * await seed(app);
+ * enforceD1BoundParameterLimit(sqlite);
+ * ```
+ */
+export function enforceD1BoundParameterLimit(sqlite: Database.Database): void {
+  const prepare = sqlite.prepare.bind(sqlite);
+  sqlite.prepare = ((source: string) => {
+    const count = source.match(/\?/g)?.length ?? 0;
+    if (count > D1_MAX_BOUND_PARAMETERS) {
+      throw new Error(
+        `too many SQL variables: ${count} bound parameters, D1 allows ${D1_MAX_BOUND_PARAMETERS}`,
+      );
+    }
+    return prepare(source);
+  }) as Database.Database["prepare"];
+}

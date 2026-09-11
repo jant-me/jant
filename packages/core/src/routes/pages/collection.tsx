@@ -21,6 +21,7 @@ import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
   getFeedEntryUpdatedAt,
+  getFeedLimit,
   getRssPublishedBefore,
   renderFeed,
 } from "../../lib/feed-policy.js";
@@ -249,7 +250,7 @@ export async function renderCollectionFeed(
   const siteUrl = appConfig.siteUrl;
   // A language view's feed is that language's feed, so it declares it.
   const siteLanguage = getViewLang(c) ?? appConfig.siteLanguage;
-  const feedLimit = appConfig.rssFeedLimit;
+  const feedLimit = getFeedLimit(c);
   const publishedBefore = getRssPublishedBefore(
     appConfig.rssPublishDelaySeconds,
   );

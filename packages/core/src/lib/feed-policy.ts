@@ -1,11 +1,16 @@
 import type { Context } from "hono";
 import type { Bindings, FeedData, Post } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
-import { getDiscoverFeedPath } from "./discover.js";
+import type { PostFilters, ThreadRootPageOptions } from "../services/post.js";
+import { DISCOVER_STATUS_PATH, getDiscoverFeedPath } from "./discover.js";
 import { strongETag } from "./http-cache.js";
 import { now, toISOString } from "./time.js";
 import { toAbsoluteSiteUrl } from "./url.js";
-import { buildSurfaceAlternates, viewBasePath } from "./view-language.js";
+import {
+  buildSurfaceAlternates,
+  getViewLang,
+  viewBasePath,
+} from "./view-language.js";
 
 type FeedContext = Context<{ Bindings: Bindings; Variables: AppVariables }>;
 
@@ -71,6 +76,117 @@ export function getRssPublishedBefore(
 }
 
 /**
+ * The most entries one feed response carries, whatever `?limit=` asks for.
+ *
+ * The parameter exists for a consumer reading a site for the first time — a
+ * directory that wants a blog's history, not its last fifty posts — and this
+ * bounds what any anonymous request can make the site render in one go.
+ */
+export const FEED_LIMIT_MAX = 500;
+
+/**
+ * Read a feed's `?limit=` value.
+ *
+ * A positive integer is honoured up to {@link FEED_LIMIT_MAX}; asking for more
+ * gets the most there is. Anything else — missing, zero, negative, not a whole
+ * number — leaves the site's own length in place, the same leniency `?format=`
+ * gets: a feed reader gains nothing from an error page.
+ *
+ * @param raw - The query value as sent, if any
+ * @param siteLimit - The site's `RSS_FEED_LIMIT`
+ * @returns How many entries to render
+ * @example
+ * ```ts
+ * parseFeedLimit("200", 50); // 200
+ * parseFeedLimit("9000", 50); // 500
+ * parseFeedLimit("abc", 50); // 50
+ * ```
+ */
+export function parseFeedLimit(
+  raw: string | undefined,
+  siteLimit: number,
+): number {
+  if (raw === undefined || !/^\d+$/.test(raw)) return siteLimit;
+  const requested = Number(raw);
+  if (requested === 0) return siteLimit;
+  return Math.min(requested, FEED_LIMIT_MAX);
+}
+
+/**
+ * How many entries the feed being served carries.
+ *
+ * Every feed on the site reads its length here. `?limit=` changes how much of
+ * a feed one response holds, not which feed it is, so nothing else reads it:
+ * `rel="self"`, the language alternates and the Discover declaration all keep
+ * naming the address without it.
+ *
+ * @param c - Request context
+ * @returns The entry count to query for
+ * @example
+ * ```ts
+ * posts.list({ ...filters, limit: getFeedLimit(c) });
+ * ```
+ */
+export function getFeedLimit(c: FeedContext): number {
+  return parseFeedLimit(c.req.query("limit"), c.var.appConfig.rssFeedLimit);
+}
+
+/**
+ * The posts `/latest/feed` chooses from, before its length and its order.
+ *
+ * Written once because two places must agree on it: the feed itself, and the
+ * Discover status endpoint, which tells a directory whether a post it holds
+ * is still in this feed. A second copy of the rule is a directory told a post
+ * is gone while the feed still carries it.
+ *
+ * @param input - The language view, if any, and the RSS delay's cutoff
+ * @returns Filters for `posts.list`
+ * @example
+ * ```ts
+ * posts.list({ ...latestFeedSelection({ lang, publishedBefore }), limit });
+ * ```
+ */
+export function latestFeedSelection(input: {
+  lang?: string;
+  publishedBefore: number;
+}) {
+  return {
+    status: "published",
+    excludeReplies: true,
+    excludeLatestHidden: true,
+    excludePrivate: true,
+    lang: input.lang,
+    publishedBefore: input.publishedBefore,
+  } satisfies PostFilters;
+}
+
+/**
+ * The Threads `/featured/feed` chooses from: any with a featured post past
+ * the RSS delay. See {@link latestFeedSelection} for why it is written once.
+ *
+ * @param input - The language view, if any, and the RSS delay's cutoff
+ * @returns Options for `posts.listFeaturedThreadRootIds`
+ * @example
+ * ```ts
+ * posts.listFeaturedThreadRootIds({
+ *   ...featuredFeedSelection({ lang, publishedBefore }),
+ *   limit,
+ * });
+ * ```
+ */
+export function featuredFeedSelection(input: {
+  lang?: string;
+  publishedBefore: number;
+}) {
+  return {
+    status: "published",
+    excludePrivate: true,
+    lang: input.lang,
+    publishedBefore: input.publishedBefore,
+  } satisfies ThreadRootPageOptions;
+}
+
+/**
  * Resolve the Atom `updated` timestamp for a Thread entry from content that is
  * actually present in the feed.
  *
@@ -111,10 +227,10 @@ export function getFeedEntryUpdatedAt(
  *
  * A consumer holding one of a site's feeds — any of them — should be able to
  * learn two things from it: whether the site wants to be listed in Jant
- * Discover and which feed to poll for it, and where that site's other
- * languages publish. Both are per-view, so they are resolved from the request
- * rather than from `AppConfig` alone, and both are spread into every
- * `FeedData` the site builds.
+ * Discover, with which feeds to poll and where to ask about posts it holds,
+ * and where that site's other languages publish. Both are per-view, so they
+ * are resolved from the request rather than from `AppConfig` alone, and both
+ * are spread into every `FeedData` the site builds.
  *
  * @param c - Request context
  * @param options - `query` is the canonical query string this feed's siblings
@@ -134,6 +250,7 @@ export function buildFeedDiscoveryFields(
   | "discover"
   | "discoverFeedUrl"
   | "discoverFeaturedFeedUrl"
+  | "discoverStatusUrl"
   | "languageAlternates"
 > {
   const { appConfig } = c.var;
@@ -151,11 +268,24 @@ export function buildFeedDiscoveryFields(
     appConfig.discover === "latest"
       ? absoluteFeedUrl(getDiscoverFeedPath("featured") ?? "/featured/feed")
       : null;
+  // The API lives outside language views, so the view travels as `lang`: the
+  // answer must be about the feeds this declaration sits in.
+  const viewLang = getViewLang(c);
+  const discoverStatusUrl = feedPath
+    ? toAbsoluteSiteUrl(
+        viewLang
+          ? `${DISCOVER_STATUS_PATH}?lang=${encodeURIComponent(viewLang)}`
+          : DISCOVER_STATUS_PATH,
+        appConfig.siteUrl,
+        appConfig.sitePathPrefix,
+      )
+    : null;
 
   return {
     discover: appConfig.discover,
     discoverFeedUrl,
     discoverFeaturedFeedUrl,
+    discoverStatusUrl,
     // Alternates follow the feed's canonical URL, not the request's, so a feed
     // reached with tracking params still points its siblings at the canonical
     // form. `x-default` is defined for web pages a search engine ranks; it

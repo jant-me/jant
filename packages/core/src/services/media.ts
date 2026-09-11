@@ -17,7 +17,11 @@ import {
   lte,
 } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
-import { type Database, supportsDrizzleTransaction } from "../db/index.js";
+import {
+  batchQueryRows,
+  type Database,
+  supportsDrizzleTransaction,
+} from "../db/index.js";
 import type { DatabaseDialect } from "../db/dialect.js";
 import {
   sqliteSchemaBundle,
@@ -723,11 +727,15 @@ export function createMediaService(
       const result = new Map<string, Media[]>();
       if (postIds.length === 0) return result;
 
-      const rows = await db
-        .select()
-        .from(media)
-        .where(and(eq(media.siteId, siteId), inArray(media.postId, postIds)))
-        .orderBy(asc(media.position));
+      // A feed asks for every post it renders at once, which can be hundreds.
+      // Each post's attachments land in one chunk, so their order holds.
+      const rows = await batchQueryRows([...new Set(postIds)], (chunk) =>
+        db
+          .select()
+          .from(media)
+          .where(and(eq(media.siteId, siteId), inArray(media.postId, chunk)))
+          .orderBy(asc(media.position)),
+      );
 
       for (const row of rows) {
         const m = toMedia(row);

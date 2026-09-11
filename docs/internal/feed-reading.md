@@ -6,11 +6,11 @@ It says what arrives and how to read it. Why each field is shaped that way is in
 
 ## Namespaces
 
-| Prefix  | URI                             | Carries                        |
-| ------- | ------------------------------- | ------------------------------ |
-| —       | `http://www.w3.org/2005/Atom`   | Everything standard            |
-| `jant`  | `https://jant.me/ns`            | Post format, threads, Discover |
-| `media` | `http://search.yahoo.com/mrss/` | Attachment metadata            |
+| Prefix  | URI                             | Carries                               |
+| ------- | ------------------------------- | ------------------------------------- |
+| —       | `http://www.w3.org/2005/Atom`   | Everything standard                   |
+| `jant`  | `https://jant.me/ns`            | Post ID and format, threads, Discover |
+| `media` | `http://search.yahoo.com/mrss/` | Attachment metadata                   |
 
 Both extensions are declared only when the feed emits something in them — which for `jant` is every served feed, since each carries `<jant:discover>`. The URIs are fixed identifiers, not addresses to fetch, and the prefixes bound to them are arbitrary — match on the URI.
 
@@ -23,6 +23,7 @@ An Atom reader that knows neither extension still gets a working feed. Everythin
   <title></title>
   <link href="https://ex.com/roasting-again" rel="alternate"/>
   <id>https://ex.com/roasting-again</id>
+  <jant:id>pst_01jpyx3m7gw4w3h7m4bknq0v1d</jant:id>
   <published>2026-03-19T09:00:00.000Z</published>
   <updated>2026-03-19T09:00:00.000Z</updated>
   <jant:format>note</jant:format>
@@ -40,6 +41,7 @@ An Atom reader that knows neither extension still gets a working feed. Everythin
 | Element                  | Count | Read it for                                                                                            |
 | ------------------------ | ----- | ------------------------------------------------------------------------------------------------------ |
 | `id`                     | 1     | The post's permalink. Always — even on a Link post, whose `alternate` points elsewhere                 |
+| `jant:id`                | 1     | The post's ID. Unlike `id` it survives a slug rename or a new domain: key on it to recognise a post    |
 | `title`                  | 1     | The title. **Empty, not absent**, on untitled Notes and every Quote                                    |
 | `link[@rel="alternate"]` | 1     | Where the entry points: the external URL on a Link post, the permalink otherwise                       |
 | `link[@rel="related"]`   | 0–1   | Link posts only: the permalink, since `alternate` was spent on the external URL                        |

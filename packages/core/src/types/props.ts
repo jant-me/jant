@@ -273,6 +273,12 @@ export interface FeedData {
    */
   discoverFeaturedFeedUrl?: string | null;
   /**
+   * Absolute URL of the endpoint a directory asks whether posts it holds are
+   * still in these feeds, scoped to this feed's language view. Null under
+   * `none`.
+   */
+  discoverStatusUrl?: string | null;
+  /**
    * The same feed in the site's other languages. Empty on a single-language
    * site.
    */

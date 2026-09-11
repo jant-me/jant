@@ -99,6 +99,7 @@ Auth resolution for both surfaces:
 - pass `Authorization: Bearer jnt_...` (issued under Settings → API Tokens), or
 - on local hosts, send the same value with `DEV_API_TOKEN` from `.dev.vars`.
 - a small set of read endpoints — public posts/archive, Collections, navigation items, and search — work without a token while `PUBLIC_API_ENABLED=true`.
+- `GET /api/discover/posts` works without a token while the site is listed in Discover, independent of `PUBLIC_API_ENABLED`.
 
 ### MCP
 
@@ -2966,6 +2967,7 @@ These are not part of the JSON content-management API, but they are often useful
 | `GET /collections/:slug/feed` | Public | RSS      | Collection feed for a collection selection                      |
 | `GET /sitemap.xml`            | Public | XML      | Sitemap for published posts                                     |
 | `GET /robots.txt`             | Public | Text     | Robots rules and sitemap location                               |
+| `GET /api/discover/posts`     | Public | JSON     | Whether posts are still in the feeds a Discover directory reads |
 
 ### Health and readiness
 
@@ -3018,6 +3020,8 @@ Feed notes:
 - `GET /feed` and `GET /feed/atom.xml` use the configured `MAIN_RSS_FEED` to choose `latest` or `featured`.
 - `GET /latest/feed` accepts `?format=note|link|quote`.
 - Invalid `format` values are ignored rather than rejected.
+- Every feed accepts `?limit=` for one response of a different length, from `1` to `500`; a larger value gets `500`, and a value that is not a positive whole number leaves the site's `RSS_FEED_LIMIT` in place. The feed's `rel="self"` link keeps the address without it.
+- Every entry carries `<jant:id>`, the post's ID, beside `<id>`, which is the permalink. The permalink changes when a slug is renamed or the site moves domain; the ID never does.
 - Latest feeds include published root posts only, excluding private posts and `latest_hidden` posts.
 - Featured feeds include published featured root posts and exclude private posts.
 - `GET /archive/feed` returns the complete published record (including `latest_hidden`) and accepts the archive filters `?year=`, `?format=`, `?collection=`, `?media=`, `?title=`, `?replies=`, `?visibility=`, and `?sort=`. A `?collection=` slug that names no collection returns `404`, as the page does — handing back the unfiltered archive under the collection's name would give a subscriber a set they never asked for.
@@ -3027,6 +3031,47 @@ Feed notes:
 - `GET /collections/:slug/feed` returns an RSS feed for a collection selection and redirects normalized selections to the canonical path with `301`.
 - Pages advertise feeds in the HTML head with `<link rel="alternate" type="application/atom+xml">`. Every page carries the main feed and its counterpart; Collection and Archive pages list their own feed first — the archive one carrying the active filters — so a reader subscribing from the page gets the feed it shows.
 - Disabling feeds also removes HTML autodiscovery, Archive and Collection feed buttons, and the built-in RSS navigation item. Saved navigation configuration is retained for later re-enabling.
+
+### Discover post status
+
+`GET /api/discover/posts?id={postId}&id={postId}…`
+
+Auth: `Public`
+
+A Discover directory reads a site's feeds, and a feed shows only its newest entries. When a post the directory holds is missing from one, the feed cannot say whether the post was taken out or pushed past the feed's length, and the permalink cannot say it either: a post hidden from Latest or unfeatured is still a live page. This endpoint answers for each post it is asked about. A directory does not build the address: every feed names it in the `status` attribute of `<jant:discover>`. See [Feeds](feeds.md#asking-about-posts).
+
+Query parameters:
+
+| Parameter | Type                 | Required | Notes                                                                  |
+| --------- | -------------------- | -------- | ---------------------------------------------------------------------- |
+| `id`      | `pst_*` string       | yes      | Repeat for each post, `1` to `50` of them. The ID from `<jant:id>`     |
+| `lang`    | BCP 47 language code | no       | Answer for that language view's feeds. The declared address carries it |
+
+Response:
+
+```json
+{
+  "posts": [
+    {
+      "id": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
+      "latest": true,
+      "featured": false
+    },
+    {
+      "id": "pst_01jpyx5bq4e0c9t2wq0h6gk3r8",
+      "latest": false,
+      "featured": false
+    }
+  ]
+}
+```
+
+Notes:
+
+- `latest` is whether the post is in the Latest feed; `featured` is whether its Thread is in the featured feed, which holds a Thread when any post in it is featured. Both are decided by the same rules the feeds use, RSS delay included.
+- Every ID asked about is answered once, in the order asked. A post that was deleted, made private, moved back to draft, is a reply, or does not exist answers `false` for both.
+- Available whenever the site is listed in Discover, whatever `PUBLIC_API_ENABLED` says: it tells nothing the public feeds do not. A site that is not listed answers `404`.
+- No IDs, more than `50`, or a value that is not a post ID returns `400`.
 
 ### Sitemap and robots
 

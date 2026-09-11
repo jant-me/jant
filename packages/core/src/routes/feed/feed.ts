@@ -29,8 +29,11 @@ import type { AppVariables } from "../../types/app-context.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
+  featuredFeedSelection,
   getFeedEntryUpdatedAt,
+  getFeedLimit,
   getRssPublishedBefore,
+  latestFeedSelection,
   renderFeed,
 } from "../../lib/feed-policy.js";
 import { buildMediaMap } from "../../lib/media-helpers.js";
@@ -145,14 +148,12 @@ async function buildLatestFeedData(
   format?: Format,
 ): Promise<{ posts: Post[]; postViews: FeedPostView[] }> {
   const posts = await c.var.services.posts.list({
-    status: "published",
-    excludeReplies: true,
-    excludeLatestHidden: true,
-    excludePrivate: true,
+    ...latestFeedSelection({
+      lang: getViewLang(c) ?? undefined,
+      publishedBefore,
+    }),
     format,
-    lang: getViewLang(c) ?? undefined,
     ignorePinnedSort: true,
-    publishedBefore,
     limit: feedLimit,
   });
 
@@ -220,10 +221,10 @@ async function buildFeaturedFeedData(
   publishedBefore: number,
 ): Promise<{ posts: Post[]; postViews: FeedPostView[] }> {
   const rootIds = await c.var.services.posts.listFeaturedThreadRootIds({
-    status: "published",
-    excludePrivate: true,
-    lang: getViewLang(c) ?? undefined,
-    publishedBefore,
+    ...featuredFeedSelection({
+      lang: getViewLang(c) ?? undefined,
+      publishedBefore,
+    }),
     limit: feedLimit,
   });
 
@@ -312,7 +313,7 @@ export async function buildFeedData(
   const siteUrl = appConfig.siteUrl;
   // A language view's feed is that language's feed, so it declares it.
   const siteLanguage = getViewLang(c) ?? appConfig.siteLanguage;
-  const feedLimit = appConfig.rssFeedLimit;
+  const feedLimit = getFeedLimit(c);
   const publishedBefore = getRssPublishedBefore(
     appConfig.rssPublishDelaySeconds,
   );

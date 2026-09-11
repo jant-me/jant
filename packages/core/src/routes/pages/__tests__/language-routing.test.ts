@@ -284,11 +284,14 @@ describe("language views filter content", () => {
     const root = await (await app.request("/latest/feed")).text();
     const english = await (await app.request("/en/latest/feed")).text();
 
+    // Under `latest` the declaration names the featured feed too, and that
+    // one belongs to the same language as the feed carrying it. The status
+    // endpoint lives outside language views, so the view travels as `lang`.
     expect(root).toContain(
-      '<jant:discover feed="http://localhost:3000/latest/feed">latest</jant:discover>',
+      '<jant:discover feed="http://localhost:3000/latest/feed" featured="http://localhost:3000/featured/feed" status="http://localhost:3000/api/discover/posts?lang=zh-Hans">latest</jant:discover>',
     );
     expect(english).toContain(
-      '<jant:discover feed="http://localhost:3000/en/latest/feed">latest</jant:discover>',
+      '<jant:discover feed="http://localhost:3000/en/latest/feed" featured="http://localhost:3000/en/featured/feed" status="http://localhost:3000/api/discover/posts?lang=en">latest</jant:discover>',
     );
   });
 

@@ -1155,6 +1155,7 @@ export function defaultFeedRenderer(data: FeedData): string {
     discover,
     discoverFeedUrl,
     discoverFeaturedFeedUrl,
+    discoverStatusUrl,
     languageAlternates,
   } = data;
   const feedTitle = title ?? siteName;
@@ -1241,6 +1242,13 @@ export function defaultFeedRenderer(data: FeedData): string {
       // article is the reader's call, made from this and `<title>`.
       const formatElement = `\n    <jant:format>${escapeXml(post.format)}</jant:format>`;
 
+      // The post's own ID, which never changes. `<id>` is the permalink, and
+      // stays so — changing it would make every subscriber's reader show the
+      // feed again — but a permalink moves when a slug is renamed or the site
+      // changes domain. A consumer that has to recognise the same post across
+      // either keys on this, and it is what the Discover status endpoint takes.
+      const idElement = `\n    <jant:id>${escapeXml(post.id)}</jant:id>`;
+
       // The site's own tags for this post, which Atom has a field for — unlike
       // `<jant:format>` above, a collection is a label the author chose, so
       // showing it as one is right. Replies inherit their root's, and the site
@@ -1282,7 +1290,7 @@ export function defaultFeedRenderer(data: FeedData): string {
   <entry>
     <title>${escapeXml(title)}</title>
     <link href="${alternateLink}" rel="alternate"/>${relatedLink}${enclosureLinks}
-    <id>${escapedPermalink}</id>
+    <id>${escapedPermalink}</id>${idElement}
     <published>${publishedAt}</published>
     <updated>${updatedAt}</updated>${formatElement}${threadElement}${truncatedElement}${categoryElements}${thumbnailElement}${mediaContentElements}${summaryElement}
     <content type="html"><![CDATA[${escapeCdata(contentMarkup)}]]></content>
@@ -1309,10 +1317,10 @@ export function defaultFeedRenderer(data: FeedData): string {
   const langAttr = siteLanguage ? ` xml:lang="${escapeXml(siteLanguage)}"` : "";
 
   // The jant namespace is only declared when something in it is emitted, the
-  // same way the sitemap declares xhtml only for alternates. Two things live
-  // in it now: the Discover declaration below, and every entry's format — so
-  // only a feed with neither, which means an empty feed on a site that has
-  // never answered Discover, leaves it out.
+  // same way the sitemap declares xhtml only for alternates. What lives in it:
+  // the Discover declaration below, and every entry's format and ID — so only
+  // a feed with neither, which means an empty feed on a site that has never
+  // answered Discover, leaves it out.
   const jantNs =
     discover || posts.length > 0
       ? ` xmlns:jant="${escapeXml(DISCOVER_NAMESPACE_URI)}"`
@@ -1342,15 +1350,21 @@ export function defaultFeedRenderer(data: FeedData): string {
   // to poll for it. `feed` is omitted when the site is not listed — there is
   // nothing to point at. `featured` names the featured feed beside it under
   // `latest`, so a directory can keep featured posts and everything else on
-  // separate lists without guessing the address from the site root.
+  // separate lists without guessing the address from the site root. `status`
+  // is where the directory asks whether posts it already holds are still in
+  // those feeds, which the feeds themselves cannot say about a post that has
+  // merely been pushed past their length.
   const discoverFeedAttr = discoverFeedUrl
     ? ` feed="${escapeXml(discoverFeedUrl)}"`
     : "";
   const discoverFeaturedAttr = discoverFeaturedFeedUrl
     ? ` featured="${escapeXml(discoverFeaturedFeedUrl)}"`
     : "";
+  const discoverStatusAttr = discoverStatusUrl
+    ? ` status="${escapeXml(discoverStatusUrl)}"`
+    : "";
   const discoverElement = discover
-    ? `\n  <jant:discover${discoverFeedAttr}${discoverFeaturedAttr}>${escapeXml(discover)}</jant:discover>`
+    ? `\n  <jant:discover${discoverFeedAttr}${discoverFeaturedAttr}${discoverStatusAttr}>${escapeXml(discover)}</jant:discover>`
     : "";
 
   // The feed's title is composed — "<site> - Latest posts" — because a reader's

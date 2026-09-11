@@ -156,6 +156,12 @@ export interface PostFilters {
   /** Exclude private posts from results */
   excludePrivate?: boolean;
   threadId?: string;
+  /**
+   * Restrict to these Posts. The list becomes one `IN (…)`, so a caller keeps
+   * it within a single statement's parameter budget — 50 is what D1 leaves
+   * room for beside the other conditions.
+   */
+  ids?: string[];
   /** Unix timestamp (inclusive) — only posts published at or after this time */
   publishedAfter?: number;
   /** Unix timestamp (exclusive) — only posts published before this time */
@@ -227,7 +233,7 @@ export interface SummaryConfig {
   maxChars: number;
 }
 
-interface ThreadRootPageOptions {
+export interface ThreadRootPageOptions {
   status?: Status;
   excludePrivate?: boolean;
   excludeLatestHidden?: boolean;
@@ -235,6 +241,8 @@ interface ThreadRootPageOptions {
   lang?: string;
   /** Exclude Posts published at or after this Unix timestamp. */
   publishedBefore?: number;
+  /** Restrict to these Threads, by root ID. Same budget as `PostFilters.ids`. */
+  threadIds?: string[];
   /** Restrict by the Thread root's format without excluding Child Posts. */
   rootFormat?: Format;
   /** Restrict to Threads with at least one rated published post. */
@@ -1256,6 +1264,9 @@ export function createPostService(
     if (filters.threadId) {
       conditions.push(eq(posts.threadId, filters.threadId));
     }
+    if (filters.ids !== undefined) {
+      conditions.push(inArray(posts.id, filters.ids));
+    }
     if (filters.excludeReplies) {
       conditions.push(isNull(posts.replyToId));
     }
@@ -1642,6 +1653,9 @@ export function createPostService(
     }
     if (options?.hasRating) {
       conditions.push(isNotNull(posts.rating));
+    }
+    if (options?.threadIds !== undefined) {
+      conditions.push(inArray(posts.threadId, options.threadIds));
     }
 
     return conditions;
@@ -4578,20 +4592,25 @@ export function createPostService(
       const result = new Map<string, Post[]>();
       if (rootIds.length === 0) return result;
 
-      const unique = [...new Set(rootIds)];
-      const conditions = [
-        eq(posts.siteId, siteId),
-        inArray(posts.threadId, unique),
-        eq(posts.status, "published"),
-      ];
-      if (options.publishedBefore !== undefined) {
-        conditions.push(sql`${posts.publishedAt} < ${options.publishedBefore}`);
-      }
-      const rows = await db
-        .select()
-        .from(posts)
-        .where(and(...conditions))
-        .orderBy(posts.threadId, posts.createdAt, posts.id);
+      // A feed loads every Thread it renders at once, which can be hundreds.
+      // Each Thread lands in one chunk, so its posts keep their order.
+      const rows = await batchQueryRows([...new Set(rootIds)], (chunk) => {
+        const conditions = [
+          eq(posts.siteId, siteId),
+          inArray(posts.threadId, chunk),
+          eq(posts.status, "published"),
+        ];
+        if (options.publishedBefore !== undefined) {
+          conditions.push(
+            sql`${posts.publishedAt} < ${options.publishedBefore}`,
+          );
+        }
+        return db
+          .select()
+          .from(posts)
+          .where(and(...conditions))
+          .orderBy(posts.threadId, posts.createdAt, posts.id);
+      });
 
       for (const post of await hydratePosts(rows)) {
         const thread = result.get(post.threadId);

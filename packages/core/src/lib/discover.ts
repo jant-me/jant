@@ -157,6 +157,22 @@ export function getDiscoverFeedPath(mode: DiscoverMode): string | null {
 }
 
 /**
+ * Site-relative path of the endpoint a directory asks about posts it holds.
+ *
+ * A feed shows a site's newest posts, so a post missing from it may have been
+ * taken out or may only have been pushed past the feed's length — and the
+ * permalink cannot settle it either, because a post hidden from Latest or
+ * unfeatured is still a live page. This answers the question outright: for
+ * each post, whether it is in the Latest feed and whether its Thread is in the
+ * featured feed. The declaration names it in its `status` attribute, so a
+ * directory never builds the address itself.
+ */
+export const DISCOVER_STATUS_PATH = "/api/discover/posts";
+
+/** Most post ids one status request may ask about. */
+export const DISCOVER_STATUS_MAX_IDS = 50;
+
+/**
  * Public posts a blog needs before the jant.me directory will list it.
  *
  * Not core's rule — the directory's, published on the Discover page — but

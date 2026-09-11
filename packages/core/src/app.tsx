@@ -62,6 +62,7 @@ import { internalPostBodyHtmlRoutes } from "./routes/api/internal/post-body-html
 import { internalUploadsRoutes } from "./routes/api/internal/uploads.js";
 import { publicArchiveApiRoutes } from "./routes/api/public/archive.js";
 import { publicPostsApiRoutes } from "./routes/api/public/posts.js";
+import { discoverApiRoutes } from "./routes/api/discover.js";
 // Routes - Compose
 import { composeRoutes } from "./routes/compose.js";
 
@@ -573,6 +574,7 @@ export function createApp(): App {
   // API Routes
   app.route("/api/public/posts", publicPostsApiRoutes);
   app.route("/api/public/archive", publicArchiveApiRoutes);
+  app.route("/api/discover", discoverApiRoutes);
   app.route("/api/posts", postsApiRoutes);
   app.route("/api/nav-items", navItemsApiRoutes);
   app.route("/api/collections", collectionsApiRoutes);

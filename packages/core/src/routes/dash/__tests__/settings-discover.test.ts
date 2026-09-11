@@ -144,17 +144,19 @@ describe("POST /settings/general/discover", () => {
   it("announces the feed the newly saved mode names, not the stored one", async () => {
     // `allSettings` is the snapshot taken before the request ran, so it still
     // holds the previous answer on the save that triggers the announcement.
+    // `featured` is what older releases stored, and it names a different feed
+    // from the `latest` the control now writes.
     const { app, announceToDiscover } = createDiscoverTestApp({
-      storedDiscover: undefined,
+      storedDiscover: "featured",
     });
 
     await postJson(app, "/settings/general/discover", {
-      discover: "featured",
+      discover: "latest",
     });
 
     expect(announceToDiscover).toHaveBeenCalledWith(
       expect.objectContaining({
-        feedUrl: "https://blog.example/featured/feed",
+        feedUrl: "https://blog.example/latest/feed",
       }),
     );
   });
@@ -200,9 +202,12 @@ describe("POST /settings/general/discover", () => {
     updateDiscoverSetting.mockResolvedValueOnce({ shouldAnnounce: false });
 
     await postJson(app, "/settings/general/discover", {
-      discover: "featured",
+      discover: "latest",
     });
 
+    // A request the schema rejects never reaches the service, and would pass
+    // the assertion below for the wrong reason.
+    expect(updateDiscoverSetting).toHaveBeenCalledOnce();
     expect(announceToDiscover).not.toHaveBeenCalled();
   });
 });
