@@ -661,16 +661,17 @@ export const SiteLayout: FC<PropsWithChildren<SiteLayoutProps>> = ({
   const showMobileComposeFab = Boolean(
     (isHomePage || composeCollectionId) && isAuthenticated && showComposeDialog,
   );
-  const contentClass = [
-    "site-content",
-    isHomePage ? "site-content-home" : "",
-    showMobileComposeFab ? "site-content-mobile-compose-enabled" : "",
-  ]
+  const contentClass = ["site-content", isHomePage ? "site-content-home" : ""]
     .filter(Boolean)
     .join(" ");
+  // The page, not the content, keeps room for the button: the footer and the
+  // Jant credit come after the content, and they must end above it too.
+  const pageClass = showMobileComposeFab
+    ? "site-page site-page-mobile-compose-enabled"
+    : "site-page";
 
   return (
-    <div class="site-page">
+    <div class={pageClass}>
       {showHeader && (
         <SiteHeader
           siteName={siteName}
