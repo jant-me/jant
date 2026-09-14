@@ -449,6 +449,14 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                    the blurhash fallback is a data URL, and publishing one as
                    a photo would hand a consumer a 20-pixel smear. */
                 const posterClass = item.posterUrl ? "u-photo " : "";
+                /* Fit travels with the size, and `site-media.css` sets none.
+                   In a row the clip is cropped to the strip's height like the
+                   pictures beside it; alone its box already has the clip's
+                   shape, and `contain` letterboxes frames that disagree with
+                   the stored size. */
+                const videoClass = `${posterClass}media-visual w-full ${
+                  singleVisual ? "object-contain" : "object-cover"
+                }`;
                 const aspectRatio =
                   item.width && item.height
                     ? `${item.width}/${item.height}`
@@ -497,11 +505,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                           data-video-src={item.url}
                           data-feed-video-id={item.id}
                           style={videoStyle}
-                          class={`${posterClass}${
-                            singleVisual
-                              ? "media-visual w-full"
-                              : "media-visual w-full object-cover"
-                          }`}
+                          class={videoClass}
                         />
                       </a>
                       <button
@@ -561,11 +565,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
                       width={item.width}
                       height={item.height}
                       style={videoStyle}
-                      class={`${posterClass}${
-                        singleVisual
-                          ? "media-visual w-full"
-                          : "media-visual w-full object-cover"
-                      }`}
+                      class={videoClass}
                     />
                     <div class="media-video-play-overlay">
                       <svg viewBox="0 0 24 24" fill="white">

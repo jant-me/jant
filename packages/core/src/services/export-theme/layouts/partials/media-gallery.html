@@ -140,10 +140,14 @@
           {{- else -}}
             {{- $videoWrapStyle = printf "%s display: block; flex-shrink: 0; width: %dpx; max-width: 85%%;" $videoWrapStyle $itemWidth -}}
           {{- end -}}
+          {{- /* Fit travels with the size, as in MediaGallery.tsx, and
+                 site-media.css sets none: a clip in a row is cropped to the
+                 row's height like the pictures beside it; a lone clip is
+                 letterboxed in case its frames disagree with the stored size. */ -}}
           {{- $videoStyle := cond $singleVisual
               (cond (and (gt (int (default 0 .width)) 0) (gt (int (default 0 .height)) 0))
-                (printf "display: block; width: 100%%; height: auto; aspect-ratio: %d/%d;" (int .width) (int .height))
-                "display: block; width: 100%; height: auto;")
+                (printf "display: block; width: 100%%; height: auto; aspect-ratio: %d/%d; object-fit: contain;" (int .width) (int .height))
+                "display: block; width: 100%; height: auto; object-fit: contain;")
               (printf "display: block; width: 100%%; height: %dpx; object-fit: cover;" $rowHeight) -}}
           {{- if $isShort -}}
             <div class="media-video-wrap media-video-wrap-short" style="{{ $videoWrapStyle | safeCSS }}">

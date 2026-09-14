@@ -488,16 +488,23 @@
 }
 
 /*
- * No height cap here: the gallery already owns a video's height. In a row it
- * hands every item the same inline `height` so pictures and videos line up; a
- * lone visual gets `min(100%, 24rem * ratio, …)` for its width, which caps its
- * height at 24rem on its own. A `max-height` in this rule only re-entered as a
- * second opinion — a row taller than the cap (a portrait first picture pushes
- * it to 440px) left the video short, with the frame showing underneath it.
+ * No height cap and no fit here: the gallery owns both, and sets them together
+ * in its markup. In a row it hands every item the same inline `height` and
+ * crops it to that height (`object-cover`), so a clip lines up with the
+ * pictures beside it. A lone visual gets `min(100%, 24rem * ratio, …)` for its
+ * width, which caps its height at 24rem on its own, and a lone clip is
+ * letterboxed (`object-contain`) in case its frames disagree with the stored
+ * size.
+ *
+ * Each value this rule used to carry only re-entered as a second opinion. A
+ * `max-height` left the video short in a row taller than the cap (a portrait
+ * first picture pushed it to 440px), with the frame showing underneath it. An
+ * `object-fit: contain` lost to the row's `object-cover` only because this
+ * sheet sits in the components layer; a copy without the layer letterboxed
+ * every clip in a row.
  */
 .media-video-wrap video {
   width: 100%;
-  object-fit: contain;
   background-color: var(--color-muted);
 }
 

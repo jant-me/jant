@@ -319,6 +319,27 @@ describe("MediaGallery row geometry", () => {
     expect(withText).toContain("width:521px");
   });
 
+  it("crops a clip in a row like the pictures beside it, and letterboxes a lone one", () => {
+    // `.media-video-wrap video` in site-media.css sets no fit, so the markup
+    // is the only place it is decided — for a clip that autoplays too.
+    const shortClip = createMediaView({
+      ...video,
+      id: "m-4",
+      durationSeconds: 8,
+      size: 2_000_000,
+    });
+
+    for (const clip of [video, shortClip]) {
+      const inRow = renderToString(
+        MediaGallery({ attachments: [portrait, clip] }),
+      );
+      const alone = renderToString(MediaGallery({ attachments: [clip] }));
+
+      expect(inRow).toMatch(/<video[^>]*class="[^"]*\bobject-cover\b/);
+      expect(alone).toMatch(/<video[^>]*class="[^"]*\bobject-contain\b/);
+    }
+  });
+
   it("sizes non-visual cards from the row height, 3:4 portrait", () => {
     const html = renderToString(
       MediaGallery({ attachments: [portrait, video, text] }),
