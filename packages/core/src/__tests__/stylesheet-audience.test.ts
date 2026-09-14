@@ -24,6 +24,10 @@ const AUTHOR_ONLY = [
   "confirm",
   "draft",
   "theme-preview",
+  // The floating compose button on phones, and the page modifier that keeps
+  // room for it. Reader layout renders both, but only for a signed-in author.
+  "site-mobile-compose",
+  "site-page-mobile-compose-enabled",
   // From `components.css`: the config editor, the navigation manager, the
   // custom URL manager, the dash chrome and the form skeletons. `.nav-*` here
   // is `jant-nav-manager`, not the site header — that is `.site-header-nav`.

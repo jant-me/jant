@@ -150,11 +150,107 @@
       gap: 0.12rem;
     }
   }
+
+  /* =========================================================================
+   * Mobile Compose Button
+   * ========================================================================= */
+
+  /* The button and the room the page keeps for it read one geometry, so
+     whatever ends the page — the posts, the footer, the Jant credit — scrolls
+     clear of the button rather than under it. The page keeps only the
+     button's footprint; each of those ends in its own bottom padding, and that
+     padding is the gap above the button. */
+  .site-page-mobile-compose-enabled {
+    --site-mobile-compose-fab-size: 2.875rem;
+    --site-mobile-compose-fab-bottom: max(
+      2rem,
+      calc(env(safe-area-inset-bottom) + 1.75rem)
+    );
+  }
+
+  .site-mobile-compose-fab {
+    position: fixed;
+    right: max(1rem, calc(env(safe-area-inset-right) + 0.75rem));
+    bottom: var(--site-mobile-compose-fab-bottom);
+    z-index: 35;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--site-mobile-compose-fab-size);
+    height: var(--site-mobile-compose-fab-size);
+    padding: 0;
+    border: 0.5px solid
+      color-mix(in srgb, var(--site-text-primary) 12%, transparent);
+    border-radius: 999px;
+    background: color-mix(
+      in srgb,
+      var(--site-elevated-bg) 90%,
+      var(--site-nav-hover-bg) 10%
+    );
+    color: var(--site-text-primary);
+    box-shadow: 0 14px 32px
+      color-mix(in srgb, var(--site-text-primary) 10%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    cursor: pointer;
+    transition:
+      opacity 0.22s ease,
+      transform 0.22s ease,
+      border-color 0.18s ease,
+      background-color 0.18s ease,
+      box-shadow 0.18s ease;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .site-mobile-compose-fab-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+    opacity: 0.84;
+  }
+
+  .site-mobile-compose-fab:hover {
+    border-color: color-mix(in srgb, var(--site-text-primary) 18%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--site-elevated-bg) 84%,
+      var(--site-nav-hover-bg) 16%
+    );
+    box-shadow: 0 16px 36px
+      color-mix(in srgb, var(--site-text-primary) 12%, transparent);
+    transform: translate3d(0, -1px, 0);
+  }
+
+  .site-mobile-compose-fab:focus-visible {
+    outline: 1.5px solid
+      color-mix(in srgb, var(--site-text-primary) 24%, transparent);
+    outline-offset: 2px;
+  }
+
+  .site-mobile-compose-fab:active {
+    transform: translate3d(0, 0, 0) scale(0.98);
+  }
+
+  body:has(.media-lightbox[open]) .site-mobile-compose-fab,
+  body:has(.text-preview-dialog[open]) .site-mobile-compose-fab,
+  body:has(.site-nav-drawer[aria-hidden="false"]) .site-mobile-compose-fab,
   body:has(.compose-dialog[open]) .site-mobile-compose-fab,
   body:has(.compose-fullscreen-dialog[open]) .site-mobile-compose-fab {
     opacity: 0;
     pointer-events: none;
     transform: translate3d(0, 0.75rem, 0) scale(0.96);
+  }
+
+  @media (max-width: 699px) {
+    .site-page-mobile-compose-enabled {
+      padding-bottom: calc(
+        var(--site-mobile-compose-fab-bottom) +
+          var(--site-mobile-compose-fab-size)
+      );
+    }
+
+    .site-mobile-compose-fab {
+      display: inline-flex;
+    }
   }
 
   .compose-thread-layout {

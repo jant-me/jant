@@ -22,12 +22,24 @@
     cursor: pointer;
   }
 
+  /*
+   * A column, so the viewport-height minimum reaches <main>: when the content
+   * is shorter than the screen — a new site with no posts yet — main takes the
+   * slack and the footer rests at the bottom instead of floating up under the
+   * last post.
+   */
   .site-page {
+    display: flex;
+    flex-direction: column;
     min-height: 100vh;
     min-height: 100dvh;
     overflow-x: clip;
     background-color: var(--site-page-bg);
     counter-reset: sidenote-counter;
+  }
+
+  .site-page > main {
+    flex-grow: 1;
   }
 
   /*
@@ -1066,76 +1078,6 @@
 
   .site-content-home {
     padding-top: 0;
-  }
-
-  .site-mobile-compose-fab {
-    position: fixed;
-    right: max(1rem, calc(env(safe-area-inset-right) + 0.75rem));
-    bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1.75rem));
-    z-index: 35;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    width: 2.875rem;
-    height: 2.875rem;
-    padding: 0;
-    border: 0.5px solid
-      color-mix(in srgb, var(--site-text-primary) 12%, transparent);
-    border-radius: 999px;
-    background: color-mix(
-      in srgb,
-      var(--site-elevated-bg) 90%,
-      var(--site-nav-hover-bg) 10%
-    );
-    color: var(--site-text-primary);
-    box-shadow: 0 14px 32px
-      color-mix(in srgb, var(--site-text-primary) 10%, transparent);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    cursor: pointer;
-    transition:
-      opacity 0.22s ease,
-      transform 0.22s ease,
-      border-color 0.18s ease,
-      background-color 0.18s ease,
-      box-shadow 0.18s ease;
-    transform: translate3d(0, 0, 0);
-  }
-
-  .site-mobile-compose-fab-icon {
-    width: 1.1rem;
-    height: 1.1rem;
-    opacity: 0.84;
-  }
-
-  .site-mobile-compose-fab:hover {
-    border-color: color-mix(in srgb, var(--site-text-primary) 18%, transparent);
-    background: color-mix(
-      in srgb,
-      var(--site-elevated-bg) 84%,
-      var(--site-nav-hover-bg) 16%
-    );
-    box-shadow: 0 16px 36px
-      color-mix(in srgb, var(--site-text-primary) 12%, transparent);
-    transform: translate3d(0, -1px, 0);
-  }
-
-  .site-mobile-compose-fab:focus-visible {
-    outline: 1.5px solid
-      color-mix(in srgb, var(--site-text-primary) 24%, transparent);
-    outline-offset: 2px;
-  }
-
-  .site-mobile-compose-fab:active {
-    transform: translate3d(0, 0, 0) scale(0.98);
-  }
-
-  body:has(.media-lightbox[open]) .site-mobile-compose-fab,
-  body:has(.text-preview-dialog[open]) .site-mobile-compose-fab,
-  body:has(.site-nav-drawer[aria-hidden="false"]) .site-mobile-compose-fab {
-    opacity: 0;
-    pointer-events: none;
-    transform: translate3d(0, 0.75rem, 0) scale(0.96);
   }
 
   /* --- Search page -------------------------------------------------------- */
@@ -4789,19 +4731,6 @@
       var(--site-elevated-bg)
     );
     border-color: color-mix(in srgb, var(--site-text-primary) 10%, transparent);
-  }
-
-  @media (max-width: 699px) {
-    .site-content-mobile-compose-enabled {
-      padding-bottom: max(
-        var(--space-2xl),
-        calc(env(safe-area-inset-bottom) + 5.75rem)
-      );
-    }
-
-    .site-mobile-compose-fab {
-      display: inline-flex;
-    }
   }
 
   /* =========================================================================

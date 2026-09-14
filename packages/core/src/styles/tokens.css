@@ -207,7 +207,7 @@
    * -bottom: gap from the intro down to its separator — the hairline (logged
    * out) or the compose prompt text (logged in). Same values in both states.
    */
-  --site-intro-gap-top: 24px;
+  --site-intro-gap-top: 20px;
   --site-intro-gap-bottom: 36px;
 
   /* Sidebar layout (admin + site sidebar pages) */
