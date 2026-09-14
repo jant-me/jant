@@ -1107,6 +1107,47 @@
     }
   }
 
+  /* --- Numbered pagination ------------------------------------------------ */
+
+  .page-pagination {
+    container: page-pagination / inline-size;
+  }
+
+  .page-pagination-step-icon {
+    display: none;
+    width: 1em;
+    height: 1em;
+  }
+
+  /* The bar holds seven page slots between Previous and Next. With both words,
+     three-digit page numbers (1 … 196 197 198 199 200) need just under 24rem
+     and four digits need 25rem — more than most phones held upright give it.
+     Under 25rem the words give way to arrows, so the row keeps to one line and
+     Next never falls off the edge; each word stays in the accessibility tree
+     as its link's name. The bar also wraps, as a last resort for the narrowest
+     screens with three-digit page numbers. */
+  @container page-pagination (max-width: 25rem) {
+    /* Inline, so the arrow keeps a full text line — the same height, and the
+       same tap target, as the page numbers beside it. */
+    .page-pagination-step-icon {
+      display: inline-block;
+      vertical-align: -0.125em;
+    }
+
+    .page-pagination-step-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+  }
+
   /* =========================================================================
    * Collections
    * ========================================================================= */

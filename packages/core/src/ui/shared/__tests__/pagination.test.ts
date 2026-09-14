@@ -8,40 +8,54 @@ describe("getPageNumbers", () => {
     expect(getPageNumbers(3, 7)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
-  it("shows ellipsis for gaps in large page ranges", () => {
-    // Page 1 of 20: 1, 2, ..., 20
-    const result = getPageNumbers(1, 20);
-    expect(result).toEqual([1, 2, 0, 20]);
+  it("shows the first five pages near the start", () => {
+    // Page 1 of 19: 1, 2, 3, 4, 5, ..., 19
+    expect(getPageNumbers(1, 19)).toEqual([1, 2, 3, 4, 5, 0, 19]);
+    expect(getPageNumbers(2, 19)).toEqual([1, 2, 3, 4, 5, 0, 19]);
+    // Page 4 shows page 2 rather than an ellipsis standing in for it alone
+    expect(getPageNumbers(4, 19)).toEqual([1, 2, 3, 4, 5, 0, 19]);
   });
 
   it("shows ellipsis on both sides for middle pages", () => {
-    // Page 10 of 20: 1, ..., 9, 10, 11, ..., 20
-    const result = getPageNumbers(10, 20);
-    expect(result).toEqual([1, 0, 9, 10, 11, 0, 20]);
+    // Page 10 of 19: 1, ..., 9, 10, 11, ..., 19
+    expect(getPageNumbers(5, 19)).toEqual([1, 0, 4, 5, 6, 0, 19]);
+    expect(getPageNumbers(10, 19)).toEqual([1, 0, 9, 10, 11, 0, 19]);
+    expect(getPageNumbers(15, 19)).toEqual([1, 0, 14, 15, 16, 0, 19]);
   });
 
-  it("shows ellipsis only on right for early pages", () => {
-    // Page 3 of 20: 1, 2, 3, 4, ..., 20
-    const result = getPageNumbers(3, 20);
-    expect(result).toEqual([1, 2, 3, 4, 0, 20]);
+  it("shows the last five pages near the end", () => {
+    // Page 19 of 19: 1, ..., 15, 16, 17, 18, 19
+    expect(getPageNumbers(16, 19)).toEqual([1, 0, 15, 16, 17, 18, 19]);
+    expect(getPageNumbers(18, 19)).toEqual([1, 0, 15, 16, 17, 18, 19]);
+    expect(getPageNumbers(19, 19)).toEqual([1, 0, 15, 16, 17, 18, 19]);
   });
 
-  it("shows ellipsis only on left for late pages", () => {
-    // Page 18 of 20: 1, ..., 17, 18, 19, 20
-    const result = getPageNumbers(18, 20);
-    expect(result).toEqual([1, 0, 17, 18, 19, 20]);
+  it("handles the smallest range that needs an ellipsis", () => {
+    expect(getPageNumbers(4, 8)).toEqual([1, 2, 3, 4, 5, 0, 8]);
+    expect(getPageNumbers(5, 8)).toEqual([1, 0, 4, 5, 6, 7, 8]);
   });
 
-  it("handles last page", () => {
-    // Page 20 of 20: 1, ..., 19, 20
-    const result = getPageNumbers(20, 20);
-    expect(result).toEqual([1, 0, 19, 20]);
-  });
+  it("keeps seven slots and never hides a single page behind an ellipsis", () => {
+    for (const totalPages of [8, 9, 19, 120]) {
+      for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
+        const pages = getPageNumbers(currentPage, totalPages);
+        const shown = pages.filter((page) => page !== 0);
 
-  it("handles page 2 of large range", () => {
-    // Page 2 of 20: 1, 2, 3, ..., 20
-    const result = getPageNumbers(2, 20);
-    expect(result).toEqual([1, 2, 3, 0, 20]);
+        expect(pages).toHaveLength(7);
+        expect(shown[0]).toBe(1);
+        expect(shown[shown.length - 1]).toBe(totalPages);
+        expect(shown).toContain(currentPage);
+        pages.forEach((page, i) => {
+          const prev = pages[i - 1] ?? Number.NaN;
+          if (page === 0) {
+            const next = pages[i + 1] ?? Number.NaN;
+            expect(next - prev).toBeGreaterThanOrEqual(3);
+          } else if (i > 0 && prev !== 0) {
+            expect(page).toBe(prev + 1);
+          }
+        });
+      }
+    }
   });
 });
 

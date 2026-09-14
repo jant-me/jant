@@ -2,26 +2,27 @@
 {{- $total := $paginator.TotalPages -}}
 {{- $current := $paginator.PageNumber -}}
 {{- if gt $total 1 -}}
-  {{- /* Mirror main site's getPageNumbers: always include 1, last, current,
-         and current±1. Insert 0 as an ellipsis marker for gaps. */ -}}
+  {{- /* Mirror main site's getPageNumbers: past seven pages, always seven
+         slots — 1, last, and a three-page window around the current page.
+         The second and second-to-last slots hold a page or 0 (an ellipsis
+         marker), so an ellipsis never stands in for a single page. */ -}}
   {{- $pages := slice -}}
   {{- if le $total 7 -}}
     {{- range seq 1 $total -}}
       {{- $pages = $pages | append . -}}
     {{- end -}}
   {{- else -}}
-    {{- $set := slice 1 $total $current -}}
-    {{- if gt $current 1 -}}{{- $set = $set | append (sub $current 1) -}}{{- end -}}
-    {{- if lt $current $total -}}{{- $set = $set | append (add $current 1) -}}{{- end -}}
-    {{- $sorted := sort (uniq $set) -}}
-    {{- $prev := 0 -}}
-    {{- range $i, $p := $sorted -}}
-      {{- if and (gt $i 0) (gt (sub $p $prev) 1) -}}
-        {{- $pages = $pages | append 0 -}}
-      {{- end -}}
-      {{- $pages = $pages | append $p -}}
-      {{- $prev = $p -}}
+    {{- $start := sub $current 1 -}}
+    {{- if lt $start 3 -}}{{- $start = 3 -}}{{- end -}}
+    {{- if gt $start (sub $total 4) -}}{{- $start = sub $total 4 -}}{{- end -}}
+    {{- $end := add $start 2 -}}
+    {{- $pages = $pages | append 1 -}}
+    {{- $pages = $pages | append (cond (eq $start 3) 2 0) -}}
+    {{- range seq $start $end -}}
+      {{- $pages = $pages | append . -}}
     {{- end -}}
+    {{- $pages = $pages | append (cond (eq $end (sub $total 2)) (sub $total 1) 0) -}}
+    {{- $pages = $pages | append $total -}}
   {{- end -}}
   <nav class="pagination" aria-label="Pagination">
     {{- if $paginator.HasPrev -}}

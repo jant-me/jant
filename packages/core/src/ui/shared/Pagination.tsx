@@ -8,6 +8,7 @@ import { msg } from "@lingui/core/macro";
 import type { FC } from "hono/jsx";
 import { useLingui } from "../../i18n/context.js";
 import { formatPageLabel, getPageNumbers } from "../../lib/pagination.js";
+import { Icon } from "./Icon.js";
 
 export interface PaginationProps {
   /** Base URL for pagination links (e.g., "/archive", "/search?q=test") */
@@ -183,10 +184,24 @@ export const PagePagination: FC<PagePaginationProps> = ({
   // Numbered pagination when totalPages is known
   if (totalPages && totalPages > 1) {
     const pageNumbers = getPageNumbers(currentPage, totalPages);
+    // The icon shows only where the bar is too narrow for the words, and the
+    // word then stays as the link's accessible name (see `.page-pagination`).
+    const prevContent = (
+      <>
+        <Icon name="arrow-left" class="page-pagination-step-icon" />
+        <span class="page-pagination-step-label">{prevText}</span>
+      </>
+    );
+    const nextContent = (
+      <>
+        <span class="page-pagination-step-label">{nextText}</span>
+        <Icon name="arrow-right" class="page-pagination-step-icon" />
+      </>
+    );
 
     return (
       <nav
-        class="flex items-center justify-start gap-4 py-6"
+        class="page-pagination flex flex-wrap items-center justify-start gap-4 py-6"
         aria-label="Pagination"
       >
         {hasPrev ? (
@@ -194,10 +209,10 @@ export const PagePagination: FC<PagePaginationProps> = ({
             href={buildUrl(currentPage - 1)}
             class="underline text-muted-foreground hover:text-foreground"
           >
-            {prevText}
+            {prevContent}
           </a>
         ) : (
-          <span class="text-muted-foreground/50">{prevText}</span>
+          <span class="text-muted-foreground/50">{prevContent}</span>
         )}
 
         {pageNumbers.map((page, i) =>
@@ -225,10 +240,10 @@ export const PagePagination: FC<PagePaginationProps> = ({
             href={buildUrl(currentPage + 1)}
             class="underline text-muted-foreground hover:text-foreground"
           >
-            {nextText}
+            {nextContent}
           </a>
         ) : (
-          <span class="text-muted-foreground/50">{nextText}</span>
+          <span class="text-muted-foreground/50">{nextContent}</span>
         )}
       </nav>
     );

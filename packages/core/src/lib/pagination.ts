@@ -38,10 +38,18 @@ export function formatPageLabel(
   return `Page ${String(currentPage)}`;
 }
 
+/** Slots a numbered pagination control fills once there are more pages. */
+const PAGE_SLOT_COUNT = 7;
+
 /**
  * Computes which page numbers to display in a numbered pagination control.
- * Always includes: first page, last page, current page, and 1 page on each side of current.
- * Gaps between non-consecutive pages are represented by 0 (ellipsis marker).
+ *
+ * Seven or fewer pages are all shown. Past that, the control always fills
+ * exactly seven slots — the first page, the last page, and a three-page
+ * window around the current page — so it keeps the same width, and the
+ * Previous/Next links stay put, as the reader moves through pages. Skipped
+ * pages are represented by 0 (ellipsis marker). An ellipsis always stands in
+ * for at least two pages; where it would hide just one, that page is shown.
  *
  * @param currentPage - The current active page (1-indexed)
  * @param totalPages - Total number of pages
@@ -50,36 +58,32 @@ export function formatPageLabel(
  * @example
  * ```ts
  * getPageNumbers(1, 5)    // [1, 2, 3, 4, 5]
- * getPageNumbers(1, 20)   // [1, 2, 0, 20]
- * getPageNumbers(10, 20)  // [1, 0, 9, 10, 11, 0, 20]
+ * getPageNumbers(1, 19)   // [1, 2, 3, 4, 5, 0, 19]
+ * getPageNumbers(10, 19)  // [1, 0, 9, 10, 11, 0, 19]
+ * getPageNumbers(19, 19)  // [1, 0, 15, 16, 17, 18, 19]
  * ```
  */
 export function getPageNumbers(
   currentPage: number,
   totalPages: number,
 ): number[] {
-  if (totalPages <= 7) {
+  if (totalPages <= PAGE_SLOT_COUNT) {
     return Array.from({ length: totalPages }, (_, i) => i + 1);
   }
 
-  const pages = new Set<number>();
-  pages.add(1);
-  pages.add(totalPages);
-  pages.add(currentPage);
-  if (currentPage > 1) pages.add(currentPage - 1);
-  if (currentPage < totalPages) pages.add(currentPage + 1);
+  // The second slot holds page 2 or an ellipsis, and the second-to-last slot
+  // holds page totalPages - 1 or an ellipsis, so the window around the current
+  // page starts no earlier than page 3 and ends no later than totalPages - 2.
+  const windowStart = Math.min(Math.max(currentPage - 1, 3), totalPages - 4);
+  const windowEnd = windowStart + 2;
 
-  const sorted = [...pages].sort((a, b) => a - b);
-
-  // Insert 0 for gaps
-  const result: number[] = [];
-  for (let i = 0; i < sorted.length; i++) {
-    const current = sorted[i] as number;
-    if (i > 0 && current - (sorted[i - 1] as number) > 1) {
-      result.push(0); // ellipsis marker
-    }
-    result.push(current);
-  }
-
-  return result;
+  return [
+    1,
+    windowStart === 3 ? 2 : 0,
+    windowStart,
+    windowStart + 1,
+    windowEnd,
+    windowEnd === totalPages - 2 ? totalPages - 1 : 0,
+    totalPages,
+  ];
 }
