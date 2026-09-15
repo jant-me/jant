@@ -400,7 +400,9 @@ export function linkTerms(
  * than on the checkbox label. The settings page and the setup screen both
  * render their line through here, so the two can never link different words;
  * setup's line is the settings line's opening sentence, so only the name is
- * there to find.
+ * there to find. The notice that replaces the settings line while the box is
+ * locked in demo mode goes through here too, and it also names only the
+ * directory.
  *
  * @param intro - The translated help line
  * @param terms - The translated directory and rules-page names, as `intro`

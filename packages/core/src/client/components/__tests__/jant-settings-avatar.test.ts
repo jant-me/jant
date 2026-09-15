@@ -74,7 +74,7 @@ const labels: SettingsLabels = {
   discoverEnabled: "Allow Jant Discover to list my site",
   discoverIntro:
     "Jant Discover is a directory of Jant blogs, curated by hand by the Jant community to help people find new Jant blogs and posts. A post you mark Featured appears on the Discover home page 24 hours later, and link and quote posts appear on the Links and Quotes lists 24 hours after they are published. You can keep editing them in the meantime. See the Discover community rules.",
-  discoverDemoLocked: "Demo sites are never listed in Discover.",
+  discoverDemoLocked: "Demo sites are never listed in Jant Discover.",
   discoverFeedsOffLocked:
     "Discover reads your Atom feed, so it needs feeds turned on.",
   discoverSearchOff:

@@ -1012,10 +1012,10 @@ msgstr "示範模式會隱藏會話、密碼更改與帳號刪除。匯出功能
 msgid "Demo sites always stay hidden from search engines."
 msgstr "示範網站會始終對搜尋引擎保持隱藏。"
 
-#. @context: Help text explaining that Discover is locked off in demo mode
+#. @context: Help text under the Jant Discover checkbox explaining that Discover is locked off in demo mode, shown in place of the usual help line. {name} is the directory's name and is rendered as the link to it, so keep it as one run of text.
 #: src/ui/dash/settings/GeneralContent.tsx
-msgid "Demo sites are never listed in Discover."
-msgstr "示範網站不會出現在 Discover 中。"
+msgid "Demo sites are never listed in {name}."
+msgstr "示範網站不會出現在 {name} 中。"
 
 #. @context: Color theme preview collection label
 #: src/ui/dash/appearance/ColorThemeContent.tsx
