@@ -31,6 +31,29 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # `npm publish` returns before the registry serves the new version, and a
+      # large package can lag by minutes: @jant/core 0.7.0 appeared 11 minutes
+      # after changesets reported it published, and the starter's `npm install`
+      # failed with ETARGET in between. Poll the abbreviated packument with the
+      # Accept header npm install sends, so this waits on the document the
+      # install reads.
+      - name: Wait for npm to serve this @jant/core
+        id: core
+        run: |
+          version=$(node -p "JSON.parse(require('fs').readFileSync('packages/core/package.json','utf-8')).version")
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          for attempt in $(seq 1 60); do
+            if curl -fsS -H 'Accept: application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*' \
+              https://registry.npmjs.org/@jant%2fcore | jq -e --arg v "$version" '.versions[$v]' > /dev/null; then
+              echo "npm serves @jant/core@${version}"
+              exit 0
+            fi
+            echo "npm does not serve @jant/core@${version} yet (attempt ${attempt}/60), retrying in 30s"
+            sleep 30
+          done
+          echo "npm still does not serve @jant/core@${version} after 30 minutes" >&2
+          exit 1
+
       - name: Generate and push starter
         run: |
           # Prepare create-jant CLI (copy template, merge tsconfig, build, inject version)
@@ -46,10 +69,6 @@ jobs:
           # Generate package-lock.json so the deploy workflow can use npm ci
           cd /tmp/my-site
           npm install
-
-          # Read version
-          cd "$GITHUB_WORKSPACE"
-          VERSION=$(node -p "JSON.parse(require('fs').readFileSync('packages/core/package.json','utf-8')).version")
 
           # Clone jant-starter
           git clone "https://x-access-token:${PAT_TOKEN}@github.com/jant-me/jant-starter.git" /tmp/jant-starter
@@ -79,3 +98,4 @@ jobs:
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           GITHUB_WORKSPACE: ${{ github.workspace }}
+          VERSION: ${{ steps.core.outputs.version }}
