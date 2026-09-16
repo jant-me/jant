@@ -28,7 +28,61 @@ import { normalizeTimeZone } from "./timezones.js";
 import { getSiteOrigin, getSitePathPrefix, normalizeSiteUrl } from "./url.js";
 
 /**
+ * Whether an empty stored value means "never configured" for this field.
+ *
+ * The test is whether the editor could have produced the empty value, and it
+ * mirrors what `normalizeConfigEditorDefinitionValue` accepts. A boolean takes
+ * only `true` or `false`; a number has to parse; an enum has to name one of its
+ * options. None of those can be stored empty, so an empty row for one of them
+ * is not a choice anybody made — it comes from a path that skips validation,
+ * and a snapshot's `db.sql`, replayed as raw SQL, is exactly that. Read as a
+ * configured value it silences the environment variable the operator did set,
+ * for as long as the row exists.
+ *
+ * Text is the opposite: clearing a description or a footer is an ordinary edit,
+ * so an empty value there is a decision and keeps its precedence. So is an enum
+ * that lists `""` among its options, the way `DASHBOARD_LANGUAGE` does, and one
+ * whose options come from a runtime source, where nothing here can rule it
+ * out.
+ *
+ * @param field - Config registry entry for the key being resolved
+ * @returns True when an empty stored value should fall through to env/default
+ *
+ * @example
+ * ```ts
+ * isUnsetWhenEmpty(CONFIG_FIELDS.NOINDEX); // true  (boolean)
+ * isUnsetWhenEmpty(CONFIG_FIELDS.SITE_FOOTER); // false (string)
+ * ```
+ */
+function isUnsetWhenEmpty(
+  field: (typeof CONFIG_FIELDS)[keyof typeof CONFIG_FIELDS],
+): boolean {
+  if (!("editor" in field)) return false;
+  const editor = field.editor;
+  switch (editor.type) {
+    case "boolean":
+    case "number":
+      return true;
+    case "enum":
+      // Only a fixed option list proves the value is impossible. `""` is a real
+      // choice for `DASHBOARD_LANGUAGE`, which offers it, and an enum drawing
+      // its options from a runtime source cannot rule it out either.
+      return (
+        "options" in editor &&
+        !(editor.options as readonly string[]).includes("")
+      );
+    default:
+      return false;
+  }
+}
+
+/**
  * Resolve a single config value following priority rules.
+ *
+ * Settings saved in the dashboard outrank the environment, which outranks the
+ * default. The exception is an empty boolean or numeric value — see
+ * {@link isUnsetWhenEmpty}, which explains why that is absence rather than
+ * choice.
  *
  * @param key - CONFIG_FIELDS key
  * @param allSettings - DB settings map
@@ -46,7 +100,10 @@ function resolve(
 
   // User-configurable: DB > ENV > Default
   if (!field.envOnly && Object.hasOwn(allSettings, key)) {
-    return allSettings[key] ?? "";
+    const stored = allSettings[key] ?? "";
+    if (stored !== "" || !isUnsetWhenEmpty(field)) {
+      return stored;
+    }
   }
 
   // ENV > Default

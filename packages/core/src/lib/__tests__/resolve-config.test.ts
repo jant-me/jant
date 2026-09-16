@@ -52,6 +52,73 @@ describe("resolveConfig", () => {
     expect(config.siteName).toBe("FromEnv");
   });
 
+  // A settings row holding an empty string is not always the same thing. The
+  // editor decides: a boolean, a number, and an enum with fixed options cannot
+  // be saved empty, so an empty one of those came from a path that skipped
+  // validation — a snapshot import replaying raw SQL — and the environment
+  // variable should still be heard.
+  // Text can legitimately be empty, and then the row wins.
+  describe("empty settings rows", () => {
+    it("lets an environment value through an empty boolean row", () => {
+      const config = resolveConfig(makeEnv({ NOINDEX: "true" }), {
+        NOINDEX: "",
+      });
+
+      expect(config.noindex).toBe(true);
+    });
+
+    it("falls back to the default for an empty boolean row with no env value", () => {
+      const config = resolveConfig(makeEnv(), { NOINDEX: "" });
+
+      expect(config.noindex).toBe(false);
+    });
+
+    it("still lets a saved boolean row override the environment", () => {
+      const config = resolveConfig(makeEnv({ NOINDEX: "true" }), {
+        NOINDEX: "false",
+      });
+
+      expect(config.noindex).toBe(false);
+    });
+
+    it("lets an environment value through an empty numeric row", () => {
+      const config = resolveConfig(makeEnv({ PAGE_SIZE: "20" }), {
+        PAGE_SIZE: "",
+      });
+
+      expect(config.pageSize).toBe(20);
+    });
+
+    it("keeps an empty enum row ahead of the environment when empty is an option", () => {
+      // `DASHBOARD_LANGUAGE` lists "" among its options — it is how the
+      // dashboard is told to follow the site language.
+      const config = resolveConfig(makeEnv({ DASHBOARD_LANGUAGE: "zh-Hans" }), {
+        DASHBOARD_LANGUAGE: "",
+      });
+
+      expect(config.dashboardLanguage).toBe("");
+    });
+
+    it("keeps an empty text row ahead of the environment", () => {
+      const config = resolveConfig(
+        makeEnv({ SITE_FOOTER: "From environment" }),
+        { SITE_FOOTER: "" },
+      );
+
+      expect(config.siteFooter).toBe("");
+    });
+
+    it("lets an environment value through an empty enum row", () => {
+      // `MAIN_RSS_FEED` offers "featured" and "latest" and nothing else, so an
+      // empty row is as impossible to save as an empty boolean.
+      const config = resolveConfig(makeEnv({ MAIN_RSS_FEED: "latest" }), {
+        MAIN_RSS_FEED: "",
+      });
+
+      expect(config.mainRssFeed).toBe("latest");
+    });
+  });
+
   it("lets an explicit empty DB value override an environment fallback", () => {
     const config = resolveConfig(
       makeEnv({ SITE_DESCRIPTION: "From environment" }),

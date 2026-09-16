@@ -158,9 +158,16 @@ D1 默认也强制，测试用的 `createTestDatabase()` 同样开着。
   已确认库里没有 `NOINDEX` 设置行。
 - **demo-source 的 NOINDEX**：`sites/demo-source/wrangler.toml` 设 `NOINDEX = "true"`。
   它会同时给页面加 `noindex, nofollow` meta，并把 robots.txt 翻成 `Disallow: /`
-  （`routes/feed/sitemap.ts:318`）。已确认 demo-source 库里**没有** `NOINDEX`
-  设置行，所以 env 生效 —— 但 `NOINDEX` 的优先级是 DB > ENV，将来在 Settings 里
-  关掉会盖过它，注释里写明了。
+  （`routes/feed/sitemap.ts:318`）。
+
+  **更正**：当时我说「已确认 demo-source 库里没有 `NOINDEX` 设置行，所以 env 生效」，
+  这是错的 —— 那次查询的 JSON 输出被 `tail -25` 截断，把 `NOINDEX` 那条切掉了，
+  我读了截断结果就下了结论。实际那行从 2026-04-03 建站时就在，值是空字符串。
+  同样的错误说法也进了 commit `1bc8d343` 的消息，那条已推送，改不了。
+
+  **后果**：demo-source 的 `NOINDEX = "true"` 从一开始就是失效的，部署后
+  robots.txt 仍是 `Allow: /`。content-lab 没有这行，所以它生效了。
+  根因见下节。
   README 里「private authoring site」的说法也改了：private 指的是谁能写，不是谁能读。
 - **提交进仓库的本地绝对路径**：7 个文件全部修完，32 个本地链接验证全部指向真实文件。
   `docs/internal/agent-automation-testing.md` 里那三处是可执行命令，改成了
@@ -292,3 +299,70 @@ checkout 导的」。**这个判断是错的**，真实原因更要紧：
 
 当前快照在 0 个智能合集下能正常加载（重放测试通过），但它是用坏的 dump 顺序导出的。
 **修复后需要再导出一次**，让提交进仓库的那份带上正确顺序。
+
+## 空设置行会静默压掉环境变量（新发现，待决策）
+
+`resolve()`（`lib/resolve-config.ts:48`）：
+
+```js
+if (!field.envOnly && Object.hasOwn(allSettings, key)) {
+  return allSettings[key] ?? "";   // 空字符串也从这里返回
+}
+const envValue = getEnvString(env, ...);   // 有空行时永远走不到
+```
+
+`settings.getAll()` 原样返回所有行，包括值为空的。所以一行空值让
+`Object.hasOwn` 为 true，`resolve` 返回 `""`，环境变量根本不被查询。
+
+demo-source 的 `NOINDEX` 行写于 2026-04-03（建站时），值一直是 `""`。
+同库里 `HEADER_NAV_MAX_VISIBLE`、`HOME_DEFAULT_VIEW` 也是空行。
+
+**这与文档承诺矛盾**。`docs/configuration.md`：
+
+> Each one can also be **seeded** from an environment variable of the same name
+> — **values changed in Settings** take precedence over the environment variable.
+
+一行空值不是「在 Settings 里改过的值」，是「没做选择」。代码把「行存在」当成了
+「改过」。影响范围是所有 `envOnly: false` 的键，不止 `NOINDEX` —— 任何写过空行的
+站点，`[vars]` 里的可编辑设置都是死的。
+
+**已修**。判据不是「空值是不是 falsy」，而是**这个 editor 根本存不存得出空值** ——
+正好镜像 `normalizeConfigEditorDefinitionValue` 的接受范围：
+
+| editor | 空值能否被合法保存 | 空值处理 |
+|---|---|---|
+| `boolean` | 不能（抛 "Choose true or false."） | 落回 env / default |
+| `number` | 不能（抛 "Enter a valid number."） | 落回 env / default |
+| `enum`，options 固定且不含 `""` | 不能（抛 "Choose one of the available options."） | 落回 env / default |
+| `enum`，options 含 `""`（`DASHBOARD_LANGUAGE`） | **能** —— 空值就是「跟随站点语言」 | 保持 DB 优先 |
+| `enum`，options 来自运行时（`SITE_LANGUAGE`、`TIME_ZONE`） | 无法判定 | 保持 DB 优先（保守） |
+| `string` | **能** —— 清空 footer / description 是常规编辑 | 保持 DB 优先 |
+
+我原先担心的张力（「用户明确关掉开关 vs env 说 true」）**不存在**：关掉写的是
+`"false"`，不是 `""`。
+
+### 过程中被类型检查救了一次
+
+第一版规则写成「boolean 和 number 落回，string 和 enum 不变」，理由是我用正则扫
+`config.ts` 只找到两个 enum，都不含空值。`tsc` 报 `Property 'options' does not exist`
+时才发现正则漏了两种形态：`DASHBOARD_LANGUAGE` 的 options **含 `""`**，
+`SITE_LANGUAGE` / `TIME_ZONE` 的 options 是 `optionsSource` 动态来源。
+按第一版规则，`DASHBOARD_LANGUAGE` 的空值会被 env 覆盖 —— 那是个新 bug。
+
+### 不需要数据迁移
+
+已经躺在各个库和快照里的空行自动变得无害，包括 demo 每晚被重新写入的那行。
+
+### 文档不用改
+
+`docs/configuration.md` 的 "values changed in Settings take precedence over the
+environment variable" 现在才成立 —— 此前是代码错，不是文档错。
+
+### 验证
+
+`resolve-config.test.ts` 新增 7 条，覆盖每种 editor 类型的空值行为：
+空布尔放行 env、空布尔无 env 时落到 default、已保存的布尔仍压过 env、
+空数字放行 env、固定 options 的空 enum 放行 env、含 `""` 的 enum 保持 DB 优先、
+空文本保持 DB 优先。
+
+`check-tests`：322 文件 / 4402 测试全绿。
