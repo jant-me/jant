@@ -191,6 +191,16 @@ run = "npx prettier --check ."
 description = "Check user-facing copy against the writing style rules"
 run = "node scripts/check-copy.mjs"
 
+[tasks.check-site-tables]
+description = "Check the repo's site content table lists against the schema"
+# Three hand-written lists enumerate a site's content tables. The commit that
+# added `smart_collection` updated the two beside the code it was editing and
+# missed the snapshot registry, which then dropped smart collections on export
+# and could not delete them on `--replace` — silently, for weeks. A vitest guard
+# anchors the registry to the schema; this anchors the repo-level lists to the
+# registry, so a new content table is registered once and reaches all three.
+run = "node scripts/check-site-tables.mjs"
+
 [tasks.check-site-bundle]
 description = "Check the exported theme's site bundle is in sync with its sources"
 # The bundle is a committed build output, so nothing fails when it goes stale —
@@ -218,6 +228,7 @@ run = """
 # result, which lands unformatted code without failing the commit.
 mise run check-format
 mise run check-lint
+mise run check-site-tables
 
 # Phase 2: Core checks
 mise run check-tests

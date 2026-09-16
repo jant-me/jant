@@ -25,8 +25,8 @@ lint 管不到，漏登记是静默的。
 | `SNAPSHOT_TABLES` / `SNAPSHOT_CLEAR_TABLES` | `packages/core/bin/lib/site-snapshot.js` | **没有** |
 
 作者不是粗心 —— 他更新了手边那两份。漏掉的那份没有任何东西连着它。
-本次的 guard 测试只守住了第三份（它在 `packages/core` 里，测试够得到）。
-另外两份在仓库脚本层，仍然没有守卫。
+第一轮的 guard 测试只守住了第三份（它在 `packages/core` 里，测试够得到）。
+另外两份在仓库脚本层，已由 `scripts/check-site-tables.mjs` 补上（见下）。
 
 ## 当前的两个实例
 
@@ -200,3 +200,48 @@ hosted ↔ 自部署迁移方式。在这条路上静默丢用户数据，和刚
 3. **目录条目也渲染**：配合 1 或 2。
 
 这是一个 feature 尺寸的改动，不该顺手塞进本次。
+
+## 第三轮：仓库级表清单检查
+
+`packages/core` 的 vitest 够不到 `scripts/` 和 `sites/`，而反向依赖（core 的测试
+去 import 仓库脚本）方向别扭。所以做成仓库级脚本，挂在 `check-ci` 的 Phase 1。
+
+**分层**：`SNAPSHOT_TABLES` 是唯一的登记处，vitest 把它锚在 schema 上；
+`check-site-tables.mjs` 再把另外两份锚在它上面。新增内容表只需登记一次，
+三份清单都会被推着跟上。
+
+**三份清单不一样，也不该一样**，所以差异是声明出来的而不是抹平的：
+
+| 清单 | site_setting | api_token |
+|---|---|---|
+| `SNAPSHOT_TABLES` | 有 | 无（凭据不进可移植快照） |
+| `buildSiteContentResetSql` | 无 | 可选 |
+| `buildContentLabExportQueries` | 无 | 有（演练 fixture 需要） |
+
+脚本里用 `SNAPSHOT_ONLY` 和 `EXTRA_ALLOWED` 两个声明表达，后者每条要写理由。
+
+**检查项**：覆盖（`SNAPSHOT_TABLES` 的内容表不能缺）、无未知表（不能出现
+schema 里不是 site-scoped 的表）、未登记的额外表要有理由、无重复、
+外键顺序（导出清单是插入序，reset 是删除序）。
+
+**配套重构**：`sites/content-lab/scripts/export-content-lab.mjs` 在模块顶层就
+`resolveSingleRemoteSite()`（会调 wrangler），没法被 import。把查询目录抽成
+无副作用的 `sites/content-lab/scripts/export-queries.mjs`，检查脚本直接 import，
+不做静态解析。抽取前后用旧版文件对拍过，9 张表的 SQL 逐条一致。
+
+### 验证
+
+四个反向测试，全部命中：
+
+| 破坏 | 结果 |
+|---|---|
+| content-lab 清单删掉 `smart_collection` | 报 missing |
+| reset SQL 删掉 `smart_collection` | 报 missing |
+| 把 `nav_item` 移到 `post` 前 | 精确报出 3 处外键违约 |
+| 清单里放重复条目 | 报 duplicate |
+
+第三项一开始**没抓到** —— 我最初用「复制」而不是「移动」来制造顺序错误，而
+`new Map(tables.map(...))` 只保留最后一次出现的下标，重复项把顺序错误盖住了。
+这是脚本的真 bug，因此补了重复检测，重测通过。
+
+`check-lint`、`check-format`、`check-tests`（322 文件 / 4394 测试）全绿。
