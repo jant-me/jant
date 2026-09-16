@@ -32,7 +32,10 @@ export const featuredRoutes = new Hono<Env>();
  * @returns Featured page response
  */
 export async function renderFeaturedPage(c: Context<Env>): Promise<Response> {
-  const navData = await getNavigationData(c);
+  // The chrome and the timeline are independent, so they load together. The
+  // timeline only ever wanted `navData.isAuthenticated`, which is
+  // `c.var.isAuthenticated` verbatim.
+  const navDataPromise = getNavigationData(c);
   const i18n = getI18n(c);
 
   const page = parsePageNumber(c.req.query("page"));
@@ -43,10 +46,13 @@ export async function renderFeaturedPage(c: Context<Env>): Promise<Response> {
     }),
   );
   const paginatedPageTitle = formatPageLabel(page);
-  const { items, currentPage, totalPages } = await assembleFeaturedTimeline(c, {
-    page,
-    isAuthenticated: navData.isAuthenticated,
-  });
+  const [navData, { items, currentPage, totalPages }] = await Promise.all([
+    navDataPromise,
+    assembleFeaturedTimeline(c, {
+      page,
+      isAuthenticated: c.var.isAuthenticated,
+    }),
+  ]);
 
   return renderPublicPage(c, {
     title:

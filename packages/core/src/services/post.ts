@@ -344,8 +344,37 @@ export type TranslationCandidateResolution =
   /** Its group already holds this Thread's language. */
   | { status: "group_language_taken"; language: string };
 
+/** A Post together with the custom URL that has taken over as its address. */
+export interface PostWithCanonicalAlias {
+  post: Post;
+  /**
+   * The newest registered `alias`, which is the address a slug URL redirects
+   * to. Null when the Post still answers at its slug.
+   */
+  canonicalAlias: string | null;
+}
+
 export interface PostService {
   getById(id: string): Promise<Post | null>;
+  /**
+   * The Post a resolved path points at, plus its canonical address, in one
+   * read.
+   *
+   * Serving a Post URL needs three things the registry and the Post row hold
+   * between them: the row, the Post's slug, and whether a custom URL has taken
+   * over as its address. Asking for those separately put three round trips at
+   * the head of every Post page, so they come back together.
+   *
+   * @param postId - TypeID of the Post
+   * @returns The hydrated Post and its canonical alias, or null when no such
+   *   Post exists or it has no slug
+   * @example
+   * ```ts
+   * const loaded = await posts.getWithCanonicalAlias(resolved.postId);
+   * if (loaded?.canonicalAlias) redirect(loaded.canonicalAlias);
+   * ```
+   */
+  getWithCanonicalAlias(postId: string): Promise<PostWithCanonicalAlias | null>;
   getBodyContent(id: string): Promise<PostBodyContent | null>;
   getBySlug(slug: string): Promise<Post | null>;
   suggestSlug(input: {
@@ -1542,14 +1571,80 @@ export function createPostService(
     };
   }
 
+  /**
+   * Thread visibility the loaded rows already answer, plus the thread ids they
+   * do not.
+   *
+   * A reply's own `visibility` column is null — it inherits the root's — so a
+   * row only speaks for its thread when it *is* the root. List surfaces query
+   * thread roots exclusively (`excludeReplies`), so for them this covers every
+   * thread and the follow-up read never runs.
+   *
+   * Entries are set only for a non-null visibility, matching
+   * {@link getThreadVisibilityMap}: a root row with no visibility is treated as
+   * unreadable by both paths.
+   */
+  function seedThreadVisibility(rows: (typeof posts.$inferSelect)[]): {
+    known: Map<string, Visibility>;
+    missingThreadIds: string[];
+  } {
+    const known = new Map<string, Visibility>();
+    const covered = new Set<string>();
+    for (const row of rows) {
+      if (row.id !== row.threadId) continue;
+      covered.add(row.threadId);
+      if (row.visibility) {
+        known.set(row.threadId, ensurePostVisibility(row.visibility, Error));
+      }
+    }
+    const missingThreadIds = [
+      ...new Set(
+        rows
+          .map((row) => row.threadId)
+          .filter((threadId) => !covered.has(threadId)),
+      ),
+    ];
+    return { known, missingThreadIds };
+  }
+
+  /**
+   * Slug lookup and root-visibility lookup are independent, so they go out
+   * together rather than one after the other.
+   */
+  async function loadHydrationMaps(
+    rows: (typeof posts.$inferSelect)[],
+  ): Promise<{
+    slugMap: Map<string, string>;
+    visibilityMap: Map<string, Visibility>;
+  }> {
+    const { known, missingThreadIds } = seedThreadVisibility(rows);
+    const [slugMap, fetched] = await Promise.all([
+      resolvedPaths.getPostSlugMap(rows.map((row) => row.id)),
+      missingThreadIds.length > 0
+        ? getThreadVisibilityMap(missingThreadIds)
+        : Promise.resolve(new Map<string, Visibility>()),
+    ]);
+    for (const [threadId, visibility] of fetched) {
+      known.set(threadId, visibility);
+    }
+    return { slugMap, visibilityMap: known };
+  }
+
   async function hydratePost(
     row: typeof posts.$inferSelect | undefined,
+    knownSlug?: string,
   ): Promise<Post | null> {
     if (!row) return null;
-    const slug = await resolvedPaths.getPostSlug(row.id);
+    const { known, missingThreadIds } = seedThreadVisibility([row]);
+    const [slug, fetched] = await Promise.all([
+      knownSlug ?? resolvedPaths.getPostSlug(row.id),
+      missingThreadIds.length > 0
+        ? getThreadVisibilityMap(missingThreadIds)
+        : Promise.resolve(new Map<string, Visibility>()),
+    ]);
     if (!slug) return null;
-    const rootVisibilityMap = await getThreadVisibilityMap([row.threadId]);
-    const visibility = rootVisibilityMap.get(row.threadId) ?? row.visibility;
+    const visibility =
+      known.get(row.threadId) ?? fetched.get(row.threadId) ?? row.visibility;
     if (!visibility) return null;
     return toPost(row, slug, visibility);
   }
@@ -1558,17 +1653,11 @@ export function createPostService(
     rows: (typeof posts.$inferSelect)[],
   ): Promise<Post[]> {
     if (rows.length === 0) return [];
-    const slugMap = await resolvedPaths.getPostSlugMap(
-      rows.map((row) => row.id),
-    );
-    const rootVisibilityMap = await getThreadVisibilityMap(
-      rows.map((row) => row.threadId),
-    );
+    const { slugMap, visibilityMap } = await loadHydrationMaps(rows);
     return rows
       .map((row) => {
         const slug = slugMap.get(row.id);
-        const visibility =
-          rootVisibilityMap.get(row.threadId) ?? row.visibility;
+        const visibility = visibilityMap.get(row.threadId) ?? row.visibility;
         return slug && visibility ? toPost(row, slug, visibility) : null;
       })
       .filter((row): row is Post => row !== null);
@@ -1883,6 +1972,45 @@ export function createPostService(
       return hydratePost(result[0]);
     },
 
+    async getWithCanonicalAlias(postId) {
+      const rows = await db
+        .select({ post: posts, path: pathRegistry })
+        .from(posts)
+        .leftJoin(
+          pathRegistry,
+          and(
+            eq(pathRegistry.siteId, siteId),
+            eq(pathRegistry.postId, posts.id),
+          ),
+        )
+        .where(and(eq(posts.siteId, siteId), eq(posts.id, postId)))
+        .orderBy(asc(pathRegistry.createdAt), asc(pathRegistry.id));
+
+      const row = rows[0];
+      if (!row) return null;
+
+      let slug: string | null = null;
+      let canonicalAlias: string | null = null;
+      for (const { path } of rows) {
+        if (!path) continue;
+        if (path.kind === "slug") {
+          slug = path.path;
+          continue;
+        }
+        // Rows arrive oldest first, so the last `alias` seen is the newest —
+        // the one a slug URL redirects to. Ties within a second fall to the
+        // higher id rather than to whatever the storage engine returned first.
+        if (path.kind === "alias") canonicalAlias = `/${path.path}`;
+      }
+
+      // A Post with no slug row has no address, which is what `hydratePost`
+      // says by returning null for it.
+      if (!slug) return null;
+
+      const post = await hydratePost(row.post, slug);
+      return post ? { post, canonicalAlias } : null;
+    },
+
     async getBodyContent(id) {
       const post = await this.getById(id);
       if (!post) return null;
@@ -1902,7 +2030,14 @@ export function createPostService(
       if (!resolved || resolved.kind !== "slug" || !resolved.postId) {
         return null;
       }
-      return this.getById(resolved.postId);
+      const result = await db
+        .select()
+        .from(posts)
+        .where(and(eq(posts.siteId, siteId), eq(posts.id, resolved.postId)))
+        .limit(1);
+      // The registry row that answered is the slug, so hydration does not go
+      // back for it.
+      return hydratePost(result[0], resolved.path);
     },
 
     async suggestSlug(input) {

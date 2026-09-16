@@ -31,7 +31,8 @@ export async function renderSearchPage(c: Context<Env>): Promise<Response> {
   const pageParam = c.req.query("page");
   const page = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
 
-  const navData = await getNavigationData(c);
+  // The chrome does not gate the query, so it loads alongside it.
+  const navDataPromise = getNavigationData(c);
 
   // Only search if there's a query
   let results: SearchResult[] = [];
@@ -63,7 +64,8 @@ export async function renderSearchPage(c: Context<Env>): Promise<Response> {
   // Transform to View Models
   const mediaCtx = createMediaContext(c.var.appConfig);
   const postIds = results.map((r) => r.post.id);
-  const [aliasesMap, collectionsMap] = await Promise.all([
+  const [navData, aliasesMap, collectionsMap] = await Promise.all([
+    navDataPromise,
     c.var.services.paths.getPostAliases(postIds),
     c.var.services.collections.getCollectionsByPostIds(postIds),
   ]);

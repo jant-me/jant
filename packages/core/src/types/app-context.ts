@@ -8,6 +8,7 @@
 
 import type { Hono } from "hono";
 import type { Services } from "../services/index.js";
+import type { ResolvedPath } from "../services/path.js";
 import type { HostedHandoffService } from "../services/hosted-handoff.js";
 import type { Auth } from "../auth.js";
 import type { AppConfig } from "./config.js";
@@ -40,6 +41,21 @@ export interface AppVariables {
   storage: StorageDriver | null;
   publicRequestUrl: string;
   publicPath: string;
+  /**
+   * The `path_registry` row for this request's own path, read once by the
+   * stored-redirect middleware so the catch-all route does not resolve the same
+   * address a second time.
+   *
+   * `record` is null when nothing is registered at `path`, which is a real
+   * answer and worth reusing. The whole field is absent when the middleware
+   * skipped the lookup (API and asset paths) — readers must fall back to
+   * `services.paths.resolve` rather than treat absence as "nothing registered".
+   *
+   * `path` is the stored form the lookup used, so a reader compares its own
+   * normalized path against it before trusting the record: a language view
+   * strips its prefix and is asking about a different address.
+   */
+  pathLookup?: { path: string; record: ResolvedPath | null };
   /**
    * Cached session for the current request. `null` when unauthenticated or
    * when the session lookup errored. Populated by `attachSession` middleware.

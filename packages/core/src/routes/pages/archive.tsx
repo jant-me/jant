@@ -432,10 +432,14 @@ export async function renderArchivePage(
 
   if (params.collectionMissing) return c.notFound();
 
-  const navData = await getNavigationData(c);
+  // The chrome is independent of every query below, so it goes out with them
+  // rather than ahead of them. Its `isAuthenticated` is `c.var.isAuthenticated`
+  // verbatim, which is what the filters below read.
+  const navDataPromise = getNavigationData(c);
+  const isAuthenticated = c.var.isAuthenticated;
 
   const filters = buildArchivePostFilters(params, {
-    isAuthenticated: navData.isAuthenticated,
+    isAuthenticated,
     lang: getViewLang(c) ?? undefined,
   });
 
@@ -456,13 +460,14 @@ export async function renderArchivePage(
   // media EXISTS subqueries.
   const baselineFilters = hasActiveArchiveFilter(params.selection)
     ? buildArchivePostFilters(params, {
-        isAuthenticated: navData.isAuthenticated,
+        isAuthenticated,
         lang: filters.lang,
         selection: {},
       })
     : undefined;
 
   const [
+    navData,
     totalCount,
     baselineCount,
     monthlyCounts,
@@ -470,6 +475,7 @@ export async function renderArchivePage(
     availableYears,
     listedCollections,
   ] = await Promise.all([
+    navDataPromise,
     services.posts.count(filters),
     baselineFilters
       ? services.posts.count(baselineFilters)
@@ -502,13 +508,6 @@ export async function renderArchivePage(
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   const mediaCtx = createMediaContext(appConfig);
-  const allPostIds = posts.map((p) => p.id);
-  const archiveAliasesMap =
-    await c.var.services.paths.getPostAliases(allPostIds);
-  const archiveAliasMap = new Map<string, string>();
-  for (const [id, aliases] of archiveAliasesMap) {
-    if (aliases[0]) archiveAliasMap.set(id, aliases[0]);
-  }
 
   // --- List view: flat timeline items (no month grouping) ------------------
 
@@ -543,10 +542,17 @@ export async function renderArchivePage(
     );
 
     const postIds = posts.map((p) => p.id);
-    const [rawMediaMap, replyCounts] = await Promise.all([
+    // Only the grid renders permalinks from this map. The list view goes
+    // through `assembleTimelineItems`, which loads the same aliases itself.
+    const [rawMediaMap, replyCounts, archiveAliasesMap] = await Promise.all([
       services.media.getByPostIds(postIds),
       services.posts.getReplyCounts(postIds),
+      services.paths.getPostAliases(postIds),
     ]);
+    const archiveAliasMap = new Map<string, string>();
+    for (const [id, aliases] of archiveAliasesMap) {
+      if (aliases[0]) archiveAliasMap.set(id, aliases[0]);
+    }
     const mediaMap = buildMediaMap(
       rawMediaMap,
       mediaCtx.r2PublicUrl,

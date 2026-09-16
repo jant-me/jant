@@ -93,7 +93,7 @@ import {
 } from "./lib/jant-branding.js";
 import { isAssetPath } from "./lib/asset-path.js";
 import { getHostedCanonicalRedirect } from "./lib/hosted-domain.js";
-import { stripSitePathPrefix, toPublicHref } from "./lib/url.js";
+import { normalizePath, stripSitePathPrefix, toPublicHref } from "./lib/url.js";
 import {
   matchesIfNoneMatch,
   withConditionalResponse,
@@ -533,7 +533,13 @@ export function createApp(): App {
     await next();
   });
 
-  // Redirect middleware — only handles redirect-type custom URLs
+  // Redirect middleware — only handles redirect-type custom URLs.
+  //
+  // The lookup it needs is the same `path_registry` read the catch-all route
+  // makes to resolve a post or collection, so the record is stashed on the
+  // context and that route reuses it instead of asking again. Nothing between
+  // here and the route writes to the registry, so the record cannot go stale
+  // within the request.
   app.use("*", async (c, next) => {
     const path = new URL(c.req.url).pathname;
     // Skip redirect lookup for fixed machine routes and static assets.
@@ -541,17 +547,20 @@ export function createApp(): App {
       return next();
     }
 
-    const customUrl = await c.var.services.customUrls.getByPath(path.slice(1));
-    if (customUrl?.targetType === "redirect" && customUrl.toPath) {
+    const storedPath = normalizePath(path);
+    const record = await c.var.services.paths.resolve(storedPath);
+    c.set("pathLookup", { path: storedPath, record });
+
+    if (record?.kind === "redirect" && record.redirectToPath) {
       return c.redirect(
         toPublicHref(
-          customUrl.toPath,
+          `/${record.redirectToPath}`,
           getRuntimeSitePathPrefix({
             env: c.env,
             currentSiteDomain: c.var.currentSiteDomain,
           }),
         ),
-        customUrl.redirectType ?? 301,
+        record.redirectType ?? 301,
       );
     }
 
