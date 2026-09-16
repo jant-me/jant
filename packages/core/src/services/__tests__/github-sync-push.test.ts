@@ -86,11 +86,10 @@ describe("selectFilesToWrite", () => {
   });
 
   it("leaves scaffolding alone once the repository has it", () => {
-    // The Worker name in `wrangler.jsonc` is derived from the site host and
-    // often has to be corrected to match the Worker serving the domain.
-    // Rewriting it every push would revert that silently, and the symptom —
-    // a deploy that succeeds against a Worker nobody is looking at — is
-    // close to undiagnosable from the Jant side.
+    // The Worker name in `wrangler.jsonc` defaults to the repository name,
+    // and a user whose Worker is named differently corrects it by hand.
+    // Rewriting it every push would revert that, and every build after it
+    // would fail on the name mismatch.
     const written = selectFilesToWrite(
       generated,
       new Set(["hugo.toml", "wrangler.jsonc"]),

@@ -124,10 +124,10 @@ export function isManagedPath(path: string): boolean {
  * Pick the export files this push should write.
  *
  * Everything is written every push except scaffolding the repo already has.
- * `wrangler.jsonc` is the case that needs this: its Worker name is a guess
- * derived from the site host, and a user who corrected it to match the Worker
- * serving their domain would see that correction reverted on the next sync —
- * with the symptom being a deploy that succeeds against the wrong Worker.
+ * `wrangler.jsonc` is the case that needs this: its Worker name defaults to
+ * the repository name, and a user whose Worker is named differently has to
+ * correct it by hand. Rewriting the file every push would revert that, and
+ * every build after it would fail on the name mismatch.
  *
  * @param exportFiles - Everything the export generated.
  * @param existingPaths - Repo-relative paths already present on the remote.
@@ -486,6 +486,9 @@ export function createGitHubSyncService(
       const exportService = createExportService(services, siteConfig, {
         storage: deps.storage,
         bundleMedia: false,
+        // Cloudflare names a Worker imported from this repository after it,
+        // so the deploy config's Worker name matches with no editing.
+        repoName: repo,
       });
       const exportFiles = await exportService.generateHugoFiles();
 

@@ -82,6 +82,7 @@ import PARTIAL_FEATURED_THREAD from "./export-theme/layouts/partials/featured-th
 import LAYOUT_RSS from "./export-theme/layouts/_default/rss.xml?raw";
 import PARTIAL_FEED_POST_CONTENT from "./export-theme/layouts/partials/feed-post-content.xml?raw";
 
+import { suggestSyncRepoName } from "../lib/github-sync-repo-name.js";
 import type { StorageDriver } from "../lib/storage.js";
 import { base64ToUint8Array } from "../lib/favicon.js";
 import {
@@ -273,6 +274,14 @@ export function createExportService(
      * base64-encodes attachment bytes.
      */
     bundleMedia?: boolean;
+    /**
+     * Name of the GitHub repository this export is destined for, when it has
+     * one. It decides the Worker name in `wrangler.jsonc`: Cloudflare names a
+     * Worker after the repository it was imported from, and requires the two
+     * to match. GitHub Sync passes it; a ZIP export has no repository and
+     * falls back to the repository name Sync would suggest for the site.
+     */
+    repoName?: string | null;
   } = {},
 ): ExportService {
   return {
@@ -616,7 +625,7 @@ export function createExportService(
       });
       exportFiles.push({
         path: WRANGLER_CONFIG_PATH,
-        content: buildWranglerConfig(siteConfig),
+        content: buildWranglerConfig(siteConfig, deps.repoName),
         scaffoldOnce: true,
       });
 
@@ -1742,36 +1751,47 @@ function buildJantDataToml(
 /** Repo-relative path of the Cloudflare Workers deploy config. */
 export const WRANGLER_CONFIG_PATH = "wrangler.jsonc";
 
-/** Fallback Worker name for a site whose URL yields nothing usable. */
-const FALLBACK_WORKER_NAME = "jant-site";
+/**
+ * Normalize a string into a name Cloudflare accepts for a Worker: lowercase
+ * letters, digits, and hyphens, at most 63 characters.
+ */
+function toWorkerName(raw: string): string {
+  return (
+    raw
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      // 63 characters is Cloudflare's limit; trimming hyphens comes after the
+      // cut so a truncated name cannot end on one.
+      .slice(0, 63)
+      .replace(/^-+|-+$/g, "")
+  );
+}
 
 /**
- * Derive a Cloudflare Worker name from the site's host.
+ * Pick the Worker name for `wrangler.jsonc`.
  *
- * Worker names are lowercase, may hold only letters, digits, and hyphens, and
- * are capped at 63 characters. Everything else in the host collapses to a
- * hyphen, so `www.owenyoung.com` becomes `www-owenyoung-com`.
+ * Cloudflare requires this name to match the Worker in the dashboard, and its
+ * repository-import flow names a new Worker after the repository — so the
+ * repository name is the one value that lines up without the user editing
+ * anything. An export with no repository behind it (a ZIP, or
+ * `site export --directory`) uses the repository name the GitHub Sync
+ * settings page prefills for this site, so pushing the export to a repository
+ * created with that default still matches.
  *
- * @param siteUrl - The exported site's URL, e.g. `https://www.owenyoung.com`.
- * @returns A name Cloudflare accepts; `jant-site` when the URL yields none.
+ * @param repoName - The destination repository's name, without the owner.
+ * @param siteUrl - The exported site's URL, used when there is no repository.
+ * @returns A name Cloudflare accepts.
  * @example
- * deriveWorkerName("https://www.owenyoung.com/"); // "www-owenyoung-com"
+ * deriveWorkerName("owenyoung-blog", "https://notes.example.com"); // "owenyoung-blog"
+ * deriveWorkerName(null, "https://notes.example.com"); // "notes-jant-sync"
  */
-export function deriveWorkerName(siteUrl: string): string {
-  let host: string;
-  try {
-    host = new URL(siteUrl).host;
-  } catch {
-    host = "";
-  }
-  const name = host
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    // 63 characters is Cloudflare's limit; trimming hyphens comes after the
-    // cut so a truncated name cannot end on one.
-    .slice(0, 63)
-    .replace(/^-+|-+$/g, "");
-  return name || FALLBACK_WORKER_NAME;
+export function deriveWorkerName(
+  repoName: string | null | undefined,
+  siteUrl: string,
+): string {
+  return (
+    toWorkerName(repoName ?? "") || toWorkerName(suggestSyncRepoName(siteUrl))
+  );
 }
 
 /**
@@ -1790,25 +1810,30 @@ export function deriveWorkerName(siteUrl: string): string {
  * - `not_found_handling`: the theme emits no `404.html` to point it at.
  *
  * @param config - The exported site's configuration.
+ * @param repoName - The destination repository's name, when there is one.
  * @returns The contents of `wrangler.jsonc`.
  * @example
- * buildWranglerConfig(config); // '{\n  // Cloudflare Workers …'
+ * buildWranglerConfig(config, "my-blog"); // '{\n  // Cloudflare Workers …'
  */
-function buildWranglerConfig(config: SiteConfig): string {
-  const name = deriveWorkerName(config.siteUrl);
+function buildWranglerConfig(
+  config: SiteConfig,
+  repoName: string | null | undefined,
+): string {
+  const name = deriveWorkerName(repoName, config.siteUrl);
   // `compatibility_date` pins the Workers runtime behavior to what shipped on
   // the day this export was generated, which is what a new Worker wants.
   const compatibilityDate = new Date().toISOString().slice(0, 10);
   return `{
   // Cloudflare Workers deploy config for the built site.
   //
-  // Jant writes this file once and never overwrites it, so your edits stay.
+  // "name" must match the Worker's name in the Cloudflare dashboard: Workers
+  // Builds fails the build when they differ, and a deploy run by hand under
+  // another name goes to another Worker. A Worker imported from a repository
+  // is named after the repository, so Jant uses the repository name when it
+  // knows it, and otherwise the name GitHub Sync suggests for this site's
+  // repository.
   //
-  // "name" must match the Worker that already serves this site. Deploying
-  // under a different name creates a second Worker instead: the build passes,
-  // the deploy passes, and the domain keeps serving the old site. Cloudflare
-  // names the build token it generates "<worker-name> build token", which is
-  // one place to read the real name.
+  // Jant writes this file once and never overwrites it, so your edits stay.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": ${JSON.stringify(name)},
   "compatibility_date": ${JSON.stringify(compatibilityDate)},
@@ -2064,7 +2089,7 @@ The output goes to the \`public/\` directory. Upload it to any static host (Netl
 | Deploy command  | \`npx wrangler deploy\`          |
 | Version command | \`npx wrangler versions upload\` |
 
-Check one thing before the first deploy: \`name\` in \`wrangler.jsonc\` has to match the Worker that serves this site. Jant derives it from the site's host, which is a guess. A name that does not match deploys a second Worker instead — the build passes, the deploy passes, and the domain keeps serving the old site. Cloudflare names each build token \`<worker-name> build token\`, so the token list is one place to read the real name.
+Check one thing before the first deploy: \`name\` in \`wrangler.jsonc\` has to match the Worker's name in the Cloudflare dashboard. Workers Builds fails the build when they differ, and a deploy run by hand under another name goes to another Worker. A Worker imported from a repository is named after the repository, so an export pushed by GitHub Sync uses the repository name. A downloaded export has no repository and uses the name GitHub Sync suggests when it creates one for this site. If the Worker is named something else, change \`name\` to match — Cloudflare names each build token \`<worker-name> build token\`, so the token list is one place to read it.
 
 Jant writes \`wrangler.jsonc\` once and never overwrites it, so a corrected name survives later syncs.
 

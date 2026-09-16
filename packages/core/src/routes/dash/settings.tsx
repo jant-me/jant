@@ -103,6 +103,7 @@ import {
   triggerGitHubSyncInline,
 } from "../../lib/github-sync-trigger.js";
 import { buildSyncSiteConfig } from "../../lib/github-sync-site-config.js";
+import { suggestSyncRepoName } from "../../lib/github-sync-repo-name.js";
 import { buildConfigEditorFields } from "../../lib/api-settings.js";
 import {
   readGitHubSyncStatus,
@@ -2111,7 +2112,7 @@ settingsRoutes.get("/github-sync/app/install", async (c) => {
       const navData = await getNavigationData(c);
       const base = publicPath(c, "/settings/github-sync");
       const labels = buildRepoPickerLabels(c);
-      const suggestedRepoName = buildSuggestedRepoName(c);
+      const suggestedRepoName = suggestSyncRepoName(c.var.appConfig.siteUrl);
       return renderPublicPage(c, {
         title: buildPageTitle(
           "GitHub Sync — Pick Repository",
@@ -2237,7 +2238,7 @@ settingsRoutes.get("/github-sync/app/callback", async (c) => {
   const navData = await getNavigationData(c);
   const base = publicPath(c, "/settings/github-sync");
   const labels = buildRepoPickerLabels(c);
-  const suggestedRepoName = buildSuggestedRepoName(c);
+  const suggestedRepoName = suggestSyncRepoName(c.var.appConfig.siteUrl);
 
   return renderPublicPage(c, {
     title: buildPageTitle("GitHub Sync — Pick Repository", navData.siteName),
@@ -2269,29 +2270,6 @@ settingsRoutes.get("/github-sync/app/callback", async (c) => {
     ),
   });
 });
-
-/**
- * Derive a default repository name to prefill on github.com/new.
- *
- * Uses the site's host — the first DNS label is a stable, URL-safe
- * identifier tied to this specific Jant instance. Fallback to
- * "jant-site-sync" when the host parse fails so we never hand GitHub an
- * empty `name=`. The `-jant-sync` suffix disambiguates the sync mirror
- * from a user's own `{slug}-jant` source repo.
- */
-function buildSuggestedRepoName(c: Context<Env>): string {
-  let firstLabel = "";
-  try {
-    firstLabel = new URL(c.var.appConfig.siteUrl).host.split(".")[0] ?? "";
-  } catch {
-    /* fall through */
-  }
-  const slug = firstLabel
-    .toLowerCase()
-    .replace(/[^a-z0-9-_]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return slug ? `${slug}-jant-sync` : "jant-site-sync";
-}
 
 function buildRepoPickerLabels(c: Context<Env>): string {
   const i18n = getI18n(c);

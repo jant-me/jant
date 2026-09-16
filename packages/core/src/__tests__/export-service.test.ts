@@ -15,6 +15,7 @@ import {
   deriveWorkerName,
   WRANGLER_CONFIG_PATH,
 } from "../services/export.js";
+import { suggestSyncRepoName } from "../lib/github-sync-repo-name.js";
 import { parseFrontMatter } from "../lib/hugo-markdown.js";
 import type { Collection, Media, Post } from "../types.js";
 import {
@@ -1407,29 +1408,58 @@ describe("bundled theme", () => {
 });
 
 describe("deriveWorkerName", () => {
-  it.each([
-    ["https://www.owenyoung.com", "www-owenyoung-com"],
-    ["https://www.owenyoung.com/", "www-owenyoung-com"],
-    ["https://example.com", "example-com"],
-    ["http://localhost:1313", "localhost-1313"],
-    // Punycode is what the URL parser hands back for a non-ASCII host, and
-    // its characters are already inside Cloudflare's allowed set.
-    ["https://例子.com", "xn--fsqu00a-com"],
-  ])("derives %s into %s", (siteUrl, expected) => {
-    expect(deriveWorkerName(siteUrl)).toBe(expected);
+  it("uses the repository name when the export has one", () => {
+    // Cloudflare names a Worker imported from a repository after the
+    // repository, and fails the build when `wrangler.jsonc` disagrees — so
+    // the repo name is the default that needs no editing.
+    expect(
+      deriveWorkerName("owenyoung-blog", "https://notes.example.com"),
+    ).toBe("owenyoung-blog");
   });
 
-  it("falls back when the site URL yields no host", () => {
-    expect(deriveWorkerName("")).toBe("jant-site");
-    expect(deriveWorkerName("not a url")).toBe("jant-site");
+  it.each([
+    ["My_Blog", "my-blog"],
+    ["blog.owenyoung.com", "blog-owenyoung-com"],
+    ["--site--", "site"],
+  ])("normalizes repository name %s into %s", (repoName, expected) => {
+    expect(deriveWorkerName(repoName, "https://example.com")).toBe(expected);
+  });
+
+  it("falls back to the repository name GitHub Sync suggests", () => {
+    // A downloaded export pushed to a repository created with the settings
+    // page's prefilled name then matches the Worker Cloudflare creates.
+    const siteUrl = "https://notes.example.com";
+
+    expect(deriveWorkerName(null, siteUrl)).toBe("notes-jant-sync");
+    expect(deriveWorkerName(undefined, siteUrl)).toBe(
+      suggestSyncRepoName(siteUrl),
+    );
+    expect(deriveWorkerName("___", siteUrl)).toBe("notes-jant-sync");
+  });
+
+  it("skips a leading www in the fallback, as the settings page does", () => {
+    expect(deriveWorkerName(null, "https://www.owenyoung.com")).toBe(
+      "owenyoung-jant-sync",
+    );
+  });
+
+  it("turns the suggestion's underscores into hyphens Cloudflare accepts", () => {
+    expect(deriveWorkerName(null, "https://my_notes.example.com")).toBe(
+      "my-notes-jant-sync",
+    );
+  });
+
+  it("still yields a name when the site URL has no host", () => {
+    expect(deriveWorkerName(null, "")).toBe("jant-site-sync");
+    expect(deriveWorkerName("", "not a url")).toBe("jant-site-sync");
   });
 
   it("keeps the name inside Cloudflare's 63-character limit", () => {
-    const host = `${"a".repeat(70)}.example.com`;
-    const name = deriveWorkerName(`https://${host}`);
+    const name = deriveWorkerName(`${"a".repeat(62)}.long-repo`, "");
 
-    expect(name).toHaveLength(63);
+    expect(name).toHaveLength(62);
     expect(name).toMatch(/^[a-z0-9-]+$/);
+    // Cut at 63, the name would end on the hyphen that replaced the dot.
     expect(name.endsWith("-")).toBe(false);
   });
 });
@@ -1439,13 +1469,14 @@ describe("wrangler.jsonc", () => {
     const service = createExportService(
       buildServices({ posts: [] }),
       makeSiteConfig({ siteUrl: "https://www.owenyoung.com" }),
+      { repoName: "owenyoung-blog" },
     );
     const files = await service.generateHugoFiles();
     const config = files.find((f) => f.path === WRANGLER_CONFIG_PATH);
 
     expect(config).toBeDefined();
     const text = config!.content as string;
-    expect(text).toContain('"name": "www-owenyoung-com"');
+    expect(text).toContain('"name": "owenyoung-blog"');
     expect(text).toMatch(/"compatibility_date": "\d{4}-\d{2}-\d{2}"/);
     expect(text).toContain('"directory": "./public"');
     // Workers Builds has no "build output directory" field, so `public/` is
@@ -1456,6 +1487,18 @@ describe("wrangler.jsonc", () => {
     expect(text).not.toContain('"build"');
     // The theme emits no 404.html to point it at.
     expect(text).not.toContain("not_found_handling");
+  });
+
+  it("names the Worker after the suggested repository when there is no repository", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig({ siteUrl: "https://notes.example.com" }),
+    );
+    const text = (await service.generateHugoFiles()).find(
+      (f) => f.path === WRANGLER_CONFIG_PATH,
+    )!.content as string;
+
+    expect(text).toContain('"name": "notes-jant-sync"');
   });
 
   it("is scaffolding the repository owns after the first write", async () => {
