@@ -323,7 +323,7 @@ mise run dev-auth-bootstrap "$usage_password"
 """
 
 [tasks.db-node-load-demo]
-description = "Bootstrap the local Node runtime and import sites/demo-source/canonical/site-export into an empty local database"
+description = "Set up the local Node runtime and import sites/demo-source/canonical/site-export into an empty local database through `jant site import`"
 usage = 'arg "[password]" default="jant-dev-debug-login"'
 dir = "packages/core"
 run = 'node dev/run-script.mjs dev/scripts/import-node-demo-site-export.ts "$usage_password"'

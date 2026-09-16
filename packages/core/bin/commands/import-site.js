@@ -32,22 +32,27 @@ async function parseToml(content) {
 }
 
 /**
- * Read custom.css from a Jant Hugo export. Prefers the root
- * `static/custom.css` (user override) and falls back to
- * `themes/jant/static/custom.css` (the default location Jant writes).
+ * Static directories of a Jant Hugo export, in Hugo's lookup order: the root
+ * `static/` (user overrides) before `themes/jant/static/`, where Jant writes
+ * `custom.css`, `favicon.ico`, and `apple-touch-icon.png`.
+ */
+const IMPORT_STATIC_DIRS = [["static"], ["themes", "jant", "static"]];
+
+/**
+ * Read custom.css from the first static directory of a Jant Hugo export that
+ * has one.
  */
 async function readImportCustomCss(rootDir) {
-  const rootCss = await readFile(
-    join(rootDir, "static", "custom.css"),
-    "utf-8",
-  ).catch(() => null);
-  if (rootCss !== null) {
-    return rootCss;
+  for (const staticDir of IMPORT_STATIC_DIRS) {
+    const css = await readFile(
+      join(rootDir, ...staticDir, "custom.css"),
+      "utf-8",
+    ).catch(() => null);
+    if (css !== null) {
+      return css;
+    }
   }
-  return readFile(
-    join(rootDir, "themes", "jant", "static", "custom.css"),
-    "utf-8",
-  ).catch(() => "");
+  return "";
 }
 
 function resolveImportUrl(url, siteConfig) {
@@ -148,13 +153,15 @@ async function resolveImportLocalAssetPath(rawUrl, siteConfig, sourceRootDir) {
     return null;
   }
 
-  const fullPath = join(sourceRootDir, "static", pathname);
-  const fileStat = await stat(fullPath).catch(() => null);
-  if (!fileStat?.isFile()) {
-    return null;
+  for (const staticDir of IMPORT_STATIC_DIRS) {
+    const fullPath = join(sourceRootDir, ...staticDir, pathname);
+    const fileStat = await stat(fullPath).catch(() => null);
+    if (fileStat?.isFile()) {
+      return fullPath;
+    }
   }
 
-  return fullPath;
+  return null;
 }
 
 async function readImportAsset(options) {
@@ -908,8 +915,10 @@ function buildSettingsUpdatesFromConfig(siteConfig, customCss = "") {
     SITE_DESCRIPTION: String(siteConfig?.description || ""),
     SITE_LANGUAGE: String(siteConfig?.default_language || "en"),
     SITE_FOOTER: String(jant.site_footer_markdown || ""),
-    SHOW_JANT_BRANDING_ON_HOME: jant.show_jant_branding_on_home ? "true" : "",
-    NOINDEX: jant.noindex ? "true" : "",
+    SHOW_JANT_BRANDING_ON_HOME: jant.show_jant_branding_on_home
+      ? "true"
+      : "false",
+    NOINDEX: jant.noindex ? "true" : "false",
     PUBLIC_API_ENABLED: jant.public_api_enabled === false ? "false" : "true",
     RSS_FEEDS_ENABLED: jant.rss_feeds_enabled === false ? "false" : "true",
     SHOW_HEADER_AVATAR: jant.show_header_avatar ? "true" : "",
@@ -1876,6 +1885,7 @@ export const __test__ = {
   buildImportedAttachments,
   uploadMediaList,
   buildSettingsUpdatesFromConfig,
+  splitSettingsUpdatesForImport,
   normalizeImportedNavItems,
   normalizeImportedCollectionDirectory,
   buildSiteAvatarImport,
