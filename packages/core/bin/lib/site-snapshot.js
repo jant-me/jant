@@ -5,25 +5,76 @@ export const SNAPSHOT_FORMAT = "jant-site-snapshot";
 export const SNAPSHOT_VERSION = 2;
 export const SUPPORTED_SNAPSHOT_VERSIONS = [1, SNAPSHOT_VERSION];
 
+/**
+ * Site content, in the order rows are inserted on import.
+ *
+ * The order is a foreign-key topological sort, not a preference: a child row
+ * cannot land before the row it points at exists. `smart_collection` therefore
+ * precedes `nav_item`, `collection_directory_item` and `path_registry`, all
+ * three of which reference it, and `post` precedes `nav_item` (a `page` nav
+ * item carries a `post_id`), `thread_collection`, `path_registry` and `media`.
+ *
+ * `src/__tests__/snapshot-tables.test.ts` re-derives this order from the schema
+ * and fails the build when an edit breaks it.
+ */
 export const SNAPSHOT_TABLES = [
   "site_setting",
   "collection",
-  "nav_item",
-  "collection_directory_item",
+  "smart_collection",
   "post",
   "thread_collection",
+  "nav_item",
+  "collection_directory_item",
   "path_registry",
   "media",
 ];
 
+/**
+ * The same content, in the order `--replace` deletes it: children first, so no
+ * delete depends on a cascade to clean up after it. `site_setting` is absent on
+ * purpose — `buildReplaceSql` clears it by key, because a site's settings hold
+ * more than the snapshot carries.
+ */
 export const SNAPSHOT_CLEAR_TABLES = [
-  "thread_collection",
   "media",
   "path_registry",
   "collection_directory_item",
   "nav_item",
+  "thread_collection",
   "post",
+  "smart_collection",
   "collection",
+];
+
+/**
+ * Site-scoped tables the snapshot deliberately leaves alone.
+ *
+ * Every table carrying a `site_id` has to appear here or in `SNAPSHOT_TABLES`
+ * — `src/__tests__/snapshot-tables.test.ts` fails the build otherwise, so a new
+ * table forces a decision rather than being silently dropped. The reasons fall
+ * into three groups: auth and routing shell that a content restore must
+ * preserve, credentials and external integration bindings that do not travel
+ * with content, and transient runtime bookkeeping.
+ */
+export const SNAPSHOT_EXCLUDED_TABLES = [
+  // Auth and routing shell. `--replace` restores content into an existing
+  // site; its members and domains belong to the deployment, not the content.
+  "site_member",
+  "site_domain",
+  // Credentials. Reissued per deployment, never copied between sites. The demo
+  // rebuild clears these through the internal admin route instead.
+  "api_token",
+  // External integration bindings. They point at an installation or a chat on
+  // someone else's service, so restoring them into another site would aim that
+  // site at a binding it does not own.
+  "github_app_installation",
+  "telegram_binding",
+  "telegram_pending_binding",
+  "telegram_media_group_item",
+  // Transient runtime bookkeeping, rebuilt by the runtime as it goes:
+  // in-flight uploads, and the recycle-window ledger for deleted objects.
+  "upload_session",
+  "storage_purge",
 ];
 
 export const SNAPSHOT_SETTING_KEYS = [
@@ -77,6 +128,12 @@ const SELECT_SQL_BY_TABLE = {
     FROM "collection_directory_item"
     WHERE "site_id" = ?1
     ORDER BY "position", "id"
+  `,
+  smart_collection: `
+    SELECT *
+    FROM "smart_collection"
+    WHERE "site_id" = ?1
+    ORDER BY "created_at", "id"
   `,
   post: `
     SELECT *

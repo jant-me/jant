@@ -121,3 +121,13 @@ jobs:
             --remote \
             --config "$WRANGLER_CONFIG" \
             --fixture packages/core/src/db/rehearsal-fixtures/demo-current.json
+
+  report-failure:
+    name: Report failure
+    needs: remote-rehearsal
+    # Pull request failures already show up as a red check on the PR; only the
+    # unattended runs need somewhere to land.
+    if: failure() && github.event_name != 'pull_request'
+    uses: ./.github/workflows/report-failure.yml
+    with:
+      job: Migration rehearsal

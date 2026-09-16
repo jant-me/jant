@@ -54,11 +54,11 @@ mise run demo-source-reset
 
 ## GitHub Actions deploy
 
-`sites/demo-source` now auto-deploys from the repo root workflow
-[`deploy-demo-source.yml`](/Users/green/project/jant/1/.github/workflows/deploy-demo-source.yml).
-Pushes to `main` deploy when either `packages/core/**` or
-`sites/demo-source/**` changes. You can also run the workflow manually with
-`workflow_dispatch`.
+`sites/demo-source` deploys from the repo root workflow
+[`deploy-demo-source.yml`](../../.github/workflows/deploy-demo-source.yml),
+which is `workflow_dispatch` only — run it by hand from the Actions tab. Pushing
+to `main` does not deploy it, so the deployed Worker stays on whatever code was
+current the last time someone ran it.
 
 Configure these repository secrets before relying on CI deploys:
 
@@ -83,8 +83,8 @@ Precedence is:
 Recommended split:
 
 - repo root `.env.repo.local`: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
-  Start from [`/.env.repo.example`](/Users/green/project/jant/main/.env.repo.example).
-- [`sites/demo-source/.env.example`](/Users/green/project/jant/main/sites/demo-source/.env.example):
+  Start from [`.env.repo.example`](../../.env.repo.example).
+- [`.env.example`](.env.example):
   copy to `.env.local` only if you want local overrides such as
   `DEMO_SOURCE_URL`
 
@@ -98,8 +98,10 @@ Recommended split:
    ```
 
 3. Optional: refresh the canonical `site-export/` fixture for `jant site import`
-   testing and local Node/Postgres bootstrapping. This is derived from the
-   committed snapshot, not exported separately from the live Worker:
+   testing and local Node/Postgres bootstrapping. This one goes over HTTP
+   against the deployed `demo-source` site, so it needs `JANT_API_TOKEN` and it
+   reads the live site rather than the snapshot you just committed — deploy
+   first if the two have to agree:
 
    ```sh
    mise run demo-source-export-canonical-site-export

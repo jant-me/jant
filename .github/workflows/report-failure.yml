@@ -1,0 +1,78 @@
+name: Report Failure
+
+# Opens a tracking issue when a scheduled job fails.
+#
+# Scheduled workflows fail unattended: the demo reset broke on 2026-09-08 and
+# nothing said so — the only record was `gh run list`. Anything running on a
+# cron needs somewhere for its failure to land.
+#
+# One issue per job, reused: a repeat failure comments on the open issue rather
+# than opening a second one, so a job that breaks for a week reads as one
+# problem with a history instead of seven identical issues.
+
+on:
+  workflow_call:
+    inputs:
+      job:
+        description: "Short name of the failing job, used as the issue title"
+        required: true
+        type: string
+
+jobs:
+  report:
+    name: Open or update the failure issue
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const job = ${{ toJSON(inputs.job) }};
+            const title = `${job} failed`;
+            const label = "ci-failure";
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `\`${job}\` failed on ${new Date().toISOString()}.`,
+              "",
+              `Run: ${run}`,
+              `Commit: ${context.sha}`,
+            ].join("\n");
+
+            await github.rest.issues.createLabel({
+              ...context.repo,
+              name: label,
+              color: "b60205",
+              description: "A scheduled job failed",
+            }).catch((error) => {
+              // Already exists — the only failure worth swallowing here.
+              if (error.status !== 422) throw error;
+            });
+
+            const existing = await github.rest.issues.listForRepo({
+              ...context.repo,
+              state: "open",
+              labels: label,
+              per_page: 100,
+            });
+            const open = existing.data.find((issue) => issue.title === title);
+
+            if (open) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: open.number,
+                body,
+              });
+              core.notice(`Commented on #${open.number}`);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              ...context.repo,
+              title,
+              body,
+              labels: [label],
+            });
+            core.notice(`Opened #${created.data.number}`);

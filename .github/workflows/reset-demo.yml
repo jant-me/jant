@@ -35,3 +35,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           INTERNAL_ADMIN_TOKEN: ${{ secrets.INTERNAL_ADMIN_TOKEN }}
+
+  report-failure:
+    name: Report failure
+    needs: reset
+    if: failure()
+    uses: ./.github/workflows/report-failure.yml
+    with:
+      job: Demo reset
