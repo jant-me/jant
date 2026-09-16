@@ -18,11 +18,11 @@ lint 管不到，漏登记是静默的。
 追查 content-lab 时发现仓库里一共有三份手写的内容表清单，而 `6681ee96`
 （引入 `smart_collection` 的那个提交）更新了其中两份：
 
-| 清单 | 位置 | 有 smart_collection |
-|---|---|---|
-| `buildSiteContentResetSql` | `scripts/lib/remote-site-ops.mjs` | 有，还带 FK 顺序注释 |
-| content-lab 导出的 `tables` | `sites/content-lab/scripts/export-content-lab.mjs` | 有 |
-| `SNAPSHOT_TABLES` / `SNAPSHOT_CLEAR_TABLES` | `packages/core/bin/lib/site-snapshot.js` | **没有** |
+| 清单                                        | 位置                                               | 有 smart_collection  |
+| ------------------------------------------- | -------------------------------------------------- | -------------------- |
+| `buildSiteContentResetSql`                  | `scripts/lib/remote-site-ops.mjs`                  | 有，还带 FK 顺序注释 |
+| content-lab 导出的 `tables`                 | `sites/content-lab/scripts/export-content-lab.mjs` | 有                   |
+| `SNAPSHOT_TABLES` / `SNAPSHOT_CLEAR_TABLES` | `packages/core/bin/lib/site-snapshot.js`           | **没有**             |
 
 作者不是粗心 —— 他更新了手边那两份。漏掉的那份没有任何东西连着它。
 第一轮的 guard 测试只守住了第三份（它在 `packages/core` 里，测试够得到）。
@@ -64,19 +64,11 @@ D1 默认也强制，测试用的 `createTestDatabase()` 同样开着。
 - [x] `site-snapshot.js`：新增 `SNAPSHOT_EXCLUDED_TABLES`，逐张写明排除理由
 - [x] `site-snapshot.js`：`SNAPSHOT_TABLES` 补 `smart_collection` 并按拓扑重排
 - [x] `site-snapshot.js`：`SNAPSHOT_CLEAR_TABLES` 同上（反向，子表先删）
-- [x] 新增 `src/__tests__/snapshot-tables.test.ts`（guard 测试）
-      - 每张 site-scoped 表必须显式出现在两个清单之一
-      - `SNAPSHOT_TABLES` 顺序符合 FK 拓扑
-      - `SNAPSHOT_CLEAR_TABLES` 顺序符合反向拓扑，且覆盖 `SNAPSHOT_TABLES` 去掉
-        `site_setting`（后者由 `SNAPSHOT_SETTING_KEYS` 单独按 key 清）
-- [x] 新增 `src/__tests__/snapshot-canonical-replay.test.ts`
-      - 用 `createTestDatabase()` 建一个迁移到 head 的库
-      - 重放已提交的 `canonical/snapshot/db.sql`（先 `buildReplaceSql`）
-      - 断言不抛错 —— 把「凌晨三点静默失败」变成「PR 变红」
+- [x] 新增 `src/__tests__/snapshot-tables.test.ts`（guard 测试）- 每张 site-scoped 表必须显式出现在两个清单之一 - `SNAPSHOT_TABLES` 顺序符合 FK 拓扑 - `SNAPSHOT_CLEAR_TABLES` 顺序符合反向拓扑，且覆盖 `SNAPSHOT_TABLES` 去掉
+      `site_setting`（后者由 `SNAPSHOT_SETTING_KEYS` 单独按 key 清）
+- [x] 新增 `src/__tests__/snapshot-canonical-replay.test.ts` - 用 `createTestDatabase()` 建一个迁移到 head 的库 - 重放已提交的 `canonical/snapshot/db.sql`（先 `buildReplaceSql`）- 断言不抛错 —— 把「凌晨三点静默失败」变成「PR 变红」
 - [x] `reset-demo.yml` / `migration-rehearsal.yml`：失败时通知（现在两个都没有）
-- [x] 修文档：`sites/demo-source/README.md` 两处与代码不符
-      - 声称 push 到 main 自动部署（实际只有 `workflow_dispatch:`）
-      - 声称 site-export 派生自已提交快照（实际打实时 Worker，要 `JANT_API_TOKEN`）
+- [x] 修文档：`sites/demo-source/README.md` 两处与代码不符 - 声称 push 到 main 自动部署（实际只有 `workflow_dispatch:`）- 声称 site-export 派生自已提交快照（实际打实时 Worker，要 `JANT_API_TOKEN`）
 
 ## 不在本次范围
 
@@ -102,7 +94,7 @@ D1 默认也强制，测试用的 `createTestDatabase()` 同样开着。
 
 - `SNAPSHOT_TABLES` 按外键拓扑重排并补 `smart_collection`：
   `site_setting, collection, smart_collection, post, thread_collection,
-   nav_item, collection_directory_item, path_registry, media`
+ nav_item, collection_directory_item, path_registry, media`
 - `SNAPSHOT_CLEAR_TABLES` 同步重排（子表先删）
 - 新增 `SNAPSHOT_EXCLUDED_TABLES`，9 张表逐条写明排除理由
 - 新增 `smart_collection` 的导出 SELECT
@@ -169,6 +161,7 @@ D1 默认也强制，测试用的 `createTestDatabase()` 同样开着。
   robots.txt 仍是 `Allow: /`。content-lab 没有这行，所以它生效了。
   根因见下节。
   README 里「private authoring site」的说法也改了：private 指的是谁能写，不是谁能读。
+
 - **提交进仓库的本地绝对路径**：7 个文件全部修完，32 个本地链接验证全部指向真实文件。
   `docs/internal/agent-automation-testing.md` 里那三处是可执行命令，改成了
   `REPO_ROOT=$(git rev-parse --show-toplevel)`，不是简单替换成相对路径。
@@ -189,11 +182,11 @@ Jant 专属 sidecar（`format = "jant-site"`, `version = 1`）。
 
 实际行为（`services/export.ts`，全文件零处 `smartCollection`）：
 
-| 东西 | 现在会怎样 |
-|---|---|
-| 智能合集本身 | 完全不导出，Hugo 站点里没有对应页面 |
+| 东西         | 现在会怎样                                                                                                                                                  |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 智能合集本身 | 完全不导出，Hugo 站点里没有对应页面                                                                                                                         |
 | 它的目录条目 | `buildExportedCollectionDirectoryItems` 走到最后的 `item.collection` 分支，而 `smart_collection` 类型的 `collection_id` 被 CHECK 约束为 NULL → **静默丢弃** |
-| 它的导航条目 | `resolveNavItemUrl` 落到 `item.url`，导出成一条在生成站点里 404 的链接 |
+| 它的导航条目 | `resolveNavItemUrl` 落到 `item.url`，导出成一条在生成站点里 404 的链接                                                                                      |
 
 为什么值得处理：`docs/faq.md:124` 把 export → import 列为**推荐**的
 hosted ↔ 自部署迁移方式。在这条路上静默丢用户数据，和刚修的快照 bug 是同一类。
@@ -219,11 +212,11 @@ hosted ↔ 自部署迁移方式。在这条路上静默丢用户数据，和刚
 
 **三份清单不一样，也不该一样**，所以差异是声明出来的而不是抹平的：
 
-| 清单 | site_setting | api_token |
-|---|---|---|
-| `SNAPSHOT_TABLES` | 有 | 无（凭据不进可移植快照） |
-| `buildSiteContentResetSql` | 无 | 可选 |
-| `buildContentLabExportQueries` | 无 | 有（演练 fixture 需要） |
+| 清单                           | site_setting | api_token                |
+| ------------------------------ | ------------ | ------------------------ |
+| `SNAPSHOT_TABLES`              | 有           | 无（凭据不进可移植快照） |
+| `buildSiteContentResetSql`     | 无           | 可选                     |
+| `buildContentLabExportQueries` | 无           | 有（演练 fixture 需要）  |
 
 脚本里用 `SNAPSHOT_ONLY` 和 `EXTRA_ALLOWED` 两个声明表达，后者每条要写理由。
 
@@ -240,12 +233,12 @@ schema 里不是 site-scoped 的表）、未登记的额外表要有理由、无
 
 四个反向测试，全部命中：
 
-| 破坏 | 结果 |
-|---|---|
-| content-lab 清单删掉 `smart_collection` | 报 missing |
-| reset SQL 删掉 `smart_collection` | 报 missing |
-| 把 `nav_item` 移到 `post` 前 | 精确报出 3 处外键违约 |
-| 清单里放重复条目 | 报 duplicate |
+| 破坏                                    | 结果                  |
+| --------------------------------------- | --------------------- |
+| content-lab 清单删掉 `smart_collection` | 报 missing            |
+| reset SQL 删掉 `smart_collection`       | 报 missing            |
+| 把 `nav_item` 移到 `post` 前            | 精确报出 3 处外键违约 |
+| 清单里放重复条目                        | 报 duplicate          |
 
 第三项一开始**没抓到** —— 我最初用「复制」而不是「移动」来制造顺序错误，而
 `new Map(tables.map(...))` 只保留最后一次出现的下标，重复项把顺序错误盖住了。
@@ -264,11 +257,11 @@ checkout 导的」。**这个判断是错的**，真实原因更要紧：
 
 后果，以及第一轮修复的实际有效范围：
 
-| 第一轮改的 | 是否生效 |
-|---|---|
-| `SNAPSHOT_TABLES` **成员**（补 `smart_collection`） | 生效 —— 决定哪些表被读 |
-| `SNAPSHOT_TABLES` **顺序** | **失效** —— 被 `sortExportTables` 覆盖 |
-| `SNAPSHOT_CLEAR_TABLES` 顺序 | 生效 —— `buildReplaceSql` 直接用 |
+| 第一轮改的                                          | 是否生效                               |
+| --------------------------------------------------- | -------------------------------------- |
+| `SNAPSHOT_TABLES` **成员**（补 `smart_collection`） | 生效 —— 决定哪些表被读                 |
+| `SNAPSHOT_TABLES` **顺序**                          | **失效** —— 被 `sortExportTables` 覆盖 |
+| `SNAPSHOT_CLEAR_TABLES` 顺序                        | 生效 —— `buildReplaceSql` 直接用       |
 
 而 `TABLE_EXPORT_ORDER` 自己带着两个问题，和第一轮修的是同一对：
 
@@ -288,10 +281,10 @@ checkout 导的」。**这个判断是错的**，真实原因更要紧：
 
 ### 验证
 
-| 破坏 | 结果 |
-|---|---|
-| `TABLE_EXPORT_ORDER` 移除 `smart_collection` | 两条断言同时红（未登记 + 3 处外键违约） |
-| `nav_item` 退回 `post` 之前 | 精确报 `nav_item (3) references post (4)` |
+| 破坏                                         | 结果                                      |
+| -------------------------------------------- | ----------------------------------------- |
+| `TABLE_EXPORT_ORDER` 移除 `smart_collection` | 两条断言同时红（未登记 + 3 处外键违约）   |
+| `nav_item` 退回 `post` 之前                  | 精确报 `nav_item (3) references post (4)` |
 
 `check-site-tables`、`check-tests`（322 文件 / 4395 测试）全绿。
 
@@ -329,14 +322,14 @@ demo-source 的 `NOINDEX` 行写于 2026-04-03（建站时），值一直是 `""
 **已修**。判据不是「空值是不是 falsy」，而是**这个 editor 根本存不存得出空值** ——
 正好镜像 `normalizeConfigEditorDefinitionValue` 的接受范围：
 
-| editor | 空值能否被合法保存 | 空值处理 |
-|---|---|---|
-| `boolean` | 不能（抛 "Choose true or false."） | 落回 env / default |
-| `number` | 不能（抛 "Enter a valid number."） | 落回 env / default |
-| `enum`，options 固定且不含 `""` | 不能（抛 "Choose one of the available options."） | 落回 env / default |
-| `enum`，options 含 `""`（`DASHBOARD_LANGUAGE`） | **能** —— 空值就是「跟随站点语言」 | 保持 DB 优先 |
-| `enum`，options 来自运行时（`SITE_LANGUAGE`、`TIME_ZONE`） | 无法判定 | 保持 DB 优先（保守） |
-| `string` | **能** —— 清空 footer / description 是常规编辑 | 保持 DB 优先 |
+| editor                                                     | 空值能否被合法保存                                | 空值处理             |
+| ---------------------------------------------------------- | ------------------------------------------------- | -------------------- |
+| `boolean`                                                  | 不能（抛 "Choose true or false."）                | 落回 env / default   |
+| `number`                                                   | 不能（抛 "Enter a valid number."）                | 落回 env / default   |
+| `enum`，options 固定且不含 `""`                            | 不能（抛 "Choose one of the available options."） | 落回 env / default   |
+| `enum`，options 含 `""`（`DASHBOARD_LANGUAGE`）            | **能** —— 空值就是「跟随站点语言」                | 保持 DB 优先         |
+| `enum`，options 来自运行时（`SITE_LANGUAGE`、`TIME_ZONE`） | 无法判定                                          | 保持 DB 优先（保守） |
+| `string`                                                   | **能** —— 清空 footer / description 是常规编辑    | 保持 DB 优先         |
 
 我原先担心的张力（「用户明确关掉开关 vs env 说 true」）**不存在**：关掉写的是
 `"false"`，不是 `""`。
