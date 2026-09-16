@@ -32,8 +32,8 @@ Shell environment variables still win over all of them.
 Recommended split:
 
 - repo root `.env.repo.local`: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
-  Start from [/.env.repo.example](/Users/green/project/jant/main/.env.repo.example).
-- [`sites/demo/.env.example`](/Users/green/project/jant/main/sites/demo/.env.example):
+  Start from [`.env.repo.example`](../../../../.env.repo.example).
+- [`.env.example`](../../.env.example):
   copy to `.env.local` for `INTERNAL_ADMIN_TOKEN`, plus any local
   overrides such as `DEMO_PUBLIC_URL`, `DEMO_EMAIL`, or `DEMO_PASSWORD`
 

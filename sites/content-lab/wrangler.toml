@@ -9,6 +9,12 @@ directory = "./node_modules/@jant/core/dist/client"
 
 [vars]
 SITE_ORIGIN = "https://content-lab.jant.me"
+# A scratch environment on a jant.me subdomain, reachable by anyone. Its test
+# content has no reason to be in a search index, and being there attaches
+# throwaway posts to the product's own domain.
+#
+# NOINDEX resolves DB > env, so toggling it off in Settings would win over this.
+NOINDEX = "true"
 
 # Optional: keep these in wrangler.toml or dashboard vars once your media domain exists.
 R2_PUBLIC_URL = "https://content-lab-media.jant.me"

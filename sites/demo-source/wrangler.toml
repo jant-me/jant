@@ -12,6 +12,15 @@ port = 9030
 
 [vars]
 SITE_ORIGIN = "https://demo-source.jant.me"
+# demo-source holds the same posts demo.jant.me publishes, and it answers
+# anonymous requests — "private" describes who edits it, not who can read it.
+# Left crawlable, the official demo content is indexed twice, and the copy that
+# ranks is the one that is not meant to be the public face. demo.jant.me gets
+# noindex from DEMO_MODE; this site has to ask for it. Setting it here also
+# flips robots.txt to `Disallow: /`.
+#
+# NOINDEX resolves DB > env, so toggling it off in Settings would win over this.
+NOINDEX = "true"
 R2_PUBLIC_URL = "https://demo-source-media.jant.me"
 IMAGE_TRANSFORM_URL = "https://demo-source-media.jant.me/cdn-cgi/image"
 

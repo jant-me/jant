@@ -68,7 +68,7 @@ If you only need the bare minimum, create `.dev.vars` in `packages/core/`:
 AUTH_SECRET=your-secret-at-least-32-chars
 ```
 
-Or start from [packages/core/.dev.vars.example](/Users/green/project/jant/main/packages/core/.dev.vars.example) when you want the full list of supported local development variables with inline explanations.
+Or start from [packages/core/.dev.vars.example](packages/core/.dev.vars.example) when you want the full list of supported local development variables with inline explanations.
 
 ## Project Structure
 

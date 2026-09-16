@@ -1,10 +1,15 @@
 # Demo Source
 
-`sites/demo-source` is the private authoring site for the public demo.
+`sites/demo-source` is the authoring site for the public demo.
 
 Use this Worker to write, edit, and curate the official demo content. Its
 output is the canonical site snapshot committed in
 `sites/demo-source/canonical/snapshot/`.
+
+Private means only the author can write here. Reading is open, the way every
+Jant site is — so `wrangler.toml` sets `NOINDEX = "true"` to keep the official
+demo content from being indexed twice, once under a hostname that is not its
+public face.
 
 Repo automation still lives in the root `mise.toml` because the rebuild flow
 crosses both `sites/demo-source` and `sites/demo`, and `sites/demo` also serves

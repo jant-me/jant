@@ -62,7 +62,7 @@ runtime context once the service layer is ready.
 
 ### Add New Tables
 
-Add to [`schema.ts`](/Users/green/project/jant/2/packages/core/src/db/schema.ts):
+Add to [`schema.ts`](../../packages/core/src/db/schema.ts):
 
 - `site`
 - `site_domain`
@@ -167,11 +167,11 @@ Expected behavior:
 
 Likely files:
 
-- [`app.tsx`](/Users/green/project/jant/2/packages/core/src/app.tsx)
-- [`env.ts`](/Users/green/project/jant/2/packages/core/src/lib/env.ts)
-- [`app-context.ts`](/Users/green/project/jant/2/packages/core/src/types/app-context.ts)
-- [`resolve-config.ts`](/Users/green/project/jant/2/packages/core/src/lib/resolve-config.ts)
-- runtime factory files under [`runtime`](/Users/green/project/jant/2/packages/core/src/runtime)
+- [`app.tsx`](../../packages/core/src/app.tsx)
+- [`env.ts`](../../packages/core/src/lib/env.ts)
+- [`app-context.ts`](../../packages/core/src/types/app-context.ts)
+- [`resolve-config.ts`](../../packages/core/src/lib/resolve-config.ts)
+- runtime factory files under [`runtime`](../../packages/core/src/runtime)
 
 ### Extend Request Context
 
@@ -202,7 +202,7 @@ identity.
 
 Current service construction is global:
 
-- [`services/index.ts`](/Users/green/project/jant/2/packages/core/src/services/index.ts)
+- [`services/index.ts`](../../packages/core/src/services/index.ts)
 
 Refactor to create services in two layers:
 
@@ -263,10 +263,10 @@ Refactor setup so it:
 
 Likely files:
 
-- [`routes/auth/setup.tsx`](/Users/green/project/jant/2/packages/core/src/routes/auth/setup.tsx)
-- [`services/bootstrap.ts`](/Users/green/project/jant/2/packages/core/src/services/bootstrap.ts)
-- [`services/auth.ts`](/Users/green/project/jant/2/packages/core/src/services/auth.ts)
-- [`auth.ts`](/Users/green/project/jant/2/packages/core/src/auth.ts)
+- [`routes/auth/setup.tsx`](../../packages/core/src/routes/auth/setup.tsx)
+- [`services/bootstrap.ts`](../../packages/core/src/services/bootstrap.ts)
+- [`services/auth.ts`](../../packages/core/src/services/auth.ts)
+- [`auth.ts`](../../packages/core/src/auth.ts)
 
 ### Deletion Semantics
 
@@ -291,13 +291,13 @@ For this phase, it is acceptable to:
 
 Current settings service is globally keyed:
 
-- [`settings.ts`](/Users/green/project/jant/2/packages/core/src/services/settings.ts)
+- [`settings.ts`](../../packages/core/src/services/settings.ts)
 
 Refactor it to read/write `site_setting` by `(site_id, key)`.
 
 ### Storage Keys
 
-Refactor helpers in [`upload.ts`](/Users/green/project/jant/2/packages/core/src/lib/upload.ts):
+Refactor helpers in [`upload.ts`](../../packages/core/src/lib/upload.ts):
 
 - `generateStorageKey(siteId, originalFilename)`
 - `getPosterStorageKey(siteId, mediaId)`
@@ -316,9 +316,9 @@ Implementation rule:
 
 Likely files:
 
-- [`routes/api/export.ts`](/Users/green/project/jant/2/packages/core/src/routes/api/export.ts)
-- [`services/export.ts`](/Users/green/project/jant/2/packages/core/src/services/export.ts)
-- [`bin/commands/site/export.js`](/Users/green/project/jant/2/packages/core/bin/commands/site/export.js)
+- [`routes/api/export.ts`](../../packages/core/src/routes/api/export.ts)
+- [`services/export.ts`](../../packages/core/src/services/export.ts)
+- [`bin/commands/site/export.js`](../../packages/core/bin/commands/site/export.js)
 
 CLI behavior:
 
@@ -338,10 +338,10 @@ Implementation rules:
 
 Likely files:
 
-- [`site-snapshot.js`](/Users/green/project/jant/2/packages/core/bin/lib/site-snapshot.js)
-- [`bin/commands/site/snapshot/export.js`](/Users/green/project/jant/2/packages/core/bin/commands/site/snapshot/export.js)
-- [`bin/commands/site/snapshot/import.js`](/Users/green/project/jant/2/packages/core/bin/commands/site/snapshot/import.js)
-- [`docs/backups.md`](/Users/green/project/jant/2/docs/backups.md)
+- [`site-snapshot.js`](../../packages/core/bin/lib/site-snapshot.js)
+- [`bin/commands/site/snapshot/export.js`](../../packages/core/bin/commands/site/snapshot/export.js)
+- [`bin/commands/site/snapshot/import.js`](../../packages/core/bin/commands/site/snapshot/import.js)
+- [`docs/backups.md`](../../docs/backups.md)
 
 ## Phase 6: Tests And Verification
 
@@ -380,12 +380,12 @@ without the full checks.
 
 Recommended concrete order:
 
-1. [`schema.ts`](/Users/green/project/jant/2/packages/core/src/db/schema.ts)
-2. [`services/index.ts`](/Users/green/project/jant/2/packages/core/src/services/index.ts)
+1. [`schema.ts`](../../packages/core/src/db/schema.ts)
+2. [`services/index.ts`](../../packages/core/src/services/index.ts)
 3. new site/site-domain/site-member services
-4. [`app-context.ts`](/Users/green/project/jant/2/packages/core/src/types/app-context.ts)
+4. [`app-context.ts`](../../packages/core/src/types/app-context.ts)
 5. runtime creation and site resolution
-6. [`settings.ts`](/Users/green/project/jant/2/packages/core/src/services/settings.ts)
+6. [`settings.ts`](../../packages/core/src/services/settings.ts)
 7. content services (`post`, `path`, `media`, `collection`, `navigation`,
    `api-token`, `search`)
 8. setup/auth/bootstrap flow

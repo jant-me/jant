@@ -50,11 +50,10 @@ mise run db-content-lab-clean
 
 ## GitHub Actions deploy
 
-`sites/content-lab` now auto-deploys from the repo root workflow
-[`deploy-content-lab.yml`](/Users/green/project/jant/1/.github/workflows/deploy-content-lab.yml).
-Pushes to `main` deploy when either `packages/core/**` or
-`sites/content-lab/**` changes. You can also run the workflow manually with
-`workflow_dispatch`.
+`sites/content-lab` deploys from the repo root workflow
+[`deploy-content-lab.yml`](../../.github/workflows/deploy-content-lab.yml),
+which is `workflow_dispatch` only — run it by hand from the Actions tab. Pushing
+to `main` does not deploy it.
 
 Configure these repository secrets before relying on CI deploys:
 

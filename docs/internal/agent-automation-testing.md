@@ -48,9 +48,10 @@ pnpm --filter create-jant prepublishOnly
 ### 2.2 生成一个临时项目
 
 ```bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
 TMP_DIR=$(mktemp -d /tmp/jant-agent-e2e.XXXXXX)
 cd "$TMP_DIR"
-node /Users/green/project/jant/1/packages/create-jant/dist/index.js site --no-git -y
+node "$REPO_ROOT/packages/create-jant/dist/index.js" site --no-git -y
 cd site
 ```
 
@@ -91,7 +92,7 @@ test ! -L ./.claude/skills && echo ".claude/skills is copied"
 先在仓库根目录把本地包构建到最新：
 
 ```bash
-cd /Users/green/project/jant/1
+cd "$REPO_ROOT"
 pnpm --filter @jant/core build
 ```
 
@@ -99,7 +100,7 @@ pnpm --filter @jant/core build
 
 ```bash
 cd "$TMP_DIR/site"
-pnpm add @jant/core@file:/Users/green/project/jant/1/packages/core
+pnpm add "@jant/core@file:$REPO_ROOT/packages/core"
 ```
 
 验证安装结果：

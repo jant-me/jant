@@ -13,6 +13,21 @@ lint 管不到，漏登记是静默的。
 两个数组的**顺序**还各自承载隐性语义（= INSERT 顺序 / DELETE 顺序），必须符合外键
 拓扑，但没有注释、没有测试、没有推导。
 
+## 根因的旁证：三份清单，改对了两份
+
+追查 content-lab 时发现仓库里一共有三份手写的内容表清单，而 `6681ee96`
+（引入 `smart_collection` 的那个提交）更新了其中两份：
+
+| 清单 | 位置 | 有 smart_collection |
+|---|---|---|
+| `buildSiteContentResetSql` | `scripts/lib/remote-site-ops.mjs` | 有，还带 FK 顺序注释 |
+| content-lab 导出的 `tables` | `sites/content-lab/scripts/export-content-lab.mjs` | 有 |
+| `SNAPSHOT_TABLES` / `SNAPSHOT_CLEAR_TABLES` | `packages/core/bin/lib/site-snapshot.js` | **没有** |
+
+作者不是粗心 —— 他更新了手边那两份。漏掉的那份没有任何东西连着它。
+本次的 guard 测试只守住了第三份（它在 `packages/core` 里，测试够得到）。
+另外两份在仓库脚本层，仍然没有守卫。
+
 ## 当前的两个实例
 
 1. **`smart_collection` 完全缺失**
@@ -134,13 +149,54 @@ D1 默认也强制，测试用的 `createTestDatabase()` 同样开着。
    —— 这次会第一次带上 `smart_collection`（当前为 0 行）
 3. 之后重放测试守的就是新快照
 
-## 遗留（已记录，不在本次范围）
+## 遗留
 
-- Hugo `site export`/`import` 对 `smart_collection` 零处理
-- 另外 7 个 markdown 文件里有提交进仓库的本地绝对路径 `/Users/green/project/jant/...`：
-  `CONTRIBUTING.md`、`docs/internal/markdown-contract.md`、
-  `docs/internal/site-aware-core-implementation-plan.md`、
-  `docs/internal/agent-automation-testing.md`、`tasks/github-app-installation-index.md`、
-  `sites/demo/docs/internal/operations.md`、`sites/content-lab/README.md`
-- demo / demo-source 的自动部署
-- demo-source 没有 NOINDEX，且公开可读
+### 已在后续一轮解决
+
+- **content-lab 的 NOINDEX**：同样的问题，同样的一行修复。它是个挂在 jant.me
+  子域上、标题叫 `test-content-lab` 的暂存站，此前 `Allow: /` 且发布 sitemap。
+  已确认库里没有 `NOINDEX` 设置行。
+- **demo-source 的 NOINDEX**：`sites/demo-source/wrangler.toml` 设 `NOINDEX = "true"`。
+  它会同时给页面加 `noindex, nofollow` meta，并把 robots.txt 翻成 `Disallow: /`
+  （`routes/feed/sitemap.ts:318`）。已确认 demo-source 库里**没有** `NOINDEX`
+  设置行，所以 env 生效 —— 但 `NOINDEX` 的优先级是 DB > ENV，将来在 Settings 里
+  关掉会盖过它，注释里写明了。
+  README 里「private authoring site」的说法也改了：private 指的是谁能写，不是谁能读。
+- **提交进仓库的本地绝对路径**：7 个文件全部修完，32 个本地链接验证全部指向真实文件。
+  `docs/internal/agent-automation-testing.md` 里那三处是可执行命令，改成了
+  `REPO_ROOT=$(git rev-parse --show-toplevel)`，不是简单替换成相对路径。
+- **`sites/content-lab/README.md` 的第三处假话**：和 demo-source 一样声称 push 到
+  main 自动部署，实际 `deploy-content-lab.yml` 只有 `workflow_dispatch:`。
+
+### 仍未处理
+
+- **Hugo `site export`/`import` 对 `smart_collection` 零处理**，见下节。
+- demo / demo-source 的自动部署。
+- demo 迁移到 Docker（另一份任务文件）。
+
+## Hugo 导出路径的 smart_collection 缺口（已调研，待决策）
+
+「Hugo 没有 smart collection 概念」不是理由 —— 导出格式里的 `data/jant.toml`
+已经在承载 `[[nav]]` 和 `[[directory]]`，这两个 Hugo 同样没有。它是个
+Jant 专属 sidecar（`format = "jant-site"`, `version = 1`）。
+
+实际行为（`services/export.ts`，全文件零处 `smartCollection`）：
+
+| 东西 | 现在会怎样 |
+|---|---|
+| 智能合集本身 | 完全不导出，Hugo 站点里没有对应页面 |
+| 它的目录条目 | `buildExportedCollectionDirectoryItems` 走到最后的 `item.collection` 分支，而 `smart_collection` 类型的 `collection_id` 被 CHECK 约束为 NULL → **静默丢弃** |
+| 它的导航条目 | `resolveNavItemUrl` 落到 `item.url`，导出成一条在生成站点里 404 的链接 |
+
+为什么值得处理：`docs/faq.md:124` 把 export → import 列为**推荐**的
+hosted ↔ 自部署迁移方式。在这条路上静默丢用户数据，和刚修的快照 bug 是同一类。
+
+三档可选，需要 Owen 定：
+
+1. **只保往返**（最小）：在 `data/jant.toml` 里带上智能合集定义，让 `site import`
+   能还原；导航条目不要导成 404 链接。迁移不丢数据，但导出的 Hugo 站点仍缺页面。
+2. **加上静态物化**：智能合集是个保存下来的查询，导出是静态快照 —— 可以像合集页那样
+   把查询结果物化成静态列表页。导出的站点就完整了。
+3. **目录条目也渲染**：配合 1 或 2。
+
+这是一个 feature 尺寸的改动，不该顺手塞进本次。

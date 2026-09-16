@@ -222,7 +222,7 @@ Ordered so each step leaves the tree in a working state.
      is now consumed by two webhook endpoints (push + app)
    - Update any user-facing GitHub sync docs mentioning the install flow
 
-### Jant-Cloud (`/Users/green/project/jant-cloud`)
+### Jant-Cloud (the `jant-cloud` repo)
 
 8. **Passthrough route**
    - New file `apps/app/app/routes/api/github-app-webhook.ts`

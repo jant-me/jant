@@ -12,9 +12,9 @@ The goal is one contract across:
 
 The implementation lives in:
 
-- `/Users/green/project/jant/main/packages/core/src/lib/markdown-manager.ts`
-- `/Users/green/project/jant/main/packages/core/src/lib/tiptap-render.ts`
-- `/Users/green/project/jant/main/packages/core/src/lib/markdown.ts`
+- `packages/core/src/lib/markdown-manager.ts`
+- `packages/core/src/lib/tiptap-render.ts`
+- `packages/core/src/lib/markdown.ts`
 
 ## Source Of Truth
 
