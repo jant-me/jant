@@ -215,7 +215,7 @@ async function openNodeDatabase(env: Bindings) {
     close,
     async query<T extends Record<string, unknown>>(sql: string) {
       const result = await nodeDatabase.rawQuery.prepare(sql).all<T>();
-      return result.results;
+      return result.results ?? [];
     },
   };
 }

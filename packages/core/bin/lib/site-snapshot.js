@@ -175,6 +175,14 @@ export function getSnapshotSelectSql(tableName, siteId) {
   return statement.trim().replaceAll("?1", `'${escapeSqlString(siteId)}'`);
 }
 
+/**
+ * SQL listing a site's stored media objects: originals and video posters.
+ *
+ * @param {string} siteId Site whose media rows to read
+ * @returns {string} A query returning `key` and `contentType` columns
+ * @example
+ * collectSnapshotObjects(await query(buildSnapshotStorageQuery(site.id)))
+ */
 export function buildSnapshotStorageQuery(siteId) {
   return `
     SELECT "key", "contentType"
@@ -203,6 +211,27 @@ export function buildSnapshotStorageQuery(siteId) {
   `.trim();
 }
 
+/**
+ * A storage object a snapshot carries.
+ *
+ * @typedef {object} SnapshotObject
+ * @property {string} key Storage key
+ * @property {string} contentType MIME type, or `""` when neither the row nor
+ *   the key's extension gives one
+ */
+
+/**
+ * Deduplicate the rows of `buildSnapshotStorageQuery` into storage objects.
+ *
+ * Rows with a blank key are skipped. A row without a content type takes one
+ * from the key's extension.
+ *
+ * @param {Record<string, unknown>[]} rows Rows with `key` and `contentType`
+ * @returns {SnapshotObject[]} One entry per distinct key
+ * @example
+ * collectSnapshotObjects([{ key: "media/a.png", contentType: null }])
+ * // => [{ key: "media/a.png", contentType: "image/png" }]
+ */
 export function collectSnapshotObjects(rows) {
   const objects = new Map();
 
@@ -255,6 +284,28 @@ export function buildSnapshotMeta(site, options = {}) {
   };
 }
 
+/**
+ * A snapshot's `meta.json`, as `assertSnapshotMeta` accepts it.
+ *
+ * @typedef {object} SnapshotMeta
+ * @property {typeof SNAPSHOT_FORMAT} format
+ * @property {number} version One of `SUPPORTED_SNAPSHOT_VERSIONS`
+ * @property {"sqlite" | "pg"} [dialect] Absent from snapshots that predate it
+ * @property {{ id: string, key: string }} [site] The site the snapshot was
+ *   exported from; absent from legacy snapshots
+ * @property {unknown} [tables] Listed by legacy snapshots only
+ */
+
+/**
+ * Refuse a `meta.json` this version cannot import.
+ *
+ * @param {unknown} meta Parsed `meta.json`
+ * @returns {asserts meta is SnapshotMeta}
+ * @throws {Error} When the format, version, dialect, or site is not supported
+ * @example
+ * const meta = JSON.parse(await readFile(metaPath, "utf8"));
+ * assertSnapshotMeta(meta);
+ */
 export function assertSnapshotMeta(meta) {
   if (!meta || typeof meta !== "object") {
     throw new Error("Snapshot meta.json is missing or invalid.");
@@ -331,6 +382,15 @@ export function isLegacySnapshotMeta(meta) {
   return !meta?.site || tables.includes("setting");
 }
 
+/**
+ * The site a snapshot was exported from, for creating or remapping the target.
+ *
+ * @param {SnapshotMeta} meta Snapshot meta accepted by `assertSnapshotMeta`
+ * @returns {{ id: string, key: string } | undefined} The source site, or
+ *   undefined for a legacy snapshot, which records none
+ * @example
+ * const snapshotSite = getSnapshotBootstrapSite(meta);
+ */
 export function getSnapshotBootstrapSite(meta) {
   if (isLegacySnapshotMeta(meta)) {
     return undefined;
@@ -342,6 +402,18 @@ export function getSnapshotBootstrapSite(meta) {
   };
 }
 
+/**
+ * Refuse to import a snapshot into a site other than the one it came from.
+ *
+ * Legacy snapshots record no site and pass.
+ *
+ * @param {SnapshotMeta} meta Snapshot meta accepted by `assertSnapshotMeta`
+ * @param {{ id: string }} site The import target
+ * @returns {void}
+ * @throws {Error} When the snapshot names a different site
+ * @example
+ * validateSnapshotTargetSite(meta, targetSite);
+ */
 export function validateSnapshotTargetSite(meta, site) {
   if (isLegacySnapshotMeta(meta)) {
     return;
@@ -354,6 +426,17 @@ export function validateSnapshotTargetSite(meta, site) {
   }
 }
 
+/**
+ * Replace a snapshot's source site id with the target's throughout its SQL.
+ *
+ * @param {string} sql Snapshot `db.sql`
+ * @param {string} sourceSiteId Site the snapshot was exported from; empty
+ *   leaves the SQL unchanged
+ * @param {string} targetSiteId Site the snapshot is imported into
+ * @returns {string} The rewritten SQL
+ * @example
+ * rewriteSnapshotSiteIdentifiers(dbSql, snapshotSite.id, targetSite.id)
+ */
 export function rewriteSnapshotSiteIdentifiers(
   sql,
   sourceSiteId,
@@ -368,6 +451,17 @@ export function rewriteSnapshotSiteIdentifiers(
   return sql.replaceAll(escapedSource, escapedTarget);
 }
 
+/**
+ * Move a storage key from the source site's namespace to the target's.
+ *
+ * @param {string} key Storage key as exported
+ * @param {string} sourceSiteId Site the snapshot was exported from; empty
+ *   leaves the key unchanged
+ * @param {string} targetSiteId Site the snapshot is imported into
+ * @returns {string} The key to store the object under
+ * @example
+ * remapSnapshotObjectKey(entry.key, snapshotSite.id, targetSite.id)
+ */
 export function remapSnapshotObjectKey(key, sourceSiteId, targetSiteId) {
   if (!sourceSiteId || sourceSiteId === targetSiteId) {
     return key;
@@ -382,6 +476,12 @@ export function remapSnapshotObjectKey(key, sourceSiteId, targetSiteId) {
  * export time (with forward slashes). If the snapshot was produced by a
  * different site than the import target, callers apply
  * `remapSnapshotObjectKey()` before uploading.
+ *
+ * @param {string} rootDir Snapshot directory
+ * @returns {Promise<{ key: string, filePath: string, contentType: string }[]>}
+ *   Files sorted by key; empty when there is no `objects/` directory
+ * @example
+ * const objectFiles = await enumerateSnapshotObjectFiles(snapshotDir);
  */
 export async function enumerateSnapshotObjectFiles(rootDir) {
   const objectsRoot = join(rootDir, "objects");
@@ -542,6 +642,16 @@ function splitSqlStatements(sql) {
   return statements;
 }
 
+/**
+ * Scope a legacy single-site dump to a site: global `setting` rows become
+ * `site_setting` rows, and site-owned tables gain a `site_id` column.
+ *
+ * @param {string} sql Legacy snapshot `db.sql`
+ * @param {string} siteId Site the snapshot is imported into
+ * @returns {string} Site-scoped SQL
+ * @example
+ * rewriteLegacySnapshotSql(dbSql, targetSite.id)
+ */
 export function rewriteLegacySnapshotSql(sql, siteId) {
   const rewrittenStatements = splitSqlStatements(sql).map((statement) => {
     const normalized = statement.trim();
@@ -897,6 +1007,15 @@ function parseSqlScalar(raw) {
   return trimmed;
 }
 
+/**
+ * SQL clearing a site's snapshot content before a replacing import.
+ *
+ * @param {string} siteId Site to clear
+ * @returns {string} `DELETE` statements for every `SNAPSHOT_CLEAR_TABLES`
+ *   table and the snapshot's setting keys
+ * @example
+ * await execute(`${buildReplaceSql(site.id)}\n${dbSql}`);
+ */
 export function buildReplaceSql(siteId) {
   const statements = [];
 

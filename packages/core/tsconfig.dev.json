@@ -1,0 +1,12 @@
+{
+  // Dev scripts run through `dev/run-script.mjs`, where a named import the
+  // module no longer exports is `undefined` until called. Type-checking is what
+  // catches it. `allowJs` reads the exports of the JS modules the scripts import
+  // (`bin/lib/`, `dev/scripts/*.mjs`) from the files themselves, so a renamed
+  // export fails here too; their parameter and return types come from JSDoc.
+  "extends": "./tsconfig.server.json",
+  "compilerOptions": {
+    "allowJs": true
+  },
+  "include": ["dev/**/*.ts", "src/types/**/*.d.ts"]
+}

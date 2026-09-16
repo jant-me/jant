@@ -176,6 +176,15 @@ function formatSiteSummary(rows) {
     .join(", ");
 }
 
+/**
+ * How the target instance maps requests to sites.
+ *
+ * @param {{ SITE_RESOLUTION_MODE?: unknown }} [env] The process environment,
+ *   or runtime bindings built from it; defaults to `process.env`
+ * @returns {"host-based" | "single-site"} `host-based` only when set to it
+ * @example
+ * if (getCliSiteResolutionMode(process.env) === "host-based") { ... }
+ */
 export function getCliSiteResolutionMode(env = process.env) {
   return env.SITE_RESOLUTION_MODE === "host-based"
     ? "host-based"
@@ -192,7 +201,7 @@ export function getCliSiteResolutionMode(env = process.env) {
  *
  * @param {{ query(sql: string): Promise<Record<string, unknown>[]>, execute?(sql: string): Promise<void> }} queryRunner
  *   Runs SQL against the target database
- * @param {{ env?: Record<string, string | undefined>, site?: string, host?: string, pathPrefix?: string, url?: string, createIfMissing?: boolean, bootstrapSite?: { id?: string, key?: string } }} [options]
+ * @param {{ env?: { SITE_RESOLUTION_MODE?: unknown }, site?: string, host?: string, pathPrefix?: string, url?: string, createIfMissing?: boolean, bootstrapSite?: { id?: string, key?: string } }} [options]
  *   The environment, the command's site flags, and whether single-site mode
  *   may create the site shell when none exists
  * @returns {Promise<{ created: boolean, site: { id: string, key: string, status: string, createdAt: number, updatedAt: number } }>}
