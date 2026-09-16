@@ -17,8 +17,18 @@ export interface SiteLookupResult {
   domain: SiteDomain | null;
 }
 
+/**
+ * Where a single-site install's row and domain come from. Every field applies
+ * only when the site is created; an existing site keeps its own.
+ */
 export interface EnsureSingleSiteOptions {
   host?: string | null;
+  /**
+   * The id to create the site with, instead of a random one. A deployment
+   * that restores a snapshot on every start gives the site the snapshot's id,
+   * so media URLs — which carry the site id — stay the same across rebuilds.
+   */
+  id?: string;
   key?: string;
   pathPrefix?: string | null;
 }
@@ -283,7 +293,7 @@ export function createSiteService(
               await db
                 .insert(sites)
                 .values({
-                  id: createEntityId("site"),
+                  id: options.id ?? createEntityId("site"),
                   key: options.key?.trim() || "default",
                   status: "active",
                   createdAt: timestamp,

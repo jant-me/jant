@@ -12,14 +12,21 @@ import {
   shouldUseSecureCookies,
 } from "../lib/env.js";
 import { createHostedControlPlaneClient } from "../lib/hosted-control-plane.js";
+import { ValidationError } from "../lib/errors.js";
 import { createMemoryRateLimiter } from "../lib/rate-limit-memory.js";
 import type { RateLimiter } from "../lib/rate-limit.js";
+import { InstanceSetupSchema } from "../lib/schemas.js";
 import { createStorageDriver, type StorageDriver } from "../lib/storage.js";
 import {
   createHostedHandoffService,
   type HostedHandoffService,
 } from "../services/hosted-handoff.js";
+import {
+  createBootstrapService,
+  type SetUpInstanceResult,
+} from "../services/bootstrap.js";
 import { createServices, type Services } from "../services/index.js";
+import { TRANSIENT_SINGLE_SITE_ID } from "../services/site.js";
 import type { Site, SiteDomain } from "../types/entities.js";
 import type { Bindings } from "../types/bindings.js";
 import {
@@ -228,4 +235,46 @@ export async function createNodeCliRuntime(
     }),
     storage: createStorageDriver(env),
   };
+}
+
+/**
+ * Set up a self-hosted Node install without a browser, the way the two setup
+ * screens would. Backs `jant setup`.
+ *
+ * @param env - Bindings with a resolved `NODE_DATABASE`
+ * @param input - The owner's credentials and the site's answers, unvalidated
+ * @returns What setup found, and the site
+ * @throws {ValidationError} When the input fails `InstanceSetupSchema`
+ * @throws {Error} Whenever `BootstrapService.setUpInstance` refuses
+ * @example
+ * ```ts
+ * await setUpNodeInstance(bindings, {
+ *   email: "owner@example.com",
+ *   password: "correct horse battery",
+ * });
+ * ```
+ */
+export async function setUpNodeInstance(
+  env: Bindings,
+  input: unknown,
+): Promise<SetUpInstanceResult> {
+  const nodeDatabase = env.NODE_DATABASE;
+  if (!nodeDatabase) {
+    throw new Error("Node setup requires a resolved database binding.");
+  }
+
+  const parsed = InstanceSetupSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new ValidationError(
+      parsed.error.issues[0]?.message ?? "Invalid setup input.",
+    );
+  }
+
+  // No request resolved a site, and setup never reads the one it is bound to.
+  return createBootstrapService(nodeDatabase.db, TRANSIENT_SINGLE_SITE_ID, {
+    schema: nodeDatabase.schema,
+    databaseDialect: nodeDatabase.dialect,
+    bootstrapSite: getSingleSiteBootstrapOptions(env),
+    siteResolutionMode: getSiteResolutionMode(env),
+  }).setUpInstance(parsed.data);
 }

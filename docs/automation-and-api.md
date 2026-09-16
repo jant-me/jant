@@ -28,7 +28,7 @@ Default to HTTP. MCP only beats it when the caller already speaks the tool-calli
 
 ## Local CLI
 
-Operations that touch the local environment or the database stay on the CLI: `migrate`, `deploy`, `reset-password`, `site snapshot`, `site export`, `site import`, `db export`, and so on. These commands read and write the database or site deployment directly — no HTTP, no API token. See [Export and import](export-and-import.md).
+Operations that touch the local environment or the database stay on the CLI: `migrate`, `setup`, `deploy`, `reset-password`, `site snapshot`, `site export`, `site import`, `db export`, and so on. These commands read and write the database or site deployment directly — no HTTP, no API token. See [Export and import](export-and-import.md).
 
 Content automation (publishing posts, uploading media, updating settings) goes through HTTP or MCP.
 

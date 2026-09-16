@@ -1055,6 +1055,30 @@ export const SetupSiteSchema = SetupLanguageSchema.extend({
 export type SetupLanguageAnswers = z.infer<typeof SetupLanguageSchema>;
 
 /**
+ * Both setup screens' answers at once, for `jant setup`: a self-hosted install
+ * set up by its deployment rather than in a browser.
+ *
+ * Only the credentials are required. Everything the second screen asks has
+ * the default an empty answer gets there, and a browser's guesses — its
+ * language, its time zone — have no counterpart here.
+ */
+export const InstanceSetupSchema = SetupAccountSchema.extend({
+  siteId: createTypeIdSchema(ID_PREFIX.site).optional(),
+  siteName: z
+    .string()
+    .trim()
+    .min(1, "Site name cannot be empty")
+    .max(MAX_SITE_NAME_LENGTH)
+    .optional(),
+  siteLanguage: ContentLanguageSchema.optional(),
+  timeZone: z
+    .string()
+    .refine(isSupportedTimeZone, "Choose a valid time zone.")
+    .transform(normalizeTimeZone)
+    .optional(),
+});
+
+/**
  * Sign-in form validation schema
  */
 export const SigninSchema = z.object({

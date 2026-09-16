@@ -145,6 +145,19 @@ docker run -d \
 
 容器在你自己的反向代理后面时，把 `TRUST_PROXY` 改成 `true`。
 
+## 用命令行创建管理员账号
+
+不在浏览器里初始化（比如用脚本部署）时，迁移之后跑 `jant setup`。它创建管理员账号和站点，并完成初始化。密码从标准输入读：
+
+```bash
+printf '%s' "$OWNER_PASSWORD" | docker run --rm -i \
+  -v "$(pwd)/data:/var/lib/jant" \
+  owenyoung/jant:latest \
+  node bin/jant.js setup --email you@example.com --password-stdin --site-name "My Blog"
+```
+
+`--language` 默认是 `en`，`--time-zone` 默认是 `UTC`，全部参数见 `node bin/jant.js setup --help`。已经初始化过的站点不会被改动，所以每次启动都跑这条命令，也不会把之后改过的密码改回去。
+
 ## 更新站点
 
 拉最新镜像并重启就行：

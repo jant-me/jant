@@ -5,25 +5,19 @@ import { mkdir, stat } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { and, asc, eq } from "drizzle-orm";
 import { getCliSiteResolutionMode } from "../../bin/lib/site-selection.js";
 import { resolveDatabaseDialect } from "../../src/db/dialect.js";
-import { AUTH_ID_PREFIX, createTypeId } from "../../src/lib/ids.js";
-import { hashPassword } from "../../src/lib/password.js";
-import { now } from "../../src/lib/time.js";
 import {
   applyNodeRuntimeEnvDefaults,
   createNodeBindings,
   migrate,
   resolveDatabasePath,
 } from "../../src/node/request-handler.js";
-import { createNavItemService } from "../../src/services/navigation.js";
-import { createSettingsService } from "../../src/services/settings.js";
-import { createSiteMemberService } from "../../src/services/site-member.js";
-import { createSiteService } from "../../src/services/site.js";
+import { setUpNodeInstance } from "../../src/runtime/node.js";
 import type { Bindings } from "../../src/types/bindings.js";
 import {
   DEFAULT_DEV_PASSWORD,
+  DEFAULT_SITE_LANGUAGE,
   DEFAULT_SITE_NAME,
   DEV_EMAIL,
 } from "./dev-auth-db.mjs";
@@ -278,132 +272,6 @@ async function openNodeDatabase(env: Bindings) {
   };
 }
 
-async function ensureLocalDevShell(
-  bindings: Bindings,
-  password: string,
-  siteName: string,
-) {
-  const nodeDatabase = bindings.NODE_DATABASE;
-  if (!nodeDatabase) {
-    throw new Error("Node database binding is missing.");
-  }
-
-  const { db, schema } = nodeDatabase;
-  const timestamp = now();
-  const authTimestamp = new Date(timestamp * 1000);
-  const hashedPassword = await hashPassword(password);
-  const credentialUsers = await db
-    .select({
-      accountRowId: schema.account.id,
-      role: schema.user.role,
-      userId: schema.user.id,
-    })
-    .from(schema.user)
-    .innerJoin(
-      schema.account,
-      and(
-        eq(schema.account.userId, schema.user.id),
-        eq(schema.account.providerId, "credential"),
-      ),
-    )
-    .orderBy(asc(schema.user.createdAt))
-    .limit(1);
-
-  let createdCredentialUser = false;
-  let promotedToAdmin = false;
-  let ownerUserId = credentialUsers[0]?.userId ?? null;
-
-  if (!ownerUserId) {
-    ownerUserId = createTypeId(AUTH_ID_PREFIX.user);
-    const accountId = createTypeId(AUTH_ID_PREFIX.account);
-
-    await db.insert(schema.user).values({
-      createdAt: authTimestamp,
-      email: DEV_EMAIL,
-      emailVerified: false,
-      id: ownerUserId,
-      image: null,
-      name: siteName,
-      role: "admin",
-      updatedAt: authTimestamp,
-    });
-    await db.insert(schema.account).values({
-      accessToken: null,
-      accountId: ownerUserId,
-      accessTokenExpiresAt: null,
-      createdAt: authTimestamp,
-      id: accountId,
-      idToken: null,
-      password: hashedPassword,
-      providerId: "credential",
-      refreshToken: null,
-      refreshTokenExpiresAt: null,
-      scope: null,
-      updatedAt: authTimestamp,
-      userId: ownerUserId,
-    });
-
-    createdCredentialUser = true;
-    promotedToAdmin = true;
-  } else {
-    promotedToAdmin = credentialUsers[0]?.role !== "admin";
-
-    await db
-      .update(schema.user)
-      .set({
-        email: DEV_EMAIL,
-        role: "admin",
-        updatedAt: authTimestamp,
-      })
-      .where(eq(schema.user.id, ownerUserId));
-    await db
-      .update(schema.account)
-      .set({
-        password: hashedPassword,
-        updatedAt: authTimestamp,
-      })
-      .where(eq(schema.account.id, credentialUsers[0].accountRowId));
-  }
-
-  const siteService = createSiteService(db, schema);
-  const existingSite = await siteService.getOnlySite();
-  const { site } = await siteService.ensureSingleSite();
-
-  const siteMembers = createSiteMemberService(db, schema);
-  const navItems = createNavItemService(db, site.id, schema);
-  const settings = createSettingsService(db, site.id, schema);
-
-  const navCountBefore = (await navItems.list()).length;
-  const existingSiteName = await settings.get("SITE_NAME");
-  const existingLanguage = await settings.get("SITE_LANGUAGE");
-  const onboardingComplete = await settings.isOnboardingComplete();
-
-  await siteMembers.ensure(site.id, ownerUserId, "owner");
-  if (!onboardingComplete) {
-    await navItems.materializeDefaultNavigation();
-  }
-
-  if (!existingSiteName) {
-    await settings.set("SITE_NAME", siteName);
-  }
-
-  if (!existingLanguage) {
-    await settings.set("SITE_LANGUAGE", "en");
-  }
-
-  if (!onboardingComplete) {
-    await settings.completeOnboarding();
-  }
-
-  return {
-    completedOnboarding: !onboardingComplete,
-    createdCredentialUser,
-    createdSite: !existingSite,
-    promotedToAdmin,
-    seededNavigation: (await navItems.list()).length > navCountBefore,
-  };
-}
-
 function normalizeCount(value: unknown) {
   const count = Number(value);
   return Number.isFinite(count) ? count : 0;
@@ -535,14 +403,15 @@ async function main() {
   }
 
   const opened = await openNodeDatabase(env);
-  let ensured;
+  let setup;
 
   try {
-    ensured = await ensureLocalDevShell(
-      opened.bindings,
+    setup = await setUpNodeInstance(opened.bindings, {
+      email: DEV_EMAIL,
       password,
-      DEFAULT_SITE_NAME,
-    );
+      siteName: DEFAULT_SITE_NAME,
+      siteLanguage: DEFAULT_SITE_LANGUAGE,
+    });
   } finally {
     await opened.close();
   }
@@ -556,21 +425,7 @@ async function main() {
   console.log(`  Env file:      ${envPath}`);
   console.log(`  Database:      ${config.target}`);
   console.log(`  Canonical dir: ${canonicalDir}`);
-  if (ensured.createdSite) {
-    console.log("  Site shell:    created");
-  }
-  if (ensured.createdCredentialUser) {
-    console.log("  Admin user:    created");
-  }
-  if (ensured.promotedToAdmin) {
-    console.log("  Admin role:    normalized");
-  }
-  if (ensured.completedOnboarding) {
-    console.log("  Onboarding:    completed");
-  }
-  if (ensured.seededNavigation) {
-    console.log("  Navigation:    seeded");
-  }
+  console.log(`  Setup:         ${setup.outcome}`);
 }
 
 await main();

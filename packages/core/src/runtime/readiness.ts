@@ -5,6 +5,7 @@ import {
   getAuthSecretReadinessError,
   getHostBasedStartupConfigurationIssues,
 } from "../lib/startup-config.js";
+import { CORE_VERSION } from "../lib/version.js";
 import { createSiteService } from "../services/site.js";
 import type { Bindings } from "../types/bindings.js";
 
@@ -15,6 +16,15 @@ export interface ReadinessCheckStatus {
 
 export interface InstanceReadinessResult {
   status: "ok" | "error";
+  /** The running build: the package version, then the build's commit id. */
+  version: string;
+  /**
+   * When the Node process started serving, in Unix seconds. With `version`,
+   * it lets a deploy check from outside that the instance answering is one
+   * started after the deploy, not an older one a rollback left running.
+   * Absent on Workers.
+   */
+  startedAt?: number;
   checks: {
     startupConfig: ReadinessCheckStatus;
     database: ReadinessCheckStatus;
@@ -117,6 +127,7 @@ export async function getInstanceReadiness(
     | "INTERNAL_ADMIN_TOKEN"
     | "NODE_DATABASE"
     | "NODE_SQLITE"
+    | "NODE_STARTED_AT"
     | "SITE_RESOLUTION_MODE"
   >,
 ): Promise<InstanceReadinessResult> {
@@ -125,6 +136,10 @@ export async function getInstanceReadiness(
 
   return {
     status: startupConfig.ok && database.ok ? "ok" : "error",
+    version: CORE_VERSION,
+    ...(env.NODE_STARTED_AT === undefined
+      ? {}
+      : { startedAt: env.NODE_STARTED_AT }),
     checks: {
       startupConfig,
       database,

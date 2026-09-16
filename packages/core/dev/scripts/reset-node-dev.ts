@@ -4,7 +4,6 @@ import { readFile, rm } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { and, asc, eq } from "drizzle-orm";
 import {
   assertSnapshotMeta,
   buildReplaceSql,
@@ -22,23 +21,20 @@ import {
   resolveCliSite,
 } from "../../bin/lib/site-selection.js";
 import { resolveDatabaseDialect } from "../../src/db/dialect.js";
-import { AUTH_ID_PREFIX, createTypeId } from "../../src/lib/ids.js";
-import { hashPassword } from "../../src/lib/password.js";
-import { now } from "../../src/lib/time.js";
 import {
   applyNodeRuntimeEnvDefaults,
   createNodeBindings,
   migrate,
   resolveDatabasePath,
 } from "../../src/node/request-handler.js";
-import { createNodeCliRuntime } from "../../src/runtime/node.js";
-import { createNavItemService } from "../../src/services/navigation.js";
-import { createSettingsService } from "../../src/services/settings.js";
-import { createSiteMemberService } from "../../src/services/site-member.js";
-import { createSiteService } from "../../src/services/site.js";
+import {
+  createNodeCliRuntime,
+  setUpNodeInstance,
+} from "../../src/runtime/node.js";
 import type { Bindings } from "../../src/types/bindings.js";
 import {
   DEFAULT_DEV_PASSWORD,
+  DEFAULT_SITE_LANGUAGE,
   DEFAULT_SITE_NAME,
   DEV_EMAIL,
 } from "./dev-auth-db.mjs";
@@ -300,132 +296,6 @@ async function openNodeDatabase(env: Bindings) {
   };
 }
 
-async function ensureLocalDevShell(
-  bindings: Bindings,
-  password: string,
-  siteName: string,
-) {
-  const nodeDatabase = bindings.NODE_DATABASE;
-  if (!nodeDatabase) {
-    throw new Error("Node database binding is missing.");
-  }
-
-  const { db, schema } = nodeDatabase;
-  const timestamp = now();
-  const authTimestamp = new Date(timestamp * 1000);
-  const hashedPassword = await hashPassword(password);
-  const credentialUsers = await db
-    .select({
-      accountRowId: schema.account.id,
-      role: schema.user.role,
-      userId: schema.user.id,
-    })
-    .from(schema.user)
-    .innerJoin(
-      schema.account,
-      and(
-        eq(schema.account.userId, schema.user.id),
-        eq(schema.account.providerId, "credential"),
-      ),
-    )
-    .orderBy(asc(schema.user.createdAt))
-    .limit(1);
-
-  let createdCredentialUser = false;
-  let promotedToAdmin = false;
-  let ownerUserId = credentialUsers[0]?.userId ?? null;
-
-  if (!ownerUserId) {
-    ownerUserId = createTypeId(AUTH_ID_PREFIX.user);
-    const accountId = createTypeId(AUTH_ID_PREFIX.account);
-
-    await db.insert(schema.user).values({
-      createdAt: authTimestamp,
-      email: DEV_EMAIL,
-      emailVerified: false,
-      id: ownerUserId,
-      image: null,
-      name: siteName,
-      role: "admin",
-      updatedAt: authTimestamp,
-    });
-    await db.insert(schema.account).values({
-      accessToken: null,
-      accountId: ownerUserId,
-      accessTokenExpiresAt: null,
-      createdAt: authTimestamp,
-      id: accountId,
-      idToken: null,
-      password: hashedPassword,
-      providerId: "credential",
-      refreshToken: null,
-      refreshTokenExpiresAt: null,
-      scope: null,
-      updatedAt: authTimestamp,
-      userId: ownerUserId,
-    });
-
-    createdCredentialUser = true;
-    promotedToAdmin = true;
-  } else {
-    promotedToAdmin = credentialUsers[0]?.role !== "admin";
-
-    await db
-      .update(schema.user)
-      .set({
-        email: DEV_EMAIL,
-        role: "admin",
-        updatedAt: authTimestamp,
-      })
-      .where(eq(schema.user.id, ownerUserId));
-    await db
-      .update(schema.account)
-      .set({
-        password: hashedPassword,
-        updatedAt: authTimestamp,
-      })
-      .where(eq(schema.account.id, credentialUsers[0].accountRowId));
-  }
-
-  const siteService = createSiteService(db, schema);
-  const existingSite = await siteService.getOnlySite();
-  const { site } = await siteService.ensureSingleSite();
-
-  const siteMembers = createSiteMemberService(db, schema);
-  const navItems = createNavItemService(db, site.id, schema);
-  const settings = createSettingsService(db, site.id, schema);
-
-  const navCountBefore = (await navItems.list()).length;
-  const existingSiteName = await settings.get("SITE_NAME");
-  const existingLanguage = await settings.get("SITE_LANGUAGE");
-  const onboardingComplete = await settings.isOnboardingComplete();
-
-  await siteMembers.ensure(site.id, ownerUserId, "owner");
-  if (!onboardingComplete) {
-    await navItems.materializeDefaultNavigation();
-  }
-
-  if (!existingSiteName) {
-    await settings.set("SITE_NAME", siteName);
-  }
-
-  if (!existingLanguage) {
-    await settings.set("SITE_LANGUAGE", "en");
-  }
-
-  if (!onboardingComplete) {
-    await settings.completeOnboarding();
-  }
-
-  return {
-    completedOnboarding: !onboardingComplete,
-    createdCredentialUser,
-    createdSite: !existingSite,
-    promotedToAdmin,
-    seededNavigation: (await navItems.list()).length > navCountBefore,
-  };
-}
-
 async function importCanonicalSnapshot(bindings: Bindings) {
   const opened = await openNodeDatabase(bindings);
 
@@ -567,14 +437,14 @@ async function main() {
   await migrate(env);
 
   const opened = await openNodeDatabase(env);
-  let bootstrapResult;
   try {
-    console.log("Bootstrapping local development shell...");
-    bootstrapResult = await ensureLocalDevShell(
-      opened.bindings,
+    console.log("Setting up the local development site...");
+    await setUpNodeInstance(opened.bindings, {
+      email: DEV_EMAIL,
       password,
-      DEFAULT_SITE_NAME,
-    );
+      siteName: DEFAULT_SITE_NAME,
+      siteLanguage: DEFAULT_SITE_LANGUAGE,
+    });
   } finally {
     await opened.close();
   }
@@ -591,18 +461,6 @@ async function main() {
   console.log(`  SQLite DB: ${paths.databasePath}`);
   if (paths.localStoragePath) {
     console.log(`  Media dir: ${paths.localStoragePath}`);
-  }
-  if (bootstrapResult.createdCredentialUser) {
-    console.log("  Account:   created local credential user");
-  }
-  if (bootstrapResult.promotedToAdmin) {
-    console.log("  Role:      normalized to admin");
-  }
-  if (bootstrapResult.completedOnboarding) {
-    console.log("  Setup:     marked onboarding complete");
-  }
-  if (bootstrapResult.seededNavigation) {
-    console.log("  Nav:       seeded default navigation");
   }
   console.log("");
   console.log("Browser sign-in:");
