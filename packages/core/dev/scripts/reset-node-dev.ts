@@ -233,7 +233,7 @@ async function assertCanonicalSnapshot() {
     );
   }
 
-  const meta = JSON.parse(
+  const meta: unknown = JSON.parse(
     await readFile(resolve(canonicalDir, "meta.json"), "utf8"),
   );
 
@@ -291,7 +291,7 @@ async function openNodeDatabase(env: Bindings) {
     },
     async query<T extends Record<string, unknown>>(sql: string) {
       const result = await nodeDatabase.rawQuery.prepare(sql).all<T>();
-      return result.results;
+      return result.results ?? [];
     },
   };
 }
@@ -305,7 +305,7 @@ async function importCanonicalSnapshot(bindings: Bindings) {
       throw new Error("Snapshot import requires configured local storage.");
     }
 
-    const meta = JSON.parse(
+    const meta: unknown = JSON.parse(
       await readFile(resolve(canonicalDir, "meta.json"), "utf8"),
     );
 
@@ -351,9 +351,7 @@ async function importCanonicalSnapshot(bindings: Bindings) {
       buildSnapshotStorageQuery(targetSite.id),
     );
     const currentKeys = new Set(
-      collectSnapshotObjects(currentObjectRows).map((object: { key: string }) =>
-        String(object.key),
-      ),
+      collectSnapshotObjects(currentObjectRows).map((object) => object.key),
     );
 
     for (const object of snapshotObjects) {

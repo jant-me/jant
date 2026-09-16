@@ -267,7 +267,7 @@ async function openNodeDatabase(env: Bindings) {
     close,
     async query<T extends Record<string, unknown>>(sql: string) {
       const result = await nodeDatabase.rawQuery.prepare(sql).all<T>();
-      return result.results;
+      return result.results ?? [];
     },
   };
 }
@@ -333,14 +333,36 @@ function buildHelpText() {
   ].join("\n");
 }
 
+/**
+ * The environment a child process runs with: this process's, plus each setting
+ * in `env`. Bindings that are objects, such as a database handle, are not
+ * environment variables and stay out.
+ *
+ * @param env - Runtime bindings built from environment variables
+ * @returns Environment for `execFileSync`
+ */
+function toChildProcessEnv(env: Bindings): NodeJS.ProcessEnv {
+  const childEnv: NodeJS.ProcessEnv = { ...process.env };
+  const settings: [string, unknown][] = Object.entries(env);
+  for (const [key, value] of settings) {
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
+      childEnv[key] = String(value);
+    }
+  }
+  return childEnv;
+}
+
 function runCliSiteImport(env: Bindings) {
+  const childEnv = toChildProcessEnv(env);
+
   console.log("Building @jant/core for local CLI import...");
   execFileSync("pnpm", ["--filter", "@jant/core", "build"], {
     cwd: repoRoot,
-    env: {
-      ...process.env,
-      ...env,
-    },
+    env: childEnv,
     stdio: "inherit",
   });
 
@@ -352,10 +374,7 @@ function runCliSiteImport(env: Bindings) {
     [resolve(coreDir, "bin/jant.js"), "site", "import", "--path", canonicalDir],
     {
       cwd: coreDir,
-      env: {
-        ...process.env,
-        ...env,
-      },
+      env: childEnv,
       stdio: "inherit",
     },
   );

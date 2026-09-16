@@ -17,7 +17,7 @@
  *
  * What loading cannot see: a named import the module no longer exports. Vite's
  * runner leaves it `undefined` until the script calls it, so a renamed export
- * is a type error to catch, not a load error.
+ * is a type error, and `tsconfig.dev.json` is what catches it.
  */
 
 import { spawnSync } from "node:child_process";
