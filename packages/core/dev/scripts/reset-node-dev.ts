@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,6 +33,12 @@ import {
 } from "../../src/runtime/node.js";
 import type { Bindings } from "../../src/types/bindings.js";
 import {
+  describeScriptEnvPath,
+  readScriptEnvFile,
+  resolveScriptEnvPath,
+  writeScriptEnvValues,
+} from "../script-env.js";
+import {
   DEFAULT_DEV_PASSWORD,
   DEFAULT_SITE_LANGUAGE,
   DEFAULT_SITE_NAME,
@@ -42,78 +48,14 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const coreDir = resolve(__dirname, "../..");
 const repoRoot = resolve(coreDir, "../..");
-const envPath = resolve(coreDir, ".env.node");
 const canonicalDir = resolve(repoRoot, "sites/demo-source/canonical/snapshot");
 const defaultDataDir = resolve(coreDir, "data");
 const defaultPort = "3000";
 
-function readEnvLines() {
-  if (!existsSync(envPath)) {
-    return [];
-  }
-
-  return readFileSync(envPath, "utf8").split(/\r?\n/);
-}
-
-function parseEnvFile(lines: string[]) {
-  const values: Record<string, string> = {};
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) {
-      continue;
-    }
-
-    const separatorIndex = line.indexOf("=");
-    if (separatorIndex <= 0) {
-      continue;
-    }
-
-    const key = line.slice(0, separatorIndex).trim();
-    if (!key) {
-      continue;
-    }
-
-    let value = line.slice(separatorIndex + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    values[key] = value;
-  }
-
-  return values;
-}
-
-function upsertEnvValue(lines: string[], key: string, value: string) {
-  const prefix = `${key}=`;
-  const nextLines = [];
-  let updated = false;
-
-  for (const line of lines) {
-    if (line.startsWith(prefix)) {
-      nextLines.push(`${key}=${value}`);
-      updated = true;
-      continue;
-    }
-
-    nextLines.push(line);
-  }
-
-  if (!updated) {
-    if (nextLines.length > 0 && nextLines.at(-1) !== "") {
-      nextLines.push("");
-    }
-    nextLines.push(`${key}=${value}`);
-  }
-
-  return nextLines;
-}
-
-function resolvePassword(cliPassword: string | undefined) {
+function resolvePassword(
+  cliPassword: string | undefined,
+  envFileValues: Record<string, string>,
+) {
   if (cliPassword) {
     return cliPassword;
   }
@@ -123,7 +65,7 @@ function resolvePassword(cliPassword: string | undefined) {
     return fromProcess;
   }
 
-  const fromFile = parseEnvFile(readEnvLines()).DEMO_PASSWORD?.trim();
+  const fromFile = envFileValues.DEMO_PASSWORD?.trim();
   if (fromFile) {
     return fromFile;
   }
@@ -131,9 +73,12 @@ function resolvePassword(cliPassword: string | undefined) {
   return DEFAULT_DEV_PASSWORD;
 }
 
-function buildRuntimeEnv(password: string, checkOnly: boolean) {
-  let lines = readEnvLines();
-  const envFileValues = parseEnvFile(lines);
+function buildRuntimeEnv(
+  envPath: string | null,
+  envFileValues: Record<string, string>,
+  password: string,
+  checkOnly: boolean,
+) {
   const merged = {
     ...envFileValues,
     ...process.env,
@@ -153,15 +98,12 @@ function buildRuntimeEnv(password: string, checkOnly: boolean) {
   } as Bindings;
 
   if (!checkOnly) {
-    lines = upsertEnvValue(lines, "AUTH_SECRET", authSecret);
-    lines = upsertEnvValue(lines, "DEV_API_TOKEN", devApiToken);
-    lines = upsertEnvValue(lines, "DEMO_EMAIL", DEV_EMAIL);
-    lines = upsertEnvValue(lines, "DEMO_PASSWORD", password);
-    writeFileSync(
-      envPath,
-      `${lines.join("\n").replace(/\n+$/u, "").trimEnd()}\n`,
-      "utf8",
-    );
+    writeScriptEnvValues(envPath, {
+      AUTH_SECRET: authSecret,
+      DEV_API_TOKEN: devApiToken,
+      DEMO_EMAIL: DEV_EMAIL,
+      DEMO_PASSWORD: password,
+    });
   }
 
   applyNodeRuntimeEnvDefaults(nextEnv, {
@@ -414,15 +356,22 @@ export default async function main(args: string[]) {
     return;
   }
 
-  const password = resolvePassword(positionals[0]);
+  const envPath = resolveScriptEnvPath();
+  const envFileValues = readScriptEnvFile(envPath);
+  const password = resolvePassword(positionals[0], envFileValues);
   const checkOnly = values.check;
-  const { authSecret, devApiToken, env } = buildRuntimeEnv(password, checkOnly);
+  const { authSecret, devApiToken, env } = buildRuntimeEnv(
+    envPath,
+    envFileValues,
+    password,
+    checkOnly,
+  );
   const paths = assertLocalResetConfig(env);
   await assertCanonicalSnapshot();
 
   if (checkOnly) {
     console.log("Node reset prerequisites look good.");
-    console.log(`  Env file:   ${envPath}`);
+    console.log(`  Env file:   ${describeScriptEnvPath(envPath)}`);
     console.log(`  Snapshot:   ${canonicalDir}`);
     console.log(`  SQLite DB:  ${paths.databasePath}`);
     if (paths.localStoragePath) {
@@ -457,7 +406,7 @@ export default async function main(args: string[]) {
 
   console.log("");
   console.log("Local Node auth is ready.");
-  console.log(`  File:      ${envPath}`);
+  console.log(`  File:      ${describeScriptEnvPath(envPath)}`);
   console.log(`  Email:     ${DEV_EMAIL}`);
   console.log(`  Password:  ${password}`);
   console.log(`  Dev token: ${devApiToken}`);

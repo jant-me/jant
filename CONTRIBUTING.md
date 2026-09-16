@@ -449,13 +449,17 @@ The local development workflow is intentionally simple:
    mise run db-node-load-demo
    ```
 
-   This migrates the configured local Node database, bootstraps the local shell, and imports `sites/demo-source/canonical/site-export/`. It is intended for single-site local PostgreSQL or SQLite development with local filesystem storage, and it refuses to run against a non-empty content database.
+   This migrates the configured local Node database, sets up the local site, and imports `sites/demo-source/canonical/site-export/` with `jant site import`, through a server on `127.0.0.1` that runs only for the import. It is intended for single-site local PostgreSQL or SQLite development with local filesystem storage, and it refuses to run against a non-empty content database.
 
 4. **Reload just the canonical demo snapshot** into the current local shell:
 
    ```bash
    mise run db-wrangler-load-demo
    ```
+
+The Node tasks read `packages/core/.env.node` and write the dev credentials they
+generate back to it. Set `JANT_ENV_FILE` to use another file, or to an empty
+value to use none.
 
 The canonical snapshot remains the primary development truth source. The
 canonical `site-export/` fixture is a derived portability fixture for `jant site

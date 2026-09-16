@@ -1,20 +1,31 @@
-import { execFileSync } from "node:child_process";
+import { serve, type ServerType } from "@hono/node-server";
+import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { once } from "node:events";
 import { mkdir, stat } from "node:fs/promises";
+import type { AddressInfo } from "node:net";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { CLI_API_TOKEN_ENV_VAR } from "../../bin/lib/cli-api-token.js";
 import { getCliSiteResolutionMode } from "../../bin/lib/site-selection.js";
+import { createApp } from "../../src/app.js";
 import { resolveDatabaseDialect } from "../../src/db/dialect.js";
 import {
   applyNodeRuntimeEnvDefaults,
   createNodeBindings,
+  createNodeRequestHandler,
   migrate,
   resolveDatabasePath,
 } from "../../src/node/request-handler.js";
 import { setUpNodeInstance } from "../../src/runtime/node.js";
 import type { Bindings } from "../../src/types/bindings.js";
+import {
+  describeScriptEnvPath,
+  readScriptEnvFile,
+  resolveScriptEnvPath,
+  writeScriptEnvValues,
+} from "../script-env.js";
 import {
   DEFAULT_DEV_PASSWORD,
   DEFAULT_SITE_LANGUAGE,
@@ -25,80 +36,17 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const coreDir = resolve(__dirname, "../..");
 const repoRoot = resolve(coreDir, "../..");
-const envPath = resolve(coreDir, ".env.node");
 const canonicalDir = resolve(
   repoRoot,
   "sites/demo-source/canonical/site-export",
 );
 const defaultDataDir = resolve(coreDir, "data");
+const loopbackHost = "127.0.0.1";
 
-function readEnvLines() {
-  if (!existsSync(envPath)) {
-    return [];
-  }
-
-  return readFileSync(envPath, "utf8").split(/\r?\n/);
-}
-
-function parseEnvFile(lines: string[]) {
-  const values: Record<string, string> = {};
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) {
-      continue;
-    }
-
-    const separatorIndex = line.indexOf("=");
-    if (separatorIndex <= 0) {
-      continue;
-    }
-
-    const key = line.slice(0, separatorIndex).trim();
-    if (!key) {
-      continue;
-    }
-
-    let value = line.slice(separatorIndex + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    values[key] = value;
-  }
-
-  return values;
-}
-
-function upsertEnvValue(lines: string[], key: string, value: string) {
-  const prefix = `${key}=`;
-  const nextLines = [];
-  let updated = false;
-
-  for (const line of lines) {
-    if (line.startsWith(prefix)) {
-      nextLines.push(`${key}=${value}`);
-      updated = true;
-      continue;
-    }
-
-    nextLines.push(line);
-  }
-
-  if (!updated) {
-    if (nextLines.length > 0 && nextLines.at(-1) !== "") {
-      nextLines.push("");
-    }
-    nextLines.push(`${key}=${value}`);
-  }
-
-  return nextLines;
-}
-
-function resolvePassword(cliPassword: string | undefined) {
+function resolvePassword(
+  cliPassword: string | undefined,
+  envFileValues: Record<string, string>,
+) {
   if (cliPassword) {
     return cliPassword;
   }
@@ -108,7 +56,7 @@ function resolvePassword(cliPassword: string | undefined) {
     return fromProcess;
   }
 
-  const fromFile = parseEnvFile(readEnvLines()).DEMO_PASSWORD?.trim();
+  const fromFile = envFileValues.DEMO_PASSWORD?.trim();
   if (fromFile) {
     return fromFile;
   }
@@ -116,9 +64,12 @@ function resolvePassword(cliPassword: string | undefined) {
   return DEFAULT_DEV_PASSWORD;
 }
 
-function buildRuntimeEnv(password: string, checkOnly: boolean) {
-  let lines = readEnvLines();
-  const envFileValues = parseEnvFile(lines);
+function buildRuntimeEnv(
+  envPath: string | null,
+  envFileValues: Record<string, string>,
+  password: string,
+  checkOnly: boolean,
+) {
   const merged = {
     ...envFileValues,
     ...process.env,
@@ -138,15 +89,12 @@ function buildRuntimeEnv(password: string, checkOnly: boolean) {
   } as Bindings;
 
   if (!checkOnly) {
-    lines = upsertEnvValue(lines, "AUTH_SECRET", authSecret);
-    lines = upsertEnvValue(lines, "DEV_API_TOKEN", devApiToken);
-    lines = upsertEnvValue(lines, "DEMO_EMAIL", DEV_EMAIL);
-    lines = upsertEnvValue(lines, "DEMO_PASSWORD", password);
-    writeFileSync(
-      envPath,
-      `${lines.join("\n").replace(/\n+$/u, "").trimEnd()}\n`,
-      "utf8",
-    );
+    writeScriptEnvValues(envPath, {
+      AUTH_SECRET: authSecret,
+      DEV_API_TOKEN: devApiToken,
+      DEMO_EMAIL: DEV_EMAIL,
+      DEMO_PASSWORD: password,
+    });
   }
 
   applyNodeRuntimeEnvDefaults(nextEnv, {
@@ -329,36 +277,102 @@ function buildHelpText() {
     "",
     "Bootstrap a local single-site Node runtime and import sites/demo-source/canonical/site-export.",
     "",
+    "The import runs `jant site import` against a temporary server on 127.0.0.1, the same API path a remote site uses.",
+    "",
     "This task is intended for local PostgreSQL or SQLite development databases with local filesystem storage.",
   ].join("\n");
 }
 
-function runCliSiteImport(env: Bindings) {
-  console.log("Building @jant/core for local CLI import...");
-  execFileSync("pnpm", ["--filter", "@jant/core", "build"], {
-    cwd: repoRoot,
-    env: {
-      ...process.env,
-      ...env,
-    },
-    stdio: "inherit",
+/**
+ * Serve the app on a free loopback port for the length of the import.
+ *
+ * `jant site import` is an API client, so the canonical export goes in through
+ * the routes a remote site exposes. The server runs in this process, compiled
+ * by the script runner, so nothing has to be built first: the import only
+ * calls API routes, and no static assets are served.
+ *
+ * @param env - Runtime bindings for the local database and storage
+ * @returns The server's base URL and a function that stops it
+ */
+async function startLoopbackServer(env: Bindings) {
+  const handler = await createNodeRequestHandler({
+    env,
+    app: createApp(),
+    assetRoot: null,
   });
 
-  console.log(
-    "Importing canonical demo site-export into the local Node runtime...",
-  );
-  execFileSync(
+  let server: ServerType;
+  let port: number;
+  try {
+    ({ server, port } = await new Promise<{
+      server: ServerType;
+      port: number;
+    }>((resolveListening, rejectListening) => {
+      const listening = serve(
+        { fetch: handler.fetch, hostname: loopbackHost, port: 0 },
+        (info: AddressInfo) => {
+          listening.off("error", rejectListening);
+          resolveListening({ server: listening, port: info.port });
+        },
+      );
+      listening.once("error", rejectListening);
+    }));
+  } catch (error) {
+    await handler.close();
+    throw error;
+  }
+
+  return {
+    url: `http://${loopbackHost}:${port}`,
+    async close() {
+      await new Promise<void>((resolveClose, rejectClose) => {
+        server.close((error?: Error) =>
+          error ? rejectClose(error) : resolveClose(),
+        );
+      });
+      await handler.close();
+    },
+  };
+}
+
+/**
+ * Run `jant site import` for the canonical export against a local server.
+ *
+ * A child process, not an in-process call: the command exits the process on
+ * failure, and this process has a server and a database to close. The token
+ * goes through the environment so it stays out of the process list. The
+ * server accepts `DEV_API_TOKEN` only from a loopback host.
+ *
+ * @param siteUrl - Base URL of the running local server
+ * @param devApiToken - The `DEV_API_TOKEN` the server was started with
+ */
+async function runSiteImport(siteUrl: string, devApiToken: string) {
+  const child = spawn(
     process.execPath,
-    [resolve(coreDir, "bin/jant.js"), "site", "import", "--path", canonicalDir],
+    [
+      resolve(coreDir, "bin/jant.js"),
+      "site",
+      "import",
+      siteUrl,
+      "--path",
+      canonicalDir,
+    ],
     {
       cwd: coreDir,
-      env: {
-        ...process.env,
-        ...env,
-      },
+      env: { ...process.env, [CLI_API_TOKEN_ENV_VAR]: devApiToken },
       stdio: "inherit",
     },
   );
+
+  const [code, signal] = (await once(child, "close")) as [
+    number | null,
+    NodeJS.Signals | null,
+  ];
+  if (code !== 0) {
+    throw new Error(
+      `jant site import failed (${signal ? `signal ${signal}` : `exit code ${code}`}).`,
+    );
+  }
 }
 
 export default async function main(args: string[]) {
@@ -376,16 +390,23 @@ export default async function main(args: string[]) {
     process.exit(0);
   }
 
-  const password = resolvePassword(positionals[0]);
+  const envPath = resolveScriptEnvPath();
+  const envFileValues = readScriptEnvFile(envPath);
+  const password = resolvePassword(positionals[0], envFileValues);
   const checkOnly = values.check ?? false;
-  const { env } = buildRuntimeEnv(password, checkOnly);
+  const { devApiToken, env } = buildRuntimeEnv(
+    envPath,
+    envFileValues,
+    password,
+    checkOnly,
+  );
   const config = assertLocalImportConfig(env);
 
   await assertCanonicalSiteExport();
 
   if (checkOnly) {
     console.log("Node site-export import prerequisites look good.");
-    console.log(`  Env file:       ${envPath}`);
+    console.log(`  Env file:       ${describeScriptEnvPath(envPath)}`);
     console.log(`  Canonical dir:  ${canonicalDir}`);
     console.log(`  Database:       ${config.target}`);
     console.log(`  Dialect:        ${config.dialect}`);
@@ -397,6 +418,9 @@ export default async function main(args: string[]) {
 
   console.log("Running local Node migrations...");
   await migrate(env);
+
+  // Before setup, so a refused run leaves the database as migrations left it.
+  await assertEmptyImportTarget(env);
 
   if (config.localStoragePath) {
     await mkdir(config.localStoragePath, { recursive: true });
@@ -416,13 +440,20 @@ export default async function main(args: string[]) {
     await opened.close();
   }
 
-  await assertEmptyImportTarget(env);
-  runCliSiteImport(env);
+  const server = await startLoopbackServer(env);
+  try {
+    console.log(
+      `Importing canonical demo site-export through ${server.url}...`,
+    );
+    await runSiteImport(server.url, devApiToken);
+  } finally {
+    await server.close();
+  }
 
   console.log(
     "Canonical demo site-export imported into the local Node runtime.",
   );
-  console.log(`  Env file:      ${envPath}`);
+  console.log(`  Env file:      ${describeScriptEnvPath(envPath)}`);
   console.log(`  Database:      ${config.target}`);
   console.log(`  Canonical dir: ${canonicalDir}`);
   console.log(`  Setup:         ${setup.outcome}`);
