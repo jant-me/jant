@@ -1,8 +1,13 @@
-name: Deploy Jant via Build
+name: Deploy via Build
 
 on:
   workflow_call:
     inputs:
+      service:
+        description: "Studio external app to deploy (jant is hosted, jant-demo the Docker demo)"
+        required: false
+        type: string
+        default: "jant"
       source_ref:
         description: "Git ref to deploy from"
         required: true
@@ -30,7 +35,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-jant-${{ github.head_ref || github.ref_name || inputs.source_ref || 'manual' }}
+  # Per service: hosted and the demo can deploy the same ref at once, and one
+  # pending run in a shared group would replace the other's.
+  group: deploy-${{ inputs.service || 'jant' }}-${{ github.head_ref || github.ref_name || inputs.source_ref || 'manual' }}
   cancel-in-progress: false
 
 jobs:
@@ -41,12 +48,14 @@ jobs:
       - name: Dispatch to tonormal/build
         env:
           BUILD_REPO_TOKEN: ${{ secrets.BUILD_REPO_TOKEN }}
+          INPUT_SERVICE: ${{ inputs.service }}
           INPUT_SOURCE_REF: ${{ inputs.source_ref }}
           INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
           INPUT_TARGET_ENV: ${{ inputs.target_env }}
           GIT_REF_NAME: ${{ github.ref_name }}
           GIT_SHA: ${{ github.sha }}
         run: |
+          SERVICE="${INPUT_SERVICE:-jant}"
           SOURCE_REF="${INPUT_SOURCE_REF:-$GIT_REF_NAME}"
           SOURCE_SHA="${INPUT_SOURCE_SHA:-$GIT_SHA}"
 
@@ -63,7 +72,7 @@ jobs:
             -H "Authorization: token ${BUILD_REPO_TOKEN}" \
             https://api.github.com/repos/tonormal/build/dispatches \
             -d "$(jq -n \
-              --arg service "jant" \
+              --arg service "$SERVICE" \
               --arg source_ref "$SOURCE_REF" \
               --arg source_sha "$SOURCE_SHA" \
               '{
@@ -75,4 +84,4 @@ jobs:
                 }
               }')"
 
-          echo "Triggered $TARGET_ENV deploy for jant using source $SOURCE_REF@$SOURCE_SHA."
+          echo "Triggered $TARGET_ENV deploy for $SERVICE using source $SOURCE_REF@$SOURCE_SHA."

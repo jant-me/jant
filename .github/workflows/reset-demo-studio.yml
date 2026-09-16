@@ -1,0 +1,140 @@
+name: Reset Demo via Studio
+
+# Resets the Docker demo by deploying it again. Every container start rebuilds
+# the demo from the canonical snapshot, so a nightly deploy is a nightly reset,
+# and it also moves the demo to the commit hosted runs.
+#
+# The deploy is fire-and-forget: the build repository reports nothing back, and
+# a failed rebuild only means the rollout keeps yesterday's container. So after
+# dispatching, this checks from outside that a container started after the
+# dispatch is serving the commit it asked for, and opens an issue when not.
+#
+# The schedule is switched with `gh workflow enable|disable reset-demo-studio.yml`,
+# the same way as the Workers demo's reset-demo.yml.
+
+on:
+  schedule:
+    # Daily at 00:00 UTC, when the Workers demo used to reset
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+    inputs:
+      verify:
+        description: "Check the public site afterwards. Turn off while the domain still points elsewhere."
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: reset-demo-studio
+  cancel-in-progress: false
+
+env:
+  DEMO_SITE_URL: https://demo.jant.me
+
+jobs:
+  resolve:
+    name: Resolve the commit hosted runs
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+      dispatched_after: ${{ steps.time.outputs.dispatched_after }}
+    steps:
+      # Hosted deploys a main push once CI and PG Smoke pass (ci.yml,
+      # deploy-studio-prod). The same gate picks the demo's commit, so the demo
+      # never runs code hosted would not.
+      - name: Find the latest main push that passed CI and PG Smoke
+        id: sha
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              ...context.repo,
+              workflow_id: "ci.yml",
+              branch: "main",
+              event: "push",
+              per_page: 30,
+            });
+            for (const run of data.workflow_runs) {
+              const jobs = await github.paginate(
+                github.rest.actions.listJobsForWorkflowRun,
+                { ...context.repo, run_id: run.id, per_page: 100 },
+              );
+              const passed = (name) =>
+                jobs.some((job) => job.name === name && job.conclusion === "success");
+              if (passed("CI") && passed("PG Smoke")) {
+                core.setOutput("sha", run.head_sha);
+                core.notice(`Deploying ${run.head_sha} (${run.html_url})`);
+                return;
+              }
+            }
+            core.setFailed(
+              "None of the last 30 pushes to main passed both CI and PG Smoke.",
+            );
+
+      # Taken before the dispatch, so any container that reports a later start
+      # was started by this deploy or after it.
+      - name: Record the dispatch time
+        id: time
+        run: echo "dispatched_after=$(date -u +%s)" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy
+    needs: resolve
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy-studio.yml
+    with:
+      service: jant-demo
+      source_ref: main
+      source_sha: ${{ needs.resolve.outputs.sha }}
+      target_env: prod
+      github_environment: demo
+    secrets:
+      BUILD_REPO_TOKEN: ${{ secrets.BUILD_REPO_TOKEN }}
+
+  verify:
+    name: Confirm the reset from outside
+    needs: [resolve, deploy]
+    if: github.event_name == 'schedule' || inputs.verify
+    runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 75
+    steps:
+      # The commit alone is not enough: when main has not moved since the last
+      # reset, yesterday's container reports the same one. Its start time is
+      # what tells a fresh rebuild from a rollout that kept the old container.
+      - name: Wait for a container started after the dispatch to serve the commit
+        env:
+          EXPECTED_SHA: ${{ needs.resolve.outputs.sha }}
+          DISPATCHED_AFTER: ${{ needs.resolve.outputs.dispatched_after }}
+        run: |
+          expected_build="${EXPECTED_SHA:0:16}"
+          deadline=$(( $(date +%s) + 60 * 60 ))
+          while :; do
+            body="$(curl -fsS --max-time 20 "${DEMO_SITE_URL}/readyz?t=$(date +%s)" || true)"
+            version="$(jq -r '.version // ""' <<<"$body" 2>/dev/null || true)"
+            started_at="$(jq -r '.startedAt // 0' <<<"$body" 2>/dev/null || echo 0)"
+            if [[ "$version" == *"-${expected_build}" ]] &&
+              [ "${started_at:-0}" -ge "$DISPATCHED_AFTER" ]; then
+              echo "Serving ${version}, started at ${started_at}."
+              exit 0
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::After an hour, ${DEMO_SITE_URL}/readyz reports version '${version}' started at '${started_at}'. Expected build ${expected_build} started at or after ${DISPATCHED_AFTER}. Check the tonormal/build run and the jant-demo container logs."
+              exit 1
+            fi
+            sleep 60
+          done
+
+  report-failure:
+    name: Report failure
+    needs: [resolve, deploy, verify]
+    if: failure()
+    permissions:
+      issues: write
+    uses: ./.github/workflows/report-failure.yml
+    with:
+      job: Demo reset via Studio
