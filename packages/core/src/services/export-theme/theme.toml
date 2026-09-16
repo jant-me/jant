@@ -5,7 +5,7 @@ description = "Default theme packaged with Jant exports."
 homepage = "https://jant.so"
 tags = ["blog", "microblog", "minimal"]
 features = ["pagination", "aliases"]
-min_version = "0.160.1"
+min_version = "0.147.7"
 
 [author]
   name = "Jant"

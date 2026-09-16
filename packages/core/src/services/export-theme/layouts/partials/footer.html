@@ -1,4 +1,4 @@
-{{- $jant := hugo.Data.jant -}}
+{{- $jant := partial "jant-data.html" . -}}
 {{- $footerHtml := "" -}}
 {{- with $jant -}}{{- with .site_footer_html -}}{{- $footerHtml = . -}}{{- end -}}{{- end -}}
 {{- $showBranding := false -}}

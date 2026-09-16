@@ -1,0 +1,23 @@
+{{- /*
+  Returns the `jant` table from `data/jant.toml` — nav, branding, and the
+  collections directory.
+
+  Hugo moved site data to `hugo.Data` in v0.160.0 and deprecated `site.Data`
+  in v0.156.0, so neither accessor works everywhere: `hugo.Data` is a render
+  error before it existed, and `site.Data` is a deprecation warning today and
+  a removal tomorrow. Only the taken branch of an `if` is evaluated, so
+  branching on the running version reads whichever one that version has.
+  `hugo.Version` compares semantically, not as a string.
+
+  Hugo rewrites a single `return` per template, hence the assignment rather
+  than a `return` in each branch. Every template reads the data through this
+  partial, so the day the old branch stops being worth carrying there is one
+  place to change.
+*/ -}}
+{{- $data := dict -}}
+{{- if ge hugo.Version "0.160.0" -}}
+  {{- $data = hugo.Data -}}
+{{- else -}}
+  {{- $data = site.Data -}}
+{{- end -}}
+{{- return (index $data "jant") -}}

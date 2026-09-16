@@ -387,6 +387,132 @@ describe("Hugo smoke build", () => {
     }
   }, 60_000);
 
+  it("never emits an alias page that redirects to nowhere", async () => {
+    if (!hugoOk) {
+      console.log("hugo binary not found on PATH — skipping hugo build test");
+      return;
+    }
+
+    const root = makePost({
+      id: "pst_root",
+      slug: "hello-world",
+      title: "Hello World",
+      threadId: "pst_root",
+    });
+    const draft = makePost({
+      id: "pst_draft",
+      slug: "secret-plan",
+      title: "Secret Plan",
+      threadId: "pst_draft",
+      status: "draft",
+    });
+    const services = {
+      posts: { list: async () => [root, draft] },
+      paths: {
+        getPostSlugMap: async () =>
+          new Map([
+            ["pst_root", "hello-world"],
+            ["pst_draft", "secret-plan"],
+          ]),
+        getPostAliases: async () =>
+          new Map([
+            ["pst_root", ["/blog/hello-world/"]],
+            ["pst_draft", ["/blog/nixos-setup/"]],
+          ]),
+        getCollectionSlugMap: async () => new Map(),
+      },
+      collections: {
+        list: async () => [],
+        listDirectoryData: async () => ({
+          collections: [],
+          items: [],
+          directoryItems: [],
+        }),
+        getCollectionsByPostIds: async () => new Map(),
+        getCollectionEntriesByThreadIds: async () => new Map(),
+      },
+      media: { getByPostIds: async () => new Map() },
+    } as unknown as ServicesArg;
+
+    const siteDir = await mkdtemp(join(tmpdir(), "jant-hugo-alias-"));
+    try {
+      const files = await createExportService(
+        services,
+        makeSiteConfig(),
+      ).generateHugoFiles();
+      for (const file of files) {
+        const target = join(siteDir, file.path);
+        await mkdir(dirname(target), { recursive: true });
+        const data =
+          typeof file.content === "string"
+            ? new TextEncoder().encode(file.content)
+            : file.content;
+        await writeFile(target, data);
+      }
+      // A page whose `aliases:` were written by hand rather than by Jant —
+      // editing content on GitHub is a supported workflow, so the theme
+      // cannot assume every alias came from the exporter.
+      await mkdir(join(siteDir, "content/hand-written"), { recursive: true });
+      await writeFile(
+        join(siteDir, "content/hand-written/_index.md"),
+        [
+          "---",
+          'title: "Hand written"',
+          'date: "2026-03-09T00:00:00.000Z"',
+          'slug: "hand-written"',
+          'type: "post"',
+          "draft: true",
+          "aliases:",
+          '  - "/blog/hand-written/"',
+          "---",
+          "",
+          "Body.",
+          "",
+        ].join("\n"),
+      );
+
+      const { code, stdout, stderr } = await runHugo(siteDir);
+      if (code !== 0) {
+        console.error("hugo stdout:", stdout);
+        console.error("hugo stderr:", stderr);
+      }
+      expect(code).toBe(0);
+
+      // The published thread's alias redirects where it always did.
+      const liveAlias = await readFile(
+        join(siteDir, "public/blog/hello-world/index.html"),
+        "utf-8",
+      );
+      expect(liveAlias).toContain(
+        'content="0; url=https://example.com/hello-world/"',
+      );
+      // `jsonify` alone is escaped into a JS string by Hugo's contextual
+      // escaping, which leaves the historical-root-alias branch comparing
+      // single characters and never taking. `safeJS` keeps it an array.
+      expect(liveAlias).toContain('["/blog/hello-world/"]');
+      expect(liveAlias).not.toContain("'[\"/blog/hello-world/\"]'");
+
+      // The unpublished thread gets no alias page at all: the exporter left
+      // `aliases:` off a root Hugo was never going to build.
+      expect(
+        await fileExists(join(siteDir, "public/blog/nixos-setup/index.html")),
+      ).toBe(false);
+
+      // The hand-written one does get a page, and it has to be inert. An
+      // empty `url=` is read as "reload this page", so the alias would
+      // refresh itself forever.
+      const orphanAlias = await readFile(
+        join(siteDir, "public/blog/hand-written/index.html"),
+        "utf-8",
+      );
+      expect(orphanAlias).not.toContain("http-equiv");
+      expect(orphanAlias).toContain("This page is not available");
+      expect(orphanAlias).toContain('content="noindex,nofollow"');
+    } finally {
+      await rm(siteDir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   it("folds a long thread's preview the way the site does", async () => {
     if (!hugoOk) {
       console.log("hugo binary not found on PATH — skipping hugo build test");

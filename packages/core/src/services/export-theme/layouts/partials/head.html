@@ -1,4 +1,4 @@
-{{- $jant := hugo.Data.jant -}}
+{{- $jant := partial "jant-data.html" . -}}
 {{- $siteTitle := .Site.Title -}}
 {{- $pageTitle := "" -}}
 {{- if .IsHome -}}

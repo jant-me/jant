@@ -110,6 +110,7 @@ CLI 启动时会自动加载 `<cwd>/.env.node`，但已通过 `export` 设置的
 
 ```
 hugo.toml
+wrangler.jsonc            Cloudflare Workers 部署配置
 content/                  posts、collections、sections
   {slug}/
     _index.md             thread root（branch bundle）
@@ -125,6 +126,14 @@ static/                   用户自有静态文件 + 下载的媒体
 ```
 
 根目录下的 `layouts/` 与 `static/` 由用户自由维护。Hugo 优先加载根目录的 `layouts/<name>.html` 而非 `themes/jant/layouts/<name>.html`，因此可以在不 fork 主题的前提下单独覆盖任意模板。
+
+### 部署到 Cloudflare Workers
+
+`wrangler.jsonc` 指定 Worker 名称，并把产物目录指向 `public/`。Workers Builds 没有 build output directory 这个字段（那是 Pages 才有的），产物目录只能在这个文件里声明。仓库带上它之后，Cloudflare 连接时填好的默认值都不用改：构建用 `hugo --gc --minify`，部署用 `npx wrangler deploy`，预览版本用 `npx wrangler versions upload`。`HUGO_VERSION` 也不用设，主题在 Cloudflare 构建镜像自带的 Hugo 上就能构建。
+
+`name` 由站点域名推导而来（`www.example.com` 得到 `www-example-com`），必须和实际托管站点的那个 Worker 同名。名字对不上时会部署到另一个新建的 Worker：构建和部署都报成功，域名上的站点却没有更新。Cloudflare 生成的构建 token 名为 `<worker 名> build token`，可以据此确认真实名称。
+
+`wrangler.jsonc` 只写入一次。[GitHub Sync](github-sync.md) 后续推送不会覆盖它，改过的名字会保留。
 
 ### URL 方案
 

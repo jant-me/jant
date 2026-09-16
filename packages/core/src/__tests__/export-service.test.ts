@@ -10,7 +10,11 @@
 
 import { describe, expect, it } from "vitest";
 import { unzipSync } from "fflate";
-import { createExportService } from "../services/export.js";
+import {
+  createExportService,
+  deriveWorkerName,
+  WRANGLER_CONFIG_PATH,
+} from "../services/export.js";
 import { parseFrontMatter } from "../lib/hugo-markdown.js";
 import type { Collection, Media, Post } from "../types.js";
 import {
@@ -324,6 +328,69 @@ describe("createExportService (Hugo)", () => {
     );
   });
 
+  it("emits no aliases for a root that is not published", async () => {
+    // Hugo writes an alias page for every `aliases:` entry whether or not the
+    // page it points at was built. On an unbuilt target `.Permalink` is
+    // empty, `<meta http-equiv=refresh content="0; url=">` means "reload this
+    // page" to a browser, and the old URL becomes an infinite refresh loop.
+    const draftRoot = makePost({
+      id: "d",
+      slug: "secret-plan",
+      threadId: "d",
+      status: "draft",
+    });
+    const reply = makePost({
+      id: "d-rep",
+      slug: "secret-reply",
+      replyToId: "d",
+      threadId: "d",
+      createdAt: 1773018000,
+      publishedAt: 1773018000,
+    });
+
+    const service = createExportService(
+      buildServices({
+        posts: [draftRoot, reply],
+        aliasMap: new Map([["d", ["/blog/old-plan/"]]]),
+      }),
+      makeSiteConfig(),
+    );
+    const files = filesToMap(await service.generateHugoFiles());
+    const { frontMatter } = await parseFrontMatter(
+      files.get("content/secret-plan/_index.md") as string,
+    );
+
+    expect(frontMatter.draft).toBe(true);
+    expect(frontMatter.aliases).toBeUndefined();
+    // The historical slugs still round-trip through import; it is only the
+    // Hugo-facing redirect list that an unpublished thread does not get.
+    expect(frontMatter.root_aliases).toEqual(["/blog/old-plan/"]);
+  });
+
+  it("emits no aliases for a private root either", async () => {
+    const privateRoot = makePost({
+      id: "p",
+      slug: "for-me",
+      threadId: "p",
+      visibility: "private",
+    });
+
+    const service = createExportService(
+      buildServices({
+        posts: [privateRoot],
+        aliasMap: new Map([["p", ["/blog/for-me/"]]]),
+      }),
+      makeSiteConfig(),
+    );
+    const files = filesToMap(await service.generateHugoFiles());
+    const { frontMatter } = await parseFrontMatter(
+      files.get("content/for-me/_index.md") as string,
+    );
+
+    expect(frontMatter.draft).toBe(true);
+    expect(frontMatter.aliases).toBeUndefined();
+  });
+
   it("merges historical root aliases + reply slugs onto the root", async () => {
     const root = makePost({ id: "r", slug: "new-slug", threadId: "r" });
     const reply = makePost({
@@ -412,6 +479,23 @@ describe("createExportService (Hugo)", () => {
     expect(toml).toMatch(/\[permalinks\][\s\S]*post = "\/:slug\/"/);
     expect(toml).toContain("[params]");
     expect(toml).not.toContain("home_default_view");
+  });
+
+  it("omits the site-level paginate key the theme never reads", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig({ pageSize: 25 }),
+    );
+    const toml = filesToMap(await service.generateHugoFiles()).get(
+      "hugo.toml",
+    ) as string;
+
+    // Every paginated template calls `.Paginate` with `params.page_size`, so
+    // a site-level pager size would never be read — and `paginate` was
+    // removed from Hugo, which fails the build outright rather than warning.
+    expect(toml).not.toMatch(/^paginate\b/m);
+    expect(toml).not.toContain("pagerSize");
+    expect(toml).toContain("page_size = 25");
   });
 
   it("configures hugo.toml for Atom RSS output with per-section opt-in", async () => {
@@ -1289,5 +1373,106 @@ describe("createExportService (Hugo)", () => {
       files.get("content/with-media/_index.md") as string,
     );
     expect(frontMatter.media![0].src).toBe("/media/med-1.webp");
+  });
+});
+
+describe("bundled theme", () => {
+  it("reads site data only through the version-agnostic partial", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig(),
+    );
+    const layouts = (await service.generateHugoFiles()).filter(
+      (f) =>
+        f.path.startsWith("themes/jant/layouts/") &&
+        typeof f.content === "string",
+    );
+
+    expect(layouts.length).toBeGreaterThan(0);
+    // Hugo has no accessor for `data/` that works on every version: it added
+    // `hugo.Data` in v0.160.0 and deprecated `site.Data` in v0.156.0, so a
+    // template naming either one directly is a build failure on one side of
+    // that line. `partials/jant-data.html` branches on the running version;
+    // everything else goes through it.
+    const offenders = layouts
+      .filter(
+        (f) =>
+          f.path !== "themes/jant/layouts/partials/jant-data.html" &&
+          /\b(?:hugo|site)\.Data\b/.test(f.content as string),
+      )
+      .map((f) => f.path);
+
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe("deriveWorkerName", () => {
+  it.each([
+    ["https://www.owenyoung.com", "www-owenyoung-com"],
+    ["https://www.owenyoung.com/", "www-owenyoung-com"],
+    ["https://example.com", "example-com"],
+    ["http://localhost:1313", "localhost-1313"],
+    // Punycode is what the URL parser hands back for a non-ASCII host, and
+    // its characters are already inside Cloudflare's allowed set.
+    ["https://例子.com", "xn--fsqu00a-com"],
+  ])("derives %s into %s", (siteUrl, expected) => {
+    expect(deriveWorkerName(siteUrl)).toBe(expected);
+  });
+
+  it("falls back when the site URL yields no host", () => {
+    expect(deriveWorkerName("")).toBe("jant-site");
+    expect(deriveWorkerName("not a url")).toBe("jant-site");
+  });
+
+  it("keeps the name inside Cloudflare's 63-character limit", () => {
+    const host = `${"a".repeat(70)}.example.com`;
+    const name = deriveWorkerName(`https://${host}`);
+
+    expect(name).toHaveLength(63);
+    expect(name).toMatch(/^[a-z0-9-]+$/);
+    expect(name.endsWith("-")).toBe(false);
+  });
+});
+
+describe("wrangler.jsonc", () => {
+  it("declares the Worker name, a compatibility date, and public/ as the asset directory", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig({ siteUrl: "https://www.owenyoung.com" }),
+    );
+    const files = await service.generateHugoFiles();
+    const config = files.find((f) => f.path === WRANGLER_CONFIG_PATH);
+
+    expect(config).toBeDefined();
+    const text = config!.content as string;
+    expect(text).toContain('"name": "www-owenyoung-com"');
+    expect(text).toMatch(/"compatibility_date": "\d{4}-\d{2}-\d{2}"/);
+    expect(text).toContain('"directory": "./public"');
+    // Workers Builds has no "build output directory" field, so `public/` is
+    // only declarable here. An assets-only Worker needs no script, and
+    // setting `build.command` would make Cloudflare's own detected Hugo
+    // build run a second time.
+    expect(text).not.toContain('"main"');
+    expect(text).not.toContain('"build"');
+    // The theme emits no 404.html to point it at.
+    expect(text).not.toContain("not_found_handling");
+  });
+
+  it("is scaffolding the repository owns after the first write", async () => {
+    const service = createExportService(
+      buildServices({ posts: [] }),
+      makeSiteConfig(),
+    );
+    const files = await service.generateHugoFiles();
+
+    // The Worker name is a guess at the site's host; correcting it by hand is
+    // expected, and a later sync must not revert that.
+    expect(
+      files.find((f) => f.path === WRANGLER_CONFIG_PATH)?.scaffoldOnce,
+    ).toBe(true);
+    // Nothing else claims the flag — every other file is Jant's to rewrite.
+    expect(files.filter((f) => f.scaffoldOnce).map((f) => f.path)).toEqual([
+      WRANGLER_CONFIG_PATH,
+    ]);
   });
 });

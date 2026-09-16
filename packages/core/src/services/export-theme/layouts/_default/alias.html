@@ -1,3 +1,13 @@
+{{- /*
+  Alias page. Hugo renders one of these for every entry in a post's
+  `aliases:` front matter.
+
+  `.Permalink` is the alias target. It is empty whenever the page the alias
+  points at was not built — an empty `content=0; url=` is read by browsers as
+  "reload this page", which turns the alias into an infinite refresh loop. So
+  the redirect markup is only emitted when there is somewhere to redirect to.
+*/ -}}
+{{- if .Permalink -}}
 <!doctype html>
 <html lang="{{ .Site.LanguageCode | default "en" }}">
   <head>
@@ -9,7 +19,10 @@
     <script>
       (function () {
         var target = {{ .Permalink }};
-        var rootAliases = {{ with .Params.root_aliases }}{{ . | jsonify }}{{ else }}[]{{ end }};
+        // `safeJS` keeps this an array literal. Without it Hugo's contextual
+        // escaping emits a quoted JSON string, and the loop below compares
+        // single characters instead of paths.
+        var rootAliases = {{ with .Params.root_aliases }}{{ . | jsonify | safeJS }}{{ else }}[]{{ end }};
         try {
           var path = window.location.pathname || "";
           var normalized = "/" + path.replace(/^\/+|\/+$/g, "") + "/";
@@ -47,3 +60,16 @@
     <p>Redirecting to <a href="{{ .Permalink }}">{{ .Permalink }}</a>&hellip;</p>
   </body>
 </html>
+{{- else -}}
+<!doctype html>
+<html lang="{{ .Site.LanguageCode | default "en" }}">
+  <head>
+    <meta charset="utf-8">
+    <title>{{ .Site.Title }}</title>
+    <meta name="robots" content="noindex,nofollow">
+  </head>
+  <body>
+    <p>This page is not available.</p>
+  </body>
+</html>
+{{- end -}}

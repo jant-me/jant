@@ -69,6 +69,7 @@ import LAYOUT_FEATURED_LIST from "./export-theme/layouts/featured/list.html?raw"
 import LAYOUT_ARCHIVE_LIST from "./export-theme/layouts/archive/list.html?raw";
 import LAYOUT_COLLECTIONS_LIST from "./export-theme/layouts/collections/list.html?raw";
 import LAYOUT_COLLECTION_SINGLE from "./export-theme/layouts/collection/single.html?raw";
+import PARTIAL_JANT_DATA from "./export-theme/layouts/partials/jant-data.html?raw";
 import PARTIAL_HEAD from "./export-theme/layouts/partials/head.html?raw";
 import PARTIAL_HEADER from "./export-theme/layouts/partials/header.html?raw";
 import PARTIAL_FOOTER from "./export-theme/layouts/partials/footer.html?raw";
@@ -97,6 +98,16 @@ import {
 export interface ExportFile {
   path: string;
   content: string | Uint8Array;
+  /**
+   * Scaffolding the destination owns once it exists. A fresh export always
+   * carries it — the ZIP is a new tree, and `site export --directory` refuses
+   * a non-empty directory — but GitHub Sync writes it only when the
+   * repository does not have it yet, so an edit there survives every later
+   * push. Deploy config is the case that needs this: the Worker name has to
+   * be corrected by hand when it does not match the Worker already serving
+   * the domain.
+   */
+  scaffoldOnce?: boolean;
 }
 
 export interface ExportService {
@@ -509,6 +520,10 @@ export function createExportService(
         content: LAYOUT_COLLECTION_SINGLE,
       });
       exportFiles.push({
+        path: "themes/jant/layouts/partials/jant-data.html",
+        content: PARTIAL_JANT_DATA,
+      });
+      exportFiles.push({
         path: "themes/jant/layouts/partials/head.html",
         content: PARTIAL_HEAD,
       });
@@ -598,6 +613,11 @@ export function createExportService(
       exportFiles.push({
         path: ".gitignore",
         content: buildGitignore(),
+      });
+      exportFiles.push({
+        path: WRANGLER_CONFIG_PATH,
+        content: buildWranglerConfig(siteConfig),
+        scaffoldOnce: true,
       });
 
       return exportFiles;
@@ -910,10 +930,20 @@ async function buildThreadBundle(
   // Root aliases = historical root slugs + every reply slug (so
   // /{reply-slug}/ gets a Hugo alias page that redirects/anchors to
   // the thread root).
-  const aliases = [...rootAliases];
-  for (const reply of threadReplies) {
-    const replySlug = slugMap.get(reply.id) ?? reply.slug;
-    aliases.push(`/${replySlug}/`);
+  //
+  // A draft or private root is not built, so its alias pages would have no
+  // target: Hugo still writes them, `.Permalink` resolves to the empty
+  // string, and the result is a page that redirects to itself. The thread
+  // is unpublished, so its historical URLs are unpublished with it.
+  const rootIsUnpublished =
+    root.status === "draft" || root.visibility === "private";
+  const aliases: string[] = [];
+  if (!rootIsUnpublished) {
+    aliases.push(...rootAliases);
+    for (const reply of threadReplies) {
+      const replySlug = slugMap.get(reply.id) ?? reply.slug;
+      aliases.push(`/${replySlug}/`);
+    }
   }
 
   // Root front matter.
@@ -944,10 +974,7 @@ async function buildThreadBundle(
         : undefined,
     slug: rootSlug,
     type: "post",
-    draft:
-      root.status === "draft" || root.visibility === "private"
-        ? true
-        : undefined,
+    draft: rootIsUnpublished ? true : undefined,
     aliases: aliases.length > 0 ? aliases : undefined,
     format: root.format,
     status: root.status,
@@ -1503,7 +1530,12 @@ function buildHugoToml(config: SiteConfig): string {
     `languageCode = "${escapeTomlString(language)}"`,
     `defaultContentLanguage = "${escapeTomlString(language)}"`,
     'theme = "jant"',
-    `paginate = ${config.pageSize}`,
+    // No site-level `paginate` / `[pagination] pagerSize`: every paginated
+    // template calls `.Paginate` with an explicit page size taken from
+    // `params.page_size` / `params.archive_page_size`, so a site-level value
+    // would never be read. `paginate` was also deprecated in Hugo v0.128.0
+    // and has since been removed, so emitting it fails the build outright on
+    // any version that only knows `[pagination] pagerSize`.
     "enableRobotsTXT = true",
     // Disable Hugo's built-in taxonomies — jant has no tags or categories
     // and the default empty /tags/ and /categories/ pages are noise. This
@@ -1704,8 +1736,88 @@ function buildJantDataToml(
 }
 
 // ---------------------------------------------------------------------------
-// README + .gitignore + _redirects
+// README + .gitignore + _redirects + wrangler.jsonc
 // ---------------------------------------------------------------------------
+
+/** Repo-relative path of the Cloudflare Workers deploy config. */
+export const WRANGLER_CONFIG_PATH = "wrangler.jsonc";
+
+/** Fallback Worker name for a site whose URL yields nothing usable. */
+const FALLBACK_WORKER_NAME = "jant-site";
+
+/**
+ * Derive a Cloudflare Worker name from the site's host.
+ *
+ * Worker names are lowercase, may hold only letters, digits, and hyphens, and
+ * are capped at 63 characters. Everything else in the host collapses to a
+ * hyphen, so `www.owenyoung.com` becomes `www-owenyoung-com`.
+ *
+ * @param siteUrl - The exported site's URL, e.g. `https://www.owenyoung.com`.
+ * @returns A name Cloudflare accepts; `jant-site` when the URL yields none.
+ * @example
+ * deriveWorkerName("https://www.owenyoung.com/"); // "www-owenyoung-com"
+ */
+export function deriveWorkerName(siteUrl: string): string {
+  let host: string;
+  try {
+    host = new URL(siteUrl).host;
+  } catch {
+    host = "";
+  }
+  const name = host
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    // 63 characters is Cloudflare's limit; trimming hyphens comes after the
+    // cut so a truncated name cannot end on one.
+    .slice(0, 63)
+    .replace(/^-+|-+$/g, "");
+  return name || FALLBACK_WORKER_NAME;
+}
+
+/**
+ * Build the Cloudflare Workers deploy config for the exported site.
+ *
+ * Workers Builds has no "build output directory" field — that one belongs to
+ * Pages — so `public/` can only be declared here. Without this file the
+ * dashboard's default deploy command (`npx wrangler deploy`) fails on a repo
+ * that has no Worker name to deploy under.
+ *
+ * Deliberately absent:
+ * - `main`: a site with only static assets is a valid assets-only Worker.
+ * - `build.command`: Cloudflare already detects `hugo --gc --minify`, and
+ *   setting it here would force the user to clear the dashboard's build
+ *   command to stop Hugo from running twice.
+ * - `not_found_handling`: the theme emits no `404.html` to point it at.
+ *
+ * @param config - The exported site's configuration.
+ * @returns The contents of `wrangler.jsonc`.
+ * @example
+ * buildWranglerConfig(config); // '{\n  // Cloudflare Workers …'
+ */
+function buildWranglerConfig(config: SiteConfig): string {
+  const name = deriveWorkerName(config.siteUrl);
+  // `compatibility_date` pins the Workers runtime behavior to what shipped on
+  // the day this export was generated, which is what a new Worker wants.
+  const compatibilityDate = new Date().toISOString().slice(0, 10);
+  return `{
+  // Cloudflare Workers deploy config for the built site.
+  //
+  // Jant writes this file once and never overwrites it, so your edits stay.
+  //
+  // "name" must match the Worker that already serves this site. Deploying
+  // under a different name creates a second Worker instead: the build passes,
+  // the deploy passes, and the domain keeps serving the old site. Cloudflare
+  // names the build token it generates "<worker-name> build token", which is
+  // one place to read the real name.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": ${JSON.stringify(name)},
+  "compatibility_date": ${JSON.stringify(compatibilityDate)},
+  "assets": {
+    "directory": "./public"
+  }
+}
+`;
+}
 
 /**
  * Build the `static/_redirects` file that keeps existing feed subscribers
@@ -1869,6 +1981,10 @@ function buildReadme(config: SiteConfig, hasFeaturedSection: boolean): string {
   const feedNote = config.rssFeedsEnabled
     ? "\n- Feed addresses are the exception: they move to `index.xml` and stay reachable only through `static/_redirects`. See [Feeds](#feeds)."
     : "";
+  // Same reason: without feeds there is no `static/_redirects` to explain.
+  const redirectsNote = config.rssFeedsEnabled
+    ? "`static/_redirects` needs no configuration here. Hugo copies it to `public/_redirects` and Workers applies the rules as published.\n\n"
+    : "";
   // Nothing to say about feeds on a site that publishes none, and no
   // `_redirects` file was written for it either.
   const feedRows: [string, string][] = [
@@ -1900,7 +2016,7 @@ This is a static site exported from [Jant](https://github.com/jant-me/jant), rea
 
 ## Install Hugo
 
-This export targets Hugo **extended 0.160.1+**.
+This export targets Hugo **extended 0.147.7+**.
 
 **macOS (Homebrew):**
 
@@ -1938,10 +2054,25 @@ hugo --minify
 
 The output goes to the \`public/\` directory. Upload it to any static host (Netlify, Vercel, Cloudflare Pages, GitHub Pages, etc.).
 
-${feedsSection}## Project structure
+## Deploy to Cloudflare Workers
+
+\`wrangler.jsonc\` at the root is the deploy config: it names the Worker and points it at \`public/\`. Connect this repository to Cloudflare Workers Builds and the defaults Cloudflare fills in work as they are:
+
+| Field           | Value                          |
+| --------------- | ------------------------------ |
+| Build command   | \`hugo --gc --minify\`           |
+| Deploy command  | \`npx wrangler deploy\`          |
+| Version command | \`npx wrangler versions upload\` |
+
+Check one thing before the first deploy: \`name\` in \`wrangler.jsonc\` has to match the Worker that serves this site. Jant derives it from the site's host, which is a guess. A name that does not match deploys a second Worker instead — the build passes, the deploy passes, and the domain keeps serving the old site. Cloudflare names each build token \`<worker-name> build token\`, so the token list is one place to read the real name.
+
+Jant writes \`wrangler.jsonc\` once and never overwrites it, so a corrected name survives later syncs.
+
+${redirectsNote}${feedsSection}## Project structure
 
 \`\`\`
 hugo.toml                 — Site configuration (baseURL, title, theme, params)
+wrangler.jsonc            — Cloudflare Workers deploy config (see Deploy above)
 content/
   _index.md               — Home section
   archive/_index.md       — Archive section

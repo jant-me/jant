@@ -67,6 +67,8 @@ These paths are managed entirely by Jant and overwritten on every push:
 
 Files inside these paths that Jant no longer generates are removed on the next push. For example, deleting a post in Jant deletes the corresponding bundle from GitHub on the next sync.
 
+`wrangler.jsonc` is the exception: Jant writes it when the repository does not have one and never touches it again. Its Worker name is derived from the site's host and often has to be corrected to match the Worker that serves the domain — see [Deploying to Cloudflare Workers](export-and-import.md#deploying-to-cloudflare-workers).
+
 Everything else in the repository is left alone. To customize the site:
 
 - Add `layouts/<name>.html` or `static/<name>` at the repository root to override files of the same name in the theme — Hugo prefers root-level versions.

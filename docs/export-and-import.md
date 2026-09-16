@@ -110,6 +110,7 @@ The export is a standard Hugo site. Templates and static assets are packaged as 
 
 ```
 hugo.toml
+wrangler.jsonc            Cloudflare Workers deploy config
 content/                  posts, collections, sections
   {slug}/
     _index.md             thread root (branch bundle)
@@ -125,6 +126,14 @@ static/                   user static files + downloaded media
 ```
 
 The root `layouts/` and `static/` directories are yours to maintain. Hugo loads root `layouts/<name>.html` ahead of `themes/jant/layouts/<name>.html`, so you can override any single template without forking the theme.
+
+### Deploying to Cloudflare Workers
+
+`wrangler.jsonc` names the Worker and points it at `public/`. Workers Builds has no build output directory field — that one belongs to Pages — so this file is the only place the asset directory can be declared. With it in the repository, the defaults Cloudflare fills in on connect need no editing: `hugo --gc --minify` to build, `npx wrangler deploy` to deploy, `npx wrangler versions upload` for preview versions. `HUGO_VERSION` needs no value either; the theme builds on the Hugo that Cloudflare's image ships.
+
+The `name` is derived from the site's host (`www.example.com` becomes `www-example-com`) and has to match the Worker that serves the site. A name that does not match deploys a second Worker: the build and the deploy both report success while the domain keeps serving the old site. Cloudflare names each build token `<worker-name> build token`, which is one place to read the real name.
+
+`wrangler.jsonc` is written once. [GitHub Sync](github-sync.md) leaves it alone on later pushes, so a corrected name survives.
 
 ### URL scheme
 

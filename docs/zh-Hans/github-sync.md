@@ -67,6 +67,8 @@ Jant 会校验 token、保存配置，并在仓库里创建 webhook。不需要�
 
 这些路径里 Jant 不再生成的文件会在下一次 push 时被删除。例如，在 Jant 里删除一篇帖子，下一次同步时 GitHub 上对应的 bundle 也会被删掉。
 
+`wrangler.jsonc` 是个例外：仓库里没有时 Jant 写入一次，之后不再改动。它的 Worker 名称由站点域名推导，经常需要手工改成实际托管站点的那个 Worker 名，见[部署到 Cloudflare Workers](export-and-import.md#部署到-cloudflare-workers)。
+
 仓库里其他文件 Jant 不会动。要自定义站点：
 
 - 在根目录加 `layouts/<name>.html` 或 `static/<name>` 覆盖主题里同名文件——Hugo 会优先用根目录版本。

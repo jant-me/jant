@@ -32,7 +32,11 @@ import { getInstallationToken } from "../lib/github-app.js";
 import type { GitHubAppEnvConfig } from "../lib/env.js";
 import { parseFrontMatter } from "../lib/hugo-markdown.js";
 import { markdownToTiptapJson } from "../lib/markdown-to-tiptap.js";
-import { createExportService, type SiteConfig } from "./export.js";
+import {
+  createExportService,
+  type ExportFile,
+  type SiteConfig,
+} from "./export.js";
 import type { PostService } from "./post.js";
 import type { PathService } from "./path.js";
 import type { CollectionService } from "./collection.js";
@@ -114,6 +118,30 @@ export function pathMatchesManagedGlob(path: string, glob: string): boolean {
  */
 export function isManagedPath(path: string): boolean {
   return JANT_MANAGED_GLOBS.some((g) => pathMatchesManagedGlob(path, g));
+}
+
+/**
+ * Pick the export files this push should write.
+ *
+ * Everything is written every push except scaffolding the repo already has.
+ * `wrangler.jsonc` is the case that needs this: its Worker name is a guess
+ * derived from the site host, and a user who corrected it to match the Worker
+ * serving their domain would see that correction reverted on the next sync —
+ * with the symptom being a deploy that succeeds against the wrong Worker.
+ *
+ * @param exportFiles - Everything the export generated.
+ * @param existingPaths - Repo-relative paths already present on the remote.
+ * @returns The subset to include in the commit.
+ * @example
+ * selectFilesToWrite(files, new Set(["wrangler.jsonc"]));
+ */
+export function selectFilesToWrite(
+  exportFiles: readonly ExportFile[],
+  existingPaths: ReadonlySet<string>,
+): ExportFile[] {
+  return exportFiles.filter(
+    (file) => !file.scaffoldOnce || !existingPaths.has(file.path),
+  );
 }
 
 /**
@@ -488,6 +516,26 @@ export function createGitHubSyncService(
         marker,
       );
 
+      // The HEAD tree is needed twice: to decide which scaffold files the
+      // repo already has, and (below) to delete managed files this push no
+      // longer generates. Reading it once, before the tree is assembled,
+      // covers both.
+      const headCommit = await client.getCommit(owner, repo, headSha);
+      const headTree = await client.getTree(owner, repo, headCommit.treeSha, {
+        recursive: true,
+      });
+      if (headTree.truncated) {
+        throw new Error(
+          "GitHub tree exceeds API limits (>100k entries or >7MB); " +
+            "incremental deletion cannot run safely against this repo.",
+        );
+      }
+      const existingPaths = new Set<string>(
+        headTree.tree
+          .filter((item) => item.type === "blob")
+          .map((item) => item.path),
+      );
+
       // Convert to Git tree items. The ownership marker is always emitted;
       // `created_at` is preserved across pushes (Git dedupes identical
       // blobs by SHA, so a no-op marker push is still cheap).
@@ -500,7 +548,7 @@ export function createGitHubSyncService(
         },
       ];
 
-      for (const file of exportFiles) {
+      for (const file of selectFilesToWrite(exportFiles, existingPaths)) {
         if (typeof file.content === "string") {
           treeItems.push({
             path: file.path,
@@ -530,16 +578,6 @@ export function createGitHubSyncService(
       // removed. Without this, deleting a post in Jant would leave the
       // old file behind on GitHub, because base_tree preserves everything
       // we don't explicitly overwrite.
-      const headCommit = await client.getCommit(owner, repo, headSha);
-      const headTree = await client.getTree(owner, repo, headCommit.treeSha, {
-        recursive: true,
-      });
-      if (headTree.truncated) {
-        throw new Error(
-          "GitHub tree exceeds API limits (>100k entries or >7MB); " +
-            "incremental deletion cannot run safely against this repo.",
-        );
-      }
       const writtenPaths = new Set<string>(treeItems.map((item) => item.path));
       treeItems.push(...computeManagedDeletions(headTree.tree, writtenPaths));
 

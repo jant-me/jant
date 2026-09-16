@@ -1,6 +1,6 @@
 {{ define "main" }}
   {{- $items := slice -}}
-  {{- with hugo.Data.jant -}}{{- with .directory -}}{{- $items = . -}}{{- end -}}{{- end -}}
+  {{- with partial "jant-data.html" . -}}{{- with .directory -}}{{- $items = . -}}{{- end -}}{{- end -}}
   {{- $collectionCount := 0 -}}
   {{- range $items -}}
     {{- if eq .type "collection" -}}{{- $collectionCount = add $collectionCount 1 -}}{{- end -}}

@@ -11,10 +11,12 @@
 
 import { describe, expect, it } from "vitest";
 import type { GitHubTreeItem } from "../../lib/github-api.js";
+import type { ExportFile } from "../export.js";
 import {
   computeManagedDeletions,
   isManagedPath,
   pathMatchesManagedGlob,
+  selectFilesToWrite,
 } from "../github-sync.js";
 
 describe("pathMatchesManagedGlob", () => {
@@ -63,6 +65,51 @@ describe("isManagedPath", () => {
     "README.txt",
   ])("treats %s as user-owned", (path) => {
     expect(isManagedPath(path)).toBe(false);
+  });
+});
+
+describe("selectFilesToWrite", () => {
+  const generated: ExportFile[] = [
+    { path: "hugo.toml", content: 'baseURL = "/"' },
+    { path: "content/hello/_index.md", content: "---\n---\n" },
+    { path: "wrangler.jsonc", content: "{}", scaffoldOnce: true },
+  ];
+
+  it("writes scaffolding the repository does not have yet", () => {
+    const written = selectFilesToWrite(generated, new Set(["hugo.toml"]));
+
+    expect(written.map((f) => f.path)).toEqual([
+      "hugo.toml",
+      "content/hello/_index.md",
+      "wrangler.jsonc",
+    ]);
+  });
+
+  it("leaves scaffolding alone once the repository has it", () => {
+    // The Worker name in `wrangler.jsonc` is derived from the site host and
+    // often has to be corrected to match the Worker serving the domain.
+    // Rewriting it every push would revert that silently, and the symptom —
+    // a deploy that succeeds against a Worker nobody is looking at — is
+    // close to undiagnosable from the Jant side.
+    const written = selectFilesToWrite(
+      generated,
+      new Set(["hugo.toml", "wrangler.jsonc"]),
+    );
+
+    expect(written.map((f) => f.path)).toEqual([
+      "hugo.toml",
+      "content/hello/_index.md",
+    ]);
+  });
+
+  it("still rewrites ordinary files the repository already has", () => {
+    const written = selectFilesToWrite(
+      generated,
+      new Set(["hugo.toml", "content/hello/_index.md"]),
+    );
+
+    expect(written.map((f) => f.path)).toContain("hugo.toml");
+    expect(written.map((f) => f.path)).toContain("content/hello/_index.md");
   });
 });
 

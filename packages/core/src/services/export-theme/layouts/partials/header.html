@@ -1,4 +1,4 @@
-{{- $jant := hugo.Data.jant -}}
+{{- $jant := partial "jant-data.html" . -}}
 {{- $showAvatar := false -}}
 {{- with $jant -}}{{- if eq .show_header_avatar true -}}{{- $showAvatar = true -}}{{- end -}}{{- end -}}
 {{- $avatarUrl := "" -}}
