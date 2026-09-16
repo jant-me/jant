@@ -24,6 +24,7 @@ describe("getInstanceReadiness", () => {
       }),
     ).resolves.toEqual({
       status: "ok",
+      version: "test-version",
       checks: {
         startupConfig: { ok: true },
         database: { ok: true },
@@ -40,6 +41,7 @@ describe("getInstanceReadiness", () => {
       }),
     ).resolves.toEqual({
       status: "error",
+      version: "test-version",
       checks: {
         startupConfig: {
           ok: false,
@@ -104,6 +106,26 @@ describe("getInstanceReadiness", () => {
     );
   });
 
+  // What a deploy check compares: the build that answers, and when its
+  // process started. A Worker has no process, so it reports only the build.
+  it("reports the build, and the process start where there is one", async () => {
+    const { sqlite } = createTestDatabase();
+    const env = {
+      AUTH_SECRET: "test-secret-with-enough-entropy-for-readiness",
+      NODE_SQLITE: sqlite,
+    };
+
+    const withoutStart = await getInstanceReadiness(env);
+    expect(withoutStart.version).toBe("test-version");
+    expect(withoutStart).not.toHaveProperty("startedAt");
+
+    const withStart = await getInstanceReadiness({
+      ...env,
+      NODE_STARTED_AT: 1789000000,
+    });
+    expect(withStart.startedAt).toBe(1789000000);
+  });
+
   it("reports a missing database binding", async () => {
     await expect(
       getInstanceReadiness({
@@ -111,6 +133,7 @@ describe("getInstanceReadiness", () => {
       }),
     ).resolves.toEqual({
       status: "error",
+      version: "test-version",
       checks: {
         startupConfig: { ok: true },
         database: {

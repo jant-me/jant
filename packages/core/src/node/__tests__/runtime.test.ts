@@ -12,6 +12,7 @@ import {
   resolveDatabasePath,
   resolvePublicRequestUrl,
 } from "../runtime.js";
+import type { App } from "../../types/app-context.js";
 import type { Bindings } from "../../types.js";
 
 const tempDirs: string[] = [];
@@ -202,6 +203,43 @@ describe("resolveNodeAssetRoot", () => {
         } as Bindings,
       }),
     ).rejects.toThrow("single-site mode found multiple sites in the database:");
+  });
+
+  // A deploy check tells a container that just started from one a rollback
+  // left running by this stamp, so it has to be the handler's start and not a
+  // time taken per request.
+  it("stamps the bindings with when the handler started serving", async () => {
+    const root = await mkdtemp(join(tmpdir(), "jant-node-started-at-"));
+    tempDirs.push(root);
+    const databasePath = join(root, "data", "jant.sqlite");
+    await migrate({ DATABASE_URL: `file:${databasePath}` } as Bindings);
+
+    const before = Math.floor(Date.now() / 1000);
+    const handler = await createNodeRequestHandler({
+      assetRoot: null,
+      env: { DATABASE_URL: `file:${databasePath}` } as Bindings,
+      app: {
+        fetch: (_request: Request, env: Bindings) =>
+          Response.json({ startedAt: env.NODE_STARTED_AT }),
+      } as unknown as App,
+    });
+    const after = Math.floor(Date.now() / 1000);
+
+    try {
+      const read = async () =>
+        (
+          (await (
+            await handler.fetch(new Request("http://127.0.0.1:3000/readyz"))
+          ).json()) as { startedAt: number }
+        ).startedAt;
+      const first = await read();
+
+      expect(first).toBeGreaterThanOrEqual(before);
+      expect(first).toBeLessThanOrEqual(after);
+      expect(await read()).toBe(first);
+    } finally {
+      await handler.close();
+    }
   });
 
   // The single-site readiness check blames SITE_RESOLUTION_MODE for extra

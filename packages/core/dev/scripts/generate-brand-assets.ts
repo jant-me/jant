@@ -193,7 +193,7 @@ function buildBrandPackReadme(): string {
 }
 
 function printHelp(): void {
-  console.log(`Usage: tsx dev/scripts/generate-brand-assets.ts [options]
+  console.log(`Usage: node dev/run-script.mjs dev/scripts/generate-brand-assets.ts [options]
 
 Options:
   --export-dir <path>  Write generated logo/icon assets to a local directory
@@ -201,8 +201,8 @@ Options:
   --help               Show this help message
 
 Examples:
-  tsx dev/scripts/generate-brand-assets.ts
-  tsx dev/scripts/generate-brand-assets.ts --export-dir ${DEFAULT_EXPORT_DIR} --export-only`);
+  node dev/run-script.mjs dev/scripts/generate-brand-assets.ts
+  node dev/run-script.mjs dev/scripts/generate-brand-assets.ts --export-dir ${DEFAULT_EXPORT_DIR} --export-only`);
 }
 
 function parseArgs(argv: string[]): CliOptions {
@@ -451,8 +451,8 @@ ${formatStringExport("JANT_LOGO_VIEW_BOX", viewBox)}${formatStringExport(
   console.log(`Generated ${outputPath}`);
 }
 
-async function main(): Promise<void> {
-  const options = parseArgs(process.argv.slice(2));
+export default async function main(args: string[]): Promise<void> {
+  const options = parseArgs(args);
   const sourceSvg = normalizeSvg(await readFile(sourceSvgPath, "utf8"));
   const viewBox = extractSvgAttribute(sourceSvg, "viewBox");
   const pathData = extractPathData(sourceSvg);
@@ -470,5 +470,3 @@ async function main(): Promise<void> {
     await writeGeneratedModule({ viewBox, pathData, defaultBundle });
   }
 }
-
-await main();

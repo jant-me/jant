@@ -50,7 +50,7 @@ run = 'node dev/scripts/setup-dev-auth.mjs "$usage_password"'
 description = "Update the local Node admin password to match DEMO_PASSWORD in .env.node (or arg)"
 usage = 'arg "[password]"'
 dir = "packages/core"
-run = 'pnpm exec tsx dev/scripts/sync-dev-password.ts "$usage_password"'
+run = 'node dev/run-script.mjs dev/scripts/sync-dev-password.ts "$usage_password"'
 
 [tasks.serve-node]
 description = "Serve the production Node runtime locally (reads packages/core/.env.node)"
@@ -97,7 +97,7 @@ run = "node --env-file packages/core/.env.node packages/core/bin/jant.js assets 
 [tasks.brand-export]
 description = "Export the default Jant brand assets to a local directory"
 usage = 'arg "[path]" default="packages/core/src/assets/branding/generated"'
-run = 'pnpm exec tsx packages/core/dev/scripts/generate-brand-assets.ts --export-dir "$usage_path" --export-only'
+run = 'node packages/core/dev/run-script.mjs packages/core/dev/scripts/generate-brand-assets.ts --export-dir "$usage_path" --export-only'
 
 [tasks.jant]
 description = "Run the local Jant CLI from packages/core/bin/jant.js"
@@ -323,17 +323,17 @@ mise run dev-auth-bootstrap "$usage_password"
 """
 
 [tasks.db-node-load-demo]
-description = "Bootstrap the local Node runtime and import sites/demo-source/canonical/site-export into an empty local database"
+description = "Set up the local Node runtime and import sites/demo-source/canonical/site-export into an empty local database through `jant site import`"
 usage = 'arg "[password]" default="jant-dev-debug-login"'
 dir = "packages/core"
-run = 'pnpm exec tsx dev/scripts/import-node-demo-site-export.ts "$usage_password"'
+run = 'node dev/run-script.mjs dev/scripts/import-node-demo-site-export.ts "$usage_password"'
 
 [tasks.db-node-rebuild-demo]
 alias = "local-reset"
 description = "Recreate the local Node SQLite database and media storage, bootstrap the local shell, and load the canonical demo snapshot"
 usage = 'arg "[password]" default="jant-dev-debug-login"'
 dir = "packages/core"
-run = 'pnpm exec tsx dev/scripts/reset-node-dev.ts "$usage_password"'
+run = 'node dev/run-script.mjs dev/scripts/reset-node-dev.ts "$usage_password"'
 
 # =============================================================================
 # DB — Remote (Cloudflare D1)

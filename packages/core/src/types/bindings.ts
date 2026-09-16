@@ -28,6 +28,11 @@ export interface Bindings {
   R2?: R2Bucket;
   NODE_DATABASE?: NodeDatabaseBinding;
   NODE_SQLITE?: BetterSqlite3.Database;
+  /**
+   * When this Node process started serving, in Unix seconds. Set by the
+   * request handler; a Worker has no process to date.
+   */
+  NODE_STARTED_AT?: number;
   SITE_ORIGIN?: EnvBindingValue;
   SITE_PATH_PREFIX?: EnvBindingValue;
   DEFAULT_THEME?: EnvBindingValue;

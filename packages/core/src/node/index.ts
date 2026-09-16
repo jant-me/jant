@@ -6,6 +6,7 @@ export { createNodeRequestHandler } from "./request-handler.js";
 export {
   createNodeCliRuntime,
   createNodeRequestRuntime,
+  setUpNodeInstance,
 } from "../runtime/node.js";
 export type { CliSiteSelector } from "../runtime/site.js";
 export { createExportService } from "../services/export.js";

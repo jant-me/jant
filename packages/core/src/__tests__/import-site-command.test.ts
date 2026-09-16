@@ -13,11 +13,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { __test__ } from "../../bin/commands/import-site.js";
+import {
+  partitionEditableSettingUpdates,
+  partitionImportableSettingUpdates,
+} from "../lib/api-settings.js";
+import { normalizeEditableSettingValue } from "../lib/schemas.js";
+import type { ConfigKey } from "../types/config.js";
 
 const {
   walkHugoContent,
   loadSiteConfig,
   buildSettingsUpdatesFromConfig,
+  splitSettingsUpdatesForImport,
+  buildSiteAvatarImport,
   mediaSpecFromJantMedia,
   resolveCollectionMemberships,
   resolveThreadCollectionMemberships,
@@ -150,6 +158,119 @@ describe("Hugo import CLI helpers", () => {
     expect(siteConfig.extra.jant.nav).toHaveLength(1);
     expect(siteConfig.extra.jant.collections_directory_exported).toBe(true);
     expect(siteConfig.extra.jant.collections_directory).toHaveLength(2);
+  });
+
+  it.each([true, false])(
+    "sends settings the settings API accepts when every flag is %s",
+    async (flag) => {
+      // The Config Editor (6c79f0b4) made boolean settings "true" or "false".
+      // The importer kept sending "" for a false flag, the settings route
+      // answered 400, and the import stopped before it created anything.
+      await writeFileTree(tempDir, {
+        "data/jant.toml": [
+          'format = "jant-site"',
+          "version = 1",
+          'site_name = "Example Site"',
+          'site_language = "en"',
+          `show_jant_branding_on_home = ${flag}`,
+          `show_header_avatar = ${flag}`,
+          `noindex = ${flag}`,
+          `public_api_enabled = ${flag}`,
+          `rss_feeds_enabled = ${flag}`,
+          'theme_id = "paper"',
+          'default_theme_id = "tufte"',
+          'font_theme_id = "classic"',
+          'theme_mode = "dark"',
+          "",
+        ].join("\n"),
+      });
+
+      const siteConfig = await loadSiteConfig(tempDir);
+      const { editable, internal } = splitSettingsUpdatesForImport(
+        buildSettingsUpdatesFromConfig(siteConfig, "body { color: red; }"),
+      );
+
+      // The two routes the importer calls, in the order the routes apply them:
+      // which keys each accepts, then the value check `settings.setMany` runs.
+      const settingsRoute = partitionEditableSettingUpdates(editable, false);
+      const importRoute = partitionImportableSettingUpdates(internal, false);
+      expect(settingsRoute.rejectedKeys).toEqual([]);
+      expect(importRoute.rejectedKeys).toEqual([]);
+
+      const accepted = {
+        ...settingsRoute.filteredUpdates,
+        ...importRoute.filteredUpdates,
+      };
+      for (const [key, value] of Object.entries(accepted)) {
+        expect(
+          () => normalizeEditableSettingValue(key as ConfigKey, value),
+          `${key}=${JSON.stringify(value)}`,
+        ).not.toThrow();
+      }
+    },
+  );
+
+  it("buildSiteAvatarImport reads exported icons from the theme's static directory", async () => {
+    // The export writes favicon.ico and apple-touch-icon.png under
+    // themes/jant/static/. Looking only in static/ sent the importer to the
+    // source site for them, and an unreachable source dropped the avatar too.
+    await writeFileTree(tempDir, {
+      "data/jant.toml": [
+        'format = "jant-site"',
+        'site_avatar_mode = "custom"',
+        'favicon_mode = "custom"',
+        'apple_touch_mode = "custom"',
+        'favicon_path = "/favicon.ico"',
+        'apple_touch_icon_path = "/apple-touch-icon.png"',
+        'site_avatar_url = "/media/avatar.png"',
+        "",
+      ].join("\n"),
+      "hugo.toml": 'baseURL = "https://gone.example/"\n',
+      "static/media/avatar.png": new Uint8Array([1]),
+      "themes/jant/static/favicon.ico": new Uint8Array([2]),
+      "themes/jant/static/apple-touch-icon.png": new Uint8Array([3]),
+    });
+
+    const avatarImport = await buildSiteAvatarImport(
+      await loadSiteConfig(tempDir),
+      tempDir,
+    );
+
+    expect(avatarImport).toMatchObject({
+      mode: "set",
+      avatarFilePath: join(tempDir, "static/media/avatar.png"),
+      faviconFilePath: join(tempDir, "themes/jant/static/favicon.ico"),
+      appleTouchFilePath: join(
+        tempDir,
+        "themes/jant/static/apple-touch-icon.png",
+      ),
+    });
+  });
+
+  it("buildSiteAvatarImport prefers an icon in the root static directory", async () => {
+    // Hugo serves the site's own static/ over the theme's, so a file placed
+    // there after export is the one the site shows.
+    await writeFileTree(tempDir, {
+      "data/jant.toml": [
+        'format = "jant-site"',
+        'site_avatar_mode = "custom"',
+        'favicon_mode = "custom"',
+        'site_avatar_url = "/media/avatar.png"',
+        "",
+      ].join("\n"),
+      "static/media/avatar.png": new Uint8Array([1]),
+      "static/favicon.ico": new Uint8Array([4]),
+      "themes/jant/static/favicon.ico": new Uint8Array([2]),
+    });
+
+    const avatarImport = await buildSiteAvatarImport(
+      await loadSiteConfig(tempDir),
+      tempDir,
+    );
+
+    expect(avatarImport).toMatchObject({
+      faviconFilePath: join(tempDir, "static/favicon.ico"),
+    });
   });
 
   it("mediaSpecFromJantMedia resolves site-relative src under static/", async () => {

@@ -2996,6 +2996,8 @@ Response:
 ```json
 {
   "status": "ok",
+  "version": "0.7.0-3f9c2a7b1e4d8c60",
+  "startedAt": 1789000000,
   "checks": {
     "startupConfig": { "ok": true },
     "database": { "ok": true }
@@ -3008,6 +3010,8 @@ Notes:
 - Returns `200` when all checks pass.
 - Returns `503` when `status` is `"error"`.
 - `startupConfig.error` and `database.error` appear when a check fails.
+- `version` is the package version followed by the first 16 characters of the build's commit id.
+- `startedAt` is when the process started serving, in Unix seconds. Node only; absent on Workers.
 - This endpoint is stricter than `/health`: it verifies startup configuration and performs a lightweight database query.
 
 ### Feeds

@@ -4,6 +4,7 @@
  * Exports:
  * - pkg: package.json data (version, dependencies)
  * - buildVersion: cache-busting version token for deployed assets
+ * - unbuiltClientAssetDefine: client asset globals for servers with no client build
  * - CLIENT_TARGET: browser target for client asset compilation
  * - clientBuildOptions: rollup input/output for public/auth JS and CSS assets
  * - swcPlugin: SWC with Hono JSX + Lingui macro transforms
@@ -17,6 +18,7 @@ import swc from "unplugin-swc";
 import { resolve } from "path";
 import { readFileSync } from "fs";
 import { execSync } from "child_process";
+import { createRequire } from "module";
 import { gzipSync } from "zlib";
 import {
   ASSET_BASE_SEGMENT,
@@ -49,6 +51,27 @@ const safeBuildId = rawBuildId.replace(/[^0-9A-Za-z._-]/g, "").slice(0, 16);
 export const buildVersion = safeBuildId
   ? `${pkg.version}-${safeBuildId}`
   : pkg.version;
+
+/**
+ * Client asset globals for a server that has no client build to point at.
+ *
+ * `lib/version.ts` reads these at module scope, so anything that evaluates it
+ * needs a value even when no page ever links one: the Node dev server
+ * (`IS_VITE_DEV` serves assets from source instead) and the dev-script runner
+ * (renders no pages). The library build reads the content-hashed paths from the
+ * client manifest instead.
+ */
+export const unbuiltClientAssetDefine = {
+  __CLIENT_JS_FILE__: JSON.stringify("/_assets/client.js"),
+  __CLIENT_AUTH_JS_FILE__: JSON.stringify("/_assets/client-auth.js"),
+  __CLIENT_COMPOSE_PRELOAD__: JSON.stringify([]),
+  __CLIENT_CSS_FILE__: JSON.stringify("/_assets/client.css"),
+  __CLIENT_AUTHOR_CSS_FILE__: JSON.stringify("/_assets/client-author.css"),
+  __CLIENT_CJK_CSS_FILE__: JSON.stringify("/_assets/client-cjk.css"),
+  __CLIENT_CJK_TC_CSS_FILE__: JSON.stringify("/_assets/client-cjk-tc.css"),
+  __CLIENT_CJK_JP_CSS_FILE__: JSON.stringify("/_assets/client-cjk-jp.css"),
+  __CLIENT_CJK_KR_CSS_FILE__: JSON.stringify("/_assets/client-cjk-kr.css"),
+};
 
 /** Browser target for client assets. */
 export const CLIENT_TARGET = "es2022" as const;
@@ -140,6 +163,18 @@ export const workerBuildOptions = {
 };
 
 /**
+ * The Lingui macro plugin's `.wasm`, resolved from this package.
+ *
+ * SWC resolves a plugin given by package name against `process.cwd()`, not
+ * against the config that names it. Every Vite command happens to run from
+ * `packages/core`, so the name worked — until a dev script ran from the repo
+ * root and every transform failed with "failed to resolve plugin path".
+ */
+const LINGUI_SWC_PLUGIN = createRequire(import.meta.url).resolve(
+  "@lingui/swc-plugin",
+);
+
+/**
  * SWC plugin for Hono JSX transforms and Lingui macro rewrites.
  *
  * Every bundle needs it, browser bundles included: `lib/` modules are shared
@@ -166,7 +201,7 @@ export const swcPlugin = () =>
       experimental: {
         plugins: [
           [
-            "@lingui/swc-plugin",
+            LINGUI_SWC_PLUGIN,
             {
               runtimeModules: {
                 useLingui: ["@jant/core/i18n", "useLingui"],
