@@ -56,7 +56,9 @@ function readEnvFile(): Record<string, string> {
 }
 
 function printHelp() {
-  console.log("Usage: sync-dev-password.ts [password]");
+  console.log(
+    "Usage: node dev/run-script.mjs dev/scripts/sync-dev-password.ts [password]",
+  );
   console.log("");
   console.log(
     "Update the local Node admin password to match DEMO_PASSWORD in .env.node,",
@@ -69,8 +71,9 @@ function printHelp() {
   console.log("Resolution order: CLI arg, $DEMO_PASSWORD, .env.node, default.");
 }
 
-async function main() {
+export default async function main(args: string[]) {
   const { positionals, values } = parseArgs({
+    args,
     allowPositionals: true,
     options: {
       help: { type: "boolean", short: "h" },
@@ -151,5 +154,3 @@ async function main() {
     await close();
   }
 }
-
-await main();

@@ -387,7 +387,9 @@ async function importCanonicalSnapshot(bindings: Bindings) {
 }
 
 function printHelp() {
-  console.log("Usage: reset-node-dev.ts [password] [--check]");
+  console.log(
+    "Usage: node dev/run-script.mjs dev/scripts/reset-node-dev.ts [password] [--check]",
+  );
   console.log("");
   console.log(
     "Reset the local Node SQLite development database, bootstrap local auth, and load the canonical demo snapshot.",
@@ -397,8 +399,9 @@ function printHelp() {
   console.log("SQLite and local filesystem storage.");
 }
 
-async function main() {
+export default async function main(args: string[]) {
   const { positionals, values } = parseArgs({
+    args,
     allowPositionals: true,
     options: {
       check: { type: "boolean", default: false },
@@ -471,5 +474,3 @@ async function main() {
     `  http://localhost:${env.PORT || defaultPort}/__dev/login?token=${devApiToken}&redirect=/settings`,
   );
 }
-
-await main();

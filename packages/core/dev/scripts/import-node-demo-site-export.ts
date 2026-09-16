@@ -233,7 +233,7 @@ function assertLocalImportConfig(env: Bindings) {
 }
 
 async function assertCanonicalSiteExport() {
-  const configPath = resolve(canonicalDir, "config.toml");
+  const configPath = resolve(canonicalDir, "hugo.toml");
   const configStat = await stat(configPath).catch(() => null);
   if (!configStat?.isFile()) {
     throw new Error(
@@ -325,7 +325,7 @@ async function assertEmptyImportTarget(env: Bindings) {
 
 function buildHelpText() {
   return [
-    "Usage: pnpm exec tsx dev/scripts/import-node-demo-site-export.ts [password] [--check]",
+    "Usage: node dev/run-script.mjs dev/scripts/import-node-demo-site-export.ts [password] [--check]",
     "",
     "Bootstrap a local single-site Node runtime and import sites/demo-source/canonical/site-export.",
     "",
@@ -361,9 +361,9 @@ function runCliSiteImport(env: Bindings) {
   );
 }
 
-async function main() {
+export default async function main(args: string[]) {
   const { values, positionals } = parseArgs({
-    args: process.argv.slice(2),
+    args,
     allowPositionals: true,
     options: {
       check: { type: "boolean" },
@@ -427,5 +427,3 @@ async function main() {
   console.log(`  Canonical dir: ${canonicalDir}`);
   console.log(`  Setup:         ${setup.outcome}`);
 }
-
-await main();

@@ -17,7 +17,11 @@ import {
   resolvePort,
 } from "./src/node/request-handler.js";
 import type { Bindings } from "./src/types/bindings.js";
-import { buildVersion, swcPlugin } from "./vite.shared";
+import {
+  buildVersion,
+  swcPlugin,
+  unbuiltClientAssetDefine,
+} from "./vite.shared";
 import { linguiAutoExtract, ssrReload } from "./vite.dev-plugins";
 
 function nodeMiddleware(): Plugin {
@@ -104,17 +108,7 @@ export default defineConfig(async ({ command, mode }) => {
     define: {
       __JANT_DEV__: "true",
       __JANT_VERSION__: JSON.stringify(buildVersion),
-      // Not used in dev (IS_VITE_DEV=true skips these paths), but required for
-      // the TypeScript declarations in version.ts to compile.
-      __CLIENT_JS_FILE__: JSON.stringify("/_assets/client.js"),
-      __CLIENT_AUTH_JS_FILE__: JSON.stringify("/_assets/client-auth.js"),
-      __CLIENT_COMPOSE_PRELOAD__: JSON.stringify([]),
-      __CLIENT_CSS_FILE__: JSON.stringify("/_assets/client.css"),
-      __CLIENT_AUTHOR_CSS_FILE__: JSON.stringify("/_assets/client-author.css"),
-      __CLIENT_CJK_CSS_FILE__: JSON.stringify("/_assets/client-cjk.css"),
-      __CLIENT_CJK_TC_CSS_FILE__: JSON.stringify("/_assets/client-cjk-tc.css"),
-      __CLIENT_CJK_JP_CSS_FILE__: JSON.stringify("/_assets/client-cjk-jp.css"),
-      __CLIENT_CJK_KR_CSS_FILE__: JSON.stringify("/_assets/client-cjk-kr.css"),
+      ...unbuiltClientAssetDefine,
     },
 
     plugins: [
