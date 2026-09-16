@@ -8,14 +8,14 @@ export const SUPPORTED_SNAPSHOT_VERSIONS = [1, SNAPSHOT_VERSION];
 /**
  * Site content, in the order rows are inserted on import.
  *
- * The order is a foreign-key topological sort, not a preference: a child row
- * cannot land before the row it points at exists. `smart_collection` therefore
- * precedes `nav_item`, `collection_directory_item` and `path_registry`, all
- * three of which reference it, and `post` precedes `nav_item` (a `page` nav
- * item carries a `post_id`), `thread_collection`, `path_registry` and `media`.
+ * Membership is what this list decides: a table absent from it is never read,
+ * so its rows leave no trace in the snapshot and `--replace` cannot clear them.
  *
- * `src/__tests__/snapshot-tables.test.ts` re-derives this order from the schema
- * and fails the build when an edit breaks it.
+ * The order here is kept as a foreign-key topological sort for readability, but
+ * it is not what an export follows — `sortExportTables` re-sorts by
+ * `TABLE_EXPORT_ORDER` in `sql-export.js`, and that is the list to change when
+ * the dump order has to change. `src/__tests__/snapshot-tables.test.ts` checks
+ * the sorted result for that reason.
  */
 export const SNAPSHOT_TABLES = [
   "site_setting",

@@ -245,3 +245,50 @@ schema 里不是 site-scoped 的表）、未登记的额外表要有理由、无
 这是脚本的真 bug，因此补了重复检测，重测通过。
 
 `check-lint`、`check-format`、`check-tests`（322 文件 / 4394 测试）全绿。
+
+## 第四轮：修正上一轮的一个错误
+
+重新导出的快照（`9427684c`）里表的出现顺序仍是旧的，我一度以为是「用了未更新的
+checkout 导的」。**这个判断是错的**，真实原因更要紧：
+
+`bin/lib/sql-export.js` 里的 `TABLE_EXPORT_ORDER` 是**第五份**手写有序清单，而
+`dumpDatabaseToSql` 会用 `sortExportTables()` 拿它重排调用方给的表。所以决定 dump
+顺序的从来不是 `SNAPSHOT_TABLES`，是它。
+
+后果，以及第一轮修复的实际有效范围：
+
+| 第一轮改的 | 是否生效 |
+|---|---|
+| `SNAPSHOT_TABLES` **成员**（补 `smart_collection`） | 生效 —— 决定哪些表被读 |
+| `SNAPSHOT_TABLES` **顺序** | **失效** —— 被 `sortExportTables` 覆盖 |
+| `SNAPSHOT_CLEAR_TABLES` 顺序 | 生效 —— `buildReplaceSql` 直接用 |
+
+而 `TABLE_EXPORT_ORDER` 自己带着两个问题，和第一轮修的是同一对：
+
+- **没有 `smart_collection`**。未登记的表在 `sortExportTables` 里排到所有已知表
+  **之后**，所以一旦有智能合集，它会被 dump 到 `nav_item`、
+  `collection_directory_item`、`path_registry` 之后 —— 这三张都引用它 → 导入外键违约。
+- `nav_item` 排在 `post` 前面。
+
+### 改动
+
+- `TABLE_EXPORT_ORDER` 补 `smart_collection`（`collection` 之后、三张引用它的表之前），
+  并把 `nav_item` 移到 `post` 之后。它同时服务 `jant db export`，那条路一并修好。
+- 导出 `TABLE_EXPORT_ORDER`，让测试够得到。
+- guard 测试改成断言 **`sortExportTables(SNAPSHOT_TABLES)` 的结果**，而不是原数组；
+  另加一条断言：每张内容表都必须登记在 `TABLE_EXPORT_ORDER` 里。
+- 修正 `SNAPSHOT_TABLES` 的文档注释 —— 它此前声称自己的顺序是导入顺序，不实。
+
+### 验证
+
+| 破坏 | 结果 |
+|---|---|
+| `TABLE_EXPORT_ORDER` 移除 `smart_collection` | 两条断言同时红（未登记 + 3 处外键违约） |
+| `nav_item` 退回 `post` 之前 | 精确报 `nav_item (3) references post (4)` |
+
+`check-site-tables`、`check-tests`（322 文件 / 4395 测试）全绿。
+
+### 对已提交快照的影响
+
+当前快照在 0 个智能合集下能正常加载（重放测试通过），但它是用坏的 dump 顺序导出的。
+**修复后需要再导出一次**，让提交进仓库的那份带上正确顺序。

@@ -1,4 +1,17 @@
-const TABLE_EXPORT_ORDER = [
+/**
+ * The order rows are dumped, and so the order they are replayed on import.
+ *
+ * It is a foreign-key topological sort: a table follows everything it points
+ * at. `sortExportTables` applies it to whatever table list it is handed, so
+ * this — not the caller's list — is what decides an export's order.
+ *
+ * A table missing from here is not an ordering no-op. Unknown names sort after
+ * every known one, so a new child table lands at the end, behind its own
+ * parents, and the dump only fails once there is a row to violate the
+ * constraint. `snapshot-tables.test.ts` checks the sorted result, not the
+ * caller's list, for that reason.
+ */
+export const TABLE_EXPORT_ORDER = [
   "site",
   "user",
   "account",
@@ -8,11 +21,15 @@ const TABLE_EXPORT_ORDER = [
   "site_setting",
   "site_member",
   "collection",
-  "nav_item",
-  "collection_directory_item",
+  // Before the three tables that hold a key into it: `nav_item`,
+  // `collection_directory_item` and `path_registry`.
+  "smart_collection",
   "api_token",
   "post",
   "thread_collection",
+  // After `post`: a `page` nav item carries a `post_id`.
+  "nav_item",
+  "collection_directory_item",
   "path_registry",
   "media",
 ];

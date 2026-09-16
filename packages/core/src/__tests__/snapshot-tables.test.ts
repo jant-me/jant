@@ -34,6 +34,10 @@ import {
   SNAPSHOT_TABLES,
   getSnapshotSelectSql,
 } from "../../bin/lib/site-snapshot.js";
+import {
+  TABLE_EXPORT_ORDER,
+  sortExportTables,
+} from "../../bin/lib/sql-export.js";
 import * as schema from "../db/schema.js";
 
 /** `site_setting` is cleared by key, not wholesale — see `buildReplaceSql`. */
@@ -131,9 +135,21 @@ describe("snapshot table registry", () => {
 });
 
 describe("snapshot table ordering", () => {
+  it("registers every content table for export ordering", () => {
+    // A table missing here is not merely unordered: `sortExportTables` places
+    // unknown names after every known one, so a new child table is dumped
+    // behind its own parents and the import fails the first time a row exists
+    // to violate the constraint.
+    const ordered = new Set<string>(TABLE_EXPORT_ORDER);
+    expect(SNAPSHOT_TABLES.filter((name) => !ordered.has(name))).toEqual([]);
+  });
+
   it("inserts a table only after every table it references", () => {
+    // The order an export actually follows. `SNAPSHOT_TABLES` is re-sorted by
+    // `TABLE_EXPORT_ORDER` on the way out, so asserting on the raw list would
+    // check something the dump ignores.
     const position = new Map(
-      SNAPSHOT_TABLES.map((name, index) => [name, index]),
+      sortExportTables(SNAPSHOT_TABLES).map((name, index) => [name, index]),
     );
     const violations: string[] = [];
 
@@ -155,9 +171,10 @@ describe("snapshot table ordering", () => {
     expect(
       violations,
       [
-        "SNAPSHOT_TABLES is the order rows are inserted on import, so a table has to",
-        "come after everything it points at with a foreign key. Otherwise the child row",
-        "lands before its parent exists and the insert fails the constraint.",
+        "TABLE_EXPORT_ORDER in sql-export.js is the order rows are dumped, and so the",
+        "order they are inserted on import. A table has to come after everything it",
+        "points at with a foreign key, or the child row lands before its parent exists",
+        "and the insert fails the constraint.",
       ].join("\n"),
     ).toEqual([]);
   });
