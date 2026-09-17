@@ -97,7 +97,7 @@ describe("getImageUrl", () => {
       { width: 200, quality: 80, format: "auto" },
     );
     expect(result).toBe(
-      "https://example.com/cdn-cgi/image/width=200,quality=80,format=auto//media/test.jpg",
+      "https://example.com/cdn-cgi/image/width=200,quality=80,format=auto/media/test.jpg",
     );
   });
 
@@ -107,5 +107,31 @@ describe("getImageUrl", () => {
       "https://example.com/cdn-cgi/image",
     );
     expect(result).toBe("/media/test.jpg");
+  });
+
+  // Cloudflare cannot fetch `…/width=200//media/test.jpg` (err=9404): the
+  // source path after the options must not start with a second slash.
+  it("never joins a root-relative source with a double slash", () => {
+    expect(
+      getImageUrl(
+        "/blog/media/test.jpg",
+        "https://example.com/cdn-cgi/image/",
+        {
+          width: 200,
+        },
+      ),
+    ).toBe("https://example.com/cdn-cgi/image/width=200/blog/media/test.jpg");
+  });
+
+  it("keeps an absolute source as it is", () => {
+    expect(
+      getImageUrl(
+        "https://media.example.com/media/test.jpg",
+        "https://example.com/cdn-cgi/image",
+        { width: 200 },
+      ),
+    ).toBe(
+      "https://example.com/cdn-cgi/image/width=200/https://media.example.com/media/test.jpg",
+    );
   });
 });

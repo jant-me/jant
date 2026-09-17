@@ -11,6 +11,7 @@ export {
 export type { CliSiteSelector } from "../runtime/site.js";
 export { createExportService } from "../services/export.js";
 export { createStorageDriver } from "../lib/storage.js";
+export { getConfiguredStorageDriver } from "../lib/env.js";
 export { resolveConfig } from "../lib/resolve-config.js";
 export { buildThemeStyle } from "../lib/theme.js";
 export { BUILTIN_COLOR_THEMES } from "../ui/color-themes.js";
