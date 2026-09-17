@@ -355,6 +355,8 @@ Snapshot import requires explicit `--replace`. With `--replace`, the snapshot's 
 
 Current exports use snapshot format v2. Imports also accept v1 snapshots: their legacy `post_collection` rows are upgraded in memory to the Thread-level union before any target content is cleared.
 
+Media files are uploaded into the target site's own storage and recorded there, so a snapshot exported from a site on R2 can be imported into a site that stores media in S3 or on local disk.
+
 Default target:
 
 ```bash

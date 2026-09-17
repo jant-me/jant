@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertSnapshotDialectMatches,
   assertSnapshotMeta,
+  buildMediaProviderSql,
   buildSnapshotMeta,
   getSnapshotDialect,
   SNAPSHOT_VERSION,
@@ -181,5 +182,24 @@ describe("assertSnapshotDialectMatches", () => {
     // can't refuse them. The user opts into the looser check by importing
     // legacy snapshots; cross-dialect SQL errors will surface mid-import.
     expect(() => assertSnapshotDialectMatches({}, "pg")).not.toThrow();
+  });
+});
+
+describe("buildMediaProviderSql", () => {
+  it("records the site's media under the given storage driver", () => {
+    expect(buildMediaProviderSql("sit_o'brien", "s3")).toBe(
+      `UPDATE "media" SET "provider" = 's3' WHERE "site_id" = 'sit_o''brien';`,
+    );
+  });
+
+  // The value is written into SQL and read back as where the bytes live, so
+  // anything but a real driver is refused rather than quoted.
+  it("refuses anything that is not a storage driver", () => {
+    expect(() => buildMediaProviderSql("sit_test", "gcs")).toThrow(
+      'Snapshot import cannot record media under storage driver "gcs".',
+    );
+    expect(() => buildMediaProviderSql("sit_test", "s3' OR '1")).toThrow(
+      "cannot record media under storage driver",
+    );
   });
 });

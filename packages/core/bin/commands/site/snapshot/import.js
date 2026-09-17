@@ -18,6 +18,7 @@ import { deleteR2Object, uploadR2Object } from "../../../lib/r2-query.js";
 import {
   assertSnapshotDialectMatches,
   assertSnapshotMeta,
+  buildMediaProviderSql,
   buildReplaceSql,
   buildSnapshotStorageQuery,
   collectSnapshotObjects,
@@ -58,11 +59,13 @@ async function createNodeImportContext() {
   // the current site, which (a) is redundant with the bin-level resolveCliSite
   // call below and (b) prints a generic "/setup first" error when the
   // snapshot's own error path is more informative.
-  const { createStorageDriver } = await loadNodeRuntime();
+  const { createStorageDriver, getConfiguredStorageDriver } =
+    await loadNodeRuntime();
   const storage = createStorageDriver(nodeDatabase.bindings);
 
   return {
     dialect: nodeDatabase.database.dialect,
+    storageProvider: getConfiguredStorageDriver(nodeDatabase.bindings),
     async close() {
       await nodeDatabase.close();
     },
@@ -96,6 +99,8 @@ function createD1ImportContext(runtime, values) {
 
   return {
     dialect: "sqlite",
+    // Objects go up through the wrangler R2 binding below.
+    storageProvider: "r2",
     async close() {},
     async query(sql) {
       return queryD1(sql, runtime, wranglerOptions);
@@ -402,7 +407,13 @@ export async function run(argv) {
       );
     }
 
-    await context.execute(`${buildReplaceSql(targetSite.id)}\n${dbSql}`);
+    await context.execute(
+      [
+        buildReplaceSql(targetSite.id),
+        dbSql,
+        buildMediaProviderSql(targetSite.id, context.storageProvider),
+      ].join("\n"),
+    );
 
     const keysToDelete = [...currentKeys].filter(
       (key) => !snapshotKeys.has(key),

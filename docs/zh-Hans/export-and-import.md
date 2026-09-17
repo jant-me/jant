@@ -355,6 +355,8 @@ Snapshot import 必须显式传 `--replace`。`--replace` 会清空目标库中 
 
 当前导出使用 snapshot format v2。Import 仍接受 v1 snapshot：会先在内存中把旧 `post_collection` 行升级成 Thread 级并集，确认可转换后才清空目标内容。
 
+媒体文件会上传到目标站点自己的存储，记录也随之改成这个存储，所以在 R2 上导出的 snapshot 可以导入到用 S3 或本地磁盘存媒体的站点。
+
 默认目标：
 
 ```bash

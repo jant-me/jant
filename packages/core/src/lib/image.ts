@@ -34,7 +34,11 @@ export interface ImageOptions {
  * - Cloudinary
  * - Any service with similar URL-based transformation API
  *
- * @param originalUrl - The original image URL
+ * A root-relative source is written without its leading slash, the form the
+ * transformation service resolves against its own host. Kept, it would produce
+ * `…/width=200//media/abc123`, which Cloudflare cannot fetch (`err=9404`).
+ *
+ * @param originalUrl - The original image URL, absolute or root-relative
  * @param transformUrl - The base URL for transformations (e.g., `https://example.com/cdn-cgi/image`)
  * @param options - Transformation options (width, height, quality, format, fit)
  * @returns The transformed URL or original URL if transformations are not configured
@@ -45,9 +49,13 @@ export interface ImageOptions {
  * getImageUrl("/media/abc123", undefined, { width: 200 });
  * // Returns: "/media/abc123"
  *
- * // With transform URL - returns transformed
+ * // With transform URL and a root-relative source
  * getImageUrl("/media/abc123", "https://example.com/cdn-cgi/image", { width: 200, quality: 80 });
- * // Returns: "https://example.com/cdn-cgi/image/width=200,quality=80/https://example.com/media/abc123"
+ * // Returns: "https://example.com/cdn-cgi/image/width=200,quality=80/media/abc123"
+ *
+ * // With transform URL and an absolute source
+ * getImageUrl("https://cdn.example.com/media/abc123", "https://example.com/cdn-cgi/image", { width: 200 });
+ * // Returns: "https://example.com/cdn-cgi/image/width=200/https://cdn.example.com/media/abc123"
  * ```
  */
 export function getImageUrl(
@@ -70,7 +78,12 @@ export function getImageUrl(
     return originalUrl;
   }
 
-  return `${transformUrl}/${params.join(",")}/${originalUrl}`;
+  const base = transformUrl.replace(/\/+$/, "");
+  const source =
+    originalUrl.startsWith("/") && !originalUrl.startsWith("//")
+      ? originalUrl.slice(1)
+      : originalUrl;
+  return `${base}/${params.join(",")}/${source}`;
 }
 
 /**

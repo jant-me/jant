@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import {
   assertSnapshotMeta,
+  buildMediaProviderSql,
   buildReplaceSql,
   buildSnapshotStorageQuery,
   collectSnapshotObjects,
@@ -21,6 +22,7 @@ import {
   resolveCliSite,
 } from "../../bin/lib/site-selection.js";
 import { resolveDatabaseDialect } from "../../src/db/dialect.js";
+import { getConfiguredStorageDriver } from "../../src/lib/env.js";
 import {
   applyNodeRuntimeEnvDefaults,
   createNodeBindings,
@@ -313,7 +315,16 @@ async function importCanonicalSnapshot(bindings: Bindings) {
           )
         : rawDbSql
       : rewriteLegacySnapshotSql(rawDbSql, targetSite.id);
-    await opened.execute(`${buildReplaceSql(targetSite.id)}\n${dbSql}`);
+    await opened.execute(
+      [
+        buildReplaceSql(targetSite.id),
+        dbSql,
+        buildMediaProviderSql(
+          targetSite.id,
+          getConfiguredStorageDriver(opened.bindings),
+        ),
+      ].join("\n"),
+    );
 
     const keysToDelete = [...currentKeys].filter(
       (key) => !snapshotKeys.has(key),

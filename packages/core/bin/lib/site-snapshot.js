@@ -1032,6 +1032,41 @@ export function buildReplaceSql(siteId) {
   return statements.join("\n");
 }
 
+/** The storage drivers a `media` row can name as its `provider`. */
+const MEDIA_STORAGE_PROVIDERS = ["r2", "s3", "local"];
+
+/**
+ * SQL recording a site's media under the storage an import just wrote it to.
+ *
+ * A snapshot carries each media row's `provider` from the site it was exported
+ * from, but the import uploads every object into the target's own storage. A
+ * row exported on R2 and imported into S3 would still say `r2`, and everything
+ * that reads `provider` as where the bytes live goes wrong: the public URL looks
+ * for `R2_PUBLIC_URL`, replacing the avatar or favicon misses the existing row
+ * and inserts a second one for the same key, and a trashed object is never
+ * purged because the sweep only handles the active driver. Run after the
+ * snapshot's inserts, while every media row of the site is one the snapshot
+ * brought.
+ *
+ * @param {string} siteId - Site whose media was imported
+ * @param {string} provider - Storage driver the import uploaded through
+ * @returns {string} An `UPDATE` statement for the site's media rows
+ * @throws {Error} When `provider` is not one of r2, s3, or local
+ * @example
+ * await execute(
+ *   `${buildReplaceSql(site.id)}\n${dbSql}\n${buildMediaProviderSql(site.id, "s3")}`,
+ * );
+ */
+export function buildMediaProviderSql(siteId, provider) {
+  if (!MEDIA_STORAGE_PROVIDERS.includes(provider)) {
+    throw new Error(
+      `Snapshot import cannot record media under storage driver "${provider}". Expected one of: ${MEDIA_STORAGE_PROVIDERS.join(", ")}.`,
+    );
+  }
+
+  return `UPDATE "media" SET "provider" = '${provider}' WHERE "site_id" = '${escapeSqlString(siteId)}';`;
+}
+
 export function normalizeD1Sql(sql) {
   return sql
     .replace(/^\s*BEGIN(?:\s+TRANSACTION)?\s*;\s*$/gim, "")
