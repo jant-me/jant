@@ -298,40 +298,38 @@ dir = "packages/core"
 run = "node ./bin/jant.js db rehearse --local --fixture src/db/rehearsal-fixtures/demo-current.json --persist-to .wrangler/rehearsal"
 
 # =============================================================================
-# DB — Local Node (SQLite via packages/core/.env.node)
+# DB — Local Node (SQLite or Postgres via packages/core/.env.node)
 # =============================================================================
+# The scripts resolve the database, media, and dev credentials the way
+# `dev-node` does (packages/core/dev/node-dev-site.ts). `[password]` has no
+# default here, so an omitted argument falls through to $DEMO_PASSWORD, then
+# DEMO_PASSWORD in .env.node, then the scripts' built-in default.
 [tasks.db-node-migrate]
 description = "Run migrations for the local Node runtime database (reads .env.node)"
 dir = "packages/core"
 run = "node ./bin/jant.js migrate --node"
 
 [tasks.db-node-clean]
-description = "Delete the local Node runtime database and media storage"
-run = """
-echo "Removing local Node SQLite database and media..."
-rm -rf packages/core/.data packages/core/.media
-"""
+description = "Delete the local Node SQLite database and media storage (reads .env.node)"
+dir = "packages/core"
+run = "node dev/run-script.mjs dev/scripts/clean-node-dev.ts"
 
 [tasks.db-node-bootstrap-shell]
-description = "Ensure the local Node runtime shell (admin, onboarding, default nav, debug creds)"
-usage = 'arg "[password]" default="jant-dev-debug-login"'
-run = """
-echo "Running Node migrations..."
-mise run db-node-migrate
-echo "Bootstrapping local Node auth helpers..."
-mise run dev-auth-bootstrap "$usage_password"
-"""
+description = "Migrate and set up the local Node database (dev account, onboarding, default nav) and write dev credentials to .env.node"
+usage = 'arg "[password]"'
+dir = "packages/core"
+run = 'node dev/run-script.mjs dev/scripts/bootstrap-node-dev.ts "$usage_password"'
 
 [tasks.db-node-load-demo]
 description = "Set up the local Node runtime and import sites/demo-source/canonical/site-export into an empty local database through `jant site import`"
-usage = 'arg "[password]" default="jant-dev-debug-login"'
+usage = 'arg "[password]"'
 dir = "packages/core"
 run = 'node dev/run-script.mjs dev/scripts/import-node-demo-site-export.ts "$usage_password"'
 
 [tasks.db-node-rebuild-demo]
 alias = "local-reset"
 description = "Recreate the local Node SQLite database and media storage, bootstrap the local shell, and load the canonical demo snapshot"
-usage = 'arg "[password]" default="jant-dev-debug-login"'
+usage = 'arg "[password]"'
 dir = "packages/core"
 run = 'node dev/run-script.mjs dev/scripts/reset-node-dev.ts "$usage_password"'
 

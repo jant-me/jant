@@ -1,37 +1,26 @@
 import { serve, type ServerType } from "@hono/node-server";
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
 import { once } from "node:events";
 import { mkdir, stat } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { CLI_API_TOKEN_ENV_VAR } from "../../bin/lib/cli-api-token.js";
-import { getCliSiteResolutionMode } from "../../bin/lib/site-selection.js";
 import { createApp } from "../../src/app.js";
-import { resolveDatabaseDialect } from "../../src/db/dialect.js";
 import {
-  applyNodeRuntimeEnvDefaults,
   createNodeBindings,
   createNodeRequestHandler,
   migrate,
-  resolveDatabasePath,
 } from "../../src/node/request-handler.js";
-import { setUpNodeInstance } from "../../src/runtime/node.js";
 import type { Bindings } from "../../src/types/bindings.js";
 import {
-  describeScriptEnvPath,
-  readScriptEnvFile,
-  resolveScriptEnvPath,
-  writeScriptEnvValues,
-} from "../script-env.js";
-import {
-  DEFAULT_DEV_PASSWORD,
-  DEFAULT_SITE_LANGUAGE,
-  DEFAULT_SITE_NAME,
-  DEV_EMAIL,
-} from "./dev-auth-db.mjs";
+  applyNodeDevCredentials,
+  loadNodeDevEnv,
+  resolveNodeDevTarget,
+  setUpNodeDevSite,
+} from "../node-dev-site.js";
+import { describeScriptEnvPath } from "../script-env.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const coreDir = resolve(__dirname, "../..");
@@ -40,145 +29,7 @@ const canonicalDir = resolve(
   repoRoot,
   "sites/demo-source/canonical/site-export",
 );
-const defaultDataDir = resolve(coreDir, "data");
 const loopbackHost = "127.0.0.1";
-
-function resolvePassword(
-  cliPassword: string | undefined,
-  envFileValues: Record<string, string>,
-) {
-  if (cliPassword) {
-    return cliPassword;
-  }
-
-  const fromProcess = process.env.DEMO_PASSWORD?.trim();
-  if (fromProcess) {
-    return fromProcess;
-  }
-
-  const fromFile = envFileValues.DEMO_PASSWORD?.trim();
-  if (fromFile) {
-    return fromFile;
-  }
-
-  return DEFAULT_DEV_PASSWORD;
-}
-
-function buildRuntimeEnv(
-  envPath: string | null,
-  envFileValues: Record<string, string>,
-  password: string,
-  checkOnly: boolean,
-) {
-  const merged = {
-    ...envFileValues,
-    ...process.env,
-  };
-
-  const authSecret =
-    merged.AUTH_SECRET || randomBytes(32).toString("base64url");
-  const devApiToken =
-    merged.DEV_API_TOKEN || `jnt_dev_${randomBytes(16).toString("hex")}`;
-
-  const nextEnv = {
-    ...merged,
-    AUTH_SECRET: authSecret,
-    DEMO_EMAIL: DEV_EMAIL,
-    DEMO_PASSWORD: password,
-    DEV_API_TOKEN: devApiToken,
-  } as Bindings;
-
-  if (!checkOnly) {
-    writeScriptEnvValues(envPath, {
-      AUTH_SECRET: authSecret,
-      DEV_API_TOKEN: devApiToken,
-      DEMO_EMAIL: DEV_EMAIL,
-      DEMO_PASSWORD: password,
-    });
-  }
-
-  applyNodeRuntimeEnvDefaults(nextEnv, {
-    cwd: coreDir,
-    defaultDataDir,
-  });
-
-  return {
-    devApiToken,
-    env: nextEnv,
-  };
-}
-
-function resolveLocalPath(pathValue: unknown, cwd: string) {
-  if (!pathValue) {
-    return null;
-  }
-
-  const normalized = String(pathValue).trim();
-  if (!normalized) {
-    return null;
-  }
-
-  return isAbsolute(normalized) ? normalized : resolve(cwd, normalized);
-}
-
-function describeDatabaseTarget(env: Bindings) {
-  const databaseUrl = String(env.DATABASE_URL ?? "").trim();
-  const dialect = resolveDatabaseDialect(databaseUrl);
-
-  if (dialect === "sqlite") {
-    return {
-      dialect,
-      target: resolveDatabasePath(databaseUrl, coreDir),
-    };
-  }
-
-  try {
-    const parsed = new URL(databaseUrl);
-    if (parsed.password) {
-      parsed.password = "*****";
-    }
-    return {
-      dialect,
-      target: parsed.toString(),
-    };
-  } catch {
-    return {
-      dialect,
-      target: databaseUrl,
-    };
-  }
-}
-
-function assertLocalImportConfig(env: Bindings) {
-  if (getCliSiteResolutionMode(env) !== "single-site") {
-    throw new Error(
-      "db-node-load-demo only supports single-site local development. Set SITE_RESOLUTION_MODE=single-site for this workflow.",
-    );
-  }
-
-  const databaseUrl = String(env.DATABASE_URL ?? "").trim();
-  const dialect = resolveDatabaseDialect(databaseUrl);
-  if (dialect === "sqlite") {
-    const databasePath = resolveDatabasePath(databaseUrl, coreDir);
-    if (databasePath === ":memory:") {
-      throw new Error(
-        "db-node-load-demo cannot target an in-memory SQLite database.",
-      );
-    }
-  }
-
-  const storageDriver = String(env.STORAGE_DRIVER ?? "").trim();
-  if (storageDriver && storageDriver !== "local") {
-    throw new Error(
-      "db-node-load-demo only supports STORAGE_DRIVER=local or an unset storage driver.",
-    );
-  }
-
-  return {
-    ...describeDatabaseTarget(env),
-    localStoragePath: resolveLocalPath(env.LOCAL_STORAGE_PATH, coreDir),
-  };
-}
 
 async function assertCanonicalSiteExport() {
   const configPath = resolve(canonicalDir, "hugo.toml");
@@ -390,62 +241,49 @@ export default async function main(args: string[]) {
     process.exit(0);
   }
 
-  const envPath = resolveScriptEnvPath();
-  const envFileValues = readScriptEnvFile(envPath);
-  const password = resolvePassword(positionals[0], envFileValues);
-  const checkOnly = values.check ?? false;
-  const { devApiToken, env } = buildRuntimeEnv(
-    envPath,
-    envFileValues,
-    password,
-    checkOnly,
-  );
-  const config = assertLocalImportConfig(env);
+  const devEnv = loadNodeDevEnv();
+  const target = resolveNodeDevTarget(devEnv.env, {
+    task: "db-node-load-demo",
+    localStorage: true,
+  });
 
   await assertCanonicalSiteExport();
 
-  if (checkOnly) {
+  if (values.check) {
     console.log("Node site-export import prerequisites look good.");
-    console.log(`  Env file:       ${describeScriptEnvPath(envPath)}`);
+    console.log(`  Env file:       ${describeScriptEnvPath(devEnv.envPath)}`);
     console.log(`  Canonical dir:  ${canonicalDir}`);
-    console.log(`  Database:       ${config.target}`);
-    console.log(`  Dialect:        ${config.dialect}`);
+    console.log(`  Database:       ${target.database}`);
+    console.log(`  Dialect:        ${target.dialect}`);
     console.log(
-      `  Local storage:  ${config.localStoragePath ?? "(managed by runtime defaults)"}`,
+      `  Local storage:  ${target.localStoragePath ?? "(managed by runtime defaults)"}`,
     );
     process.exit(0);
   }
 
+  const credentials = applyNodeDevCredentials(devEnv, {
+    cliPassword: positionals[0],
+    write: true,
+  });
+
   console.log("Running local Node migrations...");
-  await migrate(env);
+  await migrate(devEnv.env);
 
   // Before setup, so a refused run leaves the database as migrations left it.
-  await assertEmptyImportTarget(env);
+  await assertEmptyImportTarget(devEnv.env);
 
-  if (config.localStoragePath) {
-    await mkdir(config.localStoragePath, { recursive: true });
+  if (target.localStoragePath) {
+    await mkdir(target.localStoragePath, { recursive: true });
   }
 
-  const opened = await openNodeDatabase(env);
-  let setup;
+  const setup = await setUpNodeDevSite(devEnv.env, credentials);
 
-  try {
-    setup = await setUpNodeInstance(opened.bindings, {
-      email: DEV_EMAIL,
-      password,
-      siteName: DEFAULT_SITE_NAME,
-      siteLanguage: DEFAULT_SITE_LANGUAGE,
-    });
-  } finally {
-    await opened.close();
-  }
-
-  const server = await startLoopbackServer(env);
+  const server = await startLoopbackServer(devEnv.env);
   try {
     console.log(
       `Importing canonical demo site-export through ${server.url}...`,
     );
-    await runSiteImport(server.url, devApiToken);
+    await runSiteImport(server.url, credentials.devApiToken);
   } finally {
     await server.close();
   }
@@ -453,8 +291,8 @@ export default async function main(args: string[]) {
   console.log(
     "Canonical demo site-export imported into the local Node runtime.",
   );
-  console.log(`  Env file:      ${describeScriptEnvPath(envPath)}`);
-  console.log(`  Database:      ${config.target}`);
+  console.log(`  Env file:      ${describeScriptEnvPath(devEnv.envPath)}`);
+  console.log(`  Database:      ${target.database}`);
   console.log(`  Canonical dir: ${canonicalDir}`);
   console.log(`  Setup:         ${setup.outcome}`);
 }
