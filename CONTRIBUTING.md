@@ -173,6 +173,11 @@ mise run db-wrangler-migrate       # Apply migrations (local Wrangler/D1) — us
 mise run db-wrangler-load-demo     # Reload the canonical demo snapshot into the current local DB shell
 mise run db-wrangler-rebuild-demo  # Recreate the local Wrangler DB shell and load the canonical demo snapshot
 mise run db-wrangler-clean         # Delete local Wrangler/D1 database (.wrangler) — alias: `clean`
+mise run db-node-migrate           # Apply migrations (local Node database from packages/core/.env.node)
+mise run db-node-bootstrap-shell   # Set up an empty local Node site with the dev account and credentials
+mise run db-node-load-demo         # Import the canonical demo site export into an empty local Node database
+mise run db-node-rebuild-demo      # Recreate the local Node SQLite database and load the canonical demo snapshot
+mise run db-node-clean             # Delete the local Node SQLite database and media
 ```
 
 ### Auth Debugging
@@ -451,7 +456,15 @@ The local development workflow is intentionally simple:
 
    This migrates the configured local Node database, sets up the local site, and imports `sites/demo-source/canonical/site-export/` with `jant site import`, through a server on `127.0.0.1` that runs only for the import. It is intended for single-site local PostgreSQL or SQLite development with local filesystem storage, and it refuses to run against a non-empty content database.
 
-4. **Reload just the canonical demo snapshot** into the current local shell:
+4. **Set up an empty local Node site** when you want the dev account without demo content:
+
+   ```bash
+   mise run db-node-bootstrap-shell
+   ```
+
+   This migrates the configured local Node database and sets up its site the way the `/setup` screens do: the dev account, default navigation, and completed onboarding. It adds no content and works with SQLite and PostgreSQL. A site that already finished setup is left unchanged; if the printed credentials do not sign in to it, the task says which part differs.
+
+5. **Reload just the canonical demo snapshot** into the current local shell:
 
    ```bash
    mise run db-wrangler-load-demo
@@ -493,11 +506,11 @@ Those three values are the whole connection string. Put it in
 DATABASE_URL=postgres://jant:jant@localhost:5432/jant_dev
 ```
 
-Then migrate, and optionally load the canonical demo site:
+Then set up the site with one of these. Both run the migrations first:
 
 ```bash
-mise run db-node-migrate
-mise run db-node-load-demo
+mise run db-node-bootstrap-shell   # An empty site with the dev account
+mise run db-node-load-demo         # The same, with the canonical demo site imported
 ```
 
 Already running Postgres? Jant never creates the database itself — `DATABASE_URL` has
@@ -531,7 +544,7 @@ mise run check-pg-smoke
 
 ```bash
 mise run db-wrangler-clean   # Delete local Wrangler/D1 database only (alias: `clean`)
-mise run db-node-clean       # Delete local Node SQLite database and media storage
+mise run db-node-clean       # Delete local Node SQLite database and media storage (paths from packages/core/.env.node)
 mise run clean-reset         # Nuclear reset — everything (node_modules, dist, db, cache, lockfile)
 ```
 

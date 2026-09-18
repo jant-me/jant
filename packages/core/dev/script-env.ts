@@ -76,6 +76,7 @@ export function writeScriptEnvValues(
   }
 
   let lines = readLines(envPath);
+  const appended: string[] = [];
   for (const [key, value] of Object.entries(values)) {
     const prefix = `${key}=`;
     let updated = false;
@@ -88,18 +89,16 @@ export function writeScriptEnvValues(
     });
 
     if (!updated) {
-      if (lines.length > 0 && lines.at(-1) !== "") {
-        lines.push("");
-      }
-      lines.push(`${key}=${value}`);
+      appended.push(`${key}=${value}`);
     }
   }
 
-  writeFileSync(
-    envPath,
-    `${lines.join("\n").replace(/\n+$/u, "").trimEnd()}\n`,
-    "utf8",
-  );
+  // New keys go in one block, a blank line below the file's own lines.
+  const existing = lines.join("\n").replace(/\n+$/u, "").trimEnd();
+  const content = [existing, appended.join("\n")]
+    .filter((block) => block !== "")
+    .join("\n\n");
+  writeFileSync(envPath, `${content}\n`, "utf8");
 }
 
 /**

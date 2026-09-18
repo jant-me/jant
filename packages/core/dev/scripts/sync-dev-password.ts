@@ -1,24 +1,10 @@
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { and, asc, eq } from "drizzle-orm";
 import { hashPassword } from "../../src/lib/password.js";
 import { now } from "../../src/lib/time.js";
-import {
-  applyNodeRuntimeEnvDefaults,
-  createNodeBindings,
-} from "../../src/node/request-handler.js";
-import type { Bindings } from "../../src/types/bindings.js";
-import {
-  describeScriptEnvPath,
-  readScriptEnvFile,
-  resolveScriptEnvPath,
-} from "../script-env.js";
-import { DEFAULT_DEV_PASSWORD, DEV_EMAIL } from "./dev-auth-db.mjs";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const coreDir = resolve(__dirname, "../..");
-const defaultDataDir = resolve(coreDir, "data");
+import { createNodeBindings } from "../../src/node/request-handler.js";
+import { loadNodeDevEnv, resolveNodeDevPassword } from "../node-dev-site.js";
+import { describeScriptEnvPath } from "../script-env.js";
 
 function printHelp() {
   console.log(
@@ -50,27 +36,10 @@ export default async function main(args: string[]) {
     return;
   }
 
-  const envPath = resolveScriptEnvPath();
-  const envFileValues = readScriptEnvFile(envPath);
-  const password =
-    positionals[0]?.trim() ||
-    process.env.DEMO_PASSWORD?.trim() ||
-    envFileValues.DEMO_PASSWORD?.trim() ||
-    DEFAULT_DEV_PASSWORD;
+  const devEnv = loadNodeDevEnv();
+  const password = resolveNodeDevPassword(devEnv, positionals[0]);
 
-  const env = {
-    ...envFileValues,
-    ...process.env,
-    DEMO_EMAIL: process.env.DEMO_EMAIL || envFileValues.DEMO_EMAIL || DEV_EMAIL,
-    DEMO_PASSWORD: password,
-  } as Bindings;
-
-  applyNodeRuntimeEnvDefaults(env, {
-    cwd: coreDir,
-    defaultDataDir,
-  });
-
-  const { bindings, close } = await createNodeBindings(env);
+  const { bindings, close } = await createNodeBindings(devEnv.env);
   try {
     const nodeDatabase = bindings.NODE_DATABASE;
     if (!nodeDatabase) {
@@ -99,7 +68,7 @@ export default async function main(args: string[]) {
     if (!target) {
       console.error("No credential user found in the local Node database.");
       console.error(
-        "Run `mise run db-node-rebuild-demo` first to bootstrap an admin.",
+        "Run `mise run db-node-bootstrap-shell` first to set up the dev account.",
       );
       process.exit(1);
     }
@@ -113,7 +82,7 @@ export default async function main(args: string[]) {
 
     console.log("");
     console.log("Local Node admin password synced.");
-    console.log(`  Env file: ${describeScriptEnvPath(envPath)}`);
+    console.log(`  Env file: ${describeScriptEnvPath(devEnv.envPath)}`);
     console.log(`  Email:    ${target.email}`);
     console.log(`  Password: ${password}`);
   } finally {

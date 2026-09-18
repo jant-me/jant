@@ -129,6 +129,8 @@ describe("dev scripts", () => {
 
     expect(invocations.map(({ script }) => script)).toEqual(
       expect.arrayContaining([
+        "dev/scripts/bootstrap-node-dev.ts",
+        "dev/scripts/clean-node-dev.ts",
         "dev/scripts/reset-node-dev.ts",
         "dev/scripts/import-node-demo-site-export.ts",
       ]),
