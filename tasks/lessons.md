@@ -1231,3 +1231,13 @@ btn-outline"` compiles, passes every test, and only shows up as a button whose
   tenancy boundary. The same shape applies to any per-account external
   resource: one webhook per repository, one bot per workspace, one domain per
   zone.
+- A label the browser finishes must carry its placeholder as a value.
+  `i18n._(msg({ message: "Showing {shown} of {total}" }))` with no `values`
+  renders `Showing  of ` — Lingui substitutes a missing value with an empty
+  string, so a server-serialized label the client later fills with
+  `.replace("{shown}", …)` arrives with nothing left to replace. It compiles,
+  reads fine in the source, and only shows up on screen as a sentence with a
+  hole in it. Either interpolate server-side when the value is known there
+  (`{ name: suggestedRepoName }`), or pass the placeholder as its own value
+  (`keepForClient("shown", "total")` in `routes/dash/settings.tsx`) so the
+  token survives into the JSON.

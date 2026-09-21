@@ -1683,6 +1683,11 @@ msgstr "Muted red-brown background, earthy and warm."
 msgid "My Collection"
 msgstr "My Collection"
 
+#. @context: GitHub sync picker — hint under the create-on-github entry. Placeholder {name} is the suggested repo name.
+#: src/routes/dash/settings.tsx
+msgid "Name prefilled as {name}. The list refreshes when you return."
+msgstr "Name prefilled as {name}. The list refreshes when you return."
+
 #. @context: Settings item description for general
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Name, visibility, feeds, and time zone"
@@ -3012,11 +3017,6 @@ msgstr "Warm terracotta"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Warm-neutral and easy for long reading."
 msgstr "Warm-neutral and easy for long reading."
-
-#. @context: GitHub sync picker — hint under the create-on-github entry. Placeholder {name} is the suggested repo name.
-#: src/routes/dash/settings.tsx
-msgid "We'll prefill the name {name}. The list refreshes on return."
-msgstr "We'll prefill the name {name}. The list refreshes on return."
 
 #. @context: Setup page welcome heading
 #: src/routes/auth/setup.tsx

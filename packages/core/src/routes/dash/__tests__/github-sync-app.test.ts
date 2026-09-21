@@ -169,6 +169,31 @@ describe("GitHub App connect flow", () => {
     });
   });
 
+  describe("the labels the picker is handed", () => {
+    async function renderPicker() {
+      const { app, sqlite } = createGitHubApp();
+      insertSiblingSiteInstallation(sqlite);
+      const res = await app.request("/settings/github-sync/app/install");
+      expect(res.status).toBe(200);
+      return await res.text();
+    }
+
+    it("fills in the suggested repository name", async () => {
+      // `i18n._()` renders a placeholder it has no value for as an empty
+      // string, which left the hint reading "Name prefilled as ."
+      expect(await renderPicker()).toMatch(
+        /Name prefilled as [a-z0-9-]+-jant-sync\./,
+      );
+    });
+
+    it("keeps the placeholders the component fills in itself", async () => {
+      const html = await renderPicker();
+
+      expect(html).toContain("Showing {shown} of {total}");
+      expect(html).toContain("Type {repo} to confirm");
+    });
+  });
+
   describe("GET /settings/github-sync/app/installations", () => {
     it("lists the account the author authorized on another of their sites", async () => {
       const { app, sqlite } = createGitHubApp();

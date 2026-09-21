@@ -2192,8 +2192,8 @@ settingsRoutes.get("/github-sync/app/install", async (c) => {
     if (existing.length > 0) {
       const navData = await getNavigationData(c);
       const base = publicPath(c, "/settings/github-sync");
-      const labels = buildRepoPickerLabels(c);
       const suggestedRepoName = suggestSyncRepoName(c.var.appConfig.siteUrl);
+      const labels = buildRepoPickerLabels(c, suggestedRepoName);
       return renderPublicPage(c, {
         title: buildPageTitle(
           "GitHub Sync — Pick Repository",
@@ -2326,8 +2326,8 @@ settingsRoutes.get("/github-sync/app/callback", async (c) => {
 
   const navData = await getNavigationData(c);
   const base = publicPath(c, "/settings/github-sync");
-  const labels = buildRepoPickerLabels(c);
   const suggestedRepoName = suggestSyncRepoName(c.var.appConfig.siteUrl);
+  const labels = buildRepoPickerLabels(c, suggestedRepoName);
 
   return renderPublicPage(c, {
     title: buildPageTitle("GitHub Sync — Pick Repository", navData.siteName),
@@ -2360,7 +2360,37 @@ settingsRoutes.get("/github-sync/app/callback", async (c) => {
   });
 });
 
-function buildRepoPickerLabels(c: Context<Env>): string {
+/**
+ * Values that keep a placeholder literal for the client to fill in.
+ *
+ * `i18n._()` renders a placeholder it has no value for as an empty string, so
+ * a label whose value only exists in the browser — a repo count, the picked
+ * repo — must be formatted with the placeholder's own token as its value.
+ * `{repo}` then survives into the serialized labels and the component's
+ * `.replace("{repo}", …)` finds it.
+ *
+ * @param names - Placeholder names the client interpolates.
+ * @returns A values object mapping each name to its own `{name}` token.
+ * @example
+ * i18n._(msg({ message: "Type {repo} to confirm" }), keepForClient("repo"));
+ * // "Type {repo} to confirm"
+ */
+function keepForClient(...names: string[]): Record<string, string> {
+  return Object.fromEntries(names.map((name) => [name, `{${name}}`]));
+}
+
+/**
+ * Serialize the picker's strings for the client component.
+ *
+ * @param c - Request context, for the active locale.
+ * @param suggestedRepoName - Repository name prefilled on github.com/new;
+ *   interpolated here because the client cannot format ICU messages.
+ * @returns The labels as a JSON string for the `labels` attribute.
+ */
+function buildRepoPickerLabels(
+  c: Context<Env>,
+  suggestedRepoName: string,
+): string {
   const i18n = getI18n(c);
   return JSON.stringify({
     pageTitle: i18n._(
@@ -2447,6 +2477,7 @@ function buildRepoPickerLabels(c: Context<Env>): string {
         comment:
           "@context: GitHub sync picker — paginated repo count hint. Placeholders {shown} and {total} are integers.",
       }),
+      keepForClient("shown", "total"),
     ),
     repoSearchHint: i18n._(
       msg({
@@ -2471,10 +2502,12 @@ function buildRepoPickerLabels(c: Context<Env>): string {
     ),
     createOnGitHubHint: i18n._(
       msg({
-        message: "We'll prefill the name {name}. The list refreshes on return.",
+        message:
+          "Name prefilled as {name}. The list refreshes when you return.",
         comment:
           "@context: GitHub sync picker — hint under the create-on-github entry. Placeholder {name} is the suggested repo name.",
       }),
+      { name: suggestedRepoName },
     ),
     classifyLoading: i18n._(
       msg({
@@ -2504,6 +2537,7 @@ function buildRepoPickerLabels(c: Context<Env>): string {
         comment:
           "@context: GitHub sync picker — blocking message when marker belongs to another site. Placeholder {host} is the other site's host.",
       }),
+      keepForClient("host"),
     ),
     classificationForeign: i18n._(
       msg({
@@ -2526,6 +2560,7 @@ function buildRepoPickerLabels(c: Context<Env>): string {
         comment:
           "@context: GitHub sync picker — explanatory body for foreign-repo confirmation. Placeholder {repo} is the owner/repo slug.",
       }),
+      keepForClient("repo"),
     ),
     confirmInputLabel: i18n._(
       msg({
@@ -2533,6 +2568,7 @@ function buildRepoPickerLabels(c: Context<Env>): string {
         comment:
           "@context: GitHub sync picker — label above the typed-confirmation input",
       }),
+      keepForClient("repo"),
     ),
     confirmInputPlaceholder: i18n._(
       msg({

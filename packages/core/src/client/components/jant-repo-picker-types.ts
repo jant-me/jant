@@ -1,6 +1,11 @@
 /**
  * Types shared between the server-side template and the
  * `jant-repo-picker` Lit component.
+ *
+ * Labels arrive translated and already formatted. A `{name}` left in one is
+ * deliberate: the value only exists in the browser, so the server keeps the
+ * token literal (see `keepForClient` in the settings route) and the component
+ * replaces it. Anything the server already knows is interpolated there.
  */
 
 export interface RepoPickerLabels {
@@ -20,7 +25,7 @@ export interface RepoPickerLabels {
   repoSearchHint: string;
   refreshRepos: string; // aria-label + tooltip for the refresh button
   createOnGitHub: string; // primary call-to-action text
-  createOnGitHubHint: string; // "We'll prefill the name {name} for you"
+  createOnGitHubHint: string; // repo name already interpolated
   classifyLoading: string;
   classificationEmpty: string;
   classificationOwned: string;

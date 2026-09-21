@@ -1683,6 +1683,11 @@ msgstr "低饱和的红棕底，温暖、有泥土感。"
 msgid "My Collection"
 msgstr "我的合集"
 
+#. @context: GitHub sync picker — hint under the create-on-github entry. Placeholder {name} is the suggested repo name.
+#: src/routes/dash/settings.tsx
+msgid "Name prefilled as {name}. The list refreshes when you return."
+msgstr "名称预填为 {name}。返回后列表会刷新。"
+
 #. @context: Settings item description for general
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Name, visibility, feeds, and time zone"
@@ -3012,11 +3017,6 @@ msgstr "暖陶土色"
 #: src/ui/dash/appearance/ColorThemeContent.tsx
 msgid "Warm-neutral and easy for long reading."
 msgstr "暖中性，适合长读。"
-
-#. @context: GitHub sync picker — hint under the create-on-github entry. Placeholder {name} is the suggested repo name.
-#: src/routes/dash/settings.tsx
-msgid "We'll prefill the name {name}. The list refreshes on return."
-msgstr "我们会预先填充名称 {name}。返回时列表会刷新。"
 
 #. @context: Setup page welcome heading
 #: src/routes/auth/setup.tsx

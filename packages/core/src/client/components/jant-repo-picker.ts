@@ -557,7 +557,7 @@ export class JantRepoPicker extends LitElement {
               <li>
                 <button
                   type="button"
-                  class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                  class="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
                   @click=${() => this.#selectOwner(inst)}
                   role="option"
                   aria-selected=${
@@ -692,7 +692,7 @@ export class JantRepoPicker extends LitElement {
                       <li>
                         <button
                           type="button"
-                          class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                          class="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
                           @click=${() => this.#selectRepo(r)}
                           role="option"
                           aria-selected=${
@@ -717,7 +717,7 @@ export class JantRepoPicker extends LitElement {
         <div class="border-t p-2">
           <button
             type="button"
-            class="flex w-full items-start gap-2 px-2 py-2 text-left text-sm text-primary hover:bg-muted rounded-md"
+            class="flex w-full cursor-pointer items-start gap-2 rounded-md px-2 py-2 text-left text-sm text-primary hover:bg-muted"
             @click=${() => this.#openCreateOnGitHub()}
           >
             <span class="flex flex-col">
@@ -725,10 +725,7 @@ export class JantRepoPicker extends LitElement {
               ${
                 this.createRepoNameHint
                   ? html`<span class="text-xs text-muted-foreground">
-                      ${this.labels.createOnGitHubHint.replace(
-                        "{name}",
-                        this.createRepoNameHint,
-                      )}
+                      ${this.labels.createOnGitHubHint}
                     </span>`
                   : nothing
               }
