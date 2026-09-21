@@ -1802,11 +1802,18 @@ export function deriveWorkerName(
  * dashboard's default deploy command (`npx wrangler deploy`) fails on a repo
  * that has no Worker name to deploy under.
  *
+ * `build.command` is here because nothing else runs Hugo. Workers Builds
+ * detects frameworks from a `package.json`, which a Hugo site does not have,
+ * so importing this repository leaves the build command empty and the deploy
+ * fails on a `public/` that was never generated. Wrangler runs a custom build
+ * before deploying, assets-only Workers included, which makes
+ * `npx wrangler deploy` self-sufficient — on Cloudflare's image, on any CI,
+ * and in a local checkout. Cloudflare's image ships Hugo extended, so the
+ * command needs no install step; anyone who does fill in a dashboard build
+ * command should leave it empty here to keep Hugo from running twice.
+ *
  * Deliberately absent:
  * - `main`: a site with only static assets is a valid assets-only Worker.
- * - `build.command`: Cloudflare already detects `hugo --gc --minify`, and
- *   setting it here would force the user to clear the dashboard's build
- *   command to stop Hugo from running twice.
  * - `not_found_handling`: the theme emits no `404.html` to point it at.
  *
  * @param config - The exported site's configuration.
@@ -1837,6 +1844,12 @@ function buildWranglerConfig(
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": ${JSON.stringify(name)},
   "compatibility_date": ${JSON.stringify(compatibilityDate)},
+  // Wrangler runs this before it uploads, so "npx wrangler deploy" builds the
+  // site first. Leave the build command in the Cloudflare dashboard empty, or
+  // Hugo runs twice.
+  "build": {
+    "command": "hugo --gc --minify"
+  },
   "assets": {
     "directory": "./public"
   }
@@ -2081,13 +2094,15 @@ The output goes to the \`public/\` directory. Upload it to any static host (Netl
 
 ## Deploy to Cloudflare Workers
 
-\`wrangler.jsonc\` at the root is the deploy config: it names the Worker and points it at \`public/\`. Connect this repository to Cloudflare Workers Builds and the defaults Cloudflare fills in work as they are:
+\`wrangler.jsonc\` at the root is the deploy config: it names the Worker, runs \`hugo --gc --minify\`, and points the upload at \`public/\`. Connect this repository to Cloudflare Workers Builds and leave the commands Cloudflare offers as they are:
 
 | Field           | Value                          |
 | --------------- | ------------------------------ |
-| Build command   | \`hugo --gc --minify\`           |
+| Build command   | leave empty                    |
 | Deploy command  | \`npx wrangler deploy\`          |
 | Version command | \`npx wrangler versions upload\` |
+
+The build belongs to \`wrangler.jsonc\` rather than to that field: Workers Builds reads a \`package.json\` to detect a framework, a Hugo site has none, and an empty build command deploys a \`public/\` that was never built. Filling the field in as well makes Hugo run twice.
 
 Check one thing before the first deploy: \`name\` in \`wrangler.jsonc\` has to match the Worker's name in the Cloudflare dashboard. Workers Builds fails the build when they differ, and a deploy run by hand under another name goes to another Worker. A Worker imported from a repository is named after the repository, so an export pushed by GitHub Sync uses the repository name. A downloaded export has no repository and uses the name GitHub Sync suggests when it creates one for this site. If the Worker is named something else, change \`name\` to match — Cloudflare names each build token \`<worker-name> build token\`, so the token list is one place to read it.
 

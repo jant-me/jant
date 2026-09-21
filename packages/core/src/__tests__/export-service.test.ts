@@ -1465,7 +1465,7 @@ describe("deriveWorkerName", () => {
 });
 
 describe("wrangler.jsonc", () => {
-  it("declares the Worker name, a compatibility date, and public/ as the asset directory", async () => {
+  it("declares the Worker name, a compatibility date, the Hugo build, and public/ as the asset directory", async () => {
     const service = createExportService(
       buildServices({ posts: [] }),
       makeSiteConfig({ siteUrl: "https://www.owenyoung.com" }),
@@ -1479,12 +1479,13 @@ describe("wrangler.jsonc", () => {
     expect(text).toContain('"name": "owenyoung-blog"');
     expect(text).toMatch(/"compatibility_date": "\d{4}-\d{2}-\d{2}"/);
     expect(text).toContain('"directory": "./public"');
-    // Workers Builds has no "build output directory" field, so `public/` is
-    // only declarable here. An assets-only Worker needs no script, and
-    // setting `build.command` would make Cloudflare's own detected Hugo
-    // build run a second time.
+    // Nothing else runs Hugo: Workers Builds detects a framework from a
+    // `package.json`, a Hugo site has none, so the build command it offers
+    // on connect is empty and the deploy uploads a `public/` that was never
+    // built. Wrangler runs this before uploading.
+    expect(text).toContain('"command": "hugo --gc --minify"');
+    // An assets-only Worker needs no script.
     expect(text).not.toContain('"main"');
-    expect(text).not.toContain('"build"');
     // The theme emits no 404.html to point it at.
     expect(text).not.toContain("not_found_handling");
   });

@@ -129,7 +129,7 @@ static/                   用户自有静态文件 + 下载的媒体
 
 ### 部署到 Cloudflare Workers
 
-`wrangler.jsonc` 指定 Worker 名称，并把产物目录指向 `public/`。Workers Builds 没有 build output directory 这个字段（那是 Pages 才有的），产物目录只能在这个文件里声明。仓库带上它之后，Cloudflare 连接时填好的默认值都不用改：构建用 `hugo --gc --minify`，部署用 `npx wrangler deploy`，预览版本用 `npx wrangler versions upload`。`HUGO_VERSION` 也不用设，主题在 Cloudflare 构建镜像自带的 Hugo 上就能构建。
+`wrangler.jsonc` 指定 Worker 名称，执行 `hugo --gc --minify`，并把上传目录指向 `public/`。Workers Builds 没有 build output directory 这个字段（那是 Pages 才有的），产物目录只能在这个文件里声明；构建命令写在这里也是同一个原因：Workers Builds 靠 `package.json` 识别框架，Hugo 站点没有这个文件，连接时给出的构建命令是空的，直接部署会上传一个根本没生成过的 `public/`。Wrangler 会在上传前执行配置里的构建，所以部署只需要 `npx wrangler deploy` 一条命令。Cloudflare 那个构建命令留空——两边都填，Hugo 会跑两遍。`HUGO_VERSION` 不用设，主题在 Cloudflare 构建镜像自带的 Hugo 上就能构建。
 
 `name` 必须和 Cloudflare 控制台里的 Worker 名称一致。Workers Builds 发现两者不一致时构建会失败；手动以别的名字部署，则会部署到另一个 Worker。从仓库导入的 Worker 以仓库名命名，所以 [GitHub Sync](github-sync.md) 推送的仓库用仓库名（`My_Blog` 得到 `my-blog`）。下载的导出没有仓库，改用 GitHub Sync 为这个站点建仓库时预填的名字（`www.example.com` 得到 `example-jant-sync`）。Worker 叫别的名字时，把 `name` 改成一致即可。Cloudflare 生成的构建 token 名为 `<worker 名> build token`，可以据此确认名称。
 
