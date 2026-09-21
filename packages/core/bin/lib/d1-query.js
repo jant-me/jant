@@ -1,8 +1,22 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { runLocalWrangler } from "./wrangler-cli.js";
 import { extractWranglerJson } from "./wrangler-json.js";
 
 const DEFAULT_RETRY_ATTEMPTS = 4;
 const DEFAULT_RETRY_DELAY_MS = 500;
+
+/**
+ * Byte ceiling for a statement batch sent as one `--command=` argument.
+ *
+ * Linux caps a single argv entry at 128 KiB (`MAX_ARG_STRLEN`) and fails the
+ * spawn with `E2BIG`; macOS has no per-argument cap, so an oversized batch
+ * works on a developer's Mac and dies in CI and in the demo rebuild, which is
+ * exactly how it first surfaced — a snapshot import whose `db.sql` had grown
+ * past the limit. Anything at or above this goes through `--file` instead.
+ */
+const MAX_INLINE_COMMAND_BYTES = 96 * 1024;
 
 function getD1Flag(runtime) {
   return runtime === "d1-remote" ? "--remote" : "--local";
@@ -128,7 +142,38 @@ function runWrangler(args, options = {}) {
   }
 }
 
+/**
+ * Whether a statement batch is too large to travel as one CLI argument.
+ *
+ * @param {string} sql - SQL batch about to be sent to Wrangler
+ * @returns {boolean} true when it has to go through a file instead
+ * @example
+ * ```js
+ * exceedsInlineCommandLimit("SELECT 1;"); // false
+ * ```
+ */
+export function exceedsInlineCommandLimit(sql) {
+  return Buffer.byteLength(sql, "utf8") >= MAX_INLINE_COMMAND_BYTES;
+}
+
+function withTemporarySqlFile(sql, run) {
+  const directory = mkdtempSync(join(tmpdir(), "jant-d1-"));
+  try {
+    const filePath = join(directory, "batch.sql");
+    writeFileSync(filePath, sql);
+    return run(filePath);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
 export function executeD1(sql, runtime, options = {}) {
+  if (exceedsInlineCommandLimit(sql)) {
+    return withTemporarySqlFile(sql, (filePath) =>
+      executeD1File(filePath, runtime, options),
+    );
+  }
+
   const args = appendWranglerContext(
     [
       "d1",

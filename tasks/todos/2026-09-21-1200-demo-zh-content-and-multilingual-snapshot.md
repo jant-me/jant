@@ -65,6 +65,26 @@ Re-exporting the canonical snapshot alone would not have fixed it.
       Node/Postgres bootstrapping; refreshing it adds another copy of the images
       to the repo.
 
+## Follow-up: the snapshot outgrew a CLI argument
+
+CI failed on the commit that added the Chinese side, and the demo reset
+therefore fell back to the last green commit — which is why demo.jant.me did
+not change.
+
+`jant site snapshot import` sends the whole statement batch to Wrangler as one
+`--command=` argument. Linux caps a single argv entry at 128 KiB
+(`MAX_ARG_STRLEN`) and fails the spawn with `E2BIG`; macOS has no such cap, so
+the 190 KB `db.sql` imported fine locally and died in CI.
+
+- [x] `executeD1` routes any batch at or above 96 KiB through a temp file and
+      the existing `executeD1File` (`--file`), so every caller — snapshot
+      import, migrate, backfills — is fixed, not just this one.
+- [x] `src/db/__tests__/d1-query.test.ts` covers both branches, asserts the
+      temp file holds the batch and is cleaned up, and pins the threshold below
+      the Linux cap.
+- [x] `src/db/__tests__/demo-canonical-snapshot.test.ts` now imports the real
+      190 KB snapshot through the file path against a local D1.
+
 ## Noted, not done here
 
 - The public reader UI catalogs for Chinese are ~512/518 untranslated
