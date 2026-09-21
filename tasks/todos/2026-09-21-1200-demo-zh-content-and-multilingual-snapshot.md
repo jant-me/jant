@@ -26,19 +26,30 @@ Re-exporting the canonical snapshot alone would not have fixed it.
 - [x] `docs/export-and-import.md` + `docs/zh-Hans/export-and-import.md`: say the
       language setup travels, and that code injection and integration bindings
       don't.
-- [x] 19 `zh-Hans` posts published on demo-source, adapted from
-      www.owenyoung.com: 8 plain notes, 3 notes with images, 3 titled notes,
-      6 quotes, 5 links, 4 featured, 8 images across 6 posts.
+- [x] 20 `zh-Hans` thread roots on demo-source, adapted from
+      www.owenyoung.com: 8 plain notes, 2 notes with media, 3 titled notes,
+      7 quotes (one of them a two-post Thread), 5 links, 3 featured.
 - [x] Translation groups run from the Chinese side: English versions of three
       Chinese posts (a note, a quote, a link), linked with `translationOfId`.
       The first pass had it backwards — Chinese versions of the demo's own
       English posts — and those three were deleted.
-- [x] Images re-encoded to ≤1000px webp (628 KB total) and uploaded with
-      Chinese alt text.
-- [x] `mise run demo-source-export-canonical` — snapshot now carries
-      `MULTILINGUAL_ENABLED = true`, `ADDITIONAL_LANGUAGES = zh-Hans`, 65 posts
-      (30 `en` + 19 `zh-Hans` thread roots, plus replies and drafts).
-- [x] `mise run check-tests` (4472 passed), `mise run check-lint`,
+- [x] Media: 20 content images, 4 videos with poster frames. Videos re-encoded
+      to ≤960px H.264 (CRF 31, mono 64k AAC): the storefront post carries
+      7 photos + 3 videos, the Bluetooth remote post a video + a photo.
+- [x] Timeline re-dated so no two posts of the same format sit next to each
+      other in the Chinese view (`N Q N L N Q L Q N L N Q N L Q N L N Q N`),
+      and no two links are adjacent in the English view either. Ordering is
+      `publishedAt` — there is no separate position to set, and a Thread is
+      placed by its root, so moving one re-dates the reply too.
+- [x] The compounding Thread sits in the second slot, dated so it stays there
+      whether a view orders by `publishedAt` or by `lastActivityAt`.
+- [x] Images re-encoded to ≤1000px webp and uploaded with Chinese alt text.
+      Snapshot `objects/` is 30 files, 2.2 MB in total.
+- [x] `mise run demo-source-export-canonical` — snapshot carries
+      `MULTILINGUAL_ENABLED = true`, `ADDITIONAL_LANGUAGES = zh-Hans` and
+      `SITE_NAME = 'Jant Demo'`, with 67 posts (30 `en` + 20 `zh-Hans` thread
+      roots, plus replies) and 26 media rows.
+- [x] `mise run check-tests` (4473 passed), `mise run check-lint`,
       `mise run check-copy`.
 - [x] Verified live: `/zh-hans`, `/zh-hans/collections`, `/zh-hans/archive`,
       "Also available in" in both directions on the three translation groups,
@@ -46,9 +57,9 @@ Re-exporting the canonical snapshot alone would not have fixed it.
 
 ## Left
 
-- [ ] Commit `sites/demo-source/canonical/snapshot/` and the code change, then
-      let the nightly `reset-demo.yml` run (or `mise run demo-rebuild` by hand)
-      restore demo.jant.me as a multilingual site.
+- [ ] Commit the re-exported `sites/demo-source/canonical/snapshot/`. The
+      nightly `reset-demo.yml` run (or `mise run demo-rebuild` by hand) then
+      restores demo.jant.me as a multilingual site named Jant Demo.
 - [ ] Decide whether to refresh `sites/demo-source/canonical/site-export/`.
       It is a separate HTTP export used for `jant site import` testing and local
       Node/Postgres bootstrapping; refreshing it adds another copy of the images
@@ -62,6 +73,12 @@ Re-exporting the canonical snapshot alone would not have fixed it.
 - `media.listOrphanedMediaIds` is now dead code: `uploads.cleanupExpired`
   hardcodes `deletedOrphanMedia: 0` because body-embedded media has no
   `post_id`. Worth deleting or wiring up deliberately.
+- The author deleted the concert and Anji posts from demo-source. Their
+  media went with them (deleting a post hard-deletes its media), so the demo
+  no longer has an audio attachment anywhere — video is still covered by the
+  storefront and Bluetooth remote posts.
+- The Bluetooth remote link keeps its `e.tb.cn` short URL but drops the `tk=`
+  affiliate parameter. Restore it if the demo should carry it.
 - The two Toastmasters photos from the source post were left out on purpose:
   a printed agenda with a club address and QR codes, and a group illustration
   of identifiable people at a named club. Not material for a public demo.
