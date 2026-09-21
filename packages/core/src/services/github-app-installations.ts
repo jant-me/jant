@@ -9,6 +9,15 @@
  * Routes call these methods instead of touching the settings table to
  * keep the model relational (one entry per (installation_id, site_id)
  * pair) instead of serialising a JSON list into a single settings row.
+ *
+ * Two scopes matter and they are not interchangeable. A *site* scope
+ * answers "which accounts is this blog syncing through". A *user* scope
+ * answers "which accounts has this person already authorized anywhere",
+ * which is what the connect flow needs: a GitHub App installs once per
+ * GitHub account, so someone who connected their first site can never
+ * install it a second time — GitHub sends them to the installation's
+ * Configure page and never calls back. Their other sites have to be able
+ * to reuse that installation without leaving Jant.
  */
 
 import { and, eq, inArray } from "drizzle-orm";
@@ -35,11 +44,56 @@ export interface StoredGitHubAppInstallation {
   addedAt: number;
 }
 
+/**
+ * An installation as seen by one person rather than by one site: the
+ * same installation may back several of their sites, so the site id
+ * drops out and `addedAt` carries the most recent binding.
+ */
+export interface VisibleGitHubAppInstallation {
+  installationId: string;
+  account: GitHubInstallationAccount;
+  /** Unix seconds — most recent binding of this installation to any of the user's sites. */
+  addedAt: number;
+}
+
 export interface GitHubAppInstallationsService {
   /** Installations this site has authorized, newest-first by `addedAt`. */
   listInstallationsForSite(
     siteId: string,
   ): Promise<StoredGitHubAppInstallation[]>;
+  /**
+   * Installations authorized on any site this user is a member of,
+   * deduplicated by installation and newest-first by `addedAt`.
+   *
+   * This is the set the connect flow may offer and act on: membership is
+   * the tenancy boundary, so one person's sites share their GitHub
+   * accounts while other tenants' installations stay invisible.
+   */
+  listInstallationsForUser(
+    userId: string,
+  ): Promise<VisibleGitHubAppInstallation[]>;
+  /**
+   * One installation from `listInstallationsForUser`, or `null` when the
+   * user has no site bound to it. Routes use this to authorize an
+   * `installationId` that arrived in a request.
+   */
+  findInstallationForUser(
+    installationId: string,
+    userId: string,
+  ): Promise<VisibleGitHubAppInstallation | null>;
+  /**
+   * Installations the user's sites are *actively syncing through*, read
+   * from each site's settings rather than from the junction table.
+   *
+   * The two can disagree: settings are written when a site connects,
+   * the binding when it was installed, and a site that connected while
+   * the binding write failed keeps syncing with nothing to show for it.
+   * Callers use this to rebuild the missing row — they have to fetch the
+   * account from GitHub, which is why this returns ids and not accounts.
+   */
+  listSyncingInstallationsForUser(
+    userId: string,
+  ): Promise<Array<{ siteId: string; installationId: string }>>;
   /** Site ids that share the given installation. */
   listSitesForInstallation(installationId: string): Promise<string[]>;
   /**
@@ -56,6 +110,19 @@ export interface GitHubAppInstallationsService {
   ): Promise<void>;
   /** Remove a single (installation, site) binding. */
   removeInstallation(installationId: string, siteId: string): Promise<void>;
+  /**
+   * Remove the installation from every site this user is a member of.
+   *
+   * Used when GitHub reports the installation as gone (401/404): the
+   * binding that made it visible may live on another of the user's
+   * sites, so clearing only the current site would leave a dead account
+   * in their picker forever. Other tenants' bindings are left to the
+   * App-level webhook, which sees the authoritative `installation.deleted`.
+   */
+  removeInstallationForUser(
+    installationId: string,
+    userId: string,
+  ): Promise<void>;
   /**
    * Remove the installation from every site it's bound to and return
    * the previously-bound site ids so callers can fan out side effects
@@ -94,7 +161,63 @@ export function createGitHubAppInstallationsService(
   db: Database,
   databaseSchema: DatabaseSchema = sqliteSchemaBundle,
 ): GitHubAppInstallationsService {
-  const { githubAppInstallation, settings } = databaseSchema;
+  const { githubAppInstallation, settings, siteMembers } = databaseSchema;
+
+  /**
+   * Rows for every binding on a site the user belongs to. One join, not
+   * a per-site fan-out — a user has few sites but the query shape is
+   * what gets copied.
+   */
+  function selectUserBindings(userId: string, installationId?: string) {
+    const scope = eq(siteMembers.userId, userId);
+    return db
+      .select({
+        installationId: githubAppInstallation.installationId,
+        accountLogin: githubAppInstallation.accountLogin,
+        accountType: githubAppInstallation.accountType,
+        accountAvatarUrl: githubAppInstallation.accountAvatarUrl,
+        addedAt: githubAppInstallation.addedAt,
+      })
+      .from(githubAppInstallation)
+      .innerJoin(
+        siteMembers,
+        eq(siteMembers.siteId, githubAppInstallation.siteId),
+      )
+      .where(
+        installationId
+          ? and(scope, eq(githubAppInstallation.installationId, installationId))
+          : scope,
+      );
+  }
+
+  /** Collapse per-site bindings into one entry per installation. */
+  function toVisible(
+    rows: Array<{
+      installationId: string;
+      accountLogin: string;
+      accountType: string;
+      accountAvatarUrl: string;
+      addedAt: number;
+    }>,
+  ): VisibleGitHubAppInstallation[] {
+    const byInstallation = new Map<string, VisibleGitHubAppInstallation>();
+    for (const row of rows) {
+      const entry = {
+        installationId: row.installationId,
+        account: {
+          login: row.accountLogin,
+          type: toAccountType(row.accountType),
+          avatarUrl: row.accountAvatarUrl,
+        },
+        addedAt: row.addedAt,
+      };
+      const existing = byInstallation.get(row.installationId);
+      if (!existing || existing.addedAt < entry.addedAt) {
+        byInstallation.set(row.installationId, entry);
+      }
+    }
+    return [...byInstallation.values()].sort((a, b) => b.addedAt - a.addedAt);
+  }
 
   // Per-site settings mutation helpers. These sit alongside the
   // junction-table operations because the webhook fan-out inherently
@@ -152,6 +275,32 @@ export function createGitHubAppInstallationsService(
       return rows.map(toStored).sort((a, b) => b.addedAt - a.addedAt);
     },
 
+    async listInstallationsForUser(userId) {
+      return toVisible(await selectUserBindings(userId));
+    },
+
+    async findInstallationForUser(installationId, userId) {
+      const rows = await selectUserBindings(userId, installationId);
+      return toVisible(rows)[0] ?? null;
+    },
+
+    async listSyncingInstallationsForUser(userId) {
+      const rows = await db
+        .select({
+          siteId: settings.siteId,
+          installationId: settings.value,
+        })
+        .from(settings)
+        .innerJoin(siteMembers, eq(siteMembers.siteId, settings.siteId))
+        .where(
+          and(
+            eq(siteMembers.userId, userId),
+            eq(settings.key, "GITHUB_SYNC_APP_INSTALLATION_ID"),
+          ),
+        );
+      return rows.filter((row) => row.installationId.trim().length > 0);
+    },
+
     async listSitesForInstallation(installationId) {
       const rows = await db
         .select({ siteId: githubAppInstallation.siteId })
@@ -194,6 +343,21 @@ export function createGitHubAppInstallationsService(
           and(
             eq(githubAppInstallation.installationId, installationId),
             eq(githubAppInstallation.siteId, siteId),
+          ),
+        );
+    },
+
+    async removeInstallationForUser(installationId, userId) {
+      const memberSites = db
+        .select({ siteId: siteMembers.siteId })
+        .from(siteMembers)
+        .where(eq(siteMembers.userId, userId));
+      await db
+        .delete(githubAppInstallation)
+        .where(
+          and(
+            eq(githubAppInstallation.installationId, installationId),
+            inArray(githubAppInstallation.siteId, memberSites),
           ),
         );
     },
@@ -277,6 +441,11 @@ export function createGitHubAppInstallationsService(
   };
 }
 
+/** The column is a checked enum; narrow it without trusting the read. */
+function toAccountType(value: string): GitHubAccountType {
+  return value === "Organization" ? "Organization" : "User";
+}
+
 function toStored(row: {
   installationId: string;
   siteId: string;
@@ -285,14 +454,12 @@ function toStored(row: {
   accountAvatarUrl: string;
   addedAt: number;
 }): StoredGitHubAppInstallation {
-  const type: GitHubAccountType =
-    row.accountType === "Organization" ? "Organization" : "User";
   return {
     installationId: row.installationId,
     siteId: row.siteId,
     account: {
       login: row.accountLogin,
-      type,
+      type: toAccountType(row.accountType),
       avatarUrl: row.accountAvatarUrl,
     },
     addedAt: row.addedAt,

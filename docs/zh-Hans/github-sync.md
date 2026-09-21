@@ -50,6 +50,8 @@ Jant 会校验 token、保存配置，并在仓库里创建 webhook。不需要�
 2. 点击 **Install GitHub App**，跳转到 GitHub 选择 App 可访问的仓库
 3. 安装完成后回到 Jant，选要同步的仓库，点 **Connect**
 
+一个 GitHub 账号只会安装一次这个 App，所以第二个站点连接同一个账号时不再跳转 GitHub：**Install GitHub App** 会直接打开仓库选择器，列出你已经授权过的账号。每个站点同步各自的仓库。要换一个账号，在选择器里用 **Install on another account**。
+
 ## 完整同步
 
 首次连接后，Jant 会自动把全部内容推送一次。之后也可以在 **Settings > Site > GitHub Sync** 里点 **Sync Now** 重新执行。

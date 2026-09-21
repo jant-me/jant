@@ -1221,3 +1221,13 @@ btn-outline"` compiles, passes every test, and only shows up as a button whose
   payload there passes every local check and fails only after push. To run it
   locally, start a throwaway `postgres:17` container and point
   `PG_SMOKE_ADMIN_DATABASE_URL` / `PG_SMOKE_DATABASE_URL` at it.
+- Scope a local "do we already have this?" check to the scope of the external
+  object it stands for. A GitHub App installs once per GitHub _account_, so
+  checking "does this site have an installation" dead-ends every site after the
+  first: GitHub answers a second install attempt with the existing
+  installation's Configure page and never calls the Setup URL back, leaving no
+  way in at all. The check belongs at the level the external system uses — here
+  the sites the signed-in author belongs to (`site_member`), which is also the
+  tenancy boundary. The same shape applies to any per-account external
+  resource: one webhook per repository, one bot per workspace, one domain per
+  zone.

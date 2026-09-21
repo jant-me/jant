@@ -50,6 +50,8 @@ Available when the deployment has a GitHub App configured. You never touch a lon
 2. Click **Install GitHub App**. You're redirected to GitHub to pick which repositories the App can access.
 3. After installing, return to Jant, choose the repository to sync, and click **Connect**.
 
+A GitHub account holds one installation of the App, so connecting a second site to the same account skips the trip to GitHub: **Install GitHub App** opens the repository picker directly, listing the accounts you have already authorized. Each site syncs its own repository. To bring in a different account, use **Install on another account** in the picker.
+
 ## Full sync
 
 After the first connect, Jant pushes everything once automatically. You can re-run it anytime from **Settings > Site > GitHub Sync** by clicking **Sync Now**.
