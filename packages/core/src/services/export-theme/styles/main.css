@@ -693,7 +693,6 @@ time {
 .home-branding-credit {
   margin-top: var(--space-xl);
   padding-bottom: var(--space-xl);
-  text-align: center;
   color: var(--site-text-secondary);
   font-size: var(--type-base);
 }

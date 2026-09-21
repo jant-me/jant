@@ -73,6 +73,42 @@ describe("canonical demo snapshot", () => {
     expect(posts.count).toBeGreaterThan(0);
   });
 
+  it("restores the language setup its posts are stamped for", () => {
+    // The demo publishes in two languages. When the snapshot carried each
+    // post's `language` but not `MULTILINGUAL_ENABLED`, every rebuild left
+    // demo.jant.me serving no per-language views at all, and the Chinese side
+    // of the demo disappeared at ~00:00 UTC each night.
+    const { sqlite } = createTestDatabase();
+
+    sqlite.exec(buildReplaceSql(DEFAULT_TEST_SITE_ID));
+    sqlite.exec(readCanonicalSql());
+
+    const languages = sqlite
+      .prepare(
+        `SELECT DISTINCT "language" FROM "post" WHERE "site_id" = ? AND "language" IS NOT NULL`,
+      )
+      .all(DEFAULT_TEST_SITE_ID) as { language: string }[];
+    if (languages.length < 2) return;
+
+    const settings = sqlite
+      .prepare(
+        `SELECT "key", "value" FROM "site_setting" WHERE "site_id" = ? AND "key" IN ('SITE_LANGUAGE', 'MULTILINGUAL_ENABLED', 'ADDITIONAL_LANGUAGES')`,
+      )
+      .all(DEFAULT_TEST_SITE_ID) as { key: string; value: string }[];
+    const value = (key: string) =>
+      settings.find((row) => row.key === key)?.value ?? "";
+
+    expect(value("MULTILINGUAL_ENABLED")).toBe("true");
+
+    const served = new Set([
+      value("SITE_LANGUAGE"),
+      ...value("ADDITIONAL_LANGUAGES").split(",").filter(Boolean),
+    ]);
+    expect(
+      languages.map((row) => row.language).filter((tag) => !served.has(tag)),
+    ).toEqual([]);
+  });
+
   it("replays twice, the way a nightly rebuild does", () => {
     // `--replace` runs against a site that already holds the previous rebuild's
     // rows, so the delete order matters as much as the insert order. A first

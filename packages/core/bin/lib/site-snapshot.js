@@ -77,10 +77,29 @@ export const SNAPSHOT_EXCLUDED_TABLES = [
   "storage_purge",
 ];
 
+/**
+ * Settings the snapshot carries: the site's published identity and appearance.
+ *
+ * `site_setting` holds more than a site's content — deployment wiring, secrets,
+ * integration bindings, local UI state — so both the export and `--replace`
+ * work through this allowlist rather than the whole table. Membership is what
+ * it decides: a key absent from it is neither exported nor cleared on import.
+ *
+ * Every DB-backed key in `CONFIG_FIELDS` has to appear here or in
+ * `SNAPSHOT_EXCLUDED_SETTING_KEYS`, and
+ * `src/__tests__/snapshot-settings.test.ts` fails the build otherwise, so a new
+ * setting forces a decision instead of being silently dropped.
+ */
 export const SNAPSHOT_SETTING_KEYS = [
   "SITE_NAME",
   "SITE_DESCRIPTION",
+  // The language trio travels together. `post.language` and
+  // `post.translation_group_id` are already carried by the whole-row `post`
+  // dump, so leaving the switch behind restored a site whose posts were
+  // stamped per language while every per-language view was gone.
   "SITE_LANGUAGE",
+  "MULTILINGUAL_ENABLED",
+  "ADDITIONAL_LANGUAGES",
   "MAIN_RSS_FEED",
   "PUBLIC_API_ENABLED",
   "RSS_FEEDS_ENABLED",
@@ -97,6 +116,68 @@ export const SNAPSHOT_SETTING_KEYS = [
   "SITE_FOOTER",
   "SHOW_JANT_BRANDING_ON_HOME",
   "NOINDEX",
+];
+
+/**
+ * DB-backed settings the snapshot deliberately leaves alone.
+ *
+ * `envOnly` keys are absent from both lists on purpose: they never reach
+ * `site_setting`, so there is no row to carry or clear.
+ */
+export const SNAPSHOT_EXCLUDED_SETTING_KEYS = [
+  // The operator's own dashboard locale, not the site's published language.
+  // A content restore should not relabel the dashboard of whoever runs the
+  // target site.
+  "DASHBOARD_LANGUAGE",
+  // Sizing and pacing knobs. They describe how much the target deployment
+  // serves at a time, not what it publishes, and they carry env defaults the
+  // deployment picked.
+  "ARCHIVE_DEFAULT_LAYOUT",
+  "PAGE_SIZE",
+  "SEARCH_PAGE_SIZE",
+  "ARCHIVE_PAGE_SIZE",
+  "SUMMARY_MAX_PARAGRAPHS",
+  "SUMMARY_MAX_CHARS",
+  "RSS_FEED_LIMIT",
+  "RSS_PUBLISH_DELAY_SECONDS",
+  // Code injection. `CUSTOM_CSS` is declarative and travels; these two are
+  // executable markup, and importing an archive must not be a way to run
+  // script on the importing site.
+  "CUSTOM_HEAD_HTML",
+  "CUSTOM_BODY_END_HTML",
+  // Being listed in the Jant Discover directory is the site owner's consent,
+  // and the announcement state below it belongs to the announcing instance.
+  "DISCOVER",
+  "DISCOVER_ANNOUNCE_STATE",
+  // Local UI state: which affordances this author has already been shown, and
+  // how far setup got.
+  "DISCOVERY_COMPOSE_OPEN_SHORTCUT_AT",
+  "DISCOVERY_SLASH_COMMAND_AT",
+  "ONBOARDING_STATUS",
+  // Credential. Reissued per deployment, never copied between sites.
+  "PASSWORD_RESET_TOKEN",
+  // External integration bindings, their secrets, and their sync bookkeeping.
+  // They point at a repo, an installation, or a chat on someone else's
+  // service, so restoring them would aim the target site at a binding it does
+  // not own — the same reason `github_app_installation` and `telegram_binding`
+  // are excluded tables.
+  "GITHUB_SYNC_ENABLED",
+  "GITHUB_SYNC_REPO",
+  "GITHUB_SYNC_TOKEN",
+  "GITHUB_SYNC_WEBHOOK_SECRET",
+  "GITHUB_SYNC_WEBHOOK_ID",
+  "GITHUB_SYNC_LAST_PUSH_SHA",
+  "GITHUB_SYNC_LAST_PUSH_AT",
+  "GITHUB_SYNC_PENDING",
+  "GITHUB_SYNC_PENDING_AT",
+  "GITHUB_SYNC_DIRTY",
+  "GITHUB_SYNC_LAST_ERROR",
+  "GITHUB_SYNC_AUTH_MODE",
+  "GITHUB_SYNC_APP_INSTALLATION_ID",
+  "TELEGRAM_BOT_TOKEN",
+  "TELEGRAM_BOT_ID",
+  "TELEGRAM_BOT_USERNAME",
+  "TELEGRAM_BOT_WEBHOOK_SECRET",
 ];
 
 function escapeSqlString(value) {

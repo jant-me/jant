@@ -296,13 +296,16 @@ A snapshot includes:
 - Collections, collection directory items, navigation items.
 - Media records and path registry entries.
 - The storage objects referenced by those records (downloaded in full by default — archive size ≈ total media; pass `--skip-objects` to skip).
-- A set of site display settings (site name, description, language, theme, type style, favicon, custom CSS, timezone, etc.).
+- A set of site display settings (site name, description, theme, type style, favicon, custom CSS, timezone, etc.).
+- The language setup: the primary language, the languages served under a prefix, and whether [multilingual content](multilingual.md) is on. Each post's own language and translation links ride along with the post.
 
 A snapshot **does not include** (excluded at export time, never written to the archive):
 
 - users, sessions, accounts, verifications.
 - API tokens.
 - Site runtime config (`wrangler.toml`, environment variables).
+- Code injection (`Settings → Code injection`). Custom CSS travels; custom head and body HTML don't, so importing an archive can't run script on the importing site.
+- GitHub Sync and Telegram bindings, along with their tokens and sync state. They point at a repo or a chat the target site doesn't own.
 
 In other words: distributing a snapshot doesn't leak login credentials, but the importer needs to register their own account afterwards.
 

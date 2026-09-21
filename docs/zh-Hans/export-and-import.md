@@ -296,13 +296,16 @@ Snapshot 包含：
 - collection、collection directory item、navigation item。
 - media 记录、path registry 记录。
 - 上述记录引用的存储对象本身（默认全量下载，归档大小约等于媒体总量；可加 `--skip-objects` 跳过）。
-- 一组站点显示设置（站点名、描述、语言、主题、字型、favicon、自定义 CSS、时区等）。
+- 一组站点显示设置（站点名、描述、主题、字型、favicon、自定义 CSS、时区等）。
+- 语言配置：主语言、带前缀的其他语言，以及[多语言内容](multilingual.md)是否开启。每篇 post 自己的语言和译文关联随 post 一起带走。
 
 Snapshot **不包含**（导出时即被排除，不写入归档）：
 
 - users、sessions、accounts、verifications。
 - API tokens。
 - 站点运行时配置（`wrangler.toml`、环境变量）。
+- 代码注入（**设置 → 代码注入**）。自定义 CSS 会带走，head 与 body HTML 不会——导入归档不能成为在目标站点执行脚本的途径。
+- GitHub 同步与 Telegram 绑定，以及它们的 token 和同步状态。它们指向的仓库或聊天并不属于目标站点。
 
 也就是说：把 snapshot 文件分发给他人不会泄露登录凭据，但目标站点导入后需要自行注册账号。
 
