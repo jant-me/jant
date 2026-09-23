@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { Editor } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
 import { createMarkdownContentExtensions } from "../../../lib/markdown-manager.js";
 import { ContinuousLists } from "../continuous-lists.js";
@@ -42,6 +43,7 @@ function paragraphPosition(
   let position: number | null = null;
 
   editor.state.doc.descendants((node, pos) => {
+    if (position !== null) return false;
     if (node.type.name !== "paragraph" || node.textContent !== text) return;
 
     position = pos + 1 + (edge === "end" ? node.content.size : 0);
@@ -50,6 +52,69 @@ function paragraphPosition(
 
   if (position === null) throw new Error(`Paragraph not found: ${text}`);
   return position;
+}
+
+function editorAt(
+  content: string,
+  text: string,
+  edge: "start" | "end",
+): Editor {
+  const editor = createEditor(content);
+  setCursor(editor, paragraphPosition(editor, text, edge));
+  return editor;
+}
+
+/**
+ * Renders lists as Markdown-like lines with the caret as `|`, so an assertion
+ * reads like the structure the author sees. A markerless paragraph inside an
+ * item aligns with the item's text; the trailing empty paragraph is omitted.
+ */
+function outline(editor: Editor): string {
+  const { selection } = editor.state;
+  const lines: string[] = [];
+
+  const lineText = (node: ProseMirrorNode, pos: number): string => {
+    const start = pos + 1;
+    const offset = selection.from - start;
+    if (offset < 0 || offset > node.content.size) return node.textContent;
+    return `${node.textContent.slice(0, offset)}|${node.textContent.slice(offset)}`;
+  };
+
+  const walk = (
+    parent: ProseMirrorNode,
+    contentStart: number,
+    indent: string,
+  ) => {
+    parent.forEach((child, offset) => {
+      const pos = contentStart + offset;
+      if (child.isTextblock) {
+        lines.push(`${indent}${lineText(child, pos)}`);
+        return;
+      }
+
+      const ordered = child.type.name === "orderedList";
+      if (!ordered && child.type.name !== "bulletList") {
+        lines.push(`${indent}[${child.type.name}]`);
+        return;
+      }
+
+      let number = Number(child.attrs.start ?? 1);
+      child.forEach((item, itemOffset) => {
+        const marker = ordered ? `${number++}. ` : "- ";
+        const firstLine = lines.length;
+        walk(
+          item,
+          pos + 1 + itemOffset + 1,
+          indent + " ".repeat(marker.length),
+        );
+        lines[firstLine] = `${indent}${marker}${lines[firstLine]?.trimStart()}`;
+      });
+    });
+  };
+
+  walk(editor.state.doc, 0, "");
+  if (lines.at(-1) === "") lines.pop();
+  return lines.join("\n");
 }
 
 function typeText(editor: Editor, text: string): void {
@@ -317,112 +382,185 @@ describe("list editing", () => {
     expect(secondItem?.child(1).textContent).toBe("Third paragraph");
   });
 
-  it.each([
-    ["ordered", "ol"],
-    ["bullet", "ul"],
-  ])(
-    "merges adjacent %s items in one Backspace, matching forward Delete",
-    (_name, tag) => {
-      const html = `<${tag}><li><p>A</p></li><li><p>B</p></li></${tag}>`;
-      const backwardEditor = createEditor(html);
-      const forwardEditor = createEditor(html);
-
-      setCursor(
-        backwardEditor,
-        paragraphPosition(backwardEditor, "B", "start"),
+  describe("Backspace at the start of a line", () => {
+    it("removes a top-level marker first, then merges into the line above", () => {
+      const editor = editorAt(
+        "<ul><li><p>1</p><ul><li><p>a</p></li><li><p>c</p></li></ul></li><li><p>2</p></li></ul>",
+        "2",
+        "start",
       );
-      setCursor(forwardEditor, paragraphPosition(forwardEditor, "A", "end"));
 
-      expect(pressKey(backwardEditor, "Backspace")).toBe(true);
-      expect(pressKey(forwardEditor, "Delete")).toBe(true);
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(outline(editor)).toBe(["- 1", "  - a", "  - c", "|2"].join("\n"));
 
-      expect(backwardEditor.state.doc.firstChild?.toJSON()).toEqual(
-        forwardEditor.state.doc.firstChild?.toJSON(),
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(outline(editor)).toBe(["- 1", "  - a", "  - c|2"].join("\n"));
+    });
+
+    it("rejoins a split ordered list once the unmarked line merges", () => {
+      const editor = editorAt(
+        "<ol><li><p>one</p></li><li><p>two</p></li><li><p>three</p></li></ol>",
+        "two",
+        "start",
       );
-      expect(backwardEditor.state.doc.firstChild?.childCount).toBe(1);
-      expect(backwardEditor.state.doc.firstChild?.firstChild?.textContent).toBe(
-        "AB",
+
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(outline(editor)).toBe(["1. one", "|two", "1. three"].join("\n"));
+
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(outline(editor)).toBe(["1. one|two", "2. three"].join("\n"));
+    });
+
+    it("keeps a nested item inside its parent when removing its marker", () => {
+      const editor = editorAt(
+        "<ul><li><p>1</p><ul><li><p>a</p></li><li><p>b</p></li><li><p>c</p></li></ul></li></ul>",
+        "b",
+        "start",
       );
-    },
-  );
 
-  it("removes a list marker without reordering existing subtrees", () => {
-    const editor = createEditor(
-      "<ul><li><p>A</p><ul><li><p>P</p></li></ul></li><li><p>B</p><ul><li><p>X</p></li></ul></li><li><p>C</p></li></ul>",
-    );
-    setCursor(editor, paragraphPosition(editor, "B", "start"));
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(outline(editor)).toBe(
+        ["- 1", "  - a", "  |b", "  - c"].join("\n"),
+      );
 
-    expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(outline(editor)).toBe(["- 1", "  - a|b", "  - c"].join("\n"));
+    });
 
-    const list = editor.state.doc.firstChild;
-    const mergedItem = list?.firstChild;
-    expect(list?.type.name).toBe("bulletList");
-    expect(list?.childCount).toBe(2);
-    expect(
-      mergedItem?.content.content.map((node) => [
-        node.type.name,
-        node.textContent,
-      ]),
-    ).toEqual([
-      ["paragraph", "A"],
-      ["bulletList", "P"],
-      ["paragraph", "B"],
-      ["bulletList", "X"],
-    ]);
-    expect(list?.child(1).textContent).toBe("C");
+    it("moves an unmarked item's children up one level", () => {
+      const editor = editorAt(
+        "<ul><li><p>1</p><ul><li><p>a</p></li><li><p>b</p><ul><li><p>x</p></li></ul></li><li><p>c</p></li></ul></li></ul>",
+        "b",
+        "start",
+      );
+
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(outline(editor)).toBe(
+        ["- 1", "  - a", "  |b", "  - x", "  - c"].join("\n"),
+      );
+    });
+
+    it("merges a first nested item into its parent line in two presses", () => {
+      const editor = editorAt(
+        "<ul><li><p>Parent</p><ul><li><p>Child</p></li><li><p>Sibling</p></li></ul></li></ul>",
+        "Child",
+        "start",
+      );
+
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(outline(editor)).toBe(
+        ["- Parent", "  |Child", "  - Sibling"].join("\n"),
+      );
+
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(outline(editor)).toBe(
+        ["- Parent|Child", "  - Sibling"].join("\n"),
+      );
+    });
+
+    it("removes an empty nested item and returns to the end of the line above", () => {
+      const editor = editorAt(
+        "<ul><li><p>1</p><ul><li><p>c</p></li><li><p></p></li></ul></li><li><p>2</p></li></ul>",
+        "",
+        "start",
+      );
+
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(outline(editor)).toBe(["- 1", "  - c|", "- 2"].join("\n"));
+    });
+
+    it("merges a paragraph after a nested list into the line above", () => {
+      const editor = editorAt(
+        "<ul><li><p>A</p><ul><li><p>Nested</p></li></ul><p>Continuation</p></li><li><p>B</p></li></ul>",
+        "Continuation",
+        "start",
+      );
+
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(outline(editor)).toBe(
+        ["- A", "  - Nested|Continuation", "- B"].join("\n"),
+      );
+    });
+
+    it("restores list items and subtrees with undo", () => {
+      const editor = editorAt(
+        "<ul><li><p>A</p></li><li><p>B</p><ul><li><p>Child</p></li></ul></li></ul>",
+        "B",
+        "start",
+      );
+      const before = editor.getJSON();
+
+      expect(pressKey(editor, "Backspace")).toBe(true);
+      expect(editor.commands.undo()).toBe(true);
+      expect(editor.getJSON()).toEqual(before);
+    });
   });
 
-  it("preserves the current item's subtree during a direct merge", () => {
-    const editor = createEditor(
-      "<ul><li><p>A</p></li><li><p>B</p><ul><li><p>Child</p></li></ul></li></ul>",
+  describe("Delete at the end of a line", () => {
+    it.each([
+      ["ordered", "ol", ["1. A|B", "   - y"]],
+      ["bullet", "ul", ["- A|B", "  - y"]],
+    ])(
+      "merges the next %s item and keeps its children",
+      (_name, tag, lines) => {
+        const editor = editorAt(
+          `<${tag}><li><p>A</p></li><li><p>B</p><ul><li><p>y</p></li></ul></li></${tag}>`,
+          "A",
+          "end",
+        );
+
+        expect(pressKey(editor, "Delete")).toBe(true);
+        expect(outline(editor)).toBe(lines.join("\n"));
+      },
     );
-    setCursor(editor, paragraphPosition(editor, "B", "start"));
 
-    expect(pressKey(editor, "Backspace")).toBe(true);
+    it("pulls a shallower item up without moving its children", () => {
+      const editor = editorAt(
+        "<ul><li><p>1</p><ul><li><p>a</p></li><li><p>c</p></li></ul></li><li><p>2</p><ul><li><p>x</p></li></ul></li><li><p>3</p></li></ul>",
+        "c",
+        "end",
+      );
 
-    const mergedItem = editor.state.doc.firstChild?.firstChild;
-    expect(editor.state.doc.firstChild?.childCount).toBe(1);
-    expect(mergedItem?.firstChild?.textContent).toBe("AB");
-    expect(mergedItem?.lastChild?.type.name).toBe("bulletList");
-    expect(mergedItem?.lastChild?.firstChild?.textContent).toBe("Child");
-  });
+      expect(pressKey(editor, "Delete")).toBe(true);
+      expect(outline(editor)).toBe(
+        ["- 1", "  - a", "  - c|2", "  - x", "- 3"].join("\n"),
+      );
+    });
 
-  it("restores list items and subtrees with undo", () => {
-    const editor = createEditor(
-      "<ul><li><p>A</p></li><li><p>B</p><ul><li><p>Child</p></li></ul></li></ul>",
-    );
-    setCursor(editor, paragraphPosition(editor, "B", "start"));
-    const before = editor.getJSON();
+    it("pulls a first nested item up and moves its children up one level", () => {
+      const editor = editorAt(
+        "<ul><li><p>P</p><ul><li><p>c1</p><ul><li><p>y</p></li></ul></li><li><p>c2</p></li></ul></li></ul>",
+        "P",
+        "end",
+      );
 
-    expect(pressKey(editor, "Backspace")).toBe(true);
-    expect(editor.commands.undo()).toBe(true);
-    expect(editor.getJSON()).toEqual(before);
-  });
+      expect(pressKey(editor, "Delete")).toBe(true);
+      expect(outline(editor)).toBe(["- P|c1", "  - y", "  - c2"].join("\n"));
+    });
 
-  it("does not lift a whole item from a paragraph after a nested list", () => {
-    const editor = createEditor(
-      "<ul><li><p>A</p><ul><li><p>Nested</p></li></ul><p>Continuation</p></li><li><p>B</p></li></ul>",
-    );
-    setCursor(editor, paragraphPosition(editor, "Continuation", "start"));
-    const before = editor.getJSON();
+    it("pulls a list's first item into the paragraph above", () => {
+      const editor = editorAt(
+        "<p>intro</p><ul><li><p>A</p><ul><li><p>k</p></li></ul></li><li><p>B</p></li></ul>",
+        "intro",
+        "end",
+      );
 
-    expect(pressKey(editor, "Backspace")).toBe(true);
-    expect(editor.getJSON()).toEqual(before);
-  });
+      expect(pressKey(editor, "Delete")).toBe(true);
+      expect(outline(editor)).toBe(["intro|A", "- k", "- B"].join("\n"));
+    });
 
-  it("lets the official keymap promote a first nested item", () => {
-    const editor = createEditor(
-      "<ul><li><p>Parent</p><ul><li><p>Child</p></li></ul></li></ul>",
-    );
-    setCursor(editor, paragraphPosition(editor, "Child", "start"));
+    it("agrees with Backspace for a line without a marker", () => {
+      const html =
+        "<ul><li><p>A</p><ul><li><p>c</p></li></ul></li></ul><p>tail</p>";
+      const forward = editorAt(html, "c", "end");
+      const backward = editorAt(html, "tail", "start");
 
-    expect(pressKey(editor, "Backspace")).toBe(true);
-
-    const list = editor.state.doc.firstChild;
-    expect(list?.type.name).toBe("bulletList");
-    expect(list?.childCount).toBe(2);
-    expect(list?.child(0).textContent).toBe("Parent");
-    expect(list?.child(1).textContent).toBe("Child");
+      expect(pressKey(forward, "Delete")).toBe(true);
+      expect(pressKey(backward, "Backspace")).toBe(true);
+      expect(outline(forward)).toBe(["- A", "  - c|tail"].join("\n"));
+      expect(outline(backward)).toBe(outline(forward));
+    });
   });
 
   it("preserves multiple paragraphs and a nested list when pasting HTML", () => {

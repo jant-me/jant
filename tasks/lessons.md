@@ -153,6 +153,14 @@
 - Editor-specific Tab handlers must consume the event whenever the selection
   is in their context, even when the structural command cannot apply. Returning
   `false` at a boundary lets browser focus navigation unexpectedly take over.
+- Compose boundary keys follow the Notion / Google Docs model through Tiptap's
+  official keymaps. Override only where Tiptap diverges from that model or
+  Markdown cannot represent its result (a paragraph cannot own a nested list),
+  and keep the model written down in `structural-keymap.ts`. Backspace at a
+  line start removes one layer per press — the marker first, then the line
+  break — while Delete at a line end joins the next line's text, so the two
+  keys are not symmetric. A boundary key must never be consumed without
+  changing the document.
 - Treat editor marks and structural nodes as separate formatting concerns.
   “Clear formatting” should remove clearable marks generically; lists, quotes,
   headings, and other nodes should use explicit structural controls instead of

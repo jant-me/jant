@@ -3,7 +3,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { Editor } from "@tiptap/core";
 import { createMarkdownContentExtensions } from "../../../lib/markdown-manager.js";
-import { ExitableMarks } from "../exitable-marks.js";
 import { toggleMarkAndExit } from "../bubble-menu.js";
 
 const editors: Editor[] = [];
@@ -13,7 +12,7 @@ function createEditor(content: string): Editor {
   document.body.appendChild(element);
   const editor = new Editor({
     element,
-    extensions: [...createMarkdownContentExtensions(), ExitableMarks],
+    extensions: createMarkdownContentExtensions(),
     content,
   });
   editor.view.dispatch(editor.state.tr);

@@ -1,12 +1,37 @@
 /**
  * Compose Structural Keymap
  *
- * Keeps Jant's small set of product-specific block-boundary decisions in one
- * place while delegating every unowned case to Tiptap's official keymaps.
+ * Block boundaries follow the editing model shared by Notion and Google Docs,
+ * mapped onto what Markdown can represent. Tiptap's official keymaps already
+ * implement most of it; this extension owns only the cases where they differ,
+ * and delegates everything else.
+ *
+ * Backspace at the start of a line removes one layer at a time:
+ *   - A list item loses its marker first and becomes a paragraph where it
+ *     stands. Tiptap does this for top-level items. A nested item stays inside
+ *     its parent item instead of being outdented, which is Tiptap's default;
+ *     Shift-Tab and Enter on an empty item remain the outdent keys.
+ *   - A paragraph then merges into the line visually above it, however deep
+ *     that line is nested.
+ *
+ * Delete at the end of a line always pulls the next line's text up, whatever
+ * its list depth. The two keys are intentionally not symmetric: Backspace
+ * deletes the marker just before the caret, Delete deletes the line break.
+ *
+ * Markdown differs from Notion in one place: a paragraph cannot own a nested
+ * list. When an item loses its marker, or its text merges into a shallower
+ * line, its children move up one level instead of staying indented.
  */
 
 import { Extension, type Editor } from "@tiptap/core";
-import type { Node as ProseMirrorNode, ResolvedPos } from "@tiptap/pm/model";
+import {
+  Fragment,
+  NodeRange,
+  type Node as ProseMirrorNode,
+  type ResolvedPos,
+} from "@tiptap/pm/model";
+import { TextSelection } from "@tiptap/pm/state";
+import { liftTarget } from "@tiptap/pm/transform";
 
 type Direction = "backward" | "forward";
 
@@ -101,6 +126,11 @@ function joinBlockquoteParagraphBoundary(
     : editor.commands.joinTextblockForward();
 }
 
+function isListNode(node: ProseMirrorNode | null | undefined): boolean {
+  const name = node?.type.name;
+  return name === "bulletList" || name === "orderedList";
+}
+
 function findDirectListItemDepth($cursor: ResolvedPos): number | null {
   const listItemDepth = $cursor.depth - 1;
   if (
@@ -110,55 +140,48 @@ function findDirectListItemDepth($cursor: ResolvedPos): number | null {
     return null;
   }
 
-  const listDepth = listItemDepth - 1;
-  const listName = $cursor.node(listDepth).type.name;
-  return listName === "bulletList" || listName === "orderedList"
-    ? listItemDepth
-    : null;
+  return isListNode($cursor.node(listItemDepth - 1)) ? listItemDepth : null;
 }
 
-function joinListItemBackward(editor: Editor): boolean {
-  const { selection } = editor.state;
-  if (!selection.empty) return false;
+/**
+ * Removes a nested item's marker while keeping it inside its parent item: the
+ * item's content becomes blocks of the parent item, splitting the nested list
+ * around it.
+ * Top-level items are left to the official ListKeymap, which does the same
+ * against the document or blockquote.
+ */
+function unwrapNestedListItem(editor: Editor, listItemDepth: number): boolean {
+  const { state } = editor;
+  const { $from } = state.selection;
+  if ($from.node(listItemDepth - 2).type.name !== "listItem") return false;
 
-  const { $from } = selection;
-  if ($from.parentOffset !== 0 || !$from.parent.isTextblock) return false;
+  const range = new NodeRange(
+    state.doc.resolve($from.start(listItemDepth)),
+    state.doc.resolve($from.end(listItemDepth)),
+    listItemDepth,
+  );
+  const target = liftTarget(range);
+  if (target === null) return false;
 
+  editor.view.dispatch(state.tr.lift(range, target).scrollIntoView());
+  return true;
+}
+
+function handleListBackspace(editor: Editor): boolean {
+  const { $from } = editor.state.selection;
   const listItemDepth = findDirectListItemDepth($from);
   if (listItemDepth === null) return false;
 
-  const listItem = $from.node(listItemDepth);
   const childIndex = $from.index(listItemDepth);
+  if (childIndex === 0) return unwrapNestedListItem(editor, listItemDepth);
 
-  if (childIndex > 0) {
-    const previousChild = listItem.child(childIndex - 1);
-    if (previousChild.isTextblock) {
-      return editor.commands.joinTextblockBackward();
-    }
+  // A markerless paragraph after an adjacent textblock is joined by the
+  // official keymap. After a nested list the official fallback would wrap the
+  // paragraph into that list instead, so merge into the line visually above.
+  const previousChild = $from.node(listItemDepth).child(childIndex - 1);
+  if (previousChild.isTextblock) return false;
 
-    // A paragraph following a nested structural block has no unambiguous
-    // one-key merge target. Consume Backspace instead of letting ListKeymap
-    // lift and split the entire list item.
-    return true;
-  }
-
-  const listDepth = listItemDepth - 1;
-  const itemIndex = $from.index(listDepth);
-  if (itemIndex === 0) {
-    // Let the official ListKeymap lift a first/nested-first item.
-    return false;
-  }
-
-  if (editor.commands.joinItemBackward()) return true;
-
-  // `joinItemBackward` cannot join when the previous item already owns a
-  // nested list. The official textblock join safely removes the current marker
-  // while preserving both subtrees in their existing document order.
-  if (editor.commands.joinBackward()) return true;
-
-  // A same-level previous item exists, so never fall through to the official
-  // lift behavior, which would split the surrounding list into top-level blocks.
-  return true;
+  return editor.commands.joinTextblockBackward();
 }
 
 function handleBackspace(editor: Editor): boolean {
@@ -176,8 +199,98 @@ function handleBackspace(editor: Editor): boolean {
   if (editor.commands.undoInputRule()) return true;
 
   return (
-    joinListItemBackward(editor) ||
+    handleListBackspace(editor) ||
     joinBlockquoteParagraphBoundary(editor, "backward")
+  );
+}
+
+/** Mirrors ProseMirror's `findCutAfter`, which prosemirror-commands keeps private. */
+function findCutAfter($pos: ResolvedPos): ResolvedPos | null {
+  if ($pos.parent.type.spec.isolating) return null;
+
+  for (let depth = $pos.depth - 1; depth >= 0; depth -= 1) {
+    const parent = $pos.node(depth);
+    if ($pos.index(depth) + 1 < parent.childCount) {
+      return $pos.doc.resolve($pos.after(depth + 1));
+    }
+    if (parent.type.spec.isolating) break;
+  }
+
+  return null;
+}
+
+/**
+ * Pulls the first item of a directly following deeper list up into the
+ * caret's line. The item's text joins the line; its children cannot stay
+ * nested under a line that is no longer there, so they move up one level and
+ * sit between the joined line and the rest of the list.
+ */
+function pullUpFirstItemOfNestedList(
+  editor: Editor,
+  $cut: ResolvedPos,
+): boolean {
+  const { state } = editor;
+  const { $from } = state.selection;
+  const list = $cut.nodeAfter;
+  const item = list?.firstChild;
+  const itemText = item?.firstChild;
+  if (!list || !item || item.childCount < 2 || !itemText?.isTextblock) {
+    return false;
+  }
+  if ($from.parent.type.spec.code) return false;
+
+  const children = item.content.cut(itemText.nodeSize);
+  const remainingItems = list.content.cut(item.nodeSize);
+  const replacement =
+    remainingItems.size > 0
+      ? children.addToEnd(list.copy(remainingItems))
+      : children;
+  const index = $cut.index();
+  if (!$cut.parent.canReplace(index, index + 1, replacement)) return false;
+
+  const tr = state.tr
+    .replaceWith($cut.pos, $cut.pos + list.nodeSize, replacement)
+    .insert($from.pos, Fragment.from(itemText.content));
+  tr.setSelection(TextSelection.create(tr.doc, $from.pos));
+  editor.view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
+function handleListDelete(editor: Editor): boolean {
+  const { selection } = editor.state;
+  if (!selection.empty) return false;
+
+  const { $from } = selection;
+  if (
+    !$from.parent.isTextblock ||
+    $from.parentOffset !== $from.parent.content.size
+  ) {
+    return false;
+  }
+
+  const $cut = findCutAfter($from);
+  if (!$cut) return false;
+
+  // Only boundaries that cross list structure are Jant's. Between plain
+  // blocks the official Delete already joins the next textblock.
+  const { nodeBefore, nodeAfter } = $cut;
+  const crossesList =
+    isListNode(nodeBefore) ||
+    isListNode(nodeAfter) ||
+    nodeBefore?.type.name === "listItem";
+  if (!crossesList) return false;
+
+  if ($cut.pos === $from.after() && isListNode(nodeAfter)) {
+    if (pullUpFirstItemOfNestedList(editor, $cut)) return true;
+  }
+
+  return editor.commands.joinTextblockForward();
+}
+
+function handleDelete(editor: Editor): boolean {
+  return (
+    joinBlockquoteParagraphBoundary(editor, "forward") ||
+    handleListDelete(editor)
   );
 }
 
@@ -190,10 +303,8 @@ export const StructuralKeymap = Extension.create({
       Backspace: ({ editor }) => handleBackspace(editor),
       "Mod-Backspace": ({ editor }) => handleBackspace(editor),
       "Shift-Backspace": ({ editor }) => handleBackspace(editor),
-      Delete: ({ editor }) =>
-        joinBlockquoteParagraphBoundary(editor, "forward"),
-      "Mod-Delete": ({ editor }) =>
-        joinBlockquoteParagraphBoundary(editor, "forward"),
+      Delete: ({ editor }) => handleDelete(editor),
+      "Mod-Delete": ({ editor }) => handleDelete(editor),
       Tab: ({ editor }) => {
         if (!editor.isActive("listItem")) return false;
 

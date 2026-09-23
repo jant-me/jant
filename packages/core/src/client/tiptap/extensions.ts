@@ -12,7 +12,6 @@ import { PasteMedia } from "./paste-media.js";
 import type { PasteMediaOptions } from "./paste-media.js";
 import { BubbleMenu } from "./bubble-menu.js";
 import { LinkToolbar } from "./link-toolbar.js";
-import { ExitableMarks } from "./exitable-marks.js";
 import { CodeBlockIndent } from "./tab-indent.js";
 import { StructuralKeymap } from "./structural-keymap.js";
 import { ContinuousLists } from "./continuous-lists.js";
@@ -88,7 +87,6 @@ export function createSettingsEditorExtensions(
     ReclaimModEnter,
     LinkInputRules,
     MarkdownClipboard,
-    ExitableMarks,
     InsertParagraphAround,
     StructuralKeymap,
     ContinuousLists,
@@ -133,7 +131,6 @@ export function createEditorExtensions(
       toolbarMode: options.toolbarMode ?? "default",
     }),
     LinkToolbar,
-    ExitableMarks,
     InsertParagraphAround,
     StructuralKeymap,
     ContinuousLists,
