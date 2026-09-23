@@ -2346,6 +2346,13 @@
     margin-top: 0.65rem;
   }
 
+  /* A preview is a block of image, not a line of text: commentary set 0.65rem
+     under it reads as a caption. Give it the same air the title leaves above
+     the preview, so the image sits between the two rather than on the body. */
+  [data-format="link"] .link-preview + [data-post-body] {
+    margin-top: 1.4rem;
+  }
+
   .feed-link-domain {
     display: inline-flex;
     align-items: center;
