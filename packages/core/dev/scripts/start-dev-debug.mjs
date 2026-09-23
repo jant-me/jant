@@ -106,8 +106,10 @@ async function main() {
     );
   }
 
-  await runCommand(process.execPath, ["dev/scripts/setup-dev-auth.mjs"], env);
+  // Migrate first: the auth setup writes to `site`, `user`, and `account`,
+  // which a fresh `.wrangler` does not have yet.
   await runCommand(PNPM_BIN, ["db:migrate:local"], env);
+  await runCommand(process.execPath, ["dev/scripts/setup-dev-auth.mjs"], env);
   await runCommand(
     PNPM_BIN,
     ["exec", "vite", "dev", "--port", String(debugPort), "--strictPort"],

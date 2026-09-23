@@ -260,7 +260,10 @@ run = "pnpm --filter @jant/core db:generate:pg"
 [tasks.db-wrangler-migrate]
 description = "Run migrations for the local Wrangler/D1 development database"
 dir = "packages/core"
-run = "node ./bin/jant.js migrate"
+# `--local` is required: without a runtime flag, `jant migrate` loads
+# packages/core/.env.node and targets the Node database whenever that file sets
+# DATABASE_URL or DATA_DIR.
+run = "node ./bin/jant.js migrate --local"
 
 [tasks.db-wrangler-clean]
 alias = "clean"

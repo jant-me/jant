@@ -60,7 +60,9 @@ mise run dev-auth-bootstrap
 
 This creates or updates `packages/core/.dev.vars`, ensures a local credential admin exists, marks onboarding complete when needed, and prints both the sign-in URL and the local-only auto-login URL. Use the printed `http://localhost:19xxx/...` URL for browser testing.
 
-`mise run dev-debug` runs this automatically before starting the first free debug port beginning at `19020`.
+It writes to the local D1 database, so the schema has to exist first. On an unmigrated database it stops and names the task to run: `mise run db-wrangler-migrate`, or `mise run db-wrangler-bootstrap-shell` to migrate and bootstrap in one step.
+
+`mise run dev-debug` migrates local D1 and runs this automatically, then starts on the first free debug port from `19020`.
 
 If you only need the bare minimum, create `.dev.vars` in `packages/core/`:
 
