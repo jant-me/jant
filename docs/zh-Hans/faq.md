@@ -146,7 +146,13 @@ feeds。内容会立即显示在网页上，等待的只有 feed 分发。这段
 
 ## 怎么把别的博客的内容迁进来（WordPress、Tumblr 等）？
 
-没有固定的导入器——每个平台的导出格式都不一样。最省事的办法是把当前站点的 `/skill.md` 地址（例如 `https://example.com/skill.md`）交给 AI 助手。这份绑定当前站点的 Jant 操作指南包含专门的导入流程，讲清楚了数据模型、来源格式映射、断点续跑和迁移验证。把导出文件和站点的 API token 给它，让它来跑这次迁移。详见[导出与导入](export-and-import.md#从别的博客或-cms-迁移过来)。
+没有固定的导入器，每个平台的导出格式都不一样。创建 Jant 站点后，把下面这句话发给 Claude Code、Codex 这类能运行命令的 AI 助手，`example.com` 换成你的站点地址：
+
+```text
+读取 https://example.com/skill.md，帮我把旧博客迁移到这里。
+```
+
+具体的步骤 AI 助手会引导你完成，包括导出旧博客和创建 API token。详见[导出与导入](export-and-import.md#从别的博客或-cms-迁移过来)。
 
 ## 能迁回 WordPress / Ghost 吗？
 

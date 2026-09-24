@@ -8,7 +8,7 @@
 >
 > 你也可以查看作者的博客作为参考：[www.owenyoung.com](https://www.owenyoung.com/)
 
-Jant 是一个为单作者设计的小型博客系统，支持 **Note、Link、Quote** 三种内容格式。一个想法可以用 Thread 持续展开，也可以归入 Collection 里。发布体验更接近 Twitter / Threads，而不是 WordPress / Ghost 的后台。
+Jant 是一个为单作者设计的轻博客，介于传统博客和社交媒体之间：表达像发动态一样轻，内容又像博客一样归你自己。它有 Note、Link、Quote 三种基本格式，帖子可以串成 Thread，也可以归到 Collection 里。
 
 ![Jant Home](https://jant-me-media.jant.me/assets/jant-home-800-0816.png)
 

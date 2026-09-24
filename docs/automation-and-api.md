@@ -22,7 +22,7 @@ So an agent working inside the generated project gets more than an API token —
 
 - Scripts, scheduled jobs, external integrations: use the **HTTP API**.
 - The caller is itself an MCP client: use **MCP**.
-- An AI assistant working with one site: hand it that site's `/skill.md` URL (for example, `https://example.com/skill.md`) — a site-bound guide to reading, publishing, organizing, and migrating content through HTTP or MCP. For migrations, follow its dedicated import workflow and see [Export and import](export-and-import.md#coming-from-another-blog-or-cms).
+- An AI assistant working with one site: hand it that site's `/skill.md` URL (for example, `https://example.com/skill.md`), a site-bound guide to reading, publishing, organizing, and migrating content through HTTP or MCP. To move an old blog in, see [Export and import](export-and-import.md#coming-from-another-blog-or-cms).
 
 Default to HTTP. MCP only beats it when the caller already speaks the tool-calling protocol.
 
