@@ -142,7 +142,16 @@ For exact fields, filters, pagination, and response schemas, read the [full HTTP
 
 ## Import Content from Another Platform
 
-Use this workflow when the user provides an export, archive, feed, database dump, or folder of source files from another blog or CMS.
+Use this workflow when the user wants to move an old blog, site, or archive into this Jant site. The request may arrive as one sentence, with no export and no token yet. Lead the user through the rest.
+
+### Lead the user
+
+Ask for one thing at a time, when the next step needs it. Name the menus the user clicks, not API endpoints.
+
+1. Check that you can send HTTP requests to `<site>` and read files the user gives you. If you cannot, say so first and suggest an assistant that can, such as a coding agent with shell access. Do not hand over a script unless the user asks for one.
+2. Ask which platform the old blog is on and where it lives.
+3. Get the content. Use an export if the user has one. If not, tell them where their platform exports it (the table under "Read the source" lists the usual places) and wait for the file. When the old blog is public and its feed carries full posts, you can read the feed instead. Feeds usually hold only recent posts, so compare the count with the old blog's archive before relying on one.
+4. Ask for the API token just before the first write, using the steps in "Confirm the Target and Authenticate". Do not ask for it at the start.
 
 ### Plan before writing
 

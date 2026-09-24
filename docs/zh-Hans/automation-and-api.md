@@ -22,7 +22,7 @@ Jant 提供两条通道：
 
 - 写脚本、跑定时任务、接外部系统：用 **HTTP API**。
 - 调用方本身就是 MCP client：用 **MCP**。
-- 让 AI 助手操作某个站点：把该站点的 `/skill.md` 地址（例如 `https://example.com/skill.md`）交给它——这是一份绑定当前站点的操作指南，讲清楚了怎么通过 HTTP 或 MCP 读取、发布、整理和迁移内容。迁移走其中专门的导入流程，另见[导出与导入](export-and-import.md#从别的博客或-cms-迁移过来)。
+- 让 AI 助手操作某个站点：把该站点的 `/skill.md` 地址（例如 `https://example.com/skill.md`）交给它。这是一份绑定当前站点的操作指南，讲清楚了怎么通过 HTTP 或 MCP 读取、发布、整理和迁移内容。迁移旧博客见[导出与导入](export-and-import.md#从别的博客或-cms-迁移过来)。
 
 拿不准就走 HTTP。
 

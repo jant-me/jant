@@ -1,112 +1,77 @@
 # Export and import
 
-Run every command in this guide from a Jant project directory where `@jant/core` is installed. Sites created with `create-jant` usually use the project root.
-
 ## Choosing the right tool
 
-| Need                                                 | Use                                               |
-| ---------------------------------------------------- | ------------------------------------------------- |
-| Move content between Jant sites                      | `site export` and `site import`                   |
-| Generate a portable static archive                   | `site export`                                     |
-| Restore the same internal IDs and storage keys as-is | `site snapshot export` and `site snapshot import` |
-| Export raw database SQL                              | `db export`                                       |
-| Import content from a non-Jant blog or CMS           | An AI assistant (see below)                       |
+| You want to                                                 | Use                                               |
+| ----------------------------------------------------------- | ------------------------------------------------- |
+| Move an old blog from another platform into Jant            | An AI assistant (see below)                       |
+| Move content between Jant sites, or keep a portable archive | `site export` and `site import`                   |
+| Restore a site with the same internal IDs and storage keys  | `site snapshot export` and `site snapshot import` |
+| Dump the database as SQL                                    | `db export`                                       |
 
-The difference between `site export` and `site snapshot` is not what they're for — it's what they produce:
+`site export` and `site snapshot` produce different things:
 
 | Aspect                        | `site export`                                         | `site snapshot`                                 |
 | ----------------------------- | ----------------------------------------------------- | ----------------------------------------------- |
 | Output format                 | Hugo site directory (Markdown + front matter + media) | SQL dump + object storage dump (binary archive) |
-| Human-readable                | Yes — edit Markdown in any editor                     | No — needs Jant to parse                        |
+| Human-readable                | Yes, edit the Markdown in any editor                  | No, only Jant can read it                       |
 | Builds with Hugo directly     | Yes                                                   | No                                              |
 | Internal IDs (post id, media) | Discarded; reassigned on import                       | Preserved as-is                                 |
 | Drafts and private posts      | Included; front matter sets `draft: true`             | Included                                        |
 | users / sessions / tokens     | Not included                                          | Not included                                    |
 | Media storage keys            | Regenerated                                           | Preserved as-is                                 |
 
-Rule of thumb: changing domains, switching hosts, building with Hugo yourself, or long-term archival — use `site export`. Restoring the same site, cloning to staging, or moving between deployments with the same shape — use `site snapshot`.
+Changing domains, switching hosts, building with Hugo yourself, or archiving for the long term: use `site export`. Restoring the same site, cloning it to staging, or moving between deployments of the same shape: use `site snapshot`.
 
-This page covers one-shot commands. For ongoing backups, see [Backups and recovery](backups.md). For long-term sync to a GitHub repository, see [GitHub sync](github-sync.md), which reuses the same `site export` format.
+These are one-shot commands. For regular backups, see [Backups and recovery](backups.md). [GitHub sync](github-sync.md) keeps a repository up to date in the same format as `site export`.
 
 ## Coming from another blog or CMS
 
-The tools above move content between Jant sites. There's no fixed importer for non-Jant sources — WordPress, Tumblr, Ghost, an RSS dump — because every platform exports differently.
+There is no importer for other platforms, because WordPress, Tumblr, Ghost, and the rest each export differently. An AI assistant does the migration instead.
 
-Instead, hand your site's `/skill.md` URL (for example, `https://example.com/skill.md`) to an AI assistant. It's a site-bound guide for working with Jant and includes a dedicated import workflow covering the data model, source-format mapping, resumable writes, and verification. Give the assistant your export file and an [API token](automation-and-api.md), and let it run the migration.
+Once your Jant site exists, send this line to an AI assistant that can run commands, such as Claude Code or Codex, with your site's address in place of `example.com`:
 
-## Runtime targets
-
-The commands in this guide fall into two categories with very different environment requirements. Confirm which category you're in before running.
-
-### HTTP API commands
-
-`site export <url>`, `site import <url>`, `site pull-media`
-
-These call the site's public HTTP API and **never touch the database or object storage directly**, so they run from any machine against any reachable Jant site. No `wrangler.toml` or `DATABASE_URL` required.
-
-You need an API token:
-
-```bash
-export JANT_API_TOKEN=jnt_your_token
+```text
+Read https://example.com/skill.md and help me move my old blog here.
 ```
 
-Generate the token under **Settings → API Tokens**, or pass it explicitly with `--token`.
-
-### Direct data-storage commands
-
-`site snapshot export/import`, `db export`
-
-These read and write Jant's database and media storage directly, so they must run inside the deployment environment for that site (with that site's `wrangler.toml`, or sharing its `DATABASE_URL`, `LOCAL_STORAGE_PATH`, `S3_*`, and other runtime variables).
-
-The runtime target resolves like this:
-
-| Flag       | Target                  | Required environment                                 |
-| ---------- | ----------------------- | ---------------------------------------------------- |
-| `--remote` | Remote Cloudflare D1/R2 | `wrangler.toml`, wrangler authenticated              |
-| `--local`  | Local D1 (wrangler)     | `wrangler.toml`                                      |
-| `--node`   | Node runtime            | `DATABASE_URL` and matching storage config variables |
-
-With no flag, the target is auto-selected:
-
-1. If `DATABASE_URL` or `DATA_DIR` is set in the shell → Node runtime.
-2. Otherwise → local D1 (requires `wrangler.toml` in the working directory).
-
-The CLI prints a `[jant] target = ...` line at startup so you can confirm which target was chosen.
-
-`--remote` runs through the local `wrangler` CLI, so you need `wrangler login` or `CLOUDFLARE_API_TOKEN` first. Use `--config` to point at a non-default wrangler config.
-
-The CLI auto-loads `<cwd>/.env.node` at startup, but variables already exported in the shell take precedence and won't be overwritten. Drop your variables into `.env.node` once and skip the manual `source` step.
-
-Set `JANT_ENV_FILE` to load a different file — handy when one machine drives several deployments. An empty `JANT_ENV_FILE` skips the file entirely, which is how automated runs keep a local `.env.node` out of their environment.
-
-For the full environment variable list, see [Configuration](configuration.md).
+`/skill.md` is a guide to your site written for AI assistants. It tells the assistant how to run the migration: ask where the old blog is, help you export it, and ask for an [API token](automation-and-api.md) before the first write.
 
 ## Site export (`site export`)
 
-`site export` produces a Hugo-compatible export, either as a ZIP archive or a directory. Typical uses: migrating content between Jant sites, building a local Hugo preview, or keeping a portable long-term archive.
+`site export` writes the site as a Hugo site, in a ZIP or a directory. It works through the site's HTTP API, as `site import` and `site pull-media` do, so it runs from any machine that can reach the site, without the site's `wrangler.toml` or `DATABASE_URL`. Run it from a Jant project directory where `@jant/core` is installed (for a site created with `create-jant`, the project root), with an API token from **Settings → API Tokens** in `JANT_API_TOKEN` or passed with `--token`:
 
-By default the export downloads referenced media into `static/media/` so the archive is self-contained. When the export comes from Jant, `data/jant.toml` also carries the metadata needed for round-trip imports — header navigation and the collections directory structure (order, dividers, custom links).
+```bash
+JANT_API_TOKEN=jnt_your_token npx jant site export https://your-site.example --output ./jant-site-export.zip
+```
+
+To look at the result, export to a directory and run Hugo:
+
+```bash
+npx jant site export https://your-site.example --directory ./jant-site
+cd ./jant-site && hugo serve
+```
 
 ### What's included and excluded
 
 Included:
 
-- **Every post** (including Thread replies). Drafts and private posts are also archived with `draft: true` in front matter; Hugo skips them by default and only renders them with `hugo --buildDrafts`.
-- Media referenced by posts and avatars, downloaded into `static/media/` by default. Pass `--no-pull-media` to skip.
-- Collections, the collections directory (order, dividers, custom links), and header navigation — written to `data/jant.toml`.
-- Per-post `featured_at` and `pinned_at`, plus per-Thread collection membership on the root bundle, written to front matter for round-trip restore.
-- **Current slug plus historical aliases and redirects**: when a post's slug changes, the old slug stays in `path_registry` as a `redirect` row. On export, both `redirect` and `alias` rows are written to the root post's `aliases:` field. Hugo's custom `alias.html` template keeps the old links working.
-- Site display settings: `SITE_NAME`, `SITE_DESCRIPTION`, `SITE_LANGUAGE`, theme, type style, custom CSS, favicon, and so on — written to `data/jant.toml` and `hugo.toml`.
+- Every post, Thread replies included. Drafts and private posts carry `draft: true` in front matter; Hugo builds them only with `hugo --buildDrafts`.
+- Media used by posts and avatars, downloaded into `static/media/` so the archive stands on its own. `--no-pull-media` skips the download.
+- Collections, the Collections directory (order, dividers, custom links), and header navigation, in `data/jant.toml`.
+- Each post's `featured_at` and `pinned_at`, and each Thread's Collection membership on the root bundle, in front matter.
+- The current slug, plus old slugs and aliases in the root post's `aliases:` field. A custom `alias.html` template keeps the old links working.
+- Display settings: `SITE_NAME`, `SITE_DESCRIPTION`, `SITE_LANGUAGE`, theme, type style, custom CSS, favicon, and so on, in `data/jant.toml` and `hugo.toml`.
 
 Not included:
 
-- users, sessions, accounts, verifications, API tokens — account and auth data isn't portable across sites.
-- Site-level runtime config (`wrangler.toml`, environment variables, bindings).
-- **Smart Collections.** Membership is a query, and an exported Hugo site has no database to run it against. The two honest options were to leave them out or to freeze today's matches under a name that promises to keep updating; the export leaves them out. The posts themselves are all there — a Smart Collection gathers posts, it does not own them — so nothing is lost but the gathering, which you recreate on the target site.
+- Users, sessions, accounts, verifications, and API tokens. Account data doesn't move between sites.
+- Runtime config: `wrangler.toml`, environment variables, bindings.
+- Smart Collections. Their membership is a query, and a Hugo site has no database to run it against. Every post they gathered is exported; recreate the Smart Collection on the target site.
 
 ### Export structure
 
-The export is a standard Hugo site. Templates and static assets are packaged as a `themes/jant/` theme, and `hugo.toml` sets `theme = "jant"`:
+The export is a standard Hugo site. Templates and static assets are packaged as the `themes/jant/` theme, and `hugo.toml` sets `theme = "jant"`:
 
 ```
 hugo.toml
@@ -125,15 +90,13 @@ layouts/                  user overrides (optional)
 static/                   user static files + downloaded media
 ```
 
-The root `layouts/` and `static/` directories are yours to maintain. Hugo loads root `layouts/<name>.html` ahead of `themes/jant/layouts/<name>.html`, so you can override any single template without forking the theme.
-
 ### Deploying to Cloudflare Workers
 
-`wrangler.jsonc` names the Worker, runs `hugo --gc --minify`, and points the upload at `public/`. Workers Builds has no build output directory field — that one belongs to Pages — so this file is the only place the asset directory can be declared, and it carries the build for the same reason: Workers Builds detects a framework from a `package.json`, a Hugo site has none, so the build command it offers on connect is empty and a deploy would upload a `public/` that was never built. Wrangler runs the config's build before it uploads, so `npx wrangler deploy` is the whole deploy. Leave Cloudflare's build command empty — filling it in as well runs Hugo twice. `HUGO_VERSION` needs no value; the theme builds on the Hugo that Cloudflare's image ships.
+`wrangler.jsonc` names the Worker, builds the site with `hugo --gc --minify`, and uploads `public/`, so `npx wrangler deploy` is the whole deploy. Cloudflare finds no `package.json` in a Hugo site and offers an empty build command when you connect the repository. Leave it empty; filling it in runs Hugo twice. `HUGO_VERSION` needs no value, because the theme builds on the Hugo in Cloudflare's build image.
 
-The `name` has to match the Worker's name in the Cloudflare dashboard. Workers Builds fails the build when they differ, and a deploy run by hand under another name goes to another Worker. A Worker imported from a repository is named after the repository, so a repository pushed by [GitHub Sync](github-sync.md) gets the repository name (`My_Blog` becomes `my-blog`). A downloaded export has no repository and gets the name GitHub Sync suggests when it creates one for the site (`www.example.com` becomes `example-jant-sync`). If your Worker is named something else, change `name` to match. Cloudflare names each build token `<worker-name> build token`, which is one place to read it.
+The `name` has to match the Worker's name in the Cloudflare dashboard. When they differ, Workers Builds fails the build, and a deploy run by hand goes to a different Worker. Cloudflare names a Worker imported from a repository after the repository, so a repository pushed by [GitHub Sync](github-sync.md) uses the repository name (`My_Blog` becomes `my-blog`). A downloaded export has no repository and uses the name GitHub Sync suggests when it creates one for the site (`www.example.com` becomes `example-jant-sync`). If your Worker has another name, change `name` to match. Cloudflare calls the Worker's build token `<worker-name> build token`, which is one place to read the name.
 
-`wrangler.jsonc` is written once. [GitHub Sync](github-sync.md) leaves it alone on later pushes, so a corrected name survives.
+`wrangler.jsonc` is written once. GitHub Sync leaves it alone on later pushes, so a corrected name stays.
 
 ### URL scheme
 
@@ -149,9 +112,9 @@ The `name` has to match the Worker's name in the Cloudflare dashboard. Workers B
 | `/{collection-slug}/` | A collection of complete Threads                                  |
 | `/collections/`       | Collections directory                                             |
 
-Page size is controlled by Jant's **Settings → Posts per page**.
+Page size follows Jant's **Settings → Posts per page**.
 
-Atom feeds are emitted alongside the pages they carry, when **Settings → Feeds** is on:
+When **Settings → Feeds** is on, the export also writes Atom feeds:
 
 | URL                            | Carries           |
 | ------------------------------ | ----------------- |
@@ -162,43 +125,27 @@ Atom feeds are emitted alongside the pages they carry, when **Settings → Feeds
 
 ### Feed addresses change
 
-Jant serves its feeds under `/feed` — `/feed`, `/latest/feed`, `/featured/feed`, `/archive/feed`, `/{collection-slug}/feed`. Hugo serves the same documents as `index.xml` inside each section, so none of the old addresses exist on the exported site, and every reader subscribed in a feed reader is holding one of them.
+Jant serves its feeds at `/feed`, `/latest/feed`, `/featured/feed`, `/archive/feed`, and `/{collection-slug}/feed`. Hugo writes the same feeds as `index.xml` inside each section, so none of the addresses your subscribers use exist on the exported site.
 
-The export writes `static/_redirects`, mapping each old address to its new one with a 301. Cloudflare Pages and Netlify read that file as published, so a site moved to either host keeps its subscribers. Other hosts ignore it — translate its rules into that host's redirect configuration before you point the domain at the export.
+The export writes `static/_redirects`, which sends each old address to its new one with a 301. Cloudflare Pages and Netlify read that file as published, so subscribers follow a move to either host. Other hosts ignore it; copy its rules into the host's own redirect config before you point the domain at the export.
 
-The `aliases:` mechanism that preserves `/{reply-slug}/` links cannot cover feeds. An alias page redirects with a meta refresh and a script, and feed readers fetch XML without running either.
+The `aliases:` pages that keep old post links working can't do this for feeds. They redirect with a meta refresh and a script, and feed readers run neither.
 
-The exported site has no `/subscribe` page either — that page belongs to the Jant runtime. The **Subscribe** navigation entry resolves to the main feed file instead.
+The Jant `/subscribe` page doesn't exist on the exported site. The **Subscribe** navigation entry links to the main feed file instead.
 
 ### Round-trip fidelity
 
-A `site export` → `site import` round-trip preserves every post's Featured and pinned state, plus every Thread's collection membership:
+`site import` restores what `site export` wrote:
 
-- `featured_at` and `pinned_at` are written to front matter as ISO timestamps, not booleans, so re-importing restores the precise moment a post was Featured or pinned.
-- The Thread root's top-level `collections` array carries `collected_at`, `position`, and per-collection `pinned_at` for every entry. Reply leaf bundles do not repeat Thread membership.
-- Imports remain compatible with older exports that wrote `collections` on each post. The importer unions root and reply memberships by Thread, taking the latest `collected_at`, latest `pinned_at`, and smallest `position` for duplicates.
-- Thread root `last_activity_at` preserves the effect of replies published with **Reply quietly**. Quietness is not a per-reply field in the export; import uses the root activity timestamp to avoid bumping replies that originally landed quietly.
+- `featured_at` and `pinned_at` are ISO timestamps, so a re-import brings back the moment a post was Featured or pinned.
+- A Thread's Collection membership sits in the root's `collections` array, each entry with `collected_at`, `position`, and a per-Collection `pinned_at`. Replies don't repeat it. Older exports that wrote `collections` on every post still import.
+- The export has no per-reply flag for **Reply quietly**. Import reads the root's `last_activity_at` so that quiet replies don't bump the Thread.
 
-Fields not documented here are Jant-internal — don't hand-edit them. They get written back to the database verbatim on the next import and will overwrite any later changes you made in Jant.
-
-### Export the site
-
-You need `JANT_API_TOKEN` (or `--token`); see [Runtime targets § HTTP API commands](#http-api-commands).
-
-```bash
-JANT_API_TOKEN=jnt_your_token npx jant site export https://your-site.example --output ./jant-site-export.zip
-```
-
-To inspect the generated site, export to a directory:
-
-```bash
-npx jant site export https://your-site.example --directory ./jant-site
-cd ./jant-site && hugo serve
-```
+Front-matter fields not listed on this page are internal to Jant. Don't edit them by hand: the next import writes them back to the database as they are, over anything you changed in Jant since.
 
 ### Pull media separately
 
-`site export` downloads media by default, but the pull step also runs on its own against an existing export — directory or ZIP. Use it when you exported with `--no-pull-media`, when new media was added after an earlier export, or when a previous pull was interrupted.
+`site pull-media` runs the media download on an existing export, directory or ZIP. Use it after a `--no-pull-media` export, after new media was added, or when an earlier pull stopped partway.
 
 ```bash
 # Against an unpacked directory
@@ -211,105 +158,100 @@ npx jant site pull-media --path ./jant-site-export.zip
 npx jant site pull-media --path ./jant-site-export.zip --output ./pulled.zip
 ```
 
-The command scans every markdown file plus `hugo.toml`, downloads each remote media reference into `static/media/`, and rewrites references to local paths. It's idempotent: files already present in `static/media/` are reused rather than re-downloaded. Anything that fails to download keeps its original URL so the Hugo build still works.
+It scans every Markdown file and `hugo.toml`, downloads each remote media file into `static/media/`, and rewrites the references to local paths. Files already in `static/media/` are reused, so a second run is safe. A file that fails to download keeps its original URL, and the Hugo build still works.
 
 ### Customizing the export
 
-`themes/jant/` is the packaged Jant theme. If the export is bidirectionally synced to a GitHub repository, every Jant push updates the repo using these rules:
+The next export or [GitHub Sync](github-sync.md) push overwrites `themes/jant/**`, so don't edit it. On a synced repository, each push also rewrites `content/**`, `data/jant.toml`, `hugo.toml`, `.gitignore`, and `README.md`, and deletes files in those paths that Jant no longer generates. Root `layouts/`, root `static/`, your own files under `data/`, and everything else are left alone. To customize:
 
-- **Overwrite and clean** (managed paths): `themes/jant/**`, `content/**`, `data/jant.toml`, `hugo.toml`, `.gitignore`, `README.md`. Files Jant no longer generates in these paths are deleted — for example, the directory of a deleted post.
-- **Preserve** (unmanaged paths): root `layouts/`, root `static/`, your own Hugo data files under `data/`, and anything not in the managed list above.
-
-Custom theme work and added static assets belong in unmanaged paths. Don't edit `themes/jant/**` directly.
-
-Supported customization paths:
-
-- **Override a single template**: copy `themes/jant/layouts/<name>.html` to root `layouts/<name>.html` and edit the root copy. Hugo loads root templates first, so you don't need to fork the entire theme.
-- **Add static files**: drop them in root `static/`. They're served at the matching URL and take precedence over same-named files in `themes/jant/static/`.
-- **Tweak colors, fonts, or layout details**: use **Settings → Custom CSS** in Jant. The value is written to `themes/jant/static/custom.css` on every export. Edit it in Settings, not in the repo.
-
-Editing `themes/jant/**` directly isn't supported — the next sync or export overwrites it. For site-wide configuration, use Jant's **Settings**; don't hand-edit `hugo.toml`.
+- To change one template, copy `themes/jant/layouts/<name>.html` to root `layouts/<name>.html` and edit the copy. Hugo loads root templates first.
+- Put extra static files in root `static/`. They win over files of the same name in `themes/jant/static/`.
+- Change colors, fonts, or layout details in Jant under **Settings → Custom CSS**. Each export writes it to `themes/jant/static/custom.css`.
+- Change site-wide configuration in Jant's **Settings**, not in `hugo.toml`.
 
 ## Site import (`site import`)
 
-`site import` reads a site export directory or ZIP and imports it into Jant. Typical uses: migrating between Jant sites, restoring content from a portable export, and previewing an import before writing.
-
-### Conflicts and constraints
-
-Import does not merge, overwrite, or roll back transactions — it walks the inbound posts and collections one at a time, comparing slugs against the target site's `path_registry`:
-
-- If a slug is already taken by an existing post, collection, alias, or redirect, the command halts immediately. Anything written before the halt **stays** in the target site (you'll need to clean up partial state by hand).
-- The target site doesn't have to be completely empty, but in practice you'll only import a single export into a clean site — overlap with the source almost guarantees slug collisions.
-- If a single export contains duplicate slugs internally (for example, after hand-editing several markdown files), the same conflict triggers and the command exits.
-- `--dry-run` runs the full validation pass without writing anything. Always dry-run before a real import.
-
-### Clearing the target site
-
-When migration hits field conflicts or a previous import didn't complete cleanly, there's currently no lightweight "wipe content but keep the account" entry point. The fastest path is to use **Settings → Account & Data → Delete Account** to remove the account along with all its content, then re-register — a common shortcut during first-time migration. The flow forces a `site export` download as a final backup, then asks for a confirmation phrase.
-
-On hosted sites, **Delete Account** removes the same content and account but leaves billing, domain bindings, and the jant.me instance itself intact. After re-registering you can re-initialize the same instance.
-
-### Dry-run first
-
-Dry-run never connects to the target site, but the URL is still required so the argument shape stays consistent:
+`site import` reads an export, directory or ZIP, into a Jant site. Run it with `--dry-run` first: it checks everything and writes nothing. A dry run never contacts the site, but the URL is still required.
 
 ```bash
 npx jant site import https://your-site.example --path ./jant-site-export.zip --dry-run
 ```
 
-### Import into a site
-
-Same as `site export`, you need `JANT_API_TOKEN` (or `--token`):
+Then import for real, with `JANT_API_TOKEN` or `--token`:
 
 ```bash
 JANT_API_TOKEN=jnt_your_token npx jant site import https://your-site.example --path ./jant-site-export.zip
 ```
 
+### Conflicts and constraints
+
+Import writes posts and Collections one at a time. It doesn't merge, overwrite, or roll back.
+
+- When a slug is already taken on the target site by a post, Collection, alias, or redirect, the import stops. Everything written before that stays, and you clean it up by hand.
+- Duplicate slugs inside the export itself, for example after hand-editing Markdown files, stop it the same way.
+- The target site doesn't have to be empty, but an export overlaps its source so much that in practice you import into a clean site.
+
+### Clearing the target site
+
+Jant has no single action yet that deletes a site's content and keeps the account. After a failed or partial import, the fastest reset is **Settings → Account & Data → Delete Account**, then registering again. The flow makes you download a `site export` as a last backup, then asks for a confirmation phrase.
+
+On a hosted site, **Delete Account** removes the same content and account, but billing, domain bindings, and the jant.me instance itself stay. After registering again you can set up the same instance.
+
 ### Skip remote images in the body
 
-By default, import re-hosts every piece of media on the target site: assets declared in front matter `media:`, images referenced from body markdown via `![](...)` (including remote URLs), and avatars are all fetched and uploaded. URLs in the body get rewritten to the new locations. The target site is then fully independent of the source — taking the source offline doesn't break image availability.
+By default, import copies all media to the target site: files declared in front matter `media:`, images in the body (`![](...)`, remote URLs included), and avatars. Body URLs are rewritten to the copies, so the target keeps working after the source goes offline.
 
-If you don't want body images **pointing at third-party URLs** (imgur, Wikipedia, any https link) mirrored into your storage — for bandwidth, copyright, or necessity reasons — pass `--skip-remote-media`:
+To leave images that point at third-party URLs (imgur, Wikipedia, any `https://` link) out of your storage, for bandwidth, copyright, or other reasons, pass `--skip-remote-media`:
 
 ```bash
 npx jant site import https://your-site.example --path ./jant-site-export.zip --skip-remote-media
 ```
 
-With this flag:
+With the flag, relative paths (`/media/...`, `./foo.png`) are the source site's own files and still upload. Absolute URLs (`https://...`, `//cdn...`) stay in the body as they are. Front-matter `media:`, avatars, and text attachments always migrate.
 
-- **Relative paths** (`/media/...`, `./foo.png`): still uploaded — these are the source site's own files.
-- **Absolute URLs** (any `https://...`, `//cdn...`): not fetched, not uploaded, original URL kept in the body.
+If the source site serves media from its own storage domain, such as an R2 public domain like `media.yourdomain.com` or an S3 CDN, its body images count as absolute URLs too. Use the flag only when that domain will stay up, for example when source and target share a bucket. Otherwise the images break once the source's storage goes away.
 
-Front-matter `media:` declarations, avatars, and text attachments are unaffected and always migrate.
+## Runtime targets
 
-> **Note**: if the source site serves media from a separate storage domain (an R2 public domain like `media.yourdomain.com`, an S3 CDN, etc.), body images on that domain are also classified as absolute URLs. Only enable this flag when that domain is durable — for example, when source and target share the same storage bucket. Otherwise the images break once the source's R2 goes away.
+`site snapshot export/import` and `db export` read and write the database and media storage directly. Run them inside the site's deployment environment: from its project directory with its `wrangler.toml`, or with the same `DATABASE_URL`, `LOCAL_STORAGE_PATH`, `S3_*`, and other runtime variables.
+
+| Flag       | Target                  | Required environment                                 |
+| ---------- | ----------------------- | ---------------------------------------------------- |
+| `--remote` | Remote Cloudflare D1/R2 | `wrangler.toml`, wrangler authenticated              |
+| `--local`  | Local D1 (wrangler)     | `wrangler.toml`                                      |
+| `--node`   | Node runtime            | `DATABASE_URL` and matching storage config variables |
+
+With no flag, the CLI picks the Node runtime when `DATABASE_URL` or `DATA_DIR` is set in the shell, and local D1 otherwise, which needs `wrangler.toml` in the working directory. It prints `[jant] target = ...` at startup so you can check the choice.
+
+`--remote` goes through the local `wrangler` CLI, so run `wrangler login` or set `CLOUDFLARE_API_TOKEN` first. `--config` points at a non-default wrangler config.
+
+The CLI loads `<cwd>/.env.node` at startup. Variables already exported in the shell take precedence. `JANT_ENV_FILE` loads a different file, which helps when one machine manages several deployments; set it to an empty value to skip the file, as automated runs do to keep a local `.env.node` out. The full variable list is in [Configuration](configuration.md).
 
 ## Site snapshot (`site snapshot`)
 
-`site snapshot export` and `site snapshot import` preserve Jant's internal IDs, storage keys, and the underlying object files. Use snapshots when you want round-trip-safe recovery rather than content migration.
+A snapshot keeps Jant's internal IDs, storage keys, and media files exactly as they are. Use it to restore a site, not to migrate content. It reads the database directly (see [Runtime targets](#runtime-targets)), so it doesn't work on hosted sites.
 
 ### What's included and excluded
 
 A snapshot includes:
 
-- Posts (including drafts and private posts, with `status` and `visibility` preserved as-is).
-- Collections, collection directory items, navigation items.
+- Posts, drafts and private posts included, with `status` and `visibility` as they were.
+- Collections, Collections directory items, and navigation items.
 - Media records and path registry entries.
-- The storage objects referenced by those records (downloaded in full by default — archive size ≈ total media; pass `--skip-objects` to skip).
-- A set of site display settings (site name, description, theme, type style, favicon, custom CSS, timezone, etc.).
-- The language setup: the primary language, the languages served under a prefix, and whether [multilingual content](multilingual.md) is on. Each post's own language and translation links ride along with the post.
+- The storage objects those records point to. The archive is about as large as all your media; `--skip-objects` leaves them out.
+- Display settings: site name, description, theme, type style, favicon, custom CSS, timezone, and so on.
+- The language setup: the primary language, the languages served under a prefix, and whether [multilingual content](multilingual.md) is on. Each post's language and translation links come with the post.
 
-A snapshot **does not include** (excluded at export time, never written to the archive):
+A snapshot leaves out, at export time:
 
-- users, sessions, accounts, verifications.
-- API tokens.
-- Site runtime config (`wrangler.toml`, environment variables).
-- Code injection (`Settings → Code injection`). Custom CSS travels; custom head and body HTML don't, so importing an archive can't run script on the importing site.
-- GitHub Sync and Telegram bindings, along with their tokens and sync state. They point at a repo or a chat the target site doesn't own.
+- Users, sessions, accounts, verifications, and API tokens.
+- Runtime config (`wrangler.toml`, environment variables).
+- Code injection (**Settings → Code injection**). Custom CSS is included; custom head and body HTML are not, so importing an archive can't run script on the importing site.
+- GitHub Sync and Telegram connections, with their tokens and sync state. They point at a repository or chat the target site doesn't own.
 
-In other words: distributing a snapshot doesn't leak login credentials, but the importer needs to register their own account afterwards.
+A snapshot carries no login credentials, so the person importing it registers their own account afterwards.
 
-The archive is three pieces:
+The archive has three parts:
 
 ```
 jant-site-snapshot.zip
@@ -320,13 +262,13 @@ jant-site-snapshot.zip
 
 ### Export a snapshot
 
-Default target (auto-selected per [Runtime targets](#runtime-targets) — local D1 or Node):
+With no flag, the target follows [Runtime targets](#runtime-targets) (local D1 or Node):
 
 ```bash
 npx jant site snapshot export --output ./jant-site-snapshot.zip
 ```
 
-Explicit Node runtime (e.g. SQLite or Postgres deployments):
+Node runtime, for SQLite or Postgres deployments:
 
 ```bash
 DATABASE_URL=postgres://... npx jant site snapshot export --node --output ./jant-site-snapshot.zip
@@ -340,27 +282,19 @@ npx jant site snapshot export --remote --config ./wrangler.toml --output ./jant-
 
 ### Skip media file download
 
-When source and target share the same R2 / S3 bucket — for example, when you're migrating database state to another Worker but the media is already in the target bucket — pass `--skip-objects` to leave the `objects/` directory out of the archive:
+When source and target share an R2 or S3 bucket, for example when you move the database to another Worker and the media is already in the target bucket, `--skip-objects` leaves `objects/` out. The archive is then only `meta.json` and `db.sql`.
 
 ```bash
 npx jant site snapshot export --output ./jant-site-snapshot.zip --skip-objects
 ```
 
-The archive shrinks to just `meta.json` + `db.sql`.
-
-> **Prerequisite**: the target storage already contains every storage key referenced by `db.sql` (typically because source and target share the same R2 / S3 bucket). Otherwise every media reference 404s after import.
->
-> Pair this with `--allow-missing-objects` on import (see below). Without that flag, import stops at the preflight stage and lists the missing keys.
+The target storage must already hold every storage key in `db.sql`, or every media reference returns 404 after import. Import with `--allow-missing-objects` (below); without it, import stops at its preflight check and lists the missing keys.
 
 ### Import a snapshot
 
-Snapshot import requires explicit `--replace`. With `--replace`, the snapshot's content tables in the target database are wiped (`post`, `collection`, `nav_item`, `collection_directory_item`, `thread_collection`, `media`, `path_registry`), then rewritten from the snapshot. Tables outside that scope — users, sessions, tokens — are left alone. Without `--replace`, import refuses to run, preventing accidental overwrites.
+Snapshot import needs `--replace`. It clears the snapshot's content tables in the target database (`post`, `collection`, `nav_item`, `collection_directory_item`, `thread_collection`, `media`, `path_registry`) and writes the snapshot in their place. Users, sessions, and tokens stay. Without `--replace`, import refuses to run.
 
-Current exports use snapshot format v2. Imports also accept v1 snapshots: their legacy `post_collection` rows are upgraded in memory to the Thread-level union before any target content is cleared.
-
-Media files are uploaded into the target site's own storage and recorded there, so a snapshot exported from a site on R2 can be imported into a site that stores media in S3 or on local disk.
-
-Default target:
+Media files go into the target site's own storage, so a snapshot from a site on R2 imports into one that keeps media in S3 or on local disk. Exports use snapshot format v2; import also accepts v1.
 
 ```bash
 npx jant site snapshot import --path ./jant-site-snapshot.zip --replace
@@ -374,9 +308,7 @@ npx jant site snapshot import --remote --config ./wrangler.toml --path ./jant-si
 
 ### Allow missing objects
 
-By default, import runs a preflight: it extracts every `storage_key` and `poster_key` from `db.sql` and compares them against the files in the `objects/` directory. Any missing key aborts the import and prints the full missing list.
-
-If you've confirmed the target storage already has those files (for instance, importing a `--skip-objects` archive into a Worker that shares its R2 bucket with the source), pass `--allow-missing-objects` to skip the check:
+Before writing, import checks every `storage_key` and `poster_key` in `db.sql` against the files in `objects/`, and stops with the full list if any are missing. When the target storage already has those files, as with a `--skip-objects` archive going into a Worker that shares the source's R2 bucket, `--allow-missing-objects` skips the check:
 
 ```bash
 npx jant site snapshot import \
@@ -385,19 +317,19 @@ npx jant site snapshot import \
   --allow-missing-objects
 ```
 
-Even with the flag set, the missing list still prints to stderr — redirect it to a file if you want an audit trail.
+The missing list still goes to stderr. Redirect it to a file to keep a record.
 
 ## Database export (`db export`)
 
-`db export` writes the current database to raw SQL. It **doesn't include media files**. Use it to inspect table contents, keep a SQL dump alongside other backups, or feed your own operational tooling. **Don't use it as a complete backup** — media has to be handled separately. See [Backups and recovery](backups.md). Postgres deployments can also use `pg_dump` directly; see [Backups and recovery § Node + Postgres](backups.md#node--postgres).
+`db export` writes the database as raw SQL, without media files. Use it to inspect tables, keep a SQL dump next to other backups, or feed your own tools. It is not a complete backup; [Backups and recovery](backups.md) covers media. Postgres deployments can also use `pg_dump`; see [Backups and recovery § Node + Postgres](backups.md#node--postgres).
 
-Default target (auto-selected per [Runtime targets](#runtime-targets)):
+With no flag, the target follows [Runtime targets](#runtime-targets):
 
 ```bash
 npx jant db export --output ./jant-export.sql
 ```
 
-Explicit Node runtime:
+Node runtime:
 
 ```bash
 DATABASE_URL=postgres://... npx jant db export --node --output ./jant-export.sql
@@ -411,7 +343,7 @@ npx jant db export --remote --config ./wrangler.toml --output ./jant-remote.sql
 
 ## What's next
 
-- [Backups and recovery](backups.md) — full backup and recovery strategy
-- [GitHub sync](github-sync.md) — content backup and bidirectional editing through a GitHub repository
-- [Automation and API](automation-and-api.md) — scripting the operations above
+- [Backups and recovery](backups.md): a full backup and recovery plan
+- [GitHub sync](github-sync.md): back up content to a GitHub repository and edit it there
+- [Automation and API](automation-and-api.md): script the operations above
 - [API Reference](API.md)
