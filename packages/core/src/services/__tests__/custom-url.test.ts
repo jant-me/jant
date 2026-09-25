@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import { sql } from "drizzle-orm";
 import {
   createTestDatabase,
   DEFAULT_TEST_SITE_ID,
@@ -93,6 +94,39 @@ describe("CustomUrlService", () => {
           toPath: "/somewhere",
         }),
       ).rejects.toThrow("conflicts with an existing post slug");
+    });
+  });
+
+  // Postgres gives no order among rows that tie on the sort key, so paging
+  // by created_at alone repeated some custom URLs and never showed others
+  // (482 rows listed, 478 distinct, on a real site).
+  describe("list order", () => {
+    it("orders custom URLs created in the same second by ID", async () => {
+      const created = [];
+      for (const path of ["a-page", "b-page", "c-page"]) {
+        created.push(
+          await customUrlService.create({
+            path,
+            targetType: "redirect",
+            toPath: "/target",
+            redirectType: 301,
+          }),
+        );
+      }
+      await db.run(sql`UPDATE path_registry SET created_at = 1000`);
+
+      const listed = await customUrlService.list();
+      const expected = created
+        .map((url) => url.id)
+        .sort()
+        .reverse();
+      expect(listed.map((url) => url.id)).toEqual(expected);
+
+      const pages = [
+        ...(await customUrlService.list({ limit: 2, offset: 0 })),
+        ...(await customUrlService.list({ limit: 2, offset: 2 })),
+      ];
+      expect(pages.map((url) => url.id)).toEqual(expected);
     });
   });
 

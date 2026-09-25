@@ -1171,10 +1171,11 @@ This is the media metadata listing endpoint.
 
 Query parameters:
 
-| Parameter    | Type    | Required | Default | Notes                                      |
-| ------------ | ------- | -------- | ------- | ------------------------------------------ |
-| `limit`      | integer | no       | `50`    | `1` to `200`                               |
-| `mimePrefix` | string  | no       | none    | Prefix filter such as `image/` or `video/` |
+| Parameter    | Type    | Required | Default | Notes                                         |
+| ------------ | ------- | -------- | ------- | --------------------------------------------- |
+| `limit`      | integer | no       | `50`    | `1` to `200`                                  |
+| `mimePrefix` | string  | no       | none    | Prefix filter such as `image/` or `video/`    |
+| `cursor`     | string  | no       | none    | Pass the previous `nextCursor` back unchanged |
 
 Response:
 
@@ -1207,12 +1208,14 @@ Response:
       "previewUrl": "/media/med_01jpyx4g9m8b4y50a4gx3t7p1n.webp",
       "posterUrl": null
     }
-  ]
+  ],
+  "nextCursor": "med_01jpyx4g9m8b4y50a4gx3t7p1n"
 }
 ```
 
 Notes:
 
+- Newest first. `nextCursor` is `null` on the last page.
 - This list may include ordinary uploaded binaries and stored text attachments.
 - Text attachments use `type: "text"` and expose `contentFormat` plus `contentUrl` instead of `url`, `previewUrl`, and `posterUrl`.
 

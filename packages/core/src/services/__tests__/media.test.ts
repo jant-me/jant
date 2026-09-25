@@ -1203,6 +1203,37 @@ describe("MediaService", () => {
       const list = await mediaService.list({ limit: 2 });
       expect(list).toHaveLength(2);
     });
+
+    // The API used to stop at 200 items with no way to ask for the rest.
+    it("pages through every item with an ID cursor", async () => {
+      const created = [];
+      for (let i = 0; i < 5; i++) {
+        created.push(
+          await mediaService.create({
+            ...sampleMedia,
+            storageKey: `page${i}.jpg`,
+          }),
+        );
+      }
+      const newestFirst = created
+        .map((media) => media.id)
+        .sort()
+        .reverse();
+
+      const first = await mediaService.list({ limit: 2 });
+      const second = await mediaService.list({
+        limit: 2,
+        cursor: first.at(-1)?.id,
+      });
+      const third = await mediaService.list({
+        limit: 2,
+        cursor: second.at(-1)?.id,
+      });
+
+      expect([...first, ...second, ...third].map((media) => media.id)).toEqual(
+        newestFirst,
+      );
+    });
   });
 
   describe("attachToPost", () => {
