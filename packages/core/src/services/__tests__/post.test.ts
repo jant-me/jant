@@ -13,6 +13,7 @@ import type { Database } from "../../db/index.js";
 import { createPathService } from "../path.js";
 import type { MediaService } from "../media.js";
 import { POST_BODY_HTML_VERSION } from "../../lib/post-body-html.js";
+import { ValidationError } from "../../lib/errors.js";
 import type BetterSqlite3 from "better-sqlite3";
 
 function createMockStorage() {
@@ -88,6 +89,44 @@ describe("PostService", () => {
       expect(post.pinnedAt).toBeNull();
       expect(post.bodyHtml).toContain("<p>Hello world</p>");
       expect(post.threadId).toBe(post.id);
+    });
+
+    it("stores an empty list item with the paragraph the schema requires", async () => {
+      const post = await postService.create({
+        format: "note",
+        body: JSON.stringify({
+          type: "doc",
+          content: [
+            {
+              type: "orderedList",
+              content: [
+                { type: "listItem", content: [] },
+                {
+                  type: "listItem",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [{ type: "text", text: "Install" }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      });
+
+      const stored = JSON.parse(post.body ?? "");
+      expect(stored.content[0].content[0]).toEqual({
+        type: "listItem",
+        content: [{ type: "paragraph" }],
+      });
+    });
+
+    it("rejects a body that isn't TipTap JSON", async () => {
+      await expect(
+        postService.create({ format: "note", body: "not json" }),
+      ).rejects.toThrow(ValidationError);
     });
 
     it("creates a link post with commentary", async () => {

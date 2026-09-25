@@ -786,6 +786,9 @@ export async function rebuildPostBodyHtmlWithRuntimeSettings(
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
 
+const INVALID_POST_BODY_MESSAGE =
+  "The body isn't a TipTap JSON document. Send a doc node as a JSON string, or send Markdown as bodyMarkdown.";
+
 function isValidSlug(value: string): boolean {
   return SLUG_RE.test(value);
 }
@@ -2359,6 +2362,9 @@ export function createPostService(
       const preparedBody = trimmedBody
         ? tryPreparePostBodyHtml(id, trimmedBody)
         : null;
+      if (preparedBody && !preparedBody.ok) {
+        throw new ValidationError(INVALID_POST_BODY_MESSAGE);
+      }
       const body = preparedBody?.ok ? preparedBody.body : trimmedBody;
       const title = data.title?.trim() || null;
       const quoteText = data.quoteText?.trim() || null;
@@ -3083,6 +3089,9 @@ export function createPostService(
         const preparedBody = normalizedBody
           ? tryPreparePostBodyHtml(existing.id, normalizedBody)
           : null;
+        if (preparedBody && !preparedBody.ok) {
+          throw new ValidationError(INVALID_POST_BODY_MESSAGE);
+        }
         updatedBody = preparedBody?.ok ? preparedBody.body : normalizedBody;
         updates.body = updatedBody;
         updates.bodyHtml = preparedBody?.ok

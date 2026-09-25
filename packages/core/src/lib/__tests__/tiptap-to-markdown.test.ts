@@ -465,12 +465,32 @@ describe("tiptapJsonToMarkdown", () => {
   });
 
   describe("edge cases", () => {
-    it("returns empty string for invalid JSON", () => {
-      expect(tiptapJsonToMarkdown("not json")).toBe("");
+    it("throws for invalid JSON instead of returning nothing", () => {
+      expect(() => tiptapJsonToMarkdown("not json")).toThrow();
     });
 
-    it("returns empty string for non-doc node", () => {
-      expect(tiptapJsonToMarkdown('{"type":"paragraph"}')).toBe("");
+    it("throws for a root that is not a doc", () => {
+      expect(() => tiptapJsonToMarkdown('{"type":"paragraph"}')).toThrow(/doc/);
+    });
+
+    // A stored body with an empty list item made the serializer throw, and
+    // the catch-all turned the whole post into "" in the export.
+    it("fills an empty list item instead of dropping the document", () => {
+      const json = doc(
+        { type: "heading", attrs: { level: 2 }, content: [text("Setup")] },
+        {
+          type: "orderedList",
+          content: [
+            { type: "listItem", content: [] },
+            { type: "listItem", content: [p(text("Install"))] },
+          ],
+        },
+        { type: "codeBlock", content: [text("nix run")] },
+      );
+      const markdown = tiptapJsonToMarkdown(json);
+      expect(markdown).toContain("## Setup");
+      expect(markdown).toContain("Install");
+      expect(markdown).toContain("nix run");
     });
 
     it("handles empty doc", () => {

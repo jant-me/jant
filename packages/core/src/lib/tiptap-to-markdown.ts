@@ -11,8 +11,14 @@ import { serializeMarkdownDocument } from "./markdown-manager.js";
 /**
  * Converts a Tiptap JSON document to a Markdown string.
  *
- * @param json - Tiptap JSON string or parsed document object
+ * Throws rather than returning an empty string: a caller writing the result
+ * somewhere (an export, a text attachment) would otherwise replace the
+ * content with nothing and say nothing.
+ *
+ * @param json - Tiptap JSON document string
  * @returns Markdown string
+ * @throws {SyntaxError} When `json` is not JSON
+ * @throws {Error} When the root node is not a `doc`
  *
  * @example
  * ```ts
@@ -21,11 +27,11 @@ import { serializeMarkdownDocument } from "./markdown-manager.js";
  * ```
  */
 export function tiptapJsonToMarkdown(json: string): string {
-  try {
-    const doc = JSON.parse(json) as JSONContent;
-    if (doc.type !== "doc") return "";
-    return serializeMarkdownDocument(doc).trimEnd();
-  } catch {
-    return "";
+  const doc = JSON.parse(json) as JSONContent;
+  if (doc.type !== "doc") {
+    throw new Error(
+      `A TipTap body's root must be a doc node, not ${JSON.stringify(doc.type)}.`,
+    );
   }
+  return serializeMarkdownDocument(doc).trimEnd();
 }

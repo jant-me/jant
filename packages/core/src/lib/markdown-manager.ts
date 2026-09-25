@@ -1,10 +1,12 @@
 import {
   Extension,
   Node,
+  getSchema,
   type AnyExtension,
   type Extensions,
   type JSONContent,
 } from "@tiptap/core";
+import { Fragment, type Schema } from "@tiptap/pm/model";
 import { MarkdownManager } from "@tiptap/markdown";
 import CodeBlock from "@tiptap/extension-code-block";
 import { OrderedList } from "@tiptap/extension-list";
@@ -261,9 +263,12 @@ function escapeLineStartBlockSyntax(markdown: string): string {
     .join("\n");
 }
 
+const renderParagraphMarkdown = Paragraph.config.renderMarkdown;
+
 const MarkdownParagraph = Paragraph.extend({
   renderMarkdown(node, helpers, context) {
-    const rendered = this.parent?.(node, helpers, context) ?? "";
+    const rendered =
+      renderParagraphMarkdown?.call(this, node, helpers, context) ?? "";
     return escapeLineStartBlockSyntax(rendered);
   },
 });
@@ -1137,12 +1142,52 @@ export function getMarkdownManager(): MarkdownManager {
   return sharedMarkdownManager;
 }
 
+let sharedContentSchema: Schema | null = null;
+
+function getContentSchema(): Schema {
+  sharedContentSchema ??= getSchema(createMarkdownContentExtensions());
+  return sharedContentSchema;
+}
+
+/**
+ * Fill in the children a node's schema requires but the document left out.
+ *
+ * A list item must hold a paragraph, a blockquote a block, a doc a block.
+ * Documents that skipped one (an empty `1. ` item from an older Markdown
+ * parser, or JSON posted through the API) made the Markdown serializer throw.
+ * Each empty node that cannot be empty gets what `createAndFill` would give it.
+ *
+ * @param node - A TipTap document or descendant
+ * @returns A copy whose empty required containers are filled
+ * @example
+ * fillRequiredContent({ type: "listItem", content: [] });
+ * // { type: "listItem", content: [{ type: "paragraph" }] }
+ */
+export function fillRequiredContent(node: JSONContent): JSONContent {
+  const nodeType = node.type ? getContentSchema().nodes[node.type] : undefined;
+  if (!nodeType || nodeType.isLeaf) return node;
+
+  const content = node.content?.map(fillRequiredContent);
+  if ((content?.length ?? 0) === 0 && !nodeType.contentMatch.validEnd) {
+    const filled = nodeType.contentMatch.fillBefore(Fragment.empty, true);
+    if (filled) {
+      return { ...node, content: filled.toJSON() as JSONContent[] };
+    }
+  }
+
+  return content ? { ...node, content } : node;
+}
+
 export function parseMarkdownDocument(markdown: string): JSONContent {
-  return normalizeMarkdownDocument(getMarkdownManager().parse(markdown));
+  return fillRequiredContent(
+    normalizeMarkdownDocument(getMarkdownManager().parse(markdown)),
+  );
 }
 
 export function serializeMarkdownDocument(doc: JSONContent): string {
   return expandCodeBlockFences(
-    getMarkdownManager().serialize(normalizeFootnoteArtifacts(doc)),
+    getMarkdownManager().serialize(
+      normalizeFootnoteArtifacts(fillRequiredContent(doc)),
+    ),
   );
 }

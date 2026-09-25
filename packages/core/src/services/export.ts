@@ -1014,7 +1014,7 @@ async function buildThreadBundle(
     media: rootMediaList.length > 0 ? rootMediaList : undefined,
   };
 
-  const rootBody = root.body ? tiptapJsonToMarkdown(root.body) : "";
+  const rootBody = root.body ? postBodyToMarkdown(root.body, rootSlug) : "";
   files.push({
     path: `content/${rootSlug}/_index.md`,
     content: `${await formatFrontMatter(rootFrontMatter)}\n${rootBody}${rootBody.endsWith("\n") ? "" : "\n"}`,
@@ -1092,7 +1092,9 @@ async function buildThreadBundle(
       media: replyMediaList.length > 0 ? replyMediaList : undefined,
     };
 
-    const replyBody = reply.body ? tiptapJsonToMarkdown(reply.body) : "";
+    const replyBody = reply.body
+      ? postBodyToMarkdown(reply.body, replySlug)
+      : "";
     files.push({
       path: `content/${rootSlug}/${replySlug}/index.md`,
       content: `${await formatFrontMatter(replyFrontMatter)}\n${replyBody}${replyBody.endsWith("\n") ? "" : "\n"}`,
@@ -1972,6 +1974,29 @@ Thumbs.db
  * @example
  * renderMarkdownTable(["Jant", "This export"], [["/feed", "/index.xml"]]);
  */
+/**
+ * Convert a stored post body to the export's Markdown, naming the post when
+ * it can't be converted. An export that dropped the body would read as a
+ * complete archive and restore as an empty post.
+ *
+ * @param body - Stored TipTap JSON
+ * @param slug - The post's slug, for the error
+ * @returns The body as Markdown
+ * @throws {Error} When the stored body isn't a TipTap document
+ * @example
+ * postBodyToMarkdown('{"type":"doc","content":[]}', "hello"); // ""
+ */
+function postBodyToMarkdown(body: string, slug: string): string {
+  try {
+    return tiptapJsonToMarkdown(body);
+  } catch (error) {
+    throw new Error(
+      `Couldn't convert the body of /${slug} to Markdown: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
+}
+
 function renderMarkdownTable(
   headers: [string, string],
   rows: [string, string][],

@@ -90,6 +90,18 @@ describe("markdownToTiptapJson", () => {
       expect(doc.content[0].content).toHaveLength(3);
     });
 
+    // Tiptap's own tokenizer gave an empty item no content at all, which the
+    // schema rejects and the Markdown serializer threw on.
+    it("gives an empty list item the paragraph the schema requires", () => {
+      const doc = parse("1. First\n2.\n3. Third");
+      expect(doc.content[0].type).toBe("orderedList");
+      expect(doc.content[0].content).toHaveLength(3);
+      expect(doc.content[0].content[1].type).toBe("listItem");
+      expect(doc.content[0].content[1].content).toMatchObject([
+        { type: "paragraph" },
+      ]);
+    });
+
     it("keeps an ordered list's start number", () => {
       const doc = parse("3. Third\n4. Fourth");
       expect(doc.content[0].type).toBe("orderedList");

@@ -8,6 +8,7 @@
 
 import type { JSONContent } from "@tiptap/core";
 import { upgradeLegacyFootnotes } from "./footnotes.js";
+import { fillRequiredContent } from "./markdown-manager.js";
 import {
   renderTiptapDocument,
   type TiptapRenderResult,
@@ -50,8 +51,9 @@ export function renderPostBodyHtml(postId: string, body: string): string {
 }
 
 /**
- * Normalize recognized historical footnotes and render the current HTML
- * projection in one parse pass.
+ * Normalize recognized historical footnotes, fill in children the schema
+ * requires (an empty list item gets its paragraph), and render the current
+ * HTML projection in one parse pass.
  *
  * @param postId - Immutable post TypeID
  * @param body - Canonical TipTap JSON
@@ -73,10 +75,15 @@ export function tryPreparePostBodyHtml(
     }
 
     const upgraded = upgradeLegacyFootnotes(parsed);
+    const doc = fillRequiredContent(upgraded.doc);
+    const canonical = JSON.stringify(doc);
     return {
       ok: true,
-      body: upgraded.upgraded ? JSON.stringify(upgraded.doc) : body,
-      html: renderTiptapDocument(upgraded.doc, { namespace: postId }),
+      body:
+        upgraded.upgraded || canonical !== JSON.stringify(upgraded.doc)
+          ? canonical
+          : body,
+      html: renderTiptapDocument(doc, { namespace: postId }),
       upgradedLegacyFootnotes: upgraded.upgraded,
     };
   } catch (error) {
