@@ -548,14 +548,30 @@ function refineSlugPathExclusivity<T extends { slug?: string; path?: string }>(
 }
 
 /**
+ * Create only: a post's own record timestamps, in Unix seconds. An import or
+ * a migration restores them, so "last edited" (feed `<updated>`, sitemap
+ * `lastmod`) and Thread order (creation time, then ID) survive the move.
+ * Omitted, both are the time of the request; `updatedAt` alone defaults to
+ * `createdAt`.
+ */
+const RestoredTimestampFields = {
+  createdAt: z.number().int().positive().optional(),
+  updatedAt: z.number().int().positive().optional(),
+};
+
+/**
  * API request body schema for creating a post
  */
 export const CreatePostSchema = refineSlugPathExclusivity(
-  refineCreatePostFormatShape(refineBodyExclusivity(PostFieldsSchema)),
+  refineCreatePostFormatShape(
+    refineBodyExclusivity(PostFieldsSchema.extend(RestoredTimestampFields)),
+  ),
 );
 
 export const CreatePostApiSchema = refineSlugPathExclusivity(
-  refineCreatePostFormatShape(refineBodyExclusivity(ApiPostFieldsSchema)),
+  refineCreatePostFormatShape(
+    refineBodyExclusivity(ApiPostFieldsSchema.extend(RestoredTimestampFields)),
+  ),
 );
 
 /**

@@ -148,7 +148,7 @@
        newest included — as `lib/thread-fold.ts` defines it. A thread of five
        replies or fewer is shown whole; `first` and `last` clamp to the slice,
        so the two windows simply overlap there. */ -}}
-  {{- $replies := (where $post.Pages "Params.visibility" "public").ByDate -}}
+  {{- $replies := (where $post.Pages "Params.visibility" "public").ByWeight -}}
   {{- $truncated := $post.Params.truncated | default false -}}
   {{- range first 2 $replies -}}
     {{- if .Params.truncated -}}{{- $truncated = true -}}{{- end -}}

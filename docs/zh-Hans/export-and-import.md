@@ -139,7 +139,10 @@ Jant 的 feed 地址是 `/feed`、`/latest/feed`、`/featured/feed`、`/archive/
 
 - `featured_at` 和 `pinned_at` 是 ISO 时间戳，重新导入后恢复到帖子被 Featured 或置顶的具体时刻。
 - Thread 的合集归属写在 root 的 `collections` 数组里，每条带 `collected_at`、`position` 和该合集内的 `pinned_at`。回复不重复写。旧版导出在每篇帖子上都写了 `collections`，也能导入。
-- 导出里没有单条回复的 **Reply quietly** 标记。导入时读取 root 的 `last_activity_at`，这类回复不会把 Thread 顶上去。
+- 用 **Reply quietly** 发布的回复带 `quiet_reply: true`。没有这个字段的旧版导出，导入时读取 root 的 `last_activity_at`，这类回复不会把 Thread 顶上去。
+- 每条回复的 `weight` 是它在 Thread 里的位置，导入按这个顺序创建回复。同一秒发布的帖子也保持原来的先后。
+- `created` 和 `updated` 记录帖子的写作时间和最后编辑时间，与 `date` 不同时才写。搬站之后，feed 和 sitemap 报的仍是原来的时间。
+- 视频和音频保留 `duration_seconds`。
 
 本页没有列出的 front matter 字段是 Jant 内部字段，不要手动修改：下次导入会把它们原样写回数据库，覆盖你之后在 Jant 里做的修改。
 

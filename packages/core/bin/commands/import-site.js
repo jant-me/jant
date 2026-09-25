@@ -312,45 +312,66 @@ async function assertImportSlugAvailable(target, slug, label, kind) {
  * Download a media file and upload it to the Jant API.
  * Returns the new URL, or null on failure.
  */
+/**
+ * Upload one media file through the site's API.
+ *
+ * Throws when the file can't be read or the site refuses it, so a caller
+ * decides whether that is fatal (the export's own media) or leaves a link in
+ * place (an image in the body). It used to return null for either, and a
+ * post was created without the file and without a word.
+ *
+ * @param {Record<string, unknown>} media - A normalized media spec
+ * @param {string} apiUrl - Target site URL
+ * @param {string} token - API token
+ * @returns {Promise<{ url: string, id: string }>} The uploaded media
+ */
 async function uploadRemoteMedia(media, apiUrl, token) {
-  try {
-    const asset = await readMediaSpecAsset(media);
-    if (!asset) return null;
-
-    const blob = new Blob([asset.bytes], { type: asset.contentType });
-
-    const formData = new FormData();
-    formData.append("file", blob, asset.filename);
-    if (media.alt) formData.append("alt", media.alt);
-    if (media.summary) formData.append("summary", media.summary);
-    if (media.width) formData.append("width", String(media.width));
-    if (media.height) formData.append("height", String(media.height));
-    if (media.blurhash) formData.append("blurhash", media.blurhash);
-    if (media.waveform) formData.append("waveform", media.waveform);
-
-    if (media.poster) {
-      const posterAsset = await readMediaSpecAsset(media, "poster");
-      if (posterAsset) {
-        formData.append(
-          "poster",
-          new Blob([posterAsset.bytes], { type: posterAsset.contentType }),
-          posterAsset.filename,
-        );
-      }
-    }
-
-    const uploadResponse = await fetch(`${apiUrl}/api/upload`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-
-    if (!uploadResponse.ok) return null;
-    const data = await uploadResponse.json();
-    return { url: data.url, id: data.id };
-  } catch {
-    return null;
+  const asset = await readMediaSpecAsset(media);
+  if (!asset) {
+    throw new Error(`Couldn't read ${media.src}`);
   }
+
+  const blob = new Blob([asset.bytes], { type: asset.contentType });
+
+  const formData = new FormData();
+  formData.append("file", blob, asset.filename);
+  if (media.alt) formData.append("alt", media.alt);
+  if (media.summary) formData.append("summary", media.summary);
+  if (media.width) formData.append("width", String(media.width));
+  if (media.height) formData.append("height", String(media.height));
+  if (media.blurhash) formData.append("blurhash", media.blurhash);
+  if (media.waveform) formData.append("waveform", media.waveform);
+  if (media.durationSeconds) {
+    formData.append("durationSeconds", String(media.durationSeconds));
+  }
+
+  if (media.poster) {
+    const posterAsset = await readMediaSpecAsset(media, "poster");
+    if (posterAsset) {
+      formData.append(
+        "poster",
+        new Blob([posterAsset.bytes], { type: posterAsset.contentType }),
+        posterAsset.filename,
+      );
+    } else {
+      console.warn(`Warning: couldn't read the poster ${media.poster}`);
+    }
+  }
+
+  const uploadResponse = await fetch(`${apiUrl}/api/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!uploadResponse.ok) {
+    const detail = (await uploadResponse.text().catch(() => "")).slice(0, 300);
+    throw new Error(
+      `The site refused ${media.src}: HTTP ${uploadResponse.status}${detail ? ` ${detail}` : ""}`,
+    );
+  }
+  const data = await uploadResponse.json();
+  return { url: data.url, id: data.id };
 }
 
 function getFilenameFromUrl(fileUrl) {
@@ -522,6 +543,10 @@ async function mediaSpecFromJantMedia(entry, sourceRootDir) {
     waveform: typeof entry.waveform === "string" ? entry.waveform : undefined,
     summary: typeof entry.summary === "string" ? entry.summary : undefined,
     chars: typeof entry.chars === "number" ? entry.chars : undefined,
+    durationSeconds:
+      typeof entry.duration_seconds === "number"
+        ? entry.duration_seconds
+        : undefined,
   };
 }
 
@@ -674,7 +699,16 @@ async function buildImportedAttachments(
       sourceRootDir,
     );
     if (!normalized || normalized.src.startsWith("data:")) continue;
-    const result = await target.uploadMedia(normalized);
+    let result;
+    try {
+      result = await target.uploadMedia(normalized);
+    } catch (err) {
+      // The post's own attachment: creating the post without it would lose
+      // the file quietly.
+      throw new Error(`Couldn't upload ${spec.src}: ${err.message}`, {
+        cause: err,
+      });
+    }
     if (!result) continue;
     attachments.push({
       type: "media",
@@ -699,7 +733,14 @@ async function uploadMediaList(mediaSpecs, target, siteConfig, sourceRootDir) {
       sourceRootDir,
     );
     if (!normalized || normalized.src.startsWith("data:")) continue;
-    const result = await target.uploadMedia(normalized);
+    let result;
+    try {
+      result = await target.uploadMedia(normalized);
+    } catch (err) {
+      // A body image may be a third party's; the Markdown keeps its URL.
+      console.warn(`Warning: kept ${spec.src} as a link. ${err.message}`);
+      continue;
+    }
     if (!result) continue;
     // Key the rewrite map by the *original* URL as it appears in the body
     // (e.g. `/media/...`). `normalized.src` has been resolved against
@@ -733,7 +774,16 @@ async function uploadBundleResources(resourceSpecs, target) {
   for (const spec of resourceSpecs) {
     if (!spec) continue;
     if (!spec.srcFilePath && !isAbsoluteUrl(spec.src)) continue;
-    const result = await target.uploadMedia(spec);
+    let result;
+    try {
+      result = await target.uploadMedia(spec);
+    } catch (err) {
+      // The post's own attachment: creating the post without it would lose
+      // the file quietly.
+      throw new Error(`Couldn't upload ${spec.src}: ${err.message}`, {
+        cause: err,
+      });
+    }
     if (!result) continue;
     urlMap.set(spec.src, result.url);
     mediaIds.push(result.id);
@@ -1504,6 +1554,57 @@ function createRemoteTarget(apiUrl, token) {
   };
 }
 
+function getBundleTimestamp(bundle) {
+  return parseImportTimestamp(bundle.frontMatter.date);
+}
+
+function getBundleSourceId(bundle) {
+  return typeof bundle.frontMatter.id === "string" ? bundle.frontMatter.id : "";
+}
+
+/**
+ * Order bundles by `date`, then by the original TypeID (time-sortable, so it
+ * breaks a same-second tie the way the source site did), then by directory.
+ *
+ * @param {{ frontMatter: Record<string, unknown>, dir: string }} a
+ * @param {{ frontMatter: Record<string, unknown>, dir: string }} b
+ * @returns {number} Negative when `a` comes first
+ */
+function compareBundlesByDateThenId(a, b) {
+  const aDate = getBundleTimestamp(a);
+  const bDate = getBundleTimestamp(b);
+  if (aDate !== null && bDate !== null && aDate !== bDate) return aDate - bDate;
+  if (aDate !== null && bDate === null) return -1;
+  if (aDate === null && bDate !== null) return 1;
+
+  const aId = getBundleSourceId(a);
+  const bId = getBundleSourceId(b);
+  if (aId && bId && aId !== bId) return aId < bId ? -1 : 1;
+
+  return basename(a.dir).localeCompare(basename(b.dir));
+}
+
+/**
+ * Order reply bundles by their exported `weight` (position in the Thread),
+ * falling back to {@link compareBundlesByDateThenId} for older exports.
+ *
+ * @param {{ frontMatter: Record<string, unknown>, dir: string }} a
+ * @param {{ frontMatter: Record<string, unknown>, dir: string }} b
+ * @returns {number} Negative when `a` comes first
+ */
+function compareReplyBundles(a, b) {
+  const aWeight = a.frontMatter.weight;
+  const bWeight = b.frontMatter.weight;
+  if (
+    typeof aWeight === "number" &&
+    typeof bWeight === "number" &&
+    aWeight !== bWeight
+  ) {
+    return aWeight - bWeight;
+  }
+  return compareBundlesByDateThenId(a, b);
+}
+
 /**
  * Walk `content/` and classify each `_index.md` / `index.md` bundle by its
  * front-matter `type`. Returns ordered root-post bundles (with child reply
@@ -1519,8 +1620,9 @@ function createRemoteTarget(apiUrl, token) {
  *      skipped for post import.
  *   3. For each root bundle, enumerate immediate child directories; any
  *      child dir containing `index.md` becomes a reply leaf bundle.
- *   4. Reply bundles are sorted by `frontMatter.date` ascending (fallback:
- *      directory name) so thread order is deterministic.
+ *   4. Reply bundles are sorted by `weight` (Thread position), then `date`,
+ *      then the original ID; root bundles by `date`, then the original ID.
+ *      Creating posts in that order keeps same-second ties as they were.
  */
 async function walkHugoContent(rootDir) {
   const contentDir = join(rootDir, "content");
@@ -1627,25 +1729,17 @@ async function walkHugoContent(rootDir) {
     // home / featured / archive / collections / anything else — skip.
   }
 
-  // Sort replies within each root by `date` asc (fallback: directory name).
+  // Replies in Thread order: the exported `weight`, which follows Jant's own
+  // order (creation time, then ID). Older exports have no weight; `date` then
+  // the original ID come next, since replies written in one second tie on
+  // `date`, and the directory name last.
   for (const root of rootBundles) {
-    root.children.sort((a, b) => {
-      const aDate =
-        typeof a.frontMatter.date === "string"
-          ? Date.parse(a.frontMatter.date)
-          : NaN;
-      const bDate =
-        typeof b.frontMatter.date === "string"
-          ? Date.parse(b.frontMatter.date)
-          : NaN;
-      if (Number.isFinite(aDate) && Number.isFinite(bDate) && aDate !== bDate) {
-        return aDate - bDate;
-      }
-      if (Number.isFinite(aDate) && !Number.isFinite(bDate)) return -1;
-      if (!Number.isFinite(aDate) && Number.isFinite(bDate)) return 1;
-      return basename(a.dir).localeCompare(basename(b.dir));
-    });
+    root.children.sort(compareReplyBundles);
   }
+
+  // Roots in creation order, oldest first, so the new IDs keep the original
+  // order among posts that share a second: lists break those ties by ID.
+  rootBundles.sort(compareBundlesByDateThenId);
 
   return { rootBundles, collectionBundles };
 }
@@ -1834,6 +1928,16 @@ function buildPostPayloadFromBundle(bundle, options) {
       status === "published" && typeof frontMatter.date === "string"
         ? Math.floor(new Date(frontMatter.date).getTime() / 1000)
         : undefined,
+    // `date` holds the publish time of a published post and the creation
+    // time of a draft; `created` and `updated` are written when they differ.
+    createdAt:
+      parseImportTimestamp(frontMatter.created) ??
+      parseImportTimestamp(frontMatter.date) ??
+      undefined,
+    updatedAt:
+      parseImportTimestamp(frontMatter.updated) ??
+      parseImportTimestamp(frontMatter.date) ??
+      undefined,
     featuredAt:
       typeof frontMatter.featured_at === "string" && frontMatter.featured_at
         ? Math.floor(new Date(frontMatter.featured_at).getTime() / 1000)
@@ -1884,6 +1988,7 @@ export const __test__ = {
   extractAttachmentBlocks,
   buildImportedAttachments,
   uploadMediaList,
+  uploadBundleResources,
   buildSettingsUpdatesFromConfig,
   splitSettingsUpdatesForImport,
   normalizeImportedNavItems,

@@ -123,6 +123,41 @@ describe("PostService", () => {
       });
     });
 
+    it("restores the creation and edit times an import passes", async () => {
+      const published = await postService.create({
+        format: "note",
+        bodyMarkdown: "Moved from another site",
+        publishedAt: 1700000500,
+        createdAt: 1700000000,
+        updatedAt: 1700009000,
+      });
+      expect(published).toMatchObject({
+        createdAt: 1700000000,
+        updatedAt: 1700009000,
+        lastActivityAt: 1700000500,
+      });
+
+      const draft = await postService.create({
+        format: "note",
+        status: "draft",
+        bodyMarkdown: "Unfinished",
+        createdAt: 1700000000,
+        updatedAt: 1700004000,
+      });
+      expect(draft).toMatchObject({
+        createdAt: 1700000000,
+        updatedAt: 1700004000,
+        lastActivityAt: 1700004000,
+      });
+
+      const backdated = await postService.create({
+        format: "note",
+        bodyMarkdown: "Only a creation time",
+        createdAt: 1700000000,
+      });
+      expect(backdated.updatedAt).toBe(1700000000);
+    });
+
     it("rejects a body that isn't TipTap JSON", async () => {
       await expect(
         postService.create({ format: "note", body: "not json" }),

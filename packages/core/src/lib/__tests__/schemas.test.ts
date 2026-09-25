@@ -617,6 +617,25 @@ describe("CreatePostApiSchema", () => {
     status: "published",
   };
 
+  it("accepts the creation and edit times a restore passes", () => {
+    expect(
+      CreatePostApiSchema.parse({
+        ...validPost,
+        createdAt: 1700000000,
+        updatedAt: 1700009000,
+      }),
+    ).toMatchObject({ createdAt: 1700000000, updatedAt: 1700009000 });
+  });
+
+  it("leaves record timestamps out of updates", () => {
+    expect(
+      UpdatePostApiSchema.safeParse({ createdAt: 1700000000 }).success,
+    ).toBe(false);
+    expect(
+      UpdatePostApiSchema.safeParse({ updatedAt: 1700000000 }).success,
+    ).toBe(false);
+  });
+
   it("accepts ordered attachment inputs", () => {
     const mediaId = createEntityId("media");
     const result = CreatePostApiSchema.parse({

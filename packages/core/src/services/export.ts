@@ -375,9 +375,13 @@ export function createExportService(
         list.push(reply);
         repliesByThread.set(reply.threadId, list);
       }
-      // Sort replies by createdAt within each thread
+      // Thread order, as `posts.getThread` reads it: creation time, then ID.
       for (const list of repliesByThread.values()) {
-        list.sort((a, b) => a.createdAt - b.createdAt);
+        list.sort(
+          (a, b) =>
+            a.createdAt - b.createdAt ||
+            (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+        );
       }
 
       // 3. Build file list
@@ -968,6 +972,10 @@ async function buildThreadBundle(
       root.publishedAt !== null
         ? toISOString(root.publishedAt)
         : toISOString(root.createdAt),
+    created:
+      root.publishedAt !== null && root.createdAt !== root.publishedAt
+        ? toISOString(root.createdAt)
+        : undefined,
     updated:
       root.updatedAt && root.updatedAt !== root.publishedAt
         ? toISOString(root.updatedAt)
@@ -1047,8 +1055,8 @@ async function buildThreadBundle(
     }
   }
 
-  // Replies as nested leaf bundles.
-  for (const reply of threadReplies) {
+  // Replies as nested leaf bundles, in Thread order.
+  for (const [replyIndex, reply] of threadReplies.entries()) {
     const replySlug = slugMap.get(reply.id) ?? reply.slug;
     const replyMedia = mediaByPost.get(reply.id) ?? [];
     const replyEmissions = replyMedia.map((m) =>
@@ -1062,12 +1070,17 @@ async function buildThreadBundle(
         reply.publishedAt !== null
           ? toISOString(reply.publishedAt)
           : toISOString(reply.createdAt),
+      created:
+        reply.publishedAt !== null && reply.createdAt !== reply.publishedAt
+          ? toISOString(reply.createdAt)
+          : undefined,
       updated:
         reply.updatedAt && reply.updatedAt !== reply.publishedAt
           ? toISOString(reply.updatedAt)
           : undefined,
       slug: replySlug,
       type: "post",
+      weight: replyIndex + 1,
       draft:
         reply.status === "draft" || reply.visibility === "private"
           ? true

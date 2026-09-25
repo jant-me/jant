@@ -684,11 +684,15 @@ Fields:
 | `language`        | BCP 47 tag                               | no                   | detected       | Content language, e.g. `en`, `zh-Hans`; replies inherit the Thread's      |
 | `translationOfId` | `pst_*` string                           | no                   | `null`         | Link the new post into that post's translation group                      |
 | `publishedAt`     | integer                                  | no                   | current time   | Unix seconds; only valid when `status` is `published`                     |
+| `createdAt`       | integer                                  | no                   | current time   | Unix seconds; restores a moved post's creation time                       |
+| `updatedAt`       | integer                                  | no                   | `createdAt`    | Unix seconds; restores a moved post's last edit time                      |
 | `attachments`     | attachment[]                             | no                   | `[]`           | Ordered attachments, max `20`                                             |
 
 Important rules:
 
 - Use `body` or `bodyMarkdown`, not both.
+- `body` must be a TipTap document (a `doc` node) as a JSON string. Anything else is a `400`.
+- `createdAt` and `updatedAt` are for restores: an import or a migration that keeps a post's own times. Feeds report `updatedAt` as the entry's update time, and a Thread orders its posts by `createdAt`, then ID. Updates can't change either.
 - Use `slug` or `path`, not both.
 - `path` is only available on create. Post updates only support `slug`.
 - `link` posts require `title` and `url`.
@@ -1269,16 +1273,17 @@ Content type: `multipart/form-data`
 
 Form fields:
 
-| Field      | Type    | Required | Default | Notes                          |
-| ---------- | ------- | -------- | ------- | ------------------------------ |
-| `file`     | file    | yes      | —       | Main file                      |
-| `width`    | integer | no       | `null`  | Image/video width              |
-| `height`   | integer | no       | `null`  | Image/video height             |
-| `alt`      | string  | no       | `null`  | Alt text                       |
-| `blurhash` | string  | no       | `null`  | Blurhash                       |
-| `waveform` | string  | no       | `null`  | Audio waveform                 |
-| `summary`  | string  | no       | `null`  | Summary for text uploads       |
-| `poster`   | file    | no       | —       | Poster frame for video uploads |
+| Field             | Type    | Required | Default | Notes                          |
+| ----------------- | ------- | -------- | ------- | ------------------------------ |
+| `file`            | file    | yes      | —       | Main file                      |
+| `width`           | integer | no       | `null`  | Image/video width              |
+| `height`          | integer | no       | `null`  | Image/video height             |
+| `alt`             | string  | no       | `null`  | Alt text                       |
+| `blurhash`        | string  | no       | `null`  | Blurhash                       |
+| `waveform`        | string  | no       | `null`  | Audio waveform                 |
+| `summary`         | string  | no       | `null`  | Summary for text uploads       |
+| `durationSeconds` | integer | no       | `null`  | Video or audio length          |
+| `poster`          | file    | no       | —       | Poster frame for video uploads |
 
 Response:
 

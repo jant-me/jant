@@ -11,7 +11,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { __test__ } from "../../bin/commands/import-site.js";
 import {
   partitionEditableSettingUpdates,
@@ -32,6 +32,8 @@ const {
   buildPostPayloadFromBundle,
   getRootAliasPathsForImport,
   uploadMediaList,
+  uploadBundleResources,
+  buildImportedAttachments,
   normalizeTextAttachmentSpec,
   isAbsoluteImportUrl,
   shouldImportReplyQuietly,
@@ -356,6 +358,61 @@ describe("Hugo import CLI helpers", () => {
     expect(result.urlMap.get("/media/inline.png")).toBe(
       "https://target.example/media/med_new.png",
     );
+  });
+
+  it("uploadMediaList keeps a body image as a link when its upload fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const target = {
+      uploadMedia: async () => {
+        throw new Error("Couldn't read https://gone.example/a.png");
+      },
+    };
+
+    const result = await uploadMediaList(
+      [{ src: "https://gone.example/a.png" }],
+      target,
+      { base_url: "https://origin.example/" },
+      tempDir,
+    );
+
+    expect(result.uploaded).toBe(0);
+    expect(result.urlMap.size).toBe(0);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("kept https://gone.example/a.png as a link"),
+    );
+    warn.mockRestore();
+  });
+
+  it("uploadBundleResources stops when a post's own file can't be uploaded", async () => {
+    const target = {
+      uploadMedia: async () => {
+        throw new Error("The site refused /media/a.webp: HTTP 413");
+      },
+    };
+
+    await expect(
+      uploadBundleResources(
+        [{ src: "/media/a.webp", srcFilePath: join(tempDir, "a.webp") }],
+        target,
+      ),
+    ).rejects.toThrow("Couldn't upload /media/a.webp: The site refused");
+  });
+
+  it("buildImportedAttachments stops when an attachment can't be uploaded", async () => {
+    const target = {
+      uploadMedia: async () => {
+        throw new Error("The site refused /media/b.jpg: HTTP 500");
+      },
+    };
+
+    await expect(
+      buildImportedAttachments(
+        [{ src: "https://origin.example/media/b.jpg" }],
+        target,
+        { base_url: "https://origin.example/" },
+        tempDir,
+      ),
+    ).rejects.toThrow("Couldn't upload https://origin.example/media/b.jpg");
   });
 
   it("isAbsoluteImportUrl distinguishes absolute URLs from relative paths for --skip-remote-media", () => {

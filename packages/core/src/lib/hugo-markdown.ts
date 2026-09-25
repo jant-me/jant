@@ -90,6 +90,12 @@ export interface HugoFrontMatter {
   id?: string;
   title?: string;
   date?: string;
+  /**
+   * When the post was created, written only when it differs from `date` (a
+   * published post dated before or after it was written). Restored on import
+   * so thread order and "last edited" survive a move.
+   */
+  created?: string;
   updated?: string;
   slug?: string;
   type?: string;
@@ -98,6 +104,12 @@ export interface HugoFrontMatter {
   // Hugo routing
   aliases?: string[];
   build?: HugoBuildOptions;
+  /**
+   * Reply bundles only: 1-based position in the Thread. Jant orders a Thread
+   * by creation time, then ID; replies written in the same second tie on
+   * `date`, so the theme and the importer order by this instead.
+   */
+  weight?: number;
 
   // Jant post payload (flat — no `extra` nesting)
   format?: string;

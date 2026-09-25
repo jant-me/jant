@@ -139,7 +139,10 @@ The Jant `/subscribe` page doesn't exist on the exported site. The **Subscribe**
 
 - `featured_at` and `pinned_at` are ISO timestamps, so a re-import brings back the moment a post was Featured or pinned.
 - A Thread's Collection membership sits in the root's `collections` array, each entry with `collected_at`, `position`, and a per-Collection `pinned_at`. Replies don't repeat it. Older exports that wrote `collections` on every post still import.
-- The export has no per-reply flag for **Reply quietly**. Import reads the root's `last_activity_at` so that quiet replies don't bump the Thread.
+- A reply published with **Reply quietly** carries `quiet_reply: true`. For older exports without the field, import reads the root's `last_activity_at` so that quiet replies don't bump the Thread.
+- Each reply's `weight` is its position in the Thread, and import creates replies in that order. Posts that share a publish second keep their order too.
+- `created` and `updated` hold when a post was written and last edited, written where they differ from `date`. After a move, feeds and the sitemap report the original times.
+- Video and audio keep `duration_seconds`.
 
 Front-matter fields not listed on this page are internal to Jant. Don't edit them by hand: the next import writes them back to the database as they are, over anything you changed in Jant since.
 

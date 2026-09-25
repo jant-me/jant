@@ -2545,6 +2545,8 @@ export function createPostService(
       assertDraftPublishedAt(status, data.publishedAt);
       const publishedAt =
         status === "published" ? (data.publishedAt ?? timestamp) : null;
+      const createdAt = data.createdAt ?? timestamp;
+      const updatedAt = data.updatedAt ?? createdAt;
 
       // Resolve slug from slug, path, or title
       let slug: string;
@@ -2704,10 +2706,10 @@ export function createPostService(
               translationGroupId,
               quietReply: isQuietReply,
               publishedAt,
-              lastActivityAt: publishedAt ?? timestamp,
-              threadUpdatedAt: publishedAt ?? timestamp,
-              createdAt: timestamp,
-              updatedAt: timestamp,
+              lastActivityAt: publishedAt ?? updatedAt,
+              threadUpdatedAt: publishedAt ?? updatedAt,
+              createdAt,
+              updatedAt,
             }),
           );
 
@@ -2798,10 +2800,10 @@ export function createPostService(
               translationGroupId,
               quietReply: isQuietReply,
               publishedAt,
-              lastActivityAt: publishedAt ?? timestamp,
-              threadUpdatedAt: publishedAt ?? timestamp,
-              createdAt: timestamp,
-              updatedAt: timestamp,
+              lastActivityAt: publishedAt ?? updatedAt,
+              threadUpdatedAt: publishedAt ?? updatedAt,
+              createdAt,
+              updatedAt,
             });
 
             await tx.insert(pathRegistry).values({
