@@ -10,10 +10,7 @@ import {
   getCliApiToken,
 } from "../../lib/cli-api-token.js";
 import { pullSiteExportDirectory } from "../../lib/site-pull-media.js";
-import {
-  extractZipFile,
-  writeDirectoryToZip,
-} from "../../lib/zip-archive.js";
+import { extractZipFile, writeDirectoryToZip } from "../../lib/zip-archive.js";
 
 /**
  * Stream the site's export archive to a file. The site streams it too, and a
