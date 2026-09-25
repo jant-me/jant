@@ -8,6 +8,7 @@ import {
 import { MarkdownManager } from "@tiptap/markdown";
 import CodeBlock from "@tiptap/extension-code-block";
 import { OrderedList } from "@tiptap/extension-list";
+import Paragraph from "@tiptap/extension-paragraph";
 import Link from "@tiptap/extension-link";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -223,6 +224,48 @@ const MarkdownCodeBlock = CodeBlock.extend({
 
 const SemanticLink = Link.extend({
   clearable: false,
+});
+
+const LINE_START_BLOCK_SYNTAX: ReadonlyArray<[RegExp, string]> = [
+  // `1986. A good year`, `2) Second`: an ordered-list marker
+  [/^([ \t]{0,3})(\d{1,9})([.)])(?=[ \t]|$)/, "$1$2\\$3"],
+  // `- note`, `+ note`: a bullet-list marker (`*` is escaped inline already)
+  [/^([ \t]{0,3})([-+])(?=[ \t]|$)/, "$1\\$2"],
+  // `# note`: an ATX heading
+  [/^([ \t]{0,3})(#{1,6})(?=[ \t]|$)/, "$1\\$2"],
+  // `---`, `===`: a thematic break or a setext underline for the line above
+  [/^([ \t]{0,3})([-=])(?=[-= \t]*$)/, "$1\\$2"],
+];
+
+/**
+ * Backslash-escape block syntax that a paragraph line happens to open with.
+ *
+ * Text nodes only get inline escaping, so a paragraph reading `1. Pony`, or a
+ * hard break followed by `- note`, came back from the Markdown as a list.
+ *
+ * @param markdown - A paragraph's rendered Markdown
+ * @returns The same Markdown with each line's leading block syntax escaped
+ * @example
+ * escapeLineStartBlockSyntax("Update:  \n1. Pony"); // "Update:  \n1\\. Pony"
+ */
+function escapeLineStartBlockSyntax(markdown: string): string {
+  return markdown
+    .split("\n")
+    .map((line) =>
+      LINE_START_BLOCK_SYNTAX.reduce(
+        (escaped, [pattern, replacement]) =>
+          escaped.replace(pattern, replacement),
+        line,
+      ),
+    )
+    .join("\n");
+}
+
+const MarkdownParagraph = Paragraph.extend({
+  renderMarkdown(node, helpers, context) {
+    const rendered = this.parent?.(node, helpers, context) ?? "";
+    return escapeLineStartBlockSyntax(rendered);
+  },
 });
 
 /**
@@ -865,8 +908,10 @@ export function createMarkdownContentExtensions(
       link: false,
       codeBlock: false,
       orderedList: false,
+      paragraph: false,
       trailingNode: { notAfter: ["footnoteDefinition"] },
     }),
+    MarkdownParagraph,
     CommonMarkOrderedList,
     SemanticLink.configure({
       openOnClick: false,

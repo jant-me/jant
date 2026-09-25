@@ -363,6 +363,60 @@ describe("tiptapJsonToMarkdown", () => {
     });
   });
 
+  // Text that happens to open a line with block syntax must come back as the
+  // same paragraph, not as a list, heading, or setext underline.
+  describe("block markers at the start of a line", () => {
+    const br = { type: "hardBreak" };
+
+    it.each([
+      ["a numbered line", [text("1986. A good year")], "1986\\. A good year"],
+      ["a parenthesized number", [text("2) Second")], "2\\) Second"],
+      ["a dash", [text("- not a list")], "\\- not a list"],
+      ["a plus", [text("+ not a list")], "\\+ not a list"],
+      ["a hash", [text("# not a heading")], "\\# not a heading"],
+      [
+        "numbered lines after hard breaks",
+        [text("Update:"), br, text("1. Pony"), br, text("2. Next")],
+        "Update:  \n1\\. Pony  \n2\\. Next",
+      ],
+      [
+        "a dash rule after a hard break",
+        [text("Title"), br, text("---")],
+        "Title  \n\\---",
+      ],
+      [
+        "an equals rule after a hard break",
+        [text("Title"), br, text("===")],
+        "Title  \n\\===",
+      ],
+    ])("escapes %s", (_label, content, expected) => {
+      const json = doc(p(...content));
+      expect(tiptapJsonToMarkdown(json)).toBe(expected);
+      expect(JSON.parse(markdownToTiptapJson(expected))).toEqual(
+        JSON.parse(json),
+      );
+    });
+
+    it("leaves markers in the middle of a line alone", () => {
+      expect(tiptapJsonToMarkdown(doc(p(text("Step 1. then 2."))))).toBe(
+        "Step 1. then 2.",
+      );
+    });
+
+    it("escapes a numbered line inside a list item", () => {
+      const json = doc({
+        type: "orderedList",
+        content: [
+          { type: "listItem", content: [p(text("1. nested-looking"))] },
+        ],
+      });
+      expect(tiptapJsonToMarkdown(json)).toBe("1. 1\\. nested-looking");
+      expect(
+        JSON.parse(markdownToTiptapJson("1. 1\\. nested-looking")),
+      ).toEqual(JSON.parse(json));
+    });
+  });
+
   describe("round-trip", () => {
     it("round-trips a simple paragraph", () => {
       expect(roundtrip("Hello world")).toBe("Hello world");
