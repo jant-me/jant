@@ -74,10 +74,16 @@ export async function writeDirectoryToZip(sourceDir, zipPath) {
   // stream, which would otherwise wait for the rest of the archive forever.
   const failed = new Promise((_resolve, reject) => {
     zipFile.on("error", (error) => {
-      zipFile.outputStream.destroy(error);
+      // Stop the output without re-emitting the error on it: yazl feeds it
+      // through `.pipe()`, which forwards no errors, so the copy would go
+      // unhandled. `failed` carries the cause to the caller.
+      zipFile.outputStream.destroy();
       reject(error);
     });
   });
+  // It can fail before it is awaited below; an unhandled rejection in the
+  // meantime would take the process down instead of reaching the caller.
+  failed.catch(() => {});
 
   for (const fullPath of files) {
     const entryName = relative(sourceDir, fullPath).split(sep).join("/");
