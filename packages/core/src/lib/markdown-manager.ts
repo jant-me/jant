@@ -10,6 +10,7 @@ import { Fragment, type Schema } from "@tiptap/pm/model";
 import { MarkdownManager } from "@tiptap/markdown";
 import CodeBlock from "@tiptap/extension-code-block";
 import { OrderedList } from "@tiptap/extension-list";
+import HardBreak from "@tiptap/extension-hard-break";
 import Paragraph from "@tiptap/extension-paragraph";
 import Bold from "@tiptap/extension-bold";
 import Italic from "@tiptap/extension-italic";
@@ -491,6 +492,21 @@ const MarkdownHtmlEmphasis = Extension.create({
       if (!type) return undefined;
       return { type, raw, text, tokens: helpers.inlineTokens(text) };
     },
+  },
+});
+
+/**
+ * Hard breaks as two trailing spaces, except where that line would be blank.
+ *
+ * A break at the start of a paragraph, or right after another break, puts
+ * the spaces on a line of their own. A line of spaces is blank in Markdown:
+ * it ended the paragraph, and `-   ` left a list item empty with the text
+ * after it outside the list. The backslash form keeps something on the line.
+ */
+const MarkdownHardBreak = HardBreak.extend({
+  renderMarkdown(_node, _helpers, context) {
+    const previous = context?.previousNode;
+    return !previous || previous.type === "hardBreak" ? "\\\n" : "  \n";
   },
 });
 
@@ -1145,12 +1161,14 @@ export function createMarkdownContentExtensions(
       codeBlock: false,
       orderedList: false,
       paragraph: false,
+      hardBreak: false,
       bold: false,
       italic: false,
       strike: false,
       trailingNode: { notAfter: ["footnoteDefinition"] },
     }),
     MarkdownParagraph,
+    MarkdownHardBreak,
     MarkdownBold,
     MarkdownItalic,
     MarkdownStrike,

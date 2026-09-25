@@ -361,6 +361,35 @@ describe("tiptapJsonToMarkdown", () => {
       );
       expect(tiptapJsonToMarkdown(json)).toBe("Line 1  \nLine 2");
     });
+
+    // Trailing spaces on a line with nothing else on it make a blank line,
+    // which ends the paragraph (or leaves a list item empty).
+    it("keeps two hard breaks in a row inside one paragraph", () => {
+      const br = { type: "hardBreak" };
+      const json = doc(p(text("A"), br, br, text("B")));
+      const markdown = tiptapJsonToMarkdown(json);
+      expect(markdown).toBe("A  \n\\\nB");
+      expect(JSON.parse(markdownToTiptapJson(markdown))).toEqual(
+        JSON.parse(json),
+      );
+    });
+
+    it("keeps a list item that opens with a hard break in the list", () => {
+      const json = doc({
+        type: "bulletList",
+        content: [
+          {
+            type: "listItem",
+            content: [p({ type: "hardBreak" }, text("Ships in 3–7 days"))],
+          },
+          { type: "listItem", content: [p(text("Next"))] },
+        ],
+      });
+      const markdown = tiptapJsonToMarkdown(json);
+      expect(JSON.parse(markdownToTiptapJson(markdown))).toEqual(
+        JSON.parse(json),
+      );
+    });
   });
 
   // CommonMark only closes `**` after punctuation when a space or another
