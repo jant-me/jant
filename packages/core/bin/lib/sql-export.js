@@ -217,6 +217,8 @@ async function queryAllPages(queryRunner, selectSql, pageSize) {
  * `options.pageSize` reads each table in pages. D1 needs it: every query runs
  * through `wrangler d1 execute --json`, and one SELECT of a real site's
  * `post` table outgrew the output the CLI can buffer.
+ * `options.orderRowsByTable` reorders a table's rows before they are written,
+ * for inserts that must follow their own foreign keys.
  */
 export async function dumpDatabaseToSql(queryRunner, options) {
   const dialect = options.dialect ?? "sqlite";
@@ -252,9 +254,11 @@ export async function dumpDatabaseToSql(queryRunner, options) {
       (pageSize && dialect === "sqlite"
         ? `SELECT * FROM ${quoteIdentifier(tableName)} ORDER BY rowid`
         : `SELECT * FROM ${quoteIdentifier(tableName)}`);
-    const rows = pageSize
+    const readRows = pageSize
       ? await queryAllPages(queryRunner, selectSql, pageSize)
       : await queryRunner.query(selectSql);
+    const orderRows = options.orderRowsByTable?.[tableName];
+    const rows = orderRows ? orderRows(readRows) : readRows;
     if (rows.length === 0) {
       continue;
     }

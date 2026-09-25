@@ -1,14 +1,8 @@
-import { existsSync } from "node:fs";
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { createReadStream, existsSync } from "node:fs";
+import { Readable } from "node:stream";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { extractZipFile } from "../../../lib/zip-archive.js";
 import { executeD1, queryD1 } from "../../../lib/d1-query.js";
@@ -19,6 +13,7 @@ import {
   assertSnapshotDialectMatches,
   assertSnapshotMeta,
   buildMediaProviderSql,
+  DEFER_FOREIGN_KEYS_SQL,
   buildReplaceSql,
   buildSnapshotStorageQuery,
   collectSnapshotObjects,
@@ -80,8 +75,7 @@ async function createNodeImportContext() {
         throw new Error("Snapshot import requires configured storage.");
       }
 
-      const bytes = new Uint8Array(await readFile(filePath));
-      await storage.put(key, bytes, {
+      await storage.put(key, Readable.toWeb(createReadStream(filePath)), {
         contentType: contentType || undefined,
       });
     },
@@ -402,6 +396,7 @@ export async function run(argv) {
 
     await context.execute(
       [
+        ...(context.dialect === "postgres" ? [] : [DEFER_FOREIGN_KEYS_SQL]),
         buildReplaceSql(targetSite.id),
         dbSql,
         buildMediaProviderSql(targetSite.id, context.storageProvider),

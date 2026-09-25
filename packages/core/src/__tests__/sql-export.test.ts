@@ -9,6 +9,7 @@
 import { describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
 import { dumpDatabaseToSql } from "../../bin/lib/sql-export.js";
+import { orderSnapshotPostRows } from "../../bin/lib/site-snapshot.js";
 import { describeWranglerFailure } from "../../bin/lib/d1-query.js";
 import { WRANGLER_MAX_BUFFER } from "../../bin/lib/wrangler-cli.js";
 
@@ -125,5 +126,48 @@ describe("describeWranglerFailure", () => {
 
     expect(message.length).toBeLessThan(2_200);
     expect(message).toContain("(10000 characters)");
+  });
+});
+
+describe("snapshot post order", () => {
+  it("puts every post after its root and the post it replies to", () => {
+    const rows = [
+      { id: "reply-2", thread_id: "root", reply_to_id: "reply-1" },
+      { id: "reply-1", thread_id: "root", reply_to_id: "root" },
+      { id: "other", thread_id: "other", reply_to_id: null },
+      { id: "root", thread_id: "root", reply_to_id: null },
+    ];
+
+    expect(orderSnapshotPostRows(rows).map((row) => row.id)).toEqual([
+      "root",
+      "reply-1",
+      "reply-2",
+      "other",
+    ]);
+  });
+
+  it("keeps the dump order when parents already come first", () => {
+    const rows = [
+      { id: "a", thread_id: "a", reply_to_id: null },
+      { id: "b", thread_id: "a", reply_to_id: "a" },
+      { id: "c", thread_id: "c", reply_to_id: null },
+    ];
+
+    expect(orderSnapshotPostRows(rows)).toEqual(rows);
+  });
+
+  it("applies a table's row order to the dump", async () => {
+    const { runner } = createQueryRunner();
+
+    const sql = await dumpDatabaseToSql(runner, {
+      source: "node",
+      dialect: "sqlite",
+      tables: ["post"],
+      orderRowsByTable: {
+        post: (rows: Record<string, unknown>[]) => [...rows].reverse(),
+      },
+    });
+
+    expect(sql.indexOf("'pst_6'")).toBeLessThan(sql.indexOf("'pst_0'"));
   });
 });
