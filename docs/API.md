@@ -2240,7 +2240,7 @@ Fields:
 | `targetType`   | `post` \| `collection` \| `redirect` | yes                                 | —       | Target kind                                                                   |
 | `targetId`     | string                               | required for `post` or `collection` | —       | Send the canonical slug, not the TypeID                                       |
 | `toPath`       | string                               | required for `redirect`             | —       | Internal destination path such as `/new-path`; normalized before storage      |
-| `redirectType` | `"301"` \| `"302"`                   | no                                  | `301`   | Only used for `redirect`                                                      |
+| `redirectType` | `"301"` \| `"302"` \| `301` \| `302` | no                                  | `301`   | Only used for `redirect`; the number the list answers with works too          |
 
 Examples:
 

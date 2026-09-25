@@ -40,6 +40,7 @@ const {
   normalizeTextAttachmentSpec,
   isAbsoluteImportUrl,
   shouldImportReplyQuietly,
+  getNextThreadTail,
 } = __test__;
 
 async function writeFileTree(
@@ -446,6 +447,21 @@ describe("Hugo import CLI helpers", () => {
     ]);
     expect(requests[0]?.customLabel).toBe("All");
     expect(requests[5]?.warning).toContain('"Gone"');
+  });
+
+  // A reply the site holds as older than its root (moved into the Thread,
+  // or dated by publish time in an older export) doesn't end the Thread, and
+  // the API refuses a reply to anything but the end.
+  it("follows the Thread's end the way the site reads it", () => {
+    const root = { id: "pst_root", createdAt: 1_000 };
+    const older = { id: "pst_older", createdAt: 500 };
+    const tied = { id: "pst_tied", createdAt: 1_000 };
+    const newer = { id: "pst_newer", createdAt: 2_000 };
+
+    expect(getNextThreadTail(root, older)).toBe(root);
+    expect(getNextThreadTail(root, tied)).toBe(tied);
+    expect(getNextThreadTail(tied, newer)).toBe(newer);
+    expect(getNextThreadTail(root, null)).toBe(root);
   });
 
   it("reads the redirects and archive URLs an export lists", () => {

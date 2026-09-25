@@ -1977,6 +1977,23 @@ function shouldImportReplyQuietly(rootFrontMatter, replyFrontMatter) {
 }
 
 /**
+ * The post a Thread's next reply has to answer: the site's rule, newest by
+ * creation time, then by ID. A post created later has the newer ID, so it
+ * wins a tie.
+ *
+ * @param {{ id: string, createdAt: number }} tail - The current end
+ * @param {{ id: string, createdAt: number } | null | undefined} created - The post just created
+ * @returns {{ id: string, createdAt: number }} The new end
+ * @example
+ * getNextThreadTail({ id: "root", createdAt: 20 }, { id: "r1", createdAt: 10 });
+ * // { id: "root", createdAt: 20 }: an older reply doesn't end the Thread
+ */
+function getNextThreadTail(tail, created) {
+  if (!created?.id) return tail;
+  return created.createdAt >= tail.createdAt ? created : tail;
+}
+
+/**
  * Build the payload for `target.createPost()` from a parsed bundle. Works
  * for both root bundles (`forReply: false`) and reply leaf bundles — the
  * front-matter shape is identical aside from `build:` and the parent link.
@@ -2113,6 +2130,7 @@ export const __test__ = {
   resolveThreadCollectionMemberships,
   buildPostPayloadFromBundle,
   shouldImportReplyQuietly,
+  getNextThreadTail,
 };
 
 function printImportUsage() {
@@ -2575,10 +2593,13 @@ export async function run(argv) {
       // Create replies before aliases so reply slugs can claim their paths.
       if (!post) continue;
       const replySlugPaths = new Set();
-      // Jant threads are linear: each reply must point at the current end of
-      // the thread, not at the root. Track the tail as we go so the Nth
-      // reply chains after the (N−1)th.
-      let threadTailId = post.id;
+      // Jant threads are linear: a reply must point at the current end of the
+      // thread, which the site reads as its newest post by creation time,
+      // then ID. Creation times are restored from the export, and a post
+      // moved into a Thread keeps its own, so a reply can be older than the
+      // root; the end is then the root, not the reply created before it.
+      // Track it by the site's rule.
+      let threadTail = post;
       for (const replyBundle of rootBundle.children) {
         const replyFm = replyBundle.frontMatter;
         const replySlug = replyBundle.slug;
@@ -2677,16 +2698,14 @@ export async function run(argv) {
           bodyMarkdown: replyBody,
           attachments: replyAttachments,
           memberships: { entries: [], ids: [] },
-          replyToId: threadTailId,
+          replyToId: threadTail.id,
           quietReply: shouldImportReplyQuietly(rootFm, replyFm),
         });
 
         try {
           const createdReply = await target.createPost(replyData);
           repliesCreated++;
-          if (createdReply?.id) {
-            threadTailId = createdReply.id;
-          }
+          threadTail = getNextThreadTail(threadTail, createdReply);
         } catch (err) {
           console.error(`  Error creating reply: ${err.message}`);
           process.exit(1);
@@ -2783,7 +2802,7 @@ export async function run(argv) {
             path: customUrl.path,
             targetType: "redirect",
             toPath: customUrl.to,
-            redirectType: customUrl.status,
+            redirectType: String(customUrl.status),
           });
           customUrlsCreated++;
         } catch (err) {

@@ -195,10 +195,14 @@ export const NavItemTypeSchema = z.enum(NAV_ITEM_TYPES);
 export const SystemNavKeySchema = z.enum(SYSTEM_NAV_KEY_VALUES);
 
 /**
- * Redirect type enum schema
- * Form input validation for redirect type (stored as number in DB)
+ * Redirect type, as forms send it ("301") or as the API answers it (301).
+ * Parses to the string form; stored as a number.
  */
-export const RedirectTypeSchema = z.enum(["301", "302"]);
+export const RedirectTypeSchema = z.union([
+  z.enum(["301", "302"]),
+  z.literal(301).transform(() => "301" as const),
+  z.literal(302).transform(() => "302" as const),
+]);
 
 /**
  * Custom URL target type enum schema.

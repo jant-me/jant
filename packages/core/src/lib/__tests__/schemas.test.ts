@@ -61,10 +61,17 @@ describe("RedirectTypeSchema", () => {
     expect(RedirectTypeSchema.parse("302")).toBe("302");
   });
 
+  // The custom URL list answers `redirectType: 301`; sending that back to
+  // create one has to work.
+  it("accepts 301 and 302 as numbers, as the API answers them", () => {
+    expect(RedirectTypeSchema.parse(301)).toBe("301");
+    expect(RedirectTypeSchema.parse(302)).toBe("302");
+  });
+
   it("rejects other values", () => {
     expect(() => RedirectTypeSchema.parse("200")).toThrow();
     expect(() => RedirectTypeSchema.parse("404")).toThrow();
-    expect(() => RedirectTypeSchema.parse(301)).toThrow();
+    expect(() => RedirectTypeSchema.parse(308)).toThrow();
   });
 });
 
