@@ -37,6 +37,7 @@ import {
   formatFrontMatter,
   type HugoCollectionRef,
   type HugoFrontMatter,
+  type HugoSmartCollectionSelection,
   type JantMedia,
 } from "../lib/hugo-markdown.js";
 // Shared design tokens — single source of truth for colors, typography,
@@ -69,6 +70,7 @@ import LAYOUT_FEATURED_LIST from "./export-theme/layouts/featured/list.html?raw"
 import LAYOUT_ARCHIVE_LIST from "./export-theme/layouts/archive/list.html?raw";
 import LAYOUT_COLLECTIONS_LIST from "./export-theme/layouts/collections/list.html?raw";
 import LAYOUT_COLLECTION_SINGLE from "./export-theme/layouts/collection/single.html?raw";
+import LAYOUT_SMART_COLLECTION_LIST from "./export-theme/layouts/smart_collection/list.html?raw";
 import PARTIAL_JANT_DATA from "./export-theme/layouts/partials/jant-data.html?raw";
 import PARTIAL_HEAD from "./export-theme/layouts/partials/head.html?raw";
 import PARTIAL_HEADER from "./export-theme/layouts/partials/header.html?raw";
@@ -79,6 +81,8 @@ import PARTIAL_MEDIA_GALLERY from "./export-theme/layouts/partials/media-gallery
 import PARTIAL_REPLY from "./export-theme/layouts/partials/reply.html?raw";
 import PARTIAL_THREAD_PREVIEW from "./export-theme/layouts/partials/thread-preview.html?raw";
 import PARTIAL_FEATURED_THREAD from "./export-theme/layouts/partials/featured-thread.html?raw";
+import PARTIAL_SMART_COLLECTION_MEMBERS from "./export-theme/layouts/partials/smart-collection-members.html?raw";
+import PARTIAL_COLLECTION_THREADS from "./export-theme/layouts/partials/collection-threads.html?raw";
 import LAYOUT_RSS from "./export-theme/layouts/_default/rss.xml?raw";
 import PARTIAL_FEED_POST_CONTENT from "./export-theme/layouts/partials/feed-post-content.xml?raw";
 
@@ -94,6 +98,7 @@ import {
   type NavItem,
   type PathRecord,
   type Post,
+  type SmartCollection,
   type SystemNavKey,
 } from "../types.js";
 
@@ -212,6 +217,7 @@ export interface SiteConfig {
     | "position"
     | "placement"
     | "collectionId"
+    | "smartCollectionId"
     | "postId"
   >[];
   /** Items per page for Hugo pagination — kept in sync with the main site's PAGE_SIZE. */
@@ -237,6 +243,16 @@ type ExportedCollectionDirectoryItem =
       recentActivityIso?: string | null;
     }
   | {
+      type: "smart_collection";
+      sequence: string;
+      slug: string;
+      title: string;
+      descriptionHtml?: string | null;
+      entryCount?: number;
+      recentActivityLabel?: string | null;
+      recentActivityIso?: string | null;
+    }
+  | {
       type: "divider";
       label: string | null;
     }
@@ -252,12 +268,19 @@ type ExportedCollectionDirectoryItem =
     };
 
 interface ExportCollectionDirectorySourceItem {
-  type: "collection" | "divider" | "link";
+  type: "collection" | "smart_collection" | "divider" | "link";
   label?: string | null;
   url?: string | null;
   description?: string | null;
   collection?: {
     id: string;
+    slug: string;
+    title: string;
+    description?: string | null;
+    threadCount?: number;
+    recentActivityAt?: number;
+  };
+  smartCollection?: {
     slug: string;
     title: string;
     description?: string | null;
@@ -394,22 +417,47 @@ export function createExportService(
         allPosts,
         collectionsByRoot,
       );
-      // Smart collections are left out of a static export. Their membership is
-      // a query, and the exported site has no database to run it against, so
-      // the honest options are "omit" or "freeze today's matches under a name
-      // that promises to keep updating". Round-tripping them is out of scope
-      // (see the smart collections design notes); omitting is what that
-      // decision means here.
+      // Smart collections travel as their conditions (a section page per
+      // smart collection, below): a site importing the export recreates them,
+      // and the Hugo theme applies the same conditions to the posts it has, so
+      // the page keeps up with the repository instead of freezing the matches
+      // of the day it was exported.
+      const exportedSmartCollections: {
+        smartCollection: SmartCollection;
+        selection: HugoSmartCollectionSelection;
+      }[] = [];
+      const smartCollectionSlugMap = new Map<string, string>();
+      for (const smartCollection of collectionDirectoryData?.smartCollections ??
+        []) {
+        const selection = toExportedSelection(
+          smartCollection.selection,
+          collectionSlugMap,
+        );
+        if (!selection) {
+          console.warn(
+            `Export: smart collection /${smartCollection.slug} filters by a collection that no longer exists, so it was left out.`,
+          );
+          continue;
+        }
+        smartCollectionSlugMap.set(smartCollection.id, smartCollection.slug);
+        exportedSmartCollections.push({ smartCollection, selection });
+      }
       const exportableDirectoryItems: ExportCollectionDirectorySourceItem[] =
         collectionDirectoryData?.items
           ? collectionDirectoryData.items
-              .filter((item) => item.type !== "smart_collection")
+              .filter(
+                (item) =>
+                  item.type !== "smart_collection" ||
+                  (item.smartCollection !== undefined &&
+                    smartCollectionSlugMap.has(item.smartCollection.id)),
+              )
               .map((item) => ({
-                type: item.type as "collection" | "divider" | "link",
+                type: item.type,
                 label: item.label,
                 url: item.url,
                 description: item.description,
                 collection: item.collection,
+                smartCollection: item.smartCollection,
               }))
           : allCollections.map((collection) => ({
               type: "collection" as const,
@@ -486,6 +534,19 @@ export function createExportService(
         });
       }
 
+      // Smart collection landing pages: the conditions, which the theme's
+      // `smart-collection-members` partial applies to the exported posts.
+      for (const { smartCollection, selection } of exportedSmartCollections) {
+        exportFiles.push({
+          path: `content/${smartCollection.slug}/_index.md`,
+          content: await buildSmartCollectionSection(
+            smartCollection,
+            selection,
+            siteConfig.rssFeedsEnabled,
+          ),
+        });
+      }
+
       // Section + home scaffolding.
       exportFiles.push({
         path: "hugo.toml",
@@ -507,6 +568,7 @@ export function createExportService(
       const usedSlugs = new Set<string>();
       for (const s of slugMap.values()) usedSlugs.add(s);
       for (const s of collectionSlugMap.values()) usedSlugs.add(s);
+      for (const s of smartCollectionSlugMap.values()) usedSlugs.add(s);
       const hasFeaturedSection = !usedSlugs.has("featured");
       if (hasFeaturedSection) {
         exportFiles.push({
@@ -545,6 +607,7 @@ export function createExportService(
           {
             postSlugs: slugMap,
             collectionSlugs: collectionSlugMap,
+            smartCollectionSlugs: smartCollectionSlugMap,
             standalonePaths,
           },
         ),
@@ -634,6 +697,18 @@ export function createExportService(
       exportFiles.push({
         path: "themes/jant/layouts/partials/featured-thread.html",
         content: PARTIAL_FEATURED_THREAD,
+      });
+      exportFiles.push({
+        path: "themes/jant/layouts/smart_collection/list.html",
+        content: LAYOUT_SMART_COLLECTION_LIST,
+      });
+      exportFiles.push({
+        path: "themes/jant/layouts/partials/smart-collection-members.html",
+        content: PARTIAL_SMART_COLLECTION_MEMBERS,
+      });
+      exportFiles.push({
+        path: "themes/jant/layouts/partials/collection-threads.html",
+        content: PARTIAL_COLLECTION_THREADS,
       });
       exportFiles.push({
         path: "themes/jant/layouts/_default/rss.xml",
@@ -1290,6 +1365,48 @@ async function buildCollectionSection(
   return `${await formatFrontMatter(frontMatter)}\n`;
 }
 
+/**
+ * A smart collection's conditions as its section page carries them: the
+ * stored selection, with the collection named by slug rather than ID so an
+ * import into another site can resolve it. Null when the collection it names
+ * is gone.
+ */
+function toExportedSelection(
+  selection: SmartCollection["selection"],
+  collectionSlugs: ReadonlyMap<string, string>,
+): HugoSmartCollectionSelection | null {
+  const { collection, media, ...rest } = selection;
+  const exported: HugoSmartCollectionSelection = { ...rest };
+  if (collection !== undefined) {
+    const slug = collection[0] ? collectionSlugs.get(collection[0]) : undefined;
+    if (!slug) return null;
+    exported.collection = slug;
+  }
+  if (media !== undefined) {
+    exported.media = typeof media === "string" ? media : [...media];
+  }
+  return exported;
+}
+
+async function buildSmartCollectionSection(
+  smartCollection: SmartCollection,
+  selection: HugoSmartCollectionSelection,
+  rssFeedsEnabled: boolean,
+): Promise<string> {
+  const frontMatter: HugoFrontMatter = {
+    title: smartCollection.title,
+    slug: smartCollection.slug,
+    type: "smart_collection",
+    summary_text: smartCollection.description ?? undefined,
+    sort_order: smartCollection.sort,
+    display_layout: smartCollection.layout ?? undefined,
+    selection,
+    // Opt into Atom output at /{slug}/index.xml.
+    outputs: rssFeedsEnabled ? ["html", "rss"] : ["html"],
+  };
+  return `${await formatFrontMatter(frontMatter)}\n`;
+}
+
 // ---------------------------------------------------------------------------
 // Summary extraction (kept from the previous exporter)
 // ---------------------------------------------------------------------------
@@ -1460,6 +1577,31 @@ function buildExportedCollectionDirectoryItems(
               namespace: `collection-directory-link-${sequenceLabels[index] ?? index}`,
             })
           : null,
+      });
+      return;
+    }
+
+    if (item.type === "smart_collection") {
+      const smartCollection = item.smartCollection;
+      if (!smartCollection?.slug) return;
+      const smartDescription = smartCollection.description?.trim();
+      exportedItems.push({
+        type: "smart_collection",
+        sequence: sequenceLabels[index] ?? "",
+        slug: smartCollection.slug,
+        title: smartCollection.title || smartCollection.slug,
+        descriptionHtml: smartDescription
+          ? renderMarkdown(smartDescription, {
+              namespace: `smart-collection-${smartCollection.slug}`,
+            })
+          : null,
+        entryCount: smartCollection.threadCount,
+        recentActivityLabel: formatCollectionActivityLabel(
+          smartCollection.recentActivityAt,
+        ),
+        recentActivityIso: formatCollectionActivityIso(
+          smartCollection.recentActivityAt,
+        ),
       });
       return;
     }
@@ -1711,7 +1853,31 @@ function buildHugoToml(config: SiteConfig): string {
 interface JantDataTargets {
   postSlugs: ReadonlyMap<string, string>;
   collectionSlugs: ReadonlyMap<string, string>;
+  smartCollectionSlugs: ReadonlyMap<string, string>;
   standalonePaths: readonly PathRecord[];
+}
+
+/** The key and slug `data/jant.toml` names a nav item's target by. */
+function resolveNavItemTarget(
+  item: SiteConfig["navItems"][number],
+  targets: JantDataTargets,
+): { key: string; slug: string } | null {
+  const slug =
+    item.type === "collection" && item.collectionId
+      ? targets.collectionSlugs.get(item.collectionId)
+      : item.type === "smart_collection" && item.smartCollectionId
+        ? targets.smartCollectionSlugs.get(item.smartCollectionId)
+        : item.type === "page" && item.postId
+          ? targets.postSlugs.get(item.postId)
+          : undefined;
+  if (!slug) return null;
+  const key =
+    item.type === "collection"
+      ? "collection_slug"
+      : item.type === "smart_collection"
+        ? "smart_collection_slug"
+        : "post_slug";
+  return { key, slug };
 }
 
 function buildJantDataToml(
@@ -1795,16 +1961,9 @@ function buildJantDataToml(
     if (item.label) {
       parts.push(`custom_label = "${escapeTomlString(item.label)}"`);
     }
-    const targetSlug =
-      item.type === "collection" && item.collectionId
-        ? targets.collectionSlugs.get(item.collectionId)
-        : item.type === "page" && item.postId
-          ? targets.postSlugs.get(item.postId)
-          : undefined;
-    if (targetSlug) {
-      parts.push(
-        `${item.type === "collection" ? "collection_slug" : "post_slug"} = "${escapeTomlString(targetSlug)}"`,
-      );
+    const target = resolveNavItemTarget(item, targets);
+    if (target) {
+      parts.push(`${target.key} = "${escapeTomlString(target.slug)}"`);
     }
   }
 
@@ -1812,7 +1971,7 @@ function buildJantDataToml(
     parts.push("");
     parts.push("[[directory]]");
     parts.push(`type = "${escapeTomlString(item.type)}"`);
-    if (item.type === "collection") {
+    if (item.type === "collection" || item.type === "smart_collection") {
       parts.push(`sequence = "${escapeTomlString(item.sequence)}"`);
       parts.push(`slug = "${escapeTomlString(item.slug)}"`);
       parts.push(`title = "${escapeTomlString(item.title)}"`);

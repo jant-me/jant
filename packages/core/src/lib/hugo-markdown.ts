@@ -35,6 +35,24 @@ export interface HugoCollectionRef {
 }
 
 /**
+ * A smart collection's conditions on its section page (`type:
+ * smart_collection`). The stored selection, with two changes of spelling:
+ * `collection` is one collection's slug rather than a list of IDs, and
+ * `media` is `any`, `none`, or a list of kinds. The theme's
+ * `smart-collection-members` partial evaluates it; an import recreates the
+ * smart collection from it.
+ */
+export interface HugoSmartCollectionSelection {
+  collection?: string;
+  format?: string;
+  title?: boolean;
+  year?: number;
+  media?: "any" | "none" | string[];
+  replies?: boolean;
+  visibility?: string;
+}
+
+/**
  * Jant media attachment descriptor. Stored flat inside the `media:` front-
  * matter array. `src` is either:
  *   - a site-relative path (e.g. `/media/{id}.webp`) when the bytes are
@@ -154,6 +172,14 @@ export interface HugoFrontMatter {
   // Thread memberships (root bundles only) + attachments
   collections?: HugoCollectionRef[];
   media?: JantMedia[];
+
+  // Smart collection section pages
+  selection?: HugoSmartCollectionSelection;
+  /**
+   * `list` or `grid`; absent when the smart collection follows the site's
+   * archive layout. Not `layout`, which Hugo reads as a template name.
+   */
+  display_layout?: string;
 
   // Escape hatch for page-specific export metadata.
   [key: string]: unknown;

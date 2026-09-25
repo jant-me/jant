@@ -1,0 +1,123 @@
+{{- /*
+  The Thread roots a smart collection's conditions select, in its order.
+
+  The same set and order Jant shows a signed-out reader on the smart
+  collection's page (`smartCollections.toPostFilters` handed to
+  `posts.list`), computed from the exported front matter so the page keeps
+  up with the posts in this repository. Every condition reads the root:
+
+    format      `format`
+    title       `title`; for a quote, `source_name`, which is what Jant
+                stores in the title column
+    year        `date`, the publication time, in UTC
+    media       the root's own `media` entries: `any`, `none`, or a list of
+                kinds, any one of which matches
+    replies     whether the root has published replies
+    visibility  `public` and `latest_hidden` match `visibility`; `featured`
+                matches a root with `featured_at`
+    collection  a `collections` entry with that slug
+
+  Drafts and private roots are exported as Hugo drafts and never reach here;
+  they are checked again so a `--buildDrafts` preview agrees with Jant.
+
+  Orders, each ending on the post ID so no two roots tie:
+    newest       Thread activity (`last_activity_at`, else `date`), newest first
+    oldest       publication, oldest first
+    rating_desc  rated before unrated, higher rating first, then as newest.
+                 With fewer than two rated roots it falls back to newest,
+                 as Jant's page does.
+
+  `src/__tests__/export-smart-collection.test.ts` builds a site with Hugo
+  and compares every condition and order against Jant's own list.
+*/ -}}
+{{- $selection := .Params.selection | default dict -}}
+{{- $roots := where (where site.Pages "Type" "post") "Kind" "section" -}}
+{{- $members := slice -}}
+{{- range $roots -}}
+  {{- $post := . -}}
+  {{- $params := .Params -}}
+  {{- $matches := and (eq ($params.status | default "published") "published") (ne $params.visibility "private") -}}
+  {{- if and $matches (isset $selection "format") -}}
+    {{- $matches = eq $params.format $selection.format -}}
+  {{- end -}}
+  {{- if and $matches (isset $selection "title") -}}
+    {{- $title := $params.title -}}
+    {{- if eq $params.format "quote" -}}{{- $title = $params.source_name -}}{{- end -}}
+    {{- $matches = eq (gt (len (string ($title | default ""))) 0) $selection.title -}}
+  {{- end -}}
+  {{- if and $matches (isset $selection "year") -}}
+    {{- $matches = eq $post.Date.UTC.Year (int $selection.year) -}}
+  {{- end -}}
+  {{- if and $matches (isset $selection "media") -}}
+    {{- $media := $params.media | default slice -}}
+    {{- $wanted := $selection.media -}}
+    {{- if reflect.IsSlice $wanted -}}
+      {{- $found := false -}}
+      {{- range $media -}}{{- if in $wanted .kind -}}{{- $found = true -}}{{- end -}}{{- end -}}
+      {{- $matches = $found -}}
+    {{- else if eq $wanted "any" -}}
+      {{- $matches = gt (len $media) 0 -}}
+    {{- else -}}
+      {{- $matches = eq (len $media) 0 -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if and $matches (isset $selection "replies") -}}
+    {{- $matches = eq (gt (len $post.Pages) 0) $selection.replies -}}
+  {{- end -}}
+  {{- if and $matches (isset $selection "visibility") -}}
+    {{- if eq $selection.visibility "featured" -}}
+      {{- $matches = ne ($params.featured_at | default "") "" -}}
+    {{- else -}}
+      {{- $matches = eq $params.visibility $selection.visibility -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if and $matches (isset $selection "collection") -}}
+    {{- $inCollection := false -}}
+    {{- range $params.collections -}}
+      {{- if eq .slug $selection.collection -}}{{- $inCollection = true -}}{{- end -}}
+    {{- end -}}
+    {{- $matches = $inCollection -}}
+  {{- end -}}
+
+  {{- if $matches -}}
+    {{- $activity := $post.Date.Unix -}}
+    {{- with $params.last_activity_at -}}{{- $activity = (time.AsTime .).Unix -}}{{- end -}}
+    {{- $rated := ne $params.rating nil -}}
+    {{- $rating := 0 -}}
+    {{- if $rated -}}{{- $rating = int $params.rating -}}{{- end -}}
+    {{- $members = $members | append (dict
+      "post" $post
+      "id" $params.id
+      "published" $post.Date.Unix
+      "activity" $activity
+      "rated" $rated
+      "rating" $rating
+    ) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $order := .Params.sort_order | default "newest" -}}
+{{- if and (eq $order "rating_desc") (le (len (where $members "rated" true)) 1) -}}
+  {{- $order = "newest" -}}
+{{- end -}}
+
+{{- /* One string key per root, fixed-width numbers first, so a single sort
+     orders by every key in turn. */ -}}
+{{- $keyed := slice -}}
+{{- range $members -}}
+  {{- $key := printf "%020d %s" .activity .id -}}
+  {{- if eq $order "oldest" -}}
+    {{- $key = printf "%020d %s" .published .id -}}
+  {{- else if eq $order "rating_desc" -}}
+    {{- $key = printf "%d %02d %020d %s" (cond .rated 1 0) .rating .activity .id -}}
+  {{- end -}}
+  {{- $keyed = $keyed | append (dict "key" $key "post" .post) -}}
+{{- end -}}
+
+{{- $ordered := slice -}}
+{{- if $keyed -}}
+  {{- range sort $keyed "key" (cond (eq $order "oldest") "asc" "desc") -}}
+    {{- $ordered = $ordered | append .post -}}
+  {{- end -}}
+{{- end -}}
+{{- return $ordered -}}

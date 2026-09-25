@@ -62,30 +62,7 @@
         {{- end -}}
         {{ .Content }}
       </header>
-      {{- if $paginator.Pages -}}
-        <div class="post-list">
-          {{- range $i, $p := $paginator.Pages -}}
-            {{- if gt $i 0 -}}<hr class="feed-divider" aria-hidden="true" />{{- end -}}
-            {{- $replies := $p.Pages.ByWeight -}}
-            {{- $hasReplies := gt (len $replies) 0 -}}
-            <div class="thread thread-full{{ if $hasReplies }} thread-has-replies{{ end }}" data-slug="{{ $p.Params.slug | default $p.Slug }}">
-              <div class="thread-item thread-item-root">
-                {{ partial "post-card.html" $p }}
-              </div>
-              {{- if $hasReplies -}}
-                <section class="thread-replies" aria-label="Replies">
-                  {{- range $replies -}}
-                    {{ partial "reply.html" . }}
-                  {{- end -}}
-                </section>
-              {{- end -}}
-            </div>
-          {{- end -}}
-        </div>
-        {{ partial "pagination.html" $paginator }}
-      {{- else -}}
-        <p class="empty-state">This collection doesn't contain any threads.</p>
-      {{- end -}}
+      {{ partial "collection-threads.html" (dict "paginator" $paginator "empty" "This collection doesn't contain any threads.") }}
     </section>
   {{- else -}}
     <section class="section">

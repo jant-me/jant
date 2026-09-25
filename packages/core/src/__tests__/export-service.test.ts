@@ -19,7 +19,13 @@ import {
 } from "../services/export.js";
 import { suggestSyncRepoName } from "../lib/github-sync-repo-name.js";
 import { parseFrontMatter } from "../lib/hugo-markdown.js";
-import type { Collection, Media, PathRecord, Post } from "../types.js";
+import type {
+  Collection,
+  Media,
+  PathRecord,
+  Post,
+  SmartCollectionDirectoryEntry,
+} from "../types.js";
 import {
   makeCollection,
   makeMedia,
@@ -47,6 +53,7 @@ interface FixtureOptions {
   aliasMap?: Map<string, string[]>;
   collectionSlugMap?: Map<string, string>;
   directoryItems?: unknown[];
+  smartCollections?: SmartCollectionDirectoryEntry[];
   standalonePaths?: PathRecord[];
 }
 
@@ -61,6 +68,7 @@ function buildServices(opts: FixtureOptions): ServicesArg {
     aliasMap = new Map(),
     collectionSlugMap = new Map(collections.map((c) => [c.id, c.slug])),
     directoryItems,
+    smartCollections = [],
     standalonePaths = [],
   } = opts;
 
@@ -78,6 +86,7 @@ function buildServices(opts: FixtureOptions): ServicesArg {
       list: async () => collections,
       listDirectoryData: async () => ({
         collections: [],
+        smartCollections,
         items:
           directoryItems ??
           collections.map((collection) => ({
@@ -685,6 +694,133 @@ describe("createExportService (Hugo)", () => {
     expect(data).toContain('system_key = "settings"');
   });
 
+  // The conditions travel, not the matches of the day: an import recreates the
+  // smart collection, and the theme evaluates the conditions against the posts
+  // in the repository. The collection a condition names goes by slug, which is
+  // what another site can resolve.
+  it("exports each smart collection's conditions as a section page", async () => {
+    const ideas = makeCollection({ id: "col-ideas", slug: "ideas" });
+    const smartCollection = (
+      over: Partial<SmartCollectionDirectoryEntry>,
+    ): SmartCollectionDirectoryEntry => ({
+      id: "smc-thoughts",
+      siteId: "site",
+      slug: "thoughts",
+      title: "Thoughts",
+      description: "Short notes.",
+      selection: {},
+      sort: "newest",
+      layout: null,
+      createdAt: 1,
+      updatedAt: 1,
+      threadCount: 4,
+      recentActivityAt: 1773020000,
+      ...over,
+    });
+    const thoughts = smartCollection({
+      selection: { format: "note", title: false },
+    });
+    const pictures = smartCollection({
+      id: "smc-pictures",
+      slug: "pictures",
+      title: "Pictures",
+      description: null,
+      selection: {
+        collection: ["col-ideas"],
+        media: ["image", "video"],
+        year: 2025,
+        replies: true,
+        visibility: "featured",
+      },
+      sort: "rating_desc",
+      layout: "grid",
+    });
+    const orphaned = smartCollection({
+      id: "smc-orphaned",
+      slug: "orphaned",
+      selection: { collection: ["col-gone"] },
+    });
+
+    const files = filesToMap(
+      await createExportService(
+        buildServices({
+          posts: [],
+          collections: [ideas],
+          smartCollections: [thoughts, pictures, orphaned],
+          directoryItems: [
+            {
+              id: "dir-1",
+              type: "smart_collection",
+              smartCollection: thoughts,
+            },
+            {
+              id: "dir-2",
+              type: "smart_collection",
+              smartCollection: orphaned,
+            },
+          ],
+        }),
+        makeSiteConfig({
+          navItems: [
+            {
+              type: "smart_collection",
+              smartCollectionId: "smc-pictures",
+              label: "",
+              targetTitle: "Pictures",
+              url: "/pictures",
+              position: 0,
+              placement: "header",
+            },
+          ],
+        }),
+      ).generateHugoFiles(),
+    );
+
+    const { frontMatter: thoughtsPage } = await parseFrontMatter(
+      files.get("content/thoughts/_index.md") as string,
+    );
+    expect(thoughtsPage).toEqual({
+      title: "Thoughts",
+      slug: "thoughts",
+      type: "smart_collection",
+      summary_text: "Short notes.",
+      sort_order: "newest",
+      selection: { format: "note", title: false },
+      outputs: ["html", "rss"],
+    });
+    const { frontMatter: picturesPage } = await parseFrontMatter(
+      files.get("content/pictures/_index.md") as string,
+    );
+    expect(picturesPage.selection).toEqual({
+      collection: "ideas",
+      media: ["image", "video"],
+      year: 2025,
+      replies: true,
+      visibility: "featured",
+    });
+    expect(picturesPage.sort_order).toBe("rating_desc");
+    expect(picturesPage.display_layout).toBe("grid");
+    expect(files.has("content/orphaned/_index.md")).toBe(false);
+
+    const { parse } = await import("smol-toml");
+    const data = parse(files.get("data/jant.toml") as string) as {
+      directory: Record<string, unknown>[];
+      nav: Record<string, unknown>[];
+    };
+    expect(data.directory).toEqual([
+      expect.objectContaining({
+        type: "smart_collection",
+        slug: "thoughts",
+        title: "Thoughts",
+        entry_count: 4,
+      }),
+    ]);
+    expect(data.nav[0]).toMatchObject({
+      type: "smart_collection",
+      smart_collection_slug: "pictures",
+    });
+  });
+
   it("carries redirects and archive URLs that name no post", async () => {
     const record = (over: Partial<PathRecord>): PathRecord => ({
       id: "pth-1",
@@ -1059,6 +1195,9 @@ describe("createExportService (Hugo)", () => {
       "themes/jant/layouts/partials/reply.html",
       "themes/jant/layouts/partials/featured-thread.html",
       "themes/jant/layouts/partials/feed-post-content.xml",
+      "themes/jant/layouts/partials/collection-threads.html",
+      "themes/jant/layouts/partials/smart-collection-members.html",
+      "themes/jant/layouts/smart_collection/list.html",
     ];
     for (const path of expectedLayouts) {
       expect(files.has(path), `missing ${path}`).toBe(true);
@@ -1069,10 +1208,10 @@ describe("createExportService (Hugo)", () => {
     expect(files.has("themes/jant/static/theme.css")).toBe(true);
     expect(files.has("themes/jant/static/custom.css")).toBe(true);
 
-    const collectionList = files.get(
-      "themes/jant/layouts/_default/list.html",
+    const collectionThreads = files.get(
+      "themes/jant/layouts/partials/collection-threads.html",
     ) as string;
-    expect(collectionList).toContain(
+    expect(collectionThreads).toContain(
       'class="thread thread-full{{ if $hasReplies }} thread-has-replies{{ end }}"',
     );
   });

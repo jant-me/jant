@@ -58,7 +58,8 @@ cd ./jant-site && hugo serve
 
 - 所有帖子，含 Thread 的回复。草稿和私密帖子也在其中，front matter 标 `draft: true`，Hugo 只在 `hugo --buildDrafts` 时构建它们。
 - 帖子和头像用到的媒体，下载到 `static/media/`，归档不依赖原站。`--no-pull-media` 跳过下载。
-- 合集、合集目录（顺序、分隔线、自定义链接及其说明）和导航（位置、标签、每一项指向的合集或页面），写在 `data/jant.toml`。
+- 合集、合集目录（顺序、分隔线、自定义链接及其说明）和导航（位置、标签、每一项指向的合集、智能合集或页面），写在 `data/jant.toml`。
+- 智能合集，条件和排序写在各自的 `content/{slug}/_index.md`。主题用这些条件筛选导出的帖子，页面列出的内容和 Jant 上一致，仓库里加了帖子也会跟着更新。
 - 在 **Settings → Custom URLs** 里设置的重定向，写在 `data/jant.toml` 和 `static/_redirects`。
 - 每篇帖子的 `featured_at`、`pinned_at`，以及写在 root bundle 上的 Thread 合集归属，写在 front matter。
 - 当前 slug，以及旧 slug 和别名，写在 root 帖子的 `aliases:` 里。自定义的 `alias.html` 模板让旧链接继续可用。
@@ -68,7 +69,6 @@ cd ./jant-site && hugo serve
 
 - users、sessions、accounts、verifications 和 API tokens。账户数据不能跨站点迁移。
 - 运行时配置：`wrangler.toml`、环境变量、绑定。
-- 智能合集。它的成员是一条查询，导出的 Hugo 站点没有数据库可以运行这条查询。它收录的帖子都会导出，在目标站点重建这个智能合集。
 
 ### 导出结构
 
@@ -101,32 +101,34 @@ static/                   用户自有静态文件 + 下载的媒体
 
 ### URL 结构
 
-| URL                   | 渲染内容                                     |
-| --------------------- | -------------------------------------------- |
-| `/`                   | 首页：先列置顶帖子，然后是非置顶帖子的第一页 |
-| `/page/N/`            | 非置顶帖子的分页（N ≥ 2）                    |
-| `/archive/`           | 归档：所有已发布帖子，按时间倒序             |
-| `/archive/page/N/`    | 归档分页（N ≥ 2）                            |
-| `/featured/`          | Featured：标为 Featured 的帖子，按时间倒序   |
-| `/{slug}/`            | 单个 Thread（root 帖子和内联回复）           |
-| `/{reply-slug}/`      | 别名，重定向到 `/{root-slug}/#{reply-slug}`  |
-| `/{collection-slug}/` | 一个合集里的完整 Thread                      |
-| `/collections/`       | 合集目录                                     |
+| URL                         | 渲染内容                                     |
+| --------------------------- | -------------------------------------------- |
+| `/`                         | 首页：先列置顶帖子，然后是非置顶帖子的第一页 |
+| `/page/N/`                  | 非置顶帖子的分页（N ≥ 2）                    |
+| `/archive/`                 | 归档：所有已发布帖子，按时间倒序             |
+| `/archive/page/N/`          | 归档分页（N ≥ 2）                            |
+| `/featured/`                | Featured：标为 Featured 的帖子，按时间倒序   |
+| `/{slug}/`                  | 单个 Thread（root 帖子和内联回复）           |
+| `/{reply-slug}/`            | 别名，重定向到 `/{root-slug}/#{reply-slug}`  |
+| `/{collection-slug}/`       | 一个合集里的完整 Thread                      |
+| `/{smart-collection-slug}/` | 一个智能合集：符合条件的完整 Thread          |
+| `/collections/`             | 合集目录                                     |
 
 每页条数跟随 Jant 的 **Settings → Posts per page**。
 
 开启 **Settings → Feeds** 时，导出还会生成 Atom feed：
 
-| URL                            | 内容       |
-| ------------------------------ | ---------- |
-| `/index.xml`                   | 首页时间线 |
-| `/featured/index.xml`          | Featured   |
-| `/archive/index.xml`           | 全部归档   |
-| `/{collection-slug}/index.xml` | 单个合集   |
+| URL                                  | 内容         |
+| ------------------------------------ | ------------ |
+| `/index.xml`                         | 首页时间线   |
+| `/featured/index.xml`                | Featured     |
+| `/archive/index.xml`                 | 全部归档     |
+| `/{collection-slug}/index.xml`       | 单个合集     |
+| `/{smart-collection-slug}/index.xml` | 单个智能合集 |
 
 ### Feed 地址会变
 
-Jant 的 feed 地址是 `/feed`、`/latest/feed`、`/featured/feed`、`/archive/feed` 和 `/{collection-slug}/feed`。Hugo 把同样的 feed 写成各 section 里的 `index.xml`，所以订阅者用的地址在导出站上都不存在。
+Jant 的 feed 地址是 `/feed`、`/latest/feed`、`/featured/feed`、`/archive/feed`，以及每个合集和智能合集的 `/{slug}/feed`。Hugo 把同样的 feed 写成各 section 里的 `index.xml`，所以订阅者用的地址在导出站上都不存在。
 
 导出会写一份 `static/_redirects`，把每个旧地址 301 到新地址。Cloudflare Pages 和 Netlify 会直接读取这个文件，迁到这两家不会丢订阅者。其他 host 会忽略它，把域名指过去之前，先把里面的规则改写成该 host 的重定向配置。
 
@@ -144,6 +146,7 @@ Jant 的 feed 地址是 `/feed`、`/latest/feed`、`/featured/feed`、`/archive/
 - 每条回复的 `weight` 是它在 Thread 里的位置，导入按这个顺序创建回复。同一秒发布的帖子也保持原来的先后。
 - `created` 和 `updated` 记录帖子的写作时间和最后编辑时间，与 `date` 不同时才写。搬站之后，feed 和 sitemap 报的仍是原来的时间。
 - 视频和音频保留 `duration_seconds`。
+- 智能合集的 `selection` 记录它的条件，合集条件写的是合集的 slug。导入在合集之后重建智能合集。条件里的合集没有一起导入时，这个智能合集会跳过并给出警告：少了这个条件，它会收进原本不属于它的帖子。
 
 本页没有列出的 front matter 字段是 Jant 内部字段，不要手动修改：下次导入会把它们原样写回数据库，覆盖你之后在 Jant 里做的修改。
 

@@ -1043,7 +1043,11 @@ function normalizeImportedNavItems(siteConfig) {
           return { type, slug, customLabel, label, url, placement };
         }
         if (type === "smart_collection") {
-          return { type, slug: null, customLabel, label, url, placement };
+          const slug =
+            typeof item.smart_collection_slug === "string"
+              ? item.smart_collection_slug
+              : getSlugFromNavUrl(url);
+          return { type, slug, customLabel, label, url, placement };
         }
         if (!label || !url) return null;
         return { type: "link", label: customLabel ?? label, url, placement };
@@ -1098,7 +1102,7 @@ function normalizeImportedCustomUrls(siteConfig) {
  * in the navigation as a plain link to the same address.
  *
  * @param {Record<string, unknown>} item - From `normalizeImportedNavItems`
- * @param {{ collectionSlugToId: Map<string, string>, postSlugToId: Map<string, string> }} targets
+ * @param {{ collectionSlugToId: Map<string, string>, smartCollectionSlugToId: Map<string, string>, postSlugToId: Map<string, string> }} targets
  * @returns {{ payload: Record<string, unknown>, customLabel: string | null, warning: string | null }}
  */
 function buildNavItemCreateRequest(item, targets) {
@@ -1122,16 +1126,22 @@ function buildNavItemCreateRequest(item, targets) {
   const targetId =
     item.type === "collection"
       ? targets.collectionSlugToId.get(item.slug)
-      : item.type === "page"
-        ? targets.postSlugToId.get(item.slug)
-        : undefined;
+      : item.type === "smart_collection"
+        ? targets.smartCollectionSlugToId.get(item.slug)
+        : item.type === "page"
+          ? targets.postSlugToId.get(item.slug)
+          : undefined;
   if (targetId) {
+    const targetField =
+      item.type === "collection"
+        ? "collectionId"
+        : item.type === "smart_collection"
+          ? "smartCollectionId"
+          : "postId";
     return {
       payload: {
         type: item.type,
-        ...(item.type === "collection"
-          ? { collectionId: targetId }
-          : { postId: targetId }),
+        [targetField]: targetId,
         ...(customLabel ? { label: customLabel } : {}),
         placement,
       },
@@ -1152,6 +1162,66 @@ function buildNavItemCreateRequest(item, targets) {
   };
 }
 
+/**
+ * The create request for one exported smart collection.
+ *
+ * The conditions arrive as the export spells them, with the collection one
+ * naming a slug; it becomes this site's ID. When that collection didn't come
+ * across, the smart collection is skipped rather than created without the
+ * condition, which would widen it to posts it never held.
+ *
+ * @param {{ slug: string, frontMatter: Record<string, unknown> }} bundle - A `type: smart_collection` section
+ * @param {Map<string, string>} collectionSlugToId - Imported collections
+ * @returns {{ payload: Record<string, unknown> | null, warning: string | null }}
+ * @example
+ * buildSmartCollectionCreateRequest(bundle, new Map([["ideas", "col_01…"]]));
+ */
+function buildSmartCollectionCreateRequest(bundle, collectionSlugToId) {
+  const frontMatter = bundle.frontMatter;
+  const exported = frontMatter.selection;
+  const selection =
+    exported && typeof exported === "object" && !Array.isArray(exported)
+      ? { ...exported }
+      : {};
+
+  if (selection.collection !== undefined) {
+    const collectionId =
+      typeof selection.collection === "string"
+        ? collectionSlugToId.get(selection.collection)
+        : undefined;
+    if (!collectionId) {
+      return {
+        payload: null,
+        warning: `skipped the smart collection /${bundle.slug}: the collection it filters by, "${selection.collection}", wasn't imported.`,
+      };
+    }
+    selection.collection = [collectionId];
+  }
+
+  const title =
+    typeof frontMatter.title === "string" && frontMatter.title.trim()
+      ? frontMatter.title
+      : bundle.slug;
+  return {
+    payload: {
+      slug: bundle.slug,
+      title,
+      ...(typeof frontMatter.summary_text === "string" &&
+      frontMatter.summary_text.trim()
+        ? { description: frontMatter.summary_text }
+        : {}),
+      selection,
+      ...(typeof frontMatter.sort_order === "string"
+        ? { sort: frontMatter.sort_order }
+        : {}),
+      ...(typeof frontMatter.display_layout === "string"
+        ? { layout: frontMatter.display_layout }
+        : {}),
+    },
+    warning: null,
+  };
+}
+
 function normalizeImportedCollectionDirectory(siteConfig) {
   const jant = siteConfig?.extra?.jant || {};
   const directoryItems = jant.collections_directory;
@@ -1169,12 +1239,12 @@ function normalizeImportedCollectionDirectory(siteConfig) {
         if (!item || typeof item !== "object") return null;
 
         if (
-          item.type === "collection" &&
+          (item.type === "collection" || item.type === "smart_collection") &&
           typeof item.slug === "string" &&
           item.slug.trim()
         ) {
           return {
-            type: "collection",
+            type: item.type,
             slug: item.slug.trim(),
           };
         }
@@ -1327,6 +1397,7 @@ async function syncImportedCollectionDirectory(
   target,
   importedDirectory,
   collectionSlugToId,
+  smartCollectionSlugToId,
 ) {
   if (!importedDirectory.exported) {
     return { created: 0, deleted: 0, moved: 0 };
@@ -1334,8 +1405,12 @@ async function syncImportedCollectionDirectory(
 
   let deleted = 0;
   const existingItems = await target.listCollectionDirectoryItems();
+  // Collections and smart collections get their row when they are created;
+  // dividers and links exist only in the directory and are rebuilt from it.
   for (const item of existingItems) {
-    if (item.type === "collection") continue;
+    if (item.type === "collection" || item.type === "smart_collection") {
+      continue;
+    }
     const removed = await target.deleteCollectionDirectoryItem(item.id);
     if (removed !== false) {
       deleted += 1;
@@ -1343,24 +1418,33 @@ async function syncImportedCollectionDirectory(
   }
 
   let currentItems = await target.listCollectionDirectoryItems();
-  const collectionItemIds = new Map(
-    currentItems
-      .filter((item) => item.type === "collection" && item.collectionId)
-      .map((item) => [item.collectionId, item.id]),
-  );
+  // Directory rows by what they list: `collection:<id>` or
+  // `smart_collection:<id>`.
+  const rowIdsByTarget = new Map();
+  for (const item of currentItems) {
+    if (item.type === "collection" && item.collectionId) {
+      rowIdsByTarget.set(`collection:${item.collectionId}`, item.id);
+    } else if (item.type === "smart_collection" && item.smartCollectionId) {
+      rowIdsByTarget.set(`smart_collection:${item.smartCollectionId}`, item.id);
+    }
+  }
 
   const desiredIds = [];
-  const seenCollectionIds = new Set();
+  const seenTargets = new Set();
   let created = 0;
 
   for (const item of importedDirectory.items) {
-    if (item.type === "collection") {
-      const collectionId = collectionSlugToId.get(item.slug);
-      if (!collectionId || seenCollectionIds.has(collectionId)) {
+    if (item.type === "collection" || item.type === "smart_collection") {
+      const targetId =
+        item.type === "collection"
+          ? collectionSlugToId.get(item.slug)
+          : smartCollectionSlugToId.get(item.slug);
+      const key = `${item.type}:${targetId}`;
+      if (!targetId || seenTargets.has(key)) {
         continue;
       }
-      seenCollectionIds.add(collectionId);
-      const directoryItemId = collectionItemIds.get(collectionId);
+      seenTargets.add(key);
+      const directoryItemId = rowIdsByTarget.get(key);
       if (directoryItemId) {
         desiredIds.push(directoryItemId);
       }
@@ -1591,6 +1675,25 @@ function createRemoteTarget(apiUrl, token) {
     async createCollection(data) {
       return apiCall("POST", "/api/collections", apiUrl, token, data);
     },
+    async listSmartCollections() {
+      const result = await apiCall(
+        "GET",
+        "/api/smart-collections",
+        apiUrl,
+        token,
+      );
+      return result.smartCollections || [];
+    },
+    async createSmartCollection(data) {
+      const result = await apiCall(
+        "POST",
+        "/api/smart-collections",
+        apiUrl,
+        token,
+        data,
+      );
+      return result.smartCollection;
+    },
     async createCollectionDirectoryItem(data) {
       return apiCall(
         "POST",
@@ -1711,14 +1814,15 @@ function compareReplyBundles(a, b) {
 /**
  * Walk `content/` and classify each `_index.md` / `index.md` bundle by its
  * front-matter `type`. Returns ordered root-post bundles (with child reply
- * bundles attached) and stand-alone collection landing pages.
+ * bundles attached), collection landing pages, and smart collection pages.
  *
  * Algorithm:
  *   1. Recurse into `content/` collecting every directory that has either
  *      `_index.md` (branch bundle / section) or `index.md` (leaf bundle).
  *   2. For each `_index.md`, read front matter. `type: "post"` (or a
  *      missing `type` with post-shaped keys) → root bundle. `type:
- *      "collection"` → collection landing page. Other known section types
+ *      "collection"` → collection landing page, `type: "smart_collection"` →
+ *      smart collection conditions. Other known section types
  *      (`home`, `featured`, `archive`, `collections`) are recorded and
  *      skipped for post import.
  *   3. For each root bundle, enumerate immediate child directories; any
@@ -1811,6 +1915,7 @@ async function walkHugoContent(rootDir) {
   // Attach leaf children to their parent root bundles.
   const rootBundles = [];
   const collectionBundles = [];
+  const smartCollectionBundles = [];
 
   for (const record of dirs.values()) {
     if (record.kind === "leaf") {
@@ -1823,6 +1928,10 @@ async function walkHugoContent(rootDir) {
     }
     if (record.kind === "collection") {
       collectionBundles.push(record);
+      continue;
+    }
+    if (record.kind === "smart_collection") {
+      smartCollectionBundles.push(record);
       continue;
     }
     if (record.kind === "post") {
@@ -1844,7 +1953,7 @@ async function walkHugoContent(rootDir) {
   // order among posts that share a second: lists break those ties by ID.
   rootBundles.sort(compareBundlesByDateThenId);
 
-  return { rootBundles, collectionBundles };
+  return { rootBundles, collectionBundles, smartCollectionBundles };
 }
 
 /**
@@ -2113,6 +2222,7 @@ export const __test__ = {
   splitSettingsUpdatesForImport,
   normalizeImportedNavItems,
   buildNavItemCreateRequest,
+  buildSmartCollectionCreateRequest,
   normalizeImportedCustomUrls,
   normalizeImportedCollectionDirectory,
   buildSiteAvatarImport,
@@ -2240,7 +2350,7 @@ export async function run(argv) {
     console.log(`Reading directory ${inputPath}...`);
   }
 
-  const { rootBundles, collectionBundles } =
+  const { rootBundles, collectionBundles, smartCollectionBundles } =
     await walkHugoContent(sourceRootDir);
   const siteConfig = await loadSiteConfig(sourceRootDir);
   const customCss = await readImportCustomCss(sourceRootDir);
@@ -2251,7 +2361,7 @@ export async function run(argv) {
       0,
     );
     console.log(
-      `Found ${rootBundles.length} posts (+${replyCount} replies) and ${collectionBundles.length} collections`,
+      `Found ${rootBundles.length} posts (+${replyCount} replies), ${collectionBundles.length} collections, and ${smartCollectionBundles.length} smart collections`,
     );
     const importedCollectionDirectory = siteConfig
       ? normalizeImportedCollectionDirectory(siteConfig)
@@ -2407,6 +2517,60 @@ export async function run(argv) {
       }
     }
 
+    // Smart collections after collections, which their conditions may name.
+    // They hold no posts, so nothing about them waits for the posts below.
+    const smartCollectionSlugToId = new Map();
+    if (!dryRun) {
+      try {
+        for (const existing of await target.listSmartCollections()) {
+          smartCollectionSlugToId.set(existing.slug, existing.id);
+        }
+      } catch (err) {
+        console.error(
+          `Error fetching existing smart collections: ${err.message}`,
+        );
+        process.exit(1);
+      }
+    }
+
+    for (const bundle of smartCollectionBundles) {
+      const slug = bundle.slug;
+      if (smartCollectionSlugToId.has(slug)) {
+        console.error(
+          `Import conflict: smart collection slug "${slug}" is already in use. Import into an empty site or remove the existing smart collection first.`,
+        );
+        process.exit(1);
+      }
+
+      const request = buildSmartCollectionCreateRequest(
+        bundle,
+        collectionSlugToId,
+      );
+      if (!request.payload) {
+        console.warn(`Warning: ${request.warning}`);
+        continue;
+      }
+
+      if (dryRun) {
+        console.log(
+          `[dry-run] Would create smart collection: ${request.payload.title}`,
+        );
+        smartCollectionSlugToId.set(slug, `dry-run-${slug}`);
+        continue;
+      }
+
+      try {
+        const created = await target.createSmartCollection(request.payload);
+        smartCollectionSlugToId.set(slug, created.id);
+        console.log(`Created smart collection: ${request.payload.title}`);
+      } catch (err) {
+        console.error(
+          `Error creating smart collection "${slug}": ${err.message}`,
+        );
+        process.exit(1);
+      }
+    }
+
     if (importedCollectionDirectory.exported) {
       if (dryRun) {
         console.log(
@@ -2418,6 +2582,7 @@ export async function run(argv) {
             target,
             importedCollectionDirectory,
             collectionSlugToId,
+            smartCollectionSlugToId,
           );
         } catch (err) {
           console.error(
@@ -2774,6 +2939,7 @@ export async function run(argv) {
           for (const item of importedNav.items) {
             const request = buildNavItemCreateRequest(item, {
               collectionSlugToId,
+              smartCollectionSlugToId,
               postSlugToId,
             });
             if (request.warning) console.warn(`Warning: ${request.warning}`);
@@ -2793,7 +2959,7 @@ export async function run(argv) {
       for (const customUrl of importedCustomUrls) {
         if (customUrl.kind === "archive") {
           console.warn(
-            `Warning: skipped /${customUrl.path}, an archive URL (${customUrl.archiveQuery ?? "no filter"}). Archive URLs can't be created any more; set up a smart collection at that address instead.`,
+            `Warning: skipped /${customUrl.path}, an archive URL (${customUrl.archiveQuery ?? "no filter"}). Archive URLs can no longer be created. Create a smart collection at /${customUrl.path} with the same conditions, here or on the source site before exporting.`,
           );
           continue;
         }

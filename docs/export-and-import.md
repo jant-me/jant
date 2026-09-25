@@ -58,7 +58,8 @@ Included:
 
 - Every post, Thread replies included. Drafts and private posts carry `draft: true` in front matter; Hugo builds them only with `hugo --buildDrafts`.
 - Media used by posts and avatars, downloaded into `static/media/` so the archive stands on its own. `--no-pull-media` skips the download.
-- Collections, the Collections directory (order, dividers, custom links with their descriptions), and navigation (placement, labels, and the Collection or page each entry points at), in `data/jant.toml`.
+- Collections, the Collections directory (order, dividers, custom links with their descriptions), and navigation (placement, labels, and the Collection, Smart Collection, or page each entry points at), in `data/jant.toml`.
+- Smart Collections, each as its conditions and sort order in `content/{slug}/_index.md`. The theme applies the conditions to the exported posts, so the page lists what it lists on Jant and keeps up as posts are added to the repository.
 - Redirects set up under **Settings → Custom URLs**, in `data/jant.toml` and `static/_redirects`.
 - Each post's `featured_at` and `pinned_at`, and each Thread's Collection membership on the root bundle, in front matter.
 - The current slug, plus old slugs and aliases in the root post's `aliases:` field. A custom `alias.html` template keeps the old links working.
@@ -68,7 +69,6 @@ Not included:
 
 - Users, sessions, accounts, verifications, and API tokens. Account data doesn't move between sites.
 - Runtime config: `wrangler.toml`, environment variables, bindings.
-- Smart Collections. Their membership is a query, and a Hugo site has no database to run it against. Every post they gathered is exported; recreate the Smart Collection on the target site.
 
 ### Export structure
 
@@ -101,32 +101,34 @@ The `name` has to match the Worker's name in the Cloudflare dashboard. When they
 
 ### URL scheme
 
-| URL                   | Renders                                                           |
-| --------------------- | ----------------------------------------------------------------- |
-| `/`                   | Home: pinned posts first, then the first page of non-pinned posts |
-| `/page/N/`            | Non-pinned post pagination (N ≥ 2)                                |
-| `/archive/`           | Archive: every published post, newest first                       |
-| `/archive/page/N/`    | Archive pagination (N ≥ 2)                                        |
-| `/featured/`          | Featured: posts marked Featured, newest first                     |
-| `/{slug}/`            | A single Thread (root post with inline replies)                   |
-| `/{reply-slug}/`      | Alias that redirects to `/{root-slug}/#{reply-slug}`              |
-| `/{collection-slug}/` | A collection of complete Threads                                  |
-| `/collections/`       | Collections directory                                             |
+| URL                         | Renders                                                           |
+| --------------------------- | ----------------------------------------------------------------- |
+| `/`                         | Home: pinned posts first, then the first page of non-pinned posts |
+| `/page/N/`                  | Non-pinned post pagination (N ≥ 2)                                |
+| `/archive/`                 | Archive: every published post, newest first                       |
+| `/archive/page/N/`          | Archive pagination (N ≥ 2)                                        |
+| `/featured/`                | Featured: posts marked Featured, newest first                     |
+| `/{slug}/`                  | A single Thread (root post with inline replies)                   |
+| `/{reply-slug}/`            | Alias that redirects to `/{root-slug}/#{reply-slug}`              |
+| `/{collection-slug}/`       | A collection of complete Threads                                  |
+| `/{smart-collection-slug}/` | A Smart Collection: the complete Threads its conditions select    |
+| `/collections/`             | Collections directory                                             |
 
 Page size follows Jant's **Settings → Posts per page**.
 
 When **Settings → Feeds** is on, the export also writes Atom feeds:
 
-| URL                            | Carries           |
-| ------------------------------ | ----------------- |
-| `/index.xml`                   | The home timeline |
-| `/featured/index.xml`          | Featured          |
-| `/archive/index.xml`           | The full archive  |
-| `/{collection-slug}/index.xml` | One collection    |
+| URL                                  | Carries              |
+| ------------------------------------ | -------------------- |
+| `/index.xml`                         | The home timeline    |
+| `/featured/index.xml`                | Featured             |
+| `/archive/index.xml`                 | The full archive     |
+| `/{collection-slug}/index.xml`       | One collection       |
+| `/{smart-collection-slug}/index.xml` | One Smart Collection |
 
 ### Feed addresses change
 
-Jant serves its feeds at `/feed`, `/latest/feed`, `/featured/feed`, `/archive/feed`, and `/{collection-slug}/feed`. Hugo writes the same feeds as `index.xml` inside each section, so none of the addresses your subscribers use exist on the exported site.
+Jant serves its feeds at `/feed`, `/latest/feed`, `/featured/feed`, `/archive/feed`, and `/{slug}/feed` for each Collection and Smart Collection. Hugo writes the same feeds as `index.xml` inside each section, so none of the addresses your subscribers use exist on the exported site.
 
 The export writes `static/_redirects`, which sends each old address to its new one with a 301. Cloudflare Pages and Netlify read that file as published, so subscribers follow a move to either host. Other hosts ignore it; copy its rules into the host's own redirect config before you point the domain at the export.
 
@@ -144,6 +146,7 @@ The Jant `/subscribe` page doesn't exist on the exported site. The **Subscribe**
 - Each reply's `weight` is its position in the Thread, and import creates replies in that order. Posts that share a publish second keep their order too.
 - `created` and `updated` hold when a post was written and last edited, written where they differ from `date`. After a move, feeds and the sitemap report the original times.
 - Video and audio keep `duration_seconds`.
+- A Smart Collection's `selection` holds its conditions, with the Collection condition naming a slug. Import recreates Smart Collections after Collections. One whose Collection didn't come across is skipped with a warning: without that condition it would gather posts it never held.
 
 Front-matter fields not listed on this page are internal to Jant. Don't edit them by hand: the next import writes them back to the database as they are, over anything you changed in Jant since.
 

@@ -2,7 +2,8 @@
   Atom 2005 feed template — mirrors the main site's `lib/feed.ts`.
 
   One template covers every page that opts into the custom `RSS` output
-  format (home, featured, archive, and each collection section). Root-post
+  format (home, featured, archive, and each collection and smart collection
+  section). Root-post
   sections do NOT opt in, so no `/{slug}/index.xml` gets emitted.
 
   Feed filter parity with the corresponding HTML list view:
@@ -12,6 +13,8 @@
     - archive  (`.Type == "archive"`): all published (includes latest_hidden)
     - collection (`.Type == "collection"`): Params.collections.slug match,
         ordered per `sort_order`; pinning is ignored for RSS
+    - smart collection (`.Type == "smart_collection"`): the roots its
+        conditions select, in its order (`smart-collection-members`)
 
   Per-entry payload mirrors `buildSinglePostContent` + `buildFeedContent`:
     - Title: empty for quote posts, else .Title
@@ -72,6 +75,8 @@
     {{- end -}}
   {{- end -}}
   {{- range $ordered -}}{{- $posts = $posts | append .post -}}{{- end -}}
+{{- else if eq $page.Type "smart_collection" -}}
+  {{- $posts = partial "smart-collection-members.html" $page -}}
 {{- end -}}
 
 {{- if gt (len $posts) $limit -}}
@@ -88,7 +93,7 @@
   {{- $feedTitle = printf "%s - Featured posts" .Site.Title -}}
 {{- else if eq $page.Type "archive" -}}
   {{- $feedTitle = printf "%s - Archive" .Site.Title -}}
-{{- else if eq $page.Type "collection" -}}
+{{- else if in (slice "collection" "smart_collection") $page.Type -}}
   {{- $feedTitle = printf "%s - %s" .Site.Title $page.Title -}}
 {{- end -}}
 
