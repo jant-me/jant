@@ -12,7 +12,6 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, extname, join, relative } from "node:path";
-import { unzipSync, zipSync } from "fflate";
 import { parse, stringify } from "smol-toml";
 import {
   collectMediaReferences as collectParsedMediaReferences,
@@ -20,6 +19,7 @@ import {
   rewriteMediaReferences,
 } from "./site-media-parser.js";
 import { formatFrontMatter, parseFrontMatter } from "./hugo-markdown.js";
+import { extractZipFile, writeDirectoryToZip } from "./zip-archive.js";
 
 export function getSitePathPrefix(baseUrl) {
   if (typeof baseUrl !== "string" || baseUrl.trim() === "") {
@@ -477,29 +477,6 @@ async function resolveExistingPulledPath(
   return toPulledPublicPath(pathname, sitePathPrefix);
 }
 
-async function packDirectoryToZip(rootDir) {
-  const files = {};
-  const allFiles = await walkFiles(rootDir);
-
-  for (const fullPath of allFiles) {
-    const relPath = relative(rootDir, fullPath).replace(/\\/g, "/");
-    files[relPath] = new Uint8Array(await readFile(fullPath));
-  }
-
-  return zipSync(files);
-}
-
-async function unpackZipToDirectory(zipBytes, rootDir) {
-  const files = unzipSync(zipBytes);
-  await Promise.all(
-    Object.entries(files).map(async ([relPath, bytes]) => {
-      const fullPath = join(rootDir, relPath);
-      await mkdir(dirname(fullPath), { recursive: true });
-      await writeFile(fullPath, bytes);
-    }),
-  );
-}
-
 export async function pullSiteExportDirectory(rootDir, options = {}) {
   const logger =
     typeof options.logger === "function" ? options.logger : () => {};
@@ -681,14 +658,30 @@ export async function pullSiteExportDirectory(rootDir, options = {}) {
   return stats;
 }
 
-export async function pullSiteExportZipBytes(zipBytes, options = {}) {
+/**
+ * Pull media into an export ZIP: extract it to a temporary directory, pull
+ * there, and write the result as a new archive. Nothing is held in memory
+ * beyond one media file at a time, so the archive can be any size.
+ *
+ * @param {string} inputZipPath - Export archive to read
+ * @param {string} outputZipPath - Archive to write; may be the input
+ * @param {Parameters<typeof pullSiteExportDirectory>[1]} [options]
+ * @returns {Promise<Awaited<ReturnType<typeof pullSiteExportDirectory>>>} Pull stats
+ * @example
+ * await pullSiteExportZipFile("export.zip", "export.zip", { logger });
+ */
+export async function pullSiteExportZipFile(
+  inputZipPath,
+  outputZipPath,
+  options = {},
+) {
   const tempDir = await mkdtemp(join(tmpdir(), "jant-site-pull-"));
 
   try {
-    await unpackZipToDirectory(zipBytes, tempDir);
+    await extractZipFile(inputZipPath, tempDir);
     const stats = await pullSiteExportDirectory(tempDir, options);
-    const pulledZip = await packDirectoryToZip(tempDir);
-    return { zipBytes: pulledZip, stats };
+    await writeDirectoryToZip(tempDir, outputZipPath);
+    return stats;
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }

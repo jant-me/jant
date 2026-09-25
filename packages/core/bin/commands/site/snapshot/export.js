@@ -10,8 +10,8 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { zipSync } from "fflate";
-import { queryD1 } from "../../../lib/d1-query.js";
+import { writeDirectoryToZip } from "../../../lib/zip-archive.js";
+import { D1_DUMP_PAGE_SIZE, queryD1 } from "../../../lib/d1-query.js";
 import { loadNodeRuntime } from "../../../lib/load-node-runtime.js";
 import { openNodeDatabase } from "../../../lib/node-database.js";
 import {
@@ -58,27 +58,6 @@ async function readStorageBody(body) {
   }
 
   return bytes;
-}
-
-async function readDirectoryEntries(rootDir) {
-  const entries = {};
-
-  async function walk(dir) {
-    const items = await readdir(dir, { withFileTypes: true });
-    for (const item of items) {
-      const fullPath = join(dir, item.name);
-      if (item.isDirectory()) {
-        await walk(fullPath);
-        continue;
-      }
-
-      const relativePath = relative(rootDir, fullPath).replace(/\\/g, "/");
-      entries[relativePath] = new Uint8Array(await readFile(fullPath));
-    }
-  }
-
-  await walk(rootDir);
-  return entries;
 }
 
 async function assertWritableOutput(outputPath, force) {
@@ -295,6 +274,8 @@ export async function run(argv) {
       {
         dialect: context.dialect,
         source: runtime,
+        // D1 answers through Wrangler's buffered output; read it in pages.
+        pageSize: runtime === "node" ? undefined : D1_DUMP_PAGE_SIZE,
         tables: SNAPSHOT_TABLES,
         selectSqlByTable: Object.fromEntries(
           SNAPSHOT_TABLES.map((tableName) => [
@@ -344,10 +325,7 @@ export async function run(argv) {
 
     if (shouldZip) {
       await mkdir(dirname(outputPath), { recursive: true });
-      const zipped = zipSync(await readDirectoryEntries(scratchDir), {
-        level: 6,
-      });
-      await writeFile(outputPath, zipped);
+      await writeDirectoryToZip(scratchDir, outputPath);
       if (process.env.SNAPSHOT_SUPPRESS_SUCCESS_LOG !== "true") {
         console.log(
           `Exported ${getCliRuntimeLabel(runtime)} snapshot to ${values.output}`,

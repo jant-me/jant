@@ -184,8 +184,46 @@ export async function getTableColumns(
     .map((row) => String(row.name));
 }
 
+/**
+ * Read an ordered SELECT a page at a time.
+ *
+ * `LIMIT … OFFSET …` is appended to the statement, so it must end in an
+ * ORDER BY with a unique tiebreaker. Pages are separate reads: rows written
+ * between two of them can be skipped or repeated, which is why a snapshot
+ * should be taken of a site nobody is writing to.
+ *
+ * @param {{ query(sql: string): Promise<Record<string, unknown>[]> }} queryRunner
+ * @param {string} selectSql - An ordered SELECT with no LIMIT
+ * @param {number} pageSize - Rows per read
+ * @returns {Promise<Record<string, unknown>[]>} Every row, in order
+ * @example
+ * await queryAllPages(runner, 'SELECT * FROM "post" ORDER BY rowid', 200);
+ */
+async function queryAllPages(queryRunner, selectSql, pageSize) {
+  const base = selectSql.trim();
+  const rows = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await queryRunner.query(
+      `${base} LIMIT ${pageSize} OFFSET ${offset}`,
+    );
+    rows.push(...page);
+    if (page.length < pageSize) return rows;
+  }
+}
+
+/**
+ * Dump tables as INSERT statements.
+ *
+ * `options.pageSize` reads each table in pages. D1 needs it: every query runs
+ * through `wrangler d1 execute --json`, and one SELECT of a real site's
+ * `post` table outgrew the output the CLI can buffer.
+ */
 export async function dumpDatabaseToSql(queryRunner, options) {
   const dialect = options.dialect ?? "sqlite";
+  const pageSize =
+    Number.isInteger(options.pageSize) && options.pageSize > 0
+      ? options.pageSize
+      : null;
   const onProgress =
     typeof options.onProgress === "function" ? options.onProgress : null;
   const configuredTables = Array.isArray(options.tables)
@@ -211,8 +249,12 @@ export async function dumpDatabaseToSql(queryRunner, options) {
 
     const selectSql =
       options.selectSqlByTable?.[tableName] ||
-      `SELECT * FROM ${quoteIdentifier(tableName)}`;
-    const rows = await queryRunner.query(selectSql);
+      (pageSize && dialect === "sqlite"
+        ? `SELECT * FROM ${quoteIdentifier(tableName)} ORDER BY rowid`
+        : `SELECT * FROM ${quoteIdentifier(tableName)}`);
+    const rows = pageSize
+      ? await queryAllPages(queryRunner, selectSql, pageSize)
+      : await queryRunner.query(selectSql);
     if (rows.length === 0) {
       continue;
     }

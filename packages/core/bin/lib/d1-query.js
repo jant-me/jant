@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runLocalWrangler } from "./wrangler-cli.js";
+import { WRANGLER_MAX_BUFFER, runLocalWrangler } from "./wrangler-cli.js";
 import { extractWranglerJson } from "./wrangler-json.js";
 
 const DEFAULT_RETRY_ATTEMPTS = 4;
@@ -76,6 +76,46 @@ function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
+const WRANGLER_OUTPUT_EXCERPT_LENGTH = 2000;
+
+/**
+ * Rows per read when dumping a D1 table: small enough that a page of long
+ * posts stays well inside {@link WRANGLER_MAX_BUFFER}.
+ */
+export const D1_DUMP_PAGE_SIZE = 200;
+
+/**
+ * Say why a Wrangler call failed without echoing its whole output: on a
+ * failed `d1 execute` that output can be a site's rows, hundreds of KB of it.
+ *
+ * @param {string[]} args - The Wrangler arguments
+ * @param {Error & { code?: string, stdout?: string, stderr?: string }} error
+ * @returns {string} A message naming the command and the cause
+ * @example
+ * describeWranglerFailure(["d1", "execute", "DB"], enobufsError);
+ * // "`wrangler d1 execute DB` printed more than 67108864 bytes, …"
+ */
+export function describeWranglerFailure(args, error) {
+  const command = `wrangler ${args.slice(0, 3).join(" ")}`;
+  if (error?.code === "ENOBUFS") {
+    return `\`${command}\` printed more than ${WRANGLER_MAX_BUFFER} bytes, the most the CLI buffers.`;
+  }
+
+  const stderr = String(error?.stderr ?? "").trim();
+  if (stderr) return `\`${command}\` failed: ${stderr}`;
+
+  const stdout = String(error?.stdout ?? "").trim();
+  if (stdout) {
+    const excerpt =
+      stdout.length > WRANGLER_OUTPUT_EXCERPT_LENGTH
+        ? `${stdout.slice(0, WRANGLER_OUTPUT_EXCERPT_LENGTH)}… (${stdout.length} characters)`
+        : stdout;
+    return `\`${command}\` failed: ${excerpt}`;
+  }
+
+  return `\`${command}\` failed: ${error?.message ?? "unknown error"}`;
+}
+
 export function isRetryableWranglerD1Failure(output, error) {
   const combined = `${output ?? ""}\n${error?.message ?? ""}`.toLowerCase();
   return [
@@ -137,7 +177,7 @@ function runWrangler(args, options = {}) {
         throw new Error(`Wrangler error: ${wranglerError}`);
       }
 
-      throw new Error(output || error.message, { cause: error });
+      throw new Error(describeWranglerFailure(args, error), { cause: error });
     }
   }
 }

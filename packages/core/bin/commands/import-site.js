@@ -19,6 +19,7 @@ import {
   rewriteMediaReferences,
 } from "../lib/site-media-parser.js";
 import { parseFrontMatter as parseFrontMatterShared } from "../lib/hugo-markdown.js";
+import { extractZipFile } from "../lib/zip-archive.js";
 
 /**
  * Parse front matter from a Markdown file.
@@ -2272,16 +2273,9 @@ export async function run(argv) {
 
   if (inputStat.isFile()) {
     console.log(`Reading ZIP ${inputPath}...`);
-    const zipData = await readFile(inputPath);
-    const { unzipSync } = await import("fflate");
-    const files = unzipSync(new Uint8Array(zipData));
     tempSourceRootDir = await mkdtemp(join(tmpdir(), "jant-site-import-"));
     sourceRootDir = tempSourceRootDir;
-    for (const [path, data] of Object.entries(files)) {
-      const fullPath = join(sourceRootDir, path);
-      await mkdir(dirname(fullPath), { recursive: true });
-      await writeFile(fullPath, data);
-    }
+    await extractZipFile(inputPath, sourceRootDir);
   } else {
     console.log(`Reading directory ${inputPath}...`);
   }
