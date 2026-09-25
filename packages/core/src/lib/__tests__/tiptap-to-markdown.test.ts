@@ -363,6 +363,71 @@ describe("tiptapJsonToMarkdown", () => {
     });
   });
 
+  // CommonMark only closes `**` after punctuation when a space or another
+  // punctuation mark follows, so `**句子。**后文` stays literal asterisks in
+  // Hugo and in Jant. Those runs use HTML tags, which both read.
+  describe("emphasis a delimiter can't open or close", () => {
+    const bold = [{ type: "bold" }];
+
+    it.each([
+      [
+        "bold ending in CJK punctuation before a letter",
+        [text("而是："), text("固定时间，一群人。", bold), text("来的人")],
+        "而是：<strong>固定时间，一群人。</strong>来的人",
+      ],
+      [
+        "bold opening on CJK punctuation after a letter",
+        [text("说"), text("「引用」", bold), text("后")],
+        "说<strong>「引用」</strong>后",
+      ],
+      [
+        "italic ending in punctuation before a letter",
+        [text("这是"), text("强调。", [{ type: "italic" }]), text("后面")],
+        "这是<em>强调。</em>后面",
+      ],
+      [
+        "strike ending in punctuation before a letter",
+        [text("价格"), text("100元。", [{ type: "strike" }]), text("现在")],
+        "价格<s>100元。</s>现在",
+      ],
+      [
+        "English bold ending in a period before a letter",
+        [text("Say "), text("hello.", bold), text("World")],
+        "Say <strong>hello.</strong>World",
+      ],
+    ])("writes %s as HTML", (_label, content, expected) => {
+      const json = doc(p(...content));
+      expect(tiptapJsonToMarkdown(json)).toBe(expected);
+      expect(JSON.parse(markdownToTiptapJson(expected))).toEqual(
+        JSON.parse(json),
+      );
+    });
+
+    it.each([
+      [
+        "between spaces",
+        [text("a "), text("bold", bold), text(" b")],
+        "a **bold** b",
+      ],
+      [
+        "inside CJK text",
+        [text("中"), text("加粗", bold), text("文")],
+        "中**加粗**文",
+      ],
+      [
+        "ending in punctuation before punctuation",
+        [text("说"), text("好。", bold), text("」")],
+        "说**好。**」",
+      ],
+    ])("keeps Markdown delimiters %s", (_label, content, expected) => {
+      const json = doc(p(...content));
+      expect(tiptapJsonToMarkdown(json)).toBe(expected);
+      expect(JSON.parse(markdownToTiptapJson(expected))).toEqual(
+        JSON.parse(json),
+      );
+    });
+  });
+
   // Text that happens to open a line with block syntax must come back as the
   // same paragraph, not as a list, heading, or setext underline.
   describe("block markers at the start of a line", () => {

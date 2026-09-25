@@ -11,6 +11,9 @@ import { MarkdownManager } from "@tiptap/markdown";
 import CodeBlock from "@tiptap/extension-code-block";
 import { OrderedList } from "@tiptap/extension-list";
 import Paragraph from "@tiptap/extension-paragraph";
+import Bold from "@tiptap/extension-bold";
+import Italic from "@tiptap/extension-italic";
+import Strike from "@tiptap/extension-strike";
 import Link from "@tiptap/extension-link";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -262,6 +265,234 @@ function escapeLineStartBlockSyntax(markdown: string): string {
     )
     .join("\n");
 }
+
+/** The HTML tag each emphasis mark falls back to. */
+const HTML_EMPHASIS_TAGS = {
+  bold: "strong",
+  italic: "em",
+  strike: "s",
+} as const;
+
+type EmphasisMarkType = keyof typeof HTML_EMPHASIS_TAGS;
+
+const EMPHASIS_MARK_TYPES = Object.keys(
+  HTML_EMPHASIS_TAGS,
+) as EmphasisMarkType[];
+
+/** Marks that write their own delimiter characters around the text. */
+const DELIMITED_MARK_TYPES = new Set<string>([
+  ...EMPHASIS_MARK_TYPES,
+  "code",
+  "link",
+]);
+
+/**
+ * Serialization-only mark attribute: write this run with HTML tags. It is
+ * set by `markEmphasisDelimiters` on a copy of the document and never stored.
+ */
+const HTML_EMPHASIS_ATTR = "markdownAsHtml";
+
+type FlankingClass = "space" | "punctuation" | "other";
+
+function classifyFlankingChar(char: string | undefined): FlankingClass {
+  if (char === undefined || /\s/u.test(char)) return "space";
+  return /[\p{P}\p{S}]/u.test(char) ? "punctuation" : "other";
+}
+
+function hasMark(node: JSONContent | undefined, type: string): boolean {
+  return node?.marks?.some((mark) => mark.type === type) ?? false;
+}
+
+/**
+ * Whether a `**`, `*`, or `~~` at one end of a run can open or close it.
+ *
+ * CommonMark's flanking rule, which GFM strikethrough shares: the character
+ * on the text side must not be whitespace, and when it is punctuation, the
+ * character on the outside must be whitespace or punctuation too. The rule is
+ * symmetric, so one check covers the opening and the closing delimiter.
+ *
+ * @param nodes - The inline nodes of one block
+ * @param index - The run's first node (`side: "start"`) or last (`"end"`)
+ * @param side - Which end of the run
+ * @param markType - The run's mark
+ * @returns True when Markdown delimiters work at this end
+ */
+function delimiterFlanks(
+  nodes: JSONContent[],
+  index: number,
+  side: "start" | "end",
+  markType: string,
+): boolean {
+  const node = nodes[index];
+  const neighbor = nodes[side === "start" ? index - 1 : index + 1];
+  const chars = [...(node?.text ?? "")];
+  const edge = side === "start" ? chars : chars.slice().reverse();
+  const innerChar = edge.find((char) => !/\s/u.test(char));
+
+  // Another mark opening or closing at the same edge writes its delimiter
+  // between ours and the text; it counts as punctuation.
+  const sharesEdge =
+    node?.marks?.some(
+      (mark) =>
+        mark.type !== markType &&
+        DELIMITED_MARK_TYPES.has(mark.type) &&
+        !hasMark(neighbor, mark.type),
+    ) ?? false;
+  const inner = sharesEdge ? "punctuation" : classifyFlankingChar(innerChar);
+
+  // The serializer moves whitespace at a run's edge outside the delimiter.
+  let outer: FlankingClass;
+  if (edge[0] !== undefined && /\s/u.test(edge[0])) outer = "space";
+  else if (!neighbor || neighbor.type === "hardBreak") outer = "space";
+  else if (neighbor.type === "text") {
+    const neighborChars = [...(neighbor.text ?? "")];
+    outer = classifyFlankingChar(
+      side === "start" ? neighborChars.at(-1) : neighborChars[0],
+    );
+  } else outer = "punctuation"; // `![…](…)`, `[^1]`
+
+  return inner !== "space" && (inner !== "punctuation" || outer !== "other");
+}
+
+function markEmphasisRuns(nodes: JSONContent[]): JSONContent[] {
+  const result = nodes.map((node) => ({ ...node }));
+
+  for (const markType of EMPHASIS_MARK_TYPES) {
+    let start = 0;
+    while (start < result.length) {
+      if (result[start]?.type !== "text" || !hasMark(result[start], markType)) {
+        start += 1;
+        continue;
+      }
+
+      // The serializer closes marks around any non-text node, so a run is
+      // consecutive text nodes.
+      let end = start;
+      while (
+        result[end + 1]?.type === "text" &&
+        hasMark(result[end + 1], markType)
+      ) {
+        end += 1;
+      }
+
+      if (
+        !delimiterFlanks(result, start, "start", markType) ||
+        !delimiterFlanks(result, end, "end", markType)
+      ) {
+        for (let index = start; index <= end; index += 1) {
+          const node = result[index] as JSONContent;
+          node.marks = node.marks?.map((mark) =>
+            mark.type === markType
+              ? {
+                  ...mark,
+                  attrs: { ...mark.attrs, [HTML_EMPHASIS_ATTR]: true },
+                }
+              : mark,
+          );
+        }
+      }
+
+      start = end + 1;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Flag the emphasis runs whose Markdown delimiters a CommonMark parser would
+ * leave as literal characters, so they serialize as HTML tags instead.
+ *
+ * Chinese and Japanese put no space around punctuation, so `**说话。**来的人`
+ * is common, and neither Hugo (goldmark) nor Jant's own parser reads the
+ * closing `**` after `。` followed by `来`. `<strong>…</strong>` reads the
+ * same in both, and the rest of the Markdown stays as it was.
+ *
+ * @param node - A TipTap document or descendant
+ * @returns A copy with unflankable runs flagged
+ * @example
+ * markEmphasisDelimiters(doc); // bold "说话。" before "来" gets the flag
+ */
+function markEmphasisDelimiters(node: JSONContent): JSONContent {
+  if (!node.content || node.type === "codeBlock") return node;
+
+  const content = node.content.map(markEmphasisDelimiters);
+  const hasInline = content.some(
+    (child) => child.type === "text" || child.type === "hardBreak",
+  );
+  return { ...node, content: hasInline ? markEmphasisRuns(content) : content };
+}
+
+function renderEmphasis(
+  node: JSONContent,
+  content: string,
+  markType: EmphasisMarkType,
+  delimiter: string,
+): string {
+  if (!node.attrs?.[HTML_EMPHASIS_ATTR]) {
+    return `${delimiter}${content}${delimiter}`;
+  }
+  const tag = HTML_EMPHASIS_TAGS[markType];
+  return `<${tag}>${content}</${tag}>`;
+}
+
+const MarkdownBold = Bold.extend({
+  renderMarkdown(node, helpers) {
+    return renderEmphasis(node, helpers.renderChildren(node), "bold", "**");
+  },
+});
+
+const MarkdownItalic = Italic.extend({
+  renderMarkdown(node, helpers) {
+    return renderEmphasis(node, helpers.renderChildren(node), "italic", "*");
+  },
+});
+
+const MarkdownStrike = Strike.extend({
+  renderMarkdown(node, helpers) {
+    return renderEmphasis(node, helpers.renderChildren(node), "strike", "~~");
+  },
+});
+
+/** Marked token for each HTML emphasis tag the parser accepts. */
+const HTML_EMPHASIS_TOKEN_TYPES: Record<string, "strong" | "em" | "del"> = {
+  strong: "strong",
+  b: "strong",
+  em: "em",
+  i: "em",
+  s: "del",
+  del: "del",
+};
+
+const HTML_EMPHASIS_OPEN_PATTERN = /<(?:strong|b|em|i|s|del)>/i;
+const HTML_EMPHASIS_PATTERN = /^<(strong|b|em|i|s|del)>([\s\S]*?)<\/\1>/i;
+
+/**
+ * Reads the HTML tags `markEmphasisDelimiters` writes back as marks.
+ *
+ * Only bare tags: `<strong onclick=…>` and every other tag stay text, as
+ * inline HTML always has. The content between the tags is Markdown.
+ */
+const MarkdownHtmlEmphasis = Extension.create({
+  name: "markdownHtmlEmphasis",
+
+  markdownTokenizer: {
+    name: "htmlEmphasis",
+    level: "inline",
+    start(src: string) {
+      return src.search(HTML_EMPHASIS_OPEN_PATTERN);
+    },
+    tokenize(src: string, _tokens, helpers) {
+      const match = HTML_EMPHASIS_PATTERN.exec(src);
+      if (!match) return undefined;
+
+      const [raw, tag = "", text = ""] = match;
+      const type = HTML_EMPHASIS_TOKEN_TYPES[tag.toLowerCase()];
+      if (!type) return undefined;
+      return { type, raw, text, tokens: helpers.inlineTokens(text) };
+    },
+  },
+});
 
 const renderParagraphMarkdown = Paragraph.config.renderMarkdown;
 
@@ -914,9 +1145,16 @@ export function createMarkdownContentExtensions(
       codeBlock: false,
       orderedList: false,
       paragraph: false,
+      bold: false,
+      italic: false,
+      strike: false,
       trailingNode: { notAfter: ["footnoteDefinition"] },
     }),
     MarkdownParagraph,
+    MarkdownBold,
+    MarkdownItalic,
+    MarkdownStrike,
+    MarkdownHtmlEmphasis,
     CommonMarkOrderedList,
     SemanticLink.configure({
       openOnClick: false,
@@ -1187,7 +1425,9 @@ export function parseMarkdownDocument(markdown: string): JSONContent {
 export function serializeMarkdownDocument(doc: JSONContent): string {
   return expandCodeBlockFences(
     getMarkdownManager().serialize(
-      normalizeFootnoteArtifacts(fillRequiredContent(doc)),
+      normalizeFootnoteArtifacts(
+        markEmphasisDelimiters(fillRequiredContent(doc)),
+      ),
     ),
   );
 }

@@ -102,6 +102,43 @@ describe("markdownToTiptapJson", () => {
       ]);
     });
 
+    it.each([
+      ["<strong>粗</strong>", "bold"],
+      ["<b>粗</b>", "bold"],
+      ["<em>斜</em>", "italic"],
+      ["<i>斜</i>", "italic"],
+      ["<s>删</s>", "strike"],
+      ["<del>删</del>", "strike"],
+    ])("reads %s as a %s mark", (html, mark) => {
+      const doc = parse(`前${html}后`);
+      const marked = doc.content[0].content.find(
+        (node: TiptapNode) => node.marks?.length,
+      );
+      expect(marked.marks).toEqual([{ type: mark }]);
+      expect(
+        doc.content[0].content.map((n: TiptapNode) => n.text).join(""),
+      ).toBe(`前${html.replace(/<[^>]+>/g, "")}后`);
+    });
+
+    it("parses Markdown inside an HTML emphasis tag", () => {
+      const doc = parse("<strong>[链接](https://example.com)。</strong>后");
+      const first = doc.content[0].content[0];
+      expect(first.text).toBe("链接");
+      expect(first.marks.map((mark: TiptapMark) => mark.type).sort()).toEqual([
+        "bold",
+        "link",
+      ]);
+    });
+
+    it.each([
+      '<strong onclick="alert(1)">x</strong>',
+      "<span>x</span>",
+      "<script>x</script>",
+    ])("keeps %j as text", (html) => {
+      const doc = parse(html);
+      expect(doc.content[0].content).toEqual([{ type: "text", text: html }]);
+    });
+
     it("keeps an ordered list's start number", () => {
       const doc = parse("3. Third\n4. Fourth");
       expect(doc.content[0].type).toBe("orderedList");
