@@ -7,6 +7,7 @@ import {
 } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import CodeBlock from "@tiptap/extension-code-block";
+import { OrderedList } from "@tiptap/extension-list";
 import Link from "@tiptap/extension-link";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -222,6 +223,45 @@ const MarkdownCodeBlock = CodeBlock.extend({
 
 const SemanticLink = Link.extend({
   clearable: false,
+});
+
+/**
+ * Ordered lists with CommonMark markers: digits only.
+ *
+ * Tiptap's ordered list also reads letters and roman numerals as markers
+ * (`a.`, `IV.`, anything of one or two letters), so a line such as
+ * `PS. 补充一句` or `Mr. Smith went` became a list item and lost its first
+ * word. Its tokenizer also measured a marker's width without the `.`, which
+ * left one stray space on every line of a code block inside a list item.
+ *
+ * Jant's Markdown is CommonMark plus GFM (docs/internal/markdown-contract.md),
+ * the same dialect Hugo reads in an export, so list tokenizing goes back to
+ * marked: a tokenizer that never matches leaves the built-in one in charge,
+ * and marked's list items go to `listItem` the way bullet lists' do. Tiptap's
+ * plain-text paste plugin goes too; it applied the same markers, and the
+ * editors already parse pasted plain text as Markdown (`MarkdownClipboard`).
+ */
+const CommonMarkOrderedList = OrderedList.extend({
+  markdownTokenizer: {
+    name: "orderedList",
+    level: "block",
+    start: () => -1,
+    tokenize: () => undefined,
+  },
+
+  parseMarkdown: (token, helpers) => {
+    if (token.type !== "list" || !token.ordered) return [];
+    const start = typeof token.start === "number" ? token.start : 1;
+    return {
+      type: "orderedList",
+      ...(start === 1 ? {} : { attrs: { start } }),
+      content: token.items ? helpers.parseChildren(token.items) : [],
+    };
+  },
+
+  addProseMirrorPlugins() {
+    return [];
+  },
 });
 
 const MarkdownFigureImageSupport = Extension.create({
@@ -824,8 +864,10 @@ export function createMarkdownContentExtensions(
       heading: { levels: [1, 2, 3] },
       link: false,
       codeBlock: false,
+      orderedList: false,
       trailingNode: { notAfter: ["footnoteDefinition"] },
     }),
+    CommonMarkOrderedList,
     SemanticLink.configure({
       openOnClick: false,
       autolink: false,

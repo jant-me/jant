@@ -37,7 +37,10 @@ The shared schema supports:
 - Headings `#` through `###`
 - Bold, italic, strike, inline code
 - Links
-- Bullet lists and ordered lists
+- Bullet lists and ordered lists. Ordered-list markers are digits, as in
+  CommonMark: `PS. note`, `Mr. Smith`, `a. item`, and `IV. part` are
+  paragraphs. Tiptap's own tokenizer also reads letters and roman numerals as
+  markers; `CommonMarkOrderedList` hands list tokenizing back to marked.
 - Blockquotes
 - Fenced code blocks
 - Horizontal rules

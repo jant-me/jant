@@ -90,6 +90,62 @@ describe("markdownToTiptapJson", () => {
       expect(doc.content[0].content).toHaveLength(3);
     });
 
+    it("keeps an ordered list's start number", () => {
+      const doc = parse("3. Third\n4. Fourth");
+      expect(doc.content[0].type).toBe("orderedList");
+      expect(doc.content[0].attrs).toEqual({ start: 3 });
+    });
+
+    // CommonMark list markers are digits. Tiptap's own tokenizer also takes
+    // letters and roman numerals, which ate the first word of these lines.
+    it.each([
+      "Ps. 今天发现苹果尼日利亚区的终身会员",
+      "PS. 补充一句",
+      "Mr. Smith went to Washington.",
+      "No. 5 is here.",
+      "OK. Fine.",
+      "I. Introduction",
+      "a. first",
+      "mix. of words",
+    ])("keeps %j a paragraph", (line) => {
+      const doc = parse(line);
+      expect(doc.content).toEqual([
+        { type: "paragraph", content: [{ type: "text", text: line }] },
+      ]);
+    });
+
+    it("keeps a code block inside a list item exactly as written", () => {
+      const doc = parse(
+        [
+          "1. Create the project:",
+          "   ```bash",
+          "   ├── .github",
+          "   │   └── workflows",
+          "   └── package.json",
+          "   ```",
+          "2. Clone it",
+        ].join("\n"),
+      );
+      const list = doc.content[0];
+      expect(list.type).toBe("orderedList");
+      expect(list.content).toHaveLength(2);
+      const codeBlock = list.content[0].content.find(
+        (node: TiptapNode) => node.type === "codeBlock",
+      );
+      expect(codeBlock.content[0].text).toBe(
+        "├── .github\n│   └── workflows\n└── package.json",
+      );
+    });
+
+    it("keeps a wide marker's continuation lines intact", () => {
+      const doc = parse("10. Run:\n\n    ```sh\n    ls -la\n    ```");
+      const codeBlock = doc.content[0].content[0].content.find(
+        (node: TiptapNode) => node.type === "codeBlock",
+      );
+      expect(doc.content[0].attrs).toEqual({ start: 10 });
+      expect(codeBlock.content[0].text).toBe("ls -la");
+    });
+
     it("converts horizontal rules", () => {
       const doc = parse("Above\n\n---\n\nBelow");
       const hr = doc.content.find(
