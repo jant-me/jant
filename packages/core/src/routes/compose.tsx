@@ -92,6 +92,8 @@ composeRoutes.post("/", async (c) => {
       language: data.language,
       translationOfId: data.translationOfId,
       publishedAt: data.publishedAt,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
     },
     data.attachments,
     {
@@ -239,6 +241,8 @@ composeRoutes.post("/thread", async (c) => {
         // Replies may carry their own date; when they don't, the service
         // inherits the root's rather than stamping "now".
         publishedAt: data.publishedAt,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
       },
       attachments: data.attachments,
     })),

@@ -245,6 +245,16 @@ const mcpTools: McpToolDefinition[] = [
         replyToId: { type: "string" },
         quietReply: { type: "boolean" },
         publishedAt: { type: "integer" },
+        createdAt: {
+          type: "integer",
+          description:
+            "Unix seconds. When moving a post from another site, the time it was written.",
+        },
+        updatedAt: {
+          type: "integer",
+          description:
+            "Unix seconds. When moving a post from another site, the time it was last edited.",
+        },
         attachments: {
           type: "array",
           items: { type: "object" },
@@ -277,6 +287,8 @@ const mcpTools: McpToolDefinition[] = [
           replyToId: input.replyToId,
           quietReply: input.quietReply,
           publishedAt: input.publishedAt,
+          createdAt: input.createdAt,
+          updatedAt: input.updatedAt,
         },
         input.attachments,
         {

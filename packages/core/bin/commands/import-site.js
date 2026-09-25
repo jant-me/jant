@@ -1,16 +1,8 @@
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { openAsBlob } from "node:fs";
+import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { resolve, join, extname, dirname, basename } from "node:path";
 import { tmpdir } from "node:os";
 import { parseArgs } from "node:util";
-import { typeidUnboxed } from "typeid-js";
 import { CLI_API_TOKEN_ENV_VAR, getCliApiToken } from "../lib/cli-api-token.js";
 import {
   extractAttachmentBlocks,
@@ -165,17 +157,29 @@ async function resolveImportLocalAssetPath(rawUrl, siteConfig, sourceRootDir) {
   return null;
 }
 
+/**
+ * Read one asset as a Blob, from the export's files or its URL.
+ *
+ * A local file comes back file-backed (`openAsBlob`): an upload streams it
+ * from disk. Reading every file into memory first held gigabytes during the
+ * import of a real site, since Node does not count Blob memory toward the
+ * garbage collector's pressure.
+ *
+ * @param {{ sourceUrl?: string, sourceFilePath?: string | null, mimeType?: string, originalName?: string }} options
+ * @returns {Promise<{ blob: Blob, filename: string, contentType: string } | null>}
+ *   The asset, or null when a remote source is missing or unreachable
+ */
 async function readImportAsset(options) {
   const { sourceUrl, sourceFilePath, mimeType, originalName } = options;
 
   if (sourceFilePath) {
-    const bytes = new Uint8Array(await readFile(sourceFilePath));
     const filename =
       originalName || basename(sourceFilePath) || getFilenameFromUrl(sourceUrl);
+    const contentType = mimeType || guessMimeType(filename);
     return {
-      bytes,
+      blob: await openAsBlob(sourceFilePath, { type: contentType }),
       filename,
-      contentType: mimeType || guessMimeType(filename),
+      contentType,
     };
   }
 
@@ -190,21 +194,15 @@ async function readImportAsset(options) {
 
   const bytes = new Uint8Array(await response.arrayBuffer());
   const filename = originalName || getFilenameFromUrl(sourceUrl) || "file";
+  const contentType =
+    mimeType ||
+    response.headers.get("content-type")?.split(";")[0] ||
+    guessMimeType(filename);
   return {
-    bytes,
+    blob: new Blob([bytes], { type: contentType }),
     filename,
-    contentType:
-      mimeType ||
-      response.headers.get("content-type")?.split(";")[0] ||
-      guessMimeType(filename),
+    contentType,
   };
-}
-
-function toArrayBuffer(bytes) {
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  );
 }
 
 async function readMediaSpecAsset(media, field = "src") {
@@ -332,10 +330,8 @@ async function uploadRemoteMedia(media, apiUrl, token) {
     throw new Error(`Couldn't read ${media.src}`);
   }
 
-  const blob = new Blob([asset.bytes], { type: asset.contentType });
-
   const formData = new FormData();
-  formData.append("file", blob, asset.filename);
+  formData.append("file", asset.blob, asset.filename);
   if (media.alt) formData.append("alt", media.alt);
   if (media.summary) formData.append("summary", media.summary);
   if (media.width) formData.append("width", String(media.width));
@@ -349,11 +345,7 @@ async function uploadRemoteMedia(media, apiUrl, token) {
   if (media.poster) {
     const posterAsset = await readMediaSpecAsset(media, "poster");
     if (posterAsset) {
-      formData.append(
-        "poster",
-        new Blob([posterAsset.bytes], { type: posterAsset.contentType }),
-        posterAsset.filename,
-      );
+      formData.append("poster", posterAsset.blob, posterAsset.filename);
     } else {
       console.warn(`Warning: couldn't read the poster ${media.poster}`);
     }
@@ -421,33 +413,6 @@ function guessMimeType(filename) {
     default:
       return "application/octet-stream";
   }
-}
-
-function generateImportedStorageKey(originalName) {
-  const id = typeidUnboxed("med");
-  const extension = extname(originalName) || "";
-  const filename = `${id}${extension}`;
-  return {
-    id,
-    filename,
-    storageKey: `media/${filename}`,
-  };
-}
-
-function getMediaPublicUrl(storageKey, provider, appConfig) {
-  const base =
-    provider === "s3"
-      ? appConfig.s3PublicUrl
-      : provider === "local"
-        ? appConfig.localPublicUrl
-        : appConfig.r2PublicUrl;
-
-  if (base) {
-    return `${base.replace(/\/+$/, "")}/${storageKey}`;
-  }
-
-  const prefix = appConfig.sitePathPrefix || "";
-  return `${prefix}/${storageKey}`.replace(/\/{2,}/g, "/");
 }
 
 function normalizeImportedBodySegment(markdown) {
@@ -657,7 +622,7 @@ async function normalizeTextAttachmentSpec(spec, siteConfig, sourceRootDir) {
 
   let markdown;
   try {
-    markdown = new TextDecoder("utf-8", { fatal: false }).decode(asset.bytes);
+    markdown = await asset.blob.text();
   } catch {
     return null;
   }
@@ -1467,17 +1432,6 @@ async function getIncompleteSetupError(target, targetLabel) {
   return buildIncompleteSetupError(targetLabel);
 }
 
-function createUploadFile(name, type, bytes) {
-  return {
-    name,
-    type,
-    size: bytes.byteLength,
-    stream() {
-      return new Blob([bytes], { type }).stream();
-    },
-  };
-}
-
 class ApiError extends Error {
   constructor(status, text) {
     super(`HTTP ${status}: ${text}`);
@@ -1579,11 +1533,7 @@ function createRemoteTarget(apiUrl, token) {
       }
 
       const formData = new FormData();
-      formData.append(
-        "file",
-        new Blob([avatarAsset.bytes], { type: avatarAsset.contentType }),
-        avatarAsset.filename,
-      );
+      formData.append("file", avatarAsset.blob, avatarAsset.filename);
 
       if (data.faviconUrl || data.faviconFilePath) {
         const faviconAsset = await readImportAsset({
@@ -1593,13 +1543,7 @@ function createRemoteTarget(apiUrl, token) {
           originalName: "favicon.ico",
         });
         if (faviconAsset) {
-          formData.append(
-            "favicon",
-            new Blob([faviconAsset.bytes], {
-              type: faviconAsset.contentType,
-            }),
-            faviconAsset.filename,
-          );
+          formData.append("favicon", faviconAsset.blob, faviconAsset.filename);
         }
       }
 
@@ -1611,9 +1555,7 @@ function createRemoteTarget(apiUrl, token) {
         if (appleTouchAsset) {
           formData.append(
             "appleTouch",
-            new Blob([appleTouchAsset.bytes], {
-              type: appleTouchAsset.contentType,
-            }),
+            appleTouchAsset.blob,
             appleTouchAsset.filename,
           );
         }
