@@ -91,6 +91,7 @@ import {
   type Collection,
   type Media,
   type NavItem,
+  type PathRecord,
   type Post,
   type SystemNavKey,
 } from "../types.js";
@@ -163,6 +164,8 @@ export interface SiteConfig {
     | "url"
     | "position"
     | "placement"
+    | "collectionId"
+    | "postId"
   >[];
   /** Items per page for Hugo pagination — kept in sync with the main site's PAGE_SIZE. */
   pageSize: number;
@@ -195,6 +198,8 @@ type ExportedCollectionDirectoryItem =
       sequence: string;
       label: string;
       url: string;
+      /** The link description as the author wrote it, or null if empty. */
+      description?: string | null;
       /** Rendered HTML of the link description, or null if empty. */
       descriptionHtml?: string | null;
     };
@@ -317,6 +322,7 @@ export function createExportService(
         slugMap,
         aliasMap,
         collectionSlugMap,
+        standalonePaths,
       ] = await Promise.all([
         services.collections.getCollectionsByPostIds(rootPostIds),
         services.collections.getCollectionEntriesByThreadIds(rootPostIds),
@@ -324,6 +330,7 @@ export function createExportService(
         services.paths.getPostSlugMap(allPostIds),
         services.paths.getPostAliases(rootPostIds),
         services.paths.getCollectionSlugMap(allCollections.map((c) => c.id)),
+        services.paths.listStandalonePaths(),
       ]);
       // Denormalized title lookup so front-matter collection refs can
       // include a title label without templates having to resolve another
@@ -464,14 +471,18 @@ export function createExportService(
       // Feed subscribers are the one audience the export can lose silently:
       // their reader polls a `/feed` address that this site does not serve.
       // With feeds off there is nothing to redirect to, and the live site had
-      // no feeds to have been subscribed to either.
-      if (siteConfig.rssFeedsEnabled) {
+      // no feeds to have been subscribed to either. The author's own
+      // redirects go in too; an old feed address is often one of them.
+      const redirectSections = [
+        siteConfig.rssFeedsEnabled
+          ? buildFeedRedirects(siteConfig.mainRssFeed, hasFeaturedSection)
+          : null,
+        buildCustomUrlRedirects(standalonePaths),
+      ].filter((section): section is string => section !== null);
+      if (redirectSections.length > 0) {
         exportFiles.push({
           path: "static/_redirects",
-          content: buildFeedRedirects(
-            siteConfig.mainRssFeed,
-            hasFeaturedSection,
-          ),
+          content: redirectSections.join("\n"),
         });
       }
 
@@ -484,6 +495,11 @@ export function createExportService(
           siteConfig,
           iconAssets,
           exportedCollectionDirectoryItems,
+          {
+            postSlugs: slugMap,
+            collectionSlugs: collectionSlugMap,
+            standalonePaths,
+          },
         ),
       });
 
@@ -1384,6 +1400,7 @@ function buildExportedCollectionDirectoryItems(
         sequence: sequenceLabels[index] ?? "",
         label: item.label,
         url: item.url,
+        description: description || null,
         descriptionHtml: description
           ? renderMarkdown(description, {
               namespace: `collection-directory-link-${sequenceLabels[index] ?? index}`,
@@ -1636,10 +1653,18 @@ function buildHugoToml(config: SiteConfig): string {
   return `${parts.join("\n")}\n`;
 }
 
+/** What `data/jant.toml` needs to name nav targets and standalone URLs. */
+interface JantDataTargets {
+  postSlugs: ReadonlyMap<string, string>;
+  collectionSlugs: ReadonlyMap<string, string>;
+  standalonePaths: readonly PathRecord[];
+}
+
 function buildJantDataToml(
   config: SiteConfig,
   iconAssets: SiteIconAssets,
   directoryItems: readonly ExportedCollectionDirectoryItem[],
+  targets: JantDataTargets,
 ): string {
   const footerHtml = config.siteFooter
     ? renderMarkdown(config.siteFooter, { namespace: "site-footer" })
@@ -1691,11 +1716,10 @@ function buildJantDataToml(
   }
 
   for (const item of config.navItems) {
-    // `settings` is authenticated-only and has no corresponding page in the
-    // static Hugo site — drop it at export time so it never shows up in nav.
-    if (item.systemKey === "settings") continue;
-    // Both feed entries resolve to a feed file, so with feeds off both would
-    // export a link to something that was never written.
+    // `settings` has no page in the static site; the theme skips it, and the
+    // entry stays so an import back into Jant keeps it. Both feed entries
+    // resolve to a feed file, so with feeds off both would export a link to
+    // something that was never written.
     if (
       !config.rssFeedsEnabled &&
       item.type === "system" &&
@@ -1712,6 +1736,22 @@ function buildJantDataToml(
     );
     parts.push(`system_key = "${escapeTomlString(item.systemKey ?? "")}"`);
     parts.push(`placement = "${escapeTomlString(item.placement ?? "header")}"`);
+    // `label` above is what the theme shows. The author's own wording, when
+    // there is one, and the target by slug are what an import restores.
+    if (item.label) {
+      parts.push(`custom_label = "${escapeTomlString(item.label)}"`);
+    }
+    const targetSlug =
+      item.type === "collection" && item.collectionId
+        ? targets.collectionSlugs.get(item.collectionId)
+        : item.type === "page" && item.postId
+          ? targets.postSlugs.get(item.postId)
+          : undefined;
+    if (targetSlug) {
+      parts.push(
+        `${item.type === "collection" ? "collection_slug" : "post_slug"} = "${escapeTomlString(targetSlug)}"`,
+      );
+    }
   }
 
   for (const item of directoryItems) {
@@ -1748,6 +1788,9 @@ function buildJantDataToml(
       parts.push(`sequence = "${escapeTomlString(item.sequence)}"`);
       parts.push(`label = "${escapeTomlString(item.label)}"`);
       parts.push(`url = "${escapeTomlString(item.url)}"`);
+      if (item.description) {
+        parts.push(`description = "${escapeTomlString(item.description)}"`);
+      }
       if (item.descriptionHtml) {
         parts.push(
           `description_html = "${escapeTomlString(item.descriptionHtml)}"`,
@@ -1756,7 +1799,53 @@ function buildJantDataToml(
     }
   }
 
+  // Custom URLs that name no post or collection. Post aliases travel in each
+  // root's `aliases:`; these would otherwise not travel at all.
+  for (const record of targets.standalonePaths) {
+    parts.push("");
+    parts.push("[[custom_url]]");
+    parts.push(`path = "${escapeTomlString(record.path)}"`);
+    parts.push(`kind = "${escapeTomlString(record.kind)}"`);
+    if (record.kind === "redirect" && record.redirectToPath) {
+      parts.push(`to = "/${escapeTomlString(record.redirectToPath)}"`);
+      parts.push(`status = ${record.redirectType ?? 301}`);
+    }
+    if (record.kind === "archive" && record.archiveQuery) {
+      parts.push(`archive_query = "${escapeTomlString(record.archiveQuery)}"`);
+    }
+  }
+
   return `${parts.join("\n")}\n`;
+}
+
+/**
+ * The author's redirects as `_redirects` rules, or null when there are none.
+ *
+ * @param standalonePaths - Custom URLs that name no post or collection
+ * @returns The `_redirects` section
+ * @example
+ * buildCustomUrlRedirects([redirectFromAtomXml]); // "# Redirects...\n/atom.xml  /feed  301\n"
+ */
+function buildCustomUrlRedirects(
+  standalonePaths: readonly PathRecord[],
+): string | null {
+  const rules = standalonePaths
+    .filter((record) => record.kind === "redirect" && record.redirectToPath)
+    .map(
+      (record) =>
+        [
+          `/${record.path}`,
+          `/${record.redirectToPath}`,
+          record.redirectType ?? 301,
+        ] as const,
+    );
+  if (rules.length === 0) return null;
+
+  const width = Math.max(...rules.map(([from]) => from.length));
+  return `# Redirects set up under Settings → Custom URLs on the live site.
+
+${rules.map(([from, to, status]) => `${from.padEnd(width)}  ${to}  ${status}`).join("\n")}
+`;
 }
 
 // ---------------------------------------------------------------------------

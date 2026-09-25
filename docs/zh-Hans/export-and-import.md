@@ -58,7 +58,8 @@ cd ./jant-site && hugo serve
 
 - 所有帖子，含 Thread 的回复。草稿和私密帖子也在其中，front matter 标 `draft: true`，Hugo 只在 `hugo --buildDrafts` 时构建它们。
 - 帖子和头像用到的媒体，下载到 `static/media/`，归档不依赖原站。`--no-pull-media` 跳过下载。
-- 合集、合集目录（顺序、分隔线、自定义链接）和头部导航，写在 `data/jant.toml`。
+- 合集、合集目录（顺序、分隔线、自定义链接及其说明）和导航（位置、标签、每一项指向的合集或页面），写在 `data/jant.toml`。
+- 在 **Settings → Custom URLs** 里设置的重定向，写在 `data/jant.toml` 和 `static/_redirects`。
 - 每篇帖子的 `featured_at`、`pinned_at`，以及写在 root bundle 上的 Thread 合集归属，写在 front matter。
 - 当前 slug，以及旧 slug 和别名，写在 root 帖子的 `aliases:` 里。自定义的 `alias.html` 模板让旧链接继续可用。
 - 显示设置：`SITE_NAME`、`SITE_DESCRIPTION`、`SITE_LANGUAGE`、主题、字型、自定义 CSS、favicon 等，写在 `data/jant.toml` 和 `hugo.toml`。

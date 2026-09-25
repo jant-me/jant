@@ -33,6 +33,9 @@ const {
   getRootAliasPathsForImport,
   uploadMediaList,
   uploadBundleResources,
+  normalizeImportedNavItems,
+  buildNavItemCreateRequest,
+  normalizeImportedCustomUrls,
   buildImportedAttachments,
   normalizeTextAttachmentSpec,
   isAbsoluteImportUrl,
@@ -358,6 +361,117 @@ describe("Hugo import CLI helpers", () => {
     expect(result.urlMap.get("/media/inline.png")).toBe(
       "https://target.example/media/med_new.png",
     );
+  });
+
+  it("rebuilds navigation with its placement, labels, and targets", () => {
+    const siteConfig = {
+      extra: {
+        jant: {
+          nav: [
+            {
+              type: "system",
+              label: "All",
+              url: "/archive/",
+              system_key: "archive",
+              placement: "header",
+              custom_label: "All",
+            },
+            {
+              type: "collection",
+              label: "Now",
+              url: "/now",
+              system_key: "",
+              placement: "header",
+              collection_slug: "now",
+            },
+            // An export from before `collection_slug`: the URL names it.
+            {
+              type: "collection",
+              label: "Books",
+              url: "/books/",
+              system_key: "",
+              placement: "more",
+            },
+            {
+              type: "page",
+              label: "About",
+              url: "/about",
+              system_key: "",
+              placement: "more",
+              post_slug: "about",
+            },
+            {
+              type: "link",
+              label: "More Quotes",
+              url: "https://jant.me/quotes",
+              system_key: "",
+              placement: "more",
+            },
+            {
+              type: "collection",
+              label: "Gone",
+              url: "/gone",
+              system_key: "",
+              placement: "header",
+              collection_slug: "gone",
+            },
+          ],
+        },
+      },
+    };
+    const targets = {
+      collectionSlugToId: new Map([
+        ["now", "col-now"],
+        ["books", "col-books"],
+      ]),
+      postSlugToId: new Map([["about", "pst-about"]]),
+    };
+
+    const requests = normalizeImportedNavItems(siteConfig).items.map((item) =>
+      buildNavItemCreateRequest(item, targets),
+    );
+
+    expect(requests.map((request) => request.payload)).toEqual([
+      { type: "system", systemKey: "archive", placement: "header" },
+      { type: "collection", collectionId: "col-now", placement: "header" },
+      { type: "collection", collectionId: "col-books", placement: "more" },
+      { type: "page", postId: "pst-about", placement: "more" },
+      {
+        type: "link",
+        label: "More Quotes",
+        url: "https://jant.me/quotes",
+        placement: "more",
+      },
+      { type: "link", label: "Gone", url: "/gone", placement: "header" },
+    ]);
+    expect(requests[0]?.customLabel).toBe("All");
+    expect(requests[5]?.warning).toContain('"Gone"');
+  });
+
+  it("reads the redirects and archive URLs an export lists", () => {
+    expect(
+      normalizeImportedCustomUrls({
+        extra: {
+          jant: {
+            custom_urls: [
+              { path: "atom.xml", kind: "redirect", to: "/feed", status: 301 },
+              {
+                path: "/inspires",
+                kind: "redirect",
+                to: "/inspired",
+                status: 302,
+              },
+              { path: "links", kind: "archive", archive_query: "format=link" },
+              { path: "", kind: "redirect", to: "/x" },
+            ],
+          },
+        },
+      }),
+    ).toEqual([
+      { path: "atom.xml", kind: "redirect", to: "/feed", status: 301 },
+      { path: "inspires", kind: "redirect", to: "/inspired", status: 302 },
+      { path: "links", kind: "archive", archiveQuery: "format=link" },
+    ]);
   });
 
   it("uploadMediaList keeps a body image as a link when its upload fails", async () => {

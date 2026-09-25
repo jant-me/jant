@@ -1667,13 +1667,14 @@ Link:
 
 Fields by type:
 
-| Field   | Type             | Required         | Default | Notes                                                         |
-| ------- | ---------------- | ---------------- | ------- | ------------------------------------------------------------- |
-| `type`  | `divider`        | yes              | —       | Creates a divider item                                        |
-| `label` | string \| `null` | no               | `null`  | Divider label, max `60`; blank values are stored as `null`    |
-| `type`  | `link`           | yes              | —       | Creates a custom link item                                    |
-| `label` | string           | yes (for `link`) | —       | Link label, 1-60 chars after trim                             |
-| `url`   | string           | yes (for `link`) | —       | Relative path or absolute `http:`, `https:`, or `mailto:` URL |
+| Field         | Type             | Required         | Default | Notes                                                         |
+| ------------- | ---------------- | ---------------- | ------- | ------------------------------------------------------------- |
+| `type`        | `divider`        | yes              | —       | Creates a divider item                                        |
+| `label`       | string \| `null` | no               | `null`  | Divider label, max `60`; blank values are stored as `null`    |
+| `type`        | `link`           | yes              | —       | Creates a custom link item                                    |
+| `label`       | string           | yes (for `link`) | —       | Link label, 1-60 chars after trim                             |
+| `url`         | string           | yes (for `link`) | —       | Relative path or absolute `http:`, `https:`, or `mailto:` URL |
+| `description` | string \| `null` | no               | `null`  | Link only: Markdown shown under the link                      |
 
 Notes:
 

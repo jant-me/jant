@@ -945,6 +945,9 @@ async function loadSiteConfig(rootDir) {
         nav_exported: Array.isArray(jantData.nav),
         collections_directory: directoryItems,
         collections_directory_exported: directoryExported,
+        custom_urls: Array.isArray(jantData.custom_url)
+          ? jantData.custom_url
+          : [],
       },
       jant_export: {
         format:
@@ -1005,6 +1008,28 @@ function splitSettingsUpdatesForImport(updates) {
   return { editable, internal };
 }
 
+const NAV_PLACEMENTS = new Set(["header", "more"]);
+const NAV_ITEM_TYPES = new Set([
+  "system",
+  "link",
+  "collection",
+  "smart_collection",
+  "page",
+]);
+
+/**
+ * The slug a nav URL names, for exports older than `collection_slug` and
+ * `post_slug`: `/now` or `/now/` → `now`. Anything else names no slug.
+ *
+ * @param {unknown} url - The exported nav URL
+ * @returns {string | null} The slug, or null
+ */
+function getSlugFromNavUrl(url) {
+  if (typeof url !== "string") return null;
+  const match = url.match(/^\/([^/?#]+)\/?$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function normalizeImportedNavItems(siteConfig) {
   const jant = siteConfig?.extra?.jant || {};
   const navItems = jant.nav;
@@ -1020,20 +1045,144 @@ function normalizeImportedNavItems(siteConfig) {
     items: navItems
       .map((item) => {
         if (!item || typeof item !== "object") return null;
-        const type = item.type === "system" ? "system" : "link";
-        if (type === "system" && typeof item.system_key === "string") {
-          return { type, systemKey: item.system_key };
+        const type = NAV_ITEM_TYPES.has(item.type) ? item.type : "link";
+        const placement = NAV_PLACEMENTS.has(item.placement)
+          ? item.placement
+          : "header";
+        const label = typeof item.label === "string" ? item.label : "";
+        const url = typeof item.url === "string" ? item.url : "";
+        const customLabel =
+          typeof item.custom_label === "string" && item.custom_label.trim()
+            ? item.custom_label
+            : null;
+
+        if (type === "system") {
+          if (typeof item.system_key !== "string" || !item.system_key) {
+            return null;
+          }
+          return { type, systemKey: item.system_key, customLabel, placement };
         }
-        if (
-          type === "link" &&
-          typeof item.label === "string" &&
-          typeof item.url === "string"
-        ) {
-          return { type, label: item.label, url: item.url };
+        if (type === "collection") {
+          const slug =
+            typeof item.collection_slug === "string"
+              ? item.collection_slug
+              : getSlugFromNavUrl(url);
+          return { type, slug, customLabel, label, url, placement };
         }
-        return null;
+        if (type === "page") {
+          const slug =
+            typeof item.post_slug === "string"
+              ? item.post_slug
+              : getSlugFromNavUrl(url);
+          return { type, slug, customLabel, label, url, placement };
+        }
+        if (type === "smart_collection") {
+          return { type, slug: null, customLabel, label, url, placement };
+        }
+        if (!label || !url) return null;
+        return { type: "link", label: customLabel ?? label, url, placement };
       })
       .filter(Boolean),
+  };
+}
+
+/**
+ * The custom URLs an export lists that name no post or collection: redirects,
+ * and legacy archive URLs the importer reports but can't recreate.
+ *
+ * @param {Record<string, unknown>} siteConfig - From `loadSiteConfig`
+ * @returns {Array<{ path: string, kind: "redirect" | "archive", to?: string, status?: 301 | 302, archiveQuery?: string }>}
+ */
+function normalizeImportedCustomUrls(siteConfig) {
+  const entries = siteConfig?.extra?.jant?.custom_urls;
+  if (!Array.isArray(entries)) return [];
+
+  return entries
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const path =
+        typeof entry.path === "string" ? entry.path.replace(/^\/+/, "") : "";
+      if (!path) return null;
+      if (entry.kind === "redirect" && typeof entry.to === "string") {
+        return {
+          path,
+          kind: "redirect",
+          to: entry.to,
+          status: entry.status === 302 ? 302 : 301,
+        };
+      }
+      if (entry.kind === "archive") {
+        return {
+          path,
+          kind: "archive",
+          archiveQuery:
+            typeof entry.archive_query === "string"
+              ? entry.archive_query
+              : undefined,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
+
+/**
+ * The create request for one imported nav item, once the posts and
+ * collections it may point at exist. A target that didn't come across stays
+ * in the navigation as a plain link to the same address.
+ *
+ * @param {Record<string, unknown>} item - From `normalizeImportedNavItems`
+ * @param {{ collectionSlugToId: Map<string, string>, postSlugToId: Map<string, string> }} targets
+ * @returns {{ payload: Record<string, unknown>, customLabel: string | null, warning: string | null }}
+ */
+function buildNavItemCreateRequest(item, targets) {
+  const { placement, customLabel } = item;
+
+  if (item.type === "system") {
+    return {
+      payload: { type: "system", systemKey: item.systemKey, placement },
+      customLabel,
+      warning: null,
+    };
+  }
+  if (item.type === "link") {
+    return {
+      payload: { type: "link", label: item.label, url: item.url, placement },
+      customLabel: null,
+      warning: null,
+    };
+  }
+
+  const targetId =
+    item.type === "collection"
+      ? targets.collectionSlugToId.get(item.slug)
+      : item.type === "page"
+        ? targets.postSlugToId.get(item.slug)
+        : undefined;
+  if (targetId) {
+    return {
+      payload: {
+        type: item.type,
+        ...(item.type === "collection"
+          ? { collectionId: targetId }
+          : { postId: targetId }),
+        ...(customLabel ? { label: customLabel } : {}),
+        placement,
+      },
+      customLabel: null,
+      warning: null,
+    };
+  }
+
+  return {
+    payload: {
+      type: "link",
+      label: customLabel ?? item.label,
+      url: item.url,
+      placement,
+    },
+    customLabel: null,
+    warning: `The ${item.type.replace("_", " ")} behind "${item.label}" wasn't imported; it stays in the navigation as a link to ${item.url}.`,
   };
 }
 
@@ -1080,6 +1229,10 @@ function normalizeImportedCollectionDirectory(siteConfig) {
             type: "link",
             label: item.label,
             url: item.url,
+            description:
+              typeof item.description === "string" && item.description.trim()
+                ? item.description
+                : null,
           };
         }
 
@@ -1258,6 +1411,7 @@ async function syncImportedCollectionDirectory(
             type: "link",
             label: item.label,
             url: item.url,
+            ...(item.description ? { description: item.description } : {}),
           },
     );
     desiredIds.push(createdItem.id);
@@ -1404,6 +1558,12 @@ function createRemoteTarget(apiUrl, token) {
     },
     async deleteNavItem(id) {
       return apiCall("DELETE", `/api/nav-items/${id}`, apiUrl, token);
+    },
+    async updateNavItem(id, data) {
+      return apiCall("PUT", `/api/nav-items/${id}`, apiUrl, token, data);
+    },
+    async createCustomUrl(data) {
+      return apiCall("POST", "/api/custom-urls", apiUrl, token, data);
     },
     async removeSiteAvatar() {
       return apiCall("DELETE", "/api/settings/avatar", apiUrl, token);
@@ -1992,6 +2152,8 @@ export const __test__ = {
   buildSettingsUpdatesFromConfig,
   splitSettingsUpdatesForImport,
   normalizeImportedNavItems,
+  buildNavItemCreateRequest,
+  normalizeImportedCustomUrls,
   normalizeImportedCollectionDirectory,
   buildSiteAvatarImport,
   reorderCollectionDirectoryItems,
@@ -2140,6 +2302,12 @@ export async function run(argv) {
     const importedCollectionDirectory = siteConfig
       ? normalizeImportedCollectionDirectory(siteConfig)
       : { exported: false, items: [] };
+    const importedNav = siteConfig
+      ? normalizeImportedNavItems(siteConfig)
+      : { exported: false, items: [] };
+    const importedCustomUrls = siteConfig
+      ? normalizeImportedCustomUrls(siteConfig)
+      : [];
 
     if (target) {
       const setupError = await getIncompleteSetupError(
@@ -2159,7 +2327,6 @@ export async function run(argv) {
         siteConfig,
         customCss,
       );
-      const importedNav = normalizeImportedNavItems(siteConfig);
       const avatarImport = await buildSiteAvatarImport(
         siteConfig,
         sourceRootDir,
@@ -2212,21 +2379,6 @@ export async function run(argv) {
           }
         }
 
-        if (importedNav.exported) {
-          try {
-            const existingNavItems = await target.listNavItems();
-            for (const item of existingNavItems) {
-              await target.deleteNavItem(item.id);
-            }
-            for (const item of importedNav.items) {
-              await target.createNavItem(item);
-            }
-          } catch (err) {
-            console.error(`Error importing navigation: ${err.message}`);
-            process.exit(1);
-          }
-        }
-
         if (avatarImport) {
           try {
             await target.syncSiteAvatar(
@@ -2247,6 +2399,8 @@ export async function run(argv) {
 
     // 3. Fetch existing collections and create missing ones
     const collectionSlugToId = new Map();
+    // Root posts by slug, for navigation entries that point at a page.
+    const postSlugToId = new Map();
 
     if (!dryRun) {
       try {
@@ -2459,6 +2613,7 @@ export async function run(argv) {
       try {
         post = await target.createPost(postData);
         postsCreated++;
+        if (post?.id && post.slug) postSlugToId.set(post.slug, post.id);
         // Translation groups are rebuilt after every post exists: the group ID
         // in the export is opaque and its members can appear in any order, so
         // there is nothing to link to until the whole run is done.
@@ -2651,6 +2806,62 @@ export async function run(argv) {
       }
     }
 
+    // Navigation and custom URLs go last: they point at posts and
+    // collections, which exist by now.
+    let customUrlsCreated = 0;
+    if (!dryRun && target) {
+      if (importedNav.exported) {
+        try {
+          const existingNavItems = await target.listNavItems();
+          for (const item of existingNavItems) {
+            await target.deleteNavItem(item.id);
+          }
+          for (const item of importedNav.items) {
+            const request = buildNavItemCreateRequest(item, {
+              collectionSlugToId,
+              postSlugToId,
+            });
+            if (request.warning) console.warn(`Warning: ${request.warning}`);
+            const created = await target.createNavItem(request.payload);
+            if (request.customLabel && created?.id) {
+              await target.updateNavItem(created.id, {
+                label: request.customLabel,
+              });
+            }
+          }
+        } catch (err) {
+          console.error(`Error importing navigation: ${err.message}`);
+          process.exit(1);
+        }
+      }
+
+      for (const customUrl of importedCustomUrls) {
+        if (customUrl.kind === "archive") {
+          console.warn(
+            `Warning: skipped /${customUrl.path}, an archive URL (${customUrl.archiveQuery ?? "no filter"}). Archive URLs can't be created any more; set up a smart collection at that address instead.`,
+          );
+          continue;
+        }
+        try {
+          await target.createCustomUrl({
+            path: customUrl.path,
+            targetType: "redirect",
+            toPath: customUrl.to,
+            redirectType: customUrl.status,
+          });
+          customUrlsCreated++;
+        } catch (err) {
+          console.warn(
+            `Warning: couldn't recreate the redirect /${customUrl.path} → ${customUrl.to}: ${err.message}`,
+          );
+        }
+      }
+    } else if (dryRun && importedCustomUrls.length > 0) {
+      console.log(
+        `[dry-run] Would recreate ${importedCustomUrls.length} custom URLs`,
+      );
+    }
+
     await target?.close();
 
     // 5. Summary
@@ -2664,6 +2875,9 @@ export async function run(argv) {
     }
     if (aliasesCreated > 0) {
       console.log(`  Aliases created: ${aliasesCreated}`);
+    }
+    if (customUrlsCreated > 0) {
+      console.log(`  Redirects created: ${customUrlsCreated}`);
     }
     if (dryRun) {
       console.log("  (dry-run mode — no changes were made)");

@@ -53,6 +53,7 @@ function buildRoundtripServices(opts: {
     },
     paths: {
       getPostSlugMap: async () => slugMap,
+      listStandalonePaths: async () => [],
       getPostAliases: async () => opts.aliasMap ?? new Map(),
       getCollectionSlugMap: async () => collectionSlugMap,
     },

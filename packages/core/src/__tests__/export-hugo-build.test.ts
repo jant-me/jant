@@ -90,6 +90,7 @@ function buildFixtureServices(): ServicesArg {
           ["pst_root", "hello-world"],
           ["pst_reply", "hello-reply"],
         ]),
+      listStandalonePaths: async () => [],
       getPostAliases: async () => new Map(),
       getCollectionSlugMap: async () => new Map([["col-1", "ideas"]]),
     },
@@ -325,6 +326,7 @@ describe("Hugo smoke build", () => {
             ["pst_long", "blue-long"],
             ["pst_short", "blue-short"],
           ]),
+        listStandalonePaths: async () => [],
         getPostAliases: async () => new Map(),
         getCollectionSlugMap: async () => new Map(),
       },
@@ -414,6 +416,7 @@ describe("Hugo smoke build", () => {
             ["pst_root", "hello-world"],
             ["pst_draft", "secret-plan"],
           ]),
+        listStandalonePaths: async () => [],
         getPostAliases: async () =>
           new Map([
             ["pst_root", ["/blog/hello-world/"]],
@@ -558,6 +561,7 @@ describe("Hugo smoke build", () => {
               `fold-${word}`,
             ]),
           ]),
+        listStandalonePaths: async () => [],
         getPostAliases: async () => new Map(),
         getCollectionSlugMap: async () => new Map(),
       },

@@ -17,7 +17,7 @@ import {
 } from "../services/export.js";
 import { suggestSyncRepoName } from "../lib/github-sync-repo-name.js";
 import { parseFrontMatter } from "../lib/hugo-markdown.js";
-import type { Collection, Media, Post } from "../types.js";
+import type { Collection, Media, PathRecord, Post } from "../types.js";
 import {
   makeCollection,
   makeMedia,
@@ -45,6 +45,7 @@ interface FixtureOptions {
   aliasMap?: Map<string, string[]>;
   collectionSlugMap?: Map<string, string>;
   directoryItems?: unknown[];
+  standalonePaths?: PathRecord[];
 }
 
 function buildServices(opts: FixtureOptions): ServicesArg {
@@ -58,6 +59,7 @@ function buildServices(opts: FixtureOptions): ServicesArg {
     aliasMap = new Map(),
     collectionSlugMap = new Map(collections.map((c) => [c.id, c.slug])),
     directoryItems,
+    standalonePaths = [],
   } = opts;
 
   return {
@@ -66,6 +68,7 @@ function buildServices(opts: FixtureOptions): ServicesArg {
     },
     paths: {
       getPostSlugMap: async () => slugMap,
+      listStandalonePaths: async () => standalonePaths,
       getPostAliases: async () => aliasMap,
       getCollectionSlugMap: async () => collectionSlugMap,
     },
@@ -142,6 +145,7 @@ describe("createExportService (Hugo)", () => {
               ["post-long", "long-read"],
               ["post-short", "short-note"],
             ]),
+          listStandalonePaths: async () => [],
           getPostAliases: async () => new Map(),
           getCollectionSlugMap: async () => new Map(),
         },
@@ -607,6 +611,127 @@ describe("createExportService (Hugo)", () => {
       const { frontMatter } = await parseFrontMatter(raw);
       expect(frontMatter.outputs).toEqual(["html"]);
     }
+  });
+
+  // An import back into Jant restores navigation from this file, so it names
+  // what the theme doesn't need: the author's own label, the target by slug,
+  // and the settings entry the static site skips.
+  it("writes what an import needs to rebuild navigation", async () => {
+    const collection = makeCollection({
+      id: "col-now",
+      slug: "now",
+      title: "Now",
+    });
+    const about = makePost({ id: "pst-about", slug: "about", title: "About" });
+    const service = createExportService(
+      buildServices({ posts: [about], collections: [collection] }),
+      makeSiteConfig({
+        navItems: [
+          {
+            type: "system",
+            systemKey: "archive",
+            label: "All",
+            url: "/archive",
+            position: 0,
+            placement: "header",
+          },
+          {
+            type: "collection",
+            collectionId: "col-now",
+            label: "",
+            targetTitle: "Now",
+            url: "/now",
+            position: 1,
+            placement: "header",
+          },
+          {
+            type: "page",
+            postId: "pst-about",
+            label: "",
+            targetTitle: "About",
+            url: "/about",
+            position: 2,
+            placement: "more",
+          },
+          {
+            type: "system",
+            systemKey: "settings",
+            label: "",
+            url: "/settings",
+            position: 3,
+            placement: "more",
+          },
+        ],
+      }),
+    );
+    const data = (await service.generateHugoFiles()).find(
+      (file) => file.path === "data/jant.toml",
+    )?.content as string;
+
+    expect(data).toContain(
+      'system_key = "archive"\nplacement = "header"\ncustom_label = "All"',
+    );
+    expect(data).toContain('collection_slug = "now"');
+    expect(data).toContain('placement = "more"\npost_slug = "about"');
+    expect(data).toContain('system_key = "settings"');
+  });
+
+  it("carries redirects and archive URLs that name no post", async () => {
+    const record = (over: Partial<PathRecord>): PathRecord => ({
+      id: "pth-1",
+      siteId: "site",
+      path: "",
+      kind: "redirect",
+      postId: null,
+      collectionId: null,
+      smartCollectionId: null,
+      redirectToPath: null,
+      redirectType: null,
+      archiveQuery: null,
+      createdAt: 1,
+      updatedAt: 1,
+      ...over,
+    });
+    const files = filesToMap(
+      await createExportService(
+        buildServices({
+          posts: [],
+          standalonePaths: [
+            record({
+              path: "atom.xml",
+              redirectToPath: "feed",
+              redirectType: 301,
+            }),
+            record({
+              path: "inspires",
+              redirectToPath: "inspired",
+              redirectType: 302,
+            }),
+            record({
+              path: "links",
+              kind: "archive",
+              archiveQuery: "format=link",
+            }),
+          ],
+        }),
+        makeSiteConfig(),
+      ).generateHugoFiles(),
+    );
+    const data = files.get("data/jant.toml") as string;
+    const redirects = files.get("static/_redirects") as string;
+
+    expect(data).toContain(
+      '[[custom_url]]\npath = "atom.xml"\nkind = "redirect"\nto = "/feed"\nstatus = 301',
+    );
+    expect(data).toContain(
+      'path = "inspires"\nkind = "redirect"\nto = "/inspired"\nstatus = 302',
+    );
+    expect(data).toContain(
+      'path = "links"\nkind = "archive"\narchive_query = "format=link"',
+    );
+    expect(redirects).toMatch(/^\/atom\.xml\s+\/feed\s+301$/m);
+    expect(redirects).toMatch(/^\/inspires\s+\/inspired\s+302$/m);
+    expect(redirects).not.toContain("/links");
   });
 
   it("resolves the nav RSS link to /featured/index.xml when mainRssFeed=featured", async () => {

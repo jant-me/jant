@@ -178,3 +178,59 @@ describe("PathService.getPostAliases", () => {
     expect(after.get(post.id)?.[0]).toBe("/original");
   });
 });
+
+describe("PathService.listStandalonePaths", () => {
+  it("lists redirects and archive URLs, not a post's own addresses", async () => {
+    const testDb = createTestDatabase();
+    const db = testDb.db as unknown as Database;
+    const paths = createPathService(db, DEFAULT_TEST_SITE_ID);
+    const postService = createPostService(
+      db,
+      { slugIdLength: 5 },
+      DEFAULT_TEST_SITE_ID,
+      paths,
+    );
+    const post = await postService.create({
+      format: "note",
+      title: "Kept",
+      slug: "kept",
+      body: JSON.stringify({ type: "doc", content: [{ type: "paragraph" }] }),
+    });
+    await paths.create({ path: "old-kept", kind: "alias", postId: post.id });
+    await paths.create({
+      path: "atom.xml",
+      kind: "redirect",
+      redirectToPath: "feed",
+      redirectType: 301,
+    });
+    await paths.create({
+      path: "links",
+      kind: "archive",
+      archiveQuery: "format=link",
+    });
+
+    const standalone = await paths.listStandalonePaths();
+
+    expect(
+      standalone.map(({ path, kind, redirectToPath, archiveQuery }) => ({
+        path,
+        kind,
+        redirectToPath,
+        archiveQuery,
+      })),
+    ).toEqual([
+      {
+        path: "atom.xml",
+        kind: "redirect",
+        redirectToPath: "feed",
+        archiveQuery: null,
+      },
+      {
+        path: "links",
+        kind: "archive",
+        redirectToPath: null,
+        archiveQuery: "format=link",
+      },
+    ]);
+  });
+});

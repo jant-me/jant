@@ -6,7 +6,17 @@
  * slash (for example: "hello-world" or "collections/reading+tools").
  */
 
-import { and, asc, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { type Database, batchQuery } from "../db/index.js";
 import {
   sqliteSchemaBundle,
@@ -83,6 +93,12 @@ export interface PathService {
    * not have its feed identity reassigned to the newer one.
    */
   getPostAliases(postIds: string[]): Promise<Map<string, string[]>>;
+  /**
+   * Custom URLs that stand on their own rather than naming a post or a
+   * collection: redirects to another path, and legacy archive views. Oldest
+   * first.
+   */
+  listStandalonePaths(): Promise<PathRecord[]>;
   listNavigableItems(): Promise<NavigableItem[]>;
   /**
    * Find registered paths that a URL segment would shadow: the segment itself
@@ -489,6 +505,23 @@ export function createPathService(
         .where(
           and(eq(pathRegistry.siteId, siteId), eq(pathRegistry.postId, postId)),
         );
+    },
+
+    async listStandalonePaths() {
+      const rows = await db
+        .select()
+        .from(pathRegistry)
+        .where(
+          and(
+            eq(pathRegistry.siteId, siteId),
+            inArray(pathRegistry.kind, ["redirect", "archive"]),
+            isNull(pathRegistry.postId),
+            isNull(pathRegistry.collectionId),
+            isNull(pathRegistry.smartCollectionId),
+          ),
+        )
+        .orderBy(asc(pathRegistry.createdAt), asc(pathRegistry.id));
+      return rows.map(toPathRecord);
     },
 
     async getPostAliases(postIds) {

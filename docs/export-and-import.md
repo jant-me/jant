@@ -58,7 +58,8 @@ Included:
 
 - Every post, Thread replies included. Drafts and private posts carry `draft: true` in front matter; Hugo builds them only with `hugo --buildDrafts`.
 - Media used by posts and avatars, downloaded into `static/media/` so the archive stands on its own. `--no-pull-media` skips the download.
-- Collections, the Collections directory (order, dividers, custom links), and header navigation, in `data/jant.toml`.
+- Collections, the Collections directory (order, dividers, custom links with their descriptions), and navigation (placement, labels, and the Collection or page each entry points at), in `data/jant.toml`.
+- Redirects set up under **Settings → Custom URLs**, in `data/jant.toml` and `static/_redirects`.
 - Each post's `featured_at` and `pinned_at`, and each Thread's Collection membership on the root bundle, in front matter.
 - The current slug, plus old slugs and aliases in the root post's `aliases:` field. A custom `alias.html` template keeps the old links working.
 - Display settings: `SITE_NAME`, `SITE_DESCRIPTION`, `SITE_LANGUAGE`, theme, type style, custom CSS, favicon, and so on, in `data/jant.toml` and `hugo.toml`.
