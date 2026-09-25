@@ -1,0 +1,100 @@
+{{- /*
+  The Thread roots in a collection, in the order Jant lists them: the page
+  (`listCollectionThreadRootIdsForCollections` in `services/post.ts`) or the
+  feed (`listCollectionFeedEntriesForCollections`).
+
+  Takes a dict: `page`, the collection's section page, and `feed`, true for
+  its Atom feed.
+
+  A Thread belongs when its root lists the collection in `collections`.
+  Drafts and private roots are exported as Hugo drafts and never reach here;
+  they are checked again so a `--buildDrafts` preview agrees with Jant.
+
+  The page puts Threads pinned in this collection first, most recently
+  pinned first, then orders by `sort_order`, each order ending on the root
+  ID so no two Threads tie:
+    newest       Thread activity (`last_activity_at`, else `date`), newest first
+    oldest       the Thread's earliest published post, oldest first
+    rating_desc  Threads with a rating before those without, by the highest
+                 rating on any published post in the Thread, then as newest.
+                 With fewer than two rated Threads it falls back to newest,
+                 as Jant's page does.
+  The feed ignores pins and `sort_order`: Thread activity, newest first.
+
+  `src/__tests__/export-collection-order.test.ts` builds a site with Hugo
+  and compares the page and the feed with Jant's.
+*/ -}}
+{{- $page := .page -}}
+{{- $feed := .feed -}}
+{{- $slug := $page.Params.slug | default $page.Slug -}}
+{{- $roots := where (where site.Pages "Type" "post") "Kind" "section" -}}
+{{- $members := slice -}}
+{{- range $roots -}}
+  {{- $post := . -}}
+  {{- $params := .Params -}}
+  {{- $entry := false -}}
+  {{- range $params.collections -}}
+    {{- if eq .slug $slug -}}{{- $entry = . -}}{{- end -}}
+  {{- end -}}
+  {{- $visible := and (eq ($params.status | default "published") "published") (ne $params.visibility "private") -}}
+  {{- if and $entry $visible -}}
+    {{- $pinned := 0 -}}
+    {{- with $entry.pinned_at -}}{{- $pinned = (time.AsTime .).Unix -}}{{- end -}}
+    {{- $activity := $post.Date.Unix -}}
+    {{- with $params.last_activity_at -}}{{- $activity = (time.AsTime .).Unix -}}{{- end -}}
+    {{- $first := $post.Date.Unix -}}
+    {{- $rated := ne $params.rating nil -}}
+    {{- $rating := 0 -}}
+    {{- if $rated -}}{{- $rating = int $params.rating -}}{{- end -}}
+    {{- range $post.Pages -}}
+      {{- if eq (.Params.status | default "published") "published" -}}
+        {{- if lt .Date.Unix $first -}}{{- $first = .Date.Unix -}}{{- end -}}
+        {{- if ne .Params.rating nil -}}
+          {{- $rated = true -}}
+          {{- if gt (int .Params.rating) $rating -}}{{- $rating = int .Params.rating -}}{{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $members = $members | append (dict
+      "post" $post
+      "id" $params.id
+      "pinned" (cond $feed 0 $pinned)
+      "first" $first
+      "activity" $activity
+      "rated" $rated
+      "rating" $rating
+    ) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $order := "newest" -}}
+{{- if not $feed -}}
+  {{- $order = $page.Params.sort_order | default "newest" -}}
+  {{- if and (eq $order "rating_desc") (le (len (where $members "rated" true)) 1) -}}
+    {{- $order = "newest" -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* One string key per Thread, fixed-width numbers first, so a single sort
+     orders by every key in turn. `oldest` sorts ascending, so its pin rank
+     counts down: the most recently pinned Thread gets the smallest. */ -}}
+{{- $unpinnedRank := 99999999999 -}}
+{{- $keyed := slice -}}
+{{- range $members -}}
+  {{- $key := printf "%020d %020d %s" .pinned .activity .id -}}
+  {{- if eq $order "oldest" -}}
+    {{- $pinRank := cond (gt .pinned 0) (sub $unpinnedRank .pinned) $unpinnedRank -}}
+    {{- $key = printf "%020d %020d %s" $pinRank .first .id -}}
+  {{- else if eq $order "rating_desc" -}}
+    {{- $key = printf "%020d %d %02d %020d %s" .pinned (cond .rated 1 0) .rating .activity .id -}}
+  {{- end -}}
+  {{- $keyed = $keyed | append (dict "key" $key "post" .post) -}}
+{{- end -}}
+
+{{- $ordered := slice -}}
+{{- if $keyed -}}
+  {{- range sort $keyed "key" (cond (eq $order "oldest") "asc" "desc") -}}
+    {{- $ordered = $ordered | append .post -}}
+  {{- end -}}
+{{- end -}}
+{{- return $ordered -}}

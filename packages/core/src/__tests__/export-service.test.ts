@@ -1196,6 +1196,7 @@ describe("createExportService (Hugo)", () => {
       "themes/jant/layouts/partials/featured-thread.html",
       "themes/jant/layouts/partials/feed-post-content.xml",
       "themes/jant/layouts/partials/collection-threads.html",
+      "themes/jant/layouts/partials/collection-members.html",
       "themes/jant/layouts/partials/smart-collection-members.html",
       "themes/jant/layouts/smart_collection/list.html",
     ];

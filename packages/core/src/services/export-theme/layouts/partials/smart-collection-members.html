@@ -20,17 +20,23 @@
   Drafts and private roots are exported as Hugo drafts and never reach here;
   they are checked again so a `--buildDrafts` preview agrees with Jant.
 
+  Takes a dict: `page`, the smart collection's section page, and `feed`,
+  true for its Atom feed.
+
   Orders, each ending on the post ID so no two roots tie:
     newest       Thread activity (`last_activity_at`, else `date`), newest first
     oldest       publication, oldest first
     rating_desc  rated before unrated, higher rating first, then as newest.
-                 With fewer than two rated roots it falls back to newest,
-                 as Jant's page does.
+                 On the page, fewer than two rated roots fall back to
+                 newest, as Jant's page does; the feed keeps the stored
+                 order, as Jant's feed does.
 
   `src/__tests__/export-smart-collection.test.ts` builds a site with Hugo
   and compares every condition and order against Jant's own list.
 */ -}}
-{{- $selection := .Params.selection | default dict -}}
+{{- $page := .page -}}
+{{- $feed := .feed -}}
+{{- $selection := $page.Params.selection | default dict -}}
 {{- $roots := where (where site.Pages "Type" "post") "Kind" "section" -}}
 {{- $members := slice -}}
 {{- range $roots -}}
@@ -96,8 +102,8 @@
   {{- end -}}
 {{- end -}}
 
-{{- $order := .Params.sort_order | default "newest" -}}
-{{- if and (eq $order "rating_desc") (le (len (where $members "rated" true)) 1) -}}
+{{- $order := $page.Params.sort_order | default "newest" -}}
+{{- if and (not $feed) (eq $order "rating_desc") (le (len (where $members "rated" true)) 1) -}}
   {{- $order = "newest" -}}
 {{- end -}}
 

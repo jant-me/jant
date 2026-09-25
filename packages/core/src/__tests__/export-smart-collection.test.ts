@@ -11,15 +11,18 @@
  * Skips when `hugo` is not on PATH, like the other Hugo build tests.
  */
 
-import { spawn, spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { rm } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDatabase, DEFAULT_TEST_SITE_ID } from "./helpers/db.js";
 import { makeSiteConfig } from "./helpers/export-fixtures.js";
+import {
+  buildHugoSite,
+  hugoAvailable,
+  readFeedSlugs,
+  readThreadSlugs,
+} from "./helpers/hugo-site.js";
 import { createCollectionService } from "../services/collection.js";
-import { createExportService, isStoredExportFile } from "../services/export.js";
+import { createExportService } from "../services/export.js";
 import { createMediaService } from "../services/media.js";
 import { createPathService } from "../services/path.js";
 import { createPostService } from "../services/post.js";
@@ -29,21 +32,7 @@ import type { Database } from "../db/index.js";
 import type { CreatePost } from "../types/operations.js";
 import type { MediaKind, SmartCollection } from "../types.js";
 
-const hugoAvailable =
-  spawnSync("hugo", ["version"], { stdio: "ignore" }).status === 0;
-
-function runHugo(sourceDir: string): Promise<{ code: number; log: string }> {
-  return new Promise((resolve) => {
-    // Not minified: the page is read back by its markup.
-    const child = spawn("hugo", ["--source", sourceDir], {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let log = "";
-    child.stdout?.on("data", (chunk) => (log += chunk.toString()));
-    child.stderr?.on("data", (chunk) => (log += chunk.toString()));
-    child.on("close", (code) => resolve({ code: code ?? -1, log }));
-  });
-}
+const SITE_URL = "https://example.com";
 
 const at = (iso: string) => Math.floor(Date.parse(iso) / 1000);
 
@@ -82,10 +71,11 @@ const SMART_COLLECTIONS: {
 ];
 
 describe.skipIf(!hugoAvailable)("smart collections on an exported site", () => {
-  let tempDir: string;
+  let siteDir: string;
   const expected = new Map<string, string[]>();
   const built = new Map<string, string[]>();
-  let feed = "";
+  const expectedFeed = new Map<string, string[]>();
+  const builtFeed = new Map<string, string[]>();
 
   beforeAll(async () => {
     const { db: testDb } = createTestDatabase();
@@ -256,46 +246,33 @@ describe.skipIf(!hugoAvailable)("smart collections on an exported site", () => {
         definition.slug,
         list.map((item) => item.slug),
       );
-    }
-
-    const files = await createExportService(
-      { posts, paths, collections, media },
-      makeSiteConfig({ pageSize: 100 }),
-      { storage: null, bundleMedia: false },
-    ).generateHugoFiles();
-
-    tempDir = await mkdtemp(join(tmpdir(), "jant-smart-collection-"));
-    for (const file of files) {
-      if (isStoredExportFile(file)) continue;
-      const target = join(tempDir, file.path);
-      await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, file.content);
-    }
-    const { code, log } = await runHugo(tempDir);
-    if (code !== 0) throw new Error(`Hugo build failed:\n${log}`);
-
-    for (const { slug } of SMART_COLLECTIONS) {
-      const html = await readFile(
-        join(tempDir, "public", slug, "index.html"),
-        "utf8",
-      );
-      built.set(
-        slug,
-        [
-          ...html.matchAll(
-            /<div class="thread thread-full[^"]*" data-slug="([^"]+)"/g,
-          ),
-        ].map((match) => match[1] as string),
+      // The feed keeps the stored order, fallback or not.
+      const feedList = await posts.list({
+        ...smartCollections.toPostFilters(smartCollection, anonymous),
+        limit: 50,
+      });
+      expectedFeed.set(
+        definition.slug,
+        feedList.map((item) => item.slug),
       );
     }
-    feed = await readFile(
-      join(tempDir, "public", "sc-all-oldest", "index.xml"),
-      "utf8",
+
+    // A small page size, so the pages are read across pagination.
+    siteDir = await buildHugoSite(
+      await createExportService(
+        { posts, paths, collections, media },
+        makeSiteConfig({ siteUrl: SITE_URL, pageSize: 4 }),
+        { storage: null, bundleMedia: false },
+      ).generateHugoFiles(),
     );
+    for (const { slug } of SMART_COLLECTIONS) {
+      built.set(slug, await readThreadSlugs(siteDir, slug));
+      builtFeed.set(slug, await readFeedSlugs(siteDir, slug, SITE_URL));
+    }
   }, 60_000);
 
   afterAll(async () => {
-    if (tempDir) await rm(tempDir, { recursive: true, force: true });
+    if (siteDir) await rm(siteDir, { recursive: true, force: true });
   });
 
   it.each(SMART_COLLECTIONS.map(({ slug }) => slug))(
@@ -319,6 +296,11 @@ describe.skipIf(!hugoAvailable)("smart collections on an exported site", () => {
       "c-hidden-link",
     ]);
     expect(expected.get("sc-links")).toEqual(["k-newer-link", "c-hidden-link"]);
+    // The page falls back to newest with one rated link; the feed doesn't.
+    expect(expectedFeed.get("sc-links")).toEqual([
+      "c-hidden-link",
+      "k-newer-link",
+    ]);
     expect(expected.get("sc-titled")).toEqual([
       "b-titled-note",
       "k-newer-link",
@@ -338,11 +320,10 @@ describe.skipIf(!hugoAvailable)("smart collections on an exported site", () => {
     }
   });
 
-  it("gives the feed the page's order", () => {
-    const order = [...feed.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map(
-      (entry) =>
-        entry[1]?.match(/href="https:\/\/example\.com\/([^/"]+)\/"/)?.[1],
-    );
-    expect(order).toEqual(expected.get("sc-all-oldest"));
-  });
+  it.each(SMART_COLLECTIONS.map(({ slug }) => slug))(
+    "%s feed carries what Jant's feed carries, in its order",
+    (slug) => {
+      expect(builtFeed.get(slug)).toEqual(expectedFeed.get(slug));
+    },
+  );
 });

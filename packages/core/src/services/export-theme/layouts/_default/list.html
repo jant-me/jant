@@ -8,45 +8,7 @@
     fallback for unknown section types.
   */ -}}
   {{- if eq .Type "collection" -}}
-    {{- $collectionSlug := .Params.slug | default .Slug -}}
-    {{- /* Thread collection membership is stored only on root bundles. */ -}}
-    {{- $allPosts := where (where .Site.Pages "Type" "post") "Kind" "section" -}}
-    {{- $members := slice -}}
-    {{- range $allPosts -}}
-      {{- $post := . -}}
-      {{- with $post.Params.collections -}}
-        {{- range . -}}
-          {{- if eq .slug $collectionSlug -}}
-            {{- $members = $members | append (dict "post" $post "entry" .) -}}
-          {{- end -}}
-        {{- end -}}
-      {{- end -}}
-    {{- end -}}
-
-    {{- /* Split into pinned + unpinned, sort each, then concat. */ -}}
-    {{- $pinned := slice -}}
-    {{- $unpinned := slice -}}
-    {{- range $members -}}
-      {{- if .entry.pinned_at -}}
-        {{- $pinned = $pinned | append . -}}
-      {{- else -}}
-        {{- $unpinned = $unpinned | append . -}}
-      {{- end -}}
-    {{- end -}}
-    {{- if $pinned -}}
-      {{- $pinned = sort $pinned "entry.pinned_at" "desc" -}}
-    {{- end -}}
-    {{- $sortOrder := .Params.sort_order | default "position" -}}
-    {{- if $unpinned -}}
-      {{- if eq $sortOrder "collected_at_desc" -}}
-        {{- $unpinned = sort $unpinned "entry.collected_at" "desc" -}}
-      {{- else -}}
-        {{- $unpinned = sort $unpinned "entry.position" "asc" -}}
-      {{- end -}}
-    {{- end -}}
-    {{- $ordered := $pinned | append $unpinned -}}
-    {{- $posts := slice -}}
-    {{- range $ordered -}}{{- $posts = $posts | append .post -}}{{- end -}}
+    {{- $posts := partial "collection-members.html" (dict "page" . "feed" false) -}}
 
     {{- $pageSize := .Site.Params.page_size | default 10 -}}
     {{- $paginator := .Paginate $posts $pageSize -}}

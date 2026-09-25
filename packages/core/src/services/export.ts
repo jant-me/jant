@@ -83,6 +83,7 @@ import PARTIAL_THREAD_PREVIEW from "./export-theme/layouts/partials/thread-previ
 import PARTIAL_FEATURED_THREAD from "./export-theme/layouts/partials/featured-thread.html?raw";
 import PARTIAL_SMART_COLLECTION_MEMBERS from "./export-theme/layouts/partials/smart-collection-members.html?raw";
 import PARTIAL_COLLECTION_THREADS from "./export-theme/layouts/partials/collection-threads.html?raw";
+import PARTIAL_COLLECTION_MEMBERS from "./export-theme/layouts/partials/collection-members.html?raw";
 import LAYOUT_RSS from "./export-theme/layouts/_default/rss.xml?raw";
 import PARTIAL_FEED_POST_CONTENT from "./export-theme/layouts/partials/feed-post-content.xml?raw";
 
@@ -434,6 +435,7 @@ export function createExportService(
           collectionSlugMap,
         );
         if (!selection) {
+          // eslint-disable-next-line no-console -- A dropped page must leave a trace
           console.warn(
             `Export: smart collection /${smartCollection.slug} filters by a collection that no longer exists, so it was left out.`,
           );
@@ -709,6 +711,10 @@ export function createExportService(
       exportFiles.push({
         path: "themes/jant/layouts/partials/collection-threads.html",
         content: PARTIAL_COLLECTION_THREADS,
+      });
+      exportFiles.push({
+        path: "themes/jant/layouts/partials/collection-members.html",
+        content: PARTIAL_COLLECTION_MEMBERS,
       });
       exportFiles.push({
         path: "themes/jant/layouts/_default/rss.xml",
