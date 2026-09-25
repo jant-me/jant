@@ -8,12 +8,14 @@
  * Jant theme, and the `data/*.toml` files consumed by templates.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { unzipSync } from "fflate";
 import {
   createExportService,
   deriveWorkerName,
+  isStoredExportFile,
   WRANGLER_CONFIG_PATH,
+  type ExportFile,
 } from "../services/export.js";
 import { suggestSyncRepoName } from "../lib/github-sync-repo-name.js";
 import { parseFrontMatter } from "../lib/hugo-markdown.js";
@@ -98,12 +100,19 @@ function buildServices(opts: FixtureOptions): ServicesArg {
   } as unknown as ServicesArg;
 }
 
-function filesToMap(
-  list: { path: string; content: string | Uint8Array }[],
-): Map<string, string | Uint8Array> {
+function filesToMap(list: ExportFile[]): Map<string, string | Uint8Array> {
   const map = new Map<string, string | Uint8Array>();
-  for (const f of list) map.set(f.path, f.content);
+  for (const f of list) {
+    if (!isStoredExportFile(f)) map.set(f.path, f.content);
+  }
   return map;
+}
+
+/** Read the streamed archive the way a download receives it. */
+async function readArchive(
+  stream: ReadableStream<Uint8Array>,
+): Promise<Record<string, Uint8Array>> {
+  return unzipSync(new Uint8Array(await new Response(stream).arrayBuffer()));
 }
 
 describe("createExportService (Hugo)", () => {
@@ -1104,9 +1113,9 @@ describe("createExportService (Hugo)", () => {
       buildServices({ posts: [makePost()] }),
       makeSiteConfig(),
     );
-    const zip = await service.generateHugoSite();
-    expect(zip).toBeInstanceOf(Uint8Array);
-    expect(zip.byteLength).toBeGreaterThan(0);
+    const zip = new Uint8Array(
+      await new Response(await service.generateHugoSite()).arrayBuffer(),
+    );
     // ZIP magic: PK\x03\x04
     expect(zip[0]).toBe(0x50);
     expect(zip[1]).toBe(0x4b);
@@ -1251,18 +1260,60 @@ describe("createExportService (Hugo)", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { storage: storage as any },
     );
-    const files = filesToMap(await service.generateHugoFiles());
-    expect(files.has("static/media/med-root.webp")).toBe(true);
-    expect(files.has("static/media/med-reply.png")).toBe(true);
-    expect(files.get("static/media/med-root.webp")).toEqual(
+    // The file list names the objects; the archive reads them as it goes.
+    const stored = (await service.generateHugoFiles()).filter(
+      isStoredExportFile,
+    );
+    expect(stored).toEqual([
+      { path: "static/media/med-root.webp", storageKey: "media/med-root.webp" },
+      { path: "static/media/med-reply.png", storageKey: "media/med-reply.png" },
+    ]);
+    const archive = await readArchive(await service.generateHugoSite());
+    expect(archive["static/media/med-root.webp"]).toEqual(
       new Uint8Array([1, 2, 3]),
     );
-    expect(files.get("static/media/med-reply.png")).toEqual(
+    expect(archive["static/media/med-reply.png"]).toEqual(
       new Uint8Array([9, 9, 9, 9]),
     );
     // Sanity: the old per-bundle paths are gone.
-    expect(files.has("content/with-media/med-root.webp")).toBe(false);
-    expect(files.has("content/with-media/reply-one/med-reply.png")).toBe(false);
+    expect(archive["content/with-media/med-root.webp"]).toBeUndefined();
+    expect(
+      archive["content/with-media/reply-one/med-reply.png"],
+    ).toBeUndefined();
+  });
+
+  it("leaves a missing object out of the archive and says so", async () => {
+    const root = makePost({ id: "post-root", slug: "with-media" });
+    const service = createExportService(
+      buildServices({
+        posts: [root],
+        mediaByPost: new Map([
+          [
+            "post-root",
+            [
+              makeMedia({
+                id: "med-gone",
+                filename: "gone.webp",
+                storageKey: "media/med-gone.webp",
+              }),
+            ],
+          ],
+        ]),
+      }),
+      makeSiteConfig(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { storage: { get: async () => null } as any },
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const archive = await readArchive(await service.generateHugoSite());
+
+    expect(archive["static/media/med-gone.webp"]).toBeUndefined();
+    expect(archive["hugo.toml"]).toBeDefined();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("media/med-gone.webp is missing from storage"),
+    );
+    warn.mockRestore();
   });
 
   it("emits poster bytes and poster field for video media with posterKey", async () => {
@@ -1302,12 +1353,11 @@ describe("createExportService (Hugo)", () => {
       { storage: storage as any },
     );
     const files = filesToMap(await service.generateHugoFiles());
-    expect(files.has("static/media/med-video.mp4")).toBe(true);
-    expect(files.has("static/media/med-video-poster.webp")).toBe(true);
-    expect(files.get("static/media/med-video.mp4")).toEqual(
+    const archive = await readArchive(await service.generateHugoSite());
+    expect(archive["static/media/med-video.mp4"]).toEqual(
       new Uint8Array([10, 20, 30]),
     );
-    expect(files.get("static/media/med-video-poster.webp")).toEqual(
+    expect(archive["static/media/med-video-poster.webp"]).toEqual(
       new Uint8Array([40, 50, 60, 70]),
     );
 
@@ -1490,11 +1540,12 @@ describe("createExportService (Hugo)", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { storage: storage as any, bundleMedia: false },
     );
-    const files = filesToMap(await service.generateHugoFiles());
+    const exportFiles = await service.generateHugoFiles();
+    const files = filesToMap(exportFiles);
     // No resolvable URL — bundling is the only way to avoid a broken link.
-    expect(files.get("static/media/med-1.webp")).toEqual(
-      new Uint8Array([1, 2, 3]),
-    );
+    expect(exportFiles.filter(isStoredExportFile)).toEqual([
+      { path: "static/media/med-1.webp", storageKey: "media/med-1.webp" },
+    ]);
     const { frontMatter } = await parseFrontMatter(
       files.get("content/with-media/_index.md") as string,
     );

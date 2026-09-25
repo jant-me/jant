@@ -34,6 +34,8 @@ import { parseFrontMatter } from "../lib/hugo-markdown.js";
 import { markdownToTiptapJson } from "../lib/markdown-to-tiptap.js";
 import {
   createExportService,
+  isStoredExportFile,
+  readStoredExportFile,
   type ExportFile,
   type SiteConfig,
 } from "./export.js";
@@ -140,7 +142,10 @@ export function selectFilesToWrite(
   existingPaths: ReadonlySet<string>,
 ): ExportFile[] {
   return exportFiles.filter(
-    (file) => !file.scaffoldOnce || !existingPaths.has(file.path),
+    (file) =>
+      isStoredExportFile(file) ||
+      !file.scaffoldOnce ||
+      !existingPaths.has(file.path),
   );
 }
 
@@ -552,19 +557,27 @@ export function createGitHubSyncService(
       ];
 
       for (const file of selectFilesToWrite(exportFiles, existingPaths)) {
-        if (typeof file.content === "string") {
+        // Sync links media by URL, so a stored file only turns up when the
+        // site URL is unknown and the export falls back to bundling.
+        const content = isStoredExportFile(file)
+          ? deps.storage
+            ? await readStoredExportFile(file, deps.storage)
+            : null
+          : file.content;
+        if (content === null) continue;
+        if (typeof content === "string") {
           treeItems.push({
             path: file.path,
             mode: "100644",
             type: "blob",
-            content: file.content,
+            content,
           });
         } else {
           // Binary files need to be created as blobs first
           const blob = await client.createBlob(
             owner,
             repo,
-            uint8ArrayToBase64(file.content),
+            uint8ArrayToBase64(content),
             "base64",
           );
           treeItems.push({

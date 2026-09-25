@@ -84,6 +84,7 @@
     "better-auth": "1.6.27",
     "better-sqlite3": "^12.8.0",
     "blurhash": "^2.0.5",
+    "client-zip": "^2.5.1",
     "drizzle-orm": "^0.45.1",
     "emoji-mart": "^5.6.0",
     "fflate": "^0.8.2",

@@ -240,7 +240,6 @@ internalSitesRoutes.get(
     return new Response(archive.zip, {
       headers: {
         "Content-Disposition": `attachment; filename="${archive.filename}"`,
-        "Content-Length": String(archive.zip.byteLength),
         "Content-Type": "application/zip",
       },
     });

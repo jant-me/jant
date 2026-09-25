@@ -179,20 +179,3 @@ export async function extractZipFile(zipPath, targetDir) {
   );
   return extractOpenZip(zipFile, targetDir);
 }
-
-/**
- * Extract a ZIP held in memory into a directory. For small archives only,
- * such as the one `/api/export/hugo` answers with before media is pulled.
- *
- * @param {Uint8Array} bytes - Archive bytes
- * @param {string} targetDir - Directory to write into
- * @returns {Promise<{ files: number }>} How many files came out
- * @example
- * await extractZipBuffer(new Uint8Array(await response.arrayBuffer()), dir);
- */
-export async function extractZipBuffer(bytes, targetDir) {
-  const zipFile = await openZip((callback) =>
-    yauzl.fromBuffer(Buffer.from(bytes), { lazyEntries: true }, callback),
-  );
-  return extractOpenZip(zipFile, targetDir);
-}

@@ -85,6 +85,7 @@ import PARTIAL_FEED_POST_CONTENT from "./export-theme/layouts/partials/feed-post
 import { suggestSyncRepoName } from "../lib/github-sync-repo-name.js";
 import type { StorageDriver } from "../lib/storage.js";
 import { base64ToUint8Array } from "../lib/favicon.js";
+import { makeZip } from "client-zip";
 import {
   SYSTEM_NAV_KEYS,
   isFeedNavKey,
@@ -96,8 +97,8 @@ import {
   type SystemNavKey,
 } from "../types.js";
 
-/** A file entry in the exported Hugo site. */
-export interface ExportFile {
+/** A file of the exported Hugo site whose text or bytes the export holds. */
+export interface ExportContentFile {
   path: string;
   content: string | Uint8Array;
   /**
@@ -112,11 +113,57 @@ export interface ExportFile {
   scaffoldOnce?: boolean;
 }
 
+/**
+ * A media file of the exported site, named but not read: the archive streams
+ * it from storage as it is written. Reading every bundled file up front held a
+ * site's media in memory, and on a Docker site with 3 GB of local media the
+ * container was killed before it answered.
+ */
+export interface ExportStoredFile {
+  path: string;
+  storageKey: string;
+}
+
+/** A file entry in the exported Hugo site. */
+export type ExportFile = ExportContentFile | ExportStoredFile;
+
+/**
+ * @param file - An export file entry
+ * @returns Whether its bytes are still in storage
+ * @example
+ * if (isStoredExportFile(file)) await readStoredExportFile(file, storage);
+ */
+export function isStoredExportFile(file: ExportFile): file is ExportStoredFile {
+  return "storageKey" in file;
+}
+
+/**
+ * Read a stored export file's bytes, for a consumer that needs them whole.
+ *
+ * @param file - A stored export file
+ * @param storage - The site's storage
+ * @returns The bytes, or null when the object is gone
+ * @example
+ * const bytes = await readStoredExportFile(file, storage);
+ */
+export async function readStoredExportFile(
+  file: ExportStoredFile,
+  storage: StorageDriver,
+): Promise<Uint8Array | null> {
+  const object = await storage.get(file.storageKey);
+  if (!object?.body) return null;
+  return new Uint8Array(await new Response(object.body).arrayBuffer());
+}
+
 export interface ExportService {
   /** Generate a flat list of files for a complete Hugo site. */
   generateHugoFiles(): Promise<ExportFile[]>;
-  /** Generate a ZIP archive of the Hugo site. */
-  generateHugoSite(): Promise<Uint8Array>;
+  /**
+   * The Hugo site as a ZIP stream. Stored media is read from storage one file
+   * at a time as the stream is consumed, so memory stays flat whatever the
+   * size of the site; the archive switches to ZIP64 past 4 GiB.
+   */
+  generateHugoSite(): Promise<ReadableStream<Uint8Array>>;
 }
 
 export interface SiteConfig {
@@ -654,16 +701,31 @@ export function createExportService(
 
     async generateHugoSite() {
       const exportFiles = await this.generateHugoFiles();
-      const { zipSync } = await import("fflate");
-      const encoder = new TextEncoder();
-      const files: Record<string, Uint8Array> = {};
-      for (const file of exportFiles) {
-        files[file.path] =
-          typeof file.content === "string"
-            ? encoder.encode(file.content)
-            : file.content;
+      const storage = deps.storage ?? null;
+      const lastModified = new Date();
+
+      async function* entries() {
+        for (const file of exportFiles) {
+          if (!isStoredExportFile(file)) {
+            yield { name: file.path, lastModified, input: file.content };
+            continue;
+          }
+
+          const object = storage ? await storage.get(file.storageKey) : null;
+          if (!object?.body) {
+            // The archive is already streaming; say which file is missing
+            // rather than leave it out without a trace.
+            // eslint-disable-next-line no-console -- A dropped file must leave a trace
+            console.warn(
+              `Export: ${file.storageKey} is missing from storage, so ${file.path} is not in the archive.`,
+            );
+            continue;
+          }
+          yield { name: file.path, lastModified, input: object.body };
+        }
       }
-      return zipSync(files);
+
+      return makeZip(entries());
     },
   };
 }
@@ -1054,7 +1116,7 @@ async function buildThreadBundle(
     media: rootMedia[i] as Media,
   }))) {
     if (emission.inlinePath) {
-      const file = await readMediaResourceFile(
+      const file = toStoredMediaFile(
         storage,
         media.storageKey,
         emission.inlinePath,
@@ -1062,7 +1124,7 @@ async function buildThreadBundle(
       if (file) files.push(file);
     }
     if (emission.inlinePosterPath && media.posterKey) {
-      const posterFile = await readMediaResourceFile(
+      const posterFile = toStoredMediaFile(
         storage,
         media.posterKey,
         emission.inlinePosterPath,
@@ -1134,7 +1196,7 @@ async function buildThreadBundle(
       media: replyMedia[i] as Media,
     }))) {
       if (emission.inlinePath) {
-        const file = await readMediaResourceFile(
+        const file = toStoredMediaFile(
           storage,
           media.storageKey,
           emission.inlinePath,
@@ -1142,7 +1204,7 @@ async function buildThreadBundle(
         if (file) files.push(file);
       }
       if (emission.inlinePosterPath && media.posterKey) {
-        const posterFile = await readMediaResourceFile(
+        const posterFile = toStoredMediaFile(
           storage,
           media.posterKey,
           emission.inlinePosterPath,
@@ -1156,25 +1218,17 @@ async function buildThreadBundle(
 }
 
 /**
- * Read a media record's bytes from storage and return an ExportFile so
- * they can be bundled next to the post as a Hugo page resource. Returns
- * null when storage is unavailable or the object cannot be read, in
- * which case the front matter entry still points at the resource name
- * and the CLI's pull-media step (or a later sync) can fill it in.
+ * Name a media object for the archive to bundle as `static/media/…`. Its
+ * bytes are read when the archive is written. Null when the export has no
+ * storage, in which case the front matter entry still points at the file and
+ * the CLI's pull-media step can fill it in.
  */
-async function readMediaResourceFile(
+function toStoredMediaFile(
   storage: StorageDriver | null,
   storageKey: string,
   bundlePath: string,
-): Promise<ExportFile | null> {
-  if (!storage) return null;
-  try {
-    const bytes = await readStorageObjectBytes(storage, storageKey);
-    if (!bytes) return null;
-    return { path: bundlePath, content: bytes };
-  } catch {
-    return null;
-  }
+): ExportStoredFile | null {
+  return storage ? { path: bundlePath, storageKey } : null;
 }
 
 // ---------------------------------------------------------------------------

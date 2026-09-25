@@ -80,7 +80,8 @@ export interface ExportManagedSiteDeps {
 
 export interface ManagedSiteExportResult {
   filename: string;
-  zip: Uint8Array;
+  /** The site's Hugo export as a ZIP stream; see `generateHugoSite`. */
+  zip: ReadableStream<Uint8Array>;
 }
 
 export interface ManagedSiteMediaUsageResult {

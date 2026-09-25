@@ -1,7 +1,9 @@
-import { mkdirSync, readdirSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createWriteStream, mkdirSync, readdirSync } from "node:fs";
+import { mkdir, mkdtemp, rename, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { parseArgs } from "node:util";
 import {
   CLI_API_TOKEN_ENV_VAR,
@@ -9,11 +11,19 @@ import {
 } from "../../lib/cli-api-token.js";
 import { pullSiteExportDirectory } from "../../lib/site-pull-media.js";
 import {
-  extractZipBuffer,
+  extractZipFile,
   writeDirectoryToZip,
 } from "../../lib/zip-archive.js";
 
-async function exportRemoteSite(url, token) {
+/**
+ * Stream the site's export archive to a file. The site streams it too, and a
+ * site that bundles its media answers with gigabytes.
+ *
+ * @param {string} url - Site URL
+ * @param {string} token - API token
+ * @param {string} destination - File to write
+ */
+async function downloadSiteArchive(url, token, destination) {
   const response = await fetch(`${url.replace(/\/$/, "")}/api/export/hugo`, {
     method: "POST",
     headers: {
@@ -21,12 +31,16 @@ async function exportRemoteSite(url, token) {
     },
   });
 
-  if (!response.ok) {
+  if (!response.ok || !response.body) {
     const text = await response.text();
     throw new Error(`HTTP ${response.status}: ${text}`);
   }
 
-  return new Uint8Array(await response.arrayBuffer());
+  await mkdir(dirname(destination), { recursive: true });
+  await pipeline(
+    Readable.fromWeb(response.body),
+    createWriteStream(destination),
+  );
 }
 
 function describeProgressUrl(value) {
@@ -189,26 +203,32 @@ export async function run(argv) {
 
   console.log(`Exporting site from ${url}...`);
 
-  // The site answers with a small archive (media is linked, not included).
-  // It is unpacked to disk and media is downloaded next to it, so the export
-  // never holds more than one media file in memory.
-  const zipBytes = await exportRemoteSite(url, token);
-
   // Nothing to add: the site's archive is the export.
   if (!pullMedia && !outputDirectory) {
     console.log(`Writing ${values.output}...`);
-    await mkdir(dirname(output), { recursive: true });
-    await writeFile(output, zipBytes);
+    const partial = `${output}.partial`;
+    try {
+      await downloadSiteArchive(url, token, partial);
+      await rename(partial, output);
+    } catch (error) {
+      await rm(partial, { force: true });
+      throw error;
+    }
     console.log(`Exported site from ${url} to ${values.output}`);
     return;
   }
 
-  const workDir =
-    outputDirectory ?? (await mkdtemp(join(tmpdir(), "jant-site-export-")));
+  // Unpacked to disk and media downloaded next to it, so the export never
+  // holds more than one media file in memory.
+  const tempDir = await mkdtemp(join(tmpdir(), "jant-site-export-"));
+  const workDir = outputDirectory ?? join(tempDir, "site");
   let pullStats = null;
 
   try {
-    await extractZipBuffer(zipBytes, workDir);
+    const archivePath = join(tempDir, "site.zip");
+    await downloadSiteArchive(url, token, archivePath);
+    await extractZipFile(archivePath, workDir);
+    await rm(archivePath, { force: true });
 
     if (pullMedia) {
       console.log("Pulling media...");
@@ -227,9 +247,7 @@ export async function run(argv) {
       console.log(`Exported site from ${url} to ${values.output}`);
     }
   } finally {
-    if (!outputDirectory) {
-      await rm(workDir, { recursive: true, force: true });
-    }
+    await rm(tempDir, { recursive: true, force: true });
   }
 
   if (pullStats) {

@@ -20,7 +20,6 @@ import { zipSync } from "fflate";
 import yazl from "yazl";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  extractZipBuffer,
   extractZipFile,
   writeDirectoryToZip,
 } from "../../bin/lib/zip-archive.js";
@@ -80,10 +79,14 @@ describe("zip-archive", () => {
   });
 
   it("refuses an entry that climbs out of the target directory", async () => {
-    const bytes = zipSync({ "../escaped.txt": new TextEncoder().encode("x") });
+    const zipPath = join(tempDir, "escape.zip");
+    await writeFile(
+      zipPath,
+      zipSync({ "../escaped.txt": new TextEncoder().encode("x") }),
+    );
 
     await expect(
-      extractZipBuffer(bytes, join(tempDir, "target")),
+      extractZipFile(zipPath, join(tempDir, "target")),
     ).rejects.toThrow();
     await expect(stat(join(tempDir, "escaped.txt"))).rejects.toThrow();
   });
