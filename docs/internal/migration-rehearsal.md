@@ -66,6 +66,50 @@ To enable the remote job, configure:
 
 The rehearsal database should be a dedicated remote D1 database used only for CI resets and migration playback.
 
+## Postgres
+
+Hosted Jant runs on Postgres, so an upgrade over existing Postgres data is the
+path most sites take. `mise run check-pg-rehearsal` rehearses it the same way,
+in the `PG Smoke` CI job against its Postgres service:
+
+1. Recreate the database named by `PG_REHEARSAL_DATABASE_URL` (from
+   `PG_REHEARSAL_ADMIN_DATABASE_URL`).
+2. Apply the Postgres migrations up to `baseMigrationTag`, through a copy of
+   the migrations folder whose journal stops there.
+3. Load the seed.
+4. Run `jant migrate --node`: every later migration, then every backfill.
+5. Check that every migration is recorded, and the manifest's assertions.
+
+Current fixture:
+
+- Manifest: `packages/core/src/db/rehearsal-fixtures/pg-demo-current.json`
+- Seed SQL: `packages/core/src/db/rehearsal-fixtures/pg-demo-current.sql`
+  (baseline `0032_furry_multiple_man`)
+
+The seed leaves out `data_migration`, which the backfill runner creates, so
+each rehearsal also reruns every backfill over real data; backfills must be
+idempotent anyway.
+
+Run it locally against a disposable Postgres:
+
+```sh
+docker run -d --name jant-pg -e POSTGRES_PASSWORD=postgres -p 55432:5432 postgres:17
+PG_REHEARSAL_ADMIN_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/postgres \
+PG_REHEARSAL_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55432/jant_pg_rehearsal \
+mise run check-pg-rehearsal
+```
+
+A migration that changes what the assertions count updates the manifest in
+the same change, saying why. To move the baseline forward, write a new seed
+rather than editing this one: import the canonical site export into a
+Postgres database migrated to the new head
+(`node dev/run-script.mjs dev/scripts/import-node-demo-site-export.ts` with
+`DATABASE_URL` pointing at it), run `jant migrate --node`, dump it with
+`pg_dump --data-only --column-inserts --disable-triggers --schema=public`,
+excluding `account`, `session`, `verification`, `api_token`, `rate_limit`,
+and `data_migration`, and remove the `\restrict` lines and the
+`transaction_timeout` and `search_path` settings `pg` can't run.
+
 ## Production table cutovers
 
 Migration rehearsal proves that a known fixture upgrades correctly. It does not

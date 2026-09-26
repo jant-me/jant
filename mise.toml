@@ -143,6 +143,13 @@ pnpm --filter @jant/core build:lib
 node ./packages/core/dev/scripts/pg-smoke.mjs
 """
 
+[tasks.check-pg-rehearsal]
+description = "Upgrade a seeded Postgres database from its baseline migration (PG_REHEARSAL_*_DATABASE_URL)"
+run = """
+pnpm --filter @jant/core build:lib
+node ./packages/core/dev/scripts/pg-rehearsal.mjs
+"""
+
 [tasks.check-types]
 description = "Run TypeScript type checking (all packages)"
 run = "pnpm -r typecheck"
@@ -237,6 +244,9 @@ mise run i18n-check
 mise run check-site-bundle
 if [[ -n "${PG_SMOKE_DATABASE_URL:-}" ]]; then
   mise run check-pg-smoke
+fi
+if [[ -n "${PG_REHEARSAL_DATABASE_URL:-}" ]]; then
+  mise run check-pg-rehearsal
 fi
 
 # Phase 3: Template integration

@@ -1,0 +1,55 @@
+{
+  "name": "pg-demo-current",
+  "baseMigrationTag": "0032_furry_multiple_man",
+  "seedPath": "./pg-demo-current.sql",
+  "assertions": [
+    {
+      "name": "posts survive",
+      "sql": "SELECT COUNT(*) AS count FROM post",
+      "column": "count",
+      "equals": 43
+    },
+    {
+      "name": "collections survive",
+      "sql": "SELECT COUNT(*) AS count FROM collection",
+      "column": "count",
+      "equals": 6
+    },
+    {
+      "name": "thread collection memberships survive",
+      "sql": "SELECT COUNT(*) AS count FROM thread_collection",
+      "column": "count",
+      "equals": 44
+    },
+    {
+      "name": "navigation survives",
+      "sql": "SELECT COUNT(*) AS count FROM nav_item",
+      "column": "count",
+      "equals": 5
+    },
+    {
+      "name": "paths survive",
+      "sql": "SELECT COUNT(*) AS count FROM path_registry",
+      "column": "count",
+      "equals": 49
+    },
+    {
+      "name": "media survives",
+      "sql": "SELECT COUNT(*) AS count FROM media",
+      "column": "count",
+      "equals": 10
+    },
+    {
+      "name": "every post's thread root exists",
+      "sql": "SELECT COUNT(*) AS count FROM post p LEFT JOIN post root ON root.site_id = p.site_id AND root.id = p.thread_id WHERE root.id IS NULL",
+      "column": "count",
+      "equals": 0
+    },
+    {
+      "name": "thread collection targets are roots",
+      "sql": "SELECT COUNT(*) AS count FROM thread_collection tc INNER JOIN post root ON root.site_id = tc.site_id AND root.id = tc.thread_id WHERE root.reply_to_id IS NOT NULL OR root.thread_id <> root.id",
+      "column": "count",
+      "equals": 0
+    }
+  ]
+}

@@ -140,6 +140,12 @@ jobs:
           PG_SMOKE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jant_pg_smoke
         run: mise run check-pg-smoke
 
+      - name: Rehearse Postgres migrations on seeded data
+        env:
+          PG_REHEARSAL_ADMIN_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          PG_REHEARSAL_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jant_pg_rehearsal
+        run: mise run check-pg-rehearsal
+
   deploy-demo:
     name: Deploy Demo
     needs: [changes, ci, pg-smoke]
