@@ -621,18 +621,24 @@ describe("Hugo import CLI helpers", () => {
     expect(result).toMatchObject({ created: 1, deleted: 1 });
   });
 
-  // A reply the site holds as older than its root (moved into the Thread,
-  // or dated by publish time in an older export) doesn't end the Thread, and
-  // the API refuses a reply to anything but the end.
+  // The API refuses a reply to anything but the Thread's end, which the site
+  // reads as the last post in Thread order: the root first whatever its
+  // creation time, then replies by creation time, then ID. A reply can be
+  // older than its root (moved into the Thread, or dated by publish time in
+  // an older export) and still end the Thread.
   it("follows the Thread's end the way the site reads it", () => {
-    const root = { id: "pst_root", createdAt: 1_000 };
-    const older = { id: "pst_older", createdAt: 500 };
-    const tied = { id: "pst_tied", createdAt: 1_000 };
-    const newer = { id: "pst_newer", createdAt: 2_000 };
+    const root = { id: "pst_05", createdAt: 1_000, replyToId: null };
+    const older = { id: "pst_06", createdAt: 500, replyToId: root.id };
+    const oldest = { id: "pst_07", createdAt: 400, replyToId: older.id };
+    const tiedLowerId = { id: "pst_04", createdAt: 500, replyToId: older.id };
+    const tiedHigherId = { id: "pst_08", createdAt: 500, replyToId: older.id };
+    const newer = { id: "pst_09", createdAt: 2_000, replyToId: older.id };
 
-    expect(getNextThreadTail(root, older)).toBe(root);
-    expect(getNextThreadTail(root, tied)).toBe(tied);
-    expect(getNextThreadTail(tied, newer)).toBe(newer);
+    expect(getNextThreadTail(root, older)).toBe(older);
+    expect(getNextThreadTail(older, oldest)).toBe(older);
+    expect(getNextThreadTail(older, tiedLowerId)).toBe(older);
+    expect(getNextThreadTail(older, tiedHigherId)).toBe(tiedHigherId);
+    expect(getNextThreadTail(older, newer)).toBe(newer);
     expect(getNextThreadTail(root, null)).toBe(root);
   });
 

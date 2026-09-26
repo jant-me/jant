@@ -692,7 +692,7 @@ Important rules:
 
 - Use `body` or `bodyMarkdown`, not both.
 - `body` must be a TipTap document (a `doc` node) as a JSON string. Anything else is a `400`.
-- `createdAt` and `updatedAt` are for restores: an import or a migration that keeps a post's own times. Feeds report `updatedAt` as the entry's update time, and a Thread orders its posts by `createdAt`, then ID. Updates can't change either.
+- `createdAt` and `updatedAt` are for restores: an import or a migration that keeps a post's own times. Feeds report `updatedAt` as the entry's update time, and a Thread orders its replies by `createdAt`, then ID, after the root, which always comes first. Updates can't change either.
 - Use `slug` or `path`, not both.
 - `path` is only available on create. Post updates only support `slug`.
 - `link` posts require `title` and `url`.

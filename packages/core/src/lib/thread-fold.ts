@@ -106,9 +106,9 @@ export interface ThreadFold<T> {
  *
  * Takes the same slices the SQL path ranks for: the first
  * `THREAD_LEADING_REPLIES`, and the last `THREAD_TRAILING_REPLIES` with the
- * newest as the hero. `getPublishedThreads` orders replies by
- * `(threadId, createdAt, id)` ascending, which is the window function's own
- * `ORDER BY`, so position in this array *is* the rank — no approximation.
+ * newest as the hero. `getPublishedThreads` returns each Thread in Thread
+ * order, the same `threadOrder` the window functions rank by, so once the root
+ * is set aside position in this array *is* the rank — no approximation.
  *
  * @param replies - Every published reply, oldest first
  * @returns The fold, or null when the thread has no replies

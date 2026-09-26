@@ -486,6 +486,133 @@ describe("PostService - Timeline features", () => {
     });
   });
 
+  // A reply can be older than its root: a post moved into a Thread keeps its
+  // own creation time, and an export without `created` dates every post by
+  // publication. Thread order still opens on the root.
+  describe("a reply created before its root", () => {
+    async function createThreadWithOlderReplies() {
+      const root = await postService.create({
+        format: "note",
+        bodyMarkdown: "Root",
+        featured: true,
+        publishedAt: 3000,
+      });
+      const first = await postService.create({
+        format: "note",
+        bodyMarkdown: "First reply",
+        replyToId: root.id,
+        publishedAt: 1000,
+      });
+      const second = await postService.create({
+        format: "note",
+        bodyMarkdown: "Second reply",
+        replyToId: first.id,
+        publishedAt: 2000,
+      });
+      // Backdated after the fact, the way a restore lands them, so each test
+      // reads the shape without going through the reply guard.
+      for (const [id, createdAt] of [
+        [root.id, 3000],
+        [first.id, 1000],
+        [second.id, 2000],
+      ] as const) {
+        await db.update(posts).set({ createdAt }).where(eq(posts.id, id));
+      }
+      return { root, first, second };
+    }
+
+    it("opens getThread on the root", async () => {
+      const { root, first, second } = await createThreadWithOlderReplies();
+
+      const thread = await postService.getThread(root.id);
+
+      expect(thread.map((post) => post.id)).toEqual([
+        root.id,
+        first.id,
+        second.id,
+      ]);
+    });
+
+    it("opens getPublishedThreads on the root", async () => {
+      const { root, first, second } = await createThreadWithOlderReplies();
+
+      const threads = await postService.getPublishedThreads([root.id]);
+
+      expect(threads.get(root.id)?.map((post) => post.id)).toEqual([
+        root.id,
+        first.id,
+        second.id,
+      ]);
+    });
+
+    it("puts the root at position 0 of the Featured projection", async () => {
+      const { root, second } = await createThreadWithOlderReplies();
+
+      const result = await postService.getFeaturedThreadTimelineData([root.id]);
+
+      expect(
+        result
+          .get(root.id)
+          ?.posts.map(({ post, position }) => [post.id, position]),
+      ).toEqual([
+        [root.id, 0],
+        [second.id, 2],
+      ]);
+      expect(result.get(root.id)?.featuredPostIds).toEqual([root.id]);
+    });
+
+    it("ends the Thread on the newest reply, not the root", async () => {
+      const { root, second } = await createThreadWithOlderReplies();
+
+      const published = await postService.getThreadTailIds([root.id]);
+      const withDrafts = await postService.getThreadTailIds([root.id], {
+        includeDrafts: true,
+      });
+
+      expect(published.get(root.id)).toBe(second.id);
+      expect(withDrafts.get(root.id)).toBe(second.id);
+    });
+
+    it("refuses a reply to the root once a reply exists", async () => {
+      const { root, second } = await createThreadWithOlderReplies();
+
+      await expect(
+        postService.create({
+          format: "note",
+          bodyMarkdown: "Fork",
+          replyToId: root.id,
+        }),
+      ).rejects.toThrow("This post is no longer the end of the thread.");
+
+      const next = await postService.create({
+        format: "note",
+        bodyMarkdown: "Third reply",
+        replyToId: second.id,
+      });
+      expect(next.threadId).toBe(root.id);
+    });
+
+    it("folds the replies for the timeline in Thread order", async () => {
+      const { root, first, second } = await createThreadWithOlderReplies();
+
+      const context = (
+        await postService.getThreadTimelineContext([root.id])
+      ).get(root.id);
+      const previews = await postService.getThreadPreviews([root.id]);
+
+      expect(context?.leadingReplies.map((post) => post.id)).toEqual([
+        first.id,
+        second.id,
+      ]);
+      expect(context?.latestReply.id).toBe(second.id);
+      expect(context?.totalReplyCount).toBe(2);
+      expect(previews.get(root.id)?.map((post) => post.id)).toEqual([
+        first.id,
+        second.id,
+      ]);
+    });
+  });
+
   describe("timeline assembly", () => {
     it("fetches published non-reply posts for the timeline", async () => {
       const root = await postService.create({

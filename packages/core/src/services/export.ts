@@ -482,7 +482,8 @@ export function createExportService(
         list.push(reply);
         repliesByThread.set(reply.threadId, list);
       }
-      // Thread order, as `posts.getThread` reads it: creation time, then ID.
+      // Thread order, as `posts.getThread` reads it: after the root, which
+      // leads as `_index.md`, creation time, then ID.
       for (const list of repliesByThread.values()) {
         list.sort(
           (a, b) =>

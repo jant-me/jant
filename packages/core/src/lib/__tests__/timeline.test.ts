@@ -733,6 +733,93 @@ describe("Timeline data assembly", () => {
     ]);
   });
 
+  // A reply can be older than its root (a post moved into the Thread keeps
+  // its creation time; an export without `created` dates posts by
+  // publication). The Thread still opens on its root.
+  async function createThreadWithOlderReplies() {
+    const root = await postService.create({
+      format: "note",
+      bodyMarkdown: "Root",
+      featured: true,
+      publishedAt: 3000,
+    });
+    const first = await postService.create({
+      format: "note",
+      bodyMarkdown: "First reply",
+      replyToId: root.id,
+      publishedAt: 1000,
+    });
+    const second = await postService.create({
+      format: "note",
+      bodyMarkdown: "Second reply",
+      replyToId: first.id,
+      publishedAt: 2000,
+    });
+    for (const [id, createdAt] of [
+      [root.id, 3000],
+      [first.id, 1000],
+      [second.id, 2000],
+    ] as const) {
+      await db.update(postTable).set({ createdAt }).where(eq(postTable.id, id));
+    }
+    return { root, first, second };
+  }
+
+  it("keeps a Featured Thread whose replies are older than its root", async () => {
+    const { root, second } = await createThreadWithOlderReplies();
+
+    const result = await assembleFeaturedTimeline(createTimelineContext(), {
+      isAuthenticated: true,
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.post.id).toBe(root.id);
+    expect(result.items[0]?.curatedThread?.segments).toEqual([
+      expect.objectContaining({
+        post: expect.objectContaining({ id: root.id }),
+        hiddenBeforeCount: 0,
+        highlighted: true,
+      }),
+      expect.objectContaining({
+        post: expect.objectContaining({ id: second.id }),
+        hiddenBeforeCount: 1,
+        highlighted: false,
+      }),
+    ]);
+  });
+
+  it("renders a collected Thread whose replies are older than its root", async () => {
+    const collection = await collectionService.create({
+      slug: "older-replies",
+      title: "Older replies",
+    });
+    const { root, first, second } = await createThreadWithOlderReplies();
+    await collectionService.addThread(collection.id, root.id);
+
+    const result = await assembleCollectionTimeline(createTimelineContext(), {
+      collectionIds: [collection.id],
+      isAuthenticated: true,
+      sortOrder: "newest",
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.post.id).toBe(root.id);
+    expect(result.items[0]?.curatedThread?.segments).toEqual([
+      expect.objectContaining({
+        post: expect.objectContaining({ id: root.id }),
+        highlighted: false,
+      }),
+      expect.objectContaining({
+        post: expect.objectContaining({ id: first.id }),
+        highlighted: false,
+      }),
+      expect.objectContaining({
+        post: expect.objectContaining({ id: second.id }),
+        highlighted: true,
+      }),
+    ]);
+  });
+
   it("deduplicates Threads selected through multiple collections", async () => {
     const smart = await collectionService.create({
       slug: "smart",

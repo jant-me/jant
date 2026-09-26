@@ -275,7 +275,7 @@ export interface CollectionFeedEntry {
 
 export interface FeaturedThreadTimelinePost {
   post: Post;
-  /** Zero-based position among the Thread's published Posts. */
+  /** Zero-based position among the Thread's published Posts; the root is 0. */
   position: number;
 }
 
@@ -505,6 +505,10 @@ export interface PostService {
    * Used when replacing a saved thread draft with a new version.
    */
   deleteThreadDraft(id: string, deps?: PostDeleteDeps): Promise<boolean>;
+  /**
+   * Every Post in a Thread, drafts included, in Thread order: the root first,
+   * then replies by creation time, then ID.
+   */
   getThread(rootId: string): Promise<Post[]>;
   /**
    * 1-based position of a Post in the reply chain running from its Thread root
@@ -692,7 +696,10 @@ export interface PostService {
     collectionIds: string[],
     options?: CollectionFeedEntryOptions,
   ): Promise<CollectionFeedEntry[]>;
-  /** Fetch published Posts for each requested Thread root. */
+  /**
+   * Fetch published Posts for each requested Thread root, in Thread order: the
+   * root first, then replies by creation time, then ID.
+   */
   getPublishedThreads(
     rootIds: string[],
     options?: Pick<PostFilters, "publishedBefore">,
@@ -700,7 +707,8 @@ export interface PostService {
   /** Get distinct years with posts, bucketed on the `sortBy` time axis */
   getDistinctYears(filters?: PostFilters): Promise<number[]>;
   /**
-   * For each Thread ID, resolve the Post that currently ends the chain.
+   * For each Thread ID, resolve the Post that currently ends the chain: the
+   * last in Thread order, so the root only while it has no replies.
    *
    * Two callers need two different answers. Readers ask what the audience can
    * see, so drafts must not count — the Reply affordance belongs on the last
@@ -982,6 +990,33 @@ export function createPostService(
     if (filters.sortBy === "activity") return posts.lastActivityAt;
     if (filters.sortBy === "thread_updated") return posts.threadUpdatedAt;
     return posts.publishedAt;
+  }
+
+  /**
+   * Thread order: the root first, then replies by creation time, then ID.
+   *
+   * The root leads whatever its own `createdAt` says. A reply can be older
+   * than its root — a post moved into a Thread keeps its creation time, and an
+   * export without `created` dates every post by publication — and ordering
+   * on time alone would open such a Thread on a reply. Every surface that
+   * reads the first post as the root would then lose it: the Thread page's
+   * canonical URL, Featured, Collections, the feeds, and the reply guard's
+   * idea of where the Thread ends. Every query that orders a Thread's posts
+   * goes through here so they agree.
+   *
+   * @param direction - `desc` walks from the Thread's end back to its root
+   * @returns ORDER BY terms, placed after any partitioning column
+   * @example
+   * db.select().from(posts).orderBy(posts.threadId, ...threadOrder());
+   * sql`ROW_NUMBER() OVER (ORDER BY ${sql.join(threadOrder(), sql`, `)})`;
+   */
+  function threadOrder(direction: "asc" | "desc" = "asc"): SQL[] {
+    const terms = [
+      sql`CASE WHEN ${posts.replyToId} IS NULL THEN 0 ELSE 1 END`,
+      sql`${posts.createdAt}`,
+      sql`${posts.id}`,
+    ];
+    return direction === "asc" ? terms : terms.map((term) => desc(term));
   }
 
   function buildYearMonthExpr(column: SQLWrapper): SQL<string> {
@@ -2930,8 +2965,8 @@ export function createPostService(
         // A reply with no date of its own belongs to the root's moment, not to
         // whenever the request happened to run. Without this, backdating the
         // root leaves its replies stamped today and the thread reads as if it
-        // spanned years. Thread order is by `createdAt`/`id` (see the thread
-        // queries), so sharing one `publishedAt` cannot reorder anything.
+        // spanned years. Thread order is the root, then `createdAt`/`id` (see
+        // `threadOrder`), so sharing one `publishedAt` cannot reorder anything.
         const rootPublishedAt = created[0]?.publishedAt ?? undefined;
         const postData: CreatePost = {
           ...data,
@@ -3632,7 +3667,7 @@ export function createPostService(
         .select()
         .from(posts)
         .where(and(eq(posts.siteId, siteId), eq(posts.threadId, rootId)))
-        .orderBy(posts.createdAt, posts.id);
+        .orderBy(...threadOrder());
 
       return hydratePosts(rows);
     },
@@ -4166,10 +4201,9 @@ export function createPostService(
         .select({
           id: posts.id,
           threadId: posts.threadId,
-          createdAt: posts.createdAt,
           previewRank: sql<number>`CAST(ROW_NUMBER() OVER (
             PARTITION BY ${posts.threadId}
-            ORDER BY ${posts.createdAt}, ${posts.id}
+            ORDER BY ${sql.join(threadOrder(), sql`, `)}
           ) AS INTEGER)`.as("preview_rank"),
         })
         .from(posts)
@@ -4187,15 +4221,10 @@ export function createPostService(
         .select({
           id: rankedReplies.id,
           threadId: rankedReplies.threadId,
-          createdAt: rankedReplies.createdAt,
         })
         .from(rankedReplies)
         .where(lte(rankedReplies.previewRank, previewCount))
-        .orderBy(
-          rankedReplies.threadId,
-          rankedReplies.createdAt,
-          rankedReplies.id,
-        );
+        .orderBy(rankedReplies.threadId, sql`${rankedReplies.previewRank}`);
 
       const hydratedPosts = await hydratePostsById(
         rankedRows.map((row) => row.id),
@@ -4225,11 +4254,11 @@ export function createPostService(
           threadId: posts.threadId,
           firstReplyRank: sql<number>`CAST(ROW_NUMBER() OVER (
             PARTITION BY ${posts.threadId}
-            ORDER BY ${posts.createdAt}, ${posts.id}
+            ORDER BY ${sql.join(threadOrder(), sql`, `)}
           ) AS INTEGER)`.as("first_reply_rank"),
           latestReplyRank: sql<number>`CAST(ROW_NUMBER() OVER (
             PARTITION BY ${posts.threadId}
-            ORDER BY ${posts.createdAt} DESC, ${posts.id} DESC
+            ORDER BY ${sql.join(threadOrder("desc"), sql`, `)}
           ) AS INTEGER)`.as("latest_reply_rank"),
           totalReplyCount: sql<number>`CAST(COUNT(*) OVER (
             PARTITION BY ${posts.threadId}
@@ -4414,7 +4443,7 @@ export function createPostService(
       const threadPosition = sql<number>`CAST(
         row_number() OVER (
           PARTITION BY ${posts.threadId}
-          ORDER BY ${posts.createdAt}, ${posts.id}
+          ORDER BY ${sql.join(threadOrder(), sql`, `)}
         ) - 1 AS INTEGER
       )`.as("thread_position");
       const threadPostCount = sql<number>`CAST(
@@ -4755,7 +4784,7 @@ export function createPostService(
           .select()
           .from(posts)
           .where(and(...conditions))
-          .orderBy(posts.threadId, posts.createdAt, posts.id);
+          .orderBy(posts.threadId, ...threadOrder());
       });
 
       for (const post of await hydratePosts(rows)) {
@@ -4788,7 +4817,7 @@ export function createPostService(
             ...(options?.includeDrafts ? [] : [eq(posts.status, "published")]),
           ),
         )
-        .orderBy(posts.threadId, desc(posts.createdAt), desc(posts.id));
+        .orderBy(posts.threadId, ...threadOrder("desc"));
 
       for (const row of rows) {
         if (!result.has(row.threadId)) {
