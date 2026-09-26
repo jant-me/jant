@@ -108,6 +108,24 @@ Config Editor 中实时修改；设为 `0` 可关闭延迟。重置运行时覆�
 session 和 Bearer API token 仍可使用这些接口。包括 `/search` 在内的公开 HTML
 页面不受影响。
 
+### 跨域 API 访问（可选）
+
+| 变量           | 默认值 | 说明                                     |
+| -------------- | ------ | ---------------------------------------- |
+| `CORS_ORIGINS` | `*`    | 允许浏览器从哪些来源调用 API，用逗号分隔 |
+
+`*` 允许任何来源。写成 `https://a.example,chrome-extension://<id>` 这样的列表，
+只允许列出的来源；留空则关闭跨域访问。需要 session 或 API token 的接口仍然需要。
+
+### 搜索频率限制（可选）
+
+| 变量                        | 默认值  | 说明                         |
+| --------------------------- | ------- | ---------------------------- |
+| `RATE_LIMIT_SEARCH_PER_MIN` | `30`    | 同一客户端每分钟的搜索请求数 |
+| `RATE_LIMIT_DISABLED`       | `false` | 设为 `true` 关闭限制         |
+
+超过限制的客户端收到 `429`，附带 `Retry-After` 头。
+
 ### 分页（可选）
 
 | 变量                | 默认值           | 说明                             |
@@ -119,6 +137,18 @@ session 和 Bearer API token 仍可使用这些接口。包括 `/search` 在内�
 只有在搜索页或归档页真的需要和全站不同的分页大小时，才去设置 `SEARCH_PAGE_SIZE` 和 `ARCHIVE_PAGE_SIZE`。
 三个值都接受 `1–100` 的整数，也可以在 Config Editor 中实时修改；环境变量仍
 作为部署时的回退值。
+
+### 默认外观（可选）
+
+| 变量                 | 默认值    | 说明                         |
+| -------------------- | --------- | ---------------------------- |
+| `DEFAULT_THEME`      | `tufte`   | 站点没有选择配色主题时使用的 |
+| `DEFAULT_FONT_THEME` | `classic` | 站点没有选择字体主题时使用的 |
+
+在 **设置 → 外观** 里选过的主题优先。配色主题：`tufte`、`linen`、`frost`、
+`cotton`、`bone`、`parchment`、`dune`、`ink`、`slate`、`sage`、`clay`、`ember`、
+`paper`、`snow`、`espresso`。字体主题：`classic`、`tufte`、`system-sans`、
+`humanist-sans`、`modern-editorial`、`literary`、`geometric`。
 
 ### 存储
 
@@ -362,6 +392,27 @@ location /_assets/ {
 为 `1–1500`，RSS 条目数范围为 `1–200`。重置运行时覆盖值后，会重新使用环境
 变量。
 
+### 维护命令（可选）
+
+| 变量                   | 默认值 | 说明                                      |
+| ---------------------- | ------ | ----------------------------------------- |
+| `INTERNAL_ADMIN_TOKEN` | 未设置 | 维护命令和 `/api/internal/*` 接受的 token |
+
+`jant search reindex`、`jant posts rebuild-html` 和 `jant uploads cleanup` 用这个
+token 调用站点，见 [命令行](cli.md#维护)。不设置时，`/api/internal/*` 返回 `404`。
+用一个足够长的随机值，不要提交到版本控制。
+
+### GitHub App（可选）
+
+`GITHUB_APP_ID`、`GITHUB_APP_PRIVATE_KEY`、`GITHUB_APP_SLUG` 和
+`GITHUB_APP_WEBHOOK_SECRET` 让 GitHub 同步通过你自己的 GitHub App 连接，
+不用个人访问令牌。见 [GitHub 同步](github-sync.md)。
+
+### 托管服务
+
+`SITE_RESOLUTION_MODE` 和 `HOSTED_CONTROL_PLANE_*` 变量用于托管服务，也就是一台
+服务器运行多个站点的部署。自部署站点不需要设置。
+
 ## Settings 页面设置
 
 这些设置可以在初始化完成后，通过 Jant 的 Settings 页面修改。所有设置都可以通过同名环境变量预置初始值——Settings 里改过的值优先级高于环境变量。
@@ -372,7 +423,6 @@ location /_assets/ {
 | `SITE_DESCRIPTION`           | Meta description 和 feed description      |
 | `SITE_LANGUAGE`              | 主要语言代码                              |
 | `DASHBOARD_LANGUAGE`         | 私有管理界面语言                          |
-| `CJK_SERIF_FONT`             | CJK 衬线字体回退                          |
 | `TIME_ZONE`                  | 显示时区，例如 `UTC` 或 `Asia/Shanghai`   |
 | `MAIN_RSS_FEED`              | 决定 `/feed` 返回什么                     |
 | `PAGE_SIZE`                  | 默认每页条目数（`1–100`）                 |
@@ -422,9 +472,9 @@ Config Editor 使用显式允许清单。部署基础设施、凭据、集成令
 这些顶层路径是保留的，不能作为 post 或自定义页面的 slug：
 
 ```text
-featured, latest, collections, signin, signout, setup, settings, dash,
-api, feed, search, archive, media, pages, reset, compose, preview, new, static, assets,
-_assets, healthz, readyz
+featured, latest, signin, signout, setup, settings, dash, api, feed, search,
+subscribe, archive, media, pages, reset, collections, compose, preview, new,
+static, assets, _assets, healthz, readyz, skill.md
 ```
 
 ## 配置文件

@@ -2187,7 +2187,6 @@ All values are strings because they map directly to stored config values.
 | `SITE_DESCRIPTION`           | Site description           | `"Notes and links"` |
 | `SITE_LANGUAGE`              | BCP 47 content language    | `"en"`              |
 | `DASHBOARD_LANGUAGE`         | Dashboard catalog language | `"zh-Hans"`         |
-| `CJK_SERIF_FONT`             | CJK serif fallback         | `"off"`             |
 | `MAIN_RSS_FEED`              | Canonical feed kind        | `"featured"`        |
 | `ARCHIVE_DEFAULT_LAYOUT`     | Archive default layout     | `"list"`            |
 | `PAGE_SIZE`                  | Default page size          | `"25"`              |
