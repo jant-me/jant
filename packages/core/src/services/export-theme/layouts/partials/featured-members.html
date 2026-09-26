@@ -1,0 +1,35 @@
+{{- /*
+  The Threads on Featured, in the order Jant lists them on the Featured page
+  and in `/featured/feed` (`listFeaturedThreadRootIds`): a Thread belongs
+  when any published post in it is featured and it is not private. Hidden
+  from Latest is no bar here.
+
+  Order: the newest publication among the Thread's featured posts
+  (`featured_sort_at`, which the export derives exactly that way), newest
+  first, then the root ID, newest first, so Threads whose featured posts
+  share a second don't tie.
+
+  `src/__tests__/export-feed-order.test.ts` builds a site with Hugo and
+  compares the page and the feed with Jant's.
+*/ -}}
+{{- $roots := where (where site.Pages "Type" "post") "Kind" "section" -}}
+{{- $keyed := slice -}}
+{{- range $roots -}}
+  {{- $post := . -}}
+  {{- $params := .Params -}}
+  {{- $visible := and (eq ($params.status | default "published") "published") (ne $params.visibility "private") -}}
+  {{- if and $visible $params.featured_sort_at -}}
+    {{- $keyed = $keyed | append (dict
+      "key" (printf "%020d %s" (time.AsTime $params.featured_sort_at).Unix $params.id)
+      "post" $post
+    ) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $ordered := slice -}}
+{{- if $keyed -}}
+  {{- range sort $keyed "key" "desc" -}}
+    {{- $ordered = $ordered | append .post -}}
+  {{- end -}}
+{{- end -}}
+{{- return $ordered -}}

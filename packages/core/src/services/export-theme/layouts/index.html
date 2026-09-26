@@ -1,28 +1,42 @@
-{{ define "main" }} {{- $pageSize := .Site.Params.page_size | default 10 -}} {{-
-/* Root posts are branch bundles (kind=section), so we iterate .Site.Pages, not
-.Site.RegularPages. */ -}} {{- $allPosts := where .Site.Pages "Type" "post" -}}
-{{- $pinned := where $allPosts "Params.pinned_at" "ne" nil -}} {{- $pinned =
-$pinned.ByDate.Reverse -}} {{- $public := where $allPosts "Params.visibility"
-"public" -}} {{- $public = where $public "Params.pinned_at" nil -}} {{- $main :=
-$public.ByDate.Reverse -}} {{- $paginator := .Paginate $main $pageSize -}}
-
-<section class="home">
-  {{- if and (eq $paginator.PageNumber 1) $pinned -}}
-  <div class="post-list post-list-pinned" aria-label="Pinned posts">
-    {{- range $i, $p := $pinned -}} {{- if gt $i 0 -}}
-    <hr class="feed-divider" aria-hidden="true" />
-    {{- end -}} {{ partial "thread-preview.html" $p }} {{- end -}}
-  </div>
-  {{- end -}} {{- if $paginator.Pages -}}
-  <div class="post-list post-list-main">
-    {{- range $i, $p := $paginator.Pages -}} {{- if gt $i 0 -}}
-    <hr class="feed-divider" aria-hidden="true" />
-    {{- end -}} {{ partial "thread-preview.html" $p }} {{- end -}}
-  </div>
-  {{ partial "pagination.html" $paginator }} {{- else if not $pinned -}}
-  <p class="empty-state">
-    Nothing published yet. Write your first post to get started.
-  </p>
+{{ define "main" }}
+  {{- /*
+    The home page lists Latest the way Jant's does: one list, pinned roots
+    first, paginated as a whole (`latest-members`). The pinned roots on a
+    page, which only lead the list, keep a block of their own.
+  */ -}}
+  {{- $pageSize := .Site.Params.page_size | default 10 -}}
+  {{- $paginator := .Paginate (partial "latest-members.html" (dict "feed" false)) $pageSize -}}
+  {{- $pinned := slice -}}
+  {{- $main := slice -}}
+  {{- range $paginator.Pages -}}
+    {{- if .Params.pinned_at -}}
+      {{- $pinned = $pinned | append . -}}
+    {{- else -}}
+      {{- $main = $main | append . -}}
+    {{- end -}}
   {{- end -}}
-</section>
+
+  <section class="home">
+    {{- if $pinned -}}
+      <div class="post-list post-list-pinned" aria-label="Pinned posts">
+        {{- range $i, $p := $pinned -}}
+          {{- if gt $i 0 -}}<hr class="feed-divider" aria-hidden="true" />{{- end -}}
+          {{ partial "thread-preview.html" $p }}
+        {{- end -}}
+      </div>
+    {{- end -}}
+    {{- if $main -}}
+      <div class="post-list post-list-main">
+        {{- range $i, $p := $main -}}
+          {{- if gt $i 0 -}}<hr class="feed-divider" aria-hidden="true" />{{- end -}}
+          {{ partial "thread-preview.html" $p }}
+        {{- end -}}
+      </div>
+    {{- end -}}
+    {{- if $paginator.Pages -}}
+      {{ partial "pagination.html" $paginator }}
+    {{- else -}}
+      <p class="empty-state">Nothing published yet. Write your first post to get started.</p>
+    {{- end -}}
+  </section>
 {{ end }}

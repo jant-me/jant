@@ -108,3 +108,39 @@ export async function readFeedSlugs(
     (entry) => entry[1]?.match(permalink)?.[1] ?? "",
   );
 }
+
+/**
+ * The Thread roots a timeline page lists, page by page.
+ *
+ * A timeline renders each root as a thread preview or a lone post card, and
+ * both nest cards that carry their own `data-slug`, so this reads every
+ * `data-slug` in order and keeps the first mention of each root.
+ *
+ * @param siteDir - From {@link buildHugoSite}
+ * @param section - The section's slug, or `""` for the home page
+ * @param roots - Slugs of every Thread root in the export
+ * @returns One list of root slugs per page
+ * @example
+ * await readRootSlugsByPage(siteDir, "featured", new Set(["hello"]));
+ */
+export async function readRootSlugsByPage(
+  siteDir: string,
+  section: string,
+  roots: ReadonlySet<string>,
+): Promise<string[][]> {
+  const pages: string[][] = [];
+  for (let page = 1; ; page++) {
+    const path =
+      page === 1
+        ? join(siteDir, "public", section, "index.html")
+        : join(siteDir, "public", section, "page", String(page), "index.html");
+    const html = await readFile(path, "utf8").catch(() => null);
+    if (html === null) return pages;
+    const slugs: string[] = [];
+    for (const match of html.matchAll(/data-slug="([^"]+)"/g)) {
+      const slug = match[1] as string;
+      if (roots.has(slug) && !slugs.includes(slug)) slugs.push(slug);
+    }
+    pages.push(slugs);
+  }
+}
