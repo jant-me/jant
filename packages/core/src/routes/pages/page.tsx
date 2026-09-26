@@ -70,10 +70,10 @@ interface TextPreviewAutoOpen {
  * content at every reply URL. Point the canonical to the thread root so
  * crawlers consolidate ranking on one URL.
  *
- * The root post is always at index 0 of `threadPostViews` (getThread orders
- * by createdAt ASC, and the DB check constraint guarantees root has the
- * smallest createdAt in its thread). When `threadPostViews` is undefined the
- * post is not part of a multi-post thread, so the post itself is the root.
+ * The root post is always at index 0 of `threadPostViews`: Thread order puts
+ * the root first even when a reply is older than it. When `threadPostViews` is
+ * undefined the post is not part of a multi-post thread, so the post itself is
+ * the root.
  */
 function buildPostCanonicalHref(
   postView: { permalink: string },

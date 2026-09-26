@@ -2086,20 +2086,42 @@ function shouldImportReplyQuietly(rootFrontMatter, replyFrontMatter) {
 }
 
 /**
- * The post a Thread's next reply has to answer: the site's rule, newest by
- * creation time, then by ID. A post created later has the newer ID, so it
- * wins a tie.
+ * The post a Thread's next reply has to answer: the site's rule, the last post
+ * in Thread order. The root comes first whatever its creation time, so the
+ * first reply always ends the Thread; after that the newest reply by creation
+ * time, then by ID, does.
  *
- * @param {{ id: string, createdAt: number }} tail - The current end
- * @param {{ id: string, createdAt: number } | null | undefined} created - The post just created
- * @returns {{ id: string, createdAt: number }} The new end
+ * @param {{ id: string, createdAt: number, replyToId?: string | null }} tail - The current end
+ * @param {{ id: string, createdAt: number, replyToId?: string | null } | null | undefined} created - The post just created
+ * @returns {{ id: string, createdAt: number, replyToId?: string | null }} The new end
  * @example
- * getNextThreadTail({ id: "root", createdAt: 20 }, { id: "r1", createdAt: 10 });
- * // { id: "root", createdAt: 20 }: an older reply doesn't end the Thread
+ * getNextThreadTail(
+ *   { id: "root", createdAt: 20, replyToId: null },
+ *   { id: "r1", createdAt: 10, replyToId: "root" },
+ * );
+ * // r1: a reply older than the root still ends the Thread
  */
 function getNextThreadTail(tail, created) {
   if (!created?.id) return tail;
-  return created.createdAt >= tail.createdAt ? created : tail;
+  return compareThreadOrder(created, tail) > 0 ? created : tail;
+}
+
+/**
+ * Compare two posts of one Thread the way the site orders them (`threadOrder`
+ * in the post service): the root first, then creation time, then ID.
+ *
+ * @param {{ id: string, createdAt: number, replyToId?: string | null }} a
+ * @param {{ id: string, createdAt: number, replyToId?: string | null }} b
+ * @returns {number} Negative when `a` comes first, positive when `b` does
+ * @example
+ * compareThreadOrder({ id: "r1", createdAt: 10, replyToId: "root" },
+ *   { id: "root", createdAt: 20, replyToId: null }); // 1
+ */
+function compareThreadOrder(a, b) {
+  const rank = (post) => (post.replyToId ? 1 : 0);
+  if (rank(a) !== rank(b)) return rank(a) - rank(b);
+  if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
 /**
@@ -2759,11 +2781,12 @@ export async function run(argv) {
       if (!post) continue;
       const replySlugPaths = new Set();
       // Jant threads are linear: a reply must point at the current end of the
-      // thread, which the site reads as its newest post by creation time,
-      // then ID. Creation times are restored from the export, and a post
-      // moved into a Thread keeps its own, so a reply can be older than the
-      // root; the end is then the root, not the reply created before it.
-      // Track it by the site's rule.
+      // thread, which the site reads as its last post in Thread order — the
+      // root first, then replies by creation time, then ID. Creation times
+      // are restored from the export (or taken from `date` in an older one),
+      // so a reply sent after another can carry the earlier time; the end is
+      // then the one with the later time, not the one sent last. Track it by
+      // the site's rule.
       let threadTail = post;
       for (const replyBundle of rootBundle.children) {
         const replyFm = replyBundle.frontMatter;

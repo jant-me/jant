@@ -111,7 +111,7 @@ export interface CreatePost {
   publishedAt?: number;
   /**
    * The post's creation time, for a restore. Defaults to now. Thread order
-   * reads it, then the ID.
+   * reads it, then the ID, to order replies; the root always comes first.
    */
   createdAt?: number;
   /**

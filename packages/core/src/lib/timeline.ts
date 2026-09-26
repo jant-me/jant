@@ -272,7 +272,7 @@ async function buildCuratedThreadItems(
 
   return orderedThreads.reduce<TimelineItemView[]>((items, thread) => {
     const rootEntry = thread.posts[0];
-    if (!rootEntry || rootEntry.position !== 0) {
+    if (!rootEntry || rootEntry.post.id !== rootEntry.post.threadId) {
       return items;
     }
 
