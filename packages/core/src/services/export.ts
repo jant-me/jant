@@ -88,6 +88,7 @@ import LAYOUT_RSS from "./export-theme/layouts/_default/rss.xml?raw";
 import PARTIAL_FEED_POST_CONTENT from "./export-theme/layouts/partials/feed-post-content.xml?raw";
 
 import { suggestSyncRepoName } from "../lib/github-sync-repo-name.js";
+import { getPostPath, toAbsoluteSiteUrl } from "../lib/url.js";
 import type { StorageDriver } from "../lib/storage.js";
 import { base64ToUint8Array } from "../lib/favicon.js";
 import { makeZip } from "client-zip";
@@ -1118,6 +1119,23 @@ async function buildThreadBundle(
     }
   }
 
+  // The `<id>` Jant's feeds give this Thread's entry, kept as the string it
+  // was. A reader recognises an entry it has seen by that string alone, and
+  // the Hugo page's own URL differs from it — a trailing slash always, and
+  // the slug where Jant uses a custom path — so an exported feed that used
+  // the page URL would show every entry to every subscriber again after the
+  // move. RFC 4287 §4.2.6 asks for exactly this: an entry's ID must not
+  // change when its feed is migrated or exported.
+  const siteUrl = siteConfig.siteUrl.trim();
+  const feedId =
+    !rootIsUnpublished && siteUrl
+      ? toAbsoluteSiteUrl(
+          getPostPath(rootSlug, rootAliases[0]),
+          siteUrl,
+          siteConfig.sitePathPrefix,
+        )
+      : undefined;
+
   // Root front matter.
   const rootMedia = mediaByPost.get(root.id) ?? [];
   const rootEmissions = rootMedia.map((m) =>
@@ -1152,6 +1170,7 @@ async function buildThreadBundle(
     type: "post",
     draft: rootIsUnpublished ? true : undefined,
     aliases: aliases.length > 0 ? aliases : undefined,
+    feed_id: feedId,
     format: root.format,
     status: root.status,
     visibility: root.visibility,
@@ -2389,6 +2408,8 @@ ${feedTable}
 A reader who is already subscribed holds one of the old addresses, and a feed reader that gets a 404 stops delivering posts. \`static/_redirects\` maps every old address to its new one with a 301. Cloudflare Pages and Netlify read that file as published; on any other host, translate its rules into that host's redirect configuration before you point the domain here.
 
 Hugo's \`aliases:\` cannot cover this. An alias page redirects with a meta refresh and a script, and feed readers fetch XML without running either — only an HTTP redirect reaches them.
+
+Feed entries keep the IDs Jant gave them, so feed readers don't show old posts again. Each root post stores its ID in \`feed_id\`: the post's address on Jant, which is not its page URL here. Don't change \`feed_id\`, or feed readers show that post again. A post you add here without one uses its page URL.
 
 The **Subscribe** entry in the site navigation points at \`${mainFeed}\`. The exported site has no \`/subscribe\` page; that page belongs to the Jant runtime.
 

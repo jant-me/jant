@@ -121,6 +121,13 @@ export interface HugoFrontMatter {
 
   // Hugo routing
   aliases?: string[];
+  /**
+   * Published root bundles only: the `<id>` Jant's feeds gave the Thread's
+   * entry — its permalink, absolute, with no trailing slash. The theme's feed
+   * writes it as the entry's `<id>` so readers don't show the post again after
+   * a move. Written by the export, never read by the import.
+   */
+  feed_id?: string;
   build?: HugoBuildOptions;
   /**
    * Reply bundles only: 1-based position in the Thread. Jant orders a Thread
@@ -251,6 +258,7 @@ const FRONT_MATTER_KEY_ORDER: readonly string[] = [
   "type",
   "draft",
   "aliases",
+  "feed_id",
   "build",
 
   // Post payload

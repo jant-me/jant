@@ -134,6 +134,8 @@ The export writes `static/_redirects`, which sends each old address to its new o
 
 The `aliases:` pages that keep old post links working can't do this for feeds. They redirect with a meta refresh and a script, and feed readers run neither.
 
+Feed entries keep the IDs Jant gave them, so feed readers don't show old posts again after the move. Each root post stores its ID in `feed_id`. The ID is the post's address on Jant; the exported page's address adds a trailing slash, and uses the slug in place of a custom URL. Don't change `feed_id`, or feed readers show that post again. A post you write in Hugo later has no `feed_id` and uses its page address.
+
 The Jant `/subscribe` page doesn't exist on the exported site. The **Subscribe** navigation entry links to the main feed file instead.
 
 ### Round-trip fidelity

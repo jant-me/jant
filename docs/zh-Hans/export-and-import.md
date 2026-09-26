@@ -134,6 +134,8 @@ Jant 的 feed 地址是 `/feed`、`/latest/feed`、`/featured/feed`、`/archive/
 
 让旧帖子链接继续可用的 `aliases:` 页面管不了 feed：它靠 meta refresh 和脚本跳转，feed 阅读器两样都不执行。
 
+feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖子再显示一遍。ID 写在每篇 root 帖子的 `feed_id` 里，是帖子在 Jant 上的地址。导出页面的地址和它不同：末尾多一个斜杠，设过自定义 URL 的帖子还会换成 slug。不要改 `feed_id`，改了 feed 阅读器会把这篇帖子再显示一遍。之后在 Hugo 里写的帖子没有 `feed_id`，用页面地址。
+
 导出站没有 Jant 的 `/subscribe` 页面，导航里的 **Subscribe** 指向主 feed 文件。
 
 ### 导出再导入

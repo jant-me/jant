@@ -101,8 +101,9 @@ slug: hello
 type: post
 draft: false
 aliases:
-  - /old-slug/
+  - /notes/hello # a custom URL
   - /reply-abc/ # reply slugs go here so /{reply-slug}/ aliases work
+feed_id: https://example.com/notes/hello # the <id> Jant's feeds gave it
 format: note
 status: published
 visibility: public
@@ -145,6 +146,13 @@ No `aliases` on replies. The reply's URL is redirected by the root's
 `aliases:` list + the custom `_default/alias.html` template. Replies also omit
 `collections`; older exports that contain reply-level entries are unioned into
 the Thread root during import.
+
+`feed_id` is the `<id>` Jant's feeds gave the Thread's entry: the permalink,
+absolute, with no trailing slash — the oldest custom URL when the post has one,
+else the slug. `rss.xml` writes it as the entry's `<id>` in place of
+`.Permalink`, so a reader that already showed the post doesn't show it again
+after the move. Only published roots carry it; a reply is never an entry of its
+own, and an unpublished root is in no feed.
 
 ## URL scheme
 

@@ -414,6 +414,42 @@ describe("createExportService (Hugo)", () => {
     expect(frontMatter.aliases).toBeUndefined();
   });
 
+  it("writes the entry ID Jant's feeds give each published root", async () => {
+    // `<id>` is the permalink Jant served: the oldest custom path in place of
+    // the slug, under the site path prefix, no trailing slash. The theme's
+    // feed writes it as it is, so subscribers don't see the post again.
+    const plain = makePost({ id: "a", slug: "xta29", threadId: "a" });
+    const custom = makePost({ id: "b", slug: "links-4", threadId: "b" });
+    const draft = makePost({
+      id: "c",
+      slug: "unfinished",
+      threadId: "c",
+      status: "draft",
+    });
+
+    const service = createExportService(
+      buildServices({
+        posts: [plain, custom, draft],
+        aliasMap: new Map([["b", ["/blog/links/4", "/links/four"]]]),
+      }),
+      makeSiteConfig({
+        siteUrl: "https://example.com/journal",
+        sitePathPrefix: "/journal",
+      }),
+    );
+    const files = filesToMap(await service.generateHugoFiles());
+    const feedId = async (slug: string) =>
+      (await parseFrontMatter(files.get(`content/${slug}/_index.md`) as string))
+        .frontMatter.feed_id;
+
+    expect(await feedId("xta29")).toBe("https://example.com/journal/xta29");
+    expect(await feedId("links-4")).toBe(
+      "https://example.com/journal/blog/links/4",
+    );
+    // Not in any feed, so there is no ID to keep.
+    expect(await feedId("unfinished")).toBeUndefined();
+  });
+
   it("merges historical root aliases + reply slugs onto the root", async () => {
     const root = makePost({ id: "r", slug: "new-slug", threadId: "r" });
     const reply = makePost({

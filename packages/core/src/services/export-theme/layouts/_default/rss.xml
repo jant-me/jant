@@ -17,6 +17,7 @@
         conditions select, in its stored order (`smart-collection-members`)
 
   Per-entry payload mirrors `buildSinglePostContent` + `buildFeedContent`:
+    - Id: `feed_id` from front matter, the id Jant's feed used; see below
     - Title: empty for quote posts, else .Title
     - Link rel=alternate: external URL for `link` format, else permalink;
       link-format posts also get a <link rel="related"> back to the
@@ -101,6 +102,12 @@
   {{- $post := . -}}
   {{- $format := .Params.format | default "note" -}}
   {{- $permalink := .Permalink -}}
+  {{- /* <id>: the string Jant's feeds gave this entry, which the exporter
+       writes as `feed_id`. Readers recognise an entry by it alone, and
+       `.Permalink` differs from it (trailing slash; slug in place of a custom
+       path), so using the page URL would show every post again after a move.
+       A post written in Hugo has no `feed_id` and takes its page URL. */ -}}
+  {{- $entryId := string (.Params.feed_id | default $permalink) -}}
   {{- $isLink := and (eq $format "link") .Params.link_url -}}
   {{- $alternate := cond $isLink (string .Params.link_url) $permalink -}}
   {{- /* Atom <title>: empty for quotes (matches main site's getAtomTitle). */ -}}
@@ -168,7 +175,7 @@
     <link rel="enclosure" type="{{ (string ($m.mime_type | default "application/octet-stream")) | transform.XMLEscape }}" href="{{ (string $m.src) | absURL | transform.XMLEscape }}"{{ with $m.size }} length="{{ . }}"{{ end }}{{ with $m.original_name }} title="{{ . | transform.XMLEscape }}"{{ end }}/>
     {{- end }}
     {{- end }}
-    <id>{{ $permalink | transform.XMLEscape }}</id>
+    <id>{{ $entryId | transform.XMLEscape }}</id>
     <published>{{ $published }}</published>
     <updated>{{ $updated }}</updated>
     <jant:format>{{ $format | transform.XMLEscape }}</jant:format>
