@@ -8,10 +8,6 @@
       "types": "./src/index.ts",
       "default": "./dist/index.js"
     },
-    "./node": {
-      "types": "./src/node/index.ts",
-      "default": "./dist/node.js"
-    },
     "./i18n": "./src/i18n/index.ts"
   },
   "bin": {

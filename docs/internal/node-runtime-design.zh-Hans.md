@@ -11,7 +11,7 @@ v1 采用以下方向：
 - Node 运行时和 Docker 运行时共享同一套服务端实现，Docker 只是 Node 运行时的打包形式。
 - 裸机 Node 和 Docker 都属于官方支持的部署路径。
 - `@jant/core` 继续保留平台无关的 `createApp()`。
-- `@jant/core/node` 提供零配置启动入口 `start()`，屏蔽 `@hono/node-server` 等实现细节。
+- Node 运行时的零配置启动入口是 `jant start`，屏蔽 `@hono/node-server` 等实现细节。`start()` 等函数在 `src/node/index.ts`，构建为 `dist/node.js` 供 CLI 使用，不在包的 `exports` 里（0.8.0 起），不属于公开 API。
 - `createApp()` 保持无参数、无副作用；所有运行配置来自环境变量。
 - `.env` 文件由 Node 官方 `--env-file` / `--env-file-if-exists` 处理，Jant 不重复实现 dotenv 解析。
 - v1 采用混合命名策略：生态通用变量保持无前缀，Jant 专属变量使用 `JANT_` 前缀。
@@ -36,7 +36,7 @@ v1 目标：
 - 支持在裸机 Node 24 上直接运行 Jant。
 - 支持以 Docker image / compose 的方式部署同一套 Node 运行时。
 - 保持 Cloudflare 路线继续可用。
-- 让大多数用户通过 `jant start` 或 `@jant/core/node` 的 `start()` 即可运行，不需要自己处理 Hono Node server、静态资源和 SQLite 初始化。
+- 让大多数用户通过 `jant start` 即可运行，不需要自己处理 Hono Node server、静态资源和 SQLite 初始化。
 
 v1 原始非目标：
 
@@ -101,15 +101,11 @@ const app = createApp();
 - 不直接启动端口监听
 - 不绑定 Node 或 Cloudflare 专有启动逻辑
 
-### 4.2 `@jant/core/node`
+### 4.2 Node 入口（`src/node/index.ts`）
 
-新增 Node 入口：
-
-```ts
-import { start } from "@jant/core/node";
-
-start();
-```
+Node 入口构建为 `dist/node.js`，由 CLI 通过 `bin/lib/load-node-runtime.js` 直接加载。它最初作为
+`@jant/core/node` 发布，0.8.0 起从包的 `exports` 里移除：用户文档从未提到它，`jant start` 是公开的
+启动方式，冻结一个没人用的入口只会增加 1.0 的承诺面。以后需要嵌入式启动时，再加回来即可（属于新增）。
 
 `start()` 负责：
 
@@ -128,7 +124,7 @@ start();
 - `jant start`
 - `jant migrate`
 
-这两个命令内部直接复用 `@jant/core/node`。
+这两个命令内部直接复用 `dist/node.js`。
 
 ### 4.4 为什么不暴露 `@hono/node-server`
 
@@ -519,7 +515,7 @@ Node v1 需要把 multipart 从“R2 特性”改成“存储后端能力”：
 
 ### 9.1 HTTP server
 
-`@jant/core/node` 内部使用 `@hono/node-server`。
+Node 入口内部使用 `@hono/node-server`。
 
 公开 API 不暴露该依赖。
 

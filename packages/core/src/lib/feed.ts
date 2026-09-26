@@ -2,12 +2,6 @@
  * Default Feed Renderers
  *
  * Atom and Sitemap XML generators.
- * Theme authors can import these to extend/wrap the defaults:
- *
- * @example
- * ```typescript
- * import { defaultFeedRenderer } from "@jant/core/lib/feed";
- * ```
  */
 
 import type {

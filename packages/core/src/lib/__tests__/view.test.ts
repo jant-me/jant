@@ -10,7 +10,6 @@ import {
   toNavItemView,
   toNavItemViews,
   toSearchResultView,
-  toArchiveGroups,
 } from "../view.js";
 import type { MediaContext } from "../view.js";
 import type {
@@ -982,50 +981,5 @@ describe("toSearchResultView", () => {
     expect(view.post.pinned).toBe(false);
     expect(view.post.url).toBe("https://example.com");
     expect(view.post.permalink).toBe("/my-link");
-  });
-});
-
-// =============================================================================
-// toArchiveGroups
-// =============================================================================
-
-describe("toArchiveGroups", () => {
-  it("converts grouped map to ArchiveGroup array", () => {
-    const grouped = new Map<string, Post[]>();
-    grouped.set("2024-02", [
-      makePost({ id: UUID_1, publishedAt: 1706745600 }),
-      makePost({ id: UUID_2, publishedAt: 1706832000 }),
-    ]);
-    grouped.set("2024-01", [makePost({ id: UUID_3, publishedAt: 1704067200 })]);
-
-    const groups = toArchiveGroups(grouped, EMPTY_CTX);
-    expect(groups).toHaveLength(2);
-
-    expect(groups[0]).toHaveProperty("year", "2024");
-    expect(groups[0]).toHaveProperty("month", "02");
-    expect(groups[0]).toHaveProperty("label", "February 2024");
-    expect(groups[0]).toHaveProperty("posts");
-    expect(groups[0]?.posts).toHaveLength(2);
-
-    expect(groups[1]).toHaveProperty("year", "2024");
-    expect(groups[1]).toHaveProperty("month", "01");
-    expect(groups[1]).toHaveProperty("label", "January 2024");
-    expect(groups[1]?.posts).toHaveLength(1);
-  });
-
-  it("converts posts to PostView within groups", () => {
-    const grouped = new Map<string, Post[]>();
-    grouped.set("2024-02", [makePost({ id: UUID_1 })]);
-
-    const groups = toArchiveGroups(grouped, EMPTY_CTX);
-    const post = groups[0]?.posts[0];
-    expect(post).toBeDefined();
-    expect(post?.permalink).toBeDefined();
-    expect(post?.publishedAtFormatted).toBeDefined();
-  });
-
-  it("handles empty map", () => {
-    const groups = toArchiveGroups(new Map(), EMPTY_CTX);
-    expect(groups).toHaveLength(0);
   });
 });
