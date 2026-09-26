@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { run as runImportSite } from "../../../bin/commands/import-site.js";
+import { run as runImportSite } from "../../../bin/commands/site/import.js";
 import { run as runSiteExport } from "../../../bin/commands/site/export.js";
 import {
   CLI_API_TOKEN_ENV_VAR,
@@ -65,6 +65,7 @@ describe("site CLI token env", () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
 
     await runSiteExport([
+      "--url",
       "https://example.com",
       "--output",
       outputPath,
@@ -94,6 +95,7 @@ describe("site CLI token env", () => {
 
     await expect(
       runImportSite([
+        "--url",
         "https://example.com",
         "--path",
         "/definitely-missing-jant-import-source",
@@ -119,6 +121,7 @@ describe("site CLI token env", () => {
 
     await expect(
       runImportSite([
+        "--url",
         "https://example.com",
         "--path",
         "/definitely-missing-jant-import-source",

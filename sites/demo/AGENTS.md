@@ -25,12 +25,11 @@ Do not edit `node_modules/@jant/core`. If you need reusable product changes, mak
 ```bash
 npm run dev
 npm run deploy
-npm run export
 npm run reset-password
 
 npx jant migrate --local
-npx jant site export https://your-site.example --output ./jant-site-export.zip
-npx jant site import https://your-site.example --path ./jant-site-export.zip --dry-run
+npx jant site export --url https://your-site.example --output ./jant-site-export.zip
+npx jant site import --url https://your-site.example --path ./jant-site-export.zip --dry-run
 npx jant db export --output ./jant-export.sql
 ```
 

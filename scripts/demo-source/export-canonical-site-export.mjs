@@ -57,7 +57,7 @@ try {
 
   execFileSync(
     process.execPath,
-    [runJantScript, "site", "export", siteUrl, "--directory", tempOutputDir],
+    [runJantScript, "site", "export", "--url", siteUrl, "--output", tempOutputDir],
     {
       cwd: demoSourceDir,
       env: process.env,

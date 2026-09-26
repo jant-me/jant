@@ -12,7 +12,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { __test__ } from "../../bin/commands/import-site.js";
+import { __test__ } from "../../bin/commands/site/import.js";
 import {
   partitionEditableSettingUpdates,
   partitionImportableSettingUpdates,

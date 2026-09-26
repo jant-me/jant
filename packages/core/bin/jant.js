@@ -2,7 +2,8 @@
 
 import { readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { dirname, join, basename, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
+import { PUBLIC_COMMAND_GROUPS } from "./lib/command-registry.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const commandsDir = join(__dirname, "commands");
@@ -32,15 +33,19 @@ async function listCommands() {
   return commands;
 }
 
-async function showHelp() {
-  const commands = await listCommands();
+function showHelp() {
+  const width = Math.max(
+    ...PUBLIC_COMMAND_GROUPS.flatMap((group) =>
+      group.commands.map((command) => command.name.length),
+    ),
+  );
   console.log("Usage: jant <command> [options]");
-  console.log("");
-  console.log("Commands:");
-  for (const cmd of commands
-    .map((segments) => segments.join(" "))
-    .sort((a, b) => a.localeCompare(b))) {
-    console.log(`  ${cmd}`);
+  for (const group of PUBLIC_COMMAND_GROUPS) {
+    console.log("");
+    console.log(`${group.title}:`);
+    for (const command of group.commands) {
+      console.log(`  ${command.name.padEnd(width)}  ${command.summary}`);
+    }
   }
   console.log("");
   console.log("Run 'jant <command> --help' for command-specific help.");
@@ -49,7 +54,7 @@ async function showHelp() {
 const argv = process.argv.slice(2);
 const commandStart = argv.findIndex((arg) => !arg.startsWith("-"));
 if (commandStart === -1) {
-  await showHelp();
+  showHelp();
   process.exit(0);
 }
 
@@ -80,7 +85,7 @@ for (let length = positionalTail.length; length >= 1; length -= 1) {
 if (!matched) {
   console.error(`Unknown command: ${positionalTail[0]}`);
   console.error("");
-  await showHelp();
+  showHelp();
   process.exit(1);
 }
 

@@ -42,13 +42,13 @@
 `site export` 把站点导出为 Hugo 站点，格式可以是 ZIP 或目录。它和 `site import`、`site pull-media` 一样走站点的 HTTP API，能在任何可以访问该站点的机器上运行，不需要站点的 `wrangler.toml` 或 `DATABASE_URL`。在安装了 `@jant/core` 的 Jant 项目目录里运行（用 `create-jant` 创建的站点就是项目根目录），并提供 API token：在 **Settings → API Tokens** 生成，写进 `JANT_API_TOKEN` 或用 `--token` 传入。
 
 ```bash
-JANT_API_TOKEN=jnt_your_token npx jant site export https://your-site.example --output ./jant-site-export.zip
+JANT_API_TOKEN=jnt_your_token npx jant site export --url https://your-site.example --output ./jant-site-export.zip
 ```
 
-要查看导出结果，导出到目录再运行 Hugo：
+`--output` 的路径不以 `.zip` 结尾时，导出到这个目录，目录必须为空。要查看导出结果，导出到目录再运行 Hugo：
 
 ```bash
-npx jant site export https://your-site.example --directory ./jant-site
+npx jant site export --url https://your-site.example --output ./jant-site
 cd ./jant-site && hugo serve
 ```
 
@@ -183,13 +183,13 @@ npx jant site pull-media --path ./jant-site-export.zip --output ./pulled.zip
 `site import` 把一份导出（目录或 ZIP）导入 Jant 站点。先加 `--dry-run` 运行一遍：完整校验，不写任何数据。Dry run 不会连接站点，但 URL 仍然必填。
 
 ```bash
-npx jant site import https://your-site.example --path ./jant-site-export.zip --dry-run
+npx jant site import --url https://your-site.example --path ./jant-site-export.zip --dry-run
 ```
 
 然后正式导入，需要 `JANT_API_TOKEN` 或 `--token`：
 
 ```bash
-JANT_API_TOKEN=jnt_your_token npx jant site import https://your-site.example --path ./jant-site-export.zip
+JANT_API_TOKEN=jnt_your_token npx jant site import --url https://your-site.example --path ./jant-site-export.zip
 ```
 
 ### 冲突与约束
@@ -213,7 +213,7 @@ Jant 目前没有「只删内容、保留账号」的单独操作。导入失败
 如果不想把指向第三方 URL 的图片（imgur、Wikipedia 或任何 `https://` 链接）存进自己的存储，比如出于带宽或版权考虑，加 `--skip-remote-media`：
 
 ```bash
-npx jant site import https://your-site.example --path ./jant-site-export.zip --skip-remote-media
+npx jant site import --url https://your-site.example --path ./jant-site-export.zip --skip-remote-media
 ```
 
 加上后，相对路径（`/media/...`、`./foo.png`）属于源站自己的文件，仍会上传；绝对 URL（`https://...`、`//cdn...`）原样留在正文里。front matter `media:`、头像和文本附件始终会迁移。

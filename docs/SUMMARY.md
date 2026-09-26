@@ -17,6 +17,7 @@
 - [Deploy with Docker](deployment-docker.md)
 - [Use Hosted Jant](hosted.md)
 - [Configuration](configuration.md)
+- [Command line](cli.md)
 
 ## Use your site
 

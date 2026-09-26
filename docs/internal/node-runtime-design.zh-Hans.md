@@ -560,7 +560,7 @@ Node 运行时需要明确 `TRUST_PROXY` 语义：
 后续补齐为运行时感知：
 
 - `jant reset-password`
-- `jant export`
+- `jant db export`
 
 Cloudflare 命令与 Node 命令可以共存，但需要按运行时模式分流实现。
 

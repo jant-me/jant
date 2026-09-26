@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "jant migrate --local && node scripts/dev.mjs",
     "deploy": "jant deploy",
-    "reset-password": "jant reset-password",
-    "export": "jant export"
+    "reset-password": "jant reset-password"
   },
   "dependencies": {
     "@jant/core": "workspace:*"

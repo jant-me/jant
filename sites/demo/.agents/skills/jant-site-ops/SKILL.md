@@ -16,7 +16,6 @@ All commands below assume the current working directory is the site root created
 ```bash
 npm run dev
 npm run deploy
-npm run export
 npm run reset-password
 ```
 
@@ -24,7 +23,6 @@ What they do:
 
 - `npm run dev`: run local migrations, then start Wrangler dev
 - `npm run deploy`: run remote migrations and deploy to Cloudflare
-- `npm run export`: run the Jant export command configured by the site
 - `npm run reset-password`: generate a password reset token for the local site
 
 ## CLI Commands
@@ -32,8 +30,8 @@ What they do:
 ```bash
 npx jant migrate --local
 npx jant migrate --remote --config ./wrangler.toml
-npx jant site export https://your-site.example --output ./jant-site-export.zip
-npx jant site import https://your-site.example --path ./jant-site-export.zip --dry-run
+npx jant site export --url https://your-site.example --output ./jant-site-export.zip
+npx jant site import --url https://your-site.example --path ./jant-site-export.zip --dry-run
 npx jant site snapshot export --output ./jant-site-snapshot.zip
 npx jant site snapshot import --path ./jant-site-snapshot.zip --replace
 npx jant db export --output ./jant-export.sql
@@ -75,7 +73,7 @@ Use `assets prepare` when you need the publishable asset directory assembled loc
 
 ```bash
 export JANT_API_TOKEN=jnt_your_token
-npx jant site export https://your-site.example --output ./jant-site-export.zip
+npx jant site export --url https://your-site.example --output ./jant-site-export.zip
 ```
 
 For D1-oriented commands like snapshot export and `db export`, pass `--remote` and your Wrangler config when needed.

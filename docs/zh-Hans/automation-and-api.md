@@ -28,7 +28,7 @@ Jant 提供两条通道：
 
 ## 本机 CLI
 
-涉及本机环境和数据库的操作仍然走 CLI：`migrate`、`setup`、`deploy`、`reset-password`、`site snapshot`、`site export`、`site import`、`db export` 等。这些命令直接读写数据库或站点部署，不走 HTTP，也不需要 API token。详见 [导出与导入](export-and-import.md)。
+站点的初始化、部署、迁移和备份仍然走 CLI：`setup`、`migrate`、`deploy`、`reset-password`、`site export`、`site import`、`site snapshot`、`db export` 等。`site export` 和 `site import` 用 API token 调用站点的 API，其余命令直接读写数据库。详见 [命令行](cli.md)。
 
 内容自动化（发帖、上传、改设置）一律走 HTTP 或 MCP。
 

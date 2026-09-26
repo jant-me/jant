@@ -451,7 +451,7 @@ export function assertSnapshotDialectMatches(meta, targetDialect) {
         `Snapshot dialect mismatch: source is ${sourceDialect}, target is ${targetDialect}.`,
         "Snapshot db.sql is dialect-specific (BLOB literals, generated columns, FTS, etc.)",
         "and cannot be replayed across SQLite and Postgres safely.",
-        "Use `jant site export <url>` (HTTP, dialect-neutral) to move content between",
+        "Use `jant site export --url <url>` (HTTP, dialect-neutral) to move content between",
         "different DB engines.",
       ].join("\n"),
     );

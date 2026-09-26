@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { resolveSiteUrl } from "../lib/site-url.js";
+import { resolveSiteUrl } from "../../lib/site-url.js";
 
 const INTERNAL_ADMIN_TOKEN_ENV_VAR = "INTERNAL_ADMIN_TOKEN";
 const DEFAULT_BATCH_SIZE = 50;
@@ -70,7 +70,7 @@ export async function run(argv) {
   });
 
   if (values.help) {
-    console.log("Usage: jant search-reindex [--url <url>] [options]");
+    console.log("Usage: jant search reindex [--url <url>] [options]");
     console.log("");
     console.log("Rebuild the search index for every non-deleted post by");
     console.log("recomputing `post.body_text` from the stored TipTap body.");
@@ -99,7 +99,7 @@ export async function run(argv) {
     console.log(
       `  export ${INTERNAL_ADMIN_TOKEN_ENV_VAR}=your-internal-admin-token`,
     );
-    console.log("  jant search-reindex --url https://your-site.example");
+    console.log("  jant search reindex --url https://your-site.example");
     console.log("");
     console.log(
       "If --url is omitted, uses SITE_ORIGIN + SITE_PATH_PREFIX from env or wrangler.toml.",
@@ -114,7 +114,7 @@ export async function run(argv) {
   });
   if (!siteUrl) {
     console.error(
-      "Error: search-reindex requires --url or SITE_ORIGIN in the environment or wrangler.toml.",
+      "Error: search reindex requires --url or SITE_ORIGIN in the environment or wrangler.toml.",
     );
     process.exit(1);
   }
@@ -123,7 +123,7 @@ export async function run(argv) {
     values.token?.trim() || process.env[INTERNAL_ADMIN_TOKEN_ENV_VAR]?.trim();
   if (!token) {
     console.error(
-      `Error: search-reindex requires --token or ${INTERNAL_ADMIN_TOKEN_ENV_VAR}.`,
+      `Error: search reindex requires --token or ${INTERNAL_ADMIN_TOKEN_ENV_VAR}.`,
     );
     process.exit(1);
   }

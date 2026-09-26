@@ -20,7 +20,7 @@ export const internalSearchReindexRoutes = new Hono<Env>();
  * `body_text` changes.
  *
  * Idempotent. Callers loop with the returned `nextCursor` until `done: true`.
- * Used by the `jant search-reindex` CLI to backfill search indexes for
+ * Used by the `jant search reindex` CLI to backfill search indexes for
  * existing posts after changes to the text extraction logic (e.g. including
  * link mark hrefs so inline URLs become searchable).
  */

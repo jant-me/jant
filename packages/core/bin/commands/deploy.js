@@ -7,6 +7,7 @@ import {
   preparePublicAssets,
   resolvePackageClientRoot,
 } from "../lib/public-assets.js";
+import { findRenamedOption } from "../lib/renamed-arguments.js";
 import { resolveSitePathPrefix } from "../lib/site-url.js";
 import { resolveWranglerAssetsDirectory } from "../lib/wrangler-config.js";
 
@@ -53,6 +54,13 @@ function resolveDeployPlan(options) {
 
 export async function run(argv) {
   const { commandArgs, wranglerArgs } = splitArgs(argv);
+  const renamed = findRenamedOption("deploy", commandArgs, {
+    "--site-path-prefix": "--path-prefix",
+  });
+  if (renamed) {
+    console.error(`Error: ${renamed}`);
+    process.exit(1);
+  }
   const { values } = parseArgs({
     args: commandArgs,
     allowPositionals: true,
@@ -61,7 +69,7 @@ export async function run(argv) {
       config: { type: "string", short: "c", default: "wrangler.toml" },
       env: { type: "string", short: "e" },
       output: { type: "string", short: "o", default: DEFAULT_PUBLISH_DIR },
-      "site-path-prefix": { type: "string" },
+      "path-prefix": { type: "string" },
       database: { type: "string", default: "DB" },
       "skip-migrate": { type: "boolean", default: false },
     },
@@ -83,7 +91,7 @@ export async function run(argv) {
       `  -o, --output <path>     Publish directory for prefixed asset deploys (default: ${DEFAULT_PUBLISH_DIR})`,
     );
     console.log(
-      "      --site-path-prefix <path> Override SITE_PATH_PREFIX instead of reading config",
+      "      --path-prefix <path> Override SITE_PATH_PREFIX instead of reading config",
     );
     console.log(
       "      --database <name>   D1 binding name for migrations (default: DB)",
@@ -103,7 +111,7 @@ export async function run(argv) {
     config: values.config,
     env: values.env,
     output: values.output,
-    sitePathPrefix: values["site-path-prefix"],
+    sitePathPrefix: values["path-prefix"],
   });
 
   if (!values["skip-migrate"]) {

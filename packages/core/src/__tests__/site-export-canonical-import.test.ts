@@ -25,7 +25,7 @@ import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
-import { __test__ as importSite } from "../../bin/commands/import-site.js";
+import { __test__ as importSite } from "../../bin/commands/site/import.js";
 
 const CORE_DIR = resolve(import.meta.dirname, "../..");
 const CANONICAL_DIR = resolve(

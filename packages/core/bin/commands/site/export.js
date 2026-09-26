@@ -10,6 +10,10 @@ import {
   getCliApiToken,
 } from "../../lib/cli-api-token.js";
 import { pullSiteExportDirectory } from "../../lib/site-pull-media.js";
+import {
+  findPositionalUrl,
+  findRenamedOption,
+} from "../../lib/renamed-arguments.js";
 import { extractZipFile, writeDirectoryToZip } from "../../lib/zip-archive.js";
 
 /**
@@ -86,19 +90,16 @@ function logPullProgress(event) {
 }
 
 function printUsage() {
-  console.log("Usage: jant site export <url> [options]");
+  console.log("Usage: jant site export --url <url> [options]");
   console.log("");
-  console.log("Export a Jant site as a Hugo ZIP archive or directory.");
-  console.log("");
-  console.log("Arguments:");
-  console.log("  <url>           Jant site URL (required)");
+  console.log(
+    "Export a Jant site as a Hugo site, to a ZIP archive or a directory.",
+  );
   console.log("");
   console.log("Options:");
+  console.log("  --url           Jant site URL (required)");
   console.log(
-    "  --output, -o    Output ZIP path (default: jant-site-export.zip)",
-  );
-  console.log(
-    "  --directory, -d Export directly to a directory for hugo serve/debugging",
+    "  --output, -o    A .zip path, or an empty directory to export into (default: jant-site-export.zip)",
   );
   console.log(
     "  --pull-media    Download referenced media into static/media/ (default: on)",
@@ -108,26 +109,43 @@ function printUsage() {
   console.log("");
   console.log("Authentication:");
   console.log(`  export ${CLI_API_TOKEN_ENV_VAR}=jnt_your_token`);
-  console.log("  jant site export https://your-site.example");
+  console.log("  jant site export --url https://your-site.example");
   console.log("");
   console.log("Examples:");
-  console.log("  jant site export https://your-site.example -o ./export.zip");
   console.log(
-    "  jant site export https://your-site.example -d ./jant-site && cd ./jant-site && hugo serve",
+    "  jant site export --url https://your-site.example -o ./export.zip",
+  );
+  console.log(
+    "  jant site export --url https://your-site.example -o ./jant-site && cd ./jant-site && hugo serve",
   );
 }
 
+/**
+ * Whether an `--output` path names a ZIP archive rather than a directory.
+ *
+ * @param {string} output - The `--output` value
+ * @returns {boolean} True for a `.zip` path
+ */
+function isZipOutput(output) {
+  return output.toLowerCase().endsWith(".zip");
+}
+
 export async function run(argv) {
+  const renamed = findRenamedOption("site export", argv, {
+    "--directory": "--output <directory>",
+    "-d": "--output <directory>",
+  });
+  if (renamed) {
+    console.error(`Error: ${renamed}`);
+    process.exit(1);
+  }
+
   const noPullMedia = argv.includes("--no-pull-media");
   const filteredArgv = argv.filter((arg) => arg !== "--no-pull-media");
   const { values, positionals } = parseArgs({
     args: filteredArgv,
     allowPositionals: true,
     options: {
-      directory: {
-        type: "string",
-        short: "d",
-      },
       help: { type: "boolean", short: "h" },
       "pull-media": { type: "boolean" },
       output: {
@@ -136,6 +154,7 @@ export async function run(argv) {
         default: "jant-site-export.zip",
       },
       token: { type: "string" },
+      url: { type: "string" },
     },
   });
 
@@ -144,29 +163,22 @@ export async function run(argv) {
     process.exit(0);
   }
 
-  const url = positionals[0];
+  const positionalError = findPositionalUrl("site export", positionals);
+  if (positionalError) {
+    console.error(`Error: ${positionalError}`);
+    process.exit(1);
+  }
+
+  const url = values.url?.trim();
   if (!url) {
-    console.error("Error: site URL is required");
+    console.error("Error: --url is required");
     console.error("");
     printUsage();
     process.exit(1);
   }
-  if (positionals.length > 1) {
-    console.error(
-      `Error: unexpected extra arguments: ${positionals.slice(1).join(" ")}`,
-    );
-    process.exit(1);
-  }
-
-  if (values.directory && values.output !== "jant-site-export.zip") {
-    console.error("Error: use either --output or --directory, not both");
-    process.exit(1);
-  }
 
   const output = resolve(process.cwd(), values.output);
-  const outputDirectory = values.directory
-    ? resolve(process.cwd(), values.directory)
-    : null;
+  const outputDirectory = isZipOutput(values.output) ? null : output;
   const token = getCliApiToken(process.env, values.token);
   const pullMedia = values["pull-media"] ?? !noPullMedia;
 
@@ -187,12 +199,12 @@ export async function run(argv) {
         withFileTypes: true,
       }).filter((entry) => !entry.name.startsWith("."));
     } catch {
-      console.error(`Error: couldn't prepare directory ${values.directory}`);
+      console.error(`Error: couldn't prepare directory ${values.output}`);
       process.exit(1);
     }
     if (existingEntries.length > 0) {
       console.error(
-        `Error: directory is not empty: ${values.directory}. Choose an empty directory path.`,
+        `Error: directory is not empty: ${values.output}. Choose an empty directory path.`,
       );
       process.exit(1);
     }
@@ -236,8 +248,8 @@ export async function run(argv) {
     }
 
     if (outputDirectory) {
-      console.log(`Exported site from ${url} to ${values.directory}`);
-      console.log(`Preview with: cd ${values.directory} && hugo serve`);
+      console.log(`Exported site from ${url} to ${values.output}`);
+      console.log(`Preview with: cd ${values.output} && hugo serve`);
     } else {
       console.log(`Writing ${values.output}...`);
       await writeDirectoryToZip(workDir, output);

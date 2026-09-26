@@ -204,6 +204,7 @@ async function runSiteImport(siteUrl: string, devApiToken: string) {
       resolve(coreDir, "bin/jant.js"),
       "site",
       "import",
+      "--url",
       siteUrl,
       "--path",
       canonicalDir,

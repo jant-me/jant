@@ -42,13 +42,13 @@ Read https://example.com/skill.md and help me move my old blog here.
 `site export` writes the site as a Hugo site, in a ZIP or a directory. It works through the site's HTTP API, as `site import` and `site pull-media` do, so it runs from any machine that can reach the site, without the site's `wrangler.toml` or `DATABASE_URL`. Run it from a Jant project directory where `@jant/core` is installed (for a site created with `create-jant`, the project root), with an API token from **Settings → API Tokens** in `JANT_API_TOKEN` or passed with `--token`:
 
 ```bash
-JANT_API_TOKEN=jnt_your_token npx jant site export https://your-site.example --output ./jant-site-export.zip
+JANT_API_TOKEN=jnt_your_token npx jant site export --url https://your-site.example --output ./jant-site-export.zip
 ```
 
-To look at the result, export to a directory and run Hugo:
+An `--output` path that doesn't end in `.zip` is a directory, which must be empty. To look at the result, export to a directory and run Hugo:
 
 ```bash
-npx jant site export https://your-site.example --directory ./jant-site
+npx jant site export --url https://your-site.example --output ./jant-site
 cd ./jant-site && hugo serve
 ```
 
@@ -183,13 +183,13 @@ The next export or [GitHub Sync](github-sync.md) push overwrites `themes/jant/**
 `site import` reads an export, directory or ZIP, into a Jant site. Run it with `--dry-run` first: it checks everything and writes nothing. A dry run never contacts the site, but the URL is still required.
 
 ```bash
-npx jant site import https://your-site.example --path ./jant-site-export.zip --dry-run
+npx jant site import --url https://your-site.example --path ./jant-site-export.zip --dry-run
 ```
 
 Then import for real, with `JANT_API_TOKEN` or `--token`:
 
 ```bash
-JANT_API_TOKEN=jnt_your_token npx jant site import https://your-site.example --path ./jant-site-export.zip
+JANT_API_TOKEN=jnt_your_token npx jant site import --url https://your-site.example --path ./jant-site-export.zip
 ```
 
 ### Conflicts and constraints
@@ -213,7 +213,7 @@ By default, import copies all media to the target site: files declared in front 
 To leave images that point at third-party URLs (imgur, Wikipedia, any `https://` link) out of your storage, for bandwidth, copyright, or other reasons, pass `--skip-remote-media`:
 
 ```bash
-npx jant site import https://your-site.example --path ./jant-site-export.zip --skip-remote-media
+npx jant site import --url https://your-site.example --path ./jant-site-export.zip --skip-remote-media
 ```
 
 With the flag, relative paths (`/media/...`, `./foo.png`) are the source site's own files and still upload. Absolute URLs (`https://...`, `//cdn...`) stay in the body as they are. Front-matter `media:`, avatars, and text attachments always migrate.

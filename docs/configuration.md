@@ -439,7 +439,7 @@ Otherwise (e.g. a Workers deployment, or to register against a custom URL),
 register them manually:
 
 ```sh
-jant telegram register-webhooks --base-url https://your-site.example
+jant telegram register-webhooks --url https://your-site.example
 ```
 
 ## Settings page options

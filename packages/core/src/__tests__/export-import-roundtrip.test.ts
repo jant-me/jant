@@ -16,7 +16,7 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createExportService, type ExportFile } from "../services/export.js";
 import { parseFrontMatter } from "../lib/hugo-markdown.js";
-import { __test__ as importTestHelpers } from "../../bin/commands/import-site.js";
+import { __test__ as importTestHelpers } from "../../bin/commands/site/import.js";
 import type { Collection, Media, Post } from "../types.js";
 import {
   makeCollection,
