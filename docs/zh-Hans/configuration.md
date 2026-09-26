@@ -97,6 +97,21 @@ Config Editor 中实时修改；设为 `0` 可关闭延迟。重置运行时覆�
 页面中的 feed 自动发现、按钮和系统 RSS 导航也会隐藏。Worker 中已经缓存的成功
 响应最多还可能保留 60 秒。
 
+### Jant Discover（可选）
+
+| 变量                | 默认值                           | 说明                                                              |
+| ------------------- | -------------------------------- | ----------------------------------------------------------------- |
+| `DISCOVER`          | `off`                            | 这个部署上的站点默认让目录列出什么：`latest`、`featured` 或 `off` |
+| `DISCOVER_PING_URL` | 你的控制平面，或 Jant 自己的目录 | 站点向哪里提交自己；设为空则不向任何地方提交                      |
+
+Jant Discover 是 Jant 博客的公开目录。每个 Atom feed 都会声明站点是否加入，没有这个声明就不会被收录，所以从没开启过的站点不会出现在任何目录里，包括你没听说过的目录。
+
+`DISCOVER` 是这个部署上各站点的默认值，不是它们的最终选择。站点自己的「站点可见性」设置优先；这个设置还没选时，`NOINDEX=true` 也优先。自部署单个博客时不用管它；运营一个平台、希望旗下博客默认被收录（除非主人关闭）时，设 `DISCOVER=latest`。设了 `RSS_FEEDS_ENABLED=false` 的站点没有 feed 可读，一律按 `off` 处理。
+
+`DISCOVER_PING_URL` 指定站点向哪个目录提交自己。不设置时，运行了控制平面的部署向控制平面提交，其他部署向 Jant 自己的目录提交，两者不需要手动保持一致。设成别的地址就向那里提交，设为空字符串则不向任何地方提交。每次提交是一个请求，只带一个 feed 地址：站点加入时发送，退出后重新加入或点了「提交我的站点」时再发送一次。结果记入日志，也显示在站点的「站点可见性」设置里。
+
+feed 里声明了什么、第三方目录需要遵守什么，见 [Feed](feeds.md#discover)。
+
 ### 公开 API 访问（可选）
 
 | 变量                 | 默认值 | 说明                                      |
@@ -137,6 +152,16 @@ session 和 Bearer API token 仍可使用这些接口。包括 `/search` 在内�
 只有在搜索页或归档页真的需要和全站不同的分页大小时，才去设置 `SEARCH_PAGE_SIZE` 和 `ARCHIVE_PAGE_SIZE`。
 三个值都接受 `1–100` 的整数，也可以在 Config Editor 中实时修改；环境变量仍
 作为部署时的回退值。
+
+### 归档布局（可选）
+
+| 变量                     | 默认值 | 说明                                      |
+| ------------------------ | ------ | ----------------------------------------- |
+| `ARCHIVE_DEFAULT_LAYOUT` | `list` | `/archive` 打开时的布局：`list` 或 `grid` |
+
+`list` 显示完整帖子，和 Latest、Featured 的时间线一样；`grid` 显示网格目录。读者可以在页面上切换布局，带 `?layout=` 的链接不受这项设置影响，始终用链接里的布局。
+
+`?view=grid` 是这种链接以前的写法，仍然可用：`/archive` 会把它重定向到 `?layout=`，已保存的自定义归档 URL 两种写法都能读。
 
 ### 默认外观（可选）
 
@@ -392,6 +417,27 @@ location /_assets/ {
 为 `1–1500`，RSS 条目数范围为 `1–200`。重置运行时覆盖值后，会重新使用环境
 变量。
 
+### Telegram 机器人（可选）
+
+给 Telegram 机器人发消息就能发布笔记。在 **设置 → Telegram** 页面连接账号后，发给机器人的文字都会被发布。
+
+| 变量                      | 默认值 | 说明                                                               |
+| ------------------------- | ------ | ------------------------------------------------------------------ |
+| `TELEGRAM_BOT_TOKENS`     | _无_   | 平台统一管理的机器人池：`<bot_id>:<secret>` 格式的 token，逗号分隔 |
+| `TELEGRAM_WEBHOOK_SECRET` | _无_   | 为池中每个机器人注册 webhook 时共用的 `secret_token`               |
+
+两个都不设置，就用你自己的机器人：Telegram 设置页会显示 token 输入框，保存 token 时 Jant 自动注册 webhook。
+
+设置了它们就是统一管理的机器人池（托管服务，或者想用一个固定机器人的自部署站点）：token 输入框隐藏，用户用绑定码连接。第一个 token 是对外的机器人；多出来的 token 让同一个 Telegram 账号可以连接多个站点。
+
+托管模式下（设置了 `HOSTED_CONTROL_PLANE_BASE_URL`），Node 服务器启动时会为池中的机器人注册 webhook，指向控制平面的域名，不需要额外操作。这个检查是幂等的：重启只会重新注册 webhook 有偏差或新加入的机器人。
+
+其他情况（例如 Workers 部署，或要注册到自定义 URL）需要手动注册：
+
+```sh
+jant telegram register-webhooks --url https://your-site.example
+```
+
 ### 维护命令（可选）
 
 | 变量                   | 默认值 | 说明                                      |
@@ -425,6 +471,7 @@ token 调用站点，见 [命令行](cli.md#维护)。不设置时，`/api/inter
 | `DASHBOARD_LANGUAGE`         | 私有管理界面语言                          |
 | `TIME_ZONE`                  | 显示时区，例如 `UTC` 或 `Asia/Shanghai`   |
 | `MAIN_RSS_FEED`              | 决定 `/feed` 返回什么                     |
+| `ARCHIVE_DEFAULT_LAYOUT`     | `/archive` 打开时的布局                   |
 | `PAGE_SIZE`                  | 默认每页条目数（`1–100`）                 |
 | `SEARCH_PAGE_SIZE`           | 每页搜索结果数（`1–100`）                 |
 | `ARCHIVE_PAGE_SIZE`          | 每页归档帖子数（`1–100`）                 |
@@ -437,6 +484,7 @@ token 调用站点，见 [命令行](cli.md#维护)。不设置时，`/api/inter
 | `NOINDEX`                    | 请求搜索引擎不要收录这个站点              |
 | `PUBLIC_API_ENABLED`         | 是否允许无 session 或 API token 读取 JSON |
 | `RSS_FEEDS_ENABLED`          | 是否发布 Atom feeds 和内置 feed 入口      |
+| `DISCOVER`                   | 站点是否出现在 Jant Discover              |
 
 多语言站点还有两项设置：`ADDITIONAL_LANGUAGES` 和 `MULTILINGUAL_ENABLED`。它们由语言页写入，不建议手工设置——它们的值必须和帖子上标记的语言保持一致，见[多语言内容](multilingual.md)。
 

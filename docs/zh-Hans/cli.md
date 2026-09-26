@@ -197,7 +197,7 @@ npx jant site snapshot import --path ./jant-site-snapshot.zip --replace
 
 ### `jant uploads cleanup`
 
-清理已过期的上传会话，并彻底删除已过 [回收期](../backups.md#deleted-media-recycle-window) 的已删除媒体。
+清理已过期的上传会话，并彻底删除已过 [回收期](backups.md#已删除媒体的回收期) 的已删除媒体。
 
 | 选项                | 用途                                        |
 | ------------------- | ------------------------------------------- |
@@ -208,7 +208,7 @@ npx jant site snapshot import --path ./jant-site-snapshot.zip --replace
 
 ### `jant telegram register-webhooks`
 
-为 `TELEGRAM_BOT_TOKENS` 里的每个机器人注册 webhook。什么时候需要运行，见 [Telegram 机器人](../configuration.md#telegram-bot-optional)。
+为 `TELEGRAM_BOT_TOKENS` 里的每个机器人注册 webhook。什么时候需要运行，见 [Telegram 机器人](configuration.md#telegram-机器人可选)。
 
 | 选项    | 用途                                                                     |
 | ------- | ------------------------------------------------------------------------ |

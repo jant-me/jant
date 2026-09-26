@@ -4,19 +4,19 @@
 
 ## 承诺覆盖的范围
 
-| 范围       | 覆盖的内容                                                                                              | 参考                                         |
-| ---------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| HTTP API   | 接口、请求与响应字段及其行为，`/api/internal/*` 除外                                                    | [API 参考（英文）](../API.md)                |
-| MCP        | `/api/mcp` 的工具名和参数                                                                               | [自动化与 API](automation-and-api.md)        |
-| Feed       | Feed 地址、Atom 输出，以及 `https://jant.me/ns` 命名空间里的每个名字                                    | [读取 Jant feed（英文）](../feed-reading.md) |
-| 地址       | 帖子和合集的 URL、自定义 URL 与重定向、归档页的查询参数                                                 | [写作与内容组织](writing-and-organizing.md)  |
-| 命令行     | `jant --help` 列出的命令及其选项                                                                        | [命令行](cli.md)                             |
-| 配置       | 环境变量、设置项和保留路径                                                                              | [配置](configuration.md)                     |
-| 主题钩子   | 主题定制页列出的 CSS 变量、数据属性和 class                                                             | [主题定制](theming.md)                       |
-| 导出与快照 | 站点导出的 front matter 字段和 `data/jant.toml`，以及快照归档                                           | [导出与导入](export-and-import.md)           |
-| JavaScript | `@jant/core` 的 `createApp`                                                                             | —                                            |
-| 项目结构   | `create-jant` 项目的 `wrangler.toml` 读取的 `@jant/core` 内部路径：`dist/client` 和 `src/db/migrations` | [使用 Cloudflare 部署](deployment.md)        |
-| Docker     | `owenyoung/jant` 镜像、`/var/lib/jant` 数据目录和 `jant-migrate` 服务                                   | [使用 Docker 部署](deployment-docker.md)     |
+| 范围       | 覆盖的内容                                                                                              | 参考                                                           |
+| ---------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| HTTP API   | 接口、请求与响应字段及其行为，`/api/internal/*` 除外                                                    | [API 参考（英文）](../API.md)                                  |
+| MCP        | `/api/mcp` 的工具名和参数                                                                               | [自动化与 API](automation-and-api.md)                          |
+| Feed       | Feed 地址、Atom 输出，以及 `https://jant.me/ns` 命名空间里的每个名字                                    | [Feed](feeds.md)、[读取 Jant feed（英文）](../feed-reading.md) |
+| 地址       | 帖子和合集的 URL、自定义 URL 与重定向、归档页的查询参数                                                 | [写作与内容组织](writing-and-organizing.md)                    |
+| 命令行     | `jant --help` 列出的命令及其选项                                                                        | [命令行](cli.md)                                               |
+| 配置       | 环境变量、设置项和保留路径                                                                              | [配置](configuration.md)                                       |
+| 主题钩子   | 主题定制页列出的 CSS 变量、数据属性和 class                                                             | [主题定制](theming.md)                                         |
+| 导出与快照 | 站点导出的 front matter 字段和 `data/jant.toml`，以及快照归档                                           | [导出与导入](export-and-import.md)                             |
+| JavaScript | `@jant/core` 的 `createApp`                                                                             | —                                                              |
+| 项目结构   | `create-jant` 项目的 `wrangler.toml` 读取的 `@jant/core` 内部路径：`dist/client` 和 `src/db/migrations` | [使用 Cloudflare 部署](deployment.md)                          |
+| Docker     | `owenyoung/jant` 镜像、`/var/lib/jant` 数据目录和 `jant-migrate` 服务                                   | [使用 Docker 部署](deployment-docker.md)                       |
 
 ## 不在承诺范围内
 

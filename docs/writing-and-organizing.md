@@ -236,14 +236,15 @@ fetch it. See
 
 ## Custom URLs
 
-In addition to the default slug, Jant lets you set custom paths for posts, Collections, and archive pages, and lets you configure redirects. Manage all of them in the admin under **Settings → Advanced → Custom URLs** (the route is `/settings/custom-urls`).
+In addition to the default slug, Jant lets you set custom paths for posts and Collections, and lets you configure redirects. Manage all of them in the admin under **Settings → Advanced → Custom URLs** (the route is `/settings/custom-urls`).
 
-There are four types:
+There are three types:
 
 - **Post**: assign a new primary path to a specific post; the original slug auto-redirects with a 301.
 - **Collection**: assign a new primary path to a specific Collection; the original slug auto-redirects with a 301.
-- **Archive**: pin a set of archive filters to a fixed path — for example, `/quotes` actually renders `/archive?format=quote&visibility=public&view=list`.
 - **Redirect**: redirect any path to another path or to an external URL.
+
+Paths made with the retired **Archive** type keep working; see [Custom archive views (retired)](#custom-archive-views-retired).
 
 ### Setting a custom path for a post or Collection
 

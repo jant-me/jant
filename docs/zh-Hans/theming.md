@@ -91,21 +91,22 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 ## 排版变量
 
-| 变量                | 默认值                  | 作用                                       |
-| ------------------- | ----------------------- | ------------------------------------------ |
-| `--font-body`       | 系统 sans-serif         | 正文、输入框                               |
-| `--font-heading`    | 偏编辑风格的 serif 组合 | 帖子标题、h1–h3                            |
-| `--font-site-title` | 偏编辑风格的 serif 组合 | 站点 logo（标题栏）                        |
-| `--font-ui`         | 系统 sans-serif         | 按钮、导航、标签、徽章（不受字型主题影响） |
-| `--font-serif`      | 系统 serif + Noto 回退  | serif 强调文本                             |
-| `--font-blockquote` | `inherit`               | 引用块字族，默认跟随正文字体               |
-| `--font-mono`       | 系统 monospace          | 代码块                                     |
-| `--fw-light`        | 300                     | 轻量强调                                   |
-| `--fw-regular`      | 400                     | 正文                                       |
-| `--fw-medium`       | 500                     | 标签、激活导航                             |
-| `--fw-semibold`     | 600                     | 标题、按钮                                 |
-| `--fw-bold`         | 700                     | 强强调                                     |
-| `--fw-extrabold`    | 800                     | 站点 logo                                  |
+| 变量                  | 默认值                  | 作用                                       |
+| --------------------- | ----------------------- | ------------------------------------------ |
+| `--font-body`         | 系统 sans-serif         | 正文、输入框                               |
+| `--font-heading`      | 偏编辑风格的 serif 组合 | 帖子标题、h1–h3                            |
+| `--font-site-title`   | 偏编辑风格的 serif 组合 | 站点 logo（标题栏）                        |
+| `--font-ui`           | 系统 sans-serif         | 按钮、导航、标签、徽章（不受字型主题影响） |
+| `--font-serif`        | 系统 serif + Noto 回退  | serif 强调文本                             |
+| `--font-blockquote`   | `inherit`               | 引用块字族，默认跟随正文字体               |
+| `--font-mono`         | 系统 monospace          | 代码块                                     |
+| `--type-footnote-ref` | 正文字号的 `75%`        | 行内脚注引用的字号                         |
+| `--fw-light`          | 300                     | 轻量强调                                   |
+| `--fw-regular`        | 400                     | 正文                                       |
+| `--fw-medium`         | 500                     | 标签、激活导航                             |
+| `--fw-semibold`       | 600                     | 标题、按钮                                 |
+| `--fw-bold`           | 700                     | 强强调                                     |
+| `--fw-extrabold`      | 800                     | 站点 logo                                  |
 
 在 **Settings > Font Theme** 选字型主题后，`--font-heading`、`--font-body` 以及若干相关字重会随之切换。`--font-ui` 不在切换范围内——按钮、导航这些界面文字始终用系统 sans-serif，方便阅读。要进一步调整，仍然可以在 Custom CSS 里覆盖任意变量。
 
@@ -122,11 +123,13 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 ## 布局变量
 
-| 变量                  | 默认值   | 作用                 |
-| --------------------- | -------- | -------------------- |
-| `--content-max-width` | `42rem`  | 内容最大宽度         |
-| `--site-padding`      | `1.5rem` | 横向内边距           |
-| `--content-gap`       | `1rem`   | 信息流条目之间的间距 |
+| 变量                      | 默认值   | 作用                     |
+| ------------------------- | -------- | ------------------------ |
+| `--content-max-width`     | `42rem`  | 内容最大宽度             |
+| `--site-padding`          | `1.5rem` | 横向内边距               |
+| `--content-gap`           | `1rem`   | 信息流条目之间的间距     |
+| `--layout-sidenote-width` | `50%`    | 宽屏下脚注侧栏的宽度     |
+| `--layout-sidenote-gap`   | `10%`    | 正文和脚注侧栏之间的间距 |
 
 ### 示例：更宽的内容区
 
@@ -135,6 +138,26 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
   --content-max-width: 55rem;
 }
 ```
+
+### 侧注与缩进块
+
+脚注使用语义化的 HTML：正文里是上标的脚注引用链接，正文之后是原生的有序尾注列表。在详情页和公开的时间线列表里，Jant 按每篇帖子的实际容器（而不只是视口）判断右侧有没有空间放 Tufte 风格的侧栏。容器至少 `56rem` 宽、脚注放得下又不会溢出太多时，一小段渐进增强的脚本会把现有的尾注列表移到侧栏。时间线里的每一项单独测量。容器较窄或脚注较密、打印、不运行 JavaScript 的客户端以及旧浏览器，都保留底部尾注。
+
+这段脚本读取每个脚注引用的实际位置，而不是把浮动元素锚定在所在的块上，所以引用块或其他正文块带内边距时，不再需要额外的锚点偏移。侧栏编号和脚注文字同样大小、同一基线。侧栏的比例和语义颜色用主题 token 调整：
+
+```css
+:root {
+  --layout-sidenote-width: 42%;
+  --layout-sidenote-gap: 8%;
+  --type-footnote-ref: calc(var(--type-body-size) * 0.75);
+  --site-footnote-text: var(--site-reading-caption);
+  --site-footnote-marker: var(--site-text-secondary);
+}
+```
+
+侧栏在视觉上隐藏返回箭头，因为每条脚注已经紧挨着它第一次被引用的位置。返回链接仍然保留在语义 HTML 里，供底部尾注和辅助技术使用，键盘用户聚焦到它时会显示出来。
+
+主题选择器优先用 `.footnote-endnotes`、`.footnote-list`、`.footnote`、`.footnote-ref` 和 `.footnote-backlinks`。片段 ID 不透明，不同的 HTML 格式版本之间可能变化，不要给它们的压缩哈希写样式，也不要解析它。
 
 ## 卡片与媒体
 
