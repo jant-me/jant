@@ -37,3 +37,4 @@
 
 - [常见问题](faq.md)
 - [API 参考（英文）](../API.md)
+- [读取 Jant feed（英文）](../feed-reading.md)

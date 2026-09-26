@@ -2,7 +2,7 @@
 
 Jant's Atom feed carries enough to redraw the site's own timeline: what kind of post each entry is, the text as the timeline cuts it, the attachments with their dimensions, and the shape of a thread. Hand this page to whoever writes the consumer — an app, a directory, a script, an AI given the feed and asked to render it.
 
-It says what arrives and how to read it. Why each field is shaped that way is in [the feed contract](feed-contract.md); feed addresses and settings are in [Feeds](../feeds.md).
+It says what arrives and how to read it; feed addresses and settings are in [Feeds](feeds.md). The elements and attributes on this page change only in a major release. New ones can appear in any release, so ignore an element or attribute you don't recognize.
 
 ## Namespaces
 

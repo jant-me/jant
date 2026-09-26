@@ -3,7 +3,7 @@
 This document defines what a Jant Atom entry carries and who each field is for.
 
 A consumer-facing handout — what arrives and how to read it, without the
-reasoning — is in [Reading a Jant feed](feed-reading.md).
+reasoning — is in [Reading a Jant feed](../feed-reading.md).
 
 The implementation lives in:
 
