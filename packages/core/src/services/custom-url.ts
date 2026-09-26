@@ -108,7 +108,7 @@ export function createCustomUrlService(
               : eq(pathRegistry.collectionId, targetId),
           ),
         )
-        .orderBy(desc(pathRegistry.createdAt))
+        .orderBy(desc(pathRegistry.createdAt), desc(pathRegistry.id))
         .limit(1);
       return result[0] ? toCustomUrl(result[0]) : null;
     },
@@ -228,7 +228,7 @@ export function createCustomUrlService(
         .where(
           and(eq(pathRegistry.siteId, siteId), ne(pathRegistry.kind, "slug")),
         )
-        .orderBy(desc(pathRegistry.createdAt))
+        .orderBy(desc(pathRegistry.createdAt), desc(pathRegistry.id))
         .$dynamic();
       if (opts?.limit !== undefined) q = q.limit(opts.limit);
       if (opts?.offset !== undefined) q = q.offset(opts.offset);

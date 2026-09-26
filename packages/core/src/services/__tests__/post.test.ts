@@ -13,6 +13,7 @@ import type { Database } from "../../db/index.js";
 import { createPathService } from "../path.js";
 import type { MediaService } from "../media.js";
 import { POST_BODY_HTML_VERSION } from "../../lib/post-body-html.js";
+import { ValidationError } from "../../lib/errors.js";
 import type BetterSqlite3 from "better-sqlite3";
 
 function createMockStorage() {
@@ -88,6 +89,79 @@ describe("PostService", () => {
       expect(post.pinnedAt).toBeNull();
       expect(post.bodyHtml).toContain("<p>Hello world</p>");
       expect(post.threadId).toBe(post.id);
+    });
+
+    it("stores an empty list item with the paragraph the schema requires", async () => {
+      const post = await postService.create({
+        format: "note",
+        body: JSON.stringify({
+          type: "doc",
+          content: [
+            {
+              type: "orderedList",
+              content: [
+                { type: "listItem", content: [] },
+                {
+                  type: "listItem",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [{ type: "text", text: "Install" }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      });
+
+      const stored = JSON.parse(post.body ?? "");
+      expect(stored.content[0].content[0]).toEqual({
+        type: "listItem",
+        content: [{ type: "paragraph" }],
+      });
+    });
+
+    it("restores the creation and edit times an import passes", async () => {
+      const published = await postService.create({
+        format: "note",
+        bodyMarkdown: "Moved from another site",
+        publishedAt: 1700000500,
+        createdAt: 1700000000,
+        updatedAt: 1700009000,
+      });
+      expect(published).toMatchObject({
+        createdAt: 1700000000,
+        updatedAt: 1700009000,
+        lastActivityAt: 1700000500,
+      });
+
+      const draft = await postService.create({
+        format: "note",
+        status: "draft",
+        bodyMarkdown: "Unfinished",
+        createdAt: 1700000000,
+        updatedAt: 1700004000,
+      });
+      expect(draft).toMatchObject({
+        createdAt: 1700000000,
+        updatedAt: 1700004000,
+        lastActivityAt: 1700004000,
+      });
+
+      const backdated = await postService.create({
+        format: "note",
+        bodyMarkdown: "Only a creation time",
+        createdAt: 1700000000,
+      });
+      expect(backdated.updatedAt).toBe(1700000000);
+    });
+
+    it("rejects a body that isn't TipTap JSON", async () => {
+      await expect(
+        postService.create({ format: "note", body: "not json" }),
+      ).rejects.toThrow(ValidationError);
     });
 
     it("creates a link post with commentary", async () => {

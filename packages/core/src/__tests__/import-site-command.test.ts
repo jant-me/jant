@@ -11,7 +11,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { __test__ } from "../../bin/commands/import-site.js";
 import {
   partitionEditableSettingUpdates,
@@ -32,9 +32,18 @@ const {
   buildPostPayloadFromBundle,
   getRootAliasPathsForImport,
   uploadMediaList,
+  uploadBundleResources,
+  normalizeImportedNavItems,
+  buildNavItemCreateRequest,
+  buildSmartCollectionCreateRequest,
+  normalizeImportedCollectionDirectory,
+  syncImportedCollectionDirectory,
+  normalizeImportedCustomUrls,
+  buildImportedAttachments,
   normalizeTextAttachmentSpec,
   isAbsoluteImportUrl,
   shouldImportReplyQuietly,
+  getNextThreadTail,
 } = __test__;
 
 async function writeFileTree(
@@ -356,6 +365,356 @@ describe("Hugo import CLI helpers", () => {
     expect(result.urlMap.get("/media/inline.png")).toBe(
       "https://target.example/media/med_new.png",
     );
+  });
+
+  it("rebuilds navigation with its placement, labels, and targets", () => {
+    const siteConfig = {
+      extra: {
+        jant: {
+          nav: [
+            {
+              type: "system",
+              label: "All",
+              url: "/archive/",
+              system_key: "archive",
+              placement: "header",
+              custom_label: "All",
+            },
+            {
+              type: "collection",
+              label: "Now",
+              url: "/now",
+              system_key: "",
+              placement: "header",
+              collection_slug: "now",
+            },
+            // An export from before `collection_slug`: the URL names it.
+            {
+              type: "collection",
+              label: "Books",
+              url: "/books/",
+              system_key: "",
+              placement: "more",
+            },
+            {
+              type: "page",
+              label: "About",
+              url: "/about",
+              system_key: "",
+              placement: "more",
+              post_slug: "about",
+            },
+            {
+              type: "link",
+              label: "More Quotes",
+              url: "https://jant.me/quotes",
+              system_key: "",
+              placement: "more",
+            },
+            {
+              type: "collection",
+              label: "Gone",
+              url: "/gone",
+              system_key: "",
+              placement: "header",
+              collection_slug: "gone",
+            },
+            {
+              type: "smart_collection",
+              label: "Thoughts",
+              url: "/thoughts",
+              system_key: "",
+              placement: "header",
+              smart_collection_slug: "thoughts",
+            },
+          ],
+        },
+      },
+    };
+    const targets = {
+      collectionSlugToId: new Map([
+        ["now", "col-now"],
+        ["books", "col-books"],
+      ]),
+      smartCollectionSlugToId: new Map([["thoughts", "smc-thoughts"]]),
+      postSlugToId: new Map([["about", "pst-about"]]),
+    };
+
+    const requests = normalizeImportedNavItems(siteConfig).items.map((item) =>
+      buildNavItemCreateRequest(item, targets),
+    );
+
+    expect(requests.map((request) => request.payload)).toEqual([
+      { type: "system", systemKey: "archive", placement: "header" },
+      { type: "collection", collectionId: "col-now", placement: "header" },
+      { type: "collection", collectionId: "col-books", placement: "more" },
+      { type: "page", postId: "pst-about", placement: "more" },
+      {
+        type: "link",
+        label: "More Quotes",
+        url: "https://jant.me/quotes",
+        placement: "more",
+      },
+      { type: "link", label: "Gone", url: "/gone", placement: "header" },
+      {
+        type: "smart_collection",
+        smartCollectionId: "smc-thoughts",
+        placement: "header",
+      },
+    ]);
+    expect(requests[0]?.customLabel).toBe("All");
+    expect(requests[5]?.warning).toContain('"Gone"');
+  });
+
+  it("recreates a smart collection from its exported conditions", () => {
+    const bundle = {
+      slug: "pictures",
+      frontMatter: {
+        title: "Pictures",
+        type: "smart_collection",
+        summary_text: "Photos from the ideas collection.",
+        sort_order: "rating_desc",
+        display_layout: "grid",
+        selection: {
+          collection: "ideas",
+          media: ["image", "video"],
+          year: 2025,
+          title: false,
+        },
+      },
+    };
+
+    expect(
+      buildSmartCollectionCreateRequest(
+        bundle,
+        new Map([["ideas", "col-ideas"]]),
+      ),
+    ).toEqual({
+      payload: {
+        slug: "pictures",
+        title: "Pictures",
+        description: "Photos from the ideas collection.",
+        selection: {
+          collection: ["col-ideas"],
+          media: ["image", "video"],
+          year: 2025,
+          title: false,
+        },
+        sort: "rating_desc",
+        layout: "grid",
+      },
+      warning: null,
+    });
+
+    // Without the collection it names, the smart collection would gather
+    // every post the other conditions match; it is skipped instead.
+    const skipped = buildSmartCollectionCreateRequest(bundle, new Map());
+    expect(skipped.payload).toBeNull();
+    expect(skipped.warning).toContain('"ideas"');
+
+    expect(
+      buildSmartCollectionCreateRequest(
+        { slug: "everything", frontMatter: { type: "smart_collection" } },
+        new Map(),
+      ).payload,
+    ).toEqual({ slug: "everything", title: "everything", selection: {} });
+  });
+
+  it("finds smart collection pages in the content tree", async () => {
+    await writeFileTree(tempDir, {
+      "content/thoughts/_index.md": [
+        "---",
+        'title: "Thoughts"',
+        'slug: "thoughts"',
+        'type: "smart_collection"',
+        "selection:",
+        '  format: "note"',
+        "---",
+        "",
+      ].join("\n"),
+      "content/ideas/_index.md": [
+        "---",
+        'title: "Ideas"',
+        'type: "collection"',
+        "---",
+        "",
+      ].join("\n"),
+    });
+
+    const { rootBundles, collectionBundles, smartCollectionBundles } =
+      await walkHugoContent(tempDir);
+
+    expect(rootBundles).toHaveLength(0);
+    expect(collectionBundles.map((bundle) => bundle.slug)).toEqual(["ideas"]);
+    expect(smartCollectionBundles).toMatchObject([
+      { slug: "thoughts", frontMatter: { selection: { format: "note" } } },
+    ]);
+  });
+
+  // Creating a collection or smart collection gives it a directory row;
+  // dividers and links are rebuilt. The sync keeps the first kind and puts
+  // every row in the exported order.
+  it("restores the directory order with smart collections in it", async () => {
+    let rows = [
+      { id: "dir-col", type: "collection", collectionId: "col-ideas" },
+      {
+        id: "dir-smc",
+        type: "smart_collection",
+        smartCollectionId: "smc-thoughts",
+      },
+      { id: "dir-old-divider", type: "divider" },
+    ];
+    let nextId = 0;
+    const target = {
+      async listCollectionDirectoryItems() {
+        return rows;
+      },
+      async deleteCollectionDirectoryItem(id: string) {
+        rows = rows.filter((row) => row.id !== id);
+      },
+      async createCollectionDirectoryItem(data: { type: string }) {
+        const row = { id: `dir-new-${nextId++}`, type: data.type };
+        rows = [...rows, row];
+        return row;
+      },
+      async moveCollectionDirectoryItem(
+        id: string,
+        afterId: string | null,
+        beforeId: string | null,
+      ) {
+        const moving = rows.find((row) => row.id === id)!;
+        const rest = rows.filter((row) => row.id !== id);
+        const index =
+          afterId !== null
+            ? rest.findIndex((row) => row.id === afterId) + 1
+            : beforeId !== null
+              ? rest.findIndex((row) => row.id === beforeId)
+              : 0;
+        rest.splice(index, 0, moving);
+        rows = rest;
+      },
+    };
+    const directory = normalizeImportedCollectionDirectory({
+      extra: {
+        jant: {
+          collections_directory: [
+            { type: "smart_collection", slug: "thoughts" },
+            { type: "divider", label: "Topics" },
+            { type: "collection", slug: "ideas" },
+          ],
+        },
+      },
+    });
+
+    const result = await syncImportedCollectionDirectory(
+      target,
+      directory,
+      new Map([["ideas", "col-ideas"]]),
+      new Map([["thoughts", "smc-thoughts"]]),
+    );
+
+    expect(rows.map((row) => row.id)).toEqual([
+      "dir-smc",
+      "dir-new-0",
+      "dir-col",
+    ]);
+    expect(result).toMatchObject({ created: 1, deleted: 1 });
+  });
+
+  // A reply the site holds as older than its root (moved into the Thread,
+  // or dated by publish time in an older export) doesn't end the Thread, and
+  // the API refuses a reply to anything but the end.
+  it("follows the Thread's end the way the site reads it", () => {
+    const root = { id: "pst_root", createdAt: 1_000 };
+    const older = { id: "pst_older", createdAt: 500 };
+    const tied = { id: "pst_tied", createdAt: 1_000 };
+    const newer = { id: "pst_newer", createdAt: 2_000 };
+
+    expect(getNextThreadTail(root, older)).toBe(root);
+    expect(getNextThreadTail(root, tied)).toBe(tied);
+    expect(getNextThreadTail(tied, newer)).toBe(newer);
+    expect(getNextThreadTail(root, null)).toBe(root);
+  });
+
+  it("reads the redirects and archive URLs an export lists", () => {
+    expect(
+      normalizeImportedCustomUrls({
+        extra: {
+          jant: {
+            custom_urls: [
+              { path: "atom.xml", kind: "redirect", to: "/feed", status: 301 },
+              {
+                path: "/inspires",
+                kind: "redirect",
+                to: "/inspired",
+                status: 302,
+              },
+              { path: "links", kind: "archive", archive_query: "format=link" },
+              { path: "", kind: "redirect", to: "/x" },
+            ],
+          },
+        },
+      }),
+    ).toEqual([
+      { path: "atom.xml", kind: "redirect", to: "/feed", status: 301 },
+      { path: "inspires", kind: "redirect", to: "/inspired", status: 302 },
+      { path: "links", kind: "archive", archiveQuery: "format=link" },
+    ]);
+  });
+
+  it("uploadMediaList keeps a body image as a link when its upload fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const target = {
+      uploadMedia: async () => {
+        throw new Error("Couldn't read https://gone.example/a.png");
+      },
+    };
+
+    const result = await uploadMediaList(
+      [{ src: "https://gone.example/a.png" }],
+      target,
+      { base_url: "https://origin.example/" },
+      tempDir,
+    );
+
+    expect(result.uploaded).toBe(0);
+    expect(result.urlMap.size).toBe(0);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("kept https://gone.example/a.png as a link"),
+    );
+    warn.mockRestore();
+  });
+
+  it("uploadBundleResources stops when a post's own file can't be uploaded", async () => {
+    const target = {
+      uploadMedia: async () => {
+        throw new Error("The site refused /media/a.webp: HTTP 413");
+      },
+    };
+
+    await expect(
+      uploadBundleResources(
+        [{ src: "/media/a.webp", srcFilePath: join(tempDir, "a.webp") }],
+        target,
+      ),
+    ).rejects.toThrow("Couldn't upload /media/a.webp: The site refused");
+  });
+
+  it("buildImportedAttachments stops when an attachment can't be uploaded", async () => {
+    const target = {
+      uploadMedia: async () => {
+        throw new Error("The site refused /media/b.jpg: HTTP 500");
+      },
+    };
+
+    await expect(
+      buildImportedAttachments(
+        [{ src: "https://origin.example/media/b.jpg" }],
+        target,
+        { base_url: "https://origin.example/" },
+        tempDir,
+      ),
+    ).rejects.toThrow("Couldn't upload https://origin.example/media/b.jpg");
   });
 
   it("isAbsoluteImportUrl distinguishes absolute URLs from relative paths for --skip-remote-media", () => {

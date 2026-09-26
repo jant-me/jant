@@ -1,14 +1,26 @@
-import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { createWriteStream, mkdirSync, readdirSync } from "node:fs";
+import { mkdir, mkdtemp, rename, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { parseArgs } from "node:util";
-import { unzipSync } from "fflate";
 import {
   CLI_API_TOKEN_ENV_VAR,
   getCliApiToken,
 } from "../../lib/cli-api-token.js";
-import { pullSiteExportZipBytes } from "../../lib/site-pull-media.js";
+import { pullSiteExportDirectory } from "../../lib/site-pull-media.js";
+import { extractZipFile, writeDirectoryToZip } from "../../lib/zip-archive.js";
 
-async function exportRemoteSite(url, token) {
+/**
+ * Stream the site's export archive to a file. The site streams it too, and a
+ * site that bundles its media answers with gigabytes.
+ *
+ * @param {string} url - Site URL
+ * @param {string} token - API token
+ * @param {string} destination - File to write
+ */
+async function downloadSiteArchive(url, token, destination) {
   const response = await fetch(`${url.replace(/\/$/, "")}/api/export/hugo`, {
     method: "POST",
     headers: {
@@ -16,12 +28,16 @@ async function exportRemoteSite(url, token) {
     },
   });
 
-  if (!response.ok) {
+  if (!response.ok || !response.body) {
     const text = await response.text();
     throw new Error(`HTTP ${response.status}: ${text}`);
   }
 
-  return new Uint8Array(await response.arrayBuffer());
+  await mkdir(dirname(destination), { recursive: true });
+  await pipeline(
+    Readable.fromWeb(response.body),
+    createWriteStream(destination),
+  );
 }
 
 function describeProgressUrl(value) {
@@ -161,22 +177,8 @@ export async function run(argv) {
     process.exit(1);
   }
 
-  console.log(`Exporting site from ${url}...`);
-
-  const zipBytes = await exportRemoteSite(url, token);
-  let zip = zipBytes;
-  let pullStats = null;
-
-  if (pullMedia) {
-    console.log("Preparing pull-media export ZIP...");
-    const pulled = await pullSiteExportZipBytes(zip, {
-      assetLoader: null,
-      logger: logPullProgress,
-    });
-    zip = pulled.zipBytes;
-    pullStats = pulled.stats;
-  }
-
+  // Fail before the download, not after it: pulling a real site's media
+  // takes minutes.
   if (outputDirectory) {
     let existingEntries = [];
     try {
@@ -194,20 +196,55 @@ export async function run(argv) {
       );
       process.exit(1);
     }
+  }
 
-    console.log(`Writing export directory ${values.directory}...`);
-    const files = unzipSync(zip);
-    for (const [relativePath, bytes] of Object.entries(files)) {
-      const fullPath = resolve(outputDirectory, relativePath);
-      mkdirSync(dirname(fullPath), { recursive: true });
-      writeFileSync(fullPath, Buffer.from(bytes));
-    }
-    console.log(`Exported site from ${url} to ${values.directory}`);
-    console.log(`Preview with: cd ${values.directory} && hugo serve`);
-  } else {
+  console.log(`Exporting site from ${url}...`);
+
+  // Nothing to add: the site's archive is the export.
+  if (!pullMedia && !outputDirectory) {
     console.log(`Writing ${values.output}...`);
-    writeFileSync(output, Buffer.from(zip));
+    const partial = `${output}.partial`;
+    try {
+      await downloadSiteArchive(url, token, partial);
+      await rename(partial, output);
+    } catch (error) {
+      await rm(partial, { force: true });
+      throw error;
+    }
     console.log(`Exported site from ${url} to ${values.output}`);
+    return;
+  }
+
+  // Unpacked to disk and media downloaded next to it, so the export never
+  // holds more than one media file in memory.
+  const tempDir = await mkdtemp(join(tmpdir(), "jant-site-export-"));
+  const workDir = outputDirectory ?? join(tempDir, "site");
+  let pullStats = null;
+
+  try {
+    const archivePath = join(tempDir, "site.zip");
+    await downloadSiteArchive(url, token, archivePath);
+    await extractZipFile(archivePath, workDir);
+    await rm(archivePath, { force: true });
+
+    if (pullMedia) {
+      console.log("Pulling media...");
+      pullStats = await pullSiteExportDirectory(workDir, {
+        assetLoader: null,
+        logger: logPullProgress,
+      });
+    }
+
+    if (outputDirectory) {
+      console.log(`Exported site from ${url} to ${values.directory}`);
+      console.log(`Preview with: cd ${values.directory} && hugo serve`);
+    } else {
+      console.log(`Writing ${values.output}...`);
+      await writeDirectoryToZip(workDir, output);
+      console.log(`Exported site from ${url} to ${values.output}`);
+    }
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
   }
 
   if (pullStats) {

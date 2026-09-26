@@ -20,6 +20,7 @@ const FRONT_MATTER_KEY_ORDER = [
   "type",
   "draft",
   "aliases",
+  "feed_id",
   "build",
 
   // Post payload
@@ -27,12 +28,15 @@ const FRONT_MATTER_KEY_ORDER = [
   "status",
   "visibility",
   "summary_text",
+  "truncated",
   "link_url",
   "source_name",
   "source_url",
   "quote_text",
   "rating",
   "featured_at",
+  "featured_post_ids",
+  "featured_sort_at",
   "pinned_at",
 
   // Bookkeeping / attachments

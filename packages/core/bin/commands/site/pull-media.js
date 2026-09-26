@@ -1,10 +1,9 @@
-import { readFileSync, writeFileSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import {
   pullSiteExportDirectory,
-  pullSiteExportZipBytes,
+  pullSiteExportZipFile,
 } from "../../lib/site-pull-media.js";
 
 function describeProgressUrl(value) {
@@ -102,13 +101,10 @@ export async function run(argv) {
   }
 
   const outputPath = resolve(process.cwd(), values.output || values.path);
-  const inputBytes = new Uint8Array(readFileSync(inputPath));
   console.log(`Pulling media in ${values.path}...`);
-  const { zipBytes, stats } = await pullSiteExportZipBytes(inputBytes, {
+  const stats = await pullSiteExportZipFile(inputPath, outputPath, {
     logger: logPullProgress,
   });
-  console.log(`Writing ${values.output || values.path}...`);
-  writeFileSync(outputPath, Buffer.from(zipBytes));
   console.log(
     `Pulled media in ${values.path} -> ${values.output || values.path}`,
   );

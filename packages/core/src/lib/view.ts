@@ -47,7 +47,7 @@ import {
 } from "./summary.js";
 import { renderTiptapDocumentAroundBoundary } from "./tiptap-render.js";
 import { highlightText } from "./search-snippet.js";
-import { isFullUrl, toPublicPath, toSameSitePath } from "./url.js";
+import { getPostPath, isFullUrl, toPublicPath, toSameSitePath } from "./url.js";
 
 // =============================================================================
 // Media Context
@@ -260,7 +260,7 @@ export function toPostView(
 ): PostView {
   const id = post.id;
   const permalink = toPublicPath(
-    aliasPath ?? `/${post.slug}`,
+    getPostPath(post.slug, aliasPath),
     ctx.sitePathPrefix,
   );
   const timeZone = ctx.timeZone ?? "UTC";

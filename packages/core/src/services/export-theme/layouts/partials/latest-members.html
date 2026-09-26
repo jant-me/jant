@@ -1,0 +1,48 @@
+{{- /*
+  The Thread roots on Latest, in the order Jant lists them: the home page
+  (`assembleTimeline`, `posts.list`) or `/latest/feed`
+  (`latestFeedSelection` with `ignorePinnedSort`).
+
+  Takes a dict: `feed`, true for the Atom feed.
+
+  A root is on Latest when it is published and public: Hidden from Latest
+  and private roots are left out, as are drafts, which are exported as Hugo
+  drafts and never reach here; status and visibility are checked again so a
+  `--buildDrafts` preview agrees with Jant.
+
+  Order, each key after the one before it:
+    pinned       page only: pinned roots first, most recently pinned first
+    activity     Thread activity (`last_activity_at`, else `date`), newest
+                 first, so a Thread that gains a reply comes back up; a quiet
+                 reply doesn't move it, because Jant doesn't count it
+    ID           newest first, so no two roots tie
+
+  `src/__tests__/export-feed-order.test.ts` builds a site with Hugo and
+  compares the page and the feed with Jant's.
+*/ -}}
+{{- $feed := .feed -}}
+{{- $roots := where (where site.Pages "Type" "post") "Kind" "section" -}}
+{{- $keyed := slice -}}
+{{- range $roots -}}
+  {{- $params := .Params -}}
+  {{- if and (eq ($params.status | default "published") "published") (eq $params.visibility "public") -}}
+    {{- $pinned := 0 -}}
+    {{- if not $feed -}}
+      {{- with $params.pinned_at -}}{{- $pinned = (time.AsTime .).Unix -}}{{- end -}}
+    {{- end -}}
+    {{- $activity := .Date.Unix -}}
+    {{- with $params.last_activity_at -}}{{- $activity = (time.AsTime .).Unix -}}{{- end -}}
+    {{- $keyed = $keyed | append (dict
+      "key" (printf "%020d %020d %s" $pinned $activity $params.id)
+      "post" .
+    ) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- $ordered := slice -}}
+{{- if $keyed -}}
+  {{- range sort $keyed "key" "desc" -}}
+    {{- $ordered = $ordered | append .post -}}
+  {{- end -}}
+{{- end -}}
+{{- return $ordered -}}

@@ -203,6 +203,8 @@ postsApiRoutes.post("/", requireAuthApi(), async (c) => {
       language: body.language,
       translationOfId: body.translationOfId,
       publishedAt: body.publishedAt,
+      createdAt: body.createdAt,
+      updatedAt: body.updatedAt,
     },
     body.attachments,
     {

@@ -8,7 +8,7 @@
 {{- $root := . -}}
 {{- $featuredIds := $root.Params.featured_post_ids | default slice -}}
 {{- $posts := slice $root -}}
-{{- range $root.Pages.ByDate -}}
+{{- range $root.Pages.ByWeight -}}
   {{- $posts = $posts | append . -}}
 {{- end -}}
 {{- $lastIndex := sub (len $posts) 1 -}}

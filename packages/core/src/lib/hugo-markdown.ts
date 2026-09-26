@@ -35,6 +35,24 @@ export interface HugoCollectionRef {
 }
 
 /**
+ * A smart collection's conditions on its section page (`type:
+ * smart_collection`). The stored selection, with two changes of spelling:
+ * `collection` is one collection's slug rather than a list of IDs, and
+ * `media` is `any`, `none`, or a list of kinds. The theme's
+ * `smart-collection-members` partial evaluates it; an import recreates the
+ * smart collection from it.
+ */
+export interface HugoSmartCollectionSelection {
+  collection?: string;
+  format?: string;
+  title?: boolean;
+  year?: number;
+  media?: "any" | "none" | string[];
+  replies?: boolean;
+  visibility?: string;
+}
+
+/**
  * Jant media attachment descriptor. Stored flat inside the `media:` front-
  * matter array. `src` is either:
  *   - a site-relative path (e.g. `/media/{id}.webp`) when the bytes are
@@ -90,6 +108,12 @@ export interface HugoFrontMatter {
   id?: string;
   title?: string;
   date?: string;
+  /**
+   * When the post was created, written only when it differs from `date` (a
+   * published post dated before or after it was written). Restored on import
+   * so thread order and "last edited" survive a move.
+   */
+  created?: string;
   updated?: string;
   slug?: string;
   type?: string;
@@ -97,7 +121,20 @@ export interface HugoFrontMatter {
 
   // Hugo routing
   aliases?: string[];
+  /**
+   * Published root bundles only: the `<id>` Jant's feeds gave the Thread's
+   * entry — its permalink, absolute, with no trailing slash. The theme's feed
+   * writes it as the entry's `<id>` so readers don't show the post again after
+   * a move. Written by the export, never read by the import.
+   */
+  feed_id?: string;
   build?: HugoBuildOptions;
+  /**
+   * Reply bundles only: 1-based position in the Thread. Jant orders a Thread
+   * by creation time, then ID; replies written in the same second tie on
+   * `date`, so the theme and the importer order by this instead.
+   */
+  weight?: number;
 
   // Jant post payload (flat — no `extra` nesting)
   format?: string;
@@ -142,6 +179,14 @@ export interface HugoFrontMatter {
   // Thread memberships (root bundles only) + attachments
   collections?: HugoCollectionRef[];
   media?: JantMedia[];
+
+  // Smart collection section pages
+  selection?: HugoSmartCollectionSelection;
+  /**
+   * `list` or `grid`; absent when the smart collection follows the site's
+   * archive layout. Not `layout`, which Hugo reads as a template name.
+   */
+  display_layout?: string;
 
   // Escape hatch for page-specific export metadata.
   [key: string]: unknown;
@@ -213,6 +258,7 @@ const FRONT_MATTER_KEY_ORDER: readonly string[] = [
   "type",
   "draft",
   "aliases",
+  "feed_id",
   "build",
 
   // Post payload

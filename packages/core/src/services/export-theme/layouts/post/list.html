@@ -5,7 +5,7 @@
   {{- $media := $root.Params.media | default slice -}}
   {{- $collections := $root.Params.collections | default slice -}}
   {{- $linkUrl := $root.Params.link_url -}}
-  {{- $replies := $root.Pages.ByDate -}}
+  {{- $replies := $root.Pages.ByWeight -}}
   {{- $hasReplies := gt (len $replies) 0 -}}
   <article class="thread thread-{{ $format }}{{ if $hasReplies }} thread-has-replies{{ end }}" id="{{ $slug }}" data-format="{{ $format }}" data-slug="{{ $slug }}"
     {{- if $root.Params.pinned_at }} data-post-pinned{{ end -}}

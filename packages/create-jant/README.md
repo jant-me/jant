@@ -25,6 +25,9 @@ The scaffold:
 - creates a Cloudflare Workers project wired for Jant
 - generates a local `.dev.vars` file with a secure `AUTH_SECRET`
 - installs dependencies by default
+- with pnpm, pins `packageManager` to the pnpm version that ran it and approves the install scripts of better-sqlite3, esbuild, and workerd in `pnpm-workspace.yaml`
+- with Yarn 2 or later, pins `packageManager` to the Yarn version that ran it, installs into `node_modules` instead of Plug'n'Play (`.yarnrc.yml`), and approves the same install scripts in `dependenciesMeta`
+- with pnpm or yarn, makes the GitHub Actions deploy workflow install with that package manager instead of npm, through Corepack for Yarn 2 or later
 - initializes a git repository by default
 - can switch the storage template to S3-compatible storage with `--s3`
 

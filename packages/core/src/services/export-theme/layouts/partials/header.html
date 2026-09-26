@@ -4,11 +4,13 @@
 {{- $avatarUrl := "" -}}
 {{- with $jant -}}{{- with .site_avatar_url -}}{{- $avatarUrl = . -}}{{- end -}}{{- end -}}
 
-{{- /* Split nav items by placement: "header" (inline) vs "more" (supplemental dropdown). */ -}}
+{{- /* Split nav items by placement: "header" (inline) vs "more" (supplemental dropdown).
+     `settings` is exported for an import back into Jant; the static site has no page for it. */ -}}
 {{- $headerItems := slice -}}
 {{- $moreItems := slice -}}
 {{- with $jant -}}{{- range .nav -}}
-  {{- if eq .placement "more" -}}
+  {{- if eq .system_key "settings" -}}
+  {{- else if eq .placement "more" -}}
     {{- $moreItems = $moreItems | append . -}}
   {{- else -}}
     {{- $headerItems = $headerItems | append . -}}

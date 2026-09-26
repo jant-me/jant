@@ -102,6 +102,7 @@ const SearchPostsToolSchema = z.object({
 
 const ListMediaToolSchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  cursor: z.string().optional(),
   mimePrefix: z.string().trim().min(1).optional(),
 });
 
@@ -244,6 +245,16 @@ const mcpTools: McpToolDefinition[] = [
         replyToId: { type: "string" },
         quietReply: { type: "boolean" },
         publishedAt: { type: "integer" },
+        createdAt: {
+          type: "integer",
+          description:
+            "Unix seconds. When moving a post from another site, the time it was written.",
+        },
+        updatedAt: {
+          type: "integer",
+          description:
+            "Unix seconds. When moving a post from another site, the time it was last edited.",
+        },
         attachments: {
           type: "array",
           items: { type: "object" },
@@ -276,6 +287,8 @@ const mcpTools: McpToolDefinition[] = [
           replyToId: input.replyToId,
           quietReply: input.quietReply,
           publishedAt: input.publishedAt,
+          createdAt: input.createdAt,
+          updatedAt: input.updatedAt,
         },
         input.attachments,
         {
@@ -542,12 +555,14 @@ const mcpTools: McpToolDefinition[] = [
   },
   {
     name: "jant_media_list",
-    description: "List uploaded media, optionally filtered by MIME prefix.",
+    description:
+      "List uploaded media, newest first, optionally filtered by MIME prefix. Pass nextCursor back as cursor for the next page.",
     inputSchema: {
       type: "object",
       properties: {
         limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
         mimePrefix: { type: "string" },
+        cursor: { type: "string" },
       },
       additionalProperties: false,
     },
@@ -556,10 +571,13 @@ const mcpTools: McpToolDefinition[] = [
       const media = await context.services.media.list({
         limit: input.limit,
         mimePrefix: input.mimePrefix,
+        cursor: input.cursor,
       });
 
       return {
         media: media.map((item) => serializeMedia(item, context.appConfig)),
+        nextCursor:
+          media.length === input.limit ? (media.at(-1)?.id ?? null) : null,
       };
     },
   },

@@ -101,8 +101,9 @@ slug: hello
 type: post
 draft: false
 aliases:
-  - /old-slug/
+  - /notes/hello # a custom URL
   - /reply-abc/ # reply slugs go here so /{reply-slug}/ aliases work
+feed_id: https://example.com/notes/hello # the <id> Jant's feeds gave it
 format: note
 status: published
 visibility: public
@@ -146,26 +147,39 @@ No `aliases` on replies. The reply's URL is redirected by the root's
 `collections`; older exports that contain reply-level entries are unioned into
 the Thread root during import.
 
+`feed_id` is the `<id>` Jant's feeds gave the Thread's entry: the permalink,
+absolute, with no trailing slash — the oldest custom URL when the post has one,
+else the slug. `rss.xml` writes it as the entry's `<id>` in place of
+`.Permalink`, so a reader that already showed the post doesn't show it again
+after the move. Only published roots carry it; a reply is never an entry of its
+own, and an unpublished root is in no feed.
+
 ## URL scheme
 
-| URL                   | Rendered by                                                                                               |
-| --------------------- | --------------------------------------------------------------------------------------------------------- |
-| `/`                   | `index.html` — pinned prefix + paginated `visibility=public` tail                                         |
-| `/page/N/`            | Hugo's native paginator on home (N ≥ 2)                                                                   |
-| `/archive/`           | `archive/list.html` — every published post chronologically                                                |
-| `/archive/page/N/`    | Hugo's native paginator on archive (N ≥ 2)                                                                |
-| `/featured/`          | `featured/list.html` — one curated entry per Thread, ordered by the newest Featured Post publication time |
-| `/{root-slug}/`       | `post/list.html` — thread root + inline replies                                                           |
-| `/{reply-slug}/`      | `_default/alias.html` — redirects to `/{root-slug}/#{reply-slug}`                                         |
-| `/{collection-slug}/` | `_default/list.html` — complete Threads in the collection                                                 |
-| `/collections/`       | `collections/list.html` — reads `hugo.Data.jant.directory`                                                |
+| URL                   | Rendered by                                                                                           |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| `/`                   | `index.html` — Latest: pinned roots first, then Thread activity, paginated as one list                |
+| `/page/N/`            | Hugo's native paginator on home (N ≥ 2)                                                               |
+| `/archive/`           | `archive/list.html` — every published post chronologically                                            |
+| `/archive/page/N/`    | Hugo's native paginator on archive (N ≥ 2)                                                            |
+| `/featured/`          | `featured/list.html` — one curated entry per Thread, by the newest Featured Post publication, then ID |
+| `/{root-slug}/`       | `post/list.html` — thread root + inline replies                                                       |
+| `/{reply-slug}/`      | `_default/alias.html` — redirects to `/{root-slug}/#{reply-slug}`                                     |
+| `/{collection-slug}/` | `_default/list.html` — complete Threads in the collection                                             |
+| `/collections/`       | `collections/list.html` — reads `hugo.Data.jant.directory`                                            |
 
-The home template handles the pinned prepend in-layout: it iterates
-`where .Site.RegularPages "Params.pinned_at" "ne" nil` first, then
-paginates `where (where .Site.RegularPages "Params.visibility" "eq"
-"public") "Params.pinned_at" "eq" nil`. Hugo's `where` + `.Paginate`
-composition makes this a one-template solution — no manual boundary
-stitching between page 1 and page 2+.
+The home page and `/index.xml` take their roots from
+`partials/latest-members.html`, the Featured page and `/featured/index.xml`
+from `partials/featured-members.html`, so page and feed can't disagree on
+membership. Latest is the public, published roots; the page puts pinned
+roots first (most recently pinned first) and paginates the whole list, as
+Jant's home page does, so pinned roots count toward the page size; the feed
+ignores pins. Both then order by Thread activity (`last_activity_at`, else
+`date`), so a reply brings a Thread back up and a quiet reply doesn't, and
+break ties by root ID. Featured orders by `featured_sort_at`, then root ID.
+Each partial builds one fixed-width string key per root, so a single `sort`
+applies every key in turn. `src/__tests__/export-feed-order.test.ts` holds
+all four to Jant's services.
 
 ## pageSize vs archivePageSize
 

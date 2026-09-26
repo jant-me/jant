@@ -1,16 +1,10 @@
-import { existsSync } from "node:fs";
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { createReadStream, existsSync } from "node:fs";
+import { Readable } from "node:stream";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { unzipSync } from "fflate";
+import { extractZipFile } from "../../../lib/zip-archive.js";
 import { executeD1, queryD1 } from "../../../lib/d1-query.js";
 import { loadNodeRuntime } from "../../../lib/load-node-runtime.js";
 import { openNodeDatabase } from "../../../lib/node-database.js";
@@ -19,6 +13,7 @@ import {
   assertSnapshotDialectMatches,
   assertSnapshotMeta,
   buildMediaProviderSql,
+  DEFER_FOREIGN_KEYS_SQL,
   buildReplaceSql,
   buildSnapshotStorageQuery,
   collectSnapshotObjects,
@@ -80,8 +75,7 @@ async function createNodeImportContext() {
         throw new Error("Snapshot import requires configured storage.");
       }
 
-      const bytes = new Uint8Array(await readFile(filePath));
-      await storage.put(key, bytes, {
+      await storage.put(key, Readable.toWeb(createReadStream(filePath)), {
         contentType: contentType || undefined,
       });
     },
@@ -146,14 +140,7 @@ async function materializeSnapshotInput(inputPath) {
   }
 
   const outputDir = await mkdtemp(join(tmpdir(), "jant-site-snapshot-import-"));
-  const bytes = new Uint8Array(await readFile(inputPath));
-  const files = unzipSync(bytes);
-
-  for (const [relativePath, data] of Object.entries(files)) {
-    const absolutePath = join(outputDir, relativePath);
-    await mkdir(dirname(absolutePath), { recursive: true });
-    await writeFile(absolutePath, data);
-  }
+  await extractZipFile(inputPath, outputDir);
 
   return {
     cleanup: async () => {
@@ -409,6 +396,7 @@ export async function run(argv) {
 
     await context.execute(
       [
+        ...(context.dialect === "postgres" ? [] : [DEFER_FOREIGN_KEYS_SQL]),
         buildReplaceSql(targetSite.id),
         dbSql,
         buildMediaProviderSql(targetSite.id, context.storageProvider),

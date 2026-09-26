@@ -20,7 +20,7 @@
 */ -}}
 {{- $root := . -}}
 {{- $replies := where $root.Pages "Params.visibility" "public" -}}
-{{- $replies = $replies.ByDate -}}
+{{- $replies = $replies.ByWeight -}}
 {{- $replyCount := len $replies -}}
 {{- if eq $replyCount 0 -}}
   {{ partial "post-card.html" $root }}

@@ -2,6 +2,16 @@ import { describe, it, expect } from "vitest";
 import { render, toPlainText, extractTitle } from "../markdown.js";
 
 describe("render", () => {
+  it("renders the HTML emphasis tags the serializer writes for CJK text", () => {
+    expect(render("而是：<strong>固定时间。</strong>来的人")).toBe(
+      "<p>而是：<strong>固定时间。</strong>来的人</p>",
+    );
+  });
+
+  it("escapes HTML tags outside the emphasis allowlist", () => {
+    expect(render("<span>x</span>")).toBe("<p>&lt;span&gt;x&lt;/span&gt;</p>");
+  });
+
   it("renders a heading", () => {
     const html = render("# Hello");
     expect(html).toContain("<h1>");

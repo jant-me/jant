@@ -1,9 +1,6 @@
 {{ define "main" }}
   {{- /* Root bundles carry a derived projection of every Featured Post in the Thread. */ -}}
-  {{- $posts := where .Site.Pages "Type" "post" -}}
-  {{- $roots := where $posts "Kind" "section" -}}
-  {{- $featured := where $roots "Params.featured_sort_at" "ne" nil -}}
-  {{- $featured = sort $featured "Params.featured_sort_at" "desc" -}}
+  {{- $featured := partial "featured-members.html" . -}}
   {{- $pageSize := .Site.Params.page_size | default 10 -}}
   {{- $paginator := .Paginate $featured $pageSize -}}
 

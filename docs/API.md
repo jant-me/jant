@@ -684,11 +684,15 @@ Fields:
 | `language`        | BCP 47 tag                               | no                   | detected       | Content language, e.g. `en`, `zh-Hans`; replies inherit the Thread's      |
 | `translationOfId` | `pst_*` string                           | no                   | `null`         | Link the new post into that post's translation group                      |
 | `publishedAt`     | integer                                  | no                   | current time   | Unix seconds; only valid when `status` is `published`                     |
+| `createdAt`       | integer                                  | no                   | current time   | Unix seconds; restores a moved post's creation time                       |
+| `updatedAt`       | integer                                  | no                   | `createdAt`    | Unix seconds; restores a moved post's last edit time                      |
 | `attachments`     | attachment[]                             | no                   | `[]`           | Ordered attachments, max `20`                                             |
 
 Important rules:
 
 - Use `body` or `bodyMarkdown`, not both.
+- `body` must be a TipTap document (a `doc` node) as a JSON string. Anything else is a `400`.
+- `createdAt` and `updatedAt` are for restores: an import or a migration that keeps a post's own times. Feeds report `updatedAt` as the entry's update time, and a Thread orders its posts by `createdAt`, then ID. Updates can't change either.
 - Use `slug` or `path`, not both.
 - `path` is only available on create. Post updates only support `slug`.
 - `link` posts require `title` and `url`.
@@ -1167,10 +1171,11 @@ This is the media metadata listing endpoint.
 
 Query parameters:
 
-| Parameter    | Type    | Required | Default | Notes                                      |
-| ------------ | ------- | -------- | ------- | ------------------------------------------ |
-| `limit`      | integer | no       | `50`    | `1` to `200`                               |
-| `mimePrefix` | string  | no       | none    | Prefix filter such as `image/` or `video/` |
+| Parameter    | Type    | Required | Default | Notes                                         |
+| ------------ | ------- | -------- | ------- | --------------------------------------------- |
+| `limit`      | integer | no       | `50`    | `1` to `200`                                  |
+| `mimePrefix` | string  | no       | none    | Prefix filter such as `image/` or `video/`    |
+| `cursor`     | string  | no       | none    | Pass the previous `nextCursor` back unchanged |
 
 Response:
 
@@ -1203,12 +1208,14 @@ Response:
       "previewUrl": "/media/med_01jpyx4g9m8b4y50a4gx3t7p1n.webp",
       "posterUrl": null
     }
-  ]
+  ],
+  "nextCursor": "med_01jpyx4g9m8b4y50a4gx3t7p1n"
 }
 ```
 
 Notes:
 
+- Newest first. `nextCursor` is `null` on the last page.
 - This list may include ordinary uploaded binaries and stored text attachments.
 - Text attachments use `type: "text"` and expose `contentFormat` plus `contentUrl` instead of `url`, `previewUrl`, and `posterUrl`.
 
@@ -1269,16 +1276,17 @@ Content type: `multipart/form-data`
 
 Form fields:
 
-| Field      | Type    | Required | Default | Notes                          |
-| ---------- | ------- | -------- | ------- | ------------------------------ |
-| `file`     | file    | yes      | —       | Main file                      |
-| `width`    | integer | no       | `null`  | Image/video width              |
-| `height`   | integer | no       | `null`  | Image/video height             |
-| `alt`      | string  | no       | `null`  | Alt text                       |
-| `blurhash` | string  | no       | `null`  | Blurhash                       |
-| `waveform` | string  | no       | `null`  | Audio waveform                 |
-| `summary`  | string  | no       | `null`  | Summary for text uploads       |
-| `poster`   | file    | no       | —       | Poster frame for video uploads |
+| Field             | Type    | Required | Default | Notes                          |
+| ----------------- | ------- | -------- | ------- | ------------------------------ |
+| `file`            | file    | yes      | —       | Main file                      |
+| `width`           | integer | no       | `null`  | Image/video width              |
+| `height`          | integer | no       | `null`  | Image/video height             |
+| `alt`             | string  | no       | `null`  | Alt text                       |
+| `blurhash`        | string  | no       | `null`  | Blurhash                       |
+| `waveform`        | string  | no       | `null`  | Audio waveform                 |
+| `summary`         | string  | no       | `null`  | Summary for text uploads       |
+| `durationSeconds` | integer | no       | `null`  | Video or audio length          |
+| `poster`          | file    | no       | —       | Poster frame for video uploads |
 
 Response:
 
@@ -1662,13 +1670,14 @@ Link:
 
 Fields by type:
 
-| Field   | Type             | Required         | Default | Notes                                                         |
-| ------- | ---------------- | ---------------- | ------- | ------------------------------------------------------------- |
-| `type`  | `divider`        | yes              | —       | Creates a divider item                                        |
-| `label` | string \| `null` | no               | `null`  | Divider label, max `60`; blank values are stored as `null`    |
-| `type`  | `link`           | yes              | —       | Creates a custom link item                                    |
-| `label` | string           | yes (for `link`) | —       | Link label, 1-60 chars after trim                             |
-| `url`   | string           | yes (for `link`) | —       | Relative path or absolute `http:`, `https:`, or `mailto:` URL |
+| Field         | Type             | Required         | Default | Notes                                                         |
+| ------------- | ---------------- | ---------------- | ------- | ------------------------------------------------------------- |
+| `type`        | `divider`        | yes              | —       | Creates a divider item                                        |
+| `label`       | string \| `null` | no               | `null`  | Divider label, max `60`; blank values are stored as `null`    |
+| `type`        | `link`           | yes              | —       | Creates a custom link item                                    |
+| `label`       | string           | yes (for `link`) | —       | Link label, 1-60 chars after trim                             |
+| `url`         | string           | yes (for `link`) | —       | Relative path or absolute `http:`, `https:`, or `mailto:` URL |
+| `description` | string \| `null` | no               | `null`  | Link only: Markdown shown under the link                      |
 
 Notes:
 
@@ -2231,7 +2240,7 @@ Fields:
 | `targetType`   | `post` \| `collection` \| `redirect` | yes                                 | —       | Target kind                                                                   |
 | `targetId`     | string                               | required for `post` or `collection` | —       | Send the canonical slug, not the TypeID                                       |
 | `toPath`       | string                               | required for `redirect`             | —       | Internal destination path such as `/new-path`; normalized before storage      |
-| `redirectType` | `"301"` \| `"302"`                   | no                                  | `301`   | Only used for `redirect`                                                      |
+| `redirectType` | `"301"` \| `"302"` \| `301` \| `302` | no                                  | `301`   | Only used for `redirect`; the number the list answers with works too          |
 
 Examples:
 

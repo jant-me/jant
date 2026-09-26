@@ -90,6 +90,111 @@ describe("markdownToTiptapJson", () => {
       expect(doc.content[0].content).toHaveLength(3);
     });
 
+    // Tiptap's own tokenizer gave an empty item no content at all, which the
+    // schema rejects and the Markdown serializer threw on.
+    it("gives an empty list item the paragraph the schema requires", () => {
+      const doc = parse("1. First\n2.\n3. Third");
+      expect(doc.content[0].type).toBe("orderedList");
+      expect(doc.content[0].content).toHaveLength(3);
+      expect(doc.content[0].content[1].type).toBe("listItem");
+      expect(doc.content[0].content[1].content).toMatchObject([
+        { type: "paragraph" },
+      ]);
+    });
+
+    it.each([
+      ["<strong>粗</strong>", "bold"],
+      ["<b>粗</b>", "bold"],
+      ["<em>斜</em>", "italic"],
+      ["<i>斜</i>", "italic"],
+      ["<s>删</s>", "strike"],
+      ["<del>删</del>", "strike"],
+    ])("reads %s as a %s mark", (html, mark) => {
+      const doc = parse(`前${html}后`);
+      const marked = doc.content[0].content.find(
+        (node: TiptapNode) => node.marks?.length,
+      );
+      expect(marked.marks).toEqual([{ type: mark }]);
+      expect(
+        doc.content[0].content.map((n: TiptapNode) => n.text).join(""),
+      ).toBe(`前${html.replace(/<[^>]+>/g, "")}后`);
+    });
+
+    it("parses Markdown inside an HTML emphasis tag", () => {
+      const doc = parse("<strong>[链接](https://example.com)。</strong>后");
+      const first = doc.content[0].content[0];
+      expect(first.text).toBe("链接");
+      expect(first.marks.map((mark: TiptapMark) => mark.type).sort()).toEqual([
+        "bold",
+        "link",
+      ]);
+    });
+
+    it.each([
+      '<strong onclick="alert(1)">x</strong>',
+      "<span>x</span>",
+      "<script>x</script>",
+    ])("keeps %j as text", (html) => {
+      const doc = parse(html);
+      expect(doc.content[0].content).toEqual([{ type: "text", text: html }]);
+    });
+
+    it("keeps an ordered list's start number", () => {
+      const doc = parse("3. Third\n4. Fourth");
+      expect(doc.content[0].type).toBe("orderedList");
+      expect(doc.content[0].attrs).toEqual({ start: 3 });
+    });
+
+    // CommonMark list markers are digits. Tiptap's own tokenizer also takes
+    // letters and roman numerals, which ate the first word of these lines.
+    it.each([
+      "Ps. 今天发现苹果尼日利亚区的终身会员",
+      "PS. 补充一句",
+      "Mr. Smith went to Washington.",
+      "No. 5 is here.",
+      "OK. Fine.",
+      "I. Introduction",
+      "a. first",
+      "mix. of words",
+    ])("keeps %j a paragraph", (line) => {
+      const doc = parse(line);
+      expect(doc.content).toEqual([
+        { type: "paragraph", content: [{ type: "text", text: line }] },
+      ]);
+    });
+
+    it("keeps a code block inside a list item exactly as written", () => {
+      const doc = parse(
+        [
+          "1. Create the project:",
+          "   ```bash",
+          "   ├── .github",
+          "   │   └── workflows",
+          "   └── package.json",
+          "   ```",
+          "2. Clone it",
+        ].join("\n"),
+      );
+      const list = doc.content[0];
+      expect(list.type).toBe("orderedList");
+      expect(list.content).toHaveLength(2);
+      const codeBlock = list.content[0].content.find(
+        (node: TiptapNode) => node.type === "codeBlock",
+      );
+      expect(codeBlock.content[0].text).toBe(
+        "├── .github\n│   └── workflows\n└── package.json",
+      );
+    });
+
+    it("keeps a wide marker's continuation lines intact", () => {
+      const doc = parse("10. Run:\n\n    ```sh\n    ls -la\n    ```");
+      const codeBlock = doc.content[0].content[0].content.find(
+        (node: TiptapNode) => node.type === "codeBlock",
+      );
+      expect(doc.content[0].attrs).toEqual({ start: 10 });
+      expect(codeBlock.content[0].text).toBe("ls -la");
+    });
+
     it("converts horizontal rules", () => {
       const doc = parse("Above\n\n---\n\nBelow");
       const hr = doc.content.find(

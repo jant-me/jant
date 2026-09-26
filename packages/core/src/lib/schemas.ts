@@ -195,10 +195,14 @@ export const NavItemTypeSchema = z.enum(NAV_ITEM_TYPES);
 export const SystemNavKeySchema = z.enum(SYSTEM_NAV_KEY_VALUES);
 
 /**
- * Redirect type enum schema
- * Form input validation for redirect type (stored as number in DB)
+ * Redirect type, as forms send it ("301") or as the API answers it (301).
+ * Parses to the string form; stored as a number.
  */
-export const RedirectTypeSchema = z.enum(["301", "302"]);
+export const RedirectTypeSchema = z.union([
+  z.enum(["301", "302"]),
+  z.literal(301).transform(() => "301" as const),
+  z.literal(302).transform(() => "302" as const),
+]);
 
 /**
  * Custom URL target type enum schema.
@@ -548,14 +552,30 @@ function refineSlugPathExclusivity<T extends { slug?: string; path?: string }>(
 }
 
 /**
+ * Create only: a post's own record timestamps, in Unix seconds. An import or
+ * a migration restores them, so "last edited" (feed `<updated>`, sitemap
+ * `lastmod`) and Thread order (creation time, then ID) survive the move.
+ * Omitted, both are the time of the request; `updatedAt` alone defaults to
+ * `createdAt`.
+ */
+const RestoredTimestampFields = {
+  createdAt: z.number().int().positive().optional(),
+  updatedAt: z.number().int().positive().optional(),
+};
+
+/**
  * API request body schema for creating a post
  */
 export const CreatePostSchema = refineSlugPathExclusivity(
-  refineCreatePostFormatShape(refineBodyExclusivity(PostFieldsSchema)),
+  refineCreatePostFormatShape(
+    refineBodyExclusivity(PostFieldsSchema.extend(RestoredTimestampFields)),
+  ),
 );
 
 export const CreatePostApiSchema = refineSlugPathExclusivity(
-  refineCreatePostFormatShape(refineBodyExclusivity(ApiPostFieldsSchema)),
+  refineCreatePostFormatShape(
+    refineBodyExclusivity(ApiPostFieldsSchema.extend(RestoredTimestampFields)),
+  ),
 );
 
 /**

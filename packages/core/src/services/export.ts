@@ -37,6 +37,7 @@ import {
   formatFrontMatter,
   type HugoCollectionRef,
   type HugoFrontMatter,
+  type HugoSmartCollectionSelection,
   type JantMedia,
 } from "../lib/hugo-markdown.js";
 // Shared design tokens — single source of truth for colors, typography,
@@ -69,6 +70,7 @@ import LAYOUT_FEATURED_LIST from "./export-theme/layouts/featured/list.html?raw"
 import LAYOUT_ARCHIVE_LIST from "./export-theme/layouts/archive/list.html?raw";
 import LAYOUT_COLLECTIONS_LIST from "./export-theme/layouts/collections/list.html?raw";
 import LAYOUT_COLLECTION_SINGLE from "./export-theme/layouts/collection/single.html?raw";
+import LAYOUT_SMART_COLLECTION_LIST from "./export-theme/layouts/smart_collection/list.html?raw";
 import PARTIAL_JANT_DATA from "./export-theme/layouts/partials/jant-data.html?raw";
 import PARTIAL_HEAD from "./export-theme/layouts/partials/head.html?raw";
 import PARTIAL_HEADER from "./export-theme/layouts/partials/header.html?raw";
@@ -79,24 +81,33 @@ import PARTIAL_MEDIA_GALLERY from "./export-theme/layouts/partials/media-gallery
 import PARTIAL_REPLY from "./export-theme/layouts/partials/reply.html?raw";
 import PARTIAL_THREAD_PREVIEW from "./export-theme/layouts/partials/thread-preview.html?raw";
 import PARTIAL_FEATURED_THREAD from "./export-theme/layouts/partials/featured-thread.html?raw";
+import PARTIAL_SMART_COLLECTION_MEMBERS from "./export-theme/layouts/partials/smart-collection-members.html?raw";
+import PARTIAL_COLLECTION_THREADS from "./export-theme/layouts/partials/collection-threads.html?raw";
+import PARTIAL_COLLECTION_MEMBERS from "./export-theme/layouts/partials/collection-members.html?raw";
+import PARTIAL_LATEST_MEMBERS from "./export-theme/layouts/partials/latest-members.html?raw";
+import PARTIAL_FEATURED_MEMBERS from "./export-theme/layouts/partials/featured-members.html?raw";
 import LAYOUT_RSS from "./export-theme/layouts/_default/rss.xml?raw";
 import PARTIAL_FEED_POST_CONTENT from "./export-theme/layouts/partials/feed-post-content.xml?raw";
 
 import { suggestSyncRepoName } from "../lib/github-sync-repo-name.js";
+import { getPostPath, toAbsoluteSiteUrl } from "../lib/url.js";
 import type { StorageDriver } from "../lib/storage.js";
 import { base64ToUint8Array } from "../lib/favicon.js";
+import { makeZip } from "client-zip";
 import {
   SYSTEM_NAV_KEYS,
   isFeedNavKey,
   type Collection,
   type Media,
   type NavItem,
+  type PathRecord,
   type Post,
+  type SmartCollection,
   type SystemNavKey,
 } from "../types.js";
 
-/** A file entry in the exported Hugo site. */
-export interface ExportFile {
+/** A file of the exported Hugo site whose text or bytes the export holds. */
+export interface ExportContentFile {
   path: string;
   content: string | Uint8Array;
   /**
@@ -111,11 +122,57 @@ export interface ExportFile {
   scaffoldOnce?: boolean;
 }
 
+/**
+ * A media file of the exported site, named but not read: the archive streams
+ * it from storage as it is written. Reading every bundled file up front held a
+ * site's media in memory, and on a Docker site with 3 GB of local media the
+ * container was killed before it answered.
+ */
+export interface ExportStoredFile {
+  path: string;
+  storageKey: string;
+}
+
+/** A file entry in the exported Hugo site. */
+export type ExportFile = ExportContentFile | ExportStoredFile;
+
+/**
+ * @param file - An export file entry
+ * @returns Whether its bytes are still in storage
+ * @example
+ * if (isStoredExportFile(file)) await readStoredExportFile(file, storage);
+ */
+export function isStoredExportFile(file: ExportFile): file is ExportStoredFile {
+  return "storageKey" in file;
+}
+
+/**
+ * Read a stored export file's bytes, for a consumer that needs them whole.
+ *
+ * @param file - A stored export file
+ * @param storage - The site's storage
+ * @returns The bytes, or null when the object is gone
+ * @example
+ * const bytes = await readStoredExportFile(file, storage);
+ */
+export async function readStoredExportFile(
+  file: ExportStoredFile,
+  storage: StorageDriver,
+): Promise<Uint8Array | null> {
+  const object = await storage.get(file.storageKey);
+  if (!object?.body) return null;
+  return new Uint8Array(await new Response(object.body).arrayBuffer());
+}
+
 export interface ExportService {
   /** Generate a flat list of files for a complete Hugo site. */
   generateHugoFiles(): Promise<ExportFile[]>;
-  /** Generate a ZIP archive of the Hugo site. */
-  generateHugoSite(): Promise<Uint8Array>;
+  /**
+   * The Hugo site as a ZIP stream. Stored media is read from storage one file
+   * at a time as the stream is consumed, so memory stays flat whatever the
+   * size of the site; the archive switches to ZIP64 past 4 GiB.
+   */
+  generateHugoSite(): Promise<ReadableStream<Uint8Array>>;
 }
 
 export interface SiteConfig {
@@ -163,6 +220,9 @@ export interface SiteConfig {
     | "url"
     | "position"
     | "placement"
+    | "collectionId"
+    | "smartCollectionId"
+    | "postId"
   >[];
   /** Items per page for Hugo pagination — kept in sync with the main site's PAGE_SIZE. */
   pageSize: number;
@@ -187,6 +247,16 @@ type ExportedCollectionDirectoryItem =
       recentActivityIso?: string | null;
     }
   | {
+      type: "smart_collection";
+      sequence: string;
+      slug: string;
+      title: string;
+      descriptionHtml?: string | null;
+      entryCount?: number;
+      recentActivityLabel?: string | null;
+      recentActivityIso?: string | null;
+    }
+  | {
       type: "divider";
       label: string | null;
     }
@@ -195,17 +265,26 @@ type ExportedCollectionDirectoryItem =
       sequence: string;
       label: string;
       url: string;
+      /** The link description as the author wrote it, or null if empty. */
+      description?: string | null;
       /** Rendered HTML of the link description, or null if empty. */
       descriptionHtml?: string | null;
     };
 
 interface ExportCollectionDirectorySourceItem {
-  type: "collection" | "divider" | "link";
+  type: "collection" | "smart_collection" | "divider" | "link";
   label?: string | null;
   url?: string | null;
   description?: string | null;
   collection?: {
     id: string;
+    slug: string;
+    title: string;
+    description?: string | null;
+    threadCount?: number;
+    recentActivityAt?: number;
+  };
+  smartCollection?: {
     slug: string;
     title: string;
     description?: string | null;
@@ -317,6 +396,7 @@ export function createExportService(
         slugMap,
         aliasMap,
         collectionSlugMap,
+        standalonePaths,
       ] = await Promise.all([
         services.collections.getCollectionsByPostIds(rootPostIds),
         services.collections.getCollectionEntriesByThreadIds(rootPostIds),
@@ -324,6 +404,7 @@ export function createExportService(
         services.paths.getPostSlugMap(allPostIds),
         services.paths.getPostAliases(rootPostIds),
         services.paths.getCollectionSlugMap(allCollections.map((c) => c.id)),
+        services.paths.listStandalonePaths(),
       ]);
       // Denormalized title lookup so front-matter collection refs can
       // include a title label without templates having to resolve another
@@ -340,22 +421,48 @@ export function createExportService(
         allPosts,
         collectionsByRoot,
       );
-      // Smart collections are left out of a static export. Their membership is
-      // a query, and the exported site has no database to run it against, so
-      // the honest options are "omit" or "freeze today's matches under a name
-      // that promises to keep updating". Round-tripping them is out of scope
-      // (see the smart collections design notes); omitting is what that
-      // decision means here.
+      // Smart collections travel as their conditions (a section page per
+      // smart collection, below): a site importing the export recreates them,
+      // and the Hugo theme applies the same conditions to the posts it has, so
+      // the page keeps up with the repository instead of freezing the matches
+      // of the day it was exported.
+      const exportedSmartCollections: {
+        smartCollection: SmartCollection;
+        selection: HugoSmartCollectionSelection;
+      }[] = [];
+      const smartCollectionSlugMap = new Map<string, string>();
+      for (const smartCollection of collectionDirectoryData?.smartCollections ??
+        []) {
+        const selection = toExportedSelection(
+          smartCollection.selection,
+          collectionSlugMap,
+        );
+        if (!selection) {
+          // eslint-disable-next-line no-console -- A dropped page must leave a trace
+          console.warn(
+            `Export: smart collection /${smartCollection.slug} filters by a collection that no longer exists, so it was left out.`,
+          );
+          continue;
+        }
+        smartCollectionSlugMap.set(smartCollection.id, smartCollection.slug);
+        exportedSmartCollections.push({ smartCollection, selection });
+      }
       const exportableDirectoryItems: ExportCollectionDirectorySourceItem[] =
         collectionDirectoryData?.items
           ? collectionDirectoryData.items
-              .filter((item) => item.type !== "smart_collection")
+              .filter(
+                (item) =>
+                  item.type !== "smart_collection" ||
+                  (item.smartCollection !== undefined &&
+                    smartCollectionSlugMap.has(item.smartCollection.id)),
+              )
               .map((item) => ({
-                type: item.type as "collection" | "divider" | "link",
+                type: item.type,
                 label: item.label,
                 url: item.url,
                 description: item.description,
                 collection: item.collection,
+                smartCollection: item.smartCollection,
               }))
           : allCollections.map((collection) => ({
               type: "collection" as const,
@@ -375,9 +482,13 @@ export function createExportService(
         list.push(reply);
         repliesByThread.set(reply.threadId, list);
       }
-      // Sort replies by createdAt within each thread
+      // Thread order, as `posts.getThread` reads it: creation time, then ID.
       for (const list of repliesByThread.values()) {
-        list.sort((a, b) => a.createdAt - b.createdAt);
+        list.sort(
+          (a, b) =>
+            a.createdAt - b.createdAt ||
+            (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+        );
       }
 
       // 3. Build file list
@@ -428,6 +539,19 @@ export function createExportService(
         });
       }
 
+      // Smart collection landing pages: the conditions, which the theme's
+      // `smart-collection-members` partial applies to the exported posts.
+      for (const { smartCollection, selection } of exportedSmartCollections) {
+        exportFiles.push({
+          path: `content/${smartCollection.slug}/_index.md`,
+          content: await buildSmartCollectionSection(
+            smartCollection,
+            selection,
+            siteConfig.rssFeedsEnabled,
+          ),
+        });
+      }
+
       // Section + home scaffolding.
       exportFiles.push({
         path: "hugo.toml",
@@ -449,6 +573,7 @@ export function createExportService(
       const usedSlugs = new Set<string>();
       for (const s of slugMap.values()) usedSlugs.add(s);
       for (const s of collectionSlugMap.values()) usedSlugs.add(s);
+      for (const s of smartCollectionSlugMap.values()) usedSlugs.add(s);
       const hasFeaturedSection = !usedSlugs.has("featured");
       if (hasFeaturedSection) {
         exportFiles.push({
@@ -460,14 +585,18 @@ export function createExportService(
       // Feed subscribers are the one audience the export can lose silently:
       // their reader polls a `/feed` address that this site does not serve.
       // With feeds off there is nothing to redirect to, and the live site had
-      // no feeds to have been subscribed to either.
-      if (siteConfig.rssFeedsEnabled) {
+      // no feeds to have been subscribed to either. The author's own
+      // redirects go in too; an old feed address is often one of them.
+      const redirectSections = [
+        siteConfig.rssFeedsEnabled
+          ? buildFeedRedirects(siteConfig.mainRssFeed, hasFeaturedSection)
+          : null,
+        buildCustomUrlRedirects(standalonePaths),
+      ].filter((section): section is string => section !== null);
+      if (redirectSections.length > 0) {
         exportFiles.push({
           path: "static/_redirects",
-          content: buildFeedRedirects(
-            siteConfig.mainRssFeed,
-            hasFeaturedSection,
-          ),
+          content: redirectSections.join("\n"),
         });
       }
 
@@ -480,6 +609,12 @@ export function createExportService(
           siteConfig,
           iconAssets,
           exportedCollectionDirectoryItems,
+          {
+            postSlugs: slugMap,
+            collectionSlugs: collectionSlugMap,
+            smartCollectionSlugs: smartCollectionSlugMap,
+            standalonePaths,
+          },
         ),
       });
 
@@ -569,6 +704,30 @@ export function createExportService(
         content: PARTIAL_FEATURED_THREAD,
       });
       exportFiles.push({
+        path: "themes/jant/layouts/smart_collection/list.html",
+        content: LAYOUT_SMART_COLLECTION_LIST,
+      });
+      exportFiles.push({
+        path: "themes/jant/layouts/partials/smart-collection-members.html",
+        content: PARTIAL_SMART_COLLECTION_MEMBERS,
+      });
+      exportFiles.push({
+        path: "themes/jant/layouts/partials/collection-threads.html",
+        content: PARTIAL_COLLECTION_THREADS,
+      });
+      exportFiles.push({
+        path: "themes/jant/layouts/partials/collection-members.html",
+        content: PARTIAL_COLLECTION_MEMBERS,
+      });
+      exportFiles.push({
+        path: "themes/jant/layouts/partials/latest-members.html",
+        content: PARTIAL_LATEST_MEMBERS,
+      });
+      exportFiles.push({
+        path: "themes/jant/layouts/partials/featured-members.html",
+        content: PARTIAL_FEATURED_MEMBERS,
+      });
+      exportFiles.push({
         path: "themes/jant/layouts/_default/rss.xml",
         content: LAYOUT_RSS,
       });
@@ -634,16 +793,31 @@ export function createExportService(
 
     async generateHugoSite() {
       const exportFiles = await this.generateHugoFiles();
-      const { zipSync } = await import("fflate");
-      const encoder = new TextEncoder();
-      const files: Record<string, Uint8Array> = {};
-      for (const file of exportFiles) {
-        files[file.path] =
-          typeof file.content === "string"
-            ? encoder.encode(file.content)
-            : file.content;
+      const storage = deps.storage ?? null;
+      const lastModified = new Date();
+
+      async function* entries() {
+        for (const file of exportFiles) {
+          if (!isStoredExportFile(file)) {
+            yield { name: file.path, lastModified, input: file.content };
+            continue;
+          }
+
+          const object = storage ? await storage.get(file.storageKey) : null;
+          if (!object?.body) {
+            // The archive is already streaming; say which file is missing
+            // rather than leave it out without a trace.
+            // eslint-disable-next-line no-console -- A dropped file must leave a trace
+            console.warn(
+              `Export: ${file.storageKey} is missing from storage, so ${file.path} is not in the archive.`,
+            );
+            continue;
+          }
+          yield { name: file.path, lastModified, input: object.body };
+        }
       }
-      return zipSync(files);
+
+      return makeZip(entries());
     },
   };
 }
@@ -955,6 +1129,23 @@ async function buildThreadBundle(
     }
   }
 
+  // The `<id>` Jant's feeds give this Thread's entry, kept as the string it
+  // was. A reader recognises an entry it has seen by that string alone, and
+  // the Hugo page's own URL differs from it — a trailing slash always, and
+  // the slug where Jant uses a custom path — so an exported feed that used
+  // the page URL would show every entry to every subscriber again after the
+  // move. RFC 4287 §4.2.6 asks for exactly this: an entry's ID must not
+  // change when its feed is migrated or exported.
+  const siteUrl = siteConfig.siteUrl.trim();
+  const feedId =
+    !rootIsUnpublished && siteUrl
+      ? toAbsoluteSiteUrl(
+          getPostPath(rootSlug, rootAliases[0]),
+          siteUrl,
+          siteConfig.sitePathPrefix,
+        )
+      : undefined;
+
   // Root front matter.
   const rootMedia = mediaByPost.get(root.id) ?? [];
   const rootEmissions = rootMedia.map((m) =>
@@ -968,6 +1159,10 @@ async function buildThreadBundle(
       root.publishedAt !== null
         ? toISOString(root.publishedAt)
         : toISOString(root.createdAt),
+    created:
+      root.publishedAt !== null && root.createdAt !== root.publishedAt
+        ? toISOString(root.createdAt)
+        : undefined,
     updated:
       root.updatedAt && root.updatedAt !== root.publishedAt
         ? toISOString(root.updatedAt)
@@ -985,6 +1180,7 @@ async function buildThreadBundle(
     type: "post",
     draft: rootIsUnpublished ? true : undefined,
     aliases: aliases.length > 0 ? aliases : undefined,
+    feed_id: feedId,
     format: root.format,
     status: root.status,
     visibility: root.visibility,
@@ -1014,7 +1210,7 @@ async function buildThreadBundle(
     media: rootMediaList.length > 0 ? rootMediaList : undefined,
   };
 
-  const rootBody = root.body ? tiptapJsonToMarkdown(root.body) : "";
+  const rootBody = root.body ? postBodyToMarkdown(root.body, rootSlug) : "";
   files.push({
     path: `content/${rootSlug}/_index.md`,
     content: `${await formatFrontMatter(rootFrontMatter)}\n${rootBody}${rootBody.endsWith("\n") ? "" : "\n"}`,
@@ -1030,7 +1226,7 @@ async function buildThreadBundle(
     media: rootMedia[i] as Media,
   }))) {
     if (emission.inlinePath) {
-      const file = await readMediaResourceFile(
+      const file = toStoredMediaFile(
         storage,
         media.storageKey,
         emission.inlinePath,
@@ -1038,7 +1234,7 @@ async function buildThreadBundle(
       if (file) files.push(file);
     }
     if (emission.inlinePosterPath && media.posterKey) {
-      const posterFile = await readMediaResourceFile(
+      const posterFile = toStoredMediaFile(
         storage,
         media.posterKey,
         emission.inlinePosterPath,
@@ -1047,8 +1243,8 @@ async function buildThreadBundle(
     }
   }
 
-  // Replies as nested leaf bundles.
-  for (const reply of threadReplies) {
+  // Replies as nested leaf bundles, in Thread order.
+  for (const [replyIndex, reply] of threadReplies.entries()) {
     const replySlug = slugMap.get(reply.id) ?? reply.slug;
     const replyMedia = mediaByPost.get(reply.id) ?? [];
     const replyEmissions = replyMedia.map((m) =>
@@ -1062,12 +1258,17 @@ async function buildThreadBundle(
         reply.publishedAt !== null
           ? toISOString(reply.publishedAt)
           : toISOString(reply.createdAt),
+      created:
+        reply.publishedAt !== null && reply.createdAt !== reply.publishedAt
+          ? toISOString(reply.createdAt)
+          : undefined,
       updated:
         reply.updatedAt && reply.updatedAt !== reply.publishedAt
           ? toISOString(reply.updatedAt)
           : undefined,
       slug: replySlug,
       type: "post",
+      weight: replyIndex + 1,
       draft:
         reply.status === "draft" || reply.visibility === "private"
           ? true
@@ -1092,7 +1293,9 @@ async function buildThreadBundle(
       media: replyMediaList.length > 0 ? replyMediaList : undefined,
     };
 
-    const replyBody = reply.body ? tiptapJsonToMarkdown(reply.body) : "";
+    const replyBody = reply.body
+      ? postBodyToMarkdown(reply.body, replySlug)
+      : "";
     files.push({
       path: `content/${rootSlug}/${replySlug}/index.md`,
       content: `${await formatFrontMatter(replyFrontMatter)}\n${replyBody}${replyBody.endsWith("\n") ? "" : "\n"}`,
@@ -1103,7 +1306,7 @@ async function buildThreadBundle(
       media: replyMedia[i] as Media,
     }))) {
       if (emission.inlinePath) {
-        const file = await readMediaResourceFile(
+        const file = toStoredMediaFile(
           storage,
           media.storageKey,
           emission.inlinePath,
@@ -1111,7 +1314,7 @@ async function buildThreadBundle(
         if (file) files.push(file);
       }
       if (emission.inlinePosterPath && media.posterKey) {
-        const posterFile = await readMediaResourceFile(
+        const posterFile = toStoredMediaFile(
           storage,
           media.posterKey,
           emission.inlinePosterPath,
@@ -1125,25 +1328,17 @@ async function buildThreadBundle(
 }
 
 /**
- * Read a media record's bytes from storage and return an ExportFile so
- * they can be bundled next to the post as a Hugo page resource. Returns
- * null when storage is unavailable or the object cannot be read, in
- * which case the front matter entry still points at the resource name
- * and the CLI's pull-media step (or a later sync) can fill it in.
+ * Name a media object for the archive to bundle as `static/media/…`. Its
+ * bytes are read when the archive is written. Null when the export has no
+ * storage, in which case the front matter entry still points at the file and
+ * the CLI's pull-media step can fill it in.
  */
-async function readMediaResourceFile(
+function toStoredMediaFile(
   storage: StorageDriver | null,
   storageKey: string,
   bundlePath: string,
-): Promise<ExportFile | null> {
-  if (!storage) return null;
-  try {
-    const bytes = await readStorageObjectBytes(storage, storageKey);
-    if (!bytes) return null;
-    return { path: bundlePath, content: bytes };
-  } catch {
-    return null;
-  }
+): ExportStoredFile | null {
+  return storage ? { path: bundlePath, storageKey } : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1199,6 +1394,48 @@ async function buildCollectionSection(
     summary_text: collection.description ?? undefined,
     sort_order: collection.sortOrder,
     entry_count: entryCount,
+    // Opt into Atom output at /{slug}/index.xml.
+    outputs: rssFeedsEnabled ? ["html", "rss"] : ["html"],
+  };
+  return `${await formatFrontMatter(frontMatter)}\n`;
+}
+
+/**
+ * A smart collection's conditions as its section page carries them: the
+ * stored selection, with the collection named by slug rather than ID so an
+ * import into another site can resolve it. Null when the collection it names
+ * is gone.
+ */
+function toExportedSelection(
+  selection: SmartCollection["selection"],
+  collectionSlugs: ReadonlyMap<string, string>,
+): HugoSmartCollectionSelection | null {
+  const { collection, media, ...rest } = selection;
+  const exported: HugoSmartCollectionSelection = { ...rest };
+  if (collection !== undefined) {
+    const slug = collection[0] ? collectionSlugs.get(collection[0]) : undefined;
+    if (!slug) return null;
+    exported.collection = slug;
+  }
+  if (media !== undefined) {
+    exported.media = typeof media === "string" ? media : [...media];
+  }
+  return exported;
+}
+
+async function buildSmartCollectionSection(
+  smartCollection: SmartCollection,
+  selection: HugoSmartCollectionSelection,
+  rssFeedsEnabled: boolean,
+): Promise<string> {
+  const frontMatter: HugoFrontMatter = {
+    title: smartCollection.title,
+    slug: smartCollection.slug,
+    type: "smart_collection",
+    summary_text: smartCollection.description ?? undefined,
+    sort_order: smartCollection.sort,
+    display_layout: smartCollection.layout ?? undefined,
+    selection,
     // Opt into Atom output at /{slug}/index.xml.
     outputs: rssFeedsEnabled ? ["html", "rss"] : ["html"],
   };
@@ -1369,11 +1606,37 @@ function buildExportedCollectionDirectoryItems(
         sequence: sequenceLabels[index] ?? "",
         label: item.label,
         url: item.url,
+        description: description || null,
         descriptionHtml: description
           ? renderMarkdown(description, {
               namespace: `collection-directory-link-${sequenceLabels[index] ?? index}`,
             })
           : null,
+      });
+      return;
+    }
+
+    if (item.type === "smart_collection") {
+      const smartCollection = item.smartCollection;
+      if (!smartCollection?.slug) return;
+      const smartDescription = smartCollection.description?.trim();
+      exportedItems.push({
+        type: "smart_collection",
+        sequence: sequenceLabels[index] ?? "",
+        slug: smartCollection.slug,
+        title: smartCollection.title || smartCollection.slug,
+        descriptionHtml: smartDescription
+          ? renderMarkdown(smartDescription, {
+              namespace: `smart-collection-${smartCollection.slug}`,
+            })
+          : null,
+        entryCount: smartCollection.threadCount,
+        recentActivityLabel: formatCollectionActivityLabel(
+          smartCollection.recentActivityAt,
+        ),
+        recentActivityIso: formatCollectionActivityIso(
+          smartCollection.recentActivityAt,
+        ),
       });
       return;
     }
@@ -1621,10 +1884,42 @@ function buildHugoToml(config: SiteConfig): string {
   return `${parts.join("\n")}\n`;
 }
 
+/** What `data/jant.toml` needs to name nav targets and standalone URLs. */
+interface JantDataTargets {
+  postSlugs: ReadonlyMap<string, string>;
+  collectionSlugs: ReadonlyMap<string, string>;
+  smartCollectionSlugs: ReadonlyMap<string, string>;
+  standalonePaths: readonly PathRecord[];
+}
+
+/** The key and slug `data/jant.toml` names a nav item's target by. */
+function resolveNavItemTarget(
+  item: SiteConfig["navItems"][number],
+  targets: JantDataTargets,
+): { key: string; slug: string } | null {
+  const slug =
+    item.type === "collection" && item.collectionId
+      ? targets.collectionSlugs.get(item.collectionId)
+      : item.type === "smart_collection" && item.smartCollectionId
+        ? targets.smartCollectionSlugs.get(item.smartCollectionId)
+        : item.type === "page" && item.postId
+          ? targets.postSlugs.get(item.postId)
+          : undefined;
+  if (!slug) return null;
+  const key =
+    item.type === "collection"
+      ? "collection_slug"
+      : item.type === "smart_collection"
+        ? "smart_collection_slug"
+        : "post_slug";
+  return { key, slug };
+}
+
 function buildJantDataToml(
   config: SiteConfig,
   iconAssets: SiteIconAssets,
   directoryItems: readonly ExportedCollectionDirectoryItem[],
+  targets: JantDataTargets,
 ): string {
   const footerHtml = config.siteFooter
     ? renderMarkdown(config.siteFooter, { namespace: "site-footer" })
@@ -1676,11 +1971,10 @@ function buildJantDataToml(
   }
 
   for (const item of config.navItems) {
-    // `settings` is authenticated-only and has no corresponding page in the
-    // static Hugo site — drop it at export time so it never shows up in nav.
-    if (item.systemKey === "settings") continue;
-    // Both feed entries resolve to a feed file, so with feeds off both would
-    // export a link to something that was never written.
+    // `settings` has no page in the static site; the theme skips it, and the
+    // entry stays so an import back into Jant keeps it. Both feed entries
+    // resolve to a feed file, so with feeds off both would export a link to
+    // something that was never written.
     if (
       !config.rssFeedsEnabled &&
       item.type === "system" &&
@@ -1697,13 +1991,22 @@ function buildJantDataToml(
     );
     parts.push(`system_key = "${escapeTomlString(item.systemKey ?? "")}"`);
     parts.push(`placement = "${escapeTomlString(item.placement ?? "header")}"`);
+    // `label` above is what the theme shows. The author's own wording, when
+    // there is one, and the target by slug are what an import restores.
+    if (item.label) {
+      parts.push(`custom_label = "${escapeTomlString(item.label)}"`);
+    }
+    const target = resolveNavItemTarget(item, targets);
+    if (target) {
+      parts.push(`${target.key} = "${escapeTomlString(target.slug)}"`);
+    }
   }
 
   for (const item of directoryItems) {
     parts.push("");
     parts.push("[[directory]]");
     parts.push(`type = "${escapeTomlString(item.type)}"`);
-    if (item.type === "collection") {
+    if (item.type === "collection" || item.type === "smart_collection") {
       parts.push(`sequence = "${escapeTomlString(item.sequence)}"`);
       parts.push(`slug = "${escapeTomlString(item.slug)}"`);
       parts.push(`title = "${escapeTomlString(item.title)}"`);
@@ -1733,6 +2036,9 @@ function buildJantDataToml(
       parts.push(`sequence = "${escapeTomlString(item.sequence)}"`);
       parts.push(`label = "${escapeTomlString(item.label)}"`);
       parts.push(`url = "${escapeTomlString(item.url)}"`);
+      if (item.description) {
+        parts.push(`description = "${escapeTomlString(item.description)}"`);
+      }
       if (item.descriptionHtml) {
         parts.push(
           `description_html = "${escapeTomlString(item.descriptionHtml)}"`,
@@ -1741,7 +2047,53 @@ function buildJantDataToml(
     }
   }
 
+  // Custom URLs that name no post or collection. Post aliases travel in each
+  // root's `aliases:`; these would otherwise not travel at all.
+  for (const record of targets.standalonePaths) {
+    parts.push("");
+    parts.push("[[custom_url]]");
+    parts.push(`path = "${escapeTomlString(record.path)}"`);
+    parts.push(`kind = "${escapeTomlString(record.kind)}"`);
+    if (record.kind === "redirect" && record.redirectToPath) {
+      parts.push(`to = "/${escapeTomlString(record.redirectToPath)}"`);
+      parts.push(`status = ${record.redirectType ?? 301}`);
+    }
+    if (record.kind === "archive" && record.archiveQuery) {
+      parts.push(`archive_query = "${escapeTomlString(record.archiveQuery)}"`);
+    }
+  }
+
   return `${parts.join("\n")}\n`;
+}
+
+/**
+ * The author's redirects as `_redirects` rules, or null when there are none.
+ *
+ * @param standalonePaths - Custom URLs that name no post or collection
+ * @returns The `_redirects` section
+ * @example
+ * buildCustomUrlRedirects([redirectFromAtomXml]); // "# Redirects...\n/atom.xml  /feed  301\n"
+ */
+function buildCustomUrlRedirects(
+  standalonePaths: readonly PathRecord[],
+): string | null {
+  const rules = standalonePaths
+    .filter((record) => record.kind === "redirect" && record.redirectToPath)
+    .map(
+      (record) =>
+        [
+          `/${record.path}`,
+          `/${record.redirectToPath}`,
+          record.redirectType ?? 301,
+        ] as const,
+    );
+  if (rules.length === 0) return null;
+
+  const width = Math.max(...rules.map(([from]) => from.length));
+  return `# Redirects set up under Settings → Custom URLs on the live site.
+
+${rules.map(([from, to, status]) => `${from.padEnd(width)}  ${to}  ${status}`).join("\n")}
+`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1972,6 +2324,29 @@ Thumbs.db
  * @example
  * renderMarkdownTable(["Jant", "This export"], [["/feed", "/index.xml"]]);
  */
+/**
+ * Convert a stored post body to the export's Markdown, naming the post when
+ * it can't be converted. An export that dropped the body would read as a
+ * complete archive and restore as an empty post.
+ *
+ * @param body - Stored TipTap JSON
+ * @param slug - The post's slug, for the error
+ * @returns The body as Markdown
+ * @throws {Error} When the stored body isn't a TipTap document
+ * @example
+ * postBodyToMarkdown('{"type":"doc","content":[]}', "hello"); // ""
+ */
+function postBodyToMarkdown(body: string, slug: string): string {
+  try {
+    return tiptapJsonToMarkdown(body);
+  } catch (error) {
+    throw new Error(
+      `Couldn't convert the body of /${slug} to Markdown: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
+  }
+}
+
 function renderMarkdownTable(
   headers: [string, string],
   rows: [string, string][],
@@ -2043,6 +2418,8 @@ ${feedTable}
 A reader who is already subscribed holds one of the old addresses, and a feed reader that gets a 404 stops delivering posts. \`static/_redirects\` maps every old address to its new one with a 301. Cloudflare Pages and Netlify read that file as published; on any other host, translate its rules into that host's redirect configuration before you point the domain here.
 
 Hugo's \`aliases:\` cannot cover this. An alias page redirects with a meta refresh and a script, and feed readers fetch XML without running either — only an HTTP redirect reaches them.
+
+Feed entries keep the IDs Jant gave them, so feed readers don't show old posts again. Each root post stores its ID in \`feed_id\`: the post's address on Jant, which is not its page URL here. Don't change \`feed_id\`, or feed readers show that post again. A post you add here without one uses its page URL.
 
 The **Subscribe** entry in the site navigation points at \`${mainFeed}\`. The exported site has no \`/subscribe\` page; that page belongs to the Jant runtime.
 

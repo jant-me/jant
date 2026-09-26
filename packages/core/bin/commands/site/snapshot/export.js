@@ -1,17 +1,12 @@
-import { existsSync } from "node:fs";
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+import { createWriteStream, existsSync } from "node:fs";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { zipSync } from "fflate";
-import { queryD1 } from "../../../lib/d1-query.js";
+import { writeDirectoryToZip } from "../../../lib/zip-archive.js";
+import { D1_DUMP_PAGE_SIZE, queryD1 } from "../../../lib/d1-query.js";
 import { loadNodeRuntime } from "../../../lib/load-node-runtime.js";
 import { openNodeDatabase } from "../../../lib/node-database.js";
 import {
@@ -23,6 +18,7 @@ import {
   buildSnapshotStorageQuery,
   collectSnapshotObjects,
   getSnapshotSelectSql,
+  orderSnapshotPostRows,
   SNAPSHOT_TABLES,
   snapshotObjectPath,
 } from "../../../lib/site-snapshot.js";
@@ -36,49 +32,6 @@ import { resolveWranglerVarString } from "../../../lib/wrangler-config.js";
 
 function isZipPath(filePath) {
   return filePath.toLowerCase().endsWith(".zip");
-}
-
-async function readStorageBody(body) {
-  const reader = body.getReader();
-  const chunks = [];
-  let totalLength = 0;
-
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    totalLength += value.length;
-  }
-
-  const bytes = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return bytes;
-}
-
-async function readDirectoryEntries(rootDir) {
-  const entries = {};
-
-  async function walk(dir) {
-    const items = await readdir(dir, { withFileTypes: true });
-    for (const item of items) {
-      const fullPath = join(dir, item.name);
-      if (item.isDirectory()) {
-        await walk(fullPath);
-        continue;
-      }
-
-      const relativePath = relative(rootDir, fullPath).replace(/\\/g, "/");
-      entries[relativePath] = new Uint8Array(await readFile(fullPath));
-    }
-  }
-
-  await walk(rootDir);
-  return entries;
 }
 
 async function assertWritableOutput(outputPath, force) {
@@ -123,7 +76,12 @@ async function createNodeExportContext() {
       }
 
       await mkdir(dirname(filePath), { recursive: true });
-      await writeFile(filePath, await readStorageBody(object.body));
+      // Straight to disk: a snapshot holds every media file, and collecting
+      // each one in memory first ran a 3 GB export to a 2 GB peak.
+      await pipeline(
+        Readable.fromWeb(object.body),
+        createWriteStream(filePath),
+      );
     },
   };
 }
@@ -295,6 +253,9 @@ export async function run(argv) {
       {
         dialect: context.dialect,
         source: runtime,
+        // D1 answers through Wrangler's buffered output; read it in pages.
+        pageSize: runtime === "node" ? undefined : D1_DUMP_PAGE_SIZE,
+        orderRowsByTable: { post: orderSnapshotPostRows },
         tables: SNAPSHOT_TABLES,
         selectSqlByTable: Object.fromEntries(
           SNAPSHOT_TABLES.map((tableName) => [
@@ -344,10 +305,7 @@ export async function run(argv) {
 
     if (shouldZip) {
       await mkdir(dirname(outputPath), { recursive: true });
-      const zipped = zipSync(await readDirectoryEntries(scratchDir), {
-        level: 6,
-      });
-      await writeFile(outputPath, zipped);
+      await writeDirectoryToZip(scratchDir, outputPath);
       if (process.env.SNAPSHOT_SUPPRESS_SUCCESS_LOG !== "true") {
         console.log(
           `Exported ${getCliRuntimeLabel(runtime)} snapshot to ${values.output}`,

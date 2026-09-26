@@ -449,6 +449,30 @@ describe("Posts API Routes", () => {
       expect(body.attachments).toEqual([]);
     });
 
+    it("keeps the creation and edit times a restore sends", async () => {
+      const { app } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+
+      const res = await app.request("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          format: "note",
+          bodyMarkdown: "Moved from another site",
+          publishedAt: 1700000500,
+          createdAt: 1700000000,
+          updatedAt: 1700009000,
+        }),
+      });
+
+      expect(res.status).toBe(201);
+      expect(await res.json()).toMatchObject({
+        publishedAt: 1700000500,
+        createdAt: 1700000000,
+        updatedAt: 1700009000,
+      });
+    });
+
     it("creates a post with bodyMarkdown", async () => {
       const { app } = createTestApp({ authenticated: true });
       app.route("/api/posts", postsApiRoutes);

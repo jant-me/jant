@@ -109,6 +109,16 @@ export interface CreatePost {
    */
   translationOfId?: string;
   publishedAt?: number;
+  /**
+   * The post's creation time, for a restore. Defaults to now. Thread order
+   * reads it, then the ID.
+   */
+  createdAt?: number;
+  /**
+   * The post's last edit time, for a restore. Defaults to `createdAt`.
+   * Feeds and the sitemap report it as the post's update time.
+   */
+  updatedAt?: number;
   attachments?: PostAttachmentInput[];
 }
 

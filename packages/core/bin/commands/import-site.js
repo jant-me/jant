@@ -1,16 +1,8 @@
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { openAsBlob } from "node:fs";
+import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { resolve, join, extname, dirname, basename } from "node:path";
 import { tmpdir } from "node:os";
 import { parseArgs } from "node:util";
-import { typeidUnboxed } from "typeid-js";
 import { CLI_API_TOKEN_ENV_VAR, getCliApiToken } from "../lib/cli-api-token.js";
 import {
   extractAttachmentBlocks,
@@ -19,6 +11,7 @@ import {
   rewriteMediaReferences,
 } from "../lib/site-media-parser.js";
 import { parseFrontMatter as parseFrontMatterShared } from "../lib/hugo-markdown.js";
+import { extractZipFile } from "../lib/zip-archive.js";
 
 /**
  * Parse front matter from a Markdown file.
@@ -164,17 +157,29 @@ async function resolveImportLocalAssetPath(rawUrl, siteConfig, sourceRootDir) {
   return null;
 }
 
+/**
+ * Read one asset as a Blob, from the export's files or its URL.
+ *
+ * A local file comes back file-backed (`openAsBlob`): an upload streams it
+ * from disk. Reading every file into memory first held gigabytes during the
+ * import of a real site, since Node does not count Blob memory toward the
+ * garbage collector's pressure.
+ *
+ * @param {{ sourceUrl?: string, sourceFilePath?: string | null, mimeType?: string, originalName?: string }} options
+ * @returns {Promise<{ blob: Blob, filename: string, contentType: string } | null>}
+ *   The asset, or null when a remote source is missing or unreachable
+ */
 async function readImportAsset(options) {
   const { sourceUrl, sourceFilePath, mimeType, originalName } = options;
 
   if (sourceFilePath) {
-    const bytes = new Uint8Array(await readFile(sourceFilePath));
     const filename =
       originalName || basename(sourceFilePath) || getFilenameFromUrl(sourceUrl);
+    const contentType = mimeType || guessMimeType(filename);
     return {
-      bytes,
+      blob: await openAsBlob(sourceFilePath, { type: contentType }),
       filename,
-      contentType: mimeType || guessMimeType(filename),
+      contentType,
     };
   }
 
@@ -189,21 +194,15 @@ async function readImportAsset(options) {
 
   const bytes = new Uint8Array(await response.arrayBuffer());
   const filename = originalName || getFilenameFromUrl(sourceUrl) || "file";
+  const contentType =
+    mimeType ||
+    response.headers.get("content-type")?.split(";")[0] ||
+    guessMimeType(filename);
   return {
-    bytes,
+    blob: new Blob([bytes], { type: contentType }),
     filename,
-    contentType:
-      mimeType ||
-      response.headers.get("content-type")?.split(";")[0] ||
-      guessMimeType(filename),
+    contentType,
   };
-}
-
-function toArrayBuffer(bytes) {
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  );
 }
 
 async function readMediaSpecAsset(media, field = "src") {
@@ -312,45 +311,60 @@ async function assertImportSlugAvailable(target, slug, label, kind) {
  * Download a media file and upload it to the Jant API.
  * Returns the new URL, or null on failure.
  */
+/**
+ * Upload one media file through the site's API.
+ *
+ * Throws when the file can't be read or the site refuses it, so a caller
+ * decides whether that is fatal (the export's own media) or leaves a link in
+ * place (an image in the body). It used to return null for either, and a
+ * post was created without the file and without a word.
+ *
+ * @param {Record<string, unknown>} media - A normalized media spec
+ * @param {string} apiUrl - Target site URL
+ * @param {string} token - API token
+ * @returns {Promise<{ url: string, id: string }>} The uploaded media
+ */
 async function uploadRemoteMedia(media, apiUrl, token) {
-  try {
-    const asset = await readMediaSpecAsset(media);
-    if (!asset) return null;
-
-    const blob = new Blob([asset.bytes], { type: asset.contentType });
-
-    const formData = new FormData();
-    formData.append("file", blob, asset.filename);
-    if (media.alt) formData.append("alt", media.alt);
-    if (media.summary) formData.append("summary", media.summary);
-    if (media.width) formData.append("width", String(media.width));
-    if (media.height) formData.append("height", String(media.height));
-    if (media.blurhash) formData.append("blurhash", media.blurhash);
-    if (media.waveform) formData.append("waveform", media.waveform);
-
-    if (media.poster) {
-      const posterAsset = await readMediaSpecAsset(media, "poster");
-      if (posterAsset) {
-        formData.append(
-          "poster",
-          new Blob([posterAsset.bytes], { type: posterAsset.contentType }),
-          posterAsset.filename,
-        );
-      }
-    }
-
-    const uploadResponse = await fetch(`${apiUrl}/api/upload`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-
-    if (!uploadResponse.ok) return null;
-    const data = await uploadResponse.json();
-    return { url: data.url, id: data.id };
-  } catch {
-    return null;
+  const asset = await readMediaSpecAsset(media);
+  if (!asset) {
+    throw new Error(`Couldn't read ${media.src}`);
   }
+
+  const formData = new FormData();
+  formData.append("file", asset.blob, asset.filename);
+  if (media.alt) formData.append("alt", media.alt);
+  if (media.summary) formData.append("summary", media.summary);
+  if (media.width) formData.append("width", String(media.width));
+  if (media.height) formData.append("height", String(media.height));
+  if (media.blurhash) formData.append("blurhash", media.blurhash);
+  if (media.waveform) formData.append("waveform", media.waveform);
+  if (media.durationSeconds) {
+    formData.append("durationSeconds", String(media.durationSeconds));
+  }
+
+  if (media.poster) {
+    const posterAsset = await readMediaSpecAsset(media, "poster");
+    if (posterAsset) {
+      formData.append("poster", posterAsset.blob, posterAsset.filename);
+    } else {
+      console.warn(`Warning: couldn't read the poster ${media.poster}`);
+    }
+  }
+
+  const uploadResponse = await fetch(`${apiUrl}/api/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!uploadResponse.ok) {
+    const detail = (await uploadResponse.text().catch(() => "")).slice(0, 300);
+    throw new Error(
+      `The site refused ${media.src}: HTTP ${uploadResponse.status}${detail ? ` ${detail}` : ""}`,
+    );
+  }
+  const data = await uploadResponse.json();
+  return { url: data.url, id: data.id };
 }
 
 function getFilenameFromUrl(fileUrl) {
@@ -399,33 +413,6 @@ function guessMimeType(filename) {
     default:
       return "application/octet-stream";
   }
-}
-
-function generateImportedStorageKey(originalName) {
-  const id = typeidUnboxed("med");
-  const extension = extname(originalName) || "";
-  const filename = `${id}${extension}`;
-  return {
-    id,
-    filename,
-    storageKey: `media/${filename}`,
-  };
-}
-
-function getMediaPublicUrl(storageKey, provider, appConfig) {
-  const base =
-    provider === "s3"
-      ? appConfig.s3PublicUrl
-      : provider === "local"
-        ? appConfig.localPublicUrl
-        : appConfig.r2PublicUrl;
-
-  if (base) {
-    return `${base.replace(/\/+$/, "")}/${storageKey}`;
-  }
-
-  const prefix = appConfig.sitePathPrefix || "";
-  return `${prefix}/${storageKey}`.replace(/\/{2,}/g, "/");
 }
 
 function normalizeImportedBodySegment(markdown) {
@@ -522,6 +509,10 @@ async function mediaSpecFromJantMedia(entry, sourceRootDir) {
     waveform: typeof entry.waveform === "string" ? entry.waveform : undefined,
     summary: typeof entry.summary === "string" ? entry.summary : undefined,
     chars: typeof entry.chars === "number" ? entry.chars : undefined,
+    durationSeconds:
+      typeof entry.duration_seconds === "number"
+        ? entry.duration_seconds
+        : undefined,
   };
 }
 
@@ -631,7 +622,7 @@ async function normalizeTextAttachmentSpec(spec, siteConfig, sourceRootDir) {
 
   let markdown;
   try {
-    markdown = new TextDecoder("utf-8", { fatal: false }).decode(asset.bytes);
+    markdown = await asset.blob.text();
   } catch {
     return null;
   }
@@ -674,7 +665,16 @@ async function buildImportedAttachments(
       sourceRootDir,
     );
     if (!normalized || normalized.src.startsWith("data:")) continue;
-    const result = await target.uploadMedia(normalized);
+    let result;
+    try {
+      result = await target.uploadMedia(normalized);
+    } catch (err) {
+      // The post's own attachment: creating the post without it would lose
+      // the file quietly.
+      throw new Error(`Couldn't upload ${spec.src}: ${err.message}`, {
+        cause: err,
+      });
+    }
     if (!result) continue;
     attachments.push({
       type: "media",
@@ -699,7 +699,14 @@ async function uploadMediaList(mediaSpecs, target, siteConfig, sourceRootDir) {
       sourceRootDir,
     );
     if (!normalized || normalized.src.startsWith("data:")) continue;
-    const result = await target.uploadMedia(normalized);
+    let result;
+    try {
+      result = await target.uploadMedia(normalized);
+    } catch (err) {
+      // A body image may be a third party's; the Markdown keeps its URL.
+      console.warn(`Warning: kept ${spec.src} as a link. ${err.message}`);
+      continue;
+    }
     if (!result) continue;
     // Key the rewrite map by the *original* URL as it appears in the body
     // (e.g. `/media/...`). `normalized.src` has been resolved against
@@ -733,7 +740,16 @@ async function uploadBundleResources(resourceSpecs, target) {
   for (const spec of resourceSpecs) {
     if (!spec) continue;
     if (!spec.srcFilePath && !isAbsoluteUrl(spec.src)) continue;
-    const result = await target.uploadMedia(spec);
+    let result;
+    try {
+      result = await target.uploadMedia(spec);
+    } catch (err) {
+      // The post's own attachment: creating the post without it would lose
+      // the file quietly.
+      throw new Error(`Couldn't upload ${spec.src}: ${err.message}`, {
+        cause: err,
+      });
+    }
     if (!result) continue;
     urlMap.set(spec.src, result.url);
     mediaIds.push(result.id);
@@ -895,6 +911,9 @@ async function loadSiteConfig(rootDir) {
         nav_exported: Array.isArray(jantData.nav),
         collections_directory: directoryItems,
         collections_directory_exported: directoryExported,
+        custom_urls: Array.isArray(jantData.custom_url)
+          ? jantData.custom_url
+          : [],
       },
       jant_export: {
         format:
@@ -955,6 +974,28 @@ function splitSettingsUpdatesForImport(updates) {
   return { editable, internal };
 }
 
+const NAV_PLACEMENTS = new Set(["header", "more"]);
+const NAV_ITEM_TYPES = new Set([
+  "system",
+  "link",
+  "collection",
+  "smart_collection",
+  "page",
+]);
+
+/**
+ * The slug a nav URL names, for exports older than `collection_slug` and
+ * `post_slug`: `/now` or `/now/` → `now`. Anything else names no slug.
+ *
+ * @param {unknown} url - The exported nav URL
+ * @returns {string | null} The slug, or null
+ */
+function getSlugFromNavUrl(url) {
+  if (typeof url !== "string") return null;
+  const match = url.match(/^\/([^/?#]+)\/?$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function normalizeImportedNavItems(siteConfig) {
   const jant = siteConfig?.extra?.jant || {};
   const navItems = jant.nav;
@@ -970,20 +1011,214 @@ function normalizeImportedNavItems(siteConfig) {
     items: navItems
       .map((item) => {
         if (!item || typeof item !== "object") return null;
-        const type = item.type === "system" ? "system" : "link";
-        if (type === "system" && typeof item.system_key === "string") {
-          return { type, systemKey: item.system_key };
+        const type = NAV_ITEM_TYPES.has(item.type) ? item.type : "link";
+        const placement = NAV_PLACEMENTS.has(item.placement)
+          ? item.placement
+          : "header";
+        const label = typeof item.label === "string" ? item.label : "";
+        const url = typeof item.url === "string" ? item.url : "";
+        const customLabel =
+          typeof item.custom_label === "string" && item.custom_label.trim()
+            ? item.custom_label
+            : null;
+
+        if (type === "system") {
+          if (typeof item.system_key !== "string" || !item.system_key) {
+            return null;
+          }
+          return { type, systemKey: item.system_key, customLabel, placement };
         }
-        if (
-          type === "link" &&
-          typeof item.label === "string" &&
-          typeof item.url === "string"
-        ) {
-          return { type, label: item.label, url: item.url };
+        if (type === "collection") {
+          const slug =
+            typeof item.collection_slug === "string"
+              ? item.collection_slug
+              : getSlugFromNavUrl(url);
+          return { type, slug, customLabel, label, url, placement };
         }
-        return null;
+        if (type === "page") {
+          const slug =
+            typeof item.post_slug === "string"
+              ? item.post_slug
+              : getSlugFromNavUrl(url);
+          return { type, slug, customLabel, label, url, placement };
+        }
+        if (type === "smart_collection") {
+          const slug =
+            typeof item.smart_collection_slug === "string"
+              ? item.smart_collection_slug
+              : getSlugFromNavUrl(url);
+          return { type, slug, customLabel, label, url, placement };
+        }
+        if (!label || !url) return null;
+        return { type: "link", label: customLabel ?? label, url, placement };
       })
       .filter(Boolean),
+  };
+}
+
+/**
+ * The custom URLs an export lists that name no post or collection: redirects,
+ * and legacy archive URLs the importer reports but can't recreate.
+ *
+ * @param {Record<string, unknown>} siteConfig - From `loadSiteConfig`
+ * @returns {Array<{ path: string, kind: "redirect" | "archive", to?: string, status?: 301 | 302, archiveQuery?: string }>}
+ */
+function normalizeImportedCustomUrls(siteConfig) {
+  const entries = siteConfig?.extra?.jant?.custom_urls;
+  if (!Array.isArray(entries)) return [];
+
+  return entries
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return null;
+      const path =
+        typeof entry.path === "string" ? entry.path.replace(/^\/+/, "") : "";
+      if (!path) return null;
+      if (entry.kind === "redirect" && typeof entry.to === "string") {
+        return {
+          path,
+          kind: "redirect",
+          to: entry.to,
+          status: entry.status === 302 ? 302 : 301,
+        };
+      }
+      if (entry.kind === "archive") {
+        return {
+          path,
+          kind: "archive",
+          archiveQuery:
+            typeof entry.archive_query === "string"
+              ? entry.archive_query
+              : undefined,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
+
+/**
+ * The create request for one imported nav item, once the posts and
+ * collections it may point at exist. A target that didn't come across stays
+ * in the navigation as a plain link to the same address.
+ *
+ * @param {Record<string, unknown>} item - From `normalizeImportedNavItems`
+ * @param {{ collectionSlugToId: Map<string, string>, smartCollectionSlugToId: Map<string, string>, postSlugToId: Map<string, string> }} targets
+ * @returns {{ payload: Record<string, unknown>, customLabel: string | null, warning: string | null }}
+ */
+function buildNavItemCreateRequest(item, targets) {
+  const { placement, customLabel } = item;
+
+  if (item.type === "system") {
+    return {
+      payload: { type: "system", systemKey: item.systemKey, placement },
+      customLabel,
+      warning: null,
+    };
+  }
+  if (item.type === "link") {
+    return {
+      payload: { type: "link", label: item.label, url: item.url, placement },
+      customLabel: null,
+      warning: null,
+    };
+  }
+
+  const targetId =
+    item.type === "collection"
+      ? targets.collectionSlugToId.get(item.slug)
+      : item.type === "smart_collection"
+        ? targets.smartCollectionSlugToId.get(item.slug)
+        : item.type === "page"
+          ? targets.postSlugToId.get(item.slug)
+          : undefined;
+  if (targetId) {
+    const targetField =
+      item.type === "collection"
+        ? "collectionId"
+        : item.type === "smart_collection"
+          ? "smartCollectionId"
+          : "postId";
+    return {
+      payload: {
+        type: item.type,
+        [targetField]: targetId,
+        ...(customLabel ? { label: customLabel } : {}),
+        placement,
+      },
+      customLabel: null,
+      warning: null,
+    };
+  }
+
+  return {
+    payload: {
+      type: "link",
+      label: customLabel ?? item.label,
+      url: item.url,
+      placement,
+    },
+    customLabel: null,
+    warning: `The ${item.type.replace("_", " ")} behind "${item.label}" wasn't imported; it stays in the navigation as a link to ${item.url}.`,
+  };
+}
+
+/**
+ * The create request for one exported smart collection.
+ *
+ * The conditions arrive as the export spells them, with the collection one
+ * naming a slug; it becomes this site's ID. When that collection didn't come
+ * across, the smart collection is skipped rather than created without the
+ * condition, which would widen it to posts it never held.
+ *
+ * @param {{ slug: string, frontMatter: Record<string, unknown> }} bundle - A `type: smart_collection` section
+ * @param {Map<string, string>} collectionSlugToId - Imported collections
+ * @returns {{ payload: Record<string, unknown> | null, warning: string | null }}
+ * @example
+ * buildSmartCollectionCreateRequest(bundle, new Map([["ideas", "col_01…"]]));
+ */
+function buildSmartCollectionCreateRequest(bundle, collectionSlugToId) {
+  const frontMatter = bundle.frontMatter;
+  const exported = frontMatter.selection;
+  const selection =
+    exported && typeof exported === "object" && !Array.isArray(exported)
+      ? { ...exported }
+      : {};
+
+  if (selection.collection !== undefined) {
+    const collectionId =
+      typeof selection.collection === "string"
+        ? collectionSlugToId.get(selection.collection)
+        : undefined;
+    if (!collectionId) {
+      return {
+        payload: null,
+        warning: `skipped the smart collection /${bundle.slug}: the collection it filters by, "${selection.collection}", wasn't imported.`,
+      };
+    }
+    selection.collection = [collectionId];
+  }
+
+  const title =
+    typeof frontMatter.title === "string" && frontMatter.title.trim()
+      ? frontMatter.title
+      : bundle.slug;
+  return {
+    payload: {
+      slug: bundle.slug,
+      title,
+      ...(typeof frontMatter.summary_text === "string" &&
+      frontMatter.summary_text.trim()
+        ? { description: frontMatter.summary_text }
+        : {}),
+      selection,
+      ...(typeof frontMatter.sort_order === "string"
+        ? { sort: frontMatter.sort_order }
+        : {}),
+      ...(typeof frontMatter.display_layout === "string"
+        ? { layout: frontMatter.display_layout }
+        : {}),
+    },
+    warning: null,
   };
 }
 
@@ -1004,12 +1239,12 @@ function normalizeImportedCollectionDirectory(siteConfig) {
         if (!item || typeof item !== "object") return null;
 
         if (
-          item.type === "collection" &&
+          (item.type === "collection" || item.type === "smart_collection") &&
           typeof item.slug === "string" &&
           item.slug.trim()
         ) {
           return {
-            type: "collection",
+            type: item.type,
             slug: item.slug.trim(),
           };
         }
@@ -1030,6 +1265,10 @@ function normalizeImportedCollectionDirectory(siteConfig) {
             type: "link",
             label: item.label,
             url: item.url,
+            description:
+              typeof item.description === "string" && item.description.trim()
+                ? item.description
+                : null,
           };
         }
 
@@ -1158,6 +1397,7 @@ async function syncImportedCollectionDirectory(
   target,
   importedDirectory,
   collectionSlugToId,
+  smartCollectionSlugToId,
 ) {
   if (!importedDirectory.exported) {
     return { created: 0, deleted: 0, moved: 0 };
@@ -1165,8 +1405,12 @@ async function syncImportedCollectionDirectory(
 
   let deleted = 0;
   const existingItems = await target.listCollectionDirectoryItems();
+  // Collections and smart collections get their row when they are created;
+  // dividers and links exist only in the directory and are rebuilt from it.
   for (const item of existingItems) {
-    if (item.type === "collection") continue;
+    if (item.type === "collection" || item.type === "smart_collection") {
+      continue;
+    }
     const removed = await target.deleteCollectionDirectoryItem(item.id);
     if (removed !== false) {
       deleted += 1;
@@ -1174,24 +1418,33 @@ async function syncImportedCollectionDirectory(
   }
 
   let currentItems = await target.listCollectionDirectoryItems();
-  const collectionItemIds = new Map(
-    currentItems
-      .filter((item) => item.type === "collection" && item.collectionId)
-      .map((item) => [item.collectionId, item.id]),
-  );
+  // Directory rows by what they list: `collection:<id>` or
+  // `smart_collection:<id>`.
+  const rowIdsByTarget = new Map();
+  for (const item of currentItems) {
+    if (item.type === "collection" && item.collectionId) {
+      rowIdsByTarget.set(`collection:${item.collectionId}`, item.id);
+    } else if (item.type === "smart_collection" && item.smartCollectionId) {
+      rowIdsByTarget.set(`smart_collection:${item.smartCollectionId}`, item.id);
+    }
+  }
 
   const desiredIds = [];
-  const seenCollectionIds = new Set();
+  const seenTargets = new Set();
   let created = 0;
 
   for (const item of importedDirectory.items) {
-    if (item.type === "collection") {
-      const collectionId = collectionSlugToId.get(item.slug);
-      if (!collectionId || seenCollectionIds.has(collectionId)) {
+    if (item.type === "collection" || item.type === "smart_collection") {
+      const targetId =
+        item.type === "collection"
+          ? collectionSlugToId.get(item.slug)
+          : smartCollectionSlugToId.get(item.slug);
+      const key = `${item.type}:${targetId}`;
+      if (!targetId || seenTargets.has(key)) {
         continue;
       }
-      seenCollectionIds.add(collectionId);
-      const directoryItemId = collectionItemIds.get(collectionId);
+      seenTargets.add(key);
+      const directoryItemId = rowIdsByTarget.get(key);
       if (directoryItemId) {
         desiredIds.push(directoryItemId);
       }
@@ -1208,6 +1461,7 @@ async function syncImportedCollectionDirectory(
             type: "link",
             label: item.label,
             url: item.url,
+            ...(item.description ? { description: item.description } : {}),
           },
     );
     desiredIds.push(createdItem.id);
@@ -1260,17 +1514,6 @@ async function getIncompleteSetupError(target, targetLabel) {
   }
 
   return buildIncompleteSetupError(targetLabel);
-}
-
-function createUploadFile(name, type, bytes) {
-  return {
-    name,
-    type,
-    size: bytes.byteLength,
-    stream() {
-      return new Blob([bytes], { type }).stream();
-    },
-  };
 }
 
 class ApiError extends Error {
@@ -1355,6 +1598,12 @@ function createRemoteTarget(apiUrl, token) {
     async deleteNavItem(id) {
       return apiCall("DELETE", `/api/nav-items/${id}`, apiUrl, token);
     },
+    async updateNavItem(id, data) {
+      return apiCall("PUT", `/api/nav-items/${id}`, apiUrl, token, data);
+    },
+    async createCustomUrl(data) {
+      return apiCall("POST", "/api/custom-urls", apiUrl, token, data);
+    },
     async removeSiteAvatar() {
       return apiCall("DELETE", "/api/settings/avatar", apiUrl, token);
     },
@@ -1368,11 +1617,7 @@ function createRemoteTarget(apiUrl, token) {
       }
 
       const formData = new FormData();
-      formData.append(
-        "file",
-        new Blob([avatarAsset.bytes], { type: avatarAsset.contentType }),
-        avatarAsset.filename,
-      );
+      formData.append("file", avatarAsset.blob, avatarAsset.filename);
 
       if (data.faviconUrl || data.faviconFilePath) {
         const faviconAsset = await readImportAsset({
@@ -1382,13 +1627,7 @@ function createRemoteTarget(apiUrl, token) {
           originalName: "favicon.ico",
         });
         if (faviconAsset) {
-          formData.append(
-            "favicon",
-            new Blob([faviconAsset.bytes], {
-              type: faviconAsset.contentType,
-            }),
-            faviconAsset.filename,
-          );
+          formData.append("favicon", faviconAsset.blob, faviconAsset.filename);
         }
       }
 
@@ -1400,9 +1639,7 @@ function createRemoteTarget(apiUrl, token) {
         if (appleTouchAsset) {
           formData.append(
             "appleTouch",
-            new Blob([appleTouchAsset.bytes], {
-              type: appleTouchAsset.contentType,
-            }),
+            appleTouchAsset.blob,
             appleTouchAsset.filename,
           );
         }
@@ -1437,6 +1674,25 @@ function createRemoteTarget(apiUrl, token) {
     },
     async createCollection(data) {
       return apiCall("POST", "/api/collections", apiUrl, token, data);
+    },
+    async listSmartCollections() {
+      const result = await apiCall(
+        "GET",
+        "/api/smart-collections",
+        apiUrl,
+        token,
+      );
+      return result.smartCollections || [];
+    },
+    async createSmartCollection(data) {
+      const result = await apiCall(
+        "POST",
+        "/api/smart-collections",
+        apiUrl,
+        token,
+        data,
+      );
+      return result.smartCollection;
     },
     async createCollectionDirectoryItem(data) {
       return apiCall(
@@ -1504,23 +1760,76 @@ function createRemoteTarget(apiUrl, token) {
   };
 }
 
+function getBundleTimestamp(bundle) {
+  return parseImportTimestamp(bundle.frontMatter.date);
+}
+
+function getBundleSourceId(bundle) {
+  return typeof bundle.frontMatter.id === "string" ? bundle.frontMatter.id : "";
+}
+
+/**
+ * Order bundles by `date`, then by the original TypeID (time-sortable, so it
+ * breaks a same-second tie the way the source site did), then by directory.
+ *
+ * @param {{ frontMatter: Record<string, unknown>, dir: string }} a
+ * @param {{ frontMatter: Record<string, unknown>, dir: string }} b
+ * @returns {number} Negative when `a` comes first
+ */
+function compareBundlesByDateThenId(a, b) {
+  const aDate = getBundleTimestamp(a);
+  const bDate = getBundleTimestamp(b);
+  if (aDate !== null && bDate !== null && aDate !== bDate) return aDate - bDate;
+  if (aDate !== null && bDate === null) return -1;
+  if (aDate === null && bDate !== null) return 1;
+
+  const aId = getBundleSourceId(a);
+  const bId = getBundleSourceId(b);
+  if (aId && bId && aId !== bId) return aId < bId ? -1 : 1;
+
+  return basename(a.dir).localeCompare(basename(b.dir));
+}
+
+/**
+ * Order reply bundles by their exported `weight` (position in the Thread),
+ * falling back to {@link compareBundlesByDateThenId} for older exports.
+ *
+ * @param {{ frontMatter: Record<string, unknown>, dir: string }} a
+ * @param {{ frontMatter: Record<string, unknown>, dir: string }} b
+ * @returns {number} Negative when `a` comes first
+ */
+function compareReplyBundles(a, b) {
+  const aWeight = a.frontMatter.weight;
+  const bWeight = b.frontMatter.weight;
+  if (
+    typeof aWeight === "number" &&
+    typeof bWeight === "number" &&
+    aWeight !== bWeight
+  ) {
+    return aWeight - bWeight;
+  }
+  return compareBundlesByDateThenId(a, b);
+}
+
 /**
  * Walk `content/` and classify each `_index.md` / `index.md` bundle by its
  * front-matter `type`. Returns ordered root-post bundles (with child reply
- * bundles attached) and stand-alone collection landing pages.
+ * bundles attached), collection landing pages, and smart collection pages.
  *
  * Algorithm:
  *   1. Recurse into `content/` collecting every directory that has either
  *      `_index.md` (branch bundle / section) or `index.md` (leaf bundle).
  *   2. For each `_index.md`, read front matter. `type: "post"` (or a
  *      missing `type` with post-shaped keys) → root bundle. `type:
- *      "collection"` → collection landing page. Other known section types
+ *      "collection"` → collection landing page, `type: "smart_collection"` →
+ *      smart collection conditions. Other known section types
  *      (`home`, `featured`, `archive`, `collections`) are recorded and
  *      skipped for post import.
  *   3. For each root bundle, enumerate immediate child directories; any
  *      child dir containing `index.md` becomes a reply leaf bundle.
- *   4. Reply bundles are sorted by `frontMatter.date` ascending (fallback:
- *      directory name) so thread order is deterministic.
+ *   4. Reply bundles are sorted by `weight` (Thread position), then `date`,
+ *      then the original ID; root bundles by `date`, then the original ID.
+ *      Creating posts in that order keeps same-second ties as they were.
  */
 async function walkHugoContent(rootDir) {
   const contentDir = join(rootDir, "content");
@@ -1606,6 +1915,7 @@ async function walkHugoContent(rootDir) {
   // Attach leaf children to their parent root bundles.
   const rootBundles = [];
   const collectionBundles = [];
+  const smartCollectionBundles = [];
 
   for (const record of dirs.values()) {
     if (record.kind === "leaf") {
@@ -1620,6 +1930,10 @@ async function walkHugoContent(rootDir) {
       collectionBundles.push(record);
       continue;
     }
+    if (record.kind === "smart_collection") {
+      smartCollectionBundles.push(record);
+      continue;
+    }
     if (record.kind === "post") {
       rootBundles.push(record);
       continue;
@@ -1627,27 +1941,19 @@ async function walkHugoContent(rootDir) {
     // home / featured / archive / collections / anything else — skip.
   }
 
-  // Sort replies within each root by `date` asc (fallback: directory name).
+  // Replies in Thread order: the exported `weight`, which follows Jant's own
+  // order (creation time, then ID). Older exports have no weight; `date` then
+  // the original ID come next, since replies written in one second tie on
+  // `date`, and the directory name last.
   for (const root of rootBundles) {
-    root.children.sort((a, b) => {
-      const aDate =
-        typeof a.frontMatter.date === "string"
-          ? Date.parse(a.frontMatter.date)
-          : NaN;
-      const bDate =
-        typeof b.frontMatter.date === "string"
-          ? Date.parse(b.frontMatter.date)
-          : NaN;
-      if (Number.isFinite(aDate) && Number.isFinite(bDate) && aDate !== bDate) {
-        return aDate - bDate;
-      }
-      if (Number.isFinite(aDate) && !Number.isFinite(bDate)) return -1;
-      if (!Number.isFinite(aDate) && Number.isFinite(bDate)) return 1;
-      return basename(a.dir).localeCompare(basename(b.dir));
-    });
+    root.children.sort(compareReplyBundles);
   }
 
-  return { rootBundles, collectionBundles };
+  // Roots in creation order, oldest first, so the new IDs keep the original
+  // order among posts that share a second: lists break those ties by ID.
+  rootBundles.sort(compareBundlesByDateThenId);
+
+  return { rootBundles, collectionBundles, smartCollectionBundles };
 }
 
 /**
@@ -1780,6 +2086,23 @@ function shouldImportReplyQuietly(rootFrontMatter, replyFrontMatter) {
 }
 
 /**
+ * The post a Thread's next reply has to answer: the site's rule, newest by
+ * creation time, then by ID. A post created later has the newer ID, so it
+ * wins a tie.
+ *
+ * @param {{ id: string, createdAt: number }} tail - The current end
+ * @param {{ id: string, createdAt: number } | null | undefined} created - The post just created
+ * @returns {{ id: string, createdAt: number }} The new end
+ * @example
+ * getNextThreadTail({ id: "root", createdAt: 20 }, { id: "r1", createdAt: 10 });
+ * // { id: "root", createdAt: 20 }: an older reply doesn't end the Thread
+ */
+function getNextThreadTail(tail, created) {
+  if (!created?.id) return tail;
+  return created.createdAt >= tail.createdAt ? created : tail;
+}
+
+/**
  * Build the payload for `target.createPost()` from a parsed bundle. Works
  * for both root bundles (`forReply: false`) and reply leaf bundles — the
  * front-matter shape is identical aside from `build:` and the parent link.
@@ -1834,6 +2157,16 @@ function buildPostPayloadFromBundle(bundle, options) {
       status === "published" && typeof frontMatter.date === "string"
         ? Math.floor(new Date(frontMatter.date).getTime() / 1000)
         : undefined,
+    // `date` holds the publish time of a published post and the creation
+    // time of a draft; `created` and `updated` are written when they differ.
+    createdAt:
+      parseImportTimestamp(frontMatter.created) ??
+      parseImportTimestamp(frontMatter.date) ??
+      undefined,
+    updatedAt:
+      parseImportTimestamp(frontMatter.updated) ??
+      parseImportTimestamp(frontMatter.date) ??
+      undefined,
     featuredAt:
       typeof frontMatter.featured_at === "string" && frontMatter.featured_at
         ? Math.floor(new Date(frontMatter.featured_at).getTime() / 1000)
@@ -1884,9 +2217,13 @@ export const __test__ = {
   extractAttachmentBlocks,
   buildImportedAttachments,
   uploadMediaList,
+  uploadBundleResources,
   buildSettingsUpdatesFromConfig,
   splitSettingsUpdatesForImport,
   normalizeImportedNavItems,
+  buildNavItemCreateRequest,
+  buildSmartCollectionCreateRequest,
+  normalizeImportedCustomUrls,
   normalizeImportedCollectionDirectory,
   buildSiteAvatarImport,
   reorderCollectionDirectoryItems,
@@ -1903,6 +2240,7 @@ export const __test__ = {
   resolveThreadCollectionMemberships,
   buildPostPayloadFromBundle,
   shouldImportReplyQuietly,
+  getNextThreadTail,
 };
 
 function printImportUsage() {
@@ -2005,21 +2343,14 @@ export async function run(argv) {
 
   if (inputStat.isFile()) {
     console.log(`Reading ZIP ${inputPath}...`);
-    const zipData = await readFile(inputPath);
-    const { unzipSync } = await import("fflate");
-    const files = unzipSync(new Uint8Array(zipData));
     tempSourceRootDir = await mkdtemp(join(tmpdir(), "jant-site-import-"));
     sourceRootDir = tempSourceRootDir;
-    for (const [path, data] of Object.entries(files)) {
-      const fullPath = join(sourceRootDir, path);
-      await mkdir(dirname(fullPath), { recursive: true });
-      await writeFile(fullPath, data);
-    }
+    await extractZipFile(inputPath, sourceRootDir);
   } else {
     console.log(`Reading directory ${inputPath}...`);
   }
 
-  const { rootBundles, collectionBundles } =
+  const { rootBundles, collectionBundles, smartCollectionBundles } =
     await walkHugoContent(sourceRootDir);
   const siteConfig = await loadSiteConfig(sourceRootDir);
   const customCss = await readImportCustomCss(sourceRootDir);
@@ -2030,11 +2361,17 @@ export async function run(argv) {
       0,
     );
     console.log(
-      `Found ${rootBundles.length} posts (+${replyCount} replies) and ${collectionBundles.length} collections`,
+      `Found ${rootBundles.length} posts (+${replyCount} replies), ${collectionBundles.length} collections, and ${smartCollectionBundles.length} smart collections`,
     );
     const importedCollectionDirectory = siteConfig
       ? normalizeImportedCollectionDirectory(siteConfig)
       : { exported: false, items: [] };
+    const importedNav = siteConfig
+      ? normalizeImportedNavItems(siteConfig)
+      : { exported: false, items: [] };
+    const importedCustomUrls = siteConfig
+      ? normalizeImportedCustomUrls(siteConfig)
+      : [];
 
     if (target) {
       const setupError = await getIncompleteSetupError(
@@ -2054,7 +2391,6 @@ export async function run(argv) {
         siteConfig,
         customCss,
       );
-      const importedNav = normalizeImportedNavItems(siteConfig);
       const avatarImport = await buildSiteAvatarImport(
         siteConfig,
         sourceRootDir,
@@ -2107,21 +2443,6 @@ export async function run(argv) {
           }
         }
 
-        if (importedNav.exported) {
-          try {
-            const existingNavItems = await target.listNavItems();
-            for (const item of existingNavItems) {
-              await target.deleteNavItem(item.id);
-            }
-            for (const item of importedNav.items) {
-              await target.createNavItem(item);
-            }
-          } catch (err) {
-            console.error(`Error importing navigation: ${err.message}`);
-            process.exit(1);
-          }
-        }
-
         if (avatarImport) {
           try {
             await target.syncSiteAvatar(
@@ -2142,6 +2463,8 @@ export async function run(argv) {
 
     // 3. Fetch existing collections and create missing ones
     const collectionSlugToId = new Map();
+    // Root posts by slug, for navigation entries that point at a page.
+    const postSlugToId = new Map();
 
     if (!dryRun) {
       try {
@@ -2194,6 +2517,60 @@ export async function run(argv) {
       }
     }
 
+    // Smart collections after collections, which their conditions may name.
+    // They hold no posts, so nothing about them waits for the posts below.
+    const smartCollectionSlugToId = new Map();
+    if (!dryRun) {
+      try {
+        for (const existing of await target.listSmartCollections()) {
+          smartCollectionSlugToId.set(existing.slug, existing.id);
+        }
+      } catch (err) {
+        console.error(
+          `Error fetching existing smart collections: ${err.message}`,
+        );
+        process.exit(1);
+      }
+    }
+
+    for (const bundle of smartCollectionBundles) {
+      const slug = bundle.slug;
+      if (smartCollectionSlugToId.has(slug)) {
+        console.error(
+          `Import conflict: smart collection slug "${slug}" is already in use. Import into an empty site or remove the existing smart collection first.`,
+        );
+        process.exit(1);
+      }
+
+      const request = buildSmartCollectionCreateRequest(
+        bundle,
+        collectionSlugToId,
+      );
+      if (!request.payload) {
+        console.warn(`Warning: ${request.warning}`);
+        continue;
+      }
+
+      if (dryRun) {
+        console.log(
+          `[dry-run] Would create smart collection: ${request.payload.title}`,
+        );
+        smartCollectionSlugToId.set(slug, `dry-run-${slug}`);
+        continue;
+      }
+
+      try {
+        const created = await target.createSmartCollection(request.payload);
+        smartCollectionSlugToId.set(slug, created.id);
+        console.log(`Created smart collection: ${request.payload.title}`);
+      } catch (err) {
+        console.error(
+          `Error creating smart collection "${slug}": ${err.message}`,
+        );
+        process.exit(1);
+      }
+    }
+
     if (importedCollectionDirectory.exported) {
       if (dryRun) {
         console.log(
@@ -2205,6 +2582,7 @@ export async function run(argv) {
             target,
             importedCollectionDirectory,
             collectionSlugToId,
+            smartCollectionSlugToId,
           );
         } catch (err) {
           console.error(
@@ -2354,6 +2732,7 @@ export async function run(argv) {
       try {
         post = await target.createPost(postData);
         postsCreated++;
+        if (post?.id && post.slug) postSlugToId.set(post.slug, post.id);
         // Translation groups are rebuilt after every post exists: the group ID
         // in the export is opaque and its members can appear in any order, so
         // there is nothing to link to until the whole run is done.
@@ -2379,10 +2758,13 @@ export async function run(argv) {
       // Create replies before aliases so reply slugs can claim their paths.
       if (!post) continue;
       const replySlugPaths = new Set();
-      // Jant threads are linear: each reply must point at the current end of
-      // the thread, not at the root. Track the tail as we go so the Nth
-      // reply chains after the (N−1)th.
-      let threadTailId = post.id;
+      // Jant threads are linear: a reply must point at the current end of the
+      // thread, which the site reads as its newest post by creation time,
+      // then ID. Creation times are restored from the export, and a post
+      // moved into a Thread keeps its own, so a reply can be older than the
+      // root; the end is then the root, not the reply created before it.
+      // Track it by the site's rule.
+      let threadTail = post;
       for (const replyBundle of rootBundle.children) {
         const replyFm = replyBundle.frontMatter;
         const replySlug = replyBundle.slug;
@@ -2481,16 +2863,14 @@ export async function run(argv) {
           bodyMarkdown: replyBody,
           attachments: replyAttachments,
           memberships: { entries: [], ids: [] },
-          replyToId: threadTailId,
+          replyToId: threadTail.id,
           quietReply: shouldImportReplyQuietly(rootFm, replyFm),
         });
 
         try {
           const createdReply = await target.createPost(replyData);
           repliesCreated++;
-          if (createdReply?.id) {
-            threadTailId = createdReply.id;
-          }
+          threadTail = getNextThreadTail(threadTail, createdReply);
         } catch (err) {
           console.error(`  Error creating reply: ${err.message}`);
           process.exit(1);
@@ -2546,6 +2926,63 @@ export async function run(argv) {
       }
     }
 
+    // Navigation and custom URLs go last: they point at posts and
+    // collections, which exist by now.
+    let customUrlsCreated = 0;
+    if (!dryRun && target) {
+      if (importedNav.exported) {
+        try {
+          const existingNavItems = await target.listNavItems();
+          for (const item of existingNavItems) {
+            await target.deleteNavItem(item.id);
+          }
+          for (const item of importedNav.items) {
+            const request = buildNavItemCreateRequest(item, {
+              collectionSlugToId,
+              smartCollectionSlugToId,
+              postSlugToId,
+            });
+            if (request.warning) console.warn(`Warning: ${request.warning}`);
+            const created = await target.createNavItem(request.payload);
+            if (request.customLabel && created?.id) {
+              await target.updateNavItem(created.id, {
+                label: request.customLabel,
+              });
+            }
+          }
+        } catch (err) {
+          console.error(`Error importing navigation: ${err.message}`);
+          process.exit(1);
+        }
+      }
+
+      for (const customUrl of importedCustomUrls) {
+        if (customUrl.kind === "archive") {
+          console.warn(
+            `Warning: skipped /${customUrl.path}, an archive URL (${customUrl.archiveQuery ?? "no filter"}). Archive URLs can no longer be created. Create a smart collection at /${customUrl.path} with the same conditions, here or on the source site before exporting.`,
+          );
+          continue;
+        }
+        try {
+          await target.createCustomUrl({
+            path: customUrl.path,
+            targetType: "redirect",
+            toPath: customUrl.to,
+            redirectType: String(customUrl.status),
+          });
+          customUrlsCreated++;
+        } catch (err) {
+          console.warn(
+            `Warning: couldn't recreate the redirect /${customUrl.path} → ${customUrl.to}: ${err.message}`,
+          );
+        }
+      }
+    } else if (dryRun && importedCustomUrls.length > 0) {
+      console.log(
+        `[dry-run] Would recreate ${importedCustomUrls.length} custom URLs`,
+      );
+    }
+
     await target?.close();
 
     // 5. Summary
@@ -2559,6 +2996,9 @@ export async function run(argv) {
     }
     if (aliasesCreated > 0) {
       console.log(`  Aliases created: ${aliasesCreated}`);
+    }
+    if (customUrlsCreated > 0) {
+      console.log(`  Redirects created: ${customUrlsCreated}`);
     }
     if (dryRun) {
       console.log("  (dry-run mode — no changes were made)");

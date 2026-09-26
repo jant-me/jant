@@ -150,6 +150,32 @@ describe("isCodeEditorHtml", () => {
 });
 
 describe("MarkdownClipboard", () => {
+  it("keeps pasted plain text that opens with a word and a period", () => {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const editor = createTiptapEditor({ element });
+    editors.push(editor);
+
+    dispatchMarkdownPaste(editor, "PS. 补充一句");
+
+    expect(editor.getJSON().content).toEqual([
+      { type: "paragraph", content: [{ type: "text", text: "PS. 补充一句" }] },
+    ]);
+  });
+
+  it("turns pasted plain numbered lines into an ordered list", () => {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const editor = createTiptapEditor({ element });
+    editors.push(editor);
+
+    dispatchMarkdownPaste(editor, "1. First\n2. Second");
+
+    const list = editor.getJSON().content?.[0];
+    expect(list?.type).toBe("orderedList");
+    expect(list?.content).toHaveLength(2);
+  });
+
   it("prefers an explicit text/markdown flavor over HTML and plain text", () => {
     const element = document.createElement("div");
     document.body.appendChild(element);

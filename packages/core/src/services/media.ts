@@ -205,6 +205,8 @@ export interface MediaFilters {
   limit?: number;
   /** Filter by MIME type prefix, e.g. "image/" */
   mimePrefix?: string;
+  /** Exclusive media ID cursor: the last item of the previous page. */
+  cursor?: string;
 }
 
 export interface CreateTextAttachmentData {
@@ -774,11 +776,16 @@ export function createMediaService(
           sql`${media.mimeType} LIKE ${filters.mimePrefix + "%"}`,
         );
       }
+      if (filters?.cursor) {
+        conditions.push(lt(media.id, filters.cursor));
+      }
+      // Newest first. A TypeID sorts by the time it was minted, so the ID
+      // orders like `created_at` and never ties, which a cursor needs.
       const rows = await db
         .select()
         .from(media)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .orderBy(desc(media.createdAt))
+        .orderBy(desc(media.id))
         .limit(limit);
       return rows.map(toMedia);
     },

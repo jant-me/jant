@@ -46,6 +46,40 @@ describe("Upload API Routes", () => {
     });
   });
 
+  it("pages the media list with nextCursor", async () => {
+    const { app, services } = createTestApp({ authenticated: true });
+    app.route("/api/upload", uploadApiRoutes);
+
+    for (const name of ["a", "b", "c"]) {
+      await services.media.create({
+        filename: `${name}.webp`,
+        originalName: `${name}.webp`,
+        mimeType: "image/webp",
+        size: 1024,
+        storageKey: `media/${name}.webp`,
+      });
+    }
+
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    for (let page = 0; page < 4; page += 1) {
+      const res = await app.request(
+        `/api/upload?limit=2${cursor ? `&cursor=${cursor}` : ""}`,
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        media: { filename: string }[];
+        nextCursor: string | null;
+      };
+      seen.push(...body.media.map((media) => media.filename));
+      cursor = body.nextCursor;
+      if (!cursor) break;
+    }
+
+    expect(seen.sort()).toEqual(["a.webp", "b.webp", "c.webp"]);
+    expect(cursor).toBeNull();
+  });
+
   it("returns a single media item", async () => {
     const { app, services } = createTestApp({ authenticated: true });
     app.route("/api/upload", uploadApiRoutes);

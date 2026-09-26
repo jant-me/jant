@@ -37,7 +37,10 @@ The shared schema supports:
 - Headings `#` through `###`
 - Bold, italic, strike, inline code
 - Links
-- Bullet lists and ordered lists
+- Bullet lists and ordered lists. Ordered-list markers are digits, as in
+  CommonMark: `PS. note`, `Mr. Smith`, `a. item`, and `IV. part` are
+  paragraphs. Tiptap's own tokenizer also reads letters and roman numerals as
+  markers; `CommonMarkOrderedList` hands list tokenizing back to marked.
 - Blockquotes
 - Fenced code blocks
 - Horizontal rules
@@ -49,7 +52,7 @@ The shared schema supports:
 
 ## Jant-Specific Markdown Extensions
 
-Jant adds two non-standard structures on top of the normal Markdown set.
+Jant adds three non-standard structures on top of the normal Markdown set.
 
 ### Read More Break
 
@@ -73,6 +76,23 @@ Stored as the `image` TipTap node with Jant image attrs and serialized back to:
 
 - Standard Markdown image syntax for simple images
 - Jant `<figure data-jant-node="image">...</figure>` HTML for rich figures with caption, layout, or link metadata
+
+### HTML Emphasis
+
+Supported source forms, bare tags only (no attributes):
+
+- `<strong>`, `<b>` → bold
+- `<em>`, `<i>` → italic
+- `<s>`, `<del>` → strike
+
+The content between the tags is Markdown. Stored as the ordinary mark.
+
+The serializer writes these tags for an emphasis run whose Markdown
+delimiters a CommonMark parser would leave as literal characters: CommonMark
+closes `**` after punctuation only when whitespace or punctuation follows, so
+`**说话。**来的人` does not parse, in Hugo or in Jant. Such runs serialize as
+`<strong>说话。</strong>来的人`; every other run keeps `**`, `*`, or `~~`.
+The export's Hugo config renders raw HTML, so the Hugo site reads them too.
 
 ## Footnote Contract
 
@@ -196,7 +216,7 @@ Rules:
 
 - Unsupported raw HTML is treated as text and escaped in rendered HTML
 - Only explicitly supported structures may parse as nodes
-- Today that allowlist is limited to Jant image figures
+- Today that allowlist is Jant image figures and the bare HTML emphasis tags
 
 Examples:
 

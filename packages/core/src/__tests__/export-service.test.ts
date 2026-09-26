@@ -8,16 +8,24 @@
  * Jant theme, and the `data/*.toml` files consumed by templates.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { unzipSync } from "fflate";
 import {
   createExportService,
   deriveWorkerName,
+  isStoredExportFile,
   WRANGLER_CONFIG_PATH,
+  type ExportFile,
 } from "../services/export.js";
 import { suggestSyncRepoName } from "../lib/github-sync-repo-name.js";
 import { parseFrontMatter } from "../lib/hugo-markdown.js";
-import type { Collection, Media, Post } from "../types.js";
+import type {
+  Collection,
+  Media,
+  PathRecord,
+  Post,
+  SmartCollectionDirectoryEntry,
+} from "../types.js";
 import {
   makeCollection,
   makeMedia,
@@ -45,6 +53,8 @@ interface FixtureOptions {
   aliasMap?: Map<string, string[]>;
   collectionSlugMap?: Map<string, string>;
   directoryItems?: unknown[];
+  smartCollections?: SmartCollectionDirectoryEntry[];
+  standalonePaths?: PathRecord[];
 }
 
 function buildServices(opts: FixtureOptions): ServicesArg {
@@ -58,6 +68,8 @@ function buildServices(opts: FixtureOptions): ServicesArg {
     aliasMap = new Map(),
     collectionSlugMap = new Map(collections.map((c) => [c.id, c.slug])),
     directoryItems,
+    smartCollections = [],
+    standalonePaths = [],
   } = opts;
 
   return {
@@ -66,6 +78,7 @@ function buildServices(opts: FixtureOptions): ServicesArg {
     },
     paths: {
       getPostSlugMap: async () => slugMap,
+      listStandalonePaths: async () => standalonePaths,
       getPostAliases: async () => aliasMap,
       getCollectionSlugMap: async () => collectionSlugMap,
     },
@@ -73,6 +86,7 @@ function buildServices(opts: FixtureOptions): ServicesArg {
       list: async () => collections,
       listDirectoryData: async () => ({
         collections: [],
+        smartCollections,
         items:
           directoryItems ??
           collections.map((collection) => ({
@@ -95,12 +109,19 @@ function buildServices(opts: FixtureOptions): ServicesArg {
   } as unknown as ServicesArg;
 }
 
-function filesToMap(
-  list: { path: string; content: string | Uint8Array }[],
-): Map<string, string | Uint8Array> {
+function filesToMap(list: ExportFile[]): Map<string, string | Uint8Array> {
   const map = new Map<string, string | Uint8Array>();
-  for (const f of list) map.set(f.path, f.content);
+  for (const f of list) {
+    if (!isStoredExportFile(f)) map.set(f.path, f.content);
+  }
   return map;
+}
+
+/** Read the streamed archive the way a download receives it. */
+async function readArchive(
+  stream: ReadableStream<Uint8Array>,
+): Promise<Record<string, Uint8Array>> {
+  return unzipSync(new Uint8Array(await new Response(stream).arrayBuffer()));
 }
 
 describe("createExportService (Hugo)", () => {
@@ -142,6 +163,7 @@ describe("createExportService (Hugo)", () => {
               ["post-long", "long-read"],
               ["post-short", "short-note"],
             ]),
+          listStandalonePaths: async () => [],
           getPostAliases: async () => new Map(),
           getCollectionSlugMap: async () => new Map(),
         },
@@ -392,6 +414,42 @@ describe("createExportService (Hugo)", () => {
     expect(frontMatter.aliases).toBeUndefined();
   });
 
+  it("writes the entry ID Jant's feeds give each published root", async () => {
+    // `<id>` is the permalink Jant served: the oldest custom path in place of
+    // the slug, under the site path prefix, no trailing slash. The theme's
+    // feed writes it as it is, so subscribers don't see the post again.
+    const plain = makePost({ id: "a", slug: "xta29", threadId: "a" });
+    const custom = makePost({ id: "b", slug: "links-4", threadId: "b" });
+    const draft = makePost({
+      id: "c",
+      slug: "unfinished",
+      threadId: "c",
+      status: "draft",
+    });
+
+    const service = createExportService(
+      buildServices({
+        posts: [plain, custom, draft],
+        aliasMap: new Map([["b", ["/blog/links/4", "/links/four"]]]),
+      }),
+      makeSiteConfig({
+        siteUrl: "https://example.com/journal",
+        sitePathPrefix: "/journal",
+      }),
+    );
+    const files = filesToMap(await service.generateHugoFiles());
+    const feedId = async (slug: string) =>
+      (await parseFrontMatter(files.get(`content/${slug}/_index.md`) as string))
+        .frontMatter.feed_id;
+
+    expect(await feedId("xta29")).toBe("https://example.com/journal/xta29");
+    expect(await feedId("links-4")).toBe(
+      "https://example.com/journal/blog/links/4",
+    );
+    // Not in any feed, so there is no ID to keep.
+    expect(await feedId("unfinished")).toBeUndefined();
+  });
+
   it("merges historical root aliases + reply slugs onto the root", async () => {
     const root = makePost({ id: "r", slug: "new-slug", threadId: "r" });
     const reply = makePost({
@@ -607,6 +665,254 @@ describe("createExportService (Hugo)", () => {
       const { frontMatter } = await parseFrontMatter(raw);
       expect(frontMatter.outputs).toEqual(["html"]);
     }
+  });
+
+  // An import back into Jant restores navigation from this file, so it names
+  // what the theme doesn't need: the author's own label, the target by slug,
+  // and the settings entry the static site skips.
+  it("writes what an import needs to rebuild navigation", async () => {
+    const collection = makeCollection({
+      id: "col-now",
+      slug: "now",
+      title: "Now",
+    });
+    const about = makePost({ id: "pst-about", slug: "about", title: "About" });
+    const service = createExportService(
+      buildServices({ posts: [about], collections: [collection] }),
+      makeSiteConfig({
+        navItems: [
+          {
+            type: "system",
+            systemKey: "archive",
+            label: "All",
+            url: "/archive",
+            position: 0,
+            placement: "header",
+          },
+          {
+            type: "collection",
+            collectionId: "col-now",
+            label: "",
+            targetTitle: "Now",
+            url: "/now",
+            position: 1,
+            placement: "header",
+          },
+          {
+            type: "page",
+            postId: "pst-about",
+            label: "",
+            targetTitle: "About",
+            url: "/about",
+            position: 2,
+            placement: "more",
+          },
+          {
+            type: "system",
+            systemKey: "settings",
+            label: "",
+            url: "/settings",
+            position: 3,
+            placement: "more",
+          },
+        ],
+      }),
+    );
+    const data = (await service.generateHugoFiles()).find(
+      (file) => file.path === "data/jant.toml",
+    )?.content as string;
+
+    expect(data).toContain(
+      'system_key = "archive"\nplacement = "header"\ncustom_label = "All"',
+    );
+    expect(data).toContain('collection_slug = "now"');
+    expect(data).toContain('placement = "more"\npost_slug = "about"');
+    expect(data).toContain('system_key = "settings"');
+  });
+
+  // The conditions travel, not the matches of the day: an import recreates the
+  // smart collection, and the theme evaluates the conditions against the posts
+  // in the repository. The collection a condition names goes by slug, which is
+  // what another site can resolve.
+  it("exports each smart collection's conditions as a section page", async () => {
+    const ideas = makeCollection({ id: "col-ideas", slug: "ideas" });
+    const smartCollection = (
+      over: Partial<SmartCollectionDirectoryEntry>,
+    ): SmartCollectionDirectoryEntry => ({
+      id: "smc-thoughts",
+      siteId: "site",
+      slug: "thoughts",
+      title: "Thoughts",
+      description: "Short notes.",
+      selection: {},
+      sort: "newest",
+      layout: null,
+      createdAt: 1,
+      updatedAt: 1,
+      threadCount: 4,
+      recentActivityAt: 1773020000,
+      ...over,
+    });
+    const thoughts = smartCollection({
+      selection: { format: "note", title: false },
+    });
+    const pictures = smartCollection({
+      id: "smc-pictures",
+      slug: "pictures",
+      title: "Pictures",
+      description: null,
+      selection: {
+        collection: ["col-ideas"],
+        media: ["image", "video"],
+        year: 2025,
+        replies: true,
+        visibility: "featured",
+      },
+      sort: "rating_desc",
+      layout: "grid",
+    });
+    const orphaned = smartCollection({
+      id: "smc-orphaned",
+      slug: "orphaned",
+      selection: { collection: ["col-gone"] },
+    });
+
+    const files = filesToMap(
+      await createExportService(
+        buildServices({
+          posts: [],
+          collections: [ideas],
+          smartCollections: [thoughts, pictures, orphaned],
+          directoryItems: [
+            {
+              id: "dir-1",
+              type: "smart_collection",
+              smartCollection: thoughts,
+            },
+            {
+              id: "dir-2",
+              type: "smart_collection",
+              smartCollection: orphaned,
+            },
+          ],
+        }),
+        makeSiteConfig({
+          navItems: [
+            {
+              type: "smart_collection",
+              smartCollectionId: "smc-pictures",
+              label: "",
+              targetTitle: "Pictures",
+              url: "/pictures",
+              position: 0,
+              placement: "header",
+            },
+          ],
+        }),
+      ).generateHugoFiles(),
+    );
+
+    const { frontMatter: thoughtsPage } = await parseFrontMatter(
+      files.get("content/thoughts/_index.md") as string,
+    );
+    expect(thoughtsPage).toEqual({
+      title: "Thoughts",
+      slug: "thoughts",
+      type: "smart_collection",
+      summary_text: "Short notes.",
+      sort_order: "newest",
+      selection: { format: "note", title: false },
+      outputs: ["html", "rss"],
+    });
+    const { frontMatter: picturesPage } = await parseFrontMatter(
+      files.get("content/pictures/_index.md") as string,
+    );
+    expect(picturesPage.selection).toEqual({
+      collection: "ideas",
+      media: ["image", "video"],
+      year: 2025,
+      replies: true,
+      visibility: "featured",
+    });
+    expect(picturesPage.sort_order).toBe("rating_desc");
+    expect(picturesPage.display_layout).toBe("grid");
+    expect(files.has("content/orphaned/_index.md")).toBe(false);
+
+    const { parse } = await import("smol-toml");
+    const data = parse(files.get("data/jant.toml") as string) as {
+      directory: Record<string, unknown>[];
+      nav: Record<string, unknown>[];
+    };
+    expect(data.directory).toEqual([
+      expect.objectContaining({
+        type: "smart_collection",
+        slug: "thoughts",
+        title: "Thoughts",
+        entry_count: 4,
+      }),
+    ]);
+    expect(data.nav[0]).toMatchObject({
+      type: "smart_collection",
+      smart_collection_slug: "pictures",
+    });
+  });
+
+  it("carries redirects and archive URLs that name no post", async () => {
+    const record = (over: Partial<PathRecord>): PathRecord => ({
+      id: "pth-1",
+      siteId: "site",
+      path: "",
+      kind: "redirect",
+      postId: null,
+      collectionId: null,
+      smartCollectionId: null,
+      redirectToPath: null,
+      redirectType: null,
+      archiveQuery: null,
+      createdAt: 1,
+      updatedAt: 1,
+      ...over,
+    });
+    const files = filesToMap(
+      await createExportService(
+        buildServices({
+          posts: [],
+          standalonePaths: [
+            record({
+              path: "atom.xml",
+              redirectToPath: "feed",
+              redirectType: 301,
+            }),
+            record({
+              path: "inspires",
+              redirectToPath: "inspired",
+              redirectType: 302,
+            }),
+            record({
+              path: "links",
+              kind: "archive",
+              archiveQuery: "format=link",
+            }),
+          ],
+        }),
+        makeSiteConfig(),
+      ).generateHugoFiles(),
+    );
+    const data = files.get("data/jant.toml") as string;
+    const redirects = files.get("static/_redirects") as string;
+
+    expect(data).toContain(
+      '[[custom_url]]\npath = "atom.xml"\nkind = "redirect"\nto = "/feed"\nstatus = 301',
+    );
+    expect(data).toContain(
+      'path = "inspires"\nkind = "redirect"\nto = "/inspired"\nstatus = 302',
+    );
+    expect(data).toContain(
+      'path = "links"\nkind = "archive"\narchive_query = "format=link"',
+    );
+    expect(redirects).toMatch(/^\/atom\.xml\s+\/feed\s+301$/m);
+    expect(redirects).toMatch(/^\/inspires\s+\/inspired\s+302$/m);
+    expect(redirects).not.toContain("/links");
   });
 
   it("resolves the nav RSS link to /featured/index.xml when mainRssFeed=featured", async () => {
@@ -925,6 +1231,12 @@ describe("createExportService (Hugo)", () => {
       "themes/jant/layouts/partials/reply.html",
       "themes/jant/layouts/partials/featured-thread.html",
       "themes/jant/layouts/partials/feed-post-content.xml",
+      "themes/jant/layouts/partials/collection-threads.html",
+      "themes/jant/layouts/partials/collection-members.html",
+      "themes/jant/layouts/partials/latest-members.html",
+      "themes/jant/layouts/partials/featured-members.html",
+      "themes/jant/layouts/partials/smart-collection-members.html",
+      "themes/jant/layouts/smart_collection/list.html",
     ];
     for (const path of expectedLayouts) {
       expect(files.has(path), `missing ${path}`).toBe(true);
@@ -935,10 +1247,10 @@ describe("createExportService (Hugo)", () => {
     expect(files.has("themes/jant/static/theme.css")).toBe(true);
     expect(files.has("themes/jant/static/custom.css")).toBe(true);
 
-    const collectionList = files.get(
-      "themes/jant/layouts/_default/list.html",
+    const collectionThreads = files.get(
+      "themes/jant/layouts/partials/collection-threads.html",
     ) as string;
-    expect(collectionList).toContain(
+    expect(collectionThreads).toContain(
       'class="thread thread-full{{ if $hasReplies }} thread-has-replies{{ end }}"',
     );
   });
@@ -979,9 +1291,9 @@ describe("createExportService (Hugo)", () => {
       buildServices({ posts: [makePost()] }),
       makeSiteConfig(),
     );
-    const zip = await service.generateHugoSite();
-    expect(zip).toBeInstanceOf(Uint8Array);
-    expect(zip.byteLength).toBeGreaterThan(0);
+    const zip = new Uint8Array(
+      await new Response(await service.generateHugoSite()).arrayBuffer(),
+    );
     // ZIP magic: PK\x03\x04
     expect(zip[0]).toBe(0x50);
     expect(zip[1]).toBe(0x4b);
@@ -1126,18 +1438,60 @@ describe("createExportService (Hugo)", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { storage: storage as any },
     );
-    const files = filesToMap(await service.generateHugoFiles());
-    expect(files.has("static/media/med-root.webp")).toBe(true);
-    expect(files.has("static/media/med-reply.png")).toBe(true);
-    expect(files.get("static/media/med-root.webp")).toEqual(
+    // The file list names the objects; the archive reads them as it goes.
+    const stored = (await service.generateHugoFiles()).filter(
+      isStoredExportFile,
+    );
+    expect(stored).toEqual([
+      { path: "static/media/med-root.webp", storageKey: "media/med-root.webp" },
+      { path: "static/media/med-reply.png", storageKey: "media/med-reply.png" },
+    ]);
+    const archive = await readArchive(await service.generateHugoSite());
+    expect(archive["static/media/med-root.webp"]).toEqual(
       new Uint8Array([1, 2, 3]),
     );
-    expect(files.get("static/media/med-reply.png")).toEqual(
+    expect(archive["static/media/med-reply.png"]).toEqual(
       new Uint8Array([9, 9, 9, 9]),
     );
     // Sanity: the old per-bundle paths are gone.
-    expect(files.has("content/with-media/med-root.webp")).toBe(false);
-    expect(files.has("content/with-media/reply-one/med-reply.png")).toBe(false);
+    expect(archive["content/with-media/med-root.webp"]).toBeUndefined();
+    expect(
+      archive["content/with-media/reply-one/med-reply.png"],
+    ).toBeUndefined();
+  });
+
+  it("leaves a missing object out of the archive and says so", async () => {
+    const root = makePost({ id: "post-root", slug: "with-media" });
+    const service = createExportService(
+      buildServices({
+        posts: [root],
+        mediaByPost: new Map([
+          [
+            "post-root",
+            [
+              makeMedia({
+                id: "med-gone",
+                filename: "gone.webp",
+                storageKey: "media/med-gone.webp",
+              }),
+            ],
+          ],
+        ]),
+      }),
+      makeSiteConfig(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { storage: { get: async () => null } as any },
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const archive = await readArchive(await service.generateHugoSite());
+
+    expect(archive["static/media/med-gone.webp"]).toBeUndefined();
+    expect(archive["hugo.toml"]).toBeDefined();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("media/med-gone.webp is missing from storage"),
+    );
+    warn.mockRestore();
   });
 
   it("emits poster bytes and poster field for video media with posterKey", async () => {
@@ -1177,12 +1531,11 @@ describe("createExportService (Hugo)", () => {
       { storage: storage as any },
     );
     const files = filesToMap(await service.generateHugoFiles());
-    expect(files.has("static/media/med-video.mp4")).toBe(true);
-    expect(files.has("static/media/med-video-poster.webp")).toBe(true);
-    expect(files.get("static/media/med-video.mp4")).toEqual(
+    const archive = await readArchive(await service.generateHugoSite());
+    expect(archive["static/media/med-video.mp4"]).toEqual(
       new Uint8Array([10, 20, 30]),
     );
-    expect(files.get("static/media/med-video-poster.webp")).toEqual(
+    expect(archive["static/media/med-video-poster.webp"]).toEqual(
       new Uint8Array([40, 50, 60, 70]),
     );
 
@@ -1365,11 +1718,12 @@ describe("createExportService (Hugo)", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { storage: storage as any, bundleMedia: false },
     );
-    const files = filesToMap(await service.generateHugoFiles());
+    const exportFiles = await service.generateHugoFiles();
+    const files = filesToMap(exportFiles);
     // No resolvable URL — bundling is the only way to avoid a broken link.
-    expect(files.get("static/media/med-1.webp")).toEqual(
-      new Uint8Array([1, 2, 3]),
-    );
+    expect(exportFiles.filter(isStoredExportFile)).toEqual([
+      { path: "static/media/med-1.webp", storageKey: "media/med-1.webp" },
+    ]);
     const { frontMatter } = await parseFrontMatter(
       files.get("content/with-media/_index.md") as string,
     );

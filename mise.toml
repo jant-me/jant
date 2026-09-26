@@ -148,7 +148,7 @@ description = "Run TypeScript type checking (all packages)"
 run = "pnpm -r typecheck"
 
 [tasks.check-template]
-description = "Integration test: scaffold a project with create-jant, then build + typecheck it"
+description = "Integration test: scaffold projects with create-jant through pnpm, npm, Yarn 1, and Yarn 2+, install the pnpm and Yarn 2+ ones, and check the results"
 run = """
 pnpm --filter @jant/core build:lib
 pnpm --filter create-jant prepublishOnly

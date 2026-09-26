@@ -1,0 +1,24 @@
+{{ define "main" }}
+  {{- /*
+    A smart collection's page (`type: smart_collection`). The members come
+    from its conditions, applied to the posts in this site by the
+    `smart-collection-members` partial.
+  */ -}}
+  {{- $posts := partial "smart-collection-members.html" (dict "page" . "feed" false) -}}
+  {{- $pageSize := .Site.Params.page_size | default 10 -}}
+  {{- $paginator := .Paginate $posts $pageSize -}}
+
+  <section class="section section-collection section-smart-collection">
+    <header class="section-header">
+      <h1 class="section-title">{{ .Title }}</h1>
+      {{- with .Params.summary_text -}}
+        <p class="section-summary">{{ . }}</p>
+      {{- end -}}
+      {{- with len $posts -}}
+        <p class="section-meta">{{ . }} {{ if eq . 1 }}thread{{ else }}threads{{ end }}</p>
+      {{- end -}}
+      {{ .Content }}
+    </header>
+    {{ partial "collection-threads.html" (dict "paginator" $paginator "empty" "Nothing matches these conditions yet.") }}
+  </section>
+{{ end }}

@@ -3,7 +3,7 @@
   {{- with partial "jant-data.html" . -}}{{- with .directory -}}{{- $items = . -}}{{- end -}}{{- end -}}
   {{- $collectionCount := 0 -}}
   {{- range $items -}}
-    {{- if eq .type "collection" -}}{{- $collectionCount = add $collectionCount 1 -}}{{- end -}}
+    {{- if in (slice "collection" "smart_collection") .type -}}{{- $collectionCount = add $collectionCount 1 -}}{{- end -}}
   {{- end -}}
 
   <div class="section section-collections" data-page="collections">
@@ -68,7 +68,7 @@
                   {{- end -}}
                 </div>
               </div>
-            {{- else if eq .type "collection" -}}
+            {{- else if in (slice "collection" "smart_collection") .type -}}
               {{- $entryCount := .entry_count -}}
               {{- $activityLabel := .recent_activity_label -}}
               {{- $activityIso := .recent_activity_iso -}}

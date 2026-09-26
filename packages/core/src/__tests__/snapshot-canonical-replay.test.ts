@@ -20,6 +20,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  DEFER_FOREIGN_KEYS_SQL,
   SNAPSHOT_TABLES,
   assertSnapshotMeta,
   buildReplaceSql,
@@ -138,5 +139,41 @@ describe("snapshot export queries", () => {
         sqlite.prepare(getSnapshotSelectSql(table, DEFAULT_TEST_SITE_ID)).all(),
       ).not.toThrow();
     }
+  });
+
+  // Snapshots written before posts were ordered parents-first put a reply
+  // older than its root ahead of the root. The import checks foreign keys at
+  // commit on SQLite and D1, so those snapshots still load.
+  it("loads a snapshot that lists a reply before its root", () => {
+    const { sqlite } = createTestDatabase();
+    const post = (id: string, threadId: string, replyToId: string | null) =>
+      `INSERT INTO "post" ("id", "site_id", "format", "status", "visibility", "reply_to_id", "thread_id", "published_at", "last_activity_at", "created_at", "updated_at", "thread_updated_at") VALUES ('${id}', '${DEFAULT_TEST_SITE_ID}', 'note', 'published', 'public', ${replyToId ? `'${replyToId}'` : "NULL"}, '${threadId}', 1, 1, 1, 1, 1);`;
+    const dump = [
+      post(
+        "pst_01aaaaaaaaaaaaaaaaaaaaaaab",
+        "pst_01aaaaaaaaaaaaaaaaaaaaaaaa",
+        "pst_01aaaaaaaaaaaaaaaaaaaaaaaa",
+      ),
+      post(
+        "pst_01aaaaaaaaaaaaaaaaaaaaaaaa",
+        "pst_01aaaaaaaaaaaaaaaaaaaaaaaa",
+        null,
+      ),
+    ].join("\n");
+
+    expect(() =>
+      sqlite.transaction(() => {
+        sqlite.exec(buildReplaceSql(DEFAULT_TEST_SITE_ID));
+        sqlite.exec(dump);
+      })(),
+    ).toThrow(/FOREIGN KEY/);
+
+    expect(() =>
+      sqlite.transaction(() => {
+        sqlite.exec(DEFER_FOREIGN_KEYS_SQL);
+        sqlite.exec(buildReplaceSql(DEFAULT_TEST_SITE_ID));
+        sqlite.exec(dump);
+      })(),
+    ).not.toThrow();
   });
 });

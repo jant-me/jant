@@ -109,6 +109,24 @@ export type PublicPostMarkdownResponse = PublicPostBaseResponse & {
 export type PublicPostResponse =
   PublicPostRenderedResponse | PublicPostMarkdownResponse;
 
+/**
+ * The public Markdown for a post, or null for a historical body that isn't
+ * TipTap JSON. One unreadable row answers null and is logged, rather than
+ * failing the whole listing; `bodyHtml` still falls back to stored HTML.
+ */
+function toPublicBodyMarkdown(postId: string, body: string): string | null {
+  try {
+    return tiptapJsonToMarkdown(body);
+  } catch (error) {
+    // eslint-disable-next-line no-console -- A skipped body must leave a trace
+    console.error(
+      `Couldn't convert the body of post ${postId} to Markdown`,
+      error,
+    );
+    return null;
+  }
+}
+
 function isPublicDetailVisible(post: Post | null): post is Post {
   return (
     post !== null &&
@@ -196,7 +214,9 @@ export function toPublicPost(
   const contentFields =
     options?.content === "markdown"
       ? {
-          bodyMarkdown: post.body ? tiptapJsonToMarkdown(post.body) : null,
+          bodyMarkdown: post.body
+            ? toPublicBodyMarkdown(post.id, post.body)
+            : null,
         }
       : {
           bodyHtml: post.bodyHtml,

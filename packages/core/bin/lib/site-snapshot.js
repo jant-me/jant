@@ -1097,6 +1097,49 @@ function parseSqlScalar(raw) {
  * @example
  * await execute(`${buildReplaceSql(site.id)}\n${dbSql}`);
  */
+/**
+ * Order `post` rows so every row comes after its Thread root and the post it
+ * replies to.
+ *
+ * The dump reads posts by creation time, and `(site_id, thread_id)` and
+ * `(site_id, reply_to_id)` are foreign keys. A post moved into a Thread keeps
+ * its own creation time, and an import restores creation times, so a reply
+ * can be older than its root; inserted in creation order it names a row that
+ * isn't there yet, and the whole import fails. Otherwise the order is kept.
+ *
+ * @param {Record<string, unknown>[]} rows - `post` rows in dump order
+ * @returns {Record<string, unknown>[]} The same rows, parents first
+ * @example
+ * orderSnapshotPostRows([reply, root]); // [root, reply]
+ */
+export function orderSnapshotPostRows(rows) {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const placed = new Set();
+  const ordered = [];
+
+  const place = (row, visiting) => {
+    if (placed.has(row.id) || visiting.has(row.id)) return;
+    visiting.add(row.id);
+    for (const parentId of [row.thread_id, row.reply_to_id]) {
+      const parent = parentId !== row.id ? byId.get(parentId) : undefined;
+      if (parent) place(parent, visiting);
+    }
+    placed.add(row.id);
+    ordered.push(row);
+  };
+
+  for (const row of rows) place(row, new Set());
+  return ordered;
+}
+
+/**
+ * SQL a snapshot import runs before its inserts on SQLite and D1: foreign
+ * keys are checked at commit rather than per row, so a snapshot written
+ * before posts were ordered parents-first still loads. Postgres has no
+ * equivalent for its non-deferrable keys; its snapshots are ordered at export.
+ */
+export const DEFER_FOREIGN_KEYS_SQL = "PRAGMA defer_foreign_keys = ON;";
+
 export function buildReplaceSql(siteId) {
   const statements = [];
 

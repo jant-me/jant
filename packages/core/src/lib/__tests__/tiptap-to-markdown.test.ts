@@ -361,6 +361,154 @@ describe("tiptapJsonToMarkdown", () => {
       );
       expect(tiptapJsonToMarkdown(json)).toBe("Line 1  \nLine 2");
     });
+
+    // Trailing spaces on a line with nothing else on it make a blank line,
+    // which ends the paragraph (or leaves a list item empty).
+    it("keeps two hard breaks in a row inside one paragraph", () => {
+      const br = { type: "hardBreak" };
+      const json = doc(p(text("A"), br, br, text("B")));
+      const markdown = tiptapJsonToMarkdown(json);
+      expect(markdown).toBe("A  \n\\\nB");
+      expect(JSON.parse(markdownToTiptapJson(markdown))).toEqual(
+        JSON.parse(json),
+      );
+    });
+
+    it("keeps a list item that opens with a hard break in the list", () => {
+      const json = doc({
+        type: "bulletList",
+        content: [
+          {
+            type: "listItem",
+            content: [p({ type: "hardBreak" }, text("Ships in 3–7 days"))],
+          },
+          { type: "listItem", content: [p(text("Next"))] },
+        ],
+      });
+      const markdown = tiptapJsonToMarkdown(json);
+      expect(JSON.parse(markdownToTiptapJson(markdown))).toEqual(
+        JSON.parse(json),
+      );
+    });
+  });
+
+  // CommonMark only closes `**` after punctuation when a space or another
+  // punctuation mark follows, so `**句子。**后文` stays literal asterisks in
+  // Hugo and in Jant. Those runs use HTML tags, which both read.
+  describe("emphasis a delimiter can't open or close", () => {
+    const bold = [{ type: "bold" }];
+
+    it.each([
+      [
+        "bold ending in CJK punctuation before a letter",
+        [text("而是："), text("固定时间，一群人。", bold), text("来的人")],
+        "而是：<strong>固定时间，一群人。</strong>来的人",
+      ],
+      [
+        "bold opening on CJK punctuation after a letter",
+        [text("说"), text("「引用」", bold), text("后")],
+        "说<strong>「引用」</strong>后",
+      ],
+      [
+        "italic ending in punctuation before a letter",
+        [text("这是"), text("强调。", [{ type: "italic" }]), text("后面")],
+        "这是<em>强调。</em>后面",
+      ],
+      [
+        "strike ending in punctuation before a letter",
+        [text("价格"), text("100元。", [{ type: "strike" }]), text("现在")],
+        "价格<s>100元。</s>现在",
+      ],
+      [
+        "English bold ending in a period before a letter",
+        [text("Say "), text("hello.", bold), text("World")],
+        "Say <strong>hello.</strong>World",
+      ],
+    ])("writes %s as HTML", (_label, content, expected) => {
+      const json = doc(p(...content));
+      expect(tiptapJsonToMarkdown(json)).toBe(expected);
+      expect(JSON.parse(markdownToTiptapJson(expected))).toEqual(
+        JSON.parse(json),
+      );
+    });
+
+    it.each([
+      [
+        "between spaces",
+        [text("a "), text("bold", bold), text(" b")],
+        "a **bold** b",
+      ],
+      [
+        "inside CJK text",
+        [text("中"), text("加粗", bold), text("文")],
+        "中**加粗**文",
+      ],
+      [
+        "ending in punctuation before punctuation",
+        [text("说"), text("好。", bold), text("」")],
+        "说**好。**」",
+      ],
+    ])("keeps Markdown delimiters %s", (_label, content, expected) => {
+      const json = doc(p(...content));
+      expect(tiptapJsonToMarkdown(json)).toBe(expected);
+      expect(JSON.parse(markdownToTiptapJson(expected))).toEqual(
+        JSON.parse(json),
+      );
+    });
+  });
+
+  // Text that happens to open a line with block syntax must come back as the
+  // same paragraph, not as a list, heading, or setext underline.
+  describe("block markers at the start of a line", () => {
+    const br = { type: "hardBreak" };
+
+    it.each([
+      ["a numbered line", [text("1986. A good year")], "1986\\. A good year"],
+      ["a parenthesized number", [text("2) Second")], "2\\) Second"],
+      ["a dash", [text("- not a list")], "\\- not a list"],
+      ["a plus", [text("+ not a list")], "\\+ not a list"],
+      ["a hash", [text("# not a heading")], "\\# not a heading"],
+      [
+        "numbered lines after hard breaks",
+        [text("Update:"), br, text("1. Pony"), br, text("2. Next")],
+        "Update:  \n1\\. Pony  \n2\\. Next",
+      ],
+      [
+        "a dash rule after a hard break",
+        [text("Title"), br, text("---")],
+        "Title  \n\\---",
+      ],
+      [
+        "an equals rule after a hard break",
+        [text("Title"), br, text("===")],
+        "Title  \n\\===",
+      ],
+    ])("escapes %s", (_label, content, expected) => {
+      const json = doc(p(...content));
+      expect(tiptapJsonToMarkdown(json)).toBe(expected);
+      expect(JSON.parse(markdownToTiptapJson(expected))).toEqual(
+        JSON.parse(json),
+      );
+    });
+
+    it("leaves markers in the middle of a line alone", () => {
+      expect(tiptapJsonToMarkdown(doc(p(text("Step 1. then 2."))))).toBe(
+        "Step 1. then 2.",
+      );
+    });
+
+    it("escapes a numbered line inside a list item", () => {
+      const json = doc({
+        type: "orderedList",
+        content: [
+          { type: "listItem", content: [p(text("1. nested-looking"))] },
+        ],
+      });
+      expect(tiptapJsonToMarkdown(json)).toBe("1. 1\\. nested-looking");
+      expect(
+        JSON.parse(markdownToTiptapJson("1. 1\\. nested-looking")),
+      ).toEqual(JSON.parse(json));
+    });
   });
 
   describe("round-trip", () => {
@@ -411,12 +559,32 @@ describe("tiptapJsonToMarkdown", () => {
   });
 
   describe("edge cases", () => {
-    it("returns empty string for invalid JSON", () => {
-      expect(tiptapJsonToMarkdown("not json")).toBe("");
+    it("throws for invalid JSON instead of returning nothing", () => {
+      expect(() => tiptapJsonToMarkdown("not json")).toThrow();
     });
 
-    it("returns empty string for non-doc node", () => {
-      expect(tiptapJsonToMarkdown('{"type":"paragraph"}')).toBe("");
+    it("throws for a root that is not a doc", () => {
+      expect(() => tiptapJsonToMarkdown('{"type":"paragraph"}')).toThrow(/doc/);
+    });
+
+    // A stored body with an empty list item made the serializer throw, and
+    // the catch-all turned the whole post into "" in the export.
+    it("fills an empty list item instead of dropping the document", () => {
+      const json = doc(
+        { type: "heading", attrs: { level: 2 }, content: [text("Setup")] },
+        {
+          type: "orderedList",
+          content: [
+            { type: "listItem", content: [] },
+            { type: "listItem", content: [p(text("Install"))] },
+          ],
+        },
+        { type: "codeBlock", content: [text("nix run")] },
+      );
+      const markdown = tiptapJsonToMarkdown(json);
+      expect(markdown).toContain("## Setup");
+      expect(markdown).toContain("Install");
+      expect(markdown).toContain("nix run");
     });
 
     it("handles empty doc", () => {

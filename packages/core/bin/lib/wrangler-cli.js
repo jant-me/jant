@@ -48,12 +48,20 @@ function resolveWranglerBin(cwd = process.cwd()) {
   return resolve(dirname(manifestPath), binEntry);
 }
 
+/**
+ * The most output a Wrangler call may print before the CLI gives up on it.
+ * `d1 execute --json` prints whole result sets, and Node's default of 1 MiB
+ * overflowed on one page of a real site's posts.
+ */
+export const WRANGLER_MAX_BUFFER = 64 * 1024 * 1024;
+
 export function runLocalWrangler(args, options = {}) {
   const {
     cwd = process.cwd(),
     encoding = "utf-8",
     env = process.env,
     stdio = "pipe",
+    maxBuffer = WRANGLER_MAX_BUFFER,
     ...execOptions
   } = options;
 
@@ -63,5 +71,6 @@ export function runLocalWrangler(args, options = {}) {
     encoding,
     env,
     stdio,
+    maxBuffer,
   });
 }

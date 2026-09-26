@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { queryD1 } from "../lib/d1-query.js";
+import { D1_DUMP_PAGE_SIZE, queryD1 } from "../lib/d1-query.js";
 import { openNodeDatabase } from "../lib/node-database.js";
 import { dumpDatabaseToSql } from "../lib/sql-export.js";
 import {
@@ -108,6 +108,8 @@ export async function run(argv) {
       {
         source: runtime === "d1-remote" ? "remote" : "local",
         dialect: "sqlite",
+        // D1 answers through Wrangler's buffered output; read it in pages.
+        pageSize: D1_DUMP_PAGE_SIZE,
       },
     );
   }

@@ -487,6 +487,26 @@ export function toPublicPath(path: string, sitePathPrefix = ""): string {
 }
 
 /**
+ * The internal path a Post is served at: its oldest custom path when it has
+ * one, else its slug.
+ *
+ * This is the Post's permalink before the site path prefix, and so the `<id>`
+ * of its Atom entry. The Hugo export writes that `<id>` into front matter so
+ * an exported feed keeps it, which is why the rule lives here rather than
+ * inside `toPostView`.
+ *
+ * @param slug - The Post's current slug
+ * @param aliasPath - Its oldest custom path, `paths.getPostAliases()`'s first
+ * @returns Internal path rooted at `/`
+ * @example
+ * getPostPath("xta29"); // "/xta29"
+ * getPostPath("links-4", "/blog/links/4"); // "/blog/links/4"
+ */
+export function getPostPath(slug: string, aliasPath?: string): string {
+  return aliasPath ?? `/${slug}`;
+}
+
+/**
  * Convert an app-local href to its public path while leaving external URLs
  * unchanged.
  *
