@@ -43,7 +43,6 @@ import { smartCollectionsApiRoutes } from "./routes/api/smart-collections.js";
 import { settingsApiRoutes } from "./routes/api/settings.js";
 import { uploadApiRoutes } from "./routes/api/upload.js";
 import { uploadsApiRoutes } from "./routes/api/uploads.js";
-import { multipartUploadApiRoutes } from "./routes/api/upload-multipart.js";
 import { searchApiRoutes } from "./routes/api/search.js";
 import { mcpApiRoutes } from "./routes/api/mcp.js";
 import { customUrlsApiRoutes } from "./routes/api/custom-urls.js";
@@ -605,8 +604,7 @@ export function createApp(): App {
   app.route("/settings/custom-urls", customUrlsRoutes);
   app.route("/settings", settingsRoutes);
 
-  // Protected API routes (multipart must be registered before base upload)
-  app.route("/api/upload/multipart", multipartUploadApiRoutes);
+  // Protected API routes
   app.route("/api/upload", uploadApiRoutes);
   app.route("/api/uploads", uploadsApiRoutes);
   app.route("/api/search", searchApiRoutes);

@@ -15,23 +15,22 @@ For static export and round-trip import, also see [Export and Import](export-and
 
 ## API Surface
 
-| Area                    | Base path               | Auth                    |
-| ----------------------- | ----------------------- | ----------------------- |
-| Public posts            | `/api/public/posts`     | Public when enabled     |
-| Public archive          | `/api/public/archive`   | Public when enabled     |
-| Posts                   | `/api/posts`            | API token or session    |
-| Upload sessions         | `/api/uploads`          | API token or session    |
-| One-shot upload         | `/api/upload`           | API token or session    |
-| Legacy multipart relay  | `/api/upload/multipart` | API token or session    |
-| Text attachment content | `/api/attachments`      | API token or session    |
-| MCP                     | `/api/mcp`              | API token or session    |
-| Collections             | `/api/collections`      | Mixed                   |
-| Navigation items        | `/api/nav-items`        | Mixed                   |
-| Custom URLs             | `/api/custom-urls`      | API token or session    |
-| Settings                | `/api/settings`         | API token or session    |
-| Search                  | `/api/search`           | Public or authenticated |
-| Export                  | `/api/export`           | API token or session    |
-| Internal admin          | `/api/internal/*`       | Internal admin token    |
+| Area                    | Base path             | Auth                    |
+| ----------------------- | --------------------- | ----------------------- |
+| Public posts            | `/api/public/posts`   | Public when enabled     |
+| Public archive          | `/api/public/archive` | Public when enabled     |
+| Posts                   | `/api/posts`          | API token or session    |
+| Upload sessions         | `/api/uploads`        | API token or session    |
+| One-shot upload         | `/api/upload`         | API token or session    |
+| Text attachment content | `/api/attachments`    | API token or session    |
+| MCP                     | `/api/mcp`            | API token or session    |
+| Collections             | `/api/collections`    | Mixed                   |
+| Navigation items        | `/api/nav-items`      | Mixed                   |
+| Custom URLs             | `/api/custom-urls`    | API token or session    |
+| Settings                | `/api/settings`       | API token or session    |
+| Search                  | `/api/search`         | Public or authenticated |
+| Export                  | `/api/export`         | API token or session    |
+| Internal admin          | `/api/internal/*`     | Internal admin token    |
 
 Auth labels in this document:
 
@@ -489,9 +488,9 @@ Query parameters:
 | `title`      | `any` \| `none`                                | no       | none    | `any` = posts with a title, `none` = posts without                                                                                                                                     |
 | `replies`    | `any` \| `none`                                | no       | none    | `any` = thread roots with published replies (threads), `none` = single posts without replies                                                                                           |
 | `visibility` | `public` \| `featured` \| `hidden`             | no       | all     | `hidden` is the URL spelling of `latest_hidden`, which is also read. `private` names a set no anonymous caller can see and returns `400`, as does any other value                      |
-| `hasMedia`   | `0` \| `1`                                     | no       | none    | **Deprecated** — use `media=any` / `media=none`                                                                                                                                        |
-| `hasTitle`   | `0` \| `1`                                     | no       | none    | **Deprecated** — use `title=any` / `title=none`                                                                                                                                        |
-| `hasReplies` | `0` \| `1`                                     | no       | none    | **Deprecated** — use `replies=any` / `replies=none`                                                                                                                                    |
+| `hasMedia`   | `0` \| `1`                                     | no       | none    | Legacy spelling of `media=any` / `media=none`, accepted indefinitely for old links                                                                                                     |
+| `hasTitle`   | `0` \| `1`                                     | no       | none    | Legacy spelling of `title=any` / `title=none`, accepted indefinitely for old links                                                                                                     |
+| `hasReplies` | `0` \| `1`                                     | no       | none    | Legacy spelling of `replies=any` / `replies=none`, accepted indefinitely for old links                                                                                                 |
 | `cursor`     | string                                         | no       | none    | Pass the previous `nextCursor` back unchanged                                                                                                                                          |
 | `limit`      | integer                                        | no       | `20`    | `1` to `100`                                                                                                                                                                           |
 | `content`    | `markdown`                                     | no       | none    | Return `bodyMarkdown` instead of rendered body fields                                                                                                                                  |
@@ -971,11 +970,10 @@ Response: `200 OK` with `{ "success": true }`.
 
 All upload endpoints require auth.
 
-Jant currently exposes three upload APIs:
+Jant exposes two upload APIs:
 
 1. `/api/upload`: one-shot upload, preferred for ordinary scripts and migrations
 2. `/api/uploads`: session-based upload, preferred for large files, unreliable connections, and application clients that need resumable transport
-3. `/api/upload/multipart`: legacy explicit multipart relay API
 
 File size is limited by `UPLOAD_MAX_FILE_SIZE_MB` and defaults to `1024 MB`.
 
@@ -1301,128 +1299,6 @@ Response:
 ```
 
 If the request sends `Accept: text/event-stream`, the endpoint may return SSE patches instead of JSON for live UI updates.
-
-### Legacy explicit multipart relay
-
-Base path: `/api/upload/multipart`
-
-This is the older chunked-upload API. Prefer `/api/uploads` unless you already implement this flow.
-
-#### Initiate a multipart upload
-
-`POST /api/upload/multipart`
-
-Request body:
-
-```json
-{
-  "filename": "video.mp4",
-  "contentType": "video/mp4",
-  "size": 250000000
-}
-```
-
-Response:
-
-```json
-{
-  "id": "med_01jpyx4g9m8b4y50a4gx3t7p1n",
-  "uploadId": "upload-123",
-  "storageKey": "media/...",
-  "filename": "med_01jpyx4g9m8b4y50a4gx3t7p1n.mp4",
-  "originalName": "video.mp4"
-}
-```
-
-#### Upload one part
-
-`PUT /api/upload/multipart/:id/part?partNumber=N&storageKey=...&uploadId=...`
-
-- Body: raw part bytes
-- Response:
-
-```json
-{
-  "partNumber": 1,
-  "etag": "etag-value"
-}
-```
-
-#### Upload a poster frame
-
-`PUT /api/upload/multipart/:id/poster`
-
-Content type: `multipart/form-data`
-
-Form field:
-
-| Field    | Type | Required | Default | Notes             |
-| -------- | ---- | -------- | ------- | ----------------- |
-| `poster` | file | yes      | —       | WebP poster frame |
-
-Response:
-
-```json
-{
-  "posterKey": "media/.../posters/..."
-}
-```
-
-#### Complete the multipart upload
-
-`POST /api/upload/multipart/:id/complete`
-
-Request body:
-
-```json
-{
-  "storageKey": "media/...",
-  "uploadId": "upload-123",
-  "parts": [{ "partNumber": 1, "etag": "etag-1" }],
-  "filename": "med_....mp4",
-  "originalName": "video.mp4",
-  "contentType": "video/mp4",
-  "size": 250000000,
-  "width": 1920,
-  "height": 1080,
-  "blurhash": "optional",
-  "waveform": "optional",
-  "posterKey": "media/.../poster.webp"
-}
-```
-
-Response:
-
-```json
-{
-  "id": "med_01jpyx4g9m8b4y50a4gx3t7p1n",
-  "filename": "med_01jpyx4g9m8b4y50a4gx3t7p1n.mp4",
-  "url": "/media/med_01jpyx4g9m8b4y50a4gx3t7p1n.mp4",
-  "mimeType": "video/mp4",
-  "size": 250000000
-}
-```
-
-#### Abort the multipart upload
-
-`POST /api/upload/multipart/:id/abort`
-
-Request body:
-
-```json
-{
-  "storageKey": "media/...",
-  "uploadId": "upload-123"
-}
-```
-
-Response:
-
-```json
-{ "success": true }
-```
-
----
 
 ## Collections
 
@@ -2228,7 +2104,7 @@ Request body:
   "path": "/blog/old-post",
   "targetType": "redirect",
   "toPath": "/my-new-slug",
-  "redirectType": "301"
+  "redirectType": 301
 }
 ```
 
@@ -2240,7 +2116,7 @@ Fields:
 | `targetType`   | `post` \| `collection` \| `redirect` | yes                                 | —       | Target kind                                                                   |
 | `targetId`     | string                               | required for `post` or `collection` | —       | Send the canonical slug, not the TypeID                                       |
 | `toPath`       | string                               | required for `redirect`             | —       | Internal destination path such as `/new-path`; normalized before storage      |
-| `redirectType` | `"301"` \| `"302"` \| `301` \| `302` | no                                  | `301`   | Only used for `redirect`; the number the list answers with works too          |
+| `redirectType` | `301` \| `302`                       | no                                  | `301`   | Only used for `redirect`. The strings `"301"` and `"302"` are accepted too    |
 
 Examples:
 
@@ -2251,7 +2127,7 @@ Redirect an old path:
   "path": "/blog/2024/my-old-post",
   "targetType": "redirect",
   "toPath": "/my-new-slug",
-  "redirectType": "301"
+  "redirectType": 301
 }
 ```
 
