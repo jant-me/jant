@@ -263,7 +263,7 @@ PORT=8787 npm run dev
 
 ## 升级
 
-升级前先读 [发布说明](https://github.com/jant-me/jant/releases)，留意破坏性变更。然后更新 `@jant/core` 并部署：
+升级前先读 [发布说明](https://github.com/jant-me/jant/releases)，留意破坏性变更。然后更新 `@jant/core` 并部署。一次发布可能改动什么、哪些版本可以原地升级，见 [兼容性](compatibility.md)。
 
 ```bash
 npm install @jant/core@latest

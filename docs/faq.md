@@ -143,7 +143,7 @@ Every active session is invalidated immediately and everyone has to sign in agai
 
 ## Pre-1.0 — will there be a lot of breaking changes?
 
-Possibly, but only when warranted. Every breaking change is documented in the commit and changelog. Skim the changelog before upgrading and keep a recent backup.
+Possibly, but only when warranted. Every breaking change is documented in the commit and changelog. Skim the changelog before upgrading and keep a recent backup. [Compatibility](compatibility.md) lists what 1.0 will freeze.
 
 ## How do I move my old blog into Jant (WordPress, Tumblr, etc.)?
 

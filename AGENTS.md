@@ -6,7 +6,7 @@ Jant (short for Jantelagen) is a personal microblogging system — self-hosted, 
 
 It runs on Cloudflare Workers with minimal infrastructure. The UI follows an "Organic Minimalism" aesthetic: generous whitespace, single-column layout, smooth animations, mobile-first.
 
-The project is in **pre-1.0 development**. Breaking changes are expected and welcome when they improve the design. Always follow best practices over minimal-change conservatism. Update all references in the same change and document what changed in the commit message.
+The project is **settling toward 1.0**. What `docs/compatibility.md` lists — the HTTP API, MCP tools, feeds, addresses, CLI, configuration, theme hooks, export and snapshot formats, and `createApp` — is frozen: change or remove it only through a deprecation in a minor release and removal in a major one, and keep additions backward compatible. Everything else — internal modules, the database schema (through migrations), undocumented CSS, `/api/internal/*` — still changes freely when it improves the design. Always follow best practices over minimal-change conservatism. Update all references in the same change and document what changed in the commit message; a change to a frozen surface also updates its reference doc, whose drift tests (`cli-commands`, `config-docs`, `theme-docs`, `feed-docs`) fail otherwise.
 
 ## Workflow
 
@@ -86,7 +86,7 @@ Non-negotiable regardless of context:
 ### Conventions
 
 - `packages/core`: library + dev environment (Vite HMR). `sites/demo`: demo site + user template source (via `@create-jant` annotations).
-- **Types**: public exports in `src/types.ts`; definitions in `src/types/`.
+- **Types**: shared domain types re-exported from `src/types.ts`; definitions in `src/types/`. The package's public JavaScript API is `createApp` alone (`src/index.ts`).
 - **Schemas**: shared domain schemas in `src/lib/schemas.ts`; route-specific schemas colocated with routes.
 - **Routes**: `xxxRoutes` suffix (`postsRoutes`, `settingsRoutes`).
 - **DB table names**: always singular or domain-specific (`post`, `collection`, `nav_item`, `api_token`, `path_registry`), never plural.
@@ -179,6 +179,8 @@ If you notice code contradicting this document, think about which side is correc
 
 ### Docs Index
 
+- **Compatibility promise** (what 1.0 freezes, deprecation, upgrade range): `docs/compatibility.md`
+- **Command line** (every public `jant` command and option): `docs/cli.md`
 - **Coding standards** (module deps, error handling, testing): `docs/internal/coding-standards.md`
 - **Writing style** (long-form docs prose, genre discipline, 中文对照): `docs/internal/writing-style.md`
 - **Feed contract** (what an Atom entry carries, and who each field is for): `docs/internal/feed-contract.md`

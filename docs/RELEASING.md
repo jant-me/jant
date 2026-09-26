@@ -12,7 +12,9 @@ We follow [Semantic Versioning](https://semver.org/):
 | **minor** | New features (backwards compatible) | `0.1.0` → `0.2.0` |
 | **major** | Breaking changes                    | `0.x.x` → `1.0.0` |
 
-> **Note**: While version is `0.x.x`, the API is considered unstable. Breaking changes may occur in minor versions.
+> **Note**: While version is `0.x.x`, a minor release can break things and its changelog carries upgrade notes. From 1.0, [Compatibility](compatibility.md) defines what "breaking" covers: a change to anything it lists needs a major release, after a deprecation in a minor one.
+>
+> `@jant/core@1.0.0` was published by accident in April 2026 and is deprecated on npm, and npm never accepts a version number twice. The first real 1.x release is **1.0.1**; its changelog says why. A major changeset makes Changesets propose 1.0.0, so in that Release PR change both packages' `version` and `CHANGELOG.md` heading to 1.0.1 before merging. Keep the `v1.0.0`, `@jant/core@1.0.0`, and `create-jant@1.0.0` tags: they record what the npm 1.0.0 was built from.
 
 ## Packages
 
@@ -86,7 +88,7 @@ Configure this repository secret before expecting Docker pushes to work:
 
 - `DOCKERHUB_TOKEN`: Docker Hub access token with permission to push that repository
 
-The workflow hardcodes the Docker Hub owner as `owenyoung`. If ownership moves later, update `.github/workflows/docker-publish.yml` in the same change.
+The image name `owenyoung/jant` is part of the [compatibility promise](compatibility.md): users' `compose.yml` files name it. It stays as it is.
 
 If `DOCKERHUB_TOKEN` is missing, package release still works, but the Docker image push and overview sync will fail at the Docker Hub steps.
 

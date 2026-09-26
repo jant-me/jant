@@ -37,5 +37,6 @@
 ## Reference
 
 - [FAQ](faq.md)
+- [Compatibility](compatibility.md)
 - [API Reference](API.md)
 - [Reading a Jant feed](feed-reading.md)
