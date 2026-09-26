@@ -1,5 +1,10 @@
+import { readFileSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
+import {
+  listSchemaMigrationFiles,
+  resolveBundledSchemaMigrationsDir,
+} from "./migration-artifacts.js";
 
 export const SNAPSHOT_FORMAT = "jant-site-snapshot";
 export const SNAPSHOT_VERSION = 2;
@@ -346,6 +351,43 @@ export function snapshotObjectPath(key) {
 
 export const SNAPSHOT_DIALECTS = ["sqlite", "pg"];
 
+/**
+ * Version of the installed `@jant/core`, which a snapshot records as `jant`.
+ *
+ * @returns {string} The package version, e.g. `0.8.0`
+ */
+export function readInstalledJantVersion() {
+  const packageJson = JSON.parse(
+    readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+  );
+  return String(packageJson.version);
+}
+
+/**
+ * Schema migrations the installed `@jant/core` ships for a dialect, oldest
+ * first.
+ *
+ * @param {"sqlite" | "pg"} dialect Snapshot dialect
+ * @returns {string[]} Migration tags, e.g. `0034_cheerful_rumiko_fujikawa`
+ */
+export function listInstalledSchemaTags(dialect) {
+  return listSchemaMigrationFiles(
+    resolveBundledSchemaMigrationsDir(dialect),
+  ).map((migration) => migration.tag);
+}
+
+/**
+ * Build a snapshot's `meta.json`.
+ *
+ * Besides the format, it records the `@jant/core` version that wrote the
+ * snapshot (`jant`) and, when the dialect is known, the last schema migration
+ * that version ships (`schema`). The CLI that exports is the one the site
+ * runs and migrates with, so `schema` is the schema the rows were read from.
+ *
+ * @param {{ id: string, key: string }} site The exported site
+ * @param {{ dialect?: "sqlite" | "pg" }} [options] Source database dialect
+ * @returns {SnapshotMeta} The object to write as `meta.json`
+ */
 export function buildSnapshotMeta(site, options = {}) {
   const dialect = options.dialect;
   if (dialect && !SNAPSHOT_DIALECTS.includes(dialect)) {
@@ -354,10 +396,14 @@ export function buildSnapshotMeta(site, options = {}) {
     );
   }
 
+  const schema = dialect ? listInstalledSchemaTags(dialect).at(-1) : undefined;
+
   return {
     format: SNAPSHOT_FORMAT,
     version: SNAPSHOT_VERSION,
     ...(dialect ? { dialect } : {}),
+    jant: readInstalledJantVersion(),
+    ...(schema ? { schema } : {}),
     site: {
       id: site.id,
       key: site.key,
@@ -372,6 +418,10 @@ export function buildSnapshotMeta(site, options = {}) {
  * @property {typeof SNAPSHOT_FORMAT} format
  * @property {number} version One of `SUPPORTED_SNAPSHOT_VERSIONS`
  * @property {"sqlite" | "pg"} [dialect] Absent from snapshots that predate it
+ * @property {string} [jant] The `@jant/core` version that wrote the snapshot;
+ *   absent before 0.8.0
+ * @property {string} [schema] The last schema migration of that version, for
+ *   `dialect`; absent before 0.8.0
  * @property {{ id: string, key: string }} [site] The site the snapshot was
  *   exported from; absent from legacy snapshots
  * @property {unknown} [tables] Listed by legacy snapshots only
@@ -419,6 +469,38 @@ export function assertSnapshotMeta(meta) {
   ) {
     throw new Error("Snapshot meta site must contain string id and key.");
   }
+
+  for (const field of ["jant", "schema"]) {
+    if (meta[field] !== undefined && typeof meta[field] !== "string") {
+      throw new Error(`Snapshot meta ${field} must be a string.`);
+    }
+  }
+}
+
+/**
+ * Refuse a snapshot written by a newer Jant than the installed one.
+ *
+ * A snapshot's rows fit the schema it records. When the installed
+ * `@jant/core` does not ship that migration, its schema is older than the
+ * snapshot's, and the rows can name columns it doesn't have. Snapshots from
+ * before 0.8.0 record no schema and are accepted.
+ *
+ * @param {SnapshotMeta} meta Checked by `assertSnapshotMeta`
+ * @returns {void}
+ * @throws {Error} When the installed package lacks the snapshot's schema
+ * @example
+ * assertSnapshotSchemaInstalled({ format: "jant-site-snapshot", version: 2, schema: "9999_later" });
+ * // throws: This snapshot was written by a newer Jant …
+ */
+export function assertSnapshotSchemaInstalled(meta) {
+  if (typeof meta.schema !== "string") return;
+  const dialect = meta.dialect ?? "sqlite";
+  if (listInstalledSchemaTags(dialect).includes(meta.schema)) return;
+
+  const writer = meta.jant ? `Jant ${meta.jant}` : "a newer Jant";
+  throw new Error(
+    `This snapshot was written by ${writer}, whose schema reaches ${meta.schema}. The installed @jant/core (${readInstalledJantVersion()}) doesn't have that migration. Upgrade @jant/core, run jant migrate, then import again.`,
+  );
 }
 
 /**
@@ -451,7 +533,7 @@ export function assertSnapshotDialectMatches(meta, targetDialect) {
         `Snapshot dialect mismatch: source is ${sourceDialect}, target is ${targetDialect}.`,
         "Snapshot db.sql is dialect-specific (BLOB literals, generated columns, FTS, etc.)",
         "and cannot be replayed across SQLite and Postgres safely.",
-        "Use `jant site export <url>` (HTTP, dialect-neutral) to move content between",
+        "Use `jant site export --url <url>` (HTTP, dialect-neutral) to move content between",
         "different DB engines.",
       ].join("\n"),
     );

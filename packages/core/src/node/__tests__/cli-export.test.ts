@@ -3,11 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { run } from "../../../bin/commands/export.js";
+import { run } from "../../../bin/commands/db/export.js";
 import { migrate } from "../runtime.js";
 import type { Bindings } from "../../types.js";
 
-describe("jant export", () => {
+describe("jant db export", () => {
   const tempDirs: string[] = [];
   const originalEnv = process.env.DATABASE_URL;
   const siteId = "sit_01jpyz1h3v4m7s2k8r5c9t0qbd";

@@ -91,21 +91,22 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 ## 排版变量
 
-| 变量                | 默认值                  | 作用                                       |
-| ------------------- | ----------------------- | ------------------------------------------ |
-| `--font-body`       | 系统 sans-serif         | 正文、输入框                               |
-| `--font-heading`    | 偏编辑风格的 serif 组合 | 帖子标题、h1–h3                            |
-| `--font-site-title` | 偏编辑风格的 serif 组合 | 站点 logo（标题栏）                        |
-| `--font-ui`         | 系统 sans-serif         | 按钮、导航、标签、徽章（不受字型主题影响） |
-| `--font-serif`      | 系统 serif + Noto 回退  | serif 强调文本                             |
-| `--font-blockquote` | `inherit`               | 引用块字族，默认跟随正文字体               |
-| `--font-mono`       | 系统 monospace          | 代码块                                     |
-| `--fw-light`        | 300                     | 轻量强调                                   |
-| `--fw-regular`      | 400                     | 正文                                       |
-| `--fw-medium`       | 500                     | 标签、激活导航                             |
-| `--fw-semibold`     | 600                     | 标题、按钮                                 |
-| `--fw-bold`         | 700                     | 强强调                                     |
-| `--fw-extrabold`    | 800                     | 站点 logo                                  |
+| 变量                  | 默认值                  | 作用                                       |
+| --------------------- | ----------------------- | ------------------------------------------ |
+| `--font-body`         | 系统 sans-serif         | 正文、输入框                               |
+| `--font-heading`      | 偏编辑风格的 serif 组合 | 帖子标题、h1–h3                            |
+| `--font-site-title`   | 偏编辑风格的 serif 组合 | 站点 logo（标题栏）                        |
+| `--font-ui`           | 系统 sans-serif         | 按钮、导航、标签、徽章（不受字型主题影响） |
+| `--font-serif`        | 系统 serif + Noto 回退  | serif 强调文本                             |
+| `--font-blockquote`   | `inherit`               | 引用块字族，默认跟随正文字体               |
+| `--font-mono`         | 系统 monospace          | 代码块                                     |
+| `--type-footnote-ref` | 正文字号的 `75%`        | 行内脚注引用的字号                         |
+| `--fw-light`          | 300                     | 轻量强调                                   |
+| `--fw-regular`        | 400                     | 正文                                       |
+| `--fw-medium`         | 500                     | 标签、激活导航                             |
+| `--fw-semibold`       | 600                     | 标题、按钮                                 |
+| `--fw-bold`           | 700                     | 强强调                                     |
+| `--fw-extrabold`      | 800                     | 站点 logo                                  |
 
 在 **Settings > Font Theme** 选字型主题后，`--font-heading`、`--font-body` 以及若干相关字重会随之切换。`--font-ui` 不在切换范围内——按钮、导航这些界面文字始终用系统 sans-serif，方便阅读。要进一步调整，仍然可以在 Custom CSS 里覆盖任意变量。
 
@@ -122,11 +123,13 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 ## 布局变量
 
-| 变量                  | 默认值   | 作用                 |
-| --------------------- | -------- | -------------------- |
-| `--content-max-width` | `42rem`  | 内容最大宽度         |
-| `--site-padding`      | `1.5rem` | 横向内边距           |
-| `--content-gap`       | `1rem`   | 信息流条目之间的间距 |
+| 变量                      | 默认值   | 作用                     |
+| ------------------------- | -------- | ------------------------ |
+| `--content-max-width`     | `42rem`  | 内容最大宽度             |
+| `--site-padding`          | `1.5rem` | 横向内边距               |
+| `--content-gap`           | `1rem`   | 信息流条目之间的间距     |
+| `--layout-sidenote-width` | `50%`    | 宽屏下脚注侧栏的宽度     |
+| `--layout-sidenote-gap`   | `10%`    | 正文和脚注侧栏之间的间距 |
 
 ### 示例：更宽的内容区
 
@@ -135,6 +138,26 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
   --content-max-width: 55rem;
 }
 ```
+
+### 侧注与缩进块
+
+脚注使用语义化的 HTML：正文里是上标的脚注引用链接，正文之后是原生的有序尾注列表。在详情页和公开的时间线列表里，Jant 按每篇帖子的实际容器（而不只是视口）判断右侧有没有空间放 Tufte 风格的侧栏。容器至少 `56rem` 宽、脚注放得下又不会溢出太多时，一小段渐进增强的脚本会把现有的尾注列表移到侧栏。时间线里的每一项单独测量。容器较窄或脚注较密、打印、不运行 JavaScript 的客户端以及旧浏览器，都保留底部尾注。
+
+这段脚本读取每个脚注引用的实际位置，而不是把浮动元素锚定在所在的块上，所以引用块或其他正文块带内边距时，不再需要额外的锚点偏移。侧栏编号和脚注文字同样大小、同一基线。侧栏的比例和语义颜色用主题 token 调整：
+
+```css
+:root {
+  --layout-sidenote-width: 42%;
+  --layout-sidenote-gap: 8%;
+  --type-footnote-ref: calc(var(--type-body-size) * 0.75);
+  --site-footnote-text: var(--site-reading-caption);
+  --site-footnote-marker: var(--site-text-secondary);
+}
+```
+
+侧栏在视觉上隐藏返回箭头，因为每条脚注已经紧挨着它第一次被引用的位置。返回链接仍然保留在语义 HTML 里，供底部尾注和辅助技术使用，键盘用户聚焦到它时会显示出来。
+
+主题选择器优先用 `.footnote-endnotes`、`.footnote-list`、`.footnote`、`.footnote-ref` 和 `.footnote-backlinks`。片段 ID 不透明，不同的 HTML 格式版本之间可能变化，不要给它们的压缩哈希写样式，也不要解析它。
 
 ## 卡片与媒体
 
@@ -163,18 +186,18 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 写选择器时可以用这些 data attribute 锁定特定页面或元素：
 
-| 属性                 | 出现在       | 取值                                                                         |
-| -------------------- | ------------ | ---------------------------------------------------------------------------- |
-| `data-theme`         | `<html>`     | 当前配色主题 id（`tufte`、`linen`、`frost` …）                               |
-| `data-theme-mode`    | `<html>`     | `auto`、`light`、`dark`                                                      |
-| `data-page`          | 页面外层容器 | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured` |
-| `data-post`          | `<article>`  | 每篇帖子都会带上                                                             |
-| `data-format`        | `<article>`  | `note`, `link`, `quote`                                                      |
-| `data-post-slug`     | `<article>`  | 帖子的 slug（便于调试和按帖子定制样式）                                      |
-| `data-post-pinned`   | `<article>`  | 置顶帖子会带上                                                               |
-| `data-post-featured` | `<article>`  | Featured 帖子会带上                                                          |
-| `data-feed`          | 信息流容器   | 包裹帖子列表                                                                 |
-| `data-authenticated` | `<body>`     | 登录时带上                                                                   |
+| 属性                 | 出现在       | 取值                                                                                      |
+| -------------------- | ------------ | ----------------------------------------------------------------------------------------- |
+| `data-theme`         | `<html>`     | 当前配色主题 id（`tufte`、`linen`、`frost` …）                                            |
+| `data-theme-mode`    | `<html>`     | `auto`、`light`、`dark`                                                                   |
+| `data-page`          | 页面外层容器 | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured`, `subscribe` |
+| `data-post`          | `<article>`  | 每篇帖子都会带上                                                                          |
+| `data-format`        | `<article>`  | `note`, `link`, `quote`                                                                   |
+| `data-post-slug`     | `<article>`  | 帖子的 slug（便于调试和按帖子定制样式）                                                   |
+| `data-post-pinned`   | `<article>`  | 置顶帖子会带上                                                                            |
+| `data-post-featured` | `<article>`  | Featured 帖子会带上                                                                       |
+| `data-feed`          | 信息流容器   | 包裹帖子列表                                                                              |
+| `data-authenticated` | `<body>`     | 登录时带上                                                                                |
 
 帖子内部还有三个标记：`data-post-body`（正文容器）、`data-post-meta`（日期、标签等元信息）、`data-post-media`（图片 / 视频区）。三个一组，便于针对帖子的某一块单独写样式。
 
@@ -231,7 +254,7 @@ Jant 会自动跟随访问者的系统偏好（浅色 / 深色）。如果想为
 
 ## 提示
 
-- 优先改变量，再考虑写选择器覆盖。变量层将来升级时不易破。
+- 优先改变量，再考虑写选择器覆盖。本页列出的变量、数据属性和 class 只在大版本里变动；Jant 样式表里的其他自定义属性和 class 属于内部实现，任何版本都可能改变。
 - Custom CSS 优先级最高，会覆盖内建主题里的所有变量。
 - 颜色用 `oklch()` 比较好控制。一个常见做法：`--primary` 用饱和、稳定的颜色给按钮；`--site-accent` 用更柔和的颜色给链接和正文中的强调。
 - 浅色和深色都要测。如果在 `:root` 里覆盖了某个颜色变量，也要想一想它在 `@media (prefers-color-scheme: dark)` 或 `:root[data-theme-mode="dark"]` 下是否需要对应覆盖。

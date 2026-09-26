@@ -641,8 +641,8 @@ S3_SECRET_ACCESS_KEY=
     "utf-8",
   );
 
-  // Claude-compatible agent files are generated from the canonical site files
-  // so published templates do not depend on symlink behavior.
+  // CLAUDE.md points Claude Code at AGENTS.md, written here so the published
+  // template does not depend on symlink behavior.
   const agentsPath = path.join(targetDir, "AGENTS.md");
   if (await fs.pathExists(agentsPath)) {
     await fs.writeFile(
@@ -650,11 +650,6 @@ S3_SECRET_ACCESS_KEY=
       "@AGENTS.md\n",
       "utf-8",
     );
-  }
-
-  const sourceSkillsDir = path.join(targetDir, ".agents", "skills");
-  if (await fs.pathExists(sourceSkillsDir)) {
-    await fs.copy(sourceSkillsDir, path.join(targetDir, ".claude", "skills"));
   }
 }
 

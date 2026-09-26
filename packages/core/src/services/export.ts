@@ -106,14 +106,22 @@ import {
   type SystemNavKey,
 } from "../types.js";
 
+/**
+ * Format version written to `data/jant.toml` as `version`. Raise it when an
+ * export changes in a way an older `jant site import` would misread; the
+ * importer refuses a version newer than its `SUPPORTED_SITE_EXPORT_VERSION`,
+ * which a test keeps equal to this.
+ */
+export const SITE_EXPORT_FORMAT_VERSION = 1;
+
 /** A file of the exported Hugo site whose text or bytes the export holds. */
 export interface ExportContentFile {
   path: string;
   content: string | Uint8Array;
   /**
    * Scaffolding the destination owns once it exists. A fresh export always
-   * carries it — the ZIP is a new tree, and `site export --directory` refuses
-   * a non-empty directory — but GitHub Sync writes it only when the
+   * carries it — the ZIP is a new tree, and `site export` refuses a non-empty
+   * output directory — but GitHub Sync writes it only when the
    * repository does not have it yet, so an edit there survives every later
    * push. Deploy config is the case that needs this: the Worker name has to
    * be corrected by hand when it does not match the Worker already serving
@@ -1927,7 +1935,7 @@ function buildJantDataToml(
     : "";
   const parts: string[] = [
     'format = "jant-site"',
-    "version = 1",
+    `version = ${SITE_EXPORT_FORMAT_VERSION}`,
     `generated_at = "${escapeTomlString(toISOString(Math.floor(Date.now() / 1000)))}"`,
     `site_name = "${escapeTomlString(config.siteName)}"`,
     `site_description = "${escapeTomlString(config.siteDescription)}"`,
@@ -2127,7 +2135,7 @@ function toWorkerName(raw: string): string {
  * repository-import flow names a new Worker after the repository — so the
  * repository name is the one value that lines up without the user editing
  * anything. An export with no repository behind it (a ZIP, or
- * `site export --directory`) uses the repository name the GitHub Sync
+ * `site export` into a directory) uses the repository name the GitHub Sync
  * settings page prefills for this site, so pushing the export to a repository
  * created with that default still matches.
  *
@@ -2512,7 +2520,7 @@ static/                   — Copy files here to add them to the published site$
 - **Jant metadata** — \`data/jant.toml\` drives nav and the collections directory, and is preserved across round-trip import.
 - **Styles** — edit \`themes/jant/static/main.css\`, or drop a \`static/main.css\` at the site root to override.
 - **Templates** — add files under \`layouts/\` at the site root to override the bundled theme.
-- **Debugging** — from a Jant site project, run \`npx jant site export --directory ./my-site\`, then \`cd my-site && hugo serve\`.
+- **Debugging** — from a Jant site project, run \`npx jant site export --url <site-url> --output ./my-site\`, then \`cd my-site && hugo serve\`.
 
 ## Fetching media locally
 

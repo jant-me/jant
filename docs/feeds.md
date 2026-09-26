@@ -60,6 +60,8 @@ By default the archive feed is ordered by publication, like the page it belongs 
 
 **Post ID.** Each entry also carries the post's own ID, `<jant:id>pst_…</jant:id>`, beside `<id>`. `<id>` is the post's address, which changes when you rename its slug or move the site to another domain. The ID never changes, so anything that needs to recognise the same post across either can rely on it.
 
+Everything else Jant adds to an entry, including how a thread's posts and attachments are marked, is in [Reading a Jant feed](feed-reading.md).
+
 ## Feeds and languages
 
 On a multilingual site every feed exists once per language, under that language's prefix: `/ja/feed`, `/ja/archive/feed`, `/ja/reading/feed`. Each carries only that language's posts and declares itself in that language. The primary language keeps the unprefixed addresses. See [Multilingual content](multilingual.md).

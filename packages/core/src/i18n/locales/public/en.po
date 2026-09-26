@@ -2566,8 +2566,6 @@ msgid "This site publishes Atom feeds. Copy one of these addresses into a feed r
 msgstr "This site publishes Atom feeds. Copy one of these addresses into a feed reader."
 
 #. @context: Error shown when a hosted upload would exceed the shared account media limit
-#. @context: Error shown when a hosted upload would exceed the shared account media limit
-#: src/routes/api/upload-multipart.ts
 #: src/routes/api/upload.ts
 msgid "This upload would exceed your shared hosted media limit. Remove files or upgrade storage to continue."
 msgstr "This upload would exceed your shared hosted media limit. Remove files or upgrade storage to continue."

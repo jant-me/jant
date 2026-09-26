@@ -725,34 +725,7 @@ export function toSearchResultViews(
 // =============================================================================
 
 /**
- * Converts a grouped post map to typed ArchiveGroup[].
- */
-export function toArchiveGroups(
-  grouped: Map<string, Post[]>,
-  ctx: MediaContext,
-  aliasMap?: Map<string, string>,
-): ArchiveGroup[] {
-  const groups: ArchiveGroup[] = [];
-  for (const [yearMonth, posts] of grouped) {
-    const [year, month] = yearMonth.split("-");
-    if (!year || !month) continue;
-
-    const label = formatYearMonthLabel(yearMonth);
-    if (!label) continue;
-
-    groups.push({
-      year,
-      month,
-      label,
-      posts: toPostViewsFromPosts(posts, ctx, undefined, aliasMap),
-    });
-  }
-  return groups;
-}
-
-/**
  * Converts a grouped PostWithMedia map to typed ArchiveGroup[].
- * Unlike toArchiveGroups, this preserves media attachments on each post.
  *
  * @param grouped - Map of "YYYY-MM" keys to PostWithMedia arrays
  * @param ctx - Media context for URL computation

@@ -263,7 +263,7 @@ To mount Jant under a subpath like `<your-domain>/blog` and leave the root for o
 
 ## Upgrade
 
-Check the [release notes](https://github.com/jant-me/jant/releases) for breaking changes, then update `@jant/core` and deploy:
+Check the [release notes](https://github.com/jant-me/jant/releases) for breaking changes, then update `@jant/core` and deploy. [Compatibility](compatibility.md) lists what a release can change and which versions upgrade in place.
 
 ```bash
 npm install @jant/core@latest

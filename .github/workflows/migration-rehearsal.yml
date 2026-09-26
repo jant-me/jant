@@ -6,7 +6,7 @@ on:
     paths:
       - ".github/workflows/migration-rehearsal.yml"
       - "packages/core/bin/commands/db/rehearse.js"
-      - "packages/core/bin/commands/export.js"
+      - "packages/core/bin/commands/db/export.js"
       - "packages/core/bin/lib/d1-query.js"
       - "packages/core/bin/lib/migration-artifacts.js"
       - "packages/core/bin/lib/migration-rehearsal.js"
@@ -21,7 +21,7 @@ on:
     paths:
       - ".github/workflows/migration-rehearsal.yml"
       - "packages/core/bin/commands/db/rehearse.js"
-      - "packages/core/bin/commands/export.js"
+      - "packages/core/bin/commands/db/export.js"
       - "packages/core/bin/lib/d1-query.js"
       - "packages/core/bin/lib/migration-artifacts.js"
       - "packages/core/bin/lib/migration-rehearsal.js"

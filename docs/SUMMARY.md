@@ -17,6 +17,7 @@
 - [Deploy with Docker](deployment-docker.md)
 - [Use Hosted Jant](hosted.md)
 - [Configuration](configuration.md)
+- [Command line](cli.md)
 
 ## Use your site
 
@@ -36,4 +37,6 @@
 ## Reference
 
 - [FAQ](faq.md)
+- [Compatibility](compatibility.md)
 - [API Reference](API.md)
+- [Reading a Jant feed](feed-reading.md)

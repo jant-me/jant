@@ -114,7 +114,7 @@ feeds。内容会立即显示在网页上，等待的只有 feed 分发。这段
 - **HTTP JSON API**：默认推荐——`POST /api/posts` 加 Bearer token，外部脚本、定时任务、第三方集成都用它。
 - **MCP 接口**（`/api/mcp`）：调用方本身就是 MCP client 时。
 
-`create-jant` 生成的项目自带 `AGENTS.md`、`.claude/skills/` 和 `examples/agent-content-automation/`，里面有可以直接复制的 curl 示例。详见 [自动化与 API](automation-and-api.md)。
+`create-jant` 生成的项目自带 `AGENTS.md`（把 agent 指向站点的 `/skill.md`）和 `examples/agent-content-automation/`，里面有可以直接复制的 curl 示例。详见 [自动化与 API](automation-and-api.md)。
 
 启用 [GitHub 同步](github-sync.md) 后，AI 也可以直接读写 Git 仓库里的 Markdown——对很多 coding agent 来说比 API 更顺手。
 
@@ -142,7 +142,7 @@ feeds。内容会立即显示在网页上，等待的只有 feed 分发。这段
 
 ## Pre-1.0，破坏性变更会很多吗？
 
-可能会有，但不到必要不会做。每次破坏性变更都会写在 commit 和 changelog 里。升级前扫一眼变更记录，留一份最近的备份。
+可能会有，但不到必要不会做。每次破坏性变更都会写在 commit 和 changelog 里。升级前扫一眼变更记录，留一份最近的备份。1.0 会冻结哪些内容，见 [兼容性](compatibility.md)。
 
 ## 怎么把别的博客的内容迁进来（WordPress、Tumblr 等）？
 

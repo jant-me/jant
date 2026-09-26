@@ -143,6 +143,26 @@ reads return `401` to anonymous requests but remain available to browser
 sessions and Bearer API tokens. Public HTML pages, including `/search`, are
 unchanged.
 
+### Cross-origin API access (optional)
+
+| Variable       | Default | Description                                              |
+| -------------- | ------- | -------------------------------------------------------- |
+| `CORS_ORIGINS` | `*`     | Origins a browser may call the API from, comma-separated |
+
+`*` lets any origin call the API. A list such as
+`https://a.example,chrome-extension://<id>` limits it to those origins, and an
+empty value turns cross-origin access off. Requests still need a session or API
+token wherever the API asks for one.
+
+### Search rate limit (optional)
+
+| Variable                    | Default | Description                                    |
+| --------------------------- | ------- | ---------------------------------------------- |
+| `RATE_LIMIT_SEARCH_PER_MIN` | `30`    | Search requests one client can make per minute |
+| `RATE_LIMIT_DISABLED`       | `false` | Set to `true` to turn the limit off            |
+
+A client over the limit gets `429` with a `Retry-After` header.
+
 ### Pagination (optional)
 
 | Variable            | Default              | Description                              |
@@ -168,6 +188,19 @@ renders the tile catalogue. Readers switch layouts from the page itself, and a
 
 `?view=grid` was the earlier spelling of that link. It still works — `/archive`
 redirects it to `?layout=`, and stored custom archive URLs are read either way.
+
+### Default appearance (optional)
+
+| Variable             | Default   | Description                                  |
+| -------------------- | --------- | -------------------------------------------- |
+| `DEFAULT_THEME`      | `tufte`   | Color theme of a site that hasn't picked one |
+| `DEFAULT_FONT_THEME` | `classic` | Font theme of a site that hasn't picked one  |
+
+A theme picked in **Settings → Appearance** takes precedence. Color themes:
+`tufte`, `linen`, `frost`, `cotton`, `bone`, `parchment`, `dune`, `ink`,
+`slate`, `sage`, `clay`, `ember`, `paper`, `snow`, `espresso`. Font themes:
+`classic`, `tufte`, `system-sans`, `humanist-sans`, `modern-editorial`,
+`literary`, `geometric`.
 
 ### Storage
 
@@ -439,8 +472,31 @@ Otherwise (e.g. a Workers deployment, or to register against a custom URL),
 register them manually:
 
 ```sh
-jant telegram register-webhooks --base-url https://your-site.example
+jant telegram register-webhooks --url https://your-site.example
 ```
+
+### Maintenance commands (optional)
+
+| Variable               | Default | Description                                                 |
+| ---------------------- | ------- | ----------------------------------------------------------- |
+| `INTERNAL_ADMIN_TOKEN` | unset   | Token the maintenance commands and `/api/internal/*` accept |
+
+`jant search reindex`, `jant posts rebuild-html`, and `jant uploads cleanup`
+call the site with this token; see [Command line](cli.md#maintenance). Without
+it, `/api/internal/*` answers `404`. Use a long random value and keep it out of
+version control.
+
+### GitHub App (optional)
+
+`GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`, and
+`GITHUB_APP_WEBHOOK_SECRET` connect GitHub Sync through your own GitHub App
+instead of a personal access token. See [GitHub Sync](github-sync.md).
+
+### Hosted service
+
+`SITE_RESOLUTION_MODE` and the `HOSTED_CONTROL_PLANE_*` variables configure the
+hosted service, where one server runs many sites. A self-hosted site leaves
+them unset.
 
 ## Settings page options
 
@@ -452,7 +508,6 @@ These settings can be changed on Jant's Settings page after setup. Each one can 
 | `SITE_DESCRIPTION`           | Meta description and feed description            |
 | `SITE_LANGUAGE`              | Primary language code                            |
 | `DASHBOARD_LANGUAGE`         | Private dashboard language                       |
-| `CJK_SERIF_FONT`             | CJK serif fallback                               |
 | `TIME_ZONE`                  | Display time zone, e.g. `UTC` or `Asia/Shanghai` |
 | `MAIN_RSS_FEED`              | What `/feed` returns                             |
 | `ARCHIVE_DEFAULT_LAYOUT`     | Layout `/archive` opens with                     |
@@ -511,9 +566,9 @@ display value, never custom code or storage keys.
 These top-level paths are reserved and can't be used as a post or custom page slug:
 
 ```text
-featured, latest, collections, signin, signout, setup, settings, dash,
-api, feed, search, archive, media, pages, reset, compose, preview, new, static, assets,
-_assets, healthz, readyz
+featured, latest, signin, signout, setup, settings, dash, api, feed, search,
+subscribe, archive, media, pages, reset, collections, compose, preview, new,
+static, assets, _assets, healthz, readyz, skill.md
 ```
 
 ## Config files

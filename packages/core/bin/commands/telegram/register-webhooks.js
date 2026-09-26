@@ -1,5 +1,7 @@
 import { parseArgs } from "node:util";
 import { autoloadNodeEnv } from "../../lib/node-env.js";
+import { findRenamedOption } from "../../lib/renamed-arguments.js";
+import { resolveSiteUrl } from "../../lib/site-url.js";
 
 const TELEGRAM_API_BASE = "https://api.telegram.org";
 
@@ -16,39 +18,62 @@ async function callTelegram(token, method, body) {
   return payload.result;
 }
 
+function printUsage() {
+  console.log("Usage: jant telegram register-webhooks [--url <url>]");
+  console.log("");
+  console.log(
+    "Registers a webhook for every bot in TELEGRAM_BOT_TOKENS, pointing at",
+  );
+  console.log("<url>/api/telegram/webhook/<bot_id> with the shared");
+  console.log("TELEGRAM_WEBHOOK_SECRET. Run once after configuring the pool.");
+  console.log("");
+  console.log("Options:");
+  console.log("  --url  The site's public URL");
+  console.log("");
+  console.log(
+    "If --url is omitted, uses SITE_ORIGIN + SITE_PATH_PREFIX from the environment.",
+  );
+  console.log("");
+  console.log("Environment (also read from .env.node):");
+  console.log(
+    "  TELEGRAM_BOT_TOKENS      Comma-separated <bot_id>:<secret> tokens",
+  );
+  console.log(
+    "  TELEGRAM_WEBHOOK_SECRET  Shared secret_token for the webhooks",
+  );
+}
+
 export async function run(argv) {
+  const renamed = findRenamedOption("telegram register-webhooks", argv, {
+    "--base-url": "--url",
+  });
+  if (renamed) {
+    console.error(`Error: ${renamed}`);
+    process.exit(1);
+  }
+
   const { values } = parseArgs({
     args: argv,
     options: {
-      "base-url": { type: "string" },
+      url: { type: "string" },
       help: { type: "boolean", short: "h" },
     },
   });
 
-  if (values.help || !values["base-url"]) {
-    console.log(
-      "Usage: jant telegram register-webhooks --base-url <public-url>",
-    );
-    console.log("");
-    console.log(
-      "Registers a webhook for every bot in TELEGRAM_BOT_TOKENS, pointing at",
-    );
-    console.log("<base-url>/api/telegram/webhook/<bot_id> with the shared");
-    console.log(
-      "TELEGRAM_WEBHOOK_SECRET. Run once after configuring the pool.",
-    );
-    console.log("");
-    console.log("Environment (also read from .env.node):");
-    console.log(
-      "  TELEGRAM_BOT_TOKENS      Comma-separated <bot_id>:<secret> tokens",
-    );
-    console.log(
-      "  TELEGRAM_WEBHOOK_SECRET  Shared secret_token for the webhooks",
-    );
-    process.exit(values.help ? 0 : 1);
+  if (values.help) {
+    printUsage();
+    process.exit(0);
   }
 
   autoloadNodeEnv();
+
+  const siteUrl = resolveSiteUrl({ url: values.url });
+  if (!siteUrl) {
+    console.error(
+      "Error: telegram register-webhooks requires --url or SITE_ORIGIN in the environment.",
+    );
+    process.exit(1);
+  }
 
   const rawTokens = process.env.TELEGRAM_BOT_TOKENS ?? "";
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET ?? "";
@@ -61,7 +86,7 @@ export async function run(argv) {
     process.exit(1);
   }
 
-  const baseUrl = values["base-url"].replace(/\/+$/, "");
+  const baseUrl = siteUrl.replace(/\/+$/, "");
   const tokens = rawTokens
     .split(",")
     .map((entry) => entry.trim())

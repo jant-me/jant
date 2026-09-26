@@ -115,7 +115,7 @@ Yes. Two entry points, pick by use case:
 - **HTTP JSON API**: the default — `POST /api/posts` with a Bearer token. Used by external scripts, scheduled jobs, and third-party integrations.
 - **MCP interface** (`/api/mcp`): when the caller is itself an MCP client.
 
-Projects scaffolded with `create-jant` ship `AGENTS.md`, `.claude/skills/`, and `examples/agent-content-automation/` with copy-pasteable curl examples. See [Automation and API](automation-and-api.md).
+Projects scaffolded with `create-jant` ship `AGENTS.md`, which points agents at the site's `/skill.md`, and `examples/agent-content-automation/` with copy-pasteable curl examples. See [Automation and API](automation-and-api.md).
 
 With [GitHub sync](github-sync.md) enabled, agents can also read and write Markdown directly through the Git repo — for many coding agents this feels more natural than the API.
 
@@ -143,7 +143,7 @@ Every active session is invalidated immediately and everyone has to sign in agai
 
 ## Pre-1.0 — will there be a lot of breaking changes?
 
-Possibly, but only when warranted. Every breaking change is documented in the commit and changelog. Skim the changelog before upgrading and keep a recent backup.
+Possibly, but only when warranted. Every breaking change is documented in the commit and changelog. Skim the changelog before upgrading and keep a recent backup. [Compatibility](compatibility.md) lists what 1.0 will freeze.
 
 ## How do I move my old blog into Jant (WordPress, Tumblr, etc.)?
 

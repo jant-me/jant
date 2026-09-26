@@ -12,6 +12,7 @@ import { deleteR2Object, uploadR2Object } from "../../../lib/r2-query.js";
 import {
   assertSnapshotDialectMatches,
   assertSnapshotMeta,
+  assertSnapshotSchemaInstalled,
   buildMediaProviderSql,
   DEFER_FOREIGN_KEYS_SQL,
   buildReplaceSql,
@@ -273,6 +274,7 @@ export async function run(argv) {
   try {
     const meta = await readSnapshotJson(materialized.rootDir, "meta.json");
     assertSnapshotMeta(meta);
+    assertSnapshotSchemaInstalled(meta);
     assertSnapshotDialectMatches(meta, context.dialect);
     const explicitRemap = values["remap-site"] === true;
     const snapshotSite = getSnapshotBootstrapSite(meta);

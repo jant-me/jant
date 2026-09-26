@@ -43,7 +43,6 @@ import { smartCollectionsApiRoutes } from "./routes/api/smart-collections.js";
 import { settingsApiRoutes } from "./routes/api/settings.js";
 import { uploadApiRoutes } from "./routes/api/upload.js";
 import { uploadsApiRoutes } from "./routes/api/uploads.js";
-import { multipartUploadApiRoutes } from "./routes/api/upload-multipart.js";
 import { searchApiRoutes } from "./routes/api/search.js";
 import { mcpApiRoutes } from "./routes/api/mcp.js";
 import { customUrlsApiRoutes } from "./routes/api/custom-urls.js";
@@ -56,7 +55,6 @@ import {
   githubSyncAdminRoutes,
 } from "./routes/api/github-sync.js";
 import { telegramWebhookRoutes } from "./routes/api/telegram.js";
-import { internalTextAttachmentsRoutes } from "./routes/api/internal/text-attachments.js";
 import { internalSearchReindexRoutes } from "./routes/api/internal/search-reindex.js";
 import { internalPostBodyHtmlRoutes } from "./routes/api/internal/post-body-html.js";
 import { internalUploadsRoutes } from "./routes/api/internal/uploads.js";
@@ -399,7 +397,6 @@ export function createApp(): App {
   app.route("/api/attachments", attachmentsApiRoutes);
   app.route("/api/internal/api-tokens", internalApiTokensRoutes);
   app.route("/api/internal/sites", internalSitesRoutes);
-  app.route("/api/internal/text-attachments", internalTextAttachmentsRoutes);
   app.route("/api/internal/search/reindex", internalSearchReindexRoutes);
   app.route("/api/internal/posts/body-html", internalPostBodyHtmlRoutes);
   app.route("/api/internal/uploads", internalUploadsRoutes);
@@ -607,8 +604,7 @@ export function createApp(): App {
   app.route("/settings/custom-urls", customUrlsRoutes);
   app.route("/settings", settingsRoutes);
 
-  // Protected API routes (multipart must be registered before base upload)
-  app.route("/api/upload/multipart", multipartUploadApiRoutes);
+  // Protected API routes
   app.route("/api/upload", uploadApiRoutes);
   app.route("/api/uploads", uploadsApiRoutes);
   app.route("/api/search", searchApiRoutes);

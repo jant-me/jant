@@ -19,13 +19,15 @@
  * hence the timeout.
  */
 
-import { spawnSync } from "node:child_process";
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readdirSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
-import { __test__ as importSite } from "../../bin/commands/import-site.js";
+import { __test__ as importSite } from "../../bin/commands/site/import.js";
+import {
+  importSiteExportIntoTempSite,
+  type SiteExportImportResult,
+} from "./helpers/site-export-import.js";
 
 const CORE_DIR = resolve(import.meta.dirname, "../..");
 const CANONICAL_DIR = resolve(
@@ -38,57 +40,19 @@ function count(sqlite: Database.Database, sql: string): number {
 }
 
 describe("canonical demo site-export", () => {
-  const tempDirs: string[] = [];
+  const imports: SiteExportImportResult[] = [];
 
   afterEach(() => {
-    for (const dir of tempDirs.splice(0)) {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    for (const result of imports.splice(0)) result.cleanup();
   });
 
   it(
     "imports through `jant site import` into a local Node database at head",
     { timeout: 150_000 },
     async () => {
-      const dir = mkdtempSync(join(tmpdir(), "jant-load-demo-"));
-      tempDirs.push(dir);
-      const databasePath = join(dir, "jant.sqlite");
-
-      const env: Record<string, string | undefined> = {
-        ...process.env,
-        JANT_ENV_FILE: "",
-        DATABASE_URL: `file:${databasePath}`,
-        DATA_DIR: dir,
-        LOCAL_STORAGE_PATH: join(dir, "media"),
-        STORAGE_DRIVER: "local",
-        // No announcement to a Discover directory from a test database.
-        DISCOVER_PING_URL: "",
-        // Every request off this machine goes to a closed port, so the export
-        // has to import from its own files. The importer falls back to
-        // fetching a file from the exported site's URL; with the network up,
-        // that fallback hid icons it failed to find in the export.
-        NODE_USE_ENV_PROXY: "1",
-        HTTP_PROXY: "http://127.0.0.1:9",
-        HTTPS_PROXY: "http://127.0.0.1:9",
-        NO_PROXY: "127.0.0.1",
-      };
-      delete env.SITE_RESOLUTION_MODE;
-      for (const name of [
-        "http_proxy",
-        "https_proxy",
-        "no_proxy",
-        "all_proxy",
-        "ALL_PROXY",
-      ]) {
-        delete env[name];
-      }
-
-      const result = spawnSync(
-        process.execPath,
-        ["dev/run-script.mjs", "dev/scripts/import-node-demo-site-export.ts"],
-        { cwd: CORE_DIR, encoding: "utf8", env, timeout: 120_000 },
-      );
-      const output = `${result.stdout}\n${result.stderr}`;
+      const result = importSiteExportIntoTempSite();
+      imports.push(result);
+      const { databasePath, output } = result;
 
       expect(result.error).toBeUndefined();
       expect(result.status, output).toBe(0);

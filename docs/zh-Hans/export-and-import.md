@@ -42,13 +42,13 @@
 `site export` 把站点导出为 Hugo 站点，格式可以是 ZIP 或目录。它和 `site import`、`site pull-media` 一样走站点的 HTTP API，能在任何可以访问该站点的机器上运行，不需要站点的 `wrangler.toml` 或 `DATABASE_URL`。在安装了 `@jant/core` 的 Jant 项目目录里运行（用 `create-jant` 创建的站点就是项目根目录），并提供 API token：在 **Settings → API Tokens** 生成，写进 `JANT_API_TOKEN` 或用 `--token` 传入。
 
 ```bash
-JANT_API_TOKEN=jnt_your_token npx jant site export https://your-site.example --output ./jant-site-export.zip
+JANT_API_TOKEN=jnt_your_token npx jant site export --url https://your-site.example --output ./jant-site-export.zip
 ```
 
-要查看导出结果，导出到目录再运行 Hugo：
+`--output` 的路径不以 `.zip` 结尾时，导出到这个目录，目录必须为空。要查看导出结果，导出到目录再运行 Hugo：
 
 ```bash
-npx jant site export https://your-site.example --directory ./jant-site
+npx jant site export --url https://your-site.example --output ./jant-site
 cd ./jant-site && hugo serve
 ```
 
@@ -173,7 +173,7 @@ npx jant site pull-media --path ./jant-site-export.zip --output ./pulled.zip
 
 下次导出或 [GitHub 同步](github-sync.md) 推送都会覆盖 `themes/jant/**`，不要直接修改它。同步的仓库每次推送还会重写 `content/**`、`data/jant.toml`、`hugo.toml`、`.gitignore` 和 `README.md`，并删除这些路径下 Jant 不再生成的文件。根目录的 `layouts/`、`static/`、`data/` 下你自己的文件以及其他文件都不会被改动。自定义的方式：
 
-- 改单个模板：把 `themes/jant/layouts/<name>.html` 复制到根目录 `layouts/<name>.html`，改这份副本。Hugo 优先加载根目录的模板。
+- 改单个模板：把 `themes/jant/layouts/<name>.html` 复制到根目录 `layouts/<name>.html`，改这份副本。Hugo 优先加载根目录的模板。本页列出的 front matter 字段只在大版本里变动；主题的模板和 partial 任何版本都可能改变，升级 Jant 后要对照新主题检查复制出来的模板。
 - 额外的静态文件放在根目录 `static/`，同名时优先于 `themes/jant/static/` 里的文件。
 - 颜色、字体和布局细节在 Jant 的 **Settings → Custom CSS** 里改，每次导出都会写入 `themes/jant/static/custom.css`。
 - 站点级配置在 Jant 的 **Settings** 里改，不要改 `hugo.toml`。
@@ -183,13 +183,13 @@ npx jant site pull-media --path ./jant-site-export.zip --output ./pulled.zip
 `site import` 把一份导出（目录或 ZIP）导入 Jant 站点。先加 `--dry-run` 运行一遍：完整校验，不写任何数据。Dry run 不会连接站点，但 URL 仍然必填。
 
 ```bash
-npx jant site import https://your-site.example --path ./jant-site-export.zip --dry-run
+npx jant site import --url https://your-site.example --path ./jant-site-export.zip --dry-run
 ```
 
 然后正式导入，需要 `JANT_API_TOKEN` 或 `--token`：
 
 ```bash
-JANT_API_TOKEN=jnt_your_token npx jant site import https://your-site.example --path ./jant-site-export.zip
+JANT_API_TOKEN=jnt_your_token npx jant site import --url https://your-site.example --path ./jant-site-export.zip
 ```
 
 ### 冲突与约束
@@ -199,6 +199,7 @@ JANT_API_TOKEN=jnt_your_token npx jant site import https://your-site.example --p
 - 目标站点上某个 slug 已被帖子、合集、别名或重定向占用时，导入立即停止。停止前写入的内容会留在站点上，需要手动清理。
 - 导出内部有重复 slug（比如手动改过 Markdown 文件）时，同样会停止。
 - 目标站点不必是空的，但导出和源站重叠太多，实际上都是导入到一个干净的站点。
+- `data/jant.toml` 记录导出的格式 `version`。导出的格式比导入方能读的更新时，导入在写入任何数据之前停止，提示先升级 `@jant/core`。旧格式的导出可以导入。
 
 ### 清空目标站点
 
@@ -213,7 +214,7 @@ Jant 目前没有「只删内容、保留账号」的单独操作。导入失败
 如果不想把指向第三方 URL 的图片（imgur、Wikipedia 或任何 `https://` 链接）存进自己的存储，比如出于带宽或版权考虑，加 `--skip-remote-media`：
 
 ```bash
-npx jant site import https://your-site.example --path ./jant-site-export.zip --skip-remote-media
+npx jant site import --url https://your-site.example --path ./jant-site-export.zip --skip-remote-media
 ```
 
 加上后，相对路径（`/media/...`、`./foo.png`）属于源站自己的文件，仍会上传；绝对 URL（`https://...`、`//cdn...`）原样留在正文里。front matter `media:`、头像和文本附件始终会迁移。
@@ -264,7 +265,7 @@ CLI 启动时会加载 `<cwd>/.env.node`，shell 里已经 export 的变量优�
 
 ```
 jant-site-snapshot.zip
-├── meta.json                  // { format, version, site }
+├── meta.json                  // { format, version, dialect, jant, schema, site }
 ├── db.sql                     // 完整 SQL，包含 favicon.ico 的 base64
 └── objects/<storage-key>/...  // 所有 media 引用的对象
 ```
@@ -303,7 +304,7 @@ npx jant site snapshot export --output ./jant-site-snapshot.zip --skip-objects
 
 快照导入必须加 `--replace`。它会清空目标数据库中快照涵盖的内容表（`post`、`collection`、`nav_item`、`collection_directory_item`、`thread_collection`、`media`、`path_registry`），再写入快照内容。users、sessions 和 tokens 不受影响。不加 `--replace` 时导入直接拒绝运行。
 
-媒体文件会上传到目标站点自己的存储，所以 R2 上导出的快照可以导入到用 S3 或本地磁盘存媒体的站点。导出使用快照格式 v2，导入也接受 v1。
+媒体文件会上传到目标站点自己的存储，所以 R2 上导出的快照可以导入到用 S3 或本地磁盘存媒体的站点。导出使用快照格式 v2，导入也接受 v1。`meta.json` 记录写出快照的 Jant 版本（`jant`）和该版本最后一个数据库迁移（`schema`）。快照来自比导入方更新的 Jant 时，导入在写入任何数据之前停止，提示先升级 `@jant/core`。
 
 ```bash
 npx jant site snapshot import --path ./jant-site-snapshot.zip --replace

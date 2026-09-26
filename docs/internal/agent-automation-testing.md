@@ -4,7 +4,7 @@
 
 适用变更范围：
 
-- `sites/demo` 下的 `AGENTS.md`、`.agents/skills/`、`.claude/`
+- `sites/demo` 下的 `AGENTS.md`、`CLAUDE.md`
 - `packages/create-jant` 对模板和脚手架的同步逻辑
 - `/api/posts`、`/api/upload`、`/api/uploads`、`/api/attachments`、`/api/settings`、`/api/search`、`/api/mcp`
 - 生成项目里的 `examples/agent-content-automation/`
@@ -64,9 +64,7 @@ cd site
 
 ```bash
 find . -maxdepth 3 \
-  \( -path '*/.agents/*' \
-  -o -path '*/.claude/*' \
-  -o -path '*/examples/agent-content-automation/*' \
+  \( -path '*/examples/agent-content-automation/*' \
   -o -name 'AGENTS.md' \
   -o -name 'CLAUDE.md' \) | sort
 ```
@@ -75,15 +73,10 @@ find . -maxdepth 3 \
 
 - `AGENTS.md`
 - `CLAUDE.md`
-- `.agents/skills/`
-- `.claude/skills/`
 - `examples/agent-content-automation/README.md`
 
-确认 `.claude/skills` 是复制目录，不是 symlink：
-
-```bash
-test ! -L ./.claude/skills && echo ".claude/skills is copied"
-```
+模板不再带 `.agents/skills/` 和 `.claude/skills/`（0.8.0 起）：它们是复制进用户仓库的 API 与 CLI 说明，
+升级后会过期。`AGENTS.md` 改为指向运行中站点的 `/skill.md`、`npx jant --help` 和文档站。
 
 ### 2.4 验证未发布 core 改动时切到本地包
 
@@ -317,7 +310,7 @@ mise run check-template
 如果这次改动确实碰到了 agent automation 面：
 
 1. `pnpm --filter create-jant prepublishOnly`
-2. 生成一个临时项目并检查 `AGENTS.md`、`.agents/skills`、`.claude/skills`、`examples/agent-content-automation/`
+2. 生成一个临时项目并检查 `AGENTS.md`、`CLAUDE.md`、`examples/agent-content-automation/`
 3. 至少跑一次 `curl -X POST $JANT_URL/api/posts ...` 验证内容自动化
 4. 如果碰到上传或 MCP，额外跑 `curl -X POST $JANT_URL/api/upload ...` 和 `/api/mcp initialize + tools/call`
 5. 跑定向 Vitest

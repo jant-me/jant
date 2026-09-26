@@ -42,13 +42,13 @@ Read https://example.com/skill.md and help me move my old blog here.
 `site export` writes the site as a Hugo site, in a ZIP or a directory. It works through the site's HTTP API, as `site import` and `site pull-media` do, so it runs from any machine that can reach the site, without the site's `wrangler.toml` or `DATABASE_URL`. Run it from a Jant project directory where `@jant/core` is installed (for a site created with `create-jant`, the project root), with an API token from **Settings → API Tokens** in `JANT_API_TOKEN` or passed with `--token`:
 
 ```bash
-JANT_API_TOKEN=jnt_your_token npx jant site export https://your-site.example --output ./jant-site-export.zip
+JANT_API_TOKEN=jnt_your_token npx jant site export --url https://your-site.example --output ./jant-site-export.zip
 ```
 
-To look at the result, export to a directory and run Hugo:
+An `--output` path that doesn't end in `.zip` is a directory, which must be empty. To look at the result, export to a directory and run Hugo:
 
 ```bash
-npx jant site export https://your-site.example --directory ./jant-site
+npx jant site export --url https://your-site.example --output ./jant-site
 cd ./jant-site && hugo serve
 ```
 
@@ -173,7 +173,7 @@ It scans every Markdown file and `hugo.toml`, downloads each remote media file i
 
 The next export or [GitHub Sync](github-sync.md) push overwrites `themes/jant/**`, so don't edit it. On a synced repository, each push also rewrites `content/**`, `data/jant.toml`, `hugo.toml`, `.gitignore`, and `README.md`, and deletes files in those paths that Jant no longer generates. Root `layouts/`, root `static/`, your own files under `data/`, and everything else are left alone. To customize:
 
-- To change one template, copy `themes/jant/layouts/<name>.html` to root `layouts/<name>.html` and edit the copy. Hugo loads root templates first.
+- To change one template, copy `themes/jant/layouts/<name>.html` to root `layouts/<name>.html` and edit the copy. Hugo loads root templates first. The front-matter fields this page lists change only in a major release; the theme's templates and partials can change in any release, so compare a copied template with the new theme after you upgrade Jant.
 - Put extra static files in root `static/`. They win over files of the same name in `themes/jant/static/`.
 - Change colors, fonts, or layout details in Jant under **Settings → Custom CSS**. Each export writes it to `themes/jant/static/custom.css`.
 - Change site-wide configuration in Jant's **Settings**, not in `hugo.toml`.
@@ -183,13 +183,13 @@ The next export or [GitHub Sync](github-sync.md) push overwrites `themes/jant/**
 `site import` reads an export, directory or ZIP, into a Jant site. Run it with `--dry-run` first: it checks everything and writes nothing. A dry run never contacts the site, but the URL is still required.
 
 ```bash
-npx jant site import https://your-site.example --path ./jant-site-export.zip --dry-run
+npx jant site import --url https://your-site.example --path ./jant-site-export.zip --dry-run
 ```
 
 Then import for real, with `JANT_API_TOKEN` or `--token`:
 
 ```bash
-JANT_API_TOKEN=jnt_your_token npx jant site import https://your-site.example --path ./jant-site-export.zip
+JANT_API_TOKEN=jnt_your_token npx jant site import --url https://your-site.example --path ./jant-site-export.zip
 ```
 
 ### Conflicts and constraints
@@ -199,6 +199,7 @@ Import writes posts and Collections one at a time. It doesn't merge, overwrite, 
 - When a slug is already taken on the target site by a post, Collection, alias, or redirect, the import stops. Everything written before that stays, and you clean it up by hand.
 - Duplicate slugs inside the export itself, for example after hand-editing Markdown files, stop it the same way.
 - The target site doesn't have to be empty, but an export overlaps its source so much that in practice you import into a clean site.
+- `data/jant.toml` records the export's format `version`. An export in a newer format than the importing Jant reads stops before anything is written, and the message asks you to upgrade `@jant/core`. Older exports import.
 
 ### Clearing the target site
 
@@ -213,7 +214,7 @@ By default, import copies all media to the target site: files declared in front 
 To leave images that point at third-party URLs (imgur, Wikipedia, any `https://` link) out of your storage, for bandwidth, copyright, or other reasons, pass `--skip-remote-media`:
 
 ```bash
-npx jant site import https://your-site.example --path ./jant-site-export.zip --skip-remote-media
+npx jant site import --url https://your-site.example --path ./jant-site-export.zip --skip-remote-media
 ```
 
 With the flag, relative paths (`/media/...`, `./foo.png`) are the source site's own files and still upload. Absolute URLs (`https://...`, `//cdn...`) stay in the body as they are. Front-matter `media:`, avatars, and text attachments always migrate.
@@ -264,7 +265,7 @@ The archive has three parts:
 
 ```
 jant-site-snapshot.zip
-├── meta.json                  // { format, version, site }
+├── meta.json                  // { format, version, dialect, jant, schema, site }
 ├── db.sql                     // full SQL, including the favicon.ico base64
 └── objects/<storage-key>/...  // every object referenced by media rows
 ```
@@ -303,7 +304,7 @@ The target storage must already hold every storage key in `db.sql`, or every med
 
 Snapshot import needs `--replace`. It clears the snapshot's content tables in the target database (`post`, `collection`, `nav_item`, `collection_directory_item`, `thread_collection`, `media`, `path_registry`) and writes the snapshot in their place. Users, sessions, and tokens stay. Without `--replace`, import refuses to run.
 
-Media files go into the target site's own storage, so a snapshot from a site on R2 imports into one that keeps media in S3 or on local disk. Exports use snapshot format v2; import also accepts v1.
+Media files go into the target site's own storage, so a snapshot from a site on R2 imports into one that keeps media in S3 or on local disk. Exports use snapshot format v2; import also accepts v1. `meta.json` records the Jant version that wrote the snapshot (`jant`) and the last database migration of that version (`schema`). A snapshot from a newer Jant than the one importing it stops before writing anything, and the message asks you to upgrade `@jant/core` first.
 
 ```bash
 npx jant site snapshot import --path ./jant-site-snapshot.zip --replace

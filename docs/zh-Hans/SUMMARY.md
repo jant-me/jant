@@ -17,11 +17,13 @@
 - [使用 Docker 部署](deployment-docker.md)
 - [使用 Jant 托管](hosted.md)
 - [配置](configuration.md)
+- [命令行](cli.md)
 
 ## 使用你的站点
 
 - [写作与内容组织](writing-and-organizing.md)
 - [多语言内容](multilingual.md)
+- [Feed](feeds.md)
 - [GitHub 同步](github-sync.md)
 - [主题定制](theming.md)
 - [代码注入](code-injection.md)
@@ -35,4 +37,6 @@
 ## 参考
 
 - [常见问题](faq.md)
+- [兼容性](compatibility.md)
 - [API 参考（英文）](../API.md)
+- [读取 Jant feed（英文）](../feed-reading.md)

@@ -9,14 +9,7 @@ Jant 提供两条通道：
 
 完整字段、请求体见 [API 参考（英文）](../API.md)。
 
-用 `create-jant` 生成的项目里还有这些文件：
-
-- `AGENTS.md`
-- `.agents/skills/`
-- `.claude/skills/`
-- `examples/agent-content-automation/README.md`
-
-这样 agent 拿到的不只是 API token，还有项目约定和现成样例。
+用 `create-jant` 生成的项目里还有 `AGENTS.md`，它把 agent 指向运行中站点的 `/skill.md`、`npx jant --help` 和这份文档；另有 `examples/agent-content-automation/README.md`，里面是可以直接运行的请求。
 
 ## 先选哪条路
 
@@ -28,7 +21,7 @@ Jant 提供两条通道：
 
 ## 本机 CLI
 
-涉及本机环境和数据库的操作仍然走 CLI：`migrate`、`setup`、`deploy`、`reset-password`、`site snapshot`、`site export`、`site import`、`db export` 等。这些命令直接读写数据库或站点部署，不走 HTTP，也不需要 API token。详见 [导出与导入](export-and-import.md)。
+站点的初始化、部署、迁移和备份仍然走 CLI：`setup`、`migrate`、`deploy`、`reset-password`、`site export`、`site import`、`site snapshot`、`db export` 等。`site export` 和 `site import` 用 API token 调用站点的 API，其余命令直接读写数据库。详见 [命令行](cli.md)。
 
 内容自动化（发帖、上传、改设置）一律走 HTTP 或 MCP。
 

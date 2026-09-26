@@ -15,7 +15,7 @@ export async function run(argv) {
       config: { type: "string", short: "c", default: DEFAULT_CONFIG_PATH },
       env: { type: "string", short: "e" },
       output: { type: "string", short: "o", default: DEFAULT_PUBLISH_DIR },
-      "site-path-prefix": { type: "string" },
+      "path-prefix": { type: "string" },
     },
   });
 
@@ -35,7 +35,7 @@ export async function run(argv) {
       `  -o, --output <path>     Output directory (default: ${DEFAULT_PUBLISH_DIR})`,
     );
     console.log(
-      "      --site-path-prefix <path> Override SITE_PATH_PREFIX instead of reading config",
+      "      --path-prefix <path> Override SITE_PATH_PREFIX instead of reading config",
     );
     process.exit(0);
   }
@@ -43,7 +43,7 @@ export async function run(argv) {
   const sitePathPrefix = resolveSitePathPrefix({
     config: values.config,
     env: values.env,
-    sitePathPrefix: values["site-path-prefix"],
+    sitePathPrefix: values["path-prefix"],
   });
   const prepared = await preparePublicAssets({
     outputDir: values.output,

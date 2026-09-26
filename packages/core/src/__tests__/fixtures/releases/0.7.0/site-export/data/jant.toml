@@ -1,0 +1,119 @@
+format = "jant-site"
+version = 1
+generated_at = "2026-07-18T05:23:57.000Z"
+site_name = "Jant"
+site_description = ""
+site_language = "en"
+main_rss_feed = "featured"
+show_jant_branding_on_home = true
+show_header_avatar = false
+noindex = false
+site_avatar_mode = "custom"
+favicon_mode = "custom"
+apple_touch_mode = "custom"
+theme_id = "tufte"
+default_theme_id = "tufte"
+font_theme_id = "classic"
+theme_mode = "auto"
+page_size = 50
+archive_page_size = 50
+rss_feed_limit = 50
+favicon_path = "/favicon.ico"
+apple_touch_icon_path = "/apple-touch-icon.png"
+site_avatar_url = "/media/e89ea4eabf01-med_01kn8jtq3penf98tfq4gzmh9g9.png"
+favicon_version = "202604030230"
+
+[[nav]]
+type = "system"
+label = "Latest"
+url = "/"
+system_key = "latest"
+placement = "header"
+
+[[nav]]
+type = "system"
+label = "Featured"
+url = "/featured/"
+system_key = "featured"
+placement = "header"
+
+[[nav]]
+type = "system"
+label = "Collections"
+url = "/collections/"
+system_key = "collections"
+placement = "header"
+
+[[nav]]
+type = "system"
+label = "Archive"
+url = "/archive/"
+system_key = "archive"
+placement = "header"
+
+[[nav]]
+type = "system"
+label = "RSS"
+url = "/featured/index.xml"
+system_key = "rss"
+placement = "more"
+
+[[directory]]
+type = "collection"
+sequence = "00"
+slug = "city-walks"
+title = "City Walks"
+description_html = "<p>Routes, corners, and small things I notice outside.</p>"
+entry_count = 3
+recent_activity_label = "Mar 9"
+recent_activity_iso = "2026-03-09T18:05:00.000Z"
+
+[[directory]]
+type = "collection"
+sequence = "01"
+slug = "home-cooking"
+title = "Home Cooking"
+description_html = "<p>Weeknight dinners, soup weather, and things from the stove.</p>"
+entry_count = 5
+recent_activity_label = "Feb 1"
+recent_activity_iso = "2026-02-01T18:05:00.000Z"
+
+[[directory]]
+type = "collection"
+sequence = "02"
+slug = "reading-notes"
+title = "Reading Notes"
+description_html = "<p>Lines worth keeping and thoughts after a chapter ends.</p>"
+entry_count = 7
+recent_activity_label = "Feb 5"
+recent_activity_iso = "2026-02-05T06:55:00.000Z"
+
+[[directory]]
+type = "collection"
+sequence = "03"
+slug = "tiny-projects"
+title = "Tiny Projects"
+description_html = "<p>Repairs, setup tweaks, and half-day improvements around the apartment.</p>"
+entry_count = 8
+recent_activity_label = "Mar 1"
+recent_activity_iso = "2026-03-01T10:45:00.000Z"
+
+[[directory]]
+type = "collection"
+sequence = "04"
+slug = "useful-links"
+title = "Useful Links"
+description_html = "<p>Articles, tools, recipes, and pages I want to find again.</p>"
+entry_count = 7
+recent_activity_label = "Mar 5"
+recent_activity_iso = "2026-03-05T09:10:00.000Z"
+
+[[directory]]
+type = "collection"
+sequence = "05"
+slug = "weekend-notes"
+title = "Weekend Notes"
+description_html = "<p>Small updates from slow Saturdays and Sundays.</p>"
+entry_count = 14
+recent_activity_label = "Mar 9"
+recent_activity_iso = "2026-03-09T18:05:00.000Z"
