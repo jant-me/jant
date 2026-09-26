@@ -163,18 +163,18 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 写选择器时可以用这些 data attribute 锁定特定页面或元素：
 
-| 属性                 | 出现在       | 取值                                                                         |
-| -------------------- | ------------ | ---------------------------------------------------------------------------- |
-| `data-theme`         | `<html>`     | 当前配色主题 id（`tufte`、`linen`、`frost` …）                               |
-| `data-theme-mode`    | `<html>`     | `auto`、`light`、`dark`                                                      |
-| `data-page`          | 页面外层容器 | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured` |
-| `data-post`          | `<article>`  | 每篇帖子都会带上                                                             |
-| `data-format`        | `<article>`  | `note`, `link`, `quote`                                                      |
-| `data-post-slug`     | `<article>`  | 帖子的 slug（便于调试和按帖子定制样式）                                      |
-| `data-post-pinned`   | `<article>`  | 置顶帖子会带上                                                               |
-| `data-post-featured` | `<article>`  | Featured 帖子会带上                                                          |
-| `data-feed`          | 信息流容器   | 包裹帖子列表                                                                 |
-| `data-authenticated` | `<body>`     | 登录时带上                                                                   |
+| 属性                 | 出现在       | 取值                                                                                      |
+| -------------------- | ------------ | ----------------------------------------------------------------------------------------- |
+| `data-theme`         | `<html>`     | 当前配色主题 id（`tufte`、`linen`、`frost` …）                                            |
+| `data-theme-mode`    | `<html>`     | `auto`、`light`、`dark`                                                                   |
+| `data-page`          | 页面外层容器 | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured`, `subscribe` |
+| `data-post`          | `<article>`  | 每篇帖子都会带上                                                                          |
+| `data-format`        | `<article>`  | `note`, `link`, `quote`                                                                   |
+| `data-post-slug`     | `<article>`  | 帖子的 slug（便于调试和按帖子定制样式）                                                   |
+| `data-post-pinned`   | `<article>`  | 置顶帖子会带上                                                                            |
+| `data-post-featured` | `<article>`  | Featured 帖子会带上                                                                       |
+| `data-feed`          | 信息流容器   | 包裹帖子列表                                                                              |
+| `data-authenticated` | `<body>`     | 登录时带上                                                                                |
 
 帖子内部还有三个标记：`data-post-body`（正文容器）、`data-post-meta`（日期、标签等元信息）、`data-post-media`（图片 / 视频区）。三个一组，便于针对帖子的某一块单独写样式。
 
@@ -231,7 +231,7 @@ Jant 会自动跟随访问者的系统偏好（浅色 / 深色）。如果想为
 
 ## 提示
 
-- 优先改变量，再考虑写选择器覆盖。变量层将来升级时不易破。
+- 优先改变量，再考虑写选择器覆盖。本页列出的变量、数据属性和 class 只在大版本里变动；Jant 样式表里的其他自定义属性和 class 属于内部实现，任何版本都可能改变。
 - Custom CSS 优先级最高，会覆盖内建主题里的所有变量。
 - 颜色用 `oklch()` 比较好控制。一个常见做法：`--primary` 用饱和、稳定的颜色给按钮；`--site-accent` 用更柔和的颜色给链接和正文中的强调。
 - 浅色和深色都要测。如果在 `:root` 里覆盖了某个颜色变量，也要想一想它在 `@media (prefers-color-scheme: dark)` 或 `:root[data-theme-mode="dark"]` 下是否需要对应覆盖。

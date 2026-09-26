@@ -203,18 +203,18 @@ their compact hash.
 
 You can target specific pages or elements with these data attributes when writing selectors:
 
-| Attribute            | Where it appears | Values                                                                       |
-| -------------------- | ---------------- | ---------------------------------------------------------------------------- |
-| `data-theme`         | `<html>`         | Active color theme id (`tufte`, `linen`, `frost`, …)                         |
-| `data-theme-mode`    | `<html>`         | `auto`, `light`, `dark`                                                      |
-| `data-page`          | Page wrapper     | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured` |
-| `data-post`          | `<article>`      | Present on every post                                                        |
-| `data-format`        | `<article>`      | `note`, `link`, `quote`                                                      |
-| `data-post-slug`     | `<article>`      | Post slug (handy for debugging and per-post styling)                         |
-| `data-post-pinned`   | `<article>`      | Present on pinned posts                                                      |
-| `data-post-featured` | `<article>`      | Present on Featured posts                                                    |
-| `data-feed`          | Feed container   | Wraps the post list                                                          |
-| `data-authenticated` | `<body>`         | Present when logged in                                                       |
+| Attribute            | Where it appears | Values                                                                                    |
+| -------------------- | ---------------- | ----------------------------------------------------------------------------------------- |
+| `data-theme`         | `<html>`         | Active color theme id (`tufte`, `linen`, `frost`, …)                                      |
+| `data-theme-mode`    | `<html>`         | `auto`, `light`, `dark`                                                                   |
+| `data-page`          | Page wrapper     | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured`, `subscribe` |
+| `data-post`          | `<article>`      | Present on every post                                                                     |
+| `data-format`        | `<article>`      | `note`, `link`, `quote`                                                                   |
+| `data-post-slug`     | `<article>`      | Post slug (handy for debugging and per-post styling)                                      |
+| `data-post-pinned`   | `<article>`      | Present on pinned posts                                                                   |
+| `data-post-featured` | `<article>`      | Present on Featured posts                                                                 |
+| `data-feed`          | Feed container   | Wraps the post list                                                                       |
+| `data-authenticated` | `<body>`         | Present when logged in                                                                    |
 
 Inside each post there are three more markers: `data-post-body` (body container), `data-post-meta` (date, tags, and other metadata), and `data-post-media` (image / video area). Together they let you style any one section of a post on its own.
 
@@ -271,7 +271,7 @@ A site can also be forced into dark mode (ignoring the system preference). To ov
 
 ## Tips
 
-- Override variables first, write selectors second. Variables hold up better across future upgrades.
+- Override variables first, write selectors second. The variables, data attributes, and classes on this page change only in a major release. Jant's stylesheets define many more custom properties and class names; those are internal and can change in any release.
 - Custom CSS has the highest priority and overrides every variable defined by the built-in theme.
 - `oklch()` is convenient for color tuning. A common pattern: keep `--primary` saturated and stable for buttons; let `--site-accent` carry a softer tone for links and inline emphasis.
 - Test in both light and dark. If you override a color variable in `:root`, think about whether it also needs a matching override under `@media (prefers-color-scheme: dark)` or `:root[data-theme-mode="dark"]`.
