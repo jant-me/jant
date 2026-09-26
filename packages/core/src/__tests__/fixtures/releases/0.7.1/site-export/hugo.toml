@@ -1,0 +1,43 @@
+baseURL = "https://demo-source.jant.me/"
+title = "Jant"
+languageCode = "en"
+defaultContentLanguage = "en"
+theme = "jant"
+paginate = 50
+enableRobotsTXT = true
+disableKinds = [ "taxonomy", "term" ]
+
+[permalinks]
+post = "/:slug/"
+
+[markup.goldmark.renderer]
+unsafe = true
+
+[outputs]
+home = [ "html", "rss" ]
+section = [ "html" ]
+
+[outputFormats.RSS]
+mediaType = "application/atom+xml"
+baseName = "index"
+isPlainText = true
+rel = "alternate"
+
+[mediaTypes."application/atom+xml"]
+suffixes = [ "xml" ]
+
+[params]
+description = ""
+main_rss_feed = "featured"
+show_jant_branding_on_home = true
+show_header_avatar = false
+noindex = false
+theme_id = "tufte"
+default_theme_id = "tufte"
+font_theme_id = "classic"
+theme_mode = "auto"
+page_size = 50
+archive_page_size = 50
+rss_feed_limit = 50
+site_avatar_url = "/media/e89ea4eabf01-med_01kn8jtq3penf98tfq4gzmh9g9.png"
+favicon_version = "202604030230"
