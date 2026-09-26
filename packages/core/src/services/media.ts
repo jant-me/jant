@@ -4,18 +4,7 @@
  * Handles media upload and management with pluggable storage backends.
  */
 
-import {
-  eq,
-  desc,
-  inArray,
-  asc,
-  sql,
-  and,
-  or,
-  isNull,
-  lt,
-  lte,
-} from "drizzle-orm";
+import { eq, desc, inArray, asc, sql, and, isNull, lt, lte } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import {
   batchQueryRows,
@@ -33,7 +22,6 @@ import { extractBodyText } from "../lib/summary.js";
 import { now } from "../lib/time.js";
 import { supportsCopy, type StorageDriver } from "../lib/storage.js";
 import { renderTiptapJson } from "../lib/tiptap-render.js";
-import { tiptapJsonToMarkdown } from "../lib/tiptap-to-markdown.js";
 import {
   generateStorageKey,
   imageExtensionForMimeType,
@@ -126,25 +114,6 @@ const TEXT_ATTACHMENT_FILENAME = "attached-text.md";
  * immutable for the lifetime of the key and safe to cache forever.
  */
 const TEXT_ATTACHMENT_CACHE_CONTROL = "public, max-age=31536000, immutable";
-
-/**
- * MIME types that identify legacy text-attachment storage layouts, still used
- * by the migration path to find rows that need converting to the current
- * markdown-only format.
- *
- * - `text/x-tiptap+json` → single-envelope era (`{ json, html }` JSON blob).
- * - `text/html; charset=utf-8` → split-sibling era (`.html` primary +
- *   `.json` sibling at `storageKey.replace(/\.html$/, ".json")`).
- */
-const LEGACY_TEXT_ATTACHMENT_ENVELOPE_MIME_TYPE = "text/x-tiptap+json";
-const LEGACY_TEXT_ATTACHMENT_SPLIT_MIME_TYPE = "text/html; charset=utf-8";
-
-/**
- * Default maximum number of legacy records processed per migration call.
- * Keeps a single invocation bounded so callers can drive progress in batches.
- */
-const TEXT_ATTACHMENT_MIGRATION_DEFAULT_LIMIT = 50;
-const TEXT_ATTACHMENT_MIGRATION_MAX_LIMIT = 500;
 
 /**
  * Returns true if the given media record is a Jant-composed text attachment
@@ -333,27 +302,6 @@ export interface MediaService {
   attachToPost(postId: string, mediaIds: string[]): Promise<void>;
   detachFromPost(postId: string): Promise<void>;
   updateAlt(id: string, alt: string): Promise<void>;
-  /**
-   * One-off maintenance operation that converts legacy text-attachment rows
-   * to the current markdown-only format. Handles both prior storage layouts:
-   *
-   * - Envelope era (`text/x-tiptap+json` MIME, single JSON with `json` + `html`).
-   * - Split era (`text/html; charset=utf-8` MIME with a `.json` sibling).
-   *
-   * Rows with `text/markdown; charset=utf-8` are already current and ignored.
-   * Safe to re-run. Processes in batches; pass `limit` to control batch size.
-   * Returns a summary so callers can loop until `remaining === 0`.
-   */
-  migrateLegacyTextAttachments(deps: {
-    storage: StorageDriver;
-    storageDriver: string;
-    limit?: number;
-  }): Promise<{
-    migrated: number;
-    failed: number;
-    remaining: number;
-    errors: Array<{ mediaId: string; message: string }>;
-  }>;
 }
 
 export interface CreateMediaData {
@@ -521,112 +469,6 @@ export function createMediaService(
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
-  }
-
-  /**
-   * Migrate a single legacy text-attachment row to the current markdown-only
-   * format. Handles both historical shapes in one place so callers don't
-   * have to branch:
-   *
-   * - Envelope era (`text/x-tiptap+json`): single object with
-   *   `{ json, html }`. Extract the Tiptap AST, convert to markdown.
-   * - Split era (`text/html; charset=utf-8`): two sibling objects; the
-   *   `.json` sibling holds the AST. Read it, convert to markdown, delete
-   *   both old objects.
-   */
-  async function migrateLegacyTextAttachmentRow(
-    row: typeof media.$inferSelect,
-    storage: StorageDriver,
-    storageDriver: string,
-  ): Promise<void> {
-    const provider = ensureStorageProvider(row.provider, Error);
-    const expectedProvider = ensureStorageProvider(storageDriver, Error);
-    if (provider !== expectedProvider) {
-      throw new Error(
-        `Row ${row.id} lives on provider "${provider}" but migration was called with driver "${expectedProvider}"`,
-      );
-    }
-
-    const oldKeys: string[] = [row.storageKey];
-    let markdown: string;
-
-    if (row.mimeType === LEGACY_TEXT_ATTACHMENT_ENVELOPE_MIME_TYPE) {
-      const object = await storage.get(row.storageKey);
-      if (!object) {
-        throw new Error(
-          `Legacy envelope object missing from storage at ${row.storageKey}`,
-        );
-      }
-      const raw = await new Response(object.body).text();
-      const envelope = JSON.parse(raw) as { json?: unknown };
-      if (!envelope.json) {
-        throw new Error(
-          `Envelope at ${row.storageKey} is missing expected json field`,
-        );
-      }
-      markdown = tiptapJsonToMarkdown(JSON.stringify(envelope.json));
-    } else if (row.mimeType === LEGACY_TEXT_ATTACHMENT_SPLIT_MIME_TYPE) {
-      const jsonKey = row.storageKey.replace(/\.html$/, ".json");
-      if (jsonKey === row.storageKey) {
-        throw new Error(
-          `Split-format row ${row.id} storageKey "${row.storageKey}" does not end in .html; cannot derive JSON sibling`,
-        );
-      }
-      const object = await storage.get(jsonKey);
-      if (!object) {
-        throw new Error(
-          `JSON sibling missing from storage at ${jsonKey} for split-format row ${row.id}`,
-        );
-      }
-      const raw = await new Response(object.body).text();
-      markdown = tiptapJsonToMarkdown(raw);
-      oldKeys.push(jsonKey);
-    } else {
-      throw new Error(
-        `Row ${row.id} has unrecognized legacy mimeType "${row.mimeType}"`,
-      );
-    }
-
-    const mdBytes = new TextEncoder().encode(markdown);
-
-    // Compute the new storage key by swapping extension on the old one.
-    // Reusing the path prefix keeps objects grouped by site under the same
-    // prefix, which matters for storage backends that scan by prefix.
-    const baseKey = row.storageKey.replace(/\.[^.]+$/, "");
-    const mdKey = `${baseKey}.md`;
-
-    await storage.put(mdKey, mdBytes, {
-      contentType: TEXT_ATTACHMENT_MARKDOWN_MIME_TYPE,
-      contentDisposition: TEXT_ATTACHMENT_CONTENT_DISPOSITION,
-      cacheControl: TEXT_ATTACHMENT_CACHE_CONTROL,
-    });
-
-    // Filename tracks the storageKey's trailing segment so downstream code
-    // that inspects `media.filename` stays consistent with the object layout.
-    const newFilename = mdKey.split("/").pop() ?? row.filename;
-
-    await db
-      .update(media)
-      .set({
-        storageKey: mdKey,
-        filename: newFilename,
-        originalName: TEXT_ATTACHMENT_FILENAME,
-        mimeType: TEXT_ATTACHMENT_MARKDOWN_MIME_TYPE,
-        size: mdBytes.byteLength,
-        updatedAt: now(),
-      })
-      .where(and(eq(media.siteId, siteId), eq(media.id, row.id)));
-
-    // Remove the old objects after the DB row has migrated. Best-effort —
-    // if delete fails, we leak the object but readers have already moved
-    // on to the new key.
-    for (const key of oldKeys) {
-      if (key === mdKey) continue;
-      await storage.delete(key).catch((err) => {
-        // eslint-disable-next-line no-console -- Visibility helps operators spot stuck garbage
-        console.error(`Failed to delete legacy object ${key}:`, err);
-      });
-    }
   }
 
   async function assertCanWriteBytes(additionalBytes: number): Promise<void> {
@@ -1107,66 +949,6 @@ export function createMediaService(
         .update(media)
         .set({ alt, updatedAt: now() })
         .where(and(eq(media.siteId, siteId), eq(media.id, id)));
-    },
-
-    async migrateLegacyTextAttachments(deps) {
-      const limit = Math.min(
-        Math.max(deps.limit ?? TEXT_ATTACHMENT_MIGRATION_DEFAULT_LIMIT, 1),
-        TEXT_ATTACHMENT_MIGRATION_MAX_LIMIT,
-      );
-
-      // Select rows that carry either legacy mimeType. The current
-      // markdown-only rows (`text/markdown; charset=utf-8`) are excluded
-      // automatically because neither `eq` branch matches, making the
-      // migration idempotent by construction.
-      const legacyRows = await db
-        .select()
-        .from(media)
-        .where(
-          and(
-            eq(media.siteId, siteId),
-            eq(media.mediaKind, "text"),
-            or(
-              eq(media.mimeType, LEGACY_TEXT_ATTACHMENT_ENVELOPE_MIME_TYPE),
-              eq(media.mimeType, LEGACY_TEXT_ATTACHMENT_SPLIT_MIME_TYPE),
-            ),
-          ),
-        )
-        .orderBy(asc(media.createdAt))
-        .limit(limit + 1);
-
-      const toProcess = legacyRows.slice(0, limit);
-      const remainingBeyondBatch = legacyRows.length > limit;
-
-      const errors: Array<{ mediaId: string; message: string }> = [];
-      let migrated = 0;
-      let failed = 0;
-
-      for (const row of toProcess) {
-        try {
-          await migrateLegacyTextAttachmentRow(
-            row,
-            deps.storage,
-            deps.storageDriver,
-          );
-          migrated += 1;
-        } catch (error) {
-          failed += 1;
-          errors.push({
-            mediaId: row.id,
-            message: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-
-      // If the batch was full and there was a peek row beyond it, there's
-      // at least one more remaining. Otherwise remaining equals whatever
-      // this call couldn't migrate (plus the peek row if any). Callers loop
-      // until remaining === 0.
-      const remaining =
-        (remainingBeyondBatch ? 1 : 0) + (toProcess.length - migrated);
-
-      return { migrated, failed, remaining, errors };
     },
 
     async delete(id, storage) {

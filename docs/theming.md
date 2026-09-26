@@ -174,8 +174,7 @@ focuses it.
 Theme selectors should prefer `.footnote-endnotes`, `.footnote-list`,
 `.footnote`, `.footnote-ref`, and `.footnote-backlinks`. Fragment IDs are
 opaque and may change between HTML contract versions; never style or parse
-their compact hash. The older `.margin-toggle + .sidenote` trio is retained
-only for legacy stored HTML.
+their compact hash.
 
 ## Cards and media
 

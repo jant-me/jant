@@ -56,7 +56,6 @@ import {
   githubSyncAdminRoutes,
 } from "./routes/api/github-sync.js";
 import { telegramWebhookRoutes } from "./routes/api/telegram.js";
-import { internalTextAttachmentsRoutes } from "./routes/api/internal/text-attachments.js";
 import { internalSearchReindexRoutes } from "./routes/api/internal/search-reindex.js";
 import { internalPostBodyHtmlRoutes } from "./routes/api/internal/post-body-html.js";
 import { internalUploadsRoutes } from "./routes/api/internal/uploads.js";
@@ -399,7 +398,6 @@ export function createApp(): App {
   app.route("/api/attachments", attachmentsApiRoutes);
   app.route("/api/internal/api-tokens", internalApiTokensRoutes);
   app.route("/api/internal/sites", internalSitesRoutes);
-  app.route("/api/internal/text-attachments", internalTextAttachmentsRoutes);
   app.route("/api/internal/search/reindex", internalSearchReindexRoutes);
   app.route("/api/internal/posts/body-html", internalPostBodyHtmlRoutes);
   app.route("/api/internal/uploads", internalUploadsRoutes);
