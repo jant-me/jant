@@ -9,14 +9,7 @@ Jant provides two channels:
 
 For full field definitions and request bodies, see the [API Reference](API.md).
 
-If you scaffolded the site with `create-jant`, the project also ships with:
-
-- `AGENTS.md`
-- `.agents/skills/`
-- `.claude/skills/`
-- `examples/agent-content-automation/README.md`
-
-So an agent working inside the generated project gets more than an API token — it sees the project conventions and ready-to-run examples directly.
+A project created with `create-jant` also has `AGENTS.md`, which points an agent at the running site's `/skill.md`, at `npx jant --help`, and at these docs, and `examples/agent-content-automation/README.md` with ready-to-run requests.
 
 ## Which path first
 

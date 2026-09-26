@@ -9,14 +9,7 @@ Jant 提供两条通道：
 
 完整字段、请求体见 [API 参考（英文）](../API.md)。
 
-用 `create-jant` 生成的项目里还有这些文件：
-
-- `AGENTS.md`
-- `.agents/skills/`
-- `.claude/skills/`
-- `examples/agent-content-automation/README.md`
-
-这样 agent 拿到的不只是 API token，还有项目约定和现成样例。
+用 `create-jant` 生成的项目里还有 `AGENTS.md`，它把 agent 指向运行中站点的 `/skill.md`、`npx jant --help` 和这份文档；另有 `examples/agent-content-automation/README.md`，里面是可以直接运行的请求。
 
 ## 先选哪条路
 

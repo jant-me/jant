@@ -166,14 +166,6 @@ Reference:
 
 ## AI Coding Tools
 
-This site template includes project guidance in `AGENTS.md` plus task-focused skills in `.agents/skills/`.
+`AGENTS.md` tells a coding agent where to read about this site: the running site's `/skill.md` for content work through the API or MCP, `npx jant --help` for the command line, and the Jant docs for the rest. All three follow the installed Jant version. `CLAUDE.md` points to `AGENTS.md`.
 
-For concrete content automation examples, see `examples/agent-content-automation/README.md`.
-
-Available skills:
-
-- `building-jant-site`
-- `jant-http-api`
-- `jant-site-ops`
-
-If your coding tool expects Claude-style project files, `CLAUDE.md` and `.claude/skills/` are generated too.
+For content automation examples, see `examples/agent-content-automation/README.md`.
