@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   assertSnapshotDialectMatches,
   assertSnapshotMeta,
+  assertSnapshotSchemaInstalled,
+  listInstalledSchemaTags,
   buildMediaProviderSql,
   buildSnapshotMeta,
   getSnapshotDialect,
@@ -29,6 +32,67 @@ describe("buildSnapshotMeta", () => {
     expect(() => buildSnapshotMeta(SITE, { dialect: "mysql" })).toThrow(
       /Unsupported snapshot dialect/,
     );
+  });
+});
+
+describe("snapshot schema", () => {
+  const packageVersion = JSON.parse(
+    readFileSync(new URL("../../../package.json", import.meta.url), "utf8"),
+  ).version;
+
+  it("records the writing version and its last migration per dialect", () => {
+    for (const dialect of ["sqlite", "pg"] as const) {
+      const meta = buildSnapshotMeta(SITE, { dialect });
+      expect(meta.jant).toBe(packageVersion);
+      expect(meta.schema).toBe(listInstalledSchemaTags(dialect).at(-1));
+    }
+  });
+
+  it("accepts a snapshot whose schema the installed package ships", () => {
+    const meta = buildSnapshotMeta(SITE, { dialect: "pg" });
+    expect(() => assertSnapshotSchemaInstalled(meta)).not.toThrow();
+    const older = {
+      ...meta,
+      schema: listInstalledSchemaTags("pg")[0],
+    };
+    expect(() => assertSnapshotSchemaInstalled(older)).not.toThrow();
+  });
+
+  it("accepts a snapshot from before the schema was recorded", () => {
+    const {
+      schema: _schema,
+      jant: _jant,
+      ...legacy
+    } = buildSnapshotMeta(SITE, { dialect: "sqlite" });
+    expect(() => assertSnapshotSchemaInstalled(legacy)).not.toThrow();
+  });
+
+  it("refuses a snapshot from a newer schema, naming the fix", () => {
+    const meta = {
+      ...buildSnapshotMeta(SITE, { dialect: "sqlite" }),
+      jant: "9.0.0",
+      schema: "9999_later_change",
+    };
+    expect(() => assertSnapshotSchemaInstalled(meta)).toThrow(
+      /Jant 9\.0\.0.*9999_later_change.*Upgrade @jant\/core/,
+    );
+  });
+
+  it("checks a snapshot against its own dialect's migrations", () => {
+    const sqliteTag = listInstalledSchemaTags("sqlite").at(-1);
+    const pgTags = listInstalledSchemaTags("pg");
+    expect(pgTags).not.toContain(sqliteTag);
+    const meta = {
+      ...buildSnapshotMeta(SITE, { dialect: "pg" }),
+      schema: sqliteTag,
+    };
+    expect(() => assertSnapshotSchemaInstalled(meta)).toThrow();
+  });
+
+  it("rejects a non-string jant or schema field", () => {
+    expect(() =>
+      assertSnapshotMeta({ ...buildSnapshotMeta(SITE), schema: 34 }),
+    ).toThrow(/schema must be a string/);
   });
 });
 

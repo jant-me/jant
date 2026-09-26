@@ -106,6 +106,14 @@ import {
   type SystemNavKey,
 } from "../types.js";
 
+/**
+ * Format version written to `data/jant.toml` as `version`. Raise it when an
+ * export changes in a way an older `jant site import` would misread; the
+ * importer refuses a version newer than its `SUPPORTED_SITE_EXPORT_VERSION`,
+ * which a test keeps equal to this.
+ */
+export const SITE_EXPORT_FORMAT_VERSION = 1;
+
 /** A file of the exported Hugo site whose text or bytes the export holds. */
 export interface ExportContentFile {
   path: string;
@@ -1927,7 +1935,7 @@ function buildJantDataToml(
     : "";
   const parts: string[] = [
     'format = "jant-site"',
-    "version = 1",
+    `version = ${SITE_EXPORT_FORMAT_VERSION}`,
     `generated_at = "${escapeTomlString(toISOString(Math.floor(Date.now() / 1000)))}"`,
     `site_name = "${escapeTomlString(config.siteName)}"`,
     `site_description = "${escapeTomlString(config.siteDescription)}"`,

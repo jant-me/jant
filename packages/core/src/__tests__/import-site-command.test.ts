@@ -12,17 +12,22 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { __test__ } from "../../bin/commands/site/import.js";
+import {
+  __test__,
+  SUPPORTED_SITE_EXPORT_VERSION,
+} from "../../bin/commands/site/import.js";
 import {
   partitionEditableSettingUpdates,
   partitionImportableSettingUpdates,
 } from "../lib/api-settings.js";
 import { normalizeEditableSettingValue } from "../lib/schemas.js";
+import { SITE_EXPORT_FORMAT_VERSION } from "../services/export.js";
 import type { ConfigKey } from "../types/config.js";
 
 const {
   walkHugoContent,
   loadSiteConfig,
+  checkSiteExportVersion,
   buildSettingsUpdatesFromConfig,
   splitSettingsUpdatesForImport,
   buildSiteAvatarImport,
@@ -68,6 +73,27 @@ describe("Hugo import CLI helpers", () => {
 
   afterEach(async () => {
     await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("reads the export format version the exporter writes", () => {
+    expect(SUPPORTED_SITE_EXPORT_VERSION).toBe(SITE_EXPORT_FORMAT_VERSION);
+  });
+
+  it("refuses an export in a newer format version, and accepts older or unversioned ones", async () => {
+    const withVersion = async (line: string) => {
+      await writeFileTree(tempDir, {
+        "data/jant.toml": `format = "jant-site"\n${line}site_name = "Test"\n`,
+      });
+      return checkSiteExportVersion(await loadSiteConfig(tempDir));
+    };
+
+    expect(
+      await withVersion(`version = ${SUPPORTED_SITE_EXPORT_VERSION + 1}\n`),
+    ).toMatch(/format version 2.*Upgrade @jant\/core/);
+    expect(
+      await withVersion(`version = ${SUPPORTED_SITE_EXPORT_VERSION}\n`),
+    ).toBeNull();
+    expect(await withVersion("")).toBeNull();
   });
 
   it("walkHugoContent classifies root posts, replies, and collection bundles", async () => {

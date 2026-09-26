@@ -724,6 +724,13 @@ arg "<summary>"
 """
 run = 'node scripts/release/changeset-add.mjs "$usage_bump" "$usage_summary"'
 
+[tasks.release-freeze-fixtures]
+description = "Freeze a tagged release's canonical snapshot and site export as test fixtures"
+usage = """
+arg "<version>"
+"""
+run = 'node scripts/release/freeze-fixtures.mjs "$usage_version"'
+
 [tasks.changeset-status]
 description = "Show pending changesets and version bumps"
 run = "pnpm changeset status"

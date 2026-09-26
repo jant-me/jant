@@ -16,6 +16,8 @@ packages/core/src/services/export-theme/layouts/
 sites/demo-source/canonical/site-export/themes/jant/layouts/
 # Generated demo site-export client bundle.
 sites/demo-source/canonical/site-export/themes/jant/static/_jant/
+# What a past release wrote, frozen byte for byte (release-fixtures.test.ts).
+packages/core/src/__tests__/fixtures/releases/
 
 # Generated files
 **/assets.gen.ts

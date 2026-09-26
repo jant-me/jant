@@ -173,7 +173,7 @@ npx jant site pull-media --path ./jant-site-export.zip --output ./pulled.zip
 
 下次导出或 [GitHub 同步](github-sync.md) 推送都会覆盖 `themes/jant/**`，不要直接修改它。同步的仓库每次推送还会重写 `content/**`、`data/jant.toml`、`hugo.toml`、`.gitignore` 和 `README.md`，并删除这些路径下 Jant 不再生成的文件。根目录的 `layouts/`、`static/`、`data/` 下你自己的文件以及其他文件都不会被改动。自定义的方式：
 
-- 改单个模板：把 `themes/jant/layouts/<name>.html` 复制到根目录 `layouts/<name>.html`，改这份副本。Hugo 优先加载根目录的模板。
+- 改单个模板：把 `themes/jant/layouts/<name>.html` 复制到根目录 `layouts/<name>.html`，改这份副本。Hugo 优先加载根目录的模板。本页列出的 front matter 字段只在大版本里变动；主题的模板和 partial 任何版本都可能改变，升级 Jant 后要对照新主题检查复制出来的模板。
 - 额外的静态文件放在根目录 `static/`，同名时优先于 `themes/jant/static/` 里的文件。
 - 颜色、字体和布局细节在 Jant 的 **Settings → Custom CSS** 里改，每次导出都会写入 `themes/jant/static/custom.css`。
 - 站点级配置在 Jant 的 **Settings** 里改，不要改 `hugo.toml`。
@@ -199,6 +199,7 @@ JANT_API_TOKEN=jnt_your_token npx jant site import --url https://your-site.examp
 - 目标站点上某个 slug 已被帖子、合集、别名或重定向占用时，导入立即停止。停止前写入的内容会留在站点上，需要手动清理。
 - 导出内部有重复 slug（比如手动改过 Markdown 文件）时，同样会停止。
 - 目标站点不必是空的，但导出和源站重叠太多，实际上都是导入到一个干净的站点。
+- `data/jant.toml` 记录导出的格式 `version`。导出的格式比导入方能读的更新时，导入在写入任何数据之前停止，提示先升级 `@jant/core`。旧格式的导出可以导入。
 
 ### 清空目标站点
 
@@ -264,7 +265,7 @@ CLI 启动时会加载 `<cwd>/.env.node`，shell 里已经 export 的变量优�
 
 ```
 jant-site-snapshot.zip
-├── meta.json                  // { format, version, site }
+├── meta.json                  // { format, version, dialect, jant, schema, site }
 ├── db.sql                     // 完整 SQL，包含 favicon.ico 的 base64
 └── objects/<storage-key>/...  // 所有 media 引用的对象
 ```
@@ -303,7 +304,7 @@ npx jant site snapshot export --output ./jant-site-snapshot.zip --skip-objects
 
 快照导入必须加 `--replace`。它会清空目标数据库中快照涵盖的内容表（`post`、`collection`、`nav_item`、`collection_directory_item`、`thread_collection`、`media`、`path_registry`），再写入快照内容。users、sessions 和 tokens 不受影响。不加 `--replace` 时导入直接拒绝运行。
 
-媒体文件会上传到目标站点自己的存储，所以 R2 上导出的快照可以导入到用 S3 或本地磁盘存媒体的站点。导出使用快照格式 v2，导入也接受 v1。
+媒体文件会上传到目标站点自己的存储，所以 R2 上导出的快照可以导入到用 S3 或本地磁盘存媒体的站点。导出使用快照格式 v2，导入也接受 v1。`meta.json` 记录写出快照的 Jant 版本（`jant`）和该版本最后一个数据库迁移（`schema`）。快照来自比导入方更新的 Jant 时，导入在写入任何数据之前停止，提示先升级 `@jant/core`。
 
 ```bash
 npx jant site snapshot import --path ./jant-site-snapshot.zip --replace

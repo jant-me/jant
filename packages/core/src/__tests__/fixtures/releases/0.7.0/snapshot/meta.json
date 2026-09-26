@@ -1,0 +1,9 @@
+{
+  "format": "jant-site-snapshot",
+  "version": 2,
+  "dialect": "sqlite",
+  "site": {
+    "id": "sit_01kn8jq3t4famtyg9hjd074ckr",
+    "key": "default"
+  }
+}

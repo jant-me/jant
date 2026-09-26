@@ -19,6 +19,25 @@ export function resolveBundledBackfillsDir(moduleUrl = import.meta.url) {
   return join(resolveBundledDbDir(moduleUrl), "backfills");
 }
 
+/**
+ * Directory of the schema migrations this package ships for a dialect.
+ *
+ * @param {"sqlite" | "pg"} dialect SQLite (D1 and Node) or Postgres
+ * @param {string} [moduleUrl] Module URL the package root is resolved from
+ * @returns {string} Absolute path of the migrations directory
+ * @example
+ * ```js
+ * resolveBundledSchemaMigrationsDir("pg"); // ".../src/db/migrations/pg"
+ * ```
+ */
+export function resolveBundledSchemaMigrationsDir(
+  dialect,
+  moduleUrl = import.meta.url,
+) {
+  const dir = join(resolveBundledDbDir(moduleUrl), "migrations");
+  return dialect === "pg" ? join(dir, "pg") : dir;
+}
+
 export function extractNumberPrefix(name) {
   const match = String(name).match(/^(\d+)/);
   return match ? match[1] : null;

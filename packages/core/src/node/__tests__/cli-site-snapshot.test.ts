@@ -4,6 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  listInstalledSchemaTags,
+  readInstalledJantVersion,
+} from "../../../bin/lib/site-snapshot.js";
 import { createLocalDriver } from "../../lib/storage.js";
 import { migrate } from "../runtime.js";
 import type { Bindings } from "../../types.js";
@@ -244,6 +248,8 @@ describe("jant site snapshot export/import", () => {
       format: "jant-site-snapshot",
       version: 2,
       dialect: "sqlite",
+      jant: readInstalledJantVersion(),
+      schema: listInstalledSchemaTags("sqlite").at(-1),
       site: { id: SNAPSHOT_SITE_ID, key: SNAPSHOT_SITE_KEY },
     });
     expect(existsSync(join(snapshotPath, "storage-manifest.json"))).toBe(false);

@@ -43,6 +43,14 @@ When PRs with changesets are merged:
 4. Packages are automatically published to npm
 5. When `@jant/core` is published, the Release workflow also calls `.github/workflows/docker-publish.yml` to publish `owenyoung/jant:<version>` and `owenyoung/jant:latest` to Docker Hub
 6. The same workflow updates the Docker Hub overview from `docs/docker-hub-overview.md`
+7. Freeze the release's fixtures, and commit them:
+
+   ```bash
+   git fetch --tags
+   mise run release-freeze-fixtures <version>
+   ```
+
+   This copies the canonical demo snapshot and site export at the release tag into `packages/core/src/__tests__/fixtures/releases/<version>/`. `release-fixtures.test.ts` restores and imports every release there, so a later change that can no longer read what this release wrote fails in CI. Never edit a frozen fixture.
 
 ## Commands
 

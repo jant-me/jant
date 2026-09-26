@@ -31,10 +31,15 @@ const canonicalDir = resolve(
 );
 const loopbackHost = "127.0.0.1";
 
-async function assertCanonicalSiteExport() {
-  const configPath = resolve(canonicalDir, "hugo.toml");
+async function assertSiteExport(sourceDir: string) {
+  const configPath = resolve(sourceDir, "hugo.toml");
   const configStat = await stat(configPath).catch(() => null);
   if (!configStat?.isFile()) {
+    if (sourceDir !== canonicalDir) {
+      throw new Error(
+        `No Jant site export at ${sourceDir}: hugo.toml is missing.`,
+      );
+    }
     throw new Error(
       [
         "Missing canonical demo site export at sites/demo-source/canonical/site-export.",
@@ -43,12 +48,12 @@ async function assertCanonicalSiteExport() {
     );
   }
 
-  const contentStat = await stat(resolve(canonicalDir, "content")).catch(
+  const contentStat = await stat(resolve(sourceDir, "content")).catch(
     () => null,
   );
   if (!contentStat?.isDirectory()) {
     throw new Error(
-      "Canonical demo site-export is missing its content/ directory.",
+      `The site export at ${sourceDir} has no content/ directory.`,
     );
   }
 }
@@ -124,9 +129,10 @@ async function assertEmptyImportTarget(env: Bindings) {
 
 function buildHelpText() {
   return [
-    "Usage: node dev/run-script.mjs dev/scripts/import-node-demo-site-export.ts [password] [--check]",
+    "Usage: node dev/run-script.mjs dev/scripts/import-node-demo-site-export.ts [password] [--check] [--path <dir>]",
     "",
-    "Bootstrap a local single-site Node runtime and import sites/demo-source/canonical/site-export.",
+    "Bootstrap a local single-site Node runtime and import sites/demo-source/canonical/site-export,",
+    "or the export directory --path names.",
     "",
     "The import runs `jant site import` against a temporary server on 127.0.0.1, the same API path a remote site uses.",
     "",
@@ -187,7 +193,7 @@ async function startLoopbackServer(env: Bindings) {
 }
 
 /**
- * Run `jant site import` for the canonical export against a local server.
+ * Run `jant site import` for an export against a local server.
  *
  * A child process, not an in-process call: the command exits the process on
  * failure, and this process has a server and a database to close. The token
@@ -196,8 +202,13 @@ async function startLoopbackServer(env: Bindings) {
  *
  * @param siteUrl - Base URL of the running local server
  * @param devApiToken - The `DEV_API_TOKEN` the server was started with
+ * @param sourceDir - The export directory to import
  */
-async function runSiteImport(siteUrl: string, devApiToken: string) {
+async function runSiteImport(
+  siteUrl: string,
+  devApiToken: string,
+  sourceDir: string,
+) {
   const child = spawn(
     process.execPath,
     [
@@ -207,7 +218,7 @@ async function runSiteImport(siteUrl: string, devApiToken: string) {
       "--url",
       siteUrl,
       "--path",
-      canonicalDir,
+      sourceDir,
     ],
     {
       cwd: coreDir,
@@ -234,6 +245,7 @@ export default async function main(args: string[]) {
     options: {
       check: { type: "boolean" },
       help: { type: "boolean", short: "h" },
+      path: { type: "string" },
     },
   });
 
@@ -248,12 +260,14 @@ export default async function main(args: string[]) {
     localStorage: true,
   });
 
-  await assertCanonicalSiteExport();
+  // Tests pass an older release's export here to hold head to reading it.
+  const sourceDir = values.path ? resolve(values.path) : canonicalDir;
+  await assertSiteExport(sourceDir);
 
   if (values.check) {
     console.log("Node site-export import prerequisites look good.");
     console.log(`  Env file:       ${describeScriptEnvPath(devEnv.envPath)}`);
-    console.log(`  Canonical dir:  ${canonicalDir}`);
+    console.log(`  Export dir:     ${sourceDir}`);
     console.log(`  Database:       ${target.database}`);
     console.log(`  Dialect:        ${target.dialect}`);
     console.log(
@@ -281,19 +295,15 @@ export default async function main(args: string[]) {
 
   const server = await startLoopbackServer(devEnv.env);
   try {
-    console.log(
-      `Importing canonical demo site-export through ${server.url}...`,
-    );
-    await runSiteImport(server.url, credentials.devApiToken);
+    console.log(`Importing ${sourceDir} through ${server.url}...`);
+    await runSiteImport(server.url, credentials.devApiToken, sourceDir);
   } finally {
     await server.close();
   }
 
-  console.log(
-    "Canonical demo site-export imported into the local Node runtime.",
-  );
+  console.log("Site export imported into the local Node runtime.");
   console.log(`  Env file:      ${describeScriptEnvPath(devEnv.envPath)}`);
   console.log(`  Database:      ${target.database}`);
-  console.log(`  Canonical dir: ${canonicalDir}`);
+  console.log(`  Export dir:    ${sourceDir}`);
   console.log(`  Setup:         ${setup.outcome}`);
 }

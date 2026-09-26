@@ -23,6 +23,36 @@ import { findPositionalUrl } from "../../lib/renamed-arguments.js";
  */
 const parseFrontMatter = parseFrontMatterShared;
 
+/**
+ * Newest `data/jant.toml` format version this importer reads. `site export`
+ * writes `SITE_EXPORT_FORMAT_VERSION` from `src/services/export.ts`; a test
+ * keeps the two equal.
+ */
+export const SUPPORTED_SITE_EXPORT_VERSION = 1;
+
+/**
+ * Refuse an export written in a format newer than this importer reads.
+ *
+ * An export from before the version field, or from any version up to
+ * {@link SUPPORTED_SITE_EXPORT_VERSION}, is accepted.
+ *
+ * @param {{ extra?: { jant_export?: { format?: string, version?: unknown } } } | null} siteConfig
+ *   The merged config from `loadSiteConfig`
+ * @returns {string | null} An error message, or null when the export can be read
+ * @example
+ * ```js
+ * checkSiteExportVersion({ extra: { jant_export: { format: "jant-site", version: 2 } } });
+ * // "This export uses format version 2, …"
+ * ```
+ */
+function checkSiteExportVersion(siteConfig) {
+  const version = siteConfig?.extra?.jant_export?.version;
+  if (typeof version !== "number" || version <= SUPPORTED_SITE_EXPORT_VERSION) {
+    return null;
+  }
+  return `This export uses format version ${version}, and this Jant reads up to version ${SUPPORTED_SITE_EXPORT_VERSION}. Upgrade @jant/core, then import again.`;
+}
+
 async function parseToml(content) {
   const { parse } = await import("smol-toml");
   return parse(content);
@@ -922,6 +952,7 @@ async function loadSiteConfig(rootDir) {
       jant_export: {
         format:
           typeof jantData.format === "string" ? jantData.format : "jant-site",
+        version: jantData.version,
       },
     },
   };
@@ -2260,6 +2291,7 @@ export const __test__ = {
   detectRemoteSetupStatus,
   getIncompleteSetupError,
   loadSiteConfig,
+  checkSiteExportVersion,
   walkHugoContent,
   mediaSpecFromJantMedia,
   resolveCollectionMemberships,
@@ -2378,6 +2410,14 @@ export async function run(argv) {
   const { rootBundles, collectionBundles, smartCollectionBundles } =
     await walkHugoContent(sourceRootDir);
   const siteConfig = await loadSiteConfig(sourceRootDir);
+  const versionError = checkSiteExportVersion(siteConfig);
+  if (versionError) {
+    console.error(`Error: ${versionError}`);
+    if (tempSourceRootDir) {
+      await rm(tempSourceRootDir, { recursive: true, force: true });
+    }
+    process.exit(1);
+  }
   const customCss = await readImportCustomCss(sourceRootDir);
 
   try {
