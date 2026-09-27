@@ -47,21 +47,19 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 这些变量默认从核心色盘派生。内建主题会单独设置 `--site-accent`；如果你只手动覆盖核心色盘，`--site-accent` 会回退到 `--primary`。
 
-| 变量                    | 默认值                      | 作用                                  |
-| ----------------------- | --------------------------- | ------------------------------------- |
-| `--site-accent`         | `var(--primary)`            | 阅读区强调色（链接、Thread 连接点等） |
-| `--site-accent-text`    | `var(--primary-foreground)` | 站点强调色上的文本                    |
-| `--site-page-bg`        | `var(--background)`         | 页面整体背景                          |
-| `--site-elevated-bg`    | `var(--background)`         | 主内容区和浮层（菜单、popover）的背景 |
-| `--site-nav-hover-bg`   | `var(--accent)`             | 导航 hover 背景                       |
-| `--site-text-primary`   | `var(--foreground)`         | 主文本                                |
-| `--site-text-secondary` | `var(--muted-foreground)`   | 次级 / 说明文本                       |
-| `--site-divider`        | `var(--border)`             | 内容分隔线                            |
-| `--site-threadline`     | `var(--border)`             | Thread 连线                           |
-| `--site-column-outline` | `var(--border)`             | 内容块描边的派生基色                  |
-| `--site-media-outline`  | `var(--border)`             | 图片 / 视频边框                       |
-| `--search-mark-bg`      | 内置黄底                    | 搜索结果高亮背景                      |
-| `--search-mark-color`   | 内置深字                    | 搜索结果高亮文字                      |
+| 变量                    | 默认值                    | 作用                                  |
+| ----------------------- | ------------------------- | ------------------------------------- |
+| `--site-accent`         | `var(--primary)`          | 阅读区强调色（链接、Thread 连接点等） |
+| `--site-page-bg`        | `var(--background)`       | 页面整体背景                          |
+| `--site-elevated-bg`    | `var(--background)`       | 主内容区和浮层（菜单、popover）的背景 |
+| `--site-nav-hover-bg`   | `var(--accent)`           | 导航 hover 背景                       |
+| `--site-text-primary`   | `var(--foreground)`       | 主文本                                |
+| `--site-text-secondary` | `var(--muted-foreground)` | 次级 / 说明文本                       |
+| `--site-divider`        | `var(--border)`           | 内容分隔线                            |
+| `--site-threadline`     | `var(--border)`           | Thread 连线                           |
+| `--site-column-outline` | `var(--border)`           | 内容块描边的派生基色                  |
+| `--search-mark-bg`      | 内置黄底                  | 搜索结果高亮背景                      |
+| `--search-mark-color`   | 内置深字                  | 搜索结果高亮文字                      |
 
 ### 示例：自定义主色和站点强调色
 
@@ -109,12 +107,10 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 | `--font-blockquote`   | `inherit`               | 引用块字族，默认跟随正文字体               |
 | `--font-mono`         | 系统 monospace          | 代码块                                     |
 | `--type-footnote-ref` | 正文字号的 `75%`        | 行内脚注引用的字号                         |
-| `--fw-light`          | 300                     | 轻量强调                                   |
 | `--fw-regular`        | 400                     | 正文                                       |
 | `--fw-medium`         | 500                     | 标签、激活导航                             |
 | `--fw-semibold`       | 600                     | 标题、按钮                                 |
 | `--fw-bold`           | 700                     | 强强调                                     |
-| `--fw-extrabold`      | 800                     | 站点 logo                                  |
 
 在 **Settings > Font Theme** 选字型主题后，`--font-heading`、`--font-body` 以及若干相关字重会随之切换。`--font-ui` 不在切换范围内——按钮、导航这些界面文字始终用系统 sans-serif，方便阅读。要进一步调整，仍然可以在 Custom CSS 里覆盖任意变量。
 
@@ -167,28 +163,13 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 主题选择器优先用 `.footnote-endnotes`、`.footnote-list`、`.footnote`、`.footnote-ref` 和 `.footnote-backlinks`。片段 ID 不透明，不同的 HTML 格式版本之间可能变化，不要给它们的压缩哈希写样式，也不要解析它。
 
-## 卡片与媒体
+## 媒体与头像
 
-| 变量                  | 默认值   | 作用             |
-| --------------------- | -------- | ---------------- |
-| `--card-radius`       | `0`      | 帖子卡片圆角     |
-| `--card-padding`      | `1rem`   | 帖子卡片内边距   |
-| `--card-border-width` | `0`      | 帖子卡片边框宽度 |
-| `--card-shadow`       | `none`   | 帖子卡片阴影     |
-| `--media-radius`      | `0.5rem` | 图片 / 视频圆角  |
-| `--avatar-size`       | `28px`   | 页头头像尺寸     |
-| `--avatar-radius`     | `50%`    | 头像圆角         |
-
-### 示例：把帖子做成卡片
-
-```css
-:root {
-  --card-radius: 12px;
-  --card-padding: 1.5rem;
-  --card-border-width: 1px;
-  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-```
+| 变量              | 默认值   | 作用            |
+| ----------------- | -------- | --------------- |
+| `--media-radius`  | `0.5rem` | 图片 / 视频圆角 |
+| `--avatar-size`   | `28px`   | 页头头像尺寸    |
+| `--avatar-radius` | `50%`    | 头像圆角        |
 
 ## 数据属性（data attributes）
 

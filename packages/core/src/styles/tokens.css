@@ -64,12 +64,10 @@
   --font-blockquote: inherit;
 
   /* Typography — Font weights */
-  --fw-light: 300;
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-semibold: 600;
   --fw-bold: 700;
-  --fw-extrabold: 800;
   /*
    * Unified type scale.
    *
@@ -216,10 +214,6 @@
 
   /* Surfaces */
   --card-bg: var(--card);
-  --card-radius: 0;
-  --card-padding: 1rem;
-  --card-border-width: 0;
-  --card-shadow: none;
 
   /* Elements */
   --avatar-size: 28px;
@@ -232,7 +226,6 @@
 
   /* Derived color tokens (from BaseCoat variables) */
   --site-accent: var(--primary);
-  --site-accent-text: var(--primary-foreground);
   --site-column-outline: var(--border);
   --site-border-light: color-mix(
     in srgb,
@@ -315,6 +308,7 @@
     transparent
   );
   --site-text-placeholder: oklch(from var(--muted-foreground) l c h / 0.5);
+  /* Read by the exported Hugo theme's main.css; the site itself has no use. */
   --site-media-outline: var(--border);
   --site-divider: var(--border);
   --site-feed-card-bg: color-mix(

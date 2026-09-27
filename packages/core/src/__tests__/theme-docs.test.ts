@@ -4,11 +4,14 @@
  * `docs/theming.md` is the public theme contract: the CSS variables it lists,
  * the `data-*` attributes and their values, and the footnote classes. The
  * rest of the roughly 270 custom properties are internal. `--site-width`
- * stayed documented after it was removed, and `data-page="subscribe"` shipped
- * without being documented; these checks fail on both kinds of drift.
+ * stayed documented after it was removed, `data-page="subscribe"` shipped
+ * without being documented, and eight documented variables — the `--card-*`
+ * set among them — were defined but read by nothing, so setting one changed
+ * nothing. These checks fail on each kind of drift.
  */
 
 import { readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -37,6 +40,11 @@ function listSourceFiles(dir: string, extensions: string[]): string[] {
 const stylesheets = listSourceFiles(SRC_DIR, [".css"])
   .map((path) => readFileSync(path, "utf8"))
   .join("\n");
+/** BaseCoat's components read its palette variables, which the docs list. */
+const baseCoatStylesheet = readFileSync(
+  createRequire(import.meta.url).resolve("basecoat-css"),
+  "utf8",
+);
 const markup = listSourceFiles(SRC_DIR, [".tsx", ".ts"])
   .map((path) => readFileSync(path, "utf8"))
   .join("\n");
@@ -89,6 +97,20 @@ describe("theming docs", () => {
       expect(documented.filter((name) => !definedVariables.has(name))).toEqual(
         [],
       );
+    });
+
+    it(`${path} lists only variables a style reads`, () => {
+      // A variable the stylesheets define but never read is a knob connected
+      // to nothing: the docs would promise an effect that setting it lacks.
+      const documented = readDocumentedVariables(readRepoFile(path));
+      expect(
+        documented.filter(
+          (name) =>
+            !stylesheets.includes(`var(${name}`) &&
+            !baseCoatStylesheet.includes(`var(${name}`) &&
+            !markup.includes(`var(${name}`),
+        ),
+      ).toEqual([]);
     });
 
     it(`${path} lists only data attributes the markup emits`, () => {

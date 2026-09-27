@@ -24,8 +24,6 @@ interface ThemeModeColors {
   primary: string;
   primaryFg: string;
   siteAccent: string;
-  /** Text on site accent backgrounds (defaults to primaryFg) */
-  siteAccentFg?: string;
   muted: string;
   mutedFg: string;
   border: string;
@@ -92,7 +90,6 @@ function defineTheme(opts: {
       "--primary": light.primary,
       "--primary-foreground": light.primaryFg,
       "--site-accent": light.siteAccent,
-      "--site-accent-text": light.siteAccentFg ?? light.primaryFg,
       "--secondary": light.muted,
       "--secondary-foreground": light.fg,
       "--muted": light.muted,
@@ -139,7 +136,6 @@ function defineTheme(opts: {
       "--primary": dark.primary,
       "--primary-foreground": dark.primaryFg,
       "--site-accent": dark.siteAccent,
-      "--site-accent-text": dark.siteAccentFg ?? dark.primaryFg,
       "--secondary": dark.muted,
       "--secondary-foreground": dark.fg,
       "--muted": dark.muted,

@@ -47,21 +47,19 @@ Most color variables come in pairs: a background color and its matching foregrou
 
 These derive from the core palette by default. Built-in themes set `--site-accent` independently; if you only override the core palette by hand, `--site-accent` falls back to `--primary`.
 
-| Variable                | Default                     | What it controls                                 |
-| ----------------------- | --------------------------- | ------------------------------------------------ |
-| `--site-accent`         | `var(--primary)`            | Editorial accent (links, thread connector dots)  |
-| `--site-accent-text`    | `var(--primary-foreground)` | Text on the site accent color                    |
-| `--site-page-bg`        | `var(--background)`         | Overall page background                          |
-| `--site-elevated-bg`    | `var(--background)`         | Main content area and overlays (menus, popovers) |
-| `--site-nav-hover-bg`   | `var(--accent)`             | Navigation hover background                      |
-| `--site-text-primary`   | `var(--foreground)`         | Primary text                                     |
-| `--site-text-secondary` | `var(--muted-foreground)`   | Secondary / caption text                         |
-| `--site-divider`        | `var(--border)`             | Content dividers                                 |
-| `--site-threadline`     | `var(--border)`             | Thread connection lines                          |
-| `--site-column-outline` | `var(--border)`             | Base color used to derive content block outlines |
-| `--site-media-outline`  | `var(--border)`             | Image / video border                             |
-| `--search-mark-bg`      | Built-in yellow             | Search result highlight background               |
-| `--search-mark-color`   | Built-in dark text          | Search result highlight text                     |
+| Variable                | Default                   | What it controls                                 |
+| ----------------------- | ------------------------- | ------------------------------------------------ |
+| `--site-accent`         | `var(--primary)`          | Editorial accent (links, thread connector dots)  |
+| `--site-page-bg`        | `var(--background)`       | Overall page background                          |
+| `--site-elevated-bg`    | `var(--background)`       | Main content area and overlays (menus, popovers) |
+| `--site-nav-hover-bg`   | `var(--accent)`           | Navigation hover background                      |
+| `--site-text-primary`   | `var(--foreground)`       | Primary text                                     |
+| `--site-text-secondary` | `var(--muted-foreground)` | Secondary / caption text                         |
+| `--site-divider`        | `var(--border)`           | Content dividers                                 |
+| `--site-threadline`     | `var(--border)`           | Thread connection lines                          |
+| `--site-column-outline` | `var(--border)`           | Base color used to derive content block outlines |
+| `--search-mark-bg`      | Built-in yellow           | Search result highlight background               |
+| `--search-mark-color`   | Built-in dark text        | Search result highlight text                     |
 
 ### Example: custom primary and site accent
 
@@ -109,12 +107,10 @@ The two dark rules are explained under [Dark mode](#dark-mode).
 | `--font-blockquote`   | `inherit`                    | Blockquote font family; defaults to the body font                 |
 | `--font-mono`         | System monospace             | Code blocks                                                       |
 | `--type-footnote-ref` | `75%` of content body text   | Inline footnote reference size                                    |
-| `--fw-light`          | 300                          | Light accents                                                     |
 | `--fw-regular`        | 400                          | Body text                                                         |
 | `--fw-medium`         | 500                          | Labels, active nav                                                |
 | `--fw-semibold`       | 600                          | Headings, buttons                                                 |
 | `--fw-bold`           | 700                          | Strong emphasis                                                   |
-| `--fw-extrabold`      | 800                          | Site logo                                                         |
 
 When you pick a font theme in **Settings > Font Theme**, `--font-heading`, `--font-body`, and a few related font weights switch with it. `--font-ui` is intentionally left out — buttons, navigation, and other interface text always stay system sans-serif for legibility. You can still override any variable in Custom CSS for further tuning.
 
@@ -184,28 +180,13 @@ Theme selectors should prefer `.footnote-endnotes`, `.footnote-list`,
 opaque and may change between HTML contract versions; never style or parse
 their compact hash.
 
-## Cards and media
+## Media and avatars
 
-| Variable              | Default  | What it controls            |
-| --------------------- | -------- | --------------------------- |
-| `--card-radius`       | `0`      | Post card corner radius     |
-| `--card-padding`      | `1rem`   | Post card inner padding     |
-| `--card-border-width` | `0`      | Post card border width      |
-| `--card-shadow`       | `none`   | Post card shadow            |
-| `--media-radius`      | `0.5rem` | Image / video corner radius |
-| `--avatar-size`       | `28px`   | Header avatar size          |
-| `--avatar-radius`     | `50%`    | Avatar corner radius        |
-
-### Example: turn posts into cards
-
-```css
-:root {
-  --card-radius: 12px;
-  --card-padding: 1.5rem;
-  --card-border-width: 1px;
-  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-```
+| Variable          | Default  | What it controls            |
+| ----------------- | -------- | --------------------------- |
+| `--media-radius`  | `0.5rem` | Image / video corner radius |
+| `--avatar-size`   | `28px`   | Header avatar size          |
+| `--avatar-radius` | `50%`    | Avatar corner radius        |
 
 ## Data attributes
 
