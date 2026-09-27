@@ -103,10 +103,13 @@ publicArchiveApiRoutes.get("/", async (c) => {
     excludePrivate: true,
     excludeLatestHidden: false,
     excludeReplies: true,
-    // Ordering is fixed at newest-published-first here, so the year filter
-    // stays on the publication axis — the page's `?sort=` switch has no
-    // counterpart on a cursor keyed off the post id.
+    // Newest-published-first, the page's default order. Named explicitly:
+    // left unset, a published list sorts by activity, and a reply would lift
+    // an old root to the top. The year filter reads the same column, and so
+    // does the cursor — `nextCursor` is a post id, but the keyset it resumes
+    // from is that post's publication time, then its id.
     ...toPostFilters(parsed.selection, { yearAxis: "published" }),
+    sortBy: "published",
     ignorePinnedSort: true,
   });
 

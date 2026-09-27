@@ -474,7 +474,7 @@ Notes:
 
 Auth: `Public`
 
-The archive endpoint carries the same filters as the `/archive` page — year, collection, media kind, presence of media, title, or replies, and visibility — and returns every public thread root, **including `latest_hidden` posts**. Use this when you want a complete corpus instead of the curated Latest feed. Ordering is fixed at newest-first; the page's `?sort=` switch has no counterpart here, because the cursor is keyed off the post `id`.
+The archive endpoint carries the same filters as the `/archive` page — year, collection, media kind, presence of media, title, or replies, and visibility — and returns every public thread root, **including `latest_hidden` posts**. Use this when you want a complete corpus instead of the curated Latest feed. Ordering is fixed at the page's default, newest published first; its `?sort=` switch has no counterpart here.
 
 Query parameters:
 
@@ -501,7 +501,8 @@ Notes:
 
 - Returns published public thread roots **and** `latest_hidden` posts.
 - Drafts, private posts, and replies are excluded.
-- Posts are returned in newest-first order. Cursor pagination is keyed off the post `id`.
+- Posts are ordered by `publishedAt`, newest first, with `id` breaking ties. A new reply does not move its thread up.
+- The next page picks up after the last post of the previous one, by `publishedAt` and then `id`. Treat `nextCursor` as opaque; its format is not part of the API.
 - An invalid value for any filter returns `400`, and so does a parameter this endpoint does not know — a typo that silently returned the whole archive would be worse than an error. An unknown `collection` slug returns an empty result set.
 - `content=markdown` returns `bodyMarkdown` and omits `bodyHtml/bodyText`.
 

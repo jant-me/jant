@@ -234,6 +234,70 @@ describe("Public Archive API Routes", () => {
       ]);
     });
 
+    // The failure this guards: with no time axis named, the list fell back to
+    // `lastActivityAt`, so a reply lifted a long-published root to the top of
+    // an endpoint documented as newest-published-first.
+    it("orders by publication date, not by the latest reply", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/archive", publicArchiveApiRoutes);
+
+      const oldest = await services.posts.create({
+        format: "note",
+        title: "Published January 2024",
+        bodyMarkdown: "oldest",
+        publishedAt: Date.UTC(2024, 0, 1) / 1000,
+      });
+      const extended = await services.posts.create({
+        format: "note",
+        title: "Published November 2024, replied to in 2026",
+        bodyMarkdown: "old root",
+        publishedAt: Date.UTC(2024, 10, 19) / 1000,
+      });
+      await services.posts.create({
+        format: "note",
+        bodyMarkdown: "new reply",
+        replyToId: extended.id,
+        publishedAt: Date.UTC(2026, 8, 26) / 1000,
+      });
+      const middle = await services.posts.create({
+        format: "note",
+        title: "Published March 2025",
+        bodyMarkdown: "middle",
+        publishedAt: Date.UTC(2025, 2, 1) / 1000,
+      });
+      const newest = await services.posts.create({
+        format: "note",
+        title: "Published December 2025",
+        bodyMarkdown: "newest",
+        publishedAt: Date.UTC(2025, 11, 1) / 1000,
+      });
+      const expected = [newest.id, middle.id, extended.id, oldest.id];
+
+      const all = await app.request("/api/public/archive");
+      expect(all.status).toBe(200);
+      const allBody = await all.json();
+      expect(allBody.posts.map((post: { id: string }) => post.id)).toEqual(
+        expected,
+      );
+
+      // One post per page puts a cursor on every boundary, including the two
+      // where publication and activity order disagree. A cursor comparison on
+      // a different axis from the ORDER BY would skip or repeat a post here.
+      const walked: string[] = [];
+      let cursor: string | null = null;
+      for (let page = 0; page <= expected.length; page++) {
+        const query: string = cursor ? `&cursor=${cursor}` : "";
+        const res = await app.request(`/api/public/archive?limit=1${query}`);
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        walked.push(...body.posts.map((post: { id: string }) => post.id));
+        cursor = body.nextCursor;
+        if (cursor === null) break;
+      }
+      expect(cursor).toBeNull();
+      expect(walked).toEqual(expected);
+    });
+
     it("filters by year using publishedAt", async () => {
       const { app, services } = createTestApp({ authenticated: false });
       app.route("/api/public/archive", publicArchiveApiRoutes);
