@@ -58,16 +58,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Uses trusted publishing via OIDC (id-token: write permission)
 
-      # Auto-merge Release PR during development (0.x.x)
-      # Remove this step when ready for 1.0.0
-      # Uses PAT_TOKEN to trigger subsequent workflow runs (GITHUB_TOKEN won't trigger them)
-      - name: Auto-merge Release PR
-        if: steps.changesets.outputs.pullRequestNumber
-        run: |
-          gh pr merge ${{ steps.changesets.outputs.pullRequestNumber }} --squash --delete-branch
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
-
       - name: Derive release metadata
         if: steps.changesets.outputs.published == 'true'
         id: release-meta
