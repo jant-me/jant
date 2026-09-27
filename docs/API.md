@@ -179,6 +179,7 @@ Jant uses TypeIDs everywhere.
 | Media / attachment        | `med_` | `med_01jpyx4g9m8b4y50a4gx3t7p1n` |
 | Upload session            | `upl_` | `upl_01jpyx9h0m8w4g5q1c7d2f3r4s` |
 | Collection                | `col_` | `col_01jpyx5qds8y79w2dd6sv4rznj` |
+| Smart collection          | `smc_` | `smc_01jpyxd4k2m8w5q9r3t7v1b6nc` |
 | Custom URL / path record  | `pth_` | `pth_01jpyxb27t6m4v9r2k8s5c1qfh` |
 | Collection directory item | `cdi_` | `cdi_01jpyx8r7s3v8m1q5c9k2f6gth` |
 | Nav item                  | `nav_` | `nav_01jpyxcv3m7w4b8k2r5s9t1qfh` |

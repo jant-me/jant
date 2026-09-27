@@ -75,11 +75,11 @@ curl -X POST "$JANT_URL/api/posts" \
   -H "Content-Type: application/json" \
   -d '{
     "format": "note",
-    "body": "Hello from curl."
+    "bodyMarkdown": "Hello from curl."
   }'
 ```
 
-For more formats (`link`, `quote`) and advanced fields (`collections`, `publishedAt`, `slug`, `pinned`, `featured`), see `examples/agent-content-automation/`.
+`examples/agent-content-automation/` has a `quote` post and a settings update to start from. Every field, including `collectionIds`, `publishedAt`, `slug`, `pinned`, and `featured`, is in the [API reference](API.md#create-a-post).
 
 ### Upload an image
 
@@ -135,7 +135,7 @@ For agents that already support MCP. The transport is HTTP JSON-RPC:
 - **Protocol header**: `MCP-Protocol-Version: 2025-06-18`. This page is updated when the version changes.
 - **Methods**: `initialize`, `ping`, `tools/list`, `tools/call`.
 
-Tools are grouped by resource: `posts`, `media`, `attachments`, `collections`, `settings`, `search`. Get the exact tool names and parameters from `tools/list`; they map one-to-one with the HTTP endpoints.
+The tools cover posts, Threads, media, attachments, collections, settings, and search, and each does what its HTTP endpoint does. Navigation, custom URLs, smart collections, translations, and export are HTTP-only. Get the exact tool names and parameters from `tools/list`.
 
 Minimal initialization request:
 

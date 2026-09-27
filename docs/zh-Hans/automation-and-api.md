@@ -75,11 +75,11 @@ curl -X POST "$JANT_URL/api/posts" \
   -H "Content-Type: application/json" \
   -d '{
     "format": "note",
-    "body": "Hello from curl."
+    "bodyMarkdown": "Hello from curl."
   }'
 ```
 
-更多 format（`link`、`quote`）和高级字段（`collections`、`publishedAt`、`slug`、`pinned`、`featured`）见 `examples/agent-content-automation/`。
+`examples/agent-content-automation/` 里有一个 `quote` 帖子和一次设置更新可以照着改。全部字段（包括 `collectionIds`、`publishedAt`、`slug`、`pinned`、`featured`）见 [API 参考（英文）](../API.md#create-a-post)。
 
 ### 上传一张图
 
@@ -135,7 +135,7 @@ API 没有硬性限速。搜索限速（[配置](configuration.md)里的 `RATE_L
 - **协议头**：`MCP-Protocol-Version: 2025-06-18`。版本升级时本页同步更新。
 - **方法**：`initialize`、`ping`、`tools/list`、`tools/call`。
 
-工具按资源分组：`posts`、`media`、`attachments`、`collections`、`settings`、`search`。具体工具名和入参用 `tools/list` 拿到，和 HTTP 端点一一对应。
+工具覆盖帖子、Thread、媒体、附件、合集、设置和搜索，每个工具的行为和对应的 HTTP 端点一致。导航、自定义 URL、智能合集、译文和导出只能走 HTTP。具体工具名和入参用 `tools/list` 拿到。
 
 最小初始化请求：
 
