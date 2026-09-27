@@ -12,6 +12,32 @@ import { requirePublicApiAccess } from "../../middleware/public-content-access.j
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
+const DEFAULT_SEARCH_LIMIT = 20;
+const MAX_SEARCH_LIMIT = 50;
+
+/**
+ * Read `limit` from the query string, clamped to 1–50.
+ *
+ * Clamped rather than rejected: the endpoint has always capped a large value
+ * at 50, and a small one gets the same treatment. Anything that isn't a number
+ * falls back to the default.
+ *
+ * @param value - Raw `limit` query parameter
+ * @returns A page size between 1 and 50
+ *
+ * @example
+ * ```ts
+ * parseSearchLimit(undefined); // 20
+ * parseSearchLimit("-1");      // 1
+ * parseSearchLimit("500");     // 50
+ * ```
+ */
+function parseSearchLimit(value: string | undefined): number {
+  const parsed = value === undefined ? Number.NaN : Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) return DEFAULT_SEARCH_LIMIT;
+  return Math.min(Math.max(parsed, 1), MAX_SEARCH_LIMIT);
+}
+
 export const searchApiRoutes = new Hono<Env>();
 
 searchApiRoutes.use("*", requirePublicApiAccess());
@@ -40,13 +66,16 @@ searchApiRoutes.get("/", async (c) => {
     throw new ValidationError("Query too long");
   }
 
-  const limitParam = c.req.query("limit");
-  const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 20, 50) : 20;
+  const limit = parseSearchLimit(c.req.query("limit"));
 
   try {
+    // One answer for every caller, as on `/api/public/*`: this endpoint is
+    // documented as public, so a session or token does not widen it. The
+    // author searches private posts on `/search` or through MCP.
     const results = await c.var.services.search.search(query, {
       limit,
       status: ["published"],
+      includePrivate: false,
     });
 
     return c.json({

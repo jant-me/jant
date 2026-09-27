@@ -192,13 +192,13 @@ This means you can publish small fragments without weight — they appear on you
 
 The table below assumes the default `MAIN_RSS_FEED=featured`.
 
-| Post state            | Direct URL | Latest | `/archive` | Default `/feed` | Collection |
-| --------------------- | ---------- | ------ | ---------- | --------------- | ---------- |
-| `Public` and Featured | Yes        | Yes    | Yes        | Yes             | Yes        |
-| `Public`              | Yes        | Yes    | Yes        | No              | Yes        |
-| `Hidden from Latest`  | Yes        | No     | Yes        | No              | Yes        |
-| `Private`             | Login only | No     | Login only | No              | Login only |
-| `Draft`               | No         | No     | No         | No              | No         |
+| Post state            | Direct URL | Latest | `/archive` | `/search`  | Default `/feed` | Collection |
+| --------------------- | ---------- | ------ | ---------- | ---------- | --------------- | ---------- |
+| `Public` and Featured | Yes        | Yes    | Yes        | Yes        | Yes             | Yes        |
+| `Public`              | Yes        | Yes    | Yes        | Yes        | No              | Yes        |
+| `Hidden from Latest`  | Yes        | No     | Yes        | Yes        | No              | Yes        |
+| `Private`             | Login only | No     | Login only | Login only | No              | Login only |
+| `Draft`               | No         | No     | No         | No         | No              | No         |
 
 If you switch `MAIN_RSS_FEED` to `latest`, the default `/feed` behavior shifts accordingly, but `Hidden from Latest` still keeps those posts out of that stream.
 

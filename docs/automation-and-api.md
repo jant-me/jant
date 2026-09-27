@@ -62,7 +62,7 @@ A few public read endpoints don't need a token by default: `GET /api/collections
 | `/api/collections`       | GET / POST / PUT / DELETE   | Collections (GET needs no token)                                                                       |
 | `/api/smart-collections` | GET / POST / PUT / DELETE   | Smart collections — collections whose members come from conditions (token required, including reads)   |
 | `/api/settings`          | GET / PUT                   | Site settings                                                                                          |
-| `/api/search`            | GET                         | Full-text search (public, IP-rate-limited)                                                             |
+| `/api/search`            | GET                         | Full-text search of published posts, private ones excluded (public, IP-rate-limited)                   |
 | `/api/mcp`               | POST                        | MCP JSON-RPC (`initialize` / `tools/list`, etc.)                                                       |
 
 `/api/upload` and `/api/uploads` differ by a single `s` but mean different things — the first is a one-shot single-file multipart upload, the second is a three-step init/part/complete session. Default to `/api/upload`; reach for `/api/uploads` only when files are large or the connection is unreliable.

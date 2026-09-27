@@ -42,11 +42,13 @@ export async function renderSearchPage(c: Context<Env>): Promise<Response> {
 
   if (query.trim()) {
     try {
-      // Fetch one extra to check for more
+      // Fetch one extra to check for more. Private posts match for the
+      // signed-in author only, as on the archive and collection pages.
       results = await c.var.services.search.search(query, {
         limit: pageSize + 1,
         offset: (page - 1) * pageSize,
         status: ["published"],
+        includePrivate: c.var.isAuthenticated,
         lang: getViewLang(c) ?? undefined,
       });
 

@@ -102,6 +102,110 @@ describe("Search API Routes", () => {
     expect(body.count).toBe(0);
   });
 
+  describe("private posts", () => {
+    async function seedPrivateThread(
+      services: ReturnType<typeof createTestApp>["services"],
+    ) {
+      const root = await services.posts.create({
+        format: "note",
+        title: "Secret diary",
+        body: tiptapDoc("Private root about lanterns"),
+        visibility: "private",
+      });
+      await services.posts.create({
+        format: "note",
+        body: tiptapDoc("Private reply about lanterns"),
+        replyToId: root.id,
+      });
+      await services.posts.create({
+        format: "note",
+        title: "Public notes",
+        body: tiptapDoc("Public post about lanterns"),
+      });
+    }
+
+    it("leaves out private posts and replies in a private Thread for anonymous callers", async () => {
+      const { app, services } = createTestApp({
+        authenticated: false,
+        fts: true,
+      });
+      app.route("/api/search", searchApiRoutes);
+      await seedPrivateThread(services);
+
+      const res = await app.request("/api/search?q=lanterns");
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.count).toBe(1);
+      expect(body.results[0].title).toBe("Public notes");
+
+      const titleRes = await app.request("/api/search?q=Secret");
+      const titleBody = await titleRes.json();
+      expect(titleBody.count).toBe(0);
+      expect(JSON.stringify(titleBody)).not.toContain("Secret diary");
+    });
+
+    it("answers a signed-in caller the same way", async () => {
+      const { app, services } = createTestApp({
+        authenticated: true,
+        fts: true,
+      });
+      app.route("/api/search", searchApiRoutes);
+      await seedPrivateThread(services);
+
+      const res = await app.request("/api/search?q=lanterns");
+      const body = await res.json();
+      expect(body.count).toBe(1);
+      expect(body.results[0].title).toBe("Public notes");
+    });
+  });
+
+  describe("limit", () => {
+    async function seedMatches(
+      services: ReturnType<typeof createTestApp>["services"],
+    ) {
+      for (let i = 0; i < 3; i++) {
+        await services.posts.create({
+          format: "note",
+          body: tiptapDoc(`Lantern note number ${i}`),
+        });
+      }
+    }
+
+    it.each(["-1", "0", "-500"])(
+      "raises limit=%s to one result",
+      async (limit) => {
+        const { app, services } = createTestApp({ fts: true });
+        app.route("/api/search", searchApiRoutes);
+        await seedMatches(services);
+
+        const res = await app.request(`/api/search?q=lantern&limit=${limit}`);
+        expect(res.status).toBe(200);
+        const body = await res.json();
+        expect(body.count).toBe(1);
+      },
+    );
+
+    it("uses the default for a limit that isn't a number", async () => {
+      const { app, services } = createTestApp({ fts: true });
+      app.route("/api/search", searchApiRoutes);
+      await seedMatches(services);
+
+      const res = await app.request("/api/search?q=lantern&limit=abc");
+      const body = await res.json();
+      expect(body.count).toBe(3);
+    });
+
+    it("keeps a limit within range as given", async () => {
+      const { app, services } = createTestApp({ fts: true });
+      app.route("/api/search", searchApiRoutes);
+      await seedMatches(services);
+
+      const res = await app.request("/api/search?q=lantern&limit=2");
+      const body = await res.json();
+      expect(body.count).toBe(2);
+    });
+  });
+
   it("does not require authentication", async () => {
     const { app } = createTestApp({ authenticated: false, fts: true });
     app.route("/api/search", searchApiRoutes);

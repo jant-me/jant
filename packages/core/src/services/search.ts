@@ -25,6 +25,13 @@ export interface SearchOptions {
   offset?: number;
   /** Filter by status */
   status?: Status[];
+  /**
+   * Whether private posts, and replies in a private Thread, may match.
+   *
+   * Defaults to `false`, so a caller that doesn't say who is asking gets what a
+   * signed-out reader would. Pass `true` only for the signed-in author.
+   */
+  includePrivate?: boolean;
   /** Filter by format */
   format?: Format;
   /**
@@ -167,6 +174,62 @@ function buildPgPrefixTsQuery(query: string): string | null {
   return terms.map((term) => `${term}:*`).join(" & ");
 }
 
+/**
+ * A post's visibility after Thread-root inheritance, in the raw-SQL form every
+ * search statement shares. Each one joins the root as `root_post`. This is the
+ * same rule as `buildEffectiveVisibilityExpr` in `db/post-visibility.ts`.
+ */
+const EFFECTIVE_VISIBILITY_SQL =
+  "COALESCE(post.visibility, root_post.visibility)";
+
+/**
+ * The conditions every search statement applies after its own match clause:
+ * site, status, audience, format, and language.
+ *
+ * Built once so that no statement can leave one out. Each dialect and each
+ * match strategy has its own SQL, and a statement missing the visibility
+ * clause does not fail — it returns private posts.
+ *
+ * @param siteId - Site the search is scoped to
+ * @param options - Caller's search options
+ * @returns `AND …` lines to follow the match clause, and their bound values in order
+ *
+ * @example
+ * ```ts
+ * const filters = buildSearchFilters(siteId, { status: ["published"] });
+ * // filters.sql: "AND post.site_id = ?\nAND post.status IN (?)\nAND COALESCE(…) != 'private'"
+ * // filters.params: [siteId, "published"]
+ * ```
+ */
+function buildSearchFilters(
+  siteId: string,
+  options: SearchOptions,
+): { sql: string; params: unknown[] } {
+  const status = options.status ?? ["published"];
+  const conditions = [
+    "post.site_id = ?",
+    `post.status IN (${status.map(() => "?").join(", ")})`,
+  ];
+  const params: unknown[] = [siteId, ...status];
+
+  if (!options.includePrivate) {
+    conditions.push(`${EFFECTIVE_VISIBILITY_SQL} != 'private'`);
+  }
+  if (options.format) {
+    conditions.push("post.format = ?");
+    params.push(options.format);
+  }
+  if (options.lang) {
+    conditions.push("post.language = ?");
+    params.push(options.lang);
+  }
+
+  return {
+    sql: conditions.map((condition) => `AND ${condition}`).join("\n"),
+    params,
+  };
+}
+
 const PG_TS_HEADLINE_OPTIONS = [
   "MaxWords=18",
   "MinWords=6",
@@ -188,12 +251,7 @@ export function createSearchService(
   ): Promise<SearchResult[]> {
     const limit = options.limit ?? 20;
     const offset = options.offset ?? 0;
-    const status = options.status ?? ["published"];
-    const statusPlaceholders = status.map(() => "?").join(", ");
-    const formatFilter = options.format ? "AND post.format = ?" : "";
-    const formatParams = options.format ? [options.format] : [];
-    const langFilter = options.lang ? "AND post.language = ?" : "";
-    const langParams = options.lang ? [options.lang] : [];
+    const filters = buildSearchFilters(siteId, options);
 
     if (databaseDialect === "sqlite") {
       const ftsQuery = buildSqliteFtsQuery(query);
@@ -202,7 +260,7 @@ export function createSearchService(
       const stmt = rawQuery.prepare(`
         SELECT
           post.*,
-          COALESCE(post.visibility, root_post.visibility) AS effective_visibility,
+          ${EFFECTIVE_VISIBILITY_SQL} AS effective_visibility,
           path_registry.path AS slug,
           post_fts.rank AS rank,
           snippet(post_fts, 1, char(2), char(3), '...', 32) AS snippet
@@ -214,24 +272,13 @@ export function createSearchService(
          AND path_registry.site_id = post.site_id
          AND path_registry.kind = 'slug'
         WHERE post_fts MATCH ?
-          AND post.site_id = ?
-          AND post.status IN (${statusPlaceholders})
-          ${formatFilter}
-          ${langFilter}
+          ${filters.sql}
         ORDER BY post_fts.rank
         LIMIT ? OFFSET ?
       `);
 
       const { results } = await stmt
-        .bind(
-          ftsQuery,
-          siteId,
-          ...status,
-          ...formatParams,
-          ...langParams,
-          limit,
-          offset,
-        )
+        .bind(ftsQuery, ...filters.params, limit, offset)
         .all<RawSearchRow>();
 
       return withSnippetFallback((results || []).map(mapRow), query);
@@ -250,7 +297,7 @@ export function createSearchService(
       )
       SELECT
         post.*,
-        COALESCE(post.visibility, root_post.visibility) AS effective_visibility,
+        ${EFFECTIVE_VISIBILITY_SQL} AS effective_visibility,
         path_registry.path AS slug,
         ts_rank_cd(post.search_document, search_query.tsq, 32) AS rank,
         NULLIF(
@@ -297,24 +344,13 @@ export function createSearchService(
        AND path_registry.site_id = post.site_id
        AND path_registry.kind = 'slug'
       WHERE post.search_document @@ search_query.tsq
-        AND post.site_id = ?
-        AND post.status IN (${statusPlaceholders})
-        ${formatFilter}
-          ${langFilter}
+        ${filters.sql}
       ORDER BY rank DESC, post.published_at DESC NULLS LAST, post.id DESC
       LIMIT ? OFFSET ?
     `);
 
     const { results } = await stmt
-      .bind(
-        tsQuery,
-        siteId,
-        ...status,
-        ...formatParams,
-        ...langParams,
-        limit,
-        offset,
-      )
+      .bind(tsQuery, ...filters.params, limit, offset)
       .all<RawSearchRow>();
 
     return withSnippetFallback((results || []).map(mapRow), query);
@@ -326,19 +362,14 @@ export function createSearchService(
   ): Promise<SearchResult[]> {
     const limit = options.limit ?? 20;
     const offset = options.offset ?? 0;
-    const status = options.status ?? ["published"];
     const like = `%${query}%`;
-    const statusPlaceholders = status.map(() => "?").join(", ");
-    const formatFilter = options.format ? "AND post.format = ?" : "";
-    const formatParams = options.format ? [options.format] : [];
-    const langFilter = options.lang ? "AND post.language = ?" : "";
-    const langParams = options.lang ? [options.lang] : [];
+    const filters = buildSearchFilters(siteId, options);
 
     if (databaseDialect === "pg") {
       const stmt = rawQuery.prepare(`
         SELECT
           post.*,
-          COALESCE(post.visibility, root_post.visibility) AS effective_visibility,
+          ${EFFECTIVE_VISIBILITY_SQL} AS effective_visibility,
           path_registry.path AS slug,
           GREATEST(
             similarity(coalesce(post.title, ''), ?),
@@ -354,10 +385,7 @@ export function createSearchService(
          AND path_registry.site_id = post.site_id
          AND path_registry.kind = 'slug'
         WHERE post.search_text ILIKE ?
-          AND post.site_id = ?
-          AND post.status IN (${statusPlaceholders})
-          ${formatFilter}
-          ${langFilter}
+          ${filters.sql}
         ORDER BY rank DESC, post.published_at DESC NULLS LAST, post.id DESC
         LIMIT ? OFFSET ?
       `);
@@ -369,10 +397,7 @@ export function createSearchService(
           query,
           query,
           like,
-          siteId,
-          ...status,
-          ...formatParams,
-          ...langParams,
+          ...filters.params,
           limit,
           offset,
         )
@@ -387,7 +412,7 @@ export function createSearchService(
     const stmt = rawQuery.prepare(`
       SELECT
         post.*,
-        COALESCE(post.visibility, root_post.visibility) AS effective_visibility,
+        ${EFFECTIVE_VISIBILITY_SQL} AS effective_visibility,
         path_registry.path AS slug,
         0 AS rank,
         NULL AS snippet
@@ -403,27 +428,13 @@ export function createSearchService(
         post.quote_text ${likeOperator} ? OR
         post.url ${likeOperator} ?
       )
-      AND post.site_id = ?
-      AND post.status IN (${statusPlaceholders})
-      ${formatFilter}
-          ${langFilter}
+      ${filters.sql}
       ${likeOrderBy}
       LIMIT ? OFFSET ?
     `);
 
     const { results } = await stmt
-      .bind(
-        like,
-        like,
-        like,
-        like,
-        siteId,
-        ...status,
-        ...formatParams,
-        ...langParams,
-        limit,
-        offset,
-      )
+      .bind(like, like, like, like, ...filters.params, limit, offset)
       .all<RawSearchRow>();
 
     return withSnippetFallback((results || []).map(mapRow), query);

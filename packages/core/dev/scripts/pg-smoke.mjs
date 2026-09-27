@@ -609,6 +609,47 @@ async function main() {
     assert.equal(searchPage.status, 200);
     assert.match(await searchPage.text(), /<mark>Postgres<\/mark>/);
 
+    // Search keeps private posts, and replies that inherit a private root's
+    // visibility, from anyone signed out. `lanterns` takes the full-text
+    // statement and then its ILIKE fallback; `灯笼` is short enough to go
+    // straight to ILIKE. Each is its own SQL, and each has to apply the rule.
+    const privateSearchRoot = await createPost({
+      title: "Secret diary",
+      bodyMarkdown: "Private root lanterns 灯笼.",
+      visibility: "private",
+    });
+    await createPost({
+      bodyMarkdown: "Private reply lanterns 灯笼.",
+      replyToId: privateSearchRoot.id,
+    });
+    for (const query of ["lanterns", "灯笼"]) {
+      const q = encodeURIComponent(query);
+      const anonymousApi = await handler.fetch(
+        new Request(`http://127.0.0.1:3000/api/search?q=${q}`),
+      );
+      assert.equal(anonymousApi.status, 200);
+      assert.equal((await anonymousApi.json()).count, 0);
+
+      const anonymousPage = await handler.fetch(
+        new Request(`http://127.0.0.1:3000/search?q=${q}`),
+      );
+      assert.equal(anonymousPage.status, 200);
+      assert.doesNotMatch(
+        await anonymousPage.text(),
+        /Secret diary|Private root|Private reply/,
+      );
+
+      const authorPage = await handler.fetch(
+        new Request(`http://127.0.0.1:3000/search?q=${q}`, {
+          headers: { Cookie: cookieHeader },
+        }),
+      );
+      assert.equal(authorPage.status, 200);
+      const authorHtml = await authorPage.text();
+      assert.match(authorHtml, /Secret diary/);
+      assert.match(authorHtml, /Private reply/);
+    }
+
     const settingsResponse = await handler.fetch(
       new Request("http://127.0.0.1:3000/api/settings", {
         method: "PUT",

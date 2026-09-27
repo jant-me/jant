@@ -49,7 +49,7 @@ For HTTP, these are the main entry points:
 | Create, update, delete       | `POST /api/posts`, `PUT /api/posts/:id`, `DELETE /api/posts/:id` |
 | Upload or manage media       | `/api/upload` or `/api/uploads`                                  |
 | Manage Collections           | `/api/collections`                                               |
-| Search published content     | `GET /api/search`                                                |
+| Search public posts          | `GET /api/search`                                                |
 | Read or update site settings | `GET /api/settings`, `PUT /api/settings`                         |
 
 Public post, Thread, Collection, navigation, and search reads can work without a token. A site can disable anonymous API reads; `/api/public/*` then becomes unavailable, while Collection, navigation, and search JSON reads require a browser session or Bearer token. Private content and all writes always require authentication.

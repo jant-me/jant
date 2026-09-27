@@ -429,6 +429,60 @@ describe("MCP API Routes", () => {
     expect(body.result.structuredContent.results[0].slug).toBeTruthy();
   });
 
+  it("searches private posts and says which results are private", async () => {
+    const { app, services } = createTestApp({ authenticated: true, fts: true });
+    app.route("/api/mcp", mcpApiRoutes);
+
+    const root = await services.posts.create({
+      format: "note",
+      title: "Secret diary",
+      body: tiptapDoc("Private root about lanterns"),
+      visibility: "private",
+    });
+    const reply = await services.posts.create({
+      format: "note",
+      body: tiptapDoc("Private reply about lanterns"),
+      replyToId: root.id,
+    });
+    const publicPost = await services.posts.create({
+      format: "note",
+      body: tiptapDoc("Public post about lanterns"),
+    });
+
+    const res = await postMcp(
+      app,
+      {
+        jsonrpc: "2.0",
+        id: 4,
+        method: "tools/call",
+        params: {
+          name: "jant_search_posts",
+          arguments: { query: "lanterns" },
+        },
+      },
+      { "MCP-Protocol-Version": "2025-06-18" },
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.result.isError).toBe(false);
+    const visibilityById = new Map(
+      (
+        body.result.structuredContent.results as {
+          id: string;
+          visibility: string;
+        }[]
+      ).map((result) => [result.id, result.visibility]),
+    );
+    expect(visibilityById).toEqual(
+      new Map([
+        [root.id, "private"],
+        [reply.id, "private"],
+        [publicPost.id, "public"],
+      ]),
+    );
+  });
+
   it("uploads media through tools/call", async () => {
     const storage = createMockStorage();
     const { app, services } = createTestApp({

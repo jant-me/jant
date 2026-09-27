@@ -1028,7 +1028,8 @@ const mcpTools: McpToolDefinition[] = [
   },
   {
     name: "jant_search_posts",
-    description: "Search published posts.",
+    description:
+      "Search published posts, including private ones. Each result carries its visibility.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1040,21 +1041,25 @@ const mcpTools: McpToolDefinition[] = [
     },
     async execute(args, context) {
       const input = SearchPostsToolSchema.parse(args ?? {});
+      // MCP is the author's tool, so private posts match. Each result says
+      // which visibility it has, so an agent can tell before linking one.
       const results = await context.services.search.search(input.query, {
         limit: input.limit,
         status: ["published"],
+        includePrivate: true,
       });
 
       return {
         count: results.length,
         query: input.query,
-        results: results.map((result) =>
-          toSearchApiResult(
+        results: results.map((result) => ({
+          ...toSearchApiResult(
             result.post,
             result.snippet,
             context.appConfig.sitePathPrefix,
           ),
-        ),
+          visibility: result.post.visibility,
+        })),
       };
     },
   },

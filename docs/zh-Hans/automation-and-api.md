@@ -62,7 +62,7 @@ Authorization: Bearer jnt_...
 | `/api/collections`       | GET / POST / PUT / DELETE   | 合集（GET 不需要 token）                                                               |
 | `/api/smart-collections` | GET / POST / PUT / DELETE   | 智能合集——成员由条件决定的合集（读写都需要 token）                                     |
 | `/api/settings`          | GET / PUT                   | 站点设置                                                                               |
-| `/api/search`            | GET                         | 全文搜索（公开，按 IP 限速）                                                           |
+| `/api/search`            | GET                         | 全文搜索已发布的帖子，不含私密帖子（公开，按 IP 限速）                                 |
 | `/api/mcp`               | POST                        | MCP JSON-RPC（`initialize` / `tools/list` 等）                                         |
 
 `/api/upload` 与 `/api/uploads` 只差一个 s，但语义完全不同——前者是单文件 multipart 一次完成，后者是 init/part/complete 三步分片会话。脚本首选 `/api/upload`，遇到大文件或不稳定连接再换 `/api/uploads`。

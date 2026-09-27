@@ -130,6 +130,8 @@ Current tool groups:
 
 Tool calls return normal MCP `result` envelopes. Successful tool calls include both `structuredContent` and a JSON string copy in `content[0].text`. Tool-level validation and domain failures return `200 OK` with `isError: true`.
 
+`jant_search_posts` returns the result objects `GET /api/search` does, plus `visibility`, and includes private posts.
+
 `jant_posts_list`, `jant_threads_list`, and `jant_threads_list_posts` take `cursor` and return `nextCursor` as `GET /api/posts`, `GET /api/threads`, and `GET /api/threads/:id/posts` do; see [Pagination](#pagination). `jant_threads_list` takes the same filters as `GET /api/threads`, and `fold: true` in place of `include=fold`.
 
 Initialize:
@@ -2613,7 +2615,7 @@ Response:
 
 Base path: `/api/search`
 
-Search is public and only returns published posts.
+Search is public and answers every caller the same way: published posts, leaving out private posts and replies in a private Thread. A session or token doesn't change that. To search private posts, use `/search` while signed in, or the `jant_search_posts` MCP tool.
 
 ### Search posts
 
@@ -2626,7 +2628,7 @@ Query parameters:
 | Parameter | Type    | Required | Default | Notes                |
 | --------- | ------- | -------- | ------- | -------------------- |
 | `q`       | string  | yes      | none    | Maximum length `200` |
-| `limit`   | integer | no       | `20`    | Maximum `50`         |
+| `limit`   | integer | no       | `20`    | Clamped to `1`–`50`  |
 
 Result objects include these fields:
 
@@ -2669,7 +2671,7 @@ Notes:
 - `snippet` may contain `<mark>` tags.
 - All search results include `permalink`.
 - Quote results use `sourceName` and `sourceUrl` instead of `title` and `url`.
-- Search only returns published posts.
+- Search never returns private posts or replies in a private Thread.
 
 ---
 

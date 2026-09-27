@@ -323,6 +323,217 @@ describe("SearchService", () => {
     expect(results).toHaveLength(0);
   });
 
+  describe("private posts", () => {
+    async function createPrivateThread() {
+      const root = await postService.create({
+        format: "note",
+        title: "Secret diary",
+        body: tiptapDoc("Private root about lanterns"),
+        visibility: "private",
+      });
+      const reply = await postService.create({
+        format: "note",
+        body: tiptapDoc("Private reply about lanterns"),
+        replyToId: root.id,
+      });
+      return { root, reply };
+    }
+
+    it("leaves out private posts and replies in a private Thread by default", async () => {
+      const { root, reply } = await createPrivateThread();
+      const publicPost = await postService.create({
+        format: "note",
+        body: tiptapDoc("Public post about lanterns"),
+      });
+      // A reply stores no visibility of its own; it inherits the root's.
+      const [storedReply] = await db
+        .select({ visibility: posts.visibility })
+        .from(posts)
+        .where(eq(posts.id, reply.id));
+      expect(storedReply?.visibility).toBeNull();
+
+      const searchService = createSearchService(
+        createMockD1(sqlite),
+        DEFAULT_TEST_SITE_ID,
+      );
+      const results = await searchService.search("lanterns");
+
+      expect(results.map((r) => r.post.id)).toEqual([publicPost.id]);
+      expect(results.map((r) => r.post.id)).not.toContain(root.id);
+    });
+
+    it("leaves them out on the short-query LIKE path too", async () => {
+      await postService.create({
+        format: "note",
+        body: tiptapDoc("私密的灯笼"),
+        visibility: "private",
+      });
+
+      const searchService = createSearchService(
+        createMockD1(sqlite),
+        DEFAULT_TEST_SITE_ID,
+      );
+
+      expect(await searchService.search("灯笼")).toEqual([]);
+      expect(
+        await searchService.search("灯笼", { includePrivate: true }),
+      ).toHaveLength(1);
+    });
+
+    it("finds nothing when the only FTS match is private, instead of falling back to it", async () => {
+      await createPrivateThread();
+
+      const searchService = createSearchService(
+        createMockD1(sqlite),
+        DEFAULT_TEST_SITE_ID,
+      );
+
+      // No public match sends the query on to the LIKE statement, which has
+      // to apply the same rule.
+      expect(await searchService.search("Secret diary")).toEqual([]);
+    });
+
+    it("includes them, with the inherited visibility, when asked", async () => {
+      const { root, reply } = await createPrivateThread();
+
+      const searchService = createSearchService(
+        createMockD1(sqlite),
+        DEFAULT_TEST_SITE_ID,
+      );
+      const results = await searchService.search("lanterns", {
+        includePrivate: true,
+      });
+
+      const visibilityById = new Map(
+        results.map((r) => [r.post.id, r.post.visibility]),
+      );
+      expect(visibilityById.get(root.id)).toBe("private");
+      expect(visibilityById.get(reply.id)).toBe("private");
+    });
+
+    it("filters inside the query, so private matches don't use up the limit", async () => {
+      for (let i = 0; i < 3; i++) {
+        await postService.create({
+          format: "note",
+          body: tiptapDoc(`Private lantern note ${i}`),
+          visibility: "private",
+        });
+      }
+      for (let i = 0; i < 2; i++) {
+        await postService.create({
+          format: "note",
+          body: tiptapDoc(`Public lantern note ${i}`),
+        });
+      }
+
+      const searchService = createSearchService(
+        createMockD1(sqlite),
+        DEFAULT_TEST_SITE_ID,
+      );
+      const firstPage = await searchService.search("lantern", { limit: 2 });
+      const secondPage = await searchService.search("lantern", {
+        limit: 2,
+        offset: 2,
+      });
+
+      expect(firstPage).toHaveLength(2);
+      expect(firstPage.every((r) => r.post.visibility === "public")).toBe(true);
+      expect(secondPage).toEqual([]);
+    });
+  });
+
+  describe("private posts on Postgres", () => {
+    const VISIBILITY_CLAUSE =
+      "COALESCE(post.visibility, root_post.visibility) != 'private'";
+
+    /** Records every statement; returns no rows so FTS falls back to LIKE. */
+    function createCapturingRawQuery() {
+      const calls: { params: unknown[]; query: string }[] = [];
+      const rawQuery: RawQueryClient = {
+        prepare(query) {
+          const call = { params: [] as unknown[], query };
+          calls.push(call);
+          return {
+            bind(...params: unknown[]) {
+              call.params = params;
+              return this;
+            },
+            async all() {
+              return { results: [] };
+            },
+          };
+        },
+      };
+      return { calls, rawQuery };
+    }
+
+    it("applies the visibility rule in both the FTS and the LIKE statement", async () => {
+      const { calls, rawQuery } = createCapturingRawQuery();
+      const searchService = createSearchService(
+        rawQuery,
+        DEFAULT_TEST_SITE_ID,
+        "pg",
+      );
+
+      await searchService.search("lanterns", {
+        format: "note",
+        lang: "en",
+        limit: 5,
+        offset: 10,
+      });
+
+      expect(calls).toHaveLength(2);
+      expect(calls[0]?.query).toContain("search_document @@");
+      expect(calls[1]?.query).toContain("search_text ILIKE");
+      for (const call of calls) {
+        expect(call.query).toContain(VISIBILITY_CLAUSE);
+      }
+      // The rule binds no value, so every placeholder still lines up.
+      expect(calls[0]?.params).toEqual([
+        "lanterns:*",
+        DEFAULT_TEST_SITE_ID,
+        "published",
+        "note",
+        "en",
+        5,
+        10,
+      ]);
+      expect(calls[1]?.params).toEqual([
+        "lanterns",
+        "lanterns",
+        "lanterns",
+        "lanterns",
+        "%lanterns%",
+        DEFAULT_TEST_SITE_ID,
+        "published",
+        "note",
+        "en",
+        5,
+        10,
+      ]);
+      for (const call of calls) {
+        expect(call.query.split("?").length - 1).toBe(call.params.length);
+      }
+    });
+
+    it("drops the rule only when private posts are asked for", async () => {
+      const { calls, rawQuery } = createCapturingRawQuery();
+      const searchService = createSearchService(
+        rawQuery,
+        DEFAULT_TEST_SITE_ID,
+        "pg",
+      );
+
+      await searchService.search("lanterns", { includePrivate: true });
+      await searchService.search("灯笼", { includePrivate: true });
+
+      expect(calls).toHaveLength(3);
+      for (const call of calls) {
+        expect(call.query).not.toContain(VISIBILITY_CLAUSE);
+      }
+    });
+  });
+
   it("uses weighted FTS for Postgres searches with ts_headline snippets", async () => {
     const calls: { params: unknown[]; query: string }[] = [];
     const rawQuery: RawQueryClient = {
