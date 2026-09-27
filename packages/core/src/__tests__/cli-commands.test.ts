@@ -14,7 +14,7 @@
  * option table row lists the options it describes.
  */
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -124,6 +124,26 @@ describe("jant CLI surface", () => {
     for (const command of INTERNAL_COMMANDS) {
       expect(help).not.toContain(`  ${command} `);
     }
+  });
+
+  it.each([
+    ["--remote migrate", '"--remote" after "migrate"'],
+    ["--help deploy", '"--help" after "deploy"'],
+    [
+      "--url https://example.test site export",
+      '"--url https://example.test" after "site export"',
+    ],
+  ])("refuses options before the command: jant %s", (args, hint) => {
+    // Options before the command used to be dropped, so the command ran
+    // without them: `--remote migrate` migrated the local database.
+    const result = spawnSync("node", ["bin/jant.js", ...args.split(" ")], {
+      cwd: CORE_DIR,
+      encoding: "utf8",
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(`Options go after the command`);
+    expect(result.stderr).toContain(hint);
+    expect(result.stdout).toBe("");
   });
 
   for (const path of CLI_DOCS) {

@@ -1,6 +1,6 @@
 # Command line
 
-The `jant` command ships with `@jant/core`. In a Jant project directory, run it with `npx jant <command>`; in the Docker image, `jant` is on the path. `jant --help` lists the commands, and `jant <command> --help` lists a command's options.
+The `jant` command ships with `@jant/core`. In a Jant project directory, run it with `npx jant <command>`; in the Docker image, `jant` is on the path. `jant --help` lists the commands, and `jant <command> --help` lists a command's options. Options go after the command's name: `jant migrate --remote`, not `jant --remote migrate`, which `jant` refuses.
 
 The commands and options on this page change only in a major release. `jant` also runs a few build and operations commands that `--help` leaves out; those are internal and can change in any release.
 
