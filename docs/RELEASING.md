@@ -78,6 +78,12 @@ mise run release-publish
 The first 1.x release has steps no other release has. Work through them in the Release PR, and after it merges.
 
 - [ ] In the Release PR, set both packages' `version` and `CHANGELOG.md` heading to 1.0.1 (see [Versioning](#versioning-semver))
+- [ ] In the Release PR, retire the pre-1.0 notices, in both languages:
+  - the **Pre-1.0** banner at the top of `README.md`, `README.zh-Hans.md`, `docs/overview.md`, and `docs/zh-Hans/overview.md`
+  - the "Pre-1.0 — will there be a lot of breaking changes?" entry in `docs/faq.md` and `docs/zh-Hans/faq.md`, which becomes an answer about upgrading within 1.x
+  - the "Until 1.0, a minor release can still change these" sentence in the first paragraph of `docs/compatibility.md` and `docs/zh-Hans/compatibility.md`
+  - the 0.x note under [Versioning](#versioning-semver) on this page
+  - "The project is settling toward 1.0" at the top of `AGENTS.md`, which becomes a statement that 1.0 has shipped
 - [ ] After `owenyoung/jant:1` is on Docker Hub, switch `compose.yml`'s `IMAGE` default, and the images in `docs/deployment-docker.md` (en, zh-Hans) and `docs/docker-hub-overview.md`, from `:latest` to `:1`. Until that tag exists, `compose.yml` on `main` must keep `:latest`: users download it from there
 
 ## Docker image publishing
