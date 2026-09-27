@@ -819,9 +819,9 @@ describe("archive collection selection", () => {
     );
   });
 
-  // The page read a single slug while `/api/public/archive` read a list, so one
-  // spelling meant two things depending on which surface you asked. Both now
-  // read the same vocabulary.
+  // The page once read a single slug while the public API read a list, so one
+  // spelling meant two things depending on which surface you asked. Every
+  // surface now reads the same vocabulary.
   it("selects the union of several collections", async () => {
     const { app, services } = setupApp();
     const recipes = await services.collections.create({

@@ -15,7 +15,7 @@ import {
   notFoundHandler,
 } from "../../../middleware/error-handler.js";
 import { postsApiRoutes } from "../posts.js";
-import { publicPostsApiRoutes } from "../public/posts.js";
+import { publicThreadsApiRoutes } from "../public/threads.js";
 import { uploadApiRoutes } from "../upload.js";
 
 async function errorOf(res: Response) {
@@ -49,10 +49,10 @@ describe("API error shape", () => {
 
   it("answers the switched-off public API with JSON 404 NOT_FOUND", async () => {
     const { app, services } = createTestApp({ authenticated: false });
-    app.route("/api/public/posts", publicPostsApiRoutes);
+    app.route("/api/public/threads", publicThreadsApiRoutes);
     await services.settings.set("PUBLIC_API_ENABLED", "false");
 
-    const res = await app.request("/api/public/posts");
+    const res = await app.request("/api/public/threads");
 
     expect(res.status).toBe(404);
     expect((await errorOf(res)).code).toBe("NOT_FOUND");

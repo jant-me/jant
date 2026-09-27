@@ -1259,3 +1259,7 @@ btn-outline"` compiles, passes every test, and only shows up as a button whose
   CI: `gh run list --branch main`. Release runs from CI's `workflow_run`, so
   its failures never show up where the push was made; it failed on every push
   for a day and left the Release PR without a day of changesets.
+- Before committing part of the working tree, read `git diff --cached --stat`.
+  `git rm` stages at once, so a later `git add <files> && git commit` carries
+  those deletions along; one did, and `main` stopped building until the
+  files were restored.

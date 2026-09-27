@@ -19,7 +19,6 @@ For static export and round-trip import, also see [Export and Import](export-and
 | ----------------------- | --------------------- | -------------------- |
 | Public posts            | `/api/public/posts`   | Public when enabled  |
 | Public Threads          | `/api/public/threads` | Public when enabled  |
-| Public archive          | `/api/public/archive` | Public when enabled  |
 | Posts                   | `/api/posts`          | API token or session |
 | Threads                 | `/api/threads`        | API token or session |
 | Upload sessions         | `/api/uploads`        | API token or session |
@@ -188,13 +187,13 @@ Invalid IDs return `400`.
 
 ### Pagination
 
-The post lists (`GET /api/posts`, `GET /api/public/posts`, `GET /api/public/archive`), the Thread lists (`GET /api/threads`, `GET /api/public/threads`), a Thread's posts (`GET /api/threads/:id/posts`, `GET /api/public/threads/:slug/posts`), and the `jant_posts_list`, `jant_threads_list`, and `jant_threads_list_posts` MCP tools return one page and a `nextCursor`. Repeat the request with `cursor` set to `nextCursor` for the next page. `nextCursor` is `null` on the last page.
+The post list (`GET /api/posts`), the Thread lists (`GET /api/threads`, `GET /api/public/threads`), a Thread's posts (`GET /api/threads/:id/posts`, `GET /api/public/threads/:slug/posts`), and the `jant_posts_list`, `jant_threads_list`, and `jant_threads_list_posts` MCP tools return one page and a `nextCursor`. Repeat the request with `cursor` set to `nextCursor` for the next page. `nextCursor` is `null` on the last page.
 
 - `nextCursor` is opaque: pass it back unchanged. Its format is not part of the API.
 - A post that exists for the whole walk and keeps its place in the order is returned exactly once, whatever else is published, edited, or deleted between requests. A post that moves during the walk, because its publish date is edited or a reply moves its Thread up, can be skipped or returned twice. To walk everything, use an order a reply doesn't move: `GET /api/posts`, or `sort=published` on a Thread list.
 - A page can hold fewer posts than `limit` and still have a `nextCursor`. The walk ends when `nextCursor` is `null`.
 - A `cursor` that can't be read, or that comes from a list in a different order, returns `400`.
-- A post ID is also accepted as `cursor`, since earlier releases returned one: the page starts after that post. The ID of a post that doesn't exist, or that the caller can't see, returns `400`. On `GET /api/public/posts` with `collection`, so does the ID of a post that isn't in the collection, and on a Thread's posts, the ID of a post in another Thread.
+- A post ID is also accepted as `cursor`, since earlier releases returned one: the page starts after that post. The ID of a post that doesn't exist, or that the caller can't see, returns `400`. On a Thread list with `collection`, so does the ID of a post that isn't in the collection, and on a Thread's posts, the ID of a post in another Thread.
 
 ### Slugs, paths, and aliases
 
@@ -379,9 +378,15 @@ Notes:
 
 Base path: `/api/public/posts`
 
-These endpoints expose the public reading view, not the editing view used in Settings.
-When `PUBLIC_API_ENABLED=false`, these dedicated public endpoints return `404`
-to every caller. Authenticated clients can use `/api/posts` instead.
+`GET /api/public/posts/:slug` returns one post in the public reading view, not
+the editing view used in Settings; the Thread lists under `/api/public/threads`
+carry their posts in the same shape. When `PUBLIC_API_ENABLED=false`, these
+public endpoints return `404` to every caller. Authenticated clients can use
+`/api/posts` instead.
+
+Lists of public posts are Thread lists: `GET /api/public/threads`. The
+`GET /api/public/posts` list and `GET /api/public/archive`, deprecated in 0.9,
+were removed in 1.0.1 and return `404`.
 
 Public post responses include these fields:
 
@@ -390,7 +395,7 @@ Public post responses include these fields:
 | `id`              | `pst_*` string              | Post ID                                                                                                                 |
 | `format`          | `note` \| `link` \| `quote` | Post format                                                                                                             |
 | `status`          | `published`                 | Public endpoints only return published posts                                                                            |
-| `visibility`      | `public` \| `latest_hidden` | `/api/public/posts` list excludes `latest_hidden`; single-post reads and `/api/public/archive` may return it            |
+| `visibility`      | `public` \| `latest_hidden` | `latest_hidden` comes from single-post reads, and from Thread lists that ask for it                                     |
 | `slug`            | string                      | Canonical slug                                                                                                          |
 | `permalink`       | string                      | Public post URL                                                                                                         |
 | `title`           | string \| `null`            | Returned for `note` and `link` posts                                                                                    |
@@ -421,68 +426,6 @@ Public post responses include these fields:
 | `attachments`     | array                       | Ordered media/text attachment objects                                                                                   |
 | `collections`     | object[]                    | Public collection refs with `id`, `slug`, `title`, and `url`                                                            |
 
-### List public posts
-
-`GET /api/public/posts`
-
-Auth: `Public when enabled`
-
-Deprecated in 0.9, removed in 1.0.1. Use [`GET /api/public/threads`](#list-threads): it lists the same Thread roots by default and takes the archive's filters. Until then this endpoint answers as before, and every response carries a `Deprecation` header and a `Link: </api/public/threads>; rel="successor-version"` header. `GET /api/public/posts/:slug` stays.
-
-Query parameters:
-
-| Parameter    | Type                                  | Required | Default              | Notes                                                                                               |
-| ------------ | ------------------------------------- | -------- | -------------------- | --------------------------------------------------------------------------------------------------- |
-| `format`     | `note` \| `link` \| `quote`           | no       | all                  | Format filter                                                                                       |
-| `collection` | string                                | no       | none                 | Filter by collection slug(s). Single slug (`design`) or multiple comma-separated (`tech,art`)       |
-| `sort`       | `newest` \| `oldest` \| `rating_desc` | no       | collection's default | Sort order override. Only effective when `collection` is set. Without `collection`, this is ignored |
-| `cursor`     | string                                | no       | none                 | Pass the previous `nextCursor` back unchanged                                                       |
-| `limit`      | integer                               | no       | `20`                 | `1` to `100`                                                                                        |
-| `content`    | `markdown`                            | no       | none                 | Return `bodyMarkdown` instead of rendered body fields                                               |
-
-Collection filtering notes:
-
-- Single collection: `?collection=design`
-- Multiple collections (union): `?collection=tech,art`
-- When filtering by a single collection, results default to that collection's configured `sortOrder`.
-- When filtering by multiple collections, results default to `newest`.
-- Use `sort` to override the default: `?collection=design&sort=oldest`
-- If any slug in the `collection` parameter does not resolve, the endpoint returns an empty result set.
-
-Response:
-
-```json
-{
-  "posts": [
-    {
-      "id": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
-      "format": "note",
-      "status": "published",
-      "visibility": "public",
-      "slug": "hello-world",
-      "permalink": "/hello-world",
-      "title": "Hello World",
-      "bodyHtml": "<p>Hello world</p>",
-      "bodyText": "Hello world",
-      "quoteText": null,
-      "replyToId": null,
-      "threadId": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
-      "publishedAt": 1706000000,
-      "attachments": [],
-      "collections": []
-    }
-  ],
-  "nextCursor": "eyJ2IjoxLCJzIjoibmV3ZXN0OmFjdGl2aXR5OnBpbm5lZCIsImsiOlstMSwxNzA2MDAwMDAwLCJwc3RfMDFqcHl4M203Z3c0dzNoN200YmtucTB2MWQiXX0"
-}
-```
-
-Notes:
-
-- This list returns published public thread roots only.
-- Drafts, private posts, replies, and `latest_hidden` posts are excluded.
-- Paging follows [Pagination](#pagination).
-- `content=markdown` returns `bodyMarkdown` and omits `bodyHtml/bodyText`.
-
 ### Get a public post by slug
 
 `GET /api/public/posts/:slug`
@@ -495,46 +438,6 @@ Notes:
 
 - `latest_hidden` posts remain readable by direct slug.
 - Draft and private posts return `404`.
-- `content=markdown` returns `bodyMarkdown` and omits `bodyHtml/bodyText`.
-
-### List archive posts
-
-`GET /api/public/archive`
-
-Auth: `Public when enabled`
-
-Deprecated in 0.9, removed in 1.0.1. Use [`GET /api/public/threads?visibility=any&sort=published`](#list-threads), which takes the same filters. Until then this endpoint answers as before, and every response carries a `Deprecation` header and a `Link` header naming that URL as `successor-version`.
-
-The archive endpoint carries the same filters as the `/archive` page — year, collection, media kind, presence of media, title, or replies, and visibility — and returns every public thread root, **including `latest_hidden` posts**. Use this when you want a complete corpus instead of the curated Latest feed. Ordering is fixed at the page's default, newest published first; its `?sort=` switch has no counterpart here.
-
-Query parameters:
-
-| Parameter    | Type                                           | Required | Default | Notes                                                                                                                                                                                  |
-| ------------ | ---------------------------------------------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `format`     | `note` \| `link` \| `quote`                    | no       | all     | Format filter                                                                                                                                                                          |
-| `collection` | string                                         | no       | none    | Filter by collection slug(s). Single slug (`design`) or several, comma-separated (`tech,art`). A post in any one of them matches                                                       |
-| `lang`       | BCP 47 tag                                     | no       | all     | Restrict to one content language, as `/api/public/posts` does                                                                                                                          |
-| `year`       | integer                                        | no       | none    | Only posts whose `publishedAt` falls in this calendar year (UTC)                                                                                                                       |
-| `media`      | comma-separated `MediaKind` \| `any` \| `none` | no       | none    | Kinds (`image`, `video`, `audio`, `text`, `document`): posts with at least one attachment of one of these kinds. `any` = posts with any attachment, `none` = posts without attachments |
-| `title`      | `any` \| `none`                                | no       | none    | `any` = posts with a title, `none` = posts without                                                                                                                                     |
-| `replies`    | `any` \| `none`                                | no       | none    | `any` = thread roots with published replies (threads), `none` = single posts without replies                                                                                           |
-| `visibility` | `public` \| `featured` \| `hidden`             | no       | all     | `hidden` is the URL spelling of `latest_hidden`, which is also read. `private` names a set no anonymous caller can see and returns `400`, as does any other value                      |
-| `hasMedia`   | `0` \| `1`                                     | no       | none    | Legacy spelling of `media=any` / `media=none`, accepted indefinitely for old links                                                                                                     |
-| `hasTitle`   | `0` \| `1`                                     | no       | none    | Legacy spelling of `title=any` / `title=none`, accepted indefinitely for old links                                                                                                     |
-| `hasReplies` | `0` \| `1`                                     | no       | none    | Legacy spelling of `replies=any` / `replies=none`, accepted indefinitely for old links                                                                                                 |
-| `cursor`     | string                                         | no       | none    | Pass the previous `nextCursor` back unchanged                                                                                                                                          |
-| `limit`      | integer                                        | no       | `20`    | `1` to `100`                                                                                                                                                                           |
-| `content`    | `markdown`                                     | no       | none    | Return `bodyMarkdown` instead of rendered body fields                                                                                                                                  |
-
-Response shape matches `GET /api/public/posts`: `{ posts: PublicPost[], nextCursor: string | null }`.
-
-Notes:
-
-- Returns published public thread roots **and** `latest_hidden` posts.
-- Drafts, private posts, and replies are excluded.
-- Posts are ordered by `publishedAt`, newest first, with `id` breaking ties. A new reply does not move its thread up.
-- Paging follows [Pagination](#pagination).
-- An invalid value for any filter returns `400`, and so does a parameter this endpoint does not know — a typo that silently returned the whole archive would be worse than an error. An unknown `collection` slug returns an empty result set.
 - `content=markdown` returns `bodyMarkdown` and omits `bodyHtml/bodyText`.
 
 ### List posts
@@ -1081,26 +984,26 @@ Notes:
 
 Auth: `Public when enabled` for `/api/public/threads`, `Session or token` for `/api/threads`
 
-Unfiltered, `/api/public/threads` lists what the homepage lists: Threads hidden from Latest are left out, the newest activity comes first, and pinned Threads are on top. `/api/threads` lists every visibility. Both take the archive's filters.
+Unfiltered, `/api/public/threads` lists what the homepage lists: Threads hidden from Latest are left out, the newest activity comes first, and pinned Threads are on top. `/api/threads` lists every visibility. Both take [the archive's filters](writing-and-organizing.md#archive-filters).
 
 Query parameters:
 
-| Parameter    | Type                                                           | Required | Default     | Notes                                                                                                 |
-| ------------ | -------------------------------------------------------------- | -------- | ----------- | ----------------------------------------------------------------------------------------------------- |
-| `sort`       | `activity` \| `published` \| `updated` \| `oldest` \| `rating` | no       | `activity`  | See the orders below. A named collection changes the default                                          |
-| `visibility` | `public` \| `featured` \| `hidden` \| `any` \| `private`       | no       | see notes   | `hidden` is the URL spelling of `latest_hidden`, which is also read. `private` on `/api/threads` only |
-| `format`     | `note` \| `link` \| `quote`                                    | no       | all         | Format of the root                                                                                    |
-| `collection` | string                                                         | no       | none        | Collection slug, or several comma-separated. A Thread in any one of them matches                      |
-| `year`       | integer                                                        | no       | none        | Roots whose `publishedAt` falls in this calendar year (UTC), whatever the order                       |
-| `media`      | comma-separated `MediaKind` \| `any` \| `none`                 | no       | none        | As on [the archive](#list-archive-posts), for the root                                                |
-| `title`      | `any` \| `none`                                                | no       | none        | Roots with a title, or without                                                                        |
-| `replies`    | `any` \| `none`                                                | no       | none        | Threads with published replies, or single posts                                                       |
-| `lang`       | BCP 47 tag                                                     | no       | all         | Restrict to one content language                                                                      |
-| `status`     | `draft` \| `published`                                         | no       | `published` | `/api/threads` only                                                                                   |
-| `include`    | `fold`                                                         | no       | none        | Add [the fold](#the-fold) to each Thread                                                              |
-| `cursor`     | string                                                         | no       | none        | Pass the previous `nextCursor` back unchanged                                                         |
-| `limit`      | integer                                                        | no       | `20`        | `1` to `100`                                                                                          |
-| `content`    | `markdown`                                                     | no       | none        | `/api/public/threads` only. Return `bodyMarkdown` instead of rendered body fields                     |
+| Parameter    | Type                                                           | Required | Default     | Notes                                                                                                                                         |
+| ------------ | -------------------------------------------------------------- | -------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sort`       | `activity` \| `published` \| `updated` \| `oldest` \| `rating` | no       | `activity`  | See the orders below. A named collection changes the default                                                                                  |
+| `visibility` | `public` \| `featured` \| `hidden` \| `any` \| `private`       | no       | see notes   | `hidden` is the URL spelling of `latest_hidden`, which is also read. `private` on `/api/threads` only                                         |
+| `format`     | `note` \| `link` \| `quote`                                    | no       | all         | Format of the root                                                                                                                            |
+| `collection` | string                                                         | no       | none        | Collection slug, or several comma-separated. A Thread in any one of them matches                                                              |
+| `year`       | integer                                                        | no       | none        | Roots whose `publishedAt` falls in this calendar year (UTC), whatever the order                                                               |
+| `media`      | comma-separated `MediaKind` \| `any` \| `none`                 | no       | none        | Kinds (`image`, `video`, `audio`, `text`, `document`): roots with an attachment of one of them. `any` = with any attachment, `none` = without |
+| `title`      | `any` \| `none`                                                | no       | none        | Roots with a title, or without                                                                                                                |
+| `replies`    | `any` \| `none`                                                | no       | none        | Threads with published replies, or single posts                                                                                               |
+| `lang`       | BCP 47 tag                                                     | no       | all         | Restrict to one content language                                                                                                              |
+| `status`     | `draft` \| `published`                                         | no       | `published` | `/api/threads` only                                                                                                                           |
+| `include`    | `fold`                                                         | no       | none        | Add [the fold](#the-fold) to each Thread                                                                                                      |
+| `cursor`     | string                                                         | no       | none        | Pass the previous `nextCursor` back unchanged                                                                                                 |
+| `limit`      | integer                                                        | no       | `20`        | `1` to `100`                                                                                                                                  |
+| `content`    | `markdown`                                                     | no       | none        | `/api/public/threads` only. Return `bodyMarkdown` instead of rendered body fields                                                             |
 
 Orders:
 

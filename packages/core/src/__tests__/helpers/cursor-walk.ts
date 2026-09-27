@@ -22,7 +22,8 @@ interface RequestTarget {
  * @returns Every post ID, in the order the pages returned them
  * @example
  * ```ts
- * expect(await walkPostPages(app, "/api/public/archive", 1)).toEqual(ids);
+ * const path = `/api/public/threads/${root.slug}/posts`;
+ * expect(await walkPostPages(app, path, 1)).toEqual(ids);
  * ```
  */
 export async function walkPostPages(

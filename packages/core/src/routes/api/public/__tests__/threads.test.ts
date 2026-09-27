@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
 import { createTestApp } from "../../../../__tests__/helpers/app.js";
 import { enforceD1BoundParameterLimit } from "../../../../__tests__/helpers/db.js";
 import {
   walkPostPages,
   walkThreadPages,
 } from "../../../../__tests__/helpers/cursor-walk.js";
+import { posts } from "../../../../db/schema.js";
 import type { CreatePost, Post } from "../../../../types.js";
-import { publicArchiveApiRoutes } from "../archive.js";
-import { publicPostsApiRoutes } from "../posts.js";
 import { publicThreadsApiRoutes } from "../threads.js";
 
 const DAY = 86_400;
@@ -17,8 +17,6 @@ const day = (n: number) => BASE + n * DAY;
 function setup() {
   const testApp = createTestApp({ authenticated: false });
   testApp.app.route("/api/public/threads", publicThreadsApiRoutes);
-  testApp.app.route("/api/public/posts", publicPostsApiRoutes);
-  testApp.app.route("/api/public/archive", publicArchiveApiRoutes);
   const { services } = testApp;
   const post = (data: Partial<CreatePost>) =>
     services.posts.create({ format: "note", bodyMarkdown: "body", ...data });
@@ -43,7 +41,7 @@ function setup() {
   };
   const get = async (path: string) => {
     const res = await testApp.app.request(path);
-    return { status: res.status, headers: res.headers, body: await res.json() };
+    return { status: res.status, body: await res.json() };
   };
   return { ...testApp, post, thread, get };
 }
@@ -72,6 +70,22 @@ describe("GET /api/public/threads", () => {
     });
     expect(rootThread.fold).toBeUndefined();
     expect(loneThread.postCount).toBe(1);
+  });
+
+  // `lastActivityAt` answers "when was this announced", `threadUpdatedAt`
+  // "when did it change". With only the first, a quiet addition left no trace.
+  it("reports both activity times, so a quiet reply shows", async () => {
+    const { post, get } = setup();
+    const root = await post({ publishedAt: day(1) });
+    await post({ replyToId: root.id, publishedAt: day(3), quietReply: true });
+
+    const { body } = await get("/api/public/threads");
+    expect(body.threads[0]).toMatchObject({
+      id: root.id,
+      lastActivityAt: day(1),
+      threadUpdatedAt: day(3),
+      root: { quietReply: false },
+    });
   });
 
   it("attaches the homepage fold on request", async () => {
@@ -137,6 +151,28 @@ describe("GET /api/public/threads", () => {
     expect(ids(only.body.threads)).toEqual([hidden.id]);
   });
 
+  it("answers each visibility it is asked for", async () => {
+    const { post, get } = setup();
+    const plain = await post({ publishedAt: day(1) });
+    const hidden = await post({
+      publishedAt: day(2),
+      visibility: "latest_hidden",
+    });
+    const featured = await post({ publishedAt: day(3), featured: true });
+    await post({ publishedAt: day(4), visibility: "private" });
+
+    const list = async (visibility: string) => {
+      const { body } = await get(
+        `/api/public/threads?visibility=${visibility}`,
+      );
+      return ids(body.threads);
+    };
+    expect(await list("public")).toEqual([featured.id, plain.id]);
+    expect(await list("featured")).toEqual([featured.id]);
+    // The stored spelling of `hidden`, which the page and the feeds read too.
+    expect(await list("latest_hidden")).toEqual([hidden.id]);
+  });
+
   it("walks a whole site in publication order", async () => {
     const { post, thread, app } = setup();
     const [old] = await thread(1);
@@ -157,6 +193,30 @@ describe("GET /api/public/threads", () => {
         1,
       ),
     ).toEqual(expected);
+  });
+
+  // A cursor records a position in an order, not the filters around it.
+  it("carries a cursor to other filters on the same order, not to another order", async () => {
+    const { post, get } = setup();
+    const first = await post({ publishedAt: day(1), featured: true });
+    await post({ publishedAt: day(2) });
+    await post({ publishedAt: day(3), featured: true });
+    await post({ publishedAt: day(4) });
+
+    const { body } = await get(
+      "/api/public/threads?visibility=any&sort=published&limit=2",
+    );
+    // Featured lists newest-published first too, so the position carries over.
+    const featured = await get(
+      `/api/public/threads?visibility=featured&cursor=${body.nextCursor}`,
+    );
+    expect(featured.status).toBe(200);
+    expect(ids(featured.body.threads)).toEqual([first.id]);
+
+    // The homepage's order is activity, pins first.
+    const latest = await get(`/api/public/threads?cursor=${body.nextCursor}`);
+    expect(latest.status).toBe(400);
+    expect(latest.body.error).toMatch(/different order/);
   });
 
   it("takes the archive's filters", async () => {
@@ -182,10 +242,82 @@ describe("GET /api/public/threads", () => {
     expect(missing.body).toEqual({ threads: [], nextCursor: null });
   });
 
+  it("narrows to one root format, page by page", async () => {
+    const { post, get, app } = setup();
+    const older = await post({ publishedAt: day(1) });
+    const hidden = await post({
+      publishedAt: day(2),
+      visibility: "latest_hidden",
+    });
+    const newer = await post({ publishedAt: day(3) });
+    await post({
+      format: "link",
+      title: "Example",
+      url: "https://example.com",
+      publishedAt: day(4),
+    });
+
+    const first = await get("/api/public/threads?format=note&limit=1");
+    expect(ids(first.body.threads)).toEqual([newer.id]);
+    const second = await get(
+      `/api/public/threads?format=note&limit=1&cursor=${first.body.nextCursor}`,
+    );
+    expect(ids(second.body.threads)).toEqual([older.id]);
+    expect(second.body.nextCursor).toBeNull();
+
+    expect(
+      await walkThreadPages(
+        app,
+        "/api/public/threads?visibility=any&sort=published&format=note",
+        1,
+      ),
+    ).toEqual([newer.id, hidden.id, older.id]);
+  });
+
+  it("filters by year, title, media, and replies", async () => {
+    const { services, post, get } = setup();
+    const lastYear = await post({
+      title: "Last year",
+      publishedAt: Date.UTC(2024, 5, 1) / 1000,
+    });
+    // Published in 2024, active in 2025: the year reads the publication date.
+    const untitled = await post({ publishedAt: Date.UTC(2024, 11, 31) / 1000 });
+    await post({ replyToId: untitled.id, publishedAt: day(3) });
+    const pictured = await post({ title: "Pictured", publishedAt: day(1) });
+    const image = await services.media.create({
+      filename: "pic.jpg",
+      originalName: "pic.jpg",
+      mimeType: "image/jpeg",
+      size: 1024,
+      storageKey: "media/pic.jpg",
+    });
+    await services.media.attachToPost(pictured.id, [image.id]);
+
+    const list = async (query: string) => {
+      const { status, body } = await get(`/api/public/threads?${query}`);
+      expect(status, query).toBe(200);
+      return ids(body.threads);
+    };
+    expect(await list("year=2024")).toEqual([untitled.id, lastYear.id]);
+    expect(await list("year=2025")).toEqual([pictured.id]);
+    expect(await list("title=any")).toEqual([pictured.id, lastYear.id]);
+    expect(await list("title=none")).toEqual([untitled.id]);
+    expect(await list("media=image")).toEqual([pictured.id]);
+    expect(await list("media=any")).toEqual([pictured.id]);
+    expect(await list("media=none")).toEqual([untitled.id, lastYear.id]);
+    expect(await list("replies=any")).toEqual([untitled.id]);
+    expect(await list("replies=none")).toEqual([pictured.id, lastYear.id]);
+    // The spellings earlier releases wrote.
+    expect(await list("hasTitle=0")).toEqual([untitled.id]);
+    expect(await list("hasMedia=1")).toEqual([pictured.id]);
+  });
+
   it.each([
     ["an unknown parameter", "?sorting=published"],
     ["visibility=all", "?visibility=all"],
     ["visibility=private", "?visibility=private"],
+    ["an unknown visibility", "?visibility=nonsense"],
+    ["an unknown media kind", "?media=invalid"],
     ["an unknown include", "?include=replies"],
     ["an unknown sort", "?sort=newest"],
     ["featured with another order", "?visibility=featured&sort=activity"],
@@ -237,6 +369,28 @@ describe("GET /api/public/threads", () => {
     const { body } = await get("/api/public/threads?content=markdown");
     expect(body.threads[0].root.bodyMarkdown).toBe("Some *text*");
     expect(body.threads[0].root.bodyHtml).toBeUndefined();
+  });
+
+  it("returns current HTML when the stored copy is stale", async () => {
+    const { db, post, get } = setup();
+    const stale = await post({
+      publishedAt: day(1),
+      bodyMarkdown: "API body[^1]\n\n[^1]: API definition",
+    });
+    await db
+      .update(posts)
+      .set({
+        bodyHtml: '<span class="sidenote">legacy</span>',
+        bodyHtmlVersion: 1,
+      })
+      .where(eq(posts.id, stale.id));
+
+    const { body } = await get("/api/public/threads");
+    const html = body.threads[0].root.bodyHtml;
+    expect(html).toContain('role="doc-noteref"');
+    expect(html).toMatch(/id="fn-[a-z0-9]{13}-1"/);
+    expect(html).not.toContain(stale.id);
+    expect(html).not.toContain("legacy");
   });
 });
 
@@ -320,44 +474,5 @@ describe("GET /api/public/threads/:slug/posts", () => {
       `/api/public/threads/${all[0]?.slug}/posts?cursor=${other.id}`,
     );
     expect(status).toBe(400);
-  });
-});
-
-describe("deprecated Thread lists", () => {
-  it.each([
-    ["/api/public/posts", "</api/public/threads>"],
-    [
-      "/api/public/archive",
-      "</api/public/threads?visibility=any&sort=published>",
-    ],
-  ])(
-    "%s names its replacement and still answers as before",
-    async (path, successor) => {
-      const { thread, get } = setup();
-      const [root] = await thread(2);
-
-      const { status, headers, body } = await get(path);
-      expect(status).toBe(200);
-      expect(headers.get("Deprecation")).toMatch(/^@\d+$/);
-      expect(headers.get("Link")).toBe(`${successor}; rel="successor-version"`);
-      expect(ids(body.posts)).toEqual([root?.id]);
-      expect(body.posts[0].threadPostCount).toBe(3);
-
-      // Errors carry the headers too.
-      const refused = await get(`${path}?limit=0`);
-      expect(refused.status).toBe(400);
-      expect(refused.headers.get("Deprecation")).toMatch(/^@\d+$/);
-    },
-  );
-
-  it("leaves the single-post endpoint undeprecated", async () => {
-    const { thread, get } = setup();
-    const all = await thread(1);
-    const { status, headers, body } = await get(
-      `/api/public/posts/${all[1]?.slug}`,
-    );
-    expect(status).toBe(200);
-    expect(headers.get("Deprecation")).toBeNull();
-    expect(body.threadPostCount).toBe(2);
   });
 });

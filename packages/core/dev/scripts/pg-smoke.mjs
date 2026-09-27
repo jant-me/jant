@@ -532,11 +532,6 @@ async function main() {
     for (const [path, headers] of [
       ["/api/posts?", { Cookie: cookieHeader }],
       ["/api/posts?status=draft&", { Cookie: cookieHeader }],
-      ["/api/public/posts?", {}],
-      ["/api/public/archive?", {}],
-      ["/api/public/posts?collection=smoke-walk&sort=newest&", {}],
-      ["/api/public/posts?collection=smoke-walk&sort=oldest&", {}],
-      ["/api/public/posts?collection=smoke-walk&sort=rating_desc&", {}],
       // The Thread lists: every order on the plain list, a collection's own
       // orders with the other dimensions pushed into a root subquery (the
       // `replies` one correlates an EXISTS inside it), and one Thread's posts.
@@ -547,6 +542,8 @@ async function main() {
       ["/api/public/threads?sort=oldest&", {}],
       ["/api/public/threads?sort=rating&include=fold&", {}],
       ["/api/public/threads?collection=smoke-walk&", {}],
+      ["/api/public/threads?collection=smoke-walk&sort=activity&", {}],
+      ["/api/public/threads?collection=smoke-walk&sort=oldest&", {}],
       ["/api/public/threads?collection=smoke-walk&sort=rating&", {}],
       ["/api/public/threads?collection=smoke-walk&replies=any&", {}],
       ["/api/public/threads?collection=smoke-walk&sort=published&", {}],
@@ -581,9 +578,11 @@ async function main() {
       walkedOrders.get(`/api/public/threads/${walkBumped.slug}/posts?`)?.length,
       2,
     );
-    const collectionOrders = [...walkedOrders]
-      .filter(([path]) => path.startsWith("/api/public/posts?collection="))
-      .map(([, ids]) => ids);
+    const collectionOrders = ["activity", "oldest", "rating"].map((sort) =>
+      walkedOrders.get(
+        `/api/public/threads?collection=smoke-walk&sort=${sort}&`,
+      ),
+    );
     assert.equal(collectionOrders.length, 3);
     for (const ids of collectionOrders) {
       assert.equal(ids.length, 5);
@@ -598,13 +597,13 @@ async function main() {
     // A private post's ID, the old cursor format, answers as an unknown one.
     const privateCursor = await handler.fetch(
       new Request(
-        `http://127.0.0.1:3000/api/public/archive?cursor=${privatePost.id}`,
+        `http://127.0.0.1:3000/api/public/threads?visibility=any&sort=published&cursor=${privatePost.id}`,
       ),
     );
     assert.equal(privateCursor.status, 400);
     const privateCollectionCursor = await handler.fetch(
       new Request(
-        `http://127.0.0.1:3000/api/public/posts?collection=smoke-walk&cursor=${walkPrivate.id}`,
+        `http://127.0.0.1:3000/api/public/threads?collection=smoke-walk&cursor=${walkPrivate.id}`,
       ),
     );
     assert.equal(privateCollectionCursor.status, 400);

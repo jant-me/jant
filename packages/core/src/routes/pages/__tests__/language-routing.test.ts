@@ -21,7 +21,7 @@ import { latestRoutes } from "../latest.js";
 import { pageRoutes } from "../page.js";
 import { searchRoutes } from "../search.js";
 import { feedRoutes } from "../../feed/feed.js";
-import { publicPostsApiRoutes } from "../../api/public/posts.js";
+import { publicThreadsApiRoutes } from "../../api/public/threads.js";
 
 /**
  * Mount the public route groups in the same order `createApp()` does — the
@@ -40,7 +40,7 @@ function createLanguageTestApp() {
   app.use("*", i18nMiddleware());
 
   // API routes come first in `createApp()` too, ahead of the catch-all.
-  app.route("/api/public/posts", publicPostsApiRoutes);
+  app.route("/api/public/threads", publicThreadsApiRoutes);
   app.route("/feed", feedRoutes);
   app.route("/search", searchRoutes);
   app.route("/archive", archiveRoutes);
@@ -594,21 +594,21 @@ describe("the public JSON API", () => {
       status: "published",
     });
 
-    const res = await testApp.app.request("/api/public/posts?lang=en");
+    const res = await testApp.app.request("/api/public/threads?lang=en");
     const body = (await res.json()) as {
-      posts: { title: string; language: string }[];
+      threads: { root: { title: string; language: string } }[];
     };
 
-    expect(body.posts).toHaveLength(1);
-    expect(body.posts[0]?.title).toBe("English post");
-    expect(body.posts[0]?.language).toBe("en");
+    expect(body.threads).toHaveLength(1);
+    expect(body.threads[0]?.root.title).toBe("English post");
+    expect(body.threads[0]?.root.language).toBe("en");
   });
 
   it("rejects a malformed language tag rather than ignoring it", async () => {
     const testApp = createLanguageTestApp();
 
     const res = await testApp.app.request(
-      "/api/public/posts?lang=not%20a%20tag",
+      "/api/public/threads?lang=not%20a%20tag",
     );
     expect(res.status).toBe(400);
   });

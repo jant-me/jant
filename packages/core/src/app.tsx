@@ -60,7 +60,6 @@ import { telegramWebhookRoutes } from "./routes/api/telegram.js";
 import { internalSearchReindexRoutes } from "./routes/api/internal/search-reindex.js";
 import { internalPostBodyHtmlRoutes } from "./routes/api/internal/post-body-html.js";
 import { internalUploadsRoutes } from "./routes/api/internal/uploads.js";
-import { publicArchiveApiRoutes } from "./routes/api/public/archive.js";
 import { publicPostsApiRoutes } from "./routes/api/public/posts.js";
 import { publicThreadsApiRoutes } from "./routes/api/public/threads.js";
 import { discoverApiRoutes } from "./routes/api/discover.js";
@@ -529,7 +528,6 @@ export function createApp(): App {
   // API Routes
   app.route("/api/public/posts", publicPostsApiRoutes);
   app.route("/api/public/threads", publicThreadsApiRoutes);
-  app.route("/api/public/archive", publicArchiveApiRoutes);
   app.route("/api/discover", discoverApiRoutes);
   app.route("/api/posts", postsApiRoutes);
   app.route("/api/threads", threadsApiRoutes);
