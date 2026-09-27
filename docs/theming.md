@@ -72,14 +72,22 @@ These derive from the core palette by default. Built-in themes set `--site-accen
   --site-accent: oklch(0.56 0.06 240);
 }
 
+:root[data-theme-mode="dark"] {
+  --primary: oklch(0.79 0.06 255);
+  --primary-foreground: oklch(0.19 0.01 255);
+  --site-accent: oklch(0.74 0.07 240);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme-mode="light"]) {
     --primary: oklch(0.79 0.06 255);
     --primary-foreground: oklch(0.19 0.01 255);
     --site-accent: oklch(0.74 0.07 240);
   }
 }
 ```
+
+The two dark rules are explained under [Dark mode](#dark-mode).
 
 ### Example: colored thread connectors
 
@@ -253,28 +261,34 @@ Inside each post there are three more markers: `data-post-body` (body container)
 
 ## Dark mode
 
-Jant follows the visitor's system preference (light / dark) automatically. To set values specifically for dark mode, use a media query:
+A site follows the visitor's system preference (light / dark) unless it is set to always light or always dark; `data-theme-mode` on `<html>` says which. A page is dark in two ways, so a dark value takes two rules:
 
 ```css
 :root {
-  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --site-threadline: oklch(0.8 0.05 250);
 }
 
+/* The site is set to dark */
+:root[data-theme-mode="dark"] {
+  --site-threadline: oklch(0.45 0.05 250);
+}
+
+/* The system is dark, and the site isn't set to light */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  :root:not([data-theme-mode="light"]) {
+    --site-threadline: oklch(0.45 0.05 250);
   }
 }
 ```
 
-A site can also be forced into dark mode (ignoring the system preference). To override colors in that case, use the `:root[data-theme-mode="dark"]` selector.
+Write the selectors as shown. The built-in theme uses the same ones, and custom CSS comes after it, so yours win. A plain `:root` inside the media query is less specific and loses to the theme's dark values.
 
 ## Tips
 
 - Override variables first, write selectors second. The variables, data attributes, and classes on this page change only in a major release. Jant's stylesheets define many more custom properties and class names; those are internal and can change in any release.
-- Custom CSS has the highest priority and overrides every variable defined by the built-in theme.
+- Custom CSS comes after the built-in theme and uses the same selectors, so it overrides every variable the theme sets: `:root` for light values, the two rules under [Dark mode](#dark-mode) for dark ones.
 - `oklch()` is convenient for color tuning. A common pattern: keep `--primary` saturated and stable for buttons; let `--site-accent` carry a softer tone for links and inline emphasis.
-- Test in both light and dark. If you override a color variable in `:root`, think about whether it also needs a matching override under `@media (prefers-color-scheme: dark)` or `:root[data-theme-mode="dark"]`.
+- Test in both light and dark. A color set only in `:root` also applies in dark mode wherever neither the theme nor Jant sets a dark value for it.
 
 ## What's next
 

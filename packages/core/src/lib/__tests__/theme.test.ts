@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   buildThemeStyle,
@@ -13,7 +15,7 @@ import { BUILTIN_COLOR_THEMES } from "../../ui/color-themes.js";
 describe("buildThemeStyle", () => {
   it("returns empty string when no theme and no variables", () => {
     expect(buildThemeStyle(undefined)).toBe("");
-    expect(buildThemeStyle(undefined, "auto", {})).toBe("");
+    expect(buildThemeStyle(undefined, {})).toBe("");
   });
 
   it("generates CSS with font overrides only (no color theme)", () => {
@@ -22,9 +24,9 @@ describe("buildThemeStyle", () => {
     ) as (typeof BUILTIN_FONT_THEMES)[number];
     const fontOverrides = getFontThemeCssVariables(theme);
 
-    const css = buildThemeStyle(undefined, "auto", fontOverrides);
+    const css = buildThemeStyle(undefined, fontOverrides);
 
-    expect(css).toContain(":root:root");
+    expect(css).toContain(":root {");
     expect(css).toContain("--font-body:");
     expect(css).toContain("--font-heading:");
     expect(css).toContain("ui-sans-serif");
@@ -49,7 +51,7 @@ describe("buildThemeStyle", () => {
       "--font-heading": "Futura, sans-serif",
     };
 
-    const css = buildThemeStyle(fakeTheme, "auto", fontOverrides);
+    const css = buildThemeStyle(fakeTheme, fontOverrides);
 
     expect(css).toContain("--primary:");
     expect(css).toContain("--site-accent:");
@@ -66,13 +68,13 @@ describe("buildThemeStyle", () => {
     };
     const overrides = { "--font-body": "Charter, serif" };
 
-    const css = buildThemeStyle(fakeTheme, "auto", overrides);
+    const css = buildThemeStyle(fakeTheme, overrides);
 
     expect(css).toContain("--font-body: Charter, serif");
     expect(css).not.toContain("should-be-overridden");
   });
 
-  it("supports forcing dark mode without relying on system preference", () => {
+  it("writes each value on the rung custom CSS overrides with the same selector", () => {
     const fakeTheme = {
       id: "test",
       name: "Test",
@@ -80,25 +82,38 @@ describe("buildThemeStyle", () => {
       dark: { "--primary": "oklch(0.7 0.1 200)" },
     };
 
-    const css = buildThemeStyle(fakeTheme, "dark");
+    const css = buildThemeStyle(fakeTheme);
 
-    expect(css).toContain("color-scheme: dark");
-    expect(css).not.toContain('data-theme-mode="dark"');
-    expect(css).not.toContain("prefers-color-scheme: dark");
+    // Light on `:root`; dark for a site set to dark, and for one following a
+    // dark system preference unless set to light. Nothing doubles `:root`,
+    // which would put it out of reach of custom CSS that follows it.
+    expect(css).toContain(":root {\n  color-scheme: light;");
+    expect(css).toContain(
+      ':root[data-theme-mode="dark"] {\n  color-scheme: dark;',
+    );
+    expect(css).toMatch(
+      /@media \(prefers-color-scheme: dark\) \{\n {2}:root:not\(\[data-theme-mode="light"\]\) \{/,
+    );
+    expect(css).not.toContain(":root:root");
   });
 
-  it("lets forced light mode opt out of system dark preference", () => {
-    const fakeTheme = {
-      id: "test",
-      name: "Test",
-      light: { "--primary": "oklch(0.5 0.1 200)" },
-      dark: { "--primary": "oklch(0.7 0.1 200)" },
-    };
-
-    const css = buildThemeStyle(fakeTheme, "light");
-
-    expect(css).toContain(':root:root[data-theme-mode="dark"]');
-    expect(css).toContain(':root:root:not([data-theme-mode="light"])');
+  it("keeps every stylesheet's theme variables within reach of custom CSS", () => {
+    // The site stylesheet is linked before the theme and custom CSS, so a
+    // default on the same rung loses to both. One above the dark rung would
+    // beat them wherever it appears.
+    const dir = resolve(import.meta.dirname, "../..");
+    for (const file of [
+      "preset.css",
+      ...readdirSync(join(dir, "styles"))
+        .filter((name) => name.endsWith(".css"))
+        .map((name) => `styles/${name}`),
+    ]) {
+      const css = readFileSync(join(dir, file), "utf8").replace(
+        /\/\*[\s\S]*?\*\//g,
+        "",
+      );
+      expect(css, file).not.toContain(":root:root");
+    }
   });
 
   it("resolves the active built-in theme from ID", () => {

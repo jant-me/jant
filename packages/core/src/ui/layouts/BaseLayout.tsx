@@ -251,10 +251,10 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
   )
     .map(([name, value]) => `  ${name}: ${value};`)
     .join("\n");
-  // `:root:root` matches the specificity `buildThemeStyle` uses, so ordering
+  // `:root`, the rung `buildThemeStyle` writes light values on, so ordering
   // alone decides the winner.
   const cjkFontStyle = cjkFontDeclarations
-    ? `:root:root {\n${cjkFontDeclarations}\n}`
+    ? `:root {\n${cjkFontDeclarations}\n}`
     : "";
   const cjkStylesheetPath =
     cjkFontProfile === "zh-Hans"

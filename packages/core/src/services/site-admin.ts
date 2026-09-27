@@ -800,11 +800,7 @@ export function createSiteAdminService(
         ...getCjkFontCssVariables(appConfig.siteLanguage),
         ...(fontTheme ? getFontThemeCssVariables(fontTheme) : {}),
       };
-      const themeCss = buildThemeStyle(
-        activeTheme,
-        appConfig.themeMode,
-        fontOverrides,
-      );
+      const themeCss = buildThemeStyle(activeTheme, fontOverrides);
       const navItemList = await navItems.list();
       const appleTouchKey = allSettings[SETTINGS_KEYS.SITE_FAVICON_APPLE_TOUCH];
       const exportService = createExportService(

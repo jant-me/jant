@@ -56,11 +56,7 @@ export function withConfig(): MiddlewareHandler<Env> {
     );
     const fontOverrides = fontTheme ? getFontThemeCssVariables(fontTheme) : {};
 
-    const themeStyle = buildThemeStyle(
-      activeTheme,
-      appConfig.themeMode,
-      fontOverrides,
-    );
+    const themeStyle = buildThemeStyle(activeTheme, fontOverrides);
     c.set("themeStyle", themeStyle);
 
     await next();

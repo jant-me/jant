@@ -6,7 +6,6 @@
 
 import type { ColorTheme } from "../ui/color-themes.js";
 import { BUILTIN_COLOR_THEMES } from "../ui/color-themes.js";
-import type { ThemeMode } from "../types/config.js";
 
 const DEFAULT_THEME_BROWSER_COLORS = {
   light: "oklch(1 0 0)",
@@ -147,27 +146,36 @@ export function getThemeBrowserColors(theme?: ColorTheme): {
  * Build a `<style>` CSS string from a color theme and optional cssVariables overlay.
  *
  * Priority (lowest → highest):
- *   BaseCoat defaults → selected theme → cssVariables
+ *   BaseCoat and token defaults → selected theme → cssVariables → custom CSS
+ *
+ * Every Jant rule that sets a theme variable sits on one of two rungs, and
+ * source order breaks ties within a rung:
+ *
+ * - light, `:root` (0,1,0): the defaults in the site stylesheet, then this
+ *   block, then the author's custom CSS;
+ * - dark, `:root[data-theme-mode="dark"]` or, under
+ *   `prefers-color-scheme: dark`, `:root:not([data-theme-mode="light"])`
+ *   (0,2,0): the dark defaults, then this block's dark part, then custom CSS
+ *   written with the same selectors.
+ *
+ * Every page links the stylesheet before the inline theme and custom CSS, so
+ * the theme beats the defaults and the author's custom CSS beats the theme,
+ * as docs/theming.md promises. A dark default outranks a light theme value,
+ * so a theme that leaves a variable out of its dark block gets the dark
+ * default rather than its light value.
  *
  * @param theme - The active color theme (undefined = no theme overrides)
- * @param cssVariables - Extra CSS variable overrides
+ * @param cssVariables - Extra CSS variable overrides, applied in both modes
  * @returns CSS string to inject in `<head>`, or empty string if nothing to inject
- *
- * Uses `:root:root` for light mode and `@media (prefers-color-scheme: dark)`
- * with `:root:root` for dark mode, giving higher specificity than BaseCoat
- * defaults (`:root`). This ensures theme overrides win regardless of source
- * order — important because Vite dev mode injects CSS as `<style>` tags
- * after the theme `<style>`.
  *
  * @example
  * ```typescript
- * const css = buildThemeStyle(blueTheme, "auto", { "--radius": "0.5rem" });
- * // => ":root:root { ... }\n@media (prefers-color-scheme: dark) { :root:root { ... } }"
+ * const css = buildThemeStyle(blueTheme, { "--radius": "0.5rem" });
+ * // => ':root { ... }\n:root[data-theme-mode="dark"] { ... }\n@media (prefers-color-scheme: dark) { ... }'
  * ```
  */
 export function buildThemeStyle(
   theme: ColorTheme | undefined,
-  themeMode: ThemeMode = "auto",
   cssVariables?: Record<string, string>,
 ): string {
   const lightVars: Record<string, string> = {
@@ -190,8 +198,7 @@ export function buildThemeStyle(
     const declarations = Object.entries(lightVars)
       .map(([k, v]) => `  ${k}: ${v};`)
       .join("\n");
-    // :root:root has specificity (0,0,2) > BaseCoat's :root (0,0,1)
-    parts.push(`:root:root {\n  color-scheme: light;\n${declarations}\n}`);
+    parts.push(`:root {\n  color-scheme: light;\n${declarations}\n}`);
   }
 
   if (hasDark) {
@@ -199,14 +206,12 @@ export function buildThemeStyle(
       .map(([k, v]) => `    ${k}: ${v};`)
       .join("\n");
     const darkBlock = `  color-scheme: dark;\n${declarations}`;
-    if (themeMode === "dark") {
-      parts.push(`:root:root {\n${darkBlock}\n}`);
-    } else {
-      parts.push(`:root:root[data-theme-mode="dark"] {\n${darkBlock}\n}`);
-      parts.push(
-        `@media (prefers-color-scheme: dark) {\n  :root:root:not([data-theme-mode="light"]) {\n${darkBlock}\n  }\n}`,
-      );
-    }
+    // A site set to dark carries `data-theme-mode="dark"`; one following the
+    // reader's system preference takes the media query unless set to light.
+    parts.push(`:root[data-theme-mode="dark"] {\n${darkBlock}\n}`);
+    parts.push(
+      `@media (prefers-color-scheme: dark) {\n  :root:not([data-theme-mode="light"]) {\n${darkBlock}\n  }\n}`,
+    );
   }
 
   return parts.join("\n");

@@ -72,14 +72,22 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
   --site-accent: oklch(0.56 0.06 240);
 }
 
+:root[data-theme-mode="dark"] {
+  --primary: oklch(0.79 0.06 255);
+  --primary-foreground: oklch(0.19 0.01 255);
+  --site-accent: oklch(0.74 0.07 240);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme-mode="light"]) {
     --primary: oklch(0.79 0.06 255);
     --primary-foreground: oklch(0.19 0.01 255);
     --site-accent: oklch(0.74 0.07 240);
   }
 }
 ```
+
+两条深色规则的写法见[深色模式](#深色模式)。
 
 ### 示例：让 Thread 连线带颜色
 
@@ -236,28 +244,34 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 ## 深色模式
 
-Jant 会自动跟随访问者的系统偏好（浅色 / 深色）。如果想为深色模式单独设置变量，可以用 media query：
+站点默认跟随访问者的系统偏好（浅色 / 深色），也可以设为始终浅色或始终深色，`<html>` 上的 `data-theme-mode` 标明是哪一种。页面变成深色有两种情况，所以深色值要写两条规则：
 
 ```css
 :root {
-  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --site-threadline: oklch(0.8 0.05 250);
 }
 
+/* 站点设为深色 */
+:root[data-theme-mode="dark"] {
+  --site-threadline: oklch(0.45 0.05 250);
+}
+
+/* 系统是深色，且站点没有设为浅色 */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  :root:not([data-theme-mode="light"]) {
+    --site-threadline: oklch(0.45 0.05 250);
   }
 }
 ```
 
-站点也可以强制切换到深色模式（不跟随系统）。要在那种情况下也覆盖颜色，用 `:root[data-theme-mode="dark"]` 选择器。
+选择器照这样写。内建主题用的是同样的选择器，Custom CSS 排在它后面，所以你的值会生效。media query 里只写 `:root` 的话，优先级更低，会输给主题的深色值。
 
 ## 提示
 
 - 优先改变量，再考虑写选择器覆盖。本页列出的变量、数据属性和 class 只在大版本里变动；Jant 样式表里的其他自定义属性和 class 属于内部实现，任何版本都可能改变。
-- Custom CSS 优先级最高，会覆盖内建主题里的所有变量。
+- Custom CSS 排在内建主题之后，用的也是同样的选择器，所以能覆盖主题设置的每个变量：浅色值写在 `:root` 里，深色值用[深色模式](#深色模式)里的两条规则。
 - 颜色用 `oklch()` 比较好控制。一个常见做法：`--primary` 用饱和、稳定的颜色给按钮；`--site-accent` 用更柔和的颜色给链接和正文中的强调。
-- 浅色和深色都要测。如果在 `:root` 里覆盖了某个颜色变量，也要想一想它在 `@media (prefers-color-scheme: dark)` 或 `:root[data-theme-mode="dark"]` 下是否需要对应覆盖。
+- 浅色和深色都要测。只写在 `:root` 里的颜色，在主题和 Jant 都没有给它设深色值的地方，深色模式下也会生效。
 
 ## 接下来
 

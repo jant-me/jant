@@ -531,21 +531,21 @@
 /*
  * Dark-mode reading color overrides.
  *
- * These rules must beat the active color theme's light-mode block, which
- * uses `:root:root { ... }` (specificity 0,0,2,0) with no media query and
- * therefore applies in both light and dark modes. Most themes do not
- * redefine `--site-reading-*` in their dark block, so without higher
- * specificity here the light reading-body color would leak into dark mode
- * (resulting in near-invisible body text on a dark background).
+ * Every rule that sets a theme variable sits on one of two rungs (see
+ * `buildThemeStyle` in lib/theme.ts): light values on `:root` (0,1,0), dark
+ * values on `:root[data-theme-mode="dark"]` or, under the media query,
+ * `:root:not([data-theme-mode="light"])` (0,2,0).
  *
- * We repeat `:root:root` to reach specificity 0,0,3,0, which outranks the
- * theme's light `:root:root` (0,0,2,0). The theme's dark blocks use
- * `:root:root[data-theme-mode="dark"]` or `:root:root:not([data-theme-mode="light"])`
- * (also 0,0,3,0), so a theme that explicitly defines dark reading colors
- * still wins via source order.
+ * These are on the dark rung, so they outrank the active color theme's light
+ * block, which has no media query and applies in both modes. Most themes do
+ * not redefine `--site-reading-*` in their dark block, so without that the
+ * light reading-body color would leak into dark mode (near-invisible body
+ * text on a dark background). A theme that does define dark reading colors
+ * sits on the same rung later in the page and wins, as does the author's
+ * custom CSS after it.
  */
 @media (prefers-color-scheme: dark) {
-  :root:root:not([data-theme-mode="light"]) {
+  :root:not([data-theme-mode="light"]) {
     --site-reading-title: var(--site-text-primary);
     --site-reading-heading: color-mix(
       in oklch,
@@ -589,7 +589,7 @@
   }
 }
 
-:root:root[data-theme-mode="dark"] {
+:root[data-theme-mode="dark"] {
   --site-reading-title: var(--site-text-primary);
   --site-reading-heading: color-mix(
     in oklch,

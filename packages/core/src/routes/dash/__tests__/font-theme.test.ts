@@ -62,7 +62,7 @@ describe("Font theme save & CSS generation", () => {
     expect(fontTheme.bodyFontFamily).toContain("Source Sans 3 Variable");
 
     const fontOverrides = getFontThemeCssVariables(fontTheme);
-    const css = buildThemeStyle(undefined, "auto", fontOverrides);
+    const css = buildThemeStyle(undefined, fontOverrides);
 
     expect(css).toContain("--font-body:");
     expect(css).toContain("--font-heading:");
@@ -80,7 +80,7 @@ describe("Font theme save & CSS generation", () => {
     expect(fontTheme.bodyFontFamily).toContain("ui-sans-serif");
 
     const fontOverrides = getFontThemeCssVariables(fontTheme);
-    const css = buildThemeStyle(undefined, "auto", fontOverrides);
+    const css = buildThemeStyle(undefined, fontOverrides);
 
     expect(css).toContain("--font-heading:");
     expect(css).toContain("Charter");
