@@ -34,6 +34,9 @@ RUN mkdir -p /app /var/lib/jant /usr/local/bin \
 
 COPY --from=build --chown=node:node /app /app
 
+# `jant` on the PATH, as docs/cli.md says: `docker exec … jant migrate`.
+RUN ln -s /app/bin/jant.js /usr/local/bin/jant
+
 USER node
 
 VOLUME ["/var/lib/jant"]

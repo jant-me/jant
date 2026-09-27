@@ -43,7 +43,7 @@ When PRs with changesets are merged:
 2. Review the version bumps and changelog
 3. Merge the Release PR
 4. Packages are automatically published to npm
-5. When `@jant/core` is published, the Release workflow also calls `.github/workflows/docker-publish.yml` to publish `owenyoung/jant:<version>` and `owenyoung/jant:latest` to Docker Hub
+5. When `@jant/core` is published, the Release workflow also calls `.github/workflows/docker-publish.yml` to publish `owenyoung/jant:<version>`, `owenyoung/jant:latest`, and from 1.0.1 on `owenyoung/jant:<major>` to Docker Hub
 6. The same workflow updates the Docker Hub overview from `docs/docker-hub-overview.md`
 7. Freeze the release's fixtures, and commit them:
 
@@ -73,12 +73,20 @@ mise run release-publish-dry
 mise run release-publish
 ```
 
+## Releasing 1.0.1
+
+The first 1.x release has steps no other release has. Work through them in the Release PR, and after it merges.
+
+- [ ] In the Release PR, set both packages' `version` and `CHANGELOG.md` heading to 1.0.1 (see [Versioning](#versioning-semver))
+- [ ] After `owenyoung/jant:1` is on Docker Hub, switch `compose.yml`'s `IMAGE` default, and the images in `docs/deployment-docker.md` (en, zh-Hans) and `docs/docker-hub-overview.md`, from `:latest` to `:1`. Until that tag exists, `compose.yml` on `main` must keep `:latest`: users download it from there
+
 ## Docker image publishing
 
 The official Docker image lives at `owenyoung/jant`.
 
 - Automatic publish happens after a successful package release that includes `@jant/core`
 - The pushed tags are the exact package version, such as `owenyoung/jant:0.3.38`, and `owenyoung/jant:latest`
+- From 1.0.1, a release also moves the major tag, such as `owenyoung/jant:1`, to itself. A compose file pinned to it gets every 1.x release and never a 2.0. Pre-releases and 0.x releases don't move it
 - Maintainers can manually backfill or republish the current `main` version from the **Docker Publish** workflow using `workflow_dispatch`
 - The workflow also syncs the Docker Hub overview from `docs/docker-hub-overview.md`
 
