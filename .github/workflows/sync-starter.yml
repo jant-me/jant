@@ -66,9 +66,23 @@ jobs:
           # Remove generated .dev.vars (starter should only have .dev.vars.example)
           rm -f /tmp/my-site/.dev.vars
 
-          # Generate package-lock.json so the deploy workflow can use npm ci
+          # Generate package-lock.json so the deploy workflow can use npm ci.
+          # The registry's edges catch up one at a time: on 0.9.1 the wait step
+          # saw the version and this install, five seconds later, still got
+          # ETARGET. Retry the install itself, revalidating the packument each
+          # time instead of reusing the stale one npm just cached.
           cd /tmp/my-site
-          npm install
+          for attempt in $(seq 1 10); do
+            if npm install --prefer-online; then
+              break
+            fi
+            if [ "$attempt" -eq 10 ]; then
+              echo "npm install failed 10 times" >&2
+              exit 1
+            fi
+            echo "npm install failed (attempt ${attempt}/10), retrying in 30s"
+            sleep 30
+          done
 
           # Clone jant-starter
           git clone "https://x-access-token:${PAT_TOKEN}@github.com/jant-me/jant-starter.git" /tmp/jant-starter
