@@ -1,5 +1,21 @@
 # create-jant
 
+## 0.9.1
+
+### Patch Changes
+
+- [`68eae5d`](https://github.com/jant-me/jant/commit/68eae5d94c2c4d5ed90571712d1a901542cc8009) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Search leaves out private posts for anyone who isn't signed in. `GET /api/search` and the `/search` page filtered on publishing status only, so a private post, or a reply in a private Thread, came back to anyone who searched for words in it: its title, an excerpt around the match, its link or quote source, its slug, and its publish date.
+
+  **Upgrade notes**
+
+  - This is a security fix. On a site with private posts, anyone who could reach `/search` or `GET /api/search` could read those fields. No database migrations.
+  - `GET /api/search` leaves out private posts for every caller, as `/api/public/*` does. A session or Bearer token doesn't add them.
+  - The `/search` page includes private posts for the signed-in author, as the archive and collection pages do.
+  - The `jant_search_posts` MCP tool includes private posts, and each result now carries `visibility`.
+  - `GET /api/search` clamps `limit` to 1–50. A negative value, such as `limit=-1`, used to return every match on SQLite and fail on Postgres; a value below 1 now returns one result.
+
+- [`408bc6e`](https://github.com/jant-me/jant/commit/408bc6e68a3b999b8ee20a48715b06727b695998) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Setup asks the Jant Discover question only when the content language is Chinese, the one language the jant.me directory lists. For any other language the checkbox stays off screen and setup stores no answer, so the deployment's `DISCOVER` default applies as before. The checkbox follows the language picker on the same screen. The Discover checkbox in Settings is unchanged and shows for every site.
+
 ## 0.9.0
 
 ### Minor Changes
