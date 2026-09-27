@@ -201,6 +201,40 @@ export const DISCOVER_FIRST_READ_MAX_HOURS = 6;
 export const DISCOVER_PUBLIC_DELAY_HOURS = 24;
 
 /**
+ * Languages the jant.me directory lists, as primary language subtags.
+ *
+ * The directory's rule — its `accepted_languages` — stated here for the same
+ * reason as `DISCOVER_MIN_PUBLIC_POSTS`, and read by setup alone: the Discover
+ * question is asked there only when the answer can lead somewhere. An author
+ * writing in a language the directory does not list would be handed a promise
+ * nobody keeps, ticked in advance on hosted Jant.
+ *
+ * Nothing else reads it. The settings checkbox records consent rather than
+ * applying for a listing, and a site can take on a listed language later
+ * through multilingual content, so it stays for everyone.
+ *
+ * Simplified and Traditional Chinese are one list there, which is why the
+ * match is on the primary subtag rather than on the script.
+ */
+export const DISCOVER_LANGUAGES: readonly string[] = ["zh"];
+
+/**
+ * Whether the jant.me directory lists posts written in a language.
+ *
+ * @param tag - A BCP 47 language tag, as the content language is stored
+ * @returns True when the tag's primary subtag is in `DISCOVER_LANGUAGES`
+ * @example
+ * ```ts
+ * isDiscoverLanguage("zh-Hant"); // true
+ * isDiscoverLanguage("en"); // false
+ * ```
+ */
+export function isDiscoverLanguage(tag: string): boolean {
+  const primary = tag.split("-")[0]?.toLowerCase() ?? "";
+  return DISCOVER_LANGUAGES.includes(primary);
+}
+
+/**
  * The directory's names for its two format lists.
  *
  * Proper names that stay in English in every locale, as the directory's own

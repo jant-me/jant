@@ -4,6 +4,7 @@ import {
   getDiscoverFeedPath,
   getDiscoverPageUrls,
   getDiscoverSubmitUrl,
+  isDiscoverLanguage,
   linkTerms,
   measureDiscoverMaturity,
   parseDiscoverSetting,
@@ -246,6 +247,29 @@ describe("measureDiscoverMaturity", () => {
       publicPostCount: 0,
       established: false,
     });
+  });
+});
+
+describe("isDiscoverLanguage", () => {
+  // One list for both scripts: splitting an already small community over a
+  // script boundary is what the directory decided against.
+  it("accepts Chinese in either script", () => {
+    expect(isDiscoverLanguage("zh-Hans")).toBe(true);
+    expect(isDiscoverLanguage("zh-Hant")).toBe(true);
+  });
+
+  // A stored tag is not always one the picker offers; a region form or a bare
+  // `zh` is still Chinese.
+  it("reads the primary subtag, whatever follows it", () => {
+    expect(isDiscoverLanguage("zh")).toBe(true);
+    expect(isDiscoverLanguage("zh-TW")).toBe(true);
+    expect(isDiscoverLanguage("ZH-hans")).toBe(true);
+  });
+
+  it("turns away every other language", () => {
+    expect(isDiscoverLanguage("en")).toBe(false);
+    expect(isDiscoverLanguage("ja")).toBe(false);
+    expect(isDiscoverLanguage("")).toBe(false);
   });
 });
 

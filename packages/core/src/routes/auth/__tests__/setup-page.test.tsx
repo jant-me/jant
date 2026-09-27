@@ -13,7 +13,11 @@ import { renderToString } from "hono/jsx/dom/server";
 import { describe, expect, it } from "vitest";
 import { I18nProvider } from "../../../i18n/context.js";
 import { createI18n } from "../../../i18n/i18n.js";
-import type { DiscoverPageUrls } from "../../../lib/discover.js";
+import {
+  isDiscoverLanguage,
+  type DiscoverPageUrls,
+} from "../../../lib/discover.js";
+import { SUPPORTED_LOCALE_TAGS } from "../../../i18n/supported-locales.js";
 import { getDiscoverCopy } from "../../../ui/dash/settings/discover-copy.js";
 import { SetupContent } from "../setup.js";
 
@@ -25,6 +29,23 @@ const PAGES: DiscoverPageUrls = {
   quotes: "https://jant.me/quotes",
   rules: "https://jant.me/discover/about",
 };
+
+/** The Discover field's opening tag, which carries whether it is on screen. */
+function discoverFieldTag(html: string): string {
+  const tag = html.match(/<div class="field mt-2"[^>]*>/)?.[0];
+  if (!tag) throw new Error("No Discover field in the rendered form");
+  return tag;
+}
+
+/** Undo the attribute escaping the renderer applies. */
+function unescapeAttribute(value: string): string {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
 
 function render(props: SetupProps): string {
   const i18n = createI18n("en");
@@ -148,6 +169,43 @@ describe("SetupContent — the Discover question", () => {
 
     expect(html).not.toContain("setup-discover");
     expect(html).toContain("discover: false");
+  });
+
+  // The directory lists Chinese only. Asking anyone else leads nowhere, and on
+  // hosted Jant the box would arrive ticked.
+  it("stays off screen for a language the directory does not list", () => {
+    const tag = discoverFieldTag(render({ ...base, contentLanguage: "en" }));
+
+    expect(tag).toContain('style="display:none"');
+  });
+
+  it("is on screen from the start for a language the directory lists", () => {
+    const tag = discoverFieldTag(
+      render({ ...base, contentLanguage: "zh-Hant" }),
+    );
+
+    expect(tag).not.toContain("display:none");
+  });
+
+  // The field follows the picker on the client and the answer is filtered on
+  // the server, so the two have to read the language the same way. The
+  // expression is plain JavaScript once Datastar has swapped its signal in, and
+  // `$contentLanguage` is a valid parameter name, so it runs here as written.
+  it("follows the picker the way the server reads the language", () => {
+    const tag = discoverFieldTag(render(base));
+    const expression = unescapeAttribute(
+      tag.match(/data-show="([^"]*)"/)?.[1] ?? "",
+    );
+    const shows = new Function(
+      "$contentLanguage",
+      `return (${expression});`,
+    ) as (language: string) => boolean;
+
+    for (const language of [...SUPPORTED_LOCALE_TAGS, "zh", "zh-TW"]) {
+      expect(shows(language), language).toBe(isDiscoverLanguage(language));
+    }
+    expect(shows("zh-Hans")).toBe(true);
+    expect(shows("en")).toBe(false);
   });
 
   // One control appearing twice should not describe itself two ways: the

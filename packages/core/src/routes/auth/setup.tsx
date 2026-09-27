@@ -67,8 +67,10 @@ import { toPublicPath } from "../../lib/url.js";
 import { ONBOARDING_STATUS } from "../../lib/constants.js";
 import { announceInBackground } from "../discover-announce.js";
 import {
+  DISCOVER_LANGUAGES,
   discoverIntroRuns,
   getDiscoverPageUrls,
+  isDiscoverLanguage,
   resolveDiscoverMode,
   type DiscoverPageUrls,
 } from "../../lib/discover.js";
@@ -143,6 +145,14 @@ const LocaleField: FC<{
 };
 
 /**
+ * `isDiscoverLanguage` as a Datastar expression over the language signal, so
+ * the Discover question follows the picker without a round trip. The list is
+ * the same constant the server reads, and a test holds the two readings of it
+ * together.
+ */
+const DISCOVER_LANGUAGE_EXPRESSION = `${JSON.stringify(DISCOVER_LANGUAGES)}.includes($contentLanguage.split('-')[0].toLowerCase())`;
+
+/**
  * The one question setup asks about the world outside this site.
  *
  * It earns a place on a screen that asks as little as it can because the
@@ -150,6 +160,11 @@ const LocaleField: FC<{
  * never goes looking never learns a directory exists. The wording is the
  * settings page's own: one control appearing twice should not describe itself
  * two ways.
+ *
+ * Only on screen while the chosen language is one the directory lists. For any
+ * other, learning the directory exists leads nowhere, and on hosted Jant the box
+ * would arrive ticked — a promise nobody keeps. It follows the language picker
+ * above it, since both are answered on the same screen.
  *
  * The words come from the same `getDiscoverCopy` the settings page uses,
  * which is what keeps the two surfaces from drifting when either is edited.
@@ -164,14 +179,22 @@ const DiscoverField: FC<{
   copy: DiscoverCopy;
   /** The directory's pages, or null when this deployment announces to none. */
   pages: DiscoverPageUrls | null;
-}> = ({ copy, pages }) => {
+  /** Whether the language the form opens with is one the directory lists. */
+  shown: boolean;
+}> = ({ copy, pages, shown }) => {
   const runs = discoverIntroRuns(copy.about, copy, pages);
 
   return (
     // Held a little further from the field above it than the form's own gap:
     // every other field on this screen is about the site itself, and this one
-    // is about the world outside it.
-    <div class="field mt-2">
+    // is about the world outside it. Hidden in the markup as well as by
+    // `data-show`, so a form opening in English never flashes the question
+    // before Datastar starts.
+    <div
+      class="field mt-2"
+      data-show={DISCOVER_LANGUAGE_EXPRESSION}
+      style={shown ? undefined : "display:none"}
+    >
       {/* Classes copied from the settings page's own Discover checkbox
           (`jant-settings-general.ts`), so the control a hosted author meets here
           and the one they find later in Settings are the same object. */}
@@ -410,6 +433,8 @@ export type SetupContentProps = {
        *
        * False where the answer could not be honoured — a demo site, or feeds
        * switched off — and a control nobody can act on is worse than none.
+       * Where it is true, the question still waits for a language the
+       * directory lists; see `DiscoverField`.
        */
       discoverAvailable: boolean;
       /**
@@ -474,11 +499,15 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
     }),
   );
 
-  // Rendered even when the question is not asked, so the form can name the
-  // signal unconditionally; `discoverAvailable` decides whether the control
+  // The signal exists even when the question is not asked, so the form can
+  // name it unconditionally; `discoverAvailable` decides whether the control
   // appears, and an absent field simply sends the default back.
   const discoverField = discoverAvailable ? (
-    <DiscoverField copy={getDiscoverCopy(i18n)} pages={discoverPages} />
+    <DiscoverField
+      copy={getDiscoverCopy(i18n)}
+      pages={discoverPages}
+      shown={isDiscoverLanguage(contentLanguage)}
+    />
   ) : null;
 
   const signals = [
@@ -630,6 +659,12 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
  * is the whole point of asking. An absent field is not a refusal — an older
  * client or a scripted setup sends none — and leaves the default in force.
  *
+ * Neither is a value sent with a language the directory does not list. The
+ * question was not on screen for it, but the signal behind the hidden box still
+ * went out holding its starting state, and storing that would record an answer
+ * to a question nobody was asked. It is dropped, and the default stays in
+ * force — the same as sending nothing.
+ *
  * A yes is announced immediately, on the same terms as the settings page's own
  * switch. A directory decides eligibility for itself and re-reads the feed on
  * its own schedule, so a site with nothing published yet loses nothing by
@@ -644,12 +679,16 @@ export const SetupContent: FC<SetupContentProps> = (props) => {
  * page's status block reads it back with a Retry beside it.
  *
  * @param c - The setup request, for its services and its config
- * @param answer - The checkbox, or undefined when the form carried no field
+ * @param answers - The validated answers: the checkbox, or undefined when the
+ *   form carried no field, and the language it was answered for
  */
 async function storeDiscoverAnswer(
   c: Context<Env>,
-  answer: boolean | undefined,
+  answers: SetupLanguageAnswers,
 ): Promise<void> {
+  const answer = isDiscoverLanguage(answers.contentLanguage)
+    ? answers.discover
+    : undefined;
   if (answer === undefined) return;
   const stored = answer ? "latest" : "off";
   const { shouldAnnounce } =
@@ -959,7 +998,7 @@ async function storeSiteAnswers(
     },
   );
 
-  await storeDiscoverAnswer(c, answers.discover);
+  await storeDiscoverAnswer(c, answers);
 
   return dsRedirect(toPublicPath("/", c.var.appConfig.sitePathPrefix));
 }

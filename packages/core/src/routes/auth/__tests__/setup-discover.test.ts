@@ -6,7 +6,8 @@
  * field at all writes nothing, since that last case is an older client or a
  * scripted setup and reading it as a refusal would opt sites out that never
  * said so — and then acts on it, on the same terms as the settings page's own
- * switch.
+ * switch. The one exception is a language the directory does not list: the
+ * question was not on screen, so whatever the form sent is not an answer.
  */
 
 import { describe, expect, it, vi } from "vitest";
@@ -142,6 +143,33 @@ describe("POST /setup, the Discover answer", () => {
     await post(app, {});
 
     expect(updateDiscoverSetting).not.toHaveBeenCalled();
+  });
+
+  // The box is off screen for a language the directory does not list, but its
+  // signal still goes out holding the starting state — ticked on hosted Jant,
+  // clear on a self-hosted install. Neither is an answer anyone gave.
+  it.each([true, false])(
+    "writes nothing for a language the directory does not list (box %s)",
+    async (discover) => {
+      const { app, updateDiscoverSetting, announceToDiscover, pending } =
+        createSetupApp();
+
+      await post(app, { contentLanguage: "en", discover });
+      await Promise.all(pending);
+
+      expect(updateDiscoverSetting).not.toHaveBeenCalled();
+      expect(announceToDiscover).not.toHaveBeenCalled();
+    },
+  );
+
+  it("takes the answer for Traditional Chinese as well", async () => {
+    const { app, updateDiscoverSetting } = createSetupApp();
+
+    await post(app, { contentLanguage: "zh-Hant", discover: true });
+
+    expect(updateDiscoverSetting).toHaveBeenCalledWith("latest", {
+      demoMode: false,
+    });
   });
 
   // The answer takes effect now, not when the author next happens to open a
