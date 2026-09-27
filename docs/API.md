@@ -1524,8 +1524,6 @@ Response:
 }
 ```
 
-If the request sends `Accept: text/event-stream`, the endpoint may return SSE patches instead of JSON for live UI updates.
-
 ## Collections
 
 Base path: `/api/collections`

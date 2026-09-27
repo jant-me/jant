@@ -1081,11 +1081,6 @@ msgstr "Field notes on quiet design"
 msgid "File storage isn't set up. Check your server config."
 msgstr "File storage isn't set up. Check your server config."
 
-#. @context: Toast after successful file upload
-#: src/routes/api/upload.ts
-msgid "File uploaded."
-msgstr "File uploaded."
-
 #. @context: Archive media filter - files/documents
 #: src/lib/filter-dimensions.ts
 msgid "Files"

@@ -6,18 +6,12 @@
  */
 
 import { Hono, type Context } from "hono";
-import { html } from "hono/html";
 import { msg } from "@lingui/core/macro";
 import { z } from "zod";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
-import {
-  getMediaUrl,
-  getImageUrl,
-  getPublicUrlForProvider,
-} from "../../lib/image.js";
-import { sse } from "../../lib/sse.js";
+import { getMediaUrl, getPublicUrlForProvider } from "../../lib/image.js";
 import {
   detectPosterMimeType,
   getPosterExtension,
@@ -62,101 +56,6 @@ const UpdateMediaSchema = z.object({
 // Require auth for all upload routes
 uploadApiRoutes.use("*", requireAuthApi());
 
-/**
- * Render a media card HTML string for SSE response
- */
-function renderMediaCard(
-  media: {
-    id: string;
-    storageKey: string;
-    mimeType: string;
-    originalName: string;
-    alt: string | null;
-    size: number;
-  },
-  publicUrl?: string,
-  imageTransformUrl?: string,
-  sitePathPrefix?: string,
-): string {
-  const fullUrl = getMediaUrl(media.storageKey, publicUrl, sitePathPrefix);
-  const thumbnailUrl = getImageUrl(fullUrl, imageTransformUrl, {
-    width: 300,
-    quality: 80,
-    format: "auto",
-    fit: "cover",
-  });
-  const isImage = media.mimeType.startsWith("image/");
-  const displayName = media.alt || media.originalName;
-  const sizeStr = formatSize(media.size);
-
-  if (isImage) {
-    return html`
-      <div class="group relative" data-media-id="${media.id}">
-        <button
-          type="button"
-          class="block w-full aspect-square bg-muted rounded-lg overflow-hidden border hover:border-primary cursor-pointer"
-          data-on:click="document.getElementById('lightbox-img').src = '${fullUrl}'; document.getElementById('lightbox').showModal()"
-        >
-          <img
-            src="${thumbnailUrl}"
-            alt="${displayName}"
-            class="w-full h-full object-cover"
-            loading="lazy"
-          />
-        </button>
-        <span class="block mt-2 text-xs truncate" title="${media.originalName}">
-          ${media.originalName}
-        </span>
-        <div class="text-xs text-muted-foreground">${sizeStr}</div>
-      </div>
-    `.toString();
-  }
-
-  return html`
-    <div class="group relative" data-media-id="${media.id}">
-      <div
-        class="block aspect-square bg-muted rounded-lg overflow-hidden border"
-      >
-        <div
-          class="w-full h-full flex items-center justify-center text-muted-foreground"
-        >
-          <span class="text-xs">${media.mimeType}</span>
-        </div>
-      </div>
-      <span class="block mt-2 text-xs truncate" title="${media.originalName}">
-        ${media.originalName}
-      </span>
-      <div class="text-xs text-muted-foreground">${sizeStr}</div>
-    </div>
-  `.toString();
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-/**
- * Check if request wants SSE response (from Datastar)
- */
-function wantsSSE(c: {
-  req: { header: (name: string) => string | undefined };
-}): boolean {
-  const accept = c.req.header("accept") || "";
-  return accept.includes("text/event-stream");
-}
-
-/**
- * Return an SSE error response that removes the upload placeholder and shows a toast
- */
-function sseUploadError(c: Context<Env>, message: string): Response {
-  return sse(c, async (stream) => {
-    await stream.remove("#upload-placeholder");
-    await stream.toast(message, "error");
-  });
-}
-
 function getHostedMediaQuotaExceededText(c: Context<Env>): string {
   return getI18n(c)._(
     msg({
@@ -179,9 +78,6 @@ uploadApiRoutes.post("/", async (c) => {
         comment: "@context: Error when file storage is not set up",
       }),
     );
-    if (wantsSSE(c)) {
-      return sseUploadError(c, errorText);
-    }
     return c.json({ error: errorText }, 500);
   }
 
@@ -195,9 +91,6 @@ uploadApiRoutes.post("/", async (c) => {
         comment: "@context: Error when no file was selected for upload",
       }),
     );
-    if (wantsSSE(c)) {
-      return sseUploadError(c, errorText);
-    }
     return c.json({ error: errorText }, 400);
   }
 
@@ -206,9 +99,6 @@ uploadApiRoutes.post("/", async (c) => {
     maxFileSizeMB: c.var.appConfig.uploadMaxFileSize,
   });
   if (uploadError) {
-    if (wantsSSE(c)) {
-      return sseUploadError(c, uploadError);
-    }
     return c.json({ error: uploadError }, 400);
   }
 
@@ -220,9 +110,6 @@ uploadApiRoutes.post("/", async (c) => {
   const uploadPolicy = getStoredUploadPolicy(file.type);
   if (!uploadPolicy) {
     const errorText = `File type "${file.type}" is not supported.`;
-    if (wantsSSE(c)) {
-      return sseUploadError(c, errorText);
-    }
     return c.json({ error: errorText }, 400);
   }
 
@@ -241,9 +128,6 @@ uploadApiRoutes.post("/", async (c) => {
         signatureBytes,
       );
       if (signatureError) {
-        if (wantsSSE(c)) {
-          return sseUploadError(c, signatureError);
-        }
         return c.json({ error: signatureError }, 400);
       }
     }
@@ -347,38 +231,6 @@ uploadApiRoutes.post("/", async (c) => {
       mediaKind: uploadPolicy.mediaKind,
     });
 
-    // SSE response for Datastar
-    if (wantsSSE(c)) {
-      const mediaPublicUrl = getPublicUrlForProvider(
-        c.var.appConfig.storageDriver,
-        c.var.appConfig.r2PublicUrl,
-        c.var.appConfig.s3PublicUrl,
-        c.var.appConfig.localPublicUrl,
-      );
-      const cardHtml = renderMediaCard(
-        media,
-        mediaPublicUrl,
-        c.var.appConfig.imageTransformUrl,
-        sitePathPrefix,
-      );
-
-      return sse(c, async (stream) => {
-        // Replace placeholder with real media card
-        await stream.patchElements(cardHtml, {
-          mode: "outer",
-          selector: "#upload-placeholder",
-        });
-        await stream.toast(
-          i18n._(
-            msg({
-              message: "File uploaded.",
-              comment: "@context: Toast after successful file upload",
-            }),
-          ),
-        );
-      });
-    }
-
     // JSON response for API clients
     const mediaPublicUrl = getPublicUrlForProvider(
       c.var.appConfig.storageDriver,
@@ -407,12 +259,6 @@ uploadApiRoutes.post("/", async (c) => {
               comment: "@context: Error when file upload fails",
             }),
           );
-    if (wantsSSE(c)) {
-      return sse(c, async (stream) => {
-        await stream.remove("#upload-placeholder");
-        await stream.toast(errorText, "error");
-      });
-    }
     return c.json(
       { error: errorText },
       err instanceof MediaQuotaExceededError ? 409 : 500,
