@@ -150,7 +150,91 @@ feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖�
 - 视频和音频保留 `duration_seconds`。
 - 智能合集的 `selection` 记录它的条件，合集条件写的是合集的 slug。导入在合集之后重建智能合集。条件里的合集没有一起导入时，这个智能合集会跳过并给出警告：少了这个条件，它会收进原本不属于它的帖子。
 
-本页没有列出的 front matter 字段是 Jant 内部字段，不要手动修改：下次导入会把它们原样写回数据库，覆盖你之后在 Jant 里做的修改。
+### 文件字段一览
+
+下面几张表列出 `site export` 写出的每个字段。标为「**仅主题**」的字段是给内置 Hugo 主题用的，任何版本都可能改变，`site import` 也不读取；其余字段只在大版本里变动。这些字段都不要手动修改：下次导入会把它们原样写回数据库，覆盖你之后在 Jant 里做的修改。
+
+帖子文件：Thread 的 root 是 `content/<slug>/_index.md`，每条回复是 `content/<root>/<slug>/index.md`。
+
+| 字段                        | 位置 | 说明                                                                               |
+| --------------------------- | ---- | ---------------------------------------------------------------------------------- |
+| `id`                        | 都有 | 帖子 TypeID                                                                        |
+| `title`                     | 都有 | 引用没有                                                                           |
+| `date`                      | 都有 | 发布时间，ISO 8601；草稿是创建时间                                                 |
+| `created`、`updated`        | 都有 | 写作时间和最后编辑时间，和 `date` 不同时才写                                       |
+| `slug`                      | 都有 | 规范 slug                                                                          |
+| `type`                      | 都有 | `post`                                                                             |
+| `draft`                     | 都有 | 草稿和私密帖子为 `true`，Hugo 只在 `--buildDrafts` 时构建                          |
+| `format`                    | 都有 | `note`、`link` 或 `quote`                                                          |
+| `status`                    | 都有 | `published` 或 `draft`                                                             |
+| `visibility`                | 都有 | `public`、`latest_hidden` 或 `private`                                             |
+| `summary_text`              | 都有 | 纯文本摘要                                                                         |
+| `link_url`                  | 都有 | 链接帖子的链接                                                                     |
+| `source_name`、`source_url` | 都有 | 引用的出处                                                                         |
+| `quote_text`                | 都有 | 引用的原文                                                                         |
+| `rating`                    | 都有 | `1` 到 `5`                                                                         |
+| `featured_at`、`pinned_at`  | 都有 | ISO 8601                                                                           |
+| `media`                     | 都有 | 按顺序的附件，见下表                                                               |
+| `aliases`                   | root | Hugo 的别名页：root 的自定义 URL 和每条回复的 slug                                 |
+| `root_aliases`              | root | root 的自定义 URL，导入时重建                                                      |
+| `language`                  | root | BCP 47 内容语言，整个 Thread 相同                                                  |
+| `translation_group`         | root | 互为译文的帖子共用                                                                 |
+| `last_activity_at`          | root | Thread 里最新一篇帖子（不含用 **Reply quietly** 发布的回复），和 `date` 不同时才写 |
+| `collections`               | root | Thread 所属的合集，每项含 `slug`、`title`、`collected_at`、`position`、`pinned_at` |
+| `weight`                    | 回复 | 在 Thread 里的位置                                                                 |
+| `build`                     | 回复 | Hugo 构建选项 `render` 和 `list`，让回复不出现在列表里                             |
+| `quiet_reply`               | 回复 | 用 **Reply quietly** 发布的回复为 `true`                                           |
+| `feed_id`                   | root | 仅主题：Jant 的 feed 给这个 Thread 的条目 ID                                       |
+| `featured_post_ids`         | root | 仅主题                                                                             |
+| `featured_sort_at`          | root | 仅主题                                                                             |
+| `truncated`                 | 都有 | 仅主题                                                                             |
+
+`media` 的每一项：
+
+| 字段                                                | 说明                                                |
+| --------------------------------------------------- | --------------------------------------------------- |
+| `id`                                                | 媒体 TypeID                                         |
+| `kind`                                              | `image`、`video`、`audio`、`text` 或 `document`     |
+| `src`                                               | 文件：拉取后是 `static/media/` 下的路径，否则是 URL |
+| `mime_type`、`original_name`、`size`                | 文件类型、上传时的文件名、字节数                    |
+| `width`、`height`                                   | 图片和视频的像素尺寸                                |
+| `alt`、`blurhash`                                   | 替代文本和图片占位                                  |
+| `duration_seconds`                                  | 音频和视频的时长                                    |
+| `poster`                                            | 视频的封面帧                                        |
+| `summary`、`chars`                                  | 文本附件的摘要和长度                                |
+| `position`、`provider`、`storage_key`、`poster_key` | 仅主题                                              |
+
+合集页：`content/<slug>/_index.md`，`type` 为 `collection` 或 `smart_collection`。
+
+| 字段             | 说明                                        |
+| ---------------- | ------------------------------------------- |
+| `title`、`slug`  | 标题和地址                                  |
+| `type`           | `collection` 或 `smart_collection`          |
+| `summary_text`   | 说明                                        |
+| `sort_order`     | `newest`、`oldest` 或 `rating_desc`         |
+| `selection`      | 智能合集的条件，合集按 slug 指定            |
+| `display_layout` | 智能合集的布局 `list` 或 `grid`，设置了才写 |
+| `entry_count`    | 仅主题                                      |
+| `outputs`        | 仅主题：页面渲染的 Hugo 输出                |
+
+其他栏目页（`content/_index.md`、`archive/`、`featured/`、`collections/`）属于主题。
+
+`data/jant.toml`：
+
+| 键                                                                                                                                                                                | 说明                                                                                                             |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `version`、`format`                                                                                                                                                               | 导出格式，见[冲突与约束](#冲突与约束)                                                                            |
+| `site_name`、`site_description`、`site_language`                                                                                                                                  | 站点设置                                                                                                         |
+| `site_footer_markdown`                                                                                                                                                            | 页脚原文                                                                                                         |
+| `theme_id`、`default_theme_id`、`font_theme_id`、`theme_mode`                                                                                                                     | 外观                                                                                                             |
+| `noindex`、`public_api_enabled`、`rss_feeds_enabled`                                                                                                                              | 站点设置                                                                                                         |
+| `show_header_avatar`、`show_jant_branding_on_home`                                                                                                                                | 页头和首页设置                                                                                                   |
+| `site_avatar_mode`、`site_avatar_url`、`favicon_mode`、`favicon_path`、`favicon_version`、`apple_touch_mode`、`apple_touch_icon_path`                                             | 头像和图标，以及文件位置                                                                                         |
+| `nav`                                                                                                                                                                             | 导航项，每项含 `type`、`label`、`custom_label`、`url`、`placement`、`system_key`、`collection_slug`、`post_slug` |
+| `directory`                                                                                                                                                                       | 按顺序的合集目录，每项含 `type`、`slug`、`title`、`label`、`url`、`description`                                  |
+| `custom_url`                                                                                                                                                                      | 自定义 URL，每项含 `kind`、`path`、`to`、`status`、`archive_query`                                               |
+| `additional_languages`、`multilingual_enabled`、`main_rss_feed`、`page_size`、`archive_page_size`、`archive_default_layout`、`rss_feed_limit`、`generated_at`、`site_footer_html` | 仅主题                                                                                                           |
+| `description_html`、`entry_count`、`sequence`、`recent_activity_iso`、`recent_activity_label`                                                                                     | 仅主题，在 `directory` 的各项里                                                                                  |
 
 ### 单独拉取媒体
 
