@@ -1,0 +1,25 @@
+# Feed addresses moved in this export.
+#
+# Jant served its feeds under /feed; Hugo serves them as index.xml inside each
+# section. Cloudflare Pages and Netlify read this file and issue the redirects
+# below, so readers who subscribed to the old addresses keep receiving posts.
+# Other hosts ignore this file — see README.md for the same rules to translate
+# into your host's configuration.
+
+/feed                    /featured/index.xml  301
+/latest/feed             /index.xml  301
+/featured/feed           /featured/index.xml  301
+/archive/feed            /archive/index.xml  301
+
+# Aliases the live site answered with a 308. They would die at the same moment.
+/feed/latest             /index.xml  301
+/feed/all                /index.xml  301
+/feed/featured           /featured/index.xml  301
+/feed/atom.xml           /featured/index.xml  301
+/feed/latest/atom.xml    /index.xml  301
+/feed/all/atom.xml       /index.xml  301
+/feed/featured/atom.xml  /featured/index.xml  301
+
+# Collection feeds, by slug. Collections are the only root-level sections that
+# emit Atom, so any other slug 404s here exactly as it did on the live site.
+/:slug/feed              /:slug/index.xml  301
