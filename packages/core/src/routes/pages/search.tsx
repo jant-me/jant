@@ -4,11 +4,12 @@
 
 import { Hono } from "hono";
 import type { Context } from "hono";
-import type { Bindings, SearchResult } from "../../types.js";
+import type { Bindings, SearchPageError, SearchResult } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { SearchPage } from "../../ui/pages/SearchPage.js";
 import { getNavigationData } from "../../lib/navigation.js";
 import { buildPageTitle } from "../../lib/page-title.js";
+import { checkRequestRateLimit } from "../../lib/rate-limit.js";
 import { renderPublicPage } from "../../lib/render.js";
 import { createMediaContext, toSearchResultViews } from "../../lib/view.js";
 import {
@@ -36,11 +37,27 @@ export async function renderSearchPage(c: Context<Env>): Promise<Response> {
 
   // Only search if there's a query
   let results: SearchResult[] = [];
-  let error: string | undefined;
+  let error: SearchPageError | undefined;
   let hasMore = false;
   const pageSize = c.var.appConfig.searchPageSize;
 
-  if (query.trim()) {
+  // This page is the only search a signed-out reader has, so the per-client
+  // search limit applies here. The signed-in author isn't metered, as on the
+  // search API and MCP.
+  const rateLimit =
+    query.trim() && !c.var.isAuthenticated
+      ? await checkRequestRateLimit(c, {
+          name: "search",
+          limit: c.var.appConfig.rateLimit.searchPerMinute,
+          windowSec: 60,
+        })
+      : null;
+
+  if (rateLimit && !rateLimit.ok) {
+    error = "rate-limited";
+    c.status(429);
+    c.header("Retry-After", String(rateLimit.retryAfterSec));
+  } else if (query.trim()) {
     try {
       // Fetch one extra to check for more. Private posts match for the
       // signed-in author only, as on the archive and collection pages.
@@ -59,7 +76,7 @@ export async function renderSearchPage(c: Context<Env>): Promise<Response> {
     } catch (err) {
       // eslint-disable-next-line no-console -- Error logging is intentional
       console.error("Search error:", err);
-      error = "Search failed. Please try again.";
+      error = "failed";
     }
   }
 

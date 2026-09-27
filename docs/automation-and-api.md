@@ -45,7 +45,7 @@ Send the header:
 Authorization: Bearer jnt_...
 ```
 
-A few public read endpoints don't need a token by default: `GET /api/collections`, `GET /api/collections/:id`, `GET /api/nav-items`, `GET /api/search`, `GET /api/public/threads`, `GET /api/public/threads/:slug`, `GET /api/public/threads/:slug/posts`, `GET /api/public/posts/:slug`, and the deprecated `GET /api/public/posts` and `GET /api/public/archive`. When `PUBLIC_API_ENABLED=false`, `/api/public/*` returns `404` to every caller; Collection, navigation, and search JSON reads require a browser session or Bearer token. Public HTML pages, including `/search`, remain available.
+A few public read endpoints don't need a token by default: `GET /api/collections`, `GET /api/collections/:id`, `GET /api/nav-items`, `GET /api/public/threads`, `GET /api/public/threads/:slug`, `GET /api/public/threads/:slug/posts`, `GET /api/public/posts/:slug`, and the deprecated `GET /api/public/posts` and `GET /api/public/archive`. When `PUBLIC_API_ENABLED=false`, `/api/public/*` returns `404` to every caller; Collection and navigation JSON reads require a browser session or Bearer token. Public HTML pages, including `/search`, remain available.
 
 ### Common endpoints
 
@@ -62,7 +62,7 @@ A few public read endpoints don't need a token by default: `GET /api/collections
 | `/api/collections`       | GET / POST / PUT / DELETE   | Collections (GET needs no token)                                                                       |
 | `/api/smart-collections` | GET / POST / PUT / DELETE   | Smart collections — collections whose members come from conditions (token required, including reads)   |
 | `/api/settings`          | GET / PUT                   | Site settings                                                                                          |
-| `/api/search`            | GET                         | Full-text search of published posts, private ones excluded (public, IP-rate-limited)                   |
+| `/api/search`            | GET                         | Full-text search of published posts, private ones included                                             |
 | `/api/mcp`               | POST                        | MCP JSON-RPC (`initialize` / `tools/list`, etc.)                                                       |
 
 `/api/upload` and `/api/uploads` differ by a single `s` but mean different things — the first is a one-shot single-file multipart upload, the second is a three-step init/part/complete session. Default to `/api/upload`; reach for `/api/uploads` only when files are large or the connection is unreliable.
@@ -125,7 +125,7 @@ Every failure under `/api` returns JSON with a fixed shape:
 
 ### Rate limiting
 
-Today only `/api/search` enforces a per-IP per-minute limit (controlled by the deployment's `appConfig.rateLimit.searchPerMinute`; for the default see [Configuration](configuration.md)). Other endpoints have no hard rate limit, but a single Cloudflare Workers instance has limited concurrency — for bulk writes, keep calls sequential and add a small gap between writes when needed. If more rate limits are introduced later, they'll return `429` with `Retry-After`, and this section will be updated.
+The API has no hard rate limit. The search limit, `RATE_LIMIT_SEARCH_PER_MIN` in [Configuration](configuration.md), applies to signed-out readers on the `/search` page, not to `/api/search`. A single Cloudflare Workers instance has limited concurrency, though — for bulk writes, keep calls sequential and add a small gap between writes when needed. If rate limits are added to the API later, they'll return `429` with `Retry-After`, and this section will be updated.
 
 ## MCP interface
 

@@ -1041,8 +1041,9 @@ const mcpTools: McpToolDefinition[] = [
     },
     async execute(args, context) {
       const input = SearchPostsToolSchema.parse(args ?? {});
-      // MCP is the author's tool, so private posts match. Each result says
-      // which visibility it has, so an agent can tell before linking one.
+      // The author's search, the same as `GET /api/search`: private posts
+      // match, and each result says which visibility it has, so an agent can
+      // tell before linking one.
       const results = await context.services.search.search(input.query, {
         limit: input.limit,
         status: ["published"],
@@ -1052,14 +1053,13 @@ const mcpTools: McpToolDefinition[] = [
       return {
         count: results.length,
         query: input.query,
-        results: results.map((result) => ({
-          ...toSearchApiResult(
+        results: results.map((result) =>
+          toSearchApiResult(
             result.post,
             result.snippet,
             context.appConfig.sitePathPrefix,
           ),
-          visibility: result.post.visibility,
-        })),
+        ),
       };
     },
   },

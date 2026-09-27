@@ -7,8 +7,7 @@ import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { ValidationError, ExternalServiceError } from "../../lib/errors.js";
 import { toSearchApiResult } from "../../lib/api-search.js";
-import { rateLimit } from "../../middleware/rate-limit.js";
-import { requirePublicApiAccess } from "../../middleware/public-content-access.js";
+import { requireAuthApi } from "../../middleware/auth.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -40,19 +39,9 @@ function parseSearchLimit(value: string | undefined): number {
 
 export const searchApiRoutes = new Hono<Env>();
 
-searchApiRoutes.use("*", requirePublicApiAccess());
-
-// Per-IP rate limit. The request-time wrapper is needed because the
-// per-minute cap is pulled from `appConfig` which is only available on
-// `c.var`; constructing the middleware once at module load would capture
-// an undefined value.
-searchApiRoutes.use("*", async (c, next) =>
-  rateLimit({
-    name: "search",
-    limit: c.var.appConfig.rateLimit.searchPerMinute,
-    windowSec: 60,
-  })(c, next),
-);
+// The author's search, like the rest of the author API: readers search on the
+// `/search` page, which is where the per-client search limit applies.
+searchApiRoutes.use("*", requireAuthApi());
 
 // Search posts
 searchApiRoutes.get("/", async (c) => {
@@ -69,13 +58,10 @@ searchApiRoutes.get("/", async (c) => {
   const limit = parseSearchLimit(c.req.query("limit"));
 
   try {
-    // One answer for every caller, as on `/api/public/*`: this endpoint is
-    // documented as public, so a session or token does not widen it. The
-    // author searches private posts on `/search` or through MCP.
     const results = await c.var.services.search.search(query, {
       limit,
       status: ["published"],
-      includePrivate: false,
+      includePrivate: true,
     });
 
     return c.json({

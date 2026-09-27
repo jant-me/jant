@@ -45,7 +45,7 @@ Jant 提供两条通道：
 Authorization: Bearer jnt_...
 ```
 
-少量公开读接口默认不需要 token：`GET /api/collections`、`GET /api/collections/:id`、`GET /api/nav-items`、`GET /api/search`、`GET /api/public/threads`、`GET /api/public/threads/:slug`、`GET /api/public/threads/:slug/posts`、`GET /api/public/posts/:slug`，以及已废弃的 `GET /api/public/posts` 和 `GET /api/public/archive`。如果设置了 `PUBLIC_API_ENABLED=false`，`/api/public/*` 会对所有调用方返回 `404`；合集、导航和搜索的 JSON 读取则需要浏览器 session 或 Bearer token。包括 `/search` 在内的公开 HTML 页面不受影响。
+少量公开读接口默认不需要 token：`GET /api/collections`、`GET /api/collections/:id`、`GET /api/nav-items`、`GET /api/public/threads`、`GET /api/public/threads/:slug`、`GET /api/public/threads/:slug/posts`、`GET /api/public/posts/:slug`，以及已废弃的 `GET /api/public/posts` 和 `GET /api/public/archive`。如果设置了 `PUBLIC_API_ENABLED=false`，`/api/public/*` 会对所有调用方返回 `404`；合集和导航的 JSON 读取则需要浏览器 session 或 Bearer token。包括 `/search` 在内的公开 HTML 页面不受影响。
 
 ### 常用端点
 
@@ -62,7 +62,7 @@ Authorization: Bearer jnt_...
 | `/api/collections`       | GET / POST / PUT / DELETE   | 合集（GET 不需要 token）                                                               |
 | `/api/smart-collections` | GET / POST / PUT / DELETE   | 智能合集——成员由条件决定的合集（读写都需要 token）                                     |
 | `/api/settings`          | GET / PUT                   | 站点设置                                                                               |
-| `/api/search`            | GET                         | 全文搜索已发布的帖子，不含私密帖子（公开，按 IP 限速）                                 |
+| `/api/search`            | GET                         | 全文搜索已发布的帖子，含私密帖子                                                       |
 | `/api/mcp`               | POST                        | MCP JSON-RPC（`initialize` / `tools/list` 等）                                         |
 
 `/api/upload` 与 `/api/uploads` 只差一个 s，但语义完全不同——前者是单文件 multipart 一次完成，后者是 init/part/complete 三步分片会话。脚本首选 `/api/upload`，遇到大文件或不稳定连接再换 `/api/uploads`。
@@ -125,7 +125,7 @@ curl -X PUT "$JANT_URL/api/settings" \
 
 ### 速率限制
 
-目前只有 `/api/search` 设了按 IP 的每分钟上限（值由部署侧 `appConfig.rateLimit.searchPerMinute` 控制，默认值见 [配置](configuration.md)）。其他接口暂未做硬性限速，但 Cloudflare Workers 单实例并发有限——批量写入按顺序调用，必要时在两次写之间留一点间隔。以后如果加了更多限速，会通过 `429` 加 `Retry-After` 返回，本节同步更新。
+API 没有硬性限速。搜索限速（[配置](configuration.md)里的 `RATE_LIMIT_SEARCH_PER_MIN`）只作用于未登录读者访问的 `/search` 页面，不作用于 `/api/search`。不过 Cloudflare Workers 单实例并发有限——批量写入按顺序调用，必要时在两次写之间留一点间隔。以后如果给 API 加了限速，会通过 `429` 加 `Retry-After` 返回，本节同步更新。
 
 ## MCP 接口
 

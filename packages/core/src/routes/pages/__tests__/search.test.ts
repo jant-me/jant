@@ -124,4 +124,65 @@ describe("Search Page Routes", () => {
     expect(html).toContain("<mark>marker</mark>");
     expect(html).toContain("Root Search Collection");
   });
+
+  describe("rate limit", () => {
+    // The test app uses the default limit of 30 searches per minute.
+    const headers = { "cf-connecting-ip": "203.0.113.9" };
+
+    it("answers a signed-out reader's 31st search in a minute with 429", async () => {
+      const { app } = createTestApp({ authenticated: false, fts: true });
+      app.route("/search", searchRoutes);
+
+      for (let i = 0; i < 30; i++) {
+        const res = await app.request("/search?q=lanterns", { headers });
+        expect(res.status).toBe(200);
+      }
+      const limited = await app.request("/search?q=lanterns", { headers });
+
+      expect(limited.status).toBe(429);
+      expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
+      const html = await limited.text();
+      expect(html).toContain("Too many searches. Wait a minute and try again.");
+      expect(html).not.toContain("No results");
+    });
+
+    it("doesn't count a visit without a query", async () => {
+      const { app } = createTestApp({ authenticated: false, fts: true });
+      app.route("/search", searchRoutes);
+
+      for (let i = 0; i < 40; i++) {
+        expect((await app.request("/search", { headers })).status).toBe(200);
+      }
+      expect(
+        (await app.request("/search?q=lanterns", { headers })).status,
+      ).toBe(200);
+    });
+
+    it("doesn't limit the signed-in author", async () => {
+      const { app } = createTestApp({ authenticated: true, fts: true });
+      app.route("/search", searchRoutes);
+
+      for (let i = 0; i < 40; i++) {
+        const res = await app.request("/search?q=lanterns", { headers });
+        expect(res.status).toBe(200);
+      }
+    });
+
+    it("doesn't limit anyone when rate limiting is off", async () => {
+      const { app } = createTestApp({ authenticated: false, fts: true });
+      app.use("/search", async (c, next) => {
+        c.set("appConfig", {
+          ...c.var.appConfig,
+          rateLimit: { ...c.var.appConfig.rateLimit, disabled: true },
+        });
+        await next();
+      });
+      app.route("/search", searchRoutes);
+
+      for (let i = 0; i < 40; i++) {
+        const res = await app.request("/search?q=lanterns", { headers });
+        expect(res.status).toBe(200);
+      }
+    });
+  });
 });

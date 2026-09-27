@@ -138,9 +138,9 @@ third-party directory needs to honour.
 | `PUBLIC_API_ENABLED` | `true`  | Allows published content to be read without a session or token |
 
 When disabled, `/api/public/*` returns `404` to every caller; authenticated
-clients can use `/api/posts` instead. Collection, navigation, and search JSON
-reads return `401` to anonymous requests but remain available to browser
-sessions and Bearer API tokens. Public HTML pages, including `/search`, are
+clients can use `/api/posts` instead. Collection and navigation JSON reads
+return `401` to anonymous requests but remain available to browser sessions and
+Bearer API tokens. Public HTML pages, including `/search`, are
 unchanged.
 
 ### Cross-origin API access (optional)
@@ -156,12 +156,13 @@ token wherever the API asks for one.
 
 ### Search rate limit (optional)
 
-| Variable                    | Default | Description                                    |
-| --------------------------- | ------- | ---------------------------------------------- |
-| `RATE_LIMIT_SEARCH_PER_MIN` | `30`    | Search requests one client can make per minute |
-| `RATE_LIMIT_DISABLED`       | `false` | Set to `true` to turn the limit off            |
+| Variable                    | Default | Description                                      |
+| --------------------------- | ------- | ------------------------------------------------ |
+| `RATE_LIMIT_SEARCH_PER_MIN` | `30`    | Searches a signed-out reader can make per minute |
+| `RATE_LIMIT_DISABLED`       | `false` | Set to `true` to turn the limit off              |
 
-A client over the limit gets `429` with a `Retry-After` header.
+The limit applies to the `/search` page; the signed-in author and `/api/search`
+aren't limited. A reader over the limit gets `429` with a `Retry-After` header.
 
 ### Pagination (optional)
 

@@ -8,6 +8,8 @@ export type SearchApiResult = {
   snippet?: string;
   publishedAt: number | null;
   permalink: string;
+  /** The Thread's visibility: private results reach the author only. */
+  visibility: Post["visibility"];
   title?: string | null;
   url?: string | null;
   sourceName?: string | null;
@@ -29,6 +31,7 @@ export function toSearchApiResult(
       snippet,
       publishedAt: post.publishedAt,
       permalink,
+      visibility: post.visibility,
       sourceName: post.title,
       sourceUrl: post.url,
     };
@@ -43,5 +46,6 @@ export function toSearchApiResult(
     snippet,
     publishedAt: post.publishedAt,
     permalink,
+    visibility: post.visibility,
   };
 }

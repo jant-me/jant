@@ -10,6 +10,13 @@
  */
 
 import type { Context } from "hono";
+import type { Bindings } from "../types.js";
+import type { AppVariables } from "../types/app-context.js";
+
+type RateLimitContext = Context<{
+  Bindings: Bindings;
+  Variables: AppVariables;
+}>;
 
 export interface RateLimitCheckOptions {
   /** Max requests allowed within `windowSec`. */
@@ -60,4 +67,55 @@ export function getClientIp(c: Context): string {
     if (first) return first;
   }
   return "unknown";
+}
+
+/** A per-client limit on one surface. */
+export interface RequestRateLimitOptions extends RateLimitCheckOptions {
+  /**
+   * Storage-key prefix scoping this limit (e.g. "search"). Keeps counters for
+   * different surfaces independent when they share a storage backend.
+   */
+  name: string;
+}
+
+/** Whether a request is under its limit, and how long to wait when it isn't. */
+export type RequestRateLimitResult =
+  { ok: true } | { ok: false; retryAfterSec: number };
+
+/**
+ * Counts this request against its client's bucket and reports whether it is
+ * under the limit.
+ *
+ * Buckets are per client IP (see {@link getClientIp}) and scoped by `name`.
+ * When `appConfig.rateLimit.disabled` is set, nothing is counted and every
+ * request passes, so test and dev environments don't have to reason about
+ * bucket state. The caller decides what an over-limit response looks like:
+ * a page and an API answer differently.
+ *
+ * @param c - Hono context; reads `c.var.rateLimiter` and `c.var.appConfig`
+ * @param opts - Bucket name, limit, and window
+ * @returns `ok: false` with the seconds to wait when the client is over the limit
+ *
+ * @example
+ * ```ts
+ * const limit = await checkRequestRateLimit(c, {
+ *   name: "search",
+ *   limit: 30,
+ *   windowSec: 60,
+ * });
+ * if (!limit.ok) c.header("Retry-After", String(limit.retryAfterSec));
+ * ```
+ */
+export async function checkRequestRateLimit(
+  c: RateLimitContext,
+  opts: RequestRateLimitOptions,
+): Promise<RequestRateLimitResult> {
+  if (c.var.appConfig.rateLimit.disabled) return { ok: true };
+
+  const result = await c.var.rateLimiter.check(
+    `${opts.name}:${getClientIp(c)}`,
+    { limit: opts.limit, windowSec: opts.windowSec },
+  );
+  if (result.ok) return { ok: true };
+  return { ok: false, retryAfterSec: result.retryAfterSec ?? opts.windowSec };
 }

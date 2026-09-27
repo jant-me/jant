@@ -5,14 +5,12 @@ import { navItemsApiRoutes } from "../nav-items.js";
 import { publicArchiveApiRoutes } from "../public/archive.js";
 import { publicPostsApiRoutes } from "../public/posts.js";
 import { publicThreadsApiRoutes } from "../public/threads.js";
-import { searchApiRoutes } from "../search.js";
 
 function mountPublicReadRoutes(authenticated = false) {
   const testApp = createTestApp({ authenticated, fts: true });
   testApp.app.route("/api/public/posts", publicPostsApiRoutes);
   testApp.app.route("/api/public/archive", publicArchiveApiRoutes);
   testApp.app.route("/api/public/threads", publicThreadsApiRoutes);
-  testApp.app.route("/api/search", searchApiRoutes);
   testApp.app.route("/api/collections", collectionsApiRoutes);
   testApp.app.route("/api/nav-items", navItemsApiRoutes);
   return testApp;
@@ -56,7 +54,6 @@ describe("public API access setting", () => {
   });
 
   it.each([
-    "/api/search",
     "/api/collections",
     "/api/collections/not-a-typeid",
     "/api/nav-items",
@@ -72,7 +69,7 @@ describe("public API access setting", () => {
     },
   );
 
-  it.each(["/api/search?q=missing", "/api/collections", "/api/nav-items"])(
+  it.each(["/api/collections", "/api/nav-items"])(
     "preserves authenticated access to shared read endpoint %s",
     async (path) => {
       const { app, services } = mountPublicReadRoutes(true);

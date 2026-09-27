@@ -119,7 +119,7 @@ feed 里声明了什么、第三方目录需要遵守什么，见 [Feed](feeds.m
 | `PUBLIC_API_ENABLED` | `true` | 是否允许无 session 或 token 读取公开 JSON |
 
 关闭后，`/api/public/*` 会对所有调用方返回 `404`；已认证客户端可以改用
-`/api/posts`。匿名请求 Collection、导航和搜索 JSON 接口会收到 `401`，浏览器
+`/api/posts`。匿名请求 Collection 和导航 JSON 接口会收到 `401`，浏览器
 session 和 Bearer API token 仍可使用这些接口。包括 `/search` 在内的公开 HTML
 页面不受影响。
 
@@ -134,12 +134,13 @@ session 和 Bearer API token 仍可使用这些接口。包括 `/search` 在内�
 
 ### 搜索频率限制（可选）
 
-| 变量                        | 默认值  | 说明                         |
-| --------------------------- | ------- | ---------------------------- |
-| `RATE_LIMIT_SEARCH_PER_MIN` | `30`    | 同一客户端每分钟的搜索请求数 |
-| `RATE_LIMIT_DISABLED`       | `false` | 设为 `true` 关闭限制         |
+| 变量                        | 默认值  | 说明                       |
+| --------------------------- | ------- | -------------------------- |
+| `RATE_LIMIT_SEARCH_PER_MIN` | `30`    | 未登录读者每分钟的搜索次数 |
+| `RATE_LIMIT_DISABLED`       | `false` | 设为 `true` 关闭限制       |
 
-超过限制的客户端收到 `429`，附带 `Retry-After` 头。
+限制作用于 `/search` 页面；已登录的作者和 `/api/search` 不受限制。超过限制的读者
+收到 `429`，附带 `Retry-After` 头。
 
 ### 分页（可选）
 

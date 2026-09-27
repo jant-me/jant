@@ -2149,6 +2149,11 @@ msgctxt "nav"
 msgid "Search"
 msgstr "Search"
 
+#. @context: Search page error when the search fails
+#: src/ui/pages/SearchPage.tsx
+msgid "Search failed. Try again in a moment."
+msgstr "Search failed. Try again in a moment."
+
 #. @context: Search input placeholder
 #: src/ui/pages/SearchPage.tsx
 msgid "Search posts..."
@@ -2662,6 +2667,11 @@ msgstr "to make sure both still feel like they belong to the same product."
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Toggle header row"
 msgstr "Toggle header row"
+
+#. @context: Search page error when a signed-out reader searches too often
+#: src/ui/pages/SearchPage.tsx
+msgid "Too many searches. Wait a minute and try again."
+msgstr "Too many searches. Wait a minute and try again."
 
 #. @context: Divider between the original post and the editor writing its translation, when the target language is not known yet
 #: src/ui/compose/ComposeDialog.tsx

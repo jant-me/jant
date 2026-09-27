@@ -135,10 +135,16 @@ export interface ArchivePageProps {
 }
 
 /** Props for the search page component */
+/**
+ * Why a search page shows no results for its query: the search itself failed,
+ * or a signed-out reader went over the per-client search limit.
+ */
+export type SearchPageError = "failed" | "rate-limited";
+
 export interface SearchPageProps {
   query: string;
   results: SearchResultView[];
-  error?: string;
+  error?: SearchPageError;
   hasMore: boolean;
   page: number;
   /** Public path this page's own URLs are built from. See `ArchivePageProps`. */

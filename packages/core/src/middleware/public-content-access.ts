@@ -45,7 +45,7 @@ export function requirePublicApiEnabled(): MiddlewareHandler<Env> {
  * @returns Hono middleware that preserves session and Bearer-token access
  * @example
  * ```ts
- * app.get("/api/search", requirePublicApiAccess(), searchHandler);
+ * app.get("/api/nav-items", requirePublicApiAccess(), navItemsHandler);
  * ```
  */
 export function requirePublicApiAccess(): MiddlewareHandler<Env> {

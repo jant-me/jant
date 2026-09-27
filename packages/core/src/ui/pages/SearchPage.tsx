@@ -263,7 +263,23 @@ export const SearchPage: FC<SearchPageProps> = ({
       {/* Error */}
       {error && (
         <div class="alert-destructive mb-6">
-          <h2>{error}</h2>
+          <h2>
+            {error === "rate-limited"
+              ? i18n._(
+                  msg({
+                    message: "Too many searches. Wait a minute and try again.",
+                    comment:
+                      "@context: Search page error when a signed-out reader searches too often",
+                  }),
+                )
+              : i18n._(
+                  msg({
+                    message: "Search failed. Try again in a moment.",
+                    comment:
+                      "@context: Search page error when the search fails",
+                  }),
+                )}
+          </h2>
         </div>
       )}
 

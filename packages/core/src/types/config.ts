@@ -842,9 +842,12 @@ export interface AppConfig {
 
   // Rate limiting (ENV only)
   rateLimit: {
-    /** When true, all rate-limit middleware becomes a no-op. */
+    /** When true, every rate-limit check passes without counting. */
     disabled: boolean;
-    /** Per-IP cap for `/api/search` requests per 60-second window. */
+    /**
+     * Per-IP cap on searches by signed-out readers on the `/search` page, per
+     * 60-second window.
+     */
     searchPerMinute: number;
   };
 

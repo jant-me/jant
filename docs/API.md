@@ -15,30 +15,29 @@ For static export and round-trip import, also see [Export and Import](export-and
 
 ## API Surface
 
-| Area                    | Base path             | Auth                    |
-| ----------------------- | --------------------- | ----------------------- |
-| Public posts            | `/api/public/posts`   | Public when enabled     |
-| Public Threads          | `/api/public/threads` | Public when enabled     |
-| Public archive          | `/api/public/archive` | Public when enabled     |
-| Posts                   | `/api/posts`          | API token or session    |
-| Threads                 | `/api/threads`        | API token or session    |
-| Upload sessions         | `/api/uploads`        | API token or session    |
-| One-shot upload         | `/api/upload`         | API token or session    |
-| Text attachment content | `/api/attachments`    | API token or session    |
-| MCP                     | `/api/mcp`            | API token or session    |
-| Collections             | `/api/collections`    | Mixed                   |
-| Navigation items        | `/api/nav-items`      | Mixed                   |
-| Custom URLs             | `/api/custom-urls`    | API token or session    |
-| Settings                | `/api/settings`       | API token or session    |
-| Search                  | `/api/search`         | Public or authenticated |
-| Export                  | `/api/export`         | API token or session    |
-| Internal admin          | `/api/internal/*`     | Internal admin token    |
+| Area                    | Base path             | Auth                 |
+| ----------------------- | --------------------- | -------------------- |
+| Public posts            | `/api/public/posts`   | Public when enabled  |
+| Public Threads          | `/api/public/threads` | Public when enabled  |
+| Public archive          | `/api/public/archive` | Public when enabled  |
+| Posts                   | `/api/posts`          | API token or session |
+| Threads                 | `/api/threads`        | API token or session |
+| Upload sessions         | `/api/uploads`        | API token or session |
+| One-shot upload         | `/api/upload`         | API token or session |
+| Text attachment content | `/api/attachments`    | API token or session |
+| MCP                     | `/api/mcp`            | API token or session |
+| Collections             | `/api/collections`    | Mixed                |
+| Navigation items        | `/api/nav-items`      | Mixed                |
+| Custom URLs             | `/api/custom-urls`    | API token or session |
+| Settings                | `/api/settings`       | API token or session |
+| Search                  | `/api/search`         | API token or session |
+| Export                  | `/api/export`         | API token or session |
+| Internal admin          | `/api/internal/*`     | Internal admin token |
 
 Auth labels in this document:
 
 - `Public`: no auth required
 - `Public when enabled`: public by default; returns `404` to every caller when `PUBLIC_API_ENABLED=false`
-- `Public or authenticated`: public by default; requires a session or token when `PUBLIC_API_ENABLED=false`
 - `Session or token`: browser session cookie or `Authorization: Bearer <token>`
 - `Internal admin token`: `Authorization: Bearer <INTERNAL_ADMIN_TOKEN>`
 
@@ -130,7 +129,7 @@ Current tool groups:
 
 Tool calls return normal MCP `result` envelopes. Successful tool calls include both `structuredContent` and a JSON string copy in `content[0].text`. Tool-level validation and domain failures return `200 OK` with `isError: true`.
 
-`jant_search_posts` returns the result objects `GET /api/search` does, plus `visibility`, and includes private posts.
+`jant_search_posts` searches as `GET /api/search` does and returns the same result objects.
 
 `jant_posts_list`, `jant_threads_list`, and `jant_threads_list_posts` take `cursor` and return `nextCursor` as `GET /api/posts`, `GET /api/threads`, and `GET /api/threads/:id/posts` do; see [Pagination](#pagination). `jant_threads_list` takes the same filters as `GET /api/threads`, and `fold: true` in place of `include=fold`.
 
@@ -2615,13 +2614,13 @@ Response:
 
 Base path: `/api/search`
 
-Search is public and answers every caller the same way: published posts, leaving out private posts and replies in a private Thread. A session or token doesn't change that. To search private posts, use `/search` while signed in, or the `jant_search_posts` MCP tool.
+Search is the author's: it covers every published post, including private posts and replies in a private Thread. Readers search on the `/search` page, which leaves private posts out for anyone signed out.
 
 ### Search posts
 
 `GET /api/search`
 
-Auth: `Public`
+Auth: `Session or token`
 
 Query parameters:
 
@@ -2632,18 +2631,19 @@ Query parameters:
 
 Result objects include these fields:
 
-| Field         | Type                        | Notes                                             |
-| ------------- | --------------------------- | ------------------------------------------------- |
-| `id`          | `pst_*` string              | Post ID                                           |
-| `format`      | `note` \| `link` \| `quote` | Post format                                       |
-| `slug`        | string                      | Canonical slug                                    |
-| `snippet`     | string \| omitted           | Search snippet; may contain `<mark>` tags         |
-| `publishedAt` | integer \| `null`           | Publish timestamp                                 |
-| `permalink`   | string                      | Public path, including any configured site prefix |
-| `title`       | string \| `null`            | Present for `note` and `link` results             |
-| `url`         | string \| `null`            | Present for `note` and `link` results             |
-| `sourceName`  | string \| `null`            | Present instead of `title` for `quote` results    |
-| `sourceUrl`   | string \| `null`            | Present instead of `url` for `quote` results      |
+| Field         | Type                                     | Notes                                                 |
+| ------------- | ---------------------------------------- | ----------------------------------------------------- |
+| `id`          | `pst_*` string                           | Post ID                                               |
+| `format`      | `note` \| `link` \| `quote`              | Post format                                           |
+| `slug`        | string                                   | Canonical slug                                        |
+| `snippet`     | string \| omitted                        | Search snippet; may contain `<mark>` tags             |
+| `publishedAt` | integer \| `null`                        | Publish timestamp                                     |
+| `permalink`   | string                                   | Public path, including any configured site prefix     |
+| `visibility`  | `public` \| `latest_hidden` \| `private` | Resolved visibility, inherited from the Thread's root |
+| `title`       | string \| `null`                         | Present for `note` and `link` results                 |
+| `url`         | string \| `null`                         | Present for `note` and `link` results                 |
+| `sourceName`  | string \| `null`                         | Present instead of `title` for `quote` results        |
+| `sourceUrl`   | string \| `null`                         | Present instead of `url` for `quote` results          |
 
 Response:
 
@@ -2659,6 +2659,7 @@ Response:
       "snippet": "...matched <mark>hello</mark> text...",
       "publishedAt": 1706000000,
       "permalink": "/hello-world",
+      "visibility": "public",
       "url": null
     }
   ],
@@ -2671,7 +2672,8 @@ Notes:
 - `snippet` may contain `<mark>` tags.
 - All search results include `permalink`.
 - Quote results use `sourceName` and `sourceUrl` instead of `title` and `url`.
-- Search never returns private posts or replies in a private Thread.
+- Search covers published posts only. Drafts don't match.
+- Search isn't rate-limited. The per-client limit, `RATE_LIMIT_SEARCH_PER_MIN`, applies to signed-out readers on the `/search` page.
 
 ---
 
