@@ -1,5 +1,19 @@
 # @jant/core
 
+## 0.8.1
+
+### Patch Changes
+
+- [`91e1503`](https://github.com/jant-me/jant/commit/91e1503f57f34d2d776b7cd65e9b3e6a65cdfd8a) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Paging through `GET /api/public/posts` with `collection` no longer depends on the Thread a cursor was taken on. `nextCursor` now records the position itself, as it does without `collection`. If that Thread is deleted, unpublished, or taken out of the collection between requests, the walk continues; it used to end on an empty page. A `cursor` the request can't resume from returns `400` instead of an empty page: one that can't be read, one from a list in a different order, or the ID of a post that isn't in the collection or that the caller can't see. `nextCursor` is `null` on the last page instead of leading to an empty one.
+
+  `nextCursor` is a different string now. Clients that pass it back unchanged, as the API reference says, need no change, and a Thread root's ID is still accepted as `cursor`. Under the [compatibility promise](https://jant.me/docs/compatibility) this is a bug fix: the documented contract, pass `nextCursor` back for the next page, is unchanged, and each behavior that changed broke it.
+
+- [`91e1503`](https://github.com/jant-me/jant/commit/91e1503f57f34d2d776b7cd65e9b3e6a65cdfd8a) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Paging through `GET /api/posts`, `GET /api/public/posts` without `collection`, `GET /api/public/archive`, and the `jant_posts_list` MCP tool no longer depends on the post a cursor was taken on. `nextCursor` now records the position itself. If that post is deleted between requests, the walk continues; it used to end on an empty page. If its publish date is edited, the next page starts where the last one ended; it used to start from the post's new place, skipping or repeating posts. Passing a private post's or a draft's ID as `cursor` on a public endpoint returns `400`, as an unknown ID does, where it used to reveal whether the post existed and roughly when it was published. A cursor that can't be read, or that comes from a list in a different order, also returns `400`, and `nextCursor` is `null` on the last page instead of leading to an empty one.
+
+  `nextCursor` is a different string now. Clients that pass it back unchanged, as the API reference says, need no change, and a post ID is still accepted as `cursor`. Under the [compatibility promise](https://jant.me/docs/compatibility) this is a bug fix: the documented contract, pass `nextCursor` back for the next page, is unchanged, and each behavior that changed broke it.
+
+- [`b68684a`](https://github.com/jant-me/jant/commit/b68684a4482ac5deee72e9b0b1edf6adf1469e1a) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `GET /api/public/archive` orders posts by publication date, newest first, as documented and as the `/archive` page does by default. It sorted by latest thread activity, so a new reply moved an old thread to the top. Cursor pagination follows the same order.
+
 ## 0.8.0
 
 ### Minor Changes
