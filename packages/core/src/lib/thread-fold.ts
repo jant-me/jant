@@ -3,15 +3,17 @@
  *
  * How much of a thread the timeline shows, and how much it folds away.
  *
- * A thread appears in two places that cannot select its posts the same way.
- * The site paints a page of timeline items and must not load whole threads to
- * do it, so `getThreadTimelineContext` ranks replies in SQL and hands the
- * buckets down. The feed already holds every reply — `<content>` carries the
- * whole chain — so it slices the array it has. Two access paths, one rule.
+ * A thread is folded in three places that cannot all select its posts the same
+ * way. The site paints a page of timeline items and must not load whole
+ * threads to do it, so `getThreadTimelineContext` ranks replies in SQL and
+ * hands the windows down; the Threads API's `include=fold` reads the same
+ * windows. The feed already holds every reply — `<content>` carries the whole
+ * chain — so it slices the array it has. Two access paths, one rule.
  *
- * This module owns what they share: the thresholds, and the arithmetic that
- * turns a selection into a hidden count. Whoever changes the shape of the fold
- * changes it here, and both surfaces move together.
+ * This module owns what they share: the thresholds, how overlapping windows
+ * become the replies shown ({@link foldReplyWindows}), and the arithmetic that
+ * turns them into a hidden count. Whoever changes the shape of the fold changes
+ * it here, and every surface moves together.
  *
  * ## The fold
  *
@@ -102,6 +104,73 @@ export interface ThreadFold<T> {
 }
 
 /**
+ * Fold a thread from its ranked windows: the replies each end of the fold
+ * keeps, before any overlap between them is removed.
+ *
+ * Both access paths arrive here. The feed slices the windows out of the whole
+ * chain; the site and the API rank them in SQL (`getThreadTimelineContext`),
+ * which hands them over overlapping on purpose. A short thread's windows
+ * overlap, and the hero is inside both of them on the shortest ones: with a
+ * single reply, that reply is the newest *and* the whole leading window. Each
+ * list therefore drops whatever an earlier one already shows, hero first.
+ *
+ * @param buckets.leadingReplies - The first `THREAD_LEADING_REPLIES` replies
+ * @param buckets.trailingReplies - The replies just before the newest, oldest
+ *   first
+ * @param buckets.latestReply - The newest reply
+ * @param buckets.nextReply - The reply right after the leading window, the
+ *   only candidate for the gap; `null` when the thread has no such reply
+ * @param buckets.totalReplyCount - Every published reply in the thread
+ * @returns The fold
+ * @example
+ * foldReplyWindows({ leadingReplies: [r1, r2], trailingReplies: [r6, r7],
+ *   latestReply: r8, nextReply: r3, totalReplyCount: 8 });
+ * // leading [r1, r2], trailing [r6, r7], latest r8, firstHidden r3, hidden 3
+ */
+export function foldReplyWindows<T extends Identified>({
+  leadingReplies: leadingWindow,
+  trailingReplies: trailingWindow,
+  latestReply,
+  nextReply,
+  totalReplyCount,
+}: {
+  leadingReplies: T[];
+  trailingReplies: T[];
+  latestReply: T;
+  nextReply: T | null;
+  totalReplyCount: number;
+}): ThreadFold<T> {
+  const shown = new Set([latestReply.id]);
+  const keepUnshown = (replies: T[]) =>
+    replies.filter((reply) => {
+      if (shown.has(reply.id)) return false;
+      shown.add(reply.id);
+      return true;
+    });
+  const leadingReplies = keepUnshown(leadingWindow);
+  const trailingReplies = keepUnshown(trailingWindow);
+  const hiddenCount = getThreadHiddenCount({
+    leadingReplies,
+    trailingReplies,
+    latestReply,
+    totalReplyCount,
+  });
+
+  return {
+    leadingReplies,
+    trailingReplies,
+    latestReply,
+    // The reply after the leading window is hidden exactly when anything is:
+    // the trailing window starts at or before it otherwise.
+    firstHiddenReply:
+      hiddenCount > 0 && nextReply && !shown.has(nextReply.id)
+        ? nextReply
+        : null,
+    hiddenCount,
+  };
+}
+
+/**
  * Fold a thread whose replies are already in hand.
  *
  * Takes the same slices the SQL path ranks for: the first
@@ -122,40 +191,13 @@ export function foldThreadReplies<T extends Identified>(
   const latestReply = replies.at(-1);
   if (!latestReply) return null;
 
-  // A short thread's windows overlap, and the hero is inside both of them on
-  // the shortest ones: with a single reply, that reply is the newest *and* the
-  // whole leading window. Each list therefore drops whatever an earlier one
-  // already shows, hero first — the same order `ThreadPreview` dedupes in when
-  // it walks the buckets the SQL path hands it.
-  const leadingReplies = replies
-    .slice(0, THREAD_LEADING_REPLIES)
-    .filter((reply) => reply.id !== latestReply.id);
-
-  const leadingIds = new Set(leadingReplies.map((reply) => reply.id));
-  const trailingReplies = replies
-    .slice(-THREAD_TRAILING_REPLIES, -1)
-    .filter(
-      (reply) => reply.id !== latestReply.id && !leadingIds.has(reply.id),
-    );
-
-  const shown = new Set([
-    ...leadingIds,
-    ...trailingReplies.map((reply) => reply.id),
-    latestReply.id,
-  ]);
-
-  return {
-    leadingReplies,
-    trailingReplies,
+  return foldReplyWindows({
+    leadingReplies: replies.slice(0, THREAD_LEADING_REPLIES),
+    trailingReplies: replies.slice(-THREAD_TRAILING_REPLIES, -1),
     latestReply,
     // In thread order, so the gap link lands on the earliest post it stands
     // for rather than somewhere in the middle of the run it hides.
-    firstHiddenReply: replies.find((reply) => !shown.has(reply.id)) ?? null,
-    hiddenCount: getThreadHiddenCount({
-      leadingReplies,
-      trailingReplies,
-      latestReply,
-      totalReplyCount: replies.length,
-    }),
-  };
+    nextReply: replies[THREAD_LEADING_REPLIES] ?? null,
+    totalReplyCount: replies.length,
+  });
 }

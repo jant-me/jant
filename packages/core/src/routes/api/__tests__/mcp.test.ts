@@ -144,6 +144,9 @@ describe("MCP API Routes", () => {
     );
 
     expect(toolNames).toContain("jant_posts_list");
+    expect(toolNames).toContain("jant_threads_list");
+    expect(toolNames).toContain("jant_threads_get");
+    expect(toolNames).toContain("jant_threads_list_posts");
     expect(toolNames).toContain("jant_collections_add_thread");
     expect(toolNames).toContain("jant_collections_remove_thread");
     expect(toolNames).toContain("jant_settings_update");
@@ -211,6 +214,92 @@ describe("MCP API Routes", () => {
     expect(removeRes.status).toBe(200);
     expect((await removeRes.json()).result.isError).toBe(false);
     expect(await services.collections.getThreadIds(collection.id)).toEqual([]);
+  });
+
+  it("reads Threads through tools/call", async () => {
+    const { app, services } = createTestApp({ authenticated: true });
+    app.route("/api/mcp", mcpApiRoutes);
+
+    const collection = await services.collections.create({
+      slug: "notes",
+      title: "Notes",
+    });
+    const root = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Root",
+      publishedAt: 1000,
+      collectionIds: [collection.id],
+    });
+    const replies = [];
+    let parent = root;
+    for (let i = 1; i <= 7; i++) {
+      parent = await services.posts.create({
+        format: "note",
+        bodyMarkdown: `Reply ${i}`,
+        replyToId: parent.id,
+        publishedAt: 1000 + i,
+        createdAt: 1000 + i,
+      });
+      replies.push(parent);
+    }
+    const other = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Elsewhere",
+      publishedAt: 500,
+    });
+
+    const call = async (name: string, args: Record<string, unknown>) => {
+      const res = await postMcp(
+        app,
+        {
+          jsonrpc: "2.0",
+          id: 40,
+          method: "tools/call",
+          params: { name, arguments: args },
+        },
+        { "MCP-Protocol-Version": "2025-06-18" },
+      );
+      expect(res.status).toBe(200);
+      const { result } = await res.json();
+      expect(result.isError).toBe(false);
+      return result.structuredContent;
+    };
+
+    const all = await call("jant_threads_list", { sort: "published" });
+    expect(all.threads.map((thread: { id: string }) => thread.id)).toEqual([
+      root.id,
+      other.id,
+    ]);
+    expect(all.threads[0].postCount).toBe(8);
+    expect(all.threads[0].fold).toBeUndefined();
+
+    const inCollection = await call("jant_threads_list", {
+      collection: "notes",
+      fold: true,
+    });
+    expect(inCollection.threads).toHaveLength(1);
+    expect(inCollection.threads[0].fold.hidden).toBe(2);
+    expect(inCollection.threads[0].fold.gap).toEqual({
+      id: replies[2]?.id,
+      slug: replies[2]?.slug,
+    });
+
+    const thread = await call("jant_threads_get", { id: replies[4]?.id });
+    expect(thread).toMatchObject({ id: root.id, postCount: 8 });
+
+    const walked: string[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < 10; page++) {
+      const result = await call("jant_threads_list_posts", {
+        id: root.id,
+        limit: 3,
+        ...(cursor ? { cursor } : {}),
+      });
+      walked.push(...result.posts.map((post: { id: string }) => post.id));
+      cursor = result.nextCursor ?? undefined;
+      if (!cursor) break;
+    }
+    expect(walked).toEqual([root.id, ...replies.map((reply) => reply.id)]);
   });
 
   it("pages posts through tools/call with nextCursor", async () => {

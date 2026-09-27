@@ -26,6 +26,7 @@ import {
   type SmartCollectionService,
 } from "./smart-collection.js";
 import { createSearchService, type SearchService } from "./search.js";
+import { createThreadService, type ThreadService } from "./thread.js";
 import { createNavItemService, type NavItemService } from "./navigation.js";
 import { createAuthService, type AuthService } from "./auth.js";
 import { createApiTokenService, type ApiTokenService } from "./api-token.js";
@@ -58,6 +59,7 @@ export interface Services {
   site: SiteService;
   paths: PathService;
   posts: PostService;
+  threads: ThreadService;
   customUrls: CustomUrlService;
   media: MediaService;
   uploads: UploadSessionService;
@@ -135,6 +137,7 @@ export function createServices(
     site,
     paths,
     posts,
+    threads: createThreadService({ posts, collections }),
     customUrls: createCustomUrlService(db, siteId, paths, databaseSchema),
     media,
     uploads: createUploadSessionService(db, siteId, media, databaseSchema),
@@ -193,6 +196,7 @@ export type { SettingsService } from "./settings.js";
 export type { SiteService } from "./site.js";
 export type { PathService } from "./path.js";
 export type { PostService, PostFilters, PostDeleteDeps } from "./post.js";
+export type { ThreadService } from "./thread.js";
 export type { CustomUrlService } from "./custom-url.js";
 export type {
   SmartCollectionService,

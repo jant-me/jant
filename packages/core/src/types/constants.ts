@@ -103,6 +103,31 @@ export type CollectionSortOrder = SortOrder;
 export const SMART_COLLECTION_SORT_ORDERS = COLLECTION_SORT_ORDERS;
 export type SmartCollectionSortOrder = CollectionSortOrder;
 
+/**
+ * How the Threads API orders a list of Threads — each value one the site
+ * already shows somewhere, named for the axis it reads:
+ *
+ * - `activity`: the homepage, and a collection's `newest`. A Thread moves up
+ *   when it gains an announced post.
+ * - `published`: the archive's default. Newest root publication first; a reply
+ *   never moves a Thread, so this is the order to walk a whole site in.
+ * - `updated`: the archive's `?sort=updated`. Like `activity`, but a quiet
+ *   reply counts too.
+ * - `oldest`: a collection's `oldest`. Oldest root publication first.
+ * - `rating`: a collection's `rating_desc`. Highest rating first, then activity.
+ *
+ * Not `SORT_ORDERS`: `newest` means activity on a collection and would read as
+ * publication here.
+ */
+export const THREAD_SORTS = [
+  "activity",
+  "published",
+  "updated",
+  "oldest",
+  "rating",
+] as const;
+export type ThreadSort = (typeof THREAD_SORTS)[number];
+
 export const NAV_ITEM_TYPES = [
   "link",
   "system",

@@ -36,6 +36,7 @@ import { customUrlsRoutes } from "./routes/dash/custom-urls.js";
 
 // Routes - API
 import { postsApiRoutes } from "./routes/api/posts.js";
+import { threadsApiRoutes } from "./routes/api/threads.js";
 import { attachmentsApiRoutes } from "./routes/api/attachments.js";
 import { navItemsApiRoutes } from "./routes/api/nav-items.js";
 import { collectionsApiRoutes } from "./routes/api/collections.js";
@@ -60,6 +61,7 @@ import { internalPostBodyHtmlRoutes } from "./routes/api/internal/post-body-html
 import { internalUploadsRoutes } from "./routes/api/internal/uploads.js";
 import { publicArchiveApiRoutes } from "./routes/api/public/archive.js";
 import { publicPostsApiRoutes } from "./routes/api/public/posts.js";
+import { publicThreadsApiRoutes } from "./routes/api/public/threads.js";
 import { discoverApiRoutes } from "./routes/api/discover.js";
 // Routes - Compose
 import { composeRoutes } from "./routes/compose.js";
@@ -579,9 +581,11 @@ export function createApp(): App {
 
   // API Routes
   app.route("/api/public/posts", publicPostsApiRoutes);
+  app.route("/api/public/threads", publicThreadsApiRoutes);
   app.route("/api/public/archive", publicArchiveApiRoutes);
   app.route("/api/discover", discoverApiRoutes);
   app.route("/api/posts", postsApiRoutes);
+  app.route("/api/threads", threadsApiRoutes);
   app.route("/api/nav-items", navItemsApiRoutes);
   app.route("/api/collections", collectionsApiRoutes);
   app.route("/api/smart-collections", smartCollectionsApiRoutes);

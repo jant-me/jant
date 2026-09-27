@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  foldReplyWindows,
   foldThreadReplies,
   getThreadHiddenCount,
   THREAD_LEADING_REPLIES,
@@ -70,6 +71,48 @@ describe("foldThreadReplies", () => {
 
     expect(shown).toBe(THREAD_LEADING_REPLIES + THREAD_TRAILING_REPLIES);
     expect(fold?.hiddenCount).toBe(50 - shown);
+  });
+});
+
+describe("foldReplyWindows", () => {
+  /**
+   * The windows as `getThreadTimelineContext` ranks them in SQL: overlapping
+   * on a short thread, the trailing window without the hero, and the reply one
+   * past the leading window fetched whether or not it ends up hidden.
+   */
+  const rankedWindows = (count: number) => {
+    const all = replies(count);
+    return {
+      leadingReplies: all.slice(0, THREAD_LEADING_REPLIES),
+      trailingReplies: all.slice(
+        Math.max(0, count - THREAD_TRAILING_REPLIES),
+        count - 1,
+      ),
+      latestReply: all[count - 1] ?? reply(0),
+      nextReply: all[THREAD_LEADING_REPLIES] ?? null,
+      totalReplyCount: count,
+    };
+  };
+
+  // The site and the API fold from ranked windows, the feed from the whole
+  // chain. Both must describe the same thread the same way.
+  it.each([1, 2, 3, 4, 5, 6, 7, 12])(
+    "folds %i replies the way the whole chain does",
+    (count) => {
+      expect(foldReplyWindows(rankedWindows(count))).toEqual(
+        foldThreadReplies(replies(count)),
+      );
+    },
+  );
+
+  // With four replies the reply after the leading window is the third-newest,
+  // on screen in the trailing window. It is not a gap target.
+  it("never points the gap at a reply it shows", () => {
+    const fold = foldReplyWindows(rankedWindows(4));
+
+    expect(fold.hiddenCount).toBe(0);
+    expect(fold.firstHiddenReply).toBeNull();
+    expect(ids(fold.trailingReplies)).toEqual(["reply-3"]);
   });
 });
 

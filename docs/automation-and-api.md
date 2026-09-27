@@ -45,23 +45,25 @@ Send the header:
 Authorization: Bearer jnt_...
 ```
 
-A few public read endpoints don't need a token by default: `GET /api/collections`, `GET /api/collections/:id`, `GET /api/nav-items`, `GET /api/search`, `GET /api/public/posts`, `GET /api/public/posts/:slug`, `GET /api/public/archive`. When `PUBLIC_API_ENABLED=false`, `/api/public/*` returns `404` to every caller; Collection, navigation, and search JSON reads require a browser session or Bearer token. Public HTML pages, including `/search`, remain available.
+A few public read endpoints don't need a token by default: `GET /api/collections`, `GET /api/collections/:id`, `GET /api/nav-items`, `GET /api/search`, `GET /api/public/threads`, `GET /api/public/threads/:slug`, `GET /api/public/threads/:slug/posts`, `GET /api/public/posts/:slug`, and the deprecated `GET /api/public/posts` and `GET /api/public/archive`. When `PUBLIC_API_ENABLED=false`, `/api/public/*` returns `404` to every caller; Collection, navigation, and search JSON reads require a browser session or Bearer token. Public HTML pages, including `/search`, remain available.
 
 ### Common endpoints
 
-| Endpoint                 | Methods                     | Purpose                                                                                                                             |
-| ------------------------ | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `/api/posts`             | GET / POST / PUT / DELETE   | List, read, create, update, delete posts                                                                                            |
-| `/api/public/posts`      | GET                         | Public read of published posts (no token)                                                                                           |
-| `/api/public/archive`    | GET                         | Public archive feed — includes `latest_hidden`, supports year/collection/language/media/title/replies/visibility filters (no token) |
-| `/api/upload`            | POST / GET / PATCH / DELETE | One-shot multipart upload, single file per call — preferred for scripts                                                             |
-| `/api/uploads`           | POST → PUT → POST           | Multipart upload session — for large files or unstable networks                                                                     |
-| `/api/attachments`       | GET                         | Fetch raw attachment content by id                                                                                                  |
-| `/api/collections`       | GET / POST / PUT / DELETE   | Collections (GET needs no token)                                                                                                    |
-| `/api/smart-collections` | GET / POST / PUT / DELETE   | Smart collections — collections whose members come from conditions (token required, including reads)                                |
-| `/api/settings`          | GET / PUT                   | Site settings                                                                                                                       |
-| `/api/search`            | GET                         | Full-text search (public, IP-rate-limited)                                                                                          |
-| `/api/mcp`               | POST                        | MCP JSON-RPC (`initialize` / `tools/list`, etc.)                                                                                    |
+| Endpoint                 | Methods                     | Purpose                                                                                                |
+| ------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `/api/posts`             | GET / POST / PUT / DELETE   | List, read, create, update, delete posts                                                               |
+| `/api/threads`           | GET                         | List Threads, read one, and page through its posts, drafts and private Threads included                |
+| `/api/public/threads`    | GET                         | Public read of Threads — the homepage's list by default, with the archive's filters (no token)         |
+| `/api/public/posts`      | GET                         | Public read of one published post by slug (no token). The list is deprecated for `/api/public/threads` |
+| `/api/public/archive`    | GET                         | Deprecated for `/api/public/threads?visibility=any&sort=published`, removed in 1.0.1                   |
+| `/api/upload`            | POST / GET / PATCH / DELETE | One-shot multipart upload, single file per call — preferred for scripts                                |
+| `/api/uploads`           | POST → PUT → POST           | Multipart upload session — for large files or unstable networks                                        |
+| `/api/attachments`       | GET                         | Fetch raw attachment content by id                                                                     |
+| `/api/collections`       | GET / POST / PUT / DELETE   | Collections (GET needs no token)                                                                       |
+| `/api/smart-collections` | GET / POST / PUT / DELETE   | Smart collections — collections whose members come from conditions (token required, including reads)   |
+| `/api/settings`          | GET / PUT                   | Site settings                                                                                          |
+| `/api/search`            | GET                         | Full-text search (public, IP-rate-limited)                                                             |
+| `/api/mcp`               | POST                        | MCP JSON-RPC (`initialize` / `tools/list`, etc.)                                                       |
 
 `/api/upload` and `/api/uploads` differ by a single `s` but mean different things — the first is a one-shot single-file multipart upload, the second is a three-step init/part/complete session. Default to `/api/upload`; reach for `/api/uploads` only when files are large or the connection is unreliable.
 

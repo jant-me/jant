@@ -18,8 +18,10 @@ For static export and round-trip import, also see [Export and Import](export-and
 | Area                    | Base path             | Auth                    |
 | ----------------------- | --------------------- | ----------------------- |
 | Public posts            | `/api/public/posts`   | Public when enabled     |
+| Public Threads          | `/api/public/threads` | Public when enabled     |
 | Public archive          | `/api/public/archive` | Public when enabled     |
 | Posts                   | `/api/posts`          | API token or session    |
+| Threads                 | `/api/threads`        | API token or session    |
 | Upload sessions         | `/api/uploads`        | API token or session    |
 | One-shot upload         | `/api/upload`         | API token or session    |
 | Text attachment content | `/api/attachments`    | API token or session    |
@@ -97,7 +99,7 @@ Auth resolution for both surfaces:
 
 - pass `Authorization: Bearer jnt_...` (issued under Settings → API Tokens), or
 - on local hosts, send the same value with `DEV_API_TOKEN` from `.dev.vars`.
-- a small set of read endpoints — public posts/archive, Collections, navigation items, and search — work without a token while `PUBLIC_API_ENABLED=true`.
+- a small set of read endpoints — public posts, Threads, and archive, Collections, navigation items, and search — work without a token while `PUBLIC_API_ENABLED=true`.
 - `GET /api/discover/posts` works without a token while the site is listed in Discover, independent of `PUBLIC_API_ENABLED`.
 
 ### MCP
@@ -119,6 +121,7 @@ Current transport behavior:
 Current tool groups:
 
 - posts: `jant_posts_list`, `jant_posts_get`, `jant_posts_get_content`, `jant_posts_create`, `jant_posts_update`, `jant_posts_delete`
+- threads: `jant_threads_list`, `jant_threads_get`, `jant_threads_list_posts`
 - media: `jant_media_list`, `jant_media_get`, `jant_media_upload`, `jant_media_update_alt`, `jant_media_delete`
 - attachments: `jant_attachments_get_content`
 - collections: `jant_collections_list`, `jant_collections_get`, `jant_collections_create`, `jant_collections_update`, `jant_collections_delete`, `jant_collections_add_thread`, `jant_collections_remove_thread`
@@ -127,7 +130,7 @@ Current tool groups:
 
 Tool calls return normal MCP `result` envelopes. Successful tool calls include both `structuredContent` and a JSON string copy in `content[0].text`. Tool-level validation and domain failures return `200 OK` with `isError: true`.
 
-`jant_posts_list` takes `cursor` and returns `nextCursor` as `GET /api/posts` does; see [Pagination](#pagination).
+`jant_posts_list`, `jant_threads_list`, and `jant_threads_list_posts` take `cursor` and return `nextCursor` as `GET /api/posts`, `GET /api/threads`, and `GET /api/threads/:id/posts` do; see [Pagination](#pagination). `jant_threads_list` takes the same filters as `GET /api/threads`, and `fold: true` in place of `include=fold`.
 
 Initialize:
 
@@ -183,13 +186,13 @@ Invalid IDs return `400`.
 
 ### Pagination
 
-`GET /api/posts`, `GET /api/public/posts`, `GET /api/public/archive`, and the `jant_posts_list` MCP tool return one page of posts and a `nextCursor`. Repeat the request with `cursor` set to `nextCursor` for the next page. `nextCursor` is `null` on the last page.
+The post lists (`GET /api/posts`, `GET /api/public/posts`, `GET /api/public/archive`), the Thread lists (`GET /api/threads`, `GET /api/public/threads`), a Thread's posts (`GET /api/threads/:id/posts`, `GET /api/public/threads/:slug/posts`), and the `jant_posts_list`, `jant_threads_list`, and `jant_threads_list_posts` MCP tools return one page and a `nextCursor`. Repeat the request with `cursor` set to `nextCursor` for the next page. `nextCursor` is `null` on the last page.
 
 - `nextCursor` is opaque: pass it back unchanged. Its format is not part of the API.
-- A post that exists for the whole walk and keeps its place in the order is returned exactly once, whatever else is published, edited, or deleted between requests. A post that moves during the walk, because its publish date is edited or a reply moves its Thread up, can be skipped or returned twice.
+- A post that exists for the whole walk and keeps its place in the order is returned exactly once, whatever else is published, edited, or deleted between requests. A post that moves during the walk, because its publish date is edited or a reply moves its Thread up, can be skipped or returned twice. To walk everything, use an order a reply doesn't move: `GET /api/posts`, or `sort=published` on a Thread list.
 - A page can hold fewer posts than `limit` and still have a `nextCursor`. The walk ends when `nextCursor` is `null`.
 - A `cursor` that can't be read, or that comes from a list in a different order, returns `400`.
-- A post ID is also accepted as `cursor`, since earlier releases returned one: the page starts after that post. The ID of a post that doesn't exist, or that the caller can't see, returns `400`. On `GET /api/public/posts` with `collection`, so does the ID of a post that isn't in the collection.
+- A post ID is also accepted as `cursor`, since earlier releases returned one: the page starts after that post. The ID of a post that doesn't exist, or that the caller can't see, returns `400`. On `GET /api/public/posts` with `collection`, so does the ID of a post that isn't in the collection, and on a Thread's posts, the ID of a post in another Thread.
 
 ### Slugs, paths, and aliases
 
@@ -315,6 +318,7 @@ Post responses include these fields:
 | `publishedAt`     | integer \| `null`                        | Publish timestamp                                         |
 | `lastActivityAt`  | integer                                  | Newest post in the Thread, excluding quiet replies        |
 | `threadUpdatedAt` | integer                                  | Newest post in the Thread, including quiet replies        |
+| `threadPostCount` | integer                                  | Published posts in the Thread, root included; `1` alone   |
 | `createdAt`       | integer                                  | Unix seconds                                              |
 | `updatedAt`       | integer                                  | Unix seconds — last row write, including edits            |
 | `attachments`     | array                                    | Ordered media/text attachment objects                     |
@@ -349,6 +353,7 @@ Example:
   "publishedAt": 1706000000,
   "lastActivityAt": 1706000000,
   "threadUpdatedAt": 1706000000,
+  "threadPostCount": 1,
   "createdAt": 1706000000,
   "updatedAt": 1706000000,
   "attachments": []
@@ -361,6 +366,7 @@ Notes:
 - Quote responses omit `title` and `url` instead of returning them as `null`.
 - `replyToId !== null` means the post is a thread reply.
 - `threadId` points at the thread root.
+- `threadPostCount` above `1` means the post belongs to a Thread; [Threads](#threads) returns the rest of it. It is `0` while nothing in the Thread is published.
 - `GET /api/posts` includes both root posts and replies. There is currently no `excludeReplies` query parameter.
 
 ## Public posts
@@ -402,6 +408,7 @@ Public post responses include these fields:
 | `publishedAt`     | integer \| `null`           | Publish timestamp                                                                                            |
 | `lastActivityAt`  | integer                     | Thread root: newest post in the Thread, **excluding** quiet replies. Editing a post never moves it           |
 | `threadUpdatedAt` | integer                     | Thread root: newest post in the Thread, **including** quiet replies. Editing a post never moves it           |
+| `threadPostCount` | integer                     | Published posts in the Thread, root included; `1` for a post on its own                                      |
 | `createdAt`       | integer                     | Unix seconds                                                                                                 |
 | `updatedAt`       | integer                     | Unix seconds — when this row was last written, including edits                                               |
 | `attachments`     | array                       | Ordered media/text attachment objects                                                                        |
@@ -412,6 +419,8 @@ Public post responses include these fields:
 `GET /api/public/posts`
 
 Auth: `Public`
+
+Deprecated in 0.9, removed in 1.0.1. Use [`GET /api/public/threads`](#list-threads): it lists the same Thread roots by default and takes the archive's filters. Until then this endpoint answers as before, and every response carries a `Deprecation` header and a `Link: </api/public/threads>; rel="successor-version"` header. `GET /api/public/posts/:slug` stays.
 
 Query parameters:
 
@@ -487,6 +496,8 @@ Notes:
 
 Auth: `Public`
 
+Deprecated in 0.9, removed in 1.0.1. Use [`GET /api/public/threads?visibility=any&sort=published`](#list-threads), which takes the same filters. Until then this endpoint answers as before, and every response carries a `Deprecation` header and a `Link` header naming that URL as `successor-version`.
+
 The archive endpoint carries the same filters as the `/archive` page — year, collection, media kind, presence of media, title, or replies, and visibility — and returns every public thread root, **including `latest_hidden` posts**. Use this when you want a complete corpus instead of the curated Latest feed. Ordering is fixed at the page's default, newest published first; its `?sort=` switch has no counterpart here.
 
 Query parameters:
@@ -557,13 +568,15 @@ Response:
       "attachments": []
     }
   ],
-  "nextCursor": "eyJ2IjoxLCJzIjoibmV3ZXN0OmFjdGl2aXR5OnBpbm5lZCIsImsiOlstMSwxNzA2MDAwMDAwLCJwc3RfMDFqcHl4M203Z3c0dzNoN200YmtucTB2MWQiXX0"
+  "nextCursor": "eyJ2IjoxLCJzIjoibmV3ZXN0OnB1Ymxpc2hlZDp1bnBpbm5lZCIsImsiOlsxNzA2MDAwMDAwLCJwc3RfMDFqcHl4M203Z3c0dzNoN200YmtucTB2MWQiXX0"
 }
 ```
 
 Notes:
 
 - Each item uses the post response fields above, except list responses omit `collectionIds`.
+- Roots and replies are listed alike, one post per item. [Threads](#threads) lists them grouped.
+- Published posts are ordered by `publishedAt`, newest first, with `id` breaking ties. Pinned posts are not moved to the top, and a reply does not move its root. Drafts are ordered by `updatedAt`, last edited first.
 - Paging follows [Pagination](#pagination).
 
 ### Suggest or validate a slug
@@ -977,6 +990,175 @@ Auth: `Session or token`
 Removes this post from its translation group. The other members stay linked to each other.
 
 Response: `200 OK` with `{ "success": true }`.
+
+---
+
+## Threads
+
+Base paths: `/api/threads` and `/api/public/threads`
+
+A Thread is a root post and its replies. It has no ID of its own: it uses its root's, which every post in it carries as `threadId`. The endpoints that read one Thread accept any of its posts.
+
+`/api/threads` is the author's view: every status and visibility, with posts in the [editing view](#post-response-shape). `/api/public/threads` is the reader's: published Threads that aren't private, with posts in the [reading view](#public-posts). When `PUBLIC_API_ENABLED=false`, `/api/public/threads` returns `404` to every caller.
+
+Thread responses include these fields:
+
+| Field             | Type           | Notes                                               |
+| ----------------- | -------------- | --------------------------------------------------- |
+| `id`              | `pst_*` string | The root post's ID                                  |
+| `postCount`       | integer        | Published posts in the Thread, root included        |
+| `lastActivityAt`  | integer        | Newest post in the Thread, excluding quiet replies  |
+| `threadUpdatedAt` | integer        | Newest post in the Thread, including quiet replies  |
+| `root`            | object         | The root post                                       |
+| `fold`            | object         | Only with `include=fold`; see [The fold](#the-fold) |
+
+Example from `/api/public/threads?include=fold`:
+
+```json
+{
+  "id": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
+  "postCount": 9,
+  "lastActivityAt": 1706700000,
+  "threadUpdatedAt": 1706700000,
+  "root": {
+    "id": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
+    "slug": "dialing-in",
+    "permalink": "/dialing-in",
+    "threadPostCount": 9
+  },
+  "fold": {
+    "leading": [{ "id": "pst_01jpz0c7r4e7kqv3m8x2n5b6td" }, { "id": "…" }],
+    "hidden": 3,
+    "gap": {
+      "id": "pst_01jpz2k9w1f8m5c7q3v6x4b2hn",
+      "slug": "third-cup",
+      "permalink": "/third-cup"
+    },
+    "trailing": [{ "id": "…" }, { "id": "…" }, { "id": "…" }]
+  }
+}
+```
+
+Posts in the example are cut to a few fields; each is a full post.
+
+### The fold
+
+`include=fold` adds the replies the homepage shows under a Thread: the earliest ones, then the latest ones with the newest last, and a count of the replies left out between them.
+
+| Field      | Type             | Notes                                                                                                             |
+| ---------- | ---------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `leading`  | post[]           | The earliest replies                                                                                              |
+| `hidden`   | integer          | Replies left out between `leading` and `trailing`                                                                 |
+| `gap`      | object \| `null` | The first reply left out: `id` and `slug`, plus `permalink` on `/api/public/threads`. `null` when `hidden` is `0` |
+| `trailing` | post[]           | The latest replies, oldest first. The newest reply is the last one                                                |
+
+Notes:
+
+- Which replies the fold keeps is the site's choice and can change. Read `hidden` rather than working it out: for a published Thread, `1 + leading.length + trailing.length + hidden` is `postCount`.
+- A Thread without replies has an empty fold: `leading` and `trailing` are empty and `hidden` is `0`.
+- To load the replies left out, list the Thread's posts after the last `leading` reply: `GET /api/public/threads/:slug/posts?cursor=<its id>&limit=<hidden>`.
+
+### List Threads
+
+`GET /api/public/threads`
+
+`GET /api/threads`
+
+Auth: `Public when enabled` for `/api/public/threads`, `Session or token` for `/api/threads`
+
+Unfiltered, `/api/public/threads` lists what the homepage lists: Threads hidden from Latest are left out, the newest activity comes first, and pinned Threads are on top. `/api/threads` lists every visibility. Both take the archive's filters.
+
+Query parameters:
+
+| Parameter    | Type                                                           | Required | Default     | Notes                                                                                                 |
+| ------------ | -------------------------------------------------------------- | -------- | ----------- | ----------------------------------------------------------------------------------------------------- |
+| `sort`       | `activity` \| `published` \| `updated` \| `oldest` \| `rating` | no       | `activity`  | See the orders below. A named collection changes the default                                          |
+| `visibility` | `public` \| `featured` \| `hidden` \| `any` \| `private`       | no       | see notes   | `hidden` is the URL spelling of `latest_hidden`, which is also read. `private` on `/api/threads` only |
+| `format`     | `note` \| `link` \| `quote`                                    | no       | all         | Format of the root                                                                                    |
+| `collection` | string                                                         | no       | none        | Collection slug, or several comma-separated. A Thread in any one of them matches                      |
+| `year`       | integer                                                        | no       | none        | Roots whose `publishedAt` falls in this calendar year (UTC), whatever the order                       |
+| `media`      | comma-separated `MediaKind` \| `any` \| `none`                 | no       | none        | As on [the archive](#list-archive-posts), for the root                                                |
+| `title`      | `any` \| `none`                                                | no       | none        | Roots with a title, or without                                                                        |
+| `replies`    | `any` \| `none`                                                | no       | none        | Threads with published replies, or single posts                                                       |
+| `lang`       | BCP 47 tag                                                     | no       | all         | Restrict to one content language                                                                      |
+| `status`     | `draft` \| `published`                                         | no       | `published` | `/api/threads` only                                                                                   |
+| `include`    | `fold`                                                         | no       | none        | Add [the fold](#the-fold) to each Thread                                                              |
+| `cursor`     | string                                                         | no       | none        | Pass the previous `nextCursor` back unchanged                                                         |
+| `limit`      | integer                                                        | no       | `20`        | `1` to `100`                                                                                          |
+| `content`    | `markdown`                                                     | no       | none        | `/api/public/threads` only. Return `bodyMarkdown` instead of rendered body fields                     |
+
+Orders:
+
+| `sort`      | Order                                                                                            | Where the site uses it            |
+| ----------- | ------------------------------------------------------------------------------------------------ | --------------------------------- |
+| `activity`  | Newest activity first, pinned Threads on top. A reply moves its Thread up; a quiet reply doesn't | Homepage, a collection's `newest` |
+| `published` | Newest root publication first, `id` breaking ties. A reply doesn't move its Thread               | Archive                           |
+| `updated`   | Like `activity`, but quiet replies count too, and pinned Threads aren't moved to the top         | Archive's `?sort=updated`         |
+| `oldest`    | Oldest root publication first                                                                    | A collection's `oldest`           |
+| `rating`    | Highest rating first, then newest activity                                                       | A collection's `rating_desc`      |
+
+Response:
+
+```json
+{
+  "threads": [
+    { "id": "pst_01jpyx3m7gw4w3h7m4bknq0v1d", "postCount": 9, "…": "…" }
+  ],
+  "nextCursor": null
+}
+```
+
+Notes:
+
+- `visibility` left out means what the homepage shows on `/api/public/threads`, and every visibility on `/api/threads`. `visibility=any` on `/api/public/threads` adds Threads hidden from Latest. `visibility=all` returns `400`, and so does `visibility=private` on `/api/public/threads`.
+- `visibility=featured` lists newest-published first. A `sort` other than `published` returns `400`.
+- A single `collection` without `sort` lists in that collection's own `sortOrder`, with its pinned Threads on top; several collections list by `activity`. `activity`, `oldest`, and `rating` on a collection keep its pins. `published` and `updated` read it as a plain filter.
+- To walk every public Thread, pass `visibility=any&sort=published`: in `activity` order a new reply moves a Thread, which a walk can skip.
+- Paging follows [Pagination](#pagination).
+- An invalid value returns `400`, and so does a parameter the endpoint doesn't know. An unknown `collection` slug returns an empty result set.
+
+### Get a Thread
+
+`GET /api/public/threads/:slug`
+
+`GET /api/threads/:id`
+
+Auth: `Public when enabled` for `/api/public/threads/:slug`, `Session or token` for `/api/threads/:id`
+
+Returns the Thread of the post the slug or ID names, root or reply. `include=fold` adds [the fold](#the-fold), and `content=markdown` works as on the list.
+
+Notes:
+
+- `/api/public/threads/:slug` returns `404` when the slug names a draft or a private post. A Thread hidden from Latest is returned.
+- `/api/threads/:id` returns drafts and private Threads.
+
+### List a Thread's posts
+
+`GET /api/public/threads/:slug/posts`
+
+`GET /api/threads/:id/posts`
+
+Auth: `Public when enabled` for `/api/public/threads/:slug/posts`, `Session or token` for `/api/threads/:id/posts`
+
+Returns the posts of the Thread the slug or ID names, in Thread order: the root first, then replies by creation time. The Thread page and the feeds use the same order.
+
+Query parameters:
+
+| Parameter | Type                   | Required | Default     | Notes                                                                             |
+| --------- | ---------------------- | -------- | ----------- | --------------------------------------------------------------------------------- |
+| `status`  | `draft` \| `published` | no       | `published` | `/api/threads/:id/posts` only                                                     |
+| `cursor`  | string                 | no       | none        | Pass the previous `nextCursor` back unchanged, or the ID of a post in this Thread |
+| `limit`   | integer                | no       | `100`       | `1` to `100`                                                                      |
+| `content` | `markdown`             | no       | none        | `/api/public/threads/:slug/posts` only                                            |
+
+Response: `{ "posts": [Post], "nextCursor": string | null }`, with each post as the Posts or Public posts endpoints return it.
+
+Notes:
+
+- `/api/public/threads/:slug/posts` returns published posts only.
+- A reply published during a walk joins the end of the Thread, so the walk reaches it.
+- `cursor` also takes the ID of a post in this Thread: the page starts right after it. The ID of a post in another Thread returns `400`.
+- Paging follows [Pagination](#pagination).
 
 ---
 

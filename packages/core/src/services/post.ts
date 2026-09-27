@@ -275,6 +275,13 @@ export interface ThreadRootPageOptions {
   rootFormat?: Format;
   /** Restrict to Threads with at least one rated published post. */
   hasRating?: true;
+  /**
+   * Restrict to Threads whose root matches these filters, the way a list of
+   * roots would (`excludeReplies` is implied). Lets a Thread-grouped order,
+   * such as a collection's, take the same filter dimensions `list()` does.
+   * Sorting and paging fields are ignored.
+   */
+  rootFilters?: PostFilters;
   limit?: number;
   offset?: number;
 }
@@ -304,7 +311,13 @@ interface ListSort {
   pinned: boolean;
 }
 
-/** One term of a paged ORDER BY: `list()`'s, or a collection's Threads'. */
+/**
+ * The sort mode a cursor into one Thread's Posts records. Distinct from every
+ * `list()` and collection mode, so a position in one never resumes another.
+ */
+const THREAD_POSTS_SORT_MODE = "thread";
+
+/** One term of a paged ORDER BY: `list()`'s, a collection's, or a Thread's. */
 interface ListSortKey {
   /** Selectable as a column, so a page's cursor is read from SQL. */
   expr: SQL;
@@ -587,6 +600,44 @@ export interface PostService {
    * then replies by creation time, then ID.
    */
   getThread(rootId: string): Promise<Post[]>;
+  /**
+   * One page of a Thread's Posts in Thread order, and an opaque cursor for the
+   * next.
+   *
+   * Pages like {@link listPage}. A new reply joins the end of the Thread, so a
+   * walk that is still going when one is published reaches it rather than
+   * skipping it. As well as a `nextCursor`, the cursor may be the ID of a Post
+   * in this Thread with the requested status: the page then starts right after
+   * it, which is how a reader opens the run a fold hides.
+   *
+   * @param threadId - The Thread root's ID
+   * @param options - Which Posts to include; `status` defaults to `published`
+   * @param page - The previous page's `nextCursor` or a Post ID, and the page
+   *   size
+   * @returns The page's Posts and the cursor after them, `null` on the last page
+   * @throws {ValidationError} When the cursor can't be read, was taken in
+   *   another order, or names a Post this request doesn't list
+   * @example
+   * ```ts
+   * const first = await posts.listThreadPostsPage(root.id, {}, { limit: 100 });
+   * ```
+   */
+  listThreadPostsPage(
+    threadId: string,
+    options: { status?: Status },
+    page: PostListPageOptions,
+  ): Promise<PostListPage>;
+  /**
+   * How many published Posts each Thread holds, its root included.
+   *
+   * @param threadIds - Thread root IDs; duplicates are fine
+   * @returns Map of Thread root ID to its published Post count; a Thread with
+   *   nothing published is absent
+   * @example
+   * const counts = await posts.countThreadPosts([root.id]);
+   * counts.get(root.id); // 12
+   */
+  countThreadPosts(threadIds: string[]): Promise<Map<string, number>>;
   /**
    * 1-based position of a Post in the reply chain running from its Thread root
    * down to it: a root is 1, a reply to it is 2, a reply to that is 3.
@@ -1116,12 +1167,31 @@ export function createPostService(
    * sql`ROW_NUMBER() OVER (ORDER BY ${sql.join(threadOrder(), sql`, `)})`;
    */
   function threadOrder(direction: "asc" | "desc" = "asc"): SQL[] {
-    const terms = [
-      sql`CASE WHEN ${posts.replyToId} IS NULL THEN 0 ELSE 1 END`,
-      sql`${posts.createdAt}`,
-      sql`${posts.id}`,
-    ];
+    const terms = threadSortKeys().map((key) => key.expr);
     return direction === "asc" ? terms : terms.map((term) => desc(term));
+  }
+
+  /**
+   * {@link threadOrder} as paged sort keys, for walking one Thread with a
+   * cursor. The one definition both read, so a page of a Thread and the
+   * Thread page itself cannot order its posts differently.
+   */
+  function threadSortKeys(): ListSortKey[] {
+    return [
+      {
+        expr: sql<number>`CASE WHEN ${posts.replyToId} IS NULL THEN 0 ELSE 1 END`.mapWith(
+          Number,
+        ),
+        direction: "asc",
+        kind: "number",
+      },
+      {
+        expr: sql<number>`${posts.createdAt}`.mapWith(Number),
+        direction: "asc",
+        kind: "number",
+      },
+      { expr: sql<string>`${posts.id}`, direction: "asc", kind: "id" },
+    ];
   }
 
   function buildYearMonthExpr(column: SQLWrapper): SQL<string> {
@@ -1956,6 +2026,26 @@ export function createPostService(
     }
     if (options?.threadIds !== undefined) {
       conditions.push(inArray(posts.threadId, options.threadIds));
+    }
+    if (options?.rootFilters) {
+      // Uncorrelated: the inner `post` shadows the outer one, so every column
+      // the filters name reads the root row being matched.
+      conditions.push(
+        inArray(
+          posts.threadId,
+          db
+            .select({ id: posts.id })
+            .from(posts)
+            .where(
+              and(
+                ...buildFilterConditions({
+                  ...options.rootFilters,
+                  excludeReplies: true,
+                }),
+              ),
+            ),
+        ),
+      );
     }
 
     return conditions;
@@ -3918,6 +4008,87 @@ export function createPostService(
       return hydratePosts(rows);
     },
 
+    async listThreadPostsPage(threadId, options, { cursor, limit }) {
+      const keys = threadSortKeys();
+      const conditions: SQL[] = [
+        eq(posts.siteId, siteId),
+        eq(posts.threadId, threadId),
+        eq(posts.status, options.status ?? "published"),
+      ];
+
+      if (cursor) {
+        let values: PostListCursorValue[];
+        if (isLegacyPostListCursor(cursor)) {
+          // A Post ID names a position only inside the Thread being listed,
+          // and only among the Posts this request would return, so it can't
+          // be used to learn anything about a Post elsewhere.
+          const rows = await db
+            .select(listSortKeyFields(keys))
+            .from(posts)
+            .where(and(...conditions, eq(posts.id, cursor)))
+            .limit(1);
+          const row = rows[0];
+          if (!row) {
+            throw new ValidationError(MISSING_LEGACY_CURSOR_MESSAGE);
+          }
+          values = readListSortKeyValues(keys, row);
+        } else {
+          values = decodePostListCursor(cursor, {
+            mode: THREAD_POSTS_SORT_MODE,
+            kinds: keys.map((key) => key.kind),
+          });
+        }
+        conditions.push(buildListKeysetCondition(keys, values));
+      }
+
+      const rows = await db
+        .select({ post: posts, sortKey: listSortKeyFields(keys) })
+        .from(posts)
+        .where(and(...conditions))
+        .orderBy(...listOrderBy(keys))
+        .limit(limit + 1);
+
+      const pageRows = rows.slice(0, limit);
+      const lastRow = pageRows[pageRows.length - 1];
+      return {
+        posts: await hydratePosts(pageRows.map((row) => row.post)),
+        nextCursor:
+          rows.length > limit && lastRow
+            ? encodePostListCursor(
+                THREAD_POSTS_SORT_MODE,
+                readListSortKeyValues(keys, lastRow.sortKey),
+              )
+            : null,
+      };
+    },
+
+    async countThreadPosts(threadIds) {
+      const counts = new Map<string, number>();
+      if (threadIds.length === 0) return counts;
+
+      const rows = await batchQueryRows([...new Set(threadIds)], (chunk) =>
+        db
+          .select({
+            threadId: posts.threadId,
+            count: sql<number>`CAST(count(*) AS INTEGER)`.as("count"),
+          })
+          .from(posts)
+          .where(
+            and(
+              eq(posts.siteId, siteId),
+              inArray(posts.threadId, chunk),
+              eq(posts.status, "published"),
+            ),
+          )
+          .groupBy(posts.threadId),
+      );
+
+      for (const row of rows) {
+        counts.set(row.threadId, row.count);
+      }
+      return counts;
+    },
+
     async getThreadPosition(postId) {
       const targetRows = await db
         .select({ replyToId: posts.replyToId, threadId: posts.threadId })
@@ -4494,51 +4665,59 @@ export function createPostService(
     async getThreadTimelineContext(rootIds) {
       if (rootIds.length === 0) return new Map();
 
-      const rankedReplies = db
-        .select({
-          id: posts.id,
-          threadId: posts.threadId,
-          firstReplyRank: sql<number>`CAST(ROW_NUMBER() OVER (
+      // A page of Threads can outgrow one statement's parameter budget — the
+      // API lists up to 100. Each Thread lands in one chunk, so every window
+      // below still partitions over a whole Thread.
+      const contextRows = await batchQueryRows(
+        [...new Set(rootIds)],
+        (chunk) => {
+          const rankedReplies = db
+            .select({
+              id: posts.id,
+              threadId: posts.threadId,
+              firstReplyRank: sql<number>`CAST(ROW_NUMBER() OVER (
             PARTITION BY ${posts.threadId}
             ORDER BY ${sql.join(threadOrder(), sql`, `)}
           ) AS INTEGER)`.as("first_reply_rank"),
-          latestReplyRank: sql<number>`CAST(ROW_NUMBER() OVER (
+              latestReplyRank: sql<number>`CAST(ROW_NUMBER() OVER (
             PARTITION BY ${posts.threadId}
             ORDER BY ${sql.join(threadOrder("desc"), sql`, `)}
           ) AS INTEGER)`.as("latest_reply_rank"),
-          totalReplyCount: sql<number>`CAST(COUNT(*) OVER (
+              totalReplyCount: sql<number>`CAST(COUNT(*) OVER (
             PARTITION BY ${posts.threadId}
           ) AS INTEGER)`.as("total_reply_count"),
-        })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.siteId, siteId),
-            inArray(posts.threadId, rootIds),
-            eq(posts.status, "published"),
-            isNotNull(posts.replyToId),
-          ),
-        )
-        .as("ranked_replies");
+            })
+            .from(posts)
+            .where(
+              and(
+                eq(posts.siteId, siteId),
+                inArray(posts.threadId, chunk),
+                eq(posts.status, "published"),
+                isNotNull(posts.replyToId),
+              ),
+            )
+            .as("ranked_replies");
 
-      const contextRows = await db
-        .select({
-          threadId: rankedReplies.threadId,
-          id: rankedReplies.id,
-          firstReplyRank: rankedReplies.firstReplyRank,
-          latestReplyRank: rankedReplies.latestReplyRank,
-          totalReplyCount: rankedReplies.totalReplyCount,
-        })
-        .from(rankedReplies)
-        .where(
-          or(
-            // One past the leading window: that extra row is never rendered,
-            // it is only where the gap link points. Without it the gap has to
-            // aim at a reply already on screen.
-            lte(rankedReplies.firstReplyRank, THREAD_LEADING_REPLIES + 1),
-            lte(rankedReplies.latestReplyRank, THREAD_TRAILING_REPLIES),
-          ),
-        );
+          return db
+            .select({
+              threadId: rankedReplies.threadId,
+              id: rankedReplies.id,
+              firstReplyRank: rankedReplies.firstReplyRank,
+              latestReplyRank: rankedReplies.latestReplyRank,
+              totalReplyCount: rankedReplies.totalReplyCount,
+            })
+            .from(rankedReplies)
+            .where(
+              or(
+                // One past the leading window: that extra row is never rendered,
+                // it is only where the gap link points. Without it the gap has to
+                // aim at a reply already on screen.
+                lte(rankedReplies.firstReplyRank, THREAD_LEADING_REPLIES + 1),
+                lte(rankedReplies.latestReplyRank, THREAD_TRAILING_REPLIES),
+              ),
+            );
+        },
+      );
 
       const hydratedPosts = await hydratePostsById(
         contextRows.map((row) => row.id),

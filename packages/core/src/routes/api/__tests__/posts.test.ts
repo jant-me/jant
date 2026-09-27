@@ -222,6 +222,84 @@ describe("Posts API Routes", () => {
       expect((await unreadable.json()).code).toBe("VALIDATION_ERROR");
     });
 
+    // The failure this guards: ordered by thread activity with pins first, a
+    // reply lifted a long-published root to the top — past a walk's cursor,
+    // so the walk never returned it.
+    it("orders published posts by publication alone", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+
+      const root = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "old root",
+        publishedAt: 1000,
+      });
+      const pinned = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "pinned",
+        publishedAt: 2000,
+        pinned: true,
+      });
+      const recent = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "recent",
+        publishedAt: 3000,
+      });
+
+      const first = await (await app.request("/api/posts?limit=1")).json();
+      expect(first.posts[0].id).toBe(recent.id);
+      const reply = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "late reply",
+        replyToId: root.id,
+        publishedAt: 4000,
+      });
+
+      const rest = await walkPostPages(app, "/api/posts", 1, first.nextCursor);
+      expect(rest).toEqual([pinned.id, root.id]);
+      const all = await (await app.request("/api/posts")).json();
+      expect(all.posts.map((post: { id: string }) => post.id)).toEqual([
+        reply.id,
+        recent.id,
+        pinned.id,
+        root.id,
+      ]);
+      expect(
+        all.posts.map(
+          (post: { threadPostCount: number }) => post.threadPostCount,
+        ),
+      ).toEqual([2, 1, 1, 2]);
+    });
+
+    it("keeps drafts in last-edited order", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+
+      const first = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "first",
+        status: "draft",
+        createdAt: 1000,
+        updatedAt: 1000,
+      });
+      const second = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "second",
+        status: "draft",
+        createdAt: 2000,
+        updatedAt: 2000,
+      });
+      await services.posts.update(first.id, { bodyMarkdown: "edited" });
+
+      const res = await app.request("/api/posts?status=draft");
+      const body = await res.json();
+      expect(body.posts.map((post: { id: string }) => post.id)).toEqual([
+        first.id,
+        second.id,
+      ]);
+      expect(body.posts[0].threadPostCount).toBe(0);
+    });
+
     it("serializes quote attribution as sourceName/sourceUrl", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/posts", postsApiRoutes);

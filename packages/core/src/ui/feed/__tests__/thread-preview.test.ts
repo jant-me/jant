@@ -7,10 +7,8 @@ import { createI18n } from "../../../i18n/i18n.js";
 import type { PostView, TimelineItemView } from "../../../types.js";
 import { CuratedThreadPreview } from "../CuratedThreadPreview.js";
 import { ThreadPreview } from "../ThreadPreview.js";
-import {
-  getThreadPreviewState,
-  threadContextAssumesOverflow,
-} from "../thread-preview-state.js";
+import { foldReplyWindows } from "../../../lib/thread-fold.js";
+import { threadContextAssumesOverflow } from "../thread-preview-state.js";
 
 function createPostView(overrides: Partial<PostView> = {}): PostView {
   return {
@@ -57,7 +55,7 @@ function toggleTag(html: string): string {
   );
 }
 
-describe("getThreadPreviewState", () => {
+describe("thread preview fold", () => {
   it("has no hidden posts for a 2-post thread", () => {
     const latestReply = createPostView({
       id: "post-2",
@@ -65,16 +63,16 @@ describe("getThreadPreviewState", () => {
       slug: "post-2",
     });
 
-    expect(
-      getThreadPreviewState({
-        leadingReplies: [latestReply],
-        trailingReplies: [],
-        latestReply,
-        totalReplyCount: 1,
-      }),
-    ).toEqual({
-      hiddenCount: 0,
+    const fold = foldReplyWindows({
+      leadingReplies: [latestReply],
+      trailingReplies: [],
+      latestReply,
+      nextReply: null,
+      totalReplyCount: 1,
     });
+    expect(fold.hiddenCount).toBe(0);
+    // The only reply is the hero, so the leading window gives it up.
+    expect(fold.leadingReplies).toEqual([]);
   });
 
   it("has no hidden posts for a 6-post thread when all slots are visible", () => {
@@ -105,15 +103,14 @@ describe("getThreadPreviewState", () => {
     });
 
     expect(
-      getThreadPreviewState({
+      foldReplyWindows({
         leadingReplies: [firstReply, secondReply],
         trailingReplies: [antepenultimateReply, penultimateReply],
         latestReply,
+        nextReply: antepenultimateReply,
         totalReplyCount: 5,
       }),
-    ).toEqual({
-      hiddenCount: 0,
-    });
+    ).toMatchObject({ hiddenCount: 0, firstHiddenReply: null });
   });
 
   it("counts hidden posts for longer threads after deduping visible slots", () => {
@@ -144,15 +141,14 @@ describe("getThreadPreviewState", () => {
     });
 
     expect(
-      getThreadPreviewState({
+      foldReplyWindows({
         leadingReplies: [firstReply, secondReply],
         trailingReplies: [antepenultimateReply, penultimateReply],
         latestReply,
+        nextReply: createPostView({ id: "post-4" }),
         totalReplyCount: 8,
       }),
-    ).toEqual({
-      hiddenCount: 3,
-    });
+    ).toMatchObject({ hiddenCount: 3, firstHiddenReply: { id: "post-4" } });
   });
 
   it("keeps thread preview items shrinkable within the grid track", () => {

@@ -1,8 +1,8 @@
 /**
  * Cursor Walk Helper
  *
- * Follows a paginated posts endpoint the way a client does, so route tests can
- * compare a walk against one unpaged request.
+ * Follows a paginated posts or Threads endpoint the way a client does, so route
+ * tests can compare a walk against one unpaged request.
  */
 
 import { expect } from "vitest";
@@ -31,6 +31,36 @@ export async function walkPostPages(
   limit: number,
   from: string | null = null,
 ): Promise<string[]> {
+  return walkPages(app, path, limit, "posts", from);
+}
+
+/**
+ * {@link walkPostPages} for a Thread list, whose pages hold `threads`.
+ *
+ * @param app - The test app the endpoint is mounted on
+ * @param path - Endpoint path with its query, without `limit` or `cursor`
+ * @param limit - Page size
+ * @returns Every Thread ID, in the order the pages returned them
+ * @example
+ * ```ts
+ * expect(await walkThreadPages(app, "/api/public/threads", 1)).toEqual(ids);
+ * ```
+ */
+export async function walkThreadPages(
+  app: RequestTarget,
+  path: string,
+  limit: number,
+): Promise<string[]> {
+  return walkPages(app, path, limit, "threads", null);
+}
+
+async function walkPages(
+  app: RequestTarget,
+  path: string,
+  limit: number,
+  key: "posts" | "threads",
+  from: string | null,
+): Promise<string[]> {
   const separator = path.includes("?") ? "&" : "?";
   const ids: string[] = [];
   let cursor = from;
@@ -40,11 +70,11 @@ export async function walkPostPages(
       : `limit=${limit}`;
     const res = await app.request(`${path}${separator}${query}`);
     expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      posts: Array<{ id: string }>;
-      nextCursor: string | null;
-    };
-    ids.push(...body.posts.map((post) => post.id));
+    const body = (await res.json()) as Record<
+      typeof key,
+      Array<{ id: string }>
+    > & { nextCursor: string | null };
+    ids.push(...body[key].map((item) => item.id));
     if (body.nextCursor === null) return ids;
     cursor = body.nextCursor;
   }

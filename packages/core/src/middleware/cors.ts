@@ -39,7 +39,14 @@ export function apiCors(): MiddlewareHandler<Env> {
       origin: origins,
       allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowHeaders: ["Content-Type", "Authorization", "MCP-Protocol-Version"],
-      exposeHeaders: ["Content-Type", "MCP-Protocol-Version"],
+      // `Deprecation` and `Link` are how a deprecated endpoint names its
+      // replacement; a browser client can't read either unless exposed.
+      exposeHeaders: [
+        "Content-Type",
+        "MCP-Protocol-Version",
+        "Deprecation",
+        "Link",
+      ],
       credentials: origins !== "*",
       maxAge: 86400,
     });

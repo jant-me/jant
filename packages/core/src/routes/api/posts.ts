@@ -16,7 +16,11 @@ import {
   parseValidated,
 } from "../../lib/schemas.js";
 import { requireAuthApi } from "../../middleware/auth.js";
-import { toApiAttachment, toApiPost } from "../../lib/api-posts.js";
+import {
+  apiPostListOrder,
+  loadApiPostResponse,
+  loadApiPostResponses,
+} from "../../lib/api-posts.js";
 import { getPostDisplayTitle } from "../../lib/post-meta.js";
 import { assertFound, NotFoundError, parseIdParam } from "../../lib/errors.js";
 import { AddressQuerySchema, requestInternalPath } from "../../lib/address.js";
@@ -59,37 +63,14 @@ postsApiRoutes.get("/", requireAuthApi(), async (c) => {
     c.req.query(),
   );
 
+  const listStatus = status ?? "published";
   const { posts, nextCursor } = await c.var.services.posts.listPage(
-    { format, status: status ?? "published" },
+    { format, status: listStatus, ...apiPostListOrder(listStatus) },
     { cursor, limit },
   );
 
-  // Batch load media for all posts
-  const postIds = posts.map((p) => p.id);
-  const mediaMap = await c.var.services.media.getByPostIds(postIds);
-  const {
-    r2PublicUrl,
-    imageTransformUrl,
-    s3PublicUrl,
-    localPublicUrl,
-    sitePathPrefix,
-  } = c.var.appConfig;
-
   return c.json({
-    posts: posts.map((p) =>
-      toApiPost(p, {
-        attachments: (mediaMap.get(p.id) ?? []).map((m) =>
-          toApiAttachment(
-            m,
-            r2PublicUrl,
-            imageTransformUrl,
-            s3PublicUrl,
-            localPublicUrl,
-            sitePathPrefix,
-          ),
-        ),
-      }),
-    ),
+    posts: await loadApiPostResponses(c.var, posts),
     nextCursor,
   });
 });
@@ -131,39 +112,14 @@ postsApiRoutes.get("/:id/content", requireAuthApi(), async (c) => {
 postsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
 
-  // Fetch post, media, collections and thread position in parallel (all keyed
-  // by the same id)
-  const [post, mediaList, threadCollections, threadPosition] =
-    await Promise.all([
-      c.var.services.posts.getById(id),
-      c.var.services.media.getByPostId(id),
-      c.var.services.collections.getCollectionsByPostId(id),
-      c.var.services.posts.getThreadPosition(id),
-    ]);
+  const [post, threadPosition] = await Promise.all([
+    c.var.services.posts.getById(id),
+    c.var.services.posts.getThreadPosition(id),
+  ]);
   const foundPost = assertFound(post, "Post");
-  const {
-    r2PublicUrl,
-    imageTransformUrl,
-    s3PublicUrl,
-    localPublicUrl,
-    sitePathPrefix,
-  } = c.var.appConfig;
-  const collectionIds = threadCollections.map((col) => col.id);
 
   return c.json({
-    ...toApiPost(foundPost, {
-      collectionIds,
-      attachments: mediaList.map((m) =>
-        toApiAttachment(
-          m,
-          r2PublicUrl,
-          imageTransformUrl,
-          s3PublicUrl,
-          localPublicUrl,
-          sitePathPrefix,
-        ),
-      ),
-    }),
+    ...(await loadApiPostResponse(c.var, foundPost, { collectionIds: true })),
     threadPosition,
   });
 });
@@ -215,33 +171,10 @@ postsApiRoutes.post("/", requireAuthApi(), async (c) => {
     },
   );
 
-  const mediaList = await c.var.services.media.getByPostId(post.id);
-  const {
-    r2PublicUrl,
-    imageTransformUrl,
-    s3PublicUrl,
-    localPublicUrl,
-    sitePathPrefix,
-  } = c.var.appConfig;
-
   // Trigger GitHub Sync in background (no-op when sync isn't enabled).
   await triggerGitHubSyncInline(c);
 
-  return c.json(
-    toApiPost(post, {
-      attachments: mediaList.map((m) =>
-        toApiAttachment(
-          m,
-          r2PublicUrl,
-          imageTransformUrl,
-          s3PublicUrl,
-          localPublicUrl,
-          sitePathPrefix,
-        ),
-      ),
-    }),
-    201,
-  );
+  return c.json(await loadApiPostResponse(c.var, post), 201);
 });
 
 // Update post (requires auth)
@@ -293,29 +226,7 @@ postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
   // Trigger GitHub Sync in background (no-op when sync isn't enabled).
   await triggerGitHubSyncInline(c);
 
-  const mediaList = await c.var.services.media.getByPostId(post.id);
-  const {
-    r2PublicUrl,
-    imageTransformUrl,
-    s3PublicUrl,
-    localPublicUrl,
-    sitePathPrefix,
-  } = c.var.appConfig;
-
-  return c.json(
-    toApiPost(post, {
-      attachments: mediaList.map((m) =>
-        toApiAttachment(
-          m,
-          r2PublicUrl,
-          imageTransformUrl,
-          s3PublicUrl,
-          localPublicUrl,
-          sitePathPrefix,
-        ),
-      ),
-    }),
-  );
+  return c.json(await loadApiPostResponse(c.var, post));
 });
 
 // =============================================================================

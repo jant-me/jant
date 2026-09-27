@@ -11,10 +11,8 @@ import { useLingui } from "../../i18n/context.js";
 import type { ThreadPreviewProps } from "../../types.js";
 import { TimelineItem } from "./TimelineItem.js";
 import { TimelineItemFromPost } from "./TimelineItem.js";
-import {
-  getThreadPreviewState,
-  threadContextAssumesOverflow,
-} from "./thread-preview-state.js";
+import { foldReplyWindows } from "../../lib/thread-fold.js";
+import { threadContextAssumesOverflow } from "./thread-preview-state.js";
 
 const ROOT_CONTEXT_DISPLAY = {
   footer: {
@@ -40,12 +38,16 @@ export const ThreadPreview: FC<ThreadPreviewProps> = ({
   totalReplyCount,
 }) => {
   const { i18n } = useLingui();
-  const { hiddenCount } = getThreadPreviewState({
+  // The gap's target arrives resolved as `gapHref`, so the fold is asked only
+  // what it shows and how much it hides.
+  const fold = foldReplyWindows({
     leadingReplies,
     trailingReplies,
     latestReply,
+    nextReply: null,
     totalReplyCount,
   });
+  const hiddenCount = fold.hiddenCount;
   const assumeOverflow = threadContextAssumesOverflow({
     rootPost,
     totalReplyCount,
@@ -73,15 +75,8 @@ export const ThreadPreview: FC<ThreadPreviewProps> = ({
         "@context: Collapse expanded thread ancestor context in the feed",
     }),
   );
-  const visibleReplyIds = new Set([latestReply.id]);
-  const dedupeReplies = (replies: typeof leadingReplies) =>
-    replies.filter((reply) => {
-      if (visibleReplyIds.has(reply.id)) return false;
-      visibleReplyIds.add(reply.id);
-      return true;
-    });
-  const renderedLeadingReplies = dedupeReplies(leadingReplies);
-  const renderedTrailingReplies = dedupeReplies(trailingReplies);
+  const renderedLeadingReplies = fold.leadingReplies;
+  const renderedTrailingReplies = fold.trailingReplies;
   // The gap opens the first post it hides — the rule in `lib/thread-fold.ts`,
   // which the feed follows too. The fallback only covers a gap target that
   // went unpublished between the count and the fetch.

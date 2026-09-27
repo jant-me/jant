@@ -4,12 +4,14 @@ import { collectionsApiRoutes } from "../collections.js";
 import { navItemsApiRoutes } from "../nav-items.js";
 import { publicArchiveApiRoutes } from "../public/archive.js";
 import { publicPostsApiRoutes } from "../public/posts.js";
+import { publicThreadsApiRoutes } from "../public/threads.js";
 import { searchApiRoutes } from "../search.js";
 
 function mountPublicReadRoutes(authenticated = false) {
   const testApp = createTestApp({ authenticated, fts: true });
   testApp.app.route("/api/public/posts", publicPostsApiRoutes);
   testApp.app.route("/api/public/archive", publicArchiveApiRoutes);
+  testApp.app.route("/api/public/threads", publicThreadsApiRoutes);
   testApp.app.route("/api/search", searchApiRoutes);
   testApp.app.route("/api/collections", collectionsApiRoutes);
   testApp.app.route("/api/nav-items", navItemsApiRoutes);
@@ -21,6 +23,9 @@ describe("public API access setting", () => {
     "/api/public/posts",
     "/api/public/posts/missing",
     "/api/public/archive",
+    "/api/public/threads",
+    "/api/public/threads/missing",
+    "/api/public/threads/missing/posts",
   ])("returns 404 for %s when the public API is off", async (path) => {
     const { app, services } = mountPublicReadRoutes();
     await services.settings.set("PUBLIC_API_ENABLED", "false");

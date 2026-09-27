@@ -1,8 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Bindings, Collection, Media, Post } from "../../../types.js";
+import type { Bindings, Post } from "../../../types.js";
 import type { AppVariables } from "../../../types/app-context.js";
-import { getCollectionPagePath } from "../../../lib/collection-paths.js";
 import {
   CollectionSortOrderSchema,
   ContentLanguageSchema,
@@ -10,19 +9,16 @@ import {
   parseValidated,
 } from "../../../lib/schemas.js";
 import { NotFoundError } from "../../../lib/errors.js";
-import { toApiAttachment } from "../../../lib/api-posts.js";
-import { tiptapJsonToMarkdown } from "../../../lib/tiptap-to-markdown.js";
-import { toPublicPath } from "../../../lib/url.js";
-import {
-  getImageUrl,
-  getMediaUrl,
-  getPublicUrlForProvider,
-} from "../../../lib/image.js";
+import { loadPublicPostResponses } from "../../../lib/api-public-posts.js";
 import {
   resolveCollectionSortOrder,
   supportsCollectionRatingSort,
 } from "../../../lib/collection-sort.js";
 import { requirePublicApiEnabled } from "../../../middleware/public-content-access.js";
+import {
+  deprecated,
+  THREAD_LIST_DEPRECATED_AT,
+} from "../../../middleware/deprecation.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -48,85 +44,6 @@ const PublicPostContentQuerySchema = z.object({
   content: z.enum(["markdown"]).optional(),
 });
 
-export type PublicPostBaseResponse = {
-  id: string;
-  format: Post["format"];
-  status: "published";
-  visibility: Post["visibility"];
-  slug: string;
-  permalink: string;
-  title?: string | null;
-  url?: string | null;
-  sourceName?: string | null;
-  sourceUrl?: string | null;
-  quoteText: string | null;
-  summary: string | null;
-  rating: number | null;
-  previewKind: string | null;
-  previewProvider: string | null;
-  previewImageUrl: string | null;
-  replyToId: string | null;
-  threadId: string;
-  /**
-   * BCP 47 content language, or null on a post written before the site
-   * enabled multilingual content.
-   */
-  language: string | null;
-  /**
-   * Shared by every translation of this Thread. Null when the Thread has no
-   * translations.
-   */
-  translationGroupId: string | null;
-  /** Reply published without announcing its Thread. Always false on roots. */
-  quietReply: boolean;
-  pinnedAt: number | null;
-  featuredAt: number | null;
-  publishedAt: number | null;
-  /** Root only: newest post in the Thread, quiet replies excluded. */
-  lastActivityAt: number;
-  /** Root only: newest post in the Thread, quiet replies included. */
-  threadUpdatedAt: number;
-  createdAt: number;
-  updatedAt: number;
-  attachments: ReturnType<typeof toApiAttachment>[];
-  collections: {
-    id: string;
-    slug: string;
-    title: string;
-    url: string;
-  }[];
-};
-
-export type PublicPostRenderedResponse = PublicPostBaseResponse & {
-  bodyHtml: string | null;
-  bodyText: string | null;
-};
-
-export type PublicPostMarkdownResponse = PublicPostBaseResponse & {
-  bodyMarkdown: string | null;
-};
-
-export type PublicPostResponse =
-  PublicPostRenderedResponse | PublicPostMarkdownResponse;
-
-/**
- * The public Markdown for a post, or null for a historical body that isn't
- * TipTap JSON. One unreadable row answers null and is logged, rather than
- * failing the whole listing; `bodyHtml` still falls back to stored HTML.
- */
-function toPublicBodyMarkdown(postId: string, body: string): string | null {
-  try {
-    return tiptapJsonToMarkdown(body);
-  } catch (error) {
-    // eslint-disable-next-line no-console -- A skipped body must leave a trace
-    console.error(
-      `Couldn't convert the body of post ${postId} to Markdown`,
-      error,
-    );
-    return null;
-  }
-}
-
 function isPublicDetailVisible(post: Post | null): post is Post {
   return (
     post !== null &&
@@ -135,207 +52,97 @@ function isPublicDetailVisible(post: Post | null): post is Post {
   );
 }
 
-export function toPublicPost(
-  post: Post,
-  mediaList: Media[],
-  threadCollections: Collection[],
-  appConfig: AppVariables["appConfig"],
-  options?: { content?: "markdown" },
-): PublicPostResponse {
-  const {
-    r2PublicUrl,
-    imageTransformUrl,
-    s3PublicUrl,
-    localPublicUrl,
-    sitePathPrefix,
-    storageDriver,
-  } = appConfig;
+/**
+ * Deprecated in 0.9 for `GET /api/public/threads`, which lists the same Thread
+ * roots with the archive's filters and the homepage's defaults. Answers as it
+ * always has until 1.0.1 removes it.
+ */
+publicPostsApiRoutes.get(
+  "/",
+  deprecated(THREAD_LIST_DEPRECATED_AT, "/api/public/threads"),
+  async (c) => {
+    const { format, lang, collection, sort, cursor, limit, content } =
+      parseValidated(ListPublicPostsQuerySchema, c.req.query());
 
-  const previewImagePublicUrl = getPublicUrlForProvider(
-    storageDriver,
-    r2PublicUrl,
-    s3PublicUrl,
-    localPublicUrl,
-  );
-  const previewImageUrl = post.previewImageKey
-    ? getImageUrl(
-        getMediaUrl(
-          post.previewImageKey,
-          previewImagePublicUrl,
-          sitePathPrefix,
-        ),
-        imageTransformUrl,
-        { width: 1280, quality: 80, format: "auto", fit: "scale-down" },
-      )
-    : null;
+    // Resolve collection slug(s) — accepts comma-separated (e.g. "tech,art")
+    // or "+" separated (e.g. "tech+art"), matching the page URL convention.
+    let collectionIds: string[] | undefined;
+    let sortOrder: "newest" | "oldest" | "rating_desc" | undefined;
 
-  const base = {
-    id: post.id,
-    format: post.format,
-    status: "published" as const,
-    visibility: post.visibility,
-    slug: post.slug,
-    permalink: toPublicPath(`/${post.slug}`, sitePathPrefix),
-    quoteText: post.quoteText,
-    summary: post.summary,
-    rating: post.rating,
-    previewKind: post.previewKind,
-    previewProvider: post.previewProvider,
-    previewImageUrl,
-    replyToId: post.replyToId,
-    threadId: post.threadId,
-    language: post.language,
-    translationGroupId: post.translationGroupId,
-    quietReply: post.quietReply,
-    pinnedAt: post.pinnedAt,
-    featuredAt: post.featuredAt,
-    publishedAt: post.publishedAt,
-    lastActivityAt: post.lastActivityAt,
-    threadUpdatedAt: post.threadUpdatedAt,
-    createdAt: post.createdAt,
-    updatedAt: post.updatedAt,
-    attachments: mediaList.map((media) =>
-      toApiAttachment(
-        media,
-        r2PublicUrl,
-        imageTransformUrl,
-        s3PublicUrl,
-        localPublicUrl,
-        sitePathPrefix,
-      ),
-    ),
-    collections: threadCollections.map((collection) => ({
-      id: collection.id,
-      slug: collection.slug,
-      title: collection.title,
-      url: toPublicPath(getCollectionPagePath(collection.slug), sitePathPrefix),
-    })),
-  };
-  const contentFields =
-    options?.content === "markdown"
-      ? {
-          bodyMarkdown: post.body
-            ? toPublicBodyMarkdown(post.id, post.body)
-            : null,
-        }
-      : {
-          bodyHtml: post.bodyHtml,
-          bodyText: post.bodyText,
-        };
+    if (collection) {
+      // Normalize: commas → "+" so resolveSelection handles both forms
+      const slugExpression = collection.replace(/,/g, "+");
+      const selection =
+        await c.var.services.collections.resolveSelection(slugExpression);
+      if (!selection) {
+        return c.json({ posts: [], nextCursor: null });
+      }
 
-  if (post.format === "quote") {
-    return {
-      ...base,
-      ...contentFields,
-      sourceName: post.title,
-      sourceUrl: post.url,
-    };
-  }
+      collectionIds = selection.collections.map((col) => col.id);
 
-  return {
-    ...base,
-    ...contentFields,
-    title: post.title,
-    url: post.url,
-  };
-}
+      // Determine sort order: single collection uses its configured default,
+      // aggregate selections default to "newest"
+      const isAggregate = selection.collections.length > 1;
+      const primaryCollection = selection.collections[0];
+      if (!primaryCollection) {
+        return c.json({ posts: [], nextCursor: null });
+      }
+      const requestedDefaultSort = isAggregate
+        ? "newest"
+        : primaryCollection.sortOrder;
 
-publicPostsApiRoutes.get("/", async (c) => {
-  const { format, lang, collection, sort, cursor, limit, content } =
-    parseValidated(ListPublicPostsQuerySchema, c.req.query());
-
-  // Resolve collection slug(s) — accepts comma-separated (e.g. "tech,art")
-  // or "+" separated (e.g. "tech+art"), matching the page URL convention.
-  let collectionIds: string[] | undefined;
-  let sortOrder: "newest" | "oldest" | "rating_desc" | undefined;
-
-  if (collection) {
-    // Normalize: commas → "+" so resolveSelection handles both forms
-    const slugExpression = collection.replace(/,/g, "+");
-    const selection =
-      await c.var.services.collections.resolveSelection(slugExpression);
-    if (!selection) {
-      return c.json({ posts: [], nextCursor: null });
+      const ratedThreadCount =
+        await c.var.services.posts.countCollectionThreadRootsUpToForCollections(
+          collectionIds,
+          {
+            status: "published",
+            excludePrivate: true,
+            excludeLatestHidden: true,
+            rootFormat: format,
+            hasRating: true,
+          },
+          2,
+        );
+      const showRatingSort = supportsCollectionRatingSort(ratedThreadCount);
+      const defaultSort = resolveCollectionSortOrder(
+        undefined,
+        requestedDefaultSort,
+        showRatingSort,
+      );
+      sortOrder = resolveCollectionSortOrder(sort, defaultSort, showRatingSort);
     }
 
-    collectionIds = selection.collections.map((col) => col.id);
+    const { posts, nextCursor } = collectionIds
+      ? await c.var.services.posts.listCollectionThreadRootPage(
+          collectionIds,
+          {
+            status: "published",
+            excludePrivate: true,
+            excludeLatestHidden: true,
+            rootFormat: format,
+            lang,
+            sortOrder,
+          },
+          { cursor, limit },
+        )
+      : await c.var.services.posts.listPage(
+          {
+            format,
+            lang,
+            status: "published",
+            excludePrivate: true,
+            excludeLatestHidden: true,
+            excludeReplies: true,
+          },
+          { cursor, limit },
+        );
 
-    // Determine sort order: single collection uses its configured default,
-    // aggregate selections default to "newest"
-    const isAggregate = selection.collections.length > 1;
-    const primaryCollection = selection.collections[0];
-    if (!primaryCollection) {
-      return c.json({ posts: [], nextCursor: null });
-    }
-    const requestedDefaultSort = isAggregate
-      ? "newest"
-      : primaryCollection.sortOrder;
-
-    const ratedThreadCount =
-      await c.var.services.posts.countCollectionThreadRootsUpToForCollections(
-        collectionIds,
-        {
-          status: "published",
-          excludePrivate: true,
-          excludeLatestHidden: true,
-          rootFormat: format,
-          hasRating: true,
-        },
-        2,
-      );
-    const showRatingSort = supportsCollectionRatingSort(ratedThreadCount);
-    const defaultSort = resolveCollectionSortOrder(
-      undefined,
-      requestedDefaultSort,
-      showRatingSort,
-    );
-    sortOrder = resolveCollectionSortOrder(sort, defaultSort, showRatingSort);
-  }
-
-  const { posts, nextCursor } = collectionIds
-    ? await c.var.services.posts.listCollectionThreadRootPage(
-        collectionIds,
-        {
-          status: "published",
-          excludePrivate: true,
-          excludeLatestHidden: true,
-          rootFormat: format,
-          lang,
-          sortOrder,
-        },
-        { cursor, limit },
-      )
-    : await c.var.services.posts.listPage(
-        {
-          format,
-          lang,
-          status: "published",
-          excludePrivate: true,
-          excludeLatestHidden: true,
-          excludeReplies: true,
-        },
-        { cursor, limit },
-      );
-
-  const postIds = posts.map((post) => post.id);
-  const [mediaMap, collectionsMap] = await Promise.all([
-    c.var.services.media.getByPostIds(postIds),
-    c.var.services.collections.getCollectionsByPostIds(postIds),
-  ]);
-
-  return c.json({
-    posts: posts.map((post) =>
-      toPublicPost(
-        post,
-        mediaMap.get(post.id) ?? [],
-        collectionsMap.get(post.id) ?? [],
-        c.var.appConfig,
-        { content },
-      ),
-    ),
-    nextCursor,
-  });
-});
+    return c.json({
+      posts: await loadPublicPostResponses(c.var, posts, { content }),
+      nextCursor,
+    });
+  },
+);
 
 publicPostsApiRoutes.get("/:slug", async (c) => {
   const { content } = parseValidated(
@@ -349,14 +156,6 @@ publicPostsApiRoutes.get("/:slug", async (c) => {
     throw new NotFoundError("Post");
   }
 
-  const [mediaList, threadCollections] = await Promise.all([
-    c.var.services.media.getByPostId(post.id),
-    c.var.services.collections.getCollectionsByPostId(post.id),
-  ]);
-
-  return c.json(
-    toPublicPost(post, mediaList, threadCollections, c.var.appConfig, {
-      content,
-    }),
-  );
+  const [response] = await loadPublicPostResponses(c.var, [post], { content });
+  return c.json(response);
 });

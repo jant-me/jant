@@ -36,21 +36,23 @@ Jant exposes the same site-owner capabilities through two interfaces:
 | HTTP JSON API           | Writing scripts, making a few direct requests, or running a one-time migration. This is the default. |
 | MCP at `<site>/api/mcp` | The caller already supports MCP and benefits from tool discovery and structured tool calls.          |
 
-For MCP, call `initialize`, then `tools/list`, and use the returned schemas rather than assuming tool arguments. The tool groups cover posts, media, attachments, Collections, settings, and search.
+For MCP, call `initialize`, then `tools/list`, and use the returned schemas rather than assuming tool arguments. The tool groups cover posts, Threads, media, attachments, Collections, settings, and search.
 
 For HTTP, these are the main entry points:
 
 | Task                         | Endpoint                                                         |
 | ---------------------------- | ---------------------------------------------------------------- |
-| Read public posts            | `GET /api/public/posts`, `GET /api/public/posts/:slug`           |
+| Read public Threads          | `GET /api/public/threads`, `GET /api/public/threads/:slug/posts` |
+| Read one public post         | `GET /api/public/posts/:slug`                                    |
 | List or inspect all posts    | `GET /api/posts`, `GET /api/posts/:id`                           |
+| List or read whole Threads   | `GET /api/threads`, `GET /api/threads/:id/posts`                 |
 | Create, update, delete       | `POST /api/posts`, `PUT /api/posts/:id`, `DELETE /api/posts/:id` |
 | Upload or manage media       | `/api/upload` or `/api/uploads`                                  |
 | Manage Collections           | `/api/collections`                                               |
 | Search published content     | `GET /api/search`                                                |
 | Read or update site settings | `GET /api/settings`, `PUT /api/settings`                         |
 
-Public post, Collection, navigation, and search reads can work without a token. A site can disable anonymous API reads; `/api/public/*` then becomes unavailable, while Collection, navigation, and search JSON reads require a browser session or Bearer token. Private content and all writes always require authentication.
+Public post, Thread, Collection, navigation, and search reads can work without a token. A site can disable anonymous API reads; `/api/public/*` then becomes unavailable, while Collection, navigation, and search JSON reads require a browser session or Bearer token. Private content and all writes always require authentication.
 
 ---
 
@@ -84,7 +86,7 @@ Jant is a single-author microblog. There are no users, comments, likes, follower
 Three concepts shape almost every content operation:
 
 1. **Posts have three formats** — `note`, `link`, and `quote`. Preserve the semantic format instead of coercing everything into `note`.
-2. **Threads connect posts** — a reply is a post whose `replyToId` points to another post. There is no separate comments table.
+2. **Threads connect posts** — a reply is a post whose `replyToId` points to another post. There is no separate comments table. A post's `threadPostCount` says how many posts its Thread holds; read them all with `GET /api/threads/:id/posts`, passing any post's ID, rather than collecting replies from the post list.
 3. **Collections curate Threads** — they are intentional groupings, not tags. A Thread can belong to multiple Collections; its root and replies share the same memberships.
 
 ### `note` — original writing

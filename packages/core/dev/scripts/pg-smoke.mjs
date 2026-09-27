@@ -512,7 +512,8 @@ async function main() {
       );
       assert.equal(response.status, 200, path);
       const body = await response.json();
-      return { ids: body.posts.map((post) => post.id), next: body.nextCursor };
+      const items = body.posts ?? body.threads;
+      return { ids: items.map((item) => item.id), next: body.nextCursor };
     };
     const walkedOrders = new Map();
     for (const [path, headers] of [
@@ -523,6 +524,20 @@ async function main() {
       ["/api/public/posts?collection=smoke-walk&sort=newest&", {}],
       ["/api/public/posts?collection=smoke-walk&sort=oldest&", {}],
       ["/api/public/posts?collection=smoke-walk&sort=rating_desc&", {}],
+      // The Thread lists: every order on the plain list, a collection's own
+      // orders with the other dimensions pushed into a root subquery (the
+      // `replies` one correlates an EXISTS inside it), and one Thread's posts.
+      ["/api/threads?", { Cookie: cookieHeader }],
+      ["/api/public/threads?", {}],
+      ["/api/public/threads?visibility=any&sort=published&", {}],
+      ["/api/public/threads?sort=updated&", {}],
+      ["/api/public/threads?sort=oldest&", {}],
+      ["/api/public/threads?sort=rating&include=fold&", {}],
+      ["/api/public/threads?collection=smoke-walk&", {}],
+      ["/api/public/threads?collection=smoke-walk&sort=rating&", {}],
+      ["/api/public/threads?collection=smoke-walk&replies=any&", {}],
+      ["/api/public/threads?collection=smoke-walk&sort=published&", {}],
+      [`/api/public/threads/${walkBumped.slug}/posts?`, {}],
     ]) {
       const expected = (await readIds(`${path}limit=100`, headers)).ids;
       assert.ok(expected.length >= 1, path);
@@ -543,8 +558,18 @@ async function main() {
     }
     // Each sort reads its own keys: the pinned Thread leads all three, then
     // activity, first publication, and rating put the rest in three orders.
+    assert.deepEqual(
+      walkedOrders.get(
+        "/api/public/threads?collection=smoke-walk&replies=any&",
+      ),
+      [walkBumped.id],
+    );
+    assert.equal(
+      walkedOrders.get(`/api/public/threads/${walkBumped.slug}/posts?`)?.length,
+      2,
+    );
     const collectionOrders = [...walkedOrders]
-      .filter(([path]) => path.includes("collection=smoke-walk"))
+      .filter(([path]) => path.startsWith("/api/public/posts?collection="))
       .map(([, ids]) => ids);
     assert.equal(collectionOrders.length, 3);
     for (const ids of collectionOrders) {

@@ -3,6 +3,7 @@ import {
   CollectionDescriptionValueSchema,
   CollectionIdSchema,
   CollectionSortOrderSchema,
+  ContentLanguageSchema,
   CreateCollectionSchema,
   CreatePostApiSchema,
   FormatSchema,
@@ -15,7 +16,9 @@ import {
   COLLECTION_SORT_ORDERS,
   FORMATS,
   STATUSES,
+  THREAD_SORTS,
   VISIBILITIES,
+  type Post,
 } from "../types.js";
 import type { AppConfig } from "../types/config.js";
 import type { StorageDriver } from "../lib/storage.js";
@@ -25,8 +28,14 @@ import {
   buildEditableSettingsResponse,
   partitionEditableSettingUpdates,
 } from "../lib/api-settings.js";
-import { toApiAttachment, toApiPost } from "../lib/api-posts.js";
+import {
+  apiPostListOrder,
+  loadApiPostResponse,
+  loadApiPostResponses,
+} from "../lib/api-posts.js";
 import { toSearchApiResult } from "../lib/api-search.js";
+import { loadApiThreadResponses } from "../lib/api-threads.js";
+import { parseThreadSelection } from "../lib/thread-query.js";
 import {
   ConfigurationError,
   ExternalServiceError,
@@ -140,6 +149,68 @@ const AddCollectionThreadToolSchema = z.object({
 
 const RemoveCollectionThreadToolSchema = AddCollectionThreadToolSchema;
 
+/**
+ * The filter dimensions `jant_threads_list` takes, spelled as the HTTP API
+ * and the archive spell them. They reach the same registry parser as a query
+ * string would, so the vocabularies can't drift.
+ */
+const THREAD_FILTER_TOOL_PROPERTIES = {
+  format: { type: "string", enum: [...FORMATS] },
+  collection: {
+    type: "string",
+    description: "Collection slug, or several comma-separated",
+  },
+  year: { type: "integer", description: "Publication year (UTC)" },
+  media: {
+    type: "string",
+    description:
+      "any, none, or comma-separated kinds: image, video, audio, text, document",
+  },
+  title: { type: "string", enum: ["any", "none"] },
+  replies: { type: "string", enum: ["any", "none"] },
+  visibility: {
+    type: "string",
+    enum: ["public", "featured", "hidden", "private"],
+  },
+} as const;
+
+const ListThreadsToolSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  status: StatusSchema.optional(),
+  sort: z.enum(THREAD_SORTS).optional(),
+  fold: z.boolean().optional(),
+  lang: ContentLanguageSchema.optional(),
+  format: z.string().optional(),
+  collection: z.string().optional(),
+  year: z.number().int().optional(),
+  media: z.string().optional(),
+  title: z.string().optional(),
+  replies: z.string().optional(),
+  visibility: z.string().optional(),
+});
+
+const LIST_THREADS_OWN_PARAMS = [
+  "cursor",
+  "limit",
+  "status",
+  "sort",
+  "fold",
+  "lang",
+] as const;
+
+const GetThreadToolSchema = z.object({
+  id: PostIdSchema,
+  fold: z.boolean().optional(),
+});
+
+const ListThreadPostsToolSchema = z.object({
+  id: PostIdSchema,
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(100),
+  status: StatusSchema.optional(),
+});
+
 const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_posts_list",
@@ -157,8 +228,9 @@ const mcpTools: McpToolDefinition[] = [
     },
     async execute(args, context) {
       const input = ListPostsToolSchema.parse(args ?? {});
+      const status = input.status ?? "published";
       const { posts, nextCursor } = await context.services.posts.listPage(
-        { format: input.format, status: input.status ?? "published" },
+        { format: input.format, status, ...apiPostListOrder(status) },
         { cursor: input.cursor, limit: input.limit },
       );
 
@@ -209,6 +281,136 @@ const mcpTools: McpToolDefinition[] = [
       }
 
       return content;
+    },
+  },
+  {
+    name: "jant_threads_list",
+    description:
+      "List Threads (a root post and its replies), each with its post count. Takes the archive's filters; sort is activity (default), published, updated, oldest, or rating. Set fold to include the replies the homepage shows. Pass nextCursor back as cursor for the next page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        cursor: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+        status: { type: "string", enum: [...STATUSES] },
+        sort: { type: "string", enum: [...THREAD_SORTS] },
+        fold: { type: "boolean" },
+        lang: { type: "string", description: "BCP 47 content language" },
+        ...THREAD_FILTER_TOOL_PROPERTIES,
+      },
+      additionalProperties: false,
+    },
+    async execute(args, context) {
+      const input = ListThreadsToolSchema.parse(args ?? {});
+      const filterArgs = Object.fromEntries(
+        Object.entries(input).filter(
+          ([key, value]) =>
+            value !== undefined &&
+            !(LIST_THREADS_OWN_PARAMS as readonly string[]).includes(key),
+        ),
+      );
+      const parsed = await parseThreadSelection(
+        (key) => {
+          const value = filterArgs[key];
+          return value === undefined ? undefined : String(value);
+        },
+        Object.keys(filterArgs),
+        {
+          allow: [],
+          audience: "author",
+          loadCollections: () => context.services.collections.list(),
+        },
+      );
+      if (parsed.kind === "empty") {
+        return { threads: [], nextCursor: null };
+      }
+
+      const { threads, nextCursor } =
+        await context.services.threads.listThreads(
+          {
+            audience: "author",
+            status: input.status,
+            selection: parsed.selection,
+            lang: input.lang,
+            sort: input.sort,
+            fold: input.fold,
+          },
+          { cursor: input.cursor, limit: input.limit },
+        );
+      return {
+        threads: await loadApiThreadResponses(context, threads),
+        nextCursor,
+      };
+    },
+  },
+  {
+    name: "jant_threads_get",
+    description:
+      "Get the Thread any post belongs to: its root and post count, and with fold the replies the homepage shows.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "TypeID of any post in the Thread",
+        },
+        fold: { type: "boolean" },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+    async execute(args, context) {
+      const input = GetThreadToolSchema.parse(args ?? {});
+      const root = await context.services.threads.findRoot(
+        { id: input.id },
+        "author",
+      );
+      if (!root) {
+        throw new NotFoundError("Thread");
+      }
+      const summaries = await context.services.threads.summarize([root], {
+        fold: input.fold,
+      });
+      const [thread] = await loadApiThreadResponses(context, summaries);
+      return thread;
+    },
+  },
+  {
+    name: "jant_threads_list_posts",
+    description:
+      "List the posts of the Thread any post belongs to, root first, in Thread order. Pass nextCursor back as cursor for the next page.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "TypeID of any post in the Thread",
+        },
+        cursor: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100, default: 100 },
+        status: { type: "string", enum: [...STATUSES] },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+    async execute(args, context) {
+      const input = ListThreadPostsToolSchema.parse(args ?? {});
+      const root = await context.services.threads.findRoot(
+        { id: input.id },
+        "author",
+      );
+      if (!root) {
+        throw new NotFoundError("Thread");
+      }
+      const { posts, nextCursor } = await context.services.threads.listPosts(
+        root.id,
+        { audience: "author", status: input.status },
+        { cursor: input.cursor, limit: input.limit },
+      );
+      return {
+        posts: await serializePosts(posts, context),
+        nextCursor,
+      };
     },
   },
   {
@@ -1281,46 +1483,15 @@ async function uploadMediaFromBase64(
   return serializeMedia(media, context.appConfig);
 }
 
-async function serializePosts(
+function serializePosts(
   posts: Awaited<ReturnType<Services["posts"]["list"]>>,
   context: McpToolContext,
 ) {
-  if (posts.length === 0) {
-    return [];
-  }
-
-  const postIds = posts.map((post) => post.id);
-  const [mediaMap, collectionMap] = await Promise.all([
-    context.services.media.getByPostIds(postIds),
-    context.services.collections.getCollectionsByPostIds(postIds),
-  ]);
-
-  return posts.map((post) =>
-    toApiPost(post, {
-      attachments: serializeAttachments(
-        mediaMap.get(post.id) ?? [],
-        context.appConfig,
-      ),
-      collectionIds: (collectionMap.get(post.id) ?? []).map(
-        (collection) => collection.id,
-      ),
-    }),
-  );
+  return loadApiPostResponses(context, posts, { collectionIds: true });
 }
 
-async function serializePost(
-  post: Parameters<typeof toApiPost>[0],
-  context: McpToolContext,
-) {
-  const [mediaList, threadCollections] = await Promise.all([
-    context.services.media.getByPostId(post.id),
-    context.services.collections.getCollectionsByPostId(post.id),
-  ]);
-
-  return toApiPost(post, {
-    attachments: serializeAttachments(mediaList, context.appConfig),
-    collectionIds: threadCollections.map((collection) => collection.id),
-  });
+function serializePost(post: Post, context: McpToolContext) {
+  return loadApiPostResponse(context, post, { collectionIds: true });
 }
 
 function serializeMedia(
@@ -1330,20 +1501,4 @@ function serializeMedia(
   appConfig: AppConfig,
 ) {
   return toApiMedia(media, appConfig);
-}
-
-function serializeAttachments(
-  mediaList: Awaited<ReturnType<Services["media"]["getByPostId"]>>,
-  appConfig: AppConfig,
-) {
-  return mediaList.map((media) =>
-    toApiAttachment(
-      media,
-      appConfig.r2PublicUrl,
-      appConfig.imageTransformUrl,
-      appConfig.s3PublicUrl,
-      appConfig.localPublicUrl,
-      appConfig.sitePathPrefix,
-    ),
-  );
 }
