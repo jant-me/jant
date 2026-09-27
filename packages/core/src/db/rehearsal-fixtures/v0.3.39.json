@@ -1,0 +1,170 @@
+{
+  "name": "v0.3.39",
+  "dialect": "sqlite",
+  "baseMigrationTag": "0004_perpetual_eternity",
+  "seedPath": "./v0.3.39.sql",
+  "assertions": [
+    {
+      "name": "posts survive, and the post deleted on 0.3.39 is gone",
+      "sql": "SELECT COUNT(*) AS count FROM post",
+      "column": "count",
+      "equals": 15
+    },
+    {
+      "name": "the draft stays a draft",
+      "sql": "SELECT COUNT(*) AS count FROM post WHERE status = 'draft'",
+      "column": "count",
+      "equals": 1
+    },
+    {
+      "name": "every post is in the search index",
+      "sql": "SELECT COUNT(*) AS count FROM post_fts",
+      "column": "count",
+      "equals": 15
+    },
+    {
+      "name": "every post's thread root exists",
+      "sql": "SELECT COUNT(*) AS count FROM post p LEFT JOIN post root ON root.site_id = p.site_id AND root.id = p.thread_id WHERE root.id IS NULL",
+      "column": "count",
+      "equals": 0
+    },
+    {
+      "name": "collections survive",
+      "sql": "SELECT COUNT(*) AS count FROM collection",
+      "column": "count",
+      "equals": 3
+    },
+    {
+      "name": "post memberships become one per Thread and collection",
+      "sql": "SELECT COUNT(*) AS count FROM thread_collection",
+      "column": "count",
+      "equals": 7
+    },
+    {
+      "name": "a reply's collection becomes its Thread's",
+      "sql": "SELECT COUNT(*) AS count FROM thread_collection tc JOIN post root ON root.site_id = tc.site_id AND root.id = tc.thread_id JOIN collection c ON c.site_id = tc.site_id AND c.id = tc.collection_id WHERE root.title = 'A Thread' AND c.title = 'Ratings'",
+      "column": "count",
+      "equals": 1
+    },
+    {
+      "name": "thread collection targets are roots",
+      "sql": "SELECT COUNT(*) AS count FROM thread_collection tc INNER JOIN post root ON root.site_id = tc.site_id AND root.id = tc.thread_id WHERE root.reply_to_id IS NOT NULL OR root.thread_id <> root.id",
+      "column": "count",
+      "equals": 0
+    },
+    {
+      "name": "the per-post membership table is removed",
+      "sql": "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'post_collection'",
+      "column": "count",
+      "equals": 0
+    },
+    {
+      "name": "the collections directory survives, divider included",
+      "sql": "SELECT COUNT(*) AS count FROM collection_directory_item",
+      "column": "count",
+      "equals": 4
+    },
+    {
+      "name": "paths survive, less the deleted post's",
+      "sql": "SELECT COUNT(*) AS count FROM path_registry",
+      "column": "count",
+      "equals": 21
+    },
+    {
+      "name": "collections move from /c/ to the root",
+      "sql": "SELECT COUNT(*) AS count FROM path_registry WHERE collection_id IS NOT NULL AND path LIKE 'c/%'",
+      "column": "count",
+      "equals": 0
+    },
+    {
+      "name": "media survives: two images, a text file, a PDF, and a text attachment",
+      "sql": "SELECT COUNT(*) AS count FROM media",
+      "column": "count",
+      "equals": 5
+    },
+    {
+      "name": "navigation survives",
+      "sql": "SELECT COUNT(*) AS count FROM nav_item",
+      "column": "count",
+      "equals": 5
+    },
+    {
+      "name": "foreign keys remain valid",
+      "sql": "PRAGMA foreign_key_check",
+      "rowCount": 0
+    }
+  ],
+  "pages": [
+    {
+      "path": "/",
+      "status": 200,
+      "contains": ["Hello, world", "A Thread"],
+      "excludes": ["A private note", "Not published yet"]
+    },
+    {
+      "path": "/hello-world",
+      "status": 200,
+      "contains": ["The first post"]
+    },
+    {
+      "path": "/a-thread",
+      "status": 200,
+      "contains": ["The start of a Thread", "A reply to the reply"]
+    },
+    {
+      "path": "/notes/custom-path",
+      "status": 200,
+      "contains": ["This post lives at a path"]
+    },
+    {
+      "path": "/notes-with-attachments",
+      "status": 200,
+      "contains": [
+        "A table of details",
+        "Plain text notes.",
+        "&lt;angle&gt; &amp; ampersand",
+        "paper.pdf"
+      ]
+    },
+    {
+      "path": "/old-hello",
+      "status": 301,
+      "location": "/hello-world"
+    },
+    {
+      "path": "/reading",
+      "status": 301,
+      "location": "/books"
+    },
+    {
+      "path": "/books",
+      "status": 200,
+      "contains": ["A long read"]
+    },
+    {
+      "path": "/ratings",
+      "status": 200,
+      "contains": ["A Thread"]
+    },
+    {
+      "path": "/collections",
+      "status": 200,
+      "contains": ["Reading", "Ratings", "Field Notes", "Topics"]
+    },
+    {
+      "path": "/archive",
+      "status": 200,
+      "contains": ["Code and lists"]
+    },
+    {
+      "path": "/search?q=harbor",
+      "status": 200,
+      "contains": ["Two pictures"]
+    },
+    {
+      "path": "/feed",
+      "status": 200,
+      "contains": ["Hello, world"]
+    }
+  ]
+}

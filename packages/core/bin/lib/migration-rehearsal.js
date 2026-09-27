@@ -270,6 +270,23 @@ function isTransientWranglerError(error) {
   );
 }
 
+/**
+ * The tables a seed writes, children first, so deleting from them in this
+ * order satisfies their foreign keys: a seed inserts parents first.
+ */
+function seededTablesChildrenFirst(statements) {
+  const tables = [];
+  for (const statement of statements) {
+    // The first statement carries the seed's header comment.
+    const match =
+      /^(?:\s*--[^\n]*\n)*\s*INSERT\s+INTO\s+"?([A-Za-z_]\w*)"?/i.exec(
+        statement,
+      );
+    if (match && !tables.includes(match[1])) tables.push(match[1]);
+  }
+  return tables.reverse();
+}
+
 function chunkStatements(statements, chunkSize) {
   const chunks = [];
 
@@ -351,6 +368,16 @@ async function executeRehearsalSqlFile(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
+      if (attempt > 1) {
+        // Batches that went through before the failure are in the database;
+        // clear them so the retry doesn't insert them twice.
+        await executeRemoteD1SqlBatch(
+          seededTablesChildrenFirst(statements)
+            .map((table) => `DELETE FROM "${table}";`)
+            .join("\n"),
+          config,
+        );
+      }
       console.log(
         `Importing fixture SQL via D1 API in ${batches.length} batches (attempt ${attempt}/${maxAttempts})...`,
       );

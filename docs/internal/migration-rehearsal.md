@@ -17,10 +17,19 @@ The rehearsal command rebuilds a D1 database in four steps:
 3. Import a frozen SQL snapshot compatible with that baseline.
 4. Run current schema migrations and backfills.
 
-Current fixture:
+Fixtures:
 
-- Manifest: `packages/core/src/db/rehearsal-fixtures/demo-current.json`
-- Seed SQL: `packages/core/src/db/rehearsal-fixtures/demo-current.sql`
+- `v0.3.39` (`packages/core/src/db/rehearsal-fixtures/v0.3.39.json`, baseline
+  `0004_perpetual_eternity`): a site written by @jant/core 0.3.39 itself, the
+  oldest release `docs/compatibility.md` says upgrades in place. It holds every
+  post format, a Thread whose reply is in a collection its root isn't,
+  each visibility and a draft, a post deleted on 0.3.39, attachments of each
+  kind, navigation, and custom URLs. This is the default, locally, remotely,
+  and in CI.
+- `pinned-reply-memberships` (baseline `0026_absent_rhodey`, written by hand):
+  collection memberships with positions and pinned times on a root and its
+  reply, which releases after 0.3.39 could set and the Thread migration must
+  merge. `src/db/__tests__/migration-rehearsal.test.ts` rehearses both.
 
 Run it locally:
 
@@ -49,7 +58,7 @@ Local remote rehearsal reads these environment variables:
 
 It loads `packages/core/.env` first, then `packages/core/.env.local`, and finally lets explicit shell environment variables override either file.
 
-If the remote fixture import hits a transient network error, rehearsal retries the whole fixture import from the start. The current frozen fixture is safe to replay because it begins by clearing the content tables before re-inserting rows.
+If the remote fixture import hits a transient network error, rehearsal retries the whole fixture import from the start, after deleting from every table the seed writes, children first, so the batches that went through aren't inserted twice.
 
 ## GitHub Actions Activation
 
@@ -66,27 +75,32 @@ To enable the remote job, configure:
 
 The rehearsal database should be a dedicated remote D1 database used only for CI resets and migration playback.
 
-## Postgres
+## Node runtime: Postgres and SQLite
 
-Hosted Jant runs on Postgres, so an upgrade over existing Postgres data is the
-path most sites take. `mise run check-pg-rehearsal` rehearses it the same way,
-in the `PG Smoke` CI job against its Postgres service:
+Hosted Jant runs on Postgres and the Docker image on SQLite, both through the
+Node runtime, whose migrator is Drizzle's rather than the D1 runner above.
+`dev/scripts/node-rehearsal.mjs` rehearses that path for a manifest whose
+`dialect` is `pg` or `sqlite`:
 
-1. Recreate the database named by `PG_REHEARSAL_DATABASE_URL` (from
-   `PG_REHEARSAL_ADMIN_DATABASE_URL`).
-2. Apply the Postgres migrations up to `baseMigrationTag`, through a copy of
-   the migrations folder whose journal stops there.
+1. Create a throwaway database: the one named by `PG_REHEARSAL_DATABASE_URL`
+   (recreated from `PG_REHEARSAL_ADMIN_DATABASE_URL`), or a temporary SQLite
+   file.
+2. Apply the migrations up to `baseMigrationTag`, through a copy of the
+   migrations folder whose journal stops there.
 3. Load the seed.
 4. Run `jant migrate --node`: every later migration, then every backfill.
 5. Check that every migration is recorded, and the manifest's assertions.
+6. Serve the upgraded database and read the manifest's `pages` as a
+   signed-out reader: each page's status, redirect target, and text it must
+   and must not show.
 
-Current fixture:
+`mise run check-pg-rehearsal` runs `pg-v0.3.39` (baseline
+`0002_breezy_lockjaw`) in the `PG Smoke` CI job, against its Postgres
+service. `mise run check-sqlite-rehearsal` runs `v0.3.39`, the D1 fixture's
+seed, in `check-ci`; it needs no database. `jant db rehearse` reads a
+manifest's seed and assertions and ignores `dialect` and `pages`.
 
-- Manifest: `packages/core/src/db/rehearsal-fixtures/pg-demo-current.json`
-- Seed SQL: `packages/core/src/db/rehearsal-fixtures/pg-demo-current.sql`
-  (baseline `0032_furry_multiple_man`)
-
-The seed leaves out `data_migration`, which the backfill runner creates, so
+The seeds leave out `data_migration`, which the backfill runner creates, so
 each rehearsal also reruns every backfill over real data; backfills must be
 idempotent anyway.
 
@@ -100,15 +114,32 @@ mise run check-pg-rehearsal
 ```
 
 A migration that changes what the assertions count updates the manifest in
-the same change, saying why. To move the baseline forward, write a new seed
-rather than editing this one: import the canonical site export into a
-Postgres database migrated to the new head
-(`node dev/run-script.mjs dev/scripts/import-node-demo-site-export.ts` with
-`DATABASE_URL` pointing at it), run `jant migrate --node`, dump it with
-`pg_dump --data-only --column-inserts --disable-triggers --schema=public`,
-excluding `account`, `session`, `verification`, `api_token`, `rate_limit`,
-and `data_migration`, and remove the `\restrict` lines and the
-`transaction_timeout` and `search_path` settings `pg` can't run.
+the same change, saying why.
+
+## Building a seed from a release
+
+`dev/scripts/build-rehearsal-seeds.mjs` builds both `v<version>` seeds from a
+published release: it installs `@jant/core@<version>` from npm, migrates a
+SQLite file and a new Postgres database with that release's own `jant migrate`,
+starts its `jant start` on each, writes the site through its API, and dumps the
+data as `INSERT` statements with declared columns, parents first. Auth
+secrets, rate limits, migration bookkeeping, `data_migration`, and SQLite's
+search index are left out; each rehearsal reruns every backfill and the
+search triggers refill the index.
+
+```sh
+cd packages/core
+node dev/scripts/build-rehearsal-seeds.mjs \
+  --pg-admin-url postgresql://postgres:postgres@127.0.0.1:55432/postgres \
+  --version 0.3.39
+```
+
+A committed seed is never rebuilt: later migrations are rehearsed against
+exactly that data. To move the promise's baseline, build seeds for the new
+version, write their manifests with the counts the upgrade must end at, and
+point the defaults at them. The script writes the same site against any
+release whose API accepts it; an older or newer one may need `writeSite`
+adjusted, which changes nothing for seeds already committed.
 
 ## Production table cutovers
 
@@ -146,10 +177,9 @@ Recommended loop:
 
 1. Capture or curate real content in the content-lab Worker.
 2. Run `mise run db-content-lab-export`.
-3. Copy the snapshot into `packages/core/src/db/rehearsal-fixtures/`.
-4. Update the fixture manifest's `baseMigrationTag` to the latest migration tag on `main`.
-5. Verify with `mise run db-wrangler-rehearse`.
-6. Commit the refreshed fixture in a separate change when possible.
+3. Copy the snapshot into `packages/core/src/db/rehearsal-fixtures/` as a new fixture, with a manifest whose `baseMigrationTag` is the latest migration tag on `main`. Existing seeds stay as they are.
+4. Verify with `node ./bin/jant.js db rehearse --local --fixture <manifest>`.
+5. Commit the new fixture in a separate change when possible.
 
 The content-lab snapshot is written to `sites/content-lab/scripts/content-lab-snapshot.sql` and stays out of Git by default.
 

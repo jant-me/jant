@@ -1,7 +1,10 @@
 -- =============================================================================
--- Frozen migration rehearsal fixture for Jant (site-aware core)
--- Seed source: minimal current-schema content sample
--- Refresh flow: keep this fixture aligned with the latest schema baseline
+-- Migration rehearsal seed at 0026_absent_rhodey, written by hand: a Thread
+-- whose root and reply share one collection and whose reply alone is in
+-- another, with the positions and pinned times releases after 0.3.39 could
+-- set. The upgrade must merge them into one membership per Thread and
+-- collection. v0.3.39.sql can't carry this: that release had neither column.
+-- Never edit it: later migrations are rehearsed against exactly this.
 -- =============================================================================
 
 INSERT INTO "site" ("id", "key", "status", "created_at", "updated_at")

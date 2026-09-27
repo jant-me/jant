@@ -1,7 +1,7 @@
 {
-  "name": "demo-current",
+  "name": "pinned-reply-memberships",
   "baseMigrationTag": "0026_absent_rhodey",
-  "seedPath": "./demo-current.sql",
+  "seedPath": "./pinned-reply-memberships.sql",
   "assertions": [
     {
       "name": "published posts exist",

@@ -55,8 +55,8 @@ uploads/media automation, or the MCP endpoint, see
 
 ## Migration Rehearsal
 
-- Use `mise run db-wrangler-rehearse` to replay a frozen D1 fixture against the current migration set.
-- The fixture lives in `packages/core/src/db/rehearsal-fixtures/` and stays independent from demo/preview site seeds.
+- Use `mise run db-wrangler-rehearse` to upgrade a local D1 from the site 0.3.39 wrote, the oldest release that upgrades in place. `mise run check-sqlite-rehearsal` and `check-pg-rehearsal` do the same on the Node runtime.
+- Fixtures live in `packages/core/src/db/rehearsal-fixtures/` and stay independent from demo/preview site seeds.
 - Remote CI rehearsal is configured separately in `.github/workflows/migration-rehearsal.yml`.
 - Remote rehearsal uses a dedicated disposable D1 database and replays the fixture through the Cloudflare D1 API instead of relying only on Wrangler file uploads.
 - See `docs/internal/migration-rehearsal.md` for activation and snapshot refresh steps.

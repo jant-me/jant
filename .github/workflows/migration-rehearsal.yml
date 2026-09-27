@@ -120,7 +120,7 @@ jobs:
           node packages/core/bin/jant.js db rehearse \
             --remote \
             --config "$WRANGLER_CONFIG" \
-            --fixture packages/core/src/db/rehearsal-fixtures/demo-current.json
+            --fixture packages/core/src/db/rehearsal-fixtures/v0.3.39.json
 
   report-failure:
     name: Report failure

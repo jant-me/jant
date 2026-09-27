@@ -147,7 +147,14 @@ node ./packages/core/dev/scripts/pg-smoke.mjs
 description = "Upgrade a seeded Postgres database from its baseline migration (PG_REHEARSAL_*_DATABASE_URL)"
 run = """
 pnpm --filter @jant/core build:lib
-node ./packages/core/dev/scripts/pg-rehearsal.mjs
+node ./packages/core/dev/scripts/node-rehearsal.mjs --fixture packages/core/src/db/rehearsal-fixtures/pg-v0.3.39.json
+"""
+
+[tasks.check-sqlite-rehearsal]
+description = "Upgrade a seeded SQLite database on the Node runtime from its baseline migration"
+run = """
+pnpm --filter @jant/core build:lib
+node ./packages/core/dev/scripts/node-rehearsal.mjs --fixture packages/core/src/db/rehearsal-fixtures/v0.3.39.json
 """
 
 [tasks.check-types]
@@ -242,6 +249,7 @@ mise run check-tests
 mise run check-copy
 mise run i18n-check
 mise run check-site-bundle
+mise run check-sqlite-rehearsal
 if [[ -n "${PG_SMOKE_DATABASE_URL:-}" ]]; then
   mise run check-pg-smoke
 fi
@@ -308,7 +316,7 @@ echo "Done! Local database is ready."
 [tasks.db-wrangler-rehearse]
 description = "Rebuild a local Wrangler/D1 from the frozen migration rehearsal fixture"
 dir = "packages/core"
-run = "node ./bin/jant.js db rehearse --local --fixture src/db/rehearsal-fixtures/demo-current.json --persist-to .wrangler/rehearsal"
+run = "node ./bin/jant.js db rehearse --local --fixture src/db/rehearsal-fixtures/v0.3.39.json --persist-to .wrangler/rehearsal"
 
 # =============================================================================
 # DB — Local Node (SQLite or Postgres via packages/core/.env.node)
