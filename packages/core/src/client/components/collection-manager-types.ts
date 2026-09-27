@@ -83,7 +83,7 @@ export interface ManagedSmartCollection {
   description: string | null;
   /** Conditions, in the shared dimension vocabulary. */
   selection: Record<string, unknown>;
-  sort: string;
+  sortOrder: string;
   layout: string | null;
   threadCount: number;
   recentActivityAt: number;

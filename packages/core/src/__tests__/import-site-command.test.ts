@@ -526,6 +526,8 @@ describe("Hugo import CLI helpers", () => {
           year: 2025,
           title: false,
         },
+        // Both names, so a site before and after the rename reads it.
+        sortOrder: "rating_desc",
         sort: "rating_desc",
         layout: "grid",
       },

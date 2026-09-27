@@ -830,7 +830,8 @@ export const CreateSmartCollectionSchema = z.object({
   description: CollectionDescriptionValueSchema.nullable().optional(),
   // Omitted means no conditions, which is the honest spelling of "every post".
   selection: PostFilterSelectionSchema.optional(),
-  sort: z.enum(SMART_COLLECTION_SORT_ORDERS).optional(),
+  // Named as a collection's is, and taking the same values.
+  sortOrder: z.enum(SMART_COLLECTION_SORT_ORDERS).optional(),
   layout: z.enum(ARCHIVE_LAYOUTS).nullable().optional(),
 });
 

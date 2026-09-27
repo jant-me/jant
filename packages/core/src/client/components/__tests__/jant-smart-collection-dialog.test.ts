@@ -134,7 +134,7 @@ beforeEach(() => {
         method: init?.method ?? "GET",
         body: init?.body ? JSON.parse(String(init.body)) : undefined,
       });
-      const body = responses[path] ?? { smartCollection: {} };
+      const body = responses[path] ?? {};
       return {
         ok: true,
         status: 200,
@@ -582,14 +582,12 @@ describe("JantSmartCollectionDialog", () => {
 
   it("warns before an existing link moves", async () => {
     responses["/api/smart-collections/smc_1"] = {
-      smartCollection: {
-        id: "smc_1",
-        slug: "quotes",
-        title: "Quotes",
-        selection: {},
-        sort: "newest",
-        layout: null,
-      },
+      id: "smc_1",
+      slug: "quotes",
+      title: "Quotes",
+      selection: {},
+      sortOrder: "newest",
+      layout: null,
     };
     const element = mountDialog();
     void element.open({ smartCollectionId: "smc_1" });
@@ -627,14 +625,12 @@ describe("JantSmartCollectionDialog", () => {
     );
 
     responses["/api/smart-collections/smc_1"] = {
-      smartCollection: {
-        id: "smc_1",
-        slug: "quotes",
-        title: "Quotes",
-        selection: {},
-        sort: "newest",
-        layout: null,
-      },
+      id: "smc_1",
+      slug: "quotes",
+      title: "Quotes",
+      selection: {},
+      sortOrder: "newest",
+      layout: null,
     };
     const editing = mountDialog();
     void editing.open({ smartCollectionId: "smc_1" });
@@ -646,14 +642,12 @@ describe("JantSmartCollectionDialog", () => {
 
   it("leaves deleting to the menus that open it", async () => {
     responses["/api/smart-collections/smc_1"] = {
-      smartCollection: {
-        id: "smc_1",
-        slug: "quotes",
-        title: "Quotes",
-        selection: {},
-        sort: "newest",
-        layout: null,
-      },
+      id: "smc_1",
+      slug: "quotes",
+      title: "Quotes",
+      selection: {},
+      sortOrder: "newest",
+      layout: null,
     };
     const element = mountDialog();
     void element.open({ smartCollectionId: "smc_1" });

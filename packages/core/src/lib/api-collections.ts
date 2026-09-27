@@ -36,7 +36,8 @@ export interface ApiSmartCollectionResponse {
   title: string;
   description: string | null;
   selection: SmartCollection["selection"];
-  sort: SmartCollection["sort"];
+  /** Named as a collection's is, and taking the same values. */
+  sortOrder: SmartCollection["sort"];
   layout: SmartCollection["layout"];
   createdAt: number;
   updatedAt: number;
@@ -100,7 +101,7 @@ export function toApiCollection(
  * @param smartCollection - The smart collection, with its directory counts when listed
  * @returns The smart collection response; counts only when the input carries them
  * @example
- * return c.json({ smartCollection: toApiSmartCollection(smartCollection) });
+ * return c.json(toApiSmartCollection(smartCollection));
  */
 export function toApiSmartCollection(
   smartCollection: SmartCollection | SmartCollectionDirectoryEntry,
@@ -111,7 +112,7 @@ export function toApiSmartCollection(
     title: smartCollection.title,
     description: smartCollection.description,
     selection: smartCollection.selection,
-    sort: smartCollection.sort,
+    sortOrder: smartCollection.sort,
     layout: smartCollection.layout,
     createdAt: smartCollection.createdAt,
     updatedAt: smartCollection.updatedAt,

@@ -1246,8 +1246,10 @@ function buildSmartCollectionCreateRequest(bundle, collectionSlugToId) {
         ? { description: frontMatter.summary_text }
         : {}),
       selection,
+      // `sortOrder` since 0.10, `sort` before: a site on either version
+      // reads its own name and drops the other.
       ...(typeof frontMatter.sort_order === "string"
-        ? { sort: frontMatter.sort_order }
+        ? { sortOrder: frontMatter.sort_order, sort: frontMatter.sort_order }
         : {}),
       ...(typeof frontMatter.display_layout === "string"
         ? { layout: frontMatter.display_layout }
@@ -1727,7 +1729,8 @@ function createRemoteTarget(apiUrl, token) {
         token,
         data,
       );
-      return result.smartCollection;
+      // Bare since 0.10; earlier sites wrap it in `smartCollection`.
+      return result.smartCollection ?? result;
     },
     async createCollectionDirectoryItem(data) {
       return apiCall(

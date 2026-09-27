@@ -112,11 +112,12 @@ smartCollectionsApiRoutes.post("/", requireAuthApi(), async (c) => {
     CreateSmartCollectionSchema,
     await readJsonBody(c),
   );
-  const smartCollection = await c.var.services.smartCollections.create(body);
-  return c.json(
-    { smartCollection: toApiSmartCollection(smartCollection) },
-    201,
-  );
+  const { sortOrder, ...fields } = body;
+  const smartCollection = await c.var.services.smartCollections.create({
+    ...fields,
+    sort: sortOrder,
+  });
+  return c.json(toApiSmartCollection(smartCollection), 201);
 });
 
 smartCollectionsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
@@ -125,7 +126,7 @@ smartCollectionsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
     await c.var.services.smartCollections.getById(id),
     "Smart collection",
   );
-  return c.json({ smartCollection: toApiSmartCollection(smartCollection) });
+  return c.json(toApiSmartCollection(smartCollection));
 });
 
 smartCollectionsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
@@ -134,11 +135,15 @@ smartCollectionsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
     UpdateSmartCollectionSchema,
     await readJsonBody(c),
   );
+  const { sortOrder, ...fields } = body;
   const smartCollection = assertFound(
-    await c.var.services.smartCollections.update(id, body),
+    await c.var.services.smartCollections.update(id, {
+      ...fields,
+      ...(sortOrder !== undefined ? { sort: sortOrder } : {}),
+    }),
     "Smart collection",
   );
-  return c.json({ smartCollection: toApiSmartCollection(smartCollection) });
+  return c.json(toApiSmartCollection(smartCollection));
 });
 
 smartCollectionsApiRoutes.delete("/:id", requireAuthApi(), async (c) => {

@@ -71,7 +71,7 @@ interface CollectionsResponse {
     title: string;
     description: string | null;
     selection: Record<string, unknown>;
-    sort: string;
+    sortOrder: string;
     layout: string | null;
     threadCount: number;
     recentActivityAt: number;
@@ -429,7 +429,7 @@ export class JantCollectionsManager extends LitElement {
         title: smartCollection.title,
         description: smartCollection.description,
         selection: smartCollection.selection ?? {},
-        sort: smartCollection.sort,
+        sortOrder: smartCollection.sortOrder,
         layout: smartCollection.layout,
         threadCount: smartCollection.threadCount ?? 0,
         recentActivityAt: smartCollection.recentActivityAt,

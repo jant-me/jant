@@ -190,7 +190,7 @@ export class JantSmartCollectionDialog extends LitElement {
       this._title = options.prefill.title ?? "";
       this._description = options.prefill.description ?? "";
       this._rows = selectionToRows(options.prefill.selection ?? {});
-      this._sort = options.prefill.sort ?? "newest";
+      this._sort = options.prefill.sortOrder ?? "newest";
       this._layout = options.prefill.layout ?? "";
       if (this._title) await this.#suggestSlug();
     }
@@ -228,13 +228,10 @@ export class JantSmartCollectionDialog extends LitElement {
     try {
       const res = await fetch(publicPath(`/api/smart-collections/${id}`));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as {
-        smartCollection: SmartCollectionDialogState & {
-          id: string;
-          slug: string;
-        };
+      const loaded = (await res.json()) as SmartCollectionDialogState & {
+        id: string;
+        slug: string;
       };
-      const loaded = json.smartCollection;
       this._mode = "edit";
       this._id = loaded.id;
       this._title = loaded.title ?? "";
@@ -243,7 +240,7 @@ export class JantSmartCollectionDialog extends LitElement {
       this._slugEdited = true;
       this._description = loaded.description ?? "";
       this._rows = selectionToRows(loaded.selection ?? {});
-      this._sort = loaded.sort ?? "newest";
+      this._sort = loaded.sortOrder ?? "newest";
       this._layout = loaded.layout ?? "";
       return true;
     } catch {
@@ -631,7 +628,7 @@ export class JantSmartCollectionDialog extends LitElement {
       title,
       description: this._description.trim() || null,
       selection: rowsToSelection(this._rows),
-      sort: this._sort,
+      sortOrder: this._sort,
       layout: this._layout || null,
     };
 

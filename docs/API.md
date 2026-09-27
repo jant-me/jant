@@ -1947,19 +1947,19 @@ endpoints here — the conditions are the membership.
 
 Smart collection responses include these fields:
 
-| Field              | Type                                  | Notes                                             |
-| ------------------ | ------------------------------------- | ------------------------------------------------- |
-| `id`               | `smc_*` string                        | Smart collection ID                               |
-| `slug`             | string                                | Canonical address, in the same namespace as posts |
-| `title`            | string                                | Display title. Required                           |
-| `description`      | string \| `null`                      | Optional description                              |
-| `selection`        | object                                | The conditions. `{}` collects every post          |
-| `sort`             | `newest` \| `oldest` \| `rating_desc` | Order of the posts the conditions gather          |
-| `layout`           | `list` \| `grid` \| `null`            | `null` follows the site's archive layout          |
-| `createdAt`        | integer                               | Unix seconds                                      |
-| `updatedAt`        | integer                               | Unix seconds                                      |
-| `threadCount`      | integer                               | Only present in list responses                    |
-| `recentActivityAt` | integer                               | Only present in list responses                    |
+| Field              | Type                                  | Notes                                                                        |
+| ------------------ | ------------------------------------- | ---------------------------------------------------------------------------- |
+| `id`               | `smc_*` string                        | Smart collection ID                                                          |
+| `slug`             | string                                | Canonical address, in the same namespace as posts                            |
+| `title`            | string                                | Display title. Required                                                      |
+| `description`      | string \| `null`                      | Optional description                                                         |
+| `selection`        | object                                | The conditions. `{}` collects every post                                     |
+| `sortOrder`        | `newest` \| `oldest` \| `rating_desc` | Order of the posts the conditions gather, named and valued as a collection's |
+| `layout`           | `list` \| `grid` \| `null`            | `null` follows the site's archive layout                                     |
+| `createdAt`        | integer                               | Unix seconds                                                                 |
+| `updatedAt`        | integer                               | Unix seconds                                                                 |
+| `threadCount`      | integer                               | Only present in list responses                                               |
+| `recentActivityAt` | integer                               | Only present in list responses                                               |
 
 ### The `selection` object
 
@@ -2004,7 +2004,7 @@ nothing reports its own `updatedAt`.
 
 `GET /api/smart-collections/:id`
 
-Response: `{ "smartCollection": SmartCollection }`.
+Response: the smart collection object.
 
 ### Create a smart collection
 
@@ -2018,13 +2018,13 @@ Body:
   "title": "Quotes",
   "description": "Things worth keeping.",
   "selection": { "format": "quote", "media": "any" },
-  "sort": "newest",
+  "sortOrder": "newest",
   "layout": null
 }
 ```
 
 `slug` and `title` are required; everything else is optional. Returns `201` with
-`{ "smartCollection": SmartCollection }`. A slug already used by a post, a
+the smart collection object. A slug already used by a post, a
 collection, or another smart collection returns `409` — they share one address
 space.
 
@@ -2032,7 +2032,7 @@ space.
 
 `PUT /api/smart-collections/:id`
 
-Same body, every field optional. Sending `selection` **replaces** the conditions
+Same body, every field optional. Returns the updated smart collection object. Sending `selection` **replaces** the conditions
 entirely: a dimension you leave out is cleared, not kept.
 
 Changing `slug` moves the address immediately and does not leave a redirect

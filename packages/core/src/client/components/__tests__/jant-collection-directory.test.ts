@@ -181,7 +181,7 @@ const itemsWithSmartCollection: CollectionManagerItem[] = [
       title: "Quotes",
       description: null,
       selection: { format: "quote" },
-      sort: "newest",
+      sortOrder: "newest",
       layout: null,
       threadCount: 4,
       recentActivityAt: 1_763_619_400,

@@ -22,7 +22,7 @@ export interface SmartCollectionDialogState {
   title?: string;
   description?: string | null;
   selection?: Record<string, unknown>;
-  sort?: string;
+  sortOrder?: string;
   layout?: string | null;
 }
 
