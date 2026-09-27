@@ -4,8 +4,9 @@ import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
 import { parseIdParam, ValidationError } from "../../lib/errors.js";
+import { requireStorage } from "../../lib/storage.js";
 import { ID_PREFIX } from "../../lib/ids.js";
-import { parseValidated } from "../../lib/schemas.js";
+import { parseValidated, readJsonBody } from "../../lib/schemas.js";
 import { getMediaUrl, getPublicUrlForProvider } from "../../lib/image.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -51,15 +52,9 @@ uploadsApiRoutes.use("*", requireAuthApi());
  * public URL so the editor can swap the node's `src`.
  */
 uploadsApiRoutes.post("/sideload", async (c) => {
-  const storage = c.var.storage;
-  if (!storage) {
-    return c.json(
-      { error: "File storage isn't set up. Check your server config." },
-      500,
-    );
-  }
+  const storage = requireStorage(c.var.storage);
 
-  const { url, alt } = parseValidated(SideloadSchema, await c.req.json());
+  const { url, alt } = parseValidated(SideloadSchema, await readJsonBody(c));
 
   const media = await c.var.services.media.ingestFromUrl(
     { url, alt },
@@ -134,17 +129,11 @@ function scheduleExpiredUploadCleanup(
 }
 
 uploadsApiRoutes.post("/init", async (c) => {
-  const storage = c.var.storage;
-  if (!storage) {
-    return c.json(
-      { error: "File storage isn't set up. Check your server config." },
-      500,
-    );
-  }
+  const storage = requireStorage(c.var.storage);
 
   scheduleExpiredUploadCleanup(c);
 
-  const body = await c.req.json();
+  const body = await readJsonBody(c);
   const data = parseValidated(InitiateUploadSchema, body);
   const result = await c.var.services.uploads.initiate(
     {
@@ -187,13 +176,7 @@ uploadsApiRoutes.post("/init", async (c) => {
 });
 
 uploadsApiRoutes.put("/:id/body", async (c) => {
-  const storage = c.var.storage;
-  if (!storage) {
-    return c.json(
-      { error: "File storage isn't set up. Check your server config." },
-      500,
-    );
-  }
+  const storage = requireStorage(c.var.storage);
 
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.uploadSession);
   const bytes = new Uint8Array(await c.req.arrayBuffer());
@@ -202,13 +185,7 @@ uploadsApiRoutes.put("/:id/body", async (c) => {
 });
 
 uploadsApiRoutes.put("/:id/part", async (c) => {
-  const storage = c.var.storage;
-  if (!storage) {
-    return c.json(
-      { error: "File storage isn't set up. Check your server config." },
-      500,
-    );
-  }
+  const storage = requireStorage(c.var.storage);
 
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.uploadSession);
   const partNumberRaw = c.req.query("partNumber");
@@ -230,13 +207,7 @@ uploadsApiRoutes.put("/:id/part", async (c) => {
 });
 
 uploadsApiRoutes.put("/:id/poster", async (c) => {
-  const storage = c.var.storage;
-  if (!storage) {
-    return c.json(
-      { error: "File storage isn't set up. Check your server config." },
-      500,
-    );
-  }
+  const storage = requireStorage(c.var.storage);
 
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.uploadSession);
   await c.var.services.uploads.uploadPoster(
@@ -248,16 +219,10 @@ uploadsApiRoutes.put("/:id/poster", async (c) => {
 });
 
 uploadsApiRoutes.post("/:id/complete", async (c) => {
-  const storage = c.var.storage;
-  if (!storage) {
-    return c.json(
-      { error: "File storage isn't set up. Check your server config." },
-      500,
-    );
-  }
+  const storage = requireStorage(c.var.storage);
 
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.uploadSession);
-  const body = await c.req.json();
+  const body = await readJsonBody(c);
   const data = parseValidated(CompleteUploadSchema, body);
   const result = await c.var.services.uploads.complete(id, data, {
     storage,
@@ -285,13 +250,7 @@ uploadsApiRoutes.post("/:id/complete", async (c) => {
 });
 
 uploadsApiRoutes.post("/:id/abort", async (c) => {
-  const storage = c.var.storage;
-  if (!storage) {
-    return c.json(
-      { error: "File storage isn't set up. Check your server config." },
-      500,
-    );
-  }
+  const storage = requireStorage(c.var.storage);
 
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.uploadSession);
   await c.var.services.uploads.abort(id, { storage });

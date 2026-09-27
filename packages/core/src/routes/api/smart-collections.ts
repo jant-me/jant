@@ -11,10 +11,11 @@ import { requireAuthApi } from "../../middleware/auth.js";
 import {
   ContentLanguageSchema,
   CreateSmartCollectionSchema,
+  parseValidated,
+  readJsonBody,
   SmartCollectionIdSchema,
   SmartCollectionPreviewSchema,
   UpdateSmartCollectionSchema,
-  parseValidated,
 } from "../../lib/schemas.js";
 import { assertFound, parseIdParam } from "../../lib/errors.js";
 import { ID_PREFIX } from "../../lib/ids.js";
@@ -77,7 +78,10 @@ smartCollectionsApiRoutes.get("/slug", requireAuthApi(), async (c) => {
  * second spelling for them.
  */
 smartCollectionsApiRoutes.post("/preview", requireAuthApi(), async (c) => {
-  const body = parseValidated(SmartCollectionPreviewSchema, await c.req.json());
+  const body = parseValidated(
+    SmartCollectionPreviewSchema,
+    await readJsonBody(c),
+  );
   const query = parseValidated(PreviewQuerySchema, c.req.query());
 
   const { count, baseline } = await c.var.services.smartCollections.preview(
@@ -104,7 +108,10 @@ smartCollectionsApiRoutes.get("/", requireAuthApi(), async (c) => {
 });
 
 smartCollectionsApiRoutes.post("/", requireAuthApi(), async (c) => {
-  const body = parseValidated(CreateSmartCollectionSchema, await c.req.json());
+  const body = parseValidated(
+    CreateSmartCollectionSchema,
+    await readJsonBody(c),
+  );
   const smartCollection = await c.var.services.smartCollections.create(body);
   return c.json(
     { smartCollection: toApiSmartCollection(smartCollection) },
@@ -123,7 +130,10 @@ smartCollectionsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
 
 smartCollectionsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.smartCollection);
-  const body = parseValidated(UpdateSmartCollectionSchema, await c.req.json());
+  const body = parseValidated(
+    UpdateSmartCollectionSchema,
+    await readJsonBody(c),
+  );
   const smartCollection = assertFound(
     await c.var.services.smartCollections.update(id, body),
     "Smart collection",

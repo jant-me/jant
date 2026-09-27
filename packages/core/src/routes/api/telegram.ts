@@ -41,6 +41,8 @@ import type {
   IngestTelegramMediaInput,
   TelegramMediaGroupKind,
 } from "../../services/telegram.js";
+import { NotFoundError, UnauthorizedError } from "../../lib/errors.js";
+import { readJsonBody } from "../../lib/schemas.js";
 
 /** Message-derived ingest payload; the bot token is added at the call site. */
 type MessageMedia = Omit<IngestTelegramMediaInput, "botToken">;
@@ -139,20 +141,15 @@ telegramWebhookRoutes.post("/webhook/:botId", async (c) => {
   const botId = c.req.param("botId");
   const bot = await resolveBot(c, botId);
   if (!bot) {
-    return c.json({ error: "Unknown bot" }, 404);
+    throw new NotFoundError("Telegram bot");
   }
 
   const providedSecret = c.req.header("X-Telegram-Bot-Api-Secret-Token") ?? "";
   if (!timingSafeEqualText(providedSecret, bot.secret)) {
-    return c.json({ error: "Invalid secret token" }, 401);
+    throw new UnauthorizedError("Invalid secret token");
   }
 
-  let update: TelegramUpdate;
-  try {
-    update = (await c.req.json()) as TelegramUpdate;
-  } catch {
-    return c.json({ error: "Invalid JSON payload" }, 400);
-  }
+  const update = (await readJsonBody(c)) as TelegramUpdate;
 
   // Telegram retries failed deliveries; a slow handler causes duplicate
   // posts. Process inline (posting a note is fast) but never let an error

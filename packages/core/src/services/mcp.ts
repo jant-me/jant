@@ -21,7 +21,7 @@ import {
   type Post,
 } from "../types.js";
 import type { AppConfig } from "../types/config.js";
-import type { StorageDriver } from "../lib/storage.js";
+import { requireStorage, type StorageDriver } from "../lib/storage.js";
 import type { Services } from "./index.js";
 import { CORE_VERSION } from "../lib/version.js";
 import {
@@ -37,7 +37,6 @@ import { toSearchApiResult } from "../lib/api-search.js";
 import { loadApiThreadResponses } from "../lib/api-threads.js";
 import { parseThreadSelection } from "../lib/thread-query.js";
 import {
-  ConfigurationError,
   ExternalServiceError,
   NotFoundError,
   type DomainError,
@@ -855,7 +854,7 @@ const mcpTools: McpToolDefinition[] = [
     },
     async execute(args, context) {
       const input = GetMediaToolSchema.parse(args ?? {});
-      const storage = requireStorage(context);
+      const storage = requireStorage(context.storage);
       const content = await context.services.media.getTextAttachmentContent(
         input.id,
         storage,
@@ -1315,16 +1314,6 @@ function isDomainError(error: unknown): error is DomainError {
   );
 }
 
-function requireStorage(context: McpToolContext): StorageDriver {
-  if (!context.storage) {
-    throw new ConfigurationError(
-      "File storage isn't set up. Check your server config.",
-    );
-  }
-
-  return context.storage;
-}
-
 function decodeBase64Bytes(value: string, label: string): Uint8Array {
   try {
     const binary = atob(value);
@@ -1346,7 +1335,7 @@ async function uploadMediaFromBase64(
   input: z.infer<typeof UploadMediaToolSchema>,
   context: McpToolContext,
 ) {
-  const storage = requireStorage(context);
+  const storage = requireStorage(context.storage);
   const fileBytes = decodeBase64Bytes(input.contentBase64, "contentBase64");
   const init = await context.services.uploads.initiate(
     {

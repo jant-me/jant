@@ -18,7 +18,7 @@ import {
   SYNC_COMMIT_MARKER,
 } from "../../services/github-sync.js";
 import type { GitHubPushEvent } from "../../lib/github-api.js";
-import { parseValidated } from "../../lib/schemas.js";
+import { parseValidated, readJsonBody } from "../../lib/schemas.js";
 import { getGitHubAppConfig } from "../../lib/env.js";
 import { buildSyncSiteConfig } from "../../lib/github-sync-site-config.js";
 import { sse } from "../../lib/sse.js";
@@ -267,7 +267,7 @@ githubSyncAdminRoutes.post("/setup", requireAuthApi(), async (c) => {
     );
   }
 
-  const body = parseValidated(ConnectSchema, await c.req.json());
+  const body = parseValidated(ConnectSchema, await readJsonBody(c));
   const parsed = parseRepoSlug(body.repo);
   if (!parsed) {
     return c.json({ error: "Invalid repository format. Use owner/repo." }, 400);

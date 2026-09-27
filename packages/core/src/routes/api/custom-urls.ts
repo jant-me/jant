@@ -6,7 +6,11 @@ import { Hono } from "hono";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
-import { CreateCustomUrlSchema, parseValidated } from "../../lib/schemas.js";
+import {
+  CreateCustomUrlSchema,
+  parseValidated,
+  readJsonBody,
+} from "../../lib/schemas.js";
 import { parseIdParam, NotFoundError } from "../../lib/errors.js";
 import { ID_PREFIX } from "../../lib/ids.js";
 
@@ -34,7 +38,7 @@ customUrlsApiRoutes.get("/", requireAuthApi(), async (c) => {
 
 // Create custom URL (requires auth)
 customUrlsApiRoutes.post("/", requireAuthApi(), async (c) => {
-  const body = parseValidated(CreateCustomUrlSchema, await c.req.json());
+  const body = parseValidated(CreateCustomUrlSchema, await readJsonBody(c));
 
   const redirectType = body.redirectType
     ? (parseInt(body.redirectType, 10) as 301 | 302)

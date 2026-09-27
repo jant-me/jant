@@ -87,13 +87,6 @@ export class MediaQuotaExceededError extends DomainError {
   }
 }
 
-/** Too many requests — 429 */
-export class RateLimitError extends DomainError {
-  constructor(message = "Too many requests") {
-    super(message, 429, "RATE_LIMIT");
-  }
-}
-
 /** Third-party failure — 500 */
 export class ExternalServiceError extends DomainError {
   constructor(message: string) {

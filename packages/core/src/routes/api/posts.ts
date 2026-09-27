@@ -9,11 +9,12 @@ import { z } from "zod";
 import {
   ContentLanguageSchema,
   CreatePostApiSchema,
-  UpdatePostApiSchema,
   FormatSchema,
-  PostIdSchema,
-  StatusSchema,
   parseValidated,
+  PostIdSchema,
+  readJsonBody,
+  StatusSchema,
+  UpdatePostApiSchema,
 } from "../../lib/schemas.js";
 import { requireAuthApi } from "../../middleware/auth.js";
 import {
@@ -127,7 +128,7 @@ postsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
 
 // Create post (requires auth)
 postsApiRoutes.post("/", requireAuthApi(), async (c) => {
-  const body = parseValidated(CreatePostApiSchema, await c.req.json());
+  const body = parseValidated(CreatePostApiSchema, await readJsonBody(c));
 
   const deps = postWriteDeps(c.var);
   const post = await c.var.services.posts.createWithAttachments(
@@ -147,7 +148,7 @@ postsApiRoutes.post("/", requireAuthApi(), async (c) => {
 postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
 
-  const body = parseValidated(UpdatePostApiSchema, await c.req.json());
+  const body = parseValidated(UpdatePostApiSchema, await readJsonBody(c));
   const deps = postWriteDeps(c.var);
   const post = assertFound(
     await c.var.services.posts.updateWithAttachments(
@@ -185,7 +186,7 @@ const LinkTranslationSchema = z.object({ postId: PostIdSchema });
  */
 postsApiRoutes.put("/:id/language", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-  const { language } = parseValidated(SetLanguageSchema, await c.req.json());
+  const { language } = parseValidated(SetLanguageSchema, await readJsonBody(c));
 
   await c.var.services.posts.setThreadLanguage(id, language);
   await triggerGitHubSyncInline(c);
@@ -300,7 +301,10 @@ postsApiRoutes.get("/:id/translations/resolve", requireAuthApi(), async (c) => {
 /** Link two already-published Threads as translations of each other. */
 postsApiRoutes.post("/:id/translations", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-  const { postId } = parseValidated(LinkTranslationSchema, await c.req.json());
+  const { postId } = parseValidated(
+    LinkTranslationSchema,
+    await readJsonBody(c),
+  );
 
   await c.var.services.posts.linkTranslation(id, postId);
   await triggerGitHubSyncInline(c);

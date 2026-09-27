@@ -235,7 +235,7 @@ Quote posts use quote-specific names in the API:
 
 ## Error Format
 
-Domain errors use this shape:
+Every error uses this shape:
 
 ```json
 {
@@ -246,7 +246,7 @@ Domain errors use this shape:
 ```
 
 - `details` is present for validation errors that carry structured field information.
-- Unhandled server errors may return only `{ "error": "Something went wrong on our end" }`.
+- `code` is always present, an error the server didn't expect included (`INTERNAL_ERROR`). An unknown `/api` path answers `NOT_FOUND` in this shape too.
 
 Common error codes:
 
@@ -258,9 +258,11 @@ Common error codes:
 | `NOT_FOUND`              | `404` | Resource does not exist                                             |
 | `CONFLICT`               | `409` | Duplicate slug/path, invalid state transition, hosted-mode conflict |
 | `MEDIA_QUOTA_EXCEEDED`   | `409` | Hosted media quota would be exceeded                                |
-| `RATE_LIMIT`             | `429` | Too many requests                                                   |
+| `LANGUAGE_IN_USE`        | `409` | The language still has posts, so it can't be removed                |
 | `CONFIGURATION_ERROR`    | `500` | Missing or invalid server configuration                             |
 | `EXTERNAL_SERVICE_ERROR` | `500` | External dependency failed                                          |
+| `INTERNAL_ERROR`         | `500` | An error the server didn't expect; the server log has the details   |
+| `SITE_UNAVAILABLE`       | `503` | The hosted site is suspended                                        |
 
 Example validation error:
 

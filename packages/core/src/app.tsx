@@ -78,7 +78,7 @@ import { attachSession } from "./middleware/session.js";
 import { defaultCacheControl, noStore } from "./middleware/cache-control.js";
 import { requireRssFeedsEnabled } from "./middleware/public-content-access.js";
 import { requireOnboarding } from "./middleware/onboarding.js";
-import { errorHandler } from "./middleware/error-handler.js";
+import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { withConfig } from "./middleware/config.js";
 import { secureHeadersMiddleware } from "./middleware/secure-headers.js";
 import { apiCors } from "./middleware/cors.js";
@@ -301,6 +301,7 @@ export function createApp(): App {
 
   // Global error handler: maps DomainError → HTTP responses
   app.onError(errorHandler);
+  app.notFound(notFoundHandler);
 
   // Instance health checks must bypass hosted site resolution so container
   // health probes keep working in host-based mode before any site matches.

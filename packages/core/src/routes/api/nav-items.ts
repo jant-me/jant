@@ -13,8 +13,9 @@ import { requirePublicApiAccess } from "../../middleware/public-content-access.j
 import {
   CreateNavItemSchema,
   NavItemIdSchema,
-  UpdateNavItemSchema,
   parseValidated,
+  readJsonBody,
+  UpdateNavItemSchema,
 } from "../../lib/schemas.js";
 import { assertFound, parseIdParam, NotFoundError } from "../../lib/errors.js";
 import { AddressQuerySchema, requestInternalPath } from "../../lib/address.js";
@@ -119,7 +120,7 @@ navItemsApiRoutes.get("/resolve", requireAuthApi(), async (c) => {
 // Move nav item (requires auth) — must be before /:id
 navItemsApiRoutes.put("/:id/move", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.navItem);
-  const body = parseValidated(MoveSchema, await c.req.json());
+  const body = parseValidated(MoveSchema, await readJsonBody(c));
 
   const item = assertFound(
     await c.var.services.navItems.move(
@@ -135,7 +136,7 @@ navItemsApiRoutes.put("/:id/move", requireAuthApi(), async (c) => {
 
 // Create nav item (requires auth)
 navItemsApiRoutes.post("/", requireAuthApi(), async (c) => {
-  const body = parseValidated(CreateNavItemSchema, await c.req.json());
+  const body = parseValidated(CreateNavItemSchema, await readJsonBody(c));
 
   let item;
   if (body.type === "system") {
@@ -180,7 +181,7 @@ navItemsApiRoutes.post("/", requireAuthApi(), async (c) => {
 // Update nav item (requires auth)
 navItemsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.navItem);
-  const body = parseValidated(UpdateNavItemSchema, await c.req.json());
+  const body = parseValidated(UpdateNavItemSchema, await readJsonBody(c));
 
   const item = assertFound(
     await c.var.services.navItems.update(id, body),

@@ -120,7 +120,6 @@ Every failure under `/api` returns JSON with a fixed shape:
 | 403    | `FORBIDDEN`                    | Token is valid but lacks access to the resource                                      |
 | 404    | `NOT_FOUND`                    | Resource doesn't exist                                                               |
 | 409    | `CONFLICT` and friends         | State conflict (slug collision, hosted media quota, etc.)                            |
-| 429    | `RATE_LIMIT`                   | Rate-limited; see below                                                              |
 | 500    | `EXTERNAL_SERVICE_ERROR`, etc. | Server error; retry, and if it keeps failing, send the request details for debugging |
 
 ### Rate limiting

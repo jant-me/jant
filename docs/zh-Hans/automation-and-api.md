@@ -120,7 +120,6 @@ curl -X PUT "$JANT_URL/api/settings" \
 | 403  | `FORBIDDEN`                 | token 有效但无权访问该资源                   |
 | 404  | `NOT_FOUND`                 | 资源不存在                                   |
 | 409  | `CONFLICT` 等               | 状态冲突（如 slug 重复、托管媒体配额超限）   |
-| 429  | `RATE_LIMIT`                | 触发速率限制，见下节                         |
 | 500  | `EXTERNAL_SERVICE_ERROR` 等 | 服务端错误，重试；持续失败就带上请求详情反馈 |
 
 ### 速率限制

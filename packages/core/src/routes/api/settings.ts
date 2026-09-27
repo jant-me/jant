@@ -9,8 +9,13 @@ import { requireAuthApi } from "../../middleware/auth.js";
 import { z } from "zod";
 import { now } from "../../lib/time.js";
 import { SETTINGS_KEYS } from "../../lib/constants.js";
-import { parseValidated } from "../../lib/schemas.js";
-import { ValidationError } from "../../lib/errors.js";
+import { parseValidated, readJsonBody } from "../../lib/schemas.js";
+import {
+  DomainError,
+  ExternalServiceError,
+  ValidationError,
+} from "../../lib/errors.js";
+import { requireStorage } from "../../lib/storage.js";
 import { syncHostedControlPlaneSiteAvatar } from "../../lib/hosted-control-plane-sync.js";
 import {
   buildConfigEditorFields,
@@ -41,7 +46,7 @@ settingsApiRoutes.get("/", requireAuthApi(), async (c) => {
 
 // Update settings (requires auth)
 settingsApiRoutes.put("/", requireAuthApi(), async (c) => {
-  const updates = parseValidated(UpdateSettingsSchema, await c.req.json());
+  const updates = parseValidated(UpdateSettingsSchema, await readJsonBody(c));
   const { filteredUpdates, rejectedKeys } = partitionEditableSettingUpdates(
     updates,
     c.var.appConfig.demoMode,
@@ -75,7 +80,7 @@ settingsApiRoutes.put("/", requireAuthApi(), async (c) => {
 // to restore config-like internal keys (theme, font, mode, custom CSS, header
 // avatar toggle) that are not writable through the regular settings route.
 settingsApiRoutes.put("/import", requireAuthApi(), async (c) => {
-  const updates = parseValidated(UpdateSettingsSchema, await c.req.json());
+  const updates = parseValidated(UpdateSettingsSchema, await readJsonBody(c));
   const { filteredUpdates, rejectedKeys } = partitionImportableSettingUpdates(
     updates,
     c.var.appConfig.demoMode,
@@ -138,18 +143,12 @@ settingsApiRoutes.post(
 
 // Upload site avatar (requires auth)
 settingsApiRoutes.post("/avatar", requireAuthApi(), async (c) => {
-  const storage = c.var.storage;
-  if (!storage) {
-    return c.json(
-      { error: "File storage isn't set up. Check your server config." },
-      500,
-    );
-  }
+  const storage = requireStorage(c.var.storage);
 
   const formData = await c.req.formData();
   const file = formData.get("file") as File | null;
   if (!file) {
-    return c.json({ error: "No file selected. Choose a file to upload." }, 400);
+    throw new ValidationError("No file selected. Choose a file to upload.");
   }
 
   const faviconFile = formData.get("favicon") as File | null;
@@ -188,12 +187,13 @@ settingsApiRoutes.post("/avatar", requireAuthApi(), async (c) => {
 
     return c.json({ success: true }, 201);
   } catch (error) {
-    if (error instanceof ValidationError) {
-      return c.json({ error: error.message }, 400);
-    }
-    return c.json(
-      { error: "Upload didn't go through. Try again in a moment." },
-      500,
+    // Validation and quota errors reach the client as they are; anything else
+    // is a failed write.
+    if (error instanceof DomainError) throw error;
+    // eslint-disable-next-line no-console -- Error logging is intentional
+    console.error("[Jant] Avatar upload failed:", error);
+    throw new ExternalServiceError(
+      "Upload didn't go through. Try again in a moment.",
     );
   }
 });

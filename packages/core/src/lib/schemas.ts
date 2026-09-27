@@ -1194,6 +1194,29 @@ export function validateAttachmentCount(attachments: unknown[]): string | null {
 }
 
 /**
+ * Read a request's JSON body, answering a body that isn't JSON with a
+ * ValidationError (400) rather than letting the parse error surface as a 500.
+ *
+ * @param c - Anything with Hono's `req.json()`, usually the request context
+ * @returns The parsed body, to validate with {@link parseValidated}
+ * @example
+ * ```ts
+ * const body = parseValidated(CreatePostApiSchema, await readJsonBody(c));
+ * ```
+ */
+export async function readJsonBody(c: {
+  req: { json(): Promise<unknown> };
+}): Promise<unknown> {
+  try {
+    return await c.req.json();
+  } catch {
+    throw new ValidationError(
+      "The request body isn't valid JSON. Send a JSON object with Content-Type: application/json.",
+    );
+  }
+}
+
+/**
  * Parse and validate data against a Zod schema, throwing ValidationError on failure.
  *
  * @param schema - Zod schema to validate against
@@ -1201,7 +1224,7 @@ export function validateAttachmentCount(attachments: unknown[]): string | null {
  * @returns Validated data
  * @example
  * ```ts
- * const body = parseValidated(CreatePostSchema, await c.req.json());
+ * const body = parseValidated(CreatePostSchema, await readJsonBody(c));
  * ```
  */
 export function parseValidated<T>(schema: z.ZodSchema<T>, data: unknown): T {

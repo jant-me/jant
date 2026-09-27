@@ -28,12 +28,20 @@ import {
 } from "../../lib/image-dimensions.js";
 import {
   assertFound,
+  DomainError,
+  ExternalServiceError,
   MediaQuotaExceededError,
   parseIdParam,
+  ValidationError,
 } from "../../lib/errors.js";
+import { requireStorage } from "../../lib/storage.js";
 import { getI18n } from "../../i18n/index.js";
 import { ID_PREFIX } from "../../lib/ids.js";
-import { MediaIdSchema, parseValidated } from "../../lib/schemas.js";
+import {
+  MediaIdSchema,
+  parseValidated,
+  readJsonBody,
+} from "../../lib/schemas.js";
 import { toApiMedia } from "../../lib/api-media.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -70,28 +78,20 @@ function getHostedMediaQuotaExceededText(c: Context<Env>): string {
 // Upload a file
 uploadApiRoutes.post("/", async (c) => {
   const i18n = getI18n(c);
-  const storage = c.var.storage;
-  if (!storage) {
-    const errorText = i18n._(
-      msg({
-        message: "File storage isn't set up. Check your server config.",
-        comment: "@context: Error when file storage is not set up",
-      }),
-    );
-    return c.json({ error: errorText }, 500);
-  }
+  const storage = requireStorage(c.var.storage);
 
   const formData = await c.req.formData();
   const file = formData.get("file") as File | null;
 
   if (!file) {
-    const errorText = i18n._(
-      msg({
-        message: "No file selected. Choose a file to upload.",
-        comment: "@context: Error when no file was selected for upload",
-      }),
+    throw new ValidationError(
+      i18n._(
+        msg({
+          message: "No file selected. Choose a file to upload.",
+          comment: "@context: Error when no file was selected for upload",
+        }),
+      ),
     );
-    return c.json({ error: errorText }, 400);
   }
 
   // Validate file type and size
@@ -99,7 +99,7 @@ uploadApiRoutes.post("/", async (c) => {
     maxFileSizeMB: c.var.appConfig.uploadMaxFileSize,
   });
   if (uploadError) {
-    return c.json({ error: uploadError }, 400);
+    throw new ValidationError(uploadError);
   }
 
   // Generate a media TypeID-backed filename and storage key
@@ -109,8 +109,7 @@ uploadApiRoutes.post("/", async (c) => {
   );
   const uploadPolicy = getStoredUploadPolicy(file.type);
   if (!uploadPolicy) {
-    const errorText = `File type "${file.type}" is not supported.`;
-    return c.json({ error: errorText }, 400);
+    throw new ValidationError(`File type "${file.type}" is not supported.`);
   }
 
   try {
@@ -128,7 +127,7 @@ uploadApiRoutes.post("/", async (c) => {
         signatureBytes,
       );
       if (signatureError) {
-        return c.json({ error: signatureError }, 400);
+        throw new ValidationError(signatureError);
       }
     }
 
@@ -247,21 +246,21 @@ uploadApiRoutes.post("/", async (c) => {
       size: media.size,
     });
   } catch (err) {
+    // The quota error carries the hosted service's own wording; a validation
+    // error thrown above passes through; anything else is a failed write.
+    if (err instanceof MediaQuotaExceededError) {
+      throw new MediaQuotaExceededError(getHostedMediaQuotaExceededText(c));
+    }
+    if (err instanceof DomainError) throw err;
     // eslint-disable-next-line no-console -- Error logging is intentional
     console.error("Upload error:", err);
-
-    const errorText =
-      err instanceof MediaQuotaExceededError
-        ? getHostedMediaQuotaExceededText(c)
-        : i18n._(
-            msg({
-              message: "Upload didn't go through. Try again in a moment.",
-              comment: "@context: Error when file upload fails",
-            }),
-          );
-    return c.json(
-      { error: errorText },
-      err instanceof MediaQuotaExceededError ? 409 : 500,
+    throw new ExternalServiceError(
+      i18n._(
+        msg({
+          message: "Upload didn't go through. Try again in a moment.",
+          comment: "@context: Error when file upload fails",
+        }),
+      ),
     );
   }
 });
@@ -293,7 +292,7 @@ uploadApiRoutes.get("/:id", async (c) => {
 
 uploadApiRoutes.patch("/:id", async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.media);
-  const { alt } = parseValidated(UpdateMediaSchema, await c.req.json());
+  const { alt } = parseValidated(UpdateMediaSchema, await readJsonBody(c));
   assertFound(await c.var.services.media.getById(id), "Media");
 
   await c.var.services.media.updateAlt(id, alt);

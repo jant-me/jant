@@ -1076,11 +1076,6 @@ msgstr "Field Notes on Interface Tone"
 msgid "Field notes on quiet design"
 msgstr "Field notes on quiet design"
 
-#. @context: Error when file storage is not set up
-#: src/routes/api/upload.ts
-msgid "File storage isn't set up. Check your server config."
-msgstr "File storage isn't set up. Check your server config."
-
 #. @context: Archive media filter - files/documents
 #: src/lib/filter-dimensions.ts
 msgid "Files"

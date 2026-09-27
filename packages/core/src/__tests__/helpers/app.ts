@@ -10,7 +10,10 @@ import type { AppVariables } from "../../types/app-context.js";
 import { createTestDatabase, DEFAULT_TEST_SITE_ID } from "./db.js";
 import type { Database } from "../../db/index.js";
 import type BetterSqlite3 from "better-sqlite3";
-import { errorHandler } from "../../middleware/error-handler.js";
+import {
+  errorHandler,
+  notFoundHandler,
+} from "../../middleware/error-handler.js";
 import { createI18n } from "../../i18n/i18n.js";
 import { DEFAULT_APP_PORT } from "../../lib/env.js";
 import { createMemoryRateLimiter } from "../../lib/rate-limit-memory.js";
@@ -74,6 +77,7 @@ export function createTestApp(options: TestAppOptions = {}) {
 
   // Global error handler: maps DomainError → HTTP responses
   app.onError(errorHandler);
+  app.notFound(notFoundHandler);
 
   // Inject env bindings and services middleware
   app.use("*", async (c, next) => {

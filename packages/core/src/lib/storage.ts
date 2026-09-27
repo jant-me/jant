@@ -11,6 +11,7 @@ import {
   getLocalStoragePath,
 } from "./env.js";
 import { now } from "./time.js";
+import { ConfigurationError } from "./errors.js";
 
 export interface StorageObjectOptions {
   contentType?: string;
@@ -141,6 +142,24 @@ function assertSupportedStorageDriver(env: Bindings, driver: string): void {
       "Cloudflare runtime does not support local storage. Use the default R2 storage or set STORAGE_DRIVER=s3.",
     );
   }
+}
+
+/**
+ * The storage driver a file operation needs, or a ConfigurationError that the
+ * error handler answers as a 500 with `code: "CONFIGURATION_ERROR"`.
+ *
+ * @param storage - The request's storage driver, `null` when none is set up
+ * @returns The driver
+ * @example
+ * const storage = requireStorage(c.var.storage);
+ */
+export function requireStorage(storage: StorageDriver | null): StorageDriver {
+  if (!storage) {
+    throw new ConfigurationError(
+      "File storage isn't set up. Check your server config.",
+    );
+  }
+  return storage;
 }
 
 /**

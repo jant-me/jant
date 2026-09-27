@@ -14,16 +14,17 @@ import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
 import { requirePublicApiAccess } from "../../middleware/public-content-access.js";
 import {
-  CollectionDirectoryRowIdSchema,
   CollectionDescriptionValueSchema,
+  CollectionDirectoryRowIdSchema,
   CollectionIdSchema,
   CollectionSortOrderSchema,
   ContentLanguageSchema,
   CreateCollectionDirectoryItemSchema,
   CreateCollectionSchema,
-  PostIdSchema,
-  UpdateCollectionDirectoryItemSchema,
   parseValidated,
+  PostIdSchema,
+  readJsonBody,
+  UpdateCollectionDirectoryItemSchema,
 } from "../../lib/schemas.js";
 import { assertFound, parseIdParam, NotFoundError } from "../../lib/errors.js";
 import { ID_PREFIX } from "../../lib/ids.js";
@@ -93,7 +94,7 @@ collectionsApiRoutes.get("/", requirePublicApiAccess(), async (c) => {
 collectionsApiRoutes.post("/directory-items", requireAuthApi(), async (c) => {
   const body = parseValidated(
     CreateCollectionDirectoryItemSchema,
-    await c.req.json(),
+    await readJsonBody(c),
   );
   const item = await c.var.services.collections.createDirectoryItem(body);
   return c.json(toApiDirectoryItem(item), 201);
@@ -109,7 +110,7 @@ collectionsApiRoutes.put(
     );
     const body = parseValidated(
       UpdateCollectionDirectoryItemSchema,
-      await c.req.json(),
+      await readJsonBody(c),
     );
 
     const item = assertFound(
@@ -134,7 +135,7 @@ collectionsApiRoutes.put(
       CollectionDirectoryRowIdSchema,
       c.req.param("id"),
     );
-    const body = parseValidated(MoveSchema, await c.req.json());
+    const body = parseValidated(MoveSchema, await readJsonBody(c));
 
     const item = assertFound(
       await c.var.services.collections.moveDirectoryItem(
@@ -191,7 +192,7 @@ collectionsApiRoutes.get("/:id", requirePublicApiAccess(), async (c) => {
 
 // Create collection (requires auth)
 collectionsApiRoutes.post("/", requireAuthApi(), async (c) => {
-  const body = parseValidated(CreateCollectionSchema, await c.req.json());
+  const body = parseValidated(CreateCollectionSchema, await readJsonBody(c));
 
   const collection = await c.var.services.collections.create({
     slug: body.slug,
@@ -206,7 +207,7 @@ collectionsApiRoutes.post("/", requireAuthApi(), async (c) => {
 // Update collection (requires auth)
 collectionsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.collection);
-  const body = parseValidated(UpdateCollectionSchema, await c.req.json());
+  const body = parseValidated(UpdateCollectionSchema, await readJsonBody(c));
 
   const collection = assertFound(
     await c.var.services.collections.update(id, body),
@@ -231,7 +232,7 @@ collectionsApiRoutes.post("/:id/threads", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.collection);
   assertFound(await c.var.services.collections.getById(id), "Collection");
 
-  const body = parseValidated(ThreadAssignSchema, await c.req.json());
+  const body = parseValidated(ThreadAssignSchema, await readJsonBody(c));
   await c.var.services.collections.addThread(id, body.threadId);
 
   return c.json({ success: true }, 201);
