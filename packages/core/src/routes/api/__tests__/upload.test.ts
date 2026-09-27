@@ -40,7 +40,7 @@ describe("Upload API Routes", () => {
     const body = await res.json();
     expect(body.media).toHaveLength(1);
     expect(body.media[0]).toMatchObject({
-      filename: "photo.webp",
+      originalName: "photo.webp",
       mimeType: "image/webp",
       type: "media",
     });
@@ -68,10 +68,10 @@ describe("Upload API Routes", () => {
       );
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        media: { filename: string }[];
+        media: { originalName: string }[];
         nextCursor: string | null;
       };
-      seen.push(...body.media.map((media) => media.filename));
+      seen.push(...body.media.map((media) => media.originalName));
       cursor = body.nextCursor;
       if (!cursor) break;
     }
@@ -100,7 +100,7 @@ describe("Upload API Routes", () => {
     const body = await res.json();
     expect(body).toMatchObject({
       id: media.id,
-      filename: "photo.webp",
+      originalName: "photo.webp",
       mimeType: "image/webp",
       type: "media",
     });

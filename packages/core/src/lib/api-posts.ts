@@ -7,25 +7,56 @@ import { getPostDisplayTitle } from "./post-meta.js";
 import { getImageUrl, getMediaUrl, getPublicUrlForProvider } from "./image.js";
 import { toPublicPath } from "./url.js";
 
-export type ApiPostResponse = Omit<Post, "title" | "url"> & {
-  attachments?: ReturnType<typeof toApiAttachment>[];
-  collectionIds?: string[];
+/**
+ * A Post in the author API: `GET /api/posts`, `/api/threads`, and the MCP post
+ * tools. Every field is listed here and in docs/API.md's Posts table; nothing
+ * reaches the response by being a column. `title` and `url` are present
+ * except on quotes, which carry `sourceName` and `sourceUrl` instead.
+ */
+export interface ApiPostResponse {
+  id: string;
+  format: Post["format"];
+  status: Post["status"];
+  /** Resolved: a reply carries its Thread root's visibility. */
+  visibility: Post["visibility"];
+  pinnedAt: number | null;
+  featuredAt: number | null;
+  slug: string;
   title?: string | null;
+  url?: string | null;
+  sourceName?: string | null;
+  sourceUrl?: string | null;
   /**
    * Short plain-text name for this Post, derived when it has no title of its
    * own. Use it wherever the Post is referenced from somewhere else; a slug is
    * a URL, not a name.
    */
   displayTitle: string;
+  body: string | null;
+  bodyHtml: string | null;
+  bodyText: string | null;
+  quoteText: string | null;
+  summary: string | null;
+  rating: number | null;
+  replyToId: string | null;
+  threadId: string;
+  /** BCP 47 content language, uniform across a Thread. */
+  language: string | null;
+  quietReply: boolean;
+  publishedAt: number | null;
+  lastActivityAt: number;
+  threadUpdatedAt: number;
   /**
    * Published Posts in this Post's Thread, its root included: 1 for a Post on
    * its own, 0 while nothing in the Thread is published.
    */
   threadPostCount: number;
-  url?: string | null;
-  sourceName?: string | null;
-  sourceUrl?: string | null;
-};
+  createdAt: number;
+  updatedAt: number;
+  attachments?: ReturnType<typeof toApiAttachment>[];
+  /** The Thread's collections; only on single-post reads. */
+  collectionIds?: string[];
+}
 
 /**
  * The order `GET /api/posts` and `jant_posts_list` walk Posts in.
@@ -118,27 +149,42 @@ export function toApiPost(
     collectionIds?: string[];
   },
 ): ApiPostResponse {
-  const { title, url, ...rest } = post;
-  // A short name for this Post wherever it is referenced from somewhere else —
-  // notes are usually untitled, so the client cannot just read `title`.
-  const displayTitle = getPostDisplayTitle(post);
-
-  if (post.format === "quote") {
-    return {
-      ...rest,
-      ...extras,
-      displayTitle,
-      sourceName: title ?? null,
-      sourceUrl: url ?? null,
-    };
-  }
+  // Quotes name their source where other formats carry a title and link.
+  const source =
+    post.format === "quote"
+      ? { sourceName: post.title ?? null, sourceUrl: post.url ?? null }
+      : { title: post.title ?? null, url: post.url ?? null };
 
   return {
-    ...rest,
-    ...extras,
-    displayTitle,
-    title: title ?? null,
-    url: url ?? null,
+    id: post.id,
+    format: post.format,
+    status: post.status,
+    visibility: post.visibility,
+    pinnedAt: post.pinnedAt,
+    featuredAt: post.featuredAt,
+    slug: post.slug,
+    ...source,
+    // A short name for this Post wherever it is referenced from somewhere
+    // else — notes are usually untitled, so the client cannot just read `title`.
+    displayTitle: getPostDisplayTitle(post),
+    body: post.body,
+    bodyHtml: post.bodyHtml,
+    bodyText: post.bodyText,
+    quoteText: post.quoteText,
+    summary: post.summary,
+    rating: post.rating,
+    replyToId: post.replyToId,
+    threadId: post.threadId,
+    language: post.language,
+    quietReply: post.quietReply,
+    publishedAt: post.publishedAt,
+    lastActivityAt: post.lastActivityAt,
+    threadUpdatedAt: post.threadUpdatedAt,
+    threadPostCount: extras.threadPostCount,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+    ...(extras.attachments ? { attachments: extras.attachments } : {}),
+    ...(extras.collectionIds ? { collectionIds: extras.collectionIds } : {}),
   };
 }
 

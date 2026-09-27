@@ -3,6 +3,11 @@
  */
 
 import { Hono } from "hono";
+import {
+  toApiCollection,
+  toApiCollectionList,
+  toApiDirectoryItem,
+} from "../../lib/api-collections.js";
 import { z } from "zod";
 import type { Bindings, CollectionSortOrder } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
@@ -71,7 +76,7 @@ collectionsApiRoutes.get("/", requirePublicApiAccess(), async (c) => {
     // design notes on the asymmetry, which is not a gap to be filled in later.
     const collections = await c.var.services.collections.listByRecentActivity();
     return c.json({
-      collections,
+      collections: collections.map(toApiCollection),
       directoryItems: [],
     });
   }
@@ -81,11 +86,7 @@ collectionsApiRoutes.get("/", requirePublicApiAccess(), async (c) => {
     lang: query.lang,
   });
 
-  return c.json({
-    collections: directoryData.collections,
-    smartCollections: directoryData.smartCollections,
-    directoryItems: directoryData.directoryItems,
-  });
+  return c.json(toApiCollectionList(directoryData));
 });
 
 // Create directory item (divider or link) — must be before /:id
@@ -95,7 +96,7 @@ collectionsApiRoutes.post("/directory-items", requireAuthApi(), async (c) => {
     await c.req.json(),
   );
   const item = await c.var.services.collections.createDirectoryItem(body);
-  return c.json(item, 201);
+  return c.json(toApiDirectoryItem(item), 201);
 });
 
 collectionsApiRoutes.put(
@@ -116,7 +117,7 @@ collectionsApiRoutes.put(
       "Directory item",
     );
 
-    return c.json(item);
+    return c.json(toApiDirectoryItem(item));
   },
 );
 
@@ -144,7 +145,7 @@ collectionsApiRoutes.put(
       "Directory item",
     );
 
-    return c.json(item);
+    return c.json(toApiDirectoryItem(item));
   },
 );
 
@@ -185,7 +186,7 @@ collectionsApiRoutes.get("/:id", requirePublicApiAccess(), async (c) => {
     await c.var.services.collections.getById(id),
     "Collection",
   );
-  return c.json(collection);
+  return c.json(toApiCollection(collection));
 });
 
 // Create collection (requires auth)
@@ -199,7 +200,7 @@ collectionsApiRoutes.post("/", requireAuthApi(), async (c) => {
     sortOrder: body.sortOrder as CollectionSortOrder | undefined,
   });
 
-  return c.json(collection, 201);
+  return c.json(toApiCollection(collection), 201);
 });
 
 // Update collection (requires auth)
@@ -212,7 +213,7 @@ collectionsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
     "Collection",
   );
 
-  return c.json(collection);
+  return c.json(toApiCollection(collection));
 });
 
 // Delete collection (requires auth)

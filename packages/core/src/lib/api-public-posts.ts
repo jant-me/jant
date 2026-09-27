@@ -38,11 +38,6 @@ export type PublicPostBaseResponse = {
    * enabled multilingual content.
    */
   language: string | null;
-  /**
-   * Shared by every translation of this Thread. Null when the Thread has no
-   * translations.
-   */
-  translationGroupId: string | null;
   /** Reply published without announcing its Thread. Always false on roots. */
   quietReply: boolean;
   pinnedAt: number | null;
@@ -164,7 +159,6 @@ export function toPublicPost(
     replyToId: post.replyToId,
     threadId: post.threadId,
     language: post.language,
-    translationGroupId: post.translationGroupId,
     quietReply: post.quietReply,
     pinnedAt: post.pinnedAt,
     featuredAt: post.featuredAt,

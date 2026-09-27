@@ -3,6 +3,7 @@
  */
 
 import { Hono } from "hono";
+import { toApiSmartCollection } from "../../lib/api-collections.js";
 import { z } from "zod";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
@@ -97,31 +98,37 @@ smartCollectionsApiRoutes.get("/", requireAuthApi(), async (c) => {
       isAuthenticated: c.var.isAuthenticated,
       lang: query.lang,
     });
-  return c.json({ smartCollections });
+  return c.json({
+    smartCollections: smartCollections.map(toApiSmartCollection),
+  });
 });
 
 smartCollectionsApiRoutes.post("/", requireAuthApi(), async (c) => {
   const body = parseValidated(CreateSmartCollectionSchema, await c.req.json());
   const smartCollection = await c.var.services.smartCollections.create(body);
-  return c.json({ smartCollection }, 201);
+  return c.json(
+    { smartCollection: toApiSmartCollection(smartCollection) },
+    201,
+  );
 });
 
 smartCollectionsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.smartCollection);
-  const smartCollection = await c.var.services.smartCollections.getById(id);
-  assertFound(smartCollection, "Smart collection");
-  return c.json({ smartCollection });
+  const smartCollection = assertFound(
+    await c.var.services.smartCollections.getById(id),
+    "Smart collection",
+  );
+  return c.json({ smartCollection: toApiSmartCollection(smartCollection) });
 });
 
 smartCollectionsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.smartCollection);
   const body = parseValidated(UpdateSmartCollectionSchema, await c.req.json());
-  const smartCollection = await c.var.services.smartCollections.update(
-    id,
-    body,
+  const smartCollection = assertFound(
+    await c.var.services.smartCollections.update(id, body),
+    "Smart collection",
   );
-  assertFound(smartCollection, "Smart collection");
-  return c.json({ smartCollection });
+  return c.json({ smartCollection: toApiSmartCollection(smartCollection) });
 });
 
 smartCollectionsApiRoutes.delete("/:id", requireAuthApi(), async (c) => {

@@ -293,37 +293,38 @@ Jant supports three post formats:
 
 Post responses include these fields:
 
-| Field             | Type                                     | Notes                                                     |
-| ----------------- | ---------------------------------------- | --------------------------------------------------------- |
-| `id`              | `pst_*` string                           | Post ID                                                   |
-| `siteId`          | string                                   | Owning site                                               |
-| `format`          | `note` \| `link` \| `quote`              | Post format                                               |
-| `status`          | `draft` \| `published`                   | Stored post status                                        |
-| `visibility`      | `public` \| `latest_hidden` \| `private` | Resolved visibility shown to clients                      |
-| `pinnedAt`        | integer \| `null`                        | Pin timestamp                                             |
-| `featuredAt`      | integer \| `null`                        | Feature timestamp                                         |
-| `slug`            | string                                   | Canonical slug                                            |
-| `title`           | string \| `null`                         | Returned for non-quote responses; omitted for `quote`     |
-| `url`             | string \| `null`                         | Returned for non-quote responses; usually `null` on notes |
-| `sourceName`      | string \| `null`                         | Returned instead of `title` for `quote`                   |
-| `sourceUrl`       | string \| `null`                         | Returned instead of `url` for `quote`                     |
-| `body`            | string \| `null`                         | Raw TipTap JSON string when stored that way               |
-| `bodyHtml`        | string \| `null`                         | Rendered HTML                                             |
-| `bodyText`        | string \| `null`                         | Plain-text rendering                                      |
-| `quoteText`       | string \| `null`                         | Quote content                                             |
-| `summary`         | string \| `null`                         | Optional summary                                          |
-| `rating`          | integer \| `null`                        | `1` to `5` when set                                       |
-| `replyToId`       | `pst_*` string \| `null`                 | Parent reply/post ID                                      |
-| `threadId`        | `pst_*` string                           | Thread root ID                                            |
-| `quietReply`      | boolean                                  | Reply published without announcing its Thread             |
-| `publishedAt`     | integer \| `null`                        | Publish timestamp                                         |
-| `lastActivityAt`  | integer                                  | Newest post in the Thread, excluding quiet replies        |
-| `threadUpdatedAt` | integer                                  | Newest post in the Thread, including quiet replies        |
-| `threadPostCount` | integer                                  | Published posts in the Thread, root included; `1` alone   |
-| `createdAt`       | integer                                  | Unix seconds                                              |
-| `updatedAt`       | integer                                  | Unix seconds — last row write, including edits            |
-| `attachments`     | array                                    | Ordered media/text attachment objects                     |
-| `collectionIds`   | `col_*` string[]                         | Shared Thread Collections; only in `GET /api/posts/:id`   |
+| Field             | Type                                     | Notes                                                                                                                                    |
+| ----------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`              | `pst_*` string                           | Post ID                                                                                                                                  |
+| `format`          | `note` \| `link` \| `quote`              | Post format                                                                                                                              |
+| `status`          | `draft` \| `published`                   | Stored post status                                                                                                                       |
+| `visibility`      | `public` \| `latest_hidden` \| `private` | Resolved visibility shown to clients                                                                                                     |
+| `pinnedAt`        | integer \| `null`                        | Pin timestamp                                                                                                                            |
+| `featuredAt`      | integer \| `null`                        | Feature timestamp                                                                                                                        |
+| `slug`            | string                                   | Canonical slug                                                                                                                           |
+| `title`           | string \| `null`                         | Returned for non-quote responses; omitted for `quote`                                                                                    |
+| `url`             | string \| `null`                         | Returned for non-quote responses; usually `null` on notes                                                                                |
+| `sourceName`      | string \| `null`                         | Returned instead of `title` for `quote`                                                                                                  |
+| `sourceUrl`       | string \| `null`                         | Returned instead of `url` for `quote`                                                                                                    |
+| `displayTitle`    | string                                   | Short plain-text name: the title, or one derived from the content when there is none. Use it where the post is referenced from elsewhere |
+| `body`            | string \| `null`                         | Raw TipTap JSON string when stored that way                                                                                              |
+| `bodyHtml`        | string \| `null`                         | Rendered HTML                                                                                                                            |
+| `bodyText`        | string \| `null`                         | Plain-text rendering                                                                                                                     |
+| `quoteText`       | string \| `null`                         | Quote content                                                                                                                            |
+| `summary`         | string \| `null`                         | Optional summary                                                                                                                         |
+| `rating`          | integer \| `null`                        | `1` to `5` when set                                                                                                                      |
+| `replyToId`       | `pst_*` string \| `null`                 | Parent reply/post ID                                                                                                                     |
+| `threadId`        | `pst_*` string                           | Thread root ID                                                                                                                           |
+| `language`        | string \| `null`                         | BCP 47 content language, the same for every post in a Thread; `null` until the site first turns on multilingual content                  |
+| `quietReply`      | boolean                                  | Reply published without announcing its Thread                                                                                            |
+| `publishedAt`     | integer \| `null`                        | Publish timestamp                                                                                                                        |
+| `lastActivityAt`  | integer                                  | Newest post in the Thread, excluding quiet replies                                                                                       |
+| `threadUpdatedAt` | integer                                  | Newest post in the Thread, including quiet replies                                                                                       |
+| `threadPostCount` | integer                                  | Published posts in the Thread, root included; `1` alone                                                                                  |
+| `createdAt`       | integer                                  | Unix seconds                                                                                                                             |
+| `updatedAt`       | integer                                  | Unix seconds — last row write, including edits                                                                                           |
+| `attachments`     | array                                    | Ordered media/text attachment objects                                                                                                    |
+| `collectionIds`   | `col_*` string[]                         | Shared Thread Collections; only in `GET /api/posts/:id`                                                                                  |
 
 ### Post response shape
 
@@ -334,7 +335,6 @@ Example:
 ```json
 {
   "id": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
-  "siteId": "sit_01jpyx1v6z9k4c7b2m5q8r3nfh",
   "format": "note",
   "status": "published",
   "visibility": "public",
@@ -342,6 +342,7 @@ Example:
   "featuredAt": null,
   "slug": "hello-world",
   "title": "Hello World",
+  "displayTitle": "Hello World",
   "body": null,
   "bodyHtml": "<p>Hello world</p>",
   "bodyText": "Hello world",
@@ -350,6 +351,7 @@ Example:
   "rating": null,
   "replyToId": null,
   "threadId": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
+  "language": "en",
   "quietReply": false,
   "publishedAt": 1706000000,
   "lastActivityAt": 1706000000,
@@ -380,40 +382,41 @@ to every caller. Authenticated clients can use `/api/posts` instead.
 
 Public post responses include these fields:
 
-| Field             | Type                        | Notes                                                                                                        |
-| ----------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `id`              | `pst_*` string              | Post ID                                                                                                      |
-| `format`          | `note` \| `link` \| `quote` | Post format                                                                                                  |
-| `status`          | `published`                 | Public endpoints only return published posts                                                                 |
-| `visibility`      | `public` \| `latest_hidden` | `/api/public/posts` list excludes `latest_hidden`; single-post reads and `/api/public/archive` may return it |
-| `slug`            | string                      | Canonical slug                                                                                               |
-| `permalink`       | string                      | Public post URL                                                                                              |
-| `title`           | string \| `null`            | Returned for `note` and `link` posts                                                                         |
-| `url`             | string \| `null`            | Returned for `link` posts                                                                                    |
-| `sourceName`      | string \| `null`            | Returned instead of `title` for `quote`                                                                      |
-| `sourceUrl`       | string \| `null`            | Returned instead of `url` for `quote`                                                                        |
-| `bodyHtml`        | string \| `null`            | Rendered HTML; omitted when `content=markdown`                                                               |
-| `bodyText`        | string \| `null`            | Plain-text rendering; omitted when `content=markdown`                                                        |
-| `bodyMarkdown`    | string \| `null`            | Markdown source; only returned when `content=markdown`                                                       |
-| `quoteText`       | string \| `null`            | Quote content                                                                                                |
-| `summary`         | string \| `null`            | Optional summary                                                                                             |
-| `rating`          | integer \| `null`           | `1` to `5` when set                                                                                          |
-| `previewKind`     | string \| `null`            | Link preview kind                                                                                            |
-| `previewProvider` | string \| `null`            | Link preview provider                                                                                        |
-| `previewImageUrl` | string \| `null`            | Public preview image URL                                                                                     |
-| `replyToId`       | `pst_*` string \| `null`    | Parent reply/post ID                                                                                         |
-| `threadId`        | `pst_*` string              | Thread root ID                                                                                               |
-| `quietReply`      | boolean                     | Reply published without announcing its Thread. Always `false` on Thread roots                                |
-| `pinnedAt`        | integer \| `null`           | Pin timestamp                                                                                                |
-| `featuredAt`      | integer \| `null`           | Feature timestamp                                                                                            |
-| `publishedAt`     | integer \| `null`           | Publish timestamp                                                                                            |
-| `lastActivityAt`  | integer                     | Thread root: newest post in the Thread, **excluding** quiet replies. Editing a post never moves it           |
-| `threadUpdatedAt` | integer                     | Thread root: newest post in the Thread, **including** quiet replies. Editing a post never moves it           |
-| `threadPostCount` | integer                     | Published posts in the Thread, root included; `1` for a post on its own                                      |
-| `createdAt`       | integer                     | Unix seconds                                                                                                 |
-| `updatedAt`       | integer                     | Unix seconds — when this row was last written, including edits                                               |
-| `attachments`     | array                       | Ordered media/text attachment objects                                                                        |
-| `collections`     | object[]                    | Public collection refs with `id`, `slug`, `title`, and `url`                                                 |
+| Field             | Type                        | Notes                                                                                                                   |
+| ----------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `id`              | `pst_*` string              | Post ID                                                                                                                 |
+| `format`          | `note` \| `link` \| `quote` | Post format                                                                                                             |
+| `status`          | `published`                 | Public endpoints only return published posts                                                                            |
+| `visibility`      | `public` \| `latest_hidden` | `/api/public/posts` list excludes `latest_hidden`; single-post reads and `/api/public/archive` may return it            |
+| `slug`            | string                      | Canonical slug                                                                                                          |
+| `permalink`       | string                      | Public post URL                                                                                                         |
+| `title`           | string \| `null`            | Returned for `note` and `link` posts                                                                                    |
+| `url`             | string \| `null`            | Returned for `link` posts                                                                                               |
+| `sourceName`      | string \| `null`            | Returned instead of `title` for `quote`                                                                                 |
+| `sourceUrl`       | string \| `null`            | Returned instead of `url` for `quote`                                                                                   |
+| `bodyHtml`        | string \| `null`            | Rendered HTML; omitted when `content=markdown`                                                                          |
+| `bodyText`        | string \| `null`            | Plain-text rendering; omitted when `content=markdown`                                                                   |
+| `bodyMarkdown`    | string \| `null`            | Markdown source; only returned when `content=markdown`                                                                  |
+| `quoteText`       | string \| `null`            | Quote content                                                                                                           |
+| `summary`         | string \| `null`            | Optional summary                                                                                                        |
+| `rating`          | integer \| `null`           | `1` to `5` when set                                                                                                     |
+| `previewKind`     | string \| `null`            | Link preview kind                                                                                                       |
+| `previewProvider` | string \| `null`            | Link preview provider                                                                                                   |
+| `previewImageUrl` | string \| `null`            | Public preview image URL                                                                                                |
+| `replyToId`       | `pst_*` string \| `null`    | Parent reply/post ID                                                                                                    |
+| `threadId`        | `pst_*` string              | Thread root ID                                                                                                          |
+| `language`        | string \| `null`            | BCP 47 content language, the same for every post in a Thread; `null` until the site first turns on multilingual content |
+| `quietReply`      | boolean                     | Reply published without announcing its Thread. Always `false` on Thread roots                                           |
+| `pinnedAt`        | integer \| `null`           | Pin timestamp                                                                                                           |
+| `featuredAt`      | integer \| `null`           | Feature timestamp                                                                                                       |
+| `publishedAt`     | integer \| `null`           | Publish timestamp                                                                                                       |
+| `lastActivityAt`  | integer                     | Thread root: newest post in the Thread, **excluding** quiet replies. Editing a post never moves it                      |
+| `threadUpdatedAt` | integer                     | Thread root: newest post in the Thread, **including** quiet replies. Editing a post never moves it                      |
+| `threadPostCount` | integer                     | Published posts in the Thread, root included; `1` for a post on its own                                                 |
+| `createdAt`       | integer                     | Unix seconds                                                                                                            |
+| `updatedAt`       | integer                     | Unix seconds — when this row was last written, including edits                                                          |
+| `attachments`     | array                       | Ordered media/text attachment objects                                                                                   |
+| `collections`     | object[]                    | Public collection refs with `id`, `slug`, `title`, and `url`                                                            |
 
 ### List public posts
 
@@ -884,7 +887,7 @@ Response:
 
 ## Language and translations
 
-These endpoints only matter on a site with [multilingual content](multilingual.md) turned on. Post responses do not carry `language`; read it through the translation endpoints below, which return the language of every post they list.
+These endpoints only matter on a site with [multilingual content](multilingual.md) turned on. Every post response carries `language`; the endpoints below list and link a post's other versions.
 
 ### Set a Thread's language
 
@@ -1176,6 +1179,33 @@ File size is limited by `UPLOAD_MAX_FILE_SIZE_MB` and defaults to `1024 MB`.
 
 Jant accepts a broad set of image, video, audio, document, text, archive, font, design, and code MIME types. Unsupported types return `400`.
 
+Media responses — the media list and single reads, and the MCP media tools — include these fields:
+
+| Field             | Type                                                  | Notes                                                                      |
+| ----------------- | ----------------------------------------------------- | -------------------------------------------------------------------------- |
+| `id`              | `med_*` string                                        | Media ID                                                                   |
+| `postId`          | `pst_*` string \| `null`                              | The post the file is attached to; `null` while unattached                  |
+| `type`            | `media` \| `text`                                     | `text` for a text attachment, `media` for every other file                 |
+| `mediaKind`       | `image` \| `video` \| `audio` \| `text` \| `document` | Kind of file                                                               |
+| `mimeType`        | string                                                | MIME type                                                                  |
+| `originalName`    | string                                                | The file's name as uploaded                                                |
+| `size`            | integer                                               | Bytes                                                                      |
+| `width`           | integer \| `null`                                     | Pixels, for images and video                                               |
+| `height`          | integer \| `null`                                     | Pixels, for images and video                                               |
+| `durationSeconds` | number \| `null`                                      | For audio and video                                                        |
+| `alt`             | string \| `null`                                      | Alt text                                                                   |
+| `blurhash`        | string \| `null`                                      | Placeholder hash for images                                                |
+| `waveform`        | string \| `null`                                      | Waveform data for audio                                                    |
+| `summary`         | string \| `null`                                      | Text attachment summary                                                    |
+| `chars`           | integer \| `null`                                     | Text attachment length in characters                                       |
+| `createdAt`       | integer                                               | Unix seconds                                                               |
+| `updatedAt`       | integer                                               | Unix seconds                                                               |
+| `url`             | string                                                | `type: "media"` only: the file's public URL                                |
+| `previewUrl`      | string                                                | `type: "media"` only: a resized image for images, the file's URL otherwise |
+| `posterUrl`       | string \| `null`                                      | `type: "media"` only: the poster frame for video                           |
+| `contentFormat`   | `markdown`                                            | `type: "text"` only                                                        |
+| `contentUrl`      | string                                                | `type: "text"` only: where to read the content                             |
+
 ### Session-based upload flow
 
 Base path: `/api/uploads`
@@ -1379,18 +1409,14 @@ Response:
   "media": [
     {
       "id": "med_01jpyx4g9m8b4y50a4gx3t7p1n",
-      "siteId": "sit_01jpyx1v6z9k4c7b2m5q8r3nfh",
       "postId": null,
-      "filename": "photo.webp",
       "originalName": "photo.webp",
       "mimeType": "image/webp",
       "size": 1024000,
-      "provider": "r2",
       "width": 1200,
       "height": 800,
       "durationSeconds": null,
       "alt": "Cover image",
-      "position": "0",
       "blurhash": null,
       "waveform": null,
       "summary": null,
@@ -1509,7 +1535,6 @@ Collection responses include these fields:
 | Field              | Type                                  | Notes                            |
 | ------------------ | ------------------------------------- | -------------------------------- |
 | `id`               | `col_*` string                        | Collection ID                    |
-| `siteId`           | string                                | Owning site                      |
 | `slug`             | string                                | Canonical collection slug        |
 | `title`            | string                                | Display title                    |
 | `description`      | string \| `null`                      | Optional description             |
@@ -1521,18 +1546,18 @@ Collection responses include these fields:
 
 Directory item responses include these fields:
 
-| Field               | Type                                                      | Notes                                  |
-| ------------------- | --------------------------------------------------------- | -------------------------------------- |
-| `id`                | `cdi_*` string                                            | Directory item ID                      |
-| `siteId`            | string                                                    | Owning site                            |
-| `type`              | `collection` \| `smart_collection` \| `divider` \| `link` | Item kind                              |
-| `collectionId`      | `col_*` string \| `null`                                  | Present for `type: "collection"`       |
-| `smartCollectionId` | `smc_*` string \| `null`                                  | Present for `type: "smart_collection"` |
-| `label`             | string \| `null`                                          | Divider label or link label            |
-| `url`               | string \| `null`                                          | Present for `type: "link"`             |
-| `position`          | string                                                    | Fractional ordering key                |
-| `createdAt`         | integer                                                   | Unix seconds                           |
-| `updatedAt`         | integer                                                   | Unix seconds                           |
+| Field               | Type                                                      | Notes                                   |
+| ------------------- | --------------------------------------------------------- | --------------------------------------- |
+| `id`                | `cdi_*` string                                            | Directory item ID                       |
+| `type`              | `collection` \| `smart_collection` \| `divider` \| `link` | Item kind                               |
+| `collectionId`      | `col_*` string \| `null`                                  | Present for `type: "collection"`        |
+| `smartCollectionId` | `smc_*` string \| `null`                                  | Present for `type: "smart_collection"`  |
+| `label`             | string \| `null`                                          | Divider label or link label             |
+| `url`               | string \| `null`                                          | Present for `type: "link"`              |
+| `description`       | string \| `null`                                          | Optional description for `type: "link"` |
+| `position`          | string                                                    | Fractional ordering key                 |
+| `createdAt`         | integer                                                   | Unix seconds                            |
+| `updatedAt`         | integer                                                   | Unix seconds                            |
 
 Notes:
 
@@ -1560,7 +1585,6 @@ Default response:
   "collections": [
     {
       "id": "col_01jpyx5qds8y79w2dd6sv4rznj",
-      "siteId": "sit_01jpyx1v6z9k4c7b2m5q8r3nfh",
       "slug": "reading",
       "title": "Reading",
       "description": "Books I've read",
@@ -1574,7 +1598,6 @@ Default response:
   "smartCollections": [
     {
       "id": "smc_01jpyxa2k4d7n6r9s1t3v5w8xz",
-      "siteId": "sit_01jpyx1v6z9k4c7b2m5q8r3nfh",
       "slug": "quotes",
       "title": "Quotes",
       "description": "Things worth keeping.",
@@ -1590,7 +1613,6 @@ Default response:
   "directoryItems": [
     {
       "id": "cdi_01jpyx8r7s3v8m1q5c9k2f6gth",
-      "siteId": "sit_01jpyx1v6z9k4c7b2m5q8r3nfh",
       "type": "collection",
       "collectionId": "col_01jpyx5qds8y79w2dd6sv4rznj",
       "smartCollectionId": null,
@@ -1620,7 +1642,6 @@ Response:
 ```json
 {
   "id": "col_01jpyx5qds8y79w2dd6sv4rznj",
-  "siteId": "sit_01jpyx1v6z9k4c7b2m5q8r3nfh",
   "slug": "reading",
   "title": "Reading",
   "description": "Books I've read",
@@ -1677,7 +1698,7 @@ Notes:
 - Reserved slugs are rejected.
 - On success, Jant also creates the collection's `type: "collection"` directory item.
 
-Response: `201 Created` with the collection object, including `siteId`.
+Response: `201 Created` with the collection object.
 
 ### Update a collection
 
@@ -1696,7 +1717,7 @@ Request body fields:
 | `description` | string \| `null`                      | no       | unchanged | Send `null` to clear               |
 | `sortOrder`   | `newest` \| `oldest` \| `rating_desc` | no       | unchanged | Replaces the collection sort order |
 
-Response: `200 OK` with the updated collection object, including `siteId`.
+Response: `200 OK` with the updated collection object.
 
 ### Delete a collection
 
@@ -1762,7 +1783,6 @@ Response:
 ```json
 {
   "id": "cdi_01jpyx8r7s3v8m1q5c9k2f6gth",
-  "siteId": "sit_01jpyx1v6z9k4c7b2m5q8r3nfh",
   "type": "divider",
   "collectionId": null,
   "label": "Essays",
@@ -1921,7 +1941,6 @@ Smart collection responses include these fields:
 | Field              | Type                                  | Notes                                             |
 | ------------------ | ------------------------------------- | ------------------------------------------------- |
 | `id`               | `smc_*` string                        | Smart collection ID                               |
-| `siteId`           | string                                | Owning site                                       |
 | `slug`             | string                                | Canonical address, in the same namespace as posts |
 | `title`            | string                                | Display title. Required                           |
 | `description`      | string \| `null`                      | Optional description                              |
@@ -2064,20 +2083,21 @@ Navigation items power the header navigation.
 
 Nav item responses include these fields:
 
-| Field               | Type                                                               | Notes                                           |
-| ------------------- | ------------------------------------------------------------------ | ----------------------------------------------- |
-| `id`                | `nav_*` string                                                     | Nav item ID                                     |
-| `siteId`            | string                                                             | Owning site                                     |
-| `type`              | `link` \| `system` \| `collection` \| `smart_collection` \| `page` | What the item points at                         |
-| `systemKey`         | `rss` \| `settings` \| `collections` \| `archive`                  | Only present for `type: "system"`               |
-| `collectionId`      | `col_*` string                                                     | Only present for `type: "collection"`           |
-| `smartCollectionId` | `smc_*` string                                                     | Only present for `type: "smart_collection"`     |
-| `postId`            | `pst_*` string                                                     | Only present for `type: "page"`                 |
-| `label`             | string                                                             | Author's override, or `""` to follow the target |
-| `url`               | string                                                             | Stored URL or path                              |
-| `position`          | string                                                             | Fractional ordering key                         |
-| `createdAt`         | integer                                                            | Unix seconds                                    |
-| `updatedAt`         | integer                                                            | Unix seconds                                    |
+| Field               | Type                                                                                       | Notes                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `id`                | `nav_*` string                                                                             | Nav item ID                                                                                  |
+| `type`              | `link` \| `system` \| `collection` \| `smart_collection` \| `page`                         | What the item points at                                                                      |
+| `systemKey`         | `latest` \| `featured` \| `archive` \| `collections` \| `subscribe` \| `rss` \| `settings` | Only present for `type: "system"`                                                            |
+| `collectionId`      | `col_*` string                                                                             | Only present for `type: "collection"`                                                        |
+| `smartCollectionId` | `smc_*` string                                                                             | Only present for `type: "smart_collection"`                                                  |
+| `postId`            | `pst_*` string                                                                             | Only present for `type: "page"`                                                              |
+| `label`             | string                                                                                     | Author's override, or `""` to follow the target                                              |
+| `url`               | string                                                                                     | Stored URL or path                                                                           |
+| `targetTitle`       | string                                                                                     | The target's current title, shown when `label` is `""`. Absent for `link` and `system` items |
+| `placement`         | `header` \| `more`                                                                         | In the header, or in its More menu                                                           |
+| `position`          | string                                                                                     | Fractional ordering key                                                                      |
+| `createdAt`         | integer                                                                                    | Unix seconds                                                                                 |
+| `updatedAt`         | integer                                                                                    | Unix seconds                                                                                 |
 
 ### List nav items
 
@@ -2130,28 +2150,33 @@ Create a built-in item:
 
 Fields by type:
 
-| Field               | Type                                              | Required                     | Default | Notes                                                            |
-| ------------------- | ------------------------------------------------- | ---------------------------- | ------- | ---------------------------------------------------------------- |
-| `type`              | `link`                                            | yes                          | —       | Creates a custom nav link                                        |
-| `label`             | string                                            | yes (for `link`)             | —       | Link label, 1-100 chars after trim                               |
-| `url`               | string                                            | yes (for `link`)             | —       | Relative path or absolute `http:`, `https:`, or `mailto:` URL    |
-| `type`              | `system`                                          | yes                          | —       | Creates a built-in nav item                                      |
-| `systemKey`         | `rss` \| `settings` \| `collections` \| `archive` | yes (for `system`)           | —       | Built-in destination key                                         |
-| `type`              | `collection` \| `smart_collection` \| `page`      | yes                          | —       | Points at a collection, a smart collection, or a standalone page |
-| `collectionId`      | `col_*` string                                    | yes (for `collection`)       | —       | Collection to point at                                           |
-| `smartCollectionId` | `smc_*` string                                    | yes (for `smart_collection`) | —       | Smart collection to point at                                     |
-| `postId`            | `pst_*` string                                    | yes (for `page`)             | —       | Published, non-private, titled Note to point at                  |
+| Field               | Type                                                                                       | Required                     | Default   | Notes                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------ | ---------------------------- | --------- | ---------------------------------------------------------------- |
+| `type`              | `link`                                                                                     | yes                          | —         | Creates a custom nav link                                        |
+| `label`             | string                                                                                     | yes (for `link`)             | —         | Link label, 1-100 chars after trim                               |
+| `url`               | string                                                                                     | yes (for `link`)             | —         | Relative path or absolute `http:`, `https:`, or `mailto:` URL    |
+| `type`              | `system`                                                                                   | yes                          | —         | Creates a built-in nav item                                      |
+| `systemKey`         | `latest` \| `featured` \| `archive` \| `collections` \| `subscribe` \| `rss` \| `settings` | yes (for `system`)           | —         | Built-in destination key                                         |
+| `type`              | `collection` \| `smart_collection` \| `page`                                               | yes                          | —         | Points at a collection, a smart collection, or a standalone page |
+| `collectionId`      | `col_*` string                                                                             | yes (for `collection`)       | —         | Collection to point at                                           |
+| `smartCollectionId` | `smc_*` string                                                                             | yes (for `smart_collection`) | —         | Smart collection to point at                                     |
+| `postId`            | `pst_*` string                                                                             | yes (for `page`)             | —         | Published, non-private, titled Note to point at                  |
+| `placement`         | `header` \| `more`                                                                         | no                           | see notes | In the header, or in its More menu                               |
 
 System keys:
 
+- `latest`
+- `featured`
+- `archive`
+- `collections`
+- `subscribe`
 - `rss`
 - `settings`
-- `collections`
-- `archive`
 
 Notes:
 
 - Built-in items get their label and URL automatically.
+- `placement` defaults to `header`, except for the built-in `collections`, `subscribe`, `rss`, and `settings` items, which default to `more`.
 - Jant rejects duplicate built-in items.
 - A `collection`, `smart_collection`, or `page` item stores its `label` empty unless you send one. It then shows its target's current title and follows it when the target is renamed, and its URL follows when the target's address moves. Only a label you typed is stored, and it then wins in every language view.
 
@@ -2196,7 +2221,7 @@ Notes:
 
 - This is a partial update.
 - Built-in system items reject manual label and URL edits.
-- Only `label` and `url` are accepted.
+- Only `label`, `url`, and `placement` are accepted.
 
 Response: `200 OK` with the updated nav item.
 

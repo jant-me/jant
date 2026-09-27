@@ -3,6 +3,7 @@
  */
 
 import { Hono } from "hono";
+import { toApiNavItem } from "../../lib/api-nav-items.js";
 import type { Context } from "hono";
 import { z } from "zod";
 import type { Bindings } from "../../types.js";
@@ -57,7 +58,7 @@ async function withSiteHeaderHtml<T extends object>(
 // List nav items
 navItemsApiRoutes.get("/", requirePublicApiAccess(), async (c) => {
   const items = await c.var.services.navItems.list();
-  return c.json({ navItems: items });
+  return c.json({ navItems: items.map(toApiNavItem) });
 });
 
 // Search published titled notes that can be added as pages (requires auth)
@@ -129,7 +130,7 @@ navItemsApiRoutes.put("/:id/move", requireAuthApi(), async (c) => {
     "Nav item",
   );
 
-  return c.json(await withSiteHeaderHtml(c, item));
+  return c.json(await withSiteHeaderHtml(c, toApiNavItem(item)));
 });
 
 // Create nav item (requires auth)
@@ -173,7 +174,7 @@ navItemsApiRoutes.post("/", requireAuthApi(), async (c) => {
     });
   }
 
-  return c.json(await withSiteHeaderHtml(c, item), 201);
+  return c.json(await withSiteHeaderHtml(c, toApiNavItem(item)), 201);
 });
 
 // Update nav item (requires auth)
@@ -186,7 +187,7 @@ navItemsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
     "Nav item",
   );
 
-  return c.json(await withSiteHeaderHtml(c, item));
+  return c.json(await withSiteHeaderHtml(c, toApiNavItem(item)));
 });
 
 // Delete nav item (requires auth)

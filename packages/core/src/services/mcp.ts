@@ -43,6 +43,10 @@ import {
   type DomainError,
   ValidationError,
 } from "../lib/errors.js";
+import {
+  toApiCollection,
+  toApiCollectionList,
+} from "../lib/api-collections.js";
 import { toApiMedia } from "../lib/api-media.js";
 
 export const MCP_PROTOCOL_VERSION = "2025-06-18";
@@ -636,16 +640,20 @@ const mcpTools: McpToolDefinition[] = [
         .parse(args ?? {});
 
       if (input.view === "compose") {
+        const collections =
+          await context.services.collections.listByRecentActivity();
         return {
-          collections:
-            await context.services.collections.listByRecentActivity(),
+          collections: collections.map(toApiCollection),
           directoryItems: [],
         };
       }
 
-      return context.services.collections.listDirectoryData({
-        isAuthenticated: true,
-      });
+      // The same list `GET /api/collections` answers with.
+      return toApiCollectionList(
+        await context.services.collections.listDirectoryData({
+          isAuthenticated: true,
+        }),
+      );
     },
   },
   {
@@ -666,7 +674,7 @@ const mcpTools: McpToolDefinition[] = [
         throw new NotFoundError("Collection");
       }
 
-      return collection;
+      return toApiCollection(collection);
     },
   },
   {
@@ -688,7 +696,7 @@ const mcpTools: McpToolDefinition[] = [
     },
     async execute(args, context) {
       const input = CreateCollectionSchema.parse(args ?? {});
-      return context.services.collections.create(input);
+      return toApiCollection(await context.services.collections.create(input));
     },
   },
   {
@@ -726,7 +734,7 @@ const mcpTools: McpToolDefinition[] = [
         throw new NotFoundError("Collection");
       }
 
-      return collection;
+      return toApiCollection(collection);
     },
   },
   {
