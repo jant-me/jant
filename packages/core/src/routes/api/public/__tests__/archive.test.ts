@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createTestApp } from "../../../../__tests__/helpers/app.js";
+import { walkPostPages } from "../../../../__tests__/helpers/cursor-walk.js";
+import { createEntityId } from "../../../../lib/ids.js";
 import { publicArchiveApiRoutes } from "../archive.js";
+import { publicPostsApiRoutes } from "../posts.js";
 
 describe("Public Archive API Routes", () => {
   describe("GET /api/public/archive", () => {
@@ -532,6 +535,200 @@ describe("Public Archive API Routes", () => {
 
       const res = await app.request("/api/public/archive?media=invalid");
       expect(res.status).toBe(400);
+    });
+  });
+
+  describe("cursors", () => {
+    function setup() {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/archive", publicArchiveApiRoutes);
+      app.route("/api/public/posts", publicPostsApiRoutes);
+      return { app, services };
+    }
+
+    /** Four roots published a day apart, oldest first. */
+    async function publishDays(services: ReturnType<typeof setup>["services"]) {
+      const created = [];
+      for (let day = 1; day <= 4; day++) {
+        created.push(
+          await services.posts.create({
+            format: "note",
+            title: `Day ${day}`,
+            bodyMarkdown: `day ${day}`,
+            publishedAt: Date.UTC(2025, 0, day) / 1000,
+          }),
+        );
+      }
+      return created;
+    }
+
+    async function page(
+      app: ReturnType<typeof setup>["app"],
+      path: string,
+    ): Promise<{ ids: string[]; nextCursor: string | null }> {
+      const res = await app.request(path);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      return {
+        ids: body.posts.map((post: { id: string }) => post.id),
+        nextCursor: body.nextCursor,
+      };
+    }
+
+    it("continues after the post the cursor was taken on is deleted", async () => {
+      const { app, services } = setup();
+      const [day1, day2, day3, day4] = await publishDays(services);
+
+      const first = await page(app, "/api/public/archive?limit=2");
+      expect(first.ids).toEqual([day4?.id, day3?.id]);
+      await services.posts.delete(day3?.id ?? "");
+
+      const second = await page(
+        app,
+        `/api/public/archive?limit=2&cursor=${first.nextCursor}`,
+      );
+      expect(second.ids).toEqual([day2?.id, day1?.id]);
+      expect(second.nextCursor).toBeNull();
+    });
+
+    it("skips nothing when the cursor post is re-dated mid-walk", async () => {
+      const { app, services } = setup();
+      const [day1, day2, day3, day4] = await publishDays(services);
+
+      const first = await page(app, "/api/public/archive?limit=2");
+      expect(first.ids).toEqual([day4?.id, day3?.id]);
+
+      // The author moves the page's last post before every other one. Resuming
+      // from where it now sits would return nothing more.
+      await services.posts.update(day3?.id ?? "", {
+        publishedAt: Date.UTC(2024, 0, 1) / 1000,
+      });
+      expect((await page(app, "/api/public/archive")).ids).toEqual([
+        day4?.id,
+        day2?.id,
+        day1?.id,
+        day3?.id,
+      ]);
+
+      const rest = await walkPostPages(
+        app,
+        "/api/public/archive",
+        2,
+        first.nextCursor,
+      );
+      // Day 3 comes round again: its sort key changed mid-walk, which the
+      // paging guarantee does not cover. Nothing that stayed put is skipped.
+      expect(rest).toEqual([day2?.id, day1?.id, day3?.id]);
+    });
+
+    it("answers a private post's or a draft's ID as it does an unknown one", async () => {
+      const { app, services } = setup();
+      await publishDays(services);
+      const hidden = await services.posts.create({
+        format: "note",
+        title: "Private",
+        bodyMarkdown: "private",
+        visibility: "private",
+      });
+      const draft = await services.posts.create({
+        format: "note",
+        title: "Draft",
+        bodyMarkdown: "draft",
+        status: "draft",
+      });
+
+      const answers = [];
+      for (const id of [hidden.id, draft.id, createEntityId("post")]) {
+        for (const path of ["/api/public/archive", "/api/public/posts"]) {
+          const res = await app.request(`${path}?cursor=${id}`);
+          expect(res.status).toBe(400);
+          const body = await res.json();
+          expect(body.code).toBe("VALIDATION_ERROR");
+          answers.push(body.error);
+        }
+      }
+      // Nothing in the answer tells a real post from one that never existed.
+      expect(new Set(answers).size).toBe(1);
+    });
+
+    it("still resumes from a bare post ID", async () => {
+      const { app, services } = setup();
+      const [day1, day2, day3] = await publishDays(services);
+
+      const res = await page(app, `/api/public/archive?cursor=${day3?.id}`);
+      expect(res.ids).toEqual([day2?.id, day1?.id]);
+    });
+
+    it("rejects a cursor it can't read", async () => {
+      const { app, services } = setup();
+      await publishDays(services);
+
+      for (const cursor of ["garbage", "eyJ2IjoxfQ", "pst_", "%7B%7D"]) {
+        const res = await app.request(`/api/public/archive?cursor=${cursor}`);
+        expect(res.status).toBe(400);
+        expect((await res.json()).code).toBe("VALIDATION_ERROR");
+      }
+    });
+
+    it("rejects a cursor from a list in another order", async () => {
+      const { app, services } = setup();
+      await publishDays(services);
+      await services.posts.create({
+        format: "note",
+        title: "Featured",
+        bodyMarkdown: "featured",
+        featured: true,
+      });
+
+      // The archive reads publication order; `/api/public/posts` reads
+      // activity with pinned posts first.
+      const archive = await page(app, "/api/public/archive?limit=1");
+      const posts = await app.request(
+        `/api/public/posts?cursor=${archive.nextCursor}`,
+      );
+      expect(posts.status).toBe(400);
+      expect((await posts.json()).error).toMatch(/different order/);
+
+      // A cursor records a position in an order, not the filters around it:
+      // Featured-only reads the same order, so the position carries over.
+      const featured = await app.request(
+        `/api/public/archive?cursor=${archive.nextCursor}&visibility=featured`,
+      );
+      expect(featured.status).toBe(200);
+    });
+
+    it("walks every order it serves the same as one unpaged request", async () => {
+      const { app, services } = setup();
+      await publishDays(services);
+      const sameDay = Date.UTC(2025, 5, 1) / 1000;
+      for (const title of ["Tie A", "Tie B", "Tie C"]) {
+        await services.posts.create({
+          format: "note",
+          title,
+          bodyMarkdown: title,
+          publishedAt: sameDay,
+          featured: title !== "Tie C",
+        });
+      }
+      await services.posts.create({
+        format: "note",
+        title: "Pinned, and pinning doesn't count here",
+        bodyMarkdown: "pinned",
+        pinned: true,
+        publishedAt: Date.UTC(2023, 0, 1) / 1000,
+      });
+
+      for (const path of [
+        "/api/public/archive",
+        "/api/public/archive?visibility=featured",
+        "/api/public/archive?format=note&title=any",
+      ]) {
+        const expected = (await page(app, path)).ids;
+        expect(expected.length).toBeGreaterThan(1);
+        for (const limit of [1, 2, 3]) {
+          expect(await walkPostPages(app, path, limit)).toEqual(expected);
+        }
+      }
     });
   });
 });

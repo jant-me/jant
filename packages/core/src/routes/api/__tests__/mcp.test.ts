@@ -213,6 +213,64 @@ describe("MCP API Routes", () => {
     expect(await services.collections.getThreadIds(collection.id)).toEqual([]);
   });
 
+  it("pages posts through tools/call with nextCursor", async () => {
+    const { app, services } = createTestApp({ authenticated: true });
+    app.route("/api/mcp", mcpApiRoutes);
+
+    const created = [];
+    for (let i = 0; i < 3; i++) {
+      created.push(
+        await services.posts.create({
+          format: "note",
+          bodyMarkdown: `post ${i}`,
+          publishedAt: 1000 + i,
+        }),
+      );
+    }
+
+    const listPosts = async (args: Record<string, unknown>) => {
+      const res = await postMcp(
+        app,
+        {
+          jsonrpc: "2.0",
+          id: 30,
+          method: "tools/call",
+          params: { name: "jant_posts_list", arguments: args },
+        },
+        { "MCP-Protocol-Version": "2025-06-18" },
+      );
+      expect(res.status).toBe(200);
+      return (await res.json()).result;
+    };
+
+    const ids: string[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < 5; page++) {
+      const result = await listPosts({
+        limit: 1,
+        ...(cursor ? { cursor } : {}),
+      });
+      expect(result.isError).toBe(false);
+      ids.push(
+        ...result.structuredContent.posts.map(
+          (post: { id: string }) => post.id,
+        ),
+      );
+      cursor = result.structuredContent.nextCursor ?? undefined;
+      if (!cursor) break;
+    }
+    expect(ids).toEqual(created.map((post) => post.id).reverse());
+
+    const legacy = await listPosts({ cursor: created[2]?.id });
+    expect(
+      legacy.structuredContent.posts.map((post: { id: string }) => post.id),
+    ).toEqual([created[1]?.id, created[0]?.id]);
+
+    const unreadable = await listPosts({ cursor: "nope" });
+    expect(unreadable.isError).toBe(true);
+    expect(unreadable.structuredContent.error).toMatch(/cursor/);
+  });
+
   it("creates posts through tools/call", async () => {
     const { app, services } = createTestApp({ authenticated: true });
     app.route("/api/mcp", mcpApiRoutes);

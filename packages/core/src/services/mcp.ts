@@ -144,7 +144,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_posts_list",
     description:
-      "List posts, with optional format, status, cursor, and limit filters.",
+      "List posts, with optional format, status, cursor, and limit filters. Pass nextCursor back as cursor for the next page.",
     inputSchema: {
       type: "object",
       properties: {
@@ -157,19 +157,14 @@ const mcpTools: McpToolDefinition[] = [
     },
     async execute(args, context) {
       const input = ListPostsToolSchema.parse(args ?? {});
-      const posts = await context.services.posts.list({
-        cursor: input.cursor ?? undefined,
-        format: input.format,
-        limit: input.limit,
-        status: input.status ?? "published",
-      });
+      const { posts, nextCursor } = await context.services.posts.listPage(
+        { format: input.format, status: input.status ?? "published" },
+        { cursor: input.cursor, limit: input.limit },
+      );
 
       return {
         posts: await serializePosts(posts, context),
-        nextCursor:
-          posts.length === input.limit
-            ? (posts[posts.length - 1]?.id ?? null)
-            : null,
+        nextCursor,
       };
     },
   },

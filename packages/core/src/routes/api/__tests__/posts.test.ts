@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createTestApp } from "../../../__tests__/helpers/app.js";
+import { walkPostPages } from "../../../__tests__/helpers/cursor-walk.js";
 import { createEntityId } from "../../../lib/ids.js";
 import { postsApiRoutes } from "../posts.js";
 
@@ -141,6 +142,84 @@ describe("Posts API Routes", () => {
 
       expect(body.posts).toHaveLength(2);
       expect(body.nextCursor).toBeTruthy();
+    });
+
+    it("pages published posts and drafts with an opaque cursor", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+
+      const published = [];
+      for (let i = 0; i < 5; i++) {
+        published.push(
+          await services.posts.create({
+            format: "note",
+            bodyMarkdown: `post ${i}`,
+            publishedAt: 1000 + (i % 2), // Ties, broken by ID.
+          }),
+        );
+      }
+      const root = published[0];
+      await services.posts.create({
+        format: "note",
+        bodyMarkdown: "reply",
+        replyToId: root?.id,
+        publishedAt: 900,
+      });
+      for (let i = 0; i < 3; i++) {
+        await services.posts.create({
+          format: "note",
+          bodyMarkdown: `draft ${i}`,
+          status: "draft",
+        });
+      }
+
+      for (const path of ["/api/posts", "/api/posts?status=draft"]) {
+        const res = await app.request(path);
+        const expected = (await res.json()).posts.map(
+          (post: { id: string }) => post.id,
+        );
+        expect(expected.length).toBeGreaterThan(2);
+        for (const limit of [1, 2]) {
+          expect(await walkPostPages(app, path, limit)).toEqual(expected);
+        }
+      }
+
+      const first = await (await app.request("/api/posts?limit=2")).json();
+      expect(first.nextCursor).not.toMatch(/^pst_/);
+    });
+
+    it("reads a bare post ID as a cursor, and rejects one it can't use", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+
+      const older = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "older",
+        publishedAt: 1000,
+      });
+      const newer = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "newer",
+        publishedAt: 2000,
+      });
+      const draft = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "draft",
+        status: "draft",
+      });
+
+      const legacy = await app.request(`/api/posts?cursor=${newer.id}`);
+      expect(legacy.status).toBe(200);
+      expect(
+        (await legacy.json()).posts.map((post: { id: string }) => post.id),
+      ).toEqual([older.id]);
+
+      // A draft is not in the published list the cursor claims to continue.
+      const wrongList = await app.request(`/api/posts?cursor=${draft.id}`);
+      expect(wrongList.status).toBe(400);
+      const unreadable = await app.request("/api/posts?cursor=nope");
+      expect(unreadable.status).toBe(400);
+      expect((await unreadable.json()).code).toBe("VALIDATION_ERROR");
     });
 
     it("serializes quote attribution as sourceName/sourceUrl", async () => {

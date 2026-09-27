@@ -39,6 +39,14 @@ import {
 } from "../db/thread-activity.js";
 import { buildReaderVisibilityConditions } from "../db/post-visibility.js";
 import { createEntityId } from "../lib/ids.js";
+import {
+  decodePostListCursor,
+  encodePostListCursor,
+  isLegacyPostListCursor,
+  MISSING_LEGACY_CURSOR_MESSAGE,
+  type PostListCursorKeyKind,
+  type PostListCursorValue,
+} from "../lib/post-list-cursor.js";
 import { now } from "../lib/time.js";
 import { trimTiptapBody } from "../lib/tiptap-render.js";
 import {
@@ -216,8 +224,28 @@ export interface PostFilters {
   /** Ignore global pinned ordering when results must remain chronological. */
   ignorePinnedSort?: boolean;
   limit?: number;
-  cursor?: string;
   offset?: number; // offset for page-based pagination
+}
+
+/** Where `PostService.listPage` starts, and how much it returns. */
+export interface PostListPageOptions {
+  /**
+   * `nextCursor` from the previous page; omit for the first. A bare post ID,
+   * the format earlier releases returned, is still accepted.
+   */
+  cursor?: string;
+  /** Posts per page. */
+  limit: number;
+}
+
+/**
+ * One page of Posts, and the cursor that continues it. See
+ * `PostService.listPage` and `PostService.listCollectionThreadRootPage`.
+ */
+export interface PostListPage {
+  posts: Post[];
+  /** Opaque. `null` when no further page exists. */
+  nextCursor: string | null;
 }
 
 /** What one filter measured over a set of Posts. See `aggregateMany`. */
@@ -258,14 +286,30 @@ interface CollectionFeedEntryOptions extends ThreadRootPageOptions {
 
 interface CollectionThreadRootPageOptions extends ThreadRootPageOptions {
   sortOrder?: CollectionSortOrder;
-  /** Root Post ID returned by the previous page. */
-  cursor?: string;
 }
 
 interface CursorSortKey {
   direction: "asc" | "desc";
   expr: SQLWrapper;
   value: number | string;
+}
+
+/**
+ * How `list()` orders Posts: `sortOrder` on the `sortBy` axis, pinned Posts
+ * first unless `pinned` is off.
+ */
+interface ListSort {
+  order: SortOrder;
+  axis: NonNullable<PostFilters["sortBy"]>;
+  pinned: boolean;
+}
+
+/** One term of a paged ORDER BY: `list()`'s, or a collection's Threads'. */
+interface ListSortKey {
+  /** Selectable as a column, so a page's cursor is read from SQL. */
+  expr: SQL;
+  direction: "asc" | "desc";
+  kind: PostListCursorKeyKind;
 }
 
 export interface CollectionFeedEntry {
@@ -383,7 +427,40 @@ export interface PostService {
     excludePostId?: string;
   }): Promise<string>;
   checkSlugAvailability(slug: string, excludePostId?: string): Promise<boolean>;
+  /**
+   * Posts matching `filters`, in the order `sortOrder`, `sortBy`, `featured`,
+   * and `ignorePinnedSort` select. Pages by `limit` and `offset`; a caller
+   * handing pages to a client that walks them uses {@link listPage} instead.
+   */
   list(filters?: PostFilters): Promise<Post[]>;
+  /**
+   * One page of {@link list}, and an opaque cursor for the next.
+   *
+   * The cursor carries the sort mode and the sort-key values of the page's
+   * last row, so the next page resumes from that position without looking the
+   * row up again. A Post that exists for the whole walk and keeps its place in
+   * the order is returned exactly once, whatever else is created, deleted, or
+   * edited in between. A Post whose sort key changes mid-walk can be skipped
+   * or repeated.
+   *
+   * @param filters - What to list and in which order, as for {@link list}
+   * @param page - The previous page's `nextCursor`, and the page size
+   * @returns The page's Posts and the cursor after them, `null` on the last page
+   * @throws {ValidationError} When the cursor can't be read, was taken in
+   *   another sort mode, or is a Post ID the caller can't see
+   * @example
+   * ```ts
+   * const first = await posts.listPage({ status: "published" }, { limit: 20 });
+   * const second = await posts.listPage(
+   *   { status: "published" },
+   *   { cursor: first.nextCursor ?? undefined, limit: 20 },
+   * );
+   * ```
+   */
+  listPage(
+    filters: Omit<PostFilters, "limit" | "offset">,
+    page: PostListPageOptions,
+  ): Promise<PostListPage>;
   /**
    * List minimal fields needed to render sitemap entries, paginated by `id`
    * (ascending). Excludes replies, private posts, deleted posts, and drafts.
@@ -413,9 +490,9 @@ export interface PostService {
    * SQLite/D1 scan only the index for this, not the row data.
    */
   getSitemapIdAt(offset: number): Promise<string | null>;
-  /** Count posts matching filters (ignores cursor, offset, limit) */
+  /** Count posts matching filters (ignores offset, limit) */
   count(filters?: PostFilters): Promise<number>;
-  /** Count posts matching filters up to a fixed limit (ignores cursor, offset, limit) */
+  /** Count posts matching filters up to a fixed limit (ignores offset, limit) */
   countUpTo(filters: PostFilters | undefined, limit: number): Promise<number>;
   /**
    * Measure several filters at once, in a single round trip.
@@ -681,11 +758,39 @@ export interface PostService {
     collectionIds: string[],
     options?: CollectionThreadRootPageOptions,
   ): Promise<string[]>;
-  /** List and hydrate collection Thread roots using Thread-level ordering. */
-  listCollectionThreadRootsForCollections(
+  /**
+   * One page of a collection's Thread roots, in the order
+   * {@link listCollectionThreadRootIdsForCollections} returns them, and an
+   * opaque cursor for the next.
+   *
+   * Pages the way {@link listPage} does: the cursor records the sort order and
+   * the sort-key values of the page's last Thread, so a Thread that is
+   * deleted, unpublished, or taken out of the collection between requests
+   * doesn't end the walk. A Thread that stays listed and keeps its place is
+   * returned exactly once; one whose activity, rating, or pin changes mid-walk
+   * can be skipped or repeated.
+   *
+   * @param collectionIds - The collection, or the union of collections, to list
+   * @param options - Which Threads to list and in which order
+   * @param page - The previous page's `nextCursor`, and the page size
+   * @returns The page's Thread roots and the cursor after them, `null` on the
+   *   last page
+   * @throws {ValidationError} When the cursor can't be read, was taken in
+   *   another order, or is a root ID this request doesn't list
+   * @example
+   * ```ts
+   * const first = await posts.listCollectionThreadRootPage(
+   *   [collection.id],
+   *   { status: "published", excludePrivate: true, sortOrder: "newest" },
+   *   { limit: 20 },
+   * );
+   * ```
+   */
+  listCollectionThreadRootPage(
     collectionIds: string[],
-    options?: CollectionThreadRootPageOptions,
-  ): Promise<Post[]>;
+    options: Omit<CollectionThreadRootPageOptions, "limit" | "offset">,
+    page: PostListPageOptions,
+  ): Promise<PostListPage>;
   /** List collection feed entries ordered by latest added-at timestamp */
   listCollectionFeedEntries(
     collectionId: string,
@@ -1405,38 +1510,144 @@ export function createPostService(
     return conditions;
   }
 
-  function getCursorSortTimestamp(
-    row: typeof posts.$inferSelect,
-    filters: PostFilters,
-  ): number {
-    if (filters.sortBy === "published") {
-      return row.publishedAt ?? row.createdAt;
+  /**
+   * How `list()` orders a set of filters.
+   *
+   * A Featured list runs newest-published-first whatever `sortOrder` and
+   * `sortBy` say. It is that order and no variant of it, so a cursor moves
+   * between a Featured list and any other newest-published one. Everything
+   * else takes both from the filters, defaulting to newest by announced
+   * activity.
+   */
+  function resolveListSort(filters: PostFilters): ListSort {
+    const pinned = !filters.ignorePinnedSort;
+    if (filters.featured) {
+      return { order: "newest", axis: "published", pinned };
     }
-    if (filters.sortBy === "thread_updated") {
-      return row.threadUpdatedAt ?? -1;
-    }
-    return row.status === "draft" ? row.updatedAt : (row.lastActivityAt ?? -1);
+    return {
+      order: filters.sortOrder ?? "newest",
+      axis: filters.sortBy ?? "activity",
+      pinned,
+    };
   }
 
   /**
-   * Chronological sort key for `list()`.
-   *
-   * Shared by the ORDER BY and the keyset cursor comparison — they must read
-   * the same expression or pagination silently skips or repeats rows.
+   * The sort mode a cursor records. Two requests share a mode exactly when
+   * their ORDER BY reads the same keys in the same directions, so a position
+   * taken in one resumes the other.
    */
-  function buildSortTimestampExpr(filters: PostFilters): SQLWrapper {
-    if (filters.sortBy === "published") {
-      return sql<number>`coalesce(${posts.publishedAt}, ${posts.createdAt})`;
+  function listSortMode(sort: ListSort): string {
+    return `${sort.order}:${sort.axis}:${sort.pinned ? "pinned" : "unpinned"}`;
+  }
+
+  /**
+   * Where a Post sits on one of `list()`'s time axes. See `PostFilters.sortBy`.
+   *
+   * On the activity axis a draft, which has announced nothing, sits at its last
+   * edit. When the status filter already settles which case applies, only
+   * that column is read.
+   */
+  function listAxisExpr(
+    axis: ListSort["axis"],
+    status: Status | undefined,
+  ): SQL {
+    switch (axis) {
+      case "published":
+        return sql`coalesce(${posts.publishedAt}, ${posts.createdAt})`;
+      case "thread_updated":
+        return sql`${posts.threadUpdatedAt}`;
+      case "activity":
+        if (status === "draft") return sql`${posts.updatedAt}`;
+        if (status === "published") return sql`${posts.lastActivityAt}`;
+        return sql`CASE
+          WHEN ${posts.status} = 'draft' THEN ${posts.updatedAt}
+          ELSE ${posts.lastActivityAt}
+        END`;
     }
-    if (filters.sortBy === "thread_updated") {
-      return posts.threadUpdatedAt;
+  }
+
+  /**
+   * `list()`'s sort keys, in ORDER BY order — the one definition of it.
+   *
+   * The ORDER BY, the keyset condition that resumes after a cursor, and the
+   * values a cursor records are all built from this list, so they cannot read
+   * different expressions. Two of them used to, and a page boundary then
+   * skipped or repeated Posts.
+   *
+   * Every nullable key is wrapped in `coalesce(…, -1)`. SQLite sorts NULLs
+   * last under DESC and Postgres sorts them first, and a keyset comparison
+   * against NULL is never true on either; with the wrap both engines order,
+   * compare, and return the same values. The Post ID ends every list, so no
+   * two rows share a tuple.
+   */
+  function listSortKeys(
+    sort: ListSort,
+    status: Status | undefined,
+  ): ListSortKey[] {
+    const numberKey = (expr: SQL, direction: "asc" | "desc"): ListSortKey => ({
+      expr: sql<number>`coalesce(${expr}, -1)`.mapWith(Number),
+      direction,
+      kind: "number",
+    });
+    const idKey = (direction: "asc" | "desc"): ListSortKey => ({
+      expr: sql<string>`${posts.id}`,
+      direction,
+      kind: "id",
+    });
+    const pinnedKeys = sort.pinned
+      ? [numberKey(sql`${posts.pinnedAt}`, "desc")]
+      : [];
+    const time = listAxisExpr(sort.axis, status);
+
+    // One case per order and no default: an order added to `SortOrder`
+    // doesn't compile until it has keys, rather than falling into another's.
+    switch (sort.order) {
+      case "oldest":
+        return [...pinnedKeys, numberKey(time, "asc"), idKey("asc")];
+      case "rating_desc":
+        // Ratings run 1 to 5, so -1 puts unrated Posts after every rated one.
+        return [
+          ...pinnedKeys,
+          numberKey(sql`${posts.rating}`, "desc"),
+          numberKey(time, "desc"),
+          idKey("desc"),
+        ];
+      case "newest":
+        return [...pinnedKeys, numberKey(time, "desc"), idKey("desc")];
     }
-    if (filters.status === "draft") return posts.updatedAt;
-    if (filters.status === "published") return posts.lastActivityAt;
-    return sql<number>`CASE
-      WHEN ${posts.status} = 'draft' THEN ${posts.updatedAt}
-      ELSE ${posts.lastActivityAt}
-    END`;
+  }
+
+  function listOrderBy(keys: readonly ListSortKey[]): SQL[] {
+    return keys.map((key) =>
+      key.direction === "desc" ? desc(key.expr) : asc(key.expr),
+    );
+  }
+
+  /** The sort keys as select fields, `k0`, `k1`, …, in ORDER BY order. */
+  function listSortKeyFields(
+    keys: readonly ListSortKey[],
+  ): Record<string, SQL> {
+    return Object.fromEntries(
+      keys.map((key, index) => [`k${index}`, key.expr]),
+    );
+  }
+
+  /** Read back the tuple {@link listSortKeyFields} selected. */
+  function readListSortKeyValues(
+    keys: readonly ListSortKey[],
+    fields: Record<string, unknown>,
+  ): PostListCursorValue[] {
+    return keys.map((key, index) => {
+      const value = fields[`k${index}`];
+      if (key.kind === "number") {
+        if (typeof value === "number" && Number.isSafeInteger(value)) {
+          return value;
+        }
+      } else if (typeof value === "string") {
+        return value;
+      }
+      throw new Error(`Sort key ${index} read back as ${String(value)}`);
+    });
   }
 
   function buildLexicographicCursorCondition(
@@ -1460,106 +1671,68 @@ export function createPostService(
     )`;
   }
 
-  async function buildListCursorCondition(
+  /** Rows strictly after `values` in the order `keys` describe. */
+  function buildListKeysetCondition(
+    keys: readonly ListSortKey[],
+    values: readonly PostListCursorValue[],
+  ): SQL<unknown> {
+    const cursorKeys = keys.map((key, index): CursorSortKey => {
+      const value = values[index];
+      if (value === undefined) {
+        throw new Error(`Cursor holds no value for sort key ${index}`);
+      }
+      return { direction: key.direction, expr: key.expr, value };
+    });
+    const [first, ...rest] = cursorKeys;
+    if (!first) {
+      throw new Error("A list has at least one sort key");
+    }
+    return buildLexicographicCursorCondition([first, ...rest]);
+  }
+
+  /**
+   * The position a cursor names, as the tuple of sort-key values after which
+   * the page starts.
+   *
+   * A bare post ID, the cursor earlier releases returned, is looked up — but
+   * only among Posts the caller could have been shown: the request's status,
+   * and nothing private when the request excludes it. A deleted Post, a draft,
+   * and a private Post all get the same rejection, so the lookup can't be used
+   * to learn whether a Post exists or when it was published. Its values come
+   * from the same key expressions as the ORDER BY.
+   */
+  async function resolveListCursor(
+    cursor: string,
+    sort: ListSort,
+    keys: readonly ListSortKey[],
     filters: PostFilters,
-  ): Promise<SQL<unknown> | null> {
-    if (!filters.cursor) {
-      return null;
+  ): Promise<PostListCursorValue[]> {
+    if (!isLegacyPostListCursor(cursor)) {
+      return decodePostListCursor(cursor, {
+        mode: listSortMode(sort),
+        kinds: keys.map((key) => key.kind),
+      });
     }
 
-    const cursorRow = await db
-      .select()
+    const rows = await db
+      .select(listSortKeyFields(keys))
       .from(posts)
-      .where(and(eq(posts.siteId, siteId), eq(posts.id, filters.cursor)))
+      .where(
+        and(
+          eq(posts.siteId, siteId),
+          eq(posts.id, cursor),
+          ...buildReaderVisibilityConditions(posts, siteId, {
+            status: filters.status,
+            excludePrivate: filters.excludePrivate,
+          }),
+        ),
+      )
       .limit(1);
-    const cursorPost = cursorRow[0];
-
-    if (!cursorPost) {
-      return null;
+    const row = rows[0];
+    if (!row) {
+      throw new ValidationError(MISSING_LEGACY_CURSOR_MESSAGE);
     }
-
-    const sortTimestampExpr = buildSortTimestampExpr(filters);
-    const pinnedSortExpr = sql<number>`coalesce(${posts.pinnedAt}, -1)`;
-    const featuredPublishedSortExpr = sql<number>`coalesce(
-      ${posts.publishedAt}, ${posts.createdAt}, -1
-    )`;
-    const sortTimestampSortExpr = sql<number>`coalesce(${sortTimestampExpr}, -1)`;
-    const ratingPresenceExpr = sql<number>`CASE
-      WHEN ${posts.rating} IS NULL THEN 0
-      ELSE 1
-    END`;
-    const ratingSortExpr = sql<number>`coalesce(${posts.rating}, -1)`;
-    const cursorPinnedAt = cursorPost.pinnedAt ?? -1;
-    const cursorFeaturedPublishedAt =
-      cursorPost.publishedAt ?? cursorPost.createdAt;
-    const cursorSortTimestamp = getCursorSortTimestamp(cursorPost, filters);
-    const cursorRatingPresence = cursorPost.rating === null ? 0 : 1;
-    const cursorRating = cursorPost.rating ?? -1;
-    const withPinnedSortKey = (
-      keys: [CursorSortKey, ...CursorSortKey[]],
-    ): [CursorSortKey, ...CursorSortKey[]] =>
-      filters.ignorePinnedSort
-        ? keys
-        : [
-            { direction: "desc", expr: pinnedSortExpr, value: cursorPinnedAt },
-            ...keys,
-          ];
-
-    if (filters.featured) {
-      return buildLexicographicCursorCondition(
-        withPinnedSortKey([
-          {
-            direction: "desc",
-            expr: featuredPublishedSortExpr,
-            value: cursorFeaturedPublishedAt,
-          },
-          { direction: "desc", expr: posts.id, value: cursorPost.id },
-        ]),
-      );
-    }
-
-    // One case per sort order, mirroring `list()` key for key.
-    switch (filters.sortOrder ?? "newest") {
-      case "oldest":
-        return buildLexicographicCursorCondition(
-          withPinnedSortKey([
-            {
-              direction: "asc",
-              expr: sortTimestampSortExpr,
-              value: cursorSortTimestamp,
-            },
-            { direction: "asc", expr: posts.id, value: cursorPost.id },
-          ]),
-        );
-      case "rating_desc":
-        return buildLexicographicCursorCondition(
-          withPinnedSortKey([
-            {
-              direction: "desc",
-              expr: ratingPresenceExpr,
-              value: cursorRatingPresence,
-            },
-            { direction: "desc", expr: ratingSortExpr, value: cursorRating },
-            {
-              direction: "desc",
-              expr: sortTimestampSortExpr,
-              value: cursorSortTimestamp,
-            },
-            { direction: "desc", expr: posts.id, value: cursorPost.id },
-          ]),
-        );
-      case "newest":
-        return buildLexicographicCursorCondition(
-          withPinnedSortKey([
-            {
-              direction: "desc",
-              expr: sortTimestampSortExpr,
-              value: cursorSortTimestamp,
-            },
-            { direction: "desc", expr: posts.id, value: cursorPost.id },
-          ]),
-        );
-    }
+    return readListSortKeyValues(keys, row);
   }
 
   function toPost(
@@ -1811,43 +1984,64 @@ export function createPostService(
     )`.as(alias);
   }
 
-  function buildCollectionThreadSortQuery(
+  /**
+   * The sort mode a collection cursor records. Distinct from every
+   * {@link listSortMode}: a collection orders Threads by its own pins, so a
+   * position in `list()` never resumes a collection or the other way round.
+   */
+  function collectionThreadSortMode(order: CollectionSortOrder): string {
+    return `collection:${order}`;
+  }
+
+  /**
+   * A collection's matching Threads, one row per Thread with its sort keys as
+   * columns, those keys in ORDER BY order, and the sort mode a cursor taken
+   * in that order records — the one definition of how a collection orders
+   * its Threads. `options.sortOrder` defaults to `newest`.
+   *
+   * The keys are aggregates over the Thread's matching members, computed once
+   * in the grouped subquery; the ORDER BY, the keyset condition that resumes
+   * after a cursor, and the values a cursor records all read the subquery's
+   * columns through `keys`. As in {@link listSortKeys}, no key is ever NULL,
+   * so SQLite and Postgres order and compare alike: a missing pin, rating, or
+   * publication time folds to -1, and Thread activity falls back to the
+   * member's own times.
+   *
+   * - `newest`: pinned in the collection first, then Thread activity, newest
+   *   first.
+   * - `oldest`: pinned first, then the Thread's first publication, oldest
+   *   first. A new reply doesn't move a Thread.
+   * - `rating_desc`: pinned first, then the Thread's highest rating (unrated
+   *   last, since ratings run 1 to 5), then Thread activity.
+   *
+   * The Thread root ID ends every order, so no two rows share a tuple.
+   */
+  function buildCollectionThreadSort(
     collectionIds: string[],
     options: CollectionThreadRootPageOptions,
   ) {
+    const order = options.sortOrder ?? "newest";
     const conditions = [
       ...buildThreadRootPageConditions(options),
       buildCollectionMembershipCondition(collectionIds),
     ];
-    const sortOrder = options.sortOrder ?? "newest";
-    const publishedAt =
-      sortOrder === "oldest"
-        ? sql<number>`MIN(${posts.publishedAt})`.as("published_at")
-        : sql<number>`MAX(${posts.publishedAt})`.as("published_at");
-    const threadActivityAt =
-      buildCollectionThreadActivityExpr("thread_activity_at");
-    const ratingPresence = sql<number>`MAX(
-      CASE
-        WHEN ${posts.rating} IS NULL THEN 0
-        ELSE 1
-      END
-    )`.as("rating_presence");
-    const ratingValue = sql<number>`MAX(coalesce(${posts.rating}, -1))`.as(
-      "rating_value",
-    );
-    const collectionPinnedAt =
-      sql<number>`MAX(coalesce(${threadCollections.pinnedAt}, -1))`.as(
-        "collection_pinned_at",
-      );
 
     const sortedThreads = db
       .select({
         threadId: posts.threadId,
-        publishedAt,
-        threadActivityAt,
-        collectionPinnedAt,
-        ratingPresence,
-        ratingValue,
+        collectionPinnedAt:
+          sql<number>`MAX(coalesce(${threadCollections.pinnedAt}, -1))`.as(
+            "collection_pinned_at",
+          ),
+        firstPublishedAt:
+          sql<number>`coalesce(MIN(${posts.publishedAt}), -1)`.as(
+            "first_published_at",
+          ),
+        threadActivityAt:
+          buildCollectionThreadActivityExpr("thread_activity_at"),
+        ratingValue: sql<number>`MAX(coalesce(${posts.rating}, -1))`.as(
+          "rating_value",
+        ),
       })
       .from(posts)
       .innerJoin(
@@ -1861,7 +2055,76 @@ export function createPostService(
       .groupBy(posts.threadId)
       .as("collection_thread_sort");
 
-    return { sortOrder, sortedThreads };
+    const numberKey = (
+      column: SQLWrapper,
+      direction: "asc" | "desc",
+    ): ListSortKey => ({
+      expr: sql<number>`${column}`.mapWith(Number),
+      direction,
+      kind: "number",
+    });
+    const idKey = (direction: "asc" | "desc"): ListSortKey => ({
+      expr: sql<string>`${sortedThreads.threadId}`,
+      direction,
+      kind: "id",
+    });
+    const pinned = numberKey(sortedThreads.collectionPinnedAt, "desc");
+    const activity = numberKey(sortedThreads.threadActivityAt, "desc");
+
+    // One case per order and no default, as in `listSortKeys`.
+    const keys = ((): ListSortKey[] => {
+      switch (order) {
+        case "oldest":
+          return [
+            pinned,
+            numberKey(sortedThreads.firstPublishedAt, "asc"),
+            idKey("asc"),
+          ];
+        case "rating_desc":
+          return [
+            pinned,
+            numberKey(sortedThreads.ratingValue, "desc"),
+            activity,
+            idKey("desc"),
+          ];
+        case "newest":
+          return [pinned, activity, idKey("desc")];
+      }
+    })();
+
+    return { sortedThreads, keys, mode: collectionThreadSortMode(order) };
+  }
+
+  /**
+   * The position a collection cursor names, as the tuple of sort-key values
+   * after which the page starts.
+   *
+   * A bare root ID, the cursor earlier releases returned, is looked up in the
+   * request's own `sortedThreads`, so only among Threads this request could
+   * list. A Thread that is gone, private, a draft, or no longer in the
+   * collection gets the same rejection as an ID that never existed.
+   */
+  async function resolveCollectionThreadCursor(
+    cursor: string,
+    sort: ReturnType<typeof buildCollectionThreadSort>,
+  ): Promise<PostListCursorValue[]> {
+    if (!isLegacyPostListCursor(cursor)) {
+      return decodePostListCursor(cursor, {
+        mode: sort.mode,
+        kinds: sort.keys.map((key) => key.kind),
+      });
+    }
+
+    const rows = await db
+      .select(listSortKeyFields(sort.keys))
+      .from(sort.sortedThreads)
+      .where(eq(sort.sortedThreads.threadId, cursor))
+      .limit(1);
+    const row = rows[0];
+    if (!row) {
+      throw new ValidationError(MISSING_LEGACY_CURSOR_MESSAGE);
+    }
+    return readListSortKeyValues(sort.keys, row);
   }
 
   function isMediaAttachmentInput(
@@ -2101,75 +2364,15 @@ export function createPostService(
     },
 
     async list(filters = {}) {
+      const keys = listSortKeys(resolveListSort(filters), filters.status);
       const conditions = buildFilterConditions(filters);
-      const cursorCondition = await buildListCursorCondition(filters);
-      if (filters.cursor && !cursorCondition) {
-        return [];
-      }
-      const sortTimestamp = buildSortTimestampExpr(filters);
 
-      if (cursorCondition) {
-        conditions.push(cursorCondition);
-      }
-
-      const ratingPresence = sql<number>`CASE
-          WHEN ${posts.rating} IS NULL THEN 0
-          ELSE 1
-        END`;
-
-      // NULL-sort order differs between dialects: SQLite puts NULLs last for
-      // DESC, Postgres puts them first. Wrap nullable sort keys in COALESCE
-      // so pinned and nullable timeline values sort identically under both
-      // engines. Mirrors the
-      // expressions used by `buildListCursorCondition` above.
-      const pinnedSortExpr = sql<number>`coalesce(${posts.pinnedAt}, -1)`;
-      const featuredPublishedSortExpr = sql<number>`coalesce(
-        ${posts.publishedAt}, ${posts.createdAt}, -1
-      )`;
-      const sortTimestampSortExpr = sql<number>`coalesce(${sortTimestamp}, -1)`;
-      const pinnedOrder = filters.ignorePinnedSort
-        ? []
-        : [desc(pinnedSortExpr)];
-
-      const baseQuery = db
+      let query = db
         .select()
         .from(posts)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(...listOrderBy(keys))
         .limit(filters.limit ?? 100);
-
-      // A case per sort order, and no shared fallthrough. This was an if/else
-      // chain whose last branch was written for one order and silently caught
-      // another, so `newest` ordered by rating instead of by time wherever it
-      // was passed explicitly — a smart collection page, most visibly.
-      const buildOrderBy = (): SQL<unknown>[] => {
-        if (filters.featured) {
-          return [
-            ...pinnedOrder,
-            desc(featuredPublishedSortExpr),
-            desc(posts.id),
-          ];
-        }
-        switch (filters.sortOrder ?? "newest") {
-          case "oldest":
-            return [...pinnedOrder, asc(sortTimestampSortExpr), asc(posts.id)];
-          case "rating_desc":
-            return [
-              ...pinnedOrder,
-              desc(ratingPresence),
-              desc(posts.rating),
-              desc(sortTimestampSortExpr),
-              desc(posts.id),
-            ];
-          case "newest":
-            return [
-              ...pinnedOrder,
-              desc(sortTimestampSortExpr),
-              desc(posts.id),
-            ];
-        }
-      };
-
-      let query = baseQuery.orderBy(...buildOrderBy());
 
       if (filters.offset !== undefined) {
         query = query.offset(filters.offset) as typeof query;
@@ -2177,6 +2380,49 @@ export function createPostService(
 
       const rows = await query;
       return hydratePosts(rows);
+    },
+
+    async listPage(filters, { cursor, limit }) {
+      const sort = resolveListSort(filters);
+      const keys = listSortKeys(sort, filters.status);
+      const conditions = buildFilterConditions(filters);
+      // An empty cursor has always meant the first page — a client that sends
+      // `?cursor=` before it has one keeps working.
+      if (cursor) {
+        conditions.push(
+          buildListKeysetCondition(
+            keys,
+            await resolveListCursor(cursor, sort, keys, filters),
+          ),
+        );
+      }
+
+      // One row past the page says whether another page exists, so the last
+      // page carries a null cursor rather than one that leads to an empty page.
+      const rows = await db
+        .select({ post: posts, sortKey: listSortKeyFields(keys) })
+        .from(posts)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(...listOrderBy(keys))
+        .limit(limit + 1);
+
+      const pageRows = rows.slice(0, limit);
+      // The cursor comes from the last row read, not the last Post returned:
+      // hydration drops a row it can't give a slug, and a page cut short that
+      // way must not end the walk.
+      const lastRow = pageRows[pageRows.length - 1];
+      const nextCursor =
+        rows.length > limit && lastRow
+          ? encodePostListCursor(
+              listSortMode(sort),
+              readListSortKeyValues(keys, lastRow.sortKey),
+            )
+          : null;
+
+      return {
+        posts: await hydratePosts(pageRows.map((row) => row.post)),
+        nextCursor,
+      };
     },
 
     async listForSitemap({ afterId, limit }) {
@@ -4582,103 +4828,15 @@ export function createPostService(
       collectionIds,
       options = {},
     ) {
-      const { sortOrder, sortedThreads } = buildCollectionThreadSortQuery(
+      const { sortedThreads, keys } = buildCollectionThreadSort(
         collectionIds,
         options,
       );
-      let cursorCondition: SQL<unknown> | undefined;
 
-      if (options.cursor) {
-        const cursorRows = await db
-          .select()
-          .from(sortedThreads)
-          .where(eq(sortedThreads.threadId, options.cursor))
-          .limit(1);
-        const cursorRow = cursorRows[0];
-        if (!cursorRow) return [];
-
-        const pinnedKey: CursorSortKey = {
-          direction: "desc",
-          expr: sortedThreads.collectionPinnedAt,
-          value: cursorRow.collectionPinnedAt,
-        };
-
-        cursorCondition =
-          sortOrder === "oldest"
-            ? buildLexicographicCursorCondition([
-                pinnedKey,
-                {
-                  direction: "asc",
-                  expr: sortedThreads.publishedAt,
-                  value: cursorRow.publishedAt,
-                },
-                {
-                  direction: "asc",
-                  expr: sortedThreads.threadId,
-                  value: cursorRow.threadId,
-                },
-              ])
-            : sortOrder === "rating_desc"
-              ? buildLexicographicCursorCondition([
-                  pinnedKey,
-                  {
-                    direction: "desc",
-                    expr: sortedThreads.ratingPresence,
-                    value: cursorRow.ratingPresence,
-                  },
-                  {
-                    direction: "desc",
-                    expr: sortedThreads.ratingValue,
-                    value: cursorRow.ratingValue,
-                  },
-                  {
-                    direction: "desc",
-                    expr: sortedThreads.threadActivityAt,
-                    value: cursorRow.threadActivityAt,
-                  },
-                  {
-                    direction: "desc",
-                    expr: sortedThreads.threadId,
-                    value: cursorRow.threadId,
-                  },
-                ])
-              : buildLexicographicCursorCondition([
-                  pinnedKey,
-                  {
-                    direction: "desc",
-                    expr: sortedThreads.threadActivityAt,
-                    value: cursorRow.threadActivityAt,
-                  },
-                  {
-                    direction: "desc",
-                    expr: sortedThreads.threadId,
-                    value: cursorRow.threadId,
-                  },
-                ]);
-      }
-
-      const baseQuery = db.select().from(sortedThreads).where(cursorCondition);
-
-      let query =
-        sortOrder === "oldest"
-          ? baseQuery.orderBy(
-              desc(sortedThreads.collectionPinnedAt),
-              asc(sortedThreads.publishedAt),
-              asc(sortedThreads.threadId),
-            )
-          : sortOrder === "rating_desc"
-            ? baseQuery.orderBy(
-                desc(sortedThreads.collectionPinnedAt),
-                desc(sortedThreads.ratingPresence),
-                desc(sortedThreads.ratingValue),
-                desc(sortedThreads.threadActivityAt),
-                desc(sortedThreads.threadId),
-              )
-            : baseQuery.orderBy(
-                desc(sortedThreads.collectionPinnedAt),
-                desc(sortedThreads.threadActivityAt),
-                desc(sortedThreads.threadId),
-              );
+      let query = db
+        .select({ threadId: sortedThreads.threadId })
+        .from(sortedThreads)
+        .orderBy(...listOrderBy(keys));
 
       if (options.limit !== undefined) {
         query = query.limit(options.limit) as typeof query;
@@ -4691,16 +4849,52 @@ export function createPostService(
       return rows.map((row) => row.threadId);
     },
 
-    async listCollectionThreadRootsForCollections(collectionIds, options = {}) {
-      const rootIds = await this.listCollectionThreadRootIdsForCollections(
-        collectionIds,
-        options,
-      );
+    async listCollectionThreadRootPage(
+      collectionIds,
+      options,
+      { cursor, limit },
+    ) {
+      const sort = buildCollectionThreadSort(collectionIds, options);
+      const { sortedThreads, keys } = sort;
+      // An empty cursor means the first page, as in `listPage`.
+      const after = cursor
+        ? buildListKeysetCondition(
+            keys,
+            await resolveCollectionThreadCursor(cursor, sort),
+          )
+        : undefined;
+
+      // One row past the page says whether another page exists.
+      const rows = await db
+        .select({
+          threadId: sortedThreads.threadId,
+          sortKey: listSortKeyFields(keys),
+        })
+        .from(sortedThreads)
+        .where(after)
+        .orderBy(...listOrderBy(keys))
+        .limit(limit + 1);
+
+      const pageRows = rows.slice(0, limit);
+      // From the last row read, not the last root hydrated, as in `listPage`.
+      const lastRow = pageRows[pageRows.length - 1];
+      const nextCursor =
+        rows.length > limit && lastRow
+          ? encodePostListCursor(
+              sort.mode,
+              readListSortKeyValues(keys, lastRow.sortKey),
+            )
+          : null;
+
+      const rootIds = pageRows.map((row) => row.threadId);
       const rootsById = await hydratePostsById(rootIds);
-      return rootIds.flatMap((rootId) => {
-        const root = rootsById.get(rootId);
-        return root ? [root] : [];
-      });
+      return {
+        posts: rootIds.flatMap((rootId) => {
+          const root = rootsById.get(rootId);
+          return root ? [root] : [];
+        }),
+        nextCursor,
+      };
     },
 
     async listCollectionFeedEntries(collectionId, options = {}) {

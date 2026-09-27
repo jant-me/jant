@@ -415,6 +415,162 @@ async function main() {
     // above, and a draft is never counted for anyone.
     assert.equal(smartRow?.threadCount, 2);
 
+    // Paging reads its cursor back out of SQL: the ORDER BY keys are selected
+    // as columns beside the row, NULLs folded by `coalesce(…, -1)`, and the
+    // next page compares against them. Postgres sorts NULLs first under DESC
+    // where SQLite sorts them last, so a key left unwrapped would reorder the
+    // walk here and nowhere else. Ties and a pinned post put page breaks on
+    // every key.
+    const createPost = async (fields) => {
+      const response = await handler.fetch(
+        new Request("http://127.0.0.1:3000/api/posts", {
+          method: "POST",
+          headers: {
+            Cookie: cookieHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            format: "note",
+            status: "published",
+            ...fields,
+          }),
+        }),
+      );
+      assert.equal(response.status, 201);
+      return response.json();
+    };
+    for (const bodyMarkdown of ["Tie one.", "Tie two.", "Tie three."]) {
+      await createPost({ bodyMarkdown, publishedAt: 1_700_000_000 });
+    }
+    await createPost({
+      bodyMarkdown: "Pinned.",
+      publishedAt: 1_600_000_000,
+      pinned: true,
+    });
+    const privatePost = await createPost({
+      bodyMarkdown: "Private.",
+      visibility: "private",
+    });
+
+    // A collection's keys are aggregates over each Thread's members, read
+    // back out of a grouped subquery: a Collection pin, the first publication
+    // (oldest), Thread activity, and the highest rating (rating_desc).
+    const walkCollectionResponse = await handler.fetch(
+      new Request("http://127.0.0.1:3000/api/collections", {
+        method: "POST",
+        headers: {
+          Cookie: cookieHeader,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ slug: "smoke-walk", title: "Smoke walk" }),
+      }),
+    );
+    assert.equal(walkCollectionResponse.status, 201);
+    const walkCollection = await walkCollectionResponse.json();
+    const inWalk = { collectionIds: [walkCollection.id] };
+    for (const bodyMarkdown of ["Walk tie one.", "Walk tie two."]) {
+      await createPost({
+        ...inWalk,
+        bodyMarkdown,
+        publishedAt: 1_700_000_000,
+        rating: 3,
+      });
+    }
+    const walkBumped = await createPost({
+      ...inWalk,
+      bodyMarkdown: "Walk root with a later reply.",
+      publishedAt: 1_650_000_000,
+    });
+    await createPost({
+      bodyMarkdown: "Walk reply.",
+      replyToId: walkBumped.id,
+      publishedAt: 1_750_000_000,
+      rating: 5,
+    });
+    const walkPinned = await createPost({
+      ...inWalk,
+      bodyMarkdown: "Walk pinned.",
+      publishedAt: 1_600_000_000,
+    });
+    const pinResponse = await handler.fetch(
+      new Request(
+        `http://127.0.0.1:3000/api/collections/${walkCollection.id}/threads/${walkPinned.id}/pin`,
+        { method: "PUT", headers: { Cookie: cookieHeader } },
+      ),
+    );
+    assert.equal(pinResponse.status, 200);
+    await createPost({ ...inWalk, bodyMarkdown: "Walk unrated." });
+    const walkPrivate = await createPost({
+      ...inWalk,
+      bodyMarkdown: "Walk private.",
+      visibility: "private",
+    });
+
+    const readIds = async (path, headers = {}) => {
+      const response = await handler.fetch(
+        new Request(`http://127.0.0.1:3000${path}`, { headers }),
+      );
+      assert.equal(response.status, 200, path);
+      const body = await response.json();
+      return { ids: body.posts.map((post) => post.id), next: body.nextCursor };
+    };
+    const walkedOrders = new Map();
+    for (const [path, headers] of [
+      ["/api/posts?", { Cookie: cookieHeader }],
+      ["/api/posts?status=draft&", { Cookie: cookieHeader }],
+      ["/api/public/posts?", {}],
+      ["/api/public/archive?", {}],
+      ["/api/public/posts?collection=smoke-walk&sort=newest&", {}],
+      ["/api/public/posts?collection=smoke-walk&sort=oldest&", {}],
+      ["/api/public/posts?collection=smoke-walk&sort=rating_desc&", {}],
+    ]) {
+      const expected = (await readIds(`${path}limit=100`, headers)).ids;
+      assert.ok(expected.length >= 1, path);
+      const walked = [];
+      let cursor = null;
+      for (let page = 0; page <= expected.length; page++) {
+        const query = cursor
+          ? `limit=1&cursor=${encodeURIComponent(cursor)}`
+          : "limit=1";
+        const { ids, next } = await readIds(`${path}${query}`, headers);
+        walked.push(...ids);
+        cursor = next;
+        if (cursor === null) break;
+      }
+      assert.equal(cursor, null, path);
+      assert.deepEqual(walked, expected, path);
+      walkedOrders.set(path, expected);
+    }
+    // Each sort reads its own keys: the pinned Thread leads all three, then
+    // activity, first publication, and rating put the rest in three orders.
+    const collectionOrders = [...walkedOrders]
+      .filter(([path]) => path.includes("collection=smoke-walk"))
+      .map(([, ids]) => ids);
+    assert.equal(collectionOrders.length, 3);
+    for (const ids of collectionOrders) {
+      assert.equal(ids.length, 5);
+      assert.equal(ids[0], walkPinned.id);
+    }
+    assert.equal(
+      new Set(collectionOrders.map((ids) => ids.join())).size,
+      3,
+      "collection sort orders",
+    );
+
+    // A private post's ID, the old cursor format, answers as an unknown one.
+    const privateCursor = await handler.fetch(
+      new Request(
+        `http://127.0.0.1:3000/api/public/archive?cursor=${privatePost.id}`,
+      ),
+    );
+    assert.equal(privateCursor.status, 400);
+    const privateCollectionCursor = await handler.fetch(
+      new Request(
+        `http://127.0.0.1:3000/api/public/posts?collection=smoke-walk&cursor=${walkPrivate.id}`,
+      ),
+    );
+    assert.equal(privateCollectionCursor.status, 400);
+
     // A collection slug that names nothing is answered, not dropped — the
     // whole archive under the reader's own word is never the right response.
     const missingCollection = await handler.fetch(

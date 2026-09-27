@@ -292,8 +292,8 @@ publicPostsApiRoutes.get("/", async (c) => {
     sortOrder = resolveCollectionSortOrder(sort, defaultSort, showRatingSort);
   }
 
-  const posts = collectionIds
-    ? await c.var.services.posts.listCollectionThreadRootsForCollections(
+  const { posts, nextCursor } = collectionIds
+    ? await c.var.services.posts.listCollectionThreadRootPage(
         collectionIds,
         {
           status: "published",
@@ -302,20 +302,20 @@ publicPostsApiRoutes.get("/", async (c) => {
           rootFormat: format,
           lang,
           sortOrder,
-          cursor: cursor ?? undefined,
-          limit,
         },
+        { cursor, limit },
       )
-    : await c.var.services.posts.list({
-        format,
-        lang,
-        status: "published",
-        cursor: cursor ?? undefined,
-        limit,
-        excludePrivate: true,
-        excludeLatestHidden: true,
-        excludeReplies: true,
-      });
+    : await c.var.services.posts.listPage(
+        {
+          format,
+          lang,
+          status: "published",
+          excludePrivate: true,
+          excludeLatestHidden: true,
+          excludeReplies: true,
+        },
+        { cursor, limit },
+      );
 
   const postIds = posts.map((post) => post.id);
   const [mediaMap, collectionsMap] = await Promise.all([
@@ -333,8 +333,7 @@ publicPostsApiRoutes.get("/", async (c) => {
         { content },
       ),
     ),
-    nextCursor:
-      posts.length === limit ? (posts[posts.length - 1]?.id ?? null) : null,
+    nextCursor,
   });
 });
 

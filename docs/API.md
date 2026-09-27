@@ -127,6 +127,8 @@ Current tool groups:
 
 Tool calls return normal MCP `result` envelopes. Successful tool calls include both `structuredContent` and a JSON string copy in `content[0].text`. Tool-level validation and domain failures return `200 OK` with `isError: true`.
 
+`jant_posts_list` takes `cursor` and returns `nextCursor` as `GET /api/posts` does; see [Pagination](#pagination).
+
 Initialize:
 
 ```bash
@@ -178,6 +180,16 @@ Jant uses TypeIDs everywhere.
 | Nav item                  | `nav_` | `nav_01jpyxcv3m7w4b8k2r5s9t1qfh` |
 
 Invalid IDs return `400`.
+
+### Pagination
+
+`GET /api/posts`, `GET /api/public/posts`, `GET /api/public/archive`, and the `jant_posts_list` MCP tool return one page of posts and a `nextCursor`. Repeat the request with `cursor` set to `nextCursor` for the next page. `nextCursor` is `null` on the last page.
+
+- `nextCursor` is opaque: pass it back unchanged. Its format is not part of the API.
+- A post that exists for the whole walk and keeps its place in the order is returned exactly once, whatever else is published, edited, or deleted between requests. A post that moves during the walk, because its publish date is edited or a reply moves its Thread up, can be skipped or returned twice.
+- A page can hold fewer posts than `limit` and still have a `nextCursor`. The walk ends when `nextCursor` is `null`.
+- A `cursor` that can't be read, or that comes from a list in a different order, returns `400`.
+- A post ID is also accepted as `cursor`, since earlier releases returned one: the page starts after that post. The ID of a post that doesn't exist, or that the caller can't see, returns `400`. On `GET /api/public/posts` with `collection`, so does the ID of a post that isn't in the collection.
 
 ### Slugs, paths, and aliases
 
@@ -444,7 +456,7 @@ Response:
       "collections": []
     }
   ],
-  "nextCursor": "pst_01jpyx3m7gw4w3h7m4bknq0v1d"
+  "nextCursor": "eyJ2IjoxLCJzIjoibmV3ZXN0OmFjdGl2aXR5OnBpbm5lZCIsImsiOlstMSwxNzA2MDAwMDAwLCJwc3RfMDFqcHl4M203Z3c0dzNoN200YmtucTB2MWQiXX0"
 }
 ```
 
@@ -452,6 +464,7 @@ Notes:
 
 - This list returns published public thread roots only.
 - Drafts, private posts, replies, and `latest_hidden` posts are excluded.
+- Paging follows [Pagination](#pagination).
 - `content=markdown` returns `bodyMarkdown` and omits `bodyHtml/bodyText`.
 
 ### Get a public post by slug
@@ -502,7 +515,7 @@ Notes:
 - Returns published public thread roots **and** `latest_hidden` posts.
 - Drafts, private posts, and replies are excluded.
 - Posts are ordered by `publishedAt`, newest first, with `id` breaking ties. A new reply does not move its thread up.
-- The next page picks up after the last post of the previous one, by `publishedAt` and then `id`. Treat `nextCursor` as opaque; its format is not part of the API.
+- Paging follows [Pagination](#pagination).
 - An invalid value for any filter returns `400`, and so does a parameter this endpoint does not know — a typo that silently returned the whole archive would be worse than an error. An unknown `collection` slug returns an empty result set.
 - `content=markdown` returns `bodyMarkdown` and omits `bodyHtml/bodyText`.
 
@@ -544,14 +557,14 @@ Response:
       "attachments": []
     }
   ],
-  "nextCursor": "pst_01jpyx3m7gw4w3h7m4bknq0v1d"
+  "nextCursor": "eyJ2IjoxLCJzIjoibmV3ZXN0OmFjdGl2aXR5OnBpbm5lZCIsImsiOlstMSwxNzA2MDAwMDAwLCJwc3RfMDFqcHl4M203Z3c0dzNoN200YmtucTB2MWQiXX0"
 }
 ```
 
 Notes:
 
 - Each item uses the post response fields above, except list responses omit `collectionIds`.
-- `nextCursor` is `null` when there are no more results.
+- Paging follows [Pagination](#pagination).
 
 ### Suggest or validate a slug
 

@@ -95,23 +95,23 @@ publicArchiveApiRoutes.get("/", async (c) => {
     throw new ValidationError(INVALID_VISIBILITY_MESSAGE);
   }
 
-  const posts = await c.var.services.posts.list({
-    lang,
-    status: "published",
-    cursor: cursor ?? undefined,
-    limit,
-    excludePrivate: true,
-    excludeLatestHidden: false,
-    excludeReplies: true,
-    // Newest-published-first, the page's default order. Named explicitly:
-    // left unset, a published list sorts by activity, and a reply would lift
-    // an old root to the top. The year filter reads the same column, and so
-    // does the cursor — `nextCursor` is a post id, but the keyset it resumes
-    // from is that post's publication time, then its id.
-    ...toPostFilters(parsed.selection, { yearAxis: "published" }),
-    sortBy: "published",
-    ignorePinnedSort: true,
-  });
+  const { posts, nextCursor } = await c.var.services.posts.listPage(
+    {
+      lang,
+      status: "published",
+      excludePrivate: true,
+      excludeLatestHidden: false,
+      excludeReplies: true,
+      // Newest-published-first, the page's default order. Named explicitly:
+      // left unset, a published list sorts by activity, and a reply would
+      // lift an old root to the top. The year filter reads the same column,
+      // and so does the cursor.
+      ...toPostFilters(parsed.selection, { yearAxis: "published" }),
+      sortBy: "published",
+      ignorePinnedSort: true,
+    },
+    { cursor, limit },
+  );
 
   const postIds = posts.map((post) => post.id);
   const [mediaMap, collectionsMap] = await Promise.all([
@@ -129,7 +129,6 @@ publicArchiveApiRoutes.get("/", async (c) => {
         { content },
       ),
     ),
-    nextCursor:
-      posts.length === limit ? (posts[posts.length - 1]?.id ?? null) : null,
+    nextCursor,
   });
 });

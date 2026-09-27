@@ -59,12 +59,10 @@ postsApiRoutes.get("/", requireAuthApi(), async (c) => {
     c.req.query(),
   );
 
-  const posts = await c.var.services.posts.list({
-    format,
-    status: status ?? "published",
-    cursor: cursor ?? undefined,
-    limit,
-  });
+  const { posts, nextCursor } = await c.var.services.posts.listPage(
+    { format, status: status ?? "published" },
+    { cursor, limit },
+  );
 
   // Batch load media for all posts
   const postIds = posts.map((p) => p.id);
@@ -92,9 +90,7 @@ postsApiRoutes.get("/", requireAuthApi(), async (c) => {
         ),
       }),
     ),
-
-    nextCursor:
-      posts.length === limit ? (posts[posts.length - 1]?.id ?? null) : null,
+    nextCursor,
   });
 });
 

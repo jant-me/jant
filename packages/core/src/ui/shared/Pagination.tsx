@@ -15,7 +15,7 @@ export interface PaginationProps {
   baseUrl: string;
   /** Whether there are more items after the current page */
   hasMore: boolean;
-  /** Cursor for the next page (typically the last item's ID) */
+  /** Cursor for the next page, as the list returned it. Opaque; never built from an item's ID. */
   nextCursor?: number | string;
   /** Cursor for the previous page */
   prevCursor?: number | string;

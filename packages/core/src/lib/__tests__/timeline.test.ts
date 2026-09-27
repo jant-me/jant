@@ -219,25 +219,25 @@ describe("Timeline data assembly", () => {
       );
     }
 
+    const filters = { status: "published" as const, excludeReplies: true };
+
     // First page
-    const page1 = await postService.list({
-      status: "published",
-      excludeReplies: true,
-      limit: 3,
-    });
-    expect(page1).toHaveLength(3);
+    const page1 = await postService.listPage(filters, { limit: 3 });
+    expect(page1.posts).toHaveLength(3);
+    expect(page1.nextCursor).not.toBeNull();
 
     // Second page using cursor
-    const lastPost = page1[page1.length - 1];
-    expect(lastPost).toBeDefined();
-    const page2 = await postService.list({
-      status: "published",
-      excludeReplies: true,
+    const page2 = await postService.listPage(filters, {
+      cursor: page1.nextCursor ?? undefined,
       limit: 3,
-      cursor: lastPost?.id,
     });
-    expect(page2).toHaveLength(2);
-    expect(page2.every((p) => p.id < (lastPost?.id ?? 0))).toBe(true);
+    expect(page2.posts.map((post) => post.id)).toEqual(
+      posts
+        .slice(0, 2)
+        .map((post) => post.id)
+        .reverse(),
+    );
+    expect(page2.nextCursor).toBeNull();
   });
 
   it("supports offset-based pagination for page navigation", async () => {

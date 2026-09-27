@@ -683,13 +683,17 @@ describe("PostService", () => {
       ]);
 
       // The keyset cursor reads the same keys or pagination skips rows.
+      const first = await postService.listPage(
+        { sortOrder: "newest" },
+        { limit: 1 },
+      );
       expect(
         (
-          await postService.list({
-            sortOrder: "newest",
-            cursor: ordered[0]?.id,
-          })
-        ).map((post) => post.bodyText),
+          await postService.listPage(
+            { sortOrder: "newest" },
+            { cursor: first.nextCursor ?? undefined, limit: 10 },
+          )
+        ).posts.map((post) => post.bodyText),
       ).toEqual(["middle, worst", "oldest, best"]);
     });
 
@@ -858,20 +862,21 @@ describe("PostService", () => {
         .set({ featuredAt: 7000 })
         .where(eq(posts.id, newest.id));
 
-      const firstPage = await postService.list({
-        featured: true,
-        ignorePinnedSort: true,
-        limit: 2,
-      });
-      const secondPage = await postService.list({
-        featured: true,
-        ignorePinnedSort: true,
-        cursor: middle.id,
-        limit: 2,
-      });
+      const firstPage = await postService.listPage(
+        { featured: true, ignorePinnedSort: true },
+        { limit: 2 },
+      );
+      const secondPage = await postService.listPage(
+        { featured: true, ignorePinnedSort: true },
+        { cursor: firstPage.nextCursor ?? undefined, limit: 2 },
+      );
 
-      expect(firstPage.map((post) => post.id)).toEqual([newest.id, middle.id]);
-      expect(secondPage.map((post) => post.id)).toEqual([oldest.id]);
+      expect(firstPage.posts.map((post) => post.id)).toEqual([
+        newest.id,
+        middle.id,
+      ]);
+      expect(secondPage.posts.map((post) => post.id)).toEqual([oldest.id]);
+      expect(secondPage.nextCursor).toBeNull();
     });
 
     it("excludes posts hidden from Latest when requested", async () => {
@@ -1032,24 +1037,6 @@ describe("PostService", () => {
       expect(posts).toHaveLength(2);
     });
 
-    it("supports cursor pagination", async () => {
-      const created = [];
-      for (let i = 0; i < 5; i++) {
-        created.push(
-          await postService.create({
-            format: "note",
-            bodyMarkdown: `post ${i}`,
-            publishedAt: 1000 + i,
-          }),
-        );
-      }
-
-      // Get posts with ID less than the 3rd post
-      const thirdPostId = created[2]?.id ?? 0;
-      const posts = await postService.list({ cursor: thirdPostId });
-      expect(posts.every((p) => p.id < thirdPostId)).toBe(true);
-    });
-
     it("excludes replies when requested", async () => {
       const root = await postService.create({
         format: "note",
@@ -1133,6 +1120,325 @@ describe("PostService", () => {
       expect(posts).toHaveLength(2);
       expect(posts[0]?.bodyText).toBe("post 2");
       expect(posts[1]?.bodyText).toBe("post 1");
+    });
+  });
+
+  describe("listPage", () => {
+    type PageFilters = Parameters<typeof postService.listPage>[0];
+
+    /** Every page of a walk, one request per page, until `nextCursor` is null. */
+    async function walk(filters: PageFilters, limit: number) {
+      const ids: string[] = [];
+      let cursor: string | undefined;
+      // A walk that never ends is a failure too; bound it by the corpus size.
+      for (let page = 0; page < 100; page++) {
+        const result = await postService.listPage(filters, { cursor, limit });
+        ids.push(...result.posts.map((post) => post.id));
+        if (result.nextCursor === null) return ids;
+        cursor = result.nextCursor;
+      }
+      throw new Error("The walk did not end");
+    }
+
+    async function publishSeries(count: number, from = 1000) {
+      const created = [];
+      for (let i = 0; i < count; i++) {
+        created.push(
+          await postService.create({
+            format: "note",
+            bodyMarkdown: `post ${i}`,
+            publishedAt: from + i,
+          }),
+        );
+      }
+      return created;
+    }
+
+    /**
+     * A corpus where every sort key has ties and NULLs, and the three time
+     * axes disagree, so some page boundary lands on each case a wrong keyset
+     * would get wrong.
+     */
+    async function seedSortCorpus() {
+      const at = 1_700_000_000;
+      const note = (body: string, extra: Record<string, unknown> = {}) =>
+        postService.create({ format: "note", bodyMarkdown: body, ...extra });
+
+      await note("pinned, older pin", {
+        publishedAt: at + 10,
+        pinnedAt: at + 500,
+        rating: 3,
+      });
+      await note("pinned, newer pin", {
+        publishedAt: at + 20,
+        pinnedAt: at + 600,
+      });
+      await note("pinned, same pin and time", {
+        publishedAt: at + 20,
+        pinnedAt: at + 600,
+      });
+      await note("featured, rated 5", {
+        publishedAt: at + 30,
+        featuredAt: at + 700,
+        rating: 5,
+      });
+      await note("featured, same time and rating", {
+        publishedAt: at + 30,
+        featuredAt: at + 710,
+        rating: 5,
+      });
+      await note("featured, oldest", {
+        publishedAt: at + 5,
+        featuredAt: at + 720,
+      });
+      await note("same time, rated 2", { publishedAt: at + 40, rating: 2 });
+      await note("same time, also rated 2", {
+        publishedAt: at + 40,
+        rating: 2,
+      });
+      await note("same time, unrated", { publishedAt: at + 40 });
+      const announced = await note("old root, announced reply", {
+        publishedAt: at + 1,
+        rating: 4,
+      });
+      await note("announced reply", {
+        replyToId: announced.id,
+        publishedAt: at + 100,
+      });
+      const quiet = await note("old root, quiet reply", {
+        publishedAt: at + 2,
+      });
+      await note("quiet reply", {
+        replyToId: quiet.id,
+        quietReply: true,
+        publishedAt: at + 200,
+      });
+      await note("private", { publishedAt: at + 50, visibility: "private" });
+      await note("hidden from Latest", {
+        publishedAt: at + 60,
+        visibility: "latest_hidden",
+      });
+      await note("draft one", { status: "draft" });
+      await note("draft two", { status: "draft", rating: 1 });
+    }
+
+    const ORDERS = ["newest", "oldest", "rating_desc"] as const;
+    const AXES = ["activity", "thread_updated", "published"] as const;
+    const MODES: Array<{ name: string; filters: PageFilters }> = [
+      ...ORDERS.flatMap((sortOrder) =>
+        AXES.flatMap((sortBy) =>
+          [false, true].map((ignorePinnedSort) => ({
+            name: `${sortOrder} by ${sortBy}, ${ignorePinnedSort ? "unpinned" : "pinned"}`,
+            filters: { sortOrder, sortBy, ignorePinnedSort },
+          })),
+        ),
+      ),
+      { name: "featured, pinned", filters: { featured: true } },
+      {
+        name: "featured, unpinned",
+        filters: { featured: true, ignorePinnedSort: true },
+      },
+    ];
+
+    // Walking page by page must return exactly the unpaged order: nothing
+    // skipped, nothing repeated, at every page size. Drafts are in the set,
+    // so the activity axis also covers its draft branch.
+    it.each(MODES)("walks $name in list order", async ({ filters }) => {
+      await seedSortCorpus();
+      const expected = (
+        await postService.list({ ...filters, limit: 1000 })
+      ).map((post) => post.id);
+      expect(new Set(expected).size).toBe(expected.length);
+      expect(expected.length).toBeGreaterThan(2);
+
+      for (const limit of [1, 2, 3, 7]) {
+        expect(await walk(filters, limit)).toEqual(expected);
+      }
+      const published = { ...filters, status: "published" as const };
+      const expectedPublished = (
+        await postService.list({ ...published, limit: 1000 })
+      ).map((post) => post.id);
+      expect(await walk(published, 2)).toEqual(expectedPublished);
+    });
+
+    it("ends with a null cursor on a page that exactly fills", async () => {
+      await publishSeries(4);
+
+      const first = await postService.listPage({}, { limit: 2 });
+      expect(first.posts).toHaveLength(2);
+      expect(first.nextCursor).not.toBeNull();
+
+      const second = await postService.listPage(
+        {},
+        { cursor: first.nextCursor ?? undefined, limit: 2 },
+      );
+      expect(second.posts).toHaveLength(2);
+      expect(second.nextCursor).toBeNull();
+    });
+
+    it("keeps walking past a row it can't return", async () => {
+      // Hydration drops a Post with no slug. The page it was on comes back
+      // short; the walk must not read that as the end.
+      const [oldest, middle, newest] = await publishSeries(3);
+      sqlite
+        .prepare("DELETE FROM path_registry WHERE post_id = ?")
+        .run(middle?.id);
+
+      const first = await postService.listPage({}, { limit: 1 });
+      expect(first.posts.map((post) => post.id)).toEqual([newest?.id]);
+      const second = await postService.listPage(
+        {},
+        { cursor: first.nextCursor ?? undefined, limit: 1 },
+      );
+      expect(second.posts).toEqual([]);
+      expect(second.nextCursor).not.toBeNull();
+      const third = await postService.listPage(
+        {},
+        { cursor: second.nextCursor ?? undefined, limit: 1 },
+      );
+      expect(third.posts.map((post) => post.id)).toEqual([oldest?.id]);
+      expect(third.nextCursor).toBeNull();
+    });
+
+    it("continues after the post the cursor was taken on is deleted", async () => {
+      const [oldest, middle, newest] = await publishSeries(3);
+
+      const first = await postService.listPage({}, { limit: 2 });
+      expect(first.posts.map((post) => post.id)).toEqual([
+        newest?.id,
+        middle?.id,
+      ]);
+      await postService.delete(middle?.id ?? "");
+
+      const second = await postService.listPage(
+        {},
+        { cursor: first.nextCursor ?? undefined, limit: 2 },
+      );
+      expect(second.posts.map((post) => post.id)).toEqual([oldest?.id]);
+    });
+
+    it("resumes from where the page ended when that post is re-dated", async () => {
+      const [oldest, middle, newest] = await publishSeries(3);
+      const filters = { sortBy: "published" as const };
+
+      const first = await postService.listPage(filters, { limit: 2 });
+      expect(first.posts.map((post) => post.id)).toEqual([
+        newest?.id,
+        middle?.id,
+      ]);
+      // Moved before `oldest`: a cursor that looked the post up would resume
+      // from its new place and skip `oldest`; moved to the top, it would
+      // return `newest` again.
+      await postService.update(middle?.id ?? "", { publishedAt: 500 });
+
+      const second = await postService.listPage(filters, {
+        cursor: first.nextCursor ?? undefined,
+        limit: 2,
+      });
+      // `middle` comes round again because its own sort key changed, which
+      // the guarantee leaves open. `oldest`, which stayed put, is not skipped.
+      expect(second.posts.map((post) => post.id)).toEqual([
+        oldest?.id,
+        middle?.id,
+      ]);
+
+      await postService.update(middle?.id ?? "", { publishedAt: 5000 });
+      const again = await postService.listPage(filters, {
+        cursor: first.nextCursor ?? undefined,
+        limit: 2,
+      });
+      expect(again.posts.map((post) => post.id)).toEqual([oldest?.id]);
+    });
+
+    it("treats an empty cursor as the first page", async () => {
+      await publishSeries(2);
+
+      const page = await postService.listPage({}, { cursor: "", limit: 5 });
+      expect(page.posts).toHaveLength(2);
+    });
+
+    it("resumes after a bare post ID, as earlier releases' cursors are", async () => {
+      const created = await publishSeries(5);
+      const third = created[2];
+
+      const page = await postService.listPage(
+        {},
+        { cursor: third?.id, limit: 10 },
+      );
+      expect(page.posts.map((post) => post.id)).toEqual([
+        created[1]?.id,
+        created[0]?.id,
+      ]);
+    });
+
+    it("rejects a bare post ID the caller can't see, whatever the reason", async () => {
+      const [visible] = await publishSeries(1);
+      const draft = await postService.create({
+        format: "note",
+        bodyMarkdown: "draft",
+        status: "draft",
+      });
+      const hidden = await postService.create({
+        format: "note",
+        bodyMarkdown: "private",
+        visibility: "private",
+      });
+      const deleted = await postService.create({
+        format: "note",
+        bodyMarkdown: "deleted",
+      });
+      await postService.delete(deleted.id);
+      const publicFilters = {
+        status: "published" as const,
+        excludePrivate: true,
+      };
+
+      const errors = [];
+      for (const cursor of [draft.id, hidden.id, deleted.id]) {
+        const error = await postService
+          .listPage(publicFilters, { cursor, limit: 5 })
+          .catch((caught: unknown) => caught);
+        expect(error).toBeInstanceOf(ValidationError);
+        errors.push((error as ValidationError).message);
+      }
+      // One message for all three, so the answer says nothing about the post.
+      expect(new Set(errors).size).toBe(1);
+
+      // A post the caller can see still resumes.
+      await expect(
+        postService.listPage(publicFilters, { cursor: visible?.id, limit: 5 }),
+      ).resolves.toEqual({ posts: [], nextCursor: null });
+    });
+
+    it("rejects a cursor taken in another sort mode", async () => {
+      await publishSeries(3);
+      const first = await postService.listPage(
+        { sortBy: "published" },
+        { limit: 1 },
+      );
+
+      await expect(
+        postService.listPage(
+          { sortBy: "activity" },
+          { cursor: first.nextCursor ?? undefined, limit: 1 },
+        ),
+      ).rejects.toThrow(/different order/);
+      await expect(
+        postService.listPage(
+          { sortBy: "published", ignorePinnedSort: true },
+          { cursor: first.nextCursor ?? undefined, limit: 1 },
+        ),
+      ).rejects.toThrow(/different order/);
+    });
+
+    it("rejects a cursor it can't read", async () => {
+      await publishSeries(1);
+
+      for (const cursor of ["not a cursor", "eyJ2IjoxfQ", "pst_nope"]) {
+        await expect(
+          postService.listPage({}, { cursor, limit: 1 }),
+        ).rejects.toBeInstanceOf(ValidationError);
+      }
     });
   });
 

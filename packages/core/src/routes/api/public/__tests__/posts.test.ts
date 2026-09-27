@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestApp } from "../../../../__tests__/helpers/app.js";
-import { posts } from "../../../../db/schema.js";
+import { walkPostPages } from "../../../../__tests__/helpers/cursor-walk.js";
+import { posts, threadCollections } from "../../../../db/schema.js";
+import { createEntityId } from "../../../../lib/ids.js";
 import { publicPostsApiRoutes } from "../posts.js";
 
 describe("Public Posts API Routes", () => {
@@ -118,6 +120,104 @@ describe("Public Posts API Routes", () => {
       expect(body.posts).toHaveLength(1);
       expect(body.posts[0].format).toBe("note");
       expect(body.nextCursor).toBeTruthy();
+    });
+
+    it("walks pinned posts and bumped Threads the same as one unpaged request", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+
+      const day = (n: number) => Date.UTC(2025, 0, n) / 1000;
+      await services.posts.create({
+        format: "note",
+        title: "Pinned",
+        bodyMarkdown: "pinned",
+        publishedAt: day(1),
+        pinnedAt: day(20),
+      });
+      await services.posts.create({
+        format: "note",
+        title: "Pinned at the same moment",
+        bodyMarkdown: "pinned too",
+        publishedAt: day(2),
+        pinnedAt: day(20),
+      });
+      const bumped = await services.posts.create({
+        format: "note",
+        title: "Old root, new reply",
+        bodyMarkdown: "bumped",
+        publishedAt: day(3),
+      });
+      await services.posts.create({
+        format: "note",
+        bodyMarkdown: "reply",
+        replyToId: bumped.id,
+        publishedAt: day(15),
+      });
+      for (const title of ["Tie A", "Tie B", "Tie C"]) {
+        await services.posts.create({
+          format: "note",
+          title,
+          bodyMarkdown: title,
+          publishedAt: day(10),
+        });
+      }
+      await services.posts.create({
+        format: "note",
+        title: "Hidden from Latest",
+        bodyMarkdown: "hidden",
+        visibility: "latest_hidden",
+        publishedAt: day(11),
+      });
+
+      const res = await app.request("/api/public/posts");
+      const expected = (await res.json()).posts.map(
+        (post: { id: string }) => post.id,
+      );
+      expect(expected).toHaveLength(6);
+      for (const limit of [1, 2, 4]) {
+        expect(await walkPostPages(app, "/api/public/posts", limit)).toEqual(
+          expected,
+        );
+      }
+    });
+
+    it("keeps paging after the cursor post is deleted, and reads old ID cursors", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+
+      const created = [];
+      for (let n = 1; n <= 4; n++) {
+        created.push(
+          await services.posts.create({
+            format: "note",
+            title: `Post ${n}`,
+            bodyMarkdown: `post ${n}`,
+            publishedAt: Date.UTC(2025, 0, n) / 1000,
+          }),
+        );
+      }
+      const [first, second, third, fourth] = created;
+
+      const page1 = await (
+        await app.request("/api/public/posts?limit=2")
+      ).json();
+      expect(page1.posts.map((post: { id: string }) => post.id)).toEqual([
+        fourth?.id,
+        third?.id,
+      ]);
+      await services.posts.delete(third?.id ?? "");
+      expect(
+        await walkPostPages(app, "/api/public/posts", 2, page1.nextCursor),
+      ).toEqual([second?.id, first?.id]);
+
+      // The bare post ID earlier releases returned as `nextCursor`.
+      const legacy = await app.request(
+        `/api/public/posts?cursor=${fourth?.id}`,
+      );
+      expect(legacy.status).toBe(200);
+      expect(
+        (await legacy.json()).posts.map((post: { id: string }) => post.id),
+      ).toEqual([second?.id, first?.id]);
     });
 
     it("returns markdown instead of rendered fields when content=markdown", async () => {
@@ -363,28 +463,253 @@ describe("Public Posts API Routes", () => {
       const middle = await createRatedThread("Middle", 2000, 3);
       const lowest = await createRatedThread("Lowest", 3000, 1);
 
-      const firstRes = await app.request(
-        "/api/public/posts?collection=rated-threads&limit=1",
-      );
-      expect(firstRes.status).toBe(200);
-      const first = await firstRes.json();
-      expect(first.posts[0].id).toBe(highest.id);
-      expect(first.nextCursor).toBe(highest.id);
+      expect(
+        await walkPostPages(
+          app,
+          "/api/public/posts?collection=rated-threads",
+          1,
+        ),
+      ).toEqual([highest.id, middle.id, lowest.id]);
+    });
 
-      const secondRes = await app.request(
-        `/api/public/posts?collection=rated-threads&limit=1&cursor=${first.nextCursor}`,
-      );
-      expect(secondRes.status).toBe(200);
-      const second = await secondRes.json();
-      expect(second.posts[0].id).toBe(middle.id);
-      expect(second.nextCursor).toBe(middle.id);
+    it("walks a collection in each order the same as one unpaged request", async () => {
+      const { app, services, db } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
 
-      const thirdRes = await app.request(
-        `/api/public/posts?collection=rated-threads&limit=1&cursor=${second.nextCursor}`,
+      const collection = await services.collections.create({
+        slug: "walked",
+        title: "Walked",
+      });
+      const day = (n: number) => Date.UTC(2025, 0, n) / 1000;
+      const thread = async (
+        title: string,
+        publishedAt: number,
+        extra: {
+          rating?: number;
+          visibility?: "private" | "latest_hidden";
+        } = {},
+      ) =>
+        services.posts.create({
+          format: "note",
+          title,
+          bodyMarkdown: title,
+          collectionIds: [collection.id],
+          publishedAt,
+          ...extra,
+        });
+
+      // Pins tie on the pin time, then order by each sort's own keys.
+      const pinnedA = await thread("Pinned A", day(1), { rating: 2 });
+      const pinnedB = await thread("Pinned B", day(2));
+      for (const pinned of [pinnedA, pinnedB]) {
+        await db
+          .update(threadCollections)
+          .set({ pinnedAt: day(30) })
+          .where(eq(threadCollections.threadId, pinned.id));
+      }
+      // A reply moves this Thread up under newest and rating, not oldest.
+      const bumped = await thread("Bumped", day(3), { rating: 4 });
+      await services.posts.create({
+        format: "note",
+        bodyMarkdown: "reply",
+        replyToId: bumped.id,
+        publishedAt: day(20),
+        rating: 5,
+      });
+      // Ties on publication time, activity, and rating.
+      for (const title of ["Tie A", "Tie B", "Tie C"]) {
+        await thread(title, day(10), { rating: 3 });
+      }
+      await thread("Unrated", day(12));
+      await thread("Private", day(13), { visibility: "private" });
+      await thread("Hidden from Latest", day(14), {
+        visibility: "latest_hidden",
+      });
+
+      for (const sort of ["newest", "oldest", "rating_desc"]) {
+        const path = `/api/public/posts?collection=walked&sort=${sort}`;
+        const res = await app.request(`${path}&limit=100`);
+        const body = await res.json();
+        const expected = body.posts.map((post: { id: string }) => post.id);
+        expect(body.nextCursor).toBeNull();
+        expect(expected).toHaveLength(7);
+        expect(expected.slice(0, 2).sort()).toEqual(
+          [pinnedA.id, pinnedB.id].sort(),
+        );
+        for (const limit of [1, 2, 3]) {
+          expect(await walkPostPages(app, path, limit), sort).toEqual(expected);
+        }
+      }
+    });
+
+    it("keeps paging a collection after the cursor Thread leaves it", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+
+      const collection = await services.collections.create({
+        slug: "shrinking",
+        title: "Shrinking",
+      });
+      const roots = [];
+      for (let n = 1; n <= 7; n++) {
+        roots.push(
+          await services.posts.create({
+            format: "note",
+            title: `Thread ${n}`,
+            bodyMarkdown: `thread ${n}`,
+            collectionIds: [collection.id],
+            publishedAt: Date.UTC(2025, 0, n) / 1000,
+          }),
+        );
+      }
+      const ids = roots.map((root) => root.id).reverse();
+      const path = "/api/public/posts?collection=shrinking&limit=2";
+      const readPage = async (cursor?: string) => {
+        const res = await app.request(
+          cursor ? `${path}&cursor=${encodeURIComponent(cursor)}` : path,
+        );
+        expect(res.status).toBe(200);
+        return (await res.json()) as {
+          posts: { id: string }[];
+          nextCursor: string | null;
+        };
+      };
+      const idsOf = (page: { posts: { id: string }[] }) =>
+        page.posts.map((post) => post.id);
+
+      // Each page ends on a Thread that is gone before the next request:
+      // deleted, unpublished, then taken out of the collection.
+      const page1 = await readPage();
+      expect(idsOf(page1)).toEqual(ids.slice(0, 2));
+      await services.posts.delete(ids[1] ?? "");
+
+      const page2 = await readPage(page1.nextCursor ?? undefined);
+      expect(idsOf(page2)).toEqual(ids.slice(2, 4));
+      await services.posts.update(ids[3] ?? "", { status: "draft" });
+
+      const page3 = await readPage(page2.nextCursor ?? undefined);
+      expect(idsOf(page3)).toEqual(ids.slice(4, 6));
+      await services.collections.removeThread(collection.id, ids[5] ?? "");
+
+      const page4 = await readPage(page3.nextCursor ?? undefined);
+      expect(idsOf(page4)).toEqual(ids.slice(6));
+      expect(page4.nextCursor).toBeNull();
+    });
+
+    it("resumes a collection from a bare root ID it lists, and rejects any other", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+
+      const collection = await services.collections.create({
+        slug: "legacy",
+        title: "Legacy",
+      });
+      const inCollection = async (title: string, n: number) =>
+        services.posts.create({
+          format: "note",
+          title,
+          bodyMarkdown: title,
+          collectionIds: [collection.id],
+          publishedAt: Date.UTC(2025, 0, n) / 1000,
+        });
+      const first = await inCollection("First", 1);
+      const second = await inCollection("Second", 2);
+      const third = await inCollection("Third", 3);
+
+      // The bare root ID earlier releases returned as `nextCursor`.
+      const legacy = await app.request(
+        `/api/public/posts?collection=legacy&cursor=${third.id}`,
       );
-      expect(thirdRes.status).toBe(200);
-      const third = await thirdRes.json();
-      expect(third.posts[0].id).toBe(lowest.id);
+      expect(legacy.status).toBe(200);
+      const body = await legacy.json();
+      expect(body.posts.map((post: { id: string }) => post.id)).toEqual([
+        second.id,
+        first.id,
+      ]);
+      expect(body.nextCursor).toBeNull();
+
+      const privateRoot = await services.posts.create({
+        format: "note",
+        title: "Private",
+        bodyMarkdown: "private",
+        collectionIds: [collection.id],
+        visibility: "private",
+      });
+      const draftRoot = await services.posts.create({
+        format: "note",
+        title: "Draft",
+        bodyMarkdown: "draft",
+        collectionIds: [collection.id],
+        status: "draft",
+      });
+      const elsewhere = await services.posts.create({
+        format: "note",
+        title: "Not in the collection",
+        bodyMarkdown: "elsewhere",
+      });
+      const deleted = await inCollection("Deleted", 4);
+      await services.posts.delete(deleted.id);
+
+      const answers = [];
+      for (const id of [
+        privateRoot.id,
+        draftRoot.id,
+        elsewhere.id,
+        deleted.id,
+        createEntityId("post"),
+      ]) {
+        const res = await app.request(
+          `/api/public/posts?collection=legacy&cursor=${id}`,
+        );
+        expect(res.status).toBe(400);
+        const error = await res.json();
+        expect(error.code).toBe("VALIDATION_ERROR");
+        answers.push(error.error);
+      }
+      // Nothing in the answer tells a private Thread from one that never
+      // existed.
+      expect(new Set(answers).size).toBe(1);
+    });
+
+    it("rejects a cursor from a collection in another order, or from Latest", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+
+      const collection = await services.collections.create({
+        slug: "ordered",
+        title: "Ordered",
+      });
+      for (const n of [1, 2, 3]) {
+        await services.posts.create({
+          format: "note",
+          title: `Thread ${n}`,
+          bodyMarkdown: `thread ${n}`,
+          collectionIds: [collection.id],
+          publishedAt: Date.UTC(2025, 0, n) / 1000,
+        });
+      }
+      const cursorOf = async (path: string) =>
+        (await (await app.request(path)).json()).nextCursor as string;
+
+      const newest = await cursorOf(
+        "/api/public/posts?collection=ordered&sort=newest&limit=1",
+      );
+      const latest = await cursorOf("/api/public/posts?limit=1");
+      for (const path of [
+        `/api/public/posts?collection=ordered&sort=oldest&cursor=${newest}`,
+        `/api/public/posts?collection=ordered&cursor=${latest}`,
+        `/api/public/posts?cursor=${newest}`,
+      ]) {
+        const res = await app.request(path);
+        expect(res.status, path).toBe(400);
+        expect((await res.json()).error).toMatch(/different order/);
+      }
+      for (const cursor of ["garbage", "eyJ2IjoxfQ", "pst_"]) {
+        const res = await app.request(
+          `/api/public/posts?collection=ordered&cursor=${cursor}`,
+        );
+        expect(res.status).toBe(400);
+      }
     });
 
     it("keeps root format and Latest visibility filters for Collections", async () => {
