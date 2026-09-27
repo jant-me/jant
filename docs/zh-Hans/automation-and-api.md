@@ -45,7 +45,7 @@ Jant 提供两条通道：
 Authorization: Bearer jnt_...
 ```
 
-少量公开读接口默认不需要 token：`GET /api/collections`、`GET /api/collections/:id`、`GET /api/nav-items`、`GET /api/public/threads`、`GET /api/public/threads/:slug`、`GET /api/public/threads/:slug/posts`、`GET /api/public/posts/:slug`，以及已废弃的 `GET /api/public/posts` 和 `GET /api/public/archive`。如果设置了 `PUBLIC_API_ENABLED=false`，`/api/public/*` 会对所有调用方返回 `404`；合集和导航的 JSON 读取则需要浏览器 session 或 Bearer token。包括 `/search` 在内的公开 HTML 页面不受影响。
+少量公开读接口默认不需要 token：`GET /api/public/threads`、`GET /api/public/threads/:slug`、`GET /api/public/threads/:slug/posts`、`GET /api/public/posts/:slug`，以及已废弃的 `GET /api/public/posts` 和 `GET /api/public/archive`。如果设置了 `PUBLIC_API_ENABLED=false`，`/api/public/*` 会对所有调用方返回 `404`。包括 `/search` 在内的公开 HTML 页面不受影响。
 
 ### 常用端点
 
@@ -60,8 +60,8 @@ Authorization: Bearer jnt_...
 | `/api/media`             | GET / PATCH / DELETE      | 列出、读取、改 alt 文本、删除已上传的文件                                              |
 | `/api/uploads`           | POST → PUT → POST         | 分片上传会话，大文件或不稳定网络用                                                     |
 | `/api/attachments`       | GET                       | 按 id 读取附件原始内容                                                                 |
-| `/api/collections`       | GET / POST / PUT / DELETE | 合集（GET 不需要 token）                                                               |
-| `/api/smart-collections` | GET / POST / PUT / DELETE | 智能合集——成员由条件决定的合集（读写都需要 token）                                     |
+| `/api/collections`       | GET / POST / PUT / DELETE | 合集                                                                                   |
+| `/api/smart-collections` | GET / POST / PUT / DELETE | 智能合集——成员由条件决定的合集                                                         |
 | `/api/settings`          | GET / PUT                 | 站点设置                                                                               |
 | `/api/search`            | GET                       | 全文搜索已发布的帖子，含私密帖子                                                       |
 | `/api/mcp`               | POST                      | MCP JSON-RPC（`initialize` / `tools/list` 等）                                         |

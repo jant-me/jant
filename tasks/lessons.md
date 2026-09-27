@@ -1249,3 +1249,9 @@ btn-outline"` compiles, passes every test, and only shows up as a button whose
   (`{ name: suggestedRepoName }`), or pass the placeholder as its own value
   (`keepForClient("shown", "total")` in `routes/dash/settings.tsx`) so the
   token survives into the JSON.
+- `mise run check-tests` doesn't run `dev/scripts/pg-smoke.mjs`; only CI's
+  `pg-smoke` job does, and it gates the production deploy. A change to an API
+  response shape or to who may call an endpoint can pass every local check and
+  still stop the deploy. Before committing such a change, grep
+  `dev/scripts/pg-smoke.mjs` for the endpoint and run `mise run check-pg-smoke`
+  against a throwaway database.

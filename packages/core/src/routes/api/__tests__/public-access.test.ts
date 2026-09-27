@@ -58,26 +58,16 @@ describe("public API access setting", () => {
     "/api/collections/not-a-typeid",
     "/api/nav-items",
   ])(
-    "requires authentication for %s when anonymous reads are off",
+    "keeps %s for the author, whatever the public API switch",
     async (path) => {
-      const { app, services } = mountPublicReadRoutes();
-      await services.settings.set("PUBLIC_API_ENABLED", "false");
+      // Collections and navigation were read without a token outside /public;
+      // readers see them on the site's pages.
+      const anonymous = mountPublicReadRoutes();
+      expect((await anonymous.app.request(path)).status).toBe(401);
 
-      const response = await app.request(path);
-
-      expect(response.status).toBe(401);
-    },
-  );
-
-  it.each(["/api/collections", "/api/nav-items"])(
-    "preserves authenticated access to shared read endpoint %s",
-    async (path) => {
-      const { app, services } = mountPublicReadRoutes(true);
-      await services.settings.set("PUBLIC_API_ENABLED", "false");
-
-      const response = await app.request(path);
-
-      expect(response.status).toBe(200);
+      const author = mountPublicReadRoutes(true);
+      await author.services.settings.set("PUBLIC_API_ENABLED", "false");
+      expect((await author.app.request(path)).status).not.toBe(401);
     },
   );
 });

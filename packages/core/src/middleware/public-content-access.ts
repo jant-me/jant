@@ -9,7 +9,6 @@ import type { MiddlewareHandler } from "hono";
 import type { Bindings } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
 import { isRssFeedPath } from "../lib/feed-path.js";
-import { requireAuthApi } from "./auth.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -36,30 +35,6 @@ export function requirePublicApiEnabled(): MiddlewareHandler<Env> {
     }
 
     return c.notFound();
-  };
-}
-
-/**
- * Require normal authentication for shared JSON reads when public access is off.
- *
- * @returns Hono middleware that preserves session and Bearer-token access
- * @example
- * ```ts
- * app.get("/api/nav-items", requirePublicApiAccess(), navItemsHandler);
- * ```
- */
-export function requirePublicApiAccess(): MiddlewareHandler<Env> {
-  const requireAuthentication = requireAuthApi();
-
-  return async (c, next) => {
-    if (
-      (c.req.method !== "GET" && c.req.method !== "HEAD") ||
-      c.var.appConfig.publicApiEnabled
-    ) {
-      return next();
-    }
-
-    return requireAuthentication(c, next);
   };
 }
 

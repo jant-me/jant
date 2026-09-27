@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { createTestApp } from "../../__tests__/helpers/app.js";
 import { isRssFeedPath } from "../../lib/feed-path.js";
 import {
-  requirePublicApiAccess,
   requirePublicApiEnabled,
   requireRssFeedsEnabled,
 } from "../public-content-access.js";
@@ -33,16 +32,6 @@ describe("public content access policies", () => {
     expect(isRssFeedPath(path)).toBe(false);
   });
 
-  it("requires authentication for JSON reads when public access is off", async () => {
-    const { app, services } = createTestApp({ authenticated: false });
-    await services.settings.set("PUBLIC_API_ENABLED", "false");
-    app.get("/api/data", requirePublicApiAccess(), (c) => c.json({ ok: true }));
-
-    const response = await app.request("/api/data");
-
-    expect(response.status).toBe(401);
-  });
-
   it("returns 404 for the dedicated public API even with a session", async () => {
     const { app, services } = createTestApp({ authenticated: true });
     await services.settings.set("PUBLIC_API_ENABLED", "false");
@@ -53,29 +42,6 @@ describe("public content access policies", () => {
     const response = await app.request("/api/public/data");
 
     expect(response.status).toBe(404);
-  });
-
-  it("preserves session access when public JSON reads are off", async () => {
-    const { app, services } = createTestApp({ authenticated: true });
-    await services.settings.set("PUBLIC_API_ENABLED", "false");
-    app.get("/api/data", requirePublicApiAccess(), (c) => c.json({ ok: true }));
-
-    const response = await app.request("/api/data");
-
-    expect(response.status).toBe(200);
-  });
-
-  it("preserves Bearer-token access when public JSON reads are off", async () => {
-    const { app, services } = createTestApp({ authenticated: false });
-    await services.settings.set("PUBLIC_API_ENABLED", "false");
-    const { plaintext } = await services.apiTokens.create("Test client");
-    app.get("/api/data", requirePublicApiAccess(), (c) => c.json({ ok: true }));
-
-    const response = await app.request("/api/data", {
-      headers: { Authorization: `Bearer ${plaintext}` },
-    });
-
-    expect(response.status).toBe(200);
   });
 
   it("returns 404 for feed paths when feed publishing is off", async () => {

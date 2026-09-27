@@ -45,7 +45,7 @@ Send the header:
 Authorization: Bearer jnt_...
 ```
 
-A few public read endpoints don't need a token by default: `GET /api/collections`, `GET /api/collections/:id`, `GET /api/nav-items`, `GET /api/public/threads`, `GET /api/public/threads/:slug`, `GET /api/public/threads/:slug/posts`, `GET /api/public/posts/:slug`, and the deprecated `GET /api/public/posts` and `GET /api/public/archive`. When `PUBLIC_API_ENABLED=false`, `/api/public/*` returns `404` to every caller; Collection and navigation JSON reads require a browser session or Bearer token. Public HTML pages, including `/search`, remain available.
+A few public read endpoints don't need a token by default: `GET /api/public/threads`, `GET /api/public/threads/:slug`, `GET /api/public/threads/:slug/posts`, `GET /api/public/posts/:slug`, and the deprecated `GET /api/public/posts` and `GET /api/public/archive`. When `PUBLIC_API_ENABLED=false`, `/api/public/*` returns `404` to every caller. Public HTML pages, including `/search`, remain available.
 
 ### Common endpoints
 
@@ -60,8 +60,8 @@ A few public read endpoints don't need a token by default: `GET /api/collections
 | `/api/media`             | GET / PATCH / DELETE      | List, read, update the alt text of, and delete uploaded files                                          |
 | `/api/uploads`           | POST → PUT → POST         | Multipart upload session — for large files or unstable networks                                        |
 | `/api/attachments`       | GET                       | Fetch raw attachment content by id                                                                     |
-| `/api/collections`       | GET / POST / PUT / DELETE | Collections (GET needs no token)                                                                       |
-| `/api/smart-collections` | GET / POST / PUT / DELETE | Smart collections — collections whose members come from conditions (token required, including reads)   |
+| `/api/collections`       | GET / POST / PUT / DELETE | Collections                                                                                            |
+| `/api/smart-collections` | GET / POST / PUT / DELETE | Smart collections — collections whose members come from conditions                                     |
 | `/api/settings`          | GET / PUT                 | Site settings                                                                                          |
 | `/api/search`            | GET                       | Full-text search of published posts, private ones included                                             |
 | `/api/mcp`               | POST                      | MCP JSON-RPC (`initialize` / `tools/list`, etc.)                                                       |

@@ -338,8 +338,21 @@ async function main() {
       assert.equal(attach.status, 201);
     }
 
+    // The reader's count is printed on the directory page; the API is the
+    // author's and counts without the visibility condition.
+    const directoryPage = await handler.fetch(
+      new Request("http://127.0.0.1:3000/collections"),
+    );
+    assert.equal(directoryPage.status, 200);
+    assert.match(
+      await directoryPage.text(),
+      /collection-directory-title">Smoke<[\s\S]*?collection-directory-meta">1 thread</,
+    );
+
     const directoryResponse = await handler.fetch(
-      new Request("http://127.0.0.1:3000/api/collections"),
+      new Request("http://127.0.0.1:3000/api/collections", {
+        headers: { Cookie: cookieHeader },
+      }),
     );
     assert.equal(directoryResponse.status, 200);
     const directory = await directoryResponse.json();

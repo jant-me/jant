@@ -12,7 +12,6 @@ import { z } from "zod";
 import type { Bindings, CollectionSortOrder } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
-import { requirePublicApiAccess } from "../../middleware/public-content-access.js";
 import {
   CollectionDescriptionValueSchema,
   CollectionDirectoryRowIdSchema,
@@ -65,7 +64,7 @@ const ListCollectionsQuerySchema = z.object({
 });
 
 // List collections (includes Thread counts and directory items)
-collectionsApiRoutes.get("/", requirePublicApiAccess(), async (c) => {
+collectionsApiRoutes.get("/", requireAuthApi(), async (c) => {
   const query = parseValidated(ListCollectionsQuerySchema, c.req.query());
 
   if (query.view === "compose") {
@@ -83,7 +82,9 @@ collectionsApiRoutes.get("/", requirePublicApiAccess(), async (c) => {
   }
 
   const directoryData = await c.var.services.collections.listDirectoryData({
-    isAuthenticated: c.var.isAuthenticated,
+    // The caller is the author, by session or by token; `isAuthenticated`
+    // only reports a session.
+    isAuthenticated: true,
     lang: query.lang,
   });
 
@@ -181,7 +182,7 @@ collectionsApiRoutes.get("/slug", requireAuthApi(), async (c) => {
 });
 
 // Get single collection
-collectionsApiRoutes.get("/:id", requirePublicApiAccess(), async (c) => {
+collectionsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.collection);
   const collection = assertFound(
     await c.var.services.collections.getById(id),

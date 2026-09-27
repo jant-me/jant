@@ -86,7 +86,8 @@ smartCollectionsApiRoutes.post("/preview", requireAuthApi(), async (c) => {
 
   const { count, baseline } = await c.var.services.smartCollections.preview(
     body.selection ?? {},
-    { isAuthenticated: c.var.isAuthenticated, lang: query.lang },
+    // The author, by session or by token; `isAuthenticated` only reports a session.
+    { isAuthenticated: true, lang: query.lang },
   );
 
   c.header("Cache-Control", "no-store");
@@ -99,7 +100,7 @@ smartCollectionsApiRoutes.get("/", requireAuthApi(), async (c) => {
   const query = parseValidated(PreviewQuerySchema, c.req.query());
   const smartCollections =
     await c.var.services.smartCollections.listDirectoryEntries({
-      isAuthenticated: c.var.isAuthenticated,
+      isAuthenticated: true,
       lang: query.lang,
     });
   return c.json({

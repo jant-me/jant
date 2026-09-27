@@ -119,9 +119,7 @@ feed 里声明了什么、第三方目录需要遵守什么，见 [Feed](feeds.m
 | `PUBLIC_API_ENABLED` | `true` | 是否允许无 session 或 token 读取公开 JSON |
 
 关闭后，`/api/public/*` 会对所有调用方返回 `404`；已认证客户端可以改用
-`/api/posts`。匿名请求 Collection 和导航 JSON 接口会收到 `401`，浏览器
-session 和 Bearer API token 仍可使用这些接口。包括 `/search` 在内的公开 HTML
-页面不受影响。
+`/api/posts`。包括 `/search` 在内的公开 HTML 页面不受影响。
 
 ### 跨域 API 访问（可选）
 

@@ -53,7 +53,7 @@ For HTTP, these are the main entry points:
 | Search posts, private too    | `GET /api/search`                                                |
 | Read or update site settings | `GET /api/settings`, `PUT /api/settings`                         |
 
-Public post, Thread, Collection, and navigation reads can work without a token. A site can disable anonymous API reads; `/api/public/*` then becomes unavailable, while Collection and navigation JSON reads require a browser session or Bearer token. Search, private content, and all writes always require authentication.
+Public post and Thread reads under `/api/public/*` can work without a token. A site can disable anonymous API reads; `/api/public/*` then becomes unavailable. Everything else, including search and Collection reads, requires authentication.
 
 ---
 

@@ -6,7 +6,7 @@ import { navItemsApiRoutes } from "../nav-items.js";
 describe("Nav Items API Routes", () => {
   describe("GET /api/nav-items", () => {
     it("returns empty list when no nav items exist", async () => {
-      const { app } = createTestApp();
+      const { app } = createTestApp({ authenticated: true });
       app.route("/api/nav-items", navItemsApiRoutes);
 
       const res = await app.request("/api/nav-items");
@@ -17,7 +17,7 @@ describe("Nav Items API Routes", () => {
     });
 
     it("returns nav items ordered by position", async () => {
-      const { app, services } = createTestApp();
+      const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/nav-items", navItemsApiRoutes);
 
       await services.navItems.create({

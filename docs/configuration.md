@@ -138,10 +138,8 @@ third-party directory needs to honour.
 | `PUBLIC_API_ENABLED` | `true`  | Allows published content to be read without a session or token |
 
 When disabled, `/api/public/*` returns `404` to every caller; authenticated
-clients can use `/api/posts` instead. Collection and navigation JSON reads
-return `401` to anonymous requests but remain available to browser sessions and
-Bearer API tokens. Public HTML pages, including `/search`, are
-unchanged.
+clients can use `/api/posts` instead. Public HTML pages, including `/search`,
+are unchanged.
 
 ### Cross-origin API access (optional)
 

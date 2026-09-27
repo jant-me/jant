@@ -27,8 +27,8 @@ For static export and round-trip import, also see [Export and Import](export-and
 | Media                   | `/api/media`          | API token or session |
 | Text attachment content | `/api/attachments`    | API token or session |
 | MCP                     | `/api/mcp`            | API token or session |
-| Collections             | `/api/collections`    | Mixed                |
-| Navigation items        | `/api/nav-items`      | Mixed                |
+| Collections             | `/api/collections`    | API token or session |
+| Navigation items        | `/api/nav-items`      | API token or session |
 | Custom URLs             | `/api/custom-urls`    | API token or session |
 | Settings                | `/api/settings`       | API token or session |
 | Search                  | `/api/search`         | API token or session |
@@ -99,7 +99,7 @@ Auth resolution for both surfaces:
 
 - pass `Authorization: Bearer jnt_...` (issued under Settings → API Tokens), or
 - on local hosts, send the same value with `DEV_API_TOKEN` from `.dev.vars`.
-- a small set of read endpoints — public posts, Threads, and archive, Collections, navigation items, and search — work without a token while `PUBLIC_API_ENABLED=true`.
+- the public posts, Threads, and archive endpoints under `/api/public/*` work without a token while `PUBLIC_API_ENABLED=true`.
 - `GET /api/discover/posts` works without a token while the site is listed in Discover, independent of `PUBLIC_API_ENABLED`.
 
 ### MCP
@@ -425,7 +425,7 @@ Public post responses include these fields:
 
 `GET /api/public/posts`
 
-Auth: `Public`
+Auth: `Public when enabled`
 
 Deprecated in 0.9, removed in 1.0.1. Use [`GET /api/public/threads`](#list-threads): it lists the same Thread roots by default and takes the archive's filters. Until then this endpoint answers as before, and every response carries a `Deprecation` header and a `Link: </api/public/threads>; rel="successor-version"` header. `GET /api/public/posts/:slug` stays.
 
@@ -487,7 +487,7 @@ Notes:
 
 `GET /api/public/posts/:slug`
 
-Auth: `Public`
+Auth: `Public when enabled`
 
 This returns a single published public post by canonical slug.
 
@@ -501,7 +501,7 @@ Notes:
 
 `GET /api/public/archive`
 
-Auth: `Public`
+Auth: `Public when enabled`
 
 Deprecated in 0.9, removed in 1.0.1. Use [`GET /api/public/threads?visibility=any&sort=published`](#list-threads), which takes the same filters. Until then this endpoint answers as before, and every response carries a `Deprecation` header and a `Link` header naming that URL as `successor-version`.
 
@@ -1583,7 +1583,7 @@ Notes:
 
 `GET /api/collections`
 
-Auth: `Public`
+Auth: `Session or token`
 
 Query parameters:
 
@@ -1641,14 +1641,14 @@ Default response:
 
 Notes:
 
-- The default response returns directory ordering in `directoryItems`, and every smart collection in `smartCollections`. Both kinds carry `threadCount` and `recentActivityAt`, measured the same way, because the directory prints them side by side.
+- The default response returns directory ordering in `directoryItems`, and every smart collection in `smartCollections`. Both kinds carry `threadCount` and `recentActivityAt`, measured the same way, because the directory prints them side by side. Both count private Threads.
 - `view=compose` returns collections sorted by recent activity and always returns an empty `directoryItems` array. It carries no smart collections: a post cannot be added to one by hand, so offering it in a compose picker would be a control that does nothing.
 
 ### Get a collection
 
 `GET /api/collections/:id`
 
-Auth: `Public`
+Auth: `Session or token`
 
 Response:
 
@@ -2116,7 +2116,7 @@ Nav item responses include these fields:
 
 `GET /api/nav-items`
 
-Auth: `Public`
+Auth: `Session or token`
 
 Response:
 

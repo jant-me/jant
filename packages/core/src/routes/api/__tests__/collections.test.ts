@@ -7,7 +7,7 @@ import { collectionsApiRoutes } from "../collections.js";
 describe("Collections API Routes", () => {
   describe("GET /api/collections", () => {
     it("returns empty list when no collections exist", async () => {
-      const { app } = createTestApp();
+      const { app } = createTestApp({ authenticated: true });
       app.route("/api/collections", collectionsApiRoutes);
 
       const res = await app.request("/api/collections");
@@ -19,7 +19,7 @@ describe("Collections API Routes", () => {
     });
 
     it("returns collections with Thread counts and directory items", async () => {
-      const { app, services } = createTestApp();
+      const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/collections", collectionsApiRoutes);
 
       const col = await services.collections.create({
@@ -46,7 +46,7 @@ describe("Collections API Routes", () => {
     });
 
     it("returns smart collections with the same two measures", async () => {
-      const { app, services } = createTestApp();
+      const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/collections", collectionsApiRoutes);
 
       await services.smartCollections.create({
@@ -67,6 +67,36 @@ describe("Collections API Routes", () => {
       expect(body.smartCollections[0].recentActivityAt).toBe(
         quote.lastActivityAt,
       );
+    });
+
+    it("counts private Threads for a Bearer token, as for a session", async () => {
+      const { app, services } = createTestApp();
+      app.route("/api/collections", collectionsApiRoutes);
+      const { plaintext } = await services.apiTokens.create("Test client");
+
+      const col = await services.collections.create({
+        slug: "journal",
+        title: "Journal",
+      });
+      await services.smartCollections.create({
+        slug: "notes",
+        title: "Notes",
+        selection: { format: "note" },
+      });
+      await services.posts.create({
+        format: "note",
+        bodyMarkdown: "private entry",
+        visibility: "private",
+        collectionIds: [col.id],
+      });
+
+      const res = await app.request("/api/collections", {
+        headers: { Authorization: `Bearer ${plaintext}` },
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.collections[0].threadCount).toBe(1);
+      expect(body.smartCollections[0].threadCount).toBe(1);
     });
 
     it("returns divider labels", async () => {
@@ -133,7 +163,7 @@ describe("Collections API Routes", () => {
 
   describe("GET /api/collections/:id", () => {
     it("returns a collection by id", async () => {
-      const { app, services } = createTestApp();
+      const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/collections", collectionsApiRoutes);
 
       const col = await services.collections.create({
@@ -150,7 +180,7 @@ describe("Collections API Routes", () => {
     });
 
     it("returns 400 for invalid id", async () => {
-      const { app } = createTestApp();
+      const { app } = createTestApp({ authenticated: true });
       app.route("/api/collections", collectionsApiRoutes);
 
       const res = await app.request("/api/collections/!!invalid!!");
@@ -158,7 +188,7 @@ describe("Collections API Routes", () => {
     });
 
     it("returns 404 for non-existent collection", async () => {
-      const { app } = createTestApp();
+      const { app } = createTestApp({ authenticated: true });
       app.route("/api/collections", collectionsApiRoutes);
       const missingId = createEntityId("collection");
 
