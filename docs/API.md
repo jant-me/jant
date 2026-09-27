@@ -3308,10 +3308,4 @@ curl -X POST https://your-site.com/api/export/hugo \
 
 ## Versioning and Stability
 
-The API is currently unversioned.
-
-Practical stability rules:
-
-- The site-owner endpoints documented here are intended to be scriptable.
-- `/api/internal/*` is operational rather than public API surface and may change more aggressively.
-- Breaking changes are announced in release notes rather than through URL-based versioning.
+The API has no version in its URLs. What this page documents follows Jant's [compatibility promise](compatibility.md), which says what each kind of release may change. `/api/internal/*` connects core to the hosted service and can change in any release.
