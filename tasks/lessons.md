@@ -1255,3 +1255,7 @@ btn-outline"` compiles, passes every test, and only shows up as a button whose
   still stop the deploy. Before committing such a change, grep
   `dev/scripts/pg-smoke.mjs` for the endpoint and run `mise run check-pg-smoke`
   against a throwaway database.
+- After pushing to `main`, check every workflow the push starts, not only
+  CI: `gh run list --branch main`. Release runs from CI's `workflow_run`, so
+  its failures never show up where the push was made; it failed on every push
+  for a day and left the Release PR without a day of changesets.

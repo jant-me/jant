@@ -755,7 +755,15 @@ run = "pnpm changeset status"
 
 [tasks.release-version]
 description = "Apply changesets and bump versions (generates CHANGELOG)"
-run = "pnpm changeset version"
+# changesets/action checks out the release branch and resets it to main before
+# running this, which rewrites package.json files without changing them. pnpm
+# 10's pre-run dependency check then reports the lockfile's overrides as
+# outdated until an install records its state again, and the Release PR stops
+# updating. The lockfile is main's, so the install changes nothing.
+run = """
+pnpm install --frozen-lockfile --prefer-offline
+pnpm changeset version
+"""
 
 [tasks.release-publish]
 description = "Build and publish all packages to npm (CI only, requires provenance)"
