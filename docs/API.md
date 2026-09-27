@@ -695,31 +695,35 @@ Request body:
 
 Fields:
 
-| Field             | Type                                     | Required             | Default        | Notes                                                                     |
-| ----------------- | ---------------------------------------- | -------------------- | -------------- | ------------------------------------------------------------------------- |
-| `format`          | `note` \| `link` \| `quote`              | yes                  | —              | Post format                                                               |
-| `title`           | string                                   | required for `link`  | —              | Max `300`; not allowed for `quote`                                        |
-| `sourceName`      | string                                   | no                   | `null`         | Quote attribution name, max `300`; only for `quote`                       |
-| `body`            | string                                   | no                   | `null`         | TipTap JSON string; mutually exclusive with `bodyMarkdown`                |
-| `bodyMarkdown`    | string                                   | no                   | `null`         | Recommended for scripts; mutually exclusive with `body`                   |
-| `slug`            | string                                   | no                   | auto-generated | Canonical slug; mutually exclusive with `path`                            |
-| `path`            | string                                   | no                   | —              | Create-time path helper; mutually exclusive with `slug`                   |
-| `status`          | `draft` \| `published`                   | no                   | `published`    | Post status                                                               |
-| `visibility`      | `public` \| `latest_hidden` \| `private` | no                   | `public`       | Post visibility                                                           |
-| `pinned`          | boolean                                  | no                   | `false`        | Pin the post; not allowed on replies                                      |
-| `featured`        | boolean                                  | no                   | `false`        | Mark as featured                                                          |
-| `url`             | absolute URL                             | required for `link`  | —              | Allows `http:`, `https:`, or `mailto:`; not allowed for `note` or `quote` |
-| `sourceUrl`       | absolute URL                             | no                   | `null`         | Quote attribution URL; not allowed for non-quote                          |
-| `quoteText`       | string                                   | required for `quote` | —              | Not allowed for `note` or `link`                                          |
-| `rating`          | integer                                  | no                   | `null`         | `1` to `5`; send `0` to clear on update                                   |
-| `collectionIds`   | `col_*` string[]                         | no                   | `[]`           | Shared Thread Collection TypeIDs; max `20`                                |
-| `replyToId`       | `pst_*` string                           | no                   | `null`         | Make this post a thread reply                                             |
-| `language`        | BCP 47 tag                               | no                   | detected       | Content language, e.g. `en`, `zh-Hans`; replies inherit the Thread's      |
-| `translationOfId` | `pst_*` string                           | no                   | `null`         | Link the new post into that post's translation group                      |
-| `publishedAt`     | integer                                  | no                   | current time   | Unix seconds; only valid when `status` is `published`                     |
-| `createdAt`       | integer                                  | no                   | current time   | Unix seconds; restores a moved post's creation time                       |
-| `updatedAt`       | integer                                  | no                   | `createdAt`    | Unix seconds; restores a moved post's last edit time                      |
-| `attachments`     | attachment[]                             | no                   | `[]`           | Ordered attachments, max `20`                                             |
+| Field               | Type                                     | Required             | Default        | Notes                                                                                |
+| ------------------- | ---------------------------------------- | -------------------- | -------------- | ------------------------------------------------------------------------------------ |
+| `format`            | `note` \| `link` \| `quote`              | yes                  | —              | Post format                                                                          |
+| `title`             | string                                   | required for `link`  | —              | Max `300`; not allowed for `quote`                                                   |
+| `sourceName`        | string                                   | no                   | `null`         | Quote attribution name, max `300`; only for `quote`                                  |
+| `body`              | string                                   | no                   | `null`         | TipTap JSON string; mutually exclusive with `bodyMarkdown`                           |
+| `bodyMarkdown`      | string                                   | no                   | `null`         | Recommended for scripts; mutually exclusive with `body`                              |
+| `slug`              | string                                   | no                   | auto-generated | Canonical slug; mutually exclusive with `path`                                       |
+| `path`              | string                                   | no                   | —              | Create-time path helper; mutually exclusive with `slug`                              |
+| `status`            | `draft` \| `published`                   | no                   | `published`    | Post status                                                                          |
+| `visibility`        | `public` \| `latest_hidden` \| `private` | no                   | `public`       | Post visibility                                                                      |
+| `pinned`            | boolean                                  | no                   | `false`        | Pin the post; not allowed on replies                                                 |
+| `featured`          | boolean                                  | no                   | `false`        | Mark as featured                                                                     |
+| `pinnedAt`          | integer \| ISO 8601 string \| `null`     | no                   | —              | Pin at this time instead of now; wins over `pinned`. For restores                    |
+| `featuredAt`        | integer \| ISO 8601 string \| `null`     | no                   | —              | Feature at this time instead of now; wins over `featured`. For restores              |
+| `url`               | absolute URL                             | required for `link`  | —              | Allows `http:`, `https:`, or `mailto:`; not allowed for `note` or `quote`            |
+| `sourceUrl`         | absolute URL                             | no                   | `null`         | Quote attribution URL; not allowed for non-quote                                     |
+| `quoteText`         | string                                   | required for `quote` | —              | Not allowed for `note` or `link`                                                     |
+| `rating`            | integer                                  | no                   | `null`         | `1` to `5`; send `0` to clear on update                                              |
+| `collectionIds`     | `col_*` string[]                         | no                   | `[]`           | Shared Thread Collection TypeIDs; max `20`                                           |
+| `collectionEntries` | object[]                                 | no                   | —              | Collection memberships with their own times; wins over `collectionIds`. For restores |
+| `replyToId`         | `pst_*` string                           | no                   | `null`         | Make this post a thread reply                                                        |
+| `quietReply`        | boolean                                  | no                   | `false`        | Publish a reply without announcing its Thread on Latest                              |
+| `language`          | BCP 47 tag                               | no                   | detected       | Content language, e.g. `en`, `zh-Hans`; replies inherit the Thread's                 |
+| `translationOfId`   | `pst_*` string                           | no                   | `null`         | Link the new post into that post's translation group                                 |
+| `publishedAt`       | integer                                  | no                   | current time   | Unix seconds; only valid when `status` is `published`                                |
+| `createdAt`         | integer                                  | no                   | current time   | Unix seconds; restores a moved post's creation time                                  |
+| `updatedAt`         | integer                                  | no                   | `createdAt`    | Unix seconds; restores a moved post's last edit time                                 |
+| `attachments`       | attachment[]                             | no                   | `[]`           | Ordered attachments, max `20`                                                        |
 
 Important rules:
 
@@ -728,6 +732,7 @@ Important rules:
 - `createdAt` and `updatedAt` are for restores: an import or a migration that keeps a post's own times. Feeds report `updatedAt` as the entry's update time, and a Thread orders its replies by `createdAt`, then ID, after the root, which always comes first. Updates can't change either.
 - Use `slug` or `path`, not both.
 - `path` is only available on create. Post updates only support `slug`.
+- Each `collectionEntries` item is `{ "collectionId": "col_…", "createdAt": 1706000000, "position": 0, "pinnedAt": null }`; all but `collectionId` are optional. It restores when a Thread joined each collection, its place in a hand-ordered one, and whether it's pinned there.
 - `link` posts require `title` and `url`.
 - `quote` posts require `quoteText` and must use `sourceName` / `sourceUrl` instead of `title` / `url`.
 - `note` posts do not accept `url`, `quoteText`, `sourceName`, or `sourceUrl`.
@@ -2550,6 +2555,35 @@ Rejected keys are returned:
 - in top-level `rejectedKeys` on successful partial updates
 
 In demo mode, `NOINDEX` updates are rejected and the returned value stays `"true"`.
+
+### Import appearance settings
+
+`PUT /api/settings/import`
+
+Auth: `Session or token`
+
+Writes the appearance settings a site import restores, which `PUT /api/settings` doesn't take because the settings screens edit them through their own controls.
+
+Importable setting keys:
+
+| Key                  | Notes                      |
+| -------------------- | -------------------------- |
+| `THEME`              | Color theme ID             |
+| `FONT_THEME`         | Font theme ID              |
+| `THEME_MODE`         | `auto`, `light`, or `dark` |
+| `CUSTOM_CSS`         | Custom CSS                 |
+| `SHOW_HEADER_AVATAR` | `"true"` or `"false"`      |
+
+Request body: an object of those keys and string values, as for `PUT /api/settings`.
+
+Response:
+
+```json
+{ "success": true, "rejectedKeys": ["SITE_NAME"] }
+```
+
+- Other keys are left out and listed in `rejectedKeys`. A request with none of these keys answers `400`.
+- On the demo site, locked keys are rejected the same way.
 
 ### Reset a Config Editor setting
 

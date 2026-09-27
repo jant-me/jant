@@ -24,7 +24,7 @@ With no runtime flag, a command uses the Node runtime when `DATABASE_URL` or `DA
 
 A database that holds several sites (the hosted setup) needs the site named: `--site` takes a site key or ID, `--host` a host (with `--path-prefix` for a site under a subpath), and `--url` the site's URL.
 
-**Over HTTP.** `site export`, `site import`, and the maintenance commands call the site's API, so they run from any machine that can reach it. `--url` names the site. `site export` and `site import` take an API token from **Settings → API Tokens**, in `JANT_API_TOKEN` or `--token`. The maintenance commands take the server's `INTERNAL_ADMIN_TOKEN`, in that variable or `--token`, and fall back to `SITE_ORIGIN` and `SITE_PATH_PREFIX` from the environment or `wrangler.toml` when `--url` is left out.
+**Over HTTP.** `site export`, `site import`, and the maintenance commands call the site's API, so they run from any machine that can reach it. `--url` names the site. `site export` and `site import` take an API token from **Settings → API Tokens**, in `JANT_API_TOKEN` or `--token`. The maintenance commands take the server's `INTERNAL_ADMIN_TOKEN`, in that variable or `--token`, and fall back to `SITE_ORIGIN` and `SITE_PATH_PREFIX` from the environment or `wrangler.toml` when `--url` is left out. They call the server's internal API, which changes with each release, so run them from the Jant version the server runs.
 
 ## Set up and run
 

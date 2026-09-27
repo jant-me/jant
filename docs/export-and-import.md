@@ -306,6 +306,8 @@ Snapshot import needs `--replace`. It clears the snapshot's content tables in th
 
 Media files go into the target site's own storage, so a snapshot from a site on R2 imports into one that keeps media in S3 or on local disk. Exports use snapshot format v2; import also accepts v1. `meta.json` records the Jant version that wrote the snapshot (`jant`) and the last database migration of that version (`schema`). A snapshot from a newer Jant than the one importing it stops before writing anything, and the message asks you to upgrade `@jant/core` first.
 
+A snapshot restores into the kind of database it came from, recorded as `dialect` in `meta.json`: SQLite, D1 included, or Postgres. Import refuses the other kind before writing anything. To move a site between SQLite and Postgres, use a [site export](#site-export-site-export) and [site import](#site-import-site-import).
+
 ```bash
 npx jant site snapshot import --path ./jant-site-snapshot.zip --replace
 ```

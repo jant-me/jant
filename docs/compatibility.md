@@ -23,13 +23,15 @@ From 1.0, Jant follows [semantic versioning](https://semver.org/). A patch relea
 These can change in any release:
 
 - `/api/internal/*`, which connects core to the hosted service. Both are released together.
+- Endpoints, fields, and parameters that the reference pages don't document, even where a response carries them.
 - Commands that `jant --help` leaves out: build and operations tooling.
+- Running `search reindex`, `uploads cleanup`, or `posts rebuild-html` against a server on another Jant version. They call `/api/internal/*`, so run them from the version the server runs.
 - Everything in `@jant/core` besides `createApp`, including `@jant/core/i18n` and the modules under `src/`.
 - CSS custom properties and classes that the theming page doesn't list, and the HTML structure around the documented hooks.
 - The exported site's Hugo templates and partials, and front-matter fields that [Export and import](export-and-import.md) doesn't list.
 - The database schema. Migrations change tables and columns in any release; read and change data through the API, the command line, or an export.
 - Interface text and translations.
-- Default values. A minor release can change a default, such as `PAGE_SIZE`, and its release notes say so and name the setting that restores the old behavior.
+- Default values. A minor release can change a default, such as `PAGE_SIZE`, and its release notes say so and name the setting that restores the old behavior. The exceptions are `PUBLIC_API_ENABLED`, `MAIN_RSS_FEED`, `RSS_FEEDS_ENABLED`, and `CORS_ORIGINS`: their defaults decide what a covered address answers, so they change only in a major release.
 
 ## Changes and removals
 
@@ -43,5 +45,6 @@ These can change in any release:
 - A site installed with 0.3.39 (March 2026) or later upgrades in place to any later version, skipping versions: migrations run in order on deploy. An installation older than that predates the current database baseline. Don't upgrade it in place, since the migration that set up the baseline drops existing data; export its content and import it into a new site.
 - Migrations only go forward. To go back to an earlier version, restore a backup taken before the upgrade; see [Backups and recovery](backups.md).
 - A snapshot or site export from any 1.x release imports into that release or a later 1.x. One written by a newer Jant than the one importing it stops before anything is written and asks you to upgrade `@jant/core`.
+- A snapshot restores into the kind of database it came from: SQLite, D1 included, or Postgres. To move between them, use a site export.
 - Fixes go into the latest 1.x release only.
 - Hosted sites are upgraded by the service.

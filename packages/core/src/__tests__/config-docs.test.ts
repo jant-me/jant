@@ -16,7 +16,10 @@
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { editableSettingKeys } from "../lib/api-settings.js";
+import {
+  editableSettingKeys,
+  importableInternalSettingKeys,
+} from "../lib/api-settings.js";
 import { RESERVED_PATHS } from "../lib/constants.js";
 import { CONFIG_FIELDS } from "../types/config.js";
 
@@ -143,6 +146,17 @@ describe("configuration docs", () => {
         .find((part) => part.startsWith("Editable setting keys\n")) ?? "";
     expect(readTableKeys(section).sort()).toEqual(
       [...editableSettingKeys].sort(),
+    );
+  });
+
+  it("lists exactly the importable setting keys in API.md", () => {
+    const markdown = readRepoFile("docs/API.md");
+    const section =
+      markdown
+        .split(/^### /m)
+        .find((part) => part.startsWith("Import appearance settings\n")) ?? "";
+    expect(readTableKeys(section).sort()).toEqual(
+      [...importableInternalSettingKeys].sort(),
     );
   });
 });

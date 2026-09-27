@@ -306,6 +306,8 @@ npx jant site snapshot export --output ./jant-site-snapshot.zip --skip-objects
 
 媒体文件会上传到目标站点自己的存储，所以 R2 上导出的快照可以导入到用 S3 或本地磁盘存媒体的站点。导出使用快照格式 v2，导入也接受 v1。`meta.json` 记录写出快照的 Jant 版本（`jant`）和该版本最后一个数据库迁移（`schema`）。快照来自比导入方更新的 Jant 时，导入在写入任何数据之前停止，提示先升级 `@jant/core`。
 
+快照只能恢复到同一种数据库：SQLite（包括 D1）或 Postgres，`meta.json` 里的 `dialect` 记录着它来自哪一种。类型不同时，导入在写入任何数据之前拒绝。要在 SQLite 和 Postgres 之间迁移站点，用站点导出和站点导入。
+
 ```bash
 npx jant site snapshot import --path ./jant-site-snapshot.zip --replace
 ```
