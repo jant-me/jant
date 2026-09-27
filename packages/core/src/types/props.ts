@@ -4,6 +4,7 @@
 
 import type {
   ArchiveLayout,
+  ArchiveSort,
   ArchiveVisibility,
   CollectionSortOrder,
   SmartCollectionSortOrder,
@@ -70,17 +71,7 @@ export interface FeaturedPageProps {
   baseUrl: string;
 }
 
-export type { ArchiveLayout, ArchiveVisibility };
-
-/**
- * Time axis for the archive page.
- *
- * `published` (default) orders and buckets by when a thread was first
- * published — the stable historical record. `updated` switches the whole axis
- * to thread activity, so a thread moves to the month it last gained a post.
- * Edits are not activity.
- */
-export type ArchiveSort = "published" | "updated";
+export type { ArchiveLayout, ArchiveSort, ArchiveVisibility };
 
 /**
  * What the archive page is currently showing.

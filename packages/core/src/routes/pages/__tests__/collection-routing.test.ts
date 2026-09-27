@@ -93,6 +93,47 @@ describe("Collection Routing", () => {
     expect(html).not.toContain('class="feed-link"');
   });
 
+  it("links to ?sort=rating and still reads ?sort=rating_desc", async () => {
+    const { app, services } = createCollectionRoutingTestApp();
+    const collection = await services.collections.create({
+      slug: "reading",
+      title: "Reading",
+    });
+    const higher = await services.posts.create({
+      format: "note",
+      title: "Higher rated",
+      bodyMarkdown: "higher",
+      status: "published",
+      rating: 5,
+      publishedAt: Date.UTC(2024, 0, 1) / 1000,
+    });
+    const lower = await services.posts.create({
+      format: "note",
+      title: "Lower rated",
+      bodyMarkdown: "lower",
+      status: "published",
+      rating: 2,
+      publishedAt: Date.UTC(2026, 0, 1) / 1000,
+    });
+    await services.collections.addThread(collection.id, higher.id);
+    await services.collections.addThread(collection.id, lower.id);
+
+    const byDefault = await (await app.request("/reading")).text();
+    expect(byDefault.indexOf("Lower rated")).toBeLessThan(
+      byDefault.indexOf("Higher rated"),
+    );
+    expect(byDefault).toContain('href="/reading?sort=rating"');
+    expect(byDefault).not.toContain("sort=rating_desc");
+
+    // `rating_desc` is what the page wrote before 1.0; links to it stay.
+    for (const sort of ["rating", "rating_desc"]) {
+      const html = await (await app.request(`/reading?sort=${sort}`)).text();
+      expect(html.indexOf("Higher rated")).toBeLessThan(
+        html.indexOf("Lower rated"),
+      );
+    }
+  });
+
   it("redirects namespaced single-collection paths to the root canonical URL", async () => {
     const { app, services } = createCollectionRoutingTestApp();
 

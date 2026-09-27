@@ -46,6 +46,8 @@ By default the archive feed is ordered by publication, like the page it belongs 
 
 `?format=` also works on `/latest/feed`. It does nothing on `/feed` or on the featured feed.
 
+The feed takes every archive filter, not only these four; [Writing and organizing § Archive filters](writing-and-organizing.md#archive-filters) lists them all.
+
 ## What every feed shares
 
 **Length.** Each feed carries your most recent 50 entries. Change it with `RSS_FEED_LIMIT` (1–200). Any feed also takes `?limit=` for one read of a different length, up to 500: `/latest/feed?limit=200`. It is for catching up on a site's history, the way a directory reads your site the first time it sees it; the address without it is still the one to subscribe to. A value that is not a whole number above zero is ignored.

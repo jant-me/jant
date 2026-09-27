@@ -264,6 +264,43 @@ describe("smart collection page", () => {
     );
   });
 
+  it("links to ?sort=rating and still reads ?sort=rating_desc", async () => {
+    const { app, services } = setup();
+    await services.posts.create({
+      format: "quote",
+      quoteText: "Higher",
+      bodyMarkdown: "higher body",
+      status: "published",
+      publishedAt: Date.UTC(2024, 0, 1) / 1000,
+      rating: 5,
+    });
+    await services.posts.create({
+      format: "quote",
+      quoteText: "Lower",
+      bodyMarkdown: "lower body",
+      status: "published",
+      publishedAt: Date.UTC(2026, 0, 1) / 1000,
+      rating: 2,
+    });
+    await services.smartCollections.create({
+      slug: "quotes",
+      title: "Quotes",
+      selection: { format: "quote" },
+      sort: "newest",
+    });
+
+    const byDefault = await (await app.request("/quotes")).text();
+    expect(byDefault).toContain('href="/quotes?sort=rating"');
+    expect(byDefault).not.toContain("sort=rating_desc");
+
+    for (const sort of ["rating", "rating_desc"]) {
+      const html = await (await app.request(`/quotes?sort=${sort}`)).text();
+      expect(html.indexOf("higher body")).toBeLessThan(
+        html.indexOf("lower body"),
+      );
+    }
+  });
+
   it("404s an address no smart collection holds", async () => {
     const { app } = setup();
     expect((await app.request("/nothing-here")).status).toBe(404);

@@ -20,6 +20,7 @@ import { getCollectionsDirectoryPath } from "../../lib/collection-paths.js";
 import { render as renderMarkdown } from "../../lib/markdown.js";
 import { formatPageLabel } from "../../lib/pagination.js";
 import { toPublicPath } from "../../lib/url.js";
+import { collectionSortParam } from "../../lib/collection-sort.js";
 import { TimelineFeed } from "../feed/TimelineFeed.js";
 import { getCollectionMutationLabels } from "../shared/collection-management-labels.js";
 import {
@@ -67,7 +68,7 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
 
   const sortOptions = [
     {
-      value: "newest",
+      value: "newest" as const,
       label: i18n._(
         msg({
           message: "Newest first",
@@ -76,7 +77,7 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
       ),
     },
     {
-      value: "oldest",
+      value: "oldest" as const,
       label: i18n._(
         msg({
           message: "Oldest first",
@@ -87,7 +88,7 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
     ...(showRatingSort
       ? [
           {
-            value: "rating_desc",
+            value: "rating_desc" as const,
             label: i18n._(
               msg({
                 message: "Highest rated",
@@ -261,7 +262,7 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
                       href={
                         option.value === defaultSort
                           ? pageUrl
-                          : `${pageUrl}?sort=${option.value}`
+                          : `${pageUrl}?sort=${collectionSortParam(option.value)}`
                       }
                       role="menuitem"
                       class={`collection-sort-option ${

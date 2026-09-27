@@ -218,13 +218,47 @@ Feed：
 - `/feed` 使用你当前配置的主 feed
 - `/latest/feed` 返回出现在首页 Latest 的帖子（不含 `Hidden from Latest`）
 - `/featured/feed` 中，每个包含 Featured 帖子的 Thread 只返回一个条目
-- `/archive/feed` 返回全量公开帖子（包含 `Hidden from Latest`），支持 `?year=`、`?format=`、`?collection=`、`?media=` 等筛选参数
+- `/archive/feed` 返回全量公开帖子（包含 `Hidden from Latest`），接受全部[归档筛选参数](#归档筛选参数)
 - `/{slug}/feed` 返回单个 Collection 的 feed
 - `/collections/{slug1}+{slug2}/feed` 返回组合 Collection 的 feed
 
 每个页面都会在 HTML head 里声明 feed，阅读器和浏览器插件不用你手动给地址也能嗅探到。Collection 页和归档页把自己的 feed 排在最前，并带上当前筛选条件，所以在某个页面上订阅，拿到的就是这个页面显示的内容。
 
 Jant 动态生成的 Atom feed 都有同一段发布缓冲：新帖子和 Reply 立即显示在网页上，默认五分钟后才进入 feed。这段时间可以用来检查刚发布的内容、改错，或者赶在 feed 阅读器抓取前撤回。详见[配置 § Feed 默认值](configuration.md#feed-默认值可选)。
+
+### 归档筛选参数
+
+`/archive` 和 `/archive/feed` 接受同样的查询参数，帖子要同时满足所有参数。归档页的筛选控件写出的就是这些参数，所以筛选后的地址可以直接收藏或订阅。
+
+| 参数         | 取值                                                                             | 选出                                                                                    |
+| ------------ | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `collection` | 合集 slug，多个用逗号分隔                                                        | 属于其中任一合集的 Thread                                                               |
+| `format`     | `note`、`link`、`quote`                                                          | 该格式的帖子                                                                            |
+| `title`      | `any`、`none`                                                                    | 有标题或没标题的帖子                                                                    |
+| `year`       | 年份，例如 2024                                                                  | 该年发布的帖子；配合 `sort=updated` 时，是该年最后有活动的 Thread                       |
+| `media`      | `any`、`none`，或用逗号分隔的类型：`image`、`video`、`audio`、`text`、`document` | 带任意附件、不带附件，或带其中某类附件的帖子                                            |
+| `replies`    | `any`、`none`                                                                    | 有回复的 Thread，或没有回复的单帖                                                       |
+| `visibility` | `public`、`featured`、`hidden`、`private`                                        | 公开、精选或 `Hidden from Latest` 的帖子；`private` 只在你登录时可用                    |
+| `sort`       | `published`、`updated`                                                           | 排序和月份分组的依据：发布时间（默认），或活动时间，包括用 **Reply quietly** 发布的回复 |
+| `layout`     | `list`、`grid`                                                                   | 页面布局；feed 忽略它                                                                   |
+| `page`       | 页码                                                                             | 第几页；feed 忽略它                                                                     |
+
+旧写法的链接继续能用。归档页会跳转到当前写法，feed 直接按旧写法读取：
+
+- `hasTitle`、`hasMedia`、`hasReplies` 取 `1` 或 `0`，等同于 `title`、`media`、`replies` 取 `any` 或 `none`。
+- `visibility=latest_hidden` 等同于 `visibility=hidden`，`visibility=all` 等同于不筛选可见性。
+- `view` 等同于 `layout`。
+
+### 合集排序
+
+合集页、组合合集视图和智能合集页接受两个参数：
+
+| 参数   | 取值                         | 选出                                                                                         |
+| ------ | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `sort` | `newest`、`oldest`、`rating` | 排序方式，默认用合集自己的设置。`rating` 需要至少两个带评分的 Thread，不够时页面保持默认排序 |
+| `page` | 页码                         | 第几页                                                                                       |
+
+`sort=rating_desc` 仍按 `rating` 读取，`sort=updated` 按 `newest` 读取。
 
 ## 自定义 URL
 

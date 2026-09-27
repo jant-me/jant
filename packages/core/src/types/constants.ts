@@ -26,6 +26,17 @@ export const ARCHIVE_LAYOUTS = ["list", "grid"] as const;
 export type ArchiveLayout = (typeof ARCHIVE_LAYOUTS)[number];
 
 /**
+ * Time axis for the archive page, its `?sort=`.
+ *
+ * `published` (default) orders and buckets by when a thread was first
+ * published — the stable historical record. `updated` switches the whole axis
+ * to thread activity, so a thread moves to the month it last gained a post.
+ * Edits are not activity.
+ */
+export const ARCHIVE_SORTS = ["published", "updated"] as const;
+export type ArchiveSort = (typeof ARCHIVE_SORTS)[number];
+
+/**
  * Visibility values a signed-out reader may select on the archive.
  *
  * `featured` is a virtual member: it is a separate flag rather than a stored

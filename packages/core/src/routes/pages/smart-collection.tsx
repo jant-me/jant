@@ -42,9 +42,12 @@ import {
   describeSmartCollection,
 } from "../../ui/shared/smart-collection-labels.js";
 import { getI18n } from "../../i18n/index.js";
-import { SMART_COLLECTION_SORT_ORDERS } from "../../types.js";
-import type { SmartCollectionSortOrder } from "../../types.js";
-import { supportsCollectionRatingSort } from "../../lib/collection-sort.js";
+import {
+  collectionSortParam,
+  parseCollectionSortParam,
+  resolveCollectionSortOrder,
+  supportsCollectionRatingSort,
+} from "../../lib/collection-sort.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -62,26 +65,6 @@ async function loadConditionVocabulary(
   const ids = smartCollection.selection.collection ?? [];
   if (ids.length === 0) return buildCollectionVocabulary([]);
   return buildCollectionVocabulary(await c.var.services.collections.list());
-}
-
-function readSort(
-  value: string | undefined,
-  fallback: SmartCollectionSortOrder,
-  showRatingSort: boolean,
-): SmartCollectionSortOrder {
-  // `updated` was a fourth order before `newest` came to mean the same thing.
-  // Links to it are still in the wild, and they still resolve to what the
-  // reader chose, so the accept-old rule costs one line here.
-  const named = value === "updated" ? "newest" : value;
-  const requested = (
-    SMART_COLLECTION_SORT_ORDERS as readonly string[]
-  ).includes(named ?? "")
-    ? (named as SmartCollectionSortOrder)
-    : fallback;
-  // Silently falls back rather than showing an order that would look arbitrary
-  // on a set where almost nothing is rated — the same rule a collection page
-  // applies to its own rating sort.
-  return requested === "rating_desc" && !showRatingSort ? "newest" : requested;
 }
 
 /**
@@ -120,12 +103,18 @@ export async function renderSmartCollectionPage(
     2,
   );
   const showRatingSort = supportsCollectionRatingSort(ratedCount);
-  const defaultSort = readSort(smartCollection.sort, "newest", showRatingSort);
+  // A rating order falls back rather than showing an order that would look
+  // arbitrary on a set where almost nothing is rated, as on a collection page.
+  const defaultSort = resolveCollectionSortOrder(
+    undefined,
+    smartCollection.sort,
+    showRatingSort,
+  );
   // The reader's `?sort=` wins over the stored default, the same way it does on
   // a collection page. Condition params in the URL are ignored: membership is
   // edited in the dialog, not by hand in the address bar.
-  const currentSort = readSort(
-    c.req.query("sort"),
+  const currentSort = resolveCollectionSortOrder(
+    parseCollectionSortParam(c.req.query("sort")),
     defaultSort,
     showRatingSort,
   );
@@ -185,7 +174,10 @@ export async function renderSmartCollectionPage(
         baseUrl={
           currentSort === defaultSort
             ? toViewPath(c, canonicalPagePath)
-            : toViewPath(c, `${canonicalPagePath}?sort=${currentSort}`)
+            : toViewPath(
+                c,
+                `${canonicalPagePath}?sort=${collectionSortParam(currentSort)}`,
+              )
         }
         currentSort={currentSort}
         defaultSort={defaultSort}

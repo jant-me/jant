@@ -46,6 +46,8 @@ Jant 站点的每个列表页都发布一个 Atom feed，feed 地址就在所属
 
 `?format=` 也可以用在 `/latest/feed` 上，对 `/feed` 和 Featured feed 不起作用。
 
+归档 feed 接受全部归档筛选参数，不只这四个，完整列表见[写作与内容组织 § 归档筛选参数](writing-and-organizing.md#归档筛选参数)。
+
 ## 所有 feed 的共同点
 
 **长度。** 每个 feed 包含最近的 50 个条目，用 `RSS_FEED_LIMIT`（1–200）修改。任何 feed 都接受 `?limit=`，按另一个长度读取一次，最多 500：`/latest/feed?limit=200`。它用来补读一个站点的历史，就像目录第一次读取你的站点时那样；订阅用的仍然是不带它的地址。不是大于零的整数时，这个参数会被忽略。

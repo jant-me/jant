@@ -11,8 +11,9 @@ import { getNavigationData } from "../../lib/navigation.js";
 import { formatPageLabel, parsePageNumber } from "../../lib/pagination.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
-import { CollectionSortOrderSchema } from "../../lib/schemas.js";
 import {
+  collectionSortParam,
+  parseCollectionSortParam,
   resolveCollectionSortOrder,
   supportsCollectionRatingSort,
 } from "../../lib/collection-sort.js";
@@ -99,11 +100,7 @@ export async function renderCollectionPage(
     return c.redirect(`${toViewPath(c, canonicalPagePath)}${search}`, 301);
   }
 
-  const sortQuery = c.req.query("sort");
-  const requestedSort =
-    sortQuery && CollectionSortOrderSchema.safeParse(sortQuery).success
-      ? CollectionSortOrderSchema.parse(sortQuery)
-      : undefined;
+  const requestedSort = parseCollectionSortParam(c.req.query("sort"));
   const primaryCollection = selection.collections[0];
   if (!primaryCollection) return null;
   const collectionIds = selection.collections.map(
@@ -207,7 +204,10 @@ export async function renderCollectionPage(
         baseUrl={
           currentSort === defaultSort
             ? toViewPath(c, canonicalPagePath)
-            : toViewPath(c, `${canonicalPagePath}?sort=${currentSort}`)
+            : toViewPath(
+                c,
+                `${canonicalPagePath}?sort=${collectionSortParam(currentSort)}`,
+              )
         }
         currentSort={currentSort}
         defaultSort={defaultSort}

@@ -218,7 +218,7 @@ Feeds:
 - `/feed` uses your currently configured main feed
 - `/latest/feed` returns posts that appear on the homepage Latest (excludes `Hidden from Latest`)
 - `/featured/feed` returns one entry per Thread containing Featured posts
-- `/archive/feed` returns every public post (including `Hidden from Latest`), and supports filters like `?year=`, `?format=`, `?collection=`, `?media=`
+- `/archive/feed` returns every public post (including `Hidden from Latest`), and takes the [archive filters](#archive-filters)
 - `/{slug}/feed` returns the feed for a single Collection
 - `/collections/{slug1}+{slug2}/feed` returns the feed for a combined Collection view
 
@@ -233,6 +233,46 @@ eligible for feeds after five minutes by default. This gives you time to check
 the published content, fix mistakes, or unpublish it before a feed reader can
 fetch it. See
 [Configuration § Feed defaults](configuration.md#feed-defaults-optional).
+
+### Archive filters
+
+`/archive` and `/archive/feed` take the same query parameters, and a post has
+to match all of them. The archive's filter controls write them, so a filtered
+page's address can be bookmarked or subscribed to as it is.
+
+| Parameter    | Values                                                                                  | Selects                                                                                       |
+| ------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `collection` | Collection slugs, comma-separated                                                       | Threads in any of these Collections                                                           |
+| `format`     | `note`, `link`, `quote`                                                                 | Posts in this format                                                                          |
+| `title`      | `any`, `none`                                                                           | Posts with a title, or without one                                                            |
+| `year`       | A year, such as 2024                                                                    | Posts published that year; with `sort=updated`, Threads last active that year                 |
+| `media`      | `any`, `none`, or kinds, comma-separated: `image`, `video`, `audio`, `text`, `document` | Posts with any attachment, none, or one of these kinds                                        |
+| `replies`    | `any`, `none`                                                                           | Threads with replies, or single posts                                                         |
+| `visibility` | `public`, `featured`, `hidden`, `private`                                               | Public, Featured, or `Hidden from Latest` posts; `private` only while you're signed in        |
+| `sort`       | `published`, `updated`                                                                  | Order and month headings by publication (the default), or by activity, quiet replies included |
+| `layout`     | `list`, `grid`                                                                          | The page's layout; feeds ignore it                                                            |
+| `page`       | A page number                                                                           | Which page; feeds ignore it                                                                   |
+
+Links with older spellings keep working. The archive page redirects them to
+the current one, and feeds read them as they are:
+
+- `hasTitle`, `hasMedia`, and `hasReplies` with `1` or `0` read as `title`,
+  `media`, and `replies` with `any` or `none`.
+- `visibility=latest_hidden` reads as `visibility=hidden`, and `visibility=all`
+  as no visibility filter.
+- `view` reads as `layout`.
+
+### Collection order
+
+A Collection page, a combined Collection view, and a Smart Collection page take
+two parameters:
+
+| Parameter | Values                       | Selects                                                                                                                            |
+| --------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `sort`    | `newest`, `oldest`, `rating` | The order; the Collection's own by default. `rating` needs at least two rated Threads, and without them the page keeps its default |
+| `page`    | A page number                | Which page                                                                                                                         |
+
+`sort=rating_desc` still reads as `rating`, and `sort=updated` as `newest`.
 
 ## Custom URLs
 
