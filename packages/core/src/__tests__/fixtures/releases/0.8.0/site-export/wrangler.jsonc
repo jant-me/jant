@@ -1,0 +1,24 @@
+{
+  // Cloudflare Workers deploy config for the built site.
+  //
+  // "name" must match the Worker's name in the Cloudflare dashboard: Workers
+  // Builds fails the build when they differ, and a deploy run by hand under
+  // another name goes to another Worker. A Worker imported from a repository
+  // is named after the repository, so Jant uses the repository name when it
+  // knows it, and otherwise the name GitHub Sync suggests for this site's
+  // repository.
+  //
+  // Jant writes this file once and never overwrites it, so your edits stay.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "127-jant-sync",
+  "compatibility_date": "2026-09-27",
+  // Wrangler runs this before it uploads, so "npx wrangler deploy" builds the
+  // site first. Leave the build command in the Cloudflare dashboard empty, or
+  // Hugo runs twice.
+  "build": {
+    "command": "hugo --gc --minify"
+  },
+  "assets": {
+    "directory": "./public"
+  }
+}
