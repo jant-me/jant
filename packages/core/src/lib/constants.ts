@@ -31,7 +31,22 @@ export const RESERVED_PATHS = [
   "healthz",
   "readyz",
   "skill.md",
+  // Files served at the root. Only a custom URL could take one of these (a
+  // slug has no dot), and the route answering first would leave it unreachable.
+  "robots.txt",
+  "manifest.webmanifest",
+  "favicon.ico",
+  "apple-touch-icon.png",
+  // Public storage for keys stored before the `media/` layout.
+  "sites",
 ] as const;
+
+/**
+ * Sitemap file names, reserved as a family: `sitemap.xml` and every
+ * `sitemap-*.xml` it links to, including the numbered post sitemaps, and any
+ * the sitemap adds later.
+ */
+const RESERVED_SITEMAP_PATTERN = /^sitemap(?:-[a-z0-9-]+)?\.xml$/;
 
 export type ReservedPath = (typeof RESERVED_PATHS)[number];
 
@@ -47,6 +62,7 @@ export type ReservedPath = (typeof RESERVED_PATHS)[number];
  * @returns Whether the path's first segment is unavailable
  * @example
  * isReservedPath("archive"); // true
+ * isReservedPath("sitemap-posts-2.xml"); // true
  * isReservedPath("ja/hello", ["ja"]); // true
  * isReservedPath("ja/hello"); // false — no language configured
  */
@@ -57,6 +73,7 @@ export function isReservedPath(
   const firstSegment = path.split("/")[0]?.toLowerCase();
   if (!firstSegment) return false;
   if (RESERVED_PATHS.includes(firstSegment as ReservedPath)) return true;
+  if (RESERVED_SITEMAP_PATTERN.test(firstSegment)) return true;
   return languagePrefixes.includes(firstSegment);
 }
 

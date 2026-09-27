@@ -564,13 +564,16 @@ display value, never custom code or storage keys.
 
 ## Reserved paths
 
-These top-level paths are reserved and can't be used as a post or custom page slug:
+These top-level paths are reserved. No post, collection, or custom URL address can start with one:
 
 ```text
 featured, latest, signin, signout, setup, settings, dash, api, feed, search,
 subscribe, archive, media, pages, reset, collections, compose, preview, new,
-static, assets, _assets, healthz, readyz, skill.md
+static, assets, _assets, healthz, readyz, skill.md, robots.txt,
+manifest.webmanifest, favicon.ico, apple-touch-icon.png, sites
 ```
+
+Neither can any `sitemap.xml` or `sitemap-*.xml` name: the sitemap uses that family.
 
 ## Config files
 

@@ -518,13 +518,16 @@ Config Editor 使用显式允许清单。部署基础设施、凭据、集成令
 
 ## 保留路径
 
-这些顶层路径是保留的，不能作为 post 或自定义页面的 slug：
+这些顶层路径是保留的，帖子、合集和自定义 URL 的地址都不能以它们开头：
 
 ```text
 featured, latest, signin, signout, setup, settings, dash, api, feed, search,
 subscribe, archive, media, pages, reset, collections, compose, preview, new,
-static, assets, _assets, healthz, readyz, skill.md
+static, assets, _assets, healthz, readyz, skill.md, robots.txt,
+manifest.webmanifest, favicon.ico, apple-touch-icon.png, sites
 ```
+
+`sitemap.xml` 以及所有 `sitemap-*.xml` 形式的名字也不能用，sitemap 占用了这一组。
 
 ## 配置文件
 
