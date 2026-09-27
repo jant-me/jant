@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createTestApp } from "../../../__tests__/helpers/app.js";
 import { createEntityId } from "../../../lib/ids.js";
+import { handleMcpHttpRequest } from "../../../services/mcp.js";
 import { mcpApiRoutes } from "../mcp.js";
 
 function createFakeWebpBytes(length = 32): Uint8Array {
@@ -650,5 +651,116 @@ describe("MCP API Routes", () => {
     const body = await res.json();
     expect(body.result.isError).toBe(true);
     expect(body.result.content[0].text).toBe("Post not found");
+  });
+});
+
+describe("MCP post writes", () => {
+  function callTool(
+    app: ReturnType<typeof createTestApp>["app"],
+    path: string,
+    name: string,
+    args: Record<string, unknown>,
+  ) {
+    return app
+      .request(path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "MCP-Protocol-Version": "2025-06-18",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name, arguments: args },
+        }),
+      })
+      .then(
+        (res) =>
+          res.json() as Promise<{
+            result: { isError: boolean; structuredContent: { id: string } };
+          }>,
+      );
+  }
+
+  it("keeps every field POST and PUT /api/posts keep", async () => {
+    // The MCP tools once mapped the body themselves and dropped `language`,
+    // `translationOfId`, `pinnedAt`, and `featuredAt`.
+    const { app, services } = createTestApp({ authenticated: true });
+    app.route("/api/mcp", mcpApiRoutes);
+
+    const source = await callTool(app, "/api/mcp", "jant_posts_create", {
+      format: "note",
+      bodyMarkdown: "中文",
+      language: "zh-Hans",
+    });
+    const translation = await callTool(app, "/api/mcp", "jant_posts_create", {
+      format: "note",
+      bodyMarkdown: "English",
+      language: "en",
+      translationOfId: source.result.structuredContent.id,
+      pinnedAt: 1706000000,
+      featuredAt: 1706000100,
+    });
+    expect(translation.result.isError).toBe(false);
+
+    const stored = await services.posts.getById(
+      translation.result.structuredContent.id,
+    );
+    expect(stored).toMatchObject({
+      language: "en",
+      pinnedAt: 1706000000,
+      featuredAt: 1706000100,
+    });
+    expect(
+      (await services.posts.listTranslations(stored!.id)).map((p) => p.id),
+    ).toEqual([source.result.structuredContent.id]);
+
+    const updated = await callTool(app, "/api/mcp", "jant_posts_update", {
+      id: stored!.id,
+      language: "ja",
+    });
+    expect(updated.result.isError).toBe(false);
+    expect((await services.posts.getById(stored!.id))?.language).toBe("ja");
+  });
+
+  it("runs the post-write hook after each post write, and only then", async () => {
+    // The HTTP routes start a GitHub sync after writing a post; MCP writes
+    // reach the same hook through the context.
+    const { app } = createTestApp({ authenticated: true });
+    const afterPostWrite = vi.fn(async () => {});
+    app.post("/mcp-with-hook", async (c) => {
+      const response = await handleMcpHttpRequest(
+        {
+          bodyText: await c.req.text(),
+          protocolVersionHeader: c.req.header("MCP-Protocol-Version"),
+        },
+        {
+          appConfig: c.var.appConfig,
+          services: c.var.services,
+          storage: c.var.storage,
+          afterPostWrite,
+        },
+      );
+      return new Response(response.body, {
+        status: response.status,
+        headers: response.headers,
+      });
+    });
+
+    const created = await callTool(app, "/mcp-with-hook", "jant_posts_create", {
+      format: "note",
+      bodyMarkdown: "Hello",
+    });
+    const id = created.result.structuredContent.id;
+    await callTool(app, "/mcp-with-hook", "jant_posts_get", { id });
+    expect(afterPostWrite).toHaveBeenCalledTimes(1);
+
+    await callTool(app, "/mcp-with-hook", "jant_posts_update", {
+      id,
+      bodyMarkdown: "Hello again",
+    });
+    await callTool(app, "/mcp-with-hook", "jant_posts_delete", { id });
+    expect(afterPostWrite).toHaveBeenCalledTimes(3);
   });
 });

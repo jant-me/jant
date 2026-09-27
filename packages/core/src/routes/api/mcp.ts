@@ -3,6 +3,7 @@ import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
 import { handleMcpHttpRequest } from "../../services/mcp.js";
+import { triggerGitHubSyncInline } from "../../lib/github-sync-trigger.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -20,6 +21,8 @@ mcpApiRoutes.post("/", async (c) => {
       appConfig: c.var.appConfig,
       services: c.var.services,
       storage: c.var.storage,
+      // As after the same writes over HTTP (a no-op when sync is off).
+      afterPostWrite: () => triggerGitHubSyncInline(c),
     },
   );
 

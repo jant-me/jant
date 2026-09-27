@@ -27,14 +27,15 @@ import { AddressQuerySchema, requestInternalPath } from "../../lib/address.js";
 import { toPublicPath } from "../../lib/url.js";
 import { ID_PREFIX } from "../../lib/ids.js";
 import { triggerGitHubSyncInline } from "../../lib/github-sync-trigger.js";
+import {
+  postWriteDeps,
+  toCreatePostInput,
+  toUpdatePostInput,
+} from "../../lib/api-post-input.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const postsApiRoutes = new Hono<Env>();
-
-function hasOwnField<T extends object>(value: T, key: keyof T): boolean {
-  return Object.prototype.hasOwnProperty.call(value, key);
-}
 
 const ListPostsQuerySchema = z.object({
   format: FormatSchema.optional(),
@@ -128,47 +129,12 @@ postsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
 postsApiRoutes.post("/", requireAuthApi(), async (c) => {
   const body = parseValidated(CreatePostApiSchema, await c.req.json());
 
+  const deps = postWriteDeps(c.var);
   const post = await c.var.services.posts.createWithAttachments(
-    {
-      format: body.format,
-      title: body.format === "quote" ? body.sourceName : body.title,
-      body: body.body,
-      bodyMarkdown: body.bodyMarkdown,
-      slug: body.slug || undefined,
-      path: body.path || undefined,
-      status: body.status,
-      visibility: body.visibility,
-      pinned: body.pinned,
-      featured: body.featured,
-      pinnedAt: body.pinnedAt,
-      featuredAt: body.featuredAt,
-      url:
-        body.format === "quote"
-          ? body.sourceUrl || undefined
-          : body.url || undefined,
-      quoteText: body.quoteText,
-      rating: body.rating || undefined,
-      collectionIds: body.collectionIds,
-      collectionEntries: body.collectionEntries,
-      replyToId: body.replyToId,
-      quietReply: body.quietReply,
-      language: body.language,
-      translationOfId: body.translationOfId,
-      publishedAt: body.publishedAt,
-      createdAt: body.createdAt,
-      updatedAt: body.updatedAt,
-    },
+    toCreatePostInput(body),
     body.attachments,
-    {
-      media: c.var.services.media,
-      storage: c.var.storage,
-      storageDriver: c.var.appConfig.storageDriver,
-      maxFileSizeMB: c.var.appConfig.uploadMaxFileSize,
-    },
-    {
-      maxParagraphs: c.var.appConfig.summaryMaxParagraphs,
-      maxChars: c.var.appConfig.summaryMaxChars,
-    },
+    deps.attachments,
+    deps.summary,
   );
 
   // Trigger GitHub Sync in background (no-op when sync isn't enabled).
@@ -182,43 +148,14 @@ postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
 
   const body = parseValidated(UpdatePostApiSchema, await c.req.json());
-  const title = hasOwnField(body, "sourceName") ? body.sourceName : body.title;
-  const url = hasOwnField(body, "sourceUrl") ? body.sourceUrl : body.url;
-
+  const deps = postWriteDeps(c.var);
   const post = assertFound(
     await c.var.services.posts.updateWithAttachments(
       id,
-      {
-        format: body.format,
-        title,
-        body: body.body,
-        bodyMarkdown: body.bodyMarkdown,
-        slug: body.slug,
-        status: body.status,
-        visibility: body.visibility,
-        pinned: body.pinned,
-        featured: body.featured,
-        pinnedAt: body.pinnedAt,
-        featuredAt: body.featuredAt,
-        url,
-        quoteText: body.quoteText,
-        rating: body.rating,
-        collectionIds: body.collectionIds,
-        collectionEntries: body.collectionEntries,
-        publishedAt: body.publishedAt,
-        language: body.language,
-      },
+      toUpdatePostInput(body),
       body.attachments,
-      {
-        media: c.var.services.media,
-        storage: c.var.storage,
-        storageDriver: c.var.appConfig.storageDriver,
-        maxFileSizeMB: c.var.appConfig.uploadMaxFileSize,
-      },
-      {
-        maxParagraphs: c.var.appConfig.summaryMaxParagraphs,
-        maxChars: c.var.appConfig.summaryMaxChars,
-      },
+      deps.attachments,
+      deps.summary,
     ),
     "Post",
   );

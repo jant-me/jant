@@ -48,6 +48,11 @@ import {
   toApiCollectionList,
 } from "../lib/api-collections.js";
 import { toApiMedia } from "../lib/api-media.js";
+import {
+  postWriteDeps,
+  toCreatePostInput,
+  toUpdatePostInput,
+} from "../lib/api-post-input.js";
 
 export const MCP_PROTOCOL_VERSION = "2025-06-18";
 
@@ -57,6 +62,11 @@ type McpHttpContext = {
   appConfig: AppConfig;
   services: Services;
   storage: StorageDriver | null;
+  /**
+   * Runs after a tool creates, updates, or deletes a post — what the HTTP
+   * post routes do after the same writes, such as starting a GitHub sync.
+   */
+  afterPostWrite?: () => Promise<void>;
 };
 
 type McpHttpRequest = {
@@ -466,43 +476,14 @@ const mcpTools: McpToolDefinition[] = [
     },
     async execute(args, context) {
       const input = CreatePostApiSchema.parse(args ?? {});
+      const deps = postWriteDeps(context);
       const post = await context.services.posts.createWithAttachments(
-        {
-          format: input.format,
-          title: input.format === "quote" ? input.sourceName : input.title,
-          body: input.body,
-          bodyMarkdown: input.bodyMarkdown,
-          slug: input.slug || undefined,
-          path: input.path || undefined,
-          status: input.status,
-          visibility: input.visibility,
-          pinned: input.pinned,
-          featured: input.featured,
-          url:
-            input.format === "quote"
-              ? input.sourceUrl || undefined
-              : input.url || undefined,
-          quoteText: input.quoteText,
-          rating: input.rating || undefined,
-          collectionIds: input.collectionIds,
-          replyToId: input.replyToId,
-          quietReply: input.quietReply,
-          publishedAt: input.publishedAt,
-          createdAt: input.createdAt,
-          updatedAt: input.updatedAt,
-        },
+        toCreatePostInput(input),
         input.attachments,
-        {
-          media: context.services.media,
-          storage: context.storage,
-          storageDriver: context.appConfig.storageDriver,
-          maxFileSizeMB: context.appConfig.uploadMaxFileSize,
-        },
-        {
-          maxParagraphs: context.appConfig.summaryMaxParagraphs,
-          maxChars: context.appConfig.summaryMaxChars,
-        },
+        deps.attachments,
+        deps.summary,
       );
+      await context.afterPostWrite?.();
 
       return serializePost(post, context);
     },
@@ -543,54 +524,27 @@ const mcpTools: McpToolDefinition[] = [
       additionalProperties: true,
     },
     async execute(args, context) {
-      const parsed = z
+      // The body schema is strict, so `id` comes off before it is checked:
+      // passed along, it failed every call as an unknown field.
+      const { id, ...fields } = z
         .object({
           id: PostIdSchema,
         })
         .passthrough()
         .parse(args ?? {});
-      const input = UpdatePostApiSchema.parse(parsed);
-      const title = Object.prototype.hasOwnProperty.call(input, "sourceName")
-        ? input.sourceName
-        : input.title;
-      const url = Object.prototype.hasOwnProperty.call(input, "sourceUrl")
-        ? input.sourceUrl
-        : input.url;
-
+      const input = UpdatePostApiSchema.parse(fields);
+      const deps = postWriteDeps(context);
       const post = await context.services.posts.updateWithAttachments(
-        parsed.id,
-        {
-          format: input.format,
-          title,
-          body: input.body,
-          bodyMarkdown: input.bodyMarkdown,
-          slug: input.slug,
-          status: input.status,
-          visibility: input.visibility,
-          pinned: input.pinned,
-          featured: input.featured,
-          url,
-          quoteText: input.quoteText,
-          rating: input.rating,
-          collectionIds: input.collectionIds,
-          publishedAt: input.publishedAt,
-        },
+        id,
+        toUpdatePostInput(input),
         input.attachments,
-        {
-          media: context.services.media,
-          storage: context.storage,
-          storageDriver: context.appConfig.storageDriver,
-          maxFileSizeMB: context.appConfig.uploadMaxFileSize,
-        },
-        {
-          maxParagraphs: context.appConfig.summaryMaxParagraphs,
-          maxChars: context.appConfig.summaryMaxChars,
-        },
+        deps.attachments,
+        deps.summary,
       );
-
       if (!post) {
         throw new NotFoundError("Post");
       }
+      await context.afterPostWrite?.();
 
       return serializePost(post, context);
     },
@@ -615,6 +569,7 @@ const mcpTools: McpToolDefinition[] = [
       if (!success) {
         throw new NotFoundError("Post");
       }
+      await context.afterPostWrite?.();
 
       return { success: true };
     },
