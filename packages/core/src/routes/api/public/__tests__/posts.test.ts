@@ -940,4 +940,53 @@ describe("Public Posts API Routes", () => {
       ).resolves.toMatchObject({ status: 404 });
     });
   });
+
+  it("gives a text attachment its file, not the author's content endpoint", async () => {
+    // `contentUrl` needs a session or token; an anonymous reader got a 401
+    // from the address the public response handed them.
+    const files = new Map<string, Uint8Array>();
+    const storage = {
+      async put(key: string, body: Uint8Array | ReadableStream) {
+        files.set(
+          key,
+          body instanceof Uint8Array
+            ? body
+            : new Uint8Array(await new Response(body).arrayBuffer()),
+        );
+      },
+      async get() {
+        return null;
+      },
+      async delete(key: string) {
+        files.delete(key);
+      },
+    };
+    const { app, services } = createTestApp({
+      authenticated: false,
+      storage: storage as never,
+    });
+    app.route("/api/public/posts", publicPostsApiRoutes);
+    const post = await services.posts.createWithAttachments(
+      { format: "note", bodyMarkdown: "With notes" },
+      [{ type: "text", contentFormat: "markdown", content: "# Notes" }],
+      {
+        media: services.media,
+        storage: storage as never,
+        storageDriver: "r2",
+        maxFileSizeMB: 10,
+      },
+    );
+
+    const res = await app.request(`/api/public/posts/${post.slug}`);
+    const body = await res.json();
+
+    const [attachment] = body.attachments;
+    expect(attachment).toMatchObject({
+      type: "text",
+      contentFormat: "markdown",
+    });
+    expect(attachment).not.toHaveProperty("contentUrl");
+    const [storedKey] = [...files.keys()];
+    expect(attachment.url.endsWith(storedKey)).toBe(true);
+  });
 });

@@ -169,14 +169,7 @@ export function toPublicPost(
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
     attachments: related.media.map((media) =>
-      toApiAttachment(
-        media,
-        r2PublicUrl,
-        imageTransformUrl,
-        s3PublicUrl,
-        localPublicUrl,
-        sitePathPrefix,
-      ),
+      toApiAttachment(media, appConfig, "reader"),
     ),
     collections: related.collections.map((collection) => ({
       id: collection.id,

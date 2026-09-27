@@ -804,12 +804,15 @@ Response shapes:
 {
   "type": "text",
   "id": "med_...",
+  "url": "/media/med_....md",
   "contentFormat": "markdown",
   "contentUrl": "/api/attachments/med_.../content",
   "summary": "Attached note Extra context here.",
   "chars": 33
 }
 ```
+
+A text attachment's `url` is its Markdown source file. `contentUrl` returns the same source as JSON and needs a session or token, so [public posts](#public-posts) leave it out.
 
 ### Get text attachment content
 
@@ -1181,30 +1184,30 @@ Jant accepts a broad set of image, video, audio, document, text, archive, font, 
 
 Media responses — the media list and single reads, and the MCP media tools — include these fields:
 
-| Field             | Type                                                  | Notes                                                                      |
-| ----------------- | ----------------------------------------------------- | -------------------------------------------------------------------------- |
-| `id`              | `med_*` string                                        | Media ID                                                                   |
-| `postId`          | `pst_*` string \| `null`                              | The post the file is attached to; `null` while unattached                  |
-| `type`            | `media` \| `text`                                     | `text` for a text attachment, `media` for every other file                 |
-| `mediaKind`       | `image` \| `video` \| `audio` \| `text` \| `document` | Kind of file                                                               |
-| `mimeType`        | string                                                | MIME type                                                                  |
-| `originalName`    | string                                                | The file's name as uploaded                                                |
-| `size`            | integer                                               | Bytes                                                                      |
-| `width`           | integer \| `null`                                     | Pixels, for images and video                                               |
-| `height`          | integer \| `null`                                     | Pixels, for images and video                                               |
-| `durationSeconds` | number \| `null`                                      | For audio and video                                                        |
-| `alt`             | string \| `null`                                      | Alt text                                                                   |
-| `blurhash`        | string \| `null`                                      | Placeholder hash for images                                                |
-| `waveform`        | string \| `null`                                      | Waveform data for audio                                                    |
-| `summary`         | string \| `null`                                      | Text attachment summary                                                    |
-| `chars`           | integer \| `null`                                     | Text attachment length in characters                                       |
-| `createdAt`       | integer                                               | Unix seconds                                                               |
-| `updatedAt`       | integer                                               | Unix seconds                                                               |
-| `url`             | string                                                | `type: "media"` only: the file's public URL                                |
-| `previewUrl`      | string                                                | `type: "media"` only: a resized image for images, the file's URL otherwise |
-| `posterUrl`       | string \| `null`                                      | `type: "media"` only: the poster frame for video                           |
-| `contentFormat`   | `markdown`                                            | `type: "text"` only                                                        |
-| `contentUrl`      | string                                                | `type: "text"` only: where to read the content                             |
+| Field             | Type                                                  | Notes                                                                                                             |
+| ----------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `id`              | `med_*` string                                        | Media ID                                                                                                          |
+| `postId`          | `pst_*` string \| `null`                              | The post the file is attached to; `null` while unattached                                                         |
+| `type`            | `media` \| `text`                                     | `text` for a text attachment, `media` for every other file                                                        |
+| `mediaKind`       | `image` \| `video` \| `audio` \| `text` \| `document` | Kind of file                                                                                                      |
+| `mimeType`        | string                                                | MIME type                                                                                                         |
+| `originalName`    | string                                                | The file's name as uploaded                                                                                       |
+| `size`            | integer                                               | Bytes                                                                                                             |
+| `width`           | integer \| `null`                                     | Pixels, for images and video                                                                                      |
+| `height`          | integer \| `null`                                     | Pixels, for images and video                                                                                      |
+| `durationSeconds` | number \| `null`                                      | For audio and video                                                                                               |
+| `alt`             | string \| `null`                                      | Alt text                                                                                                          |
+| `blurhash`        | string \| `null`                                      | Placeholder hash for images                                                                                       |
+| `waveform`        | string \| `null`                                      | Waveform data for audio                                                                                           |
+| `summary`         | string \| `null`                                      | Text attachment summary                                                                                           |
+| `chars`           | integer \| `null`                                     | Text attachment length in characters                                                                              |
+| `createdAt`       | integer                                               | Unix seconds                                                                                                      |
+| `updatedAt`       | integer                                               | Unix seconds                                                                                                      |
+| `url`             | string                                                | The file's public URL; for `type: "text"`, its Markdown source                                                    |
+| `previewUrl`      | string                                                | `type: "media"` only: a resized image for images, the file's URL otherwise                                        |
+| `posterUrl`       | string \| `null`                                      | `type: "media"` only: the poster frame for video                                                                  |
+| `contentFormat`   | `markdown`                                            | `type: "text"` only                                                                                               |
+| `contentUrl`      | string                                                | `type: "text"` only: the Markdown source as JSON; see [Get text attachment content](#get-text-attachment-content) |
 
 ### Session-based upload flow
 
@@ -1438,7 +1441,7 @@ Notes:
 
 - Newest first. `nextCursor` is `null` on the last page.
 - This list may include ordinary uploaded binaries and stored text attachments.
-- Text attachments use `type: "text"` and expose `contentFormat` plus `contentUrl` instead of `url`, `previewUrl`, and `posterUrl`.
+- Text attachments use `type: "text"` and expose `contentFormat` plus `contentUrl` instead of `previewUrl` and `posterUrl`.
 
 ### Get a media item
 

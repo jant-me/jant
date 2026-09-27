@@ -79,19 +79,58 @@ export function apiPostListOrder(
     : { sortBy: "published", ignorePinnedSort: true };
 }
 
+/**
+ * Where the author API reads a text attachment's Markdown as JSON.
+ *
+ * @param mediaId - The text attachment's media ID
+ * @param sitePathPrefix - The site's path prefix, if any
+ * @returns The endpoint's public path
+ * @example
+ * textAttachmentContentUrl("med_01…", "/blog"); // "/blog/api/attachments/med_01…/content"
+ */
+export function textAttachmentContentUrl(
+  mediaId: string,
+  sitePathPrefix?: string,
+): string {
+  return toPublicPath(`/api/attachments/${mediaId}/content`, sitePathPrefix);
+}
+
+/** The app config an attachment's addresses are built from. */
+export type AttachmentUrlConfig = Pick<
+  AppConfig,
+  | "r2PublicUrl"
+  | "imageTransformUrl"
+  | "s3PublicUrl"
+  | "localPublicUrl"
+  | "sitePathPrefix"
+>;
+
+/**
+ * One of a Post's attachments, as the API returns it.
+ *
+ * Every attachment's `url` is the file itself. A text attachment's file is
+ * its Markdown source. The author view adds `contentUrl`, the endpoint that
+ * returns that source as JSON; it needs a session or token, so the reader
+ * view leaves it out.
+ *
+ * @param media - The attachment's media row
+ * @param config - Public URL settings the addresses are built from
+ * @param view - `author` for the author API and MCP, `reader` for `/api/public/*`
+ * @returns The attachment object
+ * @example
+ * post.attachments = media.map((item) => toApiAttachment(item, appConfig, "reader"));
+ */
 export function toApiAttachment(
   media: Media,
-  r2PublicUrl?: string,
-  imageTransformUrl?: string,
-  s3PublicUrl?: string,
-  localPublicUrl?: string,
-  sitePathPrefix?: string,
+  config: AttachmentUrlConfig,
+  view: "author" | "reader" = "author",
 ) {
+  const { imageTransformUrl, sitePathPrefix } = config;
   const publicUrl = getPublicUrlForProvider(
     media.provider,
-    r2PublicUrl,
-    s3PublicUrl,
-    localPublicUrl,
+    config.r2PublicUrl,
+    config.s3PublicUrl,
+    config.localPublicUrl,
   );
   const url = getMediaUrl(media.storageKey, publicUrl, sitePathPrefix);
 
@@ -99,11 +138,11 @@ export function toApiAttachment(
     return {
       type: "text" as const,
       id: media.id,
+      url,
       contentFormat: "markdown" as const,
-      contentUrl: toPublicPath(
-        `/api/attachments/${media.id}/content`,
-        sitePathPrefix,
-      ),
+      ...(view === "author"
+        ? { contentUrl: textAttachmentContentUrl(media.id, sitePathPrefix) }
+        : {}),
       summary: media.summary,
       chars: media.chars,
     };
@@ -226,14 +265,7 @@ export async function loadApiPostResponses(
     toApiPost(post, {
       threadPostCount: threadPostCounts.get(post.threadId) ?? 0,
       attachments: (mediaMap.get(post.id) ?? []).map((media) =>
-        toApiAttachment(
-          media,
-          appConfig.r2PublicUrl,
-          appConfig.imageTransformUrl,
-          appConfig.s3PublicUrl,
-          appConfig.localPublicUrl,
-          appConfig.sitePathPrefix,
-        ),
+        toApiAttachment(media, appConfig),
       ),
       ...(collectionsMap
         ? {

@@ -821,8 +821,11 @@ describe("Posts API Routes", () => {
         }),
       ]);
       expect(body.attachments[0].contentUrl).toContain("/api/attachments/");
-      // Markdown-only storage: a single .md object per text attachment.
+      // Markdown-only storage: a single .md object per text attachment, and
+      // `url` is that file.
       expect(storage.files.size).toBe(1);
+      const [storedKey] = [...storage.files.keys()];
+      expect(body.attachments[0].url.endsWith(storedKey)).toBe(true);
     });
 
     it("creates quote posts with sourceName/sourceUrl", async () => {

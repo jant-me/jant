@@ -1,6 +1,6 @@
 import type { AppConfig } from "../types/config.js";
 import type { Media } from "../types.js";
-import { toApiAttachment } from "./api-posts.js";
+import { textAttachmentContentUrl, toApiAttachment } from "./api-posts.js";
 
 /**
  * What every media response carries, whatever the file is. Every field is
@@ -38,6 +38,8 @@ export type ApiMediaResponse =
     })
   | (ApiMediaBase & {
       type: "text";
+      /** The Markdown source file. */
+      url: string;
       contentFormat: "markdown";
       contentUrl: string;
     });
@@ -82,21 +84,15 @@ export function toApiMedia(
     createdAt: media.createdAt,
     updatedAt: media.updatedAt,
   };
-  const attachment = toApiAttachment(
-    media,
-    appConfig.r2PublicUrl,
-    appConfig.imageTransformUrl,
-    appConfig.s3PublicUrl,
-    appConfig.localPublicUrl,
-    appConfig.sitePathPrefix,
-  );
+  const attachment = toApiAttachment(media, appConfig);
 
   if (attachment.type === "text") {
     return {
       ...base,
       type: "text",
+      url: attachment.url,
       contentFormat: attachment.contentFormat,
-      contentUrl: attachment.contentUrl,
+      contentUrl: textAttachmentContentUrl(media.id, appConfig.sitePathPrefix),
     };
   }
 
