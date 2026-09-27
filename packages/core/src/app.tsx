@@ -43,6 +43,7 @@ import { collectionsApiRoutes } from "./routes/api/collections.js";
 import { smartCollectionsApiRoutes } from "./routes/api/smart-collections.js";
 import { settingsApiRoutes } from "./routes/api/settings.js";
 import { uploadApiRoutes } from "./routes/api/upload.js";
+import { mediaApiRoutes } from "./routes/api/media.js";
 import { uploadsApiRoutes } from "./routes/api/uploads.js";
 import { searchApiRoutes } from "./routes/api/search.js";
 import { mcpApiRoutes } from "./routes/api/mcp.js";
@@ -94,18 +95,12 @@ import {
 import { isAssetPath } from "./lib/asset-path.js";
 import { getHostedCanonicalRedirect } from "./lib/hosted-domain.js";
 import { normalizePath, stripSitePathPrefix, toPublicHref } from "./lib/url.js";
-import {
-  matchesIfNoneMatch,
-  withConditionalResponse,
-} from "./lib/http-cache.js";
+import { withConditionalResponse } from "./lib/http-cache.js";
 import { withWorkerResponseCache } from "./lib/worker-response-cache.js";
 import { createRequestRuntime } from "./runtime/index.js";
 import { getInstanceReadiness } from "./runtime/readiness.js";
 import { type AppVariables, type App } from "./types/app-context.js";
 import { isPublicStorageKeyAllowed } from "./lib/public-storage.js";
-import { isTextAttachment } from "./services/media.js";
-import { markdownToTiptapJson } from "./lib/markdown-to-tiptap.js";
-import { renderTiptapJson } from "./lib/tiptap-render.js";
 
 export type { AppVariables, App };
 
@@ -406,55 +401,6 @@ export function createApp(): App {
   app.route("/api/github-sync", githubSyncWebhookRoutes);
   app.route("/api/telegram", telegramWebhookRoutes);
 
-  // Fetch text media content by ID (same-origin proxy to avoid CORS with CDN URLs)
-  app.get("/api/media/:id/content", async (c) => {
-    const media = await c.var.services.media.getById(c.req.param("id"));
-    if (!media) return c.notFound();
-
-    const storage = c.var.storage;
-    if (!storage) return c.notFound();
-
-    // The outer conditional layer would answer this too, but only after the
-    // object has been fetched and rendered; matching here skips that work.
-    const etag = `"${media.updatedAt}"`;
-    if (matchesIfNoneMatch(c.req.header("If-None-Match"), etag)) {
-      return new Response(null, { status: 304, headers: { ETag: etag } });
-    }
-
-    // Text attachments are stored as plain markdown. The preview dialog
-    // wants both the raw source (for Copy) and a rendered HTML view, so
-    // read the single `.md` object and render HTML on the fly. Rendering
-    // cost is negligible at typical attachment sizes, and response-level
-    // cache hints let edge caches keep the rendered form for repeat hits.
-    if (isTextAttachment(media)) {
-      const object = await storage.get(media.storageKey);
-      if (!object) return c.notFound();
-
-      const markdown = await new Response(object.body).text();
-      const html = renderTiptapJson(markdownToTiptapJson(markdown), {
-        namespace: media.id,
-      });
-
-      return c.json({ html, markdown }, 200, {
-        "Cache-Control": "public, no-cache",
-        ETag: etag,
-      });
-    }
-
-    const object = await storage.get(media.storageKey);
-    if (!object) return c.notFound();
-
-    const headers = new Headers();
-    headers.set(
-      "Content-Type",
-      object.contentType || "application/octet-stream",
-    );
-    headers.set("Cache-Control", "public, no-cache");
-    headers.set("ETag", etag);
-
-    return new Response(object.body, { headers });
-  });
-
   // Public storage proxy for the current `media/{siteId}/...` layout.
   // `/sites/*` remains readable for older stored keys during migration.
   // Supports HTTP Range requests for seekable audio/video playback.
@@ -611,6 +557,7 @@ export function createApp(): App {
 
   // Protected API routes
   app.route("/api/upload", uploadApiRoutes);
+  app.route("/api/media", mediaApiRoutes);
   app.route("/api/uploads", uploadsApiRoutes);
   app.route("/api/search", searchApiRoutes);
   app.route("/api/palette", paletteApiRoutes);

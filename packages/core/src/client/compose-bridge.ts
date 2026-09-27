@@ -539,7 +539,9 @@ document.addEventListener("jant:attachment-removed", (e: Event) => {
 
   if (mediaId) {
     // Upload already finished — fire-and-forget delete
-    fetch(`/api/upload/${mediaId}`, { method: "DELETE" }).catch(() => {});
+    fetch(publicPath(`/api/media/${mediaId}`), { method: "DELETE" }).catch(
+      () => {},
+    );
   } else {
     // Upload still in flight — mark for cleanup after it finishes
     removedClientIds.add(clientId);
@@ -560,7 +562,9 @@ document.addEventListener("jant:files-selected", (e: Event) => {
       if (removedClientIds.has(clientId)) {
         removedClientIds.delete(clientId);
         if (mediaId) {
-          fetch(`/api/upload/${mediaId}`, { method: "DELETE" }).catch(() => {});
+          fetch(publicPath(`/api/media/${mediaId}`), {
+            method: "DELETE",
+          }).catch(() => {});
         }
         return null;
       }

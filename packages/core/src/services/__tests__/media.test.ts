@@ -479,44 +479,6 @@ describe("MediaService", () => {
     });
   });
 
-  describe("getTextAttachmentHtml", () => {
-    it("renders HTML from the stored markdown on the fly", async () => {
-      const storage = createMockStorage();
-      const media = await mediaService.createTextAttachment(
-        {
-          contentFormat: "markdown",
-          content: "# Heading\n\nBody text",
-        },
-        {
-          storage,
-          storageDriver: "local",
-          maxFileSizeMB: 1,
-        },
-      );
-
-      const result = await mediaService.getTextAttachmentHtml(
-        media.id,
-        storage,
-      );
-
-      expect(result).not.toBeNull();
-      expect(result!.id).toBe(media.id);
-      expect(result!.html).toContain("<h1");
-      expect(result!.html).toContain("Heading");
-      expect(result!.summary).toBe("Heading Body text");
-      expect(result!.chars).toBe(17);
-    });
-
-    it("returns null for non-text attachments", async () => {
-      const storage = createMockStorage();
-      const media = await mediaService.create(sampleMedia);
-
-      await expect(
-        mediaService.getTextAttachmentHtml(media.id, storage),
-      ).resolves.toBeNull();
-    });
-  });
-
   describe("delete for text attachments", () => {
     it("moves the .md object to trash and frees the original key", async () => {
       const storage = createMockStorage();

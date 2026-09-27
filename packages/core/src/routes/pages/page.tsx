@@ -39,7 +39,6 @@ import {
 } from "../../lib/view-language.js";
 import { getOrBuildEntry } from "../../i18n/supported-locales.js";
 import { ABOUT_PAGE_SLUG } from "../../services/about-page.js";
-import { isTextAttachment } from "../../services/media.js";
 import type { ResolvedPath } from "../../services/path.js";
 import type { Post } from "../../types.js";
 import { renderArchivePage } from "./archive.js";
@@ -580,17 +579,11 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
         return c.redirect(toPublicPath(`/${fullPath}`, sitePathPrefix), 301);
       }
 
-      // Verify the media belongs to this post and is a Jant-composed text
-      // attachment. Plain text-file uploads (.md, .txt, .csv) also carry
-      // mediaKind === "text" but lack the split HTML/JSON sibling layout
-      // that this page route expects — `isTextAttachment` excludes them.
-      const media = await c.var.services.media.getById(mediaId);
-      if (!media || media.postId !== post.id || !isTextAttachment(media)) {
-        return c.notFound();
-      }
-
-      const attachment = await c.var.services.media.getTextAttachmentHtml(
-        media.id,
+      // The file must belong to this post; the service applies the rest of
+      // the rule the preview dialog's `/_/text/{id}` shares.
+      const attachment = await c.var.services.textAttachments.readForViewer(
+        mediaId,
+        { isAuthenticated: c.var.isAuthenticated, postId: post.id },
         c.var.storage ?? null,
       );
       if (!attachment) return c.notFound();
@@ -605,8 +598,8 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
         html: attachment.html,
         shareHref: c.req.path,
         postHref: postPermalink,
-        attachmentTitle: attachment.summary ?? "",
-        mediaId: media.id,
+        attachmentTitle: attachment.media.summary ?? "",
+        mediaId: attachment.media.id,
       });
     }
   }

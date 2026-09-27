@@ -47,7 +47,8 @@ For HTTP, these are the main entry points:
 | List or inspect all posts    | `GET /api/posts`, `GET /api/posts/:id`                           |
 | List or read whole Threads   | `GET /api/threads`, `GET /api/threads/:id/posts`                 |
 | Create, update, delete       | `POST /api/posts`, `PUT /api/posts/:id`, `DELETE /api/posts/:id` |
-| Upload or manage media       | `/api/upload` or `/api/uploads`                                  |
+| Upload media                 | `POST /api/upload` or `/api/uploads`                             |
+| List or manage media         | `/api/media`                                                     |
 | Manage Collections           | `/api/collections`                                               |
 | Search posts, private too    | `GET /api/search`                                                |
 | Read or update site settings | `GET /api/settings`, `PUT /api/settings`                         |

@@ -21,7 +21,6 @@ import { markdownToTiptapJson } from "../lib/markdown-to-tiptap.js";
 import { extractBodyText } from "../lib/summary.js";
 import { now } from "../lib/time.js";
 import { supportsCopy, type StorageDriver } from "../lib/storage.js";
-import { renderTiptapJson } from "../lib/tiptap-render.js";
 import {
   generateStorageKey,
   imageExtensionForMimeType,
@@ -285,20 +284,6 @@ export interface MediaService {
     id: string,
     storage?: StorageDriver | null,
   ): Promise<TextAttachmentContent | null>;
-  /**
-   * Return the pre-rendered HTML sibling stored alongside the Tiptap AST.
-   * Used for SSR pages where the HTML can be served directly without a
-   * round-trip through markdown conversion.
-   */
-  getTextAttachmentHtml(
-    id: string,
-    storage?: StorageDriver | null,
-  ): Promise<{
-    id: string;
-    html: string;
-    summary: string | null;
-    chars: number | null;
-  } | null>;
   attachToPost(postId: string, mediaIds: string[]): Promise<void>;
   detachFromPost(postId: string): Promise<void>;
   updateAlt(id: string, alt: string): Promise<void>;
@@ -837,36 +822,6 @@ export function createMediaService(
         type: "text",
         contentFormat: "markdown",
         content,
-        summary: record.summary,
-        chars: record.chars,
-      };
-    },
-
-    async getTextAttachmentHtml(id, storage) {
-      const record = await this.getById(id);
-      if (!record || !isTextAttachment(record)) {
-        return null;
-      }
-      if (!storage) {
-        throw new ConfigurationError(
-          "File storage isn't set up. Check your server config.",
-        );
-      }
-
-      // Read markdown, render HTML on the fly. Rendering cost is negligible
-      // for typical attachment sizes (< 1ms on edge/Node); upstream callers
-      // that care (`/api/media/:id/content`, SSR preview) set long cache
-      // headers so CDN serves the rendered HTML for subsequent visits.
-      const object = await storage.get(record.storageKey);
-      if (!object) return null;
-
-      const markdown = await new Response(object.body).text();
-      const tiptapJson = markdownToTiptapJson(markdown);
-      const html = renderTiptapJson(tiptapJson, { namespace: record.id });
-
-      return {
-        id: record.id,
-        html,
         summary: record.summary,
         chars: record.chars,
       };

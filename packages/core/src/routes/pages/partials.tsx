@@ -13,6 +13,7 @@ import { PostPage } from "../../ui/pages/PostPage.js";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { CORE_VERSION } from "../../lib/version.js";
+import { matchesIfNoneMatch } from "../../lib/http-cache.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -20,6 +21,39 @@ export const partialPageRoutes = new Hono<Env>();
 
 partialPageRoutes.get("/_/version", (c) => {
   return c.json({ version: CORE_VERSION });
+});
+
+/**
+ * A text file attached to a post, for the preview dialog: its HTML, safe to
+ * insert, and its source, for copying. The attachment's own page,
+ * `/{post}/text/{id}`, applies the same rule of who may read it.
+ */
+partialPageRoutes.get("/_/text/:mediaId", async (c) => {
+  const mediaId = parseIdParam(c.req.param("mediaId"), ID_PREFIX.media);
+  const attachment = await c.var.services.textAttachments.readForViewer(
+    mediaId,
+    { isAuthenticated: c.var.isAuthenticated },
+    c.var.storage,
+  );
+  if (!attachment) return c.notFound();
+
+  // A shared cache may keep a public post's file, revalidating each time; a
+  // private post's stays with the author's browser.
+  const etag = `"${attachment.media.updatedAt}"`;
+  const cacheControl =
+    attachment.post.visibility === "private"
+      ? "private, no-cache"
+      : "public, no-cache";
+  if (matchesIfNoneMatch(c.req.header("If-None-Match"), etag)) {
+    return new Response(null, {
+      status: 304,
+      headers: { ETag: etag, "Cache-Control": cacheControl },
+    });
+  }
+  return c.json({ html: attachment.html, source: attachment.source }, 200, {
+    ETag: etag,
+    "Cache-Control": cacheControl,
+  });
 });
 
 partialPageRoutes.get("/_/timeline-item/:threadRootId", async (c) => {

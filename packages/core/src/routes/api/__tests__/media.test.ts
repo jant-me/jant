@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createTestApp } from "../../../__tests__/helpers/app.js";
 import { createEntityId } from "../../../lib/ids.js";
-import { uploadApiRoutes } from "../upload.js";
+import { mediaApiRoutes } from "../media.js";
 
 function createMockStorage() {
   return {
@@ -12,10 +12,10 @@ function createMockStorage() {
   };
 }
 
-describe("Upload API Routes", () => {
+describe("Media API Routes", () => {
   it("lists media and supports mimePrefix filtering", async () => {
     const { app, services } = createTestApp({ authenticated: true });
-    app.route("/api/upload", uploadApiRoutes);
+    app.route("/api/media", mediaApiRoutes);
 
     await services.media.create({
       filename: "photo.webp",
@@ -34,7 +34,7 @@ describe("Upload API Routes", () => {
       storageKey: "media/notes.txt",
     });
 
-    const res = await app.request("/api/upload?mimePrefix=image/");
+    const res = await app.request("/api/media?mimePrefix=image/");
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -48,7 +48,7 @@ describe("Upload API Routes", () => {
 
   it("pages the media list with nextCursor", async () => {
     const { app, services } = createTestApp({ authenticated: true });
-    app.route("/api/upload", uploadApiRoutes);
+    app.route("/api/media", mediaApiRoutes);
 
     for (const name of ["a", "b", "c"]) {
       await services.media.create({
@@ -64,7 +64,7 @@ describe("Upload API Routes", () => {
     let cursor: string | null = null;
     for (let page = 0; page < 4; page += 1) {
       const res = await app.request(
-        `/api/upload?limit=2${cursor ? `&cursor=${cursor}` : ""}`,
+        `/api/media?limit=2${cursor ? `&cursor=${cursor}` : ""}`,
       );
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
@@ -82,7 +82,7 @@ describe("Upload API Routes", () => {
 
   it("returns a single media item", async () => {
     const { app, services } = createTestApp({ authenticated: true });
-    app.route("/api/upload", uploadApiRoutes);
+    app.route("/api/media", mediaApiRoutes);
 
     const media = await services.media.create({
       filename: "photo.webp",
@@ -94,7 +94,7 @@ describe("Upload API Routes", () => {
       height: 800,
     });
 
-    const res = await app.request(`/api/upload/${media.id}`);
+    const res = await app.request(`/api/media/${media.id}`);
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -108,7 +108,7 @@ describe("Upload API Routes", () => {
 
   it("updates alt text", async () => {
     const { app, services } = createTestApp({ authenticated: true });
-    app.route("/api/upload", uploadApiRoutes);
+    app.route("/api/media", mediaApiRoutes);
 
     const media = await services.media.create({
       filename: "photo.webp",
@@ -118,7 +118,7 @@ describe("Upload API Routes", () => {
       storageKey: "media/photo.webp",
     });
 
-    const res = await app.request(`/api/upload/${media.id}`, {
+    const res = await app.request(`/api/media/${media.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ alt: "  Cover image  " }),
@@ -136,7 +136,7 @@ describe("Upload API Routes", () => {
       authenticated: true,
       storage,
     });
-    app.route("/api/upload", uploadApiRoutes);
+    app.route("/api/media", mediaApiRoutes);
 
     const media = await services.media.create({
       filename: "photo.webp",
@@ -146,7 +146,7 @@ describe("Upload API Routes", () => {
       storageKey: "media/photo.webp",
     });
 
-    const res = await app.request(`/api/upload/${media.id}`, {
+    const res = await app.request(`/api/media/${media.id}`, {
       method: "DELETE",
     });
     expect(res.status).toBe(200);
@@ -159,10 +159,10 @@ describe("Upload API Routes", () => {
 
   it("returns 404 for a missing media item", async () => {
     const { app } = createTestApp({ authenticated: true });
-    app.route("/api/upload", uploadApiRoutes);
+    app.route("/api/media", mediaApiRoutes);
     const missingId = createEntityId("media");
 
-    const res = await app.request(`/api/upload/${missingId}`);
+    const res = await app.request(`/api/media/${missingId}`);
     expect(res.status).toBe(404);
   });
 });

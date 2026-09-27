@@ -24,6 +24,7 @@ For static export and round-trip import, also see [Export and Import](export-and
 | Threads                 | `/api/threads`        | API token or session |
 | Upload sessions         | `/api/uploads`        | API token or session |
 | One-shot upload         | `/api/upload`         | API token or session |
+| Media                   | `/api/media`          | API token or session |
 | Text attachment content | `/api/attachments`    | API token or session |
 | MCP                     | `/api/mcp`            | API token or session |
 | Collections             | `/api/collections`    | Mixed                |
@@ -1185,33 +1186,6 @@ File size is limited by `UPLOAD_MAX_FILE_SIZE_MB` and defaults to `1024 MB`.
 
 Jant accepts a broad set of image, video, audio, document, text, archive, font, design, and code MIME types. Unsupported types return `400`.
 
-Media responses — the media list and single reads, and the MCP media tools — include these fields:
-
-| Field             | Type                                                  | Notes                                                                                                             |
-| ----------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `id`              | `med_*` string                                        | Media ID                                                                                                          |
-| `postId`          | `pst_*` string \| `null`                              | The post the file is attached to; `null` while unattached                                                         |
-| `type`            | `media` \| `text`                                     | `text` for a text attachment, `media` for every other file                                                        |
-| `mediaKind`       | `image` \| `video` \| `audio` \| `text` \| `document` | Kind of file                                                                                                      |
-| `mimeType`        | string                                                | MIME type                                                                                                         |
-| `originalName`    | string                                                | The file's name as uploaded                                                                                       |
-| `size`            | integer                                               | Bytes                                                                                                             |
-| `width`           | integer \| `null`                                     | Pixels, for images and video                                                                                      |
-| `height`          | integer \| `null`                                     | Pixels, for images and video                                                                                      |
-| `durationSeconds` | number \| `null`                                      | For audio and video                                                                                               |
-| `alt`             | string \| `null`                                      | Alt text                                                                                                          |
-| `blurhash`        | string \| `null`                                      | Placeholder hash for images                                                                                       |
-| `waveform`        | string \| `null`                                      | Waveform data for audio                                                                                           |
-| `summary`         | string \| `null`                                      | Text attachment summary                                                                                           |
-| `chars`           | integer \| `null`                                     | Text attachment length in characters                                                                              |
-| `createdAt`       | integer                                               | Unix seconds                                                                                                      |
-| `updatedAt`       | integer                                               | Unix seconds                                                                                                      |
-| `url`             | string                                                | The file's public URL; for `type: "text"`, its Markdown source                                                    |
-| `previewUrl`      | string                                                | `type: "media"` only: a resized image for images, the file's URL otherwise                                        |
-| `posterUrl`       | string \| `null`                                      | `type: "media"` only: the poster frame for video                                                                  |
-| `contentFormat`   | `markdown`                                            | `type: "text"` only                                                                                               |
-| `contentUrl`      | string                                                | `type: "text"` only: the Markdown source as JSON; see [Get text attachment content](#get-text-attachment-content) |
-
 ### Session-based upload flow
 
 Base path: `/api/uploads`
@@ -1392,13 +1366,82 @@ Response:
 { "success": true }
 ```
 
-### List uploaded media
+### One-shot upload
 
-`GET /api/upload`
+Base path: `/api/upload`
+
+Use this when a script or one-time migration benefits from sending one file in a single multipart request. Use `/api/uploads` when files are large or the connection is unreliable.
+
+#### Upload a file
+
+`POST /api/upload`
+
+Content type: `multipart/form-data`
+
+Form fields:
+
+| Field             | Type    | Required | Default | Notes                          |
+| ----------------- | ------- | -------- | ------- | ------------------------------ |
+| `file`            | file    | yes      | —       | Main file                      |
+| `width`           | integer | no       | `null`  | Image/video width              |
+| `height`          | integer | no       | `null`  | Image/video height             |
+| `alt`             | string  | no       | `null`  | Alt text                       |
+| `blurhash`        | string  | no       | `null`  | Blurhash                       |
+| `waveform`        | string  | no       | `null`  | Audio waveform                 |
+| `summary`         | string  | no       | `null`  | Summary for text uploads       |
+| `durationSeconds` | integer | no       | `null`  | Video or audio length          |
+| `poster`          | file    | no       | —       | Poster frame for video uploads |
+
+Response:
+
+```json
+{
+  "id": "med_01jpyx4g9m8b4y50a4gx3t7p1n",
+  "filename": "med_01jpyx4g9m8b4y50a4gx3t7p1n.jpg",
+  "url": "/media/med_01jpyx4g9m8b4y50a4gx3t7p1n.jpg",
+  "mimeType": "image/jpeg",
+  "size": 1024000
+}
+```
+
+## Media
+
+Base path: `/api/media`
+
+The files you've uploaded, whether attached to a post or not. Upload them with [`POST /api/upload`](#one-shot-upload) or an [upload session](#session-based-upload-flow).
+
+Media responses, from these endpoints and the MCP media tools, include these fields:
+
+| Field             | Type                                                  | Notes                                                                                                             |
+| ----------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `id`              | `med_*` string                                        | Media ID                                                                                                          |
+| `postId`          | `pst_*` string \| `null`                              | The post the file is attached to; `null` while unattached                                                         |
+| `type`            | `media` \| `text`                                     | `text` for a text attachment, `media` for every other file                                                        |
+| `mediaKind`       | `image` \| `video` \| `audio` \| `text` \| `document` | Kind of file                                                                                                      |
+| `mimeType`        | string                                                | MIME type                                                                                                         |
+| `originalName`    | string                                                | The file's name as uploaded                                                                                       |
+| `size`            | integer                                               | Bytes                                                                                                             |
+| `width`           | integer \| `null`                                     | Pixels, for images and video                                                                                      |
+| `height`          | integer \| `null`                                     | Pixels, for images and video                                                                                      |
+| `durationSeconds` | number \| `null`                                      | For audio and video                                                                                               |
+| `alt`             | string \| `null`                                      | Alt text                                                                                                          |
+| `blurhash`        | string \| `null`                                      | Placeholder hash for images                                                                                       |
+| `waveform`        | string \| `null`                                      | Waveform data for audio                                                                                           |
+| `summary`         | string \| `null`                                      | Text attachment summary                                                                                           |
+| `chars`           | integer \| `null`                                     | Text attachment length in characters                                                                              |
+| `createdAt`       | integer                                               | Unix seconds                                                                                                      |
+| `updatedAt`       | integer                                               | Unix seconds                                                                                                      |
+| `url`             | string                                                | The file's public URL; for `type: "text"`, its Markdown source                                                    |
+| `previewUrl`      | string                                                | `type: "media"` only: a resized image for images, the file's URL otherwise                                        |
+| `posterUrl`       | string \| `null`                                      | `type: "media"` only: the poster frame for video                                                                  |
+| `contentFormat`   | `markdown`                                            | `type: "text"` only                                                                                               |
+| `contentUrl`      | string                                                | `type: "text"` only: the Markdown source as JSON; see [Get text attachment content](#get-text-attachment-content) |
+
+### List media
+
+`GET /api/media`
 
 Auth: `Session or token`
-
-This is the media metadata listing endpoint.
 
 Query parameters:
 
@@ -1448,15 +1491,15 @@ Notes:
 
 ### Get a media item
 
-`GET /api/upload/:id`
+`GET /api/media/:id`
 
 Auth: `Session or token`
 
-Returns one media or text attachment record using the same response shape as `GET /api/upload`.
+Returns one media or text attachment record using the same response shape as `GET /api/media`.
 
 ### Update media alt text
 
-`PATCH /api/upload/:id`
+`PATCH /api/media/:id`
 
 Auth: `Session or token`
 
@@ -1477,7 +1520,7 @@ Response: `200 OK` with the updated media object.
 
 ### Delete a media item
 
-`DELETE /api/upload/:id`
+`DELETE /api/media/:id`
 
 Auth: `Session or token`
 
@@ -1487,44 +1530,6 @@ Response:
 
 ```json
 { "success": true }
-```
-
-### One-shot upload
-
-Base path: `/api/upload`
-
-Use this when a script or one-time migration benefits from sending one file in a single multipart request. Use `/api/uploads` when files are large or the connection is unreliable.
-
-#### Upload a file
-
-`POST /api/upload`
-
-Content type: `multipart/form-data`
-
-Form fields:
-
-| Field             | Type    | Required | Default | Notes                          |
-| ----------------- | ------- | -------- | ------- | ------------------------------ |
-| `file`            | file    | yes      | —       | Main file                      |
-| `width`           | integer | no       | `null`  | Image/video width              |
-| `height`          | integer | no       | `null`  | Image/video height             |
-| `alt`             | string  | no       | `null`  | Alt text                       |
-| `blurhash`        | string  | no       | `null`  | Blurhash                       |
-| `waveform`        | string  | no       | `null`  | Audio waveform                 |
-| `summary`         | string  | no       | `null`  | Summary for text uploads       |
-| `durationSeconds` | integer | no       | `null`  | Video or audio length          |
-| `poster`          | file    | no       | —       | Poster frame for video uploads |
-
-Response:
-
-```json
-{
-  "id": "med_01jpyx4g9m8b4y50a4gx3t7p1n",
-  "filename": "med_01jpyx4g9m8b4y50a4gx3t7p1n.jpg",
-  "url": "/media/med_01jpyx4g9m8b4y50a4gx3t7p1n.jpg",
-  "mimeType": "image/jpeg",
-  "size": 1024000
-}
 ```
 
 ## Collections

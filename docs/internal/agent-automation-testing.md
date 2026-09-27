@@ -6,7 +6,7 @@
 
 - `sites/demo` 下的 `AGENTS.md`、`CLAUDE.md`
 - `packages/create-jant` 对模板和脚手架的同步逻辑
-- `/api/posts`、`/api/upload`、`/api/uploads`、`/api/attachments`、`/api/settings`、`/api/search`、`/api/mcp`
+- `/api/posts`、`/api/upload`、`/api/uploads`、`/api/media`、`/api/attachments`、`/api/settings`、`/api/search`、`/api/mcp`
 - 生成项目里的 `examples/agent-content-automation/`
 
 目标不是每次都跑满所有步骤，而是按改动范围选一层或多层验证。
@@ -173,7 +173,7 @@ curl -X POST "$JANT_URL/api/upload" \
   -F "file=@./path/to/photo.webp" \
   -F "alt=Cover image"
 
-curl "$JANT_URL/api/upload?mimePrefix=image/" \
+curl "$JANT_URL/api/media?mimePrefix=image/" \
   -H "Authorization: Bearer $JANT_API_TOKEN"
 ```
 
@@ -183,7 +183,7 @@ curl "$JANT_URL/api/upload?mimePrefix=image/" \
 - `PUT /api/settings` 返回更新后的 `settings`
 - `GET /api/search` 返回合法 JSON，而不是认证或解析错误
 - `POST /api/upload` 返回 `med_*`
-- `GET /api/upload?mimePrefix=image/` 能看到刚上传的文件
+- `GET /api/media?mimePrefix=image/` 能看到刚上传的文件
 
 ### 3.3 额外的裸 API 检查
 

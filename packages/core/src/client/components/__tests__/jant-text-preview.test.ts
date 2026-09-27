@@ -57,6 +57,14 @@ function createTrigger() {
   return trigger;
 }
 
+/** What `/_/text/{id}` answers: rendered HTML and the file's source. */
+function previewResponse(html: string, source: string): Response {
+  return new Response(JSON.stringify({ html, source }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 describe("JantTextPreview", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -91,22 +99,14 @@ describe("JantTextPreview", () => {
     expect(document.activeElement).toBe(content);
     expect(document.activeElement).not.toBe(closeButton);
 
-    resolveFetch(
-      new Response("<p>Hello</p>", {
-        status: 200,
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      }),
-    );
+    resolveFetch(previewResponse("<p>Hello</p>", "Hello"));
     await flush(el);
   });
 
   it("returns focus to the trigger after closing", async () => {
     const el = await createElement();
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response("<p>Hello</p>", {
-        status: 200,
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      }),
+      previewResponse("<p>Hello</p>", "Hello"),
     );
     const trigger = createTrigger();
     trigger.focus();
@@ -172,18 +172,16 @@ describe("JantTextPreview", () => {
     expect(document.getElementById("text-preview-autoopen")).toBeNull();
   });
 
-  it("renders the pre-rendered HTML returned by the storage proxy", async () => {
-    // After the envelope refactor, `/api/media/:id/content` streams the
-    // stored HTML bytes back verbatim. Nothing client-side parses them
-    // as JSON or wraps them in an escape shell; the dialog body renders
-    // the string as-is so headings and paragraphs display correctly.
+  it("renders the HTML /_/text returns, and fetches it under the site's path", async () => {
+    // The server renders or escapes the file, so the dialog inserts `html`
+    // as DOM. It used to insert any non-JSON response as HTML, which let a
+    // plain-text file's markup through.
     const el = await createElement();
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response("<h1>Heading</h1><p>Body</p>", {
-        status: 200,
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      }),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        previewResponse("<h1>Heading</h1><p>Body</p>", "# Heading\n\nBody"),
+      );
     const trigger = createTrigger();
 
     trigger.dispatchEvent(
@@ -195,12 +193,9 @@ describe("JantTextPreview", () => {
     await flush(el);
     await flush(el);
 
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toMatch(/\/_\/text\/med_/);
     const body = el.querySelector(".text-preview-body");
-    expect(body).not.toBeNull();
-    // The HTML string is not wrapped in a <pre> or escaped — it renders
-    // as real DOM nodes the reader can see.
     expect(body?.querySelector("h1")?.textContent).toBe("Heading");
     expect(body?.querySelector("p")?.textContent).toBe("Body");
-    expect(body?.querySelector("pre")).toBeNull();
   });
 });

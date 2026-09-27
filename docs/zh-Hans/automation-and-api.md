@@ -49,21 +49,22 @@ Authorization: Bearer jnt_...
 
 ### 常用端点
 
-| 端点                     | 方法                        | 用途                                                                                   |
-| ------------------------ | --------------------------- | -------------------------------------------------------------------------------------- |
-| `/api/posts`             | GET / POST / PUT / DELETE   | 列出、读取、创建、更新、删除帖子                                                       |
-| `/api/threads`           | GET                         | 列出 Thread、读取单个 Thread、分页读取其中的帖子，含草稿和私密 Thread                  |
-| `/api/public/threads`    | GET                         | 公开读取 Thread——默认是首页的列表，支持归档的过滤条件（无需 token）                    |
-| `/api/public/posts`      | GET                         | 按 slug 公开读取一篇已发布的帖子（无需 token）。列表已废弃，改用 `/api/public/threads` |
-| `/api/public/archive`    | GET                         | 已废弃，改用 `/api/public/threads?visibility=any&sort=published`，1.0.1 删除           |
-| `/api/upload`            | POST / GET / PATCH / DELETE | 一次性 multipart 上传，单次一文件，脚本首选                                            |
-| `/api/uploads`           | POST → PUT → POST           | 分片上传会话，大文件或不稳定网络用                                                     |
-| `/api/attachments`       | GET                         | 按 id 读取附件原始内容                                                                 |
-| `/api/collections`       | GET / POST / PUT / DELETE   | 合集（GET 不需要 token）                                                               |
-| `/api/smart-collections` | GET / POST / PUT / DELETE   | 智能合集——成员由条件决定的合集（读写都需要 token）                                     |
-| `/api/settings`          | GET / PUT                   | 站点设置                                                                               |
-| `/api/search`            | GET                         | 全文搜索已发布的帖子，含私密帖子                                                       |
-| `/api/mcp`               | POST                        | MCP JSON-RPC（`initialize` / `tools/list` 等）                                         |
+| 端点                     | 方法                      | 用途                                                                                   |
+| ------------------------ | ------------------------- | -------------------------------------------------------------------------------------- |
+| `/api/posts`             | GET / POST / PUT / DELETE | 列出、读取、创建、更新、删除帖子                                                       |
+| `/api/threads`           | GET                       | 列出 Thread、读取单个 Thread、分页读取其中的帖子，含草稿和私密 Thread                  |
+| `/api/public/threads`    | GET                       | 公开读取 Thread——默认是首页的列表，支持归档的过滤条件（无需 token）                    |
+| `/api/public/posts`      | GET                       | 按 slug 公开读取一篇已发布的帖子（无需 token）。列表已废弃，改用 `/api/public/threads` |
+| `/api/public/archive`    | GET                       | 已废弃，改用 `/api/public/threads?visibility=any&sort=published`，1.0.1 删除           |
+| `/api/upload`            | POST                      | 一次性 multipart 上传，单次一文件，脚本首选                                            |
+| `/api/media`             | GET / PATCH / DELETE      | 列出、读取、改 alt 文本、删除已上传的文件                                              |
+| `/api/uploads`           | POST → PUT → POST         | 分片上传会话，大文件或不稳定网络用                                                     |
+| `/api/attachments`       | GET                       | 按 id 读取附件原始内容                                                                 |
+| `/api/collections`       | GET / POST / PUT / DELETE | 合集（GET 不需要 token）                                                               |
+| `/api/smart-collections` | GET / POST / PUT / DELETE | 智能合集——成员由条件决定的合集（读写都需要 token）                                     |
+| `/api/settings`          | GET / PUT                 | 站点设置                                                                               |
+| `/api/search`            | GET                       | 全文搜索已发布的帖子，含私密帖子                                                       |
+| `/api/mcp`               | POST                      | MCP JSON-RPC（`initialize` / `tools/list` 等）                                         |
 
 `/api/upload` 与 `/api/uploads` 只差一个 s，但语义完全不同——前者是单文件 multipart 一次完成，后者是 init/part/complete 三步分片会话。脚本首选 `/api/upload`，遇到大文件或不稳定连接再换 `/api/uploads`。
 

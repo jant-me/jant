@@ -16,6 +16,10 @@ import { createPostService, type PostService } from "./post.js";
 import { createCustomUrlService, type CustomUrlService } from "./custom-url.js";
 import { createPathService, type PathService } from "./path.js";
 import { createMediaService, type MediaService } from "./media.js";
+import {
+  createTextAttachmentService,
+  type TextAttachmentService,
+} from "./text-attachment.js";
 import { createSiteService, type SiteService } from "./site.js";
 import {
   createCollectionService,
@@ -77,6 +81,7 @@ export interface Services {
   language: LanguageService;
   githubAppInstallations: GitHubAppInstallationsService;
   telegram: TelegramService;
+  textAttachments: TextAttachmentService;
 }
 
 export function createServices(
@@ -140,6 +145,7 @@ export function createServices(
     threads: createThreadService({ posts, collections }),
     customUrls: createCustomUrlService(db, siteId, paths, databaseSchema),
     media,
+    textAttachments: createTextAttachmentService({ posts, media }),
     uploads: createUploadSessionService(db, siteId, media, databaseSchema),
     collections,
     smartCollections,

@@ -12,6 +12,19 @@
 import { LitElement, html, nothing } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { showToast } from "../toast.js";
+import { publicPath } from "../runtime-paths.js";
+
+/**
+ * A text file's preview content from `/_/text/{id}`, or null when the site
+ * doesn't answer with it.
+ */
+async function fetchTextAttachment(
+  mediaId: string,
+): Promise<{ html: string; source: string } | null> {
+  const res = await fetch(publicPath(`/_/text/${encodeURIComponent(mediaId)}`));
+  if (!res.ok) return null;
+  return (await res.json()) as { html: string; source: string };
+}
 
 export class JantTextPreview extends LitElement {
   static properties = {
@@ -132,13 +145,9 @@ export class JantTextPreview extends LitElement {
 
   async #loadMarkdownSource(mediaId: string): Promise<void> {
     try {
-      const res = await fetch(`/api/media/${mediaId}/content`);
-      if (!res.ok) return;
-      const contentType = res.headers.get("Content-Type") || "";
-      if (!contentType.includes("application/json")) return;
-      const payload = (await res.json()) as { markdown?: string };
-      if (payload.markdown) {
-        this.#rawText = payload.markdown;
+      const payload = await fetchTextAttachment(mediaId);
+      if (payload?.source) {
+        this.#rawText = payload.source;
         this.requestUpdate();
       }
     } catch {
@@ -172,28 +181,13 @@ export class JantTextPreview extends LitElement {
     this.querySelector<HTMLElement>(".text-preview-content")?.focus();
 
     try {
-      const res = await fetch(`/api/media/${mediaId}/content`);
-      if (!res.ok) throw new Error("Fetch failed");
-
-      // For text attachments the endpoint returns a JSON envelope with
-      // both the rendered HTML (for display) and the markdown source
-      // (for the Copy button). Other media fall back to a bytes proxy
-      // and end up in the `text/*` branch below.
-      const contentType = res.headers.get("Content-Type") || "";
-      if (contentType.includes("application/json")) {
-        const payload = (await res.json()) as {
-          html?: string;
-          markdown?: string;
-        };
-        this._html = payload.html ?? "";
-        this.#rawText = payload.markdown ?? "";
-      } else {
-        const raw = await res.text();
-        this._html = raw;
-        const scratch = document.createElement("div");
-        scratch.innerHTML = raw;
-        this.#rawText = scratch.innerText.trim();
-      }
+      // The server renders a Markdown attachment and escapes a plain-text
+      // file, so `html` is safe to insert either way; `source` is what Copy
+      // puts on the clipboard.
+      const payload = await fetchTextAttachment(mediaId);
+      if (!payload) throw new Error("Fetch failed");
+      this._html = payload.html;
+      this.#rawText = payload.source;
     } catch {
       this._html = "<p>Failed to load content.</p>";
       this.#rawText = "";

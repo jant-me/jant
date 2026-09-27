@@ -49,21 +49,22 @@ A few public read endpoints don't need a token by default: `GET /api/collections
 
 ### Common endpoints
 
-| Endpoint                 | Methods                     | Purpose                                                                                                |
-| ------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `/api/posts`             | GET / POST / PUT / DELETE   | List, read, create, update, delete posts                                                               |
-| `/api/threads`           | GET                         | List Threads, read one, and page through its posts, drafts and private Threads included                |
-| `/api/public/threads`    | GET                         | Public read of Threads — the homepage's list by default, with the archive's filters (no token)         |
-| `/api/public/posts`      | GET                         | Public read of one published post by slug (no token). The list is deprecated for `/api/public/threads` |
-| `/api/public/archive`    | GET                         | Deprecated for `/api/public/threads?visibility=any&sort=published`, removed in 1.0.1                   |
-| `/api/upload`            | POST / GET / PATCH / DELETE | One-shot multipart upload, single file per call — preferred for scripts                                |
-| `/api/uploads`           | POST → PUT → POST           | Multipart upload session — for large files or unstable networks                                        |
-| `/api/attachments`       | GET                         | Fetch raw attachment content by id                                                                     |
-| `/api/collections`       | GET / POST / PUT / DELETE   | Collections (GET needs no token)                                                                       |
-| `/api/smart-collections` | GET / POST / PUT / DELETE   | Smart collections — collections whose members come from conditions (token required, including reads)   |
-| `/api/settings`          | GET / PUT                   | Site settings                                                                                          |
-| `/api/search`            | GET                         | Full-text search of published posts, private ones included                                             |
-| `/api/mcp`               | POST                        | MCP JSON-RPC (`initialize` / `tools/list`, etc.)                                                       |
+| Endpoint                 | Methods                   | Purpose                                                                                                |
+| ------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `/api/posts`             | GET / POST / PUT / DELETE | List, read, create, update, delete posts                                                               |
+| `/api/threads`           | GET                       | List Threads, read one, and page through its posts, drafts and private Threads included                |
+| `/api/public/threads`    | GET                       | Public read of Threads — the homepage's list by default, with the archive's filters (no token)         |
+| `/api/public/posts`      | GET                       | Public read of one published post by slug (no token). The list is deprecated for `/api/public/threads` |
+| `/api/public/archive`    | GET                       | Deprecated for `/api/public/threads?visibility=any&sort=published`, removed in 1.0.1                   |
+| `/api/upload`            | POST                      | One-shot multipart upload, single file per call — preferred for scripts                                |
+| `/api/media`             | GET / PATCH / DELETE      | List, read, update the alt text of, and delete uploaded files                                          |
+| `/api/uploads`           | POST → PUT → POST         | Multipart upload session — for large files or unstable networks                                        |
+| `/api/attachments`       | GET                       | Fetch raw attachment content by id                                                                     |
+| `/api/collections`       | GET / POST / PUT / DELETE | Collections (GET needs no token)                                                                       |
+| `/api/smart-collections` | GET / POST / PUT / DELETE | Smart collections — collections whose members come from conditions (token required, including reads)   |
+| `/api/settings`          | GET / PUT                 | Site settings                                                                                          |
+| `/api/search`            | GET                       | Full-text search of published posts, private ones included                                             |
+| `/api/mcp`               | POST                      | MCP JSON-RPC (`initialize` / `tools/list`, etc.)                                                       |
 
 `/api/upload` and `/api/uploads` differ by a single `s` but mean different things — the first is a one-shot single-file multipart upload, the second is a three-step init/part/complete session. Default to `/api/upload`; reach for `/api/uploads` only when files are large or the connection is unreliable.
 
