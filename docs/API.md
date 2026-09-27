@@ -120,17 +120,16 @@ Current transport behavior:
 
 Current tool groups:
 
-- posts: `jant_posts_list`, `jant_posts_get`, `jant_posts_get_content`, `jant_posts_create`, `jant_posts_update`, `jant_posts_delete`
+- posts: `jant_posts_list`, `jant_posts_get`, `jant_posts_get_content`, `jant_posts_search`, `jant_posts_create`, `jant_posts_update`, `jant_posts_delete`
 - threads: `jant_threads_list`, `jant_threads_get`, `jant_threads_list_posts`
-- media: `jant_media_list`, `jant_media_get`, `jant_media_upload`, `jant_media_update_alt`, `jant_media_delete`
+- media: `jant_media_list`, `jant_media_get`, `jant_media_upload`, `jant_media_update`, `jant_media_delete`
 - attachments: `jant_attachments_get_content`
 - collections: `jant_collections_list`, `jant_collections_get`, `jant_collections_create`, `jant_collections_update`, `jant_collections_delete`, `jant_collections_add_thread`, `jant_collections_remove_thread`
 - settings: `jant_settings_get`, `jant_settings_update`
-- search: `jant_search_posts`
 
-Tool calls return normal MCP `result` envelopes. Successful tool calls include both `structuredContent` and a JSON string copy in `content[0].text`. Tool-level validation and domain failures return `200 OK` with `isError: true`.
+Tool calls return normal MCP `result` envelopes. Successful tool calls include both `structuredContent` and a JSON string copy in `content[0].text`, and a tool returns the objects its HTTP endpoint does. A failed call returns `200 OK` with `isError: true`; its `structuredContent` has the [HTTP error shape](#error-format), `{ error, code }` with `details` for a validation error, and `content[0].text` repeats the message.
 
-`jant_search_posts` searches as `GET /api/search` does and returns the same result objects.
+`jant_posts_search` takes `q` and `limit`, searches as `GET /api/search` does, and returns the same result objects.
 
 `jant_posts_list`, `jant_threads_list`, and `jant_threads_list_posts` take `cursor` and return `nextCursor` as `GET /api/posts`, `GET /api/threads`, and `GET /api/threads/:id/posts` do; see [Pagination](#pagination). `jant_threads_list` takes the same filters as `GET /api/threads`, and `fold: true` in place of `include=fold`.
 

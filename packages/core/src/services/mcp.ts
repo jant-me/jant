@@ -119,7 +119,8 @@ const UpdateSettingsToolSchema = z.record(z.string(), z.string());
 
 const SearchPostsToolSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional().default(20),
-  query: z.string().trim().min(1).max(200),
+  // `q`, as `GET /api/search` names it.
+  q: z.string().trim().min(1).max(200),
 });
 
 const ListMediaToolSchema = z.object({
@@ -790,8 +791,8 @@ const mcpTools: McpToolDefinition[] = [
     },
   },
   {
-    name: "jant_media_update_alt",
-    description: "Update a media item's alt text.",
+    name: "jant_media_update",
+    description: "Update a media item: its alt text.",
     inputSchema: {
       type: "object",
       properties: {
@@ -989,16 +990,16 @@ const mcpTools: McpToolDefinition[] = [
     },
   },
   {
-    name: "jant_search_posts",
+    name: "jant_posts_search",
     description:
       "Search published posts, including private ones. Each result carries its visibility.",
     inputSchema: {
       type: "object",
       properties: {
-        query: { type: "string", minLength: 1, maxLength: 200 },
+        q: { type: "string", minLength: 1, maxLength: 200 },
         limit: { type: "integer", minimum: 1, maximum: 50, default: 20 },
       },
-      required: ["query"],
+      required: ["q"],
       additionalProperties: false,
     },
     async execute(args, context) {
@@ -1006,7 +1007,7 @@ const mcpTools: McpToolDefinition[] = [
       // The author's search, the same as `GET /api/search`: private posts
       // match, and each result says which visibility it has, so an agent can
       // tell before linking one.
-      const results = await context.services.search.search(input.query, {
+      const results = await context.services.search.search(input.q, {
         limit: input.limit,
         status: ["published"],
         includePrivate: true,
@@ -1014,7 +1015,7 @@ const mcpTools: McpToolDefinition[] = [
 
       return {
         count: results.length,
-        query: input.query,
+        query: input.q,
         results: results.map((result) =>
           toSearchApiResult(
             result.post,
@@ -1131,18 +1132,13 @@ async function handleToolCall(
     (candidate) => candidate.name === parsedParams.data.name,
   );
   if (!tool) {
-    return jsonRpcSuccessResponse(id, {
-      content: [
-        {
-          type: "text",
-          text: `Unknown tool: ${parsedParams.data.name}`,
-        },
-      ],
-      structuredContent: {
-        error: `Unknown tool: ${parsedParams.data.name}`,
-      },
-      isError: true,
-    });
+    return jsonRpcSuccessResponse(
+      id,
+      toolErrorResult({
+        error: `Unknown tool: ${parsedParams.data.name}. List the tools with tools/list.`,
+        code: "NOT_FOUND",
+      }),
+    );
   }
 
   try {
@@ -1225,83 +1221,48 @@ function jsonRpcErrorResponse(
   };
 }
 
+/**
+ * A failed tool call, in the shape an HTTP error has: `{ error, code }`, plus
+ * `details` for a validation error. The text content repeats the message.
+ */
+function toolErrorResult(body: {
+  error: string;
+  code: string;
+  details?: unknown;
+}): Record<string, unknown> {
+  return {
+    content: [{ type: "text", text: body.error }],
+    structuredContent: body,
+    isError: true,
+  };
+}
+
 function toToolErrorResult(error: unknown): Record<string, unknown> {
   if (error instanceof z.ZodError) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: "Invalid tool arguments.",
-        },
-      ],
-      structuredContent: {
-        error: "Invalid tool arguments.",
-        issues: error.issues,
-      },
-      isError: true,
-    };
-  }
-
-  if (error instanceof ValidationError) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: error.message,
-        },
-      ],
-      structuredContent: {
-        error: error.message,
-        details: error.details,
-      },
-      isError: true,
-    };
-  }
-
-  if (error instanceof NotFoundError) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: error.message,
-        },
-      ],
-      structuredContent: {
-        error: error.message,
-      },
-      isError: true,
-    };
+    return toolErrorResult({
+      error: error.issues[0]?.message ?? "Invalid tool arguments.",
+      code: "VALIDATION_ERROR",
+      details: error.flatten(),
+    });
   }
 
   if (isDomainError(error)) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: error.message,
-        },
-      ],
-      structuredContent: {
-        code: error.code,
-        error: error.message,
-        statusCode: error.statusCode,
-      },
-      isError: true,
-    };
+    return toolErrorResult({
+      error: error.message,
+      code: error.code,
+      ...(error instanceof ValidationError && error.details
+        ? { details: error.details }
+        : {}),
+    });
   }
 
-  return {
-    content: [
-      {
-        type: "text",
-        text: "Tool execution failed.",
-      },
-    ],
-    structuredContent: {
-      error: "Tool execution failed.",
-    },
-    isError: true,
-  };
+  // eslint-disable-next-line no-console -- Server error logging is intentional
+  console.error("[Jant] MCP tool failed:", error);
+  return toolErrorResult({
+    error:
+      "The server hit an error it didn't expect. Try again; the server log has the details.",
+    code: "INTERNAL_ERROR",
+  });
 }
 
 function isDomainError(error: unknown): error is DomainError {

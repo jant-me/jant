@@ -151,7 +151,7 @@ describe("MCP API Routes", () => {
     expect(toolNames).toContain("jant_collections_add_thread");
     expect(toolNames).toContain("jant_collections_remove_thread");
     expect(toolNames).toContain("jant_settings_update");
-    expect(toolNames).toContain("jant_search_posts");
+    expect(toolNames).toContain("jant_posts_search");
   });
 
   it("manages collection membership at the thread root", async () => {
@@ -411,9 +411,9 @@ describe("MCP API Routes", () => {
         id: 4,
         method: "tools/call",
         params: {
-          name: "jant_search_posts",
+          name: "jant_posts_search",
           arguments: {
-            query: "quiet",
+            q: "quiet",
           },
         },
       },
@@ -457,8 +457,8 @@ describe("MCP API Routes", () => {
         id: 4,
         method: "tools/call",
         params: {
-          name: "jant_search_posts",
-          arguments: { query: "lanterns" },
+          name: "jant_posts_search",
+          arguments: { q: "lanterns" },
         },
       },
       { "MCP-Protocol-Version": "2025-06-18" },
@@ -762,5 +762,48 @@ describe("MCP post writes", () => {
     });
     await callTool(app, "/mcp-with-hook", "jant_posts_delete", { id });
     expect(afterPostWrite).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("MCP tool errors", () => {
+  it("answer in the HTTP error shape: { error, code }, with details for validation", async () => {
+    // Tool errors came back in four shapes — `issues`, `details`, a bare
+    // `error`, or `code` with `statusCode` — so a client couldn't branch on
+    // one field.
+    const { app } = createTestApp({ authenticated: true });
+    app.route("/api/mcp", mcpApiRoutes);
+    const call = async (name: string, args: Record<string, unknown>) => {
+      const res = await postMcp(
+        app,
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name, arguments: args },
+        },
+        { "MCP-Protocol-Version": "2025-06-18" },
+      );
+      const body = (await res.json()) as {
+        result: {
+          isError: boolean;
+          structuredContent: Record<string, unknown>;
+        };
+      };
+      expect(body.result.isError).toBe(true);
+      return body.result.structuredContent;
+    };
+
+    expect(await call("jant_no_such_tool", {})).toMatchObject({
+      code: "NOT_FOUND",
+    });
+    const invalid = await call("jant_posts_get", {});
+    expect(invalid).toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(invalid).toHaveProperty("details");
+    expect(
+      await call("jant_posts_get", { id: "pst_01jpyx3m7gw4w3h7m4bknq0v1d" }),
+    ).toEqual({ error: "Post not found", code: "NOT_FOUND" });
+    expect(await call("jant_posts_list", { cursor: "nope" })).toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
   });
 });

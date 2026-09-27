@@ -7,7 +7,7 @@
 | 范围       | 覆盖的内容                                                                                              | 参考                                                           |
 | ---------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | HTTP API   | 接口、请求与响应字段及其行为，`/api/internal/*` 除外                                                    | [API 参考（英文）](../API.md)                                  |
-| MCP        | `/api/mcp` 的工具名和参数                                                                               | [自动化与 API](automation-and-api.md)                          |
+| MCP        | `/api/mcp` 的工具名、参数和返回结果                                                                     | [自动化与 API](automation-and-api.md)                          |
 | Feed       | Feed 地址、Atom 输出，以及 `https://jant.me/ns` 命名空间里的每个名字                                    | [Feed](feeds.md)、[读取 Jant feed（英文）](../feed-reading.md) |
 | 地址       | 帖子和合集的 URL、自定义 URL 与重定向、归档页的查询参数                                                 | [写作与内容组织](writing-and-organizing.md)                    |
 | 命令行     | `jant --help` 列出的命令及其选项                                                                        | [命令行](cli.md)                                               |
