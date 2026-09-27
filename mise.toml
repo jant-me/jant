@@ -735,7 +735,7 @@ arg "<summary>"
 run = 'node scripts/release/changeset-add.mjs "$usage_bump" "$usage_summary"'
 
 [tasks.release-freeze-fixtures]
-description = "Freeze a tagged release's canonical snapshot and site export as test fixtures"
+description = "Freeze the snapshot and site export a published release writes as test fixtures"
 usage = """
 arg "<version>"
 """

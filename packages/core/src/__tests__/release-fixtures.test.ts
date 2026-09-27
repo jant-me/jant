@@ -4,8 +4,12 @@
  * `fixtures/releases/<version>/` freezes what that release wrote: a site
  * snapshot (`snapshot/meta.json` and `snapshot/db.sql`, no objects) and a
  * site export (`site-export/`, without the bundled theme's templates and
- * styles, which import doesn't read). Both come from the canonical demo
- * content at that release's tag and are never edited afterwards.
+ * styles, which import doesn't read). From 0.8.0 on, that release's published
+ * package writes both from the canonical demo content at its tag
+ * (`scripts/release/freeze-fixtures.mjs`). 0.7.0 and 0.7.1 are copies of the
+ * canonical directory at their tags, which earlier versions had written: a
+ * July site export and a snapshot without `jant` or `schema`. Fixtures are
+ * never edited afterwards.
  *
  * The canonical fixtures under `sites/demo-source/canonical/` are
  * re-exported as the demo changes, so they only prove that head reads what
