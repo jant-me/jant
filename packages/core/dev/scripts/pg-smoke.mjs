@@ -369,7 +369,7 @@ async function main() {
     assert.equal(smartResponse.status, 201);
     const smartBody = await smartResponse.json();
     // Round-tripped through the boolean column, not merely echoed back.
-    assert.deepEqual(smartBody.smartCollection.selection, {
+    assert.deepEqual(smartBody.selection, {
       format: "note",
       title: false,
     });
