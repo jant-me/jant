@@ -20,7 +20,7 @@
  */
 
 import { ValidationError } from "./errors.js";
-import { ID_PREFIX, isTypeId } from "./ids.js";
+import { ID_PREFIX, isTypeId, type IdPrefix } from "./ids.js";
 
 /** Bumped when the payload shape changes; older versions are rejected. */
 const POST_LIST_CURSOR_VERSION = 1;
@@ -60,6 +60,11 @@ export interface PostListCursorShape {
   mode: string;
   /** One kind per ORDER BY key, in ORDER BY order. */
   kinds: readonly PostListCursorKeyKind[];
+  /**
+   * The TypeID prefix an `id` key carries. Post lists leave it out; another
+   * list keyed by its own rows' IDs, such as custom URLs, names its prefix.
+   */
+  idPrefix?: IdPrefix;
 }
 
 interface PostListCursorPayload {
@@ -90,10 +95,11 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function matchesKind(
   value: unknown,
   kind: PostListCursorKeyKind,
+  idPrefix: IdPrefix,
 ): value is PostListCursorValue {
   return kind === "number"
     ? Number.isSafeInteger(value)
-    : typeof value === "string" && isTypeId(value, ID_PREFIX.post);
+    : typeof value === "string" && isTypeId(value, idPrefix);
 }
 
 /**
@@ -183,7 +189,7 @@ export function decodePostListCursor(
   const tuple: PostListCursorValue[] = [];
   for (const [index, kind] of shape.kinds.entries()) {
     const value: unknown = values[index];
-    if (!matchesKind(value, kind)) {
+    if (!matchesKind(value, kind, shape.idPrefix ?? ID_PREFIX.post)) {
       throw new ValidationError(UNREADABLE_MESSAGE);
     }
     tuple.push(value);

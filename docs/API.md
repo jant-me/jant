@@ -2256,23 +2256,27 @@ Custom URLs let you attach extra paths to posts or collections, or define intern
 
 Custom URL responses include these fields:
 
-| Field          | Type                                 | Notes                                             |
-| -------------- | ------------------------------------ | ------------------------------------------------- |
-| `id`           | `pth_*` string                       | Custom URL ID                                     |
-| `path`         | string                               | Normalized path without a leading slash           |
-| `targetType`   | `post` \| `collection` \| `redirect` | Target kind                                       |
-| `targetId`     | string \| `null`                     | Resolved post/collection TypeID for alias records |
-| `toPath`       | string \| `null`                     | Redirect destination with a leading slash         |
-| `redirectType` | `301` \| `302` \| `null`             | Redirect status for redirect records              |
-| `createdAt`    | integer                              | Unix seconds                                      |
+| Field          | Type                                              | Notes                                                     |
+| -------------- | ------------------------------------------------- | --------------------------------------------------------- |
+| `id`           | `pth_*` string                                    | Custom URL ID                                             |
+| `path`         | string                                            | The address, with a leading slash                         |
+| `targetType`   | `post` \| `collection` \| `redirect` \| `archive` | Target kind                                               |
+| `targetId`     | string \| `null`                                  | The post's or collection's TypeID; `null` for other kinds |
+| `toPath`       | string \| `null`                                  | `redirect` only: the destination, with a leading slash    |
+| `redirectType` | `301` \| `302` \| `null`                          | `redirect` only: the status it answers with               |
+| `archiveQuery` | string \| `null`                                  | `archive` only: the archive query the address shows       |
+| `createdAt`    | integer                                           | Unix seconds                                              |
 
 Target types:
 
-| Type         | Meaning                             | Key fields               |
-| ------------ | ----------------------------------- | ------------------------ |
-| `post`       | Alias that resolves to a post       | `targetId`               |
-| `collection` | Alias that resolves to a collection | `targetId`               |
-| `redirect`   | Internal redirect to another path   | `toPath`, `redirectType` |
+| Type         | Meaning                                    | Key fields               |
+| ------------ | ------------------------------------------ | ------------------------ |
+| `post`       | Alias that resolves to a post              | `targetId`               |
+| `collection` | Alias that resolves to a collection        | `targetId`               |
+| `redirect`   | Internal redirect to another path          | `toPath`, `redirectType` |
+| `archive`    | A saved archive view; read and delete only | `archiveQuery`           |
+
+`archive` addresses can't be created anymore; a [smart collection](#smart-collections) does the same job. Existing ones keep working, and the list returns them.
 
 ### List custom URLs
 
@@ -2282,9 +2286,10 @@ Auth: `Session or token`
 
 Query parameters:
 
-| Parameter | Type    | Required | Default |
-| --------- | ------- | -------- | ------- |
-| `page`    | integer | no       | `1`     |
+| Parameter | Type    | Required | Default | Notes                                         |
+| --------- | ------- | -------- | ------- | --------------------------------------------- |
+| `limit`   | integer | no       | `100`   | `1` to `100`                                  |
+| `cursor`  | string  | no       | none    | Pass the previous `nextCursor` back unchanged |
 
 Response:
 
@@ -2293,34 +2298,33 @@ Response:
   "customUrls": [
     {
       "id": "pth_01jpyxb27t6m4v9r2k8s5c1qfh",
-      "path": "blog/old-post",
+      "path": "/blog/old-post",
       "targetType": "redirect",
       "targetId": null,
       "toPath": "/my-new-slug",
       "redirectType": 301,
+      "archiveQuery": null,
       "createdAt": 1706000000
     },
     {
       "id": "pth_01jpyxbk8v4m2s7r9c5t1g6qdn",
-      "path": "essays/on-writing",
+      "path": "/essays/on-writing",
       "targetType": "post",
       "targetId": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
       "toPath": null,
       "redirectType": null,
+      "archiveQuery": null,
       "createdAt": 1706000000
     }
   ],
-  "total": 42,
-  "page": 1,
-  "totalPages": 1
+  "nextCursor": null
 }
 ```
 
 Notes:
 
-- List and create responses only cover alias and redirect records. Canonical post and collection slugs are not returned here.
-- Response `path` values are normalized and do not include a leading slash.
-- Alias responses return the resolved post or collection TypeID in `targetId`.
+- Newest first. `nextCursor` is `null` on the last page; see [Pagination](#pagination).
+- The list covers aliases, redirects, and archive addresses. Canonical post and collection slugs are not custom URLs and aren't listed.
 
 ### Create a custom URL
 
@@ -2341,13 +2345,13 @@ Request body:
 
 Fields:
 
-| Field          | Type                                 | Required                            | Default | Notes                                                                         |
-| -------------- | ------------------------------------ | ----------------------------------- | ------- | ----------------------------------------------------------------------------- |
-| `path`         | string                               | yes                                 | —       | Must start with `/`; max `512`; lowercase letters, numbers, `-`, and `/` only |
-| `targetType`   | `post` \| `collection` \| `redirect` | yes                                 | —       | Target kind                                                                   |
-| `targetId`     | string                               | required for `post` or `collection` | —       | Send the canonical slug, not the TypeID                                       |
-| `toPath`       | string                               | required for `redirect`             | —       | Internal destination path such as `/new-path`; normalized before storage      |
-| `redirectType` | `301` \| `302`                       | no                                  | `301`   | Only used for `redirect`. The strings `"301"` and `"302"` are accepted too    |
+| Field          | Type                                 | Required                            | Default | Notes                                                                                     |
+| -------------- | ------------------------------------ | ----------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `path`         | string                               | yes                                 | —       | Max `512`; lowercase letters, numbers, `-`, `.`, and `/`; the leading `/` may be left off |
+| `targetType`   | `post` \| `collection` \| `redirect` | yes                                 | —       | Target kind                                                                               |
+| `targetId`     | string                               | required for `post` or `collection` | —       | The post's or collection's TypeID, or its slug                                            |
+| `toPath`       | string                               | required for `redirect`             | —       | Internal destination path such as `/new-path`; normalized before storage                  |
+| `redirectType` | `301` \| `302`                       | no                                  | `301`   | Only used for `redirect`. The strings `"301"` and `"302"` are accepted too                |
 
 Examples:
 
@@ -2377,8 +2381,8 @@ Important notes:
 - `path` must not collide with an existing slug or custom URL.
 - Reserved paths are rejected.
 - Redirects are for internal paths. External redirect targets are not supported by this API.
-- Post and collection targets must already exist by slug or the API returns `404`.
-- Create responses resolve slug targets to TypeIDs.
+- A post or collection target that doesn't exist answers `404`.
+- The response names the target by TypeID, whichever you sent.
 
 Response: `201 Created` with the new custom URL object.
 

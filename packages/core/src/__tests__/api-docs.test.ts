@@ -18,6 +18,7 @@ import {
   toApiDirectoryItem,
   toApiSmartCollection,
 } from "../lib/api-collections.js";
+import { toApiCustomUrl } from "../lib/api-custom-urls.js";
 import { toApiMedia } from "../lib/api-media.js";
 import { toApiNavItem } from "../lib/api-nav-items.js";
 import { toApiPost } from "../lib/api-posts.js";
@@ -233,6 +234,23 @@ describe("API docs", () => {
         toApiNavItem({ ...base, type: "page", postId: "pst-1" }),
       ),
     ).toEqual(documentedFields("Nav item responses include these fields:"));
+  });
+
+  it("list every field of a custom URL", () => {
+    expect(
+      keysOf(
+        toApiCustomUrl({
+          id: "pth-1",
+          path: "old-post",
+          targetType: "redirect",
+          targetId: null,
+          toPath: "/new-post",
+          redirectType: 301,
+          archiveQuery: null,
+          createdAt: 1773014400,
+        }),
+      ),
+    ).toEqual(documentedFields("Custom URL responses include these fields:"));
   });
 
   it("list every field of a search result", () => {
