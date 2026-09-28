@@ -232,7 +232,7 @@ PORT=8787 npm run dev
 
 ### 通过 GitHub Actions 自动部署
 
-`create-jant` 创建的项目里已内置 `.github/workflows/deploy.yml`。在 GitHub 仓库加两个 Secret，之后每次推送 `main` 都会自动部署：
+`create-jant` 创建的项目里已内置 `.github/workflows/deploy.yml`，它和 `npm run deploy` 一样运行 `jant deploy`。在 GitHub 仓库加两个 Secret，之后每次推送 `main` 都会自动部署：
 
 - `CF_API_TOKEN`
 - `CF_ACCOUNT_ID`

@@ -82,8 +82,7 @@ interface DeployWorkflowInstall {
  * Corepack is installed from npm because Node 25 and later no longer include
  * it; its package links the `yarn` and `pnpm` binaries itself, so the global
  * ones have to go first, as Corepack's README says. The exec prefixes are the
- * ones cloudflare/wrangler-action runs wrangler with once it finds the
- * manager's lock file.
+ * ones the workflow runs `jant` and `wrangler` with.
  */
 const DEPLOY_WORKFLOW_INSTALL: Record<
   DeployWorkflowTarget,
@@ -385,7 +384,7 @@ function adaptDeployWorkflow(
   );
   return replaceRequired(
     result,
-    /\bnpx (wrangler)\b/g,
+    /\bnpx (jant|wrangler)\b/g,
     (bin) => `${exec} ${bin}`,
   );
 }

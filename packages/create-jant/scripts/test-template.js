@@ -74,17 +74,17 @@ const EXPECTED_WORKFLOW = {
   pnpm: {
     cache: "pnpm",
     install: "pnpm install --frozen-lockfile",
-    wrangler: "pnpm exec wrangler",
+    exec: "pnpm exec",
   },
   "yarn-classic": {
     cache: "yarn",
     install: "yarn install --frozen-lockfile",
-    wrangler: "yarn wrangler",
+    exec: "yarn",
   },
   "yarn-berry": {
     cache: "yarn",
     install: "yarn install --immutable",
-    wrangler: "yarn wrangler",
+    exec: "yarn",
   },
 };
 
@@ -150,10 +150,10 @@ async function checkBetterSqlite(projectDir) {
 
 /**
  * Check that a scaffold's deploy workflow sets up, caches, installs, and runs
- * wrangler with the package manager of `target`, and nowhere with npm.
+ * `jant deploy` with the package manager of `target`, and nowhere with npm.
  *
  * @param target - "pnpm", "yarn-classic" (Yarn 1), or "yarn-berry" (Yarn 2+)
- * @returns the workflow's install command and its wrangler command prefix
+ * @returns the workflow's install command and the command it runs jant with
  */
 async function checkDeployWorkflow(projectDir, target) {
   const expected = EXPECTED_WORKFLOW[target];
@@ -217,12 +217,14 @@ async function checkDeployWorkflow(projectDir, target) {
     fail(`${target} workflow installs with "${install}"`);
   }
 
-  const migrate = steps[stepIndex("Run migrations")].run;
-  if (!migrate.startsWith(`${expected.wrangler} d1 migrations apply `)) {
-    fail(`${target} workflow migrates with "${migrate}"`);
+  // `jant deploy`, not wrangler directly: it runs the data backfills with
+  // the migrations and prepares assets for a site under a path prefix.
+  const deploy = steps[stepIndex("Deploy")].run;
+  if (deploy !== `${expected.exec} jant deploy`) {
+    fail(`${target} workflow deploys with "${deploy}"`);
   }
 
-  return { install, wrangler: expected.wrangler };
+  return { install, jant: `${expected.exec} jant` };
 }
 
 async function main() {
@@ -379,14 +381,14 @@ async function main() {
 
   // 11. The deploy workflow installs with pnpm, and its commands work on the
   // project: the install passes on the lock file the scaffold produced, and
-  // the migration step's prefix finds wrangler.
+  // the deploy step's prefix finds jant.
   console.log("Step 11: Verifying the pnpm deploy workflow...");
   const pnpmWorkflow = await checkDeployWorkflow(projectDir, "pnpm");
   run(pnpmWorkflow.install, {
     cwd: projectDir,
     env: { ...process.env, CI: "true" },
   });
-  run(`${pnpmWorkflow.wrangler} --version`, { cwd: projectDir });
+  run(`${pnpmWorkflow.jant} --version`, { cwd: projectDir });
   console.log("  deploy.yml sets up, caches, and installs with pnpm\n");
 
   // 12. npm and Yarn 1 scaffolds. npm's workflow is the demo's byte for byte,
@@ -511,7 +513,7 @@ async function main() {
     cwd: berryDir,
     env: { ...shellEnv, CI: "true" },
   });
-  run(`${corepack} ${berryWorkflow.wrangler} --version`, {
+  run(`${corepack} ${berryWorkflow.jant} --version`, {
     cwd: berryDir,
     env: shellEnv,
   });

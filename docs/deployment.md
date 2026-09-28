@@ -232,7 +232,7 @@ In order:
 
 ### Automatic deploys via GitHub Actions
 
-Projects created by `create-jant` already include `.github/workflows/deploy.yml`. Add two repository secrets in GitHub and every push to `main` will deploy automatically:
+Projects created by `create-jant` already include `.github/workflows/deploy.yml`, which runs `jant deploy` as `npm run deploy` does. Add two repository secrets in GitHub and every push to `main` will deploy automatically:
 
 - `CF_API_TOKEN`
 - `CF_ACCOUNT_ID`
