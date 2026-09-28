@@ -100,7 +100,10 @@ import { withWorkerResponseCache } from "./lib/worker-response-cache.js";
 import { createRequestRuntime } from "./runtime/index.js";
 import { getInstanceReadiness } from "./runtime/readiness.js";
 import { type AppVariables, type App } from "./types/app-context.js";
-import { isPublicStorageKeyAllowed } from "./lib/public-storage.js";
+import {
+  getStoredFileContentSecurityPolicy,
+  isPublicStorageKeyAllowed,
+} from "./lib/public-storage.js";
 
 export type { AppVariables, App };
 
@@ -139,6 +142,39 @@ function prepareRequestForRouting(
   return rewrittenRequest;
 }
 
+/**
+ * Headers every stored file is served with, whole or in part.
+ *
+ * A stored file answers on the site's own origin, so one that a browser would
+ * run as a page, an HTML or SVG file, must not get the site's session or
+ * scripts. The sandbox policy gives it a unique origin and no scripts, and
+ * `nosniff` stops the browser guessing a more dangerous type than the one
+ * stored. Both leave `<img>`, `<video>`, and `<audio>` on a post untouched:
+ * they apply only when the file itself is opened.
+ */
+function storedFileHeaders(object: {
+  contentType?: string;
+  cacheControl?: string;
+  contentDisposition?: string;
+}): Headers {
+  const contentType = object.contentType || "application/octet-stream";
+  const headers = new Headers();
+  headers.set("Content-Type", contentType);
+  headers.set(
+    "Cache-Control",
+    object.cacheControl || "public, max-age=31536000, immutable",
+  );
+  if (object.contentDisposition) {
+    headers.set("Content-Disposition", object.contentDisposition);
+  }
+  headers.set("X-Content-Type-Options", "nosniff");
+  const policy = getStoredFileContentSecurityPolicy(contentType);
+  if (policy) {
+    headers.set("Content-Security-Policy", policy);
+  }
+  return headers;
+}
+
 async function servePublicStorage(
   c: Context<{ Bindings: Bindings; Variables: AppVariables }>,
 ): Promise<Response> {
@@ -162,22 +198,7 @@ async function servePublicStorage(
     if (!totalSize) {
       const full = await storage.get(storageKey);
       if (!full) return c.notFound();
-      const headers = new Headers();
-      headers.set(
-        "Content-Type",
-        full.contentType || "application/octet-stream",
-      );
-      headers.set(
-        "Cache-Control",
-        full.cacheControl || "public, max-age=31536000, immutable",
-      );
-      if (full.contentDisposition) {
-        headers.set("Content-Disposition", full.contentDisposition);
-      }
-      if (full.contentDisposition === "attachment") {
-        headers.set("X-Content-Type-Options", "nosniff");
-      }
-      return new Response(full.body, { headers });
+      return new Response(full.body, { headers: storedFileHeaders(full) });
     }
 
     const match = /^bytes=(\d+)-(\d*)$/.exec(rangeHeader);
@@ -205,21 +226,7 @@ async function servePublicStorage(
     });
     if (!rangeObj) return c.notFound();
 
-    const headers = new Headers();
-    headers.set(
-      "Content-Type",
-      rangeObj.contentType || "application/octet-stream",
-    );
-    headers.set(
-      "Cache-Control",
-      rangeObj.cacheControl || "public, max-age=31536000, immutable",
-    );
-    if (rangeObj.contentDisposition) {
-      headers.set("Content-Disposition", rangeObj.contentDisposition);
-    }
-    if (rangeObj.contentDisposition === "attachment") {
-      headers.set("X-Content-Type-Options", "nosniff");
-    }
+    const headers = storedFileHeaders(rangeObj);
     headers.set("Accept-Ranges", "bytes");
     headers.set("Content-Range", `bytes ${start}-${end}/${totalSize}`);
     headers.set("Content-Length", String(end - start + 1));
@@ -232,18 +239,7 @@ async function servePublicStorage(
     return c.notFound();
   }
 
-  const headers = new Headers();
-  headers.set("Content-Type", object.contentType || "application/octet-stream");
-  headers.set(
-    "Cache-Control",
-    object.cacheControl || "public, max-age=31536000, immutable",
-  );
-  if (object.contentDisposition) {
-    headers.set("Content-Disposition", object.contentDisposition);
-  }
-  if (object.contentDisposition === "attachment") {
-    headers.set("X-Content-Type-Options", "nosniff");
-  }
+  const headers = storedFileHeaders(object);
   headers.set("Accept-Ranges", "bytes");
   if (object.size) {
     headers.set("Content-Length", String(object.size));

@@ -35,7 +35,12 @@ import {
   setMyCommands,
   setWebhook,
 } from "../lib/telegram.js";
-import { generateStorageKey, getPosterStorageKey } from "../lib/upload.js";
+import {
+  generateStorageKey,
+  getPosterStorageKey,
+  getStoredUploadPolicy,
+  validateStoredUploadSignature,
+} from "../lib/upload.js";
 import type { StorageDriver } from "../lib/storage.js";
 import type { Media, MediaKind } from "../types.js";
 import { ValidationError } from "../lib/errors.js";
@@ -535,13 +540,25 @@ export function createTelegramService(
         input.originalName,
       );
 
-      // Telegram's CDN serves trusted bytes already validated on their side,
-      // so we skip the signature peek that browser uploads need and just
-      // pass the bytes straight through to storage.
+      // The MIME type is whatever the sender's client claimed, so a file that
+      // arrives through Telegram follows the browser upload rules: a format
+      // Jant shows inline must really be that format, and anything else is
+      // stored as a download. Posts still play and show it; only opening the
+      // file directly is affected.
+      const policy = getStoredUploadPolicy(input.mimeType);
+      if (policy?.requiresSignatureCheck) {
+        const signatureError = validateStoredUploadSignature(
+          input.mimeType,
+          bytes,
+        );
+        if (signatureError) {
+          throw new ValidationError(signatureError);
+        }
+      }
+
       await deps.storage.put(storageKey, bytes, {
         contentType: input.mimeType,
-        contentDisposition:
-          input.mediaKind === "document" ? "attachment" : "inline",
+        contentDisposition: policy?.contentDisposition ?? "attachment",
         cacheControl: "public, max-age=31536000, immutable",
       });
 

@@ -15,6 +15,7 @@ import type { Bindings } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
 import { getConfiguredStorageDriver, getEnvString } from "../lib/env.js";
 import { IS_VITE_DEV } from "../lib/build-env.js";
+import { isPublicStoragePath } from "../lib/public-storage.js";
 import {
   buildCspDirectives,
   type ContentSecurityPolicyDirectives,
@@ -57,7 +58,7 @@ function couldRenderCodeInjection(path: string): boolean {
   if (shouldBlockFraming(path)) return false;
   if (path === "/favicon.ico" || path === "/apple-touch-icon.png") return false;
   if (path === "/healthz" || path === "/readyz") return false;
-  if (path.startsWith("/media/") || path.startsWith("/sites/")) return false;
+  if (isPublicStoragePath(path)) return false;
   return true;
 }
 
@@ -135,7 +136,12 @@ function buildSecureHeadersOptions(
   });
 
   return {
-    contentSecurityPolicy: toHonoCspOptions(directives),
+    // A stored file carries its own, stricter policy (see storedFileHeaders
+    // in app.tsx); the page policy would let an uploaded HTML file run
+    // scripts from any https origin.
+    contentSecurityPolicy: isPublicStoragePath(path)
+      ? undefined
+      : toHonoCspOptions(directives),
     crossOriginResourcePolicy: false,
     crossOriginOpenerPolicy: false,
     originAgentCluster: false,
