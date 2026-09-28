@@ -8,7 +8,7 @@ import {
   getHostedControlPlaneSsoSecret,
 } from "../../lib/env.js";
 import { DomainError, NotFoundError } from "../../lib/errors.js";
-import { toPublicPath } from "../../lib/url.js";
+import { isSafeInternalRedirect, toPublicPath } from "../../lib/url.js";
 import { renderHostedSsoExpiredPage } from "./hosted-sso-expired-page.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -17,11 +17,7 @@ const DEFAULT_REDIRECT_PATH = "/settings";
 const EXPIRED_SIGNIN_LINK_MESSAGE = "This sign-in link has expired.";
 
 function normalizeRedirectPath(path?: string): string {
-  if (!path || !path.startsWith("/") || path.startsWith("//")) {
-    return DEFAULT_REDIRECT_PATH;
-  }
-
-  return path;
+  return isSafeInternalRedirect(path) ? path : DEFAULT_REDIRECT_PATH;
 }
 
 function getHostedControlPlaneReturnTarget(env: object | undefined | null): {

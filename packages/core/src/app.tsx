@@ -94,7 +94,12 @@ import {
 } from "./lib/jant-branding.js";
 import { isAssetPath } from "./lib/asset-path.js";
 import { getHostedCanonicalRedirect } from "./lib/hosted-domain.js";
-import { normalizePath, stripSitePathPrefix, toPublicHref } from "./lib/url.js";
+import {
+  isSafeInternalRedirect,
+  normalizePath,
+  stripSitePathPrefix,
+  toPublicHref,
+} from "./lib/url.js";
 import { withConditionalResponse } from "./lib/http-cache.js";
 import { withWorkerResponseCache } from "./lib/worker-response-cache.js";
 import { createRequestRuntime } from "./runtime/index.js";
@@ -469,12 +474,17 @@ export function createApp(): App {
   // Onboarding gate — redirect to /setup if not yet initialized
   app.use("*", requireOnboarding());
 
-  // Trailing slash redirect (redirect /foo/ to /foo)
+  // Trailing slash redirect (redirect /foo/ to /foo). Leading slashes and
+  // backslashes collapse too: `//evil.com/` must become `/evil.com`, never
+  // the protocol-relative `//evil.com` a browser would follow off-site.
   app.use("*", async (c, next) => {
-    const publicUrl = new URL(c.var.publicRequestUrl);
-    if (c.var.publicPath !== "/" && c.var.publicPath.endsWith("/")) {
-      const newUrl = c.var.publicPath.slice(0, -1) + publicUrl.search;
-      return c.redirect(newUrl, 301);
+    const path = c.var.publicPath;
+    if (path !== "/" && path.endsWith("/")) {
+      const target = `/${path.replace(/^[/\\]+/, "").replace(/\/+$/, "")}`;
+      if (isSafeInternalRedirect(target)) {
+        const { search } = new URL(c.var.publicRequestUrl);
+        return c.redirect(target + search, 301);
+      }
     }
     await next();
   });

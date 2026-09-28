@@ -104,19 +104,22 @@ describe("devAuthRoutes", () => {
     expect(signInEmail).not.toHaveBeenCalled();
   });
 
-  it("falls back to /settings for invalid redirect targets", async () => {
-    const { app } = createApp();
+  it.each(["//evil.com", "/%5Cevil.com"])(
+    "falls back to /settings for the off-site target %s",
+    async (target) => {
+      const { app } = createApp();
 
-    const res = await app.request(
-      "http://jant.localtest.me/__dev/login?token=jnt_dev_test123&redirect=//evil.com",
-      {
-        redirect: "manual",
-      },
-    );
+      const res = await app.request(
+        `http://jant.localtest.me/__dev/login?token=jnt_dev_test123&redirect=${target}`,
+        {
+          redirect: "manual",
+        },
+      );
 
-    expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toBe("/settings");
-  });
+      expect(res.status).toBe(302);
+      expect(res.headers.get("Location")).toBe("/settings");
+    },
+  );
 
   it("returns 500 when demo credentials are not configured", async () => {
     const { app, signInEmail } = createApp({ demoEmail: "", demoPassword: "" });
