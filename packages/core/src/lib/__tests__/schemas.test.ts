@@ -394,9 +394,13 @@ describe("CreatePostSchema", () => {
     expect(result.pinned).toBe(true);
   });
 
-  it("accepts pinned as 'on' (transforms to true)", () => {
-    const result = CreatePostSchema.parse({ ...validPost, pinned: "on" });
-    expect(result.pinned).toBe(true);
+  it("takes pinned only as a boolean", () => {
+    expect(
+      CreatePostSchema.safeParse({ ...validPost, pinned: "on" }).success,
+    ).toBe(false);
+    expect(CreatePostSchema.parse({ ...validPost, pinned: true }).pinned).toBe(
+      true,
+    );
   });
 
   it("accepts optional quoteText for quote posts", () => {
@@ -521,9 +525,29 @@ describe("CreatePostSchema", () => {
     expect(result.rating).toBeUndefined();
   });
 
-  it("accepts empty string rating (transforms to undefined)", () => {
-    const result = CreatePostSchema.parse({ ...validPost, rating: "" });
-    expect(result.rating).toBeUndefined();
+  it("takes a rating only as a number", () => {
+    expect(
+      CreatePostSchema.safeParse({ ...validPost, rating: "" }).success,
+    ).toBe(false);
+    expect(
+      CreatePostSchema.safeParse({ ...validPost, rating: "3" }).success,
+    ).toBe(false);
+    expect(
+      CreatePostSchema.parse({ ...validPost, rating: 0 }).rating,
+    ).toBeUndefined();
+  });
+
+  it("takes pinnedAt and featuredAt only as Unix seconds", () => {
+    expect(
+      CreatePostSchema.safeParse({
+        ...validPost,
+        pinnedAt: "2026-09-28T00:00:00Z",
+      }).success,
+    ).toBe(false);
+    expect(
+      CreatePostSchema.parse({ ...validPost, featuredAt: 1790000000 })
+        .featuredAt,
+    ).toBe(1790000000);
   });
 
   it("accepts optional collectionIds as array of non-empty strings", () => {
@@ -545,12 +569,10 @@ describe("CreatePostSchema", () => {
     ).toThrow();
   });
 
-  it("accepts empty string collectionIds (transforms to undefined)", () => {
-    const result = CreatePostSchema.parse({
-      ...validPost,
-      collectionIds: "",
-    });
-    expect(result.collectionIds).toBeUndefined();
+  it("takes collectionIds only as an array", () => {
+    expect(
+      CreatePostSchema.safeParse({ ...validPost, collectionIds: "" }).success,
+    ).toBe(false);
   });
 
   it("accepts optional replyToId", () => {

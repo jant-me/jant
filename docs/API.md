@@ -614,8 +614,8 @@ Fields:
 | `visibility`        | `public` \| `latest_hidden` \| `private` | no                   | `public`       | Post visibility                                                                      |
 | `pinned`            | boolean                                  | no                   | `false`        | Pin the post; not allowed on replies                                                 |
 | `featured`          | boolean                                  | no                   | `false`        | Mark as featured                                                                     |
-| `pinnedAt`          | integer \| ISO 8601 string \| `null`     | no                   | —              | Pin at this time instead of now; wins over `pinned`. For restores                    |
-| `featuredAt`        | integer \| ISO 8601 string \| `null`     | no                   | —              | Feature at this time instead of now; wins over `featured`. For restores              |
+| `pinnedAt`          | integer \| `null`                        | no                   | —              | Pin at this time instead of now; wins over `pinned`. For restores                    |
+| `featuredAt`        | integer \| `null`                        | no                   | —              | Feature at this time instead of now; wins over `featured`. For restores              |
 | `url`               | absolute URL                             | required for `link`  | —              | Allows `http:`, `https:`, or `mailto:`; not allowed for `note` or `quote`            |
 | `sourceUrl`         | absolute URL                             | no                   | `null`         | Quote attribution URL; not allowed for non-quote                                     |
 | `quoteText`         | string                                   | required for `quote` | —              | Not allowed for `note` or `link`                                                     |

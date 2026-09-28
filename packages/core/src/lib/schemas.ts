@@ -157,11 +157,7 @@ function sanitizeNullableUpdateUrl() {
 /** Preserve omitted ratings and normalize explicit clears to null on update. */
 function createNullableUpdateRatingSchema() {
   return z
-    .union([
-      z.coerce.number().int().min(0).max(5),
-      z.literal("").transform(() => null),
-      z.null(),
-    ])
+    .union([z.number().int().min(0).max(5), z.null()])
     .optional()
     .transform((value) => (value === 0 ? null : value));
 }
@@ -234,13 +230,12 @@ export const CreatableCustomUrlTargetTypeSchema = z.enum([
 /**
  * Rating schema (1-5 integer)
  */
-export const RatingSchema = z.coerce
+export const RatingSchema = z
   .number()
   .int()
   .min(0)
   .max(5)
   .optional()
-  .or(z.literal("").transform(() => undefined))
   .transform((v) => (v === 0 ? undefined : v));
 
 /**
@@ -301,32 +296,12 @@ const PostFieldsSchema = z.object({
   bodyMarkdown: z.string().optional(),
   status: StatusSchema.optional(),
   visibility: z.enum(VISIBILITIES).optional(),
-  // Admin UI sends boolean flags; the Hugo importer and API clients can
-  // instead send explicit ISO-8601 or Unix-second timestamps via
-  // `pinnedAt` / `featuredAt`. The refine below at the API-body level
-  // collapses whichever form is present into a single internal field.
-  pinned: z
-    .union([z.boolean(), z.literal("on").transform(() => true)])
-    .optional(),
+  // The composer sends the flags; the importer and other API clients can
+  // send the moments themselves, in Unix seconds like every timestamp.
+  pinned: z.boolean().optional(),
   featured: z.boolean().optional(),
-  pinnedAt: z
-    .union([
-      z.iso
-        .datetime()
-        .transform((iso) => Math.floor(new Date(iso).getTime() / 1000)),
-      z.number().int().positive(),
-      z.null(),
-    ])
-    .optional(),
-  featuredAt: z
-    .union([
-      z.iso
-        .datetime()
-        .transform((iso) => Math.floor(new Date(iso).getTime() / 1000)),
-      z.number().int().positive(),
-      z.null(),
-    ])
-    .optional(),
+  pinnedAt: z.union([z.number().int().positive(), z.null()]).optional(),
+  featuredAt: z.union([z.number().int().positive(), z.null()]).optional(),
   url: z
     .url()
     .refine((val) => sanitizeUrl(val) !== "", {
@@ -343,10 +318,7 @@ const PostFieldsSchema = z.object({
     .or(z.literal("")),
   quoteText: z.string().optional(),
   rating: RatingSchema,
-  collectionIds: z
-    .array(CollectionIdSchema)
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+  collectionIds: z.array(CollectionIdSchema).optional(),
   collectionEntries: z
     .array(
       z.object({
