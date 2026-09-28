@@ -1169,14 +1169,62 @@ describe("NavItemService", () => {
   });
 
   describe("getCollectionFreshness", () => {
+    const READER = { status: "published" as const, excludePrivate: true };
+
     beforeEach(() => {
       insertTestCollection(sqlite, TEST_COLLECTION_ID, "design", "Design");
     });
 
+    function insertCollectedRoot(
+      id: string,
+      status: "published" | "draft",
+      visibility: "public" | "private",
+    ) {
+      const ts = now();
+      sqlite
+        .prepare(
+          `INSERT INTO post (id, site_id, thread_id, format, status, visibility, created_at, updated_at, last_activity_at)
+           VALUES (?, ?, ?, 'note', ?, ?, ?, ?, ?)`,
+        )
+        .run(id, DEFAULT_TEST_SITE_ID, id, status, visibility, ts, ts, ts);
+      sqlite
+        .prepare(
+          `INSERT INTO thread_collection (site_id, thread_id, collection_id, created_at, position)
+           VALUES (?, ?, ?, ?, 0)`,
+        )
+        .run(DEFAULT_TEST_SITE_ID, id, TEST_COLLECTION_ID, ts);
+    }
+
+    it("ignores a draft a signed-out reader can't see", async () => {
+      insertCollectedRoot("pst_fresh_draft", "draft", "public");
+
+      const result = await navItemService.getCollectionFreshness(
+        [TEST_COLLECTION_ID],
+        READER,
+      );
+      expect(result.size).toBe(0);
+    });
+
+    it("counts a private Thread only for the signed-in author", async () => {
+      insertCollectedRoot("pst_fresh_private", "published", "private");
+
+      const signedOut = await navItemService.getCollectionFreshness(
+        [TEST_COLLECTION_ID],
+        READER,
+      );
+      const author = await navItemService.getCollectionFreshness(
+        [TEST_COLLECTION_ID],
+        { status: "published", excludePrivate: false },
+      );
+      expect(signedOut.size).toBe(0);
+      expect(author.has(TEST_COLLECTION_ID)).toBe(true);
+    });
+
     it("returns empty set when no collections have recent activity", async () => {
-      const result = await navItemService.getCollectionFreshness([
-        TEST_COLLECTION_ID,
-      ]);
+      const result = await navItemService.getCollectionFreshness(
+        [TEST_COLLECTION_ID],
+        READER,
+      );
       expect(result.size).toBe(0);
     });
 
@@ -1197,9 +1245,10 @@ describe("NavItemService", () => {
         )
         .run(DEFAULT_TEST_SITE_ID, "pst_test001", TEST_COLLECTION_ID, ts);
 
-      const result = await navItemService.getCollectionFreshness([
-        TEST_COLLECTION_ID,
-      ]);
+      const result = await navItemService.getCollectionFreshness(
+        [TEST_COLLECTION_ID],
+        READER,
+      );
       expect(result.has(TEST_COLLECTION_ID)).toBe(true);
     });
 
@@ -1225,9 +1274,10 @@ describe("NavItemService", () => {
         )
         .run(DEFAULT_TEST_SITE_ID, "pst_test002", TEST_COLLECTION_ID, oldTs);
 
-      const result = await navItemService.getCollectionFreshness([
-        TEST_COLLECTION_ID,
-      ]);
+      const result = await navItemService.getCollectionFreshness(
+        [TEST_COLLECTION_ID],
+        READER,
+      );
       expect(result.has(TEST_COLLECTION_ID)).toBe(false);
     });
 
@@ -1254,9 +1304,10 @@ describe("NavItemService", () => {
         )
         .run(DEFAULT_TEST_SITE_ID, "pst_edited", TEST_COLLECTION_ID, oldTs);
 
-      const result = await navItemService.getCollectionFreshness([
-        TEST_COLLECTION_ID,
-      ]);
+      const result = await navItemService.getCollectionFreshness(
+        [TEST_COLLECTION_ID],
+        READER,
+      );
       expect(result.get(TEST_COLLECTION_ID)).toBe(recentTs);
     });
 
@@ -1303,9 +1354,10 @@ describe("NavItemService", () => {
           recentTs,
         );
 
-      const result = await navItemService.getCollectionFreshness([
-        TEST_COLLECTION_ID,
-      ]);
+      const result = await navItemService.getCollectionFreshness(
+        [TEST_COLLECTION_ID],
+        READER,
+      );
       expect(result.has(TEST_COLLECTION_ID)).toBe(true);
     });
   });

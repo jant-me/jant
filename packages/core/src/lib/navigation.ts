@@ -167,7 +167,10 @@ export async function getNavigationData(
   }
   const collectionFreshness =
     collectionNavIds.length > 0
-      ? await c.var.services.navItems.getCollectionFreshness(collectionNavIds)
+      ? await c.var.services.navItems.getCollectionFreshness(collectionNavIds, {
+          status: "published",
+          excludePrivate: !isAuthenticated,
+        })
       : undefined;
 
   const basePath = `${appConfig.sitePathPrefix}${langBase}`;

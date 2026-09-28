@@ -46,6 +46,10 @@ export interface ListSuggestedLinksOptions {
 
 // Re-export shared constraint detection — see db/dialect.ts
 import { isUniqueConstraintError } from "../db/dialect.js";
+import {
+  buildReaderVisibilityConditions,
+  type ReaderVisibilityOptions,
+} from "../db/post-visibility.js";
 import { createPathService, type PathService } from "./path.js";
 
 export interface ListNavItemsOptions {
@@ -127,7 +131,18 @@ export interface NavItemService {
   listSuggestedLinks(
     options?: ListSuggestedLinksOptions,
   ): Promise<SuggestedNavLink[]>;
-  getCollectionFreshness(collectionIds: string[]): Promise<Map<string, number>>;
+  /**
+   * The latest recent activity in each Collection, counting only Threads the
+   * reader may see. Feeds the header's "new" marker, which every visitor
+   * reads, so a draft or private Thread must not move it.
+   *
+   * @param collectionIds - Collections in the navigation
+   * @param reader - What this reader may see
+   */
+  getCollectionFreshness(
+    collectionIds: string[],
+    reader: ReaderVisibilityOptions,
+  ): Promise<Map<string, number>>;
 }
 
 export function createNavItemService(
@@ -1102,7 +1117,7 @@ export function createNavItemService(
       return suggestions;
     },
 
-    async getCollectionFreshness(collectionIds) {
+    async getCollectionFreshness(collectionIds, reader) {
       if (collectionIds.length === 0) return new Map<string, number>();
 
       const threshold = now() - COLLECTION_FRESHNESS_WINDOW_SECONDS;
@@ -1137,10 +1152,10 @@ export function createNavItemService(
           and(
             eq(threadCollections.siteId, siteId),
             inArray(threadCollections.collectionId, collectionIds),
+            ...buildReaderVisibilityConditions(posts, siteId, reader),
             sql`(
               ${threadCollections.createdAt} > ${threshold}
-              OR (${threadActivityAt} > ${threshold}
-                AND ${posts.status} = 'published')
+              OR ${threadActivityAt} > ${threshold}
             )`,
           ),
         )
