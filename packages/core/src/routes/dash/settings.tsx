@@ -22,6 +22,7 @@ import { getTimeZoneOptions } from "../../lib/timezones.js";
 import { getOrBuildEntry } from "../../i18n/supported-locales.js";
 import {
   DomainError,
+  ForbiddenError,
   LanguageInUseError,
   UnauthorizedError,
   ValidationError,
@@ -374,12 +375,21 @@ function getDemoRestrictionMessage(
   }
 }
 
-function demoRestrictionResponse(c: Context<Env>, message: string): Response {
-  const wantsJson = c.req.header("accept")?.includes("application/json");
-  if (wantsJson) {
-    return c.json({ error: message, code: "FORBIDDEN" }, 403);
-  }
-  return dsToast(message, "error");
+/**
+ * Refuse an action the demo turns off, with a message that says so.
+ *
+ * Thrown rather than answered here, so the error handler formats it for
+ * whoever asked: a toast for a Datastar form, JSON for a script. This used to
+ * pick JSON whenever `Accept` allowed it, and Datastar's `Accept` always does,
+ * so every settings form got a 403 that Datastar drops, and the demo refused
+ * the save without a word.
+ *
+ * @param c - The request context
+ * @param restriction - Which demo lock the request ran into
+ * @throws {ForbiddenError} Always
+ */
+function refuseInDemo(c: Context<Env>, restriction: DemoRestriction): never {
+  throw new ForbiddenError(getDemoRestrictionMessage(c, restriction));
 }
 
 // ===========================================================================
@@ -1464,10 +1474,7 @@ settingsRoutes.get("/custom-css", async (c) => {
 
 settingsRoutes.post("/custom-css", async (c) => {
   if (c.var.appConfig.demoMode) {
-    return demoRestrictionResponse(
-      c,
-      getDemoRestrictionMessage(c, "customCss"),
-    );
+    refuseInDemo(c, "customCss");
   }
 
   const i18n = getI18n(c);
@@ -1528,10 +1535,7 @@ settingsRoutes.post("/code-injection", async (c) => {
   // The demo's credentials are public, so a script saved here would run for
   // every visitor until the nightly reset.
   if (c.var.appConfig.demoMode) {
-    return demoRestrictionResponse(
-      c,
-      getDemoRestrictionMessage(c, "codeInjection"),
-    );
+    refuseInDemo(c, "codeInjection");
   }
 
   const i18n = getI18n(c);
@@ -1696,7 +1700,7 @@ settingsRoutes.get("/account/sessions", async (c) => {
 
 settingsRoutes.post("/account/sessions/:token/revoke", async (c) => {
   if (c.var.appConfig.demoMode) {
-    return demoRestrictionResponse(c, getDemoRestrictionMessage(c, "sessions"));
+    refuseInDemo(c, "sessions");
   }
 
   const token = c.req.param("token");
@@ -1755,7 +1759,7 @@ settingsRoutes.post("/account/password", async (c) => {
   }
 
   if (c.var.appConfig.demoMode) {
-    return demoRestrictionResponse(c, getDemoRestrictionMessage(c, "password"));
+    refuseInDemo(c, "password");
   }
 
   const i18n = getI18n(c);
@@ -1879,10 +1883,7 @@ settingsRoutes.post("/account/delete-account", async (c) => {
   }
 
   if (c.var.appConfig.demoMode) {
-    return demoRestrictionResponse(
-      c,
-      getDemoRestrictionMessage(c, "accountDeletion"),
-    );
+    refuseInDemo(c, "accountDeletion");
   }
 
   const i18n = getI18n(c);
