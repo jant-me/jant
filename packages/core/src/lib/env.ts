@@ -566,13 +566,16 @@ export function getConfiguredStorageDriver(
  * getCorsOrigins({ CORS_ORIGINS: "https://a.com,chrome-extension://id" });
  * // ["https://a.com", "chrome-extension://id"]
  * getCorsOrigins({}); // "*"
+ * getCorsOrigins({ CORS_ORIGINS: "" }); // undefined
  * ```
  */
 export function getCorsOrigins(env: EnvSource): "*" | string[] | undefined {
-  const raw = getEnvString(env, "CORS_ORIGINS") ?? "*";
-  if (!raw) {
+  // Set but empty is a choice, unlike unset: it turns cross-origin access off.
+  const configured = toEnvRecord(env)["CORS_ORIGINS"];
+  if (typeof configured === "string" && configured.trim() === "") {
     return undefined;
   }
+  const raw = getEnvString(env, "CORS_ORIGINS")?.trim() ?? "*";
 
   if (raw === "*") {
     return "*";

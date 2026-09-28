@@ -1,10 +1,10 @@
 /**
  * CORS Middleware
  *
- * Allows cross-origin API requests when `CORS_ORIGINS` is configured.
+ * Answers cross-origin API requests as `CORS_ORIGINS` says.
  *
- * - Not set → CORS disabled
- * - `*` → allow all origins
+ * - Not set, or `*` → allow all origins
+ * - Set but empty → cross-origin access off
  * - Comma-separated origins → allow only those
  *   (e.g. `https://example.com,chrome-extension://abcdef`)
  */
