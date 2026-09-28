@@ -7,6 +7,12 @@ import type {
 } from "../../../lib/storage.js";
 import { uploadsApiRoutes } from "../uploads.js";
 
+// Sideloading resolves hosts before fetching; keep these tests off real DNS.
+vi.mock("node:dns/promises", () => {
+  const lookup = async () => [{ address: "93.184.215.14", family: 4 }];
+  return { lookup, default: { lookup } };
+});
+
 interface StoredFile extends StorageObjectOptions {
   body: Uint8Array;
 }

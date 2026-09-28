@@ -1,6 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { assertPublicHttpUrl, fetchImageBytes } from "../url-fetch.js";
+import {
+  assertPublicHttpUrl,
+  assertResolvesPublic,
+  fetchImageBytes,
+  isPrivateAddress,
+} from "../url-fetch.js";
 import { ValidationError } from "../errors.js";
+
+// Every host resolves to a public address unless a test says otherwise, so
+// no test depends on real DNS.
+const lookup = vi.hoisted(() =>
+  vi.fn(async (_host: string, _options?: unknown) => [
+    { address: "93.184.215.14", family: 4 },
+  ]),
+);
+vi.mock("node:dns/promises", () => ({ lookup, default: { lookup } }));
 
 describe("assertPublicHttpUrl", () => {
   it("accepts public http(s) URLs", () => {
@@ -29,12 +43,62 @@ describe("assertPublicHttpUrl", () => {
     ["link-local v6", "http://[fe80::1]/a.png"],
     ["ULA v6", "http://[fd00::1]/a.png"],
     ["v4-mapped private v6", "http://[::ffff:10.0.0.1]/a.png"],
+    ["trailing-dot localhost", "http://localhost./a.png"],
+    ["v4-compatible loopback v6", "http://[::7f00:1]/a.png"],
+    ["NAT64 loopback", "http://[64:ff9b::7f00:1]/a.png"],
+    ["6to4 private", "http://[2002:a00:1::1]/a.png"],
+    ["multicast v4", "http://224.0.0.1/a.png"],
   ])("rejects %s", (_label, url) => {
     expect(() => assertPublicHttpUrl(url)).toThrow(ValidationError);
   });
 
   it("rejects a non-URL string", () => {
     expect(() => assertPublicHttpUrl("not a url")).toThrow(ValidationError);
+  });
+});
+
+describe("isPrivateAddress", () => {
+  it.each([
+    "8.8.8.8",
+    "2606:4700::1111",
+    "64:ff9b::808:808",
+    "2002:808:808::1",
+  ])("treats %s as public", (address) => {
+    expect(isPrivateAddress(address)).toBe(false);
+  });
+
+  it.each(["127.0.0.1", "::1", "fc00::1", "not:an:address::::"])(
+    "treats %s as private",
+    (address) => {
+      expect(isPrivateAddress(address)).toBe(true);
+    },
+  );
+});
+
+describe("assertResolvesPublic", () => {
+  it("refuses a name that resolves to a private address", async () => {
+    lookup.mockResolvedValueOnce([{ address: "127.0.0.1", family: 4 }]);
+
+    await expect(
+      assertResolvesPublic(new URL("http://127.0.0.1.nip.io/a.png")),
+    ).rejects.toThrow("private address");
+  });
+
+  it("refuses a name when any of its addresses is private", async () => {
+    lookup.mockResolvedValueOnce([
+      { address: "93.184.215.14", family: 4 },
+      { address: "::1", family: 6 },
+    ]);
+
+    await expect(
+      assertResolvesPublic(new URL("https://example.com/a.png")),
+    ).rejects.toThrow("private address");
+  });
+
+  it("accepts a name that resolves only to public addresses", async () => {
+    await expect(
+      assertResolvesPublic(new URL("https://example.com/a.png")),
+    ).resolves.toBeUndefined();
   });
 });
 

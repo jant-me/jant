@@ -12,6 +12,12 @@ import { storagePurge } from "../../db/schema.js";
 import { MediaQuotaExceededError } from "../../lib/errors.js";
 import { now } from "../../lib/time.js";
 
+// Sideloading resolves hosts before fetching; keep these tests off real DNS.
+vi.mock("node:dns/promises", () => {
+  const lookup = async () => [{ address: "93.184.215.14", family: 4 }];
+  return { lookup, default: { lookup } };
+});
+
 interface MockStorageFile {
   body: Uint8Array;
   contentType?: string;
