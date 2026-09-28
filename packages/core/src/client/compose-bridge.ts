@@ -807,7 +807,7 @@ document.addEventListener("jant:compose-submit-deferred", async (e: Event) => {
           mediaId: upload.id,
           url: upload.url,
           mimeType: upload.mimeType,
-          name: upload.filename || undefined,
+          name: upload.originalName || undefined,
           alt: attachment.alt || undefined,
         });
       }

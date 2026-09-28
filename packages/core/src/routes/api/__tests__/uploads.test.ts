@@ -254,7 +254,7 @@ describe("Upload Session API Routes", () => {
         }),
       },
     );
-    expect(completeRes.status).toBe(200);
+    expect(completeRes.status).toBe(201);
 
     const completeData = (await completeRes.json()) as {
       id: string;
@@ -376,7 +376,7 @@ describe("Upload Session API Routes", () => {
         body: JSON.stringify({}),
       },
     );
-    expect(completeRes.status).toBe(200);
+    expect(completeRes.status).toBe(201);
 
     const completeData = (await completeRes.json()) as {
       id: string;

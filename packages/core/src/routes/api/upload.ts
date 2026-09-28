@@ -10,7 +10,7 @@ import { msg } from "@lingui/core/macro";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
-import { getMediaUrl, getPublicUrlForProvider } from "../../lib/image.js";
+import { toApiMedia } from "../../lib/api-media.js";
 import {
   detectPosterMimeType,
   getPosterExtension,
@@ -90,8 +90,6 @@ uploadApiRoutes.post("/", async (c) => {
   }
 
   try {
-    const sitePathPrefix = c.var.appConfig.sitePathPrefix;
-
     await c.var.services.media.assertCanWriteBytes(file.size);
 
     const peekLength = getStoredUploadSignaturePeekLength(file.type);
@@ -207,21 +205,8 @@ uploadApiRoutes.post("/", async (c) => {
       mediaKind: uploadPolicy.mediaKind,
     });
 
-    // JSON response for API clients
-    const mediaPublicUrl = getPublicUrlForProvider(
-      c.var.appConfig.storageDriver,
-      c.var.appConfig.r2PublicUrl,
-      c.var.appConfig.s3PublicUrl,
-      c.var.appConfig.localPublicUrl,
-    );
-    const publicUrl = getMediaUrl(storageKey, mediaPublicUrl, sitePathPrefix);
-    return c.json({
-      id: media.id,
-      filename: media.filename,
-      url: publicUrl,
-      mimeType: media.mimeType,
-      size: media.size,
-    });
+    // The same shape `GET /api/media/:id` returns, as for every other create.
+    return c.json(toApiMedia(media, c.var.appConfig), 201);
   } catch (err) {
     // The quota error carries the hosted service's own wording; a validation
     // error thrown above passes through; anything else is a failed write.

@@ -8,6 +8,7 @@
 
 import { and, asc, eq, inArray, lt } from "drizzle-orm";
 import type { Database } from "../db/index.js";
+import type { Media } from "../types.js";
 import {
   sqliteSchemaBundle,
   type DatabaseSchema,
@@ -127,13 +128,7 @@ export interface UploadSessionService {
     id: string,
     data: CompleteUploadData,
     deps: { storage: StorageDriver; storageDriver: string },
-  ): Promise<{
-    id: string;
-    filename: string;
-    storageKey: string;
-    mimeType: string;
-    size: number;
-  }>;
+  ): Promise<Media>;
   cleanupExpired(deps: {
     storage: StorageDriver;
     storageDriver: string;
@@ -641,7 +636,7 @@ export function createUploadSessionService(
           );
         }
 
-        await media.create({
+        const created = await media.create({
           id: session.mediaId,
           filename: session.filename,
           originalName: session.originalName,
@@ -672,13 +667,7 @@ export function createUploadSessionService(
         );
         await updateSession(id, { state: "completed" });
 
-        return {
-          id: session.mediaId,
-          filename: session.filename,
-          storageKey: session.finalStorageKey,
-          mimeType: session.expectedContentType,
-          size: session.expectedSize,
-        };
+        return created;
       } catch (error) {
         await updateSession(id, { state: "failed" });
         throw error;

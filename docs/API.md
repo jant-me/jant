@@ -1254,17 +1254,7 @@ Fields:
 | `chars`    | integer | no                            | `null`  | Mainly for text uploads; non-negative |
 | `parts`    | array   | required for `multipartRelay` | —       | `[{partNumber, etag}]`                |
 
-Response:
-
-```json
-{
-  "id": "med_01jpyx4g9m8b4y50a4gx3t7p1n",
-  "filename": "med_01jpyx4g9m8b4y50a4gx3t7p1n.webp",
-  "url": "/media/med_01jpyx4g9m8b4y50a4gx3t7p1n.webp",
-  "mimeType": "image/webp",
-  "size": 1024000
-}
-```
+Response: `201 Created` with the [media object](#media) the upload became.
 
 ### Abort an upload session
 
@@ -1302,17 +1292,7 @@ Form fields:
 | `durationSeconds` | integer | no       | `null`  | Video or audio length          |
 | `poster`          | file    | no       | —       | Poster frame for video uploads |
 
-Response:
-
-```json
-{
-  "id": "med_01jpyx4g9m8b4y50a4gx3t7p1n",
-  "filename": "med_01jpyx4g9m8b4y50a4gx3t7p1n.jpg",
-  "url": "/media/med_01jpyx4g9m8b4y50a4gx3t7p1n.jpg",
-  "mimeType": "image/jpeg",
-  "size": 1024000
-}
-```
+Response: `201 Created` with the [media object](#media) the file became.
 
 ## Media
 

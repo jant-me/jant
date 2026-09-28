@@ -52,7 +52,8 @@ export interface UploadSessionMetadata {
 
 export interface UploadSessionResult {
   id: string;
-  filename: string;
+  /** The file's name as it was uploaded. */
+  originalName: string;
   url: string;
   mimeType: string;
   size: number;
@@ -212,15 +213,15 @@ async function completeUpload(
 
   const data = await readJsonObject(completeRes);
   const id = getJsonString(data, "id");
-  const filename = getJsonString(data, "filename");
+  const originalName = getJsonString(data, "originalName") ?? "";
   const url = getJsonString(data, "url");
   const mimeType = getJsonString(data, "mimeType");
   const size = getJsonNumber(data, "size");
-  if (!id || !filename || !url || !mimeType || size === undefined) {
+  if (!id || !url || !mimeType || size === undefined) {
     throw new Error("Failed to complete upload");
   }
 
-  return { id, filename, url, mimeType, size };
+  return { id, originalName, url, mimeType, size };
 }
 
 async function uploadMultipartRelay(

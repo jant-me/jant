@@ -8,6 +8,7 @@ import { requireStorage } from "../../lib/storage.js";
 import { ID_PREFIX } from "../../lib/ids.js";
 import { parseValidated, readJsonBody } from "../../lib/schemas.js";
 import { getMediaUrl, getPublicUrlForProvider } from "../../lib/image.js";
+import { toApiMedia } from "../../lib/api-media.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -229,24 +230,8 @@ uploadsApiRoutes.post("/:id/complete", async (c) => {
     storageDriver: c.var.appConfig.storageDriver,
   });
 
-  const mediaPublicUrl = getPublicUrlForProvider(
-    c.var.appConfig.storageDriver,
-    c.var.appConfig.r2PublicUrl,
-    c.var.appConfig.s3PublicUrl,
-    c.var.appConfig.localPublicUrl,
-  );
-
-  return c.json({
-    id: result.id,
-    filename: result.filename,
-    url: getMediaUrl(
-      result.storageKey,
-      mediaPublicUrl,
-      c.var.appConfig.sitePathPrefix,
-    ),
-    mimeType: result.mimeType,
-    size: result.size,
-  });
+  // The same shape `GET /api/media/:id` returns, as for every other create.
+  return c.json(toApiMedia(result, c.var.appConfig), 201);
 });
 
 uploadsApiRoutes.post("/:id/abort", async (c) => {
