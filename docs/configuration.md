@@ -156,10 +156,10 @@ token wherever the API asks for one.
 
 ### Rate limits (optional)
 
-| Variable                    | Default | Description                                      |
-| --------------------------- | ------- | ------------------------------------------------ |
-| `RATE_LIMIT_SEARCH_PER_MIN` | `30`    | Searches a signed-out reader can make per minute |
-| `RATE_LIMIT_DISABLED`       | `false` | Set to `true` to turn every limit off            |
+| Variable                    | Default | Description                                                          |
+| --------------------------- | ------- | -------------------------------------------------------------------- |
+| `RATE_LIMIT_SEARCH_PER_MIN` | `30`    | Searches a signed-out reader can make per minute. `0` means no limit |
+| `RATE_LIMIT_ENABLED`        | `true`  | Set to `false` to turn off every limit: search, sign-in, and setup   |
 
 The search limit applies to the `/search` page; the signed-in author and
 `/api/search` aren't limited. A reader over the limit gets `429` with a

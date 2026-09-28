@@ -43,12 +43,13 @@ export async function renderSearchPage(c: Context<Env>): Promise<Response> {
 
   // This page is the only search a signed-out reader has, so the per-client
   // search limit applies here. The signed-in author isn't metered, as on the
-  // search API and MCP.
+  // search API and MCP, and a limit of 0 meters no one.
+  const { searchPerMinute } = c.var.appConfig.rateLimit;
   const rateLimit =
-    query.trim() && !c.var.isAuthenticated
+    query.trim() && !c.var.isAuthenticated && searchPerMinute > 0
       ? await checkRequestRateLimit(c, {
           name: "search",
-          limit: c.var.appConfig.rateLimit.searchPerMinute,
+          limit: searchPerMinute,
           windowSec: 60,
         })
       : null;

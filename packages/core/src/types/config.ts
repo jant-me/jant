@@ -842,11 +842,11 @@ export interface AppConfig {
 
   // Rate limiting (ENV only)
   rateLimit: {
-    /** When true, every rate-limit check passes without counting. */
-    disabled: boolean;
+    /** When false, every rate-limit check passes without counting. */
+    enabled: boolean;
     /**
      * Per-IP cap on searches by signed-out readers on the `/search` page, per
-     * 60-second window.
+     * 60-second window. `0` leaves search unlimited.
      */
     searchPerMinute: number;
   };

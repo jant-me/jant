@@ -427,7 +427,7 @@ export function resolveConfig(
     // Rate limiting (ENV only). Defaults are conservative enough for a
     // human typing in the search UI but reject bot floods.
     rateLimit: {
-      disabled: readEnvBoolean(env, "RATE_LIMIT_DISABLED") ?? false,
+      enabled: readEnvBoolean(env, "RATE_LIMIT_ENABLED") ?? true,
       searchPerMinute: readEnvInteger(env, "RATE_LIMIT_SEARCH_PER_MIN") ?? 30,
     },
 

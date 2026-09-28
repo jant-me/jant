@@ -79,7 +79,7 @@ function createProvisionedSetupApp(options: {
       sitePathPrefix: "",
       siteLanguage: "en",
       // Counting setup attempts is covered in setup-rate-limit.test.ts.
-      rateLimit: { disabled: true, searchPerMinute: 30 },
+      rateLimit: { enabled: false, searchPerMinute: 30 },
     } as AppVariables["appConfig"]);
     c.set("lang", "en");
     c.set("i18n", createI18n("en"));

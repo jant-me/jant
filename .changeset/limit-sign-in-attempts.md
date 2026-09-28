@@ -10,5 +10,5 @@ On Node, a rate limit now counts the address Jant can vouch for. Without `TRUST_
 **Upgrade notes**
 
 - No database migrations.
-- `RATE_LIMIT_DISABLED=true` turns these limits off along with the search limit.
+- `RATE_LIMIT_ENABLED=false` turns these limits off along with the search limit.
 - A Node deployment behind a reverse proxy without `TRUST_PROXY=true` counts every visitor as the proxy's address. Set it when a proxy sits in front, as the Docker setup does.

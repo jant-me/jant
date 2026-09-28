@@ -34,7 +34,7 @@ function createSetupApp() {
     c.set("appConfig", {
       siteName: "Jant",
       sitePathPrefix: "",
-      rateLimit: { disabled: false, searchPerMinute: 30 },
+      rateLimit: { enabled: true, searchPerMinute: 30 },
     } as AppVariables["appConfig"]);
     c.set("lang", "en");
     c.set("i18n", createI18n("en"));

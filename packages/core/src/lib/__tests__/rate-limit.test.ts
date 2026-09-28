@@ -17,7 +17,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
  */
 function buildApp(options: {
   limiter: RateLimiter;
-  disabled?: boolean;
+  enabled?: boolean;
   key?: string;
 }): Hono<Env> {
   const app = new Hono<Env>();
@@ -25,7 +25,7 @@ function buildApp(options: {
     c.set("rateLimiter", options.limiter);
     c.set("appConfig", {
       rateLimit: {
-        disabled: options.disabled ?? false,
+        enabled: options.enabled ?? true,
         searchPerMinute: 30,
       },
     } as AppVariables["appConfig"]);
@@ -91,10 +91,10 @@ describe("checkRequestRateLimit", () => {
     });
   });
 
-  it("counts nothing when rateLimit.disabled is true", async () => {
+  it("counts nothing when rate limiting is off", async () => {
     const { limiter, keys } = scriptedLimiter([{ ok: false }]);
 
-    expect(await check(buildApp({ limiter, disabled: true }))).toEqual({
+    expect(await check(buildApp({ limiter, enabled: false }))).toEqual({
       ok: true,
     });
     expect(keys()).toEqual([]);

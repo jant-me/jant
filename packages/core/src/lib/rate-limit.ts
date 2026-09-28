@@ -102,7 +102,7 @@ export type RequestRateLimitResult =
  *
  * Buckets are per client IP (see {@link getClientIp}), or per `key` when one
  * is given, and scoped by `name`.
- * When `appConfig.rateLimit.disabled` is set, nothing is counted and every
+ * When `appConfig.rateLimit.enabled` is off, nothing is counted and every
  * request passes, so test and dev environments don't have to reason about
  * bucket state. The caller decides what an over-limit response looks like:
  * a page and an API answer differently.
@@ -125,7 +125,7 @@ export async function checkRequestRateLimit(
   c: RateLimitContext,
   opts: RequestRateLimitOptions,
 ): Promise<RequestRateLimitResult> {
-  if (c.var.appConfig.rateLimit.disabled) return { ok: true };
+  if (!c.var.appConfig.rateLimit.enabled) return { ok: true };
 
   const result = await c.var.rateLimiter.check(
     `${opts.name}:${opts.key ?? getClientIp(c)}`,

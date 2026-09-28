@@ -106,3 +106,20 @@ describe("readConfigEnvValue", () => {
     ).toBe("true");
   });
 });
+
+describe("rate limit variables", () => {
+  it("reads 0 as an unlimited search and RATE_LIMIT_ENABLED=false as off", () => {
+    const config = resolveConfig(
+      {
+        RATE_LIMIT_SEARCH_PER_MIN: "0",
+        RATE_LIMIT_ENABLED: "false",
+      } as unknown as Bindings,
+      {},
+    );
+    expect(config.rateLimit).toEqual({ enabled: false, searchPerMinute: 0 });
+    expect(resolveConfig({} as Bindings, {}).rateLimit).toEqual({
+      enabled: true,
+      searchPerMinute: 30,
+    });
+  });
+});

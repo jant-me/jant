@@ -168,12 +168,15 @@ describe("Search Page Routes", () => {
       }
     });
 
-    it("doesn't limit anyone when rate limiting is off", async () => {
+    it.each([
+      ["rate limiting is off", { enabled: false }],
+      ["the search limit is 0", { searchPerMinute: 0 }],
+    ])("doesn't limit anyone when %s", async (_label, rateLimit) => {
       const { app } = createTestApp({ authenticated: false, fts: true });
       app.use("/search", async (c, next) => {
         c.set("appConfig", {
           ...c.var.appConfig,
-          rateLimit: { ...c.var.appConfig.rateLimit, disabled: true },
+          rateLimit: { ...c.var.appConfig.rateLimit, ...rateLimit },
         });
         await next();
       });
