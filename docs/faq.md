@@ -22,7 +22,7 @@ All three paths run the same code. Going from hosted to self-hosted (or back) is
 
 ## Are comments supported?
 
-Not built-in. May come later. For now you can embed third-party systems like giscus or Disqus through [code injection](code-injection.md).
+Jant has no built-in comments. To take comments, embed a third-party system such as giscus or Disqus through [code injection](code-injection.md).
 
 ## Does Jant have standalone pages (like an About page)?
 

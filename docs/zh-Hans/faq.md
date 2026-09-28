@@ -22,7 +22,7 @@
 
 ## 支持评论吗？
 
-不内置，未来可能会加。现在可以通过 [代码注入](code-injection.md) 嵌入 giscus、Disqus 等第三方系统。
+Jant 不内置评论。需要的话，可以通过[代码注入](code-injection.md)嵌入 giscus、Disqus 等第三方评论系统。
 
 ## Jant 有独立页面吗（比如 About 页）？
 
