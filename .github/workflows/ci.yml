@@ -146,6 +146,32 @@ jobs:
           PG_REHEARSAL_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jant_pg_rehearsal
         run: mise run check-pg-rehearsal
 
+  docker-smoke:
+    name: Docker Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # amd64 only. The published image adds arm64 under QEMU, which is slow
+      # and builds the same Dockerfile.
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: jant:ci
+          cache-from: type=gha,scope=docker-smoke
+          cache-to: type=gha,scope=docker-smoke,mode=max
+
+      - name: Run the Compose quick start
+        run: bash scripts/docker-smoke.sh jant:ci
+
   deploy-demo:
     name: Deploy Demo
     needs: [changes, ci, pg-smoke]
@@ -220,6 +246,7 @@ jobs:
       - changes
       - ci
       - pg-smoke
+      - docker-smoke
       - deploy-demo
       - deploy-demo-source
       - deploy-content-lab
@@ -237,6 +264,7 @@ jobs:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref || '' }}
           CI_RESULT: ${{ needs.ci.result }}
           PG_SMOKE_RESULT: ${{ needs['pg-smoke'].result }}
+          DOCKER_SMOKE_RESULT: ${{ needs['docker-smoke'].result }}
           DEMO_SELECTED: ${{ needs.changes.outputs.demo || 'false' }}
           DEMO_SOURCE_SELECTED: ${{ needs.changes.outputs.demo_source || 'false' }}
           CONTENT_LAB_SELECTED: ${{ needs.changes.outputs.content_lab || 'false' }}
@@ -259,6 +287,7 @@ jobs:
             echo "- Ref: \`$REF_NAME\`"
             echo "- CI: \`$CI_RESULT\`"
             echo "- PG Smoke: \`$PG_SMOKE_RESULT\`"
+            echo "- Docker Smoke: \`$DOCKER_SMOKE_RESULT\`"
             echo
             echo "| Target | Selected | Result |"
             echo "| --- | --- | --- |"

@@ -227,7 +227,8 @@ mise run auth-reset-token # Generate password reset link (local)
 ### CI
 
 ```bash
-mise run check-ci         # Run all CI checks (lint + typecheck + test + build + i18n + template)
+mise run check-ci           # Run all CI checks (lint + typecheck + test + build + i18n + template)
+mise run check-docker-smoke # Build the Docker image and run the Compose quick start against it
 ```
 
 ## Development Workflow

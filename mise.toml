@@ -161,6 +161,13 @@ node ./packages/core/dev/scripts/node-rehearsal.mjs --fixture packages/core/src/
 description = "Run TypeScript type checking (all packages)"
 run = "pnpm -r typecheck"
 
+[tasks.check-docker-smoke]
+description = "Build the Docker image and run the documented Compose quick start against it"
+run = """
+docker build -t jant:smoke .
+bash scripts/docker-smoke.sh jant:smoke
+"""
+
 [tasks.check-template]
 description = "Integration test: scaffold projects with create-jant through pnpm, npm, Yarn 1, and Yarn 2+, install the pnpm and Yarn 2+ ones, and check the results"
 run = """
