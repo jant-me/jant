@@ -91,7 +91,7 @@ export async function run(argv) {
     console.log("Options:");
     console.log("  --url           Target site or internal core URL");
     console.log(
-      "  --site          Explicit managed site TypeID (host-based mode)",
+      "  --site          Managed site key or TypeID (host-based mode)",
     );
     console.log(
       `  --limit         Batch size (default: ${DEFAULT_BATCH_SIZE}, max: ${MAX_BATCH_SIZE})`,

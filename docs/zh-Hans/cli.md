@@ -188,7 +188,7 @@ npx jant site snapshot import --path ./jant-site-snapshot.zip --replace
 | 选项                | 用途                                        |
 | ------------------- | ------------------------------------------- |
 | `--url`             | 站点 URL                                    |
-| `--site`            | 站点 ID，用于托管多个站点的服务器           |
+| `--site`            | 站点 key 或 ID，用于托管多个站点的服务器    |
 | `--limit`           | 每批的帖子数（默认 50，最多 100）           |
 | `--dry-run`         | 只报告会改动什么，不写入                    |
 | `--once`            | 只执行一批                                  |

@@ -140,6 +140,25 @@ describe("Internal post body HTML rebuild routes", () => {
       POST_BODY_HTML_VERSION,
     );
     expect(rows.find((row) => row.id === defaultPost.id)?.version).toBe(1);
+
+    // The site's key names it too, as `--site` takes it on the DB commands.
+    await db
+      .update(posts)
+      .set({ bodyHtmlVersion: 1 })
+      .where(eq(posts.id, managedPost.id));
+    const byKey = await app.request(
+      "/api/internal/sites/managed/posts/body-html/rebuild",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer internal-secret",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      },
+    );
+    expect(byKey.status).toBe(200);
+    await expect(byKey.json()).resolves.toMatchObject({ rebuilt: 1 });
   });
 
   it("rejects an unknown explicit site instead of reporting an empty success", async () => {

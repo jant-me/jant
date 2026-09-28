@@ -185,15 +185,15 @@ Rebuilds the search index from the stored post bodies.
 
 Rebuilds the stored HTML of every post at the current HTML format. Pages render stale posts correctly without it; the rebuild saves the work on every read.
 
-| Option              | Use                                                     |
-| ------------------- | ------------------------------------------------------- |
-| `--url`             | The site's URL                                          |
-| `--site`            | The site's ID, for a server that hosts several sites    |
-| `--limit`           | Posts per batch (default: 50, at most 100)              |
-| `--dry-run`         | Report what would change without writing                |
-| `--once`            | Run one batch and stop                                  |
-| `--token`           | Internal admin token, instead of `INTERNAL_ADMIN_TOKEN` |
-| `--config`, `--env` | The Wrangler config to read `SITE_ORIGIN` from          |
+| Option              | Use                                                         |
+| ------------------- | ----------------------------------------------------------- |
+| `--url`             | The site's URL                                              |
+| `--site`            | The site's key or ID, for a server that hosts several sites |
+| `--limit`           | Posts per batch (default: 50, at most 100)                  |
+| `--dry-run`         | Report what would change without writing                    |
+| `--once`            | Run one batch and stop                                      |
+| `--token`           | Internal admin token, instead of `INTERNAL_ADMIN_TOKEN`     |
+| `--config`, `--env` | The Wrangler config to read `SITE_ORIGIN` from              |
 
 ### `jant uploads cleanup`
 

@@ -1,7 +1,7 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { z } from "zod";
 import { requireInternalAdminApi } from "../../../middleware/auth.js";
-import { ConflictError } from "../../../lib/errors.js";
+import { ConflictError, NotFoundError } from "../../../lib/errors.js";
 import { parseValidated, readJsonBody } from "../../../lib/schemas.js";
 import { rebuildPostBodyHtmlWithRuntimeSettings } from "../../../services/post.js";
 import {
@@ -185,7 +185,7 @@ internalSitesRoutes.post(
       : {};
     const body = parseValidated(CleanupSiteUploadsSchema, rawBody);
 
-    const services = c.var.servicesForSite(c.req.param("siteId"));
+    const services = await servicesForNamedSite(c);
     const result = await services.uploads.cleanupExpired({
       storage,
       storageDriver: getConfiguredStorageDriver(c.env),
@@ -195,6 +195,18 @@ internalSitesRoutes.post(
     return c.json(result);
   },
 );
+
+/**
+ * The services for the site the `:siteId` parameter names, by TypeID or key,
+ * as the database commands' `--site` takes it. A site that doesn't exist
+ * answers 404 rather than running the operation against an empty one.
+ */
+async function servicesForNamedSite(c: Context<Env>) {
+  const idOrKey = c.req.param("siteId");
+  const site = idOrKey ? await c.var.services.site.getByIdOrKey(idOrKey) : null;
+  if (!site) throw new NotFoundError("Site");
+  return c.var.servicesForSite(site.id);
+}
 
 // Rebuild one managed site's materialized body HTML projection. Hosted fleet
 // orchestration stays in the control plane; core never silently widens a
@@ -210,7 +222,7 @@ internalSitesRoutes.post(
       ? await c.req.json().catch(() => ({}))
       : {};
     const body = parseValidated(RebuildPostBodyHtmlSchema, rawBody);
-    const services = c.var.servicesForSite(c.req.param("siteId"));
+    const services = await servicesForNamedSite(c);
 
     return c.json(
       await rebuildPostBodyHtmlWithRuntimeSettings(services, c.env, body),
