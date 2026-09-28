@@ -62,3 +62,18 @@ overrides:
   # Reachable from limax -> slugify. Unpin once upstream stops scheduling at
   # import time: https://github.com/zh-lx/pinyin-pro/issues
   pinyin-pro: 3.29.0
+
+  # Lifted past the releases `pnpm audit` reports. Each consumer pins an older
+  # range and has no release on a fixed one yet; drop an entry once it does.
+  #
+  # sharp: miniflare, under @cloudflare/vite-plugin, pins 0.34. Local dev and
+  #   the brand-asset scripts only; nothing ships it.
+  # uuid: typeid-js asks for ^10. It calls v7, parse and stringify, none of
+  #   which changed in 11; the advisory covers v3/v5/v6 with a caller's buffer.
+  # esbuild under @esbuild-kit/core-utils: drizzle-kit's TypeScript loader,
+  #   pinned to 0.18. Only `db-schema-generate` runs it.
+  # esbuild under tsup: builds create-jant.
+  sharp: ^0.35.5
+  "typeid-js>uuid": ^11.1.1
+  "@esbuild-kit/core-utils>esbuild": ^0.25.0
+  "tsup>esbuild": ^0.28.1
