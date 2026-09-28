@@ -12,14 +12,7 @@ import {
   StatusSchema,
   UpdatePostApiSchema,
 } from "../lib/schemas.js";
-import {
-  COLLECTION_SORT_ORDERS,
-  FORMATS,
-  STATUSES,
-  THREAD_SORTS,
-  VISIBILITIES,
-  type Post,
-} from "../types.js";
+import { THREAD_SORTS, type Post } from "../types.js";
 import type { AppConfig } from "../types/config.js";
 import { requireStorage, type StorageDriver } from "../lib/storage.js";
 import type { Services } from "./index.js";
@@ -36,7 +29,10 @@ import {
 } from "../lib/api-posts.js";
 import { toSearchApiResult } from "../lib/api-search.js";
 import { loadApiThreadResponses } from "../lib/api-threads.js";
-import { parseThreadSelection } from "../lib/thread-query.js";
+import {
+  parseThreadSelection,
+  THREAD_AUTHOR_VISIBILITIES,
+} from "../lib/thread-query.js";
 import {
   ExternalServiceError,
   NotFoundError,
@@ -105,7 +101,7 @@ const ListPostsToolSchema = z.object({
 });
 
 const GetPostToolSchema = z.object({
-  id: PostIdSchema,
+  id: PostIdSchema.describe("Post TypeID"),
 });
 
 const UpdateCollectionToolSchema = CreateCollectionSchema.partial().extend({
@@ -114,8 +110,15 @@ const UpdateCollectionToolSchema = CreateCollectionSchema.partial().extend({
 });
 
 const GetCollectionToolSchema = z.object({
-  id: CollectionIdSchema,
+  id: CollectionIdSchema.describe("Collection TypeID"),
 });
+
+const ListCollectionsToolSchema = z.object({
+  view: z.enum(["compose"]).optional(),
+});
+
+/** A tool that takes no input. */
+const EmptyToolSchema = z.object({});
 
 const UpdateSettingsToolSchema = z.record(z.string(), z.string());
 
@@ -132,11 +135,11 @@ const ListMediaToolSchema = z.object({
 });
 
 const GetMediaToolSchema = z.object({
-  id: MediaIdSchema,
+  id: MediaIdSchema.describe("Media TypeID"),
 });
 
 const UpdateMediaAltToolSchema = z.object({
-  id: MediaIdSchema,
+  id: MediaIdSchema.describe("Media TypeID"),
   alt: z
     .string()
     .max(500)
@@ -159,36 +162,11 @@ const UploadMediaToolSchema = z.object({
 });
 
 const AddCollectionThreadToolSchema = z.object({
-  collectionId: CollectionIdSchema,
-  threadId: PostIdSchema,
+  collectionId: CollectionIdSchema.describe("Collection TypeID"),
+  threadId: PostIdSchema.describe("TypeID of any post in the Thread"),
 });
 
 const RemoveCollectionThreadToolSchema = AddCollectionThreadToolSchema;
-
-/**
- * The filter dimensions `jant_threads_list` takes, spelled as the HTTP API
- * and the archive spell them. They reach the same registry parser as a query
- * string would, so the vocabularies can't drift.
- */
-const THREAD_FILTER_TOOL_PROPERTIES = {
-  format: { type: "string", enum: [...FORMATS] },
-  collection: {
-    type: "string",
-    description: "Collection slug, or several comma-separated",
-  },
-  year: { type: "integer", description: "Publication year (UTC)" },
-  media: {
-    type: "string",
-    description:
-      "any, none, or comma-separated kinds: image, video, audio, text, document",
-  },
-  title: { type: "string", enum: ["any", "none"] },
-  replies: { type: "string", enum: ["any", "none"] },
-  visibility: {
-    type: "string",
-    enum: ["public", "featured", "hidden", "private"],
-  },
-} as const;
 
 const ListThreadsToolSchema = z.object({
   cursor: z.string().optional(),
@@ -196,14 +174,24 @@ const ListThreadsToolSchema = z.object({
   status: StatusSchema.optional(),
   sort: z.enum(THREAD_SORTS).optional(),
   fold: z.boolean().optional(),
-  lang: ContentLanguageSchema.optional(),
-  format: z.string().optional(),
-  collection: z.string().optional(),
-  year: z.number().int().optional(),
-  media: z.string().optional(),
-  title: z.string().optional(),
-  replies: z.string().optional(),
-  visibility: z.string().optional(),
+  lang: ContentLanguageSchema.optional().describe("BCP 47 content language"),
+  // The filter dimensions, spelled as the HTTP API and the archive spell
+  // them. They reach the same registry parser a query string does.
+  format: FormatSchema.optional(),
+  collection: z
+    .string()
+    .optional()
+    .describe("Collection slug, or several comma-separated"),
+  year: z.number().int().optional().describe("Publication year (UTC)"),
+  media: z
+    .string()
+    .optional()
+    .describe(
+      "any, none, or comma-separated kinds: image, video, audio, text, document",
+    ),
+  title: z.enum(["any", "none"]).optional(),
+  replies: z.enum(["any", "none"]).optional(),
+  visibility: z.enum(THREAD_AUTHOR_VISIBILITIES).optional(),
 });
 
 const LIST_THREADS_OWN_PARAMS = [
@@ -216,32 +204,60 @@ const LIST_THREADS_OWN_PARAMS = [
 ] as const;
 
 const GetThreadToolSchema = z.object({
-  id: PostIdSchema,
+  id: PostIdSchema.describe("TypeID of any post in the Thread"),
   fold: z.boolean().optional(),
 });
 
 const ListThreadPostsToolSchema = z.object({
-  id: PostIdSchema,
+  id: PostIdSchema.describe("TypeID of any post in the Thread"),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(100),
   status: StatusSchema.optional(),
 });
+
+/**
+ * A tool's advertised input, generated from the schema its handler parses
+ * with, so the two can't drift apart. `extra` adds properties the handler
+ * reads before that schema, such as the ID an update names.
+ *
+ * @param schema - The schema the tool's handler parses its arguments with
+ * @param extra - Required properties read ahead of it
+ * @returns The JSON Schema `tools/list` advertises
+ */
+function toolInputSchema(
+  schema: z.ZodType,
+  extra: Record<string, z.ZodType> = {},
+): Record<string, unknown> {
+  const generated = z.toJSONSchema(schema, {
+    io: "input",
+    unrepresentable: "any",
+  }) as Record<string, unknown>;
+  delete generated.$schema;
+  if (Object.keys(extra).length === 0) return generated;
+
+  const extraSchema = z.toJSONSchema(z.object(extra), {
+    io: "input",
+    unrepresentable: "any",
+  }) as { properties: Record<string, unknown>; required?: string[] };
+  return {
+    ...generated,
+    properties: {
+      ...extraSchema.properties,
+      ...(generated.properties as Record<string, unknown> | undefined),
+    },
+    required: [
+      ...(extraSchema.required ?? []),
+      ...((generated.required as string[] | undefined) ?? []),
+    ],
+  };
+}
 
 const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_posts_list",
     description:
       "List posts, with optional format, status, cursor, and limit filters. Pass nextCursor back as cursor for the next page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        cursor: { type: "string" },
-        format: { type: "string", enum: [...FORMATS] },
-        limit: { type: "integer", minimum: 1, maximum: 100, default: 100 },
-        status: { type: "string", enum: [...STATUSES] },
-      },
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(ListPostsToolSchema),
     async execute(args, context) {
       const input = ListPostsToolSchema.parse(args ?? {});
       const status = input.status ?? "published";
@@ -260,14 +276,7 @@ const mcpTools: McpToolDefinition[] = [
     name: "jant_posts_get",
     description:
       "Get one post, including attachments and shared Thread collection IDs.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Post TypeID" },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(GetPostToolSchema),
     async execute(args, context) {
       const input = GetPostToolSchema.parse(args ?? {});
       const post = await context.services.posts.getById(input.id);
@@ -281,14 +290,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_posts_get_content",
     description: "Get one post body as markdown.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Post TypeID" },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(GetPostToolSchema),
     async execute(args, context) {
       const input = GetPostToolSchema.parse(args ?? {});
       const content = await context.services.posts.getBodyContent(input.id);
@@ -303,19 +305,7 @@ const mcpTools: McpToolDefinition[] = [
     name: "jant_threads_list",
     description:
       "List Threads (a root post and its replies), each with its post count. Takes the archive's filters; sort is activity (default), published, updated, oldest, or rating. Set fold to include the replies the homepage shows. Pass nextCursor back as cursor for the next page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        cursor: { type: "string" },
-        limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
-        status: { type: "string", enum: [...STATUSES] },
-        sort: { type: "string", enum: [...THREAD_SORTS] },
-        fold: { type: "boolean" },
-        lang: { type: "string", description: "BCP 47 content language" },
-        ...THREAD_FILTER_TOOL_PROPERTIES,
-      },
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(ListThreadsToolSchema),
     async execute(args, context) {
       const input = ListThreadsToolSchema.parse(args ?? {});
       const filterArgs = Object.fromEntries(
@@ -361,18 +351,7 @@ const mcpTools: McpToolDefinition[] = [
     name: "jant_threads_get",
     description:
       "Get the Thread any post belongs to: its root and post count, and with fold the replies the homepage shows.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: {
-          type: "string",
-          description: "TypeID of any post in the Thread",
-        },
-        fold: { type: "boolean" },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(GetThreadToolSchema),
     async execute(args, context) {
       const input = GetThreadToolSchema.parse(args ?? {});
       const root = await context.services.threads.findRoot(
@@ -393,20 +372,7 @@ const mcpTools: McpToolDefinition[] = [
     name: "jant_threads_list_posts",
     description:
       "List the posts of the Thread any post belongs to, root first, in Thread order. Pass nextCursor back as cursor for the next page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: {
-          type: "string",
-          description: "TypeID of any post in the Thread",
-        },
-        cursor: { type: "string" },
-        limit: { type: "integer", minimum: 1, maximum: 100, default: 100 },
-        status: { type: "string", enum: [...STATUSES] },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(ListThreadPostsToolSchema),
     async execute(args, context) {
       const input = ListThreadPostsToolSchema.parse(args ?? {});
       const root = await context.services.threads.findRoot(
@@ -431,49 +397,7 @@ const mcpTools: McpToolDefinition[] = [
     name: "jant_posts_create",
     description:
       "Create a post. Supports the same JSON body as POST /api/posts.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        format: { type: "string", enum: [...FORMATS] },
-        title: { type: "string" },
-        sourceName: { type: "string" },
-        body: { type: "string" },
-        bodyMarkdown: { type: "string" },
-        slug: { type: "string" },
-        path: { type: "string" },
-        status: { type: "string", enum: [...STATUSES] },
-        visibility: { type: "string", enum: [...VISIBILITIES] },
-        pinned: { type: "boolean" },
-        featured: { type: "boolean" },
-        url: { type: "string" },
-        sourceUrl: { type: "string" },
-        quoteText: { type: "string" },
-        rating: { type: "integer" },
-        collectionIds: {
-          type: "array",
-          items: { type: "string" },
-        },
-        replyToId: { type: "string" },
-        quietReply: { type: "boolean" },
-        publishedAt: { type: "integer" },
-        createdAt: {
-          type: "integer",
-          description:
-            "Unix seconds. When moving a post from another site, the time it was written.",
-        },
-        updatedAt: {
-          type: "integer",
-          description:
-            "Unix seconds. When moving a post from another site, the time it was last edited.",
-        },
-        attachments: {
-          type: "array",
-          items: { type: "object" },
-        },
-      },
-      required: ["format"],
-      additionalProperties: true,
-    },
+    inputSchema: toolInputSchema(CreatePostApiSchema),
     async execute(args, context) {
       const input = CreatePostApiSchema.parse(args ?? {});
       const deps = postWriteDeps(context);
@@ -492,37 +416,9 @@ const mcpTools: McpToolDefinition[] = [
     name: "jant_posts_update",
     description:
       "Update a post. Supports the same JSON body as PUT /api/posts/:id.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Post TypeID" },
-        format: { type: "string", enum: [...FORMATS] },
-        title: { type: "string" },
-        sourceName: { type: "string" },
-        body: { type: "string" },
-        bodyMarkdown: { type: "string" },
-        slug: { type: "string" },
-        status: { type: "string", enum: [...STATUSES] },
-        visibility: { type: "string", enum: [...VISIBILITIES] },
-        pinned: { type: "boolean" },
-        featured: { type: "boolean" },
-        url: { type: "string" },
-        sourceUrl: { type: "string" },
-        quoteText: { type: "string" },
-        rating: { type: "integer" },
-        collectionIds: {
-          type: "array",
-          items: { type: "string" },
-        },
-        publishedAt: { type: "integer" },
-        attachments: {
-          type: "array",
-          items: { type: "object" },
-        },
-      },
-      required: ["id"],
-      additionalProperties: true,
-    },
+    inputSchema: toolInputSchema(UpdatePostApiSchema, {
+      id: PostIdSchema.describe("Post TypeID"),
+    }),
     async execute(args, context) {
       const { id, ...fields } = z
         .object({
@@ -555,14 +451,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_posts_delete",
     description: "Delete a post and clean up any attached media.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Post TypeID" },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(GetPostToolSchema),
     async execute(args, context) {
       const input = GetPostToolSchema.parse(args ?? {});
       const success = await context.services.posts.delete(input.id, {
@@ -580,22 +469,9 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_collections_list",
     description: "List collections and collection directory items.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        view: {
-          type: "string",
-          enum: ["compose"],
-        },
-      },
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(ListCollectionsToolSchema),
     async execute(args, context) {
-      const input = z
-        .object({
-          view: z.enum(["compose"]).optional(),
-        })
-        .parse(args ?? {});
+      const input = ListCollectionsToolSchema.parse(args ?? {});
 
       if (input.view === "compose") {
         const collections =
@@ -617,14 +493,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_collections_get",
     description: "Get one collection by ID.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Collection TypeID" },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(GetCollectionToolSchema),
     async execute(args, context) {
       const input = GetCollectionToolSchema.parse(args ?? {});
       const collection = await context.services.collections.getById(input.id);
@@ -638,20 +507,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_collections_create",
     description: "Create a collection.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        slug: { type: "string" },
-        title: { type: "string" },
-        description: { type: "string" },
-        sortOrder: {
-          type: "string",
-          enum: [...COLLECTION_SORT_ORDERS],
-        },
-      },
-      required: ["slug", "title"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(CreateCollectionSchema),
     async execute(args, context) {
       const input = CreateCollectionSchema.parse(args ?? {});
       return toApiCollection(await context.services.collections.create(input));
@@ -660,23 +516,9 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_collections_update",
     description: "Update a collection.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Collection TypeID" },
-        slug: { type: "string" },
-        title: { type: "string" },
-        description: {
-          anyOf: [{ type: "string" }, { type: "null" }],
-        },
-        sortOrder: {
-          type: "string",
-          enum: [...COLLECTION_SORT_ORDERS],
-        },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(UpdateCollectionToolSchema, {
+      id: CollectionIdSchema.describe("Collection TypeID"),
+    }),
     async execute(args, context) {
       const parsed = z
         .object({
@@ -698,14 +540,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_collections_delete",
     description: "Delete a collection.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Collection TypeID" },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(GetCollectionToolSchema),
     async execute(args, context) {
       const input = GetCollectionToolSchema.parse(args ?? {});
       const success = await context.services.collections.delete(input.id);
@@ -720,15 +555,7 @@ const mcpTools: McpToolDefinition[] = [
     name: "jant_media_list",
     description:
       "List uploaded media, newest first, optionally filtered by MIME prefix. Pass nextCursor back as cursor for the next page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        limit: { type: "integer", minimum: 1, maximum: 200, default: 50 },
-        mimePrefix: { type: "string" },
-        cursor: { type: "string" },
-      },
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(ListMediaToolSchema),
     async execute(args, context) {
       const input = ListMediaToolSchema.parse(args ?? {});
       const media = await context.services.media.list({
@@ -747,14 +574,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_media_get",
     description: "Get one media item by ID.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Media TypeID" },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(GetMediaToolSchema),
     async execute(args, context) {
       const input = GetMediaToolSchema.parse(args ?? {});
       const media = await context.services.media.getById(input.id);
@@ -769,25 +589,7 @@ const mcpTools: McpToolDefinition[] = [
     name: "jant_media_upload",
     description:
       "Upload one media file from base64 bytes and return the created media record.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        filename: { type: "string" },
-        contentType: { type: "string" },
-        contentBase64: { type: "string" },
-        alt: { type: "string" },
-        summary: { type: "string" },
-        width: { type: "integer", minimum: 1 },
-        height: { type: "integer", minimum: 1 },
-        durationSeconds: { type: "integer", minimum: 1 },
-        blurhash: { type: "string" },
-        waveform: { type: "string" },
-        chars: { type: "integer", minimum: 0 },
-        posterBase64: { type: "string" },
-      },
-      required: ["filename", "contentType", "contentBase64"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(UploadMediaToolSchema),
     async execute(args, context) {
       const input = UploadMediaToolSchema.parse(args ?? {});
       return uploadMediaFromBase64(input, context);
@@ -796,15 +598,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_media_update",
     description: "Update a media item: its alt text.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Media TypeID" },
-        alt: { type: "string" },
-      },
-      required: ["id", "alt"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(UpdateMediaAltToolSchema),
     async execute(args, context) {
       const input = UpdateMediaAltToolSchema.parse(args ?? {});
       const media = await context.services.media.getById(input.id);
@@ -824,14 +618,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_media_delete",
     description: "Delete a media item and its stored object.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Media TypeID" },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(GetMediaToolSchema),
     async execute(args, context) {
       const input = GetMediaToolSchema.parse(args ?? {});
       const success = await context.services.media.delete(
@@ -848,14 +635,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_attachments_get_content",
     description: "Get a text attachment's markdown content.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Media TypeID" },
-      },
-      required: ["id"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(GetMediaToolSchema),
     async execute(args, context) {
       const input = GetMediaToolSchema.parse(args ?? {});
       const storage = requireStorage(context.storage);
@@ -873,18 +653,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_collections_add_thread",
     description: "Add a thread to a collection.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        collectionId: { type: "string", description: "Collection TypeID" },
-        threadId: {
-          type: "string",
-          description: "Root or child Post TypeID in the Thread",
-        },
-      },
-      required: ["collectionId", "threadId"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(AddCollectionThreadToolSchema),
     async execute(args, context) {
       const input = AddCollectionThreadToolSchema.parse(args ?? {});
       const collection = await context.services.collections.getById(
@@ -905,18 +674,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_collections_remove_thread",
     description: "Remove a thread from a collection.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        collectionId: { type: "string", description: "Collection TypeID" },
-        threadId: {
-          type: "string",
-          description: "Root or child Post TypeID in the Thread",
-        },
-      },
-      required: ["collectionId", "threadId"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(RemoveCollectionThreadToolSchema),
     async execute(args, context) {
       const input = RemoveCollectionThreadToolSchema.parse(args ?? {});
       const collection = await context.services.collections.getById(
@@ -936,10 +694,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_settings_get",
     description: "Get editable site settings.",
-    inputSchema: {
-      type: "object",
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(EmptyToolSchema),
     async execute(_args, context) {
       const allSettings = await context.services.settings.getAll();
       return {
@@ -953,12 +708,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_settings_update",
     description: "Update editable site settings.",
-    inputSchema: {
-      type: "object",
-      additionalProperties: {
-        type: "string",
-      },
-    },
+    inputSchema: toolInputSchema(UpdateSettingsToolSchema),
     async execute(args, context) {
       const updates = UpdateSettingsToolSchema.parse(args ?? {});
       const { filteredUpdates, rejectedKeys } = partitionEditableSettingUpdates(
@@ -996,15 +746,7 @@ const mcpTools: McpToolDefinition[] = [
     name: "jant_posts_search",
     description:
       "Search published posts, including private ones. Each result carries its visibility.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        q: { type: "string", minLength: 1, maxLength: 200 },
-        limit: { type: "integer", minimum: 1, maximum: 50, default: 20 },
-      },
-      required: ["q"],
-      additionalProperties: false,
-    },
+    inputSchema: toolInputSchema(SearchPostsToolSchema),
     async execute(args, context) {
       const input = SearchPostsToolSchema.parse(args ?? {});
       // The author's search, the same as `GET /api/search`: private posts

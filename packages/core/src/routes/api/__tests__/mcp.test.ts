@@ -101,6 +101,49 @@ async function postMcp(
 }
 
 describe("MCP API Routes", () => {
+  it("advertises each tool's input from the schema its handler reads", async () => {
+    const { app } = createTestApp({ authenticated: true });
+    app.route("/api/mcp", mcpApiRoutes);
+
+    const res = await postMcp(
+      app,
+      { jsonrpc: "2.0", id: 1, method: "tools/list" },
+      { "MCP-Protocol-Version": "2025-06-18" },
+    );
+    const { tools } = (await res.json()).result as {
+      tools: Array<{
+        name: string;
+        inputSchema: {
+          type: string;
+          properties?: Record<string, { enum?: string[] }>;
+          required?: string[];
+        };
+      }>;
+    };
+    const byName = new Map(tools.map((tool) => [tool.name, tool.inputSchema]));
+
+    for (const tool of tools) {
+      expect(tool.inputSchema.type, tool.name).toBe("object");
+    }
+    // These once went missing from the hand-written schemas while the
+    // handlers accepted them.
+    expect(
+      Object.keys(byName.get("jant_posts_create")?.properties ?? {}),
+    ).toEqual(
+      expect.arrayContaining([
+        "language",
+        "translationOfId",
+        "pinnedAt",
+        "featuredAt",
+        "collectionEntries",
+      ]),
+    );
+    expect(byName.get("jant_posts_update")?.required).toContain("id");
+    expect(
+      byName.get("jant_threads_list")?.properties?.visibility?.enum,
+    ).toContain("any");
+  });
+
   it("initializes the MCP endpoint", async () => {
     const { app } = createTestApp({ authenticated: true });
     app.route("/api/mcp", mcpApiRoutes);

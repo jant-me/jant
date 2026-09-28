@@ -37,6 +37,9 @@ export type ThreadSelectionParse =
 
 const READER_VISIBILITIES = ["public", "featured", "hidden", "any"] as const;
 const AUTHOR_VISIBILITIES = [...READER_VISIBILITIES, "private"] as const;
+
+/** The `visibility` values an author's Thread list takes. */
+export const THREAD_AUTHOR_VISIBILITIES = AUTHOR_VISIBILITIES;
 /** Spellings the registry reads that stay valid here. */
 const LEGACY_VISIBILITIES = ["latest_hidden"] as const;
 
