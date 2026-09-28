@@ -3,7 +3,7 @@ import { createTestApp } from "../../../../__tests__/helpers/app.js";
 import { publicPostsApiRoutes } from "../posts.js";
 
 // The list this path answered moved to `/api/public/threads` in 0.9 and was
-// removed in 1.0.1; its behaviors are tested there.
+// removed in 0.10.0; its behaviors are tested there.
 describe("Public Posts API Routes", () => {
   describe("GET /api/public/posts/:slug", () => {
     it("returns a public post by slug without authentication", async () => {

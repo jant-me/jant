@@ -3,7 +3,7 @@
 "create-jant": minor
 ---
 
-Remove the two public lists deprecated in 0.9: the `GET /api/public/posts` list and `GET /api/public/archive`. `GET /api/public/threads` replaces both. `GET /api/public/posts/:slug` stays.
+Remove the two public lists deprecated in 0.9: the `GET /api/public/posts` list and `GET /api/public/archive`. `GET /api/public/threads` replaces both. `GET /api/public/posts/:slug` stays. The 0.9 notes said 1.0.1; the removal comes a release earlier, so 1.x starts without them.
 
 **Upgrade notes**
 

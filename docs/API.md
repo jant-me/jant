@@ -386,7 +386,7 @@ public endpoints return `404` to every caller. Authenticated clients can use
 
 Lists of public posts are Thread lists: `GET /api/public/threads`. The
 `GET /api/public/posts` list and `GET /api/public/archive`, deprecated in 0.9,
-were removed in 1.0.1 and return `404`.
+were removed in 0.10.0 and return `404`.
 
 Public post responses include these fields:
 

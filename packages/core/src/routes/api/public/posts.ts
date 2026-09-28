@@ -12,7 +12,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 /**
  * One published Post by its slug. Lists of Posts are Threads now:
  * `GET /api/public/threads` replaced the list this path used to answer, and
- * 1.0.1 removed it.
+ * 0.10.0 removed it.
  */
 export const publicPostsApiRoutes = new Hono<Env>();
 
