@@ -2,8 +2,11 @@
 # Tools
 # =============================================================================
 [tools]
-node = "lts"
-pnpm = "10.28.2"
+# The major the Dockerfile, the deploy workflow, and `engines` build and run on.
+# "lts" would move to the next major on its own when that one becomes LTS.
+node = "24"
+# Same as `packageManager` in package.json, which CI and the Docker build use.
+pnpm = "10.33.0"
 hugo-extended = "0.160.1"
 
 # =============================================================================
