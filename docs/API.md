@@ -2484,47 +2484,15 @@ Removes the database override for one resettable Config Editor setting. This
 includes directly editable values and the safe scalar linked settings `THEME`,
 `FONT_THEME`, `THEME_MODE`, and `SHOW_HEADER_AVATAR`.
 
-The successful response contains the same directly editable `settings` object
-as `GET /api/settings` plus a safe `setting` field with the reset key's resolved
-Config Editor state:
+The successful response is what `GET /api/settings` returns, with the value the
+setting falls back to:
 
 ```json
-{
-  "settings": { "SITE_NAME": "Jant" },
-  "setting": {
-    "key": "SITE_NAME",
-    "mode": "link",
-    "type": "string",
-    "value": "Jant",
-    "fallbackValue": "Jant",
-    "modified": false,
-    "locked": false,
-    "settingsPath": "/settings/general",
-    "display": "value",
-    "resettable": true
-  }
-}
+{ "settings": { "SITE_NAME": "Jant" } }
 ```
 
 Environment-only, secret, unknown, specialized content/file keys, and
 demo-locked keys return `400` without changing stored settings.
-
-### Mark compose shortcut discovery as seen
-
-`POST /api/settings/discovery/compose-open-shortcut`
-
-Auth: `Session or token`
-
-This is a small UI-state endpoint used by the compose UI.
-
-- First call stores the timestamp and returns `201`
-- Later calls return `200`
-
-Response:
-
-```json
-{ "learned": true }
-```
 
 ### Upload site avatar and icons
 

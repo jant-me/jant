@@ -397,14 +397,12 @@ export class JantConfigEditor extends LitElement {
         );
       }
 
+      // An editable setting comes back with its fallback in `settings`; a
+      // linked one (a theme, say) isn't listed there, and resets to the
+      // fallback this row already shows.
       const body = await readJsonObject(response);
-      const resetSetting = isJsonObject(body.setting)
-        ? body.setting
-        : undefined;
       const resetValue =
-        getJsonString(resetSetting, "value") ??
-        getJsonString(body.settings, item.key) ??
-        item.fallbackValue;
+        getJsonString(body.settings, item.key) ?? item.fallbackValue;
       this._commitValue(item.key, resetValue, false);
       this._setStatus(item.key, { state: "saved" });
     } catch (error) {

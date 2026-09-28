@@ -19,7 +19,6 @@ import {
 import { requireStorage } from "../../lib/storage.js";
 import { syncHostedControlPlaneSiteAvatar } from "../../lib/hosted-control-plane-sync.js";
 import {
-  buildConfigEditorFields,
   buildEditableSettingsResponse,
   demoLockedSettingKeys,
   isResettableConfigEditorKey,
@@ -254,12 +253,8 @@ settingsApiRoutes.delete("/:key", requireAuthApi(), async (c) => {
 
   await c.var.services.settings.remove(key);
   const allSettings = await c.var.services.settings.getAll();
-  const setting = buildConfigEditorFields(allSettings, c.env, demoMode).find(
-    (field) => field.key === key,
-  );
 
   return c.json({
     settings: buildEditableSettingsResponse(allSettings, demoMode, c.env),
-    setting,
   });
 });

@@ -420,11 +420,7 @@ describe("Settings API Routes", () => {
       expect(await services.settings.get("SITE_NAME")).toBeNull();
       const body = await res.json();
       expect(body.settings.SITE_NAME).toBe("Jant");
-      expect(body.setting).toMatchObject({
-        key: "SITE_NAME",
-        value: "Jant",
-        modified: false,
-      });
+      expect(body).not.toHaveProperty("setting");
     });
 
     it("resets search page size to the current page-size setting", async () => {
@@ -441,12 +437,7 @@ describe("Settings API Routes", () => {
       expect(await services.settings.get("SEARCH_PAGE_SIZE")).toBeNull();
       const body = await res.json();
       expect(body.settings.SEARCH_PAGE_SIZE).toBe("80");
-      expect(body.setting).toMatchObject({
-        key: "SEARCH_PAGE_SIZE",
-        value: "80",
-        fallbackValue: "80",
-        modified: false,
-      });
+      expect(body).not.toHaveProperty("setting");
     });
 
     it("removes a safe linked scalar override and returns its fallback", async () => {
@@ -462,13 +453,7 @@ describe("Settings API Routes", () => {
       expect(await services.settings.get("THEME")).toBeNull();
       const body = await res.json();
       expect(body.settings.THEME).toBeUndefined();
-      expect(body.setting).toMatchObject({
-        key: "THEME",
-        mode: "link",
-        value: "tufte",
-        modified: false,
-        resettable: true,
-      });
+      expect(body).not.toHaveProperty("setting");
     });
 
     it("resets an API-editable textarea setting through its linked editor state", async () => {
@@ -484,14 +469,7 @@ describe("Settings API Routes", () => {
       expect(await services.settings.get("SITE_DESCRIPTION")).toBeNull();
       const body = await res.json();
       expect(body.settings.SITE_DESCRIPTION).toBe("");
-      expect(body.setting).toMatchObject({
-        key: "SITE_DESCRIPTION",
-        mode: "link",
-        value: "false",
-        modified: false,
-        resettable: true,
-        settingsPath: "/settings/general",
-      });
+      expect(body).not.toHaveProperty("setting");
     });
 
     it("rejects unsafe, specialized, and demo-locked keys", async () => {
