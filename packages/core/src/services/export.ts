@@ -369,6 +369,13 @@ export function createExportService(
      * falls back to the repository name Sync would suggest for the site.
      */
     repoName?: string | null;
+    /**
+     * Leave out drafts and private posts, replies in a private Thread
+     * included. GitHub Sync sets it: its repository may be public, and it
+     * deletes a file once its post stops qualifying. A ZIP export is the
+     * author's own copy and keeps everything.
+     */
+    publicOnly?: boolean;
   } = {},
 ): ExportService {
   return {
@@ -387,6 +394,9 @@ export function createExportService(
           services.posts.list({
             excludeReplies: false,
             limit: 10000,
+            ...(deps.publicOnly
+              ? { status: "published" as const, excludePrivate: true }
+              : {}),
           }),
           services.collections.list(),
           collectionDirectoryDataPromise,

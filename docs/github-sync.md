@@ -10,6 +10,8 @@ Jant is the source of truth. The GitHub repository mirrors Jant's content with a
 
 **Jant → GitHub**: when you create, edit, or delete a post, Jant pushes the change to your repository as a Markdown file with YAML front matter. Thread replies become individual files nested under the root post directory. Media is not copied into the repository — it stays at its URL.
 
+Only published posts that aren't private are pushed, since the repository may be public. Drafts, private posts, and replies in a private Thread stay in Jant, and a post that becomes private loses its file on the next push. For a copy that includes them, use [Export and import](export-and-import.md).
+
 **GitHub → Jant**: when you edit a Markdown file on GitHub and push, a webhook notifies Jant. Jant matches the file to an existing post by the `slug` field in front matter and updates its content. **The webhook only updates content fields on existing posts — adding or deleting `.md` files on GitHub does not create or delete posts in Jant.** This avoids accidental loss (clearing the repository will not take down the site).
 
 Jant's own commits are tagged with `[jant-sync]`. Webhooks carrying that marker are ignored, so changes never bounce back and forth.

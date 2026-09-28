@@ -491,6 +491,9 @@ export function createGitHubSyncService(
       const exportService = createExportService(services, siteConfig, {
         storage: deps.storage,
         bundleMedia: false,
+        // The repository may be public, so drafts and private posts stay in
+        // Jant. A post that becomes private loses its file on the next push.
+        publicOnly: true,
         // Cloudflare names a Worker imported from this repository after it,
         // so the deploy config's Worker name matches with no editing.
         repoName: repo,

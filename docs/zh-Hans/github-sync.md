@@ -10,6 +10,8 @@ Jant 是 source of truth。GitHub 仓库是 Jant 内容的镜像，外加一个�
 
 **Jant → GitHub**：当你创建、编辑或删除一篇帖子，Jant 把这次变更以带 YAML front matter 的 Markdown 文件推送到你的仓库。Thread 回复各自成为独立文件，嵌套在根帖目录下。媒体不进入仓库，仅以 URL 引用。
 
+仓库可能是公开的，所以只推送已发布、非私密的帖子。草稿、私密帖子和私密 Thread 里的回复留在 Jant 里；帖子改为私密后，下次推送会删掉它的文件。要包含它们的副本，用[导出与导入](export-and-import.md)。
+
 **GitHub → Jant**：当你在 GitHub 上编辑一个 Markdown 文件并 push，webhook 通知 Jant，Jant 按 front matter 里的 `slug` 字段匹配到已有帖子，更新内容。**webhook 只更新已存在帖子的内容字段——在 GitHub 上新增或删除 `.md` 文件不会在 Jant 里创建或删除帖子。** 这是为了避免误删（仓库被清空也不会拖垮站点）。
 
 Jant 自己产生的 commit 会带上 `[jant-sync]` 标记。带这个标记的 webhook 会被忽略，所以变更不会来回反弹。
