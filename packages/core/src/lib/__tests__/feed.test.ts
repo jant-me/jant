@@ -406,17 +406,14 @@ describe("feed renderers", () => {
     expect(xml).not.toContain("★");
   });
 
-  it("uses feed-specific timestamps when provided", () => {
+  // A curated feed moves an entry's <updated> when it takes a post in; the
+  // post's own publication date stays <published>.
+  it("dates <published> by the post and <updated> by the feed", () => {
     const xml = defaultFeedRenderer(
-      makeFeedData(
-        makePostView({
-          feedPublishedAt: "2026-03-20T08:30:00.000Z",
-          feedUpdatedAt: "2026-03-20T09:45:00.000Z",
-        }),
-      ),
+      makeFeedData(makePostView({ feedUpdatedAt: "2026-03-20T09:45:00.000Z" })),
     );
 
-    expect(xml).toContain("<published>2026-03-20T08:30:00.000Z</published>");
+    expect(xml).toContain("<published>2026-03-19T00:00:00.000Z</published>");
     expect(xml).toContain("<updated>2026-03-20T09:45:00.000Z</updated>");
   });
 

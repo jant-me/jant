@@ -16,6 +16,22 @@ Both extensions are declared only when the feed emits something in them — whic
 
 An Atom reader that knows neither extension still gets a working feed. Everything Jant adds is either an element in its own namespace or an attribute on a Media RSS element.
 
+## The feed
+
+| Element                             | Read it for                                                                                                        |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `title`                             | The site's name and the feed's, as in `Jant - Latest posts`, so a reader's sidebar keeps one site's feeds together |
+| `author/name`                       | The site's name alone. Read the blog's name from here, not from `title`                                            |
+| `subtitle`                          | The site's description. May be empty                                                                               |
+| `icon`                              | The site's avatar                                                                                                  |
+| `link[@rel="alternate"]`            | The page the feed follows, such as the home page                                                                   |
+| `link[@rel="self"]`                 | This feed, with any filter it was asked for                                                                        |
+| `link[@rel="alternate"][@hreflang]` | The same feed in the site's other languages                                                                        |
+| `id`                                | This feed's address                                                                                                |
+| `updated`                           | The newest entry's `updated`, never the time the feed was served, so an unchanged feed looks unchanged             |
+| `@xml:lang`                         | The feed's content language                                                                                        |
+| `jant:discover`                     | The site's Jant Discover answer; see [Feeds](feeds.md#discover)                                                    |
+
 ## One entry
 
 ```xml
@@ -46,7 +62,7 @@ An Atom reader that knows neither extension still gets a working feed. Everythin
 | `link[@rel="alternate"]` | 1     | Where the entry points: the external URL on a Link post, the permalink otherwise                                                                                                                 |
 | `link[@rel="related"]`   | 0–1   | Link posts only: the permalink, since `alternate` was spent on the external URL                                                                                                                  |
 | `link[@rel="enclosure"]` | 0–n   | Attachments a plain Atom parser can fetch. Images are excluded — the content already shows them                                                                                                  |
-| `published` / `updated`  | 1     | Timestamps. A curated feed may date an entry by the curation rather than the post                                                                                                                |
+| `published` / `updated`  | 1     | `published` is when the post was published, in every feed. `updated` is the latest of that, an edit, a reply in its Thread, and, in a collection's feed, when the collection took the post in    |
 | `jant:format`            | 1     | `note`, `link`, or `quote` — the entry's, which is the root's in a thread                                                                                                                        |
 | `jant:thread`            | 0–1   | The entry is a thread. Absent means a lone post                                                                                                                                                  |
 | `jant:truncated`         | 0–1   | The summary's text was cut. Offer a "read more". A row's `truncated` says which post. Never on a Quote                                                                                           |

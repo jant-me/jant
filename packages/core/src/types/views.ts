@@ -121,13 +121,11 @@ export interface PostView {
 }
 
 /**
- * Render-ready post data for feeds.
- * Feed timestamps can differ from on-page timestamps when a feed represents a
- * curation event rather than original publication time.
+ * Render-ready post data for feeds. `<updated>` can differ from the post's
+ * own date: a Thread's replies move it, and so does a collection taking the
+ * post in. `<published>` is always the post's.
  */
 export interface FeedPostView extends PostView {
-  /** Optional ISO 8601 timestamp used for Atom `<published>` */
-  feedPublishedAt?: string;
   /** Optional ISO 8601 timestamp used for Atom `<updated>` */
   feedUpdatedAt?: string;
   /** Thread replies to render inline in the feed entry content */

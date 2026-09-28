@@ -1194,7 +1194,9 @@ export function defaultFeedRenderer(data: FeedData): string {
         ? escapeXml(alternateUrl)
         : escapedPermalink;
       const title = getAtomTitle(post);
-      const publishedAt = post.feedPublishedAt ?? post.publishedAt;
+      // Always the post's own date. A curated feed moves `<updated>` when it
+      // takes a post in, never `<published>`.
+      const publishedAt = post.publishedAt;
       const updatedAt = post.feedUpdatedAt ?? post.updatedAt;
 
       // For link posts, add a <link rel="related"> back to the blog permalink
