@@ -57,7 +57,6 @@ These derive from the core palette by default. Built-in themes set `--site-accen
 | `--site-text-secondary` | `var(--muted-foreground)` | Secondary / caption text                         |
 | `--site-divider`        | `var(--border)`           | Content dividers                                 |
 | `--site-threadline`     | `var(--border)`           | Thread connection lines                          |
-| `--site-column-outline` | `var(--border)`           | Base color used to derive content block outlines |
 | `--search-mark-bg`      | Built-in yellow           | Search result highlight background               |
 | `--search-mark-color`   | Built-in dark text        | Search result highlight text                     |
 
@@ -110,7 +109,6 @@ The two dark rules are explained under [Dark mode](#dark-mode).
 | `--fw-regular`        | 400                          | Body text                                                         |
 | `--fw-medium`         | 500                          | Labels, active nav                                                |
 | `--fw-semibold`       | 600                          | Headings, buttons                                                 |
-| `--fw-bold`           | 700                          | Strong emphasis                                                   |
 
 When you pick a font theme in **Settings > Font Theme**, `--font-heading`, `--font-body`, and a few related font weights switch with it. `--font-ui` is intentionally left out — buttons, navigation, and other interface text always stay system sans-serif for legibility. You can still override any variable in Custom CSS for further tuning.
 
@@ -127,19 +125,20 @@ To use external font sources like Google Fonts, load the font files first via [c
 
 ## Layout variables
 
-| Variable                  | Default  | What it controls                    |
-| ------------------------- | -------- | ----------------------------------- |
-| `--content-max-width`     | `42rem`  | Maximum content width               |
-| `--site-padding`          | `1.5rem` | Horizontal padding                  |
-| `--content-gap`           | `1rem`   | Spacing between feed items          |
-| `--layout-sidenote-width` | `50%`    | Wide-screen footnote rail width     |
-| `--layout-sidenote-gap`   | `10%`    | Gap between prose and footnote rail |
+| Variable                  | Default  | What it controls                                        |
+| ------------------------- | -------- | ------------------------------------------------------- |
+| `--layout-body-max-width` | `1088px` | Widest the page frame gets: header, content, and footer |
+| `--site-feed-rhythm`      | `4.4rem` | Space between posts in a list, and above the first one  |
+| `--layout-sidenote-width` | `50%`    | Wide-screen footnote rail width                         |
+| `--layout-sidenote-gap`   | `10%`    | Gap between prose and footnote rail                     |
 
 ### Example: wider content area
 
+On a wide screen the reading column is a fixed share of the frame, so a wider frame gives it more room. Below `1024px` the column keeps a `35rem` measure whatever the frame.
+
 ```css
 :root {
-  --content-max-width: 55rem;
+  --layout-body-max-width: 1280px;
 }
 ```
 

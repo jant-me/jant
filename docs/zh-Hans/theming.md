@@ -57,7 +57,6 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 | `--site-text-secondary` | `var(--muted-foreground)` | 次级 / 说明文本                       |
 | `--site-divider`        | `var(--border)`           | 内容分隔线                            |
 | `--site-threadline`     | `var(--border)`           | Thread 连线                           |
-| `--site-column-outline` | `var(--border)`           | 内容块描边的派生基色                  |
 | `--search-mark-bg`      | 内置黄底                  | 搜索结果高亮背景                      |
 | `--search-mark-color`   | 内置深字                  | 搜索结果高亮文字                      |
 
@@ -110,7 +109,6 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 | `--fw-regular`        | 400                     | 正文                                       |
 | `--fw-medium`         | 500                     | 标签、激活导航                             |
 | `--fw-semibold`       | 600                     | 标题、按钮                                 |
-| `--fw-bold`           | 700                     | 强强调                                     |
 
 在 **Settings > Font Theme** 选字型主题后，`--font-heading`、`--font-body` 以及若干相关字重会随之切换。`--font-ui` 不在切换范围内——按钮、导航这些界面文字始终用系统 sans-serif，方便阅读。要进一步调整，仍然可以在 Custom CSS 里覆盖任意变量。
 
@@ -127,19 +125,20 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 ## 布局变量
 
-| 变量                      | 默认值   | 作用                     |
-| ------------------------- | -------- | ------------------------ |
-| `--content-max-width`     | `42rem`  | 内容最大宽度             |
-| `--site-padding`          | `1.5rem` | 横向内边距               |
-| `--content-gap`           | `1rem`   | 信息流条目之间的间距     |
-| `--layout-sidenote-width` | `50%`    | 宽屏下脚注侧栏的宽度     |
-| `--layout-sidenote-gap`   | `10%`    | 正文和脚注侧栏之间的间距 |
+| 变量                      | 默认值   | 作用                                       |
+| ------------------------- | -------- | ------------------------------------------ |
+| `--layout-body-max-width` | `1088px` | 页面框架（页头、内容、页脚）的最大宽度     |
+| `--site-feed-rhythm`      | `4.4rem` | 列表里帖子之间的间距，以及第一篇之上的间距 |
+| `--layout-sidenote-width` | `50%`    | 宽屏下脚注侧栏的宽度                       |
+| `--layout-sidenote-gap`   | `10%`    | 正文和脚注侧栏之间的间距                   |
 
 ### 示例：更宽的内容区
 
+宽屏上，阅读栏占页面框架的固定比例，框架放宽，阅读栏也跟着变宽。窄于 `1024px` 时，阅读栏保持 `35rem`，与框架宽度无关。
+
 ```css
 :root {
-  --content-max-width: 55rem;
+  --layout-body-max-width: 1280px;
 }
 ```
 
