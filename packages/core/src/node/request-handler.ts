@@ -26,6 +26,7 @@ import {
   getConfiguredSingleSiteOrigin,
   getConfiguredSingleSitePathPrefix,
   getEnvString,
+  getPort,
   getSiteResolutionMode,
   shouldTrustProxy,
 } from "../lib/env.js";
@@ -35,6 +36,8 @@ import { now } from "../lib/time.js";
 import { createSiteService } from "../services/site.js";
 import type { HonoApp } from "../types/app-context.js";
 import type { Bindings } from "../types/bindings.js";
+
+const DEFAULT_HOST = "127.0.0.1";
 
 const MIME_TYPES: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
@@ -429,6 +432,14 @@ export async function createNodeBindings(
       sqlite.close();
     },
   };
+}
+
+export function resolveHost(env: Bindings): string {
+  return getEnvString(env, "HOST") ?? DEFAULT_HOST;
+}
+
+export function resolvePort(env: Bindings): number {
+  return getPort(env);
 }
 
 export function resolvePublicRequestUrl(

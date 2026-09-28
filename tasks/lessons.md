@@ -1263,3 +1263,9 @@ btn-outline"` compiles, passes every test, and only shows up as a button whose
   `git rm` stages at once, so a later `git add <files> && git commit` carries
   those deletions along; one did, and `main` stopped building until the
   files were restored.
+- When a merge brings `main`'s own fix for a bug this branch fixed too, take
+  `main`'s version and drop the branch's, even when the branch's design reads
+  better. Two fixes of one bug on two branches is divergence with no gain, and
+  every later merge argues it again; a better design goes to `main` as its own
+  change. Before deleting an existing export, trace why it exists
+  (`git log -S`) and who calls it, sibling repos included, and say so.
