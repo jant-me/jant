@@ -385,7 +385,6 @@ msgstr "Avatar"
 #. @context: Toast after saving avatar display preference
 #. @context: Toast after saving avatar display preference
 #: src/routes/dash/settings.tsx
-#: src/routes/dash/settings.tsx
 msgid "Avatar display updated."
 msgstr "Avatar display updated."
 
@@ -460,7 +459,6 @@ msgstr "Calm and natural, easy on the eyes."
 #. @context: Dialog cancel button
 #. @context: GitHub sync picker — cancel action
 #: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/ActionButtons.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -473,13 +471,11 @@ msgstr "Calm and natural, easy on the eyes."
 #: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/SessionsContent.tsx
 #: src/ui/dash/settings/TelegramContent.tsx
-#: src/ui/dash/settings/TelegramContent.tsx
 msgid "Cancel"
 msgstr "Cancel"
 
 #. @context: Button to change password
 #. @context: Settings section heading
-#: src/ui/dash/settings/AccountContent.tsx
 #: src/ui/dash/settings/AccountContent.tsx
 msgid "Change Password"
 msgstr "Change Password"
@@ -575,7 +571,6 @@ msgstr "collection"
 #. @context: Custom URL type option
 #. @context: Suggested navigation link target type
 #: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Collection"
 msgstr "Collection"
@@ -618,7 +613,6 @@ msgstr "Config Editor"
 
 #. @context: Config Editor linked setting status
 #. @context: Config Editor linked setting status
-#: src/ui/dash/settings/ConfigEditorContent.tsx
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Configured"
 msgstr "Configured"
@@ -704,7 +698,6 @@ msgstr "Connecting…"
 #. @context: Setup form field - site content language
 #. @context: Setup form field - site content language
 #: src/routes/auth/setup.tsx
-#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Content language"
 msgstr "Content language"
@@ -742,14 +735,11 @@ msgstr "Copied"
 #. @context: Button to copy the Telegram binding code
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/TelegramContent.tsx
-#: src/ui/dash/settings/TelegramContent.tsx
-#: src/ui/dash/settings/TelegramContent.tsx
 msgid "Copy"
 msgstr "Copy"
 
 #. @context: Button to copy API token to clipboard
 #. @context: Button to copy API token to clipboard
-#: src/ui/dash/settings/ApiTokensContent.tsx
 #: src/ui/dash/settings/ApiTokensContent.tsx
 msgid "Copy Token"
 msgstr "Copy Token"
@@ -1040,7 +1030,6 @@ msgstr "Destination"
 #. @context: Button to disconnect GitHub repository on GitHub Sync settings
 #. @context: Button to disconnect Telegram
 #. @context: Section heading for disconnect action on GitHub Sync settings
-#: src/ui/dash/settings/GitHubSyncContent.tsx
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Disconnect"
@@ -1759,8 +1748,6 @@ msgstr "Neutral gray"
 #. @context: Button to create new custom URL
 #. @context: Page heading
 #: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
 msgid "New Custom URL"
 msgstr "New Custom URL"
 
@@ -1829,7 +1816,6 @@ msgstr "Not announced yet. No directory has been told this site exists."
 #. @context: Config Editor linked setting status
 #. @context: Config Editor linked setting status
 #: src/ui/dash/settings/ConfigEditorContent.tsx
-#: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Not configured"
 msgstr "Not configured"
 
@@ -1882,7 +1868,6 @@ msgstr "Open {linkOpen}@{botUsername}{linkClose} and send:"
 
 #. @context: Config Editor link to a dedicated settings page
 #. @context: Config Editor link to a dedicated settings page
-#: src/ui/dash/settings/ConfigEditorContent.tsx
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Open setting"
 msgstr "Open setting"
@@ -2034,7 +2019,6 @@ msgstr "Pinned"
 #. @context: Custom URL target type badge for a post
 #. @context: Custom URL type option
 #: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
 msgid "Post"
 msgstr "Post"
 
@@ -2116,7 +2100,6 @@ msgstr "Recently updated"
 #. @context: Custom URL target type badge for a redirect
 #. @context: Custom URL type option
 #: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
 msgid "Redirect"
 msgstr "Redirect"
 
@@ -2186,7 +2169,6 @@ msgstr "Remove this page from navigation? The page itself won't be deleted."
 #. @context: Label for GitHub repository input on GitHub Sync settings
 #. @context: Label for connected repository on GitHub Sync status
 #: src/routes/dash/settings.tsx
-#: src/ui/dash/settings/GitHubSyncContent.tsx
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 msgid "Repository"
 msgstr "Repository"
@@ -2296,13 +2278,11 @@ msgstr "Search runtime settings and open advanced configuration"
 #. @context: Config Editor search input placeholder
 #. @context: Config Editor search input placeholder
 #: src/ui/dash/settings/ConfigEditorContent.tsx
-#: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Search settings"
 msgstr "Search settings"
 
 #. @context: Toast after saving search settings
 #. @context: Toast after saving search settings
-#: src/routes/dash/settings.tsx
 #: src/routes/dash/settings.tsx
 msgid "Search settings updated."
 msgstr "Search settings updated."
@@ -2484,7 +2464,6 @@ msgstr "Site visibility"
 #. @context: Toast after saving the site visibility settings
 #. @context: Toast after saving the site visibility settings
 #: src/routes/dash/settings.tsx
-#: src/routes/dash/settings.tsx
 msgid "Site visibility updated."
 msgstr "Site visibility updated."
 
@@ -2564,7 +2543,6 @@ msgstr "Target Slug"
 #. @context: Settings section heading for Telegram setup
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
-#: src/ui/dash/settings/TelegramContent.tsx
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Telegram"
 msgstr "Telegram"
@@ -2797,7 +2775,6 @@ msgstr "Time zone updated."
 #. @context: Collection title field in Navigation settings
 #. @context: Title field label in quick page creation
 #: src/ui/dash/appearance/NavigationContent.tsx
-#: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Title"
 msgstr "Title"
 
@@ -2838,7 +2815,6 @@ msgstr "Turn off"
 
 #. @context: Title of the dialog confirming removal of the last additional language
 #. @context: Title of the disable-multilingual dialog
-#: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Turn off multilingual content?"
 msgstr "Turn off multilingual content?"

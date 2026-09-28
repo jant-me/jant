@@ -34,6 +34,7 @@ For static export and round-trip import, also see [Export and Import](export-and
 | Settings                | `/api/settings`          | API token or session |
 | Search                  | `/api/search`            | API token or session |
 | Export                  | `/api/export`            | API token or session |
+| GitHub webhooks         | `/api/github-sync`       | GitHub signature     |
 | Internal admin          | `/api/internal/*`        | Internal admin token |
 
 Auth labels in this document:
@@ -42,6 +43,7 @@ Auth labels in this document:
 - `Public when enabled`: public by default; returns `404` to every caller when `PUBLIC_API_ENABLED=false`
 - `Session or token`: browser session cookie or `Authorization: Bearer <token>`
 - `Internal admin token`: `Authorization: Bearer <INTERNAL_ADMIN_TOKEN>`
+- `GitHub signature`: an `X-Hub-Signature-256` header GitHub computes with the webhook secret; see [GitHub webhooks](#github-webhooks)
 
 ---
 
@@ -115,7 +117,7 @@ Current transport behavior:
 
 - `POST` only
 - content type `application/json`
-- takes `MCP-Protocol-Version: 2025-06-18`; a request without it is read as that version, and any other version answers `400`
+- takes `MCP-Protocol-Version: 2025-06-18`; a request without it is read as that version, and any other version answers `400`. A later minor release can accept newer protocol versions as well; one is dropped only in a major release
 - supports `initialize`, `ping`, `tools/list`, `tools/call`, and `notifications/initialized`
 - does not support batch requests, SSE streaming, or session negotiation
 
@@ -164,6 +166,8 @@ Unless an endpoint explicitly returns a ZIP, XML, or plain text response, it ret
 
 A request field or query parameter an endpoint doesn't know is ignored, so a client that sends one works against an older Jant too. A value an endpoint can't read, in a field it does know, answers `400`. A list's `limit` past either end of its range reads as that end: `limit=500` on a list of at most `100` returns `100`.
 
+A field that takes one of a fixed set of values, such as `format`, `status`, `visibility`, or an error's `code`, can gain a value in a minor release. Read a `format` you don't recognize as `note`, and handle a `code` you don't recognize by the HTTP status.
+
 All timestamps are Unix seconds:
 
 ```json
@@ -198,13 +202,15 @@ The post list (`GET /api/posts`), the Thread lists (`GET /api/threads`, `GET /ap
 - A page can hold fewer posts than `limit` and still have a `nextCursor`. The walk ends when `nextCursor` is `null`.
 - A `cursor` that can't be read, or that comes from a list in a different order, returns `400`.
 
+The other lists, collections (`GET /api/collections`), smart collections (`GET /api/smart-collections`), navigation items (`GET /api/nav-items`), and a post's other versions, return every item in one response. If one of them gains pages in a later release, a request that doesn't ask for a page still gets all of it.
+
 ### Slugs, paths, and aliases
 
 - Post and collection `slug` values are lowercase `a-z`, `0-9`, and `-`.
 - Post `path` is a create-time convenience field, not a general path-management API.
 - If a post `path` is itself a valid slug, Jant uses it as the canonical slug.
 - If a post `path` is not a valid slug, Jant slugifies it for the canonical URL and stores the original path as an alias.
-- Custom URL `path` and `toPath` carry a leading slash in responses. A request may leave it off `path`.
+- Custom URL `path` carries a leading slash in responses, and so does `toPath` when it names a path on the site. A request may leave it off `path`.
 
 ### Body formats
 
@@ -248,7 +254,7 @@ Every error uses this shape:
 }
 ```
 
-- `details` is present for validation errors that carry structured field information.
+- `details` is present for validation errors that carry structured field information. Its shape can change in any release, and so can the wording of `error`: show them to a person or log them, and branch on `code`. The one documented part of `details` is the settings endpoint's `rejectedKeys`.
 - `code` is always present, an error the server didn't expect included (`INTERNAL_ERROR`). An unknown `/api` path answers `NOT_FOUND` in this shape too.
 
 Common error codes:
@@ -1884,6 +1890,10 @@ there is no "any" value, because a key that is absent already says that.
 | `replies`    | boolean — `true` threads with replies, `false` single posts               |
 | `visibility` | `public` \| `featured` \| `latest_hidden`                                 |
 
+A key this table doesn't list answers `400` rather than being ignored like an
+unknown field elsewhere: dropping a condition would publish a wider page than
+the one asked for.
+
 `visibility` never accepts `private`, and `collection` never accepts more than
 one id. The first is because a smart collection is a published page and can
 never name a set only its author can see; the second is because two ids would
@@ -2163,16 +2173,16 @@ Custom URLs let you attach extra paths to posts or collections, or define intern
 
 Custom URL responses include these fields:
 
-| Field          | Type                                              | Notes                                                     |
-| -------------- | ------------------------------------------------- | --------------------------------------------------------- |
-| `id`           | `pth_*` string                                    | Custom URL ID                                             |
-| `path`         | string                                            | The address, with a leading slash                         |
-| `targetType`   | `post` \| `collection` \| `redirect` \| `archive` | Target kind                                               |
-| `targetId`     | string \| `null`                                  | The post's or collection's TypeID; `null` for other kinds |
-| `toPath`       | string \| `null`                                  | `redirect` only: the destination, with a leading slash    |
-| `redirectType` | `301` \| `302` \| `null`                          | `redirect` only: the status it answers with               |
-| `archiveQuery` | string \| `null`                                  | `archive` only: the archive query the address shows       |
-| `createdAt`    | integer                                           | Unix seconds                                              |
+| Field          | Type                                              | Notes                                                                              |
+| -------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `id`           | `pth_*` string                                    | Custom URL ID                                                                      |
+| `path`         | string                                            | The address, with a leading slash                                                  |
+| `targetType`   | `post` \| `collection` \| `redirect` \| `archive` | Target kind                                                                        |
+| `targetId`     | string \| `null`                                  | The post's or collection's TypeID; `null` for other kinds                          |
+| `toPath`       | string \| `null`                                  | `redirect` only: a path on the site, with a leading slash, or an `http(s)` address |
+| `redirectType` | `301` \| `302` \| `null`                          | `redirect` only: the status it answers with                                        |
+| `archiveQuery` | string \| `null`                                  | `archive` only: the archive query the address shows                                |
+| `createdAt`    | integer                                           | Unix seconds                                                                       |
 
 Target types:
 
@@ -2180,7 +2190,7 @@ Target types:
 | ------------ | ------------------------------------------ | ------------------------ |
 | `post`       | Alias that resolves to a post              | `targetId`               |
 | `collection` | Alias that resolves to a collection        | `targetId`               |
-| `redirect`   | Internal redirect to another path          | `toPath`, `redirectType` |
+| `redirect`   | Redirect to another path or another site   | `toPath`, `redirectType` |
 | `archive`    | A saved archive view; read and delete only | `archiveQuery`           |
 
 `archive` addresses can't be created anymore; a [smart collection](#smart-collections) does the same job. Existing ones keep working, and the list returns them.
@@ -2252,13 +2262,13 @@ Request body:
 
 Fields:
 
-| Field          | Type                                 | Required                            | Default | Notes                                                                                     |
-| -------------- | ------------------------------------ | ----------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `path`         | string                               | yes                                 | —       | Max `512`; lowercase letters, numbers, `-`, `.`, and `/`; the leading `/` may be left off |
-| `targetType`   | `post` \| `collection` \| `redirect` | yes                                 | —       | Target kind                                                                               |
-| `targetId`     | string                               | required for `post` or `collection` | —       | The post's or collection's TypeID, or its slug                                            |
-| `toPath`       | string                               | required for `redirect`             | —       | Internal destination path such as `/new-path`; normalized before storage                  |
-| `redirectType` | `301` \| `302`                       | no                                  | `301`   | Only used for `redirect`. The strings `"301"` and `"302"` are accepted too                |
+| Field          | Type                                 | Required                            | Default | Notes                                                                                                                                                                        |
+| -------------- | ------------------------------------ | ----------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`         | string                               | yes                                 | —       | Max `512`; lowercase letters, numbers, `-`, `.`, and `/`; the leading `/` may be left off                                                                                    |
+| `targetType`   | `post` \| `collection` \| `redirect` | yes                                 | —       | Target kind                                                                                                                                                                  |
+| `targetId`     | string                               | required for `post` or `collection` | —       | The post's or collection's TypeID, or its slug                                                                                                                               |
+| `toPath`       | string                               | required for `redirect`             | —       | A path on the site, such as `/new-path?format=note`, or a full `http://` or `https://` address. A path is lowercased and keeps its query string; an address is kept as given |
+| `redirectType` | `301` \| `302`                       | no                                  | `301`   | Only used for `redirect`. The strings `"301"` and `"302"` are accepted too                                                                                                   |
 
 Examples:
 
@@ -2287,7 +2297,7 @@ Important notes:
 
 - `path` must not collide with an existing slug or custom URL.
 - Reserved paths are rejected.
-- Redirects are for internal paths. External redirect targets are not supported by this API.
+- A redirect can point at a path on the site or at another site. A path is followed within the language view it was reached from.
 - A post or collection target that doesn't exist answers `404`.
 - The response names the target by TypeID, whichever you sent.
 
@@ -3223,6 +3233,19 @@ curl -X POST https://your-site.com/api/export/hugo \
   -H "Authorization: Bearer jnt_YOUR_TOKEN" \
   -o jant-export.zip
 ```
+
+---
+
+## GitHub webhooks
+
+GitHub calls these addresses, so they sit in GitHub's settings rather than in any client. Each checks the `X-Hub-Signature-256` signature against its secret and answers `401` when it doesn't match.
+
+| Address                             | GitHub calls it for                                                                                                                    | Secret                                                                                       |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `POST /api/github-sync/webhook`     | Pushes to the repository [GitHub Sync](github-sync.md) is connected to. Jant registers this webhook on the repository when you connect | `GITHUB_APP_WEBHOOK_SECRET` when set, otherwise the secret Jant generated when you connected |
+| `POST /api/github-sync/app-webhook` | A GitHub App's installation events: uninstalled, suspended, or repositories removed. You enter it in the App's settings                | `GITHUB_APP_WEBHOOK_SECRET`; the address answers `404` while that isn't set                  |
+
+Both answer `200` to an event they don't act on, such as an event of another kind or a push that holds only Jant's own sync commits, so GitHub doesn't mark the delivery failed.
 
 ---
 

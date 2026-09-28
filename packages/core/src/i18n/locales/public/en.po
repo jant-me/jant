@@ -24,6 +24,8 @@ msgid "{count, plural, one {# hidden post} other {# hidden posts}}"
 msgstr "{count, plural, one {# hidden post} other {# hidden posts}}"
 
 #. @context: Link showing count of hidden thread posts between root and latest
+#. @context: Link showing count of hidden thread posts between root and latest
+#: src/lib/feed-policy.ts
 #: src/ui/feed/ThreadPreview.tsx
 msgid "{count, plural, one {# more post} other {# more posts}}"
 msgstr "{count, plural, one {# more post} other {# more posts}}"
@@ -42,6 +44,11 @@ msgstr "{count} images couldn't be saved to your library — their original link
 #: src/ui/shared/smart-collection-labels.ts
 msgid "{count} of {total} threads"
 msgstr "{count} of {total} threads"
+
+#. @context: Feed alt text for a linked video's preview image, naming the site that hosts it
+#: src/lib/feed-policy.ts
+msgid "{provider} video"
+msgstr "{provider} video"
 
 #. @context: Value shown on a post's permalink control when the link is generated automatically — a stand-in for the path the server will assign. Sits next to real permalinks rendered as /my-post, so keep the leading slash
 #: src/ui/compose/ComposeDialog.tsx
@@ -71,7 +78,6 @@ msgstr "A calmer accent makes"
 #. @context: Excerpt for the sample note post
 #. @context: Plain-text summary for the sample note post
 #: src/ui/pages/ThemeSamplePage.tsx
-#: src/ui/pages/ThemeSamplePage.tsx
 msgid "A calmer, warmer accent makes the default theme feel quieter and more intentional."
 msgstr "A calmer, warmer accent makes the default theme feel quieter and more intentional."
 
@@ -99,8 +105,6 @@ msgstr "A good default accent in Jant should feel like editorial structure, not 
 #. @context: Plain-text body fallback for the sample detail article
 #. @context: Plain-text summary for the sample detail article
 #: src/ui/pages/ThemeSamplePage.tsx
-#: src/ui/pages/ThemeSamplePage.tsx
-#: src/ui/pages/ThemeSamplePage.tsx
 msgid "A long-form article sample for checking the default palette in a true reading context."
 msgstr "A long-form article sample for checking the default palette in a true reading context."
 
@@ -117,7 +121,6 @@ msgstr "A practical checklist"
 #. @context: Excerpt for the sample quote post
 #. @context: Plain-text summary for the sample quote post
 #: src/ui/pages/ThemeSamplePage.tsx
-#: src/ui/pages/ThemeSamplePage.tsx
 msgid "A quote card for judging accent color against softer, citation-heavy content."
 msgstr "A quote card for judging accent color against softer, citation-heavy content."
 
@@ -128,7 +131,6 @@ msgstr "A ready-made 1:1 PNG for decks, mockups, directories, and other square p
 
 #. @context: Excerpt for the sample link post
 #. @context: Plain-text summary for the sample link post
-#: src/ui/pages/ThemeSamplePage.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "A reference link for checking whether the accent feels editorial instead of promotional."
 msgstr "A reference link for checking whether the accent feels editorial instead of promotional."
@@ -308,7 +310,19 @@ msgstr "Archive"
 msgid "Article detail page"
 msgstr "Article detail page"
 
+#. @context: Feed name for a text attachment with no file name
+#: src/lib/feed-policy.ts
+msgid "Attached text"
+msgstr "Attached text"
+
+#. @context: Feed name for an attachment with no file name
+#: src/lib/feed-policy.ts
+msgid "Attachment"
+msgstr "Attachment"
+
 #. @context: Archive media filter - audio
+#. @context: Feed name for an audio attachment with no file name
+#: src/lib/feed-policy.ts
 #: src/lib/filter-dimensions.ts
 msgid "Audio"
 msgstr "Audio"
@@ -363,13 +377,11 @@ msgstr "Brand assets"
 #. @context: Title for the brand pack card
 #. @context: Title for the brand pack card
 #: src/ui/pages/BrandPage.tsx
-#: src/ui/pages/BrandPage.tsx
 msgid "Brand pack"
 msgstr "Brand pack"
 
 #. @context: Asset keyword on the public brand asset page
 #. @context: Title for the brand tile asset card
-#: src/ui/pages/BrandPage.tsx
 #: src/ui/pages/BrandPage.tsx
 msgid "Brand tile"
 msgstr "Brand tile"
@@ -398,7 +410,6 @@ msgstr "Buttons can stay steady, but links, thread markers, and subtle emphasis 
 #. @context: Button label to dismiss a dialog or action
 #. @context: Button to cancel form
 #: src/ui/compose/ComposeDialog.tsx
-#: src/ui/shared/collection-management-labels.ts
 #: src/ui/shared/collection-management-labels.ts
 msgid "Cancel"
 msgstr "Cancel"
@@ -441,13 +452,11 @@ msgstr "Choose today or an earlier date, or leave it blank to publish now."
 #. @context: Asset keyword on the public brand asset page
 #. @context: Title for the circle tile asset card
 #: src/ui/pages/BrandPage.tsx
-#: src/ui/pages/BrandPage.tsx
 msgid "Circle tile"
 msgstr "Circle tile"
 
 #. @context: Archive filter button label to clear the active filter
 #. @context: Archive filter button label to clear the active filter
-#: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
 msgid "Clear filter"
 msgstr "Clear filter"
@@ -673,7 +682,6 @@ msgstr "Dark"
 #. @context: Usage label for the reverse logo asset card
 #. @context: Usage label for the reverse logo card
 #: src/ui/pages/BrandPage.tsx
-#: src/ui/pages/BrandPage.tsx
 msgid "Dark backgrounds"
 msgstr "Dark backgrounds"
 
@@ -759,15 +767,12 @@ msgstr "Description"
 #. @context: Collection form field
 #. @context: Field label for a custom collections link description
 #: src/ui/shared/collection-management-labels.ts
-#: src/ui/shared/collection-management-labels.ts
 msgid "Description (optional)"
 msgstr "Description (optional)"
 
 #. @context: Collection label on theme sample content card
 #. @context: Collection tag on sample note post
 #. @context: Collection tag on the sample detail article
-#: src/ui/pages/ThemeSamplePage.tsx
-#: src/ui/pages/ThemeSamplePage.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Design"
 msgstr "Design"
@@ -784,7 +789,6 @@ msgstr "Detect"
 
 #. @context: Confirm close action sheet - discard changes button for editing published post
 #. @context: More menu - discard post
-#: src/ui/compose/ComposeDialog.tsx
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Discard"
 msgstr "Discard"
@@ -822,7 +826,6 @@ msgstr "Doesn't appear in Latest. Still appears in collections you add it to."
 #. @context: Confirm action sheet - discard text attachment changes button
 #. @context: Confirm close action sheet - discard button
 #: src/ui/compose/ComposeDialog.tsx
-#: src/ui/compose/ComposeDialog.tsx
 msgid "Don't save"
 msgstr "Don't save"
 
@@ -830,7 +833,6 @@ msgstr "Don't save"
 #. @context: Close attached text panel
 #. @context: Compose button - update existing post
 #. @context: Primary button in the quick-create collection dialog
-#: src/ui/compose/ComposeDialog.tsx
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/shared/collection-management-labels.ts
 #: src/ui/shared/CollectionsManager.tsx
@@ -897,8 +899,6 @@ msgstr "Draft restored."
 #. @context: Toast after saving a draft post
 #. @context: Toast after saving a draft post
 #. @context: Toast after saving a draft post
-#: src/routes/compose.tsx
-#: src/routes/compose.tsx
 #: src/routes/compose.tsx
 msgid "Draft saved."
 msgstr "Draft saved."
@@ -1250,7 +1250,6 @@ msgstr "iOS home screen"
 #. @context: test fixture — not shipped anywhere
 #. @context: test fixture — not shipped anywhere
 #: src/i18n/__tests__/fallback.test.ts
-#: src/i18n/__tests__/fallback.test.ts
 msgid "Jant fallback canary string"
 msgstr "Jant fallback canary string"
 
@@ -1375,6 +1374,11 @@ msgstr "Link"
 msgid "Link added."
 msgstr "Link added."
 
+#. @context: Feed alt text for a link preview image
+#: src/lib/feed-policy.ts
+msgid "Link preview"
+msgstr "Link preview"
+
 #. @context: Toast after deleting a custom collections link
 #: src/ui/shared/collection-management-labels.ts
 msgid "Link removed."
@@ -1403,7 +1407,6 @@ msgstr "List"
 #. @context: Inline link label in the sample note post body
 #. @context: Inline link label in the sample note summary
 #: src/ui/pages/ThemeSamplePage.tsx
-#: src/ui/pages/ThemeSamplePage.tsx
 msgid "live theme controls"
 msgstr "live theme controls"
 
@@ -1421,9 +1424,6 @@ msgstr "Loading post..."
 #. @context: Asset keyword on the public brand asset page
 #. @context: Title for the default logo asset card
 #. @context: Title for the default logo card
-#: src/ui/pages/BrandPage.tsx
-#: src/ui/pages/BrandPage.tsx
-#: src/ui/pages/BrandPage.tsx
 #: src/ui/pages/BrandPage.tsx
 msgid "Logo"
 msgstr "Logo"
@@ -1492,7 +1492,6 @@ msgstr "Move attachment later"
 
 #. @context: Secondary badge label on sample page
 #. @context: Token label on sample page
-#: src/ui/pages/ThemeSamplePage.tsx
 #: src/ui/pages/ThemeSamplePage.tsx
 msgid "Muted"
 msgstr "Muted"
@@ -1563,7 +1562,6 @@ msgstr "Newest first"
 #. @context: Pagination button - next page
 #. @context: Pagination next label on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
-#: src/ui/shared/Pagination.tsx
 #: src/ui/shared/Pagination.tsx
 msgid "Next"
 msgstr "Next"
@@ -1752,12 +1750,10 @@ msgstr "Password changes are off in demo mode. Sign in with the shared demo cred
 
 #. @context: Attached text placeholder
 #: src/ui/compose/ComposeDialog.tsx
-msgid ""
-"Paste a long article, AI response, or any text...\n"
+msgid "Paste a long article, AI response, or any text...\n"
 "\n"
 "Markdown formatting will be preserved."
-msgstr ""
-"Paste a long article, AI response, or any text...\n"
+msgstr "Paste a long article, AI response, or any text...\n"
 "\n"
 "Markdown formatting will be preserved."
 
@@ -1812,7 +1808,6 @@ msgstr "Preview"
 #. @context: Pagination button - previous page
 #. @context: Pagination previous label on sample page
 #: src/ui/pages/ThemeSamplePage.tsx
-#: src/ui/shared/Pagination.tsx
 #: src/ui/shared/Pagination.tsx
 msgid "Previous"
 msgstr "Previous"
@@ -2037,7 +2032,6 @@ msgstr "Reset link"
 #. @context: Password reset form submit button
 #. @context: Password reset page heading
 #: src/routes/auth/reset.tsx
-#: src/routes/auth/reset.tsx
 msgid "Reset Password"
 msgstr "Reset Password"
 
@@ -2045,9 +2039,6 @@ msgstr "Reset Password"
 #. @context: Title for the reverse logo asset card
 #. @context: Title for the reverse logo card
 #. @context: Title for the reverse logo card
-#: src/ui/pages/BrandPage.tsx
-#: src/ui/pages/BrandPage.tsx
-#: src/ui/pages/BrandPage.tsx
 #: src/ui/pages/BrandPage.tsx
 msgid "Reverse logo"
 msgstr "Reverse logo"
@@ -2075,7 +2066,6 @@ msgstr "RSS feed for this view"
 #. @context: Button to save collection
 #. @context: Confirm action sheet - save text attachment changes button
 #. @context: Confirm close action sheet - save draft button
-#: src/ui/compose/ComposeDialog.tsx
 #: src/ui/compose/ComposeDialog.tsx
 #: src/ui/shared/collection-management-labels.ts
 msgid "Save"
@@ -2128,7 +2118,6 @@ msgstr "Saving..."
 
 #. @context: Search page title
 #. @context: Search submit button
-#: src/ui/pages/SearchPage.tsx
 #: src/ui/pages/SearchPage.tsx
 msgid "Search"
 msgstr "Search"
@@ -2218,8 +2207,6 @@ msgstr "Sign in"
 #. @context: Sign in page heading
 #. @context: Sign in page heading
 #: src/routes/auth/signin.tsx
-#: src/routes/auth/signin.tsx
-#: src/routes/auth/signin.tsx
 msgid "Sign In"
 msgstr "Sign In"
 
@@ -2283,7 +2270,6 @@ msgstr "Some uploads failed. Saved as draft."
 #. @context: Fallback validation error for thread compose form
 #: src/routes/auth/reset.tsx
 #: src/routes/auth/signin.tsx
-#: src/routes/compose.tsx
 #: src/routes/compose.tsx
 msgid "Something doesn't look right. Check the form and try again."
 msgstr "Something doesn't look right. Check the form and try again."
@@ -2411,7 +2397,6 @@ msgstr "Tap to retry"
 #. @context: Archive media filter - posts without any media attachments
 #. @context: Archive media filter - posts without any media attachments
 #: src/ui/pages/ArchivePage.tsx
-#: src/ui/pages/ArchivePage.tsx
 msgid "Text"
 msgstr "Text"
 
@@ -2513,7 +2498,6 @@ msgstr "This is useful as a color check because it puts the accent next to quota
 #. @context: Hosted SSO expired link page title
 #. @context: Password reset error heading
 #: src/routes/auth/hosted-sso-expired-page.tsx
-#: src/routes/auth/hosted-sso-expired-page.tsx
 #: src/routes/auth/reset.tsx
 msgid "This Link Has Expired"
 msgstr "This Link Has Expired"
@@ -2578,10 +2562,8 @@ msgstr "This uses the real single-post detail rendering with a longer article, i
 #. @context: Singular thread count label on collection detail page
 #. @context: Singular thread count label on collection detail page
 #: src/ui/pages/ArchivePage.tsx
-#: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/CollectionPage.tsx
 #: src/ui/pages/SmartCollectionPage.tsx
-#: src/ui/shared/CollectionDirectory.tsx
 #: src/ui/shared/CollectionDirectory.tsx
 #: src/ui/shared/CollectionsManager.tsx
 msgid "thread"
@@ -2605,10 +2587,8 @@ msgstr "Thread accents"
 #. @context: Plural thread count label on collection detail page
 #. @context: Plural thread count label on collection detail page
 #: src/ui/pages/ArchivePage.tsx
-#: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/CollectionPage.tsx
 #: src/ui/pages/SmartCollectionPage.tsx
-#: src/ui/shared/CollectionDirectory.tsx
 #: src/ui/shared/CollectionDirectory.tsx
 #: src/ui/shared/CollectionsManager.tsx
 msgid "threads"
@@ -2643,7 +2623,6 @@ msgstr "Title"
 #. @context: Archive filter - notes that have a title
 #. @context: Archive filter - notes that have a title
 #: src/lib/filter-dimensions.ts
-#: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
 msgid "Titled"
 msgstr "Titled"
@@ -2709,7 +2688,6 @@ msgstr "Type the quote..."
 #. @context: Compose note title placeholder. States what the note is while the field is empty rather than asking for a title — untitled notes are a normal kind of note here, and Archive files them under this same word.
 #: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
-#: src/ui/pages/ArchivePage.tsx
 #: src/ui/pages/ArchivePage.tsx
 msgid "Untitled"
 msgstr "Untitled"
@@ -2781,6 +2759,11 @@ msgstr "Use this page to judge buttons, links, cards, forms, thread accents, and
 msgid "Video"
 msgstr "Video"
 
+#. @context: Feed alt text for a linked video's preview image
+#: src/lib/feed-policy.ts
+msgid "Video preview"
+msgstr "Video preview"
+
 #. @context: Toast action button to view the published post
 #: src/ui/compose/ComposeDialog.tsx
 msgid "View"
@@ -2797,6 +2780,16 @@ msgstr "View earlier notes in this thread"
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Visibility"
 msgstr "Visibility"
+
+#. @context: Feed link under a linked video's preview, naming the site that hosts it
+#: src/lib/feed-policy.ts
+msgid "Watch on {provider}"
+msgstr "Watch on {provider}"
+
+#. @context: Feed link under a video attachment or preview
+#: src/lib/feed-policy.ts
+msgid "Watch video"
+msgstr "Watch video"
 
 #. @context: Subscribe page heading over the explanation of feed readers, for readers who have not used one
 #: src/ui/pages/SubscribePage.tsx

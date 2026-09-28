@@ -214,6 +214,7 @@ Jant 的核心设计之一是把「发布」和「广播」拆开。
 Jant 使用可读 URL：
 
 - 帖子：`/{slug}`
+- 帖子的文本附件，单独成页：`/{slug}/text/{附件 ID}`
 - Collection：`/{slug}`
 - 组合 Collection 视图：`/collections/{slug1}+{slug2}+{slug3}`
 - 搜索：`/search`
@@ -288,6 +289,8 @@ Jant 动态生成的 Atom feed 都有同一段发布缓冲：新帖子和 Reply 
 - **目标 slug**：要指向的帖子或 Collection 的 slug
 
 保存后，新路径成为这条内容对外的主要 URL（permalink、feed、og:url 都用新路径），原 slug 自动 301 跳过去，已经传播出去的旧链接不会失效。
+
+帖子和 Collection 各只有一个地址：第一个自定义 URL，没有自定义 URL 时就是 slug。其他进来的路径都会 301 跳到这个地址，包括 slug、之后加的自定义 URL，以及大小写不同的同一地址。
 
 适合把从其他平台搬过来的内容挂回原来的链接。
 

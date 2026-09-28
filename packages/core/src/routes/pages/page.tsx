@@ -24,10 +24,11 @@ import {
 } from "../../lib/post-display.js";
 import { buildArticleJsonLd } from "../../lib/structured-data.js";
 import {
+  isFullUrl,
   normalizePath,
+  redirectTargetHref,
   toAbsoluteAssetUrl,
   toAbsoluteSiteUrl,
-  toPublicHref,
   toPublicPath,
 } from "../../lib/url.js";
 import {
@@ -487,13 +488,12 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
   // but can never shadow an explicit or reserved application route.
   const resolved = await resolveStoredPath(c, fullPath);
   if (resolved?.kind === "redirect" && resolved.redirectToPath) {
-    const target = `/${resolved.redirectToPath}`;
-    // Follow the stored redirect within the current view; the hop that lands
-    // on a post then applies the canonical-address rule below.
+    const target = redirectTargetHref(resolved.redirectToPath);
+    // Follow a redirect on the site within the current view; the hop that
+    // lands on a post then applies the canonical-address rule below. One off
+    // the site goes where it says.
     return c.redirect(
-      toPublicHref(target) === target
-        ? toViewPath(c, target)
-        : toPublicHref(target, sitePathPrefix),
+      isFullUrl(target) ? target : toViewPath(c, target),
       resolved.redirectType ?? 301,
     );
   }
@@ -629,13 +629,11 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
       return c.notFound();
     }
 
-    // If accessed via slug but an alias exists, the alias is canonical.
-    const canonicalPath =
-      resolved.kind === "slug" && loaded.canonicalAlias
-        ? loaded.canonicalAlias
-        : `/${fullPath}`;
-
-    // One address per post: a language-prefixed URL is only ever a way in.
+    // One address per post: its first custom URL, or its slug. Anything
+    // else that reached it — the slug when there is a custom URL, a later
+    // custom URL, a different letter case, a language prefix — is only a way
+    // in and redirects there.
+    const canonicalPath = loaded.canonicalAlias ?? `/${post.slug}`;
     if (inLanguageView || canonicalPath !== `/${fullPath}`) {
       return c.redirect(toPublicPath(canonicalPath, sitePathPrefix), 301);
     }
@@ -648,6 +646,9 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
       resolved.smartCollectionId,
     );
     if (!smartCollection) return c.notFound();
+    if (fullPath !== smartCollection.slug) {
+      return c.redirect(toViewPath(c, `/${smartCollection.slug}`), 301);
+    }
 
     const result = await renderSmartCollectionPage(c, smartCollection.slug);
     return result ?? c.notFound();
@@ -659,28 +660,23 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     );
     if (!collection) return c.notFound();
 
-    if (resolved.kind === "slug") {
-      const alias = await c.var.services.customUrls.getByTarget(
-        "collection",
-        collection.id,
-      );
-      if (alias) {
-        return c.redirect(toViewPath(c, `/${alias.path}`), 301);
-      }
-
-      const result = await renderCollectionPage(c, collection.slug);
-      return result ?? c.notFound();
+    // One address per collection, as for a post: its first custom URL, or
+    // its slug. Any other way in redirects there, within the language view.
+    const alias = await c.var.services.customUrls.getByTarget(
+      "collection",
+      collection.id,
+    );
+    const canonicalPath = alias ? alias.path : collection.slug;
+    if (fullPath !== canonicalPath) {
+      return c.redirect(toViewPath(c, `/${canonicalPath}`), 301);
     }
 
-    if (resolved.kind === "alias") {
-      const aliasPagePath = `/${resolved.path}`;
-      const result = await renderCollectionPage(
-        c,
-        collection.slug,
-        aliasPagePath,
-      );
-      return result ?? c.notFound();
-    }
+    const result = await renderCollectionPage(
+      c,
+      collection.slug,
+      alias ? `/${alias.path}` : undefined,
+    );
+    return result ?? c.notFound();
   }
 
   return c.notFound();

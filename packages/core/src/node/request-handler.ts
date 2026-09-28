@@ -33,7 +33,7 @@ import { getEnvValueIssues } from "../lib/env-values.js";
 import { getHostBasedStartupConfigurationIssues } from "../lib/startup-config.js";
 import { now } from "../lib/time.js";
 import { createSiteService } from "../services/site.js";
-import type { App } from "../types/app-context.js";
+import type { HonoApp } from "../types/app-context.js";
 import type { Bindings } from "../types/bindings.js";
 
 const MIME_TYPES: Record<string, string> = {
@@ -560,7 +560,7 @@ export async function migrate(
   }
 }
 
-export type NodeAppResolver = App | (() => App | Promise<App>);
+export type NodeAppResolver = HonoApp | (() => HonoApp | Promise<HonoApp>);
 
 /** What `@hono/node-server` passes alongside each request. */
 export interface NodeConnection {
@@ -608,7 +608,7 @@ export function withClientAddress(
   return new Request(request, { headers });
 }
 
-async function resolveApp(app: NodeAppResolver | undefined): Promise<App> {
+async function resolveApp(app: NodeAppResolver | undefined): Promise<HonoApp> {
   if (typeof app === "function") {
     return app();
   }

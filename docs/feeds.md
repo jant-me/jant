@@ -60,7 +60,7 @@ The feed takes every archive filter, not only these four; [Writing and organizin
 
 **Post format.** Each entry declares what kind of post it is — `<jant:format>quote</jant:format>`, in the `https://jant.me/ns` namespace — because a quote and an untitled note are otherwise identical in Atom. A thread is declared by its root. Readers that do not know the namespace ignore it.
 
-**Post ID.** Each entry also carries the post's own ID, `<jant:id>pst_…</jant:id>`, beside `<id>`. `<id>` is the post's address, which changes when you rename its slug or move the site to another domain. The ID never changes, so anything that needs to recognise the same post across either can rely on it.
+**Post ID.** Each entry also carries the post's own ID, `<jant:id>pst_…</jant:id>`, beside `<id>`. `<id>` is the post's address, so it changes whenever the address does: when you rename the slug, give the post its first custom URL or remove it, move the site to another domain, or change `SITE_PATH_PREFIX`. The ID never changes, so anything that needs to recognise the same post across those can rely on it.
 
 Everything else Jant adds to an entry, including how a thread's posts and attachments are marked, is in [Reading a Jant feed](feed-reading.md).
 
@@ -105,7 +105,7 @@ The rules a directory should follow:
 
 On a multilingual site each language's feed declares itself and lists the others with `hreflang`, which is how a directory finds a bilingual blog's other language from whichever feed it happens to hold.
 
-Two details decide what a directory sees. Feeds are cached for a minute, so a change to the setting takes effect on the next read that misses the cache. And a directory should know a post by its `<jant:id>`, not its `<id>`: renaming a slug or moving the site to another domain changes the second and never the first.
+Two details decide what a directory sees. Feeds are cached for a minute, so a change to the setting takes effect on the next read that misses the cache. And a directory should know a post by its `<jant:id>`, not its `<id>`: anything that changes the post's address, such as a new slug or a new domain, changes the second and never the first.
 
 ### Asking about posts
 
@@ -141,10 +141,15 @@ GET https://example.com/api/discover/posts?id=pst_01jpyx3m7gw4w3h7m4bknq0v1d&id=
 
 These still work and always will, so nobody's subscription breaks. New links should use the canonical address on the right.
 
-| Old                     | Now              |
-| ----------------------- | ---------------- |
-| `/feed/latest`          | `/latest/feed`   |
-| `/feed/featured`        | `/featured/feed` |
-| `/feed/all`             | `/latest/feed`   |
-| `/feed/atom.xml`        | `/feed`          |
-| `/{page}/feed/atom.xml` | `/{page}/feed`   |
+| Old                       | Now              |
+| ------------------------- | ---------------- |
+| `/feed/latest`            | `/latest/feed`   |
+| `/feed/featured`          | `/featured/feed` |
+| `/feed/all`               | `/latest/feed`   |
+| `/feed/atom.xml`          | `/feed`          |
+| `/feed/latest/atom.xml`   | `/latest/feed`   |
+| `/feed/featured/atom.xml` | `/featured/feed` |
+| `/feed/all/atom.xml`      | `/latest/feed`   |
+| `/latest/feed/atom.xml`   | `/latest/feed`   |
+| `/featured/feed/atom.xml` | `/featured/feed` |
+| `/archive/feed/atom.xml`  | `/archive/feed`  |

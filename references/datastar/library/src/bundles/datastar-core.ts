@@ -1,4 +1,6 @@
-export { action, actions, attribute, watcher } from "@engine";
+/// <reference path="../globals.d.ts" />
+
+export { action, actions, attribute, watcher } from '@engine'
 export {
   beginBatch,
   computed,
@@ -12,4 +14,4 @@ export {
   signal,
   startPeeking,
   stopPeeking,
-} from "@engine/signals";
+} from '@engine/signals'

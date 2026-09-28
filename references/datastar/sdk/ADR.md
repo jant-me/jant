@@ -30,7 +30,7 @@ The core mechanics of Datastar’s SSE support is
 
 # SDK Specification
 
-> [!WARNING]
+> [!WARNING] 
 > All naming conventions use Go as the reference implementation. Adapt to language-specific conventions while maintaining consistency.
 
 ## ServerSentEventGenerator
@@ -43,12 +43,12 @@ The core mechanics of Datastar’s SSE support is
 
 **Requirements:**
 
-| Requirement          | Description                                                                                                                                                                                                            |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Constructor**      | **_Must_** accept HTTP Request and Response objects                                                                                                                                                                    |
-| **Response Headers** | **_Must_** set:<br>• `Cache-Control: no-cache`<br>• `Content-Type: text/event-stream`<br>• `Connection: keep-alive` (HTTP/1.1 only - [see spec](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Connection)) |
-| **Immediate Flush**  | **_Should_** flush response immediately to prevent timeouts                                                                                                                                                            |
-| **Thread Safety**    | **_Should_** ensure ordered delivery (e.g., mutex in Go)                                                                                                                                                               |
+| Requirement | Description |
+|-------------|-------------|
+| **Constructor** | ***Must*** accept HTTP Request and Response objects |
+| **Response Headers** | ***Must*** set:<br>• `Cache-Control: no-cache`<br>• `Content-Type: text/event-stream`<br>• `Connection: keep-alive` (HTTP/1.1 only - [see spec](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Connection)) |
+| **Immediate Flush** | ***Should*** flush response immediately to prevent timeouts |
+| **Thread Safety** | ***Should*** ensure ordered delivery (e.g., mutex in Go) |
 
 ---
 
@@ -65,7 +65,7 @@ ServerSentEventGenerator.send(
 )
 ```
 
-A unified sending function **_should_** be used internally (private/protected).
+A unified sending function ***should*** be used internally (private/protected).
 
 #### Parameters
 
@@ -73,30 +73,30 @@ A unified sending function **_should_** be used internally (private/protected).
 
 String enum of supported events:
 
-| Event                     | Description                           |
-| ------------------------- | ------------------------------------- |
-| `datastar-patch-elements` | Patches HTML elements into the DOM    |
-| `datastar-patch-signals`  | Patches signals into the signal store |
+| Event | Description |
+|-------|-------------|
+| `datastar-patch-elements` | Patches HTML elements into the DOM |
+| `datastar-patch-signals` | Patches signals into the signal store |
 
 ##### Options
 
-| Parameter       | Type   | Default | Description                                                                                                                                                    |
-| --------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `eventId`       | string | -       | Unique event identifier for replay functionality ([SSE spec](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#id)) |
-| `retryDuration` | ms     | `1000`  | Reconnection delay after connection loss ([SSE spec](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#retry))      |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `eventId` | string | - | Unique event identifier for replay functionality ([SSE spec](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#id)) |
+| `retryDuration` | ms | `1000` | Reconnection delay after connection loss ([SSE spec](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#retry)) |
 
 #### Implementation Requirements
 
-**_Must_** write to response buffer in this exact order:
+***Must*** write to response buffer in this exact order:
 
 1. `event: EVENT_TYPE\n`
 2. `id: EVENT_ID\n` (if `eventId` provided)
-3. `retry: RETRY_DURATION\n` (**_unless_** default of `1000`)
+3. `retry: RETRY_DURATION\n` (***unless*** default of `1000`)
 4. `data: DATA\n` (for each of the `dataLines`)
 5. `\n` (end of event)
-6. **_Should_** flush immediately (note: compression middleware may interfere)
+6. ***Should*** flush immediately (note: compression middleware may interfere)
 
-**Error Handling**: **_Must_** return/throw errors per language conventions.
+**Error Handling**: ***Must*** return/throw errors per language conventions.
 
 ---
 
@@ -109,6 +109,7 @@ ServerSentEventGenerator.PatchElements(
     selector?: string,
     mode?: ElementPatchMode,
     useViewTransition?: boolean,
+    viewTransitionSelector?: string,
     namespace?: 'html' | 'svg' | 'mathml',
     eventId?: string,
     retryDuration?: durationInMilliseconds
@@ -121,86 +122,80 @@ ServerSentEventGenerator.PatchElements(
 <details>
   <summary>Minimal Example</summary>
 
-```
-event: datastar-patch-elements
-data: elements <div id="feed"><span>1</span></div>
+  ```
+  event: datastar-patch-elements
+  data: elements <div id="feed"><span>1</span></div>
 
-```
-
+  ```
 </details>
 
 <details>
   <summary>Full Example (all options)</summary>
 
-```
-event: datastar-patch-elements
-id: 123
-retry: 2000
-data: mode inner
-data: selector #feed
-data: useViewTransition true
-data: namespace html
-data: elements <div id="feed">
-data: elements     <span>1</span>
-data: elements </div>
+  ```
+  event: datastar-patch-elements
+  id: 123
+  retry: 2000
+  data: mode inner
+  data: selector #feed
+  data: useViewTransition true
+  data: viewTransitionSelector #main
+  data: namespace html
+  data: elements <div id="feed">
+  data: elements     <span>1</span>
+  data: elements </div>
 
-```
-
+  ```
 </details>
 
 <details>
   <summary>Patch elements based on their ID</summary>
 
-```
-event: datastar-patch-elements
-data: elements <div id="id1">New content.</div>
-data: elements <div id="id2">Other new content.</div>
-```
-
+  ```
+  event: datastar-patch-elements
+  data: elements <div id="id1">New content.</div>
+  data: elements <div id="id2">Other new content.</div>
+  ```
 </details>
 
 <details>
   <summary>Insert a new element based on a selector</summary>
 
-```
-event: datastar-patch-elements
-data: mode append
-data: selector #mycontainer
-data: elements <div>New content</div>
-```
-
+  ```
+  event: datastar-patch-elements
+  data: mode append
+  data: selector #mycontainer
+  data: elements <div>New content</div>
+  ```
 </details>
 
 <details>
   <summary>Remove elements based on a selector</summary>
 
-```
-event: datastar-patch-elements
-data: mode remove
-data: selector #feed, #otherid
-```
-
+  ```
+  event: datastar-patch-elements
+  data: mode remove
+  data: selector #feed, #otherid
+  ```
 </details>
 
 <details>
   <summary>Patch SVG elements</summary>
 
-```
-event: datastar-patch-elements
-data: mode append
-data: selector #vis
-data: namespace svg
-data: elements <circle id="c1" cx="10" r="5" fill="red"/>
-data: elements <circle id="c2" cx="20" r="5" fill="green"/>
-data: elements <circle id="c3" cx="30" r="5" fill="blue"/>
-```
-
+  ```
+  event: datastar-patch-elements
+  data: mode append
+  data: selector #vis
+  data: namespace svg
+  data: elements <circle id="c1" cx="10" r="5" fill="red"/>
+  data: elements <circle id="c2" cx="20" r="5" fill="green"/>
+  data: elements <circle id="c3" cx="30" r="5" fill="blue"/>
+  ```
 </details>
 
 `PatchElements` sends HTML elements to the browser for DOM manipulation.
 
 > [!TIP]
->
 > - To remove elements, use the `remove` patch mode
 
 ### Elements vs Fragments: Key Distinction
@@ -208,10 +203,10 @@ data: elements <circle id="c3" cx="30" r="5" fill="blue"/>
 > [!IMPORTANT]
 > Datastar requires **complete HTML elements**, not fragments.
 
-| Approach                | Example                         | Characteristics                                                                                                                 |
-| ----------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Approach | Example | Characteristics |
+|----------|---------|-----------------|
 | **Datastar (Elements)** | `<div id="content">Hello</div>` | • Complete, well-formed HTML<br>• Valid opening/closing tags<br>• Standard DOM API compatible<br>• Predictable browser behavior |
-| **HTMX (Fragments)**    | `Hello <strong>World</strong>`  | • Partial HTML allowed<br>• May lack proper structure<br>• Requires special handling<br>• More flexible but less predictable    |
+| **HTMX (Fragments)** | `Hello <strong>World</strong>` | • Partial HTML allowed<br>• May lack proper structure<br>• Requires special handling<br>• More flexible but less predictable |
 
 ### Parameters
 
@@ -223,35 +218,36 @@ String enum defining how elements are patched into the DOM.
 
 ##### Available Modes
 
-| Mode      | Morphed? | Description                             |
-| --------- | -------- | --------------------------------------- |
-| `outer`   | ✅       | Morph entire element, preserving state  |
-| `inner`   | ✅       | Morph inner HTML only, preserving state |
-| `replace` | 🚫       | Replace entire element, reset state     |
-| `prepend` | 🚫       | Insert at beginning inside target       |
-| `append`  | 🚫       | Insert at end inside target             |
-| `before`  | 🚫       | Insert before target element            |
-| `after`   | 🚫       | Insert after target element             |
-| `remove`  | 🚫       | Remove target element from DOM          |
+| Mode | Morphed? | Description |
+|------|------|-------------|
+| `outer` | ✅ | Morph entire element, preserving state |
+| `inner` | ✅ | Morph inner HTML only, preserving state |
+| `replace` | 🚫 | Replace entire element, reset state |
+| `prepend` | 🚫 | Insert at beginning inside target |
+| `append` | 🚫 | Insert at end inside target |
+| `before` | 🚫 | Insert before target element |
+| `after` | 🚫 | Insert after target element |
+| `remove` | 🚫 | Remove target element from DOM |
 
 #### Options
 
-| Parameter           | Type                        | Default    | Description                                                                                              |
-| ------------------- | --------------------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
-| `selector`          | string                      | Element ID | CSS selector for target element. If a selector is not specified, each element must have an ID specified. |
-| `mode`              | ElementPatchMode            | `outer`    | How to patch the element                                                                                 |
-| `useViewTransition` | boolean                     | `false`    | Enable view transitions API                                                                              |
-| `namespace`         | `html` \| `svg` \| `mathml` | `html`     | Namespace in which to create new elements                                                                |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `selector` | string | Element ID | CSS selector for target element. If a selector is not specified, each element must have an ID specified. |
+| `mode` | ElementPatchMode | `outer` | How to patch the element |
+| `useViewTransition` | boolean | `false` | Enable view transitions API |
+| `viewTransitionSelector` | string | Empty string | CSS selector for view transitions API |
+| `namespace` | `html` \| `svg` \| `mathml` | `html` | Namespace in which to create new elements |
 
 ### Implementation
 
-**_Must_** call `ServerSentEventGenerator.send` with event type `datastar-patch-elements`.
+***Must*** call `ServerSentEventGenerator.send` with event type `datastar-patch-elements`.
 
 **Data format** (only include non-defaults):
-
 - `selector SELECTOR\n` (if provided)
 - `mode PATCH_MODE\n` (if not `outer`)
 - `useViewTransition true\n` (if `true`)
+- `viewTransitionSelector SELECTOR\n` (if provided and `useViewTransition` is `true`)
 - `namespace NAMESPACE\n` (if not `html`)
 - `elements HTML_LINE\n` (for each line of HTML)
 
@@ -275,26 +271,24 @@ ServerSentEventGenerator.PatchSignals(
 <details>
   <summary>Minimal Example</summary>
 
-```
-event: datastar-patch-signals
-data: signals {"output":"Patched Output Test","show":true,"input":"Test","user":{"name":"","email":""}}
+  ```
+  event: datastar-patch-signals
+  data: signals {"output":"Patched Output Test","show":true,"input":"Test","user":{"name":"","email":""}}
 
-```
-
+  ```
 </details>
 
 <details>
   <summary>Full Example (all options)</summary>
 
-```
-event: datastar-patch-signals
-id: 123
-retry: 2000
-data: onlyIfMissing true
-data: signals {"output":"Patched Output Test","show":true,"input":"Test","user":{"name":"","email":""}}
+  ```
+  event: datastar-patch-signals
+  id: 123
+  retry: 2000
+  data: onlyIfMissing true
+  data: signals {"output":"Patched Output Test","show":true,"input":"Test","user":{"name":"","email":""}}
 
-```
-
+  ```
 </details>
 
 `PatchSignals` sends signals to the browser using [RFC 7386 JSON Merge Patch](https://datatracker.ietf.org/doc/html/rfc7386) semantics.
@@ -305,53 +299,51 @@ data: signals {"output":"Patched Output Test","show":true,"input":"Test","user":
 
 ### RFC 7386 JSON Merge Patch Behavior
 
-| Operation      | Behavior           | Example                        |
-| -------------- | ------------------ | ------------------------------ |
-| **Add/Update** | Set property value | `{"key": "value"}`             |
-| **Remove**     | Set to `null`      | `{"key": null}`                |
-| **Nested**     | Recursive patch    | `{"user": {"name": "Johnny"}}` |
+| Operation | Behavior | Example |
+|-----------|----------|---------|
+| **Add/Update** | Set property value | `{"key": "value"}` |
+| **Remove** | Set to `null` | `{"key": null}` |
+| **Nested** | Recursive patch | `{"user": {"name": "Johnny"}}` |
 
 ### Examples
 
 <details>
   <summary>Signal Operations Examples</summary>
 
-```
-// Add signal
-{"newSignal": "value"}
+  ```
+  // Add signal
+  {"newSignal": "value"}
 
-// Update signal
-{"existingSignal": "newValue"}
+  // Update signal
+  {"existingSignal": "newValue"}
 
-// Remove signal
-{"signalToRemove": null}
+  // Remove signal
+  {"signalToRemove": null}
 
-// Complex nested patch
-{
-  "user": {
-    "name": "Johnny",
-    "email": null,
-    "preferences": {
-      "theme": "dark"
+  // Complex nested patch
+  {
+    "user": {
+      "name": "Johnny",
+      "email": null,
+      "preferences": {
+        "theme": "dark"
+      }
     }
   }
-}
-```
-
+  ```
 </details>
 
 ### Options
 
-| Parameter       | Type    | Default | Description                                   |
-| --------------- | ------- | ------- | --------------------------------------------- |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
 | `onlyIfMissing` | boolean | `false` | Patches only signals that don’t already exist |
 
 ### Implementation
 
-**_Must_** call `ServerSentEventGenerator.send` with event type `datastar-patch-signals`.
+***Must*** call `ServerSentEventGenerator.send` with event type `datastar-patch-signals`.
 
 **Data format**:
-
 - `onlyIfMissing true\n` (only if `true`)
 - `signals JSON_LINE\n` (for each line of JSON)
 
@@ -376,27 +368,25 @@ ServerSentEventGenerator.ExecuteScript(
 <details>
   <summary>Minimal Example</summary>
 
-```
-event: datastar-patch-elements
-data: mode append
-data: selector body
-data: elements <script>console.log('Here')</script>
-```
-
+  ```
+  event: datastar-patch-elements
+  data: mode append
+  data: selector body
+  data: elements <script>console.log('Here')</script>
+  ```
 </details>
 
 <details>
   <summary>Full Example (all options)</summary>
 
-```
-event: datastar-patch-elements
-id: 123
-retry: 2000
-data: mode append
-data: selector body
-data: elements <script type="application/javascript" data-effect="el.remove()">console.log('Here')</script>
-```
-
+  ```
+  event: datastar-patch-elements
+  id: 123
+  retry: 2000
+  data: mode append
+  data: selector body
+  data: elements <script type="application/javascript" data-effect="el.remove()">console.log('Here')</script>
+  ```
 </details>
 
 ### Parameters
@@ -405,17 +395,16 @@ data: elements <script type="application/javascript" data-effect="el.remove()">c
 
 ### Options
 
-| Parameter    | Type     | Default | Description                            |
-| ------------ | -------- | ------- | -------------------------------------- |
-| `autoRemove` | boolean  | `true`  | Removes the script tag after executing |
-| `attributes` | []string | -       | Attributes to add to the script tag    |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `autoRemove` | boolean | `true` | Removes the script tag after executing |
+| `attributes` | []string | - | Attributes to add to the script tag |
 
 ### Implementation
 
-**_Must_** call `ServerSentEventGenerator.send` with event type `datastar-patch-elements`, sending a `script` tag containing the JavaScript to execute. If `autoRemove` is `true`, `data-effect="el.remove()"` must be added to the `script` tag. If `attributes` exist, they must be added to the `script` tag.
+***Must*** call `ServerSentEventGenerator.send` with event type `datastar-patch-elements`, sending a `script` tag containing the JavaScript to execute. If `autoRemove` is `true`, `data-effect="el.remove()"` must be added to the `script` tag. If `attributes` exist, they must be added to the `script` tag. 
 
 **Data format** (only include non-defaults):
-
 - `selector body\n`
 - `mode append\n`
 - `elements SCRIPT_TAG\n`
@@ -432,18 +421,21 @@ ReadSignals(request *http.Request, signals any) error
 
 ### Parameters
 
-| Parameter | Type         | Description                           |
-| --------- | ------------ | ------------------------------------- |
-| `request` | HTTP Request | Language-specific request object      |
-| `signals` | any          | Target object/struct for unmarshaling |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `request` | HTTP Request | Language-specific request object |
+| `signals` | any | Target object/struct for unmarshaling |
 
 ### Implementation
 
-The function **_must_** parse the incoming HTTP request based on the method:
+The function ***must*** parse the incoming HTTP request based on the method:
 
-| Method | Data Location              | Format           | Description                 |
-| ------ | -------------------------- | ---------------- | --------------------------- |
-| `GET`  | Query parameter `datastar` | URL-encoded JSON | Extract from query string   |
-| Others | Request body               | JSON             | Parse request body directly |
+| Method | Data Location | Format | Description |
+|--------|---------------|--------|-------------|
+| `GET` | Query parameter `datastar` | URL-encoded JSON | Extract from query string |
+| `PATCH` | Request body | JSON | Parse request body directly |
+| `POST` | Request body | JSON | Parse request body directly |
+| `PUT` | Request body | JSON | Parse request body directly |
+| `DELETE` | Query parameter `datastar` | URL-encoded JSON | Extract from query string |
 
-**Error Handling**: **_Must_** return error for invalid JSON.
+**Error Handling**: ***Must*** return error for invalid JSON.

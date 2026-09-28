@@ -2,10 +2,24 @@ import { describe, expect, it } from "vitest";
 import { defaultFeedRenderer } from "../feed.js";
 import type {
   FeedData,
+  FeedLabels,
   FeedPostView,
   MediaView,
   PostView,
 } from "../../types.js";
+
+/** The labels an English site's feed writes. */
+const FEED_LABELS: FeedLabels = {
+  watchVideo: "Watch video",
+  watchOn: (provider) => `Watch on ${provider}`,
+  morePosts: (count) => (count === 1 ? "1 more post" : `${count} more posts`),
+  linkPreview: "Link preview",
+  videoPreview: "Video preview",
+  providerVideo: (provider) => `${provider} video`,
+  audio: "Audio",
+  attachedText: "Attached text",
+  attachment: "Attachment",
+};
 
 function makeMediaView(overrides: Partial<MediaView> = {}): MediaView {
   return {
@@ -41,6 +55,7 @@ function makePostView(overrides: Partial<FeedPostView> = {}): FeedPostView {
 
 function makeFeedData(post: FeedPostView): FeedData {
   return {
+    labels: FEED_LABELS,
     siteName: "Jant",
     siteDescription: "Thoughts, links, and quotes — one post at a time",
     siteUrl: "https://example.com",
@@ -55,6 +70,7 @@ describe("feed renderers", () => {
   // on every poll, which is untrue and useless for change detection.
   it("dates the feed by its newest entry, not the render time", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       posts: [
         makePostView({
@@ -85,6 +101,7 @@ describe("feed renderers", () => {
   // an avatar from, so the feed is where it has to be.
   it("emits the site avatar as an absolute atom:icon", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       siteIconUrl: "/media/avatar.png",
     });
@@ -100,6 +117,7 @@ describe("feed renderers", () => {
 
   it("falls back to the render time for an empty feed", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       posts: [],
     });
@@ -388,17 +406,14 @@ describe("feed renderers", () => {
     expect(xml).not.toContain("★");
   });
 
-  it("uses feed-specific timestamps when provided", () => {
+  // A curated feed moves an entry's <updated> when it takes a post in; the
+  // post's own publication date stays <published>.
+  it("dates <published> by the post and <updated> by the feed", () => {
     const xml = defaultFeedRenderer(
-      makeFeedData(
-        makePostView({
-          feedPublishedAt: "2026-03-20T08:30:00.000Z",
-          feedUpdatedAt: "2026-03-20T09:45:00.000Z",
-        }),
-      ),
+      makeFeedData(makePostView({ feedUpdatedAt: "2026-03-20T09:45:00.000Z" })),
     );
 
-    expect(xml).toContain("<published>2026-03-20T08:30:00.000Z</published>");
+    expect(xml).toContain("<published>2026-03-19T00:00:00.000Z</published>");
     expect(xml).toContain("<updated>2026-03-20T09:45:00.000Z</updated>");
   });
 
@@ -896,6 +911,7 @@ describe("feed renderers", () => {
 describe("feed Discover declaration", () => {
   it("declares the mode and the feeds to poll", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       discover: "latest",
       discoverFeedUrl: "https://example.com/latest/feed",
@@ -910,6 +926,7 @@ describe("feed Discover declaration", () => {
 
   it("names no featured feed when none was given", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       discover: "latest",
       discoverFeedUrl: "https://example.com/latest/feed",
@@ -922,6 +939,7 @@ describe("feed Discover declaration", () => {
 
   it("points featured sites at the featured feed", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       discover: "featured",
       discoverFeedUrl: "https://example.com/featured/feed",
@@ -937,6 +955,7 @@ describe("feed Discover declaration", () => {
   // site predates Discover" instead.
   it("declares none without a feed attribute", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       discover: "none",
       discoverFeedUrl: null,
@@ -957,6 +976,7 @@ describe("feed Discover declaration", () => {
   // feed that leaves the declaration out is one with nothing in it at all.
   it("declares no namespace when nothing in it is emitted", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       posts: [],
     });
@@ -966,6 +986,7 @@ describe("feed Discover declaration", () => {
 
   it("keeps a sitePathPrefix in the polled feed URL", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       siteUrl: "https://example.com/blog",
       discover: "latest",
@@ -979,6 +1000,7 @@ describe("feed Discover declaration", () => {
 describe("feed language alternates", () => {
   it("links each language's copy of the same feed", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       languageAlternates: [
         { hreflang: "zh-Hans", href: "https://example.com/latest/feed" },
@@ -996,6 +1018,7 @@ describe("feed language alternates", () => {
 
   it("emits nothing extra for a single-language site", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       languageAlternates: [],
     });
@@ -1010,6 +1033,7 @@ describe("feed author", () => {
   // Atom already has for it.
   it("names the blog, separately from the composed feed title", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       siteName: "A blog",
       title: "A blog - Latest posts",
@@ -1021,6 +1045,7 @@ describe("feed author", () => {
 
   it("escapes a name that contains markup characters", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       siteName: "Q&A <notes>",
     });
@@ -1032,6 +1057,7 @@ describe("feed author", () => {
 
   it("emits nothing when the site has no name", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       siteName: "",
     });
@@ -1484,6 +1510,21 @@ describe("feed entry metadata", () => {
 
   // A collection is a label the author chose, which is what `<category>` is
   // for — unlike the format, which no author typed.
+  it("names the collections scheme under a site's path prefix", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(
+        makePostView({
+          collections: [
+            { slug: "reading", title: "Reading", url: "/blog/reading" },
+          ],
+        }),
+      ),
+      siteUrl: "https://example.com/blog",
+    });
+
+    expect(xml).toContain('scheme="https://example.com/blog/collections"');
+  });
+
   it("files an entry under its collections", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
@@ -1499,10 +1540,10 @@ describe("feed entry metadata", () => {
     // A single collection lives in the root URL namespace and a site path
     // prefix makes it unguessable from the term, so the URL rides along.
     expect(xml).toContain(
-      '<category term="reading" label="Reading" jant:page="https://example.com/reading"/>',
+      '<category term="reading" scheme="https://example.com/collections" label="Reading" jant:page="https://example.com/reading"/>',
     );
     expect(xml).toContain(
-      '<category term="notes" label="Field Notes" jant:page="https://example.com/notes"/>',
+      '<category term="notes" scheme="https://example.com/collections" label="Field Notes" jant:page="https://example.com/notes"/>',
     );
   });
 

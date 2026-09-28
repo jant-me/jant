@@ -1,5 +1,7 @@
 import type { Context } from "hono";
-import type { Bindings, FeedData, Post } from "../types.js";
+import { msg } from "@lingui/core/macro";
+import { getI18n } from "../i18n/index.js";
+import type { Bindings, FeedData, FeedLabels, Post } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
 import type { PostFilters, ThreadRootPageOptions } from "../services/post.js";
 import { DISCOVER_STATUS_PATH, getDiscoverFeedPath } from "./discover.js";
@@ -19,6 +21,87 @@ const RSS_FEED_CACHE_CONTROL = "public, max-age=60";
 
 /** Media type every Jant Atom feed is served as. */
 const FEED_CONTENT_TYPE = "application/atom+xml; charset=utf-8";
+
+/**
+ * The display text a feed writes, in the language the site's reader pages
+ * use, so a feed says "3 more posts" the way the page beside it does.
+ *
+ * @param c - The feed request, whose locale the reader pages use
+ * @returns The labels the renderer writes
+ * @example
+ * ```ts
+ * defaultFeedRenderer({ ...fields, labels: buildFeedLabels(c) });
+ * ```
+ */
+export function buildFeedLabels(c: FeedContext): FeedLabels {
+  const i18n = getI18n(c);
+  return {
+    watchVideo: i18n._(
+      msg({
+        message: "Watch video",
+        comment: "@context: Feed link under a video attachment or preview",
+      }),
+    ),
+    watchOn: (provider) =>
+      i18n._(
+        msg({
+          message: "Watch on {provider}",
+          comment:
+            "@context: Feed link under a linked video's preview, naming the site that hosts it",
+        }),
+        { provider },
+      ),
+    morePosts: (count) =>
+      i18n._(
+        msg({
+          message: "{count, plural, one {# more post} other {# more posts}}",
+          comment:
+            "@context: Link showing count of hidden thread posts between root and latest",
+        }),
+        { count },
+      ),
+    linkPreview: i18n._(
+      msg({
+        message: "Link preview",
+        comment: "@context: Feed alt text for a link preview image",
+      }),
+    ),
+    videoPreview: i18n._(
+      msg({
+        message: "Video preview",
+        comment: "@context: Feed alt text for a linked video's preview image",
+      }),
+    ),
+    providerVideo: (provider) =>
+      i18n._(
+        msg({
+          message: "{provider} video",
+          comment:
+            "@context: Feed alt text for a linked video's preview image, naming the site that hosts it",
+        }),
+        { provider },
+      ),
+    audio: i18n._(
+      msg({
+        message: "Audio",
+        comment:
+          "@context: Feed name for an audio attachment with no file name",
+      }),
+    ),
+    attachedText: i18n._(
+      msg({
+        message: "Attached text",
+        comment: "@context: Feed name for a text attachment with no file name",
+      }),
+    ),
+    attachment: i18n._(
+      msg({
+        message: "Attachment",
+        comment: "@context: Feed name for an attachment with no file name",
+      }),
+    ),
+  };
+}
 
 /**
  * Whether the site publishes feeds.

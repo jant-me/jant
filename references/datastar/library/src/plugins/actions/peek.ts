@@ -2,17 +2,17 @@
 // Slug: Access signals without subscribing to changes.
 // Description: Allows accessing signals without subscribing to their changes in expressions.
 
-import { action } from "@engine";
-import { startPeeking, stopPeeking } from "@engine/signals";
+import { action } from '@engine'
+import { startPeeking, stopPeeking } from '@engine/signals'
 
 action({
-  name: "peek",
+  name: 'peek',
   apply(_, fn: () => any) {
-    startPeeking();
+    startPeeking()
     try {
-      return fn();
+      return fn()
     } finally {
-      stopPeeking();
+      stopPeeking()
     }
   },
-});
+})

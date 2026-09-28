@@ -385,7 +385,6 @@ msgstr "頭像"
 #. @context: Toast after saving avatar display preference
 #. @context: Toast after saving avatar display preference
 #: src/routes/dash/settings.tsx
-#: src/routes/dash/settings.tsx
 msgid "Avatar display updated."
 msgstr "頭像顯示已更新。"
 
@@ -460,7 +459,6 @@ msgstr "平靜自然，看著舒服。"
 #. @context: Dialog cancel button
 #. @context: GitHub sync picker — cancel action
 #: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/ActionButtons.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
@@ -473,13 +471,11 @@ msgstr "平靜自然，看著舒服。"
 #: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/SessionsContent.tsx
 #: src/ui/dash/settings/TelegramContent.tsx
-#: src/ui/dash/settings/TelegramContent.tsx
 msgid "Cancel"
 msgstr "取消"
 
 #. @context: Button to change password
 #. @context: Settings section heading
-#: src/ui/dash/settings/AccountContent.tsx
 #: src/ui/dash/settings/AccountContent.tsx
 msgid "Change Password"
 msgstr "變更密碼"
@@ -575,7 +571,6 @@ msgstr "選集"
 #. @context: Custom URL type option
 #. @context: Suggested navigation link target type
 #: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
 #: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Collection"
 msgstr "選集"
@@ -618,7 +613,6 @@ msgstr "設定編輯器"
 
 #. @context: Config Editor linked setting status
 #. @context: Config Editor linked setting status
-#: src/ui/dash/settings/ConfigEditorContent.tsx
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Configured"
 msgstr "已設定"
@@ -704,7 +698,6 @@ msgstr "連線中…"
 #. @context: Setup form field - site content language
 #. @context: Setup form field - site content language
 #: src/routes/auth/setup.tsx
-#: src/routes/auth/setup.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Content language"
 msgstr "內容語言"
@@ -742,14 +735,11 @@ msgstr "已複製"
 #. @context: Button to copy the Telegram binding code
 #: src/ui/dash/settings/GeneralContent.tsx
 #: src/ui/dash/settings/TelegramContent.tsx
-#: src/ui/dash/settings/TelegramContent.tsx
-#: src/ui/dash/settings/TelegramContent.tsx
 msgid "Copy"
 msgstr "複製"
 
 #. @context: Button to copy API token to clipboard
 #. @context: Button to copy API token to clipboard
-#: src/ui/dash/settings/ApiTokensContent.tsx
 #: src/ui/dash/settings/ApiTokensContent.tsx
 msgid "Copy Token"
 msgstr "複製權杖"
@@ -1040,7 +1030,6 @@ msgstr "目標網址"
 #. @context: Button to disconnect GitHub repository on GitHub Sync settings
 #. @context: Button to disconnect Telegram
 #. @context: Section heading for disconnect action on GitHub Sync settings
-#: src/ui/dash/settings/GitHubSyncContent.tsx
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Disconnect"
@@ -1759,8 +1748,6 @@ msgstr "中性灰"
 #. @context: Button to create new custom URL
 #. @context: Page heading
 #: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
 msgid "New Custom URL"
 msgstr "新增自訂 URL"
 
@@ -1829,7 +1816,6 @@ msgstr "尚未提交。還沒有目錄知道這個網站存在。"
 #. @context: Config Editor linked setting status
 #. @context: Config Editor linked setting status
 #: src/ui/dash/settings/ConfigEditorContent.tsx
-#: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Not configured"
 msgstr "未設定"
 
@@ -1882,7 +1868,6 @@ msgstr "啟用 {linkOpen}@{botUsername}{linkClose} 並傳送："
 
 #. @context: Config Editor link to a dedicated settings page
 #. @context: Config Editor link to a dedicated settings page
-#: src/ui/dash/settings/ConfigEditorContent.tsx
 #: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Open setting"
 msgstr "啟用設定"
@@ -2034,7 +2019,6 @@ msgstr "已釘選"
 #. @context: Custom URL target type badge for a post
 #. @context: Custom URL type option
 #: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
 msgid "Post"
 msgstr "貼文"
 
@@ -2116,7 +2100,6 @@ msgstr "最近更新"
 #. @context: Custom URL target type badge for a redirect
 #. @context: Custom URL type option
 #: src/routes/dash/custom-urls.tsx
-#: src/routes/dash/custom-urls.tsx
 msgid "Redirect"
 msgstr "重新導向"
 
@@ -2186,7 +2169,6 @@ msgstr "從導覽中移除此頁面？頁面本身不會被刪除。"
 #. @context: Label for GitHub repository input on GitHub Sync settings
 #. @context: Label for connected repository on GitHub Sync status
 #: src/routes/dash/settings.tsx
-#: src/ui/dash/settings/GitHubSyncContent.tsx
 #: src/ui/dash/settings/GitHubSyncContent.tsx
 msgid "Repository"
 msgstr "儲存庫"
@@ -2296,13 +2278,11 @@ msgstr "搜尋執行階段設定並啟用進階設定"
 #. @context: Config Editor search input placeholder
 #. @context: Config Editor search input placeholder
 #: src/ui/dash/settings/ConfigEditorContent.tsx
-#: src/ui/dash/settings/ConfigEditorContent.tsx
 msgid "Search settings"
 msgstr "搜尋設定"
 
 #. @context: Toast after saving search settings
 #. @context: Toast after saving search settings
-#: src/routes/dash/settings.tsx
 #: src/routes/dash/settings.tsx
 msgid "Search settings updated."
 msgstr "搜尋設定已更新。"
@@ -2484,7 +2464,6 @@ msgstr "網站可見性"
 #. @context: Toast after saving the site visibility settings
 #. @context: Toast after saving the site visibility settings
 #: src/routes/dash/settings.tsx
-#: src/routes/dash/settings.tsx
 msgid "Site visibility updated."
 msgstr "網站可見性已更新。"
 
@@ -2564,7 +2543,6 @@ msgstr "目標 slug"
 #. @context: Settings section heading for Telegram setup
 #: src/routes/dash/settings.tsx
 #: src/ui/dash/settings/SettingsRootContent.tsx
-#: src/ui/dash/settings/TelegramContent.tsx
 #: src/ui/dash/settings/TelegramContent.tsx
 msgid "Telegram"
 msgstr "Telegram"
@@ -2797,7 +2775,6 @@ msgstr "時區已更新。"
 #. @context: Collection title field in Navigation settings
 #. @context: Title field label in quick page creation
 #: src/ui/dash/appearance/NavigationContent.tsx
-#: src/ui/dash/appearance/NavigationContent.tsx
 msgid "Title"
 msgstr "標題"
 
@@ -2838,7 +2815,6 @@ msgstr "關閉"
 
 #. @context: Title of the dialog confirming removal of the last additional language
 #. @context: Title of the disable-multilingual dialog
-#: src/ui/dash/settings/LanguageContent.tsx
 #: src/ui/dash/settings/LanguageContent.tsx
 msgid "Turn off multilingual content?"
 msgstr "關閉多語言？"

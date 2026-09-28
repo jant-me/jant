@@ -29,6 +29,7 @@ import type { AppVariables } from "../../types/app-context.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
+  buildFeedLabels,
   featuredFeedSelection,
   getFeedEntryUpdatedAt,
   getFeedLimit,
@@ -87,56 +88,80 @@ async function loadMediaMap(
 }
 
 /**
- * Build thread replies as PostView[] for a given root post from a thread map.
+ * The entries of a feed, with each root's replies, from the root posts it
+ * lists.
  *
- * Replies take the alias map too. A reply's permalink is what `<jant:post>`
- * rows, the fold's `gap` and `latest`, and every `media:content` name it by,
- * and a consumer keys on that address — so it has to be the address the site
- * itself uses, which is the reply's first alias when it has one.
+ * Every feed builds its entries here, so an entry and its replies are named
+ * the same way in all of them. A post's permalink is what `<jant:post>` rows,
+ * the fold's `gap` and `latest`, and every `media:content` name it by, and a
+ * consumer keys on that address; it has to be the one the site itself uses,
+ * which is the post's first alias when it has one, for replies as for roots.
+ *
+ * @param c - The feed request
+ * @param posts - The entries, in feed order
+ * @param options.publishedBefore - The feed's publication cutoff, which the
+ *   replies follow too
+ * @param options.threadMap - Threads the caller already read, keyed by root
+ * @param options.alsoUpdatedAt - More moments an entry changed, such as when
+ *   a collection took it
+ * @returns One view per post, in the same order
+ * @example
+ * const postViews = await buildFeedPostViews(c, posts, { publishedBefore });
  */
-function buildThreadReplies(
-  rootId: string,
-  threadMap: Map<string, Post[]>,
-  mediaMap: ReturnType<typeof buildMediaMap>,
-  mediaCtx: ReturnType<typeof createMediaContext>,
-  aliasMap: Map<string, string>,
-) {
-  const thread = threadMap.get(rootId);
-  if (!thread || thread.length <= 1) return undefined;
+export async function buildFeedPostViews(
+  c: Context<Env>,
+  posts: Post[],
+  options: {
+    publishedBefore: number;
+    threadMap?: Map<string, Post[]>;
+    alsoUpdatedAt?: (index: number) => readonly (number | undefined)[];
+  },
+): Promise<FeedPostView[]> {
+  const rootIds = posts.filter((p) => p.threadId === p.id).map((p) => p.id);
+  const threadMap =
+    options.threadMap ??
+    (await c.var.services.posts.getPublishedThreads(rootIds, {
+      publishedBefore: options.publishedBefore,
+    }));
 
-  return toPostViews(
-    thread
-      .filter((r) => r.id !== rootId)
-      .map((r) => ({
-        ...r,
-        mediaAttachments: mediaMap.get(r.id) ?? [],
-      })),
-    mediaCtx,
-    undefined,
-    aliasMap,
-  );
-}
+  const ids = new Set(posts.map((p) => p.id));
+  for (const thread of threadMap.values()) {
+    for (const post of thread) ids.add(post.id);
+  }
 
-/** The first alias of each post that has one: the address the site uses. */
-function toAliasMap(aliasesMap: Map<string, string[]>): Map<string, string> {
+  const mediaCtx = createMediaContext(c.var.appConfig);
+  const [mediaMap, aliasesMap] = await Promise.all([
+    loadMediaMap(c, [...ids], mediaCtx),
+    c.var.services.paths.getPostAliases([...ids]),
+  ]);
   const aliasMap = new Map<string, string>();
   for (const [id, aliases] of aliasesMap) {
     if (aliases[0]) aliasMap.set(id, aliases[0]);
   }
-  return aliasMap;
-}
+  const withMedia = (post: Post) => ({
+    ...post,
+    mediaAttachments: mediaMap.get(post.id) ?? [],
+  });
 
-/**
- * Collect all reply IDs from a thread map (excluding root posts).
- */
-function collectReplyIds(threadMap: Map<string, Post[]>): string[] {
-  const ids: string[] = [];
-  for (const [rootId, thread] of threadMap) {
-    for (const post of thread) {
-      if (post.id !== rootId) ids.push(post.id);
-    }
-  }
-  return ids;
+  return toPostViews(posts.map(withMedia), mediaCtx, undefined, aliasMap).map(
+    (postView, index) => {
+      const post = posts[index] as Post;
+      const thread = threadMap.get(post.id);
+      const replies = thread?.filter((reply) => reply.id !== post.id) ?? [];
+      return {
+        ...postView,
+        feedUpdatedAt: getFeedEntryUpdatedAt(
+          post,
+          thread,
+          options.alsoUpdatedAt?.(index) ?? [],
+        ),
+        threadReplies:
+          replies.length > 0
+            ? toPostViews(replies.map(withMedia), mediaCtx, undefined, aliasMap)
+            : undefined,
+      };
+    },
+  );
 }
 
 /**
@@ -158,53 +183,7 @@ async function buildLatestFeedData(
     limit: feedLimit,
   });
 
-  const rootIds = posts.filter((p) => p.threadId === p.id).map((p) => p.id);
-  const postIds = posts.map((p) => p.id);
-
-  const mediaCtx = createMediaContext(c.var.appConfig);
-  const [threadMap, mediaMap, aliasesMap] = await Promise.all([
-    c.var.services.posts.getPublishedThreads(rootIds, { publishedBefore }),
-    loadMediaMap(c, postIds, mediaCtx),
-    c.var.services.paths.getPostAliases(postIds),
-  ]);
-
-  // Replies are only known once the threads are, so their media and aliases
-  // come in a second round.
-  const replyIds = collectReplyIds(threadMap);
-  const [replyMediaMap, replyAliasesMap] =
-    replyIds.length > 0
-      ? await Promise.all([
-          loadMediaMap(c, replyIds, mediaCtx),
-          c.var.services.paths.getPostAliases(replyIds),
-        ])
-      : [mediaMap, new Map<string, string[]>()];
-  // Merge reply media into main map
-  const mergedMediaMap = new Map([...mediaMap, ...replyMediaMap]);
-  const aliasMap = toAliasMap(new Map([...aliasesMap, ...replyAliasesMap]));
-
-  const postViews = toPostViews(
-    posts.map((p) => ({
-      ...p,
-      mediaAttachments: mergedMediaMap.get(p.id) ?? [],
-    })),
-    mediaCtx,
-    undefined,
-    aliasMap,
-  ).map((postView, index) => {
-    const post = posts[index] as (typeof posts)[number];
-    const thread = threadMap.get(post.id);
-    return {
-      ...postView,
-      feedUpdatedAt: getFeedEntryUpdatedAt(post, thread),
-      threadReplies: buildThreadReplies(
-        post.id,
-        threadMap,
-        mergedMediaMap,
-        mediaCtx,
-        aliasMap,
-      ),
-    };
-  });
+  const postViews = await buildFeedPostViews(c, posts, { publishedBefore });
 
   return { posts, postViews };
 }
@@ -247,46 +226,9 @@ async function buildFeaturedFeedData(
     }
   }
 
-  const postIds = posts.map((p) => p.id);
-  const mediaCtx = createMediaContext(c.var.appConfig);
-
-  // Collect all post IDs (roots + replies) for media and alias loading
-  const allPostIds = new Set(postIds);
-  for (const thread of threadMap.values()) {
-    for (const post of thread) {
-      allPostIds.add(post.id);
-    }
-  }
-
-  const [mediaMap, aliasesMap] = await Promise.all([
-    loadMediaMap(c, [...allPostIds], mediaCtx),
-    c.var.services.paths.getPostAliases([...allPostIds]),
-  ]);
-  const aliasMap = toAliasMap(aliasesMap);
-
-  const postViews = toPostViews(
-    posts.map((p) => ({
-      ...p,
-      mediaAttachments: mediaMap.get(p.id) ?? [],
-    })),
-    mediaCtx,
-    undefined,
-    aliasMap,
-  ).map((postView, index) => {
-    const post = posts[index] as (typeof posts)[number];
-    const thread = threadMap.get(post.id);
-
-    return {
-      ...postView,
-      feedUpdatedAt: getFeedEntryUpdatedAt(post, thread),
-      threadReplies: buildThreadReplies(
-        post.id,
-        threadMap,
-        mediaMap,
-        mediaCtx,
-        aliasMap,
-      ),
-    };
+  const postViews = await buildFeedPostViews(c, posts, {
+    publishedBefore,
+    threadMap,
   });
 
   return { posts, postViews };
@@ -324,9 +266,14 @@ export async function buildFeedData(
     kind === "featured"
       ? await buildFeaturedFeedData(c, feedLimit, publishedBefore)
       : await buildLatestFeedData(c, feedLimit, publishedBefore, opts.format);
+  // A filtered feed is its own feed: its self link, its `<id>`, and its
+  // language alternates keep the filter, as the archive feed's do.
+  const query =
+    kind === "latest" && opts.format ? `?format=${opts.format}` : "";
 
   return {
-    ...buildFeedDiscoveryFields(c),
+    ...buildFeedDiscoveryFields(c, { query }),
+    labels: buildFeedLabels(c),
     siteName,
     siteDescription,
     siteUrl,
@@ -348,7 +295,7 @@ export async function buildFeedData(
             }),
           )}`,
     selfUrl: toAbsoluteSiteUrl(
-      `${viewBasePath(c)}${opts.selfPath}`,
+      `${viewBasePath(c)}${opts.selfPath}${query}`,
       siteUrl,
       appConfig.sitePathPrefix,
     ),

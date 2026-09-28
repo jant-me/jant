@@ -121,7 +121,7 @@ jant/
 - **Database**: D1 (SQLite) + Drizzle ORM
 - **Auth**: better-auth
 - **i18n**: @lingui/core + @lingui/swc-plugin
-- **Interactions**: Datastar v1.0.0-RC.7 (vendored)
+- **Interactions**: Datastar v1.0.4 (vendored)
 - **Code Quality**: ESLint + Prettier + husky + lint-staged
 - **Validation**: Zod
 - **Testing**: Vitest + better-sqlite3 (in-memory)
@@ -227,7 +227,8 @@ mise run auth-reset-token # Generate password reset link (local)
 ### CI
 
 ```bash
-mise run check-ci         # Run all CI checks (lint + typecheck + test + build + i18n + template)
+mise run check-ci           # Run all CI checks (lint + typecheck + test + build + i18n + template)
+mise run check-docker-smoke # Build the Docker image and run the Compose quick start against it
 ```
 
 ## Development Workflow
@@ -540,6 +541,19 @@ database you can afford to lose — the smoke test drops and recreates it:
 PG_SMOKE_ADMIN_DATABASE_URL=postgres://jant:jant@localhost:5432/postgres \
 PG_SMOKE_DATABASE_URL=postgres://jant:jant@localhost:5432/jant_pg_smoke \
 mise run check-pg-smoke
+```
+
+The S3 storage driver, and the media trash that relies on its server-side copy, run
+against a real S3-compatible server in the `s3-smoke` job. Locally, start one and point
+the test at it:
+
+```bash
+docker run -d --name jant-s3-smoke -p 59000:9000 \
+  -e RUSTFS_ACCESS_KEY=jantsmoke -e RUSTFS_SECRET_KEY=jantsmoke-secret \
+  rustfs/rustfs:1.0.0
+S3_SMOKE_ENDPOINT=http://127.0.0.1:59000 \
+S3_SMOKE_ACCESS_KEY_ID=jantsmoke S3_SMOKE_SECRET_ACCESS_KEY=jantsmoke-secret \
+mise run check-s3-smoke
 ```
 
 ### Reset

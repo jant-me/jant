@@ -9,6 +9,7 @@
  */
 
 import type { Context } from "hono";
+import { buildFeedPostViews } from "../feed/feed.js";
 import type { Bindings, SmartCollection } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { SmartCollectionPage } from "../../ui/pages/SmartCollectionPage.js";
@@ -20,15 +21,14 @@ import { assembleTimelineItems } from "../../lib/timeline.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
-  getFeedEntryUpdatedAt,
+  buildFeedLabels,
   getFeedLimit,
   getRssPublishedBefore,
   feedsPublished,
   renderFeed,
 } from "../../lib/feed-policy.js";
 import { toPlainText as markdownToPlainText } from "../../lib/markdown.js";
-import { buildMediaMap } from "../../lib/media-helpers.js";
-import { createMediaContext, toPostViews } from "../../lib/view.js";
+
 import { toAbsoluteSiteUrl } from "../../lib/url.js";
 import {
   buildSurfaceAlternates,
@@ -249,76 +249,11 @@ export async function renderSmartCollectionFeed(
     limit: getFeedLimit(c),
   });
 
-  const rootIds = posts.filter((p) => p.threadId === p.id).map((p) => p.id);
-  const postIds = posts.map((post) => post.id);
-  const [threadMap, rawMediaMap, aliasesMap] = await Promise.all([
-    services.posts.getPublishedThreads(rootIds, { publishedBefore }),
-    services.media.getByPostIds(postIds),
-    services.paths.getPostAliases(postIds),
-  ]);
-
-  const replyIds: string[] = [];
-  for (const [rootId, thread] of threadMap) {
-    for (const reply of thread) {
-      if (reply.id !== rootId) replyIds.push(reply.id);
-    }
-  }
-  const replyMediaMap =
-    replyIds.length > 0
-      ? await services.media.getByPostIds(replyIds)
-      : new Map<string, never[]>();
-
-  const mediaCtx = createMediaContext(appConfig);
-  const allRawMedia = new Map(rawMediaMap);
-  for (const [id, media] of replyMediaMap) {
-    allRawMedia.set(id, media);
-  }
-  const mediaMap = buildMediaMap(
-    allRawMedia,
-    mediaCtx.r2PublicUrl,
-    mediaCtx.imageTransformUrl,
-    mediaCtx.s3PublicUrl,
-    mediaCtx.localPublicUrl,
-    mediaCtx.sitePathPrefix,
-  );
-  const aliasMap = new Map<string, string>();
-  for (const [id, aliases] of aliasesMap) {
-    if (aliases[0]) aliasMap.set(id, aliases[0]);
-  }
-
-  const postViews = toPostViews(
-    posts.map((post) => ({
-      ...post,
-      mediaAttachments: mediaMap.get(post.id) ?? [],
-    })),
-    mediaCtx,
-    undefined,
-    aliasMap,
-  ).map((postView, index) => {
-    const post = posts[index] as (typeof posts)[number];
-    const thread = threadMap.get(post.id);
-    const replies =
-      thread && thread.length > 1
-        ? toPostViews(
-            thread
-              .filter((reply) => reply.id !== post.id)
-              .map((reply) => ({
-                ...reply,
-                mediaAttachments: mediaMap.get(reply.id) ?? [],
-              })),
-            mediaCtx,
-          )
-        : undefined;
-
-    return {
-      ...postView,
-      feedUpdatedAt: getFeedEntryUpdatedAt(post, thread),
-      threadReplies: replies,
-    };
-  });
+  const postViews = await buildFeedPostViews(c, posts, { publishedBefore });
 
   const feedData = {
     ...buildFeedDiscoveryFields(c),
+    labels: buildFeedLabels(c),
     siteName: appConfig.siteName,
     siteDescription: markdownToPlainText(appConfig.siteDescription),
     siteUrl: appConfig.siteUrl,

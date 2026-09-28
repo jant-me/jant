@@ -14,7 +14,9 @@ on:
 jobs:
   reset:
     runs-on: ubuntu-latest
-    name: Reset demo.jant.me data
+    # The Workers demo. demo.jant.me is the Docker demo, reset by
+    # reset-demo-studio.yml.
+    name: Reset the jant-demo Worker data
 
     # For manual trigger, require confirmation
     if: github.event_name == 'schedule' || github.event.inputs.confirm == 'reset'

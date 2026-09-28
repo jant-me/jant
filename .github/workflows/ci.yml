@@ -146,6 +146,78 @@ jobs:
           PG_REHEARSAL_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jant_pg_rehearsal
         run: mise run check-pg-rehearsal
 
+  s3-smoke:
+    name: S3 Smoke
+    runs-on: ubuntu-latest
+    services:
+      # MinIO no longer publishes images; RustFS is an S3-compatible server
+      # that checks signatures, which is what a presigned PUT needs tested.
+      rustfs:
+        image: rustfs/rustfs:1.0.0
+        env:
+          RUSTFS_ACCESS_KEY: jantsmoke
+          RUSTFS_SECRET_KEY: jantsmoke-secret
+        ports:
+          - 9000:9000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store/v10
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for the S3 server
+        run: |
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:9000/health >/dev/null && exit 0
+            sleep 1
+          done
+          echo "RustFS did not become healthy." >&2
+          exit 1
+
+      - name: Run the S3 driver tests
+        env:
+          S3_SMOKE_ENDPOINT: http://127.0.0.1:9000
+          S3_SMOKE_ACCESS_KEY_ID: jantsmoke
+          S3_SMOKE_SECRET_ACCESS_KEY: jantsmoke-secret
+        run: mise run check-s3-smoke
+
+  docker-smoke:
+    name: Docker Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # amd64 only. The published image adds arm64 under QEMU, which is slow
+      # and builds the same Dockerfile.
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: jant:ci
+          cache-from: type=gha,scope=docker-smoke
+          cache-to: type=gha,scope=docker-smoke,mode=max
+
+      - name: Run the Compose quick start
+        run: bash scripts/docker-smoke.sh jant:ci
+
   deploy-demo:
     name: Deploy Demo
     needs: [changes, ci, pg-smoke]
@@ -220,6 +292,8 @@ jobs:
       - changes
       - ci
       - pg-smoke
+      - s3-smoke
+      - docker-smoke
       - deploy-demo
       - deploy-demo-source
       - deploy-content-lab
@@ -237,6 +311,8 @@ jobs:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref || '' }}
           CI_RESULT: ${{ needs.ci.result }}
           PG_SMOKE_RESULT: ${{ needs['pg-smoke'].result }}
+          S3_SMOKE_RESULT: ${{ needs['s3-smoke'].result }}
+          DOCKER_SMOKE_RESULT: ${{ needs['docker-smoke'].result }}
           DEMO_SELECTED: ${{ needs.changes.outputs.demo || 'false' }}
           DEMO_SOURCE_SELECTED: ${{ needs.changes.outputs.demo_source || 'false' }}
           CONTENT_LAB_SELECTED: ${{ needs.changes.outputs.content_lab || 'false' }}
@@ -259,12 +335,14 @@ jobs:
             echo "- Ref: \`$REF_NAME\`"
             echo "- CI: \`$CI_RESULT\`"
             echo "- PG Smoke: \`$PG_SMOKE_RESULT\`"
+            echo "- S3 Smoke: \`$S3_SMOKE_RESULT\`"
+            echo "- Docker Smoke: \`$DOCKER_SMOKE_RESULT\`"
             echo
             echo "| Target | Selected | Result |"
             echo "| --- | --- | --- |"
 
             if [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "main" ]; then
-              write_row "demo.jant.me" "${DEMO_SELECTED:-false}" "$DEPLOY_DEMO_RESULT"
+              write_row "jant-demo Worker" "${DEMO_SELECTED:-false}" "$DEPLOY_DEMO_RESULT"
               write_row "demo-source.jant.me" "${DEMO_SOURCE_SELECTED:-false}" "$DEPLOY_DEMO_SOURCE_RESULT"
               write_row "content-lab.jant.me" "${CONTENT_LAB_SELECTED:-false}" "$DEPLOY_CONTENT_LAB_RESULT"
               write_row "jant prod build" "true" "$DEPLOY_STUDIO_PROD_RESULT"

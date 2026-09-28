@@ -275,7 +275,7 @@ Write the selectors as shown. The built-in theme uses the same ones, and custom 
 
 ## Tips
 
-- Override variables first, write selectors second. The variables, data attributes, and classes on this page change only in a major release. Jant's stylesheets define many more custom properties and class names; those are internal and can change in any release.
+- Override variables first, write selectors second. Jant keeps the variables, data attributes, and classes on this page stable where it can, and a release that changes one says so in its release notes; see [Compatibility](compatibility.md). Jant's stylesheets define many more custom properties and class names; those are internal and can change in any release without notice.
 - Custom CSS comes after the built-in theme and uses the same selectors, so it overrides every variable the theme sets: `:root` for light values, the two rules under [Dark mode](#dark-mode) for dark ones.
 - `oklch()` is convenient for color tuning. A common pattern: keep `--primary` saturated and stable for buttons; let `--site-accent` carry a softer tone for quote marks and Thread connectors. Links take `--site-content-link`.
 - Test in both light and dark. A color set only in `:root` also applies in dark mode wherever neither the theme nor Jant sets a dark value for it.

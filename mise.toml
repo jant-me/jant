@@ -2,8 +2,11 @@
 # Tools
 # =============================================================================
 [tools]
-node = "lts"
-pnpm = "10.28.2"
+# The major the Dockerfile, the deploy workflow, and `engines` build and run on.
+# "lts" would move to the next major on its own when that one becomes LTS.
+node = "24"
+# Same as `packageManager` in package.json, which CI and the Docker build use.
+pnpm = "10.33.0"
 hugo-extended = "0.160.1"
 
 # =============================================================================
@@ -143,6 +146,13 @@ pnpm --filter @jant/core build:lib
 node ./packages/core/dev/scripts/pg-smoke.mjs
 """
 
+[tasks.check-s3-smoke]
+description = "Run the S3 driver and the media trash against the server at S3_SMOKE_ENDPOINT"
+run = """
+: "${S3_SMOKE_ENDPOINT:?Set S3_SMOKE_ENDPOINT, S3_SMOKE_ACCESS_KEY_ID and S3_SMOKE_SECRET_ACCESS_KEY}"
+pnpm --filter @jant/core exec vitest run src/lib/__tests__/storage-s3.test.ts
+"""
+
 [tasks.check-pg-rehearsal]
 description = "Upgrade a seeded Postgres database from its baseline migration (PG_REHEARSAL_*_DATABASE_URL)"
 run = """
@@ -160,6 +170,13 @@ node ./packages/core/dev/scripts/node-rehearsal.mjs --fixture packages/core/src/
 [tasks.check-types]
 description = "Run TypeScript type checking (all packages)"
 run = "pnpm -r typecheck"
+
+[tasks.check-docker-smoke]
+description = "Build the Docker image and run the documented Compose quick start against it"
+run = """
+docker build -t jant:smoke .
+bash scripts/docker-smoke.sh jant:smoke
+"""
 
 [tasks.check-template]
 description = "Integration test: scaffold projects with create-jant through pnpm, npm, Yarn 1, and Yarn 2+, install the pnpm and Yarn 2+ ones, and check the results"

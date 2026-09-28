@@ -1,11 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
-  extractDomain,
   extractDisplayDomain,
+  extractDomain,
   isFullUrl,
   isSafeAbsoluteUrl,
   looksLikeAddress,
   normalizePath,
+  normalizeRedirectTarget,
+  redirectTargetHref,
+  redirectTargetPath,
   sanitizeRichTextHref,
   sanitizeUrl,
   stripSitePathPrefix,
@@ -327,5 +330,28 @@ describe("toInternalPath", () => {
     expect(toInternalPath("/about/", SITE)).toBe("/about");
     expect(toInternalPath("/collections/../about", SITE)).toBe("/about");
     expect(toInternalPath("/", SITE)).toBe("/");
+  });
+});
+
+describe("redirect targets", () => {
+  it("stores an address off the site as given, and a path in registry form", () => {
+    expect(normalizeRedirectTarget(" https://Example.com/Page?q=A ")).toBe(
+      "https://example.com/Page?q=A",
+    );
+    expect(normalizeRedirectTarget("/Archive//2024/?format=Note#top")).toBe(
+      "archive/2024?format=Note#top",
+    );
+    expect(normalizeRedirectTarget("new-path")).toBe("new-path");
+  });
+
+  it("gives back an address and the registry path a target names", () => {
+    expect(redirectTargetHref("archive?format=note")).toBe(
+      "/archive?format=note",
+    );
+    expect(redirectTargetHref("https://example.com/")).toBe(
+      "https://example.com/",
+    );
+    expect(redirectTargetPath("archive?format=note")).toBe("archive");
+    expect(redirectTargetPath("https://example.com/")).toBeNull();
   });
 });

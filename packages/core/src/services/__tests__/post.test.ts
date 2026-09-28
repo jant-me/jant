@@ -453,6 +453,17 @@ describe("PostService", () => {
       ).rejects.toThrow('Path "skill.md" is reserved and cannot be used');
     });
 
+    // A custom URL could never start with `_` or `.`, but a post's own `path`
+    // could, and took an address in Jant's namespace.
+    it.each(["_x", ".well-known/x"])(
+      "rejects a path in Jant's namespace (%s)",
+      async (path) => {
+        await expect(
+          postService.create({ format: "note", bodyMarkdown: "x", path }),
+        ).rejects.toThrow(`Path "${path}" is reserved and cannot be used`);
+      },
+    );
+
     it("rolls back the post insert when slug persistence fails inside the batch", async () => {
       await postService.create({
         format: "note",

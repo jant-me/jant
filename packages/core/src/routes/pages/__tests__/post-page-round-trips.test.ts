@@ -135,7 +135,24 @@ describe("post page round trips", () => {
     expect(countPostReads(statements)).toBe(1);
   });
 
-  it("takes the newest alias as the canonical address", async () => {
+  it("redirects a slug in another letter case to the slug", async () => {
+    const { app, services } = createPostPageApp();
+    const post = await services.posts.create({
+      format: "note",
+      title: "Mixed case",
+      bodyMarkdown: "Body",
+      status: "published",
+    });
+
+    const res = await app.request(`/${post.slug.toUpperCase()}`);
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe(`/${post.slug}`);
+  });
+
+  // The oldest custom URL is the post's address everywhere: feeds, the
+  // sitemap, and the export name it by that, so the page redirects there too.
+  // A later custom URL is another way in, not a new identity.
+  it("takes the oldest alias as the canonical address", async () => {
     const { app, services } = createPostPageApp();
     const post = await services.posts.create({
       format: "note",
@@ -156,7 +173,17 @@ describe("post page round trips", () => {
 
     const res = await app.request(`/${post.slug}`);
     expect(res.status).toBe(301);
-    expect(res.headers.get("location")).toBe("/second-name");
+    expect(res.headers.get("location")).toBe("/first-name");
+
+    const second = await app.request("/second-name");
+    expect(second.status).toBe(301);
+    expect(second.headers.get("location")).toBe("/first-name");
+
+    const recased = await app.request("/First-Name");
+    expect(recased.status).toBe(301);
+    expect(recased.headers.get("location")).toBe("/first-name");
+
+    expect((await app.request("/first-name")).status).toBe(200);
   });
 });
 

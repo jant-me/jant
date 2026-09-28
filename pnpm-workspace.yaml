@@ -18,17 +18,31 @@ catalog:
   typescript: ^6.0.2
   wrangler: ^4.76.0
 
+# better-sqlite3 stays on 12. 13 moves to N-API and ships its prebuilt
+# binaries inside the package with `gypfile: false`, but npm and pnpm still
+# run `node-gyp rebuild` for a package with a binding.gyp
+# (WiseLibs/better-sqlite3#1516, npm/cli#9837). That needs Python and a
+# compiler, which Windows, macOS without Xcode tools, and the slim and alpine
+# Node images lack — including this repo's Docker build and the machines
+# `npm create jant` installs on. Take 13 once installing it on node:24-slim
+# and on a clean Windows machine no longer builds from source.
 onlyBuiltDependencies:
   - better-sqlite3
   - cn-font-split
   - sharp
 
+# better-auth ships breaking changes in minor releases — 1.7.0 re-keyed
+# accounts on a new required `issuer` column, which 1.7.3 then reverted — so
+# core depends on it with `~` rather than `^`: a site installed from npm takes
+# its patch releases and nothing further until core has been verified against
+# the next minor.
 overrides:
   # `@lingui/swc-plugin` is a Wasm plugin: the `swc_core` ABI it targets is
-  # fixed when the plugin is compiled, so the host `@swc/core` has to match it
-  # exactly. 1.16.2 does not — every transform fails with "Failed to
-  # deserialize program received from host", which surfaces as an SSR module
-  # evaluation error on the first request, not at install time.
+  # fixed when the plugin is compiled, so the host `@swc/core` has to match it.
+  # 6.7 is built against swc_core 77 and runs on 1.16.2; the 5.x plugin, built
+  # against swc_core 50, failed on 1.16.2 with "Failed to deserialize program
+  # received from host", which surfaces as an SSR module evaluation error on
+  # the first request, not at install time.
   #
   # Pinning the direct dependency is not enough: `tsup` takes `@swc/core` as an
   # optional peer with an open range, and that resolution is what the plugin
@@ -37,24 +51,10 @@ overrides:
   # This override is the only thing that survives both.
   #
   # Raise it only together with a `@lingui/swc-plugin` release built for the
-  # newer `swc_core`, and verify by actually requesting a page from
-  # `mise run dev-node` — the error does not appear until a module is evaluated.
-  "@swc/core": 1.15.47
-
-  # better-auth 1.7 made `issuer` a required column on `account` AND changed
-  # account lookup from (providerId, accountId) to (issuer, accountId)
-  # (`findAccountByKey`). Jant's `account` table has no such column, so taking
-  # 1.7 means a dual-dialect schema change, a migration, and a backfill whose
-  # values must match byte-for-byte what the runtime writes — get that wrong
-  # and existing users cannot sign in. That is its own piece of work with its
-  # own verification against a database that has real rows in it, not
-  # something to carry along with an unrelated branch.
-  #
-  # 1.6.27 is what the lockfile held before a `clean-reset` re-resolved `^1.5.5`
-  # to 1.7.2. Pinned here rather than left to the range so the next reset does
-  # not silently upgrade authentication again. Remove this once the 1.7
-  # migration lands.
-  better-auth: 1.6.27
+  # newer `swc_core` (its README's compatibility table), and verify by actually
+  # requesting a page from `mise run dev-node` — the error does not appear
+  # until a module is evaluated.
+  "@swc/core": 1.16.2
 
   # pinyin-pro 3.29.1 schedules its Aho-Corasick build with setTimeout at
   # module scope, which Cloudflare Workers reject at deploy time ("Disallowed
@@ -62,3 +62,18 @@ overrides:
   # Reachable from limax -> slugify. Unpin once upstream stops scheduling at
   # import time: https://github.com/zh-lx/pinyin-pro/issues
   pinyin-pro: 3.29.0
+
+  # Lifted past the releases `pnpm audit` reports. Each consumer pins an older
+  # range and has no release on a fixed one yet; drop an entry once it does.
+  #
+  # sharp: miniflare, under @cloudflare/vite-plugin, pins 0.34. Local dev and
+  #   the brand-asset scripts only; nothing ships it.
+  # uuid: typeid-js asks for ^10. It calls v7, parse and stringify, none of
+  #   which changed in 11; the advisory covers v3/v5/v6 with a caller's buffer.
+  # esbuild under @esbuild-kit/core-utils: drizzle-kit's TypeScript loader,
+  #   pinned to 0.18. Only `db-schema-generate` runs it.
+  # esbuild under tsup: builds create-jant.
+  sharp: ^0.35.5
+  "typeid-js>uuid": ^11.1.1
+  "@esbuild-kit/core-utils>esbuild": ^0.25.0
+  "tsup>esbuild": ^0.28.1

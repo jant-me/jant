@@ -78,22 +78,24 @@
 
 **示例**：`/about`、`/now`、`/uses`
 
-### 2.3 Status、Featured & Pinned
+### 2.3 Status、Visibility、Featured & Pinned
 
-| 字段       | 说明                                   |
-| ---------- | -------------------------------------- |
-| `status`   | `draft`（草稿）/ `published`（已发布） |
-| `featured` | 布尔值，独立于 status，标记精选内容    |
-| `pinned`   | 布尔值，置顶帖子，显示在时间流最顶部   |
+| 字段         | 说明                                                                                      |
+| ------------ | ----------------------------------------------------------------------------------------- |
+| `status`     | `draft`（草稿）/ `published`（已发布）                                                    |
+| `visibility` | `public`（出现在 Latest）/ `latest_hidden`（Hidden from Latest）/ `private`（仅作者可见） |
+| `featuredAt` | 标为精选的时间，`null` 表示未精选；独立于 visibility                                      |
+| `pinnedAt`   | 置顶的时间，`null` 表示未置顶                                                             |
 
 **规则**：
 
-- 默认发布 = published + 不 featured + 不 pinned
-- 只有 published 的帖子可以标记为 featured 或 pinned
-- 置顶帖子最多 3 条，之间按 created_at 倒序
-- `status` 使用字符串而非布尔值，预留 `scheduled` 等未来扩展
+- 默认发布 = published + public + 未精选 + 未置顶
+- 草稿不能标为精选（「Publish this post before featuring it.」）
+- 置顶最多 `MAX_PINNED_POSTS`（3）条，按 `pinnedAt` 倒序
+- Thread 的回复继承根帖子的 visibility，不能单独改 visibility 或置顶
+- `status` 用字符串而非布尔值，给以后的状态留位置
 
-**设计理念**：默认 published 但不 featured。减少发布焦虑——随手发的东西可以随时发布，只有主动标记精选的内容才进精选视图。
+**设计理念**：默认 published 但不精选。减少发布焦虑——随手发的东西可以随时发布，只有主动标记精选的内容才进精选视图。
 
 ### 2.4 Thread（帖子串）
 

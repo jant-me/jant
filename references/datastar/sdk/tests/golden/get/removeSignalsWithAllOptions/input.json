@@ -4,7 +4,7 @@
       "type": "patchSignals",
       "signals": {
         "one": null,
-        "two": { "alpha": null }
+        "two": {"alpha": null}
       },
       "eventId": "event1",
       "retryDuration": 2000

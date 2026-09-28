@@ -214,6 +214,7 @@ If you switch `MAIN_RSS_FEED` to `latest`, the default `/feed` behavior shifts a
 Jant uses readable URLs:
 
 - Post: `/{slug}`
+- A post's text attachment, as a page of its own: `/{slug}/text/{attachment-id}`
 - Collection: `/{slug}`
 - Combined Collection view: `/collections/{slug1}+{slug2}+{slug3}`
 - Search: `/search`
@@ -302,6 +303,8 @@ Go to **Settings → Advanced → Custom URLs**, then click **New Custom URL** i
 - **Target Slug**: the slug of the post or Collection to point at
 
 Once set, the new path becomes the canonical URL for that piece of content (permalink, feed, `og:url` all use the new path), and the original slug auto-redirects with a 301 — old links already in circulation keep working.
+
+A post or Collection has one address: its first custom URL, or its slug when it has none. Every other way in redirects there with a 301 — the slug, a custom URL added later, and the same address in different letter case.
 
 Useful when you want to graft content imported from another platform back onto its original URLs.
 

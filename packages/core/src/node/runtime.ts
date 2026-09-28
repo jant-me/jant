@@ -1,6 +1,6 @@
 import { serve, type ServerType } from "@hono/node-server";
 import type { AddressInfo } from "node:net";
-import type { App } from "../types/app-context.js";
+import type { HonoApp } from "../types/app-context.js";
 import type { Bindings } from "../types/bindings.js";
 import { getHost, getPort } from "../lib/env.js";
 import { createNodeRequestHandler } from "./request-handler.js";
@@ -26,7 +26,7 @@ export interface NodeServerHandle {
 
 export async function start(
   env: Bindings = process.env as unknown as Bindings,
-  app?: App,
+  app?: HonoApp,
 ): Promise<NodeServerHandle> {
   const handler = await createNodeRequestHandler({
     env,

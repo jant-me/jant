@@ -167,11 +167,30 @@ function buildSqliteFtsQuery(query: string): string | null {
   return terms.map((term) => `"${term.replace(/"/g, '""')}"*`).join(" ");
 }
 
+/**
+ * Postgres prefix query for the words in `query`, or null when it has none.
+ *
+ * `extractSearchTerms` falls back to the whole query when it holds no letter or
+ * digit, which suits SQLite's trigram index: it matches punctuation literally.
+ * Here the term is written into tsquery syntax, where `'`, `&`, `|`, `!`, `(`
+ * and `:` are operators, so a query such as `'''` failed to parse and the
+ * search answered 500. The `simple` configuration never indexes punctuation
+ * either, so such a query has nothing to match in `search_document`; returning
+ * null hands it to the LIKE search, which does.
+ *
+ * @param query - The reader's search text
+ * @returns A `to_tsquery` input, or null to skip full-text search
+ * @example
+ * buildPgPrefixTsQuery("coffee beans"); // "coffee:* & beans:*"
+ * buildPgPrefixTsQuery("'''"); // null
+ */
 function buildPgPrefixTsQuery(query: string): string | null {
-  const terms = extractSearchTerms(query);
-  if (terms.length === 0) return null;
+  const words = extractSearchTerms(query).filter((term) =>
+    /^[\p{L}\p{N}]+$/u.test(term),
+  );
+  if (words.length === 0) return null;
 
-  return terms.map((term) => `${term}:*`).join(" & ");
+  return words.map((term) => `${term}:*`).join(" & ");
 }
 
 /**

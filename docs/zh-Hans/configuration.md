@@ -462,7 +462,7 @@ token 调用站点，见 [命令行](cli.md#维护)。不设置时，`/api/inter
 ### 托管服务
 
 `SITE_RESOLUTION_MODE` 和 `HOSTED_CONTROL_PLANE_*` 变量用于托管服务，也就是一台
-服务器运行多个站点的部署。自部署站点不需要设置。
+服务器运行多个站点的部署。自部署站点不需要设置。它们任何版本都可能改变，见[兼容性](compatibility.md)。
 
 ## Settings 页面设置
 
@@ -531,7 +531,7 @@ static, assets, _assets, healthz, readyz, skill.md, robots.txt,
 manifest.webmanifest, favicon.ico, apple-touch-icon.png, sites
 ```
 
-`sitemap.xml` 以及所有 `sitemap-*.xml` 形式的名字也不能用，sitemap 占用了这一组。开启 [多语言内容](multilingual.md) 后，每个附加语言的前缀（比如 `ja`）也会被保留。
+`sitemap.xml` 以及所有 `sitemap-*.xml` 形式的名字也不能用，sitemap 占用了这一组。你的地址都以字母或数字开头，所以第一段以 `_` 或 `.` 开头的路径（包括 `/.well-known/`）都归 Jant 使用，新的系统地址放在这里。开启 [多语言内容](multilingual.md) 后，每个附加语言的前缀（比如 `ja`）也会被保留。
 
 ## 配置文件
 
@@ -591,7 +591,7 @@ DEMO_PASSWORD=jant-dev-debug-login
 DEMO_MODE=false
 ```
 
-`DEV_API_TOKEN`、`DEMO_EMAIL` 和 `DEMO_PASSWORD` 都是本地调试辅助项，不属于正常生产环境配置。
+`DEV_API_TOKEN`、`DEMO_EMAIL` 和 `DEMO_PASSWORD` 都是本地调试辅助项，不属于正常生产环境配置。它们和 `DEMO_MODE` 任何版本都可能改变。
 
 ### Demo Mode
 

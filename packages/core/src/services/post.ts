@@ -2335,10 +2335,13 @@ export function createPostService(
           slug = path.path;
           continue;
         }
-        // Rows arrive oldest first, so the last `alias` seen is the newest —
-        // the one a slug URL redirects to. Ties within a second fall to the
-        // higher id rather than to whatever the storage engine returned first.
-        if (path.kind === "alias") canonicalAlias = `/${path.path}`;
+        // Rows arrive oldest first, and the oldest alias is the post's
+        // address, as feeds, the sitemap, and the export name it: a second
+        // custom URL is another way in, not a new identity. Ties within a
+        // second fall to the lower id, not to the storage engine's order.
+        if (path.kind === "alias" && canonicalAlias === null) {
+          canonicalAlias = `/${path.path}`;
+        }
       }
 
       // A Post with no slug row has no address, which is what `hydratePost`

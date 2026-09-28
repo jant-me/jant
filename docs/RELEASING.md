@@ -12,7 +12,7 @@ We follow [Semantic Versioning](https://semver.org/):
 | **minor** | New features (backwards compatible) | `0.1.0` → `0.2.0` |
 | **major** | Breaking changes                    | `0.x.x` → `1.0.0` |
 
-> **Note**: While version is `0.x.x`, a minor release can break things and its changelog carries upgrade notes. From 1.0, [Compatibility](compatibility.md) defines what "breaking" covers: a change to anything it lists needs a major release, after a deprecation in a minor one.
+> **Note**: While version is `0.x.x`, a minor release can break things and its changelog carries upgrade notes. From 1.0, [Compatibility](compatibility.md) defines what "breaking" covers: what its first level lists never breaks, and a change to anything its second level lists needs a major release whose changelog carries upgrade notes. A deprecation in a minor release first is optional.
 >
 > `@jant/core@1.0.0` was published by accident in April 2026 and is deprecated on npm, and npm never accepts a version number twice. The first real 1.x release is **1.0.1**; its changelog says why. A major changeset makes Changesets propose 1.0.0, so in that Release PR change both packages' `version` and `CHANGELOG.md` heading to 1.0.1 before merging. Keep the `v1.0.0`, `@jant/core@1.0.0`, and `create-jant@1.0.0` tags: they record what the npm 1.0.0 was built from.
 
@@ -54,6 +54,8 @@ When PRs with changesets are merged:
 
    This installs `@jant/core@<version>` from npm, loads the canonical demo content at the release tag into a temporary site, and writes the snapshot and site export that release produces into `packages/core/src/__tests__/fixtures/releases/<version>/`. `release-fixtures.test.ts` restores and imports every release there, so a later change that can no longer read what this release wrote fails in CI. Never edit a frozen fixture.
 
+Once you edit the Release PR by hand, as the 1.0.1 release does, freeze `main` until the Docker image is published. Every push to `main` makes the Changesets action rebuild the `changeset-release/main` branch from scratch and force-push it, which throws away the hand edits. Land nothing on `main` from the first edit until step 5 has finished.
+
 ## Commands
 
 ```bash
@@ -77,13 +79,20 @@ mise run release-publish
 
 The first 1.x release has steps no other release has. Work through them in the Release PR, and after it merges.
 
+- [ ] Freeze `main` before editing the Release PR, and keep it frozen until `owenyoung/jant:1.0.1` is on Docker Hub (see [For Maintainers](#for-maintainers))
 - [ ] In the Release PR, set both packages' `version` and `CHANGELOG.md` heading to 1.0.1 (see [Versioning](#versioning-semver))
 - [ ] In the Release PR, retire the pre-1.0 notices, in both languages:
   - the **Pre-1.0** banner at the top of `README.md`, `README.zh-Hans.md`, `docs/overview.md`, and `docs/zh-Hans/overview.md`
   - the "Pre-1.0 — will there be a lot of breaking changes?" entry in `docs/faq.md` and `docs/zh-Hans/faq.md`, which becomes an answer about upgrading within 1.x
-  - the "Until 1.0, a minor release can still change these" sentence in the first paragraph of `docs/compatibility.md` and `docs/zh-Hans/compatibility.md`
+  - the "Until then, a minor release can still change what the second level covers" sentence in the first paragraph of `docs/compatibility.md` and `docs/zh-Hans/compatibility.md`
   - the 0.x note under [Versioning](#versioning-semver) on this page
   - "The project is settling toward 1.0" at the top of `AGENTS.md`, which becomes a statement that 1.0 has shipped
+- [ ] After 1.0.1 is on npm, point the accidental 1.0.0's deprecation at it. The message still says to use 0.3.x:
+
+  ```bash
+  npm deprecate @jant/core@1.0.0 "Published by accident. Use 1.0.1 or later."
+  ```
+
 - [ ] After `owenyoung/jant:1` is on Docker Hub, switch `compose.yml`'s `IMAGE` default, and the images in `docs/deployment-docker.md` (en, zh-Hans) and `docs/docker-hub-overview.md`, from `:latest` to `:1`. Until that tag exists, `compose.yml` on `main` must keep `:latest`: users download it from there
 
 ## Docker image publishing
@@ -93,7 +102,7 @@ The official Docker image lives at `owenyoung/jant`.
 - Automatic publish happens after a successful package release that includes `@jant/core`
 - The pushed tags are the exact package version, such as `owenyoung/jant:0.3.38`, and `owenyoung/jant:latest`
 - From 1.0.1, a release also moves the major tag, such as `owenyoung/jant:1`, to itself. A compose file pinned to it gets every 1.x release and never a 2.0. Pre-releases and 0.x releases don't move it
-- Maintainers can manually backfill or republish the current `main` version from the **Docker Publish** workflow using `workflow_dispatch`
+- Maintainers can manually backfill or republish the current `main` version from the **Docker Publish** workflow using `workflow_dispatch`. It leaves `:latest` and the major tag alone unless you tick **push_latest**, so republishing an older version doesn't move them back
 - The workflow also syncs the Docker Hub overview from `docs/docker-hub-overview.md`
 
 ### Docker Hub setup

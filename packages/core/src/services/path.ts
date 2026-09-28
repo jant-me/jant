@@ -25,7 +25,11 @@ import {
 import { createEntityId } from "../lib/ids.js";
 import { now } from "../lib/time.js";
 import { ConflictError } from "../lib/errors.js";
-import { normalizePath } from "../lib/url.js";
+import {
+  normalizePath,
+  normalizeRedirectTarget,
+  redirectTargetPath,
+} from "../lib/url.js";
 import type { PathKind, PathRecord, Status } from "../types.js";
 
 export interface ResolvedPath extends PathRecord {
@@ -184,7 +188,7 @@ export function createPathService(
           collectionId: input.collectionId ?? null,
           smartCollectionId: input.smartCollectionId ?? null,
           redirectToPath: input.redirectToPath
-            ? normalizeStoredPath(input.redirectToPath)
+            ? normalizeRedirectTarget(input.redirectToPath)
             : null,
           redirectType: input.redirectType ?? null,
           archiveQuery: input.archiveQuery ?? null,
@@ -247,7 +251,10 @@ export function createPathService(
         !seen.has(current.path)
       ) {
         seen.add(current.path);
-        current = await this.resolve(current.redirectToPath);
+        // A redirect off the site names nothing here.
+        const next = redirectTargetPath(current.redirectToPath);
+        if (next === null) return null;
+        current = await this.resolve(next);
       }
 
       // A redirect chain that loops, or ends on another redirect with nothing

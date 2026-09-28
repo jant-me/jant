@@ -91,6 +91,63 @@ export function isFullUrl(str: string): boolean {
 }
 
 /**
+ * A custom URL's redirect target in the form it is stored: an `http(s)` URL
+ * as given, or a path on the site in the registry's form — no leading slash,
+ * lowercase, single slashes — with its query string and fragment kept as
+ * they were, since those can be case-sensitive.
+ *
+ * @param target - The target an author or an import gave
+ * @returns The stored form
+ * @example
+ * ```ts
+ * normalizeRedirectTarget("/Archive/?format=Note"); // "archive?format=Note"
+ * normalizeRedirectTarget("https://Example.com/Page"); // "https://example.com/Page"
+ * ```
+ */
+export function normalizeRedirectTarget(target: string): string {
+  const trimmed = target.trim();
+  if (isFullUrl(trimmed)) return new URL(trimmed).toString();
+  const split = trimmed.search(/[?#]/);
+  return split === -1
+    ? normalizePath(trimmed)
+    : `${normalizePath(trimmed.slice(0, split))}${trimmed.slice(split)}`;
+}
+
+/**
+ * Where a stored redirect target sends a reader: the URL itself, or the path
+ * with its leading slash. Callers add the site's path prefix to a path.
+ *
+ * @param stored - A target as {@link normalizeRedirectTarget} stored it
+ * @returns The target as an address
+ * @example
+ * ```ts
+ * redirectTargetHref("archive?format=note"); // "/archive?format=note"
+ * redirectTargetHref("https://example.com/page"); // "https://example.com/page"
+ * ```
+ */
+export function redirectTargetHref(stored: string): string {
+  return isFullUrl(stored) ? stored : `/${stored}`;
+}
+
+/**
+ * The registry path a stored target names on this site, or null when it
+ * leaves the site.
+ *
+ * @param stored - A target as {@link normalizeRedirectTarget} stored it
+ * @returns The path without query string or fragment, or null
+ * @example
+ * ```ts
+ * redirectTargetPath("archive?format=note"); // "archive"
+ * redirectTargetPath("https://example.com/"); // null
+ * ```
+ */
+export function redirectTargetPath(stored: string): string | null {
+  if (isFullUrl(stored)) return null;
+  const split = stored.search(/[?#]/);
+  return split === -1 ? stored : stored.slice(0, split);
+}
+
+/**
  * If a full URL points at the site's own host, return its same-site path
  * (`pathname` + `search` + `hash`). Returns `null` when the input is not a full
  * URL, is unparseable, or points at a different host.

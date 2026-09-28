@@ -9,7 +9,8 @@
  * declares strings with the Lingui macro, which exists only after the SWC
  * transform. A config that imported `src/node/request-handler.ts` handed Node
  * the macro package itself, and the server died before it started. Imports
- * from `src/` here stay type-only, or reach modules as small as `lib/env.ts`.
+ * from `src/` here stay type-only, or reach modules as small as `lib/env.ts`;
+ * `src/__tests__/vite-config-graph.test.ts` fails on any that reaches the macro.
  */
 
 import { getRequestListener } from "@hono/node-server";

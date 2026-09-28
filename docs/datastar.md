@@ -1,6 +1,6 @@
 # Datastar Patterns
 
-**Version: v1.0.0-RC.7** (vendored in `src/vendor/datastar.js`). See `references/datastar/` for full API docs.
+**Version: v1.0.4** (vendored in `src/vendor/datastar.js`). See `references/datastar/` for full API docs.
 
 ## Core Concepts
 

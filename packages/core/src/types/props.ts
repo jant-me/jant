@@ -239,8 +239,36 @@ export interface CollectionsPageProps {
 // =============================================================================
 
 /** Data passed to RSS/Atom feed renderers */
+/**
+ * The display text a feed writes, in the language the site's reader pages
+ * use. Text for a person to read, never for a consumer to parse: the counts
+ * and kinds behind it are attributes of their own.
+ */
+export interface FeedLabels {
+  /** A video attachment's link: "Watch video". */
+  watchVideo: string;
+  /** A linked video's link: "Watch on YouTube". */
+  watchOn: (provider: string) => string;
+  /** The link to the replies a Thread's fold leaves out. */
+  morePosts: (count: number) => string;
+  /** Alt text for a link preview's image. */
+  linkPreview: string;
+  /** Alt text for a linked video's preview image. */
+  videoPreview: string;
+  /** Alt text for a linked video's preview image, naming its provider. */
+  providerVideo: (provider: string) => string;
+  /** Name for an audio attachment with no file name. */
+  audio: string;
+  /** Name for a text attachment with no file name. */
+  attachedText: string;
+  /** Name for any other attachment with no file name. */
+  attachment: string;
+}
+
 export interface FeedData {
   siteName: string;
+  /** The display text the feed writes. */
+  labels: FeedLabels;
   siteDescription: string;
   siteUrl: string;
   siteLanguage: string;

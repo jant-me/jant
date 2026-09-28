@@ -5,7 +5,7 @@
  * shared path_registry table.
  */
 
-import { and, desc, eq, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, lt, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import {
   sqliteSchemaBundle,
@@ -22,7 +22,7 @@ import {
   decodePostListCursor,
   encodePostListCursor,
 } from "../lib/post-list-cursor.js";
-import { normalizePath } from "../lib/url.js";
+import { normalizePath, redirectTargetHref } from "../lib/url.js";
 import type { CustomUrl } from "../types.js";
 import { readLanguageSettings } from "./language.js";
 import { createPathService, type PathService } from "./path.js";
@@ -43,6 +43,11 @@ export interface CreateCustomUrl {
 
 export interface CustomUrlService {
   getByPath(path: string): Promise<CustomUrl | null>;
+  /**
+   * The custom URL a post or collection is known by: its oldest alias, the
+   * one feeds, the sitemap, and the export name it by. Later aliases are
+   * other ways in.
+   */
   getByTarget(
     targetType: "post" | "collection",
     targetId: string,
@@ -91,7 +96,9 @@ export function createCustomUrlService(
               ? "post"
               : "collection",
       targetId: row.postId ?? row.collectionId,
-      toPath: row.redirectToPath ? `/${row.redirectToPath}` : null,
+      toPath: row.redirectToPath
+        ? redirectTargetHref(row.redirectToPath)
+        : null,
       redirectType: row.redirectType as 301 | 302 | null,
       archiveQuery: row.archiveQuery,
       createdAt: row.createdAt,
@@ -169,7 +176,7 @@ export function createCustomUrlService(
               : eq(pathRegistry.collectionId, targetId),
           ),
         )
-        .orderBy(desc(pathRegistry.createdAt), desc(pathRegistry.id))
+        .orderBy(asc(pathRegistry.createdAt), asc(pathRegistry.id))
         .limit(1);
       return result[0] ? toCustomUrl(result[0]) : null;
     },

@@ -6,7 +6,7 @@ Jant (short for Jantelagen) is a personal microblogging system — self-hosted, 
 
 It runs on Cloudflare Workers with minimal infrastructure. The UI follows an "Organic Minimalism" aesthetic: generous whitespace, single-column layout, smooth animations, mobile-first.
 
-The project is **settling toward 1.0**. What `docs/compatibility.md` lists — the HTTP API, MCP tools, feeds, addresses, CLI, configuration, theme hooks, export and snapshot formats, and `createApp` — is frozen: change or remove it only through a deprecation in a minor release and removal in a major one, and keep additions backward compatible. Everything else — internal modules, the database schema (through migrations), undocumented CSS, `/api/internal/*` — still changes freely when it improves the design. Always follow best practices over minimal-change conservatism. Update all references in the same change and document what changed in the commit message; a change to a frozen surface also updates its reference doc, whose drift tests (`cli-commands`, `config-docs`, `theme-docs`, `feed-docs`) fail otherwise.
+The project is **settling toward 1.0**. `docs/compatibility.md` sorts what users depend on into three levels. **Kept in every release** — in-place upgrades, exports and snapshots, post and Collection addresses, feed addresses and entry IDs: never break these, not even in a major release. **Changed only in a major release** — the HTTP API, MCP tool names and parameters, the CLI, configuration, feed contents, the export format, the Docker image name and data directory, `createApp`, and the project layout: from 1.0 a breaking change here needs a major release with upgrade notes; until then, adopt the better design directly and write the upgrade notes in the changeset, with no compatibility shims. Requests stay tolerant either way: unknown fields and parameters are ignored, never rejected. **Not promised** — theme hooks, MCP results, TypeScript types, the Hugo templates, internal modules, the database schema (through migrations), undocumented CSS, `/api/internal/*`: these change freely when it improves the design, with a release-note line for the first four. Always follow best practices over minimal-change conservatism. Update all references in the same change and document what changed in the commit message; a change to a documented surface also updates its reference doc, whose drift tests (`cli-commands`, `config-docs`, `theme-docs`, `feed-docs`) fail otherwise.
 
 ## Workflow
 
@@ -86,7 +86,7 @@ Non-negotiable regardless of context:
 ### Conventions
 
 - `packages/core`: library + dev environment (Vite HMR). `sites/demo`: demo site + user template source (via `@create-jant` annotations).
-- **Types**: shared domain types re-exported from `src/types.ts`; definitions in `src/types/`. The package's public JavaScript API is `createApp` alone (`src/index.ts`).
+- **Types**: shared domain types re-exported from `src/types.ts`; definitions in `src/types/`. The package's public JavaScript API is `createApp` alone (`src/index.ts`), and that file is also its published types: the library build declares it on its own into `dist/index.d.ts`, so it may not name a type from another module (`public-types.test.ts`).
 - **Schemas**: shared domain schemas in `src/lib/schemas.ts`; route-specific schemas colocated with routes.
 - **Routes**: `xxxRoutes` suffix (`postsRoutes`, `settingsRoutes`).
 - **DB table names**: always singular or domain-specific (`post`, `collection`, `nav_item`, `api_token`, `path_registry`), never plural.
@@ -138,7 +138,7 @@ Rules that recur:
 
 ### Tech Stack
 
-Cloudflare Workers, Hono v4, Vite + SWC, Tailwind v4 + BaseCoat, D1 + Drizzle ORM, better-auth, @lingui/core, Datastar v1.0.0-RC.7 (vendored — version matters, APIs vary between releases), Lit (Web Components), Zod, ESLint + Prettier
+Cloudflare Workers, Hono v4, Vite + SWC, Tailwind v4 + BaseCoat, D1 + Drizzle ORM, better-auth, @lingui/core, Datastar v1.0.4 (vendored — version matters, APIs vary between releases), Lit (Web Components), Zod, ESLint + Prettier
 
 ## UX Copy Guidelines
 
@@ -179,7 +179,7 @@ If you notice code contradicting this document, think about which side is correc
 
 ### Docs Index
 
-- **Compatibility promise** (what 1.0 freezes, deprecation, upgrade range): `docs/compatibility.md`
+- **Compatibility promise** (the three levels, what each release may change, upgrade range): `docs/compatibility.md`
 - **Command line** (every public `jant` command and option): `docs/cli.md`
 - **Coding standards** (module deps, error handling, testing): `docs/internal/coding-standards.md`
 - **Writing style** (long-form docs prose, genre discipline, 中文对照): `docs/internal/writing-style.md`

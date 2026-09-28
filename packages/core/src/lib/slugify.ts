@@ -107,7 +107,12 @@ export function slugify(text: string): string {
   if (HANGUL_RE.test(pre)) {
     pre = hangulToLatin(pre);
   }
-  const base = limax(pre, { tone: false }).replace(/_/g, "-");
+  // limax keeps underscores. As hyphens they can lead, trail, or double up,
+  // and a slug does none of those: `_notes_` would become `-notes-`.
+  const base = limax(pre, { tone: false })
+    .replace(/_/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "");
   if (!base) return "";
   return slugCoverage(text, japanese) >= SLUG_COVERAGE_THRESHOLD ? base : "";
 }

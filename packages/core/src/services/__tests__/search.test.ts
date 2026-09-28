@@ -567,6 +567,44 @@ describe("SearchService", () => {
     expect(calls[0]?.params[0]).toBe("jant:*");
   });
 
+  // tsquery syntax treats `'`, `&`, `|`, `!`, `(` and `:` as operators, so a
+  // query with no word in it failed to parse and the search answered 500.
+  it("sends a Postgres query with no letter or digit to the LIKE search", async () => {
+    const calls: { params: unknown[]; query: string }[] = [];
+    const rawQuery: RawQueryClient = {
+      prepare(query) {
+        const call = { params: [], query };
+        calls.push(call);
+        return {
+          bind(...params: unknown[]) {
+            call.params = params;
+            return this;
+          },
+          async all() {
+            return { results: [] };
+          },
+        };
+      },
+    };
+
+    const searchService = createSearchService(
+      rawQuery,
+      DEFAULT_TEST_SITE_ID,
+      "pg",
+    );
+    for (const query of ["'''", "&|!():"]) {
+      calls.length = 0;
+      await searchService.search(query);
+      expect(calls, query).toHaveLength(1);
+      expect(calls[0]?.query, query).toContain("search_text ILIKE");
+    }
+
+    calls.length = 0;
+    await searchService.search("it's (fine)");
+    expect(calls[0]?.query).toContain("to_tsquery");
+    expect(calls[0]?.params[0]).toBe("it:* & s:* & fine:*");
+  });
+
   it("keeps Postgres searches on the LIKE path for short queries", async () => {
     const calls: string[] = [];
     const rawQuery: RawQueryClient = {

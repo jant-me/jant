@@ -24,7 +24,7 @@ go run github.com/starfederation/datastar/sdk/tests/cmd/datastar-sdk-tests@lates
 # Run only GET tests
 go run github.com/starfederation/datastar/sdk/tests/cmd/datastar-sdk-tests@latest -type get
 
-# Run only POST tests
+# Run only POST tests  
 go run github.com/starfederation/datastar/sdk/tests/cmd/datastar-sdk-tests@latest -type post
 
 # Verbose output
@@ -52,7 +52,6 @@ The test suite includes:
 - **POST Tests** (`golden/post/`): Test cases for POST endpoints
 
 Each test case contains:
-
 - `input.json`: The request payload
 - `output.txt`: The expected SSE response
 
@@ -79,7 +78,7 @@ To validate your SDK implementation:
 The `/test` endpoint should:
 
 1. Use ReadSignals to extract the `events` array from the request
-2. Loop through the array of events
+2. Loop through the array of events 
 3. Use `event.type` to decide which server sent event to generate
 4. Return the appropriate SSE response
 
@@ -128,7 +127,6 @@ To add a new test case:
 #### Multiline Signals
 
 For `patchSignals` events, if you need multiline output:
-
 - Use `signals-raw` as a string with `\n` characters instead of `signals` as a JSON object
 - The server should check for `signals-raw` first, then fall back to `signals`
 
@@ -137,7 +135,7 @@ For `patchSignals` events, if you need multiline output:
 The test suite covers:
 
 - Element patching (single and multiline)
-- Signal patching
+- Signal patching  
 - Script execution
 - Element/signal removal
 - Various SSE formatting scenarios

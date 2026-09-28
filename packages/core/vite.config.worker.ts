@@ -8,11 +8,53 @@
  * resolved via package.json exports and bundled inline.
  */
 
-import { defineConfig } from "vite";
+import ts from "typescript";
+import { defineConfig, type Plugin } from "vite";
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import { ASSET_BASE_PATH } from "./src/lib/asset-path.js";
 import { buildVersion, pkg, swcPlugin } from "./vite.shared";
+
+/**
+ * Write the package's published types, `dist/index.d.ts`, from `src/index.ts`.
+ *
+ * Declarations come from that one file, without type-checking the program
+ * behind it, so they can only describe what the file states outright: a
+ * reference to another module's type is an error here rather than a `.d.ts`
+ * that points into `src/`. The package used to publish `src/index.ts` itself
+ * as its types, which made a site's type check compile Jant's source and
+ * required `hono` to be installed to resolve `App`.
+ */
+function publicTypes(): Plugin {
+  return {
+    name: "jant-public-types",
+    apply: "build",
+    generateBundle() {
+      const fileName = resolve(dir, "src/index.ts");
+      const { outputText, diagnostics } = ts.transpileDeclaration(
+        readFileSync(fileName, "utf8"),
+        { fileName, compilerOptions: { declaration: true } },
+      );
+      if (diagnostics?.length) {
+        throw new Error(
+          `src/index.ts can't be declared on its own:\n${ts.formatDiagnostics(
+            diagnostics,
+            {
+              getCanonicalFileName: (name) => name,
+              getCurrentDirectory: () => dir,
+              getNewLine: () => "\n",
+            },
+          )}`,
+        );
+      }
+      this.emitFile({
+        type: "asset",
+        fileName: "index.d.ts",
+        source: outputText,
+      });
+    },
+  };
+}
 
 const dir = import.meta.dirname;
 
@@ -164,5 +206,5 @@ export default defineConfig({
     emptyOutDir: false,
   },
 
-  plugins: [swcPlugin()],
+  plugins: [swcPlugin(), publicTypes()],
 });

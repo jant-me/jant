@@ -22,7 +22,7 @@
 
 ## 支持评论吗？
 
-不内置，未来可能会加。现在可以通过 [代码注入](code-injection.md) 嵌入 giscus、Disqus 等第三方系统。
+Jant 不内置评论。需要的话，可以通过[代码注入](code-injection.md)嵌入 giscus、Disqus 等第三方评论系统。
 
 ## Jant 有独立页面吗（比如 About 页）？
 
@@ -142,7 +142,7 @@ feeds。内容会立即显示在网页上，等待的只有 feed 分发。这段
 
 ## Pre-1.0，破坏性变更会很多吗？
 
-可能会有，但不到必要不会做。每次破坏性变更都会写在 commit 和 changelog 里。升级前扫一眼变更记录，留一份最近的备份。1.0 会冻结哪些内容，见 [兼容性](compatibility.md)。
+可能会有，但不到必要不会做。每次破坏性变更都会写在 commit 和 changelog 里。升级前扫一眼变更记录，留一份最近的备份。每种版本可能改动什么，见[兼容性](compatibility.md)。
 
 ## 怎么把别的博客的内容迁进来（WordPress、Tumblr 等）？
 

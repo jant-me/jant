@@ -16,6 +16,22 @@ Both extensions are declared only when the feed emits something in them — whic
 
 An Atom reader that knows neither extension still gets a working feed. Everything Jant adds is either an element in its own namespace or an attribute on a Media RSS element.
 
+## The feed
+
+| Element                             | Read it for                                                                                                        |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `title`                             | The site's name and the feed's, as in `Jant - Latest posts`, so a reader's sidebar keeps one site's feeds together |
+| `author/name`                       | The site's name alone. Read the blog's name from here, not from `title`                                            |
+| `subtitle`                          | The site's description. May be empty                                                                               |
+| `icon`                              | The site's avatar                                                                                                  |
+| `link[@rel="alternate"]`            | The page the feed follows, such as the home page                                                                   |
+| `link[@rel="self"]`                 | This feed, with any filter it was asked for                                                                        |
+| `link[@rel="alternate"][@hreflang]` | The same feed in the site's other languages                                                                        |
+| `id`                                | This feed's address                                                                                                |
+| `updated`                           | The newest entry's `updated`, never the time the feed was served, so an unchanged feed looks unchanged             |
+| `@xml:lang`                         | The feed's content language                                                                                        |
+| `jant:discover`                     | The site's Jant Discover answer; see [Feeds](feeds.md#discover)                                                    |
+
 ## One entry
 
 ```xml
@@ -27,7 +43,8 @@ An Atom reader that knows neither extension still gets a working feed. Everythin
   <published>2026-03-19T09:00:00.000Z</published>
   <updated>2026-03-19T09:00:00.000Z</updated>
   <jant:format>note</jant:format>
-  <category term="coffee" label="Coffee" jant:page="https://ex.com/coffee"/>
+  <category term="coffee" scheme="https://ex.com/collections" label="Coffee"
+            jant:page="https://ex.com/coffee"/>
   <media:content url="https://ex.com/m/beans.jpg" type="image/jpeg" medium="image"
                 width="1600" height="1200">
     <media:description type="plain">Roasted beans cooling on a tray</media:description>
@@ -38,23 +55,23 @@ An Atom reader that knows neither extension still gets a working feed. Everythin
 </entry>
 ```
 
-| Element                  | Count | Read it for                                                                                            |
-| ------------------------ | ----- | ------------------------------------------------------------------------------------------------------ |
-| `id`                     | 1     | The post's permalink. Always — even on a Link post, whose `alternate` points elsewhere                 |
-| `jant:id`                | 1     | The post's ID. Unlike `id` it survives a slug rename or a new domain: key on it to recognise a post    |
-| `title`                  | 1     | The title. **Empty, not absent**, on untitled Notes and every Quote                                    |
-| `link[@rel="alternate"]` | 1     | Where the entry points: the external URL on a Link post, the permalink otherwise                       |
-| `link[@rel="related"]`   | 0–1   | Link posts only: the permalink, since `alternate` was spent on the external URL                        |
-| `link[@rel="enclosure"]` | 0–n   | Attachments a plain Atom parser can fetch. Images are excluded — the content already shows them        |
-| `published` / `updated`  | 1     | Timestamps. A curated feed may date an entry by the curation rather than the post                      |
-| `jant:format`            | 1     | `note`, `link`, or `quote` — the entry's, which is the root's in a thread                              |
-| `jant:thread`            | 0–1   | The entry is a thread. Absent means a lone post                                                        |
-| `jant:truncated`         | 0–1   | The summary's text was cut. Offer a "read more". A row's `truncated` says which post. Never on a Quote |
-| `category`               | 0–n   | Collections. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL                    |
-| `media:thumbnail`        | 0–1   | A Link post's preview image, for a card or grid                                                        |
-| `media:content`          | 0–n   | One per attachment, with dimensions and duration                                                       |
-| `summary`                | 0–1   | The post's text, as the timeline renders it                                                            |
-| `content`                | 1     | The whole post page                                                                                    |
+| Element                  | Count | Read it for                                                                                                                                                                                      |
+| ------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                     | 1     | The post's permalink, so it changes when the address does. Always the permalink — even on a Link post, whose `alternate` points elsewhere                                                        |
+| `jant:id`                | 1     | The post's ID. Unlike `id` it survives any change to the post's address — a new slug, a first custom URL added or removed, a new domain, a new `SITE_PATH_PREFIX`: key on it to recognise a post |
+| `title`                  | 1     | The title. **Empty, not absent**, on untitled Notes and every Quote                                                                                                                              |
+| `link[@rel="alternate"]` | 1     | Where the entry points: the external URL on a Link post, the permalink otherwise                                                                                                                 |
+| `link[@rel="related"]`   | 0–1   | Link posts only: the permalink, since `alternate` was spent on the external URL                                                                                                                  |
+| `link[@rel="enclosure"]` | 0–n   | Attachments a plain Atom parser can fetch. Images are excluded — the content already shows them                                                                                                  |
+| `published` / `updated`  | 1     | `published` is when the post was published, in every feed. `updated` is the latest of that, an edit, a reply in its Thread, and, in a collection's feed, when the collection took the post in    |
+| `jant:format`            | 1     | `note`, `link`, or `quote` — the entry's, which is the root's in a thread. A later release can add a format; read one you don't recognize as `note`                                              |
+| `jant:thread`            | 0–1   | The entry is a thread. Absent means a lone post                                                                                                                                                  |
+| `jant:truncated`         | 0–1   | The summary's text was cut. Offer a "read more". A row's `truncated` says which post. Never on a Quote                                                                                           |
+| `category`               | 0–n   | Collections. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL. `@scheme` is the site's collections directory; a category with another scheme is not a collection           |
+| `media:thumbnail`        | 0–1   | A Link post's preview image, for a card or grid                                                                                                                                                  |
+| `media:content`          | 0–n   | One per attachment, with dimensions and duration                                                                                                                                                 |
+| `summary`                | 0–1   | The post's text, as the timeline renders it                                                                                                                                                      |
+| `content`                | 1     | The whole post page                                                                                                                                                                              |
 
 A Quote's attribution is not its title — it is inside the text, as a `<figure>` with a `<figcaption>`. A star rating is inside the text too, as `★★★★☆ 4/5`.
 
@@ -162,7 +179,7 @@ Three surfaces, three jobs.
 
 - `@jant:post` names the post carrying the file. In a thread every attachment has it, the root's included; a lone post's entry has none, because its one post is the entry.
 - **Files from folded posts arrive too.** An entry's media is the whole thread's. When a file's `jant:post` names a row that is neither the root nor `latest`, it belongs to a post behind the gap link — drawing it is your call.
-- `@jant:page` is where a click should land, written only when it differs from `@url` — text attachments, whose file a browser downloads. Read `jant:page ?? url`.
+- `@jant:page` is where a click should land, written only when it differs from `@url` — text attachments, whose file a browser downloads; their page is `/{slug}/text/{attachment-id}`. Read `jant:page ?? url`.
 - `medium` is Media RSS's fixed vocabulary, so anything that is not a picture or playable is `document`.
 
 **`<link rel="enclosure">`** is what a plain Atom parser reads. Images are left out — the content already shows them full size — while audio, video and documents keep theirs, the way a podcast feed encloses its audio and not its show-note images.
@@ -190,5 +207,5 @@ Layout is yours. No feed format can express the site's justified media strip —
 - **A rating as a number.** It is `★★★★☆ 4/5` inside the text.
 - **A text attachment's character count.** Media RSS has no slot for it and `fileSize` is bytes.
 - **Attachments interleaved inside a summary.** `<summary>` is text alone. If you place a gallery between two posts' paragraphs, either decide that position yourself or read `<content>`, where each `data-post-media` already sits in order.
-- **Translated strings.** `▶ Watch video` and `2 more posts` are English in every feed.
+- **Fixed wording.** `▶ Watch video`, `2 more posts`, and similar labels are display text in the language the site's reader pages use, and can change. To label a gap yourself, build it from `hidden` on `<jant:thread>` rather than matching the text.
 - **Anything a self-hosted export promises.** A site exported to a static theme writes its own feed, and that one carries less. Read the served feed when you need this contract.

@@ -1,5 +1,5 @@
 /**
- * Datastar response utilities for v1.0.0-RC.7
+ * Datastar response utilities for v1.0.4
  *
  * Provides both SSE (multi-event) and plain HTTP (single-event) response helpers.
  *
