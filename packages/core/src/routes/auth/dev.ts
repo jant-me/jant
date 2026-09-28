@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { getDevApiToken } from "../../lib/env.js";
+import { getClientIp } from "../../lib/rate-limit.js";
 import { hasValidLocalDevToken } from "../../middleware/auth.js";
 import { isSafeInternalRedirect, toPublicPath } from "../../lib/url.js";
 
@@ -22,6 +23,7 @@ devAuthRoutes.get("/__dev/login", async (c) => {
     !hasValidLocalDevToken(
       c.req.url,
       c.req.header("host"),
+      getClientIp(c),
       token,
       getDevApiToken(c.env),
     )

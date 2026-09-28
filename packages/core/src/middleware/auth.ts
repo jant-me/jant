@@ -12,6 +12,8 @@ import { getDevApiToken, getInternalAdminToken } from "../lib/env.js";
 import { NotFoundError, UnauthorizedError } from "../lib/errors.js";
 import { getRuntimeSitePathPrefix } from "../lib/site-resolution.js";
 import { isSafeInternalRedirect, toPublicHref } from "../lib/url.js";
+import { timingSafeEqualText } from "../lib/crypto.js";
+import { getClientIp } from "../lib/rate-limit.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -56,26 +58,54 @@ function getRequestHostname(
 }
 
 /**
+ * Whether a client address is this machine's own.
+ *
+ * `unknown` counts: it means no proxy or edge reported an address, which only
+ * happens for a request made on the machine itself, such as a script calling
+ * the request handler directly. A request from elsewhere always arrives with
+ * the address the socket, the proxy, or Cloudflare reports.
+ */
+function isLoopbackClient(clientIp: string): boolean {
+  return (
+    clientIp === "unknown" ||
+    clientIp === "::1" ||
+    /^(::ffff:)?127\./.test(clientIp)
+  );
+}
+
+/**
  * Validates a local-only development token against the current request.
+ *
+ * The Host header is the client's to write, so a local hostname alone proves
+ * nothing on a server reachable from outside. The request must also come
+ * from the machine itself.
  *
  * @param requestUrl - Full request URL
  * @param requestHost - Original Host header when available
+ * @param clientIp - The client address (see `getClientIp`)
  * @param providedToken - Token supplied by the caller
  * @param expectedToken - Token configured in the environment
- * @returns `true` when the token matches on a local hostname
+ * @returns `true` when the token matches, on a local hostname, from this machine
  */
 export function hasValidLocalDevToken(
   requestUrl: string,
   requestHost: string | undefined,
+  clientIp: string,
   providedToken: string | undefined,
   expectedToken: string | undefined,
 ): boolean {
-  if (!providedToken || !expectedToken || providedToken !== expectedToken) {
+  if (
+    !providedToken ||
+    !expectedToken ||
+    !timingSafeEqualText(providedToken, expectedToken)
+  ) {
     return false;
   }
 
   const hostname = getRequestHostname(requestUrl, requestHost);
-  return hostname ? isLocalHostname(hostname) : false;
+  return (
+    hostname !== null && isLocalHostname(hostname) && isLoopbackClient(clientIp)
+  );
 }
 
 /**
@@ -272,6 +302,7 @@ async function hasValidBearerApiToken(c: {
     hasValidLocalDevToken(
       c.req.url,
       c.req.header("host"),
+      getClientIp(c),
       rawToken,
       getDevApiToken(c.env),
     )

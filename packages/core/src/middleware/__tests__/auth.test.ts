@@ -102,6 +102,7 @@ describe("hasValidLocalDevToken", () => {
       hasValidLocalDevToken(
         "https://jant.me/api/posts",
         "127.0.0.1:8020",
+        "127.0.0.1",
         "jnt_dev",
         "jnt_dev",
       ),
@@ -113,6 +114,7 @@ describe("hasValidLocalDevToken", () => {
       hasValidLocalDevToken(
         "http://127.0.0.1:8020/api/posts",
         undefined,
+        "unknown",
         "jnt_dev",
         "jnt_dev",
       ),
@@ -124,7 +126,32 @@ describe("hasValidLocalDevToken", () => {
       hasValidLocalDevToken(
         "https://jant.me/api/posts",
         "jant.me",
+        "127.0.0.1",
         "jnt_dev",
+        "jnt_dev",
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects a forged local Host header from another machine", () => {
+    expect(
+      hasValidLocalDevToken(
+        "https://jant.me/api/posts",
+        "localhost",
+        "203.0.113.7",
+        "jnt_dev",
+        "jnt_dev",
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects a different token", () => {
+    expect(
+      hasValidLocalDevToken(
+        "http://127.0.0.1:8020/api/posts",
+        "127.0.0.1:8020",
+        "127.0.0.1",
+        "jnt_other",
         "jnt_dev",
       ),
     ).toBe(false);

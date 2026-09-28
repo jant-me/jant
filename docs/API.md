@@ -68,7 +68,7 @@ Browser requests can use the normal session cookie after signing in at `/signin`
 
 ### Local development token
 
-When `DEV_API_TOKEN` is configured, Jant also accepts it as a Bearer token on local hosts only:
+When `DEV_API_TOKEN` is configured, Jant also accepts it as a Bearer token for requests to a local host that come from the same machine. The host must be one of:
 
 - `localhost`
 - `127.0.0.1`
@@ -98,7 +98,7 @@ Auth resolution for both surfaces:
 
 - pass `Authorization: Bearer jnt_...` (issued under Settings → API Tokens), or
 - on local hosts, send the same value with `DEV_API_TOKEN` from `.dev.vars`.
-- the public posts, Threads, and archive endpoints under `/api/public/*` work without a token while `PUBLIC_API_ENABLED=true`.
+- the public posts and Threads endpoints under `/api/public/*` work without a token while `PUBLIC_API_ENABLED=true`.
 - `GET /api/discover/posts` works without a token while the site is listed in Discover, independent of `PUBLIC_API_ENABLED`.
 
 ### MCP
