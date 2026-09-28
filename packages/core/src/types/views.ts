@@ -233,18 +233,28 @@ export interface SearchResultView {
 }
 
 /**
+ * A thread as the timeline folds it: the ranked windows, before overlap is
+ * removed, and the gap's resolved target.
+ */
+export interface ThreadPreviewView {
+  leadingReplies: PostView[];
+  trailingReplies: PostView[];
+  latestReply: PostView;
+  /**
+   * Where the gap link points: the first post the fold hides. `null` when
+   * nothing is hidden, or when that post could not be loaded — the gap is then
+   * left out, as the feed leaves it out.
+   */
+  gapHref: string | null;
+  totalReplyCount: number;
+}
+
+/**
  * Render-ready timeline item for theme components.
  */
 export interface TimelineItemView {
   post: PostView;
-  threadPreview?: {
-    leadingReplies: PostView[];
-    trailingReplies: PostView[];
-    latestReply: PostView;
-    /** Where the gap link points: the first post the fold hides. */
-    gapHref?: string;
-    totalReplyCount: number;
-  };
+  threadPreview?: ThreadPreviewView;
   curatedThread?: {
     rootPost: PostView;
     /** Show ratings on non-highlighted context posts (complete Collection Threads). */

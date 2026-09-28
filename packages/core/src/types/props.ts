@@ -21,6 +21,7 @@ import type {
   LanguageAlternate,
   LanguageSwitcherOption,
   TimelineItemView,
+  ThreadPreviewView,
   SearchResultView,
   ArchiveGroup,
 } from "./views.js";
@@ -343,15 +344,12 @@ export interface TimelineCardProps {
   display?: TimelineCardDisplayOptions;
 }
 
-/** Props for thread inline preview */
-export interface ThreadPreviewProps {
+/**
+ * Props for thread inline preview: the timeline's view of the thread, taken
+ * whole, so a field the timeline resolves cannot be dropped on the way in.
+ */
+export interface ThreadPreviewProps extends ThreadPreviewView {
   rootPost: PostView;
-  leadingReplies: PostView[];
-  trailingReplies: PostView[];
-  latestReply: PostView;
-  /** Where the gap link points: the first post the fold hides. */
-  gapHref?: string;
-  totalReplyCount: number;
 }
 
 /** Props for the timeline feed wrapper */

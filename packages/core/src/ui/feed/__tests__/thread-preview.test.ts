@@ -204,6 +204,7 @@ describe("thread preview fold", () => {
         leadingReplies: [secondReply],
         trailingReplies: [],
         latestReply,
+        gapHref: null,
         totalReplyCount: 3,
       }),
     );
@@ -248,6 +249,7 @@ describe("thread preview fold", () => {
           bodyHtml: "<p>Latest</p>",
           isLastInThread: true,
         }),
+        gapHref: "/post-3",
         totalReplyCount: 4,
       }),
     );
@@ -276,6 +278,7 @@ describe("thread preview fold", () => {
         leadingReplies: [reply(2), reply(3)],
         trailingReplies: [reply(6), reply(7)],
         latestReply: reply(8),
+        gapHref: "/post-4",
         totalReplyCount: 7,
       }),
     );
@@ -312,6 +315,7 @@ describe("thread preview fold", () => {
           bodyHtml: "<p>Latest</p>",
           isLastInThread: true,
         }),
+        gapHref: null,
         totalReplyCount: 1,
       }),
     );
@@ -342,6 +346,7 @@ describe("thread preview fold", () => {
           bodyHtml: "<p>Latest</p>",
           isLastInThread: true,
         }),
+        gapHref: null,
         totalReplyCount: 1,
       }),
     );
@@ -374,6 +379,7 @@ describe("thread preview fold", () => {
           bodyHtml: "<p>Latest</p>",
           isLastInThread: true,
         }),
+        gapHref: null,
         totalReplyCount: 2,
       }),
     );
@@ -428,8 +434,9 @@ describe("thread preview fold", () => {
 
   // The gap target comes from the service, one rank past the leading window.
   // It can be missing where the count and the fetch disagree — a reply
-  // unpublished between them — and the link still has to go somewhere.
-  it("falls back to the latest reply when no gap target arrives", () => {
+  // unpublished between them. The feed then leaves the gap out, and so does
+  // the site: no post on screen stands in for the ones hidden.
+  it("leaves the gap out when no gap target arrives", () => {
     const html = renderWithI18n(() =>
       ThreadPreview({
         rootPost: createPostView({ bodyHtml: "<p>Root</p>" }),
@@ -449,13 +456,13 @@ describe("thread preview fold", () => {
           bodyHtml: "<p>Latest</p>",
           isLastInThread: true,
         }),
+        gapHref: null,
         totalReplyCount: 3,
       }),
     );
 
-    expect(html).toMatch(
-      /<a[^>]*\bhref="\/post-5"[^>]*\bclass="thread-gap-link"|<a[^>]*\bclass="thread-gap-link"[^>]*\bhref="\/post-5"/,
-    );
+    expect(html).toContain("<p>Penultimate</p>");
+    expect(html).not.toContain("thread-item-gap");
   });
 
   it("renders curated thread previews without a collapsible context shell", () => {

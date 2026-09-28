@@ -207,7 +207,7 @@ async function buildTimelineItems(
                 `/${firstContextAlias(threadCtx.firstHiddenReply.id) ?? threadCtx.firstHiddenReply.slug}`,
                 mediaCtx.sitePathPrefix,
               )
-            : undefined,
+            : null,
           totalReplyCount: threadCtx.totalReplyCount,
         },
       };
