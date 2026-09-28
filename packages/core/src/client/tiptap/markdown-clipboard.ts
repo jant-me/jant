@@ -629,6 +629,52 @@ function normalizePastedSlice(slice: Slice, plain: boolean): Slice {
     : slice;
 }
 
+/**
+ * Pasted or dropped content must not bring in anything that publishes raw.
+ *
+ * An HTML block renders its HTML as it is, and an embed's stored `src` frames
+ * any page. A page the author copies from can plant either: a
+ * `data-jant-node` element in its HTML, or raw HTML in a Markdown flavor its
+ * copy handler sets. So a pasted HTML block arrives as an `html` code block,
+ * its source intact, and a pasted embed keeps only its URL, which the
+ * renderer resolves against the providers it knows. Adding an HTML block on
+ * purpose goes through the editor's own command.
+ */
+function neutralizePastedNode(node: ProseMirrorNode): ProseMirrorNode {
+  const { schema } = node.type;
+
+  if (node.type.name === "htmlBlock") {
+    const html = String(node.attrs.html ?? "");
+    const text = html ? [schema.text(html)] : [];
+    const codeBlock = schema.nodes.codeBlock;
+    return codeBlock
+      ? codeBlock.create({ language: "html" }, text)
+      : schema.nodes.paragraph!.create(null, text);
+  }
+
+  if (node.type.name === "embed") {
+    return node.type.create({
+      url: node.attrs.url,
+      provider: node.attrs.provider,
+      providerName: node.attrs.providerName,
+      orientation: node.attrs.orientation,
+      caption: node.attrs.caption,
+    });
+  }
+
+  if (node.isLeaf || node.childCount === 0) return node;
+
+  const children: ProseMirrorNode[] = [];
+  node.forEach((child) => children.push(neutralizePastedNode(child)));
+  return node.copy(Fragment.fromArray(children));
+}
+
+function neutralizePastedSlice(slice: Slice): Slice {
+  const nodes: ProseMirrorNode[] = [];
+  slice.content.forEach((node) => nodes.push(neutralizePastedNode(node)));
+  return new Slice(Fragment.fromArray(nodes), slice.openStart, slice.openEnd);
+}
+
 export const MarkdownClipboard = Extension.create({
   name: "markdownClipboard",
 
@@ -644,7 +690,7 @@ export const MarkdownClipboard = Extension.create({
 
           transformPastedHTML: normalizePastedHtml,
           transformPasted: (slice, _view, plain) =>
-            normalizePastedSlice(slice, plain),
+            neutralizePastedSlice(normalizePastedSlice(slice, plain)),
 
           /**
            * Prefer an explicit Markdown flavor. Marked Obsidian and detected
@@ -668,7 +714,9 @@ export const MarkdownClipboard = Extension.create({
             const content = createNodeFromContent(parsed, view.state.schema, {
               slice: false,
             });
-            const slice = Slice.maxOpen(toFragment(content));
+            const slice = neutralizePastedSlice(
+              Slice.maxOpen(toFragment(content)),
+            );
 
             event.preventDefault();
             view.dispatch(

@@ -150,6 +150,61 @@ describe("isCodeEditorHtml", () => {
 });
 
 describe("MarkdownClipboard", () => {
+  it("pastes a planted HTML block as an html code block", () => {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const editor = createTiptapEditor({ element });
+    editors.push(editor);
+
+    dispatchMarkdownPaste(
+      editor,
+      "Article text",
+      '<p>Article text</p><div data-jant-node="html-block">&lt;script src="https://evil.example/x.js"&gt;&lt;/script&gt;</div>',
+    );
+
+    const types = editor.getJSON().content?.map((node) => node.type);
+    expect(types).not.toContain("htmlBlock");
+    expect(types).toContain("codeBlock");
+    expect(JSON.stringify(editor.getJSON())).toContain("evil.example/x.js");
+  });
+
+  it("pastes a jant-html fence from a Markdown flavor as code, not an HTML block", () => {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const editor = createTiptapEditor({ element });
+    editors.push(editor);
+
+    dispatchMarkdownPaste(
+      editor,
+      "Plain fallback",
+      "",
+      'Intro\n\n```jant-html\n<script src="https://evil.example/x.js"></script>\n```\n',
+    );
+
+    const types = editor.getJSON().content?.map((node) => node.type);
+    expect(types).not.toContain("htmlBlock");
+    expect(types).toContain("codeBlock");
+  });
+
+  it("keeps only a pasted embed's URL", () => {
+    const element = document.createElement("div");
+    document.body.appendChild(element);
+    const editor = createTiptapEditor({ element });
+    editors.push(editor);
+
+    dispatchMarkdownPaste(
+      editor,
+      "",
+      '<figure data-jant-node="embed" data-url="https://www.youtube.com/watch?v=abc" data-provider="youtube" data-src="https://evil.example/frame"></figure>',
+    );
+
+    const embed = editor
+      .getJSON()
+      .content?.find((node) => node.type === "embed");
+    expect(embed?.attrs?.url).toBe("https://www.youtube.com/watch?v=abc");
+    expect(embed?.attrs?.src).toBe("");
+  });
+
   it("keeps pasted plain text that opens with a word and a period", () => {
     const element = document.createElement("div");
     document.body.appendChild(element);
