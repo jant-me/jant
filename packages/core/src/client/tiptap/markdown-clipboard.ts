@@ -649,7 +649,7 @@ function neutralizePastedNode(node: ProseMirrorNode): ProseMirrorNode {
     const codeBlock = schema.nodes.codeBlock;
     return codeBlock
       ? codeBlock.create({ language: "html" }, text)
-      : schema.nodes.paragraph!.create(null, text);
+      : schema.node("paragraph", null, text);
   }
 
   if (node.type.name === "embed") {
