@@ -107,11 +107,14 @@ Every failure under `/api` returns JSON with a fixed shape:
 {
   "error": "human readable message",
   "code": "ERROR_CODE",
-  "details": "..."
+  "details": {
+    "formErrors": [],
+    "fieldErrors": { "title": ["..."] }
+  }
 }
 ```
 
-`details` is present only on 400 validation failures and carries the field-level information. Common status codes:
+`details` is present only on 400 validation failures and names the fields that failed. Common status codes:
 
 | Status | `code`                         | Meaning and handling                                                                 |
 | ------ | ------------------------------ | ------------------------------------------------------------------------------------ |
@@ -132,10 +135,10 @@ For agents that already support MCP. The transport is HTTP JSON-RPC:
 
 - **Path**: `/api/mcp`
 - **Authentication**: scripts and agents send `Authorization: Bearer jnt_...`; same-origin browser extensions can reuse the session cookie.
-- **Protocol header**: `MCP-Protocol-Version: 2025-06-18`. This page is updated when the version changes.
+- **Protocol header**: `MCP-Protocol-Version: 2025-06-18`. A request without it is read as that version; any other version answers `400`. This page is updated when the version changes.
 - **Methods**: `initialize`, `ping`, `tools/list`, `tools/call`.
 
-The tools cover posts, Threads, media, attachments, collections, settings, and search, and each does what its HTTP endpoint does. Navigation, custom URLs, smart collections, translations, and export are HTTP-only. Get the exact tool names and parameters from `tools/list`.
+The tools cover posts, Threads, media, attachments, collections, settings, and search, and each does what its HTTP endpoint does. Navigation, custom URLs, smart collections, the collections directory, pinning a Thread in a collection, translations, avatar and icon uploads, and export are HTTP-only. Get the exact tool names and parameters from `tools/list`.
 
 Minimal initialization request:
 

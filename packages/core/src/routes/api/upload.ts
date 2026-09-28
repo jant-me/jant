@@ -1,8 +1,8 @@
 /**
- * Upload API Routes
+ * One-shot Upload API Routes
  *
- * Handles single-request uploads through the legacy relay endpoint.
- * Supports both JSON and SSE (Datastar) responses.
+ * `POST /api/upload`: the whole file in one multipart request, answered with
+ * the media object. Resumable and large uploads use `/api/uploads`.
  */
 
 import { Hono, type Context } from "hono";

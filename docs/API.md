@@ -15,24 +15,26 @@ For static export and round-trip import, also see [Export and Import](export-and
 
 ## API Surface
 
-| Area                    | Base path             | Auth                 |
-| ----------------------- | --------------------- | -------------------- |
-| Public posts            | `/api/public/posts`   | Public when enabled  |
-| Public Threads          | `/api/public/threads` | Public when enabled  |
-| Posts                   | `/api/posts`          | API token or session |
-| Threads                 | `/api/threads`        | API token or session |
-| Upload sessions         | `/api/uploads`        | API token or session |
-| One-shot upload         | `/api/upload`         | API token or session |
-| Media                   | `/api/media`          | API token or session |
-| Text attachment content | `/api/attachments`    | API token or session |
-| MCP                     | `/api/mcp`            | API token or session |
-| Collections             | `/api/collections`    | API token or session |
-| Navigation items        | `/api/nav-items`      | API token or session |
-| Custom URLs             | `/api/custom-urls`    | API token or session |
-| Settings                | `/api/settings`       | API token or session |
-| Search                  | `/api/search`         | API token or session |
-| Export                  | `/api/export`         | API token or session |
-| Internal admin          | `/api/internal/*`     | Internal admin token |
+| Area                    | Base path                | Auth                 |
+| ----------------------- | ------------------------ | -------------------- |
+| Public posts            | `/api/public/posts`      | Public when enabled  |
+| Public Threads          | `/api/public/threads`    | Public when enabled  |
+| Discover post status    | `/api/discover/posts`    | Public               |
+| Posts                   | `/api/posts`             | API token or session |
+| Threads                 | `/api/threads`           | API token or session |
+| Upload sessions         | `/api/uploads`           | API token or session |
+| One-shot upload         | `/api/upload`            | API token or session |
+| Media                   | `/api/media`             | API token or session |
+| Text attachment content | `/api/attachments`       | API token or session |
+| MCP                     | `/api/mcp`               | API token or session |
+| Collections             | `/api/collections`       | API token or session |
+| Smart collections       | `/api/smart-collections` | API token or session |
+| Navigation items        | `/api/nav-items`         | API token or session |
+| Custom URLs             | `/api/custom-urls`       | API token or session |
+| Settings                | `/api/settings`          | API token or session |
+| Search                  | `/api/search`            | API token or session |
+| Export                  | `/api/export`            | API token or session |
+| Internal admin          | `/api/internal/*`        | Internal admin token |
 
 Auth labels in this document:
 
@@ -113,7 +115,7 @@ Current transport behavior:
 
 - `POST` only
 - content type `application/json`
-- requires `MCP-Protocol-Version: 2025-06-18`
+- takes `MCP-Protocol-Version: 2025-06-18`; a request without it is read as that version, and any other version answers `400`
 - supports `initialize`, `ping`, `tools/list`, `tools/call`, and `notifications/initialized`
 - does not support batch requests, SSE streaming, or session negotiation
 
@@ -202,7 +204,7 @@ The post list (`GET /api/posts`), the Thread lists (`GET /api/threads`, `GET /ap
 - Post `path` is a create-time convenience field, not a general path-management API.
 - If a post `path` is itself a valid slug, Jant uses it as the canonical slug.
 - If a post `path` is not a valid slug, Jant slugifies it for the canonical URL and stores the original path as an alias.
-- Custom URL creation expects a leading slash in the request body, but list/create responses return normalized paths without the leading slash.
+- Custom URL `path` and `toPath` carry a leading slash in responses. A request may leave it off `path`.
 
 ### Body formats
 
@@ -375,72 +377,6 @@ Notes:
 - `threadId` points at the thread root.
 - `threadPostCount` above `1` means the post belongs to a Thread; [Threads](#threads) returns the rest of it. It is `0` while nothing in the Thread is published.
 - `GET /api/posts` includes both root posts and replies. There is currently no `excludeReplies` query parameter.
-
-## Public posts
-
-Base path: `/api/public/posts`
-
-`GET /api/public/posts/:slug` returns one post in the public reading view, not
-the editing view used in Settings; the Thread lists under `/api/public/threads`
-carry their posts in the same shape. When `PUBLIC_API_ENABLED=false`, these
-public endpoints return `404` to every caller. Authenticated clients can use
-`/api/posts` instead.
-
-Lists of public posts are Thread lists: `GET /api/public/threads`. The
-`GET /api/public/posts` list and `GET /api/public/archive`, deprecated in 0.9,
-were removed in 0.10.0 and return `404`.
-
-Public post responses include these fields:
-
-| Field             | Type                        | Notes                                                                                                                   |
-| ----------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `id`              | `pst_*` string              | Post ID                                                                                                                 |
-| `format`          | `note` \| `link` \| `quote` | Post format                                                                                                             |
-| `status`          | `published`                 | Public endpoints only return published posts                                                                            |
-| `visibility`      | `public` \| `latest_hidden` | `latest_hidden` comes from single-post reads, and from Thread lists that ask for it                                     |
-| `slug`            | string                      | Canonical slug                                                                                                          |
-| `permalink`       | string                      | Public post URL                                                                                                         |
-| `title`           | string \| `null`            | Returned for `note` and `link` posts                                                                                    |
-| `url`             | string \| `null`            | Returned for `link` posts                                                                                               |
-| `sourceName`      | string \| `null`            | Returned instead of `title` for `quote`                                                                                 |
-| `sourceUrl`       | string \| `null`            | Returned instead of `url` for `quote`                                                                                   |
-| `bodyHtml`        | string \| `null`            | Rendered HTML; omitted when `content=markdown`                                                                          |
-| `bodyText`        | string \| `null`            | Plain-text rendering; omitted when `content=markdown`                                                                   |
-| `bodyMarkdown`    | string \| `null`            | Markdown source; only returned when `content=markdown`                                                                  |
-| `quoteText`       | string \| `null`            | Quote content                                                                                                           |
-| `summary`         | string \| `null`            | Optional summary                                                                                                        |
-| `rating`          | integer \| `null`           | `1` to `5` when set                                                                                                     |
-| `previewKind`     | string \| `null`            | Link preview kind                                                                                                       |
-| `previewProvider` | string \| `null`            | Link preview provider                                                                                                   |
-| `previewImageUrl` | string \| `null`            | Public preview image URL                                                                                                |
-| `replyToId`       | `pst_*` string \| `null`    | Parent reply/post ID                                                                                                    |
-| `threadId`        | `pst_*` string              | Thread root ID                                                                                                          |
-| `language`        | string \| `null`            | BCP 47 content language, the same for every post in a Thread; `null` until the site first turns on multilingual content |
-| `quietReply`      | boolean                     | Reply published without announcing its Thread. Always `false` on Thread roots                                           |
-| `pinnedAt`        | integer \| `null`           | Pin timestamp                                                                                                           |
-| `featuredAt`      | integer \| `null`           | Feature timestamp                                                                                                       |
-| `publishedAt`     | integer \| `null`           | Publish timestamp                                                                                                       |
-| `lastActivityAt`  | integer                     | Thread root: newest post in the Thread, **excluding** quiet replies. Editing a post never moves it                      |
-| `threadUpdatedAt` | integer                     | Thread root: newest post in the Thread, **including** quiet replies. Editing a post never moves it                      |
-| `threadPostCount` | integer                     | Published posts in the Thread, root included; `1` for a post on its own                                                 |
-| `createdAt`       | integer                     | Unix seconds                                                                                                            |
-| `updatedAt`       | integer                     | Unix seconds — when this row was last written, including edits                                                          |
-| `attachments`     | array                       | Ordered media/text attachment objects                                                                                   |
-| `collections`     | object[]                    | Public collection refs with `id`, `slug`, `title`, and `url`                                                            |
-
-### Get a public post by slug
-
-`GET /api/public/posts/:slug`
-
-Auth: `Public when enabled`
-
-This returns a single published public post by canonical slug.
-
-Notes:
-
-- `latest_hidden` posts remain readable by direct slug.
-- Draft and private posts return `404`.
-- `content=markdown` returns `bodyMarkdown` and omits `bodyHtml/bodyText`.
 
 ### List posts
 
@@ -707,6 +643,7 @@ Response shapes:
   "blurhash": null,
   "width": 800,
   "height": 600,
+  "durationSeconds": null,
   "mimeType": "image/jpeg",
   "originalName": "photo.jpg",
   "size": 1024000,
@@ -806,6 +743,74 @@ Response:
 { "success": true }
 ```
 
+---
+
+## Public posts
+
+Base path: `/api/public/posts`
+
+`GET /api/public/posts/:slug` returns one post in the public reading view, not
+the editing view used in Settings; the Thread lists under `/api/public/threads`
+carry their posts in the same shape. When `PUBLIC_API_ENABLED=false`, these
+public endpoints return `404` to every caller. Authenticated clients can use
+`/api/posts` instead.
+
+Lists of public posts are Thread lists: `GET /api/public/threads`.
+
+Public post responses include these fields:
+
+| Field             | Type                        | Notes                                                                                                                   |
+| ----------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `id`              | `pst_*` string              | Post ID                                                                                                                 |
+| `format`          | `note` \| `link` \| `quote` | Post format                                                                                                             |
+| `status`          | `published`                 | Public endpoints only return published posts                                                                            |
+| `visibility`      | `public` \| `latest_hidden` | `latest_hidden` comes from single-post reads, and from Thread lists that ask for it                                     |
+| `slug`            | string                      | Canonical slug                                                                                                          |
+| `permalink`       | string                      | Public post URL                                                                                                         |
+| `title`           | string \| `null`            | Returned for `note` and `link` posts                                                                                    |
+| `url`             | string \| `null`            | Returned for `link` posts                                                                                               |
+| `sourceName`      | string \| `null`            | Returned instead of `title` for `quote`                                                                                 |
+| `sourceUrl`       | string \| `null`            | Returned instead of `url` for `quote`                                                                                   |
+| `bodyHtml`        | string \| `null`            | Rendered HTML; omitted when `content=markdown`                                                                          |
+| `bodyText`        | string \| `null`            | Plain-text rendering; omitted when `content=markdown`                                                                   |
+| `bodyMarkdown`    | string \| `null`            | Markdown source; only returned when `content=markdown`                                                                  |
+| `quoteText`       | string \| `null`            | Quote content                                                                                                           |
+| `summary`         | string \| `null`            | Optional summary                                                                                                        |
+| `rating`          | integer \| `null`           | `1` to `5` when set                                                                                                     |
+| `previewKind`     | string \| `null`            | Link preview kind                                                                                                       |
+| `previewProvider` | string \| `null`            | Link preview provider                                                                                                   |
+| `previewImageUrl` | string \| `null`            | Public preview image URL                                                                                                |
+| `replyToId`       | `pst_*` string \| `null`    | Parent reply/post ID                                                                                                    |
+| `threadId`        | `pst_*` string              | Thread root ID                                                                                                          |
+| `language`        | string \| `null`            | BCP 47 content language, the same for every post in a Thread; `null` until the site first turns on multilingual content |
+| `quietReply`      | boolean                     | Reply published without announcing its Thread. Always `false` on Thread roots                                           |
+| `pinnedAt`        | integer \| `null`           | Pin timestamp                                                                                                           |
+| `featuredAt`      | integer \| `null`           | Feature timestamp                                                                                                       |
+| `publishedAt`     | integer \| `null`           | Publish timestamp                                                                                                       |
+| `lastActivityAt`  | integer                     | Thread root: newest post in the Thread, **excluding** quiet replies. Editing a post never moves it                      |
+| `threadUpdatedAt` | integer                     | Thread root: newest post in the Thread, **including** quiet replies. Editing a post never moves it                      |
+| `threadPostCount` | integer                     | Published posts in the Thread, root included; `1` for a post on its own                                                 |
+| `createdAt`       | integer                     | Unix seconds                                                                                                            |
+| `updatedAt`       | integer                     | Unix seconds — when this row was last written, including edits                                                          |
+| `attachments`     | array                       | Ordered media/text attachment objects                                                                                   |
+| `collections`     | object[]                    | Public collection refs with `id`, `slug`, `title`, and `url`                                                            |
+
+### Get a public post by slug
+
+`GET /api/public/posts/:slug`
+
+Auth: `Public when enabled`
+
+This returns a single published public post by canonical slug.
+
+Notes:
+
+- `latest_hidden` posts remain readable by direct slug.
+- Draft and private posts return `404`.
+- `content=markdown` returns `bodyMarkdown` and omits `bodyHtml/bodyText`.
+
+---
+
 ## Language and translations
 
 These endpoints only matter on a site with [multilingual content](multilingual.md) turned on. Every post response carries `language`; the endpoints below list and link a post's other versions.
@@ -861,7 +866,7 @@ Auth: `Session or token`
 | `q`     | string  | yes      | —       | Substring of title or body, max `200` |
 | `limit` | integer | no       | `8`     | `1` to `20`                           |
 
-Returns published Thread roots this post could actually be linked to: written in a language its group does not already hold, and — when this post already belongs to a group — not in a group of their own. Same entry shape as the endpoint above, newest first.
+Returns published Thread roots this post could actually be linked to: written in a language its group does not already hold, and — when this post already belongs to a group — not in a group of their own. Newest first, as `{ "candidates": [...] }` with the same entries as the endpoint above.
 
 ### Look up a linkable post by address
 
@@ -1373,7 +1378,7 @@ Response:
       "posterUrl": null
     }
   ],
-  "nextCursor": "med_01jpyx4g9m8b4y50a4gx3t7p1n"
+  "nextCursor": null
 }
 ```
 
@@ -1477,9 +1482,10 @@ Auth: `Session or token`
 
 Query parameters:
 
-| Parameter | Type      | Required | Default | Notes                                              |
-| --------- | --------- | -------- | ------- | -------------------------------------------------- |
-| `view`    | `compose` | no       | none    | Specialized compose view sorted by recent activity |
+| Parameter | Type       | Required | Default | Notes                                                                               |
+| --------- | ---------- | -------- | ------- | ----------------------------------------------------------------------------------- |
+| `view`    | `compose`  | no       | none    | Specialized compose view sorted by recent activity                                  |
+| `lang`    | BCP 47 tag | no       | all     | Count only Threads in this content language in `threadCount` and `recentActivityAt` |
 
 Default response:
 
@@ -1505,7 +1511,7 @@ Default response:
       "title": "Quotes",
       "description": "Things worth keeping.",
       "selection": { "format": "quote" },
-      "sort": "newest",
+      "sortOrder": "newest",
       "layout": null,
       "createdAt": 1706000000,
       "updatedAt": 1706000000,

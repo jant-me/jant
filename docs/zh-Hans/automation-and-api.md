@@ -107,11 +107,14 @@ curl -X PUT "$JANT_URL/api/settings" \
 {
   "error": "human readable message",
   "code": "ERROR_CODE",
-  "details": "..."
+  "details": {
+    "formErrors": [],
+    "fieldErrors": { "title": ["..."] }
+  }
 }
 ```
 
-`details` 仅在 400 校验失败时出现，包含具体字段信息。常见状态码：
+`details` 仅在 400 校验失败时出现，列出没通过的字段。常见状态码：
 
 | 状态 | `code`                      | 含义与处理                                   |
 | ---- | --------------------------- | -------------------------------------------- |
@@ -132,10 +135,10 @@ API 没有硬性限速。搜索限速（[配置](configuration.md)里的 `RATE_L
 
 - **路径**：`/api/mcp`
 - **认证**：脚本/agent 用 `Authorization: Bearer jnt_...`；同源浏览器扩展可复用 session cookie。
-- **协议头**：`MCP-Protocol-Version: 2025-06-18`。版本升级时本页同步更新。
+- **协议头**：`MCP-Protocol-Version: 2025-06-18`。不带这个头按这个版本处理，带其他版本返回 `400`。版本升级时本页同步更新。
 - **方法**：`initialize`、`ping`、`tools/list`、`tools/call`。
 
-工具覆盖帖子、Thread、媒体、附件、合集、设置和搜索，每个工具的行为和对应的 HTTP 端点一致。导航、自定义 URL、智能合集、译文和导出只能走 HTTP。具体工具名和入参用 `tools/list` 拿到。
+工具覆盖帖子、Thread、媒体、附件、合集、设置和搜索，每个工具的行为和对应的 HTTP 端点一致。导航、自定义 URL、智能合集、合集目录、在合集中置顶 Thread、译文、头像和图标上传以及导出只能走 HTTP。具体工具名和入参用 `tools/list` 拿到。
 
 最小初始化请求：
 
