@@ -190,5 +190,5 @@ Layout is yours. No feed format can express the site's justified media strip —
 - **A rating as a number.** It is `★★★★☆ 4/5` inside the text.
 - **A text attachment's character count.** Media RSS has no slot for it and `fileSize` is bytes.
 - **Attachments interleaved inside a summary.** `<summary>` is text alone. If you place a gallery between two posts' paragraphs, either decide that position yourself or read `<content>`, where each `data-post-media` already sits in order.
-- **Translated strings.** `▶ Watch video` and `2 more posts` are English in every feed.
+- **Fixed wording.** `▶ Watch video`, `2 more posts`, and similar labels are display text in the language the site's reader pages use, and can change. To label a gap yourself, build it from `hidden` on `<jant:thread>` rather than matching the text.
 - **Anything a self-hosted export promises.** A site exported to a static theme writes its own feed, and that one carries less. Read the served feed when you need this contract.

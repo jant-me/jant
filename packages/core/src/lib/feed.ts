@@ -6,6 +6,7 @@
 
 import type {
   FeedData,
+  FeedLabels,
   FeedPostView,
   LanguageAlternate,
   MediaView,
@@ -275,7 +276,11 @@ function renderRatingHtml(rating: number): string {
  * previews use a linked thumbnail plus a visible provider-aware action.
  * Non-video Link previews keep the linked thumbnail without a video label.
  */
-function renderLinkPreviewForFeed(post: PostView, siteUrl: string): string {
+function renderLinkPreviewForFeed(
+  post: PostView,
+  siteUrl: string,
+  labels: FeedLabels,
+): string {
   if (post.format !== "link") return "";
 
   const imageUrl = post.previewImageUrl?.trim();
@@ -286,12 +291,12 @@ function renderLinkPreviewForFeed(post: PostView, siteUrl: string): string {
   const providerLabel = getLinkPreviewProviderLabel(post.previewProvider);
   const fallbackAlt = isVideo
     ? providerLabel
-      ? `${providerLabel} video`
-      : "Video preview"
-    : "Link preview";
+      ? labels.providerVideo(providerLabel)
+      : labels.videoPreview
+    : labels.linkPreview;
   const altText = post.title?.trim() || fallbackAlt;
   const caption = isVideo
-    ? `<figcaption><a href="${escapeXml(linkUrl)}">▶ ${providerLabel ? `Watch on ${providerLabel}` : "Watch video"}</a></figcaption>`
+    ? `<figcaption><a href="${escapeXml(linkUrl)}">▶ ${escapeXml(providerLabel ? labels.watchOn(providerLabel) : labels.watchVideo)}</a></figcaption>`
     : "";
 
   return `<figure><a href="${escapeXml(linkUrl)}"><img src="${escapeXml(toAbsoluteFeedUrl(imageUrl, siteUrl))}" alt="${escapeXml(altText)}"/></a>${caption}</figure>`;
@@ -359,6 +364,7 @@ function buildAttachmentLinkText(
 function renderMediaItem(
   item: MediaView,
   siteUrl: string,
+  labels: FeedLabels,
   postPermalinkUrl?: string,
 ): string {
   const category = getMediaCategory(item.mimeType);
@@ -409,12 +415,12 @@ function renderMediaItem(
     return (
       `<figure><video controls preload="none"${posterAttr}${dims}>` +
       `<source src="${url}" type="${escapeXml(cleanMimeType(item.mimeType))}"/>` +
-      `</video><figcaption><a href="${url}">▶ Watch video</a>${metaSuffix}${altSuffix}</figcaption></figure>`
+      `</video><figcaption><a href="${url}">▶ ${escapeXml(labels.watchVideo)}</a>${metaSuffix}${altSuffix}</figcaption></figure>`
     );
   }
 
   if (category === "audio") {
-    const linkText = buildAttachmentLinkText(item, "Audio");
+    const linkText = buildAttachmentLinkText(item, labels.audio);
     const suffix = meta ? ` (${escapeXml(meta)})` : "";
     return `<p><a href="${url}">${linkText}</a>${suffix}</p>`;
   }
@@ -423,7 +429,7 @@ function renderMediaItem(
     const previewHref = escapeXml(
       getMediaPageUrl(item, siteUrl, postPermalinkUrl),
     );
-    const linkText = buildAttachmentLinkText(item, "Attached text");
+    const linkText = buildAttachmentLinkText(item, labels.attachedText);
     // Prefer character count over byte size — more meaningful for text.
     const textMeta =
       typeof item.chars === "number" && item.chars > 0
@@ -436,7 +442,7 @@ function renderMediaItem(
   }
 
   // document, archive, office, font, 3d, code → plain link
-  const linkText = buildAttachmentLinkText(item, "Attachment");
+  const linkText = buildAttachmentLinkText(item, labels.attachment);
   const suffix = meta ? ` (${escapeXml(meta)})` : "";
   return `<p><a href="${url}">${linkText}</a>${suffix}</p>`;
 }
@@ -448,11 +454,12 @@ function renderMediaItem(
 function renderMediaForFeed(
   media: MediaView[],
   siteUrl: string,
+  labels: FeedLabels,
   postPermalinkUrl?: string,
 ): string {
   if (media.length === 0) return "";
   const items = media
-    .map((item) => renderMediaItem(item, siteUrl, postPermalinkUrl))
+    .map((item) => renderMediaItem(item, siteUrl, labels, postPermalinkUrl))
     .join("\n");
   // The site lays a post's attachments out as one horizontally scrolling strip
   // and marks that container `data-post-media`, which is part of the markup
@@ -521,6 +528,7 @@ function getTimelineSummary(post: PostView): TimelineSummary | null {
 function buildSinglePostContent(
   post: PostView,
   siteUrl: string,
+  labels: FeedLabels,
   permalinkUrl?: string,
   options: SinglePostContentOptions = {},
 ): string {
@@ -560,7 +568,7 @@ function buildSinglePostContent(
   // The preview image is media: `<media:thumbnail>` carries it for a consumer
   // laying out its own card, so the summary has no reason to repeat the markup.
   if (!options.summary) {
-    const linkPreviewHtml = renderLinkPreviewForFeed(post, siteUrl);
+    const linkPreviewHtml = renderLinkPreviewForFeed(post, siteUrl, labels);
     if (linkPreviewHtml) {
       parts.push(linkPreviewHtml);
     }
@@ -586,7 +594,12 @@ function buildSinglePostContent(
   // it from the dimensions on `<media:content>` — so a consumer that lays out
   // its own card wants this field to be the text and nothing else.
   if (!options.summary) {
-    const mediaHtml = renderMediaForFeed(post.media, siteUrl, permalinkUrl);
+    const mediaHtml = renderMediaForFeed(
+      post.media,
+      siteUrl,
+      labels,
+      permalinkUrl,
+    );
     if (mediaHtml) {
       parts.push(mediaHtml);
     }
@@ -779,9 +792,15 @@ function renderPostTailMeta(post: PostView, permalinkUrl: string): string {
 function buildFeedContent(
   post: FeedPostView,
   siteUrl: string,
+  labels: FeedLabels,
   permalinkUrl?: string,
 ): string {
-  const rootContent = buildSinglePostContent(post, siteUrl, permalinkUrl);
+  const rootContent = buildSinglePostContent(
+    post,
+    siteUrl,
+    labels,
+    permalinkUrl,
+  );
   const replies = post.threadReplies;
 
   // A standalone post needs no marker: the entry's own `<published>` dates it,
@@ -800,7 +819,9 @@ function buildFeedContent(
     // the structural one — the tail meta above is.
     parts.push("<hr/>");
     parts.push(
-      buildSinglePostContent(reply, siteUrl, replyPermalink, { inline: true }),
+      buildSinglePostContent(reply, siteUrl, labels, replyPermalink, {
+        inline: true,
+      }),
     );
     parts.push(renderPostTailMeta(reply, replyPermalink));
   }
@@ -841,6 +862,7 @@ function buildFeedContent(
 function buildFeedSummary(
   entry: FeedEntry,
   siteUrl: string,
+  labels: FeedLabels,
   permalinkUrl?: string,
 ): string {
   const { post, fold, summaryPosts } = entry;
@@ -854,11 +876,17 @@ function buildFeedSummary(
     memberPermalink: string,
     inline: boolean,
   ) => {
-    const markup = buildSinglePostContent(member, siteUrl, memberPermalink, {
-      inline,
-      summary: true,
-      timelineSummary: summaryPosts.get(member),
-    });
+    const markup = buildSinglePostContent(
+      member,
+      siteUrl,
+      labels,
+      memberPermalink,
+      {
+        inline,
+        summary: true,
+        timelineSummary: summaryPosts.get(member),
+      },
+    );
     if (!markup) return;
     if (parts.length > 0) parts.push("<hr/>");
     parts.push(markup);
@@ -886,8 +914,7 @@ function buildFeedSummary(
     const gapHref = escapeXml(
       toAbsoluteFeedUrl(fold.firstHiddenReply.permalink, siteUrl),
     );
-    const label =
-      fold.hiddenCount === 1 ? "1 more post" : `${fold.hiddenCount} more posts`;
+    const label = escapeXml(labels.morePosts(fold.hiddenCount));
     if (parts.length > 0) parts.push("<hr/>");
     parts.push(`<p><small><a href="${gapHref}">${label}</a></small></p>`);
   }
@@ -1274,8 +1301,18 @@ export function defaultFeedRenderer(data: FeedData): string {
       // which costs the words and nothing else, and buys a field that means one
       // thing on its own rather than one defined by what content happens to
       // hold. Missing therefore says exactly one thing: this post has no text.
-      const contentMarkup = buildFeedContent(post, siteUrl, permalinkUrl);
-      const summaryMarkup = buildFeedSummary(entry, siteUrl, permalinkUrl);
+      const contentMarkup = buildFeedContent(
+        post,
+        siteUrl,
+        data.labels,
+        permalinkUrl,
+      );
+      const summaryMarkup = buildFeedSummary(
+        entry,
+        siteUrl,
+        data.labels,
+        permalinkUrl,
+      );
       const summaryElement = summaryMarkup
         ? `\n    <summary type="html"><![CDATA[${escapeCdata(summaryMarkup)}]]></summary>`
         : "";

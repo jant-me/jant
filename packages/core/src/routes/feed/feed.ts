@@ -29,6 +29,7 @@ import type { AppVariables } from "../../types/app-context.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
+  buildFeedLabels,
   featuredFeedSelection,
   getFeedEntryUpdatedAt,
   getFeedLimit,
@@ -272,6 +273,7 @@ export async function buildFeedData(
 
   return {
     ...buildFeedDiscoveryFields(c, { query }),
+    labels: buildFeedLabels(c),
     siteName,
     siteDescription,
     siteUrl,

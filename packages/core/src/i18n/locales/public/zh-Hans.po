@@ -24,6 +24,8 @@ msgid "{count, plural, one {# hidden post} other {# hidden posts}}"
 msgstr ""
 
 #. @context: Link showing count of hidden thread posts between root and latest
+#. @context: Link showing count of hidden thread posts between root and latest
+#: src/lib/feed-policy.ts
 #: src/ui/feed/ThreadPreview.tsx
 msgid "{count, plural, one {# more post} other {# more posts}}"
 msgstr ""
@@ -41,6 +43,11 @@ msgstr "有 {count} 张图片无法转存到你的媒体库，已保留原链接
 #. @context: Smart collection dialog live count — how many threads the conditions gather out of the site total
 #: src/ui/shared/smart-collection-labels.ts
 msgid "{count} of {total} threads"
+msgstr ""
+
+#. @context: Feed alt text for a linked video's preview image, naming the site that hosts it
+#: src/lib/feed-policy.ts
+msgid "{provider} video"
 msgstr ""
 
 #. @context: Value shown on a post's permalink control when the link is generated automatically — a stand-in for the path the server will assign. Sits next to real permalinks rendered as /my-post, so keep the leading slash
@@ -308,7 +315,19 @@ msgstr ""
 msgid "Article detail page"
 msgstr ""
 
+#. @context: Feed name for a text attachment with no file name
+#: src/lib/feed-policy.ts
+msgid "Attached text"
+msgstr ""
+
+#. @context: Feed name for an attachment with no file name
+#: src/lib/feed-policy.ts
+msgid "Attachment"
+msgstr ""
+
 #. @context: Archive media filter - audio
+#. @context: Feed name for an audio attachment with no file name
+#: src/lib/feed-policy.ts
 #: src/lib/filter-dimensions.ts
 msgid "Audio"
 msgstr ""
@@ -1373,6 +1392,11 @@ msgstr ""
 #. @context: Toast after creating a custom collections link
 #: src/ui/shared/collection-management-labels.ts
 msgid "Link added."
+msgstr ""
+
+#. @context: Feed alt text for a link preview image
+#: src/lib/feed-policy.ts
+msgid "Link preview"
 msgstr ""
 
 #. @context: Toast after deleting a custom collections link
@@ -2778,6 +2802,11 @@ msgstr ""
 msgid "Video"
 msgstr ""
 
+#. @context: Feed alt text for a linked video's preview image
+#: src/lib/feed-policy.ts
+msgid "Video preview"
+msgstr ""
+
 #. @context: Toast action button to view the published post
 #: src/ui/compose/ComposeDialog.tsx
 msgid "View"
@@ -2793,6 +2822,16 @@ msgstr ""
 #: src/lib/filter-dimensions.ts
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Visibility"
+msgstr ""
+
+#. @context: Feed link under a linked video's preview, naming the site that hosts it
+#: src/lib/feed-policy.ts
+msgid "Watch on {provider}"
+msgstr ""
+
+#. @context: Feed link under a video attachment or preview
+#: src/lib/feed-policy.ts
+msgid "Watch video"
 msgstr ""
 
 #. @context: Subscribe page heading over the explanation of feed readers, for readers who have not used one

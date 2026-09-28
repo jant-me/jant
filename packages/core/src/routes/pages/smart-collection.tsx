@@ -21,6 +21,7 @@ import { assembleTimelineItems } from "../../lib/timeline.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
+  buildFeedLabels,
   getFeedLimit,
   getRssPublishedBefore,
   feedsPublished,
@@ -252,6 +253,7 @@ export async function renderSmartCollectionFeed(
 
   const feedData = {
     ...buildFeedDiscoveryFields(c),
+    labels: buildFeedLabels(c),
     siteName: appConfig.siteName,
     siteDescription: markdownToPlainText(appConfig.siteDescription),
     siteUrl: appConfig.siteUrl,

@@ -22,6 +22,7 @@ import { assembleCollectionTimeline } from "../../lib/timeline.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
+  buildFeedLabels,
   getFeedLimit,
   getRssPublishedBefore,
   feedsPublished,
@@ -287,6 +288,7 @@ export async function renderCollectionFeed(
 
   const xml = defaultFeedRenderer({
     ...buildFeedDiscoveryFields(c),
+    labels: buildFeedLabels(c),
     siteName,
     // Site name first, like every other feed: a reader's sidebar sorts by
     // feed title, so leading with the collection would scatter one site's

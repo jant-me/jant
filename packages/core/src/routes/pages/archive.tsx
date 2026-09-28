@@ -48,6 +48,7 @@ import {
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
+  buildFeedLabels,
   getFeedLimit,
   getRssPublishedBefore,
   feedsPublished,
@@ -812,6 +813,7 @@ async function buildArchiveFeedData(
 
   return {
     ...buildFeedDiscoveryFields(c, { query: feedQuery }),
+    labels: buildFeedLabels(c),
     siteName: appConfig.siteName,
     siteDescription: toPlainText(appConfig.siteDescription),
     siteUrl: appConfig.siteUrl,

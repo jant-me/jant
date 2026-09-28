@@ -2,10 +2,24 @@ import { describe, expect, it } from "vitest";
 import { defaultFeedRenderer } from "../feed.js";
 import type {
   FeedData,
+  FeedLabels,
   FeedPostView,
   MediaView,
   PostView,
 } from "../../types.js";
+
+/** The labels an English site's feed writes. */
+const FEED_LABELS: FeedLabels = {
+  watchVideo: "Watch video",
+  watchOn: (provider) => `Watch on ${provider}`,
+  morePosts: (count) => (count === 1 ? "1 more post" : `${count} more posts`),
+  linkPreview: "Link preview",
+  videoPreview: "Video preview",
+  providerVideo: (provider) => `${provider} video`,
+  audio: "Audio",
+  attachedText: "Attached text",
+  attachment: "Attachment",
+};
 
 function makeMediaView(overrides: Partial<MediaView> = {}): MediaView {
   return {
@@ -41,6 +55,7 @@ function makePostView(overrides: Partial<FeedPostView> = {}): FeedPostView {
 
 function makeFeedData(post: FeedPostView): FeedData {
   return {
+    labels: FEED_LABELS,
     siteName: "Jant",
     siteDescription: "Thoughts, links, and quotes — one post at a time",
     siteUrl: "https://example.com",
@@ -55,6 +70,7 @@ describe("feed renderers", () => {
   // on every poll, which is untrue and useless for change detection.
   it("dates the feed by its newest entry, not the render time", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       posts: [
         makePostView({
@@ -85,6 +101,7 @@ describe("feed renderers", () => {
   // an avatar from, so the feed is where it has to be.
   it("emits the site avatar as an absolute atom:icon", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       siteIconUrl: "/media/avatar.png",
     });
@@ -100,6 +117,7 @@ describe("feed renderers", () => {
 
   it("falls back to the render time for an empty feed", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       posts: [],
     });
@@ -896,6 +914,7 @@ describe("feed renderers", () => {
 describe("feed Discover declaration", () => {
   it("declares the mode and the feeds to poll", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       discover: "latest",
       discoverFeedUrl: "https://example.com/latest/feed",
@@ -910,6 +929,7 @@ describe("feed Discover declaration", () => {
 
   it("names no featured feed when none was given", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       discover: "latest",
       discoverFeedUrl: "https://example.com/latest/feed",
@@ -922,6 +942,7 @@ describe("feed Discover declaration", () => {
 
   it("points featured sites at the featured feed", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       discover: "featured",
       discoverFeedUrl: "https://example.com/featured/feed",
@@ -937,6 +958,7 @@ describe("feed Discover declaration", () => {
   // site predates Discover" instead.
   it("declares none without a feed attribute", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       discover: "none",
       discoverFeedUrl: null,
@@ -957,6 +979,7 @@ describe("feed Discover declaration", () => {
   // feed that leaves the declaration out is one with nothing in it at all.
   it("declares no namespace when nothing in it is emitted", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       posts: [],
     });
@@ -966,6 +989,7 @@ describe("feed Discover declaration", () => {
 
   it("keeps a sitePathPrefix in the polled feed URL", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       siteUrl: "https://example.com/blog",
       discover: "latest",
@@ -979,6 +1003,7 @@ describe("feed Discover declaration", () => {
 describe("feed language alternates", () => {
   it("links each language's copy of the same feed", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       languageAlternates: [
         { hreflang: "zh-Hans", href: "https://example.com/latest/feed" },
@@ -996,6 +1021,7 @@ describe("feed language alternates", () => {
 
   it("emits nothing extra for a single-language site", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       languageAlternates: [],
     });
@@ -1010,6 +1036,7 @@ describe("feed author", () => {
   // Atom already has for it.
   it("names the blog, separately from the composed feed title", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       siteName: "A blog",
       title: "A blog - Latest posts",
@@ -1021,6 +1048,7 @@ describe("feed author", () => {
 
   it("escapes a name that contains markup characters", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       siteName: "Q&A <notes>",
     });
@@ -1032,6 +1060,7 @@ describe("feed author", () => {
 
   it("emits nothing when the site has no name", () => {
     const xml = defaultFeedRenderer({
+      labels: FEED_LABELS,
       ...makeFeedData(makePostView()),
       siteName: "",
     });
