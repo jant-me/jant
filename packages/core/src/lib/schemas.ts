@@ -370,31 +370,27 @@ const PostFieldsSchema = z.object({
   mediaAlts: z.record(MediaIdSchema, z.string()).optional(),
 });
 
-const ApiMediaAttachmentInputSchema = z
-  .object({
-    type: z.literal("media"),
-    mediaId: MediaIdSchema,
-    alt: z
-      .string()
-      .max(500)
-      .transform((s) => s.replace(CONTROL_CHAR_RE, "").trim())
-      .optional()
-      .or(z.literal("").transform(() => "")),
-  })
-  .strict();
+const ApiMediaAttachmentInputSchema = z.object({
+  type: z.literal("media"),
+  mediaId: MediaIdSchema,
+  alt: z
+    .string()
+    .max(500)
+    .transform((s) => s.replace(CONTROL_CHAR_RE, "").trim())
+    .optional()
+    .or(z.literal("").transform(() => "")),
+});
 
-const ApiTextAttachmentInputSchema = z
-  .object({
-    type: z.literal("text"),
-    contentFormat: z.enum(TEXT_ATTACHMENT_CONTENT_FORMATS),
-    content: z.string().refine((value) => value.trim().length > 0, {
-      message: "Text attachments need content.",
-    }),
-    summary: sanitizeText(300)
-      .optional()
-      .or(z.literal("").transform(() => undefined)),
-  })
-  .strict();
+const ApiTextAttachmentInputSchema = z.object({
+  type: z.literal("text"),
+  contentFormat: z.enum(TEXT_ATTACHMENT_CONTENT_FORMATS),
+  content: z.string().refine((value) => value.trim().length > 0, {
+    message: "Text attachments need content.",
+  }),
+  summary: sanitizeText(300)
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+});
 
 export const PostAttachmentInputSchema = z.discriminatedUnion("type", [
   ApiMediaAttachmentInputSchema,
@@ -404,16 +400,14 @@ export const PostAttachmentInputSchema = z.discriminatedUnion("type", [
 const ApiPostFieldsSchema = PostFieldsSchema.omit({
   mediaIds: true,
   mediaAlts: true,
-})
-  .extend({
-    attachments: z
-      .array(PostAttachmentInputSchema)
-      .max(MAX_MEDIA_ATTACHMENTS, {
-        message: `Posts allow at most ${MAX_MEDIA_ATTACHMENTS} attachments`,
-      })
-      .optional(),
-  })
-  .strict();
+}).extend({
+  attachments: z
+    .array(PostAttachmentInputSchema)
+    .max(MAX_MEDIA_ATTACHMENTS, {
+      message: `Posts allow at most ${MAX_MEDIA_ATTACHMENTS} attachments`,
+    })
+    .optional(),
+});
 
 /** Mutual exclusivity: body and bodyMarkdown cannot both be provided */
 function refineBodyExclusivity<

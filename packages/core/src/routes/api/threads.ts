@@ -41,15 +41,6 @@ const ListThreadsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 });
 
-const LIST_PARAMS = [
-  "status",
-  "lang",
-  "sort",
-  "include",
-  "cursor",
-  "limit",
-] as const;
-
 const GetThreadQuerySchema = z.object({ include: z.string().optional() });
 
 const ListThreadPostsQuerySchema = z.object({
@@ -61,15 +52,10 @@ const ListThreadPostsQuerySchema = z.object({
 threadsApiRoutes.get("/", async (c) => {
   const query = parseValidated(ListThreadsQuerySchema, c.req.query());
   const { fold } = parseThreadInclude(query.include);
-  const parsed = await parseThreadSelection(
-    (key) => c.req.query(key),
-    Object.keys(c.req.query()),
-    {
-      allow: LIST_PARAMS,
-      audience: "author",
-      loadCollections: () => c.var.services.collections.list(),
-    },
-  );
+  const parsed = await parseThreadSelection((key) => c.req.query(key), {
+    audience: "author",
+    loadCollections: () => c.var.services.collections.list(),
+  });
   if (parsed.kind === "empty") {
     return c.json({ threads: [], nextCursor: null });
   }

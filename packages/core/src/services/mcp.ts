@@ -328,9 +328,7 @@ const mcpTools: McpToolDefinition[] = [
           const value = filterArgs[key];
           return value === undefined ? undefined : String(value);
         },
-        Object.keys(filterArgs),
         {
-          allow: [],
           audience: "author",
           loadCollections: () => context.services.collections.list(),
         },

@@ -47,27 +47,25 @@ function allowedVisibilities(audience: ThreadAudience): readonly string[] {
 /**
  * Read a Thread list's filter dimensions.
  *
+ * A parameter that names no dimension is ignored, as the API ignores any
+ * request field it doesn't know. A dimension with a value it can't read is
+ * refused.
+ *
  * @param read - Reads one parameter; `undefined` when absent
- * @param present - Every parameter name the request carries
- * @param options.allow - The endpoint's own parameters, which aren't
- *   dimensions; anything else unknown is refused
  * @param options.audience - A reader may not name `private`
  * @param options.loadCollections - Loads the collection vocabulary, called only
  *   when a collection is named
  * @returns The selection, or `empty` when a named collection doesn't exist
- * @throws {ValidationError} On an unknown parameter or an unreadable value
+ * @throws {ValidationError} On an unreadable value
  * @example
- * const parsed = await parseThreadSelection(read, Object.keys(query), {
- *   allow: ["cursor", "limit"],
+ * const parsed = await parseThreadSelection(read, {
  *   audience: "reader",
  *   loadCollections: () => services.collections.list(),
  * });
  */
 export async function parseThreadSelection(
   read: ParamReader,
-  present: readonly string[],
   options: {
-    allow: readonly string[];
     audience: ThreadAudience;
     loadCollections: () => Promise<Collection[]>;
   },
@@ -101,12 +99,9 @@ export async function parseThreadSelection(
     readCollectionSlugs(readDimension).length > 0
       ? buildCollectionVocabulary(await options.loadCollections())
       : EMPTY_COLLECTION_VOCABULARY;
-  const parsed = parsePostFilterSelectionStrict(
-    readDimension,
-    present,
-    { collections },
-    { allow: options.allow },
-  );
+  const parsed = parsePostFilterSelectionStrict(readDimension, [], {
+    collections,
+  });
 
   if (parsed.ok) {
     return { kind: "selection", selection: parsed.selection, includeHidden };

@@ -160,6 +160,8 @@ curl -X POST https://your-site.com/api/mcp \
 
 Unless an endpoint explicitly returns a ZIP, XML, or plain text response, it returns JSON.
 
+A request field or query parameter an endpoint doesn't know is ignored, so a client that sends one works against an older Jant too. A value an endpoint can't read, in a field it does know, answers `400`.
+
 All timestamps are Unix seconds:
 
 ```json

@@ -59,6 +59,17 @@ describe("Threads API Routes", () => {
     expect(ids(privateOnly.body.threads)).toEqual([secret.id]);
   });
 
+  it("ignores a parameter it doesn't know and refuses a value it can't read", async () => {
+    const { post, get } = setup();
+    const shown = await post({ publishedAt: day(1) });
+
+    const unknown = await get("/api/threads?somethingNew=1");
+    expect(unknown.status).toBe(200);
+    expect(ids(unknown.body.threads)).toEqual([shown.id]);
+
+    expect((await get("/api/threads?format=poem")).status).toBe(400);
+  });
+
   it("lists drafts by status", async () => {
     const { post, get } = setup();
     const draft = await post({ status: "draft" });

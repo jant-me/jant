@@ -635,12 +635,14 @@ describe("CreatePostApiSchema", () => {
   });
 
   it("leaves record timestamps out of updates", () => {
+    // Unknown fields are ignored rather than refused, so a record timestamp
+    // sent with an update never reaches it.
     expect(
-      UpdatePostApiSchema.safeParse({ createdAt: 1700000000 }).success,
-    ).toBe(false);
+      UpdatePostApiSchema.parse({ createdAt: 1700000000 }),
+    ).not.toHaveProperty("createdAt");
     expect(
-      UpdatePostApiSchema.safeParse({ updatedAt: 1700000000 }).success,
-    ).toBe(false);
+      UpdatePostApiSchema.parse({ updatedAt: 1700000000 }),
+    ).not.toHaveProperty("updatedAt");
   });
 
   it("accepts ordered attachment inputs", () => {
@@ -669,13 +671,14 @@ describe("CreatePostApiSchema", () => {
     ]);
   });
 
-  it("rejects legacy mediaIds in API requests", () => {
-    expect(() =>
-      CreatePostApiSchema.parse({
-        ...validPost,
-        mediaIds: ["media-1"],
-      }),
-    ).toThrow();
+  it("ignores fields it doesn't know, such as the legacy mediaIds", () => {
+    const parsed = CreatePostApiSchema.parse({
+      ...validPost,
+      mediaIds: ["media-1"],
+      somethingNew: true,
+    });
+    expect(parsed).not.toHaveProperty("mediaIds");
+    expect(parsed).not.toHaveProperty("somethingNew");
   });
 
   it("rejects text attachments without content", () => {
