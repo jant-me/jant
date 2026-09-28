@@ -82,6 +82,7 @@ import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { withConfig } from "./middleware/config.js";
 import { secureHeadersMiddleware } from "./middleware/secure-headers.js";
 import { apiCors } from "./middleware/cors.js";
+import { rejectCrossOriginWrites } from "./middleware/cross-origin.js";
 
 import { getConfiguredSingleSitePathPrefix } from "./lib/env.js";
 import { getRuntimeSitePathPrefix } from "./lib/site-resolution.js";
@@ -334,6 +335,10 @@ export function createApp(): App {
 
     await next();
   });
+
+  // Before any route that writes: a signed-in browser's cookie must not be
+  // usable from another site's page (see middleware/cross-origin.ts).
+  app.use("*", rejectCrossOriginWrites());
 
   // Populate c.var.session / c.var.isAuthenticated once per request so
   // downstream handlers don't each call auth.api.getSession themselves.

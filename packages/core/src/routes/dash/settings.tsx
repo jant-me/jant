@@ -316,7 +316,8 @@ function breadcrumbLabel(
   }
 }
 
-type DemoRestriction = "sessions" | "password" | "accountDeletion";
+type DemoRestriction =
+  "sessions" | "password" | "accountDeletion" | "customCss" | "codeInjection";
 
 function getDemoRestrictionMessage(
   c: Context<Env>,
@@ -350,6 +351,24 @@ function getDemoRestrictionMessage(
             "Account deletion is off in demo mode. The shared demo resets separately.",
           comment:
             "@context: Error shown when account deletion is blocked in demo mode",
+        }),
+      );
+    case "customCss":
+      return i18n._(
+        msg({
+          message:
+            "Custom CSS is off in demo mode. Every visitor shares the demo site.",
+          comment:
+            "@context: Error shown when saving custom CSS is blocked in demo mode",
+        }),
+      );
+    case "codeInjection":
+      return i18n._(
+        msg({
+          message:
+            "Code injection is off in demo mode. Every visitor shares the demo site.",
+          comment:
+            "@context: Error shown when saving code injection is blocked in demo mode",
         }),
       );
   }
@@ -1436,6 +1455,13 @@ settingsRoutes.get("/custom-css", async (c) => {
 });
 
 settingsRoutes.post("/custom-css", async (c) => {
+  if (c.var.appConfig.demoMode) {
+    return demoRestrictionResponse(
+      c,
+      getDemoRestrictionMessage(c, "customCss"),
+    );
+  }
+
   const i18n = getI18n(c);
   const body = await c.req.json<{ customCSS: string }>();
   const { settings } = c.var.services;
@@ -1490,6 +1516,15 @@ settingsRoutes.get("/code-injection", async (c) => {
 });
 
 settingsRoutes.post("/code-injection", async (c) => {
+  // The demo's credentials are public, so a script saved here would run for
+  // every visitor until the nightly reset.
+  if (c.var.appConfig.demoMode) {
+    return demoRestrictionResponse(
+      c,
+      getDemoRestrictionMessage(c, "codeInjection"),
+    );
+  }
+
   const i18n = getI18n(c);
   const body = await c.req.json<{
     customHeadHtml?: string;

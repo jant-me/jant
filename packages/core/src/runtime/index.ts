@@ -8,7 +8,9 @@ import type { Bindings } from "../types/bindings.js";
  * Matched on the `.session_token` suffix so it holds for both the plain and
  * the `__Secure-`-prefixed cookie name. This is a cheap "probably signed in"
  * hint used to pick a database consistency mode — it does not verify the
- * cookie's signature, and it must not be used to make an auth decision.
+ * cookie's signature, and it must not be used to grant access. It also picks
+ * the writes the cross-origin check covers: a cookie this misses is one
+ * better-auth wouldn't read as a session either.
  *
  * @param cookieHeader - Raw `Cookie` request header, if any
  * @returns `true` when a session token cookie appears to be present

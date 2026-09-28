@@ -14,7 +14,14 @@ import { getEnvString } from "./env.js";
 import { normalizeEditableSettingValue } from "./schemas.js";
 import { getTimeZoneOptions } from "./timezones.js";
 
-export const demoLockedSettingKeys = new Set<ConfigKey>(["NOINDEX"]);
+/**
+ * Settings a demo site's shared visitors can't change: indexing stays off, and
+ * custom CSS would restyle the site for everyone until the nightly reset.
+ */
+export const demoLockedSettingKeys = new Set<ConfigKey>([
+  "NOINDEX",
+  "CUSTOM_CSS",
+]);
 
 /** Config keys explicitly approved for runtime editing. */
 export const editableSettingKeys = Object.entries(CONFIG_FIELDS)

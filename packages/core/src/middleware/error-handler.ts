@@ -12,6 +12,7 @@ import type { AppVariables } from "../types/app-context.js";
 import {
   ConfigurationError,
   DomainError,
+  ForbiddenError,
   NotFoundError,
   SiteUnavailableError,
   ValidationError,
@@ -90,6 +91,12 @@ export const errorHandler: ErrorHandler<Env> = (err, c) => {
   // Non-API routes: map NotFoundError to Hono's built-in 404
   if (err instanceof NotFoundError) {
     return c.notFound();
+  }
+
+  // A refused request, such as a form another site submitted, is the
+  // caller's problem rather than a server fault.
+  if (err instanceof ForbiddenError) {
+    return c.text(err.message, 403);
   }
 
   if (err instanceof ConfigurationError) {

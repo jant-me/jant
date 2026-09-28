@@ -556,6 +556,11 @@ msgstr "干净、高对比，接近纯白。"
 msgid "Code Injection"
 msgstr "代码注入"
 
+#. @context: Error shown when saving code injection is blocked in demo mode
+#: src/routes/dash/settings.tsx
+msgid "Code injection is off in demo mode. Every visitor shares the demo site."
+msgstr "演示模式下已关闭代码注入。演示站点由所有访客共用。"
+
 #. @context: Toast after saving Code Injection settings
 #: src/routes/dash/settings.tsx
 msgid "Code injection updated."
@@ -914,6 +919,11 @@ msgstr "当前密码不正确。请重试。"
 #: src/ui/dash/settings/SettingsRootContent.tsx
 msgid "Custom CSS"
 msgstr "自定义 CSS"
+
+#. @context: Error shown when saving custom CSS is blocked in demo mode
+#: src/routes/dash/settings.tsx
+msgid "Custom CSS is off in demo mode. Every visitor shares the demo site."
+msgstr "演示模式下已关闭自定义 CSS。演示站点由所有访客共用。"
 
 #. @context: Toast after saving custom CSS
 #: src/routes/dash/settings.tsx
