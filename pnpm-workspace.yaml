@@ -18,6 +18,14 @@ catalog:
   typescript: ^6.0.2
   wrangler: ^4.76.0
 
+# better-sqlite3 stays on 12. 13 moves to N-API and ships its prebuilt
+# binaries inside the package with `gypfile: false`, but npm and pnpm still
+# run `node-gyp rebuild` for a package with a binding.gyp
+# (WiseLibs/better-sqlite3#1516, npm/cli#9837). That needs Python and a
+# compiler, which Windows, macOS without Xcode tools, and the slim and alpine
+# Node images lack — including this repo's Docker build and the machines
+# `npm create jant` installs on. Take 13 once installing it on node:24-slim
+# and on a clean Windows machine no longer builds from source.
 onlyBuiltDependencies:
   - better-sqlite3
   - cn-font-split
