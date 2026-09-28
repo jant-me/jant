@@ -33,12 +33,15 @@ import {
   SNAPSHOT_EXCLUDED_TABLES,
   SNAPSHOT_TABLES,
   getSnapshotSelectSql,
+  buildSnapshotStorageQuery,
+  collectSnapshotObjects,
 } from "../../bin/lib/site-snapshot.js";
 import {
   TABLE_EXPORT_ORDER,
   sortExportTables,
 } from "../../bin/lib/sql-export.js";
 import * as schema from "../db/schema.js";
+import { createTestDatabase, DEFAULT_TEST_SITE_ID } from "./helpers/db.js";
 
 /** `site_setting` is cleared by key, not wholesale — see `buildReplaceSql`. */
 const CLEARED_BY_KEY = "site_setting";
@@ -215,5 +218,39 @@ describe("snapshot table ordering", () => {
     expect([...SNAPSHOT_CLEAR_TABLES].sort()).toEqual(
       SNAPSHOT_TABLES.filter((name) => name !== CLEARED_BY_KEY).sort(),
     );
+  });
+});
+
+describe("buildSnapshotStorageQuery", () => {
+  it("includes the avatar and icon files the settings name, media row or not", () => {
+    const { sqlite } = createTestDatabase();
+    const timestamp = Math.floor(Date.now() / 1000);
+    const insertSetting = sqlite.prepare(
+      `INSERT INTO site_setting (site_id, key, value, updated_at) VALUES (?, ?, ?, ?)`,
+    );
+    insertSetting.run(
+      DEFAULT_TEST_SITE_ID,
+      "SITE_AVATAR",
+      `media/${DEFAULT_TEST_SITE_ID}/assets/avatar/old.png`,
+      timestamp,
+    );
+    insertSetting.run(
+      DEFAULT_TEST_SITE_ID,
+      "SITE_FAVICON_APPLE_TOUCH",
+      `media/${DEFAULT_TEST_SITE_ID}/assets/favicon/apple-touch-icon.png`,
+      timestamp,
+    );
+
+    const keys = collectSnapshotObjects(
+      sqlite.prepare(buildSnapshotStorageQuery(DEFAULT_TEST_SITE_ID)).all() as {
+        key: string;
+        contentType: string | null;
+      }[],
+    ).map((object) => object.key);
+
+    expect(keys).toEqual([
+      `media/${DEFAULT_TEST_SITE_ID}/assets/avatar/old.png`,
+      `media/${DEFAULT_TEST_SITE_ID}/assets/favicon/apple-touch-icon.png`,
+    ]);
   });
 });

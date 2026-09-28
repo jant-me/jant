@@ -262,7 +262,16 @@ export function getSnapshotSelectSql(tableName, siteId) {
 }
 
 /**
- * SQL listing a site's stored media objects: originals and video posters.
+ * Settings that hold a storage key. The snapshot restores these settings, so
+ * the files they point at travel with it, whether or not a media row
+ * records them: sites that set an avatar before avatars had media rows have
+ * none.
+ */
+const STORAGE_KEY_SETTINGS = ["SITE_AVATAR", "SITE_FAVICON_APPLE_TOUCH"];
+
+/**
+ * SQL listing a site's stored objects: media originals, video posters, and
+ * the files the avatar and icon settings name.
  *
  * @param {string} siteId Site whose media rows to read
  * @returns {string} A query returning `key` and `contentType` columns
@@ -290,6 +299,17 @@ export function buildSnapshotStorageQuery(siteId) {
       WHERE "poster_key" IS NOT NULL
         AND "site_id" = '${escapeSqlString(siteId)}'
         AND trim("poster_key") <> ''
+
+      UNION ALL
+
+      SELECT
+        "value" AS "key",
+        NULL AS "contentType"
+      FROM "site_setting"
+      WHERE "site_id" = '${escapeSqlString(siteId)}'
+        AND "key" IN (${quoteList(STORAGE_KEY_SETTINGS)})
+        AND "value" IS NOT NULL
+        AND trim("value") <> ''
     )
     WHERE "key" IS NOT NULL
       AND trim("key") <> ''
