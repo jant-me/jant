@@ -522,7 +522,8 @@ describe("createExportService (Hugo)", () => {
     expect(frontMatter.type).toBe("collection");
     expect(frontMatter.slug).toBe("ideas");
     expect(frontMatter.title).toBe("Ideas");
-    expect(frontMatter.summary_text).toBe("Half-formed thoughts");
+    expect(frontMatter.description).toBe("Half-formed thoughts");
+    expect(frontMatter).not.toHaveProperty("summary_text");
   });
 
   it("writes hugo.toml with baseURL, theme=jant, [permalinks] post=/:slug/, and [params]", async () => {
@@ -823,7 +824,7 @@ describe("createExportService (Hugo)", () => {
       title: "Thoughts",
       slug: "thoughts",
       type: "smart_collection",
-      summary_text: "Short notes.",
+      description: "Short notes.",
       sort_order: "newest",
       selection: { format: "note", title: false },
       outputs: ["html", "rss"],

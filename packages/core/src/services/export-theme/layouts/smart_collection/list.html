@@ -11,7 +11,7 @@
   <section class="section section-collection section-smart-collection">
     <header class="section-header">
       <h1 class="section-title">{{ .Title }}</h1>
-      {{- with .Params.summary_text -}}
+      {{- with .Params.description -}}
         <p class="section-summary">{{ . }}</p>
       {{- end -}}
       {{- with len $posts -}}

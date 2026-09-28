@@ -502,6 +502,25 @@ describe("Hugo import CLI helpers", () => {
     expect(requests[5]?.warning).toContain('"Gone"');
   });
 
+  it("reads a description under its current name and the one before 1.0", () => {
+    const request = (frontMatter: Record<string, unknown>) =>
+      buildSmartCollectionCreateRequest(
+        {
+          slug: "notes",
+          frontMatter: {
+            title: "Notes",
+            type: "smart_collection",
+            selection: { format: "note" },
+            ...frontMatter,
+          },
+        },
+        new Map(),
+      ).payload?.description;
+
+    expect(request({ description: "Short notes." })).toBe("Short notes.");
+    expect(request({ summary_text: "Short notes." })).toBe("Short notes.");
+  });
+
   it("recreates a smart collection from its exported conditions", () => {
     const bundle = {
       slug: "pictures",

@@ -9,7 +9,7 @@
   {{- $pageTitle = $siteTitle -}}
 {{- end -}}
 {{- $description := "" -}}
-{{- with .Params.summary_text -}}{{- $description = . -}}{{- end -}}
+{{- with or .Params.description .Params.summary_text -}}{{- $description = . -}}{{- end -}}
 {{- if not $description -}}{{- with $jant -}}{{- with .site_description -}}{{- $description = . -}}{{- end -}}{{- end -}}{{- end -}}
 {{- $faviconVersion := "" -}}
 {{- with $jant -}}{{- with .favicon_version -}}{{- $faviconVersion = . -}}{{- end -}}{{- end -}}

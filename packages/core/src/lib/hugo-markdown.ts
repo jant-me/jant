@@ -118,6 +118,8 @@ export interface HugoFrontMatter {
 
   // Hugo routing
   aliases?: string[];
+  /** A Collection's or Smart Collection's description, as its author wrote it. */
+  description?: string;
   /**
    * Published root bundles only: the `<id>` Jant's feeds gave the Thread's
    * entry — its permalink, absolute, with no trailing slash. The theme's feed

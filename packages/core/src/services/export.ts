@@ -1446,7 +1446,7 @@ async function buildCollectionSection(
     // Custom URLs for this Collection. Hugo writes a redirect page for each;
     // an import registers them again.
     aliases: aliases.length > 0 ? aliases : undefined,
-    summary_text: collection.description ?? undefined,
+    description: collection.description ?? undefined,
     sort_order: collection.sortOrder,
     entry_count: entryCount,
     // Opt into Atom output at /{slug}/index.xml.
@@ -1487,7 +1487,7 @@ async function buildSmartCollectionSection(
     title: smartCollection.title,
     slug: smartCollection.slug,
     type: "smart_collection",
-    summary_text: smartCollection.description ?? undefined,
+    description: smartCollection.description ?? undefined,
     sort_order: smartCollection.sort,
     display_layout: smartCollection.layout ?? undefined,
     selection,

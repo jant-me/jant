@@ -973,6 +973,21 @@ async function loadSiteConfig(rootDir) {
   };
 }
 
+/**
+ * A Collection's or Smart Collection's description from its section page:
+ * `description` since 1.0, `summary_text` before.
+ *
+ * @param {Record<string, unknown>} frontMatter - The section page's front matter
+ * @returns {string | undefined} The description, or undefined when blank
+ */
+function readCollectionDescription(frontMatter) {
+  const value =
+    typeof frontMatter.description === "string"
+      ? frontMatter.description
+      : frontMatter.summary_text;
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
 function buildSettingsUpdatesFromConfig(siteConfig, customCss = "") {
   const jant = siteConfig?.extra?.jant || {};
   const themeId = String(jant.theme_id || "");
@@ -1271,9 +1286,8 @@ function buildSmartCollectionCreateRequest(bundle, collectionSlugToId) {
     payload: {
       slug: bundle.slug,
       title,
-      ...(typeof frontMatter.summary_text === "string" &&
-      frontMatter.summary_text.trim()
-        ? { description: frontMatter.summary_text }
+      ...(readCollectionDescription(frontMatter)
+        ? { description: readCollectionDescription(frontMatter) }
         : {}),
       selection,
       // `sortOrder` since 0.10, `sort` before: a site on either version
@@ -2600,10 +2614,7 @@ export async function run(argv) {
         const result = await target.createCollection({
           title: bundle.frontMatter.title || slug,
           slug,
-          description:
-            typeof bundle.frontMatter.summary_text === "string"
-              ? bundle.frontMatter.summary_text
-              : undefined,
+          description: readCollectionDescription(bundle.frontMatter),
           sortOrder:
             typeof bundle.frontMatter.sort_order === "string"
               ? bundle.frontMatter.sort_order
