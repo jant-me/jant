@@ -327,7 +327,7 @@ With no flag, the CLI picks the Node runtime when `DATABASE_URL` or `DATA_DIR` i
 
 `--remote` goes through the local `wrangler` CLI, so run `wrangler login` or set `CLOUDFLARE_API_TOKEN` first. `--config` points at a non-default wrangler config.
 
-The CLI loads `<cwd>/.env.node` at startup. Variables already exported in the shell take precedence. `JANT_ENV_FILE` loads a different file, which helps when one machine manages several deployments; set it to an empty value to skip the file, as automated runs do to keep a local `.env.node` out. The full variable list is in [Configuration](configuration.md).
+The CLI loads `<cwd>/.env` at startup. Variables already exported in the shell take precedence. `JANT_ENV_FILE` loads a different file, which helps when one machine manages several deployments; set it to an empty value to skip the file, as automated runs do to keep a local one out. The full variable list is in [Configuration](configuration.md).
 
 ## Site snapshot (`site snapshot`)
 

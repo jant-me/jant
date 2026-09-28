@@ -113,11 +113,22 @@ describe("findNodeEnvPath", () => {
     tmpDir = mkdtempSync(join(tmpdir(), "jant-env-path-"));
   });
 
-  it("finds .env.node in the given directory when JANT_ENV_FILE is unset", () => {
-    const envPath = join(tmpDir, ".env.node");
+  it("finds .env in the given directory when JANT_ENV_FILE is unset", () => {
+    const envPath = join(tmpDir, ".env");
     writeFileSync(envPath, "DATABASE_URL=file:./jant.sqlite\n");
 
     expect(findNodeEnvPath(tmpDir, {})).toBe(envPath);
+  });
+
+  // The Node and Docker docs, the templates, and docker compose all use
+  // `.env`; a project-level `.env.node` was a name only the CLI knew.
+  it("doesn't read a .env.node in the project directory", () => {
+    writeFileSync(
+      join(tmpDir, ".env.node"),
+      "DATABASE_URL=file:./local.sqlite\n",
+    );
+
+    expect(findNodeEnvPath(tmpDir, {})).not.toBe(join(tmpDir, ".env.node"));
   });
 
   it("loads nothing when JANT_ENV_FILE is empty", () => {

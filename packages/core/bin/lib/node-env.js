@@ -22,7 +22,7 @@ function fileExists(envPath) {
 }
 
 /**
- * Locate `.env.node` for CLI auto-load.
+ * Locate the env file the CLI and `jant start` load.
  *
  * `JANT_ENV_FILE` overrides the search whenever it is set: a path names the
  * file to load, and an empty value means "load nothing". The empty form is
@@ -30,8 +30,13 @@ function fileExists(envPath) {
  * see the `env` block in `vitest.config.ts`.
  *
  * Without the override, the search order is:
- *   1. `<cwd>/.env.node`             — user's site directory
- *   2. `<bin>/../../.env.node`        — `packages/core/.env.node` (in-repo dev)
+ *   1. `<cwd>/.env` — the project directory, the file the Node and Docker
+ *      docs and templates use
+ *   2. `packages/core/.env.node` — only in a checkout of the Jant repository,
+ *      whose Node development environment lives there. It can't be
+ *      `packages/core/.env`: Wrangler reads that file as Worker bindings
+ *      whenever `.dev.vars` is missing. The published package has no such
+ *      file.
  *
  * @param {string} [cwd] - Directory searched first, and the base a relative
  *   `JANT_ENV_FILE` resolves against. Defaults to `process.cwd()`.
@@ -63,7 +68,7 @@ export function findNodeEnvPath(cwd = process.cwd(), env = process.env) {
   }
 
   const candidates = [
-    resolve(cwd, ".env.node"),
+    resolve(cwd, ".env"),
     resolve(dirname(fileURLToPath(import.meta.url)), "../../.env.node"),
   ];
 
@@ -77,7 +82,7 @@ export function findNodeEnvPath(cwd = process.cwd(), env = process.env) {
 }
 
 /**
- * Parse the .env.node file and assign keys into `env`. Existing values in
+ * Parse an env file and assign keys into `env`. Existing values in
  * `env` are preserved (already-exported shell vars win over file values).
  *
  * Returns a result object useful for debug logging:
@@ -118,11 +123,11 @@ export function loadNodeEnvFile(envPath, env = process.env) {
 }
 
 /**
- * Auto-locate and load `.env.node` for any DB-touching CLI command.
+ * Locate and load the env file for `jant start` and any DB-touching command.
  *
- * Always called before `resolveCliRuntime()`, so DATABASE_URL / DATA_DIR
- * defined in `.env.node` make `--node` (or auto-detect) work without
- * requiring the user to source the file manually.
+ * Called before `resolveCliRuntime()`, so DATABASE_URL / DATA_DIR defined in
+ * the file make `--node` (or auto-detect) work without requiring the user to
+ * source it.
  *
  * Honours `JANT_ENV_FILE` through {@link findNodeEnvPath}, so a caller that
  * needs a fully controlled environment can opt out of the file entirely.

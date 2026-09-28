@@ -38,6 +38,8 @@ const PUBLIC_ENV_OUTSIDE_CONFIG_FIELDS = [
   "DISCOVER_PING_URL",
   "HOST",
   "INTERNAL_ADMIN_TOKEN",
+  // Read by the CLI and `jant start`, not the server.
+  "JANT_ENV_FILE",
   "LOCAL_PUBLIC_URL",
   "LOCAL_STORAGE_PATH",
   "PORT",

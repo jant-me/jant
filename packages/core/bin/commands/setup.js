@@ -42,10 +42,8 @@ function printHelp() {
     `  printf '%s' "$OWNER_PASSWORD" | jant setup --email owner@example.com --password-stdin`,
   );
   console.log("");
-  console.log(
-    "Node runtime and SITE_RESOLUTION_MODE=single-site only. `.env.node` next to",
-  );
-  console.log("your project (or in packages/core/) is auto-loaded.");
+  console.log("Node runtime and SITE_RESOLUTION_MODE=single-site only. `.env` in");
+  console.log("the current directory is read, or the file JANT_ENV_FILE names.");
 }
 
 /**

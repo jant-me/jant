@@ -81,7 +81,7 @@ export function formatRuntimeBanner(runtime, env = process.env) {
 
 /**
  * One-call helper for DB-touching CLI commands:
- *   1. Auto-load `.env.node` (so DATABASE_URL/DATA_DIR work without sourcing).
+ *   1. Load the env file (so DATABASE_URL/DATA_DIR work without sourcing).
  *   2. Resolve the runtime from flags and env.
  *   3. Print a one-line banner so the user immediately sees which target
  *      was picked, instead of finding out minutes later when something fails.

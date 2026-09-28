@@ -571,10 +571,13 @@ DATABASE_URL=file:./data/jant.sqlite
 # TRUST_PROXY=true
 ```
 
-有用的模板：
+`jant start` 和各个 `jant` 命令会读取当前目录下的 `.env`。环境里已经设置的变量优先于文件里的值。Docker Compose 用 `env_file` 把这个文件传进容器。
 
-- 仓库根目录下的 Docker / Node 示例：[`.env.example`](https://github.com/jant-me/jant/blob/main/.env.example)
-- package 内部的 Node 示例：[`packages/core/.env.node.example`](https://github.com/jant-me/jant/blob/main/packages/core/.env.node.example)
+| 变量            | 默认值 | 说明                                                   |
+| --------------- | ------ | ------------------------------------------------------ |
+| `JANT_ENV_FILE` | `.env` | 改为读取的文件，相对当前目录。设为空值则不读取任何文件 |
+
+模板：[`.env.example`](https://github.com/jant-me/jant/blob/main/.env.example)。
 
 ### .dev.vars（本地开发）
 

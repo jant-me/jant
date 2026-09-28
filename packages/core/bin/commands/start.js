@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 import { loadNodeRuntime } from "../lib/load-node-runtime.js";
+import { autoloadNodeEnv } from "../lib/node-env.js";
 
 export async function run(argv) {
   const { values } = parseArgs({
@@ -13,6 +14,8 @@ export async function run(argv) {
     console.log("Usage: jant start");
     console.log("");
     console.log("Start the Node.js server using environment variables.");
+    console.log("Reads `.env` in the current directory, or the file JANT_ENV_FILE");
+    console.log("names. Variables already set in the environment win.");
     console.log("");
     console.log("Required:");
     console.log("  AUTH_SECRET=your-secret");
@@ -40,6 +43,7 @@ export async function run(argv) {
     process.exit(0);
   }
 
+  autoloadNodeEnv();
   const { start } = await loadNodeRuntime();
   const handle = await start();
   console.log(`Jant listening on ${handle.url}`);

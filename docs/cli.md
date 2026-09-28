@@ -20,7 +20,7 @@ A command works in one of two ways.
 | `--database`   | D1 binding name (default: `DB`)                                |
 | `--persist-to` | Local D1 state directory                                       |
 
-With no runtime flag, a command uses the Node runtime when `DATABASE_URL` or `DATA_DIR` is set, and local D1 otherwise. `.env.node` in the project directory is read first.
+With no runtime flag, a command uses the Node runtime when `DATABASE_URL` or `DATA_DIR` is set, and local D1 otherwise. `.env` in the current directory is read first; see [the `.env` file](configuration.md#env-node-and-docker).
 
 A database that holds several sites (the hosted setup) needs the site named: `--site` takes a site key or ID, `--host` a host (with `--path-prefix` for a site under a subpath), and `--url` the site's URL.
 

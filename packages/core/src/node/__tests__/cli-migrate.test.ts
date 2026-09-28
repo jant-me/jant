@@ -26,12 +26,12 @@ describe("jant migrate", () => {
     vi.resetModules();
   });
 
-  it("keeps the existing DATABASE_URL when --node loads .env.node", async () => {
+  it("keeps the existing DATABASE_URL when --node loads the env file", async () => {
     process.env.DATABASE_URL =
       "postgres://shell_user:super-secret@db.example.com:5432/shell_db";
     delete process.env.DATA_DIR;
     process.env.JANT_DEBUG_MIGRATE = "1";
-    // This test is about the auto-located `.env.node` itself, so it opts back
+    // This test is about the auto-located env file itself, so it opts back
     // into the search the suite disables in `vitest.config.ts`. `node:fs` is
     // mocked below, so the file it finds is the mock's content, not a real one.
     delete process.env.JANT_ENV_FILE;

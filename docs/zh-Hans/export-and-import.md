@@ -327,7 +327,7 @@ npx jant site import --url https://your-site.example --path ./jant-site-export.z
 
 `--remote` 通过本地的 `wrangler` CLI 运行，需要先 `wrangler login` 或设置 `CLOUDFLARE_API_TOKEN`。`--config` 指定非默认的 wrangler 配置文件。
 
-CLI 启动时会加载 `<cwd>/.env.node`，shell 里已经 export 的变量优先。`JANT_ENV_FILE` 用来加载另一个文件，一台机器管理多个部署时会用到；设为空值则跳过该文件，自动化任务用这种方式避开本地的 `.env.node`。完整的环境变量列表见 [配置](configuration.md)。
+CLI 启动时会加载 `<cwd>/.env`，shell 里已经 export 的变量优先。`JANT_ENV_FILE` 用来加载另一个文件，一台机器管理多个部署时会用到；设为空值则跳过该文件，自动化任务用这种方式避开本地的 env 文件。完整的环境变量列表见 [配置](configuration.md)。
 
 ## 站点快照（`site snapshot`）
 

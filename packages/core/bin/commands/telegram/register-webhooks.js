@@ -34,7 +34,7 @@ function printUsage() {
     "If --url is omitted, uses SITE_ORIGIN + SITE_PATH_PREFIX from the environment.",
   );
   console.log("");
-  console.log("Environment (also read from .env.node):");
+  console.log("Environment (also read from .env):");
   console.log(
     "  TELEGRAM_BOT_TOKENS      Comma-separated <bot_id>:<secret> tokens",
   );

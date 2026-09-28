@@ -229,7 +229,7 @@ export async function run(argv) {
     console.log("  --persist-to       Local D1 state directory override");
     console.log("");
     console.log(
-      "`.env.node` next to your project (or in packages/core/) is auto-loaded.",
+      "`.env` in the current directory is read, or the file JANT_ENV_FILE names.",
     );
     console.log(
       "If DATABASE_URL or DATA_DIR is then set and no runtime flag is passed,",
@@ -238,7 +238,7 @@ export async function run(argv) {
     process.exit(0);
   }
 
-  // bootstrapCliRuntime auto-loads `.env.node` (so DATABASE_URL/DATA_DIR
+  // bootstrapCliRuntime loads the env file (so DATABASE_URL/DATA_DIR
   // resolve without sourcing the file) and prints a one-line banner with
   // the chosen target.
   const { runtime, envLoad } = bootstrapCliRuntime(values);
@@ -255,12 +255,12 @@ export async function run(argv) {
     const databaseUrlSource = nodeEnvLoadResult?.assignedKeys.includes(
       "DATABASE_URL",
     )
-      ? ".env.node"
+      ? "env file"
       : process.env.DATABASE_URL
         ? "process.env"
         : "<unset>";
     const dataDirSource = nodeEnvLoadResult?.assignedKeys.includes("DATA_DIR")
-      ? ".env.node"
+      ? "env file"
       : process.env.DATA_DIR
         ? "process.env"
         : "<unset>";

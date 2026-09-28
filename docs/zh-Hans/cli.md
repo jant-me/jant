@@ -20,7 +20,7 @@
 | `--database`   | D1 绑定名（默认 `DB`）                                 |
 | `--persist-to` | 本地 D1 状态目录                                       |
 
-不传运行时选项时，设置了 `DATABASE_URL` 或 `DATA_DIR` 就用 Node 运行时，否则用本地 D1。项目目录下的 `.env.node` 会先被读取。
+不传运行时选项时，设置了 `DATABASE_URL` 或 `DATA_DIR` 就用 Node 运行时，否则用本地 D1。当前目录下的 `.env` 会先被读取，见 [`.env` 文件](configuration.md#envnode-和-docker)。
 
 一个数据库里有多个站点时（托管环境），需要指明站点：`--site` 接站点 key 或 ID，`--host` 接域名（子路径下的站点再加 `--path-prefix`），`--url` 接站点 URL。
 

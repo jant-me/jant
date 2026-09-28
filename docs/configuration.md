@@ -619,10 +619,13 @@ DATABASE_URL=file:./data/jant.sqlite
 # TRUST_PROXY=true
 ```
 
-Useful templates:
+`jant start` and the `jant` commands read `.env` in the current directory. A variable already set in the environment wins over the file. Docker Compose passes the file in with `env_file`.
 
-- Repo-root Docker / Node example: [`.env.example`](https://github.com/jant-me/jant/blob/main/.env.example)
-- Package-internal Node example: [`packages/core/.env.node.example`](https://github.com/jant-me/jant/blob/main/packages/core/.env.node.example)
+| Variable        | Default | Description                                                                        |
+| --------------- | ------- | ---------------------------------------------------------------------------------- |
+| `JANT_ENV_FILE` | `.env`  | The file `jant` reads instead, relative to the current directory. Empty reads none |
+
+Template: [`.env.example`](https://github.com/jant-me/jant/blob/main/.env.example).
 
 ### .dev.vars (local development)
 

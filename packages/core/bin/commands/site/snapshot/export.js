@@ -208,7 +208,7 @@ export async function run(argv) {
     console.log("                          on import.");
     console.log("");
     console.log(
-      "`.env.node` next to your project (or in packages/core/) is auto-loaded.",
+      "`.env` in the current directory is read, or the file JANT_ENV_FILE names.",
     );
     console.log(
       "If DATABASE_URL or DATA_DIR is then set and no runtime flag is passed,",
