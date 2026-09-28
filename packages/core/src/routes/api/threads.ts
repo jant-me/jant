@@ -12,6 +12,7 @@ import { THREAD_SORTS } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import {
   ContentLanguageSchema,
+  PostContentSchema,
   StatusSchema,
   parseValidated,
 } from "../../lib/schemas.js";
@@ -39,14 +40,19 @@ const ListThreadsQuerySchema = z.object({
   include: z.string().optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  content: PostContentSchema.optional(),
 });
 
-const GetThreadQuerySchema = z.object({ include: z.string().optional() });
+const GetThreadQuerySchema = z.object({
+  include: z.string().optional(),
+  content: PostContentSchema.optional(),
+});
 
 const ListThreadPostsQuerySchema = z.object({
   status: StatusSchema.optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(100),
+  content: PostContentSchema.optional(),
 });
 
 threadsApiRoutes.get("/", async (c) => {
@@ -73,14 +79,19 @@ threadsApiRoutes.get("/", async (c) => {
   );
 
   return c.json({
-    threads: await loadApiThreadResponses(c.var, threads),
+    threads: await loadApiThreadResponses(c.var, threads, {
+      content: query.content,
+    }),
     nextCursor,
   });
 });
 
 threadsApiRoutes.get("/:id", async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-  const { include } = parseValidated(GetThreadQuerySchema, c.req.query());
+  const { include, content } = parseValidated(
+    GetThreadQuerySchema,
+    c.req.query(),
+  );
   const root = await c.var.services.threads.findRoot({ id }, "author");
   if (!root) throw new NotFoundError("Thread");
 
@@ -88,14 +99,14 @@ threadsApiRoutes.get("/:id", async (c) => {
     [root],
     parseThreadInclude(include),
   );
-  const [thread] = await loadApiThreadResponses(c.var, summaries);
+  const [thread] = await loadApiThreadResponses(c.var, summaries, { content });
   if (!thread) throw new NotFoundError("Thread");
   return c.json(thread);
 });
 
 threadsApiRoutes.get("/:id/posts", async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-  const { status, cursor, limit } = parseValidated(
+  const { status, cursor, limit, content } = parseValidated(
     ListThreadPostsQuerySchema,
     c.req.query(),
   );
@@ -108,7 +119,7 @@ threadsApiRoutes.get("/:id/posts", async (c) => {
     { cursor, limit },
   );
   return c.json({
-    posts: await loadApiPostResponses(c.var, posts),
+    posts: await loadApiPostResponses(c.var, posts, { content }),
     nextCursor,
   });
 });

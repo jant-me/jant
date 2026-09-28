@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Bindings, Post } from "../../../types.js";
 import type { AppVariables } from "../../../types/app-context.js";
-import { parseValidated } from "../../../lib/schemas.js";
+import { parseValidated, PostContentSchema } from "../../../lib/schemas.js";
 import { NotFoundError } from "../../../lib/errors.js";
 import { loadPublicPostResponses } from "../../../lib/api-public-posts.js";
 import { requirePublicApiEnabled } from "../../../middleware/public-content-access.js";
@@ -19,7 +19,7 @@ export const publicPostsApiRoutes = new Hono<Env>();
 publicPostsApiRoutes.use("*", requirePublicApiEnabled());
 
 const PublicPostContentQuerySchema = z.object({
-  content: z.enum(["markdown"]).optional(),
+  content: PostContentSchema.optional(),
 });
 
 function isPublicDetailVisible(post: Post | null): post is Post {

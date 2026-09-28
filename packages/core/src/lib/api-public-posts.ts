@@ -8,9 +8,9 @@
 import type { Services } from "../services/index.js";
 import type { AppConfig } from "../types/config.js";
 import type { Collection, Media, Post } from "../types.js";
+import type { PostContent } from "./schemas.js";
 import { getCollectionPagePath } from "./collection-paths.js";
-import { toApiAttachment } from "./api-posts.js";
-import { tiptapJsonToMarkdown } from "./tiptap-to-markdown.js";
+import { toApiAttachment, toBodyMarkdown } from "./api-posts.js";
 import { toPublicPath } from "./url.js";
 import { getImageUrl, getMediaUrl, getPublicUrlForProvider } from "./image.js";
 
@@ -76,24 +76,6 @@ export type PublicPostResponse =
   PublicPostRenderedResponse | PublicPostMarkdownResponse;
 
 /**
- * The public Markdown for a post, or null for a historical body that isn't
- * TipTap JSON. One unreadable row answers null and is logged, rather than
- * failing the whole listing; `bodyHtml` still falls back to stored HTML.
- */
-function toPublicBodyMarkdown(postId: string, body: string): string | null {
-  try {
-    return tiptapJsonToMarkdown(body);
-  } catch (error) {
-    // eslint-disable-next-line no-console -- A skipped body must leave a trace
-    console.error(
-      `Couldn't convert the body of post ${postId} to Markdown`,
-      error,
-    );
-    return null;
-  }
-}
-
-/**
  * One Post's reading view, from its attachments, its Thread's collections, and
  * its Thread's Post count.
  *
@@ -114,7 +96,7 @@ export function toPublicPost(
     threadPostCount: number;
   },
   appConfig: AppConfig,
-  options?: { content?: "markdown" },
+  options?: { content?: PostContent },
 ): PublicPostResponse {
   const {
     r2PublicUrl,
@@ -181,9 +163,7 @@ export function toPublicPost(
   const contentFields =
     options?.content === "markdown"
       ? {
-          bodyMarkdown: post.body
-            ? toPublicBodyMarkdown(post.id, post.body)
-            : null,
+          bodyMarkdown: post.body ? toBodyMarkdown(post.id, post.body) : null,
         }
       : {
           bodyHtml: post.bodyHtml,
@@ -224,7 +204,7 @@ export async function loadPublicPostResponses(
     appConfig: AppConfig;
   },
   posts: Post[],
-  options: { content?: "markdown" } = {},
+  options: { content?: PostContent } = {},
 ): Promise<PublicPostResponse[]> {
   if (posts.length === 0) return [];
   const { services, appConfig } = deps;

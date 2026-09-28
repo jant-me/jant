@@ -11,6 +11,7 @@ import {
   CreatePostApiSchema,
   FormatSchema,
   parseValidated,
+  PostContentSchema,
   PostIdSchema,
   readJsonBody,
   StatusSchema,
@@ -45,6 +46,11 @@ const ListPostsQuerySchema = z.object({
   status: StatusSchema.optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(100),
+  content: PostContentSchema.optional(),
+});
+
+const GetPostQuerySchema = z.object({
+  content: PostContentSchema.optional(),
 });
 
 const PostSlugQuerySchema = z.discriminatedUnion("mode", [
@@ -62,7 +68,7 @@ const PostSlugQuerySchema = z.discriminatedUnion("mode", [
 
 // List posts (requires auth)
 postsApiRoutes.get("/", requireAuthApi(), async (c) => {
-  const { format, status, cursor, limit } = parseValidated(
+  const { format, status, cursor, limit, content } = parseValidated(
     ListPostsQuerySchema,
     c.req.query(),
   );
@@ -74,7 +80,7 @@ postsApiRoutes.get("/", requireAuthApi(), async (c) => {
   );
 
   return c.json({
-    posts: await loadApiPostResponses(c.var, posts),
+    posts: await loadApiPostResponses(c.var, posts, { content }),
     nextCursor,
   });
 });
@@ -101,24 +107,14 @@ postsApiRoutes.get("/slug", requireAuthApi(), async (c) => {
   });
 });
 
-// Get post body content (requires auth)
-postsApiRoutes.get("/:id/content", requireAuthApi(), async (c) => {
-  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-  const content = assertFound(
-    await c.var.services.posts.getBodyContent(id),
-    "Post",
-  );
-
-  return c.json(content);
-});
-
 // Get single post (requires auth)
 postsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+  const { content } = parseValidated(GetPostQuerySchema, c.req.query());
 
   const post = assertFound(await c.var.services.posts.getById(id), "Post");
 
-  return c.json(await loadApiPostDetail(c.var, post));
+  return c.json(await loadApiPostDetail(c.var, post, { content }));
 });
 
 // Create post (requires auth)

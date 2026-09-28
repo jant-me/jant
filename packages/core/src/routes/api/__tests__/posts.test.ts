@@ -371,20 +371,8 @@ describe("Posts API Routes", () => {
     });
   });
 
-  describe("GET /api/posts/:id/content", () => {
-    it("returns 401 when not authenticated", async () => {
-      const { app, services } = createTestApp({ authenticated: false });
-      app.route("/api/posts", postsApiRoutes);
-
-      const post = await services.posts.create({
-        format: "note",
-        bodyMarkdown: "test post",
-      });
-      const res = await app.request(`/api/posts/${post.id}/content`);
-      expect(res.status).toBe(401);
-    });
-
-    it("returns markdown for a note body", async () => {
+  describe("content=markdown", () => {
+    it("returns the body as Markdown in place of the rendered fields", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/posts", postsApiRoutes);
 
@@ -393,71 +381,62 @@ describe("Posts API Routes", () => {
         bodyMarkdown: "# Heading\n\nBody text",
       });
 
-      const res = await app.request(`/api/posts/${post.id}/content`);
+      const res = await app.request(`/api/posts/${post.id}?content=markdown`);
       expect(res.status).toBe(200);
-      await expect(res.json()).resolves.toEqual({
-        id: post.id,
-        type: "post",
-        format: "note",
-        contentFormat: "markdown",
-        content: "# Heading\n\nBody text",
-        chars: 17,
-      });
+      const body = await res.json();
+      expect(body.bodyMarkdown).toBe("# Heading\n\nBody text");
+      expect(body).not.toHaveProperty("body");
+      expect(body).not.toHaveProperty("bodyHtml");
+      expect(body).not.toHaveProperty("bodyText");
+      expect(body.collectionIds).toEqual([]);
+
+      const list = await (
+        await app.request("/api/posts?content=markdown")
+      ).json();
+      expect(list.posts[0].bodyMarkdown).toBe("# Heading\n\nBody text");
     });
 
-    it("returns quote commentary without quoteText or source metadata", async () => {
+    it("keeps a quote's own fields and answers null without a body", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/posts", postsApiRoutes);
 
-      const post = await services.posts.create({
+      const quote = await services.posts.create({
         format: "quote",
         title: "Marcus Aurelius",
-        url: "https://example.com/meditations",
         quoteText: "What stands in the way becomes the way.",
         bodyMarkdown: "Short commentary",
       });
-
-      const res = await app.request(`/api/posts/${post.id}/content`);
-      expect(res.status).toBe(200);
-      await expect(res.json()).resolves.toEqual({
-        id: post.id,
-        type: "post",
-        format: "quote",
-        contentFormat: "markdown",
-        content: "Short commentary",
-        chars: 16,
-      });
-    });
-
-    it("returns empty markdown when a link has no commentary body", async () => {
-      const { app, services } = createTestApp({ authenticated: true });
-      app.route("/api/posts", postsApiRoutes);
-
-      const post = await services.posts.create({
+      const link = await services.posts.create({
         format: "link",
         title: "Example",
         url: "https://example.com",
       });
 
-      const res = await app.request(`/api/posts/${post.id}/content`);
-      expect(res.status).toBe(200);
-      await expect(res.json()).resolves.toEqual({
-        id: post.id,
-        type: "post",
-        format: "link",
-        contentFormat: "markdown",
-        content: "",
-        chars: 0,
-      });
+      const quoteBody = await (
+        await app.request(`/api/posts/${quote.id}?content=markdown`)
+      ).json();
+      expect(quoteBody.bodyMarkdown).toBe("Short commentary");
+      expect(quoteBody.quoteText).toBe(
+        "What stands in the way becomes the way.",
+      );
+      expect(quoteBody.sourceName).toBe("Marcus Aurelius");
+
+      const linkBody = await (
+        await app.request(`/api/posts/${link.id}?content=markdown`)
+      ).json();
+      expect(linkBody.bodyMarkdown).toBeNull();
     });
 
-    it("returns 404 for a non-existent post", async () => {
-      const { app } = createTestApp({ authenticated: true });
+    it("refuses a content format it doesn't know", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/posts", postsApiRoutes);
-      const missingId = createEntityId("post");
 
-      const res = await app.request(`/api/posts/${missingId}/content`);
-      expect(res.status).toBe(404);
+      const post = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "text",
+      });
+      const res = await app.request(`/api/posts/${post.id}?content=html`);
+      expect(res.status).toBe(400);
     });
   });
 

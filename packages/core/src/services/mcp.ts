@@ -8,6 +8,7 @@ import {
   CreatePostApiSchema,
   FormatSchema,
   MediaIdSchema,
+  PostContentSchema,
   PostIdSchema,
   StatusSchema,
   UpdatePostApiSchema,
@@ -98,10 +99,16 @@ const ListPostsToolSchema = z.object({
   format: FormatSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(100),
   status: StatusSchema.optional(),
+  content: PostContentSchema.optional().describe(
+    "markdown returns bodyMarkdown in place of body, bodyHtml, and bodyText",
+  ),
 });
 
 const GetPostToolSchema = z.object({
   id: PostIdSchema.describe("Post TypeID"),
+  content: PostContentSchema.optional().describe(
+    "markdown returns bodyMarkdown in place of body, bodyHtml, and bodyText",
+  ),
 });
 
 const UpdateCollectionToolSchema = CreateCollectionSchema.partial().extend({
@@ -192,6 +199,9 @@ const ListThreadsToolSchema = z.object({
   title: z.enum(["any", "none"]).optional(),
   replies: z.enum(["any", "none"]).optional(),
   visibility: z.enum(THREAD_AUTHOR_VISIBILITIES).optional(),
+  content: PostContentSchema.optional().describe(
+    "markdown returns bodyMarkdown in place of body, bodyHtml, and bodyText",
+  ),
 });
 
 const LIST_THREADS_OWN_PARAMS = [
@@ -201,11 +211,15 @@ const LIST_THREADS_OWN_PARAMS = [
   "sort",
   "fold",
   "lang",
+  "content",
 ] as const;
 
 const GetThreadToolSchema = z.object({
   id: PostIdSchema.describe("TypeID of any post in the Thread"),
   fold: z.boolean().optional(),
+  content: PostContentSchema.optional().describe(
+    "markdown returns bodyMarkdown in place of body, bodyHtml, and bodyText",
+  ),
 });
 
 const ListThreadPostsToolSchema = z.object({
@@ -213,6 +227,9 @@ const ListThreadPostsToolSchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(100),
   status: StatusSchema.optional(),
+  content: PostContentSchema.optional().describe(
+    "markdown returns bodyMarkdown in place of body, bodyHtml, and bodyText",
+  ),
 });
 
 /**
@@ -267,7 +284,9 @@ const mcpTools: McpToolDefinition[] = [
       );
 
       return {
-        posts: await serializePosts(posts, context),
+        posts: await loadApiPostResponses(context, posts, {
+          content: input.content,
+        }),
         nextCursor,
       };
     },
@@ -275,7 +294,7 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_posts_get",
     description:
-      "Get one post, including attachments and shared Thread collection IDs.",
+      "Get one post, including attachments and shared Thread collection IDs. Set content to markdown to read the body as Markdown.",
     inputSchema: toolInputSchema(GetPostToolSchema),
     async execute(args, context) {
       const input = GetPostToolSchema.parse(args ?? {});
@@ -284,21 +303,7 @@ const mcpTools: McpToolDefinition[] = [
         throw new NotFoundError("Post");
       }
 
-      return loadApiPostDetail(context, post);
-    },
-  },
-  {
-    name: "jant_posts_get_content",
-    description: "Get one post body as markdown.",
-    inputSchema: toolInputSchema(GetPostToolSchema),
-    async execute(args, context) {
-      const input = GetPostToolSchema.parse(args ?? {});
-      const content = await context.services.posts.getBodyContent(input.id);
-      if (!content) {
-        throw new NotFoundError("Post");
-      }
-
-      return content;
+      return loadApiPostDetail(context, post, { content: input.content });
     },
   },
   {
@@ -342,7 +347,9 @@ const mcpTools: McpToolDefinition[] = [
           { cursor: input.cursor, limit: input.limit },
         );
       return {
-        threads: await loadApiThreadResponses(context, threads),
+        threads: await loadApiThreadResponses(context, threads, {
+          content: input.content,
+        }),
         nextCursor,
       };
     },
@@ -364,7 +371,9 @@ const mcpTools: McpToolDefinition[] = [
       const summaries = await context.services.threads.summarize([root], {
         fold: input.fold,
       });
-      const [thread] = await loadApiThreadResponses(context, summaries);
+      const [thread] = await loadApiThreadResponses(context, summaries, {
+        content: input.content,
+      });
       return thread;
     },
   },
@@ -388,7 +397,9 @@ const mcpTools: McpToolDefinition[] = [
         { cursor: input.cursor, limit: input.limit },
       );
       return {
-        posts: await serializePosts(posts, context),
+        posts: await loadApiPostResponses(context, posts, {
+          content: input.content,
+        }),
         nextCursor,
       };
     },
@@ -1147,15 +1158,8 @@ async function uploadMediaFromBase64(
   return serializeMedia(media, context.appConfig);
 }
 
-// MCP tools answer what their HTTP endpoints do: a list leaves out
-// `collectionIds`, as do create and update; only a single read carries it.
-function serializePosts(
-  posts: Awaited<ReturnType<Services["posts"]["list"]>>,
-  context: McpToolContext,
-) {
-  return loadApiPostResponses(context, posts);
-}
-
+// MCP tools answer what their HTTP endpoints do: create and update leave out
+// `collectionIds`, as a list does; only a single read carries it.
 function serializePost(post: Post, context: McpToolContext) {
   return loadApiPostResponse(context, post);
 }

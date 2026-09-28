@@ -101,6 +101,7 @@ describe("API docs", () => {
       keysOf(
         toApiPost(post(), extras),
         toApiPost(post({ format: "quote" }), extras),
+        toApiPost(post(), extras, { content: "markdown" }),
       ),
     ).toEqual(documentedFields("Post responses include these fields:"));
   });

@@ -19,6 +19,7 @@ import {
   type PublicPostResponse,
 } from "./api-public-posts.js";
 import { encodeThreadPostsCursorAfter } from "./post-list-cursor.js";
+import type { PostContent } from "./schemas.js";
 import { toPublicPath } from "./url.js";
 
 /**
@@ -152,6 +153,7 @@ export function toApiThreadResponse<P, G>(
  *
  * @param deps - Services and app config
  * @param summaries - Threads to respond with, in order
+ * @param options - `content: "markdown"` returns `bodyMarkdown` on every Post
  * @returns One Thread object per summary, in the same order
  * @example
  * const threads = await loadApiThreadResponses(c.var, page.threads);
@@ -159,10 +161,11 @@ export function toApiThreadResponse<P, G>(
 export async function loadApiThreadResponses(
   deps: ApiPostResponseDeps,
   summaries: ThreadSummary[],
+  options: { content?: PostContent } = {},
 ): Promise<ApiAuthorThreadResponse[]> {
   return buildThreadResponses(
     summaries,
-    (posts) => loadApiPostResponses(deps, posts),
+    (posts) => loadApiPostResponses(deps, posts, options),
     (post, cursor) => ({ id: post.id, slug: post.slug, cursor }),
   );
 }
@@ -180,7 +183,7 @@ export async function loadApiThreadResponses(
 export async function loadPublicThreadResponses(
   deps: ApiPostResponseDeps,
   summaries: ThreadSummary[],
-  options: { content?: "markdown" } = {},
+  options: { content?: PostContent } = {},
 ): Promise<PublicThreadResponse[]> {
   return buildThreadResponses(
     summaries,

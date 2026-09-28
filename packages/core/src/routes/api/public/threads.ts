@@ -12,7 +12,11 @@ import { z } from "zod";
 import type { Bindings } from "../../../types.js";
 import { THREAD_SORTS } from "../../../types.js";
 import type { AppVariables } from "../../../types/app-context.js";
-import { ContentLanguageSchema, parseValidated } from "../../../lib/schemas.js";
+import {
+  ContentLanguageSchema,
+  parseValidated,
+  PostContentSchema,
+} from "../../../lib/schemas.js";
 import { NotFoundError } from "../../../lib/errors.js";
 import { loadPublicPostResponses } from "../../../lib/api-public-posts.js";
 import { loadPublicThreadResponses } from "../../../lib/api-threads.js";
@@ -28,8 +32,6 @@ export const publicThreadsApiRoutes = new Hono<Env>();
 
 publicThreadsApiRoutes.use("*", requirePublicApiEnabled());
 
-const ContentSchema = z.enum(["markdown"]).optional();
-
 /** The list's own parameters; everything else is a filter dimension. */
 const ListThreadsQuerySchema = z.object({
   lang: ContentLanguageSchema.optional(),
@@ -37,18 +39,18 @@ const ListThreadsQuerySchema = z.object({
   include: z.string().optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
-  content: ContentSchema,
+  content: PostContentSchema.optional(),
 });
 
 const GetThreadQuerySchema = z.object({
   include: z.string().optional(),
-  content: ContentSchema,
+  content: PostContentSchema.optional(),
 });
 
 const ListThreadPostsQuerySchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(100),
-  content: ContentSchema,
+  content: PostContentSchema.optional(),
 });
 
 publicThreadsApiRoutes.get("/", async (c) => {

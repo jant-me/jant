@@ -753,6 +753,57 @@ describe("MCP post writes", () => {
     });
   });
 
+  it("reads bodies as Markdown where HTTP takes content=markdown", async () => {
+    const { app, services } = createTestApp({ authenticated: true });
+    app.route("/api/mcp", mcpApiRoutes);
+    app.route("/api/posts", postsApiRoutes);
+    const post = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Some **bold** text",
+    });
+
+    const viaMcp = await callTool(app, "/api/mcp", "jant_posts_get", {
+      id: post.id,
+      content: "markdown",
+    });
+    const viaHttp = await (
+      await app.request(`/api/posts/${post.id}?content=markdown`)
+    ).json();
+    expect(viaMcp.result.structuredContent).toEqual(viaHttp);
+    expect(viaHttp.bodyMarkdown).toBe("Some **bold** text");
+
+    for (const [name, args] of [
+      ["jant_posts_list", {}],
+      ["jant_threads_list_posts", { id: post.id }],
+    ] as const) {
+      const listed = (await callTool(app, "/api/mcp", name, {
+        ...args,
+        content: "markdown",
+      })) as unknown as {
+        result: { structuredContent: { posts: { bodyMarkdown: string }[] } };
+      };
+      expect(listed.result.structuredContent.posts[0]?.bodyMarkdown, name).toBe(
+        "Some **bold** text",
+      );
+    }
+    for (const name of ["jant_threads_list", "jant_threads_get"]) {
+      const result = (await callTool(app, "/api/mcp", name, {
+        ...(name === "jant_threads_get" ? { id: post.id } : {}),
+        content: "markdown",
+      })) as unknown as {
+        result: {
+          structuredContent: {
+            threads?: { root: { bodyMarkdown: string } }[];
+            root?: { bodyMarkdown: string };
+          };
+        };
+      };
+      const content = result.result.structuredContent;
+      const root = content.threads?.[0]?.root ?? content.root;
+      expect(root?.bodyMarkdown, name).toBe("Some **bold** text");
+    }
+  });
+
   it("keeps every field POST and PUT /api/posts keep", async () => {
     // The MCP tools once mapped the body themselves and dropped `language`,
     // `translationOfId`, `pinnedAt`, and `featuredAt`.

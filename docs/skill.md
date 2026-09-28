@@ -133,7 +133,7 @@ curl -X POST "$JANT_SITE/api/posts" \
   }'
 ```
 
-Use `PUT /api/posts/:id` to update a post and `DELETE /api/posts/:id` to delete one. Fetch the post first, preserve fields the user did not ask to change, and confirm before deletion.
+Use `PUT /api/posts/:id` to update a post and `DELETE /api/posts/:id` to delete one. Fetch the post first, preserve fields the user did not ask to change, and confirm before deletion. To edit a body, read it with `GET /api/posts/:id?content=markdown` (MCP: `jant_posts_get` with `content: "markdown"`) and send the edited `bodyMarkdown` back; a text attachment's Markdown is at its `contentUrl`.
 
 Use `POST /api/upload` for an ordinary single-file script or one-time migration. Use the session-based `/api/uploads` flow for large files, unreliable connections, or clients that need resumable transport. Save the returned `med_*` ID before attaching media to a post.
 

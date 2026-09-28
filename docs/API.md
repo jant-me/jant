@@ -119,7 +119,7 @@ Current transport behavior:
 
 Current tool groups:
 
-- posts: `jant_posts_list`, `jant_posts_get`, `jant_posts_get_content`, `jant_posts_search`, `jant_posts_create`, `jant_posts_update`, `jant_posts_delete`
+- posts: `jant_posts_list`, `jant_posts_get`, `jant_posts_search`, `jant_posts_create`, `jant_posts_update`, `jant_posts_delete`
 - threads: `jant_threads_list`, `jant_threads_get`, `jant_threads_list_posts`
 - media: `jant_media_list`, `jant_media_get`, `jant_media_upload`, `jant_media_update`, `jant_media_delete`
 - attachments: `jant_attachments_get_content`
@@ -130,7 +130,7 @@ Tool calls return normal MCP `result` envelopes. Successful tool calls include b
 
 `jant_posts_search` takes `q` and `limit`, searches as `GET /api/search` does, and returns the same result objects.
 
-`jant_posts_list`, `jant_threads_list`, and `jant_threads_list_posts` take `cursor` and return `nextCursor` as `GET /api/posts`, `GET /api/threads`, and `GET /api/threads/:id/posts` do; see [Pagination](#pagination). `jant_threads_list` takes the same filters as `GET /api/threads`, and `fold: true` in place of `include=fold`.
+`jant_posts_list`, `jant_threads_list`, and `jant_threads_list_posts` take `cursor` and return `nextCursor` as `GET /api/posts`, `GET /api/threads`, and `GET /api/threads/:id/posts` do; see [Pagination](#pagination). `jant_threads_list` takes the same filters as `GET /api/threads`, and `fold: true` in place of `include=fold`. The tools that return posts take `content: "markdown"` as their endpoints take `content=markdown`.
 
 Initialize:
 
@@ -310,9 +310,10 @@ Post responses include these fields:
 | `sourceName`      | string \| `null`                         | Returned instead of `title` for `quote`                                                                                                  |
 | `sourceUrl`       | string \| `null`                         | Returned instead of `url` for `quote`                                                                                                    |
 | `displayTitle`    | string                                   | Short plain-text name: the title, or one derived from the content when there is none. Use it where the post is referenced from elsewhere |
-| `body`            | string \| `null`                         | Raw TipTap JSON string when stored that way                                                                                              |
-| `bodyHtml`        | string \| `null`                         | Rendered HTML                                                                                                                            |
-| `bodyText`        | string \| `null`                         | Plain-text rendering                                                                                                                     |
+| `body`            | string \| `null`                         | Raw TipTap JSON string when stored that way; omitted when `content=markdown`                                                             |
+| `bodyHtml`        | string \| `null`                         | Rendered HTML; omitted when `content=markdown`                                                                                           |
+| `bodyText`        | string \| `null`                         | Plain-text rendering; omitted when `content=markdown`                                                                                    |
+| `bodyMarkdown`    | string \| `null`                         | Markdown source; only returned when `content=markdown`                                                                                   |
 | `quoteText`       | string \| `null`                         | Quote content                                                                                                                            |
 | `summary`         | string \| `null`                         | Optional summary                                                                                                                         |
 | `rating`          | integer \| `null`                        | `1` to `5` when set                                                                                                                      |
@@ -449,12 +450,13 @@ Auth: `Session or token`
 
 Query parameters:
 
-| Parameter | Type                        | Required | Default     | Notes                                         |
-| --------- | --------------------------- | -------- | ----------- | --------------------------------------------- |
-| `format`  | `note` \| `link` \| `quote` | no       | all         | Format filter                                 |
-| `status`  | `draft` \| `published`      | no       | `published` | Status filter                                 |
-| `cursor`  | string                      | no       | none        | Pass the previous `nextCursor` back unchanged |
-| `limit`   | integer                     | no       | `100`       | `1` to `100`                                  |
+| Parameter | Type                        | Required | Default     | Notes                                                               |
+| --------- | --------------------------- | -------- | ----------- | ------------------------------------------------------------------- |
+| `format`  | `note` \| `link` \| `quote` | no       | all         | Format filter                                                       |
+| `status`  | `draft` \| `published`      | no       | `published` | Status filter                                                       |
+| `cursor`  | string                      | no       | none        | Pass the previous `nextCursor` back unchanged                       |
+| `limit`   | integer                     | no       | `100`       | `1` to `100`                                                        |
+| `content` | `markdown`                  | no       | none        | Return `bodyMarkdown` instead of `body`, `bodyHtml`, and `bodyText` |
 
 Response:
 
@@ -550,6 +552,8 @@ Invalid slug candidates return `400`, including reserved slugs and slugs with in
 Auth: `Session or token`
 
 This returns the full post plus shared Thread-level `collectionIds`, ordered `attachments`, and `threadPosition`: the post's place in its Thread, `1` for the root. `jant_posts_get` returns the same.
+
+`content=markdown` returns the body as `bodyMarkdown` in place of `body`, `bodyHtml`, and `bodyText`. To edit a body, read it this way and send the edited Markdown back as `bodyMarkdown`.
 
 Example:
 
@@ -1007,7 +1011,7 @@ Query parameters:
 | `include`    | `fold`                                                         | no       | none        | Add [the fold](#the-fold) to each Thread                                                                                                      |
 | `cursor`     | string                                                         | no       | none        | Pass the previous `nextCursor` back unchanged                                                                                                 |
 | `limit`      | integer                                                        | no       | `20`        | `1` to `100`                                                                                                                                  |
-| `content`    | `markdown`                                                     | no       | none        | `/api/public/threads` only. Return `bodyMarkdown` instead of rendered body fields                                                             |
+| `content`    | `markdown`                                                     | no       | none        | Return `bodyMarkdown` instead of the rendered body fields                                                                                     |
 
 Orders:
 
@@ -1037,7 +1041,7 @@ Notes:
 - A single `collection` without `sort` lists in that collection's own `sortOrder`, with its pinned Threads on top; several collections list by `activity`. `activity`, `oldest`, and `rating` on a collection keep its pins. `published` and `updated` read it as a plain filter.
 - To walk every public Thread, pass `visibility=any&sort=published`: in `activity` order a new reply moves a Thread, which a walk can skip.
 - Paging follows [Pagination](#pagination).
-- An invalid value returns `400`, and so does a parameter the endpoint doesn't know. An unknown `collection` slug returns an empty result set.
+- An invalid value returns `400`. An unknown `collection` slug returns an empty result set.
 
 ### Get a Thread
 
@@ -1066,12 +1070,12 @@ Returns the posts of the Thread the slug or ID names, in Thread order: the root 
 
 Query parameters:
 
-| Parameter | Type                   | Required | Default     | Notes                                                                             |
-| --------- | ---------------------- | -------- | ----------- | --------------------------------------------------------------------------------- |
-| `status`  | `draft` \| `published` | no       | `published` | `/api/threads/:id/posts` only                                                     |
-| `cursor`  | string                 | no       | none        | Pass the previous `nextCursor` back unchanged, or the ID of a post in this Thread |
-| `limit`   | integer                | no       | `100`       | `1` to `100`                                                                      |
-| `content` | `markdown`             | no       | none        | `/api/public/threads/:slug/posts` only                                            |
+| Parameter | Type                   | Required | Default     | Notes                                                                  |
+| --------- | ---------------------- | -------- | ----------- | ---------------------------------------------------------------------- |
+| `status`  | `draft` \| `published` | no       | `published` | `/api/threads/:id/posts` only                                          |
+| `cursor`  | string                 | no       | none        | Pass the previous `nextCursor` or a fold's `gap.cursor` back unchanged |
+| `limit`   | integer                | no       | `100`       | `1` to `100`                                                           |
+| `content` | `markdown`             | no       | none        | Return `bodyMarkdown` instead of the rendered body fields              |
 
 Response: `{ "posts": [Post], "nextCursor": string | null }`, with each post as the Posts or Public posts endpoints return it.
 
@@ -1079,7 +1083,6 @@ Notes:
 
 - `/api/public/threads/:slug/posts` returns published posts only.
 - A reply published during a walk joins the end of the Thread, so the walk reaches it.
-- `cursor` also takes the ID of a post in this Thread: the page starts right after it. The ID of a post in another Thread returns `400`.
 - Paging follows [Pagination](#pagination).
 
 ---

@@ -63,7 +63,6 @@ import {
   THREAD_TRAILING_REPLIES,
 } from "../lib/thread-fold.js";
 import { markdownToTiptapJson } from "../lib/markdown-to-tiptap.js";
-import { tiptapJsonToMarkdown } from "../lib/tiptap-to-markdown.js";
 import { generatePostSlug } from "../lib/slug.js";
 import { getSlugValidationIssue } from "../lib/slug-format.js";
 import { isReservedPath } from "../lib/constants.js";
@@ -341,15 +340,6 @@ export interface FeaturedThreadTimelineData {
   featuredPostIds: string[];
 }
 
-export interface PostBodyContent {
-  id: string;
-  type: "post";
-  format: Format;
-  contentFormat: "markdown";
-  content: string;
-  chars: number;
-}
-
 /** Minimal projection used by the sitemap renderer. */
 export interface SitemapPostEntry {
   id: string;
@@ -425,7 +415,6 @@ export interface PostService {
    * ```
    */
   getWithCanonicalAlias(postId: string): Promise<PostWithCanonicalAlias | null>;
-  getBodyContent(id: string): Promise<PostBodyContent | null>;
   getBySlug(slug: string): Promise<Post | null>;
   suggestSlug(input: {
     title?: string;
@@ -2358,20 +2347,6 @@ export function createPostService(
 
       const post = await hydratePost(row.post, slug);
       return post ? { post, canonicalAlias } : null;
-    },
-
-    async getBodyContent(id) {
-      const post = await this.getById(id);
-      if (!post) return null;
-
-      return {
-        id: post.id,
-        type: "post",
-        format: post.format,
-        contentFormat: "markdown",
-        content: post.body ? tiptapJsonToMarkdown(post.body) : "",
-        chars: post.bodyText?.length ?? 0,
-      };
     },
 
     async getBySlug(slug) {

@@ -175,6 +175,15 @@ export const FormatSchema = z.enum(FORMATS);
 export const StatusSchema = z.enum(STATUSES);
 
 /**
+ * How a read returns post bodies: `markdown` returns `bodyMarkdown` in place
+ * of the rendered fields. Every API read that returns posts takes it.
+ */
+export const PostContentSchema = z.enum(["markdown"]);
+
+/** A post read's body format, as {@link PostContentSchema} parses it. */
+export type PostContent = z.infer<typeof PostContentSchema>;
+
+/**
  * Post/general sort order enum schema
  */
 export const SortOrderSchema = z.enum(SORT_ORDERS);

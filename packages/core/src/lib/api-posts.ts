@@ -5,6 +5,8 @@ import type { AppConfig } from "../types/config.js";
 import type { Media, Post, Status } from "../types.js";
 import { getPostDisplayTitle } from "./post-meta.js";
 import { getImageUrl, getMediaUrl, getPublicUrlForProvider } from "./image.js";
+import type { PostContent } from "./schemas.js";
+import { tiptapJsonToMarkdown } from "./tiptap-to-markdown.js";
 import { toPublicPath } from "./url.js";
 
 /**
@@ -32,9 +34,14 @@ export interface ApiPostResponse {
    * a URL, not a name.
    */
   displayTitle: string;
-  body: string | null;
-  bodyHtml: string | null;
-  bodyText: string | null;
+  /** TipTap JSON. Left out when the read asked for `content: "markdown"`. */
+  body?: string | null;
+  /** Left out when the read asked for `content: "markdown"`. */
+  bodyHtml?: string | null;
+  /** Left out when the read asked for `content: "markdown"`. */
+  bodyText?: string | null;
+  /** Only when the read asked for `content: "markdown"`. */
+  bodyMarkdown?: string | null;
   quoteText: string | null;
   summary: string | null;
   rating: number | null;
@@ -180,6 +187,63 @@ export function toApiAttachment(
   };
 }
 
+/**
+ * A post body as Markdown, or null for a historical body that isn't TipTap
+ * JSON. One unreadable row answers null and is logged, rather than failing a
+ * whole page of posts.
+ *
+ * @param postId - The post, named in the log line
+ * @param body - The stored TipTap JSON
+ * @returns The Markdown, or null
+ * @example
+ * toBodyMarkdown(post.id, post.body); // "Hello **world**"
+ */
+export function toBodyMarkdown(postId: string, body: string): string | null {
+  try {
+    return tiptapJsonToMarkdown(body);
+  } catch (error) {
+    // eslint-disable-next-line no-console -- A skipped body must leave a trace
+    console.error(
+      `Couldn't convert the body of post ${postId} to Markdown`,
+      error,
+    );
+    return null;
+  }
+}
+
+/**
+ * The body fields a read returns: the stored and rendered forms, or with
+ * `content: "markdown"` the Markdown alone.
+ *
+ * @param post - The Post
+ * @param content - The body format the read asked for
+ * @returns The body fields
+ * @example
+ * toApiPostBody(post, "markdown"); // { bodyMarkdown: "…" }
+ */
+function toApiPostBody(
+  post: Post,
+  content: PostContent | undefined,
+): Pick<ApiPostResponse, "body" | "bodyHtml" | "bodyText" | "bodyMarkdown"> {
+  if (content === "markdown") {
+    return {
+      bodyMarkdown: post.body ? toBodyMarkdown(post.id, post.body) : null,
+    };
+  }
+  return { body: post.body, bodyHtml: post.bodyHtml, bodyText: post.bodyText };
+}
+
+/**
+ * One Post's author response, from what was read about it in its page's batch.
+ *
+ * @param post - The Post
+ * @param extras - Its Thread's post count, attachments, and collections
+ * @param options - `content: "markdown"` returns `bodyMarkdown` in place of
+ *   `body`, `bodyHtml`, and `bodyText`
+ * @returns The response
+ * @example
+ * toApiPost(post, { threadPostCount: 1 });
+ */
 export function toApiPost(
   post: Post,
   extras: {
@@ -187,6 +251,7 @@ export function toApiPost(
     attachments?: ReturnType<typeof toApiAttachment>[];
     collectionIds?: string[];
   },
+  options: { content?: PostContent } = {},
 ): ApiPostResponse {
   // Quotes name their source where other formats carry a title and link.
   const source =
@@ -206,9 +271,7 @@ export function toApiPost(
     // A short name for this Post wherever it is referenced from somewhere
     // else — notes are usually untitled, so the client cannot just read `title`.
     displayTitle: getPostDisplayTitle(post),
-    body: post.body,
-    bodyHtml: post.bodyHtml,
-    bodyText: post.bodyText,
+    ...toApiPostBody(post, options.content),
     quoteText: post.quoteText,
     summary: post.summary,
     rating: post.rating,
@@ -233,6 +296,14 @@ export interface ApiPostResponseDeps {
   appConfig: AppConfig;
 }
 
+/** What else {@link loadApiPostResponses} puts on each response. */
+export interface ApiPostResponseOptions {
+  /** Add each Post's shared Thread collections. */
+  collectionIds?: boolean;
+  /** `markdown` returns each body as Markdown. */
+  content?: PostContent;
+}
+
 /**
  * API responses for Posts already loaded. Attachments, Thread Post counts,
  * and (when asked) Thread collections are each read in one batch for the
@@ -240,7 +311,8 @@ export interface ApiPostResponseDeps {
  *
  * @param deps - Services and app config; a request's `c.var` or an MCP context
  * @param posts - Posts to respond with, in order
- * @param options - `collectionIds` adds each Post's shared Thread collections
+ * @param options - `collectionIds` adds each Post's shared Thread collections;
+ *   `content: "markdown"` returns each body as Markdown
  * @returns One response per Post, in the same order
  * @example
  * const responses = await loadApiPostResponses(c.var, page.posts);
@@ -248,7 +320,7 @@ export interface ApiPostResponseDeps {
 export async function loadApiPostResponses(
   deps: ApiPostResponseDeps,
   posts: Post[],
-  options: { collectionIds?: boolean } = {},
+  options: ApiPostResponseOptions = {},
 ): Promise<ApiPostResponse[]> {
   if (posts.length === 0) return [];
   const { services, appConfig } = deps;
@@ -262,19 +334,23 @@ export async function loadApiPostResponses(
   ]);
 
   return posts.map((post) =>
-    toApiPost(post, {
-      threadPostCount: threadPostCounts.get(post.threadId) ?? 0,
-      attachments: (mediaMap.get(post.id) ?? []).map((media) =>
-        toApiAttachment(media, appConfig),
-      ),
-      ...(collectionsMap
-        ? {
-            collectionIds: (collectionsMap.get(post.id) ?? []).map(
-              (collection) => collection.id,
-            ),
-          }
-        : {}),
-    }),
+    toApiPost(
+      post,
+      {
+        threadPostCount: threadPostCounts.get(post.threadId) ?? 0,
+        attachments: (mediaMap.get(post.id) ?? []).map((media) =>
+          toApiAttachment(media, appConfig),
+        ),
+        ...(collectionsMap
+          ? {
+              collectionIds: (collectionsMap.get(post.id) ?? []).map(
+                (collection) => collection.id,
+              ),
+            }
+          : {}),
+      },
+      { content: options.content },
+    ),
   );
 }
 
@@ -283,7 +359,7 @@ export async function loadApiPostResponses(
  *
  * @param deps - Services and app config
  * @param post - The Post
- * @param options - `collectionIds` adds the Post's shared Thread collections
+ * @param options - As for {@link loadApiPostResponses}
  * @returns The Post's response
  * @example
  * return c.json(await loadApiPostResponse(c.var, post));
@@ -291,7 +367,7 @@ export async function loadApiPostResponses(
 export async function loadApiPostResponse(
   deps: ApiPostResponseDeps,
   post: Post,
-  options: { collectionIds?: boolean } = {},
+  options: ApiPostResponseOptions = {},
 ): Promise<ApiPostResponse> {
   const [response] = await loadApiPostResponses(deps, [post], options);
   if (!response) throw new Error(`No response built for post ${post.id}`);
@@ -304,6 +380,7 @@ export async function loadApiPostResponse(
  *
  * @param deps - Services and app config
  * @param post - The Post
+ * @param options - `content: "markdown"` returns the body as Markdown
  * @returns The Post's response with `collectionIds` and `threadPosition`
  * @example
  * return c.json(await loadApiPostDetail(c.var, post));
@@ -311,9 +388,13 @@ export async function loadApiPostResponse(
 export async function loadApiPostDetail(
   deps: ApiPostResponseDeps,
   post: Post,
+  options: { content?: PostContent } = {},
 ): Promise<ApiPostResponse & { threadPosition: number }> {
   const [response, threadPosition] = await Promise.all([
-    loadApiPostResponse(deps, post, { collectionIds: true }),
+    loadApiPostResponse(deps, post, {
+      collectionIds: true,
+      content: options.content,
+    }),
     deps.services.posts.getThreadPosition(post.id),
   ]);
   return { ...response, threadPosition };
