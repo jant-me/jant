@@ -1886,6 +1886,10 @@ there is no "any" value, because a key that is absent already says that.
 | `replies`    | boolean — `true` threads with replies, `false` single posts               |
 | `visibility` | `public` \| `featured` \| `latest_hidden`                                 |
 
+A key this table doesn't list answers `400` rather than being ignored like an
+unknown field elsewhere: dropping a condition would publish a wider page than
+the one asked for.
+
 `visibility` never accepts `private`, and `collection` never accepts more than
 one id. The first is because a smart collection is a published page and can
 never name a set only its author can see; the second is because two ids would

@@ -35,6 +35,8 @@ A major release that changes one of these says what to change in its upgrade not
 
 Additions come in minor releases: new endpoints, fields, options, feed elements, and settings, and new values for a field that takes one of a fixed set, such as a post's `format` or an error's `code`. A client should ignore a field or element it doesn't recognize, read a `format` it doesn't recognize as `note`, and handle an error `code` it doesn't recognize by the HTTP status.
 
+Requests get the same tolerance: the HTTP API and MCP ignore a request field or parameter they don't recognize, so a client written for a later release still works against an earlier one wherever it doesn't depend on the new field. The one exception is a smart collection's `selection`, where an unknown condition answers `400`, since ignoring it would publish a wider page than asked for.
+
 ## Not promised
 
 These can change in any release. Jant keeps them stable where it can, and a release that changes one says so in its release notes:
