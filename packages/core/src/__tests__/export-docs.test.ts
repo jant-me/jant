@@ -20,32 +20,38 @@ import { parseFrontMatter } from "../lib/hugo-markdown.js";
 import type { StorageDriver } from "../lib/storage.js";
 
 const CORE_DIR = resolve(import.meta.dirname, "../..");
-const REFERENCE = (() => {
-  const doc = readFileSync(
-    resolve(CORE_DIR, "../../docs/export-and-import.md"),
-    "utf8",
-  );
-  const start = doc.indexOf("### File reference\n");
+
+/** The "File reference" section of one language's export page. */
+function readReference(docPath: string, heading: string): string {
+  const doc = readFileSync(resolve(CORE_DIR, "../..", docPath), "utf8");
+  const start = doc.indexOf(`${heading}\n`);
   const end = doc.indexOf("\n### ", start + 1);
   return doc.slice(start, end);
-})();
-const EXPORTER = readFileSync(
-  resolve(CORE_DIR, "src/services/export.ts"),
-  "utf8",
+}
+
+/** Every backticked field name in a reference's table rows, prose left out. */
+function tableNames(reference: string): Set<string> {
+  return new Set(
+    reference
+      .split("\n")
+      .filter((line) => line.startsWith("| `"))
+      .flatMap((line) =>
+        [...line.matchAll(/`([a-z][a-z_]*)`/g)].map((match) => match[1]!),
+      ),
+  );
+}
+
+const REFERENCE = readReference(
+  "docs/export-and-import.md",
+  "### File reference",
+);
+const REFERENCE_ZH = readReference(
+  "docs/zh-Hans/export-and-import.md",
+  "### 文件字段一览",
 );
 
-/** Every backticked name in the reference, tables and prose. */
-const documented = new Set(
-  [...REFERENCE.matchAll(/`([a-z][a-z_]*)`/g)].map((match) => match[1]!),
-);
-/** The names in the tables' first column: the fields themselves. */
-const tableFields = REFERENCE.split("\n")
-  .filter((line) => line.startsWith("| `"))
-  .flatMap((line) =>
-    [...(line.split("|")[1] ?? "").matchAll(/`([a-z][a-z_]*)`/g)].map(
-      (match) => match[1]!,
-    ),
-  );
+/** Every field the tables name, in either column: the documented fields. */
+const documented = tableNames(REFERENCE);
 
 function memoryStorage(): StorageDriver {
   const files = new Map<string, Uint8Array>();
@@ -89,7 +95,7 @@ async function exportRichSite() {
     description: "Thinking",
     sortOrder: "oldest",
   });
-  await services.smartCollections.create({
+  const shelf = await services.smartCollections.create({
     slug: "quote-shelf",
     title: "Quotes",
     description: "Kept",
@@ -150,6 +156,17 @@ async function exportRichSite() {
     width: 16,
     height: 9,
   });
+  await storage.put("media/site/a.m4a", new Uint8Array([1]));
+  await services.media.create({
+    filename: "a.m4a",
+    originalName: "a.m4a",
+    mimeType: "audio/mp4",
+    size: 1,
+    storageKey: "media/site/a.m4a",
+    postId: root.id,
+    durationSeconds: 3,
+    waveform: "[0,0.5,1]",
+  });
   await services.posts.create({
     format: "link",
     title: "A link",
@@ -193,6 +210,10 @@ async function exportRichSite() {
     collectionId: ideas.id,
   });
   await services.navItems.create({ type: "page", postId: page.id });
+  await services.navItems.create({
+    type: "smart_collection",
+    smartCollectionId: shelf.id,
+  });
   await services.collections.createDirectoryItem({
     type: "divider",
     label: "More",
@@ -212,6 +233,7 @@ async function exportRichSite() {
       additionalLanguages: ["zh-Hans"],
       siteFooter: "Made by **me**",
       siteAvatarUrl: "https://example.com/avatar.png",
+      faviconVersion: "202609280000",
     }),
     { storage },
   ).generateHugoFiles();
@@ -232,22 +254,63 @@ function keysOf(value: unknown, into: Set<string>): Set<string> {
   return into;
 }
 
+/** Every front-matter field and data key a rich site's export writes. */
+async function writtenKeys(): Promise<Set<string>> {
+  const written = new Set<string>();
+  for (const file of await exportRichSite()) {
+    if (isStoredExportFile(file)) continue;
+    const content =
+      typeof file.content === "string"
+        ? file.content
+        : new TextDecoder().decode(file.content);
+    if (file.path.startsWith("content/") && file.path.endsWith(".md")) {
+      keysOf((await parseFrontMatter(content)).frontMatter, written);
+    } else if (file.path === "data/jant.toml") {
+      const { parse } = await import("smol-toml");
+      keysOf(parse(content), written);
+    }
+  }
+  return written;
+}
+
+/**
+ * Documented names the rich site doesn't produce. Each is written only under
+ * a condition the fixture doesn't meet, or names a value rather than a key.
+ */
+const NOT_IN_FIXTURE = new Set([
+  // Values named in a field's notes, not keys.
+  "post",
+  "note",
+  "link",
+  "quote",
+  "published",
+  "draft",
+  "public",
+  "latest_hidden",
+  "private",
+  "image",
+  "video",
+  "audio",
+  "text",
+  "document",
+  "collection",
+  "smart_collection",
+  "newest",
+  "oldest",
+  "rating_desc",
+  "list",
+  "grid",
+  "render",
+  "true",
+  "static",
+  // Written only for a custom URL of the retired archive kind, which can
+  // no longer be created.
+  "archive_query",
+]);
+
 describe("export file reference", () => {
   it("lists every field and data key the export writes", async () => {
-    const written = new Set<string>();
-    for (const file of await exportRichSite()) {
-      if (isStoredExportFile(file)) continue;
-      const content =
-        typeof file.content === "string"
-          ? file.content
-          : new TextDecoder().decode(file.content);
-      if (file.path.startsWith("content/") && file.path.endsWith(".md")) {
-        keysOf((await parseFrontMatter(content)).frontMatter, written);
-      } else if (file.path === "data/jant.toml") {
-        const { parse } = await import("smol-toml");
-        keysOf(parse(content), written);
-      }
-    }
+    const written = await writtenKeys();
 
     expect(written.size).toBeGreaterThan(60);
     expect([...written].filter((key) => !documented.has(key)).sort()).toEqual(
@@ -255,10 +318,19 @@ describe("export file reference", () => {
     );
   });
 
-  it("lists only fields the exporter still writes", () => {
-    expect(tableFields.length).toBeGreaterThan(50);
-    expect(tableFields.filter((field) => !EXPORTER.includes(field))).toEqual(
-      [],
+  it("lists only fields the export still writes", async () => {
+    const written = await writtenKeys();
+
+    expect(
+      [...documented]
+        .filter((name) => !written.has(name) && !NOT_IN_FIXTURE.has(name))
+        .sort(),
+    ).toEqual([]);
+  });
+
+  it("names the same fields in the Chinese reference", () => {
+    expect([...tableNames(REFERENCE_ZH)].sort()).toEqual(
+      [...documented].sort(),
     );
   });
 });
