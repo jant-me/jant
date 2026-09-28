@@ -15,6 +15,8 @@ function createHostedSsoTestApp(options?: {
   hostedControlPlaneBaseUrl?: string;
   hostedControlPlaneProviderName?: string;
   secret?: string;
+  /** The session the browser already carries, as `attachSession` found it. */
+  sessionToken?: string;
 }) {
   const app = new Hono<Env>();
   app.onError(errorHandler);
@@ -49,6 +51,7 @@ function createHostedSsoTestApp(options?: {
             return {
               sessionToken: "test-session-token",
               userId: "usr_test",
+              reused: false,
             };
           },
         } as HostedHandoffService),
@@ -66,6 +69,12 @@ function createHostedSsoTestApp(options?: {
     } as AppVariables["appConfig"]);
     c.set("lang", "en");
     c.set("i18n", createI18n("en"));
+    c.set(
+      "session",
+      (options?.sessionToken
+        ? { session: { token: options.sessionToken }, user: { id: "usr_test" } }
+        : null) as AppVariables["session"],
+    );
     await next();
   });
   app.route("/", hostedSsoRoutes);
@@ -97,6 +106,7 @@ describe("hostedSsoRoutes", () => {
     const completeFromSignedToken = vi.fn(async () => ({
       sessionToken: "hand-off-session",
       userId: "usr_test",
+      reused: false,
     }));
     const app = createHostedSsoTestApp({
       secret: "cloud-sso-secret-cloud-sso-secret",
@@ -109,6 +119,7 @@ describe("hostedSsoRoutes", () => {
       "/__sso?token=test-token&redirect=/compose",
       {
         redirect: "manual",
+        headers: { "User-Agent": "Mozilla/5.0 (Macintosh) Firefox/140.0" },
       },
     );
 
@@ -120,6 +131,46 @@ describe("hostedSsoRoutes", () => {
     expect(completeFromSignedToken).toHaveBeenCalledWith({
       currentSiteId: "sit_test",
       token: "test-token",
+      client: {
+        userAgent: "Mozilla/5.0 (Macintosh) Firefox/140.0",
+        ipAddress: "",
+        sessionToken: null,
+      },
+    });
+  });
+
+  // The handoff creates its session outside any better-auth endpoint, so
+  // better-auth has no request to take the device from: the route hands it
+  // over, with the session the browser already holds so it can be kept.
+  it("hands the browser's device and current session to the handoff", async () => {
+    const completeFromSignedToken = vi.fn(async () => ({
+      sessionToken: "existing-session",
+      userId: "usr_test",
+      reused: true,
+    }));
+    const app = createHostedSsoTestApp({
+      secret: "cloud-sso-secret-cloud-sso-secret",
+      hostedHandoff: { completeFromSignedToken },
+      sessionToken: "existing-session",
+    });
+
+    const response = await app.request("/__sso?token=test-token", {
+      redirect: "manual",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (iPhone) Safari/605.1.15",
+        "X-Forwarded-For": "203.0.113.7",
+      },
+    });
+
+    expect(response.status).toBe(302);
+    expect(completeFromSignedToken).toHaveBeenCalledWith({
+      currentSiteId: "sit_test",
+      token: "test-token",
+      client: {
+        userAgent: "Mozilla/5.0 (iPhone) Safari/605.1.15",
+        ipAddress: "203.0.113.7",
+        sessionToken: "existing-session",
+      },
     });
   });
 

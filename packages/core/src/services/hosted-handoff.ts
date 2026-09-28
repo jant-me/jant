@@ -22,12 +22,32 @@ import { createSiteMemberService } from "./site-member.js";
 export interface HostedHandoffSession {
   sessionToken: string;
   userId: string;
+  /** Whether the browser's existing session was kept instead of a new one. */
+  reused: boolean;
+}
+
+/**
+ * The browser a sign-in link was opened in.
+ *
+ * better-auth records the device on a session from the request of the auth
+ * endpoint that creates it. The handoff creates its session outside any such
+ * endpoint, so it has nothing to read them from, and every session it made
+ * showed as "Unknown device". The route passes them in instead.
+ */
+export interface HostedHandoffClient {
+  /** The `User-Agent` header, which the Sessions page turns into a device name. */
+  userAgent: string;
+  /** The client address, or `""` when none was reported. */
+  ipAddress: string;
+  /** The session token the browser already carries for this site, if any. */
+  sessionToken?: string | null;
 }
 
 export interface HostedHandoffService {
   completeFromSignedToken(input: {
     currentSiteId: string;
     token: string;
+    client: HostedHandoffClient;
   }): Promise<HostedHandoffSession>;
 }
 
@@ -210,9 +230,45 @@ export function createHostedHandoffService(
 
       await siteMembers.ensure(input.currentSiteId, user.id, claims.role);
 
+      const { client } = input;
+      const device = {
+        userAgent: client.userAgent,
+        ipAddress: client.ipAddress,
+      };
+
+      // Opening the site from the provider again, in a browser already signed
+      // in as the same person, keeps that browser's session. Every open used to
+      // mint another one, and the Sessions page filled up with the same
+      // browser. The row is read from the database rather than taken from the
+      // request's session, which better-auth may answer from a cookie cache for
+      // minutes after the session was revoked.
+      const existing = client.sessionToken
+        ? await authContext.internalAdapter.findSession(client.sessionToken)
+        : null;
+      if (
+        existing &&
+        existing.session.userId === user.id &&
+        new Date(existing.session.expiresAt).getTime() > Date.now()
+      ) {
+        // A session made before the handoff recorded devices has none; this
+        // browser is the one holding it, so it can say what it is.
+        if (!existing.session.userAgent && device.userAgent) {
+          await authContext.internalAdapter.updateSession(
+            existing.session.token,
+            device,
+          );
+        }
+        return {
+          sessionToken: existing.session.token,
+          userId: user.id,
+          reused: true,
+        };
+      }
+
       const session = await authContext.internalAdapter.createSession(
         user.id,
         false,
+        device,
       );
       if (!session) {
         throw new ExternalServiceError("Failed to create a site session.");
@@ -221,6 +277,7 @@ export function createHostedHandoffService(
       return {
         sessionToken: session.token,
         userId: user.id,
+        reused: false,
       };
     },
   };
