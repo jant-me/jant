@@ -164,8 +164,14 @@ export function getThemeBrowserColors(theme?: ColorTheme): {
  * so a theme that leaves a variable out of its dark block gets the dark
  * default rather than its light value.
  *
+ * The extra variables go in the light `:root` block only, and dark mode
+ * inherits them. They are the font theme's, which don't change with the
+ * mode; written into the dark blocks too they would sit on the dark rung,
+ * where the author's `:root { --font-body: … }` could never reach them.
+ *
  * @param theme - The active color theme (undefined = no theme overrides)
- * @param cssVariables - Extra CSS variable overrides, applied in both modes
+ * @param cssVariables - Mode-independent variable overrides, such as a font
+ *   theme's
  * @returns CSS string to inject in `<head>`, or empty string if nothing to inject
  *
  * @example
@@ -182,10 +188,7 @@ export function buildThemeStyle(
     ...(theme?.light ?? {}),
     ...(cssVariables ?? {}),
   };
-  const darkVars: Record<string, string> = {
-    ...(theme?.dark ?? {}),
-    ...(cssVariables ?? {}),
-  };
+  const darkVars: Record<string, string> = { ...(theme?.dark ?? {}) };
 
   const hasLight = Object.keys(lightVars).length > 0;
   const hasDark = Object.keys(darkVars).length > 0;

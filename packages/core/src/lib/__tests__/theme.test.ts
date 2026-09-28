@@ -30,7 +30,26 @@ describe("buildThemeStyle", () => {
     expect(css).toContain("--font-body:");
     expect(css).toContain("--font-heading:");
     expect(css).toContain("ui-sans-serif");
-    expect(css).toContain("prefers-color-scheme: dark");
+    // Fonts don't change with the mode, so there is no dark block to write.
+    expect(css).not.toContain("prefers-color-scheme: dark");
+  });
+
+  // The failure this guards: font variables copied into the dark blocks sat
+  // on the (0,2,0) rung, so the author's `:root { --font-body: … }` lost to
+  // them whenever the page was dark.
+  it("writes font variables only where custom CSS on :root can override them", () => {
+    const fakeTheme = {
+      id: "test",
+      name: "Test",
+      light: { "--primary": "oklch(0.5 0.1 200)" },
+      dark: { "--primary": "oklch(0.7 0.1 200)" },
+    };
+    const css = buildThemeStyle(fakeTheme, { "--font-body": "Georgia, serif" });
+    const [light, ...dark] = css.split(/(?=:root\[data-theme-mode="dark"\])/);
+
+    expect(light).toContain("--font-body: Georgia, serif");
+    expect(dark.join("")).toContain("--primary: oklch(0.7 0.1 200)");
+    expect(dark.join("")).not.toContain("--font-body");
   });
 
   it("font override merges with color theme", () => {
