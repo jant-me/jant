@@ -1179,6 +1179,8 @@ export function defaultFeedRenderer(data: FeedData): string {
     discoverStatusUrl,
     languageAlternates,
   } = data;
+  // Relative, so the site's path prefix stays in it: /blog/collections.
+  const collectionScheme = escapeXml(toAbsoluteFeedUrl("collections", siteUrl));
   const feedTitle = title ?? siteName;
 
   const feedEntries = posts.map((post) => buildFeedEntry(post, siteUrl));
@@ -1278,10 +1280,13 @@ export function defaultFeedRenderer(data: FeedData): string {
       // prints them on the root alone, so they ride on the entry once.
       // `jant:page` because a single collection lives in the root URL
       // namespace and a site path prefix makes it unguessable from the term.
+      // `scheme` says which taxonomy the term belongs to: collections, named
+      // by the site's collections directory. Any other kind of category gets
+      // a scheme of its own, so a consumer can tell them apart.
       const categoryElements = post.collections
         .map(
           (collection) =>
-            `\n    <category term="${escapeXml(collection.slug)}" label="${escapeXml(collection.title)}" jant:page="${escapeXml(toAbsoluteFeedUrl(collection.url, siteUrl))}"/>`,
+            `\n    <category term="${escapeXml(collection.slug)}" scheme="${collectionScheme}" label="${escapeXml(collection.title)}" jant:page="${escapeXml(toAbsoluteFeedUrl(collection.url, siteUrl))}"/>`,
         )
         .join("");
 

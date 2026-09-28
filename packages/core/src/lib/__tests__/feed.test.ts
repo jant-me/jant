@@ -1510,6 +1510,21 @@ describe("feed entry metadata", () => {
 
   // A collection is a label the author chose, which is what `<category>` is
   // for — unlike the format, which no author typed.
+  it("names the collections scheme under a site's path prefix", () => {
+    const xml = defaultFeedRenderer({
+      ...makeFeedData(
+        makePostView({
+          collections: [
+            { slug: "reading", title: "Reading", url: "/blog/reading" },
+          ],
+        }),
+      ),
+      siteUrl: "https://example.com/blog",
+    });
+
+    expect(xml).toContain('scheme="https://example.com/blog/collections"');
+  });
+
   it("files an entry under its collections", () => {
     const xml = defaultFeedRenderer(
       makeFeedData(
@@ -1525,10 +1540,10 @@ describe("feed entry metadata", () => {
     // A single collection lives in the root URL namespace and a site path
     // prefix makes it unguessable from the term, so the URL rides along.
     expect(xml).toContain(
-      '<category term="reading" label="Reading" jant:page="https://example.com/reading"/>',
+      '<category term="reading" scheme="https://example.com/collections" label="Reading" jant:page="https://example.com/reading"/>',
     );
     expect(xml).toContain(
-      '<category term="notes" label="Field Notes" jant:page="https://example.com/notes"/>',
+      '<category term="notes" scheme="https://example.com/collections" label="Field Notes" jant:page="https://example.com/notes"/>',
     );
   });
 

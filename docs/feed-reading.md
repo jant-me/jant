@@ -43,7 +43,8 @@ An Atom reader that knows neither extension still gets a working feed. Everythin
   <published>2026-03-19T09:00:00.000Z</published>
   <updated>2026-03-19T09:00:00.000Z</updated>
   <jant:format>note</jant:format>
-  <category term="coffee" label="Coffee" jant:page="https://ex.com/coffee"/>
+  <category term="coffee" scheme="https://ex.com/collections" label="Coffee"
+            jant:page="https://ex.com/coffee"/>
   <media:content url="https://ex.com/m/beans.jpg" type="image/jpeg" medium="image"
                 width="1600" height="1200">
     <media:description type="plain">Roasted beans cooling on a tray</media:description>
@@ -66,7 +67,7 @@ An Atom reader that knows neither extension still gets a working feed. Everythin
 | `jant:format`            | 1     | `note`, `link`, or `quote` — the entry's, which is the root's in a thread                                                                                                                        |
 | `jant:thread`            | 0–1   | The entry is a thread. Absent means a lone post                                                                                                                                                  |
 | `jant:truncated`         | 0–1   | The summary's text was cut. Offer a "read more". A row's `truncated` says which post. Never on a Quote                                                                                           |
-| `category`               | 0–n   | Collections. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL                                                                                                              |
+| `category`               | 0–n   | Collections. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL. `@scheme` is the site's collections directory; a category with another scheme is not a collection           |
 | `media:thumbnail`        | 0–1   | A Link post's preview image, for a card or grid                                                                                                                                                  |
 | `media:content`          | 0–n   | One per attachment, with dimensions and duration                                                                                                                                                 |
 | `summary`                | 0–1   | The post's text, as the timeline renders it                                                                                                                                                      |
