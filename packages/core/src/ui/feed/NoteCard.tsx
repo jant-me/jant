@@ -86,8 +86,7 @@ export const NoteCard: FC<TimelineCardProps> = ({
 
   return (
     <article
-      class={`h-entry post-menu-target${isCompact ? " feed-compact" : isDetail ? " py-6" : ""}`}
-      {...(isDetail ? { "data-page": "post" } : {})}
+      class={`h-entry post-menu-target${isCompact ? " feed-compact" : isDetail ? " post-detail py-6" : ""}`}
       {...getPostArticleAttributes(post)}
     >
       {!isCompact && !display?.hideStatusBadges && (

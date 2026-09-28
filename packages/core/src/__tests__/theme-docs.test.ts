@@ -14,6 +14,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { PAGE_NAMES } from "../types/constants.js";
 
 const CORE_DIR = resolve(import.meta.dirname, "../..");
 const REPO_ROOT = resolve(CORE_DIR, "../..");
@@ -21,7 +22,12 @@ const SRC_DIR = join(CORE_DIR, "src");
 const THEMING_DOCS = ["docs/theming.md", "docs/zh-Hans/theming.md"];
 
 /** `data-page` values of author-only and internal pages, left out of the docs. */
-const UNDOCUMENTED_PAGES = new Set(["compose", "brand", "theme-sample"]);
+const UNDOCUMENTED_PAGES = new Set([
+  "compose",
+  "settings",
+  "brand",
+  "theme-sample",
+]);
 
 function listSourceFiles(dir: string, extensions: string[]): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -54,12 +60,7 @@ const definedVariables = new Set(
     match[1] ? [match[1]] : [],
   ),
 );
-const emittedPages = new Set(
-  [
-    ...markup.matchAll(/data-page="([a-z-]+)"/g),
-    ...markup.matchAll(/"data-page": "([a-z-]+)"/g),
-  ].flatMap((match) => (match[1] ? [match[1]] : [])),
-);
+const emittedPages = new Set<string>(PAGE_NAMES);
 
 function readRepoFile(path: string): string {
   return readFileSync(join(REPO_ROOT, path), "utf8");

@@ -505,7 +505,7 @@ html {
  * headings inside the body should remain visible, but they should read as
  * sections within the card rather than as peer post titles.
  */
-[data-post]:not([data-page="post"]) [data-post-body].prose {
+[data-post]:not(.post-detail) [data-post-body].prose {
   :where(h1, h2) {
     font-size: calc(var(--type-content-body) * 1.12);
     font-weight: var(--fw-medium);
@@ -535,7 +535,7 @@ html {
  * Keep these overrides outside cascade layers so they can outrank the base
  * `.prose` variable defaults defined above.
  */
-[data-page="post"] .post-detail-body.prose {
+.post-detail .post-detail-body.prose {
   --tw-prose-body: var(--site-reading-body);
   --tw-prose-headings: var(--site-reading-heading);
   --tw-prose-lead: color-mix(
@@ -608,7 +608,7 @@ html {
   max-width: none;
 }
 
-[data-page="search"],
+.search-page,
 .site-home-header,
 .post-detail-body,
 .post-body-summary,

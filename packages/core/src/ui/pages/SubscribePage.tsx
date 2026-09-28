@@ -93,7 +93,7 @@ export const SubscribePage: FC<SubscribePageProps> = ({
   );
 
   return (
-    <div data-page="subscribe" class={COLUMN_CLASS}>
+    <div class={COLUMN_CLASS}>
       <PaginatedPageHeader
         title={i18n._(
           msg({

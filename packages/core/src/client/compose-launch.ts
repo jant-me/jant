@@ -79,7 +79,7 @@ export function readComposeDialogLabels(): JantComposeDialog["labels"] | null {
 export function getActiveCollectionId(): string | undefined {
   return (
     document.querySelector<HTMLElement>(
-      "[data-page='collection'][data-collection-id]",
+      "[data-collection-mode][data-collection-id]",
     )?.dataset.collectionId || undefined
   );
 }
@@ -89,7 +89,7 @@ export function getCurrentDetailPostArticle(
 ): HTMLElement | null {
   if (root === document) {
     const hoveredPost = document.querySelector<HTMLElement>(
-      "[data-page='post'] article[data-post]:hover",
+      ".thread-group-detail article[data-post]:hover",
     );
     if (hoveredPost) return hoveredPost;
   }
@@ -114,9 +114,7 @@ export function getCurrentDetailPostArticle(
 function getLastThreadDetailArticle(
   root: globalThis.Document | globalThis.Element,
 ): HTMLElement | null {
-  const threadGroup = root.querySelector<HTMLElement>(
-    ".thread-group-detail[data-page='post']",
-  );
+  const threadGroup = root.querySelector<HTMLElement>(".thread-group-detail");
   if (!threadGroup) return null;
 
   const articles = threadGroup.querySelectorAll<HTMLElement>(
@@ -133,7 +131,7 @@ export function getReplyTargetArticle(
 
   if (root === document) {
     const hoveredPost = document.querySelector<HTMLElement>(
-      "[data-page='post'] article[data-post]:hover",
+      ".thread-group-detail article[data-post]:hover",
     );
     if (hoveredPost) return hoveredPost;
   }

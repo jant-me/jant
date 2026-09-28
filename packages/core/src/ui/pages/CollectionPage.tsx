@@ -169,7 +169,6 @@ export const CollectionPage: FC<CollectionPageProps> = ({
   return (
     <div
       class="py-6"
-      data-page="collection"
       data-collection-mode={isAggregate ? "aggregate" : "single"}
       data-collection-id={isAggregate ? undefined : primaryCollection.id}
       data-collection-slugs={collections

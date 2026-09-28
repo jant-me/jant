@@ -32,7 +32,7 @@ export const ComposePage: FC<ComposePageProps> = ({
   );
 
   return (
-    <section class="compose-page" data-page="compose">
+    <section class="compose-page">
       <div class="compose-page-shell">
         <div class="compose-page-intro">
           <div class="compose-page-intro-row">

@@ -196,7 +196,7 @@ You can target specific pages or elements with these data attributes when writin
 | -------------------- | ---------------- | ----------------------------------------------------------------------------------------- |
 | `data-theme`         | `<html>`         | Active color theme id (`tufte`, `linen`, `frost`, …)                                      |
 | `data-theme-mode`    | `<html>`         | `auto`, `light`, `dark`                                                                   |
-| `data-page`          | Page wrapper     | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured`, `subscribe` |
+| `data-page`          | `<body>`         | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured`, `subscribe` |
 | `data-post`          | `<article>`      | Present on every post                                                                     |
 | `data-format`        | `<article>`      | `note`, `link`, `quote`                                                                   |
 | `data-post-slug`     | `<article>`      | Post slug (handy for debugging and per-post styling)                                      |

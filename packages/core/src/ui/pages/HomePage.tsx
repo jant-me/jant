@@ -22,7 +22,7 @@ export const HomePage: FC<HomePageProps> = ({
   const { i18n } = useLingui();
 
   return (
-    <div data-page="home">
+    <div>
       <PaginatedPageHeader
         title={i18n._(
           msg({

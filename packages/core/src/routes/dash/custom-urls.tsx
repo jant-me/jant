@@ -587,6 +587,7 @@ customUrlsRoutes.get("/", async (c) => {
   const navData = await getNavigationData(c);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Custom URLs", navData.siteName),
     navData,
     content: (
@@ -613,6 +614,7 @@ customUrlsRoutes.get("/new", async (c) => {
   const navData = await getNavigationData(c);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("New Custom URL", navData.siteName),
     navData,
     content: (

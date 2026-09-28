@@ -179,6 +179,7 @@ export async function renderCollectionPage(
     : undefined;
 
   return renderPublicPage(c, {
+    page: "collection",
     title:
       page > 1
         ? buildPageTitle(selectionTitle, paginatedPageTitle, navData.siteName)

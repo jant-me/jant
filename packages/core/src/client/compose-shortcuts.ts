@@ -35,7 +35,7 @@ function shouldIgnoreShortcut(event: globalThis.KeyboardEvent): boolean {
   if (event.defaultPrevented || event.isComposing || event.repeat) return true;
   if (event.metaKey || event.ctrlKey || event.altKey) return true;
   if (!getComposeDialog()) return true;
-  if (document.querySelector('[data-page="compose"]')) return true;
+  if (document.querySelector(".compose-page")) return true;
   if (document.querySelector("dialog[open]")) return true;
 
   const activeTarget = document.activeElement;

@@ -9,7 +9,7 @@
  */
 
 const FOOTNOTE_BODY_SELECTOR = [
-  '[data-post-view] [data-page="post"] [data-post-body].post-detail-body',
+  "[data-post-view] .post-detail [data-post-body].post-detail-body",
   "[data-timeline-item] article[data-post] > [data-post-body].prose",
 ].join(", ");
 const FOOTNOTE_CONTAINER_SELECTOR = "[data-post-view], [data-timeline-item]";

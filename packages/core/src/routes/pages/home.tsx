@@ -79,6 +79,7 @@ export async function renderHomePage(c: Context<Env>): Promise<Response> {
   );
 
   return renderPublicPage(c, {
+    page: "home",
     title:
       page > 1
         ? buildPageTitle(latestTitle, paginatedPageTitle, navData.siteName)

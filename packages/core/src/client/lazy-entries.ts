@@ -43,7 +43,7 @@ const PAGE_ENTRIES: ReadonlyArray<{
   selector: string;
   load: () => Promise<void>;
 }> = [
-  { selector: '[data-page="compose"]', load: ensureCompose },
+  { selector: ".compose-page", load: ensureCompose },
   {
     selector: [
       "jant-settings-general",

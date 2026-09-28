@@ -717,7 +717,7 @@ export function ThemeSamplePage({
   };
 
   return (
-    <div class="theme-sample-page py-6" data-page="theme-sample">
+    <div class="theme-sample-page py-6">
       <header class="theme-sample-header mb-8 flex flex-col gap-4">
         <div class="flex flex-col gap-2">
           <p class="text-sm uppercase tracking-[0.18em] text-muted-foreground">

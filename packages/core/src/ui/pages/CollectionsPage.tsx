@@ -30,7 +30,7 @@ export const CollectionsPage: FC<CollectionsPageProps> = ({
 
   if (isAuthenticated) {
     return (
-      <div class="py-6" data-page="collections">
+      <div class="py-6">
         <CollectionsManager
           items={items}
           navigationCollectionIds={navigationCollectionIds}
@@ -43,7 +43,7 @@ export const CollectionsPage: FC<CollectionsPageProps> = ({
   }
 
   return (
-    <div class="py-6" data-page="collections">
+    <div class="py-6">
       <div class="collections-page-shell">
         <header class="collections-page-header">
           <div class="collections-page-heading page-intro">

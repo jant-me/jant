@@ -80,7 +80,7 @@ function renderCanonicalFootnotes(): {
 } {
   document.body.innerHTML = `
     <div data-post-view>
-      <article data-page="post">
+      <article class="post-detail">
         <div class="e-content prose post-detail-body" data-post-body>
           <p>First <sup class="footnote-ref"><a id="fnref-s-1-1" href="#fn-s-1" role="doc-noteref">1</a></sup></p>
           <p>Repeated <sup class="footnote-ref"><a id="fnref-s-1-2" href="#fn-s-1" role="doc-noteref">1</a></sup></p>

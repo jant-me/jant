@@ -1082,8 +1082,8 @@
 
   /* --- Search page -------------------------------------------------------- */
 
-  [data-page="search"] .input,
-  [data-page="search"] .btn {
+  .search-page .input,
+  .search-page .btn {
     font-size: var(--type-secondary);
     padding: 1.1rem 1.25rem;
   }
@@ -2382,7 +2382,7 @@
   }
 
   /* The two post titles that do not carry their own heading font: the detail
-     h1 (`[data-page="post"] .post-detail-title` sets everything but the face)
+     h1 (the detail rule for `.post-detail-title` sets everything but the face)
      and the compact card title, which otherwise runs on utilities alone.
      This used to hang off `.p-name`, but microformats classes are the parsed
      API of a post — styling one means any future `p-name` silently changes
@@ -2512,11 +2512,11 @@
    * This keeps long-form text feeling grounded without making global UI copy
    * unnecessarily heavy.
    */
-  [data-page="post"] {
+  :is(.thread-group-detail, .post-detail) {
     color: var(--site-reading-body);
   }
 
-  [data-page="post"] .post-detail-title {
+  :is(.thread-group-detail, .post-detail) .post-detail-title {
     color: var(--site-reading-title);
     font-size: var(--type-content-display);
     font-weight: var(--type-heading-weight);
@@ -2525,36 +2525,36 @@
     text-wrap: pretty;
   }
 
-  [data-page="post"] .post-detail-body,
-  [data-page="post"] .post-detail-body.prose {
+  :is(.thread-group-detail, .post-detail) .post-detail-body,
+  :is(.thread-group-detail, .post-detail) .post-detail-body.prose {
     color: var(--site-reading-body);
   }
 
-  [data-page="post"] .post-detail-body.prose blockquote {
+  :is(.thread-group-detail, .post-detail) .post-detail-body.prose blockquote {
     border-left-color: var(--site-reading-blockquote-rail);
     background: var(--site-reading-blockquote-bg);
   }
 
-  [data-page="post"] .feed-quote-content,
-  [data-page="post"] .post-detail-quote {
+  :is(.thread-group-detail, .post-detail) .feed-quote-content,
+  :is(.thread-group-detail, .post-detail) .post-detail-quote {
     color: var(--site-reading-quote);
   }
 
-  [data-page="post"] .feed-link-domain,
-  [data-page="post"] .feed-quote-attribution,
-  [data-page="post"] .post-header-meta-row,
-  [data-page="post"] .post-header-meta-link,
-  [data-page="post"] .post-header-meta-link time {
+  :is(.thread-group-detail, .post-detail) .feed-link-domain,
+  :is(.thread-group-detail, .post-detail) .feed-quote-attribution,
+  :is(.thread-group-detail, .post-detail) .post-header-meta-row,
+  :is(.thread-group-detail, .post-detail) .post-header-meta-link,
+  :is(.thread-group-detail, .post-detail) .post-header-meta-link time {
     color: var(--site-reading-meta);
   }
 
-  [data-page="post"] .feed-link-domain:hover,
-  [data-page="post"] .feed-quote-source:hover,
-  [data-page="post"] .post-header-meta-link:hover {
+  :is(.thread-group-detail, .post-detail) .feed-link-domain:hover,
+  :is(.thread-group-detail, .post-detail) .feed-quote-source:hover,
+  :is(.thread-group-detail, .post-detail) .post-header-meta-link:hover {
     color: var(--site-reading-body);
   }
 
-  [data-page="post"] .feed-quote {
+  :is(.thread-group-detail, .post-detail) .feed-quote {
     border-left-color: color-mix(
       in srgb,
       var(--site-reading-meta) 74%,
@@ -6597,13 +6597,13 @@
 
   /* --- Internal theme sample page --------------------------------------- */
 
-  body:has([data-page="theme-sample"]) .site-header,
-  body:has([data-page="theme-sample"]) .site-main,
-  body:has([data-page="theme-sample"]) .site-footer {
+  body:has(.theme-sample-page) .site-header,
+  body:has(.theme-sample-page) .site-main,
+  body:has(.theme-sample-page) .site-footer {
     max-width: min(1240px, calc(100vw - 1.5rem));
   }
 
-  [data-page="theme-sample"] .theme-sample-feed-preview-inner {
+  .theme-sample-page .theme-sample-feed-preview-inner {
     width: min(
       100%,
       calc(var(--content-max-width) - (var(--site-padding) * 2))
@@ -6611,7 +6611,7 @@
     margin-inline: auto;
   }
 
-  [data-page="theme-sample"] code {
+  .theme-sample-page code {
     overflow-wrap: anywhere;
   }
 
@@ -6649,7 +6649,7 @@
  * ------------------------------------------------------------------------- */
 
 :is(
-  [data-post-view] [data-page="post"] [data-post-body].post-detail-body,
+  [data-post-view] .post-detail [data-post-body].post-detail-body,
   [data-timeline-item] article[data-post] > [data-post-body].prose
 ) {
   --jant-footnote-rail-enabled: 0;
@@ -6658,7 +6658,7 @@
 @media screen {
   @container post-view (min-width: 56rem) {
     :is(
-      [data-post-view] [data-page="post"] [data-post-body].post-detail-body,
+      [data-post-view] .post-detail [data-post-body].post-detail-body,
       [data-timeline-item] article[data-post] > [data-post-body].prose
     ) {
       --jant-footnote-rail-enabled: 1;

@@ -69,7 +69,7 @@ describe("lazy entries", () => {
   });
 
   it("loads the composer at once on the compose page", async () => {
-    document.body.innerHTML = `<section data-page="compose"></section>`;
+    document.body.innerHTML = `<section class="compose-page"></section>`;
 
     const { loadEntriesForPage } = await freshLazyEntries();
     loadEntriesForPage();

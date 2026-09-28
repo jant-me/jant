@@ -71,6 +71,7 @@ themeSampleRoutes.get("/theme-sample", async (c) => {
   c.set("themeStyle", buildThemeStyle(selectedTheme, fontOverrides));
 
   return renderPublicPage(c, {
+    page: "theme-sample",
     title: buildPageTitle(
       selectedTheme.name,
       i18n._(

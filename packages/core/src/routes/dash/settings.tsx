@@ -395,6 +395,7 @@ settingsRoutes.get("/", async (c) => {
   );
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Settings", navData.siteName),
     navData,
     content: (
@@ -462,6 +463,7 @@ settingsRoutes.get("/general", async (c) => {
     appConfig.siteUrl || new URL(publicPath(c, "/"), c.req.url).toString();
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("General", navData.siteName),
     navData,
     toast: saved ? { message: "Settings updated." } : undefined,
@@ -644,6 +646,7 @@ settingsRoutes.get("/language", async (c) => {
   ]);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Language", navData.siteName),
     navData,
     content: (
@@ -1072,6 +1075,7 @@ settingsRoutes.get("/avatar", async (c) => {
   const navData = await getNavigationData(c);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Avatar", navData.siteName),
     navData,
     toast: saved ? { message: "Avatar updated." } : undefined,
@@ -1283,6 +1287,7 @@ settingsRoutes.get("/navigation", async (c) => {
   const navData = await getNavigationData(c);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Navigation", navData.siteName),
     navData,
     content: (
@@ -1318,6 +1323,7 @@ settingsRoutes.get("/color-theme", async (c) => {
   const navData = await getNavigationData(c);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Color Theme", navData.siteName),
     navData,
     toast: saved ? { message: "Theme updated." } : undefined,
@@ -1383,6 +1389,7 @@ settingsRoutes.get("/font-theme", async (c) => {
   const navData = await getNavigationData(c);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Font Theme", navData.siteName),
     navData,
     toast: saved ? { message: "Font theme updated." } : undefined,
@@ -1436,6 +1443,7 @@ settingsRoutes.get("/custom-css", async (c) => {
   const navData = await getNavigationData(c);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Custom CSS", navData.siteName),
     navData,
     content: (
@@ -1496,6 +1504,7 @@ settingsRoutes.get("/code-injection", async (c) => {
   const navData = await getNavigationData(c);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Code Injection", navData.siteName),
     navData,
     content: (
@@ -1570,6 +1579,7 @@ settingsRoutes.get("/config", async (c) => {
   );
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Config Editor", navData.siteName),
     navData,
     content: (
@@ -1601,6 +1611,7 @@ settingsRoutes.get("/account", async (c) => {
   );
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Account", navData.siteName),
     navData,
     content: (
@@ -1664,6 +1675,7 @@ settingsRoutes.get("/account/sessions", async (c) => {
   });
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Sessions", navData.siteName),
     navData,
     content: (
@@ -1719,6 +1731,7 @@ settingsRoutes.get("/account/password", async (c) => {
   const navData = await getNavigationData(c);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Password", navData.siteName),
     navData,
     content: (
@@ -1832,6 +1845,7 @@ settingsRoutes.get("/account/delete-account", async (c) => {
   );
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Delete Account", navData.siteName),
     navData,
     content: (
@@ -1936,6 +1950,7 @@ settingsRoutes.get("/api-tokens", async (c) => {
   const siteUrl = c.var.appConfig.siteUrl;
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("API Tokens", navData.siteName),
     navData,
     content: (
@@ -2230,6 +2245,7 @@ settingsRoutes.get("/github-sync/app/install", async (c) => {
       const suggestedRepoName = suggestSyncRepoName(c.var.appConfig.siteUrl);
       const labels = buildRepoPickerLabels(c, suggestedRepoName);
       return renderPublicPage(c, {
+        page: "settings",
         title: buildPageTitle(
           "GitHub Sync — Pick Repository",
           navData.siteName,
@@ -2365,6 +2381,7 @@ settingsRoutes.get("/github-sync/app/callback", async (c) => {
   const labels = buildRepoPickerLabels(c, suggestedRepoName);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("GitHub Sync — Pick Repository", navData.siteName),
     navData,
     content: (
@@ -3039,6 +3056,7 @@ settingsRoutes.get("/github-sync", async (c) => {
   const navData = await getNavigationData(c);
 
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("GitHub Sync", navData.siteName),
     navData,
     content: (
@@ -3066,6 +3084,7 @@ settingsRoutes.get("/telegram", async (c) => {
   const streamUrl = getTelegramStatusStreamUrl(c);
   const navData = await getNavigationData(c);
   return renderPublicPage(c, {
+    page: "settings",
     title: buildPageTitle("Telegram", navData.siteName),
     navData,
     content: (

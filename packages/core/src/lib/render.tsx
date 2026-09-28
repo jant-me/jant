@@ -8,6 +8,7 @@
 import type { Context } from "hono";
 import type { Child } from "hono/jsx";
 import type { SiteLayoutProps } from "../types.js";
+import type { PageName } from "../types/constants.js";
 import { SETTINGS_KEYS } from "./constants.js";
 import {
   BaseLayout,
@@ -27,6 +28,8 @@ import {
 export interface RenderPublicPageOptions {
   /** Page title for <title> tag */
   title: string;
+  /** Which page this is, written to `<body data-page>` for themes. */
+  page: PageName;
   /** Page description for meta tag */
   description?: string;
   /** Optional explicit favicon asset href */
@@ -125,6 +128,7 @@ export interface RenderPublicPageOptions {
 export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
   const {
     title,
+    page,
     description,
     faviconHref,
     appleTouchHref,
@@ -195,6 +199,7 @@ export function renderPublicPage(c: Context, options: RenderPublicPageOptions) {
   return c.html(
     <BaseLayout
       title={title}
+      page={page}
       description={metaDescription}
       c={c}
       faviconHref={faviconHref}

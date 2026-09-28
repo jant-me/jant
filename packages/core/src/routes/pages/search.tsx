@@ -102,6 +102,7 @@ export async function renderSearchPage(c: Context<Env>): Promise<Response> {
   );
 
   return renderPublicPage(c, {
+    page: "search",
     title: buildPageTitle(
       query ? `Search: ${query}` : "Search",
       navData.siteName,

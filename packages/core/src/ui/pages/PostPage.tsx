@@ -73,7 +73,7 @@ const ThreadDetail: FC<{
     currentIndex >= 0 ? threadPosts.slice(currentIndex) : threadPosts;
 
   return (
-    <div class="thread-group thread-group-detail" data-page="post">
+    <div class="thread-group thread-group-detail">
       {ancestors.length > 0 && (
         <>
           <div

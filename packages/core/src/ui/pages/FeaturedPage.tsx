@@ -20,7 +20,7 @@ export const FeaturedPage: FC<FeaturedPageProps> = ({
   const { i18n } = useLingui();
 
   return (
-    <div data-page="featured">
+    <div>
       <PaginatedPageHeader
         title={i18n._(
           msg({

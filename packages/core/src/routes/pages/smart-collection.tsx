@@ -146,6 +146,7 @@ export async function renderSmartCollectionPage(
     : undefined;
 
   return renderPublicPage(c, {
+    page: "collection",
     title:
       page > 1
         ? buildPageTitle(

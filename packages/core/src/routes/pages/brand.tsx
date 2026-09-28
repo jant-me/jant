@@ -67,6 +67,7 @@ async function renderBrandSpecPage(
   const appleTouchHref = getJantIconHref("appleTouch", navData.sitePathPrefix);
 
   return renderPublicPage(c, {
+    page: "brand",
     title: buildPageTitle(options.pageTitle, navData.siteName),
     description: options.description,
     socialImageUrl,

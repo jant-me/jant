@@ -350,3 +350,23 @@ export type ContentDisposition = (typeof CONTENT_DISPOSITIONS)[number];
 
 export const GITHUB_APP_ACCOUNT_TYPES = ["User", "Organization"] as const;
 export type GithubAppAccountType = (typeof GITHUB_APP_ACCOUNT_TYPES)[number];
+
+/**
+ * Every value of `data-page`, which `<body>` carries so a theme can tell which
+ * page it is on. One per kind of page, whatever its address or language view.
+ */
+export const PAGE_NAMES = [
+  "home",
+  "post",
+  "search",
+  "archive",
+  "collection",
+  "collections",
+  "featured",
+  "subscribe",
+  "compose",
+  "settings",
+  "brand",
+  "theme-sample",
+] as const;
+export type PageName = (typeof PAGE_NAMES)[number];

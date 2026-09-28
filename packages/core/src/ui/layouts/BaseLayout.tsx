@@ -12,6 +12,7 @@ import type { FC, PropsWithChildren } from "hono/jsx";
 import type { Context } from "hono";
 import { raw } from "hono/utils/html";
 import { escapeHtml } from "../../lib/html.js";
+import type { PageName } from "../../types/constants.js";
 import { msg } from "@lingui/core/macro";
 import {
   getPreconnectHints,
@@ -65,6 +66,8 @@ export interface PageFeedLink {
 
 export interface BaseLayoutProps {
   title: string;
+  /** Written to `<body data-page>`; left off pages outside the public set. */
+  page?: PageName;
   description?: string;
   lang?: string;
   c?: Context;
@@ -133,6 +136,7 @@ export interface BaseLayoutProps {
 
 export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
   title,
+  page,
   description,
   lang,
   c,
@@ -601,6 +605,7 @@ export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({
         </head>
         <body
           class="bg-background text-foreground antialiased"
+          {...(page ? { "data-page": page } : {})}
           {...(isAuthenticated ? { "data-authenticated": true } : {})}
         >
           {content}

@@ -51,6 +51,7 @@ export async function renderCollectionsDirectory(
   ]);
 
   return renderPublicPage(c, {
+    page: "collections",
     title: buildPageTitle("Collections", navData.siteName),
     alternateLanguages: buildSurfaceAlternates(c),
     navData,

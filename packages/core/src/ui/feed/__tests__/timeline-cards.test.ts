@@ -588,7 +588,7 @@ describe("timeline cards", () => {
     );
 
     expect(presetCss).toContain(
-      '[data-post]:not([data-page="post"]) [data-post-body].prose',
+      "[data-post]:not(.post-detail) [data-post-body].prose",
     );
     expect(presetCss).toMatch(
       /:where\(h1,\s*h2\)\s*\{[\s\S]*font-size:\s*calc\(var\(--type-content-body\) \* 1\.12\);/,

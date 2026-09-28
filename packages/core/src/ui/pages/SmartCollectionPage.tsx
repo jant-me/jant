@@ -106,9 +106,8 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
   return (
     <div
       class="py-6"
-      // The same page kind a theme already styles; the second attribute is the
-      // hook for anything that needs to tell the two apart.
-      data-page="collection"
+      // `data-page` on <body> says "collection", as for any collection; this
+      // is the hook for anything that needs to tell the two apart.
       data-smart-collection={smartCollection.slug}
       data-collection-mode="smart"
     >

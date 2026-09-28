@@ -55,6 +55,7 @@ export async function renderFeaturedPage(c: Context<Env>): Promise<Response> {
   ]);
 
   return renderPublicPage(c, {
+    page: "featured",
     title:
       page > 1
         ? buildPageTitle(featuredTitle, paginatedPageTitle, navData.siteName)

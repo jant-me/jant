@@ -1368,7 +1368,7 @@ export const ArchivePage: FC<ArchivePageProps> = ({
   const countSummary = `${totalCount} ${countRemainder}`;
 
   return (
-    <div class="py-6" data-page="archive">
+    <div class="py-6">
       <header class="archive-page-header page-intro">
         <div class="page-intro-title-row">
           <h1 class="page-intro-title">{i18n._(ARCHIVE_ALL_POSTS_LABEL)}</h1>

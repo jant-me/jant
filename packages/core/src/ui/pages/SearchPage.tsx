@@ -219,7 +219,7 @@ export const SearchPage: FC<SearchPageProps> = ({
   const { i18n } = useLingui();
 
   return (
-    <div class="py-6" data-page="search">
+    <div class="search-page py-6">
       <h1 class="text-2xl font-semibold mb-6">
         {i18n._(
           msg({

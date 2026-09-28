@@ -127,7 +127,7 @@ describe("compose shortcuts", () => {
     const composeEl = createComposeHarness();
 
     const collectionPage = document.createElement("div");
-    collectionPage.dataset.page = "collection";
+    collectionPage.dataset.collectionMode = "single";
     collectionPage.dataset.collectionId = "col-2";
     document.body.appendChild(collectionPage);
 
@@ -253,7 +253,7 @@ describe("compose shortcuts", () => {
 
     vi.spyOn(document, "querySelector").mockImplementation(
       (selector: string): globalThis.Element | null => {
-        if (selector === "[data-page='post'] article[data-post]:hover") {
+        if (selector === ".thread-group-detail article[data-post]:hover") {
           return hoveredArticle;
         }
         return originalQuerySelector(selector);
@@ -281,7 +281,7 @@ describe("compose shortcuts", () => {
 
     vi.spyOn(document, "querySelector").mockImplementation(
       (selector: string): globalThis.Element | null => {
-        if (selector === "[data-page='post'] article[data-post]:hover") {
+        if (selector === ".thread-group-detail article[data-post]:hover") {
           return hoveredArticle;
         }
         return originalQuerySelector(selector);
@@ -347,7 +347,7 @@ describe("compose shortcuts", () => {
     const originalQuerySelector = document.querySelector.bind(document);
     vi.spyOn(document, "querySelector").mockImplementation(
       (selector: string): globalThis.Element | null => {
-        if (selector === "[data-page='post'] article[data-post]:hover") {
+        if (selector === ".thread-group-detail article[data-post]:hover") {
           return null;
         }
         if (selector === "article[data-post]:hover") {

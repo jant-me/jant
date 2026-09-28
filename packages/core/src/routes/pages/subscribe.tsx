@@ -162,6 +162,7 @@ export async function renderSubscribePage(c: Context<Env>): Promise<Response> {
   };
 
   return renderPublicPage(c, {
+    page: "subscribe",
     title: buildPageTitle(
       i18n._(
         msg({

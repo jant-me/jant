@@ -151,6 +151,7 @@ async function renderPostWithTextPreview(
     .replace(/>/g, "\\u003e");
 
   return renderPublicPage(c, {
+    page: "post",
     title: buildPageTitle(pageTitle, navData.siteName),
     description: meta.description,
     canonicalHref,
@@ -368,6 +369,7 @@ async function renderPost(
   )}?edit=1`;
 
   return renderPublicPage(c, {
+    page: "post",
     title: previewTitle
       ? buildPageTitle(previewTitle, meta.title, navData.siteName)
       : buildPageTitle(meta.title, navData.siteName),

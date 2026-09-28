@@ -368,7 +368,7 @@ export function BrandPage({
   );
 
   return (
-    <div class="brand-page py-8" data-page="brand">
+    <div class="brand-page py-8">
       <section class="brand-hero">
         <div class="brand-hero-copy">
           <div class="brand-mark-lockup">

@@ -26,6 +26,7 @@ newPostRoutes.get("/new", async (c) => {
   );
 
   return renderPublicPage(c, {
+    page: "compose",
     title: buildPageTitle(
       i18n._(
         msg({

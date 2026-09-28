@@ -634,6 +634,7 @@ export async function renderArchivePage(
     : `${toAbsoluteSiteUrl(c.req.path, appConfig.siteUrl, appConfig.sitePathPrefix)}${canonicalQuery}`;
 
   return renderPublicPage(c, {
+    page: "archive",
     // A tab has no filter bar beside it, so unlike the page heading this has to
     // name the selection itself — otherwise every bookmarked filtered view
     // reads identically in the tab bar.
