@@ -9,6 +9,7 @@ import { ID_PREFIX } from "../../lib/ids.js";
 import { parseValidated, readJsonBody } from "../../lib/schemas.js";
 import { getMediaUrl, getPublicUrlForProvider } from "../../lib/image.js";
 import { toApiMedia } from "../../lib/api-media.js";
+import { toPublicPath } from "../../lib/url.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -160,7 +161,12 @@ uploadsApiRoutes.post("/init", async (c) => {
       transport: {
         kind: "multipartRelay",
         method: "PUT",
-        url: `/api/uploads/${result.id}/part`,
+        // A site under a path prefix answers there; the client sends to
+        // this URL as given.
+        url: toPublicPath(
+          `/api/uploads/${result.id}/part`,
+          c.var.appConfig.sitePathPrefix,
+        ),
         partSize: result.transport.partSize,
       },
     });
@@ -171,7 +177,10 @@ uploadsApiRoutes.post("/init", async (c) => {
     transport: {
       kind: "relay",
       method: "PUT",
-      url: `/api/uploads/${result.id}/body`,
+      url: toPublicPath(
+        `/api/uploads/${result.id}/body`,
+        c.var.appConfig.sitePathPrefix,
+      ),
     },
   });
 });

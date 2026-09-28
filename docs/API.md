@@ -1133,7 +1133,7 @@ Fields:
 | `size`           | integer | yes      | —       | File size in bytes              |
 | `checksumSha256` | string  | no       | `null`  | Base64-encoded SHA-256 checksum |
 
-The response includes an upload session ID (`upl_*`) and one of three transport kinds.
+The response includes an upload session ID (`upl_*`) and one of three transport kinds. Send the file to `transport.url` as given: on a site with `SITE_PATH_PREFIX`, the relay URLs already start with the prefix.
 
 #### Relay transport
 

@@ -241,7 +241,7 @@ async function uploadMultipartRelay(
     const chunk = file.slice(start, end);
     const partBytes = end - start;
     const response = await xhrPut(
-      publicPath(`${transport.url}?partNumber=${partNumber}`),
+      `${transport.url}?partNumber=${partNumber}`,
       chunk,
       {},
       (partProgress) => {
@@ -293,7 +293,7 @@ export async function uploadViaSession(
       onProgress?.(1);
     } else if (transport.kind === "relay") {
       const response = await xhrPut(
-        publicPath(transport.url),
+        transport.url,
         file,
         { "Content-Type": file.type },
         onProgress,

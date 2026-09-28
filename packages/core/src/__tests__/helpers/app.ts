@@ -48,6 +48,8 @@ interface TestAppOptions {
   telegramWebhookSecret?: string;
   /** RSS publication delay; defaults to zero in general route tests. */
   rssPublishDelaySeconds?: number;
+  /** `SITE_PATH_PREFIX`, such as `/blog`; none by default. */
+  sitePathPrefix?: string;
 }
 
 /**
@@ -84,7 +86,7 @@ export function createTestApp(options: TestAppOptions = {}) {
     // Provide mock env bindings so c.env.* works in route handlers
     c.env = {
       SITE_ORIGIN: `http://localhost:${DEFAULT_APP_PORT}`,
-      SITE_PATH_PREFIX: "",
+      SITE_PATH_PREFIX: options.sitePathPrefix ?? "",
       DEMO_MODE: options.demoMode ? "true" : "false",
       INTERNAL_ADMIN_TOKEN: options.internalAdminToken,
       HOSTED_CONTROL_PLANE_SSO_SECRET: options.hostedControlPlaneSsoSecret,
