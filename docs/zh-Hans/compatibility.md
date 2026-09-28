@@ -19,17 +19,17 @@ Jant 的承诺分三档。有些东西每个版本都保持可用，大版本也
 
 ## 只在大版本里改动
 
-| 范围       | 覆盖的内容                                                                                              | 参考                                         |
-| ---------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| HTTP API   | 接口、请求与响应字段及其行为，`/api/internal/*` 除外                                                    | [API 参考（英文）](../API.md)                |
-| MCP        | `/api/mcp` 的工具名和参数                                                                               | [自动化与 API](automation-and-api.md)        |
-| Feed 内容  | 文档写明的 Atom 元素和 `https://jant.me/ns` 扩展                                                        | [读取 Jant feed（英文）](../feed-reading.md) |
-| 命令行     | `jant --help` 列出的命令及其选项                                                                        | [命令行](cli.md)                             |
-| 配置       | 环境变量和设置项、它们的取值（包括主题 ID），以及保留路径                                               | [配置](configuration.md)                     |
-| 导出格式   | 站点导出的 front matter 字段（标为「仅主题」的除外）和 `data/jant.toml`                                 | [导出与导入](export-and-import.md)           |
-| Docker     | `owenyoung/jant` 镜像名、`/var/lib/jant` 数据目录和 `jant-migrate` 服务                                 | [使用 Docker 部署](deployment-docker.md)     |
-| JavaScript | `@jant/core` 的 `createApp`                                                                             | —                                            |
-| 项目结构   | `create-jant` 项目的 `wrangler.toml` 读取的 `@jant/core` 内部路径：`dist/client` 和 `src/db/migrations` | [使用 Cloudflare 部署](deployment.md)        |
+| 范围       | 覆盖的内容                                                                                                                              | 参考                                         |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| HTTP API   | 接口、请求与响应字段及其行为，`/api/internal/*` 除外                                                                                    | [API 参考（英文）](../API.md)                |
+| MCP        | `/api/mcp` 的工具名和参数                                                                                                               | [自动化与 API](automation-and-api.md)        |
+| Feed 内容  | 文档写明的 Atom 元素和 `https://jant.me/ns` 扩展                                                                                        | [读取 Jant feed（英文）](../feed-reading.md) |
+| 命令行     | `jant --help` 列出的命令及其选项                                                                                                        | [命令行](cli.md)                             |
+| 配置       | 环境变量和设置项、它们的取值（包括主题 ID），以及保留路径                                                                               | [配置](configuration.md)                     |
+| 导出格式   | 站点导出的 front matter 字段（标为「仅主题」的除外）和 `data/jant.toml`                                                                 | [导出与导入](export-and-import.md)           |
+| Docker     | `owenyoung/jant` 镜像名、`/var/lib/jant` 数据目录和 `jant-migrate` 服务                                                                 | [使用 Docker 部署](deployment-docker.md)     |
+| JavaScript | `@jant/core` 的 `createApp`：不接受参数，返回一个用 `fetch` 响应请求的对象                                                              | —                                            |
+| 项目结构   | `create-jant` 项目的 `wrangler.toml` 读取的 `@jant/core` 内部路径 `dist/client` 和 `src/db/migrations`，以及它声明的绑定名 `DB` 和 `R2` | [使用 Cloudflare 部署](deployment.md)        |
 
 大版本改动其中任何一项，都会在升级说明里写明要改什么。它可能先在某个次版本里标为弃用，但不一定。
 

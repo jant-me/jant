@@ -104,13 +104,13 @@ import { withConditionalResponse } from "./lib/http-cache.js";
 import { withWorkerResponseCache } from "./lib/worker-response-cache.js";
 import { createRequestRuntime } from "./runtime/index.js";
 import { getInstanceReadiness } from "./runtime/readiness.js";
-import { type AppVariables, type App } from "./types/app-context.js";
+import { type AppVariables, type HonoApp } from "./types/app-context.js";
 import {
   getStoredFileContentSecurityPolicy,
   isPublicStorageKeyAllowed,
 } from "./lib/public-storage.js";
 
-export type { AppVariables, App };
+export type { AppVariables, HonoApp };
 
 const publicRequestMeta = new WeakMap<
   Request,
@@ -256,6 +256,10 @@ async function servePublicStorage(
 /**
  * Create a Jant application
  *
+ * The package's public `createApp` in `index.ts` wraps this and narrows the
+ * result to `fetch`; code inside the package that needs the Hono instance
+ * imports this one.
+ *
  * @returns Hono app instance
  *
  * @example
@@ -265,7 +269,7 @@ async function servePublicStorage(
  * export default createApp();
  * ```
  */
-export function createApp(): App {
+export function createApp(): HonoApp {
   const app = new Hono<{ Bindings: Bindings; Variables: AppVariables }>();
   const defaultFetch = app.fetch.bind(app);
 

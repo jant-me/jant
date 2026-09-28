@@ -19,17 +19,17 @@ No release adds a top-level path that takes an address your content already has.
 
 ## Changed only in a major release
 
-| Surface        | What's covered                                                                                                       | Reference                                   |
-| -------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| HTTP API       | Endpoints, request and response fields, and behavior, except `/api/internal/*`                                       | [API Reference](API.md)                     |
-| MCP            | Tool names and parameters at `/api/mcp`                                                                              | [Automation and API](automation-and-api.md) |
-| Feed contents  | The Atom elements and the `https://jant.me/ns` extension, as documented                                              | [Reading a Jant feed](feed-reading.md)      |
-| Command line   | The commands `jant --help` lists, and their options                                                                  | [Command line](cli.md)                      |
-| Configuration  | Environment variables and settings, the values they take, theme IDs included, and the reserved paths                 | [Configuration](configuration.md)           |
-| Export format  | The site export's front-matter fields, except those marked theme only, and `data/jant.toml`                          | [Export and import](export-and-import.md)   |
-| Docker         | The `owenyoung/jant` image name, the `/var/lib/jant` data directory, and the `jant-migrate` service                  | [Deploy with Docker](deployment-docker.md)  |
-| JavaScript     | `createApp` from `@jant/core`                                                                                        | —                                           |
-| Project layout | The paths a `create-jant` project's `wrangler.toml` reads inside `@jant/core`: `dist/client` and `src/db/migrations` | [Deploy on Cloudflare](deployment.md)       |
+| Surface        | What's covered                                                                                                                                                         | Reference                                   |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| HTTP API       | Endpoints, request and response fields, and behavior, except `/api/internal/*`                                                                                         | [API Reference](API.md)                     |
+| MCP            | Tool names and parameters at `/api/mcp`                                                                                                                                | [Automation and API](automation-and-api.md) |
+| Feed contents  | The Atom elements and the `https://jant.me/ns` extension, as documented                                                                                                | [Reading a Jant feed](feed-reading.md)      |
+| Command line   | The commands `jant --help` lists, and their options                                                                                                                    | [Command line](cli.md)                      |
+| Configuration  | Environment variables and settings, the values they take, theme IDs included, and the reserved paths                                                                   | [Configuration](configuration.md)           |
+| Export format  | The site export's front-matter fields, except those marked theme only, and `data/jant.toml`                                                                            | [Export and import](export-and-import.md)   |
+| Docker         | The `owenyoung/jant` image name, the `/var/lib/jant` data directory, and the `jant-migrate` service                                                                    | [Deploy with Docker](deployment-docker.md)  |
+| JavaScript     | `createApp` from `@jant/core`, which takes no arguments and returns an object whose `fetch` serves the site                                                            | —                                           |
+| Project layout | The paths a `create-jant` project's `wrangler.toml` reads inside `@jant/core`, `dist/client` and `src/db/migrations`, and the binding names it declares, `DB` and `R2` | [Deploy on Cloudflare](deployment.md)       |
 
 A major release that changes one of these says what to change in its upgrade notes. It may deprecate the old form in a minor release first, but it doesn't have to.
 

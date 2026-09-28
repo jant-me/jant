@@ -78,4 +78,8 @@ export interface AppVariables {
   viewLang?: string;
 }
 
-export type App = Hono<{ Bindings: Bindings; Variables: AppVariables }>;
+/**
+ * The Hono application `app.tsx` builds. Internal: the package exports only
+ * the `App` interface in `index.ts`, which is this narrowed to `fetch`.
+ */
+export type HonoApp = Hono<{ Bindings: Bindings; Variables: AppVariables }>;

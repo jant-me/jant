@@ -86,7 +86,7 @@ Non-negotiable regardless of context:
 ### Conventions
 
 - `packages/core`: library + dev environment (Vite HMR). `sites/demo`: demo site + user template source (via `@create-jant` annotations).
-- **Types**: shared domain types re-exported from `src/types.ts`; definitions in `src/types/`. The package's public JavaScript API is `createApp` alone (`src/index.ts`).
+- **Types**: shared domain types re-exported from `src/types.ts`; definitions in `src/types/`. The package's public JavaScript API is `createApp` alone (`src/index.ts`), and that file is also its published types: the library build declares it on its own into `dist/index.d.ts`, so it may not name a type from another module (`public-types.test.ts`).
 - **Schemas**: shared domain schemas in `src/lib/schemas.ts`; route-specific schemas colocated with routes.
 - **Routes**: `xxxRoutes` suffix (`postsRoutes`, `settingsRoutes`).
 - **DB table names**: always singular or domain-specific (`post`, `collection`, `nav_item`, `api_token`, `path_registry`), never plural.
