@@ -87,6 +87,12 @@ The first 1.x release has steps no other release has. Work through them in the R
   - the "Until then, a minor release can still change what the second level covers" sentence in the first paragraph of `docs/compatibility.md` and `docs/zh-Hans/compatibility.md`
   - the 0.x note under [Versioning](#versioning-semver) on this page
   - "The project is settling toward 1.0" at the top of `AGENTS.md`, which becomes a statement that 1.0 has shipped
+- [ ] After 1.0.1 is on npm, point the accidental 1.0.0's deprecation at it. The message still says to use 0.3.x:
+
+  ```bash
+  npm deprecate @jant/core@1.0.0 "Published by accident. Use 1.0.1 or later."
+  ```
+
 - [ ] After `owenyoung/jant:1` is on Docker Hub, switch `compose.yml`'s `IMAGE` default, and the images in `docs/deployment-docker.md` (en, zh-Hans) and `docs/docker-hub-overview.md`, from `:latest` to `:1`. Until that tag exists, `compose.yml` on `main` must keep `:latest`: users download it from there
 
 ## Docker image publishing
