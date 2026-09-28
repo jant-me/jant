@@ -115,7 +115,7 @@ Current transport behavior:
 
 - `POST` only
 - content type `application/json`
-- takes `MCP-Protocol-Version: 2025-06-18`; a request without it is read as that version, and any other version answers `400`
+- takes `MCP-Protocol-Version: 2025-06-18`; a request without it is read as that version, and any other version answers `400`. A later minor release can accept newer protocol versions as well; one is dropped only in a major release
 - supports `initialize`, `ping`, `tools/list`, `tools/call`, and `notifications/initialized`
 - does not support batch requests, SSE streaming, or session negotiation
 
