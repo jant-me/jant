@@ -906,13 +906,13 @@ describe("createExportService (Hugo)", () => {
     const redirects = files.get("static/_redirects") as string;
 
     expect(data).toContain(
-      '[[custom_url]]\npath = "atom.xml"\nkind = "redirect"\nto = "/feed"\nstatus = 301',
+      '[[custom_url]]\npath = "/atom.xml"\nkind = "redirect"\nto = "/feed"\nstatus = 301',
     );
     expect(data).toContain(
-      'path = "inspires"\nkind = "redirect"\nto = "/inspired"\nstatus = 302',
+      'path = "/inspires"\nkind = "redirect"\nto = "/inspired"\nstatus = 302',
     );
     expect(data).toContain(
-      'path = "links"\nkind = "archive"\narchive_query = "format=link"',
+      'path = "/links"\nkind = "archive"\narchive_query = "format=link"',
     );
     expect(redirects).toMatch(/^\/atom\.xml\s+\/feed\s+301$/m);
     expect(redirects).toMatch(/^\/inspires\s+\/inspired\s+302$/m);

@@ -2108,7 +2108,8 @@ function buildJantDataToml(
   for (const record of targets.standalonePaths) {
     parts.push("");
     parts.push("[[custom_url]]");
-    parts.push(`path = "${escapeTomlString(record.path)}"`);
+    // Every path in an export starts with a slash, as the API gives them.
+    parts.push(`path = "/${escapeTomlString(record.path)}"`);
     parts.push(`kind = "${escapeTomlString(record.kind)}"`);
     if (record.kind === "redirect" && record.redirectToPath) {
       parts.push(`to = "/${escapeTomlString(record.redirectToPath)}"`);
