@@ -65,7 +65,9 @@ export interface RateLimiter {
  * getClientIp(c); // "203.0.113.7"
  * ```
  */
-export function getClientIp(c: Context): string {
+export function getClientIp(c: {
+  req: { header(name: string): string | undefined };
+}): string {
   const cf = c.req.header("cf-connecting-ip");
   if (cf) return cf;
   const fwd = c.req.header("x-forwarded-for");
