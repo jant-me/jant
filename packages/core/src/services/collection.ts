@@ -171,7 +171,10 @@ export interface CollectionService {
   /**
    * Add a Thread to a collection. Optional metadata lets the caller set the
    * per-row `createdAt` / `position` / `pinnedAt` explicitly; omitted
-   * fields default to `now()` / append-at-end / `null`.
+   * fields default to `now()` / append-at-end / `null`. Adding a Thread that
+   * is already in the collection changes nothing.
+   *
+   * @throws {NotFoundError} When the collection or the post doesn't exist
    */
   addThread(
     collectionId: string,
@@ -197,11 +200,26 @@ export interface CollectionService {
       pinnedAt?: number | null;
     }[],
   ): Promise<void>;
-  /** Remove a Thread from a collection */
+  /**
+   * Remove a Thread from a collection. Removing one that isn't in it changes
+   * nothing.
+   *
+   * @throws {NotFoundError} When the collection or the post doesn't exist
+   */
   removeThread(collectionId: string, threadId: string): Promise<void>;
-  /** Pin a Thread within a collection */
+  /**
+   * Pin a Thread within a collection.
+   *
+   * @throws {NotFoundError} When the collection or the post doesn't exist
+   * @throws {ConflictError} When the Thread isn't in the collection
+   */
   pinThread(collectionId: string, threadId: string): Promise<void>;
-  /** Unpin a Thread within a collection */
+  /**
+   * Unpin a Thread within a collection. Unpinning one that isn't pinned, or
+   * isn't in the collection, changes nothing.
+   *
+   * @throws {NotFoundError} When the collection or the post doesn't exist
+   */
   unpinThread(collectionId: string, threadId: string): Promise<void>;
   /** Get pinned Thread IDs for given collections */
   getPinnedThreadIds(collectionIds: string[]): Promise<Set<string>>;
@@ -429,6 +447,17 @@ export function createCollectionService(
       .where(and(eq(pathRegistry.siteId, siteId), eq(pathRegistry.path, path)))
       .limit(1);
     return rows.length > 0;
+  }
+
+  async function requireCollection(collectionId: string): Promise<void> {
+    const rows = await db
+      .select({ id: collections.id })
+      .from(collections)
+      .where(
+        and(eq(collections.siteId, siteId), eq(collections.id, collectionId)),
+      )
+      .limit(1);
+    if (rows.length === 0) throw new NotFoundError("Collection");
   }
 
   async function resolveThreadRootId(postId: string): Promise<string> {
@@ -1370,6 +1399,7 @@ export function createCollectionService(
     },
 
     async addThread(collectionId, postId, opts) {
+      await requireCollection(collectionId);
       const threadId = await resolveThreadRootId(postId);
       const [maxRow] = await db
         .select({
@@ -1462,6 +1492,7 @@ export function createCollectionService(
     },
 
     async removeThread(collectionId, postId) {
+      await requireCollection(collectionId);
       const threadId = await resolveThreadRootId(postId);
       await db
         .delete(threadCollections)
@@ -1475,8 +1506,9 @@ export function createCollectionService(
     },
 
     async pinThread(collectionId, postId) {
+      await requireCollection(collectionId);
       const threadId = await resolveThreadRootId(postId);
-      await db
+      const pinned = await db
         .update(threadCollections)
         .set({ pinnedAt: now() })
         .where(
@@ -1485,10 +1517,17 @@ export function createCollectionService(
             eq(threadCollections.threadId, threadId),
             eq(threadCollections.collectionId, collectionId),
           ),
+        )
+        .returning({ threadId: threadCollections.threadId });
+      if (pinned.length === 0) {
+        throw new ConflictError(
+          "This Thread isn't in the collection. Add it before pinning it.",
         );
+      }
     },
 
     async unpinThread(collectionId, postId) {
+      await requireCollection(collectionId);
       const threadId = await resolveThreadRootId(postId);
       await db
         .update(threadCollections)

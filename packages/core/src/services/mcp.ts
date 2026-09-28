@@ -668,14 +668,6 @@ const mcpTools: McpToolDefinition[] = [
     inputSchema: toolInputSchema(AddCollectionThreadToolSchema),
     async execute(args, context) {
       const input = AddCollectionThreadToolSchema.parse(args ?? {});
-      const collection = await context.services.collections.getById(
-        input.collectionId,
-      );
-
-      if (!collection) {
-        throw new NotFoundError("Collection");
-      }
-
       await context.services.collections.addThread(
         input.collectionId,
         input.threadId,
@@ -689,13 +681,6 @@ const mcpTools: McpToolDefinition[] = [
     inputSchema: toolInputSchema(RemoveCollectionThreadToolSchema),
     async execute(args, context) {
       const input = RemoveCollectionThreadToolSchema.parse(args ?? {});
-      const collection = await context.services.collections.getById(
-        input.collectionId,
-      );
-      if (!collection) {
-        throw new NotFoundError("Collection");
-      }
-
       await context.services.collections.removeThread(
         input.collectionId,
         input.threadId,

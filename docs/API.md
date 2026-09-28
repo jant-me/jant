@@ -1769,6 +1769,8 @@ Response:
 { "success": true }
 ```
 
+An ID that names no directory item returns `404`.
+
 ### Add a Thread to a collection
 
 `POST /api/collections/:id/threads`
@@ -1788,13 +1790,17 @@ Fields:
 | `threadId` | `pst_*` string | yes      | —       | Thread root or child Post ID |
 
 The ID is normalized to the Thread root. The root and every child share one
-Collection membership set.
+Collection membership set. Adding a Thread that is already in the Collection
+changes nothing.
 
 Response:
 
 ```json
 { "success": true }
 ```
+
+On this endpoint and the three below, a Collection or post that doesn't exist
+returns `404`.
 
 ### Remove a Thread from a collection
 
@@ -1803,7 +1809,7 @@ Response:
 Auth: `Session or token`
 
 Removes the whole Thread from the Collection. It does not delete the Thread or
-the Collection.
+the Collection. Removing a Thread that isn't in the Collection changes nothing.
 
 Response:
 
@@ -1820,7 +1826,8 @@ Response:
 Auth: `Session or token`
 
 Both endpoints accept a Thread root or child Post ID and operate on the shared
-Thread membership. Response:
+Thread membership. Pinning a Thread that isn't in the Collection returns `409`;
+unpinning one changes nothing. Response:
 
 ```json
 { "success": true }

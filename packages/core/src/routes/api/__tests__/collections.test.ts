@@ -477,6 +477,12 @@ describe("Collections API Routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.success).toBe(true);
+
+      const again = await app.request(
+        `/api/collections/directory-items/${item.id}`,
+        { method: "DELETE" },
+      );
+      expect(again.status).toBe(404);
     });
   });
 
@@ -767,6 +773,68 @@ describe("Collections API Routes", () => {
       expect(await services.collections.getPinnedThreadIds([col.id])).toEqual(
         new Set(),
       );
+    });
+
+    it("refuses to pin a Thread that isn't in the collection", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/collections", collectionsApiRoutes);
+
+      const col = await services.collections.create({
+        slug: "tech",
+        title: "Tech",
+      });
+      const post = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "outside",
+      });
+
+      const pinRes = await app.request(
+        `/api/collections/${col.id}/threads/${post.id}/pin`,
+        { method: "PUT" },
+      );
+      expect(pinRes.status).toBe(409);
+      expect((await pinRes.json()).code).toBe("CONFLICT");
+
+      // Already in the state asked for.
+      const unpinRes = await app.request(
+        `/api/collections/${col.id}/threads/${post.id}/pin`,
+        { method: "DELETE" },
+      );
+      expect(unpinRes.status).toBe(200);
+    });
+  });
+
+  describe("Thread membership of a collection that doesn't exist", () => {
+    it("answers 404 to add, remove, pin, and unpin", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/collections", collectionsApiRoutes);
+
+      const post = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "test",
+      });
+      const missing = createEntityId("collection");
+
+      const requests: [string, string, string?][] = [
+        [
+          "POST",
+          `/api/collections/${missing}/threads`,
+          JSON.stringify({ threadId: post.id }),
+        ],
+        ["DELETE", `/api/collections/${missing}/threads/${post.id}`],
+        ["PUT", `/api/collections/${missing}/threads/${post.id}/pin`],
+        ["DELETE", `/api/collections/${missing}/threads/${post.id}/pin`],
+      ];
+      for (const [method, path, body] of requests) {
+        const res = await app.request(path, {
+          method,
+          ...(body
+            ? { body, headers: { "Content-Type": "application/json" } }
+            : {}),
+        });
+        expect(res.status, `${method} ${path}`).toBe(404);
+        expect((await res.json()).error).toBe("Collection not found");
+      }
     });
   });
 });

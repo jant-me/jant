@@ -160,7 +160,8 @@ collectionsApiRoutes.delete(
       c.req.param("id"),
       ID_PREFIX.collectionDirectoryItem,
     );
-    await c.var.services.collections.deleteDirectoryItem(id);
+    const deleted = await c.var.services.collections.deleteDirectoryItem(id);
+    if (!deleted) throw new NotFoundError("Directory item");
     return c.json({ success: true });
   },
 );
@@ -231,8 +232,6 @@ collectionsApiRoutes.delete("/:id", requireAuthApi(), async (c) => {
 // Add a thread to a collection (requires auth)
 collectionsApiRoutes.post("/:id/threads", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.collection);
-  assertFound(await c.var.services.collections.getById(id), "Collection");
-
   const body = parseValidated(ThreadAssignSchema, await readJsonBody(c));
   await c.var.services.collections.addThread(id, body.threadId);
 
