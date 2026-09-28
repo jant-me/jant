@@ -2,7 +2,7 @@
  * Media Lightbox
  *
  * Fullscreen overlay carousel for post media galleries.
- * Intercepts clicks on [data-post-media] a[data-lightbox-index] via
+ * Intercepts clicks on [data-lightbox-group] a[data-lightbox-index] via
  * delegated listener, reads image data from [data-lightbox-group],
  * and displays images in a native <dialog>.
  *
@@ -227,10 +227,10 @@ export class JantMediaLightbox extends LitElement {
   #handleDocumentClick = (e: Event) => {
     const target = e.target as HTMLElement;
 
-    // Find the closest anchor with data-lightbox-index inside [data-post-media]
-    // Media gallery lightbox (existing)
+    // A gallery item: an anchor with data-lightbox-index inside the group
+    // that lists the images to page through.
     const anchor = target.closest<HTMLAnchorElement>(
-      "[data-post-media] a[data-lightbox-index]",
+      "[data-lightbox-group] a[data-lightbox-index]",
     );
     if (anchor) {
       const group = anchor.closest<HTMLElement>("[data-lightbox-group]");

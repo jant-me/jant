@@ -211,7 +211,7 @@ You can target specific pages or elements with these data attributes when writin
 | `data-feed`          | Feed container   | Wraps the post list                                                                       |
 | `data-authenticated` | `<body>`         | Present when logged in                                                                    |
 
-Inside each post there are three more markers: `data-post-body` (body container), `data-post-meta` (date, tags, and other metadata), and `data-post-media` (image / video area). Together they let you style any one section of a post on its own.
+Inside each post there are four more markers: `data-post-body` (the body, or a quote's commentary), `data-post-quote` (a quote's quoted text), `data-post-meta` (the date and the collections), and `data-post-media` (the attachments: images, video, audio, documents, and text files). Together they let you style any one section of a post on its own.
 
 ### Example: dividers only on the home page
 
@@ -225,7 +225,7 @@ Inside each post there are three more markers: `data-post-body` (body container)
 ### Example: style by format
 
 ```css
-[data-format="quote"] [data-post-body] {
+[data-post-quote] {
   font-family: var(--font-serif);
   font-style: italic;
 }

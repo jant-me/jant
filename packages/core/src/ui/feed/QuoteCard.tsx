@@ -57,6 +57,7 @@ export const QuoteCard: FC<TimelineCardProps> = ({
           {post.quoteText && (
             <blockquote
               class={`feed-quote${isCompact ? "" : " feed-quote-card"}`}
+              data-post-quote
             >
               {!isCompact && <DecorativeQuoteMark class="feed-quote-mark" />}
               <div

@@ -194,7 +194,7 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 | `data-feed`          | 信息流容器  | 包裹帖子列表                                                                              |
 | `data-authenticated` | `<body>`    | 登录时带上                                                                                |
 
-帖子内部还有三个标记：`data-post-body`（正文容器）、`data-post-meta`（日期、标签等元信息）、`data-post-media`（图片 / 视频区）。三个一组，便于针对帖子的某一块单独写样式。
+帖子内部还有四个标记：`data-post-body`（正文，引用帖是评论）、`data-post-quote`（引用帖的引文）、`data-post-meta`（日期和合集）、`data-post-media`（附件：图片、视频、音频、文档和文本附件）。有了它们，可以针对帖子的某一块单独写样式。
 
 ### 示例：只在首页加分隔线
 
@@ -208,7 +208,7 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 ### 示例：按格式区分样式
 
 ```css
-[data-format="quote"] [data-post-body] {
+[data-post-quote] {
   font-family: var(--font-serif);
   font-style: italic;
 }

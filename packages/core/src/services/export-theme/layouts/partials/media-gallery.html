@@ -4,8 +4,11 @@
   post's stored `media` order (already sorted by position in the exporter).
 
   Lightbox: images and videos get `[data-lightbox-index]` pointers into a
-  JSON blob on `[data-post-media]`. The client-site bundle's
+  JSON blob on `[data-lightbox-group]`. The client-site bundle's
   `<jant-media-lightbox>` delegates clicks on those anchors.
+
+  Hooks: `data-post-media` marks the whole area once, as on the main site,
+  for themes; `data-media-gallery` marks the scrolling row for the client.
 
   Layout: mirrors MediaGallery.tsx — one horizontal row with a computed
   `rowHeight` so mixed sizes align into a clean strip. The opening visual
@@ -86,8 +89,8 @@
   {{- /* Outer wrapper — keeps the media-gallery-scroll-wrap hooks for the
          fade-mask client script in the non-single case. */ -}}
   {{- $wrapClass := cond $singleVisual "" "media-gallery-scroll-wrap" -}}
-  <div class="{{ $wrapClass }}" style="margin-top: 0.75rem;">
-    <div data-post-media
+  <div class="{{ $wrapClass }}" data-post-media style="margin-top: 0.75rem;">
+    <div data-media-gallery
       {{- if $lightbox }} data-lightbox-group="{{ $lightbox | jsonify }}"{{- end -}}
       {{- if not $singleVisual }} tabindex="0" role="group" aria-label="Media gallery"{{- end -}}
       style="display: flex; gap: 0.75rem;

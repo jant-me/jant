@@ -974,7 +974,7 @@ button.media-gallery-card {
 }
 
 /* Visible focus ring when a keyboard user tabs onto the scrollable strip. */
-.media-gallery-scroll-wrap > [data-post-media]:focus-visible {
+.media-gallery-scroll-wrap > [data-media-gallery]:focus-visible {
   outline: 2px solid var(--site-text-primary);
   outline-offset: 2px;
   border-radius: 4px;

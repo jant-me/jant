@@ -348,7 +348,7 @@ export const MediaGallery: FC<MediaGalleryProps> = ({
       {hasGalleryItems && (
         <div class={`mt-3 ${singleVisual ? "" : "media-gallery-scroll-wrap"}`}>
           <div
-            data-post-media
+            data-media-gallery
             data-lightbox-group={
               lightboxItems.length > 0
                 ? JSON.stringify(lightboxItems)

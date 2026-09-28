@@ -51,7 +51,7 @@ function setMetrics(
 function renderGallery(): { wrap: HTMLElement; scroller: HTMLElement } {
   document.body.innerHTML = `
     <div class="media-gallery-scroll-wrap">
-      <div data-post-media tabindex="0">
+      <div data-media-gallery tabindex="0">
         <a class="media-visual-frame"></a>
         <a class="media-visual-frame"></a>
       </div>
@@ -63,7 +63,7 @@ function renderGallery(): { wrap: HTMLElement; scroller: HTMLElement } {
   const wrap = document.querySelector<HTMLElement>(
     ".media-gallery-scroll-wrap",
   );
-  const scroller = document.querySelector<HTMLElement>("[data-post-media]");
+  const scroller = document.querySelector<HTMLElement>("[data-media-gallery]");
   if (!wrap || !scroller) throw new Error("Expected a gallery in the document");
   return { wrap, scroller };
 }

@@ -1029,4 +1029,21 @@ describe("timeline cards", () => {
     expect(pinned).not.toContain("post-status-private");
     expect(pinned).not.toContain("post-status-draft");
   });
+
+  // The theme hooks mark each part once: a rule on [data-post-media] used to
+  // match both the card's wrapper and the gallery row inside it.
+  it("marks a post's media once and a quote's quoted text", () => {
+    for (const card of [
+      NoteCard({ post: createPostView({ format: "note" }), mode: "feed" }),
+      LinkCard({ post: createPostView({ format: "link" }), mode: "detail" }),
+      QuoteCard({ post: createPostView({ format: "quote" }), mode: "feed" }),
+    ]) {
+      const html = renderWithI18n(card);
+      expect(html.match(/data-post-media/g)).toHaveLength(1);
+    }
+    const quoteHtml = renderWithI18n(
+      QuoteCard({ post: createPostView({ format: "quote" }), mode: "feed" }),
+    );
+    expect(quoteHtml).toMatch(/<blockquote[^>]*data-post-quote/);
+  });
 });

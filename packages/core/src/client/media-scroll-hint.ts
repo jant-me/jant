@@ -1,7 +1,7 @@
 /**
  * Media gallery horizontal scroll affordances.
  *
- * The gallery strip (`[data-post-media]` inside `.media-gallery-scroll-wrap`)
+ * The gallery strip (`[data-media-gallery]` inside `.media-gallery-scroll-wrap`)
  * is trackpad- and touch-friendly, but its scrollbar is hidden, so a plain
  * mouse or the keyboard has no obvious way to scroll it. This module:
  *
@@ -15,7 +15,7 @@
 const THRESHOLD = 4; // px tolerance for "at edge"
 
 function getScroller(wrap: HTMLElement): HTMLElement | null {
-  return wrap.querySelector("[data-post-media]");
+  return wrap.querySelector("[data-media-gallery]");
 }
 
 function updateHints(wrap: HTMLElement): void {
