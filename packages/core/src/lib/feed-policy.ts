@@ -21,6 +21,27 @@ const RSS_FEED_CACHE_CONTROL = "public, max-age=60";
 const FEED_CONTENT_TYPE = "application/atom+xml; charset=utf-8";
 
 /**
+ * Whether the site publishes feeds.
+ *
+ * Every route that renders a feed, or redirects to one, checks this first and
+ * answers 404 when it is off. The check belongs to those routes rather than to
+ * a path pattern: a post or custom URL whose address ends in `/feed` is not a
+ * feed and stays reachable.
+ *
+ * @param c - Anything carrying the request's resolved config
+ * @returns Whether feed routes should answer
+ * @example
+ * ```ts
+ * if (!feedsPublished(c)) return c.notFound();
+ * ```
+ */
+export function feedsPublished(c: {
+  var: { appConfig: { rssFeedsEnabled: boolean } };
+}): boolean {
+  return c.var.appConfig.rssFeedsEnabled;
+}
+
+/**
  * Serve a rendered Atom document.
  *
  * Every feed on the site goes through here, so the cache policy and the

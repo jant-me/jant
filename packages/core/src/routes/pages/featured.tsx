@@ -17,7 +17,7 @@ import { renderPublicPage } from "../../lib/render.js";
 import { assembleFeaturedTimeline } from "../../lib/timeline.js";
 import { buildSurfaceAlternates, toViewPath } from "../../lib/view-language.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
-import { renderFeed } from "../../lib/feed-policy.js";
+import { feedsPublished, renderFeed } from "../../lib/feed-policy.js";
 import { buildFeedData } from "../feed/feed.js";
 import { FeaturedPage } from "../../ui/pages/FeaturedPage.js";
 
@@ -81,6 +81,7 @@ featuredRoutes.get("/", renderFeaturedPage);
  * @returns Atom feed response
  */
 export async function renderFeaturedFeed(c: Context<Env>): Promise<Response> {
+  if (!feedsPublished(c)) return c.notFound();
   const feedData = await buildFeedData(c, {
     kind: "featured",
     selfPath: "/featured/feed",
@@ -89,7 +90,10 @@ export async function renderFeaturedFeed(c: Context<Env>): Promise<Response> {
 }
 
 /** Legacy atom.xml suffix → canonical /featured/feed, inside the same view. */
-export function redirectLegacyFeaturedFeed(c: Context<Env>): Response {
+export function redirectLegacyFeaturedFeed(
+  c: Context<Env>,
+): Response | Promise<Response> {
+  if (!feedsPublished(c)) return c.notFound();
   return c.redirect(toViewPath(c, "/featured/feed"), 308);
 }
 

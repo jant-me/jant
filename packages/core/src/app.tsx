@@ -76,7 +76,6 @@ import { siteSkillRoutes } from "./routes/site-skill.js";
 import { requireAuth } from "./middleware/auth.js";
 import { attachSession } from "./middleware/session.js";
 import { defaultCacheControl, noStore } from "./middleware/cache-control.js";
-import { requireRssFeedsEnabled } from "./middleware/public-content-access.js";
 import { requireOnboarding } from "./middleware/onboarding.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { withConfig } from "./middleware/config.js";
@@ -526,10 +525,6 @@ export function createApp(): App {
   // Config + i18n — loads settings, resolves config/theme
   app.use("*", withConfig());
   app.use("*", i18nMiddleware());
-
-  // Feed URLs are spread across page route groups (including dynamic
-  // collection aliases), so one config-aware guard owns the URL policy.
-  app.use("*", requireRssFeedsEnabled());
 
   // --- Routes that need config ---
 

@@ -24,6 +24,7 @@ import {
   getFeedEntryUpdatedAt,
   getFeedLimit,
   getRssPublishedBefore,
+  feedsPublished,
   renderFeed,
 } from "../../lib/feed-policy.js";
 import { toPlainText as markdownToPlainText } from "../../lib/markdown.js";
@@ -232,6 +233,9 @@ export async function renderCollectionFeed(
   slugExpression: string,
   feedPathOverride?: string,
 ): Promise<Response | null> {
+  // Null, which every caller answers with 404, as it does a selection that
+  // names nothing.
+  if (!feedsPublished(c)) return null;
   const selection =
     await c.var.services.collections.resolveSelection(slugExpression);
   if (!selection) return null;
@@ -423,6 +427,7 @@ export async function renderCollectionSelectionRoute(
 export async function renderCollectionSelectionFeedRoute(
   c: Context<Env>,
 ): Promise<Response> {
+  if (!feedsPublished(c)) return c.notFound();
   const slugExpression = c.req.param("slug");
   if (!slugExpression) return c.notFound();
 

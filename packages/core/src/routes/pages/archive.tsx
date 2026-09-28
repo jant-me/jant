@@ -50,6 +50,7 @@ import {
   getFeedEntryUpdatedAt,
   getFeedLimit,
   getRssPublishedBefore,
+  feedsPublished,
   renderFeed,
 } from "../../lib/feed-policy.js";
 import { getNavigationData } from "../../lib/navigation.js";
@@ -915,6 +916,7 @@ async function buildArchiveFeedData(
  * @returns Atom feed response
  */
 export async function renderArchiveFeed(c: Context<Env>): Promise<Response> {
+  if (!feedsPublished(c)) return c.notFound();
   // No session reaches a feed reader, so a selection only the author can see
   // has no honest rendering here — not an empty feed, and certainly not the
   // unfiltered one. The page already withholds the link; this is the backstop.
@@ -935,7 +937,10 @@ export async function renderArchiveFeed(c: Context<Env>): Promise<Response> {
 archiveRoutes.get("/feed", renderArchiveFeed);
 
 // Legacy atom.xml redirect
-export function redirectLegacyArchiveFeed(c: Context<Env>): Response {
+export function redirectLegacyArchiveFeed(
+  c: Context<Env>,
+): Response | Promise<Response> {
+  if (!feedsPublished(c)) return c.notFound();
   const qs = c.req.url.includes("?")
     ? c.req.url.slice(c.req.url.indexOf("?"))
     : "";

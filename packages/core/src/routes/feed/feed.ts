@@ -34,6 +34,7 @@ import {
   getFeedLimit,
   getRssPublishedBefore,
   latestFeedSelection,
+  feedsPublished,
   renderFeed,
 } from "../../lib/feed-policy.js";
 import { buildMediaMap } from "../../lib/media-helpers.js";
@@ -375,10 +376,17 @@ export function parseFormatQuery(c: Context<Env>): Format | undefined {
  * @returns Atom feed response
  */
 export async function renderMainFeed(c: Context<Env>): Promise<Response> {
+  if (!feedsPublished(c)) return c.notFound();
   const kind = c.var.appConfig.mainRssFeed === "latest" ? "latest" : "featured";
   const feedData = await buildFeedData(c, { kind, selfPath: "/feed" });
   return renderFeed(defaultFeedRenderer(feedData));
 }
+
+// Every route under /feed is a feed or a redirect to one.
+feedRoutes.use("*", async (c, next) => {
+  if (!feedsPublished(c)) return c.notFound();
+  await next();
+});
 
 // Atom — /feed
 feedRoutes.get("/", renderMainFeed);

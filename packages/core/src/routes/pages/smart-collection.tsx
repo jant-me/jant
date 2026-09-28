@@ -23,6 +23,7 @@ import {
   getFeedEntryUpdatedAt,
   getFeedLimit,
   getRssPublishedBefore,
+  feedsPublished,
   renderFeed,
 } from "../../lib/feed-policy.js";
 import { toPlainText as markdownToPlainText } from "../../lib/markdown.js";
@@ -219,6 +220,8 @@ export async function renderSmartCollectionFeed(
   c: Context<Env>,
   slug: string,
 ): Promise<Response | null> {
+  // Null, which the caller answers with 404.
+  if (!feedsPublished(c)) return null;
   const smartCollection = await c.var.services.smartCollections.getBySlug(slug);
   if (!smartCollection) return null;
 

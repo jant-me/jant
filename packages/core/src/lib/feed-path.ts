@@ -5,10 +5,16 @@ function hasPathPrefix(path: string, prefix: string): boolean {
 }
 
 /**
- * Check whether an internal application path is an Atom feed endpoint.
+ * Check whether an internal application path has the shape of an Atom feed
+ * endpoint, without resolving it.
+ *
+ * The Worker response cache uses it to decide which requests may be served
+ * from cache; what the response itself allows still decides whether one is
+ * stored. It is not a routing decision: a custom URL can end in `/feed` and
+ * be a post, which is why feed routes check `feedsPublished` themselves.
  *
  * @param path - Request pathname after any configured site prefix is removed
- * @returns Whether the path is a canonical or legacy feed URL
+ * @returns Whether the path looks like a canonical or legacy feed URL
  * @example
  * ```ts
  * isRssFeedPath("/reading/feed"); // true
