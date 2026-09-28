@@ -12,6 +12,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, extname, join, relative } from "node:path";
+import { assertPublicUrl, resolveInside } from "./import-sources.js";
 import { parse, stringify } from "smol-toml";
 import {
   collectMediaReferences as collectParsedMediaReferences,
@@ -168,7 +169,21 @@ function formatAssetRequestError(error) {
   return "Download failed";
 }
 
-function requestAssetWithNode(url, redirectCount = 0) {
+/**
+ * Downloads one asset an export links to. Every hop, the first and each
+ * redirect, must be a public address (see `lib/import-sources.js`): the
+ * bytes end up in the export, and importing it publishes them.
+ */
+async function requestAssetWithNode(url, redirectCount = 0) {
+  try {
+    await assertPublicUrl(url);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : String(error) };
+  }
+  return requestPublicAsset(url, redirectCount);
+}
+
+function requestPublicAsset(url, redirectCount) {
   const maxRedirects = 5;
 
   return new Promise((resolve) => {
@@ -468,7 +483,10 @@ async function resolveExistingPulledPath(
     return null;
   }
 
-  const fullPath = join(rootDir, "static", pathname);
+  const fullPath = resolveInside(join(rootDir, "static"), pathname);
+  if (!fullPath) {
+    return null;
+  }
   const fileStat = await stat(fullPath).catch(() => null);
   if (!fileStat?.isFile()) {
     return null;

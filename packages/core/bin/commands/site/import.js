@@ -15,6 +15,7 @@ import {
 } from "../../lib/site-media-parser.js";
 import { parseFrontMatter as parseFrontMatterShared } from "../../lib/hugo-markdown.js";
 import { extractZipFile } from "../../lib/zip-archive.js";
+import { fetchPublic, resolveInside } from "../../lib/import-sources.js";
 import { findPositionalUrl } from "../../lib/renamed-arguments.js";
 
 /**
@@ -181,7 +182,8 @@ async function resolveImportLocalAssetPath(rawUrl, siteConfig, sourceRootDir) {
   }
 
   for (const staticDir of IMPORT_STATIC_DIRS) {
-    const fullPath = join(sourceRootDir, ...staticDir, pathname);
+    const fullPath = resolveInside(sourceRootDir, ...staticDir, pathname);
+    if (!fullPath) continue;
     const fileStat = await stat(fullPath).catch(() => null);
     if (fileStat?.isFile()) {
       return fullPath;
@@ -221,7 +223,7 @@ async function readImportAsset(options) {
     return null;
   }
 
-  const response = await fetch(sourceUrl);
+  const response = await fetchPublic(sourceUrl);
   if (!response.ok) {
     return null;
   }
@@ -485,7 +487,9 @@ async function resolveJantMediaDiskPath(ref, sourceRootDir) {
   if (typeof ref !== "string" || !ref.trim()) return null;
   if (isAbsoluteUrl(ref)) return null;
   const normalized = ref.startsWith("/") ? ref.slice(1) : ref;
-  const fullPath = join(sourceRootDir, "static", normalized);
+  // `src` comes from front matter, so it must not climb out of `static/`.
+  const fullPath = resolveInside(join(sourceRootDir, "static"), normalized);
+  if (!fullPath) return null;
   const fileStat = await stat(fullPath).catch(() => null);
   return fileStat?.isFile() ? fullPath : null;
 }
