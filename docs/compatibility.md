@@ -15,7 +15,7 @@ Older spellings of an address keep working too: links and feed subscriptions suc
 
 An entry's `<id>` is the post's address, so it changes when the address does; [Feeds](feeds.md) lists what moves it. `<jant:id>` never changes.
 
-No release adds a top-level path that takes an address your content already has. A new top-level path comes in only where your content at that address keeps it.
+No release adds a top-level path that takes an address your content already has. A first path segment that starts with `_` or `.` belongs to Jant, since every address of yours starts with a letter or digit, so new system addresses go there: `/_assets` and `/__sso` already do, and `/.well-known/` is kept for standard ones. A new top-level path anywhere else comes in only where your content at that address keeps it.
 
 ## Changed only in a major release
 

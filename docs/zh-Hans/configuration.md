@@ -531,7 +531,7 @@ static, assets, _assets, healthz, readyz, skill.md, robots.txt,
 manifest.webmanifest, favicon.ico, apple-touch-icon.png, sites
 ```
 
-`sitemap.xml` 以及所有 `sitemap-*.xml` 形式的名字也不能用，sitemap 占用了这一组。开启 [多语言内容](multilingual.md) 后，每个附加语言的前缀（比如 `ja`）也会被保留。
+`sitemap.xml` 以及所有 `sitemap-*.xml` 形式的名字也不能用，sitemap 占用了这一组。你的地址都以字母或数字开头，所以第一段以 `_` 或 `.` 开头的路径（包括 `/.well-known/`）都归 Jant 使用，新的系统地址放在这里。开启 [多语言内容](multilingual.md) 后，每个附加语言的前缀（比如 `ja`）也会被保留。
 
 ## 配置文件
 

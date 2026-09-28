@@ -62,6 +62,8 @@ export type ReservedPath = (typeof RESERVED_PATHS)[number];
  * @returns Whether the path's first segment is unavailable
  * @example
  * isReservedPath("archive"); // true
+ * isReservedPath("_drafts"); // true — Jant's namespace
+ * isReservedPath(".well-known/security.txt"); // true
  * isReservedPath("sitemap-posts-2.xml"); // true
  * isReservedPath("ja/hello", ["ja"]); // true
  * isReservedPath("ja/hello"); // false — no language configured
@@ -72,6 +74,10 @@ export function isReservedPath(
 ): boolean {
   const firstSegment = path.split("/")[0]?.toLowerCase();
   if (!firstSegment) return false;
+  // A slug starts with a letter or digit, so a first segment that starts with
+  // `_` or `.` can only be Jant's: new system addresses go there (`/_assets`,
+  // `/__sso`, `/.well-known/`) and never take an address the author has.
+  if (/^[_.]/.test(firstSegment)) return true;
   if (RESERVED_PATHS.includes(firstSegment as ReservedPath)) return true;
   if (RESERVED_SITEMAP_PATTERN.test(firstSegment)) return true;
   return languagePrefixes.includes(firstSegment);

@@ -38,6 +38,16 @@ describe("isReservedPath", () => {
     expect(isReservedPath("PREVIEW/DRAFT-SLUG")).toBe(true);
   });
 
+  // Every slug and custom URL starts with a letter or digit, so these are
+  // where new system addresses go without taking one of the author's.
+  it("reserves every first segment that starts with _ or .", () => {
+    expect(isReservedPath("_x")).toBe(true);
+    expect(isReservedPath("__sso")).toBe(true);
+    expect(isReservedPath("_drafts/notes")).toBe(true);
+    expect(isReservedPath(".well-known/security.txt")).toBe(true);
+    expect(isReservedPath("notes/_x")).toBe(false);
+  });
+
   it("returns false for non-reserved paths", () => {
     expect(isReservedPath("about")).toBe(false);
     expect(isReservedPath("contact")).toBe(false);

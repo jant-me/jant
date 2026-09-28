@@ -24,6 +24,15 @@ describe("slugify", () => {
     expect(slugify("hello_world")).toBe("hello-world");
   });
 
+  // A post created with `path: "_x"` got the slug `-x`, which no slug rule
+  // accepts and no link to it reads as intended.
+  it("never leads, trails, or doubles a hyphen from underscores", () => {
+    expect(slugify("_x")).toBe("x");
+    expect(slugify("__notes__")).toBe("notes");
+    expect(slugify("a__b")).toBe("a-b");
+    expect(slugify("_ drafts _")).toBe("drafts");
+  });
+
   it("handles already-slugified text", () => {
     expect(slugify("already-a-slug")).toBe("already-a-slug");
   });

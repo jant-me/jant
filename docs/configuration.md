@@ -579,7 +579,7 @@ static, assets, _assets, healthz, readyz, skill.md, robots.txt,
 manifest.webmanifest, favicon.ico, apple-touch-icon.png, sites
 ```
 
-Neither can any `sitemap.xml` or `sitemap-*.xml` name: the sitemap uses that family. With [multilingual content](multilingual.md) on, each additional language's prefix, such as `ja`, is reserved too.
+Neither can any `sitemap.xml` or `sitemap-*.xml` name: the sitemap uses that family. An address of yours starts with a letter or digit, so every first segment that starts with `_` or `.`, `/.well-known/` included, belongs to Jant; new system addresses go there. With [multilingual content](multilingual.md) on, each additional language's prefix, such as `ja`, is reserved too.
 
 ## Config files
 
