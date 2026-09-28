@@ -68,7 +68,7 @@ const DEFAULTS = {
 /**
  * Create a comprehensive color theme from key colors.
  * Derives card, popover, muted, secondary, accent, and sidebar variables.
- * Also sets --destructive, --success, --search-mark-*, and --dash-bg.
+ * Also sets --destructive, --success, --site-search-mark-*, and --dash-bg.
  */
 function defineTheme(opts: {
   id: string;
@@ -109,8 +109,9 @@ function defineTheme(opts: {
       "--sidebar-accent-foreground": light.fg,
       "--sidebar-border": light.border,
       "--sidebar-ring": light.primary,
-      "--search-mark-bg": light.searchMarkBg ?? DEFAULTS.light.searchMarkBg,
-      "--search-mark-color":
+      "--site-search-mark-bg":
+        light.searchMarkBg ?? DEFAULTS.light.searchMarkBg,
+      "--site-search-mark-color":
         light.searchMarkColor ?? DEFAULTS.light.searchMarkColor,
       "--dash-bg": light.dashBg ?? DEFAULTS.light.dashBg,
       ...(light.readingTitle
@@ -155,8 +156,8 @@ function defineTheme(opts: {
       "--sidebar-accent-foreground": dark.fg,
       "--sidebar-border": dark.border,
       "--sidebar-ring": dark.primary,
-      "--search-mark-bg": dark.searchMarkBg ?? DEFAULTS.dark.searchMarkBg,
-      "--search-mark-color":
+      "--site-search-mark-bg": dark.searchMarkBg ?? DEFAULTS.dark.searchMarkBg,
+      "--site-search-mark-color":
         dark.searchMarkColor ?? DEFAULTS.dark.searchMarkColor,
       "--dash-bg": dark.dashBg ?? DEFAULTS.dark.dashBg,
       ...(dark.readingTitle

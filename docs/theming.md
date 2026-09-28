@@ -47,18 +47,24 @@ Most color variables come in pairs: a background color and its matching foregrou
 
 These derive from the core palette by default. Built-in themes set `--site-accent` independently; if you only override the core palette by hand, `--site-accent` falls back to `--primary`.
 
-| Variable                | Default                   | What it controls                                 |
-| ----------------------- | ------------------------- | ------------------------------------------------ |
-| `--site-accent`         | `var(--primary)`          | Editorial accent (links, thread connector dots)  |
-| `--site-page-bg`        | `var(--background)`       | Overall page background                          |
-| `--site-elevated-bg`    | `var(--background)`       | Main content area and overlays (menus, popovers) |
-| `--site-nav-hover-bg`   | `var(--accent)`           | Navigation hover background                      |
-| `--site-text-primary`   | `var(--foreground)`       | Primary text                                     |
-| `--site-text-secondary` | `var(--muted-foreground)` | Secondary / caption text                         |
-| `--site-divider`        | `var(--border)`           | Content dividers                                 |
-| `--site-threadline`     | `var(--border)`           | Thread connection lines                          |
-| `--search-mark-bg`      | Built-in yellow           | Search result highlight background               |
-| `--search-mark-color`   | Built-in dark text        | Search result highlight text                     |
+| Variable                        | Default                              | What it controls                                                                                          |
+| ------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `--site-accent`                 | `var(--primary)`                     | Editorial accent: quote marks, Thread connector dots, the tint of link cards, hover and focus rings       |
+| `--site-page-bg`                | `var(--background)`                  | Page background, and the surfaces that sit on it                                                          |
+| `--site-subtle-bg`              | `var(--accent)`                      | Soft fill for navigation hover, cards in the feed, and code blocks                                        |
+| `--site-text-primary`           | `var(--foreground)`                  | Primary text                                                                                              |
+| `--site-text-secondary`         | `var(--muted-foreground)`            | Secondary / caption text                                                                                  |
+| `--site-divider`                | `var(--border)`                      | Content dividers                                                                                          |
+| `--site-threadline`             | `var(--border)`                      | Thread connection lines                                                                                   |
+| `--site-reading-body`           | Derived from `--site-text-primary`   | Body text on a post's own page. Built-in themes set it, so changing `--foreground` alone doesn't reach it |
+| `--site-reading-caption`        | Derived from the text colors         | Captions and footnotes on a post's page                                                                   |
+| `--site-content-link`           | `inherit`                            | Link text in posts                                                                                        |
+| `--site-content-link-hover`     | `var(--site-text-primary)`           | Link text on hover                                                                                        |
+| `--site-content-link-underline` | Derived from `--site-text-secondary` | Link underline                                                                                            |
+| `--site-footnote-text`          | `var(--site-reading-caption)`        | Footnote text in the wide-screen rail                                                                     |
+| `--site-footnote-marker`        | Derived from `--site-text-secondary` | Footnote numbers in the rail                                                                              |
+| `--site-search-mark-bg`         | Built-in yellow                      | Search result highlight background                                                                        |
+| `--site-search-mark-color`      | Built-in dark text                   | Search result highlight text                                                                              |
 
 ### Example: custom primary and site accent
 
@@ -105,6 +111,7 @@ The two dark rules are explained under [Dark mode](#dark-mode).
 | `--font-serif`        | System serif + Noto fallback | Serif accent text                                                 |
 | `--font-blockquote`   | `inherit`                    | Blockquote font family; defaults to the body font                 |
 | `--font-mono`         | System monospace             | Code blocks                                                       |
+| `--type-body-size`    | Content body text size       | Post body text; footnote references and code scale from it        |
 | `--type-footnote-ref` | `75%` of content body text   | Inline footnote reference size                                    |
 | `--fw-regular`        | 400                          | Body text                                                         |
 | `--fw-medium`         | 500                          | Labels, active nav                                                |
@@ -267,7 +274,7 @@ Write the selectors as shown. The built-in theme uses the same ones, and custom 
 
 - Override variables first, write selectors second. The variables, data attributes, and classes on this page change only in a major release. Jant's stylesheets define many more custom properties and class names; those are internal and can change in any release.
 - Custom CSS comes after the built-in theme and uses the same selectors, so it overrides every variable the theme sets: `:root` for light values, the two rules under [Dark mode](#dark-mode) for dark ones.
-- `oklch()` is convenient for color tuning. A common pattern: keep `--primary` saturated and stable for buttons; let `--site-accent` carry a softer tone for links and inline emphasis.
+- `oklch()` is convenient for color tuning. A common pattern: keep `--primary` saturated and stable for buttons; let `--site-accent` carry a softer tone for quote marks and Thread connectors. Links take `--site-content-link`.
 - Test in both light and dark. A color set only in `:root` also applies in dark mode wherever neither the theme nor Jant sets a dark value for it.
 
 ## What's next

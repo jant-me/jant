@@ -12,8 +12,8 @@
 
 /* Search result highlight */
 mark {
-  background-color: var(--search-mark-bg);
-  color: var(--search-mark-color);
+  background-color: var(--site-search-mark-bg);
+  color: var(--site-search-mark-color);
   border-radius: 2px;
   padding: 0 2px;
 }

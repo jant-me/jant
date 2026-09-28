@@ -47,18 +47,24 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 这些变量默认从核心色盘派生。内建主题会单独设置 `--site-accent`；如果你只手动覆盖核心色盘，`--site-accent` 会回退到 `--primary`。
 
-| 变量                    | 默认值                    | 作用                                  |
-| ----------------------- | ------------------------- | ------------------------------------- |
-| `--site-accent`         | `var(--primary)`          | 阅读区强调色（链接、Thread 连接点等） |
-| `--site-page-bg`        | `var(--background)`       | 页面整体背景                          |
-| `--site-elevated-bg`    | `var(--background)`       | 主内容区和浮层（菜单、popover）的背景 |
-| `--site-nav-hover-bg`   | `var(--accent)`           | 导航 hover 背景                       |
-| `--site-text-primary`   | `var(--foreground)`       | 主文本                                |
-| `--site-text-secondary` | `var(--muted-foreground)` | 次级 / 说明文本                       |
-| `--site-divider`        | `var(--border)`           | 内容分隔线                            |
-| `--site-threadline`     | `var(--border)`           | Thread 连线                           |
-| `--search-mark-bg`      | 内置黄底                  | 搜索结果高亮背景                      |
-| `--search-mark-color`   | 内置深字                  | 搜索结果高亮文字                      |
+| 变量                            | 默认值                          | 作用                                                                   |
+| ------------------------------- | ------------------------------- | ---------------------------------------------------------------------- |
+| `--site-accent`                 | `var(--primary)`                | 阅读区强调色：引号、Thread 连接点、链接卡片的底色、hover 和焦点环      |
+| `--site-page-bg`                | `var(--background)`             | 页面背景，以及放在页面上的区块                                         |
+| `--site-subtle-bg`              | `var(--accent)`                 | 导航 hover、信息流里的卡片和代码块的浅底色                             |
+| `--site-text-primary`           | `var(--foreground)`             | 主文本                                                                 |
+| `--site-text-secondary`         | `var(--muted-foreground)`       | 次级 / 说明文本                                                        |
+| `--site-divider`                | `var(--border)`                 | 内容分隔线                                                             |
+| `--site-threadline`             | `var(--border)`                 | Thread 连线                                                            |
+| `--site-reading-body`           | 由 `--site-text-primary` 派生   | 帖子详情页的正文。内建主题会设置它，所以只改 `--foreground` 管不到正文 |
+| `--site-reading-caption`        | 由文字颜色派生                  | 帖子详情页的图注和脚注                                                 |
+| `--site-content-link`           | `inherit`                       | 帖子里的链接文字                                                       |
+| `--site-content-link-hover`     | `var(--site-text-primary)`      | 链接 hover 时的文字                                                    |
+| `--site-content-link-underline` | 由 `--site-text-secondary` 派生 | 链接下划线                                                             |
+| `--site-footnote-text`          | `var(--site-reading-caption)`   | 宽屏侧栏里的脚注文字                                                   |
+| `--site-footnote-marker`        | 由 `--site-text-secondary` 派生 | 侧栏里的脚注编号                                                       |
+| `--site-search-mark-bg`         | 内置黄底                        | 搜索结果高亮背景                                                       |
+| `--site-search-mark-color`      | 内置深字                        | 搜索结果高亮文字                                                       |
 
 ### 示例：自定义主色和站点强调色
 
@@ -96,19 +102,20 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 ## 排版变量
 
-| 变量                  | 默认值                  | 作用                                       |
-| --------------------- | ----------------------- | ------------------------------------------ |
-| `--font-body`         | 系统 sans-serif         | 正文、输入框                               |
-| `--font-heading`      | 偏编辑风格的 serif 组合 | 帖子标题、h1–h3                            |
-| `--font-site-title`   | 偏编辑风格的 serif 组合 | 站点 logo（标题栏）                        |
-| `--font-ui`           | 系统 sans-serif         | 按钮、导航、标签、徽章（不受字型主题影响） |
-| `--font-serif`        | 系统 serif + Noto 回退  | serif 强调文本                             |
-| `--font-blockquote`   | `inherit`               | 引用块字族，默认跟随正文字体               |
-| `--font-mono`         | 系统 monospace          | 代码块                                     |
-| `--type-footnote-ref` | 正文字号的 `75%`        | 行内脚注引用的字号                         |
-| `--fw-regular`        | 400                     | 正文                                       |
-| `--fw-medium`         | 500                     | 标签、激活导航                             |
-| `--fw-semibold`       | 600                     | 标题、按钮                                 |
+| 变量                  | 默认值                  | 作用                                         |
+| --------------------- | ----------------------- | -------------------------------------------- |
+| `--font-body`         | 系统 sans-serif         | 正文、输入框                                 |
+| `--font-heading`      | 偏编辑风格的 serif 组合 | 帖子标题、h1–h3                              |
+| `--font-site-title`   | 偏编辑风格的 serif 组合 | 站点 logo（标题栏）                          |
+| `--font-ui`           | 系统 sans-serif         | 按钮、导航、标签、徽章（不受字型主题影响）   |
+| `--font-serif`        | 系统 serif + Noto 回退  | serif 强调文本                               |
+| `--font-blockquote`   | `inherit`               | 引用块字族，默认跟随正文字体                 |
+| `--font-mono`         | 系统 monospace          | 代码块                                       |
+| `--type-body-size`    | 正文字号                | 帖子正文的字号；脚注引用和代码的字号按它换算 |
+| `--type-footnote-ref` | 正文字号的 `75%`        | 行内脚注引用的字号                           |
+| `--fw-regular`        | 400                     | 正文                                         |
+| `--fw-medium`         | 500                     | 标签、激活导航                               |
+| `--fw-semibold`       | 600                     | 标题、按钮                                   |
 
 在 **Settings > Font Theme** 选字型主题后，`--font-heading`、`--font-body` 以及若干相关字重会随之切换。`--font-ui` 不在切换范围内——按钮、导航这些界面文字始终用系统 sans-serif，方便阅读。要进一步调整，仍然可以在 Custom CSS 里覆盖任意变量。
 
@@ -250,7 +257,7 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 - 优先改变量，再考虑写选择器覆盖。本页列出的变量、数据属性和 class 只在大版本里变动；Jant 样式表里的其他自定义属性和 class 属于内部实现，任何版本都可能改变。
 - Custom CSS 排在内建主题之后，用的也是同样的选择器，所以能覆盖主题设置的每个变量：浅色值写在 `:root` 里，深色值用[深色模式](#深色模式)里的两条规则。
-- 颜色用 `oklch()` 比较好控制。一个常见做法：`--primary` 用饱和、稳定的颜色给按钮；`--site-accent` 用更柔和的颜色给链接和正文中的强调。
+- 颜色用 `oklch()` 比较好控制。一个常见做法：`--primary` 用饱和、稳定的颜色给按钮；`--site-accent` 用更柔和的颜色给引号和 Thread 连接线。链接用 `--site-content-link`。
 - 浅色和深色都要测。只写在 `:root` 里的颜色，在主题和 Jant 都没有给它设深色值的地方，深色模式下也会生效。
 
 ## 接下来

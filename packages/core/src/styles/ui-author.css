@@ -34,13 +34,12 @@
       color-mix(in srgb, var(--site-divider) 78%, transparent);
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 94%,
-      var(--site-nav-hover-bg)
+      var(--site-page-bg) 94%,
+      var(--site-subtle-bg)
     );
     color: var(--site-text-secondary);
     font-family: var(--font-ui);
-    box-shadow: 0 1px 0
-      color-mix(in srgb, var(--site-elevated-bg) 70%, transparent);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--site-page-bg) 70%, transparent);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
   }
@@ -102,8 +101,8 @@
     border-radius: 999px;
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 78%,
-      var(--site-nav-hover-bg)
+      var(--site-page-bg) 78%,
+      var(--site-subtle-bg)
     );
     color: var(--site-text-primary);
     font-size: var(--type-ui-caption);
@@ -124,7 +123,7 @@
       var(--site-accent) 48%,
       var(--site-divider)
     );
-    background: var(--site-nav-hover-bg);
+    background: var(--site-subtle-bg);
     color: var(--site-accent);
   }
 
@@ -184,8 +183,8 @@
     border-radius: 999px;
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 90%,
-      var(--site-nav-hover-bg) 10%
+      var(--site-page-bg) 90%,
+      var(--site-subtle-bg) 10%
     );
     color: var(--site-text-primary);
     box-shadow: 0 14px 32px
@@ -212,8 +211,8 @@
     border-color: color-mix(in srgb, var(--site-text-primary) 18%, transparent);
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 84%,
-      var(--site-nav-hover-bg) 16%
+      var(--site-page-bg) 84%,
+      var(--site-subtle-bg) 16%
     );
     box-shadow: 0 16px 36px
       color-mix(in srgb, var(--site-text-primary) 12%, transparent);
@@ -353,13 +352,13 @@
         color-mix(in srgb, var(--site-divider) 84%, transparent);
       background: color-mix(
         in srgb,
-        var(--site-elevated-bg) 94%,
+        var(--site-page-bg) 94%,
         var(--site-divider)
       );
       color: color-mix(
         in srgb,
         var(--site-text-secondary) 86%,
-        var(--site-elevated-bg)
+        var(--site-page-bg)
       );
       box-shadow: 0 0.35rem 1rem oklch(from var(--site-bg) l c h / 0.08);
       font-size: var(--type-2xs);
@@ -1477,7 +1476,7 @@
     border: none;
     border-radius: 8px;
     background-color: var(--site-text-primary);
-    color: var(--site-elevated-bg);
+    color: var(--site-page-bg);
     font-size: var(--type-ui-control);
     font-weight: var(--fw-medium);
     line-height: 1.25;
@@ -2286,7 +2285,7 @@
     font-size: var(--compose-primary-button-size);
     font-weight: var(--fw-medium);
     letter-spacing: 0.02em;
-    color: var(--site-elevated-bg);
+    color: var(--site-page-bg);
     background-color: var(--site-text-primary);
     border: none;
     border-radius: 10px;
@@ -2439,7 +2438,7 @@
     white-space: nowrap;
     padding: 0 18px;
     background-color: var(--site-text-primary);
-    color: var(--site-elevated-bg);
+    color: var(--site-page-bg);
     font-size: var(--compose-primary-button-size);
     font-weight: var(--fw-bold);
     letter-spacing: 0;
@@ -2450,7 +2449,7 @@
     background-color: color-mix(
       in srgb,
       var(--site-text-primary) 92%,
-      var(--site-elevated-bg)
+      var(--site-page-bg)
     );
   }
 
@@ -3423,7 +3422,7 @@
     position: relative;
     border-radius: var(--media-radius, 0.5rem);
     overflow: hidden;
-    background-color: var(--site-nav-hover-bg);
+    background-color: var(--site-subtle-bg);
   }
 
   .compose-attachment:has(.compose-attachment-preview-fallback)
@@ -3495,8 +3494,8 @@
     border-radius: var(--media-radius, 0.5rem);
     background: linear-gradient(
       180deg,
-      color-mix(in srgb, var(--site-nav-hover-bg) 90%, white 10%),
-      var(--site-nav-hover-bg)
+      color-mix(in srgb, var(--site-subtle-bg) 90%, white 10%),
+      var(--site-subtle-bg)
     );
     color: color-mix(in srgb, var(--site-text-secondary) 78%, transparent);
   }
@@ -3753,14 +3752,14 @@
 
   .compose-attachment-move:hover:not(:disabled) {
     color: var(--site-text-primary);
-    background-color: var(--site-nav-hover-bg);
+    background-color: var(--site-subtle-bg);
   }
 
   /* Touch has no hover, so without this a tap reads as nothing happening —
      which matters most at either end, where the order does not change. */
   .compose-attachment-move:active:not(:disabled) {
     color: var(--site-text-primary);
-    background-color: var(--site-nav-hover-bg);
+    background-color: var(--site-subtle-bg);
   }
 
   .compose-attachment-move:focus-visible {
@@ -3806,7 +3805,7 @@
     width: 120px;
     height: 160px;
     padding: 16px 12px;
-    background-color: var(--site-nav-hover-bg);
+    background-color: var(--site-subtle-bg);
     border: 1px solid var(--site-divider);
     border-radius: var(--media-radius, 0.5rem);
     text-align: center;
@@ -3849,7 +3848,7 @@
     width: 120px;
     height: 160px;
     padding: 12px;
-    background-color: var(--site-nav-hover-bg);
+    background-color: var(--site-subtle-bg);
     border: 1px solid var(--site-divider);
     border-radius: var(--media-radius, 0.5rem);
     text-align: center;
@@ -3902,7 +3901,7 @@
 
   .compose-confirm-sheet {
     width: min(300px, calc(100% - 48px));
-    background-color: var(--site-elevated-bg);
+    background-color: var(--site-page-bg);
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 8px 32px oklch(0 0 0 / 0.12);
@@ -3942,7 +3941,7 @@
   }
 
   .compose-confirm-action:hover {
-    background-color: var(--site-nav-hover-bg);
+    background-color: var(--site-subtle-bg);
   }
 
   .compose-confirm-save {
@@ -4836,7 +4835,7 @@
     position: absolute;
     inset: 0;
     z-index: 50;
-    background-color: var(--site-elevated-bg);
+    background-color: var(--site-page-bg);
     display: flex;
     flex-direction: column;
     border-radius: 10px;
@@ -4922,7 +4921,7 @@
     position: absolute;
     inset: 0;
     z-index: 50;
-    background-color: var(--site-elevated-bg);
+    background-color: var(--site-page-bg);
     display: flex;
     flex-direction: column;
     border-radius: 10px;
@@ -4977,7 +4976,7 @@
   }
 
   .compose-draft-item:hover {
-    background-color: var(--site-nav-hover-bg);
+    background-color: var(--site-subtle-bg);
   }
 
   .compose-draft-content {
@@ -5029,7 +5028,7 @@
   }
 
   .compose-draft-more:hover {
-    background-color: var(--site-nav-hover-bg);
+    background-color: var(--site-subtle-bg);
   }
 
   .compose-attached-panel-back {
@@ -5048,7 +5047,7 @@
   }
 
   .compose-attached-panel-back:hover {
-    background-color: var(--site-nav-hover-bg);
+    background-color: var(--site-subtle-bg);
   }
 
   /* --- Shared post picker ------------------------------------------------- */
@@ -5118,7 +5117,7 @@
   .picker-dialog-option:hover,
   .picker-dialog-option:focus-visible {
     outline: none;
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 70%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 70%, transparent);
   }
 
   .picker-dialog-option-label {
@@ -5634,7 +5633,7 @@
   }
 
   .compose-tiptap-body .tiptap pre {
-    background: var(--site-elevated-bg);
+    background: var(--site-page-bg);
     border-radius: 6px;
     padding: 0.75em 1em;
     margin: 0.5em 0;
@@ -5643,7 +5642,7 @@
   }
 
   .compose-tiptap-body .tiptap code {
-    background: var(--site-elevated-bg);
+    background: var(--site-page-bg);
     border-radius: 3px;
     padding: 0.15em 0.3em;
     font-size: 0.9em;
@@ -5682,7 +5681,7 @@
 
   .compose-tiptap-body .tiptap th {
     font-weight: var(--fw-semibold);
-    background: var(--site-elevated-bg);
+    background: var(--site-page-bg);
   }
 
   .compose-tiptap-body .tiptap .selectedCell {
@@ -5700,8 +5699,8 @@
     border-radius: 11px;
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 96%,
-      var(--site-nav-hover-bg) 4%
+      var(--site-page-bg) 96%,
+      var(--site-subtle-bg) 4%
     );
     box-shadow:
       0 10px 24px oklch(from var(--site-text-primary) l c h / 0.07),
@@ -5728,8 +5727,8 @@
     color: var(--site-text-primary);
     background: color-mix(
       in srgb,
-      var(--site-nav-hover-bg) 78%,
-      var(--site-elevated-bg) 22%
+      var(--site-subtle-bg) 78%,
+      var(--site-page-bg) 22%
     );
   }
 
@@ -5754,7 +5753,7 @@
     padding: 5px;
     border: 1px solid color-mix(in srgb, var(--site-divider) 58%, transparent);
     border-radius: 12px;
-    background: var(--site-elevated-bg);
+    background: var(--site-page-bg);
     box-shadow:
       0 14px 28px oklch(from var(--site-text-primary) l c h / 0.08),
       0 2px 6px oklch(from var(--site-text-primary) l c h / 0.04);
@@ -5781,7 +5780,7 @@
 
   .tiptap-table-menu-item:hover,
   .tiptap-table-menu-item:focus-visible {
-    background: var(--site-nav-hover-bg);
+    background: var(--site-subtle-bg);
   }
 
   .tiptap-table-menu-item.is-destructive {
@@ -5804,13 +5803,8 @@
     border-radius: 13px;
     background: linear-gradient(
       180deg,
-      color-mix(
-          in srgb,
-          var(--site-elevated-bg) 96%,
-          var(--site-nav-hover-bg) 4%
-        )
-        0%,
-      var(--site-elevated-bg) 100%
+      color-mix(in srgb, var(--site-page-bg) 96%, var(--site-subtle-bg) 4%) 0%,
+      var(--site-page-bg) 100%
     );
     box-shadow:
       0 14px 30px oklch(from var(--site-text-primary) l c h / 0.08),
@@ -5851,8 +5845,8 @@
     border-radius: 4px;
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 90%,
-      var(--site-nav-hover-bg) 10%
+      var(--site-page-bg) 90%,
+      var(--site-subtle-bg) 10%
     );
     cursor: pointer;
     transition:
@@ -5867,11 +5861,7 @@
       var(--site-accent) 38%,
       var(--site-divider)
     );
-    background: color-mix(
-      in srgb,
-      var(--site-accent) 14%,
-      var(--site-elevated-bg)
-    );
+    background: color-mix(in srgb, var(--site-accent) 14%, var(--site-page-bg));
   }
 
   .tiptap-table-size-cell.is-current {
@@ -5957,8 +5947,8 @@
     border-radius: 4px;
     background: linear-gradient(
       135deg,
-      color-mix(in srgb, var(--site-elevated-bg) 88%, var(--site-accent)),
-      var(--site-elevated-bg)
+      color-mix(in srgb, var(--site-page-bg) 88%, var(--site-accent)),
+      var(--site-page-bg)
     );
     color: var(--site-text-secondary);
     text-align: left;
@@ -6223,7 +6213,7 @@
     border: 1px solid var(--site-divider);
     border-radius: 8px;
     padding: 0.75em 0.9em;
-    background: var(--site-elevated-bg);
+    background: var(--site-page-bg);
     display: grid;
     gap: 0.4em;
     transition: border-color 0.15s;
@@ -6309,7 +6299,7 @@
     margin: 0.75em 0;
     border: 1px solid var(--site-divider);
     border-radius: 8px;
-    background: var(--site-elevated-bg);
+    background: var(--site-page-bg);
     overflow: hidden;
     transition: border-color 0.15s;
   }
@@ -6378,7 +6368,7 @@
       color-mix(in srgb, var(--site-text-primary) 8%, transparent);
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 94%,
+      var(--site-page-bg) 94%,
       var(--site-page-bg) 6%
     );
     box-shadow: 0 28px 80px -42px rgba(15, 23, 42, 0.42);
@@ -6712,14 +6702,8 @@
     max-width: calc(100vw - 20px);
     background: linear-gradient(
       180deg,
-      color-mix(
-          in srgb,
-          var(--site-elevated-bg) 95%,
-          var(--site-nav-hover-bg) 5%
-        )
-        0%,
-      color-mix(in srgb, var(--site-elevated-bg) 98%, var(--site-page-bg) 2%)
-        100%
+      color-mix(in srgb, var(--site-page-bg) 95%, var(--site-subtle-bg) 5%) 0%,
+      color-mix(in srgb, var(--site-page-bg) 98%, var(--site-page-bg) 2%) 100%
     );
     border: 1px solid color-mix(in srgb, var(--site-divider) 56%, transparent);
     border-radius: 13px;
@@ -6763,7 +6747,7 @@
     color: color-mix(
       in srgb,
       var(--site-text-secondary) 84%,
-      var(--site-elevated-bg)
+      var(--site-page-bg)
     );
     font-size: var(--type-2xs);
     font-weight: var(--fw-medium);
@@ -6792,8 +6776,8 @@
   .tiptap-slash-item:focus-visible {
     background: color-mix(
       in srgb,
-      var(--site-nav-hover-bg) 76%,
-      var(--site-elevated-bg) 24%
+      var(--site-subtle-bg) 76%,
+      var(--site-page-bg) 24%
     );
     box-shadow: inset 0 0 0 1px
       color-mix(in srgb, var(--site-divider) 48%, transparent);
@@ -6802,7 +6786,7 @@
   .tiptap-slash-item.is-selected {
     background: color-mix(
       in srgb,
-      var(--site-nav-hover-bg) 76%,
+      var(--site-subtle-bg) 76%,
       var(--site-accent) 24%
     );
     box-shadow:
@@ -6819,8 +6803,8 @@
     border-radius: 8px;
     background: color-mix(
       in srgb,
-      var(--site-nav-hover-bg) 72%,
-      var(--site-elevated-bg) 28%
+      var(--site-subtle-bg) 72%,
+      var(--site-page-bg) 28%
     );
     box-shadow: inset 0 0 0 1px
       color-mix(in srgb, var(--site-divider) 34%, transparent);
@@ -6846,7 +6830,7 @@
   .tiptap-slash-item:hover .tiptap-slash-item-icon {
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 82%,
+      var(--site-page-bg) 82%,
       var(--site-accent) 18%
     );
     box-shadow: inset 0 0 0 1px
@@ -6883,13 +6867,13 @@
       color-mix(in srgb, var(--site-divider) 44%, transparent);
     background: color-mix(
       in srgb,
-      var(--site-nav-hover-bg) 44%,
-      var(--site-elevated-bg) 56%
+      var(--site-subtle-bg) 44%,
+      var(--site-page-bg) 56%
     );
     color: color-mix(
       in srgb,
       var(--site-text-secondary) 86%,
-      var(--site-elevated-bg)
+      var(--site-page-bg)
     );
     font-size: var(--type-2xs);
     line-height: 1;
@@ -6901,7 +6885,7 @@
     color: color-mix(
       in srgb,
       var(--site-text-secondary) 88%,
-      var(--site-elevated-bg)
+      var(--site-page-bg)
     );
     font-size: var(--type-2xs);
     line-height: 1.3;
@@ -6941,8 +6925,8 @@
     border: 1px solid color-mix(in srgb, var(--site-divider) 50%, transparent);
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 84%,
-      var(--site-nav-hover-bg) 16%
+      var(--site-page-bg) 84%,
+      var(--site-subtle-bg) 16%
     );
     color: var(--site-text-primary);
     font-size: var(--type-2xs);
@@ -7143,15 +7127,13 @@
     background:
       radial-gradient(
         circle at top center,
-        color-mix(in srgb, var(--site-elevated-bg) 72%, transparent) 0%,
+        color-mix(in srgb, var(--site-page-bg) 72%, transparent) 0%,
         transparent 58%
       ),
       linear-gradient(
         180deg,
-        color-mix(in srgb, var(--site-page-bg) 90%, var(--site-elevated-bg) 10%)
-          0%,
-        color-mix(in srgb, var(--site-page-bg) 97%, var(--site-elevated-bg) 3%)
-          100%
+        color-mix(in srgb, var(--site-page-bg) 90%, var(--site-page-bg) 10%) 0%,
+        color-mix(in srgb, var(--site-page-bg) 97%, var(--site-page-bg) 3%) 100%
       );
     overscroll-behavior: contain;
   }
@@ -7173,12 +7155,9 @@
     padding-top: calc(10px + env(safe-area-inset-top));
     background: linear-gradient(
       180deg,
-      color-mix(in srgb, var(--site-page-bg) 90%, var(--site-elevated-bg) 10%)
-        0%,
-      color-mix(in srgb, var(--site-page-bg) 90%, var(--site-elevated-bg) 10%)
-        70%,
-      color-mix(in srgb, var(--site-page-bg) 90%, var(--site-elevated-bg) 10%)
-        82%,
+      color-mix(in srgb, var(--site-page-bg) 90%, var(--site-page-bg) 10%) 0%,
+      color-mix(in srgb, var(--site-page-bg) 90%, var(--site-page-bg) 10%) 70%,
+      color-mix(in srgb, var(--site-page-bg) 90%, var(--site-page-bg) 10%) 82%,
       transparent 100%
     );
   }
@@ -7219,7 +7198,7 @@
   .compose-fullscreen-done:focus-visible {
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 92%,
+      var(--site-page-bg) 92%,
       var(--site-page-bg) 8%
     );
     border-color: color-mix(
@@ -7250,7 +7229,7 @@
     --site-thread-marker-surface: color-mix(
       in srgb,
       var(--site-page-bg) 88%,
-      var(--site-elevated-bg) 12%
+      var(--site-page-bg) 12%
     );
   }
 

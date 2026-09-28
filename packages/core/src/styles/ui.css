@@ -245,7 +245,7 @@
       var(--site-text-secondary) 24%,
       transparent
     );
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 34%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 34%, transparent);
   }
 
   .site-header-search-link-icon {
@@ -282,7 +282,7 @@
       var(--site-text-secondary) 20%,
       transparent
     );
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 58%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 58%, transparent);
   }
 
   /* --- External link icon ------------------------------------------------- */
@@ -423,7 +423,7 @@
   .site-nav-drawer-close:focus-visible {
     color: var(--site-text-primary);
     opacity: 1;
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 50%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 50%, transparent);
   }
 
   /* Navigation links */
@@ -792,7 +792,7 @@
       var(--site-text-primary) 84%,
       var(--site-text-secondary)
     );
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 58%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 58%, transparent);
   }
 
   .site-header-more-link:has(.site-header-link-fresh) {
@@ -1071,7 +1071,7 @@
   }
 
   .site-content {
-    background-color: var(--site-elevated-bg);
+    background-color: var(--site-page-bg);
     padding-top: 1rem;
     padding-bottom: var(--space-xl);
   }
@@ -3515,7 +3515,7 @@
     position: relative;
     color: color-mix(
       in srgb,
-      var(--search-mark-color) 72%,
+      var(--site-search-mark-color) 72%,
       var(--site-text-secondary)
     );
     --icon-stroke: 1.35;
@@ -3694,7 +3694,7 @@
     min-width: 160px;
     padding: 4px;
     border-radius: 6px;
-    background: var(--site-elevated-bg);
+    background: var(--site-page-bg);
     border: 1px solid var(--site-divider);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
@@ -3717,7 +3717,7 @@
   }
 
   .post-collection-popover-item:hover {
-    background: var(--site-nav-hover-bg);
+    background: var(--site-subtle-bg);
     color: var(--site-text-primary);
   }
 
@@ -3800,7 +3800,7 @@
   .post-menu-trigger:focus-visible,
   .reply-trigger:focus-visible {
     outline: none;
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 38%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 38%, transparent);
     color: var(--site-text-primary);
     opacity: 1;
     box-shadow: 0 0 0 3px
@@ -3809,7 +3809,7 @@
 
   .post-menu-trigger[aria-expanded="true"] {
     color: var(--site-text-primary);
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 48%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 48%, transparent);
     opacity: 1;
   }
 
@@ -3841,7 +3841,7 @@
     border: 1px solid color-mix(in srgb, var(--site-divider) 74%, white 26%);
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 94%,
+      var(--site-page-bg) 94%,
       var(--site-page-bg) 6%
     );
     box-shadow:
@@ -3886,7 +3886,7 @@
   .post-menu-panel-back:hover,
   .post-menu-panel-back:focus-visible {
     outline: none;
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 66%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 66%, transparent);
     color: var(--site-text-primary);
   }
 
@@ -4082,7 +4082,7 @@
   .post-menu-panel [role="menuitem"]:focus-visible,
   .post-menu-panel [role="menuitemradio"]:focus-visible {
     outline: none;
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 72%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 72%, transparent);
   }
 
   .post-menu-panel .post-menu-item {
@@ -4090,7 +4090,7 @@
   }
 
   .post-menu-item-active {
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 82%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 82%, transparent);
   }
 
   .post-menu-item-icon,
@@ -4246,7 +4246,7 @@
   .post-menu-panel .post-menu-row .post-menu-row-action:hover,
   .post-menu-panel .post-menu-row .post-menu-row-action:focus-visible {
     outline: none;
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 72%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 72%, transparent);
     color: var(--site-text-primary);
   }
 
@@ -4287,7 +4287,7 @@
     padding: 0.65rem 0.78rem;
     border: 1px solid color-mix(in srgb, var(--site-divider) 62%, transparent);
     border-radius: 0.85rem;
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 72%, white 28%);
+    background: color-mix(in srgb, var(--site-subtle-bg) 72%, white 28%);
     color: var(--site-text-secondary);
   }
 
@@ -4337,7 +4337,7 @@
   .post-menu-picker-option:hover,
   .post-menu-picker-option:focus-visible {
     outline: none;
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 78%, white 22%);
+    background: color-mix(in srgb, var(--site-subtle-bg) 78%, white 22%);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, white 22%, transparent);
   }
 
@@ -4439,7 +4439,7 @@
   .post-menu-picker-add:hover,
   .post-menu-picker-add:focus-visible {
     outline: none;
-    background: color-mix(in srgb, var(--site-nav-hover-bg) 72%, transparent);
+    background: color-mix(in srgb, var(--site-subtle-bg) 72%, transparent);
   }
 
   /* --- Collection Quick Dialog -------------------------------------------- */
@@ -4468,7 +4468,7 @@
     border-radius: 1.35rem;
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 94%,
+      var(--site-page-bg) 94%,
       var(--site-page-bg) 6%
     );
     color: var(--site-text-primary);
@@ -4505,8 +4505,8 @@
     appearance: none;
     background: color-mix(
       in srgb,
-      var(--site-nav-hover-bg) 58%,
-      var(--site-elevated-bg)
+      var(--site-subtle-bg) 58%,
+      var(--site-page-bg)
     );
     border: 1px solid
       color-mix(in srgb, var(--site-text-primary) 7%, transparent);
@@ -4527,8 +4527,8 @@
     color: var(--site-text-primary);
     background: color-mix(
       in srgb,
-      var(--site-nav-hover-bg) 76%,
-      var(--site-elevated-bg)
+      var(--site-subtle-bg) 76%,
+      var(--site-page-bg)
     );
     border-color: color-mix(in srgb, var(--site-text-primary) 10%, transparent);
   }
@@ -4583,7 +4583,7 @@
     border-color: color-mix(in srgb, var(--site-divider) 72%, transparent);
     background-color: color-mix(
       in srgb,
-      var(--site-elevated-bg) 88%,
+      var(--site-page-bg) 88%,
       var(--site-page-bg) 12%
     );
     border-radius: 0.95rem;
@@ -4607,8 +4607,8 @@
     border-radius: 1rem;
     background: color-mix(
       in srgb,
-      var(--site-nav-hover-bg) 54%,
-      var(--site-elevated-bg)
+      var(--site-subtle-bg) 54%,
+      var(--site-page-bg)
     );
     padding: 0.95rem 1rem;
   }
@@ -4635,8 +4635,8 @@
     appearance: none;
     background: color-mix(
       in srgb,
-      var(--site-elevated-bg) 62%,
-      var(--site-nav-hover-bg)
+      var(--site-page-bg) 62%,
+      var(--site-subtle-bg)
     );
     border: 1px solid
       color-mix(in srgb, var(--site-text-primary) 7%, transparent);
@@ -4657,8 +4657,8 @@
   .collection-quick-link-action:hover {
     background: color-mix(
       in srgb,
-      var(--site-nav-hover-bg) 84%,
-      var(--site-elevated-bg)
+      var(--site-subtle-bg) 84%,
+      var(--site-page-bg)
     );
     border-color: color-mix(in srgb, var(--site-text-primary) 10%, transparent);
   }
@@ -5678,8 +5678,8 @@
   .archive-tile {
     --archive-tile-fade-bg: color-mix(
       in srgb,
-      var(--site-elevated-bg) 92%,
-      var(--site-nav-hover-bg)
+      var(--site-page-bg) 92%,
+      var(--site-subtle-bg)
     );
     position: relative;
     aspect-ratio: 1;
@@ -5906,8 +5906,8 @@
   .archive-tile-text {
     --archive-tile-fade-bg: color-mix(
       in srgb,
-      var(--site-elevated-bg) 94%,
-      var(--site-nav-hover-bg)
+      var(--site-page-bg) 94%,
+      var(--site-subtle-bg)
     );
     background: var(--archive-tile-fade-bg);
   }
@@ -5933,8 +5933,8 @@
   .archive-tile-image {
     --archive-tile-fade-bg: color-mix(
       in srgb,
-      var(--site-elevated-bg) 88%,
-      var(--site-nav-hover-bg)
+      var(--site-page-bg) 88%,
+      var(--site-subtle-bg)
     );
     background: var(--archive-tile-fade-bg);
   }

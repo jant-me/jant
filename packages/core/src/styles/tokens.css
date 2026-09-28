@@ -234,12 +234,6 @@
   );
   --site-threadline: var(--border);
   --site-page-bg: var(--background);
-  /* Despite the name, this is the page colour and ~60 rules use it that way —
-     including three that use it as *text* on a dark button. It cannot be
-     lifted without repainting the whole site; `--site-raised-bg` below is the
-     one that actually means "above the page". Read this as
-     "--site-default-surface" until the call sites are triaged. */
-  --site-elevated-bg: var(--background);
   /* What sits *above* the page: dialogs, popovers, menus, sheets. On a light
      page this is the page colour, because the separating is done by the
      backdrop dim and the drop shadows — both black over white. Neither works
@@ -258,7 +252,10 @@
     var(--site-column-outline) 68%,
     transparent
   );
-  --site-nav-hover-bg: var(--accent);
+  /* A soft fill for what sits a step off the page without floating above
+     it: hover states in navigation and menus, cards in the feed, code
+     blocks. */
+  --site-subtle-bg: var(--accent);
   --site-text-primary: var(--foreground);
   --site-text-secondary: var(--muted-foreground);
   --site-reading-title: color-mix(
@@ -313,8 +310,8 @@
   --site-divider: var(--border);
   --site-feed-card-bg: color-mix(
     in srgb,
-    var(--site-elevated-bg) 88%,
-    var(--site-nav-hover-bg)
+    var(--site-page-bg) 88%,
+    var(--site-subtle-bg)
   );
   --site-feed-card-border: color-mix(
     in srgb,
@@ -334,8 +331,8 @@
   --site-code-bg: color-mix(in srgb, var(--site-reading-meta) 12%, transparent);
   --site-code-block-bg: color-mix(
     in srgb,
-    var(--site-elevated-bg) 94%,
-    var(--site-nav-hover-bg)
+    var(--site-page-bg) 94%,
+    var(--site-subtle-bg)
   );
   --site-code-block-border: color-mix(
     in srgb,
@@ -385,7 +382,7 @@
   );
   --site-thread-context-bg: color-mix(
     in srgb,
-    var(--site-nav-hover-bg) 58%,
+    var(--site-subtle-bg) 58%,
     transparent
   );
   --site-thread-context-border: color-mix(
@@ -395,7 +392,7 @@
   );
   --site-thread-gap-bg: color-mix(
     in srgb,
-    var(--site-nav-hover-bg) 42%,
+    var(--site-subtle-bg) 42%,
     transparent
   );
   --site-thread-item-spacing: 32px;
@@ -411,12 +408,12 @@
   --compose-paper-bg: var(--site-raised-bg);
   --compose-control-bg: color-mix(
     in srgb,
-    var(--site-nav-hover-bg) 72%,
+    var(--site-subtle-bg) 72%,
     var(--compose-paper-bg)
   );
   --compose-control-bg-strong: color-mix(
     in srgb,
-    var(--site-nav-hover-bg) 88%,
+    var(--site-subtle-bg) 88%,
     var(--compose-paper-bg)
   );
   --compose-control-border: color-mix(
@@ -456,12 +453,12 @@
   --compose-floating-bg: color-mix(
     in srgb,
     var(--compose-paper-bg) 94%,
-    var(--site-nav-hover-bg) 6%
+    var(--site-subtle-bg) 6%
   );
 
   /* Search highlight */
-  --search-mark-bg: oklch(0.92 0.14 90 / 0.55);
-  --search-mark-color: oklch(0.35 0.09 70);
+  --site-search-mark-bg: oklch(0.92 0.14 90 / 0.55);
+  --site-search-mark-color: oklch(0.35 0.09 70);
 
   /* Admin */
   --dash-bg: oklch(0.97 0.005 80);
@@ -567,8 +564,8 @@
       var(--site-text-primary)
     );
     --site-reading-link: var(--site-reading-body);
-    --search-mark-bg: oklch(0.45 0.1 85 / 0.5);
-    --search-mark-color: oklch(0.92 0.08 90);
+    --site-search-mark-bg: oklch(0.45 0.1 85 / 0.5);
+    --site-search-mark-color: oklch(0.92 0.08 90);
     --dash-bg: oklch(0.2 0.005 80);
     --site-raised-bg: color-mix(
       in oklab,
@@ -607,8 +604,8 @@
     var(--site-text-primary)
   );
   --site-reading-link: var(--site-reading-body);
-  --search-mark-bg: oklch(0.45 0.1 85 / 0.5);
-  --search-mark-color: oklch(0.92 0.08 90);
+  --site-search-mark-bg: oklch(0.45 0.1 85 / 0.5);
+  --site-search-mark-color: oklch(0.92 0.08 90);
   --dash-bg: oklch(0.2 0.005 80);
   /* 12% of the foreground mixed into the page. The headroom here is small and
      bounded: `--site-divider` sits 1.36:1 above the page, and a surface lifted

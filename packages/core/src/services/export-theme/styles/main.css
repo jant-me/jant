@@ -574,7 +574,7 @@ time {
     var(--site-text-primary) 84%,
     var(--site-text-secondary)
   );
-  background: color-mix(in srgb, var(--site-nav-hover-bg) 58%, transparent);
+  background: color-mix(in srgb, var(--site-subtle-bg) 58%, transparent);
   text-decoration: none;
 }
 
@@ -1217,7 +1217,7 @@ hr.feed-divider {
   justify-content: center;
   color: color-mix(
     in srgb,
-    var(--search-mark-color) 72%,
+    var(--site-search-mark-color) 72%,
     var(--site-text-secondary)
   );
   flex-shrink: 0;
@@ -1674,7 +1674,7 @@ hr.feed-divider {
 }
 
 .reply:target {
-  background-color: var(--search-mark-bg);
+  background-color: var(--site-search-mark-bg);
   border-radius: 0.25rem;
   padding: 0.75rem 1rem;
   margin-left: -1rem;

@@ -822,7 +822,7 @@
   color: var(--site-text-primary);
   border-radius: var(--media-radius, 0.5rem);
   overflow: hidden;
-  background-color: var(--site-nav-hover-bg);
+  background-color: var(--site-subtle-bg);
   border: 1px solid var(--site-divider);
   transition: background-color 0.15s;
 }
