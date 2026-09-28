@@ -187,9 +187,6 @@ importers:
       lucide-static:
         specifier: ^0.577.0
         version: 0.577.0
-      marked:
-        specifier: ^17.0.4
-        version: 17.0.6
       mdast-util-from-markdown:
         specifier: ^2.0.3
         version: 2.0.3
