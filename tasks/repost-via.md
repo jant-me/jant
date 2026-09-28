@@ -92,11 +92,6 @@
 >   a missing key silently wipes the column on a sync round trip.
 > - §11 Phase 1 omits the Hugo export theme, which renders its own cards
 >   (`export-theme/layouts/partials/post-card.html`, `reply.html`).
->
-> The mf2 markup-correctness items from §5 (`u-bookmark-of`, `h-cite`, and the
-> incorrect `u-url` on LinkCard's outbound link) were **split out** into
-> `tasks/todos/2026-08-24-1709-post-microformats-fixes.md` — they are real bugs
-> today and stand on their own.
 
 # Repost (via) — cross-domain reblog for Jant
 
