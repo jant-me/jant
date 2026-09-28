@@ -141,10 +141,15 @@ GET https://example.com/api/discover/posts?id=pst_01jpyx3m7gw4w3h7m4bknq0v1d&id=
 
 These still work and always will, so nobody's subscription breaks. New links should use the canonical address on the right.
 
-| Old                     | Now              |
-| ----------------------- | ---------------- |
-| `/feed/latest`          | `/latest/feed`   |
-| `/feed/featured`        | `/featured/feed` |
-| `/feed/all`             | `/latest/feed`   |
-| `/feed/atom.xml`        | `/feed`          |
-| `/{page}/feed/atom.xml` | `/{page}/feed`   |
+| Old                       | Now              |
+| ------------------------- | ---------------- |
+| `/feed/latest`            | `/latest/feed`   |
+| `/feed/featured`          | `/featured/feed` |
+| `/feed/all`               | `/latest/feed`   |
+| `/feed/atom.xml`          | `/feed`          |
+| `/feed/latest/atom.xml`   | `/latest/feed`   |
+| `/feed/featured/atom.xml` | `/featured/feed` |
+| `/feed/all/atom.xml`      | `/latest/feed`   |
+| `/latest/feed/atom.xml`   | `/latest/feed`   |
+| `/featured/feed/atom.xml` | `/featured/feed` |
+| `/archive/feed/atom.xml`  | `/archive/feed`  |

@@ -141,10 +141,15 @@ GET https://example.com/api/discover/posts?id=pst_01jpyx3m7gw4w3h7m4bknq0v1d&id=
 
 这些地址仍然可用，而且会一直可用，谁的订阅都不会失效。新链接用右边的正式地址。
 
-| 旧地址                  | 现在             |
-| ----------------------- | ---------------- |
-| `/feed/latest`          | `/latest/feed`   |
-| `/feed/featured`        | `/featured/feed` |
-| `/feed/all`             | `/latest/feed`   |
-| `/feed/atom.xml`        | `/feed`          |
-| `/{page}/feed/atom.xml` | `/{page}/feed`   |
+| 旧地址                    | 现在             |
+| ------------------------- | ---------------- |
+| `/feed/latest`            | `/latest/feed`   |
+| `/feed/featured`          | `/featured/feed` |
+| `/feed/all`               | `/latest/feed`   |
+| `/feed/atom.xml`          | `/feed`          |
+| `/feed/latest/atom.xml`   | `/latest/feed`   |
+| `/feed/featured/atom.xml` | `/featured/feed` |
+| `/feed/all/atom.xml`      | `/latest/feed`   |
+| `/latest/feed/atom.xml`   | `/latest/feed`   |
+| `/featured/feed/atom.xml` | `/featured/feed` |
+| `/archive/feed/atom.xml`  | `/archive/feed`  |
