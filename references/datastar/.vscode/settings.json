@@ -1,20 +1,20 @@
 {
-  "go.testTimeout": "200s",
-  "go.coverOnSingleTestFile": true,
-  "go.coverOnSingleTest": true,
-  "editor.foldingStrategy": "indentation",
-  "makefile.configureOnOpen": false,
-  "editor.formatOnSave": true,
-  "[typescript]": {
-    "editor.defaultFormatter": "biomejs.biome"
-  },
-  "[json]": {
-    "editor.defaultFormatter": "biomejs.biome"
-  },
-  "[html]": {
-    "editor.formatOnSave": false
-  },
-  "[markdown]": {
-    "editor.formatOnSave": false
-  }
+    "go.testTimeout": "200s",
+    "go.coverOnSingleTestFile": true,
+    "go.coverOnSingleTest": true,
+    "editor.foldingStrategy": "indentation",
+    "makefile.configureOnOpen": false,
+    "editor.formatOnSave": true,
+    "[typescript]": {
+        "editor.defaultFormatter": "biomejs.biome"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "biomejs.biome"
+    },
+    "[html]": {
+        "editor.formatOnSave": false
+    },
+    "[markdown]": {
+        "editor.formatOnSave": false
+    }
 }

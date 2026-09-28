@@ -4,13 +4,7 @@
   "title": "Datastar SDK Configuration",
   "description": "Configuration schema for Datastar SDK authors",
   "type": "object",
-  "required": [
-    "version",
-    "datastarKey",
-    "defaults",
-    "enums",
-    "datalineLiterals"
-  ],
+  "required": ["version", "datastarKey", "defaults", "enums", "datalineLiterals"],
   "properties": {
     "version": {
       "type": "string",
@@ -61,15 +55,7 @@
       "items": {
         "type": "string"
       },
-      "default": [
-        "selector",
-        "mode",
-        "elements",
-        "useViewTransition",
-        "namespace",
-        "signals",
-        "onlyIfMissing"
-      ]
+      "default": ["selector", "mode", "elements", "useViewTransition", "namespace", "signals", "onlyIfMissing"]
     },
     "enums": {
       "type": "object",

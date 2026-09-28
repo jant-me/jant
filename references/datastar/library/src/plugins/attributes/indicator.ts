@@ -2,39 +2,43 @@
 // Slug: Creates an indicator for whether an SSE request is in flight.
 // Description: Creates a signal and sets its value to `true` while an SSE request request is in flight, otherwise `false`.
 
-import { attribute } from "@engine";
-import { DATASTAR_FETCH_EVENT } from "@engine/consts";
-import { mergePaths } from "@engine/signals";
-import type { DatastarFetchEvent } from "@engine/types";
-import { FINISHED, STARTED } from "@plugins/actions/fetch";
-import { modifyCasing } from "@utils/text";
+import { attribute } from '@engine'
+import { DATASTAR_FETCH_EVENT, DOCUMENT } from '@engine/consts'
+import { mergePaths } from '@engine/signals'
+import type { DatastarFetchEvent } from '@engine/types'
+import { FINISHED, STARTED } from '@plugins/actions/fetch'
+import { modifyCasing } from '@utils/text'
 
 attribute({
-  name: "indicator",
-  requirement: "exclusive",
+  name: 'indicator',
+  requirement: 'exclusive',
   apply({ el, key, mods, value }) {
-    const signalName = key != null ? modifyCasing(key, mods) : value;
+    const signalName = key != null ? modifyCasing(key, mods) : value
+    let activeFetches = 0
 
-    mergePaths([[signalName, false]]);
+    mergePaths([[signalName, false]])
 
     const watcher = ((event: CustomEvent<DatastarFetchEvent>) => {
-      const { type, el: elt } = event.detail;
+      const { type, el: elt } = event.detail
       if (elt !== el) {
-        return;
+        return
       }
       switch (type) {
         case STARTED:
-          mergePaths([[signalName, true]]);
-          break;
+          activeFetches++
+          mergePaths([[signalName, true]])
+          break
         case FINISHED:
-          mergePaths([[signalName, false]]);
-          break;
+          activeFetches = Math.max(0, activeFetches - 1)
+          mergePaths([[signalName, activeFetches > 0]])
+          break
       }
-    }) as EventListener;
-    document.addEventListener(DATASTAR_FETCH_EVENT, watcher);
+    }) as EventListener
+    DOCUMENT.addEventListener(DATASTAR_FETCH_EVENT, watcher)
     return () => {
-      mergePaths([[signalName, false]]);
-      document.removeEventListener(DATASTAR_FETCH_EVENT, watcher);
-    };
+      activeFetches = 0
+      mergePaths([[signalName, false]])
+      DOCUMENT.removeEventListener(DATASTAR_FETCH_EVENT, watcher)
+    }
   },
-});
+})

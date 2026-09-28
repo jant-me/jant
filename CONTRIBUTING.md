@@ -121,7 +121,7 @@ jant/
 - **Database**: D1 (SQLite) + Drizzle ORM
 - **Auth**: better-auth
 - **i18n**: @lingui/core + @lingui/swc-plugin
-- **Interactions**: Datastar v1.0.0-RC.7 (vendored)
+- **Interactions**: Datastar v1.0.4 (vendored)
 - **Code Quality**: ESLint + Prettier + husky + lint-staged
 - **Validation**: Zod
 - **Testing**: Vitest + better-sqlite3 (in-memory)

@@ -8,7 +8,7 @@ These are NOT runtime dependencies - they exist so the agent can look up API doc
 | Directory              | Source                                              | Version    | Commit    |
 | ---------------------- | --------------------------------------------------- | ---------- | --------- |
 | `basecoat/`            | https://github.com/hunvreus/basecoat                | 0.3.10     | `713c163` |
-| `datastar/`            | https://github.com/starfederation/datastar          | 1.0.0-RC.7 | `812cbe9` |
+| `datastar/`            | https://github.com/starfederation/datastar          | 1.0.4      | `1efcdc3` |
 | `lingui-po-translate/` | https://github.com/theowenyoung/lingui-po-translate | 1.0.10     | `9af94cf` |
 | `wxt/`                 | https://github.com/wxt-dev/wxt                      | 0.20.20    | `ffdd15e` |
 | `tufte-css/`           | https://github.com/edwardtufte/tufte-css             | 1.8.0      | `c0a7db6` |

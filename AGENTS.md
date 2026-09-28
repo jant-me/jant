@@ -138,7 +138,7 @@ Rules that recur:
 
 ### Tech Stack
 
-Cloudflare Workers, Hono v4, Vite + SWC, Tailwind v4 + BaseCoat, D1 + Drizzle ORM, better-auth, @lingui/core, Datastar v1.0.0-RC.7 (vendored — version matters, APIs vary between releases), Lit (Web Components), Zod, ESLint + Prettier
+Cloudflare Workers, Hono v4, Vite + SWC, Tailwind v4 + BaseCoat, D1 + Drizzle ORM, better-auth, @lingui/core, Datastar v1.0.4 (vendored — version matters, APIs vary between releases), Lit (Web Components), Zod, ESLint + Prettier
 
 ## UX Copy Guidelines
 
