@@ -2550,11 +2550,11 @@ Content type: `multipart/form-data`
 
 Form fields:
 
-| Field        | Type | Required | Default | Notes                  |
-| ------------ | ---- | -------- | ------- | ---------------------- |
-| `file`       | file | yes      | —       | Main avatar image      |
-| `favicon`    | file | no       | —       | Favicon `.ico` payload |
-| `appleTouch` | file | no       | —       | Apple touch icon       |
+| Field        | Type | Required | Default | Notes                                 |
+| ------------ | ---- | -------- | ------- | ------------------------------------- |
+| `file`       | file | yes      | —       | Main avatar image: PNG, JPEG, or WebP |
+| `favicon`    | file | no       | —       | Favicon `.ico` payload                |
+| `appleTouch` | file | no       | —       | Apple touch icon, PNG                 |
 
 Response:
 
@@ -2565,7 +2565,7 @@ Response:
 Notes:
 
 - File storage must be configured or the endpoint returns `500`.
-- Omitting `file` returns `400`.
+- Omitting `file` returns `400`, as does a file whose contents aren't the image type it names. An SVG is refused.
 - On success, this endpoint updates the internal avatar/favicon settings used by site rendering.
 
 ### Remove site avatar and related icons

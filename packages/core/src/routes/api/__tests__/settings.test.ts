@@ -743,9 +743,11 @@ describe("Settings API Routes", () => {
       const formData = new FormData();
       formData.append(
         "file",
-        new File([new Uint8Array([1, 2, 3])], "avatar.png", {
-          type: "image/png",
-        }),
+        new File(
+          [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+          "avatar.png",
+          { type: "image/png" },
+        ),
       );
 
       const res = await app.request("/api/settings/avatar", {
@@ -766,9 +768,11 @@ describe("Settings API Routes", () => {
       const formData = new FormData();
       formData.append(
         "file",
-        new File([new Uint8Array([1, 2, 3])], "avatar.png", {
-          type: "image/png",
-        }),
+        new File(
+          [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+          "avatar.png",
+          { type: "image/png" },
+        ),
       );
 
       const res = await app.request("/api/settings/avatar", {
@@ -810,15 +814,19 @@ describe("Settings API Routes", () => {
       const formData = new FormData();
       formData.append(
         "file",
-        new File([new Uint8Array([1, 2, 3])], "avatar.png", {
-          type: "image/png",
-        }),
+        new File(
+          [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])],
+          "avatar.png",
+          { type: "image/png" },
+        ),
       );
       formData.append(
         "appleTouch",
-        new File([new Uint8Array([137, 80, 78, 71])], "apple-touch-icon.png", {
-          type: "image/png",
-        }),
+        new File(
+          [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])],
+          "apple-touch-icon.png",
+          { type: "image/png" },
+        ),
       );
 
       const res = await app.request("/api/settings/avatar", {

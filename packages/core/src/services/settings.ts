@@ -29,9 +29,13 @@ import type { StorageDriver } from "../lib/storage.js";
 import type { MediaService } from "./media.js";
 import {
   validateUploadFile,
+  validateStoredUploadSignature,
   generateSiteAssetStorageKey,
   getSiteStorageKey,
 } from "../lib/upload.js";
+
+/** Avatar formats kept: the browser turns every upload into one of these. */
+const AVATAR_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 import { arrayBufferToBase64 } from "../lib/favicon.js";
 import { ValidationError } from "../lib/errors.js";
 import { normalizeEditableSettingValue } from "../lib/schemas.js";
@@ -126,7 +130,13 @@ export interface GeneralSettingsResult {
 }
 
 export interface AvatarUploadData {
-  file: { stream(): ReadableStream; name: string; type: string; size: number };
+  file: {
+    stream(): ReadableStream;
+    slice(start?: number, end?: number): Blob;
+    name: string;
+    type: string;
+    size: number;
+  };
   faviconIco?: ArrayBuffer;
   appleTouchIcon?: ArrayBuffer;
 }
@@ -605,6 +615,30 @@ export function createSettingsService(
       });
       if (uploadError) {
         throw new ValidationError(uploadError);
+      }
+
+      // The browser resizes every avatar to a PNG before upload, so only the
+      // raster formats the upload path serves inline are accepted, and the
+      // bytes must be what the type says. An SVG is a document that can run
+      // script when opened from the site's origin.
+      if (!AVATAR_MIME_TYPES.has(data.file.type)) {
+        throw new ValidationError("Upload a PNG, JPEG, or WebP image.");
+      }
+      const signatureError = validateStoredUploadSignature(
+        data.file.type,
+        new Uint8Array(await data.file.slice(0, 64).arrayBuffer()),
+      );
+      if (signatureError) {
+        throw new ValidationError(signatureError);
+      }
+      if (data.appleTouchIcon) {
+        const appleTouchError = validateStoredUploadSignature(
+          "image/png",
+          new Uint8Array(data.appleTouchIcon.slice(0, 64)),
+        );
+        if (appleTouchError) {
+          throw new ValidationError(appleTouchError);
+        }
       }
 
       const { id, filename, storageKey } = generateSiteAssetStorageKey(

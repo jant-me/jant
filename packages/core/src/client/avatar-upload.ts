@@ -104,16 +104,16 @@ async function handleAvatarUpload(
     // Load the image
     const img = await loadImage(file);
 
-    // Resize avatar to 512x512 PNG (skip for SVG — scalable and already small)
-    let avatarFile: File | Blob = file;
-    let avatarFilename = file.name;
-    if (file.type !== "image/svg+xml") {
-      const png512 = await resizeToSquarePng(img, 512);
-      avatarFile = new File([png512], file.name.replace(/\.[^.]+$/, ".png"), {
-        type: "image/png",
-      });
-      avatarFilename = (avatarFile as File).name;
-    }
+    // Resize avatar to a 512x512 PNG. SVGs are rasterized too: the server
+    // stores only PNG, JPEG, and WebP avatars, because an SVG opened from
+    // the site's own origin could carry script.
+    const png512 = await resizeToSquarePng(img, 512);
+    const avatarFile = new File(
+      [png512],
+      file.name.replace(/\.[^.]+$/, ".png"),
+      { type: "image/png" },
+    );
+    const avatarFilename = avatarFile.name;
 
     const appleTouchBlobPromise = canReuseOriginalAppleTouch(file, img)
       ? Promise.resolve<Blob>(file)
