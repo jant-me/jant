@@ -95,6 +95,12 @@ Tests run against SQLite only. Raw SQL fragments (`` sql`...` ``) that work on S
 
 **Rule of thumb**: if you write a raw `sql` template that is more than a simple column reference, mentally run it through Postgres syntax before committing. Drizzle's typed query builder is dialect-safe; the risk lives in `sql` tagged templates and string interpolation inside `where`/`orderBy`. Because tests run on SQLite only, dialect-specific bugs like NULL ordering won't surface locally — they have to be caught by reading the query.
 
+## Migrations and Snapshots
+
+A snapshot's `db.sql` holds rows in the schema of the Jant that wrote it, and restore replays them into the importing Jant's schema. Restore rewrites them only by snapshot format version (`upgradeSnapshotSql` in `bin/lib/site-snapshot.js`), never by migration. A column added with a default replays unchanged. A migration that renames, drops, or retypes a column, splits or merges a table, or changes what a stored value means, in any table `SNAPSHOT_TABLES` lists, breaks every snapshot written before it.
+
+So such a migration ships, in the same change, a rewrite in `site-snapshot.js` that turns an older snapshot's statements into the new shape, keyed by the snapshot's `schema` tag (the last migration its writer had), for both dialects. Snapshots from 0.7.0 on restore on every later release (`docs/compatibility.md`). `release-fixtures.test.ts` replays each release's frozen snapshot, but it only notices the columns those fixtures happen to fill, so the rewrite belongs to writing the migration rather than to a failing test.
+
 ## URL Naming
 
 ### Path segments
