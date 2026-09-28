@@ -1,6 +1,6 @@
 # 命令行
 
-`jant` 命令随 `@jant/core` 一起安装。在 Jant 项目目录里用 `npx jant <命令>` 运行；Docker 镜像里 `jant` 已在 PATH 上。`jant --help` 列出所有命令，`jant <命令> --help` 列出一个命令的选项。选项写在命令名之后：写 `jant migrate --remote`，不要写 `jant --remote migrate`，后者会被拒绝。
+`jant` 命令随 `@jant/core` 一起安装。在 Jant 项目目录里用 `npx jant <命令>` 运行；Docker 镜像里 `jant` 已在 PATH 上。`jant --help` 列出所有命令，`jant <命令> --help` 列出一个命令的选项，`jant --version` 打印已安装的版本。命令不认识的选项会被拒绝，并用一行说明是哪个。选项写在命令名之后：写 `jant migrate --remote`，不要写 `jant --remote migrate`，后者会被拒绝。
 
 本页的命令和选项只在大版本里变动。`jant` 还能运行几个构建和运维用的命令，`--help` 不列出它们；这些属于内部命令，任何版本都可能改变。
 

@@ -146,6 +146,46 @@ describe("jant CLI surface", () => {
     expect(result.stdout).toBe("");
   });
 
+  it.each(["--version", "-v"])("prints the version for jant %s", (flag) => {
+    const version = JSON.parse(
+      readFileSync(join(CORE_DIR, "package.json"), "utf8"),
+    ).version;
+    const result = spawnSync("node", ["bin/jant.js", flag], {
+      cwd: CORE_DIR,
+      encoding: "utf8",
+    });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe(`${version}\n`);
+  });
+
+  it.each([
+    ["migrate --bogus", "Error: Unknown option '--bogus'.", "migrate"],
+    [
+      "search reindex --limit",
+      "Error: Option '--limit <value>' argument missing.",
+      "search reindex",
+    ],
+  ])("answers a bad argument in one line: jant %s", (args, line, command) => {
+    // parseArgs used to surface as a Node stack trace.
+    const result = spawnSync("node", ["bin/jant.js", ...args.split(" ")], {
+      cwd: CORE_DIR,
+      encoding: "utf8",
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toBe(
+      `${line}\nRun 'jant ${command} --help' for its options.\n`,
+    );
+  });
+
+  it("refuses an option it doesn't know without a command", () => {
+    const result = spawnSync("node", ["bin/jant.js", "--bogus"], {
+      cwd: CORE_DIR,
+      encoding: "utf8",
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Unknown option: --bogus");
+  });
+
   for (const path of CLI_DOCS) {
     it(`${path} documents each public command with the options its help lists`, () => {
       const documented = readDocumentedCommands(path);

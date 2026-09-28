@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative } from "node:path";
 import { PUBLIC_COMMAND_GROUPS } from "./lib/command-registry.js";
@@ -49,13 +49,27 @@ function showHelp() {
   }
   console.log("");
   console.log("Run 'jant <command> --help' for command-specific help.");
+  console.log("Run 'jant --version' for the installed version.");
 }
 
 const argv = process.argv.slice(2);
 const commandStart = argv.findIndex((arg) => !arg.startsWith("-"));
 if (commandStart === -1) {
-  showHelp();
-  process.exit(0);
+  const [option] = argv;
+  if (option === "--version" || option === "-v") {
+    const packageJson = JSON.parse(
+      await readFile(join(__dirname, "../package.json"), "utf8"),
+    );
+    console.log(packageJson.version);
+    process.exit(0);
+  }
+  if (option === undefined || option === "--help" || option === "-h") {
+    showHelp();
+    process.exit(0);
+  }
+  console.error(`Unknown option: ${option}`);
+  console.error("Run 'jant --help' for the list of commands.");
+  process.exit(1);
 }
 
 const commands = await listCommands();
@@ -107,6 +121,27 @@ if (!matched) {
   process.exit(1);
 }
 
+/**
+ * The codes `node:util`'s `parseArgs` throws for arguments a command doesn't
+ * take. They are the user's mistake, so they get one line and a pointer to the
+ * command's help, not a stack trace.
+ */
+const ARGUMENT_ERROR_CODES = new Set([
+  "ERR_PARSE_ARGS_UNKNOWN_OPTION",
+  "ERR_PARSE_ARGS_INVALID_OPTION_VALUE",
+  "ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL",
+]);
+
 const commandIndex = commandStart + matched.length - 1;
 const mod = await import(join(commandsDir, `${matched.join("/")}.js`));
-await mod.run(argv.slice(commandIndex + 1));
+try {
+  await mod.run(argv.slice(commandIndex + 1));
+} catch (error) {
+  if (!ARGUMENT_ERROR_CODES.has(error?.code)) throw error;
+  // parseArgs appends its own advice about `--`, which names none of Jant's
+  // options; the first sentence is the part that says what went wrong.
+  const [reason] = String(error.message).split(/\. (?=To specify|Did you)/);
+  console.error(`Error: ${reason.replace(/\.$/, "")}.`);
+  console.error(`Run 'jant ${matched.join(" ")} --help' for its options.`);
+  process.exit(1);
+}
