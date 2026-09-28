@@ -197,12 +197,13 @@ npx jant site snapshot import --path ./jant-site-snapshot.zip --replace
 
 ### `jant uploads cleanup`
 
-清理已过期的上传会话，并彻底删除已过 [回收期](backups.md#已删除媒体的回收期) 的已删除媒体。
+清理已过期的上传会话，并彻底删除已过 [回收期](backups.md#已删除媒体的回收期) 的已删除媒体。会一批接一批地跑，直到清完。
 
 | 选项                | 用途                                        |
 | ------------------- | ------------------------------------------- |
 | `--url`             | 站点 URL                                    |
-| `--limit`           | 每批的会话数（默认 20，最多 500）           |
+| `--limit`           | 每批的会话数（默认 20，最多 200）           |
+| `--once`            | 只执行一批                                  |
 | `--token`           | 内部管理 token，代替 `INTERNAL_ADMIN_TOKEN` |
 | `--config`、`--env` | 从哪份 Wrangler 配置读取 `SITE_ORIGIN`      |
 

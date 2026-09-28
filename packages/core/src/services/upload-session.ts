@@ -129,6 +129,13 @@ export interface UploadSessionService {
     data: CompleteUploadData,
     deps: { storage: StorageDriver; storageDriver: string },
   ): Promise<Media>;
+  /**
+   * One batch of upload cleanup: expired sessions and their temporary files,
+   * then deleted media past the recycle window.
+   *
+   * @returns What the batch removed, and `done` when neither list had a full
+   *   batch left, so a caller walking to the end can stop
+   */
   cleanupExpired(deps: {
     storage: StorageDriver;
     storageDriver: string;
@@ -138,6 +145,7 @@ export interface UploadSessionService {
     deletedSessions: number;
     deletedOrphanMedia: number;
     purgedStorageObjects: number;
+    done: boolean;
   }>;
   abort(id: string, deps: { storage: StorageDriver }): Promise<void>;
 }
@@ -764,6 +772,8 @@ export function createUploadSessionService(
         // infer liveness from attachment state.
         deletedOrphanMedia: 0,
         purgedStorageObjects,
+        // A short read on both lists means nothing was left behind this batch.
+        done: expiredSessions.length < limit && purgedStorageObjects < limit,
       };
     },
   };

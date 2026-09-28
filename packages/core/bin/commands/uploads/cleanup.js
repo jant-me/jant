@@ -3,6 +3,8 @@ import { resolveSiteUrl } from "../../lib/site-url.js";
 
 const INTERNAL_ADMIN_TOKEN_ENV_VAR = "INTERNAL_ADMIN_TOKEN";
 const DEFAULT_LIMIT = 20;
+/** The largest batch the server runs; a larger `limit` is read as this. */
+const MAX_LIMIT = 200;
 
 function normalizeBaseUrl(value) {
   const trimmed = value.trim();
@@ -22,8 +24,10 @@ function parseLimit(rawLimit) {
   }
 
   const limit = Number.parseInt(rawLimit, 10);
-  if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
-    throw new Error("Cleanup limit must be an integer between 1 and 500.");
+  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT) {
+    throw new Error(
+      `Cleanup limit must be an integer between 1 and ${MAX_LIMIT}.`,
+    );
   }
 
   return limit;
@@ -55,6 +59,7 @@ export async function run(argv) {
       env: { type: "string" },
       help: { type: "boolean", short: "h" },
       limit: { type: "string" },
+      once: { type: "boolean", default: false },
       token: { type: "string" },
       url: { type: "string" },
     },
@@ -63,11 +68,22 @@ export async function run(argv) {
   if (values.help) {
     console.log("Usage: jant uploads cleanup [--url <url>] [options]");
     console.log("");
-    console.log("Clean up expired temporary upload sessions.");
+    console.log(
+      "Delete expired upload sessions and their temporary files, and purge",
+    );
+    console.log(
+      "deleted media whose 30-day recycle window has passed. Runs batch after",
+    );
+    console.log("batch until nothing is left.");
     console.log("");
     console.log("Options:");
     console.log("  --url           Target site URL");
-    console.log("  --limit         Cleanup batch size (default: 20, max: 500)");
+    console.log(
+      `  --limit         Cleanup batch size (default: ${DEFAULT_LIMIT}, max: ${MAX_LIMIT})`,
+    );
+    console.log(
+      "  --once          Run a single batch and exit (default: loop until done)",
+    );
     console.log("  --token         Internal admin token");
     console.log(
       "  --config        Wrangler config file (default: wrangler.toml)",
@@ -113,9 +129,32 @@ export async function run(argv) {
   const cleanupUrl = buildCleanupUrl(siteUrl);
 
   console.log(`Cleaning expired uploads for ${siteUrl}...`);
-  const result = await requestCleanup(cleanupUrl, token, limit);
-  console.log(`Deleted sessions: ${result.deletedSessions}`);
-  console.log(`Aborted multipart uploads: ${result.abortedMultipartUploads}`);
-  console.log(`Orphaned media deleted: ${result.deletedOrphanMedia}`);
-  console.log(`Purged storage objects: ${result.purgedStorageObjects ?? 0}`);
+  const totals = {
+    deletedSessions: 0,
+    abortedMultipartUploads: 0,
+    purgedStorageObjects: 0,
+  };
+  let stalled = false;
+  for (;;) {
+    const result = await requestCleanup(cleanupUrl, token, limit);
+    totals.deletedSessions += result.deletedSessions;
+    totals.abortedMultipartUploads += result.abortedMultipartUploads;
+    totals.purgedStorageObjects += result.purgedStorageObjects;
+    if (values.once || result.done) break;
+    // A full batch that removed nothing would come back unchanged next time.
+    if (result.deletedSessions === 0 && result.purgedStorageObjects === 0) {
+      stalled = true;
+      break;
+    }
+  }
+
+  console.log(`Deleted sessions: ${totals.deletedSessions}`);
+  console.log(`Aborted multipart uploads: ${totals.abortedMultipartUploads}`);
+  console.log(`Purged storage objects: ${totals.purgedStorageObjects}`);
+  if (stalled) {
+    console.error(
+      "Stopped early: the last batch removed nothing, though more is due. The server log says why; the next run tries again.",
+    );
+    process.exit(1);
+  }
 }

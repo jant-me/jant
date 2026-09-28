@@ -197,12 +197,13 @@ Rebuilds the stored HTML of every post at the current HTML format. Pages render 
 
 ### `jant uploads cleanup`
 
-Clears upload sessions that expired, and purges deleted media whose [recycle window](backups.md#deleted-media-recycle-window) has passed.
+Clears upload sessions that expired, and purges deleted media whose [recycle window](backups.md#deleted-media-recycle-window) has passed. It runs batch after batch until nothing is left.
 
 | Option              | Use                                                     |
 | ------------------- | ------------------------------------------------------- |
 | `--url`             | The site's URL                                          |
-| `--limit`           | Sessions per batch (default: 20, at most 500)           |
+| `--limit`           | Sessions per batch (default: 20, at most 200)           |
+| `--once`            | Run one batch and stop                                  |
 | `--token`           | Internal admin token, instead of `INTERNAL_ADMIN_TOKEN` |
 | `--config`, `--env` | The Wrangler config to read `SITE_ORIGIN` from          |
 

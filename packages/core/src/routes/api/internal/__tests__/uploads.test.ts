@@ -127,6 +127,7 @@ describe("Internal upload admin routes", () => {
       deletedSessions: 1,
       deletedOrphanMedia: 0,
       purgedStorageObjects: 0,
+      done: true,
     });
 
     const remaining = sqlite
@@ -189,6 +190,7 @@ describe("Internal upload admin routes", () => {
       deletedSessions: 0,
       deletedOrphanMedia: 0,
       purgedStorageObjects: 0,
+      done: true,
     });
 
     // Finalized media may be referenced from post body JSON without being a
