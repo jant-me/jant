@@ -98,17 +98,32 @@ export function sqlValue(value, dialect = "sqlite") {
   return `'${String(value).replaceAll("'", "''")}'`;
 }
 
+/**
+ * One row as an INSERT statement.
+ *
+ * @param {string} tableName - The table
+ * @param {string[]} columnNames - Columns to write, in order
+ * @param {Record<string, unknown>} row - The row as the driver returned it
+ * @param {"sqlite" | "pg"} [dialect] - The database the SQL is for
+ * @param {string} [conflictClause] - An `ON CONFLICT …` clause to append
+ * @returns {string} The statement
+ *
+ * @example
+ * buildInsertStatement("site_setting", ["site_id", "key", "value"], row, "pg");
+ */
 export function buildInsertStatement(
   tableName,
   columnNames,
   row,
   dialect = "sqlite",
+  conflictClause = "",
 ) {
   const columns = columnNames.map(quoteIdentifier).join(", ");
   const values = columnNames
     .map((column) => sqlValue(row[column], dialect))
     .join(", ");
-  return `INSERT INTO ${quoteIdentifier(tableName)} (${columns}) VALUES(${values});`;
+  const conflict = conflictClause ? ` ${conflictClause}` : "";
+  return `INSERT INTO ${quoteIdentifier(tableName)} (${columns}) VALUES(${values})${conflict};`;
 }
 
 export function sortExportTables(tableNames) {
@@ -246,6 +261,8 @@ async function queryAllPages(queryRunner, selectSql, pageSize) {
  * `post` table outgrew the output the CLI can buffer.
  * `options.orderRowsByTable` reorders a table's rows before they are written,
  * for inserts that must follow their own foreign keys.
+ * `options.conflictClauseByTable` appends an `ON CONFLICT` clause to a table's
+ * inserts.
  */
 export async function dumpDatabaseToSql(queryRunner, options) {
   const dialect = options.dialect ?? "sqlite";
@@ -292,7 +309,15 @@ export async function dumpDatabaseToSql(queryRunner, options) {
 
     sql += `-- ${tableName}\n`;
     sql += rows
-      .map((row) => buildInsertStatement(tableName, columnNames, row, dialect))
+      .map((row) =>
+        buildInsertStatement(
+          tableName,
+          columnNames,
+          row,
+          dialect,
+          options.conflictClauseByTable?.[tableName],
+        ),
+      )
       .join("\n");
     sql += "\n\n";
   }

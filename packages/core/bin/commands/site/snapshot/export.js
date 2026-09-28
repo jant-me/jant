@@ -16,6 +16,7 @@ import {
 import {
   buildSnapshotMeta,
   buildSnapshotStorageQuery,
+  SNAPSHOT_CONFLICT_CLAUSES,
   collectSnapshotObjects,
   getSnapshotSelectSql,
   orderSnapshotPostRows,
@@ -256,6 +257,7 @@ export async function run(argv) {
         // D1 answers through Wrangler's buffered output; read it in pages.
         pageSize: runtime === "node" ? undefined : D1_DUMP_PAGE_SIZE,
         orderRowsByTable: { post: orderSnapshotPostRows },
+        conflictClauseByTable: SNAPSHOT_CONFLICT_CLAUSES,
         tables: SNAPSHOT_TABLES,
         selectSqlByTable: Object.fromEntries(
           SNAPSHOT_TABLES.map((tableName) => [

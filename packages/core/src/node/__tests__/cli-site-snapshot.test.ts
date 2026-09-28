@@ -548,6 +548,63 @@ describe("jant site snapshot export/import", () => {
     }
   });
 
+  it("replaces a setting a later version's snapshot carries and this one doesn't list", async () => {
+    const root = await mkdtemp(join(tmpdir(), "jant-site-snapshot-upsert-"));
+    tempDirs.push(root);
+    const targetDbPath = join(root, "target.sqlite");
+    const snapshotPath = join(root, "snapshot");
+    await migrate({ DATABASE_URL: `file:${targetDbPath}` } as Bindings);
+
+    const sqlite = new Database(targetDbPath);
+    try {
+      // DISCOVER isn't among the settings this version's snapshot restores,
+      // so `--replace` leaves the target's row in place.
+      sqlite.exec(`
+        INSERT INTO "site" ("id", "key", "status", "created_at", "updated_at")
+        VALUES ('${SNAPSHOT_SITE_ID}', '${SNAPSHOT_SITE_KEY}', 'active', 1, 1);
+        INSERT INTO "site_setting" ("site_id", "key", "value", "updated_at")
+        VALUES ('${SNAPSHOT_SITE_ID}', 'DISCOVER', 'off', 1);
+      `);
+    } finally {
+      sqlite.close();
+    }
+
+    await mkdir(snapshotPath, { recursive: true });
+    await writeFile(
+      join(snapshotPath, "meta.json"),
+      JSON.stringify({
+        format: "jant-site-snapshot",
+        version: 2,
+        dialect: "sqlite",
+        site: { id: SNAPSHOT_SITE_ID, key: SNAPSHOT_SITE_KEY },
+      }),
+    );
+    const { SNAPSHOT_CONFLICT_CLAUSES } =
+      await import("../../../bin/lib/site-snapshot.js");
+    await writeFile(
+      join(snapshotPath, "db.sql"),
+      `INSERT INTO "site_setting" ("site_id", "key", "value", "updated_at") VALUES('${SNAPSHOT_SITE_ID}', 'DISCOVER', 'latest', 2) ${SNAPSHOT_CONFLICT_CLAUSES.site_setting};\n`,
+    );
+
+    useLocalSnapshotRuntime(`file:${targetDbPath}`, join(root, "target-media"));
+    const { run: runImport } =
+      await import("../../../bin/commands/site/snapshot/import.js");
+    await runImport(["--path", snapshotPath, "--replace"]);
+
+    const verifySqlite = new Database(targetDbPath, { readonly: true });
+    try {
+      expect(
+        verifySqlite
+          .prepare(
+            `SELECT "value" FROM "site_setting" WHERE "site_id" = ? AND "key" = 'DISCOVER'`,
+          )
+          .get(SNAPSHOT_SITE_ID),
+      ).toEqual({ value: "latest" });
+    } finally {
+      verifySqlite.close();
+    }
+  });
+
   it("skips downloading storage objects when --skip-objects is passed", async () => {
     const root = await mkdtemp(
       join(tmpdir(), "jant-site-snapshot-skip-objects-"),

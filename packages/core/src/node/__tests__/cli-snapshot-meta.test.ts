@@ -117,11 +117,21 @@ describe("assertSnapshotMeta", () => {
     ).not.toThrow();
   });
 
-  it("rejects unknown snapshot versions", () => {
+  it("asks for an upgrade when the snapshot's version is newer", () => {
     expect(() =>
       assertSnapshotMeta({
         format: "jant-site-snapshot",
         version: SNAPSHOT_VERSION + 1,
+        site: SITE,
+      }),
+    ).toThrow(/Upgrade @jant\/core, then import again/);
+  });
+
+  it("rejects a snapshot version this Jant never wrote", () => {
+    expect(() =>
+      assertSnapshotMeta({
+        format: "jant-site-snapshot",
+        version: 0,
         site: SITE,
       }),
     ).toThrow(/Unsupported snapshot version/);

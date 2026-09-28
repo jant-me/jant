@@ -469,8 +469,11 @@ export function assertSnapshotMeta(meta) {
   }
 
   if (!SUPPORTED_SNAPSHOT_VERSIONS.includes(meta.version)) {
+    const newest = Math.max(...SUPPORTED_SNAPSHOT_VERSIONS);
     throw new Error(
-      `Unsupported snapshot version: expected one of ${SUPPORTED_SNAPSHOT_VERSIONS.join(", ")}, got ${String(meta.version)}`,
+      typeof meta.version === "number" && meta.version > newest
+        ? `This snapshot uses format version ${meta.version}, and this Jant reads up to version ${newest}. Upgrade @jant/core, then import again.`
+        : `Unsupported snapshot version: expected one of ${SUPPORTED_SNAPSHOT_VERSIONS.join(", ")}, got ${String(meta.version)}`,
     );
   }
 
@@ -1241,6 +1244,20 @@ export function orderSnapshotPostRows(rows) {
  * equivalent for its non-deferrable keys; its snapshots are ordered at export.
  */
 export const DEFER_FOREIGN_KEYS_SQL = "PRAGMA defer_foreign_keys = ON;";
+
+/**
+ * `ON CONFLICT` clauses a snapshot's inserts carry.
+ *
+ * `--replace` clears the settings the importing version knows to be in a
+ * snapshot. A later version's snapshot can carry a setting this one doesn't
+ * list; written as a plain INSERT, it would collide with the target's own row
+ * and fail the import after its files were already uploaded. As an upsert it
+ * replaces that row, whichever version imports it.
+ */
+export const SNAPSHOT_CONFLICT_CLAUSES = {
+  site_setting:
+    'ON CONFLICT ("site_id", "key") DO UPDATE SET "value" = excluded."value", "updated_at" = excluded."updated_at"',
+};
 
 export function buildReplaceSql(siteId) {
   const statements = [];
