@@ -216,11 +216,21 @@ describe("Hugo import CLI helpers", () => {
           'default_theme_id = "tufte"',
           'font_theme_id = "classic"',
           'theme_mode = "dark"',
+          'time_zone = "Asia/Shanghai"',
+          'main_rss_feed = "latest"',
+          `multilingual_enabled = ${flag}`,
+          'additional_languages = "ja"',
           "",
         ].join("\n"),
       });
 
       const siteConfig = await loadSiteConfig(tempDir);
+      expect(buildSettingsUpdatesFromConfig(siteConfig)).toMatchObject({
+        TIME_ZONE: "Asia/Shanghai",
+        MAIN_RSS_FEED: "latest",
+        ADDITIONAL_LANGUAGES: "ja",
+        MULTILINGUAL_ENABLED: String(flag),
+      });
       const { editable, internal } = splitSettingsUpdatesForImport(
         buildSettingsUpdatesFromConfig(siteConfig, "body { color: red; }"),
       );

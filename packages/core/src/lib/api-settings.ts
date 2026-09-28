@@ -317,6 +317,9 @@ export const importableInternalSettingKeys = [
   "THEME_MODE",
   "CUSTOM_CSS",
   "SHOW_HEADER_AVATAR",
+  // Restored through the language service, not written as they arrive.
+  "MULTILINGUAL_ENABLED",
+  "ADDITIONAL_LANGUAGES",
 ] as const satisfies readonly ConfigKey[];
 
 export function partitionImportableSettingUpdates(

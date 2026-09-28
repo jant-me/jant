@@ -201,6 +201,8 @@ export interface SiteConfig {
   mainRssFeed: string;
   /** "list" or "grid" — the layout the exported archive page opens with. */
   archiveDefaultLayout: string;
+  /** IANA time zone the site dates posts in. */
+  timeZone: string;
   siteFooter: string;
   showHeaderAvatar: boolean;
   siteAvatarUrl: string;
@@ -1990,6 +1992,7 @@ function buildJantDataToml(
     `multilingual_enabled = ${config.multilingualEnabled}`,
     `additional_languages = "${escapeTomlString(config.additionalLanguages.join(","))}"`,
     `main_rss_feed = "${escapeTomlString(config.mainRssFeed)}"`,
+    `time_zone = "${escapeTomlString(config.timeZone)}"`,
     `archive_default_layout = "${escapeTomlString(config.archiveDefaultLayout)}"`,
     `public_api_enabled = ${config.publicApiEnabled}`,
     `rss_feeds_enabled = ${config.rssFeedsEnabled}`,

@@ -563,6 +563,41 @@ describe("Settings API Routes", () => {
       expect(await services.settings.get("SHOW_HEADER_AVATAR")).toBe("true");
     });
 
+    it("restores the site's languages through the language rules", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/settings", settingsApiRoutes);
+
+      const res = await app.request("/api/settings/import", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ADDITIONAL_LANGUAGES: "ja,zh-Hans",
+          MULTILINGUAL_ENABLED: "true",
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const state = await services.language.getState();
+      expect(state.enabled).toBe(true);
+      expect(state.additional).toEqual(["ja", "zh-Hans"]);
+    });
+
+    it("keeps multilingual content off without a second language", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/settings", settingsApiRoutes);
+
+      await app.request("/api/settings/import", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ADDITIONAL_LANGUAGES: "",
+          MULTILINGUAL_ENABLED: "true",
+        }),
+      });
+
+      expect((await services.language.getState()).enabled).toBe(false);
+    });
+
     it("rejects non-whitelisted internal keys", async () => {
       const { app } = createTestApp({ authenticated: true });
       app.route("/api/settings", settingsApiRoutes);

@@ -94,6 +94,7 @@ export function makeSiteConfig(over: Partial<SiteConfig> = {}): SiteConfig {
     rssFeedsEnabled: true,
     mainRssFeed: "latest",
     archiveDefaultLayout: "list",
+    timeZone: "UTC",
     siteFooter: "",
     showHeaderAvatar: false,
     siteAvatarUrl: "",

@@ -154,7 +154,9 @@ describe("configuration docs", () => {
     const section =
       markdown
         .split(/^### /m)
-        .find((part) => part.startsWith("Import appearance settings\n")) ?? "";
+        .find((part) =>
+          part.startsWith("Import appearance and language settings\n"),
+        ) ?? "";
     expect(readTableKeys(section).sort()).toEqual(
       [...importableInternalSettingKeys].sort(),
     );

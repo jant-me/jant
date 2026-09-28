@@ -2459,23 +2459,25 @@ Rejected keys are returned:
 
 In demo mode, `NOINDEX` updates are rejected and the returned value stays `"true"`.
 
-### Import appearance settings
+### Import appearance and language settings
 
 `PUT /api/settings/import`
 
 Auth: `Session or token`
 
-Writes the appearance settings a site import restores, which `PUT /api/settings` doesn't take because the settings screens edit them through their own controls.
+Writes the appearance and language settings a site import restores, which `PUT /api/settings` doesn't take because the settings screens edit them through their own controls.
 
 Importable setting keys:
 
-| Key                  | Notes                      |
-| -------------------- | -------------------------- |
-| `THEME`              | Color theme ID             |
-| `FONT_THEME`         | Font theme ID              |
-| `THEME_MODE`         | `auto`, `light`, or `dark` |
-| `CUSTOM_CSS`         | Custom CSS                 |
-| `SHOW_HEADER_AVATAR` | `"true"` or `"false"`      |
+| Key                    | Notes                                                 |
+| ---------------------- | ----------------------------------------------------- |
+| `THEME`                | Color theme ID                                        |
+| `FONT_THEME`           | Font theme ID                                         |
+| `THEME_MODE`           | `auto`, `light`, or `dark`                            |
+| `CUSTOM_CSS`           | Custom CSS                                            |
+| `SHOW_HEADER_AVATAR`   | `"true"` or `"false"`                                 |
+| `ADDITIONAL_LANGUAGES` | Comma-separated language tags besides `SITE_LANGUAGE` |
+| `MULTILINGUAL_ENABLED` | `"true"` or `"false"`; on only with a second language |
 
 Request body: an object of those keys and string values, as for `PUT /api/settings`.
 
@@ -2486,6 +2488,7 @@ Response:
 ```
 
 - Other keys are left out and listed in `rejectedKeys`. A request with none of these keys answers `400`.
+- The two language keys are applied together, against the current `SITE_LANGUAGE`, with the same checks as adding a language in Settings. A language whose URL prefix collides with an existing address answers `409`.
 - On the demo site, locked keys are rejected the same way.
 
 ### Reset a Config Editor setting

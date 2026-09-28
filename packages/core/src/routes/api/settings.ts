@@ -2,6 +2,7 @@
  * Settings API Routes
  */
 
+import { parseLanguageList } from "../../i18n/locales.js";
 import { Hono } from "hono";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
@@ -93,8 +94,21 @@ settingsApiRoutes.put("/import", requireAuthApi(), async (c) => {
     throw new ValidationError(message, { rejectedKeys });
   }
 
-  if (Object.keys(filteredUpdates).length > 0) {
-    await c.var.services.settings.setMany(filteredUpdates as never);
+  // The language pair is only valid together and against the site's paths,
+  // so the language service restores it rather than writing it as given.
+  const {
+    MULTILINGUAL_ENABLED: multilingualEnabled,
+    ADDITIONAL_LANGUAGES: additionalLanguages,
+    ...plainUpdates
+  } = filteredUpdates;
+  if (Object.keys(plainUpdates).length > 0) {
+    await c.var.services.settings.setMany(plainUpdates as never);
+  }
+  if (multilingualEnabled !== undefined || additionalLanguages !== undefined) {
+    await c.var.services.language.restore({
+      additional: parseLanguageList(additionalLanguages),
+      enabled: multilingualEnabled === "true",
+    });
   }
 
   return c.json({

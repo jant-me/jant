@@ -822,6 +822,7 @@ export function createSiteAdminService(
           rssFeedsEnabled: appConfig.rssFeedsEnabled,
           mainRssFeed: appConfig.mainRssFeed,
           archiveDefaultLayout: appConfig.archiveDefaultLayout,
+          timeZone: appConfig.timeZone,
           siteFooter: appConfig.siteFooter,
           showHeaderAvatar: appConfig.showHeaderAvatar,
           siteAvatarUrl: appConfig.siteAvatarUrl,

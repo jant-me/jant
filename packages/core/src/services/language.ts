@@ -113,6 +113,23 @@ export interface LanguageService {
    * @throws {ConflictError} When posts still use the language
    */
   removeLanguage(language: string): Promise<{ multilingualDisabled: boolean }>;
+  /**
+   * Bring back the languages a site export recorded, into a site whose
+   * primary language is already set.
+   *
+   * Each language passes the checks adding it would, and multilingual
+   * content is turned on only when the export had it on and names a second
+   * language, as {@link enable} requires.
+   *
+   * @param input - The additional languages, and whether multilingual
+   *   content was on
+   * @throws {ValidationError} When a language tag is malformed
+   * @throws {ConflictError} When a language prefix collides with a stored path
+   */
+  restore(input: {
+    additional: readonly string[];
+    enabled: boolean;
+  }): Promise<void>;
 }
 
 export interface LanguageServiceDeps {
@@ -333,6 +350,22 @@ export function createLanguageService(
 
     async disable() {
       await settings.remove("MULTILINGUAL_ENABLED");
+    },
+
+    async restore(input) {
+      const { primary } = await readState();
+      const additional = normalizeAdditional(input.additional, primary);
+      for (const language of additional) {
+        await assertPrefixAvailable(language);
+      }
+
+      await writeLanguages(primary, additional);
+      if (input.enabled && additional.length > 0) {
+        await settings.set("MULTILINGUAL_ENABLED", "true");
+        await posts.materializeMissingLanguage(primary);
+      } else {
+        await settings.remove("MULTILINGUAL_ENABLED");
+      }
     },
 
     async setPrimary(language) {

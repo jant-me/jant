@@ -63,7 +63,7 @@ cd ./jant-site && hugo serve
 - 在 **Settings → Custom URLs** 里设置的重定向，写在 `data/jant.toml` 和 `static/_redirects`。
 - 每篇帖子的 `featured_at`、`pinned_at`，以及写在 root bundle 上的 Thread 合集归属，写在 front matter。
 - 当前 slug，以及旧 slug 和别名，写在 root 帖子的 `aliases:` 里。自定义的 `alias.html` 模板让旧链接继续可用。
-- 显示设置：`SITE_NAME`、`SITE_DESCRIPTION`、`SITE_LANGUAGE`、主题、字型、自定义 CSS、favicon 等，写在 `data/jant.toml` 和 `hugo.toml`。
+- 站点设置，写在 `data/jant.toml` 和 `hugo.toml`：名称、描述、语言、时区、主 feed、主题、字型、自定义 CSS、页脚、头像和图标。[文件字段一览](#文件字段一览)逐项列出。
 
 不包含：
 
@@ -222,20 +222,22 @@ feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖�
 
 `data/jant.toml`：
 
-| 键                                                                                                                                                                                | 说明                                                                                                             |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `version`、`format`                                                                                                                                                               | 导出格式，见[冲突与约束](#冲突与约束)                                                                            |
-| `site_name`、`site_description`、`site_language`                                                                                                                                  | 站点设置                                                                                                         |
-| `site_footer_markdown`                                                                                                                                                            | 页脚原文                                                                                                         |
-| `theme_id`、`default_theme_id`、`font_theme_id`、`theme_mode`                                                                                                                     | 外观                                                                                                             |
-| `noindex`、`public_api_enabled`、`rss_feeds_enabled`                                                                                                                              | 站点设置                                                                                                         |
-| `show_header_avatar`、`show_jant_branding_on_home`                                                                                                                                | 页头和首页设置                                                                                                   |
-| `site_avatar_mode`、`site_avatar_url`、`favicon_mode`、`favicon_path`、`favicon_version`、`apple_touch_mode`、`apple_touch_icon_path`                                             | 头像和图标，以及文件位置                                                                                         |
-| `nav`                                                                                                                                                                             | 导航项，每项含 `type`、`label`、`custom_label`、`url`、`placement`、`system_key`、`collection_slug`、`post_slug` |
-| `directory`                                                                                                                                                                       | 按顺序的合集目录，每项含 `type`、`slug`、`title`、`label`、`url`、`description`                                  |
-| `custom_url`                                                                                                                                                                      | 自定义 URL，每项含 `kind`、`path`、`to`、`status`、`archive_query`                                               |
-| `additional_languages`、`multilingual_enabled`、`main_rss_feed`、`page_size`、`archive_page_size`、`archive_default_layout`、`rss_feed_limit`、`generated_at`、`site_footer_html` | 仅主题                                                                                                           |
-| `description_html`、`entry_count`、`sequence`、`recent_activity_iso`、`recent_activity_label`                                                                                     | 仅主题，在 `directory` 的各项里                                                                                  |
+| 键                                                                                                                                    | 说明                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `version`、`format`                                                                                                                   | 导出格式，见[冲突与约束](#冲突与约束)                                                                            |
+| `site_name`、`site_description`、`site_language`                                                                                      | 站点设置                                                                                                         |
+| `site_footer_markdown`                                                                                                                | 页脚原文                                                                                                         |
+| `theme_id`、`default_theme_id`、`font_theme_id`、`theme_mode`                                                                         | 外观                                                                                                             |
+| `noindex`、`public_api_enabled`、`rss_feeds_enabled`                                                                                  | 站点设置                                                                                                         |
+| `time_zone`、`main_rss_feed`                                                                                                          | 站点设置                                                                                                         |
+| `additional_languages`、`multilingual_enabled`                                                                                        | `site_language` 之外的语言，以及是否各有自己的视图                                                               |
+| `show_header_avatar`、`show_jant_branding_on_home`                                                                                    | 页头和首页设置                                                                                                   |
+| `site_avatar_mode`、`site_avatar_url`、`favicon_mode`、`favicon_path`、`favicon_version`、`apple_touch_mode`、`apple_touch_icon_path` | 头像和图标，以及文件位置                                                                                         |
+| `nav`                                                                                                                                 | 导航项，每项含 `type`、`label`、`custom_label`、`url`、`placement`、`system_key`、`collection_slug`、`post_slug` |
+| `directory`                                                                                                                           | 按顺序的合集目录，每项含 `type`、`slug`、`title`、`label`、`url`、`description`                                  |
+| `custom_url`                                                                                                                          | 自定义 URL，每项含 `kind`、`path`、`to`、`status`、`archive_query`                                               |
+| `page_size`、`archive_page_size`、`archive_default_layout`、`rss_feed_limit`、`generated_at`、`site_footer_html`                      | 仅主题                                                                                                           |
+| `description_html`、`entry_count`、`sequence`、`recent_activity_iso`、`recent_activity_label`                                         | 仅主题，在 `directory` 的各项里                                                                                  |
 
 ### 单独拉取媒体
 

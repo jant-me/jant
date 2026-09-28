@@ -919,6 +919,17 @@ async function loadSiteConfig(rootDir) {
           typeof jantData.site_footer_markdown === "string"
             ? jantData.site_footer_markdown
             : "",
+        time_zone:
+          typeof jantData.time_zone === "string" ? jantData.time_zone : "",
+        main_rss_feed:
+          typeof jantData.main_rss_feed === "string"
+            ? jantData.main_rss_feed
+            : "",
+        multilingual_enabled: coerceBoolean(jantData.multilingual_enabled),
+        additional_languages:
+          typeof jantData.additional_languages === "string"
+            ? jantData.additional_languages
+            : undefined,
         site_avatar_mode:
           typeof jantData.site_avatar_mode === "string"
             ? jantData.site_avatar_mode
@@ -984,6 +995,19 @@ function buildSettingsUpdatesFromConfig(siteConfig, customCss = "") {
     FONT_THEME: fontThemeId && fontThemeId !== "default" ? fontThemeId : "",
     THEME_MODE: themeMode === "light" || themeMode === "dark" ? themeMode : "",
     CUSTOM_CSS: customCss,
+    ...(typeof jant.time_zone === "string" && jant.time_zone
+      ? { TIME_ZONE: jant.time_zone }
+      : {}),
+    ...(jant.main_rss_feed === "latest" || jant.main_rss_feed === "featured"
+      ? { MAIN_RSS_FEED: jant.main_rss_feed }
+      : {}),
+    // Restored by the server's language service, after SITE_LANGUAGE.
+    ...(typeof jant.additional_languages === "string"
+      ? {
+          ADDITIONAL_LANGUAGES: jant.additional_languages,
+          MULTILINGUAL_ENABLED: jant.multilingual_enabled ? "true" : "false",
+        }
+      : {}),
   };
 }
 
@@ -998,6 +1022,8 @@ const IMPORTABLE_INTERNAL_SETTING_KEYS = new Set([
   "THEME_MODE",
   "CUSTOM_CSS",
   "SHOW_HEADER_AVATAR",
+  "MULTILINGUAL_ENABLED",
+  "ADDITIONAL_LANGUAGES",
 ]);
 
 function splitSettingsUpdatesForImport(updates) {
