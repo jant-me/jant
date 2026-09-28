@@ -288,4 +288,35 @@ describe("Collection Routing", () => {
     expect(aliasFeedRes.status).toBe(200);
     expect(await aliasFeedRes.text()).toContain("Book log");
   });
+
+  it("redirects every other form of a collection's address to its one address", async () => {
+    const { app, services } = createCollectionRoutingTestApp();
+
+    const { collection } = await createCollectionWithPost(services, {
+      slug: "reading",
+      title: "Reading",
+      postTitle: "Book log",
+    });
+    const redirectOf = async (path: string) => {
+      const res = await app.request(path, { redirect: "manual" });
+      return [res.status, res.headers.get("Location")];
+    };
+
+    expect(await redirectOf("/Reading")).toEqual([301, "/reading"]);
+
+    await services.customUrls.create({
+      path: "notes",
+      targetType: "collection",
+      targetId: collection.id,
+    });
+    await services.customUrls.create({
+      path: "more-notes",
+      targetType: "collection",
+      targetId: collection.id,
+    });
+    // The first custom URL is the address, as the sitemap names it.
+    expect(await redirectOf("/more-notes")).toEqual([301, "/notes"]);
+    expect(await redirectOf("/NOTES")).toEqual([301, "/notes"]);
+    expect((await app.request("/notes")).status).toBe(200);
+  });
 });

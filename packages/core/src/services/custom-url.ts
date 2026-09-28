@@ -5,7 +5,7 @@
  * shared path_registry table.
  */
 
-import { and, desc, eq, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, lt, ne, or, sql } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import {
   sqliteSchemaBundle,
@@ -43,6 +43,11 @@ export interface CreateCustomUrl {
 
 export interface CustomUrlService {
   getByPath(path: string): Promise<CustomUrl | null>;
+  /**
+   * The custom URL a post or collection is known by: its oldest alias, the
+   * one feeds, the sitemap, and the export name it by. Later aliases are
+   * other ways in.
+   */
   getByTarget(
     targetType: "post" | "collection",
     targetId: string,
@@ -171,7 +176,7 @@ export function createCustomUrlService(
               : eq(pathRegistry.collectionId, targetId),
           ),
         )
-        .orderBy(desc(pathRegistry.createdAt), desc(pathRegistry.id))
+        .orderBy(asc(pathRegistry.createdAt), asc(pathRegistry.id))
         .limit(1);
       return result[0] ? toCustomUrl(result[0]) : null;
     },

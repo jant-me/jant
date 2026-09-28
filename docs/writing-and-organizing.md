@@ -304,6 +304,8 @@ Go to **Settings → Advanced → Custom URLs**, then click **New Custom URL** i
 
 Once set, the new path becomes the canonical URL for that piece of content (permalink, feed, `og:url` all use the new path), and the original slug auto-redirects with a 301 — old links already in circulation keep working.
 
+A post or Collection has one address: its first custom URL, or its slug when it has none. Every other way in redirects there with a 301 — the slug, a custom URL added later, and the same address in different letter case.
+
 Useful when you want to graft content imported from another platform back onto its original URLs.
 
 ### Custom archive views (retired)
