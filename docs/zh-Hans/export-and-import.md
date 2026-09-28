@@ -69,6 +69,8 @@ cd ./jant-site && hugo serve
 
 - users、sessions、accounts、verifications 和 API tokens。账户数据不能跨站点迁移。
 - 运行时配置：`wrangler.toml`、环境变量、绑定。
+- 代码注入（**设置 → 代码注入**）。自定义 CSS 会带走，自定义 head 和 body HTML 不会，所以导入导出包不能在导入的站点上执行脚本。
+- GitHub 同步和 Telegram 绑定。它们指向的仓库或聊天不属于目标站点。
 
 ### 导出结构
 
@@ -160,7 +162,7 @@ feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖�
 | --------------------------- | ---- | ------------------------------------------------------------------------------------------------- |
 | `id`                        | 都有 | 帖子 TypeID                                                                                       |
 | `title`                     | 都有 | 引用没有                                                                                          |
-| `date`                      | 都有 | 发布时间，ISO 8601；草稿是创建时间                                                                |
+| `date`                      | 都有 | 发布时间，UTC 的 RFC 3339；草稿是创建时间                                                         |
 | `created`、`updated`        | 都有 | 写作时间和最后编辑时间，和 `date` 不同时才写                                                      |
 | `slug`                      | 都有 | 规范 slug                                                                                         |
 | `type`                      | 都有 | `post`                                                                                            |
@@ -173,7 +175,7 @@ feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖�
 | `source_name`、`source_url` | 都有 | 引用的出处                                                                                        |
 | `quote_text`                | 都有 | 引用的原文                                                                                        |
 | `rating`                    | 都有 | `1` 到 `5`                                                                                        |
-| `featured_at`、`pinned_at`  | 都有 | ISO 8601                                                                                          |
+| `featured_at`、`pinned_at`  | 都有 | UTC 的 RFC 3339                                                                                   |
 | `media`                     | 都有 | 按顺序的附件，见下表                                                                              |
 | `aliases`                   | root | Hugo 的别名页：root 的自定义 URL 和每条回复的 slug                                                |
 | `root_aliases`              | root | root 的自定义 URL，导入时重建                                                                     |
@@ -200,6 +202,7 @@ feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖�
 | `width`、`height`                    | 图片和视频的像素尺寸                                |
 | `alt`、`blurhash`                    | 替代文本和图片占位                                  |
 | `duration_seconds`                   | 音频和视频的时长                                    |
+| `waveform`                           | 音频：播放器绘制的波形峰值                          |
 | `poster`                             | 视频的封面帧                                        |
 | `summary`、`chars`                   | 文本附件的摘要和长度                                |
 | `position`                           | 仅主题                                              |
@@ -222,22 +225,24 @@ feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖�
 
 `data/jant.toml`：
 
-| 键                                                                                                                                  | 说明                                                                                                             |
-| ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `version`、`format`                                                                                                                 | 导出格式，见[冲突与约束](#冲突与约束)                                                                            |
-| `site_name`、`site_description`、`site_language`                                                                                    | 站点设置                                                                                                         |
-| `site_footer_markdown`                                                                                                              | 页脚原文                                                                                                         |
-| `theme_id`、`default_theme_id`、`font_theme_id`、`theme_mode`                                                                       | 外观                                                                                                             |
-| `noindex`、`public_api_enabled`、`rss_feeds_enabled`                                                                                | 站点设置                                                                                                         |
-| `time_zone`、`main_rss_feed`                                                                                                        | 站点设置                                                                                                         |
-| `additional_languages`、`multilingual_enabled`                                                                                      | `site_language` 之外的语言，以及是否各有自己的视图                                                               |
-| `show_header_avatar`、`show_jant_branding_on_home`                                                                                  | 页头和首页设置                                                                                                   |
-| `site_avatar_mode`、`site_avatar_url`、`favicon_mode`、`favicon_path`、`apple_touch_mode`、`apple_touch_icon_path`                  | 头像和图标，以及文件位置                                                                                         |
-| `nav`                                                                                                                               | 导航项，每项含 `type`、`label`、`custom_label`、`url`、`placement`、`system_key`、`collection_slug`、`post_slug` |
-| `directory`                                                                                                                         | 按顺序的合集目录，每项含 `type`、`slug`、`label`、`url`、`description`                                           |
-| `custom_url`                                                                                                                        | 自定义 URL，每项含 `kind`、`path`、`to`、`status`、`archive_query`；`path` 和 `to` 以斜杠开头                    |
-| `page_size`、`archive_page_size`、`archive_default_layout`、`rss_feed_limit`、`generated_at`、`site_footer_html`、`favicon_version` | 仅主题                                                                                                           |
-| `title`、`description_html`、`entry_count`、`sequence`、`recent_activity_iso`、`recent_activity_label`                              | 仅主题，在 `directory` 的各项里                                                                                  |
+| 键                                                                                                                                  | 说明                                                                                                                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`、`format`                                                                                                                 | 导出格式，见[冲突与约束](#冲突与约束)                                                                                                     |
+| `site_name`、`site_description`、`site_language`                                                                                    | 站点设置                                                                                                                                  |
+| `site_footer_markdown`                                                                                                              | 页脚原文                                                                                                                                  |
+| `theme_id`、`default_theme_id`、`font_theme_id`、`theme_mode`                                                                       | 外观                                                                                                                                      |
+| `noindex`、`public_api_enabled`、`rss_feeds_enabled`                                                                                | 站点设置                                                                                                                                  |
+| `time_zone`、`main_rss_feed`                                                                                                        | 站点设置                                                                                                                                  |
+| `additional_languages`、`multilingual_enabled`                                                                                      | `site_language` 之外的语言，以及是否各有自己的视图                                                                                        |
+| `show_header_avatar`、`show_jant_branding_on_home`                                                                                  | 页头和首页设置                                                                                                                            |
+| `site_avatar_mode`、`site_avatar_url`、`favicon_mode`、`favicon_path`、`apple_touch_mode`、`apple_touch_icon_path`                  | 头像和图标，以及文件位置                                                                                                                  |
+| `nav`                                                                                                                               | 导航项，每项含 `type`、`label`、`custom_label`、`url`、`placement`、`system_key`、`collection_slug`、`smart_collection_slug`、`post_slug` |
+| `directory`                                                                                                                         | 按顺序的合集目录，每项含 `type`、`slug`、`label`、`url`、`description`                                                                    |
+| `custom_url`                                                                                                                        | 自定义 URL，每项含 `kind`、`path`、`to`、`status`、`archive_query`；`path` 和 `to` 以斜杠开头                                             |
+| `page_size`、`archive_page_size`、`archive_default_layout`、`rss_feed_limit`、`generated_at`、`site_footer_html`、`favicon_version` | 仅主题                                                                                                                                    |
+| `title`、`description_html`、`entry_count`、`sequence`、`recent_activity_iso`、`recent_activity_label`                              | 仅主题，在 `directory` 的各项里                                                                                                           |
+
+导入还会读三个文件，先找 `static/`，再找导出写入的 `themes/jant/static/`：`custom.css`、`favicon.ico` 和 `apple-touch-icon.png`。
 
 ### 单独拉取媒体
 
@@ -333,10 +338,10 @@ CLI 启动时会加载 `<cwd>/.env.node`，shell 里已经 export 的变量优�
 快照包含：
 
 - 帖子，含草稿和私密帖子，`status` 和 `visibility` 原样保留。
-- 合集、合集目录项和导航项。
+- 合集、智能合集、合集目录项和导航项。
 - 媒体记录和 path registry 记录。
-- 这些记录引用的存储对象。归档大小约等于媒体总量；`--skip-objects` 可以不带这些对象。
-- 显示设置：站点名、描述、主题、字型、favicon、自定义 CSS、时区等。
+- 这些记录引用的存储对象，以及头像和图标文件。归档大小约等于媒体总量；`--skip-objects` 可以不带这些对象。
+- 站点设置：名称、描述、页脚、时区、主 feed、主题、字型、深浅色模式、自定义 CSS、头像和图标，以及搜索引擎收录、公开 API、feed、首页 Jant 标识这几个开关。
 - 语言配置：主语言、带前缀的其他语言，以及 [多语言内容](multilingual.md) 是否开启。每篇帖子的语言和译文关联随帖子一起带走。
 
 快照不包含（导出时就排除）：
@@ -354,7 +359,7 @@ CLI 启动时会加载 `<cwd>/.env.node`，shell 里已经 export 的变量优�
 jant-site-snapshot.zip
 ├── meta.json                  // { format, version, dialect, jant, schema, site }
 ├── db.sql                     // 完整 SQL，包含 favicon.ico 的 base64
-└── objects/<storage-key>/...  // 所有 media 引用的对象
+└── objects/<storage-key>/...  // 所有媒体文件，以及头像和图标
 ```
 
 ### 导出快照
@@ -389,7 +394,7 @@ npx jant site snapshot export --output ./jant-site-snapshot.zip --skip-objects
 
 ### 导入快照
 
-快照导入必须加 `--replace`。它会清空目标数据库中快照涵盖的内容表（`post`、`collection`、`nav_item`、`collection_directory_item`、`thread_collection`、`media`、`path_registry`），再写入快照内容。users、sessions 和 tokens 不受影响。不加 `--replace` 时导入直接拒绝运行。
+快照导入必须加 `--replace`。它会清空目标数据库中快照涵盖的内容表（`post`、`collection`、`smart_collection`、`nav_item`、`collection_directory_item`、`thread_collection`、`media`、`path_registry`）和快照带的设置，再写入快照内容。users、sessions 和 tokens 不受影响。不加 `--replace` 时导入直接拒绝运行。
 
 媒体文件会上传到目标站点自己的存储，所以 R2 上导出的快照可以导入到用 S3 或本地磁盘存媒体的站点。导出使用快照格式 v2，导入也接受 v1。`meta.json` 记录写出快照的 Jant 版本（`jant`）和该版本最后一个数据库迁移（`schema`）。快照来自比导入方更新的 Jant 时，导入在写入任何数据之前停止，提示先升级 `@jant/core`。
 

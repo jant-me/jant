@@ -69,6 +69,8 @@ Not included:
 
 - Users, sessions, accounts, verifications, and API tokens. Account data doesn't move between sites.
 - Runtime config: `wrangler.toml`, environment variables, bindings.
+- Code injection (**Settings → Code injection**). Custom CSS comes along; custom head and body HTML don't, so importing an export can't run script on the importing site.
+- GitHub Sync and Telegram connections. They point at a repository or chat the target site doesn't own.
 
 ### Export structure
 
@@ -160,7 +162,7 @@ Post files: `content/<slug>/_index.md` for a Thread's root, and `content/<root>/
 | --------------------------- | ----- | ------------------------------------------------------------------------------------------------------------- |
 | `id`                        | both  | Post TypeID                                                                                                   |
 | `title`                     | both  | Not on quotes                                                                                                 |
-| `date`                      | both  | Publish time, ISO 8601; the creation time for a draft                                                         |
+| `date`                      | both  | Publish time, RFC 3339 in UTC; the creation time for a draft                                                  |
 | `created`, `updated`        | both  | When the post was written and last edited, where they differ from `date`                                      |
 | `slug`                      | both  | Canonical slug                                                                                                |
 | `type`                      | both  | `post`                                                                                                        |
@@ -173,7 +175,7 @@ Post files: `content/<slug>/_index.md` for a Thread's root, and `content/<root>/
 | `source_name`, `source_url` | both  | Quotes: the attribution                                                                                       |
 | `quote_text`                | both  | Quotes: the quoted text                                                                                       |
 | `rating`                    | both  | `1` to `5`                                                                                                    |
-| `featured_at`, `pinned_at`  | both  | ISO 8601                                                                                                      |
+| `featured_at`, `pinned_at`  | both  | RFC 3339 in UTC                                                                                               |
 | `media`                     | both  | Attachments in order; see the next table                                                                      |
 | `aliases`                   | root  | Hugo alias pages: the root's custom URLs and every reply's slug                                               |
 | `root_aliases`              | root  | The root's custom URLs, which import recreates                                                                |
@@ -200,6 +202,7 @@ Each `media` entry:
 | `width`, `height`                    | Pixels, for images and video                                   |
 | `alt`, `blurhash`                    | Alt text and image placeholder                                 |
 | `duration_seconds`                   | Audio and video                                                |
+| `waveform`                           | Audio: the peaks the player draws                              |
 | `poster`                             | Video: the poster frame                                        |
 | `summary`, `chars`                   | Text attachments: summary and length                           |
 | `position`                           | Theme only                                                     |
@@ -222,22 +225,24 @@ The other section pages (`content/_index.md`, `archive/`, `featured/`, `collecti
 
 `data/jant.toml`:
 
-| Key                                                                                                                                 | Notes                                                                                                                             |
-| ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `version`, `format`                                                                                                                 | The export format; see [Conflicts and constraints](#conflicts-and-constraints)                                                    |
-| `site_name`, `site_description`, `site_language`                                                                                    | Site settings                                                                                                                     |
-| `site_footer_markdown`                                                                                                              | The footer, as written                                                                                                            |
-| `theme_id`, `default_theme_id`, `font_theme_id`, `theme_mode`                                                                       | Appearance                                                                                                                        |
-| `noindex`, `public_api_enabled`, `rss_feeds_enabled`                                                                                | Site settings                                                                                                                     |
-| `time_zone`, `main_rss_feed`                                                                                                        | Site settings                                                                                                                     |
-| `additional_languages`, `multilingual_enabled`                                                                                      | Languages besides `site_language`, and whether they have their own views                                                          |
-| `show_header_avatar`, `show_jant_branding_on_home`                                                                                  | Header and home page settings                                                                                                     |
-| `site_avatar_mode`, `site_avatar_url`, `favicon_mode`, `favicon_path`, `apple_touch_mode`, `apple_touch_icon_path`                  | The avatar and icons, and where their files are                                                                                   |
-| `nav`                                                                                                                               | Navigation items, each with `type`, `label`, `custom_label`, `url`, `placement`, `system_key`, `collection_slug`, and `post_slug` |
-| `directory`                                                                                                                         | The collections directory in order, each with `type`, `slug`, `label`, `url`, and `description`                                   |
-| `custom_url`                                                                                                                        | Custom URLs, each with `kind`, `path`, `to`, `status`, and `archive_query`; `path` and `to` start with a slash                    |
-| `page_size`, `archive_page_size`, `archive_default_layout`, `rss_feed_limit`, `generated_at`, `site_footer_html`, `favicon_version` | Theme only                                                                                                                        |
-| `title`, `description_html`, `entry_count`, `sequence`, `recent_activity_iso`, `recent_activity_label`                              | Theme only, in `directory` entries                                                                                                |
+| Key                                                                                                                                 | Notes                                                                                                                                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`, `format`                                                                                                                 | The export format; see [Conflicts and constraints](#conflicts-and-constraints)                                                                             |
+| `site_name`, `site_description`, `site_language`                                                                                    | Site settings                                                                                                                                              |
+| `site_footer_markdown`                                                                                                              | The footer, as written                                                                                                                                     |
+| `theme_id`, `default_theme_id`, `font_theme_id`, `theme_mode`                                                                       | Appearance                                                                                                                                                 |
+| `noindex`, `public_api_enabled`, `rss_feeds_enabled`                                                                                | Site settings                                                                                                                                              |
+| `time_zone`, `main_rss_feed`                                                                                                        | Site settings                                                                                                                                              |
+| `additional_languages`, `multilingual_enabled`                                                                                      | Languages besides `site_language`, and whether they have their own views                                                                                   |
+| `show_header_avatar`, `show_jant_branding_on_home`                                                                                  | Header and home page settings                                                                                                                              |
+| `site_avatar_mode`, `site_avatar_url`, `favicon_mode`, `favicon_path`, `apple_touch_mode`, `apple_touch_icon_path`                  | The avatar and icons, and where their files are                                                                                                            |
+| `nav`                                                                                                                               | Navigation items, each with `type`, `label`, `custom_label`, `url`, `placement`, `system_key`, `collection_slug`, `smart_collection_slug`, and `post_slug` |
+| `directory`                                                                                                                         | The collections directory in order, each with `type`, `slug`, `label`, `url`, and `description`                                                            |
+| `custom_url`                                                                                                                        | Custom URLs, each with `kind`, `path`, `to`, `status`, and `archive_query`; `path` and `to` start with a slash                                             |
+| `page_size`, `archive_page_size`, `archive_default_layout`, `rss_feed_limit`, `generated_at`, `site_footer_html`, `favicon_version` | Theme only                                                                                                                                                 |
+| `title`, `description_html`, `entry_count`, `sequence`, `recent_activity_iso`, `recent_activity_label`                              | Theme only, in `directory` entries                                                                                                                         |
+
+Import also reads three files, from `static/` first and then `themes/jant/static/`, where the export writes them: `custom.css`, `favicon.ico`, and `apple-touch-icon.png`.
 
 ### Pull media separately
 
@@ -333,10 +338,10 @@ A snapshot keeps Jant's internal IDs, storage keys, and media files exactly as t
 A snapshot includes:
 
 - Posts, drafts and private posts included, with `status` and `visibility` as they were.
-- Collections, Collections directory items, and navigation items.
+- Collections, Smart Collections, Collections directory items, and navigation items.
 - Media records and path registry entries.
-- The storage objects those records point to. The archive is about as large as all your media; `--skip-objects` leaves them out.
-- Display settings: site name, description, theme, type style, favicon, custom CSS, timezone, and so on.
+- The storage objects those records point to, and the avatar and icon files. The archive is about as large as all your media; `--skip-objects` leaves them out.
+- Site settings: name, description, footer, time zone, main feed, theme, type style, light or dark mode, custom CSS, avatar and icons, and the switches for indexing, the public API, feeds, and the Jant credit on the home page.
 - The language setup: the primary language, the languages served under a prefix, and whether [multilingual content](multilingual.md) is on. Each post's language and translation links come with the post.
 
 A snapshot leaves out, at export time:
@@ -354,7 +359,7 @@ The archive has three parts:
 jant-site-snapshot.zip
 ├── meta.json                  // { format, version, dialect, jant, schema, site }
 ├── db.sql                     // full SQL, including the favicon.ico base64
-└── objects/<storage-key>/...  // every object referenced by media rows
+└── objects/<storage-key>/...  // every media file, and the avatar and icons
 ```
 
 ### Export a snapshot
@@ -389,7 +394,7 @@ The target storage must already hold every storage key in `db.sql`, or every med
 
 ### Import a snapshot
 
-Snapshot import needs `--replace`. It clears the snapshot's content tables in the target database (`post`, `collection`, `nav_item`, `collection_directory_item`, `thread_collection`, `media`, `path_registry`) and writes the snapshot in their place. Users, sessions, and tokens stay. Without `--replace`, import refuses to run.
+Snapshot import needs `--replace`. It clears the snapshot's content tables in the target database (`post`, `collection`, `smart_collection`, `nav_item`, `collection_directory_item`, `thread_collection`, `media`, `path_registry`) and the settings the snapshot carries, and writes the snapshot in their place. Users, sessions, and tokens stay. Without `--replace`, import refuses to run.
 
 Media files go into the target site's own storage, so a snapshot from a site on R2 imports into one that keeps media in S3 or on local disk. Exports use snapshot format v2; import also accepts v1. `meta.json` records the Jant version that wrote the snapshot (`jant`) and the last database migration of that version (`schema`). A snapshot from a newer Jant than the one importing it stops before writing anything, and the message asks you to upgrade `@jant/core` first.
 
