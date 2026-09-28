@@ -40,6 +40,7 @@ import {
   type SiteConfig,
 } from "./export.js";
 import type { PostService } from "./post.js";
+import type { UpdatePost } from "../types.js";
 import type { PathService } from "./path.js";
 import type { CollectionService } from "./collection.js";
 import type { MediaService } from "./media.js";
@@ -707,17 +708,16 @@ export function createGitHubSyncService(
           ? markdownToTiptapJson(trimmedBody)
           : null;
 
-        const updateData: Record<string, unknown> = {};
+        // A quote keeps its source's name and URL in `title` and `url`,
+        // which is where the API's `sourceName` and `sourceUrl` go too.
+        const isQuote = existingPost.format === "quote";
+        const title = isQuote ? frontMatter.source_name : frontMatter.title;
+        const url = isQuote ? frontMatter.source_url : frontMatter.link_url;
+
+        const updateData: UpdatePost = {};
         if (tiptapBody !== null) updateData.body = tiptapBody;
-        if (frontMatter.title !== undefined)
-          updateData.title = frontMatter.title;
-        if (frontMatter.link_url !== undefined) {
-          updateData.url = frontMatter.link_url;
-        }
-        if (frontMatter.source_name !== undefined)
-          updateData.sourceName = frontMatter.source_name;
-        if (frontMatter.source_url !== undefined)
-          updateData.sourceUrl = frontMatter.source_url;
+        if (title !== undefined) updateData.title = title;
+        if (url !== undefined) updateData.url = url;
         if (frontMatter.quote_text !== undefined) {
           updateData.quoteText = frontMatter.quote_text;
         }
