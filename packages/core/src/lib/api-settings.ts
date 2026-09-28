@@ -11,6 +11,7 @@ import {
 import { getSupportedLocaleEntries } from "../i18n/supported-locales.js";
 import { SETTINGS_KEYS } from "./constants.js";
 import { getEnvString } from "./env.js";
+import { readConfigEnvValue } from "./env-values.js";
 import { normalizeEditableSettingValue } from "./schemas.js";
 import { getTimeZoneOptions } from "./timezones.js";
 
@@ -71,12 +72,8 @@ export function getEditableSettingFallbackValue(
   allSettings: Record<string, string> = {},
 ): string {
   const field = CONFIG_FIELDS[key];
-  const envKeys = "envKeys" in field ? field.envKeys : undefined;
-  const envValue = env ? getEnvString(env, ...(envKeys ?? [])) : undefined;
-  if (envValue) {
-    const normalizedEnv = tryNormalizeResolvedSettingValue(key, envValue);
-    if (normalizedEnv !== undefined) return normalizedEnv;
-  }
+  const envValue = env ? readConfigEnvValue(env, key) : undefined;
+  if (envValue) return envValue;
 
   const normalizedDefault = tryNormalizeResolvedSettingValue(
     key,

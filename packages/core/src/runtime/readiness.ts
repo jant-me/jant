@@ -1,5 +1,6 @@
 import { createDatabase, createNodeDatabase } from "../db/index.js";
 import { sqliteSchemaBundle } from "../db/schema-bundle.js";
+import { getEnvValueIssues } from "../lib/env-values.js";
 import {
   getAuthSecretIssueKind,
   getAuthSecretReadinessError,
@@ -53,6 +54,10 @@ function getStartupConfigurationReadiness(
 
   for (const issue of getHostBasedStartupConfigurationIssues(env)) {
     errors.push(`${issue.variable}: ${issue.message}`);
+  }
+
+  for (const issue of getEnvValueIssues(env)) {
+    errors.push(issue.message);
   }
 
   return errors.length > 0

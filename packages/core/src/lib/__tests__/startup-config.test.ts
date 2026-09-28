@@ -96,6 +96,18 @@ describe("getStartupConfigurationErrorPage", () => {
     );
   });
 
+  it("returns an error page naming each environment value Jant can't use", () => {
+    const page = getStartupConfigurationErrorPage({
+      AUTH_SECRET: "test-secret-with-enough-entropy-for-startup-checks",
+      PAGE_SIZE: "500",
+      STORAGE_DRIVER: "S3",
+    } as Parameters<typeof getStartupConfigurationErrorPage>[0]);
+
+    expect(page).toContain("Environment values need fixing");
+    expect(page).toContain("PAGE_SIZE can&#39;t be &quot;500&quot;");
+    expect(page).toContain("STORAGE_DRIVER can&#39;t be &quot;S3&quot;");
+  });
+
   it("renders runtime configuration failures as a user-facing error page", () => {
     const page = getRuntimeConfigurationErrorPage(
       "single-site mode found multiple sites in the database.",

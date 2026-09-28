@@ -71,6 +71,22 @@ describe("getInstanceReadiness", () => {
     );
   });
 
+  it("reports an environment value Jant can't use", async () => {
+    const { sqlite } = createTestDatabase();
+
+    const result = await getInstanceReadiness({
+      AUTH_SECRET: "test-secret-with-enough-entropy-for-readiness",
+      NODE_SQLITE: sqlite,
+      TRUST_PROXY: "yes",
+    } as Parameters<typeof getInstanceReadiness>[0]);
+
+    expect(result.status).toBe("error");
+    expect(result.checks.startupConfig).toEqual({
+      ok: false,
+      error: 'TRUST_PROXY can\'t be "yes". Use true or false.',
+    });
+  });
+
   it("reports startup configuration failures when AUTH_SECRET is still the placeholder", async () => {
     const { sqlite } = createTestDatabase();
 

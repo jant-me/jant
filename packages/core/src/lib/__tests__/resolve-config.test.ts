@@ -403,9 +403,11 @@ describe("resolveConfig", () => {
       }),
       {},
     );
-    expect(config2.pageSize).toBe(50);
-    expect(config2.searchPageSize).toBe(50);
-    expect(config2.archivePageSize).toBe(50);
+    // A value the startup check reports runs as the default, which is what
+    // the settings API reports too.
+    expect(config2.pageSize).toBe(25);
+    expect(config2.searchPageSize).toBe(25);
+    expect(config2.archivePageSize).toBe(25);
     expect(config2.rssFeedLimit).toBe(50);
     expect(config2.rssPublishDelaySeconds).toBe(300);
 

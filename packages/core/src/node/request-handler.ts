@@ -30,6 +30,7 @@ import {
   getSiteResolutionMode,
   shouldTrustProxy,
 } from "../lib/env.js";
+import { getEnvValueIssues } from "../lib/env-values.js";
 import { getHostBasedStartupConfigurationIssues } from "../lib/startup-config.js";
 import { now } from "../lib/time.js";
 import { createSiteService } from "../services/site.js";
@@ -656,6 +657,12 @@ export async function createNodeRequestHandler(options?: {
   if (hostBasedStartupIssues.length > 0) {
     throw new Error(
       `Host-based startup configuration is invalid:\n- ${hostBasedStartupIssues.map((issue) => issue.message).join("\n- ")}`,
+    );
+  }
+  const envValueIssues = getEnvValueIssues(env);
+  if (envValueIssues.length > 0) {
+    throw new Error(
+      `Jant can't use these environment values:\n- ${envValueIssues.map((issue) => issue.message).join("\n- ")}`,
     );
   }
   const { bindings: databaseBindings, close } = await createNodeBindings(env);

@@ -1,3 +1,4 @@
+import { STORAGE_DRIVERS } from "../types/constants.js";
 import { normalizeDisplayText } from "./display-text.js";
 import { buildSiteUrl, normalizeSitePathPrefix } from "./url.js";
 
@@ -62,6 +63,192 @@ export function getEnvString(
   return undefined;
 }
 
+/** What an environment-only variable may hold. */
+type EnvRule =
+  | { kind: "boolean" }
+  | { kind: "integer"; min: number; max?: number }
+  | { kind: "enum"; options: readonly string[] }
+  | { kind: "origin" };
+
+/**
+ * The typed environment-only variables and what each may hold.
+ *
+ * A variable the dashboard can also set is checked by its Config Editor
+ * definition instead, so the two can't disagree; see `env-values.ts`. A value
+ * outside its rule is reported by the startup check, which stops the site
+ * from serving until it is fixed; the readers below treat it as unset.
+ */
+export const ENV_RULES = {
+  PORT: { kind: "integer", min: 1, max: 65535 },
+  TRUST_PROXY: { kind: "boolean" },
+  DEMO_MODE: { kind: "boolean" },
+  RATE_LIMIT_DISABLED: { kind: "boolean" },
+  RATE_LIMIT_SEARCH_PER_MIN: { kind: "integer", min: 1 },
+  UPLOAD_MAX_FILE_SIZE_MB: { kind: "integer", min: 1 },
+  SLUG_ID_LENGTH: { kind: "integer", min: 3, max: 32 },
+  STORAGE_DRIVER: { kind: "enum", options: STORAGE_DRIVERS },
+  SITE_RESOLUTION_MODE: {
+    kind: "enum",
+    options: ["single-site", "host-based"],
+  },
+  DISCOVER: { kind: "enum", options: ["latest", "off"] },
+  SITE_ORIGIN: { kind: "origin" },
+} as const satisfies Record<string, EnvRule>;
+
+type EnvRuleVariable = keyof typeof ENV_RULES;
+type EnvVariableOfKind<K extends EnvRule["kind"]> = {
+  [V in EnvRuleVariable]: (typeof ENV_RULES)[V]["kind"] extends K ? V : never;
+}[EnvRuleVariable];
+
+/** An environment variable that holds `true` or `false`. */
+export type EnvBooleanVariable = EnvVariableOfKind<"boolean">;
+/** An environment variable that holds a whole number. */
+export type EnvIntegerVariable = EnvVariableOfKind<"integer">;
+/** An environment variable that holds one of a fixed set of values. */
+export type EnvEnumVariable = EnvVariableOfKind<"enum">;
+type EnvEnumValue<V extends EnvEnumVariable> = (typeof ENV_RULES)[V] extends {
+  options: readonly (infer O)[];
+}
+  ? O
+  : never;
+
+/** A value checked against its rule: normalized, or why it can't be used. */
+export type EnvValueCheck =
+  { ok: true; value: string } | { ok: false; message: string };
+
+function describeIntegerRange(rule: { min: number; max?: number }): string {
+  return rule.max === undefined
+    ? `a whole number of at least ${rule.min}`
+    : `a whole number from ${rule.min} to ${rule.max}`;
+}
+
+function checkEnvRule(rule: EnvRule, raw: string): EnvValueCheck {
+  switch (rule.kind) {
+    case "boolean": {
+      const value = raw.toLowerCase();
+      return value === "true" || value === "false"
+        ? { ok: true, value }
+        : { ok: false, message: "Use true or false." };
+    }
+    case "integer": {
+      const value = Number(raw);
+      return /^-?\d+$/.test(raw) &&
+        value >= rule.min &&
+        (rule.max === undefined || value <= rule.max)
+        ? { ok: true, value: String(value) }
+        : { ok: false, message: `Use ${describeIntegerRange(rule)}.` };
+    }
+    case "enum":
+      return rule.options.includes(raw)
+        ? { ok: true, value: raw }
+        : { ok: false, message: `Use one of: ${rule.options.join(", ")}.` };
+    case "origin": {
+      const url = URL.canParse(raw) ? new URL(raw) : null;
+      return url &&
+        (url.protocol === "http:" || url.protocol === "https:") &&
+        url.pathname === "/" &&
+        !url.search &&
+        !url.hash
+        ? { ok: true, value: url.origin }
+        : {
+            ok: false,
+            message:
+              "Use an http:// or https:// origin such as https://example.com, and put any path in SITE_PATH_PREFIX.",
+          };
+    }
+  }
+}
+
+/**
+ * Check a value against the rule for an environment-only variable.
+ *
+ * @param variable - The variable, which must have a rule
+ * @param raw - Its trimmed, non-empty value
+ * @returns The normalized value, or what to change it to
+ * @example
+ * ```ts
+ * checkEnvValue("TRUST_PROXY", "TRUE"); // { ok: true, value: "true" }
+ * checkEnvValue("STORAGE_DRIVER", "S3").ok; // false
+ * ```
+ */
+export function checkEnvValue(
+  variable: EnvRuleVariable,
+  raw: string,
+): EnvValueCheck {
+  return checkEnvRule(ENV_RULES[variable], raw);
+}
+
+/** Whether a variable has an environment-only rule. */
+export function hasEnvRule(variable: string): variable is EnvRuleVariable {
+  return Object.hasOwn(ENV_RULES, variable);
+}
+
+function readRuledEnvValue(
+  env: EnvSource,
+  variable: EnvRuleVariable,
+): string | undefined {
+  const raw = getEnvString(env, variable)?.trim();
+  if (!raw) return undefined;
+  const checked = checkEnvValue(variable, raw);
+  return checked.ok ? checked.value : undefined;
+}
+
+/**
+ * A boolean environment variable, `true` and `false` in any case.
+ *
+ * @param env - Runtime environment bindings
+ * @param variable - The variable
+ * @returns Its value, or `undefined` when unset or not a boolean
+ * @example
+ * ```ts
+ * readEnvBoolean({ TRUST_PROXY: "TRUE" }, "TRUST_PROXY"); // true
+ * ```
+ */
+export function readEnvBoolean(
+  env: EnvSource,
+  variable: EnvBooleanVariable,
+): boolean | undefined {
+  const value = readRuledEnvValue(env, variable);
+  return value === undefined ? undefined : value === "true";
+}
+
+/**
+ * A whole-number environment variable, within its range.
+ *
+ * @param env - Runtime environment bindings
+ * @param variable - The variable
+ * @returns Its value, or `undefined` when unset or out of range
+ * @example
+ * ```ts
+ * readEnvInteger({ SLUG_ID_LENGTH: "8" }, "SLUG_ID_LENGTH"); // 8
+ * ```
+ */
+export function readEnvInteger(
+  env: EnvSource,
+  variable: EnvIntegerVariable,
+): number | undefined {
+  const value = readRuledEnvValue(env, variable);
+  return value === undefined ? undefined : Number(value);
+}
+
+/**
+ * An environment variable that names one of a fixed set of values.
+ *
+ * @param env - Runtime environment bindings
+ * @param variable - The variable
+ * @returns Its value, or `undefined` when unset or not one of the set
+ * @example
+ * ```ts
+ * readEnvEnum({ STORAGE_DRIVER: "s3" }, "STORAGE_DRIVER"); // "s3"
+ * ```
+ */
+export function readEnvEnum<V extends EnvEnumVariable>(
+  env: EnvSource,
+  variable: V,
+): EnvEnumValue<V> | undefined {
+  return readRuledEnvValue(env, variable) as EnvEnumValue<V> | undefined;
+}
+
 /**
  * Parse a TCP port from an environment value.
  *
@@ -101,8 +288,7 @@ export function getPort(env: EnvSource, fallback = DEFAULT_APP_PORT): number {
 }
 
 export function getSiteOrigin(env: EnvSource): string {
-  const configuredOrigin = getEnvString(env, "SITE_ORIGIN");
-  return configuredOrigin ? new URL(configuredOrigin).origin : "";
+  return readRuledEnvValue(env, "SITE_ORIGIN") ?? "";
 }
 
 export function getSitePathPrefix(env: EnvSource): string {
@@ -141,9 +327,7 @@ export function getConfiguredSingleSiteUrl(env: EnvSource): string {
 export function getSiteResolutionMode(
   env: EnvSource,
 ): "single-site" | "host-based" {
-  return getEnvString(env, "SITE_RESOLUTION_MODE") === "host-based"
-    ? "host-based"
-    : "single-site";
+  return readEnvEnum(env, "SITE_RESOLUTION_MODE") ?? "single-site";
 }
 
 export function getAuthSecret(env: EnvSource): string | undefined {
@@ -331,11 +515,13 @@ export function getDiscoverDirectoryBaseUrl(
  * ```
  */
 export function getDiscoverDefault(env: EnvSource): string | undefined {
-  return getEnvString(env, "DISCOVER");
+  return readEnvEnum(env, "DISCOVER");
 }
 
-export function getStorageDriverEnv(env: EnvSource): string | undefined {
-  return getEnvString(env, "STORAGE_DRIVER");
+export function getStorageDriverEnv(
+  env: EnvSource,
+): (typeof STORAGE_DRIVERS)[number] | undefined {
+  return readEnvEnum(env, "STORAGE_DRIVER");
 }
 
 export function getDataDir(env: EnvSource): string | undefined {
@@ -361,7 +547,9 @@ export function getDefaultStorageDriver(env: EnvSource): "local" | "r2" {
   return record["NODE_SQLITE"] || record["NODE_DATABASE"] ? "local" : "r2";
 }
 
-export function getConfiguredStorageDriver(env: EnvSource): string {
+export function getConfiguredStorageDriver(
+  env: EnvSource,
+): (typeof STORAGE_DRIVERS)[number] {
   return getStorageDriverEnv(env) ?? getDefaultStorageDriver(env);
 }
 
@@ -432,7 +620,7 @@ export function getGitHubAppConfig(env: EnvSource): GitHubAppEnvConfig | null {
 }
 
 export function shouldTrustProxy(env: EnvSource): boolean {
-  return getEnvString(env, "TRUST_PROXY") === "true";
+  return readEnvBoolean(env, "TRUST_PROXY") ?? false;
 }
 
 /** A single platform-managed Telegram bot from `TELEGRAM_BOT_TOKENS`. */

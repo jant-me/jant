@@ -5,7 +5,7 @@ import { sqliteSchemaBundle } from "../db/schema-bundle.js";
 import { createAuth, type Auth } from "../auth.js";
 import {
   getAuthSecret,
-  getEnvString,
+  readEnvInteger,
   getHostedControlPlaneProviderLabel,
   getHostedControlPlaneSsoSecret,
   getSiteResolutionMode,
@@ -126,8 +126,7 @@ export async function createNodeRequestRuntime(
     throw new Error("AUTH_SECRET should be set after startup validation.");
   }
 
-  const slugIdLength =
-    parseInt(getEnvString(env, "SLUG_ID_LENGTH") ?? "5", 10) || 5;
+  const slugIdLength = readEnvInteger(env, "SLUG_ID_LENGTH") ?? 5;
   const siteLookup = await resolveRequestSite(
     db,
     env,
@@ -216,8 +215,7 @@ export async function createNodeCliRuntime(
     throw new Error("Node CLI runtime requires a resolved database binding.");
   }
 
-  const slugIdLength =
-    parseInt(getEnvString(env, "SLUG_ID_LENGTH") ?? "5", 10) || 5;
+  const slugIdLength = readEnvInteger(env, "SLUG_ID_LENGTH") ?? 5;
   const siteLookup = await resolveCliSite(db, env, selector, databaseSchema);
 
   return {

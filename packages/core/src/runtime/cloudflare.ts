@@ -3,7 +3,7 @@ import { createDatabase, type Database } from "../db/index.js";
 import { sqliteSchemaBundle } from "../db/schema-bundle.js";
 import {
   getAuthSecret,
-  getEnvString,
+  readEnvInteger,
   getHostedControlPlaneProviderLabel,
   getHostedControlPlaneSsoSecret,
   getSiteResolutionMode,
@@ -86,8 +86,7 @@ export async function createCloudflareRequestRuntime(
   // Note: Drizzle ORM doesn't officially support D1DatabaseSession yet
   // (issue #2226), but it works at runtime.
   const db = createDatabase(session as unknown as D1Database);
-  const slugIdLength =
-    parseInt(getEnvString(env, "SLUG_ID_LENGTH") ?? "5", 10) || 5;
+  const slugIdLength = readEnvInteger(env, "SLUG_ID_LENGTH") ?? 5;
   const siteLookup = await resolveRequestSite(db, env, publicRequestUrl);
   const baseURL = getResolvedSiteBaseUrl(
     env,

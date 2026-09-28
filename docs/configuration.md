@@ -15,6 +15,8 @@ Use:
 - `.dev.vars` for local Cloudflare secrets
 - `.env` or process environment variables for Node and Docker
 
+Jant checks the values it reads at startup. A switch takes `true` or `false`, in any case; a number has to be a whole number within its range; a variable with a fixed set of values has to name one of them. Any value outside that stops the site from serving: Node and Docker exit with a message naming each variable, and Cloudflare answers every request with a page that lists them, as does `/readyz`.
+
 ### Required
 
 Every runtime requires this variable:
@@ -425,9 +427,9 @@ location /_assets/ {
 
 ### Slug (optional)
 
-| Variable         | Default | Description                                                 |
-| ---------------- | ------- | ----------------------------------------------------------- |
-| `SLUG_ID_LENGTH` | `5`     | Length of the random slug auto-generated for untitled posts |
+| Variable         | Default | Description                                                              |
+| ---------------- | ------- | ------------------------------------------------------------------------ |
+| `SLUG_ID_LENGTH` | `5`     | Length of the random slug auto-generated for untitled posts, `3` to `32` |
 
 ### Upload size limits (optional)
 

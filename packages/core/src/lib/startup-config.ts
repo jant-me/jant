@@ -10,6 +10,7 @@ import {
   getInternalAdminToken,
   getSiteResolutionMode,
 } from "./env.js";
+import { getEnvValueIssues, type EnvValueIssue } from "./env-values.js";
 import type { Bindings } from "../types.js";
 
 const HOSTED_SHARED_SECRET_MIN_LENGTH = 32;
@@ -238,6 +239,18 @@ export function getHostBasedStartupConfigurationIssues(
   return collectHostBasedStartupConfigurationIssues(env);
 }
 
+function getEnvValueErrorHtml(issues: readonly EnvValueIssue[]): string {
+  const itemsHtml = issues
+    .map((issue) => `<li>${escapeHtml(issue.message)}</li>`)
+    .join("");
+
+  return renderConfigurationErrorPage({
+    title: "Environment values need fixing",
+    bodyHtml: `<p>Jant can't use these values. Fix them in the environment used to start Jant, then restart it.</p><ul>${itemsHtml}</ul>`,
+    docsHref: getJantDocsUrl("configuration"),
+  });
+}
+
 export function getRuntimeConfigurationErrorPage(message: string): string {
   return renderConfigurationErrorPage({
     title: "Configuration Error",
@@ -247,7 +260,8 @@ export function getRuntimeConfigurationErrorPage(message: string): string {
 }
 
 /**
- * Returns the startup configuration error page for invalid required env vars.
+ * Returns the startup configuration error page for a missing required env
+ * var, or for any env value Jant can't use.
  *
  * @param env - Worker bindings available at startup
  * @returns HTML for a blocking startup configuration error, or `null` when config is valid
@@ -283,6 +297,11 @@ export function getStartupConfigurationErrorPage(
   const hostBasedIssues = collectHostBasedStartupConfigurationIssues(env);
   if (hostBasedIssues.length > 0) {
     return getHostBasedConfigurationErrorHtml(hostBasedIssues);
+  }
+
+  const envValueIssues = getEnvValueIssues(env);
+  if (envValueIssues.length > 0) {
+    return getEnvValueErrorHtml(envValueIssues);
   }
 
   return null;
