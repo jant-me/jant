@@ -301,6 +301,14 @@ describe("Atom Feed Routes", () => {
       expect(xml).toContain("My Note");
       expect(xml).not.toContain("My Link");
       expect(xml).not.toContain("My Quote");
+      // A filtered feed names itself with the filter, or a reader that follows
+      // rel="self" ends up on the unfiltered feed.
+      expect(xml).toContain(
+        '<link href="http://localhost:3000/latest/feed?format=note" rel="self"',
+      );
+      expect(xml).toContain(
+        "<id>http://localhost:3000/latest/feed?format=note</id>",
+      );
     });
 
     it("ignores invalid format query parameter", async () => {

@@ -265,9 +265,13 @@ export async function buildFeedData(
     kind === "featured"
       ? await buildFeaturedFeedData(c, feedLimit, publishedBefore)
       : await buildLatestFeedData(c, feedLimit, publishedBefore, opts.format);
+  // A filtered feed is its own feed: its self link, its `<id>`, and its
+  // language alternates keep the filter, as the archive feed's do.
+  const query =
+    kind === "latest" && opts.format ? `?format=${opts.format}` : "";
 
   return {
-    ...buildFeedDiscoveryFields(c),
+    ...buildFeedDiscoveryFields(c, { query }),
     siteName,
     siteDescription,
     siteUrl,
@@ -289,7 +293,7 @@ export async function buildFeedData(
             }),
           )}`,
     selfUrl: toAbsoluteSiteUrl(
-      `${viewBasePath(c)}${opts.selfPath}`,
+      `${viewBasePath(c)}${opts.selfPath}${query}`,
       siteUrl,
       appConfig.sitePathPrefix,
     ),
