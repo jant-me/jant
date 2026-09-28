@@ -522,7 +522,7 @@ Config Editor 使用显式允许清单。部署基础设施、凭据、集成令
 
 ## 保留路径
 
-这些顶层路径是保留的，帖子、合集和自定义 URL 的地址都不能以它们开头：
+这些顶层路径是保留的，帖子、合集和自定义 URL 地址的第一段都不能是其中之一，不分大小写：`archive/2024` 和 `Archive` 被占用，`archives` 可以用。
 
 ```text
 featured, latest, signin, signout, setup, settings, dash, api, feed, search,
@@ -531,7 +531,7 @@ static, assets, _assets, healthz, readyz, skill.md, robots.txt,
 manifest.webmanifest, favicon.ico, apple-touch-icon.png, sites
 ```
 
-`sitemap.xml` 以及所有 `sitemap-*.xml` 形式的名字也不能用，sitemap 占用了这一组。
+`sitemap.xml` 以及所有 `sitemap-*.xml` 形式的名字也不能用，sitemap 占用了这一组。开启 [多语言内容](multilingual.md) 后，每个附加语言的前缀（比如 `ja`）也会被保留。
 
 ## 配置文件
 

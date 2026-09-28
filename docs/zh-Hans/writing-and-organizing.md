@@ -314,9 +314,7 @@ Jant 动态生成的 Atom feed 都有同一段发布缓冲：新帖子和 Reply 
 
 ### 保留路径
 
-下列一级路径是 Jant 自身在用的入口，不能用作自定义 URL：
-
-`featured`、`latest`、`signin`、`signout`、`setup`、`settings`、`dash`、`api`、`feed`、`search`、`archive`、`media`、`pages`、`reset`、`collections`、`compose`、`preview`、`new`、`static`、`assets`、`_assets`、`healthz`、`readyz`
+Jant 自己用了一些一级路径，比如 `archive`、`feed`、`search`，地址不能以它们开头。完整列表见 [配置 § 保留路径](configuration.md#保留路径)。
 
 如果旧站点已经有帖子或自定义 URL 直接使用 `/preview`，原记录会保留，但旧链接会变成 404。`/preview` 前缀下已有的自定义 URL 也不再按旧记录解析，因为整个命名空间现在属于登录后的草稿预览。Jant 不会自动生成替代 slug 或跳转，需要新的公开地址就自己改掉冲突的帖子或自定义 URL。
 

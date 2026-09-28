@@ -570,7 +570,7 @@ display value, never custom code or storage keys.
 
 ## Reserved paths
 
-These top-level paths are reserved. No post, collection, or custom URL address can start with one:
+These top-level paths are reserved. No post, collection, or custom URL address can have one as its first segment, in any letter case: `archive/2024` and `Archive` are taken, `archives` is free.
 
 ```text
 featured, latest, signin, signout, setup, settings, dash, api, feed, search,
@@ -579,7 +579,7 @@ static, assets, _assets, healthz, readyz, skill.md, robots.txt,
 manifest.webmanifest, favicon.ico, apple-touch-icon.png, sites
 ```
 
-Neither can any `sitemap.xml` or `sitemap-*.xml` name: the sitemap uses that family.
+Neither can any `sitemap.xml` or `sitemap-*.xml` name: the sitemap uses that family. With [multilingual content](multilingual.md) on, each additional language's prefix, such as `ja`, is reserved too.
 
 ## Config files
 

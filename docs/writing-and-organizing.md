@@ -328,9 +328,7 @@ If you really do edit the slug field directly in the editor, note that Jant won'
 
 ### Reserved paths
 
-The following top-level paths are used by Jant itself and can't be used as custom URLs:
-
-`featured`, `latest`, `signin`, `signout`, `setup`, `settings`, `dash`, `api`, `feed`, `search`, `archive`, `media`, `pages`, `reset`, `collections`, `compose`, `preview`, `new`, `static`, `assets`, `_assets`, `healthz`, `readyz`
+Jant uses some top-level paths itself, such as `archive`, `feed`, and `search`, and an address can't start with one. The full list is in [Configuration § Reserved paths](configuration.md#reserved-paths).
 
 If an older site already uses `/preview` as a post or custom URL, that stored record is left unchanged but the old link becomes a 404. Older custom URLs below that prefix also stop resolving as custom URLs because the whole namespace now belongs to authenticated previews. Jant doesn't generate a replacement slug or redirect; edit the conflicting post or custom URL yourself if you want a new public address.
 
