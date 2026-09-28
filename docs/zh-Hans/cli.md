@@ -22,7 +22,7 @@
 
 不传运行时选项时，设置了 `DATABASE_URL` 或 `DATA_DIR` 就用 Node 运行时，否则用本地 D1。当前目录下的 `.env` 会先被读取，见 [`.env` 文件](configuration.md#envnode-和-docker)。
 
-一个数据库里有多个站点时（托管环境），需要指明站点：`--site` 接站点 key 或 ID，`--host` 接域名（子路径下的站点再加 `--path-prefix`），`--url` 接站点 URL。
+一个数据库里有多个站点时（托管环境），需要指明站点：`--site` 接站点 key 或 ID，`--host` 接域名（子路径下的站点再加 `--path-prefix`），`--url` 接站点 URL。这样用的 `--site`、`--host` 和 `--path-prefix` 服务于托管环境，任何版本都可能改变。
 
 **通过 HTTP。** `site export`、`site import` 和维护命令调用站点的 API，能在任何可以访问该站点的机器上运行，用 `--url` 指定站点。`site export` 和 `site import` 需要 API token：在 **Settings → API Tokens** 生成，写进 `JANT_API_TOKEN` 或用 `--token` 传入。维护命令需要服务器的 `INTERNAL_ADMIN_TOKEN`，写进这个变量或用 `--token` 传入；不传 `--url` 时，从环境变量或 `wrangler.toml` 读取 `SITE_ORIGIN` 和 `SITE_PATH_PREFIX`。维护命令调用服务器的内部 API，它随每个版本变化，所以要用服务器所运行的 Jant 版本来跑。
 

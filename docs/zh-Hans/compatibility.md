@@ -49,7 +49,9 @@ Jant 的承诺分三档。有些东西每个版本都保持可用，大版本也
 以下内容任何版本都可能改变，不另行说明：
 
 - `/api/internal/*`。它连接 core 和托管服务，两者一起发布。
-- 参考文档没有写明的接口、字段和参数，即使响应里带着它们。
+- 参考文档没有写明的接口、字段和参数，即使响应里带着它们。给后台命令面板提供数据的 `/api/palette` 就是一例。
+- 用于托管服务的 `SITE_RESOLUTION_MODE` 和 `HOSTED_CONTROL_PLANE_*` 变量，以及在一个数据库里有多个站点时用来指明站点的命令行选项 `--site`、`--host` 和 `--path-prefix`。
+- 用于本地调试和公开演示站的 `DEV_API_TOKEN` 和 `DEMO_*` 变量。
 - `jant --help` 不列出的命令，也就是构建和运维工具。
 - 用和服务器不同版本的 Jant 运行 `search reindex`、`uploads cleanup` 或 `posts rebuild-html`。它们调用 `/api/internal/*`，要用服务器所运行的版本来跑。
 - `@jant/core` 里 `createApp` 以外的一切，包括 `@jant/core/i18n` 和 `src/` 下的模块。

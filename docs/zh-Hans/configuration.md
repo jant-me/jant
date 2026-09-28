@@ -462,7 +462,7 @@ token 调用站点，见 [命令行](cli.md#维护)。不设置时，`/api/inter
 ### 托管服务
 
 `SITE_RESOLUTION_MODE` 和 `HOSTED_CONTROL_PLANE_*` 变量用于托管服务，也就是一台
-服务器运行多个站点的部署。自部署站点不需要设置。
+服务器运行多个站点的部署。自部署站点不需要设置。它们任何版本都可能改变，见[兼容性](compatibility.md)。
 
 ## Settings 页面设置
 
@@ -591,7 +591,7 @@ DEMO_PASSWORD=jant-dev-debug-login
 DEMO_MODE=false
 ```
 
-`DEV_API_TOKEN`、`DEMO_EMAIL` 和 `DEMO_PASSWORD` 都是本地调试辅助项，不属于正常生产环境配置。
+`DEV_API_TOKEN`、`DEMO_EMAIL` 和 `DEMO_PASSWORD` 都是本地调试辅助项，不属于正常生产环境配置。它们和 `DEMO_MODE` 任何版本都可能改变。
 
 ### Demo Mode
 

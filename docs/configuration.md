@@ -503,7 +503,7 @@ instead of a personal access token. See [GitHub Sync](github-sync.md).
 
 `SITE_RESOLUTION_MODE` and the `HOSTED_CONTROL_PLANE_*` variables configure the
 hosted service, where one server runs many sites. A self-hosted site leaves
-them unset.
+them unset. They can change in any release; see [Compatibility](compatibility.md).
 
 ## Settings page options
 
@@ -639,7 +639,7 @@ DEMO_PASSWORD=jant-dev-debug-login
 DEMO_MODE=false
 ```
 
-`DEV_API_TOKEN`, `DEMO_EMAIL`, and `DEMO_PASSWORD` are local debugging helpers — they aren't part of a normal production setup.
+`DEV_API_TOKEN`, `DEMO_EMAIL`, and `DEMO_PASSWORD` are local debugging helpers — they aren't part of a normal production setup. They and `DEMO_MODE` can change in any release.
 
 ### Demo Mode
 

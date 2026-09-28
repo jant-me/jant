@@ -49,7 +49,9 @@ These can change in any release. Jant keeps them stable where it can, and a rele
 These can change in any release without notice:
 
 - `/api/internal/*`, which connects core to the hosted service. Both are released together.
-- Endpoints, fields, and parameters that the reference pages don't document, even where a response carries them.
+- Endpoints, fields, and parameters that the reference pages don't document, even where a response carries them. `/api/palette`, which feeds the dashboard's command palette, is one.
+- `SITE_RESOLUTION_MODE` and the `HOSTED_CONTROL_PLANE_*` variables, which configure the hosted service, and the command-line options `--site`, `--host`, and `--path-prefix` where they pick one site from a database that holds several.
+- `DEV_API_TOKEN` and the `DEMO_*` variables, which serve local debugging and the public demo.
 - Commands that `jant --help` leaves out: build and operations tooling.
 - Running `search reindex`, `uploads cleanup`, or `posts rebuild-html` against a server on another Jant version. They call `/api/internal/*`, so run them from the version the server runs.
 - Everything in `@jant/core` besides `createApp`, including `@jant/core/i18n` and the modules under `src/`.
