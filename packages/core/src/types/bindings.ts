@@ -36,6 +36,9 @@ export interface Bindings {
   SITE_ORIGIN?: EnvBindingValue;
   SITE_PATH_PREFIX?: EnvBindingValue;
   DEFAULT_THEME?: EnvBindingValue;
+  DEFAULT_FONT_THEME?: EnvBindingValue;
+  /** Absolute URL serving the built client assets, such as a CDN. */
+  ASSET_BASE_URL?: EnvBindingValue;
   AUTH_SECRET?: EnvBindingValue;
   SITE_NAME?: EnvBindingValue;
   SITE_DESCRIPTION?: EnvBindingValue;
@@ -66,6 +69,14 @@ export interface Bindings {
   // Telegram bot integration
   TELEGRAM_BOT_TOKENS?: EnvBindingValue;
   TELEGRAM_WEBHOOK_SECRET?: EnvBindingValue;
+  // GitHub Sync through the site's own GitHub App
+  GITHUB_APP_ID?: EnvBindingValue;
+  GITHUB_APP_PRIVATE_KEY?: EnvBindingValue;
+  GITHUB_APP_SLUG?: EnvBindingValue;
+  GITHUB_APP_WEBHOOK_SECRET?: EnvBindingValue;
+  // Rate limits
+  RATE_LIMIT_ENABLED?: EnvBindingValue;
+  RATE_LIMIT_SEARCH_PER_MIN?: EnvBindingValue;
   // Timeline
   PAGE_SIZE?: EnvBindingValue;
   SEARCH_PAGE_SIZE?: EnvBindingValue;

@@ -10,17 +10,21 @@
  * now collide with. These checks fail on each of those.
  *
  * Environment variables outside `CONFIG_FIELDS` are classified here, so a new
- * one added to `Bindings` has to be documented or declared internal.
+ * one added to `Bindings` has to be documented or declared internal, and a
+ * variable the code reads has to be in `Bindings` to be classified at all.
+ * Both language versions of the reference are held to the same lists, and to
+ * the four defaults `docs/compatibility.md` freezes.
  */
 
-import { readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   editableSettingKeys,
   importableInternalSettingKeys,
 } from "../lib/api-settings.js";
 import { RESERVED_PATHS } from "../lib/constants.js";
+import { ENV_RULES, getCorsOrigins } from "../lib/env.js";
 import { CONFIG_FIELDS } from "../types/config.js";
 
 const CORE_DIR = resolve(import.meta.dirname, "../..");
@@ -36,6 +40,10 @@ const PUBLIC_ENV_OUTSIDE_CONFIG_FIELDS = [
   "DATABASE_URL",
   "DATA_DIR",
   "DISCOVER_PING_URL",
+  "GITHUB_APP_ID",
+  "GITHUB_APP_PRIVATE_KEY",
+  "GITHUB_APP_SLUG",
+  "GITHUB_APP_WEBHOOK_SECRET",
   "HOST",
   "INTERNAL_ADMIN_TOKEN",
   // Read by the CLI and `jant start`, not the server.
@@ -45,6 +53,8 @@ const PUBLIC_ENV_OUTSIDE_CONFIG_FIELDS = [
   "PORT",
   "RATE_LIMIT_ENABLED",
   "RATE_LIMIT_SEARCH_PER_MIN",
+  "TELEGRAM_BOT_TOKENS",
+  "TELEGRAM_WEBHOOK_SECRET",
   "TRUST_PROXY",
 ];
 
@@ -98,6 +108,51 @@ function readReservedPaths(markdown: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Every environment variable a source file names through the env readers:
+ * `getEnvString(env, "NAME")`, `readEnvBoolean(env, "NAME")`, and the like.
+ */
+function readEnvReads(): Map<string, string> {
+  const reads = new Map<string, string>();
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== "__tests__") walk(path);
+        continue;
+      }
+      if (!/\.tsx?$/.test(entry.name)) continue;
+      const source = readFileSync(path, "utf8");
+      for (const match of source.matchAll(
+        /\b(?:getEnvString|readEnvBoolean|readEnvInteger|readEnvEnum)\([^,()]+,\s*"([A-Z][A-Z0-9_]+)"/g,
+      )) {
+        if (match[1]) reads.set(match[1], relative(CORE_DIR, path));
+      }
+    }
+  };
+  walk(join(CORE_DIR, "src"));
+  return reads;
+}
+
+/**
+ * Defaults `docs/compatibility.md` freezes until a major release: each decides
+ * what a covered address answers.
+ */
+const FROZEN_DEFAULTS = {
+  PUBLIC_API_ENABLED: "true",
+  MAIN_RSS_FEED: "featured",
+  RSS_FEEDS_ENABLED: "true",
+  CORS_ORIGINS: "*",
+} as const;
+
+/** The default a configuration doc's table gives a variable, e.g. `` `true` ``. */
+function readTableDefault(markdown: string, key: string): string | undefined {
+  const row = markdown.match(
+    new RegExp(`^\\| \`${key}\`\\s*\\| \`([^\`]*)\`\\s*\\|`, "m"),
+  );
+  return row?.[1];
+}
+
 const configKeys = Object.keys(CONFIG_FIELDS);
 const publicConfigKeys = Object.entries(CONFIG_FIELDS)
   .filter(([, field]) => !("internal" in field && field.internal))
@@ -113,15 +168,59 @@ describe("configuration docs", () => {
     expect(readBindingKeys().filter((key) => !known.has(key))).toEqual([]);
   });
 
-  it("mentions every public variable and setting in configuration.md", () => {
-    const markdown = readRepoFile("docs/configuration.md");
-    const missing = [...publicConfigKeys, ...PUBLIC_ENV_OUTSIDE_CONFIG_FIELDS]
-      .filter((key) => !new RegExp(`\\b${key}\\b`).test(markdown))
-      .sort();
-    expect(missing).toEqual([]);
+  it("declares in Bindings every variable the code reads", () => {
+    const bindings = new Set(readBindingKeys());
+    const undeclared = [...readEnvReads()]
+      .filter(([key]) => !bindings.has(key))
+      .map(([key, file]) => `${key} (${file})`);
+    const unruled = Object.keys(ENV_RULES).filter((key) => !bindings.has(key));
+    expect([...undeclared, ...unruled]).toEqual([]);
+  });
+
+  it("keeps the frozen defaults", () => {
+    expect(CONFIG_FIELDS.PUBLIC_API_ENABLED.defaultValue).toBe(
+      FROZEN_DEFAULTS.PUBLIC_API_ENABLED,
+    );
+    expect(CONFIG_FIELDS.MAIN_RSS_FEED.defaultValue).toBe(
+      FROZEN_DEFAULTS.MAIN_RSS_FEED,
+    );
+    expect(CONFIG_FIELDS.RSS_FEEDS_ENABLED.defaultValue).toBe(
+      FROZEN_DEFAULTS.RSS_FEEDS_ENABLED,
+    );
+    expect(getCorsOrigins({})).toBe(FROZEN_DEFAULTS.CORS_ORIGINS);
   });
 
   for (const path of CONFIGURATION_DOCS) {
+    it(`${path} mentions every public variable and setting`, () => {
+      const markdown = readRepoFile(path);
+      const missing = [...publicConfigKeys, ...PUBLIC_ENV_OUTSIDE_CONFIG_FIELDS]
+        .filter((key) => !new RegExp(`\\b${key}\\b`).test(markdown))
+        .sort();
+      expect(missing).toEqual([]);
+    });
+
+    it(`${path} gives the frozen defaults`, () => {
+      const markdown = readRepoFile(path);
+      for (const [key, value] of Object.entries(FROZEN_DEFAULTS)) {
+        expect(readTableDefault(markdown, key), key).toBe(value);
+      }
+    });
+
+    it(`${path} lists exactly the settings the Settings pages edit`, () => {
+      const section =
+        readRepoFile(path)
+          .split(/^## /m)
+          .find((part) =>
+            /^(Settings page options|Settings 页面设置)\n/.test(part),
+          ) ?? "";
+      const table = section.split(/^### /m)[0] ?? "";
+      // DISCOVER is set on the General page but kept out of the Config Editor,
+      // so "never chosen" can stay distinct from "off".
+      expect(readTableKeys(table).sort()).toEqual(
+        [...editableSettingKeys, "DISCOVER"].sort(),
+      );
+    });
+
     it(`${path} lists no variable the code doesn't read`, () => {
       const known = new Set([
         ...configKeys,
