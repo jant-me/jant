@@ -398,7 +398,8 @@ export async function run(argv) {
 
     await context.execute(
       [
-        ...(context.dialect === "postgres" ? [] : [DEFER_FOREIGN_KEYS_SQL]),
+        // The PRAGMA is SQLite's. Node reports Postgres as "pg".
+        ...(context.dialect === "pg" ? [] : [DEFER_FOREIGN_KEYS_SQL]),
         buildReplaceSql(targetSite.id),
         dbSql,
         buildMediaProviderSql(targetSite.id, context.storageProvider),

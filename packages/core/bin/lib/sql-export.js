@@ -50,8 +50,24 @@ function toHex(bytes) {
   );
 }
 
-export function sqlValue(value) {
-  if (value === null) {
+/**
+ * A value as a SQL literal in the dialect the dump will be replayed into.
+ *
+ * SQLite stores booleans as integers and reads `X'…'` blobs. Postgres wants
+ * `TRUE`/`FALSE`, which it won't take as `1`/`0`, `'\x…'::bytea` for bytes, and
+ * returns `timestamp` columns as `Date` objects, which must go back as ISO
+ * text.
+ *
+ * @param {unknown} value - A column value as the driver returned it
+ * @param {"sqlite" | "pg"} [dialect] - The database the SQL is for
+ * @returns {string} The literal
+ *
+ * @example
+ * sqlValue(true, "pg"); // "TRUE"
+ * sqlValue(true); // "1"
+ */
+export function sqlValue(value, dialect = "sqlite") {
+  if (value === null || value === undefined) {
     return "NULL";
   }
 
@@ -64,23 +80,34 @@ export function sqlValue(value) {
   }
 
   if (typeof value === "boolean") {
+    if (dialect === "pg") return value ? "TRUE" : "FALSE";
     return value ? "1" : "0";
   }
 
-  if (value instanceof Uint8Array) {
-    return `X'${toHex(value)}'`;
+  if (value instanceof Uint8Array || value instanceof ArrayBuffer) {
+    const hex = toHex(
+      value instanceof Uint8Array ? value : new Uint8Array(value),
+    );
+    return dialect === "pg" ? `'\\x${hex}'::bytea` : `X'${hex}'`;
   }
 
-  if (value instanceof ArrayBuffer) {
-    return `X'${toHex(new Uint8Array(value))}'`;
+  if (value instanceof Date) {
+    return `'${value.toISOString()}'`;
   }
 
   return `'${String(value).replaceAll("'", "''")}'`;
 }
 
-export function buildInsertStatement(tableName, columnNames, row) {
+export function buildInsertStatement(
+  tableName,
+  columnNames,
+  row,
+  dialect = "sqlite",
+) {
   const columns = columnNames.map(quoteIdentifier).join(", ");
-  const values = columnNames.map((column) => sqlValue(row[column])).join(", ");
+  const values = columnNames
+    .map((column) => sqlValue(row[column], dialect))
+    .join(", ");
   return `INSERT INTO ${quoteIdentifier(tableName)} (${columns}) VALUES(${values});`;
 }
 
@@ -265,7 +292,7 @@ export async function dumpDatabaseToSql(queryRunner, options) {
 
     sql += `-- ${tableName}\n`;
     sql += rows
-      .map((row) => buildInsertStatement(tableName, columnNames, row))
+      .map((row) => buildInsertStatement(tableName, columnNames, row, dialect))
       .join("\n");
     sql += "\n\n";
   }

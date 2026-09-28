@@ -693,6 +693,57 @@ async function main() {
     const settingsBody = await settingsResponse.json();
     assert.equal(settingsBody.settings.SITE_NAME, "PG Smoke Updated");
 
+    // A snapshot written on Postgres restores on Postgres. Import once sent
+    // SQLite's `PRAGMA defer_foreign_keys` along with the data and failed.
+    {
+      const snapshotPath = join(dataDir, "snapshot.zip");
+      const cliOptions = {
+        cwd: fileURLToPath(new URL("../../", import.meta.url)),
+        env: {
+          ...process.env,
+          DATABASE_URL: databaseUrl,
+          DATA_DIR: dataDir,
+          JANT_ENV_FILE: "",
+        },
+        stdio: "inherit",
+      };
+      const countPosts = async () =>
+        (await assertPool.query('SELECT COUNT(*)::text AS "count" FROM "post"'))
+          .rows[0]?.count;
+      const postsBefore = await countPosts();
+
+      execFileSync(
+        nodeBin,
+        [jantBin, "site", "snapshot", "export", "--output", snapshotPath],
+        cliOptions,
+      );
+      await assertPool.query(
+        `UPDATE "site_setting" SET "value" = 'Changed after the snapshot' WHERE "key" = 'SITE_NAME'`,
+      );
+      await assertPool.query(
+        'DELETE FROM "post" WHERE "reply_to_id" IS NOT NULL',
+      );
+      execFileSync(
+        nodeBin,
+        [
+          jantBin,
+          "site",
+          "snapshot",
+          "import",
+          "--path",
+          snapshotPath,
+          "--replace",
+        ],
+        cliOptions,
+      );
+
+      assert.equal(
+        await readSetting(assertPool, "SITE_NAME"),
+        "PG Smoke Updated",
+      );
+      assert.equal(await countPosts(), postsBefore);
+    }
+
     console.log("Postgres smoke passed.");
   } finally {
     await handler?.close();

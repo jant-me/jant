@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
-import { dumpDatabaseToSql } from "../../bin/lib/sql-export.js";
+import { dumpDatabaseToSql, sqlValue } from "../../bin/lib/sql-export.js";
 import { orderSnapshotPostRows } from "../../bin/lib/site-snapshot.js";
 import { describeWranglerFailure } from "../../bin/lib/d1-query.js";
 import { WRANGLER_MAX_BUFFER } from "../../bin/lib/wrangler-cli.js";
@@ -169,5 +169,25 @@ describe("snapshot post order", () => {
     });
 
     expect(sql.indexOf("'pst_6'")).toBeLessThan(sql.indexOf("'pst_0'"));
+  });
+});
+
+describe("sqlValue", () => {
+  it("writes booleans as Postgres accepts them", () => {
+    expect(sqlValue(true, "pg")).toBe("TRUE");
+    expect(sqlValue(false, "pg")).toBe("FALSE");
+    expect(sqlValue(true)).toBe("1");
+  });
+
+  it("writes bytes for the dialect that reads them", () => {
+    const bytes = new Uint8Array([0xca, 0xfe]);
+    expect(sqlValue(bytes, "pg")).toBe("'\\xcafe'::bytea");
+    expect(sqlValue(bytes)).toBe("X'cafe'");
+  });
+
+  it("writes a Postgres timestamp back as ISO text", () => {
+    expect(sqlValue(new Date("2026-09-28T04:00:00.000Z"), "pg")).toBe(
+      "'2026-09-28T04:00:00.000Z'",
+    );
   });
 });
