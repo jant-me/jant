@@ -164,6 +164,8 @@ Unless an endpoint explicitly returns a ZIP, XML, or plain text response, it ret
 
 A request field or query parameter an endpoint doesn't know is ignored, so a client that sends one works against an older Jant too. A value an endpoint can't read, in a field it does know, answers `400`. A list's `limit` past either end of its range reads as that end: `limit=500` on a list of at most `100` returns `100`.
 
+A field that takes one of a fixed set of values, such as `format`, `status`, `visibility`, or an error's `code`, can gain a value in a minor release. Read a `format` you don't recognize as `note`, and handle a `code` you don't recognize by the HTTP status.
+
 All timestamps are Unix seconds:
 
 ```json

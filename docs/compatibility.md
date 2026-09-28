@@ -33,7 +33,7 @@ No release adds a top-level path that takes an address your content already has.
 
 A major release that changes one of these says what to change in its upgrade notes. It may deprecate the old form in a minor release first, but it doesn't have to.
 
-Additions come in minor releases: new endpoints, fields, options, feed elements, and settings. A client should ignore a field or element it doesn't recognize.
+Additions come in minor releases: new endpoints, fields, options, feed elements, and settings, and new values for a field that takes one of a fixed set, such as a post's `format` or an error's `code`. A client should ignore a field or element it doesn't recognize, read a `format` it doesn't recognize as `note`, and handle an error `code` it doesn't recognize by the HTTP status.
 
 ## Not promised
 
