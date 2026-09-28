@@ -1,6 +1,6 @@
 # 使用 Docker 部署
 
-官方镜像 [`owenyoung/jant`](https://hub.docker.com/r/owenyoung/jant) 运行 Node 版本的 Jant，启动前会自动跑数据库迁移。
+官方镜像 [`owenyoung/jant`](https://hub.docker.com/r/owenyoung/jant) 运行 Node 版本的 Jant。Compose 文件会在启动应用前跑数据库迁移；单独运行镜像不会迁移，而且数据库没迁移时会拒绝启动。
 
 ## 开始前
 
@@ -17,7 +17,10 @@
 mkdir jant-site && cd jant-site
 curl -O https://raw.githubusercontent.com/jant-me/jant/main/compose.yml
 curl -o .env https://raw.githubusercontent.com/jant-me/jant/main/.env.example
+mkdir -p data
 ```
+
+容器以 ID 为 1000 的用户运行。在 Linux 上要把数据目录交给它，否则建不了数据库：`sudo chown 1000:1000 data`。macOS 和 Windows 上的 Docker Desktop 不需要这一步。
 
 编辑 `.env`，把 `AUTH_SECRET` 换成实际生成的密钥：
 
@@ -160,7 +163,7 @@ printf '%s' "$OWNER_PASSWORD" | docker run --rm -i \
 
 ## 更新站点
 
-拉最新镜像并重启就行：
+先备份 `./data`，见 [备份](#备份)。然后拉最新镜像并重启：
 
 ```bash
 docker compose pull

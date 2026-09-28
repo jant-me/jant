@@ -1,6 +1,6 @@
 # Deploy with Docker
 
-The official image [`owenyoung/jant`](https://hub.docker.com/r/owenyoung/jant) runs the Node version of Jant and applies database migrations automatically before the app starts.
+The official image [`owenyoung/jant`](https://hub.docker.com/r/owenyoung/jant) runs the Node version of Jant. The Compose file applies database migrations before the app starts; the image on its own doesn't, and refuses to start on a database that hasn't been migrated.
 
 ## Before you begin
 
@@ -17,7 +17,10 @@ Create a directory for your site's config and data, then download the official C
 mkdir jant-site && cd jant-site
 curl -O https://raw.githubusercontent.com/jant-me/jant/main/compose.yml
 curl -o .env https://raw.githubusercontent.com/jant-me/jant/main/.env.example
+mkdir -p data
 ```
+
+The container runs as the user with ID 1000. On Linux, give it the data directory, or it can't create the database: `sudo chown 1000:1000 data`. Docker Desktop on macOS and Windows doesn't need this.
 
 Edit `.env` and set `AUTH_SECRET` to the secret you generated:
 
@@ -160,7 +163,7 @@ printf '%s' "$OWNER_PASSWORD" | docker run --rm -i \
 
 ## Updating the site
 
-Pull the latest image and restart:
+Back up `./data` first; see [Backups](#backups). Then pull the latest image and restart:
 
 ```bash
 docker compose pull

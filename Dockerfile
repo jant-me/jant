@@ -29,8 +29,10 @@ ENV DATA_DIR=/var/lib/jant
 
 WORKDIR /app
 
-RUN mkdir -p /app /var/lib/jant /usr/local/bin \
-  && chown -R node:node /app /var/lib/jant /usr/local/bin
+# The app user owns the app and its data. /usr/local/bin stays root's, so the
+# process can't replace the node binary or the jant link.
+RUN mkdir -p /app /var/lib/jant \
+  && chown node:node /app /var/lib/jant
 
 COPY --from=build --chown=node:node /app /app
 
