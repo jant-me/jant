@@ -56,8 +56,9 @@ export async function run(argv) {
     args: argv,
     options: {
       help: { type: "boolean", short: "h" },
+      // What `site export` writes when given no --output.
       path: { type: "string", default: "jant-site-export.zip" },
-      output: { type: "string" },
+      output: { type: "string", short: "o" },
     },
   });
 
@@ -71,7 +72,7 @@ export async function run(argv) {
       "  --path         Path to an export ZIP or directory (default: jant-site-export.zip)",
     );
     console.log(
-      "  --output       Output ZIP path when --path points to a ZIP (default: overwrite input)",
+      "  --output, -o   Output ZIP path when --path points to a ZIP (default: overwrite input)",
     );
     process.exit(0);
   }

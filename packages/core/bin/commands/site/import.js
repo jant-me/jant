@@ -2350,7 +2350,7 @@ function printImportUsage() {
   console.log("Options:");
   console.log("  --url         Jant site URL (required)");
   console.log(
-    "  --path        Path to export directory or ZIP file (default: .)",
+    "  --path        Path to export directory or ZIP file (default: jant-site-export.zip)",
   );
   console.log("  --dry-run     Parse and validate without making API calls");
   console.log(
@@ -2384,7 +2384,8 @@ export async function run(argv) {
     options: {
       url: { type: "string" },
       token: { type: "string" },
-      path: { type: "string", default: "." },
+      // What `site export` writes when given no --output.
+      path: { type: "string", default: "jant-site-export.zip" },
       "dry-run": { type: "boolean", default: false },
       "skip-remote-media": { type: "boolean", default: false },
       help: { type: "boolean", short: "h" },

@@ -108,22 +108,22 @@ npx jant site export --url https://your-site.example --output ./jant-site-export
 npx jant site import --url https://your-site.example --path ./jant-site-export.zip --dry-run
 ```
 
-| 选项                  | 用途                                          |
-| --------------------- | --------------------------------------------- |
-| `--url`               | 站点 URL（必填）                              |
-| `--path`              | 导出目录或 ZIP（默认当前目录）                |
-| `--dry-run`           | 只读取和检查导出，不调用站点                  |
-| `--skip-remote-media` | 帖子正文里的绝对图片 URL 保持原样，不上传图片 |
-| `--token`             | API token，代替 `JANT_API_TOKEN`              |
+| 选项                  | 用途                                                                       |
+| --------------------- | -------------------------------------------------------------------------- |
+| `--url`               | 站点 URL（必填）                                                           |
+| `--path`              | 导出目录或 ZIP（默认 `jant-site-export.zip`，即 `site export` 写出的文件） |
+| `--dry-run`           | 只读取和检查导出，不调用站点                                               |
+| `--skip-remote-media` | 帖子正文里的绝对图片 URL 保持原样，不上传图片                              |
+| `--token`             | API token，代替 `JANT_API_TOKEN`                                           |
 
 ### `jant site pull-media`
 
 下载一份已有导出引用的媒体，并把导出改成使用本地副本。
 
-| 选项       | 用途                                                 |
-| ---------- | ---------------------------------------------------- |
-| `--path`   | 导出的 ZIP 或目录（默认 `jant-site-export.zip`）     |
-| `--output` | `--path` 是 ZIP 时，结果写到哪里（默认覆盖输入文件） |
+| 选项             | 用途                                                 |
+| ---------------- | ---------------------------------------------------- |
+| `--path`         | 导出的 ZIP 或目录（默认 `jant-site-export.zip`）     |
+| `--output`、`-o` | `--path` 是 ZIP 时，结果写到哪里（默认覆盖输入文件） |
 
 ### `jant site snapshot export`
 

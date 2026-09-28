@@ -108,22 +108,22 @@ Imports a Hugo site export, a directory or a ZIP, into a site. The target site h
 npx jant site import --url https://your-site.example --path ./jant-site-export.zip --dry-run
 ```
 
-| Option                | Use                                                                                   |
-| --------------------- | ------------------------------------------------------------------------------------- |
-| `--url`               | The site's URL (required)                                                             |
-| `--path`              | The export directory or ZIP (default: the current directory)                          |
-| `--dry-run`           | Read and check the export without calling the site                                    |
-| `--skip-remote-media` | Leave absolute image URLs in post bodies as they are, instead of uploading the images |
-| `--token`             | API token, instead of `JANT_API_TOKEN`                                                |
+| Option                | Use                                                                                      |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| `--url`               | The site's URL (required)                                                                |
+| `--path`              | The export directory or ZIP (default: `jant-site-export.zip`, what `site export` writes) |
+| `--dry-run`           | Read and check the export without calling the site                                       |
+| `--skip-remote-media` | Leave absolute image URLs in post bodies as they are, instead of uploading the images    |
+| `--token`             | API token, instead of `JANT_API_TOKEN`                                                   |
 
 ### `jant site pull-media`
 
 Downloads the media an existing export refers to, and rewrites the export to use the local copies.
 
-| Option     | Use                                                                             |
-| ---------- | ------------------------------------------------------------------------------- |
-| `--path`   | The export ZIP or directory (default: `jant-site-export.zip`)                   |
-| `--output` | Where to write the result when `--path` is a ZIP (default: overwrite the input) |
+| Option           | Use                                                                             |
+| ---------------- | ------------------------------------------------------------------------------- |
+| `--path`         | The export ZIP or directory (default: `jant-site-export.zip`)                   |
+| `--output`, `-o` | Where to write the result when `--path` is a ZIP (default: overwrite the input) |
 
 ### `jant site snapshot export`
 

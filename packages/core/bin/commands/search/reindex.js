@@ -72,7 +72,7 @@ export async function run(argv) {
   if (values.help) {
     console.log("Usage: jant search reindex [--url <url>] [options]");
     console.log("");
-    console.log("Rebuild the search index for every non-deleted post by");
+    console.log("Rebuild the search index for every post by");
     console.log("recomputing `post.body_text` from the stored TipTap body.");
     console.log("Useful after changes to the text extraction logic — for");
     console.log("example, indexing link URLs from inline markdown links.");
