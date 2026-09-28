@@ -49,7 +49,7 @@ function buildRoundtripServices(opts: {
 
   return {
     posts: {
-      list: async () => opts.posts,
+      listPage: async () => ({ posts: opts.posts, nextCursor: null }),
     },
     paths: {
       getPostSlugMap: async () => slugMap,

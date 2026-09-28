@@ -19,7 +19,7 @@
  * filled in by Commit 5.
  */
 
-import type { PostService } from "./post.js";
+import type { PostFilters, PostService } from "./post.js";
 import type { PathService } from "./path.js";
 import type { CollectionService } from "./collection.js";
 import type { MediaService } from "./media.js";
@@ -343,6 +343,35 @@ function buildDefaultAppleTouchAsset(): Pick<
   };
 }
 
+/** Posts read per query while an export walks the site. */
+const EXPORT_POST_PAGE_SIZE = 500;
+
+/**
+ * Every post the filters match, however many there are. An export used to
+ * ask for the first 10,000 and stop there without a word, dropping the rest
+ * of a large site, replies included.
+ *
+ * @param posts - The post service
+ * @param filters - What to list
+ * @returns All matching posts, in the list order
+ */
+async function listEveryPost(
+  posts: PostService,
+  filters: Omit<PostFilters, "limit" | "offset">,
+): Promise<Post[]> {
+  const all: Post[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await posts.listPage(filters, {
+      cursor,
+      limit: EXPORT_POST_PAGE_SIZE,
+    });
+    all.push(...page.posts);
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor);
+  return all;
+}
+
 export function createExportService(
   services: {
     posts: PostService;
@@ -391,9 +420,8 @@ export function createExportService(
       // 1. Query all data
       const [allPosts, allCollections, collectionDirectoryData] =
         await Promise.all([
-          services.posts.list({
+          listEveryPost(services.posts, {
             excludeReplies: false,
-            limit: 10000,
             ...(deps.publicOnly
               ? { status: "published" as const, excludePrivate: true }
               : {}),

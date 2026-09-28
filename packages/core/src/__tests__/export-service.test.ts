@@ -74,7 +74,7 @@ function buildServices(opts: FixtureOptions): ServicesArg {
 
   return {
     posts: {
-      list: async () => posts,
+      listPage: async () => ({ posts, nextCursor: null }),
     },
     paths: {
       getPostSlugMap: async () => slugMap,
@@ -156,7 +156,9 @@ describe("createExportService (Hugo)", () => {
 
     const files = await createExportService(
       {
-        posts: { list: async () => [long, short] },
+        posts: {
+          listPage: async () => ({ posts: [long, short], nextCursor: null }),
+        },
         paths: {
           getPostSlugMap: async () =>
             new Map([
@@ -1602,10 +1604,34 @@ describe("createExportService (Hugo)", () => {
     expect(files.has("static/media/med-x.webp")).toBe(false);
   });
 
+  it("walks every page of posts rather than stopping at a fixed count", async () => {
+    const first = makePost({ id: "post-a", slug: "first-page" });
+    const second = makePost({ id: "post-b", slug: "second-page" });
+    const services = buildServices({ posts: [first, second] });
+    const listPage = vi.fn(
+      async (_filters: unknown, page: { cursor?: string }) =>
+        page.cursor
+          ? { posts: [second], nextCursor: null }
+          : { posts: [first], nextCursor: "next" },
+    );
+    services.posts.listPage =
+      listPage as unknown as typeof services.posts.listPage;
+
+    const files = filesToMap(
+      await createExportService(services, makeSiteConfig(), {
+        bundleMedia: false,
+      }).generateHugoFiles(),
+    );
+
+    expect(listPage).toHaveBeenCalledTimes(2);
+    expect(files.has("content/first-page/_index.md")).toBe(true);
+    expect(files.has("content/second-page/_index.md")).toBe(true);
+  });
+
   it("asks only for published, non-private posts in public-only mode", async () => {
     const services = buildServices({ posts: [] });
-    const list = vi.fn(async () => []);
-    services.posts.list = list as unknown as typeof services.posts.list;
+    const list = vi.fn(async () => ({ posts: [], nextCursor: null }));
+    services.posts.listPage = list as unknown as typeof services.posts.listPage;
 
     await createExportService(services, makeSiteConfig(), {
       bundleMedia: false,

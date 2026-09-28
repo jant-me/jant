@@ -83,7 +83,9 @@ function buildFixtureServices(): ServicesArg {
   const collection = makeCollection({ id: "col-1", slug: "ideas" });
   const media = makeMedia({ id: "med_hero", filename: "hero.webp" });
   return {
-    posts: { list: async () => [root, reply] },
+    posts: {
+      listPage: async () => ({ posts: [root, reply], nextCursor: null }),
+    },
     paths: {
       getPostSlugMap: async () =>
         new Map([
@@ -318,7 +320,12 @@ describe("Hugo smoke build", () => {
     const media = makeMedia({ id: "med_blue", filename: "blue.webp", alt });
 
     const services = {
-      posts: { list: async () => [root, longReply, shortReply] },
+      posts: {
+        listPage: async () => ({
+          posts: [root, longReply, shortReply],
+          nextCursor: null,
+        }),
+      },
       paths: {
         getPostSlugMap: async () =>
           new Map([
@@ -409,7 +416,9 @@ describe("Hugo smoke build", () => {
       status: "draft",
     });
     const services = {
-      posts: { list: async () => [root, draft] },
+      posts: {
+        listPage: async () => ({ posts: [root, draft], nextCursor: null }),
+      },
       paths: {
         getPostSlugMap: async () =>
           new Map([
@@ -551,7 +560,9 @@ describe("Hugo smoke build", () => {
     );
 
     const services = {
-      posts: { list: async () => [root, ...replies] },
+      posts: {
+        listPage: async () => ({ posts: [root, ...replies], nextCursor: null }),
+      },
       paths: {
         getPostSlugMap: async () =>
           new Map([
