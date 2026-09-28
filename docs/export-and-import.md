@@ -210,6 +210,7 @@ Collection pages: `content/<slug>/_index.md` with `type: collection` or `type: s
 | ---------------- | ------------------------------------------------------------- |
 | `title`, `slug`  | Title and address                                             |
 | `type`           | `collection` or `smart_collection`                            |
+| `aliases`        | Collections: their custom URLs, each with a leading slash     |
 | `summary_text`   | Description                                                   |
 | `sort_order`     | `newest`, `oldest`, or `rating_desc`                          |
 | `selection`      | Smart collections: the conditions, a collection named by slug |

@@ -210,6 +210,7 @@ feed 条目沿用 Jant 给的 ID，搬站之后，feed 阅读器不会把旧帖�
 | ---------------- | ------------------------------------------- |
 | `title`、`slug`  | 标题和地址                                  |
 | `type`           | `collection` 或 `smart_collection`          |
+| `aliases`        | 合集的自定义 URL，每个以斜杠开头            |
 | `summary_text`   | 说明                                        |
 | `sort_order`     | `newest`、`oldest` 或 `rating_desc`         |
 | `selection`      | 智能合集的条件，合集按 slug 指定            |

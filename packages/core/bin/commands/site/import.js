@@ -1780,10 +1780,10 @@ function createRemoteTarget(apiUrl, token) {
         { postId: otherPostId },
       );
     },
-    async createAlias(path, targetSlug) {
+    async createAlias(path, targetSlug, targetType = "post") {
       return apiCall("POST", "/api/custom-urls", apiUrl, token, {
         path,
-        targetType: "post",
+        targetType,
         targetId: targetSlug,
       });
     },
@@ -2535,6 +2535,8 @@ export async function run(argv) {
 
     // 3. Fetch existing collections and create missing ones
     const collectionSlugToId = new Map();
+    // Custom URLs recreated, for collections here and for posts in step 4.
+    let aliasesCreated = 0;
     // Root posts by slug, for navigation entries that point at a page.
     const postSlugToId = new Map();
 
@@ -2586,6 +2588,23 @@ export async function run(argv) {
       } catch (err) {
         console.error(`Error creating collection "${slug}": ${err.message}`);
         process.exit(1);
+      }
+
+      // Custom URLs that name the collection.
+      const collectionAliases = Array.isArray(bundle.frontMatter.aliases)
+        ? bundle.frontMatter.aliases.filter(
+            (alias) => typeof alias === "string" && alias.trim(),
+          )
+        : [];
+      for (const alias of collectionAliases) {
+        try {
+          await target.createAlias(alias, slug, "collection");
+          aliasesCreated++;
+        } catch (err) {
+          console.warn(
+            `Warning: couldn't add ${alias} for collection /${slug}: ${err.message}`,
+          );
+        }
       }
     }
 
@@ -2669,7 +2688,6 @@ export async function run(argv) {
     let postsCreated = 0;
     let repliesCreated = 0;
     let mediaUploaded = 0;
-    let aliasesCreated = 0;
 
     for (const rootBundle of rootBundles) {
       const { frontMatter: rootFm } = rootBundle;

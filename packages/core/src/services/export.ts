@@ -570,7 +570,11 @@ export function createExportService(
         exportFiles.push(...bundleFiles);
       }
 
-      // Collection landing pages (`content/{slug}/_index.md`).
+      // Collection landing pages (`content/{slug}/_index.md`), with the
+      // custom URLs that name them.
+      const collectionAliases = await services.paths.getCollectionAliases(
+        allCollections.map((c) => c.id),
+      );
       for (const collection of allCollections) {
         const slug = collectionSlugMap.get(collection.id) ?? collection.slug;
         const entryCount =
@@ -582,6 +586,7 @@ export function createExportService(
             slug,
             entryCount,
             siteConfig.rssFeedsEnabled,
+            collectionAliases.get(collection.id) ?? [],
           ),
         });
       }
@@ -1433,11 +1438,15 @@ async function buildCollectionSection(
   slug: string,
   entryCount: number,
   rssFeedsEnabled: boolean,
+  aliases: string[],
 ): Promise<string> {
   const frontMatter: HugoFrontMatter = {
     title: collection.title,
     slug,
     type: "collection",
+    // Custom URLs for this Collection. Hugo writes a redirect page for each;
+    // an import registers them again.
+    aliases: aliases.length > 0 ? aliases : undefined,
     summary_text: collection.description ?? undefined,
     sort_order: collection.sortOrder,
     entry_count: entryCount,

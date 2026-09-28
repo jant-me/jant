@@ -95,6 +95,7 @@ function buildFixtureServices(): ServicesArg {
       listStandalonePaths: async () => [],
       getPostAliases: async () => new Map(),
       getCollectionSlugMap: async () => new Map([["col-1", "ideas"]]),
+      getCollectionAliases: async () => new Map(),
     },
     collections: {
       list: async () => [collection],
@@ -336,6 +337,7 @@ describe("Hugo smoke build", () => {
         listStandalonePaths: async () => [],
         getPostAliases: async () => new Map(),
         getCollectionSlugMap: async () => new Map(),
+        getCollectionAliases: async () => new Map(),
       },
       collections: {
         list: async () => [],
@@ -432,6 +434,7 @@ describe("Hugo smoke build", () => {
             ["pst_draft", ["/blog/nixos-setup/"]],
           ]),
         getCollectionSlugMap: async () => new Map(),
+        getCollectionAliases: async () => new Map(),
       },
       collections: {
         list: async () => [],
@@ -575,6 +578,7 @@ describe("Hugo smoke build", () => {
         listStandalonePaths: async () => [],
         getPostAliases: async () => new Map(),
         getCollectionSlugMap: async () => new Map(),
+        getCollectionAliases: async () => new Map(),
       },
       collections: {
         list: async () => [],

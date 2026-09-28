@@ -94,6 +94,11 @@ export interface PathService {
    */
   getPostAliases(postIds: string[]): Promise<Map<string, string[]>>;
   /**
+   * Custom paths registered for each Collection, oldest first, each with a
+   * leading slash, as {@link getPostAliases} gives them for Posts.
+   */
+  getCollectionAliases(collectionIds: string[]): Promise<Map<string, string[]>>;
+  /**
    * Custom URLs that stand on their own rather than naming a post or a
    * collection: redirects to another path, and legacy archive views. Oldest
    * first.
@@ -522,6 +527,36 @@ export function createPathService(
         )
         .orderBy(asc(pathRegistry.createdAt), asc(pathRegistry.id));
       return rows.map(toPathRecord);
+    },
+
+    async getCollectionAliases(collectionIds) {
+      if (collectionIds.length === 0) return new Map<string, string[]>();
+
+      return batchQuery(collectionIds, async (chunk) => {
+        const result = new Map<string, string[]>();
+        const rows = await db
+          .select({
+            collectionId: pathRegistry.collectionId,
+            path: pathRegistry.path,
+          })
+          .from(pathRegistry)
+          .where(
+            and(
+              eq(pathRegistry.siteId, siteId),
+              inArray(pathRegistry.collectionId, chunk),
+              eq(pathRegistry.kind, "alias"),
+            ),
+          )
+          .orderBy(asc(pathRegistry.createdAt), asc(pathRegistry.id));
+
+        for (const row of rows) {
+          if (!row.collectionId) continue;
+          const existing = result.get(row.collectionId) ?? [];
+          existing.push(`/${row.path}`);
+          result.set(row.collectionId, existing);
+        }
+        return result;
+      });
     },
 
     async getPostAliases(postIds) {

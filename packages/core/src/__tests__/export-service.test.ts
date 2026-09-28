@@ -81,6 +81,7 @@ function buildServices(opts: FixtureOptions): ServicesArg {
       listStandalonePaths: async () => standalonePaths,
       getPostAliases: async () => aliasMap,
       getCollectionSlugMap: async () => collectionSlugMap,
+      getCollectionAliases: async () => new Map(),
     },
     collections: {
       list: async () => collections,
@@ -168,6 +169,7 @@ describe("createExportService (Hugo)", () => {
           listStandalonePaths: async () => [],
           getPostAliases: async () => new Map(),
           getCollectionSlugMap: async () => new Map(),
+          getCollectionAliases: async () => new Map(),
         },
         collections: {
           list: async () => [],
