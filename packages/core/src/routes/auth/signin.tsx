@@ -16,6 +16,12 @@ import { getI18n } from "../../i18n/index.js";
 import { getHostedControlPlaneSigninUrl } from "../../lib/hosted-signin.js";
 import { isCurrentSiteMember } from "../../middleware/auth.js";
 import { isSafeInternalRedirect, toPublicPath } from "../../lib/url.js";
+import { checkRequestRateLimit } from "../../lib/rate-limit.js";
+
+/** Sign-in attempts allowed per window, from one client and for one account. */
+const SIGNIN_ATTEMPTS_PER_CLIENT = 20;
+const SIGNIN_ATTEMPTS_PER_ACCOUNT = 10;
+const SIGNIN_WINDOW_SEC = 10 * 60;
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -212,6 +218,36 @@ signinRoutes.post("/signin", async (c) => {
   }
 
   const { email, password } = parsed.data;
+
+  // Two buckets against password guessing: one per client, and one per
+  // account, so neither many addresses from one client nor one address from
+  // many clients gets unlimited tries.
+  const limits = await Promise.all([
+    checkRequestRateLimit(c, {
+      name: "signin",
+      limit: SIGNIN_ATTEMPTS_PER_CLIENT,
+      windowSec: SIGNIN_WINDOW_SEC,
+    }),
+    checkRequestRateLimit(c, {
+      name: "signin-account",
+      key: email.trim().toLowerCase(),
+      limit: SIGNIN_ATTEMPTS_PER_ACCOUNT,
+      windowSec: SIGNIN_WINDOW_SEC,
+    }),
+  ]);
+  if (limits.some((limit) => !limit.ok)) {
+    return dsToast(
+      i18n._(
+        msg({
+          message:
+            "Too many sign-in attempts. Wait a few minutes and try again.",
+          comment:
+            "@context: Error toast when sign-in attempts hit the rate limit",
+        }),
+      ),
+      "error",
+    );
+  }
   const rawRedirect =
     body && typeof body === "object" && "redirect" in body
       ? (body as { redirect?: unknown }).redirect

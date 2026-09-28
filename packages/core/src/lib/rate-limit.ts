@@ -47,24 +47,31 @@ export interface RateLimiter {
 /**
  * Extracts the client IP from a Hono request context.
  *
- * On Cloudflare Workers, `cf-connecting-ip` is set by the edge and is
- * authoritative. On Node deployments we fall back to the leftmost
- * `x-forwarded-for` entry, which is the conventional client IP when the
- * app sits behind a single trusted proxy. When neither header is
- * available we return `"unknown"` so all such requests share a bucket —
- * preferable to skipping the rate limit entirely.
+ * On Cloudflare Workers, `cf-connecting-ip` is set by the edge and a client
+ * can't forge it. On Node, the request handler has already pinned both
+ * headers (see `withClientAddress` in `node/request-handler.ts`): without
+ * `TRUST_PROXY` they hold the socket's address, and behind a trusted proxy
+ * they hold what the proxy set. The last `x-forwarded-for` entry is the one
+ * the nearest proxy added; earlier entries are whatever the client sent. When
+ * neither header is available we return `"unknown"` so all such requests
+ * share a bucket, which beats skipping the rate limit entirely.
  *
- * Note: this helper does not verify proxy trust. It is used for DoS
- * protection, not authentication. If header-forgery resistance becomes
- * important, gate the `x-forwarded-for` branch on `shouldTrustProxy`.
+ * @param c - Hono context
+ * @returns The client's IP address, or `"unknown"`
+ *
+ * @example
+ * ```ts
+ * // X-Forwarded-For: 198.51.100.1, 203.0.113.7
+ * getClientIp(c); // "203.0.113.7"
+ * ```
  */
 export function getClientIp(c: Context): string {
   const cf = c.req.header("cf-connecting-ip");
   if (cf) return cf;
   const fwd = c.req.header("x-forwarded-for");
   if (fwd) {
-    const first = fwd.split(",")[0]?.trim();
-    if (first) return first;
+    const last = fwd.split(",").at(-1)?.trim();
+    if (last) return last;
   }
   return "unknown";
 }
@@ -76,6 +83,11 @@ export interface RequestRateLimitOptions extends RateLimitCheckOptions {
    * different surfaces independent when they share a storage backend.
    */
   name: string;
+  /**
+   * What the bucket belongs to, such as the email address a sign-in names.
+   * Defaults to the client IP (see {@link getClientIp}).
+   */
+  key?: string;
 }
 
 /** Whether a request is under its limit, and how long to wait when it isn't. */
@@ -86,7 +98,8 @@ export type RequestRateLimitResult =
  * Counts this request against its client's bucket and reports whether it is
  * under the limit.
  *
- * Buckets are per client IP (see {@link getClientIp}) and scoped by `name`.
+ * Buckets are per client IP (see {@link getClientIp}), or per `key` when one
+ * is given, and scoped by `name`.
  * When `appConfig.rateLimit.disabled` is set, nothing is counted and every
  * request passes, so test and dev environments don't have to reason about
  * bucket state. The caller decides what an over-limit response looks like:
@@ -113,7 +126,7 @@ export async function checkRequestRateLimit(
   if (c.var.appConfig.rateLimit.disabled) return { ok: true };
 
   const result = await c.var.rateLimiter.check(
-    `${opts.name}:${getClientIp(c)}`,
+    `${opts.name}:${opts.key ?? getClientIp(c)}`,
     { limit: opts.limit, windowSec: opts.windowSec },
   );
   if (result.ok) return { ok: true };

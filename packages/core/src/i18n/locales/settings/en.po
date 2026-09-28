@@ -2816,6 +2816,11 @@ msgstr "Token name"
 msgid "Tokens let you access the API from scripts, shortcuts, and other tools without signing in."
 msgstr "Tokens let you access the API from scripts, shortcuts, and other tools without signing in."
 
+#. @context: Error toast when setup attempts hit the rate limit
+#: src/routes/auth/setup.tsx
+msgid "Too many setup attempts. Wait a few minutes and try again."
+msgstr "Too many setup attempts. Wait a few minutes and try again."
+
 #. @context: GitHub sync picker — retry button
 #: src/routes/dash/settings.tsx
 msgid "Try again"

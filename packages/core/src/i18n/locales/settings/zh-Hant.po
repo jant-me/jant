@@ -2816,6 +2816,11 @@ msgstr "權杖名稱 (API 權杖名稱欄位。)"
 msgid "Tokens let you access the API from scripts, shortcuts, and other tools without signing in."
 msgstr "權杖讓你從腳本，捷徑和其他工具存取 API 無需登入"
 
+#. @context: Error toast when setup attempts hit the rate limit
+#: src/routes/auth/setup.tsx
+msgid "Too many setup attempts. Wait a few minutes and try again."
+msgstr "設定嘗試次數過多。請等幾分鐘再試。"
+
 #. @context: GitHub sync picker — retry button
 #: src/routes/dash/settings.tsx
 msgid "Try again"

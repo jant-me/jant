@@ -18,6 +18,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 function buildApp(options: {
   limiter: RateLimiter;
   disabled?: boolean;
+  key?: string;
 }): Hono<Env> {
   const app = new Hono<Env>();
   app.use("*", async (c, next) => {
@@ -32,7 +33,12 @@ function buildApp(options: {
   });
   app.get("/", async (c) =>
     c.json(
-      await checkRequestRateLimit(c, { name: "test", limit: 2, windowSec: 60 }),
+      await checkRequestRateLimit(c, {
+        name: "test",
+        key: options.key,
+        limit: 2,
+        windowSec: 60,
+      }),
     ),
   );
   return app;
@@ -104,12 +110,21 @@ describe("checkRequestRateLimit", () => {
     expect(keys()).toEqual(["test:1.2.3.4"]);
   });
 
-  it("falls back to x-forwarded-for (first entry) when cf header is absent", async () => {
+  it("uses the entry the nearest proxy added, not one the client sent", async () => {
     const { limiter, keys } = scriptedLimiter([{ ok: true }]);
 
     await check(buildApp({ limiter }), {
       "x-forwarded-for": "10.0.0.1, 10.0.0.2",
     });
-    expect(keys()).toEqual(["test:10.0.0.1"]);
+    expect(keys()).toEqual(["test:10.0.0.2"]);
+  });
+
+  it("buckets by a key when one is given", async () => {
+    const { limiter, keys } = scriptedLimiter([{ ok: true }]);
+
+    await check(buildApp({ limiter, key: "owner@example.com" }), {
+      "cf-connecting-ip": "1.2.3.4",
+    });
+    expect(keys()).toEqual(["test:owner@example.com"]);
   });
 });

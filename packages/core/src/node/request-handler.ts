@@ -572,9 +572,50 @@ export async function migrate(
 
 export type NodeAppResolver = App | (() => App | Promise<App>);
 
+/** What `@hono/node-server` passes alongside each request. */
+export interface NodeConnection {
+  incoming?: { socket?: { remoteAddress?: string } };
+}
+
 export interface NodeRequestHandler {
   close(): Promise<void>;
-  fetch(request: Request): Promise<Response>;
+  fetch(request: Request, connection?: NodeConnection): Promise<Response>;
+}
+
+/**
+ * Pins the client address a request carries to one Jant can vouch for.
+ *
+ * Without a trusted proxy in front, an `X-Forwarded-For` or
+ * `CF-Connecting-IP` header came from the client itself, and a rate limit
+ * keyed on it could be dodged by changing it on every request. Both are
+ * replaced by the socket's address. Behind a trusted proxy the headers are
+ * the proxy's, and stay.
+ *
+ * @param request - The request as the server received it
+ * @param socketAddress - The connecting socket's address, when known
+ * @param trustProxy - Whether `TRUST_PROXY` is on
+ * @returns The request, with client-address headers only Jant set
+ *
+ * @example
+ * ```ts
+ * withClientAddress(request, "203.0.113.7", false).headers.get("x-forwarded-for");
+ * // "203.0.113.7"
+ * ```
+ */
+export function withClientAddress(
+  request: Request,
+  socketAddress: string | undefined,
+  trustProxy: boolean,
+): Request {
+  if (trustProxy) return request;
+  const headers = new Headers(request.headers);
+  headers.delete("cf-connecting-ip");
+  if (socketAddress) {
+    headers.set("x-forwarded-for", socketAddress);
+  } else {
+    headers.delete("x-forwarded-for");
+  }
+  return new Request(request, { headers });
 }
 
 async function resolveApp(app: NodeAppResolver | undefined): Promise<App> {
@@ -633,7 +674,12 @@ export async function createNodeRequestHandler(options?: {
     let closed = false;
 
     return {
-      async fetch(request: Request) {
+      async fetch(receivedRequest: Request, connection?: NodeConnection) {
+        const request = withClientAddress(
+          receivedRequest,
+          connection?.incoming?.socket?.remoteAddress,
+          shouldTrustProxy(bindings),
+        );
         const publicRequestUrl = resolvePublicRequestUrl(request, bindings);
         const preparedRequest =
           publicRequestUrl === request.url

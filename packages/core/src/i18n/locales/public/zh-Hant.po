@@ -2660,6 +2660,11 @@ msgstr ""
 msgid "Too many searches. Wait a minute and try again."
 msgstr ""
 
+#. @context: Error toast when sign-in attempts hit the rate limit
+#: src/routes/auth/signin.tsx
+msgid "Too many sign-in attempts. Wait a few minutes and try again."
+msgstr ""
+
 #. @context: Divider between the original post and the editor writing its translation, when the target language is not known yet
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Translating"

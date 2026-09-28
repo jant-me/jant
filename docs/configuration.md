@@ -74,7 +74,7 @@ Common Node and Docker variables:
 | `LOCAL_PUBLIC_URL`   | unset                    | Public base URL when media is served outside Jant; leave unset to use Jant's `/media/*` routes |
 | `HOST`               | `127.0.0.1` on bare Node | Bind address for `jant start`                                                                  |
 | `PORT`               | `3000`                   | Bind port for `jant start`                                                                     |
-| `TRUST_PROXY`        | `false`                  | Trust forwarded headers from the reverse proxy                                                 |
+| `TRUST_PROXY`        | `false`                  | Trust the reverse proxy's forwarded headers for the site address and the client IP             |
 
 The official Docker image already defaults `DATA_DIR` to `/var/lib/jant`, and Docker Compose commonly sets `TRUST_PROXY=true`.
 
@@ -152,15 +152,21 @@ are unchanged.
 empty value turns cross-origin access off. Requests still need a session or API
 token wherever the API asks for one.
 
-### Search rate limit (optional)
+### Rate limits (optional)
 
 | Variable                    | Default | Description                                      |
 | --------------------------- | ------- | ------------------------------------------------ |
 | `RATE_LIMIT_SEARCH_PER_MIN` | `30`    | Searches a signed-out reader can make per minute |
-| `RATE_LIMIT_DISABLED`       | `false` | Set to `true` to turn the limit off              |
+| `RATE_LIMIT_DISABLED`       | `false` | Set to `true` to turn every limit off            |
 
-The limit applies to the `/search` page; the signed-in author and `/api/search`
-aren't limited. A reader over the limit gets `429` with a `Retry-After` header.
+The search limit applies to the `/search` page; the signed-in author and
+`/api/search` aren't limited. A reader over the limit gets `429` with a
+`Retry-After` header.
+
+Sign-in allows 20 attempts from one client and 10 for one account in 10
+minutes, and setup allows 20 submissions from one client. A client is its IP
+address: on Cloudflare, the one the edge reports; on Node, the connecting
+address, or with `TRUST_PROXY=true` the last one in `X-Forwarded-For`.
 
 ### Pagination (optional)
 

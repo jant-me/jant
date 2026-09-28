@@ -2816,6 +2816,11 @@ msgstr "令牌名称"
 msgid "Tokens let you access the API from scripts, shortcuts, and other tools without signing in."
 msgstr "令牌让你无需登录即可从脚本、快捷方式和其他工具访问 API。"
 
+#. @context: Error toast when setup attempts hit the rate limit
+#: src/routes/auth/setup.tsx
+msgid "Too many setup attempts. Wait a few minutes and try again."
+msgstr "设置尝试次数过多。请等几分钟再试。"
+
 #. @context: GitHub sync picker — retry button
 #: src/routes/dash/settings.tsx
 msgid "Try again"

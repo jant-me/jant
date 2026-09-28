@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { createI18n } from "../../../i18n/index.js";
 import { attachSession } from "../../../middleware/session.js";
 import { requireAuth } from "../../../middleware/auth.js";
 import { signinRoutes } from "../signin.js";
+import { createMemoryRateLimiter } from "../../../lib/rate-limit-memory.js";
 import type { Bindings } from "../../../types.js";
 import type { AppVariables } from "../../../types/app-context.js";
 
@@ -131,5 +132,67 @@ describe("stale session redirect loop", () => {
     const signin = await app.request(signinLocation!, { redirect: "manual" });
     expect(signin.status).toBe(200);
     expect(await signin.text()).toContain(SIGNIN_FORM_MARKER);
+  });
+});
+
+describe("POST /signin rate limit", () => {
+  function createGuessingApp() {
+    const signInEmail = vi.fn(async () => {
+      throw new Error("Invalid email or password");
+    });
+    const rateLimiter = createMemoryRateLimiter();
+    const app = new Hono<Env>();
+    app.use("*", async (c, next) => {
+      c.env = {} as Bindings;
+      c.set("auth", {
+        api: { signInEmail },
+      } as unknown as AppVariables["auth"]);
+      c.set("rateLimiter", rateLimiter);
+      c.set("appConfig", {
+        siteName: "Jant",
+        sitePathPrefix: "",
+        rateLimit: { disabled: false, searchPerMinute: 30 },
+      } as AppVariables["appConfig"]);
+      c.set("lang", "en");
+      c.set("i18n", createI18n("en"));
+      await next();
+    });
+    app.route("/", signinRoutes);
+    return { app, signInEmail };
+  }
+
+  function attempt(app: Hono<Env>, email: string, ip: string) {
+    return app.request("/signin", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "CF-Connecting-IP": ip,
+      },
+      body: JSON.stringify({ email, password: "guess-password" }),
+    });
+  }
+
+  it("stops password guesses at one account from many clients", async () => {
+    const { app, signInEmail } = createGuessingApp();
+
+    for (let i = 0; i < 10; i++) {
+      await attempt(app, "owner@example.com", `203.0.113.${i}`);
+    }
+    const res = await attempt(app, "Owner@Example.com", "203.0.113.99");
+
+    await expect(res.text()).resolves.toContain("Too many sign-in attempts");
+    expect(signInEmail).toHaveBeenCalledTimes(10);
+  });
+
+  it("stops one client guessing across many accounts", async () => {
+    const { app, signInEmail } = createGuessingApp();
+
+    for (let i = 0; i < 20; i++) {
+      await attempt(app, `user${i}@example.com`, "203.0.113.1");
+    }
+    const res = await attempt(app, "another@example.com", "203.0.113.1");
+
+    await expect(res.text()).resolves.toContain("Too many sign-in attempts");
+    expect(signInEmail).toHaveBeenCalledTimes(20);
   });
 });

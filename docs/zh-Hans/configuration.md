@@ -74,7 +74,7 @@ Node 和 Docker 的常用变量：
 | `LOCAL_PUBLIC_URL`   | 未设置                   | 供 Jant 外部直接提供媒体的公开基地址；留空时，Jant 使用自己的 `/media/*` 路由 |
 | `HOST`               | 裸 Node 下是 `127.0.0.1` | `jant start` 的绑定地址                                                       |
 | `PORT`               | `3000`                   | `jant start` 的绑定端口                                                       |
-| `TRUST_PROXY`        | `false`                  | 是否信任反向代理传来的转发头                                                  |
+| `TRUST_PROXY`        | `false`                  | 站点地址和客户端 IP 是否采信反向代理传来的转发头                              |
 
 官方 Docker 镜像默认把 `DATA_DIR` 设为 `/var/lib/jant`，而 Docker Compose 通常会把 `TRUST_PROXY=true`。
 
@@ -130,15 +130,19 @@ feed 里声明了什么、第三方目录需要遵守什么，见 [Feed](feeds.m
 `*` 允许任何来源。写成 `https://a.example,chrome-extension://<id>` 这样的列表，
 只允许列出的来源；留空则关闭跨域访问。需要 session 或 API token 的接口仍然需要。
 
-### 搜索频率限制（可选）
+### 频率限制（可选）
 
 | 变量                        | 默认值  | 说明                       |
 | --------------------------- | ------- | -------------------------- |
 | `RATE_LIMIT_SEARCH_PER_MIN` | `30`    | 未登录读者每分钟的搜索次数 |
-| `RATE_LIMIT_DISABLED`       | `false` | 设为 `true` 关闭限制       |
+| `RATE_LIMIT_DISABLED`       | `false` | 设为 `true` 关闭所有限制   |
 
-限制作用于 `/search` 页面；已登录的作者和 `/api/search` 不受限制。超过限制的读者
+搜索限制作用于 `/search` 页面；已登录的作者和 `/api/search` 不受限制。超过限制的读者
 收到 `429`，附带 `Retry-After` 头。
+
+登录在 10 分钟内允许同一客户端尝试 20 次、同一账户 10 次；初始化允许同一客户端提交
+20 次。客户端按 IP 地址区分：Cloudflare 上用边缘节点报告的地址；Node 上用连接地址，
+设了 `TRUST_PROXY=true` 时用 `X-Forwarded-For` 里的最后一个。
 
 ### 分页（可选）
 

@@ -2663,6 +2663,11 @@ msgstr "Toggle header row"
 msgid "Too many searches. Wait a minute and try again."
 msgstr "Too many searches. Wait a minute and try again."
 
+#. @context: Error toast when sign-in attempts hit the rate limit
+#: src/routes/auth/signin.tsx
+msgid "Too many sign-in attempts. Wait a few minutes and try again."
+msgstr "Too many sign-in attempts. Wait a few minutes and try again."
+
 #. @context: Divider between the original post and the editor writing its translation, when the target language is not known yet
 #: src/ui/compose/ComposeDialog.tsx
 msgid "Translating"

@@ -64,6 +64,7 @@ import {
   resolveSupportedLocaleTag,
 } from "../../i18n/supported-locales.js";
 import { toPublicPath } from "../../lib/url.js";
+import { checkRequestRateLimit } from "../../lib/rate-limit.js";
 import { ONBOARDING_STATUS } from "../../lib/constants.js";
 import { announceInBackground } from "../discover-announce.js";
 import {
@@ -83,6 +84,9 @@ import {
   type DiscoverCopy,
 } from "../../ui/dash/settings/discover-copy.js";
 
+/** Setup submissions allowed per client in a window. */
+const SETUP_ATTEMPTS_PER_CLIENT = 20;
+const SETUP_WINDOW_SEC = 10 * 60;
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
 /**
@@ -1007,6 +1011,25 @@ setupRoutes.post("/setup", async (c) => {
   const status = await c.var.services.settings.getOnboardingStatus();
   if (status === ONBOARDING_STATUS.COMPLETED)
     return c.redirect(toPublicPath("/", c.var.appConfig.sitePathPrefix));
+
+  const limit = await checkRequestRateLimit(c, {
+    name: "setup",
+    limit: SETUP_ATTEMPTS_PER_CLIENT,
+    windowSec: SETUP_WINDOW_SEC,
+  });
+  if (!limit.ok) {
+    const i18n = getI18n(c);
+    return dsToast(
+      i18n._(
+        msg({
+          message: "Too many setup attempts. Wait a few minutes and try again.",
+          comment:
+            "@context: Error toast when setup attempts hit the rate limit",
+        }),
+      ),
+      "error",
+    );
+  }
 
   const body = await c.req.json<Record<string, string>>();
 
