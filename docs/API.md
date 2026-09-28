@@ -768,7 +768,7 @@ Example:
 
 Request body fields:
 
-This endpoint accepts the same JSON fields as `POST /api/posts`, except `path`. All fields are optional. Additionally, update accepts `null` to clear `title`, `sourceName`, `body`, `bodyMarkdown`, `url`, `sourceUrl`, `quoteText`, and `rating`.
+This endpoint accepts the same JSON fields as `POST /api/posts`, except the ones a post gets when it's created: `path`, `replyToId`, `quietReply`, `translationOfId`, `createdAt`, and `updatedAt`. It ignores those like any other field it doesn't know. All fields are optional. Additionally, update accepts `null` to clear `title`, `sourceName`, `body`, `bodyMarkdown`, `url`, `sourceUrl`, `quoteText`, and `rating`.
 
 Attachment replacement rules:
 
@@ -778,8 +778,9 @@ Attachment replacement rules:
 
 Notes:
 
-- `path` is not supported on update. Use `slug` for canonical URL changes and `custom-urls` for extra aliases.
-- For quote posts, keep using `sourceName` and `sourceUrl`.
+- To change a post's address, send `slug`, or add a custom URL through `/api/custom-urls`.
+- The fields must suit the post's format, the one in the body or else its current one, with the same rules as create: a note takes no `url` or `sourceName`, and a quote uses `sourceName` and `sourceUrl`, not `title` and `url`. A field that doesn't answers `400`.
+- To link a post as a translation, use the [translation](#language-and-translations) endpoints. A reply's place in its Thread is fixed when it's created.
 - Thread replies reject direct `visibility` and `pinned` changes.
 - Sending `collectionIds` from either a Root or Child update replaces the shared Thread Collection set.
 - Draft updates cannot set `publishedAt`.

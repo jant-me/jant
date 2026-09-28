@@ -32,6 +32,7 @@ import {
   postWriteDeps,
   toCreatePostInput,
   toUpdatePostInput,
+  assertUpdateFitsFormat,
 } from "../../lib/api-post-input.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -149,6 +150,8 @@ postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
 
   const body = parseValidated(UpdatePostApiSchema, await readJsonBody(c));
+  const existing = assertFound(await c.var.services.posts.getById(id), "Post");
+  assertUpdateFitsFormat(body, existing.format);
   const deps = postWriteDeps(c.var);
   const post = assertFound(
     await c.var.services.posts.updateWithAttachments(

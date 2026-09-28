@@ -51,6 +51,7 @@ import {
   postWriteDeps,
   toCreatePostInput,
   toUpdatePostInput,
+  assertUpdateFitsFormat,
 } from "../lib/api-post-input.js";
 
 export const MCP_PROTOCOL_VERSION = "2025-06-18";
@@ -522,8 +523,6 @@ const mcpTools: McpToolDefinition[] = [
       additionalProperties: true,
     },
     async execute(args, context) {
-      // The body schema is strict, so `id` comes off before it is checked:
-      // passed along, it failed every call as an unknown field.
       const { id, ...fields } = z
         .object({
           id: PostIdSchema,
@@ -531,6 +530,11 @@ const mcpTools: McpToolDefinition[] = [
         .passthrough()
         .parse(args ?? {});
       const input = UpdatePostApiSchema.parse(fields);
+      const existing = await context.services.posts.getById(id);
+      if (!existing) {
+        throw new NotFoundError("Post");
+      }
+      assertUpdateFitsFormat(input, existing.format);
       const deps = postWriteDeps(context);
       const post = await context.services.posts.updateWithAttachments(
         id,

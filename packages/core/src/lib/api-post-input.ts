@@ -14,7 +14,12 @@ import type { PostAttachmentDeps, SummaryConfig } from "../services/post.js";
 import type { StorageDriver } from "./storage.js";
 import type { AppConfig } from "../types/config.js";
 import type { CreatePost, UpdatePost } from "../types.js";
-import type { CreatePostApiSchema, UpdatePostApiSchema } from "./schemas.js";
+import {
+  postFormatIssues,
+  type CreatePostApiSchema,
+  type UpdatePostApiSchema,
+} from "./schemas.js";
+import { ValidationError } from "./errors.js";
 
 type CreatePostApiBody = z.infer<typeof CreatePostApiSchema>;
 type UpdatePostApiBody = z.infer<typeof UpdatePostApiSchema>;
@@ -120,4 +125,32 @@ export function postWriteDeps(deps: {
       maxChars: deps.appConfig.summaryMaxChars,
     },
   };
+}
+
+/**
+ * Refuse an update that sends a field the post's format doesn't allow.
+ *
+ * Create checks this in the schema, where the format is in the body. An update
+ * may leave the format out, so the check needs the post's current one: a
+ * `sourceName` sent to a note would otherwise land in its title.
+ *
+ * @param body - A body `UpdatePostApiSchema` accepted
+ * @param currentFormat - The post's format before the update
+ * @throws {ValidationError} On the first field the format doesn't allow
+ * @example
+ * assertUpdateFitsFormat(body, existing.format);
+ */
+export function assertUpdateFitsFormat(
+  body: UpdatePostApiBody,
+  currentFormat: string,
+): void {
+  const [issue] = postFormatIssues(body.format ?? currentFormat, body, {
+    complete: false,
+  });
+  if (issue) {
+    throw new ValidationError(issue.message, {
+      fieldErrors: { [issue.path]: [issue.message] },
+      formErrors: [],
+    });
+  }
 }

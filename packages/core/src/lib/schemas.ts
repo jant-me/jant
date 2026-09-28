@@ -423,6 +423,121 @@ function hasNonEmptyText(value: string | null | undefined): boolean {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+/** A field a post's format doesn't allow, or needs and lacks. */
+export interface PostFormatIssue {
+  path: string;
+  message: string;
+}
+
+/**
+ * The fields a post of this format mustn't carry, and, with `complete`, the
+ * ones it must.
+ *
+ * Create checks both. Update checks only what the body sends against the
+ * format the post will have, since a field it leaves out keeps its value.
+ *
+ * @param format - The post's format after the request
+ * @param data - The request's format-specific fields
+ * @param options.complete - Whether missing required fields count
+ * @returns Every issue found, in field order
+ * @example
+ * postFormatIssues("note", { sourceName: "Ada" }, { complete: false });
+ * // [{ path: "sourceName", message: "Notes can't include a source name." }]
+ */
+export function postFormatIssues(
+  format: string,
+  data: {
+    title?: string | null;
+    sourceName?: string | null;
+    url?: string | null;
+    sourceUrl?: string | null;
+    quoteText?: string | null;
+  },
+  options: { complete: boolean },
+): PostFormatIssue[] {
+  const has = {
+    url: hasNonEmptyText(data.url),
+    sourceUrl: hasNonEmptyText(data.sourceUrl),
+    quoteText: hasNonEmptyText(data.quoteText),
+    title: hasNonEmptyText(data.title),
+    sourceName: hasNonEmptyText(data.sourceName),
+  };
+  const issues: PostFormatIssue[] = [];
+
+  if (format === "note") {
+    if (has.url)
+      issues.push({ path: "url", message: "Notes can't include a URL." });
+    if (has.quoteText) {
+      issues.push({
+        path: "quoteText",
+        message: "Notes can't include quoted text.",
+      });
+    }
+    if (has.sourceName) {
+      issues.push({
+        path: "sourceName",
+        message: "Notes can't include a source name.",
+      });
+    }
+    if (has.sourceUrl) {
+      issues.push({
+        path: "sourceUrl",
+        message: "Notes can't include a source URL.",
+      });
+    }
+  }
+
+  if (format === "link") {
+    if (options.complete && !has.title) {
+      issues.push({ path: "title", message: "Link posts need a title." });
+    }
+    if (options.complete && !has.url) {
+      issues.push({ path: "url", message: "Link posts need a URL." });
+    }
+    if (has.quoteText) {
+      issues.push({
+        path: "quoteText",
+        message: "Link posts can't include quoted text.",
+      });
+    }
+    if (has.sourceName) {
+      issues.push({
+        path: "sourceName",
+        message: "Link posts can't include a source name.",
+      });
+    }
+    if (has.sourceUrl) {
+      issues.push({
+        path: "sourceUrl",
+        message: "Link posts can't include a source URL.",
+      });
+    }
+  }
+
+  if (format === "quote") {
+    if (options.complete && !has.quoteText) {
+      issues.push({
+        path: "quoteText",
+        message: "Quote posts need quoted text.",
+      });
+    }
+    if (has.title) {
+      issues.push({
+        path: "title",
+        message: "Quote posts use sourceName instead of title.",
+      });
+    }
+    if (has.url) {
+      issues.push({
+        path: "url",
+        message: "Quote posts use sourceUrl instead of url.",
+      });
+    }
+  }
+
+  return issues;
+}
+
 function refineCreatePostFormatShape<
   T extends {
     format: string;
@@ -434,102 +549,13 @@ function refineCreatePostFormatShape<
   },
 >(schema: z.ZodType<T>) {
   return schema.superRefine((data, ctx) => {
-    const hasUrl = hasNonEmptyText(data.url);
-    const hasSourceUrl = hasNonEmptyText(data.sourceUrl);
-    const hasQuoteText = hasNonEmptyText(data.quoteText);
-    const hasTitle = hasNonEmptyText(data.title);
-    const hasSourceName = hasNonEmptyText(data.sourceName);
-
-    if (data.format === "note") {
-      if (hasUrl) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["url"],
-          message: "Notes can't include a URL.",
-        });
-      }
-      if (hasQuoteText) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["quoteText"],
-          message: "Notes can't include quoted text.",
-        });
-      }
-      if (hasSourceName) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["sourceName"],
-          message: "Notes can't include a source name.",
-        });
-      }
-      if (hasSourceUrl) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["sourceUrl"],
-          message: "Notes can't include a source URL.",
-        });
-      }
-    }
-
-    if (data.format === "link") {
-      if (!hasTitle) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["title"],
-          message: "Link posts need a title.",
-        });
-      }
-      if (!hasUrl) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["url"],
-          message: "Link posts need a URL.",
-        });
-      }
-      if (hasQuoteText) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["quoteText"],
-          message: "Link posts can't include quoted text.",
-        });
-      }
-      if (hasSourceName) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["sourceName"],
-          message: "Link posts can't include a source name.",
-        });
-      }
-      if (hasSourceUrl) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["sourceUrl"],
-          message: "Link posts can't include a source URL.",
-        });
-      }
-    }
-
-    if (data.format === "quote" && !hasQuoteText) {
+    for (const issue of postFormatIssues(data.format, data, {
+      complete: true,
+    })) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["quoteText"],
-        message: "Quote posts need quoted text.",
-      });
-    }
-
-    if (data.format === "quote" && hasTitle) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["title"],
-        message: "Quote posts use sourceName instead of title.",
-      });
-    }
-
-    if (data.format === "quote" && hasUrl) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["url"],
-        message: "Quote posts use sourceUrl instead of url.",
+        path: [issue.path],
+        message: issue.message,
       });
     }
   });
@@ -603,16 +629,25 @@ const UpdatePostFieldsSchema = PostFieldsSchema.partial().extend({
   rating: createNullableUpdateRatingSchema(),
 });
 
-const UpdatePostApiFieldsSchema = ApiPostFieldsSchema.partial().extend({
-  title: sanitizeNullableUpdateText(300),
-  sourceName: sanitizeNullableUpdateText(300),
-  body: z.string().nullable().optional(),
-  bodyMarkdown: z.string().nullable().optional(),
-  url: sanitizeNullableUpdateUrl(),
-  sourceUrl: sanitizeNullableUpdateUrl(),
-  quoteText: z.string().nullable().optional(),
-  rating: createNullableUpdateRatingSchema(),
-});
+// A post's place in a Thread, its translation link, and its creation path are
+// set when it's created; an update names none of them.
+const UpdatePostApiFieldsSchema = ApiPostFieldsSchema.omit({
+  path: true,
+  replyToId: true,
+  quietReply: true,
+  translationOfId: true,
+})
+  .partial()
+  .extend({
+    title: sanitizeNullableUpdateText(300),
+    sourceName: sanitizeNullableUpdateText(300),
+    body: z.string().nullable().optional(),
+    bodyMarkdown: z.string().nullable().optional(),
+    url: sanitizeNullableUpdateUrl(),
+    sourceUrl: sanitizeNullableUpdateUrl(),
+    quoteText: z.string().nullable().optional(),
+    rating: createNullableUpdateRatingSchema(),
+  });
 
 export const UpdatePostSchema = refineSlugPathExclusivity(
   refineBodyExclusivity(UpdatePostFieldsSchema),

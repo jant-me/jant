@@ -962,6 +962,57 @@ describe("Posts API Routes", () => {
       expect(body.attachments).toEqual([]);
     });
 
+    it("refuses a field the post's format doesn't take", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+      const note = await services.posts.create({
+        format: "note",
+        title: "Kept",
+        bodyMarkdown: "original",
+      });
+
+      const res = await app.request(`/api/posts/${note.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceName: "Someone" }),
+      });
+
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toMatchObject({
+        code: "VALIDATION_ERROR",
+        error: "Notes can't include a source name.",
+      });
+      expect((await services.posts.getById(note.id))?.title).toBe("Kept");
+    });
+
+    it("ignores the fields a post gets only when it's created", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+      const root = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "root",
+      });
+      const note = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "original",
+      });
+
+      const res = await app.request(`/api/posts/${note.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bodyMarkdown: "updated",
+          replyToId: root.id,
+          path: "somewhere-else",
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const updated = await services.posts.getById(note.id);
+      expect(updated?.replyToId).toBeNull();
+      expect(updated?.slug).toBe(note.slug);
+    });
+
     it("updates post with attachments to replace attachments", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/posts", postsApiRoutes);
