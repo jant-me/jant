@@ -282,7 +282,7 @@ describe("Telegram webhook route", () => {
   });
 
   it("posts a photo as a note with the photo attached", async () => {
-    const photoBytes = new Uint8Array([1, 2, 3, 4, 5]);
+    const photoBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
     calls = mockTelegramFetch({
       files: new Map([["photo-file-id", photoBytes]]),
     });
@@ -342,7 +342,9 @@ describe("Telegram webhook route", () => {
 
   it("uses the caption as the note body and folds caption entities to markdown", async () => {
     calls = mockTelegramFetch({
-      files: new Map([["photo-file-id", new Uint8Array([9, 8, 7])]]),
+      files: new Map([
+        ["photo-file-id", new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 9, 8, 7])],
+      ]),
     });
     const storage = createMockStorage();
     const { app, services, sqlite } = setup({ storage });
@@ -387,7 +389,10 @@ describe("Telegram webhook route", () => {
   });
 
   it("downloads the video thumbnail as the media poster", async () => {
-    const videoBytes = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+    // An MP4 starts with a box size, then `ftyp`.
+    const videoBytes = new Uint8Array([
+      0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 1, 2, 3, 4,
+    ]);
     const thumbBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 9, 9, 9]);
     calls = mockTelegramFetch({
       files: new Map([
@@ -443,7 +448,7 @@ describe("Telegram webhook route", () => {
   });
 
   it("posts a video document with mime + filename preserved", async () => {
-    const docBytes = new Uint8Array([10, 20, 30, 40]);
+    const docBytes = new TextEncoder().encode("%PDF-1.7 body");
     calls = mockTelegramFetch({ files: new Map([["doc-id", docBytes]]) });
     const storage = createMockStorage();
     const { app, services, sqlite } = setup({ storage });
@@ -487,8 +492,8 @@ describe("Telegram webhook route", () => {
 
   it("merges an album (media_group_id) into a single post with both photos", async () => {
     vi.useFakeTimers();
-    const a = new Uint8Array([1, 1, 1]);
-    const b = new Uint8Array([2, 2, 2]);
+    const a = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 1, 1]);
+    const b = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 2, 2, 2]);
     calls = mockTelegramFetch({
       files: new Map([
         ["file-a", a],
