@@ -72,6 +72,38 @@ async function readSettings(db: ReturnType<typeof createSetupApp>["db"]) {
   return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 }
 
+describe("self-hosted setup under an operator's environment", () => {
+  it("offers SITE_LANGUAGE and keeps TIME_ZONE instead of the browser's", async () => {
+    const { app, db } = createSetupApp({
+      env: { SITE_LANGUAGE: "fi", TIME_ZONE: "Europe/Helsinki" },
+    });
+
+    const cookie = sessionCookie(
+      await post(app, { email: "owner@example.com", password: PASSWORD }),
+    );
+    const secondHtml = await (
+      await app.request("/setup", { headers: { Cookie: cookie } })
+    ).text();
+    expect(secondHtml).toMatch(/<option[^>]*value="fi"[^>]*selected/);
+
+    await post(
+      app,
+      {
+        siteName: "Blogi",
+        contentLanguage: "fi",
+        language: "en-US",
+        timezone: "America/New_York",
+      },
+      cookie,
+    );
+
+    const finished = await readSettings(db);
+    expect(finished["ONBOARDING_STATUS"]).toBe("completed");
+    // Not stored, so the operator's TIME_ZONE keeps deciding.
+    expect(finished["TIME_ZONE"]).toBeUndefined();
+  });
+});
+
 describe("self-hosted setup, both screens", () => {
   it("walks an empty install to a finished site", async () => {
     const { app, db } = createSetupApp();

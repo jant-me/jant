@@ -50,6 +50,8 @@ interface TestAppOptions {
   rssPublishDelaySeconds?: number;
   /** `SITE_PATH_PREFIX`, such as `/blog`; none by default. */
   sitePathPrefix?: string;
+  /** More environment bindings, as an operator would set them. */
+  env?: Partial<Record<keyof Bindings, string>>;
 }
 
 /**
@@ -100,6 +102,7 @@ export function createTestApp(options: TestAppOptions = {}) {
         schema: sqliteSchemaBundle,
       },
       SITE_RESOLUTION_MODE: options.siteResolutionMode,
+      ...options.env,
     } as AppVariables["services"] extends never ? never : Bindings;
 
     c.set("services", services as AppVariables["services"]);

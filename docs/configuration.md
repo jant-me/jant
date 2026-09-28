@@ -507,7 +507,7 @@ them unset.
 
 ## Settings page options
 
-These settings can be changed on Jant's Settings page after setup. Each one can also be seeded from an environment variable of the same name — values changed in Settings take precedence over the environment variable.
+These settings can be changed on Jant's Settings page after setup. Each one can also be seeded from an environment variable of the same name — values changed in Settings take precedence over the environment variable. Setup asks for the site's language with `SITE_LANGUAGE` filled in and stores the answer, and takes the time zone from the browser only when `TIME_ZONE` isn't set.
 
 | Setting                      | What it does                                     |
 | ---------------------------- | ------------------------------------------------ |

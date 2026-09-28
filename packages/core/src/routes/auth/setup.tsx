@@ -56,6 +56,7 @@ import {
 } from "../../lib/schemas.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { mapIanaToTimezone } from "../../lib/timezones.js";
+import { readConfigEnvValue } from "../../lib/env-values.js";
 import { getI18n } from "../../i18n/index.js";
 import { isCurrentSiteMember } from "../../middleware/auth.js";
 import type { I18n } from "../../i18n/i18n.js";
@@ -781,10 +782,11 @@ setupRoutes.get("/setup", async (c) => {
         contentLanguage={
           // On a named site the control plane's guess is already stored, so
           // offering it back is offering the site's current language. On an
-          // unnamed one nothing has been stored yet, so the browser's header is
-          // the only prefill there is.
+          // unnamed one nothing has been stored yet: the operator's
+          // SITE_LANGUAGE comes first, then the browser's header.
           askSiteName
-            ? resolveSupportedLocaleTag(c.req.header("Accept-Language"))
+            ? (readConfigEnvValue(c.env, "SITE_LANGUAGE") ??
+              resolveSupportedLocaleTag(c.req.header("Accept-Language")))
             : appConfig.siteLanguage
         }
         // Only a named site has a name worth showing: until the second screen
@@ -983,8 +985,13 @@ async function storeSiteAnswers(
       browserLanguage: body.language,
       // Left alone on a site whose clock the control plane already set: this
       // screen can be opened from anywhere, and the browser reporting a
-      // different zone is not the author moving their site.
-      timeZone: siteName ? mapIanaToTimezone(body.timezone ?? "") : undefined,
+      // different zone is not the author moving their site. Left alone too
+      // when the operator set TIME_ZONE: storing the browser's zone would
+      // outrank it for good.
+      timeZone:
+        siteName && !readConfigEnvValue(c.env, "TIME_ZONE")
+          ? mapIanaToTimezone(body.timezone ?? "")
+          : undefined,
     },
     { oldLanguage: c.var.appConfig.siteLanguage },
     {
