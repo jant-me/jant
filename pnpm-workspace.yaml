@@ -38,10 +38,11 @@ onlyBuiltDependencies:
 # the next minor.
 overrides:
   # `@lingui/swc-plugin` is a Wasm plugin: the `swc_core` ABI it targets is
-  # fixed when the plugin is compiled, so the host `@swc/core` has to match it
-  # exactly. 1.16.2 does not — every transform fails with "Failed to
-  # deserialize program received from host", which surfaces as an SSR module
-  # evaluation error on the first request, not at install time.
+  # fixed when the plugin is compiled, so the host `@swc/core` has to match it.
+  # 6.7 is built against swc_core 77 and runs on 1.16.2; the 5.x plugin, built
+  # against swc_core 50, failed on 1.16.2 with "Failed to deserialize program
+  # received from host", which surfaces as an SSR module evaluation error on
+  # the first request, not at install time.
   #
   # Pinning the direct dependency is not enough: `tsup` takes `@swc/core` as an
   # optional peer with an open range, and that resolution is what the plugin
@@ -50,9 +51,10 @@ overrides:
   # This override is the only thing that survives both.
   #
   # Raise it only together with a `@lingui/swc-plugin` release built for the
-  # newer `swc_core`, and verify by actually requesting a page from
-  # `mise run dev-node` — the error does not appear until a module is evaluated.
-  "@swc/core": 1.15.47
+  # newer `swc_core` (its README's compatibility table), and verify by actually
+  # requesting a page from `mise run dev-node` — the error does not appear
+  # until a module is evaluated.
+  "@swc/core": 1.16.2
 
   # pinyin-pro 3.29.1 schedules its Aho-Corasick build with setTimeout at
   # module scope, which Cloudflare Workers reject at deploy time ("Disallowed
