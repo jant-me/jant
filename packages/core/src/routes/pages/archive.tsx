@@ -488,9 +488,12 @@ export async function renderArchivePage(
       limit: pageSize,
       offset: (params.currentPage - 1) * pageSize,
     }),
+    // The year picker is part of the page, so a signed-out reader mustn't
+    // learn from it that private posts exist in a given year.
     services.posts.getDistinctYears({
       status: "published",
       excludeReplies: true,
+      excludePrivate: !isAuthenticated,
       lang: filters.lang,
       sortBy: filters.sortBy,
     }),
