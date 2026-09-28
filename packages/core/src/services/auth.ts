@@ -26,6 +26,7 @@ import {
   ConfigurationError,
   ValidationError,
   NotFoundError,
+  ForbiddenError,
 } from "../lib/errors.js";
 import { hashPassword } from "../lib/password.js";
 
@@ -100,6 +101,13 @@ export function createAuthService(
     databaseDialect?: DatabaseDialect;
     /** Signing key for derived tokens. Absent only where no route needs one. */
     authSecret?: string;
+    /** The site whose owner a password reset applies to. */
+    siteId?: string;
+    /**
+     * `host-based` when one database holds many sites. A factory reset wipes
+     * every table, so it is refused there.
+     */
+    siteResolutionMode?: "single-site" | "host-based";
   },
   databaseSchema: DatabaseSchema = sqliteSchemaBundle,
 ): AuthService {
@@ -223,12 +231,28 @@ export function createAuthService(
 
       const hashedPw = await hashPassword(newPassword);
 
-      // Get admin user (single-author system)
-      const userResult = await db.select({ id: user.id }).from(user).limit(1);
-      if (!userResult[0]) {
+      // The reset token belongs to this site, so it resets this site's owner.
+      // The user table is shared by every site in a host-based database, so
+      // "the first user" could be someone else's account.
+      if (!config?.siteId) {
+        throw new ConfigurationError(
+          "A password reset needs the current site.",
+        );
+      }
+      const owners = await db
+        .select({ id: siteMembers.userId })
+        .from(siteMembers)
+        .where(
+          and(
+            eq(siteMembers.siteId, config.siteId),
+            eq(siteMembers.role, "owner"),
+          ),
+        )
+        .limit(1);
+      if (!owners[0]) {
         throw new NotFoundError("User account");
       }
-      const userId = userResult[0].id;
+      const userId = owners[0].id;
 
       // Update password
       await db
@@ -255,6 +279,14 @@ export function createAuthService(
     },
 
     async deleteAllData(deps) {
+      // Every delete below is table-wide. In a host-based database that is
+      // every site's data, so deleting a site belongs to the control plane.
+      if (config?.siteResolutionMode === "host-based") {
+        throw new ForbiddenError(
+          "This server hosts more than one site, so a site can't be deleted from its own settings.",
+        );
+      }
+
       // 1. Collect all storage keys for cleanup before deleting DB records
       if (deps?.storage) {
         const mediaRows = await db

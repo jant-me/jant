@@ -456,4 +456,119 @@ describe("AuthService", () => {
       );
     });
   });
+
+  describe("resetPassword", () => {
+    const OTHER_SITE_ID = "sit_otherreset0000000000000000";
+
+    beforeEach(() => {
+      const testDb = createTestDatabase();
+      db = testDb.db as unknown as Database;
+    });
+
+    async function seedUser(id: string, email: string, siteId: string) {
+      const createdAt = new Date();
+      const timestamp = Math.floor(Date.now() / 1000);
+      await db.insert(user).values({
+        id,
+        name: email,
+        email,
+        emailVerified: true,
+        createdAt,
+        updatedAt: createdAt,
+      });
+      await db.insert(account).values({
+        id: id.replace("usr_", "acc_"),
+        accountId: email,
+        providerId: "credential",
+        userId: id,
+        password: "old-hash",
+        createdAt,
+        updatedAt: createdAt,
+      });
+      await db.insert(siteMembers).values({
+        siteId,
+        userId: id,
+        role: "owner",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
+
+    async function passwordOf(userId: string) {
+      const rows = await db
+        .select({ password: account.password })
+        .from(account)
+        .where(sql`${account.userId} = ${userId}`);
+      return rows[0]?.password;
+    }
+
+    it("resets this site's owner, not the first account in the database", async () => {
+      const timestamp = Math.floor(Date.now() / 1000);
+      await db.insert(sites).values({
+        id: OTHER_SITE_ID,
+        key: "other",
+        status: "active",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+      // Created first, so a bare `SELECT … LIMIT 1` would pick it.
+      await seedUser(
+        "usr_01otherowner0000000000000",
+        "other@example.com",
+        OTHER_SITE_ID,
+      );
+      await seedUser(
+        "usr_01thisowner00000000000000",
+        "me@example.com",
+        DEFAULT_TEST_SITE_ID,
+      );
+
+      const settingsService = createSettingsService(db, DEFAULT_TEST_SITE_ID);
+      const authService = createAuthService(db, settingsService, {
+        siteId: DEFAULT_TEST_SITE_ID,
+      });
+      const token = "reset-token";
+      const digest = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(token),
+      );
+      const tokenHash = Array.from(new Uint8Array(digest))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      await settingsService.set(
+        SETTINGS_KEYS.PASSWORD_RESET_TOKEN,
+        `${tokenHash}:${timestamp + 900}`,
+      );
+
+      await authService.resetPassword(token, "new-password-123");
+
+      expect(await passwordOf("usr_01thisowner00000000000000")).not.toBe(
+        "old-hash",
+      );
+      expect(await passwordOf("usr_01otherowner0000000000000")).toBe(
+        "old-hash",
+      );
+    });
+  });
+
+  describe("deleteAllData in a host-based database", () => {
+    beforeEach(() => {
+      const testDb = createTestDatabase();
+      db = testDb.db as unknown as Database;
+    });
+
+    it("refuses, since every table holds other sites' rows too", async () => {
+      await seedAuthData();
+      const settingsService = createSettingsService(db, DEFAULT_TEST_SITE_ID);
+      const authService = createAuthService(db, settingsService, {
+        siteId: DEFAULT_TEST_SITE_ID,
+        siteResolutionMode: "host-based",
+      });
+
+      await expect(authService.deleteAllData()).rejects.toThrow(
+        "more than one site",
+      );
+      expect(await db.select().from(user)).toHaveLength(1);
+    });
+  });
 });

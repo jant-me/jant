@@ -157,6 +157,8 @@ export function createServices(
       {
         databaseDialect: dialect,
         authSecret: config?.authSecret,
+        siteId,
+        siteResolutionMode: config?.siteResolutionMode,
       },
       databaseSchema,
     ),
