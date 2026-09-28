@@ -210,7 +210,7 @@ export type {
   SmartCollectionService,
   SmartCollectionViewer,
 } from "./smart-collection.js";
-export type { MediaService, MediaFilters } from "./media.js";
+export type { MediaService, MediaListPage } from "./media.js";
 export type { UploadSessionService } from "./upload-session.js";
 export type { CollectionService } from "./collection.js";
 export type { SearchService, SearchResult, SearchOptions } from "./search.js";

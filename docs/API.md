@@ -189,7 +189,7 @@ Invalid IDs return `400`.
 
 ### Pagination
 
-The post list (`GET /api/posts`), the Thread lists (`GET /api/threads`, `GET /api/public/threads`), a Thread's posts (`GET /api/threads/:id/posts`, `GET /api/public/threads/:slug/posts`), and the `jant_posts_list`, `jant_threads_list`, and `jant_threads_list_posts` MCP tools return one page and a `nextCursor`. Repeat the request with `cursor` set to `nextCursor` for the next page. `nextCursor` is `null` on the last page.
+The post list (`GET /api/posts`), the Thread lists (`GET /api/threads`, `GET /api/public/threads`), a Thread's posts (`GET /api/threads/:id/posts`, `GET /api/public/threads/:slug/posts`), the media list (`GET /api/media`), the custom URL list (`GET /api/custom-urls`), and the `jant_posts_list`, `jant_threads_list`, `jant_threads_list_posts`, and `jant_media_list` MCP tools return one page and a `nextCursor`. Repeat the request with `cursor` set to `nextCursor` for the next page. `nextCursor` is `null` on the last page.
 
 - `nextCursor` is opaque: pass it back unchanged. Its format is not part of the API.
 - A post that exists for the whole walk and keeps its place in the order is returned exactly once, whatever else is published, edited, or deleted between requests. A post that moves during the walk, because its publish date is edited or a reply moves its Thread up, can be skipped or returned twice. To walk everything, use an order a reply doesn't move: `GET /api/posts`, or `sort=published` on a Thread list.

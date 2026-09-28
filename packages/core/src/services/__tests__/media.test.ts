@@ -875,21 +875,15 @@ describe("MediaService", () => {
     });
   });
 
-  describe("list", () => {
-    it("returns empty array when no media exists", async () => {
-      const list = await mediaService.list();
-      expect(list).toEqual([]);
+  describe("listPage", () => {
+    it("returns an empty page when no media exists", async () => {
+      await expect(mediaService.listPage({ limit: 10 })).resolves.toEqual({
+        media: [],
+        nextCursor: null,
+      });
     });
 
-    it("returns media ordered by createdAt desc", async () => {
-      await mediaService.create({ ...sampleMedia, storageKey: "a.jpg" });
-      await mediaService.create({ ...sampleMedia, storageKey: "b.jpg" });
-
-      const list = await mediaService.list();
-      expect(list).toHaveLength(2);
-    });
-
-    it("respects limit parameter", async () => {
+    it("respects the limit", async () => {
       for (let i = 0; i < 5; i++) {
         await mediaService.create({
           ...sampleMedia,
@@ -897,12 +891,12 @@ describe("MediaService", () => {
         });
       }
 
-      const list = await mediaService.list({ limit: 2 });
-      expect(list).toHaveLength(2);
+      const page = await mediaService.listPage({ limit: 2 });
+      expect(page.media).toHaveLength(2);
+      expect(page.nextCursor).toEqual(expect.any(String));
     });
 
-    // The API used to stop at 200 items with no way to ask for the rest.
-    it("pages through every item with an ID cursor", async () => {
+    it("pages through every item, newest first", async () => {
       const created = [];
       for (let i = 0; i < 5; i++) {
         created.push(
@@ -917,19 +911,39 @@ describe("MediaService", () => {
         .sort()
         .reverse();
 
-      const first = await mediaService.list({ limit: 2 });
-      const second = await mediaService.list({
-        limit: 2,
-        cursor: first.at(-1)?.id,
-      });
-      const third = await mediaService.list({
-        limit: 2,
-        cursor: second.at(-1)?.id,
-      });
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await mediaService.listPage({ limit: 2, cursor });
+        seen.push(...page.media.map((media) => media.id));
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor);
 
-      expect([...first, ...second, ...third].map((media) => media.id)).toEqual(
-        newestFirst,
-      );
+      expect(seen).toEqual(newestFirst);
+    });
+
+    // A full last page used to hand back a cursor that led to an empty page.
+    it("ends with a null cursor when the last page is full", async () => {
+      for (let i = 0; i < 4; i++) {
+        await mediaService.create({
+          ...sampleMedia,
+          storageKey: `full${i}.jpg`,
+        });
+      }
+
+      const first = await mediaService.listPage({ limit: 2 });
+      const second = await mediaService.listPage({
+        limit: 2,
+        cursor: first.nextCursor ?? undefined,
+      });
+      expect(second.media).toHaveLength(2);
+      expect(second.nextCursor).toBeNull();
+    });
+
+    it("refuses a cursor it didn't issue", async () => {
+      await expect(
+        mediaService.listPage({ limit: 2, cursor: "not-a-cursor" }),
+      ).rejects.toThrow();
     });
   });
 

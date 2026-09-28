@@ -98,7 +98,7 @@ describe("Settings - Avatar Upload Logic", () => {
         },
       );
 
-      const mediaList = await mediaService.list();
+      const mediaList = (await mediaService.listPage({ limit: 10 })).media;
       expect(mediaList).toHaveLength(1);
       expect(mediaList[0].originalName).toBe("logo.png");
       expect(mediaList[0].mimeType).toBe("image/png");

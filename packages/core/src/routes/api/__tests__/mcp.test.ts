@@ -570,7 +570,9 @@ describe("MCP API Routes", () => {
       width: 1200,
       height: 800,
     });
-    expect(await services.media.list()).toHaveLength(1);
+    expect((await services.media.listPage({ limit: 10 })).media).toHaveLength(
+      1,
+    );
   });
 
   it("returns text attachment content through tools/call", async () => {

@@ -859,7 +859,7 @@ describe("Settings API Routes", () => {
       );
       expect(storage.put).toHaveBeenCalledTimes(2);
 
-      const mediaList = await services.media.list();
+      const mediaList = (await services.media.listPage({ limit: 10 })).media;
       expect(mediaList).toHaveLength(2);
       const originalNames = mediaList.map((entry) => entry.originalName).sort();
       expect(originalNames).toEqual(["apple-touch-icon.png", "avatar.png"]);

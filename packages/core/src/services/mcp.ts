@@ -558,16 +558,17 @@ const mcpTools: McpToolDefinition[] = [
     inputSchema: toolInputSchema(ListMediaToolSchema),
     async execute(args, context) {
       const input = ListMediaToolSchema.parse(args ?? {});
-      const media = await context.services.media.list({
+      const page = await context.services.media.listPage({
         limit: input.limit,
         mimePrefix: input.mimePrefix,
         cursor: input.cursor,
       });
 
       return {
-        media: media.map((item) => serializeMedia(item, context.appConfig)),
-        nextCursor:
-          media.length === input.limit ? (media.at(-1)?.id ?? null) : null,
+        media: page.media.map((item) =>
+          serializeMedia(item, context.appConfig),
+        ),
+        nextCursor: page.nextCursor,
       };
     },
   },

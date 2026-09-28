@@ -16,7 +16,11 @@ import {
   sqliteSchemaBundle,
   type DatabaseSchema,
 } from "../db/schema-bundle.js";
-import { createEntityId } from "../lib/ids.js";
+import { createEntityId, ID_PREFIX } from "../lib/ids.js";
+import {
+  decodePostListCursor,
+  encodePostListCursor,
+} from "../lib/post-list-cursor.js";
 import { markdownToTiptapJson } from "../lib/markdown-to-tiptap.js";
 import { extractBodyText } from "../lib/summary.js";
 import { now } from "../lib/time.js";
@@ -169,13 +173,22 @@ function ensureMediaKind(
   );
 }
 
-export interface MediaFilters {
-  limit?: number;
+export interface MediaListPageOptions {
+  limit: number;
   /** Filter by MIME type prefix, e.g. "image/" */
   mimePrefix?: string;
-  /** Exclusive media ID cursor: the last item of the previous page. */
+  /** The previous page's `nextCursor`. */
   cursor?: string;
 }
+
+/** One page of media, newest first. */
+export interface MediaListPage {
+  media: Media[];
+  /** Where the next page starts; `null` on the last page. */
+  nextCursor: string | null;
+}
+
+const MEDIA_CURSOR_MODE = "media:newest";
 
 export interface CreateTextAttachmentData {
   contentFormat: TextAttachmentContentFormat;
@@ -201,7 +214,16 @@ export interface MediaService {
   getByIds(ids: string[]): Promise<Media[]>;
   getByPostId(postId: string): Promise<Media[]>;
   getByPostIds(postIds: string[]): Promise<Map<string, Media[]>>;
-  list(filters?: MediaFilters): Promise<Media[]>;
+  /**
+   * One page of the site's media, newest first. The cursor is opaque; one
+   * row past the page says whether another exists, so the last page carries
+   * `null` rather than a cursor that leads nowhere.
+   *
+   * @param options - Page size, MIME prefix, and the previous page's cursor
+   * @returns The page and the cursor after it
+   * @throws {ValidationError} When the cursor can't be read
+   */
+  listPage(options: MediaListPageOptions): Promise<MediaListPage>;
   create(data: CreateMediaData): Promise<Media>;
   /**
    * Fetch a remote image URL server-side and store it as the site's own media.
@@ -595,26 +617,36 @@ export function createMediaService(
       return result[0] ? toMedia(result[0]) : null;
     },
 
-    async list(filters?: MediaFilters) {
-      const limit = filters?.limit ?? 100;
+    async listPage({ limit, mimePrefix, cursor }) {
       const conditions = [eq(media.siteId, siteId)];
-      if (filters?.mimePrefix) {
-        conditions.push(
-          sql`${media.mimeType} LIKE ${filters.mimePrefix + "%"}`,
-        );
+      if (mimePrefix) {
+        conditions.push(sql`${media.mimeType} LIKE ${mimePrefix + "%"}`);
       }
-      if (filters?.cursor) {
-        conditions.push(lt(media.id, filters.cursor));
+      if (cursor) {
+        const [afterId] = decodePostListCursor(cursor, {
+          mode: MEDIA_CURSOR_MODE,
+          kinds: ["id"],
+          idPrefix: ID_PREFIX.media,
+        });
+        conditions.push(lt(media.id, afterId as string));
       }
       // Newest first. A TypeID sorts by the time it was minted, so the ID
       // orders like `created_at` and never ties, which a cursor needs.
       const rows = await db
         .select()
         .from(media)
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .where(and(...conditions))
         .orderBy(desc(media.id))
-        .limit(limit);
-      return rows.map(toMedia);
+        .limit(limit + 1);
+      const page = rows.slice(0, limit);
+      const last = page.at(-1);
+      return {
+        media: page.map(toMedia),
+        nextCursor:
+          rows.length > limit && last
+            ? encodePostListCursor(MEDIA_CURSOR_MODE, [last.id])
+            : null,
+      };
     },
 
     async validateIds(ids) {
