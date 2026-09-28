@@ -815,6 +815,10 @@ function coerceBoolean(value) {
  *     site_footer, avatar urls, display preferences, and the ordered
  *     collections directory under `[[directory]]`.
  *
+ * Where both carry a value, `data/jant.toml` wins: it records the site,
+ * while `hugo.toml` configures a Hugo build the author may have edited.
+ * `hugo.toml` fills in only for exports that predate `data/jant.toml`.
+ *
  * This merger normalizes them into a single shape that downstream helpers
  * (`buildSettingsUpdatesFromConfig`, `normalizeImportedNavItems`,
  * `normalizeImportedCollectionDirectory`, `buildSiteAvatarImport`) already
@@ -841,27 +845,32 @@ async function loadSiteConfig(rootDir) {
 
   const params = hugoToml.params ?? {};
 
-  const title =
-    (typeof hugoToml.title === "string" && hugoToml.title) ||
-    (typeof jantData.site_name === "string" ? jantData.site_name : "");
-  const description =
-    (typeof params.description === "string" && params.description) ||
-    (typeof jantData.site_description === "string"
-      ? jantData.site_description
-      : "");
+  // `data/jant.toml` is the export's record of the site; `hugo.toml` is the
+  // Hugo site's configuration, which the author may have edited to build it.
+  // Read jant.toml first, and hugo.toml only for exports that predate it.
+  const fromJantData = (jantKey, fallback) =>
+    typeof jantData[jantKey] === "string" ? jantData[jantKey] : fallback;
+  const title = fromJantData(
+    "site_name",
+    typeof hugoToml.title === "string" ? hugoToml.title : "",
+  );
+  const description = fromJantData(
+    "site_description",
+    typeof params.description === "string" ? params.description : "",
+  );
   const baseUrl =
     typeof hugoToml.baseURL === "string"
       ? hugoToml.baseURL
       : typeof hugoToml.baseurl === "string"
         ? hugoToml.baseurl
         : "";
-  const language =
+  const language = fromJantData(
+    "site_language",
     (typeof hugoToml.languageCode === "string" && hugoToml.languageCode) ||
-    (typeof hugoToml.defaultContentLanguage === "string" &&
-      hugoToml.defaultContentLanguage) ||
-    (typeof jantData.site_language === "string"
-      ? jantData.site_language
-      : "en");
+      (typeof hugoToml.defaultContentLanguage === "string" &&
+        hugoToml.defaultContentLanguage) ||
+      "en",
+  );
 
   const directoryItems = Array.isArray(jantData.directory)
     ? jantData.directory
@@ -876,45 +885,30 @@ async function loadSiteConfig(rootDir) {
     default_language: language,
     extra: {
       jant: {
-        theme_id:
-          (typeof params.theme_id === "string" && params.theme_id) ||
-          (typeof jantData.theme_id === "string" ? jantData.theme_id : ""),
-        default_theme_id:
-          (typeof params.default_theme_id === "string" &&
-            params.default_theme_id) ||
-          (typeof jantData.default_theme_id === "string"
-            ? jantData.default_theme_id
-            : ""),
-        font_theme_id:
-          (typeof params.font_theme_id === "string" && params.font_theme_id) ||
-          (typeof jantData.font_theme_id === "string"
-            ? jantData.font_theme_id
-            : ""),
-        theme_mode:
-          (typeof params.theme_mode === "string" && params.theme_mode) ||
-          (typeof jantData.theme_mode === "string" ? jantData.theme_mode : ""),
+        theme_id: fromJantData("theme_id", String(params.theme_id ?? "")),
+        default_theme_id: fromJantData(
+          "default_theme_id",
+          String(params.default_theme_id ?? ""),
+        ),
+        font_theme_id: fromJantData(
+          "font_theme_id",
+          String(params.font_theme_id ?? ""),
+        ),
+        theme_mode: fromJantData("theme_mode", String(params.theme_mode ?? "")),
         show_jant_branding_on_home: coerceBoolean(
-          params.show_jant_branding_on_home ??
-            jantData.show_jant_branding_on_home,
+          jantData.show_jant_branding_on_home ??
+            params.show_jant_branding_on_home,
         ),
         show_header_avatar: coerceBoolean(
-          params.show_header_avatar ?? jantData.show_header_avatar,
+          jantData.show_header_avatar ?? params.show_header_avatar,
         ),
-        noindex: coerceBoolean(params.noindex ?? jantData.noindex),
-        public_api_enabled:
-          params.public_api_enabled === undefined &&
-          jantData.public_api_enabled === undefined
-            ? true
-            : coerceBoolean(
-                params.public_api_enabled ?? jantData.public_api_enabled,
-              ),
-        rss_feeds_enabled:
-          params.rss_feeds_enabled === undefined &&
-          jantData.rss_feeds_enabled === undefined
-            ? true
-            : coerceBoolean(
-                params.rss_feeds_enabled ?? jantData.rss_feeds_enabled,
-              ),
+        noindex: coerceBoolean(jantData.noindex ?? params.noindex),
+        public_api_enabled: coerceBoolean(
+          jantData.public_api_enabled ?? params.public_api_enabled ?? true,
+        ),
+        rss_feeds_enabled: coerceBoolean(
+          jantData.rss_feeds_enabled ?? params.rss_feeds_enabled ?? true,
+        ),
         site_footer_markdown:
           typeof jantData.site_footer_markdown === "string"
             ? jantData.site_footer_markdown

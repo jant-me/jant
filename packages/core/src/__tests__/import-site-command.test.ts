@@ -195,6 +195,34 @@ describe("Hugo import CLI helpers", () => {
     expect(siteConfig.extra.jant.collections_directory).toHaveLength(2);
   });
 
+  it("takes the site's settings from data/jant.toml over an edited hugo.toml", async () => {
+    await writeFileTree(tempDir, {
+      "hugo.toml": [
+        'title = "Renamed for the Hugo build"',
+        'languageCode = "fr"',
+        "[params]",
+        'theme_id = "paper"',
+        "noindex = true",
+        "",
+      ].join("\n"),
+      "data/jant.toml": [
+        'format = "jant-site"',
+        "version = 1",
+        'site_name = "Example Site"',
+        'site_language = "en"',
+        'theme_id = "tufte"',
+        "noindex = false",
+        "",
+      ].join("\n"),
+    });
+
+    const siteConfig = await loadSiteConfig(tempDir);
+    expect(siteConfig.title).toBe("Example Site");
+    expect(siteConfig.default_language).toBe("en");
+    expect(siteConfig.extra.jant.theme_id).toBe("tufte");
+    expect(siteConfig.extra.jant.noindex).toBe(false);
+  });
+
   it.each([true, false])(
     "sends settings the settings API accepts when every flag is %s",
     async (flag) => {
