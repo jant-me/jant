@@ -3,6 +3,7 @@
  */
 
 import { Hono, type Context } from "hono";
+import { buildFeedPostViews } from "../feed/feed.js";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { CollectionPage } from "../../ui/pages/CollectionPage.js";
@@ -21,15 +22,12 @@ import { assembleCollectionTimeline } from "../../lib/timeline.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
-  getFeedEntryUpdatedAt,
   getFeedLimit,
   getRssPublishedBefore,
   feedsPublished,
   renderFeed,
 } from "../../lib/feed-policy.js";
 import { toPlainText as markdownToPlainText } from "../../lib/markdown.js";
-import { buildMediaMap } from "../../lib/media-helpers.js";
-import { createMediaContext, toPostViews } from "../../lib/view.js";
 import { toAbsoluteSiteUrl } from "../../lib/url.js";
 import {
   buildLanguageSwitcher,
@@ -276,87 +274,10 @@ export async function renderCollectionFeed(
     );
   const posts = entries.map((entry) => entry.post);
 
-  // Collect thread root IDs to batch-load replies
-  const rootIds = posts.filter((p) => p.threadId === p.id).map((p) => p.id);
-
-  const postIds = posts.map((post) => post.id);
-  const [threadMap, rawMediaMap, aliasesMap] = await Promise.all([
-    c.var.services.posts.getPublishedThreads(rootIds, { publishedBefore }),
-    c.var.services.media.getByPostIds(postIds),
-    c.var.services.paths.getPostAliases(postIds),
-  ]);
-
-  // Collect reply IDs for media loading
-  const replyIds: string[] = [];
-  for (const [rootId, thread] of threadMap) {
-    for (const reply of thread) {
-      if (reply.id !== rootId) {
-        replyIds.push(reply.id);
-      }
-    }
-  }
-
-  const replyMediaMap =
-    replyIds.length > 0
-      ? await c.var.services.media.getByPostIds(replyIds)
-      : new Map<
-          string,
-          typeof rawMediaMap extends Map<string, infer V> ? V : never
-        >();
-
-  const mediaCtx = createMediaContext(appConfig);
-
-  // Merge all media
-  const allRawMedia = new Map(rawMediaMap);
-  for (const [id, media] of replyMediaMap) {
-    allRawMedia.set(id, media);
-  }
-
-  const mediaMap = buildMediaMap(
-    allRawMedia,
-    mediaCtx.r2PublicUrl,
-    mediaCtx.imageTransformUrl,
-    mediaCtx.s3PublicUrl,
-    mediaCtx.localPublicUrl,
-    mediaCtx.sitePathPrefix,
-  );
-  const aliasMap = new Map<string, string>();
-  for (const [id, aliases] of aliasesMap) {
-    if (aliases[0]) aliasMap.set(id, aliases[0]);
-  }
-
-  const postViews = toPostViews(
-    posts.map((post) => ({
-      ...post,
-      mediaAttachments: mediaMap.get(post.id) ?? [],
-    })),
-    mediaCtx,
-    undefined,
-    aliasMap,
-  ).map((postView, index) => {
-    const post = posts[index] as (typeof posts)[number];
-    const collectedAt = entries[index]?.collectedAt;
-
-    // Build thread replies
-    const thread = threadMap.get(post.id);
-    const replies =
-      thread && thread.length > 1
-        ? toPostViews(
-            thread
-              .filter((r) => r.id !== post.id)
-              .map((r) => ({
-                ...r,
-                mediaAttachments: mediaMap.get(r.id) ?? [],
-              })),
-            mediaCtx,
-          )
-        : undefined;
-
-    return {
-      ...postView,
-      feedUpdatedAt: getFeedEntryUpdatedAt(post, thread, [collectedAt]),
-      threadReplies: replies,
-    };
+  const postViews = await buildFeedPostViews(c, posts, {
+    publishedBefore,
+    // A post a collection took in recently changed as far as its feed goes.
+    alsoUpdatedAt: (index) => [entries[index]?.collectedAt],
   });
   const i18n = getI18n(c);
   const selectionTitle = buildCollectionSelectionTitle(

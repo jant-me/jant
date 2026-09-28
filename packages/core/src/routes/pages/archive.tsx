@@ -10,6 +10,7 @@
 
 import { msg } from "@lingui/core/macro";
 import { Hono } from "hono";
+import { buildFeedPostViews } from "../feed/feed.js";
 import type { Context } from "hono";
 import type {
   Bindings,
@@ -47,7 +48,6 @@ import {
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
   buildFeedDiscoveryFields,
-  getFeedEntryUpdatedAt,
   getFeedLimit,
   getRssPublishedBefore,
   feedsPublished,
@@ -67,9 +67,9 @@ import {
 import {
   createMediaContext,
   toArchiveGroupsWithMedia,
-  toPostViews,
 } from "../../lib/view.js";
 import { buildMediaMap } from "../../lib/media-helpers.js";
+
 import { assembleTimelineItems } from "../../lib/timeline.js";
 import { getI18n } from "../../i18n/index.js";
 import type { PostFilters } from "../../services/post.js";
@@ -804,89 +804,8 @@ async function buildArchiveFeedData(
 
   const posts = await services.posts.list(filters);
 
-  // Collect thread root IDs to batch-load replies
-  const rootIds = posts.filter((p) => p.threadId === p.id).map((p) => p.id);
-
-  // Batch load media, aliases, and thread replies
-  const postIds = posts.map((p) => p.id);
-  const [threadMap, rawMediaMap, aliasesMap] = await Promise.all([
-    services.posts.getPublishedThreads(rootIds, {
-      publishedBefore: rssPublishedBefore,
-    }),
-    services.media.getByPostIds(postIds),
-    services.paths.getPostAliases(postIds),
-  ]);
-
-  // Collect reply IDs for media loading
-  const replyIds: string[] = [];
-  for (const [rootId, thread] of threadMap) {
-    for (const reply of thread) {
-      if (reply.id !== rootId) {
-        replyIds.push(reply.id);
-      }
-    }
-  }
-
-  const replyMediaMap =
-    replyIds.length > 0
-      ? await services.media.getByPostIds(replyIds)
-      : new Map<
-          string,
-          typeof rawMediaMap extends Map<string, infer V> ? V : never
-        >();
-
-  const mediaCtx = createMediaContext(appConfig);
-
-  // Merge all media
-  const allRawMedia = new Map(rawMediaMap);
-  for (const [id, media] of replyMediaMap) {
-    allRawMedia.set(id, media);
-  }
-
-  const mediaMap = buildMediaMap(
-    allRawMedia,
-    mediaCtx.r2PublicUrl,
-    mediaCtx.imageTransformUrl,
-    mediaCtx.s3PublicUrl,
-    mediaCtx.localPublicUrl,
-    mediaCtx.sitePathPrefix,
-  );
-  const aliasMap = new Map<string, string>();
-  for (const [id, aliases] of aliasesMap) {
-    if (aliases[0]) aliasMap.set(id, aliases[0]);
-  }
-
-  const postViews = toPostViews(
-    posts.map((p) => ({
-      ...p,
-      mediaAttachments: mediaMap.get(p.id) ?? [],
-    })),
-    mediaCtx,
-    undefined,
-    aliasMap,
-  ).map((postView, index) => {
-    const post = posts[index] as (typeof posts)[number];
-    const thread = threadMap.get(post.id);
-
-    // Build thread replies
-    const replies =
-      thread && thread.length > 1
-        ? toPostViews(
-            thread
-              .filter((r) => r.id !== post.id)
-              .map((r) => ({
-                ...r,
-                mediaAttachments: mediaMap.get(r.id) ?? [],
-              })),
-            mediaCtx,
-          )
-        : undefined;
-
-    return {
-      ...postView,
-      feedUpdatedAt: getFeedEntryUpdatedAt(post, thread),
-      threadReplies: replies,
-    };
+  const postViews = await buildFeedPostViews(c, posts, {
+    publishedBefore: rssPublishedBefore,
   });
 
   const feedQuery = buildArchiveFeedQuery(params, dimensionCtx);
