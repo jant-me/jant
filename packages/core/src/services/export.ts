@@ -1092,8 +1092,6 @@ function buildMediaEmission(
   if (media.durationSeconds !== null && media.durationSeconds !== undefined) {
     entry.duration_seconds = media.durationSeconds;
   }
-  entry.provider = media.provider;
-  entry.storage_key = media.storageKey;
 
   let inlinePosterPath: string | null = null;
   if (media.posterKey) {
@@ -1102,7 +1100,6 @@ function buildMediaEmission(
     entry.poster = hasRemoteUrl
       ? getMediaUrl(media.posterKey, mediaBaseUrl)
       : `/media/${posterLocalName}`;
-    entry.poster_key = media.posterKey;
     if (!hasRemoteUrl) {
       inlinePosterPath = `static/media/${posterLocalName}`;
     }

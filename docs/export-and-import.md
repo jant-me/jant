@@ -156,53 +156,53 @@ These tables list every field `site export` writes. A field marked **theme only*
 
 Post files: `content/<slug>/_index.md` for a Thread's root, and `content/<root>/<slug>/index.md` for each reply.
 
-| Field                       | In    | Notes                                                                                            |
-| --------------------------- | ----- | ------------------------------------------------------------------------------------------------ |
-| `id`                        | both  | Post TypeID                                                                                      |
-| `title`                     | both  | Not on quotes                                                                                    |
-| `date`                      | both  | Publish time, ISO 8601; the creation time for a draft                                            |
-| `created`, `updated`        | both  | When the post was written and last edited, where they differ from `date`                         |
-| `slug`                      | both  | Canonical slug                                                                                   |
-| `type`                      | both  | `post`                                                                                           |
-| `draft`                     | both  | `true` for drafts and private posts, which Hugo builds only with `--buildDrafts`                 |
-| `format`                    | both  | `note`, `link`, or `quote`                                                                       |
-| `status`                    | both  | `published` or `draft`                                                                           |
-| `visibility`                | both  | `public`, `latest_hidden`, or `private`                                                          |
-| `summary_text`              | both  | Plain-text summary                                                                               |
-| `link_url`                  | both  | Link posts: the link                                                                             |
-| `source_name`, `source_url` | both  | Quotes: the attribution                                                                          |
-| `quote_text`                | both  | Quotes: the quoted text                                                                          |
-| `rating`                    | both  | `1` to `5`                                                                                       |
-| `featured_at`, `pinned_at`  | both  | ISO 8601                                                                                         |
-| `media`                     | both  | Attachments in order; see the next table                                                         |
-| `aliases`                   | root  | Hugo alias pages: the root's custom URLs and every reply's slug                                  |
-| `root_aliases`              | root  | The root's custom URLs, which import recreates                                                   |
-| `language`                  | root  | BCP 47 content language, the same for the whole Thread                                           |
-| `translation_group`         | root  | Shared by posts that are translations of one another                                             |
-| `last_activity_at`          | root  | Newest post in the Thread, quiet replies left out, where it differs from `date`                  |
-| `collections`               | root  | The Thread's collections, each with `slug`, `title`, `collected_at`, `position`, and `pinned_at` |
-| `weight`                    | reply | Position in the Thread                                                                           |
-| `build`                     | reply | Hugo build options, `render` and `list`, that keep a reply out of lists                          |
-| `quiet_reply`               | reply | `true` for a reply published quietly                                                             |
-| `feed_id`                   | root  | Theme only: the entry ID Jant's feeds give the Thread                                            |
-| `featured_post_ids`         | root  | Theme only                                                                                       |
-| `featured_sort_at`          | root  | Theme only                                                                                       |
-| `truncated`                 | both  | Theme only                                                                                       |
+| Field                       | In    | Notes                                                                                                         |
+| --------------------------- | ----- | ------------------------------------------------------------------------------------------------------------- |
+| `id`                        | both  | Post TypeID                                                                                                   |
+| `title`                     | both  | Not on quotes                                                                                                 |
+| `date`                      | both  | Publish time, ISO 8601; the creation time for a draft                                                         |
+| `created`, `updated`        | both  | When the post was written and last edited, where they differ from `date`                                      |
+| `slug`                      | both  | Canonical slug                                                                                                |
+| `type`                      | both  | `post`                                                                                                        |
+| `draft`                     | both  | `true` for drafts and private posts, which Hugo builds only with `--buildDrafts`                              |
+| `format`                    | both  | `note`, `link`, or `quote`                                                                                    |
+| `status`                    | both  | `published` or `draft`                                                                                        |
+| `visibility`                | both  | `public`, `latest_hidden`, or `private`                                                                       |
+| `summary_text`              | both  | Theme only: a plain-text summary                                                                              |
+| `link_url`                  | both  | Link posts: the link                                                                                          |
+| `source_name`, `source_url` | both  | Quotes: the attribution                                                                                       |
+| `quote_text`                | both  | Quotes: the quoted text                                                                                       |
+| `rating`                    | both  | `1` to `5`                                                                                                    |
+| `featured_at`, `pinned_at`  | both  | ISO 8601                                                                                                      |
+| `media`                     | both  | Attachments in order; see the next table                                                                      |
+| `aliases`                   | root  | Hugo alias pages: the root's custom URLs and every reply's slug                                               |
+| `root_aliases`              | root  | The root's custom URLs, which import recreates                                                                |
+| `language`                  | root  | BCP 47 content language, the same for the whole Thread                                                        |
+| `translation_group`         | root  | Shared by posts that are translations of one another                                                          |
+| `last_activity_at`          | root  | Newest post in the Thread, quiet replies left out, where it differs from `date`                               |
+| `collections`               | root  | The Thread's collections, each with `slug`, `collected_at`, `position`, `pinned_at`, and a theme-only `title` |
+| `weight`                    | reply | Position in the Thread                                                                                        |
+| `build`                     | reply | Hugo build options, `render` and `list`, that keep a reply out of lists                                       |
+| `quiet_reply`               | reply | `true` for a reply published quietly                                                                          |
+| `feed_id`                   | root  | Theme only: the entry ID Jant's feeds give the Thread                                                         |
+| `featured_post_ids`         | root  | Theme only                                                                                                    |
+| `featured_sort_at`          | root  | Theme only                                                                                                    |
+| `truncated`                 | both  | Theme only                                                                                                    |
 
 Each `media` entry:
 
-| Field                                               | Notes                                                          |
-| --------------------------------------------------- | -------------------------------------------------------------- |
-| `id`                                                | Media TypeID                                                   |
-| `kind`                                              | `image`, `video`, `audio`, `text`, or `document`               |
-| `src`                                               | The file: a path under `static/media/` once pulled, or its URL |
-| `mime_type`, `original_name`, `size`                | The file's type, name as uploaded, and size in bytes           |
-| `width`, `height`                                   | Pixels, for images and video                                   |
-| `alt`, `blurhash`                                   | Alt text and image placeholder                                 |
-| `duration_seconds`                                  | Audio and video                                                |
-| `poster`                                            | Video: the poster frame                                        |
-| `summary`, `chars`                                  | Text attachments: summary and length                           |
-| `position`, `provider`, `storage_key`, `poster_key` | Theme only                                                     |
+| Field                                | Notes                                                          |
+| ------------------------------------ | -------------------------------------------------------------- |
+| `id`                                 | Theme only: the media TypeID                                   |
+| `kind`                               | `image`, `video`, `audio`, `text`, or `document`               |
+| `src`                                | The file: a path under `static/media/` once pulled, or its URL |
+| `mime_type`, `original_name`, `size` | The file's type, name as uploaded, and size in bytes           |
+| `width`, `height`                    | Pixels, for images and video                                   |
+| `alt`, `blurhash`                    | Alt text and image placeholder                                 |
+| `duration_seconds`                   | Audio and video                                                |
+| `poster`                             | Video: the poster frame                                        |
+| `summary`, `chars`                   | Text attachments: summary and length                           |
+| `position`                           | Theme only                                                     |
 
 Collection pages: `content/<slug>/_index.md` with `type: collection` or `type: smart_collection`.
 
@@ -222,22 +222,22 @@ The other section pages (`content/_index.md`, `archive/`, `featured/`, `collecti
 
 `data/jant.toml`:
 
-| Key                                                                                                                                   | Notes                                                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `version`, `format`                                                                                                                   | The export format; see [Conflicts and constraints](#conflicts-and-constraints)                                                    |
-| `site_name`, `site_description`, `site_language`                                                                                      | Site settings                                                                                                                     |
-| `site_footer_markdown`                                                                                                                | The footer, as written                                                                                                            |
-| `theme_id`, `default_theme_id`, `font_theme_id`, `theme_mode`                                                                         | Appearance                                                                                                                        |
-| `noindex`, `public_api_enabled`, `rss_feeds_enabled`                                                                                  | Site settings                                                                                                                     |
-| `time_zone`, `main_rss_feed`                                                                                                          | Site settings                                                                                                                     |
-| `additional_languages`, `multilingual_enabled`                                                                                        | Languages besides `site_language`, and whether they have their own views                                                          |
-| `show_header_avatar`, `show_jant_branding_on_home`                                                                                    | Header and home page settings                                                                                                     |
-| `site_avatar_mode`, `site_avatar_url`, `favicon_mode`, `favicon_path`, `favicon_version`, `apple_touch_mode`, `apple_touch_icon_path` | The avatar and icons, and where their files are                                                                                   |
-| `nav`                                                                                                                                 | Navigation items, each with `type`, `label`, `custom_label`, `url`, `placement`, `system_key`, `collection_slug`, and `post_slug` |
-| `directory`                                                                                                                           | The collections directory in order, each with `type`, `slug`, `title`, `label`, `url`, and `description`                          |
-| `custom_url`                                                                                                                          | Custom URLs, each with `kind`, `path`, `to`, `status`, and `archive_query`                                                        |
-| `page_size`, `archive_page_size`, `archive_default_layout`, `rss_feed_limit`, `generated_at`, `site_footer_html`                      | Theme only                                                                                                                        |
-| `description_html`, `entry_count`, `sequence`, `recent_activity_iso`, `recent_activity_label`                                         | Theme only, in `directory` entries                                                                                                |
+| Key                                                                                                                                 | Notes                                                                                                                             |
+| ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `version`, `format`                                                                                                                 | The export format; see [Conflicts and constraints](#conflicts-and-constraints)                                                    |
+| `site_name`, `site_description`, `site_language`                                                                                    | Site settings                                                                                                                     |
+| `site_footer_markdown`                                                                                                              | The footer, as written                                                                                                            |
+| `theme_id`, `default_theme_id`, `font_theme_id`, `theme_mode`                                                                       | Appearance                                                                                                                        |
+| `noindex`, `public_api_enabled`, `rss_feeds_enabled`                                                                                | Site settings                                                                                                                     |
+| `time_zone`, `main_rss_feed`                                                                                                        | Site settings                                                                                                                     |
+| `additional_languages`, `multilingual_enabled`                                                                                      | Languages besides `site_language`, and whether they have their own views                                                          |
+| `show_header_avatar`, `show_jant_branding_on_home`                                                                                  | Header and home page settings                                                                                                     |
+| `site_avatar_mode`, `site_avatar_url`, `favicon_mode`, `favicon_path`, `apple_touch_mode`, `apple_touch_icon_path`                  | The avatar and icons, and where their files are                                                                                   |
+| `nav`                                                                                                                               | Navigation items, each with `type`, `label`, `custom_label`, `url`, `placement`, `system_key`, `collection_slug`, and `post_slug` |
+| `directory`                                                                                                                         | The collections directory in order, each with `type`, `slug`, `label`, `url`, and `description`                                   |
+| `custom_url`                                                                                                                        | Custom URLs, each with `kind`, `path`, `to`, `status`, and `archive_query`                                                        |
+| `page_size`, `archive_page_size`, `archive_default_layout`, `rss_feed_limit`, `generated_at`, `site_footer_html`, `favicon_version` | Theme only                                                                                                                        |
+| `title`, `description_html`, `entry_count`, `sequence`, `recent_activity_iso`, `recent_activity_label`                              | Theme only, in `directory` entries                                                                                                |
 
 ### Pull media separately
 

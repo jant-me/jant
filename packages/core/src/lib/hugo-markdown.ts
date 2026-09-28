@@ -61,9 +61,9 @@ export interface HugoSmartCollectionSelection {
  *     provider has a reachable public URL and we link rather than re-
  *     bundle the bytes.
  *
- * `poster` follows the same rule for video poster frames. Round-trip
- * fields (`provider`, `storage_key`, `poster_key`) preserve the original
- * provider coordinates so re-imports can rebuild the media record.
+ * `poster` follows the same rule for video poster frames. Where the bytes
+ * are stored is the source site's business, so no storage key travels; an
+ * import uploads each file afresh.
  */
 export interface JantMedia {
   id: string;
@@ -82,9 +82,6 @@ export interface JantMedia {
   waveform?: string;
   summary?: string;
   chars?: number;
-  provider?: string;
-  storage_key?: string;
-  poster_key?: string;
   [key: string]: unknown;
 }
 

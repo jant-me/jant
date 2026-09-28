@@ -1388,8 +1388,9 @@ describe("createExportService (Hugo)", () => {
     expect(entry.width).toBe(1024);
     expect(entry.height).toBe(768);
     expect(entry.blurhash).toBe("L6PZfSi_.AyE_3t7t7R**0o#DgR4");
-    expect(entry.provider).toBe("r2");
-    expect(entry.storage_key).toBe("media/med-1.webp");
+    // Where the source stored the bytes stays behind.
+    expect(entry).not.toHaveProperty("provider");
+    expect(entry).not.toHaveProperty("storage_key");
   });
 
   it("bundles media bytes under static/media/ for root and reply media", async () => {
@@ -1550,7 +1551,7 @@ describe("createExportService (Hugo)", () => {
     expect(entry.kind).toBe("video");
     expect(entry.src).toBe("/media/med-video.mp4");
     expect(entry.poster).toBe("/media/med-video-poster.webp");
-    expect(entry.poster_key).toBe("media/posters/med-video.webp");
+    expect(entry).not.toHaveProperty("poster_key");
   });
 
   it("links to provider public URL instead of inlining bytes when configured", async () => {
@@ -1582,8 +1583,7 @@ describe("createExportService (Hugo)", () => {
     );
     const entry = frontMatter.media![0];
     expect(entry.src).toBe("https://cdn.example.com/media/med-cdn.webp");
-    expect(entry.storage_key).toBe("media/med-cdn.webp");
-    expect(entry.provider).toBe("r2");
+    expect(entry).not.toHaveProperty("storage_key");
   });
 
   it("skips media byte emission when no storage driver is available", async () => {
@@ -1680,7 +1680,7 @@ describe("createExportService (Hugo)", () => {
     );
     const entry = frontMatter.media![0];
     expect(entry.src).toBe("https://example.com/media/med-1.webp");
-    expect(entry.storage_key).toBe("media/med-1.webp");
+    expect(entry).not.toHaveProperty("storage_key");
   });
 
   it("Sync mode links the video poster by absolute site URL without bundling", async () => {
