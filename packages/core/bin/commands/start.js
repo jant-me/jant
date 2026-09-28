@@ -14,7 +14,9 @@ export async function run(argv) {
     console.log("Usage: jant start");
     console.log("");
     console.log("Start the Node.js server using environment variables.");
-    console.log("Reads `.env` in the current directory, or the file JANT_ENV_FILE");
+    console.log(
+      "Reads `.env` in the current directory, or the file JANT_ENV_FILE",
+    );
     console.log("names. Variables already set in the environment win.");
     console.log("");
     console.log("Required:");
