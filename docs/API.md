@@ -250,7 +250,7 @@ Every error uses this shape:
 }
 ```
 
-- `details` is present for validation errors that carry structured field information.
+- `details` is present for validation errors that carry structured field information. Its shape can change in any release, and so can the wording of `error`: show them to a person or log them, and branch on `code`. The one documented part of `details` is the settings endpoint's `rejectedKeys`.
 - `code` is always present, an error the server didn't expect included (`INTERNAL_ERROR`). An unknown `/api` path answers `NOT_FOUND` in this shape too.
 
 Common error codes:
