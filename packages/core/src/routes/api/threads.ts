@@ -12,6 +12,7 @@ import { THREAD_SORTS } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import {
   ContentLanguageSchema,
+  pageLimitSchema,
   PostContentSchema,
   StatusSchema,
   parseValidated,
@@ -39,7 +40,7 @@ const ListThreadsQuerySchema = z.object({
   sort: z.enum(THREAD_SORTS).optional(),
   include: z.string().optional(),
   cursor: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  limit: pageLimitSchema(100, 20),
   content: PostContentSchema.optional(),
 });
 
@@ -51,7 +52,7 @@ const GetThreadQuerySchema = z.object({
 const ListThreadPostsQuerySchema = z.object({
   status: StatusSchema.optional(),
   cursor: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(100),
+  limit: pageLimitSchema(100, 100),
   content: PostContentSchema.optional(),
 });
 

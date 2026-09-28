@@ -10,6 +10,7 @@ import {
   ContentLanguageSchema,
   CreatePostApiSchema,
   FormatSchema,
+  pageLimitSchema,
   parseValidated,
   PostContentSchema,
   PostIdSchema,
@@ -45,7 +46,7 @@ const ListPostsQuerySchema = z.object({
   format: FormatSchema.optional(),
   status: StatusSchema.optional(),
   cursor: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(100),
+  limit: pageLimitSchema(100, 100),
   content: PostContentSchema.optional(),
 });
 
@@ -167,7 +168,7 @@ postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
 const SetLanguageSchema = z.object({ language: ContentLanguageSchema });
 const TranslationCandidatesQuerySchema = z.object({
   q: z.string().trim().min(1).max(200),
-  limit: z.coerce.number().int().min(1).max(20).optional().default(8),
+  limit: pageLimitSchema(20, 8),
 });
 const LinkTranslationSchema = z.object({ postId: PostIdSchema });
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createEntityId } from "../ids.js";
 import {
+  pageLimitSchema,
   FormatSchema,
   StatusSchema,
   RedirectTypeSchema,
@@ -39,6 +40,29 @@ describe("FormatSchema", () => {
     expect(() => FormatSchema.parse("invalid")).toThrow();
     expect(() => FormatSchema.parse("")).toThrow();
     expect(() => FormatSchema.parse(123)).toThrow();
+  });
+});
+
+describe("pageLimitSchema", () => {
+  const limit = pageLimitSchema(100, 20);
+
+  it("reads a value past either end of the range as that end", () => {
+    expect(limit.parse("500")).toBe(100);
+    expect(limit.parse(101)).toBe(100);
+    expect(limit.parse("0")).toBe(1);
+    expect(limit.parse(-3)).toBe(1);
+    expect(limit.parse("42")).toBe(42);
+  });
+
+  it("falls back when limit is absent or empty", () => {
+    expect(limit.parse(undefined)).toBe(20);
+    expect(limit.parse("")).toBe(20);
+  });
+
+  it("refuses a value that isn't an integer", () => {
+    for (const value of ["abc", "1.5", 2.5]) {
+      expect(limit.safeParse(value).success, String(value)).toBe(false);
+    }
   });
 });
 

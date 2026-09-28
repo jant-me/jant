@@ -8,8 +8,10 @@ import {
   CreatePostApiSchema,
   FormatSchema,
   MediaIdSchema,
+  pageLimitSchema,
   PostContentSchema,
   PostIdSchema,
+  SearchPostsQuerySchema,
   StatusSchema,
   UpdatePostApiSchema,
 } from "../lib/schemas.js";
@@ -97,7 +99,7 @@ type McpToolDefinition = {
 const ListPostsToolSchema = z.object({
   cursor: z.string().optional(),
   format: FormatSchema.optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(100),
+  limit: pageLimitSchema(100, 100),
   status: StatusSchema.optional(),
   content: PostContentSchema.optional().describe(
     "markdown returns bodyMarkdown in place of body, bodyHtml, and bodyText",
@@ -129,14 +131,10 @@ const EmptyToolSchema = z.object({});
 
 const UpdateSettingsToolSchema = z.record(z.string(), z.string());
 
-const SearchPostsToolSchema = z.object({
-  limit: z.coerce.number().int().min(1).max(50).optional().default(20),
-  // `q`, as `GET /api/search` names it.
-  q: z.string().trim().min(1).max(200),
-});
+const SearchPostsToolSchema = SearchPostsQuerySchema;
 
 const ListMediaToolSchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  limit: pageLimitSchema(200, 50),
   cursor: z.string().optional(),
   mimePrefix: z.string().trim().min(1).optional(),
 });
@@ -177,7 +175,7 @@ const RemoveCollectionThreadToolSchema = AddCollectionThreadToolSchema;
 
 const ListThreadsToolSchema = z.object({
   cursor: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  limit: pageLimitSchema(100, 20),
   status: StatusSchema.optional(),
   sort: z.enum(THREAD_SORTS).optional(),
   fold: z.boolean().optional(),
@@ -225,7 +223,7 @@ const GetThreadToolSchema = z.object({
 const ListThreadPostsToolSchema = z.object({
   id: PostIdSchema.describe("TypeID of any post in the Thread"),
   cursor: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(100),
+  limit: pageLimitSchema(100, 100),
   status: StatusSchema.optional(),
   content: PostContentSchema.optional().describe(
     "markdown returns bodyMarkdown in place of body, bodyHtml, and bodyText",

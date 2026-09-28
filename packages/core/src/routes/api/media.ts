@@ -14,7 +14,11 @@ import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
 import { assertFound, parseIdParam } from "../../lib/errors.js";
 import { ID_PREFIX } from "../../lib/ids.js";
-import { parseValidated, readJsonBody } from "../../lib/schemas.js";
+import {
+  pageLimitSchema,
+  parseValidated,
+  readJsonBody,
+} from "../../lib/schemas.js";
 import { toApiMedia } from "../../lib/api-media.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -22,7 +26,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 export const mediaApiRoutes = new Hono<Env>();
 
 const ListMediaQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).optional().default(50),
+  limit: pageLimitSchema(200, 50),
   mimePrefix: z.string().trim().min(1).optional(),
   cursor: z.string().optional(),
 });

@@ -175,6 +175,45 @@ export const FormatSchema = z.enum(FORMATS);
 export const StatusSchema = z.enum(STATUSES);
 
 /**
+ * A list's `limit`: an integer, clamped to `1`…`max`. A value past either end
+ * reads as that end, so a client asking for more than a page holds gets a
+ * full page rather than an error; one that isn't an integer answers 400. An
+ * empty value reads as absent.
+ *
+ * @param max - The largest page the list returns
+ * @param fallback - The page size when `limit` is absent
+ * @returns The schema, for a query string or a JSON body
+ * @example
+ * ```ts
+ * z.object({ limit: pageLimitSchema(100, 20) }).parse({ limit: "500" });
+ * // => { limit: 100 }
+ * ```
+ */
+export function pageLimitSchema(max: number, fallback: number) {
+  return z
+    .preprocess(
+      (value) => (value === "" ? undefined : value),
+      z.coerce
+        .number()
+        .int()
+        .transform((value) => Math.min(Math.max(value, 1), max))
+        .optional(),
+    )
+    .transform((value) => value ?? fallback)
+    .describe(`Page size, 1 to ${max}; default ${fallback}`);
+}
+
+/** `q` and `limit` for the author's search, over HTTP and MCP. */
+export const SearchPostsQuerySchema = z.object({
+  q: z
+    .string({ error: "Query parameter 'q' is required" })
+    .trim()
+    .min(1, "Query parameter 'q' is required")
+    .max(200, "Query parameter 'q' is longer than 200 characters"),
+  limit: pageLimitSchema(50, 20),
+});
+
+/**
  * How a read returns post bodies: `markdown` returns `bodyMarkdown` in place
  * of the rendered fields. Every API read that returns posts takes it.
  */

@@ -51,7 +51,9 @@ describe("Search API Routes", () => {
     expect(res.status).toBe(400);
 
     const body = await res.json();
-    expect(body.error).toBe("Query too long");
+    expect(body.error).toBe(
+      "Query parameter 'q' is longer than 200 characters",
+    );
   });
 
   it("returns search results for valid query", async () => {
@@ -176,13 +178,12 @@ describe("Search API Routes", () => {
       },
     );
 
-    it("uses the default for a limit that isn't a number", async () => {
+    it("refuses a limit that isn't a number", async () => {
       const { app, services } = setup();
       await seedMatches(services);
 
       const res = await app.request("/api/search?q=lantern&limit=abc");
-      const body = await res.json();
-      expect(body.count).toBe(3);
+      expect(res.status).toBe(400);
     });
 
     it("keeps a limit within range as given", async () => {

@@ -9,6 +9,7 @@ import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
 import {
   CreateCustomUrlSchema,
+  pageLimitSchema,
   parseValidated,
   readJsonBody,
 } from "../../lib/schemas.js";
@@ -21,7 +22,7 @@ type Env = { Bindings: Bindings; Variables: AppVariables };
 export const customUrlsApiRoutes = new Hono<Env>();
 
 const ListCustomUrlsQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).optional().default(100),
+  limit: pageLimitSchema(100, 100),
   cursor: z.string().optional(),
 });
 

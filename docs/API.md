@@ -160,7 +160,7 @@ curl -X POST https://your-site.com/api/mcp \
 
 Unless an endpoint explicitly returns a ZIP, XML, or plain text response, it returns JSON.
 
-A request field or query parameter an endpoint doesn't know is ignored, so a client that sends one works against an older Jant too. A value an endpoint can't read, in a field it does know, answers `400`.
+A request field or query parameter an endpoint doesn't know is ignored, so a client that sends one works against an older Jant too. A value an endpoint can't read, in a field it does know, answers `400`. A list's `limit` past either end of its range reads as that end: `limit=500` on a list of at most `100` returns `100`.
 
 All timestamps are Unix seconds:
 
@@ -2566,7 +2566,7 @@ Query parameters:
 | Parameter | Type    | Required | Default | Notes                |
 | --------- | ------- | -------- | ------- | -------------------- |
 | `q`       | string  | yes      | none    | Maximum length `200` |
-| `limit`   | integer | no       | `20`    | Clamped to `1`–`50`  |
+| `limit`   | integer | no       | `20`    | `1` to `50`          |
 
 Result objects include these fields:
 

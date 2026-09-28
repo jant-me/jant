@@ -188,6 +188,21 @@ describe("Posts API Routes", () => {
       expect(first.nextCursor).not.toMatch(/^pst_/);
     });
 
+    it("reads a limit past its range as the nearest end", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+      for (const bodyMarkdown of ["one", "two"]) {
+        await services.posts.create({ format: "note", bodyMarkdown });
+      }
+
+      const large = await app.request("/api/posts?limit=500");
+      expect(large.status).toBe(200);
+      expect((await large.json()).posts).toHaveLength(2);
+      const small = await app.request("/api/posts?limit=0");
+      expect(small.status).toBe(200);
+      expect((await small.json()).posts).toHaveLength(1);
+    });
+
     it("refuses a post ID as a cursor", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/posts", postsApiRoutes);

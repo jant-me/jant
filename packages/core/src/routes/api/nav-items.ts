@@ -12,6 +12,7 @@ import { requireAuthApi } from "../../middleware/auth.js";
 import {
   CreateNavItemSchema,
   NavItemIdSchema,
+  pageLimitSchema,
   parseValidated,
   readJsonBody,
   UpdateNavItemSchema,
@@ -36,7 +37,7 @@ const MoveSchema = z.object({
 
 const PageCandidatesQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),
-  limit: z.coerce.number().int().min(1).max(50).optional(),
+  limit: pageLimitSchema(50, 20),
 });
 
 async function withSiteHeaderHtml<T extends object>(
