@@ -119,7 +119,7 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 在 **Settings > Font Theme** 选字型主题后，`--font-heading`、`--font-body` 以及若干相关字重会随之切换。`--font-ui` 不在切换范围内——按钮、导航这些界面文字始终用系统 sans-serif，方便阅读。要进一步调整，仍然可以在 Custom CSS 里覆盖任意变量。
 
-如果想用 Google Fonts 这类外部字体源，需要先用 [代码注入](code-injection.md#配方自定义字体) 加载字体文件，再在 Custom CSS 里把变量指向新字体。
+如果想用 Google Fonts 这类外部字体源，需要先用 [代码注入](code-injection.md#自定义字体) 加载字体文件，再在 Custom CSS 里把变量指向新字体。
 
 ### 示例：更细的字重
 
@@ -167,7 +167,7 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 侧栏在视觉上隐藏返回箭头，因为每条脚注已经紧挨着它第一次被引用的位置。返回链接仍然保留在语义 HTML 里，供底部尾注和辅助技术使用，键盘用户聚焦到它时会显示出来。
 
-主题选择器优先用 `.footnote-endnotes`、`.footnote-list`、`.footnote`、`.footnote-ref` 和 `.footnote-backlinks`。片段 ID 不透明，不同的 HTML 格式版本之间可能变化，不要给它们的压缩哈希写样式，也不要解析它。
+主题选择器优先用 `.footnote-endnotes`、`.footnote-list`、`.footnote`、`.footnote-ref`、`.footnote-backlinks` 和 `.footnote-backref`（返回引用处的箭头链接）。片段 ID 不透明，任何版本都可能变化，不要给它们的压缩哈希写样式，也不要解析它。
 
 ## 媒体与头像
 
@@ -181,18 +181,19 @@ Jant 提供三种自定义外观的方式，按粒度从粗到细：
 
 写选择器时可以用这些 data attribute 锁定特定页面或元素：
 
-| 属性                 | 出现在      | 取值                                                                                      |
-| -------------------- | ----------- | ----------------------------------------------------------------------------------------- |
-| `data-theme`         | `<html>`    | 当前配色主题 id（`tufte`、`linen`、`frost` …）                                            |
-| `data-theme-mode`    | `<html>`    | `auto`、`light`、`dark`                                                                   |
-| `data-page`          | `<body>`    | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured`, `subscribe` |
-| `data-post`          | `<article>` | 每篇帖子都会带上                                                                          |
-| `data-format`        | `<article>` | `note`, `link`, `quote`                                                                   |
-| `data-post-slug`     | `<article>` | 帖子的 slug（便于调试和按帖子定制样式）                                                   |
-| `data-post-pinned`   | `<article>` | 置顶帖子会带上                                                                            |
-| `data-post-featured` | `<article>` | Featured 帖子会带上                                                                       |
-| `data-feed`          | 信息流容器  | 包裹帖子列表                                                                              |
-| `data-authenticated` | `<body>`    | 登录时带上                                                                                |
+| 属性                 | 出现在               | 取值                                                                                      |
+| -------------------- | -------------------- | ----------------------------------------------------------------------------------------- |
+| `data-theme`         | `<html>`             | 当前配色主题 id（`tufte`、`linen`、`frost` …）                                            |
+| `data-theme-mode`    | `<html>`             | `auto`、`light`、`dark`                                                                   |
+| `data-page`          | `<body>`             | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured`, `subscribe` |
+| `data-post`          | `<article>`          | 每篇帖子都会带上                                                                          |
+| `data-format`        | `<article>`          | `note`, `link`, `quote`                                                                   |
+| `data-post-slug`     | `<article>`          | 帖子的 slug（便于调试和按帖子定制样式）                                                   |
+| `data-post-pinned`   | `<article>`          | 置顶帖子会带上                                                                            |
+| `data-post-featured` | `<article>`          | Featured 帖子会带上                                                                       |
+| `data-feed`          | 信息流容器           | 包裹帖子列表                                                                              |
+| `data-authenticated` | `<body>`             | 登录时带上                                                                                |
+| `data-post-end`      | 帖子详情页的帖子之后 | 帖子之后的空插槽，[代码注入](code-injection.md) 在这里挂载评论                            |
 
 帖子内部还有四个标记：`data-post-body`（正文，引用帖是评论）、`data-post-quote`（引用帖的引文）、`data-post-meta`（日期和合集）、`data-post-media`（附件：图片、视频、音频、文档和文本附件）。有了它们，可以针对帖子的某一块单独写样式。
 

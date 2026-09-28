@@ -119,7 +119,7 @@ The two dark rules are explained under [Dark mode](#dark-mode).
 
 When you pick a font theme in **Settings > Font Theme**, `--font-heading`, `--font-body`, and a few related font weights switch with it. `--font-ui` is intentionally left out — buttons, navigation, and other interface text always stay system sans-serif for legibility. You can still override any variable in Custom CSS for further tuning.
 
-To use external font sources like Google Fonts, load the font files first via [code injection](code-injection.md#recipe-custom-fonts), then point the variables at the new fonts in Custom CSS.
+To use external font sources like Google Fonts, load the font files first via [code injection](code-injection.md#custom-fonts), then point the variables at the new fonts in Custom CSS.
 
 ### Example: lighter font weights
 
@@ -182,9 +182,9 @@ endnotes and assistive technology, and becomes visible if a keyboard user
 focuses it.
 
 Theme selectors should prefer `.footnote-endnotes`, `.footnote-list`,
-`.footnote`, `.footnote-ref`, and `.footnote-backlinks`. Fragment IDs are
-opaque and may change between HTML contract versions; never style or parse
-their compact hash.
+`.footnote`, `.footnote-ref`, `.footnote-backlinks`, and `.footnote-backref`,
+the arrow link back to a reference. Fragment IDs are opaque and may change in
+any release; never style or parse their compact hash.
 
 ## Media and avatars
 
@@ -198,18 +198,19 @@ their compact hash.
 
 You can target specific pages or elements with these data attributes when writing selectors:
 
-| Attribute            | Where it appears | Values                                                                                    |
-| -------------------- | ---------------- | ----------------------------------------------------------------------------------------- |
-| `data-theme`         | `<html>`         | Active color theme id (`tufte`, `linen`, `frost`, …)                                      |
-| `data-theme-mode`    | `<html>`         | `auto`, `light`, `dark`                                                                   |
-| `data-page`          | `<body>`         | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured`, `subscribe` |
-| `data-post`          | `<article>`      | Present on every post                                                                     |
-| `data-format`        | `<article>`      | `note`, `link`, `quote`                                                                   |
-| `data-post-slug`     | `<article>`      | Post slug (handy for debugging and per-post styling)                                      |
-| `data-post-pinned`   | `<article>`      | Present on pinned posts                                                                   |
-| `data-post-featured` | `<article>`      | Present on Featured posts                                                                 |
-| `data-feed`          | Feed container   | Wraps the post list                                                                       |
-| `data-authenticated` | `<body>`         | Present when logged in                                                                    |
+| Attribute            | Where it appears    | Values                                                                                    |
+| -------------------- | ------------------- | ----------------------------------------------------------------------------------------- |
+| `data-theme`         | `<html>`            | Active color theme id (`tufte`, `linen`, `frost`, …)                                      |
+| `data-theme-mode`    | `<html>`            | `auto`, `light`, `dark`                                                                   |
+| `data-page`          | `<body>`            | `home`, `post`, `search`, `archive`, `collection`, `collections`, `featured`, `subscribe` |
+| `data-post`          | `<article>`         | Present on every post                                                                     |
+| `data-format`        | `<article>`         | `note`, `link`, `quote`                                                                   |
+| `data-post-slug`     | `<article>`         | Post slug (handy for debugging and per-post styling)                                      |
+| `data-post-pinned`   | `<article>`         | Present on pinned posts                                                                   |
+| `data-post-featured` | `<article>`         | Present on Featured posts                                                                 |
+| `data-feed`          | Feed container      | Wraps the post list                                                                       |
+| `data-authenticated` | `<body>`            | Present when logged in                                                                    |
+| `data-post-end`      | After a post's page | Empty slot after the post, where [code injection](code-injection.md) mounts comments      |
 
 Inside each post there are four more markers: `data-post-body` (the body, or a quote's commentary), `data-post-quote` (a quote's quoted text), `data-post-meta` (the date and the collections), and `data-post-media` (the attachments: images, video, audio, documents, and text files). Together they let you style any one section of a post on its own.
 
