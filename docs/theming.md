@@ -213,6 +213,8 @@ You can target specific pages or elements with these data attributes when writin
 
 Inside each post there are four more markers: `data-post-body` (the body, or a quote's commentary), `data-post-quote` (a quote's quoted text), `data-post-meta` (the date and the collections), and `data-post-media` (the attachments: images, video, audio, documents, and text files). Together they let you style any one section of a post on its own.
 
+Posts in the feed, on a post's page, and in a collection carry every attribute and marker above. A search result carries the `<article>` attributes but none of the markers inside: it shows a snippet instead of the post. A tile in the archive's grid view carries `data-post` and `data-format` only.
+
 ### Example: dividers only on the home page
 
 ```css
