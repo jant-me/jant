@@ -1,5 +1,163 @@
 # @jant/core
 
+## 0.10.0
+
+### Minor Changes
+
+- [`42a0228`](https://github.com/jant-me/jant/commit/42a022864dde880588386799d321466c5af3c37e) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Every API error answers `{ error, code }`, the shape the API reference documents.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - A request body that isn't JSON answers `400` with `VALIDATION_ERROR`, instead of `500`.
+  - An unknown `/api` path, and `/api/public/*` while `PUBLIC_API_ENABLED=false`, answer JSON `404` with `NOT_FOUND`, instead of plain text.
+  - An error the server didn't expect carries `code: "INTERNAL_ERROR"`.
+  - Upload, avatar, Telegram webhook, and storage errors carry codes: `VALIDATION_ERROR`, `CONFIGURATION_ERROR` when file storage isn't set up, `MEDIA_QUOTA_EXCEEDED`, and `EXTERNAL_SERVICE_ERROR` when a write fails. The Telegram webhook's unknown-bot message is now "Telegram bot not found".
+  - `RATE_LIMIT` is gone from the documented codes: no API endpoint returns it.
+
+- [`dd12810`](https://github.com/jant-me/jant/commit/dd128106409703a7892aba33b441803d36ec20ca) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Every author API response is built from a fixed list of fields, the one `docs/API.md` shows, instead of the database row. A column added to Jant no longer turns up in the API on its own, and responses stop carrying the owning site and storage details.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - `siteId` is gone from posts, media, collections, smart collections, collection directory items, and navigation items. A response always comes from the site you asked.
+  - Posts in the author API no longer carry `previewImageKey`, `previewKind`, `previewProvider`, or `translationGroupId`; public posts no longer carry `translationGroupId`. The translation endpoints list a post's other versions.
+  - Media responses no longer carry `filename`, `provider`, or `position`. `originalName` is the file's name as uploaded, and a post's `attachments` array gives the order.
+  - `jant_collections_list` returns the same `collections`, `smartCollections`, and `directoryItems` as `GET /api/collections`, without the extra `items`.
+  - Now documented, unchanged: `language` and `displayTitle` on posts, `description` on directory items, and `placement` and `targetTitle` on navigation items, which `POST` and `PUT /api/nav-items` also accept as `placement`.
+
+- [`7dc7ad6`](https://github.com/jant-me/jant/commit/7dc7ad6656e77e79e1acece1d4926fe62ecfdedd) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Collection and Smart Collection pages link to their rating order as `?sort=rating`, one word like every other value in a public address. Writing and organizing now lists every archive query parameter and value, and the older spellings the archive still reads.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - Links with `?sort=rating_desc` still open the rating order. The API keeps `rating_desc` as the `sortOrder` value.
+
+- [`b4c02a7`](https://github.com/jant-me/jant/commit/b4c02a7ad5c2d57dd11ed1cc9aa02754561aaa32) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `GET /api/collections`, `GET /api/collections/:id`, and `GET /api/nav-items` are author endpoints, like the rest of the collection and navigation API. Readers see Collections on `/collections` and the navigation in the page header. With an API token, collection and smart collection counts now include private Threads, as they already did in a signed-in browser.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - These three reads return `401` without a session or API token, whatever `PUBLIC_API_ENABLED` says. `PUBLIC_API_ENABLED` now only affects `/api/public/*`.
+
+- [`881373c`](https://github.com/jant-me/jant/commit/881373c444bdda511bb0401755a2b9da9afe8f07) Thanks [@theowenyoung](https://github.com/theowenyoung)! - The custom URLs API pages and names things the way the rest of the API does.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - `GET /api/custom-urls` pages with `limit` (default and maximum `100`) and `cursor`, answering `{ customUrls, nextCursor }`. The `page` parameter and the `total`, `page`, and `totalPages` fields are gone.
+  - `path` in responses has its leading slash, as `toPath` already did and requests already allowed.
+  - `targetId` in a create request takes the post's or collection's TypeID as well as its slug. A target that doesn't exist answers `404` either way; an unknown TypeID used to fail with `500`.
+  - Responses carry `archiveQuery`, and the docs describe the `archive` addresses the list already returned.
+
+- [`6a2fc3f`](https://github.com/jant-me/jant/commit/6a2fc3fecf2095d0fd56d1ed6096ac732a1725e1) Thanks [@theowenyoung](https://github.com/theowenyoung)! - The Docker image puts `jant` on the `PATH`, as the command-line docs say: `docker compose exec jant jant setup --help` works. `node bin/jant.js` keeps working. From 1.0.1, each release also moves a major-version tag, `owenyoung/jant:1`, so a compose file pinned to it stays on 1.x.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [`6f34d9e`](https://github.com/jant-me/jant/commit/6f34d9e321e4074c1839c8aa3809516c88e91339) Thanks [@theowenyoung](https://github.com/theowenyoung)! - MCP tools follow one naming pattern and fail in one shape.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - `jant_search_posts` is now `jant_posts_search`, and its `query` parameter is `q`, as in `GET /api/search`. `jant_media_update_alt` is now `jant_media_update`.
+  - A failed tool call's `structuredContent` is the HTTP error shape: `{ error, code }`, with `details` for a validation error. It used to be one of four shapes; `issues` is now `details`, and `statusCode` is gone.
+  - An unknown tool answers `code: "NOT_FOUND"`, and an unexpected failure `code: "INTERNAL_ERROR"`.
+  - From 1.0, the compatibility promise covers what MCP tools return as well as their names and parameters.
+
+- [`b15c5bb`](https://github.com/jant-me/jant/commit/b15c5bba591f836fd726859d051dba478c8c5cdb) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Uploaded files are a resource at `/api/media`: list them, read one, change its alt text, and delete it there. `/api/upload` only uploads.
+
+  The text attachment preview reads from its own page address, `/_/text/{id}`, and follows the rule the attachment's page `/{post}/text/{id}` already followed: the file must belong to a published post, and a private one only to the signed-in author.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - `GET /api/upload`, `GET /api/upload/:id`, `PATCH /api/upload/:id`, and `DELETE /api/upload/:id` are now `GET /api/media`, `GET /api/media/:id`, `PATCH /api/media/:id`, and `DELETE /api/media/:id`, with the same requests and responses. `POST /api/upload` is unchanged.
+  - The undocumented `GET /api/media/:id/content` is gone. It answered anyone who had a media ID, whatever the post it belonged to.
+  - The preview dialog now works on a site with `SITE_PATH_PREFIX`, and shows an uploaded plain-text file as text instead of reading its contents as HTML. The attachment page `/{post}/text/{id}` also opens for an uploaded plain-text file.
+
+- [`06ab955`](https://github.com/jant-me/jant/commit/06ab9555a0a7631021d5b321d93f7fb66640bd3a) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A text attachment carries `url`, its Markdown source file, as every other attachment does. Public posts give that instead of `contentUrl`, which pointed readers at an endpoint that needs a session or token and answered them `401`.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - `/api/public/*` text attachments no longer carry `contentUrl`. Read the Markdown from `url`.
+  - Author API and media responses keep `contentUrl`, and add `url`.
+
+- [`38bcba1`](https://github.com/jant-me/jant/commit/38bcba12f89d3c87aba63501e93ee8e36d8b718e) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Remove the two public lists deprecated in 0.9: the `GET /api/public/posts` list and `GET /api/public/archive`. `GET /api/public/threads` replaces both. `GET /api/public/posts/:slug` stays. The 0.9 notes said 1.0.1; the removal comes a release earlier, so 1.x starts without them.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - Requests to the `GET /api/public/posts` list and to `GET /api/public/archive` return `404`. Use `GET /api/public/threads` for what the first listed, and `GET /api/public/threads?visibility=any&sort=published` for the archive. Their Threads carry each root post in the same shape, under `root`.
+  - Responses no longer carry the `Deprecation` and `Link` headers that announced the removal.
+
+- [`c08d573`](https://github.com/jant-me/jant/commit/c08d57320ffde052b3a1fd235536ac09053123a8) Thanks [@theowenyoung](https://github.com/theowenyoung)! - The theming page stops listing eight CSS variables that no Jant style reads, so setting them changed nothing: `--card-radius`, `--card-padding`, `--card-border-width`, `--card-shadow`, `--site-media-outline`, `--site-accent-text`, `--fw-light`, and `--fw-extrabold`.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - These variables are no longer defined, except `--site-media-outline`, which the exported Hugo theme still reads. Custom CSS that set them had no effect, and still has none. Custom CSS that read them with `var()` gets the fallback you gave, or the property's initial value.
+  - The "turn posts into cards" example is gone from the theming page; the variables it set did nothing.
+
+- [`6d90bca`](https://github.com/jant-me/jant/commit/6d90bcae078537337d0693f48c7d845a2f4d4b00) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Every path Jant answers at the site root is now reserved, so no post, collection, or custom URL can take an address that a system route would shadow. Newly reserved: `sites`, `robots.txt`, `manifest.webmanifest`, `favicon.ico`, `apple-touch-icon.png`, and every `sitemap.xml` or `sitemap-*.xml` name.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - An address that already uses one of these names was never reachable, since the system route answered first. It stays stored, and saving a new one is refused.
+
+- [`10cdef3`](https://github.com/jant-me/jant/commit/10cdef3a3f483397aed27c5d30fb6e3d91cae632) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `GET /api/search` is the author's search: it needs a session or API token, finds private posts and replies in a private Thread, and each result carries `visibility`, as the `jant_search_posts` MCP tool does. Readers search on the `/search` page, where the search rate limit now applies.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - A request to `GET /api/search` without a session or token gets `401`. Jant has no anonymous search API anymore; readers use the `/search` page. `PUBLIC_API_ENABLED` no longer affects `/api/search`.
+  - `RATE_LIMIT_SEARCH_PER_MIN` now limits signed-out readers on the `/search` page. The search API and the signed-in author aren't limited.
+
+- [`beafeb0`](https://github.com/jant-me/jant/commit/beafeb0b9ff9ba4589cd308840d620b8c9fc2523) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Smart collections name their order `sortOrder`, as collections do, with the same values, and their endpoints return the object itself.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - In smart collection requests and responses, `sort` is now `sortOrder`. A request that still sends `sort` has it ignored, and the default order applies.
+  - `GET`, `POST`, and `PUT /api/smart-collections[/:id]` return the smart collection object, no longer wrapped in `{ "smartCollection": … }`. The list keeps `{ "smartCollections": […] }`.
+  - `jant site import` from this release works with sites before and after the change. An older `jant` can't import smart collections into a site on this release; update `@jant/core` first.
+
+- [`fe78a19`](https://github.com/jant-me/jant/commit/fe78a19dcd0eeb7a023a308e9e617f89d13793ae) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `POST /api/upload` always answers JSON. It used to answer a request that sent `Accept: text/event-stream` with Datastar patches for an upload screen that no longer exists.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - A client that asked `POST /api/upload` for `text/event-stream` gets the JSON response instead.
+
+### Patch Changes
+
+- [`098c6b5`](https://github.com/jant-me/jant/commit/098c6b5bab4a7d4b3c8f6ec1ea691972d2e6c943) Thanks [@theowenyoung](https://github.com/theowenyoung)! - The API reference's "Versioning and Stability" section points to the compatibility promise instead of saying breaking changes arrive through release notes.
+
+- [`7abb701`](https://github.com/jant-me/jant/commit/7abb701d602da0b3aff45d4b586726b4c6cd55e4) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Automation and API docs: the curl example posts a note with `bodyMarkdown` (with `body`, it answered 400), the field list names `collectionIds`, and the MCP section says which resources have tools instead of claiming one tool per endpoint. The API reference lists the `smc_` ID prefix.
+
+- [`e815a3e`](https://github.com/jant-me/jant/commit/e815a3e1f644e932cdc128a963b850b33ffe1ec1) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `jant` refuses options written before the command instead of dropping them. `jant --remote migrate` used to migrate the local database, and `jant --help deploy` deployed; both now stop with a message saying where the options go.
+
+- [`14aa67f`](https://github.com/jant-me/jant/commit/14aa67ff154ef6aa3bca7e696d1ef808c6a980eb) Thanks [@theowenyoung](https://github.com/theowenyoung)! - The compatibility page says where the promise stops: undocumented endpoints and fields aren't covered, the maintenance commands run from the server's version, a snapshot restores into the kind of database it came from, and the defaults of `PUBLIC_API_ENABLED`, `MAIN_RSS_FEED`, `RSS_FEEDS_ENABLED`, and `CORS_ORIGINS` change only in a major release. The API reference documents `PUT /api/settings/import` and the post fields `jant site import` sends: `pinnedAt`, `featuredAt`, `quietReply`, and `collectionEntries`.
+
+- [`e6bef29`](https://github.com/jant-me/jant/commit/e6bef299f094dfa50c618de5724877f6af30f5c8) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Custom CSS overrides the built-in color and font theme, as the theming docs say. The theme wrote its values with a doubled `:root:root` selector, so `:root { --primary: … }` in custom CSS lost to it in light mode, and to the dark defaults in dark mode.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - The theme and Jant's defaults now use `:root` for light values, and `:root[data-theme-mode="dark"]` or, under `@media (prefers-color-scheme: dark)`, `:root:not([data-theme-mode="light"])` for dark ones. Custom CSS that uses the same selectors wins. Custom CSS that worked around the old behavior with `:root:root` still wins.
+  - A site set to always dark now shows its theme's own search highlight colors and dashboard background, as a site following a dark system preference already did.
+
+- [`fb93368`](https://github.com/jant-me/jant/commit/fb93368e5e1a863f087bcc98bd4891d60df5981b) Thanks [@theowenyoung](https://github.com/theowenyoung)! - The export and import page lists every front-matter field and `data/jant.toml` key a site export writes, and marks the ones only the bundled Hugo theme reads. The rest change only in a major release. Before, the page named a handful in prose, and everything else, `title` and `format` included, was outside the contract by omission.
+
+- [`d581889`](https://github.com/jant-me/jant/commit/d581889ae1e2743913bfe77084b471f34f60bb95) Thanks [@theowenyoung](https://github.com/theowenyoung)! - The MCP post tools write posts the way `POST` and `PUT /api/posts` do.
+
+  - `jant_posts_update` works. It rejected every call with "Invalid tool arguments." because the post `id` was checked as part of the body.
+  - `jant_posts_create` keeps `language`, `translationOfId`, `pinnedAt`, `featuredAt`, and `collectionEntries`, and `jant_posts_update` keeps `language`, `pinnedAt`, `featuredAt`, and `collectionEntries`. They used to be dropped without an error.
+  - Creating, updating, or deleting a post through MCP starts a GitHub sync on a site that has one, as the HTTP endpoints do.
+
 ## 0.9.1
 
 ### Patch Changes
