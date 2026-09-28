@@ -699,7 +699,7 @@ export const CreateNavItemSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("collection"),
-    collectionId: z.string().min(1),
+    collectionId: CollectionIdSchema,
     label: sanitizeText(100).pipe(z.string().min(1)).optional(),
     placement: z.enum(["header", "more"]).optional(),
   }),

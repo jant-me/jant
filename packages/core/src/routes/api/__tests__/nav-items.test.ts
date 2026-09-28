@@ -576,11 +576,29 @@ describe("Nav Items API Routes", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "collection",
-          collectionId: "col_nonexistent000000000000000",
+          collectionId: createEntityId("collection"),
         }),
       });
 
       expect(res.status).toBe(404);
+    });
+
+    it("returns 400 for an ID that isn't a collection ID", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/nav-items", navItemsApiRoutes);
+      const post = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "not a collection",
+      });
+
+      for (const collectionId of ["col_nonexistent000000000000000", post.id]) {
+        const res = await app.request("/api/nav-items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "collection", collectionId }),
+        });
+        expect(res.status, collectionId).toBe(400);
+      }
     });
 
     it("returns 400 for duplicate collection nav items", async () => {
