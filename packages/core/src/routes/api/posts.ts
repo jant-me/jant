@@ -19,6 +19,7 @@ import {
 import { requireAuthApi } from "../../middleware/auth.js";
 import {
   apiPostListOrder,
+  loadApiPostDetail,
   loadApiPostResponse,
   loadApiPostResponses,
 } from "../../lib/api-posts.js";
@@ -115,16 +116,9 @@ postsApiRoutes.get("/:id/content", requireAuthApi(), async (c) => {
 postsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
 
-  const [post, threadPosition] = await Promise.all([
-    c.var.services.posts.getById(id),
-    c.var.services.posts.getThreadPosition(id),
-  ]);
-  const foundPost = assertFound(post, "Post");
+  const post = assertFound(await c.var.services.posts.getById(id), "Post");
 
-  return c.json({
-    ...(await loadApiPostResponse(c.var, foundPost, { collectionIds: true })),
-    threadPosition,
-  });
+  return c.json(await loadApiPostDetail(c.var, post));
 });
 
 // Create post (requires auth)

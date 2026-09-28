@@ -550,7 +550,7 @@ Invalid slug candidates return `400`, including reserved slugs and slugs with in
 
 Auth: `Session or token`
 
-This returns the full post plus shared Thread-level `collectionIds` and ordered `attachments`.
+This returns the full post plus shared Thread-level `collectionIds`, ordered `attachments`, and `threadPosition`: the post's place in its Thread, `1` for the root. `jant_posts_get` returns the same.
 
 Example:
 
@@ -559,6 +559,7 @@ Example:
   "id": "pst_01jpyx3m7gw4w3h7m4bknq0v1d",
   "format": "note",
   "collectionIds": ["col_01jpyx5qds8y79w2dd6sv4rznj"],
+  "threadPosition": 1,
   "attachments": [],
   "slug": "hello-world",
   "title": "Hello World",

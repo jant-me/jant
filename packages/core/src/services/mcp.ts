@@ -30,6 +30,7 @@ import {
 } from "../lib/api-settings.js";
 import {
   apiPostListOrder,
+  loadApiPostDetail,
   loadApiPostResponse,
   loadApiPostResponses,
 } from "../lib/api-posts.js";
@@ -274,7 +275,7 @@ const mcpTools: McpToolDefinition[] = [
         throw new NotFoundError("Post");
       }
 
-      return serializePost(post, context);
+      return loadApiPostDetail(context, post);
     },
   },
   {
@@ -983,7 +984,7 @@ const mcpTools: McpToolDefinition[] = [
 
       const allSettings = await context.services.settings.getAll();
       return {
-        rejectedKeys,
+        ...(rejectedKeys.length > 0 && { rejectedKeys }),
         settings: buildEditableSettingsResponse(
           allSettings,
           context.appConfig.demoMode,
@@ -1403,15 +1404,17 @@ async function uploadMediaFromBase64(
   return serializeMedia(media, context.appConfig);
 }
 
+// MCP tools answer what their HTTP endpoints do: a list leaves out
+// `collectionIds`, as do create and update; only a single read carries it.
 function serializePosts(
   posts: Awaited<ReturnType<Services["posts"]["list"]>>,
   context: McpToolContext,
 ) {
-  return loadApiPostResponses(context, posts, { collectionIds: true });
+  return loadApiPostResponses(context, posts);
 }
 
 function serializePost(post: Post, context: McpToolContext) {
-  return loadApiPostResponse(context, post, { collectionIds: true });
+  return loadApiPostResponse(context, post);
 }
 
 function serializeMedia(

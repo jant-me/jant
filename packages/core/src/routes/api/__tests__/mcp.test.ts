@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createTestApp } from "../../../__tests__/helpers/app.js";
+import { postsApiRoutes } from "../posts.js";
 import { createEntityId } from "../../../lib/ids.js";
 import { handleMcpHttpRequest } from "../../../services/mcp.js";
 import { mcpApiRoutes } from "../mcp.js";
@@ -682,6 +683,32 @@ describe("MCP post writes", () => {
           }>,
       );
   }
+
+  it("answers with what the matching HTTP endpoint returns", async () => {
+    const { app, services } = createTestApp({ authenticated: true });
+    app.route("/api/mcp", mcpApiRoutes);
+    app.route("/api/posts", postsApiRoutes);
+    const collection = await services.collections.create({
+      title: "Ideas",
+      slug: "ideas",
+    });
+    const post = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "hello",
+      collectionIds: [collection.id],
+    });
+
+    const viaMcp = await callTool(app, "/api/mcp", "jant_posts_get", {
+      id: post.id,
+    });
+    const viaHttp = await (await app.request(`/api/posts/${post.id}`)).json();
+
+    expect(viaMcp.result.structuredContent).toEqual(viaHttp);
+    expect(viaHttp).toMatchObject({
+      collectionIds: [collection.id],
+      threadPosition: 1,
+    });
+  });
 
   it("keeps every field POST and PUT /api/posts keep", async () => {
     // The MCP tools once mapped the body themselves and dropped `language`,

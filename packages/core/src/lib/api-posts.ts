@@ -297,3 +297,24 @@ export async function loadApiPostResponse(
   if (!response) throw new Error(`No response built for post ${post.id}`);
   return response;
 }
+
+/**
+ * One Post as `GET /api/posts/:id` and `jant_posts_get` answer it: the
+ * response, its Thread's collections, and its place in the Thread.
+ *
+ * @param deps - Services and app config
+ * @param post - The Post
+ * @returns The Post's response with `collectionIds` and `threadPosition`
+ * @example
+ * return c.json(await loadApiPostDetail(c.var, post));
+ */
+export async function loadApiPostDetail(
+  deps: ApiPostResponseDeps,
+  post: Post,
+): Promise<ApiPostResponse & { threadPosition: number }> {
+  const [response, threadPosition] = await Promise.all([
+    loadApiPostResponse(deps, post, { collectionIds: true }),
+    deps.services.posts.getThreadPosition(post.id),
+  ]);
+  return { ...response, threadPosition };
+}
