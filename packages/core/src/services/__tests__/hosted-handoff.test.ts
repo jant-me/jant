@@ -150,4 +150,29 @@ describe("HostedHandoffService", () => {
       }),
     ).rejects.toThrow("This sign-in link has expired.");
   });
+
+  it("lets only the owner sign in while core has no roles", async () => {
+    const testDb = createTestDatabase();
+    const db = testDb.db as unknown as Database;
+    const auth = createAuth(db, {
+      allowSystemUserProvisioning: true,
+      secret: "test-auth-secret",
+      baseURL: "http://127.0.0.1:3000",
+      useSecureCookies: false,
+    });
+    const hostedHandoff = createHostedHandoffService(db, auth, {
+      secret: HOSTED_SSO_SECRET,
+    });
+    const token = await signHostedSsoToken(
+      HOSTED_SSO_SECRET,
+      createHostedClaims({ role: "editor" }),
+    );
+
+    await expect(
+      hostedHandoff.completeFromSignedToken({
+        currentSiteId: DEFAULT_TEST_SITE_ID,
+        token,
+      }),
+    ).rejects.toThrow("Only the site's owner");
+  });
 });

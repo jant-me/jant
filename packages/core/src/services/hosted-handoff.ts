@@ -9,6 +9,7 @@ import {
   ConflictError,
   DomainError,
   ExternalServiceError,
+  ForbiddenError,
   NotFoundError,
   UnauthorizedError,
 } from "../lib/errors.js";
@@ -89,6 +90,15 @@ export function createHostedHandoffService(
       if (claims.siteId !== input.currentSiteId) {
         throw new UnauthorizedError(
           "This sign-in link does not match the current site.",
+        );
+      }
+
+      // Core has one level of access: every member can do everything the
+      // owner can. Until roles mean something here, an admin or editor
+      // signing in would get the owner's powers, so only the owner may.
+      if (claims.role !== "owner") {
+        throw new ForbiddenError(
+          `Only the site's owner can sign in to it for now. Ask the owner in ${providerLabel}.`,
         );
       }
 
