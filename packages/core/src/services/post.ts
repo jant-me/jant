@@ -37,7 +37,10 @@ import {
   buildRootActivityExpr,
   rootActivityColumns,
 } from "../db/thread-activity.js";
-import { buildReaderVisibilityConditions } from "../db/post-visibility.js";
+import {
+  buildReaderVisibilityConditions,
+  type ReaderVisibilityOptions,
+} from "../db/post-visibility.js";
 import { createEntityId } from "../lib/ids.js";
 import {
   decodePostListCursor,
@@ -698,13 +701,27 @@ export interface PostService {
   /**
    * List the Thread roots that are translations of the given Post, excluding
    * the Post itself. Empty when it belongs to no translation group.
+   *
+   * @param postId - The Post whose translations to list
+   * @param reader - What the audience may see. Omit it for the author's view,
+   *   which includes drafts and private translations.
    */
-  listTranslations(postId: string): Promise<Post[]>;
+  listTranslations(
+    postId: string,
+    reader?: ReaderVisibilityOptions,
+  ): Promise<Post[]>;
   /**
    * List translations for many Thread roots in one round trip, keyed by the
-   * root ID that was asked about. Roots with no group are omitted.
+   * root ID that was asked about. Roots with no group, or none the audience
+   * may see, are omitted.
+   *
+   * @param postIds - Thread roots to look up
+   * @param reader - What the audience may see. Omit it for the author's view.
    */
-  getTranslationsMap(postIds: string[]): Promise<Map<string, Post[]>>;
+  getTranslationsMap(
+    postIds: string[],
+    reader?: ReaderVisibilityOptions,
+  ): Promise<Map<string, Post[]>>;
   /**
    * Find published Thread roots this Post could be linked to as a translation.
    *
@@ -4317,8 +4334,8 @@ export function createPostService(
         .map((row) => ({ language: row.language, count: Number(row.count) }));
     },
 
-    async listTranslations(postId) {
-      const map = await this.getTranslationsMap([postId]);
+    async listTranslations(postId, reader) {
+      const map = await this.getTranslationsMap([postId], reader);
       return map.get(postId) ?? [];
     },
 
@@ -4435,7 +4452,7 @@ export function createPostService(
       return { status: "ok", post: candidate };
     },
 
-    async getTranslationsMap(postIds) {
+    async getTranslationsMap(postIds, reader) {
       const result = new Map<string, Post[]>();
       const uniqueIds = [...new Set(postIds)].filter(Boolean);
       if (uniqueIds.length === 0) return result;
@@ -4466,6 +4483,9 @@ export function createPostService(
           and(
             eq(posts.siteId, siteId),
             inArray(posts.translationGroupId, groupIds),
+            ...(reader
+              ? buildReaderVisibilityConditions(posts, siteId, reader)
+              : []),
           ),
         );
       const members = await hydratePosts(memberRows);

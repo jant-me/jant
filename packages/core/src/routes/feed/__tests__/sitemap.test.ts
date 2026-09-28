@@ -253,6 +253,48 @@ describe("Sitemap Routes", () => {
       expect(xml).not.toContain(`/${draft.slug}`);
     });
 
+    it("leaves draft and private translations out of the alternates", async () => {
+      const { app, services } = createSitemapTestApp();
+      const en = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "English",
+        language: "en",
+        status: "published",
+      });
+      const fr = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "Français",
+        language: "fr",
+        translationOfId: en.id,
+        status: "published",
+      });
+      const ja = await services.posts.create({
+        format: "note",
+        title: "Secret draft layoffs plan",
+        bodyMarkdown: "日本語",
+        language: "ja",
+        translationOfId: en.id,
+        status: "draft",
+      });
+      const de = await services.posts.create({
+        format: "note",
+        title: "Private diary entry",
+        bodyMarkdown: "Deutsch",
+        language: "de",
+        translationOfId: en.id,
+        visibility: "private",
+        status: "published",
+      });
+
+      const xml = await (await app.request("/sitemap-posts-1.xml")).text();
+      expect(xml).toContain(`hreflang="fr"`);
+      expect(xml).toContain(`/${fr.slug}`);
+      expect(xml).not.toContain(`hreflang="ja"`);
+      expect(xml).not.toContain(`/${ja.slug}`);
+      expect(xml).not.toContain(`hreflang="de"`);
+      expect(xml).not.toContain(`/${de.slug}`);
+    });
+
     it("includes latest_hidden posts (they are public URLs)", async () => {
       const { app, services } = createSitemapTestApp();
       const hidden = await services.posts.create({
