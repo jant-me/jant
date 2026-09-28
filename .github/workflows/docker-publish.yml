@@ -8,9 +8,9 @@ on:
         required: false
         type: string
       push_latest:
-        description: Also update the latest tag
+        description: Also move the latest and major tags to this version
         required: false
-        default: true
+        default: false
         type: boolean
   workflow_dispatch:
     inputs:
@@ -18,10 +18,13 @@ on:
         description: Docker image version tag without a leading v (defaults to packages/core/package.json on main)
         required: false
         type: string
+      # Off by default: a manual run is usually a republish, and republishing
+      # an older version with this on would move `:latest` and `:1` back to it.
+      # The release workflow passes true for a new release.
       push_latest:
-        description: Also update the latest tag
+        description: Also move the latest and major tags to this version (leave off to republish an older version)
         required: false
-        default: true
+        default: false
         type: boolean
 
 concurrency:

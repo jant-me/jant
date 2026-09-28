@@ -102,7 +102,7 @@ The official Docker image lives at `owenyoung/jant`.
 - Automatic publish happens after a successful package release that includes `@jant/core`
 - The pushed tags are the exact package version, such as `owenyoung/jant:0.3.38`, and `owenyoung/jant:latest`
 - From 1.0.1, a release also moves the major tag, such as `owenyoung/jant:1`, to itself. A compose file pinned to it gets every 1.x release and never a 2.0. Pre-releases and 0.x releases don't move it
-- Maintainers can manually backfill or republish the current `main` version from the **Docker Publish** workflow using `workflow_dispatch`
+- Maintainers can manually backfill or republish the current `main` version from the **Docker Publish** workflow using `workflow_dispatch`. It leaves `:latest` and the major tag alone unless you tick **push_latest**, so republishing an older version doesn't move them back
 - The workflow also syncs the Docker Hub overview from `docs/docker-hub-overview.md`
 
 ### Docker Hub setup
