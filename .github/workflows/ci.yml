@@ -342,7 +342,7 @@ jobs:
             echo "| --- | --- | --- |"
 
             if [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "main" ]; then
-              write_row "demo.jant.me" "${DEMO_SELECTED:-false}" "$DEPLOY_DEMO_RESULT"
+              write_row "jant-demo Worker" "${DEMO_SELECTED:-false}" "$DEPLOY_DEMO_RESULT"
               write_row "demo-source.jant.me" "${DEMO_SOURCE_SELECTED:-false}" "$DEPLOY_DEMO_SOURCE_RESULT"
               write_row "content-lab.jant.me" "${CONTENT_LAB_SELECTED:-false}" "$DEPLOY_CONTENT_LAB_RESULT"
               write_row "jant prod build" "true" "$DEPLOY_STUDIO_PROD_RESULT"

@@ -5,7 +5,9 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to demo.jant.me
+    # demo.jant.me is the Docker demo (reset-demo-studio.yml); this is the
+    # Workers build of sites/demo, kept deployed on its own.
+    name: Deploy the jant-demo Worker
     uses: ./.github/workflows/deploy.yml
     with:
       working_directory: sites/demo
