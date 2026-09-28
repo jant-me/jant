@@ -48,7 +48,7 @@ import {
 } from "./filter-dimensions.js";
 import { normalizeSlug } from "./slug-format.js";
 import { isReservedPath } from "./constants.js";
-import { sanitizeUrl, normalizePath } from "./url.js";
+import { isFullUrl, sanitizeUrl, normalizePath } from "./url.js";
 import { isSupportedTimeZone, normalizeTimeZone } from "./timezones.js";
 
 // =============================================================================
@@ -1059,7 +1059,17 @@ export const CreateCustomUrlSchema = z.object({
     .transform((p) => (p.startsWith("/") ? p : `/${p}`)),
   targetType: CreatableCustomUrlTargetTypeSchema,
   targetId: z.string().optional(),
-  toPath: z.string().optional(),
+  // A path on the site, or an http(s) URL. A path keeps its query string.
+  toPath: z
+    .string()
+    .trim()
+    .min(1)
+    .max(2048)
+    .refine((value) => !isFullUrl(value) || URL.canParse(value), {
+      message:
+        "Enter a path on this site, such as /new-path, or a full http:// or https:// address.",
+    })
+    .optional(),
   redirectType: RedirectTypeSchema.optional(),
 });
 

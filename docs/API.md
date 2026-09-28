@@ -204,7 +204,7 @@ The post list (`GET /api/posts`), the Thread lists (`GET /api/threads`, `GET /ap
 - Post `path` is a create-time convenience field, not a general path-management API.
 - If a post `path` is itself a valid slug, Jant uses it as the canonical slug.
 - If a post `path` is not a valid slug, Jant slugifies it for the canonical URL and stores the original path as an alias.
-- Custom URL `path` and `toPath` carry a leading slash in responses. A request may leave it off `path`.
+- Custom URL `path` carries a leading slash in responses, and so does `toPath` when it names a path on the site. A request may leave it off `path`.
 
 ### Body formats
 
@@ -2163,16 +2163,16 @@ Custom URLs let you attach extra paths to posts or collections, or define intern
 
 Custom URL responses include these fields:
 
-| Field          | Type                                              | Notes                                                     |
-| -------------- | ------------------------------------------------- | --------------------------------------------------------- |
-| `id`           | `pth_*` string                                    | Custom URL ID                                             |
-| `path`         | string                                            | The address, with a leading slash                         |
-| `targetType`   | `post` \| `collection` \| `redirect` \| `archive` | Target kind                                               |
-| `targetId`     | string \| `null`                                  | The post's or collection's TypeID; `null` for other kinds |
-| `toPath`       | string \| `null`                                  | `redirect` only: the destination, with a leading slash    |
-| `redirectType` | `301` \| `302` \| `null`                          | `redirect` only: the status it answers with               |
-| `archiveQuery` | string \| `null`                                  | `archive` only: the archive query the address shows       |
-| `createdAt`    | integer                                           | Unix seconds                                              |
+| Field          | Type                                              | Notes                                                                              |
+| -------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `id`           | `pth_*` string                                    | Custom URL ID                                                                      |
+| `path`         | string                                            | The address, with a leading slash                                                  |
+| `targetType`   | `post` \| `collection` \| `redirect` \| `archive` | Target kind                                                                        |
+| `targetId`     | string \| `null`                                  | The post's or collection's TypeID; `null` for other kinds                          |
+| `toPath`       | string \| `null`                                  | `redirect` only: a path on the site, with a leading slash, or an `http(s)` address |
+| `redirectType` | `301` \| `302` \| `null`                          | `redirect` only: the status it answers with                                        |
+| `archiveQuery` | string \| `null`                                  | `archive` only: the archive query the address shows                                |
+| `createdAt`    | integer                                           | Unix seconds                                                                       |
 
 Target types:
 
@@ -2180,7 +2180,7 @@ Target types:
 | ------------ | ------------------------------------------ | ------------------------ |
 | `post`       | Alias that resolves to a post              | `targetId`               |
 | `collection` | Alias that resolves to a collection        | `targetId`               |
-| `redirect`   | Internal redirect to another path          | `toPath`, `redirectType` |
+| `redirect`   | Redirect to another path or another site   | `toPath`, `redirectType` |
 | `archive`    | A saved archive view; read and delete only | `archiveQuery`           |
 
 `archive` addresses can't be created anymore; a [smart collection](#smart-collections) does the same job. Existing ones keep working, and the list returns them.
@@ -2252,13 +2252,13 @@ Request body:
 
 Fields:
 
-| Field          | Type                                 | Required                            | Default | Notes                                                                                     |
-| -------------- | ------------------------------------ | ----------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `path`         | string                               | yes                                 | —       | Max `512`; lowercase letters, numbers, `-`, `.`, and `/`; the leading `/` may be left off |
-| `targetType`   | `post` \| `collection` \| `redirect` | yes                                 | —       | Target kind                                                                               |
-| `targetId`     | string                               | required for `post` or `collection` | —       | The post's or collection's TypeID, or its slug                                            |
-| `toPath`       | string                               | required for `redirect`             | —       | Internal destination path such as `/new-path`; normalized before storage                  |
-| `redirectType` | `301` \| `302`                       | no                                  | `301`   | Only used for `redirect`. The strings `"301"` and `"302"` are accepted too                |
+| Field          | Type                                 | Required                            | Default | Notes                                                                                                                                                                        |
+| -------------- | ------------------------------------ | ----------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`         | string                               | yes                                 | —       | Max `512`; lowercase letters, numbers, `-`, `.`, and `/`; the leading `/` may be left off                                                                                    |
+| `targetType`   | `post` \| `collection` \| `redirect` | yes                                 | —       | Target kind                                                                                                                                                                  |
+| `targetId`     | string                               | required for `post` or `collection` | —       | The post's or collection's TypeID, or its slug                                                                                                                               |
+| `toPath`       | string                               | required for `redirect`             | —       | A path on the site, such as `/new-path?format=note`, or a full `http://` or `https://` address. A path is lowercased and keeps its query string; an address is kept as given |
+| `redirectType` | `301` \| `302`                       | no                                  | `301`   | Only used for `redirect`. The strings `"301"` and `"302"` are accepted too                                                                                                   |
 
 Examples:
 
@@ -2287,7 +2287,7 @@ Important notes:
 
 - `path` must not collide with an existing slug or custom URL.
 - Reserved paths are rejected.
-- Redirects are for internal paths. External redirect targets are not supported by this API.
+- A redirect can point at a path on the site or at another site. A path is followed within the language view it was reached from.
 - A post or collection target that doesn't exist answers `404`.
 - The response names the target by TypeID, whichever you sent.
 

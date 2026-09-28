@@ -22,7 +22,7 @@ import {
   decodePostListCursor,
   encodePostListCursor,
 } from "../lib/post-list-cursor.js";
-import { normalizePath } from "../lib/url.js";
+import { normalizePath, redirectTargetHref } from "../lib/url.js";
 import type { CustomUrl } from "../types.js";
 import { readLanguageSettings } from "./language.js";
 import { createPathService, type PathService } from "./path.js";
@@ -91,7 +91,9 @@ export function createCustomUrlService(
               ? "post"
               : "collection",
       targetId: row.postId ?? row.collectionId,
-      toPath: row.redirectToPath ? `/${row.redirectToPath}` : null,
+      toPath: row.redirectToPath
+        ? redirectTargetHref(row.redirectToPath)
+        : null,
       redirectType: row.redirectType as 301 | 302 | null,
       archiveQuery: row.archiveQuery,
       createdAt: row.createdAt,

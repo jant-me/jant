@@ -90,7 +90,11 @@ import LAYOUT_RSS from "./export-theme/layouts/_default/rss.xml?raw";
 import PARTIAL_FEED_POST_CONTENT from "./export-theme/layouts/partials/feed-post-content.xml?raw";
 
 import { suggestSyncRepoName } from "../lib/github-sync-repo-name.js";
-import { getPostPath, toAbsoluteSiteUrl } from "../lib/url.js";
+import {
+  getPostPath,
+  redirectTargetHref,
+  toAbsoluteSiteUrl,
+} from "../lib/url.js";
 import type { StorageDriver } from "../lib/storage.js";
 import { base64ToUint8Array } from "../lib/favicon.js";
 import { makeZip } from "client-zip";
@@ -2112,7 +2116,9 @@ function buildJantDataToml(
     parts.push(`path = "/${escapeTomlString(record.path)}"`);
     parts.push(`kind = "${escapeTomlString(record.kind)}"`);
     if (record.kind === "redirect" && record.redirectToPath) {
-      parts.push(`to = "/${escapeTomlString(record.redirectToPath)}"`);
+      parts.push(
+        `to = "${escapeTomlString(redirectTargetHref(record.redirectToPath))}"`,
+      );
       parts.push(`status = ${record.redirectType ?? 301}`);
     }
     if (record.kind === "archive" && record.archiveQuery) {
@@ -2140,7 +2146,7 @@ function buildCustomUrlRedirects(
       (record) =>
         [
           `/${record.path}`,
-          `/${record.redirectToPath}`,
+          redirectTargetHref(record.redirectToPath as string),
           record.redirectType ?? 301,
         ] as const,
     );

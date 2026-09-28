@@ -24,10 +24,11 @@ import {
 } from "../../lib/post-display.js";
 import { buildArticleJsonLd } from "../../lib/structured-data.js";
 import {
+  isFullUrl,
   normalizePath,
+  redirectTargetHref,
   toAbsoluteAssetUrl,
   toAbsoluteSiteUrl,
-  toPublicHref,
   toPublicPath,
 } from "../../lib/url.js";
 import {
@@ -487,13 +488,12 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
   // but can never shadow an explicit or reserved application route.
   const resolved = await resolveStoredPath(c, fullPath);
   if (resolved?.kind === "redirect" && resolved.redirectToPath) {
-    const target = `/${resolved.redirectToPath}`;
-    // Follow the stored redirect within the current view; the hop that lands
-    // on a post then applies the canonical-address rule below.
+    const target = redirectTargetHref(resolved.redirectToPath);
+    // Follow a redirect on the site within the current view; the hop that
+    // lands on a post then applies the canonical-address rule below. One off
+    // the site goes where it says.
     return c.redirect(
-      toPublicHref(target) === target
-        ? toViewPath(c, target)
-        : toPublicHref(target, sitePathPrefix),
+      isFullUrl(target) ? target : toViewPath(c, target),
       resolved.redirectType ?? 301,
     );
   }

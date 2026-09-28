@@ -96,6 +96,7 @@ import { getHostedCanonicalRedirect } from "./lib/hosted-domain.js";
 import {
   isSafeInternalRedirect,
   normalizePath,
+  redirectTargetHref,
   stripSitePathPrefix,
   toPublicHref,
 } from "./lib/url.js";
@@ -507,9 +508,10 @@ export function createApp(): App {
     c.set("pathLookup", { path: storedPath, record });
 
     if (record?.kind === "redirect" && record.redirectToPath) {
+      // toPublicHref leaves an http(s) target as it is and prefixes a path.
       return c.redirect(
         toPublicHref(
-          `/${record.redirectToPath}`,
+          redirectTargetHref(record.redirectToPath),
           getRuntimeSitePathPrefix({
             env: c.env,
             currentSiteDomain: c.var.currentSiteDomain,
