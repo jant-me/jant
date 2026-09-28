@@ -30,6 +30,16 @@ export interface HostedHandoffService {
   }): Promise<HostedHandoffSession>;
 }
 
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
 function getDisplayName(claims: HostedSsoClaims): string {
   const name = claims.name?.trim();
   return name && name.length > 0 ? name : claims.email;
@@ -83,6 +93,24 @@ export function createHostedHandoffService(
       }
 
       const authContext = await auth.$context;
+
+      // A sign-in link travels in a URL, so it can land in a log or a
+      // history entry. It signs in once, then counts as expired: the reader
+      // gets the same page, with the way back to the provider. The record
+      // expires with the link.
+      const usedIdentifier = `hosted-sso:${await sha256Hex(input.token)}`;
+      if (
+        await authContext.internalAdapter.findVerificationValue(usedIdentifier)
+      ) {
+        throw new UnauthorizedError(
+          `This sign-in link has expired. Return to ${providerLabel} and try again.`,
+        );
+      }
+      await authContext.internalAdapter.createVerificationValue({
+        identifier: usedIdentifier,
+        value: claims.sub,
+        expiresAt: new Date(claims.exp * 1000),
+      });
       const linkedAccount = await db
         .select({ userId: account.userId })
         .from(account)
