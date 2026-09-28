@@ -86,8 +86,8 @@ importers:
         specifier: ^5.2.7
         version: 5.3.0
       '@hono/node-server':
-        specifier: ^1.19.11
-        version: 1.19.17(hono@4.13.7)
+        specifier: ^2.1.1
+        version: 2.1.1(hono@4.13.7)
       '@lingui/core':
         specifier: ^5.9.3
         version: 5.9.5(@lingui/babel-plugin-lingui-macro@5.9.5(typescript@6.0.3))
@@ -1297,9 +1297,9 @@ packages:
   '@fontsource/noto-serif-tc@5.3.0':
     resolution: {integrity: sha512-6ZvCwAxmIV9axb7PMdLFMRv9h0MAKFpgHB54dngBAt/pGXBfcdXMCV9MBhqIqPV16szpR6FFrXYGuC9fcPFJIw==}
 
-  '@hono/node-server@1.19.17':
-    resolution: {integrity: sha512-dSneS5qhiauZWGDCeK4o695Xd9nUNjviSZCMQrj10eetr8Uln1ucn6bbphOM6UynAMMtNIzZNSpL9vnASJwrPQ==}
-    engines: {node: '>=18.14.1'}
+  '@hono/node-server@2.1.1':
+    resolution: {integrity: sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg==}
+    engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
 
@@ -6185,7 +6185,7 @@ snapshots:
 
   '@fontsource/noto-serif-tc@5.3.0': {}
 
-  '@hono/node-server@1.19.17(hono@4.13.7)':
+  '@hono/node-server@2.1.1(hono@4.13.7)':
     dependencies:
       hono: 4.13.7
 
