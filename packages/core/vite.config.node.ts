@@ -3,19 +3,21 @@
  *
  * Vite owns the HTTP server, client HMR, and SSR module invalidation.
  * Jant's Node runtime is attached as a middleware behind Vite's own handlers.
+ *
+ * The runtime is loaded through the dev server, never imported here. Vite
+ * bundles a config file with a pass of its own, without `swcPlugin`, and `src/`
+ * declares strings with the Lingui macro, which exists only after the SWC
+ * transform. A config that imported `src/node/request-handler.ts` handed Node
+ * the macro package itself, and the server died before it started. Imports
+ * from `src/` here stay type-only, or reach modules as small as `lib/env.ts`.
  */
 
 import { getRequestListener } from "@hono/node-server";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "node:path";
 import { defineConfig, loadEnv, type Plugin } from "vite";
-import {
-  applyNodeRuntimeEnvDefaults,
-  createNodeRequestHandler,
-  migrate,
-  resolveHost,
-  resolvePort,
-} from "./src/node/request-handler.js";
+import { getHost, getPort } from "./src/lib/env.js";
+import type * as NodeRuntime from "./src/node/request-handler.js";
 import type { Bindings } from "./src/types/bindings.js";
 import {
   buildVersion,
@@ -30,7 +32,15 @@ function nodeMiddleware(): Plugin {
     apply: "serve",
     async configureServer(server) {
       const env = process.env as unknown as Bindings;
-      const handler = await createNodeRequestHandler({
+      const runtime = (await server.ssrLoadModule(
+        "/src/node/request-handler.ts",
+      )) as typeof NodeRuntime;
+      runtime.applyNodeRuntimeEnvDefaults(env, {
+        defaultDataDir: resolve(import.meta.dirname, "data"),
+      });
+      await runtime.migrate(env);
+
+      const handler = await runtime.createNodeRequestHandler({
         env,
         assetRoot: null,
         app: async () => {
@@ -40,7 +50,7 @@ function nodeMiddleware(): Plugin {
       });
       const requestListener = getRequestListener(
         (request) => handler.fetch(request),
-        { hostname: resolveHost(env) },
+        { hostname: getHost(env) },
       );
 
       server.httpServer?.once("close", () => {
@@ -75,19 +85,12 @@ function nodeMiddleware(): Plugin {
   };
 }
 
-export default defineConfig(async ({ command, mode }) => {
+export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, import.meta.dirname, "");
   Object.assign(process.env, env);
   process.env.NODE_ENV ||= "development";
 
   const bindings = process.env as unknown as Bindings;
-  applyNodeRuntimeEnvDefaults(bindings, {
-    defaultDataDir: resolve(import.meta.dirname, "data"),
-  });
-
-  if (command === "serve") {
-    await migrate(bindings);
-  }
 
   return {
     appType: "custom",
@@ -95,14 +98,14 @@ export default defineConfig(async ({ command, mode }) => {
     oxc: false,
 
     server: {
-      port: resolvePort(bindings),
-      host: resolveHost(bindings),
+      port: getPort(bindings),
+      host: getHost(bindings),
       allowedHosts: true,
     },
 
     preview: {
-      port: resolvePort(bindings),
-      host: resolveHost(bindings),
+      port: getPort(bindings),
+      host: getHost(bindings),
     },
 
     define: {

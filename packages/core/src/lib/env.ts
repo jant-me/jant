@@ -5,6 +5,7 @@ import { buildSiteUrl, normalizeSitePathPrefix } from "./url.js";
 type EnvSource = object | undefined | null;
 
 export const DEFAULT_APP_PORT = 3000;
+const DEFAULT_APP_HOST = "127.0.0.1";
 
 /** Jant's own directory, for a deployment that belongs to no other. */
 const DEFAULT_DISCOVER_DIRECTORY_URL = "https://jant.me";
@@ -285,6 +286,18 @@ export function parsePortValue(
  */
 export function getPort(env: EnvSource, fallback = DEFAULT_APP_PORT): number {
   return parsePortValue(getEnvString(env, "PORT"), fallback);
+}
+
+/**
+ * Resolve the address the Node server listens on from environment bindings.
+ *
+ * @param env - Runtime environment bindings
+ * @returns `HOST`, or the loopback address when it is not set
+ * @example
+ * getHost({ HOST: "0.0.0.0" });
+ */
+export function getHost(env: EnvSource): string {
+  return getEnvString(env, "HOST") ?? DEFAULT_APP_HOST;
 }
 
 export function getSiteOrigin(env: EnvSource): string {

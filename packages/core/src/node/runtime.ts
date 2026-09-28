@@ -2,11 +2,8 @@ import { serve, type ServerType } from "@hono/node-server";
 import type { AddressInfo } from "node:net";
 import type { App } from "../types/app-context.js";
 import type { Bindings } from "../types/bindings.js";
-import {
-  createNodeRequestHandler,
-  resolveHost,
-  resolvePort,
-} from "./request-handler.js";
+import { getHost, getPort } from "../lib/env.js";
+import { createNodeRequestHandler } from "./request-handler.js";
 import { registerTelegramPoolWebhooks } from "../lib/telegram-pool-webhooks.js";
 
 export {
@@ -17,9 +14,7 @@ export {
   resolveDatabasePath,
   resolveNodeAssetRoot,
   resolveNodeDataDir,
-  resolveHost,
   resolveNodeMigrationsDir,
-  resolvePort,
   resolvePublicRequestUrl,
 } from "./request-handler.js";
 
@@ -37,8 +32,8 @@ export async function start(
     env,
     app: async () => app ?? (await import("../app.js")).createApp(),
   });
-  const hostname = resolveHost(env);
-  const port = resolvePort(env);
+  const hostname = getHost(env);
+  const port = getPort(env);
 
   return new Promise<NodeServerHandle>((resolvePromise, reject) => {
     let didResolve = false;
