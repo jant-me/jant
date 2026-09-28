@@ -179,7 +179,7 @@ Three surfaces, three jobs.
 
 - `@jant:post` names the post carrying the file. In a thread every attachment has it, the root's included; a lone post's entry has none, because its one post is the entry.
 - **Files from folded posts arrive too.** An entry's media is the whole thread's. When a file's `jant:post` names a row that is neither the root nor `latest`, it belongs to a post behind the gap link — drawing it is your call.
-- `@jant:page` is where a click should land, written only when it differs from `@url` — text attachments, whose file a browser downloads. Read `jant:page ?? url`.
+- `@jant:page` is where a click should land, written only when it differs from `@url` — text attachments, whose file a browser downloads; their page is `/{slug}/text/{attachment-id}`. Read `jant:page ?? url`.
 - `medium` is Media RSS's fixed vocabulary, so anything that is not a picture or playable is `document`.
 
 **`<link rel="enclosure">`** is what a plain Atom parser reads. Images are left out — the content already shows them full size — while audio, video and documents keep theirs, the way a podcast feed encloses its audio and not its show-note images.

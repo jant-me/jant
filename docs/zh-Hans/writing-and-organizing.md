@@ -214,6 +214,7 @@ Jant 的核心设计之一是把「发布」和「广播」拆开。
 Jant 使用可读 URL：
 
 - 帖子：`/{slug}`
+- 帖子的文本附件，单独成页：`/{slug}/text/{附件 ID}`
 - Collection：`/{slug}`
 - 组合 Collection 视图：`/collections/{slug1}+{slug2}+{slug3}`
 - 搜索：`/search`

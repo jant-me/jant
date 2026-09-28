@@ -214,6 +214,7 @@ If you switch `MAIN_RSS_FEED` to `latest`, the default `/feed` behavior shifts a
 Jant uses readable URLs:
 
 - Post: `/{slug}`
+- A post's text attachment, as a page of its own: `/{slug}/text/{attachment-id}`
 - Collection: `/{slug}`
 - Combined Collection view: `/collections/{slug1}+{slug2}+{slug3}`
 - Search: `/search`
