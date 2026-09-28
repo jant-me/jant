@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { createTestApp } from "../../../../__tests__/helpers/app.js";
 import { walkThreadPages } from "../../../../__tests__/helpers/cursor-walk.js";
 import { threadCollections } from "../../../../db/schema.js";
-import { createEntityId } from "../../../../lib/ids.js";
 import type {
   CollectionSortOrder,
   CreatePost,
@@ -222,52 +221,20 @@ describe("GET /api/public/threads with a collection", () => {
     expect(page4.nextCursor).toBeNull();
   });
 
-  it("resumes from a bare root ID the collection lists, and refuses any other", async () => {
-    const { services, collection, post, get } = setup();
-    const legacy = await collection("legacy");
-    const inCollection = (n: number, extra: Partial<CreatePost> = {}) =>
-      post({ publishedAt: day(n), collectionIds: [legacy.id], ...extra });
-    const first = await inCollection(1);
-    const second = await inCollection(2);
-    const third = await inCollection(3);
-
-    // The bare root ID earlier releases returned as `nextCursor`.
-    const resumed = await get(
-      `/api/public/threads?collection=legacy&cursor=${third.id}`,
-    );
-    expect(resumed.status).toBe(200);
-    expect(ids(resumed.body.threads)).toEqual([second.id, first.id]);
-    expect(resumed.body.nextCursor).toBeNull();
-
-    const privateRoot = await inCollection(4, { visibility: "private" });
-    const hiddenRoot = await inCollection(5, { visibility: "latest_hidden" });
-    const draftRoot = await post({
-      status: "draft",
-      collectionIds: [legacy.id],
+  it("refuses a root ID as a cursor", async () => {
+    const { collection, post, get } = setup();
+    const listed = await collection("listed");
+    await post({ publishedAt: day(1), collectionIds: [listed.id] });
+    const second = await post({
+      publishedAt: day(2),
+      collectionIds: [listed.id],
     });
-    const elsewhere = await post({ publishedAt: day(6) });
-    const deleted = await inCollection(7);
-    await services.posts.delete(deleted.id);
 
-    const answers = [];
-    for (const id of [
-      privateRoot.id,
-      hiddenRoot.id,
-      draftRoot.id,
-      elsewhere.id,
-      deleted.id,
-      createEntityId("post"),
-    ]) {
-      const { status, body } = await get(
-        `/api/public/threads?collection=legacy&cursor=${id}`,
-      );
-      expect(status).toBe(400);
-      expect(body.code).toBe("VALIDATION_ERROR");
-      answers.push(body.error);
-    }
-    // Nothing in the answer tells a private Thread from one that never
-    // existed.
-    expect(new Set(answers).size).toBe(1);
+    const { status, body } = await get(
+      `/api/public/threads?collection=listed&cursor=${second.id}`,
+    );
+    expect(status).toBe(400);
+    expect(body.code).toBe("VALIDATION_ERROR");
   });
 
   it("refuses a cursor from another order, in the collection or out of it", async () => {

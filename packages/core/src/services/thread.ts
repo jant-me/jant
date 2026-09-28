@@ -140,7 +140,7 @@ export interface ThreadService {
    *
    * @param rootId - The Thread root's ID, as {@link findRoot} returned it
    * @param query - Who is asking, and the author's status filter
-   * @param page - The previous page's `nextCursor` or a Post ID, and the size
+   * @param page - The previous page's `nextCursor`, and the page size
    * @returns The page's Posts and the cursor after them
    * @example
    * await threads.listPosts(root.id, { audience: "reader" }, { limit: 100 });

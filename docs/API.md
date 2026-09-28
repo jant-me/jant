@@ -195,7 +195,6 @@ The post list (`GET /api/posts`), the Thread lists (`GET /api/threads`, `GET /ap
 - A post that exists for the whole walk and keeps its place in the order is returned exactly once, whatever else is published, edited, or deleted between requests. A post that moves during the walk, because its publish date is edited or a reply moves its Thread up, can be skipped or returned twice. To walk everything, use an order a reply doesn't move: `GET /api/posts`, or `sort=published` on a Thread list.
 - A page can hold fewer posts than `limit` and still have a `nextCursor`. The walk ends when `nextCursor` is `null`.
 - A `cursor` that can't be read, or that comes from a list in a different order, returns `400`.
-- A post ID is also accepted as `cursor`, since earlier releases returned one: the page starts after that post. The ID of a post that doesn't exist, or that the caller can't see, returns `400`. On a Thread list with `collection`, so does the ID of a post that isn't in the collection, and on a Thread's posts, the ID of a post in another Thread.
 
 ### Slugs, paths, and aliases
 
@@ -954,7 +953,8 @@ Example from `/api/public/threads?include=fold`:
     "gap": {
       "id": "pst_01jpz2k9w1f8m5c7q3v6x4b2hn",
       "slug": "third-cup",
-      "permalink": "/third-cup"
+      "permalink": "/third-cup",
+      "cursor": "eyJ2IjoxLCJzIjoidGhyZWFkIiwiayI6WzEsMTcwNjYwMDAwMCwicHN0XzAxanB6MGM3cjRlN2txdjNtOHgybjViNnRkIl19"
     },
     "trailing": [{ "id": "…" }, { "id": "…" }, { "id": "…" }]
   }
@@ -967,18 +967,18 @@ Posts in the example are cut to a few fields; each is a full post.
 
 `include=fold` adds the replies the homepage shows under a Thread: the earliest ones, then the latest ones with the newest last, and a count of the replies left out between them.
 
-| Field      | Type             | Notes                                                                                                             |
-| ---------- | ---------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `leading`  | post[]           | The earliest replies                                                                                              |
-| `hidden`   | integer          | Replies left out between `leading` and `trailing`                                                                 |
-| `gap`      | object \| `null` | The first reply left out: `id` and `slug`, plus `permalink` on `/api/public/threads`. `null` when `hidden` is `0` |
-| `trailing` | post[]           | The latest replies, oldest first. The newest reply is the last one                                                |
+| Field      | Type             | Notes                                                                                                                        |
+| ---------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `leading`  | post[]           | The earliest replies                                                                                                         |
+| `hidden`   | integer          | Replies left out between `leading` and `trailing`                                                                            |
+| `gap`      | object \| `null` | The first reply left out: `id`, `slug`, and `cursor`, plus `permalink` on `/api/public/threads`. `null` when `hidden` is `0` |
+| `trailing` | post[]           | The latest replies, oldest first. The newest reply is the last one                                                           |
 
 Notes:
 
 - Which replies the fold keeps is the site's choice and can change. Read `hidden` rather than working it out: for a published Thread, `1 + leading.length + trailing.length + hidden` is `postCount`.
 - A Thread without replies has an empty fold: `leading` and `trailing` are empty and `hidden` is `0`.
-- To load the replies left out, list the Thread's posts after the last `leading` reply: `GET /api/public/threads/:slug/posts?cursor=<its id>&limit=<hidden>`.
+- To load the replies left out, list the Thread's posts from the gap on: `GET /api/public/threads/:slug/posts?cursor=<gap.cursor>&limit=<hidden>`. The cursor is opaque, as `nextCursor` is.
 
 ### List Threads
 

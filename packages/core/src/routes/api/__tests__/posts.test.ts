@@ -188,7 +188,7 @@ describe("Posts API Routes", () => {
       expect(first.nextCursor).not.toMatch(/^pst_/);
     });
 
-    it("reads a bare post ID as a cursor, and rejects one it can't use", async () => {
+    it("refuses a post ID as a cursor", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/posts", postsApiRoutes);
 
@@ -197,29 +197,17 @@ describe("Posts API Routes", () => {
         bodyMarkdown: "older",
         publishedAt: 1000,
       });
-      const newer = await services.posts.create({
+      await services.posts.create({
         format: "note",
         bodyMarkdown: "newer",
         publishedAt: 2000,
       });
-      const draft = await services.posts.create({
-        format: "note",
-        bodyMarkdown: "draft",
-        status: "draft",
-      });
 
-      const legacy = await app.request(`/api/posts?cursor=${newer.id}`);
-      expect(legacy.status).toBe(200);
-      expect(
-        (await legacy.json()).posts.map((post: { id: string }) => post.id),
-      ).toEqual([older.id]);
-
-      // A draft is not in the published list the cursor claims to continue.
-      const wrongList = await app.request(`/api/posts?cursor=${draft.id}`);
-      expect(wrongList.status).toBe(400);
-      const unreadable = await app.request("/api/posts?cursor=nope");
-      expect(unreadable.status).toBe(400);
-      expect((await unreadable.json()).code).toBe("VALIDATION_ERROR");
+      for (const cursor of [older.id, "nope"]) {
+        const res = await app.request(`/api/posts?cursor=${cursor}`);
+        expect(res.status).toBe(400);
+        expect((await res.json()).code).toBe("VALIDATION_ERROR");
+      }
     });
 
     // The failure this guards: ordered by thread activity with pins first, a

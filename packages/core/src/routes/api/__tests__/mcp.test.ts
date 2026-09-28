@@ -327,6 +327,7 @@ describe("MCP API Routes", () => {
     expect(inCollection.threads[0].fold.gap).toEqual({
       id: replies[2]?.id,
       slug: replies[2]?.slug,
+      cursor: expect.any(String),
     });
 
     const thread = await call("jant_threads_get", { id: replies[4]?.id });
@@ -395,14 +396,11 @@ describe("MCP API Routes", () => {
     }
     expect(ids).toEqual(created.map((post) => post.id).reverse());
 
-    const legacy = await listPosts({ cursor: created[2]?.id });
-    expect(
-      legacy.structuredContent.posts.map((post: { id: string }) => post.id),
-    ).toEqual([created[1]?.id, created[0]?.id]);
-
-    const unreadable = await listPosts({ cursor: "nope" });
-    expect(unreadable.isError).toBe(true);
-    expect(unreadable.structuredContent.error).toMatch(/cursor/);
+    for (const cursor of [created[2]?.id, "nope"]) {
+      const unreadable = await listPosts({ cursor });
+      expect(unreadable.isError).toBe(true);
+      expect(unreadable.structuredContent.error).toMatch(/cursor/);
+    }
   });
 
   it("creates posts through tools/call", async () => {

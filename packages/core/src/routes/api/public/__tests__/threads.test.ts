@@ -102,6 +102,7 @@ describe("GET /api/public/threads", () => {
       id: all[3]?.id,
       slug: all[3]?.slug,
       permalink: `/${all[3]?.slug}`,
+      cursor: expect.any(String),
     });
     // Oldest first, the newest reply last.
     expect(ids(long.fold.trailing)).toEqual(ids(all.slice(6)));
@@ -123,10 +124,9 @@ describe("GET /api/public/threads", () => {
       body: { threads },
     } = await get("/api/public/threads?include=fold");
     const fold = threads[0].fold;
-    const lastLeading = fold.leading[fold.leading.length - 1].id;
 
     const { body } = await get(
-      `/api/public/threads/${all[0]?.slug}/posts?cursor=${lastLeading}&limit=${fold.hidden}`,
+      `/api/public/threads/${all[0]?.slug}/posts?cursor=${fold.gap.cursor}&limit=${fold.hidden}`,
     );
     expect(body.posts[0].id).toBe(fold.gap.id);
     expect(ids(body.posts)).toEqual(ids(all.slice(3, 3 + fold.hidden)));
@@ -312,8 +312,13 @@ describe("GET /api/public/threads", () => {
     expect(await list("hasMedia=1")).toEqual([pictured.id]);
   });
 
+  it("ignores an unknown parameter", async () => {
+    const { get } = setup();
+    const { status } = await get("/api/public/threads?sorting=published");
+    expect(status).toBe(200);
+  });
+
   it.each([
-    ["an unknown parameter", "?sorting=published"],
     ["visibility=all", "?visibility=all"],
     ["visibility=private", "?visibility=private"],
     ["an unknown visibility", "?visibility=nonsense"],
@@ -466,12 +471,11 @@ describe("GET /api/public/threads/:slug/posts", () => {
     );
   });
 
-  it("refuses a cursor that names a Post outside the Thread", async () => {
-    const { post, thread, get } = setup();
-    const all = await thread(1);
-    const other = await post({ publishedAt: day(3) });
+  it("refuses a post ID as a cursor", async () => {
+    const { thread, get } = setup();
+    const all = await thread(3);
     const { status } = await get(
-      `/api/public/threads/${all[0]?.slug}/posts?cursor=${other.id}`,
+      `/api/public/threads/${all[0]?.slug}/posts?cursor=${all[1]?.id}`,
     );
     expect(status).toBe(400);
   });

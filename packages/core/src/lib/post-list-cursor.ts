@@ -14,9 +14,7 @@
  * position on an axis they may already read; the values are never looked up.
  * Filters stay out: a position on the sort axis is valid under any filter.
  *
- * Callers treat the string as opaque. The one other shape still accepted is
- * the bare post TypeID earlier releases returned; see
- * {@link isLegacyPostListCursor}.
+ * Callers treat the string as opaque.
  */
 
 import { ValidationError } from "./errors.js";
@@ -40,13 +38,6 @@ const VERSION_MESSAGE =
   "This cursor is from a different version of Jant. Leave cursor out to start from the first page.";
 const MODE_MESSAGE =
   "This cursor is from a list in a different order. Leave cursor out to start from the first page.";
-
-/**
- * A legacy cursor naming a Post that is gone, or that the caller can't see.
- * One message for both, so a cursor can't be used to probe for private Posts.
- */
-export const MISSING_LEGACY_CURSOR_MESSAGE =
-  "This cursor names a post that can't be found. Leave cursor out to start from the first page.";
 
 /** What one position of the key tuple holds. */
 export type PostListCursorKeyKind = "number" | "id";
@@ -128,6 +119,38 @@ export function encodePostListCursor(
 }
 
 /**
+ * The sort mode a cursor into one Thread's Posts records. Distinct from every
+ * list and collection mode, so a position in one never resumes another.
+ */
+export const THREAD_POSTS_SORT_MODE = "thread";
+
+/**
+ * A cursor into a Thread's Posts that starts right after `post`.
+ *
+ * Thread order is the root first, then replies by creation time, then ID —
+ * the tuple `PostService.listThreadPostsPage` sorts by, so this is the
+ * `nextCursor` a page ending at `post` would carry.
+ *
+ * @param post - A Post in the Thread
+ * @returns The opaque cursor
+ * @example
+ * ```ts
+ * encodeThreadPostsCursorAfter(lastLeadingReply);
+ * ```
+ */
+export function encodeThreadPostsCursorAfter(post: {
+  id: string;
+  replyToId: string | null;
+  createdAt: number;
+}): string {
+  return encodePostListCursor(THREAD_POSTS_SORT_MODE, [
+    post.replyToId === null ? 0 : 1,
+    post.createdAt,
+    post.id,
+  ]);
+}
+
+/**
  * Decode a cursor for the current request, strictly.
  *
  * Nothing here falls back to the first page: a cursor that can't be read, that
@@ -195,23 +218,4 @@ export function decodePostListCursor(
     tuple.push(value);
   }
   return tuple;
-}
-
-/**
- * Whether a cursor is the bare post TypeID that releases before the opaque
- * format returned as `nextCursor`.
- *
- * Accepted indefinitely — a stored cursor, or one a client built from a post
- * ID, must keep resuming. An encoded cursor can never look like one: it opens
- * with the base64url of `{"`, never with `pst_`.
- *
- * @param raw - The `cursor` the caller sent
- * @returns Whether to resolve it as a post ID
- * @example
- * ```ts
- * isLegacyPostListCursor("pst_01jpyx3m7gw4w3h7m4bknq0v1d"); // => true
- * ```
- */
-export function isLegacyPostListCursor(raw: string): boolean {
-  return isTypeId(raw, ID_PREFIX.post);
 }

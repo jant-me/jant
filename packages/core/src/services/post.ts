@@ -45,8 +45,7 @@ import { createEntityId } from "../lib/ids.js";
 import {
   decodePostListCursor,
   encodePostListCursor,
-  isLegacyPostListCursor,
-  MISSING_LEGACY_CURSOR_MESSAGE,
+  THREAD_POSTS_SORT_MODE,
   type PostListCursorKeyKind,
   type PostListCursorValue,
 } from "../lib/post-list-cursor.js";
@@ -232,10 +231,7 @@ export interface PostFilters {
 
 /** Where `PostService.listPage` starts, and how much it returns. */
 export interface PostListPageOptions {
-  /**
-   * `nextCursor` from the previous page; omit for the first. A bare post ID,
-   * the format earlier releases returned, is still accepted.
-   */
+  /** `nextCursor` from the previous page; omit for the first. */
   cursor?: string;
   /** Posts per page. */
   limit: number;
@@ -313,12 +309,6 @@ interface ListSort {
   axis: NonNullable<PostFilters["sortBy"]>;
   pinned: boolean;
 }
-
-/**
- * The sort mode a cursor into one Thread's Posts records. Distinct from every
- * `list()` and collection mode, so a position in one never resumes another.
- */
-const THREAD_POSTS_SORT_MODE = "thread";
 
 /** One term of a paged ORDER BY: `list()`'s, a collection's, or a Thread's. */
 interface ListSortKey {
@@ -462,8 +452,8 @@ export interface PostService {
    * @param filters - What to list and in which order, as for {@link list}
    * @param page - The previous page's `nextCursor`, and the page size
    * @returns The page's Posts and the cursor after them, `null` on the last page
-   * @throws {ValidationError} When the cursor can't be read, was taken in
-   *   another sort mode, or is a Post ID the caller can't see
+   * @throws {ValidationError} When the cursor can't be read or was taken in
+   *   another sort mode
    * @example
    * ```ts
    * const first = await posts.listPage({ status: "published" }, { limit: 20 });
@@ -609,17 +599,15 @@ export interface PostService {
    *
    * Pages like {@link listPage}. A new reply joins the end of the Thread, so a
    * walk that is still going when one is published reaches it rather than
-   * skipping it. As well as a `nextCursor`, the cursor may be the ID of a Post
-   * in this Thread with the requested status: the page then starts right after
-   * it, which is how a reader opens the run a fold hides.
+   * skipping it. A fold's gap carries a cursor from
+   * `encodeThreadPostsCursorAfter`, which opens the run the fold hides.
    *
    * @param threadId - The Thread root's ID
    * @param options - Which Posts to include; `status` defaults to `published`
-   * @param page - The previous page's `nextCursor` or a Post ID, and the page
-   *   size
+   * @param page - The previous page's `nextCursor`, and the page size
    * @returns The page's Posts and the cursor after them, `null` on the last page
-   * @throws {ValidationError} When the cursor can't be read, was taken in
-   *   another order, or names a Post this request doesn't list
+   * @throws {ValidationError} When the cursor can't be read or was taken in
+   *   another order
    * @example
    * ```ts
    * const first = await posts.listThreadPostsPage(root.id, {}, { limit: 100 });
@@ -843,8 +831,8 @@ export interface PostService {
    * @param page - The previous page's `nextCursor`, and the page size
    * @returns The page's Thread roots and the cursor after them, `null` on the
    *   last page
-   * @throws {ValidationError} When the cursor can't be read, was taken in
-   *   another order, or is a root ID this request doesn't list
+   * @throws {ValidationError} When the cursor can't be read or was taken in
+   *   another order
    * @example
    * ```ts
    * const first = await posts.listCollectionThreadRootPage(
@@ -1193,6 +1181,7 @@ export function createPostService(
    * cursor. The one definition both read, so a page of a Thread and the
    * Thread page itself cannot order its posts differently.
    */
+  /** Thread order; `encodeThreadPostsCursorAfter` writes the same tuple. */
   function threadSortKeys(): ListSortKey[] {
     return [
       {
@@ -1779,47 +1768,17 @@ export function createPostService(
 
   /**
    * The position a cursor names, as the tuple of sort-key values after which
-   * the page starts.
-   *
-   * A bare post ID, the cursor earlier releases returned, is looked up — but
-   * only among Posts the caller could have been shown: the request's status,
-   * and nothing private when the request excludes it. A deleted Post, a draft,
-   * and a private Post all get the same rejection, so the lookup can't be used
-   * to learn whether a Post exists or when it was published. Its values come
-   * from the same key expressions as the ORDER BY.
+   * the page starts. The cursor must come from a list in the same order.
    */
-  async function resolveListCursor(
+  function resolveListCursor(
     cursor: string,
     sort: ListSort,
     keys: readonly ListSortKey[],
-    filters: PostFilters,
-  ): Promise<PostListCursorValue[]> {
-    if (!isLegacyPostListCursor(cursor)) {
-      return decodePostListCursor(cursor, {
-        mode: listSortMode(sort),
-        kinds: keys.map((key) => key.kind),
-      });
-    }
-
-    const rows = await db
-      .select(listSortKeyFields(keys))
-      .from(posts)
-      .where(
-        and(
-          eq(posts.siteId, siteId),
-          eq(posts.id, cursor),
-          ...buildReaderVisibilityConditions(posts, siteId, {
-            status: filters.status,
-            excludePrivate: filters.excludePrivate,
-          }),
-        ),
-      )
-      .limit(1);
-    const row = rows[0];
-    if (!row) {
-      throw new ValidationError(MISSING_LEGACY_CURSOR_MESSAGE);
-    }
-    return readListSortKeyValues(keys, row);
+  ): PostListCursorValue[] {
+    return decodePostListCursor(cursor, {
+      mode: listSortMode(sort),
+      kinds: keys.map((key) => key.kind),
+    });
   }
 
   function toPost(
@@ -2205,33 +2164,15 @@ export function createPostService(
   /**
    * The position a collection cursor names, as the tuple of sort-key values
    * after which the page starts.
-   *
-   * A bare root ID, the cursor earlier releases returned, is looked up in the
-   * request's own `sortedThreads`, so only among Threads this request could
-   * list. A Thread that is gone, private, a draft, or no longer in the
-   * collection gets the same rejection as an ID that never existed.
    */
-  async function resolveCollectionThreadCursor(
+  function resolveCollectionThreadCursor(
     cursor: string,
     sort: ReturnType<typeof buildCollectionThreadSort>,
-  ): Promise<PostListCursorValue[]> {
-    if (!isLegacyPostListCursor(cursor)) {
-      return decodePostListCursor(cursor, {
-        mode: sort.mode,
-        kinds: sort.keys.map((key) => key.kind),
-      });
-    }
-
-    const rows = await db
-      .select(listSortKeyFields(sort.keys))
-      .from(sort.sortedThreads)
-      .where(eq(sort.sortedThreads.threadId, cursor))
-      .limit(1);
-    const row = rows[0];
-    if (!row) {
-      throw new ValidationError(MISSING_LEGACY_CURSOR_MESSAGE);
-    }
-    return readListSortKeyValues(sort.keys, row);
+  ): PostListCursorValue[] {
+    return decodePostListCursor(cursor, {
+      mode: sort.mode,
+      kinds: sort.keys.map((key) => key.kind),
+    });
   }
 
   function isMediaAttachmentInput(
@@ -2497,10 +2438,7 @@ export function createPostService(
       // `?cursor=` before it has one keeps working.
       if (cursor) {
         conditions.push(
-          buildListKeysetCondition(
-            keys,
-            await resolveListCursor(cursor, sort, keys, filters),
-          ),
+          buildListKeysetCondition(keys, resolveListCursor(cursor, sort, keys)),
         );
       }
 
@@ -4034,27 +3972,10 @@ export function createPostService(
       ];
 
       if (cursor) {
-        let values: PostListCursorValue[];
-        if (isLegacyPostListCursor(cursor)) {
-          // A Post ID names a position only inside the Thread being listed,
-          // and only among the Posts this request would return, so it can't
-          // be used to learn anything about a Post elsewhere.
-          const rows = await db
-            .select(listSortKeyFields(keys))
-            .from(posts)
-            .where(and(...conditions, eq(posts.id, cursor)))
-            .limit(1);
-          const row = rows[0];
-          if (!row) {
-            throw new ValidationError(MISSING_LEGACY_CURSOR_MESSAGE);
-          }
-          values = readListSortKeyValues(keys, row);
-        } else {
-          values = decodePostListCursor(cursor, {
-            mode: THREAD_POSTS_SORT_MODE,
-            kinds: keys.map((key) => key.kind),
-          });
-        }
+        const values = decodePostListCursor(cursor, {
+          mode: THREAD_POSTS_SORT_MODE,
+          kinds: keys.map((key) => key.kind),
+        });
         conditions.push(buildListKeysetCondition(keys, values));
       }
 
@@ -5059,7 +4980,7 @@ export function createPostService(
       const after = cursor
         ? buildListKeysetCondition(
             keys,
-            await resolveCollectionThreadCursor(cursor, sort),
+            resolveCollectionThreadCursor(cursor, sort),
           )
         : undefined;
 

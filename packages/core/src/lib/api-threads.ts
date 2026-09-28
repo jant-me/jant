@@ -18,6 +18,7 @@ import {
   loadPublicPostResponses,
   type PublicPostResponse,
 } from "./api-public-posts.js";
+import { encodeThreadPostsCursorAfter } from "./post-list-cursor.js";
 import { toPublicPath } from "./url.js";
 
 /**
@@ -56,6 +57,8 @@ export interface ApiThreadResponse<P, G> {
 export interface ApiThreadGap {
   id: string;
   slug: string;
+  /** Lists the Thread's posts from this one on: the replies the fold hides. */
+  cursor: string;
 }
 
 /** The author API's and MCP's Thread object. */
@@ -105,7 +108,8 @@ export function collectThreadResponsePosts(summaries: ThreadSummary[]): Post[] {
  *
  * @param summary - The Thread
  * @param respond - The rendered response for a Post in it
- * @param reference - How the surface names the Post a fold leaves out
+ * @param reference - How the surface names the Post a fold leaves out, given
+ *   the cursor that lists the Thread's posts from it on
  * @returns The Thread object
  * @example
  * toApiThreadResponse(summary, (post) => byId.get(post.id)!, toGap);
@@ -113,7 +117,7 @@ export function collectThreadResponsePosts(summaries: ThreadSummary[]): Post[] {
 export function toApiThreadResponse<P, G>(
   summary: ThreadSummary,
   respond: (post: Post) => P,
-  reference: (post: Post) => G,
+  reference: (post: Post, cursor: string) => G,
 ): ApiThreadResponse<P, G> {
   const { root, fold } = summary;
   const response: ApiThreadResponse<P, G> = {
@@ -129,7 +133,14 @@ export function toApiThreadResponse<P, G>(
     response.fold = {
       leading: fold.leadingReplies.map(respond),
       hidden: fold.hiddenCount,
-      gap: fold.firstHiddenReply ? reference(fold.firstHiddenReply) : null,
+      gap: fold.firstHiddenReply
+        ? reference(
+            fold.firstHiddenReply,
+            // The hidden run starts right after the last Post the fold shows
+            // above it.
+            encodeThreadPostsCursorAfter(fold.leadingReplies.at(-1) ?? root),
+          )
+        : null,
       trailing: [...fold.trailingReplies, fold.latestReply].map(respond),
     };
   }
@@ -152,7 +163,7 @@ export async function loadApiThreadResponses(
   return buildThreadResponses(
     summaries,
     (posts) => loadApiPostResponses(deps, posts),
-    (post) => ({ id: post.id, slug: post.slug }),
+    (post, cursor) => ({ id: post.id, slug: post.slug, cursor }),
   );
 }
 
@@ -174,10 +185,11 @@ export async function loadPublicThreadResponses(
   return buildThreadResponses(
     summaries,
     (posts) => loadPublicPostResponses(deps, posts, options),
-    (post) => ({
+    (post, cursor) => ({
       id: post.id,
       slug: post.slug,
       permalink: toPublicPath(`/${post.slug}`, deps.appConfig.sitePathPrefix),
+      cursor,
     }),
   );
 }
@@ -186,7 +198,7 @@ export async function loadPublicThreadResponses(
 async function buildThreadResponses<P, G>(
   summaries: ThreadSummary[],
   render: (posts: Post[]) => Promise<P[]>,
-  reference: (post: Post) => G,
+  reference: (post: Post, cursor: string) => G,
 ): Promise<ApiThreadResponse<P, G>[]> {
   const posts = collectThreadResponsePosts(summaries);
   const responses = await render(posts);

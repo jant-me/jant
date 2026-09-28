@@ -3,7 +3,6 @@ import { ValidationError } from "../errors.js";
 import {
   decodePostListCursor,
   encodePostListCursor,
-  isLegacyPostListCursor,
   type PostListCursorShape,
 } from "../post-list-cursor.js";
 
@@ -48,15 +47,6 @@ describe("post list cursor", () => {
       POST_ID,
     ]);
     expect(cursor.length).toBeLessThan(200);
-  });
-
-  it("never looks like a bare post ID", () => {
-    const cursor = encodePostListCursor(SHAPE.mode, [-1, 0, POST_ID]);
-    expect(isLegacyPostListCursor(cursor)).toBe(false);
-    expect(isLegacyPostListCursor(POST_ID)).toBe(true);
-    expect(isLegacyPostListCursor("med_01jpyx4g9m8b4y50a4gx3t7p1n")).toBe(
-      false,
-    );
   });
 
   it("rejects a cursor that can't be read", () => {

@@ -1357,57 +1357,12 @@ describe("PostService", () => {
       expect(page.posts).toHaveLength(2);
     });
 
-    it("resumes after a bare post ID, as earlier releases' cursors are", async () => {
-      const created = await publishSeries(5);
-      const third = created[2];
+    it("rejects a post ID as a cursor", async () => {
+      const created = await publishSeries(3);
 
-      const page = await postService.listPage(
-        {},
-        { cursor: third?.id, limit: 10 },
-      );
-      expect(page.posts.map((post) => post.id)).toEqual([
-        created[1]?.id,
-        created[0]?.id,
-      ]);
-    });
-
-    it("rejects a bare post ID the caller can't see, whatever the reason", async () => {
-      const [visible] = await publishSeries(1);
-      const draft = await postService.create({
-        format: "note",
-        bodyMarkdown: "draft",
-        status: "draft",
-      });
-      const hidden = await postService.create({
-        format: "note",
-        bodyMarkdown: "private",
-        visibility: "private",
-      });
-      const deleted = await postService.create({
-        format: "note",
-        bodyMarkdown: "deleted",
-      });
-      await postService.delete(deleted.id);
-      const publicFilters = {
-        status: "published" as const,
-        excludePrivate: true,
-      };
-
-      const errors = [];
-      for (const cursor of [draft.id, hidden.id, deleted.id]) {
-        const error = await postService
-          .listPage(publicFilters, { cursor, limit: 5 })
-          .catch((caught: unknown) => caught);
-        expect(error).toBeInstanceOf(ValidationError);
-        errors.push((error as ValidationError).message);
-      }
-      // One message for all three, so the answer says nothing about the post.
-      expect(new Set(errors).size).toBe(1);
-
-      // A post the caller can see still resumes.
       await expect(
-        postService.listPage(publicFilters, { cursor: visible?.id, limit: 5 }),
-      ).resolves.toEqual({ posts: [], nextCursor: null });
+        postService.listPage({}, { cursor: created[1]?.id, limit: 5 }),
+      ).rejects.toBeInstanceOf(ValidationError);
     });
 
     it("rejects a cursor taken in another sort mode", async () => {

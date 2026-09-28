@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createTestApp } from "../../__tests__/helpers/app.js";
 import { ValidationError } from "../../lib/errors.js";
+import { encodeThreadPostsCursorAfter } from "../../lib/post-list-cursor.js";
 import type { CreatePost, Post } from "../../types.js";
 import type { ThreadListQuery } from "../thread.js";
 
@@ -405,17 +406,26 @@ describe("posts.listThreadPostsPage", () => {
     expect(rest.posts.map((p) => p.id)).toEqual([all[2]?.id, added.id]);
   });
 
-  it("starts after a Post of the Thread named by ID", async () => {
+  // A fold's gap hands this cursor out before any page has been read.
+  it("resumes after a Post from a cursor built for it", async () => {
     const { services, root, all } = await thread(6);
+    const first = await services.posts.listThreadPostsPage(
+      root.id,
+      {},
+      { limit: 3 },
+    );
+    expect(encodeThreadPostsCursorAfter(all[2] as Post)).toBe(first.nextCursor);
+    expect(encodeThreadPostsCursorAfter(root)).not.toBe(first.nextCursor);
+
     const page = await services.posts.listThreadPostsPage(
       root.id,
       {},
-      { limit: 2, cursor: all[2]?.id },
+      { limit: 2, cursor: encodeThreadPostsCursorAfter(root) },
     );
-    expect(page.posts.map((p) => p.id)).toEqual([all[3]?.id, all[4]?.id]);
+    expect(page.posts.map((p) => p.id)).toEqual([all[1]?.id, all[2]?.id]);
   });
 
-  it("refuses an ID from another Thread or one it wouldn't list", async () => {
+  it("refuses a post ID as a cursor, from this Thread or another", async () => {
     const { services, root, all } = await thread(2);
     const other = await services.posts.create({
       format: "note",
@@ -427,7 +437,7 @@ describe("posts.listThreadPostsPage", () => {
       replyToId: all[1]?.id,
       status: "draft",
     });
-    for (const cursor of [other.id, unsent.id, "not-a-cursor"]) {
+    for (const cursor of [all[0]?.id, other.id, unsent.id, "not-a-cursor"]) {
       await expect(
         services.posts.listThreadPostsPage(root.id, {}, { limit: 5, cursor }),
       ).rejects.toBeInstanceOf(ValidationError);
