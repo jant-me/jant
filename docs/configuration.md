@@ -69,14 +69,14 @@ DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DBNAME
 
 Common Node and Docker variables:
 
-| Variable             | Default                  | Description                                                                                    |
-| -------------------- | ------------------------ | ---------------------------------------------------------------------------------------------- |
-| `DATA_DIR`           | `./data`                 | Base directory for default SQLite and local media paths                                        |
-| `LOCAL_STORAGE_PATH` | `<DATA_DIR>/media`       | Override the local media directory                                                             |
-| `LOCAL_PUBLIC_URL`   | unset                    | Public base URL when media is served outside Jant; leave unset to use Jant's `/media/*` routes |
-| `HOST`               | `127.0.0.1` on bare Node | Bind address for `jant start`                                                                  |
-| `PORT`               | `3000`                   | Bind port for `jant start`                                                                     |
-| `TRUST_PROXY`        | `false`                  | Trust the reverse proxy's forwarded headers for the site address and the client IP             |
+| Variable             | Default                                               | Description                                                                                    |
+| -------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `DATA_DIR`           | `./data`, or the directory of a SQLite `DATABASE_URL` | Base directory for default SQLite and local media paths                                        |
+| `LOCAL_STORAGE_PATH` | `<DATA_DIR>/media`                                    | Override the local media directory                                                             |
+| `LOCAL_PUBLIC_URL`   | unset                                                 | Public base URL when media is served outside Jant; leave unset to use Jant's `/media/*` routes |
+| `HOST`               | `127.0.0.1` on bare Node                              | Bind address for `jant start`                                                                  |
+| `PORT`               | `3000`                                                | Bind port for `jant start`                                                                     |
+| `TRUST_PROXY`        | `false`                                               | Trust the reverse proxy's forwarded headers for the site address and the client IP             |
 
 The official Docker image already defaults `DATA_DIR` to `/var/lib/jant`, and Docker Compose commonly sets `TRUST_PROXY=true`.
 
@@ -104,10 +104,10 @@ already in the Worker cache can remain visible for up to 60 seconds.
 
 ### Jant Discover (optional)
 
-| Variable            | Default                                     | Description                                                           |
-| ------------------- | ------------------------------------------- | --------------------------------------------------------------------- |
-| `DISCOVER`          | `off`                                       | What this deployment lists by default: `latest`, `featured`, or `off` |
-| `DISCOVER_PING_URL` | Your control plane, or Jant's own directory | Where the site announces itself; set it empty to announce nowhere     |
+| Variable            | Default                                     | Description                                                       |
+| ------------------- | ------------------------------------------- | ----------------------------------------------------------------- |
+| `DISCOVER`          | `off`                                       | What this deployment lists by default: `latest` or `off`          |
+| `DISCOVER_PING_URL` | Your control plane, or Jant's own directory | Where the site announces itself; set it empty to announce nowhere |
 
 Jant Discover is a public directory of Jant blogs. Every Atom feed declares
 whether the site takes part, and nothing is listed without that declaration —

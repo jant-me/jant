@@ -791,7 +791,7 @@ export interface AppConfig {
   imageTransformUrl: string;
 
   // Upload (ENV only, parsed to number)
-  /** Max upload file size in MB. Defaults to 500. */
+  /** Max upload file size in MB. Defaults to 1024. */
   uploadMaxFileSize: number;
 
   // Summary extraction (DB > ENV > Default)
