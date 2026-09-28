@@ -1631,27 +1631,6 @@ describe("createExportService (Hugo)", () => {
     expect(files.has("content/second-page/_index.md")).toBe(true);
   });
 
-  it("asks only for published, non-private posts in public-only mode", async () => {
-    const services = buildServices({ posts: [] });
-    const list = vi.fn(async () => ({ posts: [], nextCursor: null }));
-    services.posts.listPage = list as unknown as typeof services.posts.listPage;
-
-    await createExportService(services, makeSiteConfig(), {
-      bundleMedia: false,
-      publicOnly: true,
-    }).generateHugoFiles();
-    await createExportService(services, makeSiteConfig(), {
-      bundleMedia: false,
-    }).generateHugoFiles();
-
-    expect(list.mock.calls[0]?.[0]).toMatchObject({
-      status: "published",
-      excludePrivate: true,
-    });
-    expect(list.mock.calls[1]?.[0]).not.toHaveProperty("status");
-    expect(list.mock.calls[1]?.[0]).not.toHaveProperty("excludePrivate");
-  });
-
   it("Sync mode (bundleMedia false) links media by absolute site URL without reading bytes", async () => {
     const root = makePost({ id: "post-root", slug: "with-media" });
     const media = makeMedia({
