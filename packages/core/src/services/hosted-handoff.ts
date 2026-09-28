@@ -182,12 +182,17 @@ export function createHostedHandoffService(
             });
           }
         } else {
-          user = await authContext.internalAdapter.createUser({
-            email: claims.email,
-            emailVerified: true,
-            name: getDisplayName(claims),
-            role: "member",
-          });
+          // The control plane vouched for this identity, the same way an
+          // OAuth provider would, and the account below carries its ID.
+          user = await authContext.internalAdapter.createUser(
+            {
+              email: claims.email,
+              emailVerified: true,
+              name: getDisplayName(claims),
+              role: "member",
+            },
+            { method: "oauth", oauth: { providerId: "jant-cloud" } },
+          );
 
           await authContext.internalAdapter.createAccount({
             accountId: claims.sub,
