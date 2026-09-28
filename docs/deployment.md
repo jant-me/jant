@@ -259,7 +259,7 @@ To mount Jant under a subpath like `<your-domain>/blog` and leave the root for o
 
 2. In the [Cloudflare dashboard](https://dash.cloudflare.com/) → select your domain → **Workers Routes** → **Add route**, enter `<your-domain>/blog*` and pick your Jant Worker.
 
-`SITE_PATH_PREFIX` and `SITE_ORIGIN` are independent. `SITE_ORIGIN` only accepts an origin (scheme + host + port); the path part is ignored — the subpath has to come from `SITE_PATH_PREFIX`. Details in [Configuration § Public URL and subpath](configuration.md#public-url-and-subpath).
+`SITE_PATH_PREFIX` and `SITE_ORIGIN` are independent. `SITE_ORIGIN` only accepts an origin (scheme + host + port); one with a path stops the site at startup — the subpath has to come from `SITE_PATH_PREFIX`. Details in [Configuration § Public URL and subpath](configuration.md#public-url-and-subpath).
 
 ## Upgrade
 

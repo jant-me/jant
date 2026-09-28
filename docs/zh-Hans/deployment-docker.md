@@ -117,7 +117,7 @@ S3_SECRET_ACCESS_KEY=<secret-access-key>
 只有这两种情况需要显式设置：
 
 - **反向代理没正确传 `X-Forwarded-Host` / `X-Forwarded-Proto`**：RSS、sitemap、导出文件、auth 回调里的绝对 URL 会用错域名。在 `.env` 里写死 `SITE_ORIGIN=https://<your-domain>`。
-- **挂在子路径下**（如 `example.com/blog`）：设 `SITE_PATH_PREFIX=/blog`。`SITE_ORIGIN` 是独立变量，只接受 origin（scheme + host + port），路径部分会被忽略——按上一条决定要不要设。
+- **挂在子路径下**（如 `example.com/blog`）：设 `SITE_PATH_PREFIX=/blog`。`SITE_ORIGIN` 是独立变量，只接受 origin（scheme + host + port），带路径时站点会在启动时停下——按上一条决定要不要设。
 
 完整变量表见 [配置](configuration.md)。
 

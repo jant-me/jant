@@ -259,7 +259,7 @@ PORT=8787 npm run dev
 
 2. 在 [Cloudflare 控制台](https://dash.cloudflare.com/) → 选中你的域名 → **Workers Routes** → **Add route**，填 `<your-domain>/blog*`，Worker 选你的 Jant Worker。
 
-`SITE_PATH_PREFIX` 与 `SITE_ORIGIN` 是两个独立变量。`SITE_ORIGIN` 只接受 origin（scheme + host + port），路径部分会被忽略——子路径必须通过 `SITE_PATH_PREFIX` 设置。详细说明见 [配置 § 公开 URL 和子路径](configuration.md#公开-url-和子路径)。
+`SITE_PATH_PREFIX` 与 `SITE_ORIGIN` 是两个独立变量。`SITE_ORIGIN` 只接受 origin（scheme + host + port），带路径时站点会在启动时停下——子路径必须通过 `SITE_PATH_PREFIX` 设置。详细说明见 [配置 § 公开 URL 和子路径](configuration.md#公开-url-和子路径)。
 
 ## 升级
 

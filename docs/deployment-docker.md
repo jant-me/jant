@@ -117,7 +117,7 @@ Putting Jant behind a reverse proxy like Caddy, Nginx, or Traefik is common. Com
 Two cases need explicit settings:
 
 - **The reverse proxy doesn't forward `X-Forwarded-Host` / `X-Forwarded-Proto` correctly**: absolute URLs in RSS, sitemap, exports, and auth callbacks will use the wrong host. Pin it with `SITE_ORIGIN=https://<your-domain>` in `.env`.
-- **Mounted under a subpath** (e.g. `example.com/blog`): set `SITE_PATH_PREFIX=/blog`. `SITE_ORIGIN` is a separate variable that only accepts an origin (scheme + host + port); the path part is ignored — decide whether you also need it based on the previous bullet.
+- **Mounted under a subpath** (e.g. `example.com/blog`): set `SITE_PATH_PREFIX=/blog`. `SITE_ORIGIN` is a separate variable that only accepts an origin (scheme + host + port), and one with a path stops the site at startup — decide whether you also need it based on the previous bullet.
 
 For the full list of variables, see [Configuration](configuration.md).
 
