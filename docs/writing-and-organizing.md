@@ -202,6 +202,13 @@ The table below assumes the default `MAIN_RSS_FEED=featured`.
 
 If you switch `MAIN_RSS_FEED` to `latest`, the default `/feed` behavior shifts accordingly, but `Hidden from Latest` still keeps those posts out of that stream.
 
+### What stays reachable
+
+`Private` and `Draft` keep a post off every page and feed a visitor can open. Two things work differently:
+
+- **Attachments.** An uploaded file has its own address under `/media/`, and that address opens for anyone who has it. It is long and random, so it can't be guessed, but a file shared while the post was public still opens at that address after the post turns private. Deleting the attachment takes the address down; a copy a browser or CDN already cached can outlive that, for up to a year.
+- **The sitemap.** Search engines read `/sitemap.xml`. A post made private drops out of it within a few minutes, or within a day on a site with more than 500 posts, whose older sitemap pages are cached longer.
+
 ## URLs and browse pages
 
 Jant uses readable URLs:
