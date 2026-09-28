@@ -200,6 +200,8 @@ The post list (`GET /api/posts`), the Thread lists (`GET /api/threads`, `GET /ap
 - A page can hold fewer posts than `limit` and still have a `nextCursor`. The walk ends when `nextCursor` is `null`.
 - A `cursor` that can't be read, or that comes from a list in a different order, returns `400`.
 
+The other lists, collections (`GET /api/collections`), smart collections (`GET /api/smart-collections`), navigation items (`GET /api/nav-items`), and a post's other versions, return every item in one response. If one of them gains pages in a later release, a request that doesn't ask for a page still gets all of it.
+
 ### Slugs, paths, and aliases
 
 - Post and collection `slug` values are lowercase `a-z`, `0-9`, and `-`.
