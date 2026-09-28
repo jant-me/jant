@@ -60,7 +60,7 @@ mediaApiRoutes.get("/:id", async (c) => {
   return c.json(toApiMedia(media, c.var.appConfig));
 });
 
-mediaApiRoutes.patch("/:id", async (c) => {
+mediaApiRoutes.put("/:id", async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.media);
   const { alt } = parseValidated(UpdateMediaSchema, await readJsonBody(c));
   assertFound(await c.var.services.media.getById(id), "Media");

@@ -56,7 +56,7 @@ A few public read endpoints don't need a token by default: `GET /api/public/thre
 | `/api/public/threads`    | GET                       | Public read of Threads — the homepage's list by default, with the archive's filters (no token)               |
 | `/api/public/posts`      | GET                       | Public read of one published post by slug (no token). Lists of posts are Thread lists: `/api/public/threads` |
 | `/api/upload`            | POST                      | One-shot multipart upload, single file per call — preferred for scripts                                      |
-| `/api/media`             | GET / PATCH / DELETE      | List, read, update the alt text of, and delete uploaded files                                                |
+| `/api/media`             | GET / PUT / DELETE        | List, read, update the alt text of, and delete uploaded files                                                |
 | `/api/uploads`           | POST → PUT → POST         | Multipart upload session — for large files or unstable networks                                              |
 | `/api/attachments`       | GET                       | Fetch raw attachment content by id                                                                           |
 | `/api/collections`       | GET / POST / PUT / DELETE | Collections                                                                                                  |

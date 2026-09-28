@@ -37,7 +37,7 @@ export function apiCors(): MiddlewareHandler<Env> {
 
     const handler = cors({
       origin: origins,
-      allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowHeaders: ["Content-Type", "Authorization", "MCP-Protocol-Version"],
       exposeHeaders: ["Content-Type", "MCP-Protocol-Version"],
       credentials: origins !== "*",

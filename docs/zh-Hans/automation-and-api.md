@@ -56,7 +56,7 @@ Authorization: Bearer jnt_...
 | `/api/public/threads`    | GET                       | 公开读取 Thread——默认是首页的列表，支持归档的过滤条件（无需 token）                |
 | `/api/public/posts`      | GET                       | 按 slug 公开读取一篇已发布的帖子（无需 token）。帖子列表改用 `/api/public/threads` |
 | `/api/upload`            | POST                      | 一次性 multipart 上传，单次一文件，脚本首选                                        |
-| `/api/media`             | GET / PATCH / DELETE      | 列出、读取、改 alt 文本、删除已上传的文件                                          |
+| `/api/media`             | GET / PUT / DELETE        | 列出、读取、改 alt 文本、删除已上传的文件                                          |
 | `/api/uploads`           | POST → PUT → POST         | 分片上传会话，大文件或不稳定网络用                                                 |
 | `/api/attachments`       | GET                       | 按 id 读取附件原始内容                                                             |
 | `/api/collections`       | GET / POST / PUT / DELETE | 合集                                                                               |

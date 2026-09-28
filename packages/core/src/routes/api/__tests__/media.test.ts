@@ -119,7 +119,7 @@ describe("Media API Routes", () => {
     });
 
     const res = await app.request(`/api/media/${media.id}`, {
-      method: "PATCH",
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ alt: "  Cover image  " }),
     });

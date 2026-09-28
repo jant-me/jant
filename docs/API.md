@@ -1393,7 +1393,7 @@ Returns one media or text attachment record using the same response shape as `GE
 
 ### Update media alt text
 
-`PATCH /api/media/:id`
+`PUT /api/media/:id`
 
 Auth: `Session or token`
 
