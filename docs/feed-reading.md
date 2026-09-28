@@ -38,23 +38,23 @@ An Atom reader that knows neither extension still gets a working feed. Everythin
 </entry>
 ```
 
-| Element                  | Count | Read it for                                                                                            |
-| ------------------------ | ----- | ------------------------------------------------------------------------------------------------------ |
-| `id`                     | 1     | The post's permalink. Always — even on a Link post, whose `alternate` points elsewhere                 |
-| `jant:id`                | 1     | The post's ID. Unlike `id` it survives a slug rename or a new domain: key on it to recognise a post    |
-| `title`                  | 1     | The title. **Empty, not absent**, on untitled Notes and every Quote                                    |
-| `link[@rel="alternate"]` | 1     | Where the entry points: the external URL on a Link post, the permalink otherwise                       |
-| `link[@rel="related"]`   | 0–1   | Link posts only: the permalink, since `alternate` was spent on the external URL                        |
-| `link[@rel="enclosure"]` | 0–n   | Attachments a plain Atom parser can fetch. Images are excluded — the content already shows them        |
-| `published` / `updated`  | 1     | Timestamps. A curated feed may date an entry by the curation rather than the post                      |
-| `jant:format`            | 1     | `note`, `link`, or `quote` — the entry's, which is the root's in a thread                              |
-| `jant:thread`            | 0–1   | The entry is a thread. Absent means a lone post                                                        |
-| `jant:truncated`         | 0–1   | The summary's text was cut. Offer a "read more". A row's `truncated` says which post. Never on a Quote |
-| `category`               | 0–n   | Collections. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL                    |
-| `media:thumbnail`        | 0–1   | A Link post's preview image, for a card or grid                                                        |
-| `media:content`          | 0–n   | One per attachment, with dimensions and duration                                                       |
-| `summary`                | 0–1   | The post's text, as the timeline renders it                                                            |
-| `content`                | 1     | The whole post page                                                                                    |
+| Element                  | Count | Read it for                                                                                                                                                                                      |
+| ------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                     | 1     | The post's permalink, so it changes when the address does. Always the permalink — even on a Link post, whose `alternate` points elsewhere                                                        |
+| `jant:id`                | 1     | The post's ID. Unlike `id` it survives any change to the post's address — a new slug, a first custom URL added or removed, a new domain, a new `SITE_PATH_PREFIX`: key on it to recognise a post |
+| `title`                  | 1     | The title. **Empty, not absent**, on untitled Notes and every Quote                                                                                                                              |
+| `link[@rel="alternate"]` | 1     | Where the entry points: the external URL on a Link post, the permalink otherwise                                                                                                                 |
+| `link[@rel="related"]`   | 0–1   | Link posts only: the permalink, since `alternate` was spent on the external URL                                                                                                                  |
+| `link[@rel="enclosure"]` | 0–n   | Attachments a plain Atom parser can fetch. Images are excluded — the content already shows them                                                                                                  |
+| `published` / `updated`  | 1     | Timestamps. A curated feed may date an entry by the curation rather than the post                                                                                                                |
+| `jant:format`            | 1     | `note`, `link`, or `quote` — the entry's, which is the root's in a thread                                                                                                                        |
+| `jant:thread`            | 0–1   | The entry is a thread. Absent means a lone post                                                                                                                                                  |
+| `jant:truncated`         | 0–1   | The summary's text was cut. Offer a "read more". A row's `truncated` says which post. Never on a Quote                                                                                           |
+| `category`               | 0–n   | Collections. `@term` is the slug, `@label` the title, `@jant:page` the absolute URL                                                                                                              |
+| `media:thumbnail`        | 0–1   | A Link post's preview image, for a card or grid                                                                                                                                                  |
+| `media:content`          | 0–n   | One per attachment, with dimensions and duration                                                                                                                                                 |
+| `summary`                | 0–1   | The post's text, as the timeline renders it                                                                                                                                                      |
+| `content`                | 1     | The whole post page                                                                                                                                                                              |
 
 A Quote's attribution is not its title — it is inside the text, as a `<figure>` with a `<figcaption>`. A star rating is inside the text too, as `★★★★☆ 4/5`.
 
