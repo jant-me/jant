@@ -54,6 +54,8 @@ When PRs with changesets are merged:
 
    This installs `@jant/core@<version>` from npm, loads the canonical demo content at the release tag into a temporary site, and writes the snapshot and site export that release produces into `packages/core/src/__tests__/fixtures/releases/<version>/`. `release-fixtures.test.ts` restores and imports every release there, so a later change that can no longer read what this release wrote fails in CI. Never edit a frozen fixture.
 
+Once you edit the Release PR by hand, as the 1.0.1 release does, freeze `main` until the Docker image is published. Every push to `main` makes the Changesets action rebuild the `changeset-release/main` branch from scratch and force-push it, which throws away the hand edits. Land nothing on `main` from the first edit until step 5 has finished.
+
 ## Commands
 
 ```bash
@@ -77,6 +79,7 @@ mise run release-publish
 
 The first 1.x release has steps no other release has. Work through them in the Release PR, and after it merges.
 
+- [ ] Freeze `main` before editing the Release PR, and keep it frozen until `owenyoung/jant:1.0.1` is on Docker Hub (see [For Maintainers](#for-maintainers))
 - [ ] In the Release PR, set both packages' `version` and `CHANGELOG.md` heading to 1.0.1 (see [Versioning](#versioning-semver))
 - [ ] In the Release PR, retire the pre-1.0 notices, in both languages:
   - the **Pre-1.0** banner at the top of `README.md`, `README.zh-Hans.md`, `docs/overview.md`, and `docs/zh-Hans/overview.md`
