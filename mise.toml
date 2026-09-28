@@ -146,6 +146,13 @@ pnpm --filter @jant/core build:lib
 node ./packages/core/dev/scripts/pg-smoke.mjs
 """
 
+[tasks.check-s3-smoke]
+description = "Run the S3 driver and the media trash against the server at S3_SMOKE_ENDPOINT"
+run = """
+: "${S3_SMOKE_ENDPOINT:?Set S3_SMOKE_ENDPOINT, S3_SMOKE_ACCESS_KEY_ID and S3_SMOKE_SECRET_ACCESS_KEY}"
+pnpm --filter @jant/core exec vitest run src/lib/__tests__/storage-s3.test.ts
+"""
+
 [tasks.check-pg-rehearsal]
 description = "Upgrade a seeded Postgres database from its baseline migration (PG_REHEARSAL_*_DATABASE_URL)"
 run = """
