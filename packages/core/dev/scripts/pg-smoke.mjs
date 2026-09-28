@@ -621,6 +621,19 @@ async function main() {
     assert.equal(searchPage.status, 200);
     assert.match(await searchPage.text(), /<mark>Postgres<\/mark>/);
 
+    // Punctuation is tsquery syntax. A query of nothing else used to reach
+    // to_tsquery as written and fail to parse: the API answered with an error
+    // and the page with "search failed".
+    for (const query of ["'''", "&|!():"]) {
+      const punctuationSearch = await handler.fetch(
+        new Request(
+          `http://127.0.0.1:3000/api/search?q=${encodeURIComponent(query)}`,
+          { headers: { Cookie: cookieHeader } },
+        ),
+      );
+      assert.equal(punctuationSearch.status, 200, query);
+    }
+
     // Search keeps private posts, and replies that inherit a private root's
     // visibility, from anyone signed out, and finds them for the author.
     // `lanterns` takes the full-text statement and then its ILIKE fallback;
