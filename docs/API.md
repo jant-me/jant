@@ -34,6 +34,7 @@ For static export and round-trip import, also see [Export and Import](export-and
 | Settings                | `/api/settings`          | API token or session |
 | Search                  | `/api/search`            | API token or session |
 | Export                  | `/api/export`            | API token or session |
+| GitHub webhooks         | `/api/github-sync`       | GitHub signature     |
 | Internal admin          | `/api/internal/*`        | Internal admin token |
 
 Auth labels in this document:
@@ -42,6 +43,7 @@ Auth labels in this document:
 - `Public when enabled`: public by default; returns `404` to every caller when `PUBLIC_API_ENABLED=false`
 - `Session or token`: browser session cookie or `Authorization: Bearer <token>`
 - `Internal admin token`: `Authorization: Bearer <INTERNAL_ADMIN_TOKEN>`
+- `GitHub signature`: an `X-Hub-Signature-256` header GitHub computes with the webhook secret; see [GitHub webhooks](#github-webhooks)
 
 ---
 
@@ -3231,6 +3233,19 @@ curl -X POST https://your-site.com/api/export/hugo \
   -H "Authorization: Bearer jnt_YOUR_TOKEN" \
   -o jant-export.zip
 ```
+
+---
+
+## GitHub webhooks
+
+GitHub calls these addresses, so they sit in GitHub's settings rather than in any client. Each checks the `X-Hub-Signature-256` signature against its secret and answers `401` when it doesn't match.
+
+| Address                             | GitHub calls it for                                                                                                                    | Secret                                                                                       |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `POST /api/github-sync/webhook`     | Pushes to the repository [GitHub Sync](github-sync.md) is connected to. Jant registers this webhook on the repository when you connect | `GITHUB_APP_WEBHOOK_SECRET` when set, otherwise the secret Jant generated when you connected |
+| `POST /api/github-sync/app-webhook` | A GitHub App's installation events: uninstalled, suspended, or repositories removed. You enter it in the App's settings                | `GITHUB_APP_WEBHOOK_SECRET`; the address answers `404` while that isn't set                  |
+
+Both answer `200` to an event they don't act on, such as an event of another kind or a push that holds only Jant's own sync commits, so GitHub doesn't mark the delivery failed.
 
 ---
 
