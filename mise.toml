@@ -776,10 +776,12 @@ description = "Apply changesets and bump versions (generates CHANGELOG)"
 # running this, which rewrites package.json files without changing them. pnpm
 # 10's pre-run dependency check then reports the lockfile's overrides as
 # outdated until an install records its state again, and the Release PR stops
-# updating. The lockfile is main's, so the install changes nothing.
+# updating. The lockfile is main's, so the install changes nothing. Then it
+# steps past a version npm already holds: 1.0.0 was published by accident.
 run = """
 pnpm install --frozen-lockfile --prefer-offline
 pnpm changeset version
+node scripts/release/skip-taken-version.mjs
 """
 
 [tasks.release-publish]

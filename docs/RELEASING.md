@@ -14,7 +14,7 @@ We follow [Semantic Versioning](https://semver.org/):
 
 > **Note**: While version is `0.x.x`, a minor release can break things and its changelog carries upgrade notes. From 1.0, [Compatibility](compatibility.md) defines what "breaking" covers: what its first level lists never breaks, and a change to anything its second level lists needs a major release whose changelog carries upgrade notes. A deprecation in a minor release first is optional.
 >
-> `@jant/core@1.0.0` was published by accident in April 2026 and is deprecated on npm, and npm never accepts a version number twice. The first real 1.x release is **1.0.1**; its changelog says why. A major changeset makes Changesets propose 1.0.0, so in that Release PR change both packages' `version` and `CHANGELOG.md` heading to 1.0.1 before merging. Keep the `v1.0.0`, `@jant/core@1.0.0`, and `create-jant@1.0.0` tags: they record what the npm 1.0.0 was built from.
+> `@jant/core@1.0.0` was published by accident in April 2026 and is deprecated on npm, and npm never accepts a version number twice. The first real 1.x release is **1.0.1**; its changelog says why. A major changeset makes Changesets propose 1.0.0, and `mise run release-version` then moves both packages and their changelog headings to 1.0.1 (`scripts/release/skip-taken-version.mjs`). Keep the `v1.0.0`, `@jant/core@1.0.0`, and `create-jant@1.0.0` tags: they record what the npm 1.0.0 was built from.
 
 ## Packages
 
@@ -57,7 +57,7 @@ When PRs with changesets are merged:
 
    This installs `@jant/core@<version>` from npm, loads the canonical demo content at the release tag into a temporary site, and writes the snapshot and site export that release produces into `packages/core/src/__tests__/fixtures/releases/<version>/`. `release-fixtures.test.ts` restores and imports every release there, so a later change that can no longer read what this release wrote fails in CI. Never edit a frozen fixture.
 
-Once you edit the Release PR by hand, as the 1.0.1 release does, freeze `main` until the Docker image is published. Every push to `main` makes the Changesets action rebuild the `changeset-release/main` branch from scratch and force-push it, which throws away the hand edits. Land nothing on `main` from the first edit until step 5 has finished.
+Don't edit the Release PR by hand. Every push to `main` makes the Changesets action rebuild the `changeset-release/main` branch from scratch and force-push it, which throws hand edits away. A change a release needs goes on `main`, and the Release PR picks it up.
 
 ## Commands
 
@@ -80,19 +80,17 @@ mise run release-publish
 
 ## Releasing 1.0.1
 
-The first 1.x release has steps no other release has. Work through them in the Release PR, and after it merges.
+The first 1.x release has steps no other release has. Make the first two in one commit on `main`, then merge the Release PR soon after: from that commit on, the docs on `main` say 1.0 has shipped.
 
-- [ ] Add a `major` changeset that introduces the release: what 1.0 promises, with a link to [Compatibility](compatibility.md), and why it is 1.0.1 (1.0.0 was published by accident in April 2026). Changesets then proposes 1.0.0
-- [ ] Freeze `main` before editing the Release PR, and keep it frozen until `owenyoung/jant:1.0.1` is on Docker Hub (see [For Maintainers](#for-maintainers))
-- [ ] In the Release PR, set both packages' `version` and `CHANGELOG.md` heading to 1.0.1 (see [Versioning](#versioning-semver))
-- [ ] Before merging, check that the Release PR's diff says 1.0.1 in both `package.json` files and both changelogs. Merged at 1.0.0, npm skips `@jant/core`, since 1.0.0 exists, but publishes `create-jant@1.0.0`, whose new projects install the deprecated `@jant/core@1.0.0`
-- [ ] In the Release PR, retire the pre-1.0 notices, in both languages:
+- [ ] Add a `major` changeset that introduces the release: what 1.0 promises, with a link to [Compatibility](compatibility.md); why it is 1.0.1 (1.0.0 was published by accident in April 2026); and, for a site upgrading from 0.10 or earlier, a link to 0.11.0's upgrade notes, since the 1.0.1 release notes carry only their own. Changesets then proposes 1.0.0, and `release-version` moves it to 1.0.1 (see [Versioning](#versioning-semver))
+- [ ] Retire the pre-1.0 notices, in both languages:
   - the **Pre-1.0** banner at the top of `README.md`, `README.zh-Hans.md`, `docs/overview.md`, and `docs/zh-Hans/overview.md`
   - the "Pre-1.0 — will there be a lot of breaking changes?" entry in `docs/faq.md` and `docs/zh-Hans/faq.md`, which becomes an answer about upgrading within 1.x
   - the "Until then, a minor release can still change what the second level covers" sentence in the first paragraph of `docs/compatibility.md` and `docs/zh-Hans/compatibility.md`
   - the 0.x note under [Versioning](#versioning-semver) on this page
   - the pre-1.0 wording in the first paragraph of `AGENTS.md`: "settling toward 1.0" becomes a statement that 1.0 has shipped, and "until then, adopt the better design directly … with no compatibility shims" goes, leaving the 1.x rule
   - the default bump in `.agents/skills/release/SKILL.md` and `.claude/commands/release.md`, which should say that a breaking change to the second level is `major`
+- [ ] Before merging, check that the Release PR's diff says 1.0.1 in both `package.json` files and both changelogs. Merged at 1.0.0, npm skips `@jant/core`, since 1.0.0 exists, but publishes `create-jant@1.0.0`, whose new projects install the deprecated `@jant/core@1.0.0`
 - [ ] After 1.0.1 is on npm, point the accidental 1.0.0's deprecation at it. The message still says to use 0.3.x:
 
   ```bash
