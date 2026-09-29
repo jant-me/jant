@@ -108,8 +108,11 @@ const ListPostsToolSchema = z.object({
   ),
 });
 
-const GetPostToolSchema = z.object({
+const PostIdToolSchema = z.object({
   id: PostIdSchema.describe("Post TypeID"),
+});
+
+const GetPostToolSchema = PostIdToolSchema.extend({
   content: PostContentSchema.optional().describe(
     "markdown returns bodyMarkdown in place of body, bodyHtml, and bodyText",
   ),
@@ -463,9 +466,9 @@ const mcpTools: McpToolDefinition[] = [
   {
     name: "jant_posts_delete",
     description: "Delete a post and clean up any attached media.",
-    inputSchema: toolInputSchema(GetPostToolSchema),
+    inputSchema: toolInputSchema(PostIdToolSchema),
     async execute(args, context) {
-      const input = GetPostToolSchema.parse(args ?? {});
+      const input = PostIdToolSchema.parse(args ?? {});
       const success = await context.services.posts.delete(input.id, {
         media: context.services.media,
         storage: context.storage,

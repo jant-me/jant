@@ -196,6 +196,12 @@ describe("MCP API Routes", () => {
     expect(toolNames).toContain("jant_collections_remove_thread");
     expect(toolNames).toContain("jant_settings_update");
     expect(toolNames).toContain("jant_posts_search");
+
+    // Deleting reads nothing back, so it takes only the post to delete.
+    const deleteTool = body.result.tools.find(
+      (tool: { name: string }) => tool.name === "jant_posts_delete",
+    );
+    expect(Object.keys(deleteTool.inputSchema.properties)).toEqual(["id"]);
   });
 
   it("manages collection membership at the thread root", async () => {
