@@ -531,11 +531,19 @@ async function uploadFile(
 // ── Attachment removal handler ───────────────────────────────────────
 
 document.addEventListener("jant:attachment-removed", (e: Event) => {
-  const { clientId, mediaId } = (
-    e as CustomEvent<{ clientId: string; mediaId: string | null }>
+  const { clientId, mediaId, persisted } = (
+    e as CustomEvent<{
+      clientId: string;
+      mediaId: string | null;
+      persisted: boolean;
+    }>
   ).detail;
 
   completedUploads.delete(clientId);
+
+  // Part of the post being edited: saving the edit deletes it, and
+  // discarding the edit has to keep it.
+  if (persisted) return;
 
   if (mediaId) {
     // Upload already finished — fire-and-forget delete

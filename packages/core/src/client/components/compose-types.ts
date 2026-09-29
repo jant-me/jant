@@ -38,6 +38,12 @@ export interface ComposeAttachment {
   progress: number | null;
   mediaId: string | null;
   /**
+   * Already attached to the post being edited. Removing it takes effect when
+   * the edit is saved, which deletes the file then; until that, discarding the
+   * edit has to bring it back, so it isn't deleted on the spot.
+   */
+  persisted: boolean;
+  /**
    * Server URL of the uploaded file, set when the upload completes. Unlike
    * `previewUrl` (a blob URL revoked on editor reset) it stays valid, so
    * draft restore can rehydrate the attachment after the dialog closed.
@@ -97,6 +103,8 @@ export interface LocalDraftMedia {
   alt?: string;
   summary?: string | null;
   chars?: number | null;
+  /** See `ComposeAttachment.persisted`. */
+  persisted?: boolean;
 }
 
 /**

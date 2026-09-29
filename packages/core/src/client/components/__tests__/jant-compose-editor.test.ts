@@ -397,6 +397,7 @@ function mediaAttachment(clientId: string, mediaId: string): ComposeAttachment {
     status: "done",
     progress: null,
     mediaId,
+    persisted: false,
     alt: "",
     error: null,
     posterUrl: null,
@@ -1355,6 +1356,38 @@ describe("JantComposeEditor", () => {
     expect(el.querySelector(".compose-attachment-img")).toBeNull();
   });
 
+  // Saving the edit deletes a saved attachment the author removed; the bridge
+  // reads `persisted` to leave it alone until then.
+  it("reports a removed saved attachment as persisted", async () => {
+    const el = await createElement("note");
+    el.populate({
+      format: "note",
+      media: [
+        {
+          id: "m1",
+          clientId: "c1",
+          previewUrl: "/saved.png",
+          mimeType: "image/png",
+          persisted: true,
+        },
+      ],
+      attachmentOrder: ["c1"],
+    });
+    await el.updateComplete;
+    const removed = vi.fn();
+    el.addEventListener("jant:attachment-removed", (event) =>
+      removed((event as CustomEvent).detail),
+    );
+
+    el.removeAttachment("c1");
+
+    expect(removed).toHaveBeenCalledWith({
+      clientId: "c1",
+      mediaId: "m1",
+      persisted: true,
+    });
+  });
+
   it("media button shows inline add label when attachments are present", async () => {
     const el = await createElement("note");
 
@@ -1373,6 +1406,7 @@ describe("JantComposeEditor", () => {
         status: "done",
         progress: null,
         mediaId: "m1",
+        persisted: false,
         alt: "",
         error: null,
         posterUrl: null,

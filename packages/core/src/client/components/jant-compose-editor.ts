@@ -1353,6 +1353,8 @@ export class JantComposeEditor extends LitElement {
       originalName?: string;
       summary?: string;
       chars?: number;
+      /** Already attached to the post being edited */
+      persisted?: boolean;
     }>;
     textAttachments?: Array<{
       clientId?: string;
@@ -1401,6 +1403,7 @@ export class JantComposeEditor extends LitElement {
         status: "done" as const,
         progress: null,
         mediaId: m.id,
+        persisted: m.persisted ?? false,
         remoteUrl: m.previewUrl,
         alt: m.alt ?? "",
         error: null,
@@ -1915,6 +1918,7 @@ export class JantComposeEditor extends LitElement {
         status: "pending",
         progress: null,
         mediaId: null,
+        persisted: false,
         remoteUrl: null,
         alt: "",
         error: null,
@@ -1971,6 +1975,7 @@ export class JantComposeEditor extends LitElement {
           detail: {
             clientId: attachment.clientId,
             mediaId: attachment.mediaId,
+            persisted: attachment.persisted,
           },
         }),
       );

@@ -155,6 +155,7 @@ describe("compose bridge image upload", () => {
       status: "pending",
       progress: null,
       mediaId: null,
+      persisted: false,
       remoteUrl: null,
       alt: "",
       error: null,

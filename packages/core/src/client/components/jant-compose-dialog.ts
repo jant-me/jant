@@ -526,6 +526,7 @@ async function resolveApiAttachments(allAttachments: ApiAttachment[]) {
     originalName: m.originalName,
     summary: m.summary,
     chars: m.chars,
+    persisted: true,
   }));
 
   const textAttachments = await Promise.all(
@@ -3596,6 +3597,7 @@ export class JantComposeDialog extends LitElement {
               alt: a.alt || undefined,
               summary: a.summary,
               chars: a.chars,
+              persisted: a.persisted || undefined,
             },
           ]
         : [],
@@ -3613,6 +3615,7 @@ export class JantComposeDialog extends LitElement {
       alt: m.alt,
       summary: m.summary ?? undefined,
       chars: m.chars ?? undefined,
+      persisted: m.persisted ?? false,
     }));
   }
 

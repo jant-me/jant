@@ -1240,4 +1240,42 @@ describe("compose bridge", () => {
     await flushBridgeWork();
     expect(progressToastText()).toBe("Draft saved.");
   });
+
+  // Removing an attachment the post already had takes effect on save, which
+  // deletes the file then. Deleting it on the spot would lose it for good
+  // when the author discards the edit.
+  it("leaves an attachment the post already had until the edit is saved", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+
+    document.dispatchEvent(
+      new CustomEvent("jant:attachment-removed", {
+        detail: {
+          clientId: "c-saved",
+          mediaId: "med_01kn8jq3t4famtyg9hjd074ckr",
+          persisted: true,
+        },
+      }),
+    );
+    await flushBridgeWork();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    document.dispatchEvent(
+      new CustomEvent("jant:attachment-removed", {
+        detail: {
+          clientId: "c-new",
+          mediaId: "med_01kn8jq3t4famtyg9hjd074ckz",
+          persisted: false,
+        },
+      }),
+    );
+    await flushBridgeWork();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [input, init] = fetchMock.mock.calls[0] ?? [];
+    expect(String(input)).toContain(
+      "/api/media/med_01kn8jq3t4famtyg9hjd074ckz",
+    );
+    expect(init?.method).toBe("DELETE");
+  });
 });
