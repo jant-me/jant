@@ -141,6 +141,15 @@ No. The GitHub → Jant direction only supports updating existing posts, matched
 
 Every active session is invalidated immediately and everyone has to sign in again. **Don't rotate this casually** in production unless you suspect a leak. Generate a new value with `openssl rand -base64 32`.
 
+## I forgot my password. How do I get back in?
+
+On a self-hosted site, run `jant reset-password` against the site's database. It prints a path such as `/reset?token=…`; open it on your site within 15 minutes and choose a new password.
+
+- Cloudflare, in your project: `npx jant reset-password --remote`. Without `--remote` it resets the local development database.
+- Docker, next to your `compose.yml`: `docker compose exec jant jant reset-password`
+
+See [Command line](cli.md) for the options.
+
 ## Pre-1.0 — will there be a lot of breaking changes?
 
 Possibly, but only when warranted. Every breaking change is documented in the commit and changelog. Skim the changelog before upgrading and keep a recent backup. [Compatibility](compatibility.md) lists what each kind of release can change.

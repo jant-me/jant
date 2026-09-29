@@ -140,6 +140,15 @@ feeds。内容会立即显示在网页上，等待的只有 feed 分发。这段
 
 所有已登录会话立即失效，所有人需要重新登录。生产环境上线后**不要轻易更换**——除非怀疑泄露。生成方式：`openssl rand -base64 32`。
 
+## 忘了密码怎么登录？
+
+自部署的站点，对站点的数据库运行 `jant reset-password`。它会打印一个 `/reset?token=…` 这样的路径，15 分钟内在你的站点上打开它，设置新密码。
+
+- Cloudflare，在项目目录里：`npx jant reset-password --remote`。不加 `--remote` 重置的是本地开发数据库。
+- Docker，在 `compose.yml` 所在目录：`docker compose exec jant jant reset-password`
+
+选项见[命令行](cli.md)。
+
 ## Pre-1.0，破坏性变更会很多吗？
 
 可能会有，但不到必要不会做。每次破坏性变更都会写在 commit 和 changelog 里。升级前扫一眼变更记录，留一份最近的备份。每种版本可能改动什么，见[兼容性](compatibility.md)。

@@ -109,7 +109,7 @@ Open `http://localhost:3000`.
 | -------------------------------------------------------------------------------------- | ------------------------------------- |
 | `npm run dev`                                                                          | Start local development               |
 | `npm run deploy`                                                                       | Apply remote migrations and deploy    |
-| `npm run reset-password`                                                               | Generate a password reset token       |
+| `npm run reset-password -- --remote`                                                   | Get a link to reset your password     |
 | `npx jant site export --url https://your-site.example --output ./jant-site-export.zip` | Export the site as a portable archive |
 
 ## Upgrade
