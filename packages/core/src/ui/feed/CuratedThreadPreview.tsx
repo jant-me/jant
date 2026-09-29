@@ -42,12 +42,17 @@ export const CuratedThreadPreview: FC<CuratedThreadPreviewProps> = ({
   return (
     <div class="thread-group thread-group-preview thread-group-curated">
       {segments.map((segment, index) => [
-        segment.hiddenBeforeCount > 0 ? (
+        // The gap opens the first post it hides — the rule in
+        // `lib/thread-fold.ts` — and appears on the same condition as
+        // `ThreadPreview`'s: something is hidden and that post is known. No
+        // other post stands in for it; one deleted between the two reads
+        // leaves the gap out for one render.
+        segment.hiddenBeforeCount > 0 && segment.gapHref ? (
           <div
             key={`gap-${segment.post.id}`}
             class="thread-item thread-item-gap"
           >
-            <a href={segment.post.permalink} class="thread-gap-link">
+            <a href={segment.gapHref} class="thread-gap-link">
               {i18n._(
                 msg({
                   message:

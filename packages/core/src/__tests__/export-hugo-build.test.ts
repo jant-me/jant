@@ -639,4 +639,124 @@ describe("Hugo smoke build", () => {
       await rm(siteDir, { recursive: true, force: true });
     }
   }, 60_000);
+
+  it("points a Featured Thread's gaps at the first post each one hides", async () => {
+    if (!hugoOk) {
+      console.log("hugo binary not found on PATH — skipping hugo build test");
+      return;
+    }
+
+    // root · [one] · two★ · [three · four] · five
+    const words = ["one", "two", "three", "four", "five"];
+    const root = makePost({
+      id: "pst_feat",
+      slug: "feat-root",
+      title: "A featured thread",
+      threadId: "pst_feat",
+    });
+    const replies = words.map((word, index) =>
+      makePost({
+        id: `pst_feat_${word}`,
+        slug: `feat-${word}`,
+        title: null,
+        replyToId: "pst_feat",
+        threadId: "pst_feat",
+        createdAt: 1773020000 + index * 1000,
+        publishedAt: 1773020000 + index * 1000,
+        featuredAt: word === "two" ? 1773030000 : null,
+        body: JSON.stringify({
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: `Reply ${word} of the thread.` }],
+            },
+          ],
+        }),
+      }),
+    );
+
+    const services = {
+      posts: {
+        listPage: async () => ({ posts: [root, ...replies], nextCursor: null }),
+      },
+      paths: {
+        getPostSlugMap: async () =>
+          new Map([
+            ["pst_feat", "feat-root"],
+            ...words.map((word): [string, string] => [
+              `pst_feat_${word}`,
+              `feat-${word}`,
+            ]),
+          ]),
+        listStandalonePaths: async () => [],
+        getPostAliases: async () => new Map(),
+        getCollectionSlugMap: async () => new Map(),
+        getCollectionAliases: async () => new Map(),
+      },
+      collections: {
+        list: async () => [],
+        listDirectoryData: async () => ({
+          collections: [],
+          items: [],
+          directoryItems: [],
+        }),
+        getCollectionsByPostIds: async () => new Map(),
+        getCollectionEntriesByThreadIds: async () => new Map(),
+      },
+      media: { getByPostIds: async () => new Map() },
+    } as unknown as ServicesArg;
+
+    const siteDir = await mkdtemp(join(tmpdir(), "jant-hugo-featured-gap-"));
+    try {
+      const files = await createExportService(
+        services,
+        makeSiteConfig(),
+      ).generateHugoFiles();
+      for (const file of files) {
+        const target = join(siteDir, file.path);
+        await mkdir(dirname(target), { recursive: true });
+        const data =
+          typeof file.content === "string"
+            ? new TextEncoder().encode(file.content)
+            : file.content;
+        await writeFile(target, data);
+      }
+
+      const { code, stdout, stderr } = await runHugo(siteDir);
+      if (code !== 0) {
+        console.error("hugo stdout:", stdout);
+        console.error("hugo stderr:", stderr);
+      }
+      expect(code).toBe(0);
+
+      const html = await readFile(
+        join(siteDir, "public/featured/index.html"),
+        "utf-8",
+      );
+      for (const shown of ["two", "five"]) {
+        expect(html).toContain(`Reply ${shown} of the thread.`);
+      }
+      for (const hidden of ["one", "three", "four"]) {
+        expect(html).not.toContain(`Reply ${hidden} of the thread.`);
+      }
+      // Each gap leads to the first post of its run, as the site's do — not
+      // to the root. The build is minified, so attribute quotes are not
+      // guaranteed.
+      const gapHrefs = [
+        ...html.matchAll(/thread-preview-gap"? href="?([^" >]*)/g),
+      ].map((match) => match[1]);
+      expect(gapHrefs).toHaveLength(2);
+      expect(gapHrefs[0]).toMatch(/\/feat-one\/$/);
+      expect(gapHrefs[1]).toMatch(/\/feat-three\/$/);
+      expect(html).toContain("1 hidden post");
+      expect(html).toContain("2 hidden posts");
+      // A reply's address is its slug, registered as an alias on the root.
+      expect(
+        await fileExists(join(siteDir, "public/feat-three/index.html")),
+      ).toBe(true);
+    } finally {
+      await rm(siteDir, { recursive: true, force: true });
+    }
+  }, 60_000);
 });

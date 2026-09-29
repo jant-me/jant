@@ -13,6 +13,7 @@ import {
   type SQL,
   type SQLWrapper,
   isNull,
+  ne,
   desc,
   inArray,
   notInArray,
@@ -329,6 +330,19 @@ export interface FeaturedThreadTimelinePost {
 }
 
 /**
+ * Where one gap in a curated Featured Thread points: the first Post of the run
+ * it hides, as `lib/thread-fold.ts` has every gap do. Only its address is
+ * loaded, since nothing renders it.
+ */
+export interface FeaturedThreadGapTarget {
+  id: string;
+  /** Canonical slug from `path_registry`. */
+  slug: string;
+  /** The shown Post the hidden run starts right after. */
+  afterPostId: string;
+}
+
+/**
  * Bounded projection for one curated Featured Thread.
  *
  * `posts` contains only the Root, every Featured Post, and the final published
@@ -338,6 +352,8 @@ export interface FeaturedThreadTimelinePost {
 export interface FeaturedThreadTimelineData {
   posts: FeaturedThreadTimelinePost[];
   featuredPostIds: string[];
+  /** The first hidden Post of each run between two shown ones. */
+  gapTargets: FeaturedThreadGapTarget[];
 }
 
 /** Minimal projection used by the sitemap renderer. */
@@ -4784,33 +4800,35 @@ export function createPostService(
       if (rootIds.length === 0) return result;
 
       const uniqueRootIds = [...new Set(rootIds)];
-      const threadPosition = sql<number>`CAST(
-        row_number() OVER (
-          PARTITION BY ${posts.threadId}
-          ORDER BY ${sql.join(threadOrder(), sql`, `)}
-        ) - 1 AS INTEGER
-      )`.as("thread_position");
-      const threadPostCount = sql<number>`CAST(
-        count(*) OVER (PARTITION BY ${posts.threadId}) AS INTEGER
-      )`.as("thread_post_count");
+      const inThreadOrder = () => sql`
+        PARTITION BY ${posts.threadId}
+        ORDER BY ${sql.join(threadOrder(), sql`, `)}
+      `;
+      const threadPosition = () =>
+        sql<number>`CAST(
+          row_number() OVER (${inThreadOrder()}) - 1 AS INTEGER
+        )`.as("thread_position");
+      const threadPostCount = () =>
+        sql<number>`CAST(
+          count(*) OVER (PARTITION BY ${posts.threadId}) AS INTEGER
+        )`.as("thread_post_count");
+      const inRequestedThreads = and(
+        eq(posts.siteId, siteId),
+        inArray(posts.threadId, uniqueRootIds),
+        eq(posts.status, "published"),
+      );
 
+      // The Posts shown: the Root, every Featured Post, and the last Post.
       const rankedPosts = db
         .select({
           ...getTableColumns(posts),
-          threadPosition,
-          threadPostCount,
+          threadPosition: threadPosition(),
+          threadPostCount: threadPostCount(),
         })
         .from(posts)
-        .where(
-          and(
-            eq(posts.siteId, siteId),
-            inArray(posts.threadId, uniqueRootIds),
-            eq(posts.status, "published"),
-          ),
-        )
+        .where(inRequestedThreads)
         .as("ranked_featured_thread_post");
-
-      const rows = await db
+      const shownQuery = db
         .select()
         .from(rankedPosts)
         .where(
@@ -4822,12 +4840,61 @@ export function createPostService(
         )
         .orderBy(rankedPosts.threadId, sql`${rankedPosts.threadPosition}`);
 
-      const hydratedPosts = await hydratePosts(
-        rows.map(
-          ({ threadPosition: _position, threadPostCount: _count, ...row }) =>
-            row,
+      // Where each gap points: the Post right after a shown one, when it is
+      // hidden itself. Read beside the shown Posts rather than with them, and
+      // only as far as its address, since nothing renders it.
+      const gapCandidates = db
+        .select({
+          id: posts.id,
+          threadId: posts.threadId,
+          featuredAt: posts.featuredAt,
+          threadPosition: threadPosition(),
+          threadPostCount: threadPostCount(),
+          previousPostId: sql<
+            string | null
+          >`LAG(${posts.id}) OVER (${inThreadOrder()})`.as("previous_post_id"),
+          previousFeaturedAt: sql<
+            number | null
+          >`LAG(${posts.featuredAt}) OVER (${inThreadOrder()})`.as(
+            "previous_featured_at",
+          ),
+        })
+        .from(posts)
+        .where(inRequestedThreads)
+        .as("featured_thread_gap_candidate");
+      const gapQuery = db
+        .select({
+          id: gapCandidates.id,
+          threadId: gapCandidates.threadId,
+          previousPostId: gapCandidates.previousPostId,
+        })
+        .from(gapCandidates)
+        .where(
+          and(
+            // Hidden: not the Root, not Featured, not the last Post...
+            ne(gapCandidates.id, gapCandidates.threadId),
+            isNull(gapCandidates.featuredAt),
+            sql`${gapCandidates.threadPosition} < ${gapCandidates.threadPostCount} - 1`,
+            // ...right after a shown Post. Nothing follows the last one, so
+            // that is the Root or a Featured Post.
+            or(
+              eq(gapCandidates.previousPostId, gapCandidates.threadId),
+              isNotNull(gapCandidates.previousFeaturedAt),
+            ),
+          ),
+        );
+
+      const [rows, gapRows] = await Promise.all([shownQuery, gapQuery]);
+
+      const [hydratedPosts, gapSlugs] = await Promise.all([
+        hydratePosts(
+          rows.map(
+            ({ threadPosition: _position, threadPostCount: _count, ...row }) =>
+              row,
+          ),
         ),
-      );
+        resolvedPaths.getPostSlugMap(gapRows.map((row) => row.id)),
+      ]);
       const hydratedById = new Map(
         hydratedPosts.map((post) => [post.id, post]),
       );
@@ -4839,12 +4906,24 @@ export function createPostService(
         const thread = result.get(row.threadId) ?? {
           posts: [],
           featuredPostIds: [],
+          gapTargets: [],
         };
         thread.posts.push({ post, position: row.threadPosition });
         if (row.featuredAt !== null) {
           thread.featuredPostIds.push(row.id);
         }
         result.set(row.threadId, thread);
+      }
+
+      for (const row of gapRows) {
+        const slug = gapSlugs.get(row.id);
+        const thread = result.get(row.threadId);
+        if (!slug || !thread || !row.previousPostId) continue;
+        thread.gapTargets.push({
+          id: row.id,
+          slug,
+          afterPostId: row.previousPostId,
+        });
       }
 
       return result;

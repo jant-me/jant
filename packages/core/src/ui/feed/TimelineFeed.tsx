@@ -25,13 +25,7 @@ export const TimelineFeedItemContent: FC<TimelineFeedItemContentProps> = ({
   return item.curatedThread ? (
     <CuratedThreadPreview curatedThread={item.curatedThread} />
   ) : item.threadPreview ? (
-    <ThreadPreview
-      rootPost={item.post}
-      leadingReplies={item.threadPreview.leadingReplies}
-      trailingReplies={item.threadPreview.trailingReplies}
-      latestReply={item.threadPreview.latestReply}
-      totalReplyCount={item.threadPreview.totalReplyCount}
-    />
+    <ThreadPreview rootPost={item.post} {...item.threadPreview} />
   ) : (
     <TimelineItem item={item} />
   );

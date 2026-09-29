@@ -4,6 +4,12 @@
   The Root carries a derived `featured_post_ids` projection. Render the Root,
   every selected Featured Post, and the final Post once, preserving the real
   Thread positions so omitted runs can be represented as gap links.
+
+  Each gap leads to the first post it hides, as the site's does
+  (`lib/thread-fold.ts`): the one right after the post above it. Replies are
+  not rendered as pages (`build: render: never`), so their `.RelPermalink` is
+  empty; the exporter registers every reply slug as an alias on the root, and
+  that is the address a reply has.
 */ -}}
 {{- $root := . -}}
 {{- $featuredIds := $root.Params.featured_post_ids | default slice -}}
@@ -37,8 +43,9 @@
         {{- $position := int $entry.position -}}
         {{- $hiddenCount := sub $position (add $previousPosition 1) -}}
         {{- if gt $hiddenCount 0 -}}
+          {{- $firstHidden := index $posts (add $previousPosition 1) -}}
           <div class="thread-item thread-item-gap">
-            <a class="thread-preview-gap" href="{{ $root.RelPermalink }}">
+            <a class="thread-preview-gap" href="{{ printf "/%s/" $firstHidden.Slug | relURL }}">
               {{ $hiddenCount }} hidden {{ if eq $hiddenCount 1 }}post{{ else }}posts{{ end }}
             </a>
           </div>

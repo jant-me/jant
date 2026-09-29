@@ -24,6 +24,7 @@ import {
 } from "../../lib/post-display.js";
 import { buildArticleJsonLd } from "../../lib/structured-data.js";
 import {
+  getPostPath,
   isFullUrl,
   normalizePath,
   redirectTargetHref,
@@ -273,7 +274,7 @@ async function buildTranslationLinks(
     ...siblings.map((other) => other.id),
   ]);
   const pathFor = (target: Post) =>
-    `/${aliasesMap.get(target.id)?.[0] ?? target.slug}`;
+    getPostPath(target.slug, aliasesMap.get(target.id)?.[0]);
 
   const group = [post as Post & { language: string }, ...siblings];
   for (const target of group) {
@@ -633,7 +634,7 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     // else that reached it — the slug when there is a custom URL, a later
     // custom URL, a different letter case, a language prefix — is only a way
     // in and redirects there.
-    const canonicalPath = loaded.canonicalAlias ?? `/${post.slug}`;
+    const canonicalPath = getPostPath(post.slug, loaded.canonicalAlias);
     if (inLanguageView || canonicalPath !== `/${fullPath}`) {
       return c.redirect(toPublicPath(canonicalPath, sitePathPrefix), 301);
     }

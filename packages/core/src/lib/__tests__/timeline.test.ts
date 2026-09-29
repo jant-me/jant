@@ -620,6 +620,52 @@ describe("Timeline data assembly", () => {
       }),
     ]);
     expect(thread?.featuredPostIds).toEqual([featuredReply.id]);
+    // Each gap points at the first post of its run, read only as far as its
+    // address.
+    expect(thread?.gapTargets).toEqual([
+      { id: hiddenReplyA.id, slug: hiddenReplyA.slug, afterPostId: root.id },
+      {
+        id: hiddenReplyB.id,
+        slug: hiddenReplyB.slug,
+        afterPostId: featuredReply.id,
+      },
+    ]);
+  });
+
+  it("points each Featured gap at the first post of its run", async () => {
+    // root★ · 1★ · [2 · 3] · 4★ · 5
+    const posts = [];
+    for (const [index, featured] of [
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+    ].entries()) {
+      posts.push(
+        await postService.create({
+          format: "note",
+          bodyMarkdown: `Post ${index}`,
+          replyToId: posts.at(-1)?.id,
+          featured,
+          publishedAt: 1000 + index,
+        }),
+      );
+    }
+    const [root, featuredA, hiddenA] = posts;
+    if (!root || !featuredA || !hiddenA) throw new Error("Thread not created");
+
+    const thread = (
+      await postService.getFeaturedThreadTimelineData([root.id])
+    ).get(root.id);
+
+    expect(thread?.posts.map(({ position }) => position)).toEqual([0, 1, 4, 5]);
+    // No gap between the root and the first featured reply, none between the
+    // last featured reply and the final post, and one for the run of two.
+    expect(thread?.gapTargets).toEqual([
+      { id: hiddenA.id, slug: hiddenA.slug, afterPostId: featuredA.id },
+    ]);
   });
 
   it("renders every post in each collected Thread and sorts by Thread activity", async () => {
