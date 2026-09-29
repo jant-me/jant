@@ -8,10 +8,6 @@
  * effective-mode rules and the identifiers the feed declaration is built
  * from. The declaration is specified in `docs/feeds.md`; how a directory
  * behaves is that directory's own business, documented where it lives.
- *
- * `featured` survives as a stored value: older releases offered it as a
- * choice, and a site that made it still declares it, which a directory reads
- * as "only this feed". Nothing writes it any more.
  */
 
 /**
@@ -25,7 +21,7 @@
 export const DISCOVER_NAMESPACE_URI = "https://jant.me/ns";
 
 /** Stored value of the `DISCOVER` site setting. */
-export type DiscoverSetting = "latest" | "featured" | "off";
+export type DiscoverSetting = "latest" | "off";
 
 /**
  * Effective Discover mode, as declared in the feed.
@@ -34,13 +30,9 @@ export type DiscoverSetting = "latest" | "featured" | "off";
  * element's absence already means "this site predates Discover" — the two
  * states are different and must stay tellable apart.
  */
-export type DiscoverMode = "latest" | "featured" | "none";
+export type DiscoverMode = "latest" | "none";
 
-const DISCOVER_SETTINGS: readonly DiscoverSetting[] = [
-  "latest",
-  "featured",
-  "off",
-];
+const DISCOVER_SETTINGS: readonly DiscoverSetting[] = ["latest", "off"];
 
 /**
  * Parse a stored or environment-supplied Discover setting.
@@ -49,7 +41,7 @@ const DISCOVER_SETTINGS: readonly DiscoverSetting[] = [
  * @returns The setting, or `null` when absent or unrecognized
  * @example
  * ```ts
- * parseDiscoverSetting("featured"); // "featured"
+ * parseDiscoverSetting("latest"); // "latest"
  * parseDiscoverSetting("yes"); // null
  * ```
  */
@@ -134,26 +126,18 @@ export function resolveDiscoverMode(input: {
  * Site-relative path of the feed a Discover crawler should poll.
  *
  * The declaration names the feed to poll rather than leaving a crawler to
- * guess, so a site that lists only its featured posts is polled at
- * `/featured/feed` and never at `/latest/feed`.
+ * guess.
  *
  * @param mode - Effective Discover mode
  * @returns Site-relative feed path, or `null` when the site is not listed
  * @example
  * ```ts
- * getDiscoverFeedPath("featured"); // "/featured/feed"
+ * getDiscoverFeedPath("latest"); // "/latest/feed"
  * getDiscoverFeedPath("none"); // null
  * ```
  */
 export function getDiscoverFeedPath(mode: DiscoverMode): string | null {
-  switch (mode) {
-    case "latest":
-      return "/latest/feed";
-    case "featured":
-      return "/featured/feed";
-    case "none":
-      return null;
-  }
+  return mode === "latest" ? "/latest/feed" : null;
 }
 
 /**

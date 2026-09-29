@@ -532,10 +532,6 @@ export class JantSettingsGeneral extends LitElement {
    * On writes `latest`: the directory may read any public post, and decides
    * itself which list each one reaches — featured posts on its home, links
    * and quotes on their own lists.
-   *
-   * A site that stored `featured` under an older release still reads as
-   * ticked, and stays `featured` until its owner touches the box: widening
-   * what the directory may show is the owner's to do, not an upgrade's.
    */
   private _onDiscoverToggle(enabled: boolean) {
     this._saveDiscover(enabled ? "latest" : "off");

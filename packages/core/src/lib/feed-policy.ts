@@ -366,12 +366,11 @@ export function buildFeedDiscoveryFields(
     );
   const feedPath = getDiscoverFeedPath(appConfig.discover);
   const discoverFeedUrl = feedPath ? absoluteFeedUrl(feedPath) : null;
-  // Only beside `latest`: under `featured` the `feed` attribute already is the
-  // featured feed, and there is nothing wider to name.
-  const discoverFeaturedFeedUrl =
-    appConfig.discover === "latest"
-      ? absoluteFeedUrl(getDiscoverFeedPath("featured") ?? "/featured/feed")
-      : null;
+  // Named beside `feed`, so a directory shows featured posts on one list and
+  // everything on another without guessing the address.
+  const discoverFeaturedFeedUrl = feedPath
+    ? absoluteFeedUrl("/featured/feed")
+    : null;
   // The API lives outside language views, so the view travels as `lang`: the
   // answer must be about the feeds this declaration sits in.
   const viewLang = getViewLang(c);

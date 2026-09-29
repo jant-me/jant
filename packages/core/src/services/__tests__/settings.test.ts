@@ -570,10 +570,10 @@ describe("SettingsService", () => {
       await settingsService.updateDiscoverSetting("off", { demoMode: false });
       expect(await settingsService.get("DISCOVER")).toBe("off");
 
-      await settingsService.updateDiscoverSetting("featured", {
+      await settingsService.updateDiscoverSetting("latest", {
         demoMode: false,
       });
-      expect(await settingsService.get("DISCOVER")).toBe("featured");
+      expect(await settingsService.get("DISCOVER")).toBe("latest");
     });
 
     // A site that has never used the control has never told anyone it exists,
@@ -592,18 +592,6 @@ describe("SettingsService", () => {
         demoMode: false,
       });
       expect(result.shouldAnnounce).toBe(true);
-    });
-
-    // The directory already knows about a listed site; which of its posts it
-    // draws from is not news.
-    it("says nothing when an enrolled site changes which posts it offers", async () => {
-      await settingsService.updateDiscoverSetting("latest", {
-        demoMode: false,
-      });
-      const result = await settingsService.updateDiscoverSetting("featured", {
-        demoMode: false,
-      });
-      expect(result.shouldAnnounce).toBe(false);
     });
 
     // The half that used to be missing. A directory that is not told keeps the

@@ -766,38 +766,6 @@ describe("JantSettingsGeneral", () => {
       );
     });
 
-    // A site that chose the old featured-only mode reads as on, and the box
-    // widens it only when the owner ticks it again — never on its own.
-    it("keeps a stored featured choice ticked, and writes latest on re-tick", async () => {
-      const el = await createElement();
-      el.initData({ ...initialData, discover: "featured" });
-      await el.updateComplete;
-      const details: SettingsSaveDetail[] = [];
-      el.addEventListener("jant:settings-save", (event) => {
-        details.push((event as CustomEvent<SettingsSaveDetail>).detail);
-      });
-
-      const toggle = requireElement(
-        findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
-        "expected the Discover checkbox",
-      );
-      expect(toggle.checked).toBe(true);
-      expect(details).toHaveLength(0);
-
-      toggle.click();
-      await el.updateComplete;
-      expect(details[0]?.data.discover).toBe("off");
-
-      el.sectionSaved("discover");
-      await el.updateComplete;
-      requireElement(
-        findCheckboxByLabel(el, labels.discoverEnabled) ?? null,
-        "expected the Discover checkbox",
-      ).click();
-      await el.updateComplete;
-      expect(details[1]?.data.discover).toBe("latest");
-    });
-
     // The controls stay disabled until the save answers, so a second click
     // cannot race the first.
     it("disables the controls while a save is in flight", async () => {

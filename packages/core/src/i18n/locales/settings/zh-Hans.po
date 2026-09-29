@@ -2742,11 +2742,6 @@ msgstr "此设置未保存。请检查该值并重试。"
 msgid "This site has no directory to announce to."
 msgstr "这个站点没有可提交的目录。"
 
-#. @context: Discover status line for a site that chose the old featured-only mode and has no featured posts. Says how to move to the current setting, which reads every public post.
-#: src/ui/dash/settings/GeneralContent.tsx
-msgid "This site still limits Discover to featured posts, and no post is marked Featured, so your feed carries nothing to show. Untick and tick the box to let Discover read every public post."
-msgstr "当前仍只向 Discover 提供精选帖子，但没有任何帖子标为 Featured，订阅源里没有可展示的内容。取消勾选再重新勾选，即可让 Discover 读取全部公开帖子。"
-
 #. @context: Warning text on account deletion page
 #: src/ui/dash/settings/DeleteAccountContent.tsx
 msgid "This will permanently delete all your data — posts, media, collections, settings, and your account. Your blog will be reset to its initial setup state. This cannot be undone."

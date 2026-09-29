@@ -937,19 +937,6 @@ describe("feed Discover declaration", () => {
     );
   });
 
-  it("points featured sites at the featured feed", () => {
-    const xml = defaultFeedRenderer({
-      labels: FEED_LABELS,
-      ...makeFeedData(makePostView()),
-      discover: "featured",
-      discoverFeedUrl: "https://example.com/featured/feed",
-    });
-
-    expect(xml).toContain(
-      '<jant:discover feed="https://example.com/featured/feed">featured</jant:discover>',
-    );
-  });
-
   // `none` is an answer, so it is still declared — a crawler that already
   // knows the site has to be told to stop, and silence would read as "this
   // site predates Discover" instead.

@@ -452,23 +452,13 @@ settingsRoutes.get("/general", async (c) => {
     excludeLatestHidden: true,
     excludePrivate: true,
   };
-  const [
-    navData,
-    aboutPage,
-    announceState,
-    publicPostCount,
-    featuredPostCount,
-  ] = await Promise.all([
-    getNavigationData(c),
-    c.var.services.aboutPage.getStatus(),
-    c.var.services.settings.getDiscoverAnnounceState(),
-    c.var.services.posts.count(publicPostFilters),
-    c.var.services.posts.countFeaturedThreadRoots({
-      status: "published",
-      excludePrivate: true,
-      excludeLatestHidden: true,
-    }),
-  ]);
+  const [navData, aboutPage, announceState, publicPostCount] =
+    await Promise.all([
+      getNavigationData(c),
+      c.var.services.aboutPage.getStatus(),
+      c.var.services.settings.getDiscoverAnnounceState(),
+      c.var.services.posts.count(publicPostFilters),
+    ]);
   const siteUrlForDisplay =
     appConfig.siteUrl || new URL(publicPath(c, "/"), c.req.url).toString();
 
@@ -535,7 +525,6 @@ settingsRoutes.get("/general", async (c) => {
             // miss the deployment default.
             declaredMode: appConfig.discover,
             ...measureDiscoverMaturity({ publicPostCount }),
-            featuredPostCount,
             minPublicPosts: DISCOVER_MIN_PUBLIC_POSTS,
             firstReadMaxHours: DISCOVER_FIRST_READ_MAX_HOURS,
           }}

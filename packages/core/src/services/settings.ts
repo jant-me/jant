@@ -533,8 +533,7 @@ export function createSettingsService(
       // told anyone it exists. Opting out is the half that used to be missed:
       // a directory that is not told keeps the blog until its next scheduled
       // read, and the owner watches a blog they just removed sit there for
-      // another hour. Switching between `latest` and `featured` while already
-      // listed changes nothing a directory needs to be told twice.
+      // another hour.
       const wasListed = previous !== null && previous !== "off";
       const isListed = mode !== "off";
       const changed = wasListed !== isListed;

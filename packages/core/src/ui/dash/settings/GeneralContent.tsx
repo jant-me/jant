@@ -55,8 +55,6 @@ export interface DiscoverStatus {
   /** What this site's feeds actually declare right now. */
   declaredMode: DiscoverMode;
   publicPostCount: number;
-  /** Featured thread roots — what a `featured` feed would actually carry. */
-  featuredPostCount: number;
   /** The directory's threshold is met. */
   established: boolean;
   minPublicPosts: number;
@@ -536,26 +534,6 @@ export function GeneralContent({
           ),
         );
       }
-    }
-
-    // A site that stored `featured` under an older release: the directory
-    // reads only its featured feed, on every list. The box still reads as on,
-    // and only the owner ticking it again widens what the directory may show.
-    if (
-      discoverStatus.declaredMode === "featured" &&
-      discoverStatus.publicPostCount > 0 &&
-      discoverStatus.featuredPostCount === 0
-    ) {
-      statusLines.push(
-        i18n._(
-          msg({
-            message:
-              "This site still limits Discover to featured posts, and no post is marked Featured, so your feed carries nothing to show. Untick and tick the box to let Discover read every public post.",
-            comment:
-              "@context: Discover status line for a site that chose the old featured-only mode and has no featured posts. Says how to move to the current setting, which reads every public post.",
-          }),
-        ),
-      );
     }
 
     if (!discoverStatus.established) {
