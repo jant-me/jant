@@ -89,10 +89,15 @@ describe("Hugo import CLI helpers", () => {
 
     expect(
       await withVersion(`version = ${SUPPORTED_SITE_EXPORT_VERSION + 1}\n`),
-    ).toMatch(/format version 2.*Upgrade @jant\/core/);
+    ).toMatch(
+      new RegExp(
+        `format version ${SUPPORTED_SITE_EXPORT_VERSION + 1}.*Upgrade @jant/core`,
+      ),
+    );
     expect(
       await withVersion(`version = ${SUPPORTED_SITE_EXPORT_VERSION}\n`),
     ).toBeNull();
+    expect(await withVersion("version = 1\n")).toBeNull();
     expect(await withVersion("")).toBeNull();
   });
 

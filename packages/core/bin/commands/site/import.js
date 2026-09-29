@@ -29,7 +29,7 @@ const parseFrontMatter = parseFrontMatterShared;
  * writes `SITE_EXPORT_FORMAT_VERSION` from `src/services/export.ts`; a test
  * keeps the two equal.
  */
-export const SUPPORTED_SITE_EXPORT_VERSION = 1;
+export const SUPPORTED_SITE_EXPORT_VERSION = 2;
 
 /**
  * Refuse an export written in a format newer than this importer reads.

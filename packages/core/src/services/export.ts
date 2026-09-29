@@ -118,7 +118,7 @@ import {
  * importing the export and silently dropping what it doesn't know.
  * `export-format-version.test.ts` freezes the fields each version reads.
  */
-export const SITE_EXPORT_FORMAT_VERSION = 1;
+export const SITE_EXPORT_FORMAT_VERSION = 2;
 
 /** A file of the exported Hugo site whose text or bytes the export holds. */
 export interface ExportContentFile {

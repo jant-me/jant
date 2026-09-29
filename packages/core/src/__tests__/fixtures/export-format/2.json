@@ -1,10 +1,10 @@
 [
   "Collection pages: aliases",
+  "Collection pages: description",
   "Collection pages: display_layout",
   "Collection pages: selection",
   "Collection pages: slug",
   "Collection pages: sort_order",
-  "Collection pages: summary_text",
   "Collection pages: title",
   "Collection pages: type",
   "Each media entry: alt",
@@ -49,6 +49,7 @@
   "Post files: updated",
   "Post files: visibility",
   "Post files: weight",
+  "data/jant.toml: additional_languages",
   "data/jant.toml: apple_touch_icon_path",
   "data/jant.toml: apple_touch_mode",
   "data/jant.toml: custom_url",
@@ -58,6 +59,8 @@
   "data/jant.toml: favicon_path",
   "data/jant.toml: font_theme_id",
   "data/jant.toml: format",
+  "data/jant.toml: main_rss_feed",
+  "data/jant.toml: multilingual_enabled",
   "data/jant.toml: nav",
   "data/jant.toml: noindex",
   "data/jant.toml: public_api_enabled",
@@ -72,5 +75,6 @@
   "data/jant.toml: site_name",
   "data/jant.toml: theme_id",
   "data/jant.toml: theme_mode",
+  "data/jant.toml: time_zone",
   "data/jant.toml: version"
 ]
