@@ -7972,7 +7972,7 @@ describe("JantComposeDialog", () => {
     expect(postBtn.textContent?.trim()).toBe("Post");
   });
 
-  it("discard on loaded draft sends DELETE request", async () => {
+  it("discard on a loaded draft keeps the saved draft", async () => {
     const el = await createElement();
     const editor = requireElement(
       el.querySelector<JantComposeEditor>("jant-compose-editor"),
@@ -8007,9 +8007,9 @@ describe("JantComposeDialog", () => {
     discardBtn.click();
     await el.updateComplete;
 
-    expect(fetchSpy).toHaveBeenCalledWith("/api/posts/draft456", {
-      method: "DELETE",
-    });
+    // "Don't save" drops this session's changes; the saved draft stays.
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(el._confirmPanelOpen).toBe(false);
 
     fetchSpy.mockRestore();
   });
@@ -8132,6 +8132,103 @@ describe("JantComposeDialog", () => {
     expect(
       (receivedDetail as unknown as ComposeSubmitDetail).threadPosts,
     ).toHaveLength(2);
+    expect(requests.every((request) => request.method === "GET")).toBe(true);
+  });
+
+  function mockThreadDraft(rootId: string, replyId: string) {
+    const requests: Array<{ url: string; method: string }> = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      requests.push({ url, method: init?.method ?? "GET" });
+      if (url === `/api/posts/${rootId}`) {
+        return new Response(
+          JSON.stringify({
+            id: rootId,
+            threadId: rootId,
+            format: "note",
+            status: "draft",
+            slug: "draft-thread",
+            title: "Draft thread",
+            body: null,
+            attachments: [],
+            collectionIds: [],
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url === "/api/posts?status=draft&limit=50") {
+        return new Response(
+          JSON.stringify({
+            posts: [
+              {
+                id: replyId,
+                threadId: rootId,
+                replyToId: rootId,
+                format: "quote",
+                status: "draft",
+                quoteText: "Draft reply",
+                attachments: [],
+              },
+            ],
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+    return requests;
+  }
+
+  // Opening a draft to read it is not writing anything, so closing it asks
+  // nothing — the prompt used to appear, and its "Don't save" deleted the draft.
+  it("closes a draft opened from Drafts without asking when nothing changed", async () => {
+    vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
+      cb(0);
+      return 1;
+    });
+    const requests = mockThreadDraft("pst_draft_root", "pst_draft_reply");
+
+    const el = await createElement();
+    await el.openDraft("pst_draft_root");
+    await flushUpdates(el);
+
+    el.requestClose();
+    await el.updateComplete;
+
+    expect(el._confirmPanelOpen).toBe(false);
+    expect(el._draftSourceId).toBeNull();
+    expect(requests.every((request) => request.method === "GET")).toBe(true);
+  });
+
+  it("asks before closing a Thread draft whose later post changed", async () => {
+    vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
+      cb(0);
+      return 1;
+    });
+    const requests = mockThreadDraft("pst_draft_root", "pst_draft_reply");
+
+    const el = await createElement();
+    await el.openDraft("pst_draft_root");
+    await flushUpdates(el);
+
+    const reply = requireElement(
+      el.querySelectorAll<JantComposeEditor>("jant-compose-editor")[1],
+      "expected reply editor",
+    );
+    reply._quoteText = "Draft reply, revised";
+    await reply.updateComplete;
+
+    el.requestClose();
+    await el.updateComplete;
+    expect(el._confirmPanelOpen).toBe(true);
+
+    requireElement(
+      el.querySelector<HTMLButtonElement>(".compose-confirm-discard"),
+      "expected discard button",
+    ).click();
+    await el.updateComplete;
+
+    expect(el._confirmPanelOpen).toBe(false);
     expect(requests.every((request) => request.method === "GET")).toBe(true);
   });
 

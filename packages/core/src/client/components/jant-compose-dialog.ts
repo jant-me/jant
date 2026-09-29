@@ -160,15 +160,8 @@ interface ComposeReplyOpenOptions {
   restoreMedia?: LocalDraftMedia[];
 }
 
-interface ComposeStateSnapshot {
-  format: ComposeFormat;
-  collectionIds: string[];
-  slug: string;
-  publishedAtInput: string;
-  publishedAtTimeMinutes: number | null;
-  visibility: ComposeVisibility;
-  /** The author's explicit language choice, not what detection reads. */
-  language: string | null;
+/** What one editor holds, compared to tell whether the author changed it. */
+interface ComposeEditorSnapshot {
   title: string;
   bodyJson: JSONContent | null;
   url: string;
@@ -194,6 +187,30 @@ interface ComposeStateSnapshot {
     summary: string;
   }>;
   attachmentOrder: string[];
+}
+
+interface ComposeStateSnapshot extends ComposeEditorSnapshot {
+  format: ComposeFormat;
+  collectionIds: string[];
+  slug: string;
+  publishedAtInput: string;
+  publishedAtTimeMinutes: number | null;
+  visibility: ComposeVisibility;
+  /** The author's explicit language choice, not what detection reads. */
+  language: string | null;
+  /**
+   * Each post of a Thread, in order, and empty outside one. The fields above
+   * come from the first editor only, so without these an edit to a later post,
+   * or a post added or removed, would not count as a change.
+   */
+  threadPosts: Array<
+    ComposeEditorSnapshot & {
+      format: ComposeFormat;
+      slug: string;
+      publishedAtInput: string;
+      publishedAtTimeMinutes: number | null;
+    }
+  >;
 }
 
 const EDITOR_FLOATING_UI_SELECTOR = "[data-editor-floating-ui]";
@@ -1475,15 +1492,29 @@ export class JantComposeDialog extends LitElement {
     return this._seededFromSource ? this._hasUnsavedChanges() : true;
   }
 
+  /**
+   * Whether leaving the composer, by closing it or going to Drafts, needs the
+   * "Save to drafts?" prompt. A post being edited, or a draft opened from
+   * Drafts, is already saved, so only what changed since it opened is at
+   * stake: opening one to read it and closing it again asks nothing.
+   */
+  private _hasWorkToLoseOnLeave(): boolean {
+    if (this._editPostId || this._draftSourceId) {
+      return this._hasUnsavedChanges();
+    }
+    return this._hasWorkToLose();
+  }
+
   private _buildSnapshot(): ComposeStateSnapshot | null {
     const editor = this._editor;
     if (!editor) return null;
 
-    const editorData = editor.getData();
-    const attachedTexts = editor.getEffectiveAttachedTexts();
-    // No `showTitle` here: a hidden title reads back as an empty one, so the
-    // toggle is already visible in `title`.
-    const showRating = editorData.rating > 0 ? editor._showRating : false;
+    const editors =
+      this._threadItems.length > 0
+        ? Array.from(
+            this.querySelectorAll<JantComposeEditor>("jant-compose-editor"),
+          )
+        : [];
 
     return {
       format: this._format,
@@ -1493,6 +1524,33 @@ export class JantComposeDialog extends LitElement {
       publishedAtTimeMinutes: this._publishedAtTimeMinutes,
       visibility: this._visibility,
       language: this._language,
+      ...JantComposeDialog._snapshotEditor(editor),
+      threadPosts: this._threadItems.flatMap((item, index) => {
+        const itemEditor = editors[index];
+        if (!itemEditor) return [];
+        return [
+          {
+            format: item.format,
+            slug: item.slug ?? "",
+            publishedAtInput: item.publishedAtInput ?? "",
+            publishedAtTimeMinutes: item.publishedAtTimeMinutes ?? null,
+            ...JantComposeDialog._snapshotEditor(itemEditor),
+          },
+        ];
+      }),
+    };
+  }
+
+  private static _snapshotEditor(
+    editor: JantComposeEditor,
+  ): ComposeEditorSnapshot {
+    const editorData = editor.getData();
+    const attachedTexts = editor.getEffectiveAttachedTexts();
+    // No `showTitle` here: a hidden title reads back as an empty one, so the
+    // toggle is already visible in `title`.
+    const showRating = editorData.rating > 0 ? editor._showRating : false;
+
+    return {
       title: editorData.title,
       bodyJson: editor.getNormalizedBodyJson(),
       url: editorData.url,
@@ -1570,20 +1628,7 @@ export class JantComposeDialog extends LitElement {
       return;
     }
 
-    // In edit mode, only prompt if actual changes were made
-    if (this._editPostId) {
-      if (this._hasUnsavedChanges()) {
-        this._confirmForDrafts = false;
-        this._confirmForAttachedText = false;
-        this._confirmPanelOpen = true;
-      } else {
-        this._closeDialog();
-        this.reset();
-      }
-      return;
-    }
-
-    if (this._hasWorkToLose()) {
+    if (this._hasWorkToLoseOnLeave()) {
       this._confirmForDrafts = false;
       this._confirmForAttachedText = false;
       this._confirmPanelOpen = true;
@@ -1593,12 +1638,9 @@ export class JantComposeDialog extends LitElement {
     }
   }
 
+  // "Don't save" drops this session's changes and nothing more. A draft opened
+  // from Drafts stays as it was saved; deleting one is the Drafts list's job.
   private _discardAndClose() {
-    if (this._draftSourceId) {
-      const id = this._draftSourceId;
-      fetch(`/api/posts/${id}`, { method: "DELETE" }).catch(() => {});
-      showToast(this.labels.draftDeleted);
-    }
     this._clearDraftFromStorage();
     this._confirmPanelOpen = false;
     this._confirmForAttachedText = false;
@@ -1640,11 +1682,6 @@ export class JantComposeDialog extends LitElement {
       this._confirmPanelOpen = false;
       this._discardAttachedPanel();
     } else if (this._confirmForDrafts) {
-      if (this._draftSourceId) {
-        const id = this._draftSourceId;
-        fetch(`/api/posts/${id}`, { method: "DELETE" }).catch(() => {});
-        showToast(this.labels.draftDeleted);
-      }
       this._confirmPanelOpen = false;
       this.reset();
       this._openDraftsPanel();
@@ -2994,7 +3031,7 @@ export class JantComposeDialog extends LitElement {
 
   private _handleDraftButtonClick() {
     if (this._loading) return;
-    if (this._hasWorkToLose()) {
+    if (this._hasWorkToLoseOnLeave()) {
       this._confirmForDrafts = true;
       this._confirmPanelOpen = true;
     } else {
