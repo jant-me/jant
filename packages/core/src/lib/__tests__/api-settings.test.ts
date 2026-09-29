@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildConfigEditorFields,
-  buildEditableSettingsResponse,
+  buildApiSettingsResponse,
   configEditorVisibleKeys,
   editableSettingKeys,
   isResettableConfigEditorKey,
@@ -232,7 +232,7 @@ describe("editable settings registry", () => {
   });
 
   it("returns canonical boolean defaults and environment fallbacks", () => {
-    const settings = buildEditableSettingsResponse({}, false, {
+    const settings = buildApiSettingsResponse({}, false, {
       SITE_NAME: "From environment",
     } as Bindings);
 
@@ -243,7 +243,7 @@ describe("editable settings registry", () => {
   });
 
   it("uses valid numeric environment values and inherited page-size fallbacks", () => {
-    const settings = buildEditableSettingsResponse({ PAGE_SIZE: "75" }, false, {
+    const settings = buildApiSettingsResponse({ PAGE_SIZE: "75" }, false, {
       SEARCH_PAGE_SIZE: "invalid",
       ARCHIVE_PAGE_SIZE: "30",
     } as Bindings);

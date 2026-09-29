@@ -21,7 +21,8 @@ import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   editableSettingKeys,
-  importableInternalSettingKeys,
+  appearanceSettingKeys,
+  languageSettingKeys,
 } from "../lib/api-settings.js";
 import { RESERVED_PATHS } from "../lib/constants.js";
 import { ENV_RULES, getCorsOrigins } from "../lib/env.js";
@@ -250,16 +251,15 @@ describe("configuration docs", () => {
     );
   });
 
-  it("lists exactly the importable setting keys in API.md", () => {
+  it.each([
+    ["Appearance setting keys", appearanceSettingKeys],
+    ["Restore the site's languages", languageSettingKeys],
+  ] as const)("lists exactly the %s in API.md", (heading, keys) => {
     const markdown = readRepoFile("docs/API.md");
     const section =
       markdown
         .split(/^### /m)
-        .find((part) =>
-          part.startsWith("Import appearance and language settings\n"),
-        ) ?? "";
-    expect(readTableKeys(section).sort()).toEqual(
-      [...importableInternalSettingKeys].sort(),
-    );
+        .find((part) => part.startsWith(`${heading}\n`)) ?? "";
+    expect(readTableKeys(section).sort()).toEqual([...keys].sort());
   });
 });

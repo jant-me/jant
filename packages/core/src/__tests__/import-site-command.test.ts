@@ -17,8 +17,8 @@ import {
   SUPPORTED_SITE_EXPORT_VERSION,
 } from "../../bin/commands/site/import.js";
 import {
-  partitionEditableSettingUpdates,
-  partitionImportableSettingUpdates,
+  partitionApiSettingUpdates,
+  partitionLanguageSettingUpdates,
 } from "../lib/api-settings.js";
 import { normalizeEditableSettingValue } from "../lib/schemas.js";
 import { SITE_EXPORT_FORMAT_VERSION } from "../services/export.js";
@@ -264,14 +264,17 @@ describe("Hugo import CLI helpers", () => {
         ADDITIONAL_LANGUAGES: "ja",
         MULTILINGUAL_ENABLED: String(flag),
       });
-      const { editable, internal } = splitSettingsUpdatesForImport(
+      const { editable, appearance, languages } = splitSettingsUpdatesForImport(
         buildSettingsUpdatesFromConfig(siteConfig, "body { color: red; }"),
       );
 
-      // The two routes the importer calls, in the order the routes apply them:
-      // which keys each accepts, then the value check `settings.setMany` runs.
-      const settingsRoute = partitionEditableSettingUpdates(editable, false);
-      const importRoute = partitionImportableSettingUpdates(internal, false);
+      // The requests the importer makes, as the routes take them: which keys
+      // each accepts, then the value check `settings.setMany` runs.
+      const settingsRoute = partitionApiSettingUpdates(
+        { ...editable, ...appearance },
+        false,
+      );
+      const importRoute = partitionLanguageSettingUpdates(languages);
       expect(settingsRoute.rejectedKeys).toEqual([]);
       expect(importRoute.rejectedKeys).toEqual([]);
 

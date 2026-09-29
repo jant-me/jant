@@ -44,6 +44,22 @@ describe("Settings API Routes", () => {
       expect(body.settings.RSS_PUBLISH_DELAY_SECONDS).toBe("0");
     });
 
+    it("reports the appearance settings and languages in effect", async () => {
+      const { app } = createTestApp({ authenticated: true });
+      app.route("/api/settings", settingsApiRoutes);
+
+      const res = await app.request("/api/settings");
+      expect((await res.json()).settings).toMatchObject({
+        THEME: "tufte",
+        FONT_THEME: "classic",
+        THEME_MODE: "auto",
+        CUSTOM_CSS: "",
+        SHOW_HEADER_AVATAR: "false",
+        MULTILINGUAL_ENABLED: "false",
+        ADDITIONAL_LANGUAGES: "",
+      });
+    });
+
     it("returns stored settings overriding defaults", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/settings", settingsApiRoutes);
@@ -218,6 +234,52 @@ describe("Settings API Routes", () => {
       const body = await res.json();
       expect(body.details.rejectedKeys).toContain("MULTILINGUAL_ENABLED");
       expect(body.details.rejectedKeys).toContain("ADDITIONAL_LANGUAGES");
+    });
+
+    it("writes the appearance settings, checked as their screens check them", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/settings", settingsApiRoutes);
+
+      const res = await app.request("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          THEME: "paper",
+          FONT_THEME: "literary",
+          THEME_MODE: "dark",
+          CUSTOM_CSS: "  body { color: red; }\n",
+          SHOW_HEADER_AVATAR: "true",
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      expect((await res.json()).settings).toMatchObject({
+        THEME: "paper",
+        FONT_THEME: "literary",
+        THEME_MODE: "dark",
+        CUSTOM_CSS: "body { color: red; }",
+        SHOW_HEADER_AVATAR: "true",
+      });
+      expect(await services.settings.get("THEME")).toBe("paper");
+    });
+
+    it.each([
+      ["THEME", "no-such-theme"],
+      ["FONT_THEME", "serif"],
+      ["THEME_MODE", "sepia"],
+      ["SHOW_HEADER_AVATAR", "yes"],
+    ])("refuses %s=%s and writes nothing", async (key, value) => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/settings", settingsApiRoutes);
+
+      const res = await app.request("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ SITE_NAME: "Changed", [key]: value }),
+      });
+
+      expect(res.status).toBe(400);
+      expect(await services.settings.get("SITE_NAME")).toBeNull();
     });
 
     it("rejects internal keys", async () => {
@@ -452,7 +514,7 @@ describe("Settings API Routes", () => {
       expect(res.status).toBe(200);
       expect(await services.settings.get("THEME")).toBeNull();
       const body = await res.json();
-      expect(body.settings.THEME).toBeUndefined();
+      expect(body.settings.THEME).toBe("tufte");
       expect(body).not.toHaveProperty("setting");
     });
 
@@ -506,39 +568,10 @@ describe("Settings API Routes", () => {
       const res = await app.request("/api/settings/import", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ THEME: "paper" }),
+        body: JSON.stringify({ MULTILINGUAL_ENABLED: "false" }),
       });
 
       expect(res.status).toBe(401);
-    });
-
-    it("stores whitelisted internal settings", async () => {
-      const { app, services } = createTestApp({ authenticated: true });
-      app.route("/api/settings", settingsApiRoutes);
-
-      const res = await app.request("/api/settings/import", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          THEME: "paper",
-          FONT_THEME: "serif",
-          THEME_MODE: "dark",
-          CUSTOM_CSS: "body { color: red; }",
-          SHOW_HEADER_AVATAR: "true",
-        }),
-      });
-
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.success).toBe(true);
-
-      expect(await services.settings.get("THEME")).toBe("paper");
-      expect(await services.settings.get("FONT_THEME")).toBe("serif");
-      expect(await services.settings.get("THEME_MODE")).toBe("dark");
-      expect(await services.settings.get("CUSTOM_CSS")).toBe(
-        "body { color: red; }",
-      );
-      expect(await services.settings.get("SHOW_HEADER_AVATAR")).toBe("true");
     });
 
     it("restores the site's languages through the language rules", async () => {
@@ -558,6 +591,13 @@ describe("Settings API Routes", () => {
       const state = await services.language.getState();
       expect(state.enabled).toBe(true);
       expect(state.additional).toEqual(["ja", "zh-Hans"]);
+      // Answered as PUT /api/settings answers.
+      const body = await res.json();
+      expect(body.settings).toMatchObject({
+        ADDITIONAL_LANGUAGES: "ja,zh-Hans",
+        MULTILINGUAL_ENABLED: "true",
+        SITE_NAME: "Jant",
+      });
     });
 
     it("keeps multilingual content off without a second language", async () => {
@@ -576,41 +616,7 @@ describe("Settings API Routes", () => {
       expect((await services.language.getState()).enabled).toBe(false);
     });
 
-    it("rejects non-whitelisted internal keys", async () => {
-      const { app } = createTestApp({ authenticated: true });
-      app.route("/api/settings", settingsApiRoutes);
-
-      const res = await app.request("/api/settings/import", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          SITE_AVATAR: "media/sit/assets/avatar/avatar.png",
-          SITE_FAVICON_ICO: "ZmFrZQ==",
-        }),
-      });
-
-      expect(res.status).toBe(400);
-      const body = await res.json();
-      expect(body.details.rejectedKeys).toContain("SITE_AVATAR");
-      expect(body.details.rejectedKeys).toContain("SITE_FAVICON_ICO");
-    });
-
-    it("rejects regular editable keys (caller should use PUT /api/settings)", async () => {
-      const { app } = createTestApp({ authenticated: true });
-      app.route("/api/settings", settingsApiRoutes);
-
-      const res = await app.request("/api/settings/import", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ SITE_NAME: "Blog" }),
-      });
-
-      expect(res.status).toBe(400);
-      const body = await res.json();
-      expect(body.details.rejectedKeys).toContain("SITE_NAME");
-    });
-
-    it("partially applies when mixing whitelisted and unknown keys", async () => {
+    it("takes only the languages; other keys belong to PUT /api/settings", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/settings", settingsApiRoutes);
 
@@ -618,16 +624,23 @@ describe("Settings API Routes", () => {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ADDITIONAL_LANGUAGES: "ja",
           THEME: "paper",
           SITE_NAME: "ignored",
         }),
       });
 
       expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.success).toBe(true);
-      expect(body.rejectedKeys).toContain("SITE_NAME");
-      expect(await services.settings.get("THEME")).toBe("paper");
+      expect((await res.json()).rejectedKeys).toEqual(["THEME", "SITE_NAME"]);
+      expect(await services.settings.get("THEME")).toBeNull();
+
+      const none = await app.request("/api/settings/import", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ SITE_AVATAR: "media/avatar.png" }),
+      });
+      expect(none.status).toBe(400);
+      expect((await none.json()).details.rejectedKeys).toEqual(["SITE_AVATAR"]);
     });
   });
 

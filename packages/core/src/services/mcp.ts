@@ -15,14 +15,14 @@ import {
   StatusSchema,
   UpdatePostApiSchema,
 } from "../lib/schemas.js";
-import { THREAD_SORTS, type Post } from "../types.js";
+import { THREAD_SORTS, type Bindings, type Post } from "../types.js";
 import type { AppConfig } from "../types/config.js";
 import { requireStorage, type StorageDriver } from "../lib/storage.js";
 import type { Services } from "./index.js";
 import { CORE_VERSION } from "../lib/version.js";
 import {
-  buildEditableSettingsResponse,
-  partitionEditableSettingUpdates,
+  buildApiSettingsResponse,
+  partitionApiSettingUpdates,
 } from "../lib/api-settings.js";
 import {
   apiPostListOrder,
@@ -60,6 +60,8 @@ type JsonRpcId = string | number | null;
 
 type McpHttpContext = {
   appConfig: AppConfig;
+  /** The environment, for settings whose fallback an environment variable sets. */
+  env: Bindings;
   services: Services;
   storage: StorageDriver | null;
   /**
@@ -695,9 +697,10 @@ const mcpTools: McpToolDefinition[] = [
     async execute(_args, context) {
       const allSettings = await context.services.settings.getAll();
       return {
-        settings: buildEditableSettingsResponse(
+        settings: buildApiSettingsResponse(
           allSettings,
           context.appConfig.demoMode,
+          context.env,
         ),
       };
     },
@@ -708,7 +711,7 @@ const mcpTools: McpToolDefinition[] = [
     inputSchema: toolInputSchema(UpdateSettingsToolSchema),
     async execute(args, context) {
       const updates = UpdateSettingsToolSchema.parse(args ?? {});
-      const { filteredUpdates, rejectedKeys } = partitionEditableSettingUpdates(
+      const { filteredUpdates, rejectedKeys } = partitionApiSettingUpdates(
         updates,
         context.appConfig.demoMode,
       );
@@ -732,9 +735,10 @@ const mcpTools: McpToolDefinition[] = [
       const allSettings = await context.services.settings.getAll();
       return {
         ...(rejectedKeys.length > 0 && { rejectedKeys }),
-        settings: buildEditableSettingsResponse(
+        settings: buildApiSettingsResponse(
           allSettings,
           context.appConfig.demoMode,
+          context.env,
         ),
       };
     },

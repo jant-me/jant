@@ -14,6 +14,10 @@ import { getEnvString } from "./env.js";
 import { readConfigEnvValue } from "./env-values.js";
 import { normalizeEditableSettingValue } from "./schemas.js";
 import { getTimeZoneOptions } from "./timezones.js";
+import { getAvailableThemes } from "./theme.js";
+import { BUILTIN_FONT_THEMES } from "../ui/font-themes.js";
+import { THEME_MODES } from "../types/config.js";
+import { ValidationError } from "./errors.js";
 
 /**
  * Settings a demo site's shared visitors can't change: indexing stays off, and
@@ -249,7 +253,126 @@ export function buildConfigEditorFields(
   });
 }
 
-export function buildEditableSettingsResponse(
+/**
+ * Appearance settings, each edited on its own settings screen rather than as
+ * a Config Editor row. The API reads and writes them next to the editable
+ * ones.
+ */
+export const appearanceSettingKeys = [
+  "THEME",
+  "FONT_THEME",
+  "THEME_MODE",
+  "CUSTOM_CSS",
+  "SHOW_HEADER_AVATAR",
+] as const satisfies readonly ConfigKey[];
+type AppearanceSettingKey = (typeof appearanceSettingKeys)[number];
+
+/**
+ * The site's languages. `GET /api/settings` reports them; only the language
+ * rules write them: Settings → Languages, or a site import restoring what an
+ * export recorded (`PUT /api/settings/import`).
+ */
+export const languageSettingKeys = [
+  "MULTILINGUAL_ENABLED",
+  "ADDITIONAL_LANGUAGES",
+] as const satisfies readonly ConfigKey[];
+
+function isAppearanceSettingKey(key: string): key is AppearanceSettingKey {
+  return (appearanceSettingKeys as readonly string[]).includes(key);
+}
+
+/** The value an appearance or language setting has in effect. */
+function readScreenSetting(
+  allSettings: Record<string, string>,
+  key: AppearanceSettingKey | (typeof languageSettingKeys)[number],
+  env?: Bindings,
+): string {
+  const stored = allSettings[key] ?? "";
+  switch (key) {
+    case "THEME":
+      return (
+        stored ||
+        (env && getEnvString(env, "DEFAULT_THEME")) ||
+        CONFIG_FIELDS.DEFAULT_THEME.defaultValue
+      );
+    case "FONT_THEME":
+      return (
+        stored ||
+        (env && getEnvString(env, "DEFAULT_FONT_THEME")) ||
+        CONFIG_FIELDS.DEFAULT_FONT_THEME.defaultValue
+      );
+    case "THEME_MODE":
+      return (THEME_MODES as readonly string[]).includes(stored)
+        ? stored
+        : "auto";
+    case "SHOW_HEADER_AVATAR":
+    case "MULTILINGUAL_ENABLED":
+      return String(stored === "true");
+    case "CUSTOM_CSS":
+    case "ADDITIONAL_LANGUAGES":
+      return stored;
+  }
+}
+
+/**
+ * Check an appearance setting's value the way its settings screen would.
+ *
+ * @param key - The appearance setting
+ * @param value - The value a client sent
+ * @returns The value to store
+ * @throws {ValidationError} When the screen would not offer that value
+ * @example
+ * normalizeAppearanceSettingValue("THEME_MODE", "dark"); // "dark"
+ */
+export function normalizeAppearanceSettingValue(
+  key: AppearanceSettingKey,
+  value: string,
+): string {
+  const trimmed = value.trim();
+  switch (key) {
+    case "THEME": {
+      const ids = getAvailableThemes().map((theme) => theme.id);
+      if (trimmed && !ids.includes(trimmed)) {
+        throw new ValidationError(
+          `THEME must be a theme ID: ${ids.join(", ")}.`,
+        );
+      }
+      return trimmed;
+    }
+    case "FONT_THEME": {
+      const ids = BUILTIN_FONT_THEMES.map((theme) => theme.id);
+      if (trimmed && !ids.includes(trimmed)) {
+        throw new ValidationError(
+          `FONT_THEME must be a font theme ID: ${ids.join(", ")}.`,
+        );
+      }
+      return trimmed;
+    }
+    case "THEME_MODE":
+      if (!(THEME_MODES as readonly string[]).includes(trimmed)) {
+        throw new ValidationError(
+          `THEME_MODE must be one of: ${THEME_MODES.join(", ")}.`,
+        );
+      }
+      return trimmed;
+    case "SHOW_HEADER_AVATAR":
+      if (trimmed !== "true" && trimmed !== "false") {
+        throw new ValidationError(
+          'SHOW_HEADER_AVATAR must be "true" or "false".',
+        );
+      }
+      return trimmed;
+    case "CUSTOM_CSS":
+      return trimmed;
+  }
+}
+
+/**
+ * Every setting `GET /api/settings` reports, with the value in effect: the
+ * Config Editor's editable settings, the appearance settings, and the
+ * languages.
+ */
+export function buildApiSettingsResponse(
   allSettings: Record<string, string>,
   demoMode: boolean,
   env?: Bindings,
@@ -258,6 +381,9 @@ export function buildEditableSettingsResponse(
   for (const key of editableSettingKeys) {
     result[key] = getEditableSettingValue(allSettings, key, env);
   }
+  for (const key of [...appearanceSettingKeys, ...languageSettingKeys]) {
+    result[key] = readScreenSetting(allSettings, key, env);
+  }
   if (demoMode) {
     result.NOINDEX = "true";
   }
@@ -265,32 +391,32 @@ export function buildEditableSettingsResponse(
   return result;
 }
 
-export function partitionEditableSettingUpdates(
+/**
+ * Split a `PUT /api/settings` body into what it may write and what it names
+ * that it may not. Appearance values are checked here; editable ones when the
+ * settings service stores them.
+ *
+ * @throws {ValidationError} When an appearance value isn't one its screen offers
+ */
+export function partitionApiSettingUpdates(
   updates: Record<string, string>,
   demoMode: boolean,
 ): {
-  filteredUpdates: Partial<Record<ConfigEditorKey, string>>;
+  filteredUpdates: Partial<Record<ConfigKey, string>>;
   rejectedKeys: string[];
 } {
-  const filteredUpdates: Partial<Record<ConfigEditorKey, string>> = {};
+  const filteredUpdates: Partial<Record<ConfigKey, string>> = {};
   const rejectedKeys: string[] = [];
 
   for (const [key, value] of Object.entries(updates)) {
-    const configKey = key as ConfigEditorKey;
-
-    if (
-      demoMode &&
-      editableSettingKeys.includes(configKey) &&
-      demoLockedSettingKeys.has(configKey)
-    ) {
+    if (!isEditableSettingKey(key) && !isAppearanceSettingKey(key)) {
       rejectedKeys.push(key);
-      continue;
-    }
-
-    if (editableSettingKeys.includes(configKey)) {
-      filteredUpdates[configKey] = value;
+    } else if (demoMode && demoLockedSettingKeys.has(key)) {
+      rejectedKeys.push(key);
     } else {
-      rejectedKeys.push(key);
+      filteredUpdates[key] = isAppearanceSettingKey(key)
+        ? normalizeAppearanceSettingValue(key, value)
+        : value;
     }
   }
 
@@ -301,49 +427,21 @@ export function partitionEditableSettingUpdates(
 }
 
 /**
- * Internal config keys that the site importer is allowed to write. These are
- * keys that the UI manages through dedicated flows (theme picker, custom CSS
- * editor, header toggle) but that the site export emits as plain values and
- * the importer needs to restore verbatim. Bytes-and-storage-keyed internal
- * settings (favicon/avatar blobs, storage paths) are excluded — those round
- * trip through `/api/settings/avatar`, not this route.
+ * Split a `PUT /api/settings/import` body into the language settings it
+ * restores and the keys it names that it doesn't take.
  */
-export const importableInternalSettingKeys = [
-  "THEME",
-  "FONT_THEME",
-  "THEME_MODE",
-  "CUSTOM_CSS",
-  "SHOW_HEADER_AVATAR",
-  // Restored through the language service, not written as they arrive.
-  "MULTILINGUAL_ENABLED",
-  "ADDITIONAL_LANGUAGES",
-] as const satisfies readonly ConfigKey[];
-
-export function partitionImportableSettingUpdates(
+export function partitionLanguageSettingUpdates(
   updates: Record<string, string>,
-  demoMode: boolean,
 ): {
   filteredUpdates: Partial<Record<ConfigKey, string>>;
   rejectedKeys: string[];
 } {
   const filteredUpdates: Partial<Record<ConfigKey, string>> = {};
   const rejectedKeys: string[] = [];
-  const whitelist = new Set<ConfigKey>(importableInternalSettingKeys);
 
   for (const [key, value] of Object.entries(updates)) {
-    const configKey = key as ConfigKey;
-
-    if (
-      demoMode &&
-      whitelist.has(configKey) &&
-      demoLockedSettingKeys.has(configKey)
-    ) {
-      rejectedKeys.push(key);
-      continue;
-    }
-
-    if (whitelist.has(configKey)) {
-      filteredUpdates[configKey] = value;
+    if ((languageSettingKeys as readonly string[]).includes(key)) {
+      filteredUpdates[key as ConfigKey] = value;
     } else {
       rejectedKeys.push(key);
     }

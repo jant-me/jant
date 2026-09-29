@@ -999,10 +999,11 @@ function buildSettingsUpdatesFromConfig(siteConfig, customCss = "") {
     NOINDEX: jant.noindex ? "true" : "false",
     PUBLIC_API_ENABLED: jant.public_api_enabled === false ? "false" : "true",
     RSS_FEEDS_ENABLED: jant.rss_feeds_enabled === false ? "false" : "true",
-    SHOW_HEADER_AVATAR: jant.show_header_avatar ? "true" : "",
+    SHOW_HEADER_AVATAR: jant.show_header_avatar ? "true" : "false",
     THEME: themeId && themeId !== defaultThemeId ? themeId : "",
     FONT_THEME: fontThemeId && fontThemeId !== "default" ? fontThemeId : "",
-    THEME_MODE: themeMode === "light" || themeMode === "dark" ? themeMode : "",
+    THEME_MODE:
+      themeMode === "light" || themeMode === "dark" ? themeMode : "auto",
     CUSTOM_CSS: customCss,
     ...(typeof jant.time_zone === "string" && jant.time_zone
       ? { TIME_ZONE: jant.time_zone }
@@ -1021,31 +1022,48 @@ function buildSettingsUpdatesFromConfig(siteConfig, customCss = "") {
 }
 
 /**
- * Internal config keys that the site importer restores via the dedicated
- * `/api/settings/import` route. Must stay in sync with
- * `importableInternalSettingKeys` in `src/lib/api-settings.ts`.
+ * Appearance settings: `PUT /api/settings` takes them, and `appearanceSettingKeys`
+ * in `src/lib/api-settings.ts` lists the same keys.
  */
-const IMPORTABLE_INTERNAL_SETTING_KEYS = new Set([
+const APPEARANCE_SETTING_KEYS = new Set([
   "THEME",
   "FONT_THEME",
   "THEME_MODE",
   "CUSTOM_CSS",
   "SHOW_HEADER_AVATAR",
+]);
+
+/**
+ * The site's languages, restored through `PUT /api/settings/import`, which
+ * applies the language rules; `languageSettingKeys` lists the same keys.
+ */
+const LANGUAGE_SETTING_KEYS = new Set([
   "MULTILINGUAL_ENABLED",
   "ADDITIONAL_LANGUAGES",
 ]);
 
+/**
+ * Sort an export's settings into the requests that restore them.
+ *
+ * Appearance goes in a request of its own so that a theme this Jant no longer
+ * has costs the import its appearance only, not everything else.
+ *
+ * @param {Record<string, string>} updates - Settings read from the export
+ * @returns {{ editable: Record<string, string>, appearance: Record<string, string>, languages: Record<string, string> }}
+ * @example
+ * splitSettingsUpdatesForImport({ SITE_NAME: "Blog", THEME: "paper" });
+ * // { editable: { SITE_NAME: "Blog" }, appearance: { THEME: "paper" }, languages: {} }
+ */
 function splitSettingsUpdatesForImport(updates) {
   const editable = {};
-  const internal = {};
+  const appearance = {};
+  const languages = {};
   for (const [key, value] of Object.entries(updates)) {
-    if (IMPORTABLE_INTERNAL_SETTING_KEYS.has(key)) {
-      internal[key] = value;
-    } else {
-      editable[key] = value;
-    }
+    if (APPEARANCE_SETTING_KEYS.has(key)) appearance[key] = value;
+    else if (LANGUAGE_SETTING_KEYS.has(key)) languages[key] = value;
+    else editable[key] = value;
   }
-  return { editable, internal };
+  return { editable, appearance, languages };
 }
 
 const NAV_PLACEMENTS = new Set(["header", "more"]);
@@ -1660,7 +1678,7 @@ function createRemoteTarget(apiUrl, token) {
     async updateSettings(updates) {
       return apiCall("PUT", "/api/settings", apiUrl, token, updates);
     },
-    async updateImportSettings(updates) {
+    async restoreLanguages(updates) {
       return apiCall("PUT", "/api/settings/import", apiUrl, token, updates);
     },
     async listNavItems() {
@@ -2518,7 +2536,7 @@ export async function run(argv) {
           }
         }
       } else {
-        const { editable, internal } =
+        const { editable, appearance, languages } =
           splitSettingsUpdatesForImport(settingsUpdates);
         try {
           const result = await target.updateSettings(editable);
@@ -2534,17 +2552,22 @@ export async function run(argv) {
           process.exit(1);
         }
 
-        if (Object.keys(internal).length > 0) {
+        if (Object.keys(appearance).length > 0) {
           try {
-            const result = await target.updateImportSettings(internal);
-            if (result?.rejectedKeys?.length) {
-              console.warn(
-                `Warning: Some internal site settings were rejected: ${result.rejectedKeys.join(", ")}`,
-              );
-            }
+            await target.updateSettings(appearance);
+          } catch (err) {
+            console.warn(
+              `Warning: kept this site's theme, fonts, and custom CSS: ${err.message}`,
+            );
+          }
+        }
+
+        if (Object.keys(languages).length > 0) {
+          try {
+            await target.restoreLanguages(languages);
           } catch (err) {
             console.error(
-              `Error applying exported internal site settings: ${err.message}`,
+              `Error restoring the site's languages: ${err.message}`,
             );
             process.exit(1);
           }

@@ -19,6 +19,7 @@ mcpApiRoutes.post("/", async (c) => {
     },
     {
       appConfig: c.var.appConfig,
+      env: c.env,
       services: c.var.services,
       storage: c.var.storage,
       // As after the same writes over HTTP (a no-op when sync is off).

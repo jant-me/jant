@@ -19,11 +19,11 @@ import {
 import { requireStorage } from "../../lib/storage.js";
 import { syncHostedControlPlaneSiteAvatar } from "../../lib/hosted-control-plane-sync.js";
 import {
-  buildEditableSettingsResponse,
+  buildApiSettingsResponse,
   demoLockedSettingKeys,
   isResettableConfigEditorKey,
-  partitionEditableSettingUpdates,
-  partitionImportableSettingUpdates,
+  partitionApiSettingUpdates,
+  partitionLanguageSettingUpdates,
 } from "../../lib/api-settings.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -36,7 +36,7 @@ const UpdateSettingsSchema = z.record(z.string(), z.string());
 settingsApiRoutes.get("/", requireAuthApi(), async (c) => {
   const allSettings = await c.var.services.settings.getAll();
   return c.json({
-    settings: buildEditableSettingsResponse(
+    settings: buildApiSettingsResponse(
       allSettings,
       c.var.appConfig.demoMode,
       c.env,
@@ -47,7 +47,7 @@ settingsApiRoutes.get("/", requireAuthApi(), async (c) => {
 // Update settings (requires auth)
 settingsApiRoutes.put("/", requireAuthApi(), async (c) => {
   const updates = parseValidated(UpdateSettingsSchema, await readJsonBody(c));
-  const { filteredUpdates, rejectedKeys } = partitionEditableSettingUpdates(
+  const { filteredUpdates, rejectedKeys } = partitionApiSettingUpdates(
     updates,
     c.var.appConfig.demoMode,
   );
@@ -67,7 +67,7 @@ settingsApiRoutes.put("/", requireAuthApi(), async (c) => {
   const allSettings = await c.var.services.settings.getAll();
 
   return c.json({
-    settings: buildEditableSettingsResponse(
+    settings: buildApiSettingsResponse(
       allSettings,
       c.var.appConfig.demoMode,
       c.env,
@@ -76,42 +76,37 @@ settingsApiRoutes.put("/", requireAuthApi(), async (c) => {
   });
 });
 
-// Import internal-config settings (requires auth). Used by the site importer
-// to restore config-like internal keys (theme, font, mode, custom CSS, header
-// avatar toggle) that are not writable through the regular settings route.
+// Restore the site's languages from a site export (requires auth). The pair
+// is only valid together and against the site's paths, so the language
+// service applies it rather than writing it as given.
 settingsApiRoutes.put("/import", requireAuthApi(), async (c) => {
   const updates = parseValidated(UpdateSettingsSchema, await readJsonBody(c));
-  const { filteredUpdates, rejectedKeys } = partitionImportableSettingUpdates(
-    updates,
-    c.var.appConfig.demoMode,
-  );
+  const { filteredUpdates, rejectedKeys } =
+    partitionLanguageSettingUpdates(updates);
 
-  if (rejectedKeys.length > 0 && Object.keys(filteredUpdates).length === 0) {
-    const message = c.var.appConfig.demoMode
-      ? "Demo mode locks these settings"
-      : "None of the provided keys are importable";
-    throw new ValidationError(message, { rejectedKeys });
-  }
-
-  // The language pair is only valid together and against the site's paths,
-  // so the language service restores it rather than writing it as given.
-  const {
-    MULTILINGUAL_ENABLED: multilingualEnabled,
-    ADDITIONAL_LANGUAGES: additionalLanguages,
-    ...plainUpdates
-  } = filteredUpdates;
-  if (Object.keys(plainUpdates).length > 0) {
-    await c.var.services.settings.setMany(plainUpdates as never);
-  }
-  if (multilingualEnabled !== undefined || additionalLanguages !== undefined) {
-    await c.var.services.language.restore({
-      additional: parseLanguageList(additionalLanguages),
-      enabled: multilingualEnabled === "true",
+  if (Object.keys(filteredUpdates).length === 0) {
+    throw new ValidationError("None of the provided keys are importable", {
+      rejectedKeys,
     });
   }
 
+  const current = await c.var.services.settings.getAll();
+  const additional =
+    filteredUpdates.ADDITIONAL_LANGUAGES ?? current.ADDITIONAL_LANGUAGES;
+  const enabled =
+    filteredUpdates.MULTILINGUAL_ENABLED ?? current.MULTILINGUAL_ENABLED;
+  await c.var.services.language.restore({
+    additional: parseLanguageList(additional),
+    enabled: enabled === "true",
+  });
+
+  const allSettings = await c.var.services.settings.getAll();
   return c.json({
-    success: true,
+    settings: buildApiSettingsResponse(
+      allSettings,
+      c.var.appConfig.demoMode,
+      c.env,
+    ),
     ...(rejectedKeys.length > 0 && { rejectedKeys }),
   });
 });
@@ -255,6 +250,6 @@ settingsApiRoutes.delete("/:key", requireAuthApi(), async (c) => {
   const allSettings = await c.var.services.settings.getAll();
 
   return c.json({
-    settings: buildEditableSettingsResponse(allSettings, demoMode, c.env),
+    settings: buildApiSettingsResponse(allSettings, demoMode, c.env),
   });
 });

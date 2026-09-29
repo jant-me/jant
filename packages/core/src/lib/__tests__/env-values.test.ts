@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getEnvValueIssues, readConfigEnvValue } from "../env-values.js";
 import { resolveConfig } from "../resolve-config.js";
-import { buildEditableSettingsResponse } from "../api-settings.js";
+import { buildApiSettingsResponse } from "../api-settings.js";
 import type { Bindings } from "../../types.js";
 
 function variables(env: Record<string, unknown>): string[] {
@@ -101,9 +101,9 @@ describe("readConfigEnvValue", () => {
   it("gives the site and the settings API the same answer", () => {
     const env = { PUBLIC_API_ENABLED: "TRUE" } as unknown as Bindings;
     expect(resolveConfig(env, {}).publicApiEnabled).toBe(true);
-    expect(
-      buildEditableSettingsResponse({}, false, env).PUBLIC_API_ENABLED,
-    ).toBe("true");
+    expect(buildApiSettingsResponse({}, false, env).PUBLIC_API_ENABLED).toBe(
+      "true",
+    );
   });
 });
 

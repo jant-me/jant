@@ -858,6 +858,7 @@ describe("MCP post writes", () => {
         },
         {
           appConfig: c.var.appConfig,
+          env: c.env,
           services: c.var.services,
           storage: c.var.storage,
           afterPostWrite,

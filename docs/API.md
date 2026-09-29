@@ -2329,7 +2329,7 @@ All settings endpoints require auth.
 
 ### Editable setting keys
 
-`GET /api/settings` and `PUT /api/settings` operate on editable site config only.
+`GET /api/settings` and `PUT /api/settings` operate on these, and on the [appearance settings](#appearance-setting-keys). `GET` also reports the [site's languages](#restore-the-sites-languages).
 
 All values are strings because they map directly to stored config values.
 
@@ -2366,6 +2366,20 @@ Notes:
   for editable keys that are not stored yet.
 - In demo mode, `NOINDEX` is always returned as `"true"`.
 
+### Appearance setting keys
+
+Each has its own screen under Settings rather than a Config Editor row. `PUT /api/settings` checks a value the way that screen would.
+
+| Key                  | Meaning                                          | Example value            |
+| -------------------- | ------------------------------------------------ | ------------------------ |
+| `THEME`              | Color theme ID; `""` follows `DEFAULT_THEME`     | `"paper"`                |
+| `FONT_THEME`         | Font theme ID; `""` follows `DEFAULT_FONT_THEME` | `"literary"`             |
+| `THEME_MODE`         | `auto`, `light`, or `dark`                       | `"dark"`                 |
+| `CUSTOM_CSS`         | Custom CSS, trimmed; locked on the demo site     | `"body { color: red; }"` |
+| `SHOW_HEADER_AVATAR` | Avatar in the site header, `"true"` or `"false"` | `"true"`                 |
+
+A theme or font theme ID that Jant doesn't have answers `400`.
+
 ### Get editable settings
 
 `GET /api/settings`
@@ -2394,14 +2408,21 @@ Response:
     "SHOW_JANT_BRANDING_ON_HOME": "false",
     "NOINDEX": "false",
     "PUBLIC_API_ENABLED": "true",
-    "RSS_FEEDS_ENABLED": "true"
+    "RSS_FEEDS_ENABLED": "true",
+    "THEME": "tufte",
+    "FONT_THEME": "classic",
+    "THEME_MODE": "auto",
+    "CUSTOM_CSS": "",
+    "SHOW_HEADER_AVATAR": "false",
+    "MULTILINGUAL_ENABLED": "false",
+    "ADDITIONAL_LANGUAGES": ""
   }
 }
 ```
 
 Notes:
 
-- The response always returns the full editable settings object, not only keys stored in the database.
+- The response always returns every setting with the value in effect, not only keys stored in the database.
 - Environment-only and internal keys never appear in this response.
 
 ### Update editable settings
@@ -2469,37 +2490,25 @@ Rejected keys are returned:
 
 In demo mode, `NOINDEX` updates are rejected and the returned value stays `"true"`.
 
-### Import appearance and language settings
+### Restore the site's languages
 
 `PUT /api/settings/import`
 
 Auth: `Session or token`
 
-Writes the appearance and language settings a site import restores, which `PUT /api/settings` doesn't take because the settings screens edit them through their own controls.
-
-Importable setting keys:
+Restores the languages a site export recorded. `PUT /api/settings` doesn't take them: Settings → Languages changes them one at a time with its own checks.
 
 | Key                    | Notes                                                 |
 | ---------------------- | ----------------------------------------------------- |
-| `THEME`                | Color theme ID                                        |
-| `FONT_THEME`           | Font theme ID                                         |
-| `THEME_MODE`           | `auto`, `light`, or `dark`                            |
-| `CUSTOM_CSS`           | Custom CSS                                            |
-| `SHOW_HEADER_AVATAR`   | `"true"` or `"false"`                                 |
 | `ADDITIONAL_LANGUAGES` | Comma-separated language tags besides `SITE_LANGUAGE` |
 | `MULTILINGUAL_ENABLED` | `"true"` or `"false"`; on only with a second language |
 
-Request body: an object of those keys and string values, as for `PUT /api/settings`.
+Request body: an object of those keys and string values. A key left out keeps its current value.
 
-Response:
+The response is what `PUT /api/settings` returns.
 
-```json
-{ "success": true, "rejectedKeys": ["SITE_NAME"] }
-```
-
-- Other keys are left out and listed in `rejectedKeys`. A request with none of these keys answers `400`.
-- The two language keys are applied together, against the current `SITE_LANGUAGE`, with the same checks as adding a language in Settings. A language whose URL prefix collides with an existing address answers `409`.
-- On the demo site, locked keys are rejected the same way.
+- Other keys are left out and listed in `rejectedKeys`. A request with neither key answers `400`.
+- Each language passes the checks adding it in Settings would, against the current `SITE_LANGUAGE`. A language whose URL prefix collides with an existing address answers `409`.
 
 ### Reset a Config Editor setting
 
