@@ -354,6 +354,11 @@ async function main() {
   if (!wranglerToml.includes("test-project")) {
     fail("wrangler.toml does not contain project name");
   }
+  // The deployment guide sets variables in the dashboard, and a deploy
+  // deletes the ones wrangler.toml doesn't list unless it keeps them.
+  if (!/^keep_vars = true$/m.test(wranglerToml)) {
+    fail("wrangler.toml does not keep dashboard variables (keep_vars = true)");
+  }
   console.log("  wrangler.toml looks correct\n");
 
   // 10. Verify dotfiles were renamed correctly

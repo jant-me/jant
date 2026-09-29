@@ -95,7 +95,7 @@ If the status sits on `Initializing` for a long time, the subdomain is usually a
 
 **Wire the URL into the Worker**, either way works:
 
-- **Dashboard**: [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → select Worker → **Settings** → **Variables and Secrets** → **Add**. Name `R2_PUBLIC_URL`, value `https://<media-domain>`. Saving triggers a redeploy.
+- **Dashboard**: [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → select Worker → **Settings** → **Variables and Secrets** → **Add**. Name `R2_PUBLIC_URL`, value `https://<media-domain>`. Saving triggers a redeploy. Later deploys keep the variable because the project's `wrangler.toml` sets `keep_vars = true`; without that line, each deploy deletes the variables it doesn't list.
 - **Code**: add this under `[vars]` in `wrangler.toml`:
 
   ```toml

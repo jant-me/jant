@@ -95,7 +95,7 @@ npm install
 
 **把 URL 配给 Worker**，任选其一：
 
-- **控制台**：[Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → 选中 Worker → **Settings** → **Variables and Secrets** → **Add**。名称 `R2_PUBLIC_URL`，值 `https://<media-domain>`。保存后会自动重新部署。
+- **控制台**：[Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → 选中 Worker → **Settings** → **Variables and Secrets** → **Add**。名称 `R2_PUBLIC_URL`，值 `https://<media-domain>`。保存后会自动重新部署。项目的 `wrangler.toml` 设了 `keep_vars = true`，以后部署时这个变量才会保留；没有这一行，每次部署都会删掉文件里没列出的变量。
 - **代码**：在 `wrangler.toml` 的 `[vars]` 段下加：
 
   ```toml

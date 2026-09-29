@@ -2,6 +2,11 @@ name = "jant-demo" # @create-jant: "${name}"
 main = "index.js"
 compatibility_date = "2026-01-20"
 compatibility_flags = ["nodejs_compat"]
+# Keep the variables you set in the Cloudflare dashboard when you deploy.
+# Without this, every deploy deletes the ones this file doesn't list. A
+# variable listed here wins over the dashboard, and removing one from this
+# file leaves it on the Worker until you delete it in the dashboard.
+keep_vars = true
 account_id = "03e7294bdb3750ed5a0d6afef6d770e4" # @create-jant: @remove
 
 [assets]
