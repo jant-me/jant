@@ -37,7 +37,7 @@ Every edit in Jant commits as Markdown to your own GitHub repo, and edits made o
 More importantly, **the repo itself is a complete Hugo site** — with theme, config, and navigation — that you can `hugo build` independently. One sync gives you all of these at once:
 
 - **An AI-friendly file interface**: a directory of plain Markdown is more natural than an API or MCP for an AI agent — read, edit, commit, no API client required.
-- **A full backup**: detached from Jant, the repo still builds into the same site.
+- **A backup**: detached from Jant, the repo still builds into the same site. Media files stay in your storage and aren't in the repo, so [back them up](docs/backups.md) as well.
 - **A static-hosting fallback**: hook it up to GitHub Actions, Cloudflare Pages, or Netlify and host it as a static site.
 
 See [GitHub Sync](docs/github-sync.md) and [Export and import](docs/export-and-import.md).

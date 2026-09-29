@@ -68,7 +68,7 @@ The common moves have keyboard shortcuts: `n` opens a new post from any page (`l
 - [Multilingual](multilingual.md): a post can have a version in each language, and each language has its own home page
 - Search, archive page, RSS
 - Built-in themes, font themes, custom CSS
-- Bidirectional GitHub Sync: every edit in Jant commits as Markdown to your GitHub repo, and edits made on GitHub flow back to the site. The repo itself is a complete Hugo site you can `hugo build` independently, and it doubles as a full backup. See [GitHub Sync](github-sync.md).
+- Bidirectional GitHub Sync: every edit in Jant commits as Markdown to your GitHub repo, and edits made on GitHub flow back to the site. The repo itself is a complete Hugo site you can `hugo build` independently, and it doubles as a backup of your writing; media files stay in your storage, so [back them up](backups.md) as well. See [GitHub Sync](github-sync.md).
 - API and MCP: automate publishing, imports, and maintenance, or hand them to [AI agents](automation-and-api.md)
 - Hugo static site export: you can [leave with your content](export-and-import.md) anytime
 

@@ -75,7 +75,7 @@ Link 和 Quote 是一等格式，不是「文章」的变体。我博客里一�
 - [多语言](multilingual.md)：一篇帖子可以有多个语言版本，每种语言有独立首页
 - 搜索、归档页、RSS
 - 内建主题、字体主题、自定义 CSS
-- GitHub 双向同步：每次在 Jant 里编辑都会以 Markdown commit 到你的 GitHub 仓库；在 GitHub 上修改文件也会同步回站点。仓库本身就是一个 Hugo 站点，可独立 `hugo build`，也是完整备份。详见 [GitHub 同步](github-sync.md)。
+- GitHub 双向同步：每次在 Jant 里编辑都会以 Markdown commit 到你的 GitHub 仓库；在 GitHub 上修改文件也会同步回站点。仓库本身就是一个 Hugo 站点，可独立 `hugo build`，也是文字内容的备份；媒体文件留在你的存储里，要另外[备份](backups.md)。详见 [GitHub 同步](github-sync.md)。
 - API 与 MCP：自动化发布、导入、维护，适合 [AI agent 调用](automation-and-api.md)
 - Hugo 静态站点导出：你随时可以[带着内容](export-and-import.md)离开
 

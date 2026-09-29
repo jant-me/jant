@@ -37,7 +37,7 @@ Jant 是一个为单作者设计的轻博客，介于传统博客和社交媒体
 更重要的是，**这个仓库本身就是一个完整的 Hugo 站点**——带主题、配置、导航，可以独立 `hugo build`。一份同步同时是：
 
 - **AI 可读的文件接口**：纯 Markdown 目录比 API 或 MCP 更自然，AI agent 直接读改提交，不需要 API 客户端。
-- **完整备份**：脱离 Jant 也能 build 出和站点一致的产物。
+- **备份**：脱离 Jant 也能 build 出和站点一致的产物。媒体文件留在你的存储里，不进仓库，要另外[备份](docs/zh-Hans/backups.md)。
 - **静态托管的退路**：接 GitHub Actions、Cloudflare Pages、Netlify 任意一个就能当静态站点 host。
 
 详见 [GitHub 同步](docs/zh-Hans/github-sync.md) 和 [导出与导入](docs/zh-Hans/export-and-import.md)。
