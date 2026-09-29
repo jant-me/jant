@@ -2528,6 +2528,62 @@ describe("JantComposeDialog", () => {
     expect(editor._attachmentOrder).toEqual(["photo-a", "text-a"]);
   });
 
+  // An omitted alt leaves the stored one alone, so a cleared alt has to go
+  // out as "" or the old text survives the save.
+  it("sends a cleared alt text on an edit", async () => {
+    vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
+      cb(0);
+      return 1;
+    });
+    mockEditPost({
+      format: "note",
+      title: null,
+      body: JSON.stringify({
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Harbour" }] },
+        ],
+      }),
+      attachments: [
+        {
+          type: "media",
+          id: "med_photo",
+          previewUrl: "/media/photo.jpg",
+          mimeType: "image/jpeg",
+          alt: "A harbour at dusk",
+        },
+      ],
+    });
+
+    const el = await createElement();
+    await el.openEdit("pst_123");
+    await flushUpdates(el);
+    const editor = requireElement(
+      el.querySelector<JantComposeEditor>("jant-compose-editor"),
+      "expected compose editor",
+    );
+    editor.updateAlt(0, "");
+    await flushUpdates(el);
+
+    let receivedDetail: ComposeSubmitDetail | null = null;
+    el.addEventListener("jant:compose-submit-deferred", (event) => {
+      receivedDetail = (event as CustomEvent<ComposeSubmitDetail>).detail;
+    });
+    requireElement(
+      el.querySelector<HTMLButtonElement>(".compose-publish-main"),
+      "expected update button",
+    ).click();
+
+    const detail = receivedDetail as ComposeSubmitDetail | null;
+    expect(detail?.attachments).toEqual([
+      expect.objectContaining({
+        type: "media",
+        mediaId: "med_photo",
+        alt: "",
+      }),
+    ]);
+  });
+
   it("keeps a text attachment's stored version in the edit's local copy", async () => {
     vi.useFakeTimers();
     try {

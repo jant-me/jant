@@ -1116,6 +1116,43 @@ describe("Posts API Routes", () => {
       });
     });
 
+    it("keeps an attachment's alt text when omitted and clears it when empty", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+
+      const post = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "test",
+      });
+      const photo = await services.media.create({
+        filename: "a.jpg",
+        originalName: "a.jpg",
+        mimeType: "image/jpeg",
+        size: 1024,
+        storageKey: "media/a.jpg",
+        alt: "A harbour at dusk",
+      });
+      await services.media.attachToPost(post.id, [photo.id]);
+
+      const update = (attachment: Record<string, unknown>) =>
+        app.request(`/api/posts/${post.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            attachments: [{ type: "media", mediaId: photo.id, ...attachment }],
+          }),
+        });
+
+      const kept = await update({});
+      expect(kept.status).toBe(200);
+      expect((await kept.json()).attachments[0].alt).toBe("A harbour at dusk");
+
+      const cleared = await update({ alt: "" });
+      expect(cleared.status).toBe(200);
+      expect((await cleared.json()).attachments[0].alt).toBeNull();
+      expect((await services.media.getById(photo.id))?.alt).toBeNull();
+    });
+
     it("refuses to take media from another post on update", async () => {
       const { app, services } = createTestApp({ authenticated: true });
       app.route("/api/posts", postsApiRoutes);

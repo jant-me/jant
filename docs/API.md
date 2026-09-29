@@ -628,15 +628,15 @@ Input shapes:
 
 Fields:
 
-| Field           | Type           | Required | Default | Notes                                  |
-| --------------- | -------------- | -------- | ------- | -------------------------------------- |
-| `type`          | `"media"`      | yes      | —       | Media attachment                       |
-| `mediaId`       | `med_*` string | yes      | —       | Previously uploaded media ID           |
-| `alt`           | string         | no       | `null`  | Alt text, max `500`                    |
-| `type`          | `"text"`       | yes      | —       | Text attachment                        |
-| `contentFormat` | `"markdown"`   | yes      | —       | Currently only `markdown` is supported |
-| `content`       | string         | yes      | —       | Non-empty text content                 |
-| `summary`       | string         | no       | `null`  | Optional summary, max `300`            |
+| Field           | Type           | Required | Default | Notes                                                                                        |
+| --------------- | -------------- | -------- | ------- | -------------------------------------------------------------------------------------------- |
+| `type`          | `"media"`      | yes      | —       | Media attachment                                                                             |
+| `mediaId`       | `med_*` string | yes      | —       | Previously uploaded media ID                                                                 |
+| `alt`           | string         | no       | `null`  | Alt text, max `500`. On an update, an omitted `alt` keeps the stored text and `""` clears it |
+| `type`          | `"text"`       | yes      | —       | Text attachment                                                                              |
+| `contentFormat` | `"markdown"`   | yes      | —       | Currently only `markdown` is supported                                                       |
+| `content`       | string         | yes      | —       | Non-empty text content                                                                       |
+| `summary`       | string         | no       | `null`  | Optional summary, max `300`                                                                  |
 
 Response shapes:
 
@@ -1427,6 +1427,7 @@ Request body:
 Rules:
 
 - `alt` is trimmed before storing.
+- An empty `alt` clears it, and the response carries `null`.
 - Max length is `500`.
 
 Response: `200 OK` with the updated media object.

@@ -946,9 +946,11 @@ export function createMediaService(
     },
 
     async updateAlt(id, alt) {
+      // Cleared alt text is stored as none, the same as a file uploaded
+      // without any, so the API answers `null` for both.
       await db
         .update(media)
-        .set({ alt, updatedAt: now() })
+        .set({ alt: alt || null, updatedAt: now() })
         .where(and(eq(media.siteId, siteId), eq(media.id, id)));
     },
 

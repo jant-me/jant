@@ -128,6 +128,14 @@ describe("Media API Routes", () => {
     const body = await res.json();
     expect(body.alt).toBe("Cover image");
     expect((await services.media.getById(media.id))?.alt).toBe("Cover image");
+
+    const cleared = await app.request(`/api/media/${media.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ alt: "   " }),
+    });
+    expect(cleared.status).toBe(200);
+    expect((await cleared.json()).alt).toBeNull();
   });
 
   it("deletes a media item", async () => {

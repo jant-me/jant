@@ -1718,7 +1718,9 @@ export class JantComposeDialog extends LitElement {
           type: "media",
           clientId,
           mediaId: media.mediaId,
-          alt: media.alt || undefined,
+          // Sent even when empty: an omitted alt leaves the stored one as it
+          // is, so dropping "" would keep alt text the author cleared.
+          alt: media.alt,
         });
         continue;
       }
