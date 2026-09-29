@@ -25,6 +25,8 @@ These principles explain _why_ the codebase is structured the way it is. When yo
 
 - **Challenge before complying**: when the user proposes an approach that conflicts with best practices or this document, push back with the trade-offs and ask for confirmation before proceeding. Silently following a suboptimal instruction is worse than a brief discussion.
 
+- **Judge findings by real impact**: every finding in a review or audit names who is affected, in what real situation, and what goes wrong for them. If it can't, drop it — the author's attention is the scarce resource. Rank by that impact, never by how literally a doc sentence can be read: a promise worded more strictly than it needs to be, an input nobody sends, or data no running site has is not a finding. Look forward: history from before the current design (old 0.x versions, formats, and addresses nobody still depends on) is not retrofitted, and pre-1.0 fixes don't carry compatibility code for it — the upgrade notes say what changed. Reserve "blocker" for lost data, lost access, a security hole, or a design mistake that would otherwise be frozen until the next major release.
+
 - **Separation of concerns**: routes handle HTTP, services own business logic and all DB access, UI renders data. Module dependency direction: `routes → services → db`, `routes → viewmodels → ui`. Detailed rules in `docs/internal/coding-standards.md`.
 
 - **Type safety as communication**: TypeScript strict mode, no `any`, fully typed exports. When a service return type changes, the compiler should catch every consumer.
