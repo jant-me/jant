@@ -14,7 +14,18 @@ concurrency:
 jobs:
   release:
     name: Release
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # CI also runs on pull requests, and the `branches` filter above matches
+    # the triggering run's head branch by name, so a fork's own `main` passes
+    # it. This job checks out that run's commit and holds npm's publish token,
+    # so it runs only for a push to this repository's main.
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == github.repository)
+      }}
     runs-on: ubuntu-latest
     outputs:
       published: ${{ steps.changesets.outputs.published }}
