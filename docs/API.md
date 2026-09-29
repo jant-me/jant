@@ -772,7 +772,7 @@ Public post responses include these fields:
 | `status`          | `published`                 | Public endpoints only return published posts                                                                            |
 | `visibility`      | `public` \| `latest_hidden` | `latest_hidden` comes from single-post reads, and from Thread lists that ask for it                                     |
 | `slug`            | string                      | Canonical slug                                                                                                          |
-| `permalink`       | string                      | Public post URL                                                                                                         |
+| `permalink`       | string                      | The post's public path, including any site prefix: its first custom URL, or `/{slug}` without one                       |
 | `title`           | string \| `null`            | Returned for `note` and `link` posts                                                                                    |
 | `url`             | string \| `null`            | Returned for `link` posts                                                                                               |
 | `sourceName`      | string \| `null`            | Returned instead of `title` for `quote`                                                                                 |
@@ -2586,19 +2586,19 @@ Query parameters:
 
 Result objects include these fields:
 
-| Field         | Type                                     | Notes                                                 |
-| ------------- | ---------------------------------------- | ----------------------------------------------------- |
-| `id`          | `pst_*` string                           | Post ID                                               |
-| `format`      | `note` \| `link` \| `quote`              | Post format                                           |
-| `slug`        | string                                   | Canonical slug                                        |
-| `snippet`     | string \| omitted                        | Search snippet; may contain `<mark>` tags             |
-| `publishedAt` | integer \| `null`                        | Publish timestamp                                     |
-| `permalink`   | string                                   | Public path, including any configured site prefix     |
-| `visibility`  | `public` \| `latest_hidden` \| `private` | Resolved visibility, inherited from the Thread's root |
-| `title`       | string \| `null`                         | Present for `note` and `link` results                 |
-| `url`         | string \| `null`                         | Present for `note` and `link` results                 |
-| `sourceName`  | string \| `null`                         | Present instead of `title` for `quote` results        |
-| `sourceUrl`   | string \| `null`                         | Present instead of `url` for `quote` results          |
+| Field         | Type                                     | Notes                                                                                                    |
+| ------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `id`          | `pst_*` string                           | Post ID                                                                                                  |
+| `format`      | `note` \| `link` \| `quote`              | Post format                                                                                              |
+| `slug`        | string                                   | Canonical slug                                                                                           |
+| `snippet`     | string \| omitted                        | Search snippet; may contain `<mark>` tags                                                                |
+| `publishedAt` | integer \| `null`                        | Publish timestamp                                                                                        |
+| `permalink`   | string                                   | Public path, including any configured site prefix: the post's first custom URL, or `/{slug}` without one |
+| `visibility`  | `public` \| `latest_hidden` \| `private` | Resolved visibility, inherited from the Thread's root                                                    |
+| `title`       | string \| `null`                         | Present for `note` and `link` results                                                                    |
+| `url`         | string \| `null`                         | Present for `note` and `link` results                                                                    |
+| `sourceName`  | string \| `null`                         | Present instead of `title` for `quote` results                                                           |
+| `sourceUrl`   | string \| `null`                         | Present instead of `url` for `quote` results                                                             |
 
 Response:
 

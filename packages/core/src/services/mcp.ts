@@ -30,7 +30,7 @@ import {
   loadApiPostResponse,
   loadApiPostResponses,
 } from "../lib/api-posts.js";
-import { toSearchApiResult } from "../lib/api-search.js";
+import { loadSearchApiResults } from "../lib/api-search.js";
 import { loadApiThreadResponses } from "../lib/api-threads.js";
 import {
   parseThreadSelection,
@@ -758,13 +758,7 @@ const mcpTools: McpToolDefinition[] = [
       return {
         count: results.length,
         query: input.q,
-        results: results.map((result) =>
-          toSearchApiResult(
-            result.post,
-            result.snippet,
-            context.appConfig.sitePathPrefix,
-          ),
-        ),
+        results: await loadSearchApiResults(context, results),
       };
     },
   },

@@ -74,6 +74,18 @@ describe("Search API Routes", () => {
     expect(body.results[0].permalink).toMatch(/^\/[a-z0-9]/);
   });
 
+  it("links a result by its custom URL", async () => {
+    const { app, services } = setup();
+    await services.posts.create({
+      format: "note",
+      body: tiptapDoc("A post about jant"),
+      path: "blog/about-jant",
+    });
+
+    const res = await app.request("/api/search?q=jant");
+    expect((await res.json()).results[0].permalink).toBe("/blog/about-jant");
+  });
+
   it("returns quote attribution as sourceName/sourceUrl", async () => {
     const { app, services } = setup();
 

@@ -40,6 +40,21 @@ describe("Public Posts API Routes", () => {
       expect(body).not.toHaveProperty("body");
     });
 
+    // The permalink is the address the page and the feed's `<id>` use; `/slug`
+    // only redirects there.
+    it("gives a post's first custom URL as its permalink", async () => {
+      const { app, services } = createTestApp({ authenticated: false });
+      app.route("/api/public/posts", publicPostsApiRoutes);
+      const post = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "body",
+        path: "blog/hello",
+      });
+
+      const res = await app.request(`/api/public/posts/${post.slug}`);
+      expect((await res.json()).permalink).toBe("/blog/hello");
+    });
+
     it("returns the shared Thread Collections for a child post", async () => {
       const { app, services } = createTestApp({ authenticated: false });
       app.route("/api/public/posts", publicPostsApiRoutes);

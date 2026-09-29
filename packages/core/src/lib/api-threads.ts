@@ -17,10 +17,11 @@ import {
 import {
   loadPublicPostResponses,
   type PublicPostResponse,
+  type PublicResponseDeps,
 } from "./api-public-posts.js";
 import { encodeThreadPostsCursorAfter } from "./post-list-cursor.js";
 import type { PostContent } from "./schemas.js";
-import { toPublicPath } from "./url.js";
+import { getPostPath, toPublicPath } from "./url.js";
 
 /**
  * The homepage fold of one Thread: what it shows either side of the gap, and
@@ -181,17 +182,24 @@ export async function loadApiThreadResponses(
  * const threads = await loadPublicThreadResponses(c.var, page.threads, {});
  */
 export async function loadPublicThreadResponses(
-  deps: ApiPostResponseDeps,
+  deps: PublicResponseDeps,
   summaries: ThreadSummary[],
   options: { content?: PostContent } = {},
 ): Promise<PublicThreadResponse[]> {
+  const gapPostIds = summaries.flatMap((summary) =>
+    summary.fold?.firstHiddenReply ? [summary.fold.firstHiddenReply.id] : [],
+  );
+  const gapAliases = await deps.services.paths.getPostAliases(gapPostIds);
   return buildThreadResponses(
     summaries,
     (posts) => loadPublicPostResponses(deps, posts, options),
     (post, cursor) => ({
       id: post.id,
       slug: post.slug,
-      permalink: toPublicPath(`/${post.slug}`, deps.appConfig.sitePathPrefix),
+      permalink: toPublicPath(
+        getPostPath(post.slug, gapAliases.get(post.id)?.[0]),
+        deps.appConfig.sitePathPrefix,
+      ),
       cursor,
     }),
   );

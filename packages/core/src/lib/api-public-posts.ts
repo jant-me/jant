@@ -11,7 +11,7 @@ import type { Collection, Media, Post } from "../types.js";
 import type { PostContent } from "./schemas.js";
 import { getCollectionPagePath } from "./collection-paths.js";
 import { toApiAttachment, toBodyMarkdown } from "./api-posts.js";
-import { toPublicPath } from "./url.js";
+import { getPostPath, toPublicPath } from "./url.js";
 import { getImageUrl, getMediaUrl, getPublicUrlForProvider } from "./image.js";
 
 export type PublicPostBaseResponse = {
@@ -72,6 +72,12 @@ export type PublicPostMarkdownResponse = PublicPostBaseResponse & {
   bodyMarkdown: string | null;
 };
 
+/** What the public API's responses read besides the Posts themselves. */
+export interface PublicResponseDeps {
+  services: Pick<Services, "media" | "posts" | "collections" | "paths">;
+  appConfig: AppConfig;
+}
+
 export type PublicPostResponse =
   PublicPostRenderedResponse | PublicPostMarkdownResponse;
 
@@ -80,7 +86,8 @@ export type PublicPostResponse =
  * its Thread's Post count.
  *
  * @param post - The Post
- * @param related - What was read about it in the same batch as its page
+ * @param related - What was read about it in the same batch as its page;
+ *   `aliasPath` is its oldest custom path, its permalink when it has one
  * @param appConfig - Media URLs and the site path prefix
  * @param options - `content: "markdown"` returns `bodyMarkdown` instead of the
  *   rendered body
@@ -94,6 +101,7 @@ export function toPublicPost(
     media: Media[];
     collections: Collection[];
     threadPostCount: number;
+    aliasPath?: string | null;
   },
   appConfig: AppConfig,
   options?: { content?: PostContent },
@@ -131,7 +139,10 @@ export function toPublicPost(
     status: "published" as const,
     visibility: post.visibility,
     slug: post.slug,
-    permalink: toPublicPath(`/${post.slug}`, sitePathPrefix),
+    permalink: toPublicPath(
+      getPostPath(post.slug, related.aliasPath),
+      sitePathPrefix,
+    ),
     quoteText: post.quoteText,
     summary: post.summary,
     rating: post.rating,
@@ -199,21 +210,20 @@ export function toPublicPost(
  * const responses = await loadPublicPostResponses(c.var, page.posts, {});
  */
 export async function loadPublicPostResponses(
-  deps: {
-    services: Pick<Services, "media" | "posts" | "collections">;
-    appConfig: AppConfig;
-  },
+  deps: PublicResponseDeps,
   posts: Post[],
   options: { content?: PostContent } = {},
 ): Promise<PublicPostResponse[]> {
   if (posts.length === 0) return [];
   const { services, appConfig } = deps;
   const postIds = posts.map((post) => post.id);
-  const [mediaMap, collectionsMap, threadPostCounts] = await Promise.all([
-    services.media.getByPostIds(postIds),
-    services.collections.getCollectionsByPostIds(postIds),
-    services.posts.countThreadPosts(posts.map((post) => post.threadId)),
-  ]);
+  const [mediaMap, collectionsMap, threadPostCounts, aliases] =
+    await Promise.all([
+      services.media.getByPostIds(postIds),
+      services.collections.getCollectionsByPostIds(postIds),
+      services.posts.countThreadPosts(posts.map((post) => post.threadId)),
+      services.paths.getPostAliases(postIds),
+    ]);
 
   return posts.map((post) =>
     toPublicPost(
@@ -222,6 +232,7 @@ export async function loadPublicPostResponses(
         media: mediaMap.get(post.id) ?? [],
         collections: collectionsMap.get(post.id) ?? [],
         threadPostCount: threadPostCounts.get(post.threadId) ?? 0,
+        aliasPath: aliases.get(post.id)?.[0],
       },
       appConfig,
       options,

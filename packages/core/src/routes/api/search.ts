@@ -6,7 +6,7 @@ import { Hono } from "hono";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { ValidationError, ExternalServiceError } from "../../lib/errors.js";
-import { toSearchApiResult } from "../../lib/api-search.js";
+import { loadSearchApiResults } from "../../lib/api-search.js";
 import { parseValidated, SearchPostsQuerySchema } from "../../lib/schemas.js";
 import { requireAuthApi } from "../../middleware/auth.js";
 
@@ -34,9 +34,7 @@ searchApiRoutes.get("/", async (c) => {
 
     return c.json({
       query,
-      results: results.map((r) =>
-        toSearchApiResult(r.post, r.snippet, c.var.appConfig.sitePathPrefix),
-      ),
+      results: await loadSearchApiResults(c.var, results),
       count: results.length,
     });
   } catch (err) {

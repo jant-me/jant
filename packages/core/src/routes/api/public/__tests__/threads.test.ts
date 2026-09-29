@@ -117,6 +117,19 @@ describe("GET /api/public/threads", () => {
     });
   });
 
+  it("links a fold's gap by the hidden post's custom URL", async () => {
+    const { thread, get, services } = setup();
+    const all = await thread(8);
+    await services.paths.create({
+      path: "notes/first-hidden",
+      kind: "alias",
+      postId: all[3]?.id,
+    });
+
+    const { body } = await get("/api/public/threads?include=fold");
+    expect(body.threads[0].fold.gap.permalink).toBe("/notes/first-hidden");
+  });
+
   it("opens the run a fold hides with one request", async () => {
     const { thread, get, app } = setup();
     const all = await thread(10);
