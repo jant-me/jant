@@ -2,7 +2,7 @@
  * Sign-in / Sign-out Routes
  */
 
-import { Hono } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import type { FC } from "hono/jsx";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "../../i18n/context.js";
@@ -24,6 +24,81 @@ const SIGNIN_ATTEMPTS_PER_ACCOUNT = 10;
 const SIGNIN_WINDOW_SEC = 10 * 60;
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
+
+/**
+ * Check one more sign-in attempt against the limits, and count it.
+ *
+ * Two buckets against password guessing: one per client, and one per
+ * account, so neither many addresses from one client nor one address from
+ * many clients gets unlimited tries. The demo's visitors all sign in to one
+ * published account, so there the account bucket would lock everyone out
+ * after a handful of visits; the per-client one still applies.
+ *
+ * @param c - The request, with its app config and rate limiter
+ * @param email - The address being signed in to; `""` when unknown
+ * @returns `retryAfterSec` when the attempt is over a limit, `null` otherwise
+ * @example
+ * const limited = await checkSigninLimits(c, "owner@example.com");
+ */
+export async function checkSigninLimits(
+  c: Context<Env>,
+  email: string,
+): Promise<{ retryAfterSec: number } | null> {
+  const account = email.trim().toLowerCase();
+  const limits = await Promise.all([
+    checkRequestRateLimit(c, {
+      name: "signin",
+      limit: SIGNIN_ATTEMPTS_PER_CLIENT,
+      windowSec: SIGNIN_WINDOW_SEC,
+    }),
+    ...(c.var.appConfig.demoMode || !account
+      ? []
+      : [
+          checkRequestRateLimit(c, {
+            name: "signin-account",
+            key: account,
+            limit: SIGNIN_ATTEMPTS_PER_ACCOUNT,
+            windowSec: SIGNIN_WINDOW_SEC,
+          }),
+        ]),
+  ]);
+  const blocked = limits.flatMap((limit) =>
+    limit.ok ? [] : [limit.retryAfterSec],
+  );
+  return blocked.length > 0 ? { retryAfterSec: Math.max(1, ...blocked) } : null;
+}
+
+/**
+ * better-auth's own sign-in endpoint, `POST /api/auth/sign-in/email`, takes
+ * the same password as `/signin`, so it counts against the same limits. It
+ * runs ahead of the better-auth handler and answers a limited attempt the way
+ * better-auth's own limiter does.
+ */
+export const limitApiSignin: MiddlewareHandler<Env> = async (c, next) => {
+  // A clone, so better-auth still reads the body it was sent.
+  const body: unknown = await c.req.raw
+    .clone()
+    .json()
+    .catch(() => null);
+  const email =
+    body &&
+    typeof body === "object" &&
+    "email" in body &&
+    typeof body.email === "string"
+      ? body.email
+      : "";
+  const limited = await checkSigninLimits(c, email);
+  if (limited) {
+    return c.json(
+      {
+        message: "Too many sign-in attempts. Wait a few minutes and try again.",
+      },
+      429,
+      { "X-Retry-After": String(limited.retryAfterSec) },
+    );
+  }
+  await next();
+};
 
 const SigninContent: FC<{
   demoEmail?: string;
@@ -219,29 +294,7 @@ signinRoutes.post("/signin", async (c) => {
 
   const { email, password } = parsed.data;
 
-  // Two buckets against password guessing: one per client, and one per
-  // account, so neither many addresses from one client nor one address from
-  // many clients gets unlimited tries. The demo's visitors all sign in to one
-  // published account, so there the account bucket would lock everyone out
-  // after a handful of visits; the per-client one still applies.
-  const limits = await Promise.all([
-    checkRequestRateLimit(c, {
-      name: "signin",
-      limit: SIGNIN_ATTEMPTS_PER_CLIENT,
-      windowSec: SIGNIN_WINDOW_SEC,
-    }),
-    ...(c.var.appConfig.demoMode
-      ? []
-      : [
-          checkRequestRateLimit(c, {
-            name: "signin-account",
-            key: email.trim().toLowerCase(),
-            limit: SIGNIN_ATTEMPTS_PER_ACCOUNT,
-            windowSec: SIGNIN_WINDOW_SEC,
-          }),
-        ]),
-  ]);
-  if (limits.some((limit) => !limit.ok)) {
+  if (await checkSigninLimits(c, email)) {
     return dsToast(
       i18n._(
         msg({

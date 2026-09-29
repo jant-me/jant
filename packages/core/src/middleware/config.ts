@@ -3,7 +3,7 @@
  *
  * Loads settings from DB, resolves app config and theme.
  * Apply only to route groups that need config/theme data —
- * skip for /healthz, /media/*, /favicon.ico, etc.
+ * skip for /healthz, /media/*, /favicon.ico, /api/auth/*, etc.
  */
 
 import type { MiddlewareHandler } from "hono";

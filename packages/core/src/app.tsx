@@ -8,7 +8,7 @@ import type { Bindings } from "./types.js";
 
 // Routes - Auth
 import { setupRoutes } from "./routes/auth/setup.js";
-import { signinRoutes } from "./routes/auth/signin.js";
+import { limitApiSignin, signinRoutes } from "./routes/auth/signin.js";
 import { resetRoutes } from "./routes/auth/reset.js";
 import { devAuthRoutes } from "./routes/auth/dev.js";
 import { hostedSsoRoutes } from "./routes/auth/hosted-sso.js";
@@ -362,8 +362,10 @@ export function createApp(): HonoApp {
   // someone with no session yet, so the anonymous branch above would let the
   // browser keep it — and its URL — on disk: a reset link's one-time token, a
   // sign-in form, an SSO handoff. One list rather than a `use()` beside each
-  // route group; the handlers themselves live under "Auth routes" below, and a
-  // new one belongs in both places.
+  // route group, because it has to be registered up here anyway: `/api/auth/*`
+  // ends in a terminal handler that never yields, so a middleware registered
+  // after it never runs. The handlers themselves live under "Auth routes"
+  // below and in `app.all("/api/auth/*")`; a new one belongs in both places.
   for (const path of [
     "/setup",
     "/signin",
@@ -371,6 +373,7 @@ export function createApp(): HonoApp {
     "/reset",
     "/__sso",
     "/__dev/login",
+    "/api/auth/*",
   ]) {
     app.use(path, noStore());
   }
@@ -412,6 +415,14 @@ export function createApp(): HonoApp {
   // Supports HTTP Range requests for seekable audio/video playback.
   app.get("/media/*", servePublicStorage);
   app.get("/sites/*", servePublicStorage);
+
+  // better-auth handler. Its password sign-in counts against the same limits
+  // as `/signin`; the limiter reads the site's config, which the routes up
+  // here otherwise go without.
+  app.post("/api/auth/sign-in/email", withConfig(), limitApiSignin);
+  app.all("/api/auth/*", async (c) => {
+    return c.var.auth.handler(c.req.raw);
+  });
 
   // Favicon routes - serve from DB settings (small files, avoids R2 round-trip)
   app.get("/favicon.ico", async (c) => {
