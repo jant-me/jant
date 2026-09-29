@@ -130,6 +130,30 @@ export function redirectTargetHref(stored: string): string {
 }
 
 /**
+ * Carry a request's query string onto a redirect within the site.
+ *
+ * An address reached another way — a later custom URL, other letter case, the
+ * slug of a post that has a custom URL — redirects to the one address, and a
+ * reader's `?sort=oldest` or `?page=2` has to arrive with them. A target with
+ * a query string of its own keeps it, and one off the site goes where it says.
+ *
+ * @param target - Where the redirect goes
+ * @param requestUrl - The URL that was requested
+ * @returns The target with the request's query string when it takes one
+ * @example
+ * ```ts
+ * withRequestQuery("/notes", "https://example.com/More-Notes?sort=oldest");
+ * // "/notes?sort=oldest"
+ * withRequestQuery("/archive?format=note", "https://example.com/a?page=2");
+ * // "/archive?format=note"
+ * ```
+ */
+export function withRequestQuery(target: string, requestUrl: string): string {
+  if (isFullUrl(target) || /[?#]/.test(target)) return target;
+  return `${target}${new URL(requestUrl).search}`;
+}
+
+/**
  * The registry path a stored target names on this site, or null when it
  * leaves the site.
  *

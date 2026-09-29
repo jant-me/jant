@@ -75,4 +75,34 @@ describe("custom URL redirects", () => {
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/archive?format=Note");
   });
+
+  // A link someone shared with `?page=2` still lands on page 2. A target
+  // with a query string of its own, or one off the site, keeps what the
+  // author set.
+  it("carries the reader's query string to a target on the site without one", async () => {
+    const { services, get } = await createSite();
+    await services.customUrls.create({
+      path: "/old-archive",
+      targetType: "redirect",
+      toPath: "/archive",
+    });
+    await services.customUrls.create({
+      path: "/notes-only",
+      targetType: "redirect",
+      toPath: "/archive?format=note",
+    });
+    await services.customUrls.create({
+      path: "/elsewhere",
+      targetType: "redirect",
+      toPath: "https://example.com/page",
+    });
+
+    const location = async (path: string) =>
+      (await get(path)).headers.get("location");
+    expect(await location("/old-archive?page=2")).toBe("/archive?page=2");
+    expect(await location("/notes-only?page=2")).toBe("/archive?format=note");
+    expect(await location("/elsewhere?page=2")).toBe(
+      "https://example.com/page",
+    );
+  });
 });

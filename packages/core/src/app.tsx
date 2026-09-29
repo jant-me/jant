@@ -99,6 +99,7 @@ import {
   redirectTargetHref,
   stripSitePathPrefix,
   toPublicHref,
+  withRequestQuery,
 } from "./lib/url.js";
 import { withConditionalResponse } from "./lib/http-cache.js";
 import { withWorkerResponseCache } from "./lib/worker-response-cache.js";
@@ -517,12 +518,15 @@ export function createApp(): HonoApp {
     if (record?.kind === "redirect" && record.redirectToPath) {
       // toPublicHref leaves an http(s) target as it is and prefixes a path.
       return c.redirect(
-        toPublicHref(
-          redirectTargetHref(record.redirectToPath),
-          getRuntimeSitePathPrefix({
-            env: c.env,
-            currentSiteDomain: c.var.currentSiteDomain,
-          }),
+        withRequestQuery(
+          toPublicHref(
+            redirectTargetHref(record.redirectToPath),
+            getRuntimeSitePathPrefix({
+              env: c.env,
+              currentSiteDomain: c.var.currentSiteDomain,
+            }),
+          ),
+          c.req.url,
         ),
         record.redirectType ?? 301,
       );

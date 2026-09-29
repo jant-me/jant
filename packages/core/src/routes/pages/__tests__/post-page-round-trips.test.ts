@@ -183,6 +183,11 @@ describe("post page round trips", () => {
     expect(recased.status).toBe(301);
     expect(recased.headers.get("location")).toBe("/first-name");
 
+    const withQuery = await app.request("/second-name?utm_source=feed");
+    expect(withQuery.headers.get("location")).toBe(
+      "/first-name?utm_source=feed",
+    );
+
     expect((await app.request("/first-name")).status).toBe(200);
   });
 });

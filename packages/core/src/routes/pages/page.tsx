@@ -31,6 +31,7 @@ import {
   toAbsoluteAssetUrl,
   toAbsoluteSiteUrl,
   toPublicPath,
+  withRequestQuery,
 } from "../../lib/url.js";
 import {
   buildLanguageSwitcher,
@@ -494,7 +495,9 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     // lands on a post then applies the canonical-address rule below. One off
     // the site goes where it says.
     return c.redirect(
-      isFullUrl(target) ? target : toViewPath(c, target),
+      isFullUrl(target)
+        ? target
+        : withRequestQuery(toViewPath(c, target), c.req.url),
       resolved.redirectType ?? 301,
     );
   }
@@ -528,7 +531,10 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
           collection.id,
         );
         if (alias) {
-          return c.redirect(toViewPath(c, `/${alias.path}/feed`), 301);
+          return c.redirect(
+            withRequestQuery(toViewPath(c, `/${alias.path}/feed`), c.req.url),
+            301,
+          );
         }
 
         const result = await renderCollectionFeed(c, collection.slug);
@@ -568,9 +574,12 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
       // Redirect slug → alias if one exists (same pattern as post pages)
       if (resolvedPost.kind === "slug" && loaded.canonicalAlias) {
         return c.redirect(
-          toPublicPath(
-            `${loaded.canonicalAlias}/text/${mediaId}`,
-            sitePathPrefix,
+          withRequestQuery(
+            toPublicPath(
+              `${loaded.canonicalAlias}/text/${mediaId}`,
+              sitePathPrefix,
+            ),
+            c.req.url,
           ),
           301,
         );
@@ -579,7 +588,13 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
       // A text attachment belongs to a post, so it inherits that post's single
       // canonical address rather than existing once per language view.
       if (inLanguageView) {
-        return c.redirect(toPublicPath(`/${fullPath}`, sitePathPrefix), 301);
+        return c.redirect(
+          withRequestQuery(
+            toPublicPath(`/${fullPath}`, sitePathPrefix),
+            c.req.url,
+          ),
+          301,
+        );
       }
 
       // The file must belong to this post; the service applies the rest of
@@ -636,7 +651,13 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     // in and redirects there.
     const canonicalPath = getPostPath(post.slug, loaded.canonicalAlias);
     if (inLanguageView || canonicalPath !== `/${fullPath}`) {
-      return c.redirect(toPublicPath(canonicalPath, sitePathPrefix), 301);
+      return c.redirect(
+        withRequestQuery(
+          toPublicPath(canonicalPath, sitePathPrefix),
+          c.req.url,
+        ),
+        301,
+      );
     }
 
     return renderPost(c, post, { allowDraft });
@@ -648,7 +669,10 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     );
     if (!smartCollection) return c.notFound();
     if (fullPath !== smartCollection.slug) {
-      return c.redirect(toViewPath(c, `/${smartCollection.slug}`), 301);
+      return c.redirect(
+        withRequestQuery(toViewPath(c, `/${smartCollection.slug}`), c.req.url),
+        301,
+      );
     }
 
     const result = await renderSmartCollectionPage(c, smartCollection.slug);
@@ -669,7 +693,10 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
     );
     const canonicalPath = alias ? alias.path : collection.slug;
     if (fullPath !== canonicalPath) {
-      return c.redirect(toViewPath(c, `/${canonicalPath}`), 301);
+      return c.redirect(
+        withRequestQuery(toViewPath(c, `/${canonicalPath}`), c.req.url),
+        301,
+      );
     }
 
     const result = await renderCollectionPage(

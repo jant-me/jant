@@ -318,5 +318,14 @@ describe("Collection Routing", () => {
     expect(await redirectOf("/more-notes")).toEqual([301, "/notes"]);
     expect(await redirectOf("/NOTES")).toEqual([301, "/notes"]);
     expect((await app.request("/notes")).status).toBe(200);
+    // A saved address keeps the page and sort a reader saved with it.
+    expect(await redirectOf("/more-notes?sort=oldest&page=2")).toEqual([
+      301,
+      "/notes?sort=oldest&page=2",
+    ]);
+    expect(await redirectOf("/Reading?sort=oldest")).toEqual([
+      301,
+      "/notes?sort=oldest",
+    ]);
   });
 });
