@@ -255,6 +255,14 @@ describe("Nav Items API Routes", () => {
       expect(body.url).toBe("https://github.com");
       expect(body.type).toBe("link");
       expect(body.headerHtml).toBeUndefined();
+      // Every field is there; the ones a link has no use for are null.
+      expect(body).toMatchObject({
+        systemKey: null,
+        collectionId: null,
+        smartCollectionId: null,
+        postId: null,
+        targetTitle: null,
+      });
     });
 
     it("includes a site header fragment for navigation editor requests", async () => {

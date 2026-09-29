@@ -2009,21 +2009,21 @@ Navigation items power the header navigation.
 
 Nav item responses include these fields:
 
-| Field               | Type                                                                                       | Notes                                                                                        |
-| ------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| `id`                | `nav_*` string                                                                             | Nav item ID                                                                                  |
-| `type`              | `link` \| `system` \| `collection` \| `smart_collection` \| `page`                         | What the item points at                                                                      |
-| `systemKey`         | `latest` \| `featured` \| `archive` \| `collections` \| `subscribe` \| `rss` \| `settings` | Only present for `type: "system"`                                                            |
-| `collectionId`      | `col_*` string                                                                             | Only present for `type: "collection"`                                                        |
-| `smartCollectionId` | `smc_*` string                                                                             | Only present for `type: "smart_collection"`                                                  |
-| `postId`            | `pst_*` string                                                                             | Only present for `type: "page"`                                                              |
-| `label`             | string                                                                                     | Author's override, or `""` to follow the target                                              |
-| `url`               | string                                                                                     | Stored URL or path                                                                           |
-| `targetTitle`       | string                                                                                     | The target's current title, shown when `label` is `""`. Absent for `link` and `system` items |
-| `placement`         | `header` \| `more`                                                                         | In the header, or in its More menu                                                           |
-| `position`          | string                                                                                     | Fractional ordering key                                                                      |
-| `createdAt`         | integer                                                                                    | Unix seconds                                                                                 |
-| `updatedAt`         | integer                                                                                    | Unix seconds                                                                                 |
+| Field               | Type                                                                                                 | Notes                                                                                        |
+| ------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `id`                | `nav_*` string                                                                                       | Nav item ID                                                                                  |
+| `type`              | `link` \| `system` \| `collection` \| `smart_collection` \| `page`                                   | What the item points at                                                                      |
+| `systemKey`         | `latest` \| `featured` \| `archive` \| `collections` \| `subscribe` \| `rss` \| `settings` \| `null` | `null` unless `type: "system"`                                                               |
+| `collectionId`      | `col_*` string \| `null`                                                                             | `null` unless `type: "collection"`                                                           |
+| `smartCollectionId` | `smc_*` string \| `null`                                                                             | `null` unless `type: "smart_collection"`                                                     |
+| `postId`            | `pst_*` string \| `null`                                                                             | `null` unless `type: "page"`                                                                 |
+| `label`             | string                                                                                               | Author's override, or `""` to follow the target                                              |
+| `url`               | string                                                                                               | Stored URL or path                                                                           |
+| `targetTitle`       | string \| `null`                                                                                     | The target's current title, shown when `label` is `""`. `null` for `link` and `system` items |
+| `placement`         | `header` \| `more`                                                                                   | In the header, or in its More menu                                                           |
+| `position`          | string                                                                                               | Fractional ordering key                                                                      |
+| `createdAt`         | integer                                                                                              | Unix seconds                                                                                 |
+| `updatedAt`         | integer                                                                                              | Unix seconds                                                                                 |
 
 ### List nav items
 

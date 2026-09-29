@@ -8,16 +8,17 @@ import type { CollectionFormLabels } from "./collection-types.js";
 export interface NavManagerItem {
   id: string;
   type: "link" | "system" | "collection" | "smart_collection" | "page";
-  systemKey?: SystemNavKey;
-  collectionId?: string;
-  smartCollectionId?: string;
-  postId?: string;
+  /** API responses carry `null` where a field doesn't apply to the type. */
+  systemKey?: SystemNavKey | null;
+  collectionId?: string | null;
+  smartCollectionId?: string | null;
+  postId?: string | null;
   /** Author's override, or `""` when the item follows its target's title */
   label: string;
   /** Resolved label from the server-rendered list */
   displayLabel?: string;
   /** Target's current title, present on mutation responses */
-  targetTitle?: string;
+  targetTitle?: string | null;
   url: string;
   placement?: "header" | "more";
 }
