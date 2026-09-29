@@ -5,6 +5,11 @@ name: Sync Starter
 
 on:
   workflow_call:
+    inputs:
+      ref:
+        description: Commit to sync from, the one the release published
+        required: false
+        type: string
     secrets:
       PAT_TOKEN:
         required: true
@@ -17,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Setup mise
         uses: jdx/mise-action@v2

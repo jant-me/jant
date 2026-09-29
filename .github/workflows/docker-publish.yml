@@ -7,6 +7,10 @@ on:
         description: Docker image version tag without a leading v
         required: false
         type: string
+      ref:
+        description: Commit to build, the one the release published
+        required: false
+        type: string
       push_latest:
         description: Also move the latest and major tags to this version
         required: false
@@ -38,10 +42,12 @@ jobs:
     permissions:
       contents: read
     steps:
+      # A release passes the commit it published; github.sha would be main's
+      # head, which may have moved on since.
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.sha }}
+          ref: ${{ inputs.ref || (github.event_name == 'workflow_dispatch' && 'main' || github.sha) }}
 
       - name: Resolve image metadata
         id: meta
@@ -77,6 +83,7 @@ jobs:
 
           {
             echo "version=${version}"
+            echo "revision=$(git rev-parse HEAD)"
             echo "tags<<EOF"
             echo "${tags}"
             echo "EOF"
@@ -108,7 +115,7 @@ jobs:
             org.opencontainers.image.source=https://github.com/jant-me/jant
             org.opencontainers.image.url=https://github.com/jant-me/jant
             org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.revision }}
             org.opencontainers.image.licenses=AGPL-3.0-or-later
           cache-from: type=gha
           cache-to: type=gha,mode=max

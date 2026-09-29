@@ -20,15 +20,24 @@ jobs:
       published: ${{ steps.changesets.outputs.published }}
       core_published: ${{ steps.release-meta.outputs.core_published }}
       release_version: ${{ steps.release-meta.outputs.version }}
+      release_sha: ${{ steps.release-sha.outputs.sha }}
     permissions:
       contents: write
       pull-requests: write
       id-token: write # Required for npm trusted publishing (OIDC)
     steps:
+      # The commit CI passed, not whatever main holds by now: under
+      # workflow_run, github.sha is main's head when this run starts, and a
+      # push during CI would publish code CI never ran.
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
+
+      - name: Record the release commit
+        id: release-sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup mise
         uses: jdx/mise-action@v2
@@ -78,6 +87,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.release-meta.outputs.version }}
+          target_commitish: ${{ steps.release-sha.outputs.sha }}
           name: v${{ steps.release-meta.outputs.version }}
           body: |
             ## Published Packages
@@ -101,6 +111,8 @@ jobs:
     needs: release
     if: needs.release.outputs.published == 'true'
     uses: ./.github/workflows/sync-starter.yml
+    with:
+      ref: ${{ needs.release.outputs.release_sha }}
     secrets:
       PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 
@@ -110,5 +122,6 @@ jobs:
     uses: ./.github/workflows/docker-publish.yml
     with:
       version: ${{ needs.release.outputs.release_version }}
+      ref: ${{ needs.release.outputs.release_sha }}
       push_latest: true
     secrets: inherit

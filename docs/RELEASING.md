@@ -45,6 +45,9 @@ When PRs with changesets are merged:
 4. Packages are automatically published to npm
 5. When `@jant/core` is published, the Release workflow also calls `.github/workflows/docker-publish.yml` to publish `owenyoung/jant:<version>`, `owenyoung/jant:latest`, and from 1.0.1 on `owenyoung/jant:<major>` to Docker Hub
 6. The same workflow updates the Docker Hub overview from `docs/docker-hub-overview.md`
+
+   Publishing, the `v<version>` tag, the Docker image, and the starter sync all use the commit CI passed, the merged Release PR. A push to `main` while they run doesn't change what ships.
+
 7. Freeze the release's fixtures, and commit them:
 
    ```bash
