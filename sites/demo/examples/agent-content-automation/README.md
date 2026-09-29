@@ -47,7 +47,7 @@ Upload the file:
 ```bash
 curl -X POST "$JANT_URL/api/upload" \
   -H "Authorization: Bearer $JANT_API_TOKEN" \
-  -F "file=@./path/to/photo.webp" \
+  -F "file=@./path/to/photo.webp;type=image/webp" \
   -F "alt=Cover image"
 ```
 

@@ -1115,7 +1115,9 @@ Jant exposes two upload APIs:
 
 File size is limited by `UPLOAD_MAX_FILE_SIZE_MB` and defaults to `1024 MB`.
 
-Jant accepts a broad set of image, video, audio, document, text, archive, font, design, and code MIME types. Unsupported types return `400`.
+Images upload as JPEG, PNG, or WebP, video as MP4, and audio as MP4 (`audio/mp4`); any other image, video, or audio type answers `400`, so convert it first, as the editor does in the browser. Documents, text, archives, fonts, design files, and code upload in most formats and are served as downloads, except PDFs, which open in the browser.
+
+The type is the one the request declares for the file. `curl -F "file=@photo.webp"` declares `application/octet-stream` for extensions it doesn't know, WebP among them, and the file is then stored as a download; name the type, as in `-F "file=@photo.webp;type=image/webp"`.
 
 ### Session-based upload flow
 
@@ -3216,7 +3218,7 @@ curl -X POST "$JANT_URL/api/posts" \
 
 curl -X POST "$JANT_URL/api/upload" \
   -H "Authorization: Bearer $JANT_API_TOKEN" \
-  -F "file=@./path/to/photo.webp" \
+  -F "file=@./path/to/photo.webp;type=image/webp" \
   -F "alt=Cover image"
 
 curl -X PUT "$JANT_URL/api/settings" \
