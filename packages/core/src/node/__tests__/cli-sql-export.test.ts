@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { getTableColumns } from "../../../bin/lib/sql-export.js";
+import {
+  getTableColumns,
+  listExportTables,
+} from "../../../bin/lib/sql-export.js";
 
 interface CapturedQueryRunner {
   query: (sql: string) => Promise<Array<Record<string, unknown>>>;
@@ -45,5 +48,26 @@ describe("getTableColumns", () => {
 
     expect(columns).toEqual(["id", "title"]);
     expect(runner.lastSql).toMatch(/PRAGMA\s+table_xinfo/);
+  });
+});
+
+describe("listExportTables", () => {
+  // D1 keeps a table of its own (`_cf_KV` remotely, `_cf_METADATA` locally)
+  // and refuses every read of it, so asking for its columns failed
+  // `jant db export --remote` on every Cloudflare site.
+  it("leaves out D1's own tables, migration history, and the search index", async () => {
+    const runner = createQueryRunner(
+      [
+        "_cf_KV",
+        "_cf_METADATA",
+        "d1_migrations",
+        "post",
+        "post_fts",
+        "post_fts_data",
+        "site",
+      ].map((name) => ({ name, sql: `CREATE TABLE "${name}" (id)` })),
+    );
+
+    expect(await listExportTables(runner)).toEqual(["site", "post"]);
   });
 });

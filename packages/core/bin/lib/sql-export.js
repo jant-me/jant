@@ -181,6 +181,10 @@ export async function listExportTables(queryRunner, dialect = "sqlite") {
     rows
       .filter((row) => typeof row.name === "string" && row.name.length > 0)
       .filter((row) => !EXCLUDED_TABLES.has(row.name))
+      // D1's own bookkeeping, `_cf_KV` remotely and `_cf_METADATA` locally:
+      // D1 refuses every read of it, the column lookup included, so listing
+      // it failed the whole export.
+      .filter((row) => !String(row.name).startsWith("_cf_"))
       .filter((row) => !String(row.name).startsWith("post_fts"))
       .filter(
         (row) => !String(row.sql ?? "").startsWith("CREATE VIRTUAL TABLE"),
