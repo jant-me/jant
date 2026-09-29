@@ -43,6 +43,7 @@ Jant 的承诺分三档。有些东西每个版本都保持可用，大版本也
 
 - [主题定制](theming.md)页列出的 CSS 变量、数据属性和 class。
 - MCP 工具的返回结果。工具名和参数属于上一档。
+- 帖子 `body` 的内部结构（编辑器自己的文档格式），以及 `bodyHtml` 里的 HTML。读写帖子请用 `bodyMarkdown`。
 - 错误里的 `details`（设置接口的 `rejectedKeys` 除外），以及 `error` 信息的措辞。错误带有 `error` 和 `code`、每个 code 的含义，属于上一档。
 - `@jant/core` 发布的 TypeScript 类型，包括 `createApp` 的类型。
 - 导出站点的 Hugo 模板和 partial。

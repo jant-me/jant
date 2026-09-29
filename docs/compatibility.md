@@ -43,6 +43,7 @@ These can change in any release. Jant keeps them stable where it can, and a rele
 
 - The CSS variables, data attributes, and classes on the [Theming](theming.md) page.
 - What an MCP tool returns. Its name and parameters are covered above.
+- What's inside a post's `body`, which is the editor's own document format, and the HTML in `bodyHtml`. `bodyMarkdown` is the form to read and write.
 - An error's `details`, apart from the settings endpoint's `rejectedKeys`, and the wording of its `error` message. That an error has `error` and `code`, and what each code means, are covered.
 - The TypeScript types `@jant/core` publishes, `createApp`'s included.
 - The exported site's Hugo templates and partials.
