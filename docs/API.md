@@ -9,7 +9,7 @@ Jant exposes a compact HTTP API for automations, content migration, settings too
 
 For static export and round-trip import, also see [Export and Import](export-and-import.md). For backup planning, see [Backups](backups.md).
 
-`/api/auth/*` is handled by better-auth and is primarily intended for browser auth flows, so it is not covered here.
+Signing in happens on the site's own pages, such as `/signin`; the API takes the session cookie they set, or an API token.
 
 ---
 

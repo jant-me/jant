@@ -221,19 +221,25 @@ signinRoutes.post("/signin", async (c) => {
 
   // Two buckets against password guessing: one per client, and one per
   // account, so neither many addresses from one client nor one address from
-  // many clients gets unlimited tries.
+  // many clients gets unlimited tries. The demo's visitors all sign in to one
+  // published account, so there the account bucket would lock everyone out
+  // after a handful of visits; the per-client one still applies.
   const limits = await Promise.all([
     checkRequestRateLimit(c, {
       name: "signin",
       limit: SIGNIN_ATTEMPTS_PER_CLIENT,
       windowSec: SIGNIN_WINDOW_SEC,
     }),
-    checkRequestRateLimit(c, {
-      name: "signin-account",
-      key: email.trim().toLowerCase(),
-      limit: SIGNIN_ATTEMPTS_PER_ACCOUNT,
-      windowSec: SIGNIN_WINDOW_SEC,
-    }),
+    ...(c.var.appConfig.demoMode
+      ? []
+      : [
+          checkRequestRateLimit(c, {
+            name: "signin-account",
+            key: email.trim().toLowerCase(),
+            limit: SIGNIN_ATTEMPTS_PER_ACCOUNT,
+            windowSec: SIGNIN_WINDOW_SEC,
+          }),
+        ]),
   ]);
   if (limits.some((limit) => !limit.ok)) {
     return dsToast(

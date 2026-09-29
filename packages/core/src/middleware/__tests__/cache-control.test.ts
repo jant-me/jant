@@ -85,11 +85,8 @@ describe("noStore", () => {
     app.use("*", defaultCacheControl());
     // Mounted exactly as `app.tsx` does: after the default, before the route.
     app.use("/reset", noStore());
-    app.use("/api/auth/*", noStore());
 
     app.get("/reset", (c) => c.html("<form/>"));
-    // A terminal handler that never calls next(), like better-auth's.
-    app.all("/api/auth/*", (c) => c.json({ ok: true }));
     app.get("/", (c) => c.html("<h1>home</h1>"));
 
     return app;
@@ -99,15 +96,6 @@ describe("noStore", () => {
     // The reset URL carries a one-time token, so the anonymous `no-cache`
     // default — which lets the browser keep the page — is the wrong answer.
     const response = await buildCredentialApp().request("/reset");
-    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
-  });
-
-  it("still reaches a terminal handler that never calls next()", async () => {
-    // better-auth's `/api/auth/*` handler returns without yielding, so the
-    // middleware only runs if it was registered first.
-    const response = await buildCredentialApp().request(
-      "/api/auth/get-session",
-    );
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
   });
 

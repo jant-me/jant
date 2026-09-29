@@ -4,6 +4,7 @@ import { createI18n } from "../../../i18n/index.js";
 import { attachSession } from "../../../middleware/session.js";
 import { requireAuth } from "../../../middleware/auth.js";
 import { signinRoutes } from "../signin.js";
+import { createApp } from "../../../app.js";
 import { createMemoryRateLimiter } from "../../../lib/rate-limit-memory.js";
 import type { Bindings } from "../../../types.js";
 import type { AppVariables } from "../../../types/app-context.js";
@@ -136,7 +137,17 @@ describe("stale session redirect loop", () => {
 });
 
 describe("POST /signin rate limit", () => {
-  function createGuessingApp() {
+  // The limit is on /signin. better-auth's own endpoints would take the same
+  // password with none (/api/auth/sign-in/email), and before setup would take
+  // the first account (/api/auth/sign-up/email), so the app serves none of
+  // them: every sign-in goes through Jant's own pages.
+  it("leaves better-auth's HTTP endpoints unserved", () => {
+    expect(
+      createApp().routes.filter((route) => route.path.startsWith("/api/auth")),
+    ).toEqual([]);
+  });
+
+  function createGuessingApp({ demoMode = false } = {}) {
     const signInEmail = vi.fn(async () => {
       throw new Error("Invalid email or password");
     });
@@ -152,6 +163,7 @@ describe("POST /signin rate limit", () => {
         siteName: "Jant",
         sitePathPrefix: "",
         rateLimit: { enabled: true, searchPerMinute: 30 },
+        demoMode,
       } as AppVariables["appConfig"]);
       c.set("lang", "en");
       c.set("i18n", createI18n("en"));
@@ -194,5 +206,16 @@ describe("POST /signin rate limit", () => {
 
     await expect(res.text()).resolves.toContain("Too many sign-in attempts");
     expect(signInEmail).toHaveBeenCalledTimes(20);
+  });
+
+  // Every demo visitor signs in to the one published account.
+  it("lets many clients sign in to the demo account", async () => {
+    const { app, signInEmail } = createGuessingApp({ demoMode: true });
+
+    for (let i = 0; i < 30; i++) {
+      await attempt(app, "demo@jant.me", `203.0.113.${i}`);
+    }
+
+    expect(signInEmail).toHaveBeenCalledTimes(30);
   });
 });

@@ -63,7 +63,6 @@ function createApp(
   app.get("/signin", (c) => c.text("Signin"));
   app.post("/signout", (c) => c.text("Signout"));
   app.get("/reset", (c) => c.text("Reset"));
-  app.get("/api/auth/session", (c) => c.json({ ok: true }));
   app.get("/assets/client-B2b-1X3C.js", (c) => c.text("js"));
   app.get("/feed", (c) => c.text("rss"));
   app.get("/robots.txt", (c) => c.text("robots"));
@@ -219,13 +218,6 @@ describe("requireOnboarding", () => {
     it("allows /signout", async () => {
       const { app, getCallCount } = createApp(false);
       const res = await app.request("/signout", { method: "POST" });
-      expect(res.status).toBe(200);
-      expect(getCallCount()).toBe(0);
-    });
-
-    it("allows /api/auth/*", async () => {
-      const { app, getCallCount } = createApp(false);
-      const res = await app.request("/api/auth/session");
       expect(res.status).toBe(200);
       expect(getCallCount()).toBe(0);
     });
