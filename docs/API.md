@@ -35,6 +35,7 @@ For static export and round-trip import, also see [Export and Import](export-and
 | Search                  | `/api/search`            | API token or session |
 | Export                  | `/api/export`            | API token or session |
 | GitHub webhooks         | `/api/github-sync`       | GitHub signature     |
+| Telegram webhook        | `/api/telegram`          | Telegram secret      |
 | Internal admin          | `/api/internal/*`        | Internal admin token |
 
 Auth labels in this document:
@@ -44,6 +45,7 @@ Auth labels in this document:
 - `Session or token`: browser session cookie or `Authorization: Bearer <token>`
 - `Internal admin token`: `Authorization: Bearer <INTERNAL_ADMIN_TOKEN>`
 - `GitHub signature`: an `X-Hub-Signature-256` header GitHub computes with the webhook secret; see [GitHub webhooks](#github-webhooks)
+- `Telegram secret`: an `X-Telegram-Bot-Api-Secret-Token` header carrying the secret the webhook was registered with; see [Telegram webhook](#telegram-webhook)
 
 ---
 
@@ -3255,6 +3257,15 @@ GitHub calls these addresses, so they sit in GitHub's settings rather than in an
 | `POST /api/github-sync/app-webhook` | A GitHub App's installation events: uninstalled, suspended, or repositories removed. You enter it in the App's settings                | `GITHUB_APP_WEBHOOK_SECRET`; the address answers `404` while that isn't set                  |
 
 Both answer `200` to an event they don't act on, such as an event of another kind or a push that holds only Jant's own sync commits, so GitHub doesn't mark the delivery failed.
+
+## Telegram webhook
+
+`POST /api/telegram/webhook/:botId`
+
+Telegram calls this address with the messages people send the site's [Telegram bot](configuration.md#telegram-bot-optional). Jant registers it with Telegram: when you save a bot token under Settings → Telegram, or, for a bot pool, with [`jant telegram register-webhooks`](cli.md#jant-telegram-register-webhooks) or on startup in hosted mode. `:botId` is the number before the colon in the bot's token.
+
+- An unknown `botId` answers `404`, and an `X-Telegram-Bot-Api-Secret-Token` that doesn't match the registered secret answers `401`.
+- Every update it accepts answers `200`, even one that fails to publish: the sender gets the error as a chat message, and Telegram doesn't deliver the update again.
 
 ---
 
