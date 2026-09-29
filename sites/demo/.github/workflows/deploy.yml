@@ -52,7 +52,7 @@ jobs:
             exit 0
           fi
 
-          database_id="$(sed -n 's/^database_id = "\\([^"]*\\)".*/\\1/p' wrangler.toml | head -n 1)"
+          database_id="$(sed -n 's/^database_id = "\([^"]*\)".*/\1/p' wrangler.toml | head -n 1)"
 
           if [ -z "${database_id}" ] || [ "${database_id}" = "local" ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
