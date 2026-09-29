@@ -13,6 +13,7 @@ import { createPostService } from "../../../services/post.js";
 import { createPathService } from "../../../services/path.js";
 import { createSettingsService } from "../../../services/settings.js";
 import { createMediaService } from "../../../services/media.js";
+import { createCollectionService } from "../../../services/collection.js";
 import { DEFAULT_APP_PORT } from "../../../lib/env.js";
 import { resolveConfig } from "../../../lib/resolve-config.js";
 import { feedRoutes } from "../feed.js";
@@ -36,6 +37,11 @@ function createFeedTestApp(envOverrides: Partial<Bindings> = {}) {
     ),
     settings: createSettingsService(db as never, DEFAULT_TEST_SITE_ID),
     media: createMediaService(db as never, DEFAULT_TEST_SITE_ID),
+    collections: createCollectionService(
+      db as never,
+      DEFAULT_TEST_SITE_ID,
+      pathService,
+    ),
   };
 
   const app = new Hono<Env>();
@@ -932,6 +938,76 @@ describe("Atom Feed Routes", () => {
       expect(entry).toContain("Corrected copy");
       expect(entry).not.toContain("Original copy");
       expect(entry).toContain("<updated>1970-01-24T03:33:20.000Z</updated>");
+    });
+  });
+
+  // `feed-reading.md` promises a `<category>` per Collection an entry's Thread
+  // is in. The renderer wrote them, but no feed route passed the Collections.
+  describe("collections as categories", () => {
+    async function seedFiledPosts(
+      services: ReturnType<typeof createFeedTestApp>["services"],
+    ) {
+      const reading = await services.collections.create({
+        slug: "reading",
+        title: "Reading",
+      });
+      const walks = await services.collections.create({
+        slug: "city-walks",
+        title: "City Walks",
+      });
+      await services.paths.create({
+        path: "/walks",
+        kind: "alias",
+        collectionId: walks.id,
+      });
+      const root = await services.posts.create({
+        format: "note",
+        title: "Filed Twice",
+        bodyMarkdown: "In two collections",
+        status: "published",
+        collectionIds: [reading.id, walks.id],
+      });
+      await services.posts.create({
+        format: "note",
+        bodyMarkdown: "A reply, in its root's collections",
+        status: "published",
+        replyToId: root.id,
+      });
+      await services.posts.create({
+        format: "note",
+        title: "Loose",
+        bodyMarkdown: "In none",
+        status: "published",
+      });
+    }
+
+    it("names each Collection once per entry, at the address its page answers", async () => {
+      const { app, services } = createFeedTestApp();
+      await seedFiledPosts(services);
+
+      const xml = await (await app.request("/latest/feed")).text();
+
+      expect(xml).toContain(
+        '<category term="reading" scheme="http://localhost:3000/collections" label="Reading" jant:page="http://localhost:3000/reading"/>',
+      );
+      // The slug redirects to the first custom URL, so that is the page.
+      expect(xml).toContain(
+        '<category term="city-walks" scheme="http://localhost:3000/collections" label="City Walks" jant:page="http://localhost:3000/walks"/>',
+      );
+      expect(xml.match(/<category /g)).toHaveLength(2);
+    });
+
+    it("keeps the site path prefix in the category's addresses", async () => {
+      const { app, services } = createFeedTestApp({
+        SITE_PATH_PREFIX: "/blog",
+      });
+      await seedFiledPosts(services);
+
+      const xml = await (await app.request("/latest/feed")).text();
+
+      expect(xml).toContain(
+        '<category term="city-walks" scheme="http://localhost:3000/blog/collections" label="City Walks" jant:page="http://localhost:3000/blog/walks"/>',
+      );
     });
   });
 });

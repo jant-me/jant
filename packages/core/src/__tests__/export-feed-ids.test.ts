@@ -111,6 +111,7 @@ describe.skipIf(!hugoAvailable)("feed entry IDs on an exported site", () => {
         c.set("services", {
           posts,
           paths,
+          collections,
           media,
           settings,
         } as unknown as AppVariables["services"]);

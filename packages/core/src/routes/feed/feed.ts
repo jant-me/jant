@@ -19,6 +19,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import type {
   Bindings,
+  CollectionTagView,
   FeedData,
   FeedKind,
   FeedPostView,
@@ -44,6 +45,7 @@ import { FORMATS } from "../../types/constants.js";
 
 import { createMediaContext, toPostViews } from "../../lib/view.js";
 import { toAbsoluteSiteUrl, toPublicPath } from "../../lib/url.js";
+import { getCollectionPagePath } from "../../lib/collection-paths.js";
 import { getViewLang, viewBasePath } from "../../lib/view-language.js";
 import { toPlainText } from "../../lib/markdown.js";
 
@@ -130,9 +132,10 @@ export async function buildFeedPostViews(
   }
 
   const mediaCtx = createMediaContext(c.var.appConfig);
-  const [mediaMap, aliasesMap] = await Promise.all([
+  const [mediaMap, aliasesMap, collectionsMap] = await Promise.all([
     loadMediaMap(c, [...ids], mediaCtx),
     c.var.services.paths.getPostAliases([...ids]),
+    c.var.services.collections.getCollectionsByPostIds(posts.map((p) => p.id)),
   ]);
   const aliasMap = new Map<string, string>();
   for (const [id, aliases] of aliasesMap) {
@@ -143,6 +146,25 @@ export async function buildFeedPostViews(
     mediaAttachments: mediaMap.get(post.id) ?? [],
   });
 
+  // An entry's `<category>` names each Collection its Thread is in, and its
+  // `jant:page` is where that Collection's page answers: its first custom URL
+  // when it has one, which its slug redirects to, as a post's permalink is.
+  const collectionAliases = await c.var.services.paths.getCollectionAliases([
+    ...new Set(
+      [...collectionsMap.values()].flat().map((collection) => collection.id),
+    ),
+  ]);
+  const collectionTags = (post: Post): CollectionTagView[] =>
+    (collectionsMap.get(post.id) ?? []).map((collection) => ({
+      slug: collection.slug,
+      title: collection.title,
+      url: toPublicPath(
+        collectionAliases.get(collection.id)?.[0] ??
+          getCollectionPagePath(collection.slug),
+        mediaCtx.sitePathPrefix,
+      ),
+    }));
+
   return toPostViews(posts.map(withMedia), mediaCtx, undefined, aliasMap).map(
     (postView, index) => {
       const post = posts[index] as Post;
@@ -150,6 +172,7 @@ export async function buildFeedPostViews(
       const replies = thread?.filter((reply) => reply.id !== post.id) ?? [];
       return {
         ...postView,
+        collections: collectionTags(post),
         feedUpdatedAt: getFeedEntryUpdatedAt(
           post,
           thread,
