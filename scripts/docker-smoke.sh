@@ -7,7 +7,9 @@
 # UID 1000 the way the docs tell a Linux host to, and brings the stack up. Then
 # checks that migrations ran, the container reports healthy, `jant` is on the
 # PATH at the checkout's version, the setup page renders from each catalog,
-# `jant setup` creates the site, and the home page and feed serve it.
+# `jant setup` creates the site, and the home page and feed serve it. Last,
+# stops the container the way a backup does and checks that the database file
+# holds every write.
 set -euo pipefail
 
 image="${1:?Usage: scripts/docker-smoke.sh <image>}"
@@ -88,5 +90,15 @@ home="$(curl -fsS "http://127.0.0.1:$port/")"
 [[ "$home" == *"$site_name"* ]] || fail "the home page does not show the site name"
 feed="$(curl -fsS "http://127.0.0.1:$port/feed")"
 [[ "$feed" == *"<feed"* ]] || fail "/feed is not an Atom feed"
+
+# docs/backups.md stops the stack and copies jant.sqlite. SQLite keeps recent
+# writes in jant.sqlite-wal until the database is closed, so a stop has to
+# close it: a container killed at the stop timeout exits 137 and leaves the
+# account setup just created in the WAL, out of the backup.
+compose stop jant
+[[ "$(docker inspect --format '{{.State.ExitCode}}' "$app")" == "0" ]] ||
+  fail "jant did not exit cleanly when stopped"
+[[ ! -e "$site_dir/data/jant.sqlite-wal" ]] ||
+  fail "jant.sqlite-wal is still there after a stop"
 
 echo "Docker smoke passed: $image"

@@ -190,7 +190,7 @@ docker compose down          # stop the whole stack
 
 Under the default Docker setup, a complete backup must include at least:
 
-- `./data/jant.sqlite` — the database
+- `./data/jant.sqlite` — the database, with `jant.sqlite-wal` next to it if the container didn't stop cleanly
 - `./data/media/` — uploaded media
 
 For details, see [Backups and recovery](backups.md).

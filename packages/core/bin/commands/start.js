@@ -48,5 +48,43 @@ export async function run(argv) {
   autoloadNodeEnv();
   const { start } = await loadNodeRuntime();
   const handle = await start();
+  closeOnSignal(handle);
   console.log(`Jant listening on ${handle.url}`);
+}
+
+/**
+ * Close the server and the database when the process is asked to stop.
+ *
+ * Docker stops a container with SIGTERM, and node runs as PID 1 there, which
+ * ignores a signal it has no handler for: without this, the container is
+ * killed ten seconds later and SQLite's last writes stay in `jant.sqlite-wal`
+ * rather than in `jant.sqlite`, the file a backup copies. Closing the database
+ * writes them back. A second signal stops without waiting.
+ *
+ * @param {{ close(): Promise<void> }} handle - The running server
+ * @param {Pick<NodeJS.Process, "on" | "exit">} [target] - The process to watch
+ * @returns {void}
+ * @example
+ * closeOnSignal(await start());
+ */
+export function closeOnSignal(handle, target = process) {
+  let closing = false;
+  /** @param {NodeJS.Signals} signal */
+  const onSignal = (signal) => {
+    if (closing) {
+      target.exit(1);
+      return;
+    }
+    closing = true;
+    console.log(`Received ${signal}, closing...`);
+    handle.close().then(
+      () => target.exit(0),
+      (error) => {
+        console.error("Failed to close cleanly:", error);
+        target.exit(1);
+      },
+    );
+  };
+  target.on("SIGTERM", onSignal);
+  target.on("SIGINT", onSignal);
 }

@@ -67,37 +67,37 @@ npx jant site snapshot import --remote --config ./wrangler.toml --path ./backups
 - `data/jant.sqlite`
 - `data/media/`
 
-直接归档运行中的 SQLite 文件可能产生不一致快照。先停服务再打包：
+直接归档运行中的 SQLite 文件可能产生不一致快照。先停服务再打包。SQLite 先把写入记在 `jant.sqlite-wal` 里，Jant 关闭数据库时才并入 `jant.sqlite`，正常停止会做这一步；进程若是被强行杀掉，最近的写入还在 `jant.sqlite-wal` 里，所以归档要带上所有 `jant.sqlite*` 文件：
 
 ```bash
 docker compose down
 mkdir -p backups
-tar -czf ./backups/jant-full-$(date +%F).tar.gz data/jant.sqlite data/media
+tar -czf ./backups/jant-full-$(date +%F).tar.gz data/jant.sqlite* data/media
 docker compose up -d
 ```
 
-恢复时先清旧数据——`tar -xzf` 只覆盖同名文件，旧 `data/media/` 里多出来的对象会留下，造成脏数据：
+恢复时先清旧数据。`tar -xzf` 只覆盖同名文件：旧 `data/media/` 里多出来的对象会留下，造成脏数据；留下的旧 `jant.sqlite-wal` 会被叠到恢复的数据库上，把它损坏：
 
 ```bash
 docker compose down
-rm -rf data/jant.sqlite data/media
+rm -rf data/jant.sqlite* data/media
 tar -xzf ./backups/jant-full-2026-03-30.tar.gz
 docker compose up -d
 ```
 
 ### Bare Node + SQLite + 本地媒体
 
-默认布局下，SQLite 文件位于 `DATA_DIR`（默认 `./data`），媒体目录为 `LOCAL_STORAGE_PATH`（默认 `<DATA_DIR>/media`）。停止进程管理器后归档实际配置的路径：
+默认布局下，SQLite 文件位于 `DATA_DIR`（默认 `./data`），媒体目录为 `LOCAL_STORAGE_PATH`（默认 `<DATA_DIR>/media`）。停止进程管理器后归档实际配置的路径，和上面一样带上所有 `jant.sqlite*` 文件：
 
 ```bash
 set -a; source .env; set +a   # 加载 DATA_DIR / LOCAL_STORAGE_PATH
 mkdir -p backups
 tar -czf "./backups/jant-full-$(date +%F).tar.gz" \
-  "${DATA_DIR:-./data}/jant.sqlite" \
+  "${DATA_DIR:-./data}"/jant.sqlite* \
   "${LOCAL_STORAGE_PATH:-${DATA_DIR:-./data}/media}"
 ```
 
-如果 `DATABASE_URL` 显式覆盖了 SQLite 路径（例如 `DATABASE_URL=file:/var/lib/jant/custom.sqlite`），归档对象应跟随 URL 中的路径。
+如果 `DATABASE_URL` 显式覆盖了 SQLite 路径（例如 `DATABASE_URL=file:/var/lib/jant/custom.sqlite`），归档对象应跟随 URL 中的路径，连同旁边的 `-wal` 文件。恢复前删掉数据库文件和它的 `-wal`、`-shm` 文件，做法同 Docker。
 
 ### Node + Postgres
 

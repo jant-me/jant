@@ -190,7 +190,7 @@ docker compose down          # 停止整个栈
 
 默认 Docker 配置下，一次完整备份至少要包含：
 
-- `./data/jant.sqlite` —— 数据库
+- `./data/jant.sqlite` —— 数据库；容器没有正常停止时，旁边还有 `jant.sqlite-wal`
 - `./data/media/` —— 上传的媒体
 
 详见 [备份与恢复](backups.md)。

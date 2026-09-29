@@ -1,4 +1,6 @@
+import { existsSync } from "node:fs";
 import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -11,8 +13,9 @@ import {
   resolveNodeDataDir,
   resolveDatabasePath,
   resolvePublicRequestUrl,
+  start,
 } from "../runtime.js";
-import type { App } from "../../types/app-context.js";
+import type { App, HonoApp } from "../../types/app-context.js";
 import type { Bindings } from "../../types.js";
 
 const tempDirs: string[] = [];
@@ -417,5 +420,55 @@ describe("migrate", () => {
     } as Bindings);
 
     await access(databasePath);
+  });
+});
+
+async function freePort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+  if (!address || typeof address === "string") {
+    throw new Error("Expected a TCP address");
+  }
+  return address.port;
+}
+
+describe("start", () => {
+  // A backup copies `jant.sqlite`. Writes made in WAL mode sit in
+  // `jant.sqlite-wal` until the last connection closes, so stopping the
+  // server has to close the database, not just stop listening.
+  it("writes the WAL back into the database file when it closes", async () => {
+    const root = await mkdtemp(join(tmpdir(), "jant-node-close-"));
+    tempDirs.push(root);
+    const databasePath = join(root, "jant.sqlite");
+    const env = {
+      DATABASE_URL: `file:${databasePath}`,
+      HOST: "127.0.0.1",
+      PORT: String(await freePort()),
+    } as Bindings;
+    await migrate(env);
+
+    const handle = await start(env, {
+      fetch: () => new Response("ok"),
+    } as unknown as HonoApp);
+
+    const writer = new Database(databasePath);
+    writer.exec("CREATE TABLE close_check (value TEXT)");
+    writer.prepare("INSERT INTO close_check (value) VALUES (?)").run("kept");
+    writer.close();
+    expect(existsSync(`${databasePath}-wal`)).toBe(true);
+
+    await handle.close();
+
+    expect(existsSync(`${databasePath}-wal`)).toBe(false);
+    const reader = new Database(databasePath, { readonly: true });
+    try {
+      expect(
+        reader.prepare("SELECT value FROM close_check").pluck().get(),
+      ).toBe("kept");
+    } finally {
+      reader.close();
+    }
   });
 });

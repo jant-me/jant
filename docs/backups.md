@@ -67,37 +67,37 @@ The repo's bundled `compose.yml` puts local data at:
 - `data/jant.sqlite`
 - `data/media/`
 
-Archiving a running SQLite file directly can produce an inconsistent snapshot. Stop the service before packing:
+Archiving a running SQLite file directly can produce an inconsistent snapshot. Stop the service before packing. SQLite writes to `jant.sqlite-wal` first and moves those writes into `jant.sqlite` when Jant closes the database, which a stop does. If the process was killed instead, the latest writes are still in `jant.sqlite-wal`, so the archive takes every `jant.sqlite*` file:
 
 ```bash
 docker compose down
 mkdir -p backups
-tar -czf ./backups/jant-full-$(date +%F).tar.gz data/jant.sqlite data/media
+tar -czf ./backups/jant-full-$(date +%F).tar.gz data/jant.sqlite* data/media
 docker compose up -d
 ```
 
-Clean the old data before restoring — `tar -xzf` only overwrites same-named files, so leftover objects in `data/media/` would survive and turn into stale data:
+Clean the old data before restoring. `tar -xzf` only overwrites same-named files: leftover objects in `data/media/` would survive and turn into stale data, and a leftover `jant.sqlite-wal` would be applied on top of the restored database and corrupt it:
 
 ```bash
 docker compose down
-rm -rf data/jant.sqlite data/media
+rm -rf data/jant.sqlite* data/media
 tar -xzf ./backups/jant-full-2026-03-30.tar.gz
 docker compose up -d
 ```
 
 ### Bare Node + SQLite + local media
 
-In the default layout, the SQLite file lives at `DATA_DIR` (default `./data`) and the media directory at `LOCAL_STORAGE_PATH` (default `<DATA_DIR>/media`). Stop the process manager, then archive whatever paths your config actually uses:
+In the default layout, the SQLite file lives at `DATA_DIR` (default `./data`) and the media directory at `LOCAL_STORAGE_PATH` (default `<DATA_DIR>/media`). Stop the process manager, then archive whatever paths your config actually uses, with every `jant.sqlite*` file as above:
 
 ```bash
 set -a; source .env; set +a   # load DATA_DIR / LOCAL_STORAGE_PATH
 mkdir -p backups
 tar -czf "./backups/jant-full-$(date +%F).tar.gz" \
-  "${DATA_DIR:-./data}/jant.sqlite" \
+  "${DATA_DIR:-./data}"/jant.sqlite* \
   "${LOCAL_STORAGE_PATH:-${DATA_DIR:-./data}/media}"
 ```
 
-If `DATABASE_URL` overrides the SQLite path explicitly (for example `DATABASE_URL=file:/var/lib/jant/custom.sqlite`), archive whatever path the URL points at.
+If `DATABASE_URL` overrides the SQLite path explicitly (for example `DATABASE_URL=file:/var/lib/jant/custom.sqlite`), archive whatever path the URL points at, along with the `-wal` file next to it. Before restoring, delete the database file and its `-wal` and `-shm` files, as in the Docker steps.
 
 ### Node + Postgres
 
