@@ -485,13 +485,17 @@ export function createApp(): HonoApp {
   // Trailing slash redirect (redirect /foo/ to /foo). Leading slashes and
   // backslashes collapse too: `//evil.com/` must become `/evil.com`, never
   // the protocol-relative `//evil.com` a browser would follow off-site.
+  // Anything but a read gets 308, which keeps the method and body: after a
+  // 301, clients resend `POST /api/posts/` as a GET, list the posts with a
+  // 200, and create nothing.
   app.use("*", async (c, next) => {
     const path = c.var.publicPath;
     if (path !== "/" && path.endsWith("/")) {
       const target = `/${path.replace(/^[/\\]+/, "").replace(/\/+$/, "")}`;
       if (isSafeInternalRedirect(target)) {
         const { search } = new URL(c.var.publicRequestUrl);
-        return c.redirect(target + search, 301);
+        const isRead = c.req.method === "GET" || c.req.method === "HEAD";
+        return c.redirect(target + search, isRead ? 301 : 308);
       }
     }
     await next();

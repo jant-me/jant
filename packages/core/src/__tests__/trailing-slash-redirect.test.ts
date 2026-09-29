@@ -15,10 +15,10 @@ const executionCtx = {
   props: {},
 } as unknown as Parameters<ReturnType<typeof createApp>["fetch"]>[2];
 
-function get(path: string) {
+function get(path: string, init?: ConstructorParameters<typeof Request>[1]) {
   const { sqlite } = createTestDatabase();
   return createApp().fetch(
-    new Request(`https://blog.example${path}`),
+    new Request(`https://blog.example${path}`, init),
     {
       SITE_ORIGIN: "https://blog.example",
       AUTH_SECRET: "x".repeat(40),
@@ -45,4 +45,17 @@ describe("trailing slash redirect", () => {
       expect(res.headers.get("location")).toBe("/evil.com");
     },
   );
+
+  // A 301 turns a POST into a GET in fetch, curl -L, and requests: the
+  // client gets a 200 list and nothing is created.
+  it("keeps the method of a write with 308", async () => {
+    const res = await get("/api/posts/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe("/api/posts");
+  });
 });
