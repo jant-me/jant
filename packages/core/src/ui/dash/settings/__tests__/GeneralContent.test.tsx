@@ -66,7 +66,6 @@ function createProps(
       submitUrl: "https://jant.me/discover/submit",
       declaredMode: "latest" as const,
       publicPostCount: 5,
-      featuredPostCount: 2,
       established: true,
       minPublicPosts: 1,
       firstReadMaxHours: 6,
@@ -228,7 +227,6 @@ describe("GeneralContent", () => {
         discoverStatus: {
           ...createProps(false).discoverStatus,
           publicPostCount: 0,
-          featuredPostCount: 0,
           established: false,
         },
       }),
@@ -237,20 +235,6 @@ describe("GeneralContent", () => {
     expect(html).toContain(
       "Nothing published yet. jant.me lists a blog once it has one public post.",
     );
-  });
-
-  it("says a featured-only feed has nothing to carry", async () => {
-    const html = await renderGeneralContent(
-      createProps(false, {
-        discoverStatus: {
-          ...createProps(false).discoverStatus,
-          declaredMode: "featured" as const,
-          featuredPostCount: 0,
-        },
-      }),
-    );
-
-    expect(html).toContain("no post is marked Featured");
   });
 
   it("offers the manual form only when the announcement failed", async () => {
@@ -265,7 +249,6 @@ describe("GeneralContent", () => {
           submitUrl: "https://jant.me/discover/submit",
           declaredMode: "latest",
           publicPostCount: 5,
-          featuredPostCount: 2,
           established: true,
           minPublicPosts: 1,
           firstReadMaxHours: 6,
@@ -295,7 +278,6 @@ describe("GeneralContent", () => {
           submitUrl: "https://jant.me/discover/submit",
           declaredMode: "latest",
           publicPostCount: 5,
-          featuredPostCount: 2,
           established: true,
           minPublicPosts: 1,
           firstReadMaxHours: 6,
@@ -323,7 +305,6 @@ describe("GeneralContent", () => {
           submitUrl: "https://jant.me/discover/submit",
           declaredMode: "none",
           publicPostCount: 5,
-          featuredPostCount: 2,
           established: true,
           minPublicPosts: 1,
           firstReadMaxHours: 6,
@@ -357,7 +338,6 @@ describe("GeneralContent", () => {
           submitUrl: "https://jant.me/discover/submit",
           declaredMode: "latest",
           publicPostCount: 5,
-          featuredPostCount: 2,
           established: true,
           minPublicPosts: 1,
           firstReadMaxHours: 6,
@@ -389,7 +369,6 @@ describe("GeneralContent", () => {
           submitUrl: "https://jant.me/discover/submit",
           declaredMode: "latest",
           publicPostCount: 5,
-          featuredPostCount: 2,
           established: true,
           minPublicPosts: 1,
           firstReadMaxHours: 6,
