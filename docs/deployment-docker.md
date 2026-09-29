@@ -153,11 +153,11 @@ If the container sits behind your own reverse proxy, set `TRUST_PROXY=true`.
 To set up without the browser, such as from a deploy script, run `jant setup` after migrations. It creates the admin account and the site, and finishes onboarding. The password is read from standard input:
 
 ```bash
-printf '%s' "$OWNER_PASSWORD" | docker run --rm -i \
-  -v "$(pwd)/data:/var/lib/jant" \
-  owenyoung/jant:latest \
+printf '%s' "$OWNER_PASSWORD" | docker compose run --rm -T jant \
   jant setup --email you@example.com --password-stdin --site-name "My Blog"
 ```
+
+`docker compose run` gives the command the site's `.env` and data directory, so the account goes into the database the site reads, Postgres included.
 
 `--language` defaults to `en` and `--time-zone` to `UTC`; `jant setup --help` lists every option. A site that is already set up is left unchanged, so running the command on every start never puts back a password changed since.
 
