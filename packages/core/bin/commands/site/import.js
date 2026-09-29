@@ -2595,6 +2595,7 @@ export async function run(argv) {
     const collectionSlugToId = new Map();
     // Custom URLs recreated, for collections here and for posts in step 4.
     let aliasesCreated = 0;
+    let aliasesSkipped = 0;
     // Root posts by slug, for navigation entries that point at a page.
     const postSlugToId = new Map();
 
@@ -2656,6 +2657,7 @@ export async function run(argv) {
           await target.createAlias(alias, slug, "collection");
           aliasesCreated++;
         } catch (err) {
+          aliasesSkipped++;
           console.warn(
             `Warning: couldn't add ${alias} for collection /${slug}: ${err.message}`,
           );
@@ -3037,15 +3039,18 @@ export async function run(argv) {
         rootTargetSlug,
         replySlugPaths,
       );
+      // An address an earlier release allowed can be one this release
+      // refuses, such as `/~me`. The post is in already; losing one old way
+      // in is better than stopping with the site half imported.
       for (const aliasPath of aliasPaths) {
         try {
           await target.createAlias(aliasPath, rootTargetSlug);
           aliasesCreated++;
         } catch (err) {
-          console.error(
-            `Error creating alias "${aliasPath}" for "${postLabel}": ${err.message}`,
+          aliasesSkipped++;
+          console.warn(
+            `Warning: couldn't add ${aliasPath} for "${postLabel}": ${err.message}`,
           );
-          process.exit(1);
         }
       }
     }
@@ -3142,6 +3147,11 @@ export async function run(argv) {
     }
     if (aliasesCreated > 0) {
       console.log(`  Aliases created: ${aliasesCreated}`);
+    }
+    if (aliasesSkipped > 0) {
+      console.log(
+        `  Aliases skipped: ${aliasesSkipped} (see the warnings above)`,
+      );
     }
     if (customUrlsCreated > 0) {
       console.log(`  Redirects created: ${customUrlsCreated}`);
