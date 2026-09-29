@@ -10,4 +10,10 @@ The site and `GET /api/settings` now read these values the same way. `PUBLIC_API
 **Upgrade notes**
 
 - No database migrations.
-- Check your environment before upgrading. Values that used to be ignored or read as a default now stop the site: `STORAGE_DRIVER=S3` (use `s3`), `TRUST_PROXY=1` (use `true`), `DISCOVER=featured` (use `latest` or `off`), a `PAGE_SIZE` above `100`, a `SITE_ORIGIN` without `https://` or with a path (put the path in `SITE_PATH_PREFIX`), and a `SLUG_ID_LENGTH` outside `3` to `32`.
+- Check your environment before upgrading: any value the Settings pages would refuse now stops the site. Values that used to be ignored or read as a default and now stop it include:
+  - a switch set to `1`, `0`, `yes`, or `on`, such as `NOINDEX=1` or `PUBLIC_API_ENABLED=1` (use `true` or `false`; `1` used to read as off)
+  - `STORAGE_DRIVER=S3` (use `s3`) and `DISCOVER=featured` (use `latest` or `off`)
+  - a number outside its range or with a fraction: `PAGE_SIZE` or `ARCHIVE_PAGE_SIZE` above `100`, `RSS_FEED_LIMIT` above `200`, `SUMMARY_MAX_CHARS=0`, `UPLOAD_MAX_FILE_SIZE_MB=0.5`, a `SLUG_ID_LENGTH` outside `3` to `32`
+  - a `SITE_ORIGIN` without `https://` or with a path (put the path in `SITE_PATH_PREFIX`)
+  - a `SITE_LANGUAGE` that isn't a language tag, such as `zh_CN` (use `zh-CN`), and a `MAIN_RSS_FEED` or `DASHBOARD_LANGUAGE` outside its options
+- The error page, `/readyz`, and the Node exit message name each variable and what it takes.

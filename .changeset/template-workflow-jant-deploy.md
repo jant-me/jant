@@ -1,6 +1,6 @@
 ---
-"@jant/core": patch
-"create-jant": patch
+"@jant/core": minor
+"create-jant": minor
 ---
 
 The deploy workflow new projects get runs `jant deploy`. It ran `wrangler d1 migrations apply` and `wrangler deploy` itself, which skipped the data backfills `jant migrate` runs and uploaded unprefixed assets for a site under `SITE_PATH_PREFIX`, so its styles and scripts 404ed.

@@ -8,4 +8,4 @@
 **Upgrade notes**
 
 - No database migrations.
-- Read the reset value from `settings[key]`. A linked setting such as `THEME` isn't listed there; after a reset it takes its default.
+- Read the reset value from `settings[key]`.

@@ -1,6 +1,6 @@
 ---
-"@jant/core": patch
-"create-jant": patch
+"@jant/core": minor
+"create-jant": minor
 ---
 
 `jant site import` and `jant site pull-media` read only what an export may reach. A media path in front matter must stay inside the export's `static/` directory; `../../.ssh/id_rsa` used to be read and uploaded as a public attachment. A linked file is fetched only from a public http(s) address, checked again at every redirect, so an export can't make the command fetch from the machine's own network.

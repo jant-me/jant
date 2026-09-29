@@ -8,4 +8,4 @@ The Docker image no longer gives its app user `/usr/local/bin`, where the `node`
 **Upgrade notes**
 
 - No database migrations.
-- If you run the image with `docker run` rather than the Compose file, run `node bin/jant.js migrate` in it after each image update; the app refuses to start on a database that isn't migrated.
+- If you run the image with `docker run` rather than the Compose file, run `jant migrate` in it after each image update; the app refuses to start on a database that isn't migrated.

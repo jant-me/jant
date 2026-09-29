@@ -1,6 +1,6 @@
 ---
-"@jant/core": patch
-"create-jant": patch
+"@jant/core": minor
+"create-jant": minor
 ---
 
 An empty `CORS_ORIGINS` turns cross-origin API access off, as the configuration reference says. It used to be read as unset, which allows every origin.

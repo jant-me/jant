@@ -1,6 +1,6 @@
 ---
-"@jant/core": patch
-"create-jant": patch
+"@jant/core": minor
+"create-jant": minor
 ---
 
 `@jant/core` publishes its types as `dist/index.d.ts`, instead of pointing TypeScript at its own source, and no longer asks for `hono` as a peer dependency: the Hono it runs on is bundled. `createApp()` is typed as an `App` with a single `fetch` method rather than the whole Hono application. Compatibility adds the `DB` and `R2` binding names to the project layout a release keeps.

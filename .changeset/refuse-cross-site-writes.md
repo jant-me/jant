@@ -1,6 +1,6 @@
 ---
-"@jant/core": patch
-"create-jant": patch
+"@jant/core": minor
+"create-jant": minor
 ---
 
 A signed-in browser's session can no longer be used by another site's page. A request that changes something and carries the session cookie must come from the site itself, or from an origin `CORS_ORIGINS` names; otherwise it gets `403`. Blogs that share a parent domain, such as hosted blogs, were exposed: a page on one could save Code Injection on another whose author was signed in. On a demo site, Code Injection and custom CSS are now locked, since everyone signs in with the same account.
