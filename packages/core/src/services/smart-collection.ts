@@ -70,6 +70,8 @@ export interface SmartCollectionViewer {
   isAuthenticated: boolean;
   /** Content language of the current view, when the site has more than one. */
   lang?: string;
+  /** The site's time zone, whose calendar a year condition reads. */
+  timeZone: string;
 }
 
 export interface SmartCollectionService {
@@ -344,7 +346,10 @@ export function createSmartCollectionService(
       excludeLatestHidden: false,
       // Membership never depends on presentation, so the year condition is
       // pinned to the publication axis whatever the chosen order is.
-      ...toPostFilters(smartCollection.selection, { yearAxis: "published" }),
+      ...toPostFilters(smartCollection.selection, {
+        yearAxis: "published",
+        timeZone: viewer.timeZone,
+      }),
       sortBy: axis,
       sortOrder: smartCollection.sort,
       ignorePinnedSort: true,
@@ -392,7 +397,9 @@ export function createSmartCollectionService(
       // Same predicate builder the pages use, so the number in the directory
       // and the number on the page it links to agree.
       const measured = await posts.aggregateMany(
-        entries.map((entry) => toPostFilters(entry.selection, {})),
+        entries.map((entry) =>
+          toPostFilters(entry.selection, { timeZone: viewer.timeZone }),
+        ),
         {
           status: "published",
           excludeReplies: true,
@@ -599,7 +606,7 @@ export function createSmartCollectionService(
       // builder the saved page will use — a preview that counted differently
       // than the page would be worse than no preview.
       const [matched, all] = await posts.aggregateMany(
-        [toPostFilters(parsed, {}), {}],
+        [toPostFilters(parsed, { timeZone: viewer.timeZone }), {}],
         base,
       );
       return { count: matched?.count ?? 0, baseline: all?.count ?? 0 };

@@ -73,6 +73,7 @@ publicThreadsApiRoutes.get("/", async (c) => {
       lang: query.lang,
       sort: query.sort,
       fold,
+      timeZone: c.var.appConfig.timeZone,
     },
     { cursor: query.cursor, limit: query.limit },
   );

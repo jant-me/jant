@@ -87,7 +87,11 @@ smartCollectionsApiRoutes.post("/preview", requireAuthApi(), async (c) => {
   const { count, baseline } = await c.var.services.smartCollections.preview(
     body.selection ?? {},
     // The author, by session or by token; `isAuthenticated` only reports a session.
-    { isAuthenticated: true, lang: query.lang },
+    {
+      isAuthenticated: true,
+      lang: query.lang,
+      timeZone: c.var.appConfig.timeZone,
+    },
   );
 
   c.header("Cache-Control", "no-store");
@@ -102,6 +106,7 @@ smartCollectionsApiRoutes.get("/", requireAuthApi(), async (c) => {
     await c.var.services.smartCollections.listDirectoryEntries({
       isAuthenticated: true,
       lang: query.lang,
+      timeZone: c.var.appConfig.timeZone,
     });
   return c.json({
     smartCollections: smartCollections.map(toApiSmartCollection),

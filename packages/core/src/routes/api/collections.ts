@@ -86,6 +86,7 @@ collectionsApiRoutes.get("/", requireAuthApi(), async (c) => {
     // only reports a session.
     isAuthenticated: true,
     lang: query.lang,
+    timeZone: c.var.appConfig.timeZone,
   });
 
   return c.json(toApiCollectionList(directoryData));

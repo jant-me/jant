@@ -210,7 +210,7 @@ describe.skipIf(!hugoAvailable)("smart collections on an exported site", () => {
       ["audio"],
     );
 
-    const anonymous = { isAuthenticated: false };
+    const anonymous = { isAuthenticated: false, timeZone: "UTC" };
     for (const definition of SMART_COLLECTIONS) {
       const smartCollection = await smartCollections.create({
         slug: definition.slug,

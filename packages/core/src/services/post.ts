@@ -50,7 +50,7 @@ import {
   type PostListCursorKeyKind,
   type PostListCursorValue,
 } from "../lib/post-list-cursor.js";
-import { now } from "../lib/time.js";
+import { calendarPeriodsIn, now, type CalendarPeriod } from "../lib/time.js";
 import { trimTiptapBody } from "../lib/tiptap-render.js";
 import {
   POST_BODY_HTML_VERSION,
@@ -537,9 +537,13 @@ export interface PostService {
     filters: readonly PostFilters[],
     base: PostFilters,
   ): Promise<PostFilterAggregate[]>;
-  /** Count posts grouped by year-month (YYYY-MM) on the `sortBy` time axis */
+  /**
+   * Count posts grouped by year-month (YYYY-MM) on the `sortBy` time axis, as
+   * the site's wall clock in `timeZone` reads it.
+   */
   countByYearMonth(
-    filters?: PostFilters,
+    filters: PostFilters,
+    timeZone: string,
   ): Promise<{ yearMonth: string; count: number }[]>;
   create(data: CreatePost, summaryConfig?: SummaryConfig): Promise<Post>;
   createWithAttachments(
@@ -870,8 +874,11 @@ export interface PostService {
     rootIds: string[],
     options?: Pick<PostFilters, "publishedBefore">,
   ): Promise<Map<string, Post[]>>;
-  /** Get distinct years with posts, bucketed on the `sortBy` time axis */
-  getDistinctYears(filters?: PostFilters): Promise<number[]>;
+  /**
+   * Get distinct years with posts, bucketed on the `sortBy` time axis as the
+   * site's wall clock in `timeZone` reads it.
+   */
+  getDistinctYears(filters: PostFilters, timeZone: string): Promise<number[]>;
   /**
    * For each Thread ID, resolve the Post that currently ends the chain: the
    * last in Thread order, so the root only while it has no replies.
@@ -1205,16 +1212,58 @@ export function createPostService(
     ];
   }
 
-  function buildYearMonthExpr(column: SQLWrapper): SQL<string> {
-    return databaseDialect === "pg"
-      ? sql<string>`to_char(timezone('UTC', to_timestamp(${column})), 'YYYY-MM')`
-      : sql<string>`strftime('%Y-%m', ${column}, 'unixepoch')`;
+  /**
+   * The calendar periods, on the site's wall clock, that the posts matching
+   * `filters` fall in, with the time axis and condition that select them.
+   * `null` when no post matches.
+   *
+   * Neither SQLite nor D1 knows IANA time zones, so the period boundaries are
+   * worked out here from the earliest and latest matching post, and the query
+   * sorts each row into one by comparing against them.
+   */
+  async function calendarPeriodsOf(
+    filters: PostFilters,
+    unit: "year" | "month",
+    timeZone: string,
+  ) {
+    const axis = timeAxisColumn(filters);
+    const where = and(...buildFilterConditions(filters), isNotNull(axis));
+    const [span] = await db
+      .select({
+        from: sql<number | null>`min(${axis})`,
+        to: sql<number | null>`max(${axis})`,
+      })
+      .from(posts)
+      .where(where);
+    if (span?.from == null || span.to == null) return null;
+    const periods = calendarPeriodsIn(
+      Number(span.from),
+      Number(span.to),
+      unit,
+      timeZone,
+    );
+    return { expr: buildPeriodExpr(axis, periods), where };
   }
 
-  function buildYearExpr(column: SQLWrapper): SQL<string> {
-    return databaseDialect === "pg"
-      ? sql<string>`to_char(timezone('UTC', to_timestamp(${column})), 'YYYY')`
-      : sql<string>`strftime('%Y', ${column}, 'unixepoch')`;
+  /**
+   * A column's period key: the latest of `periods` (oldest first, the first
+   * beginning at or before every value) that begins at or before it. Every
+   * branch reads the column, even with one period: Postgres refuses to group
+   * or order by a bare constant. Boundaries and keys are generated digits,
+   * written as literals because D1 takes at most 100 bound parameters and a
+   * long archive has more month boundaries than that.
+   */
+  function buildPeriodExpr(
+    column: SQLWrapper,
+    periods: readonly CalendarPeriod[],
+  ): SQL<string> {
+    const branches = [...periods]
+      .reverse()
+      .map(
+        (period) =>
+          sql`WHEN ${column} >= ${sql.raw(String(period.start))} THEN ${sql.raw(`'${period.key}'`)}`,
+      );
+    return sql<string>`CASE ${sql.join(branches, sql` `)} END`;
   }
 
   /** Check if a slug is available (not used by posts or path_registry) */
@@ -2645,20 +2694,19 @@ export function createPostService(
       return rows.length;
     },
 
-    async countByYearMonth(filters = {}) {
-      const axis = timeAxisColumn(filters);
-      const conditions = [...buildFilterConditions(filters), isNotNull(axis)];
-      const publishedYearMonthExpr = buildYearMonthExpr(axis);
+    async countByYearMonth(filters, timeZone) {
+      const months = await calendarPeriodsOf(filters, "month", timeZone);
+      if (!months) return [];
 
       return db
         .select({
-          yearMonth: publishedYearMonthExpr.as("year_month"),
+          yearMonth: months.expr.as("year_month"),
           count: sql<number>`CAST(count(*) AS INTEGER)`.as("count"),
         })
         .from(posts)
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .groupBy(publishedYearMonthExpr)
-        .orderBy(desc(publishedYearMonthExpr));
+        .where(months.where)
+        .groupBy(months.expr)
+        .orderBy(desc(months.expr));
     },
 
     async create(data, summaryConfig) {
@@ -5198,19 +5246,16 @@ export function createPostService(
       return result;
     },
 
-    async getDistinctYears(filters = {}) {
-      const axis = timeAxisColumn(filters);
-      const conditions = [...buildFilterConditions(filters), isNotNull(axis)];
-      const publishedYearExpr = buildYearExpr(axis);
+    async getDistinctYears(filters, timeZone) {
+      const years = await calendarPeriodsOf(filters, "year", timeZone);
+      if (!years) return [];
 
       const rows = await db
-        .select({
-          year: publishedYearExpr.as("year"),
-        })
+        .select({ year: years.expr.as("year") })
         .from(posts)
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .groupBy(publishedYearExpr)
-        .orderBy(desc(publishedYearExpr));
+        .where(years.where)
+        .groupBy(years.expr)
+        .orderBy(desc(years.expr));
 
       return rows.map((r) => parseInt(r.year, 10));
     },

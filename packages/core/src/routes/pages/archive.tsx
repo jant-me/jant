@@ -255,11 +255,13 @@ function buildArchivePostFilters(
   opts: {
     isAuthenticated: boolean;
     lang?: string;
+    /** The site's time zone, whose calendar `year` reads. */
+    timeZone: string;
     /** Overrides the request's own selection, for the unfiltered baseline. */
     selection?: PostFilterSelection;
   },
 ): PostFilters {
-  const { isAuthenticated, lang } = opts;
+  const { isAuthenticated, lang, timeZone } = opts;
   const selection = opts.selection ?? params.selection;
   const sortsByActivity = params.sort === "updated";
 
@@ -278,6 +280,7 @@ function buildArchivePostFilters(
     // under `year=N` really belongs to that year.
     ...toPostFilters(selection, {
       yearAxis: sortsByActivity ? "sort" : "published",
+      timeZone,
     }),
     // "thread_updated", not "activity": the archive is the canonical all-posts
     // view, and the quiet-reply switch only promises not to move a Thread on
@@ -443,6 +446,7 @@ export async function renderArchivePage(
   const filters = buildArchivePostFilters(params, {
     isAuthenticated,
     lang: getViewLang(c) ?? undefined,
+    timeZone: appConfig.timeZone,
   });
 
   // --- Parallel data fetches ------------------------------------------------
@@ -464,6 +468,7 @@ export async function renderArchivePage(
     ? buildArchivePostFilters(params, {
         isAuthenticated,
         lang: filters.lang,
+        timeZone: appConfig.timeZone,
         selection: {},
       })
     : undefined;
@@ -484,7 +489,7 @@ export async function renderArchivePage(
       : Promise.resolve(undefined),
     isListView
       ? Promise.resolve([] as { yearMonth: string; count: number }[])
-      : services.posts.countByYearMonth(filters),
+      : services.posts.countByYearMonth(filters, appConfig.timeZone),
     services.posts.list({
       ...filters,
       limit: pageSize,
@@ -492,13 +497,16 @@ export async function renderArchivePage(
     }),
     // The year picker is part of the page, so a signed-out reader mustn't
     // learn from it that private posts exist in a given year.
-    services.posts.getDistinctYears({
-      status: "published",
-      excludeReplies: true,
-      excludePrivate: !isAuthenticated,
-      lang: filters.lang,
-      sortBy: filters.sortBy,
-    }),
+    services.posts.getDistinctYears(
+      {
+        status: "published",
+        excludeReplies: true,
+        excludePrivate: !isAuthenticated,
+        lang: filters.lang,
+        sortBy: filters.sortBy,
+      },
+      appConfig.timeZone,
+    ),
     // Already loaded when the query named a collection, because parsing needed
     // it. Fetched here otherwise, so an unfiltered archive keeps paying for one
     // round of queries rather than two.
@@ -786,6 +794,7 @@ async function buildArchiveFeedData(
   // bound the publication column, the tighter one wins.
   const selectionFilters = toPostFilters(params.selection, {
     yearAxis: sortsByActivity ? "sort" : "published",
+    timeZone: appConfig.timeZone,
   });
   const filters: PostFilters = {
     lang: getViewLang(c) ?? undefined,

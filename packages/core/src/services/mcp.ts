@@ -341,6 +341,7 @@ const mcpTools: McpToolDefinition[] = [
             lang: input.lang,
             sort: input.sort,
             fold: input.fold,
+            timeZone: context.appConfig.timeZone,
           },
           { cursor: input.cursor, limit: input.limit },
         );
@@ -495,6 +496,7 @@ const mcpTools: McpToolDefinition[] = [
       return toApiCollectionList(
         await context.services.collections.listDirectoryData({
           isAuthenticated: true,
+          timeZone: context.appConfig.timeZone,
         }),
       );
     },

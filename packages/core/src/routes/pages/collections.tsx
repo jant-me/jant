@@ -46,6 +46,7 @@ export async function renderCollectionsDirectory(
     c.var.services.collections.listDirectoryData({
       isAuthenticated: c.var.isAuthenticated,
       lang: getViewLang(c) ?? undefined,
+      timeZone: c.var.appConfig.timeZone,
     }),
     getNavigationData(c),
   ]);

@@ -247,39 +247,53 @@ describe("parsePostFilterSelectionStrict", () => {
 });
 
 describe("toPostFilters", () => {
+  const UTC = { timeZone: "UTC" };
+
+  it("reads a year on the site's calendar", () => {
+    expect(
+      toPostFilters({ year: 2025 }, { timeZone: "Asia/Shanghai" }),
+    ).toEqual({
+      // 2024-12-31T16:00:00Z to 2025-12-31T16:00:00Z
+      publishedAfter: 1735660800,
+      publishedBefore: 1767196800,
+    });
+  });
+
   it("pins the year to publication by default", () => {
-    expect(toPostFilters({ year: 2024 }, {})).toEqual({
+    expect(toPostFilters({ year: 2024 }, UTC)).toEqual({
       publishedAfter: Date.UTC(2024, 0, 1) / 1000,
       publishedBefore: Date.UTC(2025, 0, 1) / 1000,
     });
   });
 
   it("follows the sort axis when the caller asks it to", () => {
-    expect(toPostFilters({ year: 2024 }, { yearAxis: "sort" })).toEqual({
+    expect(
+      toPostFilters({ year: 2024 }, { yearAxis: "sort", timeZone: "UTC" }),
+    ).toEqual({
       axisAfter: Date.UTC(2024, 0, 1) / 1000,
       axisBefore: Date.UTC(2025, 0, 1) / 1000,
     });
   });
 
   it("fans one media value out into the two fields PostFilters carries", () => {
-    expect(toPostFilters({ media: "any" }, {})).toEqual({ hasMedia: true });
-    expect(toPostFilters({ media: "none" }, {})).toEqual({ hasMedia: false });
-    expect(toPostFilters({ media: ["image"] }, {})).toEqual({
+    expect(toPostFilters({ media: "any" }, UTC)).toEqual({ hasMedia: true });
+    expect(toPostFilters({ media: "none" }, UTC)).toEqual({ hasMedia: false });
+    expect(toPostFilters({ media: ["image"] }, UTC)).toEqual({
       mediaKinds: ["image"],
     });
   });
 
   it("treats featured as a flag, not a stored visibility", () => {
-    expect(toPostFilters({ visibility: "featured" }, {})).toEqual({
+    expect(toPostFilters({ visibility: "featured" }, UTC)).toEqual({
       featured: true,
     });
-    expect(toPostFilters({ visibility: "latest_hidden" }, {})).toEqual({
+    expect(toPostFilters({ visibility: "latest_hidden" }, UTC)).toEqual({
       visibility: "latest_hidden",
     });
   });
 
   it("contributes nothing for an empty selection", () => {
-    expect(toPostFilters({}, {})).toEqual({});
+    expect(toPostFilters({}, UTC)).toEqual({});
   });
 });
 

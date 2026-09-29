@@ -111,6 +111,8 @@ export interface CollectionDirectoryViewer {
   isAuthenticated: boolean;
   /** Content language of the current view, when the site has more than one. */
   lang?: string;
+  /** The site's time zone, whose calendar a year condition reads. */
+  timeZone: string;
 }
 
 export interface CollectionService {

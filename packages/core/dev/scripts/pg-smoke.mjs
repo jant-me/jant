@@ -271,6 +271,15 @@ async function main() {
     assert.equal(archivePage.status, 200);
     assert.match(await archivePage.text(), /Hello from Postgres smoke\./);
 
+    // The grid groups by month and the year picker by year, each through a
+    // CASE over calendar boundaries worked out for the site's time zone.
+    const thisYear = new Date().getUTCFullYear();
+    const archiveGrid = await handler.fetch(
+      new Request(`http://127.0.0.1:3000/archive?layout=grid&year=${thisYear}`),
+    );
+    assert.equal(archiveGrid.status, 200);
+    assert.match(await archiveGrid.text(), /Hello from Postgres smoke\./);
+
     // The collections directory aggregates with COUNT(DISTINCT) under a LEFT
     // JOIN whose ON clause carries the reader's visibility, plus a correlated
     // subquery inside MAX(). That combination is where the two dialects are

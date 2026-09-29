@@ -20,7 +20,7 @@ function setup() {
     limit = 50,
   ): Promise<string[]> => {
     const page = await services.threads.listThreads(
-      { audience: "reader", selection: {}, ...query },
+      { audience: "reader", selection: {}, timeZone: "UTC", ...query },
       { limit },
     );
     return page.threads.map((thread) => thread.root.id);
@@ -110,6 +110,7 @@ describe("ThreadService.listThreads", () => {
     await expect(
       services.threads.listThreads(
         {
+          timeZone: "UTC",
           audience: "reader",
           selection: { visibility: "featured" },
           sort: "activity",
@@ -220,14 +221,14 @@ describe("ThreadService.listThreads", () => {
     ];
     for (const query of cases) {
       const full = await services.threads.listThreads(
-        { audience: "reader", selection: {}, ...query },
+        { audience: "reader", selection: {}, timeZone: "UTC", ...query },
         { limit: 50 },
       );
       const walked: string[] = [];
       let cursor: string | undefined;
       for (let page = 0; page < 10; page++) {
         const result = await services.threads.listThreads(
-          { audience: "reader", selection: {}, ...query },
+          { audience: "reader", selection: {}, timeZone: "UTC", ...query },
           { limit: 1, cursor },
         );
         walked.push(...result.threads.map((thread) => thread.root.id));
@@ -248,7 +249,7 @@ describe("ThreadService.listThreads", () => {
     const draft = await post({ status: "draft" });
 
     const published = await services.threads.listThreads(
-      { audience: "author", selection: {} },
+      { audience: "author", selection: {}, timeZone: "UTC" },
       { limit: 10 },
     );
     expect(published.threads.map((thread) => thread.root.id)).toEqual([
@@ -256,7 +257,7 @@ describe("ThreadService.listThreads", () => {
       hidden.id,
     ]);
     const drafts = await services.threads.listThreads(
-      { audience: "author", status: "draft", selection: {} },
+      { audience: "author", status: "draft", selection: {}, timeZone: "UTC" },
       { limit: 10 },
     );
     expect(drafts.threads.map((thread) => thread.root.id)).toEqual([draft.id]);
@@ -266,7 +267,11 @@ describe("ThreadService.listThreads", () => {
     const { services } = setup();
     await expect(
       services.threads.listThreads(
-        { audience: "reader", selection: { visibility: "private" } },
+        {
+          audience: "reader",
+          selection: { visibility: "private" },
+          timeZone: "UTC",
+        },
         { limit: 10 },
       ),
     ).rejects.toBeInstanceOf(ValidationError);

@@ -41,6 +41,7 @@ import {
   PUBLIC_ARCHIVE_VISIBILITIES,
 } from "../types/constants.js";
 import { ID_PREFIX, isTypeId } from "./ids.js";
+import { startOfMonthIn } from "./time.js";
 import type { PostFilters } from "../services/post.js";
 
 type Translator = Pick<I18n, "_">;
@@ -177,6 +178,12 @@ export interface DimensionContext {
   collections?: CollectionVocabulary;
   /** Defaults to `published`. */
   yearAxis?: YearAxis;
+}
+
+/** What turning a selection into `PostFilters` needs beyond the dimensions. */
+export interface PostFilterContext extends DimensionContext {
+  /** The site's time zone: a `year` is a calendar year on its wall clock. */
+  timeZone: string;
 }
 
 // =============================================================================
@@ -323,7 +330,7 @@ interface Dimension<K extends FilterDimensionKey> {
   /** This value's slice of a `PostFilters`. */
   toPostFilter(
     value: FilterDimensionValues[K],
-    ctx: DimensionContext,
+    ctx: PostFilterContext,
   ): Partial<PostFilters>;
   /**
    * How this value reads to a reader, on its own.
@@ -643,8 +650,8 @@ const YEAR_DIMENSION: Dimension<"year"> = {
       if (!raw) return { state: "absent" };
       const year = Number.parseInt(raw, 10);
       // Bounded at both ends, and the ceiling is the load-bearing one:
-      // `toPostFilter` turns a year into `Date.UTC` bounds, which go `NaN` past
-      // year 275760. A NaN bound is a comparison every row fails, so the page
+      // `toPostFilter` turns a year into `Date.UTC`-based bounds, which go `NaN`
+      // past year 275760. A NaN bound is a comparison every row fails, so the page
       // would render empty with nothing to say why.
       if (
         !Number.isFinite(year) ||
@@ -681,8 +688,8 @@ const YEAR_DIMENSION: Dimension<"year"> = {
   },
   control: { kind: "year" },
   toPostFilter(value, ctx) {
-    const after = Date.UTC(value, 0, 1) / 1000;
-    const before = Date.UTC(value + 1, 0, 1) / 1000;
+    const after = startOfMonthIn(value, 1, ctx.timeZone);
+    const before = startOfMonthIn(value + 1, 1, ctx.timeZone);
     // `PostFilters` has no year field: a year is a pair of timestamp bounds on
     // whichever column the caller is treating as the timeline.
     return ctx.yearAxis === "sort"
@@ -1267,15 +1274,15 @@ function spellDimension<K extends FilterDimensionKey>(
  * and inside an aggregate count.
  *
  * @param selection - Dimensions the reader chose
- * @param ctx - Collection vocabulary and year axis
+ * @param ctx - Collection vocabulary, year axis, and the site's time zone
  * @returns The matching `PostFilters` slice
  * @example
- * toPostFilters({ format: "quote", media: "any" }, {});
+ * toPostFilters({ format: "quote", media: "any" }, { timeZone: "UTC" });
  * // { format: "quote", hasMedia: true }
  */
 export function toPostFilters(
   selection: PostFilterSelection,
-  ctx: DimensionContext,
+  ctx: PostFilterContext,
 ): Partial<PostFilters> {
   let filters: Partial<PostFilters> = {};
   for (const key of FILTER_DIMENSION_KEYS) {
@@ -1289,11 +1296,11 @@ export function toPostFilters(
 function filterFor<K extends FilterDimensionKey>(
   key: K,
   value: FilterDimensionValues[K],
-  ctx: DimensionContext,
+  ctx: PostFilterContext,
 ): Partial<PostFilters> {
   const toFilter = FILTER_DIMENSIONS[key].toPostFilter as unknown as (
     value: FilterDimensionValues[K],
-    ctx: DimensionContext,
+    ctx: PostFilterContext,
   ) => Partial<PostFilters>;
   return toFilter(value, ctx);
 }

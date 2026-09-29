@@ -8,6 +8,8 @@ import {
   formatRelativeTime,
   formatRelativeAge,
   formatYearMonth,
+  startOfMonthIn,
+  calendarPeriodsIn,
 } from "../time.js";
 
 describe("now", () => {
@@ -214,5 +216,59 @@ describe("formatYearMonth", () => {
     // 2024-02-01T00:30:00Z
     const timestamp = 1706747400;
     expect(formatYearMonth(timestamp, "America/New_York")).toBe("2024-01");
+  });
+});
+
+describe("startOfMonthIn", () => {
+  it("starts a year at local midnight in a zone ahead of UTC", () => {
+    // 2024-12-31T16:00:00Z
+    expect(startOfMonthIn(2025, 1, "Asia/Shanghai")).toBe(1735660800);
+  });
+
+  it("uses the offset in force at the boundary, across daylight saving", () => {
+    // EST in January, EDT by April
+    expect(startOfMonthIn(2024, 1, "America/New_York")).toBe(1704085200);
+    expect(startOfMonthIn(2024, 4, "America/New_York")).toBe(1711944000);
+    // Summer time on New Year's Day in the southern hemisphere
+    expect(startOfMonthIn(2024, 1, "Pacific/Auckland")).toBe(1704020400);
+  });
+
+  it("handles offsets that aren't whole hours", () => {
+    expect(startOfMonthIn(2024, 1, "Asia/Kathmandu")).toBe(1704046500);
+  });
+
+  it("reads month 13 as January of the next year", () => {
+    expect(startOfMonthIn(2024, 13, "UTC")).toBe(
+      startOfMonthIn(2025, 1, "UTC"),
+    );
+  });
+});
+
+describe("calendarPeriodsIn", () => {
+  // 2024-12-31T17:00:00Z, already 2025 in Shanghai
+  const newYearInShanghai = 1735664400;
+
+  it("covers a span with the zone's calendar years", () => {
+    expect(
+      calendarPeriodsIn(1704067200, newYearInShanghai, "year", "Asia/Shanghai"),
+    ).toEqual([
+      { key: "2024", start: startOfMonthIn(2024, 1, "Asia/Shanghai") },
+      { key: "2025", start: 1735660800 },
+    ]);
+    expect(
+      calendarPeriodsIn(1704067200, newYearInShanghai, "year", "UTC").map(
+        (period) => period.key,
+      ),
+    ).toEqual(["2024"]);
+  });
+
+  it("covers a span with every month between, across a year", () => {
+    const keys = calendarPeriodsIn(
+      startOfMonthIn(2024, 11, "UTC"),
+      startOfMonthIn(2025, 2, "UTC"),
+      "month",
+      "UTC",
+    ).map((period) => period.key);
+    expect(keys).toEqual(["2024-11", "2024-12", "2025-01", "2025-02"]);
   });
 });

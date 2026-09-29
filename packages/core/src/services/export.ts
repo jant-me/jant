@@ -415,7 +415,10 @@ export function createExportService(
           ? // The export builds a public static site, so it sees what a
             // signed-out reader sees. Language narrowing is not applied: the
             // export walks every language itself.
-            services.collections.listDirectoryData({ isAuthenticated: false })
+            services.collections.listDirectoryData({
+              isAuthenticated: false,
+              timeZone: siteConfig.timeZone,
+            })
           : Promise.resolve(null);
 
       // 1. Query all data

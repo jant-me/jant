@@ -294,6 +294,7 @@ describe("CollectionService", () => {
       // A stranger who could subtract the directory's number from the
       // collection page's would learn how much unpublished work is in here.
       const anonymous = await collectionService.listDirectoryData({
+        timeZone: "UTC",
         isAuthenticated: false,
       });
       expect(anonymous.collections[0]?.threadCount).toBe(1);
@@ -302,6 +303,7 @@ describe("CollectionService", () => {
       );
 
       const author = await collectionService.listDirectoryData({
+        timeZone: "UTC",
         isAuthenticated: true,
       });
       expect(author.collections[0]?.threadCount).toBe(2);
@@ -324,6 +326,7 @@ describe("CollectionService", () => {
       await collectionService.addThread(reading.id, root.id);
 
       const directory = await collectionService.listDirectoryData({
+        timeZone: "UTC",
         isAuthenticated: false,
       });
       expect(directory.collections[0]?.threadCount).toBe(1);
@@ -349,6 +352,7 @@ describe("CollectionService", () => {
       }
 
       const englishView = await collectionService.listDirectoryData({
+        timeZone: "UTC",
         isAuthenticated: false,
         lang: "en",
       });
@@ -356,6 +360,7 @@ describe("CollectionService", () => {
 
       // The row itself stays listed in every view — only its number narrows.
       const japaneseView = await collectionService.listDirectoryData({
+        timeZone: "UTC",
         isAuthenticated: false,
         lang: "ja",
       });
@@ -380,6 +385,7 @@ describe("CollectionService", () => {
       await collectionService.addThread(reading.id, post.id);
 
       const directory = await collectionService.listDirectoryData({
+        timeZone: "UTC",
         isAuthenticated: false,
       });
 
@@ -428,6 +434,7 @@ describe("CollectionService", () => {
         await postService.update(root.id, { bodyMarkdown: "after" });
 
         const directory = await collectionService.listDirectoryData({
+          timeZone: "UTC",
           isAuthenticated: false,
         });
         expect(directory.collections[0]?.recentActivityAt).toBe(1704067200);
@@ -458,6 +465,7 @@ describe("CollectionService", () => {
         });
 
         const directory = await collectionService.listDirectoryData({
+          timeZone: "UTC",
           isAuthenticated: false,
         });
         expect(directory.collections[0]?.recentActivityAt).toBe(1704067260);
@@ -474,6 +482,7 @@ describe("CollectionService", () => {
       });
 
       const directory = await collectionService.listDirectoryData({
+        timeZone: "UTC",
         isAuthenticated: false,
       });
 

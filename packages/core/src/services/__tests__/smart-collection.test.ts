@@ -67,8 +67,8 @@ describe("SmartCollectionService", () => {
     );
   });
 
-  const anonymous = { isAuthenticated: false };
-  const author = { isAuthenticated: true };
+  const anonymous = { isAuthenticated: false, timeZone: "UTC" };
+  const author = { isAuthenticated: true, timeZone: "UTC" };
 
   describe("create", () => {
     it("stores conditions and reads them back in the shared vocabulary", async () => {

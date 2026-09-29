@@ -53,6 +53,7 @@ describe("Collections Listing Page - Data Logic", () => {
     await collectionService.addThread(recipes.id, p2.id);
 
     const directory = await collectionService.listDirectoryData({
+      timeZone: "UTC",
       isAuthenticated: false,
     });
 
@@ -69,6 +70,7 @@ describe("Collections Listing Page - Data Logic", () => {
 
   it("returns empty list when no collections exist", async () => {
     const directory = await collectionService.listDirectoryData({
+      timeZone: "UTC",
       isAuthenticated: false,
     });
     expect(directory.collections).toHaveLength(0);
@@ -96,6 +98,7 @@ describe("Collections Listing Page - Data Logic", () => {
     await postService.delete(post.id);
 
     const directory = await collectionService.listDirectoryData({
+      timeZone: "UTC",
       isAuthenticated: false,
     });
     expect(directory.collections[0]?.threadCount).toBe(1);

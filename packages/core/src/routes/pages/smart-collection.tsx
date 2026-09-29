@@ -92,6 +92,7 @@ export async function renderSmartCollectionPage(
   const viewer = {
     isAuthenticated: navData.isAuthenticated,
     lang: getViewLang(c) ?? undefined,
+    timeZone: c.var.appConfig.timeZone,
   };
 
   // The rating order is offered only where it would say something. One cheap
@@ -237,6 +238,7 @@ export async function renderSmartCollectionFeed(
   const filters = services.smartCollections.toPostFilters(smartCollection, {
     isAuthenticated: false,
     lang: getViewLang(c) ?? undefined,
+    timeZone: appConfig.timeZone,
   });
   const posts = await services.posts.list({
     ...filters,

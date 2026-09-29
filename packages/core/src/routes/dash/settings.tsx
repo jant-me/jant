@@ -1288,7 +1288,10 @@ settingsRoutes.post("/avatar/display", async (c) => {
 settingsRoutes.get("/navigation", async (c) => {
   const [navItems, directoryData, suggestedLinks] = await Promise.all([
     c.var.services.navItems.list(),
-    c.var.services.collections.listDirectoryData({ isAuthenticated: true }),
+    c.var.services.collections.listDirectoryData({
+      isAuthenticated: true,
+      timeZone: c.var.appConfig.timeZone,
+    }),
     c.var.services.navItems.listSuggestedLinks({
       siteOrigin: c.var.appConfig.siteOrigin,
       sitePathPrefix: c.var.appConfig.sitePathPrefix,

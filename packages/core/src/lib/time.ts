@@ -95,23 +95,6 @@ export function formatDate(timestamp: number, timeZone = "UTC"): string {
 }
 
 /**
- * Formats a Unix timestamp as a year-month string for grouping.
- *
- * Converts a Unix timestamp (in seconds) to a "YYYY-MM" format string, useful for
- * grouping posts by month in archives or creating month-based URLs. Uses the
- * provided timezone and defaults to UTC when no explicit timezone is given.
- *
- * @param timestamp - Unix timestamp in seconds to format
- * @param timeZone - IANA timezone identifier used for display
- * @returns Year-month string in "YYYY-MM" format
- *
- * @example
- * ```ts
- * const yearMonth = formatYearMonth(1706745600);
- * // Returns: "2024-02"
- * ```
- */
-/**
  * Formats a Unix timestamp as a 24-hour time string (HH:MM).
  *
  * Converts a Unix timestamp (in seconds) to a zero-padded time string in
@@ -212,6 +195,23 @@ export function formatRelativeAge(timestamp: number, timeZone = "UTC"): string {
   return /^[0-9]+[mhd]$/.test(relative) ? `${relative} ago` : relative;
 }
 
+/**
+ * Formats a Unix timestamp as a year-month string for grouping.
+ *
+ * Converts a Unix timestamp (in seconds) to a "YYYY-MM" format string, useful for
+ * grouping posts by month in archives or creating month-based URLs. Uses the
+ * provided timezone and defaults to UTC when no explicit timezone is given.
+ *
+ * @param timestamp - Unix timestamp in seconds to format
+ * @param timeZone - IANA timezone identifier used for display
+ * @returns Year-month string in "YYYY-MM" format
+ *
+ * @example
+ * ```ts
+ * const yearMonth = formatYearMonth(1706745600);
+ * // Returns: "2024-02"
+ * ```
+ */
 export function formatYearMonth(timestamp: number, timeZone = "UTC"): string {
   const date = new Date(timestamp * 1000);
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -222,6 +222,126 @@ export function formatYearMonth(timestamp: number, timeZone = "UTC"): string {
   const year = parts.find((part) => part.type === "year")?.value ?? "1970";
   const month = parts.find((part) => part.type === "month")?.value ?? "01";
   return `${year}-${month}`;
+}
+
+const offsetFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/** How far `timeZone`'s wall clock is ahead of UTC at an instant, in ms. */
+function timeZoneOffsetMs(instantMs: number, timeZone: string): number {
+  let formatter = offsetFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+    });
+    offsetFormatters.set(timeZone, formatter);
+  }
+  const wall: Record<string, number> = {};
+  for (const part of formatter.formatToParts(instantMs)) {
+    if (part.type !== "literal") wall[part.type] = Number(part.value);
+  }
+  const wallMs = Date.UTC(
+    wall.year ?? 1970,
+    (wall.month ?? 1) - 1,
+    wall.day ?? 1,
+    wall.hour ?? 0,
+    wall.minute ?? 0,
+    wall.second ?? 0,
+  );
+  return wallMs - Math.floor(instantMs / 1000) * 1000;
+}
+
+/**
+ * The Unix timestamp at which a calendar month begins on a time zone's wall
+ * clock.
+ *
+ * @param year - Calendar year
+ * @param month - Month from 1 to 12; 13 is January of the next year
+ * @param timeZone - IANA time zone identifier
+ * @returns Unix seconds of 00:00 on the month's first day in that zone
+ *
+ * @example
+ * ```ts
+ * startOfMonthIn(2025, 1, "Asia/Shanghai");
+ * // Returns: 1735660800 (2024-12-31T16:00:00Z)
+ * ```
+ */
+export function startOfMonthIn(
+  year: number,
+  month: number,
+  timeZone: string,
+): number {
+  const wallMs = Date.UTC(year, month - 1, 1);
+  // The offset at a first guess can differ from the one at the answer when a
+  // daylight-saving change falls between the two; one more pass settles it.
+  const guessMs = wallMs - timeZoneOffsetMs(wallMs, timeZone);
+  return Math.floor((wallMs - timeZoneOffsetMs(guessMs, timeZone)) / 1000);
+}
+
+/** A calendar year or month, and the Unix second it begins. */
+export interface CalendarPeriod {
+  /** `YYYY` for a year, `YYYY-MM` for a month. */
+  key: string;
+  start: number;
+}
+
+/**
+ * The calendar years or months on a time zone's wall clock that cover a span
+ * of time, oldest first.
+ *
+ * @param from - Earliest Unix timestamp to cover, in seconds
+ * @param to - Latest Unix timestamp to cover, in seconds
+ * @param unit - `year` or `month`
+ * @param timeZone - IANA time zone identifier
+ * @returns Every period from the one holding `from` to the one holding `to`
+ *
+ * @example
+ * ```ts
+ * calendarPeriodsIn(1735660800, 1735700000, "month", "Asia/Shanghai");
+ * // Returns: [{ key: "2025-01", start: 1735660800 }]
+ * ```
+ */
+export function calendarPeriodsIn(
+  from: number,
+  to: number,
+  unit: "year" | "month",
+  timeZone: string,
+): CalendarPeriod[] {
+  const [fromYear = 1970, fromMonth = 1] = formatYearMonth(from, timeZone)
+    .split("-")
+    .map(Number);
+  const [toYear = 1970, toMonth = 1] = formatYearMonth(to, timeZone)
+    .split("-")
+    .map(Number);
+  const periods: CalendarPeriod[] = [];
+  if (unit === "year") {
+    for (let year = fromYear; year <= toYear; year++) {
+      periods.push({
+        key: String(year),
+        start: startOfMonthIn(year, 1, timeZone),
+      });
+    }
+    return periods;
+  }
+  for (
+    let index = fromYear * 12 + fromMonth - 1;
+    index <= toYear * 12 + toMonth - 1;
+    index++
+  ) {
+    const year = Math.floor(index / 12);
+    const month = (index % 12) + 1;
+    periods.push({
+      key: `${year}-${String(month).padStart(2, "0")}`,
+      start: startOfMonthIn(year, month, timeZone),
+    });
+  }
+  return periods;
 }
 
 /**

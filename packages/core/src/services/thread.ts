@@ -61,6 +61,8 @@ export interface ThreadListQuery {
   sort?: ThreadSort;
   /** Attach the homepage fold to each Thread. */
   fold?: boolean;
+  /** The site's time zone, whose calendar a `year` in `selection` reads. */
+  timeZone: string;
 }
 
 /** One Thread, as a list or a lookup returns it. */
@@ -284,7 +286,10 @@ export function createThreadService(deps: {
         const { collection: _named, ...rootSelection } = selection;
         const options: ThreadRootPageOptions = {
           ...base,
-          rootFilters: toPostFilters(rootSelection, { yearAxis: "published" }),
+          rootFilters: toPostFilters(rootSelection, {
+            yearAxis: "published",
+            timeZone: query.timeZone,
+          }),
         };
         const collectionOrder =
           query.sort === undefined
@@ -310,7 +315,10 @@ export function createThreadService(deps: {
           excludeReplies: true,
           // Membership never depends on presentation: the year reads the
           // publication date whatever the order.
-          ...toPostFilters(selection, { yearAxis: "published" }),
+          ...toPostFilters(selection, {
+            yearAxis: "published",
+            timeZone: query.timeZone,
+          }),
           ...(visibility === "featured"
             ? toListOrder("published")
             : toListOrder(query.sort ?? "activity")),

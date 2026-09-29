@@ -1574,10 +1574,13 @@ describe("PostService", () => {
         publishedAt: 1706745600, // Feb 1, 2024
       });
 
-      const counts = await postService.countByYearMonth({
-        status: "published",
-        excludeReplies: true,
-      });
+      const counts = await postService.countByYearMonth(
+        {
+          status: "published",
+          excludeReplies: true,
+        },
+        "UTC",
+      );
 
       expect(counts).toEqual([
         { yearMonth: "2024-02", count: 1 },
@@ -1604,12 +1607,54 @@ describe("PostService", () => {
         publishedAt: 1706745600,
       });
 
-      const counts = await postService.countByYearMonth({
-        format: "note",
-        visibility: "private",
-      });
+      const counts = await postService.countByYearMonth(
+        {
+          format: "note",
+          visibility: "private",
+        },
+        "UTC",
+      );
 
       expect(counts).toEqual([{ yearMonth: "2024-01", count: 1 }]);
+    });
+
+    // 2024-12-31T17:00:00Z is 01:00 on New Year's Day in Shanghai.
+    it("buckets months and years on the site's calendar", async () => {
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "new year",
+        publishedAt: 1735664400,
+      });
+      await postService.create({
+        format: "note",
+        bodyMarkdown: "december",
+        publishedAt: 1733011200, // 2024-12-01T00:00:00Z
+      });
+      const filters = {
+        status: "published" as const,
+        sortBy: "published" as const,
+      };
+
+      expect(
+        await postService.countByYearMonth(filters, "Asia/Shanghai"),
+      ).toEqual([
+        { yearMonth: "2025-01", count: 1 },
+        { yearMonth: "2024-12", count: 1 },
+      ]);
+      expect(await postService.countByYearMonth(filters, "UTC")).toEqual([
+        { yearMonth: "2024-12", count: 2 },
+      ]);
+      expect(
+        await postService.getDistinctYears(filters, "Asia/Shanghai"),
+      ).toEqual([2025, 2024]);
+      expect(await postService.getDistinctYears(filters, "UTC")).toEqual([
+        2024,
+      ]);
+    });
+
+    it("finds no periods when nothing matches", async () => {
+      expect(await postService.countByYearMonth({}, "UTC")).toEqual([]);
+      expect(await postService.getDistinctYears({}, "UTC")).toEqual([]);
     });
   });
 
