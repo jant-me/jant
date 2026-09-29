@@ -632,6 +632,47 @@ describe("Posts API Routes", () => {
       expect(body.bodyHtml).toContain("<strong>bold</strong>");
     });
 
+    // A first segment that starts with `_` or `.` is Jant's, so a post stored
+    // there would answer 404 at its own address.
+    it.each(["_notes/plan", ".plan", "~me", "日记/第一篇"])(
+      "refuses the path %s",
+      async (path) => {
+        const { app } = createTestApp({ authenticated: true });
+        app.route("/api/posts", postsApiRoutes);
+
+        const res = await app.request("/api/posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ format: "note", bodyMarkdown: "x", path }),
+        });
+
+        expect(res.status).toBe(400);
+        await expect(res.json()).resolves.toMatchObject({
+          code: "VALIDATION_ERROR",
+        });
+      },
+    );
+
+    it("takes a path that starts with a letter or digit", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+
+      const res = await app.request("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          format: "note",
+          bodyMarkdown: "x",
+          path: "/Notes/2024/plan.v2/",
+        }),
+      });
+
+      expect(res.status).toBe(201);
+      const created = await res.json();
+      const resolved = await services.paths.resolve("notes/2024/plan.v2");
+      expect(resolved?.postId).toBe(created.id);
+    });
+
     it("treats single newlines in bodyMarkdown as paragraph whitespace", async () => {
       const { app } = createTestApp({ authenticated: true });
       app.route("/api/posts", postsApiRoutes);

@@ -311,6 +311,15 @@ const NavItemIdSchema = createTypeIdSchema(ID_PREFIX.navItem);
 const PathIdSchema = createTypeIdSchema(ID_PREFIX.path);
 
 /**
+ * An address the author picks, without its leading slash. It starts with a
+ * letter or digit because a first segment that starts with `_` or `.` belongs
+ * to Jant (`isReservedPath`).
+ */
+const AUTHOR_PATH_PATTERN = /^[a-z0-9][a-z0-9\-/.]*$/;
+const AUTHOR_PATH_MESSAGE =
+  "Path must start with a letter or digit and contain only lowercase letters, digits, hyphens, slashes, and dots";
+
+/**
  * Base post fields (shared between create and update schemas)
  */
 const PostFieldsSchema = z.object({
@@ -331,7 +340,7 @@ const PostFieldsSchema = z.object({
     .string()
     .min(1)
     .transform(normalizePath)
-    .pipe(z.string().min(1))
+    .pipe(z.string().min(1).regex(AUTHOR_PATH_PATTERN, AUTHOR_PATH_MESSAGE))
     .optional()
     .or(z.literal("").transform(() => undefined)),
   title: sanitizeText(300)
@@ -1052,9 +1061,9 @@ export const CreateCustomUrlSchema = z.object({
     .string()
     .min(1)
     .max(512)
-    .regex(
-      /^\/?[a-z0-9][a-z0-9\-/.]*$/,
-      "Path must contain only lowercase alphanumeric characters, hyphens, slashes, and dots",
+    .refine(
+      (p) => AUTHOR_PATH_PATTERN.test(p.replace(/^\//, "")),
+      AUTHOR_PATH_MESSAGE,
     )
     .transform((p) => (p.startsWith("/") ? p : `/${p}`)),
   targetType: CreatableCustomUrlTargetTypeSchema,
