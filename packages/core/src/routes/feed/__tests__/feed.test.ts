@@ -480,12 +480,18 @@ describe("Atom Feed Routes", () => {
       expect(res.headers.get("Location")).toBe("/latest/feed?format=note");
     });
 
-    it("redirects /feed/all/atom.xml to /latest/feed", async () => {
+    it.each([
+      ["/feed/all/atom.xml", "/latest/feed"],
+      ["/feed/latest/atom.xml", "/latest/feed"],
+      ["/feed/featured/atom.xml", "/featured/feed"],
+      ["/feed/featured", "/featured/feed"],
+      ["/feed/atom.xml", "/feed"],
+    ])("redirects %s to %s, keeping the filter", async (from, to) => {
       const { app } = createFeedTestApp();
 
-      const res = await app.request("/feed/all/atom.xml?format=link");
+      const res = await app.request(`${from}?format=link`);
       expect(res.status).toBe(308);
-      expect(res.headers.get("Location")).toBe("/latest/feed");
+      expect(res.headers.get("Location")).toBe(`${to}?format=link`);
     });
   });
 

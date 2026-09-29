@@ -338,52 +338,27 @@ feedRoutes.use("*", async (c, next) => {
 // Atom — /feed
 feedRoutes.get("/", renderMainFeed);
 
-// Legacy — /feed/latest moved to the canonical /latest/feed. Kept
-// indefinitely as a 308 so old subscribers don't break; preserves the
-// ?format= query string.
-feedRoutes.get("/latest", (c) => {
-  const sitePathPrefix = c.var.appConfig.sitePathPrefix;
-  const qs = c.req.url.includes("?")
-    ? c.req.url.slice(c.req.url.indexOf("?"))
-    : "";
+/**
+ * A 308 from a feed address that moved to where it lives now, kept
+ * indefinitely so old subscriptions don't break. The query string goes along:
+ * a subscriber's `?format=` is what they subscribed to.
+ */
+function redirectLegacyFeed(c: Context<Env>, to: string): Response {
+  const url = new URL(c.req.url);
   return c.redirect(
-    `${toPublicPath("/latest/feed", sitePathPrefix)}${qs}`,
+    `${toPublicPath(to, c.var.appConfig.sitePathPrefix)}${url.search}`,
     308,
   );
-});
+}
 
-// Legacy — /feed/featured moved to the canonical /featured/feed.
-feedRoutes.get("/featured", (c) => {
-  const sitePathPrefix = c.var.appConfig.sitePathPrefix;
-  return c.redirect(toPublicPath("/featured/feed", sitePathPrefix), 308);
-});
-
-// Legacy aliases
-feedRoutes.get("/all", (c) => {
-  const sitePathPrefix = c.var.appConfig.sitePathPrefix;
-  const qs = c.req.url.includes("?")
-    ? c.req.url.slice(c.req.url.indexOf("?"))
-    : "";
-  return c.redirect(
-    `${toPublicPath("/latest/feed", sitePathPrefix)}${qs}`,
-    308,
-  );
-});
-
-// Legacy atom.xml paths redirect to canonical feed paths
-feedRoutes.get("/atom.xml", (c) => {
-  const sitePathPrefix = c.var.appConfig.sitePathPrefix;
-  return c.redirect(toPublicPath("/feed", sitePathPrefix), 308);
-});
-feedRoutes.get("/latest/atom.xml", (c) => {
-  const sitePathPrefix = c.var.appConfig.sitePathPrefix;
-  return c.redirect(toPublicPath("/latest/feed", sitePathPrefix), 308);
-});
-feedRoutes.get("/featured/atom.xml", (c) => {
-  const sitePathPrefix = c.var.appConfig.sitePathPrefix;
-  return c.redirect(toPublicPath("/featured/feed", sitePathPrefix), 308);
-});
-feedRoutes.get("/all/atom.xml", (c) => {
-  const sitePathPrefix = c.var.appConfig.sitePathPrefix;
-  return c.redirect(toPublicPath("/latest/feed", sitePathPrefix), 308);
-});
+feedRoutes.get("/latest", (c) => redirectLegacyFeed(c, "/latest/feed"));
+feedRoutes.get("/featured", (c) => redirectLegacyFeed(c, "/featured/feed"));
+feedRoutes.get("/all", (c) => redirectLegacyFeed(c, "/latest/feed"));
+feedRoutes.get("/atom.xml", (c) => redirectLegacyFeed(c, "/feed"));
+feedRoutes.get("/latest/atom.xml", (c) =>
+  redirectLegacyFeed(c, "/latest/feed"),
+);
+feedRoutes.get("/featured/atom.xml", (c) =>
+  redirectLegacyFeed(c, "/featured/feed"),
+);
+feedRoutes.get("/all/atom.xml", (c) => redirectLegacyFeed(c, "/latest/feed"));
