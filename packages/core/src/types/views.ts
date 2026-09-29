@@ -261,7 +261,14 @@ export interface TimelineItemView {
     showContextRatings: boolean;
     segments: {
       post: PostView;
+      /** Posts the Thread leaves out between this one and the one above. */
       hiddenBeforeCount: number;
+      /**
+       * Where the gap above this post points: the first post it hides. `null`
+       * when nothing is hidden, or when that post could not be loaded — the
+       * gap is then left out, as `threadPreview`'s is.
+       */
+      gapHref: string | null;
       highlighted: boolean;
     }[];
   };

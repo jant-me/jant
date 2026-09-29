@@ -38,6 +38,12 @@
  * the first hidden post, and a consumer joining it against the `<jant:post>`
  * rows would be handed a post that is on screen. One rule beats two, so both
  * surfaces open the first hidden post.
+ *
+ * The Featured page folds differently — it shows the root, the featured posts
+ * and the last post, with a gap wherever that leaves a run out — but its gaps
+ * follow the same rule: each opens the first post of its run
+ * (`getFeaturedThreadTimelineData` reads that post's address alongside the
+ * posts it shows).
  */
 
 import type { Post, PostView } from "../types.js";

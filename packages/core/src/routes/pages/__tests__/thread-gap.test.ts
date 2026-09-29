@@ -6,15 +6,22 @@
  * SQL and hands the gap's address through `TimelineItemView` into
  * `ThreadPreview`. A field dropped anywhere on that second path went unnoticed
  * by the fold's own tests, so this compares what each surface actually serves.
+ *
+ * The Featured page folds differently — the root, the featured posts and the
+ * last post, with a gap wherever that leaves a run out — but by the same rule:
+ * each gap opens the first post of its run. That post is never loaded whole,
+ * so its address is read on its own and has to come out right.
  */
 
 import { describe, expect, it } from "vitest";
 import { createTestApp } from "../../../__tests__/helpers/app.js";
+import type { Post } from "../../../types.js";
+import { featuredRoutes } from "../featured.js";
 import { homeRoutes } from "../home.js";
 import { latestRoutes } from "../latest.js";
 
-function createThreadGapTestApp() {
-  const testApp = createTestApp();
+function createThreadGapTestApp(options: { sitePathPrefix?: string } = {}) {
+  const testApp = createTestApp(options);
   const { app } = testApp;
 
   app.use("*", async (c, next) => {
@@ -23,6 +30,7 @@ function createThreadGapTestApp() {
     await next();
   });
 
+  app.route("/featured", featuredRoutes);
   app.route("/latest", latestRoutes);
   app.route("/", homeRoutes);
 
@@ -97,5 +105,103 @@ describe("Thread gap link", () => {
     // URL that leaves the site.
     expect(gapTag).toContain('href="/notes/the-gap"');
     expect(gapTag).not.toContain("//notes/the-gap");
+  });
+});
+
+/**
+ * A root and a chain of replies, one post per entry of `featured`, each
+ * published a second after the one before it.
+ */
+async function createFeaturedThread(
+  services: ReturnType<typeof createTestApp>["services"],
+  featured: boolean[],
+): Promise<Post[]> {
+  const thread: Post[] = [];
+  for (const [index, isFeatured] of featured.entries()) {
+    thread.push(
+      await services.posts.create({
+        format: "note",
+        bodyMarkdown: `Post ${index}`,
+        featured: isFeatured,
+        replyToId: thread.at(-1)?.id,
+        publishedAt: 1000 + index,
+      }),
+    );
+  }
+  return thread;
+}
+
+/** Every gap link on the page, with its label, in page order. */
+async function featuredGapLinks(
+  app: ReturnType<typeof createTestApp>["app"],
+): Promise<Array<{ href: string; label: string }>> {
+  const html = await (await app.request("/featured")).text();
+  return [
+    ...html.matchAll(/<a\b[^>]*\bclass="thread-gap-link"[^>]*>([^<]*)</g),
+  ].map(([tag, label]) => ({
+    href: tag.match(/\bhref="([^"]*)"/)?.[1] ?? "",
+    label: (label ?? "").trim(),
+  }));
+}
+
+describe("Featured gap link", () => {
+  it("opens the first post of each hidden run", async () => {
+    const { app, services } = createThreadGapTestApp();
+    // root · [1] · 2★ · [3 · 4] · 5
+    const thread = await createFeaturedThread(services, [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+    ]);
+
+    expect(await featuredGapLinks(app)).toEqual([
+      { href: `/${thread[1]?.slug}`, label: "1 hidden post" },
+      { href: `/${thread[3]?.slug}`, label: "2 hidden posts" },
+    ]);
+  });
+
+  it("leaves no gap between posts shown back to back", async () => {
+    const { app, services } = createThreadGapTestApp();
+    // root★ · 1★ · [2] · 3
+    const thread = await createFeaturedThread(services, [
+      true,
+      true,
+      false,
+      false,
+    ]);
+
+    expect(await featuredGapLinks(app)).toEqual([
+      { href: `/${thread[2]?.slug}`, label: "1 hidden post" },
+    ]);
+  });
+
+  it("opens the first hidden post at its custom path", async () => {
+    const { app, services } = createThreadGapTestApp();
+    const thread = await createFeaturedThread(services, [true, false, false]);
+    const firstHidden = thread[1];
+    if (!firstHidden) throw new Error("thread not created");
+    await services.paths.create({
+      path: "notes/the-gap",
+      kind: "alias",
+      postId: firstHidden.id,
+    });
+
+    expect(await featuredGapLinks(app)).toEqual([
+      { href: "/notes/the-gap", label: "1 hidden post" },
+    ]);
+  });
+
+  it("carries the site path prefix", async () => {
+    const { app, services } = createThreadGapTestApp({
+      sitePathPrefix: "/blog",
+    });
+    const thread = await createFeaturedThread(services, [true, false, false]);
+
+    expect(await featuredGapLinks(app)).toEqual([
+      { href: `/blog/${thread[1]?.slug}`, label: "1 hidden post" },
+    ]);
   });
 });

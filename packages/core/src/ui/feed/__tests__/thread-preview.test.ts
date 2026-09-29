@@ -474,7 +474,9 @@ describe("thread preview fold", () => {
         curatedThread: {
           rootPost: post,
           showContextRatings: false,
-          segments: [{ post, hiddenBeforeCount: 0, highlighted: true }],
+          segments: [
+            { post, hiddenBeforeCount: 0, gapHref: null, highlighted: true },
+          ],
         },
       }),
     );
@@ -496,6 +498,7 @@ describe("thread preview fold", () => {
         {
           post: articlePost,
           hiddenBeforeCount: 0,
+          gapHref: null,
           highlighted: true,
         },
       ],
@@ -535,8 +538,18 @@ describe("thread preview fold", () => {
           rootPost: root,
           showContextRatings: true,
           segments: [
-            { post: root, hiddenBeforeCount: 0, highlighted: false },
-            { post: reply, hiddenBeforeCount: 0, highlighted: true },
+            {
+              post: root,
+              hiddenBeforeCount: 0,
+              gapHref: null,
+              highlighted: false,
+            },
+            {
+              post: reply,
+              hiddenBeforeCount: 0,
+              gapHref: null,
+              highlighted: true,
+            },
           ],
         },
       }),
@@ -568,8 +581,18 @@ describe("thread preview fold", () => {
           rootPost: featured,
           showContextRatings: false,
           segments: [
-            { post: featured, hiddenBeforeCount: 0, highlighted: true },
-            { post: context, hiddenBeforeCount: 0, highlighted: false },
+            {
+              post: featured,
+              hiddenBeforeCount: 0,
+              gapHref: null,
+              highlighted: true,
+            },
+            {
+              post: context,
+              hiddenBeforeCount: 0,
+              gapHref: null,
+              highlighted: false,
+            },
           ],
         },
       }),
@@ -578,6 +601,89 @@ describe("thread preview fold", () => {
     expect(html.match(/class="post-rating"/g)).toHaveLength(1);
     expect(html).toContain("thread-item-curated");
     expect(html).toContain("thread-item-context");
+  });
+
+  it("points a curated gap at the first post it hides", () => {
+    const root = createPostView({
+      id: "post-root",
+      slug: "post-root",
+      permalink: "/post-root",
+    });
+    const featured = createPostView({
+      id: "post-4",
+      slug: "post-4",
+      permalink: "/post-4",
+      isLastInThread: true,
+    });
+
+    const html = renderWithI18n(() =>
+      CuratedThreadPreview({
+        curatedThread: {
+          rootPost: root,
+          showContextRatings: false,
+          segments: [
+            {
+              post: root,
+              hiddenBeforeCount: 0,
+              gapHref: null,
+              highlighted: false,
+            },
+            {
+              post: featured,
+              hiddenBeforeCount: 3,
+              gapHref: "/post-1",
+              highlighted: true,
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(html).toContain(
+      '<a href="/post-1" class="thread-gap-link">3 hidden posts</a>',
+    );
+  });
+
+  // The target is read beside the posts shown, so it can go missing — a post
+  // deleted between the two reads. No other post stands in for it.
+  it("leaves a curated gap out when no target arrives", () => {
+    const root = createPostView({
+      id: "post-root",
+      slug: "post-root",
+      permalink: "/post-root",
+    });
+    const featured = createPostView({
+      id: "post-4",
+      slug: "post-4",
+      permalink: "/post-4",
+      isLastInThread: true,
+    });
+
+    const html = renderWithI18n(() =>
+      CuratedThreadPreview({
+        curatedThread: {
+          rootPost: root,
+          showContextRatings: false,
+          segments: [
+            {
+              post: root,
+              hiddenBeforeCount: 0,
+              gapHref: null,
+              highlighted: false,
+            },
+            {
+              post: featured,
+              hiddenBeforeCount: 1,
+              gapHref: null,
+              highlighted: true,
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(html).not.toContain("thread-gap-link");
+    expect(html).toContain("thread-item-curated");
   });
 });
 
