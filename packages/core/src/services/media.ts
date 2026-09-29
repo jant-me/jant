@@ -52,6 +52,7 @@ import {
 } from "../types.js";
 import {
   ConfigurationError,
+  ConflictError,
   ExternalServiceError,
   MediaQuotaExceededError,
   ValidationError,
@@ -244,13 +245,17 @@ export interface MediaService {
     deps: IngestFromUrlDeps,
   ): Promise<Media>;
   /**
-   * Validate media IDs: checks count limit and verifies all IDs exist in the database.
-   * No-op when the array is empty.
+   * Validate media IDs a post is about to attach: checks the count limit,
+   * that every ID exists, and that none is attached to another post.
+   * Attaching one would move it off that post, and deleting this one would
+   * then delete the file. No-op when the array is empty.
    *
    * @param ids - Media IDs to validate
+   * @param postId - The post being updated, whose own media it may keep
    * @throws {ValidationError} When count exceeds MAX_MEDIA_ATTACHMENTS or any ID is missing
+   * @throws {ConflictError} When a media item is attached to another post
    */
-  validateIds(ids: string[]): Promise<void>;
+  validateIds(ids: string[], postId?: string): Promise<void>;
   /**
    * Delete a media record. The DB row is removed immediately. When `storage` is
    * provided and supports server-side copy, the object is moved to a `trash/`
@@ -649,7 +654,7 @@ export function createMediaService(
       };
     },
 
-    async validateIds(ids) {
+    async validateIds(ids, postId) {
       if (ids.length === 0) return;
 
       if (ids.length > MAX_MEDIA_ATTACHMENTS) {
@@ -662,6 +667,15 @@ export function createMediaService(
       if (existing.length !== ids.length) {
         throw new ValidationError(
           "One or more attachments reference invalid media IDs",
+        );
+      }
+
+      const attachedElsewhere = existing.find(
+        (item) => item.postId !== null && item.postId !== postId,
+      );
+      if (attachedElsewhere) {
+        throw new ConflictError(
+          `Media ${attachedElsewhere.id} is attached to another post. Upload the file again to attach it here.`,
         );
       }
     },

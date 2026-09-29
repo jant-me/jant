@@ -915,6 +915,42 @@ describe("Posts API Routes", () => {
       expect(body.error).toContain("invalid media IDs");
     });
 
+    // Attaching it here would move it off the other post, and deleting this
+    // post would then delete the file.
+    it("refuses media attached to another post", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+      const original = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "original",
+      });
+      const media = await services.media.create({
+        filename: "a.jpg",
+        originalName: "a.jpg",
+        mimeType: "image/jpeg",
+        size: 1024,
+        storageKey: "media/a.jpg",
+      });
+      await services.media.attachToPost(original.id, [media.id]);
+
+      const res = await app.request("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          format: "note",
+          bodyMarkdown: "copy",
+          attachments: [{ type: "media", mediaId: media.id }],
+        }),
+      });
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toMatchObject({ code: "CONFLICT" });
+      expect((await services.media.getById(media.id))?.postId).toBe(
+        original.id,
+      );
+      expect(await services.posts.list()).toHaveLength(1);
+    });
+
     it("returns 400 for invalid body", async () => {
       const { app } = createTestApp({ authenticated: true });
       app.route("/api/posts", postsApiRoutes);
@@ -1078,6 +1114,50 @@ describe("Posts API Routes", () => {
         type: "media",
         id: m2.id,
       });
+    });
+
+    it("refuses to take media from another post on update", async () => {
+      const { app, services } = createTestApp({ authenticated: true });
+      app.route("/api/posts", postsApiRoutes);
+      const owner = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "owner",
+      });
+      const other = await services.posts.create({
+        format: "note",
+        bodyMarkdown: "other",
+      });
+      const own = await services.media.create({
+        filename: "own.jpg",
+        originalName: "own.jpg",
+        mimeType: "image/jpeg",
+        size: 1024,
+        storageKey: "media/own.jpg",
+      });
+      const taken = await services.media.create({
+        filename: "taken.jpg",
+        originalName: "taken.jpg",
+        mimeType: "image/jpeg",
+        size: 1024,
+        storageKey: "media/taken.jpg",
+      });
+      await services.media.attachToPost(owner.id, [own.id]);
+      await services.media.attachToPost(other.id, [taken.id]);
+
+      const res = await app.request(`/api/posts/${owner.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          attachments: [
+            { type: "media", mediaId: own.id },
+            { type: "media", mediaId: taken.id },
+          ],
+        }),
+      });
+
+      expect(res.status).toBe(409);
+      expect((await services.media.getById(taken.id))?.postId).toBe(other.id);
+      expect((await services.media.getById(own.id))?.postId).toBe(owner.id);
     });
 
     it("preserves existing attachments when attachments is omitted", async () => {

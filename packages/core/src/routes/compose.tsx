@@ -202,53 +202,53 @@ composeRoutes.post("/thread", async (c) => {
   const status = firstSchema.status ?? "published";
   const isDraft = status === "draft";
 
-  // When re-editing a thread draft, delete the old thread first to free up
-  // paths (slugs) and avoid conflicts.
-  if (replaceThreadId) {
-    await c.var.services.posts.deleteThreadDraft(replaceThreadId, {
-      media: c.var.services.media,
-      storage: c.var.storage,
-    });
-  }
-
-  const threadPosts = await c.var.services.posts.createThreadWithAttachments(
-    postSchemas.map((data, index) => ({
-      data: {
-        format: data.format,
-        // Every post may carry its own permalink; blank means the service
-        // generates one (title-derived for the root, random id for replies).
-        slug: data.slug || undefined,
-        title:
-          data.format === "quote"
-            ? data.sourceName || undefined
-            : data.title || undefined,
-        body: data.body || undefined,
-        bodyMarkdown: data.bodyMarkdown || undefined,
-        status,
-        visibility: index === 0 ? data.visibility || undefined : undefined,
-        url:
-          data.format === "quote"
-            ? data.sourceUrl || undefined
-            : data.url || undefined,
-        quoteText: data.quoteText || undefined,
-        rating: data.rating || undefined,
-        collectionIds: index === 0 ? data.collectionIds : undefined,
-        replyToId: index === 0 ? data.replyToId : undefined,
-        quietReply: data.quietReply,
-        // Thread-level, so only the root states them; replies inherit.
-        language: index === 0 ? data.language : undefined,
-        translationOfId: index === 0 ? data.translationOfId : undefined,
-        // Replies may carry their own date; when they don't, the service
-        // inherits the root's rather than stamping "now".
-        publishedAt: data.publishedAt,
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-      },
-      attachments: data.attachments,
-    })),
-    storageOpts,
-    summaryConfig,
-  );
+  const threadItems = postSchemas.map((data, index) => ({
+    data: {
+      format: data.format,
+      // Every post may carry its own permalink; blank means the service
+      // generates one (title-derived for the root, random id for replies).
+      slug: data.slug || undefined,
+      title:
+        data.format === "quote"
+          ? data.sourceName || undefined
+          : data.title || undefined,
+      body: data.body || undefined,
+      bodyMarkdown: data.bodyMarkdown || undefined,
+      status,
+      visibility: index === 0 ? data.visibility || undefined : undefined,
+      url:
+        data.format === "quote"
+          ? data.sourceUrl || undefined
+          : data.url || undefined,
+      quoteText: data.quoteText || undefined,
+      rating: data.rating || undefined,
+      collectionIds: index === 0 ? data.collectionIds : undefined,
+      replyToId: index === 0 ? data.replyToId : undefined,
+      quietReply: data.quietReply,
+      // Thread-level, so only the root states them; replies inherit.
+      language: index === 0 ? data.language : undefined,
+      translationOfId: index === 0 ? data.translationOfId : undefined,
+      // Replies may carry their own date; when they don't, the service
+      // inherits the root's rather than stamping "now".
+      publishedAt: data.publishedAt,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+    },
+    attachments: data.attachments,
+  }));
+  // Re-editing a saved thread draft replaces it with the new version.
+  const threadPosts = replaceThreadId
+    ? await c.var.services.posts.replaceThreadDraft(
+        replaceThreadId,
+        threadItems,
+        storageOpts,
+        summaryConfig,
+      )
+    : await c.var.services.posts.createThreadWithAttachments(
+        threadItems,
+        storageOpts,
+        summaryConfig,
+      );
 
   const root = threadPosts[0];
   if (!root) {

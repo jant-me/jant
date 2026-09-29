@@ -851,6 +851,33 @@ describe("MCP post writes", () => {
     expect((await services.posts.getById(stored!.id))?.language).toBe("ja");
   });
 
+  it("refuses media attached to another post, as POST /api/posts does", async () => {
+    const { app, services } = createTestApp({ authenticated: true });
+    app.route("/api/mcp", mcpApiRoutes);
+    const original = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "original",
+    });
+    const media = await services.media.create({
+      filename: "a.jpg",
+      originalName: "a.jpg",
+      mimeType: "image/jpeg",
+      size: 1024,
+      storageKey: "media/a.jpg",
+    });
+    await services.media.attachToPost(original.id, [media.id]);
+
+    const copy = await callTool(app, "/api/mcp", "jant_posts_create", {
+      format: "note",
+      bodyMarkdown: "A translation reusing the image",
+      attachments: [{ type: "media", mediaId: media.id }],
+    });
+
+    expect(copy.result.isError).toBe(true);
+    expect(copy.result.structuredContent).toMatchObject({ code: "CONFLICT" });
+    expect((await services.media.getById(media.id))?.postId).toBe(original.id);
+  });
+
   it("runs the post-write hook after each post write, and only then", async () => {
     // The HTTP routes start a GitHub sync after writing a post; MCP writes
     // reach the same hook through the context.

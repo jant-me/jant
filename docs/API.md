@@ -605,6 +605,8 @@ Response: `201 Created` with the full post object and ordered `attachments`.
 
 Posts accept an ordered `attachments` array. Order in the request is the order shown on the post.
 
+An uploaded media item belongs to one post. A `mediaId` already attached to another post answers `409` with `CONFLICT`; to show the same file in a second post, such as a translation, upload it again.
+
 Input shapes:
 
 - Media attachment:
@@ -725,6 +727,8 @@ Attachment replacement rules:
 - Send `"attachments": []`: remove all attachments
 - Send a new `attachments` array: replace all attachments in that order
 
+An attachment the update removes is deleted, file included.
+
 Notes:
 
 - To change a post's address, send `slug`, or add a custom URL through `/api/custom-urls`.
@@ -743,7 +747,7 @@ Response: `200 OK` with the updated post.
 
 Auth: `Session or token`
 
-Deletes the post. If the target is a thread root, its replies are deleted as part of the same operation.
+Deletes the post and its attachments, files included. If the target is a thread root, its replies are deleted as part of the same operation.
 
 Response:
 

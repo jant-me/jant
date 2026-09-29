@@ -593,10 +593,28 @@ export interface PostService {
    */
   delete(id: string, deps?: PostDeleteDeps): Promise<boolean>;
   /**
-   * Delete a thread draft and release its slug paths so they can be reused.
-   * Used when replacing a saved thread draft with a new version.
+   * Replace a saved Thread draft with a new version of it.
+   *
+   * The old Thread is deleted first, which releases its paths for the new
+   * one. Its attachments are detached before that, since the new version
+   * sends back the ones it keeps by ID; once the new Thread is created, the
+   * ones it left out are deleted.
+   *
+   * @param id - The old Thread's root, or the one post to replace
+   * @param items - The new version, as `createThreadWithAttachments` takes it
+   * @param deps - Media/storage dependencies
+   * @param summaryConfig - Optional summary extraction config
+   * @returns Ordered list of created posts; posts[0] is the root
    */
-  deleteThreadDraft(id: string, deps?: PostDeleteDeps): Promise<boolean>;
+  replaceThreadDraft(
+    id: string,
+    items: Array<{
+      data: CreatePost;
+      attachments: PostAttachmentInput[] | undefined;
+    }>,
+    deps: PostAttachmentDeps,
+    summaryConfig?: SummaryConfig,
+  ): Promise<Post[]>;
   /**
    * Every Post in a Thread, drafts included, in Thread order: the root first,
    * then replies by creation time, then ID.
@@ -2235,9 +2253,19 @@ export function createPostService(
     return attachment.type === "media";
   }
 
+  /** IDs of the uploaded media that attachment inputs reference. */
+  function referencedMediaIds(
+    attachments: PostAttachmentInput[] | undefined,
+  ): string[] {
+    return (attachments ?? [])
+      .filter(isMediaAttachmentInput)
+      .map((attachment) => attachment.mediaId);
+  }
+
   async function createAttachmentMediaIds(
     attachments: PostAttachmentInput[],
     deps: PostAttachmentDeps,
+    postId?: string,
   ) {
     if (attachments.length > MAX_MEDIA_ATTACHMENTS) {
       throw new ValidationError(
@@ -2247,11 +2275,7 @@ export function createPostService(
 
     const orderedMediaIds: string[] = [];
     const createdTextMediaIds: string[] = [];
-    const referencedMediaIds = attachments
-      .filter(isMediaAttachmentInput)
-      .map((attachment) => attachment.mediaId);
-
-    await deps.media.validateIds(referencedMediaIds);
+    await deps.media.validateIds(referencedMediaIds(attachments), postId);
 
     try {
       for (const attachment of attachments) {
@@ -3322,8 +3346,23 @@ export function createPostService(
           );
           created.push(post);
         } catch (error) {
-          // Rollback: delete all already-created posts in reverse order
+          // Roll back the posts created so far, in reverse order. Uploads they
+          // reference by ID are detached first rather than deleted with them:
+          // the composer keeps those in its local draft, and a retry attaches
+          // them again.
+          const uploadIds = new Set(
+            items.flatMap((entry) => referencedMediaIds(entry.attachments)),
+          );
           for (const p of [...created].reverse()) {
+            const attached = await deps.media.getByPostId(p.id).catch(() => []);
+            await deps.media
+              .attachToPost(
+                p.id,
+                attached
+                  .filter((item) => !uploadIds.has(item.id))
+                  .map((item) => item.id),
+              )
+              .catch(() => undefined);
             await this.delete(p.id, {
               media: deps.media,
               storage: deps.storage,
@@ -3854,7 +3893,7 @@ export function createPostService(
         ]),
       );
       const { orderedMediaIds, createdTextMediaIds } =
-        await createAttachmentMediaIds(attachments, deps);
+        await createAttachmentMediaIds(attachments, deps, id);
       const post = await this.update(id, data, summaryConfig);
 
       if (!post) {
@@ -3991,8 +4030,41 @@ export function createPostService(
       return true;
     },
 
-    async deleteThreadDraft(id, deps) {
-      return this.delete(id, deps);
+    async replaceThreadDraft(id, items, deps, summaryConfig) {
+      const existing = await this.getById(id);
+      const oldPosts = !existing
+        ? []
+        : isThreadReply(existing)
+          ? [existing]
+          : await this.getThread(id);
+      const oldMedia = [
+        ...(
+          await deps.media.getByPostIds(oldPosts.map((post) => post.id))
+        ).values(),
+      ].flat();
+      for (const post of oldPosts) {
+        await deps.media.detachFromPost(post.id);
+      }
+      if (existing) {
+        await this.delete(id, { media: deps.media, storage: deps.storage });
+      }
+
+      const created = await this.createThreadWithAttachments(
+        items,
+        deps,
+        summaryConfig,
+      );
+
+      const kept = new Set(
+        items.flatMap((item) => referencedMediaIds(item.attachments)),
+      );
+      await deps.media
+        .deleteByIds(
+          oldMedia.filter((item) => !kept.has(item.id)).map((item) => item.id),
+          deps.storage,
+        )
+        .catch(() => undefined);
+      return created;
     },
 
     async getThread(rootId) {

@@ -2295,6 +2295,42 @@ describe("PostService", () => {
       typeof postService.createThreadWithAttachments
     >[1];
 
+    // The composer keeps its uploads in a local draft when a save fails, and
+    // a retry sends them again by ID.
+    it("keeps the uploads when a later post fails and the thread rolls back", async () => {
+      const mediaService = createMediaService(db, DEFAULT_TEST_SITE_ID);
+      const storage = createMockStorage();
+      await storage.put("media/first.jpg", new Uint8Array([1]));
+      const upload = await mediaService.create({
+        filename: "first.jpg",
+        originalName: "first.jpg",
+        mimeType: "image/jpeg",
+        size: 1,
+        storageKey: "media/first.jpg",
+      });
+
+      await expect(
+        postService.createThreadWithAttachments(
+          [
+            {
+              data: { format: "note", bodyMarkdown: "Root" },
+              attachments: [{ type: "media", mediaId: upload.id }],
+            },
+            {
+              data: { format: "link", bodyMarkdown: "No URL" },
+              attachments: [],
+            },
+          ],
+          { media: mediaService, storage, storageDriver: "r2" },
+        ),
+      ).rejects.toThrow();
+
+      expect(await postService.list()).toHaveLength(0);
+      const kept = await mediaService.getById(upload.id);
+      expect(kept?.postId).toBeNull();
+      expect(storage.files.has("media/first.jpg")).toBe(true);
+    });
+
     it("dates every reply from the root when the root is backdated", async () => {
       const backdated = 1710000000; // 2024-03-09
 

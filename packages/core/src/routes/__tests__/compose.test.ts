@@ -401,5 +401,89 @@ describe("Compose Routes", () => {
         1000,
       );
     });
+
+    // Saving a re-edited thread draft replaces the old draft with a new
+    // thread. The composer sends the draft's own attachments back by ID, so
+    // replacing it must not delete them.
+    it("keeps the draft's attachments when a thread draft is saved again", async () => {
+      const storage = createMockStorage();
+      const { app, services } = createTestApp({
+        authenticated: true,
+        storage: storage as never,
+      });
+      app.route("/compose", composeRoutes);
+      const upload = async (name: string) => {
+        await storage.put(`media/${name}`, new Uint8Array([1, 2, 3]));
+        return services.media.create({
+          filename: name,
+          originalName: name,
+          mimeType: "image/jpeg",
+          size: 3,
+          storageKey: `media/${name}`,
+          width: 800,
+          height: 600,
+        });
+      };
+      const kept = await upload("kept.jpg");
+      const dropped = await upload("dropped.jpg");
+      const draftPosts = await services.posts.createThreadWithAttachments(
+        [
+          {
+            data: {
+              format: "note",
+              bodyMarkdown: "Draft root",
+              status: "draft",
+            },
+            attachments: [
+              { type: "media", mediaId: kept.id },
+              { type: "media", mediaId: dropped.id },
+            ],
+          },
+          {
+            data: {
+              format: "note",
+              bodyMarkdown: "Draft reply",
+              status: "draft",
+            },
+            attachments: [],
+          },
+        ],
+        { media: services.media, storage, storageDriver: "r2" },
+      );
+      const draftRoot = draftPosts[0];
+      if (!draftRoot) throw new Error("expected a draft root");
+
+      const res = await app.request("/compose/thread", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          replaceThreadId: draftRoot.id,
+          posts: [
+            {
+              format: "note",
+              bodyMarkdown: "Draft root, edited",
+              status: "draft",
+              attachments: [{ type: "media", mediaId: kept.id }],
+            },
+            { format: "note", bodyMarkdown: "Draft reply", status: "draft" },
+          ],
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(await services.posts.getById(draftRoot.id)).toBeNull();
+      const [newRoot] = (await services.posts.list({ status: "draft" })).filter(
+        (post) => post.replyToId === null,
+      );
+      expect(newRoot?.bodyText).toBe("Draft root, edited");
+      expect((await services.media.getById(kept.id))?.postId).toBe(newRoot?.id);
+      expect(storage.files.has("media/kept.jpg")).toBe(true);
+      // The one the new version left out goes, as removing it on save does.
+      expect(await services.media.getById(dropped.id)).toBeNull();
+      expect(storage.files.has("media/dropped.jpg")).toBe(false);
+    });
   });
 });
