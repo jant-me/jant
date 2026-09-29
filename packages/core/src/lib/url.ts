@@ -552,6 +552,10 @@ export function toPublicPath(path: string, sitePathPrefix = ""): string {
  * an exported feed keeps it, which is why the rule lives here rather than
  * inside `toPostView`.
  *
+ * Custom paths already carry their leading `/`, so never prepend one to an
+ * alias by hand: `//blog/links/4` is a protocol-relative URL, and
+ * `new URL()` reads its first segment as another host.
+ *
  * @param slug - The Post's current slug
  * @param aliasPath - Its oldest custom path, `paths.getPostAliases()`'s first
  * @returns Internal path rooted at `/`
@@ -559,7 +563,7 @@ export function toPublicPath(path: string, sitePathPrefix = ""): string {
  * getPostPath("xta29"); // "/xta29"
  * getPostPath("links-4", "/blog/links/4"); // "/blog/links/4"
  */
-export function getPostPath(slug: string, aliasPath?: string): string {
+export function getPostPath(slug: string, aliasPath?: string | null): string {
   return aliasPath ?? `/${slug}`;
 }
 

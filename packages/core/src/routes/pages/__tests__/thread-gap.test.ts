@@ -29,27 +29,37 @@ function createThreadGapTestApp() {
   return testApp;
 }
 
+/**
+ * A root and nine replies. The fold shows two leading, two trailing and the
+ * newest, so replies 3–6 are hidden.
+ */
+async function createLongThread(
+  services: ReturnType<typeof createTestApp>["services"],
+) {
+  const root = await services.posts.create({
+    format: "note",
+    bodyMarkdown: "Root",
+    publishedAt: 1000,
+  });
+  const replies = [];
+  let parentId = root.id;
+  for (let index = 1; index <= 9; index++) {
+    const reply = await services.posts.create({
+      format: "note",
+      bodyMarkdown: `Reply ${index}`,
+      replyToId: parentId,
+      publishedAt: 1000 + index,
+    });
+    replies.push(reply);
+    parentId = reply.id;
+  }
+  return replies;
+}
+
 describe("Thread gap link", () => {
   it("opens the first hidden reply on the homepage, as the Latest feed does", async () => {
     const { app, services } = createThreadGapTestApp();
-    const root = await services.posts.create({
-      format: "note",
-      bodyMarkdown: "Root",
-      publishedAt: 1000,
-    });
-    const replies = [];
-    let parentId = root.id;
-    for (let index = 1; index <= 9; index++) {
-      const reply = await services.posts.create({
-        format: "note",
-        bodyMarkdown: `Reply ${index}`,
-        replyToId: parentId,
-        publishedAt: 1000 + index,
-      });
-      replies.push(reply);
-      parentId = reply.id;
-    }
-    // Two leading, two trailing and the newest are shown; replies 3–6 fold.
+    const replies = await createLongThread(services);
     const firstHidden = replies[2];
     const latest = replies[8];
     if (!firstHidden || !latest) throw new Error("thread not created");
@@ -68,5 +78,24 @@ describe("Thread gap link", () => {
     const thread = atom.match(/<jant:thread\b[^>]*>/)?.[0] ?? "";
     expect(thread).toContain('hidden="4"');
     expect(thread).toMatch(new RegExp(`\\bgap="[^"]*/${firstHidden.slug}"`));
+  });
+
+  it("opens the first hidden reply at its custom path", async () => {
+    const { app, services } = createThreadGapTestApp();
+    const replies = await createLongThread(services);
+    const firstHidden = replies[2];
+    if (!firstHidden) throw new Error("thread not created");
+    await services.paths.create({
+      path: "notes/the-gap",
+      kind: "alias",
+      postId: firstHidden.id,
+    });
+
+    const html = await (await app.request("/")).text();
+    const gapTag = html.match(/<a\b[^>]*\bclass="thread-gap-link"[^>]*>/)?.[0];
+    // A custom path already starts with "/"; another makes a protocol-relative
+    // URL that leaves the site.
+    expect(gapTag).toContain('href="/notes/the-gap"');
+    expect(gapTag).not.toContain("//notes/the-gap");
   });
 });

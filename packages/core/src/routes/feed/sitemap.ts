@@ -24,7 +24,7 @@ import {
   type SitemapIndexEntry,
   type SitemapUrlEntry,
 } from "../../lib/feed.js";
-import { toAbsoluteSiteUrl } from "../../lib/url.js";
+import { getPostPath, toAbsoluteSiteUrl } from "../../lib/url.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -129,11 +129,8 @@ sitemapRoutes.get("/:file{sitemap-posts-[0-9]+\\.xml}", async (c) => {
     limit: SITEMAP_SHARD_SIZE,
   });
 
-  // `entry.alias` already includes a leading "/" (see `paths.getPostAliases`);
-  // slugs are stored raw. Prepending "/" to an alias would create "//path",
-  // which `new URL()` reads as protocol-relative and hijacks the hostname.
   const pathOf = (entry: (typeof shardEntries)[number]) =>
-    entry.alias ?? `/${entry.slug}`;
+    getPostPath(entry.slug, entry.alias);
 
   // A post's URL is language-neutral and listed once. Translations are
   // announced with `xhtml:link` alternates instead, which is what the sitemap
@@ -175,8 +172,10 @@ sitemapRoutes.get("/:file{sitemap-posts-[0-9]+\\.xml}", async (c) => {
                     {
                       hreflang: sibling.language,
                       href: absoluteUrl(
-                        siblingAliases.get(sibling.id)?.[0] ??
-                          `/${sibling.slug}`,
+                        getPostPath(
+                          sibling.slug,
+                          siblingAliases.get(sibling.id)?.[0],
+                        ),
                         siteUrl,
                         sitePathPrefix,
                       ),

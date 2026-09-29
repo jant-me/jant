@@ -400,6 +400,37 @@ describe("language views filter content", () => {
     );
   });
 
+  it("links each version by its custom path when it has one", async () => {
+    const { app, services, zh, en } = await seedTwoLanguages();
+    await services.posts.linkTranslation(zh.id, en.id);
+    await services.paths.create({
+      path: "notes/kafei",
+      kind: "alias",
+      postId: zh.id,
+    });
+    await services.paths.create({
+      path: "notes/coffee",
+      kind: "alias",
+      postId: en.id,
+    });
+
+    const html = await (await app.request("/notes/kafei")).text();
+
+    // A custom path already starts with "/". One more makes "//notes/coffee",
+    // a protocol-relative URL that `new URL()` resolves to the host "notes".
+    expect(html).not.toContain("//notes/");
+    expect(html).toContain('href="/notes/coffee" hreflang="en"');
+    expect(html).toContain(
+      '<link rel="alternate" hreflang="zh-Hans" href="http://localhost:3000/notes/kafei"/>',
+    );
+    expect(html).toContain(
+      '<link rel="alternate" hreflang="en" href="http://localhost:3000/notes/coffee"/>',
+    );
+    const start = html.indexOf("data-post-translations");
+    const line = html.slice(start, html.indexOf("</p>", start));
+    expect(line).toContain('href="/notes/coffee"');
+  });
+
   it("offers the translation to a reader who cannot read this one", async () => {
     const { app, services, zh, en } = await seedTwoLanguages();
     await services.posts.linkTranslation(zh.id, en.id);

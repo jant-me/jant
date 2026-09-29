@@ -16,7 +16,7 @@ import type { AppVariables } from "../types/app-context.js";
 import { buildMediaMap } from "./media-helpers.js";
 import { createMediaContext, resolveDraftTailId, toPostView } from "./view.js";
 import { getViewLang } from "./view-language.js";
-import { toPublicPath } from "./url.js";
+import { getPostPath, toPublicPath } from "./url.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -204,7 +204,10 @@ async function buildTimelineItems(
           latestReply: latestReplyView,
           gapHref: threadCtx.firstHiddenReply
             ? toPublicPath(
-                `/${firstContextAlias(threadCtx.firstHiddenReply.id) ?? threadCtx.firstHiddenReply.slug}`,
+                getPostPath(
+                  threadCtx.firstHiddenReply.slug,
+                  firstContextAlias(threadCtx.firstHiddenReply.id),
+                ),
                 mediaCtx.sitePathPrefix,
               )
             : null,
