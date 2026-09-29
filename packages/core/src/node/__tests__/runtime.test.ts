@@ -449,9 +449,11 @@ describe("start", () => {
     } as Bindings;
     await migrate(env);
 
-    const handle = await start(env, {
-      fetch: () => new Response("ok"),
-    } as unknown as HonoApp);
+    const handle = await start(
+      env,
+      { fetch: () => new Response("ok") } as unknown as HonoApp,
+      { assetRoot: null },
+    );
 
     const writer = new Database(databasePath);
     writer.exec("CREATE TABLE close_check (value TEXT)");

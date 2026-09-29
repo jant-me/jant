@@ -39,10 +39,14 @@ const CLOSE_GRACE_MS = 5000;
 export async function start(
   env: Bindings = process.env as unknown as Bindings,
   app?: HonoApp,
+  options: { assetRoot?: string | null } = {},
 ): Promise<NodeServerHandle> {
   const handler = await createNodeRequestHandler({
     env,
     app: async () => app ?? (await import("../app.js")).createApp(),
+    // Undefined finds the built assets; null serves none, for a test that
+    // runs before the build.
+    assetRoot: options.assetRoot,
   });
   const hostname = resolveHost(env);
   const port = resolvePort(env);
