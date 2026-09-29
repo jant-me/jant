@@ -643,7 +643,10 @@ function buildPostBody(
     // Thread as a side effect. Collection management stays on Thread-level
     // organization surfaces; JSON.stringify omits this undefined field.
     collectionIds: detail.replyToId ? undefined : detail.collectionIds,
-    attachments: attachments.length > 0 ? attachments : undefined,
+    // An edit sends the whole list, empty included: the server removes what
+    // the list leaves out, which is how an attachment the post already had
+    // comes off it. Omitted, it would leave them all as they were.
+    attachments: isEdit || attachments.length > 0 ? attachments : undefined,
     replyToId: detail.replyToId || undefined,
     quietReply: detail.quietReply || undefined,
     // Absent means the author left the language to detection; the server runs

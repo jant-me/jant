@@ -1278,4 +1278,53 @@ describe("compose bridge", () => {
     );
     expect(init?.method).toBe("DELETE");
   });
+
+  // The save is what removes it, and only a list that leaves it out does: an
+  // edit whose last attachment was removed has to say so with an empty list.
+  it("sends an empty attachment list when an edit removes the last one", async () => {
+    const composeEl = document.createElement(
+      "jant-compose-dialog",
+    ) as ComposeHarness;
+    composeEl.refreshCollections = vi.fn(async () => true);
+    composeEl.pageMode = false;
+    document.body.appendChild(composeEl);
+
+    const bodies: unknown[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const raw =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      const url = new URL(raw, "http://localhost");
+      if (url.pathname === "/api/posts/pst_123") {
+        bodies.push(JSON.parse(String(init?.body)));
+        return new Response(
+          JSON.stringify({ id: "pst_123", slug: "photo", status: "published" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response("", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      });
+    });
+
+    composeEl.dispatchEvent(
+      new CustomEvent("jant:compose-submit-deferred", {
+        bubbles: true,
+        detail: {
+          ...singlePostDetail({ status: "published" }),
+          attachments: [],
+          pendingAttachments: [],
+          editPostId: "pst_123",
+        },
+      }),
+    );
+    await flushBridgeWork();
+
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).toMatchObject({ attachments: [] });
+  });
 });

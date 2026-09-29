@@ -158,6 +158,12 @@ export interface LocalDraft {
     bodyJson: JSONContent | null;
     bodyHtml: string;
     summary: string;
+    /**
+     * An edit draft's text attachment that the post already has. Restoring it
+     * without these would send it as new text, replacing the stored file.
+     */
+    mediaId?: string;
+    originalBodyJson?: JSONContent | null;
   }>;
   attachmentOrder?: string[];
   mediaAttachments?: LocalDraftMedia[];

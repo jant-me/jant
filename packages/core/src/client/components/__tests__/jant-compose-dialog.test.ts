@@ -2445,6 +2445,137 @@ describe("JantComposeDialog", () => {
     }
   });
 
+  // An edit saves the whole attachment list, so a restored edit that came
+  // back without the post's own attachments would delete them on save.
+  it("restores an interrupted edit with the attachments the post already had", async () => {
+    vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
+      cb(0);
+      return 1;
+    });
+    const paragraph = (text: string) => ({
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text }] }],
+    });
+    mockEditPost({
+      format: "note",
+      title: null,
+      body: JSON.stringify(paragraph("Saved body")),
+      attachments: [
+        {
+          type: "media",
+          id: "med_photo",
+          previewUrl: "/media/photo.jpg",
+          mimeType: "image/jpeg",
+        },
+      ],
+    });
+    globalThis.localStorage.setItem(
+      "jant:compose-edit:pst_123",
+      JSON.stringify({
+        format: "note",
+        title: "",
+        bodyJson: paragraph("Written before the tab closed"),
+        url: "",
+        quoteText: "",
+        quoteAuthor: "",
+        slug: "",
+        visibility: "public",
+        rating: 0,
+        showTitle: false,
+        showRating: false,
+        collectionIds: [],
+        replyToId: null,
+        attachedTexts: [
+          {
+            clientId: "text-a",
+            bodyJson: paragraph("Notes, edited"),
+            bodyHtml: "",
+            summary: "Notes",
+            mediaId: "med_text",
+            originalBodyJson: paragraph("Notes"),
+          },
+        ],
+        attachmentOrder: ["photo-a", "text-a"],
+        mediaAttachments: [
+          {
+            clientId: "photo-a",
+            mediaId: "med_photo",
+            url: "/media/photo.jpg",
+            mimeType: "image/jpeg",
+            persisted: true,
+          },
+        ],
+        savedAt: Date.now(),
+      }),
+    );
+
+    const el = await createElement();
+    await el.openEdit("pst_123");
+    await flushUpdates(el);
+
+    const editor = requireElement(
+      el.querySelector<JantComposeEditor>("jant-compose-editor"),
+      "expected compose editor",
+    );
+    expect(
+      editor._attachments.map((a) => [a.mediaId, a.persisted, a.status]),
+    ).toEqual([["med_photo", true, "done"]]);
+    const [text] = editor.getEffectiveAttachedTexts();
+    expect(text?.mediaId).toBe("med_text");
+    // Still counts as changed, so the edited text is saved.
+    expect(text?.originalBodyJson).toEqual(paragraph("Notes"));
+    expect(text?.bodyJson).toEqual(paragraph("Notes, edited"));
+    expect(editor._attachmentOrder).toEqual(["photo-a", "text-a"]);
+  });
+
+  it("keeps a text attachment's stored version in the edit's local copy", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
+        cb(0);
+        return 1;
+      });
+      mockEditPost({ format: "note", title: null, body: null });
+
+      const el = await createElement();
+      await el.openEdit("pst_123");
+      await el.updateComplete;
+      const editor = requireElement(
+        el.querySelector<JantComposeEditor>("jant-compose-editor"),
+        "expected compose editor",
+      );
+      const stored = {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Notes" }] },
+        ],
+      };
+      editor.populate({
+        textAttachments: [
+          {
+            clientId: "text-a",
+            bodyJson: JSON.stringify(stored),
+            summary: "Notes",
+            mediaId: "med_text",
+          },
+        ],
+      });
+      editor._title = "Changed";
+      await editor.updateComplete;
+      vi.advanceTimersByTime(1000);
+
+      const saved = JSON.parse(
+        globalThis.localStorage.getItem("jant:compose-edit:pst_123") ?? "{}",
+      ) as { attachedTexts?: Array<Record<string, unknown>> };
+      expect(saved.attachedTexts?.[0]).toMatchObject({
+        mediaId: "med_text",
+        originalBodyJson: stored,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("enables the publish button right after an edit-mode switch to quote", async () => {
     vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation((cb) => {
       cb(0);

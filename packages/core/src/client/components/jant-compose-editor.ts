@@ -1362,6 +1362,12 @@ export class JantComposeEditor extends LitElement {
       bodyHtml?: string;
       summary: string;
       mediaId?: string;
+      /**
+       * The stored version of an existing text attachment, as JSON. Defaults
+       * to `bodyJson`; a restored edit passes the version it started from, so
+       * text changed before the interruption still counts as changed.
+       */
+      originalBodyJson?: string;
     }>;
     attachmentOrder?: string[];
   }) {
@@ -1416,20 +1422,26 @@ export class JantComposeEditor extends LitElement {
 
     // Restore attached texts from server data
     if (data.textAttachments?.length) {
-      const texts: AttachedTextItem[] = data.textAttachments.map((t) => {
-        let parsed: JSONContent | null = null;
+      const parseDoc = (json: string): JSONContent | null => {
         try {
-          parsed = JSON.parse(t.bodyJson) as JSONContent;
+          return JSON.parse(json) as JSONContent | null;
         } catch {
           // Invalid JSON — leave as null
+          return null;
         }
+      };
+      const texts: AttachedTextItem[] = data.textAttachments.map((t) => {
+        const parsed = parseDoc(t.bodyJson);
         return {
           clientId: t.clientId ?? randomUUID(),
           bodyJson: parsed,
           bodyHtml: t.bodyHtml ?? "",
           summary: t.summary,
           mediaId: t.mediaId,
-          originalBodyJson: parsed,
+          originalBodyJson:
+            t.originalBodyJson === undefined
+              ? parsed
+              : parseDoc(t.originalBodyJson),
         };
       });
       this._attachedTexts = texts;

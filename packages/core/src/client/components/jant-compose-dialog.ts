@@ -3514,6 +3514,8 @@ export class JantComposeDialog extends LitElement {
         bodyJson: t.bodyJson,
         bodyHtml: t.bodyHtml,
         summary: t.summary,
+        mediaId: t.mediaId,
+        originalBodyJson: t.mediaId ? (t.originalBodyJson ?? null) : undefined,
       })),
       attachmentOrder: [...data.attachmentOrder],
       mediaAttachments: JantComposeDialog._mediaSnapshotFromAttachments(
@@ -3924,7 +3926,10 @@ export class JantComposeDialog extends LitElement {
     // from the post rather than filling in for a missing one.
     this._language = draft.language ?? null;
 
-    // Restore editor content
+    // Restore editor content. The draft's attachments replace the post's: an
+    // edit sends the whole list, so what is restored here is what the post
+    // keeps, and one the author removed before the edit was interrupted stays
+    // removed.
     const textAttachments = draft.attachedTexts?.flatMap((t) => {
       const bodyJson = normalizeComposeDoc(t.bodyJson);
       if (!bodyJson) return [];
@@ -3934,9 +3939,14 @@ export class JantComposeDialog extends LitElement {
           bodyJson: JSON.stringify(bodyJson),
           bodyHtml: t.bodyHtml,
           summary: t.summary,
+          mediaId: t.mediaId,
+          originalBodyJson: t.mediaId
+            ? JSON.stringify(t.originalBodyJson ?? null)
+            : undefined,
         },
       ];
     });
+    const media = draft.mediaAttachments ?? [];
 
     this._editor?.populate({
       format: draft.format,
@@ -3948,6 +3958,9 @@ export class JantComposeDialog extends LitElement {
       rating: draft.rating || undefined,
       showTitle: draft.showTitle,
       showRating: draft.showRating,
+      media: media.length
+        ? JantComposeDialog._restoredMediaToPopulate(media)
+        : undefined,
       textAttachments: textAttachments?.length ? textAttachments : undefined,
       attachmentOrder: draft.attachmentOrder,
     });
