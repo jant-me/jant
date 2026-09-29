@@ -2551,6 +2551,7 @@ describe("JantComposeDialog", () => {
         ],
       };
       editor.populate({
+        format: "note",
         textAttachments: [
           {
             clientId: "text-a",
