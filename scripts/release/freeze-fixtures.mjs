@@ -3,11 +3,12 @@
 // Freeze what a release writes as test fixtures.
 //
 // Usage: node scripts/release/freeze-fixtures.mjs <version>
+//        node scripts/release/freeze-fixtures.mjs --rehearse <dir>
 //
 // Installs the published @jant/core@<version>, loads the canonical demo
-// content at the tag v<version> into a temporary Node site, and writes what
-// that release exports from it into
-// packages/core/src/__tests__/fixtures/releases/<version>/:
+// content at the tag v<version> into a temporary Node site, adds what the
+// demo lacks (see addFixtureContent), and writes what that release exports
+// from it into packages/core/src/__tests__/fixtures/releases/<version>/:
 //
 //   snapshot/meta.json, snapshot/db.sql   (`jant site snapshot export
 //                                          --skip-objects`: the replay reads
@@ -25,6 +26,10 @@
 //
 // `src/__tests__/release-fixtures.test.ts` restores and imports every
 // directory there at head. A fixture is never edited once written.
+//
+// --rehearse <dir> runs the same steps with this checkout's build and
+// canonical content, and writes into <dir>: a way to try a change to this
+// script before a release depends on it. Build @jant/core first.
 
 import { execFileSync, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -41,20 +46,30 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-const [, , version] = process.argv;
+const usage = `Usage: node scripts/release/freeze-fixtures.mjs <version>
+       node scripts/release/freeze-fixtures.mjs --rehearse <dir>`;
+const repoRoot = resolve(import.meta.dirname, "../..");
+const rehearseDir =
+  process.argv[2] === "--rehearse" ? process.argv[3] : undefined;
+if (process.argv[2] === "--rehearse" && !rehearseDir) {
+  console.error(usage);
+  process.exit(1);
+}
+const version = rehearseDir
+  ? JSON.parse(
+      readFileSync(join(repoRoot, "packages/core/package.json"), "utf8"),
+    ).version
+  : process.argv[2];
 if (!version || !/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(version)) {
-  console.error("Usage: node scripts/release/freeze-fixtures.mjs <version>");
+  console.error(usage);
   process.exit(1);
 }
 
-const repoRoot = resolve(import.meta.dirname, "../..");
 const tag = `v${version}`;
 const canonical = "sites/demo-source/canonical";
-const target = join(
-  repoRoot,
-  "packages/core/src/__tests__/fixtures/releases",
-  version,
-);
+const target = rehearseDir
+  ? resolve(rehearseDir)
+  : join(repoRoot, "packages/core/src/__tests__/fixtures/releases", version);
 const importedThemeFiles = [
   "favicon.ico",
   "apple-touch-icon.png",
@@ -66,21 +81,27 @@ if (existsSync(target)) {
   process.exit(1);
 }
 
-try {
-  execFileSync("git", ["rev-parse", "--verify", `${tag}^{commit}`], {
-    cwd: repoRoot,
-    stdio: "ignore",
-  });
-} catch {
-  console.error(`No tag ${tag}. Run this after the release is tagged.`);
-  process.exit(1);
+if (!rehearseDir) {
+  try {
+    execFileSync("git", ["rev-parse", "--verify", `${tag}^{commit}`], {
+      cwd: repoRoot,
+      stdio: "ignore",
+    });
+  } catch {
+    console.error(`No tag ${tag}. Run this after the release is tagged.`);
+    process.exit(1);
+  }
 }
 
 const work = mkdtempSync(join(tmpdir(), "jant-freeze-fixtures-"));
 let server = null;
 try {
-  const source = extractCanonical(work);
-  const jantBin = installRelease(join(work, "package"));
+  const source = rehearseDir
+    ? join(repoRoot, canonical)
+    : extractCanonical(work);
+  const jantBin = rehearseDir
+    ? join(repoRoot, "packages/core/bin/jant.js")
+    : installRelease(join(work, "package"));
 
   const siteId = readSnapshotSiteId(join(source, "snapshot"));
   const devApiToken = randomBytes(24).toString("hex");
@@ -130,6 +151,10 @@ try {
     "--replace",
   ]);
 
+  const baseUrl = `http://127.0.0.1:${port}`;
+  server = await startServer(jantBin, env, work, port);
+  await addFixtureContent(baseUrl, devApiToken);
+
   const snapshotOut = join(work, "snapshot-export");
   jant([
     "site",
@@ -141,13 +166,12 @@ try {
     snapshotOut,
   ]);
 
-  server = await startServer(jantBin, env, work, port);
   const siteExportOut = join(work, "site-export");
   jant([
     "site",
     "export",
     "--url",
-    `http://127.0.0.1:${port}`,
+    baseUrl,
     "--token",
     devApiToken,
     "--output",
@@ -166,6 +190,99 @@ try {
 }
 
 console.log(`Froze ${tag} fixtures into ${target}`);
+
+/**
+ * Add what the canonical demo content lacks, through the release's own API.
+ *
+ * The demo has no drafts, private posts, text attachments, custom URLs,
+ * redirects, or smart collections, so fixtures frozen from it alone could
+ * never show an importer dropping them. One of each, and a navigation item
+ * pointing at the smart collection.
+ *
+ * @param {string} baseUrl - The temporary site
+ * @param {string} token - Its API token
+ * @returns {Promise<void>}
+ */
+async function addFixtureContent(baseUrl, token) {
+  const api = async (method, path, body) => {
+    const response = await fetch(`${baseUrl}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw new Error(
+        `${method} ${path} answered ${response.status}: ${await response.text()}`,
+      );
+    }
+    return response.json();
+  };
+
+  await api("POST", "/api/posts", {
+    format: "note",
+    title: "Fixture draft",
+    bodyMarkdown: "A draft, kept by every backup and export.",
+    status: "draft",
+  });
+  await api("POST", "/api/posts", {
+    format: "note",
+    bodyMarkdown: "A private note, kept by every backup and export.",
+    visibility: "private",
+  });
+  const withText = await api("POST", "/api/posts", {
+    format: "note",
+    title: "Fixture text attachment",
+    bodyMarkdown: "A post with a text attachment and a second address.",
+    attachments: [
+      {
+        type: "text",
+        contentFormat: "markdown",
+        content: "# Attached\n\nText kept as a file of its own.",
+      },
+    ],
+  });
+  await api("POST", "/api/custom-urls", {
+    path: "/fixture-alias",
+    targetType: "post",
+    targetId: withText.id,
+  });
+
+  const { collections } = await api("GET", "/api/collections");
+  const collection = collections[0];
+  if (!collection) throw new Error("The canonical content has no collection.");
+  await api("POST", "/api/custom-urls", {
+    path: "/fixture-collection",
+    targetType: "collection",
+    targetId: collection.id,
+  });
+  await api("POST", "/api/custom-urls", {
+    path: "/fixture-notes",
+    targetType: "redirect",
+    toPath: "/archive?format=note",
+    redirectType: 302,
+  });
+  await api("POST", "/api/custom-urls", {
+    path: "/fixture-elsewhere",
+    targetType: "redirect",
+    toPath: "https://example.com/Elsewhere?ref=Jant",
+  });
+
+  const smartCollection = await api("POST", "/api/smart-collections", {
+    slug: "fixture-quotes",
+    title: "Fixture quotes",
+    description: "Every quote, oldest first.",
+    selection: { format: "quote" },
+    sortOrder: "oldest",
+  });
+  await api("POST", "/api/nav-items", {
+    type: "smart_collection",
+    smartCollectionId: smartCollection.id,
+    placement: "more",
+  });
+}
 
 function extractCanonical(dir) {
   const archive = execFileSync("git", ["archive", tag, canonical], {

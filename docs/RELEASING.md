@@ -55,7 +55,7 @@ When PRs with changesets are merged:
    mise run release-freeze-fixtures <version>
    ```
 
-   This installs `@jant/core@<version>` from npm, loads the canonical demo content at the release tag into a temporary site, and writes the snapshot and site export that release produces into `packages/core/src/__tests__/fixtures/releases/<version>/`. `release-fixtures.test.ts` restores and imports every release there, so a later change that can no longer read what this release wrote fails in CI. Never edit a frozen fixture.
+   This installs `@jant/core@<version>` from npm, loads the canonical demo content at the release tag into a temporary site, adds through that release's API what the demo lacks (a draft, a private post, a text attachment, custom URLs, redirects, a smart collection), and writes the snapshot and site export that release produces into `packages/core/src/__tests__/fixtures/releases/<version>/`. `release-fixtures.test.ts` restores and imports every release there, and checks that the site an export imports into holds what the same release's snapshot holds, so a later change that can no longer read what this release wrote fails in CI. Never edit a frozen fixture. `node scripts/release/freeze-fixtures.mjs --rehearse <dir>` runs the same steps with this checkout's build, to try a change to the script first.
 
 Don't edit the Release PR by hand. Every push to `main` makes the Changesets action rebuild the `changeset-release/main` branch from scratch and force-push it, which throws hand edits away. A change a release needs goes on `main`, and the Release PR picks it up.
 

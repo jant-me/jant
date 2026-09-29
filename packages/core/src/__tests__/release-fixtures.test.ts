@@ -45,8 +45,77 @@ const RELEASES = readdirSync(RELEASES_DIR, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
+/**
+ * Releases whose snapshot and site export weren't taken from one site: they
+ * are copies of files earlier versions wrote at different times, so the two
+ * don't describe the same content.
+ */
+const SEPARATELY_WRITTEN = new Set(["0.7.0", "0.7.1"]);
+
 function count(sqlite: Database.Database, sql: string, ...params: unknown[]) {
   return (sqlite.prepare(sql).get(...params) as { count: number }).count;
+}
+
+/** Restore a release's snapshot into a new database migrated to head. */
+function restoreSnapshot(releaseDir: string): Database.Database {
+  const meta = JSON.parse(
+    readFileSync(join(releaseDir, "snapshot/meta.json"), "utf8"),
+  );
+  assertSnapshotMeta(meta);
+  assertSnapshotSchemaInstalled(meta);
+  const site = getSnapshotBootstrapSite(meta);
+  if (!site) throw new Error(`${releaseDir} snapshot names no site.`);
+
+  const sql = normalizeD1Sql(
+    rewriteSnapshotSiteIdentifiers(
+      upgradeSnapshotSql(
+        readFileSync(join(releaseDir, "snapshot/db.sql"), "utf8"),
+        meta.version,
+      ),
+      site.id,
+      DEFAULT_TEST_SITE_ID,
+    ),
+  );
+
+  const { sqlite } = createTestDatabase();
+  sqlite.exec(buildReplaceSql(DEFAULT_TEST_SITE_ID));
+  sqlite.exec(sql);
+  return sqlite;
+}
+
+/**
+ * What a site export has to carry, read from a site's database. A release's
+ * snapshot and site export come from one site, so the site the export
+ * imports into has to read the same as the snapshot restored: every post
+ * with its status and visibility, every address and redirect, the
+ * collections, smart collections, navigation, and attachments. Archive
+ * custom URLs are left out: an export lists them, but import skips them.
+ */
+function describeSite(sqlite: Database.Database) {
+  const rows = (sql: string) => sqlite.prepare(sql).all();
+  return {
+    posts: rows(
+      `SELECT "format", "status", "visibility", COUNT(*) AS "count" FROM "post" GROUP BY 1, 2, 3 ORDER BY 1, 2, 3`,
+    ),
+    paths: rows(
+      `SELECT "path", "kind", "redirect_to_path" AS "to", "redirect_type" AS "type" FROM "path_registry" WHERE "kind" IN ('slug', 'alias', 'redirect') ORDER BY "path"`,
+    ),
+    tables: Object.fromEntries(
+      [
+        "collection",
+        "smart_collection",
+        "nav_item",
+        "collection_directory_item",
+        "thread_collection",
+      ].map((table) => [
+        table,
+        count(sqlite, `SELECT COUNT(*) AS count FROM "${table}"`),
+      ]),
+    ),
+    attachments: rows(
+      `SELECT "media_kind" AS "kind", COUNT(*) AS "count" FROM "media" WHERE "post_id" IS NOT NULL GROUP BY 1 ORDER BY 1`,
+    ),
+  };
 }
 
 describe("release fixtures", () => {
@@ -64,30 +133,7 @@ describe("release fixtures", () => {
       });
 
       it("restores its snapshot into a database migrated to head", () => {
-        const meta = JSON.parse(
-          readFileSync(join(releaseDir, "snapshot/meta.json"), "utf8"),
-        );
-        assertSnapshotMeta(meta);
-        assertSnapshotSchemaInstalled(meta);
-        const site = getSnapshotBootstrapSite(meta);
-        if (!site) throw new Error(`${release} snapshot names no site.`);
-
-        const sql = normalizeD1Sql(
-          rewriteSnapshotSiteIdentifiers(
-            upgradeSnapshotSql(
-              readFileSync(join(releaseDir, "snapshot/db.sql"), "utf8"),
-              meta.version,
-            ),
-            site.id,
-            DEFAULT_TEST_SITE_ID,
-          ),
-        );
-
-        const { sqlite } = createTestDatabase();
-        expect(() => {
-          sqlite.exec(buildReplaceSql(DEFAULT_TEST_SITE_ID));
-          sqlite.exec(sql);
-        }).not.toThrow();
+        const sqlite = restoreSnapshot(releaseDir);
         expect(
           count(
             sqlite,
@@ -126,6 +172,15 @@ describe("release fixtures", () => {
             expect(
               count(sqlite, `SELECT COUNT(*) AS count FROM "collection"`),
             ).toBe(collectionBundles.length);
+
+            if (!SEPARATELY_WRITTEN.has(release)) {
+              const restored = restoreSnapshot(releaseDir);
+              try {
+                expect(describeSite(sqlite)).toEqual(describeSite(restored));
+              } finally {
+                restored.close();
+              }
+            }
           } finally {
             sqlite.close();
           }
