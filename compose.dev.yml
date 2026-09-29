@@ -10,7 +10,7 @@ services:
       AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in .env}
       PORT: ${PORT:-3000}
       TRUST_PROXY: ${TRUST_PROXY:-true}
-    command: ["node", "bin/jant.js", "migrate"]
+    command: ["jant", "migrate"]
     restart: "no"
     profiles:
       - migrate

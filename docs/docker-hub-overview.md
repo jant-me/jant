@@ -33,7 +33,7 @@ docker run --rm \
   -e AUTH_SECRET=<auth-secret> \
   -v "$(pwd)/data:/var/lib/jant" \
   owenyoung/jant:latest \
-  node bin/jant.js migrate
+  jant migrate
 
 docker run -d \
   --name jant \

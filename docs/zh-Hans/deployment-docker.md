@@ -134,7 +134,7 @@ docker run --rm \
   -e AUTH_SECRET=<auth-secret> \
   -v "$(pwd)/data:/var/lib/jant" \
   owenyoung/jant:latest \
-  node bin/jant.js migrate
+  jant migrate
 
 # 再启动应用
 docker run -d \
@@ -156,10 +156,10 @@ docker run -d \
 printf '%s' "$OWNER_PASSWORD" | docker run --rm -i \
   -v "$(pwd)/data:/var/lib/jant" \
   owenyoung/jant:latest \
-  node bin/jant.js setup --email you@example.com --password-stdin --site-name "My Blog"
+  jant setup --email you@example.com --password-stdin --site-name "My Blog"
 ```
 
-`--language` 默认是 `en`，`--time-zone` 默认是 `UTC`，全部参数见 `node bin/jant.js setup --help`。已经初始化过的站点不会被改动，所以每次启动都跑这条命令，也不会把之后改过的密码改回去。
+`--language` 默认是 `en`，`--time-zone` 默认是 `UTC`，全部参数见 `jant setup --help`。已经初始化过的站点不会被改动，所以每次启动都跑这条命令，也不会把之后改过的密码改回去。
 
 ## 更新站点
 

@@ -134,7 +134,7 @@ docker run --rm \
   -e AUTH_SECRET=<auth-secret> \
   -v "$(pwd)/data:/var/lib/jant" \
   owenyoung/jant:latest \
-  node bin/jant.js migrate
+  jant migrate
 
 # Then start the app
 docker run -d \
@@ -156,10 +156,10 @@ To set up without the browser, such as from a deploy script, run `jant setup` af
 printf '%s' "$OWNER_PASSWORD" | docker run --rm -i \
   -v "$(pwd)/data:/var/lib/jant" \
   owenyoung/jant:latest \
-  node bin/jant.js setup --email you@example.com --password-stdin --site-name "My Blog"
+  jant setup --email you@example.com --password-stdin --site-name "My Blog"
 ```
 
-`--language` defaults to `en` and `--time-zone` to `UTC`; `node bin/jant.js setup --help` lists every option. A site that is already set up is left unchanged, so running the command on every start never puts back a password changed since.
+`--language` defaults to `en` and `--time-zone` to `UTC`; `jant setup --help` lists every option. A site that is already set up is left unchanged, so running the command on every start never puts back a password changed since.
 
 ## Updating the site
 
