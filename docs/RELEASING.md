@@ -79,21 +79,25 @@ mise run release-publish
 
 The first 1.x release has steps no other release has. Work through them in the Release PR, and after it merges.
 
+- [ ] Add a `major` changeset that introduces the release: what 1.0 promises, with a link to [Compatibility](compatibility.md), and why it is 1.0.1 (1.0.0 was published by accident in April 2026). Changesets then proposes 1.0.0
 - [ ] Freeze `main` before editing the Release PR, and keep it frozen until `owenyoung/jant:1.0.1` is on Docker Hub (see [For Maintainers](#for-maintainers))
 - [ ] In the Release PR, set both packages' `version` and `CHANGELOG.md` heading to 1.0.1 (see [Versioning](#versioning-semver))
+- [ ] Before merging, check that the Release PR's diff says 1.0.1 in both `package.json` files and both changelogs. Merged at 1.0.0, npm skips `@jant/core`, since 1.0.0 exists, but publishes `create-jant@1.0.0`, whose new projects install the deprecated `@jant/core@1.0.0`
 - [ ] In the Release PR, retire the pre-1.0 notices, in both languages:
   - the **Pre-1.0** banner at the top of `README.md`, `README.zh-Hans.md`, `docs/overview.md`, and `docs/zh-Hans/overview.md`
   - the "Pre-1.0 — will there be a lot of breaking changes?" entry in `docs/faq.md` and `docs/zh-Hans/faq.md`, which becomes an answer about upgrading within 1.x
   - the "Until then, a minor release can still change what the second level covers" sentence in the first paragraph of `docs/compatibility.md` and `docs/zh-Hans/compatibility.md`
   - the 0.x note under [Versioning](#versioning-semver) on this page
-  - "The project is settling toward 1.0" at the top of `AGENTS.md`, which becomes a statement that 1.0 has shipped
+  - the pre-1.0 wording in the first paragraph of `AGENTS.md`: "settling toward 1.0" becomes a statement that 1.0 has shipped, and "until then, adopt the better design directly … with no compatibility shims" goes, leaving the 1.x rule
+  - the default bump in `.agents/skills/release/SKILL.md` and `.claude/commands/release.md`, which should say that a breaking change to the second level is `major`
 - [ ] After 1.0.1 is on npm, point the accidental 1.0.0's deprecation at it. The message still says to use 0.3.x:
 
   ```bash
   npm deprecate @jant/core@1.0.0 "Published by accident. Use 1.0.1 or later."
   ```
 
-- [ ] After `owenyoung/jant:1` is on Docker Hub, switch `compose.yml`'s `IMAGE` default, and the images in `docs/deployment-docker.md` (en, zh-Hans) and `docs/docker-hub-overview.md`, from `:latest` to `:1`. Until that tag exists, `compose.yml` on `main` must keep `:latest`: users download it from there
+- [ ] After `owenyoung/jant:1` is on Docker Hub, switch `compose.yml`'s `IMAGE` default, the commented `IMAGE` in `.env.example`, and the images in `docs/deployment-docker.md` (en, zh-Hans) and `docs/docker-hub-overview.md`, from `:latest` to `:1`. Until that tag exists, `compose.yml` on `main` must keep `:latest`: users download it from there. Docker Hub shows the new overview after the next image publish
+- [ ] Don't republish 1.0.1 from the **Docker Publish** workflow once `main` has moved on: it builds the version `main` holds, whatever the tag says
 
 ## Docker image publishing
 
