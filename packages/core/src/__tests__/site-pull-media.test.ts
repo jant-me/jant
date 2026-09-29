@@ -6,6 +6,8 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -251,6 +253,52 @@ title: "Hello"
       expect(content).not.toContain("//media-dev.jant.me/media/photo.webp");
     } finally {
       await rm(rootDir, { recursive: true, force: true });
+    }
+  });
+
+  // `jant site export --url http://127.0.0.1:3000` exports a site on this
+  // machine. Its own files are the export's to download; anything else on a
+  // private address is refused, since importing the export publishes it.
+  it("downloads from the site being exported even on a private address", async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { "content-type": "image/png" });
+      response.end(Buffer.from([137, 80, 78, 71]));
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const { port } = server.address() as AddressInfo;
+    const siteOrigin = `http://127.0.0.1:${port}`;
+    const exportOf = async () => {
+      const rootDir = await mkdtemp(join(tmpdir(), "jant-pull-media-local-"));
+      await writeFile(
+        join(rootDir, "hugo.toml"),
+        `baseURL = "${siteOrigin}/"
+
+[params]
+site_avatar_url = "/media/avatar.png"
+`,
+      );
+      return rootDir;
+    };
+
+    const own = await exportOf();
+    const strict = await exportOf();
+    try {
+      expect(
+        (await pullSiteExportDirectory(own, { siteOrigin })).downloaded,
+      ).toBe(1);
+      expect(await readdir(join(own, "static", "media"))).toHaveLength(1);
+
+      const refused = await pullSiteExportDirectory(strict, {
+        logger: () => {},
+      });
+      expect(refused.downloaded).toBe(0);
+      expect(refused.failed).toBe(1);
+    } finally {
+      server.close();
+      await rm(own, { recursive: true, force: true });
+      await rm(strict, { recursive: true, force: true });
     }
   });
 });

@@ -244,6 +244,9 @@ export async function run(argv) {
       pullStats = await pullSiteExportDirectory(workDir, {
         assetLoader: null,
         logger: logPullProgress,
+        // The site you named, even on 127.0.0.1: its own files are the
+        // export's to download.
+        siteOrigin: new URL(url).origin,
       });
     }
 
