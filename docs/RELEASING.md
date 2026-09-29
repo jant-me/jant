@@ -14,7 +14,7 @@ We follow [Semantic Versioning](https://semver.org/):
 
 > **Note**: While version is `0.x.x`, a minor release can break things and its changelog carries upgrade notes. From 1.0, [Compatibility](compatibility.md) defines what "breaking" covers: what its first level lists never breaks, and a change to anything its second level lists needs a major release whose changelog carries upgrade notes. A deprecation in a minor release first is optional.
 >
-> `@jant/core@1.0.0` was published by accident in April 2026 and is deprecated on npm, and npm never accepts a version number twice. The first real 1.x release is **1.0.1**; its changelog says why. A major changeset makes Changesets propose 1.0.0, and `mise run release-version` then moves both packages and their changelog headings to 1.0.1 (`scripts/release/skip-taken-version.mjs`). Keep the `v1.0.0`, `@jant/core@1.0.0`, and `create-jant@1.0.0` tags: they record what the npm 1.0.0 was built from.
+> `@jant/core@1.0.0` was published by accident in April 2026 and is deprecated on npm, and npm never accepts a version number twice. The first real 1.x release is **1.0.1**; its changelog says why. A major changeset makes Changesets propose 1.0.0, and `mise run release-version` then moves both packages and their changelog headings to 1.0.1 (`scripts/release/skip-taken-version.mjs`). Keep the `@jant/core@1.0.0` and `create-jant@1.0.0` tags on the remote: they record what the npm 1.0.0 was built from. `create-jant@1.0.0` never reached npm.
 
 ## Packages
 
@@ -40,7 +40,15 @@ We follow [Semantic Versioning](https://semver.org/):
 When PRs with changesets are merged:
 
 1. A "Release PR" is automatically created/updated
-2. Review the version bumps and changelog
+2. Review the version bumps and changelog. Check that the new version's changelog section is under 125,000 characters:
+
+   ```bash
+   git fetch origin changeset-release/main
+   git show origin/changeset-release/main:packages/core/CHANGELOG.md | awk '/^## /{n++} n==1' | wc -c
+   ```
+
+   After publishing to npm, the Changesets action copies each package's section into a GitHub Release, and GitHub refuses a longer body. The job then stops with npm already holding the version: the `v<version>` release, the Docker image, and the starter sync are skipped, and a rerun finds nothing left to publish, so it doesn't bring them back. If the section is longer, shorten the changesets on `main` before merging.
+
 3. Merge the Release PR
 4. Packages are automatically published to npm
 5. When `@jant/core` is published, the Release workflow also calls `.github/workflows/docker-publish.yml` to publish `owenyoung/jant:<version>`, `owenyoung/jant:latest`, and from 1.0.1 on `owenyoung/jant:<major>` to Docker Hub
@@ -90,6 +98,7 @@ The first 1.x release has steps no other release has. Make the first two in one 
   - the 0.x note under [Versioning](#versioning-semver) on this page
   - the pre-1.0 wording in the first paragraph of `AGENTS.md`: "settling toward 1.0" becomes a statement that 1.0 has shipped, and "until then, adopt the better design directly … with no compatibility shims" goes, leaving the 1.x rule
   - the default bump in `.agents/skills/release/SKILL.md` and `.claude/commands/release.md`, which should say that a breaking change to the second level is `major`
+  - the "Still in development" note at the top of `packages/core/README.md`, which npmjs.com shows on the package page until the next release
 - [ ] Before merging, check that the Release PR's diff says 1.0.1 in both `package.json` files and both changelogs. Merged at 1.0.0, npm skips `@jant/core`, since 1.0.0 exists, but publishes `create-jant@1.0.0`, whose new projects install the deprecated `@jant/core@1.0.0`
 - [ ] After 1.0.1 is on npm, point the accidental 1.0.0's deprecation at it. The message still says to use 0.3.x:
 
@@ -107,6 +116,7 @@ The official Docker image lives at `owenyoung/jant`.
 - Automatic publish happens after a successful package release that includes `@jant/core`
 - The pushed tags are the exact package version, such as `owenyoung/jant:0.3.38`, and `owenyoung/jant:latest`
 - From 1.0.1, a release also moves the major tag, such as `owenyoung/jant:1`, to itself. A compose file pinned to it gets every 1.x release and never a 2.0. Pre-releases and 0.x releases don't move it
+- If a release's Docker job fails, use **Re-run failed jobs** on that Release run. It builds the release commit again; the arm64 image is built only here, since CI's Docker smoke test is amd64 only, so this is the step most likely to fail first
 - Maintainers can manually backfill or republish the current `main` version from the **Docker Publish** workflow using `workflow_dispatch`. It leaves `:latest` and the major tag alone unless you tick **push_latest**, so republishing an older version doesn't move them back
 - The workflow also syncs the Docker Hub overview from `docs/docker-hub-overview.md`
 
