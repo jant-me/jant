@@ -331,12 +331,27 @@ describe("GET /api/public/threads", () => {
     expect(status).toBe(200);
   });
 
+  // A later release adds `include` values; a client asking this one for
+  // them still gets the Threads and the extras it has.
+  it("skips an include value it doesn't offer", async () => {
+    const { services, get } = setup();
+    await services.posts.create({ format: "note", bodyMarkdown: "root" });
+
+    const unknownOnly = await get("/api/public/threads?include=collections");
+    expect(unknownOnly.status).toBe(200);
+    expect(unknownOnly.body.threads).toHaveLength(1);
+    expect(unknownOnly.body.threads[0]).not.toHaveProperty("fold");
+
+    const withFold = await get("/api/public/threads?include=collections,fold");
+    expect(withFold.status).toBe(200);
+    expect(withFold.body.threads[0]).toHaveProperty("fold");
+  });
+
   it.each([
     ["visibility=all", "?visibility=all"],
     ["visibility=private", "?visibility=private"],
     ["an unknown visibility", "?visibility=nonsense"],
     ["an unknown media kind", "?media=invalid"],
-    ["an unknown include", "?include=replies"],
     ["an unknown sort", "?sort=newest"],
     ["featured with another order", "?visibility=featured&sort=activity"],
   ])("refuses %s", async (_label, query) => {

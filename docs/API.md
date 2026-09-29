@@ -166,7 +166,7 @@ curl -X POST https://your-site.com/api/mcp \
 
 Unless an endpoint explicitly returns a ZIP, XML, or plain text response, it returns JSON.
 
-A request field or query parameter an endpoint doesn't know is ignored, so a client that sends one works against an older Jant too. A value an endpoint can't read, in a field it does know, answers `400`. A list's `limit` past either end of its range reads as that end: `limit=500` on a list of at most `100` returns `100`.
+A request field or query parameter an endpoint doesn't know is ignored, so a client that sends one works against an older Jant too. A value an endpoint can't read, in a field it does know, answers `400`. `include` is the exception: it skips a value it doesn't offer, so a client asking for an extra a later release adds still gets the rest. A list's `limit` past either end of its range reads as that end: `limit=500` on a list of at most `100` returns `100`.
 
 A field that takes one of a fixed set of values, such as `format`, `status`, `visibility`, or an error's `code`, can gain a value in a minor release. Read a `format` you don't recognize as `note`, and handle a `code` you don't recognize by the HTTP status.
 
@@ -1025,7 +1025,7 @@ Query parameters:
 | `replies`    | `any` \| `none`                                                | no       | none        | Threads with published replies, or single posts                                                                                               |
 | `lang`       | BCP 47 tag                                                     | no       | all         | Restrict to one content language                                                                                                              |
 | `status`     | `draft` \| `published`                                         | no       | `published` | `/api/threads` only                                                                                                                           |
-| `include`    | `fold`                                                         | no       | none        | Add [the fold](#the-fold) to each Thread                                                                                                      |
+| `include`    | `fold`                                                         | no       | none        | Add [the fold](#the-fold) to each Thread. Comma-separated; a value it doesn't offer is skipped                                                |
 | `cursor`     | string                                                         | no       | none        | Pass the previous `nextCursor` back unchanged                                                                                                 |
 | `limit`      | integer                                                        | no       | `20`        | `1` to `100`                                                                                                                                  |
 | `content`    | `markdown`                                                     | no       | none        | Return `bodyMarkdown` instead of the rendered body fields                                                                                     |

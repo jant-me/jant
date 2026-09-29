@@ -121,21 +121,18 @@ export async function parseThreadSelection(
 /**
  * Read `include`: a comma-separated list of extras to attach to each Thread.
  *
+ * A value this release doesn't offer is skipped, not refused. `include` is
+ * the parameter later releases add values to, and a site keeps running the
+ * release it was deployed with: a client that asks one for an extra it
+ * doesn't have yet still gets the Threads, and the extras it has.
+ *
  * @param raw - The parameter's value, or `undefined`
  * @returns Whether the fold was asked for
- * @throws {ValidationError} On a value this endpoint doesn't offer
  * @example
  * parseThreadInclude("fold"); // { fold: true }
+ * parseThreadInclude("fold,collections"); // { fold: true }
  */
 export function parseThreadInclude(raw: string | undefined): { fold: boolean } {
-  if (raw === undefined || raw === "") return { fold: false };
-  const values = raw.split(",").map((value) => value.trim());
-  for (const value of values) {
-    if (value !== "fold") {
-      throw new ValidationError(
-        `Invalid include value "${value}". Allowed: fold`,
-      );
-    }
-  }
+  const values = (raw ?? "").split(",").map((value) => value.trim());
   return { fold: values.includes("fold") };
 }
