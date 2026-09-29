@@ -172,7 +172,11 @@ npx jant site snapshot export --remote --config ./wrangler.toml --output ./backu
 
 ### Cloudflare
 
-1. **Database**: load the SQL back with `wrangler d1 execute <db> --file=./backups/jant-db-*.sql --remote`, or roll back with D1 time-travel; for snapshots, use `npx jant site snapshot import --remote --replace`.
+1. **Database**: within D1's time-travel window, roll the database back to a moment before the loss with `npx wrangler d1 time-travel restore <db> --timestamp=<time>`. For a snapshot, use `npx jant site snapshot import --remote --replace`. A SQL file from `db export` holds rows, not tables, so it goes into a new, empty database:
+   1. Create one with `npx wrangler d1 create <db>-restored`, and put its `database_id` in `wrangler.toml`.
+   2. Create its tables with `npx jant migrate --remote`, using the `@jant/core` version that wrote the export.
+   3. Load the rows with `npx wrangler d1 execute <db>-restored --remote --file=./backups/jant-db-<date>.sql`.
+   4. Deploy, as in step 3, so the Worker uses the new database.
 2. **Objects**: refill missing objects from R2 versioning or your offline copy.
 3. **Deploy**: no redeploy needed if bindings haven't changed; only update `wrangler.toml` and redeploy when D1 or R2 has changed.
 4. **Verify**: home page, collection pages, media URLs, settings page.

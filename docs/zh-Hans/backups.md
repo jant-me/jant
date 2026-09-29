@@ -172,7 +172,11 @@ npx jant site snapshot export --remote --config ./wrangler.toml --output ./backu
 
 ### Cloudflare
 
-1. **数据库**：用 `wrangler d1 execute <db> --file=./backups/jant-db-*.sql --remote` 灌回 SQL，或用 D1 time-travel 回滚；snapshot 用 `npx jant site snapshot import --remote --replace`。
+1. **数据库**：在 D1 time-travel 的保留期内，用 `npx wrangler d1 time-travel restore <db> --timestamp=<time>` 回滚到丢失之前。snapshot 用 `npx jant site snapshot import --remote --replace`。`db export` 导出的 SQL 文件只有数据行、没有建表语句，要灌进一个新的空数据库：
+   1. 用 `npx wrangler d1 create <db>-restored` 新建，把它的 `database_id` 写进 `wrangler.toml`。
+   2. 用写出这份导出的那个 `@jant/core` 版本运行 `npx jant migrate --remote`，建好表。
+   3. 用 `npx wrangler d1 execute <db>-restored --remote --file=./backups/jant-db-<date>.sql` 灌入数据。
+   4. 按第 3 步部署，让 Worker 用上新数据库。
 2. **对象**：缺失对象从 R2 版本控制或离线副本补齐。
 3. **部署**：binding 没变不用重新部署；换了 D1 / R2 才需更新 `wrangler.toml` 重新部署。
 4. **验证**：首页、collection 页、媒体 URL、setting 页。
