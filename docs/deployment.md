@@ -44,7 +44,7 @@ Click the Deploy button and Cloudflare creates the GitHub repo, D1 database, and
 | **Git account**            | Pick your GitHub account. First-time users click **New GitHub Connection** to authorize, then Cloudflare creates the repo.                                          |
 | **Project name**           | Defaults to `my-site`. This value is both the site subdomain `<project>.<account>.workers.dev` and the GitHub repo name. Change it now to something like `my-blog`. |
 | **D1 database**            | Keep **Create new** with the default name.                                                                                                                          |
-| **Database location hint** | Pick a region near you, or leave the default.                                                                                                                       |
+| **Database location hint** | Pick the region where most of your readers are. Every page waits on this database; see [D1 read replication](#d1-read-replication).                                 |
 | **R2 bucket**              | Keep **Create new** with the default name.                                                                                                                          |
 | **AUTH_SECRET**            | Keep the auto-generated value, or replace it with your own 32+ byte random string. This signs sessions. Don't change it after going live.                           |
 
@@ -192,6 +192,8 @@ In order:
 
    `database_name` must match the name you passed to `d1 create`.
 
+   To place the database near your readers, add `--location` with their region: `wnam`, `enam`, `weur`, `eeur`, `apac`, or `oc`. Without it, D1 picks a region near you.
+
 3. **Create the R2 bucket**
 
    ```bash
@@ -229,6 +231,29 @@ In order:
    On success, the terminal prints a URL like `https://<project>.<account>.workers.dev`. Go back to [Before going live](#before-going-live) to finish the custom domain and R2 public access, then create the admin account.
 
 ## Advanced configuration
+
+### D1 read replication
+
+A Jant page makes about a dozen D1 queries one after another, so each round trip between the Worker and the database is paid about twelve times. Without read replication, every query goes to the database's one location, and readers far from it wait on every page. Two Jant sites on the same version, both with the database in Western North America, measured from Tokyo:
+
+| Read replication | One query | Home page |
+| ---------------- | --------- | --------- |
+| Off              | ~125 ms   | ~1.0 s    |
+| On               | ~20 ms    | ~0.4 s    |
+
+With read replication on, D1 keeps a read-only copy of the database in each of its regions and sends reads to the nearest one. Replicas cost nothing extra; D1 still bills by rows read and written.
+
+To turn it on, open [D1](https://dash.cloudflare.com/?to=/:account/workers/d1), select the database, then **Settings** → **Enable Read Replication**. Through the API, set `read_replication.mode` to `"auto"`, as Cloudflare's [read replication guide](https://developers.cloudflare.com/d1/best-practices/read-replication/) shows. `wrangler.toml` doesn't change: Jant already reads through the D1 Sessions API, which replication needs.
+
+Writes still go to the primary, and requests you make while signed in start there, so a replica that is behind can't sign you out. Your pages load slower than your readers' do.
+
+To check a site, time `/healthz`, which answers without the database, against `/readyz`, which makes one D1 query. Curl reuses one connection for all five requests:
+
+```bash
+curl -s -o /dev/null -w '%{url_effective}  %{time_total}s\n' 'https://<your-domain>/{healthz,healthz,readyz,readyz,readyz}'
+```
+
+The first line includes connection setup. The fastest `readyz` minus the second `healthz` is what one query costs a reader where you are: about 125 ms and 20 ms for the two sites above.
 
 ### Automatic deploys via GitHub Actions
 

@@ -44,7 +44,7 @@ Cloudflare 是 Jant 推荐的部署平台。两条路径任选其一：
 | **Git account**            | 选你的 GitHub 账号。首次使用时点 **New GitHub Connection** 完成授权，Cloudflare 会自动创建仓库。                                    |
 | **Project name**           | 默认为 `my-site`。这个值同时是站点子域 `<project>.<account>.workers.dev` 和 GitHub 仓库名。现在就改成你要用的名字，例如 `my-blog`。 |
 | **D1 database**            | 保持默认 **Create new**，名称用默认值。                                                                                             |
-| **Database location hint** | 选离你近的区域，保持默认也行。                                                                                                      |
+| **Database location hint** | 选大多数读者所在的区域。每个页面都要等这个数据库，见 [D1 读复制](#d1-读复制)。                                                      |
 | **R2 bucket**              | 保持默认 **Create new**，名称用默认值。                                                                                             |
 | **AUTH_SECRET**            | 保留自动生成的值，或换成自己的 32 字节以上随机字符串。它用于会话签名，上线后不要修改。                                              |
 
@@ -192,6 +192,8 @@ PORT=8787 npm run dev
 
    `database_name` 必须与刚才传给 `d1 create` 的名字一致。
 
+   想让数据库靠近读者，加上 `--location` 指定读者所在的区域：`wnam`、`enam`、`weur`、`eeur`、`apac` 或 `oc`。不加时 D1 会选离你近的区域。
+
 3. **创建 R2 存储桶**
 
    ```bash
@@ -229,6 +231,29 @@ PORT=8787 npm run dev
    成功后终端会打印形如 `https://<project>.<account>.workers.dev` 的地址。回到 [上线前必做](#上线前必做) 完成自定义域名和 R2 公开访问，再创建管理员。
 
 ## 进阶配置
+
+### D1 读复制
+
+Jant 渲染一个页面要依次执行十来次 D1 查询，Worker 和数据库之间的一次往返因此要付十来次。不开读复制（read replication）时，所有查询都发往数据库所在的那一个区域，离它远的读者打开每个页面都要等。两个版本相同的 Jant 站点，数据库都在北美西部，从东京测得：
+
+| 读复制 | 单次查询  | 首页     |
+| ------ | --------- | -------- |
+| 关     | 约 125 ms | 约 1.0 s |
+| 开     | 约 20 ms  | 约 0.4 s |
+
+开启读复制后，D1 会在它的每个区域各放一份只读副本，读请求交给最近的那一份。副本不额外收费，D1 照常按读写的行数计费。
+
+开启方法：打开 [D1](https://dash.cloudflare.com/?to=/:account/workers/d1)，选中数据库，进入 **Settings** → **Enable Read Replication**。用 API 开启时，把 `read_replication.mode` 设为 `"auto"`，做法见 Cloudflare 的 [读复制文档](https://developers.cloudflare.com/d1/best-practices/read-replication/)。`wrangler.toml` 不用改：读复制要求通过 D1 Sessions API 读取数据，Jant 已经这样做了。
+
+写入仍然发往主库；登录后发出的请求也从主库开始读，以免落后的副本把你登出，所以你看到的页面会比读者慢。
+
+检查一个站点：对比不访问数据库的 `/healthz` 和执行一次 D1 查询的 `/readyz`。下面五个请求，curl 会复用同一个连接：
+
+```bash
+curl -s -o /dev/null -w '%{url_effective}  %{time_total}s\n' 'https://<your-domain>/{healthz,healthz,readyz,readyz,readyz}'
+```
+
+第一行包含建立连接的时间。最快的那次 `readyz` 减去第二次 `healthz`，就是你所在位置的读者一次查询的耗时：上面两个站点分别约 125 ms 和 20 ms。
 
 ### 通过 GitHub Actions 自动部署
 
