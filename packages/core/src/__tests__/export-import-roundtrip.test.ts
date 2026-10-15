@@ -73,7 +73,7 @@ function buildRoundtripServices(opts: {
         })),
         directoryItems: [],
       }),
-      getCollectionsByPostIds: async () => new Map(),
+      getCollectionsByThreadIds: async () => new Map(),
       getCollectionEntriesByThreadIds: async () =>
         opts.collectionEntriesByThread,
     },

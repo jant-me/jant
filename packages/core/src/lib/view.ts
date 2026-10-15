@@ -707,7 +707,8 @@ export function toSearchResultViews(
   ctx: MediaContext,
   query?: string,
   aliasMap?: Map<string, string>,
-  collectionsMap?: Map<string, Collection[]>,
+  /** Collections by Thread id, `collections.getCollectionsByThreadIds()`'s */
+  collectionsByThread?: Map<string, Collection[]>,
 ): SearchResultView[] {
   return results.map((r) =>
     toSearchResultView(
@@ -715,7 +716,7 @@ export function toSearchResultViews(
       ctx,
       query,
       aliasMap?.get(r.post.id),
-      collectionsMap?.get(r.post.id),
+      collectionsByThread?.get(r.post.threadId),
     ),
   );
 }

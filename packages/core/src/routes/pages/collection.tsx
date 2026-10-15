@@ -7,17 +7,19 @@ import { buildFeedPostViews } from "../feed/feed.js";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { CollectionPage } from "../../ui/pages/CollectionPage.js";
-import type { CollectionPageProps } from "../../types.js";
+import type { CollectionPageProps, CollectionSortOrder } from "../../types.js";
 import { getNavigationData } from "../../lib/navigation.js";
 import { formatPageLabel, parsePageNumber } from "../../lib/pagination.js";
 import { buildPageTitle } from "../../lib/page-title.js";
 import { renderPublicPage } from "../../lib/render.js";
 import {
   collectionSortParam,
+  isRatingSortOrder,
   parseCollectionSortParam,
   resolveCollectionSortOrder,
   supportsCollectionRatingSort,
 } from "../../lib/collection-sort.js";
+import type { ResolvedCollectionSelection } from "../../services/collection.js";
 import { assembleCollectionTimeline } from "../../lib/timeline.js";
 import { defaultFeedRenderer } from "../../lib/feed.js";
 import {
@@ -74,28 +76,41 @@ function buildCollectionSelectionTitle(
  * routes under `/collections/{slug1}+{slug2}`.
  *
  * @param c - Hono context
- * @param slugExpression - Collection slug (or `a+b` aggregate expression)
+ * @param slugExpressionOrSelection - Collection slug (or `a+b` aggregate
+ *   expression) to resolve, or a selection the caller already loaded
  * @param pagePathOverride - When set, used as the public page path instead of the derived canonical path
  */
 export async function renderCollectionPage(
   c: Context<Env>,
-  slugExpression: string,
+  slugExpressionOrSelection: string | ResolvedCollectionSelection,
   pagePathOverride?: string,
 ): Promise<Response | null> {
   const page = parsePageNumber(c.req.query("page"));
   const paginatedPageTitle = formatPageLabel(page);
+  const isAuthenticated = c.var.isAuthenticated;
 
-  const [selection, navData] = await Promise.all([
-    c.var.services.collections.resolveSelection(slugExpression),
-    getNavigationData(c),
-  ]);
+  // The chrome needs nothing from the selection, so it loads beside it. A
+  // page that ends early never awaits it, and must not leave its failure
+  // unhandled.
+  const navDataPromise = getNavigationData(c);
+  navDataPromise.catch(() => {});
+  const selection =
+    typeof slugExpressionOrSelection === "string"
+      ? await c.var.services.collections.resolveSelection(
+          slugExpressionOrSelection,
+        )
+      : slugExpressionOrSelection;
   if (!selection) return null;
 
   const canonicalPagePath =
     pagePathOverride ?? getCollectionSelectionPath(selection.slugExpression);
 
   // Only redirect for slug normalization when using the derived canonical path
-  if (!pagePathOverride && slugExpression !== selection.slugExpression) {
+  if (
+    !pagePathOverride &&
+    typeof slugExpressionOrSelection === "string" &&
+    slugExpressionOrSelection !== selection.slugExpression
+  ) {
     const search = new URL(c.req.url).search;
     return c.redirect(`${toViewPath(c, canonicalPagePath)}${search}`, 301);
   }
@@ -107,42 +122,64 @@ export async function renderCollectionPage(
     (collection) => collection.id,
   );
   const isAggregate = selection.collections.length > 1;
+  const requestedDefaultSort = isAggregate
+    ? "newest"
+    : primaryCollection.sortOrder;
+  const sortsFor = (showRatingSort: boolean) => {
+    const defaultSort = resolveCollectionSortOrder(
+      undefined,
+      requestedDefaultSort,
+      showRatingSort,
+    );
+    return {
+      defaultSort,
+      currentSort: resolveCollectionSortOrder(
+        requestedSort,
+        defaultSort,
+        showRatingSort,
+      ),
+    };
+  };
+  const timelineFor = (sortOrder: CollectionSortOrder) =>
+    assembleCollectionTimeline(c, {
+      collectionIds,
+      page,
+      isAuthenticated,
+      sortOrder,
+    });
 
-  const ratedThreadCount =
-    await c.var.services.posts.countCollectionThreadRootsUpToForCollections(
+  // Whether the rating sort is on offer depends on how many threads are
+  // rated, but the sort this page renders depends on that only when a rating
+  // sort is what was asked for. Any other sort starts the timeline beside the
+  // count instead of after it.
+  const ratedThreadCountPromise =
+    c.var.services.posts.countCollectionThreadRootsUpToForCollections(
       collectionIds,
       {
         status: "published",
-        excludePrivate: !navData.isAuthenticated,
+        excludePrivate: !isAuthenticated,
         hasRating: true,
       },
       2,
     );
+  const timelinePromise = isRatingSortOrder(
+    requestedSort ?? requestedDefaultSort,
+  )
+    ? ratedThreadCountPromise.then((count) =>
+        timelineFor(sortsFor(supportsCollectionRatingSort(count)).currentSort),
+      )
+    : timelineFor(sortsFor(false).currentSort);
+  const [
+    navData,
+    ratedThreadCount,
+    { items, totalCount: totalThreadCount, totalPages },
+  ] = await Promise.all([
+    navDataPromise,
+    ratedThreadCountPromise,
+    timelinePromise,
+  ]);
   const showRatingSort = supportsCollectionRatingSort(ratedThreadCount);
-  const requestedDefaultSort = isAggregate
-    ? "newest"
-    : primaryCollection.sortOrder;
-  const defaultSort = resolveCollectionSortOrder(
-    undefined,
-    requestedDefaultSort,
-    showRatingSort,
-  );
-  const currentSort = resolveCollectionSortOrder(
-    requestedSort,
-    defaultSort,
-    showRatingSort,
-  );
-
-  const {
-    items,
-    totalCount: totalThreadCount,
-    totalPages,
-  } = await assembleCollectionTimeline(c, {
-    collectionIds,
-    page,
-    isAuthenticated: navData.isAuthenticated,
-    sortOrder: currentSort,
-  });
+  const { defaultSort, currentSort } = sortsFor(showRatingSort);
   const i18n = getI18n(c);
   const selectionTitle = buildCollectionSelectionTitle(
     selection.collections,

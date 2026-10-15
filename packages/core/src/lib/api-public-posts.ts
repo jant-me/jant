@@ -220,7 +220,9 @@ export async function loadPublicPostResponses(
   const [mediaMap, collectionsMap, threadPostCounts, aliases] =
     await Promise.all([
       services.media.getByPostIds(postIds),
-      services.collections.getCollectionsByPostIds(postIds),
+      services.collections.getCollectionsByThreadIds(
+        posts.map((post) => post.threadId),
+      ),
       services.posts.countThreadPosts(posts.map((post) => post.threadId)),
       services.paths.getPostAliases(postIds),
     ]);
@@ -230,7 +232,7 @@ export async function loadPublicPostResponses(
       post,
       {
         media: mediaMap.get(post.id) ?? [],
-        collections: collectionsMap.get(post.id) ?? [],
+        collections: collectionsMap.get(post.threadId) ?? [],
         threadPostCount: threadPostCounts.get(post.threadId) ?? 0,
         aliasPath: aliases.get(post.id)?.[0],
       },

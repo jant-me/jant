@@ -1136,15 +1136,13 @@ describe("CollectionService", () => {
       const [rootCollections, childCollections, batch] = await Promise.all([
         collectionService.getCollectionsByPostId(root.id),
         collectionService.getCollectionsByPostId(child.id),
-        collectionService.getCollectionsByPostIds([root.id, child.id]),
+        collectionService.getCollectionsByThreadIds([child.threadId]),
       ]);
 
       expect(rootCollections.map((item) => item.id)).toEqual([collection.id]);
       expect(childCollections.map((item) => item.id)).toEqual([collection.id]);
+      expect(child.threadId).toBe(root.id);
       expect(batch.get(root.id)?.map((item) => item.id)).toEqual([
-        collection.id,
-      ]);
-      expect(batch.get(child.id)?.map((item) => item.id)).toEqual([
         collection.id,
       ]);
     });

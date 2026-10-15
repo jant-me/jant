@@ -329,7 +329,9 @@ export async function loadApiPostResponses(
     services.media.getByPostIds(postIds),
     services.posts.countThreadPosts(posts.map((post) => post.threadId)),
     options.collectionIds
-      ? services.collections.getCollectionsByPostIds(postIds)
+      ? services.collections.getCollectionsByThreadIds(
+          posts.map((post) => post.threadId),
+        )
       : Promise.resolve(null),
   ]);
 
@@ -343,7 +345,7 @@ export async function loadApiPostResponses(
         ),
         ...(collectionsMap
           ? {
-              collectionIds: (collectionsMap.get(post.id) ?? []).map(
+              collectionIds: (collectionsMap.get(post.threadId) ?? []).map(
                 (collection) => collection.id,
               ),
             }

@@ -15,12 +15,14 @@ function createMockServices(status: OnboardingStatus) {
   let callCount = 0;
   const services = {
     settings: {
-      getOnboardingStatus: async () => {
+      getAll: async () => {
         callCount++;
-        return status;
+        return status === ONBOARDING_STATUS.PENDING
+          ? {}
+          : { ONBOARDING_STATUS: status };
       },
     },
-  } as AppVariables["services"];
+  } as unknown as AppVariables["services"];
   return { services, getCallCount: () => callCount };
 }
 

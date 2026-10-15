@@ -86,7 +86,7 @@ function countPostReads(statements: string[]): number {
 }
 
 describe("post page round trips", () => {
-  it("resolves the requested address once, and keeps its post reads to three", async () => {
+  it("resolves the requested address once, and keeps its post reads to two", async () => {
     const { app, services, sqlite } = createPostPageApp();
     const post = await services.posts.create({
       format: "note",
@@ -103,11 +103,11 @@ describe("post page round trips", () => {
     // The middleware's lookup is the route's lookup.
     expect(countAddressLookups(statements)).toBe(1);
 
-    // Three reads, and each is for something different: the post with its
-    // canonical alias, its thread, and the thread ids that collection
-    // membership is keyed by. A root post's visibility rides along in its own
-    // row, so nothing goes back for that.
-    expect(countPostReads(statements)).toBe(3);
+    // Two reads, and each is for something different: the post with its
+    // slug and canonical alias, and its thread. Collection membership is
+    // keyed by the thread id the post already carries, and a post's
+    // visibility rides along in its own row, so nothing goes back for either.
+    expect(countPostReads(statements)).toBe(2);
   });
 
   it("redirects a slug to its custom URL without a separate alias lookup", async () => {
@@ -214,7 +214,7 @@ describe("post list round trips", () => {
     expect(countPostReads(statements)).toBe(1);
   });
 
-  it("still looks up the root for a reply loaded on its own", async () => {
+  it("takes a reply's visibility from its root in the same read", async () => {
     const { services, sqlite } = createTestApp();
     const root = await services.posts.create({
       format: "note",
@@ -235,9 +235,9 @@ describe("post list round trips", () => {
     );
 
     // A reply's own visibility column is null — it inherits the root's — and
-    // the root is not among the rows loaded here, so the second read is what
-    // makes the reply private too.
-    expect(countPostReads(statements)).toBe(2);
+    // the read carries the root's alongside the row, so the reply is private
+    // without a second trip for it.
+    expect(countPostReads(statements)).toBe(1);
     expect(loaded?.visibility).toBe("private");
   });
 });

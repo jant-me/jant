@@ -37,6 +37,11 @@ export interface AppVariables {
   currentSiteDomain: SiteDomain | null;
   appConfig: AppConfig;
   allSettings: Record<string, string>;
+  /**
+   * The settings read in flight for this request, shared through
+   * `loadRequestSettings()` so the middleware that need them read once.
+   */
+  settingsLoad?: Promise<Record<string, string>>;
   themeStyle: string;
   storage: StorageDriver | null;
   publicRequestUrl: string;

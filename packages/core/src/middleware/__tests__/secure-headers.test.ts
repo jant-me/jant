@@ -136,17 +136,25 @@ describe("secureHeadersMiddleware", () => {
     expect(csp).toContain("frame-ancestors 'none'");
   });
 
+  /** Stand in for `withConfig()`, which sets the config a page renders with. */
+  function withCodeInjection(head: string, bodyEnd = "") {
+    return async (
+      c: Parameters<Parameters<Hono<Env>["use"]>[1]>[0],
+      next: () => Promise<void>,
+    ) => {
+      c.set("appConfig", {
+        customHeadHtml: head,
+        customBodyEndHtml: bodyEnd,
+      } as AppVariables["appConfig"]);
+      await next();
+    };
+  }
+
   it("does not relax script-src when no code injection is configured", async () => {
     const app = new Hono<Env>();
-    const settings = {
-      get: vi.fn(async () => null as string | null),
-    };
 
-    app.use("*", async (c, next) => {
-      c.set("services", { settings } as AppVariables["services"]);
-      await next();
-    });
     app.use("*", secureHeadersMiddleware());
+    app.use("*", withCodeInjection("  "));
     app.get("/", (c) => c.text("ok"));
 
     const response = await app.request("/");
@@ -156,21 +164,13 @@ describe("secureHeadersMiddleware", () => {
     expect(csp).toContain("script-src 'self' 'unsafe-eval' blob: https:");
   });
 
+  // Registered ahead of the config middleware, as in `createApp()`: the
+  // policy follows what the page rendered with, read after the route ran.
   it("relaxes script-src with 'unsafe-inline' when code injection is set", async () => {
     const app = new Hono<Env>();
-    const settings = {
-      get: vi.fn(async (key: string) => {
-        if (key === "CUSTOM_HEAD_HTML")
-          return "<script>console.log('hi')</script>";
-        return null;
-      }),
-    };
 
-    app.use("*", async (c, next) => {
-      c.set("services", { settings } as AppVariables["services"]);
-      await next();
-    });
     app.use("*", secureHeadersMiddleware());
+    app.use("*", withCodeInjection("", "<script>console.log('hi')</script>"));
     app.get("/", (c) => c.text("ok"));
 
     const response = await app.request("/");
@@ -183,45 +183,43 @@ describe("secureHeadersMiddleware", () => {
 
   it("keeps script-src tight on frame-protected paths regardless of injection", async () => {
     const app = new Hono<Env>();
-    const settings = {
-      get: vi.fn(async (key: string) => {
-        if (key === "CUSTOM_HEAD_HTML") return "<script>x()</script>";
-        return null;
-      }),
-    };
 
-    app.use("*", async (c, next) => {
-      c.set("services", { settings } as AppVariables["services"]);
-      await next();
-    });
     app.use("*", secureHeadersMiddleware());
+    app.use("*", withCodeInjection("<script>x()</script>"));
     app.get("/settings", (c) => c.text("ok"));
 
     const response = await app.request("/settings");
     const csp = response.headers.get("content-security-policy") ?? "";
 
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
-    // Settings lookup should be skipped entirely on frame-protected paths.
-    expect(settings.get).not.toHaveBeenCalled();
   });
 
-  it("skips the settings lookup on static asset paths", async () => {
+  it("keeps script-src tight on a response rendered without the site config", async () => {
     const app = new Hono<Env>();
-    const settings = {
-      get: vi.fn(async () => null as string | null),
-    };
 
-    app.use("*", async (c, next) => {
-      c.set("services", { settings } as AppVariables["services"]);
-      await next();
-    });
     app.use("*", secureHeadersMiddleware());
     app.get("/media/foo.jpg", (c) => c.text("ok"));
-    app.get("/favicon.ico", (c) => c.text("ok"));
 
-    await app.request("/media/foo.jpg");
-    await app.request("/favicon.ico");
+    const response = await app.request("/media/foo.jpg");
+    const csp = response.headers.get("content-security-policy") ?? "";
 
-    expect(settings.get).not.toHaveBeenCalled();
+    expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/);
+  });
+
+  it("sets its headers on an error page too", async () => {
+    const app = new Hono<Env>();
+
+    app.onError((_error, c) => c.text("failed", 500));
+    app.use("*", secureHeadersMiddleware());
+    app.get("/", () => {
+      throw new Error("boom");
+    });
+
+    const response = await app.request("/");
+
+    expect(response.status).toBe(500);
+    expect(response.headers.get("content-security-policy")).toContain(
+      "default-src 'self'",
+    );
   });
 });

@@ -473,12 +473,39 @@ export async function renderArchivePage(
       })
     : undefined;
 
+  const postsPromise = services.posts.list({
+    ...filters,
+    limit: pageSize,
+    offset: (params.currentPage - 1) * pageSize,
+  });
+  // What each layout reads per post needs only this page of posts, so it
+  // follows the list directly rather than waiting for everything beside it:
+  // the year picker takes a round longer than the list does.
+  const flatItemsPromise = isListView
+    ? postsPromise.then((listed) => assembleTimelineItems(c, listed))
+    : Promise.resolve(undefined);
+  const gridPostDataPromise = isListView
+    ? Promise.resolve(undefined)
+    : postsPromise.then(async (listed) => {
+        const postIds = listed.map((p) => p.id);
+        // Only the grid renders permalinks from this map. The list view goes
+        // through `assembleTimelineItems`, which loads the same aliases itself.
+        const [mediaByPost, replyCounts, aliasesByPost] = await Promise.all([
+          services.media.getByPostIds(postIds),
+          services.posts.getReplyCounts(postIds),
+          services.paths.getPostAliases(postIds),
+        ]);
+        return { mediaByPost, replyCounts, aliasesByPost };
+      });
+
   const [
     navData,
     totalCount,
     baselineCount,
     monthlyCounts,
     posts,
+    flatItems,
+    gridPostData,
     availableYears,
     listedCollections,
   ] = await Promise.all([
@@ -490,11 +517,9 @@ export async function renderArchivePage(
     isListView
       ? Promise.resolve([] as { yearMonth: string; count: number }[])
       : services.posts.countByYearMonth(filters, appConfig.timeZone),
-    services.posts.list({
-      ...filters,
-      limit: pageSize,
-      offset: (params.currentPage - 1) * pageSize,
-    }),
+    postsPromise,
+    flatItemsPromise,
+    gridPostDataPromise,
     // The year picker is part of the page, so a signed-out reader mustn't
     // learn from it that private posts exist in a given year.
     services.posts.getDistinctYears(
@@ -525,11 +550,8 @@ export async function renderArchivePage(
   // --- List view: flat timeline items (no month grouping) ------------------
 
   let groups: Awaited<ReturnType<typeof toArchiveGroupsWithMedia>> = [];
-  let flatItems: Awaited<ReturnType<typeof assembleTimelineItems>> | undefined;
 
-  if (isListView) {
-    flatItems = await assembleTimelineItems(c, posts);
-  } else {
+  if (gridPostData) {
     // --- Grid view: group posts by year-month --------------------------------
 
     const grouped = new Map<string, PostWithMedia[]>();
@@ -554,14 +576,11 @@ export async function renderArchivePage(
       monthlyCounts.map((row) => [row.yearMonth, row.count] as const),
     );
 
-    const postIds = posts.map((p) => p.id);
-    // Only the grid renders permalinks from this map. The list view goes
-    // through `assembleTimelineItems`, which loads the same aliases itself.
-    const [rawMediaMap, replyCounts, archiveAliasesMap] = await Promise.all([
-      services.media.getByPostIds(postIds),
-      services.posts.getReplyCounts(postIds),
-      services.paths.getPostAliases(postIds),
-    ]);
+    const {
+      mediaByPost: rawMediaMap,
+      replyCounts,
+      aliasesByPost: archiveAliasesMap,
+    } = gridPostData;
     const archiveAliasMap = new Map<string, string>();
     for (const [id, aliases] of archiveAliasesMap) {
       if (aliases[0]) archiveAliasMap.set(id, aliases[0]);

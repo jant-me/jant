@@ -4,7 +4,9 @@
  * Redirects key page routes to /setup while first-run setup is unfinished.
  * Uses an allowlist approach: only explicitly listed page routes are redirected,
  * so static assets, API endpoints, feeds, and other resources always pass through.
- * Caches the result in memory so the DB is only queried once per isolate lifetime.
+ * Caches the result in memory so the DB is only queried once per isolate lifetime,
+ * and reads the status from the request's settings, which `withConfig()` needs
+ * anyway, rather than asking for it on its own.
  *
  * How much is gated depends on how far setup has got:
  *
@@ -22,7 +24,12 @@
 import type { MiddlewareHandler } from "hono";
 import type { Bindings } from "../types.js";
 import type { AppVariables } from "../types/app-context.js";
-import { ONBOARDING_STATUS } from "../lib/constants.js";
+import {
+  ONBOARDING_STATUS,
+  SETTINGS_KEYS,
+  parseOnboardingStatus,
+} from "../lib/constants.js";
+import { loadRequestSettings } from "./config.js";
 import { getRuntimeSitePathPrefix } from "../lib/site-resolution.js";
 import { toPublicPath } from "../lib/url.js";
 
@@ -48,7 +55,9 @@ export function requireOnboarding(): MiddlewareHandler<Env> {
       return next();
     }
 
-    const status = await c.var.services.settings.getOnboardingStatus();
+    const status = parseOnboardingStatus(
+      (await loadRequestSettings(c))[SETTINGS_KEYS.ONBOARDING_STATUS],
+    );
     if (status === ONBOARDING_STATUS.COMPLETED) {
       completedOnboardingSites.add(c.var.currentSite.id);
       return next();

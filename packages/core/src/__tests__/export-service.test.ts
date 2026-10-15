@@ -101,7 +101,7 @@ function buildServices(opts: FixtureOptions): ServicesArg {
           })),
         directoryItems: [],
       }),
-      getCollectionsByPostIds: async () => collectionsByPost,
+      getCollectionsByThreadIds: async () => collectionsByPost,
       getCollectionEntriesByThreadIds: async () => collectionEntriesByThread,
     },
     media: {
@@ -178,7 +178,7 @@ describe("createExportService (Hugo)", () => {
             items: [],
             directoryItems: [],
           }),
-          getCollectionsByPostIds: async () => new Map(),
+          getCollectionsByThreadIds: async () => new Map(),
           getCollectionEntriesByThreadIds: async () => new Map(),
         },
         media: { getByPostIds: async () => new Map() },

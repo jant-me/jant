@@ -7,7 +7,7 @@
  * table with fractional indexing.
  */
 
-import { eq, asc, sql, and, inArray, desc } from "drizzle-orm";
+import { eq, asc, sql, and, inArray, desc, getTableColumns } from "drizzle-orm";
 import { generateKeyBetween } from "fractional-indexing";
 import {
   type Database,
@@ -47,6 +47,7 @@ import {
 } from "../lib/errors.js";
 import {
   createPathService,
+  fromCollectionPath,
   toCollectionPath,
   type PathService,
 } from "./path.js";
@@ -117,6 +118,17 @@ export interface CollectionDirectoryViewer {
 
 export interface CollectionService {
   getById(id: string): Promise<Collection | null>;
+  /**
+   * A collection with its canonical address: its oldest custom URL, which
+   * the page redirects every other way in to.
+   *
+   * @param id - Collection id
+   * @returns The collection and its oldest alias path (no leading slash), or
+   *   null when no collection has the id
+   */
+  getWithCanonicalAlias(
+    id: string,
+  ): Promise<{ collection: Collection; canonicalAlias: string | null } | null>;
   getBySlug(slug: string): Promise<Collection | null>;
   getBySlugs(slugs: string[]): Promise<Collection[]>;
   resolveSelection(
@@ -227,9 +239,15 @@ export interface CollectionService {
   getPinnedThreadIds(collectionIds: string[]): Promise<Set<string>>;
   /** Get the Thread-level collections shared by a post and its siblings */
   getCollectionsByPostId(postId: string): Promise<Collection[]>;
-  /** Batch project Thread-level collections onto multiple posts */
-  getCollectionsByPostIds(
-    postIds: string[],
+  /**
+   * The collections each Thread belongs to, in the order the Thread was
+   * filed. Membership is a Thread's, so every post in it shares the entry.
+   *
+   * @param threadIds - Thread ids, which are their root posts' ids
+   * @returns Collections by Thread id; a Thread in none has no entry
+   */
+  getCollectionsByThreadIds(
+    threadIds: string[],
   ): Promise<Map<string, Collection[]>>;
   /**
    * Batch get the set of collection IDs each Thread is pinned in.
@@ -636,27 +654,37 @@ export function createCollectionService(
     return { id: rowId, after: toRowId(afterId), before: toRowId(beforeId) };
   }
 
-  async function hydrateCollection(
-    row: typeof collections.$inferSelect | undefined,
-  ): Promise<Collection | null> {
-    if (!row) return null;
-    const slug = await resolvedPaths.getCollectionSlug(row.id);
-    if (!slug) return null;
-    return toCollection(row, slug);
+  /**
+   * A collection row with its slug, read as a correlated subquery so loading
+   * a collection is one statement — see `hydratedPostColumns` in the post
+   * service, and why the outer column is written out.
+   */
+  const hydratedCollectionColumns = {
+    ...getTableColumns(collections),
+    slug: sql<string | null>`(
+      SELECT collection_slug.path
+      FROM path_registry AS collection_slug
+      WHERE collection_slug.site_id = ${siteId}
+        AND collection_slug.collection_id = "collection"."id"
+        AND collection_slug.kind = 'slug'
+    )`.as("collection_slug"),
+  };
+
+  type HydratedCollectionRow = typeof collections.$inferSelect & {
+    slug: string | null;
+  };
+
+  /** Null for a row with no slug: a collection with no address. */
+  function hydrateCollection(
+    row: HydratedCollectionRow | undefined,
+  ): Collection | null {
+    if (!row?.slug) return null;
+    return toCollection(row, fromCollectionPath(row.slug));
   }
 
-  async function hydrateCollections(
-    rows: (typeof collections.$inferSelect)[],
-  ): Promise<Collection[]> {
-    if (rows.length === 0) return [];
-    const slugMap = await resolvedPaths.getCollectionSlugMap(
-      rows.map((row) => row.id),
-    );
+  function hydrateCollections(rows: HydratedCollectionRow[]): Collection[] {
     return rows
-      .map((row) => {
-        const slug = slugMap.get(row.id);
-        return slug ? toCollection(row, slug) : null;
-      })
+      .map((row) => hydrateCollection(row))
       .filter((row): row is Collection => row !== null);
   }
 
@@ -695,7 +723,7 @@ export function createCollectionService(
 
     const rows = await db
       .select({
-        collection: collections,
+        collection: hydratedCollectionColumns,
         threadCount,
         recentActivityAt,
       })
@@ -722,19 +750,13 @@ export function createCollectionService(
       .groupBy(collections.id)
       .orderBy(asc(collections.createdAt));
 
-    if (rows.length === 0) return [];
-
-    const slugMap = await resolvedPaths.getCollectionSlugMap(
-      rows.map((row) => row.collection.id),
-    );
-
     return rows
       .map((row) => {
-        const slug = slugMap.get(row.collection.id);
-        if (!slug) return null;
+        const collection = hydrateCollection(row.collection);
+        if (!collection) return null;
 
         return {
-          ...toCollection(row.collection, slug),
+          ...collection,
           threadCount: row.threadCount,
           recentActivityAt: row.recentActivityAt ?? row.collection.updatedAt,
         };
@@ -845,11 +867,36 @@ export function createCollectionService(
   return {
     async getById(id) {
       const result = await db
-        .select()
+        .select(hydratedCollectionColumns)
         .from(collections)
         .where(and(eq(collections.siteId, siteId), eq(collections.id, id)))
         .limit(1);
       return hydrateCollection(result[0]);
+    },
+
+    async getWithCanonicalAlias(id) {
+      // Oldest first, ties to the lower id, as `customUrls.getByTarget` and
+      // the post's own canonical alias take it.
+      const result = await db
+        .select({
+          ...hydratedCollectionColumns,
+          canonicalAlias: sql<string | null>`(
+            SELECT collection_alias.path
+            FROM path_registry AS collection_alias
+            WHERE collection_alias.site_id = ${siteId}
+              AND collection_alias.collection_id = "collection"."id"
+              AND collection_alias.kind = 'alias'
+            ORDER BY collection_alias.created_at, collection_alias.id
+            LIMIT 1
+          )`.as("canonical_alias"),
+        })
+        .from(collections)
+        .where(and(eq(collections.siteId, siteId), eq(collections.id, id)))
+        .limit(1);
+      const row = result[0];
+      const collection = hydrateCollection(row);
+      if (!row || !collection) return null;
+      return { collection, canonicalAlias: row.canonicalAlias };
     },
 
     async getBySlug(slug) {
@@ -887,7 +934,7 @@ export function createCollectionService(
 
     async list() {
       const rows = await db
-        .select()
+        .select(hydratedCollectionColumns)
         .from(collections)
         .where(eq(collections.siteId, siteId))
         .orderBy(asc(collections.createdAt));
@@ -928,7 +975,7 @@ export function createCollectionService(
         number | null
       >`MAX(${threadCollections.createdAt})`.as("last_added_at");
       const rows = await db
-        .select({ collection: collections, lastAddedAt })
+        .select({ collection: hydratedCollectionColumns, lastAddedAt })
         .from(collections)
         .leftJoin(
           threadCollections,
@@ -1117,9 +1164,10 @@ export function createCollectionService(
         .update(collections)
         .set(updates)
         .where(and(eq(collections.siteId, siteId), eq(collections.id, id)))
-        .returning();
+        .returning({ id: collections.id });
 
-      return hydrateCollection(result[0]);
+      // RETURNING carries no slug, so the collection is read back whole.
+      return result[0] ? this.getById(id) : null;
     },
 
     async delete(id) {
@@ -1560,7 +1608,7 @@ export function createCollectionService(
 
     async getCollectionsByPostId(postId) {
       const rows = await db
-        .select({ collection: collections })
+        .select({ collection: hydratedCollectionColumns })
         .from(posts)
         .innerJoin(
           threadCollections,
@@ -1588,26 +1636,15 @@ export function createCollectionService(
       return hydrateCollections(rows.map((row) => row.collection));
     },
 
-    async getCollectionsByPostIds(postIds) {
+    async getCollectionsByThreadIds(threadIds) {
       const result = new Map<string, Collection[]>();
-      if (postIds.length === 0) return result;
-
-      const postRows = await batchQueryRows(postIds, (chunk) =>
-        db
-          .select({
-            postId: posts.id,
-            threadId: posts.threadId,
-          })
-          .from(posts)
-          .where(and(eq(posts.siteId, siteId), inArray(posts.id, chunk))),
-      );
-      const threadIds = [...new Set(postRows.map((row) => row.threadId))];
       if (threadIds.length === 0) return result;
-      const rows = await batchQueryRows(threadIds, (chunk) =>
+
+      const rows = await batchQueryRows([...new Set(threadIds)], (chunk) =>
         db
           .select({
             threadId: threadCollections.threadId,
-            collection: collections,
+            collection: hydratedCollectionColumns,
           })
           .from(threadCollections)
           .innerJoin(
@@ -1627,25 +1664,12 @@ export function createCollectionService(
           ),
       );
 
-      const collectionRows = rows.map((row) => row.collection);
-      const slugMap = await resolvedPaths.getCollectionSlugMap(
-        collectionRows.map((row) => row.id),
-      );
-
-      const collectionsByThread = new Map<string, Collection[]>();
       for (const row of rows) {
-        const slug = slugMap.get(row.collection.id);
-        if (!slug) continue;
-        const existing = collectionsByThread.get(row.threadId) ?? [];
-        existing.push(toCollection(row.collection, slug));
-        collectionsByThread.set(row.threadId, existing);
-      }
-
-      for (const row of postRows) {
-        const threadMemberships = collectionsByThread.get(row.threadId);
-        if (threadMemberships) {
-          result.set(row.postId, threadMemberships);
-        }
+        const collection = hydrateCollection(row.collection);
+        if (!collection) continue;
+        const existing = result.get(row.threadId);
+        if (existing) existing.push(collection);
+        else result.set(row.threadId, [collection]);
       }
 
       return result;

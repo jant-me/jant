@@ -135,7 +135,9 @@ export async function buildFeedPostViews(
   const [mediaMap, aliasesMap, collectionsMap] = await Promise.all([
     loadMediaMap(c, [...ids], mediaCtx),
     c.var.services.paths.getPostAliases([...ids]),
-    c.var.services.collections.getCollectionsByPostIds(posts.map((p) => p.id)),
+    c.var.services.collections.getCollectionsByThreadIds(
+      posts.map((p) => p.threadId),
+    ),
   ]);
   const aliasMap = new Map<string, string>();
   for (const [id, aliases] of aliasesMap) {
@@ -155,7 +157,7 @@ export async function buildFeedPostViews(
     ),
   ]);
   const collectionTags = (post: Post): CollectionTagView[] =>
-    (collectionsMap.get(post.id) ?? []).map((collection) => ({
+    (collectionsMap.get(post.threadId) ?? []).map((collection) => ({
       slug: collection.slug,
       title: collection.title,
       url: toPublicPath(

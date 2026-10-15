@@ -246,6 +246,7 @@ function canRenderDraftAboutEditor(
 async function buildTranslationLinks(
   c: Context<Env>,
   post: Post,
+  canonicalAlias?: string | null,
 ): Promise<{
   alternates: LanguageAlternate[];
   pathByLanguage: Map<string, string>;
@@ -269,11 +270,17 @@ async function buildTranslationLinks(
   );
 
   // Prefer each post's custom URL when it has one, the same way permalinks do,
-  // so a link never points at a URL that immediately redirects.
-  const aliasesMap = await c.var.services.paths.getPostAliases([
-    post.id,
+  // so a link never points at a URL that immediately redirects. The post's
+  // own is known when the caller loaded it with the post.
+  const aliasIds = [
+    ...(canonicalAlias === undefined ? [post.id] : []),
     ...siblings.map((other) => other.id),
-  ]);
+  ];
+  const aliasesMap =
+    aliasIds.length > 0
+      ? await c.var.services.paths.getPostAliases(aliasIds)
+      : new Map<string, string[]>();
+  if (canonicalAlias) aliasesMap.set(post.id, [canonicalAlias]);
   const pathFor = (target: Post) =>
     getPostPath(target.slug, aliasesMap.get(target.id)?.[0]);
 
@@ -296,18 +303,28 @@ async function buildTranslationLinks(
 async function renderPost(
   c: Context<Env>,
   post: Post,
-  options: { allowDraft?: boolean; isPreview?: boolean } = {},
+  options: {
+    allowDraft?: boolean;
+    isPreview?: boolean;
+    /** The post's canonical alias, when the caller loaded it with the post. */
+    canonicalAlias?: string | null;
+  } = {},
 ) {
-  // Start navData fetch immediately — it's independent of thread/media queries.
-  // The chrome is scoped to the post's language: a Japanese post's logo and
-  // nav lead into /ja, since the post URL itself carries no language.
+  // The chrome, the thread, and the translation links each need only the
+  // post, so they load together. The chrome is scoped to the post's
+  // language: a Japanese post's logo and nav lead into /ja, since the post
+  // URL itself carries no language.
   const navDataPromise = getNavigationData(c, { languageScope: post.language });
-  const display = await assemblePostPageDisplay(c, post, {
-    // Private-post access is validated before renderPost() is called.
-    isAuthenticated: true,
-    allowDraft: options.allowDraft,
-    includeDraftThread: options.isPreview,
-  });
+  navDataPromise.catch(() => {});
+  const [display, { alternates, pathByLanguage }] = await Promise.all([
+    assemblePostPageDisplay(c, post, {
+      // Private-post access is validated before renderPost() is called.
+      isAuthenticated: true,
+      allowDraft: options.allowDraft,
+      includeDraftThread: options.isPreview,
+    }),
+    buildTranslationLinks(c, post, options.canonicalAlias),
+  ]);
   if (!display) {
     return c.notFound();
   }
@@ -320,7 +337,6 @@ async function renderPost(
   // profile (Simplified, Traditional, Japanese and Korean share code points
   // but not glyphs).
   if (post.language) c.set("lang", post.language);
-  const { alternates, pathByLanguage } = await buildTranslationLinks(c, post);
   // The reader-facing half of the same data: a line under the post, so someone
   // who cannot read this language does not have to find the switcher.
   const translationLinks = [...pathByLanguage]
@@ -660,7 +676,10 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
       );
     }
 
-    return renderPost(c, post, { allowDraft });
+    return renderPost(c, post, {
+      allowDraft,
+      canonicalAlias: loaded.canonicalAlias,
+    });
   }
 
   if (resolved.smartCollectionId) {
@@ -680,18 +699,15 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
   }
 
   if (resolved.collectionId) {
-    const collection = await c.var.services.collections.getById(
+    const loaded = await c.var.services.collections.getWithCanonicalAlias(
       resolved.collectionId,
     );
-    if (!collection) return c.notFound();
+    if (!loaded) return c.notFound();
+    const { collection, canonicalAlias } = loaded;
 
     // One address per collection, as for a post: its first custom URL, or
     // its slug. Any other way in redirects there, within the language view.
-    const alias = await c.var.services.customUrls.getByTarget(
-      "collection",
-      collection.id,
-    );
-    const canonicalPath = alias ? alias.path : collection.slug;
+    const canonicalPath = canonicalAlias ?? collection.slug;
     if (fullPath !== canonicalPath) {
       return c.redirect(
         withRequestQuery(toViewPath(c, `/${canonicalPath}`), c.req.url),
@@ -699,10 +715,15 @@ export async function renderRegisteredPath(c: Context<Env>): Promise<Response> {
       );
     }
 
+    // Loaded and checked here, so the page does not look the slug up again.
     const result = await renderCollectionPage(
       c,
-      collection.slug,
-      alias ? `/${alias.path}` : undefined,
+      {
+        collections: [collection],
+        slugs: [collection.slug],
+        slugExpression: collection.slug,
+      },
+      canonicalAlias ? `/${canonicalAlias}` : undefined,
     );
     return result ?? c.notFound();
   }

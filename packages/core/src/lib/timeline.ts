@@ -95,14 +95,14 @@ async function buildTimelineItems(
   const threadIds = posts.map((p) => p.threadId);
   const [
     rawMediaMap,
-    collectionsMap,
+    collectionsByThread,
     threadContexts,
     aliasesMap,
     publishedTails,
     draftInclusiveTails,
   ] = await Promise.all([
     c.var.services.media.getByPostIds(postIds),
-    c.var.services.collections.getCollectionsByPostIds(postIds),
+    c.var.services.collections.getCollectionsByThreadIds(threadIds),
     c.var.services.posts.getThreadTimelineContext(postIds),
     c.var.services.paths.getPostAliases(postIds),
     // The feed never renders drafts — it would turn a reading surface into a
@@ -127,7 +127,8 @@ async function buildTimelineItems(
     mediaCtx.sitePathPrefix,
   );
 
-  // Batch load media for the bounded leading/trailing thread context.
+  // Batch load media for the bounded leading/trailing thread context. Its
+  // collections are its Thread's, already loaded with the roots.
   const contextPostIds = new Set<string>();
   const gapPostIds = new Set<string>();
   for (const ctx of threadContexts.values()) {
@@ -139,7 +140,7 @@ async function buildTimelineItems(
     // only the alias that decides its address.
     if (ctx.firstHiddenReply) gapPostIds.add(ctx.firstHiddenReply.id);
   }
-  const [contextMediaMap, contextCollectionsMap, contextAliasesMap] =
+  const [contextMediaMap, contextAliasesMap] =
     contextPostIds.size > 0
       ? await Promise.all([
           c.var.services.media
@@ -154,9 +155,6 @@ async function buildTimelineItems(
                 mediaCtx.sitePathPrefix,
               ),
             ),
-          c.var.services.collections.getCollectionsByPostIds([
-            ...contextPostIds,
-          ]),
           // Gap targets ride along here and nowhere else: their address is
           // all the gap link needs.
           c.var.services.paths.getPostAliases([
@@ -164,7 +162,7 @@ async function buildTimelineItems(
             ...gapPostIds,
           ]),
         ])
-      : [new Map(), new Map(), new Map<string, string[]>()];
+      : [new Map(), new Map<string, string[]>()];
 
   const firstAlias = (id: string) => aliasesMap.get(id)?.[0];
   const firstContextAlias = (id: string) => contextAliasesMap.get(id)?.[0];
@@ -177,7 +175,7 @@ async function buildTimelineItems(
         mediaAttachments: mediaMap.get(post.id) ?? [],
       },
       mediaCtx,
-      collectionsMap.get(post.id),
+      collectionsByThread.get(post.threadId),
       undefined,
       firstAlias(post.id),
     );
@@ -201,7 +199,7 @@ async function buildTimelineItems(
             mediaAttachments: contextMediaMap.get(reply.id) ?? [],
           },
           mediaCtx,
-          contextCollectionsMap.get(reply.id),
+          collectionsByThread.get(reply.threadId),
           false,
           firstContextAlias(reply.id),
         );
@@ -216,7 +214,7 @@ async function buildTimelineItems(
           mediaAttachments: contextMediaMap.get(threadCtx.latestReply.id) ?? [],
         },
         mediaCtx,
-        contextCollectionsMap.get(threadCtx.latestReply.id),
+        collectionsByThread.get(threadCtx.latestReply.threadId),
         true, // latestReply is the last published post in the thread
         firstContextAlias(threadCtx.latestReply.id),
       );
@@ -280,19 +278,23 @@ async function buildCuratedThreadItems(
   }
 
   const mediaCtx = createMediaContext(c.var.appConfig);
-  const postIds = orderedThreads.flatMap((thread) =>
-    thread.posts.map(({ post }) => post.id),
+  const threadPosts = orderedThreads.flatMap((thread) =>
+    thread.posts.map(({ post }) => post),
   );
+  const postIds = threadPosts.map((post) => post.id);
   const gapPostIds = orderedThreads.flatMap((thread) =>
     [...thread.gapTargets.values()].map((target) => target.id),
   );
-  const [rawMediaMap, collectionsMap, curatedAliasesMap] = await Promise.all([
-    c.var.services.media.getByPostIds(postIds),
-    c.var.services.collections.getCollectionsByPostIds(postIds),
-    // Gap targets are never rendered, so they need only the alias that
-    // decides their address.
-    c.var.services.paths.getPostAliases([...postIds, ...gapPostIds]),
-  ]);
+  const [rawMediaMap, collectionsByThread, curatedAliasesMap] =
+    await Promise.all([
+      c.var.services.media.getByPostIds(postIds),
+      c.var.services.collections.getCollectionsByThreadIds(
+        threadPosts.map((post) => post.threadId),
+      ),
+      // Gap targets are never rendered, so they need only the alias that
+      // decides their address.
+      c.var.services.paths.getPostAliases([...postIds, ...gapPostIds]),
+    ]);
   const mediaMap = buildMediaMap(
     rawMediaMap,
     mediaCtx.r2PublicUrl,
@@ -317,7 +319,7 @@ async function buildCuratedThreadItems(
           mediaAttachments: mediaMap.get(post.id) ?? [],
         },
         mediaCtx,
-        collectionsMap.get(post.id),
+        collectionsByThread.get(post.threadId),
         post.id === lastPostId,
         curatedAliasesMap.get(post.id)?.[0],
         post.id === post.threadId &&

@@ -15,6 +15,7 @@ import { now } from "../lib/time.js";
 import {
   SETTINGS_KEYS,
   ONBOARDING_STATUS,
+  parseOnboardingStatus,
   type OnboardingStatus,
   type SettingsKey,
 } from "../lib/constants.js";
@@ -368,14 +369,9 @@ export function createSettingsService(
     },
 
     async getOnboardingStatus() {
-      const status = await this.get(SETTINGS_KEYS.ONBOARDING_STATUS);
-      if (status === ONBOARDING_STATUS.COMPLETED) {
-        return ONBOARDING_STATUS.COMPLETED;
-      }
-      if (status === ONBOARDING_STATUS.PROVISIONED) {
-        return ONBOARDING_STATUS.PROVISIONED;
-      }
-      return ONBOARDING_STATUS.PENDING;
+      return parseOnboardingStatus(
+        await this.get(SETTINGS_KEYS.ONBOARDING_STATUS),
+      );
     },
 
     async isOnboardingComplete() {

@@ -128,7 +128,7 @@ export async function assemblePostCardView(
   const [rawMediaMap, collectionsMap, lastPostMap, draftTailMap, aliasesMap] =
     await Promise.all([
       c.var.services.media.getByPostIds([post.id]),
-      c.var.services.collections.getCollectionsByPostIds([post.id]),
+      c.var.services.collections.getCollectionsByThreadIds([post.threadId]),
       c.var.services.posts.getThreadTailIds([post.threadId]),
       c.var.isAuthenticated
         ? c.var.services.posts.getThreadTailIds([post.threadId], {
@@ -149,7 +149,7 @@ export async function assemblePostCardView(
   const view = toPostView(
     { ...post, mediaAttachments: mediaMap.get(post.id) ?? [] },
     mediaCtx,
-    collectionsMap.get(post.id),
+    collectionsMap.get(post.threadId),
     lastPostMap.get(post.threadId) === post.id,
     aliasesMap.get(post.id)?.[0],
   );
@@ -194,19 +194,23 @@ export async function assemblePostPageDisplay(
   const includeDrafts = Boolean(
     options?.includeDraftThread || c.var.isAuthenticated,
   );
-  const threadPosts = (
-    await c.var.services.posts.getThread(post.threadId)
-  ).filter(
+  // Collections belong to the Thread, so they need nothing from its posts
+  // and load alongside them.
+  const [thread, collectionsByThread] = await Promise.all([
+    c.var.services.posts.getThread(post.threadId),
+    c.var.services.collections.getCollectionsByThreadIds([post.threadId]),
+  ]);
+  const threadPosts = thread.filter(
     (threadPost) =>
       threadPost.status === "published" ||
       (includeDrafts && threadPost.status === "draft"),
   );
+  const threadCollections = collectionsByThread.get(post.threadId);
 
   const allPostIds =
     threadPosts.length > 1 ? threadPosts.map((p) => p.id) : [post.id];
-  const [rawMediaMap, collectionsMap, aliasesMap] = await Promise.all([
+  const [rawMediaMap, aliasesMap] = await Promise.all([
     c.var.services.media.getByPostIds(allPostIds),
-    c.var.services.collections.getCollectionsByPostIds(allPostIds),
     c.var.services.paths.getPostAliases(allPostIds),
   ]);
   const mediaMap = buildMediaMap(
@@ -222,7 +226,7 @@ export async function assemblePostPageDisplay(
   const postView = toPostView(
     { ...post, mediaAttachments: mediaMap.get(post.id) ?? [] },
     mediaCtx,
-    collectionsMap.get(post.id),
+    threadCollections,
     undefined,
     firstAlias(post.id),
   );
@@ -236,7 +240,7 @@ export async function assemblePostPageDisplay(
               mediaAttachments: mediaMap.get(threadPost.id) ?? [],
             },
             mediaCtx,
-            collectionsMap.get(threadPost.id),
+            threadCollections,
             index === threadPosts.length - 1,
             firstAlias(threadPost.id),
           ),

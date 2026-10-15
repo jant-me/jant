@@ -445,7 +445,8 @@ export function createExportService(
         collectionSlugMap,
         standalonePaths,
       ] = await Promise.all([
-        services.collections.getCollectionsByPostIds(rootPostIds),
+        // A root's id is its Thread's id.
+        services.collections.getCollectionsByThreadIds(rootPostIds),
         services.collections.getCollectionEntriesByThreadIds(rootPostIds),
         services.media.getByPostIds(allPostIds),
         services.paths.getPostSlugMap(allPostIds),

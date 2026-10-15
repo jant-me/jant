@@ -123,3 +123,23 @@ export const ONBOARDING_STATUS = {
 
 export type OnboardingStatus =
   (typeof ONBOARDING_STATUS)[keyof typeof ONBOARDING_STATUS];
+
+/**
+ * Read the stored `ONBOARDING_STATUS` setting. Anything but a known later
+ * stage, including no value at all, is `pending`.
+ *
+ * @param value - The stored setting, if any
+ * @returns How far first-run setup has got
+ * @example
+ * parseOnboardingStatus("completed"); // "completed"
+ * parseOnboardingStatus(undefined); // "pending"
+ */
+export function parseOnboardingStatus(
+  value: string | null | undefined,
+): OnboardingStatus {
+  if (value === ONBOARDING_STATUS.COMPLETED) return ONBOARDING_STATUS.COMPLETED;
+  if (value === ONBOARDING_STATUS.PROVISIONED) {
+    return ONBOARDING_STATUS.PROVISIONED;
+  }
+  return ONBOARDING_STATUS.PENDING;
+}

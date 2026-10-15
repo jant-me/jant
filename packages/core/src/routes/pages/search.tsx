@@ -87,7 +87,9 @@ export async function renderSearchPage(c: Context<Env>): Promise<Response> {
   const [navData, aliasesMap, collectionsMap] = await Promise.all([
     navDataPromise,
     c.var.services.paths.getPostAliases(postIds),
-    c.var.services.collections.getCollectionsByPostIds(postIds),
+    c.var.services.collections.getCollectionsByThreadIds(
+      results.map((r) => r.post.threadId),
+    ),
   ]);
   const aliasMap = new Map<string, string>();
   for (const [id, aliases] of aliasesMap) {

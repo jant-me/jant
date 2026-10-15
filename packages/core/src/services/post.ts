@@ -1901,95 +1901,57 @@ export function createPostService(
   }
 
   /**
-   * Thread visibility the loaded rows already answer, plus the thread ids they
-   * do not.
+   * A post row together with what turning it into a {@link Post} takes from
+   * other rows: its slug, from `path_registry`, and its Thread's visibility,
+   * which a reply inherits from the root (a reply's own column is null).
    *
-   * A reply's own `visibility` column is null — it inherits the root's — so a
-   * row only speaks for its thread when it *is* the root. List surfaces query
-   * thread roots exclusively (`excludeReplies`), so for them this covers every
-   * thread and the follow-up read never runs.
+   * Both ride along as correlated subqueries, so reading posts is one
+   * statement. On D1 each follow-up lookup was one more round trip on every
+   * page that shows a post.
    *
-   * Entries are set only for a non-null visibility, matching
-   * {@link getThreadVisibilityMap}: a root row with no visibility is treated as
-   * unreadable by both paths.
+   * The outer columns are written out rather than interpolated: Drizzle only
+   * qualifies projection columns when the query has a join, so `${posts.id}`
+   * would render as a bare "id" and bind to the subquery's own table.
    */
-  function seedThreadVisibility(rows: (typeof posts.$inferSelect)[]): {
-    known: Map<string, Visibility>;
-    missingThreadIds: string[];
-  } {
-    const known = new Map<string, Visibility>();
-    const covered = new Set<string>();
-    for (const row of rows) {
-      if (row.id !== row.threadId) continue;
-      covered.add(row.threadId);
-      if (row.visibility) {
-        known.set(row.threadId, ensurePostVisibility(row.visibility, Error));
-      }
-    }
-    const missingThreadIds = [
-      ...new Set(
-        rows
-          .map((row) => row.threadId)
-          .filter((threadId) => !covered.has(threadId)),
-      ),
-    ];
-    return { known, missingThreadIds };
-  }
+  const hydratedPostColumns = {
+    ...getTableColumns(posts),
+    slug: sql<string | null>`(
+      SELECT post_slug.path
+      FROM path_registry AS post_slug
+      WHERE post_slug.site_id = ${siteId}
+        AND post_slug.post_id = "post"."id"
+        AND post_slug.kind = 'slug'
+    )`.as("post_slug"),
+    threadVisibility: sql<string | null>`(
+      SELECT thread_root.visibility
+      FROM post AS thread_root
+      WHERE thread_root.site_id = ${siteId}
+        AND thread_root.id = "post"."thread_id"
+    )`.as("thread_visibility"),
+  };
+
+  type HydratedPostRow = typeof posts.$inferSelect & {
+    slug: string | null;
+    threadVisibility: string | null;
+  };
 
   /**
-   * Slug lookup and root-visibility lookup are independent, so they go out
-   * together rather than one after the other.
+   * Turn a row read with {@link hydratedPostColumns} into a `Post`.
+   *
+   * Null for a row with no slug — a Post with no address — or with no
+   * visibility on its Thread root.
    */
-  async function loadHydrationMaps(
-    rows: (typeof posts.$inferSelect)[],
-  ): Promise<{
-    slugMap: Map<string, string>;
-    visibilityMap: Map<string, Visibility>;
-  }> {
-    const { known, missingThreadIds } = seedThreadVisibility(rows);
-    const [slugMap, fetched] = await Promise.all([
-      resolvedPaths.getPostSlugMap(rows.map((row) => row.id)),
-      missingThreadIds.length > 0
-        ? getThreadVisibilityMap(missingThreadIds)
-        : Promise.resolve(new Map<string, Visibility>()),
-    ]);
-    for (const [threadId, visibility] of fetched) {
-      known.set(threadId, visibility);
-    }
-    return { slugMap, visibilityMap: known };
-  }
-
-  async function hydratePost(
-    row: typeof posts.$inferSelect | undefined,
-    knownSlug?: string,
-  ): Promise<Post | null> {
-    if (!row) return null;
-    const { known, missingThreadIds } = seedThreadVisibility([row]);
-    const [slug, fetched] = await Promise.all([
-      knownSlug ?? resolvedPaths.getPostSlug(row.id),
-      missingThreadIds.length > 0
-        ? getThreadVisibilityMap(missingThreadIds)
-        : Promise.resolve(new Map<string, Visibility>()),
-    ]);
-    if (!slug) return null;
-    const visibility =
-      known.get(row.threadId) ?? fetched.get(row.threadId) ?? row.visibility;
+  function hydratePost(row: HydratedPostRow | undefined): Post | null {
+    if (!row?.slug) return null;
+    const visibility = row.threadVisibility ?? row.visibility;
     if (!visibility) return null;
-    return toPost(row, slug, visibility);
+    return toPost(row, row.slug, visibility);
   }
 
-  async function hydratePosts(
-    rows: (typeof posts.$inferSelect)[],
-  ): Promise<Post[]> {
-    if (rows.length === 0) return [];
-    const { slugMap, visibilityMap } = await loadHydrationMaps(rows);
+  function hydratePosts(rows: HydratedPostRow[]): Post[] {
     return rows
-      .map((row) => {
-        const slug = slugMap.get(row.id);
-        const visibility = visibilityMap.get(row.threadId) ?? row.visibility;
-        return slug && visibility ? toPost(row, slug, visibility) : null;
-      })
-      .filter((row): row is Post => row !== null);
+      .map((row) => hydratePost(row))
+      .filter((post): post is Post => post !== null);
   }
 
   async function hydratePostsById(ids: string[]): Promise<Map<string, Post>> {
@@ -2002,7 +1964,7 @@ export function createPostService(
 
     const rows = await batchQueryRows(uniqueIds, (chunk) =>
       db
-        .select()
+        .select(hydratedPostColumns)
         .from(posts)
         .where(
           and(
@@ -2013,31 +1975,8 @@ export function createPostService(
         ),
     );
 
-    for (const post of await hydratePosts(rows)) {
+    for (const post of hydratePosts(rows)) {
       result.set(post.id, post);
-    }
-
-    return result;
-  }
-
-  async function getThreadVisibilityMap(
-    threadIds: string[],
-  ): Promise<Map<string, Visibility>> {
-    const uniqueThreadIds = [...new Set(threadIds)];
-    const result = new Map<string, Visibility>();
-    if (uniqueThreadIds.length === 0) return result;
-
-    const rows = await batchQueryRows(uniqueThreadIds, (chunk) =>
-      db
-        .select({ id: posts.id, visibility: posts.visibility })
-        .from(posts)
-        .where(and(eq(posts.siteId, siteId), inArray(posts.id, chunk))),
-    );
-
-    for (const row of rows) {
-      if (row.visibility) {
-        result.set(row.id, ensurePostVisibility(row.visibility, Error));
-      }
     }
 
     return result;
@@ -2392,7 +2331,7 @@ export function createPostService(
   return {
     async getById(id) {
       const result = await db
-        .select()
+        .select(hydratedPostColumns)
         .from(posts)
         .where(and(eq(posts.siteId, siteId), eq(posts.id, id)))
         .limit(1);
@@ -2400,45 +2339,36 @@ export function createPostService(
     },
 
     async getWithCanonicalAlias(postId) {
+      // The oldest alias is the post's address, as feeds, the sitemap, and
+      // the export name it: a second custom URL is another way in, not a new
+      // identity. Ties within a second fall to the lower id, not to the
+      // storage engine's order.
       const rows = await db
-        .select({ post: posts, path: pathRegistry })
+        .select({
+          ...hydratedPostColumns,
+          canonicalAlias: sql<string | null>`(
+            SELECT post_alias.path
+            FROM path_registry AS post_alias
+            WHERE post_alias.site_id = ${siteId}
+              AND post_alias.post_id = "post"."id"
+              AND post_alias.kind = 'alias'
+            ORDER BY post_alias.created_at, post_alias.id
+            LIMIT 1
+          )`.as("canonical_alias"),
+        })
         .from(posts)
-        .leftJoin(
-          pathRegistry,
-          and(
-            eq(pathRegistry.siteId, siteId),
-            eq(pathRegistry.postId, posts.id),
-          ),
-        )
         .where(and(eq(posts.siteId, siteId), eq(posts.id, postId)))
-        .orderBy(asc(pathRegistry.createdAt), asc(pathRegistry.id));
+        .limit(1);
 
       const row = rows[0];
-      if (!row) return null;
-
-      let slug: string | null = null;
-      let canonicalAlias: string | null = null;
-      for (const { path } of rows) {
-        if (!path) continue;
-        if (path.kind === "slug") {
-          slug = path.path;
-          continue;
-        }
-        // Rows arrive oldest first, and the oldest alias is the post's
-        // address, as feeds, the sitemap, and the export name it: a second
-        // custom URL is another way in, not a new identity. Ties within a
-        // second fall to the lower id, not to the storage engine's order.
-        if (path.kind === "alias" && canonicalAlias === null) {
-          canonicalAlias = `/${path.path}`;
-        }
-      }
-
       // A Post with no slug row has no address, which is what `hydratePost`
       // says by returning null for it.
-      if (!slug) return null;
-
-      const post = await hydratePost(row.post, slug);
-      return post ? { post, canonicalAlias } : null;
+      const post = hydratePost(row);
+      if (!row || !post) return null;
+      return {
+        post,
+        canonicalAlias: row.canonicalAlias ? `/${row.canonicalAlias}` : null,
+      };
     },
 
     async getBySlug(slug) {
@@ -2447,13 +2377,11 @@ export function createPostService(
         return null;
       }
       const result = await db
-        .select()
+        .select(hydratedPostColumns)
         .from(posts)
         .where(and(eq(posts.siteId, siteId), eq(posts.id, resolved.postId)))
         .limit(1);
-      // The registry row that answered is the slug, so hydration does not go
-      // back for it.
-      return hydratePost(result[0], resolved.path);
+      return hydratePost(result[0]);
     },
 
     async suggestSlug(input) {
@@ -2483,7 +2411,7 @@ export function createPostService(
       const conditions = buildFilterConditions(filters);
 
       let query = db
-        .select()
+        .select(hydratedPostColumns)
         .from(posts)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(...listOrderBy(keys))
@@ -2512,7 +2440,7 @@ export function createPostService(
       // One row past the page says whether another page exists, so the last
       // page carries a null cursor rather than one that leads to an empty page.
       const rows = await db
-        .select({ post: posts, sortKey: listSortKeyFields(keys) })
+        .select({ post: hydratedPostColumns, sortKey: listSortKeyFields(keys) })
         .from(posts)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(...listOrderBy(keys))
@@ -2532,7 +2460,7 @@ export function createPostService(
           : null;
 
       return {
-        posts: await hydratePosts(pageRows.map((row) => row.post)),
+        posts: hydratePosts(pageRows.map((row) => row.post)),
         nextCursor,
       };
     },
@@ -3603,9 +3531,10 @@ export function createPostService(
           .returning();
         if (needsThreadActivityRecalc) {
           await recalculateThreadActivity(existing.threadId);
-          return this.getById(id);
         }
-        return hydratePost(result[0]);
+        // A row from RETURNING has no slug or Thread visibility with it, so
+        // the post is read back whole.
+        return result[0] ? this.getById(id) : null;
       }
 
       // Complex case: cascade + update + Thread collection sync atomically.
@@ -3837,9 +3766,8 @@ export function createPostService(
 
       if (needsThreadActivityRecalc) {
         await recalculateThreadActivity(existing.threadId);
-        return this.getById(id);
       }
-      return hydratePost(updateResult?.[0]);
+      return updateResult?.[0] ? this.getById(id) : null;
     },
 
     async updateWithAttachments(id, data, attachments, deps, summaryConfig) {
@@ -4069,7 +3997,7 @@ export function createPostService(
 
     async getThread(rootId) {
       const rows = await db
-        .select()
+        .select(hydratedPostColumns)
         .from(posts)
         .where(and(eq(posts.siteId, siteId), eq(posts.threadId, rootId)))
         .orderBy(...threadOrder());
@@ -4094,7 +4022,7 @@ export function createPostService(
       }
 
       const rows = await db
-        .select({ post: posts, sortKey: listSortKeyFields(keys) })
+        .select({ post: hydratedPostColumns, sortKey: listSortKeyFields(keys) })
         .from(posts)
         .where(and(...conditions))
         .orderBy(...listOrderBy(keys))
@@ -4103,7 +4031,7 @@ export function createPostService(
       const pageRows = rows.slice(0, limit);
       const lastRow = pageRows[pageRows.length - 1];
       return {
-        posts: await hydratePosts(pageRows.map((row) => row.post)),
+        posts: hydratePosts(pageRows.map((row) => row.post)),
         nextCursor:
           rows.length > limit && lastRow
             ? encodePostListCursor(
@@ -4427,7 +4355,7 @@ export function createPostService(
       }
 
       const rows = await db
-        .select()
+        .select(hydratedPostColumns)
         .from(posts)
         .where(and(...conditions))
         .orderBy(desc(posts.publishedAt))
@@ -4492,38 +4420,57 @@ export function createPostService(
       const uniqueIds = [...new Set(postIds)].filter(Boolean);
       if (uniqueIds.length === 0) return result;
 
-      const seedRows = await db
-        .select({ id: posts.id, translationGroupId: posts.translationGroupId })
-        .from(posts)
-        .where(
-          and(
-            eq(posts.siteId, siteId),
-            inArray(posts.id, uniqueIds),
-            isNotNull(posts.translationGroupId),
-          ),
+      // The members query finds the seeds' groups itself, through a
+      // subquery, so it does not wait for the seeds to come back: both reads
+      // go out together. The seeds are still read on their own, because the
+      // reader's view may leave a seed out of the members, and its group is
+      // what names its siblings. A sitemap shard asks about hundreds of
+      // posts, past what one D1 statement may bind, hence the chunks.
+      const seedConditions = (chunk: string[]) =>
+        and(
+          eq(posts.siteId, siteId),
+          inArray(posts.id, chunk),
+          isNotNull(posts.translationGroupId),
         );
+      const [seedRows, memberRows] = await Promise.all([
+        batchQueryRows(uniqueIds, (chunk) =>
+          db
+            .select({
+              id: posts.id,
+              translationGroupId: posts.translationGroupId,
+            })
+            .from(posts)
+            .where(seedConditions(chunk)),
+        ),
+        batchQueryRows(uniqueIds, (chunk) =>
+          db
+            .select(hydratedPostColumns)
+            .from(posts)
+            .where(
+              and(
+                eq(posts.siteId, siteId),
+                inArray(
+                  posts.translationGroupId,
+                  db
+                    .select({ groupId: posts.translationGroupId })
+                    .from(posts)
+                    .where(seedConditions(chunk)),
+                ),
+                ...(reader
+                  ? buildReaderVisibilityConditions(posts, siteId, reader)
+                  : []),
+              ),
+            ),
+        ),
+      ]);
       if (seedRows.length === 0) return result;
 
-      const groupIds = [
-        ...new Set(
-          seedRows
-            .map((row) => row.translationGroupId)
-            .filter((groupId): groupId is string => groupId !== null),
-        ),
+      // Seeds of one group in two chunks bring its members back twice.
+      const members = [
+        ...new Map(
+          hydratePosts(memberRows).map((member) => [member.id, member]),
+        ).values(),
       ];
-      const memberRows = await db
-        .select()
-        .from(posts)
-        .where(
-          and(
-            eq(posts.siteId, siteId),
-            inArray(posts.translationGroupId, groupIds),
-            ...(reader
-              ? buildReaderVisibilityConditions(posts, siteId, reader)
-              : []),
-          ),
-        );
-      const members = await hydratePosts(memberRows);
       const byGroup = new Map<string, Post[]>();
       for (const member of members) {
         const groupId = member.translationGroupId;
@@ -4722,14 +4669,14 @@ export function createPostService(
 
       // A page of Threads can outgrow one statement's parameter budget — the
       // API lists up to 100. Each Thread lands in one chunk, so every window
-      // below still partitions over a whole Thread.
+      // below still partitions over a whole Thread. The replies come back
+      // whole, ranked and ready to hydrate, so the preview is one read.
       const contextRows = await batchQueryRows(
         [...new Set(rootIds)],
         (chunk) => {
           const rankedReplies = db
             .select({
-              id: posts.id,
-              threadId: posts.threadId,
+              ...hydratedPostColumns,
               firstReplyRank: sql<number>`CAST(ROW_NUMBER() OVER (
             PARTITION BY ${posts.threadId}
             ORDER BY ${sql.join(threadOrder(), sql`, `)}
@@ -4754,13 +4701,7 @@ export function createPostService(
             .as("ranked_replies");
 
           return db
-            .select({
-              threadId: rankedReplies.threadId,
-              id: rankedReplies.id,
-              firstReplyRank: rankedReplies.firstReplyRank,
-              latestReplyRank: rankedReplies.latestReplyRank,
-              totalReplyCount: rankedReplies.totalReplyCount,
-            })
+            .select()
             .from(rankedReplies)
             .where(
               or(
@@ -4774,9 +4715,16 @@ export function createPostService(
         },
       );
 
-      const hydratedPosts = await hydratePostsById(
-        contextRows.map((row) => row.id),
-      );
+      const hydratedPosts = new Map<string, Post>();
+      for (const {
+        firstReplyRank: _first,
+        latestReplyRank: _latest,
+        totalReplyCount: _total,
+        ...row
+      } of contextRows) {
+        const post = hydratePost(row);
+        if (post) hydratedPosts.set(post.id, post);
+      }
 
       const contextByThreadId = new Map<
         string,
@@ -4941,7 +4889,7 @@ export function createPostService(
       // The Posts shown: the Root, every Featured Post, and the last Post.
       const rankedPosts = db
         .select({
-          ...getTableColumns(posts),
+          ...hydratedPostColumns,
           threadPosition: threadPosition(),
           threadPostCount: threadPostCount(),
         })
@@ -4967,6 +4915,7 @@ export function createPostService(
         .select({
           id: posts.id,
           threadId: posts.threadId,
+          slug: hydratedPostColumns.slug,
           featuredAt: posts.featuredAt,
           threadPosition: threadPosition(),
           threadPostCount: threadPostCount(),
@@ -4986,6 +4935,7 @@ export function createPostService(
         .select({
           id: gapCandidates.id,
           threadId: gapCandidates.threadId,
+          slug: gapCandidates.slug,
           previousPostId: gapCandidates.previousPostId,
         })
         .from(gapCandidates)
@@ -5006,17 +4956,13 @@ export function createPostService(
 
       const [rows, gapRows] = await Promise.all([shownQuery, gapQuery]);
 
-      const [hydratedPosts, gapSlugs] = await Promise.all([
+      const hydratedById = new Map(
         hydratePosts(
           rows.map(
             ({ threadPosition: _position, threadPostCount: _count, ...row }) =>
               row,
           ),
-        ),
-        resolvedPaths.getPostSlugMap(gapRows.map((row) => row.id)),
-      ]);
-      const hydratedById = new Map(
-        hydratedPosts.map((post) => [post.id, post]),
+        ).map((post) => [post.id, post]),
       );
 
       for (const row of rows) {
@@ -5036,12 +4982,11 @@ export function createPostService(
       }
 
       for (const row of gapRows) {
-        const slug = gapSlugs.get(row.id);
         const thread = result.get(row.threadId);
-        if (!slug || !thread || !row.previousPostId) continue;
+        if (!row.slug || !thread || !row.previousPostId) continue;
         thread.gapTargets.push({
           id: row.id,
-          slug,
+          slug: row.slug,
           afterPostId: row.previousPostId,
         });
       }
@@ -5272,13 +5217,13 @@ export function createPostService(
           );
         }
         return db
-          .select()
+          .select(hydratedPostColumns)
           .from(posts)
           .where(and(...conditions))
           .orderBy(posts.threadId, ...threadOrder());
       });
 
-      for (const post of await hydratePosts(rows)) {
+      for (const post of hydratePosts(rows)) {
         const thread = result.get(post.threadId);
         if (thread) {
           thread.push(post);

@@ -114,7 +114,7 @@ function buildFixtureServices(): ServicesArg {
         ],
         directoryItems: [],
       }),
-      getCollectionsByPostIds: async () =>
+      getCollectionsByThreadIds: async () =>
         new Map([["pst_root", [collection]]]),
       getCollectionEntriesByThreadIds: async () =>
         new Map([
@@ -346,7 +346,7 @@ describe("Hugo smoke build", () => {
           items: [],
           directoryItems: [],
         }),
-        getCollectionsByPostIds: async () => new Map(),
+        getCollectionsByThreadIds: async () => new Map(),
         getCollectionEntriesByThreadIds: async () => new Map(),
       },
       media: {
@@ -443,7 +443,7 @@ describe("Hugo smoke build", () => {
           items: [],
           directoryItems: [],
         }),
-        getCollectionsByPostIds: async () => new Map(),
+        getCollectionsByThreadIds: async () => new Map(),
         getCollectionEntriesByThreadIds: async () => new Map(),
       },
       media: { getByPostIds: async () => new Map() },
@@ -587,7 +587,7 @@ describe("Hugo smoke build", () => {
           items: [],
           directoryItems: [],
         }),
-        getCollectionsByPostIds: async () => new Map(),
+        getCollectionsByThreadIds: async () => new Map(),
         getCollectionEntriesByThreadIds: async () => new Map(),
       },
       media: { getByPostIds: async () => new Map() },
@@ -701,7 +701,7 @@ describe("Hugo smoke build", () => {
           items: [],
           directoryItems: [],
         }),
-        getCollectionsByPostIds: async () => new Map(),
+        getCollectionsByThreadIds: async () => new Map(),
         getCollectionEntriesByThreadIds: async () => new Map(),
       },
       media: { getByPostIds: async () => new Map() },

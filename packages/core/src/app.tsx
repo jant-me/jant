@@ -78,7 +78,7 @@ import { attachSession } from "./middleware/session.js";
 import { defaultCacheControl, noStore } from "./middleware/cache-control.js";
 import { requireOnboarding } from "./middleware/onboarding.js";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
-import { withConfig } from "./middleware/config.js";
+import { prefetchSettings, withConfig } from "./middleware/config.js";
 import { secureHeadersMiddleware } from "./middleware/secure-headers.js";
 import { apiCors } from "./middleware/cors.js";
 import { rejectCrossOriginWrites } from "./middleware/cross-origin.js";
@@ -478,6 +478,12 @@ export function createApp(): HonoApp {
   });
 
   // --- Middleware for all remaining routes ---
+
+  // Every route below renders with the site's settings. Start reading them
+  // now, so the read shares a round trip with the stored-redirect lookup
+  // below rather than following it; the onboarding gate and `withConfig()`
+  // both take this one read.
+  app.use("*", prefetchSettings());
 
   // Onboarding gate — redirect to /setup if not yet initialized
   app.use("*", requireOnboarding());
