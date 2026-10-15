@@ -3,9 +3,12 @@
  *
  * Run via: `vite build --config vite.config.worker.ts`
  *
- * External dependencies (hono, drizzle-orm, etc.) are preserved as imports.
- * Internal imports (including @jant/core/i18n from SWC Lingui rewrites) are
- * resolved via package.json exports and bundled inline.
+ * Packages in `dependencies` (drizzle-orm, better-auth, etc.) stay imports,
+ * which a site resolves from its own node_modules. Everything else, including
+ * devDependencies such as hono, is bundled inline, so a package only the build
+ * or the browser bundles in dist/client use belongs in devDependencies and a
+ * site never installs it. Internal imports (including @jant/core/i18n from SWC
+ * Lingui rewrites) are resolved via package.json exports and bundled inline.
  */
 
 import ts from "typescript";

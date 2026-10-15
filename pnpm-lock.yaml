@@ -70,6 +70,85 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1016.0
         version: 3.1127.0
+      '@hono/node-server':
+        specifier: ^2.1.1
+        version: 2.1.1(hono@4.13.10)
+      '@lingui/core':
+        specifier: ^6.8.0
+        version: 6.8.0(@babel/core@7.29.7)
+      better-auth:
+        specifier: ~1.7.6
+        version: 1.7.6(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260702.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.23.1)(better-sqlite3@12.11.1)(kysely@0.29.5)(pg@8.23.0))(pg@8.23.0)(react@19.2.8)(vitest@4.1.11(@types/node@25.9.5)(happy-dom@20.14.0)(vite@8.2.2(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0)))
+      better-sqlite3:
+        specifier: ^12.8.0
+        version: 12.11.1
+      blurhash:
+        specifier: ^2.0.5
+        version: 2.0.5
+      client-zip:
+        specifier: ^2.5.1
+        version: 2.5.1
+      drizzle-orm:
+        specifier: ^0.45.1
+        version: 0.45.2(@cloudflare/workers-types@4.20260702.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.23.1)(better-sqlite3@12.11.1)(kysely@0.29.5)(pg@8.23.0)
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.3
+      fractional-indexing:
+        specifier: ^3.2.0
+        version: 3.4.0
+      lucide-static:
+        specifier: ^0.577.0
+        version: 0.577.0
+      mdast-util-from-markdown:
+        specifier: ^2.0.3
+        version: 2.0.3
+      mdast-util-gfm:
+        specifier: ^3.1.0
+        version: 3.1.0
+      micromark-extension-gfm:
+        specifier: ^3.0.0
+        version: 3.0.0
+      nanoid:
+        specifier: ^6.0.1
+        version: 6.0.1
+      parse5:
+        specifier: ^8.0.0
+        version: 8.0.1
+      pg:
+        specifier: ^8.20.0
+        version: 8.23.0
+      smol-toml:
+        specifier: ^1.6.0
+        version: 1.8.0
+      typeid-js:
+        specifier: ^1.2.0
+        version: 1.2.0
+      unist-util-visit:
+        specifier: ^5.1.0
+        version: 5.1.0
+      uqr:
+        specifier: ^0.1.3
+        version: 0.1.3
+      yaml:
+        specifier: ^2.8.2
+        version: 2.9.0
+      yauzl:
+        specifier: ^3.4.0
+        version: 3.4.0
+      yazl:
+        specifier: ^3.3.1
+        version: 3.3.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.5.4
+    devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: ^1.29.1
+        version: 1.54.4(@types/node@25.9.5)(vite@8.2.2(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))(wrangler@4.129.0(@cloudflare/workers-types@4.20260702.1)(@types/node@25.9.5))
+      '@cloudflare/workers-types':
+        specifier: ^4.20260317.1
+        version: 4.20260702.1
       '@emoji-mart/data':
         specifier: ^1.2.1
         version: 1.2.1
@@ -85,15 +164,39 @@ importers:
       '@fontsource/news-cycle':
         specifier: ^5.2.7
         version: 5.3.0
-      '@hono/node-server':
-        specifier: ^2.1.1
-        version: 2.1.1(hono@4.13.10)
-      '@lingui/core':
+      '@fontsource/noto-serif-jp':
+        specifier: ^5.2.8
+        version: 5.3.0
+      '@fontsource/noto-serif-kr':
+        specifier: ^5.2.9
+        version: 5.3.0
+      '@fontsource/noto-serif-sc':
+        specifier: ^5.2.9
+        version: 5.3.0
+      '@fontsource/noto-serif-tc':
+        specifier: ^5.2.9
+        version: 5.3.0
+      '@lingui/cli':
         specifier: ^6.8.0
-        version: 6.8.0(@babel/core@7.29.7)
+        version: 6.8.0(esbuild@0.28.2)(rolldown@1.2.7)
+      '@lingui/conf':
+        specifier: ^6.8.0
+        version: 6.8.0
+      '@lingui/format-po':
+        specifier: ^6.8.0
+        version: 6.8.0
+      '@lingui/swc-plugin':
+        specifier: ^6.7.0
+        version: 6.7.0(@lingui/core@6.8.0(@babel/core@7.29.7))(@swc/core@1.16.2)
+      '@swc/core':
+        specifier: 1.16.2
+        version: 1.16.2
       '@tailwindcss/typography':
         specifier: ^0.5.19
         version: 0.5.20(tailwindcss@4.3.3)
+      '@tailwindcss/vite':
+        specifier: ^4.2.2
+        version: 4.3.3(vite@8.2.2(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))
       '@tiptap/core':
         specifier: ^3.27.3
         version: 3.31.3(@tiptap/pm@3.31.3)
@@ -142,130 +245,6 @@ importers:
       '@tiptap/suggestion':
         specifier: ^3.27.3
         version: 3.31.3(@floating-ui/dom@1.8.0)(@tiptap/core@3.31.3(@tiptap/pm@3.31.3))(@tiptap/pm@3.31.3)
-      basecoat-css:
-        specifier: ^0.3.11
-        version: 0.3.11
-      better-auth:
-        specifier: ~1.7.6
-        version: 1.7.6(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260702.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.23.1)(better-sqlite3@12.11.1)(kysely@0.29.5)(pg@8.23.0))(pg@8.23.0)(react@19.2.8)(vitest@4.1.11(@types/node@25.9.5)(happy-dom@20.14.0)(vite@8.2.2(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0)))
-      better-sqlite3:
-        specifier: ^12.8.0
-        version: 12.11.1
-      blurhash:
-        specifier: ^2.0.5
-        version: 2.0.5
-      client-zip:
-        specifier: ^2.5.1
-        version: 2.5.1
-      drizzle-orm:
-        specifier: ^0.45.1
-        version: 0.45.2(@cloudflare/workers-types@4.20260702.1)(@types/better-sqlite3@7.6.13)(@types/pg@8.23.1)(better-sqlite3@12.11.1)(kysely@0.29.5)(pg@8.23.0)
-      emoji-mart:
-        specifier: ^5.6.0
-        version: 5.6.0
-      fflate:
-        specifier: ^0.8.2
-        version: 0.8.3
-      fractional-indexing:
-        specifier: ^3.2.0
-        version: 3.4.0
-      heic-to:
-        specifier: ^1.4.2
-        version: 1.5.2
-      limax:
-        specifier: ^4.2.2
-        version: 4.2.3
-      lit:
-        specifier: ^3.3.2
-        version: 3.3.3
-      lucide-static:
-        specifier: ^0.577.0
-        version: 0.577.0
-      mdast-util-from-markdown:
-        specifier: ^2.0.3
-        version: 2.0.3
-      mdast-util-gfm:
-        specifier: ^3.1.0
-        version: 3.1.0
-      mediabunny:
-        specifier: ^1.39.2
-        version: 1.55.7
-      micromark-extension-gfm:
-        specifier: ^3.0.0
-        version: 3.0.0
-      nanoid:
-        specifier: ^6.0.1
-        version: 6.0.1
-      parse5:
-        specifier: ^8.0.0
-        version: 8.0.1
-      pg:
-        specifier: ^8.20.0
-        version: 8.23.0
-      smol-toml:
-        specifier: ^1.6.0
-        version: 1.8.0
-      sortablejs:
-        specifier: ^1.15.7
-        version: 1.15.7
-      typeid-js:
-        specifier: ^1.2.0
-        version: 1.2.0
-      unist-util-visit:
-        specifier: ^5.1.0
-        version: 5.1.0
-      uqr:
-        specifier: ^0.1.3
-        version: 0.1.3
-      yaml:
-        specifier: ^2.8.2
-        version: 2.9.0
-      yauzl:
-        specifier: ^3.4.0
-        version: 3.4.0
-      yazl:
-        specifier: ^3.3.1
-        version: 3.3.1
-      zod:
-        specifier: ^4.3.6
-        version: 4.5.4
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: ^1.29.1
-        version: 1.54.4(@types/node@25.9.5)(vite@8.2.2(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))(wrangler@4.129.0(@cloudflare/workers-types@4.20260702.1)(@types/node@25.9.5))
-      '@cloudflare/workers-types':
-        specifier: ^4.20260317.1
-        version: 4.20260702.1
-      '@fontsource/noto-serif-jp':
-        specifier: ^5.2.8
-        version: 5.3.0
-      '@fontsource/noto-serif-kr':
-        specifier: ^5.2.9
-        version: 5.3.0
-      '@fontsource/noto-serif-sc':
-        specifier: ^5.2.9
-        version: 5.3.0
-      '@fontsource/noto-serif-tc':
-        specifier: ^5.2.9
-        version: 5.3.0
-      '@lingui/cli':
-        specifier: ^6.8.0
-        version: 6.8.0(esbuild@0.28.2)(rolldown@1.2.7)
-      '@lingui/conf':
-        specifier: ^6.8.0
-        version: 6.8.0
-      '@lingui/format-po':
-        specifier: ^6.8.0
-        version: 6.8.0
-      '@lingui/swc-plugin':
-        specifier: ^6.7.0
-        version: 6.7.0(@lingui/core@6.8.0(@babel/core@7.29.7))(@swc/core@1.16.2)
-      '@swc/core':
-        specifier: 1.16.2
-        version: 1.16.2
-      '@tailwindcss/vite':
-        specifier: ^4.2.2
-        version: 4.3.3(vite@8.2.2(@types/node@25.9.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
@@ -281,24 +260,45 @@ importers:
       '@types/yazl':
         specifier: ^3.3.1
         version: 3.3.1
+      basecoat-css:
+        specifier: ^0.3.11
+        version: 0.3.11
       cn-font-split:
         specifier: ^7.4.1
         version: 7.4.3
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+      emoji-mart:
+        specifier: ^5.6.0
+        version: 5.6.0
       glob:
         specifier: ^13.0.6
         version: 13.0.6
       happy-dom:
         specifier: ^20.8.4
         version: 20.14.0
+      heic-to:
+        specifier: ^1.4.2
+        version: 1.5.2
       hono:
         specifier: ^4.13.10
         version: 4.13.10
+      limax:
+        specifier: ^4.2.2
+        version: 4.2.3
+      lit:
+        specifier: ^3.3.2
+        version: 3.3.3
+      mediabunny:
+        specifier: ^1.39.2
+        version: 1.55.7
       sharp:
         specifier: ^0.35.5
         version: 0.35.5(@types/node@25.9.5)
+      sortablejs:
+        specifier: ^1.15.7
+        version: 1.15.7
       tailwindcss:
         specifier: ^4.2.2
         version: 4.3.3
