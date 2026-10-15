@@ -262,7 +262,7 @@ PORT=8787 npm run dev
 
 ### 通过 GitHub Actions 自动部署
 
-`create-jant` 创建的项目里已内置 `.github/workflows/deploy.yml`，它和 `npm run deploy` 一样运行 `jant deploy`。在 GitHub 仓库加两个 Secret，之后每次推送 `main` 都会自动部署：
+`create-jant` 创建的项目里已内置 `.github/workflows/deploy.yml`。它安装依赖后运行 `jant deploy --ci`，用的是 lockfile 里的 `@jant/core` 版本，所以检查和部署本身会随升级更新。先在自己电脑上运行一次 `npm run deploy`，再提交 `wrangler.toml`：`database_id` 还是 `"local"` 时，workflow 会停下并说明原因，不会部署。然后在 GitHub 仓库加两个 Secret，之后每次推送 `main` 都会自动部署。没加 Secret 时，workflow 跳过部署，运行结果仍是通过：
 
 - `CF_API_TOKEN`
 - `CF_ACCOUNT_ID`
@@ -273,6 +273,8 @@ PORT=8787 npm run dev
 - **`CF_API_TOKEN`**：[API Tokens 页面](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → 选 **Edit Cloudflare Workers** 模板（已包含部署 Worker、读写 D1、读写 R2 所需权限）。按提示选账号和域名（如果用了自定义域名），生成后**立即复制**——关闭页面后无法再次查看。
 
 添加到 GitHub：仓库 → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**。
+
+一键部署创建的仓库里也有这个 workflow。Cloudflare 已经会在每次推送时部署它，所以这种仓库不要加这两个 Secret，加了每次推送会部署两次。
 
 ### 部署在子路径下
 

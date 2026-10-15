@@ -226,7 +226,7 @@ Keep `database_id = "local"` in `wrangler.toml`: the first deploy finds the data
 
 ### Automatic deploys via GitHub Actions
 
-Projects created by `create-jant` already include `.github/workflows/deploy.yml`, which runs `jant deploy` as `npm run deploy` does. Run `npm run deploy` once on your computer first and commit `wrangler.toml`: while `database_id` is still `"local"`, the workflow skips the deploy. Then add two repository secrets in GitHub and every push to `main` will deploy automatically:
+Projects created by `create-jant` already include `.github/workflows/deploy.yml`. It installs dependencies and runs `jant deploy --ci` from the `@jant/core` version in your lockfile, so its checks and the deploy itself stay current as you upgrade. Run `npm run deploy` once on your computer first and commit `wrangler.toml`: while `database_id` is still `"local"`, the workflow stops with a message instead of deploying. Then add two repository secrets in GitHub and every push to `main` will deploy automatically. Without them, the workflow skips the deploy and the run still passes:
 
 - `CF_API_TOKEN`
 - `CF_ACCOUNT_ID`
@@ -237,6 +237,8 @@ How to get them:
 - **`CF_API_TOKEN`**: [API Tokens page](https://dash.cloudflare.com/profile/api-tokens) → **Create Token** → pick the **Edit Cloudflare Workers** template (it includes Worker deploy, D1 read/write, and R2 read/write permissions). Pick the account and zone (if you use a custom domain), then **copy the token immediately** — it isn't shown again after you close the page.
 
 Add to GitHub: repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+
+A repo made by one-click deploy has the same workflow. Cloudflare already deploys it on every push, so leave the secrets out there: with them, every push deploys twice.
 
 ### Deploying under a subpath
 

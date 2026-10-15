@@ -60,9 +60,11 @@ printf '%s' "$OWNER_PASSWORD" | npx jant setup --email owner@example.com --passw
 
 ### `jant deploy`
 
-先执行远端迁移，再用正确的静态资源目录部署到 Cloudflare Workers。`--` 之后的参数原样传给 `wrangler deploy`。
+先执行远端迁移，再用正确的静态资源目录部署到 Cloudflare Workers。`--` 之后的参数原样传给 `wrangler deploy`。用 Wrangler 的 `--dry-run` 时还要加 `--skip-migrate`，因为迁移在 Wrangler 启动前就执行了；第一次部署不能 dry run。
 
 用 `create-jant` 创建的项目第一次部署时，D1 的 `database_id` 还是 `"local"`，这时会先把 Cloudflare 准备好：没登录就登录 Wrangler，按 `wrangler.toml` 里的名字创建 D1 数据库和 R2 存储桶（已经存在就直接用），再把数据库 ID 写回 `wrangler.toml`。Worker 还没有 `AUTH_SECRET` 的话，会生成一个随部署一起设置。部署失败时 `database_id` 会改回 `"local"`，再跑一次会接着上次的进度继续。在脚本里运行时，没登录或者账户有多个可选，命令会停下来并说明该设置什么。
+
+`--ci` 给自动运行用，比如 `create-jant` 项目自带的 GitHub workflow。`CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID` 都没设置时，它跳过部署且不报错，用别的方式部署的仓库因此不会显示失败。它不做首次部署：`database_id` 还是 `"local"` 时直接停下，因为首次部署写回的 ID 在 CI 里提交不了。在 GitHub Actions 上，跳过或停下的原因也会写进运行摘要。
 
 | 选项             | 用途                                          |
 | ---------------- | --------------------------------------------- |
@@ -72,6 +74,7 @@ printf '%s' "$OWNER_PASSWORD" | npx jant setup --email owner@example.com --passw
 | `--path-prefix`  | 用这个子路径，不读配置里的 `SITE_PATH_PREFIX` |
 | `--database`     | 迁移用的 D1 绑定名（默认 `DB`）               |
 | `--skip-migrate` | 部署时不执行迁移                              |
+| `--ci`           | 给自动运行用，比如 GitHub Actions，见上文     |
 
 ### `jant reset-password`
 

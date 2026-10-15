@@ -217,10 +217,11 @@ async function checkDeployWorkflow(projectDir, target) {
     fail(`${target} workflow installs with "${install}"`);
   }
 
-  // `jant deploy`, not wrangler directly: it runs the data backfills with
-  // the migrations and prepares assets for a site under a path prefix.
+  // `jant deploy --ci`, not wrangler directly: it runs the data backfills
+  // with the migrations, prepares assets for a site under a path prefix, and
+  // makes the checks that used to be shell in the workflow.
   const deploy = steps[stepIndex("Deploy")].run;
-  if (deploy !== `${expected.exec} jant deploy`) {
+  if (deploy !== `${expected.exec} jant deploy --ci`) {
     fail(`${target} workflow deploys with "${deploy}"`);
   }
 

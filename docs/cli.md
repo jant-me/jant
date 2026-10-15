@@ -60,9 +60,11 @@ Applies database migrations and data backfills. `jant deploy` and the Docker Com
 
 ### `jant deploy`
 
-Applies remote migrations, then deploys to Cloudflare Workers with the right static asset directory. Arguments after `--` go to `wrangler deploy`.
+Applies remote migrations, then deploys to Cloudflare Workers with the right static asset directory. Arguments after `--` go to `wrangler deploy`. Wrangler's `--dry-run` needs `--skip-migrate` too, since the migrations run before Wrangler starts, and doesn't work on the first deploy.
 
 The first deploy of a project made by `create-jant`, whose D1 `database_id` is still `"local"`, sets up Cloudflare first: it signs you in to Wrangler if needed, creates the D1 database and R2 buckets that `wrangler.toml` names, reuses any that already exist, and writes the database ID into `wrangler.toml`. If the Worker has no `AUTH_SECRET` yet, it generates one and deploys with it. If the deploy fails, `database_id` goes back to `"local"` and the next run picks up where this one stopped. In a script, a missing sign-in or a choice between several Cloudflare accounts stops the command with what to set instead.
+
+`--ci` is for an automated run, such as the GitHub workflow `create-jant` projects ship. With neither `CLOUDFLARE_API_TOKEN` nor `CLOUDFLARE_ACCOUNT_ID` set, it skips the deploy without failing, so a repo that deploys another way stays green. It never runs the first deploy: a `database_id` that is still `"local"` stops it, since a CI checkout can't commit the ID the first deploy writes. On GitHub Actions, the reason for a skip or a stop also goes into the run summary.
 
 | Option           | Use                                                                   |
 | ---------------- | --------------------------------------------------------------------- |
@@ -72,6 +74,7 @@ The first deploy of a project made by `create-jant`, whose D1 `database_id` is s
 | `--path-prefix`  | Use this subpath instead of `SITE_PATH_PREFIX` from the config        |
 | `--database`     | D1 binding name for migrations (default: `DB`)                        |
 | `--skip-migrate` | Deploy without running migrations                                     |
+| `--ci`           | Deploy from an automated run, such as GitHub Actions; see above       |
 
 ### `jant reset-password`
 
