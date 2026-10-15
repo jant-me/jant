@@ -14,15 +14,16 @@ You can also look at the author's own blog as a real-world example: [www.owenyou
 
 ## Quick start
 
-If you don't want to deploy it yourself, [sign up for Hosted Jant](https://jant.me/signup) and create a blog in the dashboard. [Use Hosted Jant](hosted.md) covers pricing and custom domains.
+There are two ways to start using Jant:
 
-To host it yourself, send this line to an AI assistant that can run commands, such as Claude Code or Codex:
+- **Hosted Jant**: sign up at [jant.me](https://jant.me/signup) and create a blog. Deployment, upgrades, and backups are handled for you. Pricing is in [Use Hosted Jant](hosted.md).
+- **Self-hosted**: send this prompt to an AI assistant that can run commands, such as Claude Code or Codex:
 
-```text
-Read https://jant.me/docs/install.md and help me set up a Jant site.
-```
+  ```text
+  Read https://jant.me/docs/install.md and help me set up a Jant site.
+  ```
 
-It asks whether the site should run on Cloudflare or on your own server with Docker, does the setup, and hands back the steps only you can do. To set it up by hand, see [Getting started](getting-started.md).
+  The assistant first confirms whether to deploy to Cloudflare or to your own server with Docker, then follows the matching guide. Steps such as signing in to Cloudflare and setting the admin password are yours to do. To deploy by hand, see [Getting started](getting-started.md).
 
 ## Why Jant exists
 
