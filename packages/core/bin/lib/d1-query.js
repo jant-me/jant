@@ -68,6 +68,31 @@ export function parseWranglerError(output) {
   }
 }
 
+/**
+ * Read the `--json` error out of a failed Wrangler call.
+ *
+ * Wrangler writes that error to stdout and its warnings to stderr, and a
+ * warning such as "Proxy environment variables detected" comes with any
+ * failure on a machine behind a proxy. Read together, the warning trails the
+ * JSON and breaks the parse, so the message fell back to the warning alone and
+ * the cause went unseen. Each stream is read on its own.
+ *
+ * @param {{ stdout?: string, stderr?: string } | undefined} error - The error a failed Wrangler call threw
+ * @returns {string | undefined} The error text and its notes, when Wrangler printed one
+ * @example
+ * parseWranglerFailure({
+ *   stdout: '{"error":{"text":"Couldn\'t find a D1 DB with name or binding \'DB\'"}}',
+ *   stderr: "▲ [WARNING] Proxy environment variables detected.",
+ * });
+ * // => "Couldn't find a D1 DB with name or binding 'DB'"
+ */
+export function parseWranglerFailure(error) {
+  return (
+    parseWranglerError(error?.stdout?.trim()) ??
+    parseWranglerError(error?.stderr?.trim())
+  );
+}
+
 function sleepSync(ms) {
   if (!Number.isFinite(ms) || ms <= 0) {
     return;
@@ -162,7 +187,7 @@ function runWrangler(args, options = {}) {
       return runLocalWrangler(args, getWranglerExecutionOptions(options));
     } catch (error) {
       const output = `${error.stdout ?? ""}${error.stderr ?? ""}`.trim();
-      const wranglerError = parseWranglerError(output);
+      const wranglerError = parseWranglerFailure(error);
       const retryable = isRetryableWranglerD1Failure(output, error);
 
       if (retryable && attempt < retryAttempts) {

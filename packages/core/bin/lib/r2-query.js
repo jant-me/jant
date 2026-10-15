@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { parseWranglerError } from "./d1-query.js";
+import { parseWranglerFailure } from "./d1-query.js";
 import { resolveWranglerR2BucketName } from "./wrangler-config.js";
 import { runLocalWrangler } from "./wrangler-cli.js";
 
@@ -67,7 +67,7 @@ function runWrangler(args, options = {}) {
       return runLocalWrangler(args, options);
     } catch (error) {
       const output = `${error.stdout ?? ""}${error.stderr ?? ""}`.trim();
-      const wranglerError = parseWranglerError(output);
+      const wranglerError = parseWranglerFailure(error);
       const retryable = isRetryableWranglerR2Failure(output, error);
 
       if (retryable && attempt < retryAttempts) {
