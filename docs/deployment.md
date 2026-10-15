@@ -46,7 +46,7 @@ Click the Deploy button and Cloudflare creates the GitHub repo, D1 database, and
 | **Git account**            | Pick your GitHub account. First-time users click **New GitHub Connection** to authorize, then Cloudflare creates the repo.                                          |
 | **Project name**           | Defaults to `my-site`. This value is both the site subdomain `<project>.<account>.workers.dev` and the GitHub repo name. Change it now to something like `my-blog`. |
 | **D1 database**            | Keep **Create new** with the default name.                                                                                                                          |
-| **Database location hint** | Pick the region where most of your readers are. Every page waits on this database; see [D1 read replication](#d1-read-replication).                                 |
+| **Database location hint** | Pick the region where most of your readers are. Every page waits on this database; see [Enable D1 read replication](#3-enable-d1-read-replication).                 |
 | **R2 bucket**              | Keep **Create new** with the default name.                                                                                                                          |
 | **AUTH_SECRET**            | Keep the auto-generated value, or replace it with your own 32+ byte random string. This signs sessions. Don't change it after going live.                           |
 
@@ -70,7 +70,7 @@ You can skip cloning — every option in the next section is also reachable from
 
 ## Before going live
 
-Finish these three steps before creating your admin account.
+Finish these four steps before creating your admin account.
 
 ### 1. Bind a custom domain
 
@@ -109,13 +109,41 @@ If the status sits on `Initializing` for a long time, the subdomain is usually a
 
 To verify, open any uploaded image and check the page source. The `<img src>` should be `https://<media-domain>/...`, not `<project>.<account>.workers.dev/...`.
 
-### 3. Enable automatic image resizing (optional)
+### 3. Enable D1 read replication
+
+A Jant page makes about a dozen D1 queries one after another, so each round trip between the Worker and the database is paid about twelve times. Without read replication, every query goes to the database's one location, and readers far from it wait on every page. Two Jant sites on the same version, both with the database in Western North America, measured from Tokyo:
+
+| Read replication | One query | Home page |
+| ---------------- | --------- | --------- |
+| Off              | ~125 ms   | ~1.0 s    |
+| On               | ~20 ms    | ~0.4 s    |
+
+With read replication on, D1 keeps a read-only copy of the database in each of its regions and sends reads to the nearest one. Replicas cost nothing extra; D1 still bills by rows read and written.
+
+To turn it on:
+
+1. Open [D1](https://dash.cloudflare.com/?to=/:account/workers/d1) and select the database.
+2. **Settings** → **Enable Read Replication**.
+
+Through the API, set `read_replication.mode` to `"auto"`, as Cloudflare's [read replication guide](https://developers.cloudflare.com/d1/best-practices/read-replication/) shows. `wrangler.toml` doesn't change: Jant already reads through the D1 Sessions API, which replication needs.
+
+Writes still go to the primary, and requests you make while signed in start there, so a replica that is behind can't sign you out. Your pages load slower than your readers' do.
+
+To check a site, time `/healthz`, which answers without the database, against `/readyz`, which makes one D1 query. Curl reuses one connection for all five requests:
+
+```bash
+curl -s -o /dev/null -w '%{url_effective}  %{time_total}s\n' 'https://<your-domain>/{healthz,healthz,readyz,readyz,readyz}'
+```
+
+The first line includes connection setup. The fastest `readyz` minus the second `healthz` is what one query costs a reader where you are: about 125 ms and 20 ms for the two sites above.
+
+### 4. Enable automatic image resizing (optional)
 
 With [Image Transformations](https://developers.cloudflare.com/images/transform-images/) on, Jant requests image sizes that match the visitor's screen width and pixel density, so phones don't load 4000px originals.
 
 The first 5,000 transformations per month are free; about $0.50 per 1,000 after that. Each original needs 3–5 derived sizes on demand, so personal sites rarely hit the paid tier.
 
-> Image transformations are a domain (zone) level feature. Configure the R2 custom domain from the previous step first.
+> Image transformations are a domain (zone) level feature. Configure the R2 custom domain from step 2 first.
 
 1. In the [Cloudflare dashboard](https://dash.cloudflare.com/), select the domain you bound.
 2. Left menu → **Images** → **Transformations**.
@@ -195,29 +223,6 @@ npx wrangler d1 create <project>-db --location weur
 Keep `database_id = "local"` in `wrangler.toml`: the first deploy finds the database by its name.
 
 ## Advanced configuration
-
-### D1 read replication
-
-A Jant page makes about a dozen D1 queries one after another, so each round trip between the Worker and the database is paid about twelve times. Without read replication, every query goes to the database's one location, and readers far from it wait on every page. Two Jant sites on the same version, both with the database in Western North America, measured from Tokyo:
-
-| Read replication | One query | Home page |
-| ---------------- | --------- | --------- |
-| Off              | ~125 ms   | ~1.0 s    |
-| On               | ~20 ms    | ~0.4 s    |
-
-With read replication on, D1 keeps a read-only copy of the database in each of its regions and sends reads to the nearest one. Replicas cost nothing extra; D1 still bills by rows read and written.
-
-To turn it on, open [D1](https://dash.cloudflare.com/?to=/:account/workers/d1), select the database, then **Settings** → **Enable Read Replication**. Through the API, set `read_replication.mode` to `"auto"`, as Cloudflare's [read replication guide](https://developers.cloudflare.com/d1/best-practices/read-replication/) shows. `wrangler.toml` doesn't change: Jant already reads through the D1 Sessions API, which replication needs.
-
-Writes still go to the primary, and requests you make while signed in start there, so a replica that is behind can't sign you out. Your pages load slower than your readers' do.
-
-To check a site, time `/healthz`, which answers without the database, against `/readyz`, which makes one D1 query. Curl reuses one connection for all five requests:
-
-```bash
-curl -s -o /dev/null -w '%{url_effective}  %{time_total}s\n' 'https://<your-domain>/{healthz,healthz,readyz,readyz,readyz}'
-```
-
-The first line includes connection setup. The fastest `readyz` minus the second `healthz` is what one query costs a reader where you are: about 125 ms and 20 ms for the two sites above.
 
 ### Automatic deploys via GitHub Actions
 
