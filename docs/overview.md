@@ -14,13 +14,15 @@ You can also look at the author's own blog as a real-world example: [www.owenyou
 
 ## Quick start
 
-Send this line to an AI assistant that can run commands, such as Claude Code or Codex:
+If you don't want to deploy it yourself, [sign up for Hosted Jant](https://jant.me/signup) and create a blog in the dashboard. [Use Hosted Jant](hosted.md) covers pricing and custom domains.
+
+To host it yourself, send this line to an AI assistant that can run commands, such as Claude Code or Codex:
 
 ```text
 Read https://jant.me/docs/install.md and help me set up a Jant site.
 ```
 
-It asks where the site should run (Cloudflare, your own server with Docker, or Hosted Jant), does the setup, and hands back the steps only you can do. To set it up yourself, see [Getting started](getting-started.md).
+It asks whether the site should run on Cloudflare or on your own server with Docker, does the setup, and hands back the steps only you can do. To set it up by hand, see [Getting started](getting-started.md).
 
 ## Why Jant exists
 

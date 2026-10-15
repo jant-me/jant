@@ -14,13 +14,15 @@ Jant 是一个为单作者设计的轻博客，介于传统博客和社交媒体
 
 ## 快速开始
 
-把下面这句话发给 Claude Code、Codex 这类能运行命令的 AI 助手：
+不想自己部署，可以直接[注册 Jant 托管](https://jant.me/signup)，在后台创建博客。价格和自定义域名见[使用 Jant 托管](hosted.md)。
+
+想自己部署，把下面这句话发给 Claude Code、Codex 这类能运行命令的 AI 助手：
 
 ```text
 读取 https://jant.me/docs/install.md，帮我搭建一个 Jant 站点。
 ```
 
-它会先问你站点放在哪里（Cloudflare、用 Docker 部署在自己的服务器上，或者 Jant 托管），再完成部署，需要你本人做的步骤交回给你。想自己动手，见[开始使用](getting-started.md)。
+它会先问你部署在 Cloudflare 还是用 Docker 部署在自己的服务器上，再完成部署，需要你本人做的步骤交回给你。想手动部署，见[开始使用](getting-started.md)。
 
 ## 为什么会有 Jant
 
