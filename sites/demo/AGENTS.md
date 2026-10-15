@@ -6,7 +6,8 @@ These come from the installed Jant version, so they stay current after an upgrad
 
 - **Content**: reading, publishing, editing, organizing, searching, and importing posts through the HTTP API or MCP. Fetch `/skill.md` from the running site, for example `https://your-site.example/skill.md`, or `http://localhost:<port>/skill.md` during `npm run dev`.
 - **Command line**: `npx jant --help` lists the commands, and `npx jant <command> --help` lists a command's options.
-- **Configuration, deployment, and theming**: https://jant.me/docs
+- **Setting up and deploying**: https://jant.me/docs/install.md, which asks the person where the site should run and links the guide for each choice.
+- **Configuration and theming**: https://jant.me/docs
 
 ## Project files
 

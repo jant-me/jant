@@ -10,6 +10,7 @@
 
 - [Introduction](overview.md)
 - [Getting started](getting-started.md)
+- [Install with an AI assistant](install.md)
 
 ## Run your site
 

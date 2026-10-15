@@ -41,6 +41,9 @@ const ALLOWED_BUILDS = ["better-sqlite3", "esbuild", "workerd"] as const;
 
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
+/** The guide the closing note points at, released docs on jant.me. */
+const DEPLOY_GUIDE_URL = "https://jant.me/docs/deployment";
+
 type PackageManager = "pnpm" | "yarn" | "npm";
 
 /**
@@ -327,8 +330,8 @@ function renderWorkflowStep(step: WorkflowStep, indent: string): string[] {
  *
  * @param workflow - content of the template's `.github/workflows/deploy.yml`
  * @param target - package manager the project was scaffolded with
- * @returns the workflow with setup, cache, install, and wrangler steps for
- *   `target`
+ * @returns the workflow with setup, cache, install, and wrangler steps, and
+ *   the deploy command it mentions, for `target`
  * @example
  * adaptDeployWorkflow("      run: npm ci\n...", "pnpm");
  * // "      run: pnpm install --frozen-lockfile\n..."
@@ -382,6 +385,9 @@ function adaptDeployWorkflow(
     /^( *)run: npm ci$/m,
     (indent) => `${indent}run: ${install}`,
   );
+  result = replaceRequired(result, /\bnpm run (deploy)\b/g, (script) =>
+    formatRunCmd(target === "pnpm" ? "pnpm" : "yarn", script),
+  );
   return replaceRequired(
     result,
     /\bnpx (jant|wrangler)\b/g,
@@ -391,10 +397,12 @@ function adaptDeployWorkflow(
 
 /**
  * Format a run command for the given package manager.
- * npm needs `run` for custom scripts, pnpm/yarn do not.
+ * npm needs `run` for custom scripts. pnpm does too for a script named like
+ * one of its own commands: `pnpm deploy` runs pnpm's workspace deploy, never
+ * the project's `deploy` script. Yarn runs scripts without `run`.
  */
 function formatRunCmd(pm: PackageManager, script: string): string {
-  return pm === "npm" ? `npm run ${script}` : `${pm} ${script}`;
+  return pm === "yarn" ? `yarn ${script}` : `${pm} run ${script}`;
 }
 
 /**
@@ -760,7 +768,7 @@ async function main(): Promise<void> {
 
   try {
     await copyTemplate(config);
-    spinner.stop("Project created successfully!");
+    spinner.stop("Project created.");
   } catch (error) {
     spinner.stop("Failed to create project");
     p.log.error(error instanceof Error ? error.message : String(error));
@@ -800,17 +808,28 @@ async function main(): Promise<void> {
     }
   }
 
-  // Show next steps
-  const steps: string[] = [`cd ${projectName}`];
+  // Show next steps: run it here, then deploy it with one command. The
+  // first `deploy` creates the Cloudflare resources the site needs.
+  const steps: [string, string][] = [[`cd ${projectName}`, ""]];
   if (!config.install || !installOk) {
-    steps.push(`${packageManager} install`);
+    steps.push([`${packageManager} install`, ""]);
   }
-  steps.push(formatRunCmd(packageManager, "dev"));
+  steps.push(
+    [
+      formatRunCmd(packageManager, "dev"),
+      "Run locally at http://localhost:3000",
+    ],
+    [formatRunCmd(packageManager, "deploy"), "Deploy to Cloudflare"],
+  );
+  const width = Math.max(...steps.map(([command]) => command.length));
+  const lines = steps.map(([command, purpose]) =>
+    purpose ? `${command.padEnd(width)}   ${chalk.dim(purpose)}` : command,
+  );
 
   console.log(); // eslint-disable-line no-console
-  p.note(steps.join("\n"), "Next steps");
+  p.note(lines.join("\n"), "Next steps");
 
-  p.outro(chalk.green("Happy coding!"));
+  p.outro(`Deploy guide: ${chalk.cyan(DEPLOY_GUIDE_URL)}`);
 }
 
 main().catch((error) => {

@@ -1,12 +1,12 @@
-# Deploy your Jant site to Cloudflare Workers.
+# Deploy your Jant site to Cloudflare Workers on every push to main.
 #
 # Prerequisites:
-# 1. Create a D1 database: npx wrangler d1 create <name>
-# 2. Update wrangler.toml with the database_id
-# 3. Add repository secrets: CF_API_TOKEN, CF_ACCOUNT_ID
-# 4. Set production secret: npx wrangler secret put AUTH_SECRET
+# 1. Run `npm run deploy` once on your computer. The first deploy creates the
+#    D1 database, the R2 bucket, and AUTH_SECRET, and writes the database ID
+#    to wrangler.toml. Commit wrangler.toml.
+# 2. Add repository secrets: CF_API_TOKEN, CF_ACCOUNT_ID
 #
-# Full setup guide: https://github.com/jant-me/jant
+# Full setup guide: https://jant.me/docs/deployment#automatic-deploys-via-github-actions
 
 name: Deploy
 
@@ -59,7 +59,7 @@ jobs:
             {
               echo "### Deploy skipped"
               echo
-              echo "Replace the placeholder D1 \`database_id\` in \`wrangler.toml\` before enabling auto-deploy."
+              echo "\`wrangler.toml\` still has the placeholder D1 \`database_id\`. Run \`npm run deploy\` once on your computer, then commit \`wrangler.toml\`."
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi

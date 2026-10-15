@@ -62,6 +62,8 @@ printf '%s' "$OWNER_PASSWORD" | npx jant setup --email owner@example.com --passw
 
 先执行远端迁移，再用正确的静态资源目录部署到 Cloudflare Workers。`--` 之后的参数原样传给 `wrangler deploy`。
 
+用 `create-jant` 创建的项目第一次部署时，D1 的 `database_id` 还是 `"local"`，这时会先把 Cloudflare 准备好：没登录就登录 Wrangler，按 `wrangler.toml` 里的名字创建 D1 数据库和 R2 存储桶（已经存在就直接用），再把数据库 ID 写回 `wrangler.toml`。Worker 还没有 `AUTH_SECRET` 的话，会生成一个随部署一起设置。部署失败时 `database_id` 会改回 `"local"`，再跑一次会接着上次的进度继续。在脚本里运行时，没登录或者账户有多个可选，命令会停下来并说明该设置什么。
+
 | 选项             | 用途                                          |
 | ---------------- | --------------------------------------------- |
 | `--config`、`-c` | Wrangler 配置文件（默认 `wrangler.toml`）     |

@@ -9,6 +9,8 @@ After the deploy itself, you still need to bind a custom domain and configure R2
 
 > To deploy on your own server instead, see [Deploy with Docker](deployment-docker.md).
 
+> To have an AI assistant do the setup, send it this line: `Read https://jant.me/docs/install.md and help me set up a Jant site.` See [Install with an AI assistant](install.md).
+
 ## Placeholder conventions
 
 Every `<...>` in this guide is a placeholder you replace with your own value.
@@ -29,7 +31,7 @@ Every `<...>` in this guide is a placeholder you replace with your own value.
 - **GitHub account**: one-click deploy hosts the code on GitHub. Sign up or sign in at [github.com](https://github.com/).
 - **Enable R2**: open the [R2 dashboard](https://dash.cloudflare.com/?to=/:account/r2) and click **Enable R2** to accept the terms. Do this first — skipping it makes the deploy fail with `uses R2 which is only available with an R2 subscription`. R2 stores uploaded images and videos. Free tier: 10 GB storage and 1 million reads per month.
 - **Custom domain** (recommended): hosted under the same Cloudflare account. If you haven't added one yet, transfer DNS to Cloudflare first.
-- **Local development path also needs**: [Node.js](https://nodejs.org/) 24+, `git`, `openssl`.
+- **Local development path also needs**: [Node.js](https://nodejs.org/) 24+ and `git`.
 
 ## One-click deploy
 
@@ -165,70 +167,32 @@ PORT=8787 npm run dev
 
 ### Deploy to Cloudflare
 
-In order:
+Enable R2 first, as [Prerequisites](#prerequisites) says. Then:
 
-1. **Log into Wrangler**
+```bash
+npm run deploy
+```
 
-   ```bash
-   npx wrangler login
-   ```
+`npm run deploy` calls `jant deploy`. On a new project, whose `wrangler.toml` still has `database_id = "local"`, it first sets up Cloudflare:
 
-   The browser opens for authorization. Back in the terminal you'll see `Successfully logged in`.
+1. Signs in to Wrangler if you aren't signed in. The browser opens for authorization.
+2. Asks which account to use if your sign-in reaches more than one, and saves its `account_id` in `wrangler.toml`.
+3. Creates the D1 database `<project>-db` and the R2 bucket `<project>-media`, or reuses them if they exist, and writes the database ID into `wrangler.toml`.
+4. Generates a production `AUTH_SECRET` and gives it to the Worker as a secret, unless the Worker already has one. It is separate from the local secret in `.dev.vars`. Once the site is live, **don't change it** — that invalidates every active session.
 
-2. **Create the D1 database**
+Then, on every deploy, it applies D1 migrations and data backfills, and uploads the Worker code and static assets.
 
-   ```bash
-   npx wrangler d1 create <project>-db
-   ```
+On success, the terminal prints a URL like `https://<project>.<account>.workers.dev`. Commit `wrangler.toml`, which now holds the database ID. Then go back to [Before going live](#before-going-live) to finish the custom domain and R2 public access, and create the admin account.
 
-   Copy the output `database_id` into the `[[d1_databases]]` section of `wrangler.toml`:
+If the first deploy fails, `database_id` goes back to `"local"`, and the next `npm run deploy` reuses what the failed run created.
 
-   ```toml
-   [[d1_databases]]
-   binding = "DB"
-   database_name = "<project>-db"
-   database_id = "<database-id>"
-   ```
+To choose the database's region, create it yourself before the first deploy, with `--location` set to your readers' region: `wnam`, `enam`, `weur`, `eeur`, `apac`, or `oc`. Without it, D1 picks a region near you.
 
-   `database_name` must match the name you passed to `d1 create`.
+```bash
+npx wrangler d1 create <project>-db --location weur
+```
 
-   To place the database near your readers, add `--location` with their region: `wnam`, `enam`, `weur`, `eeur`, `apac`, or `oc`. Without it, D1 picks a region near you.
-
-3. **Create the R2 bucket**
-
-   ```bash
-   npx wrangler r2 bucket create <project>-media
-   ```
-
-   The `bucket_name` under `[[r2_buckets]]` in `wrangler.toml` must match:
-
-   ```toml
-   [[r2_buckets]]
-   binding = "R2"
-   bucket_name = "<project>-media"
-   ```
-
-4. **Set the production `AUTH_SECRET`**
-
-   The secret in `.dev.vars` is for local use only. Set the production secret interactively:
-
-   ```bash
-   openssl rand -base64 32 | npx wrangler secret put AUTH_SECRET
-   ```
-
-   Once the site is live, **don't change this value** — it invalidates every active session.
-
-5. **Deploy**
-
-   ```bash
-   npm run deploy
-   ```
-
-   `npm run deploy` calls `jant deploy`, which:
-   1. Applies D1 migrations and data backfills.
-   2. Uploads the Worker code and static assets.
-
-   On success, the terminal prints a URL like `https://<project>.<account>.workers.dev`. Go back to [Before going live](#before-going-live) to finish the custom domain and R2 public access, then create the admin account.
+Keep `database_id = "local"` in `wrangler.toml`: the first deploy finds the database by its name.
 
 ## Advanced configuration
 
@@ -257,7 +221,7 @@ The first line includes connection setup. The fastest `readyz` minus the second 
 
 ### Automatic deploys via GitHub Actions
 
-Projects created by `create-jant` already include `.github/workflows/deploy.yml`, which runs `jant deploy` as `npm run deploy` does. Add two repository secrets in GitHub and every push to `main` will deploy automatically:
+Projects created by `create-jant` already include `.github/workflows/deploy.yml`, which runs `jant deploy` as `npm run deploy` does. Run `npm run deploy` once on your computer first and commit `wrangler.toml`: while `database_id` is still `"local"`, the workflow skips the deploy. Then add two repository secrets in GitHub and every push to `main` will deploy automatically:
 
 - `CF_API_TOKEN`
 - `CF_ACCOUNT_ID`
@@ -310,7 +274,7 @@ replacement.
 
 - `uses R2 which is only available with an R2 subscription`: R2 isn't enabled. Open the [R2 dashboard](https://dash.cloudflare.com/?to=/:account/r2) and accept the terms.
 - `Authentication error [code: 10000]`: not logged in or the token expired. Run `npx wrangler login` again.
-- `database_id "..." is invalid`: the `database_id` placeholder in `wrangler.toml` wasn't replaced with the real ID from `wrangler d1 create`.
+- `database_id "..." is invalid`: the `database_id` in `wrangler.toml` doesn't name a database in this Cloudflare account. Set it back to `"local"` and run `npm run deploy`, which finds the database by `database_name` or creates it.
 - `A worker with this name already exists`: change the `name` at the top of `wrangler.toml`.
 - Custom domain SSL stays pending for a long time: the subdomain is taken by another DNS record. Delete the conflicting record on the DNS page and it recovers automatically.
 

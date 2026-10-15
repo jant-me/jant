@@ -15,3 +15,13 @@ All three run the same Jant. Your content can be [exported](export-and-import.md
 - **[Self-host on Cloudflare](deployment.md)**: needs a Cloudflare account, no server of your own, about 15 minutes of one-time setup.
 - **[Self-host with Docker](deployment-docker.md)**: needs Docker experience, and the server is yours to maintain.
 - **[Hosted Jant](hosted.md)**: deployment, upgrades, and backups are handled for you.
+
+## Let an AI assistant set it up
+
+Send this line to an AI assistant that can run commands, such as Claude Code or Codex:
+
+```text
+Read https://jant.me/docs/install.md and help me set up a Jant site.
+```
+
+[The page it reads](install.md) tells the assistant to ask which of the three you want, follow that guide, and hand back the steps only you can do, such as signing in to Cloudflare and choosing the admin password.

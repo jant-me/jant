@@ -3,6 +3,11 @@ import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { run as runMigrate } from "./migrate.js";
 import {
+  BEFORE_GOING_LIVE_URL,
+  needsFirstDeploySetup,
+  runFirstDeploySetup,
+} from "../lib/cloudflare-setup.js";
+import {
   DEFAULT_PUBLISH_DIR,
   preparePublicAssets,
   resolvePackageClientRoot,
@@ -99,6 +104,16 @@ export async function run(argv) {
     console.log("      --skip-migrate      Skip remote migrations");
     console.log("");
     console.log(
+      'The first deploy of a new project, whose D1 database_id is still "local",',
+    );
+    console.log(
+      "creates the D1 database, the R2 buckets, and AUTH_SECRET on Cloudflare,",
+    );
+    console.log(
+      "reusing any that already exist, and writes the database ID to wrangler.toml.",
+    );
+    console.log("");
+    console.log(
       "Root-path deploys reuse the configured assets directory directly.",
     );
     console.log(
@@ -107,6 +122,45 @@ export async function run(argv) {
     process.exit(0);
   }
 
+  const setup = needsFirstDeploySetup({
+    configPath: values.config,
+    env: values.env,
+    database: values.database,
+  })
+    ? await runFirstDeploySetup({
+        configPath: values.config,
+        env: values.env,
+        database: values.database,
+      })
+    : null;
+
+  try {
+    await deploy(values, wranglerArgs, setup?.secretsFile ?? null);
+  } catch (error) {
+    if (setup) {
+      setup.restore();
+      console.error(
+        'wrangler.toml is back to database_id = "local". Deploying again reuses what this run created.',
+      );
+    }
+    throw error;
+  } finally {
+    setup?.cleanup();
+  }
+
+  if (setup) {
+    console.log("");
+    console.log(
+      "First deploy done. Commit wrangler.toml: it now holds the D1 database ID.",
+    );
+    console.log(
+      "Open the URL above to create the admin account. To use your own domain, bind it first:",
+    );
+    console.log(BEFORE_GOING_LIVE_URL);
+  }
+}
+
+async function deploy(values, wranglerArgs, secretsFile) {
   const plan = resolveDeployPlan({
     config: values.config,
     env: values.env,
@@ -146,6 +200,9 @@ export async function run(argv) {
   }
   if (values.env) {
     deployArgs.push("--env", values.env);
+  }
+  if (secretsFile) {
+    deployArgs.push("--secrets-file", secretsFile);
   }
   deployArgs.push(...wranglerArgs);
 

@@ -62,6 +62,8 @@ Applies database migrations and data backfills. `jant deploy` and the Docker Com
 
 Applies remote migrations, then deploys to Cloudflare Workers with the right static asset directory. Arguments after `--` go to `wrangler deploy`.
 
+The first deploy of a project made by `create-jant`, whose D1 `database_id` is still `"local"`, sets up Cloudflare first: it signs you in to Wrangler if needed, creates the D1 database and R2 buckets that `wrangler.toml` names, reuses any that already exist, and writes the database ID into `wrangler.toml`. If the Worker has no `AUTH_SECRET` yet, it generates one and deploys with it. If the deploy fails, `database_id` goes back to `"local"` and the next run picks up where this one stopped. In a script, a missing sign-in or a choice between several Cloudflare accounts stops the command with what to set instead.
+
 | Option           | Use                                                                   |
 | ---------------- | --------------------------------------------------------------------- |
 | `--config`, `-c` | Wrangler config file (default: `wrangler.toml`)                       |
