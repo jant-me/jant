@@ -25,7 +25,7 @@ If the person's request already names a repository, a host, or a domain, take it
 
 ### 2. Ask once
 
-Ask the questions the checks didn't answer, all in one message, each with its default, so that "use the defaults" is a full answer:
+Ask the questions the checks didn't answer in a single message, each with its default, so that "use the defaults" is a full answer:
 
 1. **Where should the site run?**
    - **Cloudflare** (default): no server to maintain. A personal site usually stays within the free tier.

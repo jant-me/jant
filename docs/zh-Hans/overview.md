@@ -12,6 +12,16 @@ Jant 是一个为单作者设计的轻博客，介于传统博客和社交媒体
 
 也可以参考作者本人的博客 [www.owenyoung.com](https://www.owenyoung.com/)，或到 [Jant Discover](https://jant.me/discover) 看看其他人在写什么。
 
+## 快速开始
+
+把下面这句话发给 Claude Code、Codex 这类能运行命令的 AI 助手：
+
+```text
+读取 https://jant.me/docs/install.md，帮我搭建一个 Jant 站点。
+```
+
+它会先问你站点放在哪里（Cloudflare、用 Docker 部署在自己的服务器上，或者 Jant 托管），再完成部署，需要你本人做的步骤交回给你。想自己动手，见[开始使用](getting-started.md)。
+
 ## 为什么会有 Jant
 
 我一直相信练习写作需要公开表达，只有这样，我们才能让自己的思考变得清晰。可今天的互联网好像只给人两种身份：内容消费者，或者内容创作者。而我只是想要一个舒服的、属于自己的小花园。

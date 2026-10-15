@@ -12,6 +12,16 @@ Live demo: [demo.jant.me](https://demo.jant.me). Click [Sign in](https://demo.ja
 
 You can also look at the author's own blog as a real-world example: [www.owenyoung.com](https://www.owenyoung.com/).
 
+## Quick start
+
+Send this line to an AI assistant that can run commands, such as Claude Code or Codex:
+
+```text
+Read https://jant.me/docs/install.md and help me set up a Jant site.
+```
+
+It asks where the site should run (Cloudflare, your own server with Docker, or Hosted Jant), does the setup, and hands back the steps only you can do. To set it up yourself, see [Getting started](getting-started.md).
+
 ## Why Jant exists
 
 I've always believed that practicing writing means writing in public, because that's what forces a thought to become clear. But today's internet seems to give people only two identities: consumer or creator. All I wanted was a cozy little garden of my own.
