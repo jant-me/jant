@@ -104,9 +104,7 @@ export const SubscribePage: FC<SubscribePageProps> = ({
         // The page is about feeds and carried no feed mark at all. It also
         // ends by telling the reader to look for this glyph elsewhere, which
         // only works once they have seen it here.
-        iconHtml={
-          getIconSvg("rss", "size-6 text-muted-foreground") ?? undefined
-        }
+        iconHtml={getIconSvg("rss", "size-6 text-muted-foreground")}
         description={i18n._(
           msg({
             message:
@@ -154,7 +152,7 @@ export const SubscribePage: FC<SubscribePageProps> = ({
           class="mt-0.5 shrink-0 opacity-70"
           aria-hidden="true"
           dangerouslySetInnerHTML={{
-            __html: getIconSvg("rss", "size-3.5") ?? "",
+            __html: getIconSvg("rss", "size-3.5"),
           }}
         />
         <span>

@@ -157,7 +157,7 @@ const CollectionFeedLink: FC<{
 }> = ({ href, title }) =>
   href ? (
     <a href={href} class="feed-link" title={title} rel="noopener noreferrer">
-      <span dangerouslySetInnerHTML={{ __html: getIconSvg("rss") ?? "" }} />
+      <span dangerouslySetInnerHTML={{ __html: getIconSvg("rss") }} />
     </a>
   ) : null;
 
@@ -359,7 +359,7 @@ export const CollectionDirectory: FC<CollectionDirectoryProps> = ({
                         aria-label={smartCollectionNoun}
                         role="img"
                         dangerouslySetInnerHTML={{
-                          __html: getIconSvg("funnel", "icon-fine") ?? "",
+                          __html: getIconSvg("funnel", "icon-fine"),
                         }}
                       />
                     </span>

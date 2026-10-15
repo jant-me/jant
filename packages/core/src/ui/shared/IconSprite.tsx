@@ -19,24 +19,23 @@ import {
   LUCIDE_VIEWBOX,
 } from "../../lib/icons.js";
 import { getCollectedIcons } from "./icon-collector.js";
-import { getCustomSymbol } from "./custom-icons.js";
+import {
+  getCustomSymbol,
+  isCustomIconName,
+  type IconName,
+} from "./custom-icons.js";
 
-function buildSymbol(name: string): string | null {
-  const custom = getCustomSymbol(name);
-  if (custom) {
+function buildSymbol(name: IconName): string {
+  if (isCustomIconName(name)) {
+    const custom = getCustomSymbol(name);
     return `<symbol id="icon-${name}" viewBox="${custom.viewBox}">${custom.inner}</symbol>`;
   }
-  const inner = getIconInnerSvg(name);
-  if (inner === null) return null;
-  return `<symbol id="icon-${name}" viewBox="${LUCIDE_VIEWBOX}" ${LUCIDE_SYMBOL_ATTRS}>${inner}</symbol>`;
+  return `<symbol id="icon-${name}" viewBox="${LUCIDE_VIEWBOX}" ${LUCIDE_SYMBOL_ATTRS}>${getIconInnerSvg(name)}</symbol>`;
 }
 
 export const IconSprite: FC = () => {
   const names = Array.from(getCollectedIcons()).sort();
-  const symbols = names
-    .map(buildSymbol)
-    .filter((s): s is string => s !== null)
-    .join("");
+  const symbols = names.map(buildSymbol).join("");
 
   if (!symbols) return null;
 

@@ -295,7 +295,7 @@ export const CollectionPage: FC<CollectionPageProps> = ({
                   >
                     <span
                       dangerouslySetInnerHTML={{
-                        __html: getIconSvg("rss") ?? "",
+                        __html: getIconSvg("rss"),
                       }}
                     />
                   </a>

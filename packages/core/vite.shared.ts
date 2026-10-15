@@ -304,8 +304,9 @@ const LAZY_ONLY_PACKAGES = [
   "pinyin-pro",
   "speakingurl",
   "hepburn",
-  // The full Lucide index is for server rendering (`lib/icons.ts`); client
-  // components inline the few icons they draw (`client/icons.ts`).
+  // One namespace import pulls in all 1,700 icons. Server rendering imports
+  // its icons by name (`lib/icons.ts`); client components inline the few
+  // they draw (`client/icons.ts`).
   "lucide-static",
   // Upload-time media processing (`client/mediabunny.ts`, `compose-bridge.ts`).
   "mediabunny",

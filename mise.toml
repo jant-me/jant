@@ -738,13 +738,6 @@ description = "Generate jant-starter template using create-jant CLI (for testing
 run = "bash scripts/starter/generate.sh"
 
 # =============================================================================
-# Code generation
-# =============================================================================
-[tasks.codegen-icons]
-description = "Generate ALL_ICON_NAMES in icon-catalog.ts from lucide-static"
-run = "npx tsx scripts/generate-icon-catalog.ts"
-
-# =============================================================================
 # Release & Publishing (Changesets)
 # =============================================================================
 [tasks.changeset]

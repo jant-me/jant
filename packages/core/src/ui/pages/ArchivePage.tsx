@@ -35,7 +35,7 @@ import {
   serializePostFilterSelection,
 } from "../../lib/filter-dimensions.js";
 import { getFeaturedIconSvg } from "../../lib/featured-icons.js";
-import { getIconSvg } from "../../lib/icons.js";
+import { getIconSvg, type LucideIconName } from "../../lib/icons.js";
 import { toPublicPath } from "../../lib/url.js";
 import { toMediaKind } from "../../lib/upload.js";
 import { PagePagination } from "../shared/Pagination.js";
@@ -132,14 +132,14 @@ function getFormatLabelPlural(format: Format): string {
 }
 
 /** Icon name mapping for post formats. */
-const FORMAT_ICONS: Record<string, string> = {
+const FORMAT_ICONS: Record<Format, LucideIconName> = {
   note: "notepad-text",
   link: "external-link",
   quote: "quote",
 };
 
 /** Icon name mapping for media kinds. */
-const MEDIA_KIND_ICONS: Record<MediaKind, string> = {
+const MEDIA_KIND_ICONS: Record<MediaKind, LucideIconName> = {
   image: "image",
   video: "video",
   audio: "music",
@@ -171,19 +171,15 @@ function selectedMediaKinds(
 // =============================================================================
 
 /** Inline SVG icon with specified size class. */
-const Icon: FC<{ name: string; class?: string }> = ({
+const Icon: FC<{ name: LucideIconName; class?: string }> = ({
   name,
   class: cls = "[&>svg]:size-4",
-}) => {
-  const svg = getIconSvg(name);
-  if (!svg) return null;
-  return (
-    <span
-      class={`shrink-0 inline-flex ${cls}`}
-      dangerouslySetInnerHTML={{ __html: svg }}
-    />
-  );
-};
+}) => (
+  <span
+    class={`shrink-0 inline-flex ${cls}`}
+    dangerouslySetInnerHTML={{ __html: getIconSvg(name) }}
+  />
+);
 
 /** Chevron indicator for chip triggers. */
 const ChipChevron: FC = () => (
@@ -211,7 +207,7 @@ const ChipClearLink: FC<{ href: string; label: string }> = ({
 interface ChipSelectOption {
   label: string;
   value: string;
-  icon?: string;
+  icon?: LucideIconName;
   iconHtml?: string;
   indent?: boolean;
 }
@@ -225,13 +221,13 @@ interface ChipSelectOption {
  */
 const ChipSelect: FC<{
   id: string;
-  icon: string;
+  icon: LucideIconName;
   options: ChipSelectOption[];
   currentValue: string;
   clearUrl: string;
   activeLabel?: string;
   activeIconHtml?: string;
-  activeIcon?: string;
+  activeIcon?: LucideIconName;
   iconOnly?: boolean;
 }> = ({
   id,
@@ -339,7 +335,7 @@ const ChipSelect: FC<{
  */
 const ChipMediaSelect: FC<{
   id: string;
-  icon: string;
+  icon: LucideIconName;
   filters: ArchiveFilters;
   ctx: DimensionContext;
   activeLabel?: string;
@@ -353,7 +349,7 @@ const ChipMediaSelect: FC<{
   const singleKind = activeKinds.length === 1 ? activeKinds[0] : undefined;
   const activeMediaIcon = isActive
     ? f.selection.media === "none"
-      ? "text"
+      ? "text-align-start"
       : singleKind
         ? MEDIA_KIND_ICONS[singleKind]
         : icon
@@ -409,7 +405,10 @@ const ChipMediaSelect: FC<{
             aria-selected={f.selection.media === "none" ? "true" : undefined}
           >
             <span class="flex items-center gap-2">
-              <Icon name="text" class="[&>svg]:size-4 text-muted-foreground" />
+              <Icon
+                name="text-align-start"
+                class="[&>svg]:size-4 text-muted-foreground"
+              />
               {i18n._(
                 msg({
                   message: "Text",
@@ -457,7 +456,7 @@ const ChipMediaSelect: FC<{
  */
 const ToggleOption: FC<{
   href: string;
-  icon: string;
+  icon: LucideIconName;
   label: string;
   active: boolean;
 }> = ({ href, icon, label, active }) => (
@@ -578,11 +577,14 @@ function getVisibilityLabel(v: ArchiveVisibility): string {
   return getSharedVisibilityLabel(v, i18n);
 }
 
-const VISIBILITY_ICONS: Record<ArchiveVisibility, string> = {
+/** Chip icon for each visibility; Featured draws its own sparkle instead. */
+const VISIBILITY_ICONS: Record<
+  Exclude<ArchiveVisibility, "featured">,
+  LucideIconName
+> = {
   public: "globe",
   latest_hidden: "eye-off",
   private: "lock",
-  featured: "star",
 };
 
 const FEATURED_VISIBILITY_ICON_HTML = getFeaturedIconSvg({
@@ -597,13 +599,13 @@ const FILTER_ICONS = {
   media: "video",
   thread: "git-branch",
   visibility: "scan-eye",
-} as const;
+} as const satisfies Record<string, LucideIconName>;
 
 /** Icons for the thread filter options. */
 const THREAD_ICONS = {
   threads: "list-tree",
   single: "git-commit-horizontal",
-} as const;
+} as const satisfies Record<string, LucideIconName>;
 
 const FilterBar: FC<{
   filters: ArchiveFilters;
@@ -699,7 +701,7 @@ const FilterBar: FC<{
     ? selection.title === true
       ? "type"
       : selection.title === false
-        ? "text"
+        ? "text-align-start"
         : FORMAT_ICONS[selection.format]
     : undefined;
 
@@ -752,7 +754,7 @@ const FilterBar: FC<{
           comment: "@context: Archive filter - notes without a title",
         }),
       ),
-      icon: "text",
+      icon: "text-align-start",
       indent: true,
       value: buildFilterUrl(
         filters,
@@ -1068,7 +1070,7 @@ function getTileBgImage(
  */
 function getTileBadge(
   post: PostView,
-): { icon: string; position: "center" | "corner" } | undefined {
+): { icon: LucideIconName; position: "center" | "corner" } | undefined {
   const firstMedia = post.media[0];
   if (!firstMedia) return undefined;
   const kind = toMediaKind(firstMedia.mimeType);
@@ -1265,7 +1267,7 @@ const ArchiveTile: FC<{ post: PostView; timeZone?: string }> = ({
                         <span
                           class="archive-tile-link-indicator"
                           dangerouslySetInnerHTML={{
-                            __html: getIconSvg("external-link") ?? "",
+                            __html: getIconSvg("external-link"),
                           }}
                         />
                       )}
@@ -1283,7 +1285,7 @@ const ArchiveTile: FC<{ post: PostView; timeZone?: string }> = ({
             <span
               class="archive-tile-badge-row"
               dangerouslySetInnerHTML={{
-                __html: getIconSvg(cornerBadge.icon) ?? "",
+                __html: getIconSvg(cornerBadge.icon),
               }}
             />
           )}
@@ -1292,9 +1294,7 @@ const ArchiveTile: FC<{ post: PostView; timeZone?: string }> = ({
 
       {badge?.position === "center" && (
         <span class="archive-tile-badge archive-tile-badge-center">
-          <span
-            dangerouslySetInnerHTML={{ __html: getIconSvg(badge.icon) ?? "" }}
-          />
+          <span dangerouslySetInnerHTML={{ __html: getIconSvg(badge.icon) }} />
         </span>
       )}
     </a>
@@ -1405,7 +1405,7 @@ export const ArchivePage: FC<ArchivePageProps> = ({
               >
                 <span
                   dangerouslySetInnerHTML={{
-                    __html: getIconSvg("rss") ?? "",
+                    __html: getIconSvg("rss"),
                   }}
                 />
               </a>

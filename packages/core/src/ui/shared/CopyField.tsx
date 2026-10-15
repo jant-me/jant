@@ -91,7 +91,7 @@ export const CopyField: FC<CopyFieldProps> = ({
             class="text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5"
             aria-hidden="true"
             dangerouslySetInnerHTML={{
-              __html: getIconSvg("arrow-right", "size-3.5 icon-fine") ?? "",
+              __html: getIconSvg("arrow-right", "size-3.5 icon-fine"),
             }}
           />
         </a>

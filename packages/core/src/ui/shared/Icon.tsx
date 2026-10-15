@@ -6,9 +6,9 @@
  * sprite (rendered by <IconSprite>) contains exactly the icons used on
  * this page.
  *
- * Name can refer to any lucide-static icon (kebab-case) or one of the
- * custom symbols defined in `custom-icons.ts`. Unknown names render an
- * empty <svg> — the same failure mode as the previous getIconSvg() path.
+ * Name refers to a Lucide icon listed in `lib/icons.ts` or one of the
+ * custom symbols defined in `custom-icons.ts`; any other name fails the
+ * type check.
  *
  * Size: outer <svg> width/height in pixels. Defaults to 24 (lucide default).
  * Pass `class` to add CSS classes, e.g. for sizing via stylesheet instead
@@ -17,11 +17,11 @@
 
 import type { FC } from "hono/jsx";
 import { collectIcon } from "./icon-collector.js";
-import { getIconViewBox } from "./custom-icons.js";
+import { getIconViewBox, type IconName } from "./custom-icons.js";
 
 export interface IconProps {
   /** Kebab-case icon name (lucide or custom). */
-  name: string;
+  name: IconName;
   /** Width/height in px. Omit to size via CSS. */
   size?: number;
   /** CSS class for the outer <svg>. */

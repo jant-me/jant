@@ -10,21 +10,23 @@
  * synchronously per request, so a module-level singleton is safe.
  */
 
-let currentCollector: Set<string> | null = null;
+import type { IconName } from "./custom-icons.js";
+
+let currentCollector: Set<IconName> | null = null;
 
 /**
  * Start a new collection scope for the current render pass.
  * Call at the top of the root layout before children render.
  */
 export function resetIconCollector(): void {
-  currentCollector = new Set<string>();
+  currentCollector = new Set<IconName>();
 }
 
 /**
  * Register an icon as used during this render.
  * Safe to call even when no collector is active (no-op).
  */
-export function collectIcon(name: string): void {
+export function collectIcon(name: IconName): void {
   currentCollector?.add(name);
 }
 
@@ -32,6 +34,6 @@ export function collectIcon(name: string): void {
  * Get the icon names collected so far during this render.
  * Returns an empty set if no collection scope is active.
  */
-export function getCollectedIcons(): ReadonlySet<string> {
-  return currentCollector ?? new Set<string>();
+export function getCollectedIcons(): ReadonlySet<IconName> {
+  return currentCollector ?? new Set<IconName>();
 }

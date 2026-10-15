@@ -1,43 +1,109 @@
 /**
- * Shared icon utilities.
+ * Lucide icons for server-rendered UI.
  *
- * Provides a small wrapper around lucide-static so server-rendered UI can fetch
- * SVG markup by kebab-case icon name.
+ * Every icon the server draws is imported here by name and listed in
+ * `LUCIDE_ICONS`, so the build keeps these few and drops the rest of the
+ * 1,700-icon `lucide-static` set, and an unknown or misspelled name fails the
+ * type check instead of rendering nothing. To use another icon, import it and
+ * add it under its Lucide name (lucide.dev).
  */
 
-import * as lucideIcons from "lucide-static";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Calendar,
+  ChevronDown,
+  Clock,
+  ExternalLink,
+  EyeOff,
+  File as FileIcon,
+  FileText,
+  Funnel,
+  GitBranch,
+  GitCommitHorizontal,
+  Globe,
+  History as HistoryIcon,
+  Image as ImageIcon,
+  LayoutGrid,
+  List,
+  ListTree,
+  Lock as LockIcon,
+  Monitor,
+  Music,
+  NotepadText,
+  Pencil,
+  Play,
+  Plus,
+  Quote,
+  Rss,
+  ScanEye,
+  Shapes,
+  TextAlignStart,
+  Trash2,
+  Type,
+  Video,
+  X,
+} from "lucide-static";
+
+const LUCIDE_ICONS = {
+  "arrow-left": ArrowLeft,
+  "arrow-right": ArrowRight,
+  calendar: Calendar,
+  "chevron-down": ChevronDown,
+  clock: Clock,
+  "external-link": ExternalLink,
+  "eye-off": EyeOff,
+  file: FileIcon,
+  "file-text": FileText,
+  funnel: Funnel,
+  "git-branch": GitBranch,
+  "git-commit-horizontal": GitCommitHorizontal,
+  globe: Globe,
+  history: HistoryIcon,
+  image: ImageIcon,
+  "layout-grid": LayoutGrid,
+  list: List,
+  "list-tree": ListTree,
+  lock: LockIcon,
+  monitor: Monitor,
+  music: Music,
+  "notepad-text": NotepadText,
+  pencil: Pencil,
+  play: Play,
+  plus: Plus,
+  quote: Quote,
+  rss: Rss,
+  "scan-eye": ScanEye,
+  shapes: Shapes,
+  "text-align-start": TextAlignStart,
+  "trash-2": Trash2,
+  type: Type,
+  video: Video,
+  x: X,
+} as const satisfies Record<string, string>;
+
+/** Kebab-case name of a Lucide icon the server renders. */
+export type LucideIconName = keyof typeof LUCIDE_ICONS;
+
+/** Every name in `LUCIDE_ICONS`. */
+export const LUCIDE_ICON_NAMES = Object.keys(LUCIDE_ICONS) as LucideIconName[];
 
 /**
- * Convert a kebab-case icon name to PascalCase for lucide-static lookup.
+ * Get SVG markup for a Lucide icon.
  *
- * @param name - Kebab-case icon name such as "book-open"
- * @returns PascalCase name such as "BookOpen"
- */
-function toPascalCase(name: string): string {
-  return name
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join("");
-}
-
-/**
- * Get SVG markup for a Lucide icon by kebab-case name.
- *
- * @param name - Kebab-case icon name
+ * @param name - Kebab-case Lucide icon name
  * @param className - Extra classes for the `<svg>`, appended to Lucide's own.
  *   `icon-fine` is the project's lighter stroke.
- * @returns SVG string or null when the icon is unknown
+ * @returns The `<svg>` element as a string
  *
  * @example
  * ```ts
- * getIconSvg("book-open");
+ * getIconSvg("rss");
  * getIconSvg("funnel", "icon-fine");
  * ```
  */
-export function getIconSvg(name: string, className?: string): string | null {
-  const pascalName = toPascalCase(name);
-  const svg = (lucideIcons as Record<string, string>)[pascalName];
-  if (typeof svg !== "string") return null;
+export function getIconSvg(name: LucideIconName, className?: string): string {
+  const svg = LUCIDE_ICONS[name];
   if (!className) return svg;
   // Lucide always ships a `class="lucide lucide-…"`, so extend it rather than
   // adding a second class attribute the parser would drop.
@@ -49,25 +115,21 @@ export function getIconSvg(name: string, className?: string): string | null {
  * without the outer <svg> wrapper). Used by the icon sprite to build
  * <symbol> definitions.
  *
- * @param name - Kebab-case icon name
- * @returns Inner SVG markup (e.g. "<path ... />"), or null when unknown
+ * @param name - Kebab-case Lucide icon name
+ * @returns Inner SVG markup (e.g. "<path ... />")
  *
  * @example
  * ```ts
- * getIconInnerSvg("book-open");
+ * getIconInnerSvg("pencil");
  * // -> "<path d=\"...\"/><path d=\"...\"/>"
  * ```
  */
-export function getIconInnerSvg(name: string): string | null {
-  const svg = getIconSvg(name);
-  if (!svg) return null;
+export function getIconInnerSvg(name: LucideIconName): string {
+  const svg = LUCIDE_ICONS[name];
   // lucide-static output looks like:
   //   <svg ... viewBox="0 0 24 24" ...><path .../>...<line .../></svg>
   // Strip the outer <svg ...> and </svg>.
-  const openTagEnd = svg.indexOf(">");
-  const closeTagStart = svg.lastIndexOf("</svg>");
-  if (openTagEnd < 0 || closeTagStart < 0) return null;
-  return svg.slice(openTagEnd + 1, closeTagStart);
+  return svg.slice(svg.indexOf(">") + 1, svg.lastIndexOf("</svg>"));
 }
 
 /**

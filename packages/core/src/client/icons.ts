@@ -1,12 +1,11 @@
 /**
  * Inline SVG for the few Lucide icons client components render themselves.
  *
- * Server-rendered UI goes through `lib/icons.ts`, which indexes the whole
- * `lucide-static` set (1,700+ icons, ≈1 MB minified). Client code must not
- * import that module — one icon lookup would ship the entire set to the
- * browser — so the handful of icons a component needs at runtime live here as
- * literal markup, copied from `lucide-static` with the project's `icon-fine`
- * stroke class appended.
+ * Server-rendered UI goes through `lib/icons.ts`, which carries every icon
+ * the server draws. Client code must not import that module — one icon lookup
+ * would ship all of them to the browser — so the handful of icons a component
+ * needs at runtime live here as literal markup, copied from `lucide-static`
+ * with the project's `icon-fine` stroke class appended.
  */
 
 /** Lucide `funnel`, the marker for a smart collection. */

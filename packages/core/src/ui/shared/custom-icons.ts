@@ -22,6 +22,7 @@ import {
   DECORATIVE_QUOTE_MARK_PATHS,
   DECORATIVE_QUOTE_MARK_VIEWBOX,
 } from "../../lib/decorative-quote-mark.js";
+import { LUCIDE_VIEWBOX, type LucideIconName } from "../../lib/icons.js";
 
 export interface CustomSymbol {
   viewBox: string;
@@ -34,7 +35,7 @@ const STROKE_THIN =
 const STROKE_POST_BADGE =
   'fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"';
 
-export const CUSTOM_SYMBOLS: Record<string, CustomSymbol> = {
+const CUSTOM_SYMBOLS = {
   // Featured sparkle (thinner stroke than lucide's stock "sparkles").
   "featured-sparkle": {
     viewBox: "0 0 24 24",
@@ -116,10 +117,37 @@ export const CUSTOM_SYMBOLS: Record<string, CustomSymbol> = {
     viewBox: "0 0 24 24",
     inner: `<path ${STROKE_POST_BADGE} d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /><path ${STROKE_POST_BADGE} d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /><path ${STROKE_POST_BADGE} d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /><path ${STROKE_POST_BADGE} d="m2 2 20 20" />`,
   },
-};
+} as const satisfies Record<string, CustomSymbol>;
 
-export function getCustomSymbol(name: string): CustomSymbol | null {
-  return CUSTOM_SYMBOLS[name] ?? null;
+/** Name of a symbol defined in this file. */
+export type CustomIconName = keyof typeof CUSTOM_SYMBOLS;
+
+/** Every name `<Icon>` accepts: a Lucide icon or a custom symbol. */
+export type IconName = LucideIconName | CustomIconName;
+
+/**
+ * Whether an icon name refers to a custom symbol rather than a Lucide icon.
+ *
+ * @param name - Icon name
+ * @returns True for names defined in `CUSTOM_SYMBOLS`
+ * @example
+ * isCustomIconName("post-reply"); // true
+ * isCustomIconName("pencil"); // false
+ */
+export function isCustomIconName(name: IconName): name is CustomIconName {
+  return Object.hasOwn(CUSTOM_SYMBOLS, name);
+}
+
+/**
+ * Get the symbol definition for a custom icon.
+ *
+ * @param name - Custom icon name
+ * @returns Its viewBox and inner markup
+ * @example
+ * getCustomSymbol("post-reply").viewBox; // "0 0 24 24"
+ */
+export function getCustomSymbol(name: CustomIconName): CustomSymbol {
+  return CUSTOM_SYMBOLS[name];
 }
 
 /**
@@ -130,8 +158,11 @@ export function getCustomSymbol(name: string): CustomSymbol | null {
  * CSS falls back to the 300×150 replaced-element default instead of the
  * icon's real aspect ratio.
  *
- * Falls back to lucide's "0 0 24 24" for lucide-sourced icons.
+ * @param name - Icon name
+ * @returns The custom symbol's viewBox, or Lucide's "0 0 24 24"
+ * @example
+ * getIconViewBox("link-preview-play"); // "0 0 68 48"
  */
-export function getIconViewBox(name: string): string {
-  return CUSTOM_SYMBOLS[name]?.viewBox ?? "0 0 24 24";
+export function getIconViewBox(name: IconName): string {
+  return isCustomIconName(name) ? CUSTOM_SYMBOLS[name].viewBox : LUCIDE_VIEWBOX;
 }

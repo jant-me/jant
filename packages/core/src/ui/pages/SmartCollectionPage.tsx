@@ -147,7 +147,7 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
                 title={conditionSummary}
                 aria-label={conditionSummary}
                 dangerouslySetInnerHTML={{
-                  __html: getIconSvg("funnel", "icon-fine") ?? "",
+                  __html: getIconSvg("funnel", "icon-fine"),
                 }}
               />
             </span>
@@ -210,7 +210,7 @@ export const SmartCollectionPage: FC<SmartCollectionPageProps> = ({
                   >
                     <span
                       dangerouslySetInnerHTML={{
-                        __html: getIconSvg("rss") ?? "",
+                        __html: getIconSvg("rss"),
                       }}
                     />
                   </a>

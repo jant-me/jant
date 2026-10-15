@@ -283,7 +283,7 @@ export const CollectionsManager: FC<CollectionsManagerProps> = ({
                         class="collections-page-menu-item-icon"
                         aria-hidden="true"
                         dangerouslySetInnerHTML={{
-                          __html: getIconSvg("funnel") ?? "",
+                          __html: getIconSvg("funnel"),
                         }}
                       />
                       <span class="collections-page-menu-item-label">
