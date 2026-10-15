@@ -16,6 +16,43 @@ The name comes from _Jantelagen_ — a concept from a 1933 Nordic satirical nove
 
 If you're still on the fence about whether to start a blog, [this essay](docs/why-blog.md) might give you a reason.
 
+## How to deploy
+
+| Option                                                 | Best for                               | Cost                         |
+| ------------------------------------------------------ | -------------------------------------- | ---------------------------- |
+| **[Self-host on Cloudflare](docs/deployment.md)**      | Running with very low maintenance cost | Usually within the free tier |
+| **[Self-host with Docker](docs/deployment-docker.md)** | You already have a server              | Whatever your server costs   |
+| **[Hosted Jant](docs/hosted.md)**                      | You don't want to deal with deployment | $10.46/year                  |
+
+All three run the same open-source code. You can move content between them via [export and import](docs/export-and-import.md) or [GitHub Sync](docs/github-sync.md).
+
+## Quick start
+
+### Deploy on Cloudflare
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jant-me/jant-starter)
+
+The fastest path is the Cloudflare one-click deploy button — it starts from the Jant starter repo and walks you through the required fields. Full instructions in [Deploy on Cloudflare](docs/deployment.md).
+
+### Create with the CLI
+
+```bash
+npm create jant@latest my-site
+cd my-site
+npm run dev
+```
+
+Open `http://localhost:3000` and complete the first-run setup in the browser.
+
+### Deploy with Docker
+
+- Docker image: [`owenyoung/jant`](https://hub.docker.com/r/owenyoung/jant)
+- Guide: [Deploy with Docker](docs/deployment-docker.md)
+
+### Use Hosted Jant
+
+The official hosted service [jant.me](https://jant.me) runs the same code as the self-hosted versions, with automatic HTTPS, custom domains, and media storage on top. See [Use Hosted Jant](docs/hosted.md).
+
 ## Features
 
 ### Publishing and broadcasting are separate
@@ -55,43 +92,6 @@ See [GitHub Sync](docs/github-sync.md) and [Export and import](docs/export-and-i
 - Bidirectional GitHub Sync: content auto-commits to your repo, and the repo itself is a Hugo site
 - API and MCP: automate publishing, imports, and maintenance — built for [AI agents](docs/automation-and-api.md)
 - Hugo static site export: you can [leave with your content](docs/export-and-import.md) anytime
-
-## How to deploy
-
-| Option                                                 | Best for                               | Cost                         |
-| ------------------------------------------------------ | -------------------------------------- | ---------------------------- |
-| **[Self-host on Cloudflare](docs/deployment.md)**      | Running with very low maintenance cost | Usually within the free tier |
-| **[Self-host with Docker](docs/deployment-docker.md)** | You already have a server              | Whatever your server costs   |
-| **[Hosted Jant](docs/hosted.md)**                      | You don't want to deal with deployment | $10.46/year                  |
-
-All three run the same open-source code. You can move content between them via [export and import](docs/export-and-import.md) or [GitHub Sync](docs/github-sync.md).
-
-## Quick start
-
-### Deploy on Cloudflare
-
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jant-me/jant-starter)
-
-The fastest path is the Cloudflare one-click deploy button — it starts from the Jant starter repo and walks you through the required fields. Full instructions in [Deploy on Cloudflare](docs/deployment.md).
-
-### Create with the CLI
-
-```bash
-npm create jant@latest my-site
-cd my-site
-npm run dev
-```
-
-Open `http://localhost:3000` and complete the first-run setup in the browser.
-
-### Deploy with Docker
-
-- Docker image: [`owenyoung/jant`](https://hub.docker.com/r/owenyoung/jant)
-- Guide: [Deploy with Docker](docs/deployment-docker.md)
-
-### Use Hosted Jant
-
-The official hosted service [jant.me](https://jant.me) runs the same code as the self-hosted versions, with automatic HTTPS, custom domains, and media storage on top. See [Use Hosted Jant](docs/hosted.md).
 
 ## Documentation
 

@@ -16,6 +16,43 @@ Jant 是一个为单作者设计的轻博客，介于传统博客和社交媒体
 
 如果你还没想好要不要写博客，[这篇文章](docs/zh-Hans/why-blog.md)或许能给你一个理由。
 
+## 部署方式
+
+| 方式                                                   | 适合谁                   | 成本             |
+| ------------------------------------------------------ | ------------------------ | ---------------- |
+| **[Cloudflare 自托管](docs/zh-Hans/deployment.md)**    | 想用极低维护成本运行的人 | 通常在免费额度内 |
+| **[Docker 自托管](docs/zh-Hans/deployment-docker.md)** | 有自己服务器的人         | 你的服务器成本   |
+| **[Jant 托管](docs/zh-Hans/hosted.md)**                | 不想处理部署的人         | $10.46 / 年起    |
+
+三种方式跑的是同一份开源代码，内容可以通过 [导入导出](docs/zh-Hans/export-and-import.md) 或 [GitHub 同步](docs/zh-Hans/github-sync.md) 迁移。
+
+## 快速开始
+
+### 部署到 Cloudflare
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jant-me/jant-starter)
+
+最快的路径是用 Cloudflare 一键部署按钮——它会从 Jant starter 仓库开始，引导你填写所需字段。完整说明见 [使用 Cloudflare 部署](docs/zh-Hans/deployment.md)。
+
+### 用 CLI 创建
+
+```bash
+npm create jant@latest my-site
+cd my-site
+npm run dev
+```
+
+打开 `http://localhost:3000`，在浏览器里完成初始设置。
+
+### 使用 Docker 部署
+
+- Docker 镜像：[`owenyoung/jant`](https://hub.docker.com/r/owenyoung/jant)
+- 指南：[使用 Docker 部署](docs/zh-Hans/deployment-docker.md)
+
+### 使用 Jant 托管
+
+官方托管 [jant.me](https://jant.me) 和自托管跑的是同一份代码，额外提供自动 HTTPS、自定义域名和媒体存储。详见 [使用 Jant 托管](docs/zh-Hans/hosted.md)。
+
 ## 功能
 
 ### 发布与推送分离
@@ -55,43 +92,6 @@ Jant 是一个为单作者设计的轻博客，介于传统博客和社交媒体
 - GitHub 双向同步：内容自动 commit 到你的仓库，仓库本身就是 Hugo 站点
 - API 与 MCP：自动化发布、导入、维护，适合 [AI agent 调用](docs/zh-Hans/automation-and-api.md)
 - Hugo 静态站点导出：你随时可以[带着内容](docs/zh-Hans/export-and-import.md)离开
-
-## 部署方式
-
-| 方式                                                   | 适合谁                   | 成本             |
-| ------------------------------------------------------ | ------------------------ | ---------------- |
-| **[Cloudflare 自托管](docs/zh-Hans/deployment.md)**    | 想用极低维护成本运行的人 | 通常在免费额度内 |
-| **[Docker 自托管](docs/zh-Hans/deployment-docker.md)** | 有自己服务器的人         | 你的服务器成本   |
-| **[Jant 托管](docs/zh-Hans/hosted.md)**                | 不想处理部署的人         | $10.46 / 年起    |
-
-三种方式跑的是同一份开源代码，内容可以通过 [导入导出](docs/zh-Hans/export-and-import.md) 或 [GitHub 同步](docs/zh-Hans/github-sync.md) 迁移。
-
-## 快速开始
-
-### 部署到 Cloudflare
-
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jant-me/jant-starter)
-
-最快的路径是用 Cloudflare 一键部署按钮——它会从 Jant starter 仓库开始，引导你填写所需字段。完整说明见 [使用 Cloudflare 部署](docs/zh-Hans/deployment.md)。
-
-### 用 CLI 创建
-
-```bash
-npm create jant@latest my-site
-cd my-site
-npm run dev
-```
-
-打开 `http://localhost:3000`，在浏览器里完成初始设置。
-
-### 使用 Docker 部署
-
-- Docker 镜像：[`owenyoung/jant`](https://hub.docker.com/r/owenyoung/jant)
-- 指南：[使用 Docker 部署](docs/zh-Hans/deployment-docker.md)
-
-### 使用 Jant 托管
-
-官方托管 [jant.me](https://jant.me) 和自托管跑的是同一份代码，额外提供自动 HTTPS、自定义域名和媒体存储。详见 [使用 Jant 托管](docs/zh-Hans/hosted.md)。
 
 ## 文档
 
