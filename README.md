@@ -1,5 +1,7 @@
 # Jant
 
+[![Deploy to Railyard](https://app.railyard.run/deploy/badge)](https://app.railyard.run/deploy?repo=https://github.com/jant-me/jant)
+
 [English](README.md) · [简体中文](README.zh-Hans.md)
 
 > **Pre-1.0**: Jant is still early. Expect rough edges, breaking changes, and docs that keep moving while the product settles.
