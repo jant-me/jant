@@ -56,6 +56,36 @@ function publicTypes(): Plugin {
   };
 }
 
+const JSX_IMPORT_SOURCE_PRAGMA =
+  /^[ \t]*\/\*\*?\s*@jsxImportSource\s[^*]*\*\/[ \t]*\r?\n?/gm;
+
+/**
+ * Remove `@jsxImportSource` pragma lines from bundled JavaScript.
+ *
+ * TipTap compiles some extensions from TSX and leaves the pragma behind in
+ * plain JS. A site bundles dist with wrangler's esbuild, which reads the
+ * comment in classic JSX mode and warns on every `dev` and `deploy`.
+ *
+ * @param code - A rendered chunk
+ * @returns The chunk without pragma lines
+ * @example
+ * stripJsxImportSourcePragmas(chunk); // chunk minus its pragma lines
+ */
+export function stripJsxImportSourcePragmas(code: string): string {
+  return code.replace(JSX_IMPORT_SOURCE_PRAGMA, "");
+}
+
+function jsxPragmaStripper(): Plugin {
+  return {
+    name: "jant-strip-jsx-pragmas",
+    apply: "build",
+    renderChunk(code) {
+      if (!code.includes("@jsxImportSource")) return null;
+      return { code: stripJsxImportSourcePragmas(code), map: null };
+    },
+  };
+}
+
 const dir = import.meta.dirname;
 
 type ClientManifest = Record<string, { file?: string; imports?: string[] }>;
@@ -193,6 +223,10 @@ export default defineConfig({
         // the version we tested into dist keeps every self-hosted deploy on
         // it, whatever the consumer's package manager would resolve.
         if (id === "limax" || id.startsWith("limax/")) return false;
+        // Bundled, not external: the server converts Markdown with the same
+        // TipTap the editor in dist/client was built with, and only bundled
+        // code passes through jsxPragmaStripper on its way into dist.
+        if (id.startsWith("@tiptap/")) return false;
         return Object.keys(pkg.dependencies ?? {}).some(
           (dep: string) => id === dep || id.startsWith(dep + "/"),
         );
@@ -206,5 +240,5 @@ export default defineConfig({
     emptyOutDir: false,
   },
 
-  plugins: [swcPlugin(), publicTypes()],
+  plugins: [swcPlugin(), publicTypes(), jsxPragmaStripper()],
 });
