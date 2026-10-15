@@ -51,5 +51,8 @@ summarizing unreleased commits.
 - Do not modify `package.json`, `CHANGELOG.md`, or files other than the new
   `.changeset/*.md` file.
 - Use `mise run changeset-add`; do not write changeset files by hand.
+- A `major` bump writes its upgrade notes into `docs/upgrading.md` and
+  `docs/zh-Hans/upgrading.md` first, as end states, and the changeset links
+  there (see `docs/RELEASING.md`).
 - Do not stage or commit unrelated work. If the working tree contains existing
   changes, leave them untouched unless they are the new changeset file.

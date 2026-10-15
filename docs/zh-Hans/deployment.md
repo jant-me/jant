@@ -295,17 +295,7 @@ PORT=8787 npm run dev
 
 ## 升级
 
-升级前先读 [发布说明](https://github.com/jant-me/jant/releases)，留意破坏性变更。然后更新 `@jant/core` 并部署。一次发布可能改动什么、哪些版本可以原地升级，见 [兼容性](compatibility.md)。
-
-```bash
-npm install @jant/core@latest
-npm run dev      # 本地验证；新迁移会应用到本地 D1
-npm run deploy   # 部署到 Cloudflare；远端迁移在部署时应用
-```
-
-如果你的仓库已配置 push 自动部署（一键部署，或上面的 GitHub Actions 工作流），可以跳过本地命令：提交更新后的 `package.json` 与 lockfile，推送到 `main` 即可。远端迁移会作为部署的一部分自动执行。
-
-涉及替换或删除数据库表的升级，先读发布说明。`jant deploy` 会先执行迁移，再上传新版 Worker，因此破坏性的 schema 切换可能需要短暂停写。在迁移、Worker 上传和部署后检查全部完成前，停掉或排空旧版本的写入实例。迁移校验能发现脏数据和数量对不上，但表替换期间的并发写入仍然不安全。
+用 `npm install @jant/core@latest` 安装新版本，然后推送到 `main`，或者运行 `npm run deploy`。升级前要备份什么、0.x 的站点要改什么，见[升级](upgrading.md)。
 
 ## 常见错误
 

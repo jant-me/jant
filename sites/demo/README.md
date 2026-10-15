@@ -114,15 +114,11 @@ Open `http://localhost:3000`.
 
 ## Upgrade
 
-Check the [release notes](https://github.com/jant-me/jant/releases) for breaking changes, then:
-
 ```bash
 npm install @jant/core@latest
-npm run dev      # verify locally; applies new migrations to your local D1
-npm run deploy   # deploy to Cloudflare; applies remote migrations
 ```
 
-If you used one-click deploy, you can skip the local steps: commit the updated `package.json` and lockfile and push to `main`. Cloudflare rebuilds and applies remote migrations automatically.
+Commit `package.json` and the lockfile and push to `main`: the deploy workflow, or Cloudflare after a one-click deploy, deploys the new version and runs its migrations. Without either, run `npm run deploy`. [Upgrading](https://jant.me/docs/upgrading) has what to back up first and what a site on 0.x has to change.
 
 ## Configuration
 

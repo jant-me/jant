@@ -18,3 +18,4 @@ Create a changeset file for `@jant/core` and `create-jant` (fixed versioning —
 - **Always use `mise run changeset-add`** to create the changeset — NEVER write `.changeset/*.md` files directly.
 - **Do NOT modify** `package.json`, `CHANGELOG.md`, or any file other than the new `.changeset/*.md` file.
 - **Always show the user what changed** before asking for bump type.
+- **A `major` bump** writes its upgrade notes into `docs/upgrading.md` and `docs/zh-Hans/upgrading.md` first, as end states, and the changeset links there (see `docs/RELEASING.md`).

@@ -259,23 +259,7 @@ To mount Jant under a subpath like `<your-domain>/blog` and leave the root for o
 
 ## Upgrade
 
-Check the [release notes](https://github.com/jant-me/jant/releases) for breaking changes, then update `@jant/core` and deploy. [Compatibility](compatibility.md) lists what a release can change and which versions upgrade in place.
-
-```bash
-npm install @jant/core@latest
-npm run dev      # verify locally; applies new migrations to your local D1
-npm run deploy   # deploy to Cloudflare; applies remote migrations
-```
-
-If your repo auto-deploys on push (via one-click deploy or the GitHub Actions workflow above), you can skip the local commands: commit the updated `package.json` and lockfile and push to `main`. Remote migrations run as part of the deploy.
-
-Read the release notes before upgrades that replace or remove database tables.
-`jant deploy` applies migrations before it uploads the new Worker, so a
-destructive schema cutover may require a short write maintenance window. Stop
-or drain the old deployment's writers until the migration, new Worker upload,
-and post-deploy checks have completed. Migration validation can detect bad data
-or a count mismatch; it cannot make concurrent writes safe during a table
-replacement.
+Install the new version with `npm install @jant/core@latest`, then push to `main`, or run `npm run deploy`. [Upgrading](upgrading.md) has what to back up first and what a site on 0.x has to change.
 
 ## Common errors
 

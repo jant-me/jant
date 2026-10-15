@@ -178,6 +178,8 @@ For repeatable deploys, pin the image tag:
 IMAGE=owenyoung/jant:<version>
 ```
 
+[Upgrading](upgrading.md) has what a site on 0.x has to change.
+
 ## Common commands
 
 ```bash

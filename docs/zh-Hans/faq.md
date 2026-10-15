@@ -46,7 +46,7 @@ Jant 不内置评论。需要的话，可以通过[代码注入](code-injection.
 - **Cloudflare**：`npm install @jant/core@latest && npm run deploy`，迁移会在部署时自动跑。
 - **Docker**：`docker compose pull && docker compose up -d`，这个命令会先运行数据库迁移，再启动应用。
 
-升级前建议先做一次完整备份，见 [备份与恢复](backups.md)。
+先备份。各种部署方式的步骤、0.x 的站点要改什么，见[升级](upgrading.md)。
 
 ## Cloudflare 免费额度真的够吗？
 
@@ -151,7 +151,7 @@ feeds。内容会立即显示在网页上，等待的只有 feed 分发。这段
 
 ## Pre-1.0，破坏性变更会很多吗？
 
-可能会有，但不到必要不会做。每次破坏性变更都会写在 commit 和 changelog 里。升级前扫一眼变更记录，留一份最近的备份。每种版本可能改动什么，见[兼容性](compatibility.md)。
+可能会有，但不到必要不会做。每次破坏性变更都写在发布说明里，0.x 的站点要改的内容集中在[升级](upgrading.md)。每种版本可能改动什么，见[兼容性](compatibility.md)。
 
 ## 怎么把别的博客的内容迁进来（WordPress、Tumblr 等）？
 

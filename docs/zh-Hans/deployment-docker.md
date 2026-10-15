@@ -178,6 +178,8 @@ docker compose up -d
 IMAGE=owenyoung/jant:<version>
 ```
 
+0.x 的站点要改什么，见[升级](upgrading.md)。
+
 ## 常用命令
 
 ```bash

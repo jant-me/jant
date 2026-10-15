@@ -65,6 +65,8 @@ These can change in any release without notice:
 
 ## Upgrading
 
+[Upgrading](upgrading.md) has the steps for each deployment.
+
 - A site installed with 0.3.39 (March 2026) or later upgrades in place to any later version, skipping versions: migrations run in order on deploy. An installation older than that predates the current database baseline. Don't upgrade it in place, since the migration that set up the baseline drops existing data; export its content and import it into a new site.
 - Migrations only go forward. To go back to an earlier version, restore a backup taken before the upgrade; see [Backups and recovery](backups.md).
 - A site export in a newer format than the importing Jant reads, or a snapshot from a newer Jant, stops before anything is written and asks you to upgrade `@jant/core`. The format version rises whenever `site import` starts reading something new, so an older Jant never imports a newer export while dropping what it doesn't know.

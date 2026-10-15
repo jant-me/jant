@@ -35,6 +35,8 @@ We follow [Semantic Versioning](https://semver.org/):
 3. **Commit** the changeset file with your changes
 4. **Open PR** and merge to main
 
+A change that asks site owners or API clients to do something gives its changeset an **Upgrade notes** list. A major release also writes them into [Upgrading](upgrading.md), in both languages, before it ships, and its changeset links there. That page states end states, so a reader on any earlier version can follow it: what a file or setting should be, or the whole file to copy, not which line to edit.
+
 ### For Maintainers
 
 When PRs with changesets are merged:
@@ -90,7 +92,7 @@ mise run release-publish
 
 The first 1.x release has steps no other release has. Make the first two in one commit on `main`, then merge the Release PR soon after: from that commit on, the docs on `main` say 1.0 has shipped.
 
-- [ ] Add a `major` changeset that introduces the release: what 1.0 promises, with a link to [Compatibility](compatibility.md); why it is 1.0.1 (1.0.0 was published by accident in April 2026); and, for a site upgrading from 0.10 or earlier, a link to 0.11.0's upgrade notes, since the 1.0.1 release notes carry only their own. Changesets then proposes 1.0.0, and `release-version` moves it to 1.0.1 (see [Versioning](#versioning-semver))
+- [ ] Add a `major` changeset that introduces the release: what 1.0 promises, with a link to [Compatibility](compatibility.md); why it is 1.0.1 (1.0.0 was published by accident in April 2026); and, for a site upgrading from an earlier 0.x release, a link to the "Upgrading from 0.x" section of [Upgrading](upgrading.md), since the 1.0.1 release notes carry only their own. Changesets then proposes 1.0.0, and `release-version` moves it to 1.0.1 (see [Versioning](#versioning-semver))
 - [ ] Retire the pre-1.0 notices, in both languages:
   - the **Pre-1.0** banner at the top of `README.md`, `README.zh-Hans.md`, `docs/overview.md`, and `docs/zh-Hans/overview.md`
   - the "Pre-1.0 — will there be a lot of breaking changes?" entry in `docs/faq.md` and `docs/zh-Hans/faq.md`, which becomes an answer about upgrading within 1.x

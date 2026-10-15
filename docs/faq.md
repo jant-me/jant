@@ -46,7 +46,7 @@ Three layers of control: built-in color themes, built-in type styles, and Custom
 - **Cloudflare**: `npm install @jant/core@latest && npm run deploy`. Migrations run automatically as part of deploy.
 - **Docker**: `docker compose pull && docker compose up -d`. The command runs database migrations first, then starts the app.
 
-Take a full backup before upgrading. See [Backups and recovery](backups.md).
+Back up first. [Upgrading](upgrading.md) has the steps for each deployment and what a site on 0.x has to change.
 
 ## Is the Cloudflare free tier really enough?
 
@@ -152,7 +152,7 @@ See [Command line](cli.md) for the options.
 
 ## Pre-1.0 — will there be a lot of breaking changes?
 
-Possibly, but only when warranted. Every breaking change is documented in the commit and changelog. Skim the changelog before upgrading and keep a recent backup. [Compatibility](compatibility.md) lists what each kind of release can change.
+Possibly, but only when warranted. Every breaking change is in the release notes, and [Upgrading](upgrading.md) collects what a site on 0.x has to change. [Compatibility](compatibility.md) lists what each kind of release can change.
 
 ## How do I move my old blog into Jant (WordPress, Tumblr, etc.)?
 

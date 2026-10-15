@@ -17,6 +17,7 @@
 - [Deploy on Cloudflare](deployment.md)
 - [Deploy with Docker](deployment-docker.md)
 - [Use Hosted Jant](hosted.md)
+- [Upgrading](upgrading.md)
 - [Configuration](configuration.md)
 - [Command line](cli.md)
 
