@@ -6,7 +6,7 @@ Jant makes three levels of promise. Some things keep working in every release, m
 
 | Surface               | What's kept                                                                                   | Reference                                           |
 | --------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Upgrades              | A site installed with 0.3.39 (March 2026) or later upgrades in place to any later version     | [Upgrading](#upgrading)                             |
+| Upgrades              | A site upgrades in place to any later version                                                 | [Upgrading](#upgrading)                             |
 | Exports and snapshots | A site export or snapshot from 0.7.0 or later imports into that release or any later one      | [Export and import](export-and-import.md)           |
 | Addresses             | Post and Collection URLs, custom URLs and their redirects, and the archive's query parameters | [Writing and organizing](writing-and-organizing.md) |
 | Feeds                 | Every feed address, and each entry's `<id>` and `<jant:id>`                                   | [Feeds](feeds.md)                                   |
@@ -67,7 +67,7 @@ These can change in any release without notice:
 
 [Upgrading](upgrading.md) has the steps for each deployment.
 
-- A site installed with 0.3.39 (March 2026) or later upgrades in place to any later version, skipping versions: migrations run in order on deploy. An installation older than that predates the current database baseline. Don't upgrade it in place, since the migration that set up the baseline drops existing data; export its content and import it into a new site.
+- A site upgrades in place to any later version, skipping versions: migrations run in order on deploy.
 - Migrations only go forward. To go back to an earlier version, restore a backup taken before the upgrade; see [Backups and recovery](backups.md).
 - A site export in a newer format than the importing Jant reads, or a snapshot from a newer Jant, stops before anything is written and asks you to upgrade `@jant/core`. The format version rises whenever `site import` starts reading something new, so an older Jant never imports a newer export while dropping what it doesn't know.
 - A snapshot restores into the kind of database it came from: SQLite, D1 included, or Postgres. To move between them, use a site export.

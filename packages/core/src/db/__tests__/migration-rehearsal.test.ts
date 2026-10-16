@@ -42,8 +42,8 @@ function queryLocalCount(persistDir: string, sql: string) {
 }
 
 /**
- * `v0.3.39` is the oldest release docs/compatibility.md says upgrades in
- * place, written by that release itself. `pinned-reply-memberships` starts
+ * `v0.3.39` is a site written by that release itself, older than any site
+ * still running, so the rehearsal starts below every real upgrade. `pinned-reply-memberships` starts
  * later, from data that release couldn't hold. The rehearsal command checks
  * each manifest's assertions; this checks it ran to the end.
  */
