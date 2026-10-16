@@ -53,11 +53,11 @@ docker run --rm -e AUTH_SECRET=<auth-secret> -v "$(pwd)/data:/var/lib/jant" owen
 - `SITE_ORIGIN` 只写 origin，如 `https://example.com`。子路径写在 `SITE_PATH_PREFIX`。
 - `CORS_ORIGINS` 留空表示关闭跨域访问。想允许所有来源，删掉这一行。
 
-原来只向 Jant Discover 提供精选帖子的站点，现在已经不在目录里了。到 **设置 → 常规** 重新打开 Discover。
+如果你之前只让 Jant Discover 收录精选帖子，升级后这项会关闭。想继续被收录，到 **设置 → 常规** 重新勾选「允许我的博客出现在 Jant Discover 中」。
 
 ### Cloudflare 站点
 
-和新版 `@jant/core` 放在同一次提交里，把部署 workflow 和 `AGENTS.md` 换成当前的文件。0.11 之前的 workflow 每次都会跳过部署：
+和新版 `@jant/core` 放在同一次提交里，把部署 workflow 和 `AGENTS.md` 换成当前的文件：
 
 ```bash
 curl -fsSL -o .github/workflows/deploy.yml https://raw.githubusercontent.com/jant-me/jant-starter/main/.github/workflows/deploy.yml

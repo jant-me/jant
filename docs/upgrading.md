@@ -53,11 +53,11 @@ From 0.11, a variable set to a value it doesn't take stops the site at startup. 
 - `SITE_ORIGIN` holds only the origin, such as `https://example.com`. A subpath goes in `SITE_PATH_PREFIX`.
 - An empty `CORS_ORIGINS` turns cross-origin access off. Remove the line to allow every origin.
 
-A site that offered Jant Discover its featured posts is now off the directory. Turn Discover on again under Settings → General.
+If you let Jant Discover list only your featured posts, the upgrade turns that off. To stay listed, tick **Allow Jant Discover to list my site** again under **Settings → General**.
 
 ### Cloudflare sites
 
-In the same commit as the new `@jant/core`, replace the deploy workflow and `AGENTS.md` with the current ones. A workflow from before 0.11 skips every deploy:
+In the same commit as the new `@jant/core`, replace the deploy workflow and `AGENTS.md` with the current ones:
 
 ```bash
 curl -fsSL -o .github/workflows/deploy.yml https://raw.githubusercontent.com/jant-me/jant-starter/main/.github/workflows/deploy.yml
