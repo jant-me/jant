@@ -94,7 +94,7 @@ docker run --rm \
   这份文件用 npm 安装依赖。用 pnpm 或 Yarn 建的项目，用同一个包管理器新建一个项目，比如 `pnpm create jant jant-new`，再复制它的 `.github/workflows/deploy.yml`。
 
 - **`wrangler.toml`**：在顶层、第一个 `[section]` 之前写 `keep_vars = true`。没有这一行，每次部署都会删掉你在 Cloudflare 控制台设置的变量。检查 `R2_PUBLIC_URL` 和 `IMAGE_TRANSFORM_URL` 还在不在，不在就重新设置，或者写进 `[vars]`。
-- **`package.json`**：脚本和新项目一样，是 `dev`、`deploy`、`reset-password`。删掉 `export` 脚本，改用 `npx jant db export`。`tailwindcss` 也可以删。
+- **`package.json`**：脚本和新项目一样，是 `dev`、`deploy`、`reset-password`。删掉 `export` 脚本，改用 `npx jant db export`。`tailwindcss` 也可以删。你自己的代码如果 import 了 TipTap、Lit 等只有 Jant 浏览器端代码用到的包，把它写进 `dependencies`：`@jant/core` 不再顺带安装这些包。
 - **`AGENTS.md`**：换成当前的文件，并删掉 `.agents/skills/` 和 `.claude/skills/`：
 
   ```bash

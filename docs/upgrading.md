@@ -94,7 +94,7 @@ Make these changes in the same commit as the new `@jant/core`.
   That file installs with npm. For a project made with pnpm or Yarn, create a new project with the same package manager, such as `pnpm create jant jant-new`, and copy its `.github/workflows/deploy.yml`.
 
 - **`wrangler.toml`**: `keep_vars = true` at the top level, before the first `[section]`. Without it, every deploy deletes the variables you set in the Cloudflare dashboard. Check that `R2_PUBLIC_URL` and `IMAGE_TRANSFORM_URL` are still there, and set them again or move them into `[vars]`.
-- **`package.json`**: the scripts are `dev`, `deploy`, and `reset-password`, as in a new project. Remove an `export` script; `npx jant db export` replaces it. `tailwindcss` can go too.
+- **`package.json`**: the scripts are `dev`, `deploy`, and `reset-password`, as in a new project. Remove an `export` script; `npx jant db export` replaces it. `tailwindcss` can go too. If your own code imports TipTap, Lit, or another package that only Jant's browser bundles use, list it in `dependencies`: `@jant/core` no longer installs them.
 - **`AGENTS.md`**: replace it with the current one, and delete `.agents/skills/` and `.claude/skills/`:
 
   ```bash
