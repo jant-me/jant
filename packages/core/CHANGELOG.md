@@ -1,5 +1,47 @@
 # @jant/core
 
+## 0.12.0
+
+### Minor Changes
+
+- [`623ebc4`](https://github.com/jant-me/jant/commit/623ebc4e289b1d68e0b18efb1ceb1ae67e2b7348) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `jant deploy --ci` deploys from an automated run, and the deploy workflow new projects get only installs dependencies and runs it. With neither `CLOUDFLARE_API_TOKEN` nor `CLOUDFLARE_ACCOUNT_ID` set, it skips the deploy without failing, as the workflow did in a repo without the secrets. With `database_id = "local"`, it stops and says to run the first deploy on your computer, where the workflow skipped and still passed. A skip or a stop also goes into the GitHub Actions run summary. These checks used to be shell in the workflow, the copy in each project's own repo that no upgrade reaches, and the one that read `database_id` skipped every deploy from March until 0.11.0. Now they come from the installed `@jant/core`.
+
+  `jant deploy -- --dry-run` without `--skip-migrate` is refused. Wrangler got the flag, but the remote migrations had already run.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - A project's existing workflow keeps working. To switch to the short one, replace `.github/workflows/deploy.yml` as [Upgrading](https://jant.me/docs/upgrading#cloudflare-sites) shows.
+  - `jant deploy -- --dry-run` without `--skip-migrate` fails before it changes anything. Add `--skip-migrate` to dry-run the Worker upload alone.
+
+### Patch Changes
+
+- [`22f28c7`](https://github.com/jant-me/jant/commit/22f28c7d1f4adffd268c35d5682c83459fab6ce3) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A new site no longer installs `lucide-static`, which takes about 60 MB. The server loaded all 1,700 Lucide icons to draw the 34 it uses. It now imports those 34 by name, and the build bundles them into `@jant/core`. The Worker you deploy is about 1.2 MB smaller, 120 KB gzipped.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - If your site's own code imports `lucide-static`, add it to your site's `package.json`.
+
+- [`3d23a34`](https://github.com/jant-me/jant/commit/3d23a34eec7a9a76c015b6f4de55d61d54db2fee) Thanks [@theowenyoung](https://github.com/theowenyoung)! - When Wrangler fails during `jant deploy`, or any other `jant` command that runs Wrangler against D1 or R2, the error now shows what Wrangler reported. Behind a proxy, Wrangler prints a "Proxy environment variables detected" warning on every run, and the error showed that warning in place of the cause, such as `Couldn't find a D1 DB with name or binding 'DB'`.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [`acc49b6`](https://github.com/jant-me/jant/commit/acc49b6964c4af879e8cb6260a8b8cdf73e9b0ab) Thanks [@theowenyoung](https://github.com/theowenyoung)! - A new site installs 77 fewer packages, about 96 MB less. `@jant/core` now lists as dependencies only what its server and the `jant` CLI load. TipTap, Lit, the fonts, the emoji picker data, and the HEIC and video encoders were listed too, though only the prebuilt browser bundles inside `@jant/core` use them.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - If your site's own code imports one of these packages, add it to your site's `package.json`.
+
+- [`2fc99e8`](https://github.com/jant-me/jant/commit/2fc99e86f28493585a3a98d3246cb7e60464e4ae) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `npm run dev` and `jant deploy` no longer print two esbuild warnings about `@jsxImportSource` in `@tiptap/extension-blockquote` and `@tiptap/extension-bold`. TipTap now ships inside `@jant/core` instead of being bundled from the site's `node_modules`, so the server converts Markdown with the same TipTap version the editor was built with.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
 ## 0.11.0
 
 ### Minor Changes
