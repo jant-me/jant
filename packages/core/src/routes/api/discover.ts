@@ -12,7 +12,7 @@
  * feed names it in `<jant:discover status="…">`.
  */
 
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { z } from "zod";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
@@ -23,16 +23,19 @@ import {
   latestFeedSelection,
 } from "../../lib/feed-policy.js";
 import { createTypeIdSchema, ID_PREFIX } from "../../lib/ids.js";
-import { ContentLanguageSchema, parseValidated } from "../../lib/schemas.js";
+import { ContentLanguageSchema } from "../../lib/schemas.js";
+import { validate } from "../../middleware/validate.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
 export const discoverApiRoutes = new Hono<Env>();
 
+const NO_IDS = "Name at least one post with id=";
+
 const PostStatusQuerySchema = z.object({
   id: z
-    .array(createTypeIdSchema(ID_PREFIX.post))
-    .min(1, "Name at least one post with id=")
+    .array(createTypeIdSchema(ID_PREFIX.post), { error: NO_IDS })
+    .min(1, NO_IDS)
     .max(
       DISCOVER_STATUS_MAX_IDS,
       `Ask about at most ${DISCOVER_STATUS_MAX_IDS} posts at a time`,
@@ -50,46 +53,55 @@ export interface DiscoverPostStatus {
   featured: boolean;
 }
 
-discoverApiRoutes.get("/posts", async (c) => {
-  // It answers for a site that takes part, and follows the Discover setting
-  // rather than `PUBLIC_API_ENABLED`: it says nothing the public feeds do not,
-  // and a site that turned its JSON API off has not left Discover.
+/**
+ * It answers for a site that takes part, and follows the Discover setting
+ * rather than `PUBLIC_API_ENABLED`: it says nothing the public feeds do not,
+ * and a site that turned its JSON API off has not left Discover. Ahead of the
+ * query's validation, so a site that doesn't take part answers 404 to any
+ * question.
+ */
+const requireDiscover: MiddlewareHandler<Env> = async (c, next) => {
   if (c.var.appConfig.discover === "none") return c.notFound();
+  await next();
+};
 
-  const query = parseValidated(PostStatusQuerySchema, {
-    id: c.req.queries("id") ?? [],
-    lang: c.req.query("lang"),
-  });
-  const ids = [...new Set(query.id)];
-  // The feeds hold a new post back for the RSS delay, and so does this: the
-  // answer is about the feeds as a reader would fetch them now.
-  const publishedBefore = getRssPublishedBefore(
-    c.var.appConfig.rssPublishDelaySeconds,
-  );
+discoverApiRoutes.get(
+  "/posts",
+  requireDiscover,
+  validate("query", PostStatusQuerySchema),
+  async (c) => {
+    const query = c.req.valid("query");
+    const ids = [...new Set(query.id)];
+    // The feeds hold a new post back for the RSS delay, and so does this: the
+    // answer is about the feeds as a reader would fetch them now.
+    const publishedBefore = getRssPublishedBefore(
+      c.var.appConfig.rssPublishDelaySeconds,
+    );
 
-  const [latest, featured] = await Promise.all([
-    c.var.services.posts.list({
-      ...latestFeedSelection({ lang: query.lang, publishedBefore }),
-      ids,
-      limit: ids.length,
-    }),
-    c.var.services.posts.listFeaturedThreadRootIds({
-      ...featuredFeedSelection({ lang: query.lang, publishedBefore }),
-      threadIds: ids,
-      limit: ids.length,
-    }),
-  ]);
-  const inLatest = new Set(latest.map((post) => post.id));
-  const inFeatured = new Set(featured);
+    const [latest, featured] = await Promise.all([
+      c.var.services.posts.list({
+        ...latestFeedSelection({ lang: query.lang, publishedBefore }),
+        ids,
+        limit: ids.length,
+      }),
+      c.var.services.posts.listFeaturedThreadRootIds({
+        ...featuredFeedSelection({ lang: query.lang, publishedBefore }),
+        threadIds: ids,
+        limit: ids.length,
+      }),
+    ]);
+    const inLatest = new Set(latest.map((post) => post.id));
+    const inFeatured = new Set(featured);
 
-  // Every ID asked about is answered, in the order asked. A post that is
-  // deleted, private, a draft, a reply, or not this site's at all comes back
-  // `false` on both: to a directory they all mean the same thing.
-  return c.json({
-    posts: ids.map((id): DiscoverPostStatus => ({
-      id,
-      latest: inLatest.has(id),
-      featured: inFeatured.has(id),
-    })),
-  });
-});
+    // Every ID asked about is answered, in the order asked. A post that is
+    // deleted, private, a draft, a reply, or not this site's at all comes back
+    // `false` on both: to a directory they all mean the same thing.
+    return c.json({
+      posts: ids.map((id): DiscoverPostStatus => ({
+        id,
+        latest: inLatest.has(id),
+        featured: inFeatured.has(id),
+      })),
+    });
+  },
+);

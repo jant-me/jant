@@ -19,6 +19,24 @@ routes -> viewmodels -> ui
 - UI/components must not import services, DB modules, or route modules.
 - Feature modules must not import shared types from `src/app.tsx` or other app composition roots.
 
+### API Request Input
+
+A route under `src/routes/api/` declares what it accepts in its registration, with `validate()` from `src/middleware/validate.ts`, and the handler reads the parsed value with `c.req.valid()`:
+
+```ts
+postsApiRoutes.put(
+  "/:id/language",
+  requireAuthApi(),
+  validate("json", SetLanguageSchema),
+  async (c) => {
+    const { language } = c.req.valid("json");
+```
+
+`json` reads the body as JSON whatever its `Content-Type`, `query` the query string, and `form` a multipart body. The public surface manifest reads each route's query parameters and body fields from the schema on its `validate()` middleware. Input a handler parses on its own is left out of the compatibility check.
+
+- A check that must answer before validation, such as a disabled feature answering `404`, is its own middleware ahead of `validate()`.
+- Bodies whose format someone else defines (webhooks, MCP's JSON-RPC, raw upload bytes) and `/api/internal/*` routes read their input in the handler.
+
 ## Versioned Product Defaults
 
 - Built-in navigation metadata and append-only default profiles live in

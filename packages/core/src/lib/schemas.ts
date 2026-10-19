@@ -1262,6 +1262,34 @@ export function validateAttachmentCount(attachments: unknown[]): string | null {
   return null;
 }
 
+// =============================================================================
+// Multipart form fields
+// =============================================================================
+
+/**
+ * A file in a multipart form, or `undefined` when the field is missing or
+ * holds text. A route that needs the file says so itself.
+ */
+export const FormFileSchema = z.preprocess(
+  (value) => (value instanceof File ? value : undefined),
+  z.instanceof(File).optional(),
+);
+
+/** A form field's text, or `undefined` when it is empty or holds a file. */
+export const FormTextSchema = z.preprocess(
+  (value) => (typeof value === "string" && value !== "" ? value : undefined),
+  z.string().optional(),
+);
+
+/**
+ * A positive whole number written in a form field, read as `parseInt` reads
+ * it; anything else is left out rather than refused.
+ */
+export const FormPositiveIntSchema = z.preprocess((value) => {
+  const number = typeof value === "string" ? Number.parseInt(value, 10) : 0;
+  return number > 0 ? number : undefined;
+}, z.number().int().positive().optional());
+
 /**
  * Read a request's JSON body, answering a body that isn't JSON with a
  * ValidationError (400) rather than letting the parse error surface as a 500.

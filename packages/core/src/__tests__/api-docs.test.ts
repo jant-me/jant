@@ -17,6 +17,12 @@
  * A route outside `/api/internal/*` is either named in docs/API.md as
  * `` `METHOD /path` `` or declared undocumented in `helpers/public-surface.ts`,
  * which keeps it out of the public surface manifest.
+ *
+ * Every parameter and field a request table names is one its endpoint
+ * accepts, read from the schema the route validates with. A table that kept a
+ * removed or renamed field would send clients a name the API ignores. The
+ * other direction isn't checked here: the public surface manifest records
+ * what each endpoint accepts.
  */
 
 import { readFileSync } from "node:fs";
@@ -24,6 +30,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   listApiRoutes,
+  readApiRequestFields,
   readApiResponseFields,
   UNDOCUMENTED_API_ROUTES,
 } from "./helpers/public-surface.js";
@@ -79,6 +86,55 @@ function documentedEndpoints(): Set<string> {
   );
 }
 
+/** A section of docs/API.md that names endpoints, with its request names. */
+interface RequestSection {
+  heading: string;
+  endpoints: string[];
+  /** The first cell of each row of a table with a `Required` column, and each `?name=` in an endpoint line. */
+  names: string[];
+}
+
+/**
+ * Every `##`–`####` section of docs/API.md that names an endpoint outside
+ * `/api/internal/*` and documents request names.
+ */
+function requestSections(): RequestSection[] {
+  const parts = API_DOC.split(/^(#{2,4} .*)$/m);
+  const sections: RequestSection[] = [];
+  for (let index = 1; index < parts.length; index += 2) {
+    const heading = parts[index] ?? "";
+    const text = parts[index + 1] ?? "";
+    const lines = [
+      ...text.matchAll(
+        /^`(GET|POST|PUT|PATCH|DELETE) (\/api\/[^`?\s]*)(\?[^`]*)?`/gm,
+      ),
+    ];
+    const endpoints = lines
+      .map((line) => `${line[1]} ${line[2]}`)
+      .filter((endpoint) => !endpoint.includes(" /api/internal/"));
+    if (endpoints.length === 0) continue;
+
+    const names = lines.flatMap((line) =>
+      [...(line[3] ?? "").matchAll(/[?&]([A-Za-z]\w*)=/g)].map(
+        (match) => match[1] ?? "",
+      ),
+    );
+    let inRequestTable = false;
+    for (const line of text.split("\n")) {
+      if (!line.startsWith("|")) {
+        inRequestTable = false;
+      } else if (/^\|\s*(Field|Parameter|Query)\s*\|/.test(line)) {
+        inRequestTable = /\|\s*Required\s*\|/.test(line);
+      } else if (inRequestTable) {
+        const name = /^\| `([A-Za-z]\w*)`/.exec(line)?.[1];
+        if (name) names.push(name);
+      }
+    }
+    if (names.length > 0) sections.push({ heading, endpoints, names });
+  }
+  return sections;
+}
+
 describe("API docs", () => {
   it.each(Object.entries(RESPONSE_TABLES))(
     "list every field of a %s response",
@@ -86,6 +142,22 @@ describe("API docs", () => {
       expect(RESPONSE_FIELDS[name as keyof typeof RESPONSE_TABLES]).toEqual(
         documentedFields(intro),
       );
+    },
+  );
+
+  it.each(requestSections().map((section) => [section.heading, section]))(
+    "%s: name only request fields the endpoint accepts",
+    (_heading, section) => {
+      const requests = readApiRequestFields();
+      const accepted = new Set(
+        section.endpoints.flatMap((endpoint) =>
+          [
+            ...(requests.query[endpoint] ?? []),
+            ...(requests.body[endpoint] ?? []),
+          ].map((name) => name.split(".")[0]),
+        ),
+      );
+      expect(section.names.filter((name) => !accepted.has(name))).toEqual([]);
     },
   );
 

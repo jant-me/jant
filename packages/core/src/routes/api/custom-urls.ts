@@ -7,12 +7,8 @@ import { z } from "zod";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
-import {
-  CreateCustomUrlSchema,
-  pageLimitSchema,
-  parseValidated,
-  readJsonBody,
-} from "../../lib/schemas.js";
+import { validate } from "../../middleware/validate.js";
+import { CreateCustomUrlSchema, pageLimitSchema } from "../../lib/schemas.js";
 import { parseIdParam, NotFoundError } from "../../lib/errors.js";
 import { toApiCustomUrl } from "../../lib/api-custom-urls.js";
 import { ID_PREFIX } from "../../lib/ids.js";
@@ -27,34 +23,41 @@ const ListCustomUrlsQuerySchema = z.object({
 });
 
 // List custom URLs, newest first (requires auth)
-customUrlsApiRoutes.get("/", requireAuthApi(), async (c) => {
-  const { limit, cursor } = parseValidated(
-    ListCustomUrlsQuerySchema,
-    c.req.query(),
-  );
-  const page = await c.var.services.customUrls.listPage({ limit, cursor });
-  return c.json({
-    customUrls: page.customUrls.map(toApiCustomUrl),
-    nextCursor: page.nextCursor,
-  });
-});
+customUrlsApiRoutes.get(
+  "/",
+  requireAuthApi(),
+  validate("query", ListCustomUrlsQuerySchema),
+  async (c) => {
+    const { limit, cursor } = c.req.valid("query");
+    const page = await c.var.services.customUrls.listPage({ limit, cursor });
+    return c.json({
+      customUrls: page.customUrls.map(toApiCustomUrl),
+      nextCursor: page.nextCursor,
+    });
+  },
+);
 
 // Create custom URL (requires auth)
-customUrlsApiRoutes.post("/", requireAuthApi(), async (c) => {
-  const body = parseValidated(CreateCustomUrlSchema, await readJsonBody(c));
+customUrlsApiRoutes.post(
+  "/",
+  requireAuthApi(),
+  validate("json", CreateCustomUrlSchema),
+  async (c) => {
+    const body = c.req.valid("json");
 
-  const customUrl = await c.var.services.customUrls.create({
-    path: body.path,
-    targetType: body.targetType,
-    targetId: body.targetId,
-    toPath: body.toPath,
-    redirectType: body.redirectType
-      ? (parseInt(body.redirectType, 10) as 301 | 302)
-      : undefined,
-  });
+    const customUrl = await c.var.services.customUrls.create({
+      path: body.path,
+      targetType: body.targetType,
+      targetId: body.targetId,
+      toPath: body.toPath,
+      redirectType: body.redirectType
+        ? (parseInt(body.redirectType, 10) as 301 | 302)
+        : undefined,
+    });
 
-  return c.json(toApiCustomUrl(customUrl), 201);
-});
+    return c.json(toApiCustomUrl(customUrl), 201);
+  },
+);
 
 // Delete custom URL (requires auth)
 customUrlsApiRoutes.delete("/:id", requireAuthApi(), async (c) => {

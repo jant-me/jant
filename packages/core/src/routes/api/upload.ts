@@ -7,9 +7,11 @@
 
 import { Hono, type Context } from "hono";
 import { msg } from "@lingui/core/macro";
+import { z } from "zod";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
+import { validate } from "../../middleware/validate.js";
 import { toApiMedia } from "../../lib/api-media.js";
 import {
   detectPosterMimeType,
@@ -33,6 +35,11 @@ import {
 } from "../../lib/errors.js";
 import { requireStorage } from "../../lib/storage.js";
 import { getI18n } from "../../i18n/index.js";
+import {
+  FormFileSchema,
+  FormPositiveIntSchema,
+  FormTextSchema,
+} from "../../lib/schemas.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -40,6 +47,18 @@ export const uploadApiRoutes = new Hono<Env>();
 
 // Require auth for all upload routes
 uploadApiRoutes.use("*", requireAuthApi());
+
+const UploadFormSchema = z.object({
+  file: FormFileSchema,
+  summary: FormTextSchema,
+  width: FormPositiveIntSchema,
+  height: FormPositiveIntSchema,
+  durationSeconds: FormPositiveIntSchema,
+  alt: FormTextSchema,
+  blurhash: FormTextSchema,
+  waveform: FormTextSchema,
+  poster: FormFileSchema,
+});
 
 function getHostedMediaQuotaExceededText(c: Context<Env>): string {
   return getI18n(c)._(
@@ -53,12 +72,12 @@ function getHostedMediaQuotaExceededText(c: Context<Env>): string {
 }
 
 // Upload a file
-uploadApiRoutes.post("/", async (c) => {
+uploadApiRoutes.post("/", validate("form", UploadFormSchema), async (c) => {
   const i18n = getI18n(c);
   const storage = requireStorage(c.var.storage);
 
-  const formData = await c.req.formData();
-  const file = formData.get("file") as File | null;
+  const form = c.req.valid("form");
+  const file = form.file;
 
   if (!file) {
     throw new ValidationError(
@@ -107,7 +126,7 @@ uploadApiRoutes.post("/", async (c) => {
     }
 
     // Read optional summary (provided for text attachments)
-    let summary = (formData.get("summary") as string) || undefined;
+    let summary = form.summary;
     let chars: number | undefined;
     // Buffer for text files — file.stream() may not work after file.text()
     let textBuffer: Uint8Array | undefined;
@@ -138,17 +157,8 @@ uploadApiRoutes.post("/", async (c) => {
       cacheControl: "public, max-age=31536000, immutable",
     });
 
-    // Read optional client-side metadata
-    const widthRaw = parseInt(formData.get("width") as string) || undefined;
-    const heightRaw = parseInt(formData.get("height") as string) || undefined;
-    const durationSecondsRaw =
-      parseInt(formData.get("durationSeconds") as string) || undefined;
-    const altRaw = (formData.get("alt") as string) || undefined;
-    const blurhashRaw = (formData.get("blurhash") as string) || undefined;
-    const waveformRaw = (formData.get("waveform") as string) || undefined;
-
-    let width = widthRaw && widthRaw > 0 ? widthRaw : undefined;
-    let height = heightRaw && heightRaw > 0 ? heightRaw : undefined;
+    // Client-side metadata, when sent
+    let { width, height } = form;
     if ((!width || !height) && file.type.startsWith("image/")) {
       try {
         const headerBytes = new Uint8Array(
@@ -166,7 +176,7 @@ uploadApiRoutes.post("/", async (c) => {
 
     // Upload poster frame for videos (if provided by client)
     let posterKey: string | undefined;
-    const posterFile = formData.get("poster") as File | null;
+    const posterFile = form.poster;
     if (posterFile && file.type.startsWith("video/")) {
       const posterBytes = new Uint8Array(await posterFile.arrayBuffer());
       const posterMime = detectPosterMimeType(posterBytes);
@@ -190,15 +200,14 @@ uploadApiRoutes.post("/", async (c) => {
       provider: c.var.appConfig.storageDriver,
       width,
       height,
-      durationSeconds:
-        durationSecondsRaw && durationSecondsRaw > 0
-          ? durationSecondsRaw
-          : undefined,
-      alt: altRaw?.trim() || undefined,
+      durationSeconds: form.durationSeconds,
+      alt: form.alt?.trim() || undefined,
       blurhash:
-        blurhashRaw && blurhashRaw.length < 200 ? blurhashRaw : undefined,
+        form.blurhash && form.blurhash.length < 200 ? form.blurhash : undefined,
       waveform:
-        waveformRaw && waveformRaw.length < 2000 ? waveformRaw : undefined,
+        form.waveform && form.waveform.length < 2000
+          ? form.waveform
+          : undefined,
       posterKey,
       summary,
       chars,

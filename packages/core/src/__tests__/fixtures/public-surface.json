@@ -571,6 +571,219 @@
     }
   },
   "http": {
+    "body": {
+      "POST /api/collections": [
+        "description",
+        "slug",
+        "sortOrder",
+        "title"
+      ],
+      "POST /api/collections/:id/threads": [
+        "threadId"
+      ],
+      "POST /api/collections/directory-items": [
+        "description",
+        "label",
+        "type",
+        "url"
+      ],
+      "POST /api/custom-urls": [
+        "path",
+        "redirectType",
+        "targetId",
+        "targetType",
+        "toPath"
+      ],
+      "POST /api/nav-items": [
+        "collectionId",
+        "label",
+        "placement",
+        "postId",
+        "smartCollectionId",
+        "systemKey",
+        "type",
+        "url"
+      ],
+      "POST /api/posts": [
+        "attachments",
+        "attachments.alt",
+        "attachments.content",
+        "attachments.contentFormat",
+        "attachments.mediaId",
+        "attachments.summary",
+        "attachments.type",
+        "body",
+        "bodyMarkdown",
+        "collectionEntries",
+        "collectionEntries.collectionId",
+        "collectionEntries.createdAt",
+        "collectionEntries.pinnedAt",
+        "collectionEntries.position",
+        "collectionIds",
+        "createdAt",
+        "featured",
+        "featuredAt",
+        "format",
+        "language",
+        "path",
+        "pinned",
+        "pinnedAt",
+        "publishedAt",
+        "quietReply",
+        "quoteText",
+        "rating",
+        "replyToId",
+        "slug",
+        "sourceName",
+        "sourceUrl",
+        "status",
+        "title",
+        "translationOfId",
+        "updatedAt",
+        "url",
+        "visibility"
+      ],
+      "POST /api/posts/:id/translations": [
+        "postId"
+      ],
+      "POST /api/settings/avatar": [
+        "appleTouch",
+        "favicon",
+        "file"
+      ],
+      "POST /api/smart-collections": [
+        "description",
+        "layout",
+        "selection",
+        "selection.collection",
+        "selection.format",
+        "selection.media",
+        "selection.replies",
+        "selection.title",
+        "selection.visibility",
+        "selection.year",
+        "slug",
+        "sortOrder",
+        "title"
+      ],
+      "POST /api/smart-collections/preview": [
+        "selection",
+        "selection.collection",
+        "selection.format",
+        "selection.media",
+        "selection.replies",
+        "selection.title",
+        "selection.visibility",
+        "selection.year"
+      ],
+      "POST /api/upload": [
+        "alt",
+        "blurhash",
+        "durationSeconds",
+        "file",
+        "height",
+        "poster",
+        "summary",
+        "waveform",
+        "width"
+      ],
+      "POST /api/uploads/:id/complete": [
+        "blurhash",
+        "chars",
+        "durationSeconds",
+        "height",
+        "parts",
+        "parts.etag",
+        "parts.partNumber",
+        "summary",
+        "waveform",
+        "width"
+      ],
+      "POST /api/uploads/init": [
+        "checksumSha256",
+        "contentType",
+        "filename",
+        "size"
+      ],
+      "PUT /api/collections/:id": [
+        "description",
+        "slug",
+        "sortOrder",
+        "title"
+      ],
+      "PUT /api/collections/directory-items/:id": [
+        "description",
+        "label",
+        "url"
+      ],
+      "PUT /api/collections/directory-items/:id/move": [
+        "after",
+        "before"
+      ],
+      "PUT /api/media/:id": [
+        "alt"
+      ],
+      "PUT /api/nav-items/:id": [
+        "label",
+        "placement",
+        "url"
+      ],
+      "PUT /api/nav-items/:id/move": [
+        "after",
+        "before"
+      ],
+      "PUT /api/posts/:id": [
+        "attachments",
+        "attachments.alt",
+        "attachments.content",
+        "attachments.contentFormat",
+        "attachments.mediaId",
+        "attachments.summary",
+        "attachments.type",
+        "body",
+        "bodyMarkdown",
+        "collectionEntries",
+        "collectionEntries.collectionId",
+        "collectionEntries.createdAt",
+        "collectionEntries.pinnedAt",
+        "collectionEntries.position",
+        "collectionIds",
+        "featured",
+        "featuredAt",
+        "format",
+        "language",
+        "pinned",
+        "pinnedAt",
+        "publishedAt",
+        "quoteText",
+        "rating",
+        "slug",
+        "sourceName",
+        "sourceUrl",
+        "status",
+        "title",
+        "url",
+        "visibility"
+      ],
+      "PUT /api/posts/:id/language": [
+        "language"
+      ],
+      "PUT /api/smart-collections/:id": [
+        "description",
+        "layout",
+        "selection",
+        "selection.collection",
+        "selection.format",
+        "selection.media",
+        "selection.replies",
+        "selection.title",
+        "selection.visibility",
+        "selection.year",
+        "slug",
+        "sortOrder",
+        "title"
+      ]
+    },
     "endpoints": [
       "DELETE /api/collections/:id",
       "DELETE /api/collections/:id/threads/:threadId",
@@ -646,6 +859,131 @@
       "PUT /api/uploads/:id/part",
       "PUT /api/uploads/:id/poster"
     ],
+    "query": {
+      "GET /api/collections": [
+        "lang",
+        "view"
+      ],
+      "GET /api/collections/slug": [
+        "collectionId",
+        "mode",
+        "slug"
+      ],
+      "GET /api/custom-urls": [
+        "cursor",
+        "limit"
+      ],
+      "GET /api/discover/posts": [
+        "id",
+        "lang"
+      ],
+      "GET /api/media": [
+        "cursor",
+        "limit",
+        "mimePrefix"
+      ],
+      "GET /api/posts": [
+        "content",
+        "cursor",
+        "format",
+        "limit",
+        "status"
+      ],
+      "GET /api/posts/:id": [
+        "content"
+      ],
+      "GET /api/posts/:id/translations/candidates": [
+        "limit",
+        "q"
+      ],
+      "GET /api/posts/:id/translations/resolve": [
+        "url"
+      ],
+      "GET /api/posts/slug": [
+        "mode",
+        "postId",
+        "slug",
+        "title"
+      ],
+      "GET /api/public/posts/:slug": [
+        "content"
+      ],
+      "GET /api/public/threads": [
+        "collection",
+        "content",
+        "cursor",
+        "format",
+        "hasMedia",
+        "hasReplies",
+        "hasTitle",
+        "include",
+        "lang",
+        "limit",
+        "media",
+        "replies",
+        "sort",
+        "title",
+        "visibility",
+        "year"
+      ],
+      "GET /api/public/threads/:slug": [
+        "content",
+        "include"
+      ],
+      "GET /api/public/threads/:slug/posts": [
+        "content",
+        "cursor",
+        "limit"
+      ],
+      "GET /api/search": [
+        "limit",
+        "q"
+      ],
+      "GET /api/smart-collections": [
+        "lang"
+      ],
+      "GET /api/smart-collections/slug": [
+        "mode",
+        "slug",
+        "smartCollectionId",
+        "title"
+      ],
+      "GET /api/threads": [
+        "collection",
+        "content",
+        "cursor",
+        "format",
+        "hasMedia",
+        "hasReplies",
+        "hasTitle",
+        "include",
+        "lang",
+        "limit",
+        "media",
+        "replies",
+        "sort",
+        "status",
+        "title",
+        "visibility",
+        "year"
+      ],
+      "GET /api/threads/:id": [
+        "content",
+        "include"
+      ],
+      "GET /api/threads/:id/posts": [
+        "content",
+        "cursor",
+        "limit",
+        "status"
+      ],
+      "POST /api/smart-collections/preview": [
+        "lang"
+      ],
+      "PUT /api/uploads/:id/part": [
+        "partNumber"
+      ]
+    },
     "responses": {
       "attachment": [
         "alt",

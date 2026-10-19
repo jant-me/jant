@@ -12,13 +12,10 @@ import { z } from "zod";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
+import { validate } from "../../middleware/validate.js";
 import { assertFound, parseIdParam } from "../../lib/errors.js";
 import { ID_PREFIX } from "../../lib/ids.js";
-import {
-  pageLimitSchema,
-  parseValidated,
-  readJsonBody,
-} from "../../lib/schemas.js";
+import { pageLimitSchema } from "../../lib/schemas.js";
 import { toApiMedia } from "../../lib/api-media.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -41,11 +38,8 @@ const UpdateMediaSchema = z.object({
 mediaApiRoutes.use("*", requireAuthApi());
 
 // List files, newest first
-mediaApiRoutes.get("/", async (c) => {
-  const { limit, mimePrefix, cursor } = parseValidated(
-    ListMediaQuerySchema,
-    c.req.query(),
-  );
+mediaApiRoutes.get("/", validate("query", ListMediaQuerySchema), async (c) => {
+  const { limit, mimePrefix, cursor } = c.req.valid("query");
   const page = await c.var.services.media.listPage({
     limit,
     mimePrefix,
@@ -64,9 +58,9 @@ mediaApiRoutes.get("/:id", async (c) => {
   return c.json(toApiMedia(media, c.var.appConfig));
 });
 
-mediaApiRoutes.put("/:id", async (c) => {
+mediaApiRoutes.put("/:id", validate("json", UpdateMediaSchema), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.media);
-  const { alt } = parseValidated(UpdateMediaSchema, await readJsonBody(c));
+  const { alt } = c.req.valid("json");
   assertFound(await c.var.services.media.getById(id), "Media");
 
   await c.var.services.media.updateAlt(id, alt);

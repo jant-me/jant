@@ -12,6 +12,7 @@ import { z } from "zod";
 import type { Bindings, CollectionSortOrder } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
+import { validate } from "../../middleware/validate.js";
 import {
   CollectionDescriptionValueSchema,
   CollectionDirectoryRowIdSchema,
@@ -22,7 +23,6 @@ import {
   CreateCollectionSchema,
   parseValidated,
   PostIdSchema,
-  readJsonBody,
   UpdateCollectionDirectoryItemSchema,
 } from "../../lib/schemas.js";
 import { assertFound, parseIdParam, NotFoundError } from "../../lib/errors.js";
@@ -64,56 +64,62 @@ const ListCollectionsQuerySchema = z.object({
 });
 
 // List collections (includes Thread counts and directory items)
-collectionsApiRoutes.get("/", requireAuthApi(), async (c) => {
-  const query = parseValidated(ListCollectionsQuerySchema, c.req.query());
+collectionsApiRoutes.get(
+  "/",
+  requireAuthApi(),
+  validate("query", ListCollectionsQuerySchema),
+  async (c) => {
+    const query = c.req.valid("query");
 
-  if (query.view === "compose") {
-    c.header("Cache-Control", "no-store");
-    // Smart collections are deliberately absent. A post cannot be added to one
-    // by hand — its conditions decide, permanently — so offering it here would
-    // be a control that does nothing. Every "add this post to a collection"
-    // surface leaves them out for the same reason; see the smart collections
-    // design notes on the asymmetry, which is not a gap to be filled in later.
-    const collections = await c.var.services.collections.listByRecentActivity();
-    return c.json({
-      collections: collections.map(toApiCollection),
-      directoryItems: [],
+    if (query.view === "compose") {
+      c.header("Cache-Control", "no-store");
+      // Smart collections are deliberately absent. A post cannot be added to one
+      // by hand — its conditions decide, permanently — so offering it here would
+      // be a control that does nothing. Every "add this post to a collection"
+      // surface leaves them out for the same reason; see the smart collections
+      // design notes on the asymmetry, which is not a gap to be filled in later.
+      const collections =
+        await c.var.services.collections.listByRecentActivity();
+      return c.json({
+        collections: collections.map(toApiCollection),
+        directoryItems: [],
+      });
+    }
+
+    const directoryData = await c.var.services.collections.listDirectoryData({
+      // The caller is the author, by session or by token; `isAuthenticated`
+      // only reports a session.
+      isAuthenticated: true,
+      lang: query.lang,
+      timeZone: c.var.appConfig.timeZone,
     });
-  }
 
-  const directoryData = await c.var.services.collections.listDirectoryData({
-    // The caller is the author, by session or by token; `isAuthenticated`
-    // only reports a session.
-    isAuthenticated: true,
-    lang: query.lang,
-    timeZone: c.var.appConfig.timeZone,
-  });
-
-  return c.json(toApiCollectionList(directoryData));
-});
+    return c.json(toApiCollectionList(directoryData));
+  },
+);
 
 // Create directory item (divider or link) — must be before /:id
-collectionsApiRoutes.post("/directory-items", requireAuthApi(), async (c) => {
-  const body = parseValidated(
-    CreateCollectionDirectoryItemSchema,
-    await readJsonBody(c),
-  );
-  const item = await c.var.services.collections.createDirectoryItem(body);
-  return c.json(toApiDirectoryItem(item), 201);
-});
+collectionsApiRoutes.post(
+  "/directory-items",
+  requireAuthApi(),
+  validate("json", CreateCollectionDirectoryItemSchema),
+  async (c) => {
+    const body = c.req.valid("json");
+    const item = await c.var.services.collections.createDirectoryItem(body);
+    return c.json(toApiDirectoryItem(item), 201);
+  },
+);
 
 collectionsApiRoutes.put(
   "/directory-items/:id",
   requireAuthApi(),
+  validate("json", UpdateCollectionDirectoryItemSchema),
   async (c) => {
     const id = parseIdParam(
       c.req.param("id"),
       ID_PREFIX.collectionDirectoryItem,
     );
-    const body = parseValidated(
-      UpdateCollectionDirectoryItemSchema,
-      await readJsonBody(c),
-    );
+    const body = c.req.valid("json");
 
     const item = assertFound(
       await c.var.services.collections.updateDirectoryItem(id, body),
@@ -132,12 +138,13 @@ collectionsApiRoutes.put(
 collectionsApiRoutes.put(
   "/directory-items/:id/move",
   requireAuthApi(),
+  validate("json", MoveSchema),
   async (c) => {
     const id = parseValidated(
       CollectionDirectoryRowIdSchema,
       c.req.param("id"),
     );
-    const body = parseValidated(MoveSchema, await readJsonBody(c));
+    const body = c.req.valid("json");
 
     const item = assertFound(
       await c.var.services.collections.moveDirectoryItem(
@@ -174,14 +181,19 @@ collectionsApiRoutes.delete(
  * while the author types, so a clash is answered where the decision is being
  * made rather than on write.
  */
-collectionsApiRoutes.get("/slug", requireAuthApi(), async (c) => {
-  const query = parseValidated(SlugQuerySchema, c.req.query());
-  const available = await c.var.services.collections.checkSlugAvailability(
-    query.slug,
-    query.collectionId,
-  );
-  return c.json({ slug: query.slug, available });
-});
+collectionsApiRoutes.get(
+  "/slug",
+  requireAuthApi(),
+  validate("query", SlugQuerySchema),
+  async (c) => {
+    const query = c.req.valid("query");
+    const available = await c.var.services.collections.checkSlugAvailability(
+      query.slug,
+      query.collectionId,
+    );
+    return c.json({ slug: query.slug, available });
+  },
+);
 
 // Get single collection
 collectionsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
@@ -194,31 +206,41 @@ collectionsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
 });
 
 // Create collection (requires auth)
-collectionsApiRoutes.post("/", requireAuthApi(), async (c) => {
-  const body = parseValidated(CreateCollectionSchema, await readJsonBody(c));
+collectionsApiRoutes.post(
+  "/",
+  requireAuthApi(),
+  validate("json", CreateCollectionSchema),
+  async (c) => {
+    const body = c.req.valid("json");
 
-  const collection = await c.var.services.collections.create({
-    slug: body.slug,
-    title: body.title,
-    description: body.description,
-    sortOrder: body.sortOrder as CollectionSortOrder | undefined,
-  });
+    const collection = await c.var.services.collections.create({
+      slug: body.slug,
+      title: body.title,
+      description: body.description,
+      sortOrder: body.sortOrder as CollectionSortOrder | undefined,
+    });
 
-  return c.json(toApiCollection(collection), 201);
-});
+    return c.json(toApiCollection(collection), 201);
+  },
+);
 
 // Update collection (requires auth)
-collectionsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
-  const id = parseIdParam(c.req.param("id"), ID_PREFIX.collection);
-  const body = parseValidated(UpdateCollectionSchema, await readJsonBody(c));
+collectionsApiRoutes.put(
+  "/:id",
+  requireAuthApi(),
+  validate("json", UpdateCollectionSchema),
+  async (c) => {
+    const id = parseIdParam(c.req.param("id"), ID_PREFIX.collection);
+    const body = c.req.valid("json");
 
-  const collection = assertFound(
-    await c.var.services.collections.update(id, body),
-    "Collection",
-  );
+    const collection = assertFound(
+      await c.var.services.collections.update(id, body),
+      "Collection",
+    );
 
-  return c.json(toApiCollection(collection));
-});
+    return c.json(toApiCollection(collection));
+  },
+);
 
 // Delete collection (requires auth)
 collectionsApiRoutes.delete("/:id", requireAuthApi(), async (c) => {
@@ -231,13 +253,18 @@ collectionsApiRoutes.delete("/:id", requireAuthApi(), async (c) => {
 });
 
 // Add a thread to a collection (requires auth)
-collectionsApiRoutes.post("/:id/threads", requireAuthApi(), async (c) => {
-  const id = parseIdParam(c.req.param("id"), ID_PREFIX.collection);
-  const body = parseValidated(ThreadAssignSchema, await readJsonBody(c));
-  await c.var.services.collections.addThread(id, body.threadId);
+collectionsApiRoutes.post(
+  "/:id/threads",
+  requireAuthApi(),
+  validate("json", ThreadAssignSchema),
+  async (c) => {
+    const id = parseIdParam(c.req.param("id"), ID_PREFIX.collection);
+    const body = c.req.valid("json");
+    await c.var.services.collections.addThread(id, body.threadId);
 
-  return c.json({ success: true }, 201);
-});
+    return c.json({ success: true }, 201);
+  },
+);
 
 // Remove a thread from a collection (requires auth)
 collectionsApiRoutes.delete(

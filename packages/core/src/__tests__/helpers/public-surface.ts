@@ -25,6 +25,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { parse as parseToml } from "smol-toml";
+import { z } from "zod";
 import { listPublicCommandNames } from "../../../bin/lib/command-registry.js";
 import { createApp } from "../../app.js";
 import {
@@ -52,6 +53,7 @@ import {
   handleMcpHttpRequest,
   MCP_PROTOCOL_VERSION,
 } from "../../services/mcp.js";
+import { declaredRequest } from "../../middleware/validate.js";
 import type { AppConfig } from "../../types/config.js";
 import { CONFIG_FIELDS, THEME_MODES } from "../../types/config.js";
 import type { Post } from "../../types.js";
@@ -232,6 +234,24 @@ export function optionsInHelp(help: string): string[] {
 }
 
 /**
+ * Each handler of a route under `/api/` outside `/api/internal/*`, keyed
+ * `METHOD /path`. Middleware for every method (`ALL`) is left out.
+ */
+function apiRouteHandlers(): Array<{ route: string; handler: unknown }> {
+  return createApp()
+    .routes.filter(
+      (route) =>
+        route.method !== "ALL" &&
+        route.path.startsWith("/api/") &&
+        !route.path.startsWith("/api/internal/"),
+    )
+    .map((route) => ({
+      route: `${route.method} ${route.path}`,
+      handler: route.handler,
+    }));
+}
+
+/**
  * Every route under `/api/` outside `/api/internal/*`, as `METHOD /path`.
  * Middleware (`ALL`) is left out.
  *
@@ -242,15 +262,44 @@ export function optionsInHelp(help: string): string[] {
  * ```
  */
 export function listApiRoutes(): string[] {
-  const routes = createApp()
-    .routes.filter(
-      (route) =>
-        route.method !== "ALL" &&
-        route.path.startsWith("/api/") &&
-        !route.path.startsWith("/api/internal/"),
-    )
-    .map((route) => `${route.method} ${route.path}`);
+  const routes = apiRouteHandlers().map(({ route }) => route);
   return [...new Set(routes)].sort();
+}
+
+/** What the routes accept, by where the request carries it. */
+export interface ApiRequestFields {
+  /** Query parameters, by route. */
+  query: Record<string, string[]>;
+  /** Body fields, JSON or form, by route. */
+  body: Record<string, string[]>;
+}
+
+/**
+ * The query parameters and body fields each route accepts, read from the
+ * schema its registration names with `validate()`. Nested fields are dotted
+ * paths, as MCP parameters are. A route that names no schema, or a schema
+ * with no named fields, is left out.
+ *
+ * @returns Field names per `METHOD /path`, for every route under `/api/`
+ *   outside `/api/internal/*`, sorted
+ * @example
+ * ```ts
+ * readApiRequestFields().body["PUT /api/media/:id"]; // ["alt"]
+ * ```
+ */
+export function readApiRequestFields(): ApiRequestFields {
+  const fields: ApiRequestFields = { query: {}, body: {} };
+  for (const { route, handler } of apiRouteHandlers()) {
+    const request = declaredRequest(handler);
+    if (!request) continue;
+    const names = schemaParameters(
+      z.toJSONSchema(request.schema, { io: "input", unrepresentable: "any" }),
+    );
+    if (names.length === 0) continue;
+    const into = request.target === "query" ? fields.query : fields.body;
+    into[route] = [...new Set([...(into[route] ?? []), ...names])].sort();
+  }
+  return fields;
 }
 
 const APP_CONFIG = {
@@ -660,6 +709,11 @@ export async function buildPublicSurface(): Promise<PublicSurface> {
   ];
 
   const undocumented = new Set(UNDOCUMENTED_API_ROUTES);
+  const documented = (byRoute: Record<string, string[]>) =>
+    Object.fromEntries(
+      Object.entries(byRoute).filter(([route]) => !undocumented.has(route)),
+    );
+  const requests = readApiRequestFields();
 
   const { request } = await createRichFeedSite();
   const feed = readFeedNames(await (await request("/latest/feed")).text());
@@ -691,6 +745,8 @@ export async function buildPublicSurface(): Promise<PublicSurface> {
     },
     http: {
       endpoints: listApiRoutes().filter((route) => !undocumented.has(route)),
+      query: documented(requests.query),
+      body: documented(requests.body),
       responses: readApiResponseFields(),
     },
     mcp: {

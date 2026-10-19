@@ -15,14 +15,16 @@ import {
   pageLimitSchema,
   PostContentSchema,
   StatusSchema,
-  parseValidated,
 } from "../../lib/schemas.js";
 import { requireAuthApi } from "../../middleware/auth.js";
+import { validate } from "../../middleware/validate.js";
 import { loadApiPostResponses } from "../../lib/api-posts.js";
 import { loadApiThreadResponses } from "../../lib/api-threads.js";
 import {
   parseThreadInclude,
   parseThreadSelection,
+  queryReader,
+  threadSelectionQueryShape,
 } from "../../lib/thread-query.js";
 import { NotFoundError, parseIdParam } from "../../lib/errors.js";
 import { ID_PREFIX } from "../../lib/ids.js";
@@ -33,8 +35,9 @@ export const threadsApiRoutes = new Hono<Env>();
 
 threadsApiRoutes.use("*", requireAuthApi());
 
-/** The list's own parameters; everything else is a filter dimension. */
+/** The list's own parameters, and the filter dimensions. */
 const ListThreadsQuerySchema = z.object({
+  ...threadSelectionQueryShape,
   status: StatusSchema.optional(),
   lang: ContentLanguageSchema.optional(),
   sort: z.enum(THREAD_SORTS).optional(),
@@ -56,72 +59,80 @@ const ListThreadPostsQuerySchema = z.object({
   content: PostContentSchema.optional(),
 });
 
-threadsApiRoutes.get("/", async (c) => {
-  const query = parseValidated(ListThreadsQuerySchema, c.req.query());
-  const { fold } = parseThreadInclude(query.include);
-  const parsed = await parseThreadSelection((key) => c.req.query(key), {
-    audience: "author",
-    loadCollections: () => c.var.services.collections.list(),
-  });
-  if (parsed.kind === "empty") {
-    return c.json({ threads: [], nextCursor: null });
-  }
-
-  const { threads, nextCursor } = await c.var.services.threads.listThreads(
-    {
+threadsApiRoutes.get(
+  "/",
+  validate("query", ListThreadsQuerySchema),
+  async (c) => {
+    const query = c.req.valid("query");
+    const { fold } = parseThreadInclude(query.include);
+    const parsed = await parseThreadSelection(queryReader(query), {
       audience: "author",
-      status: query.status,
-      selection: parsed.selection,
-      lang: query.lang,
-      sort: query.sort,
-      fold,
-      timeZone: c.var.appConfig.timeZone,
-    },
-    { cursor: query.cursor, limit: query.limit },
-  );
+      loadCollections: () => c.var.services.collections.list(),
+    });
+    if (parsed.kind === "empty") {
+      return c.json({ threads: [], nextCursor: null });
+    }
 
-  return c.json({
-    threads: await loadApiThreadResponses(c.var, threads, {
-      content: query.content,
-    }),
-    nextCursor,
-  });
-});
+    const { threads, nextCursor } = await c.var.services.threads.listThreads(
+      {
+        audience: "author",
+        status: query.status,
+        selection: parsed.selection,
+        lang: query.lang,
+        sort: query.sort,
+        fold,
+        timeZone: c.var.appConfig.timeZone,
+      },
+      { cursor: query.cursor, limit: query.limit },
+    );
 
-threadsApiRoutes.get("/:id", async (c) => {
-  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-  const { include, content } = parseValidated(
-    GetThreadQuerySchema,
-    c.req.query(),
-  );
-  const root = await c.var.services.threads.findRoot({ id }, "author");
-  if (!root) throw new NotFoundError("Thread");
+    return c.json({
+      threads: await loadApiThreadResponses(c.var, threads, {
+        content: query.content,
+      }),
+      nextCursor,
+    });
+  },
+);
 
-  const summaries = await c.var.services.threads.summarize(
-    [root],
-    parseThreadInclude(include),
-  );
-  const [thread] = await loadApiThreadResponses(c.var, summaries, { content });
-  if (!thread) throw new NotFoundError("Thread");
-  return c.json(thread);
-});
+threadsApiRoutes.get(
+  "/:id",
+  validate("query", GetThreadQuerySchema),
+  async (c) => {
+    const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+    const { include, content } = c.req.valid("query");
+    const root = await c.var.services.threads.findRoot({ id }, "author");
+    if (!root) throw new NotFoundError("Thread");
 
-threadsApiRoutes.get("/:id/posts", async (c) => {
-  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-  const { status, cursor, limit, content } = parseValidated(
-    ListThreadPostsQuerySchema,
-    c.req.query(),
-  );
-  const root = await c.var.services.threads.findRoot({ id }, "author");
-  if (!root) throw new NotFoundError("Thread");
+    const summaries = await c.var.services.threads.summarize(
+      [root],
+      parseThreadInclude(include),
+    );
+    const [thread] = await loadApiThreadResponses(c.var, summaries, {
+      content,
+    });
+    if (!thread) throw new NotFoundError("Thread");
+    return c.json(thread);
+  },
+);
 
-  const { posts, nextCursor } = await c.var.services.threads.listPosts(
-    root.id,
-    { audience: "author", status },
-    { cursor, limit },
-  );
-  return c.json({
-    posts: await loadApiPostResponses(c.var, posts, { content }),
-    nextCursor,
-  });
-});
+threadsApiRoutes.get(
+  "/:id/posts",
+  validate("query", ListThreadPostsQuerySchema),
+  async (c) => {
+    const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+    const { status, cursor, limit, content } = c.req.valid("query");
+    const root = await c.var.services.threads.findRoot({ id }, "author");
+    if (!root) throw new NotFoundError("Thread");
+
+    const { posts, nextCursor } = await c.var.services.threads.listPosts(
+      root.id,
+      { audience: "author", status },
+      { cursor, limit },
+    );
+    return c.json({
+      posts: await loadApiPostResponses(c.var, posts, { content }),
+      nextCursor,
+    });
+  },
+);

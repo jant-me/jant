@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
+import { validate } from "../../middleware/validate.js";
 import { withConfig } from "../../middleware/config.js";
 import { verifyGitHubWebhookSignature } from "../../lib/webhook-signature.js";
 import { createGitHubClient, parseRepoSlug } from "../../lib/github-api.js";
@@ -18,7 +19,6 @@ import {
   SYNC_COMMIT_MARKER,
 } from "../../services/github-sync.js";
 import type { GitHubPushEvent } from "../../lib/github-api.js";
-import { parseValidated, readJsonBody } from "../../lib/schemas.js";
 import { getGitHubAppConfig } from "../../lib/env.js";
 import { buildSyncSiteConfig } from "../../lib/github-sync-site-config.js";
 import { sse } from "../../lib/sse.js";
@@ -254,61 +254,69 @@ const ConnectSchema = z.object({
 });
 
 // Connect: validate token, save config, create webhook
-githubSyncAdminRoutes.post("/setup", requireAuthApi(), async (c) => {
-  // PAT connect is disabled when a GitHub App is configured — see the
-  // settings route for rationale.
-  if (getGitHubAppConfig(c.env)) {
-    return c.json(
-      {
-        error:
-          "This deployment uses GitHub App authentication. Use the App install flow instead.",
-      },
-      400,
+githubSyncAdminRoutes.post(
+  "/setup",
+  requireAuthApi(),
+  validate("json", ConnectSchema),
+  async (c) => {
+    // PAT connect is disabled when a GitHub App is configured — see the
+    // settings route for rationale.
+    if (getGitHubAppConfig(c.env)) {
+      return c.json(
+        {
+          error:
+            "This deployment uses GitHub App authentication. Use the App install flow instead.",
+        },
+        400,
+      );
+    }
+
+    const body = c.req.valid("json");
+    const parsed = parseRepoSlug(body.repo);
+    if (!parsed) {
+      return c.json(
+        { error: "Invalid repository format. Use owner/repo." },
+        400,
+      );
+    }
+
+    // Validate token by fetching repo info
+    const client = createGitHubClient(body.token);
+    try {
+      await client.getRepo(parsed.owner, parsed.repo);
+    } catch {
+      return c.json(
+        {
+          error:
+            "Could not access the repository. Check your token and repo name.",
+        },
+        400,
+      );
+    }
+
+    // Save token and repo
+    await c.var.services.settings.set("GITHUB_SYNC_TOKEN", body.token);
+    await c.var.services.settings.set("GITHUB_SYNC_REPO", body.repo);
+    await c.var.services.settings.set("GITHUB_SYNC_AUTH_MODE", "pat");
+    await c.var.services.settings.set("GITHUB_SYNC_APP_INSTALLATION_ID", "");
+    await c.var.services.settings.set("GITHUB_SYNC_ENABLED", "true");
+
+    // Build webhook callback URL
+    const siteUrl = c.var.appConfig.siteUrl;
+    const callbackUrl = `${siteUrl}/api/github-sync/webhook`;
+
+    // Create webhook via the sync service
+    const syncService = createGitHubSyncService(
+      c.var.services,
+      c.var.currentSite.id,
+      await buildSyncSiteConfig(c),
+      { storage: c.var.storage, githubApp: getGitHubAppConfig(c.env) },
     );
-  }
+    const { webhookId } = await syncService.setupWebhook(callbackUrl);
 
-  const body = parseValidated(ConnectSchema, await readJsonBody(c));
-  const parsed = parseRepoSlug(body.repo);
-  if (!parsed) {
-    return c.json({ error: "Invalid repository format. Use owner/repo." }, 400);
-  }
-
-  // Validate token by fetching repo info
-  const client = createGitHubClient(body.token);
-  try {
-    await client.getRepo(parsed.owner, parsed.repo);
-  } catch {
-    return c.json(
-      {
-        error:
-          "Could not access the repository. Check your token and repo name.",
-      },
-      400,
-    );
-  }
-
-  // Save token and repo
-  await c.var.services.settings.set("GITHUB_SYNC_TOKEN", body.token);
-  await c.var.services.settings.set("GITHUB_SYNC_REPO", body.repo);
-  await c.var.services.settings.set("GITHUB_SYNC_AUTH_MODE", "pat");
-  await c.var.services.settings.set("GITHUB_SYNC_APP_INSTALLATION_ID", "");
-  await c.var.services.settings.set("GITHUB_SYNC_ENABLED", "true");
-
-  // Build webhook callback URL
-  const siteUrl = c.var.appConfig.siteUrl;
-  const callbackUrl = `${siteUrl}/api/github-sync/webhook`;
-
-  // Create webhook via the sync service
-  const syncService = createGitHubSyncService(
-    c.var.services,
-    c.var.currentSite.id,
-    await buildSyncSiteConfig(c),
-    { storage: c.var.storage, githubApp: getGitHubAppConfig(c.env) },
-  );
-  const { webhookId } = await syncService.setupWebhook(callbackUrl);
-
-  return c.json({ ok: true, repo: body.repo, webhookId });
-});
+    return c.json({ ok: true, repo: body.repo, webhookId });
+  },
+);
 
 // Trigger full push sync
 githubSyncAdminRoutes.post("/push", requireAuthApi(), async (c) => {

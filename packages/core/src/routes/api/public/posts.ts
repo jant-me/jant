@@ -2,10 +2,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Bindings, Post } from "../../../types.js";
 import type { AppVariables } from "../../../types/app-context.js";
-import { parseValidated, PostContentSchema } from "../../../lib/schemas.js";
+import { PostContentSchema } from "../../../lib/schemas.js";
 import { NotFoundError } from "../../../lib/errors.js";
 import { loadPublicPostResponses } from "../../../lib/api-public-posts.js";
 import { requirePublicApiEnabled } from "../../../middleware/public-content-access.js";
+import { validate } from "../../../middleware/validate.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
 
@@ -30,18 +31,21 @@ function isPublicDetailVisible(post: Post | null): post is Post {
   );
 }
 
-publicPostsApiRoutes.get("/:slug", async (c) => {
-  const { content } = parseValidated(
-    PublicPostContentQuerySchema,
-    c.req.query(),
-  );
-  const slug = c.req.param("slug");
-  const post = await c.var.services.posts.getBySlug(slug);
+publicPostsApiRoutes.get(
+  "/:slug",
+  validate("query", PublicPostContentQuerySchema),
+  async (c) => {
+    const { content } = c.req.valid("query");
+    const slug = c.req.param("slug");
+    const post = await c.var.services.posts.getBySlug(slug);
 
-  if (!isPublicDetailVisible(post)) {
-    throw new NotFoundError("Post");
-  }
+    if (!isPublicDetailVisible(post)) {
+      throw new NotFoundError("Post");
+    }
 
-  const [response] = await loadPublicPostResponses(c.var, [post], { content });
-  return c.json(response);
-});
+    const [response] = await loadPublicPostResponses(c.var, [post], {
+      content,
+    });
+    return c.json(response);
+  },
+);

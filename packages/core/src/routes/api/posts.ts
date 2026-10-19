@@ -11,14 +11,13 @@ import {
   CreatePostApiSchema,
   FormatSchema,
   pageLimitSchema,
-  parseValidated,
   PostContentSchema,
   PostIdSchema,
-  readJsonBody,
   StatusSchema,
   UpdatePostApiSchema,
 } from "../../lib/schemas.js";
 import { requireAuthApi } from "../../middleware/auth.js";
+import { validate } from "../../middleware/validate.js";
 import {
   apiPostListOrder,
   loadApiPostDetail,
@@ -68,98 +67,123 @@ const PostSlugQuerySchema = z.discriminatedUnion("mode", [
 ]);
 
 // List posts (requires auth)
-postsApiRoutes.get("/", requireAuthApi(), async (c) => {
-  const { format, status, cursor, limit, content } = parseValidated(
-    ListPostsQuerySchema,
-    c.req.query(),
-  );
+postsApiRoutes.get(
+  "/",
+  requireAuthApi(),
+  validate("query", ListPostsQuerySchema),
+  async (c) => {
+    const { format, status, cursor, limit, content } = c.req.valid("query");
 
-  const listStatus = status ?? "published";
-  const { posts, nextCursor } = await c.var.services.posts.listPage(
-    { format, status: listStatus, ...apiPostListOrder(listStatus) },
-    { cursor, limit },
-  );
+    const listStatus = status ?? "published";
+    const { posts, nextCursor } = await c.var.services.posts.listPage(
+      { format, status: listStatus, ...apiPostListOrder(listStatus) },
+      { cursor, limit },
+    );
 
-  return c.json({
-    posts: await loadApiPostResponses(c.var, posts, { content }),
-    nextCursor,
-  });
-});
+    return c.json({
+      posts: await loadApiPostResponses(c.var, posts, { content }),
+      nextCursor,
+    });
+  },
+);
 
 // Suggest or validate a post slug (requires auth)
-postsApiRoutes.get("/slug", requireAuthApi(), async (c) => {
-  const query = parseValidated(PostSlugQuerySchema, c.req.query());
+postsApiRoutes.get(
+  "/slug",
+  requireAuthApi(),
+  validate("query", PostSlugQuerySchema),
+  async (c) => {
+    const query = c.req.valid("query");
 
-  if (query.mode === "suggest") {
-    const slug = await c.var.services.posts.suggestSlug({
-      title: query.title,
-      excludePostId: query.postId,
+    if (query.mode === "suggest") {
+      const slug = await c.var.services.posts.suggestSlug({
+        title: query.title,
+        excludePostId: query.postId,
+      });
+      return c.json({ slug });
+    }
+
+    const available = await c.var.services.posts.checkSlugAvailability(
+      query.slug,
+      query.postId,
+    );
+    return c.json({
+      slug: query.slug,
+      available,
     });
-    return c.json({ slug });
-  }
-
-  const available = await c.var.services.posts.checkSlugAvailability(
-    query.slug,
-    query.postId,
-  );
-  return c.json({
-    slug: query.slug,
-    available,
-  });
-});
+  },
+);
 
 // Get single post (requires auth)
-postsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
-  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-  const { content } = parseValidated(GetPostQuerySchema, c.req.query());
+postsApiRoutes.get(
+  "/:id",
+  requireAuthApi(),
+  validate("query", GetPostQuerySchema),
+  async (c) => {
+    const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+    const { content } = c.req.valid("query");
 
-  const post = assertFound(await c.var.services.posts.getById(id), "Post");
+    const post = assertFound(await c.var.services.posts.getById(id), "Post");
 
-  return c.json(await loadApiPostDetail(c.var, post, { content }));
-});
+    return c.json(await loadApiPostDetail(c.var, post, { content }));
+  },
+);
 
 // Create post (requires auth)
-postsApiRoutes.post("/", requireAuthApi(), async (c) => {
-  const body = parseValidated(CreatePostApiSchema, await readJsonBody(c));
+postsApiRoutes.post(
+  "/",
+  requireAuthApi(),
+  validate("json", CreatePostApiSchema),
+  async (c) => {
+    const body = c.req.valid("json");
 
-  const deps = postWriteDeps(c.var);
-  const post = await c.var.services.posts.createWithAttachments(
-    toCreatePostInput(body),
-    body.attachments,
-    deps.attachments,
-    deps.summary,
-  );
-
-  // Trigger GitHub Sync in background (no-op when sync isn't enabled).
-  await triggerGitHubSyncInline(c);
-
-  return c.json(await loadApiPostResponse(c.var, post), 201);
-});
-
-// Update post (requires auth)
-postsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
-  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-
-  const body = parseValidated(UpdatePostApiSchema, await readJsonBody(c));
-  const existing = assertFound(await c.var.services.posts.getById(id), "Post");
-  assertUpdateFitsFormat(body, existing.format);
-  const deps = postWriteDeps(c.var);
-  const post = assertFound(
-    await c.var.services.posts.updateWithAttachments(
-      id,
-      toUpdatePostInput(body),
+    const deps = postWriteDeps(c.var);
+    const post = await c.var.services.posts.createWithAttachments(
+      toCreatePostInput(body),
       body.attachments,
       deps.attachments,
       deps.summary,
-    ),
-    "Post",
-  );
+    );
 
-  // Trigger GitHub Sync in background (no-op when sync isn't enabled).
-  await triggerGitHubSyncInline(c);
+    // Trigger GitHub Sync in background (no-op when sync isn't enabled).
+    await triggerGitHubSyncInline(c);
 
-  return c.json(await loadApiPostResponse(c.var, post));
-});
+    return c.json(await loadApiPostResponse(c.var, post), 201);
+  },
+);
+
+// Update post (requires auth)
+postsApiRoutes.put(
+  "/:id",
+  requireAuthApi(),
+  validate("json", UpdatePostApiSchema),
+  async (c) => {
+    const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+
+    const body = c.req.valid("json");
+    const existing = assertFound(
+      await c.var.services.posts.getById(id),
+      "Post",
+    );
+    assertUpdateFitsFormat(body, existing.format);
+    const deps = postWriteDeps(c.var);
+    const post = assertFound(
+      await c.var.services.posts.updateWithAttachments(
+        id,
+        toUpdatePostInput(body),
+        body.attachments,
+        deps.attachments,
+        deps.summary,
+      ),
+      "Post",
+    );
+
+    // Trigger GitHub Sync in background (no-op when sync isn't enabled).
+    await triggerGitHubSyncInline(c);
+
+    return c.json(await loadApiPostResponse(c.var, post));
+  },
+);
 
 // =============================================================================
 // Language and translations
@@ -178,15 +202,20 @@ const LinkTranslationSchema = z.object({ postId: PostIdSchema });
  * Thread-wide because `post.language` is uniform inside a Thread — see the
  * service method for why every language filter depends on that.
  */
-postsApiRoutes.put("/:id/language", requireAuthApi(), async (c) => {
-  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-  const { language } = parseValidated(SetLanguageSchema, await readJsonBody(c));
+postsApiRoutes.put(
+  "/:id/language",
+  requireAuthApi(),
+  validate("json", SetLanguageSchema),
+  async (c) => {
+    const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+    const { language } = c.req.valid("json");
 
-  await c.var.services.posts.setThreadLanguage(id, language);
-  await triggerGitHubSyncInline(c);
+    await c.var.services.posts.setThreadLanguage(id, language);
+    await triggerGitHubSyncInline(c);
 
-  return c.json({ success: true, language });
-});
+    return c.json({ success: true, language });
+  },
+);
 
 /** List the Thread roots this post is a translation of. */
 postsApiRoutes.get("/:id/translations", requireAuthApi(), async (c) => {
@@ -218,12 +247,10 @@ postsApiRoutes.get("/:id/translations", requireAuthApi(), async (c) => {
 postsApiRoutes.get(
   "/:id/translations/candidates",
   requireAuthApi(),
+  validate("query", TranslationCandidatesQuerySchema),
   async (c) => {
     const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-    const { q, limit } = parseValidated(
-      TranslationCandidatesQuerySchema,
-      c.req.query(),
-    );
+    const { q, limit } = c.req.valid("query");
 
     const candidates = await c.var.services.posts.listTranslationCandidates(
       id,
@@ -252,59 +279,66 @@ postsApiRoutes.get(
  * words: this endpoint only ever answers about one address, and answers with a
  * reason when the Thread it names is not eligible.
  */
-postsApiRoutes.get("/:id/translations/resolve", requireAuthApi(), async (c) => {
-  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-  const { url } = parseValidated(AddressQuerySchema, c.req.query());
+postsApiRoutes.get(
+  "/:id/translations/resolve",
+  requireAuthApi(),
+  validate("query", AddressQuerySchema),
+  async (c) => {
+    const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+    const { url } = c.req.valid("query");
 
-  const path = requestInternalPath(c, url);
-  if (path === null) {
-    return c.json({ resolution: { kind: "external", address: url.trim() } });
-  }
+    const path = requestInternalPath(c, url);
+    if (path === null) {
+      return c.json({ resolution: { kind: "external", address: url.trim() } });
+    }
 
-  const resolution = await c.var.services.posts.resolveTranslationCandidate(
-    id,
-    path,
-  );
-  const address = toPublicPath(path, c.var.appConfig.sitePathPrefix);
+    const resolution = await c.var.services.posts.resolveTranslationCandidate(
+      id,
+      path,
+    );
+    const address = toPublicPath(path, c.var.appConfig.sitePathPrefix);
 
-  if (resolution.status === "ok") {
-    const post = resolution.post;
+    if (resolution.status === "ok") {
+      const post = resolution.post;
+      return c.json({
+        resolution: {
+          kind: "ok",
+          address,
+          candidate: {
+            id: post.id,
+            slug: post.slug,
+            label: getPostDisplayTitle(post) || post.slug,
+            language: post.language,
+          },
+        },
+      });
+    }
+
     return c.json({
       resolution: {
-        kind: "ok",
+        kind: resolution.status,
         address,
-        candidate: {
-          id: post.id,
-          slug: post.slug,
-          label: getPostDisplayTitle(post) || post.slug,
-          language: post.language,
-        },
+        ...("language" in resolution ? { language: resolution.language } : {}),
       },
     });
-  }
-
-  return c.json({
-    resolution: {
-      kind: resolution.status,
-      address,
-      ...("language" in resolution ? { language: resolution.language } : {}),
-    },
-  });
-});
+  },
+);
 
 /** Link two already-published Threads as translations of each other. */
-postsApiRoutes.post("/:id/translations", requireAuthApi(), async (c) => {
-  const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
-  const { postId } = parseValidated(
-    LinkTranslationSchema,
-    await readJsonBody(c),
-  );
+postsApiRoutes.post(
+  "/:id/translations",
+  requireAuthApi(),
+  validate("json", LinkTranslationSchema),
+  async (c) => {
+    const id = parseIdParam(c.req.param("id"), ID_PREFIX.post);
+    const { postId } = c.req.valid("json");
 
-  await c.var.services.posts.linkTranslation(id, postId);
-  await triggerGitHubSyncInline(c);
+    await c.var.services.posts.linkTranslation(id, postId);
+    await triggerGitHubSyncInline(c);
 
-  return c.json({ success: true });
-});
+    return c.json({ success: true });
+  },
+);
 
 /** Take this Thread out of its translation group. */
 postsApiRoutes.delete("/:id/translations", requireAuthApi(), async (c) => {

@@ -8,11 +8,10 @@ import { z } from "zod";
 import type { Bindings } from "../../types.js";
 import type { AppVariables } from "../../types/app-context.js";
 import { requireAuthApi } from "../../middleware/auth.js";
+import { validate } from "../../middleware/validate.js";
 import {
   ContentLanguageSchema,
   CreateSmartCollectionSchema,
-  parseValidated,
-  readJsonBody,
   SmartCollectionIdSchema,
   SmartCollectionPreviewSchema,
   UpdateSmartCollectionSchema,
@@ -50,23 +49,29 @@ const PreviewQuerySchema = z.object({
 // --- Address ---------------------------------------------------------------
 // Declared before `/:id` so the literal path wins.
 
-smartCollectionsApiRoutes.get("/slug", requireAuthApi(), async (c) => {
-  const query = parseValidated(SlugQuerySchema, c.req.query());
+smartCollectionsApiRoutes.get(
+  "/slug",
+  requireAuthApi(),
+  validate("query", SlugQuerySchema),
+  async (c) => {
+    const query = c.req.valid("query");
 
-  if (query.mode === "suggest") {
-    const slug = await c.var.services.smartCollections.suggestSlug({
-      title: query.title,
-      excludeId: query.smartCollectionId,
-    });
-    return c.json({ slug });
-  }
+    if (query.mode === "suggest") {
+      const slug = await c.var.services.smartCollections.suggestSlug({
+        title: query.title,
+        excludeId: query.smartCollectionId,
+      });
+      return c.json({ slug });
+    }
 
-  const available = await c.var.services.smartCollections.checkSlugAvailability(
-    query.slug,
-    query.smartCollectionId,
-  );
-  return c.json({ slug: query.slug, available });
-});
+    const available =
+      await c.var.services.smartCollections.checkSlugAvailability(
+        query.slug,
+        query.smartCollectionId,
+      );
+    return c.json({ slug: query.slug, available });
+  },
+);
 
 // --- Preview ---------------------------------------------------------------
 
@@ -77,54 +82,64 @@ smartCollectionsApiRoutes.get("/slug", requireAuthApi(), async (c) => {
  * create endpoint validates, and putting them in a URL would mean inventing a
  * second spelling for them.
  */
-smartCollectionsApiRoutes.post("/preview", requireAuthApi(), async (c) => {
-  const body = parseValidated(
-    SmartCollectionPreviewSchema,
-    await readJsonBody(c),
-  );
-  const query = parseValidated(PreviewQuerySchema, c.req.query());
+smartCollectionsApiRoutes.post(
+  "/preview",
+  requireAuthApi(),
+  validate("json", SmartCollectionPreviewSchema),
+  validate("query", PreviewQuerySchema),
+  async (c) => {
+    const body = c.req.valid("json");
+    const query = c.req.valid("query");
 
-  const { count, baseline } = await c.var.services.smartCollections.preview(
-    body.selection ?? {},
-    // The author, by session or by token; `isAuthenticated` only reports a session.
-    {
-      isAuthenticated: true,
-      lang: query.lang,
-      timeZone: c.var.appConfig.timeZone,
-    },
-  );
+    const { count, baseline } = await c.var.services.smartCollections.preview(
+      body.selection ?? {},
+      // The author, by session or by token; `isAuthenticated` only reports a session.
+      {
+        isAuthenticated: true,
+        lang: query.lang,
+        timeZone: c.var.appConfig.timeZone,
+      },
+    );
 
-  c.header("Cache-Control", "no-store");
-  return c.json({ count, baseline });
-});
+    c.header("Cache-Control", "no-store");
+    return c.json({ count, baseline });
+  },
+);
 
 // --- CRUD ------------------------------------------------------------------
 
-smartCollectionsApiRoutes.get("/", requireAuthApi(), async (c) => {
-  const query = parseValidated(PreviewQuerySchema, c.req.query());
-  const smartCollections =
-    await c.var.services.smartCollections.listDirectoryEntries({
-      isAuthenticated: true,
-      lang: query.lang,
-      timeZone: c.var.appConfig.timeZone,
+smartCollectionsApiRoutes.get(
+  "/",
+  requireAuthApi(),
+  validate("query", PreviewQuerySchema),
+  async (c) => {
+    const query = c.req.valid("query");
+    const smartCollections =
+      await c.var.services.smartCollections.listDirectoryEntries({
+        isAuthenticated: true,
+        lang: query.lang,
+        timeZone: c.var.appConfig.timeZone,
+      });
+    return c.json({
+      smartCollections: smartCollections.map(toApiSmartCollection),
     });
-  return c.json({
-    smartCollections: smartCollections.map(toApiSmartCollection),
-  });
-});
+  },
+);
 
-smartCollectionsApiRoutes.post("/", requireAuthApi(), async (c) => {
-  const body = parseValidated(
-    CreateSmartCollectionSchema,
-    await readJsonBody(c),
-  );
-  const { sortOrder, ...fields } = body;
-  const smartCollection = await c.var.services.smartCollections.create({
-    ...fields,
-    sort: sortOrder,
-  });
-  return c.json(toApiSmartCollection(smartCollection), 201);
-});
+smartCollectionsApiRoutes.post(
+  "/",
+  requireAuthApi(),
+  validate("json", CreateSmartCollectionSchema),
+  async (c) => {
+    const body = c.req.valid("json");
+    const { sortOrder, ...fields } = body;
+    const smartCollection = await c.var.services.smartCollections.create({
+      ...fields,
+      sort: sortOrder,
+    });
+    return c.json(toApiSmartCollection(smartCollection), 201);
+  },
+);
 
 smartCollectionsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.smartCollection);
@@ -135,22 +150,24 @@ smartCollectionsApiRoutes.get("/:id", requireAuthApi(), async (c) => {
   return c.json(toApiSmartCollection(smartCollection));
 });
 
-smartCollectionsApiRoutes.put("/:id", requireAuthApi(), async (c) => {
-  const id = parseIdParam(c.req.param("id"), ID_PREFIX.smartCollection);
-  const body = parseValidated(
-    UpdateSmartCollectionSchema,
-    await readJsonBody(c),
-  );
-  const { sortOrder, ...fields } = body;
-  const smartCollection = assertFound(
-    await c.var.services.smartCollections.update(id, {
-      ...fields,
-      ...(sortOrder !== undefined ? { sort: sortOrder } : {}),
-    }),
-    "Smart collection",
-  );
-  return c.json(toApiSmartCollection(smartCollection));
-});
+smartCollectionsApiRoutes.put(
+  "/:id",
+  requireAuthApi(),
+  validate("json", UpdateSmartCollectionSchema),
+  async (c) => {
+    const id = parseIdParam(c.req.param("id"), ID_PREFIX.smartCollection);
+    const body = c.req.valid("json");
+    const { sortOrder, ...fields } = body;
+    const smartCollection = assertFound(
+      await c.var.services.smartCollections.update(id, {
+        ...fields,
+        ...(sortOrder !== undefined ? { sort: sortOrder } : {}),
+      }),
+      "Smart collection",
+    );
+    return c.json(toApiSmartCollection(smartCollection));
+  },
+);
 
 smartCollectionsApiRoutes.delete("/:id", requireAuthApi(), async (c) => {
   const id = parseIdParam(c.req.param("id"), ID_PREFIX.smartCollection);

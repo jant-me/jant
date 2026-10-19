@@ -12,12 +12,14 @@
  * set — the opposite of what the word says — so a Thread list refuses it.
  */
 
+import { z } from "zod";
 import type { ThreadAudience } from "../services/thread.js";
 import type { Collection } from "../types.js";
 import { ValidationError } from "./errors.js";
 import {
   buildCollectionVocabulary,
   EMPTY_COLLECTION_VOCABULARY,
+  FILTER_DIMENSION_PARAMS,
   parsePostFilterSelectionStrict,
   readCollectionSlugs,
   type ParamReader,
@@ -45,6 +47,37 @@ const LEGACY_VISIBILITIES = ["latest_hidden"] as const;
 
 function allowedVisibilities(audience: ThreadAudience): readonly string[] {
   return audience === "reader" ? READER_VISIBILITIES : AUTHOR_VISIBILITIES;
+}
+
+/**
+ * The filter dimensions as query parameters, older spellings included, each
+ * an optional string for {@link parseThreadSelection} to read. A Thread
+ * list's query schema spreads this in, so the schema names every parameter
+ * the list takes.
+ */
+export const threadSelectionQueryShape: Record<
+  string,
+  z.ZodOptional<z.ZodString>
+> = Object.fromEntries(
+  FILTER_DIMENSION_PARAMS.map((param) => [param, z.string().optional()]),
+);
+
+/**
+ * Read one parameter out of a validated query object.
+ *
+ * @param query - A query parsed with a schema that spreads in
+ *   {@link threadSelectionQueryShape}
+ * @returns A reader for {@link parseThreadSelection}
+ * @example
+ * await parseThreadSelection(queryReader(c.req.valid("query")), options);
+ */
+export function queryReader(query: object): ParamReader {
+  return (key) => {
+    const value: unknown = Object.hasOwn(query, key)
+      ? (query as Record<string, unknown>)[key]
+      : undefined;
+    return typeof value === "string" ? value : undefined;
+  };
 }
 
 /**
