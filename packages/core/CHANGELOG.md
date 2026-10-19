@@ -1,5 +1,45 @@
 # @jant/core
 
+## 1.0.1
+
+### Major Changes
+
+- [`a19fc8e`](https://github.com/jant-me/jant/commit/a19fc8e5e7a06f9072f9544a0f116774fd5fb75a) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Jant 1.0. From this release, version numbers follow semantic versioning, and [Compatibility](https://jant.me/docs/compatibility) says what each kind of release can change. In-place upgrades, exports and snapshots, post and Collection addresses, and feed addresses and entry IDs keep working in every release, major ones included. The HTTP API, MCP tool names and parameters, the command line, configuration, feed contents, the export format, the Docker image name and data directory, `createApp`, and the project layout change only in a major release, whose upgrade notes say what to do.
+
+  The first 1.x release is 1.0.1 because `@jant/core@1.0.0` was published by accident in April 2026, and npm never accepts a version number twice. 1.0.0 is deprecated on npm.
+
+  **Upgrade notes**
+
+  - A site on a 0.x release goes through [Upgrading from 0.x](https://jant.me/docs/upgrading#upgrading-from-0x) first. These release notes list only what changed since 0.12.0.
+
+### Patch Changes
+
+- [`25052c6`](https://github.com/jant-me/jant/commit/25052c6ca48585ca16fb663f059e742985966eac) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `POST /api/upload` and `POST /api/settings/avatar` answer `400` to a body that isn't form data, where they answered `500`.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
+- [`e613334`](https://github.com/jant-me/jant/commit/e6133344734bef22e04fb08600284e8dccf8b752) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `npm install` on a new site no longer reports 3 moderate severity vulnerabilities. They came from `uuid` 10, which `typeid-js` still asks for in its latest release. The advisory covers `uuid` functions Jant never called, but npm's suggested fix, `npm audit fix --force`, would have downgraded `@jant/core` to 0.3.38. Jant now makes and checks its IDs itself, in the same format and order as before, and no longer installs `typeid-js` or `uuid`.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - If your site's own code imports `typeid-js` or `uuid`, add it to your site's `package.json`.
+
+- [`bcca8eb`](https://github.com/jant-me/jant/commit/bcca8ebc6958a009d132ea4cab82dcf9922fc43b) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `jant start`, and so the Docker image, refuses to start on a database that's missing a schema migration the installed `@jant/core` bundles. It exits with a message that names the missing migrations and says to run `jant migrate`. The server used to start, answer `500` on every page, `/signin` included, and pass both `/healthz` and `/readyz`. That happened when an update replaced the `jant` container without running `jant-migrate`, or when a Node site was restarted without `jant migrate`. On Node, `/readyz` now answers `503` in the same state, with the message in `checks.database.error`. Pending data backfills don't stop the server.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - A Node or Docker site that starts `jant start` before `jant migrate` now exits until `jant migrate` has run. The Compose file already runs `jant-migrate` first.
+
+- [`5d146a0`](https://github.com/jant-me/jant/commit/5d146a0916013fe71d9dfc8bfd318307dcf460be) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `@jant/core` no longer ships its tests or the source copies of its fonts, which a site never loads. A Cloudflare site downloads the package on every deploy, and it was 48 MB, with each release adding about 2 MB of test fixtures. It is now 23 MB. Sites serve the same built fonts as before.
+
+  **Upgrade notes**
+
+  - No database migrations.
+
 ## 0.12.0
 
 ### Minor Changes

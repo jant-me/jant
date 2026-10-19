@@ -1,5 +1,38 @@
 # create-jant
 
+## 1.0.1
+
+### Major Changes
+
+- [`a19fc8e`](https://github.com/jant-me/jant/commit/a19fc8e5e7a06f9072f9544a0f116774fd5fb75a) Thanks [@theowenyoung](https://github.com/theowenyoung)! - Jant 1.0. From this release, version numbers follow semantic versioning, and [Compatibility](https://jant.me/docs/compatibility) says what each kind of release can change. In-place upgrades, exports and snapshots, post and Collection addresses, and feed addresses and entry IDs keep working in every release, major ones included. The HTTP API, MCP tool names and parameters, the command line, configuration, feed contents, the export format, the Docker image name and data directory, `createApp`, and the project layout change only in a major release, whose upgrade notes say what to do.
+
+  The first 1.x release is 1.0.1 because `@jant/core@1.0.0` was published by accident in April 2026, and npm never accepts a version number twice. 1.0.0 is deprecated on npm.
+
+  **Upgrade notes**
+
+  - A site on a 0.x release goes through [Upgrading from 0.x](https://jant.me/docs/upgrading#upgrading-from-0x) first. These release notes list only what changed since 0.12.0.
+
+### Minor Changes
+
+- [`375b7d3`](https://github.com/jant-me/jant/commit/375b7d32bc7c20165e027a85ddc57a0f25bf41d5) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `create-jant` takes a directory. `npm create jant@latest .` creates the project in the current directory, and a path such as `../sites/blog` creates it there. `package.json`, the Worker, the D1 database, and the R2 bucket are named after the directory, so `jant-0.12` becomes `jant-0-12`. The prompt asks for the directory and offers `.` the same way. In the current directory, the next steps leave out `cd`. Inside an existing git repository, `create-jant` skips `git init`, which used to nest a second repository in it.
+
+  A directory that already holds files is refused, and the message lists them. `create-jant` used to offer to empty it, `.git` included. Version control, editor, and OS files and a `LICENSE` don't count.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - `npm create jant@latest My-Site` creates `My-Site`, as typed, where it used to create `my-site`. The project is still named `my-site`.
+  - To create a project in a directory that holds files, empty it first.
+
+### Patch Changes
+
+- [`e613334`](https://github.com/jant-me/jant/commit/e6133344734bef22e04fb08600284e8dccf8b752) Thanks [@theowenyoung](https://github.com/theowenyoung)! - `npm install` on a new site no longer reports 3 moderate severity vulnerabilities. They came from `uuid` 10, which `typeid-js` still asks for in its latest release. The advisory covers `uuid` functions Jant never called, but npm's suggested fix, `npm audit fix --force`, would have downgraded `@jant/core` to 0.3.38. Jant now makes and checks its IDs itself, in the same format and order as before, and no longer installs `typeid-js` or `uuid`.
+
+  **Upgrade notes**
+
+  - No database migrations.
+  - If your site's own code imports `typeid-js` or `uuid`, add it to your site's `package.json`.
+
 ## 0.12.0
 
 ### Minor Changes
