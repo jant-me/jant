@@ -1266,15 +1266,16 @@ Request body:
 
 Fields:
 
-| Field      | Type    | Required                      | Default | Notes                                 |
-| ---------- | ------- | ----------------------------- | ------- | ------------------------------------- |
-| `width`    | integer | no                            | `null`  | Image/video width; positive           |
-| `height`   | integer | no                            | `null`  | Image/video height; positive          |
-| `blurhash` | string  | no                            | `null`  | Blurhash string, max `200`            |
-| `waveform` | string  | no                            | `null`  | Audio waveform, max `2000`            |
-| `summary`  | string  | no                            | `null`  | Mainly for text uploads, max `500`    |
-| `chars`    | integer | no                            | `null`  | Mainly for text uploads; non-negative |
-| `parts`    | array   | required for `multipartRelay` | —       | `[{partNumber, etag}]`                |
+| Field             | Type    | Required                      | Default | Notes                                   |
+| ----------------- | ------- | ----------------------------- | ------- | --------------------------------------- |
+| `width`           | integer | no                            | `null`  | Image/video width; positive             |
+| `height`          | integer | no                            | `null`  | Image/video height; positive            |
+| `durationSeconds` | integer | no                            | `null`  | Audio/video length in seconds; positive |
+| `blurhash`        | string  | no                            | `null`  | Blurhash string, max `200`              |
+| `waveform`        | string  | no                            | `null`  | Audio waveform, max `2000`              |
+| `summary`         | string  | no                            | `null`  | Mainly for text uploads, max `500`      |
+| `chars`           | integer | no                            | `null`  | Mainly for text uploads; non-negative   |
+| `parts`           | array   | required for `multipartRelay` | —       | `[{partNumber, etag}]`                  |
 
 Response: `201 Created` with the [media object](#media) the upload became.
 
@@ -1732,15 +1733,16 @@ This is a partial update.
 
 Request body fields:
 
-| Field   | Type             | Required | Default   | Notes                                               |
-| ------- | ---------------- | -------- | --------- | --------------------------------------------------- |
-| `label` | string \| `null` | no       | unchanged | For dividers: update label, or send `null` to clear |
-| `url`   | string           | no       | unchanged | For links: update URL                               |
+| Field         | Type             | Required | Default   | Notes                                                        |
+| ------------- | ---------------- | -------- | --------- | ------------------------------------------------------------ |
+| `label`       | string \| `null` | no       | unchanged | For dividers: update label, or send `null` to clear          |
+| `url`         | string           | no       | unchanged | For links: update URL                                        |
+| `description` | string \| `null` | no       | unchanged | For links: Markdown shown under the link, or `null` to clear |
 
 Notes:
 
 - Divider items only use `label`.
-- Link items use `label` and `url`.
+- Link items use `label`, `url`, and `description`.
 - Link labels cannot be cleared with `null`.
 - Collection-backed items should be managed through collection endpoints, not updated directly here.
 
