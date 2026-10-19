@@ -108,13 +108,13 @@ The first 1.x release has steps no other release has. Make the first two in one 
   - the default bump in `.agents/skills/release/SKILL.md` and `.claude/commands/release.md`, which should say that a breaking change to the second level is `major`
   - the "Still in development" note at the top of `packages/core/README.md`, which npmjs.com shows on the package page until the next release
 - [ ] Before merging, check that the Release PR's diff says 1.0.1 in both `package.json` files and both changelogs. Merged at 1.0.0, npm skips `@jant/core`, since 1.0.0 exists, but publishes `create-jant@1.0.0`, whose new projects install the deprecated `@jant/core@1.0.0`
-- [ ] After 1.0.1 is on npm, point the accidental 1.0.0's deprecation at it. The message still says to use 0.3.x:
+- [ ] After 1.0.1 is on npm, point the accidental 1.0.0's deprecation at it. The message still says to use 0.11.0:
 
   ```bash
   npm deprecate @jant/core@1.0.0 "Published by accident. Use 1.0.1 or later."
   ```
 
-- [ ] After `owenyoung/jant:1` is on Docker Hub, switch `compose.yml`'s `IMAGE` default, the commented `IMAGE` in `.env.example`, and the images in `docs/deployment-docker.md` (en, zh-Hans) and `docs/docker-hub-overview.md`, from `:latest` to `:1`. Until that tag exists, `compose.yml` on `main` must keep `:latest`: users download it from there. Docker Hub shows the new overview after the next image publish
+- [ ] After `owenyoung/jant:1` is on Docker Hub, switch `compose.yml`'s `IMAGE` default, the commented `IMAGE` in `.env.example`, and the images in `docs/deployment-docker.md`, `docs/upgrading.md` (en, zh-Hans for both), and `docs/docker-hub-overview.md`, from `:latest` to `:1`. Until that tag exists, `compose.yml` on `main` must keep `:latest`: users download it from there. Docker Hub shows the new overview after the next image publish
 - [ ] Don't republish 1.0.1 from the **Docker Publish** workflow once `main` has moved on: it builds the version `main` holds, whatever the tag says
 
 ## Docker image publishing
