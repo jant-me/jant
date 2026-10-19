@@ -20,7 +20,7 @@ Jant 是一个为单作者设计的轻博客，介于传统博客和社交媒体
 - **自行部署**：将下面的提示词发给能运行命令的 AI 助手，如 Claude Code、Codex：
 
   ```text
-  读取 https://jant.me/docs/install.md，帮我搭建一个 Jant 站点。
+  读取 https://jant.me/docs/install.md ，帮我搭建一个 Jant 站点。
   ```
 
   AI 助手会先确认部署到 Cloudflare 还是自有服务器（Docker），再按对应文档完成部署。登录 Cloudflare、设置管理员密码等步骤由你本人完成。手动部署见[开始使用](getting-started.md)。

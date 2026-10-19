@@ -21,7 +21,7 @@
 把下面这句话发给 Claude Code、Codex 这类能运行命令的 AI 助手：
 
 ```text
-读取 https://jant.me/docs/install.md，帮我搭建一个 Jant 站点。
+读取 https://jant.me/docs/install.md ，帮我搭建一个 Jant 站点。
 ```
 
 这个页面是写给 AI 助手的安装指南。它让 AI 助手先问你选哪种方式，再照对应的文档操作，需要你本人做的步骤（登录 Cloudflare、设置管理员密码等）交回给你。
