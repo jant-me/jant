@@ -58,14 +58,16 @@ When PRs with changesets are merged:
 
    Publishing, the `v<version>` tag, the Docker image, and the starter sync all use the commit CI passed, the merged Release PR. A push to `main` while they run doesn't change what ships.
 
-7. Freeze the release's fixtures, and commit them:
+7. The same workflow's **Freeze Release Fixtures** job freezes the release's fixtures, reads them back with `release-fixtures.test.ts`, and commits them to `main` as `Freeze the <version> release fixtures`. Unlike the steps above, it commits on top of whatever `main` holds by then.
+
+   The job runs `mise run release-freeze-fixtures <version>`. This installs `@jant/core@<version>` from npm, loads the canonical demo content at the release tag into a temporary site, adds through that release's API what the demo lacks (a draft, a private post, a text attachment, custom URLs, redirects, a smart collection), and writes the snapshot and site export that release produces into `packages/core/src/__tests__/fixtures/releases/<version>/`. `release-fixtures.test.ts` restores and imports every release there, and checks that the site an export imports into holds what the same release's snapshot holds, so a later change that can no longer read what this release wrote fails in CI. Never edit a frozen fixture. `node scripts/release/freeze-fixtures.mjs --rehearse <dir>` runs the same steps with this checkout's build, to try a change to the script first.
+
+   If the job fails, use **Re-run failed jobs** on that Release run. If it still fails, freeze them by hand and commit them:
 
    ```bash
    git fetch --tags
    mise run release-freeze-fixtures <version>
    ```
-
-   This installs `@jant/core@<version>` from npm, loads the canonical demo content at the release tag into a temporary site, adds through that release's API what the demo lacks (a draft, a private post, a text attachment, custom URLs, redirects, a smart collection), and writes the snapshot and site export that release produces into `packages/core/src/__tests__/fixtures/releases/<version>/`. `release-fixtures.test.ts` restores and imports every release there, and checks that the site an export imports into holds what the same release's snapshot holds, so a later change that can no longer read what this release wrote fails in CI. Never edit a frozen fixture. `node scripts/release/freeze-fixtures.mjs --rehearse <dir>` runs the same steps with this checkout's build, to try a change to the script first.
 
 Don't edit the Release PR by hand. Every push to `main` makes the Changesets action rebuild the `changeset-release/main` branch from scratch and force-push it, which throws hand edits away. A change a release needs goes on `main`, and the Release PR picks it up.
 

@@ -136,3 +136,89 @@ jobs:
       ref: ${{ needs.release.outputs.release_sha }}
       push_latest: true
     secrets: inherit
+
+  # What this release writes, frozen as test fixtures (RELEASING step 7), so a
+  # later change that can no longer read it fails in CI. A step people had to
+  # remember was missed for 0.12.0.
+  freeze-fixtures:
+    name: Freeze Release Fixtures
+    needs: release
+    if: needs.release.outputs.published == 'true' && needs.release.outputs.core_published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.release.outputs.release_version }}
+      # The commit below adds only fixtures, which Prettier ignores, so the
+      # pre-commit hook has nothing to do.
+      HUSKY: "0"
+    steps:
+      # main as it is now, since the fixtures are committed on top of it. What
+      # gets frozen doesn't come from this checkout: the script installs the
+      # release from npm and reads the demo content at the release's tag.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store/v10
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # npm can take a moment to serve a version it has just accepted.
+      - name: Wait for the release on npm
+        run: |
+          for attempt in $(seq 1 30); do
+            if npm view "@jant/core@$VERSION" version >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "@jant/core@$VERSION isn't on npm after 5 minutes." >&2
+          exit 1
+
+      # Already on main when someone froze them by hand before this ran.
+      - name: Freeze the fixtures
+        id: freeze
+        run: |
+          if [ -d "packages/core/src/__tests__/fixtures/releases/$VERSION" ]; then
+            echo "Fixtures for $VERSION are already on main."
+            exit 0
+          fi
+          mise run release-freeze-fixtures "$VERSION"
+          echo "frozen=true" >> "$GITHUB_OUTPUT"
+
+      # The test restores snapshots through the CLI, which loads dist/node.js.
+      - name: Read them back with the current code
+        if: steps.freeze.outputs.frozen == 'true'
+        run: |
+          pnpm --filter @jant/core build:lib
+          pnpm --filter @jant/core exec vitest run src/__tests__/release-fixtures.test.ts
+
+      - name: Commit to main
+        if: steps.freeze.outputs.frozen == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "packages/core/src/__tests__/fixtures/releases/$VERSION"
+          git commit --quiet \
+            -m "Freeze the $VERSION release fixtures" \
+            -m "Written by \`mise run release-freeze-fixtures $VERSION\` from @jant/core@$VERSION on npm, by the Release workflow. release-fixtures.test.ts restores and imports them with the current code."
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            git pull --rebase origin main
+          done
+          echo "Couldn't push the fixtures to main." >&2
+          exit 1
