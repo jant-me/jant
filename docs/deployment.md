@@ -177,7 +177,13 @@ pnpm create jant@latest jant-site
 yarn create jant@latest jant-site
 ```
 
-`create-jant` installs dependencies, initializes git, generates a local `.dev.vars` (with a local `AUTH_SECRET`), and creates a Wrangler project already wired to D1 and R2.
+To create the project in the current directory, pass `.`:
+
+```bash
+npm create jant@latest .
+```
+
+`create-jant` installs dependencies, initializes git unless the directory is already in a repository, generates a local `.dev.vars` (with a local `AUTH_SECRET`), and creates a Wrangler project already wired to D1 and R2.
 
 ### Run locally
 

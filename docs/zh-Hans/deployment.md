@@ -175,7 +175,13 @@ pnpm create jant@latest jant-site
 yarn create jant@latest jant-site
 ```
 
-`create-jant` 会安装依赖、初始化 git、生成本地 `.dev.vars`（含本地 `AUTH_SECRET`），并创建已绑定 D1 和 R2 的 Wrangler 项目。
+要建在当前目录，传 `.`：
+
+```bash
+npm create jant@latest .
+```
+
+`create-jant` 会安装依赖、初始化 git（目录已在仓库中时跳过）、生成本地 `.dev.vars`（含本地 `AUTH_SECRET`），并创建已绑定 D1 和 R2 的 Wrangler 项目。
 
 ### 本地启动
 

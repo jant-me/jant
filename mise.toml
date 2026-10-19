@@ -129,6 +129,7 @@ mise run check-lint
 # CLI snapshot tests import dist/node.js via loadNodeRuntime().
 pnpm --filter @jant/core build:lib
 pnpm --filter @jant/core test
+pnpm --filter create-jant test
 """
 
 [tasks.check-tests-watch]

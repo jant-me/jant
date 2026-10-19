@@ -8,9 +8,12 @@
  * pre-built client assets from @jant/core, the generated files, and a deploy
  * workflow that installs with pnpm. Then scaffolds with npm and Yarn 1,
  * without installing, to check their deploy workflows: npm's is the demo's
- * unchanged. Last, scaffolds through `yarn dlx` with Yarn 2+, installs with
+ * unchanged. Then scaffolds through `yarn dlx` with Yarn 2+, installs with
  * the Yarn it pins, and checks the build approvals, the node_modules linker,
- * `jant migrate --local`, and the deploy workflow.
+ * `jant migrate --local`, and the deploy workflow. Last, scaffolds with npm
+ * into the current directory, a git repository already, and checks the
+ * project name, the repository, and that a second run refuses to write over
+ * the first.
  *
  * Usage: node scripts/test-template.js [path-to-core-tarball]
  *
@@ -535,6 +538,47 @@ async function main() {
   }
   console.log(
     "  builds approved, better-sqlite3 opens a database, jant migrate runs, deploy.yml installs with Yarn 2+ through Corepack\n",
+  );
+
+  // 14. `npm create jant@latest .` in a directory made with `mkdir` and
+  // `git init`: the project takes the directory's name, the directory keeps its
+  // repository with nothing committed, and a second run changes nothing.
+  console.log("Step 14: Scaffolding into the current directory...");
+  const hereDir = path.join(testDir, "jant-0.12");
+  await fs.ensureDir(hereDir);
+  runCapture("git init -q", { cwd: hereDir });
+  const scaffoldHere = `npm exec --yes --package=${createJantTarball} -- create-jant . -y --no-install`;
+  const hereOutput = runTee(scaffoldHere, { cwd: hereDir, env: shellEnv });
+  const herePkg = await fs.readJson(path.join(hereDir, "package.json"));
+  if (herePkg.name !== "jant-0-12") {
+    fail(`package.json names the project ${herePkg.name}, expected jant-0-12`);
+  }
+  const hereWrangler = await fs.readFile(
+    path.join(hereDir, "wrangler.toml"),
+    "utf-8",
+  );
+  if (!/^name = "jant-0-12"$/m.test(hereWrangler)) {
+    fail('wrangler.toml does not name the Worker "jant-0-12"');
+  }
+  if (!hereOutput.includes("already inside a git repository")) {
+    fail("create-jant did not skip git init inside a repository");
+  }
+  if (runCapture("git rev-list --all --count", { cwd: hereDir }) !== "0") {
+    fail("create-jant committed to the directory's own repository");
+  }
+  const again = spawnSync(scaffoldHere, {
+    shell: true,
+    cwd: hereDir,
+    env: shellEnv,
+    encoding: "utf-8",
+  });
+  if (again.status === 0 || !again.stdout.includes("could conflict")) {
+    fail(
+      `A second scaffold into the same directory exited with ${again.status} instead of refusing:\n${again.stdout}${again.stderr}`,
+    );
+  }
+  console.log(
+    "  project named after the directory, its repository left alone, a second run refused\n",
   );
 
   // Cleanup

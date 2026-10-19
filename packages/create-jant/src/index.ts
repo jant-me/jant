@@ -6,6 +6,15 @@ import crypto from "crypto";
 import fs from "fs-extra";
 import path from "path";
 import { fileURLToPath } from "url";
+import {
+  DEFAULT_DIRECTORY,
+  describeConflicts,
+  findConflicts,
+  isInsideGitWorkTree,
+  resolveTarget,
+  toProjectName,
+  type Target,
+} from "./target.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -148,24 +157,6 @@ interface ProjectConfig {
   install: boolean;
   git: boolean;
   s3?: boolean;
-}
-
-/**
- * Validate project name
- */
-function isValidProjectName(name: string): boolean {
-  return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(name);
-}
-
-/**
- * Sanitize project name into a valid slug
- */
-function toValidProjectName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-+/g, "-");
 }
 
 /**
@@ -661,6 +652,84 @@ S3_SECRET_ACCESS_KEY=
 }
 
 /**
+ * Ask where the project goes, until the answer is a directory it can go in.
+ *
+ * @param cwd - directory create-jant runs in
+ * @returns the directory the answer names; the default one when it is blank
+ */
+async function promptTarget(cwd: string): Promise<Target> {
+  const toTarget = (value: string): Target =>
+    resolveTarget(value.trim() || DEFAULT_DIRECTORY, cwd);
+
+  const result = await p.text({
+    message: `Where should the project go? ${chalk.dim("(. for the current directory)")}`,
+    placeholder: DEFAULT_DIRECTORY,
+    defaultValue: DEFAULT_DIRECTORY,
+    validate: (value) => {
+      const target = toTarget(value);
+      const conflicts = findConflicts(target.dir);
+      return conflicts.length > 0
+        ? describeConflicts(target, conflicts)
+        : undefined;
+    },
+  });
+
+  if (p.isCancel(result)) {
+    p.cancel("Operation cancelled");
+    process.exit(0);
+  }
+  return toTarget(result);
+}
+
+/**
+ * Name the project after its directory. A directory name with no letter or
+ * digit to keep, such as one in Chinese, gets a name from the prompt, or the
+ * default one with `--yes`.
+ *
+ * @param target - the project directory
+ * @param yes - whether to skip prompts
+ * @returns lowercase letters, digits, and single hyphens
+ */
+async function chooseProjectName(
+  target: Target,
+  yes: boolean,
+): Promise<string> {
+  const dirName = path.basename(target.dir);
+  let projectName = toProjectName(dirName);
+  let typedName: string | null = null;
+
+  if (projectName === "") {
+    if (yes) {
+      projectName = DEFAULT_DIRECTORY;
+    } else {
+      const result = await p.text({
+        message: `What is your project name? ${chalk.dim("(a-z, 0-9, and hyphens)")}`,
+        placeholder: DEFAULT_DIRECTORY,
+        defaultValue: DEFAULT_DIRECTORY,
+        validate: (value) =>
+          toProjectName(value) === ""
+            ? "Project name must be lowercase alphanumeric with hyphens"
+            : undefined,
+      });
+
+      if (p.isCancel(result)) {
+        p.cancel("Operation cancelled");
+        process.exit(0);
+      }
+      typedName = result;
+      projectName = toProjectName(result);
+    }
+  }
+
+  // package.json and the Cloudflare resources take this name, so show it
+  // whenever it isn't what the person wrote.
+  if (projectName !== dirName && projectName !== typedName) {
+    p.log.info(`Project name: ${chalk.green(projectName)}`);
+  }
+  return projectName;
+}
+
+/**
  * Main CLI function
  */
 async function main(): Promise<void> {
@@ -670,7 +739,10 @@ async function main(): Promise<void> {
   program
     .name("create-jant")
     .description("Create a new Jant project")
-    .argument("[project-name]", "Name of the project")
+    .argument(
+      "[directory]",
+      `Directory to create the project in, . for the current directory (default: ${DEFAULT_DIRECTORY})`,
+    )
     .option("-y, --yes", "Skip prompts and use defaults")
     .option("--s3", "Use S3-compatible storage instead of Cloudflare R2")
     .option("--no-install", "Skip dependency installation")
@@ -685,71 +757,26 @@ async function main(): Promise<void> {
     git: boolean;
   }>();
 
-  let projectName: string;
-
-  // Get project name from argument or prompt
+  const cwd = process.cwd();
+  let target: Target;
   if (args[0]) {
-    projectName = args[0];
+    target = resolveTarget(args[0], cwd);
   } else if (opts.yes) {
-    projectName = "my-jant-site";
+    target = resolveTarget(DEFAULT_DIRECTORY, cwd);
   } else {
-    const result = await p.text({
-      message: "What is your project name?",
-      placeholder: "my-jant-site",
-      defaultValue: "my-jant-site",
-      validate: (value) => {
-        if (!value) return "Project name is required";
-        const sanitized = toValidProjectName(value);
-        if (!isValidProjectName(sanitized)) {
-          return "Project name must be lowercase alphanumeric with hyphens";
-        }
-        return undefined;
-      },
-    });
-
-    if (p.isCancel(result)) {
-      p.cancel("Operation cancelled");
-      process.exit(0);
-    }
-
-    projectName = result as string;
+    target = await promptTarget(cwd);
   }
 
-  // Sanitize project name
-  if (!isValidProjectName(projectName)) {
-    const sanitized = toValidProjectName(projectName);
-    p.log.warn(
-      `Project name sanitized: ${chalk.yellow(projectName)} -> ${chalk.green(sanitized)}`,
-    );
-    projectName = sanitized;
+  // The prompt asks again until the directory is free; a directory given on
+  // the command line stops here instead.
+  const conflicts = findConflicts(target.dir);
+  if (conflicts.length > 0) {
+    p.log.error(describeConflicts(target, conflicts));
+    process.exit(1);
   }
 
-  const targetDir = path.resolve(process.cwd(), projectName);
-
-  // Check if directory already exists
-  if (await fs.pathExists(targetDir)) {
-    const files = await fs.readdir(targetDir);
-    if (files.length > 0) {
-      if (opts.yes) {
-        p.log.error(
-          `Directory ${chalk.red(projectName)} already exists and is not empty`,
-        );
-        process.exit(1);
-      }
-
-      const overwrite = await p.confirm({
-        message: `Directory ${chalk.yellow(projectName)} already exists and is not empty. Overwrite?`,
-        initialValue: false,
-      });
-
-      if (p.isCancel(overwrite) || !overwrite) {
-        p.cancel("Operation cancelled");
-        process.exit(0);
-      }
-
-      await fs.emptyDir(targetDir);
-    }
-  }
+  const projectName = await chooseProjectName(target, opts.yes === true);
+  const targetDir = target.dir;
 
   const detectedPackageManager = detectPackageManager();
   const packageManager = detectedPackageManager.name;
@@ -794,8 +821,12 @@ async function main(): Promise<void> {
     }
   }
 
-  // Initialize git repository
-  if (config.git) {
+  // Initialize a git repository. A directory already in one, its own from
+  // `git init` or a larger project's, keeps it instead of getting another one
+  // nested inside.
+  if (config.git && isInsideGitWorkTree(targetDir)) {
+    p.log.step("Skipped git initialization: already inside a git repository.");
+  } else if (config.git) {
     spinner.start("Initializing git repository...");
     const gitOk =
       runCommand("git init", targetDir) &&
@@ -810,7 +841,10 @@ async function main(): Promise<void> {
 
   // Show next steps: run it here, then deploy it with one command. The
   // first `deploy` creates the Cloudflare resources the site needs.
-  const steps: [string, string][] = [[`cd ${projectName}`, ""]];
+  const steps: [string, string][] = [];
+  if (target.cdPath !== null) {
+    steps.push([`cd ${target.cdPath}`, ""]);
+  }
   if (!config.install || !installOk) {
     steps.push([`${packageManager} install`, ""]);
   }
