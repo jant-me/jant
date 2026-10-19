@@ -1,10 +1,8 @@
 # Upgrading
 
-Migrations run in order on deploy, so you can skip versions. They only go forward: the way back from an upgrade is a backup taken before it.
-
 ## Before you upgrade
 
-Back up the database and media; see [Backups and recovery](backups.md). On a 0.x release, also go through [Upgrading from 0.x](#upgrading-from-0x).
+Back up the database and media; see [Backups and recovery](backups.md). On a 0.x release, go through [Upgrading from 0.x](#upgrading-from-0x) first.
 
 ## Upgrade
 
@@ -23,11 +21,9 @@ docker compose pull
 docker compose up -d
 ```
 
-`up` runs the migrations before it starts the site.
-
 ### Docker without Compose
 
-Pull the new image and run the migrations with the same data directory, then start a new container from it:
+Pull the new image and run the migrations, then start a new container from the image:
 
 ```bash
 docker pull owenyoung/jant:latest
@@ -46,7 +42,7 @@ The service upgrades your site.
 
 ### Everyone
 
-From 0.11, a variable set to a value it doesn't take stops the site at startup. Check these:
+Check these environment variables:
 
 - Switches such as `NOINDEX` take `true` or `false`, not `1` or `yes`.
 - `RATE_LIMIT_DISABLED=true` is now `RATE_LIMIT_ENABLED=false`.
@@ -65,14 +61,14 @@ curl -fsSL -o AGENTS.md https://raw.githubusercontent.com/jant-me/jant-starter/m
 rm -rf .agents/skills .claude/skills
 ```
 
-The workflow installs with npm. A project made with pnpm or Yarn copies it from a new project made the same way.
+For a pnpm or Yarn project, copy the workflow from a new project made with the same package manager.
 
-Add `keep_vars = true` near the top of `wrangler.toml`, before the first `[section]`. Without it, every deploy deletes the variables you set in the Cloudflare dashboard. Set any that are already gone again.
+Add `keep_vars = true` near the top of `wrangler.toml`, before the first `[section]`, then check that the variables you set in the Cloudflare dashboard are still there.
 
 ### Docker and Node
 
-- Behind a reverse proxy, set `TRUST_PROXY=true`, or every visitor shares one sign-in rate limit. `compose.yml` already sets it.
-- `jant start` and the `jant` commands read `.env` in the working directory. Rename `.env.node` to `.env`.
+- Without Compose, behind a reverse proxy, set `TRUST_PROXY=true`.
+- Rename `.env.node` to `.env`.
 
 ### Custom CSS
 

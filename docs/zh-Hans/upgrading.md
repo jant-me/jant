@@ -1,10 +1,8 @@
 # 升级
 
-迁移在部署时按顺序执行，所以可以跨版本升级。迁移只能向前：要退回去，只能靠升级前做的备份。
-
 ## 升级前
 
-先备份数据库和媒体，见[备份与恢复](backups.md)。还在 0.x 的站点，再看一遍[从 0.x 升级](#从-0x-升级)。
+先备份数据库和媒体，见[备份与恢复](backups.md)。还在 0.x 的站点，先看[从 0.x 升级](#从-0x-升级)。
 
 ## 升级
 
@@ -23,11 +21,9 @@ docker compose pull
 docker compose up -d
 ```
 
-`up` 会先执行迁移，再启动站点。
-
 ### 不用 Compose 的 Docker
 
-拉取新镜像，用同一个数据目录执行迁移，再用新镜像启动容器：
+拉取新镜像并执行迁移，再用新镜像启动容器：
 
 ```bash
 docker pull owenyoung/jant:latest
@@ -46,7 +42,7 @@ docker run --rm -e AUTH_SECRET=<auth-secret> -v "$(pwd)/data:/var/lib/jant" owen
 
 ### 所有站点
 
-从 0.11 起，环境变量的值不合法时，站点会在启动时停下。检查这几项：
+检查这几个环境变量：
 
 - `NOINDEX` 这类开关只接受 `true` 或 `false`，不接受 `1` 或 `yes`。
 - `RATE_LIMIT_DISABLED=true` 改成 `RATE_LIMIT_ENABLED=false`。
@@ -65,14 +61,14 @@ curl -fsSL -o AGENTS.md https://raw.githubusercontent.com/jant-me/jant-starter/m
 rm -rf .agents/skills .claude/skills
 ```
 
-这份 workflow 用 npm 安装依赖。用 pnpm 或 Yarn 建的项目，用同一个包管理器新建一个项目，从那里复制。
+用 pnpm 或 Yarn 的项目，从用同一个包管理器新建的项目里复制 workflow。
 
-在 `wrangler.toml` 顶部、第一个 `[section]` 之前加上 `keep_vars = true`。没有这一行，每次部署都会删掉你在 Cloudflare 控制台设置的变量。已经被删掉的，重新设置一次。
+在 `wrangler.toml` 顶部、第一个 `[section]` 之前加上 `keep_vars = true`，再检查你在 Cloudflare 控制台设置的变量还在不在。
 
 ### Docker 与 Node
 
-- 站点在反向代理后面时，设置 `TRUST_PROXY=true`，否则所有访客共用一个登录限速。`compose.yml` 已经设置了。
-- `jant start` 和 `jant` 命令读取工作目录下的 `.env`。把 `.env.node` 改名成 `.env`。
+- 不用 Compose、站点又在反向代理后面时，设置 `TRUST_PROXY=true`。
+- 把 `.env.node` 改名成 `.env`。
 
 ### 自定义 CSS
 
