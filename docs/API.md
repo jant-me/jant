@@ -109,7 +109,7 @@ Auth resolution for both surfaces:
 
 ### MCP
 
-Base path: `/api/mcp`
+`POST /api/mcp`
 
 Auth: `Session or token`
 
@@ -117,7 +117,6 @@ Jant's MCP endpoint is a minimal HTTP JSON-RPC transport for remote agents and a
 
 Current transport behavior:
 
-- `POST` only
 - content type `application/json`
 - takes `MCP-Protocol-Version: 2025-06-18`; a request without it is read as that version, and any other version answers `400`. A later minor release can accept newer protocol versions as well; one is dropped only in a major release
 - supports `initialize`, `ping`, `tools/list`, `tools/call`, and `notifications/initialized`

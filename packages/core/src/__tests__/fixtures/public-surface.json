@@ -1,0 +1,1035 @@
+{
+  "cli": {
+    "db export": [
+      "--config",
+      "--database",
+      "--env",
+      "--local",
+      "--node",
+      "--output",
+      "--persist-to",
+      "--remote"
+    ],
+    "deploy": [
+      "--ci",
+      "--config",
+      "--database",
+      "--env",
+      "--output",
+      "--path-prefix",
+      "--skip-migrate"
+    ],
+    "migrate": [
+      "--config",
+      "--database",
+      "--env",
+      "--local",
+      "--node",
+      "--persist-to",
+      "--remote"
+    ],
+    "posts rebuild-html": [
+      "--config",
+      "--dry-run",
+      "--env",
+      "--limit",
+      "--once",
+      "--token",
+      "--url"
+    ],
+    "reset-password": [
+      "--config",
+      "--database",
+      "--env",
+      "--local",
+      "--node",
+      "--persist-to",
+      "--remote",
+      "--url"
+    ],
+    "search reindex": [
+      "--config",
+      "--env",
+      "--limit",
+      "--once",
+      "--token",
+      "--url"
+    ],
+    "setup": [
+      "--email",
+      "--language",
+      "--node",
+      "--password-stdin",
+      "--site-id",
+      "--site-name",
+      "--time-zone"
+    ],
+    "site export": [
+      "--no-pull-media",
+      "--output",
+      "--pull-media",
+      "--token",
+      "--url"
+    ],
+    "site import": [
+      "--dry-run",
+      "--path",
+      "--skip-remote-media",
+      "--token",
+      "--url"
+    ],
+    "site pull-media": [
+      "--output",
+      "--path"
+    ],
+    "site snapshot export": [
+      "--bucket",
+      "--bucket-binding",
+      "--config",
+      "--database",
+      "--env",
+      "--force",
+      "--local",
+      "--node",
+      "--output",
+      "--persist-to",
+      "--remote",
+      "--skip-objects",
+      "--url"
+    ],
+    "site snapshot import": [
+      "--allow-missing-objects",
+      "--bucket",
+      "--bucket-binding",
+      "--config",
+      "--database",
+      "--env",
+      "--local",
+      "--node",
+      "--path",
+      "--persist-to",
+      "--remap-site",
+      "--remote",
+      "--replace",
+      "--url"
+    ],
+    "start": [],
+    "telegram register-webhooks": [
+      "--url"
+    ],
+    "uploads cleanup": [
+      "--config",
+      "--env",
+      "--limit",
+      "--once",
+      "--token",
+      "--url"
+    ]
+  },
+  "configuration": {
+    "environment": {
+      "ARCHIVE_DEFAULT_LAYOUT": [
+        "grid",
+        "list"
+      ],
+      "ARCHIVE_PAGE_SIZE": [],
+      "ASSET_BASE_URL": [],
+      "AUTH_SECRET": [],
+      "CORS_ORIGINS": [],
+      "DASHBOARD_LANGUAGE": [
+        "",
+        "en",
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "DATABASE_URL": [],
+      "DATA_DIR": [],
+      "DEFAULT_FONT_THEME": [
+        "classic",
+        "geometric",
+        "humanist-sans",
+        "literary",
+        "modern-editorial",
+        "system-sans",
+        "tufte"
+      ],
+      "DEFAULT_THEME": [
+        "bone",
+        "clay",
+        "cotton",
+        "dune",
+        "ember",
+        "espresso",
+        "frost",
+        "ink",
+        "linen",
+        "paper",
+        "parchment",
+        "sage",
+        "slate",
+        "snow",
+        "tufte"
+      ],
+      "DISCOVER": [
+        "latest",
+        "off"
+      ],
+      "DISCOVER_PING_URL": [],
+      "GITHUB_APP_ID": [],
+      "GITHUB_APP_PRIVATE_KEY": [],
+      "GITHUB_APP_SLUG": [],
+      "GITHUB_APP_WEBHOOK_SECRET": [],
+      "HOST": [],
+      "IMAGE_TRANSFORM_URL": [],
+      "INTERNAL_ADMIN_TOKEN": [],
+      "JANT_ENV_FILE": [],
+      "LOCAL_PUBLIC_URL": [],
+      "LOCAL_STORAGE_PATH": [],
+      "MAIN_RSS_FEED": [
+        "featured",
+        "latest"
+      ],
+      "NOINDEX": [
+        "false",
+        "true"
+      ],
+      "PAGE_SIZE": [],
+      "PORT": [],
+      "PUBLIC_API_ENABLED": [
+        "false",
+        "true"
+      ],
+      "R2_PUBLIC_URL": [],
+      "RATE_LIMIT_ENABLED": [
+        "false",
+        "true"
+      ],
+      "RATE_LIMIT_SEARCH_PER_MIN": [],
+      "RSS_FEEDS_ENABLED": [
+        "false",
+        "true"
+      ],
+      "RSS_FEED_LIMIT": [],
+      "RSS_PUBLISH_DELAY_SECONDS": [],
+      "S3_ACCESS_KEY_ID": [],
+      "S3_BUCKET": [],
+      "S3_ENDPOINT": [],
+      "S3_PUBLIC_URL": [],
+      "S3_REGION": [],
+      "S3_SECRET_ACCESS_KEY": [],
+      "SEARCH_PAGE_SIZE": [],
+      "SHOW_JANT_BRANDING_ON_HOME": [
+        "false",
+        "true"
+      ],
+      "SITE_DESCRIPTION": [],
+      "SITE_FOOTER": [],
+      "SITE_LANGUAGE": [],
+      "SITE_NAME": [],
+      "SITE_ORIGIN": [],
+      "SITE_PATH_PREFIX": [],
+      "SLUG_ID_LENGTH": [],
+      "STORAGE_DRIVER": [
+        "local",
+        "r2",
+        "s3"
+      ],
+      "SUMMARY_MAX_CHARS": [],
+      "SUMMARY_MAX_PARAGRAPHS": [],
+      "TELEGRAM_BOT_TOKENS": [],
+      "TELEGRAM_WEBHOOK_SECRET": [],
+      "TIME_ZONE": [],
+      "TRUST_PROXY": [
+        "false",
+        "true"
+      ],
+      "UPLOAD_MAX_FILE_SIZE_MB": []
+    },
+    "reservedPaths": [
+      "_assets",
+      "api",
+      "apple-touch-icon.png",
+      "archive",
+      "assets",
+      "collections",
+      "compose",
+      "dash",
+      "favicon.ico",
+      "featured",
+      "feed",
+      "healthz",
+      "latest",
+      "manifest.webmanifest",
+      "media",
+      "new",
+      "pages",
+      "preview",
+      "readyz",
+      "reset",
+      "robots.txt",
+      "search",
+      "settings",
+      "setup",
+      "signin",
+      "signout",
+      "sites",
+      "skill.md",
+      "static",
+      "subscribe"
+    ],
+    "settings": {
+      "ADDITIONAL_LANGUAGES": [],
+      "ARCHIVE_DEFAULT_LAYOUT": [
+        "grid",
+        "list"
+      ],
+      "ARCHIVE_PAGE_SIZE": [],
+      "CUSTOM_CSS": [],
+      "DASHBOARD_LANGUAGE": [
+        "",
+        "en",
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "FONT_THEME": [
+        "classic",
+        "geometric",
+        "humanist-sans",
+        "literary",
+        "modern-editorial",
+        "system-sans",
+        "tufte"
+      ],
+      "MAIN_RSS_FEED": [
+        "featured",
+        "latest"
+      ],
+      "MULTILINGUAL_ENABLED": [
+        "false",
+        "true"
+      ],
+      "NOINDEX": [
+        "false",
+        "true"
+      ],
+      "PAGE_SIZE": [],
+      "PUBLIC_API_ENABLED": [
+        "false",
+        "true"
+      ],
+      "RSS_FEEDS_ENABLED": [
+        "false",
+        "true"
+      ],
+      "RSS_FEED_LIMIT": [],
+      "RSS_PUBLISH_DELAY_SECONDS": [],
+      "SEARCH_PAGE_SIZE": [],
+      "SHOW_HEADER_AVATAR": [
+        "false",
+        "true"
+      ],
+      "SHOW_JANT_BRANDING_ON_HOME": [
+        "false",
+        "true"
+      ],
+      "SITE_DESCRIPTION": [],
+      "SITE_FOOTER": [],
+      "SITE_LANGUAGE": [],
+      "SITE_NAME": [],
+      "SUMMARY_MAX_CHARS": [],
+      "SUMMARY_MAX_PARAGRAPHS": [],
+      "THEME": [
+        "bone",
+        "clay",
+        "cotton",
+        "dune",
+        "ember",
+        "espresso",
+        "frost",
+        "ink",
+        "linen",
+        "paper",
+        "parchment",
+        "sage",
+        "slate",
+        "snow",
+        "tufte"
+      ],
+      "THEME_MODE": [
+        "auto",
+        "dark",
+        "light"
+      ],
+      "TIME_ZONE": []
+    }
+  },
+  "export": {
+    "collection": [
+      "aliases",
+      "description",
+      "slug",
+      "sort_order",
+      "title",
+      "type"
+    ],
+    "data": [
+      "additional_languages",
+      "apple_touch_icon_path",
+      "apple_touch_mode",
+      "custom_url",
+      "custom_url.kind",
+      "custom_url.path",
+      "custom_url.status",
+      "custom_url.to",
+      "default_theme_id",
+      "directory",
+      "directory.description",
+      "directory.label",
+      "directory.slug",
+      "directory.type",
+      "directory.url",
+      "favicon_mode",
+      "favicon_path",
+      "font_theme_id",
+      "format",
+      "main_rss_feed",
+      "multilingual_enabled",
+      "nav",
+      "nav.collection_slug",
+      "nav.custom_label",
+      "nav.label",
+      "nav.placement",
+      "nav.post_slug",
+      "nav.smart_collection_slug",
+      "nav.system_key",
+      "nav.type",
+      "nav.url",
+      "noindex",
+      "public_api_enabled",
+      "rss_feeds_enabled",
+      "show_header_avatar",
+      "show_jant_branding_on_home",
+      "site_avatar_mode",
+      "site_avatar_url",
+      "site_description",
+      "site_footer_markdown",
+      "site_language",
+      "site_name",
+      "theme_id",
+      "theme_mode",
+      "time_zone",
+      "version"
+    ],
+    "post": [
+      "aliases",
+      "build",
+      "build.list",
+      "build.render",
+      "collections",
+      "collections.collected_at",
+      "collections.pinned_at",
+      "collections.position",
+      "collections.slug",
+      "created",
+      "date",
+      "draft",
+      "featured_at",
+      "format",
+      "id",
+      "language",
+      "last_activity_at",
+      "link_url",
+      "media",
+      "media.alt",
+      "media.blurhash",
+      "media.chars",
+      "media.duration_seconds",
+      "media.height",
+      "media.kind",
+      "media.mime_type",
+      "media.original_name",
+      "media.poster",
+      "media.size",
+      "media.src",
+      "media.summary",
+      "media.waveform",
+      "media.width",
+      "pinned_at",
+      "quiet_reply",
+      "quote_text",
+      "rating",
+      "root_aliases",
+      "slug",
+      "source_name",
+      "source_url",
+      "status",
+      "title",
+      "translation_group",
+      "type",
+      "updated",
+      "visibility",
+      "weight"
+    ],
+    "smart_collection": [
+      "description",
+      "display_layout",
+      "selection",
+      "slug",
+      "sort_order",
+      "title",
+      "type"
+    ]
+  },
+  "feed": {
+    "elements": {
+      "author": [],
+      "category": [
+        "jant:page",
+        "label",
+        "scheme",
+        "term"
+      ],
+      "content": [
+        "type"
+      ],
+      "entry": [],
+      "feed": [
+        "xml:lang"
+      ],
+      "id": [],
+      "jant:discover": [
+        "featured",
+        "feed",
+        "status"
+      ],
+      "jant:format": [],
+      "jant:id": [],
+      "jant:post": [
+        "folded",
+        "format",
+        "href",
+        "published",
+        "thumbnail",
+        "title",
+        "truncated",
+        "url"
+      ],
+      "jant:thread": [
+        "gap",
+        "hidden",
+        "latest",
+        "posts"
+      ],
+      "jant:truncated": [],
+      "link": [
+        "href",
+        "hreflang",
+        "length",
+        "rel",
+        "title",
+        "type"
+      ],
+      "media:content": [
+        "duration",
+        "fileSize",
+        "height",
+        "jant:page",
+        "jant:post",
+        "medium",
+        "type",
+        "url",
+        "width"
+      ],
+      "media:description": [
+        "type"
+      ],
+      "media:thumbnail": [
+        "url"
+      ],
+      "media:title": [
+        "type"
+      ],
+      "name": [],
+      "published": [],
+      "subtitle": [],
+      "summary": [
+        "type"
+      ],
+      "title": [],
+      "updated": []
+    },
+    "namespaces": {
+      "xmlns": [
+        "http://www.w3.org/2005/Atom"
+      ],
+      "xmlns:jant": [
+        "https://jant.me/ns"
+      ],
+      "xmlns:media": [
+        "http://search.yahoo.com/mrss/"
+      ]
+    }
+  },
+  "http": {
+    "endpoints": [
+      "DELETE /api/collections/:id",
+      "DELETE /api/collections/:id/threads/:threadId",
+      "DELETE /api/collections/:id/threads/:threadId/pin",
+      "DELETE /api/collections/directory-items/:id",
+      "DELETE /api/custom-urls/:id",
+      "DELETE /api/media/:id",
+      "DELETE /api/nav-items/:id",
+      "DELETE /api/posts/:id",
+      "DELETE /api/posts/:id/translations",
+      "DELETE /api/settings/:key",
+      "DELETE /api/settings/avatar",
+      "DELETE /api/smart-collections/:id",
+      "GET /api/attachments/:id/content",
+      "GET /api/collections",
+      "GET /api/collections/:id",
+      "GET /api/collections/slug",
+      "GET /api/custom-urls",
+      "GET /api/discover/posts",
+      "GET /api/media",
+      "GET /api/media/:id",
+      "GET /api/nav-items",
+      "GET /api/posts",
+      "GET /api/posts/:id",
+      "GET /api/posts/:id/translations",
+      "GET /api/posts/:id/translations/candidates",
+      "GET /api/posts/:id/translations/resolve",
+      "GET /api/posts/slug",
+      "GET /api/public/posts/:slug",
+      "GET /api/public/threads",
+      "GET /api/public/threads/:slug",
+      "GET /api/public/threads/:slug/posts",
+      "GET /api/search",
+      "GET /api/settings",
+      "GET /api/smart-collections",
+      "GET /api/smart-collections/:id",
+      "GET /api/smart-collections/slug",
+      "GET /api/threads",
+      "GET /api/threads/:id",
+      "GET /api/threads/:id/posts",
+      "POST /api/collections",
+      "POST /api/collections/:id/threads",
+      "POST /api/collections/directory-items",
+      "POST /api/custom-urls",
+      "POST /api/export/hugo",
+      "POST /api/github-sync/app-webhook",
+      "POST /api/github-sync/webhook",
+      "POST /api/mcp",
+      "POST /api/nav-items",
+      "POST /api/posts",
+      "POST /api/posts/:id/translations",
+      "POST /api/settings/avatar",
+      "POST /api/smart-collections",
+      "POST /api/smart-collections/preview",
+      "POST /api/telegram/webhook/:botId",
+      "POST /api/upload",
+      "POST /api/uploads/:id/abort",
+      "POST /api/uploads/:id/complete",
+      "POST /api/uploads/init",
+      "PUT /api/collections/:id",
+      "PUT /api/collections/:id/threads/:threadId/pin",
+      "PUT /api/collections/directory-items/:id",
+      "PUT /api/collections/directory-items/:id/move",
+      "PUT /api/media/:id",
+      "PUT /api/nav-items/:id",
+      "PUT /api/nav-items/:id/move",
+      "PUT /api/posts/:id",
+      "PUT /api/posts/:id/language",
+      "PUT /api/settings",
+      "PUT /api/settings/import",
+      "PUT /api/smart-collections/:id",
+      "PUT /api/uploads/:id/body",
+      "PUT /api/uploads/:id/part",
+      "PUT /api/uploads/:id/poster"
+    ],
+    "responses": {
+      "attachment": [
+        "alt",
+        "blurhash",
+        "chars",
+        "contentFormat",
+        "contentUrl",
+        "durationSeconds",
+        "height",
+        "id",
+        "mimeType",
+        "originalName",
+        "posterUrl",
+        "previewUrl",
+        "size",
+        "summary",
+        "type",
+        "url",
+        "width"
+      ],
+      "collection": [
+        "createdAt",
+        "description",
+        "id",
+        "recentActivityAt",
+        "slug",
+        "sortOrder",
+        "threadCount",
+        "title",
+        "updatedAt"
+      ],
+      "customUrl": [
+        "archiveQuery",
+        "createdAt",
+        "id",
+        "path",
+        "redirectType",
+        "targetId",
+        "targetType",
+        "toPath"
+      ],
+      "directoryItem": [
+        "collectionId",
+        "createdAt",
+        "description",
+        "id",
+        "label",
+        "position",
+        "smartCollectionId",
+        "type",
+        "updatedAt",
+        "url"
+      ],
+      "media": [
+        "alt",
+        "blurhash",
+        "chars",
+        "contentFormat",
+        "contentUrl",
+        "createdAt",
+        "durationSeconds",
+        "height",
+        "id",
+        "mediaKind",
+        "mimeType",
+        "originalName",
+        "postId",
+        "posterUrl",
+        "previewUrl",
+        "size",
+        "summary",
+        "type",
+        "updatedAt",
+        "url",
+        "waveform",
+        "width"
+      ],
+      "navItem": [
+        "collectionId",
+        "createdAt",
+        "id",
+        "label",
+        "placement",
+        "position",
+        "postId",
+        "smartCollectionId",
+        "systemKey",
+        "targetTitle",
+        "type",
+        "updatedAt",
+        "url"
+      ],
+      "post": [
+        "attachments",
+        "body",
+        "bodyHtml",
+        "bodyMarkdown",
+        "bodyText",
+        "collectionIds",
+        "createdAt",
+        "displayTitle",
+        "featuredAt",
+        "format",
+        "id",
+        "language",
+        "lastActivityAt",
+        "pinnedAt",
+        "publishedAt",
+        "quietReply",
+        "quoteText",
+        "rating",
+        "replyToId",
+        "slug",
+        "sourceName",
+        "sourceUrl",
+        "status",
+        "summary",
+        "threadId",
+        "threadPostCount",
+        "threadUpdatedAt",
+        "title",
+        "updatedAt",
+        "url",
+        "visibility"
+      ],
+      "publicPost": [
+        "attachments",
+        "bodyHtml",
+        "bodyMarkdown",
+        "bodyText",
+        "collections",
+        "createdAt",
+        "featuredAt",
+        "format",
+        "id",
+        "language",
+        "lastActivityAt",
+        "permalink",
+        "pinnedAt",
+        "previewImageUrl",
+        "previewKind",
+        "previewProvider",
+        "publishedAt",
+        "quietReply",
+        "quoteText",
+        "rating",
+        "replyToId",
+        "slug",
+        "sourceName",
+        "sourceUrl",
+        "status",
+        "summary",
+        "threadId",
+        "threadPostCount",
+        "threadUpdatedAt",
+        "title",
+        "updatedAt",
+        "url",
+        "visibility"
+      ],
+      "searchResult": [
+        "format",
+        "id",
+        "permalink",
+        "publishedAt",
+        "slug",
+        "snippet",
+        "sourceName",
+        "sourceUrl",
+        "title",
+        "url",
+        "visibility"
+      ],
+      "smartCollection": [
+        "createdAt",
+        "description",
+        "id",
+        "layout",
+        "recentActivityAt",
+        "selection",
+        "slug",
+        "sortOrder",
+        "threadCount",
+        "title",
+        "updatedAt"
+      ],
+      "thread": [
+        "fold",
+        "id",
+        "lastActivityAt",
+        "postCount",
+        "root",
+        "threadUpdatedAt"
+      ]
+    }
+  },
+  "mcp": {
+    "protocolVersions": [
+      "2025-06-18"
+    ],
+    "tools": {
+      "jant_attachments_get_content": [
+        "id"
+      ],
+      "jant_collections_add_thread": [
+        "collectionId",
+        "threadId"
+      ],
+      "jant_collections_create": [
+        "description",
+        "slug",
+        "sortOrder",
+        "title"
+      ],
+      "jant_collections_delete": [
+        "id"
+      ],
+      "jant_collections_get": [
+        "id"
+      ],
+      "jant_collections_list": [
+        "view"
+      ],
+      "jant_collections_remove_thread": [
+        "collectionId",
+        "threadId"
+      ],
+      "jant_collections_update": [
+        "description",
+        "id",
+        "slug",
+        "sortOrder",
+        "title"
+      ],
+      "jant_media_delete": [
+        "id"
+      ],
+      "jant_media_get": [
+        "id"
+      ],
+      "jant_media_list": [
+        "cursor",
+        "limit",
+        "mimePrefix"
+      ],
+      "jant_media_update": [
+        "alt",
+        "id"
+      ],
+      "jant_media_upload": [
+        "alt",
+        "blurhash",
+        "chars",
+        "contentBase64",
+        "contentType",
+        "durationSeconds",
+        "filename",
+        "height",
+        "posterBase64",
+        "summary",
+        "waveform",
+        "width"
+      ],
+      "jant_posts_create": [
+        "attachments",
+        "attachments.alt",
+        "attachments.content",
+        "attachments.contentFormat",
+        "attachments.mediaId",
+        "attachments.summary",
+        "attachments.type",
+        "body",
+        "bodyMarkdown",
+        "collectionEntries",
+        "collectionEntries.collectionId",
+        "collectionEntries.createdAt",
+        "collectionEntries.pinnedAt",
+        "collectionEntries.position",
+        "collectionIds",
+        "createdAt",
+        "featured",
+        "featuredAt",
+        "format",
+        "language",
+        "path",
+        "pinned",
+        "pinnedAt",
+        "publishedAt",
+        "quietReply",
+        "quoteText",
+        "rating",
+        "replyToId",
+        "slug",
+        "sourceName",
+        "sourceUrl",
+        "status",
+        "title",
+        "translationOfId",
+        "updatedAt",
+        "url",
+        "visibility"
+      ],
+      "jant_posts_delete": [
+        "id"
+      ],
+      "jant_posts_get": [
+        "content",
+        "id"
+      ],
+      "jant_posts_list": [
+        "content",
+        "cursor",
+        "format",
+        "limit",
+        "status"
+      ],
+      "jant_posts_search": [
+        "limit",
+        "q"
+      ],
+      "jant_posts_update": [
+        "attachments",
+        "attachments.alt",
+        "attachments.content",
+        "attachments.contentFormat",
+        "attachments.mediaId",
+        "attachments.summary",
+        "attachments.type",
+        "body",
+        "bodyMarkdown",
+        "collectionEntries",
+        "collectionEntries.collectionId",
+        "collectionEntries.createdAt",
+        "collectionEntries.pinnedAt",
+        "collectionEntries.position",
+        "collectionIds",
+        "featured",
+        "featuredAt",
+        "format",
+        "id",
+        "language",
+        "pinned",
+        "pinnedAt",
+        "publishedAt",
+        "quoteText",
+        "rating",
+        "slug",
+        "sourceName",
+        "sourceUrl",
+        "status",
+        "title",
+        "url",
+        "visibility"
+      ],
+      "jant_settings_get": [],
+      "jant_settings_update": [],
+      "jant_threads_get": [
+        "content",
+        "fold",
+        "id"
+      ],
+      "jant_threads_list": [
+        "collection",
+        "content",
+        "cursor",
+        "fold",
+        "format",
+        "lang",
+        "limit",
+        "media",
+        "replies",
+        "sort",
+        "status",
+        "title",
+        "visibility",
+        "year"
+      ],
+      "jant_threads_list_posts": [
+        "content",
+        "cursor",
+        "id",
+        "limit",
+        "status"
+      ]
+    }
+  }
+}

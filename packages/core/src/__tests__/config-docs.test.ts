@@ -9,9 +9,10 @@
  * reserved path list missed `subscribe` and `skill.md`, which a post slug can
  * now collide with. These checks fail on each of those.
  *
- * Environment variables outside `CONFIG_FIELDS` are classified here, so a new
- * one added to `Bindings` has to be documented or declared internal, and a
- * variable the code reads has to be in `Bindings` to be classified at all.
+ * Environment variables outside `CONFIG_FIELDS` are classified in
+ * `helpers/public-surface.ts`, so a new one added to `Bindings` has to be
+ * documented or declared internal, and a variable the code reads has to be
+ * in `Bindings` to be classified at all.
  * Both language versions of the reference are held to the same lists, and to
  * the four defaults `docs/compatibility.md` freezes.
  */
@@ -27,57 +28,16 @@ import {
 import { RESERVED_PATHS } from "../lib/constants.js";
 import { ENV_RULES, getCorsOrigins } from "../lib/env.js";
 import { CONFIG_FIELDS } from "../types/config.js";
+import {
+  INTERNAL_BINDINGS,
+  PUBLIC_ENV_OUTSIDE_CONFIG_FIELDS,
+} from "./helpers/public-surface.js";
 
 const CORE_DIR = resolve(import.meta.dirname, "../..");
 const REPO_ROOT = resolve(CORE_DIR, "../..");
 const CONFIGURATION_DOCS = [
   "docs/configuration.md",
   "docs/zh-Hans/configuration.md",
-];
-
-/** Environment variables a self-hosted site may set that `CONFIG_FIELDS` doesn't hold. */
-const PUBLIC_ENV_OUTSIDE_CONFIG_FIELDS = [
-  "CORS_ORIGINS",
-  "DATABASE_URL",
-  "DATA_DIR",
-  "DISCOVER_PING_URL",
-  "GITHUB_APP_ID",
-  "GITHUB_APP_PRIVATE_KEY",
-  "GITHUB_APP_SLUG",
-  "GITHUB_APP_WEBHOOK_SECRET",
-  "HOST",
-  "INTERNAL_ADMIN_TOKEN",
-  // Read by the CLI and `jant start`, not the server.
-  "JANT_ENV_FILE",
-  "LOCAL_PUBLIC_URL",
-  "LOCAL_STORAGE_PATH",
-  "PORT",
-  "RATE_LIMIT_ENABLED",
-  "RATE_LIMIT_SEARCH_PER_MIN",
-  "TELEGRAM_BOT_TOKENS",
-  "TELEGRAM_WEBHOOK_SECRET",
-  "TRUST_PROXY",
-];
-
-/**
- * `Bindings` members that are not documented settings: platform bindings,
- * values the runtime sets itself, development-only tokens, and the hosted
- * service's configuration.
- */
-const INTERNAL_BINDINGS = [
-  "DB",
-  "R2",
-  "NODE_DATABASE",
-  "NODE_SQLITE",
-  "NODE_STARTED_AT",
-  "DEV_API_TOKEN",
-  "SITE_RESOLUTION_MODE",
-  "HOSTED_CONTROL_PLANE_BASE_URL",
-  "HOSTED_CONTROL_PLANE_DOMAIN_CHECK_SECRET",
-  "HOSTED_CONTROL_PLANE_INTERNAL_BASE_URL",
-  "HOSTED_CONTROL_PLANE_INTERNAL_TOKEN",
-  "HOSTED_CONTROL_PLANE_PROVIDER_NAME",
-  "HOSTED_CONTROL_PLANE_SSO_SECRET",
 ];
 
 function readRepoFile(path: string): string {

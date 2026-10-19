@@ -155,7 +155,8 @@ jobs:
     steps:
       # main as it is now, since the fixtures are committed on top of it. What
       # gets frozen doesn't come from this checkout: the script installs the
-      # release from npm and reads the demo content at the release's tag.
+      # release from npm and reads the demo content and the public surface
+      # manifest at the release's tag.
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -198,12 +199,13 @@ jobs:
           mise run release-freeze-fixtures "$VERSION"
           echo "frozen=true" >> "$GITHUB_OUTPUT"
 
-      # The test restores snapshots through the CLI, which loads dist/node.js.
+      # release-fixtures restores snapshots through the CLI, which loads
+      # dist/node.js. public-surface holds main to the manifest just frozen.
       - name: Read them back with the current code
         if: steps.freeze.outputs.frozen == 'true'
         run: |
           pnpm --filter @jant/core build:lib
-          pnpm --filter @jant/core exec vitest run src/__tests__/release-fixtures.test.ts
+          pnpm --filter @jant/core exec vitest run src/__tests__/release-fixtures.test.ts src/__tests__/public-surface.test.ts
 
       - name: Commit to main
         if: steps.freeze.outputs.frozen == 'true'
@@ -213,7 +215,7 @@ jobs:
           git add "packages/core/src/__tests__/fixtures/releases/$VERSION"
           git commit --quiet \
             -m "Freeze the $VERSION release fixtures" \
-            -m "Written by \`mise run release-freeze-fixtures $VERSION\` from @jant/core@$VERSION on npm, by the Release workflow. release-fixtures.test.ts restores and imports them with the current code."
+            -m "Written by \`mise run release-freeze-fixtures $VERSION\` from @jant/core@$VERSION on npm and the v$VERSION tag, by the Release workflow. release-fixtures.test.ts restores and imports them with the current code, and public-surface.test.ts holds later releases of the same major to its public-surface.json."
           for attempt in 1 2 3; do
             if git push origin HEAD:main; then
               exit 0

@@ -753,11 +753,15 @@ arg "<summary>"
 run = 'node scripts/release/changeset-add.mjs "$usage_bump" "$usage_summary"'
 
 [tasks.release-freeze-fixtures]
-description = "Freeze the snapshot and site export a published release writes as test fixtures"
+description = "Freeze the snapshot, site export, and public surface of a published release as test fixtures"
 usage = """
 arg "<version>"
 """
 run = 'node scripts/release/freeze-fixtures.mjs "$usage_version"'
+
+[tasks.update-public-surface]
+description = "Rewrite the public surface manifest (fixtures/public-surface.json) from the code"
+run = "UPDATE_PUBLIC_SURFACE=1 pnpm --filter @jant/core exec vitest run src/__tests__/public-surface.test.ts"
 
 [tasks.changeset-status]
 description = "Show pending changesets and version bumps"

@@ -53,6 +53,15 @@ For changes that affect generated site agent scaffolding, content CLI commands,
 uploads/media automation, or the MCP endpoint, see
 `docs/internal/agent-automation-testing.md`.
 
+## Public Surface
+
+- `src/__tests__/helpers/public-surface.ts` reads the second level of `docs/compatibility.md` from the code into one manifest: public commands and their options, environment variables and settings with the values they take, reserved paths, API endpoints and response fields, MCP tools and their parameters, the elements and attributes a feed writes, and the export's front-matter fields and `data/jant.toml` keys.
+- `src/__tests__/fixtures/public-surface.json` is head's manifest. A change to the surface fails `public-surface.test.ts` until `mise run update-public-surface` rewrites the file; commit it with the change, so review shows the surface diff.
+- What the code has but the docs don't promise stays out through lists in the helper: undocumented `/api/` routes (`UNDOCUMENTED_API_ROUTES`), the `DEMO_*` variables, the options that pick one site from several, and theme-only export fields (`THEME_ONLY_EXPORT_FIELDS`). `api-docs.test.ts` and `export-docs.test.ts` hold the route and field lists to the docs, so a new route is either documented in `docs/API.md` or added to the list.
+- Each release freezes its manifest into `fixtures/releases/<version>/public-surface.json` (`docs/RELEASING.md`). Head's manifest has to hold every name the newest frozen manifest of its major holds; a removal or rename passes only while a pending changeset makes the next release major. 0.x has no baseline.
+- Not covered: request fields and query parameters, field types and meanings, value ranges, and error codes.
+- `helpers/rich-sites.ts` builds the sites the manifest reads feed and export names from: every kind of content a feed or an export writes something for. `feed-docs.test.ts` and `export-docs.test.ts` use the same sites.
+
 ## Migration Rehearsal
 
 - Use `mise run db-wrangler-rehearse` to upgrade a local D1 from the site 0.3.39 wrote, older than any site still running. `mise run check-sqlite-rehearsal` and `check-pg-rehearsal` do the same on the Node runtime.

@@ -22,6 +22,7 @@ import {
   INTERNAL_COMMANDS,
   listPublicCommandNames,
 } from "../../bin/lib/command-registry.js";
+import { optionsInHelp, readHelp } from "./helpers/public-surface.js";
 
 const CORE_DIR = resolve(import.meta.dirname, "../..");
 const REPO_ROOT = resolve(CORE_DIR, "../..");
@@ -41,27 +42,6 @@ function listCommandFiles(dir: string): string[] {
         .join(" "),
     ];
   });
-}
-
-function readHelp(command: string): string {
-  return execFileSync(
-    "node",
-    ["bin/jant.js", ...command.split(" "), "--help"],
-    {
-      cwd: CORE_DIR,
-      encoding: "utf8",
-      env: { ...process.env, JANT_ENV_FILE: "" },
-    },
-  );
-}
-
-function optionsInHelp(help: string): string[] {
-  const options = new Set<string>();
-  for (const line of help.split("\n")) {
-    const match = /^\s+(?:-[a-zA-Z], )?(--[a-z][a-z-]*)/.exec(line);
-    if (match?.[1] && match[1] !== "--help") options.add(match[1]);
-  }
-  return [...options].sort();
 }
 
 /** Documented options per command, keyed by the name in its `### jant …` heading. */
@@ -91,10 +71,11 @@ describe("jant CLI surface", () => {
   const publicCommands = listPublicCommandNames();
   const helpByCommand = new Map<string, string>();
 
-  beforeAll(() => {
-    for (const command of publicCommands) {
-      helpByCommand.set(command, readHelp(command));
-    }
+  beforeAll(async () => {
+    const helps = await Promise.all(publicCommands.map(readHelp));
+    publicCommands.forEach((command, index) => {
+      helpByCommand.set(command, helps[index] ?? "");
+    });
   });
 
   it("classifies every command file as public or internal, once", () => {

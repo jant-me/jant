@@ -37,6 +37,8 @@ We follow [Semantic Versioning](https://semver.org/):
 
 A change that asks site owners or API clients to do something gives its changeset an **Upgrade notes** list. A major release also writes them into [Upgrading](upgrading.md), in both languages, before it ships, and its changeset links there. That page states end states, so a reader on any earlier version can follow it: what a file or setting should be, or the whole file to copy, not which line to edit.
 
+A change to anything the second level of [Compatibility](compatibility.md) lists also changes `packages/core/src/__tests__/fixtures/public-surface.json`. Run `mise run update-public-surface` and commit the file with the change. When the change removes or renames a name that the latest release of the current major froze, `public-surface.test.ts` fails until a pending changeset makes the next release major.
+
 ### For Maintainers
 
 When PRs with changesets are merged:
@@ -58,9 +60,11 @@ When PRs with changesets are merged:
 
    Publishing, the `v<version>` tag, the Docker image, and the starter sync all use the commit CI passed, the merged Release PR. A push to `main` while they run doesn't change what ships.
 
-7. The same workflow's **Freeze Release Fixtures** job freezes the release's fixtures, reads them back with `release-fixtures.test.ts`, and commits them to `main` as `Freeze the <version> release fixtures`. Unlike the steps above, it commits on top of whatever `main` holds by then.
+7. The same workflow's **Freeze Release Fixtures** job freezes the release's fixtures, reads them back with `release-fixtures.test.ts` and `public-surface.test.ts`, and commits them to `main` as `Freeze the <version> release fixtures`. Unlike the steps above, it commits on top of whatever `main` holds by then.
 
    The job runs `mise run release-freeze-fixtures <version>`. This installs `@jant/core@<version>` from npm, loads the canonical demo content at the release tag into a temporary site, adds through that release's API what the demo lacks (a draft, a private post, a text attachment, custom URLs, redirects, a smart collection), and writes the snapshot and site export that release produces into `packages/core/src/__tests__/fixtures/releases/<version>/`. `release-fixtures.test.ts` restores and imports every release there, and checks that the site an export imports into holds what the same release's snapshot holds, so a later change that can no longer read what this release wrote fails in CI. Never edit a frozen fixture. `node scripts/release/freeze-fixtures.mjs --rehearse <dir>` runs the same steps with this checkout's build, to try a change to the script first.
+
+   The script also copies `public-surface.json` from the release tag into the same directory. `public-surface.test.ts` holds every later release of the same major to it: a name it lists can go only in a major release. A tag without the file, every 0.x release among them, freezes none, and the first manifest comes from 1.0.1.
 
    If the job fails, use **Re-run failed jobs** on that Release run. If it still fails, freeze them by hand and commit them:
 

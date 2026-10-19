@@ -16,6 +16,9 @@
 //   site-export/                          (`jant site export`, without themes/
 //                                          except the three files `jant site
 //                                          import` reads)
+//   public-surface.json                   (the public surface manifest at the
+//                                          tag; a tag from before the
+//                                          manifest existed has none)
 //
 // sites/demo-source/canonical/ is re-exported only when the demo changes, so
 // copying it would record whichever version last exported it. The temporary
@@ -25,10 +28,12 @@
 // against it, and `jant site export` downloads from there.
 //
 // `src/__tests__/release-fixtures.test.ts` restores and imports every
-// directory there at head. A fixture is never edited once written.
+// directory there at head, and `src/__tests__/public-surface.test.ts` holds
+// head to the newest public-surface.json of its major. A fixture is never
+// edited once written.
 //
-// --rehearse <dir> runs the same steps with this checkout's build and
-// canonical content, and writes into <dir>: a way to try a change to this
+// --rehearse <dir> runs the same steps with this checkout's build, canonical
+// content, and manifest, and writes into <dir>: a way to try a change to this
 // script before a release depends on it. Build @jant/core first.
 
 import { execFileSync, spawn } from "node:child_process";
@@ -67,6 +72,8 @@ if (!version || !/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(version)) {
 
 const tag = `v${version}`;
 const canonical = "sites/demo-source/canonical";
+const publicSurface =
+  "packages/core/src/__tests__/fixtures/public-surface.json";
 const target = rehearseDir
   ? resolve(rehearseDir)
   : join(repoRoot, "packages/core/src/__tests__/fixtures/releases", version);
@@ -93,6 +100,7 @@ if (!rehearseDir) {
   }
 }
 
+const surface = readPublicSurface();
 const work = mkdtempSync(join(tmpdir(), "jant-freeze-fixtures-"));
 let server = null;
 try {
@@ -181,6 +189,9 @@ try {
   server = null;
 
   writeFixtures(snapshotOut, siteExportOut);
+  if (surface !== null) {
+    writeFileSync(join(target, "public-surface.json"), surface);
+  }
 } catch (error) {
   rmSync(target, { recursive: true, force: true });
   throw error;
@@ -190,6 +201,9 @@ try {
 }
 
 console.log(`Froze ${tag} fixtures into ${target}`);
+if (surface === null) {
+  console.log(`${tag} has no ${publicSurface}, so none was frozen.`);
+}
 
 /**
  * Add what the canonical demo content lacks, through the release's own API.
@@ -282,6 +296,28 @@ async function addFixtureContent(baseUrl, token) {
     smartCollectionId: smartCollection.id,
     placement: "more",
   });
+}
+
+/**
+ * The public surface manifest the release shipped: the committed file at its
+ * tag, which `public-surface.test.ts` kept equal to what the code reads.
+ *
+ * @returns {string | null} The file, or null for a tag that predates it
+ */
+function readPublicSurface() {
+  if (rehearseDir) {
+    const path = join(repoRoot, publicSurface);
+    return existsSync(path) ? readFileSync(path, "utf8") : null;
+  }
+  try {
+    return execFileSync("git", ["show", `${tag}:${publicSurface}`], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return null;
+  }
 }
 
 function extractCanonical(dir) {

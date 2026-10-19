@@ -18,6 +18,8 @@ sites/demo-source/canonical/site-export/themes/jant/layouts/
 sites/demo-source/canonical/site-export/themes/jant/static/_jant/
 # What a past release wrote, frozen byte for byte (release-fixtures.test.ts).
 packages/core/src/__tests__/fixtures/releases/
+# Written by public-surface.test.ts, and copied from each release's tag.
+packages/core/src/__tests__/fixtures/public-surface.json
 
 # Generated files
 **/assets.gen.ts
