@@ -16,7 +16,9 @@
   "files": [
     "bin",
     "dist",
-    "src"
+    "src",
+    "!src/**/__tests__",
+    "!src/styles/fonts"
   ],
   "publishConfig": {
     "access": "public"
