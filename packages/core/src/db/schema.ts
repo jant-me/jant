@@ -192,8 +192,9 @@ export const posts = sqliteTable(
      *
      * Only ever set on Thread Roots (`thread_id = id`); enforced in the post
      * service rather than by a table CHECK, because adding a CHECK to `post`
-     * would make drizzle-kit rebuild the table and silently drop the FTS
-     * triggers (`post_ai` / `post_ad` / `post_au`) that keep search current.
+     * would make drizzle-kit rebuild the table, which takes the hand edits
+     * "Rebuilding a Referenced Table" in `docs/internal/coding-standards.md`
+     * describes to keep the rows and search.
      */
     translationGroupId: text("translation_group_id"),
     /**
