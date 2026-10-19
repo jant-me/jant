@@ -103,6 +103,30 @@ A snapshot's `db.sql` holds rows in the schema of the Jant that wrote it, and re
 
 So such a migration ships, in the same change, a rewrite in `site-snapshot.js` that turns an older snapshot's statements into the new shape, keyed by the snapshot's `schema` tag (the last migration its writer had), for both dialects. Snapshots from 0.7.0 on restore on every later release (`docs/compatibility.md`). `release-fixtures.test.ts` replays each release's frozen snapshot, but it only notices the columns those fixtures happen to fill, so the rewrite belongs to writing the migration rather than to a failing test.
 
+## Rebuilding a Referenced Table
+
+SQLite can't change an existing column's type, nullability, default, CHECK, or foreign key in place, so drizzle-kit rebuilds the table: `CREATE TABLE __new_x`, `INSERT … SELECT`, `DROP TABLE x`, `ALTER TABLE __new_x RENAME TO x`. With foreign keys on, `DROP TABLE x` first deletes every row of `x`, and each table that references `x` reacts by its `ON DELETE` action: CASCADE deletes its rows, SET NULL clears the column, NO ACTION fails the migration.
+
+Foreign keys are on in both `jant migrate` runners. The generated `PRAGMA foreign_keys=OFF` does nothing: D1 accepts it and keeps enforcing, and the Node runtime applies pending migrations in one transaction, where SQLite ignores it. `PRAGMA defer_foreign_keys = ON` defers the checks but not the actions, and a NO ACTION violation it deferred still fails at commit. D1 also refuses `CREATE TEMP TABLE`.
+
+So a SQLite migration that drops a table other tables reference holds their rows itself. Find every table that references `x`, directly or through another such table (for `collection`: `thread_collection`, `collection_directory_item`, `nav_item`, `path_registry`; the guard below names them), and edit the generated file:
+
+1. Before the rebuild, copy each of them into an ordinary table named `__keep_<table>`. Once all are copied, empty them, children before parents.
+2. Leave the generated rebuild as it is.
+3. After the `RENAME`, refill each from its `__keep_` table with explicit column lists, parents before children, then drop the `__keep_` tables.
+
+```sql
+CREATE TABLE `__keep_thread_collection` AS SELECT * FROM `thread_collection`;--> statement-breakpoint
+-- … the other three copied the same way
+DELETE FROM `thread_collection`;--> statement-breakpoint
+-- … the other three emptied, then the generated rebuild:
+-- CREATE TABLE `__new_collection` … DROP TABLE `collection`; ALTER TABLE `__new_collection` RENAME TO `collection`; …
+INSERT INTO `thread_collection` (`site_id`, `thread_id`, `collection_id`, `created_at`, `position`, `pinned_at`) SELECT `site_id`, `thread_id`, `collection_id`, `created_at`, `position`, `pinned_at` FROM `__keep_thread_collection`;--> statement-breakpoint
+DROP TABLE `__keep_thread_collection`;
+```
+
+`migrations.test.ts` fails a migration after 0034 that drops a referenced table without emptying each referencing table before the DROP and refilling it after, and names the tables. `release-upgrades.test.ts` runs every frozen release's rows through the new migration on both runners and fails if a row changed. Every site-scoped table references `site`, so change `site` without a rebuild. Postgres alters columns in place, so the Postgres migration needs none of this.
+
 ## URL Naming
 
 ### Path segments
