@@ -26,8 +26,8 @@ docker compose up -d
 拉取新镜像并执行迁移，再用新镜像启动容器：
 
 ```bash
-docker pull owenyoung/jant:latest
-docker run --rm -e AUTH_SECRET=<auth-secret> -v "$(pwd)/data:/var/lib/jant" owenyoung/jant:latest jant migrate
+docker pull owenyoung/jant:1
+docker run --rm -e AUTH_SECRET=<auth-secret> -v "$(pwd)/data:/var/lib/jant" owenyoung/jant:1 jant migrate
 ```
 
 ### Node

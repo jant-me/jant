@@ -133,7 +133,7 @@ To start a single container, run migrations manually first, then start the app:
 docker run --rm \
   -e AUTH_SECRET=<auth-secret> \
   -v "$(pwd)/data:/var/lib/jant" \
-  owenyoung/jant:latest \
+  owenyoung/jant:1 \
   jant migrate
 
 # Then start the app
@@ -143,7 +143,7 @@ docker run -d \
   -e AUTH_SECRET=<auth-secret> \
   -e TRUST_PROXY=false \
   -v "$(pwd)/data:/var/lib/jant" \
-  owenyoung/jant:latest
+  owenyoung/jant:1
 ```
 
 If the container sits behind your own reverse proxy, set `TRUST_PROXY=true`.

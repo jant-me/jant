@@ -133,7 +133,7 @@ S3_SECRET_ACCESS_KEY=<secret-access-key>
 docker run --rm \
   -e AUTH_SECRET=<auth-secret> \
   -v "$(pwd)/data:/var/lib/jant" \
-  owenyoung/jant:latest \
+  owenyoung/jant:1 \
   jant migrate
 
 # 再启动应用
@@ -143,7 +143,7 @@ docker run -d \
   -e AUTH_SECRET=<auth-secret> \
   -e TRUST_PROXY=false \
   -v "$(pwd)/data:/var/lib/jant" \
-  owenyoung/jant:latest
+  owenyoung/jant:1
 ```
 
 容器在你自己的反向代理后面时，把 `TRUST_PROXY` 改成 `true`。

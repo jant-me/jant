@@ -32,7 +32,7 @@ Use `docker run` when you want a single container without Compose. Apply migrati
 docker run --rm \
   -e AUTH_SECRET=<auth-secret> \
   -v "$(pwd)/data:/var/lib/jant" \
-  owenyoung/jant:latest \
+  owenyoung/jant:1 \
   jant migrate
 
 docker run -d \
@@ -41,7 +41,7 @@ docker run -d \
   -e AUTH_SECRET=<auth-secret> \
   -e TRUST_PROXY=false \
   -v "$(pwd)/data:/var/lib/jant" \
-  owenyoung/jant:latest
+  owenyoung/jant:1
 ```
 
 Set `TRUST_PROXY=true` when the container sits behind Caddy, Nginx, Traefik, or another reverse proxy you control.

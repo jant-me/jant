@@ -26,8 +26,8 @@ docker compose up -d
 Pull the new image and run the migrations, then start a new container from the image:
 
 ```bash
-docker pull owenyoung/jant:latest
-docker run --rm -e AUTH_SECRET=<auth-secret> -v "$(pwd)/data:/var/lib/jant" owenyoung/jant:latest jant migrate
+docker pull owenyoung/jant:1
+docker run --rm -e AUTH_SECRET=<auth-secret> -v "$(pwd)/data:/var/lib/jant" owenyoung/jant:1 jant migrate
 ```
 
 ### Node
