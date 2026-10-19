@@ -14,7 +14,7 @@ Back up the database and media; see [Backups and recovery](backups.md). On a 0.x
 npm install @jant/core@latest
 ```
 
-Commit `package.json` and the lockfile and push to `main`, or run `npm run deploy`. Install with `@latest`: `npm update` stays inside the version range in `package.json` and never reaches a new major version.
+Commit `package.json` and the lockfile and push to `main`, or run `npm run deploy`.
 
 ### Docker Compose
 

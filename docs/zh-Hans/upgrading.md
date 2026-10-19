@@ -14,7 +14,7 @@
 npm install @jant/core@latest
 ```
 
-提交 `package.json` 和 lockfile 并推送到 `main`，或者运行 `npm run deploy`。安装时要带 `@latest`：`npm update` 只在 `package.json` 写的版本范围内升级，到不了新的大版本。
+提交 `package.json` 和 lockfile 并推送到 `main`，或者运行 `npm run deploy`。
 
 ### Docker Compose
 
