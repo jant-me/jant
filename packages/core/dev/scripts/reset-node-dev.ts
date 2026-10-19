@@ -118,7 +118,6 @@ async function importCanonicalSnapshot(bindings: Bindings) {
     const snapshotSite = getSnapshotBootstrapSite(meta);
     const resolutionMode = getCliSiteResolutionMode(opened.bindings);
     const { site: targetSite } = await resolveCliSite(opened, {
-      createIfMissing: false,
       env: opened.bindings,
     });
 

@@ -282,7 +282,6 @@ export async function run(argv) {
 
     const { site: targetSite } = await resolveCliSite(context, {
       env: process.env,
-      createIfMissing: false,
       host: values.host,
       pathPrefix: values["path-prefix"],
       site: values.site,

@@ -102,12 +102,6 @@ export async function run(argv) {
         async query(sql) {
           return queryD1(sql, runtime, d1Options);
         },
-        async execute(sql) {
-          executeD1(sql, runtime, {
-            ...d1Options,
-            quiet: true,
-          });
-        },
       },
       {
         env: process.env,

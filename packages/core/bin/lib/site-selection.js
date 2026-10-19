@@ -1,5 +1,3 @@
-import { typeidUnboxed } from "typeid-js";
-
 function escapeSqlString(value) {
   return String(value).replaceAll("'", "''");
 }
@@ -113,10 +111,7 @@ async function resolveSiteByIdOrKey(queryRunner, idOrKey) {
     throw new Error(`No site found for --site ${idOrKey}.`);
   }
 
-  return {
-    created: false,
-    site: toSite(row),
-  };
+  return { site: toSite(row) };
 }
 
 async function resolveSiteByHost(queryRunner, host, pathPrefix) {
@@ -151,10 +146,7 @@ async function resolveSiteByHost(queryRunner, host, pathPrefix) {
     );
   }
 
-  return {
-    created: false,
-    site: toSite(rows[0]),
-  };
+  return { site: toSite(rows[0]) };
 }
 
 function toSite(row) {
@@ -199,15 +191,14 @@ export function getCliSiteResolutionMode(env = process.env) {
  * instance's one site, and host-based mode fails before querying: a hosted
  * database holds every tenant, so there is no default to fall back to.
  *
- * @param {{ query(sql: string): Promise<Record<string, unknown>[]>, execute?(sql: string): Promise<void> }} queryRunner
+ * @param {{ query(sql: string): Promise<Record<string, unknown>[]> }} queryRunner
  *   Runs SQL against the target database
- * @param {{ env?: { SITE_RESOLUTION_MODE?: unknown }, site?: string, host?: string, pathPrefix?: string, url?: string, createIfMissing?: boolean, bootstrapSite?: { id?: string, key?: string } }} [options]
- *   The environment, the command's site flags, and whether single-site mode
- *   may create the site shell when none exists
- * @returns {Promise<{ created: boolean, site: { id: string, key: string, status: string, createdAt: number, updatedAt: number } }>}
- *   The site, and whether this call created it
+ * @param {{ env?: { SITE_RESOLUTION_MODE?: unknown }, site?: string, host?: string, pathPrefix?: string, url?: string }} [options]
+ *   The environment and the command's site flags
+ * @returns {Promise<{ site: { id: string, key: string, status: string, createdAt: number, updatedAt: number } }>}
+ *   The site
  * @throws {Error} When the flags match no site, when host-based mode has none,
- *   or when single-site mode finds zero sites it may not create or several
+ *   or when single-site mode finds zero sites or several
  * @example
  * const { site } = await resolveCliSite(context, {
  *   env: process.env,
@@ -241,37 +232,9 @@ export async function resolveCliSite(queryRunner, options = {}) {
   `);
 
   if (rows.length === 0) {
-    if (!options.createIfMissing || typeof queryRunner.execute !== "function") {
-      throw new Error(
-        "single-site mode requires an initialized site. Complete /setup first or run a command that can bootstrap the site shell.",
-      );
-    }
-
-    const timestamp = Math.floor(Date.now() / 1000);
-    const siteId = options.bootstrapSite?.id ?? typeidUnboxed("sit");
-    const siteKey = options.bootstrapSite?.key ?? "default";
-
-    await queryRunner.execute(`
-      INSERT INTO "site" ("id", "key", "status", "created_at", "updated_at")
-      VALUES (
-        '${escapeSqlString(siteId)}',
-        '${escapeSqlString(siteKey)}',
-        'active',
-        ${timestamp},
-        ${timestamp}
-      );
-    `);
-
-    return {
-      created: true,
-      site: {
-        id: siteId,
-        key: siteKey,
-        status: "active",
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      },
-    };
+    throw new Error(
+      "single-site mode requires an initialized site. Complete /setup first or run a command that can bootstrap the site shell.",
+    );
   }
 
   if (rows.length > 1) {
@@ -280,8 +243,5 @@ export async function resolveCliSite(queryRunner, options = {}) {
     );
   }
 
-  return {
-    created: false,
-    site: toSite(rows[0]),
-  };
+  return { site: toSite(rows[0]) };
 }

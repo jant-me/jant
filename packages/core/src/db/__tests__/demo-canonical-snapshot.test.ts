@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, it } from "vitest";
-import { typeidUnboxed } from "typeid-js";
+import { createEntityId } from "../../lib/ids.js";
 
 const REPO_ROOT = resolve(import.meta.dirname, "../../../../../");
 const CORE_DIR = resolve(REPO_ROOT, "packages/core");
@@ -14,7 +14,7 @@ const JANT_BIN = resolve(CORE_DIR, "bin/jant.js");
 describe("demo canonical snapshot", () => {
   it("imports into a fresh local D1 with current migrations", () => {
     const persistDir = mkdtempSync(join(tmpdir(), "jant-demo-snapshot-"));
-    const targetSiteId = typeidUnboxed("sit");
+    const targetSiteId = createEntityId("site");
 
     try {
       execFileSync(

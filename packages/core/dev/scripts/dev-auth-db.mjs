@@ -1,12 +1,12 @@
 import { randomBytes, scryptSync } from "node:crypto";
 import { generateKeyBetween } from "fractional-indexing";
-import { typeidUnboxed } from "typeid-js";
 import { runLocalWrangler } from "../../bin/lib/wrangler-cli.js";
 import { extractWranglerJson } from "../../bin/lib/wrangler-json.js";
 import {
   DEFAULT_NAVIGATION_PROFILE,
   SYSTEM_NAV_KEYS,
 } from "../../src/types/constants.ts";
+import { createTypeId } from "../../src/lib/ids.ts";
 
 export const DEV_EMAIL = "debug@jant.test";
 export const DEFAULT_DEV_PASSWORD = "jant-dev-debug-login";
@@ -43,10 +43,6 @@ function sqlString(value) {
 
 function randomId(byteLength = 16) {
   return randomBytes(byteLength).toString("hex");
-}
-
-function createTypeId(prefix) {
-  return typeidUnboxed(prefix);
 }
 
 function nowSeconds() {
