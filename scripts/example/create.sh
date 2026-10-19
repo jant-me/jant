@@ -16,7 +16,7 @@ fi
 
 # Build create-jant if needed
 if [ ! -f packages/create-jant/dist/index.js ]; then
-  pnpm --filter create-jant prepublishOnly
+  pnpm --filter create-jant run prepack
 fi
 
 # Scaffold via create-jant (processes @create-jant annotations)

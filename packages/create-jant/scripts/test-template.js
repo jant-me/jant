@@ -21,8 +21,9 @@
  * The scaffold and install use the `pnpm` on PATH; to test another version,
  * put it first, e.g. `mise exec pnpm@12 -- node scripts/test-template.js`.
  * Yarn 2+ runs through Corepack at {@link YARN_BERRY_VERSION}; set
- * TEST_YARN_VERSION to test another. create-jant must already be built
- * (`pnpm --filter create-jant prepublishOnly`).
+ * TEST_YARN_VERSION to test another. Packing create-jant runs its `prepack`,
+ * which copies the template, builds, and fills in the versions, as `publish`
+ * does.
  */
 import fs from "fs-extra";
 import path from "path";
@@ -253,13 +254,6 @@ async function main() {
 
   // 2. Pack create-jant as it would be published
   console.log("Step 2: Packing create-jant...");
-  for (const built of ["dist/index.js", "template/package.json"]) {
-    if (!(await fs.pathExists(path.join(PACKAGE_ROOT, built)))) {
-      fail(
-        `${built} not found. Run "pnpm --filter create-jant prepublishOnly" first.`,
-      );
-    }
-  }
   // A unique path per run: `pnpm dlx` caches by specifier, so reusing one
   // would run a stale copy of the CLI.
   const createJantTarball = pack(PACKAGE_ROOT, testDir);

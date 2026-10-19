@@ -19,7 +19,7 @@
     "copy-template": "rm -rf template && rsync -a --exclude node_modules --exclude .wrangler --exclude .dev.vars --exclude .claude --exclude CLAUDE.md --exclude docs/internal --exclude scripts/bootstrap-demo.mjs ../../sites/demo/ template/ && mv template/.gitignore template/_gitignore && mv template/.github template/_github",
     "inject-version": "node -e \"const fs=require('fs');const path=require('path');const coreVersion=require('../core/package.json').version;const workspace=fs.readFileSync(path.resolve(__dirname,'../../pnpm-workspace.yaml'),'utf8');const match=workspace.match(/^[ \\t]*wrangler:[ \\t]*(.+)$/m);if(!match)throw new Error('Unable to resolve wrangler catalog version');const wranglerVersion=match[1].trim();const f='dist/index.js';const source=fs.readFileSync(f,'utf8').replace('__JANT_CORE_VERSION__',coreVersion).replace('__WRANGLER_VERSION__',wranglerVersion);fs.writeFileSync(f,source)\"",
     "test-template": "node scripts/test-template.js",
-    "prepublishOnly": "pnpm copy-template && pnpm build && pnpm inject-version"
+    "prepack": "pnpm copy-template && pnpm build && pnpm inject-version"
   },
   "dependencies": {
     "@clack/prompts": "^0.10.0",

@@ -64,7 +64,7 @@ jobs:
       - name: Generate and push starter
         run: |
           # Prepare create-jant CLI (copy template, merge tsconfig, build, inject version)
-          pnpm --filter create-jant prepublishOnly
+          pnpm --filter create-jant run prepack
 
           # Scaffold starter project using create-jant (reuses all processing logic)
           cd /tmp

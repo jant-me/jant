@@ -40,7 +40,7 @@ pnpm exec prettier --write \
 ### 2.1 同步模板
 
 ```bash
-pnpm --filter create-jant prepublishOnly
+pnpm --filter create-jant run prepack
 ```
 
 这一步会把 `sites/demo` 同步到 `packages/create-jant/template/`。
@@ -285,7 +285,7 @@ pnpm exec vitest run \
 ### 4.3 模板回归
 
 ```bash
-pnpm --filter create-jant prepublishOnly
+pnpm --filter create-jant run prepack
 ```
 
 如果你想把“生成模板 + 安装 + build/typecheck”整条链一起覆盖，再跑：
@@ -309,7 +309,7 @@ mise run check-template
 
 如果这次改动确实碰到了 agent automation 面：
 
-1. `pnpm --filter create-jant prepublishOnly`
+1. `pnpm --filter create-jant run prepack`
 2. 生成一个临时项目并检查 `AGENTS.md`、`CLAUDE.md`、`examples/agent-content-automation/`
 3. 至少跑一次 `curl -X POST $JANT_URL/api/posts ...` 验证内容自动化
 4. 如果碰到上传或 MCP，额外跑 `curl -X POST $JANT_URL/api/upload ...` 和 `/api/mcp initialize + tools/call`
