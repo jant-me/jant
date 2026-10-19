@@ -51,6 +51,8 @@ docker run --rm -e AUTH_SECRET=<auth-secret> -v "$(pwd)/data:/var/lib/jant" owen
 
 如果你之前只让 Jant Discover 收录精选帖子，升级后这项会关闭。想继续被收录，到 **设置 → 常规** 重新勾选「允许我的博客出现在 Jant Discover 中」。
 
+地址是 `/subscribe` 的帖子，升级后这个地址归订阅页。
+
 ### Cloudflare 站点
 
 和新版 `@jant/core` 放在同一次提交里，把部署 workflow 和 `AGENTS.md` 换成当前的文件：

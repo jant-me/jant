@@ -1,7 +1,5 @@
 # Introduction
 
-> **Pre-1.0**: Jant is still early. Expect rough edges, breaking changes, and docs that keep moving while the product settles.
->
 > Jant is open source under AGPL-3.0-or-later. Source code is hosted on [GitHub](https://github.com/jant-me/jant); report problems in [Issues](https://github.com/jant-me/jant/issues).
 
 Jant is a Tumblr-style blog for one author. It sits between a traditional blog and social media: posting feels as light as a status update, and what you post stays yours, the way a blog does. It has three basic formats, Note, Link, and Quote, and posts can be connected into Threads or grouped into Collections.

@@ -150,9 +150,9 @@ On a self-hosted site, run `jant reset-password` against the site's database. It
 
 See [Command line](cli.md) for the options.
 
-## Pre-1.0 — will there be a lot of breaking changes?
+## Will upgrading within 1.x break anything?
 
-Possibly, but only when warranted. Every breaking change is in the release notes, and [Upgrading](upgrading.md) collects what a site on 0.x has to change. [Compatibility](compatibility.md) lists what each kind of release can change.
+What [Compatibility](compatibility.md) promises keeps working in every 1.x release. A change to its second level waits for 2.0, whose upgrade notes say what to do. [Upgrading](upgrading.md) has the steps for each kind of site.
 
 ## How do I move my old blog into Jant (WordPress, Tumblr, etc.)?
 

@@ -1,7 +1,5 @@
 # 简介
 
-> **Pre-1.0**：Jant 仍处于早期阶段，有些地方还没打磨好，也会有破坏性变更，文档还在跟着产品调整。
->
 > Jant 基于 AGPL-3.0-or-later 协议开源，源码托管于 [GitHub](https://github.com/jant-me/jant)，问题反馈请提交至 [Issues](https://github.com/jant-me/jant/issues)。
 
 Jant 是一个为单作者设计的轻博客，介于传统博客和社交媒体之间：表达像发动态一样轻，内容又像博客一样归你自己。它有 Note、Link、Quote 三种基本格式，帖子可以串成 Thread，也可以归到 Collection 里。

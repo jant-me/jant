@@ -51,6 +51,8 @@ Check these environment variables:
 
 If you let Jant Discover list only your featured posts, the upgrade turns that off. To stay listed, tick **Allow Jant Discover to list my site** again under **Settings → General**.
 
+If a post's address is `/subscribe`, the upgrade gives that address to the Subscribe page.
+
 ### Cloudflare sites
 
 In the same commit as the new `@jant/core`, replace the deploy workflow and `AGENTS.md` with the current ones:

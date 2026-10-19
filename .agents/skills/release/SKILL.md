@@ -26,8 +26,10 @@ summarizing unreleased commits.
    ```
 
 3. Show the user the unreleased summary and determine the version bump:
-   `patch`, `minor`, or `major`. Use a bump already supplied by the user; if no
-   bump is supplied and the user does not answer, default to `patch`.
+   `patch`, `minor`, or `major`. A breaking change to anything the second level
+   of `docs/compatibility.md` lists is `major`. Use a bump already supplied by
+   the user; if no bump is supplied and the user does not answer, default to
+   `major` when an unreleased commit makes such a change, otherwise `patch`.
 4. Write a concise changelog summary from the commits.
 5. Run the repository task to create the changeset:
 

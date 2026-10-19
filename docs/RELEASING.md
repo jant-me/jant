@@ -12,7 +12,7 @@ We follow [Semantic Versioning](https://semver.org/):
 | **minor** | New features (backwards compatible) | `0.1.0` → `0.2.0` |
 | **major** | Breaking changes                    | `0.x.x` → `1.0.0` |
 
-> **Note**: While version is `0.x.x`, a minor release can break things and its changelog carries upgrade notes. From 1.0, [Compatibility](compatibility.md) defines what "breaking" covers: what its first level lists never breaks, and a change to anything its second level lists needs a major release whose changelog carries upgrade notes. A deprecation in a minor release first is optional.
+> **Note**: [Compatibility](compatibility.md) defines what "breaking" covers: what its first level lists never breaks, and a change to anything its second level lists needs a major release whose changelog carries upgrade notes. A deprecation in a minor release first is optional.
 >
 > `@jant/core@1.0.0` was published by accident in April 2026 and is deprecated on npm, and npm never accepts a version number twice. The first real 1.x release is **1.0.1**; its changelog says why. A major changeset makes Changesets propose 1.0.0, and `mise run release-version` then moves both packages and their changelog headings to 1.0.1 (`scripts/release/skip-taken-version.mjs`). Keep the `@jant/core@1.0.0` and `create-jant@1.0.0` tags on the remote: they record what the npm 1.0.0 was built from. `create-jant@1.0.0` never reached npm.
 

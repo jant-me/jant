@@ -2,8 +2,6 @@
 
 [English](README.md) · [简体中文](README.zh-Hans.md)
 
-> **Pre-1.0**：Jant 仍处于早期阶段。请预期会有粗糙边角、破坏性变更，以及仍在持续调整的文档。
->
 > 在线演示：[demo.jant.me](https://demo.jant.me)（演示账号已自动填充，数据每日清空）
 >
 > 你也可以查看作者的博客作为参考：[www.owenyoung.com](https://www.owenyoung.com/)

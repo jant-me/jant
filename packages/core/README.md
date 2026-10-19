@@ -2,8 +2,6 @@
 
 A self-hosted, single-author microblogging platform for Cloudflare Workers, Docker, and Node.js.
 
-> Still in development
-
 ## What is Jant?
 
 Jant is a place to publish notes, links, and quotes on your own site, without followers, likes, or algorithmic feeds.

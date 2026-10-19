@@ -1,6 +1,6 @@
 # Compatibility
 
-Jant makes three levels of promise. Some things keep working in every release, major ones included. Some change only in a major release, whose upgrade notes say what to do. The rest can change in any release. Version numbers follow [semantic versioning](https://semver.org/) from 1.0. Until then, a minor release can still change what the second level covers, and its release notes say how.
+Jant makes three levels of promise. Some things keep working in every release, major ones included. Some change only in a major release, whose upgrade notes say what to do. The rest can change in any release. Version numbers follow [semantic versioning](https://semver.org/) from 1.0.
 
 ## Kept in every release
 
