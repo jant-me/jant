@@ -121,7 +121,22 @@ export function createTestDatabase(options?: { fts?: boolean }) {
   }
 
   const db = createNodeDatabase(sqlite);
+  insertTestSite(sqlite);
 
+  return { db, sqlite };
+}
+
+/**
+ * Creates the site every test database holds, {@link DEFAULT_TEST_SITE_ID}.
+ *
+ * @param sqlite - A database migrated at least through the `site` table
+ * @returns Nothing; the row is inserted in place
+ * @example
+ * ```ts
+ * insertTestSite(sqlite);
+ * ```
+ */
+export function insertTestSite(sqlite: Database.Database): void {
   const timestamp = Math.floor(Date.now() / 1000);
   sqlite
     .prepare(
@@ -131,8 +146,6 @@ export function createTestDatabase(options?: { fts?: boolean }) {
       `,
     )
     .run(DEFAULT_TEST_SITE_ID, DEFAULT_TEST_SITE_KEY, timestamp, timestamp);
-
-  return { db, sqlite };
 }
 
 /** The most bound parameters Cloudflare D1 accepts in one statement. */

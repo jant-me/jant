@@ -19,31 +19,22 @@
  * fails here. docs/RELEASING.md adds a directory at each release.
  */
 
-import { readdirSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import { __test__ as importSite } from "../../bin/commands/site/import.js";
+import { DEFAULT_TEST_SITE_ID } from "./helpers/db.js";
 import {
-  assertSnapshotMeta,
-  assertSnapshotSchemaInstalled,
-  buildReplaceSql,
-  getSnapshotBootstrapSite,
-  normalizeD1Sql,
-  rewriteSnapshotSiteIdentifiers,
-  upgradeSnapshotSql,
-} from "../../bin/lib/site-snapshot.js";
-import { DEFAULT_TEST_SITE_ID, createTestDatabase } from "./helpers/db.js";
+  RELEASES,
+  RELEASES_DIR,
+  count,
+  describeSite,
+  restoreSnapshot,
+} from "./helpers/release-fixtures.js";
 import {
   importSiteExportIntoTempSite,
   type SiteExportImportResult,
 } from "./helpers/site-export-import.js";
-
-const RELEASES_DIR = resolve(import.meta.dirname, "fixtures/releases");
-const RELEASES = readdirSync(RELEASES_DIR, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => entry.name)
-  .sort();
 
 /**
  * Releases whose snapshot and site export weren't taken from one site: they
@@ -51,72 +42,6 @@ const RELEASES = readdirSync(RELEASES_DIR, { withFileTypes: true })
  * don't describe the same content.
  */
 const SEPARATELY_WRITTEN = new Set(["0.7.0", "0.7.1"]);
-
-function count(sqlite: Database.Database, sql: string, ...params: unknown[]) {
-  return (sqlite.prepare(sql).get(...params) as { count: number }).count;
-}
-
-/** Restore a release's snapshot into a new database migrated to head. */
-function restoreSnapshot(releaseDir: string): Database.Database {
-  const meta = JSON.parse(
-    readFileSync(join(releaseDir, "snapshot/meta.json"), "utf8"),
-  );
-  assertSnapshotMeta(meta);
-  assertSnapshotSchemaInstalled(meta);
-  const site = getSnapshotBootstrapSite(meta);
-  if (!site) throw new Error(`${releaseDir} snapshot names no site.`);
-
-  const sql = normalizeD1Sql(
-    rewriteSnapshotSiteIdentifiers(
-      upgradeSnapshotSql(
-        readFileSync(join(releaseDir, "snapshot/db.sql"), "utf8"),
-        meta.version,
-      ),
-      site.id,
-      DEFAULT_TEST_SITE_ID,
-    ),
-  );
-
-  const { sqlite } = createTestDatabase();
-  sqlite.exec(buildReplaceSql(DEFAULT_TEST_SITE_ID));
-  sqlite.exec(sql);
-  return sqlite;
-}
-
-/**
- * What a site export has to carry, read from a site's database. A release's
- * snapshot and site export come from one site, so the site the export
- * imports into has to read the same as the snapshot restored: every post
- * with its status and visibility, every address and redirect, the
- * collections, smart collections, navigation, and attachments. Archive
- * custom URLs are left out: an export lists them, but import skips them.
- */
-function describeSite(sqlite: Database.Database) {
-  const rows = (sql: string) => sqlite.prepare(sql).all();
-  return {
-    posts: rows(
-      `SELECT "format", "status", "visibility", COUNT(*) AS "count" FROM "post" GROUP BY 1, 2, 3 ORDER BY 1, 2, 3`,
-    ),
-    paths: rows(
-      `SELECT "path", "kind", "redirect_to_path" AS "to", "redirect_type" AS "type" FROM "path_registry" WHERE "kind" IN ('slug', 'alias', 'redirect') ORDER BY "path"`,
-    ),
-    tables: Object.fromEntries(
-      [
-        "collection",
-        "smart_collection",
-        "nav_item",
-        "collection_directory_item",
-        "thread_collection",
-      ].map((table) => [
-        table,
-        count(sqlite, `SELECT COUNT(*) AS count FROM "${table}"`),
-      ]),
-    ),
-    attachments: rows(
-      `SELECT "media_kind" AS "kind", COUNT(*) AS "count" FROM "media" WHERE "post_id" IS NOT NULL GROUP BY 1 ORDER BY 1`,
-    ),
-  };
-}
 
 describe("release fixtures", () => {
   it("has at least one release to check", () => {
