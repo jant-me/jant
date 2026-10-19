@@ -21,6 +21,12 @@ export interface NodeDatabaseBinding {
   rawQuery: RawQueryClient;
   schema: DatabaseSchema;
   close?: () => Promise<void> | void;
+  /**
+   * Tags of the bundled schema migrations the database hasn't applied,
+   * oldest first. Set by the Node runtime; a binding built by hand, as in
+   * tests, leaves it out and `/readyz` skips the check.
+   */
+  pendingMigrations?: () => Promise<string[]>;
 }
 
 export interface Bindings {

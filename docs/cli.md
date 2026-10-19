@@ -48,7 +48,7 @@ printf '%s' "$OWNER_PASSWORD" | npx jant setup --email owner@example.com --passw
 
 ### `jant start`
 
-Starts the Node.js server. It takes no options; everything comes from the environment, described in [Configuration](configuration.md).
+Starts the Node.js server. It takes no options; everything comes from the environment, described in [Configuration](configuration.md). If a database migration hasn't been applied, it exits and says to run `jant migrate`.
 
 ### `jant migrate`
 

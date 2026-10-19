@@ -6,7 +6,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 import { createApp } from "../../dist/index.js";
-import { createNodeRequestHandler } from "../../dist/node.js";
+import {
+  createNodeBindings,
+  createNodeRequestHandler,
+} from "../../dist/node.js";
 
 const nodeBin = process.execPath;
 const jantBin = fileURLToPath(new URL("../../bin/jant.js", import.meta.url));
@@ -108,6 +111,58 @@ async function resetPublicSchema(databaseUrl) {
   }
 }
 
+/**
+ * Take the newest migration out of Drizzle's record, the way a database one
+ * release behind looks, and check that the runtime refuses to start on it and
+ * that `/readyz` reports the database as not ready. The record goes back
+ * afterwards.
+ */
+async function assertRefusesPendingMigration(databaseUrl, env) {
+  const pool = new Pool({ connectionString: databaseUrl });
+  try {
+    const {
+      rows: [newest],
+    } = await pool.query(`
+      DELETE FROM drizzle.__drizzle_migrations
+      WHERE id = (
+        SELECT id FROM drizzle.__drizzle_migrations
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+      RETURNING hash, created_at
+    `);
+    assert.ok(newest, "the database recorded no migrations");
+
+    try {
+      await assert.rejects(
+        createNodeRequestHandler({ env, app: createApp(), assetRoot: null }),
+        (error) => error.code === "JANT_PENDING_MIGRATIONS",
+      );
+
+      const { bindings, close } = await createNodeBindings(env);
+      try {
+        const response = await createApp().fetch(
+          new Request("http://127.0.0.1:3000/readyz"),
+          bindings,
+        );
+        assert.equal(response.status, 503);
+        const body = await response.json();
+        assert.equal(body.checks.database.ok, false);
+        assert.match(body.checks.database.error, /jant migrate/);
+      } finally {
+        await close();
+      }
+    } finally {
+      await pool.query(
+        "INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)",
+        [newest.hash, newest.created_at],
+      );
+    }
+  } finally {
+    await pool.end();
+  }
+}
+
 async function main() {
   const databaseUrl = getRequiredEnv("PG_SMOKE_DATABASE_URL");
   const adminDatabaseUrl = process.env.PG_SMOKE_ADMIN_DATABASE_URL;
@@ -132,14 +187,17 @@ async function main() {
       stdio: "inherit",
     });
 
+    const env = {
+      DATABASE_URL: databaseUrl,
+      AUTH_SECRET: "test-secret-with-enough-entropy-for-pg-smoke",
+      DATA_DIR: dataDir,
+      SITE_RESOLUTION_MODE: "single-site",
+      SITE_ORIGIN: "http://127.0.0.1:3000",
+    };
+    await assertRefusesPendingMigration(databaseUrl, env);
+
     handler = await createNodeRequestHandler({
-      env: {
-        DATABASE_URL: databaseUrl,
-        AUTH_SECRET: "test-secret-with-enough-entropy-for-pg-smoke",
-        DATA_DIR: dataDir,
-        SITE_RESOLUTION_MODE: "single-site",
-        SITE_ORIGIN: "http://127.0.0.1:3000",
-      },
+      env,
       app: createApp(),
       assetRoot: null,
     });

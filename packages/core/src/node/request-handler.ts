@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate as drizzleMigrate } from "drizzle-orm/better-sqlite3/migrator";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import {
   dirname,
@@ -13,7 +13,16 @@ import {
 } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createNodeDatabase } from "../db/index.js";
-import { createNodePgDatabase, migrateNodePgDatabase } from "../db/pg/node.js";
+import {
+  type BundledMigration,
+  listPendingMigrations,
+  PendingMigrationsError,
+} from "../db/migration-status.js";
+import {
+  createNodePgDatabase,
+  migrateNodePgDatabase,
+  readPgLastMigrationAt,
+} from "../db/pg/node.js";
 import {
   type RawQueryClient,
   type RawQueryStatement,
@@ -334,6 +343,54 @@ function assertDatabaseInitialized(sqlite: Database.Database): void {
   }
 }
 
+function readSqliteLastMigrationAt(sqlite: Database.Database): number | null {
+  const hasMigrationsTable = sqlite
+    .prepare(
+      `
+        SELECT 1
+        FROM sqlite_master
+        WHERE type = 'table' AND name = '__drizzle_migrations'
+        LIMIT 1
+      `,
+    )
+    .pluck()
+    .get();
+  if (!hasMigrationsTable) {
+    return null;
+  }
+
+  const last = sqlite
+    .prepare(`SELECT MAX(created_at) FROM "__drizzle_migrations"`)
+    .pluck()
+    .get();
+  return last === null || last === undefined ? null : Number(last);
+}
+
+function readBundledMigrations(migrationsFolder: string): BundledMigration[] {
+  const journal = JSON.parse(
+    readFileSync(join(migrationsFolder, "meta/_journal.json"), "utf8"),
+  ) as { entries: BundledMigration[] };
+  return journal.entries.map(({ tag, when }) => ({ tag, when }));
+}
+
+/**
+ * Build `NODE_DATABASE.pendingMigrations`. The journal is the one `migrate()`
+ * reads, read on first use and then kept: it belongs to the code that is
+ * running, even if a newer package replaces the files on disk.
+ */
+function createPendingMigrationsCheck(
+  dialect: "sqlite" | "pg",
+  readLastAppliedAt: () => Promise<number | null>,
+): () => Promise<string[]> {
+  let bundled: BundledMigration[] | undefined;
+  return async () => {
+    bundled ??= readBundledMigrations(
+      resolveNodeMigrationsDir(import.meta.url, dialect),
+    );
+    return listPendingMigrations(bundled, await readLastAppliedAt());
+  };
+}
+
 function createNodeSqlite(
   env: Bindings,
   options?: { createParentDir?: boolean; requireInitialized?: boolean },
@@ -404,6 +461,9 @@ export async function createNodeBindings(
           rawQuery,
           schema: pgSchemaBundle,
           close: () => pool.end(),
+          pendingMigrations: createPendingMigrationsCheck("pg", () =>
+            readPgLastMigrationAt(pool),
+          ),
         },
       },
       async close() {
@@ -425,6 +485,9 @@ export async function createNodeBindings(
         close: () => {
           sqlite.close();
         },
+        pendingMigrations: createPendingMigrationsCheck("sqlite", async () =>
+          readSqliteLastMigrationAt(sqlite),
+        ),
       },
       NODE_SQLITE: sqlite,
     },
@@ -631,6 +694,18 @@ async function resolveApp(app: NodeAppResolver | undefined): Promise<HonoApp> {
   throw new Error("Node request handler requires an app instance or loader.");
 }
 
+/**
+ * Refuse a database the running code is ahead of. Every query that touches a
+ * column a pending migration adds fails, so serving would answer 500 on every
+ * page while `/healthz` stays green.
+ */
+async function assertNoPendingMigrations(bindings: Bindings): Promise<void> {
+  const pending = (await bindings.NODE_DATABASE?.pendingMigrations?.()) ?? [];
+  if (pending.length > 0) {
+    throw new PendingMigrationsError(pending);
+  }
+}
+
 async function assertNodeSiteResolutionReady(
   bindings: Bindings,
 ): Promise<void> {
@@ -668,6 +743,7 @@ export async function createNodeRequestHandler(options?: {
   const { bindings: databaseBindings, close } = await createNodeBindings(env);
   const bindings: Bindings = { ...databaseBindings, NODE_STARTED_AT: now() };
   try {
+    await assertNoPendingMigrations(bindings);
     await assertNodeSiteResolutionReady(bindings);
 
     const assetRoot =

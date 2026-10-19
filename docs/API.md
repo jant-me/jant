@@ -3071,6 +3071,7 @@ Notes:
 - `version` is the package version followed by the first 16 characters of the build's commit id.
 - `startedAt` is when the process started serving, in Unix seconds. Node only; absent on Workers.
 - This endpoint is stricter than `/health`: it verifies startup configuration and performs a lightweight database query.
+- On Node, `database` also fails while a database migration hasn't been applied. `database.error` names the missing migrations and says to run `jant migrate`.
 
 ### Feeds
 

@@ -47,9 +47,36 @@ export async function run(argv) {
 
   autoloadNodeEnv();
   const { start } = await loadNodeRuntime();
-  const handle = await start();
+  let handle;
+  try {
+    handle = await start();
+  } catch (error) {
+    exitOnRefusal(error);
+    throw error;
+  }
   closeOnSignal(handle);
   console.log(`Jant listening on ${handle.url}`);
+}
+
+/**
+ * Exit with the message alone when the runtime refused an unmigrated database.
+ *
+ * The refusal tells the operator what to run, and it is what `docker compose
+ * logs` shows; a stack trace and the full list of migrations would bury it.
+ * Any other error is left to the caller.
+ *
+ * @param {unknown} error - What `start()` threw
+ * @param {Pick<NodeJS.Process, "exit">} [target] - The process to exit
+ * @returns {void}
+ * @example
+ * exitOnRefusal(error);
+ */
+export function exitOnRefusal(error, target = process) {
+  if (error?.code !== "JANT_PENDING_MIGRATIONS") {
+    return;
+  }
+  console.error(`Error: ${error.message}`);
+  target.exit(1);
 }
 
 /**

@@ -1,4 +1,5 @@
 import { createDatabase, createNodeDatabase } from "../db/index.js";
+import { describePendingMigrations } from "../db/migration-status.js";
 import { sqliteSchemaBundle } from "../db/schema-bundle.js";
 import { getEnvValueIssues } from "../lib/env-values.js";
 import {
@@ -73,6 +74,11 @@ async function getDatabaseReadiness(
 ): Promise<ReadinessCheckStatus> {
   try {
     if (env.NODE_DATABASE?.db) {
+      const pending = (await env.NODE_DATABASE.pendingMigrations?.()) ?? [];
+      if (pending.length > 0) {
+        return { ok: false, error: describePendingMigrations(pending) };
+      }
+
       const siteService = createSiteService(
         env.NODE_DATABASE.db,
         env.NODE_DATABASE.schema,
@@ -117,7 +123,9 @@ async function getDatabaseReadiness(
  *
  * This is intentionally stricter than `/healthz`: it verifies startup
  * configuration and performs a lightweight database/schema query against the
- * shared `site` table through the service layer.
+ * shared `site` table through the service layer. On Node it also fails while
+ * the database has schema migrations the running code bundles but the
+ * database hasn't applied.
  */
 export async function getInstanceReadiness(
   env: Pick<

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createTestDatabase } from "../../__tests__/helpers/db.js";
+import { describePendingMigrations } from "../../db/migration-status.js";
+import type { RawQueryClient } from "../../db/raw-query.js";
+import { sqliteSchemaBundle } from "../../db/schema-bundle.js";
 import { getInstanceReadiness } from "../readiness.js";
 
 const HOSTED_SHARED_ENV = {
@@ -29,6 +32,29 @@ describe("getInstanceReadiness", () => {
         startupConfig: { ok: true },
         database: { ok: true },
       },
+    });
+  });
+
+  it("reports a database with schema migrations it hasn't applied", async () => {
+    const { db, sqlite } = createTestDatabase();
+
+    const result = await getInstanceReadiness({
+      AUTH_SECRET: "test-secret-with-enough-entropy-for-readiness",
+      NODE_DATABASE: {
+        db,
+        dialect: "sqlite",
+        rawQuery: {} as RawQueryClient,
+        schema: sqliteSchemaBundle,
+        pendingMigrations: async () => ["0034_add_x"],
+      },
+      NODE_SQLITE: sqlite,
+    });
+
+    expect(result.status).toBe("error");
+    expect(result.checks.startupConfig).toEqual({ ok: true });
+    expect(result.checks.database).toEqual({
+      ok: false,
+      error: describePendingMigrations(["0034_add_x"]),
     });
   });
 

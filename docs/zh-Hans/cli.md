@@ -48,7 +48,7 @@ printf '%s' "$OWNER_PASSWORD" | npx jant setup --email owner@example.com --passw
 
 ### `jant start`
 
-启动 Node.js 服务器。没有选项，所有配置来自环境变量，见 [配置](configuration.md)。
+启动 Node.js 服务器。没有选项，所有配置来自环境变量，见 [配置](configuration.md)。有数据库迁移还没执行时，它会退出，提示先运行 `jant migrate`。
 
 ### `jant migrate`
 

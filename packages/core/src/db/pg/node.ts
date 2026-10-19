@@ -67,6 +67,36 @@ export async function readPgMigrationJournal(
   }
 }
 
+/**
+ * Read when the newest migration the database recorded was generated.
+ *
+ * @param pool - Pool connected to the site database
+ * @returns The newest `created_at` in `drizzle.__drizzle_migrations`, or null
+ *   when the table is missing or empty
+ * @example
+ * ```ts
+ * const lastAppliedAt = await readPgLastMigrationAt(pool);
+ * ```
+ */
+export async function readPgLastMigrationAt(
+  pool: Pool,
+): Promise<number | null> {
+  try {
+    const result = await pool.query<{ last: string | null }>(`
+      SELECT MAX(created_at) AS last
+      FROM drizzle.__drizzle_migrations
+    `);
+    const last = result.rows[0]?.last;
+    return last === null || last === undefined ? null : Number(last);
+  } catch (error) {
+    const pgError = error as PostgresErrorLike | undefined;
+    if (pgError?.code === "3F000" || pgError?.code === "42P01") {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export async function readNavItemCheckConstraints(
   pool: Pool,
 ): Promise<Record<string, string>> {
