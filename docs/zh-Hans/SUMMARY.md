@@ -16,9 +16,9 @@
 - [使用 Cloudflare 部署](deployment.md)
 - [使用 Docker 部署](deployment-docker.md)
 - [使用 Jant 托管](hosted.md)
-- [升级](upgrading.md)
 - [配置](configuration.md)
 - [命令行](cli.md)
+- [升级](upgrading.md)
 
 ## 使用你的站点
 
