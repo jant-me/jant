@@ -38,28 +38,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # `npm publish` returns before the registry serves the new version, and a
-      # large package can lag by minutes: @jant/core 0.7.0 appeared 11 minutes
-      # after changesets reported it published, and the starter's `npm install`
-      # failed with ETARGET in between. Poll the abbreviated packument with the
-      # Accept header npm install sends, so this waits on the document the
-      # install reads.
+      # The starter's `npm install` fails with ETARGET until npm serves the
+      # version just published, which can take minutes.
       - name: Wait for npm to serve this @jant/core
         id: core
         run: |
           version=$(node -p "JSON.parse(require('fs').readFileSync('packages/core/package.json','utf-8')).version")
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          for attempt in $(seq 1 60); do
-            if curl -fsS -H 'Accept: application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*' \
-              https://registry.npmjs.org/@jant%2fcore | jq -e --arg v "$version" '.versions[$v]' > /dev/null; then
-              echo "npm serves @jant/core@${version}"
-              exit 0
-            fi
-            echo "npm does not serve @jant/core@${version} yet (attempt ${attempt}/60), retrying in 30s"
-            sleep 30
-          done
-          echo "npm still does not serve @jant/core@${version} after 30 minutes" >&2
-          exit 1
+          bash scripts/release/wait-for-npm.sh @jant/core "$version"
 
       - name: Generate and push starter
         run: |

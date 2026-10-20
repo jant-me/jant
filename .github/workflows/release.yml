@@ -176,17 +176,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # npm can take a moment to serve a version it has just accepted.
-      - name: Wait for the release on npm
-        run: |
-          for attempt in $(seq 1 30); do
-            if npm view "@jant/core@$VERSION" version >/dev/null 2>&1; then
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "@jant/core@$VERSION isn't on npm after 5 minutes." >&2
-          exit 1
+      # The freeze installs the release from npm, which can take minutes to
+      # serve it: 1.0.1 took six and a half, past the five this step used to
+      # allow. Same wait as the starter sync.
+      - name: Wait for npm to serve this @jant/core
+        run: bash scripts/release/wait-for-npm.sh @jant/core "$VERSION"
 
       # Already on main when someone froze them by hand before this ran.
       - name: Freeze the fixtures
