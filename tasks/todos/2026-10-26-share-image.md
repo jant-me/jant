@@ -68,8 +68,9 @@ B, a full-bleed magazine page):
   or the MIME type), the name (an attached text's opening words, set in the
   serif), and its size, duration or character count as the site formats
   them. Without this a post whose point is a PDF lost it on the card.
-- Footer: avatar, site name in the site-title font over the address, QR on
-  the right (74 px, 222 in the image), centred under a hairline.
+- Footer: avatar, site name in the site-title font over the site's
+  address (host and path prefix, left out when the name already is it),
+  QR to the post on the right (74 px, 222 in the image), centred under a hairline.
 
 Text still follows the timeline's summary rules (note limits for untitled
 notes, article limits otherwise, read-more break first); the one-screen
@@ -120,7 +121,7 @@ lines of context read as too busy):
 - [x] `lib/share-card.ts`: `assembleShareCard` loads the post, its media
       and alias; `buildShareCardView` picks the layout per format, cuts the
       summary (`extractSummaryHtml`, note or article limits), picks images,
-      builds the absolute permalink, display URL and QR SVG (`uqr`).
+      builds the absolute permalink, site address and QR SVG (`uqr`).
 - [x] `ui/share/ShareCard.tsx`: one component for the four layouts; the
       quote card moves the site to the footer. Quote mark drawn inline (a
       sprite `<use>` would come out empty in the capture).
@@ -200,6 +201,11 @@ lines of context read as too busy):
       has a Lucide icon (share, copy, download, x). Component test for the
       bottom Close and Escape; screenshots of WebKit and Chromium phones,
       dark mode, desktop.
+- [x] A long slug wrapped the footer's address onto two or three lines.
+      The footer names the site's address instead (host and path
+      prefix), once when the site's name already is it; the QR code
+      still points at the post. Route tests for the address, a path
+      prefix, and a name that is the domain.
 - [ ] Owen tries it on his own site/devices.
 
 ## Results

@@ -8373,7 +8373,7 @@
     color: var(--site-text-primary);
   }
 
-  .share-card-url {
+  .share-card-address {
     font-family: var(--font-ui);
     font-size: 12px;
     line-height: 1.4;

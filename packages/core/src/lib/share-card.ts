@@ -30,7 +30,12 @@ import {
   NOTE_SUMMARY_MIN_HIDDEN_CHARS,
   extractSummaryHtml,
 } from "./summary.js";
-import { extractDisplayDomain, sanitizeUrl, toPublicPath } from "./url.js";
+import {
+  buildSiteUrl,
+  extractDisplayDomain,
+  sanitizeUrl,
+  toPublicPath,
+} from "./url.js";
 import { createMediaContext, toPostView } from "./view.js";
 
 type Env = { Bindings: Bindings; Variables: AppVariables };
@@ -172,8 +177,13 @@ export interface ShareCardView {
   moreFiles: number;
   /** Absolute address of the post, what the QR code encodes. */
   permalink: string;
-  /** The address as a reader would type it: no scheme, no trailing slash. */
-  displayUrl: string;
+  /**
+   * The site's address under its name, as a reader would type it: host and
+   * path prefix, no scheme. The post's own address is the QR code's to
+   * carry; a slug is too long to type from a picture. Null when the site's
+   * name already is its address.
+   */
+  siteAddress: string | null;
   /** QR code for `permalink`, as SVG markup from `uqr`. */
   qrSvg: string;
   /** Name for the saved PNG, without extension: the post's slug. */
@@ -445,18 +455,26 @@ function quoteSize(text: string): "short" | "medium" | "long" {
 }
 
 /**
- * The address as a reader would type it: host and path, percent-decoded so a
- * CJK slug reads as itself, without a trailing slash.
+ * The site's address as a reader would type it: host and path prefix,
+ * percent-decoded, without a trailing slash. Null when the site's name
+ * already says it, such as a site named `example.com` at
+ * `www.example.com`.
  */
-function toDisplayUrl(permalink: string): string {
-  const url = new URL(permalink);
+function toSiteAddress(site: ShareCardSite): string | null {
+  const url = new URL(buildSiteUrl(site.siteOrigin, site.sitePathPrefix));
   let path = url.pathname;
   try {
     path = decodeURI(path);
   } catch {
     // Keep the encoded path when it does not decode.
   }
-  return `${url.host}${path}`.replace(/\/$/, "");
+  const address = `${url.host}${path}`.replace(/\/$/, "");
+  const bare = (text: string) =>
+    text
+      .trim()
+      .toLowerCase()
+      .replace(/^www\./, "");
+  return bare(site.siteName) === bare(address) ? null : address;
 }
 
 /**
@@ -536,7 +554,7 @@ export function buildShareCardView(
     ...cardImages(media, post.previewImageKey, site.sitePathPrefix),
     ...cardFiles(media),
     permalink,
-    displayUrl: toDisplayUrl(permalink),
+    siteAddress: toSiteAddress(site),
     qrSvg: renderSVG(permalink, { ecc: "M", border: 2 }),
     fileName: view.slug,
     language: view.language,

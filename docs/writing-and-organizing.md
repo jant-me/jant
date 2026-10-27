@@ -72,7 +72,7 @@ On a list page a Thread takes one card, folded: the root post, its first two rep
 
 ## Share a post as an image
 
-On a published post that isn't Private, choose **… → Share as image**. Jant draws the post as a picture in your site's fonts and colors, with the site name, the post's address, and a QR code that opens it. On a phone, press and hold the picture to save it. On a computer, use **Download**, or **Copy image** and **Share…** where the browser offers them.
+On a published post that isn't Private, choose **… → Share as image**. Jant draws the post as a picture in your site's fonts and colors, with the site's name and address, and a QR code that opens the post. On a phone, press and hold the picture to save it. On a computer, use **Download**, or **Copy image** and **Share…** where the browser offers them.
 
 The picture shows what the timeline shows: the same summary and up to four images. Documents, recordings, and text attachments are listed by name. A post taller than a phone screen is cut with a fade.
 

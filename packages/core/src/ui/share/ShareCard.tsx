@@ -282,7 +282,9 @@ export const ShareCard: FC<{ card: ShareCardView }> = ({ card }) => (
           <Avatar card={card} />
           <div class="share-card-source">
             <span class="share-card-site">{card.siteName}</span>
-            <span class="share-card-url">{card.displayUrl}</span>
+            {card.siteAddress && (
+              <span class="share-card-address">{card.siteAddress}</span>
+            )}
           </div>
           <span
             class="share-card-qr"

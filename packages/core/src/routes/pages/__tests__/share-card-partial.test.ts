@@ -3,7 +3,9 @@ import { createTestApp } from "../../../__tests__/helpers/app.js";
 import { DEFAULT_TEST_SITE_ID } from "../../../__tests__/helpers/db.js";
 import { partialPageRoutes } from "../partials.js";
 
-function createPartialTestApp(options: { authenticated?: boolean } = {}) {
+function createPartialTestApp(
+  options: Parameters<typeof createTestApp>[0] = {},
+) {
   const testApp = createTestApp(options);
   testApp.app.route("/", partialPageRoutes);
   return testApp;
@@ -681,19 +683,56 @@ describe("/_/share-card/:postId", () => {
     });
   });
 
-  it("points its QR code and address at the post", async () => {
+  it("points its QR code at the post and names the site's address", async () => {
     const { app, services } = createPartialTestApp({ authenticated: true });
     const post = await services.posts.create({
       format: "note",
       bodyMarkdown: "Hello",
-      slug: "hello-card",
+      slug: "a-slug-too-long-to-type-from-a-picture",
       status: "published",
     });
 
     const html = await (await app.request(`/_/share-card/${post.id}`)).text();
 
-    expect(html).toMatch(/class="share-card-url">[^<]*\/hello-card</);
+    // The slug is the QR code's to carry.
+    expect(html).toContain('class="share-card-address">localhost:3000<');
     expect(html).toMatch(/class="share-card-qr"><svg[^>]*viewBox=/);
-    expect(html).toContain('data-file-name="hello-card"');
+    expect(html).toContain(
+      'data-file-name="a-slug-too-long-to-type-from-a-picture"',
+    );
+  });
+
+  it("names a site under a path prefix by its home address", async () => {
+    const { app, services } = createPartialTestApp({
+      authenticated: true,
+      sitePathPrefix: "/blog",
+    });
+    const post = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Hello",
+      status: "published",
+    });
+
+    const html = await (await app.request(`/_/share-card/${post.id}`)).text();
+
+    expect(html).toContain('class="share-card-address">localhost:3000/blog<');
+  });
+
+  it("names the address once when the site's name already is it", async () => {
+    const { app, services } = createPartialTestApp({
+      authenticated: true,
+      env: { SITE_ORIGIN: "https://www.example.com" },
+    });
+    await services.settings.set("SITE_NAME", "Example.com");
+    const post = await services.posts.create({
+      format: "note",
+      bodyMarkdown: "Hello",
+      status: "published",
+    });
+
+    const html = await (await app.request(`/_/share-card/${post.id}`)).text();
+
+    expect(html).toContain('class="share-card-site">Example.com<');
+    expect(html).not.toContain("share-card-address");
   });
 });
