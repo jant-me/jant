@@ -116,6 +116,7 @@
     "@types/pg": "^8.20.0",
     "@types/yauzl": "^3.4.0",
     "@types/yazl": "^3.3.1",
+    "@zumer/snapdom": "^3.4.0",
     "basecoat-css": "^0.3.11",
     "cn-font-split": "^7.4.1",
     "drizzle-kit": "^0.31.10",
