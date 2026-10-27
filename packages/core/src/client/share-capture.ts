@@ -5,7 +5,7 @@
  * screen with the page's own theme and fonts, waits for them, cuts the body
  * if the card is taller than one phone screen, and has snapdom paint it at
  * 3x. Two steps, so the dialog can show the laid-out card while the picture
- * is painted. Measured in `tasks/todos/2026-10-26-share-card-snapdom-spike.md`.
+ * is painted.
  */
 
 import { snapdom } from "@zumer/snapdom";

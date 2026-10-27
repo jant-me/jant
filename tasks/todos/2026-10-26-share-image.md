@@ -1,8 +1,9 @@
 # Share a post as an image
 
-Branch: `feat/share-image`. Spike and its measurements:
-`tasks/todos/2026-10-26-share-card-snapdom-spike.md` on
-`spike/share-card-snapdom` (kept apart, not merged).
+Branch: `feat/share-image`. A standalone spike page, deleted once this
+was built, measured snapdom in desktop Safari, iPhone Safari and
+Playwright WebKit; what it found is under Decisions and in the font
+notes of `client/share-capture.ts`.
 
 The author picks "Share as image" in a post's "More" menu and gets a
 Jant-styled PNG of the post — site, text, image, QR code to its address —
@@ -27,8 +28,8 @@ to save or share (WeChat Moments is the case that drove it).
   Private posts have no address a reader can open.
 - No copy-text action in v1.
 - Fonts: embed only the web font families the page itself uses.
-- Safari: `document.fonts` can stay "loading" forever (see the spike), and
-  snapdom awaits `fonts.ready` unbounded there. The capture waits until no
+- Safari: `document.fonts` can stay "loading" forever (the spike found
+  it), and snapdom awaits `fonts.ready` unbounded there. The capture waits until no
   face is loading instead (2 s at most before the capture, 1 s per
   snapdom read): a stuck set has nothing loading, so it costs nothing,
   while a face really downloading is still waited for. `local()` stays in
